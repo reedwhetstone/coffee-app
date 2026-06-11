@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
-import { requireMemberRole } from '$lib/server/auth';
+import { requireChatAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 
 async function persistCanvas(event: Parameters<RequestHandler>[0]) {
-	const { user } = await requireMemberRole(event);
+	const { user } = await requireChatAccess(event);
 	const workspaceId = event.params.id;
 	const body = await event.request.json();
 

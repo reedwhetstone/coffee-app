@@ -1,12 +1,12 @@
 import { json } from '@sveltejs/kit';
-import { requireMemberRole } from '$lib/server/auth';
+import { requireChatAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 import { OPENROUTER_API_KEY } from '$env/static/private';
 
 // POST /api/workspaces/[id]/summarize - Trigger context compaction
 export const POST: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireMemberRole(event);
+		const { user } = await requireChatAccess(event);
 		const workspaceId = event.params.id;
 
 		// Verify workspace ownership and get current summary
@@ -21,12 +21,12 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'Workspace not found' }, { status: 404 });
 		}
 
-		// Fetch recent messages
+		// Fetch the most recent messages, then summarize them chronologically.
 		const { data: messages, error: msgError } = await event.locals.supabase
 			.from('workspace_messages')
 			.select('role, content, created_at')
 			.eq('workspace_id', workspaceId)
-			.order('created_at', { ascending: true })
+			.order('created_at', { ascending: false })
 			.limit(30);
 
 		if (msgError) {
@@ -38,7 +38,8 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		// Build conversation text for summarization
-		const conversationText = messages.map((m) => `${m.role}: ${m.content}`).join('\n');
+		const recentMessages = [...messages].reverse();
+		const conversationText = recentMessages.map((m) => `${m.role}: ${m.content}`).join('\n');
 
 		const existingSummary = workspace.context_summary || '';
 

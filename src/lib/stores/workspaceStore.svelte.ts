@@ -112,7 +112,7 @@ async function createWorkspace(
 		if (!res.ok) throw new Error('Failed to create workspace');
 		const data = await res.json();
 		const workspace = data.workspace as Workspace;
-		workspaces = [...workspaces, workspace];
+		workspaces = [...workspaces.filter((w: Workspace) => w.id !== workspace.id), workspace];
 		return workspace;
 	} catch (err) {
 		error = (err as Error).message;

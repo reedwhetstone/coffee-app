@@ -1,13 +1,46 @@
 import { json } from '@sveltejs/kit';
-import { requireMemberRole } from '$lib/server/auth';
+import { z } from 'zod';
+import { requireChatAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
+import type { Json } from '$lib/types/database.types';
+
+const MAX_BATCH_MESSAGES = 50;
+const MAX_CONTENT_CHARS = 12000;
+const MAX_PARTS_JSON_CHARS = 200000;
+
+const persistedMessageSchema = z.object({
+	role: z.enum(['user', 'assistant']),
+	content: z.string().max(MAX_CONTENT_CHARS),
+	parts: z.unknown().optional(),
+	canvas_mutations: z.unknown().optional()
+});
+
+const messageBodySchema = z.union([
+	z.object({ messages: z.array(persistedMessageSchema).min(1).max(MAX_BATCH_MESSAGES) }),
+	persistedMessageSchema
+]);
+
+function jsonSize(value: unknown): number {
+	return JSON.stringify(value ?? null).length;
+}
+
+function validateJsonSize(label: string, value: unknown) {
+	if (jsonSize(value) > MAX_PARTS_JSON_CHARS) {
+		throw new Error(`${label} exceeds ${MAX_PARTS_JSON_CHARS} serialized characters`);
+	}
+}
 
 // POST /api/workspaces/[id]/messages - Save messages for a workspace
 export const POST: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireMemberRole(event);
+		const { user } = await requireChatAccess(event);
 		const workspaceId = event.params.id;
 		const body = await event.request.json();
+		const parsed = messageBodySchema.safeParse(body);
+
+		if (!parsed.success) {
+			return json({ error: 'Invalid message payload' }, { status: 400 });
+		}
 
 		// Verify workspace ownership
 		const { data: workspace } = await event.locals.supabase
@@ -21,20 +54,23 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'Workspace not found' }, { status: 404 });
 		}
 
-		// Accept an array of messages to save
-		const messages: Array<{
-			role: string;
-			content: string;
-			parts?: unknown;
-			canvas_mutations?: unknown;
-		}> = Array.isArray(body.messages) ? body.messages : [body];
+		const messages = 'messages' in parsed.data ? parsed.data.messages : [parsed.data];
+
+		try {
+			for (const msg of messages) {
+				validateJsonSize('parts', msg.parts ?? []);
+				validateJsonSize('canvas_mutations', msg.canvas_mutations ?? []);
+			}
+		} catch (err) {
+			return json({ error: (err as Error).message }, { status: 413 });
+		}
 
 		const rows = messages.map((msg) => ({
 			workspace_id: workspaceId,
 			role: msg.role,
 			content: msg.content,
-			parts: (msg.parts || []) as import('$lib/types/database.types').Json,
-			canvas_mutations: (msg.canvas_mutations || []) as import('$lib/types/database.types').Json
+			parts: (msg.parts ?? []) as Json,
+			canvas_mutations: (msg.canvas_mutations ?? []) as Json
 		}));
 
 		const { data, error } = await event.locals.supabase
@@ -62,7 +98,7 @@ export const POST: RequestHandler = async (event) => {
 // DELETE /api/workspaces/[id]/messages - Clear all messages in workspace
 export const DELETE: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireMemberRole(event);
+		const { user } = await requireChatAccess(event);
 		const workspaceId = event.params.id;
 
 		// Verify workspace ownership

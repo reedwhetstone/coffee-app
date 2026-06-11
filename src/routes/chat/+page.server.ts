@@ -36,7 +36,7 @@ async function loadInitialWorkspaceData(
 				.from('workspace_messages')
 				.select('*')
 				.eq('workspace_id', activeId)
-				.order('created_at', { ascending: true })
+				.order('created_at', { ascending: false })
 				.limit(50)
 		]);
 
@@ -53,7 +53,7 @@ async function loadInitialWorkspaceData(
 		return {
 			workspaces: list,
 			workspace: workspaceResult.data as Workspace,
-			messages: (messagesResult.data ?? []) as WorkspaceMessage[]
+			messages: [...(messagesResult.data ?? [])].reverse() as WorkspaceMessage[]
 		};
 	} catch {
 		// Prefetch is an optimization — the client fetch path still works.
@@ -67,10 +67,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const ppiAccess =
 		locals.principal?.isAuthenticated === true ? locals.principal.ppiAccess === true : false;
 
-	const initialWorkspaceData =
-		session && user && checkRole(role as UserRole, 'member')
-			? await loadInitialWorkspaceData(locals.supabase, user.id)
-			: null;
+	const canUseChat = session && user && (ppiAccess || checkRole(role as UserRole, 'member'));
+	const initialWorkspaceData = canUseChat
+		? await loadInitialWorkspaceData(locals.supabase, user.id)
+		: null;
 
 	return {
 		session,

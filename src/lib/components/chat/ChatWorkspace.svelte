@@ -264,7 +264,7 @@
 
 	// ─── Workspace lifecycle ──────────────────────────────────────────────────
 	onMount(() => {
-		if (!canUseMallardWorkspaces) return;
+		if (!canUseChat) return;
 
 		// Capture workspace ID locally to ensure it's available in cleanup
 		// even if store state hasn't synchronized yet
