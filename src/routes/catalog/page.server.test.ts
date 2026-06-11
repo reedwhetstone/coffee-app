@@ -234,7 +234,7 @@ describe('/catalog page load', () => {
 		);
 	});
 
-	it('hydrates catalog coffee deep links even when the target is outside current filters', async () => {
+	it('hydrates catalog coffee deep links even when the target is outside current filters or unstocked', async () => {
 		mockSearchCatalog
 			.mockResolvedValueOnce({
 				data: catalogRows,
@@ -249,7 +249,7 @@ describe('/catalog page load', () => {
 						country: 'Colombia',
 						public_coffee: true,
 						wholesale: false,
-						stocked: true
+						stocked: false
 					}
 				],
 				count: 1,
@@ -279,7 +279,7 @@ describe('/catalog page load', () => {
 			expect.objectContaining({ kind: 'session-client' }),
 			expect.objectContaining({
 				coffeeIds: [99],
-				stockedOnly: true,
+				stockedOnly: false,
 				publicOnly: true,
 				showWholesale: false,
 				wholesaleOnly: false,

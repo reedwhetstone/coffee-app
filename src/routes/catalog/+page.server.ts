@@ -127,6 +127,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			if (shouldFetchDeepLinkCoffee) {
 				const deepLinkResult = await searchCatalog(locals.supabase, {
 					...baseCatalogSearchOptions,
+					stockedOnly: false,
 					coffeeIds: [deepLinkCoffeeId],
 					limit: 1,
 					offset: 0
