@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildSearchDataCache, extractBlockFromPart } from './blockExtractor';
+import {
+	buildSearchDataCache,
+	buildSearchDataCacheThroughPart,
+	extractBlockFromPart,
+	extractCanvasMutationsFromPart
+} from './blockExtractor';
 
 const rankedCoffees = [
 	{ id: 11, name: 'Ethiopia Hambela', rank: 1, rank_basis: 'Purveyor Score 92, exceptional' },
@@ -65,5 +70,116 @@ describe('blockExtractor catalog_rank support', () => {
 				{ id: 12, annotation: 'Rare origin worth a look', highlight: undefined }
 			]
 		});
+	});
+
+	it('merges items from multiple messages into one cache (conversation-wide present_results)', () => {
+		const olderPart = {
+			...rankPart(),
+			output: {
+				coffees: [{ id: 99, name: 'Older Search Result' }],
+				objective: 'value',
+				caveats: []
+			}
+		};
+		const cache = buildSearchDataCache([olderPart, rankPart()]);
+
+		expect(cache.get('catalog_rank')?.get(99)).toMatchObject({ name: 'Older Search Result' });
+		expect(cache.get('catalog_rank')?.get(11)).toMatchObject({ name: 'Ethiopia Hambela' });
+	});
+
+	it('builds causal per-part caches without seeing later results in the same message', () => {
+		const priorPart = {
+			...rankPart(),
+			output: {
+				coffees: [{ id: 99, name: 'Prior Search Result' }],
+				objective: 'value',
+				caveats: []
+			}
+		};
+		const presentPart = {
+			type: 'tool-present_results',
+			toolName: 'present_results',
+			state: 'output-available',
+			output: {
+				presentation: {
+					source_tool: 'catalog_rank',
+					layout: 'grid',
+					items: [{ id: 11, annotation: 'This ID only appears later in the same message' }]
+				}
+			}
+		};
+		const laterPart = rankPart();
+		const messages = [{ parts: [priorPart] }, { parts: [presentPart, laterPart] }];
+
+		const presentCache = buildSearchDataCacheThroughPart(messages, 1, 0);
+		expect(presentCache.get('catalog_rank')?.get(99)).toMatchObject({
+			name: 'Prior Search Result'
+		});
+		expect(presentCache.get('catalog_rank')?.has(11)).toBe(false);
+
+		const block = extractBlockFromPart(presentPart, {
+			searchDataCache: presentCache,
+			hasPresentResults: true
+		});
+		expect(block).toMatchObject({ type: 'error', data: { retryable: false } });
+
+		const laterCache = buildSearchDataCacheThroughPart(messages, 1, 1);
+		expect(laterCache.get('catalog_rank')?.get(11)).toMatchObject({ name: 'Ethiopia Hambela' });
+	});
+});
+
+describe('blockExtractor present_results cache misses', () => {
+	function missPart() {
+		return {
+			type: 'tool-present_results',
+			toolName: 'present_results',
+			state: 'output-available',
+			output: {
+				presentation: {
+					source_tool: 'catalog_rank',
+					layout: 'grid',
+					canvas_layout: 'dashboard',
+					items: [{ id: 555, annotation: 'Not in any search result' }]
+				}
+			}
+		};
+	}
+
+	it('returns a visible error block instead of failing silently', () => {
+		const block = extractBlockFromPart(missPart(), {
+			searchDataCache: buildSearchDataCache([rankPart()]),
+			hasPresentResults: true
+		});
+
+		expect(block).toMatchObject({ type: 'error', data: { retryable: false } });
+	});
+
+	it('produces no canvas mutations for a cache-miss error block', () => {
+		const block = extractBlockFromPart(missPart(), {
+			searchDataCache: buildSearchDataCache([rankPart()]),
+			hasPresentResults: true
+		});
+		const mutations = extractCanvasMutationsFromPart(missPart(), block, 'msg-1');
+
+		expect(mutations).toBeNull();
+	});
+
+	it('still honors canvas_action clear when the block is missing', () => {
+		const clearPart = {
+			type: 'tool-present_results',
+			toolName: 'present_results',
+			state: 'output-available',
+			output: {
+				presentation: {
+					source_tool: 'catalog_rank',
+					layout: 'grid',
+					canvas_action: 'clear',
+					items: [{ id: 555 }]
+				}
+			}
+		};
+		const mutations = extractCanvasMutationsFromPart(clearPart, null, 'msg-1');
+
+		expect(mutations).toEqual([{ type: 'clear' }]);
 	});
 });

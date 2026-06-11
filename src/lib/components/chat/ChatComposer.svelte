@@ -38,6 +38,23 @@
 		event.preventDefault();
 		onSend();
 	}
+
+	// ─── Textarea autosize ─────────────────────────────────────────────────────
+	// Grow with content up to a cap, then scroll inside the textarea. Driven by
+	// an effect on inputMessage (not oninput) so programmatic changes — clearing
+	// after send, suggestion chips — also resize it back down.
+	const MAX_TEXTAREA_HEIGHT = 192; // ~8 lines
+
+	let textareaEl = $state<HTMLTextAreaElement | null>(null);
+
+	$effect(() => {
+		void inputMessage;
+		const el = textareaEl;
+		if (!el) return;
+		el.style.height = 'auto';
+		el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
+		el.style.overflowY = el.scrollHeight > MAX_TEXTAREA_HEIGHT ? 'auto' : 'hidden';
+	});
 </script>
 
 <!-- Chat error banner -->
@@ -136,6 +153,7 @@
 	<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
 		<div class="flex space-x-2">
 			<textarea
+				bind:this={textareaEl}
 				bind:value={inputMessage}
 				placeholder={canUseMallardWorkspaces
 					? 'Ask me about sourcing, portfolio, roasting, or coffee market decisions...'
@@ -148,11 +166,6 @@
 						e.preventDefault();
 						onSend();
 					}
-				}}
-				oninput={(e) => {
-					const target = e.target as HTMLTextAreaElement;
-					target.style.height = 'auto';
-					target.style.height = target.scrollHeight + 'px';
 				}}
 			></textarea>
 			<button

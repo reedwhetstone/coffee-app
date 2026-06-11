@@ -24,6 +24,10 @@ export interface BlockExtractorOptions {
 	hasPresentResults?: boolean;
 }
 
+export interface MessagePartsLike {
+	parts?: unknown[];
+}
+
 /** Tool names whose raw output should be suppressed when present_results is used */
 const PRESENTABLE_TOOLS = new Set([
 	'coffee_catalog_search',
@@ -169,6 +173,22 @@ export function extractBlockFromPart(part: any, options?: BlockExtractorOptions)
 }
 
 /**
+ * Visible fallback when present_results references items that are not in the
+ * search data cache (e.g. the source search never ran in this conversation, or
+ * the model invented IDs). Without this the presentation fails silently.
+ */
+function presentationCacheMissBlock(sourceTool: string): ErrorBlock {
+	return {
+		type: 'error',
+		version: 1,
+		data: {
+			message: `Couldn't render this presentation — the referenced ${sourceTool.replace(/_/g, ' ')} results weren't found in this conversation. Ask me to re-run the search.`,
+			retryable: false
+		}
+	};
+}
+
+/**
  * Build a UIBlock from a present_results tool output.
  * Merges AI-provided annotations with cached search data.
  */
@@ -204,7 +224,7 @@ function buildPresentedBlock(
 			});
 		}
 
-		if (coffees.length === 0) return null;
+		if (coffees.length === 0) return presentationCacheMissBlock(sourceTool);
 
 		return {
 			type: 'coffee-cards',
@@ -247,7 +267,7 @@ function buildPresentedBlock(
 			});
 		}
 
-		if (profiles.length === 0) return null;
+		if (profiles.length === 0) return presentationCacheMissBlock(sourceTool);
 
 		return {
 			type: 'roast-profiles',
@@ -268,7 +288,7 @@ function buildPresentedBlock(
 			}
 		}
 
-		if (inventory.length === 0) return null;
+		if (inventory.length === 0) return presentationCacheMissBlock(sourceTool);
 
 		return {
 			type: 'inventory-table',
@@ -363,6 +383,26 @@ export function buildSearchDataCache(parts: any[]): Map<string, Map<number, unkn
 }
 
 /**
+ * Builds the present_results lookup cache for one tool part.
+ *
+ * The cache must reflect only causally prior data: all earlier messages and the
+ * current message's parts up through the part being extracted. Later tool parts
+ * in the same assistant message may not satisfy an earlier presentation.
+ */
+export function buildSearchDataCacheThroughPart(
+	messages: MessagePartsLike[],
+	messageIndex: number,
+	partIndex: number
+): Map<string, Map<number, unknown>> {
+	const priorMessageParts = messages
+		.slice(0, Math.max(0, messageIndex))
+		.flatMap((message) => message.parts ?? []);
+	const currentMessageParts = messages[messageIndex]?.parts?.slice(0, partIndex + 1) ?? [];
+
+	return buildSearchDataCache([...priorMessageParts, ...currentMessageParts]);
+}
+
+/**
  * Checks if a message contains a present_results tool call.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -440,6 +480,10 @@ export function extractCanvasMutationsFromPart(
 		mutations.push({ type: 'clear' });
 		return mutations;
 	}
+
+	// Error blocks (e.g. presentation cache misses) render inline in the
+	// message only — don't touch the canvas, including layout hints.
+	if (block?.type === 'error') return null;
 
 	// If we have a block, dispatch it to canvas
 	if (block) {
