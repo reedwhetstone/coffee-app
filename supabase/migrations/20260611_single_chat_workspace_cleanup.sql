@@ -46,6 +46,13 @@ CREATE TABLE IF NOT EXISTS public.archived_chat_workspace_messages (
   CONSTRAINT archived_chat_workspace_messages_pkey PRIMARY KEY (message_id)
 );
 
+-- Archive tables contain private chat history and are intended only for
+-- service-role/DBA recovery. Do not expose them through Supabase client roles.
+ALTER TABLE public.archived_chat_workspaces ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.archived_chat_workspace_messages ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.archived_chat_workspaces FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.archived_chat_workspace_messages FROM PUBLIC, anon, authenticated;
+
 WITH workspace_activity AS (
   SELECT
     w.id,
