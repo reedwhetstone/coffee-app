@@ -1190,6 +1190,7 @@ export type Database = {
 			workspace_messages: {
 				Row: {
 					canvas_mutations: Json | null;
+					client_message_id: string | null;
 					content: string;
 					created_at: string | null;
 					id: string;
@@ -1199,6 +1200,7 @@ export type Database = {
 				};
 				Insert: {
 					canvas_mutations?: Json | null;
+					client_message_id?: string | null;
 					content: string;
 					created_at?: string | null;
 					id?: string;
@@ -1208,6 +1210,7 @@ export type Database = {
 				};
 				Update: {
 					canvas_mutations?: Json | null;
+					client_message_id?: string | null;
 					content?: string;
 					created_at?: string | null;
 					id?: string;

@@ -15,7 +15,8 @@ const persistedMessageSchema = z.object({
 	role: z.enum(['user', 'assistant']),
 	content: z.string().max(MAX_MESSAGE_TEXT_CHARS),
 	parts: boundedJsonArraySchema.optional(),
-	canvas_mutations: boundedJsonArraySchema.optional()
+	canvas_mutations: boundedJsonArraySchema.optional(),
+	client_message_id: z.string().min(1).max(200).optional()
 });
 
 const messageBodySchema = z.union([
@@ -49,6 +50,93 @@ function persistedPartsFor(msg: z.infer<typeof persistedMessageSchema>): unknown
 	}
 
 	return msg.parts ?? [];
+}
+
+function canonicalJson(value: unknown): unknown {
+	if (Array.isArray(value)) {
+		return value.map(canonicalJson);
+	}
+
+	if (value && typeof value === 'object') {
+		return Object.fromEntries(
+			Object.entries(value as Record<string, unknown>)
+				.sort(([left], [right]) => left.localeCompare(right))
+				.map(([key, child]) => [key, canonicalJson(child)])
+		);
+	}
+
+	return value;
+}
+
+function messageSignature(message: {
+	role: string;
+	content: string;
+	parts?: unknown;
+	client_message_id?: string | null;
+}): string {
+	if (message.client_message_id) {
+		return JSON.stringify({ client_message_id: message.client_message_id });
+	}
+
+	return JSON.stringify({
+		role: message.role,
+		content: message.content,
+		parts: canonicalJson(message.parts ?? [])
+	});
+}
+
+function countPersistedClientIdPrefix(
+	existingMessages: Array<{ client_message_id?: string | null }>,
+	incomingMessages: Array<{ client_message_id?: string | null }>
+): number {
+	const existingClientIds = new Set(
+		existingMessages
+			.map((message) => message.client_message_id)
+			.filter((clientMessageId): clientMessageId is string => Boolean(clientMessageId))
+	);
+	let overlap = 0;
+
+	for (const message of incomingMessages) {
+		if (!message.client_message_id || !existingClientIds.has(message.client_message_id)) {
+			break;
+		}
+		overlap++;
+	}
+
+	return overlap;
+}
+
+function findPersistedPrefixOverlap(
+	existingMessages: Array<{
+		role: string;
+		content: string;
+		parts?: unknown;
+		client_message_id?: string | null;
+	}>,
+	incomingMessages: Array<{
+		role: string;
+		content: string;
+		parts?: unknown;
+		client_message_id?: string | null;
+	}>
+): number {
+	const existingSignatures = existingMessages.map(messageSignature);
+	const incomingSignatures = incomingMessages.map(messageSignature);
+	const maxOverlap = Math.min(existingSignatures.length, incomingSignatures.length);
+
+	for (let overlap = maxOverlap; overlap > 0; overlap--) {
+		const existingSuffix = existingSignatures.slice(existingSignatures.length - overlap);
+		const incomingPrefix = incomingSignatures.slice(0, overlap);
+		if (existingSuffix.every((signature, index) => signature === incomingPrefix[index])) {
+			return overlap;
+		}
+	}
+
+	// Rows inserted in the same Supabase batch can share created_at, and UUID ids
+	// are not a conversation sequence. When retries/sendBeacon return those recent
+	// rows in an arbitrary tie order, client_message_id is the stable ordering key
+	// for deciding how much of the incoming prefix is already persisted.
+	return Math.min(maxOverlap, countPersistedClientIdPrefix(existingMessages, incomingMessages));
 }
 
 // POST /api/workspaces/[id]/messages - Save messages for a workspace
@@ -91,17 +179,49 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: (err as Error).message }, { status: 413 });
 		}
 
-		const rows = messages.map((msg) => ({
+		const { data: recentMessages } = await event.locals.supabase
+			.from('workspace_messages')
+			.select('id, role, content, parts, client_message_id')
+			.eq('workspace_id', workspaceId)
+			.order('created_at', { ascending: false })
+			.order('id', { ascending: false })
+			.limit(messages.length);
+
+		const persistedIncoming = messages.map((msg) => ({
+			role: msg.role,
+			content: truncateDuplicatedContent(msg.content),
+			parts: persistedPartsFor(msg),
+			client_message_id: msg.client_message_id ?? null
+		}));
+		const overlap = findPersistedPrefixOverlap(
+			[
+				...((recentMessages ?? []) as Array<{
+					role: string;
+					content: string;
+					parts?: unknown;
+					client_message_id?: string | null;
+				}>)
+			].reverse(),
+			persistedIncoming
+		);
+		const messagesToInsert = messages.slice(overlap);
+
+		if (messagesToInsert.length === 0) {
+			return json({ messages: [] }, { status: 201 });
+		}
+
+		const rows = messagesToInsert.map((msg) => ({
 			workspace_id: workspaceId,
 			role: msg.role,
 			content: truncateDuplicatedContent(msg.content),
 			parts: persistedPartsFor(msg) as Json,
-			canvas_mutations: (msg.canvas_mutations ?? []) as Json
+			canvas_mutations: (msg.canvas_mutations ?? []) as Json,
+			client_message_id: msg.client_message_id ?? null
 		}));
 
 		const { data, error } = await event.locals.supabase
 			.from('workspace_messages')
-			.insert(rows)
+			.upsert(rows, { onConflict: 'workspace_id,client_message_id', ignoreDuplicates: true })
 			.select();
 
 		if (error) {

@@ -288,7 +288,7 @@
 					const textParts = msg.parts.filter((p) => p.type === 'text');
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					const content = textParts.map((p: any) => p.text || '').join('\n');
-					return { role: msg.role, content, parts: msg.parts };
+					return { role: msg.role, content, parts: msg.parts, client_message_id: msg.id };
 				});
 				navigator.sendBeacon(
 					`/api/workspaces/${wsId}/messages`,
@@ -365,6 +365,7 @@
 		canvasStore.clearAll();
 		dispatchedParts = new Set();
 		lastSentPageContext = null;
+		lastPersistedMessageCount = 0;
 
 		// Restore messages from persisted workspace
 		if (result.messages.length > 0) {
@@ -381,6 +382,9 @@
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			chat.messages = restored as any;
 		}
+		// Hydrated messages came from storage. The first post-hydration
+		// ready-state effect should not treat them as newly authored messages.
+		lastPersistedMessageCount = chat.messages.length;
 
 		// Mark all tool parts from restored messages as already dispatched
 		// This prevents the $effect from re-dispatching blocks that are
@@ -462,7 +466,8 @@
 				return {
 					role: msg.role,
 					content,
-					parts: msg.parts
+					parts: msg.parts,
+					client_message_id: msg.id
 				};
 			});
 			await workspaceStore.saveMessages(wsId, toSave);
