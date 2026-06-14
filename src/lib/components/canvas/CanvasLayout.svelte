@@ -1,60 +1,80 @@
 <script lang="ts">
-	import { defaultBlockTitle, type CanvasBlock, type CanvasLayout, type BlockAction } from '$lib/types/genui';
+	import { type CanvasBlock, type CanvasLayout, type BlockAction } from '$lib/types/genui';
 	import GenUIBlockRenderer from '$lib/components/genui/GenUIBlockRenderer.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
-
 	import { blockSupportsDetail } from '$lib/services/blockDetail';
+	import { groupCanvasBlocks, subTabLabel } from '$lib/services/canvasGrouping';
 
-	let {
-		blocks,
-		layout,
-		focusBlockId,
-		onAction,
-		onExecuteAction,
-		onRemove,
-		onPin,
-		onMinimize,
-		onExpand
-	} = $props<{
-		blocks: CanvasBlock[];
-		layout: CanvasLayout;
-		focusBlockId: string | null;
-		onAction?: (action: BlockAction) => void;
-		onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
-		onRemove: (blockId: string) => void;
-		onPin: (blockId: string) => void;
-		onMinimize: (blockId: string) => void;
-		onExpand?: (blockId: string) => void;
-	}>();
+	let { blocks, layout, focusBlockId, onAction, onExecuteAction, onMinimize, onPin, onExpand } =
+		$props<{
+			blocks: CanvasBlock[];
+			layout: CanvasLayout;
+			focusBlockId: string | null;
+			onAction?: (action: BlockAction) => void;
+			onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
+			onMinimize: (blockId: string) => void;
+			onPin: (blockId: string) => void;
+			onExpand?: (blockId: string) => void;
+		}>();
+
+	// Blocks are grouped by category into windows; each member is a sub-tab.
+	let groups = $derived(groupCanvasBlocks(blocks));
+
+	// Which sub-tab is active per group (by group key → block id). The focused
+	// block always wins so focusing/AI updates surface the right sub-tab.
+	let activeByGroup = $state<Record<string, string>>({});
+
+	function activeBlockFor(group: { key: string; blocks: CanvasBlock[] }): CanvasBlock {
+		if (focusBlockId) {
+			const focused = group.blocks.find((b) => b.id === focusBlockId);
+			if (focused) return focused;
+		}
+		const wanted = activeByGroup[group.key];
+		const chosen = wanted ? group.blocks.find((b) => b.id === wanted) : undefined;
+		return chosen ?? group.blocks[group.blocks.length - 1];
+	}
+
+	function selectSubTab(groupKey: string, blockId: string) {
+		activeByGroup = { ...activeByGroup, [groupKey]: blockId };
+		canvasStore.dispatch({ type: 'focus', blockId });
+	}
+
+	function minimizeWindow(group: { blocks: CanvasBlock[] }) {
+		for (const b of group.blocks) onMinimize(b.id);
+	}
 </script>
 
 <div class="canvas-layout canvas-layout-{layout}">
-	{#each blocks as canvasBlock (canvasBlock.id)}
-		{@const isFocused = canvasBlock.id === focusBlockId}
+	{#each groups as group (group.key)}
+		{@const active = activeBlockFor(group)}
+		{@const isFocused = group.blocks.some((b) => b.id === focusBlockId)}
 		<div
 			class="canvas-block-wrapper"
 			class:is-focused={isFocused && layout === 'focus'}
 			class:is-secondary={!isFocused && layout === 'focus'}
-			class:is-pinned={canvasBlock.pinned}
+			class:is-pinned={group.pinned}
 		>
-			<!-- Block header bar -->
-			<div class="flex items-center justify-between border-b border-border-light px-3 py-1.5">
+			<!-- Window header bar -->
+			<div class="flex items-center justify-between gap-2 border-b border-border-light px-3 py-1.5">
 				<div class="flex min-w-0 items-center gap-2">
-					<span
-						class="truncate text-xs font-medium text-text-secondary-light"
-						title={canvasBlock.title ?? defaultBlockTitle(canvasBlock.block.type)}
-					>
-						{canvasBlock.title ?? defaultBlockTitle(canvasBlock.block.type)}
+					<span class="truncate text-xs font-medium text-text-secondary-light" title={group.label}>
+						{group.label}
 					</span>
-					{#if canvasBlock.pinned}
+					{#if group.blocks.length > 1}
+						<span
+							class="rounded-full bg-background-tertiary-light/10 px-1.5 text-[10px] text-text-secondary-light"
+						>
+							{group.blocks.length}
+						</span>
+					{/if}
+					{#if group.pinned}
 						<span class="text-xs text-amber-500">pinned</span>
 					{/if}
 				</div>
-				<div class="flex items-center gap-1">
-					<!-- Pop-out detail panel -->
-					{#if onExpand && blockSupportsDetail(canvasBlock.block)}
+				<div class="flex shrink-0 items-center gap-1">
+					{#if onExpand && blockSupportsDetail(active.block)}
 						<button
-							onclick={() => onExpand?.(canvasBlock.id)}
+							onclick={() => onExpand?.(active.id)}
 							class="rounded p-0.5 text-text-secondary-light transition-colors hover:text-text-primary-light"
 							title="Open detail panel"
 						>
@@ -68,35 +88,18 @@
 							</svg>
 						</button>
 					{/if}
-					<!-- Focus button (when not in focus layout or not focused) -->
-					{#if layout !== 'focus' || !isFocused}
-						<button
-							onclick={() => canvasStore.dispatch({ type: 'focus', blockId: canvasBlock.id })}
-							class="rounded p-0.5 text-text-secondary-light transition-colors hover:text-text-primary-light"
-							title="Focus"
-						>
-							<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-								/>
-							</svg>
-						</button>
-					{/if}
-					<!-- Pin toggle -->
+					<!-- Pin toggle (operates on the active sub-tab) -->
 					<button
-						onclick={() => onPin(canvasBlock.id)}
+						onclick={() => onPin(active.id)}
 						class="rounded p-0.5 transition-colors"
-						class:text-amber-500={canvasBlock.pinned}
-						class:text-text-secondary-light={!canvasBlock.pinned}
-						class:hover:text-amber-500={!canvasBlock.pinned}
-						title={canvasBlock.pinned ? 'Unpin' : 'Pin'}
+						class:text-amber-500={active.pinned}
+						class:text-text-secondary-light={!active.pinned}
+						class:hover:text-amber-500={!active.pinned}
+						title={active.pinned ? 'Unpin' : 'Pin'}
 					>
 						<svg
 							class="h-3.5 w-3.5"
-							fill={canvasBlock.pinned ? 'currentColor' : 'none'}
+							fill={active.pinned ? 'currentColor' : 'none'}
 							stroke="currentColor"
 							viewBox="0 0 24 24"
 						>
@@ -108,38 +111,63 @@
 							/>
 						</svg>
 					</button>
-					<!-- Minimize -->
+					<!-- Minimize the whole window -->
 					<button
-						onclick={() => onMinimize(canvasBlock.id)}
+						onclick={() => minimizeWindow(group)}
 						class="rounded p-0.5 text-text-secondary-light transition-colors hover:text-text-primary-light"
-						title="Minimize"
+						title="Minimize window"
 					>
 						<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
 						</svg>
 					</button>
-					<!-- Close button: hides the tab, but the block remains recoverable. -->
-					<button
-						onclick={() => onRemove(canvasBlock.id)}
-						class="rounded p-0.5 text-text-secondary-light transition-colors hover:text-red-500"
-						title="Close tab"
-					>
-						<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M6 18L18 6M6 6l12 12"
-							/>
-						</svg>
-					</button>
 				</div>
 			</div>
 
-			<!-- Block content -->
+			<!-- Sub-tab bar (only when the category has more than one block) -->
+			{#if group.blocks.length > 1}
+				<div class="flex items-center gap-1 overflow-x-auto border-b border-border-light px-2 py-1">
+					{#each group.blocks as member, i (member.id)}
+						{@const isActive = member.id === active.id}
+						<div
+							class="group/subtab flex shrink-0 items-center rounded-md text-xs transition-colors {isActive
+								? 'bg-background-tertiary-light/15 text-text-primary-light'
+								: 'text-text-secondary-light hover:bg-background-secondary-light'}"
+						>
+							<button
+								onclick={() => selectSubTab(group.key, member.id)}
+								class="max-w-[140px] truncate px-2 py-0.5"
+								title={subTabLabel(member, i)}
+							>
+								{#if member.pinned}<span class="mr-0.5 text-amber-500">●</span>{/if}{subTabLabel(
+									member,
+									i
+								)}
+							</button>
+							<button
+								onclick={() => onMinimize(member.id)}
+								class="px-1 text-text-secondary-light opacity-0 transition-opacity hover:text-red-500 group-hover/subtab:opacity-100"
+								title="Close this tab"
+								aria-label="Close {subTabLabel(member, i)}"
+							>
+								<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M6 18L18 6M6 6l12 12"
+									/>
+								</svg>
+							</button>
+						</div>
+					{/each}
+				</div>
+			{/if}
+
+			<!-- Active block content -->
 			<div class="canvas-block-content overflow-auto p-3">
 				<GenUIBlockRenderer
-					block={canvasBlock.block}
+					block={active.block}
 					renderMode="canvas"
 					{onAction}
 					{onExecuteAction}
@@ -161,7 +189,7 @@
 			grid-template-rows 0.3s ease;
 	}
 
-	/* Focus: primary block takes most space, others as small tiles below */
+	/* Focus: primary window takes most space, others as small tiles below */
 	.canvas-layout-focus {
 		grid-template-columns: 1fr;
 		grid-template-rows: auto;
@@ -179,9 +207,15 @@
 		align-content: start;
 	}
 
-	/* Dashboard: grid of items */
+	/* Dashboard: denser grid of windows */
 	.canvas-layout-dashboard {
 		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+		align-content: start;
+	}
+
+	/* Stack: single full-width column (reads well, mobile-friendly) */
+	.canvas-layout-stack {
+		grid-template-columns: 1fr;
 		align-content: start;
 	}
 

@@ -213,7 +213,7 @@ export type BlockAction =
 
 // ─── Canvas Types ────────────────────────────────────────────────────────────
 
-export type CanvasLayout = 'focus' | 'comparison' | 'dashboard';
+export type CanvasLayout = 'focus' | 'comparison' | 'dashboard' | 'stack';
 
 export interface CanvasBlock {
 	id: string;

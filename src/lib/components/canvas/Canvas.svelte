@@ -2,7 +2,8 @@
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 	import CanvasLayout from './CanvasLayout.svelte';
 	import CanvasBlockDetail from './CanvasBlockDetail.svelte';
-	import { defaultBlockTitle, type BlockAction, type CanvasBlock } from '$lib/types/genui';
+	import { type BlockAction, type CanvasBlock } from '$lib/types/genui';
+	import { groupCanvasBlocks } from '$lib/services/canvasGrouping';
 
 	let { onAction, onScrollToMessage, onExecuteAction } = $props<{
 		onAction?: (action: BlockAction) => void;
@@ -10,8 +11,11 @@
 		onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
 	}>();
 
-	// Minimized blocks shown as title bar at bottom
-	let minimizedBlocks = $derived(canvasStore.blocks.filter((b: CanvasBlock) => b.minimized));
+	// Minimized blocks shown as a tray at the bottom, grouped by category so the
+	// tray mirrors the windowed canvas (one entry per minimized category).
+	let minimizedGroups = $derived(
+		groupCanvasBlocks(canvasStore.blocks.filter((b: CanvasBlock) => b.minimized))
+	);
 
 	function handleAction(action: BlockAction) {
 		if (action.type === 'scroll-to-message' && onScrollToMessage) {
@@ -19,13 +23,6 @@
 			return;
 		}
 		onAction?.(action);
-	}
-
-	function handleRemove(blockId: string) {
-		// Keep closed blocks recoverable from the conversation preview and
-		// minimized tray. Permanent removal made old tool links look alive while
-		// their canvas block was gone.
-		canvasStore.dispatch({ type: 'minimize', blockId });
 	}
 
 	function handlePin(blockId: string) {
@@ -41,8 +38,8 @@
 		canvasStore.dispatch({ type: 'minimize', blockId });
 	}
 
-	function handleRestore(blockId: string) {
-		canvasStore.dispatch({ type: 'restore', blockId });
+	function restoreGroup(blocks: CanvasBlock[]) {
+		for (const b of blocks) canvasStore.dispatch({ type: 'restore', blockId: b.id });
 	}
 
 	// ─── Pop-out detail panel ──────────────────────────────────────────────────
@@ -107,6 +104,18 @@
 						<rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2" />
 					</svg>
 				</button>
+				<button
+					onclick={() => canvasStore.dispatch({ type: 'layout', layout: 'stack' })}
+					class="rounded p-1 text-xs transition-colors {canvasStore.layout === 'stack'
+						? 'layout-btn-active'
+						: 'text-text-secondary-light'}"
+					title="Stacked view"
+				>
+					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<rect x="3" y="4" width="18" height="5" rx="1" stroke-width="2" />
+						<rect x="3" y="15" width="18" height="5" rx="1" stroke-width="2" />
+					</svg>
+				</button>
 			{/if}
 			{#if canvasStore.blockCount > 0}
 				<button
@@ -129,7 +138,7 @@
 
 	<!-- Canvas content -->
 	<div class="flex-1 overflow-hidden">
-		{#if canvasStore.visibleBlocks.length === 0 && minimizedBlocks.length === 0}
+		{#if canvasStore.visibleBlocks.length === 0 && minimizedGroups.length === 0}
 			<!-- Empty state -->
 			<div class="flex h-full flex-col items-center justify-center p-6 text-center">
 				<svg
@@ -154,7 +163,6 @@
 				focusBlockId={canvasStore.focusBlockId}
 				onAction={handleAction}
 				{onExecuteAction}
-				onRemove={handleRemove}
 				onPin={handlePin}
 				onMinimize={handleMinimize}
 				onExpand={handleExpand}
@@ -162,15 +170,19 @@
 		{/if}
 	</div>
 
-	<!-- Minimized blocks bar -->
-	{#if minimizedBlocks.length > 0}
-		<div class="flex gap-1 border-t border-border-light px-2 py-1.5">
-			{#each minimizedBlocks as mb (mb.id)}
+	<!-- Minimized windows tray (grouped by category) -->
+	{#if minimizedGroups.length > 0}
+		<div class="flex flex-wrap gap-1 border-t border-border-light px-2 py-1.5">
+			{#each minimizedGroups as group (group.key)}
 				<button
-					onclick={() => handleRestore(mb.id)}
+					onclick={() => restoreGroup(group.blocks)}
 					class="flex items-center gap-1 rounded bg-background-secondary-light px-2 py-1 text-xs text-text-secondary-light ring-1 ring-border-light transition-colors hover:text-text-primary-light"
+					title={`Restore ${group.label}`}
 				>
-					<span>{mb.title ?? defaultBlockTitle(mb.block.type)}</span>
+					<span>{group.label}</span>
+					{#if group.blocks.length > 1}
+						<span class="text-[10px] text-text-secondary-light/70">{group.blocks.length}</span>
+					{/if}
 					<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"

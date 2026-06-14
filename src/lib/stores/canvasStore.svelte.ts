@@ -35,10 +35,20 @@ const focusedBlock = $derived(blocks.find((b) => b.id === focusBlockId) ?? null)
 
 // ─── Auto-layout detection ───────────────────────────────────────────────────
 
+// Once a layout is explicitly chosen (by the user, the AI's canvas_layout, or a
+// restore), auto-detection stops overriding it. This is what lets a user set up
+// the canvas the way they like and have the agent inject content into it without
+// the view snapping back on every new block. Cleared on 'clear'.
+let layoutManuallySet = false;
+
 function autoDetectLayout(count: number): CanvasLayout {
 	if (count <= 1) return 'focus';
 	if (count <= 3) return 'comparison';
 	return 'dashboard';
+}
+
+function maybeAutoLayout() {
+	if (!layoutManuallySet) layout = autoDetectLayout(blocks.length);
 }
 
 // ─── Dispatch mutations ──────────────────────────────────────────────────────
@@ -59,7 +69,7 @@ function dispatch(mutation: CanvasMutation) {
 			blocks = [...blocks, newBlock];
 			blockMessageRegistry.set(id, mutation.messageId);
 			focusBlockId = id;
-			layout = autoDetectLayout(blocks.length);
+			maybeAutoLayout();
 			break;
 		}
 
@@ -69,18 +79,19 @@ function dispatch(mutation: CanvasMutation) {
 			if (focusBlockId === mutation.blockId) {
 				focusBlockId = blocks.length > 0 ? blocks[blocks.length - 1].id : null;
 			}
-			layout = autoDetectLayout(blocks.length);
+			maybeAutoLayout();
 			break;
 		}
 
 		case 'focus': {
+			// Selection only — does not change the layout, so swapping sub-tabs or
+			// clicking a canvas link won't disturb the user's chosen view.
 			focusBlockId = mutation.blockId;
 			// Restore if minimized
 			const target = blocks.find((b) => b.id === mutation.blockId);
 			if (target?.minimized) {
 				blocks = blocks.map((b) => (b.id === mutation.blockId ? { ...b, minimized: false } : b));
 			}
-			layout = 'focus';
 			break;
 		}
 
@@ -91,12 +102,14 @@ function dispatch(mutation: CanvasMutation) {
 			for (const b of removed) blockMessageRegistry.delete(b.id);
 			blocks = pinned;
 			focusBlockId = pinned.length > 0 ? pinned[pinned.length - 1].id : null;
-			layout = autoDetectLayout(blocks.length);
+			layoutManuallySet = false;
+			maybeAutoLayout();
 			break;
 		}
 
 		case 'layout': {
 			layout = mutation.layout;
+			layoutManuallySet = true;
 			break;
 		}
 
@@ -123,7 +136,7 @@ function dispatch(mutation: CanvasMutation) {
 
 			blocks = [...pinnedBlocks, ...newBlocks];
 			focusBlockId = newBlocks.length > 0 ? newBlocks[0].id : (pinnedBlocks[0]?.id ?? null);
-			layout = autoDetectLayout(blocks.length);
+			maybeAutoLayout();
 			break;
 		}
 

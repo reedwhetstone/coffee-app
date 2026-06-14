@@ -439,10 +439,8 @@
 					}
 				}
 			}
-			// Restore focus block by index (IDs regenerate, so match by position).
-			// This must run BEFORE the layout restore: dispatching 'focus' forces
-			// layout to 'focus', so applying the saved layout afterwards is what
-			// preserves a comparison/dashboard view across reloads.
+			// Restore focus selection (IDs regenerate, so match by position), then
+			// the saved view layout last so it is the authoritative final state.
 			if (cs.focusBlockId != null && typeof cs.focusBlockIndex === 'number') {
 				const targetBlock = canvasStore.blocks[cs.focusBlockIndex];
 				if (targetBlock) {

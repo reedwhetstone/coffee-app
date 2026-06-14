@@ -52,3 +52,40 @@ describe('canvasStore pinning', () => {
 		expect(canvasStore.blocks[0].title).toBe('Ethiopia naturals');
 	});
 });
+
+describe('canvasStore layout lock', () => {
+	it('keeps an explicitly chosen layout when new blocks are added', async () => {
+		const { canvasStore } = await loadCanvasStore();
+
+		canvasStore.dispatch({ type: 'add', block: cards(1), messageId: 'm1' });
+		canvasStore.dispatch({ type: 'layout', layout: 'stack' });
+
+		// AI injects more content — the chosen view must survive.
+		canvasStore.dispatch({ type: 'add', block: cards(2), messageId: 'm2' });
+		canvasStore.dispatch({ type: 'add', block: cards(3), messageId: 'm3' });
+
+		expect(canvasStore.layout).toBe('stack');
+	});
+
+	it('does not change layout when focusing a block', async () => {
+		const { canvasStore } = await loadCanvasStore();
+
+		canvasStore.dispatch({ type: 'add', block: cards(1), messageId: 'm1' });
+		canvasStore.dispatch({ type: 'layout', layout: 'dashboard' });
+		canvasStore.dispatch({ type: 'focus', blockId: canvasStore.blocks[0].id });
+
+		expect(canvasStore.layout).toBe('dashboard');
+	});
+
+	it('resumes auto-layout after a clear', async () => {
+		const { canvasStore } = await loadCanvasStore();
+
+		canvasStore.dispatch({ type: 'layout', layout: 'stack' });
+		canvasStore.clearAll();
+		// Two unpinned adds → auto-detect picks comparison again.
+		canvasStore.dispatch({ type: 'add', block: cards(1), messageId: 'm1' });
+		canvasStore.dispatch({ type: 'add', block: cards(2), messageId: 'm2' });
+
+		expect(canvasStore.layout).toBe('comparison');
+	});
+});
