@@ -203,6 +203,54 @@ describe('/api/workspaces/[id]/messages persistence payloads', () => {
 		expect(supabase.messageUpsert).not.toHaveBeenCalled();
 	});
 
+	it('skips retry batches when recent rows arrive in non-conversation order', async () => {
+		const supabase = createSupabaseMock();
+		const userParts = [{ type: 'text', text: 'Show me Ethiopian naturals' }];
+		const assistantParts = [{ type: 'text', text: 'Try this washed Yirgacheffe.' }];
+		supabase.recentMessagesQuery.limit.mockResolvedValueOnce({
+			data: [
+				{
+					role: 'user',
+					content: 'Show me Ethiopian naturals',
+					parts: userParts,
+					client_message_id: 'msg-user'
+				},
+				{
+					role: 'assistant',
+					content: 'Try this washed Yirgacheffe.',
+					parts: assistantParts,
+					client_message_id: 'msg-assistant'
+				}
+			],
+			error: null
+		} as never);
+
+		const response = await POST(
+			makeEvent(
+				{
+					messages: [
+						{
+							role: 'user',
+							content: 'Show me Ethiopian naturals',
+							parts: userParts,
+							client_message_id: 'msg-user'
+						},
+						{
+							role: 'assistant',
+							content: 'Try this washed Yirgacheffe.',
+							parts: assistantParts,
+							client_message_id: 'msg-assistant'
+						}
+					]
+				},
+				supabase
+			)
+		);
+
+		expect(response.status).toBe(201);
+		expect(supabase.messageUpsert).not.toHaveBeenCalled();
+	});
+
 	it('inserts only messages after an already persisted overlap prefix', async () => {
 		const supabase = createSupabaseMock();
 		const firstParts = [{ type: 'text', text: 'Show me Ethiopian naturals' }];

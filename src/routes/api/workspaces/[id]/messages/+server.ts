@@ -85,6 +85,27 @@ function messageSignature(message: {
 	});
 }
 
+function countPersistedClientIdPrefix(
+	existingMessages: Array<{ client_message_id?: string | null }>,
+	incomingMessages: Array<{ client_message_id?: string | null }>
+): number {
+	const existingClientIds = new Set(
+		existingMessages
+			.map((message) => message.client_message_id)
+			.filter((clientMessageId): clientMessageId is string => Boolean(clientMessageId))
+	);
+	let overlap = 0;
+
+	for (const message of incomingMessages) {
+		if (!message.client_message_id || !existingClientIds.has(message.client_message_id)) {
+			break;
+		}
+		overlap++;
+	}
+
+	return overlap;
+}
+
 function findPersistedPrefixOverlap(
 	existingMessages: Array<{
 		role: string;
@@ -111,7 +132,11 @@ function findPersistedPrefixOverlap(
 		}
 	}
 
-	return 0;
+	// Rows inserted in the same Supabase batch can share created_at, and UUID ids
+	// are not a conversation sequence. When retries/sendBeacon return those recent
+	// rows in an arbitrary tie order, client_message_id is the stable ordering key
+	// for deciding how much of the incoming prefix is already persisted.
+	return Math.min(maxOverlap, countPersistedClientIdPrefix(existingMessages, incomingMessages));
 }
 
 // POST /api/workspaces/[id]/messages - Save messages for a workspace
