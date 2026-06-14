@@ -127,6 +127,53 @@ describe('/api/workspaces/[id]/messages persistence payloads', () => {
 		expect(supabase.messageUpsert).not.toHaveBeenCalled();
 	});
 
+	it('persists canvas mutations and client-created timestamps with messages', async () => {
+		const supabase = createSupabaseMock();
+		const canvasMutations = [
+			{
+				type: 'replace',
+				blocks: [
+					{
+						block: { type: 'data-table', version: 1, data: { columns: [], rows: [] } },
+						messageId: 'msg-1'
+					}
+				]
+			}
+		];
+
+		const response = await POST(
+			makeEvent(
+				{
+					role: 'assistant',
+					content: 'Rendered a canvas table',
+					parts: [{ type: 'text', text: 'Rendered a canvas table' }],
+					canvas_mutations: canvasMutations,
+					client_message_id: 'msg-1',
+					client_created_at: '2026-06-14T17:18:39.123Z'
+				},
+				supabase
+			)
+		);
+
+		expect(response.status).toBe(201);
+		expect(supabase.messageUpsert).toHaveBeenCalledWith(
+			[
+				expect.objectContaining({
+					workspace_id: 'workspace-123',
+					role: 'assistant',
+					content: 'Rendered a canvas table',
+					canvas_mutations: canvasMutations,
+					client_message_id: 'msg-1',
+					created_at: '2026-06-14T17:18:39.123Z'
+				})
+			],
+			expect.objectContaining({
+				onConflict: 'workspace_id,client_message_id',
+				ignoreDuplicates: true
+			})
+		);
+	});
+
 	it('persists intentional repeated text when client message ids differ', async () => {
 		const supabase = createSupabaseMock();
 		const parts = [{ type: 'text', text: 'Show me Ethiopian naturals' }];

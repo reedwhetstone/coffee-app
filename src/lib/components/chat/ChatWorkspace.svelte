@@ -13,7 +13,7 @@
 		buildSearchDataCacheThroughPart,
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
-	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
+	import type { BlockAction, CanvasBlock, CanvasMutation } from '$lib/types/genui';
 	import { getSuggestions } from '$lib/services/suggestionEngine';
 	import { matchSlashCommand, getSlashCompletions } from '$lib/services/slashCommands';
 	import { goto } from '$app/navigation';
@@ -284,12 +284,7 @@
 			const savedCount = workspaceStore.getSavedMessageCount(wsId);
 			const newMessages = chat.messages.slice(savedCount);
 			if (newMessages.length > 0) {
-				const toSave = newMessages.map((msg) => {
-					const textParts = msg.parts.filter((p) => p.type === 'text');
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const content = textParts.map((p: any) => p.text || '').join('\n');
-					return { role: msg.role, content, parts: msg.parts, client_message_id: msg.id };
-				});
+				const toSave = buildPersistedMessages(newMessages);
 				navigator.sendBeacon(
 					`/api/workspaces/${wsId}/messages`,
 					new Blob([JSON.stringify({ messages: toSave })], { type: 'application/json' })
@@ -357,6 +352,60 @@
 		const result = await workspaceStore.switchWorkspace(workspaceId);
 		if (!result) return;
 		applyWorkspaceResult(result);
+	}
+
+	function buildMessageCanvasMutations(message: (typeof chat.messages)[number]) {
+		if (message.role !== 'assistant') return [];
+
+		const mutations: CanvasMutation[] = [];
+		const hasPR = messageHasPresentResults(message.parts);
+		const messageIndex = chat.messages.findIndex((candidate) => candidate.id === message.id);
+
+		for (const [partIndex, part] of message.parts.entries()) {
+			if (!part.type.startsWith('tool-')) continue;
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const p = part as any;
+			const searchDataCache =
+				hasPR && messageIndex >= 0
+					? buildSearchDataCacheThroughPart(chat.messages, messageIndex, partIndex)
+					: undefined;
+			const extractorOptions = { searchDataCache, hasPresentResults: hasPR };
+			const block = extractBlockFromPart(p, extractorOptions);
+			const explicitMutations = extractCanvasMutationsFromPart(p, block, message.id);
+
+			if (explicitMutations) {
+				mutations.push(...explicitMutations);
+				continue;
+			}
+
+			if (block && block.type !== 'error') {
+				mutations.push({ type: 'add', block, messageId: message.id });
+				for (const companion of extractCompanionBlocks(p)) {
+					mutations.push({ type: 'add', block: companion, messageId: message.id });
+				}
+			}
+		}
+
+		return mutations;
+	}
+
+	function buildPersistedMessages(messages: typeof chat.messages) {
+		return messages.map((msg) => {
+			const textParts = msg.parts.filter((p) => p.type === 'text');
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const content = textParts.map((p: any) => p.text || '').join('\n');
+			const messageCreatedAt = (msg as { createdAt?: unknown }).createdAt;
+			const createdAt = messageCreatedAt instanceof Date ? messageCreatedAt : new Date();
+			return {
+				role: msg.role,
+				content,
+				parts: msg.parts,
+				canvas_mutations: buildMessageCanvasMutations(msg),
+				client_message_id: msg.id,
+				client_created_at: createdAt.toISOString()
+			};
+		});
 	}
 
 	function applyWorkspaceResult(result: { workspace: Workspace; messages: WorkspaceMessage[] }) {
@@ -459,18 +508,7 @@
 		const savedCount = workspaceStore.getSavedMessageCount(wsId);
 		const newMessages = chat.messages.slice(savedCount);
 		if (newMessages.length > 0) {
-			const toSave = newMessages.map((msg) => {
-				const textParts = msg.parts.filter((p) => p.type === 'text');
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const content = textParts.map((p: any) => p.text || '').join('\n');
-				return {
-					role: msg.role,
-					content,
-					parts: msg.parts,
-					client_message_id: msg.id
-				};
-			});
-			await workspaceStore.saveMessages(wsId, toSave);
+			await workspaceStore.saveMessages(wsId, buildPersistedMessages(newMessages));
 		}
 
 		// Save canvas state (including pinned, minimized, focusBlockId)

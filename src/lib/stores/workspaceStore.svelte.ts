@@ -152,7 +152,14 @@ async function switchWorkspace(
 
 async function saveMessages(
 	workspaceId: string,
-	messages: Array<{ role: string; content: string; parts?: unknown; client_message_id?: string }>
+	messages: Array<{
+		role: string;
+		content: string;
+		parts?: unknown;
+		canvas_mutations?: unknown;
+		client_message_id?: string;
+		client_created_at?: string;
+	}>
 ): Promise<boolean> {
 	try {
 		const res = await fetch(`/api/workspaces/${workspaceId}/messages`, {

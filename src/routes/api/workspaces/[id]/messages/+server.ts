@@ -16,7 +16,8 @@ const persistedMessageSchema = z.object({
 	content: z.string().max(MAX_MESSAGE_TEXT_CHARS),
 	parts: boundedJsonArraySchema.optional(),
 	canvas_mutations: boundedJsonArraySchema.optional(),
-	client_message_id: z.string().min(1).max(200).optional()
+	client_message_id: z.string().min(1).max(200).optional(),
+	client_created_at: z.string().datetime().optional()
 });
 
 const messageBodySchema = z.union([
@@ -210,13 +211,14 @@ export const POST: RequestHandler = async (event) => {
 			return json({ messages: [] }, { status: 201 });
 		}
 
-		const rows = messagesToInsert.map((msg) => ({
+		const rows = messagesToInsert.map((msg, index) => ({
 			workspace_id: workspaceId,
 			role: msg.role,
 			content: truncateDuplicatedContent(msg.content),
 			parts: persistedPartsFor(msg) as Json,
 			canvas_mutations: (msg.canvas_mutations ?? []) as Json,
-			client_message_id: msg.client_message_id ?? null
+			client_message_id: msg.client_message_id ?? null,
+			created_at: msg.client_created_at ?? new Date(Date.now() + index).toISOString()
 		}));
 
 		const { data, error } = await event.locals.supabase
