@@ -174,6 +174,53 @@ describe('/api/workspaces/[id]/messages persistence payloads', () => {
 		);
 	});
 
+	it('assigns distinct fallback timestamps when clients omit message timestamps', async () => {
+		const supabase = createSupabaseMock();
+		const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_797_189_519_000);
+
+		const response = await POST(
+			makeEvent(
+				{
+					messages: [
+						{
+							role: 'user',
+							content: 'Find naturals',
+							parts: [{ type: 'text', text: 'Find naturals' }],
+							client_message_id: 'msg-user'
+						},
+						{
+							role: 'assistant',
+							content: 'Here are some.',
+							parts: [{ type: 'text', text: 'Here are some.' }],
+							client_message_id: 'msg-assistant'
+						}
+					]
+				},
+				supabase
+			)
+		);
+
+		expect(response.status).toBe(201);
+		expect(supabase.messageUpsert).toHaveBeenCalledWith(
+			[
+				expect.objectContaining({
+					client_message_id: 'msg-user',
+					created_at: '2026-12-13T19:18:39.000Z'
+				}),
+				expect.objectContaining({
+					client_message_id: 'msg-assistant',
+					created_at: '2026-12-13T19:18:39.001Z'
+				})
+			],
+			expect.objectContaining({
+				onConflict: 'workspace_id,client_message_id',
+				ignoreDuplicates: true
+			})
+		);
+
+		nowSpy.mockRestore();
+	});
+
 	it('persists intentional repeated text when client message ids differ', async () => {
 		const supabase = createSupabaseMock();
 		const parts = [{ type: 'text', text: 'Show me Ethiopian naturals' }];
