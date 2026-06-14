@@ -82,4 +82,62 @@ describe('ChatWorkspace auto-persist effect', () => {
 		expect(persist).toHaveBeenCalledTimes(1);
 		expect(persist).toHaveBeenCalledWith(4);
 	});
+
+	it('serializes overlapping persist calls so later saves slice after the first completes', async () => {
+		let messageCount = 2;
+		let savedCount = 0;
+		const saves: number[] = [];
+		let releaseFirstSave!: () => void;
+		let currentPersist: Promise<void> | null = null;
+
+		const saveMessages = vi.fn(async (count: number) => {
+			saves.push(count);
+			if (saves.length === 1) {
+				await new Promise<void>((resolve) => {
+					releaseFirstSave = resolve;
+				});
+			}
+			savedCount += count;
+		});
+
+		const persistWorkspaceState = async () => {
+			const newMessageCount = messageCount - savedCount;
+			if (newMessageCount > 0) await saveMessages(newMessageCount);
+		};
+
+		const persistCurrentState = async () => {
+			const previousPersist = currentPersist;
+			const nextPersist = (async () => {
+				if (previousPersist) await previousPersist.catch(() => undefined);
+				await persistWorkspaceState();
+			})();
+
+			currentPersist = nextPersist;
+			nextPersist.then(
+				() => {
+					if (currentPersist === nextPersist) currentPersist = null;
+				},
+				() => {
+					if (currentPersist === nextPersist) currentPersist = null;
+				}
+			);
+
+			await nextPersist;
+		};
+
+		const firstPersist = persistCurrentState();
+		await vi.waitFor(() => expect(saveMessages).toHaveBeenCalledTimes(1));
+		expect(saves).toEqual([2]);
+
+		messageCount = 4;
+		const secondPersist = persistCurrentState();
+		await Promise.resolve();
+		expect(saveMessages).toHaveBeenCalledTimes(1);
+
+		releaseFirstSave();
+		await Promise.all([firstPersist, secondPersist]);
+
+		expect(saves).toEqual([2, 2]);
+		expect(savedCount).toBe(4);
+	});
 });

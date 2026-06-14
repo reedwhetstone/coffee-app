@@ -480,11 +480,36 @@
 		};
 	}
 
-	// Persist chat messages and canvas state to the current workspace
+	// Persist chat messages and canvas state to the current workspace. Autosave
+	// calls are serialized so every save recalculates the unsaved slice after the
+	// previous `/messages` write has advanced workspaceStore's saved count.
+	let currentPersist: Promise<void> | null = null;
 	async function persistCurrentState() {
 		const wsId = workspaceStore.currentWorkspaceId;
 		if (!wsId) return;
 
+		const previousPersist = currentPersist;
+		const nextPersist = (async () => {
+			if (previousPersist) {
+				await previousPersist.catch(() => undefined);
+			}
+			await persistWorkspaceState(wsId);
+		})();
+
+		currentPersist = nextPersist;
+		nextPersist.then(
+			() => {
+				if (currentPersist === nextPersist) currentPersist = null;
+			},
+			() => {
+				if (currentPersist === nextPersist) currentPersist = null;
+			}
+		);
+
+		await nextPersist;
+	}
+
+	async function persistWorkspaceState(wsId: string) {
 		// Save new messages (ones not yet persisted)
 		const savedCount = workspaceStore.getSavedMessageCount(wsId);
 		const newMessages = chat.messages.slice(savedCount);
