@@ -439,17 +439,45 @@
 					}
 				}
 			}
-			if (cs.layout) {
-				canvasStore.dispatch({ type: 'layout', layout: cs.layout });
-			}
-			// Restore focus block by index (IDs regenerate, so match by position)
+			// Restore focus block by index (IDs regenerate, so match by position).
+			// This must run BEFORE the layout restore: dispatching 'focus' forces
+			// layout to 'focus', so applying the saved layout afterwards is what
+			// preserves a comparison/dashboard view across reloads.
 			if (cs.focusBlockId != null && typeof cs.focusBlockIndex === 'number') {
 				const targetBlock = canvasStore.blocks[cs.focusBlockIndex];
 				if (targetBlock) {
 					canvasStore.dispatch({ type: 'focus', blockId: targetBlock.id });
 				}
 			}
+			if (cs.layout) {
+				canvasStore.dispatch({ type: 'layout', layout: cs.layout });
+			}
 		}
+
+		// The canvas now mirrors storage; record its signature so the canvas
+		// autosave effect doesn't treat the restore as a user edit and write back.
+		lastCanvasSignature = canvasSignature();
+	}
+
+	// Serialized canvas UI state (which blocks, their order, view layout, pinned/
+	// minimized flags, AI titles, and focus). Shared by every save path so the
+	// canvas reorganization a user sets up is restored verbatim on reload.
+	function buildCanvasStatePayload() {
+		const focusIdx = canvasStore.focusBlockId
+			? canvasStore.blocks.findIndex((b: CanvasBlock) => b.id === canvasStore.focusBlockId)
+			: -1;
+		return {
+			blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
+				block: b.block,
+				messageId: b.messageId,
+				pinned: b.pinned,
+				minimized: b.minimized,
+				title: b.title
+			})),
+			layout: canvasStore.layout,
+			focusBlockId: canvasStore.focusBlockId,
+			focusBlockIndex: focusIdx >= 0 ? focusIdx : undefined
+		};
 	}
 
 	// Persist chat messages and canvas state to the current workspace
@@ -464,22 +492,8 @@
 			await workspaceStore.saveMessages(wsId, buildPersistedChatMessages(newMessages));
 		}
 
-		// Save canvas state (including pinned, minimized, focusBlockId)
-		const focusIdx = canvasStore.focusBlockId
-			? canvasStore.blocks.findIndex((b: CanvasBlock) => b.id === canvasStore.focusBlockId)
-			: -1;
-		await workspaceStore.saveCanvasState(wsId, {
-			blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
-				block: b.block,
-				messageId: b.messageId,
-				pinned: b.pinned,
-				minimized: b.minimized,
-				title: b.title
-			})),
-			layout: canvasStore.layout,
-			focusBlockId: canvasStore.focusBlockId,
-			focusBlockIndex: focusIdx >= 0 ? focusIdx : undefined
-		});
+		// Save canvas state (layout, order, pinned, minimized, focus, titles)
+		await workspaceStore.saveCanvasState(wsId, buildCanvasStatePayload());
 	}
 
 	// Auto-persist when streaming completes (fast debounce).
@@ -498,6 +512,40 @@
 			lastPersistedMessageCount = count;
 			persistCurrentState();
 		}, 500);
+		return () => clearTimeout(timeout);
+	});
+
+	// Compact fingerprint of the canvas UI structure (order, view layout, pin/
+	// minimize, focus, titles) used to detect user reorganization independent of
+	// the message stream.
+	function canvasSignature(): string {
+		return JSON.stringify({
+			layout: canvasStore.layout,
+			focus: canvasStore.focusBlockId,
+			blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
+				t: b.block.type,
+				title: b.title ?? null,
+				p: b.pinned,
+				m: b.minimized
+			}))
+		});
+	}
+
+	// Autosave the canvas when the user reorganizes it (switching view layout,
+	// pinning, minimizing, reordering) — these never change the message count, so
+	// the message-driven autosave above would miss them and the layout would reset
+	// on reload. lastCanvasSignature is a plain (non-reactive) tracker on purpose:
+	// writing a reactive value the effect reads would re-invalidate the effect and
+	// cancel its own debounced save.
+	let lastCanvasSignature = '';
+	$effect(() => {
+		const wsId = workspaceStore.currentWorkspaceId;
+		const signature = canvasSignature();
+		if (!wsId || isActive || signature === lastCanvasSignature) return;
+		lastCanvasSignature = signature;
+		const timeout = setTimeout(() => {
+			workspaceStore.saveCanvasState(wsId, buildCanvasStatePayload());
+		}, 800);
 		return () => clearTimeout(timeout);
 	});
 
