@@ -25,8 +25,8 @@ function createSupabaseMock() {
 	const workspaceUpdateQuery = {
 		eq: vi.fn(async () => ({ error: null }))
 	};
-	const messageInsertSelect = vi.fn(async () => ({ data: [{ id: 'message-123' }], error: null }));
-	const messageInsert = vi.fn(() => ({ select: messageInsertSelect }));
+	const messageUpsertSelect = vi.fn(async () => ({ data: [{ id: 'message-123' }], error: null }));
+	const messageUpsert = vi.fn(() => ({ select: messageUpsertSelect }));
 	const recentMessagesQuery = {
 		eq: vi.fn(() => recentMessagesQuery),
 		order: vi.fn(() => recentMessagesQuery),
@@ -43,13 +43,13 @@ function createSupabaseMock() {
 		}
 
 		if (table === 'workspace_messages') {
-			return { insert: messageInsert, select: messageSelect };
+			return { upsert: messageUpsert, select: messageSelect };
 		}
 
 		throw new Error(`Unexpected table lookup: ${table}`);
 	});
 
-	return { from, messageInsert, messageSelect, recentMessagesQuery };
+	return { from, messageUpsert, messageSelect, recentMessagesQuery };
 }
 
 function makeEvent(body: unknown, supabase = createSupabaseMock()) {
@@ -82,14 +82,20 @@ describe('/api/workspaces/[id]/messages persistence payloads', () => {
 		);
 
 		expect(response.status).toBe(201);
-		expect(supabase.messageInsert).toHaveBeenCalledWith([
+		expect(supabase.messageUpsert).toHaveBeenCalledWith(
+			[
+				expect.objectContaining({
+					workspace_id: 'workspace-123',
+					role: 'assistant',
+					content: 'x'.repeat(12_000),
+					parts
+				})
+			],
 			expect.objectContaining({
-				workspace_id: 'workspace-123',
-				role: 'assistant',
-				content: 'x'.repeat(12_000),
-				parts
+				onConflict: 'workspace_id,client_message_id',
+				ignoreDuplicates: true
 			})
-		]);
+		);
 	});
 
 	it('skips duplicate messages already saved by unload and debounce races', async () => {
@@ -118,7 +124,83 @@ describe('/api/workspaces/[id]/messages persistence payloads', () => {
 		);
 
 		expect(response.status).toBe(201);
-		expect(supabase.messageInsert).not.toHaveBeenCalled();
+		expect(supabase.messageUpsert).not.toHaveBeenCalled();
+	});
+
+	it('persists intentional repeated text when client message ids differ', async () => {
+		const supabase = createSupabaseMock();
+		const parts = [{ type: 'text', text: 'Show me Ethiopian naturals' }];
+		supabase.recentMessagesQuery.limit.mockResolvedValueOnce({
+			data: [
+				{
+					role: 'user',
+					content: 'Show me Ethiopian naturals',
+					parts,
+					client_message_id: 'msg-first'
+				}
+			],
+			error: null
+		} as never);
+
+		const response = await POST(
+			makeEvent(
+				{
+					role: 'user',
+					content: 'Show me Ethiopian naturals',
+					parts,
+					client_message_id: 'msg-second'
+				},
+				supabase
+			)
+		);
+
+		expect(response.status).toBe(201);
+		expect(supabase.messageUpsert).toHaveBeenCalledWith(
+			[
+				expect.objectContaining({
+					workspace_id: 'workspace-123',
+					role: 'user',
+					content: 'Show me Ethiopian naturals',
+					parts,
+					client_message_id: 'msg-second'
+				})
+			],
+			expect.objectContaining({
+				onConflict: 'workspace_id,client_message_id',
+				ignoreDuplicates: true
+			})
+		);
+	});
+
+	it('skips retry duplicates when the client message id already exists', async () => {
+		const supabase = createSupabaseMock();
+		const parts = [{ type: 'text', text: 'Show me Ethiopian naturals' }];
+		supabase.recentMessagesQuery.limit.mockResolvedValueOnce({
+			data: [
+				{
+					role: 'user',
+					content: 'Show me Ethiopian naturals',
+					parts,
+					client_message_id: 'msg-retry'
+				}
+			],
+			error: null
+		} as never);
+
+		const response = await POST(
+			makeEvent(
+				{
+					role: 'user',
+					content: 'Show me Ethiopian naturals',
+					parts,
+					client_message_id: 'msg-retry'
+				},
+				supabase
+			)
+		);
+
+		expect(response.status).toBe(201);
+		expect(supabase.messageUpsert).not.toHaveBeenCalled();
 	});
 
 	it('inserts only messages after an already persisted overlap prefix', async () => {
@@ -143,13 +225,19 @@ describe('/api/workspaces/[id]/messages persistence payloads', () => {
 		);
 
 		expect(response.status).toBe(201);
-		expect(supabase.messageInsert).toHaveBeenCalledWith([
+		expect(supabase.messageUpsert).toHaveBeenCalledWith(
+			[
+				expect.objectContaining({
+					workspace_id: 'workspace-123',
+					role: 'user',
+					content: 'What is the best value pick?',
+					parts: secondParts
+				})
+			],
 			expect.objectContaining({
-				workspace_id: 'workspace-123',
-				role: 'user',
-				content: 'What is the best value pick?',
-				parts: secondParts
+				onConflict: 'workspace_id,client_message_id',
+				ignoreDuplicates: true
 			})
-		]);
+		);
 	});
 });

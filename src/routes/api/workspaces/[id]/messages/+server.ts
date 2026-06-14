@@ -15,7 +15,8 @@ const persistedMessageSchema = z.object({
 	role: z.enum(['user', 'assistant']),
 	content: z.string().max(MAX_MESSAGE_TEXT_CHARS),
 	parts: boundedJsonArraySchema.optional(),
-	canvas_mutations: boundedJsonArraySchema.optional()
+	canvas_mutations: boundedJsonArraySchema.optional(),
+	client_message_id: z.string().min(1).max(200).optional()
 });
 
 const messageBodySchema = z.union([
@@ -67,7 +68,16 @@ function canonicalJson(value: unknown): unknown {
 	return value;
 }
 
-function messageSignature(message: { role: string; content: string; parts?: unknown }): string {
+function messageSignature(message: {
+	role: string;
+	content: string;
+	parts?: unknown;
+	client_message_id?: string | null;
+}): string {
+	if (message.client_message_id) {
+		return JSON.stringify({ client_message_id: message.client_message_id });
+	}
+
 	return JSON.stringify({
 		role: message.role,
 		content: message.content,
@@ -76,8 +86,18 @@ function messageSignature(message: { role: string; content: string; parts?: unkn
 }
 
 function findPersistedPrefixOverlap(
-	existingMessages: Array<{ role: string; content: string; parts?: unknown }>,
-	incomingMessages: Array<{ role: string; content: string; parts?: unknown }>
+	existingMessages: Array<{
+		role: string;
+		content: string;
+		parts?: unknown;
+		client_message_id?: string | null;
+	}>,
+	incomingMessages: Array<{
+		role: string;
+		content: string;
+		parts?: unknown;
+		client_message_id?: string | null;
+	}>
 ): number {
 	const existingSignatures = existingMessages.map(messageSignature);
 	const incomingSignatures = incomingMessages.map(messageSignature);
@@ -136,7 +156,7 @@ export const POST: RequestHandler = async (event) => {
 
 		const { data: recentMessages } = await event.locals.supabase
 			.from('workspace_messages')
-			.select('id, role, content, parts')
+			.select('id, role, content, parts, client_message_id')
 			.eq('workspace_id', workspaceId)
 			.order('created_at', { ascending: false })
 			.order('id', { ascending: false })
@@ -145,11 +165,17 @@ export const POST: RequestHandler = async (event) => {
 		const persistedIncoming = messages.map((msg) => ({
 			role: msg.role,
 			content: truncateDuplicatedContent(msg.content),
-			parts: persistedPartsFor(msg)
+			parts: persistedPartsFor(msg),
+			client_message_id: msg.client_message_id ?? null
 		}));
 		const overlap = findPersistedPrefixOverlap(
 			[
-				...((recentMessages ?? []) as Array<{ role: string; content: string; parts?: unknown }>)
+				...((recentMessages ?? []) as Array<{
+					role: string;
+					content: string;
+					parts?: unknown;
+					client_message_id?: string | null;
+				}>)
 			].reverse(),
 			persistedIncoming
 		);
@@ -164,12 +190,13 @@ export const POST: RequestHandler = async (event) => {
 			role: msg.role,
 			content: truncateDuplicatedContent(msg.content),
 			parts: persistedPartsFor(msg) as Json,
-			canvas_mutations: (msg.canvas_mutations ?? []) as Json
+			canvas_mutations: (msg.canvas_mutations ?? []) as Json,
+			client_message_id: msg.client_message_id ?? null
 		}));
 
 		const { data, error } = await event.locals.supabase
 			.from('workspace_messages')
-			.insert(rows)
+			.upsert(rows, { onConflict: 'workspace_id,client_message_id', ignoreDuplicates: true })
 			.select();
 
 		if (error) {

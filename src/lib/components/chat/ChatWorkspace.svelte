@@ -288,7 +288,7 @@
 					const textParts = msg.parts.filter((p) => p.type === 'text');
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					const content = textParts.map((p: any) => p.text || '').join('\n');
-					return { role: msg.role, content, parts: msg.parts };
+					return { role: msg.role, content, parts: msg.parts, client_message_id: msg.id };
 				});
 				navigator.sendBeacon(
 					`/api/workspaces/${wsId}/messages`,
@@ -466,7 +466,8 @@
 				return {
 					role: msg.role,
 					content,
-					parts: msg.parts
+					parts: msg.parts,
+					client_message_id: msg.id
 				};
 			});
 			await workspaceStore.saveMessages(wsId, toSave);
