@@ -235,7 +235,7 @@ export type CanvasMutation =
 	| { type: 'remove'; blockId: string }
 	| { type: 'focus'; blockId: string }
 	| { type: 'clear' }
-	| { type: 'layout'; layout: CanvasLayout }
+	| { type: 'layout'; layout: CanvasLayout; source?: 'user' | 'agent' }
 	| { type: 'replace'; blocks: Array<{ block: UIBlock; messageId: string; title?: string }> }
 	| { type: 'pin'; blockId: string }
 	| { type: 'unpin'; blockId: string }

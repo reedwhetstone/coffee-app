@@ -501,10 +501,11 @@ export function extractCanvasMutationsFromPart(
 		}
 	}
 
-	// Canvas layout hint
+	// Canvas layout hint. Tagged as an agent suggestion so the store can ignore it
+	// once the user owns the layout (manually chosen or anything locked).
 	const canvasLayout: string | undefined = presentation.canvas_layout;
 	if (canvasLayout && ['focus', 'comparison', 'dashboard'].includes(canvasLayout)) {
-		mutations.push({ type: 'layout', layout: canvasLayout as CanvasLayout });
+		mutations.push({ type: 'layout', layout: canvasLayout as CanvasLayout, source: 'agent' });
 	}
 
 	return mutations.length > 0 ? mutations : null;

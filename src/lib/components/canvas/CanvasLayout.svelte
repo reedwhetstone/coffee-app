@@ -5,7 +5,7 @@
 	import { blockSupportsDetail } from '$lib/services/blockDetail';
 	import { groupCanvasBlocks, subTabLabel } from '$lib/services/canvasGrouping';
 
-	let { blocks, layout, focusBlockId, onAction, onExecuteAction, onMinimize, onPin, onExpand } =
+	let { blocks, layout, focusBlockId, onAction, onExecuteAction, onMinimize, onToggleLock, onExpand } =
 		$props<{
 			blocks: CanvasBlock[];
 			layout: CanvasLayout;
@@ -13,7 +13,7 @@
 			onAction?: (action: BlockAction) => void;
 			onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
 			onMinimize: (blockId: string) => void;
-			onPin: (blockId: string) => void;
+			onToggleLock: (blockId: string) => void;
 			onExpand?: (blockId: string) => void;
 		}>();
 
@@ -68,7 +68,7 @@
 						</span>
 					{/if}
 					{#if group.pinned}
-						<span class="text-xs text-amber-500">pinned</span>
+						<span class="text-xs text-amber-500">locked</span>
 					{/if}
 				</div>
 				<div class="flex shrink-0 items-center gap-1">
@@ -88,27 +88,30 @@
 							</svg>
 						</button>
 					{/if}
-					<!-- Pin toggle (operates on the active sub-tab) -->
+					<!-- Lock toggle: locks the whole window so the agent can't replace,
+					     remove, reorder, or re-lay-out it — it can only add new content
+					     below. Operates on the active sub-tab's block. -->
 					<button
-						onclick={() => onPin(active.id)}
+						onclick={() => onToggleLock(active.id)}
 						class="rounded p-0.5 transition-colors"
 						class:text-amber-500={active.pinned}
 						class:text-text-secondary-light={!active.pinned}
 						class:hover:text-amber-500={!active.pinned}
-						title={active.pinned ? 'Unpin' : 'Pin'}
+						title={active.pinned ? 'Unlock window' : 'Lock window in place'}
+						aria-pressed={active.pinned}
 					>
 						<svg
 							class="h-3.5 w-3.5"
-							fill={active.pinned ? 'currentColor' : 'none'}
+							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
 						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-							/>
+							<rect x="5" y="11" width="14" height="9" rx="2" stroke-width="2" />
+							{#if active.pinned}
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 018 0v4" />
+							{:else}
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 014-4 4 4 0 013.464 2" />
+							{/if}
 						</svg>
 					</button>
 					<!-- Minimize the whole window -->

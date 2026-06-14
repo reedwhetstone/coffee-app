@@ -176,9 +176,7 @@
 		let canvasDescription = '';
 		const visible = canvasStore.visibleBlocks;
 		if (visible.length > 0) {
-			const descriptions = visible.map((b: CanvasBlock, i: number) => {
-				const block = b.block;
-				const pos = i + 1;
+			const describeBlock = (block: CanvasBlock['block'], pos: number): string => {
 				switch (block.type) {
 					case 'coffee-cards': {
 						const items = Array.isArray(block.data) ? block.data : [];
@@ -209,6 +207,12 @@
 					default:
 						return `${pos}. ${block.type.replace(/-/g, ' ')}`;
 				}
+			};
+			const descriptions = visible.map((b: CanvasBlock, i: number) => {
+				const base = describeBlock(b.block, i + 1);
+				// Locked windows are user-owned: tell the model it must not replace,
+				// remove, or reorder them, only add new content alongside.
+				return b.pinned ? `${base} [LOCKED — do not replace, remove, or reorder]` : base;
 			});
 			canvasDescription = descriptions.join('\n');
 		}

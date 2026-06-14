@@ -25,7 +25,7 @@
 		onAction?.(action);
 	}
 
-	function handlePin(blockId: string) {
+	function handleToggleLock(blockId: string) {
 		const block = canvasStore.blocks.find((b: CanvasBlock) => b.id === blockId);
 		if (block?.pinned) {
 			canvasStore.dispatch({ type: 'unpin', blockId });
@@ -163,7 +163,7 @@
 				focusBlockId={canvasStore.focusBlockId}
 				onAction={handleAction}
 				{onExecuteAction}
-				onPin={handlePin}
+				onToggleLock={handleToggleLock}
 				onMinimize={handleMinimize}
 				onExpand={handleExpand}
 			/>

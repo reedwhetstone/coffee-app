@@ -89,3 +89,35 @@ describe('canvasStore layout lock', () => {
 		expect(canvasStore.layout).toBe('comparison');
 	});
 });
+
+describe('canvasStore agent layout suggestions (lock)', () => {
+	it('applies an agent layout suggestion when nothing is owned or locked', async () => {
+		const { canvasStore } = await loadCanvasStore();
+
+		canvasStore.dispatch({ type: 'add', block: cards(1), messageId: 'm1' });
+		canvasStore.dispatch({ type: 'layout', layout: 'dashboard', source: 'agent' });
+
+		expect(canvasStore.layout).toBe('dashboard');
+	});
+
+	it('ignores an agent layout suggestion once the user has chosen a layout', async () => {
+		const { canvasStore } = await loadCanvasStore();
+
+		canvasStore.dispatch({ type: 'add', block: cards(1), messageId: 'm1' });
+		canvasStore.dispatch({ type: 'layout', layout: 'stack' }); // user choice
+		canvasStore.dispatch({ type: 'layout', layout: 'dashboard', source: 'agent' });
+
+		expect(canvasStore.layout).toBe('stack');
+	});
+
+	it('ignores an agent layout suggestion when any window is locked', async () => {
+		const { canvasStore } = await loadCanvasStore();
+
+		canvasStore.dispatch({ type: 'add', block: cards(1), messageId: 'm1' });
+		canvasStore.dispatch({ type: 'pin', blockId: canvasStore.blocks[0].id }); // lock
+		const before = canvasStore.layout;
+		canvasStore.dispatch({ type: 'layout', layout: 'dashboard', source: 'agent' });
+
+		expect(canvasStore.layout).toBe(before);
+	});
+});

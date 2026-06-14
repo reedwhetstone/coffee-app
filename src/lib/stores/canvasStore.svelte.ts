@@ -108,8 +108,17 @@ function dispatch(mutation: CanvasMutation) {
 		}
 
 		case 'layout': {
-			layout = mutation.layout;
-			layoutManuallySet = true;
+			// A user (or restore) choosing a layout owns it from then on. An agent
+			// suggestion (from present_results canvas_layout) only applies while the
+			// user hasn't taken ownership and hasn't locked anything — so the agent
+			// can never re-arrange a workspace the user has set up.
+			if (mutation.source === 'agent') {
+				if (layoutManuallySet || blocks.some((b) => b.pinned)) break;
+				layout = mutation.layout;
+			} else {
+				layout = mutation.layout;
+				layoutManuallySet = true;
+			}
 			break;
 		}
 
