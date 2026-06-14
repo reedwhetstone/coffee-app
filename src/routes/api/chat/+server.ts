@@ -234,6 +234,30 @@ WRITE TOOLS (propose changes — user must confirm before execution):
 15. record_sale - Propose recording a sale`;
 
 const PARCHMENT_WORKSPACE_TYPES = new Set(['general', 'sourcing', 'inventory']);
+const APPROX_CHARS_PER_TOKEN = 4;
+const PROMPT_COMPACTION_TARGET_TOKENS = 200_000;
+const PROMPT_HARD_LIMIT_TOKENS = 262_000;
+const PROMPT_RESERVED_OVERHEAD_TOKENS = 20_000;
+const PROMPT_SAFE_HARD_LIMIT_TOKENS = PROMPT_HARD_LIMIT_TOKENS - PROMPT_RESERVED_OVERHEAD_TOKENS;
+
+function estimatePromptTokens(systemPrompt: string, messages: UIMessage[]): number {
+	const messageChars = messages.reduce(
+		(total, message) => total + JSON.stringify(message).length,
+		0
+	);
+	return Math.ceil((systemPrompt.length + messageChars) / APPROX_CHARS_PER_TOKEN);
+}
+
+function trimMessagesToPromptBudget(systemPrompt: string, messages: UIMessage[]): UIMessage[] {
+	let windowed = [...messages];
+	while (
+		windowed.length > 6 &&
+		estimatePromptTokens(systemPrompt, windowed) > PROMPT_COMPACTION_TARGET_TOKENS
+	) {
+		windowed = windowed.slice(1);
+	}
+	return windowed;
+}
 
 function toolAccessPrompt(access?: { ppiAccess: boolean; memberAccess: boolean }): string {
 	return access?.memberAccess ? MALLARD_TOOL_ACCESS_PROMPT : PARCHMENT_TOOL_ACCESS_PROMPT;
@@ -501,6 +525,23 @@ export const POST: RequestHandler = async (event) => {
 			userMemory
 		);
 
+		const budgetedMessages = trimMessagesToPromptBudget(systemPrompt, windowedMessages);
+		const estimatedPromptTokens = estimatePromptTokens(systemPrompt, budgetedMessages);
+
+		if (estimatedPromptTokens > PROMPT_SAFE_HARD_LIMIT_TOKENS) {
+			return json(
+				{
+					error:
+						'This conversation is too large to send safely. Please clear older canvas results or start a new chat after the workspace summary finishes.',
+					code: 'prompt_budget_exceeded',
+					estimatedPromptTokens,
+					limitTokens: PROMPT_HARD_LIMIT_TOKENS,
+					reservedOverheadTokens: PROMPT_RESERVED_OVERHEAD_TOKENS
+				},
+				{ status: 413 }
+			);
+		}
+
 		// Tool distillation: older turns keep only their narrative text — stale
 		// tool calls/results are stripped from the model's view. 12 model
 		// messages covers the current user message plus the previous assistant
@@ -508,7 +549,7 @@ export const POST: RequestHandler = async (event) => {
 		// follow-ups like "tell me more about the second one" still see the
 		// last results. The UI and persistence keep the full parts regardless.
 		const modelMessages = pruneMessages({
-			messages: await convertToModelMessages(windowedMessages),
+			messages: await convertToModelMessages(budgetedMessages),
 			toolCalls: `before-last-${12}-messages`,
 			emptyMessages: 'remove'
 		});

@@ -86,11 +86,11 @@
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
 						</svg>
 					</button>
-					<!-- Close button -->
+					<!-- Close button: hides the tab, but the block remains recoverable. -->
 					<button
 						onclick={() => onRemove(canvasBlock.id)}
 						class="rounded p-0.5 text-text-secondary-light transition-colors hover:text-red-500"
-						title="Remove"
+						title="Close tab"
 					>
 						<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path

@@ -51,6 +51,49 @@ function persistedPartsFor(msg: z.infer<typeof persistedMessageSchema>): unknown
 	return msg.parts ?? [];
 }
 
+function canonicalJson(value: unknown): unknown {
+	if (Array.isArray(value)) {
+		return value.map(canonicalJson);
+	}
+
+	if (value && typeof value === 'object') {
+		return Object.fromEntries(
+			Object.entries(value as Record<string, unknown>)
+				.sort(([left], [right]) => left.localeCompare(right))
+				.map(([key, child]) => [key, canonicalJson(child)])
+		);
+	}
+
+	return value;
+}
+
+function messageSignature(message: { role: string; content: string; parts?: unknown }): string {
+	return JSON.stringify({
+		role: message.role,
+		content: message.content,
+		parts: canonicalJson(message.parts ?? [])
+	});
+}
+
+function findPersistedPrefixOverlap(
+	existingMessages: Array<{ role: string; content: string; parts?: unknown }>,
+	incomingMessages: Array<{ role: string; content: string; parts?: unknown }>
+): number {
+	const existingSignatures = existingMessages.map(messageSignature);
+	const incomingSignatures = incomingMessages.map(messageSignature);
+	const maxOverlap = Math.min(existingSignatures.length, incomingSignatures.length);
+
+	for (let overlap = maxOverlap; overlap > 0; overlap--) {
+		const existingSuffix = existingSignatures.slice(existingSignatures.length - overlap);
+		const incomingPrefix = incomingSignatures.slice(0, overlap);
+		if (existingSuffix.every((signature, index) => signature === incomingPrefix[index])) {
+			return overlap;
+		}
+	}
+
+	return 0;
+}
+
 // POST /api/workspaces/[id]/messages - Save messages for a workspace
 export const POST: RequestHandler = async (event) => {
 	try {
@@ -91,7 +134,32 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: (err as Error).message }, { status: 413 });
 		}
 
-		const rows = messages.map((msg) => ({
+		const { data: recentMessages } = await event.locals.supabase
+			.from('workspace_messages')
+			.select('id, role, content, parts')
+			.eq('workspace_id', workspaceId)
+			.order('created_at', { ascending: false })
+			.order('id', { ascending: false })
+			.limit(messages.length);
+
+		const persistedIncoming = messages.map((msg) => ({
+			role: msg.role,
+			content: truncateDuplicatedContent(msg.content),
+			parts: persistedPartsFor(msg)
+		}));
+		const overlap = findPersistedPrefixOverlap(
+			[
+				...((recentMessages ?? []) as Array<{ role: string; content: string; parts?: unknown }>)
+			].reverse(),
+			persistedIncoming
+		);
+		const messagesToInsert = messages.slice(overlap);
+
+		if (messagesToInsert.length === 0) {
+			return json({ messages: [] }, { status: 201 });
+		}
+
+		const rows = messagesToInsert.map((msg) => ({
 			workspace_id: workspaceId,
 			role: msg.role,
 			content: truncateDuplicatedContent(msg.content),

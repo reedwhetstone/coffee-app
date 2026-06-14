@@ -21,7 +21,10 @@
 	}
 
 	function handleRemove(blockId: string) {
-		canvasStore.dispatch({ type: 'remove', blockId });
+		// Keep closed blocks recoverable from the conversation preview and
+		// minimized tray. Permanent removal made old tool links look alive while
+		// their canvas block was gone.
+		canvasStore.dispatch({ type: 'minimize', blockId });
 	}
 
 	function handlePin(blockId: string) {

@@ -330,7 +330,9 @@
 
 	<div class="pointer-events-none relative z-10 flex h-full flex-col {compact ? 'gap-3' : 'gap-4'}">
 		{#if annotation}
-			<p class="text-sm italic text-muted">{annotation}</p>
+			<p class="max-h-[3.4rem] overflow-hidden text-sm italic leading-relaxed text-muted">
+				{annotation}
+			</p>
 		{/if}
 
 		<div class="flex items-start justify-between gap-3">
@@ -641,6 +643,16 @@
 									{/if}
 								</dl>
 							</div>
+							{#if annotation}
+								<div class="rounded-lg border border-line bg-surface-panel p-4">
+									<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+										AI recommendation note
+									</p>
+									<p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">
+										{annotation}
+									</p>
+								</div>
+							{/if}
 							{#if coffee.ai_description}
 								<div class="rounded-lg border border-line bg-surface-panel p-4">
 									<p class="text-xs font-semibold uppercase tracking-wide text-muted">
