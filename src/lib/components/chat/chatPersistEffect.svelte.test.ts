@@ -140,4 +140,55 @@ describe('ChatWorkspace auto-persist effect', () => {
 		expect(saves).toEqual([2, 2]);
 		expect(savedCount).toBe(4);
 	});
+
+	it('serializes canvas state saves so stale requests cannot overwrite newer state', async () => {
+		let canvasState = 'old-layout';
+		const savedStates: string[] = [];
+		let releaseFirstSave!: () => void;
+		let currentCanvasPersist: Promise<void> | null = null;
+
+		const saveCanvasState = vi.fn(async (state: string) => {
+			savedStates.push(state);
+			if (savedStates.length === 1) {
+				await new Promise<void>((resolve) => {
+					releaseFirstSave = resolve;
+				});
+			}
+		});
+
+		const buildCanvasStatePayload = () => canvasState;
+		const persistCanvasState = async () => {
+			const previousPersist = currentCanvasPersist;
+			const nextPersist = (async () => {
+				if (previousPersist) await previousPersist.catch(() => undefined);
+				await saveCanvasState(buildCanvasStatePayload());
+			})();
+
+			currentCanvasPersist = nextPersist;
+			nextPersist.then(
+				() => {
+					if (currentCanvasPersist === nextPersist) currentCanvasPersist = null;
+				},
+				() => {
+					if (currentCanvasPersist === nextPersist) currentCanvasPersist = null;
+				}
+			);
+
+			await nextPersist;
+		};
+
+		const firstPersist = persistCanvasState();
+		await vi.waitFor(() => expect(saveCanvasState).toHaveBeenCalledTimes(1));
+		expect(savedStates).toEqual(['old-layout']);
+
+		canvasState = 'new-layout';
+		const secondPersist = persistCanvasState();
+		await Promise.resolve();
+		expect(saveCanvasState).toHaveBeenCalledTimes(1);
+
+		releaseFirstSave();
+		await Promise.all([firstPersist, secondPersist]);
+
+		expect(savedStates).toEqual(['old-layout', 'new-layout']);
+	});
 });

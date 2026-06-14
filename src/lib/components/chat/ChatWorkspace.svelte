@@ -484,6 +484,7 @@
 	// calls are serialized so every save recalculates the unsaved slice after the
 	// previous `/messages` write has advanced workspaceStore's saved count.
 	let currentPersist: Promise<void> | null = null;
+	let currentCanvasPersist: Promise<void> | null = null;
 	async function persistCurrentState() {
 		const wsId = workspaceStore.currentWorkspaceId;
 		if (!wsId) return;
@@ -509,6 +510,28 @@
 		await nextPersist;
 	}
 
+	async function persistCanvasState(wsId: string) {
+		const previousPersist = currentCanvasPersist;
+		const nextPersist = (async () => {
+			if (previousPersist) {
+				await previousPersist.catch(() => undefined);
+			}
+			await workspaceStore.saveCanvasState(wsId, buildCanvasStatePayload());
+		})();
+
+		currentCanvasPersist = nextPersist;
+		nextPersist.then(
+			() => {
+				if (currentCanvasPersist === nextPersist) currentCanvasPersist = null;
+			},
+			() => {
+				if (currentCanvasPersist === nextPersist) currentCanvasPersist = null;
+			}
+		);
+
+		await nextPersist;
+	}
+
 	async function persistWorkspaceState(wsId: string) {
 		// Save new messages (ones not yet persisted)
 		const savedCount = workspaceStore.getSavedMessageCount(wsId);
@@ -518,7 +541,7 @@
 		}
 
 		// Save canvas state (layout, order, pinned, minimized, focus, titles)
-		await workspaceStore.saveCanvasState(wsId, buildCanvasStatePayload());
+		await persistCanvasState(wsId);
 	}
 
 	// Auto-persist when streaming completes (fast debounce).
@@ -569,7 +592,7 @@
 		if (!wsId || isActive || signature === lastCanvasSignature) return;
 		lastCanvasSignature = signature;
 		const timeout = setTimeout(() => {
-			workspaceStore.saveCanvasState(wsId, buildCanvasStatePayload());
+			persistCanvasState(wsId);
 		}, 800);
 		return () => clearTimeout(timeout);
 	});
