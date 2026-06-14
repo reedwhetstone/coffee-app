@@ -1,9 +1,9 @@
 # PR #390 verification: chat persistence follow-up
 
-**Date:** 2026-06-14  
-**Branch:** `fix/chat-persistence-followup`  
-**Base:** `origin/main`  
-**Head:** `dd76466`  
+**Date:** 2026-06-14
+**Branch:** `fix/chat-persistence-followup`
+**Base:** `origin/main`
+**Head:** `dd76466`
 **Verdict:** `ready_with_fixes`
 
 ## Operator summary
