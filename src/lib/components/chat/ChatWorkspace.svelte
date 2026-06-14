@@ -13,6 +13,7 @@
 		buildSearchDataCacheThroughPart,
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
+	import { buildPersistedChatMessages } from '$lib/services/chatPersistence';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
 	import { getSuggestions } from '$lib/services/suggestionEngine';
 	import { matchSlashCommand, getSlashCompletions } from '$lib/services/slashCommands';
@@ -284,12 +285,7 @@
 			const savedCount = workspaceStore.getSavedMessageCount(wsId);
 			const newMessages = chat.messages.slice(savedCount);
 			if (newMessages.length > 0) {
-				const toSave = newMessages.map((msg) => {
-					const textParts = msg.parts.filter((p) => p.type === 'text');
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const content = textParts.map((p: any) => p.text || '').join('\n');
-					return { role: msg.role, content, parts: msg.parts, client_message_id: msg.id };
-				});
+				const toSave = buildPersistedChatMessages(newMessages);
 				navigator.sendBeacon(
 					`/api/workspaces/${wsId}/messages`,
 					new Blob([JSON.stringify({ messages: toSave })], { type: 'application/json' })
@@ -459,18 +455,7 @@
 		const savedCount = workspaceStore.getSavedMessageCount(wsId);
 		const newMessages = chat.messages.slice(savedCount);
 		if (newMessages.length > 0) {
-			const toSave = newMessages.map((msg) => {
-				const textParts = msg.parts.filter((p) => p.type === 'text');
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const content = textParts.map((p: any) => p.text || '').join('\n');
-				return {
-					role: msg.role,
-					content,
-					parts: msg.parts,
-					client_message_id: msg.id
-				};
-			});
-			await workspaceStore.saveMessages(wsId, toSave);
+			await workspaceStore.saveMessages(wsId, buildPersistedChatMessages(newMessages));
 		}
 
 		// Save canvas state (including pinned, minimized, focusBlockId)
