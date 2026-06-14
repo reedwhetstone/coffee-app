@@ -475,18 +475,23 @@
 		});
 	}
 
-	// Auto-persist when streaming completes (fast debounce)
+	// Auto-persist when streaming completes (fast debounce).
+	//
+	// The counter is updated inside the debounce callback, never in the effect
+	// body. Writing a value that the effect also reads would re-invalidate the
+	// effect synchronously; Svelte would then run the cleanup (clearTimeout)
+	// before the timer could fire, silently cancelling every save. That bug
+	// meant nothing reached the DB during a live session — messages only ever
+	// persisted via the beforeunload beacon, which drops oversized payloads.
 	let lastPersistedMessageCount = $state(0);
 	$effect(() => {
-		if (
-			!isActive &&
-			chat.messages.length > 0 &&
-			chat.messages.length !== lastPersistedMessageCount
-		) {
-			lastPersistedMessageCount = chat.messages.length;
-			const timeout = setTimeout(() => persistCurrentState(), 500);
-			return () => clearTimeout(timeout);
-		}
+		const count = chat.messages.length;
+		if (isActive || count === 0 || count === lastPersistedMessageCount) return;
+		const timeout = setTimeout(() => {
+			lastPersistedMessageCount = count;
+			persistCurrentState();
+		}, 500);
+		return () => clearTimeout(timeout);
 	});
 
 	// Trigger context compaction after ~10 message pairs
@@ -667,8 +672,16 @@
 			goto(action.url);
 		} else if (action.type === 'focus-canvas-block') {
 			canvasStore.dispatch({ type: 'focus', blockId: action.blockId });
-			// On mobile, open canvas overlay
-			if (window.innerWidth < 768) {
+			// Re-open the canvas if the user had closed/hidden it. A canvas link in
+			// the conversation should always surface its block, not silently no-op
+			// against a collapsed pane.
+			if (variant === 'page') {
+				canvasOpen = true;
+				hasUserClosedCanvas = false;
+			}
+			// On mobile (and the drawer variant, which has no inline pane) open the
+			// canvas overlay so the focused block is actually visible.
+			if (variant === 'drawer' || window.innerWidth < 768) {
 				mobileCanvasOpen = true;
 			}
 		} else if (action.type === 'scroll-to-message') {
