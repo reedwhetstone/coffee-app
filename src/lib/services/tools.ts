@@ -1150,6 +1150,13 @@ export function createChatTools(
 					.optional()
 					.describe(
 						'Canvas action. replace: clear canvas and show new items (default). add: keep existing and add new. clear: clear canvas entirely.'
+					),
+				canvas_title: z
+					.string()
+					.max(60)
+					.optional()
+					.describe(
+						'Short, specific tab title for this canvas block (e.g. "Ethiopia naturals", "Espresso roasts"). Keep it under ~40 chars. Omit to use a generic default.'
 					)
 			}),
 			execute: async (input) => ({ presentation: input })

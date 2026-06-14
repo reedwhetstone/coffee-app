@@ -1,19 +1,31 @@
 <script lang="ts">
-	import type { CanvasBlock, CanvasLayout, BlockAction } from '$lib/types/genui';
+	import { defaultBlockTitle, type CanvasBlock, type CanvasLayout, type BlockAction } from '$lib/types/genui';
 	import GenUIBlockRenderer from '$lib/components/genui/GenUIBlockRenderer.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 
-	let { blocks, layout, focusBlockId, onAction, onExecuteAction, onRemove, onPin, onMinimize } =
-		$props<{
-			blocks: CanvasBlock[];
-			layout: CanvasLayout;
-			focusBlockId: string | null;
-			onAction?: (action: BlockAction) => void;
-			onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
-			onRemove: (blockId: string) => void;
-			onPin: (blockId: string) => void;
-			onMinimize: (blockId: string) => void;
-		}>();
+	import { blockSupportsDetail } from '$lib/services/blockDetail';
+
+	let {
+		blocks,
+		layout,
+		focusBlockId,
+		onAction,
+		onExecuteAction,
+		onRemove,
+		onPin,
+		onMinimize,
+		onExpand
+	} = $props<{
+		blocks: CanvasBlock[];
+		layout: CanvasLayout;
+		focusBlockId: string | null;
+		onAction?: (action: BlockAction) => void;
+		onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
+		onRemove: (blockId: string) => void;
+		onPin: (blockId: string) => void;
+		onMinimize: (blockId: string) => void;
+		onExpand?: (blockId: string) => void;
+	}>();
 </script>
 
 <div class="canvas-layout canvas-layout-{layout}">
@@ -27,15 +39,35 @@
 		>
 			<!-- Block header bar -->
 			<div class="flex items-center justify-between border-b border-border-light px-3 py-1.5">
-				<div class="flex items-center gap-2">
-					<span class="text-xs font-medium text-text-secondary-light">
-						{canvasBlock.block.type.replace(/-/g, ' ')}
+				<div class="flex min-w-0 items-center gap-2">
+					<span
+						class="truncate text-xs font-medium text-text-secondary-light"
+						title={canvasBlock.title ?? defaultBlockTitle(canvasBlock.block.type)}
+					>
+						{canvasBlock.title ?? defaultBlockTitle(canvasBlock.block.type)}
 					</span>
 					{#if canvasBlock.pinned}
 						<span class="text-xs text-amber-500">pinned</span>
 					{/if}
 				</div>
 				<div class="flex items-center gap-1">
+					<!-- Pop-out detail panel -->
+					{#if onExpand && blockSupportsDetail(canvasBlock.block)}
+						<button
+							onclick={() => onExpand?.(canvasBlock.id)}
+							class="rounded p-0.5 text-text-secondary-light transition-colors hover:text-text-primary-light"
+							title="Open detail panel"
+						>
+							<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M4 16v2a2 2 0 002 2h2m8 0h2a2 2 0 002-2v-2M16 4h2a2 2 0 012 2v2M8 4H6a2 2 0 00-2 2v2"
+								/>
+							</svg>
+						</button>
+					{/if}
 					<!-- Focus button (when not in focus layout or not focused) -->
 					{#if layout !== 'focus' || !isFocused}
 						<button

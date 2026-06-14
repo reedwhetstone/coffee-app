@@ -41,7 +41,8 @@ function dispatch(mutation: CanvasMutation) {
 				messageId: mutation.messageId,
 				pinned: false,
 				minimized: false,
-				addedAt: Date.now()
+				addedAt: Date.now(),
+				title: mutation.title
 			};
 			blocks = [...blocks, newBlock];
 			blockMessageRegistry.set(id, mutation.messageId);
@@ -103,7 +104,8 @@ function dispatch(mutation: CanvasMutation) {
 					messageId: item.messageId,
 					pinned: false,
 					minimized: false,
-					addedAt: Date.now()
+					addedAt: Date.now(),
+					title: item.title
 				};
 			});
 

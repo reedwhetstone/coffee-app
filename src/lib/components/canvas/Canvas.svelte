@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 	import CanvasLayout from './CanvasLayout.svelte';
-	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
+	import CanvasBlockDetail from './CanvasBlockDetail.svelte';
+	import { defaultBlockTitle, type BlockAction, type CanvasBlock } from '$lib/types/genui';
 
 	let { onAction, onScrollToMessage, onExecuteAction } = $props<{
 		onAction?: (action: BlockAction) => void;
@@ -42,6 +43,16 @@
 
 	function handleRestore(blockId: string) {
 		canvasStore.dispatch({ type: 'restore', blockId });
+	}
+
+	// ─── Pop-out detail panel ──────────────────────────────────────────────────
+	let detailBlockId = $state<string | null>(null);
+	let detailBlock = $derived(
+		detailBlockId ? (canvasStore.blocks.find((b: CanvasBlock) => b.id === detailBlockId) ?? null) : null
+	);
+
+	function handleExpand(blockId: string) {
+		detailBlockId = blockId;
 	}
 </script>
 
@@ -146,6 +157,7 @@
 				onRemove={handleRemove}
 				onPin={handlePin}
 				onMinimize={handleMinimize}
+				onExpand={handleExpand}
 			/>
 		{/if}
 	</div>
@@ -158,7 +170,7 @@
 					onclick={() => handleRestore(mb.id)}
 					class="flex items-center gap-1 rounded bg-background-secondary-light px-2 py-1 text-xs text-text-secondary-light ring-1 ring-border-light transition-colors hover:text-text-primary-light"
 				>
-					<span>{mb.block.type.replace(/-/g, ' ')}</span>
+					<span>{mb.title ?? defaultBlockTitle(mb.block.type)}</span>
 					<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
@@ -172,6 +184,13 @@
 		</div>
 	{/if}
 </div>
+
+<CanvasBlockDetail
+	canvasBlock={detailBlock}
+	onClose={() => (detailBlockId = null)}
+	onAction={handleAction}
+	{onExecuteAction}
+/>
 
 <style>
 	:global(.layout-btn-active) {

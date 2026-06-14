@@ -305,7 +305,8 @@
 									block: b.block,
 									messageId: b.messageId,
 									pinned: b.pinned,
-									minimized: b.minimized
+									minimized: b.minimized,
+									title: b.title
 								})),
 								layout: canvasStore.layout,
 								focusBlockId: canvasStore.focusBlockId,
@@ -415,7 +416,12 @@
 				canvasStore.dispatch({ type: 'clear' });
 				for (const cb of cs.blocks) {
 					if (cb.block) {
-						canvasStore.dispatch({ type: 'add', block: cb.block, messageId: cb.messageId || '' });
+						canvasStore.dispatch({
+							type: 'add',
+							block: cb.block,
+							messageId: cb.messageId || '',
+							title: cb.title
+						});
 						// Restore pinned state
 						if (cb.pinned) {
 							const addedBlock = canvasStore.blocks[canvasStore.blocks.length - 1];
@@ -467,7 +473,8 @@
 				block: b.block,
 				messageId: b.messageId,
 				pinned: b.pinned,
-				minimized: b.minimized
+				minimized: b.minimized,
+				title: b.title
 			})),
 			layout: canvasStore.layout,
 			focusBlockId: canvasStore.focusBlockId,

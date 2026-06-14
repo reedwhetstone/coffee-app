@@ -485,12 +485,19 @@ export function extractCanvasMutationsFromPart(
 	// message only — don't touch the canvas, including layout hints.
 	if (block?.type === 'error') return null;
 
+	// Optional AI-provided tab title for the canvas block.
+	const rawTitle = presentation.canvas_title;
+	const title =
+		typeof rawTitle === 'string' && rawTitle.trim().length > 0
+			? rawTitle.trim().slice(0, 60)
+			: undefined;
+
 	// If we have a block, dispatch it to canvas
 	if (block) {
 		if (canvasAction === 'replace') {
-			mutations.push({ type: 'replace', blocks: [{ block, messageId }] });
+			mutations.push({ type: 'replace', blocks: [{ block, messageId, title }] });
 		} else {
-			mutations.push({ type: 'add', block, messageId });
+			mutations.push({ type: 'add', block, messageId, title });
 		}
 	}
 

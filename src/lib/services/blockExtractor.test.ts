@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { UIBlock } from '$lib/types/genui';
 import {
 	buildSearchDataCache,
 	buildSearchDataCacheThroughPart,
@@ -181,5 +182,55 @@ describe('blockExtractor present_results cache misses', () => {
 		const mutations = extractCanvasMutationsFromPart(clearPart, null, 'msg-1');
 
 		expect(mutations).toEqual([{ type: 'clear' }]);
+	});
+});
+
+describe('blockExtractor canvas_title plumbing', () => {
+	const block: UIBlock = { type: 'coffee-cards', version: 1, data: [] };
+
+	function presentPart(presentation: Record<string, unknown>) {
+		return {
+			type: 'tool-present_results',
+			toolName: 'present_results',
+			state: 'output-available',
+			output: { presentation: { source_tool: 'catalog_rank', items: [{ id: 1 }], ...presentation } }
+		};
+	}
+
+	it('attaches a trimmed AI title to a replace mutation', () => {
+		const mutations = extractCanvasMutationsFromPart(
+			presentPart({ canvas_action: 'replace', canvas_title: '  Ethiopia naturals  ' }),
+			block,
+			'msg-1'
+		);
+
+		expect(mutations).toEqual([
+			{ type: 'replace', blocks: [{ block, messageId: 'msg-1', title: 'Ethiopia naturals' }] }
+		]);
+	});
+
+	it('attaches a title to an add mutation', () => {
+		const mutations = extractCanvasMutationsFromPart(
+			presentPart({ canvas_action: 'add', canvas_title: 'Espresso roasts' }),
+			block,
+			'msg-2'
+		);
+
+		expect(mutations?.[0]).toEqual({
+			type: 'add',
+			block,
+			messageId: 'msg-2',
+			title: 'Espresso roasts'
+		});
+	});
+
+	it('leaves title undefined when canvas_title is absent or blank', () => {
+		const mutations = extractCanvasMutationsFromPart(
+			presentPart({ canvas_action: 'add', canvas_title: '   ' }),
+			block,
+			'msg-3'
+		);
+
+		expect(mutations?.[0]).toMatchObject({ type: 'add', title: undefined });
 	});
 });
