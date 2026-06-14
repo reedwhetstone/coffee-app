@@ -1,5 +1,13 @@
 import type { RoastChartBlock, UIBlock } from '$lib/types/genui';
 
+const SELF_CONTAINED_BLOCK_TYPES = new Set<UIBlock['type']>([
+	'action-card',
+	'bean-form',
+	'roast-form',
+	'sale-form',
+	'error'
+]);
+
 /**
  * Extra blocks rendered beneath the primary block inside a canvas pop-out
  * detail panel. These are the "more detail" the compact canvas card omits —
@@ -38,5 +46,5 @@ export function detailCompanionLabel(block: UIBlock): string | null {
  * affordance.
  */
 export function blockSupportsDetail(block: UIBlock): boolean {
-	return block.type !== 'error';
+	return !SELF_CONTAINED_BLOCK_TYPES.has(block.type);
 }

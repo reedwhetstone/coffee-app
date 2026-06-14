@@ -57,10 +57,20 @@ describe('getDetailCompanionBlocks', () => {
 });
 
 describe('blockSupportsDetail', () => {
-	it('excludes error blocks', () => {
+	it('excludes self-contained error, action, and form blocks', () => {
 		expect(
 			blockSupportsDetail({ type: 'error', version: 1, data: { message: 'x', retryable: false } })
 		).toBe(false);
+		expect(
+			blockSupportsDetail({
+				type: 'action-card',
+				version: 1,
+				data: { actionType: 'record_sale', summary: 'Record sale', fields: [], status: 'proposed' }
+			})
+		).toBe(false);
+		expect(blockSupportsDetail({ type: 'bean-form', version: 1, data: {} })).toBe(false);
+		expect(blockSupportsDetail({ type: 'roast-form', version: 1, data: {} })).toBe(false);
+		expect(blockSupportsDetail({ type: 'sale-form', version: 1, data: {} })).toBe(false);
 	});
 
 	it('allows content blocks', () => {
