@@ -125,6 +125,15 @@ function findPersistedPrefixOverlap(
 	const incomingSignatures = incomingMessages.map(messageSignature);
 	const maxOverlap = Math.min(existingSignatures.length, incomingSignatures.length);
 
+	// Rows inserted in the same Supabase batch can share created_at, and UUID ids
+	// are not a conversation sequence. When retries/sendBeacon return those recent
+	// rows in an arbitrary tie order, client_message_id is the stable ordering key
+	// for deciding how much of the incoming prefix is already persisted. Check it
+	// before suffix matching so a partial content suffix does not mask a full ID
+	// overlap in arbitrarily ordered recent rows.
+	const clientIdPrefixOverlap = countPersistedClientIdPrefix(existingMessages, incomingMessages);
+	if (clientIdPrefixOverlap > 0) return Math.min(maxOverlap, clientIdPrefixOverlap);
+
 	for (let overlap = maxOverlap; overlap > 0; overlap--) {
 		const existingSuffix = existingSignatures.slice(existingSignatures.length - overlap);
 		const incomingPrefix = incomingSignatures.slice(0, overlap);
@@ -133,11 +142,7 @@ function findPersistedPrefixOverlap(
 		}
 	}
 
-	// Rows inserted in the same Supabase batch can share created_at, and UUID ids
-	// are not a conversation sequence. When retries/sendBeacon return those recent
-	// rows in an arbitrary tie order, client_message_id is the stable ordering key
-	// for deciding how much of the incoming prefix is already persisted.
-	return Math.min(maxOverlap, countPersistedClientIdPrefix(existingMessages, incomingMessages));
+	return 0;
 }
 
 // POST /api/workspaces/[id]/messages - Save messages for a workspace
