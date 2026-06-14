@@ -16,7 +16,19 @@ const blockMessageRegistry = new Map<string, string>();
 
 // ─── Derived ─────────────────────────────────────────────────────────────────
 
-const visibleBlocks = $derived(blocks.filter((b) => !b.minimized));
+// Pinned blocks float to the front (stable: insertion order preserved within
+// the pinned and unpinned groups), so pinning visibly prioritizes a card in
+// addition to protecting it from clear/replace.
+const visibleBlocks = $derived(
+	blocks
+		.filter((b) => !b.minimized)
+		.map((block, index) => ({ block, index }))
+		.sort((a, b) => {
+			if (a.block.pinned !== b.block.pinned) return a.block.pinned ? -1 : 1;
+			return a.index - b.index;
+		})
+		.map((entry) => entry.block)
+);
 const isEmpty = $derived(blocks.length === 0);
 const blockCount = $derived(blocks.length);
 const focusedBlock = $derived(blocks.find((b) => b.id === focusBlockId) ?? null);
