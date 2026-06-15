@@ -39,6 +39,20 @@ describe('groupCanvasBlocks', () => {
 		expect(group.pinned).toBe(true);
 	});
 
+	it('keeps action cards in separate windows so execution state is not reset by sub-tab swaps', () => {
+		const action1 = makeBlock('action-card');
+		const action2 = makeBlock('action-card');
+
+		const groups = groupCanvasBlocks([action1, action2]);
+
+		expect(groups).toHaveLength(2);
+		expect(groups.map((g) => g.blocks.map((b) => b.id))).toEqual([[action1.id], [action2.id]]);
+		expect(groups.map((g) => g.key)).toEqual([
+			`action-card:${action1.id}`,
+			`action-card:${action2.id}`
+		]);
+	});
+
 	it('does not mark a group pinned when no member is pinned', () => {
 		const [group] = groupCanvasBlocks([makeBlock('inventory-table')]);
 		expect(group.pinned).toBe(false);

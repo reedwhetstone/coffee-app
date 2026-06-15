@@ -15,7 +15,9 @@ export interface CanvasGroup {
 /**
  * Groups canvas blocks by category (block type) into windows. All coffee-card
  * blocks share one window, all roast-profile blocks another, etc., and each
- * member becomes a swappable, AI-named sub-tab within its window.
+ * member becomes a swappable, AI-named sub-tab within its window. Executable
+ * action cards are intentionally left as one-card windows so tab switching does
+ * not unmount their write status.
  *
  * Group and member order follow the order of the incoming blocks, so the
  * pinned-first ordering applied upstream still floats pinned categories to the
@@ -26,7 +28,14 @@ export function groupCanvasBlocks(blocks: CanvasBlock[]): CanvasGroup[] {
 	const byKey = new Map<string, CanvasGroup>();
 
 	for (const canvasBlock of blocks) {
-		const key = canvasBlock.block.type;
+		// Action cards execute writes. Keep each one mounted in its own window instead
+		// of swapping them through sub-tabs; otherwise component-local execution
+		// state resets when the user switches away and back, making duplicate writes
+		// possible.
+		const key =
+			canvasBlock.block.type === 'action-card'
+				? `${canvasBlock.block.type}:${canvasBlock.id}`
+				: canvasBlock.block.type;
 		let group = byKey.get(key);
 		if (!group) {
 			group = {

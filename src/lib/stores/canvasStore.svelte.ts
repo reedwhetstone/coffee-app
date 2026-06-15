@@ -48,7 +48,7 @@ function autoDetectLayout(count: number): CanvasLayout {
 }
 
 function maybeAutoLayout() {
-	if (!layoutManuallySet) layout = autoDetectLayout(blocks.length);
+	if (!layoutManuallySet && !blocks.some((b) => b.pinned)) layout = autoDetectLayout(blocks.length);
 }
 
 // ─── Dispatch mutations ──────────────────────────────────────────────────────

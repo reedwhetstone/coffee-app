@@ -47,7 +47,12 @@ describe('canvasStore pinning', () => {
 	it('carries an AI title onto an added block', async () => {
 		const { canvasStore } = await loadCanvasStore();
 
-		canvasStore.dispatch({ type: 'add', block: cards(1), messageId: 'm1', title: 'Ethiopia naturals' });
+		canvasStore.dispatch({
+			type: 'add',
+			block: cards(1),
+			messageId: 'm1',
+			title: 'Ethiopia naturals'
+		});
 
 		expect(canvasStore.blocks[0].title).toBe('Ethiopia naturals');
 	});
@@ -87,6 +92,37 @@ describe('canvasStore layout lock', () => {
 		canvasStore.dispatch({ type: 'add', block: cards(2), messageId: 'm2' });
 
 		expect(canvasStore.layout).toBe('comparison');
+	});
+
+	it('keeps the current layout when content is added after a window is locked', async () => {
+		const { canvasStore } = await loadCanvasStore();
+
+		canvasStore.dispatch({ type: 'add', block: cards(1), messageId: 'm1' });
+		expect(canvasStore.layout).toBe('focus');
+		canvasStore.dispatch({ type: 'pin', blockId: canvasStore.blocks[0].id });
+
+		canvasStore.dispatch({ type: 'add', block: cards(2), messageId: 'm2' });
+		canvasStore.dispatch({ type: 'add', block: cards(3), messageId: 'm3' });
+
+		expect(canvasStore.layout).toBe('focus');
+	});
+
+	it('keeps the current layout when content is replaced around a locked window', async () => {
+		const { canvasStore } = await loadCanvasStore();
+
+		canvasStore.dispatch({ type: 'add', block: cards(1), messageId: 'm1' });
+		canvasStore.dispatch({ type: 'pin', blockId: canvasStore.blocks[0].id });
+
+		canvasStore.dispatch({
+			type: 'replace',
+			blocks: [
+				{ block: cards(2), messageId: 'm2' },
+				{ block: cards(3), messageId: 'm3' }
+			]
+		});
+
+		expect(canvasStore.layout).toBe('focus');
+		expect(canvasStore.blocks.map((b) => b.messageId)).toEqual(['m1', 'm2', 'm3']);
 	});
 });
 
