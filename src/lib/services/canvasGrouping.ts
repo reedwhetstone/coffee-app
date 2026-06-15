@@ -8,8 +8,10 @@ export interface CanvasGroup {
 	label: string;
 	/** Member blocks in encounter order; each is a swappable sub-tab. */
 	blocks: CanvasBlock[];
-	/** True when any member is pinned — the whole window is treated as pinned. */
+	/** True only when every member is pinned; mixed groups stay tab-level locked. */
 	pinned: boolean;
+	/** Number of member tabs currently pinned. */
+	pinnedCount: number;
 }
 
 /**
@@ -20,8 +22,8 @@ export interface CanvasGroup {
  * not unmount their write status.
  *
  * Group and member order follow the order of the incoming blocks, so the
- * pinned-first ordering applied upstream still floats pinned categories to the
- * front (a pinned member makes its group appear early).
+ * pinned-first ordering applied upstream still floats pinned tabs to the
+ * front without presenting a mixed group as fully locked.
  */
 export function groupCanvasBlocks(blocks: CanvasBlock[]): CanvasGroup[] {
 	const groups: CanvasGroup[] = [];
@@ -43,13 +45,15 @@ export function groupCanvasBlocks(blocks: CanvasBlock[]): CanvasGroup[] {
 				type: canvasBlock.block.type,
 				label: defaultBlockTitle(canvasBlock.block.type),
 				blocks: [],
-				pinned: false
+				pinned: false,
+				pinnedCount: 0
 			};
 			byKey.set(key, group);
 			groups.push(group);
 		}
 		group.blocks.push(canvasBlock);
-		if (canvasBlock.pinned) group.pinned = true;
+		if (canvasBlock.pinned) group.pinnedCount += 1;
+		group.pinned = group.pinnedCount === group.blocks.length;
 	}
 
 	return groups;

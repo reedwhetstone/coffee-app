@@ -51,8 +51,8 @@
 		for (const b of group.blocks) onMinimize(b.id);
 	}
 
-	function toggleWindowLock(group: CanvasGroup) {
-		onToggleLock(group.blocks.map((b) => b.id));
+	function toggleActiveTabLock(block: CanvasBlock) {
+		onToggleLock([block.id]);
 	}
 </script>
 
@@ -64,7 +64,7 @@
 			class="canvas-block-wrapper"
 			class:is-focused={isFocused && layout === 'focus'}
 			class:is-secondary={!isFocused && layout === 'focus'}
-			class:is-pinned={group.pinned}
+			class:is-pinned={active.pinned}
 		>
 			<!-- Window header bar -->
 			<div class="flex items-center justify-between gap-2 border-b border-border-light px-3 py-1.5">
@@ -79,8 +79,10 @@
 							{group.blocks.length}
 						</span>
 					{/if}
-					{#if group.pinned}
-						<span class="text-xs text-amber-500">locked</span>
+					{#if active.pinned}
+						<span class="text-xs text-amber-500">tab locked</span>
+					{:else if group.pinnedCount > 0}
+						<span class="text-xs text-amber-500">{group.pinnedCount} locked</span>
 					{/if}
 				</div>
 				<div class="flex shrink-0 items-center gap-1">
@@ -117,21 +119,20 @@
 							</svg>
 						</button>
 					{/if}
-					<!-- Lock toggle: locks the whole window so the agent can't replace,
-						     remove, reorder, or re-lay-out it — it can only add new content
-						     below. Operates on every sub-tab in the window. -->
+					<!-- Lock toggle: pins only the active tab so mixed groups keep accurate
+					     per-tab locked/unlocked state. -->
 					<button
-						onclick={() => toggleWindowLock(group)}
+						onclick={() => toggleActiveTabLock(active)}
 						class="rounded p-0.5 transition-colors"
-						class:text-amber-500={group.pinned}
-						class:text-text-secondary-light={!group.pinned}
-						class:hover:text-amber-500={!group.pinned}
-						title={group.pinned ? 'Unlock window' : 'Lock window in place'}
-						aria-pressed={group.pinned}
+						class:text-amber-500={active.pinned}
+						class:text-text-secondary-light={!active.pinned}
+						class:hover:text-amber-500={!active.pinned}
+						title={active.pinned ? 'Unlock active tab' : 'Lock active tab in place'}
+						aria-pressed={active.pinned}
 					>
 						<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<rect x="5" y="11" width="14" height="9" rx="2" stroke-width="2" />
-							{#if group.pinned}
+							{#if active.pinned}
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
@@ -174,12 +175,11 @@
 							<button
 								onclick={() => selectSubTab(group.key, member.id)}
 								class="max-w-[140px] truncate px-2 py-0.5"
-								title={subTabLabel(member, i)}
+								title={`${subTabLabel(member, i)} (${member.pinned ? 'locked' : 'unlocked'})`}
+								aria-label={`${subTabLabel(member, i)} tab, ${member.pinned ? 'locked' : 'unlocked'}`}
 							>
-								{#if member.pinned}<span class="mr-0.5 text-amber-500">●</span>{/if}{subTabLabel(
-									member,
-									i
-								)}
+								{#if member.pinned}<span class="mr-0.5 text-amber-500" title="Locked tab">●</span
+									>{/if}{subTabLabel(member, i)}
 							</button>
 							<button
 								onclick={() => onMinimize(member.id)}

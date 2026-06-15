@@ -30,13 +30,24 @@ describe('groupCanvasBlocks', () => {
 		expect(groups[0].label).toBe('Coffee cards');
 	});
 
-	it('marks a group pinned when any member is pinned', () => {
+	it('does not mark a mixed pinned group as fully pinned', () => {
 		const a = makeBlock('coffee-cards');
 		const b = makeBlock('coffee-cards', { pinned: true });
 
 		const [group] = groupCanvasBlocks([a, b]);
 
+		expect(group.pinned).toBe(false);
+		expect(group.pinnedCount).toBe(1);
+	});
+
+	it('marks a group pinned only when every member is pinned', () => {
+		const a = makeBlock('coffee-cards', { pinned: true });
+		const b = makeBlock('coffee-cards', { pinned: true });
+
+		const [group] = groupCanvasBlocks([a, b]);
+
 		expect(group.pinned).toBe(true);
+		expect(group.pinnedCount).toBe(2);
 	});
 
 	it('keeps action cards in separate windows so execution state is not reset by sub-tab swaps', () => {
@@ -56,6 +67,7 @@ describe('groupCanvasBlocks', () => {
 	it('does not mark a group pinned when no member is pinned', () => {
 		const [group] = groupCanvasBlocks([makeBlock('inventory-table')]);
 		expect(group.pinned).toBe(false);
+		expect(group.pinnedCount).toBe(0);
 	});
 });
 
