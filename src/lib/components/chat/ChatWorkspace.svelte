@@ -361,9 +361,11 @@
 	}
 
 	function applyWorkspaceResult(result: { workspace: Workspace; messages: WorkspaceMessage[] }) {
-		// Clear current chat and canvas
+		// Workspace hydration must reset the shared canvas completely. User-facing
+		// clears preserve pinned blocks, but restored workspaces should not inherit
+		// pinned blocks from whatever canvas happened to be mounted before.
 		chat.messages = [];
-		canvasStore.clearAll();
+		canvasStore.resetAll();
 		dispatchedParts = new Set();
 		lastSentPageContext = null;
 		lastPersistedMessageCount = 0;
@@ -417,7 +419,6 @@
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const cs = result.workspace.canvas_state as any;
 			if (Array.isArray(cs.blocks)) {
-				canvasStore.dispatch({ type: 'clear' });
 				for (const cb of cs.blocks) {
 					if (cb.block) {
 						canvasStore.dispatch({

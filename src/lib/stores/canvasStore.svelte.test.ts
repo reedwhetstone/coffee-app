@@ -44,6 +44,23 @@ describe('canvasStore pinning', () => {
 		expect(canvasStore.blocks.map((b) => b.messageId)).toEqual(['m1']);
 	});
 
+	it('drops pinned blocks on a full reset for workspace restore', async () => {
+		const { canvasStore } = await loadCanvasStore();
+
+		canvasStore.dispatch({ type: 'add', block: cards(1), messageId: 'm1' });
+		canvasStore.dispatch({ type: 'add', block: cards(2), messageId: 'm2' });
+		const pinnedBlockId = canvasStore.blocks[0].id;
+		canvasStore.dispatch({ type: 'pin', blockId: pinnedBlockId });
+		canvasStore.dispatch({ type: 'layout', layout: 'dashboard' });
+
+		canvasStore.resetAll();
+
+		expect(canvasStore.blocks).toEqual([]);
+		expect(canvasStore.focusBlockId).toBeNull();
+		expect(canvasStore.layout).toBe('focus');
+		expect(canvasStore.getMessageIdForBlock(pinnedBlockId)).toBeUndefined();
+	});
+
 	it('carries an AI title onto an added block', async () => {
 		const { canvasStore } = await loadCanvasStore();
 

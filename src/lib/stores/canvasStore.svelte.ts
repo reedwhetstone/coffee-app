@@ -190,6 +190,14 @@ function clearAll() {
 	dispatch({ type: 'clear' });
 }
 
+function resetAll() {
+	blockMessageRegistry.clear();
+	blocks = [];
+	focusBlockId = null;
+	layout = 'focus';
+	layoutManuallySet = false;
+}
+
 // ─── Exported reactive accessors ─────────────────────────────────────────────
 
 export const canvasStore = {
@@ -217,5 +225,6 @@ export const canvasStore = {
 	dispatch,
 	getMessageIdForBlock,
 	getBlocksForMessage,
-	clearAll
+	clearAll,
+	resetAll
 };
