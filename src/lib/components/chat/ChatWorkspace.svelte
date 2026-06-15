@@ -483,20 +483,19 @@
 	}
 
 	// Persist chat messages and canvas state to the current workspace. Autosave
-	// calls are serialized so every save recalculates the unsaved slice after the
-	// previous `/messages` write has advanced workspaceStore's saved count.
+	// calls are serialized through one queue so every save recalculates the
+	// unsaved message slice after earlier `/messages` writes advance
+	// workspaceStore's saved count, and older canvas writes cannot complete after
+	// newer user layout changes.
 	let currentPersist: Promise<void> | null = null;
-	let currentCanvasPersist: Promise<void> | null = null;
-	async function persistCurrentState() {
-		const wsId = workspaceStore.currentWorkspaceId;
-		if (!wsId) return;
 
+	async function enqueuePersistence(task: () => Promise<void>) {
 		const previousPersist = currentPersist;
 		const nextPersist = (async () => {
 			if (previousPersist) {
 				await previousPersist.catch(() => undefined);
 			}
-			await persistWorkspaceState(wsId);
+			await task();
 		})();
 
 		currentPersist = nextPersist;
@@ -512,26 +511,16 @@
 		await nextPersist;
 	}
 
+	async function persistCurrentState() {
+		const wsId = workspaceStore.currentWorkspaceId;
+		if (!wsId) return;
+		await enqueuePersistence(() => persistWorkspaceState(wsId));
+	}
+
 	async function persistCanvasState(wsId: string) {
-		const previousPersist = currentCanvasPersist;
-		const nextPersist = (async () => {
-			if (previousPersist) {
-				await previousPersist.catch(() => undefined);
-			}
+		await enqueuePersistence(async () => {
 			await workspaceStore.saveCanvasState(wsId, buildCanvasStatePayload());
-		})();
-
-		currentCanvasPersist = nextPersist;
-		nextPersist.then(
-			() => {
-				if (currentCanvasPersist === nextPersist) currentCanvasPersist = null;
-			},
-			() => {
-				if (currentCanvasPersist === nextPersist) currentCanvasPersist = null;
-			}
-		);
-
-		await nextPersist;
+		});
 	}
 
 	async function persistWorkspaceState(wsId: string) {
@@ -543,7 +532,7 @@
 		}
 
 		// Save canvas state (layout, order, pinned, minimized, focus, titles)
-		await persistCanvasState(wsId);
+		await workspaceStore.saveCanvasState(wsId, buildCanvasStatePayload());
 	}
 
 	// Auto-persist when streaming completes (fast debounce).
@@ -559,8 +548,12 @@
 		const count = chat.messages.length;
 		if (isActive || count === 0 || count === lastPersistedMessageCount) return;
 		const timeout = setTimeout(() => {
-			lastPersistedMessageCount = count;
-			persistCurrentState();
+			void persistCurrentState().then(
+				() => {
+					lastPersistedMessageCount = count;
+				},
+				() => undefined
+			);
 		}, 500);
 		return () => clearTimeout(timeout);
 	});

@@ -25,12 +25,12 @@
 		onAction?.(action);
 	}
 
-	function handleToggleLock(blockId: string) {
-		const block = canvasStore.blocks.find((b: CanvasBlock) => b.id === blockId);
-		if (block?.pinned) {
-			canvasStore.dispatch({ type: 'unpin', blockId });
-		} else {
-			canvasStore.dispatch({ type: 'pin', blockId });
+	function handleToggleLock(blockIds: string[]) {
+		const shouldUnlock = blockIds.some((blockId) =>
+			canvasStore.blocks.some((b: CanvasBlock) => b.id === blockId && b.pinned)
+		);
+		for (const blockId of blockIds) {
+			canvasStore.dispatch({ type: shouldUnlock ? 'unpin' : 'pin', blockId });
 		}
 	}
 
@@ -45,7 +45,9 @@
 	// ─── Pop-out detail panel ──────────────────────────────────────────────────
 	let detailBlockId = $state<string | null>(null);
 	let detailBlock = $derived(
-		detailBlockId ? (canvasStore.blocks.find((b: CanvasBlock) => b.id === detailBlockId) ?? null) : null
+		detailBlockId
+			? (canvasStore.blocks.find((b: CanvasBlock) => b.id === detailBlockId) ?? null)
+			: null
 	);
 
 	function handleExpand(blockId: string) {
