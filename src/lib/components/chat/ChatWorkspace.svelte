@@ -514,16 +514,21 @@
 	async function persistCurrentState() {
 		const wsId = workspaceStore.currentWorkspaceId;
 		if (!wsId) return;
-		await enqueuePersistence(() => persistWorkspaceState(wsId));
+		const canvasStatePayload = buildCanvasStatePayload();
+		await enqueuePersistence(() => persistWorkspaceState(wsId, canvasStatePayload));
 	}
 
 	async function persistCanvasState(wsId: string) {
+		const canvasStatePayload = buildCanvasStatePayload();
 		await enqueuePersistence(async () => {
-			await workspaceStore.saveCanvasState(wsId, buildCanvasStatePayload());
+			await workspaceStore.saveCanvasState(wsId, canvasStatePayload);
 		});
 	}
 
-	async function persistWorkspaceState(wsId: string) {
+	async function persistWorkspaceState(
+		wsId: string,
+		canvasStatePayload: ReturnType<typeof buildCanvasStatePayload>
+	) {
 		// Save new messages (ones not yet persisted)
 		const savedCount = workspaceStore.getSavedMessageCount(wsId);
 		const newMessages = chat.messages.slice(savedCount);
@@ -532,7 +537,7 @@
 		}
 
 		// Save canvas state (layout, order, pinned, minimized, focus, titles)
-		await workspaceStore.saveCanvasState(wsId, buildCanvasStatePayload());
+		await workspaceStore.saveCanvasState(wsId, canvasStatePayload);
 	}
 
 	// Auto-persist when streaming completes (fast debounce).

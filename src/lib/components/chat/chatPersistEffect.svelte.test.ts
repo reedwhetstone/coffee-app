@@ -158,10 +158,11 @@ describe('ChatWorkspace auto-persist effect', () => {
 
 		const buildCanvasStatePayload = () => canvasState;
 		const persistCanvasState = async () => {
+			const payload = buildCanvasStatePayload();
 			const previousPersist = currentCanvasPersist;
 			const nextPersist = (async () => {
 				if (previousPersist) await previousPersist.catch(() => undefined);
-				await saveCanvasState(buildCanvasStatePayload());
+				await saveCanvasState(payload);
 			})();
 
 			currentCanvasPersist = nextPersist;
@@ -190,5 +191,59 @@ describe('ChatWorkspace auto-persist effect', () => {
 		await Promise.all([firstPersist, secondPersist]);
 
 		expect(savedStates).toEqual(['old-layout', 'new-layout']);
+	});
+
+	it('snapshots canvas state before queueing so workspace switches cannot leak later canvas state', async () => {
+		let canvasState = 'workspace-a-layout';
+		const savedStates: Array<{ wsId: string; state: string }> = [];
+		let releaseFirstSave!: () => void;
+		let currentPersist: Promise<void> | null = null;
+
+		const saveCanvasState = vi.fn(async (wsId: string, state: string) => {
+			savedStates.push({ wsId, state });
+			if (savedStates.length === 1) {
+				await new Promise<void>((resolve) => {
+					releaseFirstSave = resolve;
+				});
+			}
+		});
+
+		const buildCanvasStatePayload = () => canvasState;
+		const persistCanvasState = async (wsId: string) => {
+			const payload = buildCanvasStatePayload();
+			const previousPersist = currentPersist;
+			const nextPersist = (async () => {
+				if (previousPersist) await previousPersist.catch(() => undefined);
+				await saveCanvasState(wsId, payload);
+			})();
+
+			currentPersist = nextPersist;
+			nextPersist.then(
+				() => {
+					if (currentPersist === nextPersist) currentPersist = null;
+				},
+				() => {
+					if (currentPersist === nextPersist) currentPersist = null;
+				}
+			);
+
+			await nextPersist;
+		};
+
+		const firstPersist = persistCanvasState('workspace-a');
+		await vi.waitFor(() => expect(saveCanvasState).toHaveBeenCalledTimes(1));
+
+		const secondPersist = persistCanvasState('workspace-a');
+		canvasState = 'workspace-b-layout';
+		await Promise.resolve();
+		expect(saveCanvasState).toHaveBeenCalledTimes(1);
+
+		releaseFirstSave();
+		await Promise.all([firstPersist, secondPersist]);
+
+		expect(savedStates).toEqual([
+			{ wsId: 'workspace-a', state: 'workspace-a-layout' },
+			{ wsId: 'workspace-a', state: 'workspace-a-layout' }
+		]);
 	});
 });
