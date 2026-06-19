@@ -362,6 +362,15 @@ export type Database = {
 					stocked_date: string | null;
 					type: string | null;
 					unstocked_date: string | null;
+					subregion: string | null;
+					locality: string | null;
+					site: string | null;
+					processing_site: string | null;
+					farmer: string | null;
+					cooperative: string | null;
+					elevation_min_masl: number | null;
+					elevation_max_masl: number | null;
+					origin_actor_evidence: Json | null;
 					wholesale: boolean;
 				};
 				Insert: {
@@ -414,6 +423,15 @@ export type Database = {
 					stocked_date?: string | null;
 					type?: string | null;
 					unstocked_date?: string | null;
+					subregion?: string | null;
+					locality?: string | null;
+					site?: string | null;
+					processing_site?: string | null;
+					farmer?: string | null;
+					cooperative?: string | null;
+					elevation_min_masl?: number | null;
+					elevation_max_masl?: number | null;
+					origin_actor_evidence?: Json | null;
 					wholesale?: boolean;
 				};
 				Update: {
@@ -466,6 +484,15 @@ export type Database = {
 					stocked_date?: string | null;
 					type?: string | null;
 					unstocked_date?: string | null;
+					subregion?: string | null;
+					locality?: string | null;
+					site?: string | null;
+					processing_site?: string | null;
+					farmer?: string | null;
+					cooperative?: string | null;
+					elevation_min_masl?: number | null;
+					elevation_max_masl?: number | null;
+					origin_actor_evidence?: Json | null;
 					wholesale?: boolean;
 				};
 				Relationships: [];

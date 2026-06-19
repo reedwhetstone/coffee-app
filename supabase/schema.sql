@@ -82,9 +82,21 @@ CREATE TABLE public.coffee_catalog (
   coffee_user uuid,
   country text,
   continent text,
+  subregion text,
+  locality text,
+  site text,
+  processing_site text,
+  farmer text,
+  cooperative text,
+  elevation_min_masl integer,
+  elevation_max_masl integer,
+  origin_actor_evidence jsonb,
   CONSTRAINT coffee_catalog_fermentation_duration_hours_nonnegative CHECK (fermentation_duration_hours IS NULL OR fermentation_duration_hours >= 0),
   CONSTRAINT coffee_catalog_processing_confidence_unit_interval CHECK (processing_confidence IS NULL OR (processing_confidence >= 0 AND processing_confidence <= 1)),
   CONSTRAINT coffee_catalog_processing_disclosure_level_known CHECK (processing_disclosure_level IS NULL OR processing_disclosure_level IN ('none', 'label_only', 'structured', 'narrative', 'high_detail')),
+  CONSTRAINT coffee_catalog_elevation_min_masl_check CHECK (elevation_min_masl IS NULL OR (elevation_min_masl >= 0 AND elevation_min_masl <= 6000)),
+  CONSTRAINT coffee_catalog_elevation_max_masl_check CHECK (elevation_max_masl IS NULL OR (elevation_max_masl >= 0 AND elevation_max_masl <= 6000)),
+  CONSTRAINT coffee_catalog_elevation_range_check CHECK (elevation_min_masl IS NULL OR elevation_max_masl IS NULL OR elevation_min_masl <= elevation_max_masl),
   CONSTRAINT coffee_catalog_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.coffee_chunks (
