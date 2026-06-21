@@ -370,7 +370,6 @@ export type Database = {
 					cooperative: string | null;
 					elevation_min_masl: number | null;
 					elevation_max_masl: number | null;
-					origin_actor_evidence: Json | null;
 					wholesale: boolean;
 				};
 				Insert: {
@@ -431,7 +430,6 @@ export type Database = {
 					cooperative?: string | null;
 					elevation_min_masl?: number | null;
 					elevation_max_masl?: number | null;
-					origin_actor_evidence?: Json | null;
 					wholesale?: boolean;
 				};
 				Update: {
@@ -492,10 +490,38 @@ export type Database = {
 					cooperative?: string | null;
 					elevation_min_masl?: number | null;
 					elevation_max_masl?: number | null;
-					origin_actor_evidence?: Json | null;
 					wholesale?: boolean;
 				};
 				Relationships: [];
+			};
+			coffee_catalog_origin_actor_evidence: {
+				Row: {
+					coffee_catalog_id: number;
+					created_at: string;
+					evidence: Json;
+					updated_at: string;
+				};
+				Insert: {
+					coffee_catalog_id: number;
+					created_at?: string;
+					evidence?: Json;
+					updated_at?: string;
+				};
+				Update: {
+					coffee_catalog_id?: number;
+					created_at?: string;
+					evidence?: Json;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'coffee_catalog_origin_actor_evidence_coffee_catalog_id_fkey';
+						columns: ['coffee_catalog_id'];
+						isOneToOne: true;
+						referencedRelation: 'coffee_catalog';
+						referencedColumns: ['id'];
+					}
+				];
 			};
 			coffee_chunks: {
 				Row: {

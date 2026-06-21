@@ -90,7 +90,6 @@ CREATE TABLE public.coffee_catalog (
   cooperative text,
   elevation_min_masl integer,
   elevation_max_masl integer,
-  origin_actor_evidence jsonb,
   CONSTRAINT coffee_catalog_fermentation_duration_hours_nonnegative CHECK (fermentation_duration_hours IS NULL OR fermentation_duration_hours >= 0),
   CONSTRAINT coffee_catalog_processing_confidence_unit_interval CHECK (processing_confidence IS NULL OR (processing_confidence >= 0 AND processing_confidence <= 1)),
   CONSTRAINT coffee_catalog_processing_disclosure_level_known CHECK (processing_disclosure_level IS NULL OR processing_disclosure_level IN ('none', 'label_only', 'structured', 'narrative', 'high_detail')),
@@ -98,6 +97,14 @@ CREATE TABLE public.coffee_catalog (
   CONSTRAINT coffee_catalog_elevation_max_masl_check CHECK (elevation_max_masl IS NULL OR (elevation_max_masl >= 0 AND elevation_max_masl <= 6000)),
   CONSTRAINT coffee_catalog_elevation_range_check CHECK (elevation_min_masl IS NULL OR elevation_max_masl IS NULL OR elevation_min_masl <= elevation_max_masl),
   CONSTRAINT coffee_catalog_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.coffee_catalog_origin_actor_evidence (
+  coffee_catalog_id integer NOT NULL,
+  evidence jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT coffee_catalog_origin_actor_evidence_pkey PRIMARY KEY (coffee_catalog_id),
+  CONSTRAINT coffee_catalog_origin_actor_evidence_coffee_catalog_id_fkey FOREIGN KEY (coffee_catalog_id) REFERENCES public.coffee_catalog(id) ON DELETE CASCADE
 );
 CREATE TABLE public.coffee_chunks (
   id text NOT NULL,
