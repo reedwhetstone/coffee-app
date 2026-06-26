@@ -10,7 +10,6 @@ import {
 	isCatalogRoute,
 	getDefaultSortSettings,
 	getFilterableColumns,
-	isEmptyFilterValue,
 	sanitizeFilters,
 	getFieldValue,
 	processData,
