@@ -124,9 +124,7 @@
 						<!-- Status Indicator -->
 						<div class="flex items-center gap-2">
 							<div
-								class="h-3 w-3 rounded-full {selectedBean.stocked
-									? 'bg-green-500'
-									: 'bg-red-500'}"
+								class="h-3 w-3 rounded-full {selectedBean.stocked ? 'bg-green-500' : 'bg-red-500'}"
 							></div>
 							<span class="text-xs font-medium text-text-secondary-light">
 								{selectedBean.stocked ? 'In Stock' : 'Out of Stock'}
@@ -190,9 +188,7 @@
 		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
 			<div class="mb-4 flex items-center justify-between">
 				<h3 class="font-semibold text-text-primary-light">
-					{cat.source
-						? formatSourceName(cat.source) + ' Bean Information'
-						: 'Bean Information'}
+					{cat.source ? formatSourceName(cat.source) + ' Bean Information' : 'Bean Information'}
 				</h3>
 				<div class="flex items-center gap-2">
 					{#if cat.wholesale}
@@ -214,12 +210,7 @@
 							class="inline-flex items-center rounded-md bg-background-tertiary-light px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 						>
 							View Product Page
-							<svg
-								class="ml-1.5 h-3.5 w-3.5"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
+							<svg class="ml-1.5 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
@@ -244,66 +235,48 @@
 			<!-- Origin & Source -->
 			{#if hasOriginData}
 				<div class="mb-4">
-					<h4
-						class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
-					>
+					<h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light">
 						Origin & Source
 					</h4>
 					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#if locationStr}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
 								<h5 class="text-xs font-medium text-text-secondary-light">LOCATION</h5>
 								<div class="mt-1 text-sm text-text-primary-light">{locationStr}</div>
 							</div>
 						{/if}
 						{#if cat.cultivar_detail}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
 								<h5 class="text-xs font-medium text-text-secondary-light">CULTIVAR</h5>
 								<div class="mt-1 text-sm text-text-primary-light">{cat.cultivar_detail}</div>
 							</div>
 						{/if}
 						{#if cat.processing}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
 								<h5 class="text-xs font-medium text-text-secondary-light">PROCESSING</h5>
 								<div class="mt-1 text-sm text-text-primary-light">{cat.processing}</div>
 							</div>
 						{/if}
 						{#if cat.drying_method}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
 								<h5 class="text-xs font-medium text-text-secondary-light">DRYING METHOD</h5>
 								<div class="mt-1 text-sm text-text-primary-light">{cat.drying_method}</div>
 							</div>
 						{/if}
 						{#if cat.grade}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
-								<h5 class="text-xs font-medium text-text-secondary-light">
-									GRADE / ELEVATION
-								</h5>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
+								<h5 class="text-xs font-medium text-text-secondary-light">GRADE / ELEVATION</h5>
 								<div class="mt-1 text-sm text-text-primary-light">{cat.grade}</div>
 							</div>
 						{/if}
 						{#if cat.appearance}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
 								<h5 class="text-xs font-medium text-text-secondary-light">APPEARANCE</h5>
 								<div class="mt-1 text-sm text-text-primary-light">{cat.appearance}</div>
 							</div>
 						{/if}
 						{#if cat.arrival_date}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
 								<h5 class="text-xs font-medium text-text-secondary-light">ARRIVAL DATE</h5>
 								<div class="mt-1 text-sm text-text-primary-light">
 									{formatDisplayDate(cat.arrival_date)}
@@ -317,16 +290,12 @@
 			<!-- Pricing & Availability -->
 			{#if hasPricingData}
 				<div class="mb-4">
-					<h4
-						class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
-					>
+					<h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light">
 						Pricing & Availability
 					</h4>
 					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#if (cat.price_per_lb ?? cat.cost_lb) != null}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
 								<h5 class="text-xs font-medium text-text-secondary-light">COST PER LB</h5>
 								<div class="mt-1 text-sm font-medium text-text-primary-light">
 									{formatCostPerLb((cat.price_per_lb ?? cat.cost_lb) as number)}
@@ -344,25 +313,19 @@
 							</div>
 						{/if}
 						{#if cat.lot_size}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
 								<h5 class="text-xs font-medium text-text-secondary-light">LOT SIZE</h5>
 								<div class="mt-1 text-sm text-text-primary-light">{cat.lot_size}</div>
 							</div>
 						{/if}
 						{#if cat.bag_size}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
 								<h5 class="text-xs font-medium text-text-secondary-light">BAG SIZE</h5>
 								<div class="mt-1 text-sm text-text-primary-light">{cat.bag_size}</div>
 							</div>
 						{/if}
 						{#if cat.packaging}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
 								<h5 class="text-xs font-medium text-text-secondary-light">PACKAGING</h5>
 								<div class="mt-1 text-sm text-text-primary-light">{cat.packaging}</div>
 							</div>
@@ -374,40 +337,28 @@
 			<!-- Descriptions & Notes -->
 			{#if hasDescriptionData}
 				<div class="mb-4">
-					<h4
-						class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
-					>
+					<h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light">
 						Descriptions & Notes
 					</h4>
 					<div class="space-y-3">
 						{#if cat.description_short}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
-								<h5 class="text-xs font-medium text-text-secondary-light">
-									SHORT DESCRIPTION
-								</h5>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
+								<h5 class="text-xs font-medium text-text-secondary-light">SHORT DESCRIPTION</h5>
 								<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
 									{cat.description_short}
 								</div>
 							</div>
 						{/if}
 						{#if cat.description_long}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
-								<h5 class="text-xs font-medium text-text-secondary-light">
-									FULL DESCRIPTION
-								</h5>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
+								<h5 class="text-xs font-medium text-text-secondary-light">FULL DESCRIPTION</h5>
 								<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
 									{cat.description_long}
 								</div>
 							</div>
 						{/if}
 						{#if cat.farm_notes}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
 								<h5 class="text-xs font-medium text-text-secondary-light">FARM NOTES</h5>
 								<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
 									{cat.farm_notes}
@@ -415,12 +366,8 @@
 							</div>
 						{/if}
 						{#if cat.roast_recs}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
-								<h5 class="text-xs font-medium text-text-secondary-light">
-									ROAST RECOMMENDATIONS
-								</h5>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
+								<h5 class="text-xs font-medium text-text-secondary-light">ROAST RECOMMENDATIONS</h5>
 								<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
 									{cat.roast_recs}
 								</div>
@@ -433,16 +380,12 @@
 			<!-- Supplier Info -->
 			{#if hasSupplierData}
 				<div>
-					<h4
-						class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
-					>
+					<h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light">
 						Supplier
 					</h4>
 					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#if cat.source}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
 								<h5 class="text-xs font-medium text-text-secondary-light">SOURCE</h5>
 								<div class="mt-1 text-sm text-text-primary-light">
 									{formatSourceName(cat.source)}
@@ -450,9 +393,7 @@
 							</div>
 						{/if}
 						{#if cat.type}
-							<div
-								class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
-							>
+							<div class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light">
 								<h5 class="text-xs font-medium text-text-secondary-light">IMPORTER / TYPE</h5>
 								<div class="mt-1 text-sm text-text-primary-light">{cat.type}</div>
 							</div>

@@ -1,11 +1,7 @@
 <script lang="ts">
 	import type { InventoryWithCatalog, RoastProfile } from '$lib/types/component.types';
 
-	let {
-		selectedBean,
-		role,
-		onStartNewRoast
-	} = $props<{
+	let { selectedBean, role, onStartNewRoast } = $props<{
 		selectedBean: InventoryWithCatalog;
 		role?: 'viewer' | 'member' | 'admin';
 		onStartNewRoast: () => void;
@@ -53,8 +49,7 @@
 						</div>
 					</div>
 					<div class="mb-2 text-sm text-text-secondary-light">
-						Loss: {profile.weight_loss_percent !== null &&
-						profile.weight_loss_percent !== undefined
+						Loss: {profile.weight_loss_percent !== null && profile.weight_loss_percent !== undefined
 							? profile.weight_loss_percent.toFixed(1)
 							: 'N/A'}%
 					</div>
@@ -77,8 +72,7 @@
 			0
 		)}
 		{@const validRoastsForLoss = selectedBean.roast_profiles.filter(
-			(p: RoastProfile) =>
-				p.weight_loss_percent !== null && p.weight_loss_percent !== undefined
+			(p: RoastProfile) => p.weight_loss_percent !== null && p.weight_loss_percent !== undefined
 		)}
 		{@const avgLoss =
 			validRoastsForLoss.length > 0
@@ -110,9 +104,7 @@
 			</div>
 		</div>
 	{:else}
-		<div
-			class="rounded-lg bg-background-primary-light p-8 text-center ring-1 ring-border-light"
-		>
+		<div class="rounded-lg bg-background-primary-light p-8 text-center ring-1 ring-border-light">
 			<div class="mb-4 text-4xl opacity-50">🔥</div>
 			<h4 class="mb-2 text-lg font-semibold text-text-primary-light">No Roasts Yet</h4>
 			<p class="mb-4 text-text-secondary-light">

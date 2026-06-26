@@ -4,18 +4,14 @@
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { InventoryWithCatalog } from '$lib/types/component.types';
 
-	let {
-		selectedBean,
-		aiTastingNotes,
-		userTastingNotes,
-		canManagePortfolio,
-		onSave
-	} = $props<{
+	const tastingNoteFields = ['body', 'flavor', 'acidity', 'sweetness', 'fragrance_aroma'] as const;
+
+	let { selectedBean, aiTastingNotes, userTastingNotes, canManagePortfolio, onSave } = $props<{
 		selectedBean: InventoryWithCatalog;
 		aiTastingNotes: TastingNotes | null;
 		userTastingNotes: TastingNotes | null;
 		canManagePortfolio: boolean;
-		onSave: (notes: TastingNotes, rating: number | null) => Promise<void>;
+		onSave: (notes: TastingNotes, rating: number | null) => Promise<boolean>;
 	}>();
 
 	let showCuppingForm = $state(false);
@@ -28,8 +24,10 @@
 			initialRating={selectedBean.rank}
 			{aiTastingNotes}
 			onSave={async (notes, rating) => {
-				await onSave(notes, rating);
-				showCuppingForm = false;
+				const saved = await onSave(notes, rating);
+				if (saved) {
+					showCuppingForm = false;
+				}
 			}}
 			onCancel={() => (showCuppingForm = false)}
 		/>
@@ -83,9 +81,7 @@
 					{#if selectedBean.rank != null && typeof selectedBean.rank === 'number'}
 						<div class="flex items-center gap-3">
 							<span class="text-2xl font-bold text-background-tertiary-light">
-								{selectedBean.rank % 1 === 0
-									? selectedBean.rank
-									: selectedBean.rank.toFixed(1)}
+								{selectedBean.rank % 1 === 0 ? selectedBean.rank : selectedBean.rank.toFixed(1)}
 							</span>
 							<span class="text-text-secondary-light">/10</span>
 						</div>
@@ -100,16 +96,14 @@
 					<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
 						<h4 class="mb-3 font-medium text-text-primary-light">Your Cupping Notes</h4>
 						<div class="space-y-2">
-							{#each Object.entries(notes) as [key, note]}
+							{#each tastingNoteFields as key}
+								{@const note = notes[key]}
 								<div class="flex items-center justify-between">
 									<span class="text-sm capitalize text-text-secondary-light">
 										{key.replace('_', ' ')}:
 									</span>
 									<div class="flex items-center gap-2">
-										<div
-											class="h-3 w-3 rounded-full"
-											style="background-color: {note.color}"
-										></div>
+										<div class="h-3 w-3 rounded-full" style="background-color: {note.color}"></div>
 										<span class="text-sm font-medium text-text-primary-light">
 											{note.tag}
 										</span>

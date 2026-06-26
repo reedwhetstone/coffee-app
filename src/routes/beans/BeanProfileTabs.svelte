@@ -217,7 +217,7 @@
 	}
 
 	// Handle cupping notes save
-	async function handleCuppingSave(notes: TastingNotes, rating: number | null) {
+	async function handleCuppingSave(notes: TastingNotes, rating: number | null): Promise<boolean> {
 		try {
 			processingUpdate = true;
 			const dataForAPI = {
@@ -253,15 +253,18 @@
 					onUpdate(updatedBean);
 				}
 				processingUpdate = false;
+				return true;
 			} else {
 				const data = await response.json();
 				alert(`Failed to save cupping notes: ${data.error}`);
 				processingUpdate = false;
+				return false;
 			}
 		} catch (error) {
 			console.error('Error saving cupping notes:', error);
 			alert('Error saving cupping notes');
 			processingUpdate = false;
+			return false;
 		}
 	}
 
@@ -373,11 +376,7 @@
 				onSave={handleCuppingSave}
 			/>
 		{:else if currentTab === 'roasting'}
-			<RoastingTab
-				{selectedBean}
-				{role}
-				onStartNewRoast={startNewRoast}
-			/>
+			<RoastingTab {selectedBean} {role} onStartNewRoast={startNewRoast} />
 		{:else if currentTab === 'analytics'}
 			<AnalyticsTab {selectedBean} />
 		{/if}

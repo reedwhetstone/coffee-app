@@ -1,9 +1,7 @@
 <script lang="ts">
 	import type { InventoryWithCatalog, RoastProfile } from '$lib/types/component.types';
 
-	let {
-		selectedBean
-	} = $props<{
+	let { selectedBean } = $props<{
 		selectedBean: InventoryWithCatalog;
 	}>();
 </script>
@@ -82,9 +80,7 @@
 			<h4 class="mb-3 font-medium text-text-primary-light">Market Comparison</h4>
 			<div class="flex items-center justify-between">
 				<span class="text-text-secondary-light">You paid: ${paidPerLb.toFixed(2)}/lb</span>
-				<span class="text-text-secondary-light"
-					>Market price: ${marketPrice.toFixed(2)}/lb</span
-				>
+				<span class="text-text-secondary-light">Market price: ${marketPrice.toFixed(2)}/lb</span>
 			</div>
 			<div class="mt-2 text-center">
 				<span class="text-lg font-medium {savings > 0 ? 'text-green-500' : 'text-red-500'}">
@@ -99,12 +95,10 @@
 		class="rounded-lg border-dashed bg-background-primary-light p-8 text-center ring-1 ring-border-light"
 	>
 		<div class="mb-4 text-4xl opacity-50">📊</div>
-		<h4 class="mb-2 text-lg font-semibold text-text-primary-light">
-			More Analytics Coming Soon
-		</h4>
+		<h4 class="mb-2 text-lg font-semibold text-text-primary-light">More Analytics Coming Soon</h4>
 		<p class="text-text-secondary-light">
-			Advanced analytics like roast performance trends, flavor profile evolution, and
-			profitability analysis.
+			Advanced analytics like roast performance trends, flavor profile evolution, and profitability
+			analysis.
 		</p>
 	</div>
 </div>
