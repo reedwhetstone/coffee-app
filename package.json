@@ -43,9 +43,7 @@
 		"@testing-library/jest-dom": "^6.9.1",
 		"@testing-library/svelte": "^5.3.1",
 		"@types/d3": "^7.4.3",
-		"@types/lodash": "^4.17.14",
 		"@types/node": "^22.10.5",
-		"@types/papaparse": "^5.3.16",
 		"autoprefixer": "^10.4.20",
 		"bufferutil": "^4.0.9",
 		"dotenv": "^16.6.1",
@@ -89,13 +87,9 @@
 		"jose": "^5.9.6",
 		"jwt-decode": "^4.0.0",
 		"layercake": "^10.0.2",
-		"lodash": "^4.17.21",
-		"papaparse": "^5.5.3",
 		"playwright": "^1.58.1",
 		"pnpm": "^10.28.1",
 		"stripe": "^17.7.0",
-		"uuid": "^9.0.1",
-		"xlsx": "^0.18.5",
 		"zod": "^4.0.17"
 	}
 }
