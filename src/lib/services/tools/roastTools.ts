@@ -16,9 +16,7 @@ export function createRoastTools(supabase: SupabaseClient, userId: string) {
 				coffee_id: z
 					.number()
 					.optional()
-					.describe(
-						'Filter by green coffee inventory ID - use this for specific coffee analysis'
-					),
+					.describe('Filter by green coffee inventory ID - use this for specific coffee analysis'),
 				catalog_id: z
 					.number()
 					.optional()
@@ -74,9 +72,7 @@ export function createRoastTools(supabase: SupabaseClient, userId: string) {
 				}
 
 				if (input.roast_date_end) {
-					profiles = profiles.filter(
-						(p) => p.roast_date && p.roast_date <= input.roast_date_end!
-					);
+					profiles = profiles.filter((p) => p.roast_date && p.roast_date <= input.roast_date_end!);
 				}
 
 				// Trim to requested limit after client-side filtering

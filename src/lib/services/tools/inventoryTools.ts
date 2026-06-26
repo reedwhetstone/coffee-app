@@ -54,10 +54,7 @@ export function createInventoryTools(
 
 				const summary = {
 					total_beans: inventory.length,
-					total_weight_lbs: inventory.reduce(
-						(sum, bean) => sum + (bean.purchased_qty_lbs ?? 0),
-						0
-					),
+					total_weight_lbs: inventory.reduce((sum, bean) => sum + (bean.purchased_qty_lbs ?? 0), 0),
 					total_value: inventory.reduce((sum, bean) => {
 						return sum + (bean.bean_cost ?? 0) + (bean.tax_ship_cost ?? 0);
 					}, 0),
@@ -373,6 +370,100 @@ export function createInventoryTools(
 										}
 									]
 								: [])
+						],
+						status: 'proposed'
+					}
+				};
+			}
+		}),
+
+		record_sale: tool({
+			description: 'Propose recording a sale of roasted coffee.',
+			inputSchema: z.object({
+				green_coffee_inv_id: z.number().describe('Green coffee inventory ID'),
+				batch_name: z.string().describe('Batch name'),
+				oz_sold: z.number().describe('Ounces sold'),
+				price: z.number().describe('Sale price ($)'),
+				buyer: z.string().describe('Buyer name'),
+				sell_date: z.string().optional().describe('Sale date (YYYY-MM-DD)'),
+				reasoning: z
+					.string()
+					.optional()
+					.describe('Brief explanation of why this sale is being recorded')
+			}),
+			execute: async (input) => {
+				// When user confirms the action_card, execute-action should call:
+				//   recordSale(supabase, userId, {
+				//     roastId: <resolved from batch_name lookup>,
+				//     oz: params.oz_sold,
+				//     price: params.price,
+				//     buyer: params.buyer,
+				//     sellDate: params.sell_date,
+				//   })
+				// Note: CLI recordSale takes roastId, not green_coffee_inv_id. The
+				// execute-action handler currently uses a different schema (inv_id + batch_name).
+				// Align schemas in a follow-up PR when execute-action is migrated to CLI.
+				if (!input.green_coffee_inv_id || input.green_coffee_inv_id <= 0) {
+					return {
+						error:
+							'green_coffee_inv_id is required and must be a positive integer. Please specify which inventory bean this sale is for.'
+					};
+				}
+				return {
+					action_card: {
+						actionType: 'record_sale',
+						summary: `Record sale: ${input.oz_sold}oz of ${input.batch_name} to ${input.buyer} ($${input.price})`,
+						reasoning: input.reasoning,
+						fields: [
+							{
+								key: 'green_coffee_inv_id',
+								label: 'Inventory ID',
+								value: input.green_coffee_inv_id,
+								type: 'number',
+								editable: false
+							},
+							{
+								key: 'batch_name',
+								label: 'Batch Name',
+								value: input.batch_name,
+								type: 'text',
+								editable: true
+							},
+							{
+								key: 'oz_sold',
+								label: 'Oz Sold',
+								value: input.oz_sold,
+								type: 'number',
+								editable: true
+							},
+							{
+								key: 'price',
+								label: 'Price ($)',
+								value: input.price,
+								type: 'number',
+								editable: true
+							},
+							{
+								key: 'buyer',
+								label: 'Buyer',
+								value: input.buyer,
+								type: 'text',
+								editable: true
+							},
+							{
+								key: 'sell_date',
+								label: 'Sale Date',
+								value: input.sell_date || new Date().toISOString().split('T')[0],
+								type: 'date',
+								editable: true
+							},
+							{
+								key: 'purchase_date',
+								label: 'Purchase Date',
+								value: new Date().toISOString().split('T')[0],
+								type: 'date',
+								editable: true
+							}
 						],
 						status: 'proposed'
 					}

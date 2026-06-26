@@ -7,7 +7,6 @@ import {
 	findSimilarBeans,
 	findSimilarBeansSchema,
 	type SearchCatalogInput,
-	type CatalogItem,
 	type SimilarBean
 } from '@purveyors/cli/catalog';
 import {
@@ -34,10 +33,7 @@ export function createCatalogTools(
 				'Search for coffee beans in the catalog with filters for origin, processing, variety, price range, flavor keywords, coffee name, recent arrivals, supplier, and specific coffee IDs',
 			inputSchema: z.object({
 				origin: z.string().optional().describe('Coffee origin (country, region, or continent)'),
-				process: z
-					.string()
-					.optional()
-					.describe('Processing method (natural, washed, honey, etc.)'),
+				process: z.string().optional().describe('Processing method (natural, washed, honey, etc.)'),
 				variety: z.string().optional().describe('Coffee variety/cultivar'),
 				price_range: z.array(z.number()).length(2).optional().describe('Price range [min, max]'),
 				flavor_keywords: z.array(z.string()).optional().describe('Flavor descriptors'),
@@ -51,10 +47,7 @@ export function createCatalogTools(
 						'Only show currently stocked coffees (default: true, use false for historical analysis)'
 					),
 				name: z.string().optional().describe('Search by coffee name'),
-				stocked_days: z
-					.number()
-					.optional()
-					.describe('Find coffees stocked within this many days'),
+				stocked_days: z.number().optional().describe('Find coffees stocked within this many days'),
 				drying_method: z
 					.string()
 					.optional()
@@ -189,7 +182,7 @@ export function createCatalogTools(
 
 		catalog_rank: tool({
 			description:
-				"Deterministically rank catalog coffees by an objective: premium (highest Purveyor Score), value (Purveyor Score per dollar), fresh_arrival (newest stocked), rare_origin (scarcest origins). Use this for \"best / top / premium / value / just landed / unusual\" questions instead of plain search. Narrate from each result's rank_basis and purveyor_score_factors — never invent your own ordering.",
+				'Deterministically rank catalog coffees by an objective: premium (highest Purveyor Score), value (Purveyor Score per dollar), fresh_arrival (newest stocked), rare_origin (scarcest origins). Use this for "best / top / premium / value / just landed / unusual" questions instead of plain search. Narrate from each result\'s rank_basis and purveyor_score_factors — never invent your own ordering.',
 			inputSchema: z.object({
 				objective: z.enum(RANK_OBJECTIVES).describe('Ranking objective'),
 				stocked_only: z

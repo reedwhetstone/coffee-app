@@ -21,10 +21,7 @@ export function createPresentationTools() {
 				items: z.array(
 					z.object({
 						id: z.number().describe('Item ID from search results'),
-						annotation: z
-							.string()
-							.optional()
-							.describe('Natural language annotation for this item'),
+						annotation: z.string().optional().describe('Natural language annotation for this item'),
 						highlight: z.boolean().optional().describe('Visually emphasize this item as top pick')
 					})
 				),
