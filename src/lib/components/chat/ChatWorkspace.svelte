@@ -4,6 +4,8 @@
 	import Canvas from '$lib/components/canvas/Canvas.svelte';
 	import ChatMessageList from '$lib/components/chat/ChatMessageList.svelte';
 	import ChatComposer from '$lib/components/chat/ChatComposer.svelte';
+	import ChatToolbar from '$lib/components/chat/ChatToolbar.svelte';
+	import CanvasMobileOverlay from '$lib/components/chat/CanvasMobileOverlay.svelte';
 	import MemoryPanel from '$lib/components/chat/MemoryPanel.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 	import {
@@ -829,55 +831,19 @@
 			class="chat-pane flex flex-col overflow-hidden"
 			style="--chat-width: {variant === 'page' && canvasOpen ? chatWidthPercent : 100}%;"
 		>
-			<!-- Chat toolbar -->
-			<div class="flex items-center justify-end border-b border-border-light px-3 py-1.5">
-				<div class="flex items-center gap-2">
-					<button
-						onclick={() => (memoryPanelOpen = true)}
-						class="rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light"
-						title="View and edit the persistent memory document"
-					>
-						Memory
-					</button>
-					{#if !canvasStore.isEmpty}
-						<button
-							onclick={() => (mobileCanvasOpen = !mobileCanvasOpen)}
-							class="rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light {variant ===
-							'page'
-								? 'md:hidden'
-								: ''}"
-						>
-							Canvas ({canvasStore.blockCount})
-						</button>
-						{#if variant === 'page'}
-							<button
-								onclick={() => {
-									canvasOpen = !canvasOpen;
-									if (!canvasOpen) hasUserClosedCanvas = true;
-									else hasUserClosedCanvas = false;
-								}}
-								class="hidden rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light md:block"
-							>
-								{canvasOpen ? 'Hide' : 'Show'} Canvas ({canvasStore.blockCount})
-							</button>
-						{/if}
-					{/if}
-					{#if chat.messages.length > 0}
-						<button
-							onclick={exportConversation}
-							class="rounded-md border border-background-tertiary-light px-2 py-0.5 text-xs text-background-tertiary-light transition-all hover:bg-background-tertiary-light hover:text-white"
-						>
-							Export
-						</button>
-						<button
-							onclick={clearConversation}
-							class="rounded-md border border-red-500 px-2 py-0.5 text-xs text-red-500 transition-all hover:bg-red-500 hover:text-white"
-						>
-							Clear
-						</button>
-					{/if}
-				</div>
-			</div>
+			<ChatToolbar
+				{variant}
+				{canvasOpen}
+				hasMessages={chat.messages.length > 0}
+				onOpenMemory={() => (memoryPanelOpen = true)}
+				onToggleMobileCanvas={() => (mobileCanvasOpen = !mobileCanvasOpen)}
+				onToggleDesktopCanvas={() => {
+					canvasOpen = !canvasOpen;
+					hasUserClosedCanvas = !canvasOpen;
+				}}
+				onExport={exportConversation}
+				onClear={clearConversation}
+			/>
 
 			<div class="relative flex min-h-0 flex-1 flex-col">
 				<ChatMessageList
@@ -952,33 +918,13 @@
 
 <!-- Canvas overlay (mobile always; desktop too in drawer variant) -->
 {#if mobileCanvasOpen}
-	<div
-		class="fixed inset-0 z-50 flex flex-col bg-background-primary-light {variant === 'page'
-			? 'md:hidden'
-			: ''}"
-	>
-		<div class="flex items-center justify-between border-b border-border-light px-4 py-3">
-			<span class="text-sm font-medium text-text-primary-light">
-				Canvas ({canvasStore.blockCount})
-			</span>
-			<button
-				onclick={() => (mobileCanvasOpen = false)}
-				class="rounded-md px-3 py-1 text-sm text-text-secondary-light transition-colors hover:text-text-primary-light"
-			>
-				Close
-			</button>
-		</div>
-		<div class="flex-1 overflow-hidden">
-			<Canvas
-				onAction={handleBlockAction}
-				onScrollToMessage={(msgId: string) => {
-					mobileCanvasOpen = false;
-					setTimeout(() => scrollToMessage(msgId), 300);
-				}}
-				onExecuteAction={executeAction}
-			/>
-		</div>
-	</div>
+	<CanvasMobileOverlay
+		{variant}
+		onClose={() => (mobileCanvasOpen = false)}
+		onAction={handleBlockAction}
+		onScrollToMessage={scrollToMessage}
+		onExecuteAction={executeAction}
+	/>
 {/if}
 
 <style>
