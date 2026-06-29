@@ -57,7 +57,12 @@ WITH (m = 16, ef_construction = 64);
 -- ------------------------------------------------------------
 -- Same signature, same result shape, same query body as the current v3. The
 -- only change is LANGUAGE sql -> plpgsql so the function can bound its own work
--- with SET LOCAL: fail fast and degrade instead of hanging under load.
+-- with SET LOCAL: fail fast and degrade instead of hanging under load. PostgreSQL
+-- forbids SET / SET LOCAL inside a non-volatile (STABLE/IMMUTABLE) function, so the
+-- function is declared VOLATILE. That is correct here regardless: hnsw.ef_search is
+-- set per-call from a runtime-computed value (v_candidate_pool), which a function-
+-- level SET clause (literals only) cannot express, and as a top-level service_role
+-- RPC the function gains nothing from STABLE planner caching.
 --   - statement_timeout '4s' : hard ceiling; cancel rather than hang
 --   - hnsw.ef_search         : recall/latency knob for the graph search
 --   - hnsw.iterative_scan    : keep pulling from the graph past dropped filters
@@ -97,7 +102,9 @@ RETURNS TABLE (
   chunk_matches BIGINT
 )
 LANGUAGE plpgsql
-STABLE
+-- VOLATILE (not STABLE): the body issues SET LOCAL, which PostgreSQL rejects in a
+-- non-volatile function ("SET is not allowed in a non-volatile function").
+VOLATILE
 AS $$
 DECLARE
   -- Single source of truth for the result + candidate-pool sizes (replaces the
