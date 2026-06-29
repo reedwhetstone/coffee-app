@@ -59,17 +59,34 @@ function resolveAuthorizationHeaderToken(event: RequestEvent): string | undefine
 /**
  * Resolve the credential to forward to Parchment for the current request.
  *
- * Prefers the already-resolved `event.locals.session`, falling back to
- * `safeGetSession()` so cookie-authenticated callers that run before/around
- * hook resolution still get a token. For header-authenticated requests
- * (`Authorization: Bearer <session token | API key>`) `locals.session` is null
- * and the cookie session is empty, so we fall back to the incoming header
- * credential — but only when the principal resolver actually authenticated the
- * request, so an invalid header is not forwarded. Returns `undefined` for
- * anonymous callers, which is intentional: public endpoints are usable without
- * a credential.
+ * Precedence mirrors `resolvePrincipal` in the auth hook: when the request
+ * carries an `Authorization` header, the hook authenticates against that header
+ * alone and never consults the Supabase cookie. We honor the same authority
+ * here. Otherwise a mixed-credential request (`Authorization` API key/bearer
+ * *plus* a Supabase cookie) would forward the cookie user's access token instead
+ * of the API key that was actually authorized, letting `safeGetSession()` win
+ * over the authoritative header credential and presenting the wrong principal to
+ * Parchment.
+ *
+ * - Authorization header present + principal authenticated: forward the header
+ *   credential (bearer session token or API key).
+ * - Authorization header present but not authenticated (invalid header): forward
+ *   nothing — the hook treats this as anonymous and does not fall back to the
+ *   cookie, so neither do we.
+ * - No Authorization header: cookie-authenticated path. Prefer the already
+ *   resolved `event.locals.session`, falling back to `safeGetSession()` for
+ *   callers that run before/around hook resolution.
+ *
+ * Returns `undefined` for anonymous callers, which is intentional: public
+ * endpoints are usable without a credential.
  */
 async function resolveSessionToken(event: RequestEvent): Promise<string | undefined> {
+	if (event.request.headers.get('authorization') !== null) {
+		return event.locals.principal?.isAuthenticated
+			? resolveAuthorizationHeaderToken(event)
+			: undefined;
+	}
+
 	const directToken = event.locals.session?.access_token;
 	if (directToken) {
 		return directToken;
@@ -77,15 +94,7 @@ async function resolveSessionToken(event: RequestEvent): Promise<string | undefi
 
 	if (typeof event.locals.safeGetSession === 'function') {
 		const { session } = await event.locals.safeGetSession();
-		if (session?.access_token) {
-			return session.access_token;
-		}
-	}
-
-	// Bearer-session and API-key principals carry no cookie session, so forward
-	// the credential the caller supplied in the Authorization header.
-	if (event.locals.principal?.isAuthenticated) {
-		return resolveAuthorizationHeaderToken(event);
+		return session?.access_token ?? undefined;
 	}
 
 	return undefined;

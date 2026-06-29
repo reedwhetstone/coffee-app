@@ -22,17 +22,27 @@ function makeEvent(overrides: {
 	accessToken?: string | null;
 	safeGetSessionToken?: string | null;
 	includeSafeGetSession?: boolean;
+	authorizationHeader?: string | null;
+	principalAuthenticated?: boolean;
 }): RequestEvent {
 	const {
 		accessToken = null,
 		safeGetSessionToken = null,
-		includeSafeGetSession = true
+		includeSafeGetSession = true,
+		authorizationHeader = null,
+		principalAuthenticated = false
 	} = overrides;
 
 	const fetchImpl = vi.fn();
 
+	const headers = new Headers();
+	if (authorizationHeader) {
+		headers.set('authorization', authorizationHeader);
+	}
+
 	const locals = {
 		session: accessToken ? { access_token: accessToken } : null,
+		principal: { isAuthenticated: principalAuthenticated },
 		safeGetSession: includeSafeGetSession
 			? vi.fn(async () => ({
 					session: safeGetSessionToken ? { access_token: safeGetSessionToken } : null,
@@ -43,7 +53,7 @@ function makeEvent(overrides: {
 			: undefined
 	} as unknown as App.Locals;
 
-	return { locals, fetch: fetchImpl } as unknown as RequestEvent;
+	return { locals, fetch: fetchImpl, request: { headers } } as unknown as RequestEvent;
 }
 
 describe('createParchmentServerClient', () => {
@@ -112,6 +122,38 @@ describe('createParchmentServerClient', () => {
 		await createParchmentServerClient(event);
 
 		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: undefined });
+	});
+
+	it('forwards the authorized Authorization header credential over a cookie session (mixed credentials)', async () => {
+		// Authorization API key + Supabase cookie present at the same time. The
+		// hook authenticates the header and leaves locals.session null, so the
+		// header credential must win over safeGetSession's cookie token.
+		const event = makeEvent({
+			authorizationHeader: 'Bearer pcsk_authorized_api_key',
+			principalAuthenticated: true,
+			safeGetSessionToken: 'cookie-user-token'
+		});
+		await createParchmentServerClient(event);
+
+		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({
+			token: 'pcsk_authorized_api_key'
+		});
+		// The cookie session must never be consulted once a header is present.
+		expect(event.locals.safeGetSession as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
+	});
+
+	it('forwards no credential for an invalid Authorization header and does not fall back to cookies', async () => {
+		// Header present but the principal resolver rejected it. The hook treats
+		// this as anonymous and never consults the cookie, so neither do we.
+		const event = makeEvent({
+			authorizationHeader: 'Bearer not-a-valid-token',
+			principalAuthenticated: false,
+			safeGetSessionToken: 'cookie-user-token'
+		});
+		await createParchmentServerClient(event);
+
+		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: undefined });
+		expect(event.locals.safeGetSession as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
 	});
 
 	it('routes requests through event.fetch', async () => {
