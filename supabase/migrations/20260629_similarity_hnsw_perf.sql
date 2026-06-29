@@ -99,21 +99,27 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 STABLE
 AS $$
+DECLARE
+  -- Single source of truth for the result + candidate-pool sizes (replaces the
+  -- old `settings` CTE). Held as plpgsql variables so they can drive both the
+  -- LIMIT clauses (substituted as bound parameters, never outer-query Vars,
+  -- which PostgreSQL rejects in LIMIT) and the ef_search alignment below.
+  v_match_count    INT := LEAST(GREATEST(COALESCE(match_count, 10), 1), 1000);
+  v_candidate_pool INT := LEAST(GREATEST(COALESCE(candidate_pool, COALESCE(match_count, 10) * 40), 200), 1000);
 BEGIN
   -- Bound the work: fail fast and degrade instead of hanging under load.
   SET LOCAL statement_timeout = '4s';
-  SET LOCAL hnsw.ef_search = 100;
+  -- Keep HNSW's candidate list aligned with the per-dimension candidate pool so
+  -- the LATERAL LIMIT below is not silently truncated by a smaller ef_search.
+  -- pgvector caps hnsw.ef_search at 1000, which matches resolved_candidate_pool's
+  -- own cap, so this stays in range for every input.
+  PERFORM set_config('hnsw.ef_search', v_candidate_pool::text, true);
   -- pgvector >= 0.8 only. If prod is older, remove these two lines.
   SET LOCAL hnsw.iterative_scan = 'relaxed_order';
   SET LOCAL hnsw.max_scan_tuples = 20000;
 
   RETURN QUERY
-  WITH settings AS (
-    SELECT
-      LEAST(GREATEST(COALESCE(match_count, 10), 1), 1000) AS resolved_match_count,
-      LEAST(GREATEST(COALESCE(candidate_pool, COALESCE(match_count, 10) * 40), 200), 1000) AS resolved_candidate_pool
-  ),
-  target_embeddings AS (
+  WITH target_embeddings AS (
     SELECT cc.chunk_type, cc.embedding
     FROM coffee_chunks cc
     JOIN coffee_catalog target ON target.id = cc.coffee_id
@@ -127,7 +133,6 @@ BEGIN
       te.chunk_type,
       candidate.similarity
     FROM target_embeddings te
-    CROSS JOIN settings s
     CROSS JOIN LATERAL (
       SELECT
         cc.coffee_id,
@@ -139,7 +144,7 @@ BEGIN
         AND (NOT stocked_only OR c.stocked IS true)
         AND (public_only IS false OR c.public_coffee IS true)
       ORDER BY cc.embedding <=> te.embedding
-      LIMIT (SELECT resolved_candidate_pool FROM settings)
+      LIMIT v_candidate_pool
     ) candidate
     WHERE candidate.similarity >= match_threshold
   ),
@@ -185,9 +190,8 @@ BEGIN
     a.chunk_matches
   FROM aggregated a
   JOIN coffee_catalog c ON c.id = a.coffee_id
-  CROSS JOIN settings s
   ORDER BY a.avg_similarity DESC
-  LIMIT (SELECT resolved_match_count FROM settings);
+  LIMIT v_match_count;
 END;
 $$;
 

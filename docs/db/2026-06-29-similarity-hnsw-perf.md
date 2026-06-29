@@ -39,7 +39,9 @@ separately for the parchment-api test):
    to `plpgsql` so it can bound its own work with `SET LOCAL`. Same signature, same
    result shape, same query body -- the only change is the four guards:
    - `statement_timeout = '4s'` -- hard ceiling; cancel rather than hang
-   - `hnsw.ef_search = 100` -- recall/latency knob for the graph search
+   - `hnsw.ef_search = resolved_candidate_pool` -- aligned with the per-dimension
+     candidate-pool size (set via `set_config`) so the LATERAL `LIMIT` is not
+     silently truncated; capped at pgvector's max of 1000
    - `hnsw.iterative_scan = 'relaxed_order'` -- keep pulling past dropped filters
    - `hnsw.max_scan_tuples = 20000` -- cap total tuples an iterative scan visits
 
