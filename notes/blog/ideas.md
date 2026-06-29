@@ -123,3 +123,7 @@ Atomic blog ideas extracted from purveyors notes, brain captures, and conversati
 - **Source:** DaVita TPM AI rejection feedback (Mar 17). Winning candidates had AgentForce implementation or AI CoE process definition experience. The post argues that AI CoE success comes from enterprise adoption governance, not platform selection.
 - **Thesis:** Most AI CoEs fail because they start with tool selection instead of workflow governance. Enterprise adoption PMs are better positioned to build AI CoEs than AI specialists, because the organizational scaffolding is the hard layer.
 - **Outline:** `notes/blog/outlines/what-an-ai-center-of-excellence-actually-needs.md`
+
+## When source fields silently change meaning (data quality / scraper ops)
+- **Source:** coffee-scraper audit 2026-06-29 (PR #341). Genuine Origin's `harvestsched` field used to carry `Month YYYY` arrival dates; the supplier quietly repurposed it to carry recurring harvest-season windows ("December - March"). A strict validator correctly rejected the new values, nulling the column and paging a false "critical."
+- **Thesis:** In long-running scrapers, the dangerous failures aren't broken selectors; they're fields that keep returning a valid-looking string while silently changing semantics. Rigid validators turn that drift into noisy false alarms; the real fix is modeling provenance (harvest window != import date) and declaring source-limited fields conditional rather than forcing extraction. A short case study in schema discipline vs. heuristic patching.
