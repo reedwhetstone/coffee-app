@@ -14,12 +14,13 @@
 --
 -- Two independent items (the third option, skip-on-timeout resilience in the
 -- live test itself, is non-SQL and is tracked separately for parchment-api):
---   PART 1 (index)    -- add an HNSW index CONCURRENTLY, additive
+--   PART 1 (index)    -- add an HNSW index, additive
 --   PART 2 (function) -- plpgsql rewrite that bounds work via SET LOCAL
 --
--- !!! RUN PART 1 AND PART 2 AS SEPARATE EXECUTIONS !!!
--- PART 1 uses CREATE INDEX CONCURRENTLY, which cannot run inside a transaction
--- block. Run the single PART 1 statement on its own first, then run PART 2.
+-- This file is a checked-in migration and is replayed as a single transactional
+-- migration by `supabase db reset`, CI, and deploy. PART 1 therefore uses a plain
+-- (non-concurrent) CREATE INDEX so the whole file is transaction-safe. The target
+-- table is only a few thousand chunks, so the brief write lock is negligible.
 --
 -- pgvector requirement:
 --   - HNSW index        : pgvector >= 0.5.0
@@ -32,7 +33,7 @@
 
 
 -- ============================================================
--- PART 1: HNSW INDEX  (item "1")  -- run this statement BY ITSELF
+-- PART 1: HNSW INDEX  (item "1")
 -- ------------------------------------------------------------
 -- HNSW is the canonical index for filtered ANN: better recall/latency than
 -- ivfflat and, with iterative scans (PART 2, pgvector >= 0.8), it keeps pulling
@@ -42,11 +43,13 @@
 -- the planner uses HNSW, the ivfflat index can be dropped in a follow-up:
 --   DROP INDEX IF EXISTS idx_coffee_chunks_embedding;
 --
--- The catalog is only a few thousand chunks, so a CONCURRENT build is cheap and
--- does not block writes. CONCURRENTLY must run outside a transaction block.
+-- The catalog is only a few thousand chunks, so a plain (in-transaction) index
+-- build is cheap and the brief write lock is negligible. We intentionally do NOT
+-- use CREATE INDEX CONCURRENTLY here: this file is replayed as a single
+-- transactional migration, and CONCURRENTLY cannot run inside a transaction block.
 -- ============================================================
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_coffee_chunks_embedding_hnsw
+CREATE INDEX IF NOT EXISTS idx_coffee_chunks_embedding_hnsw
 ON coffee_chunks
 USING hnsw (embedding vector_cosine_ops)
 WITH (m = 16, ef_construction = 64);
