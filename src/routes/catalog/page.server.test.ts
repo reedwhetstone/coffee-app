@@ -236,7 +236,7 @@ describe('/catalog page load', () => {
 			makeLoadInput(
 				'viewer',
 				null,
-				'https://app.test/catalog?country=Ethiopia&processing=Washed&name=guji&page=2&sortField=score_value&sortDirection=asc'
+				'https://app.test/catalog?country=Ethiopia&processing=Washed&cultivar_detail=Gesha&name=guji&score_value_min=86&score_value_max=90&price_per_lb_min=7.25&price_per_lb_max=8.5&arrival_date=2026-03-01&stocked_date=2026-04-01&page=2&sortField=score_value&sortDirection=asc'
 			)
 		);
 
@@ -244,11 +244,18 @@ describe('/catalog page load', () => {
 			expect.objectContaining({
 				country: 'Ethiopia',
 				processing: 'Washed',
+				cultivar_detail: 'Gesha',
 				name: 'guji',
+				score_value_min: 86,
+				score_value_max: 90,
+				price_per_lb_min: 7.25,
+				price_per_lb_max: 8.5,
+				arrival_date: '2026-03-01',
+				stocked_date: '2026-04-01',
 				page: 2,
 				limit: 15,
-				sort: 'score_value',
-				order: 'asc'
+				sortField: 'score_value',
+				sortDirection: 'asc'
 			})
 		);
 	});
@@ -295,7 +302,7 @@ describe('/catalog page load', () => {
 		expect(mockCatalogList).toHaveBeenNthCalledWith(
 			2,
 			expect.objectContaining({
-				coffeeIds: '99',
+				ids: [99],
 				stocked: 'all',
 				showWholesale: 'false',
 				wholesaleOnly: 'false',
@@ -769,7 +776,7 @@ describe('/catalog tracked-only watchlist view', () => {
 		});
 		expect(mockCatalogList).toHaveBeenCalledWith(
 			expect.objectContaining({
-				coffeeIds: '5,9',
+				ids: [5, 9],
 				stocked: 'all',
 				showWholesale: 'true'
 			})

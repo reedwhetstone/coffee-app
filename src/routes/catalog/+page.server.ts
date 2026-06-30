@@ -43,19 +43,21 @@ type ParchmentCatalogListQuery = CatalogListQuery & {
 	has_additives?: 'true' | 'false';
 	processing_disclosure_level?: string;
 	processing_confidence_min?: number;
-	variety?: string;
+	cultivar_detail?: string;
 	type?: string;
 	grade?: string;
 	appearance?: string;
 	name?: string;
 	region?: string;
-	scoreValueMin?: number;
-	scoreValueMax?: number;
-	pricePerLbMin?: number;
-	pricePerLbMax?: number;
-	arrivalDate?: string;
-	stockedDate?: string;
-	coffeeIds?: string;
+	score_value_min?: number;
+	score_value_max?: number;
+	price_per_lb_min?: number;
+	price_per_lb_max?: number;
+	arrival_date?: string;
+	stocked_date?: string;
+	sortField?: string;
+	sortDirection?: 'asc' | 'desc';
+	ids?: number[];
 };
 
 type CatalogListBody = {
@@ -137,9 +139,9 @@ function buildParchmentCatalogQuery(
 		wholesaleOnly: state.wholesaleOnly ? 'true' : 'false'
 	};
 
-	appendStringParam(query, 'sort', searchState.orderBy);
+	appendStringParam(query, 'sortField', searchState.orderBy);
 	if (searchState.orderDirection) {
-		query.order = searchState.orderDirection;
+		query.sortDirection = searchState.orderDirection;
 	}
 	appendStringParam(query, 'origin', searchState.origin);
 	appendStringParam(query, 'continent', searchState.continent);
@@ -156,21 +158,21 @@ function buildParchmentCatalogQuery(
 	}
 	appendStringParam(query, 'processing_disclosure_level', searchState.processingDisclosureLevel);
 	appendNumberParam(query, 'processing_confidence_min', searchState.processingConfidenceMin);
-	appendStringParam(query, 'variety', searchState.cultivarDetail);
+	appendStringParam(query, 'cultivar_detail', searchState.cultivarDetail);
 	appendStringParam(query, 'type', searchState.type);
 	appendStringParam(query, 'grade', searchState.grade);
 	appendStringParam(query, 'appearance', searchState.appearance);
 	appendStringParam(query, 'name', searchState.name);
 	appendStringParam(query, 'region', searchState.region);
-	appendNumberParam(query, 'scoreValueMin', searchState.scoreValueMin);
-	appendNumberParam(query, 'scoreValueMax', searchState.scoreValueMax);
-	appendNumberParam(query, 'pricePerLbMin', searchState.pricePerLbMin);
-	appendNumberParam(query, 'pricePerLbMax', searchState.pricePerLbMax);
-	appendStringParam(query, 'arrivalDate', searchState.arrivalDate);
-	appendStringParam(query, 'stockedDate', searchState.stockedDate);
+	appendNumberParam(query, 'score_value_min', searchState.scoreValueMin);
+	appendNumberParam(query, 'score_value_max', searchState.scoreValueMax);
+	appendNumberParam(query, 'price_per_lb_min', searchState.pricePerLbMin);
+	appendNumberParam(query, 'price_per_lb_max', searchState.pricePerLbMax);
+	appendStringParam(query, 'arrival_date', searchState.arrivalDate);
+	appendStringParam(query, 'stocked_date', searchState.stockedDate);
 
 	if (options.coffeeIds && options.coffeeIds.length > 0) {
-		query.coffeeIds = options.coffeeIds.join(',');
+		query.ids = options.coffeeIds;
 	}
 
 	return query;
