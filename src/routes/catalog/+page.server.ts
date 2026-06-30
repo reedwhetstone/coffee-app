@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { CatalogSchemaUnavailableError, searchCatalog } from '$lib/data/catalog';
+import type { CatalogListQuery, components } from '@purveyors/sdk';
 import { toCatalogResourceItem } from '$lib/catalog/catalogResourceItem';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import {
@@ -16,12 +16,59 @@ import {
 	parseCatalogUrlState,
 	type CatalogUrlState
 } from '$lib/catalog/urlState';
+import {
+	createParchmentServerClient,
+	type ParchmentCredentialMode
+} from '$lib/server/parchmentClient';
 import { loadCatalogOriginPriceStats } from '$lib/server/catalogOriginPriceStats';
 import { getTrackedLotIds } from '$lib/server/trackedLots';
 import { getBriefMatchSummaries, type BriefMatchSummary } from '$lib/server/briefMatchSummary';
 
 // Watchlist-only view is served as a single page; tracked lists are small.
 const TRACKED_VIEW_LIMIT = 200;
+type SdkCatalogItem = components['schemas']['CatalogItem'];
+// The installed SDK's CatalogListQuery type lags the Span A generated params.
+// Keep this overlay local to the BFF adapter until the next SDK type publish.
+type ParchmentCatalogListQuery = CatalogListQuery & {
+	showWholesale?: 'true' | 'false';
+	wholesaleOnly?: 'true' | 'false';
+	origin?: string;
+	continent?: string;
+	country?: string | string[];
+	source?: string | string[];
+	processing?: string;
+	processing_base_method?: string;
+	fermentation_type?: string;
+	process_additive?: string;
+	has_additives?: 'true' | 'false';
+	processing_disclosure_level?: string;
+	processing_confidence_min?: number;
+	variety?: string;
+	type?: string;
+	grade?: string;
+	appearance?: string;
+	name?: string;
+	region?: string;
+	scoreValueMin?: number;
+	scoreValueMax?: number;
+	pricePerLbMin?: number;
+	pricePerLbMax?: number;
+	arrivalDate?: string;
+	stockedDate?: string;
+	coffeeIds?: string;
+};
+
+type CatalogListBody = {
+	data?: unknown;
+	pagination?: {
+		total?: number | null;
+	};
+};
+
+type CatalogListResult = {
+	data?: CatalogListBody | unknown[];
+	error?: unknown;
+};
 
 function parseCatalogDeepLinkCoffeeId(value: string | null): number | null {
 	if (!value || !/^\d+$/.test(value)) return null;
@@ -42,6 +89,128 @@ function buildPagination(state: CatalogUrlState, total: number) {
 	};
 }
 
+function appendStringParam(
+	query: ParchmentCatalogListQuery,
+	key: keyof ParchmentCatalogListQuery,
+	value: string | undefined
+): void {
+	if (value !== undefined && value !== '') {
+		(query as Record<string, unknown>)[key] = value;
+	}
+}
+
+function appendStringArrayParam(
+	query: ParchmentCatalogListQuery,
+	key: keyof ParchmentCatalogListQuery,
+	value: string[] | undefined
+): void {
+	if (value && value.length > 0) {
+		(query as Record<string, unknown>)[key] = value;
+	}
+}
+
+function appendNumberParam(
+	query: ParchmentCatalogListQuery,
+	key: keyof ParchmentCatalogListQuery,
+	value: number | undefined
+): void {
+	if (value !== undefined) {
+		(query as Record<string, unknown>)[key] = value;
+	}
+}
+
+function buildParchmentCatalogQuery(
+	state: CatalogUrlState,
+	options: {
+		stocked: 'true' | 'false' | 'all';
+		page?: number;
+		limit?: number;
+		coffeeIds?: number[];
+	} = { stocked: 'true' }
+): ParchmentCatalogListQuery {
+	const searchState = catalogUrlStateToSearchState(state);
+	const query: ParchmentCatalogListQuery = {
+		page: options.page ?? state.pagination.page,
+		limit: options.limit ?? state.pagination.limit,
+		stocked: options.stocked,
+		showWholesale: state.showWholesale ? 'true' : 'false',
+		wholesaleOnly: state.wholesaleOnly ? 'true' : 'false'
+	};
+
+	appendStringParam(query, 'sort', searchState.orderBy);
+	if (searchState.orderDirection) {
+		query.order = searchState.orderDirection;
+	}
+	appendStringParam(query, 'origin', searchState.origin);
+	appendStringParam(query, 'continent', searchState.continent);
+	if (searchState.country !== undefined) {
+		query.country = searchState.country;
+	}
+	appendStringArrayParam(query, 'source', searchState.source);
+	appendStringParam(query, 'processing', searchState.processing);
+	appendStringParam(query, 'processing_base_method', searchState.processingBaseMethod);
+	appendStringParam(query, 'fermentation_type', searchState.fermentationType);
+	appendStringParam(query, 'process_additive', searchState.processAdditive);
+	if (searchState.hasAdditives !== undefined) {
+		query.has_additives = searchState.hasAdditives ? 'true' : 'false';
+	}
+	appendStringParam(query, 'processing_disclosure_level', searchState.processingDisclosureLevel);
+	appendNumberParam(query, 'processing_confidence_min', searchState.processingConfidenceMin);
+	appendStringParam(query, 'variety', searchState.cultivarDetail);
+	appendStringParam(query, 'type', searchState.type);
+	appendStringParam(query, 'grade', searchState.grade);
+	appendStringParam(query, 'appearance', searchState.appearance);
+	appendStringParam(query, 'name', searchState.name);
+	appendStringParam(query, 'region', searchState.region);
+	appendNumberParam(query, 'scoreValueMin', searchState.scoreValueMin);
+	appendNumberParam(query, 'scoreValueMax', searchState.scoreValueMax);
+	appendNumberParam(query, 'pricePerLbMin', searchState.pricePerLbMin);
+	appendNumberParam(query, 'pricePerLbMax', searchState.pricePerLbMax);
+	appendStringParam(query, 'arrivalDate', searchState.arrivalDate);
+	appendStringParam(query, 'stockedDate', searchState.stockedDate);
+
+	if (options.coffeeIds && options.coffeeIds.length > 0) {
+		query.coffeeIds = options.coffeeIds.join(',');
+	}
+
+	return query;
+}
+
+function resolveCatalogCredentialMode(locals: App.Locals): ParchmentCredentialMode {
+	return locals.principal?.isAuthenticated === true || Boolean(locals.session)
+		? 'session'
+		: 'public-demo';
+}
+
+function extractParchmentCatalogBody(result: CatalogListResult): CatalogListBody {
+	if (result.error) {
+		throw result.error;
+	}
+
+	if (Array.isArray(result.data)) {
+		return { data: result.data, pagination: { total: result.data.length } };
+	}
+
+	return result.data ?? { data: [], pagination: { total: 0 } };
+}
+
+function extractParchmentCatalogRows(body: CatalogListBody): SdkCatalogItem[] {
+	return Array.isArray(body.data) ? (body.data as SdkCatalogItem[]) : [];
+}
+
+function getParchmentCatalogTotal(body: CatalogListBody, rows: SdkCatalogItem[]): number {
+	return typeof body.pagination?.total === 'number' ? body.pagination.total : rows.length;
+}
+
+function isCatalogSchemaUnavailableError(error: unknown): error is Error {
+	return (
+		error instanceof Error &&
+		(error.name === 'CatalogSchemaUnavailableError' ||
+			error.name === 'ParchmentConfigError' ||
+			error.message.includes('Structured process filters are unavailable'))
+	);
+}
+
 function stripProcessFacetFilters(state: CatalogUrlState): CatalogUrlState {
 	const filters = { ...state.filters };
 	for (const key of PROCESS_FACET_FILTER_KEYS) {
@@ -54,7 +223,8 @@ function stripProcessFacetFilters(state: CatalogUrlState): CatalogUrlState {
 	};
 }
 
-export const load: PageServerLoad = async ({ locals, url }) => {
+export const load: PageServerLoad = async (event) => {
+	const { locals, url } = event;
 	const requestedCatalogState = parseCatalogUrlState(url, '/catalog');
 	const catalogAccess = resolveCatalogAccessCapabilities({
 		principal: locals.principal,
@@ -82,9 +252,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		showWholesale: visibility.showWholesale,
 		wholesaleOnly: visibility.wholesaleOnly
 	};
-	const searchState = catalogUrlStateToSearchState(initialCatalogState);
 	const deepLinkCoffeeId = parseCatalogDeepLinkCoffeeId(url.searchParams.get('coffee'));
-	let catalogData: Awaited<ReturnType<typeof searchCatalog>>['data'] = [];
+	let catalogData: SdkCatalogItem[] = [];
 	let count: number | null = 0;
 	let catalogSchemaUnavailable: { message: string } | null = null;
 
@@ -104,20 +273,25 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	try {
 		if (!trackedOnly || trackedLotIds.length > 0) {
-			const baseCatalogSearchOptions = {
-				stockedOnly: !trackedOnly,
-				publicOnly: visibility.publicOnly,
-				showWholesale: trackedOnly ? true : visibility.showWholesale,
-				wholesaleOnly: trackedOnly ? false : visibility.wholesaleOnly,
-				fields: 'resource' as const
-			};
-			const catalogResult = await searchCatalog(locals.supabase, {
-				...baseCatalogSearchOptions,
-				...searchState,
-				...(trackedOnly ? { coffeeIds: trackedLotIds, limit: TRACKED_VIEW_LIMIT, offset: 0 } : {})
+			const client = await createParchmentServerClient(event, {
+				mode: resolveCatalogCredentialMode(locals)
 			});
-			catalogData = catalogResult.data;
-			count = catalogResult.count;
+			const effectiveCatalogState = trackedOnly
+				? {
+						...initialCatalogState,
+						showWholesale: true,
+						wholesaleOnly: false
+					}
+				: initialCatalogState;
+			const catalogResult = (await client.catalog.list(
+				buildParchmentCatalogQuery(effectiveCatalogState, {
+					stocked: trackedOnly ? 'all' : 'true',
+					...(trackedOnly ? { coffeeIds: trackedLotIds, limit: TRACKED_VIEW_LIMIT, page: 1 } : {})
+				}) as CatalogListQuery
+			)) as CatalogListResult;
+			const catalogBody = extractParchmentCatalogBody(catalogResult);
+			catalogData = extractParchmentCatalogRows(catalogBody);
+			count = getParchmentCatalogTotal(catalogBody, catalogData);
 
 			const shouldFetchDeepLinkCoffee =
 				deepLinkCoffeeId !== null &&
@@ -125,28 +299,39 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				(!trackedOnly || trackedLotIds.includes(deepLinkCoffeeId));
 
 			if (shouldFetchDeepLinkCoffee) {
-				const deepLinkResult = await searchCatalog(locals.supabase, {
-					...baseCatalogSearchOptions,
-					stockedOnly: false,
-					coffeeIds: [deepLinkCoffeeId],
-					limit: 1,
-					offset: 0
-				});
+				const deepLinkCatalogState: CatalogUrlState = {
+					...effectiveCatalogState,
+					filters: {},
+					sortField: null,
+					sortDirection: null
+				};
+				const deepLinkResult = (await client.catalog.list(
+					buildParchmentCatalogQuery(deepLinkCatalogState, {
+						stocked: 'all',
+						coffeeIds: [deepLinkCoffeeId],
+						limit: 1,
+						page: 1
+					}) as CatalogListQuery
+				)) as CatalogListResult;
+				const deepLinkBody = extractParchmentCatalogBody(deepLinkResult);
+				const deepLinkRows = extractParchmentCatalogRows(deepLinkBody);
 
-				if (deepLinkResult.data.length > 0) {
-					catalogData = [...deepLinkResult.data, ...catalogData];
+				if (deepLinkRows.length > 0) {
+					catalogData = [...deepLinkRows, ...catalogData];
 				}
 			}
 		}
 	} catch (error) {
-		if (!(error instanceof CatalogSchemaUnavailableError)) {
+		if (!isCatalogSchemaUnavailableError(error)) {
 			throw error;
 		}
 
 		catalogSchemaUnavailable = { message: error.message };
 	}
 
-	const catalogResources = (catalogData ?? []).map(toCatalogResourceItem);
+	const catalogResources = (catalogData ?? []).map((item) =>
+		toCatalogResourceItem(item as Parameters<typeof toCatalogResourceItem>[0])
+	);
 
 	const originPriceStats = await loadCatalogOriginPriceStats(locals.supabase, visibility);
 
