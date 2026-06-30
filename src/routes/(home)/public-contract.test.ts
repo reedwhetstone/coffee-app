@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { components } from '@purveyors/sdk';
+import type { CoffeeCatalog } from '$lib/types/component.types';
 
 import { resolvePublicPageSocialImage } from '$lib/seo/meta';
 
@@ -12,6 +14,13 @@ vi.mock('$lib/server/parchmentClient', () => ({
 }));
 
 let load: typeof import('./+page.server').load;
+
+type SdkCatalogItem = components['schemas']['CatalogItem'];
+type HomepageCatalogPreviewItem = SdkCatalogItem &
+	Pick<
+		Partial<CoffeeCatalog>,
+		'price_tiers' | 'ai_tasting_notes' | 'ai_description' | 'link' | 'wholesale'
+	>;
 
 const catalogRows = [
 	{
@@ -36,7 +45,7 @@ const catalogRows = [
 		stocked_date: '2026-06-05',
 		stocked: true
 	}
-];
+] satisfies HomepageCatalogPreviewItem[];
 const expectedParchmentPreviewQuery = {
 	stocked: 'true',
 	sort: 'arrival_date',

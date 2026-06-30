@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
-import type { CatalogListQuery } from '@purveyors/sdk';
+import type { CatalogListQuery, components } from '@purveyors/sdk';
+import type { CoffeeCatalog } from '$lib/types/component.types';
 import {
 	HOMEPAGE_MARKETING_DESCRIPTION,
 	HOMEPAGE_MARKETING_KEYWORDS,
@@ -12,6 +13,15 @@ import {
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
+
+type SdkCatalogItem = components['schemas']['CatalogItem'];
+// API PR #25 already exposes these homepage card fields; the installed SDK
+// package will catch up in the next generated type publish.
+type HomepageCatalogPreviewFields = Pick<
+	Partial<CoffeeCatalog>,
+	'price_tiers' | 'ai_tasting_notes' | 'ai_description' | 'link' | 'wholesale'
+>;
+type HomepageCatalogPreviewItem = SdkCatalogItem & HomepageCatalogPreviewFields;
 
 function buildHomepageCatalogQuery(): CatalogListQuery {
 	return {
@@ -31,11 +41,11 @@ type CatalogListResult = {
 	error?: unknown;
 };
 
-function extractCatalogRows(
+function extractHomepageCatalogRows(
 	data: CatalogListData | unknown[] | undefined
-): Record<string, unknown>[] {
+): HomepageCatalogPreviewItem[] {
 	const rows = Array.isArray(data) ? data : data?.data;
-	return Array.isArray(rows) ? (rows as Record<string, unknown>[]) : [];
+	return Array.isArray(rows) ? (rows as HomepageCatalogPreviewItem[]) : [];
 }
 
 export const load: PageServerLoad = async (event) => {
@@ -49,7 +59,7 @@ export const load: PageServerLoad = async (event) => {
 		if (result.error) {
 			throw result.error;
 		}
-		stockedData = extractCatalogRows(result.data);
+		stockedData = extractHomepageCatalogRows(result.data);
 	} catch (error) {
 		console.error('Error loading homepage coffee preview:', error);
 	}
