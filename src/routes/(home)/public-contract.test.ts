@@ -1,20 +1,55 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { components } from '@purveyors/sdk';
+import type { CoffeeCatalog } from '$lib/types/component.types';
 
 import { resolvePublicPageSocialImage } from '$lib/seo/meta';
 
-const mockSearchCatalog = vi.fn();
+const { mockCatalogList, mockCreateParchmentServerClient } = vi.hoisted(() => ({
+	mockCatalogList: vi.fn(),
+	mockCreateParchmentServerClient: vi.fn()
+}));
 
-vi.mock('$lib/data/catalog', () => ({
-	searchCatalog: mockSearchCatalog
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentServerClient: mockCreateParchmentServerClient
 }));
 
 let load: typeof import('./+page.server').load;
 
-const catalogRows = [{ id: 1, name: 'Pink Bourbon' }];
-const expectedPreviewQuery = {
-	stockedOnly: true,
-	orderBy: 'arrival_date',
-	orderDirection: 'desc',
+type SdkCatalogItem = components['schemas']['CatalogItem'];
+type HomepageCatalogPreviewItem = SdkCatalogItem &
+	Pick<
+		Partial<CoffeeCatalog>,
+		'price_tiers' | 'ai_tasting_notes' | 'ai_description' | 'link' | 'wholesale'
+	>;
+
+const catalogRows = [
+	{
+		id: 1,
+		name: 'Pink Bourbon',
+		source: 'Test Importer',
+		continent: 'South America',
+		country: 'Colombia',
+		region: 'Huila',
+		processing: 'Washed',
+		cultivar_detail: 'Pink Bourbon',
+		type: 'Arabica',
+		grade: 'Excelso',
+		cost_lb: 8.25,
+		price_per_lb: 8.25,
+		price_tiers: [{ min_lbs: 1, price: 8.25 }],
+		ai_tasting_notes: { flavor: { tag: 'stone fruit' } },
+		ai_description: 'Layered stone fruit and floral sweetness.',
+		link: 'https://supplier.example/coffee/pink-bourbon',
+		wholesale: false,
+		arrival_date: '2026-06-01',
+		stocked_date: '2026-06-05',
+		stocked: true
+	}
+] satisfies HomepageCatalogPreviewItem[];
+const expectedParchmentPreviewQuery = {
+	stocked: 'true',
+	sort: 'arrival_date',
+	order: 'desc',
 	limit: 6
 } as const;
 const expectedHomepageMeta = {
@@ -94,10 +129,28 @@ beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
 
-	mockSearchCatalog.mockResolvedValue({
-		data: catalogRows,
-		count: catalogRows.length,
-		filtersApplied: {}
+	mockCatalogList.mockResolvedValue({
+		data: {
+			data: catalogRows,
+			pagination: {
+				page: 1,
+				limit: catalogRows.length,
+				total: catalogRows.length,
+				totalPages: 1,
+				hasNext: false,
+				hasPrev: false
+			},
+			meta: {
+				resource: 'catalog',
+				namespace: '/v1/catalog',
+				version: 'v1'
+			}
+		}
+	});
+	mockCreateParchmentServerClient.mockResolvedValue({
+		catalog: {
+			list: mockCatalogList
+		}
 	});
 
 	({ load } = await import('./+page.server'));
@@ -111,12 +164,14 @@ function makeLoadInput(session: App.Locals['session'], role: App.Locals['role'] 
 			role,
 			supabase: { kind: 'public-client' }
 		},
-		url: new URL('https://purveyors.test/')
+		url: new URL('https://purveyors.test/'),
+		request: new Request('https://purveyors.test/'),
+		fetch: vi.fn()
 	} as unknown as Parameters<typeof load>[0];
 }
 
 describe('homepage public contract', () => {
-	it('keeps anonymous and viewer preview requests on the public visibility contract', async () => {
+	it('loads anonymous and viewer homepage preview rows through the public-demo Parchment client', async () => {
 		const viewerSession = {
 			user: {
 				email: 'viewer@purveyors.test'
@@ -126,29 +181,21 @@ describe('homepage public contract', () => {
 		await load(makeLoadInput(null));
 		await load(makeLoadInput(viewerSession, 'viewer'));
 
-		expect(mockSearchCatalog).toHaveBeenNthCalledWith(
+		expect(mockCreateParchmentServerClient).toHaveBeenNthCalledWith(
 			1,
-			{ kind: 'public-client' },
-			expect.objectContaining({
-				...expectedPreviewQuery,
-				publicOnly: true,
-				showWholesale: false,
-				wholesaleOnly: false
-			})
+			expect.objectContaining({ url: new URL('https://purveyors.test/') }),
+			{ mode: 'public-demo' }
 		);
-		expect(mockSearchCatalog).toHaveBeenNthCalledWith(
+		expect(mockCreateParchmentServerClient).toHaveBeenNthCalledWith(
 			2,
-			{ kind: 'public-client' },
-			expect.objectContaining({
-				...expectedPreviewQuery,
-				publicOnly: true,
-				showWholesale: false,
-				wholesaleOnly: false
-			})
+			expect.objectContaining({ url: new URL('https://purveyors.test/') }),
+			{ mode: 'public-demo' }
 		);
+		expect(mockCatalogList).toHaveBeenNthCalledWith(1, expectedParchmentPreviewQuery);
+		expect(mockCatalogList).toHaveBeenNthCalledWith(2, expectedParchmentPreviewQuery);
 	});
 
-	it('only relaxes homepage preview visibility for privileged member sessions', async () => {
+	it('keeps logged-in member homepage preview requests on public-demo data', async () => {
 		const memberSession = {
 			user: {
 				email: 'member@purveyors.test'
@@ -157,19 +204,43 @@ describe('homepage public contract', () => {
 
 		await load(makeLoadInput(memberSession, 'member'));
 
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'public-client' },
-			expect.objectContaining({
-				...expectedPreviewQuery,
-				publicOnly: false,
-				showWholesale: false,
-				wholesaleOnly: false
-			})
-		);
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'public-demo'
+		});
+		expect(mockCatalogList).toHaveBeenCalledWith(expectedParchmentPreviewQuery);
+	});
+
+	it('returns rows with the CoffeeCard field names from the Parchment catalog envelope', async () => {
+		const result = (await load(makeLoadInput(null))) as {
+			data: Array<Record<string, unknown>>;
+			trainingData: Array<Record<string, unknown>>;
+		};
+
+		expect(result.data).toEqual(catalogRows);
+		expect(result.trainingData).toBe(result.data);
+		expect(result.data[0]).toMatchObject({
+			id: 1,
+			name: 'Pink Bourbon',
+			source: 'Test Importer',
+			country: 'Colombia',
+			region: 'Huila',
+			processing: 'Washed',
+			type: 'Arabica',
+			cultivar_detail: 'Pink Bourbon',
+			grade: 'Excelso',
+			price_tiers: [{ min_lbs: 1, price: 8.25 }],
+			ai_tasting_notes: { flavor: { tag: 'stone fruit' } },
+			ai_description: 'Layered stone fruit and floral sweetness.',
+			link: 'https://supplier.example/coffee/pink-bourbon',
+			wholesale: false,
+			arrival_date: '2026-06-01',
+			stocked_date: '2026-06-05',
+			stocked: true
+		});
 	});
 
 	it('keeps market-first metadata and schema aligned even if preview loading fails', async () => {
-		mockSearchCatalog.mockRejectedValueOnce(new Error('catalog offline'));
+		mockCatalogList.mockRejectedValueOnce(new Error('catalog offline'));
 		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 		const result = (await load(makeLoadInput(null))) as {
