@@ -2,19 +2,41 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { resolvePublicPageSocialImage } from '$lib/seo/meta';
 
-const mockSearchCatalog = vi.fn();
+const mockCatalogList = vi.fn();
+const mockCreateParchmentServerClient = vi.fn();
 
-vi.mock('$lib/data/catalog', () => ({
-	searchCatalog: mockSearchCatalog
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentServerClient: mockCreateParchmentServerClient
 }));
 
 let load: typeof import('./+page.server').load;
 
-const catalogRows = [{ id: 1, name: 'Pink Bourbon' }];
+const catalogRows = [
+	{
+		id: 1,
+		name: 'Pink Bourbon',
+		source: 'Purveyor Coffee',
+		continent: 'South America',
+		country: 'Colombia',
+		region: 'Huila',
+		processing: 'Washed',
+		cultivar_detail: 'Pink Bourbon',
+		score_value: 88,
+		price_per_lb: 7.25,
+		price_tiers: [{ min_lbs: 1, price: 7.25 }],
+		ai_description: 'A structured public preview lot.',
+		ai_tasting_notes: null,
+		arrival_date: '2026-03-18',
+		stocked_date: '2026-03-20',
+		stocked: true,
+		public_coffee: true,
+		wholesale: false
+	}
+];
 const expectedPreviewQuery = {
-	stockedOnly: true,
-	orderBy: 'arrival_date',
-	orderDirection: 'desc',
+	stocked: 'true',
+	sort: 'arrival_date',
+	order: 'desc',
 	limit: 6
 } as const;
 const expectedHomepageMeta = {
@@ -94,10 +116,22 @@ beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
 
-	mockSearchCatalog.mockResolvedValue({
+	mockCatalogList.mockResolvedValue({
 		data: catalogRows,
-		count: catalogRows.length,
-		filtersApplied: {}
+		pagination: {
+			page: 1,
+			limit: catalogRows.length,
+			total: catalogRows.length,
+			totalPages: 1,
+			hasNext: false,
+			hasPrev: false
+		},
+		meta: {}
+	});
+	mockCreateParchmentServerClient.mockResolvedValue({
+		catalog: {
+			list: mockCatalogList
+		}
 	});
 
 	({ load } = await import('./+page.server'));
@@ -116,60 +150,55 @@ function makeLoadInput(session: App.Locals['session'], role: App.Locals['role'] 
 }
 
 describe('homepage public contract', () => {
-	it('keeps anonymous and viewer preview requests on the public visibility contract', async () => {
+	it('loads anonymous and signed-in previews through the public-demo Parchment catalog', async () => {
 		const viewerSession = {
 			user: {
 				email: 'viewer@purveyors.test'
 			}
 		} as App.Locals['session'];
+		const anonymousInput = makeLoadInput(null);
+		const viewerInput = makeLoadInput(viewerSession, 'viewer');
 
-		await load(makeLoadInput(null));
-		await load(makeLoadInput(viewerSession, 'viewer'));
+		const anonymousResult = (await load(anonymousInput)) as { data: typeof catalogRows };
+		const viewerResult = (await load(viewerInput)) as { data: typeof catalogRows };
 
-		expect(mockSearchCatalog).toHaveBeenNthCalledWith(
-			1,
-			{ kind: 'public-client' },
-			expect.objectContaining({
-				...expectedPreviewQuery,
-				publicOnly: true,
-				showWholesale: false,
-				wholesaleOnly: false
-			})
-		);
-		expect(mockSearchCatalog).toHaveBeenNthCalledWith(
-			2,
-			{ kind: 'public-client' },
-			expect.objectContaining({
-				...expectedPreviewQuery,
-				publicOnly: true,
-				showWholesale: false,
-				wholesaleOnly: false
-			})
-		);
+		expect(mockCreateParchmentServerClient).toHaveBeenNthCalledWith(1, anonymousInput, {
+			mode: 'public-demo'
+		});
+		expect(mockCreateParchmentServerClient).toHaveBeenNthCalledWith(2, viewerInput, {
+			mode: 'public-demo'
+		});
+		expect(mockCatalogList).toHaveBeenNthCalledWith(1, expectedPreviewQuery);
+		expect(mockCatalogList).toHaveBeenNthCalledWith(2, expectedPreviewQuery);
+		expect(anonymousResult.data).toMatchObject(catalogRows);
+		expect(viewerResult.data).toMatchObject(catalogRows);
+		expect(anonymousResult.data[0]).toMatchObject({
+			price_tiers: [{ min_lbs: 1, price: 7.25 }],
+			wholesale: false,
+			purveyor_score_factors: {}
+		});
 	});
 
-	it('only relaxes homepage preview visibility for privileged member sessions', async () => {
-		const memberSession = {
-			user: {
-				email: 'member@purveyors.test'
-			}
-		} as App.Locals['session'];
-
-		await load(makeLoadInput(memberSession, 'member'));
-
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'public-client' },
-			expect.objectContaining({
-				...expectedPreviewQuery,
-				publicOnly: false,
-				showWholesale: false,
-				wholesaleOnly: false
-			})
+	it('does not broaden homepage preview data for privileged member sessions', async () => {
+		const memberInput = makeLoadInput(
+			{
+				user: {
+					email: 'member@purveyors.test'
+				}
+			} as App.Locals['session'],
+			'member'
 		);
+
+		await load(memberInput);
+
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(memberInput, {
+			mode: 'public-demo'
+		});
+		expect(mockCatalogList).toHaveBeenCalledWith(expectedPreviewQuery);
 	});
 
 	it('keeps market-first metadata and schema aligned even if preview loading fails', async () => {
-		mockSearchCatalog.mockRejectedValueOnce(new Error('catalog offline'));
+		mockCatalogList.mockRejectedValueOnce(new Error('catalog offline'));
 		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 		const result = (await load(makeLoadInput(null))) as {
