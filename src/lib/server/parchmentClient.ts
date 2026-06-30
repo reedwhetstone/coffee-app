@@ -6,14 +6,21 @@ import type { RequestEvent } from '@sveltejs/kit';
  * Server-only Backend-for-Frontend (BFF) helper for the Parchment API.
  *
  * This module is the single place coffee-app constructs a typed Parchment
- * client. It MUST stay server-only: it reads private configuration and forwards
- * the caller's Supabase session token as a Bearer credential. Importing it into
- * browser code would leak the access token and is unsupported.
+ * client. It MUST stay server-only: it reads private configuration (including a
+ * public-demo API key) and forwards the caller's Supabase session token as a
+ * Bearer credential. Importing it into browser code would leak the access token
+ * or the demo key and is unsupported.
  *
  * Auth model: the SDK only forwards a credential. Authorization is enforced
  * server-side by Parchment against the unified principal model. Public catalog
  * reads work without a token; gated calls require one and the API rejects
  * unauthorized requests.
+ *
+ * Credential modes ({@link ParchmentCredentialMode}) let callers state exactly
+ * which credential a server route should present, instead of inferring it. This
+ * keeps public, demo-backed pages from accidentally leaking a logged-in user's
+ * session token and keeps gated, session-backed routes from silently falling
+ * back to the shared demo key.
  */
 
 /** Thrown when required Parchment configuration is missing. */
@@ -22,6 +29,32 @@ export class ParchmentConfigError extends Error {
 		super(message);
 		this.name = 'ParchmentConfigError';
 	}
+}
+
+/**
+ * Explicit credential strategy for a server-side Parchment client.
+ *
+ * - `public-demo`: present the shared, server-only demo API key
+ *   (`PARCHMENT_PUBLIC_DEMO_API_KEY`). Never reads the caller's user session.
+ *   Use for public, unauthenticated pages that should show live demo data.
+ * - `session`: forward the caller's authenticated credential (Supabase session
+ *   token or Authorization header credential). Never falls back to the demo key.
+ *   Use for gated, per-user routes.
+ * - `anonymous`: send no credential at all. Never reads the session or demo key.
+ *   Use for strictly public reads that should hit Parchment as an anonymous
+ *   principal.
+ */
+export type ParchmentCredentialMode = 'public-demo' | 'session' | 'anonymous';
+
+/** Options for {@link createParchmentServerClient}. */
+export interface CreateParchmentServerClientOptions {
+	/**
+	 * Which credential to present to Parchment. Defaults to `session`, preserving
+	 * the historical behavior of forwarding the caller's session token (and
+	 * acting anonymously when there is no session). Public, demo-backed routes
+	 * should pass `public-demo` explicitly.
+	 */
+	mode?: ParchmentCredentialMode;
 }
 
 /**
@@ -42,6 +75,26 @@ function resolveBaseUrl(): string {
 }
 
 /**
+ * Resolve the shared public-demo API key from private env.
+ *
+ * This key is server-only and deliberately has no `PUBLIC_` prefix: it must
+ * never be inlined into client bundles. A missing or blank value is a
+ * configuration error so that a misconfigured deploy fails loudly instead of
+ * silently serving unauthenticated (and likely empty) demo data.
+ */
+function resolvePublicDemoToken(): string {
+	const demoKey = env.PARCHMENT_PUBLIC_DEMO_API_KEY?.trim();
+	if (!demoKey) {
+		throw new ParchmentConfigError(
+			'PARCHMENT_PUBLIC_DEMO_API_KEY is not configured. Set it to the server-only ' +
+				'Parchment demo API key used for public, unauthenticated pages. Do not add a ' +
+				'PUBLIC_ prefix — this credential must never reach the browser.'
+		);
+	}
+	return demoKey;
+}
+
+/**
  * Extract a `Bearer` credential from the incoming request's Authorization
  * header. Covers both bearer session tokens and API keys, which the principal
  * resolver accepts in the same header form. Returns `undefined` when absent.
@@ -57,7 +110,8 @@ function resolveAuthorizationHeaderToken(event: RequestEvent): string | undefine
 }
 
 /**
- * Resolve the credential to forward to Parchment for the current request.
+ * Resolve the credential to forward to Parchment for the current request in
+ * `session` mode.
  *
  * Precedence mirrors `resolvePrincipal` in the auth hook: when the request
  * carries an `Authorization` header, the hook authenticates against that header
@@ -78,7 +132,9 @@ function resolveAuthorizationHeaderToken(event: RequestEvent): string | undefine
  *   callers that run before/around hook resolution.
  *
  * Returns `undefined` for anonymous callers, which is intentional: public
- * endpoints are usable without a credential.
+ * endpoints are usable without a credential. This path deliberately never reads
+ * the public-demo key — `session` mode must not silently borrow shared demo
+ * credentials for a user who is simply unauthenticated.
  */
 async function resolveSessionToken(event: RequestEvent): Promise<string | undefined> {
 	if (event.request.headers.get('authorization') !== null) {
@@ -101,16 +157,48 @@ async function resolveSessionToken(event: RequestEvent): Promise<string | undefi
 }
 
 /**
+ * Resolve the credential for a given {@link ParchmentCredentialMode}.
+ *
+ * Each mode is isolated on purpose:
+ * - `public-demo` reads only the demo key and never touches the user session.
+ * - `session` reads only the user session and never touches the demo key.
+ * - `anonymous` reads neither.
+ */
+async function resolveTokenForMode(
+	event: RequestEvent,
+	mode: ParchmentCredentialMode
+): Promise<string | undefined> {
+	switch (mode) {
+		case 'public-demo':
+			return resolvePublicDemoToken();
+		case 'session':
+			return resolveSessionToken(event);
+		case 'anonymous':
+			return undefined;
+	}
+}
+
+/**
  * Create a server-side Parchment client bound to the current request.
  *
- * Forwards the caller's Supabase session token (when present) as a Bearer
- * credential and routes requests through SvelteKit's `event.fetch`. Safe to call
- * for anonymous requests; the resulting client simply omits the Authorization
- * header.
+ * The credential presented to Parchment is selected by `options.mode`
+ * ({@link ParchmentCredentialMode}), defaulting to `session` to preserve the
+ * historical behavior of forwarding the caller's session token. Requests are
+ * always routed through SvelteKit's `event.fetch`.
+ *
+ * - `session` (default): forwards the caller's session/header credential, or
+ *   acts anonymously when none is present. Never uses the demo key.
+ * - `public-demo`: presents the shared server-only demo key and never reads the
+ *   user session. Throws {@link ParchmentConfigError} if the key is unset.
+ * - `anonymous`: presents no credential and reads neither session nor demo key.
  */
-export async function createParchmentServerClient(event: RequestEvent): Promise<ParchmentClient> {
+export async function createParchmentServerClient(
+	event: RequestEvent,
+	options?: CreateParchmentServerClientOptions
+): Promise<ParchmentClient> {
 	const baseUrl = resolveBaseUrl();
-	const token = await resolveSessionToken(event);
+	const mode = options?.mode ?? 'session';
+	const token = await resolveTokenForMode(event, mode);
 
 	return createParchmentClient({
 		baseUrl,
