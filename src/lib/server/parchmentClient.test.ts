@@ -64,6 +64,7 @@ describe('createParchmentServerClient', () => {
 
 	afterEach(() => {
 		delete mockEnv.PARCHMENT_API_BASE_URL;
+		delete mockEnv.PARCHMENT_PUBLIC_DEMO_API_KEY;
 	});
 
 	it('passes the configured base URL through to the SDK', async () => {
@@ -161,5 +162,135 @@ describe('createParchmentServerClient', () => {
 		await createParchmentServerClient(event);
 
 		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ fetch: event.fetch });
+	});
+
+	it('defaults to session mode (forwards the session token) when no mode is given', async () => {
+		const event = makeEvent({ accessToken: 'direct-token' });
+		await createParchmentServerClient(event);
+
+		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: 'direct-token' });
+	});
+});
+
+describe('createParchmentServerClient credential modes', () => {
+	beforeEach(() => {
+		mockEnv.PARCHMENT_API_BASE_URL = 'https://api.test.purveyors.io';
+		createParchmentClient.mockClear();
+	});
+
+	afterEach(() => {
+		delete mockEnv.PARCHMENT_API_BASE_URL;
+		delete mockEnv.PARCHMENT_PUBLIC_DEMO_API_KEY;
+	});
+
+	describe('public-demo mode', () => {
+		it('uses PARCHMENT_PUBLIC_DEMO_API_KEY and never reads the user session', async () => {
+			mockEnv.PARCHMENT_PUBLIC_DEMO_API_KEY = 'pcsk_demo_key';
+			// Populate every session source to prove none of them are consulted.
+			const event = makeEvent({
+				accessToken: 'session-token',
+				safeGetSessionToken: 'cookie-token',
+				authorizationHeader: 'Bearer header-token',
+				principalAuthenticated: true
+			});
+
+			await createParchmentServerClient(event, { mode: 'public-demo' });
+
+			expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: 'pcsk_demo_key' });
+			expect(event.locals.safeGetSession as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
+		});
+
+		it('trims surrounding whitespace from the demo key', async () => {
+			mockEnv.PARCHMENT_PUBLIC_DEMO_API_KEY = '   pcsk_demo_key   ';
+			const event = makeEvent({});
+
+			await createParchmentServerClient(event, { mode: 'public-demo' });
+
+			expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: 'pcsk_demo_key' });
+		});
+
+		it('throws a config error when the demo key is missing', async () => {
+			const event = makeEvent({});
+
+			await expect(
+				createParchmentServerClient(event, { mode: 'public-demo' })
+			).rejects.toBeInstanceOf(ParchmentConfigError);
+			await expect(createParchmentServerClient(event, { mode: 'public-demo' })).rejects.toThrow(
+				/PARCHMENT_PUBLIC_DEMO_API_KEY/
+			);
+			expect(createParchmentClient).not.toHaveBeenCalled();
+		});
+
+		it('treats a blank demo key as unconfigured', async () => {
+			mockEnv.PARCHMENT_PUBLIC_DEMO_API_KEY = '   ';
+			const event = makeEvent({});
+
+			await expect(
+				createParchmentServerClient(event, { mode: 'public-demo' })
+			).rejects.toBeInstanceOf(ParchmentConfigError);
+		});
+	});
+
+	describe('session mode', () => {
+		it('forwards the session access token and never uses the demo key as fallback', async () => {
+			mockEnv.PARCHMENT_PUBLIC_DEMO_API_KEY = 'pcsk_demo_key';
+			const event = makeEvent({ accessToken: 'direct-token' });
+
+			await createParchmentServerClient(event, { mode: 'session' });
+
+			expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: 'direct-token' });
+		});
+
+		it('forwards the Authorization header credential over a cookie session', async () => {
+			const event = makeEvent({
+				authorizationHeader: 'Bearer pcsk_authorized_api_key',
+				principalAuthenticated: true,
+				safeGetSessionToken: 'cookie-user-token'
+			});
+
+			await createParchmentServerClient(event, { mode: 'session' });
+
+			expect(createParchmentClient.mock.calls[0][0]).toMatchObject({
+				token: 'pcsk_authorized_api_key'
+			});
+			expect(event.locals.safeGetSession as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
+		});
+
+		it('sends no token for an unauthenticated caller and does NOT fall back to the demo key', async () => {
+			// Demo key is configured, but session mode must never borrow it for a
+			// caller who simply has no session.
+			mockEnv.PARCHMENT_PUBLIC_DEMO_API_KEY = 'pcsk_demo_key';
+			const event = makeEvent({ accessToken: null, safeGetSessionToken: null });
+
+			await createParchmentServerClient(event, { mode: 'session' });
+
+			expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: undefined });
+		});
+	});
+
+	describe('anonymous mode', () => {
+		it('sends no token and never reads the session or the demo key', async () => {
+			mockEnv.PARCHMENT_PUBLIC_DEMO_API_KEY = 'pcsk_demo_key';
+			const event = makeEvent({
+				accessToken: 'session-token',
+				safeGetSessionToken: 'cookie-token',
+				authorizationHeader: 'Bearer header-token',
+				principalAuthenticated: true
+			});
+
+			await createParchmentServerClient(event, { mode: 'anonymous' });
+
+			expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: undefined });
+			expect(event.locals.safeGetSession as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
+		});
+
+		it('still requires the base URL to be configured', async () => {
+			delete mockEnv.PARCHMENT_API_BASE_URL;
+			const event = makeEvent({});
+
+			await expect(
+				createParchmentServerClient(event, { mode: 'anonymous' })
+			).rejects.toBeInstanceOf(ParchmentConfigError);
+		});
 	});
 });
