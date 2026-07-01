@@ -2,6 +2,7 @@ import type { RequestHandler } from './$types';
 import { jsonResponse } from '$lib/server/http';
 import { forwardCatalogUpstreamHeaders, proxyCatalogList } from '$lib/server/catalogProxy';
 import { MAX_CATALOG_PAGE_LIMIT } from '$lib/constants/catalog';
+import { resolvePrincipal } from '$lib/server/principal';
 
 // Legacy in-app catalog endpoint — proxies the canonical Parchment /v1/catalog
 // surface (ADR-007). The only local logic is a presentation-shaping transform
@@ -13,6 +14,17 @@ import { MAX_CATALOG_PAGE_LIMIT } from '$lib/constants/catalog';
 export const GET: RequestHandler = async (event) => {
 	const headers = new Headers();
 	headers.set('X-Purveyors-Canonical-Resource', '/v1/catalog');
+
+	// Reject a present-but-invalid Authorization header before proxying. The auth
+	// hook leaves those requests anonymous, and session-mode proxying would
+	// otherwise forward no credential and silently downgrade the caller.
+	const principal = await resolvePrincipal(event);
+	if (event.request.headers.has('Authorization') && !principal.isAuthenticated) {
+		return jsonResponse(
+			{ error: 'Authentication required', message: 'Authentication required' },
+			{ status: 401, headers }
+		);
+	}
 
 	let proxied: Awaited<ReturnType<typeof proxyCatalogList>>;
 	try {

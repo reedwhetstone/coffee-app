@@ -2,17 +2,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockCreateParchmentServerClient = vi.fn();
 const mockCatalogList = vi.fn();
+const mockResolvePrincipal = vi.fn();
 
 vi.mock('$lib/server/parchmentClient', () => ({
 	createParchmentServerClient: mockCreateParchmentServerClient
 }));
 
+vi.mock('$lib/server/principal', () => ({
+	resolvePrincipal: mockResolvePrincipal
+}));
+
 let GET: typeof import('./+server').GET;
 
-function makeEvent(url: string) {
+function makeEvent(url: string, init?: RequestInit) {
 	return {
 		url: new URL(url),
-		request: new Request(url),
+		request: new Request(url, init),
 		fetch: vi.fn(),
 		locals: {}
 	} as unknown as Parameters<NonNullable<typeof GET>>[0];
@@ -22,6 +27,7 @@ beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
 
+	mockResolvePrincipal.mockResolvedValue({ isAuthenticated: false });
 	mockCatalogList.mockResolvedValue({
 		data: {
 			data: [{ id: 1 }, { id: 2 }],
@@ -70,6 +76,23 @@ describe('/api/catalog route', () => {
 		await GET(makeEvent('https://app.test/api/catalog?limit=25'));
 
 		expect(mockCatalogList).toHaveBeenCalledWith(expect.objectContaining({ limit: '25' }));
+	});
+
+	it('rejects a present-but-invalid Authorization header with 401 before proxying', async () => {
+		const response = await GET(
+			makeEvent('https://app.test/api/catalog', {
+				headers: { Authorization: 'Bearer definitely_invalid' }
+			})
+		);
+
+		expect(response.status).toBe(401);
+		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBe('/v1/catalog');
+		expect(await response.json()).toEqual({
+			error: 'Authentication required',
+			message: 'Authentication required'
+		});
+		expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
+		expect(mockCatalogList).not.toHaveBeenCalled();
 	});
 
 	it('relays upstream error bodies and status codes with the canonical resource header', async () => {
