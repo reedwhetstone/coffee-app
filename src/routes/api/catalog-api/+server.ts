@@ -2,7 +2,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { AuthError, requireApiKeyAccess } from '$lib/server/auth';
 import { jsonResponse } from '$lib/server/http';
-import { forwardCatalogUpstreamHeaders, proxyCatalogList } from '$lib/server/catalogProxy';
+import {
+	catalogProxyErrorResponse,
+	forwardCatalogUpstreamHeaders,
+	proxyCatalogList
+} from '$lib/server/catalogProxy';
 
 const LEGACY_CATALOG_API_HEADERS = {
 	Deprecation: 'true',
@@ -50,7 +54,17 @@ export const GET: RequestHandler = async (event) => {
 		throw error;
 	}
 
-	const { status, body, upstream } = await proxyCatalogList(event);
+	// Surface config/network failures as the catalog JSON 5xx contract (with the
+	// legacy deprecation headers) instead of SvelteKit's generic 500 HTML page.
+	let proxied: Awaited<ReturnType<typeof proxyCatalogList>>;
+	try {
+		proxied = await proxyCatalogList(event);
+	} catch (error) {
+		const { status, body } = catalogProxyErrorResponse(error);
+		return json(body, { status, headers: withLegacyCatalogHeaders() });
+	}
+
+	const { status, body, upstream } = proxied;
 	const headers = withLegacyCatalogHeaders();
 	forwardCatalogUpstreamHeaders(upstream, headers);
 

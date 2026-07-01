@@ -87,9 +87,7 @@ describe('/api/catalog-api legacy delegate', () => {
 	});
 
 	it('forwards the caller query params to Parchment', async () => {
-		await GET(
-			makeEvent('https://app.test/api/catalog-api?page=2&limit=10&source=sweet_marias')
-		);
+		await GET(makeEvent('https://app.test/api/catalog-api?page=2&limit=10&source=sweet_marias'));
 
 		expect(mockCatalogList).toHaveBeenCalledWith(
 			expect.objectContaining({ page: '2', limit: '10', source: 'sweet_marias' })
@@ -187,6 +185,34 @@ describe('/api/catalog-api legacy delegate', () => {
 		expect(await response.json()).toEqual({
 			error: 'Rate limit exceeded',
 			message: 'Too many requests'
+		});
+	});
+
+	it('returns a JSON 503 with legacy headers when Parchment is unconfigured', async () => {
+		const configError = new Error('PARCHMENT_API_BASE_URL is not configured');
+		configError.name = 'ParchmentConfigError';
+		mockCreateParchmentServerClient.mockRejectedValue(configError);
+
+		const response = await GET(makeEvent('https://app.test/api/catalog-api'));
+
+		expect(response.status).toBe(503);
+		expectLegacyHeaders(response);
+		expect(await response.json()).toEqual({
+			error: 'Catalog schema unavailable',
+			message: 'PARCHMENT_API_BASE_URL is not configured'
+		});
+	});
+
+	it('returns a JSON 500 with legacy headers when the upstream fetch rejects', async () => {
+		mockCatalogList.mockRejectedValue(new Error('network down'));
+
+		const response = await GET(makeEvent('https://app.test/api/catalog-api'));
+
+		expect(response.status).toBe(500);
+		expectLegacyHeaders(response);
+		expect(await response.json()).toEqual({
+			error: 'Failed to fetch catalog data',
+			message: 'Internal server error'
 		});
 	});
 

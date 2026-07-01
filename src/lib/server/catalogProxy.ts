@@ -63,6 +63,39 @@ export interface CatalogListProxyResult {
 	upstream: Response;
 }
 
+export interface CatalogProxyErrorResponse {
+	status: number;
+	body: { error: string; message: string };
+}
+
+/**
+ * Map a thrown proxy failure to the catalog API's JSON error shape.
+ *
+ * {@link proxyCatalogList} (and the proof-coverage proxy) throw only when
+ * Parchment is unconfigured — {@link ParchmentConfigError}, before any request is
+ * made — or when the upstream fetch genuinely rejects (openapi-fetch resolves
+ * non-2xx *responses* as `{ error }` and relays them instead). Public catalog
+ * routes should surface those as JSON 5xx bodies matching the removed catalog
+ * builder, not fall through to SvelteKit's generic 500 HTML page. The status/shape
+ * mirror the old `catalogResource` catch block: missing config maps to the
+ * schema-unavailable 503, everything else to the generic 500.
+ */
+export function catalogProxyErrorResponse(error: unknown): CatalogProxyErrorResponse {
+	if (error instanceof Error && error.name === 'ParchmentConfigError') {
+		return {
+			status: 503,
+			body: { error: 'Catalog schema unavailable', message: error.message }
+		};
+	}
+
+	const message = error instanceof Error ? error.message : String(error);
+	console.error('Error proxying catalog request:', message);
+	return {
+		status: 500,
+		body: { error: 'Failed to fetch catalog data', message: 'Internal server error' }
+	};
+}
+
 export interface ProxyCatalogListOptions {
 	/**
 	 * When the caller omits both `page` and `limit`, request up to this many rows

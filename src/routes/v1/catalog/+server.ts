@@ -1,6 +1,10 @@
 import type { RequestHandler } from './$types';
 import { jsonResponse } from '$lib/server/http';
-import { forwardCatalogUpstreamHeaders, proxyCatalogList } from '$lib/server/catalogProxy';
+import {
+	catalogProxyErrorResponse,
+	forwardCatalogUpstreamHeaders,
+	proxyCatalogList
+} from '$lib/server/catalogProxy';
 import { resolvePrincipal } from '$lib/server/principal';
 
 // Thin proxy in front of the canonical Parchment /v1/catalog surface (ADR-007).
@@ -24,7 +28,17 @@ export const GET: RequestHandler = async (event) => {
 		);
 	}
 
-	const { status, body, upstream } = await proxyCatalogList(event);
+	// Convert config/network failures into the catalog JSON 5xx contract instead of
+	// letting the throw fall through to SvelteKit's generic 500 HTML page.
+	let proxied: Awaited<ReturnType<typeof proxyCatalogList>>;
+	try {
+		proxied = await proxyCatalogList(event);
+	} catch (error) {
+		const { status, body } = catalogProxyErrorResponse(error);
+		return jsonResponse(body, { status, headers: new Headers() });
+	}
+
+	const { status, body, upstream } = proxied;
 	const headers = new Headers();
 	forwardCatalogUpstreamHeaders(upstream, headers);
 
