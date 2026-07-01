@@ -1,12 +1,13 @@
 <script lang="ts">
+	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	// No props needed - pure skeleton structure
 </script>
 
 <div class="animate-pulse">
 	<!-- Header Section -->
 	<div class="mb-6">
-		<div class="mb-2 h-8 w-48 rounded bg-background-tertiary-light opacity-50"></div>
-		<div class="h-4 w-80 rounded bg-background-tertiary-light opacity-30"></div>
+		<Skeleton class="mb-2 h-8 w-48 opacity-50" />
+		<Skeleton class="h-4 w-80 opacity-30" />
 	</div>
 
 	<!-- KPI Cards -->
@@ -14,16 +15,16 @@
 		<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 		{#each Array(4) as _}
 			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-				<div class="mb-2 h-4 w-24 rounded bg-background-tertiary-light opacity-30"></div>
-				<div class="mb-1 h-8 w-20 rounded bg-background-tertiary-light opacity-50"></div>
-				<div class="h-3 w-32 rounded bg-background-tertiary-light opacity-30"></div>
+				<Skeleton class="mb-2 h-4 w-24 opacity-30" />
+				<Skeleton class="mb-1 h-8 w-20 opacity-50" />
+				<Skeleton class="h-3 w-32 opacity-30" />
 			</div>
 		{/each}
 	</div>
 
 	<!-- Chart Section -->
 	<div class="mb-6 rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-		<div class="mb-4 h-6 w-32 rounded bg-background-tertiary-light opacity-50"></div>
+		<Skeleton class="mb-4 h-6 w-32 opacity-50" />
 
 		<!-- Chart area -->
 		<div class="relative h-64 w-full rounded bg-background-tertiary-light opacity-20">
@@ -43,15 +44,15 @@
 	<!-- Sales Table -->
 	<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 		<div class="mb-4 flex items-center justify-between">
-			<div class="h-6 w-24 rounded bg-background-tertiary-light opacity-50"></div>
-			<div class="h-9 w-28 rounded bg-background-tertiary-light opacity-30"></div>
+			<Skeleton class="h-6 w-24 opacity-50" />
+			<Skeleton class="h-9 w-28 opacity-30" />
 		</div>
 
 		<!-- Table header -->
 		<div class="mb-2 grid grid-cols-5 gap-4 border-b border-border-light pb-2">
 			<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 			{#each Array(5) as _}
-				<div class="h-4 w-16 rounded bg-background-tertiary-light opacity-30"></div>
+				<Skeleton class="h-4 w-16 opacity-30" />
 			{/each}
 		</div>
 
@@ -61,7 +62,7 @@
 			<div class="grid grid-cols-5 gap-4 border-b border-border-light py-2">
 				<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 				{#each Array(5) as _}
-					<div class="h-4 w-12 rounded bg-background-tertiary-light opacity-20"></div>
+					<Skeleton class="h-4 w-12 opacity-20" />
 				{/each}
 			</div>
 		{/each}

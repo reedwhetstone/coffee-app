@@ -37,3 +37,6 @@ tests/e2e/.auth/
 
 # Verify-PR audit artifacts
 .verify-pr/
+
+# Claude Code agent worktrees (temporary isolation dirs)
+.claude/worktrees/

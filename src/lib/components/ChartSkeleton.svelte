@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+
 	let { height = '400px', title = 'Loading chart...' } = $props<{
 		height?: string;
 		title?: string;
@@ -9,7 +11,7 @@
 	class="animate-pulse rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light"
 	style="height: {height}"
 >
-	<div class="mb-4 h-6 w-1/3 rounded bg-background-tertiary-light opacity-50"></div>
+	<Skeleton class="mb-4 h-6 w-1/3 opacity-50" />
 
 	<!-- Chart area skeleton -->
 	<div class="relative h-full">
@@ -17,7 +19,7 @@
 		<div class="absolute left-0 top-0 flex h-full flex-col justify-between">
 			<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 			{#each Array(5) as _}
-				<div class="h-4 w-8 rounded bg-background-tertiary-light opacity-30"></div>
+				<Skeleton class="h-4 w-8 opacity-30" />
 			{/each}
 		</div>
 
@@ -37,7 +39,7 @@
 			<div class="mt-2 flex justify-between">
 				<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 				{#each Array(6) as _}
-					<div class="h-4 w-8 rounded bg-background-tertiary-light opacity-30"></div>
+					<Skeleton class="h-4 w-8 opacity-30" />
 				{/each}
 			</div>
 		</div>

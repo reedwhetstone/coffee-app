@@ -1,26 +1,27 @@
 <script lang="ts">
+	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	// No props needed - pure skeleton structure
 </script>
 
 <div class="animate-pulse">
 	<!-- Header Section -->
 	<div class="mb-6">
-		<div class="mb-2 h-8 w-64 rounded bg-background-tertiary-light opacity-50"></div>
-		<div class="h-4 w-96 rounded bg-background-tertiary-light opacity-30"></div>
+		<Skeleton class="mb-2 h-8 w-64 opacity-50" />
+		<Skeleton class="h-4 w-96 opacity-30" />
 	</div>
 
 	<!-- Search and filters -->
 	<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-		<div class="h-10 w-64 rounded bg-background-tertiary-light opacity-30"></div>
+		<Skeleton class="h-10 w-64 opacity-30" />
 		<div class="flex gap-2">
-			<div class="h-10 w-24 rounded bg-background-tertiary-light opacity-30"></div>
-			<div class="h-10 w-32 rounded bg-background-tertiary-light opacity-30"></div>
+			<Skeleton class="h-10 w-24 opacity-30" />
+			<Skeleton class="h-10 w-32 opacity-30" />
 		</div>
 	</div>
 
 	<!-- Load more button area -->
 	<div class="mb-6 text-center">
-		<div class="mx-auto h-4 w-48 rounded bg-background-tertiary-light opacity-30"></div>
+		<Skeleton class="mx-auto h-4 w-48 opacity-30" />
 	</div>
 
 	<!-- Coffee Cards Grid -->
@@ -31,40 +32,40 @@
 				<div class="flex items-start justify-between">
 					<!-- Left side content -->
 					<div class="flex-1">
-						<div class="mb-2 h-6 w-48 rounded bg-background-tertiary-light opacity-50"></div>
-						<div class="mb-3 h-4 w-32 rounded bg-background-tertiary-light opacity-30"></div>
+						<Skeleton class="mb-2 h-6 w-48 opacity-50" />
+						<Skeleton class="mb-3 h-4 w-32 opacity-30" />
 
 						<!-- Description area -->
 						<div class="mb-4 space-y-2">
-							<div class="h-3 w-full rounded bg-background-tertiary-light opacity-20"></div>
-							<div class="h-3 w-5/6 rounded bg-background-tertiary-light opacity-20"></div>
-							<div class="h-3 w-4/6 rounded bg-background-tertiary-light opacity-20"></div>
+							<Skeleton class="h-3 w-full opacity-20" />
+							<Skeleton class="h-3 w-5/6 opacity-20" />
+							<Skeleton class="h-3 w-4/6 opacity-20" />
 						</div>
 
 						<!-- Mobile chart area -->
 						<div class="mb-4 sm:hidden">
-							<div class="h-32 w-full rounded bg-background-tertiary-light opacity-20"></div>
+							<Skeleton class="h-32 w-full opacity-20" />
 						</div>
 
 						<!-- Details grid -->
 						<div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
 							<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 							{#each Array(6) as _}
-								<div class="h-3 w-24 rounded bg-background-tertiary-light opacity-20"></div>
+								<Skeleton class="h-3 w-24 opacity-20" />
 							{/each}
 						</div>
 					</div>
 
 					<!-- Right side - price and chart (desktop) -->
 					<div class="ml-4 hidden flex-col items-end sm:flex">
-						<div class="mb-2 h-6 w-20 rounded bg-background-tertiary-light opacity-50"></div>
-						<div class="h-32 w-32 rounded bg-background-tertiary-light opacity-20"></div>
+						<Skeleton class="mb-2 h-6 w-20 opacity-50" />
+						<Skeleton class="h-32 w-32 opacity-20" />
 					</div>
 				</div>
 
 				<!-- Action button area -->
 				<div class="mt-3 flex items-center justify-end">
-					<div class="h-4 w-4 rounded bg-background-tertiary-light opacity-30"></div>
+					<Skeleton class="h-4 w-4 opacity-30" />
 				</div>
 			</div>
 		{/each}
@@ -72,6 +73,6 @@
 
 	<!-- Load More Button -->
 	<div class="mt-8 text-center">
-		<div class="mx-auto h-10 w-32 rounded bg-background-tertiary-light opacity-30"></div>
+		<Skeleton class="mx-auto h-10 w-32 opacity-30" />
 	</div>
 </div>

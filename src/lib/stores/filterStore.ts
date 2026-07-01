@@ -6,9 +6,18 @@ import {
 	type CatalogFilterValue,
 	type CatalogUrlState
 } from '$lib/catalog/urlState';
+import {
+	isCatalogRoute,
+	getDefaultSortSettings,
+	getFilterableColumns,
+	sanitizeFilters,
+	getFieldValue,
+	processData,
+	arraysEqual,
+	type DataItem
+} from '$lib/data/catalogFilters';
 
 // Define types
-type DataItem = Record<string, unknown>;
 type FilterValue = CatalogFilterValue;
 
 type CatalogPaginationState = {
@@ -58,10 +67,6 @@ function createInitialCatalogPagination(): CatalogPaginationState {
 		hasNext: false,
 		hasPrev: false
 	};
-}
-
-function isCatalogRoute(routeId: string): boolean {
-	return routeId.includes('/catalog') || routeId === '/';
 }
 
 // Initialize default state
@@ -294,45 +299,6 @@ function createFilterStore() {
 				updateUniqueFilterValues();
 			}, 0);
 		}
-	}
-
-	/**
-	 * Returns default sort settings for different routes
-	 * @param routeId - The route identifier
-	 * @returns Object with field and direction properties
-	 */
-	function getDefaultSortSettings(routeId: string) {
-		if (routeId.includes('beans')) {
-			return { field: 'purchase_date', direction: 'desc' as const };
-		} else if (routeId.includes('roast')) {
-			return { field: 'roast_date', direction: 'desc' as const };
-		} else if (routeId === '/' || routeId === '' || routeId === '/catalog') {
-			return { field: null, direction: null } as const;
-		} else {
-			return { field: null, direction: null } as const;
-		}
-	}
-
-	function isEmptyFilterValue(value: FilterValue): boolean {
-		if (value === undefined || value === null || value === '') {
-			return true;
-		}
-
-		if (Array.isArray(value)) {
-			return value.length === 0;
-		}
-
-		if (typeof value === 'object' && 'min' in value && 'max' in value) {
-			return String(value.min ?? '').trim() === '' && String(value.max ?? '').trim() === '';
-		}
-
-		return false;
-	}
-
-	function sanitizeFilters(filters: Record<string, FilterValue>): Record<string, FilterValue> {
-		return Object.fromEntries(
-			Object.entries(filters).filter(([, value]) => !isEmptyFilterValue(value))
-		) as Record<string, FilterValue>;
 	}
 
 	// Set the default sort for a route
@@ -667,256 +633,6 @@ function createFilterStore() {
 		}
 	}
 
-	/**
-	 * Helper function to get field value from item, handling joined data structure
-	 * @param item - The data item
-	 * @param field - The field name to get
-	 * @returns The field value
-	 */
-	function getFieldValue(item: DataItem, field: string): unknown {
-		// Fields that might be in coffee_catalog for joined beans data
-		const catalogFields = [
-			'name',
-			'source',
-			'score_value',
-			'region',
-			'country',
-			'continent',
-			'processing',
-			'cultivar_detail',
-			'arrival_date',
-			'cost_lb',
-			'stocked_date',
-			'type',
-			'grade',
-			'appearance'
-		];
-
-		// For beans page joined data, check coffee_catalog first for these fields
-		const catalog = item.coffee_catalog as DataItem | undefined;
-		if (catalogFields.includes(field) && catalog?.[field] !== undefined) {
-			return catalog[field];
-		}
-
-		// Fallback to direct field access
-		return item[field];
-	}
-
-	// Filter data based on filters
-	function filterData(
-		data: DataItem[],
-		filters: Record<string, FilterValue>,
-		showWholesale: boolean
-	): DataItem[] {
-		// Default catalog behavior: hide wholesale unless explicitly enabled
-		const wholesaleFiltered = showWholesale ? data : data.filter((item) => item.wholesale !== true);
-
-		// Skip if no filters
-		if (!Object.keys(filters).length) return wholesaleFiltered;
-
-		//console.log('Filtering data with filters:', filters);
-
-		return wholesaleFiltered.filter((item) => {
-			// Check each filter
-			return Object.entries(filters).every(([key, value]) => {
-				// Skip empty filters
-				if (value === undefined || value === null || value === '') return true;
-
-				// Get item value using helper function
-				const itemValue = getFieldValue(item, key);
-
-				// Handle stocked_date as a truthful absolute lower-bound date filter
-				if (key === 'stocked_date' && typeof value === 'string' && value !== '') {
-					if (!itemValue) return false;
-					return String(itemValue) >= value;
-				}
-
-				// Handle stocked_days as an explicit relative "last N days" filter
-				if (
-					key === 'stocked_days' &&
-					(typeof value === 'string' || typeof value === 'number') &&
-					value !== ''
-				) {
-					const stockedDateValue = getFieldValue(item, 'stocked_date');
-					if (!stockedDateValue) return false;
-
-					const daysBack = Number.parseInt(String(value), 10);
-					if (!Number.isFinite(daysBack) || daysBack <= 0) return true;
-
-					const cutoffDate = new Date();
-					cutoffDate.setDate(cutoffDate.getDate() - daysBack);
-
-					const stockedDate = new Date(String(stockedDateValue));
-					return stockedDate >= cutoffDate;
-				}
-
-				// Handle stocked boolean filter
-				if (key === 'stocked') {
-					// Skip filtering if value is empty string (All option)
-					if (value === '') return true;
-					// Convert string to boolean for comparison
-					if (value === 'TRUE' || value === 'true') {
-						return itemValue === true;
-					} else if (value === 'FALSE' || value === 'false') {
-						return itemValue === false;
-					}
-					// For other boolean values, use direct comparison
-					return itemValue === value;
-				}
-
-				// Handle roast_id text search
-				if (key === 'roast_id') {
-					// Skip filtering if value is empty string
-					if (value === '') return true;
-					// Convert roast_id to string and do partial match search
-					const roastIdString = String(itemValue || '');
-					const searchString = String(value || '').toLowerCase();
-					return roastIdString.toLowerCase().includes(searchString);
-				}
-
-				// Handle different filter types
-				if (typeof value === 'object' && value !== null) {
-					// Range filter - check if it's a range object (not an array)
-					if (!Array.isArray(value) && 'min' in value && 'max' in value) {
-						const numItemValue =
-							typeof itemValue === 'number' ? itemValue : parseFloat(String(itemValue));
-						return (
-							(value.min === '' || numItemValue >= parseFloat(String(value.min))) &&
-							(value.max === '' || numItemValue <= parseFloat(String(value.max)))
-						);
-					}
-
-					// Array filter - special handling for source to include null/undefined values
-					if (Array.isArray(value)) {
-						// For source filtering, if no specific sources are selected (empty array),
-						// show all items including those with null sources
-						if (key === 'source' && value.length === 0) {
-							return true;
-						}
-						return value.includes(itemValue as string);
-					}
-				} else if (typeof itemValue === 'string' && typeof value === 'string') {
-					// Case-insensitive string search
-					return itemValue.toLowerCase().includes(value.toLowerCase());
-				} else {
-					// Exact match
-					return itemValue === value;
-				}
-
-				return true;
-			});
-		});
-	}
-
-	/**
-	 * Sorts data based on the specified field and direction
-	 * @param data - Array of data items to sort
-	 * @param sortField - Field name to sort by
-	 * @param sortDirection - Sort direction ('asc' or 'desc')
-	 * @returns Sorted array of data items
-	 */
-	function sortData(
-		data: DataItem[],
-		sortField: string | null,
-		sortDirection: 'asc' | 'desc' | null
-	): DataItem[] {
-		// Return unsorted data if no sort criteria specified
-		if (!sortField || !sortDirection) {
-			return data;
-		}
-
-		return [...data].sort((a, b) => {
-			const aValue = getFieldValue(a, sortField);
-			const bValue = getFieldValue(b, sortField);
-
-			// Handle null/undefined values - always sort them to the end
-			if (aValue == null && bValue == null) return 0;
-			if (aValue == null) return 1;
-			if (bValue == null) return -1;
-
-			// Handle date fields specially
-			if (
-				sortField === 'purchase_date' ||
-				sortField === 'arrival_date' ||
-				sortField === 'roast_date' ||
-				sortField === 'stocked_date'
-			) {
-				// Custom date parsing function for handling various date formats
-				const parseMonthYear = (dateStr: string): Date => {
-					if (!dateStr) return new Date(0);
-
-					// Check if it's in the DD-MM-YYYY format
-					if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
-						const [day, month, year] = dateStr.split('-').map(Number);
-						return new Date(year, month - 1, day);
-					}
-
-					// Check if it's in the YYYY-MM format
-					if (/^\d{4}-\d{2}$/.test(dateStr)) {
-						const [year, month] = dateStr.split('-').map(Number);
-						return new Date(year, month - 1);
-					}
-
-					// If it's a database date/time format
-					if (dateStr.includes(' ')) {
-						// Convert MySQL datetime to JS Date
-						return new Date(dateStr.replace(' ', 'T') + 'Z');
-					}
-
-					// Standard date format (YYYY-MM-DD)
-					return new Date(dateStr);
-				};
-
-				const dateA = parseMonthYear(String(aValue));
-				const dateB = parseMonthYear(String(bValue));
-
-				return sortDirection === 'asc'
-					? dateA.getTime() - dateB.getTime()
-					: dateB.getTime() - dateA.getTime();
-			}
-
-			// Handle score_value, roast_id and other numeric fields
-			if (sortField === 'score_value' || sortField === 'cost_lb' || sortField === 'roast_id') {
-				const numA = parseFloat(String(aValue)) || 0;
-				const numB = parseFloat(String(bValue)) || 0;
-
-				return sortDirection === 'asc' ? numA - numB : numB - numA;
-			}
-
-			// Handle string fields (processing, cultivar_detail, name, source, region, etc.)
-			if (typeof aValue === 'string' && typeof bValue === 'string') {
-				return sortDirection === 'asc'
-					? aValue.toLowerCase().localeCompare(bValue.toLowerCase())
-					: bValue.toLowerCase().localeCompare(aValue.toLowerCase());
-			}
-
-			// Fallback for other types - convert to string and compare
-			const strA = String(aValue || '').toLowerCase();
-			const strB = String(bValue || '').toLowerCase();
-
-			return sortDirection === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
-		});
-	}
-
-	// Process data with filters and sorting
-	function processData(
-		data: DataItem[],
-		sortField: string | null,
-		sortDirection: 'asc' | 'desc' | null,
-		filters: Record<string, FilterValue>,
-		showWholesale: boolean
-	): DataItem[] {
-		// Start by filtering
-		const filtered = filterData(data, filters, showWholesale);
-		//	console.log('After filtering:', filtered.length, 'items');
-
-		// Then sort
-		const sorted = sortData(filtered, sortField, sortDirection);
-		//console.log('After sorting:', sorted.length, 'items');
-
-		return sorted;
-	}
-
 	// Process and update filtered data, with optimized debounce
 	function processAndUpdateFilteredData() {
 		// If a debounce timer exists, clear it
@@ -989,69 +705,6 @@ function createFilterStore() {
 			state.lastDebounceId = debounceId;
 			return state;
 		});
-	}
-
-	// Efficient array comparison helper
-	function arraysEqual(a: unknown[], b: unknown[]): boolean {
-		if (a.length !== b.length) return false;
-		for (let i = 0; i < a.length; i++) {
-			if (a[i] !== b[i]) return false;
-		}
-		return true;
-	}
-
-	/**
-	 * Returns the list of filterable columns for a specific route
-	 * @param routeId - The route identifier
-	 * @returns Array of column names that can be filtered
-	 */
-	function getFilterableColumns(routeId: string): string[] {
-		if (routeId.includes('beans')) {
-			return [
-				'name',
-				'source',
-				'score_value',
-				'purchase_date',
-				'arrival_date',
-				'type',
-				'grade',
-				'appearance',
-				'continent',
-				'country',
-				'region',
-				'processing',
-				'cultivar_detail',
-				'stocked'
-			];
-		} else if (routeId.includes('roast')) {
-			return [
-				'roast_id',
-				'batch_name',
-				'coffee_name',
-				'roast_date',
-				'roast_notes',
-				'roast_targets',
-				'oz_in',
-				'oz_out'
-			];
-		} else if (routeId === '/' || routeId === '/catalog') {
-			return [
-				'name',
-				'source',
-				'continent',
-				'country',
-				'region',
-				'processing',
-				'cultivar_detail',
-				'type',
-				'grade',
-				'appearance',
-				'score_value',
-				'cost_lb',
-				'stocked_date'
-			];
-		}
-		return [];
 	}
 
 	// Create a filtered data derived store

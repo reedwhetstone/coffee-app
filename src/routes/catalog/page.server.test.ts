@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockSearchCatalog = vi.fn();
+const mockCreateParchmentServerClient = vi.fn();
+const mockCatalogList = vi.fn();
 const mockBuildPublicMeta = vi.fn();
 const mockResolvePublicPageSocialImage = vi.fn();
 const mockGenerateOrganizationSchema = vi.fn();
@@ -17,9 +18,8 @@ class MockCatalogSchemaUnavailableError extends Error {
 	}
 }
 
-vi.mock('$lib/data/catalog', () => ({
-	CatalogSchemaUnavailableError: MockCatalogSchemaUnavailableError,
-	searchCatalog: mockSearchCatalog
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentServerClient: mockCreateParchmentServerClient
 }));
 
 vi.mock('$lib/catalog/catalogResourceItem', () => ({
@@ -80,10 +80,23 @@ beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
 
-	mockSearchCatalog.mockResolvedValue({
-		data: catalogRows,
-		count: 42,
-		filtersApplied: {}
+	mockCatalogList.mockResolvedValue({
+		data: {
+			data: catalogRows,
+			pagination: {
+				page: 1,
+				limit: 15,
+				total: 42,
+				totalPages: 3,
+				hasNext: true,
+				hasPrev: false
+			}
+		}
+	});
+	mockCreateParchmentServerClient.mockResolvedValue({
+		catalog: {
+			list: mockCatalogList
+		}
 	});
 	mockBuildPublicMeta.mockImplementation((value) => value);
 	mockResolvePublicPageSocialImage.mockReturnValue('/og/catalog.jpg');
@@ -126,7 +139,9 @@ function makeLoadInput(
 			role,
 			session
 		},
-		url: new URL(url)
+		url: new URL(url),
+		request: new Request(url),
+		fetch: vi.fn()
 	} as unknown as Parameters<typeof load>[0];
 }
 
@@ -143,15 +158,17 @@ function makeLoadInputWithPrincipal(
 			session,
 			principal
 		},
-		url: new URL(url)
+		url: new URL(url),
+		request: new Request(url),
+		fetch: vi.fn()
 	} as unknown as Parameters<typeof load>[0];
 }
 
 describe('/catalog page load', () => {
-	it('keeps anonymous and viewer SSR previews on the public catalog visibility policy', async () => {
+	it('uses public-demo for anonymous catalog reads and session mode for viewer sessions', async () => {
 		const viewerSession = { access_token: 'cookie-token' } as App.Locals['session'];
 
-		const result = (await load(makeLoadInput('viewer', viewerSession))) as {
+		const result = (await load(makeLoadInput('viewer', null))) as {
 			data: Array<Record<string, unknown>>;
 			trainingData: Array<Record<string, unknown>>;
 			pagination: {
@@ -168,19 +185,22 @@ describe('/catalog page load', () => {
 				sortDirection: 'asc' | 'desc' | null;
 			};
 		};
+		await load(makeLoadInput('viewer', viewerSession));
 
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			expect.objectContaining({ kind: 'session-client' }),
+		expect(mockCreateParchmentServerClient).toHaveBeenNthCalledWith(1, expect.anything(), {
+			mode: 'public-demo'
+		});
+		expect(mockCreateParchmentServerClient).toHaveBeenNthCalledWith(2, expect.anything(), {
+			mode: 'session'
+		});
+		expect(mockCatalogList).toHaveBeenNthCalledWith(
+			1,
 			expect.objectContaining({
-				stockedOnly: true,
-				publicOnly: true,
-				showWholesale: false,
-				wholesaleOnly: false,
-				fields: 'resource',
-				limit: 15,
-				offset: 0,
-				orderBy: undefined,
-				orderDirection: undefined
+				stocked: 'true',
+				showWholesale: 'false',
+				wholesaleOnly: 'false',
+				page: 1,
+				limit: 15
 			})
 		);
 		expect(result.data[0]).toMatchObject({
@@ -216,79 +236,81 @@ describe('/catalog page load', () => {
 			makeLoadInput(
 				'viewer',
 				null,
-				'https://app.test/catalog?country=Ethiopia&processing=Washed&name=guji&page=2&sortField=score_value&sortDirection=asc'
+				'https://app.test/catalog?country=Ethiopia&processing=Washed&cultivar_detail=Gesha&name=guji&score_value_min=86&score_value_max=90&price_per_lb_min=7.25&price_per_lb_max=8.5&arrival_date=2026-03-01&stocked_date=2026-04-01&page=2&sortField=score_value&sortDirection=asc'
 			)
 		);
 
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			expect.objectContaining({ kind: 'session-client' }),
+		expect(mockCatalogList).toHaveBeenCalledWith(
 			expect.objectContaining({
 				country: 'Ethiopia',
 				processing: 'Washed',
+				cultivar_detail: 'Gesha',
 				name: 'guji',
+				score_value_min: 86,
+				score_value_max: 90,
+				price_per_lb_min: 7.25,
+				price_per_lb_max: 8.5,
+				arrival_date: '2026-03-01',
+				stocked_date: '2026-04-01',
+				page: 2,
 				limit: 15,
-				offset: 15,
-				orderBy: 'score_value',
-				orderDirection: 'asc'
+				sortField: 'score_value',
+				sortDirection: 'asc'
 			})
 		);
 	});
 
 	it('hydrates catalog coffee deep links even when the target is outside current filters or unstocked', async () => {
-		mockSearchCatalog
+		mockCatalogList
 			.mockResolvedValueOnce({
-				data: catalogRows,
-				count: 42,
-				filtersApplied: {}
+				data: {
+					data: catalogRows,
+					pagination: { total: 42 }
+				}
 			})
 			.mockResolvedValueOnce({
-				data: [
-					{
-						id: 99,
-						name: 'Deep Link Coffee',
-						country: 'Colombia',
-						public_coffee: true,
-						wholesale: false,
-						stocked: false
-					}
-				],
-				count: 1,
-				filtersApplied: {}
+				data: {
+					data: [
+						{
+							id: 99,
+							name: 'Deep Link Coffee',
+							country: 'Colombia',
+							public_coffee: true,
+							wholesale: false,
+							stocked: false
+						}
+					],
+					pagination: { total: 1 }
+				}
 			});
 
 		const result = (await load(
 			makeLoadInput('viewer', null, 'https://app.test/catalog?coffee=99&country=Ethiopia&page=2')
 		)) as { data: Array<{ id: number; name: string }>; pagination: { total: number } };
 
-		expect(mockSearchCatalog).toHaveBeenNthCalledWith(
+		expect(mockCatalogList).toHaveBeenNthCalledWith(
 			1,
-			expect.objectContaining({ kind: 'session-client' }),
 			expect.objectContaining({
 				country: 'Ethiopia',
-				stockedOnly: true,
-				publicOnly: true,
-				showWholesale: false,
-				wholesaleOnly: false,
-				fields: 'resource',
-				limit: 15,
-				offset: 15
+				stocked: 'true',
+				showWholesale: 'false',
+				wholesaleOnly: 'false',
+				page: 2,
+				limit: 15
 			})
 		);
-		expect(mockSearchCatalog).toHaveBeenNthCalledWith(
+		expect(mockCatalogList).toHaveBeenNthCalledWith(
 			2,
-			expect.objectContaining({ kind: 'session-client' }),
 			expect.objectContaining({
-				coffeeIds: [99],
-				stockedOnly: false,
-				publicOnly: true,
-				showWholesale: false,
-				wholesaleOnly: false,
-				fields: 'resource',
-				limit: 1,
-				offset: 0
+				ids: [99],
+				stocked: 'all',
+				showWholesale: 'false',
+				wholesaleOnly: 'false',
+				page: 1,
+				limit: 1
 			})
 		);
-		expect(mockSearchCatalog.mock.calls[1][1]).not.toMatchObject({ country: 'Ethiopia' });
+		expect(mockCatalogList.mock.calls[1][0]).not.toMatchObject({ country: 'Ethiopia' });
 		expect(result.data.map((coffee) => coffee.id)).toEqual([99, 1]);
 		expect(result.pagination.total).toBe(42);
 	});
@@ -300,7 +322,7 @@ describe('/catalog page load', () => {
 			data: Array<{ id: number }>;
 		};
 
-		expect(mockSearchCatalog).toHaveBeenCalledTimes(1);
+		expect(mockCatalogList).toHaveBeenCalledTimes(1);
 		expect(result.data.map((coffee) => coffee.id)).toEqual([1]);
 	});
 
@@ -317,15 +339,14 @@ describe('/catalog page load', () => {
 			catalogAccessNotice: { status: number; deniedParams: string[] } | null;
 		};
 
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			expect.objectContaining({ kind: 'session-client' }),
+		expect(mockCatalogList).toHaveBeenCalledWith(
 			expect.not.objectContaining({
-				processingBaseMethod: 'natural',
-				fermentationType: 'anaerobic',
-				processAdditive: 'fruit',
-				hasAdditives: true,
-				processingDisclosureLevel: 'high_detail',
-				processingConfidenceMin: 0.8
+				processing_base_method: 'natural',
+				fermentation_type: 'anaerobic',
+				process_additive: 'fruit',
+				has_additives: 'true',
+				processing_disclosure_level: 'high_detail',
+				processing_confidence_min: 0.8
 			})
 		);
 		expect(result.initialCatalogState.filters).not.toHaveProperty('processing_base_method');
@@ -355,15 +376,14 @@ describe('/catalog page load', () => {
 			catalogAccessNotice: { status: number; deniedParams: string[] } | null;
 		};
 
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			expect.objectContaining({ kind: 'session-client' }),
+		expect(mockCatalogList).toHaveBeenCalledWith(
 			expect.not.objectContaining({
-				processingBaseMethod: expect.anything(),
-				fermentationType: expect.anything(),
-				processAdditive: expect.anything(),
-				hasAdditives: expect.anything(),
-				processingDisclosureLevel: expect.anything(),
-				processingConfidenceMin: expect.anything()
+				processing_base_method: expect.anything(),
+				fermentation_type: expect.anything(),
+				process_additive: expect.anything(),
+				has_additives: expect.anything(),
+				processing_disclosure_level: expect.anything(),
+				processing_confidence_min: expect.anything()
 			})
 		);
 		expect(result.initialCatalogState.filters).not.toHaveProperty('processing_base_method');
@@ -384,9 +404,11 @@ describe('/catalog page load', () => {
 			catalogAccessNotice: { status: number; deniedParams: string[] } | null;
 		};
 
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			expect.objectContaining({ kind: 'session-client' }),
-			expect.not.objectContaining({ processingBaseMethod: 'natural' })
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session'
+		});
+		expect(mockCatalogList).toHaveBeenCalledWith(
+			expect.not.objectContaining({ processing_base_method: 'natural' })
 		);
 		expect(result.initialCatalogState.filters).not.toHaveProperty('processing_base_method');
 		expect(result.catalogAccessNotice).toMatchObject({
@@ -398,10 +420,16 @@ describe('/catalog page load', () => {
 	it('lets member and admin SSR previews pass process transparency query params to catalog search', async () => {
 		for (const role of ['member', 'admin'] as const) {
 			vi.clearAllMocks();
-			mockSearchCatalog.mockResolvedValue({
-				data: catalogRows,
-				count: 42,
-				filtersApplied: {}
+			mockCatalogList.mockResolvedValue({
+				data: {
+					data: catalogRows,
+					pagination: { total: 42 }
+				}
+			});
+			mockCreateParchmentServerClient.mockResolvedValue({
+				catalog: {
+					list: mockCatalogList
+				}
 			});
 			const session = { access_token: 'cookie-token' } as App.Locals['session'];
 
@@ -413,16 +441,17 @@ describe('/catalog page load', () => {
 				)
 			)) as { catalogAccess: { canUseProcessFacets: boolean }; catalogAccessNotice: null };
 
-			expect(mockSearchCatalog).toHaveBeenCalledWith(
-				expect.objectContaining({ kind: 'session-client' }),
+			expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+				mode: 'session'
+			});
+			expect(mockCatalogList).toHaveBeenCalledWith(
 				expect.objectContaining({
-					processingBaseMethod: 'natural',
-					fermentationType: 'anaerobic',
-					processAdditive: 'fruit',
-					hasAdditives: true,
-					processingDisclosureLevel: 'high_detail',
-					processingConfidenceMin: 0.8,
-					fields: 'resource'
+					processing_base_method: 'natural',
+					fermentation_type: 'anaerobic',
+					process_additive: 'fruit',
+					has_additives: 'true',
+					processing_disclosure_level: 'high_detail',
+					processing_confidence_min: 0.8
 				})
 			);
 			expect(result.catalogAccess.canUseProcessFacets).toBe(true);
@@ -432,7 +461,7 @@ describe('/catalog page load', () => {
 
 	it('returns a controlled catalog schema unavailable response instead of throwing SSR 500', async () => {
 		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
-		mockSearchCatalog.mockRejectedValue(
+		mockCatalogList.mockRejectedValue(
 			new MockCatalogSchemaUnavailableError('Structured process filters are unavailable.')
 		);
 
@@ -457,6 +486,58 @@ describe('/catalog page load', () => {
 		expect(result.pagination).toMatchObject({ total: 0, totalPages: 0 });
 	});
 
+	it('routes the SDK 503 schema-unavailable error body into the controlled fallback', async () => {
+		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		// openapi-fetch resolves non-2xx responses as `{ error: <body> }` rather than
+		// rejecting, so the load must translate the parsed 503 body, not just catch throws.
+		mockCatalogList.mockResolvedValue({
+			error: {
+				error: 'Catalog schema unavailable',
+				message: 'Structured process filters are unavailable.'
+			}
+		});
+
+		const result = (await load(
+			makeLoadInput(
+				'member',
+				memberSession,
+				'https://app.test/catalog?processing_base_method=natural'
+			)
+		)) as {
+			data: Array<Record<string, unknown>>;
+			trainingData: Array<Record<string, unknown>>;
+			catalogSchemaUnavailable: { message: string } | null;
+			pagination: { total: number; totalPages: number };
+		};
+
+		expect(result.catalogSchemaUnavailable).toEqual({
+			message: 'Structured process filters are unavailable.'
+		});
+		expect(result.data).toEqual([]);
+		expect(result.trainingData).toEqual([]);
+		expect(result.pagination).toMatchObject({ total: 0, totalPages: 0 });
+	});
+
+	it('keeps the catalog page renderable when Parchment configuration is unavailable', async () => {
+		const error = new Error('PARCHMENT_API_BASE_URL is not configured.');
+		error.name = 'ParchmentConfigError';
+		mockCreateParchmentServerClient.mockRejectedValue(error);
+
+		const result = (await load(makeLoadInput('viewer', null))) as {
+			data: Array<Record<string, unknown>>;
+			trainingData: Array<Record<string, unknown>>;
+			catalogSchemaUnavailable: { message: string } | null;
+			pagination: { total: number; totalPages: number };
+		};
+
+		expect(result.catalogSchemaUnavailable).toEqual({
+			message: 'PARCHMENT_API_BASE_URL is not configured.'
+		});
+		expect(result.data).toEqual([]);
+		expect(result.trainingData).toEqual([]);
+		expect(result.pagination).toMatchObject({ total: 0, totalPages: 0 });
+	});
+
 	it('lets member SSR previews use the internal catalog visibility policy', async () => {
 		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
 
@@ -464,14 +545,14 @@ describe('/catalog page load', () => {
 			makeLoadInput('member', memberSession, 'https://app.test/catalog?showWholesale=true')
 		);
 
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			expect.objectContaining({ kind: 'session-client' }),
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session'
+		});
+		expect(mockCatalogList).toHaveBeenCalledWith(
 			expect.objectContaining({
-				stockedOnly: true,
-				publicOnly: false,
-				showWholesale: true,
-				wholesaleOnly: false,
-				fields: 'resource'
+				stocked: 'true',
+				showWholesale: 'true',
+				wholesaleOnly: 'false'
 			})
 		);
 	});
@@ -637,9 +718,8 @@ describe('/catalog page load', () => {
 			)
 		)) as { originPriceStats: Array<{ origin: string; median: number; sample_size: number }> };
 
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			expect.objectContaining({ kind: 'session-client' }),
-			expect.objectContaining({ showWholesale: true, wholesaleOnly: true })
+		expect(mockCatalogList).toHaveBeenCalledWith(
+			expect.objectContaining({ showWholesale: 'true', wholesaleOnly: 'true' })
 		);
 		expect(result.originPriceStats).toEqual([
 			expect.objectContaining({ origin: 'Honduras', median: 5, sample_size: 3 })
@@ -723,12 +803,14 @@ describe('/catalog tracked-only watchlist view', () => {
 			)
 		)) as { trackedOnly: boolean; trackedLotIds: number[] };
 
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			expect.objectContaining({ kind: 'session-client' }),
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session'
+		});
+		expect(mockCatalogList).toHaveBeenCalledWith(
 			expect.objectContaining({
-				coffeeIds: [5, 9],
-				stockedOnly: false,
-				showWholesale: true
+				ids: [5, 9],
+				stocked: 'all',
+				showWholesale: 'true'
 			})
 		);
 		expect(result.trackedOnly).toBe(true);
@@ -749,7 +831,7 @@ describe('/catalog tracked-only watchlist view', () => {
 			)
 		)) as { trackedOnly: boolean; data: unknown[] };
 
-		expect(mockSearchCatalog).not.toHaveBeenCalled();
+		expect(mockCatalogList).not.toHaveBeenCalled();
 		expect(result.trackedOnly).toBe(true);
 		expect(result.data).toEqual([]);
 	});
@@ -772,9 +854,6 @@ describe('/catalog tracked-only watchlist view', () => {
 		)) as { trackedOnly: boolean };
 
 		expect(result.trackedOnly).toBe(false);
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			expect.objectContaining({ kind: 'session-client' }),
-			expect.objectContaining({ stockedOnly: true })
-		);
+		expect(mockCatalogList).toHaveBeenCalledWith(expect.objectContaining({ stocked: 'true' }));
 	});
 });

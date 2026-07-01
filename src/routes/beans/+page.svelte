@@ -6,6 +6,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { canManagePortfolio } from '$lib/services/portfolioAccess';
+	import { loadBeanPickerCatalog } from './catalogPicker';
 
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 
@@ -176,13 +177,7 @@
 		}
 
 		catalogLoadPromise = (async () => {
-			const catalogResponse = await fetch('/api/catalog');
-			if (!catalogResponse.ok) {
-				throw new Error('Failed to fetch catalog data');
-			}
-
-			const catalogResult = await catalogResponse.json();
-			catalogData = Array.isArray(catalogResult) ? catalogResult : catalogResult.data || [];
+			catalogData = await loadBeanPickerCatalog(fetch);
 		})();
 
 		try {

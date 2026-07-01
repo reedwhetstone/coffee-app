@@ -1,33 +1,142 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockBuildLegacyAppCatalogResponse = vi.fn();
+const mockCreateParchmentServerClient = vi.fn();
+const mockCatalogList = vi.fn();
+const mockResolvePrincipal = vi.fn();
 
-vi.mock('$lib/server/catalogResource', () => ({
-	buildLegacyAppCatalogResponse: mockBuildLegacyAppCatalogResponse
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentServerClient: mockCreateParchmentServerClient
+}));
+
+vi.mock('$lib/server/principal', () => ({
+	resolvePrincipal: mockResolvePrincipal
 }));
 
 let GET: typeof import('./+server').GET;
 
+function makeEvent(url: string, init?: RequestInit) {
+	return {
+		url: new URL(url),
+		request: new Request(url, init),
+		fetch: vi.fn(),
+		locals: {}
+	} as unknown as Parameters<NonNullable<typeof GET>>[0];
+}
+
 beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
+
+	mockResolvePrincipal.mockResolvedValue({ isAuthenticated: false });
+	mockCatalogList.mockResolvedValue({
+		data: {
+			data: [{ id: 1 }, { id: 2 }],
+			pagination: { page: 1, limit: 15, total: 2 },
+			meta: {}
+		},
+		response: new Response(null, { status: 200 })
+	});
+	mockCreateParchmentServerClient.mockResolvedValue({
+		catalog: { list: mockCatalogList }
+	});
+
 	({ GET } = await import('./+server'));
 });
 
 describe('/api/catalog route', () => {
-	it('delegates to the legacy app compatibility builder', async () => {
-		const expected = new Response(JSON.stringify([{ id: 1 }]), { status: 200 });
-		mockBuildLegacyAppCatalogResponse.mockResolvedValue(expected);
+	it('proxies the caller credential to Parchment', async () => {
+		await GET(makeEvent('https://app.test/api/catalog?page=2&limit=10'));
 
-		const response = await GET({
-			url: new URL('https://app.test/api/catalog'),
-			request: new Request('https://app.test/api/catalog'),
-			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session'
+		});
+		expect(mockCatalogList).toHaveBeenCalledWith(
+			expect.objectContaining({ page: '2', limit: '10' })
+		);
+	});
 
-		expect(response).toBe(expected);
-		expect(mockBuildLegacyAppCatalogResponse).toHaveBeenCalledWith(expect.anything(), {
-			requestPath: '/api/catalog'
+	it('unwraps the canonical envelope into the legacy paginated shape', async () => {
+		const response = await GET(makeEvent('https://app.test/api/catalog?page=1&limit=15'));
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBe('/v1/catalog');
+		expect(await response.json()).toEqual({
+			data: [{ id: 1 }, { id: 2 }],
+			pagination: { page: 1, limit: 15, total: 2 }
+		});
+	});
+
+	it('injects the max default limit for the legacy full-list contract when unparameterized', async () => {
+		await GET(makeEvent('https://app.test/api/catalog'));
+
+		expect(mockCatalogList).toHaveBeenCalledWith(expect.objectContaining({ limit: '1000' }));
+	});
+
+	it('does not override an explicit limit', async () => {
+		await GET(makeEvent('https://app.test/api/catalog?limit=25'));
+
+		expect(mockCatalogList).toHaveBeenCalledWith(expect.objectContaining({ limit: '25' }));
+	});
+
+	it('rejects a present-but-invalid Authorization header with 401 before proxying', async () => {
+		const response = await GET(
+			makeEvent('https://app.test/api/catalog', {
+				headers: { Authorization: 'Bearer definitely_invalid' }
+			})
+		);
+
+		expect(response.status).toBe(401);
+		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBe('/v1/catalog');
+		expect(await response.json()).toEqual({
+			error: 'Authentication required',
+			message: 'Authentication required'
+		});
+		expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
+		expect(mockCatalogList).not.toHaveBeenCalled();
+	});
+
+	it('relays upstream error bodies and status codes with the canonical resource header', async () => {
+		mockCatalogList.mockResolvedValue({
+			error: { error: 'Catalog schema unavailable', message: 'unavailable' },
+			response: new Response(null, { status: 503 })
+		});
+
+		const response = await GET(makeEvent('https://app.test/api/catalog'));
+
+		expect(response.status).toBe(503);
+		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBe('/v1/catalog');
+		expect(await response.json()).toEqual({
+			error: 'Catalog schema unavailable',
+			message: 'unavailable'
+		});
+	});
+
+	it('degrades to an empty catalog when Parchment is unconfigured', async () => {
+		// The client factory throws ParchmentConfigError before any request when
+		// PARCHMENT_API_BASE_URL is unset (e.g. CI/preview). The endpoint must not
+		// hard-fail: it returns an empty catalog so first-party callers still load,
+		// matching the catalog page's ParchmentConfigError degradation.
+		const configError = new Error('PARCHMENT_API_BASE_URL is not configured');
+		configError.name = 'ParchmentConfigError';
+		mockCreateParchmentServerClient.mockRejectedValue(configError);
+
+		const response = await GET(makeEvent('https://app.test/api/catalog'));
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBe('/v1/catalog');
+		expect(await response.json()).toEqual({ data: [], pagination: null });
+	});
+
+	it('returns a JSON 500 with the canonical resource header when the upstream fetch rejects', async () => {
+		mockCatalogList.mockRejectedValue(new Error('network down'));
+
+		const response = await GET(makeEvent('https://app.test/api/catalog'));
+
+		expect(response.status).toBe(500);
+		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBe('/v1/catalog');
+		expect(await response.json()).toEqual({
+			error: 'Failed to fetch catalog data',
+			message: 'Internal server error'
 		});
 	});
 });
