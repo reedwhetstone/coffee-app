@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types';
 import { jsonResponse } from '$lib/server/http';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
-import { forwardCatalogUpstreamHeaders } from '$lib/server/catalogProxy';
+import { catalogProxyErrorResponse, forwardCatalogUpstreamHeaders } from '$lib/server/catalogProxy';
 import { resolvePrincipal } from '$lib/server/principal';
 
 // Thin proxy in front of the canonical Parchment proof-coverage surface
@@ -30,8 +30,16 @@ export const GET: RequestHandler = async (event) => {
 		);
 	}
 
-	const client = await createParchmentServerClient(event, { mode: 'session' });
-	const { data, error, response } = await client.catalog.proofCoverage();
+	let proxied: { data?: unknown; error?: unknown; response: Response };
+	try {
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		proxied = await client.catalog.proofCoverage();
+	} catch (error) {
+		const { status, body } = catalogProxyErrorResponse(error);
+		return jsonResponse(body, { status, headers: new Headers() });
+	}
+
+	const { data, error, response } = proxied;
 	const headers = new Headers();
 	forwardCatalogUpstreamHeaders(response, headers);
 
