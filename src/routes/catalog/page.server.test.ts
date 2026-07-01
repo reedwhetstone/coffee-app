@@ -490,6 +490,42 @@ describe('/catalog page load', () => {
 		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
 		// openapi-fetch resolves non-2xx responses as `{ error: <body> }` rather than
 		// rejecting, so the load must translate the parsed 503 body, not just catch throws.
+		// Parchment's real 503 envelope is `{ error: { code, message } }` (see
+		// parchment-api app.ts), not a flat `{ error: string }`.
+		mockCatalogList.mockResolvedValue({
+			error: {
+				error: {
+					code: 'schema_unavailable',
+					message: 'Structured process filters are unavailable.'
+				}
+			}
+		});
+
+		const result = (await load(
+			makeLoadInput(
+				'member',
+				memberSession,
+				'https://app.test/catalog?processing_base_method=natural'
+			)
+		)) as {
+			data: Array<Record<string, unknown>>;
+			trainingData: Array<Record<string, unknown>>;
+			catalogSchemaUnavailable: { message: string } | null;
+			pagination: { total: number; totalPages: number };
+		};
+
+		expect(result.catalogSchemaUnavailable).toEqual({
+			message: 'Structured process filters are unavailable.'
+		});
+		expect(result.data).toEqual([]);
+		expect(result.trainingData).toEqual([]);
+		expect(result.pagination).toMatchObject({ total: 0, totalPages: 0 });
+	});
+
+	it('routes the legacy flat schema-unavailable error body into the controlled fallback', async () => {
+		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		// Backward-compatibility: earlier/flat `{ error: 'Catalog schema unavailable' }`
+		// bodies must still resolve to the controlled fallback.
 		mockCatalogList.mockResolvedValue({
 			error: {
 				error: 'Catalog schema unavailable',
