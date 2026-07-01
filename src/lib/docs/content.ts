@@ -922,7 +922,8 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Beta endpoint',
 		intro: [
 			'GET /v1/catalog/{id}/similar finds candidate coffees related to one catalog entry. The route is useful for likely-same-bean checks, substitution research, account-linked agents, and pricing context around comparable lots.',
-			'Matches are beta confidence candidates based on origin, processing, tasting similarity signals, and deterministic identity gates. The endpoint separates canonical candidates from similar recommendations; neither group is an accepted canonical identity.'
+			'Matches are beta confidence candidates based on origin, processing, tasting similarity signals, and deterministic identity gates. The endpoint separates canonical candidates from similar recommendations; neither group is an accepted canonical identity.',
+			'Use https://api.purveyors.io/v1/catalog/{id}/similar for new integrations. The older web-host path on purveyors.io is a compatibility proxy and includes Deprecation, Link, and Sunset headers pointing to the canonical Parchment API route.'
 		],
 		sections: [
 			{
@@ -1001,7 +1002,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Member or API-key request',
 						language: 'bash',
-						code: 'curl "https://purveyors.io/v1/catalog/1182/similar?threshold=0.8&limit=5&mode=likely_same" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"'
+						code: 'curl "https://api.purveyors.io/v1/catalog/1182/similar?threshold=0.8&limit=5&mode=likely_same" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"'
 					},
 					{
 						label: 'Successful response fragment',
