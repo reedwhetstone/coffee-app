@@ -126,4 +126,17 @@ describe('/api/catalog route', () => {
 		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBe('/v1/catalog');
 		expect(await response.json()).toEqual({ data: [], pagination: null });
 	});
+
+	it('returns a JSON 500 with the canonical resource header when the upstream fetch rejects', async () => {
+		mockCatalogList.mockRejectedValue(new Error('network down'));
+
+		const response = await GET(makeEvent('https://app.test/api/catalog'));
+
+		expect(response.status).toBe(500);
+		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBe('/v1/catalog');
+		expect(await response.json()).toEqual({
+			error: 'Failed to fetch catalog data',
+			message: 'Internal server error'
+		});
+	});
 });

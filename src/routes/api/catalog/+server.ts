@@ -1,6 +1,10 @@
 import type { RequestHandler } from './$types';
 import { jsonResponse } from '$lib/server/http';
-import { forwardCatalogUpstreamHeaders, proxyCatalogList } from '$lib/server/catalogProxy';
+import {
+	catalogProxyErrorResponse,
+	forwardCatalogUpstreamHeaders,
+	proxyCatalogList
+} from '$lib/server/catalogProxy';
 import { MAX_CATALOG_PAGE_LIMIT } from '$lib/constants/catalog';
 import { resolvePrincipal } from '$lib/server/principal';
 
@@ -38,12 +42,14 @@ export const GET: RequestHandler = async (event) => {
 		// so first-party consumers (the bean picker, dropdowns) still load — the
 		// same graceful-degradation contract the catalog page applies for
 		// ParchmentConfigError (see isCatalogSchemaUnavailableError in
-		// src/routes/catalog/+page.server.ts). Genuine upstream errors are still
-		// relayed with their status below; only the missing-config case degrades.
+		// src/routes/catalog/+page.server.ts). HTTP error responses from Parchment
+		// are still relayed below; thrown network/proxy failures keep the catalog
+		// JSON error envelope instead of falling through to SvelteKit's 500 page.
 		if (error instanceof Error && error.name === 'ParchmentConfigError') {
 			return jsonResponse({ data: [], pagination: null }, { status: 200, headers });
 		}
-		throw error;
+		const { status, body } = catalogProxyErrorResponse(error);
+		return jsonResponse(body, { status, headers });
 	}
 
 	const { status, body, upstream } = proxied;
