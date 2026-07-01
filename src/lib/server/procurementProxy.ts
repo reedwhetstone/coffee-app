@@ -2,7 +2,7 @@ import type { RequestEvent } from '@sveltejs/kit';
 import type { BriefMatchesQuery, SourcingBriefCreateRequest } from '@purveyors/sdk';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { jsonResponse } from '$lib/server/http';
-import { resolvePrincipal } from '$lib/server/principal';
+import { isTrustedMutationRequest, resolvePrincipal } from '$lib/server/principal';
 
 /**
  * Thin proxy helpers for the legacy `/v1/procurement/briefs` routes.
@@ -243,9 +243,16 @@ export async function proxyBriefMatches(
  *    would silently downgrade to an anonymous Parchment call. This mirrors the
  *    pre-proxy handler's `Authentication required` guard and the `/v1/catalog`
  *    route.
- * 2. Proxy to Parchment, converting config/network throws into the JSON error
+ * 2. Block cross-site cookie-session mutations (CSRF) before proxying. Parchment
+ *    authenticates a forwarded Bearer token and has no visibility into the
+ *    browser origin, so the Origin check must stay at this cookie→Bearer edge.
+ *    Without it, a cross-site POST that rides the victim's Supabase cookie would
+ *    be converted into a valid Bearer create call. This mirrors the pre-proxy
+ *    handler's `isTrustedMutationRequest` guard; it is a no-op for safe methods
+ *    and for API-key/bearer principals.
+ * 3. Proxy to Parchment, converting config/network throws into the JSON error
  *    contract instead of SvelteKit's generic 500 HTML page.
- * 3. Relay the upstream status/body plus rate-limit headers, always stamping the
+ * 4. Relay the upstream status/body plus rate-limit headers, always stamping the
  *    legacy Deprecation/Sunset/Link migration headers.
  */
 export async function runProcurementProxyRoute(
@@ -258,6 +265,13 @@ export async function runProcurementProxyRoute(
 		return jsonResponse(
 			{ error: 'Authentication required', message: 'Authentication required' },
 			{ status: 401, headers: withLegacyProcurementHeaders(successorUrl) }
+		);
+	}
+
+	if (!isTrustedMutationRequest(event, principal)) {
+		return jsonResponse(
+			{ error: 'Insufficient permissions', message: 'Cross-site session mutation blocked' },
+			{ status: 403, headers: withLegacyProcurementHeaders(successorUrl) }
 		);
 	}
 

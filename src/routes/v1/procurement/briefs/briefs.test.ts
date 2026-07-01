@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockCreateParchmentServerClient = vi.fn();
 const mockResolvePrincipal = vi.fn();
+const mockIsTrustedMutationRequest = vi.fn();
 const mockBriefsList = vi.fn();
 const mockBriefCreate = vi.fn();
 const mockBriefGet = vi.fn();
@@ -12,7 +13,8 @@ vi.mock('$lib/server/parchmentClient', () => ({
 }));
 
 vi.mock('$lib/server/principal', () => ({
-	resolvePrincipal: mockResolvePrincipal
+	resolvePrincipal: mockResolvePrincipal,
+	isTrustedMutationRequest: mockIsTrustedMutationRequest
 }));
 
 let collection: typeof import('./+server');
@@ -34,6 +36,7 @@ beforeEach(async () => {
 	vi.clearAllMocks();
 
 	mockResolvePrincipal.mockResolvedValue({ isAuthenticated: true });
+	mockIsTrustedMutationRequest.mockReturnValue(true);
 
 	mockBriefsList.mockResolvedValue({
 		data: { data: [{ id: 'brief-id', name: 'Kenya AA' }], meta: {} },
@@ -184,6 +187,28 @@ describe('/v1/procurement/briefs collection route', () => {
 			error: 'Authentication required',
 			message: 'Authentication required'
 		});
+	});
+
+	it('blocks a cross-site cookie-session create (CSRF) with a 403 before proxying', async () => {
+		mockIsTrustedMutationRequest.mockReturnValue(false);
+
+		const response = await collection.POST(
+			makeEvent('https://app.test/v1/procurement/briefs', {
+				method: 'POST',
+				body: JSON.stringify({ name: 'x', criteria: { country: 'Kenya' } }),
+				headers: { 'content-type': 'application/json', Origin: 'https://evil.example' }
+			})
+		);
+
+		expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
+		expect(mockBriefCreate).not.toHaveBeenCalled();
+		expect(response.status).toBe(403);
+		expect(await response.json()).toEqual({
+			error: 'Insufficient permissions',
+			message: 'Cross-site session mutation blocked'
+		});
+		// Migration headers still advertised on the CSRF-block path.
+		expect(response.headers.get('Deprecation')).toBe('true');
 	});
 
 	it('returns a JSON 503 with migration headers when Parchment is unconfigured', async () => {
