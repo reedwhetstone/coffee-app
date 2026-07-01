@@ -192,9 +192,14 @@ describe('/v1/procurement/briefs collection route', () => {
 		});
 	});
 
-	it('relays upstream validation/entitlement errors verbatim on create', async () => {
+	it('flattens an upstream validation error into the legacy envelope on create', async () => {
+		// Parchment's SDK error contract is the nested `{ error: { code, message } }`
+		// ErrorResponse. The deprecated proxy flattens it into the legacy flat
+		// `{ error, message }` envelope its own local guards use, but cannot
+		// reconstruct the retired `details.issues/allowedFields` (Parchment carries
+		// only code + message).
 		mockBriefCreate.mockResolvedValue({
-			error: { error: 'Invalid criteria', message: 'unsupported field' },
+			error: { error: { code: 'invalid_criteria', message: 'unsupported field' } },
 			response: new Response(null, { status: 400 })
 		});
 
@@ -208,14 +213,14 @@ describe('/v1/procurement/briefs collection route', () => {
 
 		expect(response.status).toBe(400);
 		expect(await response.json()).toEqual({
-			error: 'Invalid criteria',
+			error: 'invalid_criteria',
 			message: 'unsupported field'
 		});
 	});
 
-	it('relays a 402/403 entitlement response from Parchment verbatim on create', async () => {
+	it('flattens a 402/403 entitlement response from Parchment on create', async () => {
 		mockBriefCreate.mockResolvedValue({
-			error: { error: 'Insufficient permissions', message: 'member plan required' },
+			error: { error: { code: 'insufficient_permissions', message: 'member plan required' } },
 			response: new Response(null, { status: 403 })
 		});
 
@@ -229,7 +234,7 @@ describe('/v1/procurement/briefs collection route', () => {
 
 		expect(response.status).toBe(403);
 		expect(await response.json()).toEqual({
-			error: 'Insufficient permissions',
+			error: 'insufficient_permissions',
 			message: 'member plan required'
 		});
 	});
@@ -326,9 +331,9 @@ describe('/v1/procurement/briefs/[id] detail route', () => {
 		);
 	});
 
-	it('relays a 404 for a brief the caller does not own', async () => {
+	it('flattens a 404 for a brief the caller does not own into the legacy envelope', async () => {
 		mockBriefGet.mockResolvedValue({
-			error: { error: 'Not found', message: 'Sourcing brief not found' },
+			error: { error: { code: 'not_found', message: 'Sourcing brief not found' } },
 			response: new Response(null, { status: 404 })
 		});
 
@@ -336,7 +341,7 @@ describe('/v1/procurement/briefs/[id] detail route', () => {
 
 		expect(response.status).toBe(404);
 		expect(await response.json()).toEqual({
-			error: 'Not found',
+			error: 'not_found',
 			message: 'Sourcing brief not found'
 		});
 	});

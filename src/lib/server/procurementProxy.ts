@@ -131,6 +131,43 @@ export function procurementProxyErrorResponse(error: unknown): ProcurementProxyE
 }
 
 /**
+ * Flatten a Parchment error body into the legacy procurement error envelope.
+ *
+ * Parchment's SDK error contract is the nested `ErrorResponse` shape
+ * (`{ error: { code, message } }`), but the legacy `/v1/procurement` routes —
+ * and this proxy's own locally-caught guard errors (auth / entitlement / CSRF /
+ * invalid body / unconfigured) — use a flat `{ error, message }` envelope.
+ * Relaying the nested object verbatim left this deprecated route returning two
+ * different error shapes depending on whether the failure was caught locally or
+ * upstream. Flattening the upstream shape keeps the envelope consistent for the
+ * route's remaining (sunsetting) lifetime and matches what clients of the old
+ * flat contract branch on.
+ *
+ * The retired handler also emitted structured criteria detail
+ * (`details.issues` / `details.allowedFields`). Parchment's `ErrorResponse`
+ * carries only `code` + `message`, so that detail cannot be reconstructed here
+ * without re-implementing the criteria validation ADR-007 deliberately moved
+ * behind Parchment; the proxy does not resurrect that dropped logic. Bodies that
+ * are already flat (or otherwise unrecognized) pass through unchanged.
+ */
+export function toLegacyProcurementErrorBody(body: unknown): unknown {
+	if (body !== null && typeof body === 'object' && 'error' in body) {
+		const nested = (body as { error: unknown }).error;
+		if (nested !== null && typeof nested === 'object') {
+			const { code, message } = nested as { code?: unknown; message?: unknown };
+			if (typeof message === 'string') {
+				return {
+					error: typeof code === 'string' ? code : 'Request failed',
+					message
+				};
+			}
+		}
+	}
+
+	return body;
+}
+
+/**
  * Convert the incoming matches request's `page`/`limit` search params into an
  * SDK brief-matches query.
  *
@@ -319,5 +356,11 @@ export async function runProcurementProxyRoute(
 	const headers = withLegacyProcurementHeaders(successorUrl);
 	forwardProcurementUpstreamHeaders(upstream, headers);
 
-	return jsonResponse(body, { status, headers });
+	// openapi-fetch relays a non-2xx upstream body as the parsed error object, so
+	// for error statuses `body` is Parchment's nested `ErrorResponse`. Flatten it
+	// into the legacy `{ error, message }` envelope this route's local guards also
+	// use; success bodies (2xx `data`) are passed through untouched.
+	const relayBody = status >= 400 ? toLegacyProcurementErrorBody(body) : body;
+
+	return jsonResponse(relayBody, { status, headers });
 }
