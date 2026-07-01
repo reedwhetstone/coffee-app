@@ -39,7 +39,7 @@ Atomic blog ideas extracted from purveyors notes, brain captures, and conversati
 
 ## Market Intelligence
 
-- [ ] Green coffee market pulse: what the data shows right now | Source: dev DB coffee_catalog analysis | Pillar: market-intelligence | Status: raw
+- [ ] Green coffee market pulse: what the data shows right now | Source: dev DB coffee_catalog analysis | Pillar: market-intelligence | Status: drafted (PR #358, slug: what-does-a-7-lb-coffee-actually-cost) | Note: First instantiation is "What Does a $7/lb Coffee Actually Cost You?" focusing on price vs decision-readiness disconnect across 1,071 catalog listings. Built on live Purveyors API data + Trading Economics futures data + Akerlof lemons framework.
 - [ ] Origin deep dive template: pricing, availability, processing trends by country | Source: scraped data | Pillar: market-intelligence | Status: raw
 - [x] Which suppliers carry what: a data-driven comparison | Source: scraped data | Pillar: market-intelligence | Status: published via "Who Profits When Coffee Data Stays Scarce?" (PR #87, slug: who-profits-when-coffee-data-stays-scarce) | Outline: no standalone repo outline file retained | Note: Reframed away from a generic comparison post into the information-asymmetry thesis. The current live post still needs a supplier-count refresh/date-scope pass in the drift ledger.
 - [ ] Seasonal patterns in green coffee availability | Source: scraped data (stocked_date/unstocked_date) | Pillar: market-intelligence | Status: raw
