@@ -187,9 +187,10 @@ function resolveCatalogCredentialMode(locals: App.Locals): ParchmentCredentialMo
 
 // openapi-fetch resolves non-2xx catalog responses as `{ error: <json body> }`
 // instead of rejecting, so translate the parsed error body into a typed Error the
-// caller can route. The 503 `Catalog schema unavailable` body becomes a
-// CatalogSchemaUnavailableError so the controlled fallback runs; everything else
-// throws a real Error to preserve the SSR 500 path.
+// caller can route. Parchment emits a structured envelope `{ error: { code, message } }`
+// and maps CatalogSchemaUnavailableError to a 503 with `code: "schema_unavailable"`,
+// so that body becomes a CatalogSchemaUnavailableError and the controlled fallback
+// runs; everything else throws a real Error to preserve the SSR 500 path.
 function normalizeCatalogListError(error: unknown): Error {
 	if (error instanceof Error) {
 		return error;
@@ -197,8 +198,20 @@ function normalizeCatalogListError(error: unknown): Error {
 
 	if (error && typeof error === 'object') {
 		const body = error as { error?: unknown; message?: unknown };
-		const message = typeof body.message === 'string' ? body.message : undefined;
+		const envelope =
+			body.error && typeof body.error === 'object'
+				? (body.error as { code?: unknown; message?: unknown })
+				: null;
+		const envelopeMessage = typeof envelope?.message === 'string' ? envelope.message : undefined;
+		const topLevelMessage = typeof body.message === 'string' ? body.message : undefined;
+		const message = envelopeMessage ?? topLevelMessage;
 
+		// Structured Parchment envelope: `{ error: { code: "schema_unavailable", message } }`.
+		if (envelope?.code === 'schema_unavailable') {
+			return new CatalogSchemaUnavailableError(message ?? 'Catalog schema unavailable');
+		}
+
+		// Legacy/flat body shape kept for backward compatibility.
 		if (body.error === 'Catalog schema unavailable') {
 			return new CatalogSchemaUnavailableError(message ?? 'Catalog schema unavailable');
 		}
