@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import type { CatalogListQuery, components } from '@purveyors/sdk';
 import { toCatalogResourceItem } from '$lib/catalog/catalogResourceItem';
+import { CatalogSchemaUnavailableError } from '$lib/data/catalog';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import {
 	PROCESS_FACET_FILTER_KEYS,
@@ -184,9 +185,35 @@ function resolveCatalogCredentialMode(locals: App.Locals): ParchmentCredentialMo
 		: 'public-demo';
 }
 
+// openapi-fetch resolves non-2xx catalog responses as `{ error: <json body> }`
+// instead of rejecting, so translate the parsed error body into a typed Error the
+// caller can route. The 503 `Catalog schema unavailable` body becomes a
+// CatalogSchemaUnavailableError so the controlled fallback runs; everything else
+// throws a real Error to preserve the SSR 500 path.
+function normalizeCatalogListError(error: unknown): Error {
+	if (error instanceof Error) {
+		return error;
+	}
+
+	if (error && typeof error === 'object') {
+		const body = error as { error?: unknown; message?: unknown };
+		const message = typeof body.message === 'string' ? body.message : undefined;
+
+		if (body.error === 'Catalog schema unavailable') {
+			return new CatalogSchemaUnavailableError(message ?? 'Catalog schema unavailable');
+		}
+
+		if (message) {
+			return new Error(message);
+		}
+	}
+
+	return new Error(typeof error === 'string' ? error : 'Catalog request failed');
+}
+
 function extractParchmentCatalogBody(result: CatalogListResult): CatalogListBody {
 	if (result.error) {
-		throw result.error;
+		throw normalizeCatalogListError(result.error);
 	}
 
 	if (Array.isArray(result.data)) {

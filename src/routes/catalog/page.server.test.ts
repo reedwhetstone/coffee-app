@@ -486,6 +486,38 @@ describe('/catalog page load', () => {
 		expect(result.pagination).toMatchObject({ total: 0, totalPages: 0 });
 	});
 
+	it('routes the SDK 503 schema-unavailable error body into the controlled fallback', async () => {
+		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		// openapi-fetch resolves non-2xx responses as `{ error: <body> }` rather than
+		// rejecting, so the load must translate the parsed 503 body, not just catch throws.
+		mockCatalogList.mockResolvedValue({
+			error: {
+				error: 'Catalog schema unavailable',
+				message: 'Structured process filters are unavailable.'
+			}
+		});
+
+		const result = (await load(
+			makeLoadInput(
+				'member',
+				memberSession,
+				'https://app.test/catalog?processing_base_method=natural'
+			)
+		)) as {
+			data: Array<Record<string, unknown>>;
+			trainingData: Array<Record<string, unknown>>;
+			catalogSchemaUnavailable: { message: string } | null;
+			pagination: { total: number; totalPages: number };
+		};
+
+		expect(result.catalogSchemaUnavailable).toEqual({
+			message: 'Structured process filters are unavailable.'
+		});
+		expect(result.data).toEqual([]);
+		expect(result.trainingData).toEqual([]);
+		expect(result.pagination).toMatchObject({ total: 0, totalPages: 0 });
+	});
+
 	it('keeps the catalog page renderable when Parchment configuration is unavailable', async () => {
 		const error = new Error('PARCHMENT_API_BASE_URL is not configured.');
 		error.name = 'ParchmentConfigError';
