@@ -1,5 +1,5 @@
 import type { RequestEvent } from '@sveltejs/kit';
-import type { CatalogListQuery } from '@purveyors/sdk';
+import type { CatalogListQuery, CatalogSimilarQuery } from '@purveyors/sdk';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 
 /**
@@ -42,6 +42,58 @@ export function toCatalogListQuery(url: URL): CatalogListQuery {
 	return query as CatalogListQuery;
 }
 
+const CATALOG_SIMILAR_QUERY_KEYS = ['threshold', 'limit', 'stocked_only', 'mode'] as const;
+const POSTGRES_INT4_MAX = 2_147_483_647;
+const POSTGRES_INT4_MAX_STRING = String(POSTGRES_INT4_MAX);
+
+export const CATALOG_ID_EXPECTED_FORMAT = 'positive integer less than or equal to 2147483647';
+
+export class CatalogProxyValidationError extends Error {
+	constructor(
+		public parameter: string,
+		public value: string,
+		public expected: string
+	) {
+		super(`Query parameter "${parameter}" must use ${expected}`);
+		this.name = 'CatalogProxyValidationError';
+	}
+}
+
+export function parseCatalogProxyId(rawId: string | undefined): string {
+	if (!rawId || !/^\d+$/.test(rawId)) {
+		throw new CatalogProxyValidationError('id', rawId ?? '', 'positive integer');
+	}
+
+	const normalizedId = rawId.replace(/^0+/, '') || '0';
+	if (normalizedId === '0') {
+		throw new CatalogProxyValidationError('id', rawId, 'positive integer');
+	}
+
+	if (
+		normalizedId.length > POSTGRES_INT4_MAX_STRING.length ||
+		(normalizedId.length === POSTGRES_INT4_MAX_STRING.length &&
+			normalizedId > POSTGRES_INT4_MAX_STRING)
+	) {
+		throw new CatalogProxyValidationError('id', rawId, CATALOG_ID_EXPECTED_FORMAT);
+	}
+
+	return normalizedId;
+}
+
+export function toCatalogSimilarQuery(url: URL): CatalogSimilarQuery {
+	const query: Record<string, string | number> = {};
+
+	for (const key of CATALOG_SIMILAR_QUERY_KEYS) {
+		const value = url.searchParams.get(key);
+		if (value === null) continue;
+		query[key] = key === 'limit' && /^\d+$/.test(value) ? Number.parseInt(value, 10) : value;
+	}
+
+	// Parchment owns query validation. The cast allows coffee-app to forward the
+	// canonical snake_case query keys without re-creating the upstream parser here.
+	return query as CatalogSimilarQuery;
+}
+
 /**
  * Relay the rate-limit headers from a Parchment response onto the outgoing
  * headers so proxied callers see the same throttling metadata they did before.
@@ -62,6 +114,8 @@ export interface CatalogListProxyResult {
 	body: unknown;
 	upstream: Response;
 }
+
+export type CatalogSimilarProxyResult = CatalogListProxyResult;
 
 export interface CatalogProxyErrorResponse {
 	status: number;
@@ -130,6 +184,21 @@ export async function proxyCatalogList(
 
 	const client = await createParchmentServerClient(event, { mode: 'session' });
 	const { data, error, response } = await client.catalog.list(query as CatalogListQuery);
+
+	return {
+		status: response.status,
+		body: error ?? data,
+		upstream: response
+	};
+}
+
+export async function proxyCatalogSimilar(
+	event: RequestEvent,
+	id: string,
+	query: CatalogSimilarQuery
+): Promise<CatalogSimilarProxyResult> {
+	const client = await createParchmentServerClient(event, { mode: 'session' });
+	const { data, error, response } = await client.catalog.similar(id, query);
 
 	return {
 		status: response.status,
