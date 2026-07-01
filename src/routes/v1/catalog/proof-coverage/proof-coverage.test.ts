@@ -1,33 +1,71 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockBuildCatalogProofCoverageResponse = vi.fn();
+const mockCreateParchmentServerClient = vi.fn();
+const mockProofCoverage = vi.fn();
 
-vi.mock('$lib/server/catalogResource', () => ({
-	buildCatalogProofCoverageResponse: mockBuildCatalogProofCoverageResponse
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentServerClient: mockCreateParchmentServerClient
 }));
 
 let GET: typeof import('./+server').GET;
 
+function makeEvent(url: string) {
+	return {
+		url: new URL(url),
+		request: new Request(url),
+		fetch: vi.fn(),
+		locals: {}
+	} as unknown as Parameters<NonNullable<typeof GET>>[0];
+}
+
 beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
+
+	mockProofCoverage.mockResolvedValue({
+		data: { meta: {}, coverage: { overall: [] } },
+		response: new Response(null, { status: 200 })
+	});
+	mockCreateParchmentServerClient.mockResolvedValue({
+		catalog: { proofCoverage: mockProofCoverage }
+	});
+
 	({ GET } = await import('./+server'));
 });
 
 describe('/v1/catalog/proof-coverage route', () => {
-	it('delegates to the shared proof coverage builder', async () => {
-		const expected = new Response(JSON.stringify({ ok: true }), { status: 200 });
-		mockBuildCatalogProofCoverageResponse.mockResolvedValue(expected);
+	it('proxies the caller credential to Parchment and relays the aggregate', async () => {
+		const response = await GET(makeEvent('https://app.test/v1/catalog/proof-coverage?stocked=true'));
 
-		const response = await GET({
-			url: new URL('https://app.test/v1/catalog/proof-coverage?stocked=true'),
-			request: new Request('https://app.test/v1/catalog/proof-coverage?stocked=true'),
-			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session'
+		});
+		expect(mockProofCoverage).toHaveBeenCalledTimes(1);
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ meta: {}, coverage: { overall: [] } });
+	});
 
-		expect(response).toBe(expected);
-		expect(mockBuildCatalogProofCoverageResponse).toHaveBeenCalledWith(expect.anything(), {
-			requestPath: '/v1/catalog/proof-coverage'
+	it('adds deprecation, successor-version, and sunset headers', async () => {
+		const response = await GET(makeEvent('https://app.test/v1/catalog/proof-coverage'));
+
+		expect(response.headers.get('Deprecation')).toBe('true');
+		expect(response.headers.get('Link')).toContain('/v1/catalog/proof-coverage');
+		expect(response.headers.get('Link')).toContain('rel="successor-version"');
+		expect(response.headers.get('Sunset')).toBe('Thu, 31 Dec 2026 23:59:59 GMT');
+	});
+
+	it('relays upstream error bodies and status codes', async () => {
+		mockProofCoverage.mockResolvedValue({
+			error: { error: 'Catalog schema unavailable', message: 'unavailable' },
+			response: new Response(null, { status: 503 })
+		});
+
+		const response = await GET(makeEvent('https://app.test/v1/catalog/proof-coverage'));
+
+		expect(response.status).toBe(503);
+		expect(await response.json()).toEqual({
+			error: 'Catalog schema unavailable',
+			message: 'unavailable'
 		});
 	});
 });
