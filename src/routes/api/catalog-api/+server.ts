@@ -1,7 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { AuthError, requireApiKeyAccess } from '$lib/server/auth';
-import { buildCanonicalCatalogResponse } from '$lib/server/catalogResource';
+import { jsonResponse } from '$lib/server/http';
+import {
+	catalogProxyErrorResponse,
+	forwardCatalogUpstreamHeaders,
+	proxyCatalogList
+} from '$lib/server/catalogProxy';
 
 const LEGACY_CATALOG_API_HEADERS = {
 	Deprecation: 'true',
@@ -19,14 +24,13 @@ function withLegacyCatalogHeaders(headers: HeadersInit = {}): Headers {
 	return merged;
 }
 
-// Legacy endpoint — delegates to the canonical /v1/catalog resource.
+// Legacy endpoint — proxies the canonical Parchment /v1/catalog surface (ADR-007).
+// The local API-key gate is retained so anonymous and session-only callers keep
+// getting 401/403 here; ADR-004 narrows this alias to API-key callers only.
 // A 308 redirect was attempted here previously but does not work under
 // adapter-vercel: the framework converts it to HTTP 200 with an empty body,
-// silently breaking callers who followed the redirect. Delegating to the
-// canonical handler directly is the only reliable option under this adapter.
-//
-// ADR-004 narrows this alias to API-key callers only. Anonymous discovery,
-// browser sessions, and public docs should all point at /v1/catalog instead.
+// silently breaking callers who followed the redirect. Proxying directly is the
+// only reliable option under this adapter.
 export const GET: RequestHandler = async (event) => {
 	try {
 		await requireApiKeyAccess(event, {
@@ -50,12 +54,19 @@ export const GET: RequestHandler = async (event) => {
 		throw error;
 	}
 
-	const response = await buildCanonicalCatalogResponse(event, {
-		requestPath: '/api/catalog-api'
-	});
+	// Surface config/network failures as the catalog JSON 5xx contract (with the
+	// legacy deprecation headers) instead of SvelteKit's generic 500 HTML page.
+	let proxied: Awaited<ReturnType<typeof proxyCatalogList>>;
+	try {
+		proxied = await proxyCatalogList(event);
+	} catch (error) {
+		const { status, body } = catalogProxyErrorResponse(error);
+		return json(body, { status, headers: withLegacyCatalogHeaders() });
+	}
 
-	return new Response(response.body, {
-		status: response.status,
-		headers: withLegacyCatalogHeaders(response.headers)
-	});
+	const { status, body, upstream } = proxied;
+	const headers = withLegacyCatalogHeaders();
+	forwardCatalogUpstreamHeaders(upstream, headers);
+
+	return jsonResponse(body, { status, headers });
 };

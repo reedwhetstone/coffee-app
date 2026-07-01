@@ -725,20 +725,20 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Proof coverage aggregate',
 				body: [
-					'GET /v1/catalog/proof-coverage summarizes the same proof-summary vocabulary exposed by include=proof. It reports overall labels, family label distributions, signal counts, top missing families, and explicit limitations for the visible catalog scope.',
+					'GET /v1/catalog/proof-coverage summarizes the same proof-summary vocabulary exposed by include=proof. The response is nested under two objects: meta (resource, namespace, version, auth, and access with publicOnly, sampled, and totalAvailable) and coverage (overall labels, family label distributions, signal counts, top missing families, and explicit limitations) for the visible catalog scope.',
 					'The endpoint is aggregate-only. It is safe as a public proof-of-value surface because it does not expose raw processing_evidence, raw supplier quotes, row-level evidence, certification claims, supplier rankings, or paid proof-query filters.',
-					'API-key requests preserve X-RateLimit-* headers and plan-scoped visibility. Anonymous and session requests follow the same catalog visibility and process-facet capability rules as /v1/catalog.'
+					'API-key requests preserve X-RateLimit-* headers and plan-scoped visibility. Anonymous and session requests follow the same catalog visibility and process-facet capability rules as /v1/catalog. Coverage scope and any stocked/filter narrowing are owned by the canonical Parchment surface; the aggregate does not currently accept its own query parameters.'
 				],
 				codeBlocks: [
 					{
 						label: 'GET /v1/catalog/proof-coverage',
 						language: 'json',
-						code: '{\n  "resource": "catalog-proof-coverage",\n  "namespace": "/v1/catalog/proof-coverage",\n  "version": "v1",\n  "scope": { "total_rows": 814 },\n  "overall": [{ "label": "strong", "count": 488, "share": 0.6 }],\n  "families": {\n    "process": [{ "label": "disclosed", "count": 260, "share": 0.319 }]\n  },\n  "signals": { "process.base_method": 260 },\n  "top_gaps": [{ "family": "process", "label": "not_available", "count": 320, "share": 0.393 }],\n  "limitations": ["not_certification", "raw_evidence_not_included"]\n}'
+						code: '{\n  "meta": {\n    "resource": "catalog-proof-coverage",\n    "namespace": "/v1/catalog/proof-coverage",\n    "version": "v1",\n    "auth": { "kind": "anonymous", "role": null, "apiPlan": null },\n    "access": { "publicOnly": true, "sampled": 814, "totalAvailable": 814 }\n  },\n  "coverage": {\n    "overall": [{ "label": "strong", "count": 488, "share": 0.6 }],\n    "families": {\n      "process": [{ "label": "disclosed", "count": 260, "share": 0.319 }]\n    },\n    "signals": { "process.base_method": 260 },\n    "top_gaps": [{ "family": "process", "label": "not_available", "count": 320, "share": 0.393 }],\n    "limitations": ["not_certification", "raw_evidence_not_included"]\n  }\n}'
 					},
 					{
 						label: 'Proof coverage smoke test',
 						language: 'bash',
-						code: 'curl "https://purveyors.io/v1/catalog/proof-coverage?stocked=true" \\\
+						code: 'curl "https://purveyors.io/v1/catalog/proof-coverage" \\\
   -H "Authorization: Bearer $PURVEYORS_API_KEY"'
 					}
 				]
