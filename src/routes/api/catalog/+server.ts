@@ -11,11 +11,30 @@ import { MAX_CATALOG_PAGE_LIMIT } from '$lib/constants/catalog';
 // full-list contract for consumers that never page (e.g. the bean picker in
 // src/routes/beans), an unparameterized request injects a high default limit.
 export const GET: RequestHandler = async (event) => {
-	const { status, body, upstream } = await proxyCatalogList(event, {
-		defaultLimit: MAX_CATALOG_PAGE_LIMIT
-	});
 	const headers = new Headers();
 	headers.set('X-Purveyors-Canonical-Resource', '/v1/catalog');
+
+	let proxied: Awaited<ReturnType<typeof proxyCatalogList>>;
+	try {
+		proxied = await proxyCatalogList(event, {
+			defaultLimit: MAX_CATALOG_PAGE_LIMIT
+		});
+	} catch (error) {
+		// When Parchment is unconfigured (e.g. CI/preview environments without
+		// PARCHMENT_API_BASE_URL), the client factory throws ParchmentConfigError
+		// before any request is made. Degrade to an empty catalog instead of a 500
+		// so first-party consumers (the bean picker, dropdowns) still load — the
+		// same graceful-degradation contract the catalog page applies for
+		// ParchmentConfigError (see isCatalogSchemaUnavailableError in
+		// src/routes/catalog/+page.server.ts). Genuine upstream errors are still
+		// relayed with their status below; only the missing-config case degrades.
+		if (error instanceof Error && error.name === 'ParchmentConfigError') {
+			return jsonResponse({ data: [], pagination: null }, { status: 200, headers });
+		}
+		throw error;
+	}
+
+	const { status, body, upstream } = proxied;
 	forwardCatalogUpstreamHeaders(upstream, headers);
 
 	if (status >= 400) {

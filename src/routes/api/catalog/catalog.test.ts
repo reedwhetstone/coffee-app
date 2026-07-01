@@ -87,4 +87,20 @@ describe('/api/catalog route', () => {
 			message: 'unavailable'
 		});
 	});
+
+	it('degrades to an empty catalog when Parchment is unconfigured', async () => {
+		// The client factory throws ParchmentConfigError before any request when
+		// PARCHMENT_API_BASE_URL is unset (e.g. CI/preview). The endpoint must not
+		// hard-fail: it returns an empty catalog so first-party callers still load,
+		// matching the catalog page's ParchmentConfigError degradation.
+		const configError = new Error('PARCHMENT_API_BASE_URL is not configured');
+		configError.name = 'ParchmentConfigError';
+		mockCreateParchmentServerClient.mockRejectedValue(configError);
+
+		const response = await GET(makeEvent('https://app.test/api/catalog'));
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBe('/v1/catalog');
+		expect(await response.json()).toEqual({ data: [], pagination: null });
+	});
 });
