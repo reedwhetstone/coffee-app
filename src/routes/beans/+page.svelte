@@ -6,6 +6,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { canManagePortfolio } from '$lib/services/portfolioAccess';
+	import { MAX_CATALOG_PAGE_LIMIT } from '$lib/constants/catalog';
 
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 
@@ -176,7 +177,10 @@
 		}
 
 		catalogLoadPromise = (async () => {
-			const catalogResponse = await fetch('/api/catalog');
+			// Request the full catalog explicitly: /api/catalog now proxies Parchment,
+			// which paginates by default, so ask for the max page size to keep the bean
+			// picker able to select any bean rather than only the first page.
+			const catalogResponse = await fetch(`/api/catalog?limit=${MAX_CATALOG_PAGE_LIMIT}`);
 			if (!catalogResponse.ok) {
 				throw new Error('Failed to fetch catalog data');
 			}

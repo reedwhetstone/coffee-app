@@ -63,6 +63,17 @@ export interface CatalogListProxyResult {
 	upstream: Response;
 }
 
+export interface ProxyCatalogListOptions {
+	/**
+	 * When the caller omits both `page` and `limit`, request up to this many rows
+	 * so the endpoint approximates its historical unbounded full-list contract
+	 * instead of falling back to Parchment's small default page size. Used by the
+	 * legacy in-app `/api/catalog` endpoint, whose consumers (e.g. the bean picker)
+	 * expect the whole catalog in one unparameterized request.
+	 */
+	defaultLimit?: number;
+}
+
 /**
  * Proxy a catalog list request to Parchment, forwarding the caller credential.
  *
@@ -70,9 +81,22 @@ export interface CatalogListProxyResult {
  * so the parsed error body is relayed with the upstream status just like a
  * success body. Only genuine network failures reject.
  */
-export async function proxyCatalogList(event: RequestEvent): Promise<CatalogListProxyResult> {
+export async function proxyCatalogList(
+	event: RequestEvent,
+	options: ProxyCatalogListOptions = {}
+): Promise<CatalogListProxyResult> {
+	const query = toCatalogListQuery(event.url) as Record<string, string | string[]>;
+
+	// Restore the legacy full-list contract: an unparameterized request injects a
+	// high default limit so callers that never paged (and relied on the old
+	// unbounded array) still receive the full catalog rather than one small page.
+	const hasPaging = event.url.searchParams.has('page') || event.url.searchParams.has('limit');
+	if (options.defaultLimit != null && !hasPaging) {
+		query.limit = String(options.defaultLimit);
+	}
+
 	const client = await createParchmentServerClient(event, { mode: 'session' });
-	const { data, error, response } = await client.catalog.list(toCatalogListQuery(event.url));
+	const { data, error, response } = await client.catalog.list(query as CatalogListQuery);
 
 	return {
 		status: response.status,

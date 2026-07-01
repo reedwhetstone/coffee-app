@@ -35,12 +35,16 @@ beforeEach(async () => {
 
 describe('/v1/catalog/proof-coverage route', () => {
 	it('proxies the caller credential to Parchment and relays the aggregate', async () => {
-		const response = await GET(makeEvent('https://app.test/v1/catalog/proof-coverage?stocked=true'));
+		const response = await GET(makeEvent('https://app.test/v1/catalog/proof-coverage'));
 
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
 			mode: 'session'
 		});
+		// The canonical proofCoverage() surface takes no query args: coverage scope
+		// and any stocked/filter narrowing are owned by Parchment, so the route
+		// forwards nothing and the aggregate is relayed verbatim.
 		expect(mockProofCoverage).toHaveBeenCalledTimes(1);
+		expect(mockProofCoverage).toHaveBeenCalledWith();
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({ meta: {}, coverage: { overall: [] } });
 	});

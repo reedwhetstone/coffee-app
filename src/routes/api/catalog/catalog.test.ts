@@ -50,7 +50,7 @@ describe('/api/catalog route', () => {
 	});
 
 	it('unwraps the canonical envelope into the legacy paginated shape', async () => {
-		const response = await GET(makeEvent('https://app.test/api/catalog'));
+		const response = await GET(makeEvent('https://app.test/api/catalog?page=1&limit=15'));
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBe('/v1/catalog');
@@ -60,15 +60,16 @@ describe('/api/catalog route', () => {
 		});
 	});
 
-	it('returns a bare data array when Parchment omits pagination', async () => {
-		mockCatalogList.mockResolvedValue({
-			data: { data: [{ id: 3 }], pagination: null, meta: {} },
-			response: new Response(null, { status: 200 })
-		});
+	it('injects the max default limit for the legacy full-list contract when unparameterized', async () => {
+		await GET(makeEvent('https://app.test/api/catalog'));
 
-		const response = await GET(makeEvent('https://app.test/api/catalog'));
+		expect(mockCatalogList).toHaveBeenCalledWith(expect.objectContaining({ limit: '1000' }));
+	});
 
-		expect(await response.json()).toEqual([{ id: 3 }]);
+	it('does not override an explicit limit', async () => {
+		await GET(makeEvent('https://app.test/api/catalog?limit=25'));
+
+		expect(mockCatalogList).toHaveBeenCalledWith(expect.objectContaining({ limit: '25' }));
 	});
 
 	it('relays upstream error bodies and status codes with the canonical resource header', async () => {
