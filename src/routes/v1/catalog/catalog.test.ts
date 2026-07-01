@@ -2,17 +2,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockCreateParchmentServerClient = vi.fn();
 const mockCatalogList = vi.fn();
+const mockResolvePrincipal = vi.fn();
 
 vi.mock('$lib/server/parchmentClient', () => ({
 	createParchmentServerClient: mockCreateParchmentServerClient
 }));
 
+vi.mock('$lib/server/principal', () => ({
+	resolvePrincipal: mockResolvePrincipal
+}));
+
 let GET: typeof import('./+server').GET;
 
-function makeEvent(url: string) {
+function makeEvent(url: string, init?: RequestInit) {
 	return {
 		url: new URL(url),
-		request: new Request(url),
+		request: new Request(url, init),
 		fetch: vi.fn(),
 		locals: {}
 	} as unknown as Parameters<NonNullable<typeof GET>>[0];
@@ -21,6 +26,10 @@ function makeEvent(url: string) {
 beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
+
+	// Default: caller is anonymous. The invalid-bearer guard only triggers when an
+	// Authorization header is also present, so header-less proxy tests are unaffected.
+	mockResolvePrincipal.mockResolvedValue({ isAuthenticated: false });
 
 	mockCatalogList.mockResolvedValue({
 		data: { data: [{ id: 1 }], pagination: { total: 1 }, meta: {} },
@@ -64,13 +73,26 @@ describe('/v1/catalog route', () => {
 		);
 	});
 
-	it('adds deprecation, successor-version, and sunset headers', async () => {
+	it('rejects a present-but-invalid Authorization header with 401 before proxying', async () => {
+		const response = await GET(
+			makeEvent('https://app.test/v1/catalog', {
+				headers: { Authorization: 'Bearer definitely_invalid' }
+			})
+		);
+
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual(
+			expect.objectContaining({ error: 'Authentication required' })
+		);
+		expect(mockCatalogList).not.toHaveBeenCalled();
+	});
+
+	it('does not advertise deprecation/sunset headers on the stable v1 route', async () => {
 		const response = await GET(makeEvent('https://app.test/v1/catalog'));
 
-		expect(response.headers.get('Deprecation')).toBe('true');
-		expect(response.headers.get('Link')).toContain('/v1/catalog');
-		expect(response.headers.get('Link')).toContain('rel="successor-version"');
-		expect(response.headers.get('Sunset')).toBe('Thu, 31 Dec 2026 23:59:59 GMT');
+		expect(response.headers.get('Deprecation')).toBeNull();
+		expect(response.headers.get('Link')).toBeNull();
+		expect(response.headers.get('Sunset')).toBeNull();
 	});
 
 	it('relays upstream error bodies and status codes', async () => {
