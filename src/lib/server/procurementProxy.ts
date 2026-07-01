@@ -74,7 +74,7 @@ export interface ProcurementProxyResult {
 
 export interface ProcurementProxyErrorResponse {
 	status: number;
-	body: { error: string; message: string };
+	body: { error: string; message: string; details?: { field: string } };
 }
 
 /**
@@ -105,9 +105,13 @@ export class ProcurementInvalidBodyError extends Error {
  */
 export function procurementProxyErrorResponse(error: unknown): ProcurementProxyErrorResponse {
 	if (error instanceof ProcurementInvalidBodyError) {
+		// Restore the legacy invalid-body response shape: malformed JSON is rejected
+		// locally and never reaches Parchment, so the structured `details.field: 'body'`
+		// the removed `createValidationBody(...)` path emitted must be preserved here
+		// for clients that branch on the structured field detail.
 		return {
 			status: 400,
-			body: { error: 'Invalid request', message: error.message }
+			body: { error: 'Invalid request', message: error.message, details: { field: 'body' } }
 		};
 	}
 

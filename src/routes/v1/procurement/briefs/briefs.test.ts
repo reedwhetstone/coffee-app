@@ -127,7 +127,8 @@ describe('/v1/procurement/briefs collection route', () => {
 		expect(response.status).toBe(400);
 		expect(await response.json()).toEqual({
 			error: 'Invalid request',
-			message: 'Request body must be valid JSON'
+			message: 'Request body must be valid JSON',
+			details: { field: 'body' }
 		});
 		// Migration headers are still advertised on the error path.
 		expect(response.headers.get('Deprecation')).toBe('true');
