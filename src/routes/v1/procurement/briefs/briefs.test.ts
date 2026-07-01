@@ -340,6 +340,21 @@ describe('/v1/procurement/briefs/[id] detail route', () => {
 			message: 'Sourcing brief not found'
 		});
 	});
+
+	it('encodes a malformed decoded id so a newline/reserved char cannot corrupt the Link header', async () => {
+		const rawId = 'brief\nid/../%3F';
+		const response = await detail.GET(
+			makeEvent('https://app.test/v1/procurement/briefs/anything', undefined, rawId)
+		);
+
+		// The raw decoded id is still forwarded to the SDK, which does its own encoding.
+		expect(mockBriefGet).toHaveBeenCalledWith(rawId);
+		// The successor URL encodes the segment, so Headers.set('Link', ...) never throws.
+		expect(response.status).toBe(200);
+		expect(response.headers.get('Link')).toBe(
+			`<https://api.purveyors.io/v1/procurement/briefs/${encodeURIComponent(rawId)}>; rel="successor-version"`
+		);
+	});
 });
 
 describe('/v1/procurement/briefs/[id]/matches route', () => {
@@ -361,5 +376,20 @@ describe('/v1/procurement/briefs/[id]/matches route', () => {
 		);
 
 		expect(mockBriefMatches).toHaveBeenCalledWith('brief-id', { page: 'abc' });
+	});
+
+	it('encodes a malformed decoded id so a newline/reserved char cannot corrupt the Link header', async () => {
+		const rawId = 'brief\nid/../%3F';
+		const response = await matches.GET(
+			makeEvent('https://app.test/v1/procurement/briefs/anything/matches', undefined, rawId)
+		);
+
+		// The raw decoded id is still forwarded to the SDK, which does its own encoding.
+		expect(mockBriefMatches).toHaveBeenCalledWith(rawId, {});
+		// The successor URL encodes the segment, so Headers.set('Link', ...) never throws.
+		expect(response.status).toBe(200);
+		expect(response.headers.get('Link')).toBe(
+			`<https://api.purveyors.io/v1/procurement/briefs/${encodeURIComponent(rawId)}/matches>; rel="successor-version"`
+		);
 	});
 });
