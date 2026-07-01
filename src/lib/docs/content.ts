@@ -1060,7 +1060,8 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Procurement seed',
 		intro: [
 			'Procurement briefs save a narrow, versioned sourcing intent for one account. They are the durable contract for agents, CLI workflows, and later web surfaces that need to ask: what currently matches this buying brief?',
-			'The first version deliberately supports only pre-pagination-safe catalog constraints. Unsupported filters are rejected instead of stored as no-ops, and manual matches explain why each returned listing satisfies the saved criteria without ranking the coffee as objectively better.'
+			'The first version deliberately supports only pre-pagination-safe catalog constraints. Unsupported filters are rejected instead of stored as no-ops, and manual matches explain why each returned listing satisfies the saved criteria without ranking the coffee as objectively better.',
+			'The purveyors.io host path is a deprecated compatibility proxy: every response carries Deprecation, Sunset (Dec 31 2026), and Link: <https://api.purveyors.io/v1/procurement/briefs>; rel="successor-version" headers. Point new integrations at the canonical api.purveyors.io host.'
 		],
 		sections: [
 			{
@@ -1197,8 +1198,8 @@ const docsPages: DocsPage[] = [
 							'/v1/procurement/briefs',
 							'GET, POST',
 							'Member session or API key with API Origin or Enterprise plus catalog:read',
-							'Stable external procurement seed',
-							'Creates and lists user-owned saved sourcing criteria. /v1/procurement/briefs/{id} gets one brief, and /v1/procurement/briefs/{id}/matches runs deterministic catalog matches.'
+							'Deprecated compatibility proxy',
+							'Creates and lists user-owned saved sourcing criteria. /v1/procurement/briefs/{id} gets one brief, and /v1/procurement/briefs/{id}/matches runs deterministic catalog matches. The purveyors.io host path is a deprecated proxy that stamps Deprecation, Sunset (Dec 31 2026), and Link: <https://api.purveyors.io/v1/procurement/briefs>; rel="successor-version" — migrate integrations to the canonical api.purveyors.io host.'
 						],
 						[
 							'/v1/price-index',

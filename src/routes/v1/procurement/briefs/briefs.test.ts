@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockCreateParchmentServerClient = vi.fn();
 const mockResolvePrincipal = vi.fn();
 const mockIsTrustedMutationRequest = vi.fn();
+const mockIsProcurementEntitled = vi.fn();
 const mockBriefsList = vi.fn();
 const mockBriefCreate = vi.fn();
 const mockBriefGet = vi.fn();
@@ -14,7 +15,8 @@ vi.mock('$lib/server/parchmentClient', () => ({
 
 vi.mock('$lib/server/principal', () => ({
 	resolvePrincipal: mockResolvePrincipal,
-	isTrustedMutationRequest: mockIsTrustedMutationRequest
+	isTrustedMutationRequest: mockIsTrustedMutationRequest,
+	isProcurementEntitled: mockIsProcurementEntitled
 }));
 
 let collection: typeof import('./+server');
@@ -37,6 +39,7 @@ beforeEach(async () => {
 
 	mockResolvePrincipal.mockResolvedValue({ isAuthenticated: true });
 	mockIsTrustedMutationRequest.mockReturnValue(true);
+	mockIsProcurementEntitled.mockReturnValue(true);
 
 	mockBriefsList.mockResolvedValue({
 		data: { data: [{ id: 'brief-id', name: 'Kenya AA' }], meta: {} },
@@ -128,6 +131,64 @@ describe('/v1/procurement/briefs collection route', () => {
 		});
 		// Migration headers are still advertised on the error path.
 		expect(response.headers.get('Deprecation')).toBe('true');
+	});
+
+	it('rejects an anonymous create with 401 before parsing the body (status is not body-syntax dependent)', async () => {
+		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: false });
+		mockIsProcurementEntitled.mockReturnValue(false);
+
+		const response = await collection.POST(
+			makeEvent('https://app.test/v1/procurement/briefs', {
+				method: 'POST',
+				body: 'not json{',
+				headers: { 'content-type': 'application/json' }
+			})
+		);
+
+		expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
+		expect(mockBriefCreate).not.toHaveBeenCalled();
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual({
+			error: 'Authentication required',
+			message: 'Authentication required'
+		});
+		expect(response.headers.get('Deprecation')).toBe('true');
+	});
+
+	it('rejects an under-entitled create with 403 before parsing the body (malformed and valid JSON match)', async () => {
+		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: true });
+		mockIsProcurementEntitled.mockReturnValue(false);
+
+		const response = await collection.POST(
+			makeEvent('https://app.test/v1/procurement/briefs', {
+				method: 'POST',
+				body: 'not json{',
+				headers: { 'content-type': 'application/json' }
+			})
+		);
+
+		expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
+		expect(mockBriefCreate).not.toHaveBeenCalled();
+		expect(response.status).toBe(403);
+		expect(await response.json()).toEqual({
+			error: 'Insufficient permissions',
+			message: 'Procurement briefs require a member or enterprise entitlement'
+		});
+		expect(response.headers.get('Deprecation')).toBe('true');
+	});
+
+	it('rejects an under-entitled list with 403 before proxying to Parchment', async () => {
+		mockIsProcurementEntitled.mockReturnValue(false);
+
+		const response = await collection.GET(makeEvent('https://app.test/v1/procurement/briefs'));
+
+		expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
+		expect(mockBriefsList).not.toHaveBeenCalled();
+		expect(response.status).toBe(403);
+		expect(await response.json()).toEqual({
+			error: 'Insufficient permissions',
+			message: 'Procurement briefs require a member or enterprise entitlement'
+		});
 	});
 
 	it('relays upstream validation/entitlement errors verbatim on create', async () => {

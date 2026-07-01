@@ -2,7 +2,11 @@ import type { RequestEvent } from '@sveltejs/kit';
 import type { BriefMatchesQuery, SourcingBriefCreateRequest } from '@purveyors/sdk';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { jsonResponse } from '$lib/server/http';
-import { isTrustedMutationRequest, resolvePrincipal } from '$lib/server/principal';
+import {
+	isProcurementEntitled,
+	isTrustedMutationRequest,
+	resolvePrincipal
+} from '$lib/server/principal';
 
 /**
  * Thin proxy helpers for the legacy `/v1/procurement/briefs` routes.
@@ -243,16 +247,23 @@ export async function proxyBriefMatches(
  *    would silently downgrade to an anonymous Parchment call. This mirrors the
  *    pre-proxy handler's `Authentication required` guard and the `/v1/catalog`
  *    route.
- * 2. Block cross-site cookie-session mutations (CSRF) before proxying. Parchment
+ * 2. Enforce the documented member entitlement before parsing any body or
+ *    forwarding the credential. Anonymous callers get 401 and under-entitled
+ *    (viewer session / viewer API plan) callers get 403 *before* the create
+ *    body is read, so the status no longer depends on body syntax. This mirrors
+ *    the pre-proxy handler's shared access check and the documented contract
+ *    ("callers hit 401/403 before brief data is read or written"). Parchment
+ *    stays the authoritative enforcer of criteria and per-user ownership.
+ * 3. Block cross-site cookie-session mutations (CSRF) before proxying. Parchment
  *    authenticates a forwarded Bearer token and has no visibility into the
  *    browser origin, so the Origin check must stay at this cookie→Bearer edge.
  *    Without it, a cross-site POST that rides the victim's Supabase cookie would
  *    be converted into a valid Bearer create call. This mirrors the pre-proxy
  *    handler's `isTrustedMutationRequest` guard; it is a no-op for safe methods
  *    and for API-key/bearer principals.
- * 3. Proxy to Parchment, converting config/network throws into the JSON error
+ * 4. Proxy to Parchment, converting config/network throws into the JSON error
  *    contract instead of SvelteKit's generic 500 HTML page.
- * 4. Relay the upstream status/body plus rate-limit headers, always stamping the
+ * 5. Relay the upstream status/body plus rate-limit headers, always stamping the
  *    legacy Deprecation/Sunset/Link migration headers.
  */
 export async function runProcurementProxyRoute(
@@ -265,6 +276,23 @@ export async function runProcurementProxyRoute(
 		return jsonResponse(
 			{ error: 'Authentication required', message: 'Authentication required' },
 			{ status: 401, headers: withLegacyProcurementHeaders(successorUrl) }
+		);
+	}
+
+	if (!isProcurementEntitled(principal)) {
+		if (!principal.isAuthenticated) {
+			return jsonResponse(
+				{ error: 'Authentication required', message: 'Authentication required' },
+				{ status: 401, headers: withLegacyProcurementHeaders(successorUrl) }
+			);
+		}
+
+		return jsonResponse(
+			{
+				error: 'Insufficient permissions',
+				message: 'Procurement briefs require a member or enterprise entitlement'
+			},
+			{ status: 403, headers: withLegacyProcurementHeaders(successorUrl) }
 		);
 	}
 

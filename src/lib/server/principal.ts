@@ -553,6 +553,30 @@ export function requiresSessionOriginCheck(principal: RequestPrincipal, request:
 	return isSessionPrincipal(principal) && !SAFE_METHODS.has(request.method.toUpperCase());
 }
 
+/**
+ * Coarse member-entitlement gate for the legacy `/v1/procurement/briefs` proxy.
+ *
+ * Procurement is a member-gated resource (ADR-007 documented contract): a
+ * member/admin session or a member/enterprise API plan may read or write briefs.
+ * coffee-app enforces this coarse gate locally so anonymous callers get 401 and
+ * under-entitled callers get 403 *before* any create body is parsed or the
+ * credential is forwarded — matching the documented "before brief data is read
+ * or written" contract. Parchment remains the authoritative enforcer of
+ * fine-grained criteria validation and per-user ownership; this is a fast-path
+ * preflight, not a reimplementation of that logic.
+ */
+export function isProcurementEntitled(principal: RequestPrincipal): boolean {
+	if (isApiKeyPrincipal(principal)) {
+		return principalHasApiPlan(principal, 'member');
+	}
+
+	if (isSessionPrincipal(principal)) {
+		return principalHasRole(principal, 'member');
+	}
+
+	return false;
+}
+
 export function requestHasTrustedOrigin(event: RequestEvent): boolean {
 	const origin = event.request.headers.get('origin');
 	if (!origin) {

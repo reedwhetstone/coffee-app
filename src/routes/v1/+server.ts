@@ -85,7 +85,10 @@ export const GET: RequestHandler = async () => {
 			},
 			procurementBriefs: {
 				href: '/v1/procurement/briefs',
-				status: 'live',
+				status: 'deprecated',
+				deprecated: true,
+				sunset: 'Thu, 31 Dec 2026 23:59:59 GMT',
+				successor: 'https://api.purveyors.io/v1/procurement/briefs',
 				auth: {
 					anonymous: false,
 					session: true,
