@@ -1,8 +1,7 @@
 import type { RequestHandler } from './$types';
-import { buildSourcingBriefGetResponse } from '$lib/server/procurement/sourcingBriefs';
+import { proxyBriefGet, runProcurementProxyRoute } from '$lib/server/procurementProxy';
 
 export const GET: RequestHandler = async (event) => {
-	return buildSourcingBriefGetResponse(event, event.params.id, {
-		requestPath: '/v1/procurement/briefs/:id'
-	});
+	const successorUrl = `https://api.purveyors.io/v1/procurement/briefs/${event.params.id}`;
+	return runProcurementProxyRoute(event, successorUrl, (e) => proxyBriefGet(e, event.params.id));
 };
