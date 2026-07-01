@@ -178,9 +178,7 @@
 		let canvasDescription = '';
 		const visible = canvasStore.visibleBlocks;
 		if (visible.length > 0) {
-			const descriptions = visible.map((b: CanvasBlock, i: number) => {
-				const block = b.block;
-				const pos = i + 1;
+			const describeBlock = (block: CanvasBlock['block'], pos: number): string => {
 				switch (block.type) {
 					case 'coffee-cards': {
 						const items = Array.isArray(block.data) ? block.data : [];
@@ -211,6 +209,12 @@
 					default:
 						return `${pos}. ${block.type.replace(/-/g, ' ')}`;
 				}
+			};
+			const descriptions = visible.map((b: CanvasBlock, i: number) => {
+				const base = describeBlock(b.block, i + 1);
+				// Locked windows are user-owned: tell the model it must not replace,
+				// remove, or reorder them, only add new content alongside.
+				return b.pinned ? `${base} [LOCKED — do not replace, remove, or reorder]` : base;
 			});
 			canvasDescription = descriptions.join('\n');
 		}
@@ -307,7 +311,8 @@
 									block: b.block,
 									messageId: b.messageId,
 									pinned: b.pinned,
-									minimized: b.minimized
+									minimized: b.minimized,
+									title: b.title
 								})),
 								layout: canvasStore.layout,
 								focusBlockId: canvasStore.focusBlockId,
@@ -358,9 +363,11 @@
 	}
 
 	function applyWorkspaceResult(result: { workspace: Workspace; messages: WorkspaceMessage[] }) {
-		// Clear current chat and canvas
+		// Workspace hydration must reset the shared canvas completely. User-facing
+		// clears preserve pinned blocks, but restored workspaces should not inherit
+		// pinned blocks from whatever canvas happened to be mounted before.
 		chat.messages = [];
-		canvasStore.clearAll();
+		canvasStore.resetAll();
 		dispatchedParts = new Set();
 		lastSentPageContext = null;
 		lastPersistedMessageCount = 0;
@@ -414,10 +421,14 @@
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const cs = result.workspace.canvas_state as any;
 			if (Array.isArray(cs.blocks)) {
-				canvasStore.dispatch({ type: 'clear' });
 				for (const cb of cs.blocks) {
 					if (cb.block) {
-						canvasStore.dispatch({ type: 'add', block: cb.block, messageId: cb.messageId || '' });
+						canvasStore.dispatch({
+							type: 'add',
+							block: cb.block,
+							messageId: cb.messageId || '',
+							title: cb.title
+						});
 						// Restore pinned state
 						if (cb.pinned) {
 							const addedBlock = canvasStore.blocks[canvasStore.blocks.length - 1];
@@ -435,24 +446,92 @@
 					}
 				}
 			}
-			if (cs.layout) {
-				canvasStore.dispatch({ type: 'layout', layout: cs.layout });
-			}
-			// Restore focus block by index (IDs regenerate, so match by position)
+			// Restore focus selection (IDs regenerate, so match by position), then
+			// the saved view layout last so it is the authoritative final state.
 			if (cs.focusBlockId != null && typeof cs.focusBlockIndex === 'number') {
 				const targetBlock = canvasStore.blocks[cs.focusBlockIndex];
 				if (targetBlock) {
 					canvasStore.dispatch({ type: 'focus', blockId: targetBlock.id });
 				}
 			}
+			if (cs.layout) {
+				canvasStore.dispatch({ type: 'layout', layout: cs.layout });
+			}
 		}
+
+		// The canvas now mirrors storage; record its signature so the canvas
+		// autosave effect doesn't treat the restore as a user edit and write back.
+		lastCanvasSignature = canvasSignature();
 	}
 
-	// Persist chat messages and canvas state to the current workspace
+	// Serialized canvas UI state (which blocks, their order, view layout, pinned/
+	// minimized flags, AI titles, and focus). Shared by every save path so the
+	// canvas reorganization a user sets up is restored verbatim on reload.
+	function buildCanvasStatePayload() {
+		const focusIdx = canvasStore.focusBlockId
+			? canvasStore.blocks.findIndex((b: CanvasBlock) => b.id === canvasStore.focusBlockId)
+			: -1;
+		return {
+			blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
+				block: b.block,
+				messageId: b.messageId,
+				pinned: b.pinned,
+				minimized: b.minimized,
+				title: b.title
+			})),
+			layout: canvasStore.layout,
+			focusBlockId: canvasStore.focusBlockId,
+			focusBlockIndex: focusIdx >= 0 ? focusIdx : undefined
+		};
+	}
+
+	// Persist chat messages and canvas state to the current workspace. Autosave
+	// calls are serialized through one queue so every save recalculates the
+	// unsaved message slice after earlier `/messages` writes advance
+	// workspaceStore's saved count, and older canvas writes cannot complete after
+	// newer user layout changes.
+	let currentPersist: Promise<void> | null = null;
+
+	async function enqueuePersistence(task: () => Promise<void>) {
+		const previousPersist = currentPersist;
+		const nextPersist = (async () => {
+			if (previousPersist) {
+				await previousPersist.catch(() => undefined);
+			}
+			await task();
+		})();
+
+		currentPersist = nextPersist;
+		nextPersist.then(
+			() => {
+				if (currentPersist === nextPersist) currentPersist = null;
+			},
+			() => {
+				if (currentPersist === nextPersist) currentPersist = null;
+			}
+		);
+
+		await nextPersist;
+	}
+
 	async function persistCurrentState() {
 		const wsId = workspaceStore.currentWorkspaceId;
 		if (!wsId) return;
+		const canvasStatePayload = buildCanvasStatePayload();
+		await enqueuePersistence(() => persistWorkspaceState(wsId, canvasStatePayload));
+	}
 
+	async function persistCanvasState(wsId: string) {
+		const canvasStatePayload = buildCanvasStatePayload();
+		await enqueuePersistence(async () => {
+			await workspaceStore.saveCanvasState(wsId, canvasStatePayload);
+		});
+	}
+
+	async function persistWorkspaceState(
+		wsId: string,
+		canvasStatePayload: ReturnType<typeof buildCanvasStatePayload>
+	) {
 		// Save new messages (ones not yet persisted)
 		const savedCount = workspaceStore.getSavedMessageCount(wsId);
 		const newMessages = chat.messages.slice(savedCount);
@@ -460,35 +539,65 @@
 			await workspaceStore.saveMessages(wsId, buildPersistedChatMessages(newMessages));
 		}
 
-		// Save canvas state (including pinned, minimized, focusBlockId)
-		const focusIdx = canvasStore.focusBlockId
-			? canvasStore.blocks.findIndex((b: CanvasBlock) => b.id === canvasStore.focusBlockId)
-			: -1;
-		await workspaceStore.saveCanvasState(wsId, {
-			blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
-				block: b.block,
-				messageId: b.messageId,
-				pinned: b.pinned,
-				minimized: b.minimized
-			})),
+		// Save canvas state (layout, order, pinned, minimized, focus, titles)
+		await workspaceStore.saveCanvasState(wsId, canvasStatePayload);
+	}
+
+	// Auto-persist when streaming completes (fast debounce).
+	//
+	// The counter is updated inside the debounce callback, never in the effect
+	// body. Writing a value that the effect also reads would re-invalidate the
+	// effect synchronously; Svelte would then run the cleanup (clearTimeout)
+	// before the timer could fire, silently cancelling every save. That bug
+	// meant nothing reached the DB during a live session — messages only ever
+	// persisted via the beforeunload beacon, which drops oversized payloads.
+	let lastPersistedMessageCount = $state(0);
+	$effect(() => {
+		const count = chat.messages.length;
+		if (isActive || count === 0 || count === lastPersistedMessageCount) return;
+		const timeout = setTimeout(() => {
+			void persistCurrentState().then(
+				() => {
+					lastPersistedMessageCount = count;
+				},
+				() => undefined
+			);
+		}, 500);
+		return () => clearTimeout(timeout);
+	});
+
+	// Compact fingerprint of the canvas UI structure (order, view layout, pin/
+	// minimize, focus, titles) used to detect user reorganization independent of
+	// the message stream.
+	function canvasSignature(): string {
+		return JSON.stringify({
 			layout: canvasStore.layout,
-			focusBlockId: canvasStore.focusBlockId,
-			focusBlockIndex: focusIdx >= 0 ? focusIdx : undefined
+			focus: canvasStore.focusBlockId,
+			blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
+				t: b.block.type,
+				title: b.title ?? null,
+				p: b.pinned,
+				m: b.minimized
+			}))
 		});
 	}
 
-	// Auto-persist when streaming completes (fast debounce)
-	let lastPersistedMessageCount = $state(0);
+	// Autosave the canvas when the user reorganizes it (switching view layout,
+	// pinning, minimizing, reordering) — these never change the message count, so
+	// the message-driven autosave above would miss them and the layout would reset
+	// on reload. lastCanvasSignature is a plain (non-reactive) tracker on purpose:
+	// writing a reactive value the effect reads would re-invalidate the effect and
+	// cancel its own debounced save.
+	let lastCanvasSignature = '';
 	$effect(() => {
-		if (
-			!isActive &&
-			chat.messages.length > 0 &&
-			chat.messages.length !== lastPersistedMessageCount
-		) {
-			lastPersistedMessageCount = chat.messages.length;
-			const timeout = setTimeout(() => persistCurrentState(), 500);
-			return () => clearTimeout(timeout);
-		}
+		const wsId = workspaceStore.currentWorkspaceId;
+		const signature = canvasSignature();
+		if (!wsId || isActive || signature === lastCanvasSignature) return;
+		lastCanvasSignature = signature;
+		const timeout = setTimeout(() => {
+			persistCanvasState(wsId);
+		}, 800);
+		return () => clearTimeout(timeout);
 	});
 
 	// Trigger context compaction after ~10 message pairs
@@ -669,8 +778,16 @@
 			goto(action.url);
 		} else if (action.type === 'focus-canvas-block') {
 			canvasStore.dispatch({ type: 'focus', blockId: action.blockId });
-			// On mobile, open canvas overlay
-			if (window.innerWidth < 768) {
+			// Re-open the canvas if the user had closed/hidden it. A canvas link in
+			// the conversation should always surface its block, not silently no-op
+			// against a collapsed pane.
+			if (variant === 'page') {
+				canvasOpen = true;
+				hasUserClosedCanvas = false;
+			}
+			// On mobile (and the drawer variant, which has no inline pane) open the
+			// canvas overlay so the focused block is actually visible.
+			if (variant === 'drawer' || window.innerWidth < 768) {
 				mobileCanvasOpen = true;
 			}
 		} else if (action.type === 'scroll-to-message') {
