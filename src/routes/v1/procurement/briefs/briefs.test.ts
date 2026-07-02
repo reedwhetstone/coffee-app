@@ -19,6 +19,30 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 vi.mock('$lib/server/principal', () => ({
 	resolvePrincipal: mockResolvePrincipal,
 	isSessionPrincipal: (principal: { authKind?: string }) => principal?.authKind === 'session',
+	isApiKeyPrincipal: (principal: { authKind?: string }) => principal?.authKind === 'api-key',
+	// Faithful reimplementations of the entitlement helpers (mirrors checkRole /
+	// API_PLAN_HIERARCHY / scopeMatches) so the POST entitlement guard is exercised
+	// end-to-end without loading the real principal module's Supabase-admin deps.
+	principalHasRole: (principal: { appRoles?: string[] }, requiredRole: string) => {
+		const roles = principal?.appRoles ?? [];
+		if (requiredRole === 'member') return roles.includes('member') || roles.includes('admin');
+		if (requiredRole === 'admin') return roles.includes('admin');
+		return roles.length > 0;
+	},
+	principalHasApiPlan: (principal: { apiPlan?: string }, requiredPlan: string) => {
+		const hierarchy: Record<string, number> = { viewer: 0, member: 1, enterprise: 2 };
+		if (!principal?.apiPlan) return false;
+		return (hierarchy[principal.apiPlan] ?? -1) >= (hierarchy[requiredPlan] ?? 99);
+	},
+	principalHasScope: (principal: { apiScopes?: string[] }, requiredScope: string) => {
+		const scopes = principal?.apiScopes ?? [];
+		return scopes.some(
+			(scope) =>
+				scope === '*' ||
+				scope === requiredScope ||
+				(scope.endsWith('*') && requiredScope.startsWith(scope.slice(0, -1)))
+		);
+	},
 	isTrustedMutationRequest: (
 		event: { url: URL; request: Request },
 		principal: { authKind?: string }
@@ -38,7 +62,34 @@ let detail: typeof import('./[id]/+server');
 let matches: typeof import('./[id]/matches/+server');
 
 const ANONYMOUS = { authKind: 'anonymous', isAuthenticated: false } as never;
-const SESSION_MEMBER = { authKind: 'session', isAuthenticated: true } as never;
+const SESSION_MEMBER = {
+	authKind: 'session',
+	isAuthenticated: true,
+	appRoles: ['member']
+} as never;
+const SESSION_VIEWER = {
+	authKind: 'session',
+	isAuthenticated: true,
+	appRoles: ['viewer']
+} as never;
+const API_KEY_MEMBER = {
+	authKind: 'api-key',
+	isAuthenticated: true,
+	apiPlan: 'member',
+	apiScopes: ['catalog:read']
+} as never;
+const API_KEY_VIEWER_PLAN = {
+	authKind: 'api-key',
+	isAuthenticated: true,
+	apiPlan: 'viewer',
+	apiScopes: ['catalog:read']
+} as never;
+const API_KEY_NO_SCOPE = {
+	authKind: 'api-key',
+	isAuthenticated: true,
+	apiPlan: 'member',
+	apiScopes: []
+} as never;
 
 // Build a lightweight request object rather than `new Request`: the WHATWG Request
 // header guard silently strips forbidden headers like `Origin`, which the CSRF test
@@ -239,6 +290,61 @@ describe('POST /v1/procurement/briefs', () => {
 		);
 		expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
 		expect(mockBriefCreate).not.toHaveBeenCalled();
+	});
+
+	it('rejects an under-entitled session viewer with 403 before parsing the body, even when the body is malformed', async () => {
+		// A signed-in viewer lacks the member role. Entitlement is resolved before
+		// the body is parsed, so an under-entitled create yields the 403 rather than
+		// leaking a body-validation 400. Guards the P2 entitlement-first contract.
+		mockResolvePrincipal.mockResolvedValue(SESSION_VIEWER);
+
+		const response = await collection.POST(postEvent('not json{'));
+
+		expect(response.status).toBe(403);
+		expect(await response.json()).toEqual({
+			error: 'Insufficient permissions',
+			message: 'Member role required'
+		});
+		expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
+		expect(mockBriefCreate).not.toHaveBeenCalled();
+	});
+
+	it('rejects an API key below the member plan with 403 before parsing the body', async () => {
+		mockResolvePrincipal.mockResolvedValue(API_KEY_VIEWER_PLAN);
+
+		const response = await collection.POST(postEvent('not json{'));
+
+		expect(response.status).toBe(403);
+		expect(await response.json()).toEqual({
+			error: 'Insufficient permissions',
+			message: 'Insufficient API plan'
+		});
+		expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
+		expect(mockBriefCreate).not.toHaveBeenCalled();
+	});
+
+	it('rejects an API key missing the catalog:read scope with 403 before parsing the body', async () => {
+		mockResolvePrincipal.mockResolvedValue(API_KEY_NO_SCOPE);
+
+		const response = await collection.POST(postEvent('not json{'));
+
+		expect(response.status).toBe(403);
+		expect(await response.json()).toEqual({
+			error: 'Insufficient permissions',
+			message: 'Insufficient API scope'
+		});
+		expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
+		expect(mockBriefCreate).not.toHaveBeenCalled();
+	});
+
+	it('allows an entitled API key (member plan + catalog:read) to create', async () => {
+		mockResolvePrincipal.mockResolvedValue(API_KEY_MEMBER);
+		const payload = { name: 'Colombia washed', criteria: { country: 'Colombia' } };
+
+		const response = await collection.POST(postEvent(JSON.stringify(payload)));
+
+		expect(mockBriefCreate).toHaveBeenCalledWith(payload);
+		expect(response.status).toBe(201);
 	});
 });
 

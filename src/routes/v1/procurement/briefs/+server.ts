@@ -7,8 +7,12 @@ import {
 	proxyBriefsList
 } from '$lib/server/procurementProxy';
 import {
+	isApiKeyPrincipal,
 	isSessionPrincipal,
 	isTrustedMutationRequest,
+	principalHasApiPlan,
+	principalHasRole,
+	principalHasScope,
 	resolvePrincipal
 } from '$lib/server/principal';
 
@@ -57,6 +61,33 @@ export const POST: RequestHandler = async (event) => {
 		return jsonResponse(
 			{ error: 'Authentication required', message: 'Authentication required' },
 			{ status: 401 }
+		);
+	}
+
+	// Entitlement guard BEFORE the body is parsed, mirroring the pre-proxy
+	// resolveProcurementAccessContext: brief creation requires member+ (API keys
+	// need the member plan *and* the `catalog:read` scope; sessions need the member
+	// role). Parchment enforces the same entitlement, but replicating the check
+	// here preserves the documented entitlement-before-body-validation ordering, so
+	// an under-entitled caller posting malformed JSON gets the expected 403 instead
+	// of leaking the local 400 body-parse result ahead of the access decision.
+	if (isApiKeyPrincipal(principal)) {
+		if (!principalHasApiPlan(principal, 'member')) {
+			return jsonResponse(
+				{ error: 'Insufficient permissions', message: 'Insufficient API plan' },
+				{ status: 403 }
+			);
+		}
+		if (!principalHasScope(principal, 'catalog:read')) {
+			return jsonResponse(
+				{ error: 'Insufficient permissions', message: 'Insufficient API scope' },
+				{ status: 403 }
+			);
+		}
+	} else if (!principalHasRole(principal, 'member')) {
+		return jsonResponse(
+			{ error: 'Insufficient permissions', message: 'Member role required' },
+			{ status: 403 }
 		);
 	}
 
