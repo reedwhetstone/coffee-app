@@ -13,7 +13,7 @@ vi.mock('ai', () => ({
 	stepCountIs: vi.fn()
 }));
 
-import { _buildSystemPrompt } from './+server';
+import { _buildAgentCatalogListQuery, _buildSystemPrompt } from './+server';
 
 describe('chat system prompt entitlement context', () => {
 	it('only advertises Parchment tools for Parchment Intelligence-only users', () => {
@@ -50,6 +50,48 @@ describe('chat system prompt entitlement context', () => {
 		expect(prompt).toContain('catalog_rank');
 		expect(prompt).toContain('price_index_read');
 		expect(prompt).toContain('WORKSPACE FOCUS: Roasting');
+	});
+});
+
+describe('chat catalog Parchment query mapping', () => {
+	it('uses canonical catalog query parameter names for agent catalog search', () => {
+		const query = _buildAgentCatalogListQuery({
+			origin: 'Ethiopia',
+			process: 'natural',
+			variety: 'Gesha',
+			price_range: [5, 9],
+			flavor_keywords: ['berry', 'jasmine'],
+			limit: 12,
+			stocked_only: false,
+			name: 'Hambela',
+			stocked_days: 30,
+			drying_method: 'raised bed',
+			supplier: 'Osito',
+			coffee_ids: [42, 0]
+		});
+
+		expect(query).toMatchObject({
+			origin: 'Ethiopia',
+			processing: 'natural',
+			cultivar_detail: 'Gesha',
+			price_per_lb_min: 5,
+			price_per_lb_max: 9,
+			flavor_keywords: ['berry', 'jasmine'],
+			limit: 12,
+			stocked: 'all',
+			name: 'Hambela',
+			stocked_days: 30,
+			drying_method: 'raised bed',
+			source: 'Osito',
+			ids: [42]
+		});
+		expect(query).not.toHaveProperty('supplier');
+		expect(query).not.toHaveProperty('stockedDays');
+		expect(query).not.toHaveProperty('dryingMethod');
+		expect(query).not.toHaveProperty('flavorKeywords');
+		expect(query).not.toHaveProperty('coffeeIds');
+		expect(query).not.toHaveProperty('pricePerLbMin');
+		expect(query).not.toHaveProperty('pricePerLbMax');
 	});
 });
 

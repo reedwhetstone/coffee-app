@@ -286,7 +286,15 @@ type AgentCatalogSearchInput = NonNullable<
 >;
 type SdkCatalogItem = components['schemas']['CatalogItem'];
 type AgentCatalogListQuery = CatalogListQuery & {
-	[key: string]: string | number | string[] | undefined;
+	source?: string | string[];
+	cultivar_detail?: string;
+	stocked_days?: number;
+	drying_method?: string;
+	flavor_keywords?: string[];
+	ids?: number[];
+	price_per_lb_min?: number;
+	price_per_lb_max?: number;
+	[key: string]: string | number | string[] | number[] | undefined;
 };
 type CatalogListResult = {
 	data?: { data?: unknown } | unknown[];
@@ -298,29 +306,29 @@ function positiveIds(ids: number[] | undefined): number[] | undefined {
 	return filtered && filtered.length > 0 ? filtered : undefined;
 }
 
-function buildAgentCatalogListQuery(input: AgentCatalogSearchInput): AgentCatalogListQuery {
+export function _buildAgentCatalogListQuery(input: AgentCatalogSearchInput): AgentCatalogListQuery {
 	const query: AgentCatalogListQuery = {
 		limit: Math.min(input.limit ?? 10, 15),
 		stocked: input.stocked_only === false ? 'all' : 'true'
 	};
 	if (input.origin) query.origin = input.origin;
 	if (input.process) query.processing = input.process;
-	if (input.variety) query.variety = input.variety;
+	if (input.variety) query.cultivar_detail = input.variety;
 	if (input.name) query.name = input.name;
-	if (input.supplier) query.supplier = input.supplier;
-	if (input.stocked_days) query.stockedDays = input.stocked_days;
-	if (input.drying_method) query.dryingMethod = input.drying_method;
+	if (input.supplier) query.source = input.supplier;
+	if (input.stocked_days) query.stocked_days = input.stocked_days;
+	if (input.drying_method) query.drying_method = input.drying_method;
 	if (input.flavor_keywords && input.flavor_keywords.length > 0) {
-		query.flavorKeywords = input.flavor_keywords;
+		query.flavor_keywords = input.flavor_keywords;
 	}
 
 	const ids = positiveIds(input.coffee_ids);
-	if (ids) query.coffeeIds = ids.join(',');
+	if (ids) query.ids = ids;
 
 	if (input.price_range) {
 		const [min, max] = input.price_range;
-		if (min != null) query.pricePerLbMin = min;
-		if (max != null) query.pricePerLbMax = max;
+		if (min != null) query.price_per_lb_min = min;
+		if (max != null) query.price_per_lb_max = max;
 	}
 
 	return query;
@@ -487,7 +495,7 @@ export const POST: RequestHandler = async (event) => {
 				searchCatalog: async (input) => {
 					const client = await createParchmentServerClient(event);
 					const result = (await client.catalog.list(
-						buildAgentCatalogListQuery(input) as CatalogListQuery
+						_buildAgentCatalogListQuery(input) as CatalogListQuery
 					)) as CatalogListResult;
 					return extractAgentCatalogRows(result) as unknown as Record<string, unknown>[];
 				},
