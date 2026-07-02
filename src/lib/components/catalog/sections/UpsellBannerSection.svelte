@@ -9,9 +9,9 @@
 				Need workflow leverage from this supply layer?
 			</h3>
 			<p class="text-sm text-text-secondary-light">
-				Parchment Intelligence adds supplier comparison and market movement reads. Mallard
-				Studio adds owned-stock and roasting context. Watchlists and saved shortlists are
-				still future workflows, so this catalog only routes to evidence that exists today.
+				Parchment Intelligence adds supplier comparison and market movement reads. Mallard Studio
+				adds owned-stock and roasting context. Watchlists and saved shortlists are still future
+				workflows, so this catalog only routes to evidence that exists today.
 			</p>
 		</div>
 		<div class="flex flex-col gap-3 sm:flex-row">

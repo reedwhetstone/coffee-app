@@ -289,9 +289,7 @@ export async function createParchmentServerClient(
 	// In `inherit` mode, carry the external caller's own preference forward rather
 	// than imposing a first-party default. Ignored in `lenient` mode.
 	const inheritedPrefer =
-		preferHandling === 'inherit'
-			? (event.request.headers.get('prefer') ?? undefined)
-			: undefined;
+		preferHandling === 'inherit' ? (event.request.headers.get('prefer') ?? undefined) : undefined;
 
 	return createParchmentClient({
 		baseUrl,

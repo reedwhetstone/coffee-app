@@ -300,7 +300,7 @@
 					height="h-64"
 					panelClass="border-border-light"
 					errorMessage={memberVisualsError}
-					onRetry={onRetry}
+					{onRetry}
 				>
 					{#if SupplierComparisonTableComponent}
 						<SupplierComparisonTableComponent beans={scopedComparisonBeans} />
@@ -320,7 +320,7 @@
 					height="h-64"
 					panelClass="border-border-light"
 					errorMessage={memberVisualsError}
-					onRetry={onRetry}
+					{onRetry}
 				>
 					{#if SupplierHealthTableComponent}
 						<div
@@ -487,8 +487,10 @@
 										<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light"
 											>Avg $/lb</th
 										>
-										<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light">Min</th>
-										<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light">Max</th>
+										<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light">Min</th
+										>
+										<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light">Max</th
+										>
 										<th class="py-2 text-right font-semibold text-text-secondary-light"
 											>Suppliers</th
 										>
@@ -507,7 +509,8 @@
 											<td class="py-2 pr-4 text-right text-text-secondary-light"
 												>{row.price_max?.toFixed(2) ?? '—'}</td
 											>
-											<td class="py-2 text-right text-text-secondary-light">{row.supplier_count}</td>
+											<td class="py-2 text-right text-text-secondary-light">{row.supplier_count}</td
+											>
 										</tr>
 									{/each}
 								</tbody>
@@ -532,7 +535,7 @@
 				height="h-64"
 				panelClass="border-background-tertiary-light/20"
 				errorMessage={memberVisualsError}
-				onRetry={onRetry}
+				{onRetry}
 			>
 				<div
 					class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"

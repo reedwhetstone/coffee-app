@@ -6,8 +6,8 @@ parchment-api **PADR-0011** and **ADR-007** (headless API extraction).
 **Date:** 2026-06-11
 
 > **Update (2026-06-29) — behavior vs surface.** The headless extraction
-> (ADR-007; parchment-api PADR-0001 / PADR-0011) reverses *where canonical tool
-> behavior executes*. Proprietary algorithms (ranking, scoring, intelligence,
+> (ADR-007; parchment-api PADR-0001 / PADR-0011) reverses _where canonical tool
+> behavior executes_. Proprietary algorithms (ranking, scoring, intelligence,
 > similarity, matching) are now **private-by-default**: they live in the
 > Parchment API, not in the public `@purveyors/cli` / `@purveyors/sdk` packages,
 > because shipping proprietary logic in a public npm package leaks the moat.
@@ -15,8 +15,8 @@ parchment-api **PADR-0011** and **ADR-007** (headless API extraction).
 > What survives from this ADR is its still-correct split and its core idea of
 > **canonical tools shared by the CLI and direct chat/agent surfaces** — but
 > bounded by that private-by-default rule. The CLI/app own the portable tool
-> *surface*, stable exported signatures, chat ergonomics, and scaffolding; the
-> API owns the *behavior*. Genuinely non-proprietary, deterministic helpers
+> _surface_, stable exported signatures, chat ergonomics, and scaffolding; the
+> API owns the _behavior_. Genuinely non-proprietary, deterministic helpers
 > (input shaping, generic facet enumeration, formatting) MAY still run in-process
 > in the shared client, and a **performance carve-out** applies: where an API
 > round-trip would materially degrade the agentic harness, latency is solved

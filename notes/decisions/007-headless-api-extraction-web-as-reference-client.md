@@ -7,7 +7,7 @@
 > side. The full cross-repo blueprint (architecture, milestones, PR-level plan)
 > lives in the second brain at
 > `brain/projects/parchment-api-extraction-spec.md`. This ADR records what the
-> decision means *for coffee-app specifically*.
+> decision means _for coffee-app specifically_.
 
 ## Context
 

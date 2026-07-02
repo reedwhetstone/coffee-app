@@ -1,7 +1,11 @@
 <script lang="ts">
 	import ExpandablePanel from '$lib/components/analytics/ExpandablePanel.svelte';
 	import AnalyticsLoadingPanel from '$lib/components/analytics/AnalyticsLoadingPanel.svelte';
-	import type { PriceSnapshot, ProcessBucket, OriginRangeRow } from '../../../../routes/analytics/+page.server';
+	import type {
+		PriceSnapshot,
+		ProcessBucket,
+		OriginRangeRow
+	} from '../../../../routes/analytics/+page.server';
 	import type { DeferredAnalyticsComponent } from '../../../../routes/analytics/deferredModules';
 
 	type TrendRange = '90d' | '6m' | '1y';
@@ -75,7 +79,7 @@
 			description="Loading origin price history."
 			height={lineChartExpanded ? 'h-[60vh]' : 'h-64'}
 			errorMessage={publicChartsError}
-			onRetry={onRetry}
+			{onRetry}
 		>
 			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
 				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin price trends</h2>
@@ -134,7 +138,7 @@
 				description="Loading stocked catalog processing distribution."
 				height="h-56"
 				errorMessage={publicChartsError}
-				onRetry={onRetry}
+				{onRetry}
 			>
 				<div
 					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
@@ -174,7 +178,7 @@
 				description="Loading live origin price comparisons from the current catalog."
 				height="h-[28rem]"
 				errorMessage={publicChartsError}
-				onRetry={onRetry}
+				{onRetry}
 			>
 				<div
 					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"

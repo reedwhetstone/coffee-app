@@ -3,13 +3,7 @@
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 	import type { BlockAction } from '$lib/types/genui';
 
-	let {
-		variant,
-		onClose,
-		onAction,
-		onScrollToMessage,
-		onExecuteAction
-	} = $props<{
+	let { variant, onClose, onAction, onScrollToMessage, onExecuteAction } = $props<{
 		/** 'page' variant hides this overlay on md+ screens (desktop has the split pane). */
 		variant: 'page' | 'drawer';
 		onClose: () => void;
@@ -42,7 +36,7 @@
 	</div>
 	<div class="flex-1 overflow-hidden">
 		<Canvas
-			onAction={onAction}
+			{onAction}
 			onScrollToMessage={(msgId: string) => {
 				onClose();
 				setTimeout(() => onScrollToMessage(msgId), 300);
