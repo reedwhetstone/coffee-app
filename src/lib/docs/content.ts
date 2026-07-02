@@ -1479,13 +1479,6 @@ const docsPages: DocsPage[] = [
 					headers: ['Route', 'Methods', 'Auth', 'Status', 'Replacement direction'],
 					rows: [
 						[
-							'/api/tools/coffee-catalog',
-							'POST',
-							'Member session',
-							'Deprecated',
-							'Prefer direct CLI-library integration or /v1/catalog for external reads.'
-						],
-						[
 							'/api/tools/green-coffee-inv',
 							'POST',
 							'Member session',
