@@ -46,7 +46,14 @@ export const GET: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async (event) => {
 	const principal = await resolvePrincipal(event);
-	if (event.request.headers.has('Authorization') && !principal.isAuthenticated) {
+	// Gated mutation: resolve access before the body is parsed. A create with no
+	// authenticated principal can only ever get Parchment's auth-required 401, so
+	// short-circuit here. Otherwise proxyBriefCreate parses the body first and a
+	// malformed anonymous payload would surface as the local 400, leaking body
+	// validation ahead of auth and breaking the documented auth-first contract.
+	// Also covers a present-but-invalid Authorization header, which the auth hook
+	// leaves anonymous.
+	if (!principal.isAuthenticated) {
 		return jsonResponse(
 			{ error: 'Authentication required', message: 'Authentication required' },
 			{ status: 401 }

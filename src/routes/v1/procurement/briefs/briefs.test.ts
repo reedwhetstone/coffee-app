@@ -225,6 +225,20 @@ describe('POST /v1/procurement/briefs', () => {
 		expect(response.status).toBe(401);
 		expect(mockBriefCreate).not.toHaveBeenCalled();
 	});
+
+	it('rejects an anonymous create with 401 before parsing the body, even when the body is malformed', async () => {
+		// Anonymous default (beforeEach) + unparseable body. Auth is resolved before
+		// the body is parsed, so a gated create yields the auth-first 401 rather than
+		// leaking a body-validation 400. Guards the P2 auth-first contract regression.
+		const response = await collection.POST(postEvent('not json{'));
+
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual(
+			expect.objectContaining({ error: 'Authentication required' })
+		);
+		expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
+		expect(mockBriefCreate).not.toHaveBeenCalled();
+	});
 });
 
 describe('GET /v1/procurement/briefs/:id', () => {
