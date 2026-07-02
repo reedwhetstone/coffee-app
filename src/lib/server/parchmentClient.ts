@@ -192,6 +192,25 @@ async function resolveTokenForMode(
  *   user session. Throws {@link ParchmentConfigError} if the key is unset.
  * - `anonymous`: presents no credential and reads neither session nor demo key.
  */
+/**
+ * Wrap SvelteKit's `event.fetch` so every BFF call to Parchment carries
+ * `Prefer: handling=lenient` (RFC 7240). This is the first-party web signal for
+ * PADR-0013 §7 strict-vs-lenient handling: authenticated web users reach the API
+ * as a bearer-session JWT, which defaults to `strict` (a machine caller would
+ * want a hard 4xx). The website instead wants graceful degradation — unentitled
+ * filters stripped with a notice, not an SSR 500 — so it opts into lenient here.
+ * A caller can still override per request by setting its own `Prefer` header.
+ */
+function withLenientHandling(baseFetch: typeof fetch): typeof fetch {
+	return (input, init) => {
+		const headers = new Headers(init?.headers ?? {});
+		if (!headers.has('prefer')) {
+			headers.set('Prefer', 'handling=lenient');
+		}
+		return baseFetch(input, { ...init, headers });
+	};
+}
+
 export async function createParchmentServerClient(
 	event: RequestEvent,
 	options?: CreateParchmentServerClientOptions
@@ -203,6 +222,6 @@ export async function createParchmentServerClient(
 	return createParchmentClient({
 		baseUrl,
 		token,
-		fetch: event.fetch
+		fetch: withLenientHandling(event.fetch)
 	});
 }

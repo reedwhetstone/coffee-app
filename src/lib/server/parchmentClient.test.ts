@@ -77,6 +77,36 @@ describe('createParchmentServerClient', () => {
 		});
 	});
 
+	it('sends Prefer: handling=lenient on BFF calls (PADR-0013 §7 first-party signal)', async () => {
+		const event = makeEvent({});
+		await createParchmentServerClient(event);
+
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		await wrappedFetch('https://api.test.purveyors.io/v1/catalog');
+
+		const init = baseFetch.mock.calls[0][1] as RequestInit;
+		expect(new Headers(init.headers).get('prefer')).toBe('handling=lenient');
+	});
+
+	it('does not override an explicit per-call Prefer header', async () => {
+		const event = makeEvent({});
+		await createParchmentServerClient(event);
+
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		await wrappedFetch('https://api.test.purveyors.io/v1/catalog', {
+			headers: { Prefer: 'handling=strict' }
+		});
+
+		const init = baseFetch.mock.calls[0][1] as RequestInit;
+		expect(new Headers(init.headers).get('prefer')).toBe('handling=strict');
+	});
+
 	it('throws a clear configuration error when the base URL is missing', async () => {
 		delete mockEnv.PARCHMENT_API_BASE_URL;
 		const event = makeEvent({});
@@ -157,11 +187,17 @@ describe('createParchmentServerClient', () => {
 		expect(event.locals.safeGetSession as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
 	});
 
-	it('routes requests through event.fetch', async () => {
+	it('routes requests through event.fetch (via the Prefer-injecting wrapper)', async () => {
 		const event = makeEvent({});
 		await createParchmentServerClient(event);
 
-		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ fetch: event.fetch });
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		await wrappedFetch('https://api.test.purveyors.io/v1/catalog');
+
+		expect(baseFetch).toHaveBeenCalledTimes(1);
 	});
 
 	it('defaults to session mode (forwards the session token) when no mode is given', async () => {
