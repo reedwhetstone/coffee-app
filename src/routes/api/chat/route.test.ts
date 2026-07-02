@@ -16,6 +16,7 @@ vi.mock('ai', () => ({
 import {
 	_buildAgentCatalogListQuery,
 	_buildSystemPrompt,
+	_fetchAgentCatalogRowsForSearch,
 	_filterAgentCatalogRowsForUnsupportedFilters
 } from './+server';
 
@@ -98,6 +99,25 @@ describe('chat catalog Parchment query mapping', () => {
 		expect(query).not.toHaveProperty('flavor_keywords');
 	});
 
+	it('sizes ID re-fetches to the requested ID count when no limit is supplied', () => {
+		const query = _buildAgentCatalogListQuery({
+			coffee_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+		});
+
+		expect(query).toMatchObject({
+			ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+			limit: 12
+		});
+	});
+
+	it('caps ID re-fetches at the catalog tool maximum', () => {
+		const query = _buildAgentCatalogListQuery({
+			coffee_ids: Array.from({ length: 20 }, (_, index) => index + 1)
+		});
+
+		expect(query.limit).toBe(15);
+	});
+
 	it('post-filters catalog rows for fields unsupported by the Parchment list API', () => {
 		const rows = [
 			{
@@ -129,6 +149,53 @@ describe('chat catalog Parchment query mapping', () => {
 		});
 
 		expect(filtered.map((row) => row.id)).toEqual([1]);
+	});
+
+	it('paginates before post-filtering fields unsupported by the Parchment list API', async () => {
+		const listCatalog = vi
+			.fn()
+			.mockResolvedValueOnce({
+				data: {
+					data: [
+						{
+							id: 1,
+							processing: 'Natural',
+							drying_method: 'Patio',
+							description_short: 'Citrus cup'
+						}
+					],
+					pagination: { page: 1, totalPages: 2, hasNext: true }
+				}
+			})
+			.mockResolvedValueOnce({
+				data: {
+					data: [
+						{
+							id: 2,
+							processing: 'Washed on raised beds',
+							drying_method: null,
+							description_short: 'Berry cup'
+						}
+					],
+					pagination: { page: 2, totalPages: 2, hasNext: false }
+				}
+			});
+
+		const rows = await _fetchAgentCatalogRowsForSearch(listCatalog, {
+			drying_method: 'raised bed',
+			flavor_keywords: ['berry'],
+			limit: 1
+		});
+
+		expect(rows.map((row) => row.id)).toEqual([2]);
+		expect(listCatalog).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ page: 1, limit: 1000 })
+		);
+		expect(listCatalog).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({ page: 2, limit: 1000 })
+		);
 	});
 });
 

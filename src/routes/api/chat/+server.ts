@@ -292,16 +292,32 @@ type AgentCatalogListQuery = CatalogListQuery & {
 	ids?: number[];
 	price_per_lb_min?: number;
 	price_per_lb_max?: number;
-	[key: string]: string | number | string[] | number[] | undefined;
+	[key: string]: string | number | string[] | number[] | null | undefined;
 };
 type CatalogListResult = {
 	data?: { data?: unknown } | unknown[];
 	error?: unknown;
 };
+type CatalogListBody = {
+	data?: unknown;
+	pagination?: { hasNext?: boolean; page?: number; totalPages?: number };
+};
+type CatalogListFn = (query: AgentCatalogListQuery) => Promise<CatalogListResult>;
+
+const AGENT_CATALOG_MAX_RESULTS = 15;
+const AGENT_CATALOG_DEFAULT_LIMIT = 10;
+const AGENT_CATALOG_POST_FILTER_PAGE_LIMIT = 1000;
+const AGENT_CATALOG_POST_FILTER_MAX_PAGES = 10;
 
 function positiveIds(ids: number[] | undefined): number[] | undefined {
 	const filtered = ids?.filter((id) => Number.isInteger(id) && id > 0);
 	return filtered && filtered.length > 0 ? filtered : undefined;
+}
+
+function resolveAgentCatalogRequestedLimit(input: AgentCatalogSearchInput): number {
+	const ids = positiveIds(input.coffee_ids);
+	const requested = input.limit ?? ids?.length ?? AGENT_CATALOG_DEFAULT_LIMIT;
+	return Math.min(Math.max(Math.trunc(requested), 1), AGENT_CATALOG_MAX_RESULTS);
 }
 
 function catalogTextValue(item: SdkCatalogItem, key: string): string {
@@ -352,7 +368,7 @@ export function _filterAgentCatalogRowsForUnsupportedFilters(
 
 export function _buildAgentCatalogListQuery(input: AgentCatalogSearchInput): AgentCatalogListQuery {
 	const query: AgentCatalogListQuery = {
-		limit: Math.min(input.limit ?? 10, 15),
+		limit: resolveAgentCatalogRequestedLimit(input),
 		stocked: input.stocked_only === false ? 'all' : 'true'
 	};
 	if (input.origin) query.origin = input.origin;
@@ -374,13 +390,57 @@ export function _buildAgentCatalogListQuery(input: AgentCatalogSearchInput): Age
 	return query;
 }
 
-function extractAgentCatalogRows(result: CatalogListResult): SdkCatalogItem[] {
+function extractAgentCatalogBody(result: CatalogListResult): CatalogListBody {
 	if (result.error) {
 		throw result.error instanceof Error ? result.error : new Error('Catalog search failed');
 	}
 
-	const rows = Array.isArray(result.data) ? result.data : result.data?.data;
-	return Array.isArray(rows) ? (rows as SdkCatalogItem[]) : [];
+	if (Array.isArray(result.data)) return { data: result.data };
+	if (result.data && typeof result.data === 'object') return result.data as CatalogListBody;
+	return {};
+}
+
+function extractAgentCatalogRows(body: CatalogListBody): SdkCatalogItem[] {
+	return Array.isArray(body.data) ? (body.data as SdkCatalogItem[]) : [];
+}
+
+function agentCatalogBodyHasNextPage(body: CatalogListBody, page: number): boolean {
+	if (body.pagination?.hasNext === true) return true;
+	if (typeof body.pagination?.totalPages === 'number') return page < body.pagination.totalPages;
+	return false;
+}
+
+export async function _fetchAgentCatalogRowsForSearch(
+	listCatalog: CatalogListFn,
+	input: AgentCatalogSearchInput
+): Promise<SdkCatalogItem[]> {
+	const requestedLimit = resolveAgentCatalogRequestedLimit(input);
+	const query = _buildAgentCatalogListQuery(input);
+
+	if (!needsAgentCatalogPostFilter(input)) {
+		const body = extractAgentCatalogBody(await listCatalog(query));
+		return extractAgentCatalogRows(body).slice(0, requestedLimit);
+	}
+
+	const filteredRows: SdkCatalogItem[] = [];
+	for (let page = 1; page <= AGENT_CATALOG_POST_FILTER_MAX_PAGES; page += 1) {
+		const body = extractAgentCatalogBody(
+			await listCatalog({
+				...query,
+				page,
+				limit: AGENT_CATALOG_POST_FILTER_PAGE_LIMIT
+			})
+		);
+		filteredRows.push(
+			..._filterAgentCatalogRowsForUnsupportedFilters(extractAgentCatalogRows(body), input)
+		);
+
+		if (filteredRows.length >= requestedLimit || !agentCatalogBodyHasNextPage(body, page)) {
+			break;
+		}
+	}
+
+	return filteredRows.slice(0, requestedLimit);
 }
 
 export function _buildSystemPrompt(
@@ -534,21 +594,11 @@ export const POST: RequestHandler = async (event) => {
 			{
 				searchCatalog: async (input) => {
 					const client = await createParchmentServerClient(event);
-					const query = _buildAgentCatalogListQuery(input);
-					const requestedLimit = query.limit;
-					if (needsAgentCatalogPostFilter(input)) {
-						query.limit = Math.max(typeof requestedLimit === 'number' ? requestedLimit : 10, 25);
-					}
-					const result = (await client.catalog.list(
-						query as CatalogListQuery
-					)) as CatalogListResult;
-					const rows = _filterAgentCatalogRowsForUnsupportedFilters(
-						extractAgentCatalogRows(result),
+					const rows = await _fetchAgentCatalogRowsForSearch(
+						(query) => client.catalog.list(query as CatalogListQuery) as Promise<CatalogListResult>,
 						input
 					);
-					const limitedRows =
-						typeof requestedLimit === 'number' ? rows.slice(0, requestedLimit) : rows;
-					return limitedRows as unknown as Record<string, unknown>[];
+					return rows as unknown as Record<string, unknown>[];
 				},
 				readPriceIndex: (input) => readPriceIndexForAgent(input),
 				findSimilarBeans: (input, options) => findSimilarBeansForAgent(input, options)
