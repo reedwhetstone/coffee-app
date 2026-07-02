@@ -43,6 +43,13 @@ export function extractParchmentCatalogRows(result: CatalogListResult): SdkCatal
  * significant. The page limit is sized to the id count (capped to the contract
  * maximum) so every requested row is returned in a single call; first-party
  * session callers are exempt from per-plan row caps.
+ *
+ * Visibility is widened to `stocked: 'all'` and `showWholesale: 'true'` to
+ * match the legacy direct `coffee_catalog` id lookup this replaces. Tracked
+ * lots are looked up by explicit id for dashboard/beans/chat hydration, so an
+ * unstocked or wholesale-only saved lot must still resolve; the contract
+ * otherwise defaults to stocked-only, wholesale-excluded public visibility and
+ * would silently drop those rows.
  */
 export async function fetchParchmentCatalogItemsByIds(
 	client: ParchmentClient,
@@ -54,6 +61,8 @@ export async function fetchParchmentCatalogItemsByIds(
 
 	const result = await client.catalog.list({
 		coffeeIds: ids.join(','),
+		stocked: 'all',
+		showWholesale: 'true',
 		limit: Math.min(ids.length, MAX_CATALOG_PAGE_LIMIT)
 	});
 

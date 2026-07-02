@@ -120,7 +120,12 @@ describe('/dashboard sourcing workspace load', () => {
 		};
 
 		expect(mockGetTrackedLotSummaries).toHaveBeenCalledWith(expect.anything(), 'ppi-1', 12);
-		expect(mockCatalogList).toHaveBeenCalledWith({ coffeeIds: '7', limit: 1 });
+		expect(mockCatalogList).toHaveBeenCalledWith({
+			coffeeIds: '7',
+			stocked: 'all',
+			showWholesale: 'true',
+			limit: 1
+		});
 		expect(result.trackedLots).toHaveLength(1);
 		expect(result.trackedCatalog).toHaveLength(1);
 		expect(result.activeBriefs).toEqual([]);
