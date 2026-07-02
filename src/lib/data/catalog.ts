@@ -1,10 +1,12 @@
 /**
  * Catalog data types — shared type definitions for coffee_catalog consumers.
  *
- * The local query functions that once lived here (searchCatalog, getCatalogItem,
- * searchCatalogDropdown, getCatalogDropdown) have been removed: all catalog reads
- * are now served by the Parchment API. Only the shared types and the schema-error
- * class remain, since live code still imports them.
+ * The local search/dropdown query helpers that once lived here (searchCatalog,
+ * getCatalogItem, searchCatalogDropdown, getCatalogDropdown) have been removed:
+ * those specific reads are now served by the Parchment API. This does not cover
+ * every coffee_catalog read in the app; other server code (e.g. analytics and
+ * catalogOriginPriceStats) still queries the table directly. Only the shared
+ * types and the schema-error class remain here, since live code still imports them.
  */
 
 import type { Database } from '$lib/types/database.types';
