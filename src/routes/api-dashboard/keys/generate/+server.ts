@@ -1,12 +1,24 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createApiKey } from '$lib/server/apiAuth';
-export const POST: RequestHandler = async ({ request, locals }) => {
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
+
+/**
+ * Mint a new API key for the signed-in dashboard user.
+ *
+ * Per #40 the API-key *lifecycle* is owned by Parchment, so this route no longer
+ * mints keys locally. It authenticates the dashboard session, then forwards the
+ * caller's own credential to Parchment (`mode: 'session'`) via the SDK. Parchment
+ * scopes the key to that user, hashes/stores it, and returns the raw secret
+ * exactly once — which we relay in the response shape the create form expects
+ * (`{ success, apiKey }`). The raw secret is never persisted here.
+ */
+export const POST: RequestHandler = async (event) => {
+	const { request, locals } = event;
 	try {
-		// Get authenticated session
+		// Local session guard: only signed-in dashboard users may mint keys. The
+		// credential itself is forwarded to Parchment, which enforces entitlement.
 		const { session, user } = await locals.safeGetSession();
 
-		// Allow authenticated users (free tier defaults to api_viewer)
 		if (!session || !user) {
 			return json(
 				{
@@ -30,22 +42,28 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		// Create the API key
-		const result = await createApiKey(user.id, name.trim());
+		// Mint via Parchment. Session mode forwards the logged-in user's Supabase
+		// token as Bearer; the token never reaches the browser.
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const { data, error, response } = await client.apiKeys.create({ name: name.trim() });
 
-		if (!result.success) {
+		if (error || !data) {
+			// Relay Parchment's status (e.g. 401/403 entitlement, 503 unavailable) so
+			// the dashboard surfaces the real authorization decision instead of a
+			// blanket 500.
 			return json(
 				{
 					success: false,
-					error: result.error || 'Failed to create API key'
+					error: error?.error?.message || 'Failed to create API key'
 				},
-				{ status: 500 }
+				{ status: response?.status ?? 500 }
 			);
 		}
 
+		// `data.apiKey` is the raw secret, returned by Parchment exactly once.
 		return json({
 			success: true,
-			apiKey: result.apiKey,
+			apiKey: data.apiKey,
 			message: 'API key created successfully'
 		});
 	} catch (error) {
