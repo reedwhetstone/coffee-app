@@ -123,3 +123,11 @@ Atomic blog ideas extracted from purveyors notes, brain captures, and conversati
 - **Source:** DaVita TPM AI rejection feedback (Mar 17). Winning candidates had AgentForce implementation or AI CoE process definition experience. The post argues that AI CoE success comes from enterprise adoption governance, not platform selection.
 - **Thesis:** Most AI CoEs fail because they start with tool selection instead of workflow governance. Enterprise adoption PMs are better positioned to build AI CoEs than AI specialists, because the organizational scaffolding is the hard layer.
 - **Outline:** `notes/blog/outlines/what-an-ai-center-of-excellence-actually-needs.md`
+
+### The agent is a new kind of API user (and it breaks your authorization layer)
+
+- **Status:** raw
+- **Pillar:** agentic-stack / api-architecture
+- **Tags:** agentic-workflows, api-design, authorization, entitlements, governance
+- **Source:** brain/ideas/agentic-consumer-api-governance-layer.md; parchment-api PADR-0013 (canonical product model + entitlement schema)
+- **Thesis:** API infrastructure splits into a product plane (data delivery/logic) and a user-governance plane (authN + authZ + entitlement + pricing). The agentic consumer is a structurally new API user — authenticated and autonomous, but with no front end to hide state and no human to notice a silently-stripped filter — which inverts the failure mode (humans want lenient strip-with-notice, agents need strict hard-deny), forces authorization onto the API itself, and makes account-level entitlement/metering load-bearing. Also surveys the underconsolidated "governance layer" market (Schematic/Stigg/Stripe Entitlements vs Oso/OpenFGA/Cerbos/Permit.io vs Kinde/Frontegg/WorkOS) and the gap for the agent era. Grounded in real parchment-api work, not abstract theory.
