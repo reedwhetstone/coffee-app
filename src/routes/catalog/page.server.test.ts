@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockCreateParchmentServerClient = vi.fn();
 const mockCatalogList = vi.fn();
+const mockCatalogOriginPriceStats = vi.fn();
 const mockBuildPublicMeta = vi.fn();
 const mockResolvePublicPageSocialImage = vi.fn();
 const mockGenerateOrganizationSchema = vi.fn();
@@ -93,9 +94,14 @@ beforeEach(async () => {
 			}
 		}
 	});
+	mockCatalogOriginPriceStats.mockResolvedValue({
+		data: { originPriceStats: [] },
+		error: null
+	});
 	mockCreateParchmentServerClient.mockResolvedValue({
 		catalog: {
-			list: mockCatalogList
+			list: mockCatalogList,
+			originPriceStats: mockCatalogOriginPriceStats
 		}
 	});
 	mockBuildPublicMeta.mockImplementation((value) => value);
@@ -428,7 +434,10 @@ describe('/catalog page load', () => {
 			});
 			mockCreateParchmentServerClient.mockResolvedValue({
 				catalog: {
-					list: mockCatalogList
+					list: mockCatalogList,
+					originPriceStats: vi
+						.fn()
+						.mockResolvedValue({ data: { originPriceStats: [] }, error: null })
 				}
 			});
 			const session = { access_token: 'cookie-token' } as App.Locals['session'];
@@ -593,168 +602,105 @@ describe('/catalog page load', () => {
 		);
 	});
 
-	it('builds member origin price stats from the full member-visible catalog scope', async () => {
+	it('sources member origin price stats from Parchment for the member-visible scope', async () => {
 		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
-		const input = makeLoadInput('member', memberSession, 'https://app.test/catalog', [
-			{
-				country: 'Colombia',
-				price_per_lb: 8,
-				cost_lb: 8,
-				price_tiers: null,
-				wholesale: false,
-				source: 'Private A'
+		mockCatalogOriginPriceStats.mockResolvedValue({
+			data: {
+				originPriceStats: [
+					{
+						origin: 'Colombia',
+						median: 9,
+						q1: 8,
+						q3: 10,
+						min: 8,
+						max: 10,
+						sample_size: 3,
+						supplier_count: 3
+					}
+				]
 			},
-			{
-				country: 'Colombia',
-				price_per_lb: 9,
-				cost_lb: 9,
-				price_tiers: null,
-				wholesale: false,
-				source: 'Private B'
-			},
-			{
-				country: 'Colombia',
-				price_per_lb: 10,
-				cost_lb: 10,
-				price_tiers: null,
-				wholesale: false,
-				source: 'Private C'
-			}
-		]);
+			error: null
+		});
 
-		const result = (await load(input)) as {
-			originPriceStats: Array<{ origin: string; median: number; sample_size: number }>;
-		};
-		const supabase = input.locals.supabase as unknown as ReturnType<typeof makeMockSupabase>;
+		const result = (await load(
+			makeLoadInput('member', memberSession, 'https://app.test/catalog')
+		)) as { originPriceStats: Array<{ origin: string; median: number; sample_size: number }> };
 
-		expect(supabase.queryChain.eq).toHaveBeenCalledWith('stocked', true);
-		expect(supabase.queryChain.eq).not.toHaveBeenCalledWith('public_coffee', true);
+		// Member with no wholesale params → neither view flag is forwarded; Parchment
+		// derives the scope (and publicOnly) from the forwarded credential.
+		const statsQuery = mockCatalogOriginPriceStats.mock.calls[0][0];
+		expect(statsQuery).not.toHaveProperty('showWholesale');
+		expect(statsQuery).not.toHaveProperty('wholesaleOnly');
 		expect(result.originPriceStats).toEqual([
 			expect.objectContaining({ origin: 'Colombia', median: 9, sample_size: 3 })
 		]);
 	});
 
-	it('builds origin price stats from the displayed-row scope when wholesale rows are visible', async () => {
+	it('forwards the wholesale view param to Parchment when wholesale rows are visible', async () => {
 		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		mockCatalogOriginPriceStats.mockResolvedValue({
+			data: {
+				originPriceStats: [
+					{
+						origin: 'Honduras',
+						median: 8,
+						q1: 5,
+						q3: 12,
+						min: 4,
+						max: 14,
+						sample_size: 6,
+						supplier_count: 6
+					}
+				]
+			},
+			error: null
+		});
+
 		const result = (await load(
-			makeLoadInput('member', memberSession, 'https://app.test/catalog?showWholesale=true', [
-				{
-					country: 'Honduras',
-					price_per_lb: 10,
-					cost_lb: 10,
-					price_tiers: null,
-					wholesale: false,
-					source: 'Retail A'
-				},
-				{
-					country: 'Honduras',
-					price_per_lb: 12,
-					cost_lb: 12,
-					price_tiers: null,
-					wholesale: false,
-					source: 'Retail B'
-				},
-				{
-					country: 'Honduras',
-					price_per_lb: 14,
-					cost_lb: 14,
-					price_tiers: null,
-					wholesale: false,
-					source: 'Retail C'
-				},
-				{
-					country: 'Honduras',
-					price_per_lb: 4,
-					cost_lb: 4,
-					price_tiers: null,
-					wholesale: true,
-					source: 'Wholesale A'
-				},
-				{
-					country: 'Honduras',
-					price_per_lb: 5,
-					cost_lb: 5,
-					price_tiers: null,
-					wholesale: true,
-					source: 'Wholesale B'
-				},
-				{
-					country: 'Honduras',
-					price_per_lb: 6,
-					cost_lb: 6,
-					price_tiers: null,
-					wholesale: true,
-					source: 'Wholesale C'
-				}
-			])
+			makeLoadInput('member', memberSession, 'https://app.test/catalog?showWholesale=true')
 		)) as { originPriceStats: Array<{ origin: string; median: number; sample_size: number }> };
 
+		expect(mockCatalogOriginPriceStats).toHaveBeenCalledWith(
+			expect.objectContaining({ showWholesale: 'true' })
+		);
+		expect(mockCatalogOriginPriceStats.mock.calls[0][0]).not.toHaveProperty('wholesaleOnly');
 		expect(result.originPriceStats).toEqual([
 			expect.objectContaining({ origin: 'Honduras', median: 8, sample_size: 6 })
 		]);
 	});
 
-	it('parses wholesaleOnly on member catalog loads so wholesale-only views use wholesale medians', async () => {
+	it('forwards wholesaleOnly to Parchment on member wholesale-only catalog loads', async () => {
 		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		mockCatalogOriginPriceStats.mockResolvedValue({
+			data: {
+				originPriceStats: [
+					{
+						origin: 'Honduras',
+						median: 5,
+						q1: 4,
+						q3: 6,
+						min: 4,
+						max: 6,
+						sample_size: 3,
+						supplier_count: 3
+					}
+				]
+			},
+			error: null
+		});
+
 		const result = (await load(
 			makeLoadInput(
 				'member',
 				memberSession,
-				'https://app.test/catalog?showWholesale=true&wholesaleOnly=true',
-				[
-					{
-						country: 'Honduras',
-						price_per_lb: 10,
-						cost_lb: 10,
-						price_tiers: null,
-						wholesale: false,
-						source: 'Retail A'
-					},
-					{
-						country: 'Honduras',
-						price_per_lb: 12,
-						cost_lb: 12,
-						price_tiers: null,
-						wholesale: false,
-						source: 'Retail B'
-					},
-					{
-						country: 'Honduras',
-						price_per_lb: 14,
-						cost_lb: 14,
-						price_tiers: null,
-						wholesale: false,
-						source: 'Retail C'
-					},
-					{
-						country: 'Honduras',
-						price_per_lb: 4,
-						cost_lb: 4,
-						price_tiers: null,
-						wholesale: true,
-						source: 'Wholesale A'
-					},
-					{
-						country: 'Honduras',
-						price_per_lb: 5,
-						cost_lb: 5,
-						price_tiers: null,
-						wholesale: true,
-						source: 'Wholesale B'
-					},
-					{
-						country: 'Honduras',
-						price_per_lb: 6,
-						cost_lb: 6,
-						price_tiers: null,
-						wholesale: true,
-						source: 'Wholesale C'
-					}
-				]
+				'https://app.test/catalog?showWholesale=true&wholesaleOnly=true'
 			)
 		)) as { originPriceStats: Array<{ origin: string; median: number; sample_size: number }> };
 
 		expect(mockCatalogList).toHaveBeenCalledWith(
+			expect.objectContaining({ showWholesale: 'true', wholesaleOnly: 'true' })
+		);
+		expect(mockCatalogOriginPriceStats).toHaveBeenCalledWith(
 			expect.objectContaining({ showWholesale: 'true', wholesaleOnly: 'true' })
 		);
 		expect(result.originPriceStats).toEqual([
