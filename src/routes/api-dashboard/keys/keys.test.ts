@@ -198,6 +198,25 @@ describe('load /api-dashboard/keys', () => {
 
 		expect(result).toEqual({ apiKeys: [], error: 'Failed to load API keys' });
 	});
+
+	it('returns the error state instead of a 500 when the Parchment client throws', async () => {
+		// e.g. PARCHMENT_API_BASE_URL unset / SDK fetch rejects in preview or degraded upstream.
+		mockCreateParchmentServerClient.mockRejectedValueOnce(
+			new Error('PARCHMENT_API_BASE_URL is not set')
+		);
+
+		const result = await page.load(makeEvent({ method: 'GET' }));
+
+		expect(result).toEqual({ apiKeys: [], error: 'Failed to load API keys' });
+	});
+
+	it('returns the error state when the list call rejects', async () => {
+		mockApiKeysList.mockRejectedValueOnce(new Error('network down'));
+
+		const result = await page.load(makeEvent({ method: 'GET' }));
+
+		expect(result).toEqual({ apiKeys: [], error: 'Failed to load API keys' });
+	});
 });
 
 describe('POST /api-dashboard/keys/deactivate', () => {
