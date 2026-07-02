@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockSearchCatalog = vi.fn();
+const mockCatalogList = vi.fn();
+const mockCreateParchmentServerClient = vi.fn();
 const mockGetCatalogItemsByIds = vi.fn();
 const mockGetTrackedLotSummaries = vi.fn();
 
 vi.mock('$lib/data/catalog', () => ({
-	searchCatalog: (...args: unknown[]) => mockSearchCatalog(...args),
 	getCatalogItemsByIds: (...args: unknown[]) => mockGetCatalogItemsByIds(...args)
+}));
+
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentServerClient: (...args: unknown[]) => mockCreateParchmentServerClient(...args)
 }));
 
 vi.mock('$lib/server/trackedLots', () => ({
@@ -17,7 +21,8 @@ let load: typeof import('./+page.server').load;
 
 beforeEach(async () => {
 	vi.clearAllMocks();
-	mockSearchCatalog.mockResolvedValue({ data: [], count: 0 });
+	mockCatalogList.mockResolvedValue({ data: { data: [] } });
+	mockCreateParchmentServerClient.mockResolvedValue({ catalog: { list: mockCatalogList } });
 	mockGetCatalogItemsByIds.mockResolvedValue([]);
 	mockGetTrackedLotSummaries.mockResolvedValue([]);
 	({ load } = await import('./+page.server'));
@@ -48,6 +53,28 @@ function makeLoadInput(input: {
 }
 
 describe('/dashboard sourcing workspace load', () => {
+	it('loads recent arrivals from Parchment catalog list', async () => {
+		mockCatalogList.mockResolvedValue({
+			data: { data: [{ id: 1, name: 'Fresh Arrival', stocked: true }] }
+		});
+
+		const result = (await load(
+			makeLoadInput({
+				role: 'viewer',
+				principal: { isAuthenticated: true, userId: 'viewer-1', ppiAccess: false }
+			})
+		)) as { recentArrivals: Array<{ id: number; name: string }> };
+
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything());
+		expect(mockCatalogList).toHaveBeenCalledWith({
+			stocked: 'true',
+			sort: 'arrival_date',
+			order: 'desc',
+			limit: 6
+		});
+		expect(result.recentArrivals).toEqual([{ id: 1, name: 'Fresh Arrival', stocked: true }]);
+	});
+
 	it('returns empty workspace context for viewers without sourcing access', async () => {
 		const result = (await load(
 			makeLoadInput({
@@ -59,6 +86,19 @@ describe('/dashboard sourcing workspace load', () => {
 		expect(result.trackedLots).toEqual([]);
 		expect(result.activeBriefs).toEqual([]);
 		expect(mockGetTrackedLotSummaries).not.toHaveBeenCalled();
+	});
+
+	it('keeps the dashboard rendering when Parchment arrivals fail', async () => {
+		mockCatalogList.mockResolvedValue({ error: { message: 'Parchment unavailable' } });
+
+		const result = (await load(
+			makeLoadInput({
+				role: 'viewer',
+				principal: { isAuthenticated: true, userId: 'viewer-1', ppiAccess: false }
+			})
+		)) as { recentArrivals: unknown[] };
+
+		expect(result.recentArrivals).toEqual([]);
 	});
 
 	it('loads tracked lot summaries and their catalog cards for ppiAccess users', async () => {
