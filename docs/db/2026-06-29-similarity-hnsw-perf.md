@@ -35,9 +35,10 @@ separately for the parchment-api test):
    existing ivfflat index; ivfflat is dropped later, only once EXPLAIN confirms the
    planner uses HNSW.
 
-3. **Function rewrite.** Convert `find_similar_beans_aggregated_v3` from `LANGUAGE sql`
+2. **Function rewrite.** Convert `find_similar_beans_aggregated_v3` from `LANGUAGE sql`
    to `plpgsql` so it can bound its own work with `SET LOCAL`. Same signature, same
    result shape, same query body -- the only change is the four guards:
+
    - `statement_timeout = '4s'` -- hard ceiling; cancel rather than hang
    - `hnsw.ef_search = resolved_candidate_pool` -- aligned with the per-dimension
      candidate-pool size (set via `set_config`) so the LATERAL `LIMIT` is not

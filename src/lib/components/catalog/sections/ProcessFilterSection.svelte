@@ -47,8 +47,7 @@
 					Base method
 					<select
 						value={$filterStore.filters.processing_base_method?.toString() ?? ''}
-						onchange={(e) =>
-							filterStore.setFilter('processing_base_method', e.currentTarget.value)}
+						onchange={(e) => filterStore.setFilter('processing_base_method', e.currentTarget.value)}
 						class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
 					>
 						<option value="">Any method</option>
@@ -67,7 +66,9 @@
 					>
 						<option value="">Any fermentation</option>
 						{#each ($filterStore.uniqueValues.fermentation_type ?? []).filter(isPublicProcessFacetOption) as fermentationType}
-							<option value={String(fermentationType)}>{formatFilterOption(fermentationType)}</option>
+							<option value={String(fermentationType)}
+								>{formatFilterOption(fermentationType)}</option
+							>
 						{/each}
 					</select>
 				</label>
@@ -118,9 +119,7 @@
 			</div>
 
 			{#if hasAdvancedProcessFilters}
-				<div
-					class="mt-3 flex items-center justify-between gap-3 text-xs text-text-secondary-light"
-				>
+				<div class="mt-3 flex items-center justify-between gap-3 text-xs text-text-secondary-light">
 					<span>Structured process filters are added to the shareable catalog URL.</span>
 					<button
 						type="button"

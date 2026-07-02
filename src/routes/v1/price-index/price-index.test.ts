@@ -56,7 +56,9 @@ describe('/v1/price-index route', () => {
 
 	it('forwards filter query params to Parchment without reshaping them', async () => {
 		await GET(
-			makeEvent('https://app.test/v1/price-index?process=Washed&grade=A&wholesale=true&from=2026-01-01')
+			makeEvent(
+				'https://app.test/v1/price-index?process=Washed&grade=A&wholesale=true&from=2026-01-01'
+			)
 		);
 
 		expect(mockPriceIndexList).toHaveBeenCalledWith(

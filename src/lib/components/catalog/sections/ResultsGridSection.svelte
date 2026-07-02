@@ -70,9 +70,9 @@
 					No catalog rows match this supply query
 				</h2>
 				<p class="mx-auto mt-2 max-w-2xl text-sm text-text-secondary-light">
-					Clear or broaden the filters to inspect named coffees, or use the Parchment Market
-					Index to review broader origin, supplier, and pricing evidence before returning to
-					row-level catalog inspection.
+					Clear or broaden the filters to inspect named coffees, or use the Parchment Market Index
+					to review broader origin, supplier, and pricing evidence before returning to row-level
+					catalog inspection.
 				</p>
 				<div class="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
 					<button
@@ -102,7 +102,9 @@
 					<div class="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
 						<span class="text-text-secondary-light">
 							Median
-							<span class="font-semibold text-text-primary-light">${stats.median.toFixed(2)}/lb</span>
+							<span class="font-semibold text-text-primary-light"
+								>${stats.median.toFixed(2)}/lb</span
+							>
 						</span>
 						<span class="text-text-secondary-light">
 							Range
@@ -115,8 +117,8 @@
 							{stats.supplier_count === 1 ? 'supplier' : 'suppliers'}
 						</span>
 						<span class="text-text-secondary-light">
-							<span class="font-medium text-text-primary-light">{stats.sample_size}</span> priced
-							lots across all suppliers
+							<span class="font-medium text-text-primary-light">{stats.sample_size}</span> priced lots
+							across all suppliers
 						</span>
 					</div>
 				</div>
@@ -155,8 +157,8 @@
 								Keep going with a free account
 							</h3>
 							<p class="mb-6 text-sm text-text-secondary-light">
-								Create a free account to browse the full catalog, inspect more supply evidence,
-								and continue from public market discovery.
+								Create a free account to browse the full catalog, inspect more supply evidence, and
+								continue from public market discovery.
 							</p>
 							<div class="flex flex-col items-center justify-center gap-3 sm:flex-row">
 								<button

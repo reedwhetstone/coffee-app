@@ -935,7 +935,7 @@
 	{OriginLineChartComponent}
 	{OriginBarChartComponent}
 	{ProcessDonutChartComponent}
-	publicChartsError={publicChartsError}
+	{publicChartsError}
 	{filteredSnapshots}
 	{filteredProcessDist}
 	{scopedOriginRangeData}
@@ -958,7 +958,7 @@
 	{PriceTierChartComponent}
 	{SupplierComparisonTableComponent}
 	{SupplierHealthTableComponent}
-	memberVisualsError={memberVisualsError}
+	{memberVisualsError}
 	{snapshots}
 	{scopedComparisonBeans}
 	{scopedSupplierHealth}
