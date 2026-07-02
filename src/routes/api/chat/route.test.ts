@@ -13,7 +13,11 @@ vi.mock('ai', () => ({
 	stepCountIs: vi.fn()
 }));
 
-import { _buildAgentCatalogListQuery, _buildSystemPrompt } from './+server';
+import {
+	_buildAgentCatalogListQuery,
+	_buildSystemPrompt,
+	_filterAgentCatalogRowsForUnsupportedFilters
+} from './+server';
 
 describe('chat system prompt entitlement context', () => {
 	it('only advertises Parchment tools for Parchment Intelligence-only users', () => {
@@ -76,12 +80,10 @@ describe('chat catalog Parchment query mapping', () => {
 			cultivar_detail: 'Gesha',
 			price_per_lb_min: 5,
 			price_per_lb_max: 9,
-			flavor_keywords: ['berry', 'jasmine'],
 			limit: 12,
 			stocked: 'all',
 			name: 'Hambela',
 			stocked_days: 30,
-			drying_method: 'raised bed',
 			source: 'Osito',
 			ids: [42]
 		});
@@ -92,6 +94,41 @@ describe('chat catalog Parchment query mapping', () => {
 		expect(query).not.toHaveProperty('coffeeIds');
 		expect(query).not.toHaveProperty('pricePerLbMin');
 		expect(query).not.toHaveProperty('pricePerLbMax');
+		expect(query).not.toHaveProperty('drying_method');
+		expect(query).not.toHaveProperty('flavor_keywords');
+	});
+
+	it('post-filters catalog rows for fields unsupported by the Parchment list API', () => {
+		const rows = [
+			{
+				id: 1,
+				name: 'Raised Bed Berry',
+				processing: 'Natural',
+				drying_method: 'Raised beds',
+				description_short: 'Berry and jasmine cup'
+			},
+			{
+				id: 2,
+				name: 'Patio Berry',
+				processing: 'Natural',
+				drying_method: 'Patio',
+				description_short: 'Berry cup'
+			},
+			{
+				id: 3,
+				name: 'Raised Bed Citrus',
+				processing: 'Washed on raised beds',
+				drying_method: null,
+				description_short: 'Citrus cup'
+			}
+		];
+
+		const filtered = _filterAgentCatalogRowsForUnsupportedFilters(rows, {
+			drying_method: 'raised bed',
+			flavor_keywords: ['berry']
+		});
+
+		expect(filtered.map((row) => row.id)).toEqual([1]);
 	});
 });
 

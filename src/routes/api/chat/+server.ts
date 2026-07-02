@@ -289,8 +289,6 @@ type AgentCatalogListQuery = CatalogListQuery & {
 	source?: string | string[];
 	cultivar_detail?: string;
 	stocked_days?: number;
-	drying_method?: string;
-	flavor_keywords?: string[];
 	ids?: number[];
 	price_per_lb_min?: number;
 	price_per_lb_max?: number;
@@ -306,6 +304,52 @@ function positiveIds(ids: number[] | undefined): number[] | undefined {
 	return filtered && filtered.length > 0 ? filtered : undefined;
 }
 
+function catalogTextValue(item: SdkCatalogItem, key: string): string {
+	const value = (item as Record<string, unknown>)[key];
+	if (typeof value === 'string') return value;
+	if (value == null) return '';
+	return JSON.stringify(value);
+}
+
+function catalogTextIncludes(item: SdkCatalogItem, fields: string[], needle: string): boolean {
+	const normalized = needle.trim().toLowerCase();
+	if (!normalized) return true;
+	return fields.some((field) => catalogTextValue(item, field).toLowerCase().includes(normalized));
+}
+
+function needsAgentCatalogPostFilter(input: AgentCatalogSearchInput): boolean {
+	return Boolean(input.drying_method || input.flavor_keywords?.length);
+}
+
+export function _filterAgentCatalogRowsForUnsupportedFilters(
+	rows: SdkCatalogItem[],
+	input: AgentCatalogSearchInput
+): SdkCatalogItem[] {
+	let filtered = rows;
+
+	if (input.drying_method) {
+		filtered = filtered.filter((item) =>
+			catalogTextIncludes(item, ['processing', 'drying_method'], input.drying_method ?? '')
+		);
+	}
+
+	const flavorKeywords = input.flavor_keywords?.filter((keyword) => keyword.trim().length > 0);
+	if (flavorKeywords && flavorKeywords.length > 0) {
+		const flavorFields = [
+			'description_short',
+			'description_long',
+			'farm_notes',
+			'ai_description',
+			'cupping_notes'
+		];
+		filtered = filtered.filter((item) =>
+			flavorKeywords.some((keyword) => catalogTextIncludes(item, flavorFields, keyword))
+		);
+	}
+
+	return filtered;
+}
+
 export function _buildAgentCatalogListQuery(input: AgentCatalogSearchInput): AgentCatalogListQuery {
 	const query: AgentCatalogListQuery = {
 		limit: Math.min(input.limit ?? 10, 15),
@@ -317,10 +361,6 @@ export function _buildAgentCatalogListQuery(input: AgentCatalogSearchInput): Age
 	if (input.name) query.name = input.name;
 	if (input.supplier) query.source = input.supplier;
 	if (input.stocked_days) query.stocked_days = input.stocked_days;
-	if (input.drying_method) query.drying_method = input.drying_method;
-	if (input.flavor_keywords && input.flavor_keywords.length > 0) {
-		query.flavor_keywords = input.flavor_keywords;
-	}
 
 	const ids = positiveIds(input.coffee_ids);
 	if (ids) query.ids = ids;
@@ -494,10 +534,21 @@ export const POST: RequestHandler = async (event) => {
 			{
 				searchCatalog: async (input) => {
 					const client = await createParchmentServerClient(event);
+					const query = _buildAgentCatalogListQuery(input);
+					const requestedLimit = query.limit;
+					if (needsAgentCatalogPostFilter(input)) {
+						query.limit = Math.max(typeof requestedLimit === 'number' ? requestedLimit : 10, 25);
+					}
 					const result = (await client.catalog.list(
-						_buildAgentCatalogListQuery(input) as CatalogListQuery
+						query as CatalogListQuery
 					)) as CatalogListResult;
-					return extractAgentCatalogRows(result) as unknown as Record<string, unknown>[];
+					const rows = _filterAgentCatalogRowsForUnsupportedFilters(
+						extractAgentCatalogRows(result),
+						input
+					);
+					const limitedRows =
+						typeof requestedLimit === 'number' ? rows.slice(0, requestedLimit) : rows;
+					return limitedRows as unknown as Record<string, unknown>[];
 				},
 				readPriceIndex: (input) => readPriceIndexForAgent(input),
 				findSimilarBeans: (input, options) => findSimilarBeansForAgent(input, options)
