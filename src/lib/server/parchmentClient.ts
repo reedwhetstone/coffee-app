@@ -47,6 +47,23 @@ export class ParchmentConfigError extends Error {
 export type ParchmentCredentialMode = 'public-demo' | 'session' | 'anonymous';
 
 /**
+ * Pick the Parchment credential mode for catalog reads from the request locals.
+ *
+ * Authenticated principals (or any Supabase session) forward their own
+ * credential (`session`); everyone else reads through the shared public-demo key
+ * (`public-demo`) so anonymous catalog traffic still sees the public/demo scope.
+ * This is the single source of truth for that decision so the SSR catalog loader
+ * and the client-triggered origin-price-stats refresh always present the same
+ * principal to Parchment (an anonymous refresh must not silently 401 by falling
+ * back to `session`).
+ */
+export function resolveCatalogCredentialMode(locals: App.Locals): ParchmentCredentialMode {
+	return locals.principal?.isAuthenticated === true || Boolean(locals.session)
+		? 'session'
+		: 'public-demo';
+}
+
+/**
  * How to set the RFC 7240 `Prefer: handling=...` signal on upstream calls.
  *
  * - `lenient` (default): inject `handling=lenient` on any call that does not

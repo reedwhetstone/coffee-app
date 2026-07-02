@@ -19,7 +19,7 @@ import {
 } from '$lib/catalog/urlState';
 import {
 	createParchmentServerClient,
-	type ParchmentCredentialMode
+	resolveCatalogCredentialMode
 } from '$lib/server/parchmentClient';
 import { getTrackedLotIds } from '$lib/server/trackedLots';
 import { getBriefMatchSummaries, type BriefMatchSummary } from '$lib/server/briefMatchSummary';
@@ -183,12 +183,6 @@ function buildParchmentCatalogQuery(
 	}
 
 	return query;
-}
-
-function resolveCatalogCredentialMode(locals: App.Locals): ParchmentCredentialMode {
-	return locals.principal?.isAuthenticated === true || Boolean(locals.session)
-		? 'session'
-		: 'public-demo';
 }
 
 // openapi-fetch resolves non-2xx catalog responses as `{ error: <json body> }`

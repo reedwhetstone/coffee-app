@@ -1,7 +1,10 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import type { ParchmentClient } from '@purveyors/sdk';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
-import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import {
+	createParchmentServerClient,
+	resolveCatalogCredentialMode
+} from '$lib/server/parchmentClient';
 import { catalogProxyErrorResponse } from '$lib/server/catalogProxy';
 
 // The origin-price-stats query only models the wholesale view params; Parchment
@@ -16,11 +19,14 @@ type CatalogOriginPriceStatsQuery = NonNullable<
  *
  * Repointed off the local Supabase aggregation onto Parchment's canonical
  * `/v1/catalog/origin-price-stats` endpoint: the API owns catalog visibility and
- * the percentile aggregation. This BFF route forwards the caller's own credential
- * (`mode: 'session'`) and the resolved wholesale view params, then relays the
- * upstream `originPriceStats` data unchanged. `meta.access` is still derived
- * locally from the request via {@link resolveCatalogVisibility} so the outward
- * JSON shape the catalog page consumes is preserved exactly.
+ * the percentile aggregation. This BFF route forwards the same credential mode
+ * the SSR catalog loader resolves via {@link resolveCatalogCredentialMode} (so an
+ * anonymous `/catalog` visitor's stats refresh reads through the public-demo key
+ * instead of a token-less `session` call that Parchment can reject with 401) plus
+ * the resolved wholesale view params, then relays the upstream `originPriceStats`
+ * data unchanged. `meta.access` is still derived locally from the request via
+ * {@link resolveCatalogVisibility} so the outward JSON shape the catalog page
+ * consumes is preserved exactly.
  */
 export const GET: RequestHandler = async (event) => {
 	const { locals, url } = event;
@@ -32,7 +38,9 @@ export const GET: RequestHandler = async (event) => {
 	});
 
 	try {
-		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const client = await createParchmentServerClient(event, {
+			mode: resolveCatalogCredentialMode(locals)
+		});
 
 		// Forward the resolved (privilege-gated) view params so the data scope
 		// Parchment computes stays consistent with the meta.access we report below.

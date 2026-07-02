@@ -7,6 +7,12 @@ const mockCreateParchmentServerClient = vi.fn(async () => ({
 
 vi.mock('$lib/server/parchmentClient', () => ({
 	createParchmentServerClient: mockCreateParchmentServerClient,
+	// Mirror the real helper so the route's credential-mode selection is exercised
+	// under test (anonymous → public-demo, authenticated/session → session).
+	resolveCatalogCredentialMode: (locals: App.Locals) =>
+		locals.principal?.isAuthenticated === true || Boolean(locals.session)
+			? 'session'
+			: 'public-demo',
 	ParchmentConfigError: class ParchmentConfigError extends Error {
 		constructor(message: string) {
 			super(message);
@@ -74,6 +80,16 @@ describe('/api/catalog/origin-price-stats', () => {
 		const query = mockOriginPriceStats.mock.calls[0][0];
 		expect(query).not.toHaveProperty('showWholesale');
 		expect(query).not.toHaveProperty('wholesaleOnly');
+		// Anonymous refresh must reuse the public-demo credential (matching the SSR
+		// loader), not a token-less session call that Parchment can reject with 401.
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'public-demo'
+		});
+	});
+
+	it('forwards the caller session credential for an authenticated request', async () => {
+		await GET(makeEvent('https://app.test/api/catalog/origin-price-stats', memberLocals));
+
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
 			mode: 'session'
 		});
