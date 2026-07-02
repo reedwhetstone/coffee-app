@@ -85,6 +85,20 @@ export interface ChatToolAccess {
  * price_index_snapshots revokes SELECT from authenticated users).
  */
 export interface ChatToolDeps {
+	searchCatalog?: (input: {
+		origin?: string;
+		process?: string;
+		variety?: string;
+		price_range?: [number, number];
+		flavor_keywords?: string[];
+		limit?: number;
+		stocked_only?: boolean;
+		name?: string;
+		stocked_days?: number;
+		drying_method?: string;
+		supplier?: string;
+		coffee_ids?: number[];
+	}) => Promise<Record<string, unknown>[]>;
 	readPriceIndex?: (input: {
 		origin?: string;
 		process?: string;

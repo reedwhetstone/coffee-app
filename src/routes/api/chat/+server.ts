@@ -3,9 +3,10 @@ import { OPENROUTER_API_KEY } from '$env/static/private';
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, stepCountIs, pruneMessages, type UIMessage, convertToModelMessages } from 'ai';
 import { z } from 'zod';
-import { createChatTools } from '$lib/services/tools';
+import { createChatTools, type ChatToolDeps } from '$lib/services/tools';
 import { readPriceIndexForAgent } from '$lib/server/agentPriceIndex';
 import { findSimilarBeansForAgent } from '$lib/server/agentSimilarity';
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { getUserMemory } from '$lib/server/userMemory';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
 import { getTrackedLotIds } from '$lib/server/trackedLots';
@@ -15,6 +16,7 @@ import {
 	validateSourcingBriefCriteria
 } from '$lib/procurement/sourcingBriefCriteria';
 import type { RequestHandler } from './$types';
+import type { CatalogListQuery, components } from '@purveyors/sdk';
 
 const BASE_SYSTEM_PROMPT = `You are an expert coffee consultant who combines deep knowledge of coffee varieties,
 processing methods, roasting techniques, and flavor profiles with practical guidance.
@@ -279,6 +281,168 @@ export interface SourcingIntelligenceContext {
 	activeBriefs: Array<{ name: string; criteriaDescription: string }>;
 }
 
+type AgentCatalogSearchInput = NonNullable<
+	Parameters<NonNullable<ChatToolDeps['searchCatalog']>>[0]
+>;
+type SdkCatalogItem = components['schemas']['CatalogItem'];
+type AgentCatalogListQuery = CatalogListQuery & {
+	source?: string | string[];
+	cultivar_detail?: string;
+	stocked_days?: number;
+	ids?: number[];
+	price_per_lb_min?: number;
+	price_per_lb_max?: number;
+	[key: string]: string | number | string[] | number[] | null | undefined;
+};
+type CatalogListResult = {
+	data?: { data?: unknown } | unknown[];
+	error?: unknown;
+};
+type CatalogListBody = {
+	data?: unknown;
+	pagination?: { hasNext?: boolean; page?: number; totalPages?: number };
+};
+type CatalogListFn = (query: AgentCatalogListQuery) => Promise<CatalogListResult>;
+
+const AGENT_CATALOG_MAX_RESULTS = 15;
+const AGENT_CATALOG_DEFAULT_LIMIT = 10;
+const AGENT_CATALOG_POST_FILTER_PAGE_LIMIT = 1000;
+const AGENT_CATALOG_POST_FILTER_MAX_PAGES = 10;
+
+function positiveIds(ids: number[] | undefined): number[] | undefined {
+	const filtered = ids?.filter((id) => Number.isInteger(id) && id > 0);
+	return filtered && filtered.length > 0 ? filtered : undefined;
+}
+
+function resolveAgentCatalogRequestedLimit(input: AgentCatalogSearchInput): number {
+	const ids = positiveIds(input.coffee_ids);
+	const requested = input.limit ?? ids?.length ?? AGENT_CATALOG_DEFAULT_LIMIT;
+	return Math.min(Math.max(Math.trunc(requested), 1), AGENT_CATALOG_MAX_RESULTS);
+}
+
+function catalogTextValue(item: SdkCatalogItem, key: string): string {
+	const value = (item as Record<string, unknown>)[key];
+	if (typeof value === 'string') return value;
+	if (value == null) return '';
+	return JSON.stringify(value);
+}
+
+function catalogTextIncludes(item: SdkCatalogItem, fields: string[], needle: string): boolean {
+	const normalized = needle.trim().toLowerCase();
+	if (!normalized) return true;
+	return fields.some((field) => catalogTextValue(item, field).toLowerCase().includes(normalized));
+}
+
+function needsAgentCatalogPostFilter(input: AgentCatalogSearchInput): boolean {
+	return Boolean(input.drying_method || input.flavor_keywords?.length);
+}
+
+export function _filterAgentCatalogRowsForUnsupportedFilters(
+	rows: SdkCatalogItem[],
+	input: AgentCatalogSearchInput
+): SdkCatalogItem[] {
+	let filtered = rows;
+
+	if (input.drying_method) {
+		filtered = filtered.filter((item) =>
+			catalogTextIncludes(item, ['processing', 'drying_method'], input.drying_method ?? '')
+		);
+	}
+
+	const flavorKeywords = input.flavor_keywords?.filter((keyword) => keyword.trim().length > 0);
+	if (flavorKeywords && flavorKeywords.length > 0) {
+		const flavorFields = [
+			'description_short',
+			'description_long',
+			'farm_notes',
+			'ai_description',
+			'cupping_notes'
+		];
+		filtered = filtered.filter((item) =>
+			flavorKeywords.some((keyword) => catalogTextIncludes(item, flavorFields, keyword))
+		);
+	}
+
+	return filtered;
+}
+
+export function _buildAgentCatalogListQuery(input: AgentCatalogSearchInput): AgentCatalogListQuery {
+	const query: AgentCatalogListQuery = {
+		limit: resolveAgentCatalogRequestedLimit(input),
+		stocked: input.stocked_only === false ? 'all' : 'true'
+	};
+	if (input.origin) query.origin = input.origin;
+	if (input.process) query.processing = input.process;
+	if (input.variety) query.cultivar_detail = input.variety;
+	if (input.name) query.name = input.name;
+	if (input.supplier) query.source = input.supplier;
+	if (input.stocked_days) query.stocked_days = input.stocked_days;
+
+	const ids = positiveIds(input.coffee_ids);
+	if (ids) query.ids = ids;
+
+	if (input.price_range) {
+		const [min, max] = input.price_range;
+		if (min != null) query.price_per_lb_min = min;
+		if (max != null) query.price_per_lb_max = max;
+	}
+
+	return query;
+}
+
+function extractAgentCatalogBody(result: CatalogListResult): CatalogListBody {
+	if (result.error) {
+		throw result.error instanceof Error ? result.error : new Error('Catalog search failed');
+	}
+
+	if (Array.isArray(result.data)) return { data: result.data };
+	if (result.data && typeof result.data === 'object') return result.data as CatalogListBody;
+	return {};
+}
+
+function extractAgentCatalogRows(body: CatalogListBody): SdkCatalogItem[] {
+	return Array.isArray(body.data) ? (body.data as SdkCatalogItem[]) : [];
+}
+
+function agentCatalogBodyHasNextPage(body: CatalogListBody, page: number): boolean {
+	if (body.pagination?.hasNext === true) return true;
+	if (typeof body.pagination?.totalPages === 'number') return page < body.pagination.totalPages;
+	return false;
+}
+
+export async function _fetchAgentCatalogRowsForSearch(
+	listCatalog: CatalogListFn,
+	input: AgentCatalogSearchInput
+): Promise<SdkCatalogItem[]> {
+	const requestedLimit = resolveAgentCatalogRequestedLimit(input);
+	const query = _buildAgentCatalogListQuery(input);
+
+	if (!needsAgentCatalogPostFilter(input)) {
+		const body = extractAgentCatalogBody(await listCatalog(query));
+		return extractAgentCatalogRows(body).slice(0, requestedLimit);
+	}
+
+	const filteredRows: SdkCatalogItem[] = [];
+	for (let page = 1; page <= AGENT_CATALOG_POST_FILTER_MAX_PAGES; page += 1) {
+		const body = extractAgentCatalogBody(
+			await listCatalog({
+				...query,
+				page,
+				limit: AGENT_CATALOG_POST_FILTER_PAGE_LIMIT
+			})
+		);
+		filteredRows.push(
+			..._filterAgentCatalogRowsForUnsupportedFilters(extractAgentCatalogRows(body), input)
+		);
+
+		if (filteredRows.length >= requestedLimit || !agentCatalogBodyHasNextPage(body, page)) {
+			break;
+		}
+	}
+
+	return filteredRows.slice(0, requestedLimit);
+}
+
 export function _buildSystemPrompt(
 	workspaceContext?: WorkspaceContext,
 	userName?: string,
@@ -428,6 +592,14 @@ export const POST: RequestHandler = async (event) => {
 			user.id,
 			{ ppiAccess, memberAccess },
 			{
+				searchCatalog: async (input) => {
+					const client = await createParchmentServerClient(event);
+					const rows = await _fetchAgentCatalogRowsForSearch(
+						(query) => client.catalog.list(query as CatalogListQuery) as Promise<CatalogListResult>,
+						input
+					);
+					return rows as unknown as Record<string, unknown>[];
+				},
 				readPriceIndex: (input) => readPriceIndexForAgent(input),
 				findSimilarBeans: (input, options) => findSimilarBeansForAgent(input, options)
 			}

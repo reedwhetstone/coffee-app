@@ -56,6 +56,19 @@ export function createCatalogTools(
 				coffee_ids: z.array(z.number()).optional().describe('Specific coffee IDs to retrieve')
 			}),
 			execute: async (input) => {
+				if (deps.searchCatalog) {
+					const coffees = await deps.searchCatalog({
+						...input,
+						price_range: input.price_range as [number, number] | undefined
+					});
+					return {
+						coffees,
+						total: coffees.length,
+						filters_applied: input,
+						search_strategy: 'structured' as const
+					};
+				}
+
 				// Map chat tool input shape to CLI function input shape.
 				// name, supplier, ids are now natively supported by the CLI (v0.8.3+).
 				// Remaining client-side filters: variety, stocked_days, drying_method.

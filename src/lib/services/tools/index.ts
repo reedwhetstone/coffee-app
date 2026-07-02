@@ -34,9 +34,9 @@ export type { ChatToolAccess, ChatToolDeps, InventoryRoastSummary } from './shar
 /**
  * Creates the set of AI tools for the chat service.
  *
- * All tools call @purveyors/cli library functions directly via the supabase
- * client — no internal HTTP hop required. This is the flywheel: CLI
- * improvements automatically improve the chat agent.
+ * Most tools call @purveyors/cli library functions directly via the supabase
+ * client — no internal HTTP hop required. Catalog search is injected by the
+ * chat route so it can use the canonical Parchment API with request credentials.
  *
  * READ TOOLS — execute immediately, return data:
  *   coffee_catalog_search  → searchCatalog()
