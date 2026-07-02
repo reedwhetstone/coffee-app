@@ -1,6 +1,8 @@
 import type { PageServerLoad } from './$types';
-import { getCatalogItemsByIds, searchCatalog } from '$lib/data/catalog';
+import type { CatalogListQuery, components } from '@purveyors/sdk';
+import { getCatalogItemsByIds } from '$lib/data/catalog';
 import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import {
 	describeSourcingBriefCriteria,
 	validateSourcingBriefCriteria,
@@ -12,6 +14,22 @@ export type DashboardBriefSummary = {
 	name: string;
 	criteriaDescription: string;
 	catalogHref: string;
+};
+
+type SdkCatalogItem = components['schemas']['CatalogItem'];
+type CatalogListBody = {
+	data?: unknown;
+};
+type CatalogListResult = {
+	data?: CatalogListBody | unknown[];
+	error?: unknown;
+};
+
+const DASHBOARD_ARRIVALS_QUERY: CatalogListQuery = {
+	stocked: 'true',
+	sort: 'arrival_date',
+	order: 'desc',
+	limit: 6
 };
 
 function briefCatalogHref(criteria: SourcingBriefCriteria): string {
@@ -27,21 +45,30 @@ function briefCatalogHref(criteria: SourcingBriefCriteria): string {
 	return query ? `/catalog?${query}` : '/catalog';
 }
 
-export const load: PageServerLoad = async ({ locals }) => {
+function extractParchmentCatalogRows(result: CatalogListResult): SdkCatalogItem[] {
+	if (result.error) {
+		throw result.error;
+	}
+
+	const rows = Array.isArray(result.data) ? result.data : result.data?.data;
+	return Array.isArray(rows) ? (rows as SdkCatalogItem[]) : [];
+}
+
+export const load: PageServerLoad = async (event) => {
+	const { locals } = event;
 	const userId = locals.principal?.isAuthenticated ? locals.principal.userId : null;
 	const isMember = locals.role === 'member' || locals.role === 'admin';
 	const hasSourcingAccess =
 		isMember || (locals.principal?.isAuthenticated === true && locals.principal.ppiAccess === true);
 
-	const arrivalsPromise = searchCatalog(locals.supabase, {
-		stockedOnly: true,
-		orderBy: 'arrival_date',
-		orderDirection: 'desc',
-		limit: 6
-	}).catch((error) => {
-		console.error('Error loading dashboard arrivals preview:', error);
-		return { data: [] };
-	});
+	const arrivalsPromise = createParchmentServerClient(event)
+		.then(async (client) =>
+			extractParchmentCatalogRows(await client.catalog.list(DASHBOARD_ARRIVALS_QUERY))
+		)
+		.catch((error) => {
+			console.error('Error loading dashboard arrivals preview:', error);
+			return [] as SdkCatalogItem[];
+		});
 
 	// Summaries carry tracking context (status/delta); the full catalog rows let the
 	// dashboard render CoffeeCards whose detail panels open in place.
@@ -86,7 +113,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		briefsPromise
 	]);
 
-	const recentArrivals = arrivalsResult.data as unknown as Record<string, unknown>[];
+	const recentArrivals = arrivalsResult as unknown as Record<string, unknown>[];
 	const activeBriefs: DashboardBriefSummary[] = (
 		(briefRows.data ?? []) as Array<{ id: string; name: string; criteria: unknown }>
 	).flatMap((brief) => {
