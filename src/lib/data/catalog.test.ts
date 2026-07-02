@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-	getCatalogDropdown,
-	getCatalogFilterMetadata,
-	searchCatalog,
-	searchCatalogDropdown
-} from './catalog';
+import { getCatalogDropdown, searchCatalog, searchCatalogDropdown } from './catalog';
 
 function createSupabaseMock() {
 	const result: {
@@ -285,66 +280,6 @@ describe('searchCatalog processing transparency filters', () => {
 				'process_additives',
 				['fruit', 'yeast', 'hops', 'spice', 'botanical', 'mossto', 'starter-culture', 'other']
 			]
-		]);
-	});
-});
-
-describe('getCatalogFilterMetadata', () => {
-	it('falls back to the legacy filter projection when processing-transparency columns are missing', async () => {
-		const { supabase, state, queueResult } = createSupabaseMock();
-
-		queueResult({
-			data: [],
-			count: 0,
-			error: {
-				code: 'PGRST200',
-				message: "Could not find the 'processing_base_method' column in the schema cache"
-			}
-		});
-		queueResult({
-			data: [
-				{
-					source: 'Cafe Imports',
-					continent: 'Africa',
-					country: 'Ethiopia',
-					processing: 'Washed',
-					cultivar_detail: '74110',
-					type: 'Green',
-					grade: 'Grade 1',
-					appearance: 'Clean',
-					arrival_date: '2026-04-01'
-				}
-			],
-			count: 1,
-			error: null
-		});
-
-		const rows = await getCatalogFilterMetadata(supabase as never, {
-			stockedOnly: true,
-			publicOnly: true,
-			showWholesale: false
-		});
-
-		expect(state.selectCalls.at(-2)?.[0]).toContain('processing_base_method');
-		expect(state.selectCalls.at(-1)?.[0]).toBe(
-			'source, continent, country, processing, cultivar_detail, type, grade, appearance, arrival_date'
-		);
-		expect(rows).toEqual([
-			{
-				source: 'Cafe Imports',
-				continent: 'Africa',
-				country: 'Ethiopia',
-				processing: 'Washed',
-				processing_base_method: null,
-				fermentation_type: null,
-				process_additives: null,
-				processing_disclosure_level: null,
-				cultivar_detail: '74110',
-				type: 'Green',
-				grade: 'Grade 1',
-				appearance: 'Clean',
-				arrival_date: '2026-04-01'
-			}
 		]);
 	});
 });
