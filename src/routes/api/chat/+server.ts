@@ -10,7 +10,7 @@ import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { getUserMemory } from '$lib/server/userMemory';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
 import { getTrackedLotIds } from '$lib/server/trackedLots';
-import { getCatalogItemsByIds } from '$lib/data/catalog';
+import { fetchParchmentCatalogItemsByIds } from '$lib/server/parchmentCatalog';
 import {
 	describeSourcingBriefCriteria,
 	validateSourcingBriefCriteria
@@ -629,7 +629,12 @@ export const POST: RequestHandler = async (event) => {
 			]);
 
 			const trackedLots = trackedIds.length
-				? (await getCatalogItemsByIds(supabase, trackedIds.slice(0, 10))).map((lot) => ({
+				? (
+						await fetchParchmentCatalogItemsByIds(
+							await createParchmentServerClient(event),
+							trackedIds.slice(0, 10)
+						)
+					).map((lot) => ({
 						id: lot.id,
 						name: lot.name ?? `Lot #${lot.id}`,
 						country: lot.country,

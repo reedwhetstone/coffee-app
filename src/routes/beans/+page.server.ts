@@ -1,9 +1,11 @@
 import type { PageServerLoad } from './$types';
 import { getPageAuthState } from '$lib/server/pageAuth';
-import { getCatalogItemsByIds } from '$lib/data/catalog';
 import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import { fetchParchmentCatalogItemsByIds } from '$lib/server/parchmentCatalog';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async (event) => {
+	const { locals } = event;
 	const { user, role } = getPageAuthState(locals);
 	const ppiAccess =
 		locals.principal?.isAuthenticated === true ? locals.principal.ppiAccess === true : false;
@@ -16,8 +18,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 	if (user && hasSourcingAccess) {
 		try {
 			trackedLots = await getTrackedLotSummaries(locals.supabase, user.id, 100);
-			trackedCatalog = (await getCatalogItemsByIds(
-				locals.supabase,
+			const parchment = await createParchmentServerClient(event);
+			trackedCatalog = (await fetchParchmentCatalogItemsByIds(
+				parchment,
 				trackedLots.map((lot) => lot.catalogId)
 			)) as unknown as Record<string, unknown>[];
 		} catch (error) {
