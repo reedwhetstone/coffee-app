@@ -19,7 +19,8 @@ class MockCatalogSchemaUnavailableError extends Error {
 	}
 }
 
-vi.mock('$lib/server/parchmentClient', () => ({
+vi.mock('$lib/server/parchmentClient', async (importOriginal) => ({
+	...(await importOriginal<typeof import('$lib/server/parchmentClient')>()),
 	createParchmentServerClient: mockCreateParchmentServerClient
 }));
 
