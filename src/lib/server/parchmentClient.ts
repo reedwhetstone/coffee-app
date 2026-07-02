@@ -203,7 +203,17 @@ async function resolveTokenForMode(
  */
 function withLenientHandling(baseFetch: typeof fetch): typeof fetch {
 	return (input, init) => {
-		const headers = new Headers(init?.headers ?? {});
+		// openapi-fetch builds a `Request` carrying credential/content-type headers
+		// and invokes this as `fetch(request)` with no `init`. Seed the header set
+		// from that `Request` first so the `headers` we pass below augments rather
+		// than replaces it — otherwise `baseFetch(request, { ...init, headers })`
+		// would rebuild the request with only our headers and drop `Authorization`
+		// (and a POST's `Content-Type`), making gated calls arrive unauthenticated.
+		// `init.headers` layers on top for the rare direct `fetch(url, init)` caller.
+		const headers = new Headers(input instanceof Request ? input.headers : undefined);
+		if (init?.headers) {
+			new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+		}
 		if (!headers.has('prefer')) {
 			headers.set('Prefer', 'handling=lenient');
 		}

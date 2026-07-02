@@ -107,6 +107,29 @@ describe('createParchmentServerClient', () => {
 		expect(new Headers(init.headers).get('prefer')).toBe('handling=strict');
 	});
 
+	it('preserves headers on a Request input (openapi-fetch fetch(request) shape)', async () => {
+		const event = makeEvent({});
+		await createParchmentServerClient(event);
+
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		// The SDK builds a Request carrying the credential/content-type and calls
+		// fetch(request) with no init. The wrapper must not drop those headers.
+		const request = new Request('https://api.test.purveyors.io/v1/catalog', {
+			method: 'POST',
+			headers: { Authorization: 'Bearer session-jwt', 'Content-Type': 'application/json' }
+		});
+		await wrappedFetch(request);
+
+		const init = baseFetch.mock.calls[0][1] as RequestInit;
+		const forwarded = new Headers(init.headers);
+		expect(forwarded.get('authorization')).toBe('Bearer session-jwt');
+		expect(forwarded.get('content-type')).toBe('application/json');
+		expect(forwarded.get('prefer')).toBe('handling=lenient');
+	});
+
 	it('throws a clear configuration error when the base URL is missing', async () => {
 		delete mockEnv.PARCHMENT_API_BASE_URL;
 		const event = makeEvent({});
