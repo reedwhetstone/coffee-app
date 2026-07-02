@@ -2,12 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockCatalogList = vi.fn();
 const mockCreateParchmentServerClient = vi.fn();
-const mockGetCatalogItemsByIds = vi.fn();
 const mockGetTrackedLotSummaries = vi.fn();
-
-vi.mock('$lib/data/catalog', () => ({
-	getCatalogItemsByIds: (...args: unknown[]) => mockGetCatalogItemsByIds(...args)
-}));
 
 vi.mock('$lib/server/parchmentClient', () => ({
 	createParchmentServerClient: (...args: unknown[]) => mockCreateParchmentServerClient(...args)
@@ -23,7 +18,6 @@ beforeEach(async () => {
 	vi.clearAllMocks();
 	mockCatalogList.mockResolvedValue({ data: { data: [] } });
 	mockCreateParchmentServerClient.mockResolvedValue({ catalog: { list: mockCatalogList } });
-	mockGetCatalogItemsByIds.mockResolvedValue([]);
 	mockGetTrackedLotSummaries.mockResolvedValue([]);
 	({ load } = await import('./+page.server'));
 });
@@ -105,7 +99,14 @@ describe('/dashboard sourcing workspace load', () => {
 		mockGetTrackedLotSummaries.mockResolvedValue([
 			{ catalogId: 7, name: 'Tracked Lot', stocked: true }
 		]);
-		mockGetCatalogItemsByIds.mockResolvedValue([{ id: 7, name: 'Tracked Lot' }]);
+		// Tracked hydration goes through Parchment catalog.list with a coffeeIds
+		// filter; arrivals uses the stocked query. Return the tracked row only for
+		// the coffeeIds call.
+		mockCatalogList.mockImplementation((query: { coffeeIds?: string }) =>
+			Promise.resolve({
+				data: { data: query?.coffeeIds ? [{ id: 7, name: 'Tracked Lot' }] : [] }
+			})
+		);
 
 		const result = (await load(
 			makeLoadInput({
@@ -119,7 +120,12 @@ describe('/dashboard sourcing workspace load', () => {
 		};
 
 		expect(mockGetTrackedLotSummaries).toHaveBeenCalledWith(expect.anything(), 'ppi-1', 12);
-		expect(mockGetCatalogItemsByIds).toHaveBeenCalledWith(expect.anything(), [7]);
+		expect(mockCatalogList).toHaveBeenCalledWith({
+			coffeeIds: '7',
+			stocked: 'all',
+			showWholesale: 'true',
+			limit: 1
+		});
 		expect(result.trackedLots).toHaveLength(1);
 		expect(result.trackedCatalog).toHaveLength(1);
 		expect(result.activeBriefs).toEqual([]);

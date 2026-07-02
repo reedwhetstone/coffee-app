@@ -1,8 +1,11 @@
 import type { PageServerLoad } from './$types';
 import type { CatalogListQuery, components } from '@purveyors/sdk';
-import { getCatalogItemsByIds } from '$lib/data/catalog';
 import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import {
+	extractParchmentCatalogRows,
+	fetchParchmentCatalogItemsByIds
+} from '$lib/server/parchmentCatalog';
 import {
 	describeSourcingBriefCriteria,
 	validateSourcingBriefCriteria,
@@ -17,13 +20,6 @@ export type DashboardBriefSummary = {
 };
 
 type SdkCatalogItem = components['schemas']['CatalogItem'];
-type CatalogListBody = {
-	data?: unknown;
-};
-type CatalogListResult = {
-	data?: CatalogListBody | unknown[];
-	error?: unknown;
-};
 
 const DASHBOARD_ARRIVALS_QUERY: CatalogListQuery = {
 	stocked: 'true',
@@ -45,15 +41,6 @@ function briefCatalogHref(criteria: SourcingBriefCriteria): string {
 	return query ? `/catalog?${query}` : '/catalog';
 }
 
-function extractParchmentCatalogRows(result: CatalogListResult): SdkCatalogItem[] {
-	if (result.error) {
-		throw result.error;
-	}
-
-	const rows = Array.isArray(result.data) ? result.data : result.data?.data;
-	return Array.isArray(rows) ? (rows as SdkCatalogItem[]) : [];
-}
-
 export const load: PageServerLoad = async (event) => {
 	const { locals } = event;
 	const userId = locals.principal?.isAuthenticated ? locals.principal.userId : null;
@@ -61,7 +48,11 @@ export const load: PageServerLoad = async (event) => {
 	const hasSourcingAccess =
 		isMember || (locals.principal?.isAuthenticated === true && locals.principal.ppiAccess === true);
 
-	const arrivalsPromise = createParchmentServerClient(event)
+	// One request-bound Parchment client feeds both the public arrivals preview
+	// and the gated tracked-lot catalog hydration below.
+	const parchmentClientPromise = createParchmentServerClient(event);
+
+	const arrivalsPromise = parchmentClientPromise
 		.then(async (client) =>
 			extractParchmentCatalogRows(await client.catalog.list(DASHBOARD_ARRIVALS_QUERY))
 		)
@@ -80,8 +71,8 @@ export const load: PageServerLoad = async (event) => {
 			? getTrackedLotSummaries(locals.supabase, userId, 12)
 					.then(async (summaries) => ({
 						summaries,
-						catalog: (await getCatalogItemsByIds(
-							locals.supabase,
+						catalog: (await fetchParchmentCatalogItemsByIds(
+							await parchmentClientPromise,
 							summaries.map((lot) => lot.catalogId)
 						)) as unknown as Record<string, unknown>[]
 					}))

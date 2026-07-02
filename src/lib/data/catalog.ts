@@ -648,22 +648,3 @@ export async function getCatalogDropdown(
 	const result = await searchCatalogDropdown(supabase, options);
 	return result.data;
 }
-
-/**
- * Fetch a batch of catalog items by IDs (legacy ?ids= support).
- * Returns rows ordered by name.
- */
-export async function getCatalogItemsByIds(
-	supabase: SupabaseClient,
-	ids: number[]
-): Promise<CatalogItem[]> {
-	if (ids.length === 0) return [];
-	const { data, error } = await supabase
-		.from('coffee_catalog')
-		.select('*')
-		.in('id', ids)
-		.order('name');
-
-	if (error) throw error;
-	return (data as CatalogItem[]) || [];
-}
