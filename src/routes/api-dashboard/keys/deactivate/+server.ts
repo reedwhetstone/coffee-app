@@ -1,12 +1,22 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { deactivateApiKey } from '$lib/server/apiAuth';
-export const POST: RequestHandler = async ({ request, locals }) => {
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
+
+/**
+ * Deactivate (revoke) an API key owned by the signed-in dashboard user.
+ *
+ * Per #40 revocation is owned by Parchment. This route authenticates the
+ * dashboard session, then forwards the caller's own credential (`mode: 'session'`)
+ * to Parchment's revoke endpoint via the SDK. Parchment scopes the mutation to the
+ * session user, so a user can only revoke their own keys — the previous local
+ * `user_id` ownership check is now enforced server-side by the API.
+ */
+export const POST: RequestHandler = async (event) => {
+	const { request, locals } = event;
 	try {
-		// Get authenticated session
+		// Local session guard: only signed-in dashboard users may revoke keys.
 		const { session, user } = await locals.safeGetSession();
 
-		// Allow authenticated users (free tier defaults to api_viewer)
 		if (!session || !user) {
 			return json(
 				{
@@ -30,16 +40,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		// Deactivate the API key (ensures user owns the key)
-		const success = await deactivateApiKey(user.id, keyId);
+		// Revoke via Parchment; ownership is enforced upstream against the session
+		// user, so a user cannot revoke another user's key.
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const { data, error, response } = await client.apiKeys.revoke(keyId);
 
-		if (!success) {
+		if (error || !data) {
 			return json(
 				{
 					success: false,
-					error: 'Failed to deactivate API key'
+					error: error?.error?.message || 'Failed to deactivate API key'
 				},
-				{ status: 500 }
+				{ status: response?.status ?? 500 }
 			);
 		}
 

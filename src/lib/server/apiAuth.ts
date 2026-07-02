@@ -1,5 +1,4 @@
 import { createAdminClient } from '$lib/supabase-admin';
-import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 import type { Database, Json } from '$lib/types/database.types';
 
@@ -13,8 +12,6 @@ type ApiKeyRow = Database['public']['Tables']['api_keys']['Row'];
 
 // API key configuration
 export const API_KEY_PREFIX = 'pk_live_';
-const API_KEY_LENGTH = 32;
-const HASH_ROUNDS = 12;
 
 // API access plans — separate from app roles.
 // viewer = Green tier, member = Origin tier, enterprise = Enterprise tier.
@@ -52,21 +49,6 @@ export interface RateLimitResult {
 	remaining: number;
 	resetTime: Date;
 	retryAfter?: number;
-}
-
-/**
- * Generate a secure API key with prefix
- */
-export function generateApiKey(): string {
-	const randomPart = randomBytes(API_KEY_LENGTH).toString('hex');
-	return `${API_KEY_PREFIX}${randomPart}`;
-}
-
-/**
- * Hash an API key for secure storage
- */
-export async function hashApiKey(key: string): Promise<string> {
-	return bcrypt.hash(key, HASH_ROUNDS);
 }
 
 /**
@@ -126,37 +108,6 @@ export async function validateApiKey(key: string): Promise<ApiKeyValidationResul
 }
 
 /**
- * Create a new API key for a user
- */
-export async function createApiKey(
-	userId: string,
-	name: string
-): Promise<{ success: boolean; apiKey?: string; error?: string }> {
-	try {
-		const apiKey = generateApiKey();
-		const hashedKey = await hashApiKey(apiKey);
-
-		const { error } = await supabase.from('api_keys').insert({
-			user_id: userId,
-			key_hash: hashedKey,
-			name,
-			is_active: true,
-			permissions: {}
-		});
-
-		if (error) {
-			console.error('Error creating API key:', error);
-			return { success: false, error: 'Failed to create API key' };
-		}
-
-		return { success: true, apiKey };
-	} catch (error) {
-		console.error('API key creation error:', error);
-		return { success: false, error: 'Creation failed' };
-	}
-}
-
-/**
  * Get user's API keys (without revealing the actual keys)
  */
 export async function getUserApiKeys(userId: string) {
@@ -176,29 +127,6 @@ export async function getUserApiKeys(userId: string) {
 	} catch (error) {
 		console.error('Get user API keys error:', error);
 		return { success: false, error: 'Fetch failed' };
-	}
-}
-
-/**
- * Deactivate an API key
- */
-export async function deactivateApiKey(userId: string, keyId: string): Promise<boolean> {
-	try {
-		const { error } = await supabase
-			.from('api_keys')
-			.update({ is_active: false })
-			.eq('id', keyId)
-			.eq('user_id', userId); // Ensure user owns the key
-
-		if (error) {
-			console.error('Error deactivating API key:', error);
-			return false;
-		}
-
-		return true;
-	} catch (error) {
-		console.error('API key deactivation error:', error);
-		return false;
 	}
 }
 
