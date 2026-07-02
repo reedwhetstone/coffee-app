@@ -182,7 +182,13 @@ export async function proxyCatalogList(
 		query.limit = String(options.defaultLimit);
 	}
 
-	const client = await createParchmentServerClient(event, { mode: 'session' });
+	// Public API proxy: relay Parchment's status/body verbatim and preserve the
+	// external caller's own `Prefer` (default strict), so gated failures are not
+	// silently downgraded to a degraded 2xx by a first-party lenient default.
+	const client = await createParchmentServerClient(event, {
+		mode: 'session',
+		preferHandling: 'inherit'
+	});
 	const { data, error, response } = await client.catalog.list(query as CatalogListQuery);
 
 	return {
@@ -197,7 +203,12 @@ export async function proxyCatalogSimilar(
 	id: string,
 	query: CatalogSimilarQuery
 ): Promise<CatalogSimilarProxyResult> {
-	const client = await createParchmentServerClient(event, { mode: 'session' });
+	// Public API proxy: preserve the external caller's `Prefer` (default strict)
+	// so entitlement/validation failures surface instead of being downgraded.
+	const client = await createParchmentServerClient(event, {
+		mode: 'session',
+		preferHandling: 'inherit'
+	});
 	const { data, error, response } = await client.catalog.similar(id, query);
 
 	return {

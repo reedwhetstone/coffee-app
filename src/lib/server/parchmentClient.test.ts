@@ -24,13 +24,15 @@ function makeEvent(overrides: {
 	includeSafeGetSession?: boolean;
 	authorizationHeader?: string | null;
 	principalAuthenticated?: boolean;
+	preferHeader?: string | null;
 }): RequestEvent {
 	const {
 		accessToken = null,
 		safeGetSessionToken = null,
 		includeSafeGetSession = true,
 		authorizationHeader = null,
-		principalAuthenticated = false
+		principalAuthenticated = false,
+		preferHeader = null
 	} = overrides;
 
 	const fetchImpl = vi.fn();
@@ -38,6 +40,9 @@ function makeEvent(overrides: {
 	const headers = new Headers();
 	if (authorizationHeader) {
 		headers.set('authorization', authorizationHeader);
+	}
+	if (preferHeader) {
+		headers.set('prefer', preferHeader);
 	}
 
 	const locals = {
@@ -128,6 +133,37 @@ describe('createParchmentServerClient', () => {
 		expect(forwarded.get('authorization')).toBe('Bearer session-jwt');
 		expect(forwarded.get('content-type')).toBe('application/json');
 		expect(forwarded.get('prefer')).toBe('handling=lenient');
+	});
+
+	it('does not inject a lenient default in preferHandling=inherit mode (public API proxy)', async () => {
+		const event = makeEvent({});
+		await createParchmentServerClient(event, { preferHandling: 'inherit' });
+
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		await wrappedFetch('https://api.test.purveyors.io/v1/catalog');
+
+		const init = baseFetch.mock.calls[0][1] as RequestInit;
+		// No first-party default: Parchment applies its documented strict default,
+		// so a gated failure surfaces as a real 4xx instead of a degraded 2xx.
+		expect(new Headers(init.headers).get('prefer')).toBeNull();
+	});
+
+	it('forwards the external caller Prefer header in preferHandling=inherit mode', async () => {
+		const event = makeEvent({ preferHeader: 'handling=lenient' });
+		await createParchmentServerClient(event, { preferHandling: 'inherit' });
+
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		await wrappedFetch('https://api.test.purveyors.io/v1/catalog');
+
+		const init = baseFetch.mock.calls[0][1] as RequestInit;
+		// The external caller opted into lenient itself; honor their preference.
+		expect(new Headers(init.headers).get('prefer')).toBe('handling=lenient');
 	});
 
 	it('throws a clear configuration error when the base URL is missing', async () => {

@@ -45,7 +45,8 @@ describe('/v1/catalog/proof-coverage route', () => {
 		const response = await GET(makeEvent('https://app.test/v1/catalog/proof-coverage'));
 
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
-			mode: 'session'
+			mode: 'session',
+			preferHandling: 'inherit'
 		});
 		// The canonical proofCoverage() surface takes no query args: coverage scope
 		// (and any stocked/filter narrowing) is owned by Parchment and not accepted

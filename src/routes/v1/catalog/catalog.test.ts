@@ -47,7 +47,8 @@ describe('/v1/catalog route', () => {
 		const response = await GET(makeEvent('https://app.test/v1/catalog?page=2&limit=10'));
 
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
-			mode: 'session'
+			mode: 'session',
+			preferHandling: 'inherit'
 		});
 		expect(mockCatalogList).toHaveBeenCalledWith(
 			expect.objectContaining({ page: '2', limit: '10' })

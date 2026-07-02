@@ -74,7 +74,8 @@ describe('/v1/catalog/[id]/similar route', () => {
 		);
 
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
-			mode: 'session'
+			mode: 'session',
+			preferHandling: 'inherit'
 		});
 		expect(mockCatalogSimilar).toHaveBeenCalledWith('1182', {
 			threshold: '0.8',

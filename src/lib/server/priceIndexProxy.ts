@@ -104,7 +104,12 @@ export function priceIndexProxyErrorResponse(error: unknown): PriceIndexProxyErr
 export async function proxyPriceIndexList(event: RequestEvent): Promise<PriceIndexProxyResult> {
 	const query = toPriceIndexQuery(event.url);
 
-	const client = await createParchmentServerClient(event, { mode: 'session' });
+	// Public API proxy: preserve the external caller's `Prefer` (default strict)
+	// so entitlement/validation failures surface instead of being downgraded.
+	const client = await createParchmentServerClient(event, {
+		mode: 'session',
+		preferHandling: 'inherit'
+	});
 	const { data, error, response } = await client.priceIndex.list(query);
 
 	return {
