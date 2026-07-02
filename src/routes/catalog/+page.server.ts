@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import type { CatalogListQuery, components } from '@purveyors/sdk';
+import type { CatalogListQuery, ParchmentClient, components } from '@purveyors/sdk';
 import { toCatalogResourceItem } from '$lib/catalog/catalogResourceItem';
 import { CatalogSchemaUnavailableError } from '$lib/data/catalog';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
@@ -19,15 +19,21 @@ import {
 } from '$lib/catalog/urlState';
 import {
 	createParchmentServerClient,
-	type ParchmentCredentialMode
+	resolveCatalogCredentialMode
 } from '$lib/server/parchmentClient';
-import { loadCatalogOriginPriceStats } from '$lib/server/catalogOriginPriceStats';
 import { getTrackedLotIds } from '$lib/server/trackedLots';
 import { getBriefMatchSummaries, type BriefMatchSummary } from '$lib/server/briefMatchSummary';
 
 // Watchlist-only view is served as a single page; tracked lists are small.
 const TRACKED_VIEW_LIMIT = 200;
 type SdkCatalogItem = components['schemas']['CatalogItem'];
+// Per-origin price context comes from Parchment's canonical endpoint; its object
+// shape is identical to the page component's OriginPriceStats.
+type CatalogOriginPriceStats =
+	components['schemas']['CatalogOriginPriceStatsResponse']['originPriceStats'];
+type CatalogOriginPriceStatsQuery = NonNullable<
+	Parameters<ParchmentClient['catalog']['originPriceStats']>[0]
+>;
 // The installed SDK's CatalogListQuery type lags the Span A generated params.
 // Keep this overlay local to the BFF adapter until the next SDK type publish.
 type ParchmentCatalogListQuery = CatalogListQuery & {
@@ -179,12 +185,6 @@ function buildParchmentCatalogQuery(
 	return query;
 }
 
-function resolveCatalogCredentialMode(locals: App.Locals): ParchmentCredentialMode {
-	return locals.principal?.isAuthenticated === true || Boolean(locals.session)
-		? 'session'
-		: 'public-demo';
-}
-
 // openapi-fetch resolves non-2xx catalog responses as `{ error: <json body> }`
 // instead of rejecting, so translate the parsed error body into a typed Error the
 // caller can route. Parchment emits a structured envelope `{ error: { code, message } }`
@@ -313,11 +313,16 @@ export const load: PageServerLoad = async (event) => {
 		trackedLotIds = await getTrackedLotIds(locals.supabase, userId);
 	}
 
+	// Reused for both the catalog list and the origin-price-stats read below so the
+	// two Parchment calls present the same principal and share one client per load.
+	let catalogClient: ParchmentClient | null = null;
+
 	try {
 		if (!trackedOnly || trackedLotIds.length > 0) {
 			const client = await createParchmentServerClient(event, {
 				mode: resolveCatalogCredentialMode(locals)
 			});
+			catalogClient = client;
 			const effectiveCatalogState = trackedOnly
 				? {
 						...initialCatalogState,
@@ -375,7 +380,24 @@ export const load: PageServerLoad = async (event) => {
 		toCatalogResourceItem(item as Parameters<typeof toCatalogResourceItem>[0])
 	);
 
-	const originPriceStats = await loadCatalogOriginPriceStats(locals.supabase, visibility);
+	// Per-origin price context now comes from Parchment (same source, same client,
+	// same credential as the catalog list above). Forward the resolved wholesale
+	// view params; publicOnly is derived server-side from the credential. Non-fatal:
+	// a stats failure degrades to an empty context panel rather than failing the
+	// whole (public) catalog page.
+	let originPriceStats: CatalogOriginPriceStats = [];
+	if (catalogClient) {
+		try {
+			const statsQuery: CatalogOriginPriceStatsQuery = {};
+			if (visibility.showWholesale) statsQuery.showWholesale = 'true';
+			if (visibility.wholesaleOnly) statsQuery.wholesaleOnly = 'true';
+
+			const { data } = await catalogClient.catalog.originPriceStats(statsQuery);
+			originPriceStats = data?.originPriceStats ?? [];
+		} catch (error) {
+			console.error('Error loading origin price stats from Parchment:', error);
+		}
+	}
 
 	let briefMatchSummaries: BriefMatchSummary[] = [];
 
