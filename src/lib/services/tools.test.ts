@@ -153,6 +153,75 @@ describe('createChatTools entitlement allowlist', () => {
 		expect(coffees[0].description_long).toBeUndefined();
 	});
 
+	it('uses the injected canonical catalog search reader when provided', async () => {
+		const searchCatalog = vi.fn().mockResolvedValue([{ id: 42, name: 'Parchment Lot' }]);
+		const tools = createChatTools(
+			supabase,
+			'user-123',
+			{ memberAccess: true, ppiAccess: false },
+			{ searchCatalog }
+		);
+		const executeSearch = tools.coffee_catalog_search.execute as unknown as (input: {
+			origin: string;
+			process: string;
+			price_range: [number, number];
+			flavor_keywords: string[];
+			limit: number;
+			stocked_only: boolean;
+			name: string;
+			stocked_days: number;
+			drying_method: string;
+			supplier: string;
+			coffee_ids: number[];
+		}) => Promise<{ coffees: Array<{ id: number; name: string }>; total: number }>;
+
+		const result = await executeSearch({
+			origin: 'Ethiopia',
+			process: 'natural',
+			price_range: [5, 9],
+			flavor_keywords: ['berry', 'jasmine'],
+			limit: 12,
+			stocked_only: false,
+			name: 'Hambela',
+			stocked_days: 30,
+			drying_method: 'raised bed',
+			supplier: 'Osito',
+			coffee_ids: [42, 0]
+		});
+
+		expect(searchCatalog).toHaveBeenCalledWith({
+			origin: 'Ethiopia',
+			process: 'natural',
+			price_range: [5, 9],
+			flavor_keywords: ['berry', 'jasmine'],
+			limit: 12,
+			stocked_only: false,
+			name: 'Hambela',
+			stocked_days: 30,
+			drying_method: 'raised bed',
+			supplier: 'Osito',
+			coffee_ids: [42, 0]
+		});
+		expect(result).toEqual({
+			coffees: [{ id: 42, name: 'Parchment Lot' }],
+			total: 1,
+			filters_applied: {
+				origin: 'Ethiopia',
+				process: 'natural',
+				price_range: [5, 9],
+				flavor_keywords: ['berry', 'jasmine'],
+				limit: 12,
+				stocked_only: false,
+				name: 'Hambela',
+				stocked_days: 30,
+				drying_method: 'raised bed',
+				supplier: 'Osito',
+				coffee_ids: [42, 0]
+			},
+			search_strategy: 'structured'
+		});
+	});
+
 	it('sends the model a compact action card view via toModelOutput', () => {
 		const tools = createChatTools(supabase, 'user-123', { memberAccess: true, ppiAccess: false });
 		const toModelOutput = tools.add_bean_to_inventory.toModelOutput as (options: {

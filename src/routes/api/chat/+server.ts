@@ -3,9 +3,10 @@ import { OPENROUTER_API_KEY } from '$env/static/private';
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, stepCountIs, pruneMessages, type UIMessage, convertToModelMessages } from 'ai';
 import { z } from 'zod';
-import { createChatTools } from '$lib/services/tools';
+import { createChatTools, type ChatToolDeps } from '$lib/services/tools';
 import { readPriceIndexForAgent } from '$lib/server/agentPriceIndex';
 import { findSimilarBeansForAgent } from '$lib/server/agentSimilarity';
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { getUserMemory } from '$lib/server/userMemory';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
 import { getTrackedLotIds } from '$lib/server/trackedLots';
@@ -15,6 +16,7 @@ import {
 	validateSourcingBriefCriteria
 } from '$lib/procurement/sourcingBriefCriteria';
 import type { RequestHandler } from './$types';
+import type { CatalogListQuery, components } from '@purveyors/sdk';
 
 const BASE_SYSTEM_PROMPT = `You are an expert coffee consultant who combines deep knowledge of coffee varieties,
 processing methods, roasting techniques, and flavor profiles with practical guidance.
@@ -279,6 +281,60 @@ export interface SourcingIntelligenceContext {
 	activeBriefs: Array<{ name: string; criteriaDescription: string }>;
 }
 
+type AgentCatalogSearchInput = NonNullable<
+	Parameters<NonNullable<ChatToolDeps['searchCatalog']>>[0]
+>;
+type SdkCatalogItem = components['schemas']['CatalogItem'];
+type AgentCatalogListQuery = CatalogListQuery & {
+	[key: string]: string | number | string[] | undefined;
+};
+type CatalogListResult = {
+	data?: { data?: unknown } | unknown[];
+	error?: unknown;
+};
+
+function positiveIds(ids: number[] | undefined): number[] | undefined {
+	const filtered = ids?.filter((id) => Number.isInteger(id) && id > 0);
+	return filtered && filtered.length > 0 ? filtered : undefined;
+}
+
+function buildAgentCatalogListQuery(input: AgentCatalogSearchInput): AgentCatalogListQuery {
+	const query: AgentCatalogListQuery = {
+		limit: Math.min(input.limit ?? 10, 15),
+		stocked: input.stocked_only === false ? 'all' : 'true'
+	};
+	if (input.origin) query.origin = input.origin;
+	if (input.process) query.processing = input.process;
+	if (input.variety) query.variety = input.variety;
+	if (input.name) query.name = input.name;
+	if (input.supplier) query.supplier = input.supplier;
+	if (input.stocked_days) query.stockedDays = input.stocked_days;
+	if (input.drying_method) query.dryingMethod = input.drying_method;
+	if (input.flavor_keywords && input.flavor_keywords.length > 0) {
+		query.flavorKeywords = input.flavor_keywords;
+	}
+
+	const ids = positiveIds(input.coffee_ids);
+	if (ids) query.coffeeIds = ids.join(',');
+
+	if (input.price_range) {
+		const [min, max] = input.price_range;
+		if (min != null) query.pricePerLbMin = min;
+		if (max != null) query.pricePerLbMax = max;
+	}
+
+	return query;
+}
+
+function extractAgentCatalogRows(result: CatalogListResult): SdkCatalogItem[] {
+	if (result.error) {
+		throw result.error instanceof Error ? result.error : new Error('Catalog search failed');
+	}
+
+	const rows = Array.isArray(result.data) ? result.data : result.data?.data;
+	return Array.isArray(rows) ? (rows as SdkCatalogItem[]) : [];
+}
+
 export function _buildSystemPrompt(
 	workspaceContext?: WorkspaceContext,
 	userName?: string,
@@ -428,6 +484,13 @@ export const POST: RequestHandler = async (event) => {
 			user.id,
 			{ ppiAccess, memberAccess },
 			{
+				searchCatalog: async (input) => {
+					const client = await createParchmentServerClient(event);
+					const result = (await client.catalog.list(
+						buildAgentCatalogListQuery(input) as CatalogListQuery
+					)) as CatalogListResult;
+					return extractAgentCatalogRows(result) as unknown as Record<string, unknown>[];
+				},
 				readPriceIndex: (input) => readPriceIndexForAgent(input),
 				findSimilarBeans: (input, options) => findSimilarBeansForAgent(input, options)
 			}
