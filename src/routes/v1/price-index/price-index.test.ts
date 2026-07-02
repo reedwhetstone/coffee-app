@@ -40,7 +40,8 @@ describe('/v1/price-index route', () => {
 		);
 
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
-			mode: 'session'
+			mode: 'session',
+			preferHandling: 'inherit'
 		});
 		expect(mockPriceIndexList).toHaveBeenCalledWith(
 			expect.objectContaining({ page: '2', limit: '10', origin: 'Ethiopia' })

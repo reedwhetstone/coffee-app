@@ -32,7 +32,12 @@ export const GET: RequestHandler = async (event) => {
 
 	let proxied: { data?: unknown; error?: unknown; response: Response };
 	try {
-		const client = await createParchmentServerClient(event, { mode: 'session' });
+		// Public API proxy: preserve the external caller's `Prefer` (default strict)
+		// so entitlement/validation failures surface instead of being downgraded.
+		const client = await createParchmentServerClient(event, {
+			mode: 'session',
+			preferHandling: 'inherit'
+		});
 		proxied = await client.catalog.proofCoverage();
 	} catch (error) {
 		const { status, body } = catalogProxyErrorResponse(error);

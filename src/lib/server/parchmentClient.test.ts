@@ -24,13 +24,15 @@ function makeEvent(overrides: {
 	includeSafeGetSession?: boolean;
 	authorizationHeader?: string | null;
 	principalAuthenticated?: boolean;
+	preferHeader?: string | null;
 }): RequestEvent {
 	const {
 		accessToken = null,
 		safeGetSessionToken = null,
 		includeSafeGetSession = true,
 		authorizationHeader = null,
-		principalAuthenticated = false
+		principalAuthenticated = false,
+		preferHeader = null
 	} = overrides;
 
 	const fetchImpl = vi.fn();
@@ -38,6 +40,9 @@ function makeEvent(overrides: {
 	const headers = new Headers();
 	if (authorizationHeader) {
 		headers.set('authorization', authorizationHeader);
+	}
+	if (preferHeader) {
+		headers.set('prefer', preferHeader);
 	}
 
 	const locals = {
@@ -75,6 +80,90 @@ describe('createParchmentServerClient', () => {
 		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({
 			baseUrl: 'https://api.test.purveyors.io'
 		});
+	});
+
+	it('sends Prefer: handling=lenient on BFF calls (PADR-0013 §7 first-party signal)', async () => {
+		const event = makeEvent({});
+		await createParchmentServerClient(event);
+
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		await wrappedFetch('https://api.test.purveyors.io/v1/catalog');
+
+		const init = baseFetch.mock.calls[0][1] as RequestInit;
+		expect(new Headers(init.headers).get('prefer')).toBe('handling=lenient');
+	});
+
+	it('does not override an explicit per-call Prefer header', async () => {
+		const event = makeEvent({});
+		await createParchmentServerClient(event);
+
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		await wrappedFetch('https://api.test.purveyors.io/v1/catalog', {
+			headers: { Prefer: 'handling=strict' }
+		});
+
+		const init = baseFetch.mock.calls[0][1] as RequestInit;
+		expect(new Headers(init.headers).get('prefer')).toBe('handling=strict');
+	});
+
+	it('preserves headers on a Request input (openapi-fetch fetch(request) shape)', async () => {
+		const event = makeEvent({});
+		await createParchmentServerClient(event);
+
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		// The SDK builds a Request carrying the credential/content-type and calls
+		// fetch(request) with no init. The wrapper must not drop those headers.
+		const request = new Request('https://api.test.purveyors.io/v1/catalog', {
+			method: 'POST',
+			headers: { Authorization: 'Bearer session-jwt', 'Content-Type': 'application/json' }
+		});
+		await wrappedFetch(request);
+
+		const init = baseFetch.mock.calls[0][1] as RequestInit;
+		const forwarded = new Headers(init.headers);
+		expect(forwarded.get('authorization')).toBe('Bearer session-jwt');
+		expect(forwarded.get('content-type')).toBe('application/json');
+		expect(forwarded.get('prefer')).toBe('handling=lenient');
+	});
+
+	it('does not inject a lenient default in preferHandling=inherit mode (public API proxy)', async () => {
+		const event = makeEvent({});
+		await createParchmentServerClient(event, { preferHandling: 'inherit' });
+
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		await wrappedFetch('https://api.test.purveyors.io/v1/catalog');
+
+		const init = baseFetch.mock.calls[0][1] as RequestInit;
+		// No first-party default: Parchment applies its documented strict default,
+		// so a gated failure surfaces as a real 4xx instead of a degraded 2xx.
+		expect(new Headers(init.headers).get('prefer')).toBeNull();
+	});
+
+	it('forwards the external caller Prefer header in preferHandling=inherit mode', async () => {
+		const event = makeEvent({ preferHeader: 'handling=lenient' });
+		await createParchmentServerClient(event, { preferHandling: 'inherit' });
+
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		await wrappedFetch('https://api.test.purveyors.io/v1/catalog');
+
+		const init = baseFetch.mock.calls[0][1] as RequestInit;
+		// The external caller opted into lenient itself; honor their preference.
+		expect(new Headers(init.headers).get('prefer')).toBe('handling=lenient');
 	});
 
 	it('throws a clear configuration error when the base URL is missing', async () => {
@@ -157,11 +246,17 @@ describe('createParchmentServerClient', () => {
 		expect(event.locals.safeGetSession as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
 	});
 
-	it('routes requests through event.fetch', async () => {
+	it('routes requests through event.fetch (via the Prefer-injecting wrapper)', async () => {
 		const event = makeEvent({});
 		await createParchmentServerClient(event);
 
-		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ fetch: event.fetch });
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		await wrappedFetch('https://api.test.purveyors.io/v1/catalog');
+
+		expect(baseFetch).toHaveBeenCalledTimes(1);
 	});
 
 	it('defaults to session mode (forwards the session token) when no mode is given', async () => {

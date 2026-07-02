@@ -46,6 +46,22 @@ export class ParchmentConfigError extends Error {
  */
 export type ParchmentCredentialMode = 'public-demo' | 'session' | 'anonymous';
 
+/**
+ * How to set the RFC 7240 `Prefer: handling=...` signal on upstream calls.
+ *
+ * - `lenient` (default): inject `handling=lenient` on any call that does not
+ *   already carry a `Prefer` header. This is the first-party web signal for
+ *   PADR-0013 §7 — graceful degradation for authenticated page/BFF loads
+ *   (unentitled filters stripped with a notice, not an SSR 500).
+ * - `inherit`: never inject a first-party default. Forward the incoming
+ *   request's own `Prefer` header when present, otherwise send none so Parchment
+ *   applies its documented machine/API-key default (strict). Use for public
+ *   `/v1/*` API proxy routes that relay Parchment's status/body to external
+ *   callers, so entitlement or validation failures surface as real 4xx instead
+ *   of a silently downgraded, degraded 2xx.
+ */
+export type ParchmentPreferHandling = 'lenient' | 'inherit';
+
 /** Options for {@link createParchmentServerClient}. */
 export interface CreateParchmentServerClientOptions {
 	/**
@@ -55,6 +71,13 @@ export interface CreateParchmentServerClientOptions {
 	 * should pass `public-demo` explicitly.
 	 */
 	mode?: ParchmentCredentialMode;
+	/**
+	 * How to set the RFC 7240 `Prefer: handling=...` signal. Defaults to
+	 * `lenient` for first-party page/BFF loads. Public `/v1/*` API proxy routes
+	 * should pass `inherit` so the external caller's preference (or Parchment's
+	 * strict default) is preserved. See {@link ParchmentPreferHandling}.
+	 */
+	preferHandling?: ParchmentPreferHandling;
 }
 
 /**
@@ -192,17 +215,70 @@ async function resolveTokenForMode(
  *   user session. Throws {@link ParchmentConfigError} if the key is unset.
  * - `anonymous`: presents no credential and reads neither session nor demo key.
  */
+/**
+ * Wrap SvelteKit's `event.fetch` to set the RFC 7240 `Prefer: handling=...`
+ * signal for PADR-0013 §7 strict-vs-lenient handling.
+ *
+ * - `lenient`: inject `handling=lenient` on any call that does not already carry
+ *   a `Prefer` header. This is the first-party web signal — authenticated web
+ *   users reach the API as a bearer-session JWT (which defaults to `strict`, the
+ *   machine-caller behavior), but the website wants graceful degradation
+ *   (unentitled filters stripped with a notice, not an SSR 500), so it opts in.
+ * - `inherit`: inject nothing of its own. Forward `inheritedPrefer` (the
+ *   external caller's incoming `Prefer` header) when present, otherwise leave the
+ *   call header-less so Parchment applies its documented strict default. Public
+ *   `/v1/*` API proxy routes use this so relayed entitlement/validation failures
+ *   are not silently downgraded to a degraded 2xx.
+ *
+ * A caller can always override per request by setting its own `Prefer` header.
+ */
+function withPreferHandling(
+	baseFetch: typeof fetch,
+	preferHandling: ParchmentPreferHandling,
+	inheritedPrefer: string | undefined
+): typeof fetch {
+	return (input, init) => {
+		// openapi-fetch builds a `Request` carrying credential/content-type headers
+		// and invokes this as `fetch(request)` with no `init`. Seed the header set
+		// from that `Request` first so the `headers` we pass below augments rather
+		// than replaces it — otherwise `baseFetch(request, { ...init, headers })`
+		// would rebuild the request with only our headers and drop `Authorization`
+		// (and a POST's `Content-Type`), making gated calls arrive unauthenticated.
+		// `init.headers` layers on top for the rare direct `fetch(url, init)` caller.
+		const headers = new Headers(input instanceof Request ? input.headers : undefined);
+		if (init?.headers) {
+			new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+		}
+		if (!headers.has('prefer')) {
+			if (preferHandling === 'lenient') {
+				headers.set('Prefer', 'handling=lenient');
+			} else if (inheritedPrefer) {
+				headers.set('Prefer', inheritedPrefer);
+			}
+		}
+		return baseFetch(input, { ...init, headers });
+	};
+}
+
 export async function createParchmentServerClient(
 	event: RequestEvent,
 	options?: CreateParchmentServerClientOptions
 ): Promise<ParchmentClient> {
 	const baseUrl = resolveBaseUrl();
 	const mode = options?.mode ?? 'session';
+	const preferHandling = options?.preferHandling ?? 'lenient';
 	const token = await resolveTokenForMode(event, mode);
+
+	// In `inherit` mode, carry the external caller's own preference forward rather
+	// than imposing a first-party default. Ignored in `lenient` mode.
+	const inheritedPrefer =
+		preferHandling === 'inherit'
+			? (event.request.headers.get('prefer') ?? undefined)
+			: undefined;
 
 	return createParchmentClient({
 		baseUrl,
 		token,
-		fetch: event.fetch
+		fetch: withPreferHandling(event.fetch, preferHandling, inheritedPrefer)
 	});
 }
