@@ -77,7 +77,7 @@ export interface ProcurementProxyResult {
 
 export interface ProcurementProxyErrorResponse {
 	status: number;
-	body: { error: string; message: string };
+	body: { error: string; message: string; details?: { field: string } };
 }
 
 /**
@@ -92,9 +92,17 @@ export interface ProcurementProxyErrorResponse {
  */
 export function procurementProxyErrorResponse(error: unknown): ProcurementProxyErrorResponse {
 	if (error instanceof ProcurementInvalidBodyError) {
+		// Preserve the historical 400 contract: the deleted local implementation
+		// routed a malformed body through createValidationBody, which attached
+		// details.field = 'body'. Clients that inspect validation details still
+		// rely on that structured field for a pre-flight parse failure.
 		return {
 			status: 400,
-			body: { error: 'Invalid request', message: 'request body must be valid JSON' }
+			body: {
+				error: 'Invalid request',
+				message: 'request body must be valid JSON',
+				details: { field: 'body' }
+			}
 		};
 	}
 

@@ -210,7 +210,8 @@ describe('POST /v1/procurement/briefs', () => {
 		expect(response.status).toBe(400);
 		expect(await response.json()).toEqual({
 			error: 'Invalid request',
-			message: 'request body must be valid JSON'
+			message: 'request body must be valid JSON',
+			details: { field: 'body' }
 		});
 		expect(mockBriefCreate).not.toHaveBeenCalled();
 	});
