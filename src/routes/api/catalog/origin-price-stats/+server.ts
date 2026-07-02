@@ -40,10 +40,15 @@ export const GET: RequestHandler = async (event) => {
 		if (visibility.showWholesale) query.showWholesale = 'true';
 		if (visibility.wholesaleOnly) query.wholesaleOnly = 'true';
 
-		const { data, error } = await client.catalog.originPriceStats(query);
+		// openapi-fetch resolves non-2xx responses as `{ error, response }` rather
+		// than throwing, so relay the upstream status/body verbatim (matching the
+		// catalog proxy pattern). Routing these through `catalogProxyErrorResponse`
+		// would flatten actionable upstream statuses (e.g. 401/403 auth/entitlement
+		// denials) into a generic 500. Only genuine throws (config/network) fall
+		// through to the catch below.
+		const { data, error, response } = await client.catalog.originPriceStats(query);
 		if (error) {
-			const { status, body } = catalogProxyErrorResponse(error);
-			return json(body, { status });
+			return json(error, { status: response.status });
 		}
 
 		return json({
