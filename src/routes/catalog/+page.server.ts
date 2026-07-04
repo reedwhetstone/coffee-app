@@ -265,6 +265,85 @@ function stripProcessFacetFilters(state: CatalogUrlState): CatalogUrlState {
 	};
 }
 
+// Schema graph is SEO metadata on the critical path; bound it to the visible page
+// so the tracked-only view (up to TRACKED_VIEW_LIMIT rows) can't make it expensive.
+const SCHEMA_ROW_LIMIT = 30;
+
+type CatalogResourceItem = ReturnType<typeof toCatalogResourceItem>;
+
+// Non-critical, public: cards render without price context and hydrate it in as
+// this resolves. Degrades to an empty context panel rather than failing the page.
+async function streamOriginPriceStats(
+	client: ParchmentClient | null,
+	visibility: { showWholesale: boolean; wholesaleOnly: boolean }
+): Promise<CatalogOriginPriceStats> {
+	if (!client) return [];
+	try {
+		const statsQuery: CatalogOriginPriceStatsQuery = {};
+		if (visibility.showWholesale) statsQuery.showWholesale = 'true';
+		if (visibility.wholesaleOnly) statsQuery.wholesaleOnly = 'true';
+
+		const { data } = await client.catalog.originPriceStats(statsQuery);
+		return data?.originPriceStats ?? [];
+	} catch (error) {
+		console.error('Error loading origin price stats from Parchment:', error);
+		return [];
+	}
+}
+
+// Deep-link enrichment: if the linked coffee is off the current page, fetch it out
+// of band so the main rows render first and the deep-linked card hydrates after.
+// A deep-link failure (including schema-unavailable) degrades to null and never
+// blanks the catalog.
+async function streamDeepLinkCoffee(options: {
+	client: ParchmentClient | null;
+	deepLinkCoffeeId: number | null;
+	catalogData: SdkCatalogItem[];
+	trackedOnly: boolean;
+	trackedLotIds: number[];
+	baseState: CatalogUrlState;
+}): Promise<CatalogResourceItem | null> {
+	const { client, deepLinkCoffeeId, catalogData, trackedOnly, trackedLotIds, baseState } = options;
+	if (!client || deepLinkCoffeeId === null) return null;
+	if (catalogData.some((coffee) => coffee.id === deepLinkCoffeeId)) return null;
+	if (trackedOnly && !trackedLotIds.includes(deepLinkCoffeeId)) return null;
+
+	try {
+		const deepLinkCatalogState: CatalogUrlState = {
+			...baseState,
+			filters: {},
+			sortField: null,
+			sortDirection: null
+		};
+		const deepLinkResult = (await client.catalog.list(
+			buildParchmentCatalogQuery(deepLinkCatalogState, {
+				stocked: 'all',
+				coffeeIds: [deepLinkCoffeeId],
+				limit: 1,
+				page: 1
+			}) as CatalogListQuery
+		)) as CatalogListResult;
+		const deepLinkBody = extractParchmentCatalogBody(deepLinkResult);
+		const deepLinkRows = extractParchmentCatalogRows(deepLinkBody);
+		if (deepLinkRows.length === 0) return null;
+
+		return toCatalogResourceItem(deepLinkRows[0] as Parameters<typeof toCatalogResourceItem>[0]);
+	} catch (error) {
+		console.error('Error loading deep-link coffee from Parchment:', error);
+		return null;
+	}
+}
+
+async function resolveBriefMatchCatalogLots(
+	catalogData: SdkCatalogItem[],
+	deepLinkCoffee: Promise<CatalogResourceItem | null>
+): Promise<Parameters<typeof getBriefMatchSummaries>[2]> {
+	const streamedCoffee = await deepLinkCoffee;
+	if (!streamedCoffee) return catalogData as Parameters<typeof getBriefMatchSummaries>[2];
+
+	return [...catalogData, streamedCoffee] as Parameters<typeof getBriefMatchSummaries>[2];
+}
+
 export const load: PageServerLoad = async (event) => {
 	const { locals, url } = event;
 	const requestedCatalogState = parseCatalogUrlState(url, '/catalog');
@@ -308,22 +387,27 @@ export const load: PageServerLoad = async (event) => {
 	const trackedOnly =
 		url.searchParams.get('tracked') === 'only' && Boolean(userId && hasParchmentAccess);
 
-	let trackedLotIds: number[] = [];
+	// Tracked-only rows are queried by id, so the watchlist ids are the one piece of
+	// user-specific data on the critical path — and only for that view. The normal
+	// public catalog never blocks on watchlist/procurement enrichment.
+	let trackedLotIdsForQuery: number[] = [];
 	if (trackedOnly && userId) {
-		trackedLotIds = await getTrackedLotIds(locals.supabase, userId);
+		trackedLotIdsForQuery = await getTrackedLotIds(locals.supabase, userId);
 	}
 
-	// Reused for both the catalog list and the origin-price-stats read below so the
-	// two Parchment calls present the same principal and share one client per load.
+	// Reused for the critical catalog list plus the deferred origin-stats and
+	// deep-link reads so every Parchment call presents the same principal and
+	// shares one client per load.
 	let catalogClient: ParchmentClient | null = null;
+	let effectiveCatalogState: CatalogUrlState = initialCatalogState;
 
 	try {
-		if (!trackedOnly || trackedLotIds.length > 0) {
+		if (!trackedOnly || trackedLotIdsForQuery.length > 0) {
 			const client = await createParchmentServerClient(event, {
 				mode: resolveCatalogCredentialMode(locals)
 			});
 			catalogClient = client;
-			const effectiveCatalogState = trackedOnly
+			effectiveCatalogState = trackedOnly
 				? {
 						...initialCatalogState,
 						showWholesale: true,
@@ -333,40 +417,14 @@ export const load: PageServerLoad = async (event) => {
 			const catalogResult = (await client.catalog.list(
 				buildParchmentCatalogQuery(effectiveCatalogState, {
 					stocked: trackedOnly ? 'all' : 'true',
-					...(trackedOnly ? { coffeeIds: trackedLotIds, limit: TRACKED_VIEW_LIMIT, page: 1 } : {})
+					...(trackedOnly
+						? { coffeeIds: trackedLotIdsForQuery, limit: TRACKED_VIEW_LIMIT, page: 1 }
+						: {})
 				}) as CatalogListQuery
 			)) as CatalogListResult;
 			const catalogBody = extractParchmentCatalogBody(catalogResult);
 			catalogData = extractParchmentCatalogRows(catalogBody);
 			count = getParchmentCatalogTotal(catalogBody, catalogData);
-
-			const shouldFetchDeepLinkCoffee =
-				deepLinkCoffeeId !== null &&
-				!catalogData.some((coffee) => coffee.id === deepLinkCoffeeId) &&
-				(!trackedOnly || trackedLotIds.includes(deepLinkCoffeeId));
-
-			if (shouldFetchDeepLinkCoffee) {
-				const deepLinkCatalogState: CatalogUrlState = {
-					...effectiveCatalogState,
-					filters: {},
-					sortField: null,
-					sortDirection: null
-				};
-				const deepLinkResult = (await client.catalog.list(
-					buildParchmentCatalogQuery(deepLinkCatalogState, {
-						stocked: 'all',
-						coffeeIds: [deepLinkCoffeeId],
-						limit: 1,
-						page: 1
-					}) as CatalogListQuery
-				)) as CatalogListResult;
-				const deepLinkBody = extractParchmentCatalogBody(deepLinkResult);
-				const deepLinkRows = extractParchmentCatalogRows(deepLinkBody);
-
-				if (deepLinkRows.length > 0) {
-					catalogData = [...deepLinkRows, ...catalogData];
-				}
-			}
 		}
 	} catch (error) {
 		if (!isCatalogSchemaUnavailableError(error)) {
@@ -380,48 +438,56 @@ export const load: PageServerLoad = async (event) => {
 		toCatalogResourceItem(item as Parameters<typeof toCatalogResourceItem>[0])
 	);
 
-	// Per-origin price context now comes from Parchment (same source, same client,
-	// same credential as the catalog list above). Forward the resolved wholesale
-	// view params; publicOnly is derived server-side from the credential. Non-fatal:
-	// a stats failure degrades to an empty context panel rather than failing the
-	// whole (public) catalog page.
-	let originPriceStats: CatalogOriginPriceStats = [];
-	if (catalogClient) {
-		try {
-			const statsQuery: CatalogOriginPriceStatsQuery = {};
-			if (visibility.showWholesale) statsQuery.showWholesale = 'true';
-			if (visibility.wholesaleOnly) statsQuery.wholesaleOnly = 'true';
+	// ---------------------------------------------------------------------------
+	// Deferred / streamed enrichment. Each value below is an un-awaited promise so
+	// the page renders the critical grid immediately (SvelteKit streams the value
+	// in when it resolves). Every one degrades to a safe empty default on failure,
+	// so slow or failing enrichment can never blank the catalog.
+	// ---------------------------------------------------------------------------
 
-			const { data } = await catalogClient.catalog.originPriceStats(statsQuery);
-			originPriceStats = data?.originPriceStats ?? [];
-		} catch (error) {
-			console.error('Error loading origin price stats from Parchment:', error);
-		}
-	}
+	// Deep-link card: hydrated after the first rows instead of blocking the response.
+	const deepLinkCoffee = streamDeepLinkCoffee({
+		client: catalogClient,
+		deepLinkCoffeeId,
+		catalogData,
+		trackedOnly,
+		trackedLotIds: trackedLotIdsForQuery,
+		baseState: effectiveCatalogState
+	});
 
-	let briefMatchSummaries: BriefMatchSummary[] = [];
+	// Origin price context: public, non-critical.
+	const originPriceStats = streamOriginPriceStats(catalogClient, visibility);
 
-	if (userId && hasParchmentAccess) {
-		const [tracked, briefs] = await Promise.all([
-			trackedOnly ? Promise.resolve(trackedLotIds) : getTrackedLotIds(locals.supabase, userId),
-			isMember
-				? getBriefMatchSummaries(
-						locals.supabase,
-						userId,
-						catalogData as Parameters<typeof getBriefMatchSummaries>[2]
-					)
-				: Promise.resolve([])
-		]);
-		trackedLotIds = tracked;
-		briefMatchSummaries = briefs;
-	}
+	// Member-only enrichment. Anonymous loads resolve to [] with no server work, so
+	// user-specific watchlist/procurement data never enters the public render and is
+	// never part of a public cacheable output. If the watchlist read fails, keep the
+	// client in an unknown state so toggle controls stay disabled rather than
+	// misrepresenting tracked lots as untracked.
+	const trackedLotIds: Promise<number[] | null> = trackedOnly
+		? Promise.resolve(trackedLotIdsForQuery)
+		: userId && hasParchmentAccess
+			? getTrackedLotIds(locals.supabase, userId).catch((error) => {
+					console.error('Error loading tracked lot ids:', error);
+					return null;
+				})
+			: Promise.resolve([]);
+
+	const briefMatchSummaries: Promise<BriefMatchSummary[]> =
+		userId && hasParchmentAccess && isMember
+			? resolveBriefMatchCatalogLots(catalogData, deepLinkCoffee)
+					.then((lots) => getBriefMatchSummaries(locals.supabase, userId, lots))
+					.catch((error) => {
+						console.error('Error loading brief match summaries:', error);
+						return [];
+					})
+			: Promise.resolve([]);
 
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const schemaService = createSchemaService(baseUrl);
 	const schemaData = schemaService.generateSchemaGraph([
 		schemaService.generateOrganizationSchema(),
 		schemaService.generateCoffeeCollectionSchema(
-			catalogResources as Record<string, unknown>[],
+			catalogResources.slice(0, SCHEMA_ROW_LIMIT) as Record<string, unknown>[],
 			`${baseUrl}/catalog`
 		)
 	]);
@@ -436,6 +502,7 @@ export const load: PageServerLoad = async (event) => {
 		trackedLotIds,
 		trackedOnly,
 		briefMatchSummaries,
+		deepLinkCoffee,
 		catalogAccess,
 		catalogAccessNotice,
 		catalogSchemaUnavailable,

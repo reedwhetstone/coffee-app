@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 	import { page } from '$app/state';
 	import { checkRole } from '$lib/types/auth.types';
@@ -8,7 +8,8 @@
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
 	import {
 		summarizeSourcingBriefMatches,
-		type MatchableSourcingLot
+		type MatchableSourcingLot,
+		type SourcingBriefMatchSummary
 	} from '$lib/procurement/sourcingBriefMatching';
 
 	import type { TastingNotes } from '$lib/types/coffee.types';
@@ -32,11 +33,63 @@
 
 	let { session, role = 'viewer', ppiAccess = false } = $derived(data);
 
+	// Deferred enrichment (origin stats, tracked ids, brief matches, deep-link card)
+	// arrives from the server load as streamed promises. Tests and any non-streamed
+	// path may still pass plain arrays, so seed synchronously from an array when one
+	// is present and let the effects below resolve the promise form as it streams in.
+	function toInitialArray<T>(value: Promise<T[] | null> | T[] | undefined | null): T[] {
+		return Array.isArray(value) ? value : [];
+	}
+
 	let trackedIds = $state<Set<number>>(new Set());
+	let trackedIdsReady = $state(false);
 
 	$effect(() => {
-		trackedIds = new Set(data.trackedLotIds ?? []);
+		const value = data.trackedLotIds;
+		// Streamed form: resolve into the set when it arrives. Guard on Promise so a
+		// non-streamed array seeds synchronously and a later microtask can't clobber an
+		// optimistic track toggle the user made in between.
+		if (value instanceof Promise) {
+			let cancelled = false;
+			trackedIdsReady = false;
+			void value
+				.then((ids) => {
+					if (!cancelled && ids !== null) {
+						trackedIds = new Set(ids ?? []);
+						trackedIdsReady = true;
+					}
+				})
+				.catch(() => {});
+			return () => {
+				cancelled = true;
+			};
+		}
+		trackedIds = new Set(toInitialArray<number>(value));
+		trackedIdsReady = value !== null;
 	});
+
+	// Deep-linked coffee streams in when it is off the current page; prepend it to
+	// the visible rows once it resolves so the main grid never waits on it.
+	let streamedDeepLinkCoffee = $state<CoffeeCatalog | null>(null);
+
+	$effect(() => {
+		let cancelled = false;
+		void Promise.resolve(data.deepLinkCoffee)
+			.then((coffee) => {
+				if (!cancelled) streamedDeepLinkCoffee = (coffee ?? null) as CoffeeCatalog | null;
+			})
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	let deepLinkCoffee = $derived(
+		streamedDeepLinkCoffee ??
+			(data.deepLinkCoffee && !(data.deepLinkCoffee instanceof Promise)
+				? (data.deepLinkCoffee as unknown as CoffeeCatalog)
+				: null)
+	);
 
 	function setTracked(catalogId: number, tracked: boolean) {
 		const next = new Set(trackedIds);
@@ -46,6 +99,8 @@
 	}
 
 	async function handleToggleTrack(catalogId: number) {
+		if (!trackedIdsReady) return;
+
 		const wasTracked = trackedIds.has(catalogId);
 		setTracked(catalogId, !wasTracked);
 		// Optimistic update, reverted on failure.
@@ -141,20 +196,29 @@
 
 	let activePagination = $derived(hydratedCatalogState ? $filterStore.pagination : data.pagination);
 
+	function withDeepLinkCoffee(rows: CoffeeCatalog[]): CoffeeCatalog[] {
+		const coffee = deepLinkCoffee;
+		if (!coffee) return rows;
+		const id = catalogCoffeeId(coffee);
+		if (id === null || id !== deepLinkCoffeeId) return rows;
+		if (rows.some((row) => catalogCoffeeId(row) === id)) return rows;
+		return [coffee, ...rows];
+	}
+
 	let displayData = $derived((): CoffeeCatalog[] => {
 		if (trackedOnlyView) {
-			return (data?.data ?? []) as unknown as CoffeeCatalog[];
+			return withDeepLinkCoffee((data?.data ?? []) as unknown as CoffeeCatalog[]);
 		}
 
 		if (hydratedCatalogState) {
-			return $filterStore.serverData as unknown as CoffeeCatalog[];
+			return withDeepLinkCoffee($filterStore.serverData as unknown as CoffeeCatalog[]);
 		}
 
 		if (data?.data) {
-			return data.data as unknown as CoffeeCatalog[];
+			return withDeepLinkCoffee(data.data as unknown as CoffeeCatalog[]);
 		}
 
-		return ($filteredData as unknown as CoffeeCatalog[]).slice(0, displayLimit);
+		return withDeepLinkCoffee(($filteredData as unknown as CoffeeCatalog[]).slice(0, displayLimit));
 	});
 
 	const PROCESS_TRANSPARENCY_FILTER_KEYS = [
@@ -218,9 +282,29 @@
 	let canUseSourcingIntelligence = $derived(
 		canUseParchmentIntelligence || hasRequiredRole('member')
 	);
+	let streamedBriefMatchSummaries = $state<SourcingBriefMatchSummary[] | null>(null);
+
+	$effect(() => {
+		let cancelled = false;
+		void Promise.resolve(data.briefMatchSummaries)
+			.then((summaries) => {
+				if (!cancelled)
+					streamedBriefMatchSummaries = (summaries ?? []) as SourcingBriefMatchSummary[];
+			})
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	let serverBriefMatchSummaries = $derived(
+		streamedBriefMatchSummaries ??
+			toInitialArray<SourcingBriefMatchSummary>(data.briefMatchSummaries)
+	);
+
 	let briefMatchSummaries = $derived(
 		summarizeSourcingBriefMatches(
-			data.briefMatchSummaries ?? [],
+			serverBriefMatchSummaries,
 			displayData() as unknown as MatchableSourcingLot[]
 		)
 	);
@@ -269,7 +353,25 @@
 		return params;
 	}
 
-	let serverOriginPriceStats = $derived((data.originPriceStats ?? []) as OriginPriceStats[]);
+	let streamedOriginPriceStats = $state<OriginPriceStats[] | null>(null);
+
+	$effect(() => {
+		let cancelled = false;
+		streamedOriginPriceStats = null;
+		void Promise.resolve(data.originPriceStats)
+			.then((stats) => {
+				if (!cancelled) streamedOriginPriceStats = (stats ?? []) as OriginPriceStats[];
+			})
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	let serverOriginPriceStats = $derived(
+		streamedOriginPriceStats ?? toInitialArray<OriginPriceStats>(data.originPriceStats)
+	);
+
 	let serverOriginStatsKey = $derived(
 		getOriginStatsScopeKey(
 			data.initialCatalogState.showWholesale,
@@ -280,7 +382,11 @@
 	let originStatsAbortController: AbortController | null = null;
 
 	$effect(() => {
-		originStatsCache = { [serverOriginStatsKey]: serverOriginPriceStats };
+		const key = serverOriginStatsKey;
+		const stats = serverOriginPriceStats;
+		// Refresh the server-scope entry without discarding stats already fetched
+		// for the user's active scope. untrack avoids a self-triggering effect loop.
+		originStatsCache = { ...untrack(() => originStatsCache), [key]: stats };
 	});
 
 	let activeStatsShowWholesale = $derived(
@@ -515,7 +621,7 @@
 			activeOriginStats={activeOriginStats()}
 			{trackedIds}
 			{canUseBeanMatching}
-			{canUseSourcingIntelligence}
+			canUseSourcingIntelligence={canUseSourcingIntelligence && trackedIdsReady}
 			{deepLinkCoffeeId}
 			filteredDataLength={$filteredData.length}
 			{displayLimit}
