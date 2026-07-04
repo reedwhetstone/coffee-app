@@ -5,6 +5,7 @@
 		visibleSupplierCount: number;
 		visiblePricedCount: number;
 		canUseSourcingIntelligence: boolean;
+		isRefetching: boolean;
 		trackedIdsSize: number;
 		trackedCountOnPage: number;
 		trackedOnlyView: boolean;
@@ -20,6 +21,7 @@
 		visibleSupplierCount,
 		visiblePricedCount,
 		canUseSourcingIntelligence,
+		isRefetching,
 		trackedIdsSize,
 		trackedCountOnPage,
 		trackedOnlyView,
@@ -45,11 +47,23 @@
 				movement into named lots to investigate.
 			</p>
 			<div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-				<div class="rounded-md border border-border-light bg-background-primary-light px-3 py-2">
+				<div
+					class="relative overflow-hidden rounded-md border border-border-light bg-background-primary-light px-3 py-2"
+				>
 					<p class="text-lg font-semibold text-text-primary-light">
 						{catalogResultCount.toLocaleString()}
 					</p>
 					<p class="text-xs text-text-secondary-light">Active rows in this query</p>
+					{#if isRefetching}
+						<div
+							class="absolute inset-x-0 bottom-0 h-0.5 bg-background-tertiary-light/20"
+							role="status"
+							aria-live="polite"
+						>
+							<div class="h-full w-full animate-pulse bg-background-tertiary-light"></div>
+							<span class="sr-only">Updating results</span>
+						</div>
+					{/if}
 				</div>
 				<div class="rounded-md border border-border-light bg-background-primary-light px-3 py-2">
 					<p class="text-lg font-semibold text-text-primary-light">{visibleOriginCount}</p>

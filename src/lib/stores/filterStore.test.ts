@@ -101,7 +101,8 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		expect(fetchSpy).toHaveBeenNthCalledWith(1, '/api/catalog/filters?');
 		expect(fetchSpy).toHaveBeenNthCalledWith(
 			2,
-			'/api/catalog?page=1&limit=15&sortField=score_value&sortDirection=asc'
+			'/api/catalog?page=1&limit=15&sortField=score_value&sortDirection=asc',
+			expect.objectContaining({ signal: expect.any(AbortSignal) })
 		);
 	});
 
@@ -319,7 +320,11 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		const state = get(filterStore);
 		expect(state.filters).toEqual({ country: ['Ethiopia'] });
 		expect(state.pagination.page).toBe(1);
-		expect(fetchSpy).toHaveBeenNthCalledWith(1, '/api/catalog?page=1&limit=15&country=Ethiopia');
+		expect(fetchSpy).toHaveBeenNthCalledWith(
+			1,
+			'/api/catalog?page=1&limit=15&country=Ethiopia',
+			expect.objectContaining({ signal: expect.any(AbortSignal) })
+		);
 	});
 
 	it('serializes stocked_date and stocked_days as distinct catalog query params', async () => {
@@ -387,5 +392,304 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		await vi.runOnlyPendingTimersAsync();
 
 		expect(get(filterStore).filteredData.map((item) => item.id)).toEqual([1]);
+	});
+});
+
+function emptyFiltersResponse() {
+	return new Response(JSON.stringify({}), {
+		status: 200,
+		headers: { 'Content-Type': 'application/json' }
+	});
+}
+
+function createDeferredResponse() {
+	let resolve!: (response: Response) => void;
+	const promise = new Promise<Response>((res) => {
+		resolve = res;
+	});
+	return { promise, resolve };
+}
+
+function catalogDataResponse(
+	ids: number[],
+	meta: Record<string, unknown> = {},
+	total = ids.length
+) {
+	return new Response(
+		JSON.stringify({
+			data: ids.map((id) => ({ id, name: `Lot ${id}`, wholesale: false })),
+			pagination: {
+				page: 1,
+				limit: 15,
+				total,
+				totalPages: 1,
+				hasNext: false,
+				hasPrev: false
+			},
+			meta
+		}),
+		{ status: 200, headers: { 'Content-Type': 'application/json' } }
+	);
+}
+
+describe('filterStore stale-while-revalidate catalog interactions', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-07-04T00:00:00.000Z'));
+		vi.restoreAllMocks();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+	});
+
+	function hydratedInit(filterStore: FilterStoreModule['filterStore']) {
+		filterStore.initializeForRoute('/catalog', [{ id: 1, wholesale: false }], {
+			catalogUrlState: {
+				filters: {},
+				sortField: null,
+				sortDirection: null,
+				showWholesale: false,
+				wholesaleOnly: false,
+				pagination: { page: 1, limit: 15 }
+			},
+			serverData: [{ id: 1, wholesale: false }],
+			pagination: {
+				page: 1,
+				limit: 15,
+				total: 1,
+				totalPages: 1,
+				hasNext: false,
+				hasPrev: false
+			}
+		});
+	}
+
+	it('marks a hydrated fetch as refetching (not first-load) and keeps stale rows visible', async () => {
+		const deferred = createDeferredResponse();
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+			if (url.startsWith('/api/catalog/filters?')) return emptyFiltersResponse();
+			if (url.startsWith('/api/catalog?')) return deferred.promise;
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { filterStore } = await loadFilterStore();
+		hydratedInit(filterStore);
+		await vi.runOnlyPendingTimersAsync();
+		expect(get(filterStore).hasLoadedOnce).toBe(true);
+		fetchSpy.mockClear();
+
+		filterStore.setFilter('name', 'kenya');
+		await vi.advanceTimersByTimeAsync(150);
+
+		const pending = get(filterStore);
+		expect(pending.isRefetching).toBe(true);
+		expect(pending.isLoading).toBe(false);
+		expect(pending.serverData.map((row) => row.id)).toEqual([1]);
+
+		deferred.resolve(catalogDataResponse([2]));
+		await vi.runOnlyPendingTimersAsync();
+
+		const settled = get(filterStore);
+		expect(settled.isRefetching).toBe(false);
+		expect(settled.hasLoadedOnce).toBe(true);
+		expect(settled.serverData.map((row) => row.id)).toEqual([2]);
+	});
+
+	it('shows the first-mount loading state (not refetching) when no rows have loaded yet', async () => {
+		const deferred = createDeferredResponse();
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+			if (url.startsWith('/api/catalog/filters?')) return emptyFiltersResponse();
+			if (url.startsWith('/api/catalog?')) return deferred.promise;
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { filterStore } = await loadFilterStore();
+		// No serverData and empty data => true first mount triggers a fetch.
+		filterStore.initializeForRoute('/catalog', []);
+		await vi.advanceTimersByTimeAsync(0);
+		await vi.advanceTimersByTimeAsync(150);
+
+		const pending = get(filterStore);
+		expect(pending.isLoading).toBe(true);
+		expect(pending.isRefetching).toBe(false);
+		expect(pending.hasLoadedOnce).toBe(false);
+
+		deferred.resolve(catalogDataResponse([5]));
+		await vi.runOnlyPendingTimersAsync();
+
+		const settled = get(filterStore);
+		expect(settled.isLoading).toBe(false);
+		expect(settled.hasLoadedOnce).toBe(true);
+	});
+
+	it('ignores a slower earlier response so it cannot overwrite a newer interaction', async () => {
+		const deferred: Array<{ resolve: (response: Response) => void }> = [];
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+			if (url.startsWith('/api/catalog/filters?')) return emptyFiltersResponse();
+			if (url.startsWith('/api/catalog?')) {
+				return new Promise<Response>((resolve) => {
+					deferred.push({ resolve });
+				});
+			}
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { filterStore } = await loadFilterStore();
+		hydratedInit(filterStore);
+		await vi.runOnlyPendingTimersAsync();
+		fetchSpy.mockClear();
+		deferred.length = 0;
+
+		filterStore.setFilter('country', ['Ethiopia']);
+		await vi.advanceTimersByTimeAsync(150);
+		filterStore.setFilter('country', ['Kenya']);
+		await vi.advanceTimersByTimeAsync(150);
+
+		expect(deferred).toHaveLength(2);
+		const [earlier, later] = deferred;
+
+		// Newer request lands first, then the slower earlier request resolves.
+		later.resolve(catalogDataResponse([2], {}, 2));
+		await vi.runOnlyPendingTimersAsync();
+		earlier.resolve(catalogDataResponse([1], {}, 1));
+		await vi.runOnlyPendingTimersAsync();
+
+		const state = get(filterStore);
+		expect(state.serverData.map((row) => row.id)).toEqual([2]);
+		expect(state.pagination.total).toBe(2);
+	});
+
+	it('drops an in-flight response that resolves during the next debounce window', async () => {
+		const deferred: Array<{ resolve: (response: Response) => void }> = [];
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+			if (url.startsWith('/api/catalog/filters?')) return emptyFiltersResponse();
+			if (url.startsWith('/api/catalog?')) {
+				return new Promise<Response>((resolve) => {
+					deferred.push({ resolve });
+				});
+			}
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { filterStore } = await loadFilterStore();
+		hydratedInit(filterStore);
+		await vi.runOnlyPendingTimersAsync();
+		fetchSpy.mockClear();
+		deferred.length = 0;
+
+		// First interaction: let the debounce fire so request A is genuinely in flight.
+		filterStore.setFilter('country', ['Ethiopia']);
+		await vi.advanceTimersByTimeAsync(150);
+		expect(deferred).toHaveLength(1);
+
+		// Second interaction while A is still in flight. Scheduling the newer fetch
+		// must invalidate A immediately, before the second debounce fires.
+		filterStore.setFilter('country', ['Kenya']);
+
+		// A resolves inside the 150ms debounce window of the second interaction.
+		// It must be dropped, not applied against the newer filter state.
+		deferred[0].resolve(catalogDataResponse([99], {}, 99));
+		await vi.advanceTimersByTimeAsync(0);
+
+		const midflight = get(filterStore);
+		expect(midflight.serverData.map((row) => row.id)).toEqual([1]);
+		expect(midflight.isRefetching).toBe(true);
+
+		// The newer request B fires after its debounce and is the one that lands.
+		await vi.advanceTimersByTimeAsync(150);
+		expect(deferred).toHaveLength(2);
+		deferred[1].resolve(catalogDataResponse([2], {}, 2));
+		await vi.runOnlyPendingTimersAsync();
+
+		const settled = get(filterStore);
+		expect(settled.serverData.map((row) => row.id)).toEqual([2]);
+		expect(settled.pagination.total).toBe(2);
+		expect(settled.isRefetching).toBe(false);
+	});
+
+	it('keeps stale rows visible and clears pending flags when a refetch fails', async () => {
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+			if (url.startsWith('/api/catalog/filters?')) return emptyFiltersResponse();
+			if (url.startsWith('/api/catalog?')) {
+				return new Response(JSON.stringify({ error: 'boom' }), {
+					status: 500,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		const { filterStore } = await loadFilterStore();
+		hydratedInit(filterStore);
+		await vi.runOnlyPendingTimersAsync();
+		fetchSpy.mockClear();
+
+		filterStore.setFilter('name', 'kenya');
+		await vi.runOnlyPendingTimersAsync();
+
+		const state = get(filterStore);
+		expect(state.isRefetching).toBe(false);
+		expect(state.isLoading).toBe(false);
+		expect(state.serverData.map((row) => row.id)).toEqual([1]);
+	});
+
+	it('drops a stripped filter from local state after the API reports it stripped', async () => {
+		const notices = [
+			{
+				code: 'filter_stripped',
+				deniedParams: ['processing_base_method'],
+				message: 'Structured process filters require a member account.'
+			}
+		];
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+			if (url.startsWith('/api/catalog/filters?')) return emptyFiltersResponse();
+			if (url.startsWith('/api/catalog?')) return catalogDataResponse([1], { notices });
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { filterStore } = await loadFilterStore();
+		filterStore.initializeForRoute('/catalog', [{ id: 1, wholesale: false }], {
+			catalogUrlState: {
+				filters: { country: ['Ethiopia'] },
+				sortField: null,
+				sortDirection: null,
+				showWholesale: false,
+				wholesaleOnly: false,
+				pagination: { page: 1, limit: 15 }
+			},
+			serverData: [{ id: 1, wholesale: false }],
+			pagination: {
+				page: 1,
+				limit: 15,
+				total: 1,
+				totalPages: 1,
+				hasNext: false,
+				hasPrev: false
+			}
+		});
+		await vi.runOnlyPendingTimersAsync();
+		fetchSpy.mockClear();
+
+		filterStore.setFilter('processing_base_method', 'natural');
+		await vi.runOnlyPendingTimersAsync();
+
+		const state = get(filterStore);
+		expect(state.filters).toEqual({ country: ['Ethiopia'] });
+		expect(state.catalogNotices).toEqual(notices);
 	});
 });
