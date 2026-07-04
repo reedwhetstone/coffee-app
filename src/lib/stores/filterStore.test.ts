@@ -567,6 +567,56 @@ describe('filterStore stale-while-revalidate catalog interactions', () => {
 		expect(state.pagination.total).toBe(2);
 	});
 
+	it('drops an in-flight response that resolves during the next debounce window', async () => {
+		const deferred: Array<{ resolve: (response: Response) => void }> = [];
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+			if (url.startsWith('/api/catalog/filters?')) return emptyFiltersResponse();
+			if (url.startsWith('/api/catalog?')) {
+				return new Promise<Response>((resolve) => {
+					deferred.push({ resolve });
+				});
+			}
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { filterStore } = await loadFilterStore();
+		hydratedInit(filterStore);
+		await vi.runOnlyPendingTimersAsync();
+		fetchSpy.mockClear();
+		deferred.length = 0;
+
+		// First interaction: let the debounce fire so request A is genuinely in flight.
+		filterStore.setFilter('country', ['Ethiopia']);
+		await vi.advanceTimersByTimeAsync(150);
+		expect(deferred).toHaveLength(1);
+
+		// Second interaction while A is still in flight. Scheduling the newer fetch
+		// must invalidate A immediately, before the second debounce fires.
+		filterStore.setFilter('country', ['Kenya']);
+
+		// A resolves inside the 150ms debounce window of the second interaction.
+		// It must be dropped, not applied against the newer filter state.
+		deferred[0].resolve(catalogDataResponse([99], {}, 99));
+		await vi.advanceTimersByTimeAsync(0);
+
+		const midflight = get(filterStore);
+		expect(midflight.serverData.map((row) => row.id)).toEqual([1]);
+		expect(midflight.isRefetching).toBe(true);
+
+		// The newer request B fires after its debounce and is the one that lands.
+		await vi.advanceTimersByTimeAsync(150);
+		expect(deferred).toHaveLength(2);
+		deferred[1].resolve(catalogDataResponse([2], {}, 2));
+		await vi.runOnlyPendingTimersAsync();
+
+		const settled = get(filterStore);
+		expect(settled.serverData.map((row) => row.id)).toEqual([2]);
+		expect(settled.pagination.total).toBe(2);
+		expect(settled.isRefetching).toBe(false);
+	});
+
 	it('keeps stale rows visible and clears pending flags when a refetch fails', async () => {
 		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
 			const url = input.toString();

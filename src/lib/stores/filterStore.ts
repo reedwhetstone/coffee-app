@@ -210,13 +210,20 @@ function createFilterStore() {
 			clearTimeout(serverFetchTimeout);
 		}
 
+		// Invalidate any request still in flight the moment a newer fetch is
+		// scheduled, not when the debounce fires. Bumping the sequence and
+		// aborting the active controller here closes the window where an earlier
+		// response could resolve during the 150ms debounce and still match
+		// requestSequence, landing stale rows/pagination and stripped-filter
+		// reconciliation against the newer filter state.
+		activeAbortController?.abort();
+		activeAbortController = null;
+		const requestId = ++requestSequence;
+
 		// Debounce server requests for better performance
 		serverFetchTimeout = setTimeout(async () => {
-			// Cancel any request still in flight so it cannot land after this one.
-			activeAbortController?.abort();
 			const controller = new AbortController();
 			activeAbortController = controller;
-			const requestId = ++requestSequence;
 
 			// First mount shows the full skeleton; subsequent fetches keep the
 			// already-visible rows and surface a quiet refetch state instead.
