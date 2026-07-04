@@ -8,7 +8,7 @@
 
 {#if active}
 	<div
-		class="pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden"
+		class="pointer-events-none fixed inset-x-0 top-0 z-[60] h-0.5 overflow-hidden"
 		role="progressbar"
 		aria-label="Page loading"
 		aria-live="polite"
