@@ -420,9 +420,7 @@ describe('/catalog intelligence connective tissue', () => {
 		expect(
 			screen.queryByRole('button', { name: /track process lot|untrack process lot/i })
 		).not.toBeInTheDocument();
-		expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/track'))).toBe(
-			false
-		);
+		expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/track'))).toBe(false);
 
 		resolveTrackedIds([1]);
 
@@ -486,6 +484,48 @@ describe('/catalog price intelligence', () => {
 		expect(screen.queryByText(/above median/i)).not.toBeInTheDocument();
 		expect(screen.queryByText(/below median/i)).not.toBeInTheDocument();
 		expect(screen.queryByText('Near median')).not.toBeInTheDocument();
+	});
+
+	it('clears streamed origin stats while new page data is pending', async () => {
+		let resolveStats!: (stats: (typeof colombiaStats)[]) => void;
+		const pendingStats = new Promise<(typeof colombiaStats)[]>((resolve) => {
+			resolveStats = resolve;
+		});
+
+		const { rerender } = renderCatalog(
+			createData({
+				originPriceStats: [{ ...colombiaStats, median: 8.5 }]
+			} as unknown as Partial<PageData>)
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText('Near median')).toBeInTheDocument();
+		});
+
+		await rerender({
+			data: createData({
+				initialCatalogState: {
+					filters: {},
+					sortField: null,
+					sortDirection: null,
+					showWholesale: true,
+					wholesaleOnly: false,
+					pagination: { page: 1, limit: 15 }
+				},
+				originPriceStats: pendingStats
+			} as unknown as Partial<PageData>)
+		});
+
+		await waitFor(() => {
+			expect(screen.queryByText('Near median')).not.toBeInTheDocument();
+			expect(screen.queryByText(/above median/i)).not.toBeInTheDocument();
+		});
+
+		resolveStats([{ ...colombiaStats, median: 4 }]);
+
+		await waitFor(() => {
+			expect(screen.getByText(/above median/i)).toBeInTheDocument();
+		});
 	});
 
 	it('refreshes origin price stats when the wholesale scope changes after hydration', async () => {

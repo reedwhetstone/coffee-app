@@ -357,6 +357,7 @@
 
 	$effect(() => {
 		let cancelled = false;
+		streamedOriginPriceStats = null;
 		void Promise.resolve(data.originPriceStats)
 			.then((stats) => {
 				if (!cancelled) streamedOriginPriceStats = (stats ?? []) as OriginPriceStats[];
