@@ -256,7 +256,7 @@ PR 6 turns the work into a measurable performance program instead of subjective 
 Coffee-app PRs:
 
 ```bash
-pnpm check
+pnpm check --fail-on-warnings
 pnpm lint
 pnpm test -- --run src/routes/catalog src/lib/stores/filterStore.test.ts src/lib/catalog/urlState.test.ts
 pnpm build
