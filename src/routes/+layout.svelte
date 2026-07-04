@@ -6,8 +6,9 @@
 	import LeftSidebar from '$lib/components/layout/LeftSidebar.svelte';
 	import MobileAppShell from '$lib/components/layout/MobileAppShell.svelte';
 	import ChatDrawer from '$lib/components/chat/ChatDrawer.svelte';
+	import NavigationProgress from '$lib/components/layout/NavigationProgress.svelte';
 	import { setContext } from 'svelte';
-	import { page } from '$app/stores';
+	import { page, navigating } from '$app/stores';
 
 	import type { PageMeta } from '$lib/types/meta.types';
 	import { checkRole, type UserRole } from '$lib/types/auth.types';
@@ -100,6 +101,8 @@
 </script>
 
 <svelte:window onkeydown={handleGlobalKeydown} />
+
+<NavigationProgress active={Boolean($navigating)} />
 
 {#if shouldShowUnifiedHeader}
 	<UnifiedHeader session={data.session} role={data.role} />
