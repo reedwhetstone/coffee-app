@@ -11,6 +11,7 @@ vi.mock('$lib/server/parchmentClient', () => ({
 }));
 
 vi.mock('$lib/server/principal', () => ({
+	isApiKeyPrincipal: (principal: { authKind?: string }) => principal.authKind === 'api-key',
 	resolvePrincipal: mockResolvePrincipal
 }));
 
@@ -73,12 +74,29 @@ describe('/api/catalog route', () => {
 
 	it('uses session mode for authenticated website catalog callers', async () => {
 		mockResolveCatalogCredentialMode.mockReturnValue('session');
+		mockResolvePrincipal.mockResolvedValue({ authKind: 'session', isAuthenticated: true });
 
 		await GET(makeEvent('https://app.test/api/catalog?page=1&limit=15'));
 
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
 			mode: 'session',
 			preferHandling: 'lenient'
+		});
+	});
+
+	it('preserves strict handling for API-key catalog callers', async () => {
+		mockResolveCatalogCredentialMode.mockReturnValue('session');
+		mockResolvePrincipal.mockResolvedValue({ authKind: 'api-key', isAuthenticated: true });
+
+		await GET(
+			makeEvent('https://app.test/api/catalog?page=1&limit=15', {
+				headers: { Authorization: 'Bearer purvey_test_key' }
+			})
+		);
+
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session',
+			preferHandling: 'inherit'
 		});
 	});
 

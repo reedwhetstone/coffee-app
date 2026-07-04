@@ -6,7 +6,7 @@ import {
 	proxyCatalogList
 } from '$lib/server/catalogProxy';
 import { MAX_CATALOG_PAGE_LIMIT } from '$lib/constants/catalog';
-import { resolvePrincipal } from '$lib/server/principal';
+import { isApiKeyPrincipal, resolvePrincipal } from '$lib/server/principal';
 import { resolveCatalogCredentialMode } from '$lib/server/parchmentClient';
 
 // First-party in-app catalog endpoint — proxies the canonical Parchment
@@ -37,7 +37,7 @@ export const GET: RequestHandler = async (event) => {
 		proxied = await proxyCatalogList(event, {
 			defaultLimit: MAX_CATALOG_PAGE_LIMIT,
 			mode: resolveCatalogCredentialMode(event.locals),
-			preferHandling: 'lenient'
+			preferHandling: isApiKeyPrincipal(principal) ? 'inherit' : 'lenient'
 		});
 	} catch (error) {
 		// When Parchment is unconfigured (e.g. CI/preview environments without
