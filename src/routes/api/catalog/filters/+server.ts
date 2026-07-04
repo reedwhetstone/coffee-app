@@ -1,6 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { ParchmentClient } from '@purveyors/sdk';
-import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import {
+	createParchmentServerClient,
+	resolveCatalogCredentialMode
+} from '$lib/server/parchmentClient';
+import { resolvePrincipal } from '$lib/server/principal';
 import type { RequestHandler } from './$types';
 
 type CatalogFacetsQuery = NonNullable<Parameters<ParchmentClient['catalog']['facets']>[0]>;
@@ -20,7 +24,18 @@ type CatalogFacetsQuery = NonNullable<Parameters<ParchmentClient['catalog']['fac
 export const GET: RequestHandler = async (event) => {
 	const { url } = event;
 	try {
-		const client = await createParchmentServerClient(event);
+		const principal = await resolvePrincipal(event);
+		if (event.request.headers.has('Authorization') && !principal.isAuthenticated) {
+			return json(
+				{ error: 'Authentication required', message: 'Authentication required' },
+				{ status: 401 }
+			);
+		}
+
+		const client = await createParchmentServerClient(event, {
+			mode: resolveCatalogCredentialMode(event.locals),
+			preferHandling: 'lenient'
+		});
 
 		const query: CatalogFacetsQuery = { stocked: 'true' };
 		if (url.searchParams.get('showWholesale') === 'true') {

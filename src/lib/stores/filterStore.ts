@@ -44,6 +44,8 @@ type FilterState = {
 	lastProcessedString: string;
 	processing: boolean;
 	isLoading: boolean; // Loading state for server requests
+	catalogResponseMeta: Record<string, unknown> | null;
+	catalogNotices: unknown[];
 	initialized: boolean;
 	initializingRoute: string | null;
 	lastDebounceId: NodeJS.Timeout | null;
@@ -85,6 +87,8 @@ const initialState: FilterState = {
 	lastProcessedString: '',
 	processing: false,
 	isLoading: false,
+	catalogResponseMeta: null,
+	catalogNotices: [],
 	initialized: false,
 	initializingRoute: null,
 	lastDebounceId: null,
@@ -163,19 +167,26 @@ function createFilterStore() {
 				const currentState = get({ subscribe });
 				const params = buildQueryParams(currentState);
 				const queryString = params.toString();
-				const response = await fetch(`/v1/catalog${queryString ? `?${queryString}` : ''}`);
+				const response = await fetch(`/api/catalog${queryString ? `?${queryString}` : ''}`);
 
 				if (!response.ok) {
 					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 				}
 
 				const result = await response.json();
+				const meta =
+					result?.meta && typeof result.meta === 'object'
+						? (result.meta as Record<string, unknown>)
+						: null;
+				const notices = Array.isArray(meta?.notices) ? meta.notices : [];
 
 				update((s) => ({
 					...s,
 					serverData: result.data || [],
 					pagination: result.pagination || s.pagination,
 					filteredData: result.data || [], // Keep filteredData in sync for backward compatibility
+					catalogResponseMeta: meta,
+					catalogNotices: notices,
 					isLoading: false,
 					changeCounter: s.changeCounter + 1
 				}));
@@ -266,6 +277,8 @@ function createFilterStore() {
 					limit: catalogUrlState.pagination.limit
 				};
 				state.filteredData = options.serverData ?? data;
+				state.catalogResponseMeta = null;
+				state.catalogNotices = [];
 			} else {
 				// For other routes, use client-side processing
 				state.serverData = [];
@@ -277,6 +290,8 @@ function createFilterStore() {
 					state.filters,
 					state.showWholesale
 				);
+				state.catalogResponseMeta = null;
+				state.catalogNotices = [];
 			}
 
 			state.initialized = true;

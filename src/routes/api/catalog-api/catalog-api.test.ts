@@ -74,7 +74,8 @@ describe('/api/catalog-api legacy delegate', () => {
 			requiredScope: 'catalog:read'
 		});
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
-			mode: 'session'
+			mode: 'session',
+			preferHandling: 'inherit'
 		});
 		expect(mockCatalogList).toHaveBeenCalledTimes(1);
 		expect(response.status).toBe(200);

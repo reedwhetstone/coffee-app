@@ -7,9 +7,11 @@ import {
 } from '$lib/server/catalogProxy';
 import { MAX_CATALOG_PAGE_LIMIT } from '$lib/constants/catalog';
 import { resolvePrincipal } from '$lib/server/principal';
+import { resolveCatalogCredentialMode } from '$lib/server/parchmentClient';
 
-// Legacy in-app catalog endpoint — proxies the canonical Parchment /v1/catalog
-// surface (ADR-007). The only local logic is a presentation-shaping transform
+// First-party in-app catalog endpoint — proxies the canonical Parchment
+// /v1/catalog surface for browser/SSR UI refreshes (ADR-007, PADR-0015). The
+// only local logic is credential brokering plus a presentation-shaping transform
 // that unwraps the canonical envelope into the `{ data, pagination }` shape
 // historical app callers expect. Parchment always returns a pagination object,
 // so the response is always the paginated envelope. To preserve the pre-proxy
@@ -33,7 +35,9 @@ export const GET: RequestHandler = async (event) => {
 	let proxied: Awaited<ReturnType<typeof proxyCatalogList>>;
 	try {
 		proxied = await proxyCatalogList(event, {
-			defaultLimit: MAX_CATALOG_PAGE_LIMIT
+			defaultLimit: MAX_CATALOG_PAGE_LIMIT,
+			mode: resolveCatalogCredentialMode(event.locals),
+			preferHandling: 'lenient'
 		});
 	} catch (error) {
 		// When Parchment is unconfigured (e.g. CI/preview environments without
@@ -59,8 +63,12 @@ export const GET: RequestHandler = async (event) => {
 		return jsonResponse(body, { status, headers });
 	}
 
-	const canonical = body as { data?: unknown; pagination?: unknown };
-	const legacyBody = { data: canonical.data, pagination: canonical.pagination };
+	const canonical = body as { data?: unknown; pagination?: unknown; meta?: unknown };
+	const legacyBody = {
+		data: canonical.data,
+		pagination: canonical.pagination,
+		meta: canonical.meta
+	};
 
 	return jsonResponse(legacyBody, { status, headers });
 };

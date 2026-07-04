@@ -280,4 +280,3 @@ curl -i 'https://<preview>/v1/catalog?limit=15&processing_base_method=Washed'
 ```
 
 Expected distinction: the website BFF path is lenient/public-demo aware for browser UX; the API-like path is strict and machine-safe.
-

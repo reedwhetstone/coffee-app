@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockCreateParchmentServerClient = vi.fn();
 const mockCatalogList = vi.fn();
 const mockResolvePrincipal = vi.fn();
+const mockResolveCatalogCredentialMode = vi.fn();
 
 vi.mock('$lib/server/parchmentClient', () => ({
-	createParchmentServerClient: mockCreateParchmentServerClient
+	createParchmentServerClient: mockCreateParchmentServerClient,
+	resolveCatalogCredentialMode: mockResolveCatalogCredentialMode
 }));
 
 vi.mock('$lib/server/principal', () => ({
@@ -28,11 +30,12 @@ beforeEach(async () => {
 	vi.clearAllMocks();
 
 	mockResolvePrincipal.mockResolvedValue({ isAuthenticated: false });
+	mockResolveCatalogCredentialMode.mockReturnValue('public-demo');
 	mockCatalogList.mockResolvedValue({
 		data: {
 			data: [{ id: 1 }, { id: 2 }],
 			pagination: { page: 1, limit: 15, total: 2 },
-			meta: {}
+			meta: { notices: [] }
 		},
 		response: new Response(null, { status: 200 })
 	});
@@ -44,11 +47,12 @@ beforeEach(async () => {
 });
 
 describe('/api/catalog route', () => {
-	it('proxies the caller credential to Parchment', async () => {
+	it('proxies through the website credential lane to Parchment', async () => {
 		await GET(makeEvent('https://app.test/api/catalog?page=2&limit=10'));
 
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
-			mode: 'session'
+			mode: 'public-demo',
+			preferHandling: 'lenient'
 		});
 		expect(mockCatalogList).toHaveBeenCalledWith(
 			expect.objectContaining({ page: '2', limit: '10' })
@@ -62,7 +66,19 @@ describe('/api/catalog route', () => {
 		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBe('/v1/catalog');
 		expect(await response.json()).toEqual({
 			data: [{ id: 1 }, { id: 2 }],
-			pagination: { page: 1, limit: 15, total: 2 }
+			pagination: { page: 1, limit: 15, total: 2 },
+			meta: { notices: [] }
+		});
+	});
+
+	it('uses session mode for authenticated website catalog callers', async () => {
+		mockResolveCatalogCredentialMode.mockReturnValue('session');
+
+		await GET(makeEvent('https://app.test/api/catalog?page=1&limit=15'));
+
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session',
+			preferHandling: 'lenient'
 		});
 	});
 
