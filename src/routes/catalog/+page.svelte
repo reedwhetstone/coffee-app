@@ -42,6 +42,7 @@
 	}
 
 	let trackedIds = $state<Set<number>>(new Set());
+	let trackedIdsReady = $state(false);
 
 	$effect(() => {
 		const value = data.trackedLotIds;
@@ -50,9 +51,13 @@
 		// optimistic track toggle the user made in between.
 		if (value instanceof Promise) {
 			let cancelled = false;
+			trackedIdsReady = false;
 			void value
 				.then((ids) => {
-					if (!cancelled) trackedIds = new Set(ids ?? []);
+					if (!cancelled) {
+						trackedIds = new Set(ids ?? []);
+						trackedIdsReady = true;
+					}
 				})
 				.catch(() => {});
 			return () => {
@@ -60,6 +65,7 @@
 			};
 		}
 		trackedIds = new Set(toInitialArray<number>(value));
+		trackedIdsReady = true;
 	});
 
 	// Deep-linked coffee streams in when it is off the current page; prepend it to
@@ -93,6 +99,8 @@
 	}
 
 	async function handleToggleTrack(catalogId: number) {
+		if (!trackedIdsReady) return;
+
 		const wasTracked = trackedIds.has(catalogId);
 		setTracked(catalogId, !wasTracked);
 		// Optimistic update, reverted on failure.
@@ -608,7 +616,7 @@
 			activeOriginStats={activeOriginStats()}
 			{trackedIds}
 			{canUseBeanMatching}
-			{canUseSourcingIntelligence}
+			canUseSourcingIntelligence={canUseSourcingIntelligence && trackedIdsReady}
 			{deepLinkCoffeeId}
 			filteredDataLength={$filteredData.length}
 			{displayLimit}

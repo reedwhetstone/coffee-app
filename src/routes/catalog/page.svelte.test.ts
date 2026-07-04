@@ -402,6 +402,38 @@ describe('/catalog intelligence connective tissue', () => {
 		});
 		expect(screen.getByRole('tablist', { name: 'Coffee detail tabs' })).toBeInTheDocument();
 	});
+
+	it('gates watchlist toggles until streamed tracked ids resolve', async () => {
+		let resolveTrackedIds: (ids: number[]) => void = () => {};
+		const trackedLotIds = new Promise<number[]>((resolve) => {
+			resolveTrackedIds = resolve;
+		});
+
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' } as PageData['session'],
+				role: 'member',
+				trackedLotIds
+			} as unknown as Partial<PageData>)
+		);
+
+		expect(
+			screen.queryByRole('button', { name: /track process lot|untrack process lot/i })
+		).not.toBeInTheDocument();
+		expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/track'))).toBe(
+			false
+		);
+
+		resolveTrackedIds([1]);
+
+		const toggle = await screen.findByRole('button', { name: /untrack process lot/i });
+		await fireEvent.click(toggle);
+
+		expect(fetch).toHaveBeenCalledWith(
+			'/api/catalog/1/track',
+			expect.objectContaining({ method: 'PUT' })
+		);
+	});
 });
 
 describe('/catalog price intelligence', () => {
