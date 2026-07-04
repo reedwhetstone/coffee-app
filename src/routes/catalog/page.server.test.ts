@@ -293,7 +293,11 @@ describe('/catalog page load', () => {
 
 		const result = (await load(
 			makeLoadInput('viewer', null, 'https://app.test/catalog?coffee=99&country=Ethiopia&page=2')
-		)) as { data: Array<{ id: number; name: string }>; pagination: { total: number } };
+		)) as {
+			data: Array<{ id: number; name: string }>;
+			deepLinkCoffee: Promise<{ id: number; name: string } | null>;
+			pagination: { total: number };
+		};
 
 		expect(mockCatalogList).toHaveBeenNthCalledWith(
 			1,
@@ -306,6 +310,9 @@ describe('/catalog page load', () => {
 				limit: 15
 			})
 		);
+		// The off-page deep-link fetch is now a deferred/streamed second call, so it
+		// never blocks the critical rows: the main list is the only awaited call and
+		// the deep-linked coffee streams in separately.
 		expect(mockCatalogList).toHaveBeenNthCalledWith(
 			2,
 			expect.objectContaining({
@@ -318,7 +325,11 @@ describe('/catalog page load', () => {
 			})
 		);
 		expect(mockCatalogList.mock.calls[1][0]).not.toMatchObject({ country: 'Ethiopia' });
-		expect(result.data.map((coffee) => coffee.id)).toEqual([99, 1]);
+		// Critical payload holds only the main-page rows; the deep-link card hydrates
+		// from the streamed promise instead of being prepended server-side.
+		expect(result.data.map((coffee) => coffee.id)).toEqual([1]);
+		const deepLinkCoffee = await result.deepLinkCoffee;
+		expect(deepLinkCoffee?.id).toBe(99);
 		expect(result.pagination.total).toBe(42);
 	});
 
@@ -327,10 +338,12 @@ describe('/catalog page load', () => {
 			makeLoadInput('viewer', null, 'https://app.test/catalog?coffee=1')
 		)) as {
 			data: Array<{ id: number }>;
+			deepLinkCoffee: Promise<{ id: number } | null>;
 		};
 
 		expect(mockCatalogList).toHaveBeenCalledTimes(1);
 		expect(result.data.map((coffee) => coffee.id)).toEqual([1]);
+		expect(await result.deepLinkCoffee).toBeNull();
 	});
 
 	it('strips anonymous process transparency query params before catalog search', async () => {
@@ -625,14 +638,16 @@ describe('/catalog page load', () => {
 
 		const result = (await load(
 			makeLoadInput('member', memberSession, 'https://app.test/catalog')
-		)) as { originPriceStats: Array<{ origin: string; median: number; sample_size: number }> };
+		)) as {
+			originPriceStats: Promise<Array<{ origin: string; median: number; sample_size: number }>>;
+		};
 
 		// Member with no wholesale params → neither view flag is forwarded; Parchment
 		// derives the scope (and publicOnly) from the forwarded credential.
 		const statsQuery = mockCatalogOriginPriceStats.mock.calls[0][0];
 		expect(statsQuery).not.toHaveProperty('showWholesale');
 		expect(statsQuery).not.toHaveProperty('wholesaleOnly');
-		expect(result.originPriceStats).toEqual([
+		expect(await result.originPriceStats).toEqual([
 			expect.objectContaining({ origin: 'Colombia', median: 9, sample_size: 3 })
 		]);
 	});
@@ -659,13 +674,15 @@ describe('/catalog page load', () => {
 
 		const result = (await load(
 			makeLoadInput('member', memberSession, 'https://app.test/catalog?showWholesale=true')
-		)) as { originPriceStats: Array<{ origin: string; median: number; sample_size: number }> };
+		)) as {
+			originPriceStats: Promise<Array<{ origin: string; median: number; sample_size: number }>>;
+		};
 
 		expect(mockCatalogOriginPriceStats).toHaveBeenCalledWith(
 			expect.objectContaining({ showWholesale: 'true' })
 		);
 		expect(mockCatalogOriginPriceStats.mock.calls[0][0]).not.toHaveProperty('wholesaleOnly');
-		expect(result.originPriceStats).toEqual([
+		expect(await result.originPriceStats).toEqual([
 			expect.objectContaining({ origin: 'Honduras', median: 8, sample_size: 6 })
 		]);
 	});
@@ -696,7 +713,9 @@ describe('/catalog page load', () => {
 				memberSession,
 				'https://app.test/catalog?showWholesale=true&wholesaleOnly=true'
 			)
-		)) as { originPriceStats: Array<{ origin: string; median: number; sample_size: number }> };
+		)) as {
+			originPriceStats: Promise<Array<{ origin: string; median: number; sample_size: number }>>;
+		};
 
 		expect(mockCatalogList).toHaveBeenCalledWith(
 			expect.objectContaining({ showWholesale: 'true', wholesaleOnly: 'true' })
@@ -704,7 +723,7 @@ describe('/catalog page load', () => {
 		expect(mockCatalogOriginPriceStats).toHaveBeenCalledWith(
 			expect.objectContaining({ showWholesale: 'true', wholesaleOnly: 'true' })
 		);
-		expect(result.originPriceStats).toEqual([
+		expect(await result.originPriceStats).toEqual([
 			expect.objectContaining({ origin: 'Honduras', median: 5, sample_size: 3 })
 		]);
 	});
@@ -713,12 +732,14 @@ describe('/catalog page load', () => {
 describe('/catalog tracked lots and brief matches', () => {
 	it('returns empty trackedLotIds and briefMatchSummaries for unauthenticated load', async () => {
 		const result = (await load(makeLoadInput('viewer', null))) as {
-			trackedLotIds: number[];
-			briefMatchSummaries: unknown[];
+			trackedLotIds: Promise<number[]>;
+			briefMatchSummaries: Promise<unknown[]>;
 		};
 
-		expect(result.trackedLotIds).toEqual([]);
-		expect(result.briefMatchSummaries).toEqual([]);
+		expect(await result.trackedLotIds).toEqual([]);
+		expect(await result.briefMatchSummaries).toEqual([]);
+		// Member enrichment is never invoked for an anonymous load, so no user-specific
+		// data can enter the public (streamed) render.
 		expect(mockGetTrackedLotIds).not.toHaveBeenCalled();
 		expect(mockGetBriefMatchSummaries).not.toHaveBeenCalled();
 	});
@@ -729,18 +750,18 @@ describe('/catalog tracked lots and brief matches', () => {
 		mockGetTrackedLotIds.mockResolvedValue([10, 42]);
 
 		const result = (await load(makeLoadInputWithPrincipal('viewer', session, principal))) as {
-			trackedLotIds: number[];
-			briefMatchSummaries: unknown[];
+			trackedLotIds: Promise<number[]>;
+			briefMatchSummaries: Promise<unknown[]>;
 		};
 
 		expect(mockGetTrackedLotIds).toHaveBeenCalledWith(
 			expect.objectContaining({ kind: 'session-client' }),
 			'ppi-user-1'
 		);
-		expect(result.trackedLotIds).toEqual([10, 42]);
+		expect(await result.trackedLotIds).toEqual([10, 42]);
 		// ppiAccess non-member: briefs not fetched
 		expect(mockGetBriefMatchSummaries).not.toHaveBeenCalled();
-		expect(result.briefMatchSummaries).toEqual([]);
+		expect(await result.briefMatchSummaries).toEqual([]);
 	});
 
 	it('fetches tracked lot IDs and brief match summaries for a member', async () => {
@@ -756,8 +777,8 @@ describe('/catalog tracked lots and brief matches', () => {
 		]);
 
 		const result = (await load(makeLoadInputWithPrincipal('member', session, principal))) as {
-			trackedLotIds: number[];
-			briefMatchSummaries: Array<{ briefId: string; briefName: string }>;
+			trackedLotIds: Promise<number[]>;
+			briefMatchSummaries: Promise<Array<{ briefId: string; briefName: string }>>;
 		};
 
 		expect(mockGetTrackedLotIds).toHaveBeenCalledWith(
@@ -765,9 +786,40 @@ describe('/catalog tracked lots and brief matches', () => {
 			'member-user-1'
 		);
 		expect(mockGetBriefMatchSummaries).toHaveBeenCalled();
-		expect(result.trackedLotIds).toEqual([7]);
-		expect(result.briefMatchSummaries).toHaveLength(1);
-		expect(result.briefMatchSummaries[0].briefName).toBe('Ethiopia brief');
+		expect(await result.trackedLotIds).toEqual([7]);
+		const briefMatchSummaries = await result.briefMatchSummaries;
+		expect(briefMatchSummaries).toHaveLength(1);
+		expect(briefMatchSummaries[0].briefName).toBe('Ethiopia brief');
+	});
+
+	it('still returns catalog rows when a member enrichment source rejects (degraded, not blank)', async () => {
+		const session = { access_token: 'member-token' } as App.Locals['session'];
+		const principal = {
+			isAuthenticated: true as const,
+			userId: 'member-user-1',
+			ppiAccess: false
+		};
+		// Both member enrichment sources fail; the critical rows must still return and
+		// the streamed enrichment must degrade to empty rather than blanking the page.
+		mockGetTrackedLotIds.mockRejectedValue(new Error('tracked lots unavailable'));
+		mockGetBriefMatchSummaries.mockRejectedValue(new Error('briefs unavailable'));
+		mockCatalogOriginPriceStats.mockRejectedValue(new Error('origin stats unavailable'));
+
+		const result = (await load(makeLoadInputWithPrincipal('member', session, principal))) as {
+			data: Array<{ id: number }>;
+			trackedLotIds: Promise<number[]>;
+			briefMatchSummaries: Promise<unknown[]>;
+			originPriceStats: Promise<unknown[]>;
+			catalogSchemaUnavailable: unknown;
+		};
+
+		// Critical path is intact: rows returned, page not in the schema-unavailable state.
+		expect(result.data.map((coffee) => coffee.id)).toEqual([1]);
+		expect(result.catalogSchemaUnavailable).toBeNull();
+		// Streamed enrichment degrades gracefully.
+		expect(await result.trackedLotIds).toEqual([]);
+		expect(await result.briefMatchSummaries).toEqual([]);
+		expect(await result.originPriceStats).toEqual([]);
 	});
 });
 
@@ -784,7 +836,7 @@ describe('/catalog tracked-only watchlist view', () => {
 				principal,
 				'https://app.test/catalog?tracked=only'
 			)
-		)) as { trackedOnly: boolean; trackedLotIds: number[] };
+		)) as { trackedOnly: boolean; trackedLotIds: Promise<number[]> };
 
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
 			mode: 'session'
@@ -797,7 +849,7 @@ describe('/catalog tracked-only watchlist view', () => {
 			})
 		);
 		expect(result.trackedOnly).toBe(true);
-		expect(result.trackedLotIds).toEqual([5, 9]);
+		expect(await result.trackedLotIds).toEqual([5, 9]);
 	});
 
 	it('skips the catalog query entirely when the watchlist is empty', async () => {

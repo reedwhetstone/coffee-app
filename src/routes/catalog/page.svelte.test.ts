@@ -283,7 +283,7 @@ describe('/catalog intelligence connective tissue', () => {
 			createData({
 				session: { access_token: 'ppi-token' } as PageData['session'],
 				ppiAccess: true
-			} as Partial<PageData>)
+			} as unknown as Partial<PageData>)
 		);
 
 		expect(
@@ -307,7 +307,7 @@ describe('/catalog intelligence connective tissue', () => {
 					hasNext: false,
 					hasPrev: false
 				}
-			} as Partial<PageData>)
+			} as unknown as Partial<PageData>)
 		);
 
 		expect(screen.getByText('No catalog rows match this supply query')).toBeInTheDocument();
@@ -394,7 +394,7 @@ describe('/catalog intelligence connective tissue', () => {
 					hasNext: false,
 					hasPrev: false
 				}
-			} as Partial<PageData>)
+			} as unknown as Partial<PageData>)
 		);
 
 		await waitFor(() => {
@@ -417,7 +417,9 @@ describe('/catalog price intelligence', () => {
 	};
 
 	it('renders a price context badge on each card when origin stats are available', async () => {
-		renderCatalog(createData({ originPriceStats: [colombiaStats] } as Partial<PageData>));
+		renderCatalog(
+			createData({ originPriceStats: [colombiaStats] } as unknown as Partial<PageData>)
+		);
 
 		// Process Lot is Colombia at $8.50, median is $6.00 → ~42% above → well_above
 		await waitFor(() => {
@@ -437,7 +439,7 @@ describe('/catalog price intelligence', () => {
 					}
 				],
 				originPriceStats: [{ ...colombiaStats, median: 9 }]
-			} as Partial<PageData>)
+			} as unknown as Partial<PageData>)
 		);
 
 		await waitFor(() => {
@@ -447,7 +449,7 @@ describe('/catalog price intelligence', () => {
 	});
 
 	it('does not render price context badges when no origin stats are provided', () => {
-		renderCatalog(createData({ originPriceStats: [] } as Partial<PageData>));
+		renderCatalog(createData({ originPriceStats: [] } as unknown as Partial<PageData>));
 
 		expect(screen.queryByText(/above median/i)).not.toBeInTheDocument();
 		expect(screen.queryByText(/below median/i)).not.toBeInTheDocument();
@@ -474,7 +476,7 @@ describe('/catalog price intelligence', () => {
 				canExport: true
 			},
 			originPriceStats: [{ ...colombiaStats, median: 8.5 }]
-		} as Partial<PageData>);
+		} as unknown as Partial<PageData>);
 
 		renderCatalog(pageData);
 
@@ -520,7 +522,7 @@ describe('/catalog price intelligence', () => {
 					wholesaleOnly: false,
 					pagination: { page: 1, limit: 15 }
 				}
-			} as Partial<PageData>)
+			} as unknown as Partial<PageData>)
 		);
 
 		await waitFor(() => {
@@ -534,7 +536,9 @@ describe('/catalog price intelligence', () => {
 	});
 
 	it('does not show origin supply context panel when no single origin is filtered', () => {
-		renderCatalog(createData({ originPriceStats: [colombiaStats] } as Partial<PageData>));
+		renderCatalog(
+			createData({ originPriceStats: [colombiaStats] } as unknown as Partial<PageData>)
+		);
 
 		expect(screen.queryByLabelText('Origin price context')).not.toBeInTheDocument();
 	});
@@ -548,7 +552,7 @@ describe('/catalog watchlist and sourcing briefs', () => {
 				role: 'member',
 				ppiAccess: false,
 				trackedLotIds: []
-			} as Partial<PageData>)
+			} as unknown as Partial<PageData>)
 		);
 
 		const button = screen.getByRole('button', { name: 'Track Process Lot' });
@@ -623,7 +627,7 @@ describe('/catalog watchlist and sourcing briefs', () => {
 						matchingIds: [1]
 					}
 				]
-			} as Partial<PageData>)
+			} as unknown as Partial<PageData>)
 		);
 
 		expect(screen.getByLabelText('Sourcing brief matches')).toBeInTheDocument();
@@ -662,7 +666,7 @@ describe('/catalog similar comparison controls', () => {
 			createData({
 				session: { access_token: 'viewer-token' } as PageData['session'],
 				role: 'viewer'
-			} as Partial<PageData>)
+			} as unknown as Partial<PageData>)
 		);
 
 		await fireEvent.click(screen.getByRole('button', { name: /unlock matches/i }));
@@ -694,7 +698,7 @@ describe('/catalog similar comparison controls', () => {
 					canUseSavedSearches: true,
 					canExport: true
 				}
-			} as Partial<PageData>)
+			} as unknown as Partial<PageData>)
 		);
 
 		await fireEvent.click(screen.getByRole('button', { name: /compare matches/i }));
@@ -718,7 +722,7 @@ describe('/catalog process controls', () => {
 					message: 'Structured process filters require a member account.',
 					deniedParams: ['processing_base_method']
 				}
-			} as Partial<PageData>)
+			} as unknown as Partial<PageData>)
 		);
 
 		expect(screen.getByText('Members unlock structured process filters')).toBeInTheDocument();
@@ -749,7 +753,7 @@ describe('/catalog process controls', () => {
 					canUseSavedSearches: true,
 					canExport: true
 				}
-			} as Partial<PageData>)
+			} as unknown as Partial<PageData>)
 		);
 
 		expect(screen.getByText('Advanced process transparency')).toBeInTheDocument();
