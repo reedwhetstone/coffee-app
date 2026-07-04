@@ -1,8 +1,16 @@
-# Span B — Legacy coffee-app `/v1` (and `/api` catalog) Proxy/Deprecate
+# Span B - Legacy coffee-app `/v1` (and `/api` catalog) Proxy/Deprecate
 
-Status: active as of 2026-07-01
+Status: superseded as of 2026-07-04 by Parchment PADR-0012/PADR-0015 and
+`notes/implementation-plans/2026-07-04-catalog-shell-performance-headless-plan.md`
 Owner: coffee-app
 Depends on: Span A complete (PR #409 catalog page cutover; parchment-api PR #26/#27 contract; PR #28 P3 cleanup).
+
+Supersession note: this plan predates the current hard-changeover and BFF topology
+decisions. Its useful historical finding is that duplicate catalog query logic
+must leave coffee-app. Its proxy/deprecation route strategy is no longer current:
+Parchment is the canonical API, browser traffic still uses a thin same-origin BFF
+for token custody, and the BFF must stay logic-free rather than becoming a
+long-lived proxy shim or compatibility harbor.
 
 ## Context
 
@@ -14,8 +22,8 @@ implementation behind four external routes:
 
 - `GET /v1/catalog` (`src/routes/v1/catalog/+server.ts`)
 - `GET /v1/catalog/proof-coverage` (`src/routes/v1/catalog/proof-coverage/+server.ts`)
-- `GET /api/catalog-api` (`src/routes/api/catalog-api/+server.ts`) — API-key feed, already carries Deprecation/Sunset headers
-- `GET /api/catalog` (`src/routes/api/catalog/+server.ts`) — legacy app catalog
+- `GET /api/catalog-api` (`src/routes/api/catalog-api/+server.ts`) - API-key feed, already carries Deprecation/Sunset headers
+- `GET /api/catalog` (`src/routes/api/catalog/+server.ts`) - legacy app catalog
 
 This is the "repeat truth at the network boundary" ADR-007 exists to remove:
 the same catalog listing/filter/projection logic now lives in **both**
@@ -86,7 +94,7 @@ same key onward, preserving current 401/403 behavior.
 
 ## Slices
 
-### B1 — Catalog listing group proxy + duplicate-logic deletion ← first PR
+### B1 - Catalog listing group proxy + duplicate-logic deletion, first PR
 
 Repo: coffee-app. This is the coherent, independently-mergeable unit: it removes
 the catalog duplication entirely rather than half-migrating it.
@@ -128,29 +136,29 @@ Acceptance:
 - No catalog listing query logic remains in `coffee-app` except proxy/presentation.
 - `pnpm check` + affected route tests pass (or precisely env-labeled).
 
-### B2 — `/v1/catalog/[id]/similar` proxy
+### B2 - `/v1/catalog/[id]/similar` proxy
 
 Repo: coffee-app. Separate slice due to similarity gating + live-test soft-timeout
 handling. Repoint to `client.catalog.similar(id, query)`, preserve member/paid
 gating and timeout semantics, delete duplicate similarity server logic where safe.
 
-### B3 — Price-index proxy
+### B3 - Price-index proxy
 
 Repo: coffee-app. `/v1/price-index` → `client.priceIndex.list(query)`; delete
 duplicate `priceIndexResource` logic where safe. (CLI repoint handled separately
 per cutover plan C3.)
 
-### B4 — Procurement briefs proxy
+### B4 - Procurement briefs proxy
 
 Repo: coffee-app. `/v1/procurement/briefs` + `[id]` + `matches` →
 `client.procurement.briefs.*`; delete duplicate `sourcingBriefs` server logic
 where safe. Note `sourcingBriefs.ts` currently imports `catalogResourceItem`;
-confirm that mapping survives B1 (it does — only the response builders are
+confirm that mapping survives B1 (it does - only the response builders are
 deleted, not the item mapper).
 
 ## Sequencing
 
-B1 first (kills the biggest duplication and is fully parity-backed). B2–B4 follow
+B1 first (kills the biggest duplication and is fully parity-backed). B2-B4 follow
 one route group per PR, each independently shippable and leaving all surfaces
 working. This slots under the existing `docs/cutover-implementation-plan.md`
 (parchment-api) Span C2 tail + C4 legacy tightening; this doc is the coffee-app
