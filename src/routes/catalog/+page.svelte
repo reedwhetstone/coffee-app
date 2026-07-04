@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 	import { page } from '$app/state';
 	import { checkRole } from '$lib/types/auth.types';
@@ -382,7 +382,11 @@
 	let originStatsAbortController: AbortController | null = null;
 
 	$effect(() => {
-		originStatsCache = { [serverOriginStatsKey]: serverOriginPriceStats };
+		const key = serverOriginStatsKey;
+		const stats = serverOriginPriceStats;
+		// Refresh the server-scope entry without discarding stats already fetched
+		// for the user's active scope. untrack avoids a self-triggering effect loop.
+		originStatsCache = { ...untrack(() => originStatsCache), [key]: stats };
 	});
 
 	let activeStatsShowWholesale = $derived(
