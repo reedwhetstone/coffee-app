@@ -460,13 +460,15 @@ export const load: PageServerLoad = async (event) => {
 
 	// Member-only enrichment. Anonymous loads resolve to [] with no server work, so
 	// user-specific watchlist/procurement data never enters the public render and is
-	// never part of a public cacheable output.
-	const trackedLotIds: Promise<number[]> = trackedOnly
+	// never part of a public cacheable output. If the watchlist read fails, keep the
+	// client in an unknown state so toggle controls stay disabled rather than
+	// misrepresenting tracked lots as untracked.
+	const trackedLotIds: Promise<number[] | null> = trackedOnly
 		? Promise.resolve(trackedLotIdsForQuery)
 		: userId && hasParchmentAccess
 			? getTrackedLotIds(locals.supabase, userId).catch((error) => {
 					console.error('Error loading tracked lot ids:', error);
-					return [];
+					return null;
 				})
 			: Promise.resolve([]);
 

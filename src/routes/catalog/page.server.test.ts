@@ -873,8 +873,9 @@ describe('/catalog tracked lots and brief matches', () => {
 		// Critical path is intact: rows returned, page not in the schema-unavailable state.
 		expect(result.data.map((coffee) => coffee.id)).toEqual([1]);
 		expect(result.catalogSchemaUnavailable).toBeNull();
-		// Streamed enrichment degrades gracefully.
-		expect(await result.trackedLotIds).toEqual([]);
+		// Streamed enrichment degrades gracefully. Watchlist failures stay unknown so
+		// the client keeps toggle controls disabled instead of showing false negatives.
+		expect(await result.trackedLotIds).toBeNull();
 		expect(await result.briefMatchSummaries).toEqual([]);
 		expect(await result.originPriceStats).toEqual([]);
 	});

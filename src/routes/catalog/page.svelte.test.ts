@@ -432,6 +432,23 @@ describe('/catalog intelligence connective tissue', () => {
 			expect.objectContaining({ method: 'PUT' })
 		);
 	});
+
+	it('keeps watchlist toggles hidden when streamed tracked ids fail', async () => {
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' } as PageData['session'],
+				role: 'member',
+				trackedLotIds: Promise.resolve(null)
+			} as unknown as Partial<PageData>)
+		);
+
+		await waitFor(() => {
+			expect(
+				screen.queryByRole('button', { name: /track process lot|untrack process lot/i })
+			).not.toBeInTheDocument();
+		});
+		expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/track'))).toBe(false);
+	});
 });
 
 describe('/catalog price intelligence', () => {

@@ -37,7 +37,7 @@
 	// arrives from the server load as streamed promises. Tests and any non-streamed
 	// path may still pass plain arrays, so seed synchronously from an array when one
 	// is present and let the effects below resolve the promise form as it streams in.
-	function toInitialArray<T>(value: Promise<T[]> | T[] | undefined | null): T[] {
+	function toInitialArray<T>(value: Promise<T[] | null> | T[] | undefined | null): T[] {
 		return Array.isArray(value) ? value : [];
 	}
 
@@ -54,7 +54,7 @@
 			trackedIdsReady = false;
 			void value
 				.then((ids) => {
-					if (!cancelled) {
+					if (!cancelled && ids !== null) {
 						trackedIds = new Set(ids ?? []);
 						trackedIdsReady = true;
 					}
@@ -65,7 +65,7 @@
 			};
 		}
 		trackedIds = new Set(toInitialArray<number>(value));
-		trackedIdsReady = true;
+		trackedIdsReady = value !== null;
 	});
 
 	// Deep-linked coffee streams in when it is off the current page; prepend it to
