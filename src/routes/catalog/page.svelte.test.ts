@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
+import { get } from 'svelte/store';
 import CatalogPage from './+page.svelte';
 import type { PageData } from './$types';
 import { createCatalogProofSummary } from '$lib/catalog/proofSummary';
@@ -317,6 +318,47 @@ describe('/catalog intelligence connective tissue', () => {
 			'href',
 			'/analytics'
 		);
+	});
+
+	it('keeps existing rows visible with a quiet pending indicator during a filter refetch instead of the full skeleton', async () => {
+		vi.mocked(fetch).mockImplementation(async (input: URL | RequestInfo) => {
+			const url =
+				typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+			if (url.startsWith('/api/catalog/filters')) {
+				return new Response(JSON.stringify({ countries: ['Colombia'] }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+			if (url.startsWith('/api/catalog/origin-price-stats')) {
+				return new Response(JSON.stringify({ originPriceStats: [] }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+			// Hold the catalog refetch pending so the refetch state stays visible.
+			if (url.startsWith('/api/catalog?')) {
+				return new Promise<Response>(() => {});
+			}
+			return new Response(JSON.stringify({ data: [], pagination: null }), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' }
+			});
+		});
+
+		renderCatalog(createData());
+
+		expect(screen.getByText('Process Lot')).toBeInTheDocument();
+		await waitFor(() => expect(get(filterStore).routeId).toBe('/catalog'));
+
+		filterStore.setFilter('name', 'kenya');
+
+		await waitFor(() => expect(get(filterStore).isRefetching).toBe(true));
+
+		// Stale rows stay on screen; the page is not replaced by the full skeleton.
+		expect(screen.getByText('Process Lot')).toBeInTheDocument();
+		expect(screen.getByText('Green Coffee Catalog')).toBeInTheDocument();
+		expect(screen.getByText('Updating results')).toBeInTheDocument();
 	});
 
 	it('rehydrates and opens a catalog coffee deep link after prior catalog navigation', async () => {

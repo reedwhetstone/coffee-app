@@ -20,6 +20,47 @@ import {
 // Define types
 type FilterValue = CatalogFilterValue;
 
+// Field names Parchment may use on a stripped-filter notice to name the
+// filter param it dropped. coffee-app stays a shell: it does not decide which
+// filters are entitled, it only believes the server about what was stripped so
+// the UI can reconcile local active-filter state to the server-applied result.
+const STRIPPED_FILTER_NOTICE_FIELDS = [
+	'deniedParams',
+	'strippedParams',
+	'params',
+	'param',
+	'fields',
+	'field',
+	'filters',
+	'filter'
+] as const;
+
+/**
+ * Extracts the set of filter param keys that upstream reports as stripped from a
+ * lenient website request. Only returns keys the server explicitly names, so a
+ * filter is never cleared unless the API says it was dropped.
+ */
+function extractStrippedFilterKeys(notices: unknown[]): string[] {
+	const keys = new Set<string>();
+	for (const notice of notices) {
+		if (!notice || typeof notice !== 'object') continue;
+		const record = notice as Record<string, unknown>;
+		for (const field of STRIPPED_FILTER_NOTICE_FIELDS) {
+			const value = record[field];
+			if (Array.isArray(value)) {
+				for (const candidate of value) {
+					if (typeof candidate === 'string' && candidate.trim() !== '') {
+						keys.add(candidate.trim());
+					}
+				}
+			} else if (typeof value === 'string' && value.trim() !== '') {
+				keys.add(value.trim());
+			}
+		}
+	}
+	return Array.from(keys);
+}
+
 type CatalogPaginationState = {
 	page: number;
 	limit: number;
@@ -43,7 +84,9 @@ type FilterState = {
 	pagination: CatalogPaginationState;
 	lastProcessedString: string;
 	processing: boolean;
-	isLoading: boolean; // Loading state for server requests
+	isLoading: boolean; // First-mount pending state for server requests (drives full skeleton)
+	isRefetching: boolean; // Refetch pending state while stale rows stay visible (drives overlay)
+	hasLoadedOnce: boolean; // True once server rows have been provided or fetched at least once
 	catalogResponseMeta: Record<string, unknown> | null;
 	catalogNotices: unknown[];
 	initialized: boolean;
@@ -87,6 +130,8 @@ const initialState: FilterState = {
 	lastProcessedString: '',
 	processing: false,
 	isLoading: false,
+	isRefetching: false,
+	hasLoadedOnce: false,
 	catalogResponseMeta: null,
 	catalogNotices: [],
 	initialized: false,
@@ -139,12 +184,18 @@ function createFilterStore() {
 		}
 	}
 
-	// Server fetch debouncing
+	// Server fetch debouncing plus request-lifecycle guards. The abort controller
+	// cancels an in-flight request when a newer fetch starts; the monotonic
+	// sequence id ensures a slower earlier response can never overwrite newer
+	// filter state even if the transport (or a test mock) ignores the abort.
 	let serverFetchTimeout: NodeJS.Timeout | null = null;
+	let activeAbortController: AbortController | null = null;
+	let requestSequence = 0;
 
 	/**
-	 * Fetches data from the server with current filter/sort/pagination settings
-	 * Includes debouncing to prevent excessive API calls
+	 * Fetches data from the server with current filter/sort/pagination settings.
+	 * Includes debouncing, request cancellation, and a sequence guard so
+	 * stale-while-revalidate interactions stay correct under rapid changes.
 	 */
 	async function fetchServerData() {
 		const state = get({ subscribe });
@@ -161,38 +212,101 @@ function createFilterStore() {
 
 		// Debounce server requests for better performance
 		serverFetchTimeout = setTimeout(async () => {
-			update((s) => ({ ...s, isLoading: true }));
+			// Cancel any request still in flight so it cannot land after this one.
+			activeAbortController?.abort();
+			const controller = new AbortController();
+			activeAbortController = controller;
+			const requestId = ++requestSequence;
+
+			// First mount shows the full skeleton; subsequent fetches keep the
+			// already-visible rows and surface a quiet refetch state instead.
+			update((s) => ({
+				...s,
+				isLoading: !s.hasLoadedOnce,
+				isRefetching: s.hasLoadedOnce
+			}));
 
 			try {
 				const currentState = get({ subscribe });
 				const params = buildQueryParams(currentState);
 				const queryString = params.toString();
-				const response = await fetch(`/api/catalog${queryString ? `?${queryString}` : ''}`);
+				const response = await fetch(`/api/catalog${queryString ? `?${queryString}` : ''}`, {
+					signal: controller.signal
+				});
 
 				if (!response.ok) {
 					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 				}
 
 				const result = await response.json();
+
+				// A newer request superseded this one while it was in flight; drop
+				// this response so it cannot overwrite fresher state.
+				if (requestId !== requestSequence) {
+					return;
+				}
+
 				const meta =
 					result?.meta && typeof result.meta === 'object'
 						? (result.meta as Record<string, unknown>)
 						: null;
 				const notices = Array.isArray(meta?.notices) ? meta.notices : [];
+				const strippedKeys = extractStrippedFilterKeys(notices);
 
-				update((s) => ({
-					...s,
-					serverData: result.data || [],
-					pagination: result.pagination || s.pagination,
-					filteredData: result.data || [], // Keep filteredData in sync for backward compatibility
-					catalogResponseMeta: meta,
-					catalogNotices: notices,
-					isLoading: false,
-					changeCounter: s.changeCounter + 1
-				}));
+				if (activeAbortController === controller) {
+					activeAbortController = null;
+				}
+
+				update((s) => {
+					// Reconcile local active-filter state to the server-applied result:
+					// drop any filter the API reported as stripped so the UI never
+					// claims an unentitled filter is still active.
+					const filters =
+						strippedKeys.length > 0
+							? (Object.fromEntries(
+									Object.entries(s.filters).filter(([key]) => !strippedKeys.includes(key))
+								) as Record<string, FilterValue>)
+							: s.filters;
+
+					return {
+						...s,
+						filters,
+						serverData: result.data || [],
+						pagination: result.pagination || s.pagination,
+						filteredData: result.data || [], // Keep filteredData in sync for backward compatibility
+						catalogResponseMeta: meta,
+						catalogNotices: notices,
+						isLoading: false,
+						isRefetching: false,
+						hasLoadedOnce: true,
+						changeCounter: s.changeCounter + 1
+					};
+				});
+
+				// Keep the shareable URL honest about the effective filter state.
+				if (strippedKeys.length > 0) {
+					syncCatalogUrl(get({ subscribe }));
+				}
 			} catch (error) {
+				// An aborted request is expected when a newer fetch supersedes it;
+				// the newer request owns the pending state, so leave it untouched.
+				if (error instanceof DOMException && error.name === 'AbortError') {
+					return;
+				}
+
+				// Ignore late failures from a superseded request.
+				if (requestId !== requestSequence) {
+					return;
+				}
+
+				if (activeAbortController === controller) {
+					activeAbortController = null;
+				}
+
 				console.error('Error fetching server data:', error);
-				update((s) => ({ ...s, isLoading: false }));
+				// Preserve the currently visible rows on error (stale-while-revalidate)
+				// and only clear the pending flags.
+				update((s) => ({ ...s, isLoading: false, isRefetching: false }));
 			}
 		}, 150); // Debounce server requests by 150ms
 	}
@@ -269,6 +383,9 @@ function createFilterStore() {
 				state.filters.stocked = 'TRUE';
 			}
 
+			state.isLoading = false;
+			state.isRefetching = false;
+
 			if (isServerSideRoute) {
 				state.serverData = options.serverData ?? data;
 				state.pagination = options.pagination ?? {
@@ -279,6 +396,9 @@ function createFilterStore() {
 				state.filteredData = options.serverData ?? data;
 				state.catalogResponseMeta = null;
 				state.catalogNotices = [];
+				// Server rows provided at init (SSR hydration) count as a first load,
+				// so later interactions revalidate in place instead of re-skeletoning.
+				state.hasLoadedOnce = options.serverData !== undefined || data.length > 0;
 			} else {
 				// For other routes, use client-side processing
 				state.serverData = [];
@@ -292,6 +412,7 @@ function createFilterStore() {
 				);
 				state.catalogResponseMeta = null;
 				state.catalogNotices = [];
+				state.hasLoadedOnce = false;
 			}
 
 			state.initialized = true;

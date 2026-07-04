@@ -133,6 +133,12 @@
 		!trackedOnlyView && $filterStore.initialized && $filterStore.routeId === page.url.pathname
 	);
 
+	// Full skeleton only on the true first mount / initial-empty state. Once rows
+	// have loaded once, later filter/sort/page fetches keep the existing rows
+	// visible and surface a quiet refetch state instead of blanking the page.
+	let showInitialSkeleton = $derived($filterStore.isLoading && !$filterStore.hasLoadedOnce);
+	let isRefetching = $derived($filterStore.isRefetching);
+
 	let activePagination = $derived(hydratedCatalogState ? $filterStore.pagination : data.pagination);
 
 	let displayData = $derived((): CoffeeCatalog[] => {
@@ -448,7 +454,7 @@
 	}
 </script>
 
-{#if $filterStore.isLoading}
+{#if showInitialSkeleton}
 	<CatalogPageSkeleton />
 {:else}
 	<div class="space-y-4">
@@ -458,6 +464,7 @@
 			{visibleSupplierCount}
 			{visiblePricedCount}
 			{canUseSourcingIntelligence}
+			{isRefetching}
 			trackedIdsSize={trackedIds.size}
 			{trackedCountOnPage}
 			{trackedOnlyView}
@@ -503,6 +510,7 @@
 			{session}
 			displayData={displayData()}
 			{isLoadingMore}
+			{isRefetching}
 			{activePagination}
 			activeOriginStats={activeOriginStats()}
 			{trackedIds}
