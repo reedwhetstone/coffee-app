@@ -334,6 +334,16 @@ async function streamDeepLinkCoffee(options: {
 	}
 }
 
+async function resolveBriefMatchCatalogLots(
+	catalogData: SdkCatalogItem[],
+	deepLinkCoffee: Promise<CatalogResourceItem | null>
+): Promise<Parameters<typeof getBriefMatchSummaries>[2]> {
+	const streamedCoffee = await deepLinkCoffee;
+	if (!streamedCoffee) return catalogData as Parameters<typeof getBriefMatchSummaries>[2];
+
+	return [...catalogData, streamedCoffee] as Parameters<typeof getBriefMatchSummaries>[2];
+}
+
 export const load: PageServerLoad = async (event) => {
 	const { locals, url } = event;
 	const requestedCatalogState = parseCatalogUrlState(url, '/catalog');
@@ -462,14 +472,12 @@ export const load: PageServerLoad = async (event) => {
 
 	const briefMatchSummaries: Promise<BriefMatchSummary[]> =
 		userId && hasParchmentAccess && isMember
-			? getBriefMatchSummaries(
-					locals.supabase,
-					userId,
-					catalogData as Parameters<typeof getBriefMatchSummaries>[2]
-				).catch((error) => {
-					console.error('Error loading brief match summaries:', error);
-					return [];
-				})
+			? resolveBriefMatchCatalogLots(catalogData, deepLinkCoffee)
+					.then((lots) => getBriefMatchSummaries(locals.supabase, userId, lots))
+					.catch((error) => {
+						console.error('Error loading brief match summaries:', error);
+						return [];
+					})
 			: Promise.resolve([]);
 
 	const baseUrl = `${url.protocol}//${url.host}`;

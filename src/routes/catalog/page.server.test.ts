@@ -785,11 +785,68 @@ describe('/catalog tracked lots and brief matches', () => {
 			expect.objectContaining({ kind: 'session-client' }),
 			'member-user-1'
 		);
-		expect(mockGetBriefMatchSummaries).toHaveBeenCalled();
 		expect(await result.trackedLotIds).toEqual([7]);
 		const briefMatchSummaries = await result.briefMatchSummaries;
+		expect(mockGetBriefMatchSummaries).toHaveBeenCalled();
 		expect(briefMatchSummaries).toHaveLength(1);
 		expect(briefMatchSummaries[0].briefName).toBe('Ethiopia brief');
+	});
+
+	it('includes a streamed deep-link coffee in member brief match summaries', async () => {
+		const session = { access_token: 'member-token' } as App.Locals['session'];
+		const principal = {
+			isAuthenticated: true as const,
+			userId: 'member-user-1',
+			ppiAccess: false
+		};
+		mockCatalogList
+			.mockResolvedValueOnce({
+				data: {
+					data: catalogRows,
+					pagination: { total: 42 }
+				}
+			})
+			.mockResolvedValueOnce({
+				data: {
+					data: [
+						{
+							id: 99,
+							name: 'Deep Link Coffee',
+							country: 'Colombia',
+							public_coffee: true,
+							wholesale: false,
+							stocked: false
+						}
+					],
+					pagination: { total: 1 }
+				}
+			});
+		mockGetBriefMatchSummaries.mockResolvedValue([
+			{ briefId: 'b1', briefName: 'Colombia brief', matchCount: 1, matchingIds: [99] }
+		]);
+
+		const result = (await load(
+			makeLoadInputWithPrincipal(
+				'member',
+				session,
+				principal,
+				'https://app.test/catalog?coffee=99&country=Ethiopia'
+			)
+		)) as {
+			briefMatchSummaries: Promise<Array<{ briefId: string; matchingIds: number[] }>>;
+		};
+
+		await expect(result.briefMatchSummaries).resolves.toEqual([
+			expect.objectContaining({ briefId: 'b1', matchingIds: [99] })
+		]);
+		expect(mockGetBriefMatchSummaries).toHaveBeenCalledWith(
+			expect.objectContaining({ kind: 'session-client' }),
+			'member-user-1',
+			expect.arrayContaining([
+				expect.objectContaining({ id: 1 }),
+				expect.objectContaining({ id: 99 })
+			])
+		);
 	});
 
 	it('still returns catalog rows when a member enrichment source rejects (degraded, not blank)', async () => {
