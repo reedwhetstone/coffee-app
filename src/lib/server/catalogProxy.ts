@@ -1,6 +1,10 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import type { CatalogListQuery, CatalogSimilarQuery } from '@purveyors/sdk';
-import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import {
+	createParchmentServerClient,
+	type ParchmentCredentialMode,
+	type ParchmentPreferHandling
+} from '$lib/server/parchmentClient';
 
 /**
  * Thin proxy helpers for the legacy catalog listing routes.
@@ -159,6 +163,18 @@ export interface ProxyCatalogListOptions {
 	 * expect the whole catalog in one unparameterized request.
 	 */
 	defaultLimit?: number;
+	/**
+	 * Credential mode to present to Parchment. Public API routes use `session`
+	 * so they forward only the caller's own credential; first-party web/BFF
+	 * routes can pass `public-demo` for anonymous website reads.
+	 */
+	mode?: ParchmentCredentialMode;
+	/**
+	 * Prefer handling policy to present upstream. Public API routes inherit the
+	 * caller's preference so strict remains the machine default; first-party
+	 * web/BFF routes use lenient handling for graceful UI degradation.
+	 */
+	preferHandling?: ParchmentPreferHandling;
 }
 
 /**
@@ -186,8 +202,8 @@ export async function proxyCatalogList(
 	// external caller's own `Prefer` (default strict), so gated failures are not
 	// silently downgraded to a degraded 2xx by a first-party lenient default.
 	const client = await createParchmentServerClient(event, {
-		mode: 'session',
-		preferHandling: 'inherit'
+		mode: options.mode ?? 'session',
+		preferHandling: options.preferHandling ?? 'inherit'
 	});
 	const { data, error, response } = await client.catalog.list(query as CatalogListQuery);
 

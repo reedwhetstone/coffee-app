@@ -8,7 +8,7 @@ async function loadFilterStore(): Promise<FilterStoreModule> {
 	return import('./filterStore');
 }
 
-function createCatalogResponse() {
+function createCatalogResponse(meta: Record<string, unknown> = {}) {
 	return new Response(
 		JSON.stringify({
 			data: [],
@@ -19,7 +19,8 @@ function createCatalogResponse() {
 				totalPages: 0,
 				hasNext: false,
 				hasPrev: false
-			}
+			},
+			meta
 		}),
 		{
 			status: 200,
@@ -44,7 +45,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
 			const url = input.toString();
 
-			if (url.startsWith('/v1/catalog')) {
+			if (url.startsWith('/api/catalog?')) {
 				return createCatalogResponse();
 			}
 
@@ -100,15 +101,53 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		expect(fetchSpy).toHaveBeenNthCalledWith(1, '/api/catalog/filters?');
 		expect(fetchSpy).toHaveBeenNthCalledWith(
 			2,
-			'/v1/catalog?page=1&limit=15&sortField=score_value&sortDirection=asc'
+			'/api/catalog?page=1&limit=15&sortField=score_value&sortDirection=asc'
 		);
 	});
 
-	it('serializes public process transparency filters with canonical v1 query params', async () => {
+	it('fetches catalog refreshes through the first-party BFF and stores upstream notices', async () => {
+		const notices = [{ code: 'filter_stripped', message: 'Process filters require a member plan' }];
 		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
 			const url = input.toString();
 
-			if (url.startsWith('/v1/catalog?')) {
+			if (url.startsWith('/api/catalog/filters?')) {
+				return new Response(JSON.stringify({}), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+
+			if (url.startsWith('/api/catalog?')) {
+				return createCatalogResponse({ notices });
+			}
+
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { filterStore } = await loadFilterStore();
+		filterStore.initializeForRoute('/catalog', [
+			{ id: 1, stocked_date: '2026-04-05', wholesale: false }
+		]);
+
+		await vi.runOnlyPendingTimersAsync();
+		fetchSpy.mockClear();
+
+		filterStore.setFilter('processing_base_method', 'natural');
+		await vi.runOnlyPendingTimersAsync();
+
+		const state = get(filterStore);
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		expect(fetchSpy.mock.calls[0][0].toString()).toContain('/api/catalog?');
+		expect(state.catalogResponseMeta).toEqual({ notices });
+		expect(state.catalogNotices).toEqual(notices);
+	});
+
+	it('serializes public process transparency filters with canonical catalog query params', async () => {
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+
+			if (url.startsWith('/api/catalog?')) {
 				return createCatalogResponse();
 			}
 
@@ -142,7 +181,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 
 		expect(fetchSpy).toHaveBeenCalledTimes(1);
 		const requestUrl = fetchSpy.mock.calls[0][0].toString();
-		expect(requestUrl).toContain('/v1/catalog?');
+		expect(requestUrl).toContain('/api/catalog?');
 		expect(requestUrl).toContain('processing_base_method=natural');
 		expect(requestUrl).toContain('fermentation_type=anaerobic');
 		expect(requestUrl).toContain('process_additive=fruit');
@@ -155,7 +194,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
 			const url = input.toString();
 
-			if (url.startsWith('/v1/catalog')) {
+			if (url.startsWith('/api/catalog?')) {
 				return createCatalogResponse();
 			}
 
@@ -228,7 +267,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
 			const url = input.toString();
 
-			if (url.startsWith('/v1/catalog?')) {
+			if (url.startsWith('/api/catalog?')) {
 				return createCatalogResponse();
 			}
 
@@ -280,14 +319,14 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		const state = get(filterStore);
 		expect(state.filters).toEqual({ country: ['Ethiopia'] });
 		expect(state.pagination.page).toBe(1);
-		expect(fetchSpy).toHaveBeenNthCalledWith(1, '/v1/catalog?page=1&limit=15&country=Ethiopia');
+		expect(fetchSpy).toHaveBeenNthCalledWith(1, '/api/catalog?page=1&limit=15&country=Ethiopia');
 	});
 
 	it('serializes stocked_date and stocked_days as distinct catalog query params', async () => {
 		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
 			const url = input.toString();
 
-			if (url.startsWith('/v1/catalog?')) {
+			if (url.startsWith('/api/catalog?')) {
 				return createCatalogResponse();
 			}
 
@@ -317,7 +356,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 
 		expect(fetchSpy).toHaveBeenCalledTimes(1);
 		const requestUrl = fetchSpy.mock.calls[0][0].toString();
-		expect(requestUrl).toContain('/v1/catalog?');
+		expect(requestUrl).toContain('/api/catalog?');
 		expect(requestUrl).toContain('stocked_date=2026-03-01');
 		expect(requestUrl).toContain('stocked_days=30');
 	});
