@@ -8,6 +8,7 @@ import {
 import { MAX_CATALOG_PAGE_LIMIT } from '$lib/constants/catalog';
 import { isApiKeyPrincipal, resolvePrincipal } from '$lib/server/principal';
 import { resolveCatalogCredentialMode } from '$lib/server/parchmentClient';
+import { applyBffCatalogCacheHeaders, applyBffCatalogNoStore } from '$lib/server/cacheHeaders';
 
 // First-party in-app catalog endpoint — proxies the canonical Parchment
 // /v1/catalog surface for browser/SSR UI refreshes (ADR-007, PADR-0015). The
@@ -26,6 +27,7 @@ export const GET: RequestHandler = async (event) => {
 	// otherwise forward no credential and silently downgrade the caller.
 	const principal = await resolvePrincipal(event);
 	if (event.request.headers.has('Authorization') && !principal.isAuthenticated) {
+		applyBffCatalogNoStore(headers);
 		return jsonResponse(
 			{ error: 'Authentication required', message: 'Authentication required' },
 			{ status: 401, headers }
@@ -50,8 +52,11 @@ export const GET: RequestHandler = async (event) => {
 		// are still relayed below; thrown network/proxy failures keep the catalog
 		// JSON error envelope instead of falling through to SvelteKit's 500 page.
 		if (error instanceof Error && error.name === 'ParchmentConfigError') {
+			// Degraded empty result — do not let a shared cache persist it.
+			applyBffCatalogNoStore(headers);
 			return jsonResponse({ data: [], pagination: null }, { status: 200, headers });
 		}
+		applyBffCatalogNoStore(headers);
 		const { status, body } = catalogProxyErrorResponse(error);
 		return jsonResponse(body, { status, headers });
 	}
@@ -60,8 +65,14 @@ export const GET: RequestHandler = async (event) => {
 	forwardCatalogUpstreamHeaders(upstream, headers);
 
 	if (status >= 400) {
+		applyBffCatalogNoStore(headers);
 		return jsonResponse(body, { status, headers });
 	}
+
+	// Session-aware cache policy: only anonymous callers get the public,
+	// short-TTL projection; authenticated callers are private/no-store. See
+	// $lib/server/cacheHeaders (sanctioned PADR-0015 relay exception).
+	applyBffCatalogCacheHeaders(headers, principal.isAuthenticated);
 
 	const canonical = body as { data?: unknown; pagination?: unknown; meta?: unknown };
 	const legacyBody = {

@@ -5,6 +5,7 @@ import {
 	resolveCatalogCredentialMode
 } from '$lib/server/parchmentClient';
 import { resolvePrincipal } from '$lib/server/principal';
+import { applyBffCatalogCacheHeaders, applyBffCatalogNoStore } from '$lib/server/cacheHeaders';
 import type { RequestHandler } from './$types';
 
 type CatalogFacetsQuery = NonNullable<Parameters<ParchmentClient['catalog']['facets']>[0]>;
@@ -28,7 +29,7 @@ export const GET: RequestHandler = async (event) => {
 		if (event.request.headers.has('Authorization') && !principal.isAuthenticated) {
 			return json(
 				{ error: 'Authentication required', message: 'Authentication required' },
-				{ status: 401 }
+				{ status: 401, headers: applyBffCatalogNoStore(new Headers()) }
 			);
 		}
 
@@ -48,12 +49,20 @@ export const GET: RequestHandler = async (event) => {
 		const { data, error } = await client.catalog.facets(query);
 		if (error) {
 			console.error('Error fetching filter values from Parchment:', error);
-			return json({ error: 'Failed to fetch filter values' }, { status: 500 });
+			return json(
+				{ error: 'Failed to fetch filter values' },
+				{ status: 500, headers: applyBffCatalogNoStore(new Headers()) }
+			);
 		}
 
-		return json(data?.values ?? {});
+		return json(data?.values ?? {}, {
+			headers: applyBffCatalogCacheHeaders(new Headers(), principal.isAuthenticated)
+		});
 	} catch (error) {
 		console.error('Error fetching filter values:', error);
-		return json({ error: 'Failed to fetch filter values' }, { status: 500 });
+		return json(
+			{ error: 'Failed to fetch filter values' },
+			{ status: 500, headers: applyBffCatalogNoStore(new Headers()) }
+		);
 	}
 };

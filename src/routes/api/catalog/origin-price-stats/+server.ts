@@ -6,6 +6,7 @@ import {
 	resolveCatalogCredentialMode
 } from '$lib/server/parchmentClient';
 import { catalogProxyErrorResponse } from '$lib/server/catalogProxy';
+import { applyBffCatalogCacheHeaders, applyBffCatalogNoStore } from '$lib/server/cacheHeaders';
 
 // The origin-price-stats query only models the wholesale view params; Parchment
 // derives publicOnly (and the rest of the visibility scope) from the forwarded
@@ -37,6 +38,11 @@ export const GET: RequestHandler = async (event) => {
 		wholesaleOnlyRequested: url.searchParams.get('wholesaleOnly') === 'true'
 	});
 
+	// Session-aware cache signal, derived the same way as the credential mode
+	// (authenticated principal or a session cookie ⇒ private/no-store). Avoids an
+	// extra admin-client round-trip on this UI stats-refresh route.
+	const isAuthenticated = locals.principal?.isAuthenticated === true || Boolean(locals.session);
+
 	try {
 		const client = await createParchmentServerClient(event, {
 			mode: resolveCatalogCredentialMode(locals)
@@ -56,21 +62,27 @@ export const GET: RequestHandler = async (event) => {
 		// through to the catch below.
 		const { data, error, response } = await client.catalog.originPriceStats(query);
 		if (error) {
-			return json(error, { status: response.status });
+			return json(error, {
+				status: response.status,
+				headers: applyBffCatalogNoStore(new Headers())
+			});
 		}
 
-		return json({
-			originPriceStats: data?.originPriceStats ?? [],
-			meta: {
-				access: {
-					publicOnly: visibility.publicOnly,
-					showWholesale: visibility.showWholesale,
-					wholesaleOnly: visibility.wholesaleOnly
+		return json(
+			{
+				originPriceStats: data?.originPriceStats ?? [],
+				meta: {
+					access: {
+						publicOnly: visibility.publicOnly,
+						showWholesale: visibility.showWholesale,
+						wholesaleOnly: visibility.wholesaleOnly
+					}
 				}
-			}
-		});
+			},
+			{ headers: applyBffCatalogCacheHeaders(new Headers(), isAuthenticated) }
+		);
 	} catch (error) {
 		const { status, body } = catalogProxyErrorResponse(error);
-		return json(body, { status });
+		return json(body, { status, headers: applyBffCatalogNoStore(new Headers()) });
 	}
 };

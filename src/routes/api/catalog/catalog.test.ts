@@ -174,3 +174,38 @@ describe('/api/catalog route', () => {
 		});
 	});
 });
+
+describe('/api/catalog session-aware cache headers', () => {
+	it('serves anonymous callers the public, short-TTL policy and keys the cache on credentials', async () => {
+		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: false });
+
+		const response = await GET(makeEvent('https://app.test/api/catalog?limit=15'));
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get('Cache-Control')).toBe(
+			'public, s-maxage=60, stale-while-revalidate=300'
+		);
+		expect(response.headers.get('Vary') ?? '').toContain('Cookie');
+		expect(response.headers.get('Vary') ?? '').toContain('Authorization');
+	});
+
+	it('forces private/no-store for an authenticated caller (the member-leak gate)', async () => {
+		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: true, authKind: 'session' });
+
+		const response = await GET(makeEvent('https://app.test/api/catalog?limit=15'));
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+		expect(response.headers.get('Vary') ?? '').not.toContain('Cookie');
+	});
+
+	it('never lets an error response be shared-cacheable', async () => {
+		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: false });
+		mockCatalogList.mockRejectedValue(new Error('network down'));
+
+		const response = await GET(makeEvent('https://app.test/api/catalog'));
+
+		expect(response.status).toBe(500);
+		expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+	});
+});
