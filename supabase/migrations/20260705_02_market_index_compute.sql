@@ -309,35 +309,55 @@ BEGIN
   HAVING origin IS NULL OR avg(day_total_lots) >= v_min_origin_lots;
 
   -- ---------- process + disclosure (share-based) ----------
+  -- Zero-share days matter: a bucket that is absent on some snapshot dates still
+  -- occupies 0% of those days. Build a (group-day x bucket) grid so missing
+  -- bucket-days coalesce to 0 lots/suppliers before averaging; otherwise share,
+  -- lot_count, and supplier_count are inflated by averaging only the days the
+  -- bucket actually appeared instead of every day the group had data.
   INSERT INTO public.metadata_index_snapshots
     (period_start, grain, origin, market, dimension, bucket, lot_count, share, stat_value, supplier_count)
-  SELECT
-    g.period_start, g.grain, g.origin, g.market, db.dimension, db.bucket,
-    round(avg(db.day_bucket_lots))::int                            AS lot_count,
-    round(avg(db.day_bucket_lots::numeric / db.day_total_lots), 6) AS share,
-    NULL::numeric                                                  AS stat_value,
-    round(avg(db.day_bucket_suppliers))::int                       AS supplier_count
-  FROM tmp_kept_groups g
-  JOIN (
+  WITH day_bucket AS (
     SELECT
       l.grain, l.period_start, l.market, l.origin, l.snapshot_date, dim.dimension,
       CASE dim.dimension WHEN 'process' THEN l.process_bucket ELSE l.disclosure_bucket END AS bucket,
       count(*) AS day_bucket_lots,
-      count(DISTINCT l.source) AS day_bucket_suppliers,
-      t.day_total_lots
+      count(DISTINCT l.source) AS day_bucket_suppliers
     FROM tmp_lots l
     CROSS JOIN (VALUES ('process'), ('disclosure')) AS dim(dimension)
-    JOIN tmp_daily_totals t
-      ON t.grain = l.grain AND t.period_start = l.period_start
-     AND t.market = l.market AND t.origin IS NOT DISTINCT FROM l.origin
-     AND t.snapshot_date = l.snapshot_date
     GROUP BY l.grain, l.period_start, l.market, l.origin, l.snapshot_date, dim.dimension,
-             CASE dim.dimension WHEN 'process' THEN l.process_bucket ELSE l.disclosure_bucket END,
-             t.day_total_lots
-  ) db
-    ON db.grain = g.grain AND db.period_start = g.period_start
-   AND db.market = g.market AND db.origin IS NOT DISTINCT FROM g.origin
-  GROUP BY g.period_start, g.grain, g.origin, g.market, db.dimension, db.bucket;
+             CASE dim.dimension WHEN 'process' THEN l.process_bucket ELSE l.disclosure_bucket END
+  ),
+  buckets AS (
+    SELECT DISTINCT grain, period_start, market, origin, dimension, bucket
+    FROM day_bucket
+  ),
+  grid AS (
+    SELECT
+      t.grain, t.period_start, t.market, t.origin, t.snapshot_date, t.day_total_lots,
+      b.dimension, b.bucket,
+      COALESCE(dbk.day_bucket_lots, 0)      AS day_bucket_lots,
+      COALESCE(dbk.day_bucket_suppliers, 0) AS day_bucket_suppliers
+    FROM tmp_daily_totals t
+    JOIN buckets b
+      ON b.grain = t.grain AND b.period_start = t.period_start
+     AND b.market = t.market AND b.origin IS NOT DISTINCT FROM t.origin
+    LEFT JOIN day_bucket dbk
+      ON dbk.grain = t.grain AND dbk.period_start = t.period_start
+     AND dbk.market = t.market AND dbk.origin IS NOT DISTINCT FROM t.origin
+     AND dbk.snapshot_date = t.snapshot_date
+     AND dbk.dimension = b.dimension AND dbk.bucket = b.bucket
+  )
+  SELECT
+    g.period_start, g.grain, g.origin, g.market, grid.dimension, grid.bucket,
+    round(avg(grid.day_bucket_lots))::int                              AS lot_count,
+    round(avg(grid.day_bucket_lots::numeric / grid.day_total_lots), 6) AS share,
+    NULL::numeric                                                      AS stat_value,
+    round(avg(grid.day_bucket_suppliers))::int                         AS supplier_count
+  FROM tmp_kept_groups g
+  JOIN grid
+    ON grid.grain = g.grain AND grid.period_start = g.period_start
+   AND grid.market = g.market AND grid.origin IS NOT DISTINCT FROM g.origin
+  GROUP BY g.period_start, g.grain, g.origin, g.market, grid.dimension, grid.bucket;
 
   -- ---------- score (percentile-based) ----------
   INSERT INTO public.metadata_index_snapshots
@@ -552,7 +572,10 @@ BEGIN
       AND b.stocked = true AND b.cost_lb IS NOT NULL AND b.cost_lb > 0
       AND (s.origin  IS NULL OR cc.country = s.origin)
       AND (s.process IS NULL OR COALESCE(cc.processing_base_method,'undisclosed') = s.process)
+      -- Require BOTH endpoints in the selected market so a lot that switches
+      -- between retail and wholesale across the window is not counted as repricing.
       AND (s.market = 'all' OR (s.market = 'wholesale') = e.wholesale)
+      AND (s.market = 'all' OR (s.market = 'wholesale') = b.wholesale)
   ) matched ON true
   WHERE latest.move_pct IS NOT NULL OR COALESCE(lm.sample_size, 0) > 0;
 
@@ -574,7 +597,16 @@ COMMENT ON FUNCTION public.compute_price_move_stats(date, int) IS
 
 -- ============================================================
 -- Grants: service_role executes all three (scraper uses the service key).
+-- Postgres grants EXECUTE to PUBLIC on new functions by default, so these
+-- SECURITY DEFINER functions (which delete/rewrite the premium precompute tables
+-- and accept arbitrary dates / baseline_weeks) must have that default revoked
+-- first, otherwise any anon/authenticated caller who knows the RPC name could
+-- invoke them via PostgREST and force expensive recomputation.
 -- ============================================================
+REVOKE EXECUTE ON FUNCTION public.compute_market_signals(date)        FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.compute_metadata_index(date)        FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.compute_price_move_stats(date, int) FROM PUBLIC, anon, authenticated;
+
 GRANT EXECUTE ON FUNCTION public.compute_market_signals(date)        TO service_role;
 GRANT EXECUTE ON FUNCTION public.compute_metadata_index(date)        TO service_role;
 GRANT EXECUTE ON FUNCTION public.compute_price_move_stats(date, int) TO service_role;
