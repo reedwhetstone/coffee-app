@@ -181,7 +181,7 @@ describe('SimilarCoffeePanel', () => {
 		expect(screen.getByText('Loading beta similarity matches...')).toBeInTheDocument();
 
 		await waitFor(() => expect(screen.getByText('Comparable Gesha')).toBeInTheDocument());
-		expect(fetchMock).toHaveBeenCalledWith('/v1/catalog/1/similar?limit=8&stocked_only=true', {
+		expect(fetchMock).toHaveBeenCalledWith('/api/catalog/1/similar?limit=8&stocked_only=true', {
 			headers: { Accept: 'application/json' }
 		});
 		expect(screen.getByText('Similar Supplier · In stock')).toBeInTheDocument();

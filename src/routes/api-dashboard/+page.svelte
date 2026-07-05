@@ -261,7 +261,9 @@
 
 				<div class="mt-6">
 					<button
-						onclick={() => goto('/docs/api/overview')}
+						onclick={() => {
+							window.location.href = 'https://api.purveyors.io/docs';
+						}}
 						class="w-full rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 					>
 						View Documentation
@@ -364,10 +366,10 @@
 										View usage analytics
 									</a>
 									<a
-										href="/docs/api/errors"
+										href="https://api.purveyors.io/docs"
 										class="font-medium text-yellow-800 underline hover:text-yellow-600"
 									>
-										Rate limit documentation
+										API documentation
 									</a>
 								</div>
 							</div>

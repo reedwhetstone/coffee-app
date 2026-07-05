@@ -203,7 +203,7 @@
 		response = null;
 
 		try {
-			const result = await fetch(`/v1/catalog/${coffee.id}/similar?limit=8&stocked_only=true`, {
+			const result = await fetch(`/api/catalog/${coffee.id}/similar?limit=8&stocked_only=true`, {
 				headers: { Accept: 'application/json' }
 			});
 			const body = (await result.json()) as SimilarityResponse | SimilarityErrorResponse;

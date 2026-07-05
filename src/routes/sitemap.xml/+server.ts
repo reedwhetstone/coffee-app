@@ -25,17 +25,19 @@ export const GET: RequestHandler = async ({ url }) => {
 		)
 		.join('');
 
-	const docsEntries = DOCS_NAV.flatMap((section) =>
-		section.items.map(
-			(item) => `
+	const docsEntries = DOCS_NAV.filter((section) => section.key !== 'api')
+		.flatMap((section) =>
+			section.items.map(
+				(item) => `
 	<url>
 		<loc>${baseUrl}${section.basePath}/${item.slug}</loc>
 		<lastmod>${currentDate}</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.7</priority>
 	</url>`
+			)
 		)
-	).join('');
+		.join('');
 
 	const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

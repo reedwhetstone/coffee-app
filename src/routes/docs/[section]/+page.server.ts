@@ -3,6 +3,10 @@ import type { PageServerLoad } from './$types';
 import { getDefaultSlug, getDocsSection } from '$lib/docs/content';
 
 export const load: PageServerLoad = async ({ params }) => {
+	if (params.section === 'api') {
+		throw redirect(307, 'https://api.purveyors.io/docs');
+	}
+
 	const section = getDocsSection(params.section);
 	if (!section) {
 		throw error(404, 'Documentation section not found');

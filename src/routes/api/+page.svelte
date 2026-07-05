@@ -5,7 +5,7 @@
 	const maxCatalogRowsPerRequest = `Up to ${MAX_CATALOG_PAGE_LIMIT_DISPLAY} per request`;
 
 	function openDocs() {
-		goto('/docs/api/overview');
+		window.location.href = 'https://api.purveyors.io/docs';
 	}
 
 	function openDashboard() {
@@ -17,7 +17,7 @@
 	<title>Parchment API</title>
 	<meta
 		name="description"
-		content="Stable /v1/catalog access for green coffee market data, with unified docs, the Parchment Console, and clear separation between the public contract and internal app routes."
+		content="Parchment API access for green coffee market data, with generated OpenAPI docs and the Parchment Console for keys and usage."
 	/>
 </svelte:head>
 
@@ -29,9 +29,9 @@
 				Stable green coffee data for sourcing tools, apps, and agents.
 			</h1>
 			<p class="mt-5 text-lg leading-relaxed text-muted">
-				GET /v1/catalog is the stable public contract for normalized pricing, availability, and
-				supplier coverage. Browse anonymously to evaluate the feed, then move to API keys in the
-				Parchment Console for production usage.
+				The generated Parchment API contract covers normalized pricing, availability, supplier
+				coverage, roasting workflows, and account-linked resources. Browse the app to evaluate the
+				feed, then move to API keys in the Parchment Console for production usage.
 			</p>
 		</div>
 
@@ -57,14 +57,12 @@
 		</div>
 
 		<p class="mt-4 max-w-3xl text-sm leading-relaxed text-muted">
-			Start with <code class="rounded bg-surface-panel px-1.5 py-0.5 text-xs text-ink"
-				>GET /v1/catalog</code
-			>
-			for the public contract. Treat
+			Start with the generated OpenAPI reference at
+			<a href="https://api.purveyors.io/docs" class="text-accent hover:underline"
+				>api.purveyors.io/docs</a
+			>. Treat this app's
 			<code class="rounded bg-surface-panel px-1.5 py-0.5 text-xs text-ink">/api/*</code>
-			as the internal app layer that powers the web app and Console. Use
-			<a href="/docs" class="text-accent hover:underline">/docs</a>
-			as the canonical docs entry and
+			routes as private BFF routes for the web experience. Use
 			<a href="/api-dashboard" class="text-accent hover:underline">/api-dashboard</a> for keys, usage,
 			and billing.
 		</p>
@@ -213,12 +211,12 @@
 
 	<section class="grid gap-6 xl:grid-cols-4">
 		<a
-			href="/docs/api/overview"
+			href="https://api.purveyors.io/docs"
 			class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm transition-colors hover:border-accent/40 hover:bg-surface-panel"
 		>
 			<h2 class="text-xl font-semibold text-ink">API docs</h2>
 			<p class="mt-3 text-sm leading-relaxed text-muted">
-				Stable /v1/catalog contract, auth modes, limits, migration notes, and production examples.
+				Generated OpenAPI reference, schemas, auth modes, limits, and production examples.
 			</p>
 		</a>
 		<a

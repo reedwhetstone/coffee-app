@@ -157,7 +157,7 @@ beforeEach(() => {
 				);
 			}
 
-			if (url.startsWith('/v1/catalog/1/similar')) {
+			if (url.startsWith('/api/catalog/1/similar')) {
 				return new Response(
 					JSON.stringify({
 						data: {
@@ -256,18 +256,16 @@ describe('/catalog intelligence connective tissue', () => {
 	it('frames the catalog as supply evidence behind market intelligence with analytics links', () => {
 		renderCatalog(createData());
 
-		expect(screen.getByText('Supply evidence layer')).toBeInTheDocument();
+		expect(screen.getByText('Live supply, updated daily')).toBeInTheDocument();
 		expect(
-			screen.getByText(
-				/Inspect the row-level supply substrate behind Parchment Market Index reads/i
-			)
+			screen.getByText(/Every stocked green coffee from 40\+ US importers in one place/i)
 		).toBeInTheDocument();
 		expect(screen.getByText('Active rows in this query')).toBeInTheDocument();
 		expect(screen.getByText('Origins shown on this page')).toBeInTheDocument();
 		expect(screen.getByText('Suppliers shown on this page')).toBeInTheDocument();
 		expect(screen.getByText('Priced rows shown')).toBeInTheDocument();
 
-		expect(screen.getByRole('link', { name: 'Open Parchment Market Index' })).toHaveAttribute(
+		expect(screen.getByRole('link', { name: 'Open the Market Index' })).toHaveAttribute(
 			'href',
 			'/analytics'
 		);
@@ -745,7 +743,7 @@ describe('/catalog similar comparison controls', () => {
 
 		expect(screen.getByText('Unlock similar coffee matches')).toBeInTheDocument();
 		expect(goto).not.toHaveBeenCalled();
-		expect(fetch).not.toHaveBeenCalledWith('/v1/catalog/1/similar?limit=8&stocked_only=true', {
+		expect(fetch).not.toHaveBeenCalledWith('/api/catalog/1/similar?limit=8&stocked_only=true', {
 			headers: { Accept: 'application/json' }
 		});
 	});
@@ -762,7 +760,7 @@ describe('/catalog similar comparison controls', () => {
 
 		expect(screen.getByText('Unlock similar coffee matches')).toBeInTheDocument();
 		expect(goto).not.toHaveBeenCalled();
-		expect(fetch).not.toHaveBeenCalledWith('/v1/catalog/1/similar?limit=8&stocked_only=true', {
+		expect(fetch).not.toHaveBeenCalledWith('/api/catalog/1/similar?limit=8&stocked_only=true', {
 			headers: { Accept: 'application/json' }
 		});
 	});

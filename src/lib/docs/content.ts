@@ -73,65 +73,13 @@ export const DOCS_NAV: DocsNavSection[] = [
 	{
 		key: 'api',
 		title: 'API docs',
-		description:
-			'Public catalog and price-index contracts, internal route matrix, analytics, billing flows, auth, and operational guidance.',
+		description: 'Generated OpenAPI/Scalar reference for the deployed Parchment API.',
 		basePath: '/docs/api',
 		items: [
 			{
 				slug: 'overview',
-				title: 'Overview',
-				summary: 'Public versus internal surfaces, auth modes, and how the product fits together.'
-			},
-			{
-				slug: 'catalog',
-				title: 'Catalog',
-				summary:
-					'The stable public /v1/catalog contract: fields, limits, compatibility aliases, headers, and query parameters.'
-			},
-			{
-				slug: 'catalog-similarity',
-				title: 'Catalog similarity',
-				summary:
-					'The beta /v1/catalog/{id}/similar endpoint for member and paid API matching workflows.'
-			},
-			{
-				slug: 'procurement-briefs',
-				title: 'Procurement briefs',
-				summary:
-					'User-owned saved sourcing criteria and manual catalog matches for procurement workflows.'
-			},
-			{
-				slug: 'platform',
-				title: 'Internal app routes',
-				summary:
-					'Authenticated and internal /api/* route matrix for catalog app flows, chat, workspaces, and tools.'
-			},
-			{
-				slug: 'inventory',
-				title: 'Inventory',
-				summary: 'Inventory CRUD, share links, stocked-state recalculation, and ownership behavior.'
-			},
-			{
-				slug: 'roast-profiles',
-				title: 'Roast profiles',
-				summary: 'Roast CRUD, Artisan import, chart data, clear flows, and AI classification.'
-			},
-			{
-				slug: 'analytics',
-				title: 'Analytics',
-				summary:
-					'The /analytics product surface and the session-auth roast analysis helpers behind it.'
-			},
-			{
-				slug: 'billing-admin',
-				title: 'Billing and admin',
-				summary:
-					'Stripe lifecycle routes, Console-adjacent flows, webhooks, and admin-only maintenance endpoints.'
-			},
-			{
-				slug: 'errors',
-				title: 'Errors and auth',
-				summary: 'Status codes, auth edge cases, rate limits, and practical troubleshooting notes.'
+				title: 'Generated API reference',
+				summary: 'Live Parchment API docs generated from the deployed OpenAPI contract.'
 			}
 		]
 	},

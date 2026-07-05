@@ -8,22 +8,6 @@ import {
 	toCatalogSimilarQuery
 } from '$lib/server/catalogProxy';
 
-const LEGACY_SIMILAR_HEADERS = {
-	Deprecation: 'true',
-	Link: '<https://api.purveyors.io/v1/catalog/{id}/similar>; rel="successor-version"',
-	Sunset: 'Thu, 31 Dec 2026 23:59:59 GMT'
-} as const;
-
-function withLegacySimilarHeaders(headers: HeadersInit = {}): Headers {
-	const merged = new Headers(headers);
-
-	for (const [name, value] of Object.entries(LEGACY_SIMILAR_HEADERS)) {
-		merged.set(name, value);
-	}
-
-	return merged;
-}
-
 function validationErrorResponse(error: CatalogProxyValidationError): Response {
 	return jsonResponse(
 		{
@@ -35,7 +19,7 @@ function validationErrorResponse(error: CatalogProxyValidationError): Response {
 				expected: error.expected
 			}
 		},
-		{ status: 400, headers: withLegacySimilarHeaders() }
+		{ status: 400 }
 	);
 }
 
@@ -58,10 +42,8 @@ function similarProxyErrorResponse(error: unknown): {
 	};
 }
 
-// Legacy coffee-app proxy for the canonical Parchment similarity route. Parchment
-// owns auth, entitlement, rate limiting, matching, and query validation; this
-// handler only keeps the old coffee-app URL alive while relaying the upstream
-// response and migration headers.
+// First-party BFF for the catalog comparison panel. The public web-host /v1
+// compatibility route is intentionally gone; Parchment owns the external API.
 export const GET: RequestHandler = async (event) => {
 	let id: string;
 
@@ -81,11 +63,11 @@ export const GET: RequestHandler = async (event) => {
 		proxied = await proxyCatalogSimilar(event, id, query);
 	} catch (error) {
 		const { status, body } = similarProxyErrorResponse(error);
-		return jsonResponse(body, { status, headers: withLegacySimilarHeaders() });
+		return jsonResponse(body, { status });
 	}
 
 	const { status, body, upstream } = proxied;
-	const headers = withLegacySimilarHeaders();
+	const headers = new Headers();
 	forwardCatalogUpstreamHeaders(upstream, headers);
 
 	return jsonResponse(body, { status, headers });
