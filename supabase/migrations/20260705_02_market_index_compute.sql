@@ -542,14 +542,14 @@ BEGIN
     CASE WHEN latest.move_pct IS NOT NULL AND base.avail >= v_min_baseline_weeks AND base.sd_move > 0
          THEN ROUND(((latest.move_pct - base.mean_move) / base.sd_move)::numeric, 2) END,
     CASE WHEN latest.move_pct IS NOT NULL AND base.avail >= v_min_baseline_weeks
-         THEN ROUND((100.0 * base.n_le / base.avail)::numeric, 1) END,
+         THEN ROUND((100.0 * (base.n_lt + (base.n_eq * 0.5)) / base.avail)::numeric, 1) END,
     CASE WHEN latest.move_pct IS NOT NULL AND base.avail >= v_min_baseline_weeks
          THEN base.weeks_since_larger END,
     CASE WHEN latest.move_pct IS NOT NULL AND base.avail >= v_min_baseline_weeks THEN
       (CASE
-        WHEN (100.0 * base.n_le / base.avail) < v_pct_quiet   THEN 'quiet'
-        WHEN (100.0 * base.n_le / base.avail) < v_pct_normal  THEN 'normal'
-        WHEN (100.0 * base.n_le / base.avail) < v_pct_notable THEN 'notable'
+        WHEN (100.0 * (base.n_lt + (base.n_eq * 0.5)) / base.avail) < v_pct_quiet   THEN 'quiet'
+        WHEN (100.0 * (base.n_lt + (base.n_eq * 0.5)) / base.avail) < v_pct_normal  THEN 'normal'
+        WHEN (100.0 * (base.n_lt + (base.n_eq * 0.5)) / base.avail) < v_pct_notable THEN 'notable'
         ELSE 'exceptional' END)
     END,
     matched.matched_move,
@@ -578,7 +578,9 @@ BEGIN
       round(avg(m.move_pct), 2)                                                     AS mean_move,
       round(stddev_samp(m.move_pct), 4)                                             AS sd_move,
       count(*) FILTER (WHERE m.move_pct IS NOT NULL
-                         AND abs(m.move_pct) <= abs(latest.move_pct))               AS n_le,
+                         AND abs(m.move_pct) < abs(latest.move_pct))                AS n_lt,
+      count(*) FILTER (WHERE m.move_pct IS NOT NULL
+                         AND abs(m.move_pct) = abs(latest.move_pct))                AS n_eq,
       min(m.k) FILTER (WHERE m.move_pct IS NOT NULL
                          AND abs(m.move_pct) > abs(latest.move_pct))                AS weeks_since_larger
     FROM tmp_moves m
