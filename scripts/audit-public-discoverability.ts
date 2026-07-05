@@ -324,12 +324,10 @@ async function main() {
 		{ label: 'Analytics', path: '/analytics', expectInSitemap: true, expectInLlms: true },
 		{ label: 'API', path: '/api', expectInSitemap: true, expectInLlms: true },
 		{ label: 'Docs', path: '/docs', expectInSitemap: true, expectInLlms: true },
-		{
-			label: 'Catalog API docs',
-			path: '/docs/api/catalog',
-			expectInSitemap: true,
-			expectInLlms: true
-		},
+		// /docs/api/* now 307-redirects to the external generated reference
+		// (https://api.purveyors.io/docs) and is intentionally excluded from
+		// sitemap.xml and llms.txt, so it is no longer a first-party
+		// discoverability target here. See ADR-007.
 		{ label: 'Contact', path: '/contact', expectInSitemap: true },
 		{ label: 'Blog index', path: '/blog', expectInSitemap: true, expectInLlms: true },
 		{
