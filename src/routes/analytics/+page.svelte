@@ -32,6 +32,7 @@
 	import EvidenceChartsSection from '$lib/components/analytics/sections/EvidenceChartsSection.svelte';
 	import ActionRailSection from '$lib/components/analytics/sections/ActionRailSection.svelte';
 	import ParchmentIntelligenceSection from '$lib/components/analytics/sections/ParchmentIntelligenceSection.svelte';
+	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -904,6 +905,11 @@
 	onWindowModeChange={(v) => (windowMode = v)}
 />
 
+<AnalyticsSectionHeader
+	title="Today's signals"
+	description="The numbers behind this morning's read — availability, movement, and what changed overnight."
+/>
+
 <KpiStripSection {kpiCards} {insightCards} />
 
 <WatchlistSignalsSection
@@ -931,6 +937,11 @@
 	</div>
 {/if}
 
+<AnalyticsSectionHeader
+	title="Price evidence"
+	description="The charts behind the read: origin price history, processing mix, and how prices spread across origins."
+/>
+
 <EvidenceChartsSection
 	{OriginLineChartComponent}
 	{OriginBarChartComponent}
@@ -950,6 +961,11 @@
 	{askActionHref}
 	{askActionStatus}
 	{canAskWithAnalyticsContext}
+/>
+
+<AnalyticsSectionHeader
+	title="Parchment Intelligence"
+	description="Supplier comparison, arrivals and delistings, and origin benchmarks — the sourcing layer for subscribers."
 />
 
 <ParchmentIntelligenceSection

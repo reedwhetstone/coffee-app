@@ -13,22 +13,15 @@
 </script>
 
 <section
-	class="mb-6 rounded-xl border border-background-tertiary-light/20 bg-background-secondary-light p-5"
-	aria-label="Action rail"
+	class="mb-6 rounded-lg border border-line bg-surface-panel p-4 sm:p-5"
+	aria-label="Ask about this market read"
 >
 	<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-center">
 		<div>
-			<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
-				Next investigation
-			</p>
-			<h2 class="mt-1 text-lg font-semibold text-text-primary-light">
-				Ask the chat agent with this market context.
-			</h2>
-			<p class="mt-1 text-sm text-text-secondary-light">
-				This is the only live handoff here that preserves the current market read, scope, movement
-				window, and visible evidence. Catalog, supplier comparison, API access, and watch actions
-				stay out of this rail until they create real investigation leverage instead of another click
-				target.
+			<h2 class="font-serif text-lg font-medium text-ink">Ask about this market read.</h2>
+			<p class="mt-1 text-sm text-muted">
+				The chat agent opens with your current scope and movement window already in context — go
+				straight from “prices moved” to “what should I do about it.”
 			</p>
 		</div>
 		<AnalyticsActionCta

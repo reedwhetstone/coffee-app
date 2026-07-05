@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		serviceType: 'Data API',
 		url: pageUrl,
 		features: [
-			'Daily-updated catalog data from 39+ suppliers',
+			'Daily-updated catalog data from 40+ suppliers',
 			'One consistent feed for pricing, origin, process, and availability',
 			'Parchment Console for API keys and usage tracking',
 			'Market analytics for price and supplier monitoring',

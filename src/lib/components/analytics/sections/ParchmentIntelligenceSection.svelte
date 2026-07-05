@@ -80,7 +80,7 @@
 		<div class="pointer-events-none select-none">
 			<div class="mb-8 blur-sm filter">
 				<div class="mb-3">
-					<h2 class="text-xl font-semibold text-text-primary-light">Supplier Price Comparison</h2>
+					<h2 class="text-base font-semibold text-ink">Supplier Price Comparison</h2>
 					<p class="mt-1 text-sm text-text-secondary-light">
 						Everyone can explore the core market view. Parchment Intelligence adds deeper supplier
 						comparisons.
@@ -104,7 +104,7 @@
 
 			<div class="mb-8 blur-sm filter">
 				<div class="mb-3">
-					<h2 class="text-xl font-semibold text-text-primary-light">Supplier Catalog Health</h2>
+					<h2 class="text-base font-semibold text-ink">Supplier Catalog Health</h2>
 					<p class="mt-1 text-sm text-text-secondary-light">
 						Catalog breadth, origin coverage, and supplier signals for deeper sourcing review.
 					</p>
@@ -129,8 +129,7 @@
 				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
 						<div class="mb-3 flex items-center gap-2">
-							<span
-								class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
+							<span class="text-sm font-semibold text-background-tertiary-light"
 								>Parchment Intelligence</span
 							>
 						</div>
@@ -154,7 +153,7 @@
 								{/each}
 							</div>
 						</div>
-						<h2 class="text-xl font-semibold text-text-primary-light">New Arrivals</h2>
+						<h2 class="text-base font-semibold text-ink">New Arrivals</h2>
 						<p class="mt-1 text-sm text-text-secondary-light">
 							Expanded monitoring for newly added coffees across suppliers.
 						</p>
@@ -170,8 +169,7 @@
 					</div>
 					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
 						<div class="mb-3 flex items-center gap-2">
-							<span
-								class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
+							<span class="text-sm font-semibold text-background-tertiary-light"
 								>Parchment Intelligence</span
 							>
 						</div>
@@ -195,7 +193,7 @@
 								{/each}
 							</div>
 						</div>
-						<h2 class="text-xl font-semibold text-text-primary-light">Recent Delistings</h2>
+						<h2 class="text-base font-semibold text-ink">Recent Delistings</h2>
 						<p class="mt-1 text-sm text-text-secondary-light">
 							Expanded monitoring for catalog removals and turnover.
 						</p>
@@ -214,9 +212,7 @@
 
 			<div class="blur-sm filter">
 				<div class="mb-3">
-					<h2 class="text-xl font-semibold text-text-primary-light">
-						Parchment Intelligence overview
-					</h2>
+					<h2 class="text-base font-semibold text-ink">Parchment Intelligence overview</h2>
 					<p class="mt-1 text-sm text-text-secondary-light">
 						Deeper market visibility for sourcing, purchasing, and supplier benchmarking in one
 						place.
@@ -365,20 +361,16 @@
 							<table class="min-w-full text-sm">
 								<thead>
 									<tr class="border-b border-border-light">
-										<th
-											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 pr-3 text-left text-xs font-semibold text-text-secondary-light"
 											>Bean</th
 										>
-										<th
-											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 pr-3 text-left text-xs font-semibold text-text-secondary-light"
 											>Origin</th
 										>
-										<th
-											class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 pr-3 text-right text-xs font-semibold text-text-secondary-light"
 											>$/lb</th
 										>
-										<th
-											class="pb-2 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 text-left text-xs font-semibold text-text-secondary-light"
 											>Supplier</th
 										>
 									</tr>
@@ -432,20 +424,16 @@
 							<table class="min-w-full text-sm">
 								<thead>
 									<tr class="border-b border-border-light">
-										<th
-											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 pr-3 text-left text-xs font-semibold text-text-secondary-light"
 											>Bean</th
 										>
-										<th
-											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 pr-3 text-left text-xs font-semibold text-text-secondary-light"
 											>Origin</th
 										>
-										<th
-											class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 pr-3 text-right text-xs font-semibold text-text-secondary-light"
 											>Last $/lb</th
 										>
-										<th
-											class="pb-2 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 text-left text-xs font-semibold text-text-secondary-light"
 											>Supplier</th
 										>
 									</tr>
@@ -541,12 +529,11 @@
 					class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
 				>
 					<div class="mb-2 flex items-center gap-2">
-						<span
-							class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
+						<span class="text-sm font-semibold text-background-tertiary-light"
 							>Parchment Intelligence</span
 						>
 					</div>
-					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price spread analysis</h2>
+					<h2 class="mb-1 text-base font-semibold text-ink">Price spread analysis</h2>
 					<p class="mb-4 text-sm text-text-secondary-light">
 						Retail versus wholesale median price by origin in the latest snapshot. This chart always
 						shows both scopes so the spread stays comparable.

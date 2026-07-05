@@ -1,8 +1,10 @@
 # Purveyors Brand Identity
 
-**Status:** Initial audit draft, pending brand direction
+**Status:** Active brand direction (visual identity system adopted July 2026)
 **Owner:** Reed Whetstone
-**Last updated:** 2026-05-06
+**Last updated:** 2026-07-05
+
+> **July 2026 rework:** the brand direction is now "the field journal of the green coffee market" — research-institution rigor presented with the warmth of a botanical field journal. The full rationale and rollout live in `notes/marketing-audits/2026-07-05-ui-brand-gtm-rework-proposal.md`. The sections below are the durable rules that came out of it.
 
 ## Purpose
 
@@ -37,15 +39,16 @@ The brand should feel:
 
 Use these names consistently:
 
-| Name                        | Use                                                                                                      |
-| --------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Purveyors                   | Parent company and platform brand                                                                        |
-| Parchment                   | API infrastructure layer inside Purveyors; use as the shared infrastructure name, not a public platform  |
-| Mallard Studio              | Authenticated roaster workspace for inventory, roast, profit, tasting, chat, and subscriptions           |
-| Parchment API               | External API product and stable `/v1/*` public contract                                                  |
-| Parchment Intelligence      | Market intelligence product for analytics, price-index depth, supplier signals, arrivals, and delistings |
-| Parchment Console           | Authenticated API key, usage, docs, and billing surface                                                  |
-| Green / Origin / Enterprise | Parchment API tier names                                                                                 |
+| Name                        | Use                                                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Purveyors                   | Parent company and platform brand                                                                                               |
+| Parchment                   | API infrastructure layer inside Purveyors; use as the shared infrastructure name, not a public platform                         |
+| Mallard Studio              | Authenticated roaster workspace for inventory, roast, profit, tasting, chat, and subscriptions                                  |
+| Parchment API               | External API product and stable `/v1/*` public contract                                                                         |
+| Parchment Intelligence      | Market intelligence product for analytics, price-index depth, supplier signals, arrivals, and delistings                        |
+| Parchment Console           | Authenticated API key, usage, docs, and billing surface                                                                         |
+| Green / Origin / Enterprise | Parchment API tier names                                                                                                        |
+| Market Index                | Canonical short label for `/analytics` in nav, footers, cards, and CTAs; "Parchment Market Index" is the formal on-page H1 only |
 
 Avoid these in current public-facing copy unless quoting historical material:
 
@@ -102,7 +105,7 @@ These are the current brand-bearing Tailwind tokens and logo colors observed in 
 - Warm off-white, brown ink, and peach-orange are the core visual signature.
 - Use orange for primary actions, active navigation, brand highlights, and selected states.
 - Use neutral surfaces for dense app workflows; do not let decorative color compete with data.
-- Data visualization can use broader semantic colors, but those colors need a named palette before more chart work ships.
+- Data visualization uses the named chart palette in `src/lib/styles/chartColors.ts` (earth-tone series with teal/plum anchors for color-blind distinguishability; warm neutral axis/tooltip chrome). Charts must not use raw Tailwind hexes. Keep `chart-*` Tailwind tokens in sync with that module.
 - Error, warning, success, and info colors should be semantic and consistent, not ad hoc page-by-page choices.
 - Gold is not a core brand color. Retire `harvest-gold` from decorative product UI unless a future visual system gives it a specific role.
 
@@ -146,20 +149,64 @@ Migration recommendation:
 
 ## Typography
 
-The product currently uses Tailwind's default font stack with compact, practical sizing.
+Adopted July 2026: a two-voice system.
 
-Keep type:
+| Voice     | Face                                                                                                        | Where                                                                                                                |
+| --------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Editorial | **Newsreader** (variable, self-hosted via `@fontsource-variable/newsreader`), `font-serif` / `font-display` | Public/marketing display headings, page-level H1/H2, blog and docs prose, insight-card titles, the daily market read |
+| Working   | System sans stack (Tailwind default `font-sans`)                                                            | Everything operational: app panels, tables, forms, buttons, nav, chart labels, dense authenticated workflows         |
 
-- clear over ornamental
-- sentence case for buttons and nav labels
-- strong but not shouty: `font-semibold` for most UI, `font-bold` for page titles and hero statements
-- readable in dense tables, cards, charts, filters, and forms
+Rules:
+
+- Serif headings run `font-medium` (500), not bold; pair with `tracking-tight` at display sizes. Newsreader at `font-bold` looks heavy and loses the scholarly voice.
+- The serif marks _editorial moments_ — statements, reads, titles. If a string is data, a control, or a label, it stays sans. Dense app tools stay entirely sans.
+- Blog/docs long-form body uses the brand-themed `prose` (serif body, ink/link colors, espresso code blocks) configured in `tailwind.config.ts`.
+- Sentence case for buttons and nav labels.
+- `font-semibold` for most sans UI headings; reserve `font-bold` for KPI values where weight aids scanning.
 
 Avoid:
 
 - oversized type inside app panels
-- excessive uppercase labels
-- negative letter spacing outside established `tracking-tight` hero/page-title use
+- uppercase + wide-tracking micro-labels (retired July 2026); eyebrows are sentence case, `text-xs font-semibold`, in `text-accent` or `text-muted`
+- negative letter spacing outside `tracking-tight` hero/page-title use
+- serif inside tables, forms, or chart internals
+
+## Organic Accent System
+
+Adopted July 2026. The brand's illustration language (the torn-stripe, Clyfford Still-adjacent earth-tone artwork from the blog heroes) appears in product UI as **accents only — never backgrounds**. Backgrounds stay quiet (canvas/panel); the organic color does the identity work in small, deliberate doses. Without these accents the palette collapses into shades of brown; with them, sparingly placed, pages get visual identity without competing with data.
+
+The system has four elements:
+
+| Element         | Implementation                             | Use                                                                                                                                                                                                                                                                        |
+| --------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AccentSpine** | `src/lib/components/ui/AccentSpine.svelte` | Vertical tri-color (rust/gold/olive) spine on the left edge of **artifact cards** — cards that deliver an insight or invite an action: market briefs, insight cards, upsell/CTA cards, blog post headers, checkout confirmations. At most one spined card per view region. |
+| **Ribbon**      | `OrganicBand` at `h-3`/`h-4` full-bleed    | Slim section divider at major editorial boundaries (hero close). Never taller than ~16px in product UI.                                                                                                                                                                    |
+| **Band art**    | `OrganicBand` full size                    | Blog heroes, OG images, editorial/marketing moments only. Not a background for content.                                                                                                                                                                                    |
+| **Grain**       | `.texture-grain` utility                   | Barely-there paper texture on public/editorial surfaces. Never on dense app views.                                                                                                                                                                                         |
+
+Color tokens: `organic-rust` `#C05B2E`, `organic-gold` `#D9A05B`, `organic-olive` `#586048` (Tailwind `organic.*`). These intentionally overlap with chart-series hues but carry a different role: `chart-*` is data encoding, `organic-*` is brand decoration. Do not use `organic-*` for status/meaning and do not use `chart-*` decoratively.
+
+Hard rules:
+
+- Organic artwork is punctuation, not wallpaper. If removing the accent changes the layout, it was doing too much.
+- No organic art behind text or data.
+- The canonical spine triple is rust/gold/olive top-to-bottom; do not invent per-page variants.
+
+## Iconography
+
+Adopted July 2026: outline icons at Heroicons weight (`stroke-width="1.5"`, 24px viewBox), rendered in `text-ink` inside a soft tile: `rounded-md bg-accent-subtle/15 ring-1 ring-accent/25`. This tile treatment is the standard way to give sections and cards a visual anchor (see `PersonaRouter.svelte`, `Features.svelte`).
+
+- Icons accompany section/card headers and empty states; they are not decoration inside table rows or dense controls.
+- No emoji in product UI.
+- Inline SVG paths are acceptable for now; if icon usage grows, consolidate on a shared icon component with the same stroke weight.
+
+## Imagery Methodology
+
+Three tiers, cheapest-first:
+
+1. **Structural iconography** (tier 1): the outline-icon tiles above, applied consistently at section/card level. This is the default answer to "this page feels like a wall of words."
+2. **Organic accents** (tier 2): the Organic Accent System above — spines, ribbons, grain — at section boundaries and on editorial artifacts.
+3. **Real photography** (tier 3): green coffee, parchment, drying beds, roastery texture. Reserved for high-emotion surfaces (About, enterprise band, blog features). Requires curated assets; do not substitute generic stock.
 
 ## UI/UX Principles
 
@@ -211,22 +258,22 @@ The product should standardize around `md` controls and `lg` panels. Larger radi
 
 These are findings from the initial static audit. Direction is needed before component corrections.
 
-| ID     | Inconsistency                                                                                  | Evidence                                                                                                                                                 | Direction needed                                                                                                           |
-| ------ | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| BR-001 | `Parchment Platform` appears in active public docs, but notes mark it historical.              | `src/lib/docs/content.ts` uses "Parchment Platform" as API overview summary/eyebrow; `notes/README.md` says it should generally stay archived.           | Resolved direction: use Parchment for API infrastructure and Parchment API for the external product; do not use Platform.  |
-| BR-002 | Internal design docs and comments still say `Coffee App`.                                      | `notes/UI-FRAMEWORK.md`; `src/lib/components/ui/Button.svelte`.                                                                                          | Rename/fold this into a Purveyors UI guide, or keep it as historical implementation guidance?                              |
-| BR-003 | Color tokens are generic and include unresolved palette comments.                              | `tailwind.config.ts` comments mention alternate colors and "ian's color pallet"; primary and secondary backgrounds both resolve to `#FCFAF8`.            | Recommended direction: add role-based Tailwind aliases while preserving current compatibility tokens.                      |
-| BR-004 | Orange is doing nearly every brand job.                                                        | Static scan found `background-tertiary-light` used 658 times.                                                                                            | Recommended direction: keep orange as primary brand accent, but move status/data/premium roles to named semantic tokens.   |
-| BR-005 | Data/status colors are ad hoc.                                                                 | Many `blue`, `purple`, `indigo`, `emerald`, `green`, `red`, `amber`, and `gray` classes across charts, cards, chat, errors, and previews.                | Recommended direction: define success/warning/danger/info/intelligence/chart token families before migrating components.   |
-| BR-006 | Border radius language is split.                                                               | App framework favors `rounded-lg` cards and `rounded-md` buttons; docs/API/pricing use many `rounded-3xl`, `rounded-2xl`, and `rounded-xl` panels.       | Recommended direction: standardize on `rounded-md` controls and `rounded-lg` panels; keep larger radii rare and editorial. |
-| BR-007 | Icon style is inconsistent.                                                                    | Many components hand-roll inline SVGs; no clear shared icon system is visible.                                                                           | Choose an icon library/system or document inline SVG rules.                                                                |
-| BR-008 | Public navigation/product language is still transitional.                                      | Nav uses "For Buyers", "Market Data", "Pricing", "API", "Docs"; pages use "market analytics", "catalog", "Parchment Intelligence", and "Mallard Studio". | Confirm preferred public IA labels and whether "Market Data" or "Analytics" is the canonical user-facing term.             |
-| BR-009 | Sign-in capitalization varies.                                                                 | `Sign In` and `Sign in` both appear in public/app surfaces.                                                                                              | Adopt sentence case (`Sign in`) or title case everywhere.                                                                  |
-| BR-010 | Deprecated tier names still appear in active notes/blog drafts.                                | Current notes outside archive mention Explorer / Roaster+ / Integrate.                                                                                   | Archive, annotate, or update drafts so future copy does not revive old names.                                              |
-| BR-011 | Public marketing relies mostly on UI cards and inline SVGs, with limited real product imagery. | Homepage hero uses a synthetic product-card composition; static assets are mostly logos and OG images.                                                   | Decide whether product screenshots, generated brand imagery, or catalog visuals should become part of the identity.        |
-| BR-012 | One clear UI bug appears brand-adjacent.                                                       | `src/routes/no-cookies/+page.svelte` sets white text on a light `background-secondary-light` surface.                                                    | Approve as a mechanical accessibility fix?                                                                                 |
-| BR-013 | Emoji appears in product empty states.                                                         | Analytics no-data state uses `📊`.                                                                                                                       | Decide whether emoji belongs in Purveyors UI, or replace with the chosen icon system.                                      |
-| BR-014 | Logo asset usage is not documented.                                                            | Logo mark uses `#F9A57B`; public header uses `/purveyors_logo_mark.svg`; favicon uses `/purveyors_orange.svg`.                                           | Define when to use mark, wordmark, orange mark, and black wordmark.                                                        |
+| ID     | Inconsistency                                                                                  | Evidence                                                                                                                                                 | Direction needed                                                                                                                                                                                                         |
+| ------ | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| BR-001 | `Parchment Platform` appears in active public docs, but notes mark it historical.              | `src/lib/docs/content.ts` uses "Parchment Platform" as API overview summary/eyebrow; `notes/README.md` says it should generally stay archived.           | Resolved direction: use Parchment for API infrastructure and Parchment API for the external product; do not use Platform.                                                                                                |
+| BR-002 | Internal design docs and comments still say `Coffee App`.                                      | `notes/UI-FRAMEWORK.md`; `src/lib/components/ui/Button.svelte`.                                                                                          | Rename/fold this into a Purveyors UI guide, or keep it as historical implementation guidance?                                                                                                                            |
+| BR-003 | Color tokens are generic and include unresolved palette comments.                              | `tailwind.config.ts` comments mention alternate colors and "ian's color pallet"; primary and secondary backgrounds both resolve to `#FCFAF8`.            | Recommended direction: add role-based Tailwind aliases while preserving current compatibility tokens.                                                                                                                    |
+| BR-004 | Orange is doing nearly every brand job.                                                        | Static scan found `background-tertiary-light` used 658 times.                                                                                            | Recommended direction: keep orange as primary brand accent, but move status/data/premium roles to named semantic tokens.                                                                                                 |
+| BR-005 | Data/status colors are ad hoc.                                                                 | Many `blue`, `purple`, `indigo`, `emerald`, `green`, `red`, `amber`, and `gray` classes across charts, cards, chat, errors, and previews.                | **Resolved 2026-07-05:** semantic families and the named chart palette (`src/lib/styles/chartColors.ts`) are defined; analytics charts migrated. Remaining raw-palette utilities in app views migrate opportunistically. |
+| BR-006 | Border radius language is split.                                                               | App framework favors `rounded-lg` cards and `rounded-md` buttons; docs/API/pricing use many `rounded-3xl`, `rounded-2xl`, and `rounded-xl` panels.       | Recommended direction: standardize on `rounded-md` controls and `rounded-lg` panels; keep larger radii rare and editorial.                                                                                               |
+| BR-007 | Icon style is inconsistent.                                                                    | Many components hand-roll inline SVGs; no clear shared icon system is visible.                                                                           | **Direction set 2026-07-05:** Heroicons-weight outline icons in accent tiles (see Iconography section). Consolidate remaining ad hoc SVGs opportunistically.                                                             |
+| BR-008 | Public navigation/product language is still transitional.                                      | Nav uses "For Buyers", "Market Data", "Pricing", "API", "Docs"; pages use "market analytics", "catalog", "Parchment Intelligence", and "Mallard Studio". | **Resolved 2026-07-05:** nav is Catalog / Market Index / Pricing / API / Docs / Blog; "Market Index" is the canonical short label for /analytics.                                                                        |
+| BR-009 | Sign-in capitalization varies.                                                                 | `Sign In` and `Sign in` both appear in public/app surfaces.                                                                                              | Adopt sentence case (`Sign in`) or title case everywhere.                                                                                                                                                                |
+| BR-010 | Deprecated tier names still appear in active notes/blog drafts.                                | Current notes outside archive mention Explorer / Roaster+ / Integrate.                                                                                   | Archive, annotate, or update drafts so future copy does not revive old names.                                                                                                                                            |
+| BR-011 | Public marketing relies mostly on UI cards and inline SVGs, with limited real product imagery. | Homepage hero uses a synthetic product-card composition; static assets are mostly logos and OG images.                                                   | **Resolved 2026-07-05:** template hero mockup and gradient blob removed; Organic Accent System + Imagery Methodology adopted (see sections above). Tier-3 photography still needs asset production.                      |
+| BR-012 | One clear UI bug appears brand-adjacent.                                                       | `src/routes/no-cookies/+page.svelte` sets white text on a light `background-secondary-light` surface.                                                    | Approve as a mechanical accessibility fix?                                                                                                                                                                               |
+| BR-013 | Emoji appears in product empty states.                                                         | Analytics no-data state uses `📊`.                                                                                                                       | **Resolved 2026-07-05:** emoji removed from product UI (including the trend-range lock); rule codified in Iconography.                                                                                                   |
+| BR-014 | Logo asset usage is not documented.                                                            | Logo mark uses `#F9A57B`; public header uses `/purveyors_logo_mark.svg`; favicon uses `/purveyors_orange.svg`.                                           | Define when to use mark, wordmark, orange mark, and black wordmark.                                                                                                                                                      |
 
 ## Initial Correction Queue
 

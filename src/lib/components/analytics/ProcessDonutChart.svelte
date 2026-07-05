@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PROCESS_COLORS, PROCESS_FALLBACK_COLORS } from '$lib/styles/chartColors';
 	import { arc, pie } from 'd3-shape';
 
 	interface Bucket {
@@ -9,16 +10,9 @@
 	let { data = [] }: { data: Bucket[] } = $props();
 
 	// Known-category colors; "Other" always gets neutral gray
-	const KNOWN_COLORS: Record<string, string> = {
-		Washed: '#3b82f6',
-		Natural: '#f59e0b',
-		Honey: '#10b981',
-		Anaerobic: '#ec4899',
-		'Wet Hulled': '#8b5cf6',
-		Unknown: '#9ca3af'
-	};
-	const OTHER_COLOR = '#6b7280';
-	const FALLBACK_COLORS = ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6'];
+	const KNOWN_COLORS: Record<string, string> = PROCESS_COLORS;
+	const OTHER_COLOR = '#a39a8c';
+	const FALLBACK_COLORS = PROCESS_FALLBACK_COLORS;
 
 	let containerH = $state(0);
 	let containerW = $state(0);
@@ -161,15 +155,10 @@
 				{/each}
 
 				<!-- Center text -->
-				<text
-					x="0"
-					y="-8"
-					text-anchor="middle"
-					font-size="22"
-					font-weight="600"
-					fill="rgb(55 65 81)">{total}</text
+				<text x="0" y="-8" text-anchor="middle" font-size="22" font-weight="600" fill="#302f2a"
+					>{total}</text
 				>
-				<text x="0" y="12" text-anchor="middle" font-size="11" fill="rgb(107 114 128)">beans</text>
+				<text x="0" y="12" text-anchor="middle" font-size="11" fill="#695c4d">beans</text>
 			</g>
 		</svg>
 

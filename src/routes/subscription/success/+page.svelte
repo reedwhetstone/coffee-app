@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
+	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 
 	interface ReconciledEntitlements {
 		role: string;
@@ -65,15 +66,14 @@
 						resolvedEntitlements = reconciliationResult.entitlements ?? null;
 
 						if (reconciliationResult.entitlementsChanged) {
-							reconciliationMessage =
-								'Your checkout was reconciled and your latest entitlements are now active.';
+							reconciliationMessage = 'Your purchase is confirmed and your new access is active.';
 						} else if (reconciliationResult.alreadyProcessed) {
 							reconciliationMessage =
-								'This checkout session was already reconciled. Your entitlements are current.';
+								'This purchase was already confirmed. Your access is up to date.';
 						} else {
 							reconciliationMessage =
 								reconciliationResult.message ||
-								'Payment verified and entitlements are already up to date.';
+								'Payment verified. Your access is already up to date.';
 						}
 					} else {
 						console.warn(
@@ -81,7 +81,7 @@
 							await reconciliationResponse.text()
 						);
 						reconciliationMessage =
-							'Payment confirmed. Billing reconciliation is still finishing in the background.';
+							'Payment confirmed. Your access is finishing activating in the background.';
 					}
 				} catch (reconciliationError) {
 					console.warn(
@@ -89,7 +89,7 @@
 						reconciliationError
 					);
 					reconciliationMessage =
-						'Payment confirmed. Billing reconciliation is still finishing in the background.';
+						'Payment confirmed. Your access is finishing activating in the background.';
 				}
 
 				await invalidateAll();
@@ -110,14 +110,15 @@
 
 <div class="flex min-h-[calc(100vh-80px)] flex-col items-center justify-center py-10">
 	<div
-		class="max-w-md rounded-lg border border-background-tertiary-light bg-background-secondary-light p-8 shadow-md"
+		class="relative max-w-md overflow-hidden rounded-lg border border-background-tertiary-light bg-background-secondary-light p-8 pl-10 shadow-md"
 	>
+		<AccentSpine />
 		{#if loading}
 			<div class="flex flex-col items-center justify-center py-10">
 				<div
 					class="h-12 w-12 animate-spin rounded-full border-4 border-accent border-t-transparent"
 				></div>
-				<p class="mt-4 text-text-primary-light">Reconciling your checkout session...</p>
+				<p class="mt-4 text-text-primary-light">Confirming your payment...</p>
 			</div>
 		{:else if error}
 			<div class="flex flex-col items-center justify-center text-center">
@@ -165,9 +166,9 @@
 					Thank you. {reconciliationMessage || 'Your payment has been confirmed.'}
 				</p>
 				{#if reconciliationComplete}
-					<p class="mt-1 text-sm text-success-strong">Entitlement reconciliation completed</p>
+					<p class="mt-1 text-sm text-success-strong">Your access is active</p>
 				{:else}
-					<p class="mt-1 text-sm text-info">Billing reconciliation in progress...</p>
+					<p class="mt-1 text-sm text-info">Activating your access...</p>
 				{/if}
 
 				{#if resolvedEntitlements}
@@ -196,7 +197,7 @@
 					onclick={returnToSubscription}
 					class="mt-6 rounded-md bg-accent px-4 py-2 font-medium text-ink transition-opacity hover:opacity-90"
 				>
-					Return to subscription control plane
+					Back to your account
 				</button>
 			</div>
 		{:else}
@@ -217,14 +218,14 @@
 				</svg>
 				<h2 class="mt-4 text-xl font-bold text-text-primary-light">Payment pending</h2>
 				<p class="mt-2 text-text-primary-light">
-					Your payment is still being processed. We'll reconcile entitlements as soon as Stripe
-					marks the checkout complete.
+					Your payment is still being processed. Your access will activate as soon as Stripe
+					confirms the checkout — usually within a few seconds.
 				</p>
 				<button
 					onclick={returnToSubscription}
 					class="mt-6 rounded-md bg-accent px-4 py-2 font-medium text-ink transition-opacity hover:opacity-90"
 				>
-					Return to subscription control plane
+					Back to your account
 				</button>
 			</div>
 		{/if}

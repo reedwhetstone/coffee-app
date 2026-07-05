@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { MARKER_PRIMARY, MARKER_SECONDARY } from '$lib/styles/chartColors';
 	import { max } from 'd3-array';
 	import { scaleBand, scaleLinear } from 'd3-scale';
 	import { select } from 'd3-selection';
@@ -173,7 +174,7 @@
 				.attr('y', y)
 				.attr('text-anchor', 'end')
 				.attr('dominant-baseline', 'middle')
-				.attr('fill', 'rgb(107 114 128)')
+				.attr('fill', '#695c4d')
 				.attr('font-size', '12')
 				.text(abbreviateOrigin(row.origin, isNarrow));
 		});
@@ -188,7 +189,7 @@
 			.attr('x2', innerW)
 			.attr('y1', 0)
 			.attr('y2', 0)
-			.attr('stroke', 'rgb(156 163 175)');
+			.attr('stroke', '#a39a8c');
 		tailTicks.forEach((tick) => {
 			const x = xScale(tick);
 			g.append('line')
@@ -196,12 +197,12 @@
 				.attr('x2', x)
 				.attr('y1', 0)
 				.attr('y2', 5)
-				.attr('stroke', 'rgb(156 163 175)');
+				.attr('stroke', '#a39a8c');
 			g.append('text')
 				.attr('x', x)
 				.attr('y', 18)
 				.attr('text-anchor', 'middle')
-				.attr('fill', 'rgb(156 163 175)')
+				.attr('fill', '#a39a8c')
 				.attr('font-size', '11')
 				.text(formatTailTick(tick));
 		});
@@ -414,7 +415,7 @@
 						y={14}
 						text-anchor="middle"
 						font-size="10"
-						fill="rgb(156 163 175)"
+						fill="#a39a8c"
 					>
 						Price ($/lb)
 					</text>
@@ -429,7 +430,7 @@
 								x2={xScale(tick)}
 								y1={0}
 								y2={innerH}
-								stroke="rgb(156 163 175)"
+								stroke="#a39a8c"
 								stroke-opacity="0.2"
 								stroke-dasharray="4 4"
 							/>
@@ -462,7 +463,7 @@
 								x2={xMax}
 								y1={cy}
 								y2={cy}
-								stroke="rgb(156 163 175)"
+								stroke="#a39a8c"
 								stroke-width="1.5"
 								stroke-opacity="0.6"
 							/>
@@ -471,7 +472,7 @@
 								x2={xMin}
 								y1={cy - 4}
 								y2={cy + 4}
-								stroke="rgb(156 163 175)"
+								stroke="#a39a8c"
 								stroke-width="1.5"
 								stroke-opacity="0.6"
 							/>
@@ -480,7 +481,7 @@
 								x2={xMax}
 								y1={cy - 4}
 								y2={cy + 4}
-								stroke="rgb(156 163 175)"
+								stroke="#a39a8c"
 								stroke-width="1.5"
 								stroke-opacity="0.6"
 							/>
@@ -490,27 +491,21 @@
 								y={cy - yScale.bandwidth() * 0.28}
 								width={Math.max(4, xQ3 - xQ1)}
 								height={yScale.bandwidth() * 0.56}
-								fill="#f59e0b"
+								fill={MARKER_PRIMARY}
 								fill-opacity="0.4"
 								rx="2"
 							/>
 
-							<circle cx={xMedian} {cy} r="5" fill="#f59e0b" />
+							<circle cx={xMedian} {cy} r="5" fill={MARKER_PRIMARY} />
 
 							{#if row.price_median > 0 && Math.abs(row.price_avg - row.price_median) / row.price_median > 0.05}
 								<polygon
 									points="{xMean},{cy - 5} {xMean + 4},{cy} {xMean},{cy + 5} {xMean - 4},{cy}"
-									fill="#14b8a6"
+									fill={MARKER_SECONDARY}
 								/>
 							{/if}
 
-							<text
-								x={innerW + 8}
-								y={cy}
-								dominant-baseline="middle"
-								font-size="10"
-								fill="rgb(107 114 128)"
-							>
+							<text x={innerW + 8} y={cy} dominant-baseline="middle" font-size="10" fill="#695c4d">
 								{row.sample_size}
 							</text>
 						{/each}

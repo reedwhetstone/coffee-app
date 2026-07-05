@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 	interface Props {
 		catalogResultCount: number;
 		visibleOriginCount: number;
@@ -32,69 +33,61 @@
 	}: Props = $props();
 </script>
 
-<div class="rounded-lg border border-border-light bg-background-secondary-light px-5 py-4">
+<div class="rounded-lg border border-line bg-surface-panel px-5 py-4">
 	<div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
 		<div class="max-w-3xl">
-			<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
-				Supply evidence layer
-			</p>
-			<h1 class="mt-1 text-2xl font-bold text-text-primary-light sm:text-3xl">
+			<p class="text-xs font-semibold text-accent">Live supply, updated daily</p>
+			<h1 class="mt-1 font-serif text-2xl font-medium tracking-tight text-ink sm:text-3xl">
 				Green Coffee Catalog
 			</h1>
-			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light sm:text-base">
-				Inspect the row-level supply substrate behind Parchment Market Index reads: stocked coffees,
-				supplier coverage, origin and process signals, and pricing evidence that turn market
-				movement into named lots to investigate.
+			<p class="mt-2 text-sm leading-relaxed text-muted sm:text-base">
+				Every stocked green coffee from 40+ US importers in one place — origin, process, score, and
+				live pricing, normalized daily. When the Market Index shows movement, this is where you find
+				the named lots behind it.
 			</p>
 			<div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
 				<div
-					class="relative overflow-hidden rounded-md border border-border-light bg-background-primary-light px-3 py-2"
+					class="relative overflow-hidden rounded-md border border-line bg-surface-canvas px-3 py-2"
 				>
-					<p class="text-lg font-semibold text-text-primary-light">
+					<p class="text-lg font-semibold text-ink">
 						{catalogResultCount.toLocaleString()}
 					</p>
-					<p class="text-xs text-text-secondary-light">Active rows in this query</p>
+					<p class="text-xs text-muted">Active rows in this query</p>
 					{#if isRefetching}
 						<div
-							class="absolute inset-x-0 bottom-0 h-0.5 bg-background-tertiary-light/20"
+							class="absolute inset-x-0 bottom-0 h-0.5 bg-accent/20"
 							role="status"
 							aria-live="polite"
 						>
-							<div class="h-full w-full animate-pulse bg-background-tertiary-light"></div>
+							<div class="h-full w-full animate-pulse bg-accent"></div>
 							<span class="sr-only">Updating results</span>
 						</div>
 					{/if}
 				</div>
-				<div class="rounded-md border border-border-light bg-background-primary-light px-3 py-2">
-					<p class="text-lg font-semibold text-text-primary-light">{visibleOriginCount}</p>
-					<p class="text-xs text-text-secondary-light">Origins shown on this page</p>
+				<div class="rounded-md border border-line bg-surface-canvas px-3 py-2">
+					<p class="text-lg font-semibold text-ink">{visibleOriginCount}</p>
+					<p class="text-xs text-muted">Origins shown on this page</p>
 				</div>
-				<div class="rounded-md border border-border-light bg-background-primary-light px-3 py-2">
-					<p class="text-lg font-semibold text-text-primary-light">{visibleSupplierCount}</p>
-					<p class="text-xs text-text-secondary-light">Suppliers shown on this page</p>
+				<div class="rounded-md border border-line bg-surface-canvas px-3 py-2">
+					<p class="text-lg font-semibold text-ink">{visibleSupplierCount}</p>
+					<p class="text-xs text-muted">Suppliers shown on this page</p>
 				</div>
-				<div class="rounded-md border border-border-light bg-background-primary-light px-3 py-2">
-					<p class="text-lg font-semibold text-text-primary-light">{visiblePricedCount}</p>
-					<p class="text-xs text-text-secondary-light">Priced rows shown</p>
+				<div class="rounded-md border border-line bg-surface-canvas px-3 py-2">
+					<p class="text-lg font-semibold text-ink">{visiblePricedCount}</p>
+					<p class="text-xs text-muted">Priced rows shown</p>
 				</div>
 			</div>
 			{#if canUseSourcingIntelligence && trackedIdsSize > 0}
-				<p class="mt-2 text-xs text-text-secondary-light">
-					<span class="font-semibold text-background-tertiary-light">{trackedIdsSize}</span>
+				<p class="mt-2 text-xs text-muted">
+					<span class="font-semibold text-accent">{trackedIdsSize}</span>
 					{trackedIdsSize === 1 ? 'lot' : 'lots'} tracked ·
 					{trackedCountOnPage} on this page ·
 					{#if trackedOnlyView}
-						<a
-							href="/catalog"
-							class="font-semibold text-background-tertiary-light hover:text-text-primary-light"
-						>
+						<a href="/catalog" class="font-semibold text-accent hover:text-ink">
 							Show full catalog
 						</a>
 					{:else}
-						<a
-							href="/catalog?tracked=only"
-							class="font-semibold text-background-tertiary-light hover:text-text-primary-light"
-						>
+						<a href="/catalog?tracked=only" class="font-semibold text-accent hover:text-ink">
 							View all tracked
 						</a>
 					{/if}
@@ -102,33 +95,32 @@
 			{/if}
 		</div>
 		<div
-			class="w-full rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-4 lg:max-w-sm"
+			class="relative w-full overflow-hidden rounded-lg border border-accent/20 bg-surface-canvas p-4 pl-6 lg:max-w-sm"
 		>
-			<p class="text-sm font-semibold text-text-primary-light">
-				Trace catalog evidence into market intelligence
-			</p>
-			<p class="mt-1 text-sm text-text-secondary-light">
-				Use the index for aggregate price and coverage reads, then return here for the named coffees
-				and suppliers behind the signal.
+			<AccentSpine />
+			<p class="text-sm font-semibold text-ink">See the market behind these coffees</p>
+			<p class="mt-1 text-sm text-muted">
+				The Market Index tracks price movement, arrivals, and supplier coverage across this whole
+				catalog — then come back here for the named lots.
 			</p>
 			<div class="mt-3 flex flex-col gap-2 sm:flex-row lg:flex-col">
 				<a
 					href="/analytics"
-					class="rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+					class="rounded-md bg-accent px-3 py-2 text-center text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 				>
-					Open Parchment Market Index
+					Open the Market Index
 				</a>
 				<a
 					href={supplierComparisonHref}
-					class="rounded-md border border-background-tertiary-light px-3 py-2 text-center text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+					class="rounded-md border border-accent px-3 py-2 text-center text-sm font-medium text-accent transition-all duration-200 hover:bg-accent hover:text-ink"
 				>
 					{supplierComparisonLabel}
 				</a>
 			</div>
-			<div class="mt-3 border-t border-border-light pt-3">
+			<div class="mt-3 border-t border-line pt-3">
 				<button
 					onclick={onCopyFilteredCatalogLink}
-					class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm font-medium text-text-primary-light shadow-sm transition-colors hover:border-background-tertiary-light hover:text-background-tertiary-light"
+					class="rounded-md border border-line bg-surface-canvas px-3 py-1.5 text-sm font-medium text-ink shadow-sm transition-colors hover:border-accent hover:text-accent"
 				>
 					{copyLinkStatus === 'copied'
 						? 'Copied filtered link'
@@ -136,7 +128,7 @@
 							? 'Copy failed'
 							: 'Copy filtered link'}
 				</button>
-				<p class="mt-1 text-xs text-text-secondary-light">
+				<p class="mt-1 text-xs text-muted">
 					Share the current catalog filters, sort, and page with one link.
 				</p>
 			</div>

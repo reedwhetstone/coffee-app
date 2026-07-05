@@ -9,18 +9,16 @@
 </script>
 
 <div
-	class="rounded-lg border border-background-tertiary-light/30 bg-background-secondary-light px-4 py-3"
+	class="rounded-lg border border-accent/30 bg-surface-panel px-4 py-3"
 	aria-label="Sourcing brief matches"
 >
-	<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
-		Active sourcing briefs
-	</p>
+	<p class="text-xs font-semibold text-accent">Active sourcing briefs</p>
 	<div class="mt-2 flex flex-col gap-2">
 		{#each briefMatchSummaries as summary}
 			<div class="flex items-center justify-between gap-3 text-sm">
-				<span class="font-medium text-text-primary-light">{summary.briefName}</span>
-				<span class="shrink-0 text-xs text-text-secondary-light">
-					<span class="font-semibold text-background-tertiary-light">{summary.matchCount}</span>
+				<span class="font-medium text-ink">{summary.briefName}</span>
+				<span class="shrink-0 text-xs text-muted">
+					<span class="font-semibold text-accent">{summary.matchCount}</span>
 					{summary.matchCount === 1 ? 'lot matches' : 'lots match'} criteria on this page
 				</span>
 			</div>

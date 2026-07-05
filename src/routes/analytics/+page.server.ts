@@ -702,7 +702,7 @@ export const load: PageServerLoad = async (event) => {
 		schemaService.generateDatasetSchema({
 			name: 'Parchment Market Index — Green Coffee Market Data',
 			description:
-				'Daily green coffee pricing from 39+ US importers and roasters, including origin trends, processing mix, and supplier coverage.',
+				'Daily green coffee pricing from 40+ US importers and roasters, including origin trends, processing mix, and supplier coverage.',
 			url: `${baseUrl}/analytics`,
 			keywords: [
 				'green coffee prices',
@@ -764,7 +764,7 @@ export const load: PageServerLoad = async (event) => {
 			path: '/analytics',
 			title: 'Green Coffee Market Visibility | Parchment Market Index',
 			description:
-				'Daily green coffee pricing, supplier movement, and origin trends from 39+ US importers. Free market visibility for coffee teams.',
+				'Daily green coffee pricing, supplier movement, and origin trends from 40+ US importers. Free market visibility for coffee teams.',
 			keywords: [
 				'green coffee prices',
 				'coffee market data',
@@ -775,9 +775,9 @@ export const load: PageServerLoad = async (event) => {
 			],
 			ogTitle: 'Green Coffee Market Visibility — Parchment Market Index',
 			ogDescription:
-				'Daily green coffee price trends, processing mix, and supplier movement from 39+ US importers.',
+				'Daily green coffee price trends, processing mix, and supplier movement from 40+ US importers.',
 			twitterTitle: 'Green Coffee Market Visibility — Parchment Market Index',
-			twitterDescription: 'Daily green coffee pricing and supplier movement from 39+ US importers.',
+			twitterDescription: 'Daily green coffee pricing and supplier movement from 40+ US importers.',
 			image: resolvePublicPageSocialImage({
 				baseUrl,
 				preferredPath: '/og/analytics.jpg',

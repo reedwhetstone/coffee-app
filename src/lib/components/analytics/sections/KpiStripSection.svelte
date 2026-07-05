@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 	interface KpiCard {
 		label: string;
 		value: string;
@@ -20,26 +21,28 @@
 	}
 
 	let { kpiCards, insightCards }: Props = $props();
+
+	const TONE_CLASSES: Record<string, string> = {
+		up: 'text-success-strong',
+		down: 'text-accent',
+		alert: 'text-danger-strong',
+		neutral: 'text-ink'
+	};
 </script>
 
-<section class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Market KPI strip">
+<section
+	class="mb-6 grid grid-cols-2 divide-line overflow-hidden rounded-lg border border-line bg-surface-raised shadow-sm max-lg:divide-y lg:grid-cols-4 lg:divide-x"
+	aria-label="Market KPI strip"
+>
 	{#each kpiCards as card}
-		<div class="rounded-xl border border-border-light bg-background-primary-light p-4 shadow-sm">
-			<p class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
+		<div class="p-4 sm:p-5">
+			<p class="text-xs font-medium text-muted">
 				{card.label}
 			</p>
-			<div
-				class="mt-2 text-2xl font-bold {card.tone === 'up'
-					? 'text-emerald-700'
-					: card.tone === 'down'
-						? 'text-background-tertiary-light'
-						: card.tone === 'alert'
-							? 'text-red-700'
-							: 'text-text-primary-light'}"
-			>
+			<div class="mt-2 text-2xl font-semibold tabular-nums {TONE_CLASSES[card.tone] ?? 'text-ink'}">
 				{card.value}
 			</div>
-			<p class="mt-1 text-xs text-text-secondary-light">{card.detail}</p>
+			<p class="mt-1 text-xs text-muted">{card.detail}</p>
 		</div>
 	{/each}
 </section>
@@ -47,14 +50,15 @@
 <section class="mb-6 grid gap-4 lg:grid-cols-3" aria-label="Market insight cards">
 	{#each insightCards as insight}
 		<article
-			class="rounded-xl border border-border-light bg-background-primary-light p-5 shadow-sm"
+			class="relative overflow-hidden rounded-lg border border-line bg-surface-panel p-5 pl-7"
 		>
-			<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
+			<AccentSpine />
+			<p class="text-xs font-semibold text-accent">
 				{insight.label}
 			</p>
-			<h2 class="mt-2 text-lg font-semibold text-text-primary-light">{insight.title}</h2>
-			<p class="mt-2 text-sm leading-6 text-text-secondary-light">{insight.body}</p>
-			<p class="mt-4 text-xs font-medium text-text-secondary-light">{insight.evidence}</p>
+			<h3 class="mt-2 font-serif text-lg font-medium text-ink">{insight.title}</h3>
+			<p class="mt-2 text-sm leading-6 text-muted">{insight.body}</p>
+			<p class="mt-4 text-xs font-medium text-muted">{insight.evidence}</p>
 		</article>
 	{/each}
 </section>
