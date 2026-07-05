@@ -1,13 +1,11 @@
-<section id="features" class="bg-background-primary-light py-24 sm:py-32">
+<section id="features" class="bg-surface-canvas py-24 sm:py-32">
 	<div class="mx-auto max-w-7xl px-6 lg:px-8">
 		<div class="mx-auto max-w-2xl lg:text-center">
-			<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">
-				What we track
-			</h2>
-			<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
+			<h2 class="text-base font-semibold leading-7 text-accent">What we track</h2>
+			<p class="mt-2 font-serif text-3xl font-medium tracking-tight text-ink sm:text-4xl">
 				Market intelligence the rest of the industry is still running on spreadsheets for.
 			</p>
-			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
+			<p class="mt-6 text-lg leading-8 text-muted">
 				40+ US importers, scraped and normalized daily. Price movement, arrivals, delistings, origin
 				benchmarks, and supplier comparisons in one place, so procurement decisions start with
 				complete data, not manual research.
@@ -16,12 +14,8 @@
 		<div class="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
 			<dl class="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
 				<div class="flex flex-col">
-					<dt
-						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
-					>
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
-						>
+					<dt class="flex items-center gap-x-3 text-base font-semibold leading-7 text-ink">
+						<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
 							<svg
 								class="h-6 w-6 text-white"
 								fill="none"
@@ -38,7 +32,7 @@
 						</div>
 						See price movement before it hits the offer list.
 					</dt>
-					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
+					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-muted">
 						<p class="flex-auto">
 							90+ days of price index history across origins. Weekly and 30-day deltas, IQR, and
 							standard deviation at the origin level. Know whether a price is a deal or a drift
@@ -48,12 +42,8 @@
 				</div>
 
 				<div class="flex flex-col">
-					<dt
-						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
-					>
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
-						>
+					<dt class="flex items-center gap-x-3 text-base font-semibold leading-7 text-ink">
+						<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
 							<svg
 								class="h-6 w-6 text-white"
 								fill="none"
@@ -70,7 +60,7 @@
 						</div>
 						Catch new arrivals the day they stock.
 					</dt>
-					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
+					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-muted">
 						<p class="flex-auto">
 							Arrivals and delistings tracked daily across 40+ importers. See what landed this week,
 							what disappeared, and which suppliers are most active for your target origins before
@@ -80,12 +70,8 @@
 				</div>
 
 				<div class="flex flex-col">
-					<dt
-						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
-					>
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
-						>
+					<dt class="flex items-center gap-x-3 text-base font-semibold leading-7 text-ink">
+						<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
 							<svg
 								class="h-6 w-6 text-white"
 								fill="none"
@@ -102,7 +88,7 @@
 						</div>
 						Plug normalized green coffee data into your stack.
 					</dt>
-					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
+					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-muted">
 						<p class="flex-auto">
 							Normalized green coffee data from 40+ suppliers through one REST API. Daily updates,
 							consistent schema. Skip rebuilding the catalog yourself and connect it directly to
@@ -112,12 +98,8 @@
 				</div>
 
 				<div class="flex flex-col">
-					<dt
-						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
-					>
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
-						>
+					<dt class="flex items-center gap-x-3 text-base font-semibold leading-7 text-ink">
+						<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
 							<svg
 								class="h-6 w-6 text-white"
 								fill="none"
@@ -139,7 +121,7 @@
 						</div>
 						Compare suppliers on coverage, freshness, and price.
 					</dt>
-					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
+					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-muted">
 						<p class="flex-auto">
 							Supplier-level stats updated daily: listing counts, active origins, recent arrivals,
 							delisting rate, and price positioning vs. the market. Know which importers are most
@@ -149,12 +131,8 @@
 				</div>
 
 				<div class="flex flex-col">
-					<dt
-						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
-					>
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
-						>
+					<dt class="flex items-center gap-x-3 text-base font-semibold leading-7 text-ink">
+						<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
 							<svg
 								class="h-6 w-6 text-white"
 								fill="none"
@@ -171,7 +149,7 @@
 						</div>
 						Find value lots below origin median.
 					</dt>
-					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
+					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-muted">
 						<p class="flex-auto">
 							Origin price distributions with IQR and standard deviation updated daily. Identify
 							lots priced below the median for their origin and process, and act before the window
@@ -181,12 +159,8 @@
 				</div>
 
 				<div class="flex flex-col">
-					<dt
-						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
-					>
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
-						>
+					<dt class="flex items-center gap-x-3 text-base font-semibold leading-7 text-ink">
+						<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
 							<svg
 								class="h-6 w-6 text-white"
 								fill="none"
@@ -203,7 +177,7 @@
 						</div>
 						Track origin supply health across 40+ importers.
 					</dt>
-					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
+					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-muted">
 						<p class="flex-auto">
 							Origin-level coverage showing how many lots are active, which importers hold them, and
 							how supply has shifted over time. Build procurement strategy around actual market

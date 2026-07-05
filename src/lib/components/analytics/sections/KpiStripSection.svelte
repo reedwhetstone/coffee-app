@@ -25,7 +25,7 @@
 <section class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Market KPI strip">
 	{#each kpiCards as card}
 		<div class="rounded-xl border border-border-light bg-background-primary-light p-4 shadow-sm">
-			<p class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
+			<p class="text-xs font-semibold text-text-secondary-light">
 				{card.label}
 			</p>
 			<div
@@ -49,7 +49,7 @@
 		<article
 			class="rounded-xl border border-border-light bg-background-primary-light p-5 shadow-sm"
 		>
-			<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
+			<p class="text-xs font-semibold text-background-tertiary-light">
 				{insight.label}
 			</p>
 			<h2 class="mt-2 text-lg font-semibold text-text-primary-light">{insight.title}</h2>

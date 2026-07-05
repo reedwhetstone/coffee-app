@@ -26,7 +26,7 @@
 
 <!-- Header with accent border -->
 <div class="mb-10 border-l-4 border-background-tertiary-light pl-6">
-	<h1 class="mb-2 text-4xl font-bold text-text-primary-light">Blog</h1>
+	<h1 class="mb-2 font-serif text-4xl font-medium tracking-tight text-text-primary-light">Blog</h1>
 	<p class="text-lg text-text-secondary-light">
 		Coffee intelligence, AI-first development, and the systems behind purveyors.io
 	</p>

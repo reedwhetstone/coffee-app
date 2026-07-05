@@ -53,7 +53,9 @@
 			{/if}
 		</div>
 
-		<h1 class="mb-4 text-4xl font-bold leading-tight text-text-primary-light">
+		<h1
+			class="mb-4 font-serif text-4xl font-medium leading-tight tracking-tight text-text-primary-light"
+		>
 			{data.metadata.title}
 		</h1>
 
@@ -83,11 +85,11 @@
 	<!-- Post content -->
 	<div
 		class="prose-code:bg-background-tertiary-light/8 prose prose-lg
-		max-w-none prose-headings:font-semibold
+		max-w-none font-serif prose-headings:font-serif prose-headings:font-semibold
 		prose-headings:text-text-primary-light prose-h2:mt-12 prose-h2:border-b prose-h2:border-border-light
 		prose-h2:pb-3 prose-p:leading-relaxed
-		prose-p:text-text-secondary-light prose-a:text-background-tertiary-light prose-a:no-underline
-		hover:prose-a:underline
+		prose-p:text-text-secondary-light prose-a:text-link prose-a:underline prose-a:decoration-accent/50
+		prose-a:underline-offset-2 hover:prose-a:decoration-accent
 		prose-blockquote:rounded-r-lg prose-blockquote:border-l-4 prose-blockquote:border-background-tertiary-light prose-blockquote:bg-background-tertiary-light/5 prose-blockquote:py-1 prose-blockquote:text-text-secondary-light prose-strong:text-text-primary-light prose-code:rounded
 		prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:text-text-primary-light prose-code:before:content-none
 		prose-code:after:content-none prose-pre:rounded-lg prose-pre:border prose-pre:border-border-light prose-pre:bg-background-primary-dark prose-pre:text-text-primary-dark

@@ -22,10 +22,10 @@
 	}
 </script>
 
-<div class="bg-background-tertiary-light">
+<div class="bg-accent">
 	<div class="px-6 py-24 sm:px-6 sm:py-32 lg:px-8">
 		<div class="mx-auto max-w-2xl text-center">
-			<h2 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+			<h2 class="font-serif text-3xl font-medium tracking-tight text-white sm:text-4xl">
 				Stop guessing on price. Source with the full market in view.
 			</h2>
 			<p class="mx-auto mt-6 max-w-xl text-lg leading-8 text-orange-100">
@@ -40,13 +40,13 @@
 			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
 				<button
 					onclick={handlePrimaryAction}
-					class="w-full rounded-md bg-white px-6 py-3 text-sm font-semibold text-background-tertiary-light shadow-sm transition-all duration-200 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:w-auto"
+					class="w-full rounded-md bg-white px-6 py-3 text-sm font-semibold text-accent shadow-sm transition-all duration-200 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:w-auto"
 				>
 					{isSignedIn ? 'Open the Market Index' : 'Explore the Market Index'}
 				</button>
 				<button
 					onclick={handleSecondaryAction}
-					class="w-full rounded-md border border-orange-100 px-6 py-3 text-sm font-semibold text-orange-100 transition-all duration-200 hover:bg-orange-100 hover:text-background-tertiary-light sm:w-auto"
+					class="w-full rounded-md border border-orange-100 px-6 py-3 text-sm font-semibold text-orange-100 transition-all duration-200 hover:bg-orange-100 hover:text-accent sm:w-auto"
 				>
 					{isSignedIn ? 'Add Intelligence' : 'See plans'}
 				</button>

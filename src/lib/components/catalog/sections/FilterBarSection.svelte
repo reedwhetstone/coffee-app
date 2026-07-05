@@ -9,7 +9,7 @@
 </script>
 
 <div
-	class="flex flex-wrap items-center gap-2 rounded-lg border border-border-light bg-background-secondary-light px-4 py-3"
+	class="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface-panel px-4 py-3"
 >
 	<select
 		value={Array.isArray($filterStore.filters.country)
@@ -19,7 +19,7 @@
 			const val = e.currentTarget.value;
 			filterStore.setFilter('country', val ? [val] : []);
 		}}
-		class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
+		class="rounded-md border border-line bg-surface-canvas px-3 py-1.5 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
 	>
 		<option value="">Origin</option>
 		{#each $filterStore.uniqueValues.countries ?? [] as country}
@@ -30,7 +30,7 @@
 	<select
 		value={$filterStore.filters.processing ?? ''}
 		onchange={(e) => filterStore.setFilter('processing', e.currentTarget.value)}
-		class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
+		class="rounded-md border border-line bg-surface-canvas px-3 py-1.5 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
 	>
 		<option value="">Process</option>
 		{#each $filterStore.uniqueValues.processing ?? [] as process}
@@ -43,13 +43,13 @@
 		value={$filterStore.filters.name ?? ''}
 		oninput={(e) => filterStore.setFilter('name', e.currentTarget.value)}
 		placeholder="Search coffees..."
-		class="min-w-[160px] flex-1 rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
+		class="min-w-[160px] flex-1 rounded-md border border-line bg-surface-canvas px-3 py-1.5 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
 	/>
 
 	{#if hasInlineFilters}
 		<button
 			onclick={filterStore.clearFilters}
-			class="rounded-md border border-border-light px-3 py-1.5 text-sm text-text-secondary-light transition-colors hover:border-background-tertiary-light hover:text-background-tertiary-light"
+			class="rounded-md border border-line px-3 py-1.5 text-sm text-muted transition-colors hover:border-accent hover:text-accent"
 		>
 			Clear
 		</button>

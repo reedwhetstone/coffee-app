@@ -32,23 +32,23 @@
 </script>
 
 {#if canUseProcessFacets}
-	<div class="rounded-lg border border-border-light bg-background-secondary-light px-4 py-3">
+	<div class="rounded-lg border border-line bg-surface-panel px-4 py-3">
 		<details open={hasAdvancedProcessFilters} class="group">
 			<summary
-				class="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-text-primary-light"
+				class="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-ink"
 			>
 				<span>Advanced process transparency</span>
-				<span class="text-xs font-normal text-text-secondary-light">
+				<span class="text-xs font-normal text-muted">
 					Filter by disclosed method, fermentation, additives, and confidence
 				</span>
 			</summary>
 			<div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-				<label class="flex flex-col gap-1 text-xs font-medium text-text-secondary-light">
+				<label class="flex flex-col gap-1 text-xs font-medium text-muted">
 					Base method
 					<select
 						value={$filterStore.filters.processing_base_method?.toString() ?? ''}
 						onchange={(e) => filterStore.setFilter('processing_base_method', e.currentTarget.value)}
-						class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
+						class="rounded-md border border-line bg-surface-canvas px-3 py-1.5 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
 					>
 						<option value="">Any method</option>
 						{#each ($filterStore.uniqueValues.processing_base_method ?? []).filter(isPublicProcessFacetOption) as method}
@@ -57,12 +57,12 @@
 					</select>
 				</label>
 
-				<label class="flex flex-col gap-1 text-xs font-medium text-text-secondary-light">
+				<label class="flex flex-col gap-1 text-xs font-medium text-muted">
 					Fermentation
 					<select
 						value={$filterStore.filters.fermentation_type?.toString() ?? ''}
 						onchange={(e) => filterStore.setFilter('fermentation_type', e.currentTarget.value)}
-						class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
+						class="rounded-md border border-line bg-surface-canvas px-3 py-1.5 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
 					>
 						<option value="">Any fermentation</option>
 						{#each ($filterStore.uniqueValues.fermentation_type ?? []).filter(isPublicProcessFacetOption) as fermentationType}
@@ -73,12 +73,12 @@
 					</select>
 				</label>
 
-				<label class="flex flex-col gap-1 text-xs font-medium text-text-secondary-light">
+				<label class="flex flex-col gap-1 text-xs font-medium text-muted">
 					Additive
 					<select
 						value={$filterStore.filters.process_additive?.toString() ?? ''}
 						onchange={(e) => filterStore.setFilter('process_additive', e.currentTarget.value)}
-						class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
+						class="rounded-md border border-line bg-surface-canvas px-3 py-1.5 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
 					>
 						<option value="">Any additive</option>
 						{#each ($filterStore.uniqueValues.process_additives ?? []).filter(isPublicProcessFacetOption) as additive}
@@ -87,13 +87,13 @@
 					</select>
 				</label>
 
-				<label class="flex flex-col gap-1 text-xs font-medium text-text-secondary-light">
+				<label class="flex flex-col gap-1 text-xs font-medium text-muted">
 					Disclosure
 					<select
 						value={$filterStore.filters.processing_disclosure_level?.toString() ?? ''}
 						onchange={(e) =>
 							filterStore.setFilter('processing_disclosure_level', e.currentTarget.value)}
-						class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
+						class="rounded-md border border-line bg-surface-canvas px-3 py-1.5 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
 					>
 						<option value="">Any disclosure</option>
 						{#each ($filterStore.uniqueValues.processing_disclosure_level ?? []).filter(isPublicProcessFacetOption) as disclosureLevel}
@@ -102,13 +102,13 @@
 					</select>
 				</label>
 
-				<label class="flex flex-col gap-1 text-xs font-medium text-text-secondary-light">
+				<label class="flex flex-col gap-1 text-xs font-medium text-muted">
 					Confidence
 					<select
 						value={$filterStore.filters.processing_confidence_min?.toString() ?? ''}
 						onchange={(e) =>
 							filterStore.setFilter('processing_confidence_min', e.currentTarget.value)}
-						class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
+						class="rounded-md border border-line bg-surface-canvas px-3 py-1.5 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
 					>
 						<option value="">Any confidence</option>
 						{#each PROCESSING_CONFIDENCE_OPTIONS as option}
@@ -119,12 +119,12 @@
 			</div>
 
 			{#if hasAdvancedProcessFilters}
-				<div class="mt-3 flex items-center justify-between gap-3 text-xs text-text-secondary-light">
+				<div class="mt-3 flex items-center justify-between gap-3 text-xs text-muted">
 					<span>Structured process filters are added to the shareable catalog URL.</span>
 					<button
 						type="button"
 						onclick={onClearProcessTransparencyFilters}
-						class="rounded-md border border-border-light px-3 py-1.5 text-xs font-medium text-text-secondary-light transition-colors hover:border-background-tertiary-light hover:text-background-tertiary-light"
+						class="rounded-md border border-line px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-accent hover:text-accent"
 					>
 						Clear process facets
 					</button>
@@ -133,18 +133,16 @@
 		</details>
 	</div>
 {:else}
-	<div class="rounded-lg border border-border-light bg-background-secondary-light px-4 py-3">
+	<div class="rounded-lg border border-line bg-surface-panel px-4 py-3">
 		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 			<div>
-				<h2 class="text-sm font-semibold text-text-primary-light">
-					Members unlock structured process filters
-				</h2>
-				<p class="mt-1 text-sm text-text-secondary-light">
+				<h2 class="text-sm font-semibold text-ink">Members unlock structured process filters</h2>
+				<p class="mt-1 text-sm text-muted">
 					Coffee cards still show disclosed process facts. Member search adds process facets,
 					confidence thresholds, and other sourcing leverage.
 				</p>
 				{#if catalogAccessNotice}
-					<p class="mt-1 text-xs text-text-secondary-light">
+					<p class="mt-1 text-xs text-muted">
 						{catalogAccessNotice.message}
 					</p>
 				{/if}
@@ -152,7 +150,7 @@
 			<button
 				type="button"
 				onclick={() => goto('/subscription')}
-				class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-colors hover:bg-background-tertiary-light hover:text-white"
+				class="rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent hover:text-ink"
 			>
 				Compare paid products
 			</button>

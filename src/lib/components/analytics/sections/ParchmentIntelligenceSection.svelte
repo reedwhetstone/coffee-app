@@ -129,8 +129,7 @@
 				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
 						<div class="mb-3 flex items-center gap-2">
-							<span
-								class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
+							<span class="text-sm font-semibold text-background-tertiary-light"
 								>Parchment Intelligence</span
 							>
 						</div>
@@ -170,8 +169,7 @@
 					</div>
 					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
 						<div class="mb-3 flex items-center gap-2">
-							<span
-								class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
+							<span class="text-sm font-semibold text-background-tertiary-light"
 								>Parchment Intelligence</span
 							>
 						</div>
@@ -365,20 +363,16 @@
 							<table class="min-w-full text-sm">
 								<thead>
 									<tr class="border-b border-border-light">
-										<th
-											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 pr-3 text-left text-xs font-semibold text-text-secondary-light"
 											>Bean</th
 										>
-										<th
-											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 pr-3 text-left text-xs font-semibold text-text-secondary-light"
 											>Origin</th
 										>
-										<th
-											class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 pr-3 text-right text-xs font-semibold text-text-secondary-light"
 											>$/lb</th
 										>
-										<th
-											class="pb-2 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 text-left text-xs font-semibold text-text-secondary-light"
 											>Supplier</th
 										>
 									</tr>
@@ -432,20 +426,16 @@
 							<table class="min-w-full text-sm">
 								<thead>
 									<tr class="border-b border-border-light">
-										<th
-											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 pr-3 text-left text-xs font-semibold text-text-secondary-light"
 											>Bean</th
 										>
-										<th
-											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 pr-3 text-left text-xs font-semibold text-text-secondary-light"
 											>Origin</th
 										>
-										<th
-											class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 pr-3 text-right text-xs font-semibold text-text-secondary-light"
 											>Last $/lb</th
 										>
-										<th
-											class="pb-2 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										<th class="pb-2 text-left text-xs font-semibold text-text-secondary-light"
 											>Supplier</th
 										>
 									</tr>
@@ -541,8 +531,7 @@
 					class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
 				>
 					<div class="mb-2 flex items-center gap-2">
-						<span
-							class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
+						<span class="text-sm font-semibold text-background-tertiary-light"
 							>Parchment Intelligence</span
 						>
 					</div>

@@ -29,9 +29,7 @@
 	>
 		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 			<div>
-				<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
-					Watchlist signals
-				</p>
+				<p class="text-xs font-semibold text-background-tertiary-light">Watchlist signals</p>
 				<h2 class="mt-1 text-lg font-semibold text-text-primary-light">
 					{scopedTrackedLots.length} tracked {viewModeLabel}
 					{scopedTrackedLots.length === 1 ? 'lot' : 'lots'}{trackedDelistedCount > 0
