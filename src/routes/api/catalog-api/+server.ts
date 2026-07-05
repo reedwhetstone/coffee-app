@@ -7,6 +7,7 @@ import {
 	forwardCatalogUpstreamHeaders,
 	proxyCatalogList
 } from '$lib/server/catalogProxy';
+import { applyBffCatalogNoStore } from '$lib/server/cacheHeaders';
 
 const LEGACY_CATALOG_API_HEADERS = {
 	Deprecation: 'true',
@@ -14,12 +15,15 @@ const LEGACY_CATALOG_API_HEADERS = {
 	Sunset: 'Thu, 31 Dec 2026 23:59:59 GMT'
 } as const;
 
+// This alias is API-key gated (metered), so every response is private/no-store —
+// metered API-key catalog reads must never sit behind a shared cache.
 function withLegacyCatalogHeaders(headers: HeadersInit = {}): Headers {
 	const merged = new Headers(headers);
 
 	for (const [name, value] of Object.entries(LEGACY_CATALOG_API_HEADERS)) {
 		merged.set(name, value);
 	}
+	applyBffCatalogNoStore(merged);
 
 	return merged;
 }
