@@ -2089,7 +2089,7 @@ const docsPages: DocsPage[] = [
 			'The Parchment CLI is a terminal interface for catalog queries, inventory management, roasting workflows, scripting, and agent automation.',
 		eyebrow: '@purveyors/cli',
 		intro: [
-			'The Parchment CLI (purvey) provides terminal access to the same coffee domain model as the web app. Catalog commands require an authenticated viewer session even though GET /v1/catalog supports anonymous and API-key access. Inventory, roast, sales, and tasting commands additionally require the member role.',
+			'The Parchment CLI (purvey) provides terminal access to the same coffee domain model as the web app. Catalog commands require an authenticated viewer session even though GET https://api.purveyors.io/v1/catalog supports anonymous and API-key access. Inventory, roast, sales, and tasting commands additionally require the member role.',
 			'Not every command requires auth. auth, config, context, and manifest are onboarding or local utility surfaces. purvey context is the dense human-readable reference, while purvey manifest is the preferred machine-readable contract.'
 		],
 		sections: [
@@ -2134,7 +2134,7 @@ const docsPages: DocsPage[] = [
 					tone: 'note',
 					title:
 						'Catalog commands are authenticated, even though the HTTP API supports anonymous reads',
-					body: 'The CLI intentionally requires a signed-in viewer session for catalog commands so terminal workflows stay account-linked and predictable. For anonymous discovery or API-key production integrations, use GET /v1/catalog instead of shelling out to the CLI.'
+					body: 'The CLI intentionally requires a signed-in viewer session for catalog commands so terminal workflows stay account-linked and predictable. For anonymous discovery or API-key production integrations, use GET https://api.purveyors.io/v1/catalog instead of shelling out to the CLI.'
 				}
 			},
 			{
@@ -2157,12 +2157,12 @@ const docsPages: DocsPage[] = [
 							'Viewer session required'
 						],
 						[
-							'Anonymous GET /v1/catalog',
+							'Anonymous GET https://api.purveyors.io/v1/catalog',
 							'The goal is public discovery, evaluation, or a zero-setup demo',
 							'None'
 						],
 						[
-							'API-key GET /v1/catalog',
+							'API-key GET https://api.purveyors.io/v1/catalog',
 							'The integration needs production usage visibility, quotas, or server-to-server auth',
 							'Bearer API key required'
 						],
@@ -2174,7 +2174,7 @@ const docsPages: DocsPage[] = [
 					]
 				},
 				bullets: [
-					'CLI login is intentional product behavior, not a contradiction of the HTTP API. The CLI is an account-linked tool surface; /v1/catalog is the public network surface.'
+					'CLI login is intentional product behavior, not a contradiction of the HTTP API. The CLI is an account-linked tool surface; https://api.purveyors.io/v1/catalog is the public network surface.'
 				]
 			}
 		],
@@ -2190,9 +2190,10 @@ const docsPages: DocsPage[] = [
 				description: 'Text-first onboarding, manifest output, and wrapper guidance for agents.'
 			},
 			{
-				href: '/docs/api/catalog',
-				label: 'Catalog API docs',
-				description: 'The HTTP endpoint that complements the CLI.'
+				href: 'https://api.purveyors.io/docs',
+				label: 'Parchment API reference',
+				description:
+					'The generated OpenAPI reference for the deployed Parchment API that complements the CLI.'
 			}
 		]
 	},
@@ -2295,7 +2296,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Catalog data',
 		intro: [
 			'Catalog commands are the fastest way to explore the green coffee feed from the terminal when the workflow is tied to a signed-in account. They require an authenticated viewer session; run purvey auth login before using them.',
-			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits. purvey catalog similar <id> mirrors the account-linked matching workflow exposed by the beta /v1/catalog/{id}/similar endpoint, but the CLI uses viewer-session auth instead of API keys. If the goal is anonymous discovery or API-key integration, use the HTTP API instead. See the CLI overview for install and login instructions.'
+			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits. purvey catalog similar <id> mirrors the account-linked matching workflow exposed by the beta https://api.purveyors.io/v1/catalog/{id}/similar endpoint, but the CLI uses viewer-session auth instead of API keys. If the goal is anonymous discovery or API-key integration, use the Parchment HTTP API instead. See the CLI overview for install and login instructions.'
 		],
 		sections: [
 			{
@@ -2320,7 +2321,7 @@ const docsPages: DocsPage[] = [
 					'purvey catalog similar <id> finds beta similar-coffee candidates for one catalog ID. Treat results as leads for comparison, not canonical identity claims.',
 					'--threshold sets the minimum similarity score. The HTTP beta endpoint accepts 0.5 through 0.99 and defaults to 0.7.',
 					'--stocked-only limits matches to currently stocked coffees. The HTTP endpoint defaults stocked_only to true.',
-					'When an integration needs API-key access, rate-limit headers, or explicit beta response metadata, call GET /v1/catalog/{id}/similar directly.'
+					'When an integration needs API-key access, rate-limit headers, or explicit beta response metadata, call GET https://api.purveyors.io/v1/catalog/{id}/similar directly.'
 				]
 			},
 			{
