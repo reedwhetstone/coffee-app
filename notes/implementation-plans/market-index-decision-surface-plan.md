@@ -51,7 +51,7 @@ Reconstruction trick used throughout: joining `coffee_price_snapshots` (which lo
 
 ### 3.1 Segments
 
-A **segment** is `(origin, process, market)` where `origin` is the normalized country (`price_index_snapshots.origin`), `process` is the normalized process or `null` (= all processes), and `market` is `retail | wholesale | all` (mapping to `wholesale_only` semantics already used by `/v1/price-index`).
+A **segment** is `(origin, process, market)` where `origin` is the normalized country (`coffee_catalog.country`, aliased as `origin` in existing price-index jobs), `process` is the normalized process or `null` (= all processes), and `market` is `retail | wholesale | all` (mapping to `wholesale_only` semantics already used by `/v1/price-index`).
 
 ### 3.2 Signal types
 
@@ -59,9 +59,9 @@ A **segment** is `(origin, process, market)` where `origin` is the normalized co
 price_drop     — lot's current cost_lb is >= drop_threshold_pct below its own trailing
                  median over `window` (7d|30d), computed from coffee_price_snapshots
 below_market   — stocked lot's cost_lb < p25 of its segment's benchmark distribution
-                 for the latest snapshot_date (benchmark = distribution of current
-                 stocked-lot prices in the segment; price_index_snapshots supplies
-                 median/min/max, p25 computed in the job)
+                 for the latest snapshot_date (benchmark = raw distribution of
+                 current stocked-lot prices in the segment, computed by joining
+                 coffee_price_snapshots to coffee_catalog)
 value_quality  — lot's (score_value / cost_lb) is >= value_z_threshold standard
                  deviations above its origin's mean among scored, stocked lots
 ```
@@ -131,7 +131,7 @@ CREATE TABLE market_signals (
   signal_window   text    NOT NULL DEFAULT 'n/a' CHECK (signal_window IN ('7d','30d','n/a')),
   catalog_id      integer NOT NULL REFERENCES coffee_catalog(id) ON DELETE CASCADE,
   -- denormalized for filtering without a join
-  origin          text,                    -- nullable: coffee_catalog.origin may be null
+  origin          text,                    -- nullable: denormalized from coffee_catalog.country
   process         text,
   market          text    NOT NULL CHECK (market IN ('retail','wholesale')),
   source          text,                    -- nullable: coffee_catalog.source is nullable (schema.sql:74)
@@ -148,7 +148,7 @@ CREATE INDEX idx_market_signals_origin ON market_signals (snapshot_date DESC, or
 
 `signal_window` carries the trailing window a `price_drop` row was computed against (`7d` or `30d`); a single lot may qualify in one window but not the other, or carry different trailing medians per window, so both are stored as distinct rows and `/v1/market/signals?type=price_drop&window=7d|30d` filters on this column. `below_market` and `value_quality` are window-agnostic and use `n/a`. Keeping the column `NOT NULL` (with an `n/a` sentinel rather than NULL) keeps it usable inside the unique key without NULL-distinctness surprises.
 
-`origin` and `source` are nullable because their `coffee_catalog` sources are nullable; the signals job denormalizes whatever is present (including NULL) rather than forcing a `NOT NULL` insert that would abort the daily pass on a lot with a missing origin/source. Filter on `origin IS NOT NULL` / `source IS NOT NULL` at query time where a non-null value is required.
+`origin` is denormalized from `coffee_catalog.country` (the current catalog schema's origin column; existing price-index SQL aliases `cc.country AS origin`). `origin` and `source` are nullable because their `coffee_catalog` sources are nullable; the signals job denormalizes whatever is present (including NULL) rather than forcing a `NOT NULL` insert that would abort the daily pass on a lot with a missing origin/source. Filter on `origin IS NOT NULL` / `source IS NOT NULL` at query time where a non-null value is required.
 
 `rank_score` recommendation: `abs(primary_discount_pct) * (1 + coalesce(score_value - 84, 0) / 10)` — magnitude weighted by quality above a specialty floor. Document whatever is shipped.
 
@@ -184,7 +184,7 @@ Bucket rules: `process` buckets are normalized `processing_base_method` values p
 
 Extend the existing daily aggregation entrypoint (same scheduling as `compute_price_index()`):
 
-1. **Signals pass** — for the latest `snapshot_date`: compute per-lot trailing medians (7d/30d) from `coffee_price_snapshots`; compute per-segment current-price distributions (p25/median) across stocked lots; compute origin-level scored-lot value-ratio baselines (`score_value / cost_lb` mean + stddev) for `value_quality`; emit `market_signals` rows per §3.2 rules with §3.3 evidence. Emit `price_drop` rows once per qualifying `signal_window` (`7d` and/or `30d` independently — a lot that qualifies in both produces two rows carrying that window's median/discount in `own_trailing_median` and `drop_vs_own_median_pct`); `below_market` and `value_quality` emit a single `signal_window='n/a'` row. Denormalize `origin`/`source` as-is (may be NULL); do not drop or fail a signal for a missing origin/source. Idempotent per (date): delete-and-rewrite the day's rows or upsert on the unique key (`snapshot_date, signal_type, signal_window, catalog_id, market`).
+1. **Signals pass** — for the latest `snapshot_date`: compute per-lot trailing medians (7d/30d) from `coffee_price_snapshots`; compute per-segment current-price distributions (p25/median) by joining stocked snapshot rows to `coffee_catalog` and grouping by `country`/process/market; compute origin-level scored-lot value-ratio baselines (`score_value / cost_lb` mean + stddev) for `value_quality`; emit `market_signals` rows per §3.2 rules with §3.3 evidence. Emit `price_drop` rows once per qualifying `signal_window` (`7d` and/or `30d` independently — a lot that qualifies in both produces two rows carrying that window's median/discount in `own_trailing_median` and `drop_vs_own_median_pct`); `below_market` and `value_quality` emit a single `signal_window='n/a'` row. Denormalize `origin` from `coffee_catalog.country` and `source` from `coffee_catalog.source` as-is (either may be NULL); do not drop or fail a signal for a missing origin/source. Idempotent per (date): delete-and-rewrite the day's rows or upsert on the unique key (`snapshot_date, signal_type, signal_window, catalog_id, market`).
 2. **Metadata pass** — for the period containing `snapshot_date`: recompute the current week and month rows by joining stocked `coffee_price_snapshots` rows for each date in the period to `coffee_catalog` metadata, then averaging daily composition across the period (document the chosen aggregation: mean of daily shares is acceptable; state it in the endpoint docs).
 3. **Backfill script** — one-off: iterate all snapshot dates since 2026-03-21 to populate `metadata_index_snapshots` history. Signals are _not_ backfilled (they are a live feed; historical signals have no product use in v1).
 
@@ -204,7 +204,7 @@ Caveat to document: the metadata join uses **current** catalog metadata against 
 - **Params:** `origin`, `process`, `market` (default `retail`), `window` (`7d|30d`, default `7d`), `baseline_weeks` (default 26, max 52).
 - **Grain:** market-wide or segment-level only (§1 rule 2). No per-coffee mode. Market-wide rows use `segment: { origin: null, process: null, market }`.
 - **Response per segment:** `segment`, `latest_move_pct`, `baseline_mean_move_pct`, `baseline_stddev`, `z_score`, `move_percentile`, `weeks_since_larger_move`, `classification` (§3.4), `matched_lot_move_pct`, `matched_lot_count`, `move_driver` (§3.4), `sample_size`, `supplier_count`, plus envelope with `thresholds`.
-- **Computation:** segment moves are computed on `price_median` of `price_index_snapshots` between `snapshot_date` and `snapshot_date - window`; baseline = distribution of same-window moves over trailing `baseline_weeks`. Market-wide moves are not read from `price_index_snapshots` because that table has no market-wide row: compute them from raw `coffee_price_snapshots` rows by taking the median `cost_lb` across stocked lots for each endpoint date and each baseline date/window pair, with `sample_size` = stocked lots and `supplier_count` = distinct suppliers after joining `coffee_catalog`. Matched-lot move = median of per-lot `cost_lb` change among `coffee_price_snapshots` rows stocked at both endpoints of the window. Cache aggressively (daily data → daily cache key).
+- **Computation:** do not read `/v1/price-index/stats` directly from existing `price_index_snapshots` rows. That table is already grouped by `origin`, `process`, `grade`, and `wholesale_only`, while this endpoint intentionally has no `grade` param and treats omitted `process` as all-process rollup, not `process IS NULL`. Instead, compute the stats series from raw `coffee_price_snapshots` joined to `coffee_catalog`: for each endpoint date and each baseline date/window pair, filter to stocked rows, apply optional `origin` (`coffee_catalog.country`) and optional `process` filters, include all grades, apply the selected `market`, then take the median `cost_lb`. Market-wide moves use the same raw aggregation with no origin/process filter. `sample_size` = included stocked lots and `supplier_count` = distinct non-null suppliers. Matched-lot move = median of per-lot `cost_lb` change among `coffee_price_snapshots` rows stocked at both endpoints of the window after the same filters. If performance needs a precompute later, materialize all-grade/all-process rollup rows with the same semantics rather than averaging existing segment medians. Cache aggressively (daily data → daily cache key).
 - **Tests:** classification thresholds respected and returned; market-wide public summary computes from raw snapshots rather than averaging segment medians; `insufficient_overlap` at `matched_lot_count < 8`; public callers can hit market-wide but not segment queries; short-history segments (< baseline) return `classification: null` with an explanatory `note` field rather than fabricated stats.
 
 ### 4.6 Endpoint 3: `GET /v1/market/metadata-index`
