@@ -1,7 +1,8 @@
 const [, , baseUrlArg] = process.argv;
 
 if (!baseUrlArg) {
-	console.error('Usage: pnpm tsx scripts/verify-catalog-http-contract.ts <deploy-host>');
+	console.error('Usage: pnpm tsx scripts/verify-catalog-http-contract.ts <api-host>');
+	console.error('Example: pnpm verify:catalog-http-contract https://api.purveyors.io');
 	process.exit(1);
 }
 
@@ -37,7 +38,7 @@ async function main() {
 	);
 	const invalidKeyBody = await invalidKeyResponse.json();
 	assert(
-		invalidKeyBody?.error === 'Authentication required',
+		invalidKeyBody?.error?.message === 'Authentication required',
 		`Expected invalid key body error to be Authentication required, got ${JSON.stringify(invalidKeyBody)}`
 	);
 
@@ -61,54 +62,6 @@ async function main() {
 	assert(
 		canonicalResponse.headers.has('X-RateLimit-Reset'),
 		'Expected /v1/catalog to include X-RateLimit-Reset'
-	);
-
-	const legacyInvalidKeyResponse = await fetchCheck('/api/catalog-api', {
-		headers: {
-			Authorization: 'Bearer definitely_invalid'
-		}
-	});
-	assert(
-		legacyInvalidKeyResponse.status === 401,
-		`Expected /api/catalog-api invalid key status 401, got ${legacyInvalidKeyResponse.status}`
-	);
-	assert(
-		legacyInvalidKeyResponse.headers.get('Deprecation') === 'true',
-		`Expected legacy invalid-key response to include Deprecation=true, got ${legacyInvalidKeyResponse.headers.get('Deprecation')}`
-	);
-
-	const legacyResponse = await fetchCheck('/api/catalog-api', {
-		headers: {
-			Authorization: `Bearer ${apiKey}`
-		}
-	});
-	assert(
-		legacyResponse.status === 200,
-		`Expected /api/catalog-api status 200, got ${legacyResponse.status}`
-	);
-	assert(
-		legacyResponse.headers.get('Deprecation') === 'true',
-		`Expected Deprecation=true, got ${legacyResponse.headers.get('Deprecation')}`
-	);
-	assert(
-		legacyResponse.headers.get('Link') === '</v1/catalog>; rel="successor-version"',
-		`Expected legacy Link header to point at /v1/catalog, got ${legacyResponse.headers.get('Link')}`
-	);
-	assert(
-		legacyResponse.headers.has('X-RateLimit-Limit'),
-		'Expected /api/catalog-api to include X-RateLimit-Limit'
-	);
-	assert(
-		legacyResponse.headers.has('X-RateLimit-Remaining'),
-		'Expected /api/catalog-api to include X-RateLimit-Remaining'
-	);
-	assert(
-		legacyResponse.headers.has('X-RateLimit-Reset'),
-		'Expected /api/catalog-api to include X-RateLimit-Reset'
-	);
-	assert(
-		legacyResponse.headers.get('Sunset') === 'Thu, 31 Dec 2026 23:59:59 GMT',
-		`Expected Sunset header to be Thu, 31 Dec 2026 23:59:59 GMT, got ${legacyResponse.headers.get('Sunset')}`
 	);
 
 	console.log(`Catalog HTTP contract verified for ${baseUrl.origin}`);

@@ -2,7 +2,7 @@
 
 Purveyors is the SvelteKit application powering [purveyors.io](https://purveyors.io): green coffee discovery, market analytics, inventory tracking, roast logging, sales tracking, and AI-assisted workflows.
 
-**Live docs:** [purveyors.io/docs](https://purveyors.io/docs) | **API reference:** [purveyors.io/docs/api/overview](https://purveyors.io/docs/api/overview) | **CLI reference:** [purveyors.io/docs/cli/overview](https://purveyors.io/docs/cli/overview)
+**Live docs:** [purveyors.io/docs](https://purveyors.io/docs) | **API reference:** [api.purveyors.io/docs](https://api.purveyors.io/docs) | **CLI reference:** [purveyors.io/docs/cli/overview](https://purveyors.io/docs/cli/overview)
 
 ## What is this repo?
 
@@ -43,30 +43,29 @@ It also depends on `@purveyors/cli`, which is a first-class interface to the sam
 
 ## API layers
 
-Purveyors ships two API layers:
+Purveyors ships the web app and the external Parchment API as separate HTTP surfaces:
 
-1. **Public external API** (`/v1/*`)
+1. **Public external API** (`https://api.purveyors.io/v1/*`)
 
-   - `GET /v1` advertises the public namespace, resource map, and legacy migration hints
-   - `GET /v1/catalog` is the stable public contract for external integrations
-   - `GET /v1/catalog/{id}/similar` is a beta catalog matching endpoint for member sessions or API keys with API Origin or Enterprise plus `catalog:read`
-   - `GET /v1/price-index` exposes aggregate `price_index_snapshots` for API keys with Parchment Intelligence access
-   - Auth varies by route: `/v1/catalog` supports Bearer API key, web session, or anonymous; similarity and price-index require entitlement-backed auth
+   - `GET https://api.purveyors.io/v1` advertises the public namespace and resource map
+   - `GET https://api.purveyors.io/v1/catalog` is the stable public contract for external integrations
+   - `GET https://api.purveyors.io/v1/catalog/{id}/similar` is a beta catalog matching endpoint for member sessions or API keys with API Origin or Enterprise plus `catalog:read`
+   - `GET https://api.purveyors.io/v1/price-index` exposes aggregate `price_index_snapshots` for API keys with Parchment Intelligence access
+   - Auth varies by route: catalog supports Bearer API key or anonymous access; similarity and price-index require entitlement-backed auth
    - Full catalog responses include structured process transparency fields and `process.evidence_available`, but not raw evidence quotes
-   - API-key routes emit rate-limit headers; anonymous and session catalog reads do not
-   - [See API docs](https://purveyors.io/docs/api/overview)
+   - API-key routes emit rate-limit headers; anonymous catalog reads do not
+   - [See API docs](https://api.purveyors.io/docs)
 
 2. **Platform app API** (`/api/*`)
    - Powers the first-party web app, Console, billing, chat, and admin workflows
-   - Mixed auth model depending on route: some catalog adapters allow anonymous or API-key access, most product routes require session auth, and chat/workspace routes require either Mallard Studio membership or Parchment Intelligence access
-   - `/api/catalog-api` is a deprecated API-key-only alias to `/v1/catalog` with `Deprecation`, `Link`, and `Sunset: Dec 31 2026` headers
+   - Mixed auth model depending on route: catalog BFF adapters can allow anonymous or session access, most product routes require session auth, and chat/workspace routes require either Mallard Studio membership or Parchment Intelligence access
    - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
-   - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `/docs/api/overview`
+   - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
    - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are metadata or compatibility endpoints, not catalog or analytics APIs
    - `/auth/callback` and `/auth/cli-callback` are OAuth handoff surfaces, not REST resources
    - `/api/tools/*` routes are deprecated compatibility shims; prefer shared CLI-library integration for new work
 
-Do not document the whole `/api/*` tree as a stable public contract. The stable public catalog feed is `/v1/catalog`; `/v1/catalog/{id}/similar` is beta and access-gated; `/v1/price-index` is aggregate-only and entitlement-gated. The broader `/api/*` tree should be described as platform/internal routes with explicit auth and stability labels.
+Do not document the whole coffee-app `/api/*` tree as a stable public contract. The stable public catalog feed is `https://api.purveyors.io/v1/catalog`; `https://api.purveyors.io/v1/catalog/{id}/similar` is beta and access-gated; `https://api.purveyors.io/v1/price-index` is aggregate-only and entitlement-gated. The broader coffee-app `/api/*` tree should be described as platform/internal routes with explicit auth and stability labels.
 
 ## CLI relationship
 
