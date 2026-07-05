@@ -21,22 +21,22 @@ export interface NavSection {
 
 export const publicNavItems: NavItem[] = [
 	{
-		label: 'For Buyers',
+		label: 'Catalog',
 		href: '/catalog',
-		description: 'Browse live coffee inventory and compare sourcing options',
+		description: 'Browse live green coffee inventory and compare sourcing options',
 		matches: ['/catalog']
+	},
+	{
+		label: 'Market Index',
+		href: '/analytics',
+		description: 'Explore current market intelligence',
+		matches: ['/analytics']
 	},
 	{
 		label: 'Pricing',
 		href: '/subscription',
 		description: 'See current plans and contact paths',
 		matches: ['/subscription']
-	},
-	{
-		label: 'Parchment Market Index',
-		href: '/analytics',
-		description: 'Explore current market intelligence',
-		matches: ['/analytics']
 	},
 	{
 		label: 'API',

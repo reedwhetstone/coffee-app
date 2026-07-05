@@ -33,8 +33,8 @@
 				<div class="mb-8 text-center">
 					{#if isSignedIn}
 						<p class="text-text-secondary-light">
-							See what is on offer today. Head to analytics for market context, or to your dashboard
-							for production workflows.
+							See what is on offer today. Head to the Market Index for market context, or to your
+							dashboard for production workflows.
 						</p>
 					{:else}
 						<p class="text-text-secondary-light">
@@ -55,7 +55,7 @@
 					>
 						{#if isSignedIn}
 							<h3 class="mb-2 text-xl font-semibold text-text-primary-light">
-								See the full catalog or check market analytics.
+								See the full catalog or check the Market Index.
 							</h3>
 							<p class="mb-4 text-text-secondary-light">
 								Browse all current lots or pull up price movement and origin benchmarks for your
@@ -66,13 +66,13 @@
 									onclick={() => goto('/catalog')}
 									class="rounded-md bg-background-tertiary-light px-8 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 								>
-									Browse full catalog
+									Browse the full catalog
 								</button>
 								<button
 									onclick={() => goto('/analytics')}
 									class="rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 								>
-									Market analytics
+									Open the Market Index
 								</button>
 							</div>
 							{#if canAccessMemberRoutes}
@@ -96,21 +96,21 @@
 								Ready to source with the full market in view?
 							</h3>
 							<p class="mb-4 text-text-secondary-light">
-								Market analytics, supplier coverage, and origin benchmarks from 40+ importers. Free
-								to explore.
+								Daily market intelligence, supplier coverage, and origin benchmarks from 40+
+								importers. Free to explore.
 							</p>
 							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
 								<button
 									onclick={() => goto('/analytics')}
 									class="rounded-md bg-background-tertiary-light px-8 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 								>
-									Explore market analytics
+									Explore the Market Index
 								</button>
 								<button
 									onclick={() => goto('/catalog')}
 									class="rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 								>
-									Browse full catalog
+									Browse the full catalog
 								</button>
 							</div>
 							<p class="mt-4 text-sm text-text-secondary-light">

@@ -3,7 +3,7 @@
 		<!-- Header -->
 		<div class="text-center">
 			<h1 class="text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
-				Contact Purveyors
+				About Purveyors
 			</h1>
 			<p class="mt-4 text-lg text-text-secondary-light">
 				Coffee intelligence, built by people who use it. Daily-normalized data from 40+ US specialty

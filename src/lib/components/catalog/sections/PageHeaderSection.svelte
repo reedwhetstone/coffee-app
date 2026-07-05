@@ -36,15 +36,15 @@
 	<div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
 		<div class="max-w-3xl">
 			<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
-				Supply evidence layer
+				Live supply, updated daily
 			</p>
 			<h1 class="mt-1 text-2xl font-bold text-text-primary-light sm:text-3xl">
 				Green Coffee Catalog
 			</h1>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light sm:text-base">
-				Inspect the row-level supply substrate behind Parchment Market Index reads: stocked coffees,
-				supplier coverage, origin and process signals, and pricing evidence that turn market
-				movement into named lots to investigate.
+				Every stocked green coffee from 40+ US importers in one place — origin, process, score, and
+				live pricing, normalized daily. When the Market Index shows movement, this is where you find
+				the named lots behind it.
 			</p>
 			<div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
 				<div
@@ -105,18 +105,18 @@
 			class="w-full rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-4 lg:max-w-sm"
 		>
 			<p class="text-sm font-semibold text-text-primary-light">
-				Trace catalog evidence into market intelligence
+				See the market behind these coffees
 			</p>
 			<p class="mt-1 text-sm text-text-secondary-light">
-				Use the index for aggregate price and coverage reads, then return here for the named coffees
-				and suppliers behind the signal.
+				The Market Index tracks price movement, arrivals, and supplier coverage across this whole
+				catalog — then come back here for the named lots.
 			</p>
 			<div class="mt-3 flex flex-col gap-2 sm:flex-row lg:flex-col">
 				<a
 					href="/analytics"
 					class="rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 				>
-					Open Parchment Market Index
+					Open the Market Index
 				</a>
 				<a
 					href={supplierComparisonHref}

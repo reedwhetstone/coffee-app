@@ -32,9 +32,7 @@
 	}
 </script>
 
-<section
-	class="relative overflow-hidden bg-gradient-to-br from-background-primary-light to-background-secondary-light"
->
+<section class="relative overflow-hidden bg-gradient-to-br from-surface-canvas to-surface-panel">
 	<div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
 		<div class="flex flex-col items-center justify-center">
 			{#if isSignedIn}
@@ -62,13 +60,13 @@
 					onclick={handlePrimaryAction}
 					class="w-full rounded-md bg-background-tertiary-light px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light sm:w-auto"
 				>
-					Explore market analytics
+					Explore the Market Index
 				</button>
 				<button
 					onclick={handleSecondaryAction}
 					class="w-full rounded-md border border-background-tertiary-light px-6 py-3 text-sm font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white sm:w-auto"
 				>
-					Browse catalog
+					Browse the catalog
 				</button>
 				<button
 					onclick={handleLearnMore}

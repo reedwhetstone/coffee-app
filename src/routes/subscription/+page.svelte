@@ -62,7 +62,7 @@
 				'Supplier comparisons and supplier health scoring',
 				'Arrivals feed and delisting alerts by origin and supplier',
 				'Origin benchmarks and price history depth',
-				'Extended trend detail across the full analytics surface'
+				'Extended price-trend depth across every Market Index view'
 			],
 			managementCopy: 'Manage Parchment Intelligence billing and access here.',
 			anonymousStateCopy: 'Sign in to see what is on this account.',
@@ -555,7 +555,7 @@
 							onclick={() => goto('/analytics')}
 							class="rounded-xl bg-background-tertiary-light px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
 						>
-							See market analytics
+							See the Market Index
 						</button>
 						<a
 							href="/catalog"
@@ -581,7 +581,7 @@
 						{isSignedIn ? 'Account overview' : 'Product line'}
 					</p>
 					<h2 class="mt-3 text-2xl font-semibold text-text-primary-light">
-						{isSignedIn ? 'Current access on this account' : 'One platform, three access tiers'}
+						{isSignedIn ? 'Current access on this account' : 'One platform, four products'}
 					</h2>
 					<p class="mt-2 text-sm leading-7 text-text-secondary-light">
 						{isSignedIn

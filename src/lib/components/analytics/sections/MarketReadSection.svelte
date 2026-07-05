@@ -84,7 +84,7 @@
 						Scope controls
 					</p>
 					<p class="mt-1 text-sm text-text-secondary-light">
-						A master lens: every module on this page follows the selected scope.
+						Every chart on this page follows the scope you set here.
 					</p>
 				</div>
 				<span

@@ -23,6 +23,9 @@
 	let isSignedIn = $derived(Boolean(session?.user));
 	let canAccessMemberRoutes = $derived(checkRole(role, 'member'));
 	let isDashboardPage = $derived(currentPath === '/dashboard');
+	let isMarketIndexPage = $derived(currentPath.startsWith('/analytics'));
+	let primaryCtaLabel = $derived(isMarketIndexPage ? 'See plans' : 'Explore Market Index');
+	let primaryCtaHref = $derived(isMarketIndexPage ? '/subscription' : '/analytics');
 	let mobileMenuOpen = $state(false);
 
 	let headerNavItems = $derived.by(() => {
@@ -118,10 +121,10 @@
 						Sign in
 					</button>
 					<button
-						onclick={() => navigateTo('/subscription')}
+						onclick={() => navigateTo(primaryCtaHref)}
 						class="inline-flex items-center rounded-md bg-background-tertiary-light px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 					>
-						See plans
+						{primaryCtaLabel}
 					</button>
 				{/if}
 
@@ -196,10 +199,10 @@
 							Sign in
 						</button>
 						<button
-							onclick={() => navigateTo('/subscription')}
+							onclick={() => navigateTo(primaryCtaHref)}
 							class="mt-2 block w-full rounded-xl bg-background-tertiary-light px-3 py-3 text-left text-sm font-medium text-white"
 						>
-							See plans
+							{primaryCtaLabel}
 						</button>
 					{/if}
 				</div>

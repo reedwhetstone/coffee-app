@@ -5,13 +5,10 @@
 <div class="rounded-lg border border-background-tertiary-light/20 bg-accent-subtle/10 p-6">
 	<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
 		<div class="text-center sm:text-left">
-			<h3 class="text-lg font-semibold text-text-primary-light">
-				Need workflow leverage from this supply layer?
-			</h3>
+			<h3 class="text-lg font-semibold text-text-primary-light">Ready to source smarter?</h3>
 			<p class="text-sm text-text-secondary-light">
-				Parchment Intelligence adds supplier comparison and market movement reads. Mallard Studio
-				adds owned-stock and roasting context. Watchlists and saved shortlists are still future
-				workflows, so this catalog only routes to evidence that exists today.
+				Parchment Intelligence compares suppliers and tracks market movement for you. Mallard Studio
+				connects the catalog to your own inventory, roasts, and margins.
 			</p>
 		</div>
 		<div class="flex flex-col gap-3 sm:flex-row">

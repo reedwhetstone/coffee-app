@@ -38,12 +38,13 @@
 		<div class="mx-auto max-w-4xl text-center">
 			<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">Products</h2>
 			<p class="mt-2 text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
-				Pick the intelligence layer that matches your work.
+				Pick the product that matches your work.
 			</p>
 		</div>
 		<p class="mx-auto mt-6 max-w-2xl text-center text-lg leading-8 text-text-secondary-light">
 			Market intelligence for buyers. Workflow tools for roasters. Structured data for developers.
-			Three distinct products built on the same daily-normalized green coffee data.
+			Enterprise integrations for platforms. All built on the same daily-normalized green coffee
+			data.
 		</p>
 
 		<div
@@ -90,7 +91,7 @@
 					}}
 					class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 				>
-					{isSignedIn ? 'Add Intelligence' : 'See analytics'}
+					{isSignedIn ? 'Add Intelligence' : 'See the Market Index'}
 				</button>
 			</div>
 

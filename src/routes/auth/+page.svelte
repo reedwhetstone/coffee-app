@@ -45,7 +45,7 @@
 </svelte:head>
 
 <div
-	class="flex min-h-screen items-center justify-center bg-gradient-to-br from-background-primary-light to-background-secondary-light px-4 sm:px-6 lg:px-8"
+	class="flex min-h-screen items-center justify-center bg-gradient-to-br from-surface-canvas to-surface-panel px-4 sm:px-6 lg:px-8"
 >
 	<div class="w-full max-w-md space-y-8">
 		<div class="text-center">

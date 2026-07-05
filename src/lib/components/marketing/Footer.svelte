@@ -4,8 +4,8 @@
 			<!-- Company Info -->
 			<div class="space-y-6">
 				<div>
-					<h3 class="text-lg font-semibold text-text-primary-light">Purveyors</h3>
-					<p class="mt-2 text-sm text-text-secondary-light">
+					<h3 class="text-lg font-semibold text-on-dark">Purveyors</h3>
+					<p class="mt-2 text-sm text-on-dark/70">
 						Coffee intelligence platform. Daily-normalized data from 40+ US specialty importers,
 						turned into procurement-ready analytics for green coffee buyers and roasting teams.
 					</p>
@@ -15,7 +15,7 @@
 						href="https://github.com/reedwhetstone/coffee-app"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="text-text-secondary-light hover:text-text-primary-light"
+						class="text-on-dark/70 hover:text-on-dark"
 						aria-label="GitHub Repository"
 					>
 						<svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
@@ -34,85 +34,51 @@
 				<div class="md:grid md:grid-cols-2 md:gap-8">
 					<!-- Product -->
 					<div>
-						<h3 class="text-sm font-semibold text-text-primary-light">Product</h3>
+						<h3 class="text-sm font-semibold text-on-dark">Product</h3>
 						<ul role="list" class="mt-4 space-y-2">
 							<li>
-								<a
-									href="/analytics"
-									class="text-sm text-text-secondary-light hover:text-text-primary-light"
-								>
-									Market Analytics
+								<a href="/analytics" class="text-sm text-on-dark/70 hover:text-on-dark">
+									Market Index
 								</a>
 							</li>
 							<li>
-								<a
-									href="/catalog"
-									class="text-sm text-text-secondary-light hover:text-text-primary-light"
-								>
+								<a href="/catalog" class="text-sm text-on-dark/70 hover:text-on-dark">
 									Green Coffee Catalog
 								</a>
 							</li>
 							<li>
-								<a
-									href="/api"
-									class="text-sm text-text-secondary-light hover:text-text-primary-light"
-								>
+								<a href="/api" class="text-sm text-on-dark/70 hover:text-on-dark">
 									Parchment API
 								</a>
 							</li>
 							<li>
-								<a
-									href="#pricing"
-									class="text-sm text-text-secondary-light hover:text-text-primary-light"
-								>
-									Pricing
-								</a>
+								<a href="#pricing" class="text-sm text-on-dark/70 hover:text-on-dark"> Pricing </a>
 							</li>
 						</ul>
 					</div>
 					<!-- Company / Developers / Legal -->
 					<div class="mt-10 md:mt-0">
-						<h3 class="text-sm font-semibold text-text-primary-light">Company</h3>
+						<h3 class="text-sm font-semibold text-on-dark">Company</h3>
 						<ul role="list" class="mt-4 space-y-2">
 							<li>
-								<a
-									href="/contact"
-									class="text-sm text-text-secondary-light hover:text-text-primary-light"
-								>
-									Contact
-								</a>
+								<a href="/contact" class="text-sm text-on-dark/70 hover:text-on-dark"> About </a>
 							</li>
 							<li>
 								<a
 									href="mailto:hello@purveyors.io"
-									class="text-sm text-text-secondary-light hover:text-text-primary-light"
+									class="text-sm text-on-dark/70 hover:text-on-dark"
 								>
 									hello@purveyors.io
 								</a>
 							</li>
 							<li>
-								<a
-									href="/docs"
-									class="text-sm text-text-secondary-light hover:text-text-primary-light"
-								>
-									Docs
-								</a>
+								<a href="/docs" class="text-sm text-on-dark/70 hover:text-on-dark"> Docs </a>
 							</li>
 							<li>
-								<a
-									href="/blog"
-									class="text-sm text-text-secondary-light hover:text-text-primary-light"
-								>
-									Blog
-								</a>
+								<a href="/blog" class="text-sm text-on-dark/70 hover:text-on-dark"> Blog </a>
 							</li>
 							<li>
-								<a
-									href="/auth"
-									class="text-sm text-text-secondary-light hover:text-text-primary-light"
-								>
-									Sign in
-								</a>
+								<a href="/auth" class="text-sm text-on-dark/70 hover:text-on-dark"> Sign in </a>
 							</li>
 						</ul>
 					</div>
@@ -121,24 +87,17 @@
 		</div>
 
 		<!-- Bottom section -->
-		<div class="mt-12 border-t border-border-light pt-8">
+		<div class="mt-12 border-t border-on-dark/15 pt-8">
 			<div class="flex flex-col items-center justify-between sm:flex-row">
-				<p class="text-xs text-text-secondary-light">© 2025 Purveyors.</p>
+				<p class="text-xs text-on-dark/70">© 2026 Purveyors.</p>
 				<div class="mt-4 flex space-x-6 sm:mt-0">
-					<a
-						href="/privacy"
-						class="text-xs text-text-secondary-light hover:text-text-primary-light"
-					>
-						Privacy Policy
-					</a>
-					<a href="/terms" class="text-xs text-text-secondary-light hover:text-text-primary-light">
-						Terms of Service
-					</a>
+					<a href="/privacy" class="text-xs text-on-dark/70 hover:text-on-dark"> Privacy Policy </a>
+					<a href="/terms" class="text-xs text-on-dark/70 hover:text-on-dark"> Terms of Service </a>
 					<a
 						href="https://github.com/reedwhetstone/coffee-app"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="text-xs text-text-secondary-light hover:text-text-primary-light"
+						class="text-xs text-on-dark/70 hover:text-on-dark"
 					>
 						Open Source
 					</a>

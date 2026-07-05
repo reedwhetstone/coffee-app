@@ -101,7 +101,7 @@
 			href="/analytics"
 			class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
-			<div class="text-sm font-semibold text-text-primary-light">Analytics</div>
+			<div class="text-sm font-semibold text-text-primary-light">Market Index</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
 				Market intelligence: pricing trends, supplier coverage, and origin analysis.
 			</p>

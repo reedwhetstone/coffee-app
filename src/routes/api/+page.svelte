@@ -262,7 +262,7 @@
 			href="/analytics"
 			class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
-			<h2 class="text-xl font-semibold text-text-primary-light">Market intelligence</h2>
+			<h2 class="text-xl font-semibold text-text-primary-light">Market Index</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
 				Public price and market overview charts, with supplier movement, arrivals, and delistings in
 				gated Parchment Intelligence modules.

@@ -25,10 +25,8 @@
 				Ask the chat agent with this market context.
 			</h2>
 			<p class="mt-1 text-sm text-text-secondary-light">
-				This is the only live handoff here that preserves the current market read, scope, movement
-				window, and visible evidence. Catalog, supplier comparison, API access, and watch actions
-				stay out of this rail until they create real investigation leverage instead of another click
-				target.
+				The chat agent opens with your current market read, scope, and movement window already in
+				context — so you can go straight from "prices moved" to "here's what I should do about it."
 			</p>
 		</div>
 		<AnalyticsActionCta

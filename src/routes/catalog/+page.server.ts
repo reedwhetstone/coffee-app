@@ -520,7 +520,7 @@ export const load: PageServerLoad = async (event) => {
 			path: '/catalog',
 			title: 'Green Coffee Catalog — 1,200+ Specialty Coffees | Purveyors',
 			description:
-				'Browse 1,200+ specialty and commercial green coffees from 39+ US importers and roasters. Filter by origin, processing method, altitude, and price. Updated daily with real-time inventory.',
+				'Browse 1,200+ specialty and commercial green coffees from 40+ US importers and roasters. Filter by origin, processing method, altitude, and price. Updated daily with real-time inventory.',
 			keywords: [
 				'green coffee',
 				'specialty coffee catalog',
@@ -535,10 +535,10 @@ export const load: PageServerLoad = async (event) => {
 			],
 			ogTitle: 'Green Coffee Catalog — 1,200+ Specialty Coffees | Purveyors',
 			ogDescription:
-				'Browse 1,200+ specialty green coffees from 39+ US suppliers. Filter by Ethiopian, Colombian, and Guatemalan origins; washed, natural, and honey processing; plus real-time pricing and daily inventory updates.',
+				'Browse 1,200+ specialty green coffees from 40+ US suppliers. Filter by Ethiopian, Colombian, and Guatemalan origins; washed, natural, and honey processing; plus real-time pricing and daily inventory updates.',
 			twitterTitle: 'Green Coffee Catalog | Purveyors',
 			twitterDescription:
-				'1,200+ specialty green coffees from 39+ US importers. Origin, processing, altitude, and daily pricing.',
+				'1,200+ specialty green coffees from 40+ US importers. Origin, processing, altitude, and daily pricing.',
 			image: resolvePublicPageSocialImage({
 				baseUrl,
 				preferredPath: '/og/catalog.jpg',
