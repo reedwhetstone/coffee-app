@@ -154,7 +154,7 @@
 					{#if !session && (activePagination.total > 15 || displayData.length >= 15)}
 						<div class="col-span-full mt-2">
 							<div
-								class="rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 px-8 py-10 text-center shadow-sm ring-1 ring-amber-200"
+								class="rounded-lg bg-surface-panel px-8 py-10 text-center shadow-sm ring-1 ring-accent/30"
 							>
 								<p class="mb-1 text-sm font-medium text-amber-700">
 									You're viewing 15 of {activePagination.total || displayData.length} specialty coffees

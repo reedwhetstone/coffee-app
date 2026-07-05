@@ -380,9 +380,7 @@
 
 	<!-- Smart Insights Panel -->
 	{#if processedChartData().length > 1}
-		<div
-			class="mt-6 rounded-lg border border-blue-100 bg-gradient-to-r from-blue-50 to-purple-50 p-4"
-		>
+		<div class="mt-6 rounded-lg border border-line bg-surface-panel p-4">
 			<div class="flex items-start gap-3">
 				<div class="flex-shrink-0 rounded-lg bg-blue-100 p-2">
 					<svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

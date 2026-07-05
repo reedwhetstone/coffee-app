@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { RETAIL_COLOR, WHOLESALE_COLOR } from '$lib/styles/chartColors';
 	import { scaleBand, scaleLinear } from 'd3-scale';
 	import { max } from 'd3-array';
 	import { select } from 'd3-selection';
@@ -25,8 +26,6 @@
 
 	let { snapshots = [] }: { snapshots: PriceSnapshot[] } = $props();
 
-	const RETAIL_COLOR = '#f59e0b';
-	const WHOLESALE_COLOR = '#3b82f6';
 	const MIN_SAMPLES = 3;
 	const MAX_ORIGINS = 10;
 
@@ -151,7 +150,7 @@
 			.attr('x2', innerW)
 			.attr('y1', 0)
 			.attr('y2', 0)
-			.attr('stroke', 'rgb(156 163 175)');
+			.attr('stroke', '#a39a8c');
 		const narrow = containerW < 520;
 		tierData.forEach((row) => {
 			const cx = (xScaleOuter(row.origin) ?? 0) + xScaleOuter.bandwidth() / 2;
@@ -160,7 +159,7 @@
 				.attr('x', cx)
 				.attr('y', 14)
 				.attr('text-anchor', 'middle')
-				.attr('fill', 'rgb(107 114 128)')
+				.attr('fill', '#695c4d')
 				.attr('font-size', narrow ? '9' : '11')
 				.text(label);
 		});
@@ -175,7 +174,7 @@
 			.attr('x2', 0)
 			.attr('y1', 0)
 			.attr('y2', innerH)
-			.attr('stroke', 'rgb(156 163 175)');
+			.attr('stroke', '#a39a8c');
 		const ticks = yScale.ticks(5);
 		ticks.forEach((t) => {
 			const y = yScale(t);
@@ -184,13 +183,13 @@
 				.attr('x2', 0)
 				.attr('y1', y)
 				.attr('y2', y)
-				.attr('stroke', 'rgb(156 163 175)');
+				.attr('stroke', '#a39a8c');
 			g.append('text')
 				.attr('x', -8)
 				.attr('y', y)
 				.attr('text-anchor', 'end')
 				.attr('dominant-baseline', 'middle')
-				.attr('fill', 'rgb(156 163 175)')
+				.attr('fill', '#a39a8c')
 				.attr('font-size', '11')
 				.text(`$${t.toFixed(0)}`);
 			g.append('line')
@@ -198,7 +197,7 @@
 				.attr('x2', innerW)
 				.attr('y1', y)
 				.attr('y2', y)
-				.attr('stroke', 'rgb(156 163 175)')
+				.attr('stroke', '#a39a8c')
 				.attr('stroke-opacity', '0.2')
 				.attr('stroke-dasharray', '4 4');
 		});
@@ -255,7 +254,7 @@
 					y={14}
 					text-anchor="middle"
 					font-size="10"
-					fill="rgb(156 163 175)"
+					fill="#a39a8c"
 				>
 					Median $/lb
 				</text>

@@ -49,13 +49,18 @@ export default {
 					subtle: '#F2EFFE',
 					strong: '#46368F'
 				},
+				// Chart series tokens. Keep in sync with src/lib/styles/chartColors.ts.
 				chart: {
-					orange: '#F9A57B',
+					rust: '#C05B2E',
 					green: '#7FB069',
-					blue: '#3B82F6',
-					purple: '#8B5CF6',
-					red: '#EF4444',
-					amber: '#F59E0B'
+					teal: '#4E8098',
+					gold: '#D9A05B',
+					plum: '#6D5BD0',
+					olive: '#586048',
+					peach: '#F9A57B',
+					sage: '#8FA382',
+					wine: '#9C4356',
+					brown: '#695C4D'
 				},
 
 				// Compatibility aliases. Prefer role-based tokens for new UI.
