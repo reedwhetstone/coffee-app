@@ -216,7 +216,7 @@ Caveat to document: the metadata join uses **current** catalog metadata against 
 - **Params:** `dimension` (`process|disclosure|score`), `origin` (optional), `market` (default `retail`), `grain` (`week|month`, default `month`), `from`/`to` (ISO dates, default full history).
 - **Response:** envelope + `series: [{ period, lot_count, supplier_count, buckets: [{ key, share, count }] }]`; for `dimension=score`, buckets are `[{ key: "p25"|"p50"|"p75", value, count }]`. Include `undisclosed` bucket explicitly.
 - **Errors:** 400 for `dimension` values not yet supported (`cultivar`, `drying`) with message "awaiting taxonomy normalization" — reserve the values, reject them explicitly.
-- **Tests:** entitlement slice boundaries (public slice exact-match only); suppression floor honored; `undisclosed` never dropped; backfilled history returns from 2026-03-21.
+- **Tests:** entitlement slice boundaries (public slice exact-match only); suppression floor honored; `undisclosed` never dropped; backfilled history returns from 2026-03-21; rerunning the backfill for an already-populated week/month is idempotent and does not duplicate or conflict on `uq_metadata_index`.
 
 ### 4.7 Docs
 
@@ -245,12 +245,12 @@ Commander implementation note: variadic option placeholders put the ellipsis ins
 
 ### 5.2 Library exports
 
-Export typed functions for agent/tool reuse (consumed by coffee-app chat per ADR-006): `marketSignals(params)`, `marketSignalsSummary()`, `marketStats(params)`, `marketMetadataIndex(params)` from a `market` module, mirroring the pattern of the existing `catalog` module exports. Include TypeScript types for the §3.3 evidence object and §3.4 enums (single source: generate or hand-mirror from the API docs; keep names identical).
+Export typed functions for agent/tool reuse (consumed by coffee-app chat per ADR-006): `marketSignals(params)`, `marketSignalsSummary()`, `marketStats(params)`, `marketMetadataIndex(params)` from a `market` module, mirroring the pattern of the existing `catalog` module exports. `marketMetadataIndex(params)` must pass through the API's `market` parameter (`retail|wholesale|all`) without local reinterpretation. Include TypeScript types for the §3.3 evidence object and §3.4 enums (single source: generate or hand-mirror from the API docs; keep names identical).
 
 ### 5.3 Manifest + tests
 
 - Register the three commands in `purvey manifest` with arg schemas, auth requirements, and output-mode notes so agents can discover them.
-- Tests: arg validation, 401/403 envelope handling, `--json` passthrough fidelity, unfiltered summary mode unauthenticated, filtered summary mode 403 without entitlement, and a recorded-fixture test per endpoint response shape.
+- Tests: arg validation, 401/403 envelope handling, `--json` passthrough fidelity, unfiltered summary mode unauthenticated, filtered summary mode 403 without entitlement, metadata `--market` pass-through, and a recorded-fixture test per endpoint response shape.
 - Release: minor version bump; coffee-app consumes via `@purveyors/cli` dependency update (WP-3).
 
 ---
