@@ -68,6 +68,10 @@ BEGIN
   -- Current price >= threshold below the lot's own trailing median over the PRIOR
   -- window [p_date - N, p_date - 1] (>= 2 prior points). Emitted once per qualifying
   -- window (7d/30d independently). Works even when origin IS NULL (own-history based).
+  -- History is scoped to the SAME market as the current lot (retail vs wholesale via
+  -- the snapshot wholesale flag): a lot that flips wholesale/retail during the lookback
+  -- must not pool its retail and wholesale minimum-tier prices into one median, which
+  -- would emit a spurious price_drop or hide a real one (§3.2 market separation).
   INSERT INTO public.market_signals (
     snapshot_date, signal_type, signal_window, catalog_id, origin, process, market,
     source, score_value, current_price_lb, rank_score, rank_score_input,
@@ -107,6 +111,7 @@ BEGIN
       WHERE hs.catalog_id = cl.catalog_id
         AND hs.snapshot_date BETWEEN p_date - win.d AND p_date - 1
         AND hs.cost_lb IS NOT NULL AND hs.cost_lb > 0
+        AND hs.wholesale = (cl.market = 'wholesale')
     ) h ON h.n >= 2 AND h.trailing_median > 0
     WHERE (cl.current_price_lb - h.trailing_median) / h.trailing_median * 100 <= -v_drop_threshold_pct
   ) d;
@@ -308,6 +313,23 @@ BEGIN
   GROUP BY grain, period_start, market, origin
   HAVING origin IS NULL OR avg(day_total_lots) >= v_min_origin_lots;
 
+  -- Score dimension needs its OWN suppression floor. tmp_kept_groups is built on all
+  -- stocked lots, so an origin with >= 5 stocked lots but only 1-4 SCORED lots would
+  -- still emit origin-level p25/p50/p75 score rows from a tiny sample, violating the
+  -- origin-row suppression contract. Floor on mean daily SCORED lots instead; market-
+  -- wide (origin NULL) always kept, matching the general contract.
+  CREATE TEMP TABLE tmp_scored_daily_totals ON COMMIT DROP AS
+  SELECT grain, period_start, market, origin, snapshot_date,
+         count(*) FILTER (WHERE score_value IS NOT NULL) AS day_scored_lots
+  FROM tmp_lots
+  GROUP BY grain, period_start, market, origin, snapshot_date;
+
+  CREATE TEMP TABLE tmp_kept_score_groups ON COMMIT DROP AS
+  SELECT grain, period_start, market, origin
+  FROM tmp_scored_daily_totals
+  GROUP BY grain, period_start, market, origin
+  HAVING origin IS NULL OR avg(day_scored_lots) >= v_min_origin_lots;
+
   -- ---------- process + disclosure (share-based) ----------
   -- Zero-share days matter: a bucket that is absent on some snapshot dates still
   -- occupies 0% of those days. Build a (group-day x bucket) grid so missing
@@ -368,7 +390,7 @@ BEGIN
     NULL::numeric                            AS share,
     round(avg(pk.pct_value)::numeric, 2)     AS stat_value,
     round(avg(pk.day_scored_suppliers))::int AS supplier_count
-  FROM tmp_kept_groups g
+  FROM tmp_kept_score_groups g
   JOIN (
     SELECT
       s.grain, s.period_start, s.market, s.origin, s.snapshot_date, b.bucket,
@@ -391,6 +413,8 @@ BEGIN
   DROP TABLE IF EXISTS tmp_lots;
   DROP TABLE IF EXISTS tmp_daily_totals;
   DROP TABLE IF EXISTS tmp_kept_groups;
+  DROP TABLE IF EXISTS tmp_scored_daily_totals;
+  DROP TABLE IF EXISTS tmp_kept_score_groups;
   DROP TABLE IF EXISTS tmp_periods;
 
   RETURN QUERY
