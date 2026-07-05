@@ -13,18 +13,15 @@
 </script>
 
 <section
-	class="mb-6 rounded-xl border border-accent/20 bg-surface-panel p-5"
-	aria-label="Action rail"
+	class="mb-6 rounded-lg border border-line bg-surface-panel p-4 sm:p-5"
+	aria-label="Ask about this market read"
 >
 	<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-center">
 		<div>
-			<p class="text-xs font-semibold text-accent">Next investigation</p>
-			<h2 class="mt-1 text-lg font-semibold text-ink">
-				Ask the chat agent with this market context.
-			</h2>
+			<h2 class="font-serif text-lg font-medium text-ink">Ask about this market read.</h2>
 			<p class="mt-1 text-sm text-muted">
-				The chat agent opens with your current market read, scope, and movement window already in
-				context — so you can go straight from "prices moved" to "here's what I should do about it."
+				The chat agent opens with your current scope and movement window already in context — go
+				straight from “prices moved” to “what should I do about it.”
 			</p>
 		</div>
 		<AnalyticsActionCta

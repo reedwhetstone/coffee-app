@@ -105,13 +105,17 @@
 		</div>
 	</div>
 
-	<!-- Brand illustration band with a sample daily market brief -->
-	<div class="relative mt-4 h-64 w-full overflow-hidden sm:h-72">
-		<OrganicBand />
-		<div class="absolute inset-0 flex items-center justify-center px-4 sm:px-6">
-			<div
-				class="w-full max-w-2xl rounded-lg border border-line bg-surface-canvas/95 p-5 shadow-lg backdrop-blur-sm sm:p-6"
-			>
+	<!-- Sample daily market brief with an organic accent spine -->
+	<div class="mx-auto max-w-7xl px-4 pb-20 sm:px-6 sm:pb-24 lg:px-8">
+		<div
+			class="relative mx-auto max-w-2xl overflow-hidden rounded-lg border border-line bg-surface-raised p-5 shadow-md sm:p-6"
+		>
+			<div class="absolute inset-y-0 left-0 flex w-1.5 flex-col" aria-hidden="true">
+				<div class="flex-1 bg-[#C05B2E]"></div>
+				<div class="flex-1 bg-[#D9A05B]"></div>
+				<div class="flex-1 bg-[#586048]"></div>
+			</div>
+			<div class="pl-3">
 				<div class="flex items-center justify-between gap-2">
 					<div class="flex items-center gap-2">
 						<div class="h-2 w-2 rounded-full bg-accent"></div>
@@ -130,5 +134,10 @@
 				</div>
 			</div>
 		</div>
+	</div>
+
+	<!-- Slim organic accent ribbon closing the hero -->
+	<div class="h-3 w-full overflow-hidden sm:h-4" aria-hidden="true">
+		<OrganicBand />
 	</div>
 </section>

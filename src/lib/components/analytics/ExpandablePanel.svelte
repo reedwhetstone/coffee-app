@@ -49,15 +49,15 @@
 	});
 
 	const BADGE_STYLES: Record<string, string> = {
-		amber: 'bg-amber-100 text-amber-700',
-		red: 'bg-red-100 text-red-600',
-		green: 'bg-green-100 text-green-700',
-		blue: 'bg-blue-100 text-blue-700'
+		amber: 'bg-warning-subtle text-warning-strong',
+		red: 'bg-danger-subtle text-danger-strong',
+		green: 'bg-success-subtle text-success-strong',
+		blue: 'bg-info-subtle text-info-strong'
 	};
 
 	let badgeClass = $derived(BADGE_STYLES[badgeColor] ?? BADGE_STYLES.amber);
 	let computedExpandLabel = $derived(
-		expandLabel ?? (totalItems != null ? `View all ${totalItems} →` : `Expand ↗`)
+		expandLabel ?? (totalItems != null ? `View all ${totalItems} →` : 'Expand')
 	);
 </script>
 

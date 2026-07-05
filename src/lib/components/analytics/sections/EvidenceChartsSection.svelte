@@ -82,7 +82,7 @@
 			{onRetry}
 		>
 			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
-				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin price trends</h2>
+				<h2 class="mb-1 text-base font-semibold text-ink">Origin price trends</h2>
 				<p class="mb-3 text-sm text-text-secondary-light">
 					Average $/lb by top origins, ranked by market activity
 					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
@@ -107,7 +107,7 @@
 										? 'cursor-not-allowed text-text-secondary-light/50'
 										: 'text-text-secondary-light hover:text-text-primary-light'}"
 							>
-								{opt.label}{locked ? ' 🔒' : ''}
+								{opt.label}
 							</button>
 						{/each}
 					</div>
@@ -143,7 +143,7 @@
 				<div
 					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
 				>
-					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Processing mix</h2>
+					<h2 class="mb-1 text-base font-semibold text-ink">Processing mix</h2>
 					<p class="mb-4 text-sm text-text-secondary-light">
 						Distribution across {displayStockedCount.toLocaleString()} stocked beans
 						{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
@@ -183,11 +183,10 @@
 				<div
 					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
 				>
-					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin price ranges</h2>
+					<h2 class="mb-1 text-base font-semibold text-ink">Origin price ranges</h2>
 					<p class="mb-4 text-sm text-text-secondary-light">
-						See how current prices spread across origins in the live catalog. The default view
-						highlights the busiest origins, and the expanded view lets you choose your comparison
-						set.
+						How current prices spread across the busiest origins. Expand to choose your own
+						comparison set.
 					</p>
 					{#if scopedOriginRangeData.length > 0}
 						<div class="w-full">

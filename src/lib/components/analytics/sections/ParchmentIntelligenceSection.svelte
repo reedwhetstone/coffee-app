@@ -80,7 +80,7 @@
 		<div class="pointer-events-none select-none">
 			<div class="mb-8 blur-sm filter">
 				<div class="mb-3">
-					<h2 class="text-xl font-semibold text-text-primary-light">Supplier Price Comparison</h2>
+					<h2 class="text-base font-semibold text-ink">Supplier Price Comparison</h2>
 					<p class="mt-1 text-sm text-text-secondary-light">
 						Everyone can explore the core market view. Parchment Intelligence adds deeper supplier
 						comparisons.
@@ -104,7 +104,7 @@
 
 			<div class="mb-8 blur-sm filter">
 				<div class="mb-3">
-					<h2 class="text-xl font-semibold text-text-primary-light">Supplier Catalog Health</h2>
+					<h2 class="text-base font-semibold text-ink">Supplier Catalog Health</h2>
 					<p class="mt-1 text-sm text-text-secondary-light">
 						Catalog breadth, origin coverage, and supplier signals for deeper sourcing review.
 					</p>
@@ -153,7 +153,7 @@
 								{/each}
 							</div>
 						</div>
-						<h2 class="text-xl font-semibold text-text-primary-light">New Arrivals</h2>
+						<h2 class="text-base font-semibold text-ink">New Arrivals</h2>
 						<p class="mt-1 text-sm text-text-secondary-light">
 							Expanded monitoring for newly added coffees across suppliers.
 						</p>
@@ -193,7 +193,7 @@
 								{/each}
 							</div>
 						</div>
-						<h2 class="text-xl font-semibold text-text-primary-light">Recent Delistings</h2>
+						<h2 class="text-base font-semibold text-ink">Recent Delistings</h2>
 						<p class="mt-1 text-sm text-text-secondary-light">
 							Expanded monitoring for catalog removals and turnover.
 						</p>
@@ -212,9 +212,7 @@
 
 			<div class="blur-sm filter">
 				<div class="mb-3">
-					<h2 class="text-xl font-semibold text-text-primary-light">
-						Parchment Intelligence overview
-					</h2>
+					<h2 class="text-base font-semibold text-ink">Parchment Intelligence overview</h2>
 					<p class="mt-1 text-sm text-text-secondary-light">
 						Deeper market visibility for sourcing, purchasing, and supplier benchmarking in one
 						place.
@@ -535,7 +533,7 @@
 							>Parchment Intelligence</span
 						>
 					</div>
-					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price spread analysis</h2>
+					<h2 class="mb-1 text-base font-semibold text-ink">Price spread analysis</h2>
 					<p class="mb-4 text-sm text-text-secondary-light">
 						Retail versus wholesale median price by origin in the latest snapshot. This chart always
 						shows both scopes so the spread stays comparable.

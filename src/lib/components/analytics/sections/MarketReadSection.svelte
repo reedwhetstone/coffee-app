@@ -53,7 +53,7 @@
 			>
 				Parchment Market Index
 			</h1>
-			<h2 class="mt-3 max-w-3xl text-xl font-semibold leading-7 text-ink sm:text-2xl">
+			<h2 class="mt-3 max-w-3xl font-serif text-xl font-medium leading-7 text-ink sm:text-2xl">
 				{marketReadHeadline}
 			</h2>
 			<p class="mt-3 max-w-3xl text-base leading-7 text-muted sm:text-lg">
