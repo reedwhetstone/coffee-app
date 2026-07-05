@@ -72,6 +72,8 @@ describe('/api/catalog/[id]/similar route', () => {
 		expect(await response.json()).toEqual(successBody);
 		expect(response.headers.get('Deprecation')).toBeNull();
 		expect(response.headers.get('Sunset')).toBeNull();
+		// Member-only similarity data must never be shared-cacheable (ADR-008).
+		expect(response.headers.get('Cache-Control')).toBe('private, no-store');
 	});
 
 	it('normalizes valid numeric ids before forwarding', async () => {
@@ -93,6 +95,7 @@ describe('/api/catalog/[id]/similar route', () => {
 			});
 			expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
 			expect(mockCatalogSimilar).not.toHaveBeenCalled();
+			expect(response.headers.get('Cache-Control')).toBe('private, no-store');
 		}
 	);
 
@@ -122,6 +125,8 @@ describe('/api/catalog/[id]/similar route', () => {
 		expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
 		expect(response.headers.get('X-RateLimit-Reset')).toBe('1782864000');
 		expect(response.headers.get('Retry-After')).toBe('3600');
+		// Relayed upstream errors stay private/no-store while preserving rate-limit headers.
+		expect(response.headers.get('Cache-Control')).toBe('private, no-store');
 	});
 
 	it('returns a JSON 503 when Parchment is unconfigured', async () => {
@@ -136,5 +141,6 @@ describe('/api/catalog/[id]/similar route', () => {
 			error: 'Catalog schema unavailable',
 			message: 'PARCHMENT_API_BASE_URL is not configured'
 		});
+		expect(response.headers.get('Cache-Control')).toBe('private, no-store');
 	});
 });

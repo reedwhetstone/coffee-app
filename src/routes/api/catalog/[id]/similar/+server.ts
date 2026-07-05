@@ -7,6 +7,7 @@ import {
 	proxyCatalogSimilar,
 	toCatalogSimilarQuery
 } from '$lib/server/catalogProxy';
+import { applyBffCatalogNoStore } from '$lib/server/cacheHeaders';
 
 function validationErrorResponse(error: CatalogProxyValidationError): Response {
 	return jsonResponse(
@@ -19,7 +20,7 @@ function validationErrorResponse(error: CatalogProxyValidationError): Response {
 				expected: error.expected
 			}
 		},
-		{ status: 400 }
+		{ status: 400, headers: applyBffCatalogNoStore(new Headers()) }
 	);
 }
 
@@ -63,12 +64,17 @@ export const GET: RequestHandler = async (event) => {
 		proxied = await proxyCatalogSimilar(event, id, query);
 	} catch (error) {
 		const { status, body } = similarProxyErrorResponse(error);
-		return jsonResponse(body, { status });
+		return jsonResponse(body, { status, headers: applyBffCatalogNoStore(new Headers()) });
 	}
 
 	const { status, body, upstream } = proxied;
 	const headers = new Headers();
 	forwardCatalogUpstreamHeaders(upstream, headers);
+	// Similar candidates require a member session or API key (never anonymous),
+	// so every response is authenticated member-scoped data. Force `private,
+	// no-store` per ADR-008 rather than relaying only the upstream headers, so a
+	// shared cache in front of the BFF cannot store or reuse member payloads.
+	applyBffCatalogNoStore(headers);
 
 	return jsonResponse(body, { status, headers });
 };
