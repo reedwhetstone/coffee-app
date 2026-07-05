@@ -72,6 +72,8 @@ BEGIN
   -- the snapshot wholesale flag): a lot that flips wholesale/retail during the lookback
   -- must not pool its retail and wholesale minimum-tier prices into one median, which
   -- would emit a spurious price_drop or hide a real one (§3.2 market separation).
+  -- History is also stocked-only (hs.stocked = true), matching the rest of the pipeline:
+  -- stale out-of-stock prices must not enter the trailing median or the >= 2-point floor.
   INSERT INTO public.market_signals (
     snapshot_date, signal_type, signal_window, catalog_id, origin, process, market,
     source, score_value, current_price_lb, rank_score, rank_score_input,
@@ -110,6 +112,7 @@ BEGIN
       FROM public.coffee_price_snapshots hs
       WHERE hs.catalog_id = cl.catalog_id
         AND hs.snapshot_date BETWEEN p_date - win.d AND p_date - 1
+        AND hs.stocked = true
         AND hs.cost_lb IS NOT NULL AND hs.cost_lb > 0
         AND hs.wholesale = (cl.market = 'wholesale')
     ) h ON h.n >= 2 AND h.trailing_median > 0
