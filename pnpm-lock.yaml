@@ -21,8 +21,8 @@ importers:
         specifier: ^0.20.1
         version: 0.20.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@purveyors/sdk':
-        specifier: ^0.4.0
-        version: 0.4.0
+        specifier: ^0.5.0
+        version: 0.5.0
       '@supabase/ssr':
         specifier: ^0.5.2
         version: 0.5.2(@supabase/supabase-js@2.99.1(bufferutil@4.1.0)(utf-8-validate@6.0.6))
@@ -826,8 +826,8 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
-  '@purveyors/sdk@0.4.0':
-    resolution: {integrity: sha512-bRrr5l6OuuLHjMfTqI4Fwtur9YR+S/XVlZ/x8s9rvmjbaPIb49Xu4NG3jpq4TPEny3unzAL/8aSFwJaGtvDx+Q==}
+  '@purveyors/sdk@0.5.0':
+    resolution: {integrity: sha512-YBD1zf6mpxWRLNSpB8Ip8zNLO14DRetADdJdWB+pgFBSe5VrcO6QgtN8A3SY7gYE8BG75vCoruPO+v2RHYBzqg==}
 
   '@rollup/pluginutils@5.3.0':
     resolution: {integrity: sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q==}
@@ -3552,7 +3552,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@purveyors/sdk@0.4.0':
+  '@purveyors/sdk@0.5.0':
     dependencies:
       openapi-fetch: 0.13.8
 
