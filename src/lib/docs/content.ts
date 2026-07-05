@@ -1318,9 +1318,9 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/clear-roast',
 							'DELETE',
-							'Session + ownership',
+							'Session + roast:write',
 							'Internal maintenance helper',
-							'Requires roast_id query param. Clears imported Artisan data and resets related fields.'
+							'Requires roast_id query param. Forwards to the canonical Parchment API, which clears imported Artisan data and resets related fields.'
 						],
 						[
 							'/api/ai/classify-roast',
@@ -1691,7 +1691,7 @@ const docsPages: DocsPage[] = [
 					'PUT /api/roast-profiles requires an id query parameter. DELETE accepts either id or batch name query parameters.',
 					'POST /api/artisan-import expects multipart form-data with file and roastId. Supported file extensions are .alog, .alog.json, and .json.',
 					'GET /api/roast-chart-data requires roastId and returns sampled telemetry tuned for charting, including performance metadata and derived ranges.',
-					'DELETE /api/clear-roast requires roast_id and verifies ownership before deleting imported telemetry, events, and log rows.',
+					'DELETE /api/clear-roast requires roast_id and forwards to Parchment, which enforces ownership plus roast:write before deleting imported telemetry, events, and log rows.',
 					'POST /api/ai/classify-roast expects alogMetadata plus an inventory array and returns { match } or { match: null }.'
 				]
 			},
