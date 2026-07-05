@@ -326,14 +326,14 @@ describe('analytics command center hierarchy', () => {
 		expect(screen.getByText('Scope controls')).toBeTruthy();
 		expect(screen.getByText('Price movement')).toBeTruthy();
 		expect(screen.getByText('Availability read')).toBeTruthy();
-		expect(screen.getByText('Next investigation')).toBeTruthy();
+		expect(screen.getByText('Ask about this market read.')).toBeTruthy();
 
 		const marketRead = container.querySelector('[aria-labelledby="market-read-heading"]');
 		const scopeControls = container.querySelector('[aria-label="Scope controls"]');
 		const kpiStrip = container.querySelector('[aria-label="Market KPI strip"]');
 		const insightCards = container.querySelector('[aria-label="Market insight cards"]');
 		const evidenceCharts = container.querySelector('[aria-label="Evidence charts"]');
-		const actionRail = container.querySelector('[aria-label="Action rail"]');
+		const actionRail = container.querySelector('[aria-label="Ask about this market read"]');
 
 		expect(marketRead).toBeTruthy();
 		expect(scopeControls).toBeTruthy();
@@ -472,7 +472,7 @@ describe('analytics action CTA rail', () => {
 
 		expect(screen.getByText('Ask about this market read')).toBeTruthy();
 		expect(screen.getByRole('link', { name: 'Sign in to ask' })).toHaveAttribute('href', '/auth');
-		expect(screen.getByText(/This is the only live handoff here/i)).toBeTruthy();
+		expect(screen.getByText(/opens with your current scope and movement window/i)).toBeTruthy();
 		expect(screen.queryByText('Open catalog evidence')).toBeNull();
 		expect(screen.queryByText('Compare supplier evidence')).toBeNull();
 		expect(screen.queryByText('Review machine access')).toBeNull();

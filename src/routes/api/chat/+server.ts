@@ -601,7 +601,25 @@ export const POST: RequestHandler = async (event) => {
 					return rows as unknown as Record<string, unknown>[];
 				},
 				readPriceIndex: (input) => readPriceIndexForAgent(input),
-				findSimilarBeans: (input, options) => findSimilarBeansForAgent(input, options)
+				findSimilarBeans: (input, options) => findSimilarBeansForAgent(input, options),
+				marketSignals: async (input) => {
+					const client = await createParchmentServerClient(event);
+					const { data, error } = await client.market.signals({
+						...input,
+						limit: Math.min(input.limit ?? 10, 50)
+					});
+					return error ?? data;
+				},
+				marketStats: async (input) => {
+					const client = await createParchmentServerClient(event);
+					const { data, error } = await client.priceIndex.stats(input);
+					return error ?? data;
+				},
+				marketMetadataIndex: async (input) => {
+					const client = await createParchmentServerClient(event);
+					const { data, error } = await client.market.metadataIndex(input);
+					return error ?? data;
+				}
 			}
 		);
 

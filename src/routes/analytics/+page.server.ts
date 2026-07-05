@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { resolvePrincipal } from '$lib/server/principal';
+import { loadMarketIndexInsights } from '$lib/server/marketIndex';
 import { createAdminClient } from '$lib/supabase-admin';
 import { createSchemaService } from '$lib/services/schemaService';
 import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
@@ -262,6 +263,10 @@ export const load: PageServerLoad = async (event) => {
 	// Logged-out visitors and logged-in viewers intentionally share the same core analytics view.
 	const principal = await resolvePrincipal(event);
 	const isParchmentIntelligence = principal.isAuthenticated ? principal.ppiAccess : false;
+
+	// ADR-008 decision-surface reads (value signals, movement stats, metadata index).
+	// Kicked off first; resolves in parallel with the Supabase queries below.
+	const marketInsightsPromise = loadMarketIndexInsights(event, { isParchmentIntelligence });
 
 	const today = new Date().toISOString().split('T')[0];
 	const supabase = event.locals.supabase;
@@ -757,6 +762,7 @@ export const load: PageServerLoad = async (event) => {
 		recentArrivals,
 		recentDelistings,
 		comparisonBeans,
+		marketInsights: await marketInsightsPromise,
 		supplierHealth,
 		trackedLots,
 		meta: buildPublicMeta({

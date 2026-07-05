@@ -21,11 +21,11 @@ importers:
         specifier: ^0.8.10
         version: 0.8.14(svelte@5.48.0)
       '@purveyors/cli':
-        specifier: ^0.20.1
-        version: 0.20.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+        specifier: ^0.25.0
+        version: 0.25.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@purveyors/sdk':
-        specifier: ^0.6.0
-        version: 0.6.0
+        specifier: ^0.7.0
+        version: 0.7.0
       '@supabase/ssr':
         specifier: ^0.5.2
         version: 0.5.2(@supabase/supabase-js@2.99.1(bufferutil@4.1.0)(utf-8-validate@6.0.6))
@@ -827,13 +827,13 @@ packages:
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
-  '@purveyors/cli@0.20.1':
-    resolution: {integrity: sha512-Tt/MZJNaS4O+UrbN6kx7zkANVxZGXwJ9340dEtmwd/MHJ1Ko8QRxEjLDBbRmJmFApBTdjUu3xgfPTHI7i/vinw==}
+  '@purveyors/cli@0.25.0':
+    resolution: {integrity: sha512-VhSXZDfTpblxFkOyTg1jCFgDVfviIJsLh3DMkTEt78cAHaWOurLpXdtpEK5bOWqf3nPwv+o3QbASmEW+bh1CgA==}
     engines: {node: '>=20'}
     hasBin: true
 
-  '@purveyors/sdk@0.6.0':
-    resolution: {integrity: sha512-/xjbTY3WIUtmNLh1iVILGIOeAIpeQ0s5Qn8UdZ41Bl4E5WnblCYdPFsljSuR+xt32hSuJLccBWcUhrD1chpZAQ==}
+  '@purveyors/sdk@0.7.0':
+    resolution: {integrity: sha512-5Bby/g2Qcg4PSnXOCrN8chHZtcbAA2pFUqkyrVtxQgdC4t44vFoTjp475B4Cvd6LOv8fz4hJvnqgVpXX678HgQ==}
 
   '@rollup/pluginutils@5.3.0':
     resolution: {integrity: sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q==}
@@ -3548,9 +3548,10 @@ snapshots:
 
   '@polka/url@1.0.0-next.29': {}
 
-  '@purveyors/cli@0.20.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
+  '@purveyors/cli@0.25.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
     dependencies:
       '@clack/prompts': 1.1.0
+      '@purveyors/sdk': 0.7.0
       '@supabase/supabase-js': 2.99.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       chalk: 5.6.2
       commander: 13.1.0
@@ -3560,7 +3561,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@purveyors/sdk@0.6.0':
+  '@purveyors/sdk@0.7.0':
     dependencies:
       openapi-fetch: 0.13.8
 

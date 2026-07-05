@@ -5,3 +5,5 @@ export { default as EvidenceChartsSection } from './EvidenceChartsSection.svelte
 export { default as ActionRailSection } from './ActionRailSection.svelte';
 export { default as ParchmentIntelligenceSection } from './ParchmentIntelligenceSection.svelte';
 export { default as AnalyticsSectionHeader } from './AnalyticsSectionHeader.svelte';
+export { default as ValueSignalsSection } from './ValueSignalsSection.svelte';
+export { default as MetadataTrendsSection } from './MetadataTrendsSection.svelte';

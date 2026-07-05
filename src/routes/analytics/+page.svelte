@@ -33,6 +33,9 @@
 	import ActionRailSection from '$lib/components/analytics/sections/ActionRailSection.svelte';
 	import ParchmentIntelligenceSection from '$lib/components/analytics/sections/ParchmentIntelligenceSection.svelte';
 	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
+	import ValueSignalsSection from '$lib/components/analytics/sections/ValueSignalsSection.svelte';
+	import MetadataTrendsSection from '$lib/components/analytics/sections/MetadataTrendsSection.svelte';
+	import type { MarketIndexInsights } from '$lib/types/marketIndex.types';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -69,7 +72,8 @@
 		recentDelistings,
 		comparisonBeans,
 		supplierHealth,
-		trackedLots
+		trackedLots,
+		marketInsights
 	} = $derived(
 		data as {
 			session: PageData['session'];
@@ -98,6 +102,7 @@
 			comparisonBeans: ComparisonBean[];
 			supplierHealth: SupplierHealthRow[];
 			trackedLots: TrackedLotSummary[];
+			marketInsights: MarketIndexInsights;
 		}
 	);
 
@@ -438,6 +443,46 @@
 		return `${sign}${Math.abs(value).toFixed(precision)}`;
 	}
 
+	// ── Movement significance (ADR-008: signal vs noise) ─────────────────────
+
+	let currentMoveStat = $derived.by(() => {
+		const stats = marketInsights?.moveStats;
+		if (!stats) return null;
+		return (
+			stats.find(
+				(item) =>
+					item.window === windowMode && item.segment.origin == null && item.segment.process == null
+			) ?? null
+		);
+	});
+
+	let significanceNote = $derived.by(() => {
+		const stat = currentMoveStat;
+		if (!stat || stat.latestMovePct == null) return null;
+		const windowLabel = stat.window === '7d' ? 'weekly' : '30-day';
+		const movePhrase = `${stat.latestMovePct > 0 ? '+' : ''}${stat.latestMovePct.toFixed(1)}% ${windowLabel} retail move`;
+		const driverPhrase =
+			stat.moveDriver === 'repricing'
+				? 'driven by suppliers repricing continuing lots'
+				: stat.moveDriver === 'mix_shift'
+					? 'driven by catalog turnover (arrivals and delistings), not repricing'
+					: stat.moveDriver === 'mixed'
+						? 'a mix of repricing and catalog turnover'
+						: null;
+		if (stat.classification == null) {
+			return driverPhrase ? `${movePhrase} — ${driverPhrase}.` : null;
+		}
+		const sizePhrase =
+			stat.classification === 'quiet'
+				? 'smaller than most recent moves'
+				: stat.classification === 'normal'
+					? 'within normal variance'
+					: stat.weeksSinceLargerMove != null && stat.weeksSinceLargerMove > 0
+						? `the largest ${windowLabel} move in ${stat.weeksSinceLargerMove} weeks`
+						: `${stat.classification} against recent variance`;
+		return `${movePhrase}: ${sizePhrase}${driverPhrase ? `, ${driverPhrase}` : ''}.`;
+	});
+
 	// ── Labels derived from scope ─────────────────────────────────────────────
 
 	let movementWindowLabel = $derived(windowMode === '7d' ? '7-day' : '30-day');
@@ -488,11 +533,15 @@
 					? 'Latest indexed average'
 					: `${formatSigned(marketPriceDeltaPercent, 1)}% from prior snapshot`,
 			tone:
-				marketPriceDelta == null || Math.abs(marketPriceDelta) < 0.01
-					? 'neutral'
-					: marketPriceDelta > 0
-						? 'up'
-						: 'down'
+				currentMoveStat?.classification === 'exceptional'
+					? 'alert'
+					: currentMoveStat?.classification === 'quiet'
+						? 'neutral'
+						: marketPriceDelta == null || Math.abs(marketPriceDelta) < 0.01
+							? 'neutral'
+							: marketPriceDelta > 0
+								? 'up'
+								: 'down'
 		},
 		{
 			label: 'New arrivals',
@@ -897,12 +946,22 @@
 <MarketReadSection
 	{marketReadHeadline}
 	{marketReadDetail}
+	{significanceNote}
 	lastUpdated={stats.lastUpdated}
 	totalSuppliers={stats.totalSuppliers}
 	{viewMode}
 	{windowMode}
 	onViewModeChange={(v) => (viewMode = v)}
 	onWindowModeChange={(v) => (windowMode = v)}
+/>
+
+<ValueSignalsSection
+	valueSignals={marketInsights?.valueSignals ?? null}
+	signalsSummary={marketInsights?.signalsSummary ?? null}
+	signalsAsOf={marketInsights?.signalsAsOf ?? null}
+	{isParchmentIntelligence}
+	isSignedIn={Boolean(session)}
+	{viewMode}
 />
 
 <AnalyticsSectionHeader
@@ -954,6 +1013,13 @@
 	{viewMode}
 	{isParchmentIntelligence}
 	onRetry={retryPublicCharts}
+/>
+
+<MetadataTrendsSection
+	processSeries={marketInsights?.metadataProcessSeries ?? null}
+	disclosureSeries={marketInsights?.metadataDisclosureSeries ?? null}
+	scoreSeries={marketInsights?.metadataScoreSeries ?? null}
+	{isParchmentIntelligence}
 />
 
 <ActionRailSection
