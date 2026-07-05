@@ -123,22 +123,27 @@ CREATE TABLE market_signals (
   id              bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   snapshot_date   date    NOT NULL,
   signal_type     text    NOT NULL CHECK (signal_type IN ('price_drop','below_market','value_quality')),
+  signal_window   text    NOT NULL DEFAULT 'n/a' CHECK (signal_window IN ('7d','30d','n/a')),
   catalog_id      integer NOT NULL REFERENCES coffee_catalog(id) ON DELETE CASCADE,
   -- denormalized for filtering without a join
-  origin          text    NOT NULL,
+  origin          text,                    -- nullable: coffee_catalog.origin may be null
   process         text,
   market          text    NOT NULL CHECK (market IN ('retail','wholesale')),
-  source          text    NOT NULL,
+  source          text,                    -- nullable: coffee_catalog.source is nullable (schema.sql:74)
   score_value     numeric,
   current_price_lb numeric(10,2) NOT NULL,
   rank_score      numeric NOT NULL,        -- ordering key: magnitude x quality prior
   evidence        jsonb   NOT NULL,        -- §3.3 shape, exactly
   created_at      timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT uq_market_signal UNIQUE (snapshot_date, signal_type, catalog_id, market)
+  CONSTRAINT uq_market_signal UNIQUE (snapshot_date, signal_type, signal_window, catalog_id, market)
 );
 CREATE INDEX idx_market_signals_date_type ON market_signals (snapshot_date DESC, signal_type);
 CREATE INDEX idx_market_signals_origin ON market_signals (snapshot_date DESC, origin);
 ```
+
+`signal_window` carries the trailing window a `price_drop` row was computed against (`7d` or `30d`); a single lot may qualify in one window but not the other, or carry different trailing medians per window, so both are stored as distinct rows and `/v1/market/signals?type=price_drop&window=7d|30d` filters on this column. `below_market` and `value_quality` are window-agnostic and use `n/a`. Keeping the column `NOT NULL` (with an `n/a` sentinel rather than NULL) keeps it usable inside the unique key without NULL-distinctness surprises.
+
+`origin` and `source` are nullable because their `coffee_catalog` sources are nullable; the signals job denormalizes whatever is present (including NULL) rather than forcing a `NOT NULL` insert that would abort the daily pass on a lot with a missing origin/source. Filter on `origin IS NOT NULL` / `source IS NOT NULL` at query time where a non-null value is required.
 
 `rank_score` recommendation: `abs(primary_discount_pct) * (1 + coalesce(score_value - 84, 0) / 10)` — magnitude weighted by quality above a specialty floor. Document whatever is shipped.
 
@@ -159,9 +164,13 @@ CREATE TABLE metadata_index_snapshots (
   share          numeric,                  -- NULL for dimension='score'
   stat_value     numeric,                  -- NULL except dimension='score' (bucket p25|p50|p75 -> value)
   supplier_count integer NOT NULL,
-  created_at     timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT uq_metadata_index UNIQUE (period_start, grain, COALESCE(origin,''), market, dimension, bucket)
+  created_at     timestamptz NOT NULL DEFAULT now()
 );
+-- Table-level UNIQUE constraints cannot span expressions like COALESCE(origin,''),
+-- so the market-wide (origin IS NULL) vs origin-level uniqueness is enforced by an
+-- expression unique index instead (equivalent to UNIQUE NULLS NOT DISTINCT on PG15+).
+CREATE UNIQUE INDEX uq_metadata_index
+  ON metadata_index_snapshots (period_start, grain, COALESCE(origin,''), market, dimension, bucket);
 ```
 
 Bucket rules: `process` buckets are normalized `processing_base_method` values plus `undisclosed` (null); `disclosure` buckets are the five ADR-004 levels plus `undisclosed`; `score` buckets are exactly `p25|p50|p75` with `stat_value` carrying the price-free score statistic and `lot_count` the scored-lot count. Suppress (do not write) origin-level rows where `lot_count < 5`; market-wide rows always written.
@@ -170,7 +179,7 @@ Bucket rules: `process` buckets are normalized `processing_base_method` values p
 
 Extend the existing daily aggregation entrypoint (same scheduling as `compute_price_index()`):
 
-1. **Signals pass** — for the latest `snapshot_date`: compute per-lot trailing medians (7d/30d) from `coffee_price_snapshots`; compute per-segment current-price distributions (p25/median) across stocked lots; emit `market_signals` rows per §3.2 rules with §3.3 evidence. Idempotent per (date): delete-and-rewrite the day's rows or upsert on the unique key.
+1. **Signals pass** — for the latest `snapshot_date`: compute per-lot trailing medians (7d/30d) from `coffee_price_snapshots`; compute per-segment current-price distributions (p25/median) across stocked lots; emit `market_signals` rows per §3.2 rules with §3.3 evidence. Emit `price_drop` rows once per qualifying `signal_window` (`7d` and/or `30d` independently — a lot that qualifies in both produces two rows carrying that window's median/discount); `below_market` and `value_quality` emit a single `signal_window='n/a'` row. Denormalize `origin`/`source` as-is (may be NULL); do not drop or fail a signal for a missing origin/source. Idempotent per (date): delete-and-rewrite the day's rows or upsert on the unique key (`snapshot_date, signal_type, signal_window, catalog_id, market`).
 2. **Metadata pass** — for the period containing `snapshot_date`: recompute the current week and month rows by joining stocked `coffee_price_snapshots` rows for each date in the period to `coffee_catalog` metadata, then averaging daily composition across the period (document the chosen aggregation: mean of daily shares is acceptable; state it in the endpoint docs).
 3. **Backfill script** — one-off: iterate all snapshot dates since 2026-03-21 to populate `metadata_index_snapshots` history. Signals are _not_ backfilled (they are a live feed; historical signals have no product use in v1).
 
@@ -180,7 +189,7 @@ Caveat to document: the metadata join uses **current** catalog metadata against 
 
 - **Auth/entitlement:** §3.5. `?summary=true` bypasses the gate and returns `{ as_of, total, by_type: { price_drop: n, below_market: n, value_quality: n } }` only.
 - **Params:** `type` (repeatable; default all three), `origin`, `process`, `market` (`retail|wholesale|all`, default `retail`), `min_discount_pct` (number), `min_score` (number), `window` (`7d|30d`, default `30d`; affects `price_drop` only), `limit` (default 20, max 100), `cursor`.
-- **Response:** envelope (§3.6) + `signals: [...]`, each item: `signal_type`, `catalog_id`, `name`, `source`, `origin`, `process`, `market`, `score_value`, `current_price_lb`, `rank_score`, `evidence` (§3.3), `catalog_url` (`https://purveyors.io/catalog?...` deep link). Sorted by `rank_score` desc.
+- **Response:** envelope (§3.6) + `signals: [...]`, each item: `signal_type`, `signal_window` (`7d`/`30d` for `price_drop`, else `n/a`), `catalog_id`, `name`, `source`, `origin`, `process`, `market`, `score_value`, `current_price_lb`, `rank_score`, `evidence` (§3.3), `catalog_url` (`https://purveyors.io/catalog?...` deep link). Sorted by `rank_score` desc. The `window` param filters `price_drop` items to the matching `signal_window`.
 - **Errors:** 400 invalid params (unknown type, bad window), 401/403 per matrix, 404 never (empty list is `signals: []`).
 - **Tests:** entitlement matrix coverage incl. direct-URL bypass attempts; summary mode leaks no lot fields; benchmark floor suppresses thin segments; evidence shape is exactly §3.3 (nulls present).
 
