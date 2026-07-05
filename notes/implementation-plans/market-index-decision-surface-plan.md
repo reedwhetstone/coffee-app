@@ -77,14 +77,19 @@ Defaults (configurable server-side, reported in responses): `drop_threshold_pct 
 	"segment_p25": 6.9,
 	"discount_vs_median_pct": -21.0,
 	"price_percentile_in_segment": 12,
-	"own_trailing_median_30d": 7.1,
+	"own_trailing_window": "30d",
+	"own_trailing_median": 7.1,
 	"drop_vs_own_median_pct": -12.7,
 	"score_value": 87.5,
+	"value_ratio": 12.4,
+	"origin_value_ratio_mean": 9.7,
+	"origin_value_ratio_stddev": 1.8,
+	"value_z_score": 1.5,
 	"as_of": "2026-07-05"
 }
 ```
 
-Fields irrelevant to a signal type are `null`, never omitted (stable shape for agents). Web cards, CLI output, and chat tools must all render from this object — no surface computes its own evidence.
+`own_trailing_window` is `7d` or `30d` only for `price_drop` rows and matches `signal_window`; `own_trailing_median` and `drop_vs_own_median_pct` carry that row's actual window-specific values. `value_ratio`, `origin_value_ratio_mean`, `origin_value_ratio_stddev`, and `value_z_score` explain `value_quality` rows. Fields irrelevant to a signal type are `null`, never omitted (stable shape for agents). Web cards, CLI output, and chat tools must all render from this object — no surface computes its own evidence.
 
 ### 3.4 Movement classification
 
@@ -94,15 +99,15 @@ Fields irrelevant to a signal type are `null`, never omitted (stable shape for a
 
 ### 3.5 Entitlement matrix
 
-| Caller                                        | `/v1/market/signals`                       | `/v1/price-index/stats`                             | `/v1/market/metadata-index`                                                             |
-| --------------------------------------------- | ------------------------------------------ | --------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Anonymous / Viewer (session, no PPI)          | 403; `?summary=true` allowed (counts only) | market-wide summary row only (public read headline) | 403 except the designated public slice: `dimension=process`, market-wide, `grain=month` |
-| Parchment Intelligence (ppiAccess)            | full                                       | full                                                | full                                                                                    |
-| API key: Green                                | 403 (`?summary=true` allowed)              | market-wide summary only                            | public slice only                                                                       |
-| API key: Origin / Enterprise (`catalog:read`) | full                                       | full                                                | full                                                                                    |
-| Admin                                         | full                                       | full                                                | full                                                                                    |
+| Caller                                                         | `/v1/market/signals`                       | `/v1/price-index/stats`                             | `/v1/market/metadata-index`                                                             |
+| -------------------------------------------------------------- | ------------------------------------------ | --------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Anonymous / Viewer (session, no PPI)                           | 403; `?summary=true` allowed (counts only) | market-wide summary row only (public read headline) | 403 except the designated public slice: `dimension=process`, market-wide, `grain=month` |
+| Parchment Intelligence session (`ppiAccess`)                   | full                                       | full                                                | full                                                                                    |
+| API key: Green or Origin/Enterprise without `ppiAccess`        | 403 (`?summary=true` allowed)              | market-wide summary only                            | public slice only                                                                       |
+| API key: Origin / Enterprise with `catalog:read` + `ppiAccess` | full                                       | full                                                | full                                                                                    |
+| Admin                                                          | full                                       | full                                                | full                                                                                    |
 
-Server-side enforcement per ADR-005: deny gated params at the boundary; 401 unauthenticated where auth is required, 403 for insufficient entitlement; no premium metadata in denied responses. Include tests proving direct calls cannot bypass gates.
+Server-side enforcement per ADR-005/PADR-0013: API plan and API scopes do not grant Market Index/Parchment Intelligence by themselves. Premium signal, segment-stat, and metadata-index access requires `ppiAccess` (or admin), in addition to whatever API-key plan/scope is needed for the route. Deny gated params at the boundary; 401 unauthenticated where auth is required, 403 for insufficient entitlement; no premium metadata in denied responses. Include tests proving direct calls cannot bypass gates, including an Origin/Enterprise API key with `catalog:read` but no `ppiAccess`.
 
 ### 3.6 Response envelope conventions (parchment-api house style)
 
@@ -179,7 +184,7 @@ Bucket rules: `process` buckets are normalized `processing_base_method` values p
 
 Extend the existing daily aggregation entrypoint (same scheduling as `compute_price_index()`):
 
-1. **Signals pass** — for the latest `snapshot_date`: compute per-lot trailing medians (7d/30d) from `coffee_price_snapshots`; compute per-segment current-price distributions (p25/median) across stocked lots; emit `market_signals` rows per §3.2 rules with §3.3 evidence. Emit `price_drop` rows once per qualifying `signal_window` (`7d` and/or `30d` independently — a lot that qualifies in both produces two rows carrying that window's median/discount); `below_market` and `value_quality` emit a single `signal_window='n/a'` row. Denormalize `origin`/`source` as-is (may be NULL); do not drop or fail a signal for a missing origin/source. Idempotent per (date): delete-and-rewrite the day's rows or upsert on the unique key (`snapshot_date, signal_type, signal_window, catalog_id, market`).
+1. **Signals pass** — for the latest `snapshot_date`: compute per-lot trailing medians (7d/30d) from `coffee_price_snapshots`; compute per-segment current-price distributions (p25/median) across stocked lots; compute origin-level scored-lot value-ratio baselines (`score_value / cost_lb` mean + stddev) for `value_quality`; emit `market_signals` rows per §3.2 rules with §3.3 evidence. Emit `price_drop` rows once per qualifying `signal_window` (`7d` and/or `30d` independently — a lot that qualifies in both produces two rows carrying that window's median/discount in `own_trailing_median` and `drop_vs_own_median_pct`); `below_market` and `value_quality` emit a single `signal_window='n/a'` row. Denormalize `origin`/`source` as-is (may be NULL); do not drop or fail a signal for a missing origin/source. Idempotent per (date): delete-and-rewrite the day's rows or upsert on the unique key (`snapshot_date, signal_type, signal_window, catalog_id, market`).
 2. **Metadata pass** — for the period containing `snapshot_date`: recompute the current week and month rows by joining stocked `coffee_price_snapshots` rows for each date in the period to `coffee_catalog` metadata, then averaging daily composition across the period (document the chosen aggregation: mean of daily shares is acceptable; state it in the endpoint docs).
 3. **Backfill script** — one-off: iterate all snapshot dates since 2026-03-21 to populate `metadata_index_snapshots` history. Signals are _not_ backfilled (they are a live feed; historical signals have no product use in v1).
 
@@ -191,16 +196,16 @@ Caveat to document: the metadata join uses **current** catalog metadata against 
 - **Params:** `type` (repeatable; default all three), `origin`, `process`, `market` (`retail|wholesale|all`, default `retail`), `min_discount_pct` (number), `min_score` (number), `window` (`7d|30d`, default `30d`; affects `price_drop` only), `limit` (default 20, max 100), `cursor`.
 - **Response:** envelope (§3.6) + `signals: [...]`, each item: `signal_type`, `signal_window` (`7d`/`30d` for `price_drop`, else `n/a`), `catalog_id`, `name`, `source`, `origin`, `process`, `market`, `score_value`, `current_price_lb`, `rank_score`, `evidence` (§3.3), `catalog_url` (`https://purveyors.io/catalog?...` deep link). Sorted by `rank_score` desc. The `window` param filters `price_drop` items to the matching `signal_window`.
 - **Errors:** 400 invalid params (unknown type, bad window), 401/403 per matrix, 404 never (empty list is `signals: []`).
-- **Tests:** entitlement matrix coverage incl. direct-URL bypass attempts; summary mode leaks no lot fields; benchmark floor suppresses thin segments; evidence shape is exactly §3.3 (nulls present).
+- **Tests:** entitlement matrix coverage incl. direct-URL bypass attempts and `catalog:read` API keys without `ppiAccess`; summary mode leaks no lot fields; benchmark floor suppresses thin segments; evidence shape is exactly §3.3 (nulls present), including 7d price-drop evidence and value-quality z-score inputs.
 
 ### 4.5 Endpoint 2: `GET /v1/price-index/stats`
 
-- **Auth/entitlement:** §3.5 — market-wide summary (no `origin`/`process` params) is public; segment queries require Intelligence/Origin+.
+- **Auth/entitlement:** §3.5 — market-wide summary (no `origin`/`process` params) is public; segment queries require `ppiAccess`.
 - **Params:** `origin`, `process`, `market` (default `retail`), `window` (`7d|30d`, default `7d`), `baseline_weeks` (default 26, max 52).
-- **Grain:** segment-level only (§1 rule 2). No per-coffee mode.
+- **Grain:** market-wide or segment-level only (§1 rule 2). No per-coffee mode. Market-wide rows use `segment: { origin: null, process: null, market }`.
 - **Response per segment:** `segment`, `latest_move_pct`, `baseline_mean_move_pct`, `baseline_stddev`, `z_score`, `move_percentile`, `weeks_since_larger_move`, `classification` (§3.4), `matched_lot_move_pct`, `matched_lot_count`, `move_driver` (§3.4), `sample_size`, `supplier_count`, plus envelope with `thresholds`.
-- **Computation:** moves computed on `price_median` of `price_index_snapshots` between `snapshot_date` and `snapshot_date - window`; baseline = distribution of same-window moves over trailing `baseline_weeks`; matched-lot move = median of per-lot `cost_lb` change among `coffee_price_snapshots` rows stocked at both endpoints of the window. Cache aggressively (daily data → daily cache key).
-- **Tests:** classification thresholds respected and returned; `insufficient_overlap` at `matched_lot_count < 8`; public callers can hit market-wide but not segment queries; short-history segments (< baseline) return `classification: null` with an explanatory `note` field rather than fabricated stats.
+- **Computation:** segment moves are computed on `price_median` of `price_index_snapshots` between `snapshot_date` and `snapshot_date - window`; baseline = distribution of same-window moves over trailing `baseline_weeks`. Market-wide moves are not read from `price_index_snapshots` because that table has no market-wide row: compute them from raw `coffee_price_snapshots` rows by taking the median `cost_lb` across stocked lots for each endpoint date and each baseline date/window pair, with `sample_size` = stocked lots and `supplier_count` = distinct suppliers after joining `coffee_catalog`. Matched-lot move = median of per-lot `cost_lb` change among `coffee_price_snapshots` rows stocked at both endpoints of the window. Cache aggressively (daily data → daily cache key).
+- **Tests:** classification thresholds respected and returned; market-wide public summary computes from raw snapshots rather than averaging segment medians; `insufficient_overlap` at `matched_lot_count < 8`; public callers can hit market-wide but not segment queries; short-history segments (< baseline) return `classification: null` with an explanatory `note` field rather than fabricated stats.
 
 ### 4.6 Endpoint 3: `GET /v1/market/metadata-index`
 
@@ -268,7 +273,7 @@ Deliverables: three UI increments on `/analytics`, chat tool adapters, docs alig
 ## 8. Acceptance criteria (v1, cross-package)
 
 - An Intelligence member sees ≥1 evidence-backed buy signal within 5 seconds of opening `/analytics` (when signals exist) and reaches the lot in one click.
-- Anonymous/Green callers can obtain signal **counts** everywhere (web teaser, `--summary`, `?summary=true`) but never lot identity; direct API/URL attempts return 403 (tested).
+- Anonymous, Viewer, Green, and API keys without `ppiAccess` can obtain signal **counts** everywhere (web teaser, `--summary`, `?summary=true`) but never lot identity; direct API/URL attempts return 403 (tested).
 - The market read never reports a raw percentage without significance context, and distinguishes repricing from mix-shift in copy.
 - The metadata process-mix chart renders from `metadata_index_snapshots` history (not a live join) back to 2026-03-21.
 - `purvey market signals --json`, the web cards, and chat tool outputs all carry the identical §3.3 evidence object.
