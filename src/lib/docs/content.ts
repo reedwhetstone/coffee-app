@@ -1297,9 +1297,9 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/artisan-import',
 							'POST',
-							'Session',
+							'Session + roast:write',
 							'Internal product route',
-							'Accepts multipart form-data with file plus roastId. Supported formats: .alog, .alog.json, .json.'
+							'Accepts multipart form-data with file plus roastId. Supported formats: .alog, .alog.json, .json. Forwards to the canonical Parchment API, which enforces the roast:write entitlement; signed-in callers without it receive a 403.'
 						],
 						[
 							'/api/roast-chart-data',
@@ -1659,8 +1659,8 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/artisan-import',
 							'POST',
-							'Session',
-							'Import an Artisan roast file into an existing roast profile'
+							'Session + roast:write',
+							'Import an Artisan roast file into an existing roast profile via the canonical Parchment API (requires the roast:write entitlement)'
 						],
 						[
 							'/api/roast-chart-data',
