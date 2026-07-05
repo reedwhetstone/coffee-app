@@ -102,6 +102,46 @@ mt-1                            /* Small top margin for values */
 
 ## Component Patterns
 
+### 0. Brand Accent Patterns (July 2026)
+
+**Artifact card with AccentSpine** — for cards that deliver an insight or invite an action
+(market briefs, insight cards, upsell/CTA cards, blog headers, checkout confirmations).
+At most one spined card per view region; see BRAND.md "Organic Accent System".
+
+```svelte
+<div class="relative overflow-hidden rounded-lg border border-line bg-surface-panel p-5 pl-7">
+	<AccentSpine />
+	<!-- card content -->
+</div>
+```
+
+**Icon tile** — standard visual anchor for section/card headers:
+
+```svelte
+<span
+	class="flex h-9 w-9 items-center justify-center rounded-md bg-accent-subtle/15 ring-1 ring-accent/25"
+>
+	<svg
+		class="h-5 w-5 text-ink"
+		fill="none"
+		viewBox="0 0 24 24"
+		stroke-width="1.5"
+		stroke="currentColor"
+	>
+		<path stroke-linecap="round" stroke-linejoin="round" d={iconPath} />
+	</svg>
+</span>
+```
+
+**Editorial heading** — public/marketing display headings and analytics chapter headers:
+
+```svelte
+<h2 class="font-serif text-3xl font-medium tracking-tight text-ink sm:text-4xl">...</h2>
+<!-- analytics group header: use AnalyticsSectionHeader.svelte -->
+```
+
+**Chart colors** — import from `src/lib/styles/chartColors.ts`; never raw Tailwind hexes in charts.
+
 ### 1. KPI Card Pattern
 
 **Standard KPI Card Structure:**

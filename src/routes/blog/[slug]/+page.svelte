@@ -2,6 +2,7 @@
 	import type { PageData } from './$types';
 	import { PILLARS } from '$lib/types/blog.types';
 	import LinkedInDraft from '$lib/components/blog/LinkedInDraft.svelte';
+	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -37,8 +38,9 @@
 <article>
 	<!-- Post header with accent background -->
 	<header
-		class="mb-10 rounded-lg border border-border-light bg-gradient-to-r from-background-tertiary-light/5 to-transparent p-6 sm:p-8"
+		class="relative mb-10 overflow-hidden rounded-lg border border-border-light bg-gradient-to-r from-background-tertiary-light/5 to-transparent p-6 pl-8 sm:p-8 sm:pl-10"
 	>
+		<AccentSpine />
 		<div class="mb-3 flex flex-wrap items-center gap-3 text-sm text-text-secondary-light">
 			<time datetime={data.metadata.date}>{formatDate(data.metadata.date)}</time>
 			<span class="text-border-light">·</span>

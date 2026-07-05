@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { checkRole } from '$lib/types/auth.types';
 	import OrganicBand from '$lib/components/marketing/OrganicBand.svelte';
+	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 
 	import type { UserRole } from '$lib/types/auth.types';
 
@@ -110,11 +111,7 @@
 		<div
 			class="relative mx-auto max-w-2xl overflow-hidden rounded-lg border border-line bg-surface-raised p-5 shadow-md sm:p-6"
 		>
-			<div class="absolute inset-y-0 left-0 flex w-1.5 flex-col" aria-hidden="true">
-				<div class="flex-1 bg-[#C05B2E]"></div>
-				<div class="flex-1 bg-[#D9A05B]"></div>
-				<div class="flex-1 bg-[#586048]"></div>
-			</div>
+			<AccentSpine />
 			<div class="pl-3">
 				<div class="flex items-center justify-between gap-2">
 					<div class="flex items-center gap-2">

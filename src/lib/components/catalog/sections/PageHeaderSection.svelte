@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 	interface Props {
 		catalogResultCount: number;
 		visibleOriginCount: number;
@@ -93,7 +94,10 @@
 				</p>
 			{/if}
 		</div>
-		<div class="w-full rounded-lg border border-accent/20 bg-surface-canvas p-4 lg:max-w-sm">
+		<div
+			class="relative w-full overflow-hidden rounded-lg border border-accent/20 bg-surface-canvas p-4 pl-6 lg:max-w-sm"
+		>
+			<AccentSpine />
 			<p class="text-sm font-semibold text-ink">See the market behind these coffees</p>
 			<p class="mt-1 text-sm text-muted">
 				The Market Index tracks price movement, arrivals, and supplier coverage across this whole

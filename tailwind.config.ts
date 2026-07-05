@@ -49,6 +49,13 @@ export default {
 					subtle: '#F2EFFE',
 					strong: '#46368F'
 				},
+				// Organic accent palette: brand illustration hues used as small
+				// decorative accents (AccentSpine, ribbons). Never backgrounds.
+				organic: {
+					rust: '#C05B2E',
+					gold: '#D9A05B',
+					olive: '#586048'
+				},
 				// Chart series tokens. Keep in sync with src/lib/styles/chartColors.ts.
 				chart: {
 					rust: '#C05B2E',

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 	interface KpiCard {
 		label: string;
 		value: string;
@@ -48,7 +49,10 @@
 
 <section class="mb-6 grid gap-4 lg:grid-cols-3" aria-label="Market insight cards">
 	{#each insightCards as insight}
-		<article class="rounded-lg border border-line bg-surface-panel p-5">
+		<article
+			class="relative overflow-hidden rounded-lg border border-line bg-surface-panel p-5 pl-7"
+		>
+			<AccentSpine />
 			<p class="text-xs font-semibold text-accent">
 				{insight.label}
 			</p>

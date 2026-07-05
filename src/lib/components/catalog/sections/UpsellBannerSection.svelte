@@ -1,8 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 </script>
 
-<div class="rounded-lg border border-accent/20 bg-accent-subtle/10 p-6">
+<div
+	class="relative overflow-hidden rounded-lg border border-accent/20 bg-accent-subtle/10 p-6 pl-8"
+>
+	<AccentSpine />
 	<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
 		<div class="text-center sm:text-left">
 			<h3 class="text-lg font-semibold text-ink">Ready to source smarter?</h3>

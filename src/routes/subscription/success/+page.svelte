@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
+	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 
 	interface ReconciledEntitlements {
 		role: string;
@@ -109,8 +110,9 @@
 
 <div class="flex min-h-[calc(100vh-80px)] flex-col items-center justify-center py-10">
 	<div
-		class="max-w-md rounded-lg border border-background-tertiary-light bg-background-secondary-light p-8 shadow-md"
+		class="relative max-w-md overflow-hidden rounded-lg border border-background-tertiary-light bg-background-secondary-light p-8 pl-10 shadow-md"
 	>
+		<AccentSpine />
 		{#if loading}
 			<div class="flex flex-col items-center justify-center py-10">
 				<div
