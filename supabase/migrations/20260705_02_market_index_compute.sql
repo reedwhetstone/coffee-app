@@ -338,7 +338,9 @@ BEGIN
   -- occupies 0% of those days. Build a (group-day x bucket) grid so missing
   -- bucket-days coalesce to 0 lots/suppliers before averaging; otherwise share,
   -- lot_count, and supplier_count are inflated by averaging only the days the
-  -- bucket actually appeared instead of every day the group had data.
+  -- bucket actually appeared instead of every day the group had data. Apply the
+  -- same origin-level suppression floor at the bucket grain so thin
+  -- process/disclosure buckets do not leak noisy origin rows.
   INSERT INTO public.metadata_index_snapshots
     (period_start, grain, origin, market, dimension, bucket, lot_count, share, stat_value, supplier_count)
   WITH day_bucket AS (
@@ -382,7 +384,8 @@ BEGIN
   JOIN grid
     ON grid.grain = g.grain AND grid.period_start = g.period_start
    AND grid.market = g.market AND grid.origin IS NOT DISTINCT FROM g.origin
-  GROUP BY g.period_start, g.grain, g.origin, g.market, grid.dimension, grid.bucket;
+  GROUP BY g.period_start, g.grain, g.origin, g.market, grid.dimension, grid.bucket
+  HAVING g.origin IS NULL OR avg(grid.day_bucket_lots) >= v_min_origin_lots;
 
   -- ---------- score (percentile-based) ----------
   INSERT INTO public.metadata_index_snapshots
