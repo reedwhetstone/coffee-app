@@ -10,11 +10,12 @@
 
 Lane A makes Parchment emit a correct cache contract, but Parchment has no cache in front of it
 (bare Render Node service). The only place a shared cache can live is in front of coffee-app
-(Vercel). PADR-0015's relay rule says the BFF relays upstream headers **verbatim** — which means a
-`public, s-maxage` from Parchment would be relayed through a hop that authenticates via **cookies**,
-where `Vary: Authorization` is meaningless. A shared cache in front of coffee-app could then serve the
-cached anonymous projection to a logged-in member. This lane closes that leak and is where the
-perceptible caching actually happens.
+(Vercel). PADR-0015's relay rule says the BFF relays upstream headers **verbatim**, which means a
+`public, s-maxage` from Parchment would be relayed through a hop that primarily authenticates via
+**cookies**, while still accepting Bearer/API-key callers. The BFF must therefore key public shared
+cache entries on both `Cookie` and `Authorization`. Otherwise a shared cache in front of coffee-app
+could serve the cached anonymous projection to an authenticated caller. This lane closes that leak and
+is where the perceptible caching actually happens.
 
 ## Deliverable
 
@@ -25,7 +26,8 @@ Routes: `src/routes/api/catalog/+server.ts`, `src/routes/api/catalog/filters/+se
 
 - If a **session cookie is present** on the incoming request → force
   `Cache-Control: private, no-store`, overriding the verbatim upstream relay.
-- If **no session cookie** → pass through the upstream `public, s-maxage=60, stale-while-revalidate=300`.
+- If **no recognized credential** → use `public, s-maxage=60, stale-while-revalidate=300` with
+  `Vary: Cookie, Authorization`.
 - This is the one sanctioned exception to PADR-0015 verbatim relay. Document it in the PR body and add
   a one-line note to PADR-0015 so the BFF is not seen as drifting back into business logic.
 - Prefer a shared helper (e.g. `src/lib/server/cacheHeaders.ts`) consumed by all four routes so the

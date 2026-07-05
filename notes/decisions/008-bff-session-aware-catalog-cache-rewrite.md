@@ -19,11 +19,14 @@ reads get `public, s-maxage=60, stale-while-revalidate=300` with
 `Vary: Authorization`; authenticated reads get `private, no-store`. That contract
 is correct **at the API**, where callers authenticate with a Bearer token.
 
-The browser hop into the BFF authenticates via **cookies**, not `Authorization`.
-So `Vary: Authorization` is meaningless at this layer. If the BFF relayed a
-`public, s-maxage` header verbatim, a shared cache in front of coffee-app (Vercel)
-could store an anonymous catalog projection and then serve it to a logged-in
-member — a member-data leak. Parchment has no shared cache in front of it (bare
+The browser hop into the BFF primarily authenticates via **cookies**, so
+Parchment's `Vary: Authorization` is not enough at this layer. The BFF also
+accepts Bearer/API-key callers on catalog routes, so both credential channels
+matter here: `Cookie` protects member sessions and `Authorization` protects
+header-authenticated API callers. If the BFF relayed a `public, s-maxage` header
+verbatim, or only varied on one local credential input, a shared cache in front of
+coffee-app (Vercel) could store an anonymous catalog projection and then serve it
+to an authenticated caller. Parchment has no shared cache in front of it (bare
 Render Node service), so the BFF is the only place this shared cache can live,
 and therefore the only place the leak can be closed.
 
@@ -36,8 +39,9 @@ relaying the upstream value for catalog reads. Single source of truth:
 `/api/catalog-api`).
 
 - **Anonymous caller** → `public, s-maxage=60, stale-while-revalidate=300` plus
-  `Vary: Cookie` (so a shared cache keys on the session cookie and cannot serve a
-  public entry to a member).
+  `Vary: Cookie, Authorization` (so a shared cache keys on every credential
+  input accepted by the BFF and cannot serve a public entry to an authenticated
+  caller).
 - **Any authenticated caller** (cookie session or API key) → `private, no-store`.
 - **Every error / degraded response** → `private, no-store` (never shared-cacheable).
 - `/api/catalog-api` is API-key gated (metered), so it is always `no-store`.

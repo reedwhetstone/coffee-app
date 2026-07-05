@@ -176,7 +176,7 @@ describe('/api/catalog route', () => {
 });
 
 describe('/api/catalog session-aware cache headers', () => {
-	it('serves anonymous callers the public, short-TTL policy and keys the cache on Cookie', async () => {
+	it('serves anonymous callers the public, short-TTL policy and keys the cache on credentials', async () => {
 		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: false });
 
 		const response = await GET(makeEvent('https://app.test/api/catalog?limit=15'));
@@ -186,6 +186,7 @@ describe('/api/catalog session-aware cache headers', () => {
 			'public, s-maxage=60, stale-while-revalidate=300'
 		);
 		expect(response.headers.get('Vary') ?? '').toContain('Cookie');
+		expect(response.headers.get('Vary') ?? '').toContain('Authorization');
 	});
 
 	it('forces private/no-store for an authenticated caller (the member-leak gate)', async () => {

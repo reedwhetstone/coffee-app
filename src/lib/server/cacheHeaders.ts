@@ -7,9 +7,10 @@
  * verbatim (PADR-0015's default relay rule), a shared cache in front of
  * coffee-app (Vercel) could serve a cached anonymous projection to a logged-in
  * member. This module re-derives the cache header from the BFF's own session
- * view instead: only anonymous callers get the public, short-TTL policy; every
- * authenticated caller (cookie session or API key) is forced to `private,
- * no-store`. Error responses are never shared-cacheable.
+ * view instead: only anonymous callers get the public, short-TTL policy varied
+ * by every credential input this BFF accepts; every authenticated caller
+ * (cookie session or API key) is forced to `private, no-store`. Error responses
+ * are never shared-cacheable.
  *
  * This is the one sanctioned exception to PADR-0015 verbatim header relay: the
  * BFF rewrites Cache-Control session-aware rather than relaying it.
@@ -45,14 +46,16 @@ function appendVary(into: Headers, token: string): void {
 
 /**
  * Apply the session-aware catalog cache policy to `into`. Anonymous callers get
- * the public short-TTL policy plus `Vary: Cookie` (so a shared cache keys on the
- * session cookie and cannot serve a public entry to a logged-in member);
- * authenticated callers get `private, no-store`.
+ * the public short-TTL policy plus `Vary: Cookie, Authorization` (so a shared
+ * cache keys on all credential inputs and cannot serve a public entry to a
+ * logged-in member or header-authenticated caller); authenticated callers get
+ * `private, no-store`.
  */
 export function applyBffCatalogCacheHeaders(into: Headers, isAuthenticated: boolean): Headers {
 	into.set('Cache-Control', resolveBffCatalogCacheControl(isAuthenticated));
 	if (!isAuthenticated) {
 		appendVary(into, 'Cookie');
+		appendVary(into, 'Authorization');
 	}
 	return into;
 }
