@@ -23,8 +23,12 @@ export const DELETE: RequestHandler = async (event) => {
 			return json({ error: 'No roast_id provided' }, { status: 400 });
 		}
 
-		const parsedId = parseInt(roastId, 10);
-		if (!Number.isFinite(parsedId)) {
+		// Require a canonical positive integer. parseInt would coerce values like
+		// "42abc" or "42.9" to 42 and forward a clear for the wrong roast on this
+		// destructive route, so reject anything that is not entirely digits.
+		const rawId = roastId.trim();
+		const parsedId = Number(rawId);
+		if (!/^\d+$/.test(rawId) || !Number.isSafeInteger(parsedId) || parsedId <= 0) {
 			return json({ error: 'Invalid roast ID' }, { status: 400 });
 		}
 
