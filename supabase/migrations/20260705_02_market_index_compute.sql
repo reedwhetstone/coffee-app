@@ -454,6 +454,7 @@ SECURITY DEFINER
 AS $$
 DECLARE
   v_min_baseline_weeks int := 8;
+  v_required_baseline_weeks int := greatest(v_min_baseline_weeks, p_baseline_weeks);
   v_pct_quiet   numeric := 40;
   v_pct_normal  numeric := 85;
   v_pct_notable numeric := 97;
@@ -539,13 +540,13 @@ BEGIN
     latest.move_pct,
     base.mean_move,
     base.sd_move,
-    CASE WHEN latest.move_pct IS NOT NULL AND base.avail >= v_min_baseline_weeks AND base.sd_move > 0
+    CASE WHEN latest.move_pct IS NOT NULL AND base.avail >= v_required_baseline_weeks AND base.sd_move > 0
          THEN ROUND(((latest.move_pct - base.mean_move) / base.sd_move)::numeric, 2) END,
-    CASE WHEN latest.move_pct IS NOT NULL AND base.avail >= v_min_baseline_weeks
+    CASE WHEN latest.move_pct IS NOT NULL AND base.avail >= v_required_baseline_weeks
          THEN ROUND((100.0 * (base.n_lt + (base.n_eq * 0.5)) / base.avail)::numeric, 1) END,
-    CASE WHEN latest.move_pct IS NOT NULL AND base.avail >= v_min_baseline_weeks
+    CASE WHEN latest.move_pct IS NOT NULL AND base.avail >= v_required_baseline_weeks
          THEN base.weeks_since_larger END,
-    CASE WHEN latest.move_pct IS NOT NULL AND base.avail >= v_min_baseline_weeks THEN
+    CASE WHEN latest.move_pct IS NOT NULL AND base.avail >= v_required_baseline_weeks THEN
       (CASE
         WHEN (100.0 * (base.n_lt + (base.n_eq * 0.5)) / base.avail) < v_pct_quiet   THEN 'quiet'
         WHEN (100.0 * (base.n_lt + (base.n_eq * 0.5)) / base.avail) < v_pct_normal  THEN 'normal'
@@ -563,7 +564,7 @@ BEGIN
     END,
     lm.sample_size, lm.supplier_count,
     base.avail,
-    CASE WHEN latest.move_pct IS NULL OR base.avail < v_min_baseline_weeks
+    CASE WHEN latest.move_pct IS NULL OR base.avail < v_required_baseline_weeks
          THEN 'insufficient_baseline_history' END
   FROM tmp_segments s
   LEFT JOIN tmp_moves latest
@@ -621,7 +622,7 @@ $$;
 COMMENT ON FUNCTION public.compute_price_move_stats(date, int) IS
   'Precomputes movement-significance stats (§3.4/§4.5) for market-wide + segment grains, markets, and 7d/30d windows. '
   'Weekly-sampled baseline; abs-magnitude percentile/classification; matched-lot move_driver. '
-  'insufficient_baseline_history when available_baseline_weeks < 8. Called by coffee-scraper after compute_price_index.';
+  'insufficient_baseline_history when available_baseline_weeks is below the requested baseline or launch minimum. Called by coffee-scraper after compute_price_index.';
 
 
 -- ============================================================
