@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { checkRole } from '$lib/types/auth.types';
+	import OrganicBand from '$lib/components/marketing/OrganicBand.svelte';
 
 	import type { UserRole } from '$lib/types/auth.types';
 
@@ -32,8 +33,10 @@
 	}
 </script>
 
-<section class="relative overflow-hidden bg-gradient-to-br from-surface-canvas to-surface-panel">
-	<div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
+<section
+	class="texture-grain relative overflow-hidden bg-gradient-to-br from-surface-canvas to-surface-panel"
+>
+	<div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
 		<div class="flex flex-col items-center justify-center">
 			{#if isSignedIn}
 				<div
@@ -100,48 +103,32 @@
 				</div>
 			{/if}
 		</div>
+	</div>
 
-		<div class="mt-16 flow-root sm:mt-24">
+	<!-- Brand illustration band with a sample daily market brief -->
+	<div class="relative mt-4 h-64 w-full overflow-hidden sm:h-72">
+		<OrganicBand />
+		<div class="absolute inset-0 flex items-center justify-center px-4 sm:px-6">
 			<div
-				class="-m-2 rounded-xl bg-accent/5 p-2 ring-1 ring-inset ring-accent/10 lg:-m-4 lg:rounded-2xl lg:p-4"
+				class="w-full max-w-2xl rounded-lg border border-line bg-surface-canvas/95 p-5 shadow-lg backdrop-blur-sm sm:p-6"
 			>
-				<div class="rounded-md bg-surface-panel p-8 shadow-2xl ring-1 ring-line">
-					<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-						<div class="rounded-lg bg-surface-canvas p-4 shadow-sm ring-1 ring-line">
-							<div class="flex items-center justify-between">
-								<h3 class="font-semibold text-ink">Ethiopia Yirgacheffe</h3>
-								<div class="font-bold text-accent">$7.45/lb</div>
-							</div>
-							<p class="mt-1 text-sm text-muted">Origin median: $7.85 · -4.9% WoW</p>
-							<div class="mt-2 flex items-center justify-between text-xs text-muted">
-								<span>3 new arrivals this week</span>
-								<span>Washed</span>
-							</div>
-						</div>
-
-						<div class="rounded-lg bg-surface-canvas p-4 shadow-sm ring-1 ring-line sm:col-span-2">
-							<div class="mb-2 flex items-center gap-2">
-								<div class="h-2 w-2 rounded-full bg-accent"></div>
-								<span class="text-xs text-muted">Market brief · updated daily</span>
-							</div>
-							<p class="text-sm text-ink">
-								Ethiopia washed lots down 4.9% median week-over-week. 3 new arrivals from importers
-								this week. 2 lots delisted. Origin IQR: $6.90 to $8.40. Wholesale average holds
-								$0.55 below retail.
-							</p>
-						</div>
+				<div class="flex items-center justify-between gap-2">
+					<div class="flex items-center gap-2">
+						<div class="h-2 w-2 rounded-full bg-accent"></div>
+						<span class="text-xs font-semibold text-ink">Market brief · updated every morning</span>
 					</div>
+					<span class="rounded-full bg-surface-panel px-2.5 py-0.5 text-xs text-muted">Sample</span>
+				</div>
+				<p class="mt-3 font-serif text-base leading-7 text-ink sm:text-lg">
+					Ethiopia washed lots down 4.9% median week-over-week. 3 new arrivals from importers this
+					week, 2 lots delisted. Origin IQR $6.90–$8.40; wholesale holds $0.55 below retail.
+				</p>
+				<div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-muted">
+					<span>40+ importers tracked</span>
+					<span>90+ days of price history</span>
+					<span>Arrivals and delistings daily</span>
 				</div>
 			</div>
 		</div>
-	</div>
-
-	<div
-		class="absolute inset-x-0 top-[calc(100%-13rem)] -z-10 transform-gpu overflow-hidden blur-3xl sm:top-[calc(100%-30rem)]"
-	>
-		<div
-			class="relative left-[calc(50%+3rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 bg-accent opacity-20 sm:left-[calc(50%+36rem)] sm:w-[72.1875rem]"
-			style="clip-path: polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)"
-		></div>
 	</div>
 </section>

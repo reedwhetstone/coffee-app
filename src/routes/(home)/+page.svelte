@@ -5,6 +5,7 @@
 	import { parseTastingNotes } from '$lib/utils/parseTastingNotes';
 
 	import Hero from '$lib/components/marketing/Hero.svelte';
+	import PersonaRouter from '$lib/components/marketing/PersonaRouter.svelte';
 	import LazyLoad from '$lib/components/LazyLoad.svelte';
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 
@@ -16,6 +17,8 @@
 
 <div class="min-h-screen">
 	<Hero session={data.session} role={data.role} />
+
+	<PersonaRouter />
 
 	{#if data?.data?.length > 0}
 		<section class="bg-surface-panel py-16">
