@@ -19,6 +19,7 @@ perceptible caching actually happens.
 ## Deliverable
 
 ### B1. Session-aware cache-header rewrite in the BFF proxy routes
+
 Routes: `src/routes/api/catalog/+server.ts`, `src/routes/api/catalog/filters/+server.ts`,
 `src/routes/api/catalog/origin-price-stats/+server.ts`, `src/routes/api/catalog-api/+server.ts`.
 
@@ -31,20 +32,24 @@ Routes: `src/routes/api/catalog/+server.ts`, `src/routes/api/catalog/filters/+se
   rule has a single source of truth.
 
 ### B2. Tests (the member-leak regression gate)
+
 - Cookie-present request → response carries `private, no-store` regardless of the upstream header.
 - Anonymous request (no session cookie) → relayed `public, s-maxage` header intact.
 - Co-locate with existing `src/routes/api/catalog/catalog.test.ts` / `catalog-api.test.ts` patterns.
 
 ## Contract from Lane A (pin these exact strings)
+
 - Public arm: `Cache-Control: public, s-maxage=60, stale-while-revalidate=300`
 - Private arm: `Cache-Control: private, no-store`
 - Freshness envelope: `meta.freshness = { generatedAt, cacheStatus, ttlSeconds }` (relayed as-is).
 
 ## Validation
+
 ```bash
 pnpm check --fail-on-warnings && pnpm lint && pnpm test -- --run src/routes/api/catalog && pnpm build
 ```
 
 ## Out of scope
+
 - Any new business logic in the BFF beyond credential attachment + header rewrite.
 - Actual Vercel cache configuration tuning (belongs to PR6 measurement).
