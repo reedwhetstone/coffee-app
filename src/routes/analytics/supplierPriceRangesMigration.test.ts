@@ -20,6 +20,13 @@ describe('supplier price ranges migration SQL contract', () => {
 		}
 	});
 
+	it('includes stocked priced lots even when origin metadata is missing', () => {
+		expect(migrationSql).toContain('where stocked = true');
+		expect(migrationSql).toContain('and price_per_lb is not null');
+		expect(migrationSql).toContain('and price_per_lb > 0');
+		expect(migrationSql).not.toContain('country is not null');
+	});
+
 	it('keeps the RPC restricted to the service role', () => {
 		expect(migrationSql).toContain('security definer');
 		expect(migrationSql).toContain('set search_path = public');

@@ -28,7 +28,6 @@ as $$
     where stocked = true
       and price_per_lb is not null
       and price_per_lb > 0
-      and country is not null
   )
   select
     source,
