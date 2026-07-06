@@ -79,7 +79,7 @@ export function createMarketIndexTools(deps: ChatToolDeps) {
 		const marketMetadataIndex = deps.marketMetadataIndex;
 		tools.market_metadata = tool({
 			description:
-				'The metadata index: how the market\'s composition is changing over time — processing-method mix, disclosure-level mix (transparency trend), or cup-score distribution — market-wide or per origin. Use for questions like "is anaerobic growing in Ethiopia?" or "is the market disclosing more about processing?".',
+				'The metadata index: how the market\'s composition is changing over time — processing-method mix or disclosure-level mix (transparency trend) — market-wide or per origin. Cup-score trends are not available. Use for questions like "is anaerobic growing in Ethiopia?" or "is the market disclosing more about processing?".',
 			inputSchema: z.object({
 				dimension: z
 					.enum(['process', 'disclosure'])

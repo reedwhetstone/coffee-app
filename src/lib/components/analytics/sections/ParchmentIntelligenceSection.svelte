@@ -157,8 +157,8 @@
 					<div>
 						<h2 class="text-base font-semibold text-ink">What's arriving and leaving?</h2>
 						<p class="mt-1 text-sm text-muted">
-							{filteredArrivals.length} arrivals and {filteredDelistings.length} delistings in the last
-							{windowDaysLabel} days.
+							Showing the latest {filteredArrivals.length} arrivals and {filteredDelistings.length} delistings
+							from the last {windowDaysLabel} days.
 						</p>
 					</div>
 					<div
