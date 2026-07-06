@@ -261,7 +261,7 @@ describe('analytics page loading experience', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
 
-		expect(screen.getByText('Source with the full market in view.')).toBeTruthy();
+		expect(screen.getByText('The supplier layer runs deeper.')).toBeTruthy();
 
 		await view.rerender({ data: createData({ session: createSession() }) });
 
@@ -270,7 +270,7 @@ describe('analytics page loading experience', () => {
 		});
 
 		expect(loadMemberAnalyticsModules).not.toHaveBeenCalled();
-		expect(screen.getByText('Source with the full market in view.')).toBeTruthy();
+		expect(screen.getByText('The supplier layer runs deeper.')).toBeTruthy();
 	});
 
 	it('loads the Parchment Intelligence chart when a viewer upgrades on the same route', async () => {
@@ -326,14 +326,14 @@ describe('analytics command center hierarchy', () => {
 		expect(screen.getByText('Scope controls')).toBeTruthy();
 		expect(screen.getByText('Price movement')).toBeTruthy();
 		expect(screen.getByText('Availability read')).toBeTruthy();
-		expect(screen.getByText('Next investigation')).toBeTruthy();
+		expect(screen.getByText('Ask about this market read.')).toBeTruthy();
 
 		const marketRead = container.querySelector('[aria-labelledby="market-read-heading"]');
 		const scopeControls = container.querySelector('[aria-label="Scope controls"]');
 		const kpiStrip = container.querySelector('[aria-label="Market KPI strip"]');
 		const insightCards = container.querySelector('[aria-label="Market insight cards"]');
 		const evidenceCharts = container.querySelector('[aria-label="Evidence charts"]');
-		const actionRail = container.querySelector('[aria-label="Action rail"]');
+		const actionRail = container.querySelector('[aria-label="Ask about this market read"]');
 
 		expect(marketRead).toBeTruthy();
 		expect(scopeControls).toBeTruthy();
@@ -358,7 +358,7 @@ describe('analytics command center hierarchy', () => {
 			evidenceCharts!.compareDocumentPosition(actionRail!) & Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 		expect(
-			actionRail!.compareDocumentPosition(screen.getByText('Supplier Price Comparison')) &
+			actionRail!.compareDocumentPosition(screen.getByText('The supplier layer runs deeper.')) &
 				Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 	});
@@ -373,6 +373,39 @@ describe('analytics command center hierarchy', () => {
 		await screen.getByRole('button', { name: 'All' }).click();
 
 		expect(screen.getByText(/The latest combined retail \+ wholesale average is/i)).toBeTruthy();
+	});
+
+	it('labels public value-signal counts as all-market in every scope', async () => {
+		render(AnalyticsPage, {
+			data: createData({
+				marketInsights: {
+					valueSignals: null,
+					signalsSummary: {
+						total: 5,
+						byType: { price_drop: 2, below_market: 3, value_quality: 0 },
+						asOf: '2026-07-06',
+						market: 'all'
+					},
+					signalsAsOf: '2026-07-06',
+					moveStats: null,
+					metadataProcessSeries: null,
+					metadataDisclosureSeries: null
+				}
+			} as Partial<PageData>)
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		await screen.getByRole('button', { name: 'Wholesale' }).click();
+
+		// The public summary is the unfiltered (retail + wholesale) count slice, so
+		// it must never present itself as retail data.
+		expect(screen.getByText(/5 all-market buy signals are active/i)).toBeTruthy();
+		expect(
+			screen.getByText(/All-market count shown while the wholesale scope is selected/i)
+		).toBeTruthy();
 	});
 
 	it('scopes coverage supplier-evidence reads with the selected market', async () => {
@@ -472,7 +505,7 @@ describe('analytics action CTA rail', () => {
 
 		expect(screen.getByText('Ask about this market read')).toBeTruthy();
 		expect(screen.getByRole('link', { name: 'Sign in to ask' })).toHaveAttribute('href', '/auth');
-		expect(screen.getByText(/This is the only live handoff here/i)).toBeTruthy();
+		expect(screen.getByText(/opens with your current scope and movement window/i)).toBeTruthy();
 		expect(screen.queryByText('Open catalog evidence')).toBeNull();
 		expect(screen.queryByText('Compare supplier evidence')).toBeNull();
 		expect(screen.queryByText('Review machine access')).toBeNull();
@@ -563,7 +596,7 @@ describe('analytics action CTA rail', () => {
 			'href',
 			'/subscription?plan=intelligence-monthly&intent=checkout'
 		);
-		expect(screen.getAllByText('Parchment Intelligence').length).toBeGreaterThanOrEqual(1);
+		expect(screen.getAllByText(/Parchment Intelligence/).length).toBeGreaterThanOrEqual(1);
 		expect(screen.queryByRole('link', { name: 'Ask with this context' })).toBeNull();
 	});
 });
@@ -577,17 +610,17 @@ describe('analytics premium boundary copy', () => {
 		});
 
 		expect(screen.queryByRole('button', { name: 'Spread' })).toBeNull();
-		expect(screen.getByText('Source with the full market in view.')).toBeTruthy();
+		expect(screen.getByText('The supplier layer runs deeper.')).toBeTruthy();
 		expect(
 			screen.getByText(
-				/supplier comparisons, arrival and delisting feeds, origin benchmarks, and the weekly procurement brief/i
+				/supplier-by-supplier price ranges, catalog health, the arrivals and delistings feed/i
 			)
 		).toBeTruthy();
-		expect(screen.getByRole('button', { name: 'Start Intelligence' })).toBeTruthy();
-		expect(screen.getByRole('button', { name: 'See free market view' })).toBeTruthy();
+		expect(screen.getByRole('link', { name: 'Start Intelligence' })).toBeTruthy();
+		expect(screen.getByRole('link', { name: 'See plans' })).toBeTruthy();
 		expect(screen.queryByText('Fresh Ethiopia')).toBeNull();
 		expect(screen.queryByText('Recently Gone')).toBeNull();
-		expect(screen.getAllByText('Parchment Intelligence').length).toBeGreaterThanOrEqual(1);
+		expect(screen.getAllByText(/Parchment Intelligence/).length).toBeGreaterThanOrEqual(1);
 	});
 
 	it('restores premium supplier analytics modules instead of static fallback tables', async () => {
@@ -650,7 +683,12 @@ describe('analytics premium boundary copy', () => {
 
 		expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();
 		expect(screen.getByText('Recently Gone')).toBeTruthy();
-		expect(screen.getAllByRole('button', { name: /Open 1 loaded row/ })).toHaveLength(2);
-		expect(screen.queryByRole('button', { name: /View all 0/ })).toBeNull();
+		// Without reliable window counts the panel opens the loaded rows and makes
+		// no "all"/freshness claim.
+		expect(
+			screen.getAllByRole('button', { name: /Open 2 loaded rows/ }).length
+		).toBeGreaterThanOrEqual(1);
+		expect(screen.queryByRole('button', { name: /View all [02]/ })).toBeNull();
+		expect(screen.getByText(/movement counts are currently unavailable/i)).toBeTruthy();
 	});
 });

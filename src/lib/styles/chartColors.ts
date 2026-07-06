@@ -35,6 +35,25 @@ export const PROCESS_COLORS: Record<string, string> = {
 
 export const PROCESS_FALLBACK_COLORS: string[] = CHART_SERIES.slice(0, 5);
 
+/** ADR-004 processing disclosure levels, ordered least → most disclosed. */
+export const DISCLOSURE_COLORS: Record<string, string> = {
+	undisclosed: '#A8A29E',
+	none: '#C9C2B6',
+	label_only: '#D9A05B',
+	structured: '#7FB069',
+	narrative: '#4E8098',
+	high_detail: '#586048'
+};
+
+export const DISCLOSURE_LABELS: Record<string, string> = {
+	undisclosed: 'Undisclosed',
+	none: 'None stated',
+	label_only: 'Label only',
+	structured: 'Structured',
+	narrative: 'Narrative',
+	high_detail: 'High detail'
+};
+
 /** Price-tier series. */
 export const RETAIL_COLOR = '#C05B2E';
 export const WHOLESALE_COLOR = '#4E8098';
@@ -42,6 +61,16 @@ export const WHOLESALE_COLOR = '#4E8098';
 /** Highlight/marker accents inside charts. */
 export const MARKER_PRIMARY = '#C05B2E';
 export const MARKER_SECONDARY = '#7FB069';
+
+/** Catalog movement series (arrivals in, delistings out). */
+export const ARRIVAL_COLOR = '#7FB069';
+export const DELISTING_COLOR = '#9C4356';
+
+/** Neutral for unknown/undisclosed categories. */
+export const NEUTRAL_CATEGORY_COLOR = '#A8A29E';
+
+/** Primary-ink text drawn inside SVG charts (row/series labels). */
+export const SERIES_LABEL_COLOR = '#302f2a';
 
 /** Axis, gridline, and tooltip chrome — brand inks instead of gray-500s. */
 export const AXIS_LABEL_COLOR = '#695c4d';

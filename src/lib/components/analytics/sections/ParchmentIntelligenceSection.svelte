@@ -1,7 +1,9 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 	import ExpandablePanel from '$lib/components/analytics/ExpandablePanel.svelte';
 	import AnalyticsLoadingPanel from '$lib/components/analytics/AnalyticsLoadingPanel.svelte';
+	import SupplierPriceRangeChart from '$lib/components/analytics/SupplierPriceRangeChart.svelte';
+	import MovementByOriginChart from '$lib/components/analytics/MovementByOriginChart.svelte';
 	import type {
 		PriceSnapshot,
 		ArrivalBean,
@@ -34,16 +36,15 @@
 		scopedSupplierHealth: SupplierHealthRow[];
 		filteredArrivals: ArrivalBean[];
 		filteredDelistings: DelistingBean[];
+		/** Exact scoped window totals from movement counts (loaded rows are capped). */
+		arrivalTotal: number;
+		delistingTotal: number;
+		/** False when movement counts are missing or the source data is stale (>90d). */
+		isMovementDataAvailable: boolean;
 		originBarData: OriginBenchmarkRow[];
 		hasSnapshots: boolean;
 		windowMode: WindowMode;
 		viewModeLabel: string;
-		arrivalPanelBadge: string | undefined;
-		arrivalPanelTotalItems: number;
-		arrivalExpandLabel: string | undefined;
-		delistingPanelBadge: string | undefined;
-		delistingPanelTotalItems: number;
-		delistingExpandLabel: string | undefined;
 		onRetry: () => void;
 		onWindowModeChange: (v: WindowMode) => void;
 	}
@@ -60,489 +61,304 @@
 		scopedSupplierHealth,
 		filteredArrivals,
 		filteredDelistings,
+		arrivalTotal,
+		delistingTotal,
+		isMovementDataAvailable,
 		originBarData,
 		hasSnapshots,
 		windowMode,
 		viewModeLabel,
-		arrivalPanelBadge,
-		arrivalPanelTotalItems,
-		arrivalExpandLabel,
-		delistingPanelBadge,
-		delistingPanelTotalItems,
-		delistingExpandLabel,
 		onRetry,
 		onWindowModeChange
 	}: Props = $props();
+
+	let windowDaysLabel = $derived(windowMode === '7d' ? '7' : '30');
+
+	// The loader caps the named-row lists (50/market), so the loaded rows can be
+	// fewer than the exact window totals shown in the KPI strip. The expand
+	// affordance must never claim "all" for a truncated list, and no window
+	// freshness is claimed when the movement data itself is stale/unavailable.
+	let movementLoadedRows = $derived(filteredArrivals.length + filteredDelistings.length);
+	let movementWindowTotal = $derived(arrivalTotal + delistingTotal);
+	let movementTruncated = $derived(
+		isMovementDataAvailable && movementLoadedRows < movementWindowTotal
+	);
+	let movementExpandLabel = $derived.by(() => {
+		if (!isMovementDataAvailable) return `Open ${movementLoadedRows} loaded rows →`;
+		if (movementTruncated) return `Open latest ${movementLoadedRows} of ${movementWindowTotal} →`;
+		return `View all ${movementWindowTotal} →`;
+	});
 </script>
 
-<div class="relative mb-8">
-	{#if !isParchmentIntelligence}
-		<div class="pointer-events-none select-none">
-			<div class="mb-8 blur-sm filter">
-				<div class="mb-3">
-					<h2 class="text-base font-semibold text-ink">Supplier Price Comparison</h2>
-					<p class="mt-1 text-sm text-text-secondary-light">
-						Everyone can explore the core market view. Parchment Intelligence adds deeper supplier
-						comparisons.
-					</p>
-				</div>
-				<div
-					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
-				>
-					<div class="space-y-2">
-						{#each Array(6) as _}
-							<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
-								<div class="h-4 w-28 rounded bg-background-secondary-light"></div>
-								<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
-								<div class="h-4 w-20 rounded bg-background-secondary-light"></div>
-								<div class="ml-auto h-4 w-14 rounded bg-background-secondary-light"></div>
-							</div>
-						{/each}
-					</div>
-				</div>
-			</div>
-
-			<div class="mb-8 blur-sm filter">
-				<div class="mb-3">
-					<h2 class="text-base font-semibold text-ink">Supplier Catalog Health</h2>
-					<p class="mt-1 text-sm text-text-secondary-light">
-						Catalog breadth, origin coverage, and supplier signals for deeper sourcing review.
-					</p>
-				</div>
-				<div
-					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
-				>
-					<div class="space-y-2">
-						{#each Array(6) as _}
-							<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
-								<div class="h-4 w-24 rounded bg-background-secondary-light"></div>
-								<div class="h-4 w-12 rounded bg-background-secondary-light"></div>
-								<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
-								<div class="ml-auto h-4 w-14 rounded bg-background-secondary-light"></div>
-							</div>
-						{/each}
-					</div>
-				</div>
-			</div>
-
-			<div class="mb-8 blur-sm filter">
-				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
-						<div class="mb-3 flex items-center gap-2">
-							<span class="text-sm font-semibold text-background-tertiary-light"
-								>Parchment Intelligence</span
-							>
-						</div>
-						<div class="mb-4 flex items-center justify-between gap-3">
-							<p class="text-sm text-text-secondary-light">
-								New coffees added in the last {windowMode === '7d' ? '7' : '30'} days.
-							</p>
-							<div
-								class="flex rounded-full border border-amber-200 bg-amber-50 p-0.5 text-xs font-medium"
-							>
-								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
-									<button
-										onclick={() => onWindowModeChange(opt.value as WindowMode)}
-										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode ===
-										opt.value
-											? 'bg-amber-200 text-amber-900 shadow-sm'
-											: 'text-amber-900/70 hover:text-amber-900'}"
-									>
-										{opt.label}
-									</button>
-								{/each}
-							</div>
-						</div>
-						<h2 class="text-base font-semibold text-ink">New Arrivals</h2>
-						<p class="mt-1 text-sm text-text-secondary-light">
-							Expanded monitoring for newly added coffees across suppliers.
-						</p>
-						<div class="mt-3 space-y-2">
-							{#each Array(4) as _}
-								<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
-									<div class="h-4 w-32 rounded bg-background-secondary-light"></div>
-									<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
-									<div class="ml-auto h-4 w-12 rounded bg-amber-100"></div>
-								</div>
-							{/each}
-						</div>
-					</div>
-					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
-						<div class="mb-3 flex items-center gap-2">
-							<span class="text-sm font-semibold text-background-tertiary-light"
-								>Parchment Intelligence</span
-							>
-						</div>
-						<div class="mb-4 flex items-center justify-between gap-3">
-							<p class="text-sm text-text-secondary-light">
-								Coffees removed in the last {windowMode === '7d' ? '7' : '30'} days.
-							</p>
-							<div
-								class="flex rounded-full border border-red-200 bg-red-50 p-0.5 text-xs font-medium"
-							>
-								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
-									<button
-										onclick={() => onWindowModeChange(opt.value as WindowMode)}
-										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode ===
-										opt.value
-											? 'bg-red-200 text-red-900 shadow-sm'
-											: 'text-red-900/70 hover:text-red-900'}"
-									>
-										{opt.label}
-									</button>
-								{/each}
-							</div>
-						</div>
-						<h2 class="text-base font-semibold text-ink">Recent Delistings</h2>
-						<p class="mt-1 text-sm text-text-secondary-light">
-							Expanded monitoring for catalog removals and turnover.
-						</p>
-						<div class="mt-3 space-y-2">
-							{#each Array(4) as _}
-								<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
-									<div class="h-4 w-32 rounded bg-background-secondary-light"></div>
-									<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
-									<div class="ml-auto h-4 w-12 rounded bg-red-100"></div>
-								</div>
-							{/each}
-						</div>
-					</div>
-				</div>
-			</div>
-
-			<div class="blur-sm filter">
-				<div class="mb-3">
-					<h2 class="text-base font-semibold text-ink">Parchment Intelligence overview</h2>
-					<p class="mt-1 text-sm text-text-secondary-light">
-						Deeper market visibility for sourcing, purchasing, and supplier benchmarking in one
-						place.
-					</p>
-				</div>
-				<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-					<div
-						class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
-					>
-						<h3 class="mb-2 text-lg font-semibold text-text-primary-light">Origin benchmarks</h3>
-						<div class="grid grid-cols-3 gap-3">
-							{#each Array(9) as _}
-								<div class="rounded bg-background-secondary-light p-3">
-									<div class="h-4 w-3/4 rounded bg-background-tertiary-light/30"></div>
-									<div class="mt-2 h-6 w-1/2 rounded bg-background-tertiary-light/20"></div>
-								</div>
-							{/each}
-						</div>
-					</div>
-					<div
-						class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
-					>
-						<h3 class="mb-2 text-lg font-semibold text-text-primary-light">
-							Longer-term trend detail
-						</h3>
-						<div class="mt-4 h-40 rounded bg-background-secondary-light"></div>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<div
-			class="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-gradient-to-b from-background-primary-light/60 to-background-primary-light"
-		>
-			<div
-				class="mx-4 max-w-xl rounded-xl border border-background-tertiary-light/30 bg-background-primary-light p-8 text-center shadow-lg"
-			>
-				<div class="mb-3 text-3xl">📈</div>
-				<h3 class="mb-2 text-2xl font-bold text-text-primary-light">
-					Source with the full market in view.
+{#if !isParchmentIntelligence}
+	<!-- Honest gated teaser: state what Intelligence adds, no fake blurred data. -->
+	<section
+		class="relative mb-8 overflow-hidden rounded-lg border border-accent/20 bg-accent-subtle/10 p-6 pl-8"
+		aria-label="Parchment Intelligence"
+	>
+		<AccentSpine />
+		<div class="flex flex-col items-start justify-between gap-5 lg:flex-row lg:items-center">
+			<div class="max-w-2xl">
+				<h3 class="font-serif text-xl font-medium tracking-tight text-ink">
+					The supplier layer runs deeper.
 				</h3>
-				<p class="mb-4 text-text-secondary-light">
-					Supplier comparisons, arrival and delisting feeds, origin benchmarks, and the weekly
-					procurement brief. Built for sourcing pros making real buying decisions.
+				<p class="mt-2 text-sm leading-6 text-muted">
+					Parchment Intelligence adds the working views behind this page: supplier-by-supplier price
+					ranges, catalog health, the arrivals and delistings feed by origin, origin benchmarks with
+					longer history, and the retail-versus-wholesale spread.
 				</p>
-				<ul class="mb-6 space-y-2 text-sm text-text-secondary-light">
-					<li>Compare 40+ importers on price, coverage, and freshness</li>
+				<ul class="mt-3 grid gap-x-6 gap-y-1 text-sm text-muted sm:grid-cols-2">
+					<li>Compare 40+ importers on price and coverage</li>
 					<li>Track new arrivals the day they stock</li>
 					<li>Catch delistings before your next order closes</li>
-					<li>Origin-level benchmarks with 6-month and 1-year depth</li>
+					<li>Origin benchmarks with 6-month and 1-year depth</li>
 				</ul>
-				<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
-					<button
-						onclick={() => goto('/subscription?plan=intelligence-monthly&intent=checkout')}
-						class="rounded-md bg-background-tertiary-light px-8 py-3 font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
+			</div>
+			<div class="flex shrink-0 flex-col gap-2 sm:flex-row lg:flex-col">
+				<a
+					href="/subscription?plan=intelligence-monthly&intent=checkout"
+					class="rounded-md bg-accent px-6 py-2.5 text-center text-sm font-semibold text-ink transition-all duration-200 hover:bg-accent/85"
+				>
+					Start Intelligence
+				</a>
+				{#if !session}
+					<a
+						href="/subscription"
+						class="rounded-md border border-accent px-6 py-2.5 text-center text-sm font-medium text-ink transition-all duration-200 hover:bg-accent"
 					>
-						Start Intelligence
-					</button>
-					{#if !session}
-						<button
-							onclick={() => goto('/subscription')}
-							class="rounded-md border border-background-tertiary-light px-8 py-3 font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-						>
-							See free market view
-						</button>
-					{/if}
-				</div>
+						See plans
+					</a>
+				{/if}
 			</div>
 		</div>
-	{:else}
-		<div id="supplier-comparison" class="space-y-6">
-			<ExpandablePanel
+	</section>
+{:else}
+	<div id="supplier-comparison" class="mb-8 space-y-6">
+		<!-- Who has what, at what price: visual first, full table in the breakout. -->
+		<ExpandablePanel
+			title="Supplier price comparison"
+			subtitle="Price ranges per supplier in the {viewModeLabel} scope. Expand for the full lot-level comparison table."
+			totalItems={scopedComparisonBeans.length}
+			collapsedMaxHeight="460px"
+			showGradient={false}
+		>
+			<AnalyticsLoadingPanel
+				ready={Boolean(SupplierComparisonTableComponent)}
 				title="Supplier price comparison"
-				subtitle="Compare current supplier pricing for a selected origin in the {viewModeLabel} scope."
-				totalItems={scopedComparisonBeans.length}
+				description="Loading supplier comparison tools."
+				height="h-64"
+				panelClass="border-line"
+				errorMessage={memberVisualsError}
+				{onRetry}
 			>
-				<AnalyticsLoadingPanel
-					ready={Boolean(SupplierComparisonTableComponent)}
-					title="Supplier price comparison"
-					description="Loading supplier comparison tools."
-					height="h-64"
-					panelClass="border-border-light"
-					errorMessage={memberVisualsError}
-					{onRetry}
-				>
-					{#if SupplierComparisonTableComponent}
-						<SupplierComparisonTableComponent beans={scopedComparisonBeans} />
-					{/if}
-				</AnalyticsLoadingPanel>
-			</ExpandablePanel>
+				<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
+					<h2 class="mb-1 text-base font-semibold text-ink">Who has it cheapest?</h2>
+					<p class="mb-4 text-sm text-muted">
+						Each supplier's price range across stocked lots in this scope.
+					</p>
+					<SupplierPriceRangeChart beans={scopedComparisonBeans} />
+					<div class="mt-6 border-t border-line pt-4">
+						<h3 class="mb-3 text-sm font-semibold text-ink">Lot-level comparison</h3>
+						{#if SupplierComparisonTableComponent}
+							<SupplierComparisonTableComponent beans={scopedComparisonBeans} />
+						{/if}
+					</div>
+				</div>
+			</AnalyticsLoadingPanel>
+		</ExpandablePanel>
 
-			<ExpandablePanel
-				title="Supplier catalog health"
-				subtitle="Review catalog breadth, coverage, and pricing for suppliers active in the {viewModeLabel} scope."
-				totalItems={scopedSupplierHealth.length}
-			>
-				<AnalyticsLoadingPanel
-					ready={Boolean(SupplierHealthTableComponent)}
-					title="Supplier catalog health"
-					description="Loading supplier catalog health views."
-					height="h-64"
-					panelClass="border-border-light"
-					errorMessage={memberVisualsError}
-					{onRetry}
-				>
-					{#if SupplierHealthTableComponent}
-						<div
-							class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
-						>
-							<SupplierHealthTableComponent rows={scopedSupplierHealth} />
-						</div>
-					{/if}
-				</AnalyticsLoadingPanel>
-			</ExpandablePanel>
-
-			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-				<ExpandablePanel
-					title="New arrivals"
-					badge={arrivalPanelBadge}
-					badgeColor="amber"
-					totalItems={arrivalPanelTotalItems}
-					expandLabel={arrivalExpandLabel}
-				>
-					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
-						<div class="mb-4 flex items-center justify-between gap-3">
-							<p class="text-sm text-text-secondary-light">
-								New coffees added in the last {windowMode === '7d' ? '7' : '30'} days.
-							</p>
-							<div
-								class="flex rounded-full border border-amber-200 bg-amber-50 p-0.5 text-xs font-medium"
+		<!-- What's arriving and leaving: one diverging read, tables in the breakout. -->
+		<ExpandablePanel
+			title="Arrivals & delistings"
+			subtitle="Catalog movement by origin over the selected window. Expand for the named lots."
+			totalItems={isMovementDataAvailable ? movementWindowTotal : movementLoadedRows}
+			expandLabel={movementExpandLabel}
+			collapsedMaxHeight="480px"
+			showGradient={false}
+		>
+			<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
+				<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+					<div>
+						<h2 class="text-base font-semibold text-ink">What's arriving and leaving?</h2>
+						<p class="mt-1 text-sm text-muted">
+							{#if !isMovementDataAvailable}
+								Showing {filteredArrivals.length} arrivals and {filteredDelistings.length} delistings
+								from the most recent catalog data — movement counts are currently unavailable.
+							{:else if movementTruncated}
+								Showing the latest {filteredArrivals.length} of {arrivalTotal} arrivals and {filteredDelistings.length}
+								of {delistingTotal} delistings from the last {windowDaysLabel} days.
+							{:else}
+								Showing {filteredArrivals.length} arrivals and {filteredDelistings.length} delistings
+								from the last {windowDaysLabel} days.
+							{/if}
+						</p>
+					</div>
+					<div
+						class="flex rounded-full border border-line bg-surface-panel p-0.5 text-xs font-medium"
+					>
+						{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
+							<button
+								onclick={() => onWindowModeChange(opt.value as WindowMode)}
+								class="rounded-full px-3 py-1 transition-all duration-150 {windowMode === opt.value
+									? 'bg-accent text-ink shadow-sm'
+									: 'text-muted hover:text-ink'}"
 							>
-								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
-									<button
-										onclick={() => onWindowModeChange(opt.value as WindowMode)}
-										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode ===
-										opt.value
-											? 'bg-amber-200 text-amber-900 shadow-sm'
-											: 'text-amber-900/70 hover:text-amber-900'}"
-									>
-										{opt.label}
-									</button>
-								{/each}
-							</div>
-						</div>
+								{opt.label}
+							</button>
+						{/each}
+					</div>
+				</div>
+				<MovementByOriginChart arrivals={filteredArrivals} delistings={filteredDelistings} />
+
+				<div class="mt-6 grid grid-cols-1 gap-6 border-t border-line pt-4 lg:grid-cols-2">
+					<div>
+						<h3 class="mb-3 text-sm font-semibold text-success-strong">
+							New arrivals ({filteredArrivals.length})
+						</h3>
 						<div class="overflow-x-auto">
 							<table class="min-w-full text-sm">
 								<thead>
-									<tr class="border-b border-border-light">
-										<th class="pb-2 pr-3 text-left text-xs font-semibold text-text-secondary-light"
-											>Bean</th
-										>
-										<th class="pb-2 pr-3 text-left text-xs font-semibold text-text-secondary-light"
-											>Origin</th
-										>
-										<th class="pb-2 pr-3 text-right text-xs font-semibold text-text-secondary-light"
-											>$/lb</th
-										>
-										<th class="pb-2 text-left text-xs font-semibold text-text-secondary-light"
-											>Supplier</th
-										>
+									<tr class="border-b border-line">
+										<th class="pb-2 pr-3 text-left text-xs font-semibold text-muted">Bean</th>
+										<th class="pb-2 pr-3 text-left text-xs font-semibold text-muted">Origin</th>
+										<th class="pb-2 pr-3 text-right text-xs font-semibold text-muted">$/lb</th>
+										<th class="pb-2 text-left text-xs font-semibold text-muted">Supplier</th>
 									</tr>
 								</thead>
 								<tbody>
 									{#each filteredArrivals as bean}
-										<tr class="border-b border-border-light/40 hover:bg-amber-50">
-											<td class="py-2 pr-3 font-medium text-text-primary-light">{bean.name}</td>
-											<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
-											<td class="py-2 pr-3 text-right text-text-primary-light"
+										<tr class="border-b border-line/40 hover:bg-success-subtle">
+											<td class="py-2 pr-3 font-medium text-ink">{bean.name}</td>
+											<td class="py-2 pr-3 text-muted">{bean.country ?? '—'}</td>
+											<td class="py-2 pr-3 text-right text-ink"
 												>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
 											>
-											<td class="py-2 text-text-secondary-light">{bean.source ?? '—'}</td>
+											<td class="py-2 text-muted">{bean.source ?? '—'}</td>
 										</tr>
 									{/each}
 								</tbody>
 							</table>
 						</div>
 					</div>
-				</ExpandablePanel>
-
-				<ExpandablePanel
-					title="Recent Delistings"
-					badge={delistingPanelBadge}
-					badgeColor="red"
-					totalItems={delistingPanelTotalItems}
-					expandLabel={delistingExpandLabel}
-				>
-					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
-						<div class="mb-4 flex items-center justify-between gap-3">
-							<p class="text-sm text-text-secondary-light">
-								Coffees removed in the last {windowMode === '7d' ? '7' : '30'} days.
-							</p>
-							<div
-								class="flex rounded-full border border-red-200 bg-red-50 p-0.5 text-xs font-medium"
-							>
-								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
-									<button
-										onclick={() => onWindowModeChange(opt.value as WindowMode)}
-										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode ===
-										opt.value
-											? 'bg-red-200 text-red-900 shadow-sm'
-											: 'text-red-900/70 hover:text-red-900'}"
-									>
-										{opt.label}
-									</button>
-								{/each}
-							</div>
-						</div>
+					<div>
+						<h3 class="mb-3 text-sm font-semibold text-danger-strong">
+							Recent delistings ({filteredDelistings.length})
+						</h3>
 						<div class="overflow-x-auto">
 							<table class="min-w-full text-sm">
 								<thead>
-									<tr class="border-b border-border-light">
-										<th class="pb-2 pr-3 text-left text-xs font-semibold text-text-secondary-light"
-											>Bean</th
-										>
-										<th class="pb-2 pr-3 text-left text-xs font-semibold text-text-secondary-light"
-											>Origin</th
-										>
-										<th class="pb-2 pr-3 text-right text-xs font-semibold text-text-secondary-light"
-											>Last $/lb</th
-										>
-										<th class="pb-2 text-left text-xs font-semibold text-text-secondary-light"
-											>Supplier</th
-										>
+									<tr class="border-b border-line">
+										<th class="pb-2 pr-3 text-left text-xs font-semibold text-muted">Bean</th>
+										<th class="pb-2 pr-3 text-left text-xs font-semibold text-muted">Origin</th>
+										<th class="pb-2 pr-3 text-right text-xs font-semibold text-muted">Last $/lb</th>
+										<th class="pb-2 text-left text-xs font-semibold text-muted">Supplier</th>
 									</tr>
 								</thead>
 								<tbody>
 									{#each filteredDelistings as bean}
-										<tr class="border-b border-border-light/40 hover:bg-red-50">
-											<td class="py-2 pr-3 font-medium text-text-primary-light">{bean.name}</td>
-											<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
-											<td class="py-2 pr-3 text-right text-text-primary-light"
+										<tr class="border-b border-line/40 hover:bg-danger-subtle">
+											<td class="py-2 pr-3 font-medium text-ink">{bean.name}</td>
+											<td class="py-2 pr-3 text-muted">{bean.country ?? '—'}</td>
+											<td class="py-2 pr-3 text-right text-ink"
 												>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
 											>
-											<td class="py-2 text-text-secondary-light">{bean.source ?? '—'}</td>
+											<td class="py-2 text-muted">{bean.source ?? '—'}</td>
 										</tr>
 									{/each}
 								</tbody>
 							</table>
 						</div>
 					</div>
-				</ExpandablePanel>
-			</div>
-
-			<ExpandablePanel
-				title="Origin benchmarks"
-				subtitle="Origin-level pricing benchmarks and longer-term trend context."
-				totalItems={originBarData.length}
-			>
-				<div
-					class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
-				>
-					{#if hasSnapshots}
-						<div class="overflow-x-auto">
-							<table class="min-w-full text-sm">
-								<thead>
-									<tr class="border-b border-border-light">
-										<th class="py-2 pr-4 text-left font-semibold text-text-secondary-light"
-											>Origin</th
-										>
-										<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light"
-											>Avg $/lb</th
-										>
-										<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light">Min</th
-										>
-										<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light">Max</th
-										>
-										<th class="py-2 text-right font-semibold text-text-secondary-light"
-											>Suppliers</th
-										>
-									</tr>
-								</thead>
-								<tbody>
-									{#each originBarData as row}
-										<tr class="border-b border-border-light/50 hover:bg-background-secondary-light">
-											<td class="py-2 pr-4 font-medium text-text-primary-light">{row.origin}</td>
-											<td class="py-2 pr-4 text-right font-semibold text-text-primary-light"
-												>${row.price_avg.toFixed(2)}</td
-											>
-											<td class="py-2 pr-4 text-right text-text-secondary-light"
-												>{row.price_min?.toFixed(2) ?? '—'}</td
-											>
-											<td class="py-2 pr-4 text-right text-text-secondary-light"
-												>{row.price_max?.toFixed(2) ?? '—'}</td
-											>
-											<td class="py-2 text-right text-text-secondary-light">{row.supplier_count}</td
-											>
-										</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
-					{:else}
-						<div
-							class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light"
-						>
-							<p class="text-sm text-text-secondary-light">
-								Awaiting first price snapshot (today's scraper run).
-							</p>
-						</div>
-					{/if}
 				</div>
-			</ExpandablePanel>
+			</div>
+		</ExpandablePanel>
 
+		<ExpandablePanel
+			title="Supplier catalog health"
+			subtitle="Catalog breadth, coverage, and pricing for suppliers active in the {viewModeLabel} scope."
+			totalItems={scopedSupplierHealth.length}
+		>
 			<AnalyticsLoadingPanel
-				ready={Boolean(PriceTierChartComponent)}
-				title="Price spread analysis"
-				description="Loading the latest origin price spread analysis."
+				ready={Boolean(SupplierHealthTableComponent)}
+				title="Supplier catalog health"
+				description="Loading supplier catalog health views."
 				height="h-64"
-				panelClass="border-background-tertiary-light/20"
+				panelClass="border-line"
 				errorMessage={memberVisualsError}
 				{onRetry}
 			>
-				<div
-					class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
-				>
-					<div class="mb-2 flex items-center gap-2">
-						<span class="text-sm font-semibold text-background-tertiary-light"
-							>Parchment Intelligence</span
-						>
+				{#if SupplierHealthTableComponent}
+					<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
+						<SupplierHealthTableComponent rows={scopedSupplierHealth} />
 					</div>
-					<h2 class="mb-1 text-base font-semibold text-ink">Price spread analysis</h2>
-					<p class="mb-4 text-sm text-text-secondary-light">
-						Retail versus wholesale median price by origin in the latest snapshot. This chart always
-						shows both scopes so the spread stays comparable.
-					</p>
-					{#if PriceTierChartComponent}
-						<PriceTierChartComponent {snapshots} />
-					{/if}
-				</div>
+				{/if}
 			</AnalyticsLoadingPanel>
-		</div>
-	{/if}
-</div>
+		</ExpandablePanel>
+
+		<ExpandablePanel
+			title="Origin benchmarks"
+			subtitle="Origin-level pricing benchmarks and longer-term trend context."
+			totalItems={originBarData.length}
+		>
+			<div class="rounded-lg border border-accent/20 bg-surface-canvas p-6 shadow-sm">
+				{#if hasSnapshots}
+					<div class="overflow-x-auto">
+						<table class="min-w-full text-sm">
+							<thead>
+								<tr class="border-b border-line">
+									<th class="py-2 pr-4 text-left font-semibold text-muted">Origin</th>
+									<th class="py-2 pr-4 text-right font-semibold text-muted">Avg $/lb</th>
+									<th class="py-2 pr-4 text-right font-semibold text-muted">Min</th>
+									<th class="py-2 pr-4 text-right font-semibold text-muted">Max</th>
+									<th class="py-2 text-right font-semibold text-muted">Suppliers</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each originBarData as row}
+									<tr class="border-b border-line/50 hover:bg-surface-panel">
+										<td class="py-2 pr-4 font-medium text-ink">{row.origin}</td>
+										<td class="py-2 pr-4 text-right font-semibold text-ink"
+											>${row.price_avg.toFixed(2)}</td
+										>
+										<td class="py-2 pr-4 text-right text-muted"
+											>{row.price_min?.toFixed(2) ?? '—'}</td
+										>
+										<td class="py-2 pr-4 text-right text-muted"
+											>{row.price_max?.toFixed(2) ?? '—'}</td
+										>
+										<td class="py-2 text-right text-muted">{row.supplier_count}</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				{:else}
+					<div class="flex h-24 items-center justify-center rounded-lg bg-surface-panel">
+						<p class="text-sm text-muted">Awaiting first price snapshot (today's scraper run).</p>
+					</div>
+				{/if}
+			</div>
+		</ExpandablePanel>
+
+		<AnalyticsLoadingPanel
+			ready={Boolean(PriceTierChartComponent)}
+			title="Price spread analysis"
+			description="Loading the latest origin price spread analysis."
+			height="h-64"
+			panelClass="border-accent/20"
+			errorMessage={memberVisualsError}
+			{onRetry}
+		>
+			<div class="rounded-lg border border-accent/20 bg-surface-canvas p-6 shadow-sm">
+				<h2 class="mb-1 text-base font-semibold text-ink">Price spread analysis</h2>
+				<p class="mb-4 text-sm text-muted">
+					Retail versus wholesale median price by origin in the latest snapshot. This chart always
+					shows both scopes so the spread stays comparable.
+				</p>
+				{#if PriceTierChartComponent}
+					<PriceTierChartComponent {snapshots} />
+				{/if}
+			</div>
+		</AnalyticsLoadingPanel>
+	</div>
+{/if}

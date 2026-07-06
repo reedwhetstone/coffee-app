@@ -7,7 +7,8 @@
  *   inventoryTools.ts    — green_coffee_inventory, add_bean_to_inventory, update_bean
  *   roastTools.ts        — roast_profiles, create_roast_session, update_roast_notes
  *   tastingTools.ts      — bean_tasting_notes
- *   marketTools.ts       — price_index_read (conditional on deps)
+ *   marketTools.ts       — price_index_read, market_signals, market_stats,
+ *                          market_metadata (all conditional on deps)
  *   presentationTools.ts — present_results
  *   shared.ts            — shared utilities and types
  *
@@ -25,7 +26,7 @@ import { createCatalogTools } from './catalogTools';
 import { createInventoryTools } from './inventoryTools';
 import { createRoastTools } from './roastTools';
 import { createTastingTools } from './tastingTools';
-import { createMarketTools } from './marketTools';
+import { createMarketTools, createMarketIndexTools } from './marketTools';
 import { createPresentationTools } from './presentationTools';
 
 // Re-export shared types so consumers can import them from this module
@@ -67,6 +68,7 @@ export function createChatTools(
 	const roastTools = createRoastTools(supabase, userId);
 	const tastingTools = createTastingTools(supabase, userId);
 	const priceIndexTools = createMarketTools(deps) as ToolSet;
+	const marketIndexTools = createMarketIndexTools(deps) as ToolSet;
 	const presentationTools = createPresentationTools();
 
 	const tools: ToolSet = {
@@ -80,7 +82,7 @@ export function createChatTools(
 	// price_index_read requires a server-injected reader (admin client); it is
 	// only registered when the chat route provides one.
 
-	if (access.memberAccess) return { ...tools, ...priceIndexTools };
+	if (access.memberAccess) return { ...tools, ...priceIndexTools, ...marketIndexTools };
 
 	if (access.ppiAccess) {
 		const ppiTools: ToolSet = {
@@ -93,7 +95,8 @@ export function createChatTools(
 			add_bean_to_inventory: tools.add_bean_to_inventory,
 			update_bean: tools.update_bean,
 			present_results: tools.present_results,
-			...priceIndexTools
+			...priceIndexTools,
+			...marketIndexTools
 		};
 		return ppiTools;
 	}

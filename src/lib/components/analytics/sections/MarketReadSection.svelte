@@ -5,6 +5,7 @@
 	interface Props {
 		marketReadHeadline: string;
 		marketReadDetail: string;
+		significanceNote?: string | null;
 		lastUpdated: string | null;
 		totalSuppliers: number;
 		viewMode: ViewMode;
@@ -22,6 +23,7 @@
 	let {
 		marketReadHeadline,
 		marketReadDetail,
+		significanceNote = null,
 		lastUpdated,
 		totalSuppliers,
 		viewMode,
@@ -59,6 +61,12 @@
 			<p class="mt-3 max-w-3xl text-base leading-7 text-muted sm:text-lg">
 				{marketReadDetail}
 			</p>
+			{#if significanceNote}
+				<p class="mt-2 flex max-w-3xl items-start gap-2 text-sm leading-6 text-ink">
+					<span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true"></span>
+					<span>{significanceNote}</span>
+				</p>
+			{/if}
 			<p class="mt-3 text-sm text-muted">
 				{#if lastUpdated}
 					Last updated {formatDate(lastUpdated)}.
