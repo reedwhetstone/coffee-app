@@ -10,14 +10,28 @@
 	} from '$lib/styles/chartColors';
 	import type { MetadataSeriesItem } from '$lib/types/marketIndex.types';
 
+	type ViewMode = 'retail' | 'wholesale' | 'all';
+
 	interface Props {
 		processSeries: MetadataSeriesItem[] | null;
 		disclosureSeries: MetadataSeriesItem[] | null;
 		scoreSeries: MetadataSeriesItem[] | null;
+		viewMode: ViewMode;
 		isParchmentIntelligence: boolean;
 	}
 
-	let { processSeries, disclosureSeries, scoreSeries, isParchmentIntelligence }: Props = $props();
+	let { processSeries, disclosureSeries, scoreSeries, viewMode, isParchmentIntelligence }: Props =
+		$props();
+
+	// The metadata index is served from the retail market slice only; wholesale and
+	// combined trends require expanded coverage that is not fetched here. When the
+	// page scope is not retail, say so plainly instead of implying these charts
+	// followed the scope toggle.
+	let retailScopeNote = $derived(
+		viewMode === 'retail'
+			? null
+			: 'Metadata trends reflect the retail market and do not change with the selected scope.'
+	);
 
 	const processFallback = new Map<string, string>();
 	function processColor(key: string): string {
@@ -47,6 +61,12 @@
 		title="How is the market changing?"
 		description="The metadata index: what the market is offering and disclosing over time — not just what it costs."
 	/>
+
+	{#if retailScopeNote}
+		<p class="mb-4 text-sm text-muted" aria-label="Metadata scope note">
+			{retailScopeNote}
+		</p>
+	{/if}
 
 	<section class="mb-6 space-y-6" aria-label="Metadata trends">
 		{#if processSeries && processSeries.length > 0}

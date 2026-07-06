@@ -451,7 +451,10 @@
 		return (
 			stats.find(
 				(item) =>
-					item.window === windowMode && item.segment.origin == null && item.segment.process == null
+					item.window === windowMode &&
+					item.segment.market === viewMode &&
+					item.segment.origin == null &&
+					item.segment.process == null
 			) ?? null
 		);
 	});
@@ -460,7 +463,8 @@
 		const stat = currentMoveStat;
 		if (!stat || stat.latestMovePct == null) return null;
 		const windowLabel = stat.window === '7d' ? 'weekly' : '30-day';
-		const movePhrase = `${stat.latestMovePct > 0 ? '+' : ''}${stat.latestMovePct.toFixed(1)}% ${windowLabel} retail move`;
+		const marketLabel = stat.segment.market === 'all' ? 'combined' : stat.segment.market;
+		const movePhrase = `${stat.latestMovePct > 0 ? '+' : ''}${stat.latestMovePct.toFixed(1)}% ${windowLabel} ${marketLabel} move`;
 		const driverPhrase =
 			stat.moveDriver === 'repricing'
 				? 'driven by suppliers repricing continuing lots'
@@ -1019,6 +1023,7 @@
 	processSeries={marketInsights?.metadataProcessSeries ?? null}
 	disclosureSeries={marketInsights?.metadataDisclosureSeries ?? null}
 	scoreSeries={marketInsights?.metadataScoreSeries ?? null}
+	{viewMode}
 	{isParchmentIntelligence}
 />
 
