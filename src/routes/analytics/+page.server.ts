@@ -63,6 +63,15 @@ export interface SupplierHealthRow {
 	retailCount: number;
 }
 
+export interface SupplierPriceRange {
+	source: string;
+	market: 'retail' | 'wholesale' | 'all';
+	count: number;
+	min: number;
+	median: number;
+	max: number;
+}
+
 export interface PriceSnapshot {
 	snapshot_date: string;
 	origin: string;
@@ -282,6 +291,9 @@ export const load: PageServerLoad = async (event) => {
 	// price_index_snapshots is entitlement-sensitive. Public analytics still exposes a
 	// bounded server-rendered slice, but direct anon/auth table access is revoked.
 	const priceIndexSupabase = createAdminClient();
+	const supplierRangeRpcClient = priceIndexSupabase as unknown as {
+		rpc(name: 'get_supplier_price_ranges'): PromiseLike<{ data: unknown; error: unknown }>;
+	};
 
 	const { data: marketSummaryRaw } = await sb
 		.from('market_daily_summary')
@@ -639,6 +651,7 @@ export const load: PageServerLoad = async (event) => {
 	const snapshots: PriceSnapshot[] = snapshotsRaw ?? [];
 	let comparisonBeans: ComparisonBean[] = [];
 	let supplierHealth: SupplierHealthRow[] = [];
+	let supplierPriceRanges: SupplierPriceRange[] = [];
 
 	// Watchlist context: members and Parchment Intelligence users see their tracked
 	// lots read against the live index scope. Kicked off here so it runs alongside
@@ -653,8 +666,14 @@ export const load: PageServerLoad = async (event) => {
 			: Promise.resolve([]);
 
 	if (isParchmentIntelligence) {
-		const [{ data: comparisonBeansRaw }, { data: supplierStatsRaw }] = await Promise.all([
-			// Supplier comparison beans
+		const [
+			{ data: comparisonBeansRaw },
+			{ data: supplierStatsRaw },
+			{ data: supplierRangesRaw, error: supplierRangesError }
+		] = await Promise.all([
+			// Lot-level comparison rows for the expandable preview table. This is
+			// intentionally capped; SupplierPriceRangeChart uses the aggregate RPC
+			// below so its min/median/max are computed over the full stocked set.
 			supabase
 				.from('coffee_catalog')
 				.select('name, country, processing, price_per_lb, source, wholesale, bag_size')
@@ -670,13 +689,38 @@ export const load: PageServerLoad = async (event) => {
 				.lte('snapshot_date', today)
 				.order('snapshot_date', { ascending: false })
 				.order('stocked_count', { ascending: false })
-				.limit(200)
+				.limit(200),
+			supplierRangeRpcClient.rpc('get_supplier_price_ranges')
 		]);
+
+		if (supplierRangesError) {
+			console.error('Error loading analytics supplier price ranges:', supplierRangesError);
+		}
 
 		comparisonBeans = (comparisonBeansRaw ?? []).map((row) => ({
 			...row,
 			source: normalizeSupplierSource(row.source)
 		})) as ComparisonBean[];
+
+		interface SupplierRangeRpcRow {
+			source: string | null;
+			market: 'retail' | 'wholesale' | 'all';
+			lot_count: number | string | null;
+			price_min: number | string | null;
+			price_median: number | string | null;
+			price_max: number | string | null;
+		}
+
+		supplierPriceRanges = ((supplierRangesRaw as SupplierRangeRpcRow[] | null) ?? [])
+			.map((row) => ({
+				source: normalizeSupplierSource(row.source),
+				market: row.market,
+				count: Number(row.lot_count ?? 0),
+				min: Number(row.price_min ?? 0),
+				median: Number(row.price_median ?? 0),
+				max: Number(row.price_max ?? 0)
+			}))
+			.filter((row) => row.count > 0 && row.min > 0 && row.median > 0 && row.max > 0);
 
 		interface SupplierStatRow {
 			snapshot_date: string;
@@ -772,6 +816,7 @@ export const load: PageServerLoad = async (event) => {
 		recentArrivals,
 		recentDelistings,
 		comparisonBeans,
+		supplierPriceRanges,
 		marketInsights: await marketInsightsPromise,
 		supplierHealth,
 		trackedLots,
