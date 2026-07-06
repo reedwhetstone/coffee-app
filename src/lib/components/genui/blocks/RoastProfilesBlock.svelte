@@ -35,16 +35,16 @@
 
 	function devPercentClass(val: number | null): string {
 		if (val == null) return '';
-		if (val < 15) return 'text-blue-500';
-		if (val > 25) return 'text-red-500';
-		return 'text-green-600';
+		if (val < 15) return 'text-info';
+		if (val > 25) return 'text-danger';
+		return 'text-success-strong';
 	}
 
 	function weightLossClass(val: number | null): string {
 		if (val == null) return '';
-		if (val < 11) return 'text-blue-500';
-		if (val > 16) return 'text-red-500';
-		return 'text-green-600';
+		if (val < 11) return 'text-info';
+		if (val > 16) return 'text-danger';
+		return 'text-success-strong';
 	}
 
 	function handleViewChart(roastId: string) {
@@ -53,18 +53,16 @@
 </script>
 
 <div class="my-4">
-	<h3 class="mb-3 font-semibold text-text-primary-light">
+	<h3 class="mb-3 font-semibold text-ink">
 		Roast Profiles ({block.data.length})
 	</h3>
 
 	<!-- Profiles table -->
-	<div class="overflow-x-auto rounded-lg ring-1 ring-border-light">
+	<div class="overflow-x-auto rounded-lg ring-1 ring-line">
 		<table class="w-full text-sm">
 			<thead>
-				<tr
-					class="border-b border-border-light bg-background-secondary-light text-left text-xs font-medium text-text-secondary-light"
-				>
-					<th class="sticky left-0 bg-background-secondary-light px-3 py-2">Batch</th>
+				<tr class="border-b border-line bg-surface-panel text-left text-xs font-medium text-muted">
+					<th class="sticky left-0 bg-surface-panel px-3 py-2">Batch</th>
 					<th class="px-3 py-2">Coffee</th>
 					<th class="px-3 py-2">Date</th>
 					<th class="px-3 py-2 text-right">Time</th>
@@ -80,43 +78,36 @@
 				{#each block.data as profile (profile.roast_id)}
 					{@const meta = annotationMap().get(Number(profile.roast_id))}
 					<tr
-						class="border-b border-border-light last:border-0 hover:bg-background-secondary-light/50 {meta?.highlight
-							? 'border-l-3 border-l-background-tertiary-light bg-background-tertiary-light/5'
+						class="border-b border-line last:border-0 hover:bg-surface-panel/50 {meta?.highlight
+							? 'border-l-3 border-l-accent bg-accent/5'
 							: ''}"
 					>
 						<td
-							class="sticky left-0 px-3 py-2 font-medium text-text-primary-light {meta?.highlight
-								? 'bg-background-tertiary-light/5'
-								: 'bg-background-primary-light'}"
+							class="sticky left-0 px-3 py-2 font-medium text-ink {meta?.highlight
+								? 'bg-accent/5'
+								: 'bg-surface-canvas'}"
 						>
 							{profile.batch_name || '-'}
 						</td>
-						<td
-							class="max-w-[150px] truncate px-3 py-2 text-text-secondary-light"
-							title={profile.coffee_name}
-						>
+						<td class="max-w-[150px] truncate px-3 py-2 text-muted" title={profile.coffee_name}>
 							{profile.coffee_name || '-'}
 						</td>
-						<td class="px-3 py-2 text-text-secondary-light">
+						<td class="px-3 py-2 text-muted">
 							{profile.roast_date ? new Date(profile.roast_date).toLocaleDateString() : '-'}
 						</td>
-						<td class="px-3 py-2 text-right text-text-primary-light">
+						<td class="px-3 py-2 text-right text-ink">
 							{formatTime(profile.total_roast_time)}
 						</td>
-						<td class="px-3 py-2 text-right text-text-primary-light">
-							<span class="text-text-primary-light">{formatTime(profile.fc_start_time)}</span>
+						<td class="px-3 py-2 text-right text-ink">
+							<span class="text-ink">{formatTime(profile.fc_start_time)}</span>
 							{#if profile.fc_start_temp != null}
-								<span class="ml-1 text-xs text-text-secondary-light"
-									>{formatTemp(profile.fc_start_temp)}</span
-								>
+								<span class="ml-1 text-xs text-muted">{formatTemp(profile.fc_start_temp)}</span>
 							{/if}
 						</td>
-						<td class="px-3 py-2 text-right text-text-primary-light">
-							<span class="text-text-primary-light">{formatTime(profile.drop_time)}</span>
+						<td class="px-3 py-2 text-right text-ink">
+							<span class="text-ink">{formatTime(profile.drop_time)}</span>
 							{#if profile.drop_temp != null}
-								<span class="ml-1 text-xs text-text-secondary-light"
-									>{formatTemp(profile.drop_temp)}</span
-								>
+								<span class="ml-1 text-xs text-muted">{formatTemp(profile.drop_temp)}</span>
 							{/if}
 						</td>
 						<td class="px-3 py-2 text-right {devPercentClass(profile.development_percent)}">
@@ -125,25 +116,23 @@
 						<td class="px-3 py-2 text-right {weightLossClass(profile.weight_loss_percent)}">
 							{formatPercent(profile.weight_loss_percent)}
 						</td>
-						<td class="px-3 py-2 text-right text-text-primary-light">
+						<td class="px-3 py-2 text-right text-ink">
 							{profile.total_ror != null ? profile.total_ror.toFixed(1) : '-'}
 						</td>
 						<td class="px-3 py-2">
 							<button
 								onclick={() => handleViewChart(profile.roast_id)}
-								class="text-xs text-background-tertiary-light hover:underline"
+								class="text-xs text-accent hover:underline"
 							>
 								View chart
 							</button>
 						</td>
 					</tr>
 					{#if meta?.annotation}
-						<tr class="border-b border-border-light last:border-0">
+						<tr class="border-b border-line last:border-0">
 							<td
 								colspan="10"
-								class="px-3 py-1.5 text-xs italic text-text-secondary-light {meta?.highlight
-									? 'bg-background-tertiary-light/5'
-									: ''}"
+								class="px-3 py-1.5 text-xs italic text-muted {meta?.highlight ? 'bg-accent/5' : ''}"
 							>
 								{meta.annotation}
 							</td>
@@ -156,36 +145,34 @@
 
 	<!-- Summary stats -->
 	{#if block.summary}
-		<div
-			class="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-background-secondary-light p-3 text-xs sm:grid-cols-4"
-		>
+		<div class="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-surface-panel p-3 text-xs sm:grid-cols-4">
 			<div>
-				<span class="text-text-secondary-light">Avg Time</span>
-				<div class="font-medium text-text-primary-light">
+				<span class="text-muted">Avg Time</span>
+				<div class="font-medium text-ink">
 					{formatTime(block.summary.avg_total_roast_time)}
 				</div>
 			</div>
 			<div>
-				<span class="text-text-secondary-light">Avg FC Temp</span>
-				<div class="font-medium text-text-primary-light">
+				<span class="text-muted">Avg FC Temp</span>
+				<div class="font-medium text-ink">
 					{formatTemp(block.summary.avg_fc_start_temp)}
 				</div>
 			</div>
 			<div>
-				<span class="text-text-secondary-light">Avg Drop Temp</span>
-				<div class="font-medium text-text-primary-light">
+				<span class="text-muted">Avg Drop Temp</span>
+				<div class="font-medium text-ink">
 					{formatTemp(block.summary.avg_drop_temp)}
 				</div>
 			</div>
 			<div>
-				<span class="text-text-secondary-light">Avg Dev%</span>
+				<span class="text-muted">Avg Dev%</span>
 				<div class="font-medium {devPercentClass(block.summary.avg_development_percent)}">
 					{formatPercent(block.summary.avg_development_percent)}
 				</div>
 			</div>
 			{#if block.summary.avg_weight_loss_percent != null}
 				<div>
-					<span class="text-text-secondary-light">Avg Weight Loss</span>
+					<span class="text-muted">Avg Weight Loss</span>
 					<div class="font-medium {weightLossClass(block.summary.avg_weight_loss_percent)}">
 						{formatPercent(block.summary.avg_weight_loss_percent)}
 					</div>
@@ -193,16 +180,16 @@
 			{/if}
 			{#if block.summary.avg_total_ror != null}
 				<div>
-					<span class="text-text-secondary-light">Avg ROR</span>
-					<div class="font-medium text-text-primary-light">
+					<span class="text-muted">Avg ROR</span>
+					<div class="font-medium text-ink">
 						{block.summary.avg_total_ror.toFixed(1)}
 					</div>
 				</div>
 			{/if}
 			{#if block.summary.date_range_start && block.summary.date_range_end}
 				<div class="col-span-2">
-					<span class="text-text-secondary-light">Date Range</span>
-					<div class="font-medium text-text-primary-light">
+					<span class="text-muted">Date Range</span>
+					<div class="font-medium text-ink">
 						{new Date(block.summary.date_range_start).toLocaleDateString()} - {new Date(
 							block.summary.date_range_end
 						).toLocaleDateString()}

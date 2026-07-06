@@ -11,12 +11,12 @@
 </script>
 
 <nav aria-label="Breadcrumb" class="breadcrumb-nav {className}">
-	<ol class="flex items-center space-x-2 text-sm text-text-secondary-light">
+	<ol class="flex items-center space-x-2 text-sm text-muted">
 		{#each breadcrumbs as breadcrumb, index}
 			<li class="flex items-center">
 				{#if index > 0}
 					<svg
-						class="mx-2 h-4 w-4 text-text-secondary-light"
+						class="mx-2 h-4 w-4 text-muted"
 						fill="currentColor"
 						viewBox="0 0 20 20"
 						aria-hidden="true"
@@ -30,14 +30,14 @@
 				{/if}
 				{#if index === breadcrumbs.length - 1}
 					<!-- Current page - not a link -->
-					<span class="font-medium text-text-primary-light" aria-current="page">
+					<span class="font-medium text-ink" aria-current="page">
 						{breadcrumb.name}
 					</span>
 				{:else}
 					<!-- Breadcrumb link -->
 					<a
 						href={breadcrumb.url}
-						class="font-medium text-background-tertiary-light transition-colors hover:text-background-tertiary-light/80"
+						class="font-medium text-accent transition-colors hover:text-accent/80"
 					>
 						{breadcrumb.name}
 					</a>

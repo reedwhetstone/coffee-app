@@ -234,7 +234,7 @@
 <div class="flex w-full flex-col" bind:clientWidth={containerW}>
 	{#if !hasData}
 		<div
-			class="flex h-48 items-center justify-center rounded-lg bg-background-secondary-light text-sm text-text-secondary-light"
+			class="flex h-48 items-center justify-center rounded-lg bg-surface-panel text-sm text-muted"
 		>
 			No price tier data available yet. Data accumulates as snapshots are collected.
 		</div>
@@ -366,14 +366,14 @@
 			{#if tooltip.visible && tooltip.row}
 				{@const row = tooltip.row}
 				<div
-					class="pointer-events-none absolute z-10 rounded-lg border border-border-light bg-background-primary-light px-3 py-2 text-xs shadow-lg"
+					class="pointer-events-none absolute z-10 rounded-lg border border-line bg-surface-canvas px-3 py-2 text-xs shadow-lg"
 					style="left:{Math.min(tooltip.x + 12, Math.max(4, containerW - 200))}px; top:{Math.max(
 						4,
 						tooltip.y - 80
 					)}px; min-width:170px"
 				>
-					<div class="mb-1.5 font-semibold text-text-primary-light">{row.origin}</div>
-					<div class="space-y-1 text-text-secondary-light">
+					<div class="mb-1.5 font-semibold text-ink">{row.origin}</div>
+					<div class="space-y-1 text-muted">
 						{#if row.retailMedian != null}
 							<div class="flex items-center justify-between gap-3">
 								<span class="flex items-center gap-1">
@@ -385,7 +385,7 @@
 									>${row.retailMedian.toFixed(2)}</span
 								>
 							</div>
-							<div class="pl-3 text-xs text-text-secondary-light/70">N = {row.retailSamples}</div>
+							<div class="pl-3 text-xs text-muted/70">N = {row.retailSamples}</div>
 						{/if}
 						{#if row.wholesaleMedian != null}
 							<div class="flex items-center justify-between gap-3">
@@ -398,16 +398,14 @@
 									>${row.wholesaleMedian.toFixed(2)}</span
 								>
 							</div>
-							<div class="pl-3 text-xs text-text-secondary-light/70">
+							<div class="pl-3 text-xs text-muted/70">
 								N = {row.wholesaleSamples}
 							</div>
 						{/if}
 						{#if row.spreadPct != null}
-							<div
-								class="mt-1 flex justify-between gap-3 border-t border-border-light pt-1 font-medium"
-							>
+							<div class="mt-1 flex justify-between gap-3 border-t border-line pt-1 font-medium">
 								<span>Spread</span>
-								<span class={row.spreadPct >= 0 ? 'text-emerald-600' : 'text-red-500'}
+								<span class={row.spreadPct >= 0 ? 'text-success-strong' : 'text-danger'}
 									>{row.spreadPct >= 0 ? '+' : ''}{row.spreadPct.toFixed(1)}%</span
 								>
 							</div>
@@ -418,9 +416,7 @@
 		</div>
 
 		<!-- Legend -->
-		<div
-			class="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-xs text-text-secondary-light"
-		>
+		<div class="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-xs text-muted">
 			<div class="flex items-center gap-1.5">
 				<div class="h-3 w-3 rounded-sm" style="background:{RETAIL_COLOR}; opacity:0.85;"></div>
 				<span>Retail median</span>
@@ -430,7 +426,7 @@
 				<span>Wholesale median</span>
 			</div>
 			<div class="flex items-center gap-1.5">
-				<span class="font-semibold text-emerald-600">+%</span>
+				<span class="font-semibold text-success-strong">+%</span>
 				<span>Retail premium over wholesale (spread)</span>
 			</div>
 		</div>

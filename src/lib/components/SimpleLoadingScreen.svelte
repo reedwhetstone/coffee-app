@@ -33,19 +33,19 @@
 {#if shouldShow}
 	<div
 		class="{overlay ? 'fixed inset-0 z-50' : 'relative'} flex items-center justify-center {overlay
-			? 'bg-background-primary-light'
+			? 'bg-surface-canvas'
 			: ''}"
 	>
 		<div class="flex flex-col items-center space-y-4">
 			<!-- Spinning circle with configurable size -->
 			<div
-				class="border-t-background-tertiary-light {sizeConfig[size as keyof typeof sizeConfig]
-					.spinner} animate-spin rounded-full border-4 border-background-secondary-light"
+				class="border-t-accent {sizeConfig[size as keyof typeof sizeConfig]
+					.spinner} animate-spin rounded-full border-4 border-surface-panel"
 			></div>
 
 			<!-- Loading message -->
 			<p
-				class="text-text-primary-light {sizeConfig[size as keyof typeof sizeConfig]
+				class="text-ink {sizeConfig[size as keyof typeof sizeConfig]
 					.text} max-w-xs text-center font-medium"
 			>
 				{displayMessage}
@@ -53,13 +53,13 @@
 
 			<!-- Progress bar (optional) -->
 			{#if showProgress && displayProgress !== undefined}
-				<div class="h-2 w-64 rounded-full bg-background-secondary-light">
+				<div class="h-2 w-64 rounded-full bg-surface-panel">
 					<div
-						class="h-2 rounded-full bg-background-tertiary-light transition-all duration-300"
+						class="h-2 rounded-full bg-accent transition-all duration-300"
 						style="width: {Math.max(0, Math.min(100, displayProgress))}%"
 					></div>
 				</div>
-				<p class="text-sm text-text-secondary-light">
+				<p class="text-sm text-muted">
 					{Math.round(displayProgress)}%
 				</p>
 			{/if}

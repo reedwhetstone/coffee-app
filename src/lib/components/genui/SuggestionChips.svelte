@@ -12,7 +12,7 @@
 		{#each suggestions as suggestion (suggestion.label)}
 			<button
 				onclick={() => onSelect(suggestion.text)}
-				class="rounded-full border border-border-light bg-background-primary-light px-3 py-1 text-xs text-text-secondary-light transition-all hover:border-background-tertiary-light/50 hover:text-text-primary-light"
+				class="rounded-full border border-line bg-surface-canvas px-3 py-1 text-xs text-muted transition-all hover:border-accent/50 hover:text-ink"
 			>
 				{suggestion.label}
 			</button>

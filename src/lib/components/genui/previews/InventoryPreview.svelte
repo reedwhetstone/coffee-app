@@ -25,7 +25,7 @@
 
 <button
 	onclick={handleClick}
-	class="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 transition-all hover:bg-blue-100 hover:ring-blue-600/30"
+	class="inline-flex items-center gap-1.5 rounded-md bg-info-subtle px-2.5 py-1 text-xs font-medium text-info-strong ring-1 ring-inset ring-info/20 transition-all hover:bg-info/15 hover:ring-info/30"
 >
 	<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 		<path
@@ -37,9 +37,9 @@
 	</svg>
 	<span>{count} bean{count === 1 ? '' : 's'} in inventory</span>
 	{#if totalLbs > 0}
-		<span class="text-blue-500">{totalLbs.toFixed(1)} lbs</span>
+		<span class="text-info">{totalLbs.toFixed(1)} lbs</span>
 	{/if}
-	<svg class="h-3 w-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+	<svg class="h-3 w-3 text-info" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 		<path
 			stroke-linecap="round"
 			stroke-linejoin="round"

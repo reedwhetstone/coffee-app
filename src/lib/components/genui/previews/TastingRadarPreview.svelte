@@ -16,7 +16,7 @@
 
 <button
 	onclick={handleClick}
-	class="inline-flex items-center gap-1.5 rounded-md bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/20 transition-all hover:bg-purple-100 hover:ring-purple-600/30"
+	class="inline-flex items-center gap-1.5 rounded-md bg-intelligence-subtle px-2.5 py-1 text-xs font-medium text-intelligence-strong ring-1 ring-inset ring-intelligence/20 transition-all hover:bg-intelligence/15 hover:ring-intelligence/30"
 >
 	<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 		<path
@@ -27,8 +27,8 @@
 		/>
 	</svg>
 	<span>{block.data.beanName}</span>
-	<span class="text-purple-500">flavor profile</span>
-	<svg class="h-3 w-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+	<span class="text-intelligence">flavor profile</span>
+	<svg class="h-3 w-3 text-intelligence" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 		<path
 			stroke-linecap="round"
 			stroke-linejoin="round"

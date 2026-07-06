@@ -14,7 +14,7 @@
 	<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
 		<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 		{#each Array(5) as _}
-			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
 				<Skeleton class="mb-2 h-4 w-20 opacity-30" />
 				<Skeleton class="mb-1 h-6 w-16 opacity-50" />
 				<Skeleton class="h-3 w-24 opacity-30" />
@@ -35,7 +35,7 @@
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 		<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 		{#each Array(9) as _}
-			<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+			<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
 				<div class="flex items-start justify-between">
 					<!-- Left side content -->
 					<div class="flex-1">

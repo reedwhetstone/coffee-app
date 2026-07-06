@@ -22,22 +22,20 @@
 </script>
 
 <div class="mb-4">
-	<h3 class="mb-2 text-sm font-medium text-text-secondary-light">ROAST EVENTS</h3>
+	<h3 class="mb-2 text-sm font-medium text-muted">ROAST EVENTS</h3>
 	<div class="relative overflow-x-auto">
-		<div class="rounded-lg border border-border-light bg-background-primary-light shadow-sm">
+		<div class="rounded-lg border border-line bg-surface-canvas shadow-sm">
 			<!-- Mobile view: Grid layout with 2 buttons per row -->
 			<div class="grid grid-cols-2 sm:hidden">
 				{#each ROAST_EVENTS as event, i}
 					<button
 						type="button"
-						class="flex min-h-14 items-center justify-center px-3 py-3 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
+						class="flex min-h-14 items-center justify-center px-3 py-3 text-center transition-colors hover:bg-accent/10 {selectedEvent ===
 						event
-							? 'bg-background-tertiary-light text-text-primary-light'
-							: 'text-text-primary-light'} {!isRoasting ? 'cursor-not-allowed opacity-50' : ''} {i %
-							2 !==
-						0
-							? 'border-l border-border-light'
-							: ''} {i > 1 ? 'border-t border-border-light' : ''}"
+							? 'bg-accent text-ink'
+							: 'text-ink'} {!isRoasting ? 'cursor-not-allowed opacity-50' : ''} {i % 2 !== 0
+							? 'border-l border-line'
+							: ''} {i > 1 ? 'border-t border-line' : ''}"
 						aria-pressed={selectedEvent === event}
 						onclick={() => isRoasting && onEventLog(event)}
 						disabled={!isRoasting}
@@ -52,12 +50,12 @@
 				{#each ROAST_EVENTS as event, i}
 					<button
 						type="button"
-						class="flex-1 cursor-pointer whitespace-nowrap p-3 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
+						class="flex-1 cursor-pointer whitespace-nowrap p-3 text-center transition-colors hover:bg-accent/10 {selectedEvent ===
 						event
-							? 'bg-background-tertiary-light text-text-primary-light'
-							: 'text-text-primary-light'} {!isRoasting
-							? 'cursor-not-allowed opacity-50'
-							: ''} {i !== 0 ? 'border-l border-border-light' : ''}"
+							? 'bg-accent text-ink'
+							: 'text-ink'} {!isRoasting ? 'cursor-not-allowed opacity-50' : ''} {i !== 0
+							? 'border-l border-line'
+							: ''}"
 						onclick={() => isRoasting && onEventLog(event)}
 						disabled={!isRoasting}
 					>

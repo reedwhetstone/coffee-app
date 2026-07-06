@@ -20,10 +20,10 @@
 	</div>
 
 	<!-- Main roasting interface -->
-	<div class="mb-6 rounded-lg bg-background-secondary-light p-4">
+	<div class="mb-6 rounded-lg bg-surface-panel p-4">
 		<Skeleton class="mb-4 h-6 w-40 opacity-50" />
 		<!-- Chart skeleton -->
-		<div class="relative h-96 w-full rounded bg-background-tertiary-light opacity-20">
+		<div class="relative h-96 w-full rounded bg-accent opacity-20">
 			<!-- Y-axis labels -->
 			<div class="absolute left-0 top-0 flex h-full flex-col justify-between p-4">
 				<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
@@ -37,22 +37,10 @@
 				<!-- Simulated chart lines -->
 				<div class="relative h-full w-full">
 					<div class="absolute inset-0">
-						<div
-							class="absolute h-0.5 w-full bg-background-tertiary-light opacity-40"
-							style="top: 20%"
-						></div>
-						<div
-							class="absolute h-0.5 w-full bg-background-tertiary-light opacity-40"
-							style="top: 40%"
-						></div>
-						<div
-							class="absolute h-0.5 w-full bg-background-tertiary-light opacity-40"
-							style="top: 60%"
-						></div>
-						<div
-							class="absolute h-0.5 w-full bg-background-tertiary-light opacity-40"
-							style="top: 80%"
-						></div>
+						<div class="absolute h-0.5 w-full bg-accent opacity-40" style="top: 20%"></div>
+						<div class="absolute h-0.5 w-full bg-accent opacity-40" style="top: 40%"></div>
+						<div class="absolute h-0.5 w-full bg-accent opacity-40" style="top: 60%"></div>
+						<div class="absolute h-0.5 w-full bg-accent opacity-40" style="top: 80%"></div>
 					</div>
 				</div>
 			</div>
@@ -75,11 +63,11 @@
 	</div>
 
 	<!-- Roast History Table -->
-	<div class="rounded-lg bg-background-secondary-light p-4">
+	<div class="rounded-lg bg-surface-panel p-4">
 		<Skeleton class="mb-4 h-6 w-32 opacity-50" />
 
 		<!-- Table header -->
-		<div class="mb-2 grid grid-cols-6 gap-4 border-b border-border-light pb-2">
+		<div class="mb-2 grid grid-cols-6 gap-4 border-b border-line pb-2">
 			<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 			{#each Array(6) as _}
 				<Skeleton class="h-4 w-16 opacity-30" />
@@ -89,7 +77,7 @@
 		<!-- Table rows -->
 		<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 		{#each Array(8) as _}
-			<div class="grid grid-cols-6 gap-4 border-b border-border-light py-2">
+			<div class="grid grid-cols-6 gap-4 border-b border-line py-2">
 				<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 				{#each Array(6) as _}
 					<Skeleton class="h-4 w-12 opacity-20" />

@@ -31,36 +31,34 @@
 	);
 	let linkClass = $derived(
 		isDisabled
-			? 'cursor-not-allowed border-border-light bg-background-secondary-light text-text-secondary-light opacity-70'
+			? 'cursor-not-allowed border-line bg-surface-panel text-muted opacity-70'
 			: tone === 'primary'
-				? 'border-background-tertiary-light bg-background-tertiary-light text-white hover:bg-opacity-90'
-				: 'border-background-tertiary-light bg-background-primary-light text-background-tertiary-light hover:bg-background-tertiary-light hover:text-white'
+				? 'border-accent bg-accent text-ink hover:bg-opacity-90'
+				: 'border-accent bg-surface-canvas text-accent hover:bg-accent hover:text-white'
 	);
 </script>
 
-<article
-	class="flex h-full flex-col rounded-xl border border-border-light bg-background-primary-light p-4 shadow-sm"
->
+<article class="flex h-full flex-col rounded-xl border border-line bg-surface-canvas p-4 shadow-sm">
 	<div class="flex items-start justify-between gap-3">
 		<div>
-			<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
+			<p class="text-xs font-semibold uppercase tracking-wide text-accent">
 				{eyebrow}
 			</p>
-			<h3 class="mt-1 text-base font-semibold text-text-primary-light">{title}</h3>
+			<h3 class="mt-1 text-base font-semibold text-ink">{title}</h3>
 		</div>
 		{#if statusLabel}
 			<span
-				class="rounded-full bg-background-secondary-light px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-text-secondary-light"
+				class="rounded-full bg-surface-panel px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted"
 			>
 				{statusLabel}
 			</span>
 		{/if}
 	</div>
 
-	<p class="mt-2 flex-1 text-sm leading-6 text-text-secondary-light">{description}</p>
+	<p class="mt-2 flex-1 text-sm leading-6 text-muted">{description}</p>
 
 	{#if disabledReason}
-		<p id={disabledReasonId} class="mt-3 text-xs font-medium text-text-secondary-light">
+		<p id={disabledReasonId} class="mt-3 text-xs font-medium text-muted">
 			{disabledReason}
 		</p>
 	{/if}

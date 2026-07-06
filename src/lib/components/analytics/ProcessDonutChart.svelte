@@ -165,10 +165,10 @@
 		<!-- Legend -->
 		<div class="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 px-2">
 			{#each slices as s}
-				<div class="flex items-center gap-1.5 text-xs text-text-secondary-light">
+				<div class="flex items-center gap-1.5 text-xs text-muted">
 					<div class="h-2.5 w-2.5 flex-shrink-0 rounded-sm" style="background:{s.color}"></div>
 					<span>{s.name}</span>
-					<span class="font-medium text-text-primary-light">{s.pct}%</span>
+					<span class="font-medium text-ink">{s.pct}%</span>
 				</div>
 			{/each}
 		</div>

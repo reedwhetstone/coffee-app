@@ -130,10 +130,10 @@
 	}
 
 	const statusColors: Record<string, string> = {
-		proposed: 'bg-amber-50 ring-amber-300',
-		executing: 'bg-blue-50 ring-blue-300',
-		success: 'bg-green-50 ring-green-300',
-		failed: 'bg-red-50 ring-red-300'
+		proposed: 'bg-warning-subtle ring-warning/40',
+		executing: 'bg-info-subtle ring-info/40',
+		success: 'bg-success-subtle ring-success/40',
+		failed: 'bg-danger-subtle ring-danger/40'
 	};
 
 	const statusLabels: Record<string, string> = {
@@ -158,12 +158,12 @@
 		<div class="flex items-center gap-2">
 			<svg
 				class="h-5 w-5 {status === 'success'
-					? 'text-green-600'
+					? 'text-success-strong'
 					: status === 'failed'
-						? 'text-red-600'
+						? 'text-danger'
 						: status === 'executing'
-							? 'animate-spin text-blue-600'
-							: 'text-amber-600'}"
+							? 'animate-spin text-info'
+							: 'text-warning'}"
 				fill="none"
 				stroke="currentColor"
 				viewBox="0 0 24 24"
@@ -175,18 +175,18 @@
 					d={statusIcons[status] || statusIcons.proposed}
 				/>
 			</svg>
-			<span class="text-sm font-medium text-text-primary-light">
+			<span class="text-sm font-medium text-ink">
 				{block.data.summary}
 			</span>
 		</div>
 		<span
 			class="rounded-full px-2 py-0.5 text-xs font-medium {status === 'proposed'
-				? 'bg-amber-100 text-amber-700'
+				? 'bg-warning-subtle text-warning-strong'
 				: status === 'executing'
-					? 'bg-blue-100 text-blue-700'
+					? 'bg-info-subtle text-info-strong'
 					: status === 'success'
-						? 'bg-green-100 text-green-700'
-						: 'bg-red-100 text-red-700'}"
+						? 'bg-success-subtle text-success-strong'
+						: 'bg-danger-subtle text-danger-strong'}"
 		>
 			{statusLabels[status]}
 		</span>
@@ -194,9 +194,7 @@
 
 	<!-- AI Reasoning -->
 	{#if block.data.reasoning}
-		<div
-			class="mb-3 rounded-md bg-background-primary-light px-3 py-2 text-sm italic text-text-secondary-light"
-		>
+		<div class="mb-3 rounded-md bg-surface-canvas px-3 py-2 text-sm italic text-muted">
 			{block.data.reasoning}
 		</div>
 	{/if}
@@ -206,20 +204,20 @@
 		{#each localFields as field (field.key)}
 			{#if field.type !== 'hidden' && field.key !== '_bean_sources'}
 				<div class="flex items-center gap-2 text-sm">
-					<span class="w-32 shrink-0 text-text-secondary-light">{field.label}</span>
+					<span class="w-32 shrink-0 text-muted">{field.label}</span>
 					{#if editing && field.editable && status === 'proposed'}
 						{#if field.type === 'textarea'}
 							<textarea
 								value={String(field.value || '')}
 								oninput={(e) => setFieldValue(field.key, (e.target as HTMLTextAreaElement).value)}
-								class="flex-1 rounded border border-border-light bg-white px-2 py-1 text-sm focus:border-background-tertiary-light focus:outline-none"
+								class="flex-1 rounded border border-line bg-white px-2 py-1 text-sm focus:border-accent focus:outline-none"
 								rows="2"
 							></textarea>
 						{:else if field.type === 'select' && (field.selectOptions || field.options)}
 							<select
 								value={String(field.value)}
 								onchange={(e) => setFieldValue(field.key, (e.target as HTMLSelectElement).value)}
-								class="flex-1 rounded border border-border-light bg-white px-2 py-1 text-sm focus:border-background-tertiary-light focus:outline-none"
+								class="flex-1 rounded border border-line bg-white px-2 py-1 text-sm focus:border-accent focus:outline-none"
 							>
 								{#if field.selectOptions}
 									{#each field.selectOptions as opt}
@@ -239,11 +237,11 @@
 									const val = (e.target as HTMLInputElement).value;
 									setFieldValue(field.key, field.type === 'number' ? Number(val) : val);
 								}}
-								class="flex-1 rounded border border-border-light bg-white px-2 py-1 text-sm focus:border-background-tertiary-light focus:outline-none"
+								class="flex-1 rounded border border-line bg-white px-2 py-1 text-sm focus:border-accent focus:outline-none"
 							/>
 						{/if}
 					{:else}
-						<span class="flex-1 text-text-primary-light">
+						<span class="flex-1 text-ink">
 							{#if field.selectOptions}
 								{field.selectOptions.find((o) => String(o.value) === String(field.value))?.label ??
 									field.value ??
@@ -260,7 +258,7 @@
 
 	<!-- Error message -->
 	{#if status === 'failed' && errorMsg}
-		<div class="mt-2 rounded bg-red-50 px-3 py-2 text-xs text-red-700">
+		<div class="mt-2 rounded bg-danger-subtle px-3 py-2 text-xs text-danger-strong">
 			{errorMsg}
 		</div>
 	{/if}
@@ -270,28 +268,28 @@
 		<div class="mt-3 flex items-center gap-2">
 			<button
 				onclick={handleExecute}
-				class="rounded-md bg-background-tertiary-light px-3 py-1.5 text-sm font-medium text-white transition-all hover:bg-opacity-90"
+				class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-ink transition-all hover:bg-opacity-90"
 			>
 				Execute
 			</button>
 			{#if !editing}
 				<button
 					onclick={() => (editing = true)}
-					class="rounded-md border border-border-light px-3 py-1.5 text-sm text-text-secondary-light transition-all hover:text-text-primary-light"
+					class="rounded-md border border-line px-3 py-1.5 text-sm text-muted transition-all hover:text-ink"
 				>
 					Edit
 				</button>
 			{:else}
 				<button
 					onclick={() => (editing = false)}
-					class="rounded-md border border-border-light px-3 py-1.5 text-sm text-text-secondary-light transition-all hover:text-text-primary-light"
+					class="rounded-md border border-line px-3 py-1.5 text-sm text-muted transition-all hover:text-ink"
 				>
 					Done Editing
 				</button>
 			{/if}
 			<button
 				onclick={handleCancel}
-				class="rounded-md px-3 py-1.5 text-sm text-text-secondary-light transition-all hover:text-red-500"
+				class="rounded-md px-3 py-1.5 text-sm text-muted transition-all hover:text-danger"
 			>
 				Cancel
 			</button>
@@ -300,13 +298,13 @@
 		<div class="mt-3 flex items-center gap-2">
 			<button
 				onclick={handleRetry}
-				class="rounded-md bg-background-tertiary-light px-3 py-1.5 text-sm font-medium text-white transition-all hover:bg-opacity-90"
+				class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-ink transition-all hover:bg-opacity-90"
 			>
 				Retry
 			</button>
 			<button
 				onclick={handleCancel}
-				class="rounded-md px-3 py-1.5 text-sm text-text-secondary-light transition-all hover:text-red-500"
+				class="rounded-md px-3 py-1.5 text-sm text-muted transition-all hover:text-danger"
 			>
 				Cancel
 			</button>
@@ -314,11 +312,11 @@
 	{:else if status === 'executing'}
 		<div class="mt-3 flex items-center gap-2">
 			<div
-				class="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"
+				class="h-4 w-4 animate-spin rounded-full border-2 border-info border-t-transparent"
 			></div>
-			<span class="text-sm text-text-secondary-light">Processing...</span>
+			<span class="text-sm text-muted">Processing...</span>
 		</div>
 	{:else if status === 'success'}
-		<div class="mt-3 text-sm text-green-600">Action completed successfully.</div>
+		<div class="mt-3 text-sm text-success-strong">Action completed successfully.</div>
 	{/if}
 </div>

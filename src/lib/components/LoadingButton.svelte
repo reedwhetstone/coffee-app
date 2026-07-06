@@ -45,11 +45,11 @@
 
 	// Style configurations
 	const variantStyles = {
-		primary: 'bg-background-tertiary-light text-white hover:bg-opacity-90 disabled:bg-gray-400',
+		primary: 'bg-accent text-ink hover:bg-opacity-90 disabled:bg-line',
 		secondary:
-			'border border-background-tertiary-light text-background-tertiary-light hover:bg-background-tertiary-light hover:text-white disabled:border-gray-400 disabled:text-gray-400',
-		danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-400',
-		success: 'bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400'
+			'border border-accent text-accent hover:bg-accent hover:text-white disabled:border-line disabled:text-muted',
+		danger: 'bg-danger text-white hover:bg-danger-strong disabled:bg-line',
+		success: 'bg-success text-white hover:bg-success-strong disabled:bg-line'
 	};
 
 	const sizeStyles = {

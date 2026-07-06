@@ -41,7 +41,7 @@
 </script>
 
 <section
-	class="mb-6 rounded-2xl border border-accent/20 bg-gradient-to-br from-background-primary-light via-background-primary-light to-background-secondary-light p-5 shadow-sm sm:p-6"
+	class="mb-6 rounded-2xl border border-accent/20 bg-gradient-to-br from-surface-canvas via-surface-canvas to-surface-panel p-5 shadow-sm sm:p-6"
 	aria-labelledby="market-read-heading"
 >
 	<div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">

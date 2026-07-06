@@ -96,7 +96,7 @@
 	<div class="fixed inset-0 z-[45] md:hidden">
 		<button
 			type="button"
-			class="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
+			class="absolute inset-0 bg-ink/55 backdrop-blur-sm"
 			onclick={onClose}
 			aria-label="Close overlay"
 			transition:fade={{ duration: 150 }}
