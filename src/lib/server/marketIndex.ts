@@ -168,12 +168,13 @@ export async function loadMarketIndexInsights(
 		);
 		// Merge with the combined 'all' ranking first so the 'all' scope keeps the
 		// true top signals, then backfill the per-market pages. Dedupe on the
-		// stable (catalogId, signalType, market) identity.
+		// API's stable signal identity; price drops can legitimately qualify in
+		// both movement windows for the same lot.
 		const merged: components['schemas']['MarketSignalItem'][] = [];
 		const seen = new Set<string>();
 		for (const body of [allBody, retailBody, wholesaleBody]) {
 			for (const item of body?.data ?? []) {
-				const key = `${item.catalogId}:${item.signalType}:${item.market}`;
+				const key = `${item.catalogId}:${item.signalType}:${item.market}:${item.signalWindow ?? ''}`;
 				if (seen.has(key)) continue;
 				seen.add(key);
 				merged.push(item);
