@@ -45,6 +45,35 @@ function marketSignalsPart() {
 	};
 }
 
+// Two distinct signals for the same lot (catalogId 42): a below_market and a
+// 7d price_drop. The presentation cache must keep both rather than collapsing.
+function multiMarketSignalsPart() {
+	return {
+		type: 'tool-market_signals',
+		toolName: 'market_signals',
+		state: 'output-available',
+		output: {
+			data: [
+				marketSignals[0],
+				{
+					catalogId: 42,
+					name: 'Kenya Gichathaini',
+					signalType: 'price_drop',
+					market: 'wholesale',
+					signalWindow: '7d',
+					currentPriceLb: 6.1,
+					evidence: {
+						own_trailing_median: 6.9,
+						drop_vs_own_median_pct: -11.6,
+						own_trailing_window: '7d'
+					}
+				}
+			],
+			meta: { asOf: '2026-07-06' }
+		}
+	};
+}
+
 describe('blockExtractor catalog_rank support', () => {
 	it('renders catalog_rank output as coffee cards', () => {
 		const block = extractBlockFromPart(rankPart());
@@ -182,7 +211,39 @@ describe('blockExtractor market_signals support', () => {
 	it('caches market_signals by catalogId for present_results merging', () => {
 		const cache = buildSearchDataCache([marketSignalsPart()]);
 
-		expect(cache.get('market_signals')?.get(42)).toMatchObject({ name: 'Kenya Gichathaini' });
+		// Signals for a lot are stored as an array so multiple rows per lot survive.
+		expect(cache.get('market_signals')?.get(42)).toMatchObject([{ name: 'Kenya Gichathaini' }]);
+	});
+
+	it('preserves multiple distinct signals for the same lot in a presentation', () => {
+		const cache = buildSearchDataCache([multiMarketSignalsPart()]);
+		const presentPart = {
+			type: 'tool-present_results',
+			toolName: 'present_results',
+			state: 'output-available',
+			output: {
+				presentation: {
+					source_tool: 'market_signals',
+					layout: 'grid',
+					items: [{ id: 42, annotation: 'Two live signals on this lot' }]
+				}
+			}
+		};
+
+		const block = extractBlockFromPart(presentPart, {
+			searchDataCache: cache,
+			hasPresentResults: true
+		});
+
+		expect(block).toMatchObject({
+			type: 'data-table',
+			data: {
+				rows: [
+					{ id: 42, signal: 'Below market', note: 'Two live signals on this lot' },
+					{ id: 42, signal: 'Price drop', note: 'Two live signals on this lot' }
+				]
+			}
+		});
 	});
 
 	it('builds an annotated table from a market_signals presentation', () => {

@@ -309,10 +309,18 @@ function buildPresentedBlock(
 		const signals: Array<Record<string, unknown>> = [];
 
 		for (const item of items) {
-			const cached = cache?.get(item.id) as Record<string, unknown> | undefined;
-			if (cached) {
+			// A lot can carry several distinct signals (e.g. 7d + 30d price_drop, or
+			// price_drop + below_market). The cache stores them as an array per
+			// catalogId so none are dropped; fall back to a single value for safety.
+			const cached = cache?.get(item.id);
+			const cachedSignals = Array.isArray(cached)
+				? (cached as Array<Record<string, unknown>>)
+				: cached
+					? [cached as Record<string, unknown>]
+					: [];
+			for (const signal of cachedSignals) {
 				signals.push({
-					...cached,
+					...signal,
 					presentation_note: item.annotation ?? null,
 					highlight: item.highlight ?? false
 				});
@@ -375,17 +383,21 @@ export function buildSearchDataCache(parts: any[]): Map<string, Map<number, unkn
 		}
 
 		if (MARKET_SIGNAL_TOOLS.has(toolName)) {
-			const itemMap = new Map<number, unknown>();
+			// Key by catalogId but keep every signal for a lot: multiple rows can share
+			// a catalogId (different signalType/window/market), so overwriting by id
+			// alone would silently drop all but the last and misattach annotations.
+			const existing = cache.get(toolName) ?? new Map<number, unknown>();
 			for (const signal of marketSignalItems(output)) {
 				const id = marketSignalCatalogId(signal);
-				if (id != null) itemMap.set(id, signal);
+				if (id == null) continue;
+				const prior = existing.get(id);
+				if (Array.isArray(prior)) {
+					prior.push(signal);
+				} else {
+					existing.set(id, [signal]);
+				}
 			}
-			const existing = cache.get(toolName);
-			if (existing) {
-				for (const [id, data] of itemMap) existing.set(id, data);
-			} else {
-				cache.set(toolName, itemMap);
-			}
+			if (!cache.has(toolName)) cache.set(toolName, existing);
 		}
 
 		if (
