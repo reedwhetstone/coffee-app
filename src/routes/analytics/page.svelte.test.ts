@@ -375,6 +375,37 @@ describe('analytics command center hierarchy', () => {
 		expect(screen.getByText(/The latest combined retail \+ wholesale average is/i)).toBeTruthy();
 	});
 
+	it('keeps public value-signal counts labeled as the retail proof slice outside retail scope', async () => {
+		render(AnalyticsPage, {
+			data: createData({
+				marketInsights: {
+					valueSignals: null,
+					signalsSummary: {
+						total: 5,
+						byType: { price_drop: 2, below_market: 3, value_quality: 0 },
+						asOf: '2026-07-06',
+						market: 'retail'
+					},
+					signalsAsOf: '2026-07-06',
+					moveStats: null,
+					metadataProcessSeries: null,
+					metadataDisclosureSeries: null
+				}
+			} as Partial<PageData>)
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		await screen.getByRole('button', { name: 'Wholesale' }).click();
+
+		expect(screen.getByText(/5 retail buy signals are active/i)).toBeTruthy();
+		expect(
+			screen.getByText(/Retail proof slice shown while wholesale scope is selected/i)
+		).toBeTruthy();
+	});
+
 	it('scopes coverage supplier-evidence reads with the selected market', async () => {
 		const baseSnapshot = createData().snapshots[0];
 		render(AnalyticsPage, {

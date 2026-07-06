@@ -189,7 +189,8 @@ export async function loadMarketIndexInsights(
 			insights.signalsSummary = {
 				total: summary.total,
 				byType: summary.byType,
-				asOf: allBody?.meta?.asOf ?? null
+				asOf: allBody?.meta?.asOf ?? null,
+				market: 'all'
 			};
 		} else if (allBody || merged.length > 0) {
 			// The 'all' page is unfiltered by market, so its pagination total is the
@@ -197,7 +198,8 @@ export async function loadMarketIndexInsights(
 			insights.signalsSummary = {
 				total: allBody?.pagination?.total ?? merged.length,
 				byType: { price_drop: 0, below_market: 0, value_quality: 0 },
-				asOf: allBody?.meta?.asOf ?? null
+				asOf: allBody?.meta?.asOf ?? null,
+				market: 'all'
 			};
 		}
 	} else {
@@ -209,7 +211,8 @@ export async function loadMarketIndexInsights(
 				insights.signalsSummary = {
 					total: summary.total,
 					byType: summary.byType,
-					asOf: body.meta?.asOf ?? null
+					asOf: body.meta?.asOf ?? null,
+					market: 'retail'
 				};
 			}
 		}

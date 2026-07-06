@@ -15,6 +15,7 @@ export interface MarketSignalsSummary {
 	total: number;
 	byType: { price_drop: number; below_market: number; value_quality: number };
 	asOf: string | null;
+	market: 'retail' | 'all';
 }
 
 export type PriceMoveStat = components['schemas']['PriceMoveStatsItem'];

@@ -35,6 +35,8 @@
 	let displayedSummaryTotal = $derived(
 		signalsSummary ? signalsSummary.byType.price_drop + signalsSummary.byType.below_market : 0
 	);
+	let summaryScopeLabel = $derived(signalsSummary?.market === 'retail' ? 'retail' : 'all-market');
+	let selectedScopeLabel = $derived(viewMode === 'all' ? 'all-market' : viewMode);
 
 	// value_quality is excluded from display: it ranks on supplier-stated cup
 	// scores, which are inconsistent across suppliers and deliberately not
@@ -160,12 +162,19 @@
 				<div>
 					<h3 class="font-serif text-lg font-medium text-ink">
 						{displayedSummaryTotal.toLocaleString()}
+						{summaryScopeLabel}
 						{displayedSummaryTotal === 1 ? 'buy signal is' : 'buy signals are'} active
 						{#if formatAsOf(signalsAsOf)}as of {formatAsOf(signalsAsOf)}{:else}this morning{/if}.
 					</h3>
 					<p class="mt-1 text-sm text-muted">
+						{#if signalsSummary.market === 'retail' && viewMode !== 'retail'}
+							Retail proof slice shown while {selectedScopeLabel} scope is selected:
+						{:else}
+							{summaryScopeLabel.charAt(0).toUpperCase() + summaryScopeLabel.slice(1)} proof slice:
+						{/if}
 						{signalsSummary.byType.price_drop} price drops · {signalsSummary.byType.below_market} below-market
-						lots. Parchment Intelligence members see the named lots and the evidence behind each one.
+						lots. Parchment Intelligence members see scoped retail, wholesale, and all-market lots with
+						the evidence behind each one.
 					</p>
 				</div>
 				<div class="flex shrink-0 flex-col gap-2 sm:flex-row">

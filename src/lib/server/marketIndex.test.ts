@@ -52,6 +52,37 @@ function makeEvent(): RequestEvent {
 }
 
 describe('loadMarketIndexInsights', () => {
+	it('marks public signal summaries as retail-scoped proof data', async () => {
+		const market = {
+			signals: vi.fn().mockResolvedValue({
+				data: {
+					meta: {
+						asOf: '2026-07-06',
+						summary: {
+							total: 5,
+							byType: { price_drop: 2, below_market: 3, value_quality: 0 }
+						}
+					}
+				}
+			}),
+			metadataIndex: vi.fn().mockResolvedValue({ data: { data: [] } })
+		};
+		mockCreateParchmentServerClient.mockResolvedValue({
+			market,
+			priceIndex: { stats: vi.fn().mockResolvedValue({ data: { data: [] } }) }
+		});
+
+		const insights = await loadMarketIndexInsights(makeEvent(), { isParchmentIntelligence: false });
+
+		expect(market.signals).toHaveBeenCalledWith({ summary: 'true' });
+		expect(insights.signalsSummary).toEqual({
+			total: 5,
+			byType: { price_drop: 2, below_market: 3, value_quality: 0 },
+			asOf: '2026-07-06',
+			market: 'retail'
+		});
+	});
+
 	it('preserves distinct signal windows while deduping exact scope backfills', async () => {
 		const sevenDay = makeSignal('7d');
 		const thirtyDay = makeSignal('30d');
