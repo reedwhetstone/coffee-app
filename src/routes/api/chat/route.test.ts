@@ -1,9 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
+const { mockCreateParchmentServerClient } = vi.hoisted(() => ({
+	mockCreateParchmentServerClient: vi.fn()
+}));
+
 vi.mock('$env/static/private', () => ({ OPENROUTER_API_KEY: 'test-key' }));
 vi.mock('$lib/server/auth', () => ({
 	AuthError: class AuthError extends Error {},
 	requireChatAccess: vi.fn()
+}));
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentServerClient: (...args: unknown[]) => mockCreateParchmentServerClient(...args)
 }));
 vi.mock('$lib/services/tools', () => ({ createChatTools: vi.fn() }));
 vi.mock('@ai-sdk/openai', () => ({ createOpenAI: vi.fn() }));
@@ -15,6 +22,7 @@ vi.mock('ai', () => ({
 
 import {
 	_buildAgentCatalogListQuery,
+	_createMarketToolParchmentClient,
 	_buildSystemPrompt,
 	_fetchAgentCatalogRowsForSearch,
 	_filterAgentCatalogRowsForUnsupportedFilters
@@ -35,6 +43,14 @@ describe('chat system prompt entitlement context', () => {
 		expect(prompt).toContain('supplier_list');
 		expect(prompt).toContain('catalog_rank');
 		expect(prompt).toContain('price_index_read');
+		expect(prompt).toContain('market_signals');
+		expect(prompt).toContain('market_stats');
+		expect(prompt).toContain('market_metadata');
+		expect(prompt).toContain(
+			'use market_signals when available before falling back to catalog_rank'
+		);
+		expect(prompt).toContain('After calling coffee_catalog_search, catalog_rank, market_signals');
+		expect(prompt).toContain('For market_signals, use the returned catalogId');
 		expect(prompt).toContain('add_bean_to_inventory');
 		expect(prompt).toContain('Mallard-only roast, tasting, and sales tools are unavailable');
 		expect(prompt).not.toContain('You have access to these tools');
@@ -54,7 +70,23 @@ describe('chat system prompt entitlement context', () => {
 		expect(prompt).toContain('record_sale');
 		expect(prompt).toContain('catalog_rank');
 		expect(prompt).toContain('price_index_read');
+		expect(prompt).toContain('market_signals');
+		expect(prompt).toContain('market_stats');
+		expect(prompt).toContain('market_metadata');
 		expect(prompt).toContain('WORKSPACE FOCUS: Roasting');
+	});
+});
+
+describe('chat market tool Parchment client', () => {
+	it('preserves strict upstream handling for gated market tools', async () => {
+		const client = { market: {}, priceIndex: {} };
+		mockCreateParchmentServerClient.mockResolvedValueOnce(client);
+		const event = { request: new Request('https://purveyors.io/api/chat') };
+
+		await expect(_createMarketToolParchmentClient(event as never)).resolves.toBe(client);
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(event, {
+			preferHandling: 'inherit'
+		});
 	});
 });
 

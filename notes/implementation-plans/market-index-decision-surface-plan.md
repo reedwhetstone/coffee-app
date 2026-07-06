@@ -289,3 +289,12 @@ Deliverables: three UI increments on `/analytics`, chat tool adapters, docs alig
 - The metadata process-mix chart renders from `metadata_index_snapshots` history (not a live join) back to 2026-03-21.
 - `purvey market signals --json`, the web cards, and chat tool outputs all carry the identical §3.3 evidence object.
 - No public surface mentions the metadata index before P3 ships.
+
+---
+
+## Post-launch revisions (2026-07-05, owner feedback on WP-3)
+
+1. **Cup scores are not a Purveyors metric.** Supplier-stated scores are inconsistent and subjective (proprietary scales per supplier) and are deliberately not surfaced on the catalog front end — the same rule now applies to the Market Index. The cup-score trend module was removed from the metadata chapter, `dimension=score` is not fetched or offered in chat tools, and `value_quality` signals are excluded from web display (they rank on `score_value`).
+   - **parchment-api follow-up:** add a **Purveyors Metadata Score** dimension to `/v1/market/metadata-index` (trend of listing-intelligence/metadata-completeness over time), and re-basis `value_quality` ranking on the Purveyors Metadata Score instead of supplier cup scores. Web display of value-quality signals returns when that lands. The `score` dimension can remain in the API for machine callers but should be documented as supplier-stated.
+2. **Legacy gating block removed.** The blurred fake-table + overlay ParchmentIntelligenceSection (a relic of the old anonymous/member split) was replaced with an honest AccentSpine teaser card; the chapter is now titled "Suppliers and movement."
+3. **Tables became visuals.** Supplier price comparison leads with a per-supplier min–median–max range plot ("Who has it cheapest?"); arrivals/delistings lead with a diverging by-origin movement chart; the detail tables live in each panel's breakout view. Origin benchmarks and supplier health tables remain tabular (secondary), retokenized to brand surfaces.

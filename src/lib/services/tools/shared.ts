@@ -114,4 +114,30 @@ export interface ChatToolDeps {
 		},
 		options: { publicOnly: boolean }
 	) => Promise<unknown>;
+	/** ADR-008 Market Index reads. Injected by the chat route with request credentials. */
+	marketSignals?: (input: {
+		type?: string[];
+		origin?: string;
+		process?: string;
+		market?: 'retail' | 'wholesale' | 'all';
+		min_discount_pct?: number;
+		min_score?: number;
+		window?: '7d' | '30d';
+		limit?: number;
+	}) => Promise<unknown>;
+	marketStats?: (input: {
+		origin?: string;
+		process?: string;
+		market?: 'retail' | 'wholesale' | 'all';
+		window?: '7d' | '30d';
+		baseline_weeks?: number;
+	}) => Promise<unknown>;
+	marketMetadataIndex?: (input: {
+		dimension: 'process' | 'disclosure';
+		origin?: string;
+		market?: 'retail' | 'wholesale' | 'all';
+		grain?: 'week' | 'month';
+		from?: string;
+		to?: string;
+	}) => Promise<unknown>;
 }

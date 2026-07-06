@@ -33,6 +33,9 @@
 	import ActionRailSection from '$lib/components/analytics/sections/ActionRailSection.svelte';
 	import ParchmentIntelligenceSection from '$lib/components/analytics/sections/ParchmentIntelligenceSection.svelte';
 	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
+	import ValueSignalsSection from '$lib/components/analytics/sections/ValueSignalsSection.svelte';
+	import MetadataTrendsSection from '$lib/components/analytics/sections/MetadataTrendsSection.svelte';
+	import type { MarketIndexInsights } from '$lib/types/marketIndex.types';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -69,7 +72,8 @@
 		recentDelistings,
 		comparisonBeans,
 		supplierHealth,
-		trackedLots
+		trackedLots,
+		marketInsights
 	} = $derived(
 		data as {
 			session: PageData['session'];
@@ -98,6 +102,7 @@
 			comparisonBeans: ComparisonBean[];
 			supplierHealth: SupplierHealthRow[];
 			trackedLots: TrackedLotSummary[];
+			marketInsights: MarketIndexInsights;
 		}
 	);
 
@@ -387,35 +392,6 @@
 
 	// ── Movement panel labels ─────────────────────────────────────────────────
 
-	function loadedRowsLabel(count: number): string {
-		return `Open ${count.toLocaleString()} loaded ${count === 1 ? 'row' : 'rows'} ↗`;
-	}
-
-	let arrivalPanelBadge = $derived(isMovementDataAvailable ? `+${scopedArrivalCount}` : undefined);
-	let delistingPanelBadge = $derived(
-		isMovementDataAvailable ? `-${scopedDelistingCount}` : undefined
-	);
-	let arrivalPanelTotalItems = $derived(
-		isMovementDataAvailable ? scopedArrivalCount : filteredArrivals.length
-	);
-	let delistingPanelTotalItems = $derived(
-		isMovementDataAvailable ? scopedDelistingCount : filteredDelistings.length
-	);
-	let arrivalExpandLabel = $derived(
-		isMovementDataAvailable
-			? filteredArrivals.length < scopedArrivalCount
-				? `Open latest ${filteredArrivals.length} shown (${scopedArrivalCount} total in window) ↗`
-				: undefined
-			: loadedRowsLabel(filteredArrivals.length)
-	);
-	let delistingExpandLabel = $derived(
-		isMovementDataAvailable
-			? filteredDelistings.length < scopedDelistingCount
-				? `Open latest ${filteredDelistings.length} shown (${scopedDelistingCount} total in window) ↗`
-				: undefined
-			: loadedRowsLabel(filteredDelistings.length)
-	);
-
 	// ── Formatting helpers ────────────────────────────────────────────────────
 
 	function formatDate(dateStr: string | null) {
@@ -437,6 +413,50 @@
 		const sign = value > 0 ? '+' : '−';
 		return `${sign}${Math.abs(value).toFixed(precision)}`;
 	}
+
+	// ── Movement significance (ADR-008: signal vs noise) ─────────────────────
+
+	let currentMoveStat = $derived.by(() => {
+		const stats = marketInsights?.moveStats;
+		if (!stats) return null;
+		return (
+			stats.find(
+				(item) =>
+					item.window === windowMode &&
+					item.segment.market === viewMode &&
+					item.segment.origin == null &&
+					item.segment.process == null
+			) ?? null
+		);
+	});
+
+	let significanceNote = $derived.by(() => {
+		const stat = currentMoveStat;
+		if (!stat || stat.latestMovePct == null) return null;
+		const windowLabel = stat.window === '7d' ? 'weekly' : '30-day';
+		const marketLabel = stat.segment.market === 'all' ? 'combined' : stat.segment.market;
+		const movePhrase = `${stat.latestMovePct > 0 ? '+' : ''}${stat.latestMovePct.toFixed(1)}% ${windowLabel} ${marketLabel} move`;
+		const driverPhrase =
+			stat.moveDriver === 'repricing'
+				? 'driven by suppliers repricing continuing lots'
+				: stat.moveDriver === 'mix_shift'
+					? 'driven by catalog turnover (arrivals and delistings), not repricing'
+					: stat.moveDriver === 'mixed'
+						? 'a mix of repricing and catalog turnover'
+						: null;
+		if (stat.classification == null) {
+			return driverPhrase ? `${movePhrase} — ${driverPhrase}.` : null;
+		}
+		const sizePhrase =
+			stat.classification === 'quiet'
+				? 'smaller than most recent moves'
+				: stat.classification === 'normal'
+					? 'within normal variance'
+					: stat.weeksSinceLargerMove != null && stat.weeksSinceLargerMove > 0
+						? `the largest ${windowLabel} move in ${stat.weeksSinceLargerMove} weeks`
+						: `${stat.classification} against recent variance`;
+		return `${movePhrase}: ${sizePhrase}${driverPhrase ? `, ${driverPhrase}` : ''}.`;
+	});
 
 	// ── Labels derived from scope ─────────────────────────────────────────────
 
@@ -476,9 +496,25 @@
 
 	// ── KPI strip ─────────────────────────────────────────────────────────────
 
-	let kpiCards = $derived.by(() => [
-		{
-			label: 'Price movement',
+	let priceMovementKpi = $derived.by(() => {
+		const stat = currentMoveStat;
+		if (stat?.latestMovePct != null) {
+			const tone =
+				stat.classification === 'exceptional'
+					? 'alert'
+					: stat.classification === 'quiet' || Math.abs(stat.latestMovePct) < 0.01
+						? 'neutral'
+						: stat.latestMovePct > 0
+							? 'up'
+							: 'down';
+			return {
+				value: `${formatSigned(stat.latestMovePct, 1)}%`,
+				detail: `${movementWindowLabel} ${viewModeLabel} move`,
+				tone
+			};
+		}
+
+		return {
 			value:
 				marketPriceDelta == null
 					? formatMoney(latestMarketAverage)
@@ -493,6 +529,13 @@
 					: marketPriceDelta > 0
 						? 'up'
 						: 'down'
+		};
+	});
+
+	let kpiCards = $derived.by(() => [
+		{
+			label: 'Price movement',
+			...priceMovementKpi
 		},
 		{
 			label: 'New arrivals',
@@ -897,12 +940,22 @@
 <MarketReadSection
 	{marketReadHeadline}
 	{marketReadDetail}
+	{significanceNote}
 	lastUpdated={stats.lastUpdated}
 	totalSuppliers={stats.totalSuppliers}
 	{viewMode}
 	{windowMode}
 	onViewModeChange={(v) => (viewMode = v)}
 	onWindowModeChange={(v) => (windowMode = v)}
+/>
+
+<ValueSignalsSection
+	valueSignals={marketInsights?.valueSignals ?? null}
+	signalsSummary={marketInsights?.signalsSummary ?? null}
+	signalsAsOf={marketInsights?.signalsAsOf ?? null}
+	{isParchmentIntelligence}
+	isSignedIn={Boolean(session)}
+	{viewMode}
 />
 
 <AnalyticsSectionHeader
@@ -956,6 +1009,13 @@
 	onRetry={retryPublicCharts}
 />
 
+<MetadataTrendsSection
+	processSeries={marketInsights?.metadataProcessSeries ?? null}
+	disclosureSeries={marketInsights?.metadataDisclosureSeries ?? null}
+	{viewMode}
+	{isParchmentIntelligence}
+/>
+
 <ActionRailSection
 	{askActionLabel}
 	{askActionHref}
@@ -964,8 +1024,8 @@
 />
 
 <AnalyticsSectionHeader
-	title="Parchment Intelligence"
-	description="Supplier comparison, arrivals and delistings, and origin benchmarks — the sourcing layer for subscribers."
+	title="Suppliers and movement"
+	description="Who has what, at what price — and what's arriving and leaving the visible market."
 />
 
 <ParchmentIntelligenceSection
@@ -980,16 +1040,13 @@
 	{scopedSupplierHealth}
 	{filteredArrivals}
 	{filteredDelistings}
+	arrivalTotal={scopedArrivalCount}
+	delistingTotal={scopedDelistingCount}
+	{isMovementDataAvailable}
 	{originBarData}
 	{hasSnapshots}
 	{windowMode}
 	{viewModeLabel}
-	{arrivalPanelBadge}
-	{arrivalPanelTotalItems}
-	{arrivalExpandLabel}
-	{delistingPanelBadge}
-	{delistingPanelTotalItems}
-	{delistingExpandLabel}
 	onRetry={retryMemberVisuals}
 	onWindowModeChange={(v) => (windowMode = v)}
 />
