@@ -496,9 +496,25 @@
 
 	// ── KPI strip ─────────────────────────────────────────────────────────────
 
-	let kpiCards = $derived.by(() => [
-		{
-			label: 'Price movement',
+	let priceMovementKpi = $derived.by(() => {
+		const stat = currentMoveStat;
+		if (stat?.latestMovePct != null) {
+			const tone =
+				stat.classification === 'exceptional'
+					? 'alert'
+					: stat.classification === 'quiet' || Math.abs(stat.latestMovePct) < 0.01
+						? 'neutral'
+						: stat.latestMovePct > 0
+							? 'up'
+							: 'down';
+			return {
+				value: `${formatSigned(stat.latestMovePct, 1)}%`,
+				detail: `${movementWindowLabel} ${viewModeLabel} move`,
+				tone
+			};
+		}
+
+		return {
 			value:
 				marketPriceDelta == null
 					? formatMoney(latestMarketAverage)
@@ -508,15 +524,18 @@
 					? 'Latest indexed average'
 					: `${formatSigned(marketPriceDeltaPercent, 1)}% from prior snapshot`,
 			tone:
-				currentMoveStat?.classification === 'exceptional'
-					? 'alert'
-					: currentMoveStat?.classification === 'quiet'
-						? 'neutral'
-						: marketPriceDelta == null || Math.abs(marketPriceDelta) < 0.01
-							? 'neutral'
-							: marketPriceDelta > 0
-								? 'up'
-								: 'down'
+				marketPriceDelta == null || Math.abs(marketPriceDelta) < 0.01
+					? 'neutral'
+					: marketPriceDelta > 0
+						? 'up'
+						: 'down'
+		};
+	});
+
+	let kpiCards = $derived.by(() => [
+		{
+			label: 'Price movement',
+			...priceMovementKpi
 		},
 		{
 			label: 'New arrivals',

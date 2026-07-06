@@ -1,4 +1,4 @@
-import { json } from '@sveltejs/kit';
+import { json, type RequestEvent } from '@sveltejs/kit';
 import { OPENROUTER_API_KEY } from '$env/static/private';
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, stepCountIs, pruneMessages, type UIMessage, convertToModelMessages } from 'ai';
@@ -541,6 +541,10 @@ Use this to make responses more specific — reference tracked lots by name when
 	return prompt;
 }
 
+export function _createMarketToolParchmentClient(event: RequestEvent) {
+	return createParchmentServerClient(event, { preferHandling: 'inherit' });
+}
+
 export const POST: RequestHandler = async (event) => {
 	try {
 		// Chat is available to Parchment Intelligence users and Mallard Studio members.
@@ -603,7 +607,7 @@ export const POST: RequestHandler = async (event) => {
 				readPriceIndex: (input) => readPriceIndexForAgent(input),
 				findSimilarBeans: (input, options) => findSimilarBeansForAgent(input, options),
 				marketSignals: async (input) => {
-					const client = await createParchmentServerClient(event);
+					const client = await _createMarketToolParchmentClient(event);
 					const { data, error } = await client.market.signals({
 						...input,
 						limit: Math.min(input.limit ?? 10, 50)
@@ -611,12 +615,12 @@ export const POST: RequestHandler = async (event) => {
 					return error ?? data;
 				},
 				marketStats: async (input) => {
-					const client = await createParchmentServerClient(event);
+					const client = await _createMarketToolParchmentClient(event);
 					const { data, error } = await client.priceIndex.stats(input);
 					return error ?? data;
 				},
 				marketMetadataIndex: async (input) => {
-					const client = await createParchmentServerClient(event);
+					const client = await _createMarketToolParchmentClient(event);
 					const { data, error } = await client.market.metadataIndex(input);
 					return error ?? data;
 				}
