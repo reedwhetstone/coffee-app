@@ -71,16 +71,10 @@
 </script>
 
 <div class="flex h-full flex-col">
-	<header
-		class="flex items-center justify-between border-b border-text-primary-light border-opacity-20 p-4"
-	>
+	<header class="flex items-center justify-between border-b border-line p-4">
 		<div>
-			<h2 class="text-lg font-semibold text-text-primary-light" id="nav-dialog-title">
-				Navigation
-			</h2>
-			<p class="mt-1 text-sm text-text-secondary-light">
-				Mobile and desktop share the same route map now.
-			</p>
+			<h2 class="text-lg font-semibold text-ink" id="nav-dialog-title">Navigation</h2>
+			<p class="mt-1 text-sm text-muted">Mobile and desktop share the same route map now.</p>
 		</div>
 		<button
 			onclick={(event) => {
@@ -111,10 +105,10 @@
 			{#each navSections as section (section.id)}
 				<section>
 					<div class="mb-3">
-						<h3 class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
+						<h3 class="text-xs font-semibold text-muted">
 							{section.label}
 						</h3>
-						<p class="mt-1 text-xs text-text-secondary-light/80">{sectionIntro(section)}</p>
+						<p class="mt-1 text-xs text-muted/80">{sectionIntro(section)}</p>
 					</div>
 					<ul class="space-y-2">
 						{#each section.items as item (item.href)}
@@ -123,18 +117,31 @@
 									href={item.locked ? (item.upgradeHref ?? '/subscription') : item.href}
 									onclick={handleNavClick}
 									onmouseenter={() => handleMouseEnter(item)}
-									class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {isNavItemActive(
+									class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-line transition-all duration-200 {isNavItemActive(
 										item,
 										currentPath
 									)
-										? 'bg-background-tertiary-light text-white'
+										? 'bg-accent text-ink'
 										: item.locked
-											? 'bg-background-secondary-light text-text-secondary-light opacity-70 hover:bg-background-secondary-light'
-											: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
+											? 'bg-surface-panel text-muted opacity-70 hover:bg-surface-panel'
+											: 'bg-surface-panel text-ink hover:bg-accent hover:text-ink'}"
 								>
 									<div class="flex items-center gap-2 font-medium">
 										<span>{item.label}</span>
-										{#if item.locked}<span aria-label="Locked">🔒</span>{/if}
+										{#if item.locked}<svg
+												class="h-3.5 w-3.5"
+												fill="none"
+												viewBox="0 0 24 24"
+												stroke-width="1.5"
+												stroke="currentColor"
+												aria-label="Locked"
+												role="img"
+												><path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
+												/></svg
+											>{/if}
 									</div>
 									{#if item.description}
 										<p class="mt-1 text-xs opacity-80">{item.description}</p>
@@ -150,9 +157,7 @@
 			{/each}
 
 			{#if canAccessAdminRoutes}
-				<p
-					class="rounded-md border border-border-light px-3 py-2 text-xs text-text-secondary-light"
-				>
+				<p class="rounded-md border border-line px-3 py-2 text-xs text-muted">
 					Admin tools remain grouped separately so the main navigation stays readable on mobile.
 				</p>
 			{/if}
