@@ -5,6 +5,8 @@
 	// import RoastChart from './RoastChart.svelte';
 	import RoastProfileForm from './RoastProfileForm.svelte';
 	import FormShell from '$lib/components/FormShell.svelte';
+	import MetricTile from '$lib/components/ui/MetricTile.svelte';
+	import OperationsHero from '$lib/components/ui/OperationsHero.svelte';
 
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -208,6 +210,34 @@
 			return latestB.getTime() - latestA.getTime();
 		});
 		return batchNames;
+	});
+
+	let roastSummary = $derived.by(() => {
+		const profiles = typedFilteredData ?? [];
+		const batches = sortedBatchNames();
+		const completedProfiles = profiles.filter(
+			(profile) =>
+				(profile.weight_loss_percent ?? 0) > 0 ||
+				(profile.oz_in ?? 0) > 0 ||
+				(profile.oz_out ?? 0) > 0
+		);
+		const profilesWithLossData = profiles.filter(
+			(profile) => profile.weight_loss_percent !== null && profile.weight_loss_percent !== undefined
+		);
+		const avgLoss =
+			profilesWithLossData.length > 0
+				? profilesWithLossData.reduce(
+						(sum, profile) => sum + (Number(profile.weight_loss_percent) || 0),
+						0
+					) / profilesWithLossData.length
+				: 0;
+
+		return {
+			profiles: profiles.length,
+			batches: batches.length,
+			completedProfiles: completedProfiles.length,
+			avgLoss
+		};
 	});
 
 	// Effect to handle first-time expansion of batches
@@ -838,6 +868,46 @@
 	</div>
 {:else}
 	<!-- New Tab-Based Interface -->
+	<div class="mb-6 space-y-4">
+		<OperationsHero
+			kicker="Mallard Studio"
+			title="Roast studio"
+			description="Run profile logging, batch review, and live roast capture from one focused workspace that keeps production decisions tied to the coffees in portfolio."
+			contextLabel="Selected coffee"
+			contextValue={currentRoastProfile?.coffee_name ?? selectedBean.name}
+			primaryLabel="New roast profile"
+			primaryHref="/roast?modal=new"
+			secondaryLabel="Portfolio"
+			secondaryHref="/beans"
+		/>
+
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+			<MetricTile
+				label="Roast profiles"
+				value={roastSummary.profiles}
+				detail="Profiles in the current filter set"
+				tone="accent"
+			/>
+			<MetricTile
+				label="Batches"
+				value={roastSummary.batches}
+				detail="Grouped by batch name and roast date"
+			/>
+			<MetricTile
+				label="Logged roasts"
+				value={roastSummary.completedProfiles}
+				detail="Profiles with recorded roast data"
+				tone="success"
+			/>
+			<MetricTile
+				label="Average loss"
+				value={`${roastSummary.avgLoss.toFixed(1)}%`}
+				detail="Across profiles with weight loss data"
+				tone="warning"
+			/>
+		</div>
+	</div>
+
 	<RoastProfileTabs
 		sortedBatchNames={sortedBatchNames()}
 		sortedGroupedProfiles={sortedGroupedProfiles()}

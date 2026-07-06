@@ -341,7 +341,7 @@
 					{coffee.name}
 				</h3>
 				<div class="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-sm">
-					<span class="break-words font-medium text-accent"
+					<span class="break-words font-medium text-organic-rust"
 						>{coffee.source ?? 'Unknown supplier'}</span
 					>
 					{#if coffee.wholesale}
@@ -535,10 +535,13 @@
 			<header class="border-b border-line bg-surface-canvas px-4 py-4 md:px-6">
 				<div class="flex items-start justify-between gap-4">
 					<div>
-						<p class="text-xs font-semibold text-accent">
+						<p class="text-xs font-semibold text-organic-rust">
 							{coffee.source ?? 'Unknown supplier'}
 						</p>
-						<h2 id="coffee-detail-title-{coffee.id}" class="mt-1 text-xl font-bold text-ink">
+						<h2
+							id="coffee-detail-title-{coffee.id}"
+							class="mt-1 text-2xl font-semibold leading-tight tracking-tight text-ink"
+						>
 							{coffee.name}
 						</h2>
 						<p class="mt-1 text-sm text-muted">{longLocationSummary}</p>
@@ -641,7 +644,7 @@
 							</div>
 							{#if annotation}
 								<div class="rounded-lg border border-line bg-surface-panel p-4">
-									<p class="text-xs font-semibold text-accent">AI recommendation note</p>
+									<p class="text-xs font-semibold text-organic-rust">AI recommendation note</p>
 									<p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">
 										{annotation}
 									</p>
@@ -717,7 +720,7 @@
 						<div class="space-y-4">
 							{#if processAnalysis}
 								<div class="rounded-lg border border-line bg-surface-panel p-4">
-									<p class="text-xs font-semibold text-accent">Process transparency</p>
+									<p class="text-xs font-semibold text-organic-rust">Process transparency</p>
 									<h3 class="mt-1 font-semibold text-ink">{processAnalysis.headline}</h3>
 									{#if processAnalysis.details.length > 0}
 										<ul class="mt-3 space-y-2 text-sm text-muted">

@@ -356,36 +356,47 @@
 </script>
 
 <!-- Sales Chart Component -->
-<div class="rounded-lg bg-surface-panel ring-line">
+<section class="rounded-lg border border-line bg-surface-panel p-5 shadow-sm sm:p-6">
+	<div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+		<div>
+			<h2 class="text-2xl font-semibold tracking-tight text-ink">Sales by coffee</h2>
+			<p class="mt-1 text-sm text-muted">
+				Compare revenue, margin, sell-through, and cost concentration across coffees.
+			</p>
+		</div>
+		<p class="text-sm text-muted">
+			{chartData().length} coffee{chartData().length === 1 ? '' : 's'} in view
+		</p>
+	</div>
 	<!-- KPI Summary Panel -->
 	<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
-			<h3 class="text-sm font-medium text-ink">Total Sales</h3>
-			<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Total sales</h3>
+			<p class="mt-1 text-3xl font-semibold tabular-nums text-ink">
 				{formatNumber(kpiSummary().totalSales)}
 			</p>
 			<p class="mt-1 text-xs text-muted">Individual transactions</p>
 		</div>
 
-		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
-			<h3 class="text-sm font-medium text-ink">Total Revenue</h3>
-			<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Total revenue</h3>
+			<p class="mt-1 text-3xl font-semibold tabular-nums text-ink">
 				{formatCurrency(kpiSummary().totalRevenue)}
 			</p>
 			<p class="mt-1 text-xs text-muted">From all sales</p>
 		</div>
 
-		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
-			<h3 class="text-sm font-medium text-ink">Total Profit</h3>
-			<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Total profit</h3>
+			<p class="mt-1 text-3xl font-semibold tabular-nums text-ink">
 				{formatCurrency(kpiSummary().totalProfit)}
 			</p>
 			<p class="mt-1 text-xs text-muted">Net after costs</p>
 		</div>
 
-		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
-			<h3 class="text-sm font-medium text-ink">Avg Margin</h3>
-			<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Average margin</h3>
+			<p class="mt-1 text-3xl font-semibold tabular-nums text-ink">
 				{formatPercent(kpiSummary().averageMargin)}
 			</p>
 			<p class="mt-1 text-xs text-muted">Weighted average</p>
@@ -394,37 +405,37 @@
 
 	<!-- Secondary KPIs -->
 	<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
-			<h3 class="text-sm font-medium text-ink">Oz Sold</h3>
-			<p class="mt-1 text-xl font-bold tabular-nums text-ink">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Oz sold</h3>
+			<p class="mt-1 text-2xl font-semibold tabular-nums text-ink">
 				{kpiSummary().totalOzSold.toFixed(1)}
 			</p>
 		</div>
 
-		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
-			<h3 class="text-sm font-medium text-ink">Investment</h3>
-			<p class="mt-1 text-xl font-bold tabular-nums text-ink">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Investment</h3>
+			<p class="mt-1 text-2xl font-semibold tabular-nums text-ink">
 				{formatCurrency(kpiSummary().totalInvestment)}
 			</p>
 		</div>
 
-		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
-			<h3 class="text-sm font-medium text-ink">Coffee Purchased</h3>
-			<p class="mt-1 text-xl font-bold tabular-nums text-ink">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Coffee purchased</h3>
+			<p class="mt-1 text-2xl font-semibold tabular-nums text-ink">
 				{kpiSummary().totalPoundsRoasted.toFixed(1)} lbs
 			</p>
 		</div>
 
-		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
-			<h3 class="text-sm font-medium text-ink">Sell-Through Rate</h3>
-			<p class="mt-1 text-xl font-bold tabular-nums text-ink">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Sell-through rate</h3>
+			<p class="mt-1 text-2xl font-semibold tabular-nums text-ink">
 				{formatPercent(kpiSummary().sellThroughRate)}
 			</p>
 		</div>
 
-		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
-			<h3 class="text-sm font-medium text-ink">Avg Price/oz</h3>
-			<p class="mt-1 text-xl font-bold tabular-nums text-ink">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Avg price/oz</h3>
+			<p class="mt-1 text-2xl font-semibold tabular-nums text-ink">
 				{formatCurrency(kpiSummary().avgSellingPricePerOz)}
 			</p>
 		</div>
@@ -599,14 +610,13 @@
 			{:else}
 				<div class="flex h-full items-center justify-center rounded bg-surface-panel bg-opacity-90">
 					<div class="text-center">
-						<div class="mb-2 text-4xl opacity-50">📊</div>
 						<div class="text-sm text-muted">No data available for selected filters</div>
 					</div>
 				</div>
 			{/if}
 		</div>
 	</div>
-</div>
+</section>
 
 <!-- Interactive Tooltip -->
 {#if tooltipState.visible && tooltipState.data}
@@ -631,8 +641,8 @@
 		<div
 			class="max-w-xs rounded-lg bg-surface-panel bg-opacity-95 p-4 shadow-lg ring-1 ring-line backdrop-blur-sm"
 		>
-			<div class="mb-3 text-sm font-semibold text-ink">
-				☕ {d.beanName}
+			<div class="mb-3 text-base font-semibold text-ink">
+				{d.beanName}
 				{#if d.rawData.profitData.some((p) => p.wholesale)}
 					<span class="ml-1 rounded bg-info-subtle px-1 text-xs font-normal text-info-strong"
 						>Wholesale</span
@@ -692,7 +702,7 @@
 			</div>
 
 			<div class="mt-3 border-t border-line pt-3">
-				<div class="mb-1 text-xs font-medium text-ink">📊 Current Value</div>
+				<div class="mb-1 text-xs font-medium text-ink">Current value</div>
 				<div class="text-sm font-bold" style="color: {getMetricColor(selectedMetric)}">
 					{currentMetric().format(d.value)}
 				</div>

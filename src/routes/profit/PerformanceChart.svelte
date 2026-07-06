@@ -232,14 +232,14 @@
 </script>
 
 <!-- Enhanced Performance Chart Component -->
-<div class="rounded-lg bg-surface-panel p-6 ring-1 ring-line">
+<section class="rounded-lg border border-line bg-surface-panel p-5 shadow-sm sm:p-6">
 	<!-- Chart Header with Controls -->
 	<div class="mb-6">
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div>
-				<h3 class="text-lg font-semibold text-ink">Sales Performance Dashboard</h3>
+				<h2 class="text-2xl font-semibold tracking-tight text-ink">Performance over time</h2>
 				<p class="text-sm text-muted">
-					Interactive analysis with {selectedTimeRange} data in {viewTypeOptions
+					Revenue, cost, target, and margin movement with {selectedTimeRange} data in {viewTypeOptions
 						.find((v) => v.value === selectedViewType)
 						?.label.toLowerCase()} view
 				</p>
@@ -386,7 +386,7 @@
 					</svg>
 				</div>
 				<div class="flex-1">
-					<h4 class="mb-2 font-semibold text-ink">Performance insights</h4>
+					<h3 class="mb-2 text-lg font-semibold text-ink">Performance insights</h3>
 					{#if processedChartData().length > 0}
 						{@const data = processedChartData()}
 						{@const latestRevenue = data[data.length - 1]?.revenue || 0}
@@ -462,7 +462,7 @@
 			</div>
 		</div>
 	{/if}
-</div>
+</section>
 
 <!-- Smooth Tooltip Implementation (Following UI Framework) -->
 {#if tooltipState.visible && tooltipState.data}
@@ -491,8 +491,8 @@
 		<div
 			class="max-w-xs rounded-lg bg-surface-panel bg-opacity-95 p-4 shadow-lg ring-1 ring-line backdrop-blur-sm"
 		>
-			<div class="mb-3 text-sm font-semibold text-ink">
-				📅 {formatDate(d.date)}
+			<div class="mb-3 text-base font-semibold text-ink">
+				{formatDate(d.date)}
 				{#if d.saleData?.wholesale}
 					<span class="ml-1 rounded bg-info-subtle px-1 text-xs font-normal text-info-strong"
 						>Wholesale</span
@@ -537,9 +537,9 @@
 			</div>
 
 			<div class="mt-3 border-t border-line pt-3">
-				<div class="mb-1 text-xs font-medium text-ink">📊 Performance</div>
+				<div class="mb-1 text-xs font-medium text-ink">Performance</div>
 				<div class="text-xs {isTargetMet ? 'text-success-strong' : 'text-warning-strong'}">
-					{isTargetMet ? '✅ On track' : '⚠️ Below target'}
+					{isTargetMet ? 'On track' : 'Below target'}
 					{#if selectedViewType === 'margin'}
 						({Math.abs(targetDiff).toFixed(1)}% {isTargetMet ? 'above' : 'below'})
 					{:else}
