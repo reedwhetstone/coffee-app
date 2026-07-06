@@ -8,6 +8,8 @@
 	import OperationsHero from '$lib/components/ui/OperationsHero.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { canUseMallardControls } from '$lib/services/portfolioAccess';
+	import type { UserRole } from '$lib/types/auth.types';
 	import type { AvailableCoffee, BatchItem } from '$lib/types/component.types';
 
 	interface ProfitData {
@@ -46,7 +48,9 @@
 	let profitData = $state<ProfitData[]>([]);
 	// Removed unused roastProfileData
 	let salesData = $state<SaleData[]>([]);
-	let isFormVisible = $derived(page.url.searchParams.get('modal') === 'new');
+	let { data = { role: 'viewer' } } = $props<{ data?: { role?: UserRole } }>();
+	let canLogSales = $derived(canUseMallardControls(data?.role ?? 'viewer'));
+	let isFormVisible = $derived(canLogSales && page.url.searchParams.get('modal') === 'new');
 	let selectedSale = $state<SaleData | null>(null);
 	let isSaving = $state<string | null>(null);
 
@@ -228,8 +232,8 @@
 			description="Track coffee sales as an operating loop: inventory investment, sell-through, margin, and the lots creating or consuming cash."
 			contextLabel="Current margin"
 			contextValue={formatPercent(profitSummary.margin)}
-			primaryLabel="Log sale"
-			primaryHref="/profit?modal=new"
+			primaryLabel={canLogSales ? 'Log sale' : ''}
+			primaryHref={canLogSales ? '/profit?modal=new' : ''}
 			secondaryLabel="Review portfolio"
 			secondaryHref="/beans"
 		/>

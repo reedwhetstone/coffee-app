@@ -165,6 +165,8 @@
 	let canManagePortfolioRows = $derived(
 		canManagePortfolio(data?.role || 'viewer', data?.ppiAccess === true)
 	);
+	let isSharedPortfolioView = $derived(Boolean(page.url.searchParams.get('share')));
+	let canAddPortfolioCoffee = $derived(canManagePortfolioRows && !isSharedPortfolioView);
 	let error = $state<string | null>(null);
 	let isSaving = $state<string | null>(null);
 	let catalogLoadPromise: Promise<void> | null = null;
@@ -484,8 +486,8 @@
 			description="Keep purchased coffee, bookmarked market lots, and roast context in one place so procurement decisions stay connected to what is actually on the shelf."
 			contextLabel="Selected value"
 			contextValue={formatCurrency(portfolioSummary.value)}
-			primaryLabel={canManagePortfolioRows ? 'Add coffee' : ''}
-			primaryHref={canManagePortfolioRows ? '/beans?modal=new' : ''}
+			primaryLabel={canAddPortfolioCoffee ? 'Add coffee' : ''}
+			primaryHref={canAddPortfolioCoffee ? '/beans?modal=new' : ''}
 			secondaryLabel="Browse catalog"
 			secondaryHref="/catalog"
 		/>

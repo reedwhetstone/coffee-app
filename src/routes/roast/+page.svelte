@@ -7,6 +7,7 @@
 	import FormShell from '$lib/components/FormShell.svelte';
 	import MetricTile from '$lib/components/ui/MetricTile.svelte';
 	import OperationsHero from '$lib/components/ui/OperationsHero.svelte';
+	import { canUseMallardControls } from '$lib/services/portfolioAccess';
 
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -46,8 +47,14 @@
 	// Roast profile state management
 	let currentRoastProfile = $state<RoastProfile | null>(null);
 
+	// Page data
+	let { data = { data: [], role: 'viewer' } } = $props<{ data?: Partial<PageData> }>();
+	let canCreateRoastProfiles = $derived(canUseMallardControls(data?.role ?? 'viewer'));
+
 	// Main state variables
-	let isFormVisible = $derived(page.url.searchParams.get('modal') === 'new');
+	let isFormVisible = $derived(
+		canCreateRoastProfiles && page.url.searchParams.get('modal') === 'new'
+	);
 	let selectedBean = $state<{ id?: number; name: string }>({ name: 'No Bean Selected' });
 	const timer = createRoastTimer();
 	let isRoasting = $derived(!timer.isIdle);
@@ -61,9 +68,6 @@
 	// Profile grouping and sorting state
 	let expandedBatches = $state<Set<string>>(new Set());
 	let currentProfileIndex = $state<number>(0);
-
-	// Page data
-	let { data = { data: [], role: 'viewer' } } = $props<{ data?: Partial<PageData> }>();
 
 	// Client-side data state
 	let clientData = $state<RoastProfile[]>([]);
@@ -875,8 +879,8 @@
 			description="Run profile logging, batch review, and live roast capture from one focused workspace that keeps production decisions tied to the coffees in portfolio."
 			contextLabel="Selected coffee"
 			contextValue={currentRoastProfile?.coffee_name ?? selectedBean.name}
-			primaryLabel="New roast profile"
-			primaryHref="/roast?modal=new"
+			primaryLabel={canCreateRoastProfiles ? 'New roast profile' : ''}
+			primaryHref={canCreateRoastProfiles ? '/roast?modal=new' : ''}
 			secondaryLabel="Portfolio"
 			secondaryHref="/beans"
 		/>
