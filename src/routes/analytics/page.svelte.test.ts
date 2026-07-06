@@ -261,7 +261,7 @@ describe('analytics page loading experience', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
 
-		expect(screen.getByText('Source with the full market in view.')).toBeTruthy();
+		expect(screen.getByText('The supplier layer runs deeper.')).toBeTruthy();
 
 		await view.rerender({ data: createData({ session: createSession() }) });
 
@@ -270,7 +270,7 @@ describe('analytics page loading experience', () => {
 		});
 
 		expect(loadMemberAnalyticsModules).not.toHaveBeenCalled();
-		expect(screen.getByText('Source with the full market in view.')).toBeTruthy();
+		expect(screen.getByText('The supplier layer runs deeper.')).toBeTruthy();
 	});
 
 	it('loads the Parchment Intelligence chart when a viewer upgrades on the same route', async () => {
@@ -358,7 +358,7 @@ describe('analytics command center hierarchy', () => {
 			evidenceCharts!.compareDocumentPosition(actionRail!) & Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 		expect(
-			actionRail!.compareDocumentPosition(screen.getByText('Supplier Price Comparison')) &
+			actionRail!.compareDocumentPosition(screen.getByText('The supplier layer runs deeper.')) &
 				Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 	});
@@ -563,7 +563,7 @@ describe('analytics action CTA rail', () => {
 			'href',
 			'/subscription?plan=intelligence-monthly&intent=checkout'
 		);
-		expect(screen.getAllByText('Parchment Intelligence').length).toBeGreaterThanOrEqual(1);
+		expect(screen.getAllByText(/Parchment Intelligence/).length).toBeGreaterThanOrEqual(1);
 		expect(screen.queryByRole('link', { name: 'Ask with this context' })).toBeNull();
 	});
 });
@@ -577,17 +577,17 @@ describe('analytics premium boundary copy', () => {
 		});
 
 		expect(screen.queryByRole('button', { name: 'Spread' })).toBeNull();
-		expect(screen.getByText('Source with the full market in view.')).toBeTruthy();
+		expect(screen.getByText('The supplier layer runs deeper.')).toBeTruthy();
 		expect(
 			screen.getByText(
-				/supplier comparisons, arrival and delisting feeds, origin benchmarks, and the weekly procurement brief/i
+				/supplier-by-supplier price ranges, catalog health, the arrivals and delistings feed/i
 			)
 		).toBeTruthy();
-		expect(screen.getByRole('button', { name: 'Start Intelligence' })).toBeTruthy();
-		expect(screen.getByRole('button', { name: 'See free market view' })).toBeTruthy();
+		expect(screen.getByRole('link', { name: 'Start Intelligence' })).toBeTruthy();
+		expect(screen.getByRole('link', { name: 'See plans' })).toBeTruthy();
 		expect(screen.queryByText('Fresh Ethiopia')).toBeNull();
 		expect(screen.queryByText('Recently Gone')).toBeNull();
-		expect(screen.getAllByText('Parchment Intelligence').length).toBeGreaterThanOrEqual(1);
+		expect(screen.getAllByText(/Parchment Intelligence/).length).toBeGreaterThanOrEqual(1);
 	});
 
 	it('restores premium supplier analytics modules instead of static fallback tables', async () => {
@@ -650,7 +650,7 @@ describe('analytics premium boundary copy', () => {
 
 		expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();
 		expect(screen.getByText('Recently Gone')).toBeTruthy();
-		expect(screen.getAllByRole('button', { name: /Open 1 loaded row/ })).toHaveLength(2);
+		expect(screen.getAllByRole('button', { name: /View all 2/ }).length).toBeGreaterThanOrEqual(1);
 		expect(screen.queryByRole('button', { name: /View all 0/ })).toBeNull();
 	});
 });

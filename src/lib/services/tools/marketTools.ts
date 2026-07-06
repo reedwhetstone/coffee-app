@@ -38,7 +38,7 @@ export function createMarketIndexTools(deps: ChatToolDeps) {
 		const marketSignals = deps.marketSignals;
 		tools.market_signals = tool({
 			description:
-				'Actionable green coffee buy signals from this morning\'s market pass: price drops vs a lot\'s own trailing median, lots priced below their origin/process segment, and price-for-quality outliers. Every signal carries a machine-readable evidence object (segment median, discount %, percentile). Use for questions like "show me buy opportunities on washed Ethiopias under $7". Requires Parchment Intelligence; a 403 means the user should be pointed at the Intelligence plan, not retried.',
+				'Actionable green coffee buy signals from this morning\'s market pass: price drops vs a lot\'s own trailing median, lots priced below their origin/process segment, and price-for-quality outliers. Every signal carries a machine-readable evidence object (segment median, discount %, percentile). Use for questions like "show me buy opportunities on washed Ethiopias under $7". Requires Parchment Intelligence; a 403 means the user should be pointed at the Intelligence plan, not retried. Note: score_value in responses is a supplier-stated number that varies by supplier methodology — never present it as a canonical Purveyors quality metric.',
 			inputSchema: z.object({
 				type: z
 					.array(z.enum(['price_drop', 'below_market', 'value_quality']))
@@ -82,8 +82,10 @@ export function createMarketIndexTools(deps: ChatToolDeps) {
 				'The metadata index: how the market\'s composition is changing over time — processing-method mix, disclosure-level mix (transparency trend), or cup-score distribution — market-wide or per origin. Use for questions like "is anaerobic growing in Ethiopia?" or "is the market disclosing more about processing?".',
 			inputSchema: z.object({
 				dimension: z
-					.enum(['process', 'disclosure', 'score'])
-					.describe('Which metadata dimension to trend'),
+					.enum(['process', 'disclosure'])
+					.describe(
+						'Which metadata dimension to trend. Cup-score trends are intentionally unavailable: supplier scores are inconsistent and not surfaced as a Purveyors metric.'
+					),
 				origin: z.string().optional().describe('Origin country; omit for market-wide'),
 				market: z.enum(['retail', 'wholesale', 'all']).optional().describe('Market scope'),
 				grain: z.enum(['week', 'month']).optional().describe('Period grain (default month)'),

@@ -9,7 +9,9 @@ import { createParchmentServerClient, ParchmentConfigError } from './parchmentCl
  * - value signals (full feed for Parchment Intelligence; public count summary
  *   for everyone else)
  * - price movement significance stats (public retail market-wide slice)
- * - metadata-trend index (public process slice; disclosure/score for PPI)
+ * - metadata-trend index (public process slice; disclosure trend for PPI).
+ *   Cup-score trends are deliberately not fetched: supplier scores are
+ *   inconsistent/subjective and are not surfaced on the front end.
  *
  * Every fetch degrades to `null` on error so a Parchment outage never breaks
  * the analytics page — the sections simply don't render.
@@ -31,8 +33,7 @@ const EMPTY_INSIGHTS: MarketIndexInsights = {
 	signalsAsOf: null,
 	moveStats: null,
 	metadataProcessSeries: null,
-	metadataDisclosureSeries: null,
-	metadataScoreSeries: null
+	metadataDisclosureSeries: null
 };
 
 const SIGNALS_LIMIT = 12;
@@ -86,21 +87,17 @@ export async function loadMarketIndexInsights(
 	const { isParchmentIntelligence } = options;
 	const supabase = event.locals.supabase as unknown as NameLookupClient;
 
-	const [signalsResult, statsResult, processResult, disclosureResult, scoreResult] =
-		await Promise.allSettled([
-			isParchmentIntelligence
-				? client.market.signals({ market: 'all', limit: SIGNALS_LIMIT })
-				: client.market.signals({ summary: 'true' }),
-			// Public retail market-wide slice; returns rows for both movement windows.
-			client.priceIndex.stats({}),
-			client.market.metadataIndex({ dimension: 'process', grain: 'month' }),
-			isParchmentIntelligence
-				? client.market.metadataIndex({ dimension: 'disclosure', grain: 'month' })
-				: Promise.resolve(null),
-			isParchmentIntelligence
-				? client.market.metadataIndex({ dimension: 'score', grain: 'month' })
-				: Promise.resolve(null)
-		]);
+	const [signalsResult, statsResult, processResult, disclosureResult] = await Promise.allSettled([
+		isParchmentIntelligence
+			? client.market.signals({ market: 'all', limit: SIGNALS_LIMIT })
+			: client.market.signals({ summary: 'true' }),
+		// Public retail market-wide slice; returns rows for both movement windows.
+		client.priceIndex.stats({}),
+		client.market.metadataIndex({ dimension: 'process', grain: 'month' }),
+		isParchmentIntelligence
+			? client.market.metadataIndex({ dimension: 'disclosure', grain: 'month' })
+			: Promise.resolve(null)
+	]);
 
 	const insights: MarketIndexInsights = { ...EMPTY_INSIGHTS };
 
@@ -142,15 +139,6 @@ export async function loadMarketIndexInsights(
 		disclosureResult.value.data
 	) {
 		insights.metadataDisclosureSeries = disclosureResult.value.data.data ?? null;
-	}
-
-	if (
-		scoreResult.status === 'fulfilled' &&
-		scoreResult.value &&
-		'data' in scoreResult.value &&
-		scoreResult.value.data
-	) {
-		insights.metadataScoreSeries = scoreResult.value.data.data ?? null;
 	}
 
 	return insights;

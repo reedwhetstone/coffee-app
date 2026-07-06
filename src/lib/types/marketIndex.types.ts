@@ -27,5 +27,4 @@ export interface MarketIndexInsights {
 	moveStats: PriceMoveStat[] | null;
 	metadataProcessSeries: MetadataSeriesItem[] | null;
 	metadataDisclosureSeries: MetadataSeriesItem[] | null;
-	metadataScoreSeries: MetadataSeriesItem[] | null;
 }

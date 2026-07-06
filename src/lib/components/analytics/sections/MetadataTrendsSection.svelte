@@ -1,7 +1,6 @@
 <script lang="ts">
 	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
 	import CompositionTrendChart from '$lib/components/analytics/CompositionTrendChart.svelte';
-	import ScoreBandChart from '$lib/components/analytics/ScoreBandChart.svelte';
 	import {
 		CHART_SERIES,
 		DISCLOSURE_COLORS,
@@ -15,13 +14,11 @@
 	interface Props {
 		processSeries: MetadataSeriesItem[] | null;
 		disclosureSeries: MetadataSeriesItem[] | null;
-		scoreSeries: MetadataSeriesItem[] | null;
 		viewMode: ViewMode;
 		isParchmentIntelligence: boolean;
 	}
 
-	let { processSeries, disclosureSeries, scoreSeries, viewMode, isParchmentIntelligence }: Props =
-		$props();
+	let { processSeries, disclosureSeries, viewMode, isParchmentIntelligence }: Props = $props();
 
 	// The metadata index is served from the retail market slice only; wholesale and
 	// combined trends require expanded coverage that is not fetched here. When the
@@ -51,9 +48,7 @@
 		return DISCLOSURE_LABELS[key] ?? key;
 	}
 
-	let hasAnySeries = $derived(
-		Boolean(processSeries?.length || disclosureSeries?.length || scoreSeries?.length)
-	);
+	let hasAnySeries = $derived(Boolean(processSeries?.length || disclosureSeries?.length));
 </script>
 
 {#if hasAnySeries}
@@ -94,15 +89,6 @@
 						/>
 					</div>
 				{/if}
-				{#if scoreSeries && scoreSeries.length > 0}
-					<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
-						<h3 class="text-base font-semibold text-ink">How is quality shifting?</h3>
-						<p class="mb-4 mt-1 text-sm text-muted">
-							Cup-score distribution of stocked supply over time.
-						</p>
-						<ScoreBandChart series={scoreSeries} />
-					</div>
-				{/if}
 			{:else}
 				<div
 					class="rounded-lg border border-line bg-surface-panel p-6 lg:col-span-2"
@@ -111,11 +97,11 @@
 					<div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
 						<div>
 							<h3 class="font-serif text-lg font-medium text-ink">
-								Disclosure and quality trends run deeper.
+								The transparency trend runs deeper.
 							</h3>
 							<p class="mt-1 text-sm text-muted">
-								Parchment Intelligence adds the transparency trend, origin-level metadata
-								composition, and cup-score distribution over time.
+								Parchment Intelligence adds the disclosure-level trend and origin-level metadata
+								composition over time.
 							</p>
 						</div>
 						<a

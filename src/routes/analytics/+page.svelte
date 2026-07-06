@@ -392,35 +392,6 @@
 
 	// ── Movement panel labels ─────────────────────────────────────────────────
 
-	function loadedRowsLabel(count: number): string {
-		return `Open ${count.toLocaleString()} loaded ${count === 1 ? 'row' : 'rows'} ↗`;
-	}
-
-	let arrivalPanelBadge = $derived(isMovementDataAvailable ? `+${scopedArrivalCount}` : undefined);
-	let delistingPanelBadge = $derived(
-		isMovementDataAvailable ? `-${scopedDelistingCount}` : undefined
-	);
-	let arrivalPanelTotalItems = $derived(
-		isMovementDataAvailable ? scopedArrivalCount : filteredArrivals.length
-	);
-	let delistingPanelTotalItems = $derived(
-		isMovementDataAvailable ? scopedDelistingCount : filteredDelistings.length
-	);
-	let arrivalExpandLabel = $derived(
-		isMovementDataAvailable
-			? filteredArrivals.length < scopedArrivalCount
-				? `Open latest ${filteredArrivals.length} shown (${scopedArrivalCount} total in window) ↗`
-				: undefined
-			: loadedRowsLabel(filteredArrivals.length)
-	);
-	let delistingExpandLabel = $derived(
-		isMovementDataAvailable
-			? filteredDelistings.length < scopedDelistingCount
-				? `Open latest ${filteredDelistings.length} shown (${scopedDelistingCount} total in window) ↗`
-				: undefined
-			: loadedRowsLabel(filteredDelistings.length)
-	);
-
 	// ── Formatting helpers ────────────────────────────────────────────────────
 
 	function formatDate(dateStr: string | null) {
@@ -1022,7 +993,6 @@
 <MetadataTrendsSection
 	processSeries={marketInsights?.metadataProcessSeries ?? null}
 	disclosureSeries={marketInsights?.metadataDisclosureSeries ?? null}
-	scoreSeries={marketInsights?.metadataScoreSeries ?? null}
 	{viewMode}
 	{isParchmentIntelligence}
 />
@@ -1035,8 +1005,8 @@
 />
 
 <AnalyticsSectionHeader
-	title="Parchment Intelligence"
-	description="Supplier comparison, arrivals and delistings, and origin benchmarks — the sourcing layer for subscribers."
+	title="Suppliers and movement"
+	description="Who has what, at what price — and what's arriving and leaving the visible market."
 />
 
 <ParchmentIntelligenceSection
@@ -1055,12 +1025,6 @@
 	{hasSnapshots}
 	{windowMode}
 	{viewModeLabel}
-	{arrivalPanelBadge}
-	{arrivalPanelTotalItems}
-	{arrivalExpandLabel}
-	{delistingPanelBadge}
-	{delistingPanelTotalItems}
-	{delistingExpandLabel}
 	onRetry={retryMemberVisuals}
 	onWindowModeChange={(v) => (windowMode = v)}
 />

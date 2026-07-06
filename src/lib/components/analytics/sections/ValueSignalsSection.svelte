@@ -31,10 +31,20 @@
 
 	const MAX_CARDS = 6;
 
+	// Teaser total excludes value_quality (not displayed; see scopedSignals note).
+	let displayedSummaryTotal = $derived(
+		signalsSummary ? signalsSummary.byType.price_drop + signalsSummary.byType.below_market : 0
+	);
+
+	// value_quality is excluded from display: it ranks on supplier-stated cup
+	// scores, which are inconsistent across suppliers and deliberately not
+	// surfaced on the front end. It returns once signals rank on the Purveyors
+	// Metadata Score instead (parchment-api follow-up).
 	let scopedSignals = $derived.by(() => {
 		if (!valueSignals) return [];
-		const filtered =
-			viewMode === 'all' ? valueSignals : valueSignals.filter((s) => s.market === viewMode);
+		const filtered = valueSignals.filter(
+			(s) => s.signalType !== 'value_quality' && (viewMode === 'all' || s.market === viewMode)
+		);
 		return filtered.slice(0, MAX_CARDS);
 	});
 
@@ -92,7 +102,7 @@
 {#if valueSignals !== null || signalsSummary !== null}
 	<AnalyticsSectionHeader
 		title="What should I consider buying?"
-		description="Evidence-backed value signals from this morning's market pass: price drops, lots priced below their segment, and price-for-quality outliers."
+		description="Evidence-backed value signals from this morning's market pass: price drops against a lot's own history, and lots priced below their origin and process segment."
 	/>
 
 	{#if isParchmentIntelligence && valueSignals !== null}
@@ -118,9 +128,6 @@
 						</h3>
 						<p class="mt-0.5 text-xs text-muted">
 							{signal.source ?? 'Supplier undisclosed'} · {signal.market}
-							{#if signal.scoreValue != null && signal.signalType !== 'value_quality'}
-								· scores {signal.scoreValue}
-							{/if}
 						</p>
 						<p class="mt-2 flex-1 text-sm leading-6 text-muted">{evidenceSentence(signal)}</p>
 						<a
@@ -152,14 +159,13 @@
 			<div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
 				<div>
 					<h3 class="font-serif text-lg font-medium text-ink">
-						{signalsSummary.total.toLocaleString()}
-						{signalsSummary.total === 1 ? 'buy signal is' : 'buy signals are'} active
+						{displayedSummaryTotal.toLocaleString()}
+						{displayedSummaryTotal === 1 ? 'buy signal is' : 'buy signals are'} active
 						{#if formatAsOf(signalsAsOf)}as of {formatAsOf(signalsAsOf)}{:else}this morning{/if}.
 					</h3>
 					<p class="mt-1 text-sm text-muted">
 						{signalsSummary.byType.price_drop} price drops · {signalsSummary.byType.below_market} below-market
-						lots · {signalsSummary.byType.value_quality} price-for-quality outliers. Parchment Intelligence
-						members see the named lots and the evidence behind each one.
+						lots. Parchment Intelligence members see the named lots and the evidence behind each one.
 					</p>
 				</div>
 				<div class="flex shrink-0 flex-col gap-2 sm:flex-row">
