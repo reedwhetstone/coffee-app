@@ -1,5 +1,6 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import type { components } from '@purveyors/sdk';
+import { createAdminClient } from '$lib/supabase-admin';
 import { createParchmentServerClient, ParchmentConfigError } from './parchmentClient';
 
 /**
@@ -76,20 +77,41 @@ interface NameLookupClient {
 }
 
 async function enrichSignalNames(
-	supabase: NameLookupClient,
 	items: components['schemas']['MarketSignalItem'][]
 ): Promise<MarketSignalItem[]> {
 	const ids = [...new Set(items.map((item) => item.catalogId))];
-	let names = new Map<number, string | null>();
-	if (ids.length > 0) {
+	const names = new Map<number, string | null>();
+
+	for (const item of items) {
+		const responseName = extractSignalName(item);
+		if (responseName) names.set(item.catalogId, responseName);
+	}
+
+	const missingIds = ids.filter((id) => !names.has(id));
+	if (missingIds.length > 0) {
 		try {
-			const { data } = await supabase.from('coffee_catalog').select('id, name').in('id', ids);
-			names = new Map((data ?? []).map((row) => [row.id, row.name]));
+			const adminSupabase = createAdminClient() as unknown as NameLookupClient;
+			const { data } = await adminSupabase
+				.from('coffee_catalog')
+				.select('id, name')
+				.in('id', missingIds);
+			for (const row of data ?? []) {
+				names.set(row.id, row.name);
+			}
 		} catch {
 			// Names are presentation sugar; signals render from origin/process without them.
 		}
 	}
 	return items.map((item) => ({ ...item, name: names.get(item.catalogId) ?? null }));
+}
+
+function extractSignalName(item: components['schemas']['MarketSignalItem']): string | null {
+	const record = item as unknown as Record<string, unknown>;
+	for (const key of ['name', 'coffeeName', 'coffee_name', 'catalogName', 'catalog_name']) {
+		const value = record[key];
+		if (typeof value === 'string' && value.trim()) return value;
+	}
+	return null;
 }
 
 export async function loadMarketIndexInsights(
@@ -108,7 +130,6 @@ export async function loadMarketIndexInsights(
 	}
 
 	const { isParchmentIntelligence } = options;
-	const supabase = event.locals.supabase as unknown as NameLookupClient;
 
 	// Value signals: entitled viewers get a full displayed-signal page per scope
 	// (the combined 'all' ranking plus retail and wholesale) so
@@ -182,7 +203,7 @@ export async function loadMarketIndexInsights(
 		}
 		insights.signalsAsOf = allBody?.meta?.asOf ?? retailBody?.meta?.asOf ?? null;
 		if (allBody || retailBody || wholesaleBody) {
-			insights.valueSignals = await enrichSignalNames(supabase, merged);
+			insights.valueSignals = await enrichSignalNames(merged);
 		}
 		const summary = allBody?.meta?.summary ?? null;
 		if (summary) {

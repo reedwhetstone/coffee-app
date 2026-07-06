@@ -1,8 +1,9 @@
 import type { RequestEvent } from '@sveltejs/kit';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockCreateParchmentServerClient } = vi.hoisted(() => ({
-	mockCreateParchmentServerClient: vi.fn()
+const { mockCreateParchmentServerClient, mockCreateAdminClient } = vi.hoisted(() => ({
+	mockCreateParchmentServerClient: vi.fn(),
+	mockCreateAdminClient: vi.fn()
 }));
 
 vi.mock('./parchmentClient', () => ({
@@ -10,9 +11,13 @@ vi.mock('./parchmentClient', () => ({
 	ParchmentConfigError: class ParchmentConfigError extends Error {}
 }));
 
+vi.mock('$lib/supabase-admin', () => ({
+	createAdminClient: (...args: unknown[]) => mockCreateAdminClient(...args)
+}));
+
 import { loadMarketIndexInsights } from './marketIndex';
 
-function makeSignal(signalWindow: '7d' | '30d') {
+function makeSignal(signalWindow: '7d' | '30d', overrides: Record<string, unknown> = {}) {
 	return {
 		catalogId: 101,
 		catalogUrl: 'https://purveyors.io/catalog/101',
@@ -33,7 +38,8 @@ function makeSignal(signalWindow: '7d' | '30d') {
 		scoreValue: null,
 		signalType: 'price_drop',
 		signalWindow,
-		source: 'Example Supplier'
+		source: 'Example Supplier',
+		...overrides
 	};
 }
 
@@ -51,7 +57,26 @@ function makeEvent(): RequestEvent {
 	} as unknown as RequestEvent;
 }
 
+function mockAdminNameLookup(name: string) {
+	const adminClient = {
+		from: vi.fn(() => ({
+			select: vi.fn(() => ({
+				in: vi.fn(async (_column: string, ids: number[]) => ({
+					data: ids.map((id) => ({ id, name }))
+				}))
+			}))
+		}))
+	};
+	mockCreateAdminClient.mockReturnValue(adminClient);
+	return adminClient;
+}
+
 describe('loadMarketIndexInsights', () => {
+	beforeEach(() => {
+		mockCreateParchmentServerClient.mockReset();
+		mockCreateAdminClient.mockReset();
+	});
+
 	it('marks public signal summaries as retail-scoped proof data', async () => {
 		const market = {
 			signals: vi.fn().mockResolvedValue({
@@ -104,6 +129,7 @@ describe('loadMarketIndexInsights', () => {
 			market,
 			priceIndex: { stats: vi.fn().mockResolvedValue({ data: { data: [] } }) }
 		});
+		mockAdminNameLookup('Dual Window Lot');
 
 		const insights = await loadMarketIndexInsights(makeEvent(), { isParchmentIntelligence: true });
 
@@ -112,5 +138,67 @@ describe('loadMarketIndexInsights', () => {
 			'Dual Window Lot',
 			'Dual Window Lot'
 		]);
+	});
+
+	it('uses an authorized server lookup when gated signal names are hidden by request RLS', async () => {
+		const wholesaleSignal = makeSignal('7d', {
+			catalogId: 202,
+			market: 'wholesale',
+			name: null
+		});
+		const market = {
+			signals: vi
+				.fn()
+				.mockResolvedValueOnce({
+					data: {
+						data: [wholesaleSignal],
+						meta: { asOf: '2026-07-06' },
+						pagination: { total: 1 }
+					}
+				})
+				.mockResolvedValueOnce({ data: { data: [], meta: { asOf: '2026-07-06' } } })
+				.mockResolvedValueOnce({ data: { data: [wholesaleSignal], meta: { asOf: '2026-07-06' } } }),
+			metadataIndex: vi.fn().mockResolvedValue({ data: { data: [] } })
+		};
+		const adminClient = mockAdminNameLookup('Gated Wholesale Lot');
+		mockCreateParchmentServerClient.mockResolvedValue({
+			market,
+			priceIndex: { stats: vi.fn().mockResolvedValue({ data: { data: [] } }) }
+		});
+
+		const insights = await loadMarketIndexInsights(makeEvent(), { isParchmentIntelligence: true });
+
+		expect(adminClient.from).toHaveBeenCalledWith('coffee_catalog');
+		expect(insights.valueSignals?.map((signal) => signal.name)).toEqual(['Gated Wholesale Lot']);
+	});
+
+	it('keeps Parchment response names without a fallback catalog lookup', async () => {
+		const namedSignal = makeSignal('7d', {
+			catalogId: 303,
+			name: 'Parchment Named Lot'
+		});
+		const market = {
+			signals: vi
+				.fn()
+				.mockResolvedValueOnce({
+					data: {
+						data: [namedSignal],
+						meta: { asOf: '2026-07-06' },
+						pagination: { total: 1 }
+					}
+				})
+				.mockResolvedValueOnce({ data: { data: [namedSignal], meta: { asOf: '2026-07-06' } } })
+				.mockResolvedValueOnce({ data: { data: [], meta: { asOf: '2026-07-06' } } }),
+			metadataIndex: vi.fn().mockResolvedValue({ data: { data: [] } })
+		};
+		mockCreateParchmentServerClient.mockResolvedValue({
+			market,
+			priceIndex: { stats: vi.fn().mockResolvedValue({ data: { data: [] } }) }
+		});
+
+		const insights = await loadMarketIndexInsights(makeEvent(), { isParchmentIntelligence: true });
+
+		expect(mockCreateAdminClient).not.toHaveBeenCalled();
+		expect(insights.valueSignals?.map((signal) => signal.name)).toEqual(['Parchment Named Lot']);
 	});
 });

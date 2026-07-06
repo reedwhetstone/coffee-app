@@ -7,7 +7,7 @@ import type { components } from '@purveyors/sdk';
  */
 
 export type MarketSignalItem = components['schemas']['MarketSignalItem'] & {
-	/** Coffee name enriched from coffee_catalog (the API item carries ids only). */
+	/** Coffee name from the entitled Parchment response or authorized server enrichment. */
 	name: string | null;
 };
 
