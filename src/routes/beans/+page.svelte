@@ -329,12 +329,33 @@
 	const formatCurrency = (value: number) =>
 		`$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+	function getPurchaseCostPerLb(bean: InventoryWithCatalog): number | null {
+		const totalCost = (Number(bean.bean_cost) || 0) + (Number(bean.tax_ship_cost) || 0);
+		const purchasedLbs = Number(bean.purchased_qty_lbs) || 0;
+		if (totalCost <= 0 || purchasedLbs <= 0) return null;
+		return totalCost / purchasedLbs;
+	}
+
 	function portfolioCoffee(bean: InventoryWithCatalog): CoffeeCatalog {
-		if (bean.coffee_catalog) return bean.coffee_catalog;
+		const purchaseCostPerLb = getPurchaseCostPerLb(bean);
+		const purchasePriceTiers = purchaseCostPerLb
+			? [{ min_lbs: 1, price: purchaseCostPerLb }]
+			: undefined;
+		if (bean.coffee_catalog) {
+			return {
+				...bean.coffee_catalog,
+				cost_lb: purchaseCostPerLb ?? bean.coffee_catalog.cost_lb,
+				price_per_lb: purchaseCostPerLb ?? bean.coffee_catalog.price_per_lb,
+				price_tiers: purchasePriceTiers ?? bean.coffee_catalog.price_tiers
+			};
+		}
 		return {
 			id: bean.catalog_id ?? bean.id,
 			name: 'Unknown coffee',
 			source: 'Portfolio',
+			cost_lb: purchaseCostPerLb,
+			price_per_lb: purchaseCostPerLb,
+			price_tiers: purchasePriceTiers ?? null,
 			stocked: bean.stocked
 		} as unknown as CoffeeCatalog;
 	}
