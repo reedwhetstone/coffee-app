@@ -3,6 +3,7 @@
 		AXIS_LABEL_COLOR,
 		GRIDLINE_COLOR,
 		MARKER_PRIMARY,
+		SERIES_LABEL_COLOR,
 		TOOLTIP_MUTED_COLOR
 	} from '$lib/styles/chartColors';
 
@@ -106,7 +107,13 @@
 			{/each}
 			{#each rows as row, i}
 				{@const cy = PAD.top + i * ROW_H + ROW_H / 2}
-				<text x={PAD.left - 10} y={cy + 4} text-anchor="end" font-size="12" fill="#302f2a">
+				<text
+					x={PAD.left - 10}
+					y={cy + 4}
+					text-anchor="end"
+					font-size="12"
+					fill={SERIES_LABEL_COLOR}
+				>
 					{row.source.length > 22 ? row.source.slice(0, 21) + '…' : row.source}
 				</text>
 				<line

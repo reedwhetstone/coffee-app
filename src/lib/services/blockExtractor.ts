@@ -383,16 +383,28 @@ export function buildSearchDataCache(parts: any[]): Map<string, Map<number, unkn
 		}
 
 		if (MARKET_SIGNAL_TOOLS.has(toolName)) {
-			// Key by catalogId but keep every signal for a lot: multiple rows can share
-			// a catalogId (different signalType/window/market), so overwriting by id
-			// alone would silently drop all but the last and misattach annotations.
+			// Key by catalogId but keep every distinct signal for a lot: multiple
+			// rows can share a catalogId (different signalType/window/market), so
+			// overwriting by id alone would silently drop all but the last and
+			// misattach annotations. Overlapping tool calls (a broad query then a
+			// refined one) return the same signal twice, so dedupe on the composite
+			// signal identity — the same key the analytics loader uses — keeping
+			// the latest copy.
 			const existing = cache.get(toolName) ?? new Map<number, unknown>();
 			for (const signal of marketSignalItems(output)) {
 				const id = marketSignalCatalogId(signal);
 				if (id == null) continue;
+				const key = marketSignalIdentity(signal);
 				const prior = existing.get(id);
 				if (Array.isArray(prior)) {
-					prior.push(signal);
+					const duplicateAt = (prior as Array<Record<string, unknown>>).findIndex(
+						(candidate) => marketSignalIdentity(candidate) === key
+					);
+					if (duplicateAt >= 0) {
+						prior[duplicateAt] = signal;
+					} else {
+						prior.push(signal);
+					}
 				} else {
 					existing.set(id, [signal]);
 				}
@@ -579,6 +591,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function marketSignalCatalogId(signal: Record<string, unknown>): number | null {
 	const id = signal.catalogId ?? signal.catalog_id ?? signal.id;
 	return typeof id === 'number' && Number.isFinite(id) ? id : null;
+}
+
+/** Composite signal identity, mirroring the analytics loader's dedupe key. */
+function marketSignalIdentity(signal: Record<string, unknown>): string {
+	const type = signal.signalType ?? signal.signal_type ?? '';
+	const market = signal.market ?? '';
+	const window = signal.signalWindow ?? signal.signal_window ?? '';
+	return `${marketSignalCatalogId(signal) ?? ''}:${type}:${market}:${window}`;
 }
 
 function marketSignalTypeLabel(value: unknown): string {

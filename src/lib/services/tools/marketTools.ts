@@ -53,7 +53,14 @@ export function createMarketIndexTools(deps: ChatToolDeps) {
 				min_discount_pct: z.number().optional().describe('Minimum discount magnitude in percent'),
 				min_score: z.number().optional().describe('Minimum cup score'),
 				window: z.enum(['7d', '30d']).optional().describe('Trailing window for price_drop signals'),
-				limit: z.number().optional().default(10).describe('Max signals to return (max 50)')
+				limit: z
+					.number()
+					.int()
+					.min(1)
+					.max(50)
+					.optional()
+					.default(10)
+					.describe('Max signals to return (1-50)')
 			}),
 			execute: async (input) => marketSignals(input)
 		});

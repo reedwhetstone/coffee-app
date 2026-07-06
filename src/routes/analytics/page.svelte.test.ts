@@ -375,7 +375,7 @@ describe('analytics command center hierarchy', () => {
 		expect(screen.getByText(/The latest combined retail \+ wholesale average is/i)).toBeTruthy();
 	});
 
-	it('keeps public value-signal counts labeled as the retail proof slice outside retail scope', async () => {
+	it('labels public value-signal counts as all-market in every scope', async () => {
 		render(AnalyticsPage, {
 			data: createData({
 				marketInsights: {
@@ -384,7 +384,7 @@ describe('analytics command center hierarchy', () => {
 						total: 5,
 						byType: { price_drop: 2, below_market: 3, value_quality: 0 },
 						asOf: '2026-07-06',
-						market: 'retail'
+						market: 'all'
 					},
 					signalsAsOf: '2026-07-06',
 					moveStats: null,
@@ -400,9 +400,11 @@ describe('analytics command center hierarchy', () => {
 
 		await screen.getByRole('button', { name: 'Wholesale' }).click();
 
-		expect(screen.getByText(/5 retail buy signals are active/i)).toBeTruthy();
+		// The public summary is the unfiltered (retail + wholesale) count slice, so
+		// it must never present itself as retail data.
+		expect(screen.getByText(/5 all-market buy signals are active/i)).toBeTruthy();
 		expect(
-			screen.getByText(/Retail proof slice shown while wholesale scope is selected/i)
+			screen.getByText(/All-market count shown while the wholesale scope is selected/i)
 		).toBeTruthy();
 	});
 
@@ -681,7 +683,12 @@ describe('analytics premium boundary copy', () => {
 
 		expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();
 		expect(screen.getByText('Recently Gone')).toBeTruthy();
-		expect(screen.getAllByRole('button', { name: /View all 2/ }).length).toBeGreaterThanOrEqual(1);
-		expect(screen.queryByRole('button', { name: /View all 0/ })).toBeNull();
+		// Without reliable window counts the panel opens the loaded rows and makes
+		// no "all"/freshness claim.
+		expect(
+			screen.getAllByRole('button', { name: /Open 2 loaded rows/ }).length
+		).toBeGreaterThanOrEqual(1);
+		expect(screen.queryByRole('button', { name: /View all [02]/ })).toBeNull();
+		expect(screen.getByText(/movement counts are currently unavailable/i)).toBeTruthy();
 	});
 });

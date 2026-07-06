@@ -1040,6 +1040,9 @@
 	{scopedSupplierHealth}
 	{filteredArrivals}
 	{filteredDelistings}
+	arrivalTotal={scopedArrivalCount}
+	delistingTotal={scopedDelistingCount}
+	{isMovementDataAvailable}
 	{originBarData}
 	{hasSnapshots}
 	{windowMode}

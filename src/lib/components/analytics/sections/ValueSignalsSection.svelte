@@ -167,8 +167,9 @@
 						{#if formatAsOf(signalsAsOf)}as of {formatAsOf(signalsAsOf)}{:else}this morning{/if}.
 					</h3>
 					<p class="mt-1 text-sm text-muted">
-						{#if signalsSummary.market === 'retail' && viewMode !== 'retail'}
-							Retail proof slice shown while {selectedScopeLabel} scope is selected:
+						{#if signalsSummary.market !== viewMode && viewMode !== 'all'}
+							{summaryScopeLabel.charAt(0).toUpperCase() + summaryScopeLabel.slice(1)} count shown while
+							the {selectedScopeLabel} scope is selected:
 						{:else}
 							{summaryScopeLabel.charAt(0).toUpperCase() + summaryScopeLabel.slice(1)} proof slice:
 						{/if}

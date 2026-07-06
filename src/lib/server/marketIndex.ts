@@ -138,48 +138,30 @@ export async function loadMarketIndexInsights(
 
 	const { isParchmentIntelligence } = options;
 
-	// Value signals: entitled viewers get displayed-signal pages per scope,
-	// including both price-drop windows. Omitting window asks Parchment for the
-	// 30d default, so 7d-only drops need their own page.
+	// Value signals: entitled viewers get displayed-signal pages per market,
+	// including both price-drop windows (omitting window asks Parchment for the
+	// 30d default, so 7d-only drops need their own page). No 'all' pages are
+	// fetched: any signal in the combined top-N by rank is by definition in its
+	// own market's top-N, so the per-market pages fully cover the 'all' scope
+	// after the rank re-sort below.
+	const SIGNAL_MARKETS = ['retail', 'wholesale'] as const;
+	const SIGNAL_PAGES = [
+		{ type: DISPLAY_SIGNAL_TYPES, window: '30d' as const },
+		{ type: PRICE_DROP_SIGNAL_TYPES, window: '7d' as const }
+	];
 	const signalsPromise = isParchmentIntelligence
-		? Promise.allSettled([
-				client.market.signals({
-					market: 'all',
-					type: DISPLAY_SIGNAL_TYPES,
-					window: '30d',
-					limit: MAX_SIGNAL_CARDS
-				}),
-				client.market.signals({
-					market: 'all',
-					type: PRICE_DROP_SIGNAL_TYPES,
-					window: '7d',
-					limit: MAX_SIGNAL_CARDS
-				}),
-				client.market.signals({
-					market: 'retail',
-					type: DISPLAY_SIGNAL_TYPES,
-					window: '30d',
-					limit: MAX_SIGNAL_CARDS
-				}),
-				client.market.signals({
-					market: 'retail',
-					type: PRICE_DROP_SIGNAL_TYPES,
-					window: '7d',
-					limit: MAX_SIGNAL_CARDS
-				}),
-				client.market.signals({
-					market: 'wholesale',
-					type: DISPLAY_SIGNAL_TYPES,
-					window: '30d',
-					limit: MAX_SIGNAL_CARDS
-				}),
-				client.market.signals({
-					market: 'wholesale',
-					type: PRICE_DROP_SIGNAL_TYPES,
-					window: '7d',
-					limit: MAX_SIGNAL_CARDS
-				})
-			])
+		? Promise.allSettled(
+				SIGNAL_MARKETS.flatMap((market) =>
+					SIGNAL_PAGES.map((page) =>
+						client.market.signals({
+							market,
+							type: page.type,
+							window: page.window,
+							limit: MAX_SIGNAL_CARDS
+						})
+					)
+				)
+			)
 		: Promise.allSettled([client.market.signals({ summary: 'true' })]);
 
 	// Movement significance: fetch the retail public slice for every viewer, plus
@@ -211,12 +193,11 @@ export async function loadMarketIndexInsights(
 
 	if (isParchmentIntelligence) {
 		const signalBodies = signalsSettled.map((r) => settledBody<SignalBody>(r));
-		const [allBody] = signalBodies;
 		const firstBody = signalBodies.find((body) => body !== null) ?? null;
-		// Merge with the combined 'all' pages first so the 'all' scope keeps the
-		// top signals, then backfill the per-market pages. Dedupe on the API's
-		// stable signal identity; price drops can legitimately qualify in both
-		// movement windows for the same lot.
+		// Merge the per-market pages and dedupe on the API's stable signal
+		// identity; price drops can legitimately qualify in both movement windows
+		// for the same lot. The rank re-sort makes the 'all' scope's order
+		// independent of page order.
 		const merged: components['schemas']['MarketSignalItem'][] = [];
 		const seen = new Set<string>();
 		for (const body of signalBodies) {
@@ -235,35 +216,23 @@ export async function loadMarketIndexInsights(
 		if (firstBody) {
 			insights.valueSignals = await enrichSignalNames(merged);
 		}
-		const summary = allBody?.meta?.summary ?? null;
-		if (summary) {
-			insights.signalsSummary = {
-				total: summary.total,
-				byType: summary.byType,
-				asOf: allBody?.meta?.asOf ?? null,
-				market: 'all'
-			};
-		} else if (firstBody || merged.length > 0) {
-			// The 'all' page is unfiltered by market, so its pagination total is the
-			// entitled-feed total used for the section header count.
-			insights.signalsSummary = {
-				total: allBody?.pagination?.total ?? merged.length,
-				byType: { price_drop: 0, below_market: 0, value_quality: 0 },
-				asOf: firstBody?.meta?.asOf ?? null,
-				market: 'all'
-			};
-		}
+		// No signalsSummary for entitled viewers: ValueSignalsSection always
+		// renders the signal cards (or the honest empty state) when valueSignals
+		// is set, so the teaser summary is a non-entitled-only shape.
 	} else {
 		const body = settledBody<SignalBody>(signalsSettled[0]);
 		if (body) {
 			insights.signalsAsOf = body.meta?.asOf ?? null;
 			const summary = body.meta?.summary ?? null;
 			if (summary) {
+				// The public `summary=true` teaser is the *unfiltered* count slice —
+				// it spans retail and wholesale and cannot be market-filtered without
+				// entitlement (plan §3), so it is labeled all-market, never retail.
 				insights.signalsSummary = {
 					total: summary.total,
 					byType: summary.byType,
 					asOf: body.meta?.asOf ?? null,
-					market: 'retail'
+					market: 'all'
 				};
 			}
 		}

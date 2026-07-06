@@ -133,7 +133,7 @@ export interface ChatToolDeps {
 		baseline_weeks?: number;
 	}) => Promise<unknown>;
 	marketMetadataIndex?: (input: {
-		dimension: 'process' | 'disclosure' | 'score';
+		dimension: 'process' | 'disclosure';
 		origin?: string;
 		market?: 'retail' | 'wholesale' | 'all';
 		grain?: 'week' | 'month';

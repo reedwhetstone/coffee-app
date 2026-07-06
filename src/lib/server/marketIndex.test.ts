@@ -78,7 +78,7 @@ describe('loadMarketIndexInsights', () => {
 		mockCreateAdminClient.mockReset();
 	});
 
-	it('marks public signal summaries as retail-scoped proof data', async () => {
+	it('labels the public unfiltered signal summary as all-market', async () => {
 		const market = {
 			signals: vi.fn().mockResolvedValue({
 				data: {
@@ -101,11 +101,13 @@ describe('loadMarketIndexInsights', () => {
 		const insights = await loadMarketIndexInsights(makeEvent(), { isParchmentIntelligence: false });
 
 		expect(market.signals).toHaveBeenCalledWith({ summary: 'true' });
+		// The public `summary=true` slice is unfiltered (retail + wholesale) and
+		// cannot be market-scoped without entitlement, so it is never labeled retail.
 		expect(insights.signalsSummary).toEqual({
 			total: 5,
 			byType: { price_drop: 2, below_market: 3, value_quality: 0 },
 			asOf: '2026-07-06',
-			market: 'retail'
+			market: 'all'
 		});
 	});
 
@@ -123,8 +125,6 @@ describe('loadMarketIndexInsights', () => {
 					}
 				})
 				.mockResolvedValueOnce({ data: { data: [sevenDay], meta: { asOf: '2026-07-06' } } })
-				.mockResolvedValueOnce({ data: { data: [thirtyDay], meta: { asOf: '2026-07-06' } } })
-				.mockResolvedValueOnce({ data: { data: [sevenDay], meta: { asOf: '2026-07-06' } } })
 				.mockResolvedValueOnce({ data: { data: [], meta: { asOf: '2026-07-06' } } })
 				.mockResolvedValueOnce({ data: { data: [], meta: { asOf: '2026-07-06' } } }),
 			metadataIndex: vi.fn().mockResolvedValue({ data: { data: [] } })
@@ -137,37 +137,28 @@ describe('loadMarketIndexInsights', () => {
 
 		const insights = await loadMarketIndexInsights(makeEvent(), { isParchmentIntelligence: true });
 
+		// Per-market pages only: the 'all' scope is reconstructed from the merged
+		// per-market pages after the rank re-sort, so no 'all' fetches are made.
+		expect(market.signals).toHaveBeenCalledTimes(4);
 		expect(market.signals).toHaveBeenNthCalledWith(1, {
-			market: 'all',
+			market: 'retail',
 			type: ['price_drop', 'below_market'],
 			window: '30d',
 			limit: 6
 		});
 		expect(market.signals).toHaveBeenNthCalledWith(2, {
-			market: 'all',
+			market: 'retail',
 			type: ['price_drop'],
 			window: '7d',
 			limit: 6
 		});
 		expect(market.signals).toHaveBeenNthCalledWith(3, {
-			market: 'retail',
-			type: ['price_drop', 'below_market'],
-			window: '30d',
-			limit: 6
-		});
-		expect(market.signals).toHaveBeenNthCalledWith(4, {
-			market: 'retail',
-			type: ['price_drop'],
-			window: '7d',
-			limit: 6
-		});
-		expect(market.signals).toHaveBeenNthCalledWith(5, {
 			market: 'wholesale',
 			type: ['price_drop', 'below_market'],
 			window: '30d',
 			limit: 6
 		});
-		expect(market.signals).toHaveBeenNthCalledWith(6, {
+		expect(market.signals).toHaveBeenNthCalledWith(4, {
 			market: 'wholesale',
 			type: ['price_drop'],
 			window: '7d',

@@ -1,5 +1,11 @@
 <script lang="ts">
-	import { AXIS_LABEL_COLOR, GRIDLINE_COLOR } from '$lib/styles/chartColors';
+	import {
+		ARRIVAL_COLOR,
+		AXIS_LABEL_COLOR,
+		DELISTING_COLOR,
+		GRIDLINE_COLOR,
+		SERIES_LABEL_COLOR
+	} from '$lib/styles/chartColors';
 
 	interface MovementBeanLike {
 		country: string | null;
@@ -12,9 +18,6 @@
 	}
 
 	let { arrivals, delistings, maxOrigins = 10 }: Props = $props();
-
-	const ARRIVAL_COLOR = '#7FB069'; // growth green
-	const DELISTING_COLOR = '#9C4356'; // wine
 
 	interface OriginRow {
 		origin: string;
@@ -93,7 +96,13 @@
 			/>
 			{#each rows as row, i}
 				{@const cy = PAD.top + i * ROW_H + ROW_H / 2}
-				<text x={PAD.left - 10} y={cy + 4} text-anchor="end" font-size="12" fill="#302f2a">
+				<text
+					x={PAD.left - 10}
+					y={cy + 4}
+					text-anchor="end"
+					font-size="12"
+					fill={SERIES_LABEL_COLOR}
+				>
 					{row.origin.length > 16 ? row.origin.slice(0, 15) + '…' : row.origin}
 				</text>
 				{#if row.delistings > 0}

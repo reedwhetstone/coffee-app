@@ -62,6 +62,16 @@ export const WHOLESALE_COLOR = '#4E8098';
 export const MARKER_PRIMARY = '#C05B2E';
 export const MARKER_SECONDARY = '#7FB069';
 
+/** Catalog movement series (arrivals in, delistings out). */
+export const ARRIVAL_COLOR = '#7FB069';
+export const DELISTING_COLOR = '#9C4356';
+
+/** Neutral for unknown/undisclosed categories. */
+export const NEUTRAL_CATEGORY_COLOR = '#A8A29E';
+
+/** Primary-ink text drawn inside SVG charts (row/series labels). */
+export const SERIES_LABEL_COLOR = '#302f2a';
+
 /** Axis, gridline, and tooltip chrome — brand inks instead of gray-500s. */
 export const AXIS_LABEL_COLOR = '#695c4d';
 export const AXIS_TICK_COLOR = '#a39a8c';

@@ -36,6 +36,11 @@
 		scopedSupplierHealth: SupplierHealthRow[];
 		filteredArrivals: ArrivalBean[];
 		filteredDelistings: DelistingBean[];
+		/** Exact scoped window totals from movement counts (loaded rows are capped). */
+		arrivalTotal: number;
+		delistingTotal: number;
+		/** False when movement counts are missing or the source data is stale (>90d). */
+		isMovementDataAvailable: boolean;
 		originBarData: OriginBenchmarkRow[];
 		hasSnapshots: boolean;
 		windowMode: WindowMode;
@@ -56,6 +61,9 @@
 		scopedSupplierHealth,
 		filteredArrivals,
 		filteredDelistings,
+		arrivalTotal,
+		delistingTotal,
+		isMovementDataAvailable,
 		originBarData,
 		hasSnapshots,
 		windowMode,
@@ -65,6 +73,21 @@
 	}: Props = $props();
 
 	let windowDaysLabel = $derived(windowMode === '7d' ? '7' : '30');
+
+	// The loader caps the named-row lists (50/market), so the loaded rows can be
+	// fewer than the exact window totals shown in the KPI strip. The expand
+	// affordance must never claim "all" for a truncated list, and no window
+	// freshness is claimed when the movement data itself is stale/unavailable.
+	let movementLoadedRows = $derived(filteredArrivals.length + filteredDelistings.length);
+	let movementWindowTotal = $derived(arrivalTotal + delistingTotal);
+	let movementTruncated = $derived(
+		isMovementDataAvailable && movementLoadedRows < movementWindowTotal
+	);
+	let movementExpandLabel = $derived.by(() => {
+		if (!isMovementDataAvailable) return `Open ${movementLoadedRows} loaded rows →`;
+		if (movementTruncated) return `Open latest ${movementLoadedRows} of ${movementWindowTotal} →`;
+		return `View all ${movementWindowTotal} →`;
+	});
 </script>
 
 {#if !isParchmentIntelligence}
@@ -148,7 +171,8 @@
 		<ExpandablePanel
 			title="Arrivals & delistings"
 			subtitle="Catalog movement by origin over the selected window. Expand for the named lots."
-			totalItems={filteredArrivals.length + filteredDelistings.length}
+			totalItems={isMovementDataAvailable ? movementWindowTotal : movementLoadedRows}
+			expandLabel={movementExpandLabel}
 			collapsedMaxHeight="480px"
 			showGradient={false}
 		>
@@ -157,8 +181,16 @@
 					<div>
 						<h2 class="text-base font-semibold text-ink">What's arriving and leaving?</h2>
 						<p class="mt-1 text-sm text-muted">
-							Showing the latest {filteredArrivals.length} arrivals and {filteredDelistings.length} delistings
-							from the last {windowDaysLabel} days.
+							{#if !isMovementDataAvailable}
+								Showing {filteredArrivals.length} arrivals and {filteredDelistings.length} delistings
+								from the most recent catalog data — movement counts are currently unavailable.
+							{:else if movementTruncated}
+								Showing the latest {filteredArrivals.length} of {arrivalTotal} arrivals and {filteredDelistings.length}
+								of {delistingTotal} delistings from the last {windowDaysLabel} days.
+							{:else}
+								Showing {filteredArrivals.length} arrivals and {filteredDelistings.length} delistings
+								from the last {windowDaysLabel} days.
+							{/if}
 						</p>
 					</div>
 					<div

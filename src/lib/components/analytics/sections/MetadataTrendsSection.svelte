@@ -5,6 +5,7 @@
 		CHART_SERIES,
 		DISCLOSURE_COLORS,
 		DISCLOSURE_LABELS,
+		NEUTRAL_CATEGORY_COLOR,
 		PROCESS_COLORS
 	} from '$lib/styles/chartColors';
 	import type { MetadataSeriesItem } from '$lib/types/marketIndex.types';
@@ -32,7 +33,7 @@
 
 	const processFallback = new Map<string, string>();
 	function processColor(key: string): string {
-		if (key === 'undisclosed') return '#A8A29E';
+		if (key === 'undisclosed') return NEUTRAL_CATEGORY_COLOR;
 		if (PROCESS_COLORS[key]) return PROCESS_COLORS[key];
 		if (!processFallback.has(key)) {
 			processFallback.set(key, CHART_SERIES[processFallback.size % CHART_SERIES.length]);
@@ -41,7 +42,7 @@
 	}
 
 	function disclosureColor(key: string): string {
-		return DISCLOSURE_COLORS[key] ?? '#A8A29E';
+		return DISCLOSURE_COLORS[key] ?? NEUTRAL_CATEGORY_COLOR;
 	}
 
 	function disclosureLabel(key: string): string {

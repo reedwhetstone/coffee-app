@@ -619,7 +619,7 @@ export const POST: RequestHandler = async (event) => {
 					const client = await _createMarketToolParchmentClient(event);
 					const { data, error } = await client.market.signals({
 						...input,
-						limit: Math.min(input.limit ?? 10, 50)
+						limit: Math.min(Math.max(Math.trunc(input.limit ?? 10), 1), 50)
 					});
 					return error ?? data;
 				},
