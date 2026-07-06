@@ -51,6 +51,7 @@ const EMPTY_INSIGHTS: MarketIndexInsights = {
 const MAX_SIGNAL_CARDS = 6;
 /** Signal types the front end actually displays; supplier-stated score signals stay hidden. */
 const DISPLAY_SIGNAL_TYPES: Array<'price_drop' | 'below_market'> = ['price_drop', 'below_market'];
+const PRICE_DROP_SIGNAL_TYPES: Array<'price_drop'> = ['price_drop'];
 /** Movement windows the MarketReadSection window toggle can select. */
 const MOVE_WINDOWS = ['7d', '30d'] as const;
 
@@ -114,6 +115,12 @@ function extractSignalName(item: components['schemas']['MarketSignalItem']): str
 	return null;
 }
 
+function signalRank(item: components['schemas']['MarketSignalItem']): number | null {
+	const record = item as unknown as Record<string, unknown>;
+	const value = record.rankScore ?? record.rank_score;
+	return typeof value === 'number' ? value : null;
+}
+
 export async function loadMarketIndexInsights(
 	event: RequestEvent,
 	options: { isParchmentIntelligence: boolean }
@@ -131,26 +138,45 @@ export async function loadMarketIndexInsights(
 
 	const { isParchmentIntelligence } = options;
 
-	// Value signals: entitled viewers get a full displayed-signal page per scope
-	// (the combined 'all' ranking plus retail and wholesale) so
-	// ValueSignalsSection's `value_quality` and `market === viewMode` filters are
-	// never starved by a single all-market cap. Everyone else gets the public
-	// count summary only.
+	// Value signals: entitled viewers get displayed-signal pages per scope,
+	// including both price-drop windows. Omitting window asks Parchment for the
+	// 30d default, so 7d-only drops need their own page.
 	const signalsPromise = isParchmentIntelligence
 		? Promise.allSettled([
 				client.market.signals({
 					market: 'all',
 					type: DISPLAY_SIGNAL_TYPES,
+					window: '30d',
+					limit: MAX_SIGNAL_CARDS
+				}),
+				client.market.signals({
+					market: 'all',
+					type: PRICE_DROP_SIGNAL_TYPES,
+					window: '7d',
 					limit: MAX_SIGNAL_CARDS
 				}),
 				client.market.signals({
 					market: 'retail',
 					type: DISPLAY_SIGNAL_TYPES,
+					window: '30d',
+					limit: MAX_SIGNAL_CARDS
+				}),
+				client.market.signals({
+					market: 'retail',
+					type: PRICE_DROP_SIGNAL_TYPES,
+					window: '7d',
 					limit: MAX_SIGNAL_CARDS
 				}),
 				client.market.signals({
 					market: 'wholesale',
 					type: DISPLAY_SIGNAL_TYPES,
+					window: '30d',
+					limit: MAX_SIGNAL_CARDS
+				}),
+				client.market.signals({
+					market: 'wholesale',
+					type: PRICE_DROP_SIGNAL_TYPES,
+					window: '7d',
 					limit: MAX_SIGNAL_CARDS
 				})
 			])
@@ -184,16 +210,16 @@ export async function loadMarketIndexInsights(
 	const insights: MarketIndexInsights = { ...EMPTY_INSIGHTS };
 
 	if (isParchmentIntelligence) {
-		const [allBody, retailBody, wholesaleBody] = signalsSettled.map((r) =>
-			settledBody<SignalBody>(r)
-		);
-		// Merge with the combined 'all' ranking first so the 'all' scope keeps the
-		// true top signals, then backfill the per-market pages. Dedupe on the
-		// API's stable signal identity; price drops can legitimately qualify in
-		// both movement windows for the same lot.
+		const signalBodies = signalsSettled.map((r) => settledBody<SignalBody>(r));
+		const [allBody] = signalBodies;
+		const firstBody = signalBodies.find((body) => body !== null) ?? null;
+		// Merge with the combined 'all' pages first so the 'all' scope keeps the
+		// top signals, then backfill the per-market pages. Dedupe on the API's
+		// stable signal identity; price drops can legitimately qualify in both
+		// movement windows for the same lot.
 		const merged: components['schemas']['MarketSignalItem'][] = [];
 		const seen = new Set<string>();
-		for (const body of [allBody, retailBody, wholesaleBody]) {
+		for (const body of signalBodies) {
 			for (const item of body?.data ?? []) {
 				const key = `${item.catalogId}:${item.signalType}:${item.market}:${item.signalWindow ?? ''}`;
 				if (seen.has(key)) continue;
@@ -201,8 +227,12 @@ export async function loadMarketIndexInsights(
 				merged.push(item);
 			}
 		}
-		insights.signalsAsOf = allBody?.meta?.asOf ?? retailBody?.meta?.asOf ?? null;
-		if (allBody || retailBody || wholesaleBody) {
+		merged.sort(
+			(a, b) =>
+				(signalRank(b) ?? Number.NEGATIVE_INFINITY) - (signalRank(a) ?? Number.NEGATIVE_INFINITY)
+		);
+		insights.signalsAsOf = firstBody?.meta?.asOf ?? null;
+		if (firstBody) {
 			insights.valueSignals = await enrichSignalNames(merged);
 		}
 		const summary = allBody?.meta?.summary ?? null;
@@ -213,13 +243,13 @@ export async function loadMarketIndexInsights(
 				asOf: allBody?.meta?.asOf ?? null,
 				market: 'all'
 			};
-		} else if (allBody || merged.length > 0) {
+		} else if (firstBody || merged.length > 0) {
 			// The 'all' page is unfiltered by market, so its pagination total is the
 			// entitled-feed total used for the section header count.
 			insights.signalsSummary = {
 				total: allBody?.pagination?.total ?? merged.length,
 				byType: { price_drop: 0, below_market: 0, value_quality: 0 },
-				asOf: allBody?.meta?.asOf ?? null,
+				asOf: firstBody?.meta?.asOf ?? null,
 				market: 'all'
 			};
 		}

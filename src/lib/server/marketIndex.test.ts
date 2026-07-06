@@ -35,6 +35,7 @@ function makeSignal(signalWindow: '7d' | '30d', overrides: Record<string, unknow
 		market: 'retail',
 		origin: 'Colombia',
 		process: 'Washed',
+		rankScore: signalWindow === '7d' ? 20 : 10,
 		scoreValue: null,
 		signalType: 'price_drop',
 		signalWindow,
@@ -116,12 +117,15 @@ describe('loadMarketIndexInsights', () => {
 				.fn()
 				.mockResolvedValueOnce({
 					data: {
-						data: [sevenDay, thirtyDay],
+						data: [thirtyDay],
 						meta: { asOf: '2026-07-06' },
-						pagination: { total: 2 }
+						pagination: { total: 1 }
 					}
 				})
 				.mockResolvedValueOnce({ data: { data: [sevenDay], meta: { asOf: '2026-07-06' } } })
+				.mockResolvedValueOnce({ data: { data: [thirtyDay], meta: { asOf: '2026-07-06' } } })
+				.mockResolvedValueOnce({ data: { data: [sevenDay], meta: { asOf: '2026-07-06' } } })
+				.mockResolvedValueOnce({ data: { data: [], meta: { asOf: '2026-07-06' } } })
 				.mockResolvedValueOnce({ data: { data: [], meta: { asOf: '2026-07-06' } } }),
 			metadataIndex: vi.fn().mockResolvedValue({ data: { data: [] } })
 		};
@@ -133,6 +137,42 @@ describe('loadMarketIndexInsights', () => {
 
 		const insights = await loadMarketIndexInsights(makeEvent(), { isParchmentIntelligence: true });
 
+		expect(market.signals).toHaveBeenNthCalledWith(1, {
+			market: 'all',
+			type: ['price_drop', 'below_market'],
+			window: '30d',
+			limit: 6
+		});
+		expect(market.signals).toHaveBeenNthCalledWith(2, {
+			market: 'all',
+			type: ['price_drop'],
+			window: '7d',
+			limit: 6
+		});
+		expect(market.signals).toHaveBeenNthCalledWith(3, {
+			market: 'retail',
+			type: ['price_drop', 'below_market'],
+			window: '30d',
+			limit: 6
+		});
+		expect(market.signals).toHaveBeenNthCalledWith(4, {
+			market: 'retail',
+			type: ['price_drop'],
+			window: '7d',
+			limit: 6
+		});
+		expect(market.signals).toHaveBeenNthCalledWith(5, {
+			market: 'wholesale',
+			type: ['price_drop', 'below_market'],
+			window: '30d',
+			limit: 6
+		});
+		expect(market.signals).toHaveBeenNthCalledWith(6, {
+			market: 'wholesale',
+			type: ['price_drop'],
+			window: '7d',
+			limit: 6
+		});
 		expect(insights.valueSignals?.map((signal) => signal.signalWindow)).toEqual(['7d', '30d']);
 		expect(insights.valueSignals?.map((signal) => signal.name)).toEqual([
 			'Dual Window Lot',
