@@ -43,6 +43,12 @@ describe('chat system prompt entitlement context', () => {
 		expect(prompt).toContain('supplier_list');
 		expect(prompt).toContain('catalog_rank');
 		expect(prompt).toContain('price_index_read');
+		expect(prompt).toContain('market_signals');
+		expect(prompt).toContain('market_stats');
+		expect(prompt).toContain('market_metadata');
+		expect(prompt).toContain(
+			'use market_signals when available before falling back to catalog_rank'
+		);
 		expect(prompt).toContain('add_bean_to_inventory');
 		expect(prompt).toContain('Mallard-only roast, tasting, and sales tools are unavailable');
 		expect(prompt).not.toContain('You have access to these tools');
@@ -62,6 +68,9 @@ describe('chat system prompt entitlement context', () => {
 		expect(prompt).toContain('record_sale');
 		expect(prompt).toContain('catalog_rank');
 		expect(prompt).toContain('price_index_read');
+		expect(prompt).toContain('market_signals');
+		expect(prompt).toContain('market_stats');
+		expect(prompt).toContain('market_metadata');
 		expect(prompt).toContain('WORKSPACE FOCUS: Roasting');
 	});
 });

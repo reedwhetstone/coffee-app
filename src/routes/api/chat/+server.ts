@@ -34,10 +34,13 @@ When a user asks about alternatives, similar coffees, or "what else is like this
 Combine with present_results to surface and annotate the top matches.
 
 MARKET INTELLIGENCE GUIDANCE
-- For "best / top / premium / value / just landed / unusual" questions, use catalog_rank with the matching objective — do not approximate with coffee_catalog_search and your own ordering
+- For ranked catalog shortlists ("best / top / premium / just landed / unusual"), use catalog_rank with the matching objective — do not approximate with coffee_catalog_search and your own ordering
+- For actionable buy opportunities, below-market lots, price drops, "value" asks, or scoped retail/wholesale signal questions, use market_signals when available before falling back to catalog_rank
 - Rankings are deterministic and grounded in Purveyor Score; explain them via rank_basis and purveyor_score_factors, and always carry the returned caveats into your answer
 - Before filtering by a supplier, origin, or process value you have not seen in this conversation, verify it with catalog_facets or supplier_list — never guess names
 - For market pricing questions ("is this priced well?", "what are naturals going for?"), use price_index_read and compare a lot's price to the matching segment's median/p25/p75
+- For movement significance questions ("did prices really move?", "is this signal or noise?"), use market_stats when available and explain the classification, sample size, and move driver
+- For market composition questions ("is anaerobic growing?", "is disclosure improving?"), use market_metadata when available and avoid promising score trends
 - catalog_facets and supplier_list results are cached and stable — reuse them within a conversation instead of calling them again
 - Quality signals are evidence, not verdicts: cite scores, sample sizes, and factors; avoid absolute claims like "objectively the best"
 
@@ -208,11 +211,14 @@ READ TOOLS (query data):
 5. supplier_list - The supplier universe with aggregate quality and price signals per supplier
 6. catalog_rank - Deterministic ranking by objective: premium, value, fresh_arrival, rare_origin
 7. price_index_read - Parchment Market Index aggregate price snapshots by origin/process over time
-8. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
+8. market_signals - Actionable buy signals: price drops, below-market lots, and price-for-quality outliers
+9. market_stats - Price movement significance with quiet/normal/notable/exceptional classification and move-driver context
+10. market_metadata - Market composition trends for process mix and disclosure level; cup-score trends are unavailable
+11. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
 
 WRITE TOOLS (propose changes — user must confirm before execution):
-9. add_bean_to_inventory - Propose adding a bean to the user's Portfolio
-10. update_bean - Propose updating an existing Portfolio bean
+12. add_bean_to_inventory - Propose adding a bean to the user's Portfolio
+13. update_bean - Propose updating an existing Portfolio bean
 
 Mallard-only roast, tasting, and sales tools are unavailable in this access tier.`;
 
@@ -228,14 +234,17 @@ READ TOOLS (query data):
 7. supplier_list - The supplier universe with aggregate quality and price signals per supplier
 8. catalog_rank - Deterministic ranking by objective: premium, value, fresh_arrival, rare_origin
 9. price_index_read - Parchment Market Index aggregate price snapshots by origin/process over time
-10. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
+10. market_signals - Actionable buy signals: price drops, below-market lots, and price-for-quality outliers
+11. market_stats - Price movement significance with quiet/normal/notable/exceptional classification and move-driver context
+12. market_metadata - Market composition trends for process mix and disclosure level; cup-score trends are unavailable
+13. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
 
 WRITE TOOLS (propose changes — user must confirm before execution):
-11. add_bean_to_inventory - Propose adding a bean to the user's inventory
-12. update_bean - Propose updating an existing inventory bean
-13. create_roast_session - Propose creating a new roast session/profile
-14. update_roast_notes - Propose updating roast notes
-15. record_sale - Propose recording a sale`;
+14. add_bean_to_inventory - Propose adding a bean to the user's inventory
+15. update_bean - Propose updating an existing inventory bean
+16. create_roast_session - Propose creating a new roast session/profile
+17. update_roast_notes - Propose updating roast notes
+18. record_sale - Propose recording a sale`;
 
 const PARCHMENT_WORKSPACE_TYPES = new Set(['general', 'sourcing', 'inventory']);
 const APPROX_CHARS_PER_TOKEN = 4;
