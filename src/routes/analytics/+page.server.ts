@@ -210,6 +210,62 @@ async function loadActiveCatalogCoverageRowsPaginated({
 	return rows;
 }
 
+interface ComparisonBeanRow {
+	name: string;
+	country: string;
+	processing: string | null;
+	price_per_lb: number;
+	source: string | null;
+	wholesale: boolean;
+	bag_size: string | null;
+}
+
+// Load the full priced, stocked, origin-tagged set for the supplier price
+// comparison. The chart derives each supplier's min/median/max from these rows,
+// so the fetch must not be price-biased: a single
+// `.order('price_per_lb').limit(2000)` silently dropped the most expensive lots
+// (and potentially whole suppliers) once the scoped catalog exceeded 2,000 rows,
+// skewing every per-supplier maximum, median, and the cheapest-supplier
+// ordering. Paginating on a neutral key (id) returns the full set without that
+// truncation. Mirrors loadActiveCatalogCoverageRowsPaginated.
+async function loadComparisonBeansPaginated({
+	supabase
+}: {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	supabase: any;
+}): Promise<ComparisonBean[]> {
+	const rows: ComparisonBean[] = [];
+
+	for (let page = 0; ; page += 1) {
+		const start = page * CATALOG_COVERAGE_PAGE_SIZE;
+		const end = start + CATALOG_COVERAGE_PAGE_SIZE - 1;
+		const { data, error } = await supabase
+			.from('coffee_catalog')
+			.select('name, country, processing, price_per_lb, source, wholesale, bag_size')
+			.eq('stocked', true)
+			.not('price_per_lb', 'is', null)
+			.not('country', 'is', null)
+			.order('id', { ascending: true })
+			.range(start, end);
+
+		if (error) {
+			throw new Error(`Failed to load supplier comparison beans page ${page + 1}: ${error.message}`);
+		}
+
+		const pageRows = (data ?? []) as ComparisonBeanRow[];
+		for (const row of pageRows) {
+			rows.push({
+				...row,
+				source: normalizeSupplierSource(row.source)
+			} as ComparisonBean);
+		}
+
+		if (pageRows.length < CATALOG_COVERAGE_PAGE_SIZE) break;
+	}
+
+	return rows;
+}
+
 function normalizeProcess(raw: string | null | undefined): string {
 	if (!raw) return 'Unknown';
 	const s = raw.toLowerCase().trim();
@@ -653,16 +709,13 @@ export const load: PageServerLoad = async (event) => {
 			: Promise.resolve([]);
 
 	if (isParchmentIntelligence) {
-		const [{ data: comparisonBeansRaw }, { data: supplierStatsRaw }] = await Promise.all([
-			// Supplier comparison beans
-			supabase
-				.from('coffee_catalog')
-				.select('name, country, processing, price_per_lb, source, wholesale, bag_size')
-				.eq('stocked', true)
-				.not('price_per_lb', 'is', null)
-				.not('country', 'is', null)
-				.order('price_per_lb', { ascending: true })
-				.limit(2000),
+		const [comparisonBeansLoaded, { data: supplierStatsRaw }] = await Promise.all([
+			// Supplier comparison beans — full priced set, neutrally ordered so the
+			// per-supplier range chart is not biased by price truncation.
+			loadComparisonBeansPaginated({ supabase }).catch((error) => {
+				console.error('Error loading supplier comparison beans:', error);
+				return [] as ComparisonBean[];
+			}),
 			// Supplier health (pre-computed)
 			sb
 				.from('supplier_daily_stats')
@@ -673,10 +726,7 @@ export const load: PageServerLoad = async (event) => {
 				.limit(200)
 		]);
 
-		comparisonBeans = (comparisonBeansRaw ?? []).map((row) => ({
-			...row,
-			source: normalizeSupplierSource(row.source)
-		})) as ComparisonBean[];
+		comparisonBeans = comparisonBeansLoaded;
 
 		interface SupplierStatRow {
 			snapshot_date: string;
