@@ -25,18 +25,16 @@
 
 {#if !session}
 	<!-- Unauthenticated state -->
-	<div class="flex min-h-screen items-center justify-center bg-background-primary-light">
-		<div
-			class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg"
-		>
-			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Parchment Intelligence Chat</h1>
-			<p class="mb-6 text-text-secondary-light">
+	<div class="flex min-h-screen items-center justify-center bg-surface-canvas">
+		<div class="mx-auto max-w-md rounded-lg bg-surface-panel p-8 text-center shadow-lg">
+			<h1 class="mb-4 text-2xl font-bold text-ink">Parchment Intelligence Chat</h1>
+			<p class="mb-6 text-muted">
 				Sign in to access Parchment Intelligence for sourcing, catalog, portfolio, and coffee market
 				guidance.
 			</p>
 			<a
 				href="/auth"
-				class="rounded-md bg-background-tertiary-light px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+				class="rounded-md bg-accent px-6 py-3 font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 			>
 				Sign in
 			</a>
@@ -44,25 +42,23 @@
 	</div>
 {:else if !canUseChat}
 	<!-- Parchment Intelligence or Mallard Studio access required -->
-	<div class="flex min-h-screen items-center justify-center bg-background-primary-light">
-		<div
-			class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg"
-		>
-			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Parchment Intelligence Chat</h1>
-			<p class="mb-6 text-text-secondary-light">
+	<div class="flex min-h-screen items-center justify-center bg-surface-canvas">
+		<div class="mx-auto max-w-md rounded-lg bg-surface-panel p-8 text-center shadow-lg">
+			<h1 class="mb-4 text-2xl font-bold text-ink">Parchment Intelligence Chat</h1>
+			<p class="mb-6 text-muted">
 				Chat is available with Parchment Intelligence or Mallard Studio. Upgrade to ask market,
 				catalog, portfolio, and roasting questions with the right tool depth.
 			</p>
 			<div class="space-y-3">
 				<a
 					href="/subscription"
-					class="block rounded-md bg-background-tertiary-light px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+					class="block rounded-md bg-accent px-6 py-3 font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 				>
 					View plans
 				</a>
 				<a
 					href="/"
-					class="block rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+					class="block rounded-md border border-accent px-6 py-3 text-accent transition-all duration-200 hover:bg-accent hover:text-ink"
 				>
 					Back to Home
 				</a>

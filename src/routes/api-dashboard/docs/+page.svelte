@@ -7,7 +7,5 @@
 </svelte:head>
 
 <div class="flex min-h-[40vh] items-center justify-center">
-	<p class="text-sm text-text-secondary-light">
-		Redirecting to the generated Parchment API reference...
-	</p>
+	<p class="text-sm text-muted">Redirecting to the generated Parchment API reference...</p>
 </div>

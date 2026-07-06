@@ -145,14 +145,14 @@
 
 <div class="mx-auto w-full max-w-[100vw] overflow-x-hidden">
 	<!-- Tab Navigation -->
-	<div class="tab-navigation border-b border-border-light bg-background-primary-light">
+	<div class="tab-navigation border-b border-line bg-surface-canvas">
 		<div class="flex space-x-8">
 			<!-- Browse Profiles Tab -->
 			<button
 				class="flex items-center gap-2 border-b-2 px-1 py-2 text-sm font-medium transition-colors duration-200 {viewMode ===
 				'browser'
-					? 'border-background-tertiary-light text-background-tertiary-light'
-					: 'border-transparent text-text-secondary-light hover:border-border-light hover:text-text-primary-light'}"
+					? 'border-accent text-accent'
+					: 'border-transparent text-muted hover:border-line hover:text-ink'}"
 				onclick={handleBrowseProfilesClick}
 			>
 				<span>📋</span>
@@ -187,14 +187,14 @@
 			{@const batchSummary = getBatchSummary(batchProfiles)}
 			<div class="mt-6">
 				<!-- Tier 1: Batch Header -->
-				<div class="mb-0 rounded-lg bg-background-secondary-light ring-1 ring-border-light">
+				<div class="mb-0 rounded-lg bg-surface-panel ring-1 ring-line">
 					<div class="flex w-full items-center justify-between p-4">
 						<div class="flex items-center gap-3">
 							<div>
-								<h3 class="text-lg font-semibold text-text-primary-light">
+								<h3 class="text-lg font-semibold text-ink">
 									{currentRoastProfile.batch_name}
 								</h3>
-								<p class="text-sm text-text-secondary-light">
+								<p class="text-sm text-muted">
 									{batchSummary.count} roast{batchSummary.count !== 1 ? 's' : ''} • {formatDateForDisplay(
 										batchProfiles[0]?.roast_date
 									)}
@@ -204,30 +204,30 @@
 						<div class="hidden text-right sm:block">
 							<div class="grid grid-cols-3 gap-6 text-sm">
 								<div>
-									<p class="text-text-secondary-light">Total Weight</p>
-									<p class="font-semibold text-blue-500">{batchSummary.totalWeight} oz</p>
+									<p class="text-muted">Total weight</p>
+									<p class="font-semibold tabular-nums text-ink">{batchSummary.totalWeight} oz</p>
 								</div>
 								<div>
-									<p class="text-text-secondary-light">Avg Loss</p>
-									<p class="font-semibold text-red-500">{batchSummary.avgWeightLoss}%</p>
+									<p class="text-muted">Avg loss</p>
+									<p class="font-semibold tabular-nums text-ink">{batchSummary.avgWeightLoss}%</p>
 								</div>
 								<div>
-									<p class="text-text-secondary-light">Roasts</p>
-									<p class="font-semibold text-purple-500">{batchSummary.count}</p>
+									<p class="text-muted">Roasts</p>
+									<p class="font-semibold tabular-nums text-ink">{batchSummary.count}</p>
 								</div>
 							</div>
 						</div>
 					</div>
 
 					<!-- Tier 2: Bean Profile Sub-tabs -->
-					<div class="border-t border-border-light bg-background-primary-light">
+					<div class="border-t border-line bg-surface-canvas">
 						<div class="flex space-x-1 overflow-x-auto p-2">
 							{#each batchProfiles as profile}
 								<button
 									class="flex-shrink-0 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-200 {currentRoastProfile.roast_id ===
 									profile.roast_id
-										? 'bg-background-tertiary-light text-white'
-										: 'bg-background-secondary-light text-text-secondary-light hover:bg-background-tertiary-light hover:bg-opacity-10 hover:text-text-primary-light'}"
+										? 'bg-accent text-ink'
+										: 'bg-surface-panel text-muted hover:bg-accent hover:bg-opacity-10 hover:text-ink'}"
 									onclick={() => handleProfileSelect(profile)}
 								>
 									{profile.coffee_name} #{profile.roast_id}
@@ -241,7 +241,7 @@
 				<div class="mt-6 space-y-6">
 					<!-- Profile Info Section -->
 					<div
-						class="w-full overflow-x-hidden rounded-lg border border-border-light bg-background-secondary-light p-3 shadow-md"
+						class="w-full overflow-x-hidden rounded-lg border border-line bg-surface-panel p-3 shadow-md"
 					>
 						<RoastProfileDisplay
 							profile={currentRoastProfile}
@@ -253,7 +253,7 @@
 					</div>
 
 					<!-- Chart Interface Section -->
-					<div class="rounded-lg bg-background-secondary-light p-4">
+					<div class="rounded-lg bg-surface-panel p-4">
 						{#if chartComponentLoading}
 							<ChartSkeleton height="500px" title="Loading roasting interface..." />
 						{:else if RoastChartInterface}

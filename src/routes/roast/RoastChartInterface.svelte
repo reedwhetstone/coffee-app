@@ -395,7 +395,7 @@
 <div class="w-full overflow-x-hidden">
 	<!-- Roast session header -->
 	<div class="mb-3 flex flex-wrap justify-between">
-		<h1 class="text-xl font-bold text-text-primary-light sm:text-2xl">
+		<h1 class="text-xl font-bold text-ink sm:text-2xl">
 			Roast Session: {selectedBean.name}
 		</h1>
 	</div>
@@ -404,7 +404,7 @@
 	<div class="flex w-full flex-col justify-center gap-4 sm:flex-row">
 		<!-- Chart -->
 		<div class="w-full min-w-0 overflow-hidden">
-			<div class="mx-auto h-[400px] w-full text-text-primary-light sm:h-[500px]">
+			<div class="mx-auto h-[400px] w-full text-ink sm:h-[500px]">
 				<RoastChart
 					chartData={preparedChartData}
 					isLive={isDuringRoasting}
@@ -440,26 +440,26 @@
 		<div
 			class="mx-auto mt-4 max-w-2xl rounded-lg p-3 text-center text-sm font-medium transition-all duration-300 {eventFeedback.type ===
 			'success'
-				? 'bg-green-100 text-green-800 ring-1 ring-green-200'
-				: 'bg-blue-100 text-blue-800 ring-1 ring-blue-200'}"
+				? 'bg-success-subtle text-success-strong ring-1 ring-success/30'
+				: 'bg-info-subtle text-info-strong ring-1 ring-info/30'}"
 		>
 			{eventFeedback.message}
 		</div>
 	{/if}
 
 	<!-- Roast event controls and timer -->
-	<div class="mt-6 bg-background-secondary-light p-3 sm:p-4">
+	<div class="mt-6 bg-surface-panel p-3 sm:p-4">
 		<!-- Timer and Start/Stop button -->
 		<div class="mb-4 flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-4">
 			{#if isBeforeRoasting || isDuringRoasting}
-				<div class="text-3xl font-bold text-text-primary-light sm:text-4xl md:text-5xl">
+				<div class="text-3xl font-bold text-ink sm:text-4xl md:text-5xl">
 					{formattedTime}
 				</div>
 			{/if}
 			{#if isBeforeRoasting || isDuringRoasting}
 				<button
 					id="start-end-roast"
-					class="w-full rounded-md border-2 border-green-800 px-3 py-1 text-base font-medium text-text-primary-light transition-colors hover:bg-green-900 sm:w-auto sm:px-4 sm:py-2 sm:text-lg"
+					class="w-full rounded-md border-2 border-success-strong px-3 py-1 text-base font-medium text-ink transition-colors hover:bg-success-subtle sm:w-auto sm:px-4 sm:py-2 sm:text-lg"
 					onmousedown={(e) => {
 						if (isRoasting) {
 							isLongPressing = true;
@@ -494,10 +494,10 @@
 						}
 						isLongPressing = false;
 					}}
-					class:border-red-800={isRoasting && !isPaused}
-					class:hover:bg-red-900={isRoasting && !isPaused}
-					class:border-orange-800={isRoasting && isPaused}
-					class:hover:bg-orange-900={isRoasting && isPaused}
+					class:border-danger-strong={isRoasting && !isPaused}
+					class:hover:bg-danger-subtle={isRoasting && !isPaused}
+					class:border-warning-strong={isRoasting && isPaused}
+					class:hover:bg-warning-subtle={isRoasting && isPaused}
 				>
 					{isRoasting ? (isPaused ? 'Resume' : 'Stop') : 'Start'}
 				</button>
@@ -553,14 +553,14 @@
 						}
 					}}
 					disabled={!isRoasting && $eventEntries.length === 0}
-					loadingText="Saving Roast..."
+					loadingText="Saving roast..."
 				>
-					Save Roast
+					Save roast
 				</LoadingButton>
 			{:catch}
 				<!-- Fallback button if LoadingButton fails to load -->
 				<button
-					class="w-full rounded border-2 border-zinc-500 px-3 py-1 text-text-primary-light hover:bg-background-primary-light sm:w-auto"
+					class="w-full rounded border-2 border-line px-3 py-1 text-ink hover:bg-surface-canvas sm:w-auto"
 					onclick={async () => {
 						console.log('Manual save (fallback): currentRoastProfile =', currentRoastProfile);
 						console.log('Manual save (fallback): About to call saveRoastProfile()');
@@ -568,7 +568,7 @@
 					}}
 					disabled={!isRoasting && $eventEntries.length === 0}
 				>
-					Save Roast
+					Save roast
 				</button>
 			{/await}
 		{/if}
@@ -576,16 +576,16 @@
 		<!-- Import Artisan File button - only show when profile exists -->
 		{#if currentRoastProfile?.roast_id}
 			<button
-				class="w-full rounded border-2 border-blue-600 px-3 py-1 text-text-primary-light hover:bg-blue-900 sm:w-auto"
+				class="w-full rounded border-2 border-info px-3 py-1 text-ink hover:bg-info-subtle sm:w-auto"
 				onclick={() => artisanImportDialog?.open()}
 			>
-				Import Artisan File
+				Import Artisan file
 			</button>
 		{/if}
 
 		{#if !isBeforeRoasting}
 			<button
-				class="w-full rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-950 sm:w-auto"
+				class="w-full rounded border-2 border-danger-strong px-3 py-1 text-ink hover:bg-danger-subtle sm:w-auto"
 				onclick={() => {
 					if (
 						confirm('Are you sure you want to clear this roast data? This action cannot be undone.')
@@ -594,7 +594,7 @@
 					}
 				}}
 			>
-				Clear Roast
+				Clear roast
 			</button>
 		{/if}
 	</div>

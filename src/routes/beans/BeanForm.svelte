@@ -385,12 +385,12 @@
 </script>
 
 <!-- Clean card-based form design matching home page patterns -->
-<div class="rounded-lg bg-background-secondary-light p-6 shadow-sm">
+<div class="rounded-lg bg-surface-panel p-6 shadow-sm">
 	<div class="mb-6">
-		<h2 class="text-2xl font-bold text-text-primary-light">
+		<h2 class="text-2xl font-bold text-ink">
 			{bean ? 'Edit Coffee Bean' : 'Add New Coffee Bean'}
 		</h2>
-		<p class="mt-2 text-text-secondary-light">
+		<p class="mt-2 text-muted">
 			{bean ? 'Edit your coffee bean details' : 'Add coffee beans to your inventory'}
 		</p>
 	</div>
@@ -403,8 +403,8 @@
 		class="space-y-6"
 	>
 		<!-- Entry Type Selection -->
-		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-			<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Entry Type</h3>
+		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
+			<h3 class="mb-4 text-lg font-semibold text-ink">Entry Type</h3>
 			<div class="flex flex-wrap gap-4">
 				<label class="inline-flex cursor-pointer items-center">
 					<input
@@ -416,11 +416,11 @@
 					/>
 					<div
 						class="flex items-center gap-2 rounded-md border px-4 py-2 transition-all duration-200"
-						class:bg-background-tertiary-light={isManualEntry}
+						class:bg-accent={isManualEntry}
 						class:text-white={isManualEntry}
-						class:border-background-tertiary-light={isManualEntry}
-						class:border-border-light={!isManualEntry}
-						class:text-text-primary-light={!isManualEntry}
+						class:border-accent={isManualEntry}
+						class:border-line={!isManualEntry}
+						class:text-ink={!isManualEntry}
 					>
 						<span>Manual Entry</span>
 					</div>
@@ -429,11 +429,11 @@
 					<input type="radio" bind:group={isManualEntry} value={false} class="sr-only" />
 					<div
 						class="flex items-center gap-2 rounded-md border px-4 py-2 transition-all duration-200"
-						class:bg-background-tertiary-light={!isManualEntry}
+						class:bg-accent={!isManualEntry}
 						class:text-white={!isManualEntry}
-						class:border-background-tertiary-light={!isManualEntry}
-						class:border-border-light={isManualEntry}
-						class:text-text-primary-light={isManualEntry}
+						class:border-accent={!isManualEntry}
+						class:border-line={isManualEntry}
+						class:text-ink={isManualEntry}
 					>
 						<span>Select from Catalog</span>
 					</div>
@@ -442,24 +442,24 @@
 		</div>
 
 		<!-- Purchase Details -->
-		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-			<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Purchase Details</h3>
+		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
+			<h3 class="mb-4 text-lg font-semibold text-ink">Purchase Details</h3>
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div class="space-y-2">
-					<label for="purchase_date" class="block text-sm font-medium text-text-primary-light">
+					<label for="purchase_date" class="block text-sm font-medium text-ink">
 						Purchase Date
 					</label>
 					<input
 						id="purchase_date"
 						type="date"
 						bind:value={sharedFormData.purchase_date}
-						class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 						required
 					/>
 				</div>
 
 				<div class="space-y-2">
-					<label for="tax_ship_cost" class="block text-sm font-medium text-text-primary-light">
+					<label for="tax_ship_cost" class="block text-sm font-medium text-ink">
 						Total Tax & Shipping ($)
 					</label>
 					<input
@@ -469,10 +469,10 @@
 						min="0"
 						placeholder="0.00"
 						bind:value={sharedFormData.tax_ship_cost}
-						class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light placeholder-text-secondary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 						required
 					/>
-					<p class="text-xs text-text-secondary-light">
+					<p class="text-xs text-muted">
 						This amount will be divided equally among all beans in this purchase
 					</p>
 				</div>
@@ -481,17 +481,15 @@
 
 		{#if !isManualEntry}
 			<!-- Catalog Selection Filter -->
-			<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-				<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Filter Options</h3>
+			<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
+				<h3 class="mb-4 text-lg font-semibold text-ink">Filter Options</h3>
 				<div class="space-y-2">
-					<label for="source" class="block text-sm font-medium text-text-primary-light">
-						Filter by Source
-					</label>
+					<label for="source" class="block text-sm font-medium text-ink"> Filter by Source </label>
 					<select
 						id="source"
 						bind:value={sourceFilter}
 						onchange={handleSourceChange}
-						class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 					>
 						<option value="">All Sources</option>
 						{#each [...new Set(filteredCatalogBeans.map((b: CoffeeCatalog) => b.source))] as source}
@@ -503,12 +501,12 @@
 		{/if}
 
 		<!-- Beans in Purchase -->
-		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
 			<div class="mb-4 flex items-center justify-between">
-				<h3 class="text-lg font-semibold text-text-primary-light">Beans in Purchase</h3>
+				<h3 class="text-lg font-semibold text-ink">Beans in Purchase</h3>
 				<button
 					type="button"
-					class="flex items-center gap-2 rounded-md bg-background-tertiary-light px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+					class="flex items-center gap-2 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 					onclick={addBeanToBatch}
 				>
 					<span class="text-lg">+</span>
@@ -533,14 +531,12 @@
 					{@const subtotal = tiers ? calculatePurchaseTotal(tiers, qty) : null}
 					{@const minOrder = tiers && tiers.length > 0 ? tiers[0].min_lbs : null}
 
-					<div
-						class="relative rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light"
-					>
+					<div class="relative rounded-lg bg-surface-panel p-4 ring-1 ring-line">
 						<!-- Remove bean button (except for first bean) -->
 						{#if index > 0}
 							<button
 								type="button"
-								class="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs text-white hover:bg-red-600"
+								class="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-xs text-white hover:bg-danger-strong"
 								onclick={() => removeBeanFromBatch(index)}
 							>
 								✕
@@ -551,10 +547,7 @@
 							<!-- Bean selection or manual entry -->
 							{#if isManualEntry}
 								<div class="space-y-2 sm:col-span-2">
-									<label
-										for="manual-name-{index}"
-										class="block text-sm font-medium text-text-primary-light"
-									>
+									<label for="manual-name-{index}" class="block text-sm font-medium text-ink">
 										Coffee Name
 									</label>
 									<input
@@ -562,21 +555,18 @@
 										type="text"
 										bind:value={beanData.manual_name}
 										placeholder="Enter coffee name"
-										class="block w-full rounded-md border-0 bg-background-primary-light px-3 py-2 text-text-primary-light placeholder-text-secondary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+										class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 										required
 									/>
 								</div>
 							{:else}
 								<div class="space-y-2 sm:col-span-2">
-									<label
-										for="catalog-bean-{index}"
-										class="block text-sm font-medium text-text-primary-light"
-									>
+									<label for="catalog-bean-{index}" class="block text-sm font-medium text-ink">
 										Select Coffee Bean
 									</label>
 									<select
 										id="catalog-bean-{index}"
-										class="block w-full rounded-md border-0 bg-background-primary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+										class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 										required
 										value={beanData.catalog_id || ''}
 										onchange={(e) => handleBeanSelect(e, index)}
@@ -591,48 +581,42 @@
 
 							{#if !isManualEntry && tiers}
 								<div class="space-y-2 sm:col-span-2">
-									<div
-										class="rounded-md border border-border-light bg-background-primary-light p-3"
-									>
+									<div class="rounded-md border border-line bg-surface-canvas p-3">
 										<div class="mb-2 flex items-center justify-between">
-											<div class="text-xs font-semibold text-text-primary-light">
-												Volume pricing
-											</div>
+											<div class="text-xs font-semibold text-ink">Volume pricing</div>
 											{#if selectedCatalogBean?.wholesale}
 												<span
-													class="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700"
+													class="rounded-full bg-info-subtle px-2 py-0.5 text-[10px] font-semibold text-info-strong"
 													>Wholesale</span
 												>
 											{/if}
 										</div>
 
 										{#each tiers as tier (tier.min_lbs)}
-											<div class="flex justify-between py-0.5 text-xs text-text-secondary-light">
+											<div class="flex justify-between py-0.5 text-xs text-muted">
 												<span>{tier.min_lbs}+ lb</span>
-												<span class="font-medium text-text-primary-light"
-													>{formatPricePerLb(tier.price)}</span
-												>
+												<span class="font-medium text-ink">{formatPricePerLb(tier.price)}</span>
 											</div>
 										{/each}
 
 										{#if qty > 0}
 											{#if applicableTier && subtotal != null}
-												<div class="mt-2 text-xs text-text-secondary-light">
+												<div class="mt-2 text-xs text-muted">
 													Applied tier: {applicableTier.min_lbs}+ lb ({formatPricePerLb(
 														applicableTier.price
 													)})
 												</div>
-												<div class="text-xs text-text-secondary-light">
+												<div class="text-xs text-muted">
 													Subtotal: ${subtotal.toFixed(2)}
 												</div>
-												<div class="text-xs text-text-secondary-light">
+												<div class="text-xs text-muted">
 													Tax/ship allocation: ${taxShipPerBean.toFixed(2)}
 												</div>
-												<div class="text-xs font-semibold text-text-primary-light">
+												<div class="text-xs font-semibold text-ink">
 													Estimated total: ${(subtotal + taxShipPerBean).toFixed(2)}
 												</div>
 											{:else if minOrder}
-												<div class="mt-2 text-xs text-red-500">
+												<div class="mt-2 text-xs text-danger">
 													Minimum order is {minOrder} lb
 												</div>
 											{/if}
@@ -642,10 +626,7 @@
 							{/if}
 
 							<div class="space-y-2">
-								<label
-									for="purchased_qty-{index}"
-									class="block text-sm font-medium text-text-primary-light"
-								>
+								<label for="purchased_qty-{index}" class="block text-sm font-medium text-ink">
 									Purchased Quantity (lbs)
 								</label>
 								<input
@@ -655,16 +636,13 @@
 									min="0"
 									bind:value={beanData.purchased_qty_lbs}
 									placeholder="0"
-									class="block w-full rounded-md border-0 bg-background-primary-light px-3 py-2 text-text-primary-light placeholder-text-secondary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+									class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 									required
 								/>
 							</div>
 
 							<div class="space-y-2">
-								<label
-									for="bean_cost-{index}"
-									class="block text-sm font-medium text-text-primary-light"
-								>
+								<label for="bean_cost-{index}" class="block text-sm font-medium text-ink">
 									{#if !isManualEntry && tiers}
 										Bean Subtotal ($)
 									{:else}
@@ -679,11 +657,11 @@
 									placeholder="0.00"
 									bind:value={beanData.bean_cost}
 									disabled={!isManualEntry && !!tiers}
-									class="block w-full rounded-md border-0 bg-background-primary-light px-3 py-2 text-text-primary-light placeholder-text-secondary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+									class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 									required
 								/>
 								{#if !isManualEntry && tiers}
-									<p class="text-xs text-text-secondary-light">
+									<p class="text-xs text-muted">
 										Auto-calculated from volume pricing tiers. Adjust quantity to update.
 									</p>
 								{/if}
@@ -695,18 +673,18 @@
 		</div>
 
 		<!-- Additional Information -->
-		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-			<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Additional Information</h3>
+		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
+			<h3 class="mb-4 text-lg font-semibold text-ink">Additional Information</h3>
 			<div class="space-y-4">
 				{#if isManualEntry}
 					<!-- Optional Field Selection for Manual Entry -->
 					<div class="space-y-2">
-						<label for="field-selector" class="block text-sm font-medium text-text-primary-light">
+						<label for="field-selector" class="block text-sm font-medium text-ink">
 							Add Optional Fields
 						</label>
 						<select
 							id="field-selector"
-							class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+							class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 							onchange={(e) => {
 								const target = e.target as HTMLSelectElement;
 								const field = target.value;
@@ -743,10 +721,7 @@
 					{#each selectedOptionalFields as fieldName}
 						<div class="flex gap-2">
 							<div class="flex-1 space-y-2">
-								<label
-									for={`field-${fieldName}`}
-									class="block text-sm font-medium text-text-primary-light"
-								>
+								<label for={`field-${fieldName}`} class="block text-sm font-medium text-ink">
 									{fieldName.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
 								</label>
 								{#if fieldName === 'description_long' || fieldName === 'farm_notes' || fieldName === 'cupping_notes'}
@@ -754,7 +729,7 @@
 										id={`field-${fieldName}`}
 										bind:value={optionalFields[fieldName]}
 										rows="3"
-										class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									></textarea>
 								{:else if fieldName === 'cost_lb' || fieldName === 'score_value'}
 									<input
@@ -762,27 +737,27 @@
 										type="number"
 										step="0.01"
 										bind:value={optionalFields[fieldName]}
-										class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									/>
 								{:else if fieldName === 'arrival_date'}
 									<input
 										id={`field-${fieldName}`}
 										type="date"
 										bind:value={optionalFields[fieldName]}
-										class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									/>
 								{:else}
 									<input
 										id={`field-${fieldName}`}
 										type="text"
 										bind:value={optionalFields[fieldName]}
-										class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									/>
 								{/if}
 							</div>
 							<button
 								type="button"
-								class="mt-6 rounded-md bg-red-500 px-2 py-1 text-xs text-white hover:bg-red-600"
+								class="mt-6 rounded-md bg-danger px-2 py-1 text-xs text-white hover:bg-danger-strong"
 								onclick={() => {
 									selectedOptionalFields = selectedOptionalFields.filter(
 										(f: string) => f !== fieldName
@@ -797,7 +772,7 @@
 				{/if}
 
 				<div class="space-y-2">
-					<label for="notes" class="block text-sm font-medium text-text-primary-light">
+					<label for="notes" class="block text-sm font-medium text-ink">
 						Purchase Notes (Optional)
 					</label>
 					<textarea
@@ -805,7 +780,7 @@
 						bind:value={sharedFormData.notes}
 						rows="3"
 						placeholder="Add any notes about this purchase..."
-						class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light placeholder-text-secondary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 					></textarea>
 				</div>
 			</div>
@@ -815,7 +790,7 @@
 		<div class="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
 			<button
 				type="button"
-				class="rounded-md border border-background-tertiary-light px-4 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+				class="rounded-md border border-accent px-4 py-2 text-accent transition-all duration-200 hover:bg-accent hover:text-ink"
 				onclick={onClose}
 			>
 				Cancel

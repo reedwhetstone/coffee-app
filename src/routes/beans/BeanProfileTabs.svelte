@@ -285,13 +285,11 @@
 	}
 </script>
 
-<div
-	class="rounded-lg border border-border-light bg-background-secondary-light p-4 shadow-md md:p-6"
->
+<div class="rounded-lg border border-line bg-surface-panel p-4 shadow-md md:p-6">
 	<!-- Header with Title and Scores -->
 	<div class="mb-6">
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-			<h2 class="text-xl font-bold text-text-primary-light">
+			<h2 class="text-xl font-bold text-ink">
 				{selectedBean.coffee_catalog?.name || selectedBean.name}
 			</h2>
 			<div>
@@ -322,12 +320,11 @@
 								</svg>
 								<!-- Rank value in the center -->
 								<div class="absolute inset-0 flex items-center justify-center">
-									<span class="text-xl font-bold text-amber-500 md:text-2xl">
+									<span class="text-xl font-bold text-chart-gold md:text-2xl">
 										{selectedBean.rank % 1 === 0 ? selectedBean.rank : selectedBean.rank.toFixed(1)}
 									</span>
 								</div>
-								<span
-									class="absolute bottom-0 left-0 right-0 text-center text-xs text-text-primary-light"
+								<span class="absolute bottom-0 left-0 right-0 text-center text-xs text-ink"
 									>RATING</span
 								>
 							</div>
@@ -338,14 +335,14 @@
 		</div>
 
 		<!-- Tab Navigation -->
-		<div class="mt-6 border-b border-border-light">
+		<div class="mt-6 border-b border-line">
 			<div class="flex space-x-8">
 				{#each tabs as tab}
 					<button
 						class="flex items-center gap-2 border-b-2 px-1 py-2 text-sm font-medium transition-colors duration-200 {currentTab ===
 						tab.id
-							? 'border-background-tertiary-light text-background-tertiary-light'
-							: 'border-transparent text-text-secondary-light hover:border-border-light hover:text-text-primary-light'}"
+							? 'border-accent text-accent'
+							: 'border-transparent text-muted hover:border-line hover:text-ink'}"
 						onclick={() => (currentTab = tab.id)}
 					>
 						<span>{tab.icon}</span>
@@ -384,9 +381,9 @@
 
 	<!-- Action Buttons (non-overview tabs) -->
 	{#if canManagePortfolio && currentTab !== 'overview'}
-		<div class="mt-6 flex flex-wrap justify-end gap-2 border-t border-border-light pt-4">
+		<div class="mt-6 flex flex-wrap justify-end gap-2 border-t border-line pt-4">
 			<button
-				class="min-w-[80px] rounded-md border border-red-600 px-3 py-1 font-medium text-red-600 transition-all duration-200 hover:bg-red-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+				class="min-w-[80px] rounded-md border border-danger px-3 py-1 font-medium text-danger transition-all duration-200 hover:bg-danger hover:text-white focus:outline-none focus:ring-2 focus:ring-danger focus:ring-offset-2"
 				onclick={deleteBean}
 			>
 				Delete

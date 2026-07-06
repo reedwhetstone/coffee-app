@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { AXIS_LABEL_COLOR, GRIDLINE_COLOR } from '$lib/styles/chartColors';
 	import { getContext } from 'svelte';
 	import { axisLeft } from 'd3-axis';
 	import { area as d3Area, line as d3Line, curveMonotoneX } from 'd3-shape';
@@ -57,7 +58,7 @@
 				.attr('x2', $width)
 				.attr('y1', 0)
 				.attr('y2', 0)
-				.attr('stroke', 'rgb(156 163 175)');
+				.attr('stroke', AXIS_LABEL_COLOR);
 
 			// Draw ticks
 			ticks.forEach((t) => {
@@ -73,13 +74,13 @@
 					.attr('x2', x)
 					.attr('y1', 0)
 					.attr('y2', 6)
-					.attr('stroke', 'rgb(156 163 175)');
+					.attr('stroke', AXIS_LABEL_COLOR);
 
 				g.append('text')
 					.attr('x', x)
 					.attr('y', 20)
 					.attr('text-anchor', 'middle')
-					.style('fill', 'rgb(156 163 175)')
+					.style('fill', AXIS_LABEL_COLOR)
 					.style('font-size', '12px')
 					.text(label);
 			});
@@ -96,8 +97,8 @@
 				.tickFormat(yAxisFormat as never)
 				.ticks(6);
 			const g = select(yAxisEl).call(yAxis as never);
-			g.style('color', 'rgb(156 163 175)');
-			g.selectAll('text').style('fill', 'rgb(156 163 175)').style('font-size', '12px');
+			g.style('color', AXIS_LABEL_COLOR);
+			g.selectAll('text').style('fill', AXIS_LABEL_COLOR).style('font-size', '12px');
 		}
 	});
 
@@ -198,17 +199,17 @@
 		if (showProfitLine) {
 			items.push({
 				label: selectedViewType === 'margin' ? 'Profit Margin' : 'Revenue',
-				color: selectedViewType === 'margin' ? 'rgb(59 130 246)' : 'rgb(34 197 94)',
+				color: selectedViewType === 'margin' ? '#4E8098' : '#7FB069',
 				dashed: false
 			});
 		}
 		if (showCostLine && selectedViewType !== 'margin') {
-			items.push({ label: 'Costs', color: 'rgb(239 68 68)', dashed: false });
+			items.push({ label: 'Costs', color: '#9C4356', dashed: false });
 		}
 		if (showTargetLine) {
 			items.push({
 				label: selectedViewType === 'margin' ? 'Target (25%)' : 'Target',
-				color: 'rgb(139 92 246)',
+				color: '#6D5BD0',
 				dashed: true
 			});
 		}
@@ -223,7 +224,7 @@
 		x2={x}
 		y1={0}
 		y2={$height}
-		stroke="rgb(156 163 175)"
+		stroke={GRIDLINE_COLOR}
 		stroke-dasharray="2,2"
 		opacity="0.1"
 	/>
@@ -234,7 +235,7 @@
 		x2={$width}
 		y1={y}
 		y2={y}
-		stroke="rgb(156 163 175)"
+		stroke={GRIDLINE_COLOR}
 		stroke-dasharray="2,2"
 		opacity="0.1"
 	/>
@@ -247,8 +248,8 @@
 <!-- Gradient definition -->
 <defs>
 	<linearGradient id="revenueGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-		<stop offset="0%" stop-color="rgb(34 197 94)" stop-opacity="0.8" />
-		<stop offset="100%" stop-color="rgb(34 197 94)" stop-opacity="0.1" />
+		<stop offset="0%" stop-color="#7FB069" stop-opacity="0.8" />
+		<stop offset="100%" stop-color="#7FB069" stop-opacity="0.1" />
 	</linearGradient>
 </defs>
 
@@ -262,7 +263,7 @@
 	<path
 		d={revenuePath}
 		fill="none"
-		stroke={selectedViewType === 'margin' ? 'rgb(59 130 246)' : 'rgb(34 197 94)'}
+		stroke={selectedViewType === 'margin' ? '#4E8098' : '#7FB069'}
 		stroke-width="3"
 		stroke-linecap="round"
 		style="filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));"
@@ -274,7 +275,7 @@
 	<path
 		d={costPath}
 		fill="none"
-		stroke="rgb(239 68 68)"
+		stroke="#9C4356"
 		stroke-width="2"
 		stroke-linecap="round"
 		style="filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));"
@@ -286,7 +287,7 @@
 	<path
 		d={targetPath}
 		fill="none"
-		stroke="rgb(139 92 246)"
+		stroke="#6D5BD0"
 		stroke-width="2"
 		stroke-dasharray="8,4"
 		stroke-linecap="round"
@@ -301,7 +302,7 @@
 		x2={hoverX}
 		y1={0}
 		y2={$height}
-		stroke="rgb(156 163 175)"
+		stroke={GRIDLINE_COLOR}
 		stroke-width="1"
 		stroke-dasharray="3,3"
 		opacity="0.7"
@@ -323,7 +324,7 @@
 					stroke-linecap="round"
 					stroke-dasharray={item.dashed ? '6,3' : 'none'}
 				/>
-				<text x={28} y={4} fill="rgb(156 163 175)" font-size="12" font-weight="500"
+				<text x={28} y={4} fill={AXIS_LABEL_COLOR} font-size="12" font-weight="500"
 					>{item.label}</text
 				>
 			</g>

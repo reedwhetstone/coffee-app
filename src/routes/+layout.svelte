@@ -129,7 +129,7 @@
 				<button
 					type="button"
 					onclick={() => (chatDrawerOpen = true)}
-					class="fixed bottom-6 right-4 z-30 flex items-center gap-2 rounded-full bg-background-tertiary-light px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-transform hover:scale-105"
+					class="fixed bottom-6 right-4 z-30 flex items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-ink shadow-lg transition-transform hover:scale-105"
 					title="Ask Parchment (Ctrl+K)"
 				>
 					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
