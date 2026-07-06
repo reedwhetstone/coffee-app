@@ -484,8 +484,8 @@
 			description="Keep purchased coffee, bookmarked market lots, and roast context in one place so procurement decisions stay connected to what is actually on the shelf."
 			contextLabel="Selected value"
 			contextValue={formatCurrency(portfolioSummary.value)}
-			primaryLabel="Add coffee"
-			primaryHref="/beans?modal=new"
+			primaryLabel={canManagePortfolioRows ? 'Add coffee' : ''}
+			primaryHref={canManagePortfolioRows ? '/beans?modal=new' : ''}
 			secondaryLabel="Browse catalog"
 			secondaryHref="/catalog"
 		/>
