@@ -10,6 +10,7 @@
 		DelistingBean,
 		ComparisonBean,
 		SupplierHealthRow,
+		SupplierPriceRange,
 		TrackedLotSummary
 	} from './+page.server';
 	import {
@@ -71,6 +72,7 @@
 		recentArrivals,
 		recentDelistings,
 		comparisonBeans,
+		supplierPriceRanges,
 		supplierHealth,
 		trackedLots,
 		marketInsights
@@ -100,6 +102,7 @@
 			recentArrivals: ArrivalBean[];
 			recentDelistings: DelistingBean[];
 			comparisonBeans: ComparisonBean[];
+			supplierPriceRanges: SupplierPriceRange[];
 			supplierHealth: SupplierHealthRow[];
 			trackedLots: TrackedLotSummary[];
 			marketInsights: MarketIndexInsights;
@@ -249,6 +252,10 @@
 		if (viewMode === 'wholesale') return comparisonBeans.filter((bean) => bean.wholesale);
 		return comparisonBeans;
 	});
+
+	let scopedSupplierPriceRanges = $derived.by(() =>
+		(supplierPriceRanges ?? []).filter((row) => row.market === viewMode)
+	);
 
 	let scopedSupplierHealth = $derived.by(() => {
 		if (viewMode === 'retail') return supplierHealth.filter((row) => row.retailCount > 0);
@@ -1037,6 +1044,7 @@
 	{memberVisualsError}
 	{snapshots}
 	{scopedComparisonBeans}
+	{scopedSupplierPriceRanges}
 	{scopedSupplierHealth}
 	{filteredArrivals}
 	{filteredDelistings}

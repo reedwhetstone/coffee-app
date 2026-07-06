@@ -9,7 +9,8 @@
 		ArrivalBean,
 		DelistingBean,
 		ComparisonBean,
-		SupplierHealthRow
+		SupplierHealthRow,
+		SupplierPriceRange
 	} from '../../../../routes/analytics/+page.server';
 	import type { DeferredAnalyticsComponent } from '../../../../routes/analytics/deferredModules';
 
@@ -33,6 +34,7 @@
 		memberVisualsError: string | null;
 		snapshots: PriceSnapshot[];
 		scopedComparisonBeans: ComparisonBean[];
+		scopedSupplierPriceRanges: SupplierPriceRange[];
 		scopedSupplierHealth: SupplierHealthRow[];
 		filteredArrivals: ArrivalBean[];
 		filteredDelistings: DelistingBean[];
@@ -58,6 +60,7 @@
 		memberVisualsError,
 		snapshots,
 		scopedComparisonBeans,
+		scopedSupplierPriceRanges,
 		scopedSupplierHealth,
 		filteredArrivals,
 		filteredDelistings,
@@ -137,7 +140,7 @@
 		<!-- Who has what, at what price: visual first, full table in the breakout. -->
 		<ExpandablePanel
 			title="Supplier price comparison"
-			subtitle="Price ranges per supplier in the {viewModeLabel} scope. Expand for the full lot-level comparison table."
+			subtitle="Price ranges per supplier in the {viewModeLabel} scope. Expand for the lot-level preview table."
 			totalItems={scopedComparisonBeans.length}
 			collapsedMaxHeight="460px"
 			showGradient={false}
@@ -156,9 +159,9 @@
 					<p class="mb-4 text-sm text-muted">
 						Each supplier's price range across stocked lots in this scope.
 					</p>
-					<SupplierPriceRangeChart beans={scopedComparisonBeans} />
+					<SupplierPriceRangeChart rows={scopedSupplierPriceRanges} />
 					<div class="mt-6 border-t border-line pt-4">
-						<h3 class="mb-3 text-sm font-semibold text-ink">Lot-level comparison</h3>
+						<h3 class="mb-3 text-sm font-semibold text-ink">Lot-level preview</h3>
 						{#if SupplierComparisonTableComponent}
 							<SupplierComparisonTableComponent beans={scopedComparisonBeans} />
 						{/if}

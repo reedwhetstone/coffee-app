@@ -152,6 +152,14 @@ function createAnalyticsClient(
 	options: {
 		marketSummaryDate?: string | null;
 		catalogPriceRows?: Array<{ country: string; price_per_lb: number; wholesale: boolean }>;
+		supplierPriceRanges?: Array<{
+			source: string | null;
+			market: 'retail' | 'wholesale' | 'all';
+			lot_count: number;
+			price_min: number;
+			price_median: number;
+			price_max: number;
+		}>;
 		originCoverageRows?: Array<{
 			country: string | null;
 			source?: string | null;
@@ -317,6 +325,12 @@ function createAnalyticsClient(
 		snapshotFromDates,
 		snapshotRangeCalls,
 		movementCutoffs,
+		rpc(name: string) {
+			if (name === 'get_supplier_price_ranges') {
+				return Promise.resolve({ data: options.supplierPriceRanges ?? [], error: null });
+			}
+			throw new Error(`Unexpected RPC in analytics test client: ${name}`);
+		},
 		from(table: string) {
 			const state: {
 				columns?: string;
@@ -660,6 +674,76 @@ describe('analytics load', () => {
 			price_max: 6,
 			sample_size: 6
 		});
+	});
+
+	it('loads supplier price ranges from the full-set aggregate instead of capped comparison rows', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }], {
+			supplierPriceRanges: [
+				{
+					source: 'Atlas',
+					market: 'retail',
+					lot_count: 3000,
+					price_min: 4,
+					price_median: 6.5,
+					price_max: 14
+				},
+				{
+					source: 'Royal',
+					market: 'wholesale',
+					lot_count: 600,
+					price_min: 2,
+					price_median: 3.25,
+					price_max: 6
+				},
+				{
+					source: 'Atlas',
+					market: 'all',
+					lot_count: 3200,
+					price_min: 4,
+					price_median: 6.75,
+					price_max: 14
+				}
+			]
+		});
+		currentPriceIndexClient = client;
+		resolvePrincipalMock.mockResolvedValueOnce({
+			isAuthenticated: true,
+			ppiAccess: true,
+			role: 'viewer'
+		});
+
+		const result = (await load(createLoadEvent(client))) as {
+			comparisonBeans: import('./+page.server').ComparisonBean[];
+			supplierPriceRanges: import('./+page.server').SupplierPriceRange[];
+		};
+
+		expect(result.comparisonBeans).toEqual([]);
+		expect(result.supplierPriceRanges).toEqual([
+			{
+				source: 'Atlas',
+				market: 'retail',
+				count: 3000,
+				min: 4,
+				median: 6.5,
+				max: 14
+			},
+			{
+				source: 'Royal',
+				market: 'wholesale',
+				count: 600,
+				min: 2,
+				median: 3.25,
+				max: 6
+			},
+			{
+				source: 'Atlas',
+				market: 'all',
+				count: 3200,
+				min: 4,
+				median: 6.75,
+				max: 14
+			}
+		]);
 	});
 
 	it('returns scoped active origin and supplier coverage counts independently from unscoped summary totals', async () => {

@@ -7,18 +7,6 @@
 		TOOLTIP_MUTED_COLOR
 	} from '$lib/styles/chartColors';
 
-	interface ComparisonBeanLike {
-		price_per_lb: number;
-		source: string | null;
-	}
-
-	interface Props {
-		beans: ComparisonBeanLike[];
-		maxSuppliers?: number;
-	}
-
-	let { beans, maxSuppliers = 12 }: Props = $props();
-
 	interface SupplierRow {
 		source: string;
 		count: number;
@@ -27,42 +15,23 @@
 		max: number;
 	}
 
+	interface Props {
+		rows: SupplierRow[];
+		maxSuppliers?: number;
+	}
+
+	let { rows: rangeRows = [], maxSuppliers = 12 }: Props = $props();
+
 	const WIDTH = 680;
 	const ROW_H = 30;
 	const PAD = { top: 22, right: 56, bottom: 8, left: 180 };
-	const UNDISCLOSED_SUPPLIER = 'Supplier undisclosed';
 
-	function median(values: number[]): number {
-		const sorted = [...values].sort((a, b) => a - b);
-		const mid = Math.floor(sorted.length / 2);
-		return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-	}
-
-	function supplierLabel(source: string | null): string {
-		const trimmed = source?.trim();
-		return trimmed ? trimmed : UNDISCLOSED_SUPPLIER;
-	}
-
-	let rows = $derived.by((): SupplierRow[] => {
-		const bySource = new Map<string, number[]>();
-		for (const bean of beans) {
-			if (bean.price_per_lb == null || bean.price_per_lb <= 0) continue;
-			const source = supplierLabel(bean.source);
-			const list = bySource.get(source) ?? [];
-			list.push(bean.price_per_lb);
-			bySource.set(source, list);
-		}
-		return [...bySource.entries()]
-			.map(([source, prices]) => ({
-				source,
-				count: prices.length,
-				min: Math.min(...prices),
-				median: median(prices),
-				max: Math.max(...prices)
-			}))
+	let rows = $derived.by((): SupplierRow[] =>
+		[...rangeRows]
+			.filter((row) => row.count > 0 && row.max > 0)
 			.sort((a, b) => a.median - b.median)
-			.slice(0, maxSuppliers);
-	});
+			.slice(0, maxSuppliers)
+	);
 
 	let domain = $derived.by(() => {
 		if (rows.length === 0) return { min: 0, max: 10 };
