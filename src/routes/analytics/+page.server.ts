@@ -38,6 +38,13 @@ export interface ComparisonBean {
 	bag_size: string | null;
 }
 
+const UNDISCLOSED_SUPPLIER = 'Supplier undisclosed';
+
+function normalizeSupplierSource(source: string | null): string {
+	const trimmed = source?.trim();
+	return trimmed ? trimmed : UNDISCLOSED_SUPPLIER;
+}
+
 function getPerLbPrice(row: {
 	price_per_lb?: number | null;
 	cost_lb?: number | null;
@@ -666,7 +673,10 @@ export const load: PageServerLoad = async (event) => {
 				.limit(200)
 		]);
 
-		comparisonBeans = (comparisonBeansRaw ?? []) as ComparisonBean[];
+		comparisonBeans = (comparisonBeansRaw ?? []).map((row) => ({
+			...row,
+			source: normalizeSupplierSource(row.source)
+		})) as ComparisonBean[];
 
 		interface SupplierStatRow {
 			snapshot_date: string;

@@ -48,6 +48,8 @@ const EMPTY_INSIGHTS: MarketIndexInsights = {
 
 /** Mirror of ValueSignalsSection's per-scope card cap so each scope gets a full page. */
 const MAX_SIGNAL_CARDS = 6;
+/** Signal types the front end actually displays; supplier-stated score signals stay hidden. */
+const DISPLAY_SIGNAL_TYPES: Array<'price_drop' | 'below_market'> = ['price_drop', 'below_market'];
 /** Movement windows the MarketReadSection window toggle can select. */
 const MOVE_WINDOWS = ['7d', '30d'] as const;
 
@@ -108,15 +110,28 @@ export async function loadMarketIndexInsights(
 	const { isParchmentIntelligence } = options;
 	const supabase = event.locals.supabase as unknown as NameLookupClient;
 
-	// Value signals: entitled viewers get a full page per scope (the combined
-	// 'all' ranking plus retail and wholesale) so ValueSignalsSection's
-	// `market === viewMode` filter is never starved by a single all-market cap.
-	// Everyone else gets the public count summary only.
+	// Value signals: entitled viewers get a full displayed-signal page per scope
+	// (the combined 'all' ranking plus retail and wholesale) so
+	// ValueSignalsSection's `value_quality` and `market === viewMode` filters are
+	// never starved by a single all-market cap. Everyone else gets the public
+	// count summary only.
 	const signalsPromise = isParchmentIntelligence
 		? Promise.allSettled([
-				client.market.signals({ market: 'all', limit: MAX_SIGNAL_CARDS }),
-				client.market.signals({ market: 'retail', limit: MAX_SIGNAL_CARDS }),
-				client.market.signals({ market: 'wholesale', limit: MAX_SIGNAL_CARDS })
+				client.market.signals({
+					market: 'all',
+					type: DISPLAY_SIGNAL_TYPES,
+					limit: MAX_SIGNAL_CARDS
+				}),
+				client.market.signals({
+					market: 'retail',
+					type: DISPLAY_SIGNAL_TYPES,
+					limit: MAX_SIGNAL_CARDS
+				}),
+				client.market.signals({
+					market: 'wholesale',
+					type: DISPLAY_SIGNAL_TYPES,
+					limit: MAX_SIGNAL_CARDS
+				})
 			])
 		: Promise.allSettled([client.market.signals({ summary: 'true' })]);
 
