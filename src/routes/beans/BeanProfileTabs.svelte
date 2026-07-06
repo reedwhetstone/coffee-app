@@ -13,12 +13,14 @@
 		selectedBean,
 		role,
 		canManagePortfolio = false,
+		embedded = false,
 		onUpdate,
 		onDelete
 	} = $props<{
 		selectedBean: InventoryWithCatalog;
 		role?: 'viewer' | 'member' | 'admin';
 		canManagePortfolio?: boolean;
+		embedded?: boolean;
 		onUpdate: (bean: InventoryWithCatalog) => void;
 		onDelete: (id: number) => void;
 	}>();
@@ -285,13 +287,19 @@
 	}
 </script>
 
-<div class="rounded-lg border border-line bg-surface-panel p-4 shadow-md md:p-6">
+<div
+	class={embedded
+		? 'space-y-5'
+		: 'rounded-lg border border-line bg-surface-panel p-4 shadow-md md:p-6'}
+>
 	<!-- Header with Title and Scores -->
 	<div class="mb-6">
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-			<h2 class="text-xl font-bold text-ink">
-				{selectedBean.coffee_catalog?.name || selectedBean.name}
-			</h2>
+			{#if !embedded}
+				<h2 class="text-xl font-bold text-ink">
+					{selectedBean.coffee_catalog?.name || selectedBean.name}
+				</h2>
+			{/if}
 			<div>
 				{#if selectedBean.rank != null && typeof selectedBean.rank === 'number'}
 					<div class="flex items-center justify-center gap-4 sm:justify-end md:gap-6">

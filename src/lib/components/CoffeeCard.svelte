@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Component } from 'svelte';
+	import type { Component, Snippet } from 'svelte';
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import SimilarCoffeePanel from '$lib/components/catalog/SimilarCoffeePanel.svelte';
 	import {
@@ -36,7 +36,8 @@
 		tracked = false,
 		onToggleTrack = undefined,
 		showCatalogLink = false,
-		initialDetailsOpen = false
+		initialDetailsOpen = false,
+		detailContent
 	} = $props<{
 		coffee: CoffeeCatalog;
 		parseTastingNotes: (tastingNotesJson: string | null | object) => TastingNotes | null;
@@ -55,6 +56,8 @@
 		showCatalogLink?: boolean;
 		/** Open the detail panel on mount (used by /catalog?coffee=<id> deep links). */
 		initialDetailsOpen?: boolean;
+		/** Optional page-specific body rendered inside the canonical detail pop-out shell. */
+		detailContent?: Snippet;
 	}>();
 
 	function priceContextColorClass(tier: LotPriceTier): string {
@@ -584,29 +587,37 @@
 						Close
 					</button>
 				</div>
-				<div class="mt-4 flex gap-2 overflow-x-auto" role="tablist" aria-label="Coffee detail tabs">
-					{#each availableDetailTabs as tab}
-						<button
-							type="button"
-							role="tab"
-							aria-selected={activeTab === tab.id}
-							class="shrink-0 rounded-md px-3 py-2 text-sm font-semibold transition-colors {activeTab ===
-							tab.id
-								? 'bg-accent text-ink'
-								: 'border border-line text-muted hover:border-accent hover:text-accent'}"
-							onclick={() => (activeTab = tab.id)}
-						>
-							{tab.label}
-						</button>
-					{/each}
-				</div>
+				{#if !detailContent}
+					<div
+						class="mt-4 flex gap-2 overflow-x-auto"
+						role="tablist"
+						aria-label="Coffee detail tabs"
+					>
+						{#each availableDetailTabs as tab}
+							<button
+								type="button"
+								role="tab"
+								aria-selected={activeTab === tab.id}
+								class="shrink-0 rounded-md px-3 py-2 text-sm font-semibold transition-colors {activeTab ===
+								tab.id
+									? 'bg-accent text-ink'
+									: 'border border-line text-muted hover:border-accent hover:text-accent'}"
+								onclick={() => (activeTab = tab.id)}
+							>
+								{tab.label}
+							</button>
+						{/each}
+					</div>
+				{/if}
 			</header>
 
 			<div
 				class="overflow-y-auto bg-surface-panel/45 px-4 py-5 md:px-6"
 				data-coffee-detail-scroll-region
 			>
-				{#if activeTab === 'overview'}
+				{#if detailContent}
+					{@render detailContent()}
+				{:else if activeTab === 'overview'}
 					<div class="grid gap-4 lg:grid-cols-[1fr_20rem]">
 						<div class="space-y-4">
 							<div class="rounded-lg border border-line bg-surface-panel p-4">

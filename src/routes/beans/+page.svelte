@@ -14,7 +14,6 @@
 
 	// Cast filtered data to the correct type for this page
 	let typedFilteredData = $derived($filteredData as unknown as InventoryWithCatalog[]);
-	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import BeansPageSkeleton from '$lib/components/BeansPageSkeleton.svelte';
 	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
@@ -24,25 +23,6 @@
 		CoffeeCatalog,
 		CoffeeFormData
 	} from '$lib/types/component.types';
-
-	// Lazy load the tasting notes radar component
-	import type { Component } from 'svelte';
-	let TastingNotesRadar = $state<Component | null>(null);
-	let radarComponentLoading = $state(true);
-
-	// Load radar component after initial render
-	$effect(() => {
-		setTimeout(async () => {
-			try {
-				const module = await import('$lib/components/TastingNotesRadar.svelte');
-				TastingNotesRadar = module.default;
-				radarComponentLoading = false;
-			} catch (error) {
-				console.error('Failed to load radar component:', error);
-				radarComponentLoading = false;
-			}
-		}, 150); // Slightly delayed to prioritize main content
-	});
 
 	// Define the type for the page data
 	type PageData = {
@@ -226,8 +206,6 @@
 
 	// State for form and bean selection
 	let isFormVisible = $derived(page.url.searchParams.get('modal') === 'new');
-	let selectedBean = $state<InventoryWithCatalog | null>(null);
-	let beanProfileElement = $state<HTMLElement | null>(null);
 
 	$effect(() => {
 		const shareToken = page.url.searchParams.get('share');
@@ -239,29 +217,6 @@
 			console.error('Error fetching catalog data:', err);
 		});
 	});
-
-	// Reset selectedBean if it's filtered out
-	$effect(() => {
-		if (selectedBean && typedFilteredData.length > 0) {
-			const stillExists = typedFilteredData.some((bean) => bean.id === selectedBean?.id);
-			if (!stillExists) {
-				selectedBean = null;
-			}
-		}
-	});
-
-	// Function to select a bean
-	function selectBean(bean: InventoryWithCatalog) {
-		if (!selectedBean || selectedBean.id !== bean.id) {
-			selectedBean = bean;
-			// Scroll to bean profile after it renders
-			setTimeout(() => {
-				if (beanProfileElement) {
-					beanProfileElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-				}
-			}, 100);
-		}
-	}
 
 	// Function to refresh data using client-side API call
 	async function refreshData() {
@@ -292,7 +247,6 @@
 	async function deleteBean(id: number) {
 		isSaving = 'Deleting bean...';
 		try {
-			selectedBean = null;
 			const response = await fetch(`/api/beans?id=${id}`, {
 				method: 'DELETE'
 			});
@@ -333,19 +287,14 @@
 			if (searchState?.searchType === 'green' && searchState?.searchId) {
 				const foundBean = clientData.find((bean) => bean.id === searchState.searchId);
 				if (foundBean) {
-					selectedBean = foundBean as unknown as InventoryWithCatalog;
-					setTimeout(() => {
-						if (beanProfileElement) {
-							beanProfileElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-						}
-					}, 100);
+					const element = document.getElementById(`portfolio-coffee-${foundBean.id}`);
+					element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 				}
 			}
 		}
 	});
 
 	function handleAddNewBean() {
-		selectedBean = null;
 		const url = new URL(page.url);
 		url.searchParams.set('modal', 'new');
 		goto(url.pathname + '?' + url.searchParams.toString(), {
@@ -379,6 +328,26 @@
 
 	const formatCurrency = (value: number) =>
 		`$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+	function portfolioCoffee(bean: InventoryWithCatalog): CoffeeCatalog {
+		if (bean.coffee_catalog) return bean.coffee_catalog;
+		return {
+			id: bean.catalog_id ?? bean.id,
+			name: 'Unknown coffee',
+			source: 'Portfolio',
+			stocked: bean.stocked
+		} as unknown as CoffeeCatalog;
+	}
+
+	function portfolioAnnotation(bean: InventoryWithCatalog): string {
+		const notes: string[] = [];
+		if (bean.purchased_qty_lbs) notes.push(`${bean.purchased_qty_lbs.toFixed(1)} lb purchased`);
+		const remainingLbs = getRemainingLbs(bean);
+		if (remainingLbs >= 0) notes.push(`${remainingLbs.toFixed(1)} lb remaining`);
+		if (bean.rank != null) notes.push(`Rated ${bean.rank}`);
+		if (bean.cupping_notes) notes.push('Cupped');
+		return notes.join(' · ');
+	}
 
 	let portfolioSummary = $derived.by(() => {
 		const rows = typedFilteredData ?? [];
@@ -635,32 +604,6 @@
 				</div>
 			{/if}
 
-			<!-- Bean Profile Section -->
-
-			{#if selectedBean}
-				<div class="mb-4" bind:this={beanProfileElement}>
-					<BeanProfileTabs
-						{selectedBean}
-						role={data?.role || 'viewer'}
-						canManagePortfolio={canManagePortfolioRows}
-						onUpdate={(updatedBean) => {
-							// Update selectedBean immediately for instant UI feedback
-							selectedBean = updatedBean;
-							// Update clientData in place without triggering loading skeleton
-							clientData = clientData.map((bean) =>
-								bean.id === updatedBean.id ? (updatedBean as (typeof clientData)[0]) : bean
-							);
-							// Re-initialize filter store with updated data (no isLoading flash)
-							filterStore.initializeForRoute(page.url.pathname, clientData);
-						}}
-						onDelete={async (id) => {
-							await deleteBean(id);
-							selectedBean = null;
-						}}
-					/>
-				</div>
-			{/if}
-
 			<!-- Form Modal -->
 			<FormShell visible={isFormVisible}>
 				<BeanForm
@@ -719,211 +662,35 @@
 				{:else}
 					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 						{#each typedFilteredData as bean}
-							{@const catalogData = bean.coffee_catalog}
-							{@const displayName = catalogData?.name || 'Unknown Coffee'}
-							{@const displaySource = catalogData?.source || 'Unknown Source'}
-							{@const displayAiDescription = catalogData?.ai_description}
-							{@const displayLocation =
-								[catalogData?.continent, catalogData?.country, catalogData?.region]
-									.filter(Boolean)
-									.join(' > ') || '-'}
-							{@const displayProcessing = catalogData?.processing}
-							{@const displayCultivar = catalogData?.cultivar_detail}
-							{@const displayGrade = catalogData?.grade}
-							{@const displayAppearance = catalogData?.appearance}
-							{@const displayType = catalogData?.type}
-							{@const displayArrival = catalogData?.arrival_date}
-							{@const tastingNotes = parseTastingNotes(
-								catalogData?.ai_tasting_notes as string | object | null
-							)}
-							{@const userCuppingNotes = parseTastingNotes(
-								bean.cupping_notes as string | object | null
-							)}
-							{@const isWholesale = catalogData?.wholesale === true}
-							{@const hasUserRating = bean.rank !== undefined && bean.rank !== null}
-							{@const hasUserCupping = userCuppingNotes !== null}
-							{@const purchasedOz = (bean.purchased_qty_lbs || 0) * 16}
-							{@const roastedOz =
-								bean.roast_profiles?.reduce(
-									(ozSum: number, profile: RoastProfile) => ozSum + (profile.oz_in || 0),
-									0
-								) || 0}
-							{@const remainingLbs = (purchasedOz - roastedOz) / 16}
-							<button
-								type="button"
-								class="group relative rounded-lg border border-line bg-surface-canvas p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/70 hover:shadow-md"
-								onclick={() => selectBean(bean)}
-							>
-								<!-- Mobile-optimized layout -->
-								<div
-									class="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0"
+							{@const coffee = portfolioCoffee(bean)}
+							<div id="portfolio-coffee-{bean.id}">
+								<CoffeeCard
+									{coffee}
+									{parseTastingNotes}
+									annotation={portfolioAnnotation(bean)}
+									showCatalogLink={Boolean(bean.coffee_catalog)}
 								>
-									<!-- Content section -->
-									<div class="flex-1">
-										<h3
-											class="text-xl font-semibold leading-snug tracking-tight text-ink group-hover:text-accent {hasUserRating ||
-											hasUserCupping ||
-											isWholesale
-												? 'pr-16 sm:pr-0'
-												: ''}"
-										>
-											{displayName}
-										</h3>
-										<div class="mt-1 flex items-center justify-between">
-											<div class="flex items-center gap-2">
-												<p class="text-sm font-medium text-organic-rust">
-													{displaySource}
-												</p>
-												{#if hasUserRating || hasUserCupping || isWholesale}
-													<div class="hidden gap-1 sm:flex">
-														{#if isWholesale}
-															<span
-																class="rounded-full bg-intelligence-subtle px-2 py-0.5 text-[11px] font-medium text-intelligence-strong"
-															>
-																Wholesale
-															</span>
-														{/if}
-														{#if hasUserRating}
-															<span
-																class="rounded-full bg-warning-subtle px-2 py-0.5 text-[11px] font-medium text-warning-strong"
-															>
-																Rated {bean.rank}
-															</span>
-														{/if}
-														{#if hasUserCupping}
-															<span
-																class="rounded-full bg-success-subtle px-2 py-0.5 text-[11px] font-medium text-success-strong"
-															>
-																Cupped
-															</span>
-														{/if}
-													</div>
-												{/if}
-											</div>
-											<!-- Mobile: Price next to supplier name -->
-											<div class="text-right sm:hidden">
-												<div class="text-xl font-semibold text-ink">
-													${(bean.purchased_qty_lbs
-														? ((bean.tax_ship_cost || 0) + (bean.bean_cost || 0)) /
-															bean.purchased_qty_lbs
-														: 0
-													).toFixed(2)}/lb
-												</div>
-											</div>
-										</div>
-										{#if displayAiDescription}
-											<p class="my-4 border-l-4 border-accent pl-3 text-sm leading-6 text-muted">
-												{displayAiDescription}
-											</p>
-										{/if}
-
-										<!-- Mobile: Chart full width -->
-										{#if tastingNotes}
-											<div class="mt-2 px-6 sm:hidden">
-												{#if radarComponentLoading}
-													<ChartSkeleton height="300px" title="Loading tasting profile..." />
-												{:else if TastingNotesRadar}
-													<TastingNotesRadar {tastingNotes} size={300} responsive={true} />
-												{/if}
-											</div>
-										{/if}
-
-										<div class="mt-3 grid gap-x-4 gap-y-1.5 text-xs text-muted sm:grid-cols-2">
-											<div><span class="font-medium">Location:</span> {displayLocation}</div>
-											<div>
-												{#if displayProcessing}
-													<span>Processing: {displayProcessing}</span>
-												{/if}
-											</div>
-											<div>
-												{#if displayCultivar}
-													<span>Cultivar: {displayCultivar}</span>
-												{/if}
-											</div>
-											<div>
-												{#if displayGrade}
-													<span>Elevation: {displayGrade}</span>
-												{/if}
-											</div>
-											<div>
-												{#if displayAppearance}
-													<span>Appearance: {displayAppearance}</span>
-												{/if}
-											</div>
-											<div>
-												{#if displayType}
-													<span>Importer: {displayType}</span>
-												{/if}
-											</div>
-											<div>
-												{#if displayArrival}
-													<span>Arrival: {displayArrival}</span>
-												{/if}
-											</div>
-											<div>
-												{#if bean.purchase_date}
-													<span>Purchase: {bean.purchase_date}</span>
-												{/if}
-											</div>
-											<div>
-												<span class="font-medium">{bean.stocked ? 'Stocked' : 'Unstocked'}:</span>
-												<span
-													class={bean.stocked === false
-														? 'text-danger'
-														: remainingLbs > 0
-															? 'text-success-strong'
-															: 'text-danger'}
-												>
-													{remainingLbs.toFixed(1)} lbs
-												</span>
-												{#if roastedOz > 0}
-													<span class="text-muted">
-														({roastedOz.toFixed(0)} oz roasted)
-													</span>
-												{/if}
-											</div>
-										</div>
-									</div>
-
-									<!-- Desktop: Price, score, and chart in sidebar -->
-									<div class="hidden flex-col items-end space-y-2 sm:flex">
-										<div class="text-right">
-											<div class="text-2xl font-semibold tabular-nums text-ink">
-												${(bean.purchased_qty_lbs
-													? ((bean.tax_ship_cost || 0) + (bean.bean_cost || 0)) /
-														bean.purchased_qty_lbs
-													: 0
-												).toFixed(2)}/lb
-											</div>
-										</div>
-										{#if tastingNotes}
-											<div class="pt-4">
-												{#if radarComponentLoading}
-													<ChartSkeleton height="180px" title="Loading tasting profile..." />
-												{:else if TastingNotesRadar}
-													<TastingNotesRadar {tastingNotes} size={180} />
-												{/if}
-											</div>
-										{/if}
-									</div>
-								</div>
-
-								<div class="mt-3 flex items-center justify-end">
-									<svg
-										class="h-4 w-4 text-muted transition-transform group-hover:translate-x-1 group-hover:text-accent"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+									{#snippet detailContent()}
+										<BeanProfileTabs
+											selectedBean={bean}
+											role={data?.role || 'viewer'}
+											canManagePortfolio={canManagePortfolioRows}
+											embedded={true}
+											onUpdate={(updatedBean) => {
+												clientData = clientData.map((portfolioBean) =>
+													portfolioBean.id === updatedBean.id
+														? (updatedBean as (typeof clientData)[0])
+														: portfolioBean
+												);
+												filterStore.initializeForRoute(page.url.pathname, clientData);
+											}}
+											onDelete={async (id) => {
+												await deleteBean(id);
+											}}
 										/>
-									</svg>
-								</div>
-							</button>
+									{/snippet}
+								</CoffeeCard>
+							</div>
 						{/each}
 					</div>
 				{/if}
