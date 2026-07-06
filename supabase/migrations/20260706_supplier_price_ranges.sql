@@ -26,6 +26,7 @@ as $$
       price_per_lb
     from public.coffee_catalog
     where stocked = true
+      and public_coffee is true
       and price_per_lb is not null
       and price_per_lb > 0
   )

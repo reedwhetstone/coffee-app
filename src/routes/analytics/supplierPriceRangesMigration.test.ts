@@ -27,6 +27,15 @@ describe('supplier price ranges migration SQL contract', () => {
 		expect(migrationSql).not.toContain('country is not null');
 	});
 
+	it('filters private catalog rows out of the service-role supplier aggregate', () => {
+		const stockedIndex = migrationSql.indexOf('where stocked = true');
+		const publicIndex = migrationSql.indexOf('and public_coffee is true');
+		const priceIndex = migrationSql.indexOf('and price_per_lb is not null');
+
+		expect(publicIndex).toBeGreaterThan(stockedIndex);
+		expect(priceIndex).toBeGreaterThan(publicIndex);
+	});
+
 	it('keeps the RPC restricted to the service role', () => {
 		expect(migrationSql).toContain('security definer');
 		expect(migrationSql).toContain('set search_path = public');
