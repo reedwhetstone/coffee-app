@@ -49,6 +49,8 @@ describe('chat system prompt entitlement context', () => {
 		expect(prompt).toContain(
 			'use market_signals when available before falling back to catalog_rank'
 		);
+		expect(prompt).toContain('After calling coffee_catalog_search, catalog_rank, market_signals');
+		expect(prompt).toContain('For market_signals, use the returned catalogId');
 		expect(prompt).toContain('add_bean_to_inventory');
 		expect(prompt).toContain('Mallard-only roast, tasting, and sales tools are unavailable');
 		expect(prompt).not.toContain('You have access to these tools');

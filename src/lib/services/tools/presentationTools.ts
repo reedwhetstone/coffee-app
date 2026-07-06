@@ -10,6 +10,7 @@ export function createPresentationTools() {
 				source_tool: z.enum([
 					'coffee_catalog_search',
 					'catalog_rank',
+					'market_signals',
 					'green_coffee_inventory',
 					'roast_profiles'
 				]),

@@ -12,12 +12,36 @@ const rankedCoffees = [
 	{ id: 12, name: 'Yemen Haraz', rank: 2, rank_basis: 'Purveyor Score 88, excellent' }
 ];
 
+const marketSignals = [
+	{
+		catalogId: 42,
+		name: 'Kenya Gichathaini',
+		signalType: 'below_market',
+		market: 'wholesale',
+		currentPriceLb: 6.25,
+		evidence: {
+			discount_vs_median_pct: -14.2,
+			segment_median: 7.28,
+			price_percentile_in_segment: 18
+		}
+	}
+];
+
 function rankPart() {
 	return {
 		type: 'tool-catalog_rank',
 		toolName: 'catalog_rank',
 		state: 'output-available',
 		output: { coffees: rankedCoffees, objective: 'premium', caveats: [] }
+	};
+}
+
+function marketSignalsPart() {
+	return {
+		type: 'tool-market_signals',
+		toolName: 'market_signals',
+		state: 'output-available',
+		output: { data: marketSignals, meta: { asOf: '2026-07-06' } }
 	};
 }
 
@@ -126,6 +150,72 @@ describe('blockExtractor catalog_rank support', () => {
 
 		const laterCache = buildSearchDataCacheThroughPart(messages, 1, 1);
 		expect(laterCache.get('catalog_rank')?.get(11)).toMatchObject({ name: 'Ethiopia Hambela' });
+	});
+});
+
+describe('blockExtractor market_signals support', () => {
+	it('renders raw market_signals output as a table', () => {
+		const block = extractBlockFromPart(marketSignalsPart());
+
+		expect(block).toMatchObject({
+			type: 'data-table',
+			data: {
+				rows: [
+					{
+						id: 42,
+						signal: 'Below market',
+						lot: 'Kenya Gichathaini',
+						market: 'wholesale',
+						price: '$6.25/lb'
+					}
+				]
+			}
+		});
+	});
+
+	it('suppresses raw market_signals output when present_results is in the message', () => {
+		const block = extractBlockFromPart(marketSignalsPart(), { hasPresentResults: true });
+
+		expect(block).toBeNull();
+	});
+
+	it('caches market_signals by catalogId for present_results merging', () => {
+		const cache = buildSearchDataCache([marketSignalsPart()]);
+
+		expect(cache.get('market_signals')?.get(42)).toMatchObject({ name: 'Kenya Gichathaini' });
+	});
+
+	it('builds an annotated table from a market_signals presentation', () => {
+		const cache = buildSearchDataCache([marketSignalsPart()]);
+		const presentPart = {
+			type: 'tool-present_results',
+			toolName: 'present_results',
+			state: 'output-available',
+			output: {
+				presentation: {
+					source_tool: 'market_signals',
+					layout: 'grid',
+					items: [{ id: 42, annotation: 'Best wholesale value signal right now' }]
+				}
+			}
+		};
+
+		const block = extractBlockFromPart(presentPart, {
+			searchDataCache: cache,
+			hasPresentResults: true
+		});
+
+		expect(block).toMatchObject({
+			type: 'data-table',
+			data: {
+				rows: [
+					{
+						id: 42,
+						note: 'Best wholesale value signal right now'
+					}
+				]
+			}
+		});
 	});
 });
 

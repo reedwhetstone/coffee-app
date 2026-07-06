@@ -12,7 +12,8 @@ import type {
 	CoffeeCardAnnotation,
 	RoastProfileAnnotation,
 	CanvasMutation,
-	CanvasLayout
+	CanvasLayout,
+	DataTableBlock
 } from '$lib/types/genui';
 import type { TastingNotes, TastingNote } from '$lib/types/coffee.types';
 import type { UIMessage } from 'ai';
@@ -32,12 +33,14 @@ export interface MessagePartsLike {
 const PRESENTABLE_TOOLS = new Set([
 	'coffee_catalog_search',
 	'catalog_rank',
+	'market_signals',
 	'green_coffee_inventory',
 	'roast_profiles'
 ]);
 
 /** Tools whose output is a `coffees` array renderable as coffee cards */
 const COFFEE_RESULT_TOOLS = new Set(['coffee_catalog_search', 'catalog_rank']);
+const MARKET_SIGNAL_TOOLS = new Set(['market_signals']);
 
 /**
  * Extracts a single UIBlock from a single message part (tool output).
@@ -86,6 +89,11 @@ export function extractBlockFromPart(part: any, options?: BlockExtractorOptions)
 			version: 1,
 			data: output.coffees
 		} satisfies CoffeeCardsBlock;
+	}
+
+	if (MARKET_SIGNAL_TOOLS.has(toolName)) {
+		const signals = marketSignalItems(output);
+		if (signals.length > 0) return buildMarketSignalsBlock(signals);
 	}
 
 	if (
@@ -297,6 +305,25 @@ function buildPresentedBlock(
 		} satisfies InventoryTableBlock;
 	}
 
+	if (sourceTool === 'market_signals') {
+		const signals: Array<Record<string, unknown>> = [];
+
+		for (const item of items) {
+			const cached = cache?.get(item.id) as Record<string, unknown> | undefined;
+			if (cached) {
+				signals.push({
+					...cached,
+					presentation_note: item.annotation ?? null,
+					highlight: item.highlight ?? false
+				});
+			}
+		}
+
+		if (signals.length === 0) return presentationCacheMissBlock(sourceTool);
+
+		return buildMarketSignalsBlock(signals);
+	}
+
 	return null;
 }
 
@@ -339,6 +366,20 @@ export function buildSearchDataCache(parts: any[]): Map<string, Map<number, unkn
 				if (coffee.id != null) itemMap.set(coffee.id, coffee);
 			}
 			// Merge with existing cache entries for this tool (multiple calls)
+			const existing = cache.get(toolName);
+			if (existing) {
+				for (const [id, data] of itemMap) existing.set(id, data);
+			} else {
+				cache.set(toolName, itemMap);
+			}
+		}
+
+		if (MARKET_SIGNAL_TOOLS.has(toolName)) {
+			const itemMap = new Map<number, unknown>();
+			for (const signal of marketSignalItems(output)) {
+				const id = marketSignalCatalogId(signal);
+				if (id != null) itemMap.set(id, signal);
+			}
 			const existing = cache.get(toolName);
 			if (existing) {
 				for (const [id, data] of itemMap) existing.set(id, data);
@@ -509,6 +550,124 @@ export function extractCanvasMutationsFromPart(
 	}
 
 	return mutations.length > 0 ? mutations : null;
+}
+
+function marketSignalItems(output: Record<string, unknown>): Array<Record<string, unknown>> {
+	for (const key of ['data', 'signals', 'items']) {
+		const value = output[key];
+		if (Array.isArray(value)) return value.filter(isRecord);
+	}
+	return [];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function marketSignalCatalogId(signal: Record<string, unknown>): number | null {
+	const id = signal.catalogId ?? signal.catalog_id ?? signal.id;
+	return typeof id === 'number' && Number.isFinite(id) ? id : null;
+}
+
+function marketSignalTypeLabel(value: unknown): string {
+	const labels: Record<string, string> = {
+		price_drop: 'Price drop',
+		below_market: 'Below market',
+		value_quality: 'Value for quality'
+	};
+	return typeof value === 'string' ? (labels[value] ?? value.replace(/_/g, ' ')) : 'Signal';
+}
+
+function marketSignalName(signal: Record<string, unknown>): string {
+	for (const key of ['name', 'coffeeName', 'coffee_name', 'catalogName', 'catalog_name']) {
+		const value = signal[key];
+		if (typeof value === 'string' && value.trim()) return value;
+	}
+	const origin =
+		typeof signal.origin === 'string' && signal.origin ? signal.origin : 'Unknown origin';
+	const process =
+		typeof signal.process === 'string' && signal.process && signal.process !== 'undisclosed'
+			? ` - ${signal.process}`
+			: '';
+	return `${origin}${process}`;
+}
+
+function formatMarketSignalMoney(value: unknown): string {
+	return typeof value === 'number' && Number.isFinite(value) ? `$${value.toFixed(2)}/lb` : '-';
+}
+
+function formatMarketSignalPct(value: unknown): string | null {
+	if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+	return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+}
+
+function marketSignalEvidence(signal: Record<string, unknown>): string {
+	const evidence = isRecord(signal.evidence) ? signal.evidence : {};
+	const signalType = signal.signalType ?? signal.signal_type;
+	if (signalType === 'price_drop') {
+		const drop = formatMarketSignalPct(
+			evidence.drop_vs_own_median_pct ?? evidence.dropVsOwnMedianPct
+		);
+		const median = formatMarketSignalMoney(
+			evidence.own_trailing_median ?? evidence.ownTrailingMedian
+		);
+		const window =
+			evidence.own_trailing_window ?? evidence.ownTrailingWindow ?? signal.signalWindow;
+		return [drop ? `${drop} vs own median` : null, median !== '-' ? median : null, window]
+			.filter(Boolean)
+			.join(' - ');
+	}
+	if (signalType === 'below_market') {
+		const discount = formatMarketSignalPct(
+			evidence.discount_vs_median_pct ?? evidence.discountVsMedianPct
+		);
+		const median = formatMarketSignalMoney(evidence.segment_median ?? evidence.segmentMedian);
+		const percentile =
+			evidence.price_percentile_in_segment ?? evidence.pricePercentileInSegment ?? null;
+		return [
+			discount ? `${discount} vs segment median` : null,
+			median !== '-' ? median : null,
+			percentile != null ? `p${percentile}` : null
+		]
+			.filter(Boolean)
+			.join(' - ');
+	}
+	const score = signal.scoreValue ?? signal.score_value;
+	const valueZ = evidence.value_z_score ?? evidence.valueZScore;
+	return [
+		score != null ? `score ${score}` : null,
+		typeof valueZ === 'number' ? `${valueZ.toFixed(1)} sigma value signal` : null
+	]
+		.filter(Boolean)
+		.join(' - ');
+}
+
+function buildMarketSignalsBlock(signals: Array<Record<string, unknown>>): DataTableBlock {
+	const rows = signals.map((signal) => ({
+		id: marketSignalCatalogId(signal) ?? '-',
+		signal: marketSignalTypeLabel(signal.signalType ?? signal.signal_type),
+		lot: marketSignalName(signal),
+		market: signal.market ?? '-',
+		price: formatMarketSignalMoney(signal.currentPriceLb ?? signal.current_price_lb),
+		evidence: marketSignalEvidence(signal) || '-',
+		note: signal.presentation_note ?? null
+	}));
+
+	return {
+		type: 'data-table',
+		version: 1,
+		data: {
+			columns: [
+				{ key: 'signal', label: 'Signal', sortable: true },
+				{ key: 'lot', label: 'Lot', sortable: true },
+				{ key: 'market', label: 'Market', sortable: true },
+				{ key: 'price', label: 'Price', align: 'right' },
+				{ key: 'evidence', label: 'Evidence' },
+				{ key: 'note', label: 'Note' }
+			],
+			rows
+		}
+	};
 }
 
 /**
