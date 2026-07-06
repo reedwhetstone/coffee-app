@@ -5,13 +5,23 @@ import { createParchmentServerClient, ParchmentConfigError } from './parchmentCl
 /**
  * BFF loader for the Market Index decision-surface modules (ADR-008 / WP-3).
  *
- * Fetches the three Parchment market-intelligence reads in parallel:
+ * Fetches the Parchment market-intelligence reads in parallel:
  * - value signals (full feed for Parchment Intelligence; public count summary
  *   for everyone else)
- * - price movement significance stats (public retail market-wide slice)
+ * - price movement significance stats
  * - metadata-trend index (public process slice; disclosure trend for PPI).
  *   Cup-score trends are deliberately not fetched: supplier scores are
  *   inconsistent/subjective and are not surfaced on the front end.
+ *
+ * The analytics page navigates a market (retail/wholesale/all) scope toggle and
+ * a movement-window (7d/30d) toggle entirely client-side, with no re-fetch, and
+ * the sections match the loaded data by exact `segment.market === viewMode` and
+ * `window === windowMode`. So this loader must fetch every scope+window cell the
+ * viewer can select, not just the default (retail, 7d) point — otherwise the
+ * value-signal cards, and the movement-significance note, silently disappear
+ * when the user switches scope or window. Non-retail stat slices and the full
+ * signal feed are Parchment Intelligence leverage (ADR-005), so they are only
+ * requested for entitled viewers; everyone else keeps the public retail reads.
  *
  * Every fetch degrades to `null` on error so a Parchment outage never breaks
  * the analytics page — the sections simply don't render.
@@ -36,7 +46,18 @@ const EMPTY_INSIGHTS: MarketIndexInsights = {
 	metadataDisclosureSeries: null
 };
 
-const SIGNALS_LIMIT = 12;
+/** Mirror of ValueSignalsSection's per-scope card cap so each scope gets a full page. */
+const MAX_SIGNAL_CARDS = 6;
+/** Movement windows the MarketReadSection window toggle can select. */
+const MOVE_WINDOWS = ['7d', '30d'] as const;
+
+type SignalBody = components['schemas']['MarketSignalsResponse'];
+type StatsBody = components['schemas']['PriceIndexStatsResponse'];
+
+/** Unwrap a settled SDK fetch result to its JSON body, or null on any failure. */
+function settledBody<T>(result: PromiseSettledResult<{ data?: T } | null | undefined>): T | null {
+	return result.status === 'fulfilled' ? (result.value?.data ?? null) : null;
+}
 
 interface CatalogNameRow {
 	id: number;
@@ -87,46 +108,103 @@ export async function loadMarketIndexInsights(
 	const { isParchmentIntelligence } = options;
 	const supabase = event.locals.supabase as unknown as NameLookupClient;
 
-	const [signalsResult, statsResult, processResult, disclosureResult] = await Promise.allSettled([
-		isParchmentIntelligence
-			? client.market.signals({ market: 'all', limit: SIGNALS_LIMIT })
-			: client.market.signals({ summary: 'true' }),
-		// Public retail market-wide slice; returns rows for both movement windows.
-		client.priceIndex.stats({}),
+	// Value signals: entitled viewers get a full page per scope (the combined
+	// 'all' ranking plus retail and wholesale) so ValueSignalsSection's
+	// `market === viewMode` filter is never starved by a single all-market cap.
+	// Everyone else gets the public count summary only.
+	const signalsPromise = isParchmentIntelligence
+		? Promise.allSettled([
+				client.market.signals({ market: 'all', limit: MAX_SIGNAL_CARDS }),
+				client.market.signals({ market: 'retail', limit: MAX_SIGNAL_CARDS }),
+				client.market.signals({ market: 'wholesale', limit: MAX_SIGNAL_CARDS })
+			])
+		: Promise.allSettled([client.market.signals({ summary: 'true' })]);
+
+	// Movement significance: fetch the retail public slice for every viewer, plus
+	// the wholesale/all Intelligence slices, across both windows, so the note is
+	// populated for any scope+window the user selects.
+	const statMarkets: ReadonlyArray<'retail' | 'wholesale' | 'all'> = isParchmentIntelligence
+		? ['retail', 'wholesale', 'all']
+		: ['retail'];
+	const statsPromise = Promise.allSettled(
+		statMarkets.flatMap((market) =>
+			MOVE_WINDOWS.map((window) => client.priceIndex.stats({ market, window }))
+		)
+	);
+
+	const metadataPromise = Promise.allSettled([
 		client.market.metadataIndex({ dimension: 'process', grain: 'month' }),
 		isParchmentIntelligence
 			? client.market.metadataIndex({ dimension: 'disclosure', grain: 'month' })
 			: Promise.resolve(null)
 	]);
 
+	const [signalsSettled, statsSettled, [processResult, disclosureResult]] = await Promise.all([
+		signalsPromise,
+		statsPromise,
+		metadataPromise
+	]);
+
 	const insights: MarketIndexInsights = { ...EMPTY_INSIGHTS };
 
-	if (signalsResult.status === 'fulfilled' && signalsResult.value?.data) {
-		const body = signalsResult.value.data;
-		insights.signalsAsOf = body.meta?.asOf ?? null;
-		if (isParchmentIntelligence) {
-			insights.valueSignals = await enrichSignalNames(supabase, body.data ?? []);
+	if (isParchmentIntelligence) {
+		const [allBody, retailBody, wholesaleBody] = signalsSettled.map((r) =>
+			settledBody<SignalBody>(r)
+		);
+		// Merge with the combined 'all' ranking first so the 'all' scope keeps the
+		// true top signals, then backfill the per-market pages. Dedupe on the
+		// stable (catalogId, signalType, market) identity.
+		const merged: components['schemas']['MarketSignalItem'][] = [];
+		const seen = new Set<string>();
+		for (const body of [allBody, retailBody, wholesaleBody]) {
+			for (const item of body?.data ?? []) {
+				const key = `${item.catalogId}:${item.signalType}:${item.market}`;
+				if (seen.has(key)) continue;
+				seen.add(key);
+				merged.push(item);
+			}
 		}
-		const summary = body.meta?.summary ?? null;
+		insights.signalsAsOf = allBody?.meta?.asOf ?? retailBody?.meta?.asOf ?? null;
+		if (allBody || retailBody || wholesaleBody) {
+			insights.valueSignals = await enrichSignalNames(supabase, merged);
+		}
+		const summary = allBody?.meta?.summary ?? null;
 		if (summary) {
 			insights.signalsSummary = {
 				total: summary.total,
 				byType: summary.byType,
-				asOf: body.meta?.asOf ?? null
+				asOf: allBody?.meta?.asOf ?? null
 			};
-		} else if (isParchmentIntelligence) {
-			// Entitled feeds still expose totals for the section header count.
+		} else if (allBody || merged.length > 0) {
+			// The 'all' page is unfiltered by market, so its pagination total is the
+			// entitled-feed total used for the section header count.
 			insights.signalsSummary = {
-				total: body.pagination?.total ?? body.data?.length ?? 0,
+				total: allBody?.pagination?.total ?? merged.length,
 				byType: { price_drop: 0, below_market: 0, value_quality: 0 },
-				asOf: body.meta?.asOf ?? null
+				asOf: allBody?.meta?.asOf ?? null
 			};
+		}
+	} else {
+		const body = settledBody<SignalBody>(signalsSettled[0]);
+		if (body) {
+			insights.signalsAsOf = body.meta?.asOf ?? null;
+			const summary = body.meta?.summary ?? null;
+			if (summary) {
+				insights.signalsSummary = {
+					total: summary.total,
+					byType: summary.byType,
+					asOf: body.meta?.asOf ?? null
+				};
+			}
 		}
 	}
 
-	if (statsResult.status === 'fulfilled' && statsResult.value?.data) {
-		insights.moveStats = statsResult.value.data.data ?? null;
+	const moveStats: components['schemas']['PriceMoveStatsItem'][] = [];
+	for (const result of statsSettled) {
+		const body = settledBody<StatsBody>(result);
+		if (body?.data) moveStats.push(...body.data);
 	}
+	if (moveStats.length > 0) insights.moveStats = moveStats;
 
 	if (processResult.status === 'fulfilled' && processResult.value?.data) {
 		insights.metadataProcessSeries = processResult.value.data.data ?? null;
