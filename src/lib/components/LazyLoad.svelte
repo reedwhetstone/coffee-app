@@ -48,9 +48,9 @@
 		{@render children?.()}
 	{:else}
 		<!-- Loading placeholder -->
-		<div class="min-h-[200px] animate-pulse rounded-lg bg-background-secondary-light/50">
+		<div class="min-h-[200px] animate-pulse rounded-lg bg-surface-panel/50">
 			<div class="flex h-full items-center justify-center">
-				<div class="text-sm text-text-secondary-light">Loading...</div>
+				<div class="text-sm text-muted">Loading...</div>
 			</div>
 		</div>
 	{/if}

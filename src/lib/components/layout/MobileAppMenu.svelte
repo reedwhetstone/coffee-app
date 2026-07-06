@@ -52,26 +52,22 @@
 </script>
 
 <div class="flex h-full flex-col">
-	<header class="flex items-center justify-between border-b border-border-light px-4 py-4">
+	<header class="flex items-center justify-between border-b border-line px-4 py-4">
 		<div>
-			<p class="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary-light">
-				Purveyors
-			</p>
-			<h2 class="mt-1 text-lg font-semibold text-text-primary-light" id="app-menu-dialog-title">
-				App menu
-			</h2>
+			<p class="text-xs font-semibold text-muted">Purveyors</p>
+			<h2 class="mt-1 text-lg font-semibold text-ink" id="app-menu-dialog-title">App menu</h2>
 		</div>
 		<button
 			type="button"
 			onclick={onClose}
-			class="rounded-full p-2 text-text-secondary-light transition-colors hover:bg-background-secondary-light hover:text-text-primary-light"
+			class="rounded-full p-2 text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 			aria-label="Close app menu"
 		>
 			<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path
 					stroke-linecap="round"
 					stroke-linejoin="round"
-					stroke-width="1.8"
+					stroke-width="1.5"
 					d="M6 18 18 6M6 6l12 12"
 				></path>
 			</svg>
@@ -80,20 +76,18 @@
 
 	<div class="flex-1 overflow-y-auto px-4 pb-6 pt-4">
 		<div class="space-y-6">
-			<section class="rounded-2xl border border-border-light bg-background-secondary-light/60 p-4">
+			<section class="rounded-xl border border-line bg-surface-panel/60 p-4">
 				<div class="flex items-start justify-between gap-4">
 					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-secondary-light">
-							Signed in
-						</p>
-						<p class="mt-1 text-sm font-medium text-text-primary-light">
+						<p class="text-xs font-semibold text-muted">Signed in</p>
+						<p class="mt-1 text-sm font-medium text-ink">
 							{userEmail || 'Purveyors member'}
 						</p>
 					</div>
 					<button
 						type="button"
 						onclick={handleSignOut}
-						class="rounded-full border border-border-light px-3 py-1.5 text-xs font-medium text-text-secondary-light transition-colors hover:border-red-300 hover:text-red-500"
+						class="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-danger/40 hover:text-danger"
 					>
 						Sign out
 					</button>
@@ -103,14 +97,14 @@
 					<button
 						type="button"
 						onclick={() => navigateTo('/subscription')}
-						class="rounded-xl bg-background-primary-light px-3 py-3 text-left text-sm font-medium text-text-primary-light ring-1 ring-border-light transition-colors hover:bg-background-secondary-light"
+						class="rounded-md bg-surface-canvas px-3 py-3 text-left text-sm font-medium text-ink ring-1 ring-line transition-colors hover:bg-surface-panel"
 					>
 						Subscription
 					</button>
 					<button
 						type="button"
 						onclick={() => navigateTo('/contact')}
-						class="rounded-xl bg-background-primary-light px-3 py-3 text-left text-sm font-medium text-text-primary-light ring-1 ring-border-light transition-colors hover:bg-background-secondary-light"
+						class="rounded-md bg-surface-canvas px-3 py-3 text-left text-sm font-medium text-ink ring-1 ring-line transition-colors hover:bg-surface-panel"
 					>
 						Contact
 					</button>
@@ -118,22 +112,20 @@
 			</section>
 
 			{#if isMember}
-				<section
-					class="space-y-3 rounded-2xl border border-border-light bg-background-secondary-light/40 p-4"
-				>
+				<section class="space-y-3 rounded-xl border border-line bg-surface-panel/40 p-4">
 					<div class="flex items-center justify-between gap-3">
 						<div>
-							<h3 class="text-sm font-semibold text-text-primary-light">Coffee Chat</h3>
-							<p class="mt-1 text-xs text-text-secondary-light">
+							<h3 class="text-sm font-semibold text-ink">Coffee Chat</h3>
+							<p class="mt-1 text-xs text-muted">
 								One continuous conversation that remembers your context.
 							</p>
 						</div>
 						<button
 							type="button"
 							onclick={() => navigateTo('/chat')}
-							class="rounded-full border border-border-light px-3 py-1.5 text-xs font-medium text-text-secondary-light transition-colors hover:text-text-primary-light"
+							class="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:text-ink"
 						>
-							Open Chat
+							Open chat
 						</button>
 					</div>
 				</section>
@@ -142,7 +134,7 @@
 			{#each navSections as section (section.id)}
 				<section class="space-y-3">
 					<div>
-						<h3 class="text-xs font-semibold uppercase tracking-[0.18em] text-text-secondary-light">
+						<h3 class="text-xs font-semibold text-muted">
 							{section.label}
 						</h3>
 					</div>
@@ -152,30 +144,43 @@
 								type="button"
 								onclick={() =>
 									navigateTo(item.locked ? (item.upgradeHref ?? '/subscription') : item.href)}
-								class="block w-full rounded-2xl border px-4 py-3 text-left transition-colors {isNavItemActive(
+								class="block w-full rounded-xl border px-4 py-3 text-left transition-colors {isNavItemActive(
 									item,
 									pathname
 								)
-									? 'border-background-tertiary-light bg-background-tertiary-light/10 text-text-primary-light'
+									? 'border-accent bg-accent/10 text-ink'
 									: item.locked
-										? 'border-border-light bg-background-secondary-light/40 text-text-secondary-light opacity-75'
-										: 'border-border-light bg-background-secondary-light/50 text-text-primary-light hover:bg-background-secondary-light'}"
+										? 'border-line bg-surface-panel/40 text-muted opacity-75'
+										: 'border-line bg-surface-panel/50 text-ink hover:bg-surface-panel'}"
 							>
 								<div class="flex items-start justify-between gap-3">
 									<div>
 										<div class="flex items-center gap-2 text-sm font-medium">
 											<span>{item.label}</span>
-											{#if item.locked}<span aria-label="Locked">🔒</span>{/if}
+											{#if item.locked}<svg
+													class="h-3.5 w-3.5"
+													fill="none"
+													viewBox="0 0 24 24"
+													stroke-width="1.5"
+													stroke="currentColor"
+													aria-label="Locked"
+													role="img"
+													><path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
+													/></svg
+												>{/if}
 										</div>
 										{#if item.description}
-											<p class="mt-1 text-xs text-text-secondary-light">{item.description}</p>
+											<p class="mt-1 text-xs text-muted">{item.description}</p>
 										{/if}
 										{#if item.locked && item.lockedReason}
-											<p class="mt-1 text-[11px] text-text-secondary-light">{item.lockedReason}</p>
+											<p class="mt-1 text-[11px] text-muted">{item.lockedReason}</p>
 										{/if}
 									</div>
 									<svg
-										class="mt-0.5 h-4 w-4 shrink-0 text-text-secondary-light"
+										class="mt-0.5 h-4 w-4 shrink-0 text-muted"
 										fill="none"
 										stroke="currentColor"
 										viewBox="0 0 24 24"
@@ -183,7 +188,7 @@
 										<path
 											stroke-linecap="round"
 											stroke-linejoin="round"
-											stroke-width="1.8"
+											stroke-width="1.5"
 											d="m9 6 6 6-6 6"
 										></path>
 									</svg>

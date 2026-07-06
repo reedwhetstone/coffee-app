@@ -176,15 +176,15 @@
 <div class="space-y-6">
 	<div class="flex items-center justify-between">
 		<div>
-			<h2 class="text-2xl font-bold text-text-primary-light">Billing Entitlement Monitor</h2>
-			<p class="text-sm text-text-secondary-light">
+			<h2 class="text-2xl font-bold text-ink">Billing Entitlement Monitor</h2>
+			<p class="text-sm text-muted">
 				Expected state is recomputed from local billing snapshots plus canonical entitlement logic.
 			</p>
 		</div>
 		<button
 			onclick={fetchDiscrepancies}
 			disabled={loading}
-			class="rounded-md bg-background-tertiary-light px-4 py-2 text-white transition-colors hover:bg-opacity-90 disabled:opacity-50"
+			class="rounded-md bg-accent px-4 py-2 text-ink transition-colors hover:bg-opacity-90 disabled:opacity-50"
 		>
 			{loading ? 'Refreshing...' : 'Refresh'}
 		</button>
@@ -201,50 +201,50 @@
 			<div
 				class="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"
 			></div>
-			<span class="ml-2 text-text-secondary-light">Loading monitoring data...</span>
+			<span class="ml-2 text-muted">Loading monitoring data...</span>
 		</div>
 	{:else if report}
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
-			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-				<h3 class="text-sm font-medium text-text-secondary-light">Total Discrepancies</h3>
+			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+				<h3 class="text-sm font-medium text-muted">Total Discrepancies</h3>
 				<p class="mt-1 text-2xl font-bold text-red-600">{report.summary.totalDiscrepancies}</p>
 			</div>
-			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-				<h3 class="text-sm font-medium text-text-secondary-light">Tracked Users</h3>
+			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+				<h3 class="text-sm font-medium text-muted">Tracked Users</h3>
 				<p class="mt-1 text-2xl font-bold text-blue-600">{report.summary.totalTrackedUsers}</p>
 			</div>
-			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-				<h3 class="text-sm font-medium text-text-secondary-light">Stripe Customers</h3>
+			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+				<h3 class="text-sm font-medium text-muted">Stripe Customers</h3>
 				<p class="mt-1 text-2xl font-bold text-blue-600">
 					{report.summary.totalStripeCustomers}
 				</p>
 			</div>
-			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-				<h3 class="text-sm font-medium text-text-secondary-light">Users With Snapshots</h3>
+			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+				<h3 class="text-sm font-medium text-muted">Users With Snapshots</h3>
 				<p class="mt-1 text-2xl font-bold text-blue-600">
 					{report.summary.totalUsersWithBillingSnapshots}
 				</p>
 			</div>
 		</div>
 
-		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-secondary-light">Last Checked</h3>
-			<p class="mt-1 text-sm text-text-primary-light">{formatDate(report.summary.lastChecked)}</p>
+		<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+			<h3 class="text-sm font-medium text-muted">Last Checked</h3>
+			<p class="mt-1 text-sm text-ink">{formatDate(report.summary.lastChecked)}</p>
 		</div>
 
 		{#if report.discrepancies.length > 0}
 			<div class="space-y-4">
 				{#each report.discrepancies as discrepancy}
-					<div class="rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
+					<div class="rounded-lg bg-surface-panel p-6 ring-1 ring-line">
 						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 							<div class="space-y-2">
 								<div>
-									<h3 class="text-lg font-semibold text-text-primary-light">
+									<h3 class="text-lg font-semibold text-ink">
 										{discrepancy.name || discrepancy.email}
 									</h3>
-									<p class="text-sm text-text-secondary-light">{discrepancy.email}</p>
+									<p class="text-sm text-muted">{discrepancy.email}</p>
 								</div>
-								<div class="flex flex-wrap gap-3 text-xs text-text-secondary-light">
+								<div class="flex flex-wrap gap-3 text-xs text-muted">
 									<span>User ID: {discrepancy.userId}</span>
 									{#if discrepancy.stripeCustomerId}
 										<span>Customer: {discrepancy.stripeCustomerId}</span>
@@ -270,10 +270,8 @@
 						</div>
 
 						<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-							<div class="rounded border border-border-light p-4">
-								<h4
-									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
-								>
+							<div class="rounded border border-line p-4">
+								<h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
 									Actual stored entitlements
 								</h4>
 								<div class="space-y-2 text-sm">
@@ -298,10 +296,8 @@
 								</div>
 							</div>
 
-							<div class="rounded border border-border-light p-4">
-								<h4
-									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
-								>
+							<div class="rounded border border-line p-4">
+								<h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
 									Expected canonical entitlements
 								</h4>
 								<div class="space-y-2 text-sm">
@@ -324,10 +320,8 @@
 							</div>
 						</div>
 
-						<div class="rounded border border-border-light p-4">
-							<h4
-								class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
-							>
+						<div class="rounded border border-line p-4">
+							<h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
 								Billing subscription snapshot rows ({discrepancy.billingSubscriptions.length})
 							</h4>
 							{#if discrepancy.billingSubscriptions.length > 0}
@@ -353,9 +347,7 @@
 									{/each}
 								</div>
 							{:else}
-								<p class="text-sm text-text-secondary-light">
-									No local billing snapshot rows for this user.
-								</p>
+								<p class="text-sm text-muted">No local billing snapshot rows for this user.</p>
 							{/if}
 						</div>
 					</div>
@@ -367,8 +359,8 @@
 			</div>
 		{/if}
 
-		<div class="rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
-			<h3 class="mb-4 text-lg font-semibold text-text-primary-light">
+		<div class="rounded-lg bg-surface-panel p-6 ring-1 ring-line">
+			<h3 class="mb-4 text-lg font-semibold text-ink">
 				Recent Role Changes ({report.recentAuditLogs.length})
 			</h3>
 			<div class="max-h-64 space-y-2 overflow-y-auto">

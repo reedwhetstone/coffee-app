@@ -146,7 +146,7 @@
 					{#if isLoadingMore}
 						<div class="flex justify-center p-4">
 							<div
-								class="h-8 w-8 animate-spin rounded-full border-4 border-background-primary-dark border-t-background-tertiary-light"
+								class="h-8 w-8 animate-spin rounded-full border-4 border-accent/30 border-t-accent"
 							></div>
 						</div>
 					{/if}
@@ -156,7 +156,7 @@
 							<div
 								class="rounded-lg bg-surface-panel px-8 py-10 text-center shadow-sm ring-1 ring-accent/30"
 							>
-								<p class="mb-1 text-sm font-medium text-amber-700">
+								<p class="mb-1 text-sm font-medium text-warning-strong">
 									You're viewing 15 of {activePagination.total || displayData.length} specialty coffees
 								</p>
 								<h3 class="mb-2 text-xl font-semibold text-ink">Keep going with a free account</h3>

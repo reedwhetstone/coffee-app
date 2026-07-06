@@ -10,10 +10,10 @@
 	}>();
 
 	function getStatusColor(message: string): string {
-		if (message.includes('Found') && !message.includes('No ')) return 'text-green-600';
-		if (message.includes('Error') || message.includes('error')) return 'text-red-500';
-		if (message.includes('No ') || message.includes('Sorry')) return 'text-amber-600';
-		return 'text-text-secondary-light';
+		if (message.includes('Found') && !message.includes('No ')) return 'text-success-strong';
+		if (message.includes('Error') || message.includes('error')) return 'text-danger';
+		if (message.includes('No ') || message.includes('Sorry')) return 'text-warning';
+		return 'text-muted';
 	}
 </script>
 
@@ -25,8 +25,7 @@
 			style:opacity={isLast && isActive ? 1 : isLast ? 0.8 : 0.5}
 		>
 			<span
-				class="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-background-tertiary-light {isLast &&
-				isActive
+				class="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-accent {isLast && isActive
 					? 'status-dot-active'
 					: ''}"
 			></span>
@@ -38,10 +37,9 @@
 
 	{#if isActive && steps.length === 0}
 		<div class="flex items-center gap-2 text-sm">
-			<span
-				class="status-dot-active inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-background-tertiary-light"
+			<span class="status-dot-active inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-accent"
 			></span>
-			<span class="font-mono text-xs text-text-secondary-light">Thinking...</span>
+			<span class="font-mono text-xs text-muted">Thinking...</span>
 		</div>
 	{/if}
 </div>

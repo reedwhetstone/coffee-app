@@ -22,16 +22,16 @@ describe('Actionsbar portfolio controls', () => {
 	it('shows only Portfolio creation for Parchment Intelligence-only viewers', () => {
 		render(Actionsbar, { data: { role: 'viewer', ppiAccess: true } });
 
-		expect(screen.getByText('New Bean')).toBeTruthy();
-		expect(screen.queryByText('New Roast')).toBeNull();
-		expect(screen.queryByText('New Sale')).toBeNull();
+		expect(screen.getByText('New bean')).toBeTruthy();
+		expect(screen.queryByText('New roast')).toBeNull();
+		expect(screen.queryByText('New sale')).toBeNull();
 	});
 
 	it('keeps Mallard actions available for members', () => {
 		render(Actionsbar, { data: { role: 'member', ppiAccess: false } });
 
-		expect(screen.getByText('New Bean')).toBeTruthy();
-		expect(screen.getByText('New Roast')).toBeTruthy();
-		expect(screen.getByText('New Sale')).toBeTruthy();
+		expect(screen.getByText('New bean')).toBeTruthy();
+		expect(screen.getByText('New roast')).toBeTruthy();
+		expect(screen.getByText('New sale')).toBeTruthy();
 	});
 });

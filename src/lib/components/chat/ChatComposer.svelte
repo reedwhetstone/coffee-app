@@ -60,7 +60,7 @@
 <!-- Chat error banner -->
 {#if chatError}
 	<div
-		class="mx-4 mt-2 flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-700"
+		class="mx-4 mt-2 flex items-center gap-2 rounded-lg border border-danger/40 bg-danger-subtle px-4 py-2 text-sm text-danger-strong"
 	>
 		<svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path
@@ -73,7 +73,7 @@
 		<span class="flex-1">{chatError}</span>
 		<button
 			onclick={onDismissError}
-			class="shrink-0 text-red-500 hover:text-red-700"
+			class="shrink-0 text-danger hover:text-danger-strong"
 			aria-label="Dismiss error"
 		>
 			<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,11 +89,9 @@
 {/if}
 
 <!-- Input area -->
-<div class="border-t border-border-light bg-background-secondary-light p-4">
+<div class="border-t border-line bg-surface-panel p-4">
 	{#if slashCompletions.length > 0 && inputMessage.startsWith('/')}
-		<div
-			class="mx-auto mb-2 max-w-4xl rounded-lg border border-border-light bg-background-primary-light shadow-sm"
-		>
+		<div class="mx-auto mb-2 max-w-4xl rounded-lg border border-line bg-surface-canvas shadow-sm">
 			{#each slashCompletions as cmd (cmd.name)}
 				<button
 					onclick={() => {
@@ -103,12 +101,10 @@
 							inputMessage = cmd.name;
 						}
 					}}
-					class="flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg last:rounded-b-lg hover:bg-background-secondary-light"
+					class="flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg last:rounded-b-lg hover:bg-surface-panel"
 				>
-					<span class="font-mono text-xs font-medium text-background-tertiary-light"
-						>{cmd.name}</span
-					>
-					<span class="text-text-secondary-light">{cmd.description}</span>
+					<span class="font-mono text-xs font-medium text-accent">{cmd.name}</span>
+					<span class="text-muted">{cmd.description}</span>
 				</button>
 			{/each}
 		</div>
@@ -124,7 +120,7 @@
 	{/if}
 	{#if contextChips.length > 0}
 		<div class="mx-auto mb-2 flex max-w-4xl flex-wrap items-center gap-1.5">
-			<span class="text-[11px] uppercase tracking-wide text-text-secondary-light">Context:</span>
+			<span class="text-[11px] uppercase tracking-wide text-muted">Context:</span>
 			{#each contextChips as chip (chip.id)}
 				<button
 					type="button"
@@ -132,8 +128,8 @@
 					title={chip.active ? chip.detail : `${chip.label} — excluded from your next message`}
 					aria-pressed={chip.active}
 					class="flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors {chip.active
-						? 'border-background-tertiary-light bg-background-tertiary-light/10 text-text-primary-light'
-						: 'border-border-light text-text-secondary-light line-through opacity-60'}"
+						? 'border-accent bg-accent/10 text-ink'
+						: 'border-line text-muted line-through opacity-60'}"
 				>
 					{#if chip.active}
 						<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,7 +154,7 @@
 				placeholder={canUseMallardWorkspaces
 					? 'Ask me about sourcing, portfolio, roasting, or coffee market decisions...'
 					: 'Ask me about sourcing, portfolio, catalog, or coffee market decisions...'}
-				class="flex-1 resize-none rounded-lg border border-border-light bg-background-primary-light px-4 py-3 text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:outline-none focus:ring-1 focus:ring-background-tertiary-light"
+				class="flex-1 resize-none rounded-lg border border-line bg-surface-canvas px-4 py-3 text-ink placeholder-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
 				rows="1"
 				disabled={isActive}
 				onkeydown={(e) => {
@@ -171,7 +167,7 @@
 			<button
 				type="submit"
 				disabled={isActive || !inputMessage.trim()}
-				class="rounded-lg bg-background-tertiary-light px-4 py-3 text-white transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+				class="rounded-lg bg-accent px-4 py-3 text-ink transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if isActive}
 					<div
@@ -193,8 +189,6 @@
 				{/if}
 			</button>
 		</div>
-		<div class="mt-2 text-xs text-text-secondary-light">
-			Press Enter to send, Shift+Enter for new line
-		</div>
+		<div class="mt-2 text-xs text-muted">Press Enter to send, Shift+Enter for new line</div>
 	</form>
 </div>

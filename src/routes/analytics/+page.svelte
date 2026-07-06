@@ -975,14 +975,14 @@
 
 {#if analyticsShellMessage}
 	<div
-		class="mb-6 rounded-lg border border-background-tertiary-light/20 bg-background-primary-light px-5 py-3 shadow-sm"
+		class="mb-6 rounded-lg border border-accent/20 bg-surface-canvas px-5 py-3 shadow-sm"
 		aria-live="polite"
 	>
 		<div class="flex items-start gap-3">
-			<span class="mt-1 h-2.5 w-2.5 animate-pulse rounded-full bg-background-tertiary-light"></span>
+			<span class="mt-1 h-2.5 w-2.5 animate-pulse rounded-full bg-accent"></span>
 			<div>
-				<p class="text-sm font-semibold text-text-primary-light">Loading market visuals</p>
-				<p class="mt-1 text-xs text-text-secondary-light">
+				<p class="text-sm font-semibold text-ink">Loading market visuals</p>
+				<p class="mt-1 text-xs text-muted">
 					The overview is ready first. {analyticsShellMessage} are loading next.
 				</p>
 			</div>
@@ -1051,8 +1051,8 @@
 	onWindowModeChange={(v) => (windowMode = v)}
 />
 
-<div class="mt-4 rounded-lg bg-background-secondary-light p-4 text-xs text-text-secondary-light">
-	<strong class="text-text-primary-light">Data source:</strong> Daily prices aggregated from
+<div class="mt-4 rounded-lg bg-surface-panel p-4 text-xs text-muted">
+	<strong class="text-ink">Data source:</strong> Daily prices aggregated from
 	{stats.totalSuppliers} US green coffee importers and roasters. The Parchment Market Index updates each
 	morning, and origin plus processing details come directly from supplier listings.
 </div>

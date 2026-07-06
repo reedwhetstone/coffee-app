@@ -149,15 +149,13 @@
 	{#if chat.messages.length === 0}
 		<!-- Welcome message -->
 		<div class="mx-auto max-w-2xl text-center">
-			<div class="mb-8 rounded-lg bg-background-secondary-light p-6">
-				<h2 class="mb-3 text-lg font-semibold text-text-primary-light">
-					Welcome to Parchment Intelligence Chat!
-				</h2>
-				<p class="mb-4 text-text-secondary-light">
+			<div class="mb-8 rounded-lg bg-surface-panel p-6">
+				<h2 class="mb-3 text-lg font-semibold text-ink">Welcome to Parchment Intelligence Chat!</h2>
+				<p class="mb-4 text-muted">
 					I'm your coffee supply-chain intelligence assistant, here to help with sourcing, catalog,
 					portfolio, and market questions. Ask me anything about:
 				</p>
-				<div class="grid grid-cols-1 gap-2 text-sm text-text-secondary-light md:grid-cols-2">
+				<div class="grid grid-cols-1 gap-2 text-sm text-muted md:grid-cols-2">
 					<div>- Green coffee recommendations</div>
 					<div>- Market and supplier signals</div>
 					<div>- Flavor profiles</div>
@@ -171,14 +169,14 @@
 
 			<!-- Example queries -->
 			<div class="space-y-2">
-				<p class="text-sm font-medium text-text-primary-light">Try asking:</p>
+				<p class="text-sm font-medium text-ink">Try asking:</p>
 				<div class="space-y-2 text-sm">
 					<button
 						onclick={() =>
 							onExampleSelect(
 								'Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique processing method.'
 							)}
-						class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+						class="block w-full rounded-md border border-line bg-surface-panel p-2 text-left text-muted transition-all hover:bg-accent hover:text-white"
 					>
 						"Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique
 						processing method."
@@ -188,7 +186,7 @@
 							onExampleSelect(
 								'Review my current portfolio and call out gaps by origin, process, and flavor profile.'
 							)}
-						class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+						class="block w-full rounded-md border border-line bg-surface-panel p-2 text-left text-muted transition-all hover:bg-accent hover:text-white"
 					>
 						"Review my current portfolio and call out gaps by origin, process, and flavor profile."
 					</button>
@@ -196,7 +194,7 @@
 						<button
 							onclick={() =>
 								onExampleSelect("What's the best way to roast a washed Costa Rican coffee?")}
-							class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+							class="block w-full rounded-md border border-line bg-surface-panel p-2 text-left text-muted transition-all hover:bg-accent hover:text-white"
 						>
 							"What's the best way to roast a washed Costa Rican coffee?"
 						</button>
@@ -214,7 +212,7 @@
 				{#if message.role === 'user'}
 					<!-- User message bubble -->
 					<div id="msg-{message.id}" class="message-fade-in flex justify-end">
-						<div class="max-w-[80%] rounded-lg bg-background-tertiary-light px-4 py-2 text-white">
+						<div class="max-w-[80%] rounded-lg bg-accent px-4 py-2 text-ink">
 							{#each message.parts as part}
 								{#if part.type === 'text'}
 									<div class="whitespace-pre-wrap">{part.text}</div>
@@ -239,7 +237,7 @@
 						{#each message.parts as part}
 							{#if part.type === 'text' && part.text.trim()}
 								<div
-									class="prose prose-sm max-w-none text-text-primary-light prose-headings:text-text-primary-light prose-p:text-text-primary-light prose-strong:text-text-primary-light prose-ol:text-text-primary-light prose-ul:text-text-primary-light prose-li:text-text-primary-light"
+									class="prose prose-sm max-w-none text-ink prose-headings:text-ink prose-p:text-ink prose-strong:text-ink prose-ol:text-ink prose-ul:text-ink prose-li:text-ink"
 								>
 									<SvelteMarkdown source={part.text} />
 								</div>
@@ -259,7 +257,7 @@
 										expandedMessages.add(message.id);
 										expandedMessages = new Set(expandedMessages);
 									}}
-									class="flex items-center gap-1.5 rounded-md border border-border-light bg-background-secondary-light px-3 py-1.5 text-xs text-text-secondary-light transition-colors hover:text-text-primary-light"
+									class="flex items-center gap-1.5 rounded-md border border-line bg-surface-panel px-3 py-1.5 text-xs text-muted transition-colors hover:text-ink"
 								>
 									<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path
@@ -343,7 +341,7 @@
 											expandedMessages.delete(message.id);
 											expandedMessages = new Set(expandedMessages);
 										}}
-										class="text-xs text-text-secondary-light hover:text-text-primary-light"
+										class="text-xs text-muted hover:text-ink"
 									>
 										Collapse previews
 									</button>

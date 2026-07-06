@@ -81,17 +81,15 @@
 			errorMessage={publicChartsError}
 			{onRetry}
 		>
-			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
+			<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
 				<h2 class="mb-1 text-base font-semibold text-ink">Origin price trends</h2>
-				<p class="mb-3 text-sm text-text-secondary-light">
+				<p class="mb-3 text-sm text-muted">
 					Average $/lb by top origins, ranked by market activity
 					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 				</p>
 				<div class="mb-4 flex items-center gap-2">
-					<span class="text-xs font-medium text-text-secondary-light">Range:</span>
-					<div
-						class="flex rounded-full border border-border-light bg-background-secondary-light p-0.5 shadow-sm"
-					>
+					<span class="text-xs font-medium text-muted">Range:</span>
+					<div class="flex rounded-full border border-line bg-surface-panel p-0.5 shadow-sm">
 						{#each TREND_RANGE_OPTIONS as opt}
 							{@const locked = opt.value !== '90d' && !isParchmentIntelligence}
 							<button
@@ -102,10 +100,10 @@
 								title={locked ? 'Longer horizons require Parchment Intelligence' : undefined}
 								class="rounded-full px-3 py-1 text-xs font-medium transition-all duration-150
 									{trendRange === opt.value
-									? 'bg-background-tertiary-light text-white shadow-sm'
+									? 'bg-accent text-ink shadow-sm'
 									: locked
-										? 'cursor-not-allowed text-text-secondary-light/50'
-										: 'text-text-secondary-light hover:text-text-primary-light'}"
+										? 'cursor-not-allowed text-muted/50'
+										: 'text-muted hover:text-ink'}"
 							>
 								{opt.label}
 							</button>
@@ -140,11 +138,9 @@
 				errorMessage={publicChartsError}
 				{onRetry}
 			>
-				<div
-					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
-				>
+				<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
 					<h2 class="mb-1 text-base font-semibold text-ink">Processing mix</h2>
-					<p class="mb-4 text-sm text-text-secondary-light">
+					<p class="mb-4 text-sm text-muted">
 						Distribution across {displayStockedCount.toLocaleString()} stocked beans
 						{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 					</p>
@@ -155,10 +151,8 @@
 							{/if}
 						</div>
 					{:else}
-						<div
-							class="flex h-40 items-center justify-center rounded-lg bg-background-secondary-light"
-						>
-							<p class="text-sm text-text-secondary-light">No catalog data yet.</p>
+						<div class="flex h-40 items-center justify-center rounded-lg bg-surface-panel">
+							<p class="text-sm text-muted">No catalog data yet.</p>
 						</div>
 					{/if}
 				</div>
@@ -180,11 +174,9 @@
 				errorMessage={publicChartsError}
 				{onRetry}
 			>
-				<div
-					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
-				>
+				<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
 					<h2 class="mb-1 text-base font-semibold text-ink">Origin price ranges</h2>
-					<p class="mb-4 text-sm text-text-secondary-light">
+					<p class="mb-4 text-sm text-muted">
 						How current prices spread across the busiest origins. Expand to choose your own
 						comparison set.
 					</p>
@@ -200,11 +192,9 @@
 							{/if}
 						</div>
 					{:else}
-						<div
-							class="flex h-40 flex-col items-center justify-center rounded-lg bg-background-secondary-light"
-						>
-							<p class="text-sm font-medium text-text-secondary-light">No origin data available</p>
-							<p class="mt-1 text-xs text-text-secondary-light">
+						<div class="flex h-40 flex-col items-center justify-center rounded-lg bg-surface-panel">
+							<p class="text-sm font-medium text-muted">No origin data available</p>
+							<p class="mt-1 text-xs text-muted">
 								Requires stocked beans with price_per_lb values in the catalog.
 							</p>
 						</div>

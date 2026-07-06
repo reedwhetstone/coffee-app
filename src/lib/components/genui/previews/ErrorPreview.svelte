@@ -7,7 +7,7 @@
 </script>
 
 <span
-	class="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20"
+	class="inline-flex items-center gap-1.5 rounded-md bg-danger-subtle px-2.5 py-1 text-xs font-medium text-danger-strong ring-1 ring-inset ring-danger/20"
 >
 	<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 		<path

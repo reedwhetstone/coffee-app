@@ -19,17 +19,15 @@
 
 <!-- Full-screen canvas overlay (always visible on mobile; desktop only in drawer variant) -->
 <div
-	class="fixed inset-0 z-50 flex flex-col bg-background-primary-light {variant === 'page'
-		? 'md:hidden'
-		: ''}"
+	class="fixed inset-0 z-50 flex flex-col bg-surface-canvas {variant === 'page' ? 'md:hidden' : ''}"
 >
-	<div class="flex items-center justify-between border-b border-border-light px-4 py-3">
-		<span class="text-sm font-medium text-text-primary-light">
+	<div class="flex items-center justify-between border-b border-line px-4 py-3">
+		<span class="text-sm font-medium text-ink">
 			Canvas ({canvasStore.blockCount})
 		</span>
 		<button
 			onclick={onClose}
-			class="rounded-md px-3 py-1 text-sm text-text-secondary-light transition-colors hover:text-text-primary-light"
+			class="rounded-md px-3 py-1 text-sm text-muted transition-colors hover:text-ink"
 		>
 			Close
 		</button>

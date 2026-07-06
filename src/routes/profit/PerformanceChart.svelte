@@ -232,13 +232,13 @@
 </script>
 
 <!-- Enhanced Performance Chart Component -->
-<div class="rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
+<div class="rounded-lg bg-surface-panel p-6 ring-1 ring-line">
 	<!-- Chart Header with Controls -->
 	<div class="mb-6">
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div>
-				<h3 class="text-lg font-semibold text-text-primary-light">Sales Performance Dashboard</h3>
-				<p class="text-sm text-text-secondary-light">
+				<h3 class="text-lg font-semibold text-ink">Sales Performance Dashboard</h3>
+				<p class="text-sm text-muted">
 					Interactive analysis with {selectedTimeRange} data in {viewTypeOptions
 						.find((v) => v.value === selectedViewType)
 						?.label.toLowerCase()} view
@@ -249,17 +249,15 @@
 			<div class="flex flex-wrap items-center gap-3">
 				<!-- Time Range Selector -->
 				<div class="flex items-center gap-2">
-					<span class="text-xs font-medium text-text-secondary-light">Period:</span>
-					<div
-						class="flex overflow-hidden rounded-md border border-border-light bg-background-primary-light"
-					>
+					<span class="text-xs font-medium text-muted">Period:</span>
+					<div class="flex overflow-hidden rounded-md border border-line bg-surface-canvas">
 						{#each timeRangeOptions as option}
 							<button
 								type="button"
 								class="px-3 py-1.5 text-xs font-medium transition-all duration-200 {selectedTimeRange ===
 								option.value
-									? 'bg-background-tertiary-light text-white'
-									: 'text-text-secondary-light hover:bg-background-tertiary-light hover:bg-opacity-10 hover:text-text-primary-light'}"
+									? 'bg-accent text-ink'
+									: 'text-muted hover:bg-accent hover:bg-opacity-10 hover:text-ink'}"
 								onclick={() => (selectedTimeRange = option.value)}
 							>
 								{option.label}
@@ -270,17 +268,15 @@
 
 				<!-- View Type Selector -->
 				<div class="flex items-center gap-2">
-					<span class="text-xs font-medium text-text-secondary-light">View:</span>
-					<div
-						class="flex overflow-hidden rounded-md border border-border-light bg-background-primary-light"
-					>
+					<span class="text-xs font-medium text-muted">View:</span>
+					<div class="flex overflow-hidden rounded-md border border-line bg-surface-canvas">
 						{#each viewTypeOptions as option}
 							<button
 								type="button"
 								class="px-3 py-1.5 text-xs font-medium transition-all duration-200 {selectedViewType ===
 								option.value
-									? 'bg-background-tertiary-light text-white'
-									: 'text-text-secondary-light hover:bg-background-tertiary-light hover:bg-opacity-10 hover:text-text-primary-light'}"
+									? 'bg-accent text-ink'
+									: 'text-muted hover:bg-accent hover:bg-opacity-10 hover:text-ink'}"
 								onclick={() => (selectedViewType = option.value)}
 								title={option.description}
 							>
@@ -293,19 +289,19 @@
 		</div>
 
 		<!-- Legend and Line Controls -->
-		<div class="mt-4 flex flex-wrap items-center gap-4 border-t border-border-light pt-4">
-			<span class="text-xs font-medium text-text-secondary-light">Display:</span>
+		<div class="mt-4 flex flex-wrap items-center gap-4 border-t border-line pt-4">
+			<span class="text-xs font-medium text-muted">Display:</span>
 
 			{#if selectedViewType !== 'margin'}
 				<label class="flex cursor-pointer items-center gap-2">
 					<input
 						type="checkbox"
 						bind:checked={showProfitLine}
-						class="h-4 w-4 rounded border-border-light bg-background-primary-light text-green-500 focus:ring-2 focus:ring-green-500"
+						class="h-4 w-4 rounded border-line bg-surface-canvas text-chart-green focus:ring-2 focus:ring-chart-green"
 					/>
 					<div class="flex items-center gap-2">
-						<div class="h-0.5 w-4 rounded bg-green-500"></div>
-						<span class="text-xs text-text-primary-light">Revenue</span>
+						<div class="h-0.5 w-4 rounded bg-chart-green"></div>
+						<span class="text-xs text-ink">Revenue</span>
 					</div>
 				</label>
 
@@ -313,17 +309,17 @@
 					<input
 						type="checkbox"
 						bind:checked={showCostLine}
-						class="h-4 w-4 rounded border-border-light bg-background-primary-light text-red-500 focus:ring-2 focus:ring-red-500"
+						class="h-4 w-4 rounded border-line bg-surface-canvas text-chart-wine focus:ring-2 focus:ring-chart-wine"
 					/>
 					<div class="flex items-center gap-2">
-						<div class="h-0.5 w-4 rounded bg-red-500"></div>
-						<span class="text-xs text-text-primary-light">Costs</span>
+						<div class="h-0.5 w-4 rounded bg-chart-wine"></div>
+						<span class="text-xs text-ink">Costs</span>
 					</div>
 				</label>
 			{:else}
 				<div class="flex items-center gap-2">
-					<div class="h-0.5 w-4 rounded bg-blue-500"></div>
-					<span class="text-xs text-text-primary-light">Profit Margin</span>
+					<div class="h-0.5 w-4 rounded bg-chart-teal"></div>
+					<span class="text-xs text-ink">Profit margin</span>
 				</div>
 			{/if}
 
@@ -331,11 +327,11 @@
 				<input
 					type="checkbox"
 					bind:checked={showTargetLine}
-					class="h-4 w-4 rounded border-border-light bg-background-primary-light text-purple-500 focus:ring-2 focus:ring-purple-500"
+					class="h-4 w-4 rounded border-line bg-surface-canvas text-chart-plum focus:ring-2 focus:ring-chart-plum"
 				/>
 				<div class="flex items-center gap-2">
-					<div class="h-0.5 w-4 rounded border-t border-dashed bg-purple-500"></div>
-					<span class="text-xs text-text-primary-light">Target</span>
+					<div class="h-0.5 w-4 rounded border-t border-dashed bg-chart-plum"></div>
+					<span class="text-xs text-ink">Target</span>
 				</div>
 			</label>
 		</div>
@@ -366,12 +362,9 @@
 					</Svg>
 				</LayerCake>
 			{:else}
-				<div
-					class="flex h-full items-center justify-center rounded bg-background-secondary-light bg-opacity-90"
-				>
+				<div class="flex h-full items-center justify-center rounded bg-surface-panel bg-opacity-90">
 					<div class="text-center">
-						<div class="mb-2 text-4xl opacity-50">📊</div>
-						<div class="text-sm text-text-secondary-light">No sales data for selected period</div>
+						<div class="text-sm text-muted">No sales data for selected period</div>
 					</div>
 				</div>
 			{/if}
@@ -382,8 +375,8 @@
 	{#if processedChartData().length > 1}
 		<div class="mt-6 rounded-lg border border-line bg-surface-panel p-4">
 			<div class="flex items-start gap-3">
-				<div class="flex-shrink-0 rounded-lg bg-blue-100 p-2">
-					<svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<div class="flex-shrink-0 rounded-lg bg-accent-subtle/15 p-2 ring-1 ring-accent/25">
+					<svg class="h-5 w-5 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -393,7 +386,7 @@
 					</svg>
 				</div>
 				<div class="flex-1">
-					<h4 class="mb-2 font-semibold text-gray-800">📊 Performance Insights</h4>
+					<h4 class="mb-2 font-semibold text-ink">Performance insights</h4>
 					{#if processedChartData().length > 0}
 						{@const data = processedChartData()}
 						{@const latestRevenue = data[data.length - 1]?.revenue || 0}
@@ -404,13 +397,14 @@
 						{@const isGrowthPositive = growthRate > 0}
 						{@const isMarginHealthy = avgMargin >= 20}
 						<div class="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-							<div class="flex items-center gap-2 rounded-lg bg-white bg-opacity-50 p-3">
-								<span class="text-lg">{isGrowthPositive ? '📈' : '📉'}</span>
+							<div
+								class="flex items-center gap-2 rounded-lg bg-surface-canvas p-3 ring-1 ring-line"
+							>
 								<div>
-									<div class="font-medium text-gray-700">
-										{selectedViewType === 'margin' ? 'Margin Trend' : 'Revenue Growth'}
+									<div class="font-medium text-ink">
+										{selectedViewType === 'margin' ? 'Margin trend' : 'Revenue growth'}
 									</div>
-									<div class="text-xs text-gray-600">
+									<div class="text-xs text-muted">
 										{#if selectedViewType === 'margin'}
 											Average {avgMargin.toFixed(1)}% • {isMarginHealthy
 												? 'Healthy'
@@ -424,11 +418,12 @@
 								</div>
 							</div>
 
-							<div class="flex items-center gap-2 rounded-lg bg-white bg-opacity-50 p-3">
-								<span class="text-lg">🎯</span>
+							<div
+								class="flex items-center gap-2 rounded-lg bg-surface-canvas p-3 ring-1 ring-line"
+							>
 								<div>
-									<div class="font-medium text-gray-700">Target Performance</div>
-									<div class="text-xs text-gray-600">
+									<div class="font-medium text-ink">Target performance</div>
+									<div class="text-xs text-muted">
 										{data.filter((d) =>
 											selectedViewType === 'margin' ? d.revenue >= d.target : d.revenue >= d.target
 										).length} of {data.length} periods meet target ({Math.round(
@@ -446,9 +441,9 @@
 						</div>
 
 						{#if selectedViewType === 'cumulative'}
-							<div class="mt-3 rounded-lg border-l-4 border-blue-400 bg-blue-50 bg-opacity-70 p-3">
-								<div class="text-xs text-gray-700">
-									<strong>💡 Recommendation:</strong>
+							<div class="mt-3 rounded-lg border-l-4 border-info/60 bg-info-subtle p-3">
+								<div class="text-xs text-ink">
+									<strong>Recommendation:</strong>
 									{#if avgMargin < 15}
 										Consider increasing prices or reducing costs - your {avgMargin.toFixed(1)}%
 										margin is below industry standards.
@@ -494,12 +489,12 @@
 		style="left: {leftPos}px; top: {topPos}px;"
 	>
 		<div
-			class="max-w-xs rounded-lg bg-background-secondary-light bg-opacity-95 p-4 shadow-lg ring-1 ring-border-light backdrop-blur-sm"
+			class="max-w-xs rounded-lg bg-surface-panel bg-opacity-95 p-4 shadow-lg ring-1 ring-line backdrop-blur-sm"
 		>
-			<div class="mb-3 text-sm font-semibold text-text-primary-light">
+			<div class="mb-3 text-sm font-semibold text-ink">
 				📅 {formatDate(d.date)}
 				{#if d.saleData?.wholesale}
-					<span class="ml-1 rounded bg-blue-100 px-1 text-xs font-normal text-blue-800"
+					<span class="ml-1 rounded bg-info-subtle px-1 text-xs font-normal text-info-strong"
 						>Wholesale</span
 					>
 				{/if}
@@ -508,40 +503,42 @@
 			<div class="space-y-2 text-xs">
 				{#if selectedViewType === 'margin'}
 					<div class="flex justify-between">
-						<span class="text-text-secondary-light">Profit Margin:</span>
-						<span class="font-semibold text-blue-500">{formatPercent(d.revenue)}</span>
+						<span class="text-muted">Profit Margin:</span>
+						<span class="font-semibold tabular-nums text-ink">{formatPercent(d.revenue)}</span>
 					</div>
 					<div class="flex justify-between">
-						<span class="text-text-secondary-light">Target:</span>
-						<span class="font-medium text-purple-500">{formatPercent(d.target)}</span>
+						<span class="text-muted">Target:</span>
+						<span class="font-medium tabular-nums text-ink">{formatPercent(d.target)}</span>
 					</div>
 				{:else}
 					<div class="flex justify-between">
-						<span class="text-text-secondary-light">Revenue:</span>
-						<span class="font-semibold text-green-500">{formatCurrency(d.revenue)}</span>
+						<span class="text-muted">Revenue:</span>
+						<span class="font-semibold tabular-nums text-ink">{formatCurrency(d.revenue)}</span>
 					</div>
 					{#if selectedViewType !== 'margin'}
 						<div class="flex justify-between">
-							<span class="text-text-secondary-light">Costs:</span>
-							<span class="font-medium text-red-500">{formatCurrency(d.cost)}</span>
+							<span class="text-muted">Costs:</span>
+							<span class="font-medium tabular-nums text-ink">{formatCurrency(d.cost)}</span>
 						</div>
 						<div class="flex justify-between">
-							<span class="text-text-secondary-light">Profit:</span>
-							<span class="font-semibold {d.profit >= 0 ? 'text-green-500' : 'text-red-500'}"
-								>{formatCurrency(d.profit)}</span
+							<span class="text-muted">Profit:</span>
+							<span
+								class="font-semibold tabular-nums {d.profit >= 0
+									? 'text-success-strong'
+									: 'text-danger'}">{formatCurrency(d.profit)}</span
 							>
 						</div>
 					{/if}
 					<div class="flex justify-between">
-						<span class="text-text-secondary-light">Target:</span>
-						<span class="font-medium text-purple-500">{formatCurrency(d.target)}</span>
+						<span class="text-muted">Target:</span>
+						<span class="font-medium tabular-nums text-ink">{formatCurrency(d.target)}</span>
 					</div>
 				{/if}
 			</div>
 
-			<div class="mt-3 border-t border-border-light pt-3">
-				<div class="mb-1 text-xs font-medium text-text-primary-light">📊 Performance</div>
-				<div class="text-xs {isTargetMet ? 'text-green-600' : 'text-orange-600'}">
+			<div class="mt-3 border-t border-line pt-3">
+				<div class="mb-1 text-xs font-medium text-ink">📊 Performance</div>
+				<div class="text-xs {isTargetMet ? 'text-success-strong' : 'text-warning-strong'}">
 					{isTargetMet ? '✅ On track' : '⚠️ Below target'}
 					{#if selectedViewType === 'margin'}
 						({Math.abs(targetDiff).toFixed(1)}% {isTargetMet ? 'above' : 'below'})

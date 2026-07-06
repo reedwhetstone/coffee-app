@@ -20,7 +20,7 @@
 
 <button
 	onclick={handleClick}
-	class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20 transition-all hover:bg-emerald-100 hover:ring-emerald-600/30"
+	class="inline-flex items-center gap-1.5 rounded-md bg-success-subtle px-2.5 py-1 text-xs font-medium text-success-strong ring-1 ring-inset ring-success/20 transition-all hover:bg-success/15 hover:ring-success/30"
 >
 	<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 		<path
@@ -32,11 +32,11 @@
 	</svg>
 	{#if count === 1}
 		<span>{firstCoffee?.name || 'Coffee'}</span>
-		{#if origin}<span class="text-emerald-500">{origin}</span>{/if}
+		{#if origin}<span class="text-success">{origin}</span>{/if}
 	{:else}
 		<span>{count} coffees</span>
 	{/if}
-	<svg class="h-3 w-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+	<svg class="h-3 w-3 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 		<path
 			stroke-linecap="round"
 			stroke-linejoin="round"

@@ -30,7 +30,7 @@
 			<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm sm:p-8">
 				<div class="flex items-start justify-between gap-4">
 					<div>
-						<h2 class="text-2xl font-semibold text-ink">{section.title}</h2>
+						<h2 class="font-serif text-2xl font-medium tracking-tight text-ink">{section.title}</h2>
 						<p class="mt-3 text-sm leading-relaxed text-muted sm:text-base">
 							{section.description}
 						</p>
@@ -38,14 +38,14 @@
 					{#if section.key === 'api'}
 						<a
 							href="https://api.purveyors.io/docs"
-							class="shrink-0 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition-opacity hover:bg-opacity-90"
+							class="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink transition-opacity hover:bg-opacity-90"
 						>
 							Open
 						</a>
 					{:else}
 						<a
 							href={`${section.basePath}/${section.items[0]?.slug}`}
-							class="shrink-0 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition-opacity hover:bg-opacity-90"
+							class="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink transition-opacity hover:bg-opacity-90"
 						>
 							Open
 						</a>

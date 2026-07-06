@@ -63,18 +63,18 @@
 
 		<div class="space-y-6 rounded-lg bg-surface-panel p-8 shadow-md">
 			{#if error}
-				<div class="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
-					<p class="text-sm text-red-400">{error}</p>
+				<div class="rounded-lg border border-danger/20 bg-danger-subtle p-4">
+					<p class="text-sm text-danger">{error}</p>
 				</div>
 			{/if}
 
 			<button
 				onclick={handleGoogleSignIn}
 				disabled={loading}
-				class="flex w-full items-center justify-center rounded-md border border-transparent bg-accent px-4 py-3 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+				class="flex w-full items-center justify-center rounded-md border border-transparent bg-accent px-4 py-3 text-sm font-medium text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if loading}
-					<div class="mr-3 h-5 w-5 animate-spin rounded-full border-b-2 border-white"></div>
+					<div class="mr-3 h-5 w-5 animate-spin rounded-full border-b-2 border-ink"></div>
 					Signing in...
 				{:else}
 					<svg class="mr-3 h-5 w-5" viewBox="0 0 24 24">

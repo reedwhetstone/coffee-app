@@ -158,20 +158,18 @@
 	bind:this={sidebarButtonsContainer}
 >
 	{#if (data?.session as { user?: { email?: string } })?.user}
-		<div
-			class="flex h-full w-16 flex-col items-center space-y-4 bg-background-primary-light py-4 shadow-lg"
-		>
+		<div class="flex h-full w-16 flex-col items-center space-y-4 bg-surface-canvas py-4 shadow-lg">
 			<!-- Auth Menu Button -->
 			<div class="relative">
 				<button
 					onclick={toggleAuthMenu}
-					class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+					class="rounded-full bg-surface-panel p-2 text-ink shadow-sm ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
 					aria-label="Toggle authentication menu"
 				>
 					{#if data?.user as { email?: string }}
 						<!-- User Avatar/Icon -->
 						<div
-							class="flex h-8 w-8 items-center justify-center rounded-full bg-background-tertiary-light font-medium text-white"
+							class="flex h-8 w-8 items-center justify-center rounded-full bg-accent font-medium text-ink"
 						>
 							{(data.user as { email?: string }).email?.[0].toUpperCase() || 'U'}
 						</div>
@@ -187,7 +185,7 @@
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
-								stroke-width="2"
+								stroke-width="1.5"
 								d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
 							/>
 						</svg>
@@ -199,7 +197,7 @@
 			<div class="relative">
 				<button
 					onclick={handleChatClick}
-					class="flex items-center justify-center rounded-full bg-background-secondary-light p-2 text-text-primary-light ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white hover:ring-background-tertiary-light"
+					class="flex items-center justify-center rounded-full bg-surface-panel p-2 text-ink ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink hover:ring-accent"
 					style="box-shadow: 0 0 20px rgba(249, 165, 123, 0.5), 0 1px 2px 0 rgb(0 0 0 / 0.05);"
 					aria-label="Coffee Chat"
 				>
@@ -213,7 +211,7 @@
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
-							stroke-width="2"
+							stroke-width="1.5"
 							d="m19 19-3.5-3.5m0 0a6 6 0 1 0-8.485-8.485 6 6 0 0 0 8.485 8.485z"
 						/>
 					</svg>
@@ -224,7 +222,7 @@
 			<div class="relative">
 				<button
 					onclick={toggleNavMenu}
-					class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+					class="rounded-full bg-surface-panel p-2 text-ink shadow-sm ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
 					aria-label="Toggle navigation menu"
 				>
 					<svg
@@ -237,7 +235,7 @@
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
-							stroke-width="2"
+							stroke-width="1.5"
 							d="M4 6h16M4 12h16M4 18h16"
 						/>
 					</svg>
@@ -249,7 +247,7 @@
 				<div class="relative">
 					<button
 						onclick={toggleActionsMenu}
-						class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						class="rounded-full bg-surface-panel p-2 text-ink shadow-sm ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
 						aria-label="Toggle actions"
 					>
 						<svg
@@ -262,7 +260,7 @@
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
-								stroke-width="2"
+								stroke-width="1.5"
 								d="M12 6v6m0 0v6m0-6h6m-6 0H6"
 							/>
 						</svg>
@@ -275,7 +273,7 @@
 				<div class="relative">
 					<button
 						onclick={toggleAdminMenu}
-						class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						class="rounded-full bg-surface-panel p-2 text-ink shadow-sm ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
 						aria-label="Toggle admin menu"
 					>
 						<svg
@@ -288,13 +286,13 @@
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
-								stroke-width="2"
+								stroke-width="1.5"
 								d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
 							/>
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
-								stroke-width="2"
+								stroke-width="1.5"
 								d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
 							/>
 						</svg>
@@ -307,7 +305,7 @@
 				<div class="relative">
 					<button
 						onclick={toggleSettingsMenu}
-						class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						class="rounded-full bg-surface-panel p-2 text-ink shadow-sm ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
 						aria-label="Toggle filters"
 					>
 						<svg
@@ -318,7 +316,7 @@
 							stroke="currentColor"
 						>
 							<!-- Three horizontal lines with slider dots -->
-							<g stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+							<g stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5">
 								<!-- First line with dot -->
 								<line x1="4" y1="7" x2="12" y2="7" />
 								<circle cx="14" cy="7" r="1.5" fill="currentColor" />
@@ -356,7 +354,7 @@
 		<!-- Auth Menu Panel -->
 		{#if activeMenu === 'auth'}
 			<aside
-				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
+				class="h-full w-64 bg-surface-canvas text-ink shadow-xl ring-1 ring-line"
 				aria-label="User Login Menu"
 			>
 				<AuthSidebar {data} onClose={closeAllMenus} />
@@ -366,7 +364,7 @@
 		<!-- Navigation Menu Panel -->
 		{#if activeMenu === 'nav'}
 			<aside
-				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
+				class="h-full w-64 bg-surface-canvas text-ink shadow-xl ring-1 ring-line"
 				role="navigation"
 				aria-label="Main navigation menu"
 			>
@@ -377,7 +375,7 @@
 		<!-- Actions Menu Panel -->
 		{#if activeMenu === 'actions'}
 			<aside
-				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
+				class="h-full w-64 bg-surface-canvas text-ink shadow-xl ring-1 ring-line"
 				aria-label="Actions menu"
 			>
 				<ActionsButton {data} onClose={closeAllMenus} />
@@ -387,7 +385,7 @@
 		<!-- Settings Menu Panel -->
 		{#if activeMenu === 'settings'}
 			<aside
-				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
+				class="h-full w-64 bg-surface-canvas text-ink shadow-xl ring-1 ring-line"
 				aria-label="Settings menu"
 			>
 				<SettingsButton {data} isOpen={true} onClose={closeAllMenus} />
@@ -397,7 +395,7 @@
 		<!-- Admin Menu Panel -->
 		{#if activeMenu === 'admin'}
 			<aside
-				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
+				class="h-full w-64 bg-surface-canvas text-ink shadow-xl ring-1 ring-line"
 				aria-label="Admin menu"
 			>
 				<AdminSidebar {data} onClose={closeAllMenus} />

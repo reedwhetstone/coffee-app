@@ -30,11 +30,11 @@
 	let editValue = $state('');
 
 	const typeColors: Record<WorkspaceType, string> = {
-		general: 'bg-gray-400',
-		sourcing: 'bg-green-500',
-		roasting: 'bg-orange-500',
-		inventory: 'bg-blue-500',
-		analysis: 'bg-purple-500'
+		general: 'bg-line',
+		sourcing: 'bg-success',
+		roasting: 'bg-warning',
+		inventory: 'bg-info',
+		analysis: 'bg-intelligence'
 	};
 
 	const typeLabels: Record<WorkspaceType, string> = {
@@ -77,19 +77,17 @@
 </script>
 
 <div
-	class="flex h-full flex-col border-r border-border-light bg-background-secondary-light transition-all duration-200"
+	class="flex h-full flex-col border-r border-line bg-surface-panel transition-all duration-200"
 	style="width: {collapsed ? '3rem' : '14rem'};"
 >
 	<!-- Header -->
-	<div class="flex items-center justify-between border-b border-border-light px-2 py-2">
+	<div class="flex items-center justify-between border-b border-line px-2 py-2">
 		{#if !collapsed}
-			<span class="text-xs font-semibold uppercase tracking-wider text-text-secondary-light"
-				>Workspaces</span
-			>
+			<span class="text-xs font-semibold uppercase tracking-wider text-muted">Workspaces</span>
 		{/if}
 		<button
 			onclick={toggleCollapsed}
-			class="rounded p-1 text-text-secondary-light transition-colors hover:text-text-primary-light"
+			class="rounded p-1 text-muted transition-colors hover:text-ink"
 			title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
 		>
 			<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -120,8 +118,8 @@
 					if (e.key === 'Enter' || e.key === ' ') onSwitch(ws.id);
 				}}
 				class="group flex cursor-pointer items-center gap-2 px-2 py-1.5 text-sm transition-colors {isActive
-					? 'bg-background-primary-light font-medium text-text-primary-light'
-					: 'text-text-secondary-light hover:bg-background-primary-light/50 hover:text-text-primary-light'}"
+					? 'bg-surface-canvas font-medium text-ink'
+					: 'text-muted hover:bg-surface-canvas/50 hover:text-ink'}"
 				title={collapsed ? `${ws.title} (${typeLabels[wsType]})` : ''}
 			>
 				<!-- Type dot -->
@@ -138,7 +136,7 @@
 								if (e.key === 'Escape') editingId = null;
 							}}
 							onclick={(e) => e.stopPropagation()}
-							class="min-w-0 flex-1 rounded border border-border-light bg-transparent px-1 text-sm focus:outline-none"
+							class="min-w-0 flex-1 rounded border border-line bg-transparent px-1 text-sm focus:outline-none"
 						/>
 					{:else}
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -153,7 +151,7 @@
 							e.stopPropagation();
 							onDelete(ws.id);
 						}}
-						class="shrink-0 rounded p-0.5 text-text-secondary-light opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+						class="shrink-0 rounded p-0.5 text-muted opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
 						title="Delete workspace"
 					>
 						<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,14 +169,14 @@
 	</div>
 
 	<!-- Footer: New workspace -->
-	<div class="border-t border-border-light p-2">
+	<div class="border-t border-line p-2">
 		{#if showCreateForm && !collapsed}
 			<div class="space-y-2">
 				<input
 					type="text"
 					bind:value={newName}
 					placeholder="Workspace name"
-					class="w-full rounded border border-border-light bg-background-primary-light px-2 py-1 text-sm text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:outline-none"
+					class="w-full rounded border border-line bg-surface-canvas px-2 py-1 text-sm text-ink placeholder-muted focus:border-accent focus:outline-none"
 					onkeydown={(e) => {
 						if (e.key === 'Enter') handleCreate();
 						if (e.key === 'Escape') showCreateForm = false;
@@ -186,7 +184,7 @@
 				/>
 				<select
 					bind:value={newType}
-					class="w-full rounded border border-border-light bg-background-primary-light px-2 py-1 text-sm text-text-primary-light focus:border-background-tertiary-light focus:outline-none"
+					class="w-full rounded border border-line bg-surface-canvas px-2 py-1 text-sm text-ink focus:border-accent focus:outline-none"
 				>
 					<option value="general">General</option>
 					<option value="sourcing">Sourcing</option>
@@ -197,13 +195,13 @@
 				<div class="flex gap-1">
 					<button
 						onclick={handleCreate}
-						class="flex-1 rounded bg-background-tertiary-light px-2 py-1 text-xs font-medium text-white transition-all hover:bg-opacity-90"
+						class="flex-1 rounded bg-accent px-2 py-1 text-xs font-medium text-ink transition-all hover:bg-opacity-90"
 					>
 						Create
 					</button>
 					<button
 						onclick={() => (showCreateForm = false)}
-						class="flex-1 rounded border border-border-light px-2 py-1 text-xs text-text-secondary-light transition-all hover:text-text-primary-light"
+						class="flex-1 rounded border border-line px-2 py-1 text-xs text-muted transition-all hover:text-ink"
 					>
 						Cancel
 					</button>
@@ -222,7 +220,7 @@
 					}
 					showCreateForm = true;
 				}}
-				class="flex w-full items-center justify-center gap-1.5 rounded px-2 py-1.5 text-sm text-text-secondary-light transition-colors hover:bg-background-primary-light hover:text-text-primary-light"
+				class="flex w-full items-center justify-center gap-1.5 rounded px-2 py-1.5 text-sm text-muted transition-colors hover:bg-surface-canvas hover:text-ink"
 				title="New workspace"
 			>
 				<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

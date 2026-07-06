@@ -31,16 +31,14 @@
 </script>
 
 <div class="my-4">
-	<h3 class="mb-3 font-semibold text-text-primary-light">
+	<h3 class="mb-3 font-semibold text-ink">
 		Inventory ({block.data.length} beans)
 	</h3>
-	<div class="overflow-x-auto rounded-lg ring-1 ring-border-light">
+	<div class="overflow-x-auto rounded-lg ring-1 ring-line">
 		<table class="w-full text-sm">
 			<thead>
-				<tr
-					class="border-b border-border-light bg-background-secondary-light text-left text-xs font-medium text-text-secondary-light"
-				>
-					<th class="sticky left-0 bg-background-secondary-light px-3 py-2">Name</th>
+				<tr class="border-b border-line bg-surface-panel text-left text-xs font-medium text-muted">
+					<th class="sticky left-0 bg-surface-panel px-3 py-2">Name</th>
 					<th class="px-3 py-2">Source</th>
 					<th class="px-3 py-2 text-right">Qty (lbs)</th>
 					<th class="px-3 py-2 text-right">Cost/lb</th>
@@ -50,29 +48,25 @@
 			</thead>
 			<tbody>
 				{#each block.data as item (item.id)}
-					<tr
-						class="border-b border-border-light last:border-0 hover:bg-background-secondary-light/50"
-					>
-						<td
-							class="sticky left-0 bg-background-primary-light px-3 py-2 font-medium text-text-primary-light"
-						>
+					<tr class="border-b border-line last:border-0 hover:bg-surface-panel/50">
+						<td class="sticky left-0 bg-surface-canvas px-3 py-2 font-medium text-ink">
 							{getCoffeeName(item)}
 						</td>
-						<td class="px-3 py-2 text-text-secondary-light">{getSource(item)}</td>
-						<td class="px-3 py-2 text-right text-text-primary-light">
+						<td class="px-3 py-2 text-muted">{getSource(item)}</td>
+						<td class="px-3 py-2 text-right text-ink">
 							{item.purchased_qty_lbs || '-'}
 						</td>
-						<td class="px-3 py-2 text-right text-text-primary-light">
+						<td class="px-3 py-2 text-right text-ink">
 							${getCostPerLb(item)}
 						</td>
 						<td class="px-3 py-2 text-center">
 							{#if item.stocked}
-								<span class="inline-block h-2 w-2 rounded-full bg-green-500"></span>
+								<span class="inline-block h-2 w-2 rounded-full bg-success"></span>
 							{:else}
-								<span class="inline-block h-2 w-2 rounded-full bg-gray-300"></span>
+								<span class="inline-block h-2 w-2 rounded-full bg-line"></span>
 							{/if}
 						</td>
-						<td class="px-3 py-2 text-right text-text-secondary-light">
+						<td class="px-3 py-2 text-right text-muted">
 							{getRoastCount(item)}
 						</td>
 					</tr>
@@ -80,10 +74,8 @@
 			</tbody>
 			{#if block.summary}
 				<tfoot>
-					<tr
-						class="border-t-2 border-border-light bg-background-secondary-light text-xs font-medium text-text-primary-light"
-					>
-						<td class="sticky left-0 bg-background-secondary-light px-3 py-2">
+					<tr class="border-t-2 border-line bg-surface-panel text-xs font-medium text-ink">
+						<td class="sticky left-0 bg-surface-panel px-3 py-2">
 							Total ({block.summary.stocked_beans} stocked)
 						</td>
 						<td class="px-3 py-2"></td>

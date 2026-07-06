@@ -16,7 +16,4 @@
 	);
 </script>
 
-<div
-	class="bg-background-tertiary-light {rounded} {className}"
-	style={inlineStyle || undefined}
-></div>
+<div class="bg-accent {rounded} {className}" style={inlineStyle || undefined}></div>

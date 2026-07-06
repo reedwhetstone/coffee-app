@@ -10,11 +10,11 @@
 
 <div class="space-y-4">
 	<div class="flex items-center justify-between">
-		<h3 class="text-lg font-semibold text-text-primary-light">Roasting History</h3>
+		<h3 class="text-lg font-semibold text-ink">Roasting History</h3>
 		{#if role === 'admin' || role === 'member'}
 			<button
 				onclick={onStartNewRoast}
-				class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+				class="rounded-md bg-accent px-4 py-2 font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 			>
 				Start New Roast
 			</button>
@@ -25,7 +25,7 @@
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 			{#each selectedBean.roast_profiles as profile, index}
 				<button
-					class="w-full cursor-pointer rounded-lg bg-background-primary-light p-4 text-left ring-1 ring-border-light transition-all duration-200 hover:bg-background-secondary-light hover:ring-2 hover:ring-background-tertiary-light"
+					class="w-full cursor-pointer rounded-lg bg-surface-canvas p-4 text-left ring-1 ring-line transition-all duration-200 hover:bg-surface-panel hover:ring-2 hover:ring-accent"
 					onclick={() => {
 						if (profile.roast_id) {
 							window.location.href = `/roast?profileId=${profile.roast_id}`;
@@ -34,27 +34,27 @@
 					disabled={!profile.roast_id}
 				>
 					<div class="mb-2 flex items-center justify-between">
-						<h4 class="font-medium text-text-primary-light">
+						<h4 class="font-medium text-ink">
 							{profile.batch_name || `Roast #${index + 1}`}
 						</h4>
 						<div class="text-right">
-							<div class="text-xs text-text-secondary-light">
+							<div class="text-xs text-muted">
 								{profile.oz_in || 0} oz → {profile.oz_out || 0} oz
 							</div>
 							{#if profile.roast_id}
-								<div class="text-xs text-text-secondary-light">
+								<div class="text-xs text-muted">
 									ID: {profile.roast_id}
 								</div>
 							{/if}
 						</div>
 					</div>
-					<div class="mb-2 text-sm text-text-secondary-light">
+					<div class="mb-2 text-sm text-muted">
 						Loss: {profile.weight_loss_percent !== null && profile.weight_loss_percent !== undefined
 							? profile.weight_loss_percent.toFixed(1)
 							: 'N/A'}%
 					</div>
 					{#if profile.roast_date}
-						<div class="mt-1 text-xs text-text-secondary-light">
+						<div class="mt-1 text-xs text-muted">
 							{new Date(profile.roast_date).toLocaleDateString()}
 						</div>
 					{/if}
@@ -83,20 +83,20 @@
 				: 0}
 
 		<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-				<h4 class="text-sm font-medium text-text-primary-light">Total Roasted</h4>
-				<p class="text-2xl font-bold text-blue-500">{totalOzIn.toFixed(1)} oz</p>
+			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+				<h4 class="text-sm font-medium text-ink">Total Roasted</h4>
+				<p class="text-2xl font-bold tabular-nums text-ink">{totalOzIn.toFixed(1)} oz</p>
 			</div>
-			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-				<h4 class="text-sm font-medium text-text-primary-light">Total Output</h4>
-				<p class="text-2xl font-bold text-green-500">{totalOzOut.toFixed(1)} oz</p>
+			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+				<h4 class="text-sm font-medium text-ink">Total Output</h4>
+				<p class="text-2xl font-bold tabular-nums text-ink">{totalOzOut.toFixed(1)} oz</p>
 			</div>
-			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-				<h4 class="text-sm font-medium text-text-primary-light">Avg Loss Rate</h4>
-				<p class="text-2xl font-bold text-orange-500">
+			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+				<h4 class="text-sm font-medium text-ink">Avg Loss Rate</h4>
+				<p class="text-2xl font-bold tabular-nums text-ink">
 					{validRoastsForLoss.length > 0 ? avgLoss.toFixed(1) : 'N/A'}%
 				</p>
-				<p class="text-xs text-text-secondary-light">
+				<p class="text-xs text-muted">
 					{validRoastsForLoss.length > 0
 						? `Average from ${validRoastsForLoss.length} roast${validRoastsForLoss.length === 1 ? '' : 's'} with calculated loss data`
 						: 'No roasts with weight loss data available'}
@@ -104,16 +104,16 @@
 			</div>
 		</div>
 	{:else}
-		<div class="rounded-lg bg-background-primary-light p-8 text-center ring-1 ring-border-light">
+		<div class="rounded-lg bg-surface-canvas p-8 text-center ring-1 ring-line">
 			<div class="mb-4 text-4xl opacity-50">🔥</div>
-			<h4 class="mb-2 text-lg font-semibold text-text-primary-light">No Roasts Yet</h4>
-			<p class="mb-4 text-text-secondary-light">
+			<h4 class="mb-2 text-lg font-semibold text-ink">No Roasts Yet</h4>
+			<p class="mb-4 text-muted">
 				Start your first roast with this coffee to see roasting history and analytics.
 			</p>
 			{#if role === 'admin' || role === 'member'}
 				<button
 					onclick={onStartNewRoast}
-					class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+					class="rounded-md bg-accent px-4 py-2 font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 				>
 					Start First Roast
 				</button>

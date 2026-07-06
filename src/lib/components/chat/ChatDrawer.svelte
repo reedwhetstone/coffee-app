@@ -33,29 +33,27 @@
 
 {#if hasOpened && canUseChat}
 	<aside
-		class="fixed inset-y-0 right-0 z-40 flex-col border-l border-border-light bg-background-primary-light shadow-xl md:w-[32rem] {open
+		class="fixed inset-y-0 right-0 z-40 flex-col border-l border-line bg-surface-canvas shadow-xl md:w-[32rem] {open
 			? 'flex w-full'
 			: 'hidden'}"
 		aria-label="Ask Parchment"
 	>
-		<div class="flex items-center justify-between border-b border-border-light px-4 py-2.5">
+		<div class="flex items-center justify-between border-b border-line px-4 py-2.5">
 			<div class="min-w-0">
-				<p class="text-sm font-semibold text-text-primary-light">Ask Parchment</p>
-				<p class="truncate text-xs text-text-secondary-light">
-					Knows what you're looking at on this page
-				</p>
+				<p class="text-sm font-semibold text-ink">Ask Parchment</p>
+				<p class="truncate text-xs text-muted">Knows what you're looking at on this page</p>
 			</div>
 			<div class="flex shrink-0 items-center gap-2">
 				<a
 					href="/chat"
-					class="rounded-md border border-border-light px-2 py-1 text-xs text-text-secondary-light transition-colors hover:text-text-primary-light"
+					class="rounded-md border border-line px-2 py-1 text-xs text-muted transition-colors hover:text-ink"
 				>
 					Open full workspace
 				</a>
 				<button
 					type="button"
 					onclick={() => (open = false)}
-					class="rounded-md p-1.5 text-text-secondary-light transition-colors hover:bg-background-secondary-light hover:text-text-primary-light"
+					class="rounded-md p-1.5 text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 					aria-label="Close Ask Parchment"
 				>
 					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

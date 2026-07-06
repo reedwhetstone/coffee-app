@@ -28,7 +28,7 @@
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 		<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 		{#each Array(12) as _}
-			<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+			<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
 				<div class="flex items-start justify-between">
 					<!-- Left side content -->
 					<div class="flex-1">

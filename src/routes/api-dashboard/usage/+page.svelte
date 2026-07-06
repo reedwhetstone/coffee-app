@@ -39,16 +39,16 @@
 
 	// Get status color based on usage percentage
 	function getUsageColor(percent: number): string {
-		if (percent >= 90) return 'text-red-500';
-		if (percent >= 75) return 'text-yellow-500';
-		return 'text-green-500';
+		if (percent >= 90) return 'text-danger';
+		if (percent >= 75) return 'text-warning';
+		return 'text-success-strong';
 	}
 
 	// Get background color for progress bars
 	function getProgressColor(percent: number): string {
-		if (percent >= 90) return 'bg-red-500';
-		if (percent >= 75) return 'bg-yellow-500';
-		return 'bg-green-500';
+		if (percent >= 90) return 'bg-danger';
+		if (percent >= 75) return 'bg-warning';
+		return 'bg-success';
 	}
 
 	onMount(() => {
@@ -64,39 +64,36 @@
 	/>
 </svelte:head>
 
-<div class="min-h-screen bg-background-primary-light">
+<div class="min-h-screen bg-surface-canvas">
 	<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 		<!-- Header -->
 		<div class="mb-8">
 			<nav class="mb-4">
-				<a
-					href="/api-dashboard"
-					class="text-sm text-text-secondary-light hover:text-text-primary-light"
-				>
+				<a href="/api-dashboard" class="text-sm text-muted hover:text-ink">
 					← Back to Parchment Console
 				</a>
 			</nav>
-			<h1 class="text-3xl font-bold tracking-tight text-text-primary-light">Usage Analytics</h1>
-			<p class="mt-2 text-lg text-text-secondary-light">
+			<h1 class="text-3xl font-bold tracking-tight text-ink">Usage Analytics</h1>
+			<p class="mt-2 text-lg text-muted">
 				Monitor your Parchment API usage, performance metrics, and plan limits
 			</p>
 		</div>
 
 		{#if data.error}
-			<div class="mb-8 rounded-md bg-red-50 p-4 ring-1 ring-red-200">
-				<div class="text-sm text-red-700">{data.error}</div>
+			<div class="mb-8 rounded-md bg-danger-subtle p-4 ring-1 ring-danger/30">
+				<div class="text-sm text-danger">{data.error}</div>
 			</div>
 		{:else}
 			<!-- Usage Overview Cards -->
 			<div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 				<!-- Monthly Usage -->
-				<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-					<h3 class="text-sm font-medium text-text-secondary-light">Monthly Usage</h3>
+				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+					<h3 class="text-sm font-medium text-muted">Monthly Usage</h3>
 					<p class="mt-1 text-2xl font-bold {getUsageColor(monthlyUsagePercent())}">
 						{formatNumber(data.currentStats?.monthlyUsage || 0)}
 					</p>
 					<div class="mt-2">
-						<div class="flex items-center justify-between text-xs text-text-secondary-light">
+						<div class="flex items-center justify-between text-xs text-muted">
 							{#if data.currentStats?.monthlyLimit === -1}
 								<span>Unlimited (Enterprise)</span>
 								<span>∞</span>
@@ -105,9 +102,9 @@
 								<span>{Math.round(monthlyUsagePercent())}%</span>
 							{/if}
 						</div>
-						<div class="mt-1 h-2 w-full rounded-full bg-background-primary-light">
+						<div class="mt-1 h-2 w-full rounded-full bg-surface-canvas">
 							{#if data.currentStats?.monthlyLimit === -1}
-								<div class="h-2 w-full rounded-full bg-blue-500"></div>
+								<div class="h-2 w-full rounded-full bg-info"></div>
 							{:else}
 								<div
 									class="h-2 rounded-full transition-all duration-300 {getProgressColor(
@@ -121,13 +118,13 @@
 				</div>
 
 				<!-- Current Plan -->
-				<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-					<h3 class="text-sm font-medium text-text-secondary-light">Current Tier</h3>
-					<p class="mt-1 text-2xl font-bold text-blue-500">
+				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+					<h3 class="text-sm font-medium text-muted">Current Tier</h3>
+					<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
 						{tierDisplayName()}
 					</p>
 					<div class="mt-2">
-						<div class="text-xs text-text-secondary-light">
+						<div class="text-xs text-muted">
 							{#if data.currentStats?.userTier === 'enterprise'}
 								Unlimited API calls
 							{:else if data.currentStats?.userTier === 'member'}
@@ -140,57 +137,55 @@
 				</div>
 
 				<!-- Active Keys -->
-				<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-					<h3 class="text-sm font-medium text-text-secondary-light">Active Keys</h3>
-					<p class="mt-1 text-2xl font-bold text-blue-500">
+				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+					<h3 class="text-sm font-medium text-muted">Active Keys</h3>
+					<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
 						{data.currentStats?.activeKeys || 0}
 					</p>
-					<p class="mt-1 text-xs text-text-secondary-light">
+					<p class="mt-1 text-xs text-muted">
 						of {data.currentStats?.totalKeys || 0} total
 					</p>
 				</div>
 
 				<!-- Average Response Time -->
-				<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-					<h3 class="text-sm font-medium text-text-secondary-light">Avg Response</h3>
-					<p class="mt-1 text-2xl font-bold text-purple-500">
+				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+					<h3 class="text-sm font-medium text-muted">Avg Response</h3>
+					<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
 						{data.dailySummary && data.dailySummary.length > 0
 							? Math.round(data.dailySummary[0]?.avg_response_time || 0)
 							: 0}ms
 					</p>
-					<p class="mt-1 text-xs text-text-secondary-light">Last 24 hours</p>
+					<p class="mt-1 text-xs text-muted">Last 24 hours</p>
 				</div>
 			</div>
 
 			<!-- Usage Chart and Recent Activity -->
 			<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
 				<!-- Daily Usage Chart -->
-				<div class="rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
-					<h2 class="mb-4 text-lg font-semibold text-text-primary-light">
-						Daily Usage (Last 30 Days)
-					</h2>
+				<div class="rounded-lg bg-surface-panel p-6 ring-1 ring-line">
+					<h2 class="mb-4 text-lg font-semibold text-ink">Daily Usage (Last 30 Days)</h2>
 					{#if data.dailySummary && data.dailySummary.length > 0}
 						<div class="space-y-3">
 							{#each data.dailySummary.slice(0, 10) as day}
 								<div class="flex items-center justify-between">
 									<div class="flex items-center space-x-3">
-										<span class="w-16 text-sm font-medium text-text-primary-light">
+										<span class="w-16 text-sm font-medium text-ink">
 											{formatDate(day.date)}
 										</span>
 										<div class="flex-1">
-											<div class="h-6 w-full rounded-full bg-background-primary-light">
+											<div class="h-6 w-full rounded-full bg-surface-canvas">
 												<div
-													class="h-6 rounded-full bg-background-tertiary-light transition-all duration-300"
+													class="h-6 rounded-full bg-accent transition-all duration-300"
 													style="width: {Math.min((day.total_requests / 500) * 100, 100)}%"
 												></div>
 											</div>
 										</div>
 									</div>
 									<div class="text-right">
-										<div class="text-sm font-medium text-text-primary-light">
+										<div class="text-sm font-medium text-ink">
 											{formatNumber(day.total_requests)}
 										</div>
-										<div class="text-xs text-text-secondary-light">
+										<div class="text-xs text-muted">
 											{day.error_requests > 0 ? `${day.error_requests} errors` : 'No errors'}
 										</div>
 									</div>
@@ -199,43 +194,41 @@
 						</div>
 					{:else}
 						<div class="py-8 text-center">
-							<p class="text-text-secondary-light">No usage data available yet</p>
-							<p class="text-sm text-text-secondary-light">
-								Start making Parchment API calls to see analytics
-							</p>
+							<p class="text-muted">No usage data available yet</p>
+							<p class="text-sm text-muted">Start making Parchment API calls to see analytics</p>
 						</div>
 					{/if}
 				</div>
 
 				<!-- API Keys Usage Breakdown -->
-				<div class="rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
-					<h2 class="mb-4 text-lg font-semibold text-text-primary-light">Usage by API Key</h2>
+				<div class="rounded-lg bg-surface-panel p-6 ring-1 ring-line">
+					<h2 class="mb-4 text-lg font-semibold text-ink">Usage by API Key</h2>
 					{#if data.usageData && data.usageData.length > 0}
 						<div class="space-y-4">
 							{#each data.usageData as keyUsage}
-								<div class="rounded-md bg-background-primary-light p-4">
+								<div class="rounded-md bg-surface-canvas p-4">
 									<div class="mb-2 flex items-center justify-between">
-										<h3 class="font-medium text-text-primary-light">{keyUsage.keyName}</h3>
-										<span class="text-sm text-text-secondary-light">
+										<h3 class="font-medium text-ink">{keyUsage.keyName}</h3>
+										<span class="text-sm text-muted">
 											{keyUsage.usage?.length || 0} requests
 										</span>
 									</div>
 									{#if keyUsage.usage && keyUsage.usage.length > 0}
-										<div class="text-xs text-text-secondary-light">
+										<div class="text-xs text-muted">
 											Last used: {new Date(keyUsage.usage[0].timestamp).toLocaleDateString()}
 										</div>
 										<div class="mt-2 flex items-center space-x-4">
 											<div class="flex items-center space-x-1">
-												<div class="h-2 w-2 rounded-full bg-green-500"></div>
-												<span class="text-xs text-text-secondary-light">
+												<div class="h-2 w-2 rounded-full bg-success"></div>
+												<span class="text-xs text-muted">
 													{keyUsage.usage.filter(
 														(u: Record<string, unknown>) => (u.status_code as number) < 400
 													).length} success
 												</span>
 											</div>
 											<div class="flex items-center space-x-1">
-												<div class="h-2 w-2 rounded-full bg-red-500"></div>
-												<span class="text-xs text-text-secondary-light">
+												<div class="h-2 w-2 rounded-full bg-danger"></div>
+												<span class="text-xs text-muted">
 													{keyUsage.usage.filter(
 														(u: Record<string, unknown>) => (u.status_code as number) >= 400
 													).length} errors
@@ -243,17 +236,17 @@
 											</div>
 										</div>
 									{:else}
-										<div class="text-xs text-text-secondary-light">No recent usage</div>
+										<div class="text-xs text-muted">No recent usage</div>
 									{/if}
 								</div>
 							{/each}
 						</div>
 					{:else}
 						<div class="py-8 text-center">
-							<p class="text-text-secondary-light">No API keys found</p>
+							<p class="text-muted">No API keys found</p>
 							<a
 								href="/api-dashboard/keys"
-								class="mt-2 inline-block text-sm text-background-tertiary-light hover:underline"
+								class="mt-2 inline-block text-sm text-accent hover:underline"
 							>
 								Create your first API key
 							</a>
@@ -264,10 +257,10 @@
 
 			<!-- Rate Limit Status with Upgrade CTAs -->
 			{#if data.currentStats?.userTier !== 'enterprise' && monthlyUsagePercent() >= 75}
-				<div class="mt-8 rounded-md bg-yellow-50 p-4 ring-1 ring-yellow-200">
+				<div class="mt-8 rounded-md bg-warning-subtle p-4 ring-1 ring-warning/30">
 					<div class="flex">
 						<div class="flex-shrink-0">
-							<svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+							<svg class="h-5 w-5 text-warning" viewBox="0 0 20 20" fill="currentColor">
 								<path
 									fill-rule="evenodd"
 									d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
@@ -276,14 +269,14 @@
 							</svg>
 						</div>
 						<div class="ml-3">
-							<h3 class="text-sm font-medium text-yellow-800">
+							<h3 class="text-sm font-medium text-warning-strong">
 								{#if monthlyUsagePercent() >= 95}
 									Rate Limit Reached
 								{:else}
 									Approaching Rate Limit
 								{/if}
 							</h3>
-							<div class="mt-2 text-sm text-yellow-700">
+							<div class="mt-2 text-sm text-warning-strong">
 								<p>
 									You've used {Math.round(monthlyUsagePercent())}% of your {formatNumber(
 										data.currentStats?.monthlyLimit || 200
@@ -297,7 +290,7 @@
 								<div class="mt-3 flex space-x-4">
 									<a
 										href={data.currentStats?.userTier === 'viewer' ? '/subscription' : '/contact'}
-										class="font-medium text-yellow-800 underline hover:text-yellow-600"
+										class="font-medium text-warning-strong underline hover:text-warning"
 									>
 										{data.currentStats?.userTier === 'viewer'
 											? 'Upgrade to Origin'
@@ -305,7 +298,7 @@
 									</a>
 									<a
 										href="/api-dashboard"
-										class="font-medium text-yellow-800 underline hover:text-yellow-600"
+										class="font-medium text-warning-strong underline hover:text-warning"
 									>
 										Back to Parchment Console
 									</a>

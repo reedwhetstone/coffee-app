@@ -26,11 +26,11 @@
 </script>
 
 <!-- Chat toolbar: Memory, canvas toggles, Export, Clear -->
-<div class="flex items-center justify-end border-b border-border-light px-3 py-1.5">
+<div class="flex items-center justify-end border-b border-line px-3 py-1.5">
 	<div class="flex items-center gap-2">
 		<button
 			onclick={onOpenMemory}
-			class="rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light"
+			class="rounded-md border border-line px-2 py-0.5 text-xs text-muted transition-all hover:text-ink"
 			title="View and edit the persistent memory document"
 		>
 			Memory
@@ -38,7 +38,7 @@
 		{#if !canvasStore.isEmpty}
 			<button
 				onclick={onToggleMobileCanvas}
-				class="rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light {variant ===
+				class="rounded-md border border-line px-2 py-0.5 text-xs text-muted transition-all hover:text-ink {variant ===
 				'page'
 					? 'md:hidden'
 					: ''}"
@@ -48,7 +48,7 @@
 			{#if variant === 'page'}
 				<button
 					onclick={onToggleDesktopCanvas}
-					class="hidden rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light md:block"
+					class="hidden rounded-md border border-line px-2 py-0.5 text-xs text-muted transition-all hover:text-ink md:block"
 				>
 					{canvasOpen ? 'Hide' : 'Show'} Canvas ({canvasStore.blockCount})
 				</button>
@@ -57,13 +57,13 @@
 		{#if hasMessages}
 			<button
 				onclick={onExport}
-				class="rounded-md border border-background-tertiary-light px-2 py-0.5 text-xs text-background-tertiary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+				class="rounded-md border border-accent px-2 py-0.5 text-xs text-accent transition-all hover:bg-accent hover:text-white"
 			>
 				Export
 			</button>
 			<button
 				onclick={onClear}
-				class="rounded-md border border-red-500 px-2 py-0.5 text-xs text-red-500 transition-all hover:bg-red-500 hover:text-white"
+				class="rounded-md border border-danger px-2 py-0.5 text-xs text-danger transition-all hover:bg-danger-strong hover:text-white"
 			>
 				Clear
 			</button>

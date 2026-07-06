@@ -168,22 +168,24 @@
 <div class="roast-chart-block">
 	{#if loading}
 		<!-- Skeleton loader -->
-		<div class="flex h-64 items-center justify-center rounded-lg bg-background-secondary-light">
+		<div class="flex h-64 items-center justify-center rounded-lg bg-surface-panel">
 			<div class="flex flex-col items-center gap-2">
 				<div
-					class="h-5 w-5 animate-spin rounded-full border-2 border-background-tertiary-light border-t-transparent"
+					class="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent"
 				></div>
-				<span class="text-xs text-text-secondary-light">Loading roast data...</span>
+				<span class="text-xs text-muted">Loading roast data...</span>
 			</div>
 		</div>
 	{:else if error}
-		<div class="flex h-32 items-center justify-center rounded-lg bg-red-50 text-sm text-red-600">
+		<div
+			class="flex h-32 items-center justify-center rounded-lg bg-danger-subtle text-sm text-danger"
+		>
 			{error}
 		</div>
 	{:else if chartData}
-		<div class="rounded-lg bg-background-secondary-light ring-1 ring-border-light">
-			<div class="flex items-center justify-between border-b border-border-light px-3 py-2">
-				<span class="text-sm font-medium text-text-primary-light">{roastName}</span>
+		<div class="rounded-lg bg-surface-panel ring-1 ring-line">
+			<div class="flex items-center justify-between border-b border-line px-3 py-2">
+				<span class="text-sm font-medium text-ink">{roastName}</span>
 			</div>
 			<div class="w-full" style="min-height: 300px; height: 350px;">
 				<RoastChart {chartData} onTooltipChange={handleTooltipChange} />
@@ -194,14 +196,14 @@
 	<!-- Tooltip -->
 	{#if tooltip.visible}
 		<div
-			class="pointer-events-none fixed z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-lg"
+			class="pointer-events-none fixed z-50 rounded-md bg-ink px-3 py-2 text-xs text-white shadow-lg"
 			style="left: {tooltip.x + 12}px; top: {tooltip.y - 10}px;"
 		>
 			<div class="font-medium">{tooltip.time}</div>
 			<div class="mt-0.5 flex flex-col gap-0.5">
-				<span><span class="text-amber-400">BT:</span> {tooltip.bt}</span>
-				<span><span class="text-red-400">ET:</span> {tooltip.et}</span>
-				<span><span class="text-blue-400">RoR:</span> {tooltip.ror}</span>
+				<span><span class="text-warning">BT:</span> {tooltip.bt}</span>
+				<span><span class="text-danger">ET:</span> {tooltip.et}</span>
+				<span><span class="text-info">RoR:</span> {tooltip.ror}</span>
 			</div>
 		</div>
 	{/if}

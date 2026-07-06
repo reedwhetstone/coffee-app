@@ -37,21 +37,17 @@
 </script>
 
 <div class="my-4">
-	<div class="overflow-x-auto rounded-lg ring-1 ring-border-light">
+	<div class="overflow-x-auto rounded-lg ring-1 ring-line">
 		<table class="w-full text-sm">
 			<thead>
-				<tr
-					class="border-b border-border-light bg-background-secondary-light text-left text-xs font-medium text-text-secondary-light"
-				>
+				<tr class="border-b border-line bg-surface-panel text-left text-xs font-medium text-muted">
 					{#each block.data.columns as col}
 						<th
 							class="px-3 py-2 {col.align === 'right'
 								? 'text-right'
 								: col.align === 'center'
 									? 'text-center'
-									: 'text-left'} {col.sortable
-								? 'cursor-pointer select-none hover:text-text-primary-light'
-								: ''}"
+									: 'text-left'} {col.sortable ? 'cursor-pointer select-none hover:text-ink' : ''}"
 							style={col.width ? `width: ${col.width}` : ''}
 							onclick={() => handleSort(String(col.key), col.sortable)}
 						>
@@ -65,9 +61,7 @@
 			</thead>
 			<tbody>
 				{#each sortedRows as row, i (i)}
-					<tr
-						class="border-b border-border-light last:border-0 hover:bg-background-secondary-light/50"
-					>
+					<tr class="border-b border-line last:border-0 hover:bg-surface-panel/50">
 						{#each block.data.columns as col}
 							{@const val = (row as Record<string, unknown>)[String(col.key)]}
 							<td
@@ -75,7 +69,7 @@
 									? 'text-right'
 									: col.align === 'center'
 										? 'text-center'
-										: 'text-left'} text-text-primary-light"
+										: 'text-left'} text-ink"
 							>
 								{#if col.render}
 									{col.render(val, row)}

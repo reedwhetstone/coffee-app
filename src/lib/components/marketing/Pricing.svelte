@@ -206,7 +206,7 @@
 						e.stopPropagation();
 						goto('/contact');
 					}}
-					class="mt-8 block w-full rounded-md bg-text-primary-light px-3 py-2 text-center text-sm font-semibold text-background-primary-light shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-primary-light"
+					class="mt-8 block w-full rounded-md bg-ink px-3 py-2 text-center text-sm font-semibold text-surface-canvas shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
 				>
 					Contact sales
 				</button>

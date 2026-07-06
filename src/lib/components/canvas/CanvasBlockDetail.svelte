@@ -43,7 +43,7 @@
 	>
 		<!-- Panel -->
 		<div
-			class="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-background-primary-light shadow-2xl ring-1 ring-border-light"
+			class="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-surface-canvas shadow-2xl ring-1 ring-line"
 			role="dialog"
 			tabindex="-1"
 			aria-modal="true"
@@ -51,20 +51,18 @@
 			onclick={(e) => e.stopPropagation()}
 		>
 			<!-- Header -->
-			<div
-				class="flex shrink-0 items-center justify-between gap-3 border-b border-border-light px-4 py-3"
-			>
+			<div class="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3">
 				<div class="min-w-0">
-					<h2 class="truncate text-sm font-semibold text-text-primary-light" {title}>
+					<h2 class="truncate text-sm font-semibold text-ink" {title}>
 						{title}
 					</h2>
-					<p class="text-xs text-text-secondary-light">
+					<p class="text-xs text-muted">
 						{defaultBlockTitle(canvasBlock.block.type)}
 					</p>
 				</div>
 				<button
 					onclick={onClose}
-					class="rounded-md p-1 text-text-secondary-light transition-colors hover:text-text-primary-light"
+					class="rounded-md p-1 text-muted transition-colors hover:text-ink"
 					aria-label="Close detail panel"
 				>
 					<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,12 +86,12 @@
 				/>
 
 				{#if companions.length > 0}
-					<div class="mt-4 space-y-4 border-t border-border-light pt-4">
+					<div class="mt-4 space-y-4 border-t border-line pt-4">
 						{#each companions as companion, i (i)}
 							{@const label = detailCompanionLabel(companion)}
 							<div>
 								{#if label}
-									<h3 class="mb-2 text-xs font-medium text-text-secondary-light">{label}</h3>
+									<h3 class="mb-2 text-xs font-medium text-muted">{label}</h3>
 								{/if}
 								<GenUIBlockRenderer block={companion} renderMode="canvas" {onAction} />
 							</div>

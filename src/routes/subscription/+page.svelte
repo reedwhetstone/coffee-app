@@ -220,11 +220,11 @@
 	const toneClasses = (tone: ProductTone) => {
 		switch (tone) {
 			case 'success':
-				return 'border-green-500/30 bg-green-500/10 text-green-300';
+				return 'border-success/30 bg-success-subtle text-success-strong';
 			case 'info':
-				return 'border-blue-500/30 bg-blue-500/10 text-blue-300';
+				return 'border-info/30 bg-info-subtle text-info-strong';
 			case 'warning':
-				return 'border-orange-500/30 bg-orange-500/10 text-orange-300';
+				return 'border-warning/30 bg-warning-subtle text-warning-strong';
 			default:
 				return 'border-line bg-surface-canvas text-muted';
 		}
@@ -547,7 +547,7 @@
 					<div class="flex flex-wrap items-center gap-3">
 						<button
 							onclick={() => goto('/analytics')}
-							class="rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+							class="rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
 						>
 							See the Market Index
 						</button>
@@ -659,7 +659,7 @@
 													<span class="text-right font-medium text-ink">
 														{data.subscription.status}
 														{#if data.subscription.cancel_at_period_end}
-															<span class="text-orange-400"> (ends at renewal)</span>
+															<span class="text-warning-strong"> (ends at renewal)</span>
 														{/if}
 													</span>
 
@@ -680,7 +680,7 @@
 											<div class="mt-4 space-y-3">
 												{#if !membershipState?.canManageSubscription && membershipState?.managementBlockedReason}
 													<div
-														class="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-300"
+														class="rounded-2xl border border-warning/30 bg-warning-subtle p-4 text-sm text-warning-strong"
 													>
 														{membershipState.managementBlockedReason}
 													</div>
@@ -688,23 +688,23 @@
 													<button
 														onclick={() => resumeSubscription()}
 														disabled={resumeLoading}
-														class="w-full rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-medium text-blue-300 transition-colors hover:bg-blue-500/20 disabled:opacity-50"
+														class="w-full rounded-lg border border-info/30 bg-info-subtle px-4 py-2 text-sm font-medium text-info-strong transition-colors hover:bg-info/15 disabled:opacity-50"
 													>
 														{resumeLoading ? 'Processing...' : 'Keep Studio active'}
 													</button>
 													{#if resumeSuccess}
-														<p class="text-sm text-green-400">
+														<p class="text-sm text-success-strong">
 															Studio will continue renewing automatically.
 														</p>
 													{/if}
 													{#if resumeError}
-														<p class="text-sm text-red-400">Error: {resumeError}</p>
+														<p class="text-sm text-danger">Error: {resumeError}</p>
 													{/if}
 												{:else}
 													<button
 														onclick={() => cancelSubscription()}
 														disabled={cancelLoading}
-														class="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+														class="w-full rounded-lg border border-danger/30 bg-danger-subtle px-4 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger/15 disabled:opacity-50"
 													>
 														{cancelLoading ? 'Processing...' : 'End at renewal'}
 													</button>
@@ -712,12 +712,12 @@
 														Studio access stays active through the current billing period.
 													</p>
 													{#if cancelSuccess}
-														<p class="text-sm text-green-400">
+														<p class="text-sm text-success-strong">
 															Studio will end at the close of the current billing period.
 														</p>
 													{/if}
 													{#if cancelError}
-														<p class="text-sm text-red-400">Error: {cancelError}</p>
+														<p class="text-sm text-danger">Error: {cancelError}</p>
 													{/if}
 												{/if}
 											</div>
@@ -775,7 +775,7 @@
 												</div>
 												{#if option.badge}
 													<span
-														class="rounded-full bg-green-500/15 px-3 py-1 text-xs font-semibold text-green-300"
+														class="rounded-full bg-success-subtle px-3 py-1 text-xs font-semibold text-success-strong"
 													>
 														{option.badge}
 													</span>
@@ -786,7 +786,7 @@
 												<div class="mt-4 space-y-2">
 													<button
 														onclick={() => signInForPlan(option.planSlug)}
-														class="w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+														class="w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
 													>
 														Start {product.name}
 													</button>
@@ -820,7 +820,7 @@
 											{:else}
 												<button
 													onclick={() => openCheckout(product.name, option)}
-													class="mt-4 w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+													class="mt-4 w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
 												>
 													{product.ctaLabel}
 												</button>
@@ -831,7 +831,7 @@
 							{:else}
 								<a
 									href={product.contactHref}
-									class="mt-5 inline-flex w-full items-center justify-center rounded-lg bg-text-primary-light px-4 py-2 text-sm font-semibold text-background-primary-light transition-opacity hover:opacity-90"
+									class="mt-5 inline-flex w-full items-center justify-center rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-surface-canvas transition-opacity hover:opacity-90"
 								>
 									{product.ctaLabel}
 								</a>

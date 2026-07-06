@@ -81,7 +81,7 @@
 	<div class="mt-2.5 flex justify-center">
 		<button
 			onclick={open}
-			class="rounded-full border border-border-light bg-background-secondary-light px-4 py-1.5 text-sm font-medium text-text-secondary-light shadow-sm transition-colors duration-150 hover:border-background-tertiary-light hover:text-background-tertiary-light"
+			class="rounded-full border border-line bg-surface-panel px-4 py-1.5 text-sm font-medium text-muted shadow-sm transition-colors duration-150 hover:border-accent hover:text-accent"
 		>
 			{computedExpandLabel}
 		</button>
@@ -104,16 +104,16 @@
 			aria-modal="true"
 			aria-label={title}
 			transition:scale={{ duration: 150, start: 0.95 }}
-			class="relative z-10 my-4 w-full max-w-5xl rounded-xl bg-background-primary-light shadow-2xl sm:my-0"
+			class="relative z-10 my-4 w-full max-w-5xl rounded-xl bg-surface-canvas shadow-2xl sm:my-0"
 		>
 			<!-- Modal header -->
 			<div
-				class="flex items-start gap-3 rounded-t-xl border-b border-border-light bg-background-primary-light px-6 py-4"
+				class="flex items-start gap-3 rounded-t-xl border-b border-line bg-surface-canvas px-6 py-4"
 			>
 				<div class="flex-1">
-					<h2 class="text-lg font-semibold text-text-primary-light">{title}</h2>
+					<h2 class="text-lg font-semibold text-ink">{title}</h2>
 					{#if subtitle}
-						<p class="mt-0.5 text-sm text-text-secondary-light">{subtitle}</p>
+						<p class="mt-0.5 text-sm text-muted">{subtitle}</p>
 					{/if}
 				</div>
 				{#if badge}
@@ -123,7 +123,7 @@
 				{/if}
 				<button
 					onclick={close}
-					class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-secondary-light transition-colors hover:bg-background-secondary-light hover:text-text-primary-light"
+					class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 					aria-label="Close panel"
 				>
 					✕

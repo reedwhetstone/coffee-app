@@ -67,29 +67,27 @@
 			class:is-pinned={active.pinned}
 		>
 			<!-- Window header bar -->
-			<div class="flex items-center justify-between gap-2 border-b border-border-light px-3 py-1.5">
+			<div class="flex items-center justify-between gap-2 border-b border-line px-3 py-1.5">
 				<div class="flex min-w-0 items-center gap-2">
-					<span class="truncate text-xs font-medium text-text-secondary-light" title={group.label}>
+					<span class="truncate text-xs font-medium text-muted" title={group.label}>
 						{group.label}
 					</span>
 					{#if group.blocks.length > 1}
-						<span
-							class="rounded-full bg-background-tertiary-light/10 px-1.5 text-[10px] text-text-secondary-light"
-						>
+						<span class="rounded-full bg-accent/10 px-1.5 text-[10px] text-muted">
 							{group.blocks.length}
 						</span>
 					{/if}
 					{#if active.pinned}
-						<span class="text-xs text-amber-500">tab locked</span>
+						<span class="text-xs text-warning">tab locked</span>
 					{:else if group.pinnedCount > 0}
-						<span class="text-xs text-amber-500">{group.pinnedCount} locked</span>
+						<span class="text-xs text-warning">{group.pinnedCount} locked</span>
 					{/if}
 				</div>
 				<div class="flex shrink-0 items-center gap-1">
 					{#if layout === 'focus' && group.blocks.length === 1 && !isFocused}
 						<button
 							onclick={() => selectSubTab(group.key, active.id)}
-							class="rounded p-0.5 text-text-secondary-light transition-colors hover:text-text-primary-light"
+							class="rounded p-0.5 text-muted transition-colors hover:text-ink"
 							title="Focus window"
 						>
 							<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,7 +104,7 @@
 					{#if onExpand && blockSupportsDetail(active.block)}
 						<button
 							onclick={() => onExpand?.(active.id)}
-							class="rounded p-0.5 text-text-secondary-light transition-colors hover:text-text-primary-light"
+							class="rounded p-0.5 text-muted transition-colors hover:text-ink"
 							title="Open detail panel"
 						>
 							<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,9 +122,9 @@
 					<button
 						onclick={() => toggleActiveTabLock(active)}
 						class="rounded p-0.5 transition-colors"
-						class:text-amber-500={active.pinned}
-						class:text-text-secondary-light={!active.pinned}
-						class:hover:text-amber-500={!active.pinned}
+						class:text-warning={active.pinned}
+						class:text-muted={!active.pinned}
+						class:hover:text-warning={!active.pinned}
 						title={active.pinned ? 'Unlock active tab' : 'Lock active tab in place'}
 						aria-pressed={active.pinned}
 					>
@@ -152,7 +150,7 @@
 					<!-- Minimize the whole window -->
 					<button
 						onclick={() => minimizeWindow(group)}
-						class="rounded p-0.5 text-text-secondary-light transition-colors hover:text-text-primary-light"
+						class="rounded p-0.5 text-muted transition-colors hover:text-ink"
 						title="Minimize window"
 					>
 						<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,13 +162,13 @@
 
 			<!-- Sub-tab bar (only when the category has more than one block) -->
 			{#if group.blocks.length > 1}
-				<div class="flex items-center gap-1 overflow-x-auto border-b border-border-light px-2 py-1">
+				<div class="flex items-center gap-1 overflow-x-auto border-b border-line px-2 py-1">
 					{#each group.blocks as member, i (member.id)}
 						{@const isActive = member.id === active.id}
 						<div
 							class="group/subtab flex shrink-0 items-center rounded-md text-xs transition-colors {isActive
-								? 'bg-background-tertiary-light/15 text-text-primary-light'
-								: 'text-text-secondary-light hover:bg-background-secondary-light'}"
+								? 'bg-accent/15 text-ink'
+								: 'text-muted hover:bg-surface-panel'}"
 						>
 							<button
 								onclick={() => selectSubTab(group.key, member.id)}
@@ -178,12 +176,12 @@
 								title={`${subTabLabel(member, i)} (${member.pinned ? 'locked' : 'unlocked'})`}
 								aria-label={`${subTabLabel(member, i)} tab, ${member.pinned ? 'locked' : 'unlocked'}`}
 							>
-								{#if member.pinned}<span class="mr-0.5 text-amber-500" title="Locked tab">●</span
+								{#if member.pinned}<span class="mr-0.5 text-warning" title="Locked tab">●</span
 									>{/if}{subTabLabel(member, i)}
 							</button>
 							<button
 								onclick={() => onMinimize(member.id)}
-								class="px-1 text-text-secondary-light opacity-0 transition-opacity hover:text-red-500 group-hover/subtab:opacity-100"
+								class="px-1 text-muted opacity-0 transition-opacity hover:text-danger group-hover/subtab:opacity-100"
 								title="Close this tab"
 								aria-label="Close {subTabLabel(member, i)}"
 							>
@@ -253,8 +251,8 @@
 
 	.canvas-block-wrapper {
 		border-radius: 0.5rem;
-		border: 1px solid var(--color-border-light, #e5e7eb);
-		background: var(--color-background-secondary-light, #f9fafb);
+		border: 1px solid var(--color-line, #e5e7eb);
+		background: var(--color-surface-panel, #f9fafb);
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
@@ -262,8 +260,8 @@
 	}
 
 	.canvas-block-wrapper.is-focused {
-		border-color: var(--color-background-tertiary-light, #6366f1);
-		box-shadow: 0 0 0 1px var(--color-background-tertiary-light, #6366f1);
+		border-color: var(--color-accent, #6366f1);
+		box-shadow: 0 0 0 1px var(--color-accent, #6366f1);
 	}
 
 	.canvas-block-wrapper.is-pinned {

@@ -89,10 +89,8 @@
 
 <div class="flex h-full flex-col">
 	<!-- Header with close button -->
-	<header
-		class="flex items-center justify-between border-b border-text-primary-light border-opacity-20 p-4"
-	>
-		<h2 class="text-lg font-semibold text-text-primary-light" id="actions-dialog-title">Actions</h2>
+	<header class="flex items-center justify-between border-b border-line p-4">
+		<h2 class="text-lg font-semibold text-ink" id="actions-dialog-title">Actions</h2>
 		<button
 			onclick={(e) => {
 				e.stopPropagation();
@@ -122,29 +120,29 @@
 			<div class="space-y-2">
 				<!-- Always show Portfolio functions regardless of current page -->
 				<button
-					class="block w-full rounded-md bg-background-secondary-light px-3 py-2 text-left text-sm font-medium text-text-primary-light ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+					class="block w-full rounded-md bg-surface-panel px-3 py-2 text-left text-sm font-medium text-ink ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
 					onclick={handleNewBean}
 				>
-					New Bean
+					New bean
 				</button>
 				{#if hasRequiredRole('member')}
 					<button
-						class="block w-full rounded-md bg-background-secondary-light px-3 py-2 text-left text-sm font-medium text-text-primary-light ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						class="block w-full rounded-md bg-surface-panel px-3 py-2 text-left text-sm font-medium text-ink ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
 						onclick={handleNewRoast}
 					>
-						New Roast
+						New roast
 					</button>
 					<button
-						class="block w-full rounded-md bg-background-secondary-light px-3 py-2 text-left text-sm font-medium text-text-primary-light ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						class="block w-full rounded-md bg-surface-panel px-3 py-2 text-left text-sm font-medium text-ink ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
 						onclick={handleNewSale}
 					>
-						New Sale
+						New sale
 					</button>
 					<button
-						class="block w-full rounded-md border border-background-tertiary-light px-3 py-2 text-left text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						class="block w-full rounded-md border border-accent px-3 py-2 text-left text-sm font-medium text-accent transition-all duration-200 hover:bg-accent hover:text-ink"
 						onclick={handleShareAllBeans}
 					>
-						Share All Beans
+						Share all beans
 					</button>
 				{/if}
 			</div>

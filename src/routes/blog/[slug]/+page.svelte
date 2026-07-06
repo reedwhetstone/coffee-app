@@ -30,7 +30,7 @@
 <!-- Back link -->
 <a
 	href="/blog"
-	class="mb-8 inline-flex items-center gap-1 text-sm text-text-secondary-light transition-colors hover:text-background-tertiary-light"
+	class="mb-8 inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-accent"
 >
 	← All posts
 </a>
@@ -38,35 +38,31 @@
 <article>
 	<!-- Post header with accent background -->
 	<header
-		class="relative mb-10 overflow-hidden rounded-lg border border-border-light bg-gradient-to-r from-background-tertiary-light/5 to-transparent p-6 pl-8 sm:p-8 sm:pl-10"
+		class="relative mb-10 overflow-hidden rounded-lg border border-line bg-gradient-to-r from-accent/5 to-transparent p-6 pl-8 sm:p-8 sm:pl-10"
 	>
 		<AccentSpine />
-		<div class="mb-3 flex flex-wrap items-center gap-3 text-sm text-text-secondary-light">
+		<div class="mb-3 flex flex-wrap items-center gap-3 text-sm text-muted">
 			<time datetime={data.metadata.date}>{formatDate(data.metadata.date)}</time>
-			<span class="text-border-light">·</span>
+			<span class="text-line">·</span>
 			<span>{data.metadata.readingTime ?? 5} min read</span>
 			{#if pillarInfo}
-				<span class="text-border-light">·</span>
-				<span
-					class="rounded-full bg-background-tertiary-light/10 px-2 py-0.5 text-xs font-medium text-background-tertiary-light"
-				>
+				<span class="text-line">·</span>
+				<span class="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
 					{pillarInfo.label}
 				</span>
 			{/if}
 		</div>
 
-		<h1
-			class="mb-4 font-serif text-4xl font-medium leading-tight tracking-tight text-text-primary-light"
-		>
+		<h1 class="mb-4 font-serif text-4xl font-medium leading-tight tracking-tight text-ink">
 			{data.metadata.title}
 		</h1>
 
-		<p class="text-lg leading-relaxed text-text-secondary-light">{data.metadata.description}</p>
+		<p class="text-lg leading-relaxed text-muted">{data.metadata.description}</p>
 
 		<img
 			src={getHeroImage(data.metadata.slug)}
 			alt={data.metadata.title}
-			class="mt-6 aspect-[3/2] w-full rounded-md border border-border-light object-cover"
+			class="mt-6 aspect-[3/2] w-full rounded-md border border-line object-cover"
 			onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
 		/>
 
@@ -75,7 +71,7 @@
 				{#each data.metadata.tags as tag}
 					<a
 						href="/blog/tag/{tag}"
-						class="bg-background-tertiary-light/8 rounded-full border border-background-tertiary-light/20 px-2.5 py-0.5 text-xs text-text-secondary-light transition-colors hover:border-background-tertiary-light/40 hover:text-background-tertiary-light"
+						class="bg-accent/8 rounded-full border border-accent/20 px-2.5 py-0.5 text-xs text-muted transition-colors hover:border-accent/40 hover:text-accent"
 					>
 						{tag}
 					</a>
@@ -86,18 +82,18 @@
 
 	<!-- Post content -->
 	<div
-		class="prose-code:bg-background-tertiary-light/8 prose prose-lg
+		class="prose-code:bg-accent/8 prose prose-lg
 		max-w-none font-serif prose-headings:font-serif prose-headings:font-semibold
-		prose-headings:text-text-primary-light prose-h2:mt-12 prose-h2:border-b prose-h2:border-border-light
+		prose-headings:text-ink prose-h2:mt-12 prose-h2:border-b prose-h2:border-line
 		prose-h2:pb-3 prose-p:leading-relaxed
-		prose-p:text-text-secondary-light prose-a:text-link prose-a:underline prose-a:decoration-accent/50
+		prose-p:text-muted prose-a:text-link prose-a:underline prose-a:decoration-accent/50
 		prose-a:underline-offset-2 hover:prose-a:decoration-accent
-		prose-blockquote:rounded-r-lg prose-blockquote:border-l-4 prose-blockquote:border-background-tertiary-light prose-blockquote:bg-background-tertiary-light/5 prose-blockquote:py-1 prose-blockquote:text-text-secondary-light prose-strong:text-text-primary-light prose-code:rounded
-		prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:text-text-primary-light prose-code:before:content-none
-		prose-code:after:content-none prose-pre:rounded-lg prose-pre:border prose-pre:border-border-light prose-pre:bg-background-primary-dark prose-pre:text-text-primary-dark
-		prose-li:text-text-secondary-light
+		prose-blockquote:rounded-r-lg prose-blockquote:border-l-4 prose-blockquote:border-accent prose-blockquote:bg-accent/5 prose-blockquote:py-1 prose-blockquote:text-muted prose-strong:text-ink prose-code:rounded
+		prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:text-ink prose-code:before:content-none
+		prose-code:after:content-none prose-pre:rounded-lg prose-pre:border prose-pre:border-line prose-pre:bg-background-primary-dark prose-pre:text-on-dark
+		prose-li:text-muted
 		prose-img:rounded-lg prose-img:shadow-sm
-		prose-hr:border-border-light"
+		prose-hr:border-line"
 	>
 		<data.content />
 	</div>
@@ -106,7 +102,7 @@
 <!-- Post footer -->
 <div class="mt-16 space-y-8">
 	<!-- Share / LinkedIn section -->
-	<div class="border-t border-border-light pt-8">
+	<div class="border-t border-line pt-8">
 		{#if showLinkedIn}
 			<LinkedInDraft
 				title={data.metadata.title}
@@ -118,7 +114,7 @@
 			<div class="flex items-center gap-4">
 				<button
 					onclick={() => (showLinkedIn = true)}
-					class="inline-flex items-center gap-2 rounded-md border border-border-light px-4 py-2 text-sm font-medium text-text-primary-light transition-all hover:border-background-tertiary-light hover:text-background-tertiary-light"
+					class="inline-flex items-center gap-2 rounded-md border border-line px-4 py-2 text-sm font-medium text-ink transition-all hover:border-accent hover:text-accent"
 				>
 					<svg class="h-4 w-4 text-[#0A66C2]" viewBox="0 0 24 24" fill="currentColor">
 						<path
@@ -132,8 +128,8 @@
 	</div>
 
 	<!-- Giscus comments -->
-	<div class="border-t border-border-light pt-8">
-		<h3 class="mb-6 text-lg font-semibold text-text-primary-light">Discussion</h3>
+	<div class="border-t border-line pt-8">
+		<h3 class="mb-6 text-lg font-semibold text-ink">Discussion</h3>
 		<div id="giscus-container">
 			<script
 				src="https://giscus.app/client.js"
@@ -154,11 +150,8 @@
 			></script>
 		</div>
 		<noscript>
-			<p class="text-sm text-text-secondary-light">
-				Enable JavaScript to view <a
-					href="https://giscus.app"
-					class="text-background-tertiary-light">comments</a
-				>.
+			<p class="text-sm text-muted">
+				Enable JavaScript to view <a href="https://giscus.app" class="text-accent">comments</a>.
 			</p>
 		</noscript>
 	</div>

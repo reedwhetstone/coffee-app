@@ -23,34 +23,24 @@
 
 <!-- Roast milestone timestamps -->
 <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
-	<div
-		class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
-	>
-		<span class="text-xs text-text-secondary-light">DRYING %</span>
-		<div class="text-base font-bold text-text-primary-light sm:text-lg">{dryingDisplay}</div>
+	<div class="rounded border border-line bg-surface-canvas p-1 text-center sm:p-2">
+		<span class="text-xs text-muted">DRYING %</span>
+		<div class="text-base font-bold text-ink sm:text-lg">{dryingDisplay}</div>
 	</div>
-	<div
-		class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
-	>
-		<span class="text-xs text-text-secondary-light">DRY END</span>
-		<div class="text-base font-bold text-text-primary-light sm:text-lg">{tpDisplay}</div>
+	<div class="rounded border border-line bg-surface-canvas p-1 text-center sm:p-2">
+		<span class="text-xs text-muted">DRY END</span>
+		<div class="text-base font-bold text-ink sm:text-lg">{tpDisplay}</div>
 	</div>
-	<div
-		class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
-	>
-		<span class="text-xs text-text-secondary-light">MAILLARD %</span>
-		<div class="text-base font-bold text-text-primary-light sm:text-lg">{maillardDisplay}</div>
+	<div class="rounded border border-line bg-surface-canvas p-1 text-center sm:p-2">
+		<span class="text-xs text-muted">MAILLARD %</span>
+		<div class="text-base font-bold text-ink sm:text-lg">{maillardDisplay}</div>
 	</div>
-	<div
-		class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
-	>
-		<span class="text-xs text-text-secondary-light">FIRST CRACK</span>
-		<div class="text-base font-bold text-text-primary-light sm:text-lg">{fcDisplay}</div>
+	<div class="rounded border border-line bg-surface-canvas p-1 text-center sm:p-2">
+		<span class="text-xs text-muted">FIRST CRACK</span>
+		<div class="text-base font-bold text-ink sm:text-lg">{fcDisplay}</div>
 	</div>
-	<div
-		class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
-	>
-		<span class="text-xs text-text-secondary-light">DEV %</span>
-		<div class="text-base font-bold text-text-primary-light sm:text-lg">{devDisplay}</div>
+	<div class="rounded border border-line bg-surface-canvas p-1 text-center sm:p-2">
+		<span class="text-xs text-muted">DEV %</span>
+		<div class="text-base font-bold text-ink sm:text-lg">{devDisplay}</div>
 	</div>
 </div>

@@ -166,12 +166,12 @@
 
 <!-- Saving Operation Status -->
 {#if isSaving}
-	<div class="fixed right-4 top-4 z-50 rounded-lg bg-blue-50 p-4 ring-1 ring-blue-200">
+	<div class="fixed right-4 top-4 z-50 rounded-lg bg-info-subtle p-4 ring-1 ring-info/30">
 		<div class="flex items-center">
 			<div
-				class="mr-3 h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"
+				class="mr-3 h-4 w-4 animate-spin rounded-full border-2 border-info border-t-transparent"
 			></div>
-			<span class="text-sm font-medium text-blue-900">{isSaving}</span>
+			<span class="text-sm font-medium text-info-strong">{isSaving}</span>
 		</div>
 	</div>
 {/if}
@@ -197,8 +197,8 @@
 	<div class="space-y-6">
 		<!-- Header Section -->
 		<div class="mb-6">
-			<h1 class="mb-2 text-2xl font-bold text-text-primary-light">Coffee Sales & Profit</h1>
-			<p class="text-text-secondary-light">Track your coffee sales performance and profitability</p>
+			<h1 class="mb-2 text-2xl font-bold text-ink">Coffee Sales & Profit</h1>
+			<p class="text-muted">Track your coffee sales performance and profitability</p>
 		</div>
 
 		<!-- Coffee Sales Analysis Chart -->

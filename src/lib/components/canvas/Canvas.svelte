@@ -55,14 +55,12 @@
 	}
 </script>
 
-<div class="flex h-full flex-col bg-background-primary-light">
+<div class="flex h-full flex-col bg-surface-canvas">
 	<!-- Canvas header -->
-	<div class="flex items-center justify-between border-b border-border-light px-3 py-2">
+	<div class="flex items-center justify-between border-b border-line px-3 py-2">
 		<div class="flex items-center gap-2">
-			<span class="text-sm font-medium text-text-primary-light">Canvas</span>
-			<span
-				class="rounded-full bg-background-tertiary-light/10 px-2 py-0.5 text-xs text-text-secondary-light"
-			>
+			<span class="text-sm font-medium text-ink">Canvas</span>
+			<span class="rounded-full bg-accent/10 px-2 py-0.5 text-xs text-muted">
 				{canvasStore.blockCount}
 			</span>
 		</div>
@@ -73,7 +71,7 @@
 					onclick={() => canvasStore.dispatch({ type: 'layout', layout: 'focus' })}
 					class="rounded p-1 text-xs transition-colors {canvasStore.layout === 'focus'
 						? 'layout-btn-active'
-						: 'text-text-secondary-light'}"
+						: 'text-muted'}"
 					title="Focus view"
 				>
 					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -84,7 +82,7 @@
 					onclick={() => canvasStore.dispatch({ type: 'layout', layout: 'comparison' })}
 					class="rounded p-1 text-xs transition-colors {canvasStore.layout === 'comparison'
 						? 'layout-btn-active'
-						: 'text-text-secondary-light'}"
+						: 'text-muted'}"
 					title="Comparison view"
 				>
 					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +94,7 @@
 					onclick={() => canvasStore.dispatch({ type: 'layout', layout: 'dashboard' })}
 					class="rounded p-1 text-xs transition-colors {canvasStore.layout === 'dashboard'
 						? 'layout-btn-active'
-						: 'text-text-secondary-light'}"
+						: 'text-muted'}"
 					title="Dashboard view"
 				>
 					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,7 +108,7 @@
 					onclick={() => canvasStore.dispatch({ type: 'layout', layout: 'stack' })}
 					class="rounded p-1 text-xs transition-colors {canvasStore.layout === 'stack'
 						? 'layout-btn-active'
-						: 'text-text-secondary-light'}"
+						: 'text-muted'}"
 					title="Stacked view"
 				>
 					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,7 +120,7 @@
 			{#if canvasStore.blockCount > 0}
 				<button
 					onclick={() => canvasStore.clearAll()}
-					class="ml-1 rounded p-1 text-text-secondary-light transition-colors hover:text-red-500"
+					class="ml-1 rounded p-1 text-muted transition-colors hover:text-danger"
 					title="Clear all"
 				>
 					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -144,7 +142,7 @@
 			<!-- Empty state -->
 			<div class="flex h-full flex-col items-center justify-center p-6 text-center">
 				<svg
-					class="mb-3 h-12 w-12 text-text-secondary-light/30"
+					class="mb-3 h-12 w-12 text-muted/30"
 					fill="none"
 					stroke="currentColor"
 					viewBox="0 0 24 24"
@@ -156,7 +154,7 @@
 						d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
 					/>
 				</svg>
-				<p class="text-sm text-text-secondary-light">Blocks will appear here as the AI responds</p>
+				<p class="text-sm text-muted">Blocks will appear here as the AI responds</p>
 			</div>
 		{:else}
 			<CanvasLayout
@@ -174,16 +172,16 @@
 
 	<!-- Minimized windows tray (grouped by category) -->
 	{#if minimizedGroups.length > 0}
-		<div class="flex flex-wrap gap-1 border-t border-border-light px-2 py-1.5">
+		<div class="flex flex-wrap gap-1 border-t border-line px-2 py-1.5">
 			{#each minimizedGroups as group (group.key)}
 				<button
 					onclick={() => restoreGroup(group.blocks)}
-					class="flex items-center gap-1 rounded bg-background-secondary-light px-2 py-1 text-xs text-text-secondary-light ring-1 ring-border-light transition-colors hover:text-text-primary-light"
+					class="flex items-center gap-1 rounded bg-surface-panel px-2 py-1 text-xs text-muted ring-1 ring-line transition-colors hover:text-ink"
 					title={`Restore ${group.label}`}
 				>
 					<span>{group.label}</span>
 					{#if group.blocks.length > 1}
-						<span class="text-[10px] text-text-secondary-light/70">{group.blocks.length}</span>
+						<span class="text-[10px] text-muted/70">{group.blocks.length}</span>
 					{/if}
 					<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
@@ -209,6 +207,6 @@
 <style>
 	:global(.layout-btn-active) {
 		background-color: rgba(99, 102, 241, 0.1);
-		color: var(--color-text-primary-light, #111827);
+		color: var(--color-ink, #111827);
 	}
 </style>

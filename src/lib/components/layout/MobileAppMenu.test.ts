@@ -43,7 +43,7 @@ describe('MobileAppMenu', () => {
 		expect(screen.queryByText(/create workspace/i)).toBeNull();
 		expect(screen.queryByText(/^Workspaces$/)).toBeNull();
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Open Chat' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Open chat' }));
 
 		expect(onClose).toHaveBeenCalledTimes(1);
 		expect(goto).toHaveBeenCalledWith('/chat');

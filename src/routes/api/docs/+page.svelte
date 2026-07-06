@@ -6,15 +6,12 @@
 	/>
 </svelte:head>
 
-<div
-	class="rounded-lg border border-border-light bg-background-primary-light p-8 text-center shadow-sm"
->
-	<p class="text-sm text-text-secondary-light">Redirecting to the unified docs experience…</p>
-	<p class="mt-3 text-sm text-text-secondary-light">
+<div class="rounded-lg border border-line bg-surface-canvas p-8 text-center shadow-sm">
+	<p class="text-sm text-muted">Redirecting to the unified docs experience…</p>
+	<p class="mt-3 text-sm text-muted">
 		If you are not redirected automatically,
-		<a
-			href="https://api.purveyors.io/docs"
-			class="font-semibold text-background-tertiary-light hover:underline">open the API overview</a
+		<a href="https://api.purveyors.io/docs" class="font-semibold text-accent hover:underline"
+			>open the API overview</a
 		>
 		for the generated Parchment API reference.
 	</p>

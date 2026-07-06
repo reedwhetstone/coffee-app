@@ -755,28 +755,41 @@
 
 <!-- Profile Operation Status -->
 {#if operationInProgress}
-	<div class="fixed right-4 top-4 z-50 rounded-lg bg-blue-50 p-4 ring-1 ring-blue-200">
+	<div class="fixed right-4 top-4 z-50 rounded-lg bg-info-subtle p-4 ring-1 ring-info/30">
 		<div class="flex items-center">
 			<div
-				class="mr-3 h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"
+				class="mr-3 h-4 w-4 animate-spin rounded-full border-2 border-info border-t-transparent"
 			></div>
-			<span class="text-sm font-medium text-blue-900">{operationInProgress}</span>
+			<span class="text-sm font-medium text-info-strong">{operationInProgress}</span>
 		</div>
 	</div>
 {/if}
 
 <!-- Profile Operation Error -->
 {#if profileError}
-	<div class="fixed right-4 top-4 z-50 rounded-lg bg-red-50 p-4 ring-1 ring-red-200">
+	<div class="fixed right-4 top-4 z-50 rounded-lg bg-danger-subtle p-4 ring-1 ring-danger/30">
 		<div class="flex items-start">
-			<div class="mr-3 mt-0.5 h-4 w-4 text-red-500">⚠️</div>
+			<svg
+				class="mr-3 mt-0.5 h-4 w-4 shrink-0 text-danger"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.5"
+				aria-hidden="true"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
+				/>
+			</svg>
 			<div class="flex-1">
-				<p class="text-sm font-medium text-red-900">Operation Failed</p>
-				<p class="text-sm text-red-700">{profileError}</p>
+				<p class="text-sm font-medium text-danger-strong">Operation failed</p>
+				<p class="text-sm text-danger">{profileError}</p>
 			</div>
 			<button
 				onclick={() => clearProfileError()}
-				class="ml-2 rounded-md bg-red-100 p-1 text-red-500 hover:bg-red-200"
+				class="ml-2 rounded-md bg-danger-subtle p-1 text-danger hover:bg-danger/15"
 			>
 				×
 			</button>
@@ -788,25 +801,38 @@
 	<RoastPageSkeleton />
 {:else if error}
 	<!-- Error state -->
-	<div class="rounded-lg bg-red-50 p-6 text-center ring-1 ring-red-200">
-		<div class="mb-4 text-6xl opacity-50">⚠️</div>
-		<h3 class="mb-2 text-lg font-semibold text-red-900">Failed to load data</h3>
-		<p class="mb-4 text-red-700">{error}</p>
+	<div class="rounded-lg bg-danger-subtle p-6 text-center ring-1 ring-danger/30">
+		<svg
+			class="mx-auto mb-4 h-12 w-12 text-danger opacity-70"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="1.5"
+			aria-hidden="true"
+		>
+			<path
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
+			/>
+		</svg>
+		<h3 class="mb-2 text-lg font-semibold text-danger-strong">Failed to load data</h3>
+		<p class="mb-4 text-danger">{error}</p>
 		<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
 			<button
 				onclick={async () => {
 					error = null;
 					await syncData();
 				}}
-				class="rounded-md bg-red-600 px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+				class="rounded-md bg-danger px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-danger-strong focus:outline-none focus:ring-2 focus:ring-danger focus:ring-offset-2"
 			>
-				Try Again
+				Try again
 			</button>
 			<button
 				onclick={() => window.location.reload()}
-				class="rounded-md border border-red-600 px-4 py-2 font-medium text-red-600 transition-all duration-200 hover:bg-red-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+				class="rounded-md border border-danger px-4 py-2 font-medium text-danger transition-all duration-200 hover:bg-danger hover:text-white focus:outline-none focus:ring-2 focus:ring-danger focus:ring-offset-2"
 			>
-				Reload Page
+				Reload page
 			</button>
 		</div>
 	</div>
@@ -838,7 +864,7 @@
 	/>
 
 	{#if !$filteredData || $filteredData.length === 0}
-		<p class="p-4 text-text-primary-light">
+		<p class="p-4 text-ink">
 			No roast profiles available ({data?.data?.length || 0} items in raw data)
 		</p>
 	{/if}

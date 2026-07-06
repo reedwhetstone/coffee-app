@@ -939,7 +939,7 @@
 </script>
 
 <!-- Main chat + canvas interface -->
-<div class="flex flex-col bg-background-primary-light {variant === 'page' ? 'h-screen' : 'h-full'}">
+<div class="flex flex-col bg-surface-canvas {variant === 'page' ? 'h-screen' : 'h-full'}">
 	<!-- Chat + Canvas split container -->
 	<div class="chat-canvas-container flex flex-1 overflow-hidden">
 		<!-- Chat pane: full width on mobile (the inline canvas pane is md+ only,
@@ -978,7 +978,7 @@
 				{#if variant === 'page' && !canvasStore.isEmpty && !mobileCanvasOpen}
 					<button
 						onclick={() => (mobileCanvasOpen = true)}
-						class="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-background-tertiary-light px-3 py-2 text-sm text-white shadow-lg transition-transform hover:scale-105 md:hidden"
+						class="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-accent px-3 py-2 text-sm text-ink shadow-lg transition-transform hover:scale-105 md:hidden"
 					>
 						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
@@ -1012,8 +1012,8 @@
 			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<div
-				class="hidden w-1 cursor-col-resize bg-border-light transition-colors hover:bg-background-tertiary-light/40 md:block"
-				class:bg-background-tertiary-light={dividerDragging}
+				class="hidden w-1 cursor-col-resize bg-line transition-colors hover:bg-accent/40 md:block"
+				class:bg-accent={dividerDragging}
 				role="separator"
 				tabindex="0"
 				onmousedown={startDividerDrag}

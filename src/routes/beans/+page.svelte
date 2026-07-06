@@ -402,12 +402,12 @@
 
 <!-- Saving Operation Status -->
 {#if isSaving}
-	<div class="fixed right-4 top-4 z-50 rounded-lg bg-blue-50 p-4 ring-1 ring-blue-200">
+	<div class="fixed right-4 top-4 z-50 rounded-lg bg-info-subtle p-4 ring-1 ring-info/30">
 		<div class="flex items-center">
 			<div
-				class="mr-3 h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"
+				class="mr-3 h-4 w-4 animate-spin rounded-full border-2 border-info border-t-transparent"
 			></div>
-			<span class="text-sm font-medium text-blue-900">{isSaving}</span>
+			<span class="text-sm font-medium text-info-strong">{isSaving}</span>
 		</div>
 	</div>
 {/if}
@@ -416,23 +416,23 @@
 	<BeansPageSkeleton />
 {:else if error}
 	<!-- Error state -->
-	<div class="rounded-lg bg-red-50 p-6 text-center ring-1 ring-red-200">
+	<div class="rounded-lg bg-danger-subtle p-6 text-center ring-1 ring-danger/30">
 		<div class="mb-4 text-6xl opacity-50">⚠️</div>
-		<h3 class="mb-2 text-lg font-semibold text-red-900">Failed to load data</h3>
-		<p class="mb-4 text-red-700">{error}</p>
+		<h3 class="mb-2 text-lg font-semibold text-danger-strong">Failed to load data</h3>
+		<p class="mb-4 text-danger">{error}</p>
 		<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
 			<button
 				onclick={async () => {
 					error = null;
 					await refreshData();
 				}}
-				class="rounded-md bg-red-600 px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+				class="rounded-md bg-danger px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-danger-strong focus:outline-none focus:ring-2 focus:ring-danger focus:ring-offset-2"
 			>
 				Try Again
 			</button>
 			<button
 				onclick={() => window.location.reload()}
-				class="rounded-md border border-red-600 px-4 py-2 font-medium text-red-600 transition-all duration-200 hover:bg-red-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+				class="rounded-md border border-danger px-4 py-2 font-medium text-danger transition-all duration-200 hover:bg-danger hover:text-white focus:outline-none focus:ring-2 focus:ring-danger focus:ring-offset-2"
 			>
 				Reload Page
 			</button>
@@ -442,15 +442,15 @@
 	<div class="">
 		<!-- Header Section -->
 		<div class="mb-6">
-			<h1 class="mb-2 text-2xl font-bold text-text-primary-light">Coffee Portfolio</h1>
-			<p class="text-text-secondary-light">
+			<h1 class="mb-2 text-2xl font-bold text-ink">Coffee Portfolio</h1>
+			<p class="text-muted">
 				Manage your green coffee bean inventory, track purchases, and review bookmarked catalog lots
 			</p>
 		</div>
 
 		{#if canUseWatchlist}
 			<div
-				class="mb-6 inline-flex gap-1 rounded-lg border border-border-light bg-background-secondary-light p-1"
+				class="mb-6 inline-flex gap-1 rounded-lg border border-line bg-surface-panel p-1"
 				role="tablist"
 				aria-label="Portfolio sections"
 			>
@@ -460,8 +460,8 @@
 					onclick={() => (portfolioTab = 'purchased')}
 					class="rounded-md px-4 py-1.5 text-sm font-medium transition-all duration-150 {portfolioTab ===
 					'purchased'
-						? 'bg-background-tertiary-light text-white shadow-sm'
-						: 'text-text-secondary-light hover:text-text-primary-light'}"
+						? 'bg-accent text-ink shadow-sm'
+						: 'text-muted hover:text-ink'}"
 				>
 					Purchased
 				</button>
@@ -471,8 +471,8 @@
 					onclick={() => (portfolioTab = 'bookmarked')}
 					class="rounded-md px-4 py-1.5 text-sm font-medium transition-all duration-150 {portfolioTab ===
 					'bookmarked'
-						? 'bg-background-tertiary-light text-white shadow-sm'
-						: 'text-text-secondary-light hover:text-text-primary-light'}"
+						? 'bg-accent text-ink shadow-sm'
+						: 'text-muted hover:text-ink'}"
 				>
 					Bookmarked ({trackedLotsList.length})
 				</button>
@@ -482,31 +482,29 @@
 		{#if canUseWatchlist && portfolioTab === 'bookmarked'}
 			<!-- Bookmarked (watchlist) lots -->
 			{#if trackedLotsList.length === 0}
-				<div
-					class="rounded-lg bg-background-secondary-light p-8 text-center ring-1 ring-border-light"
-				>
+				<div class="rounded-lg bg-surface-panel p-8 text-center ring-1 ring-line">
 					<div class="mb-4 text-6xl opacity-50">🔖</div>
-					<h3 class="mb-2 text-lg font-semibold text-text-primary-light">No Bookmarked Lots Yet</h3>
-					<p class="mb-4 text-text-secondary-light">
+					<h3 class="mb-2 text-lg font-semibold text-ink">No Bookmarked Lots Yet</h3>
+					<p class="mb-4 text-muted">
 						Bookmark catalog lots to monitor their price and availability here, alongside your
 						purchased coffees.
 					</p>
 					<button
 						onclick={() => goto('/catalog')}
-						class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+						class="rounded-md bg-accent px-4 py-2 font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 					>
 						Browse the catalog
 					</button>
 				</div>
 			{:else}
 				<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-					<p class="text-sm text-text-secondary-light">
+					<p class="text-sm text-muted">
 						{trackedLotsList.length} bookmarked
 						{trackedLotsList.length === 1 ? 'lot' : 'lots'} — click a card for the full detail panel.
 					</p>
 					<button
 						onclick={() => goto('/catalog?tracked=only')}
-						class="text-sm font-medium text-background-tertiary-light transition-colors duration-200 hover:text-text-primary-light"
+						class="text-sm font-medium text-accent transition-colors duration-200 hover:text-ink"
 					>
 						Manage in catalog
 					</button>
@@ -531,28 +529,28 @@
 			{#if !isLoading && typedFilteredData && typedFilteredData.length > 0}
 				<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
 					<!-- Total Inventory Value -->
-					<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-						<h3 class="text-sm font-medium text-text-primary-light">Total Portfolio Value</h3>
-						<p class="mt-1 text-2xl font-bold text-green-500">
+					<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+						<h3 class="text-sm font-medium text-ink">Total Portfolio Value</h3>
+						<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
 							${typedFilteredData
 								.reduce((sum, bean) => sum + ((bean.bean_cost || 0) + (bean.tax_ship_cost || 0)), 0)
 								.toFixed(2)}
 						</p>
-						<p class="mt-1 text-xs text-text-secondary-light">
+						<p class="mt-1 text-xs text-muted">
 							{typedFilteredData.length} coffee{typedFilteredData.length !== 1 ? 's' : ''}
 						</p>
 					</div>
 
 					<!-- Total Weight -->
-					<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-						<h3 class="text-sm font-medium text-text-primary-light">Total Weight</h3>
-						<p class="mt-1 text-2xl font-bold text-blue-500">
+					<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+						<h3 class="text-sm font-medium text-ink">Total Weight</h3>
+						<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
 							{typedFilteredData
 								.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0)
 								.toFixed(1)}
 							lbs
 						</p>
-						<p class="mt-1 text-xs text-text-secondary-light">
+						<p class="mt-1 text-xs text-muted">
 							{(
 								typedFilteredData.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0) * 16
 							).toFixed(0)} oz total
@@ -560,9 +558,9 @@
 					</div>
 
 					<!-- Stocked Inventory -->
-					<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-						<h3 class="text-sm font-medium text-text-primary-light">Owned Green Coffee</h3>
-						<p class="mt-1 text-2xl font-bold text-indigo-500">
+					<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+						<h3 class="text-sm font-medium text-ink">Owned Green Coffee</h3>
+						<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
 							{(() => {
 								const totalStockedLbs = typedFilteredData.reduce(
 									(sum: number, bean: InventoryWithCatalog) => {
@@ -586,13 +584,13 @@
 								return totalStockedLbs.toFixed(1);
 							})()} lbs
 						</p>
-						<p class="mt-1 text-xs text-text-secondary-light">Available for roasting</p>
+						<p class="mt-1 text-xs text-muted">Available for roasting</p>
 					</div>
 
 					<!-- Average Cost Per Pound -->
-					<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-						<h3 class="text-sm font-medium text-text-primary-light">Avg Cost/lb</h3>
-						<p class="mt-1 text-2xl font-bold text-orange-500">
+					<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+						<h3 class="text-sm font-medium text-ink">Avg Cost/lb</h3>
+						<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
 							${(() => {
 								const totalCost = typedFilteredData.reduce(
 									(sum, bean) => sum + ((bean.bean_cost || 0) + (bean.tax_ship_cost || 0)),
@@ -605,24 +603,24 @@
 								return totalWeight > 0 ? (totalCost / totalWeight).toFixed(2) : '0.00';
 							})()}
 						</p>
-						<p class="mt-1 text-xs text-text-secondary-light">Including shipping & tax</p>
+						<p class="mt-1 text-xs text-muted">Including shipping & tax</p>
 					</div>
 
 					<!-- Stocked Count -->
-					<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-						<h3 class="text-sm font-medium text-text-primary-light">Currently Stocked</h3>
-						<p class="mt-1 text-2xl font-bold text-purple-500">
+					<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+						<h3 class="text-sm font-medium text-ink">Currently Stocked</h3>
+						<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
 							{typedFilteredData.filter((bean) => bean.stocked).length}
 						</p>
-						<p class="mt-1 text-xs text-text-secondary-light">
+						<p class="mt-1 text-xs text-muted">
 							of {typedFilteredData.length} selected coffees
 						</p>
 					</div>
 				</div>
 
 				<!-- Source Distribution Chart -->
-				<div class="mb-6 rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-					<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Portfolio by Source</h3>
+				<div class="mb-6 rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+					<h3 class="mb-4 text-lg font-semibold text-ink">Portfolio by Source</h3>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 						{#each Object.entries(typedFilteredData.reduce((acc, bean) => {
 									const source = bean.coffee_catalog?.source || 'Unknown';
@@ -638,12 +636,12 @@
 								string,
 								{ count: number; weight: number; value: number }
 							]}
-							<div class="rounded-lg bg-background-primary-light p-3">
-								<h4 class="font-medium text-text-primary-light">{source}</h4>
-								<div class="mt-2 space-y-1 text-sm text-text-secondary-light">
+							<div class="rounded-lg bg-surface-canvas p-3">
+								<h4 class="font-medium text-ink">{source}</h4>
+								<div class="mt-2 space-y-1 text-sm text-muted">
 									<div>{stats.count} coffee{stats.count !== 1 ? 's' : ''}</div>
 									<div>{stats.weight.toFixed(1)} lbs</div>
-									<div class="font-medium text-background-tertiary-light">
+									<div class="font-medium text-accent">
 										${stats.value.toFixed(2)}
 									</div>
 								</div>
@@ -692,7 +690,7 @@
 			<!-- Quick Actions -->
 			{#if !isLoading && typedFilteredData && typedFilteredData.length > 0}
 				<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-					<div class="text-sm text-text-secondary-light">
+					<div class="text-sm text-muted">
 						Showing {typedFilteredData.length} of {clientData.length || 0} coffees
 					</div>
 				</div>
@@ -707,14 +705,12 @@
 						overlay={false}
 					/>
 				{:else if !typedFilteredData || typedFilteredData.length === 0}
-					<div
-						class="rounded-lg bg-background-secondary-light p-8 text-center ring-1 ring-border-light"
-					>
+					<div class="rounded-lg bg-surface-panel p-8 text-center ring-1 ring-line">
 						<div class="mb-4 text-6xl opacity-50">☕</div>
-						<h3 class="mb-2 text-lg font-semibold text-text-primary-light">
+						<h3 class="mb-2 text-lg font-semibold text-ink">
 							{clientData.length > 0 ? 'No Coffees Match Your Filters' : 'No Coffee Beans Yet'}
 						</h3>
-						<p class="mb-4 text-text-secondary-light">
+						<p class="mb-4 text-muted">
 							{clientData.length > 0
 								? 'Try adjusting your filters to see more coffees, or add a new coffee to your inventory.'
 								: 'Start building your coffee inventory by adding your first green coffee bean.'}
@@ -722,14 +718,14 @@
 						<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
 							<button
 								onclick={() => handleAddNewBean()}
-								class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
+								class="rounded-md bg-accent px-4 py-2 font-medium text-ink transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
 							>
 								{clientData.length > 0 ? 'Add New Coffee' : 'Add Your First Bean'}
 							</button>
 							{#if clientData.length > 0}
 								<button
 									onclick={() => filterStore.clearFilters()}
-									class="rounded-md border border-background-tertiary-light px-4 py-2 font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
+									class="rounded-md border border-accent px-4 py-2 font-medium text-accent transition-all duration-200 hover:bg-accent hover:text-ink focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
 								>
 									Clear Filters
 								</button>
@@ -771,7 +767,7 @@
 							{@const remainingLbs = (purchasedOz - roastedOz) / 16}
 							<button
 								type="button"
-								class="group relative rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
+								class="group relative rounded-lg bg-surface-canvas p-4 text-left shadow-sm ring-1 ring-line transition-all hover:scale-[1.02] hover:ring-accent"
 								onclick={() => selectBean(bean)}
 							>
 								<!-- Mobile-optimized layout -->
@@ -781,7 +777,7 @@
 									<!-- Content section -->
 									<div class="flex-1">
 										<h3
-											class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light {hasUserRating ||
+											class="font-semibold text-ink group-hover:text-accent {hasUserRating ||
 											hasUserCupping ||
 											isWholesale
 												? 'pr-16 sm:pr-0'
@@ -791,24 +787,30 @@
 										</h3>
 										<div class="mt-1 flex items-center justify-between">
 											<div class="flex items-center gap-2">
-												<p class="text-sm font-medium text-background-tertiary-light">
+												<p class="text-sm font-medium text-accent">
 													{displaySource}
 												</p>
 												{#if hasUserRating || hasUserCupping || isWholesale}
 													<div class="hidden gap-1 sm:flex">
 														{#if isWholesale}
-															<span class="rounded bg-blue-100 px-1 text-xs text-blue-800">
+															<span
+																class="rounded bg-info-subtle px-1 text-xs font-medium text-info-strong"
+															>
 																Wholesale
 															</span>
 														{/if}
 														{#if hasUserRating}
-															<span class="rounded bg-amber-100 px-1 text-xs text-amber-800">
-																⭐ {bean.rank}
+															<span
+																class="rounded bg-warning-subtle px-1 text-xs font-medium text-warning-strong"
+															>
+																Rated {bean.rank}
 															</span>
 														{/if}
 														{#if hasUserCupping}
-															<span class="rounded bg-purple-100 px-1 text-xs text-purple-800">
-																☕ Cupped
+															<span
+																class="rounded bg-intelligence-subtle px-1 text-xs font-medium text-intelligence-strong"
+															>
+																Cupped
 															</span>
 														{/if}
 													</div>
@@ -816,7 +818,7 @@
 											</div>
 											<!-- Mobile: Price next to supplier name -->
 											<div class="text-right sm:hidden">
-												<div class="font-bold text-background-tertiary-light">
+												<div class="font-bold text-accent">
 													${(bean.purchased_qty_lbs
 														? ((bean.tax_ship_cost || 0) + (bean.bean_cost || 0)) /
 															bean.purchased_qty_lbs
@@ -826,7 +828,7 @@
 											</div>
 										</div>
 										{#if displayAiDescription}
-											<p class="my-4 text-xs text-text-secondary-light">
+											<p class="my-4 text-xs text-muted">
 												{displayAiDescription}
 											</p>
 										{/if}
@@ -842,9 +844,7 @@
 											</div>
 										{/if}
 
-										<div
-											class="mt-3 flex-col gap-2 text-xs text-text-secondary-light sm:grid-cols-2"
-										>
+										<div class="mt-3 flex-col gap-2 text-xs text-muted sm:grid-cols-2">
 											<div><span class="font-medium">Location:</span> {displayLocation}</div>
 											<div>
 												{#if displayProcessing}
@@ -885,15 +885,15 @@
 												<span class="font-medium">{bean.stocked ? 'Stocked' : 'Unstocked'}:</span>
 												<span
 													class={bean.stocked === false
-														? 'text-red-500'
+														? 'text-danger'
 														: remainingLbs > 0
-															? 'text-green-500'
-															: 'text-red-500'}
+															? 'text-success-strong'
+															: 'text-danger'}
 												>
 													{remainingLbs.toFixed(1)} lbs
 												</span>
 												{#if roastedOz > 0}
-													<span class="text-text-secondary-light">
+													<span class="text-muted">
 														({roastedOz.toFixed(0)} oz roasted)
 													</span>
 												{/if}
@@ -904,7 +904,7 @@
 									<!-- Desktop: Price, score, and chart in sidebar -->
 									<div class="hidden flex-col items-end space-y-2 sm:flex">
 										<div class="text-right">
-											<div class="font-bold text-background-tertiary-light">
+											<div class="font-bold text-accent">
 												${(bean.purchased_qty_lbs
 													? ((bean.tax_ship_cost || 0) + (bean.bean_cost || 0)) /
 														bean.purchased_qty_lbs
@@ -926,7 +926,7 @@
 
 								<div class="mt-3 flex items-center justify-end">
 									<svg
-										class="h-4 w-4 text-text-secondary-light transition-transform group-hover:translate-x-1 group-hover:text-background-tertiary-light"
+										class="h-4 w-4 text-muted transition-transform group-hover:translate-x-1 group-hover:text-accent"
 										fill="none"
 										stroke="currentColor"
 										viewBox="0 0 24 24"
