@@ -585,7 +585,9 @@
 		{/if}
 
 		{#if data.catalogSchemaUnavailable}
-			<div class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900">
+			<div
+				class="rounded-lg border border-warning/30 bg-warning-subtle px-4 py-3 text-warning-strong"
+			>
 				<h2 class="text-sm font-semibold">Catalog filters are temporarily unavailable</h2>
 				<p class="mt-1 text-sm">
 					{data.catalogSchemaUnavailable.message}

@@ -60,15 +60,15 @@
 	function priceContextColorClass(tier: LotPriceTier): string {
 		switch (tier) {
 			case 'well_below':
-				return 'text-emerald-600';
+				return 'text-success-strong';
 			case 'below':
-				return 'text-emerald-500';
+				return 'text-success';
 			case 'at':
-				return 'text-text-secondary-light';
+				return 'text-muted';
 			case 'above':
-				return 'text-amber-600';
+				return 'text-warning-strong';
 			case 'well_above':
-				return 'text-red-500';
+				return 'text-danger';
 		}
 	}
 
@@ -314,9 +314,9 @@
 <svelte:window onkeydown={handleDialogKeydown} />
 
 <article
-	class="group relative flex h-full flex-col rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 transition-all focus-within:ring-2 focus-within:ring-background-tertiary-light/60 hover:shadow-md hover:ring-background-tertiary-light/50 {highlighted
-		? 'border-l-4 border-background-tertiary-light ring-background-tertiary-light/40'
-		: 'ring-border-light'} {compact ? 'gap-3' : 'gap-4'}"
+	class="group relative flex h-full flex-col rounded-lg bg-surface-canvas p-4 text-left shadow-sm ring-1 transition-all focus-within:ring-2 focus-within:ring-accent/60 hover:shadow-md hover:ring-accent/50 {highlighted
+		? 'border-l-4 border-accent ring-accent/40'
+		: 'ring-line'} {compact ? 'gap-3' : 'gap-4'}"
 >
 	{#if enableDetails}
 		<button
@@ -346,7 +346,7 @@
 					>
 					{#if coffee.wholesale}
 						<span
-							class="rounded-full bg-intelligence-subtle px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-intelligence"
+							class="rounded-full bg-intelligence-subtle px-2 py-0.5 text-[10px] font-semibold text-intelligence"
 						>
 							Wholesale
 						</span>
@@ -369,7 +369,7 @@
 			</div>
 		</div>
 
-		<div class="flex items-center justify-between gap-3 border-y border-border-light py-2">
+		<div class="flex items-center justify-between gap-3 border-y border-line py-2">
 			<div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
 				<span>
 					<span class="font-medium text-ink">Origin</span>
@@ -391,7 +391,7 @@
 				title="Purveyor Score"
 				aria-label={`Purveyor Score ${purveyorScore.score} ${purveyorScore.tier}`}
 			>
-				<span class="h-2 w-2 rounded-full bg-background-tertiary-light"></span>
+				<span class="h-2 w-2 rounded-full bg-accent"></span>
 				<span class="sr-only">Purveyor Score</span>
 				<span class="font-semibold text-ink">{purveyorScore.score}</span>
 				<span class="text-muted">{purveyorScore.tier}</span>
@@ -402,9 +402,7 @@
 			<div class="flex flex-wrap gap-x-3 gap-y-1.5" aria-label="Tasting preview">
 				{#each tastingPreview as note}
 					<span class="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
-						<span
-							class="h-2 w-2 rounded-full ring-1 ring-border-light"
-							style:background-color={note.color}
+						<span class="h-2 w-2 rounded-full ring-1 ring-line" style:background-color={note.color}
 						></span>
 						{note.tag}
 						{note.score ? `(${note.score}/5)` : ''}
@@ -415,7 +413,7 @@
 
 		{#if !compact && coffee.ai_description}
 			<p
-				class="max-h-[3.4rem] overflow-hidden border-l-4 border-background-tertiary-light pl-3 text-xs leading-relaxed text-muted"
+				class="max-h-[3.4rem] overflow-hidden border-l-4 border-accent pl-3 text-xs leading-relaxed text-muted"
 			>
 				{coffee.ai_description}
 			</p>
@@ -425,7 +423,7 @@
 			{#if showSimilarComparisonAction}
 				<button
 					type="button"
-					class="pointer-events-auto inline-flex size-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-background-tertiary-light/10 hover:text-accent"
+					class="pointer-events-auto inline-flex size-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-accent/10 hover:text-accent"
 					aria-label={canUseBeanMatching
 						? `Compare matches for ${coffee.name}`
 						: `Unlock matches for ${coffee.name}`}
@@ -457,8 +455,8 @@
 			{#if onToggleTrack}
 				<button
 					type="button"
-					class="pointer-events-auto inline-flex size-8 items-center justify-center rounded-md transition-colors hover:bg-background-tertiary-light/10 {tracked
-						? 'text-background-tertiary-light'
+					class="pointer-events-auto inline-flex size-8 items-center justify-center rounded-md transition-colors hover:bg-accent/10 {tracked
+						? 'text-accent'
 						: 'text-muted hover:text-accent'}"
 					aria-label={tracked ? `Untrack ${coffee.name}` : `Track ${coffee.name}`}
 					aria-pressed={tracked}
@@ -490,7 +488,7 @@
 						href={coffee.link}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="pointer-events-auto inline-flex size-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-background-tertiary-light/10 hover:text-accent"
+						class="pointer-events-auto inline-flex size-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-accent/10 hover:text-accent"
 						aria-label={`Open supplier page for ${coffee.name}`}
 						title="Open supplier page"
 						onclick={(event) => event.stopPropagation()}
@@ -506,7 +504,7 @@
 					</a>
 				{/if}
 				<span
-					class="inline-flex size-8 items-center justify-center rounded-md transition-colors group-hover:bg-background-tertiary-light/10 group-hover:text-accent"
+					class="inline-flex size-8 items-center justify-center rounded-md transition-colors group-hover:bg-accent/10 group-hover:text-accent"
 					aria-hidden="true"
 				>
 					<svg
@@ -531,13 +529,13 @@
 {#if detailsOpen}
 	<div class="pointer-events-none fixed inset-y-0 right-0 z-50 flex w-full justify-end">
 		<aside
-			class="pointer-events-auto flex h-dvh w-full flex-col overflow-hidden border-l border-line bg-background-primary-light shadow-2xl sm:max-w-xl xl:max-w-2xl"
+			class="pointer-events-auto flex h-dvh w-full flex-col overflow-hidden border-l border-line bg-surface-canvas shadow-2xl sm:max-w-xl xl:max-w-2xl"
 			aria-labelledby="coffee-detail-title-{coffee.id}"
 		>
-			<header class="border-b border-line bg-background-primary-light px-4 py-4 md:px-6">
+			<header class="border-b border-line bg-surface-canvas px-4 py-4 md:px-6">
 				<div class="flex items-start justify-between gap-4">
 					<div>
-						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+						<p class="text-xs font-semibold text-accent">
 							{coffee.source ?? 'Unknown supplier'}
 						</p>
 						<h2 id="coffee-detail-title-{coffee.id}" class="mt-1 text-xl font-bold text-ink">
@@ -609,9 +607,7 @@
 					<div class="grid gap-4 lg:grid-cols-[1fr_20rem]">
 						<div class="space-y-4">
 							<div class="rounded-lg border border-line bg-surface-panel p-4">
-								<p class="text-xs font-semibold uppercase tracking-wide text-muted">
-									Sourcing snapshot
-								</p>
+								<p class="text-xs font-semibold text-muted">Sourcing snapshot</p>
 								<dl class="mt-3 grid gap-3 text-sm sm:grid-cols-2">
 									<div>
 										<dt class="font-semibold text-ink">Origin</dt>
@@ -645,9 +641,7 @@
 							</div>
 							{#if annotation}
 								<div class="rounded-lg border border-line bg-surface-panel p-4">
-									<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-										AI recommendation note
-									</p>
+									<p class="text-xs font-semibold text-accent">AI recommendation note</p>
 									<p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">
 										{annotation}
 									</p>
@@ -655,9 +649,7 @@
 							{/if}
 							{#if coffee.ai_description}
 								<div class="rounded-lg border border-line bg-surface-panel p-4">
-									<p class="text-xs font-semibold uppercase tracking-wide text-muted">
-										Catalog note
-									</p>
+									<p class="text-xs font-semibold text-muted">Catalog note</p>
 									<p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">
 										{coffee.ai_description}
 									</p>
@@ -668,7 +660,7 @@
 						<aside class="space-y-4">
 							{#if onToggleTrack}
 								<div class="rounded-lg border border-line bg-surface-panel p-4">
-									<p class="text-xs font-semibold uppercase tracking-wide text-muted">Watchlist</p>
+									<p class="text-xs font-semibold text-muted">Watchlist</p>
 									<p class="mt-2 text-sm font-semibold text-ink">
 										{tracked ? 'Tracking this lot' : 'Not on your watchlist'}
 									</p>
@@ -680,8 +672,8 @@
 									<button
 										type="button"
 										class="mt-3 rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 {tracked
-											? 'border border-line text-muted hover:border-red-300 hover:text-red-600'
-											: 'bg-accent text-white hover:bg-opacity-90'}"
+											? 'border border-line text-muted hover:border-danger/40 hover:text-danger'
+											: 'bg-accent text-ink hover:opacity-90'}"
 										aria-pressed={tracked}
 										onclick={() => onToggleTrack(coffee.id as unknown as number)}
 									>
@@ -690,9 +682,7 @@
 								</div>
 							{/if}
 							<div class="rounded-lg border border-line bg-surface-panel p-4">
-								<p class="text-xs font-semibold uppercase tracking-wide text-muted">
-									Purveyor Score
-								</p>
+								<p class="text-xs font-semibold text-muted">Purveyor Score</p>
 								<div class="mt-2 flex items-baseline gap-2">
 									<span class="text-4xl font-bold text-ink">{purveyorScore.score}</span>
 									<span class="font-semibold text-accent">{purveyorScore.tier}</span>
@@ -704,9 +694,7 @@
 								</p>
 							</div>
 							<div class="rounded-lg border border-line bg-surface-panel p-4">
-								<p class="text-xs font-semibold uppercase tracking-wide text-muted">
-									Proof families
-								</p>
+								<p class="text-xs font-semibold text-muted">Proof families</p>
 								{#if proofBadges.length > 0}
 									<div class="mt-3 flex flex-wrap gap-2">
 										{#each proofBadges as badge (badge.key)}
@@ -729,9 +717,7 @@
 						<div class="space-y-4">
 							{#if processAnalysis}
 								<div class="rounded-lg border border-line bg-surface-panel p-4">
-									<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-										Process transparency
-									</p>
+									<p class="text-xs font-semibold text-accent">Process transparency</p>
 									<h3 class="mt-1 font-semibold text-ink">{processAnalysis.headline}</h3>
 									{#if processAnalysis.details.length > 0}
 										<ul class="mt-3 space-y-2 text-sm text-muted">
@@ -776,9 +762,7 @@
 
 							{#if tastingPreview.length > 0}
 								<div class="rounded-lg border border-line bg-surface-panel p-4">
-									<p class="text-xs font-semibold uppercase tracking-wide text-muted">
-										Tasting cues
-									</p>
+									<p class="text-xs font-semibold text-muted">Tasting cues</p>
 									<div class="mt-3 flex flex-wrap gap-2">
 										{#each tastingPreview as note}
 											<span
@@ -793,9 +777,7 @@
 							{/if}
 						</div>
 						<div class="rounded-lg border border-line bg-surface-panel p-4">
-							<p class="text-xs font-semibold uppercase tracking-wide text-muted">
-								Tasting profile
-							</p>
+							<p class="text-xs font-semibold text-muted">Tasting profile</p>
 							<div class="mt-3">
 								{#if tastingNotes}
 									{#if radarComponentLoading}
@@ -812,7 +794,7 @@
 				{:else if activeTab === 'pricing'}
 					<div class="space-y-4">
 						<div class="rounded-lg border border-line bg-surface-panel p-4">
-							<p class="text-xs font-semibold uppercase tracking-wide text-muted">
+							<p class="text-xs font-semibold text-muted">
 								{hasMultiplePriceTiers ? 'Starts at' : 'Price'}
 							</p>
 							<div class="mt-1 text-3xl font-bold text-ink">{priceText}</div>
@@ -827,7 +809,7 @@
 							<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 								{#each priceTiers as tier (tier.min_lbs)}
 									<div class="rounded-lg border border-line bg-surface-panel p-4">
-										<div class="text-xs font-semibold uppercase tracking-wide text-muted">
+										<div class="text-xs font-semibold text-muted">
 											{tier.min_lbs}+ lb
 										</div>
 										<div class="mt-1 text-lg font-semibold text-ink">
@@ -843,9 +825,7 @@
 						<SimilarCoffeePanel {coffee} />
 					{:else}
 						<div class="rounded-lg border border-line bg-surface-panel p-5">
-							<p class="text-xs font-semibold uppercase tracking-wide text-intelligence">
-								Member comparison
-							</p>
+							<p class="text-xs font-semibold text-intelligence">Member comparison</p>
 							<h3 class="mt-1 text-lg font-semibold text-ink">Unlock similar coffee matches</h3>
 							<p class="mt-2 text-sm leading-relaxed text-muted">
 								Parchment Intelligence compares origin, process, tasting, and canonical pricing

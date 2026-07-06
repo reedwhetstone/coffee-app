@@ -229,16 +229,14 @@
 </script>
 
 <section
-	class="rounded-2xl border border-background-tertiary-light/30 bg-background-secondary-light p-4 shadow-sm"
+	class="rounded-2xl border border-accent/30 bg-surface-panel p-4 shadow-sm"
 	aria-label={`Similar coffee comparison for ${coffee.name}`}
 >
 	<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 		<div>
-			<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
-				Member comparison beta
-			</p>
-			<h4 class="mt-1 text-lg font-semibold text-text-primary-light">Similar coffee matches</h4>
-			<p class="mt-1 text-sm text-text-secondary-light">
+			<p class="text-xs font-semibold text-accent">Member comparison beta</p>
+			<h4 class="mt-1 text-lg font-semibold text-ink">Similar coffee matches</h4>
+			<p class="mt-1 text-sm text-muted">
 				Fetched on demand from the canonical similarity endpoint. Treat matches as sourcing leads,
 				not accepted bean identities.
 			</p>
@@ -247,7 +245,7 @@
 			<button
 				type="button"
 				onclick={loadSimilarity}
-				class="rounded-full border border-border-light px-3 py-1.5 text-xs font-semibold text-text-secondary-light transition-colors hover:border-background-tertiary-light hover:text-background-tertiary-light"
+				class="rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:border-accent hover:text-accent"
 			>
 				Refresh
 			</button>
@@ -255,7 +253,7 @@
 				<button
 					type="button"
 					onclick={onClose}
-					class="rounded-full border border-border-light px-3 py-1.5 text-xs font-semibold text-text-secondary-light transition-colors hover:border-background-tertiary-light hover:text-background-tertiary-light"
+					class="rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:border-accent hover:text-accent"
 				>
 					Close
 				</button>
@@ -264,16 +262,16 @@
 	</div>
 
 	{#if loading}
-		<div class="mt-4 rounded-xl border border-border-light bg-background-primary-light p-4">
-			<div class="flex items-center gap-3 text-sm text-text-secondary-light">
+		<div class="mt-4 rounded-xl border border-line bg-surface-canvas p-4">
+			<div class="flex items-center gap-3 text-sm text-muted">
 				<div
-					class="h-5 w-5 animate-spin rounded-full border-2 border-background-tertiary-light/30 border-t-background-tertiary-light"
+					class="h-5 w-5 animate-spin rounded-full border-2 border-accent/30 border-t-accent"
 				></div>
 				<span>Loading beta similarity matches...</span>
 			</div>
 		</div>
 	{:else if errorMessage}
-		<div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+		<div class="mt-4 rounded-xl border border-warning/30 bg-warning-subtle p-4 text-warning-strong">
 			<h5 class="text-sm font-semibold">Comparison unavailable</h5>
 			<p class="mt-1 text-sm">{errorMessage}</p>
 			{#if entitlementTeaser}
@@ -286,19 +284,17 @@
 			{/if}
 		</div>
 	{:else if response}
-		<div class="mt-4 rounded-xl border border-border-light bg-background-primary-light p-4">
+		<div class="mt-4 rounded-xl border border-line bg-surface-canvas p-4">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 				<div>
-					<p class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
-						Target coffee
-					</p>
-					<h5 class="mt-1 font-semibold text-text-primary-light">{response.data.target.name}</h5>
-					<p class="mt-1 text-sm text-text-secondary-light">
+					<p class="text-xs font-semibold text-muted">Target coffee</p>
+					<h5 class="mt-1 font-semibold text-ink">{response.data.target.name}</h5>
+					<p class="mt-1 text-sm text-muted">
 						{response.data.target.source ?? 'Unknown supplier'} · {stockLabel(
 							response.data.target.stocked
 						)}
 					</p>
-					<p class="mt-1 text-sm text-text-secondary-light">
+					<p class="mt-1 text-sm text-muted">
 						{[response.data.target.country, response.data.target.origin]
 							.filter(Boolean)
 							.join(', ') ||
@@ -307,7 +303,7 @@
 						{response.data.target.processing ? ` · ${response.data.target.processing}` : ''}
 					</p>
 					{#if freshnessLabel(response.data.target)}
-						<p class="mt-1 text-xs text-text-secondary-light">
+						<p class="mt-1 text-xs text-muted">
 							{freshnessLabel(response.data.target)} · date signal, not a quality claim
 						</p>
 					{/if}
@@ -315,7 +311,7 @@
 						<div class="mt-2 flex flex-wrap gap-1.5" aria-label="Target catalog proof signals">
 							{#each proofBadges(response.data.target.proof) as badge (badge.key)}
 								<span
-									class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100"
+									class="rounded-full bg-success-subtle px-2 py-0.5 text-[10px] font-semibold text-success-strong ring-1 ring-success/20"
 									title={badge.title}
 								>
 									{badge.label}
@@ -324,11 +320,9 @@
 						</div>
 					{/if}
 				</div>
-				<div
-					class="rounded-xl bg-background-secondary-light px-4 py-3 text-sm text-text-secondary-light"
-				>
-					<div class="text-xs font-semibold uppercase tracking-wide">1 lb baseline</div>
-					<div class="mt-1 text-lg font-bold text-background-tertiary-light">
+				<div class="rounded-xl bg-surface-panel px-4 py-3 text-sm text-muted">
+					<div class="text-xs font-semibold">1 lb baseline</div>
+					<div class="mt-1 text-lg font-bold text-accent">
 						{formatCanonicalBaselinePrice(response.data.target.pricing)}
 					</div>
 					<div class="mt-1 text-xs">
@@ -340,17 +334,15 @@
 		</div>
 
 		{#if response.meta.copy?.confidence}
-			<p
-				class="mt-3 rounded-xl bg-background-tertiary-light/10 p-3 text-xs text-text-secondary-light"
-			>
+			<p class="mt-3 rounded-xl bg-accent/10 p-3 text-xs text-muted">
 				{response.meta.copy.confidence}
 			</p>
 		{/if}
 
 		{#if response.data.matches.length === 0}
-			<div class="mt-4 rounded-xl border border-border-light bg-background-primary-light p-4">
-				<h5 class="text-sm font-semibold text-text-primary-light">No beta matches found</h5>
-				<p class="mt-1 text-sm text-text-secondary-light">
+			<div class="mt-4 rounded-xl border border-line bg-surface-canvas p-4">
+				<h5 class="text-sm font-semibold text-ink">No beta matches found</h5>
+				<p class="mt-1 text-sm text-muted">
 					This coffee may not have enough embeddings yet, or no stocked matches cleared the current
 					threshold.
 				</p>
@@ -358,41 +350,41 @@
 		{:else}
 			<div class="mt-4 space-y-3">
 				{#each response.data.matches as match (match.coffee.id)}
-					<article class="rounded-xl border border-border-light bg-background-primary-light p-4">
+					<article class="rounded-xl border border-line bg-surface-canvas p-4">
 						<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 							<div class="min-w-0">
 								<div class="flex flex-wrap gap-2">
 									<span
-										class="rounded-full bg-background-tertiary-light/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-background-tertiary-light"
+										class="rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-semibold text-accent"
 									>
 										{categoryLabel(match)}
 									</span>
 									<span
-										class="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100"
+										class="rounded-full bg-success-subtle px-2.5 py-1 text-[11px] font-semibold text-success-strong ring-1 ring-success/20"
 									>
 										{confidenceLabel(match.match.confidence)}
 									</span>
 									{#if match.match.same_supplier}
 										<span
-											class="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 ring-1 ring-amber-100"
+											class="rounded-full bg-warning-subtle px-2.5 py-1 text-[11px] font-semibold text-warning-strong ring-1 ring-warning/20"
 											title="Listed by the same supplier as this coffee — deprioritized so competing suppliers surface first"
 										>
 											Same supplier
 										</span>
 									{/if}
 								</div>
-								<h5 class="mt-2 font-semibold text-text-primary-light">{match.coffee.name}</h5>
-								<p class="mt-1 text-sm text-text-secondary-light">
+								<h5 class="mt-2 font-semibold text-ink">{match.coffee.name}</h5>
+								<p class="mt-1 text-sm text-muted">
 									{match.coffee.source ?? 'Unknown supplier'} · {stockLabel(match.coffee.stocked)}
 								</p>
-								<p class="mt-1 text-sm text-text-secondary-light">
+								<p class="mt-1 text-sm text-muted">
 									{[match.coffee.country, match.coffee.origin].filter(Boolean).join(', ') ||
 										match.coffee.continent ||
 										'Origin unavailable'}
 									{match.coffee.processing ? ` · ${match.coffee.processing}` : ''}
 								</p>
 								{#if freshnessLabel(match.coffee)}
-									<p class="mt-1 text-xs text-text-secondary-light">
+									<p class="mt-1 text-xs text-muted">
 										{freshnessLabel(match.coffee)} · date signal, not a quality claim
 									</p>
 								{/if}
@@ -400,7 +392,7 @@
 									<div class="mt-2 flex flex-wrap gap-1.5" aria-label="Match catalog proof signals">
 										{#each proofBadges(match.coffee.proof) as badge (badge.key)}
 											<span
-												class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100"
+												class="rounded-full bg-success-subtle px-2 py-0.5 text-[10px] font-semibold text-success-strong ring-1 ring-success/20"
 												title={badge.title}
 											>
 												{badge.label}
@@ -408,9 +400,12 @@
 										{/each}
 									</div>
 								{/if}
-								<p class="mt-2 text-sm text-text-secondary-light">{match.match.language}</p>
+								<p class="mt-2 text-sm text-muted">{match.match.language}</p>
 								{#if match.match.classification?.blockers?.length}
-									<ul class="mt-2 space-y-1 text-xs text-amber-800" aria-label="Identity blockers">
+									<ul
+										class="mt-2 space-y-1 text-xs text-warning-strong"
+										aria-label="Identity blockers"
+									>
 										{#each match.match.classification.blockers as blocker}
 											<li>
 												{blockerLabel(blocker.code)}{blocker.target_value && blocker.candidate_value
@@ -422,47 +417,43 @@
 								{/if}
 							</div>
 							<div
-								class="rounded-xl bg-background-secondary-light px-4 py-3 text-sm text-text-secondary-light lg:min-w-[15rem]"
+								class="rounded-xl bg-surface-panel px-4 py-3 text-sm text-muted lg:min-w-[15rem]"
 							>
-								<div class="text-xs font-semibold uppercase tracking-wide">1 lb baseline</div>
-								<div class="mt-1 text-lg font-bold text-background-tertiary-light">
+								<div class="text-xs font-semibold">1 lb baseline</div>
+								<div class="mt-1 text-lg font-bold text-accent">
 									{formatCanonicalBaselinePrice(match.pricing)}
 								</div>
 								<div class="mt-1 text-xs">
 									Source: {priceSourceLabel(match.pricing.baseline_source)}
 								</div>
 								<div class="mt-1 text-xs">{tierSummary(match.pricing)}</div>
-								<div class="mt-2 text-sm font-semibold text-text-primary-light">
+								<div class="mt-2 text-sm font-semibold text-ink">
 									{formatPriceDelta(match.price_delta_1lb.amount, match.price_delta_1lb.percent)}
 								</div>
 							</div>
 						</div>
 
-						<div
-							class="mt-4 grid gap-2 text-xs text-text-secondary-light sm:grid-cols-2 lg:grid-cols-4"
-						>
-							<div class="rounded-lg bg-background-secondary-light p-2">
-								<span class="font-semibold text-text-primary-light">Average:</span>
+						<div class="mt-4 grid gap-2 text-xs text-muted sm:grid-cols-2 lg:grid-cols-4">
+							<div class="rounded-lg bg-surface-panel p-2">
+								<span class="font-semibold text-ink">Average:</span>
 								{percentScore(match.score.average)}
 							</div>
-							<div class="rounded-lg bg-background-secondary-light p-2">
-								<span class="font-semibold text-text-primary-light">Origin:</span>
+							<div class="rounded-lg bg-surface-panel p-2">
+								<span class="font-semibold text-ink">Origin:</span>
 								{percentScore(match.score.dimensions.origin)}
 							</div>
-							<div class="rounded-lg bg-background-secondary-light p-2">
-								<span class="font-semibold text-text-primary-light">Process:</span>
+							<div class="rounded-lg bg-surface-panel p-2">
+								<span class="font-semibold text-ink">Process:</span>
 								{percentScore(match.score.dimensions.processing)}
 							</div>
-							<div class="rounded-lg bg-background-secondary-light p-2">
-								<span class="font-semibold text-text-primary-light">Tasting:</span>
+							<div class="rounded-lg bg-surface-panel p-2">
+								<span class="font-semibold text-ink">Tasting:</span>
 								{percentScore(match.score.dimensions.tasting)}
 							</div>
 						</div>
 
-						<div
-							class="mt-3 rounded-lg bg-background-secondary-light p-3 text-xs text-text-secondary-light"
-						>
-							<p class="font-medium text-text-primary-light">{match.explanation.summary}</p>
+						<div class="mt-3 rounded-lg bg-surface-panel p-3 text-xs text-muted">
+							<p class="font-medium text-ink">{match.explanation.summary}</p>
 							{#if match.explanation.signals.length > 0}
 								<ul class="mt-2 list-disc space-y-1 pl-4">
 									{#each match.explanation.signals as signal}
