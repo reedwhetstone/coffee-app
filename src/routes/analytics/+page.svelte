@@ -36,7 +36,6 @@
 	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
 	import ValueSignalsSection from '$lib/components/analytics/sections/ValueSignalsSection.svelte';
 	import MetadataTrendsSection from '$lib/components/analytics/sections/MetadataTrendsSection.svelte';
-	import { MARKET_INDEX_MODULES } from '$lib/analytics/insightModules';
 	import type { MarketIndexInsights } from '$lib/types/marketIndex.types';
 
 	let { data } = $props<{ data: PageData }>();
@@ -953,7 +952,6 @@
 	totalSuppliers={stats.totalSuppliers}
 	{viewMode}
 	{windowMode}
-	module={MARKET_INDEX_MODULES.marketRead}
 	onViewModeChange={(v) => (viewMode = v)}
 	onWindowModeChange={(v) => (windowMode = v)}
 />
@@ -965,15 +963,11 @@
 	{isParchmentIntelligence}
 	isSignedIn={Boolean(session)}
 	{viewMode}
-	module={isParchmentIntelligence
-		? MARKET_INDEX_MODULES.valueSignals
-		: MARKET_INDEX_MODULES.valueSignalsPublic}
 />
 
 <AnalyticsSectionHeader
 	title="Today's signals"
 	description="The numbers behind this morning's read — availability, movement, and what changed overnight."
-	module={MARKET_INDEX_MODULES.todaySignals}
 />
 
 <KpiStripSection {kpiCards} {insightCards} />
@@ -1006,7 +1000,6 @@
 <AnalyticsSectionHeader
 	title="Price evidence"
 	description="The charts behind the read: origin price history, processing mix, and how prices spread across origins."
-	module={MARKET_INDEX_MODULES.priceEvidence}
 />
 
 <EvidenceChartsSection
@@ -1028,7 +1021,6 @@
 	disclosureSeries={marketInsights?.metadataDisclosureSeries ?? null}
 	{viewMode}
 	{isParchmentIntelligence}
-	module={MARKET_INDEX_MODULES.metadataTrends}
 />
 
 <ActionRailSection
@@ -1041,9 +1033,6 @@
 <AnalyticsSectionHeader
 	title="Suppliers and movement"
 	description="Who has what, at what price — and what's arriving and leaving the visible market."
-	module={isParchmentIntelligence
-		? MARKET_INDEX_MODULES.supplierMovement
-		: MARKET_INDEX_MODULES.supplierMovementPublic}
 />
 
 <ParchmentIntelligenceSection

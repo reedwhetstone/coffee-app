@@ -42,4 +42,24 @@ describe('Market Index insight module contracts', () => {
 			expect(module.qaTask).toMatch(/^Mobile:/);
 		}
 	});
+
+	it('keeps public module contracts at the entitlement boundary', () => {
+		expect(MARKET_INDEX_MODULES.valueSignals.source.toLowerCase()).toContain('supplier');
+		expect(MARKET_INDEX_MODULES.valueSignalsPublic.source.toLowerCase()).not.toContain(
+			'supplier listing'
+		);
+		expect(MARKET_INDEX_MODULES.valueSignalsPublic.decision.toLowerCase()).toContain(
+			'unlocking lot-level evidence'
+		);
+
+		expect(MARKET_INDEX_MODULES.supplierMovement.source.toLowerCase()).toContain(
+			'supplier price ranges'
+		);
+		expect(MARKET_INDEX_MODULES.supplierMovementPublic.anomaly.toLowerCase()).toContain(
+			'does not expose named suppliers'
+		);
+		expect(MARKET_INDEX_MODULES.supplierMovementPublic.primaryAction.toLowerCase()).toMatch(
+			/start intelligence|plans/
+		);
+	});
 });
