@@ -86,6 +86,13 @@
 	let movementTruncated = $derived(
 		isMovementDataAvailable && movementLoadedRows < movementWindowTotal
 	);
+	let supplierComparisonSummary = $derived.by(() => {
+		const supplierCount = scopedSupplierPriceRanges.length;
+		const lotCount = scopedComparisonBeans.length;
+		const supplierLabel = supplierCount === 1 ? 'supplier' : 'suppliers';
+		const lotLabel = lotCount === 1 ? 'preview lot' : 'preview lots';
+		return `${supplierCount.toLocaleString()} ${supplierLabel} across ${lotCount.toLocaleString()} ${lotLabel}`;
+	});
 	let movementExpandLabel = $derived.by(() => {
 		if (!isMovementDataAvailable) return `Open ${movementLoadedRows} loaded rows →`;
 		if (movementTruncated) return `Open latest ${movementLoadedRows} of ${movementWindowTotal} →`;
@@ -159,38 +166,16 @@
 				{onRetry}
 			>
 				<div class="rounded-lg border border-line bg-surface-canvas p-5 shadow-sm sm:p-6">
-					<div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,28rem)]">
-						<div>
-							<h2 class="mb-1 text-base font-semibold text-ink">Who has it cheapest?</h2>
-							<p class="mb-4 text-sm text-muted">
-								Each supplier's price range across public stocked lots in this scope.
-							</p>
-							<SupplierPriceRangeChart
-								rows={scopedSupplierPriceRanges}
-								maxSuppliers={Math.max(scopedSupplierPriceRanges.length, 1)}
-							/>
-						</div>
-						<div class="rounded-lg border border-line bg-surface-panel p-4">
-							<p class="text-xs font-semibold uppercase tracking-wide text-muted">Supplier read</p>
-							<p class="mt-2 text-sm leading-6 text-muted">
-								Scan the spread first, then open the detail view when a supplier or lot looks worth
-								comparing.
-							</p>
-							<dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
-								<div>
-									<dt class="text-muted">Suppliers</dt>
-									<dd class="mt-1 text-lg font-semibold text-ink">
-										{scopedSupplierPriceRanges.length}
-									</dd>
-								</div>
-								<div>
-									<dt class="text-muted">Preview lots</dt>
-									<dd class="mt-1 text-lg font-semibold text-ink">
-										{scopedComparisonBeans.length}
-									</dd>
-								</div>
-							</dl>
-						</div>
+					<div>
+						<h2 class="mb-1 text-base font-semibold text-ink">Who has it cheapest?</h2>
+						<p class="mb-4 text-sm text-muted">
+							Each supplier's price range across public stocked lots in this scope:
+							{supplierComparisonSummary}.
+						</p>
+						<SupplierPriceRangeChart
+							rows={scopedSupplierPriceRanges}
+							maxSuppliers={Math.max(scopedSupplierPriceRanges.length, 1)}
+						/>
 					</div>
 					<div class="mt-6 border-t border-line pt-4">
 						<h3 class="mb-3 text-sm font-semibold text-ink">Lot-level preview</h3>
@@ -243,52 +228,11 @@
 						{/each}
 					</div>
 				</div>
-				<div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,28rem)]">
-					<MovementByOriginChart
-						arrivals={filteredArrivals}
-						delistings={filteredDelistings}
-						maxOrigins={999}
-					/>
-					<div class="rounded-lg border border-line bg-surface-panel p-4">
-						<p class="text-xs font-semibold uppercase tracking-wide text-muted">Window summary</p>
-						{#if isMovementDataAvailable}
-							<dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
-								<div>
-									<dt class="text-muted">Arrivals</dt>
-									<dd class="mt-1 text-lg font-semibold text-success-strong">{arrivalTotal}</dd>
-								</div>
-								<div>
-									<dt class="text-muted">Delistings</dt>
-									<dd class="mt-1 text-lg font-semibold text-danger-strong">{delistingTotal}</dd>
-								</div>
-							</dl>
-						{:else}
-							<dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
-								<div>
-									<dt class="text-muted">Loaded arrivals</dt>
-									<dd class="mt-1 text-lg font-semibold text-success-strong">
-										{filteredArrivals.length}
-									</dd>
-								</div>
-								<div>
-									<dt class="text-muted">Loaded delistings</dt>
-									<dd class="mt-1 text-lg font-semibold text-danger-strong">
-										{filteredDelistings.length}
-									</dd>
-								</div>
-							</dl>
-						{/if}
-						<p class="mt-3 text-sm leading-6 text-muted">
-							{#if isMovementDataAvailable}
-								The chart groups movement by origin. Expand to scan the named lots without the main
-								page becoming a full-width table wall.
-							{:else}
-								Counts are unavailable for this window, so this preview only describes the named
-								rows currently loaded.
-							{/if}
-						</p>
-					</div>
-				</div>
+				<MovementByOriginChart
+					arrivals={filteredArrivals}
+					delistings={filteredDelistings}
+					maxOrigins={999}
+				/>
 
 				<div class="mt-6 grid grid-cols-1 gap-6 border-t border-line pt-4 lg:grid-cols-2">
 					<div>

@@ -84,11 +84,20 @@
 	}
 
 	function catalogHref(signal: MarketSignalItem): string {
+		const fallbackId = signal.catalogId;
 		try {
 			const url = new URL(signal.catalogUrl);
-			return `${url.pathname}${url.search}`;
+			const searchId =
+				url.searchParams.get('coffee') ??
+				url.searchParams.get('id') ??
+				url.searchParams.get('coffeeIds');
+			const pathId = url.pathname.match(/^\/catalog\/(\d+)$/)?.[1];
+			const coffeeId = searchId?.split(',')[0] ?? pathId ?? String(fallbackId);
+			return /^\d+$/.test(coffeeId) ? `/catalog?coffee=${coffeeId}` : '/catalog';
 		} catch {
-			return '/catalog';
+			return Number.isSafeInteger(fallbackId) && fallbackId > 0
+				? `/catalog?coffee=${fallbackId}`
+				: '/catalog';
 		}
 	}
 

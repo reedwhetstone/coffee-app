@@ -204,6 +204,16 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				bag_size: null
 			}
 		],
+		supplierPriceRanges: [
+			{
+				source: 'Atlas',
+				market: 'retail',
+				count: 1,
+				min: 4.25,
+				median: 4.25,
+				max: 4.25
+			}
+		],
 		supplierHealth: [
 			{
 				source: 'Atlas Coffee',
@@ -495,6 +505,11 @@ describe('analytics command center hierarchy', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 
+		expect(screen.getByRole('link', { name: /View in the catalog/ })).toHaveAttribute(
+			'href',
+			'/catalog?coffee=11'
+		);
+
 		await screen.getByRole('button', { name: 'Wholesale' }).click();
 
 		expect(screen.getByText(/No strong wholesale buy signals this morning/i)).toBeTruthy();
@@ -716,6 +731,28 @@ describe('analytics premium boundary copy', () => {
 		expect(screen.getByRole('link', { name: 'See plans' })).toBeTruthy();
 		expect(screen.queryByText('Fresh Ethiopia')).toBeNull();
 		expect(screen.queryByText('Recently Gone')).toBeNull();
+	});
+
+	it('keeps supplier and movement summaries inside chart descriptions instead of side read panels', async () => {
+		render(AnalyticsPage, {
+			data: createData({ session: createSession(), isParchmentIntelligence: true })
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+		});
+
+		expect(
+			screen.getAllByText((_content, element) =>
+				Boolean(
+					element?.textContent?.match(
+						/Each supplier's price range across public stocked lots in this scope:\s*1 supplier across 1 preview lot/i
+					)
+				)
+			).length
+		).toBeGreaterThan(0);
+		expect(screen.queryByText('Supplier read')).toBeNull();
+		expect(screen.queryByText('Window summary')).toBeNull();
 	});
 
 	it('restores premium supplier analytics modules instead of static fallback tables', async () => {
