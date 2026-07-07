@@ -691,6 +691,9 @@ describe('analytics section navigator', () => {
 			'href',
 			'/subscription?plan=intelligence-monthly&intent=checkout'
 		);
+		expect(
+			screen.getByRole('link', { name: 'Upgrade to ask from Market Index summary' })
+		).toHaveAttribute('href', '/subscription?plan=intelligence-monthly&intent=checkout');
 		expect(screen.getAllByText(/Parchment Intelligence/).length).toBeGreaterThanOrEqual(1);
 		expect(screen.queryByRole('link', { name: 'Ask with this context' })).toBeNull();
 	});

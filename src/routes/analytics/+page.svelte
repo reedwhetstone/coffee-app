@@ -990,6 +990,18 @@
 	</div>
 </nav>
 
+{#if askActionHref}
+	<div class="mb-6 md:hidden">
+		<a
+			href={askActionHref}
+			aria-label={`${askActionLabel} from Market Index summary`}
+			class="flex w-full items-center justify-center rounded-md bg-accent px-4 py-3 text-sm font-semibold text-ink shadow-sm transition-colors hover:bg-accent/85"
+		>
+			{askActionLabel}
+		</a>
+	</div>
+{/if}
+
 <ValueSignalsSection
 	valueSignals={marketInsights?.valueSignals ?? null}
 	signalsSummary={marketInsights?.signalsSummary ?? null}
