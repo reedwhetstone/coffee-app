@@ -79,6 +79,13 @@ export interface ChatToolAccess {
 	memberAccess?: boolean;
 }
 
+export type MarketMetadataDimension =
+	| 'process'
+	| 'disclosure'
+	| 'purveyor_score'
+	| 'purveyor_score_confidence'
+	| 'purveyor_score_tier';
+
 /**
  * Server-injected dependencies for tools that cannot run on the user-scoped
  * client (e.g. price_index_read needs the admin client because
@@ -133,7 +140,7 @@ export interface ChatToolDeps {
 		baseline_weeks?: number;
 	}) => Promise<unknown>;
 	marketMetadataIndex?: (input: {
-		dimension: 'process' | 'disclosure';
+		dimension: MarketMetadataDimension;
 		origin?: string;
 		market?: 'retail' | 'wholesale' | 'all';
 		grain?: 'week' | 'month';

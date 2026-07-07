@@ -11,8 +11,8 @@ import { createParchmentServerClient, ParchmentConfigError } from './parchmentCl
  *   for everyone else)
  * - price movement significance stats
  * - metadata-trend index (public process slice; disclosure trend for PPI).
- *   Cup-score trends are deliberately not fetched: supplier scores are
- *   inconsistent/subjective and are not surfaced on the front end.
+ *   Supplier score_value trends are deliberately not fetched: supplier scores
+ *   are inconsistent/subjective and are not surfaced on the front end.
  *
  * The analytics page navigates a market (retail/wholesale/all) scope toggle and
  * a movement-window (7d/30d) toggle entirely client-side, with no re-fetch, and

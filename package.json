@@ -74,7 +74,7 @@
 		"@fontsource-variable/newsreader": "^5.2.10",
 		"@humanspeak/svelte-markdown": "^0.8.10",
 		"@purveyors/cli": "^0.25.0",
-		"@purveyors/sdk": "^0.7.0",
+		"@purveyors/sdk": "^0.7.1",
 		"@supabase/ssr": "^0.5.2",
 		"@supabase/supabase-js": "^2.99.1",
 		"@tailwindcss/container-queries": "^0.1.1",
