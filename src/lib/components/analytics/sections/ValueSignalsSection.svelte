@@ -52,6 +52,12 @@
 		);
 		return filtered.slice(0, MAX_CARDS);
 	});
+	let renderedModule = $derived.by(() => {
+		if (isParchmentIntelligence && valueSignals !== null && scopedSignals.length === 0) {
+			return undefined;
+		}
+		return module;
+	});
 
 	function formatPct(value: number | null): string {
 		if (value == null) return '';
@@ -108,7 +114,7 @@
 	<AnalyticsSectionHeader
 		title="What should I consider buying?"
 		description="Evidence-backed value signals from this morning's market pass: price drops against a lot's own history, and lots priced below their origin and process segment."
-		{module}
+		module={renderedModule}
 	/>
 
 	{#if isParchmentIntelligence && valueSignals !== null}

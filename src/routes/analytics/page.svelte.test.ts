@@ -487,6 +487,53 @@ describe('analytics command center hierarchy', () => {
 		).toBeNull();
 	});
 
+	it('hides selected-lot task metadata when the selected scope has no value signals', async () => {
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				marketInsights: {
+					valueSignals: [
+						{
+							signalType: 'below_market',
+							signalWindow: '7d',
+							catalogId: 11,
+							name: 'Ethiopia Test Lot',
+							source: 'Atlas',
+							market: 'retail',
+							origin: 'Ethiopia',
+							process: 'Natural',
+							currentPriceLb: 4.25,
+							catalogUrl: 'https://example.com/catalog?id=11',
+							scoreValue: null,
+							evidence: {
+								segment: { origin: 'Ethiopia', process: 'Natural', market: 'retail' },
+								discount_vs_median_pct: -12.2,
+								segment_median: 4.85,
+								price_percentile_in_segment: 18
+							}
+						}
+					],
+					signalsSummary: null,
+					signalsAsOf: '2026-07-06',
+					moveStats: null,
+					metadataProcessSeries: null,
+					metadataDisclosureSeries: null
+				}
+			} as Partial<PageData>)
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+		});
+
+		await screen.getByRole('button', { name: 'Wholesale' }).click();
+
+		expect(screen.getByText(/No strong wholesale buy signals this morning/i)).toBeTruthy();
+		expect(screen.queryByLabelText('value-signals task parity contract')).toBeNull();
+		expect(screen.queryByText('View the selected coffee in the catalog.')).toBeNull();
+	});
+
 	it('scopes coverage supplier-evidence reads with the selected market', async () => {
 		const baseSnapshot = createData().snapshots[0];
 		render(AnalyticsPage, {
