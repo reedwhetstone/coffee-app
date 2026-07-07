@@ -24,8 +24,8 @@ importers:
         specifier: ^0.25.0
         version: 0.25.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@purveyors/sdk':
-        specifier: ^0.7.0
-        version: 0.7.0
+        specifier: ^0.7.1
+        version: 0.7.1
       '@supabase/ssr':
         specifier: ^0.5.2
         version: 0.5.2(@supabase/supabase-js@2.99.1(bufferutil@4.1.0)(utf-8-validate@6.0.6))
@@ -832,8 +832,8 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
-  '@purveyors/sdk@0.7.0':
-    resolution: {integrity: sha512-5Bby/g2Qcg4PSnXOCrN8chHZtcbAA2pFUqkyrVtxQgdC4t44vFoTjp475B4Cvd6LOv8fz4hJvnqgVpXX678HgQ==}
+  '@purveyors/sdk@0.7.1':
+    resolution: {integrity: sha512-0gU4PSwTF11yWeB6FItuvPczqy8lT1KBKx4+2kNx8aEBEidQfn1yca1LpLZGPXKMIGHNzYcAHdjhtBb+dzT/aw==}
 
   '@rollup/pluginutils@5.3.0':
     resolution: {integrity: sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q==}
@@ -3551,7 +3551,7 @@ snapshots:
   '@purveyors/cli@0.25.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
     dependencies:
       '@clack/prompts': 1.1.0
-      '@purveyors/sdk': 0.7.0
+      '@purveyors/sdk': 0.7.1
       '@supabase/supabase-js': 2.99.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       chalk: 5.6.2
       commander: 13.1.0
@@ -3561,7 +3561,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@purveyors/sdk@0.7.0':
+  '@purveyors/sdk@0.7.1':
     dependencies:
       openapi-fetch: 0.13.8
 
