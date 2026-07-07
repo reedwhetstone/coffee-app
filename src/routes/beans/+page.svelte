@@ -689,7 +689,7 @@
 									{coffee}
 									{parseTastingNotes}
 									annotation={portfolioAnnotation(bean)}
-									showCatalogLink={Boolean(bean.coffee_catalog)}
+									showCatalogLink={bean.coffee_catalog?.public_coffee === true}
 								>
 									{#snippet detailContent()}
 										<BeanProfileTabs
