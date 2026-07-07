@@ -10,6 +10,7 @@ import {
 	type SaleCreateInput
 } from '$lib/data/sales.js';
 import { SALES_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
+import { checkRole } from '$lib/types/auth.types';
 
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	try {
@@ -83,11 +84,18 @@ export const PUT: RequestHandler = async ({
 	}
 };
 
-export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
+		const { supabase, safeGetSession } = locals;
 		const { session, user } = await safeGetSession();
 		if (!session || !user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+		if (!checkRole(locals.role, 'member')) {
+			return json(
+				{ error: 'Mallard Studio membership is required to record sales' },
+				{ status: 403 }
+			);
 		}
 
 		const raw = await request.json();

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 import CoffeeCard from './CoffeeCard.svelte';
+import CoffeeCardDetailContentHarness from './__test-fixtures__/CoffeeCardDetailContentHarness.svelte';
 import type { CoffeeCatalog } from '$lib/types/component.types';
 
 function createCoffee(overrides: Partial<CoffeeCatalog> = {}): CoffeeCatalog {
@@ -170,5 +171,19 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 		expect(screen.getByRole('link', { name: /view in catalog/i }).getAttribute('href')).toBe(
 			'/catalog?coffee=43'
 		);
+	});
+
+	it('renders page-specific detail content inside the canonical pop-out shell', async () => {
+		render(CoffeeCardDetailContentHarness, {
+			coffee: createCoffee(),
+			parseTastingNotes
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: /view details for process lot/i }));
+
+		expect(screen.getByRole('complementary', { name: /process lot/i })).toBeTruthy();
+		expect(screen.getByRole('region', { name: /portfolio detail/i })).toBeTruthy();
+		expect(screen.getByText('Portfolio roast history')).toBeTruthy();
+		expect(screen.queryByRole('tab', { name: /overview/i })).toBeNull();
 	});
 });

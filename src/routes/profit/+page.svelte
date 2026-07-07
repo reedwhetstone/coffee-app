@@ -4,8 +4,12 @@
 	import PerformanceChart from './PerformanceChart.svelte';
 	import SalesChart from './SalesChart.svelte';
 	import ProfitPageSkeleton from '$lib/components/ProfitPageSkeleton.svelte';
+	import MetricTile from '$lib/components/ui/MetricTile.svelte';
+	import OperationsHero from '$lib/components/ui/OperationsHero.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { canUseMallardControls } from '$lib/services/portfolioAccess';
+	import type { UserRole } from '$lib/types/auth.types';
 	import type { AvailableCoffee, BatchItem } from '$lib/types/component.types';
 
 	interface ProfitData {
@@ -44,7 +48,9 @@
 	let profitData = $state<ProfitData[]>([]);
 	// Removed unused roastProfileData
 	let salesData = $state<SaleData[]>([]);
-	let isFormVisible = $derived(page.url.searchParams.get('modal') === 'new');
+	let { data = { role: 'viewer' } } = $props<{ data?: { role?: UserRole } }>();
+	let canLogSales = $derived(canUseMallardControls(data?.role ?? 'viewer'));
+	let isFormVisible = $derived(canLogSales && page.url.searchParams.get('modal') === 'new');
 	let selectedSale = $state<SaleData | null>(null);
 	let isSaving = $state<string | null>(null);
 
@@ -56,6 +62,31 @@
 	// Removed unused derived values (totalRevenue, totalCost, totalProfit)
 
 	// Removed unused derived values (averageMargin, totalPoundsRoasted, sellThroughRate, roastLossRate)
+	const formatCurrency = (value: number) =>
+		`$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+	const formatPercent = (value: number) => `${value.toFixed(1)}%`;
+	const profitSummary = $derived.by(() => {
+		const revenue = salesData.reduce((sum, sale) => sum + (Number(sale.price) || 0), 0);
+		const invested = profitData.reduce(
+			(sum, row) => sum + (Number(row.bean_cost) || 0) + (Number(row.tax_ship_cost) || 0),
+			0
+		);
+		const profit = revenue - invested;
+		const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+		const soldCoffeeIds = new Set(salesData.map((sale) => sale.green_coffee_inv_id));
+		const poundsIn = profitData
+			.filter((row) => soldCoffeeIds.has(row.id))
+			.reduce((sum, row) => sum + (Number(row.purchased_qty_lbs) || 0), 0);
+
+		return {
+			revenue,
+			invested,
+			profit,
+			margin,
+			poundsIn,
+			salesCount: salesData.length
+		};
+	});
 
 	// Add sales form handlers
 	// SaleForm submits to the API, then waits for the parent refresh before closing the modal.
@@ -195,10 +226,42 @@
 	<ProfitPageSkeleton />
 {:else}
 	<div class="space-y-6">
-		<!-- Header Section -->
-		<div class="mb-6">
-			<h1 class="mb-2 text-2xl font-bold text-ink">Coffee Sales & Profit</h1>
-			<p class="text-muted">Track your coffee sales performance and profitability</p>
+		<OperationsHero
+			kicker="Mallard Studio"
+			title="Profit cockpit"
+			description="Track coffee sales as an operating loop: inventory investment, sell-through, margin, and the lots creating or consuming cash."
+			contextLabel="Current margin"
+			contextValue={formatPercent(profitSummary.margin)}
+			primaryLabel={canLogSales ? 'Log sale' : ''}
+			primaryHref={canLogSales ? '/profit?modal=new' : ''}
+			secondaryLabel="Review portfolio"
+			secondaryHref="/beans"
+		/>
+
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+			<MetricTile
+				label="Revenue"
+				value={formatCurrency(profitSummary.revenue)}
+				detail={`${profitSummary.salesCount} recorded sales`}
+				tone="success"
+			/>
+			<MetricTile
+				label="Profit"
+				value={formatCurrency(profitSummary.profit)}
+				detail={`${formatCurrency(profitSummary.invested)} invested`}
+				tone={profitSummary.profit >= 0 ? 'accent' : 'danger'}
+			/>
+			<MetricTile
+				label="Coffee in play"
+				value={`${profitSummary.poundsIn.toFixed(1)} lb`}
+				detail="Purchased green coffee attached to recorded sales"
+			/>
+			<MetricTile
+				label="Margin"
+				value={formatPercent(profitSummary.margin)}
+				detail="Revenue after recorded bean, tax, and shipping cost"
+				tone={profitSummary.margin >= 20 ? 'success' : 'warning'}
+			/>
 		</div>
 
 		<!-- Coffee Sales Analysis Chart -->
