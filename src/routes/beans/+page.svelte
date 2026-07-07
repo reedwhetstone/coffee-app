@@ -682,7 +682,7 @@
 					</div>
 				{:else}
 					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-						{#each typedFilteredData as bean}
+						{#each typedFilteredData as bean (bean.id)}
 							{@const coffee = portfolioCoffee(bean)}
 							<div id="portfolio-coffee-{bean.id}">
 								<CoffeeCard
