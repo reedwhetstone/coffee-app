@@ -250,3 +250,27 @@ COMMENT ON FUNCTION public.compute_metadata_index(date) IS
 
 REVOKE EXECUTE ON FUNCTION public.compute_metadata_index(date) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.compute_metadata_index(date) TO service_role;
+
+-- Rebuild historical metadata-index periods so replacing dimension='score' does
+-- not leave the API with a gap until the next scheduled current-period job.
+DO $$
+DECLARE
+  v_period_date date;
+BEGIN
+  FOR v_period_date IN
+    SELECT DISTINCT period_date
+    FROM (
+      SELECT date_trunc('week', snapshot_date)::date AS period_date
+      FROM public.coffee_price_snapshots
+      WHERE snapshot_date >= DATE '2026-03-21'
+      UNION
+      SELECT date_trunc('month', snapshot_date)::date AS period_date
+      FROM public.coffee_price_snapshots
+      WHERE snapshot_date >= DATE '2026-03-21'
+    ) periods
+    ORDER BY period_date
+  LOOP
+    PERFORM 1 FROM public.compute_metadata_index(v_period_date);
+  END LOOP;
+END;
+$$;

@@ -40,7 +40,7 @@ MARKET INTELLIGENCE GUIDANCE
 - Before filtering by a supplier, origin, or process value you have not seen in this conversation, verify it with catalog_facets or supplier_list — never guess names
 - For market pricing questions ("is this priced well?", "what are naturals going for?"), use price_index_read and compare a lot's price to the matching segment's median/p25/p75
 - For movement significance questions ("did prices really move?", "is this signal or noise?"), use market_stats when available and explain the classification, sample size, and move driver
-- For market composition questions ("is anaerobic growing?", "is disclosure improving?"), use market_metadata when available and avoid promising score trends
+- For market composition questions ("is anaerobic growing?", "is disclosure improving?", "how is Purveyor Score trending?"), use market_metadata when available; only Purveyor Score dimensions are available, not supplier score_value trends
 - catalog_facets and supplier_list results are cached and stable — reuse them within a conversation instead of calling them again
 - Quality signals are evidence, not verdicts: cite scores, sample sizes, and factors; avoid absolute claims like "objectively the best"
 
@@ -213,7 +213,7 @@ READ TOOLS (query data):
 7. price_index_read - Parchment Market Index aggregate price snapshots by origin/process over time
 8. market_signals - Actionable buy signals: price drops, below-market lots, and price-for-quality outliers
 9. market_stats - Price movement significance with quiet/normal/notable/exceptional classification and move-driver context
-10. market_metadata - Market composition trends for process mix and disclosure level; cup-score trends are unavailable
+10. market_metadata - Market composition trends for process mix, disclosure level, and Purveyor Score distribution; supplier cup-score trends are unavailable
 11. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
 
 WRITE TOOLS (propose changes — user must confirm before execution):
@@ -236,7 +236,7 @@ READ TOOLS (query data):
 9. price_index_read - Parchment Market Index aggregate price snapshots by origin/process over time
 10. market_signals - Actionable buy signals: price drops, below-market lots, and price-for-quality outliers
 11. market_stats - Price movement significance with quiet/normal/notable/exceptional classification and move-driver context
-12. market_metadata - Market composition trends for process mix and disclosure level; cup-score trends are unavailable
+12. market_metadata - Market composition trends for process mix, disclosure level, and Purveyor Score distribution; supplier cup-score trends are unavailable
 13. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
 
 WRITE TOOLS (propose changes — user must confirm before execution):
@@ -630,7 +630,10 @@ export const POST: RequestHandler = async (event) => {
 				},
 				marketMetadataIndex: async (input) => {
 					const client = await _createMarketToolParchmentClient(event);
-					const { data, error } = await client.market.metadataIndex(input);
+					// @purveyors/sdk 0.7.0 has a narrower generated enum than the live
+					// metadata-index API. Send the widened app contract until the SDK
+					// catches up.
+					const { data, error } = await client.market.metadataIndex(input as never);
 					return error ?? data;
 				}
 			}

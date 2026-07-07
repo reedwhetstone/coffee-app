@@ -32,4 +32,10 @@ describe('Market Metadata Purveyor Score migration', () => {
 			'GRANT EXECUTE ON FUNCTION public.compute_metadata_index(date) TO service_role'
 		);
 	});
+
+	it('backfills existing snapshot periods after replacing the RPC', () => {
+		expect(migrationSql).toContain('FOR v_period_date IN');
+		expect(migrationSql).toContain('date_trunc(');
+		expect(migrationSql).toContain('PERFORM 1 FROM public.compute_metadata_index(v_period_date)');
+	});
 });
