@@ -35,6 +35,7 @@
 	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
 	import ValueSignalsSection from '$lib/components/analytics/sections/ValueSignalsSection.svelte';
 	import MetadataTrendsSection from '$lib/components/analytics/sections/MetadataTrendsSection.svelte';
+	import { getAnalyticsSectionLinks } from '$lib/components/layout/appNavigation';
 	import type { MarketIndexInsights } from '$lib/types/marketIndex.types';
 
 	let { data } = $props<{ data: PageData }>();
@@ -58,13 +59,6 @@
 	type WindowMode = '7d' | '30d';
 	let viewMode = $state<ViewMode>('retail');
 	let windowMode = $state<WindowMode>('7d');
-	const SECTION_LINKS = [
-		{ href: '#market-read', label: 'Read' },
-		{ href: '#today-signals', label: 'Signals' },
-		{ href: '#price-evidence', label: 'Evidence' },
-		{ href: '#metadata-trends', label: 'Market mix' },
-		{ href: '#supplier-movement', label: 'Suppliers' }
-	];
 
 	let {
 		session,
@@ -113,6 +107,10 @@
 			trackedLots: TrackedLotSummary[];
 			marketInsights: MarketIndexInsights;
 		}
+	);
+	let isAnonymous = $derived(!session);
+	let visibleAnalyticsSectionLinks = $derived(
+		getAnalyticsSectionLinks({ includeDisclosureIndex: !isAnonymous })
 	);
 
 	// ── Snapshot filtering (scope lens) ──────────────────────────────────────
@@ -958,11 +956,11 @@
 />
 
 <nav
-	class="sticky top-16 z-20 mb-6 overflow-x-auto border-y border-line bg-surface-canvas/95 py-2 backdrop-blur"
+	class="sticky top-16 z-20 mb-6 hidden overflow-x-auto border-y border-line bg-surface-canvas/95 py-2 backdrop-blur md:block"
 	aria-label="Market Index sections"
 >
 	<div class="flex min-w-max items-center gap-2">
-		{#each SECTION_LINKS as link}
+		{#each visibleAnalyticsSectionLinks as link}
 			<a
 				href={link.href}
 				class="rounded-full border border-line bg-surface-panel px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-ink"
@@ -999,13 +997,15 @@
 	<KpiStripSection {kpiCards} {insightCards} />
 </section>
 
-<WatchlistSignalsSection
-	{scopedTrackedLots}
-	{trackedDelistedCount}
-	{trackedPriceMovers}
-	{viewModeLabel}
-	{viewMode}
-/>
+{#if !isAnonymous}
+	<WatchlistSignalsSection
+		{scopedTrackedLots}
+		{trackedDelistedCount}
+		{trackedPriceMovers}
+		{viewModeLabel}
+		{viewMode}
+	/>
+{/if}
 
 {#if analyticsShellMessage}
 	<div
@@ -1024,10 +1024,12 @@
 	</div>
 {/if}
 
-<section id="price-evidence" class="scroll-mt-28">
+<section id="market-index" class="scroll-mt-28">
 	<AnalyticsSectionHeader
-		title="Price evidence"
-		description="The charts behind the read: origin price history, processing mix, and how prices spread across origins."
+		title="Market Index"
+		description={isAnonymous
+			? 'The main price trend behind the current market read.'
+			: 'Pricing, supplier coverage, arrivals, delistings, and the movement behind the current market read.'}
 	/>
 
 	<EvidenceChartsSection
@@ -1041,49 +1043,83 @@
 		{displayStockedCount}
 		{viewMode}
 		{isParchmentIntelligence}
+		mainOnly={isAnonymous}
 		onRetry={retryPublicCharts}
 	/>
+
+	{#if isAnonymous}
+		<section
+			class="mb-8 rounded-lg border border-accent/20 bg-accent-subtle/10 p-5 shadow-sm"
+			aria-label="Market Index upgrade summary"
+		>
+			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+				<div>
+					<h2 class="font-serif text-xl font-medium text-ink">Unlock the full market map.</h2>
+					<ul class="mt-3 grid gap-x-6 gap-y-1 text-sm text-muted sm:grid-cols-2">
+						<li>Supplier price ranges and lot-level previews</li>
+						<li>Arrivals, delistings, and movement by origin</li>
+						<li>Processing and disclosure trends over time</li>
+						<li>Scoped buy signals with evidence per lot</li>
+					</ul>
+				</div>
+				<div class="flex shrink-0 gap-2">
+					<a
+						href="/subscription"
+						class="rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-accent/85"
+					>
+						See plans
+					</a>
+					<a
+						href="/auth"
+						class="rounded-md border border-accent px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-accent"
+					>
+						Sign in
+					</a>
+				</div>
+			</div>
+		</section>
+	{:else}
+		<ParchmentIntelligenceSection
+			{isParchmentIntelligence}
+			{session}
+			{PriceTierChartComponent}
+			{SupplierComparisonTableComponent}
+			{SupplierHealthTableComponent}
+			{memberVisualsError}
+			{snapshots}
+			{scopedComparisonBeans}
+			{scopedSupplierPriceRanges}
+			{scopedSupplierHealth}
+			{filteredArrivals}
+			{filteredDelistings}
+			arrivalTotal={scopedArrivalCount}
+			delistingTotal={scopedDelistingCount}
+			{isMovementDataAvailable}
+			{originBarData}
+			{hasSnapshots}
+			{windowMode}
+			{viewModeLabel}
+			onRetry={retryMemberVisuals}
+			onWindowModeChange={(v) => (windowMode = v)}
+		/>
+	{/if}
 </section>
 
-<section id="metadata-trends" class="scroll-mt-28">
-	<MetadataTrendsSection
-		processSeries={marketInsights?.metadataProcessSeries ?? null}
-		disclosureSeries={marketInsights?.metadataDisclosureSeries ?? null}
-		{viewMode}
-		{isParchmentIntelligence}
-	/>
-</section>
+{#if !isAnonymous}
+	<section id="disclosure-index" class="scroll-mt-28">
+		<AnalyticsSectionHeader
+			title="Disclosure Index"
+			description="Metadata and transparency trends over time: what suppliers are revealing beyond price."
+		/>
 
-<section id="supplier-movement" class="scroll-mt-28">
-	<AnalyticsSectionHeader
-		title="Suppliers and movement"
-		description="Who has what, at what price — and what's arriving and leaving the visible market."
-	/>
-
-	<ParchmentIntelligenceSection
-		{isParchmentIntelligence}
-		{session}
-		{PriceTierChartComponent}
-		{SupplierComparisonTableComponent}
-		{SupplierHealthTableComponent}
-		{memberVisualsError}
-		{snapshots}
-		{scopedComparisonBeans}
-		{scopedSupplierPriceRanges}
-		{scopedSupplierHealth}
-		{filteredArrivals}
-		{filteredDelistings}
-		arrivalTotal={scopedArrivalCount}
-		delistingTotal={scopedDelistingCount}
-		{isMovementDataAvailable}
-		{originBarData}
-		{hasSnapshots}
-		{windowMode}
-		{viewModeLabel}
-		onRetry={retryMemberVisuals}
-		onWindowModeChange={(v) => (windowMode = v)}
-	/>
-</section>
+		<MetadataTrendsSection
+			processSeries={marketInsights?.metadataProcessSeries ?? null}
+			disclosureSeries={marketInsights?.metadataDisclosureSeries ?? null}
+			{viewMode}
+			{isParchmentIntelligence}
+		/>
+	</section>
+{/if}
 
 <div class="mt-4 rounded-lg bg-surface-panel p-4 text-xs text-muted">
 	<strong class="text-ink">Data source:</strong> Daily prices aggregated from

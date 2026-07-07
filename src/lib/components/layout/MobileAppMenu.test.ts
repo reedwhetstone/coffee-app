@@ -22,6 +22,19 @@ vi.mock('$lib/types/auth.types', () => ({
 }));
 
 vi.mock('$lib/components/layout/appNavigation', () => ({
+	getAnalyticsSectionLinks: ({ includeDisclosureIndex = false } = {}) =>
+		[
+			{ href: '#market-read', menuHref: '/analytics#market-read', label: 'Read' },
+			{ href: '#today-signals', menuHref: '/analytics#today-signals', label: 'Signals' },
+			{ href: '#market-index', menuHref: '/analytics#market-index', label: 'Market Index' },
+			includeDisclosureIndex
+				? {
+						href: '#disclosure-index',
+						menuHref: '/analytics#disclosure-index',
+						label: 'Disclosure Index'
+					}
+				: null
+		].filter(Boolean),
 	getAuthenticatedNavSections: () => [],
 	isNavItemActive: () => false
 }));
@@ -47,5 +60,22 @@ describe('MobileAppMenu', () => {
 
 		expect(onClose).toHaveBeenCalledTimes(1);
 		expect(goto).toHaveBeenCalledWith('/chat');
+	});
+
+	it('offers Market Index section jumps from the app menu on analytics', async () => {
+		const onClose = vi.fn();
+		pageState.url = new URL('http://localhost/analytics');
+
+		render(MobileAppMenu, {
+			data: { role: 'member', user: { email: 'member@example.com' } },
+			onClose
+		});
+
+		expect(screen.getByText('Market Index sections')).toBeTruthy();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Disclosure Index' }));
+
+		expect(onClose).toHaveBeenCalledTimes(1);
+		expect(goto).toHaveBeenCalledWith('/analytics#disclosure-index');
 	});
 });

@@ -1,6 +1,6 @@
 # ADR-003: Public Analytics — 3 Free Charts, Auth Gate for the Rest
 
-**Status:** Accepted
+**Status:** Superseded by ADR-010
 **Date:** 2026-02-01 (approximate)
 
 ## Context

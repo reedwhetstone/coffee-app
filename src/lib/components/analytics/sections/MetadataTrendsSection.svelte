@@ -1,5 +1,4 @@
 <script lang="ts">
-	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
 	import CompositionTrendChart from '$lib/components/analytics/CompositionTrendChart.svelte';
 	import {
 		CHART_SERIES,
@@ -53,11 +52,6 @@
 </script>
 
 {#if hasAnySeries}
-	<AnalyticsSectionHeader
-		title="How is the market changing?"
-		description="The metadata index: what the market is offering and disclosing over time — not just what it costs."
-	/>
-
 	{#if retailScopeNote}
 		<p class="mb-4 text-sm text-muted" aria-label="Metadata scope note">
 			{retailScopeNote}

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getAuthenticatedNavSections, getCurrentRouteLabel } from './appNavigation';
+import {
+	getAnalyticsSectionLinks,
+	getAuthenticatedNavSections,
+	getCurrentRouteLabel
+} from './appNavigation';
 
 function sectionById(role: 'viewer' | 'member' | 'admin', id: string, ppiAccess = false) {
 	return getAuthenticatedNavSections(role, { ppiAccess }).find((section) => section.id === id);
@@ -60,5 +64,21 @@ describe('authenticated app navigation taxonomy', () => {
 	it('hides admin navigation from non-admin users', () => {
 		expect(sectionById('member', 'admin')).toBeUndefined();
 		expect(sectionById('admin', 'admin')?.items.map((item) => item.href)).toContain('/admin');
+	});
+});
+
+describe('analytics section navigation', () => {
+	it('omits Disclosure Index when that section is not rendered', () => {
+		expect(getAnalyticsSectionLinks().map((link) => link.href)).toEqual([
+			'#market-read',
+			'#today-signals',
+			'#market-index'
+		]);
+	});
+
+	it('includes Disclosure Index for signed-in analytics surfaces', () => {
+		expect(
+			getAnalyticsSectionLinks({ includeDisclosureIndex: true }).map((link) => link.href)
+		).toContain('#disclosure-index');
 	});
 });

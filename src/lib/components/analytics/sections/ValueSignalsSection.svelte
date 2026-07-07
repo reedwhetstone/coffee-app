@@ -178,22 +178,16 @@
 						the evidence behind each one.
 					</p>
 				</div>
-				<div class="flex shrink-0 flex-col gap-2 sm:flex-row">
-					<a
-						href="/subscription?plan=intelligence-monthly&intent=checkout"
-						class="rounded-md bg-accent px-4 py-2 text-center text-sm font-semibold text-ink transition-all duration-200 hover:bg-accent/85"
-					>
-						Start Intelligence
-					</a>
-					{#if !isSignedIn}
+				{#if isSignedIn}
+					<div class="flex shrink-0 flex-col gap-2 sm:flex-row">
 						<a
-							href="/auth"
-							class="rounded-md border border-accent px-4 py-2 text-center text-sm font-medium text-ink transition-all duration-200 hover:bg-accent"
+							href="/subscription?plan=intelligence-monthly&intent=checkout"
+							class="rounded-md bg-accent px-4 py-2 text-center text-sm font-semibold text-ink transition-all duration-200 hover:bg-accent/85"
 						>
-							Sign in
+							Start Intelligence
 						</a>
-					{/if}
-				</div>
+					</div>
+				{/if}
 			</div>
 		</section>
 	{/if}

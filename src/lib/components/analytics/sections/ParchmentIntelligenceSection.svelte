@@ -171,10 +171,10 @@
 							/>
 						</div>
 						<div class="rounded-lg border border-line bg-surface-panel p-4">
-							<p class="text-xs font-semibold uppercase tracking-wide text-muted">Preview</p>
+							<p class="text-xs font-semibold uppercase tracking-wide text-muted">Supplier read</p>
 							<p class="mt-2 text-sm leading-6 text-muted">
-								The range chart uses the full public supplier aggregate. The lot preview stays
-								capped and price-ordered so the first rows remain actionable.
+								Scan the spread first, then open the detail view when a supplier or lot looks worth
+								comparing.
 							</p>
 							<dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
 								<div>

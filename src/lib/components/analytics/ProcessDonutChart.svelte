@@ -122,47 +122,50 @@
 	let cy = $derived(containerH / 2);
 </script>
 
-<div class="h-full w-full" bind:clientHeight={containerH} bind:clientWidth={containerW}>
-	{#if containerW > 0 && containerH > 0 && slices.length > 0}
-		<svg width={containerW} height={containerH}>
-			<g transform="translate({cx},{cy})">
-				{#each slices as s}
-					<path
-						d={s.path}
-						fill={s.color}
-						fill-opacity="0.85"
-						stroke="transparent"
-						stroke-width="1"
-					/>
-				{/each}
+<div class="flex h-72 w-full flex-col">
+	<div class="min-h-0 flex-1" bind:clientHeight={containerH} bind:clientWidth={containerW}>
+		{#if containerW > 0 && containerH > 0 && slices.length > 0}
+			<svg width={containerW} height={containerH}>
+				<g transform="translate({cx},{cy})">
+					{#each slices as s}
+						<path
+							d={s.path}
+							fill={s.color}
+							fill-opacity="0.85"
+							stroke="transparent"
+							stroke-width="1"
+						/>
+					{/each}
 
-				<!-- Percentage labels inside arcs (top segments >= 8%) -->
-				{#each slices as s}
-					{#if s.showLabel}
-						<text
-							x={s.labelX}
-							y={s.labelY}
-							text-anchor="middle"
-							dominant-baseline="middle"
-							font-size="11"
-							font-weight="600"
-							fill="white"
-							pointer-events="none"
-						>
-							{s.pct}%
-						</text>
-					{/if}
-				{/each}
+					<!-- Percentage labels inside arcs (top segments >= 8%) -->
+					{#each slices as s}
+						{#if s.showLabel}
+							<text
+								x={s.labelX}
+								y={s.labelY}
+								text-anchor="middle"
+								dominant-baseline="middle"
+								font-size="11"
+								font-weight="600"
+								fill="white"
+								pointer-events="none"
+							>
+								{s.pct}%
+							</text>
+						{/if}
+					{/each}
 
-				<!-- Center text -->
-				<text x="0" y="-8" text-anchor="middle" font-size="22" font-weight="600" fill="#302f2a"
-					>{total}</text
-				>
-				<text x="0" y="12" text-anchor="middle" font-size="11" fill="#695c4d">beans</text>
-			</g>
-		</svg>
+					<!-- Center text -->
+					<text x="0" y="-8" text-anchor="middle" font-size="22" font-weight="600" fill="#302f2a"
+						>{total}</text
+					>
+					<text x="0" y="12" text-anchor="middle" font-size="11" fill="#695c4d">beans</text>
+				</g>
+			</svg>
+		{/if}
+	</div>
 
-		<!-- Legend -->
+	{#if slices.length > 0}
 		<div class="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 px-2">
 			{#each slices as s}
 				<div class="flex items-center gap-1.5 text-xs text-muted">

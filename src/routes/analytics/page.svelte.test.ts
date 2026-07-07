@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { render, screen, waitFor, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import AnalyticsPage from './+page.svelte';
@@ -243,7 +243,7 @@ describe('analytics page loading experience', () => {
 		expect(
 			screen.getByText(/the overview is ready first\. charts are loading next\./i)
 		).toBeTruthy();
-		expect(screen.getAllByTestId('analytics-loading-panel').length).toBeGreaterThanOrEqual(3);
+		expect(screen.getAllByTestId('analytics-loading-panel').length).toBeGreaterThanOrEqual(1);
 
 		publicModules.resolve(await buildPublicModules());
 
@@ -251,17 +251,19 @@ describe('analytics page loading experience', () => {
 			expect(screen.queryByText('Loading market visuals')).toBeNull();
 		});
 
-		expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 	});
 
-	it('keeps logged-out and signed-in viewers on the same baseline analytics surface', async () => {
+	it('keeps logged-out viewers on a compact public analytics surface', async () => {
 		const view = render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 		});
 
-		expect(screen.getByText('The supplier layer runs deeper.')).toBeTruthy();
+		expect(screen.getByText('Unlock the full market map.')).toBeTruthy();
+		expect(screen.queryByText('The supplier layer runs deeper.')).toBeNull();
+		expect(screen.queryByText('Processing mix')).toBeNull();
 
 		await view.rerender({ data: createData({ session: createSession() }) });
 
@@ -302,13 +304,13 @@ describe('analytics page loading experience', () => {
 		await waitFor(() => {
 			expect(
 				screen.getAllByText("We couldn't load the overview charts right now. Please retry.")
-			).toHaveLength(3);
+			).toHaveLength(1);
 		});
 
 		expect(screen.queryByTestId('analytics-loading-panel')).toBeNull();
-		expect(screen.getAllByTestId('analytics-error-panel').length).toBeGreaterThanOrEqual(3);
+		expect(screen.getAllByTestId('analytics-error-panel').length).toBeGreaterThanOrEqual(1);
 		expect(screen.getAllByRole('button', { name: 'Retry loading' }).length).toBeGreaterThanOrEqual(
-			3
+			1
 		);
 	});
 });
@@ -318,7 +320,7 @@ describe('analytics command center hierarchy', () => {
 		const { container } = render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 		});
 
 		expect(screen.getByRole('heading', { name: 'Parchment Market Index' })).toBeTruthy();
@@ -342,10 +344,19 @@ describe('analytics command center hierarchy', () => {
 		expect(evidenceCharts).toBeTruthy();
 		expect(screen.getByRole('link', { name: 'Read' })).toHaveAttribute('href', '#market-read');
 		expect(screen.getByRole('link', { name: 'Signals' })).toHaveAttribute('href', '#today-signals');
-		expect(screen.getByRole('link', { name: 'Suppliers' })).toHaveAttribute(
+		expect(screen.getByRole('link', { name: 'Market Index' })).toHaveAttribute(
 			'href',
-			'#supplier-movement'
+			'#market-index'
 		);
+		expect(screen.queryByRole('link', { name: 'Disclosure Index' })).toBeNull();
+
+		const sectionLinks = within(sectionNav as HTMLElement)
+			.getAllByRole('link')
+			.map((link) => link.getAttribute('href'))
+			.filter((href): href is string => Boolean(href?.startsWith('#')));
+		for (const href of sectionLinks) {
+			expect(container.querySelector(href)).toBeTruthy();
+		}
 
 		expect(
 			marketRead!.compareDocumentPosition(scopeControls!) & Node.DOCUMENT_POSITION_FOLLOWING
@@ -363,7 +374,7 @@ describe('analytics command center hierarchy', () => {
 			insightCards!.compareDocumentPosition(evidenceCharts!) & Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 		expect(
-			evidenceCharts!.compareDocumentPosition(screen.getByText('The supplier layer runs deeper.')) &
+			evidenceCharts!.compareDocumentPosition(screen.getByText('Unlock the full market map.')) &
 				Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 	});
@@ -372,7 +383,7 @@ describe('analytics command center hierarchy', () => {
 		render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 		});
 
 		await screen.getByRole('button', { name: 'All' }).click();
@@ -400,7 +411,7 @@ describe('analytics command center hierarchy', () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 		});
 
 		await screen.getByRole('button', { name: 'Wholesale' }).click();
@@ -463,6 +474,7 @@ describe('analytics command center hierarchy', () => {
 		const baseSnapshot = createData().snapshots[0];
 		render(AnalyticsPage, {
 			data: createData({
+				session: createSession(),
 				snapshots: [
 					baseSnapshot,
 					{
@@ -494,6 +506,7 @@ describe('analytics command center hierarchy', () => {
 	it('surfaces watchlist signals scoped to the selected market', async () => {
 		render(AnalyticsPage, {
 			data: createData({
+				session: createSession(),
 				trackedLots: [
 					{
 						catalogId: 1,
@@ -551,7 +564,7 @@ describe('analytics section navigator', () => {
 		render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 		});
 
 		expect(screen.getByRole('navigation', { name: 'Market Index sections' })).toBeTruthy();
@@ -657,21 +670,18 @@ describe('analytics premium boundary copy', () => {
 		render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 		});
 
 		expect(screen.queryByRole('button', { name: 'Spread' })).toBeNull();
-		expect(screen.getByText('The supplier layer runs deeper.')).toBeTruthy();
-		expect(
-			screen.getByText(
-				/supplier-by-supplier price ranges, catalog health, the arrivals and delistings feed/i
-			)
-		).toBeTruthy();
-		expect(screen.getByRole('link', { name: 'Start Intelligence' })).toBeTruthy();
+		expect(screen.getByText('Unlock the full market map.')).toBeTruthy();
+		expect(screen.getByText(/Supplier price ranges and lot-level previews/i)).toBeTruthy();
+		expect(screen.getByText(/Arrivals, delistings, and movement by origin/i)).toBeTruthy();
+		expect(screen.queryByText('The supplier layer runs deeper.')).toBeNull();
+		expect(screen.queryByRole('link', { name: 'Start Intelligence' })).toBeNull();
 		expect(screen.getByRole('link', { name: 'See plans' })).toBeTruthy();
 		expect(screen.queryByText('Fresh Ethiopia')).toBeNull();
 		expect(screen.queryByText('Recently Gone')).toBeNull();
-		expect(screen.getAllByText(/Parchment Intelligence/).length).toBeGreaterThanOrEqual(1);
 	});
 
 	it('restores premium supplier analytics modules instead of static fallback tables', async () => {
