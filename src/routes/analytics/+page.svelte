@@ -958,7 +958,7 @@
 />
 
 <nav
-	class="sticky top-16 z-20 mb-6 overflow-x-auto border-y border-line bg-surface-canvas/95 py-2 backdrop-blur md:top-4"
+	class="sticky top-16 z-20 mb-6 overflow-x-auto border-y border-line bg-surface-canvas/95 py-2 backdrop-blur"
 	aria-label="Market Index sections"
 >
 	<div class="flex min-w-max items-center gap-2">
