@@ -25,6 +25,7 @@
 	import {
 		loadMemberAnalyticsModules,
 		loadPublicAnalyticsModules,
+		loadPublicTrendAnalyticsModule,
 		loadSupplierAnalyticsModules
 	} from './deferredModules';
 	import MarketReadSection from '$lib/components/analytics/sections/MarketReadSection.svelte';
@@ -843,9 +844,13 @@
 
 	$effect(() => {
 		const retryKey = publicChartsRetryKey;
+		const mainOnly = isAnonymous;
 		void retryKey;
 
-		if (OriginLineChartComponent && OriginBarChartComponent && ProcessDonutChartComponent) {
+		if (
+			OriginLineChartComponent &&
+			(mainOnly || (OriginBarChartComponent && ProcessDonutChartComponent))
+		) {
 			publicChartsLoading = false;
 			publicChartsError = null;
 			return;
@@ -855,17 +860,23 @@
 		publicChartsLoading = true;
 		publicChartsError = null;
 
-		void loadPublicAnalyticsModules()
+		const moduleLoad = mainOnly ? loadPublicTrendAnalyticsModule() : loadPublicAnalyticsModules();
+
+		void moduleLoad
 			.then(
 				({
 					OriginLineChartComponent: originLine,
 					OriginBarChartComponent: originBar,
 					ProcessDonutChartComponent: processDonut
+				}: {
+					OriginLineChartComponent: DeferredAnalyticsComponent;
+					OriginBarChartComponent?: DeferredAnalyticsComponent;
+					ProcessDonutChartComponent?: DeferredAnalyticsComponent;
 				}) => {
 					if (cancelled) return;
 					OriginLineChartComponent = originLine;
-					OriginBarChartComponent = originBar;
-					ProcessDonutChartComponent = processDonut;
+					if (originBar) OriginBarChartComponent = originBar;
+					if (processDonut) ProcessDonutChartComponent = processDonut;
 				}
 			)
 			.catch((error) => {

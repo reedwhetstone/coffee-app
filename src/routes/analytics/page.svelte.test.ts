@@ -6,11 +6,13 @@ import type { PageData } from './$types';
 
 const {
 	goto,
+	loadPublicTrendAnalyticsModule,
 	loadPublicAnalyticsModules,
 	loadMemberAnalyticsModules,
 	loadSupplierAnalyticsModules
 } = vi.hoisted(() => ({
 	goto: vi.fn(),
+	loadPublicTrendAnalyticsModule: vi.fn(),
 	loadPublicAnalyticsModules: vi.fn(),
 	loadMemberAnalyticsModules: vi.fn(),
 	loadSupplierAnalyticsModules: vi.fn()
@@ -18,6 +20,7 @@ const {
 
 vi.mock('$app/navigation', () => ({ goto }));
 vi.mock('./deferredModules', () => ({
+	loadPublicTrendAnalyticsModule,
 	loadPublicAnalyticsModules,
 	loadMemberAnalyticsModules,
 	loadSupplierAnalyticsModules
@@ -50,6 +53,13 @@ async function buildPublicModules() {
 		OriginLineChartComponent: component,
 		OriginBarChartComponent: component,
 		ProcessDonutChartComponent: component
+	};
+}
+
+async function buildPublicTrendModule() {
+	const component = await loadStubComponent();
+	return {
+		OriginLineChartComponent: component
 	};
 }
 
@@ -223,6 +233,7 @@ function expectPromptLine(prompt: string | null, line: string) {
 beforeEach(() => {
 	vi.clearAllMocks();
 	vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-04-09T12:00:00.000Z').getTime());
+	loadPublicTrendAnalyticsModule.mockImplementation(buildPublicTrendModule);
 	loadPublicAnalyticsModules.mockImplementation(buildPublicModules);
 	loadMemberAnalyticsModules.mockImplementation(buildMemberModules);
 	loadSupplierAnalyticsModules.mockImplementation(buildSupplierModules);
@@ -234,8 +245,8 @@ afterEach(() => {
 
 describe('analytics page loading experience', () => {
 	it('shows immediate loading feedback before deferred analytics modules mount', async () => {
-		const publicModules = deferred<Awaited<ReturnType<typeof buildPublicModules>>>();
-		loadPublicAnalyticsModules.mockReturnValueOnce(publicModules.promise);
+		const trendModule = deferred<Awaited<ReturnType<typeof buildPublicTrendModule>>>();
+		loadPublicTrendAnalyticsModule.mockReturnValueOnce(trendModule.promise);
 
 		render(AnalyticsPage, { data: createData() });
 
@@ -245,7 +256,7 @@ describe('analytics page loading experience', () => {
 		).toBeTruthy();
 		expect(screen.getAllByTestId('analytics-loading-panel').length).toBeGreaterThanOrEqual(1);
 
-		publicModules.resolve(await buildPublicModules());
+		trendModule.resolve(await buildPublicTrendModule());
 
 		await waitFor(() => {
 			expect(screen.queryByText('Loading market visuals')).toBeNull();
@@ -261,6 +272,8 @@ describe('analytics page loading experience', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 		});
 
+		expect(loadPublicTrendAnalyticsModule).toHaveBeenCalledTimes(1);
+		expect(loadPublicAnalyticsModules).not.toHaveBeenCalled();
 		expect(screen.getByText('Unlock the full market map.')).toBeTruthy();
 		expect(screen.queryByText('The supplier layer runs deeper.')).toBeNull();
 		expect(screen.queryByText('Processing mix')).toBeNull();
@@ -271,8 +284,26 @@ describe('analytics page loading experience', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
 
+		expect(loadPublicAnalyticsModules).toHaveBeenCalledTimes(1);
 		expect(loadMemberAnalyticsModules).not.toHaveBeenCalled();
 		expect(screen.getByText('The supplier layer runs deeper.')).toBeTruthy();
+	});
+
+	it('does not block anonymous trend chart rendering on hidden public chart chunks', async () => {
+		loadPublicTrendAnalyticsModule.mockResolvedValueOnce(await buildPublicTrendModule());
+		loadPublicAnalyticsModules.mockRejectedValueOnce(new Error('hidden chunk failed'));
+
+		render(AnalyticsPage, { data: createData() });
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
+		});
+
+		expect(loadPublicTrendAnalyticsModule).toHaveBeenCalledTimes(1);
+		expect(loadPublicAnalyticsModules).not.toHaveBeenCalled();
+		expect(
+			screen.queryByText("We couldn't load the overview charts right now. Please retry.")
+		).toBeNull();
 	});
 
 	it('loads the Parchment Intelligence chart when a viewer upgrades on the same route', async () => {
@@ -297,7 +328,7 @@ describe('analytics page loading experience', () => {
 	});
 
 	it('shows an actionable error state when deferred imports fail', async () => {
-		loadPublicAnalyticsModules.mockRejectedValueOnce(new Error('chunk load failed'));
+		loadPublicTrendAnalyticsModule.mockRejectedValueOnce(new Error('chunk load failed'));
 
 		render(AnalyticsPage, { data: createData() });
 
