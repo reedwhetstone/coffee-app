@@ -1,6 +1,14 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { ChatToolDeps } from './shared';
+import type { ChatToolDeps, MarketMetadataDimension } from './shared';
+
+const METADATA_DIMENSIONS: readonly [MarketMetadataDimension, ...MarketMetadataDimension[]] = [
+	'process',
+	'disclosure',
+	'purveyor_score',
+	'purveyor_score_confidence',
+	'purveyor_score_tier'
+];
 
 export function createMarketTools(deps: ChatToolDeps) {
 	const readPriceIndex = deps.readPriceIndex;
@@ -86,12 +94,12 @@ export function createMarketIndexTools(deps: ChatToolDeps) {
 		const marketMetadataIndex = deps.marketMetadataIndex;
 		tools.market_metadata = tool({
 			description:
-				'The metadata index: how the market\'s composition is changing over time — processing-method mix or disclosure-level mix (transparency trend) — market-wide or per origin. Cup-score trends are not available. Use for questions like "is anaerobic growing in Ethiopia?" or "is the market disclosing more about processing?".',
+				'The metadata index: how the market\'s composition is changing over time: processing-method mix, disclosure-level mix, and Purveyor Score distribution, confidence, or tier. Supplier cup-score trends are not available. Use for questions like "is anaerobic growing in Ethiopia?", "is disclosure improving?", or "how is Purveyor Score trending?".',
 			inputSchema: z.object({
 				dimension: z
-					.enum(['process', 'disclosure'])
+					.enum(METADATA_DIMENSIONS)
 					.describe(
-						'Which metadata dimension to trend. Cup-score trends are intentionally unavailable: supplier scores are inconsistent and not surfaced as a Purveyors metric.'
+						'Which metadata dimension to trend. Use Purveyor Score dimensions for Purveyors-owned scoring; supplier score_value is intentionally unavailable.'
 					),
 				origin: z.string().optional().describe('Origin country; omit for market-wide'),
 				market: z.enum(['retail', 'wholesale', 'all']).optional().describe('Market scope'),
