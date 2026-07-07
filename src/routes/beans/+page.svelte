@@ -346,7 +346,11 @@
 				...bean.coffee_catalog,
 				cost_lb: purchaseCostPerLb ?? bean.coffee_catalog.cost_lb,
 				price_per_lb: purchaseCostPerLb ?? bean.coffee_catalog.price_per_lb,
-				price_tiers: purchasePriceTiers ?? bean.coffee_catalog.price_tiers
+				price_tiers: purchasePriceTiers ?? bean.coffee_catalog.price_tiers,
+				stocked: bean.stocked,
+				stocked_date: null,
+				arrival_date: null,
+				unstocked_date: null
 			};
 		}
 		return {
