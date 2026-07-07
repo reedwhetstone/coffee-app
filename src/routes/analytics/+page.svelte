@@ -31,7 +31,6 @@
 	import KpiStripSection from '$lib/components/analytics/sections/KpiStripSection.svelte';
 	import WatchlistSignalsSection from '$lib/components/analytics/sections/WatchlistSignalsSection.svelte';
 	import EvidenceChartsSection from '$lib/components/analytics/sections/EvidenceChartsSection.svelte';
-	import ActionRailSection from '$lib/components/analytics/sections/ActionRailSection.svelte';
 	import ParchmentIntelligenceSection from '$lib/components/analytics/sections/ParchmentIntelligenceSection.svelte';
 	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
 	import ValueSignalsSection from '$lib/components/analytics/sections/ValueSignalsSection.svelte';
@@ -59,6 +58,13 @@
 	type WindowMode = '7d' | '30d';
 	let viewMode = $state<ViewMode>('retail');
 	let windowMode = $state<WindowMode>('7d');
+	const SECTION_LINKS = [
+		{ href: '#market-read', label: 'Read' },
+		{ href: '#today-signals', label: 'Signals' },
+		{ href: '#price-evidence', label: 'Evidence' },
+		{ href: '#metadata-trends', label: 'Market mix' },
+		{ href: '#supplier-movement', label: 'Suppliers' }
+	];
 
 	let {
 		session,
@@ -818,11 +824,6 @@
 		if (!session) return 'Sign in to ask';
 		return 'Upgrade to ask';
 	});
-	let askActionStatus = $derived.by(() => {
-		if (canAskWithAnalyticsContext) return 'Available';
-		if (!session) return 'Login required';
-		return 'Parchment Intelligence';
-	});
 
 	// ── Deferred module loading ───────────────────────────────────────────────
 
@@ -956,6 +957,30 @@
 	onWindowModeChange={(v) => (windowMode = v)}
 />
 
+<nav
+	class="sticky top-16 z-20 mb-6 overflow-x-auto border-y border-line bg-surface-canvas/95 py-2 backdrop-blur md:top-4"
+	aria-label="Market Index sections"
+>
+	<div class="flex min-w-max items-center gap-2">
+		{#each SECTION_LINKS as link}
+			<a
+				href={link.href}
+				class="rounded-full border border-line bg-surface-panel px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-ink"
+			>
+				{link.label}
+			</a>
+		{/each}
+		{#if askActionHref}
+			<a
+				href={askActionHref}
+				class="rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-ink transition-colors hover:bg-accent/85"
+			>
+				{askActionLabel}
+			</a>
+		{/if}
+	</div>
+</nav>
+
 <ValueSignalsSection
 	valueSignals={marketInsights?.valueSignals ?? null}
 	signalsSummary={marketInsights?.signalsSummary ?? null}
@@ -965,12 +990,14 @@
 	{viewMode}
 />
 
-<AnalyticsSectionHeader
-	title="Today's signals"
-	description="The numbers behind this morning's read — availability, movement, and what changed overnight."
-/>
+<section id="today-signals" class="scroll-mt-28">
+	<AnalyticsSectionHeader
+		title="Today's signals"
+		description="The numbers behind this morning's read — availability, movement, and what changed overnight."
+	/>
 
-<KpiStripSection {kpiCards} {insightCards} />
+	<KpiStripSection {kpiCards} {insightCards} />
+</section>
 
 <WatchlistSignalsSection
 	{scopedTrackedLots}
@@ -997,67 +1024,66 @@
 	</div>
 {/if}
 
-<AnalyticsSectionHeader
-	title="Price evidence"
-	description="The charts behind the read: origin price history, processing mix, and how prices spread across origins."
-/>
+<section id="price-evidence" class="scroll-mt-28">
+	<AnalyticsSectionHeader
+		title="Price evidence"
+		description="The charts behind the read: origin price history, processing mix, and how prices spread across origins."
+	/>
 
-<EvidenceChartsSection
-	{OriginLineChartComponent}
-	{OriginBarChartComponent}
-	{ProcessDonutChartComponent}
-	{publicChartsError}
-	{filteredSnapshots}
-	{filteredProcessDist}
-	{scopedOriginRangeData}
-	{displayStockedCount}
-	{viewMode}
-	{isParchmentIntelligence}
-	onRetry={retryPublicCharts}
-/>
+	<EvidenceChartsSection
+		{OriginLineChartComponent}
+		{OriginBarChartComponent}
+		{ProcessDonutChartComponent}
+		{publicChartsError}
+		{filteredSnapshots}
+		{filteredProcessDist}
+		{scopedOriginRangeData}
+		{displayStockedCount}
+		{viewMode}
+		{isParchmentIntelligence}
+		onRetry={retryPublicCharts}
+	/>
+</section>
 
-<MetadataTrendsSection
-	processSeries={marketInsights?.metadataProcessSeries ?? null}
-	disclosureSeries={marketInsights?.metadataDisclosureSeries ?? null}
-	{viewMode}
-	{isParchmentIntelligence}
-/>
+<section id="metadata-trends" class="scroll-mt-28">
+	<MetadataTrendsSection
+		processSeries={marketInsights?.metadataProcessSeries ?? null}
+		disclosureSeries={marketInsights?.metadataDisclosureSeries ?? null}
+		{viewMode}
+		{isParchmentIntelligence}
+	/>
+</section>
 
-<ActionRailSection
-	{askActionLabel}
-	{askActionHref}
-	{askActionStatus}
-	{canAskWithAnalyticsContext}
-/>
+<section id="supplier-movement" class="scroll-mt-28">
+	<AnalyticsSectionHeader
+		title="Suppliers and movement"
+		description="Who has what, at what price — and what's arriving and leaving the visible market."
+	/>
 
-<AnalyticsSectionHeader
-	title="Suppliers and movement"
-	description="Who has what, at what price — and what's arriving and leaving the visible market."
-/>
-
-<ParchmentIntelligenceSection
-	{isParchmentIntelligence}
-	{session}
-	{PriceTierChartComponent}
-	{SupplierComparisonTableComponent}
-	{SupplierHealthTableComponent}
-	{memberVisualsError}
-	{snapshots}
-	{scopedComparisonBeans}
-	{scopedSupplierPriceRanges}
-	{scopedSupplierHealth}
-	{filteredArrivals}
-	{filteredDelistings}
-	arrivalTotal={scopedArrivalCount}
-	delistingTotal={scopedDelistingCount}
-	{isMovementDataAvailable}
-	{originBarData}
-	{hasSnapshots}
-	{windowMode}
-	{viewModeLabel}
-	onRetry={retryMemberVisuals}
-	onWindowModeChange={(v) => (windowMode = v)}
-/>
+	<ParchmentIntelligenceSection
+		{isParchmentIntelligence}
+		{session}
+		{PriceTierChartComponent}
+		{SupplierComparisonTableComponent}
+		{SupplierHealthTableComponent}
+		{memberVisualsError}
+		{snapshots}
+		{scopedComparisonBeans}
+		{scopedSupplierPriceRanges}
+		{scopedSupplierHealth}
+		{filteredArrivals}
+		{filteredDelistings}
+		arrivalTotal={scopedArrivalCount}
+		delistingTotal={scopedDelistingCount}
+		{isMovementDataAvailable}
+		{originBarData}
+		{hasSnapshots}
+		{windowMode}
+		{viewModeLabel}
+		onRetry={retryMemberVisuals}
+		onWindowModeChange={(v) => (windowMode = v)}
+	/>
+</section>
 
 <div class="mt-4 rounded-lg bg-surface-panel p-4 text-xs text-muted">
 	<strong class="text-ink">Data source:</strong> Daily prices aggregated from

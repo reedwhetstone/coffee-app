@@ -127,25 +127,27 @@
 		<ExpandablePanel
 			title="Processing mix"
 			subtitle="How current listings break down by processing style"
-			collapsedMaxHeight="360px"
+			collapsedMaxHeight="340px"
 			showGradient={false}
 		>
 			<AnalyticsLoadingPanel
 				ready={Boolean(ProcessDonutChartComponent)}
 				title="Processing mix"
 				description="Loading stocked catalog processing distribution."
-				height="h-56"
+				height="h-64"
 				errorMessage={publicChartsError}
 				{onRetry}
 			>
-				<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
+				<div
+					class="flex h-full min-h-[22rem] flex-col rounded-lg border border-line bg-surface-canvas p-6 shadow-sm"
+				>
 					<h2 class="mb-1 text-base font-semibold text-ink">Processing mix</h2>
 					<p class="mb-4 text-sm text-muted">
 						Distribution across {displayStockedCount.toLocaleString()} stocked beans
 						{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 					</p>
 					{#if filteredProcessDist.length > 0}
-						<div class="h-56 w-full">
+						<div class="min-h-0 flex-1">
 							{#if ProcessDonutChartComponent}
 								<ProcessDonutChartComponent data={filteredProcessDist} />
 							{/if}
@@ -170,18 +172,20 @@
 				ready={Boolean(OriginBarChartComponent)}
 				title="Origin price ranges"
 				description="Loading live origin price comparisons from the current catalog."
-				height="h-[28rem]"
+				height="h-64"
 				errorMessage={publicChartsError}
 				{onRetry}
 			>
-				<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
+				<div
+					class="flex h-full min-h-[22rem] flex-col rounded-lg border border-line bg-surface-canvas p-6 shadow-sm"
+				>
 					<h2 class="mb-1 text-base font-semibold text-ink">Origin price ranges</h2>
 					<p class="mb-4 text-sm text-muted">
 						How current prices spread across the busiest origins. Expand to choose your own
 						comparison set.
 					</p>
 					{#if scopedOriginRangeData.length > 0}
-						<div class="w-full">
+						<div class="min-h-0 flex-1">
 							{#if OriginBarChartComponent}
 								{#key viewMode}
 									<OriginBarChartComponent

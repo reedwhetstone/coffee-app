@@ -64,7 +64,7 @@
 		</p>
 	{/if}
 
-	<section class="mb-6 space-y-6" aria-label="Metadata trends">
+	<section class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2" aria-label="Metadata trends">
 		{#if processSeries && processSeries.length > 0}
 			<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
 				<h3 class="text-base font-semibold text-ink">How is processing changing?</h3>
@@ -75,45 +75,43 @@
 			</div>
 		{/if}
 
-		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-			{#if isParchmentIntelligence}
-				{#if disclosureSeries && disclosureSeries.length > 0}
-					<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
-						<h3 class="text-base font-semibold text-ink">Is the market disclosing more?</h3>
-						<p class="mb-4 mt-1 text-sm text-muted">
-							Processing disclosure levels across stocked supply — the transparency trend.
-						</p>
-						<CompositionTrendChart
-							series={disclosureSeries}
-							colorFor={disclosureColor}
-							labelFor={disclosureLabel}
-						/>
-					</div>
-				{/if}
-			{:else}
-				<div
-					class="rounded-lg border border-line bg-surface-panel p-6 lg:col-span-2"
-					aria-label="Gated metadata trends"
-				>
-					<div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-						<div>
-							<h3 class="font-serif text-lg font-medium text-ink">
-								The transparency trend runs deeper.
-							</h3>
-							<p class="mt-1 text-sm text-muted">
-								Parchment Intelligence adds the disclosure-level trend and origin-level metadata
-								composition over time.
-							</p>
-						</div>
-						<a
-							href="/subscription?plan=intelligence-monthly&intent=checkout"
-							class="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink transition-all duration-200 hover:bg-accent/85"
-						>
-							Start Intelligence
-						</a>
-					</div>
+		{#if isParchmentIntelligence}
+			{#if disclosureSeries && disclosureSeries.length > 0}
+				<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
+					<h3 class="text-base font-semibold text-ink">Is the market disclosing more?</h3>
+					<p class="mb-4 mt-1 text-sm text-muted">
+						Processing disclosure levels across stocked supply — the transparency trend.
+					</p>
+					<CompositionTrendChart
+						series={disclosureSeries}
+						colorFor={disclosureColor}
+						labelFor={disclosureLabel}
+					/>
 				</div>
 			{/if}
-		</div>
+		{:else}
+			<div
+				class="rounded-lg border border-line bg-surface-panel p-6"
+				aria-label="Gated metadata trends"
+			>
+				<div class="flex h-full flex-col items-start justify-between gap-4">
+					<div>
+						<h3 class="font-serif text-lg font-medium text-ink">
+							The transparency trend runs deeper.
+						</h3>
+						<p class="mt-1 text-sm text-muted">
+							Parchment Intelligence adds the disclosure-level trend and origin-level metadata
+							composition over time.
+						</p>
+					</div>
+					<a
+						href="/subscription?plan=intelligence-monthly&intent=checkout"
+						class="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink transition-all duration-200 hover:bg-accent/85"
+					>
+						Start Intelligence
+					</a>
+				</div>
+			</div>
+		{/if}
 	</section>
 {/if}

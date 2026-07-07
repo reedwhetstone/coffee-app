@@ -326,27 +326,35 @@ describe('analytics command center hierarchy', () => {
 		expect(screen.getByText('Scope controls')).toBeTruthy();
 		expect(screen.getByText('Price movement')).toBeTruthy();
 		expect(screen.getByText('Availability read')).toBeTruthy();
-		expect(screen.getByText('Ask about this market read.')).toBeTruthy();
 
 		const marketRead = container.querySelector('[aria-labelledby="market-read-heading"]');
 		const scopeControls = container.querySelector('[aria-label="Scope controls"]');
+		const sectionNav = container.querySelector('[aria-label="Market Index sections"]');
 		const kpiStrip = container.querySelector('[aria-label="Market KPI strip"]');
 		const insightCards = container.querySelector('[aria-label="Market insight cards"]');
 		const evidenceCharts = container.querySelector('[aria-label="Evidence charts"]');
-		const actionRail = container.querySelector('[aria-label="Ask about this market read"]');
 
 		expect(marketRead).toBeTruthy();
 		expect(scopeControls).toBeTruthy();
+		expect(sectionNav).toBeTruthy();
 		expect(kpiStrip).toBeTruthy();
 		expect(insightCards).toBeTruthy();
 		expect(evidenceCharts).toBeTruthy();
-		expect(actionRail).toBeTruthy();
+		expect(screen.getByRole('link', { name: 'Read' })).toHaveAttribute('href', '#market-read');
+		expect(screen.getByRole('link', { name: 'Signals' })).toHaveAttribute('href', '#today-signals');
+		expect(screen.getByRole('link', { name: 'Suppliers' })).toHaveAttribute(
+			'href',
+			'#supplier-movement'
+		);
 
 		expect(
 			marketRead!.compareDocumentPosition(scopeControls!) & Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 		expect(
-			scopeControls!.compareDocumentPosition(kpiStrip!) & Node.DOCUMENT_POSITION_FOLLOWING
+			scopeControls!.compareDocumentPosition(sectionNav!) & Node.DOCUMENT_POSITION_FOLLOWING
+		).toBeTruthy();
+		expect(
+			sectionNav!.compareDocumentPosition(kpiStrip!) & Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 		expect(
 			kpiStrip!.compareDocumentPosition(insightCards!) & Node.DOCUMENT_POSITION_FOLLOWING
@@ -355,10 +363,7 @@ describe('analytics command center hierarchy', () => {
 			insightCards!.compareDocumentPosition(evidenceCharts!) & Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 		expect(
-			evidenceCharts!.compareDocumentPosition(actionRail!) & Node.DOCUMENT_POSITION_FOLLOWING
-		).toBeTruthy();
-		expect(
-			actionRail!.compareDocumentPosition(screen.getByText('The supplier layer runs deeper.')) &
+			evidenceCharts!.compareDocumentPosition(screen.getByText('The supplier layer runs deeper.')) &
 				Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 	});
@@ -541,17 +546,17 @@ describe('analytics command center hierarchy', () => {
 	});
 });
 
-describe('analytics action CTA rail', () => {
-	it('keeps the investigation rail focused on the chat passthrough only', async () => {
+describe('analytics section navigator', () => {
+	it('keeps section jumps and chat passthrough compact in the sticky navigator', async () => {
 		render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
 
-		expect(screen.getByText('Ask about this market read')).toBeTruthy();
+		expect(screen.getByRole('navigation', { name: 'Market Index sections' })).toBeTruthy();
 		expect(screen.getByRole('link', { name: 'Sign in to ask' })).toHaveAttribute('href', '/auth');
-		expect(screen.getByText(/opens with your current scope and movement window/i)).toBeTruthy();
+		expect(screen.queryByText(/opens with your current scope and movement window/i)).toBeNull();
 		expect(screen.queryByText('Open catalog evidence')).toBeNull();
 		expect(screen.queryByText('Compare supplier evidence')).toBeNull();
 		expect(screen.queryByText('Review machine access')).toBeNull();
