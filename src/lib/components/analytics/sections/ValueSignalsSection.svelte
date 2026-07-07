@@ -1,6 +1,7 @@
 <script lang="ts">
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
+	import type { InsightModuleContract } from '$lib/analytics/insightModules';
 	import type { MarketSignalItem, MarketSignalsSummary } from '$lib/types/marketIndex.types';
 
 	type ViewMode = 'retail' | 'wholesale' | 'all';
@@ -12,6 +13,7 @@
 		isParchmentIntelligence: boolean;
 		isSignedIn: boolean;
 		viewMode: ViewMode;
+		module?: InsightModuleContract;
 	}
 
 	let {
@@ -20,7 +22,8 @@
 		signalsAsOf,
 		isParchmentIntelligence,
 		isSignedIn,
-		viewMode
+		viewMode,
+		module
 	}: Props = $props();
 
 	const SIGNAL_LABELS: Record<MarketSignalItem['signalType'], string> = {
@@ -105,6 +108,7 @@
 	<AnalyticsSectionHeader
 		title="What should I consider buying?"
 		description="Evidence-backed value signals from this morning's market pass: price drops against a lot's own history, and lots priced below their origin and process segment."
+		{module}
 	/>
 
 	{#if isParchmentIntelligence && valueSignals !== null}

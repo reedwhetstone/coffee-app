@@ -1,4 +1,7 @@
 <script lang="ts">
+	import InsightModuleContractSummary from '$lib/components/analytics/InsightModuleContractSummary.svelte';
+	import type { InsightModuleContract } from '$lib/analytics/insightModules';
+
 	type ViewMode = 'retail' | 'wholesale' | 'all';
 	type WindowMode = '7d' | '30d';
 
@@ -10,6 +13,7 @@
 		totalSuppliers: number;
 		viewMode: ViewMode;
 		windowMode: WindowMode;
+		module?: InsightModuleContract;
 		onViewModeChange: (v: ViewMode) => void;
 		onWindowModeChange: (v: WindowMode) => void;
 	}
@@ -28,6 +32,7 @@
 		totalSuppliers,
 		viewMode,
 		windowMode,
+		module,
 		onViewModeChange,
 		onWindowModeChange
 	}: Props = $props();
@@ -76,6 +81,9 @@
 				Daily-normalized pricing, arrivals, and supplier movement across {totalSuppliers}
 				US importers.
 			</p>
+			{#if module}
+				<InsightModuleContractSummary {module} class="mt-4 bg-surface-panel/80" />
+			{/if}
 		</div>
 
 		<aside

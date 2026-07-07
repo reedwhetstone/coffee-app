@@ -8,6 +8,7 @@
 		NEUTRAL_CATEGORY_COLOR,
 		PROCESS_COLORS
 	} from '$lib/styles/chartColors';
+	import type { InsightModuleContract } from '$lib/analytics/insightModules';
 	import type { MetadataSeriesItem } from '$lib/types/marketIndex.types';
 
 	type ViewMode = 'retail' | 'wholesale' | 'all';
@@ -17,9 +18,11 @@
 		disclosureSeries: MetadataSeriesItem[] | null;
 		viewMode: ViewMode;
 		isParchmentIntelligence: boolean;
+		module?: InsightModuleContract;
 	}
 
-	let { processSeries, disclosureSeries, viewMode, isParchmentIntelligence }: Props = $props();
+	let { processSeries, disclosureSeries, viewMode, isParchmentIntelligence, module }: Props =
+		$props();
 
 	// The metadata index is served from the retail market slice only; wholesale and
 	// combined trends require expanded coverage that is not fetched here. When the
@@ -56,6 +59,7 @@
 	<AnalyticsSectionHeader
 		title="How is the market changing?"
 		description="The metadata index: what the market is offering and disclosing over time — not just what it costs."
+		{module}
 	/>
 
 	{#if retailScopeNote}

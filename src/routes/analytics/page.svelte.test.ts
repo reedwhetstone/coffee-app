@@ -327,6 +327,23 @@ describe('analytics command center hierarchy', () => {
 		expect(screen.getByText('Price movement')).toBeTruthy();
 		expect(screen.getByText('Availability read')).toBeTruthy();
 		expect(screen.getByText('Ask about this market read.')).toBeTruthy();
+		expect(screen.getByLabelText('market-read task parity contract')).toBeTruthy();
+		expect(screen.getByLabelText('today-signals task parity contract')).toBeTruthy();
+		expect(screen.getByLabelText('price-evidence task parity contract')).toBeTruthy();
+		expect(screen.getByLabelText('supplier-movement-public task parity contract')).toBeTruthy();
+		expect(
+			screen.getByText(
+				'Latest daily-normalized price snapshot, movement window, and supplier counts.'
+			)
+		).toBeTruthy();
+		expect(
+			screen.getByText('Inspect the matching evidence chart or ask chat with context.')
+		).toBeTruthy();
+		expect(
+			screen.getByText(
+				'Parchment Intelligence entitlement boundary and public proof-level market read.'
+			)
+		).toBeTruthy();
 
 		const marketRead = container.querySelector('[aria-labelledby="market-read-heading"]');
 		const scopeControls = container.querySelector('[aria-label="Scope controls"]');
@@ -406,6 +423,68 @@ describe('analytics command center hierarchy', () => {
 		expect(
 			screen.getByText(/All-market count shown while the wholesale scope is selected/i)
 		).toBeTruthy();
+		expect(screen.getByLabelText('value-signals-public task parity contract')).toBeTruthy();
+		expect(
+			screen.getByText(
+				'Aggregate signal count, signal type totals, as-of date, and entitlement note.'
+			)
+		).toBeTruthy();
+		expect(
+			screen.getByText('Start Intelligence or sign in before inspecting named lots.')
+		).toBeTruthy();
+	});
+
+	it('uses full source and action metadata only for entitled Market Index modules', async () => {
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				marketInsights: {
+					valueSignals: [
+						{
+							signalType: 'below_market',
+							signalWindow: '7d',
+							catalogId: 11,
+							name: 'Ethiopia Test Lot',
+							source: 'Atlas',
+							market: 'retail',
+							origin: 'Ethiopia',
+							process: 'Natural',
+							currentPriceLb: 4.25,
+							catalogUrl: 'https://example.com/catalog?id=11',
+							scoreValue: null,
+							evidence: {
+								segment: { origin: 'Ethiopia', process: 'Natural', market: 'retail' },
+								discount_vs_median_pct: -12.2,
+								segment_median: 4.85,
+								price_percentile_in_segment: 18
+							}
+						}
+					],
+					signalsSummary: null,
+					signalsAsOf: '2026-07-06',
+					moveStats: null,
+					metadataProcessSeries: null,
+					metadataDisclosureSeries: null
+				}
+			} as Partial<PageData>)
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+		});
+
+		expect(screen.getByLabelText('value-signals task parity contract')).toBeTruthy();
+		expect(screen.getByLabelText('supplier-movement task parity contract')).toBeTruthy();
+		expect(
+			screen.getByText('Signal feed date, market scope, supplier listing, and segment evidence.')
+		).toBeTruthy();
+		expect(screen.getByText('View the selected coffee in the catalog.')).toBeTruthy();
+		expect(
+			screen.queryByText(
+				'Aggregate signal count, signal type totals, as-of date, and entitlement note.'
+			)
+		).toBeNull();
 	});
 
 	it('scopes coverage supplier-evidence reads with the selected market', async () => {
