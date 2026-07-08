@@ -2,6 +2,7 @@ import type { RequestEvent } from '@sveltejs/kit';
 import type { components } from '@purveyors/sdk';
 import { createAdminClient } from '$lib/supabase-admin';
 import { createParchmentServerClient, ParchmentConfigError } from './parchmentClient';
+import type { CoffeeCatalog } from '$lib/types/component.types';
 
 /**
  * BFF loader for the Market Index decision-surface modules (ADR-008 / WP-3).
@@ -44,7 +45,10 @@ const EMPTY_INSIGHTS: MarketIndexInsights = {
 	signalsAsOf: null,
 	moveStats: null,
 	metadataProcessSeries: null,
-	metadataDisclosureSeries: null
+	metadataDisclosureSeries: null,
+	metadataPurveyorScoreSeries: null,
+	metadataPurveyorScoreConfidenceSeries: null,
+	metadataPurveyorScoreTierSeries: null
 };
 
 /** Mirror of ValueSignalsSection's per-scope card cap so each scope gets a full page. */
@@ -54,25 +58,62 @@ const DISPLAY_SIGNAL_TYPES: Array<'price_drop' | 'below_market'> = ['price_drop'
 const PRICE_DROP_SIGNAL_TYPES: Array<'price_drop'> = ['price_drop'];
 /** Movement windows the MarketReadSection window toggle can select. */
 const MOVE_WINDOWS = ['7d', '30d'] as const;
+const SIGNAL_COFFEE_SELECT = [
+	'id',
+	'name',
+	'source',
+	'region',
+	'country',
+	'continent',
+	'processing',
+	'processing_base_method',
+	'fermentation_type',
+	'process_additives',
+	'process_additive_detail',
+	'fermentation_duration_hours',
+	'drying_method',
+	'processing_notes',
+	'processing_disclosure_level',
+	'processing_confidence',
+	'processing_evidence_available',
+	'stocked',
+	'arrival_date',
+	'stocked_date',
+	'last_updated',
+	'farm_notes',
+	'wholesale',
+	'type',
+	'cultivar_detail',
+	'grade',
+	'appearance',
+	'cost_lb',
+	'price_per_lb',
+	'price_tiers',
+	'ai_tasting_notes',
+	'ai_description',
+	'link',
+	'purveyor_score',
+	'purveyor_score_confidence',
+	'purveyor_score_tier',
+	'purveyor_score_factors',
+	'purveyor_score_version',
+	'purveyor_score_updated_at'
+].join(', ');
 
 type SignalBody = components['schemas']['MarketSignalsResponse'];
 type StatsBody = components['schemas']['PriceIndexStatsResponse'];
+type MetadataBody = components['schemas']['MetadataIndexResponse'];
 
 /** Unwrap a settled SDK fetch result to its JSON body, or null on any failure. */
 function settledBody<T>(result: PromiseSettledResult<{ data?: T } | null | undefined>): T | null {
 	return result.status === 'fulfilled' ? (result.value?.data ?? null) : null;
 }
 
-interface CatalogNameRow {
-	id: number;
-	name: string | null;
-}
-
 /** Minimal supabase surface needed for name enrichment. */
 interface NameLookupClient {
 	from(table: 'coffee_catalog'): {
 		select(columns: string): {
-			in(column: string, values: number[]): PromiseLike<{ data: CatalogNameRow[] | null }>;
+			in(column: string, values: number[]): PromiseLike<{ data: CoffeeCatalog[] | null }>;
 		};
 	};
 }
@@ -82,28 +123,33 @@ async function enrichSignalNames(
 ): Promise<MarketSignalItem[]> {
 	const ids = [...new Set(items.map((item) => item.catalogId))];
 	const names = new Map<number, string | null>();
+	const catalogRows = new Map<number, CoffeeCatalog>();
 
 	for (const item of items) {
 		const responseName = extractSignalName(item);
 		if (responseName) names.set(item.catalogId, responseName);
 	}
 
-	const missingIds = ids.filter((id) => !names.has(id));
-	if (missingIds.length > 0) {
+	if (ids.length > 0) {
 		try {
 			const adminSupabase = createAdminClient() as unknown as NameLookupClient;
 			const { data } = await adminSupabase
 				.from('coffee_catalog')
-				.select('id, name')
-				.in('id', missingIds);
+				.select(SIGNAL_COFFEE_SELECT)
+				.in('id', ids);
 			for (const row of data ?? []) {
-				names.set(row.id, row.name);
+				if (!names.has(row.id)) names.set(row.id, row.name);
+				catalogRows.set(row.id, row);
 			}
 		} catch {
-			// Names are presentation sugar; signals render from origin/process without them.
+			// Catalog rows are presentation sugar; signals render from API evidence without them.
 		}
 	}
-	return items.map((item) => ({ ...item, name: names.get(item.catalogId) ?? null }));
+	return items.map((item) => ({
+		...item,
+		name: names.get(item.catalogId) ?? null,
+		coffee: catalogRows.get(item.catalogId) ?? null
+	}));
 }
 
 function extractSignalName(item: components['schemas']['MarketSignalItem']): string | null {
@@ -180,14 +226,29 @@ export async function loadMarketIndexInsights(
 		client.market.metadataIndex({ dimension: 'process', grain: 'month' }),
 		isParchmentIntelligence
 			? client.market.metadataIndex({ dimension: 'disclosure', grain: 'month' })
+			: Promise.resolve(null),
+		isParchmentIntelligence
+			? client.market.metadataIndex({ dimension: 'purveyor_score', grain: 'month' })
+			: Promise.resolve(null),
+		isParchmentIntelligence
+			? client.market.metadataIndex({ dimension: 'purveyor_score_confidence', grain: 'month' })
+			: Promise.resolve(null),
+		isParchmentIntelligence
+			? client.market.metadataIndex({ dimension: 'purveyor_score_tier', grain: 'month' })
 			: Promise.resolve(null)
 	]);
 
-	const [signalsSettled, statsSettled, [processResult, disclosureResult]] = await Promise.all([
-		signalsPromise,
-		statsPromise,
-		metadataPromise
-	]);
+	const [
+		signalsSettled,
+		statsSettled,
+		[
+			processResult,
+			disclosureResult,
+			purveyorScoreResult,
+			purveyorScoreConfidenceResult,
+			purveyorScoreTierResult
+		]
+	] = await Promise.all([signalsPromise, statsPromise, metadataPromise]);
 
 	const insights: MarketIndexInsights = { ...EMPTY_INSIGHTS };
 
@@ -245,18 +306,14 @@ export async function loadMarketIndexInsights(
 	}
 	if (moveStats.length > 0) insights.moveStats = moveStats;
 
-	if (processResult.status === 'fulfilled' && processResult.value?.data) {
-		insights.metadataProcessSeries = processResult.value.data.data ?? null;
-	}
-
-	if (
-		disclosureResult.status === 'fulfilled' &&
-		disclosureResult.value &&
-		'data' in disclosureResult.value &&
-		disclosureResult.value.data
-	) {
-		insights.metadataDisclosureSeries = disclosureResult.value.data.data ?? null;
-	}
+	insights.metadataProcessSeries = settledBody<MetadataBody>(processResult)?.data ?? null;
+	insights.metadataDisclosureSeries = settledBody<MetadataBody>(disclosureResult)?.data ?? null;
+	insights.metadataPurveyorScoreSeries =
+		settledBody<MetadataBody>(purveyorScoreResult)?.data ?? null;
+	insights.metadataPurveyorScoreConfidenceSeries =
+		settledBody<MetadataBody>(purveyorScoreConfidenceResult)?.data ?? null;
+	insights.metadataPurveyorScoreTierSeries =
+		settledBody<MetadataBody>(purveyorScoreTierResult)?.data ?? null;
 
 	return insights;
 }

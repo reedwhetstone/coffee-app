@@ -63,7 +63,7 @@ function mockAdminNameLookup(name: string) {
 		from: vi.fn(() => ({
 			select: vi.fn(() => ({
 				in: vi.fn(async (_column: string, ids: number[]) => ({
-					data: ids.map((id) => ({ id, name }))
+					data: ids.map((id) => ({ id, name, source: 'Example Supplier', wholesale: false }))
 				}))
 			}))
 		}))
@@ -169,6 +169,20 @@ describe('loadMarketIndexInsights', () => {
 			'Dual Window Lot',
 			'Dual Window Lot'
 		]);
+		expect(market.metadataIndex).toHaveBeenCalledWith({ dimension: 'process', grain: 'month' });
+		expect(market.metadataIndex).toHaveBeenCalledWith({ dimension: 'disclosure', grain: 'month' });
+		expect(market.metadataIndex).toHaveBeenCalledWith({
+			dimension: 'purveyor_score',
+			grain: 'month'
+		});
+		expect(market.metadataIndex).toHaveBeenCalledWith({
+			dimension: 'purveyor_score_confidence',
+			grain: 'month'
+		});
+		expect(market.metadataIndex).toHaveBeenCalledWith({
+			dimension: 'purveyor_score_tier',
+			grain: 'month'
+		});
 	});
 
 	it('uses an authorized server lookup when gated signal names are hidden by request RLS', async () => {
@@ -200,10 +214,19 @@ describe('loadMarketIndexInsights', () => {
 		const insights = await loadMarketIndexInsights(makeEvent(), { isParchmentIntelligence: true });
 
 		expect(adminClient.from).toHaveBeenCalledWith('coffee_catalog');
+		const selectColumns = adminClient.from.mock.results[0].value.select.mock.calls[0][0] as string;
+		expect(selectColumns).not.toBe('*');
+		expect(selectColumns).toContain('processing_evidence_available');
+		expect(selectColumns).not.toMatch(/(^|,\s*)processing_evidence(,|$)/);
 		expect(insights.valueSignals?.map((signal) => signal.name)).toEqual(['Gated Wholesale Lot']);
+		expect(insights.valueSignals?.[0]?.coffee).toMatchObject({
+			id: 202,
+			name: 'Gated Wholesale Lot',
+			source: 'Example Supplier'
+		});
 	});
 
-	it('keeps Parchment response names without a fallback catalog lookup', async () => {
+	it('keeps Parchment response names while still attaching a sanitized catalog drawer row', async () => {
 		const namedSignal = makeSignal('7d', {
 			catalogId: 303,
 			name: 'Parchment Named Lot'
@@ -222,6 +245,7 @@ describe('loadMarketIndexInsights', () => {
 				.mockResolvedValueOnce({ data: { data: [], meta: { asOf: '2026-07-06' } } }),
 			metadataIndex: vi.fn().mockResolvedValue({ data: { data: [] } })
 		};
+		mockAdminNameLookup('Catalog Fallback Name');
 		mockCreateParchmentServerClient.mockResolvedValue({
 			market,
 			priceIndex: { stats: vi.fn().mockResolvedValue({ data: { data: [] } }) }
@@ -229,7 +253,11 @@ describe('loadMarketIndexInsights', () => {
 
 		const insights = await loadMarketIndexInsights(makeEvent(), { isParchmentIntelligence: true });
 
-		expect(mockCreateAdminClient).not.toHaveBeenCalled();
+		expect(mockCreateAdminClient).toHaveBeenCalled();
 		expect(insights.valueSignals?.map((signal) => signal.name)).toEqual(['Parchment Named Lot']);
+		expect(insights.valueSignals?.[0]?.coffee).toMatchObject({
+			id: 303,
+			name: 'Catalog Fallback Name'
+		});
 	});
 });

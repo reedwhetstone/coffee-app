@@ -227,6 +227,17 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 			}
 		],
 		trackedLots: [],
+		marketInsights: {
+			valueSignals: null,
+			signalsSummary: null,
+			signalsAsOf: null,
+			moveStats: null,
+			metadataProcessSeries: null,
+			metadataDisclosureSeries: null,
+			metadataPurveyorScoreSeries: null,
+			metadataPurveyorScoreConfidenceSeries: null,
+			metadataPurveyorScoreTierSeries: null
+		},
 		role: 'viewer',
 		...overrides
 	} as unknown as PageData;
@@ -446,7 +457,10 @@ describe('analytics command center hierarchy', () => {
 					signalsAsOf: '2026-07-06',
 					moveStats: null,
 					metadataProcessSeries: null,
-					metadataDisclosureSeries: null
+					metadataDisclosureSeries: null,
+					metadataPurveyorScoreSeries: null,
+					metadataPurveyorScoreConfidenceSeries: null,
+					metadataPurveyorScoreTierSeries: null
 				}
 			} as Partial<PageData>)
 		});
@@ -496,7 +510,10 @@ describe('analytics command center hierarchy', () => {
 					signalsAsOf: '2026-07-06',
 					moveStats: null,
 					metadataProcessSeries: null,
-					metadataDisclosureSeries: null
+					metadataDisclosureSeries: null,
+					metadataPurveyorScoreSeries: null,
+					metadataPurveyorScoreConfidenceSeries: null,
+					metadataPurveyorScoreTierSeries: null
 				}
 			} as Partial<PageData>)
 		});
@@ -514,6 +531,81 @@ describe('analytics command center hierarchy', () => {
 
 		expect(screen.getByText(/No strong wholesale buy signals this morning/i)).toBeTruthy();
 		expect(screen.queryByText('View the selected coffee in the catalog.')).toBeNull();
+	});
+
+	it('opens value-signal lot details in the local CoffeeCard drawer when catalog data is attached', async () => {
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				marketInsights: {
+					valueSignals: [
+						{
+							signalType: 'below_market',
+							signalWindow: '7d',
+							catalogId: 11,
+							name: 'Ethiopia Test Lot',
+							source: 'Atlas',
+							market: 'retail',
+							origin: 'Ethiopia',
+							process: 'Natural',
+							currentPriceLb: 4.25,
+							catalogUrl: 'https://example.com/catalog?id=11',
+							scoreValue: null,
+							coffee: {
+								id: 11,
+								name: 'Ethiopia Test Lot',
+								source: 'Atlas',
+								country: 'Ethiopia',
+								continent: 'Africa',
+								region: 'Guji',
+								processing: 'Natural',
+								stocked: true,
+								stocked_date: '2026-07-06',
+								arrival_date: null,
+								last_updated: '2026-07-06',
+								wholesale: false,
+								cost_lb: 4.25,
+								price_per_lb: 4.25,
+								price_tiers: null,
+								ai_tasting_notes: null,
+								ai_description: null,
+								link: 'https://supplier.example/coffee/11',
+								purveyor_score: 82,
+								purveyor_score_confidence: 0.76,
+								purveyor_score_tier: 'Strong',
+								purveyor_score_factors: null,
+								purveyor_score_version: 'purveyor-score-v1'
+							},
+							evidence: {
+								segment: { origin: 'Ethiopia', process: 'Natural', market: 'retail' },
+								discount_vs_median_pct: -12.2,
+								segment_median: 4.85,
+								price_percentile_in_segment: 18
+							}
+						}
+					],
+					signalsSummary: null,
+					signalsAsOf: '2026-07-06',
+					moveStats: null,
+					metadataProcessSeries: null,
+					metadataDisclosureSeries: null,
+					metadataPurveyorScoreSeries: null,
+					metadataPurveyorScoreConfidenceSeries: null,
+					metadataPurveyorScoreTierSeries: null
+				}
+			} as Partial<PageData>)
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+		});
+
+		expect(screen.queryByRole('link', { name: /View in the catalog/ })).toBeNull();
+		await screen.getByRole('button', { name: 'View details for Ethiopia Test Lot' }).click();
+
+		expect(screen.getByRole('heading', { level: 2, name: 'Ethiopia Test Lot' })).toBeTruthy();
+		expect(screen.getAllByText(/Below market:/).length).toBeGreaterThanOrEqual(2);
 	});
 
 	it('scopes coverage supplier-evidence reads with the selected market', async () => {
@@ -753,6 +845,77 @@ describe('analytics premium boundary copy', () => {
 		).toBeGreaterThan(0);
 		expect(screen.queryByText('Supplier read')).toBeNull();
 		expect(screen.queryByText('Window summary')).toBeNull();
+	});
+
+	it('adds Purveyor Score metadata trends to the Disclosure Index for Intelligence users', async () => {
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				marketInsights: {
+					valueSignals: null,
+					signalsSummary: null,
+					signalsAsOf: null,
+					moveStats: null,
+					metadataProcessSeries: null,
+					metadataDisclosureSeries: [
+						{
+							period: '2026-06-01',
+							lotCount: 20,
+							supplierCount: 4,
+							buckets: [{ key: 'structured', share: 0.55, count: 11, supplierCount: 4 }]
+						}
+					],
+					metadataPurveyorScoreSeries: [
+						{
+							period: '2026-06-01',
+							lotCount: 20,
+							supplierCount: 4,
+							buckets: [
+								{ key: 'p25', value: 66, count: 20, supplierCount: 4 },
+								{ key: 'p50', value: 78, count: 20, supplierCount: 4 },
+								{ key: 'p75', value: 88, count: 20, supplierCount: 4 }
+							]
+						}
+					],
+					metadataPurveyorScoreConfidenceSeries: [
+						{
+							period: '2026-06-01',
+							lotCount: 18,
+							supplierCount: 4,
+							buckets: [
+								{ key: 'p25', value: 0.62, count: 18, supplierCount: 4 },
+								{ key: 'p50', value: 0.74, count: 18, supplierCount: 4 },
+								{ key: 'p75', value: 0.91, count: 18, supplierCount: 4 }
+							]
+						}
+					],
+					metadataPurveyorScoreTierSeries: [
+						{
+							period: '2026-06-01',
+							lotCount: 20,
+							supplierCount: 4,
+							buckets: [
+								{ key: 'Strong', share: 0.4, count: 8, supplierCount: 4 },
+								{ key: 'Solid', share: 0.35, count: 7, supplierCount: 3 },
+								{ key: 'Unscored', share: 0.25, count: 5, supplierCount: 2 }
+							]
+						}
+					]
+				}
+			} as Partial<PageData>)
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+		});
+
+		expect(screen.getByText('Purveyor Score over time')).toBeTruthy();
+		expect(screen.getByText('Purveyor Score confidence over time')).toBeTruthy();
+		expect(screen.getByText('How is listing quality distributed?')).toBeTruthy();
+		expect(screen.getAllByText('Latest median')).toHaveLength(2);
+		expect(screen.getByText('78')).toBeTruthy();
+		expect(screen.getByText('74%')).toBeTruthy();
 	});
 
 	it('restores premium supplier analytics modules instead of static fallback tables', async () => {

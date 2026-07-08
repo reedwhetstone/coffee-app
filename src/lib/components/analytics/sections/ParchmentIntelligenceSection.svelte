@@ -147,155 +147,164 @@
 	</section>
 {:else}
 	<div id="supplier-comparison" class="mb-8 space-y-6">
-		<!-- Who has what, at what price: visual first, full table in the breakout. -->
-		<ExpandablePanel
-			title="Supplier price comparison"
-			subtitle="Public stocked price ranges per supplier in the {viewModeLabel} scope. Expand for the full supplier range set and lot-level preview."
-			totalItems={supplierComparisonExpandableRows}
-			expandLabel="Open supplier detail →"
-			collapsedMaxHeight="380px"
-			showGradient={false}
-		>
-			<AnalyticsLoadingPanel
-				ready={Boolean(SupplierComparisonTableComponent)}
+		<div class="grid gap-6 xl:grid-cols-2">
+			<!-- Who has what, at what price: visual first, full table in the breakout. -->
+			<ExpandablePanel
 				title="Supplier price comparison"
-				description="Loading supplier comparison tools."
-				height="h-64"
-				panelClass="border-line"
-				errorMessage={memberVisualsError}
-				{onRetry}
+				subtitle="Public stocked price ranges per supplier in the {viewModeLabel} scope. Expand for the full supplier range set and lot-level preview."
+				totalItems={supplierComparisonExpandableRows}
+				expandLabel="Open supplier detail →"
+				collapsedMaxHeight="330px"
+				showGradient={false}
 			>
-				<div class="rounded-lg border border-line bg-surface-canvas p-5 shadow-sm sm:p-6">
-					<div>
-						<h2 class="mb-1 text-base font-semibold text-ink">Who has it cheapest?</h2>
-						<p class="mb-4 text-sm text-muted">
-							Each supplier's price range across public stocked lots in this scope:
-							{supplierComparisonSummary}.
-						</p>
-						<SupplierPriceRangeChart
-							rows={scopedSupplierPriceRanges}
-							maxSuppliers={Math.max(scopedSupplierPriceRanges.length, 1)}
-						/>
-					</div>
-					<div class="mt-6 border-t border-line pt-4">
-						<h3 class="mb-3 text-sm font-semibold text-ink">Lot-level preview</h3>
-						{#if SupplierComparisonTableComponent}
-							<SupplierComparisonTableComponent beans={scopedComparisonBeans} />
-						{/if}
-					</div>
-				</div>
-			</AnalyticsLoadingPanel>
-		</ExpandablePanel>
-
-		<!-- What's arriving and leaving: one diverging read, tables in the breakout. -->
-		<ExpandablePanel
-			title="Arrivals & delistings"
-			subtitle="Catalog movement by origin over the selected window. Expand for the named lots."
-			totalItems={isMovementDataAvailable ? movementWindowTotal : movementLoadedRows}
-			expandLabel={movementExpandLabel}
-			collapsedMaxHeight="380px"
-			showGradient={false}
-		>
-			<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
-				<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-					<div>
-						<h2 class="text-base font-semibold text-ink">What's arriving and leaving?</h2>
-						<p class="mt-1 text-sm text-muted">
-							{#if !isMovementDataAvailable}
-								Showing {filteredArrivals.length} arrivals and {filteredDelistings.length} delistings
-								from the most recent catalog data — movement counts are currently unavailable.
-							{:else if movementTruncated}
-								Showing the latest {filteredArrivals.length} of {arrivalTotal} arrivals and {filteredDelistings.length}
-								of {delistingTotal} delistings from the last {windowDaysLabel} days.
-							{:else}
-								Showing {filteredArrivals.length} arrivals and {filteredDelistings.length} delistings
-								from the last {windowDaysLabel} days.
+				<AnalyticsLoadingPanel
+					ready={Boolean(SupplierComparisonTableComponent)}
+					title="Supplier price comparison"
+					description="Loading supplier comparison tools."
+					height="h-64"
+					panelClass="border-line"
+					errorMessage={memberVisualsError}
+					{onRetry}
+				>
+					<div class="rounded-lg border border-line bg-surface-canvas p-5 shadow-sm sm:p-6">
+						<div>
+							<h2 class="mb-1 text-base font-semibold text-ink">Who has it cheapest?</h2>
+							<p class="mb-4 text-sm text-muted">
+								Each supplier's price range across public stocked lots in this scope:
+								{supplierComparisonSummary}.
+							</p>
+							<SupplierPriceRangeChart
+								rows={scopedSupplierPriceRanges}
+								maxSuppliers={Math.max(scopedSupplierPriceRanges.length, 1)}
+							/>
+						</div>
+						<div class="mt-6 border-t border-line pt-4">
+							<h3 class="mb-3 text-sm font-semibold text-ink">Lot-level preview</h3>
+							{#if SupplierComparisonTableComponent}
+								<SupplierComparisonTableComponent beans={scopedComparisonBeans} />
 							{/if}
-						</p>
+						</div>
 					</div>
-					<div
-						class="flex rounded-full border border-line bg-surface-panel p-0.5 text-xs font-medium"
-					>
-						{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
-							<button
-								onclick={() => onWindowModeChange(opt.value as WindowMode)}
-								class="rounded-full px-3 py-1 transition-all duration-150 {windowMode === opt.value
-									? 'bg-accent text-ink shadow-sm'
-									: 'text-muted hover:text-ink'}"
-							>
-								{opt.label}
-							</button>
-						{/each}
-					</div>
-				</div>
-				<MovementByOriginChart
-					arrivals={filteredArrivals}
-					delistings={filteredDelistings}
-					maxOrigins={999}
-				/>
+				</AnalyticsLoadingPanel>
+			</ExpandablePanel>
 
-				<div class="mt-6 grid grid-cols-1 gap-6 border-t border-line pt-4 lg:grid-cols-2">
-					<div>
-						<h3 class="mb-3 text-sm font-semibold text-success-strong">
-							New arrivals ({filteredArrivals.length})
-						</h3>
-						<div class="overflow-x-auto">
-							<table class="min-w-full text-sm">
-								<thead>
-									<tr class="border-b border-line">
-										<th class="pb-2 pr-3 text-left text-xs font-semibold text-muted">Bean</th>
-										<th class="pb-2 pr-3 text-left text-xs font-semibold text-muted">Origin</th>
-										<th class="pb-2 pr-3 text-right text-xs font-semibold text-muted">$/lb</th>
-										<th class="pb-2 text-left text-xs font-semibold text-muted">Supplier</th>
-									</tr>
-								</thead>
-								<tbody>
-									{#each filteredArrivals as bean}
-										<tr class="border-b border-line/40 hover:bg-success-subtle">
-											<td class="py-2 pr-3 font-medium text-ink">{bean.name}</td>
-											<td class="py-2 pr-3 text-muted">{bean.country ?? '—'}</td>
-											<td class="py-2 pr-3 text-right text-ink"
-												>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
-											>
-											<td class="py-2 text-muted">{bean.source ?? '—'}</td>
-										</tr>
-									{/each}
-								</tbody>
-							</table>
+			<!-- What's arriving and leaving: one diverging read, tables in the breakout. -->
+			<ExpandablePanel
+				title="Arrivals & delistings"
+				subtitle="Catalog movement by origin over the selected window. Expand for the named lots."
+				totalItems={isMovementDataAvailable ? movementWindowTotal : movementLoadedRows}
+				expandLabel={movementExpandLabel}
+				collapsedMaxHeight="330px"
+				showGradient={false}
+			>
+				<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
+					<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+						<div>
+							<h2 class="text-base font-semibold text-ink">What's arriving and leaving?</h2>
+							<p class="mt-1 text-sm text-muted">
+								{#if !isMovementDataAvailable}
+									Showing {filteredArrivals.length} arrivals and {filteredDelistings.length} delistings
+									from the most recent catalog data — movement counts are currently unavailable.
+								{:else if movementTruncated}
+									Showing the latest {filteredArrivals.length} of {arrivalTotal} arrivals and {filteredDelistings.length}
+									of {delistingTotal} delistings from the last {windowDaysLabel} days.
+								{:else}
+									Showing {filteredArrivals.length} arrivals and {filteredDelistings.length} delistings
+									from the last {windowDaysLabel} days.
+								{/if}
+							</p>
+						</div>
+						<div
+							class="flex rounded-full border border-line bg-surface-panel p-0.5 text-xs font-medium"
+						>
+							{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
+								<button
+									onclick={() => onWindowModeChange(opt.value as WindowMode)}
+									class="rounded-full px-3 py-1 transition-all duration-150 {windowMode ===
+									opt.value
+										? 'bg-accent text-ink shadow-sm'
+										: 'text-muted hover:text-ink'}"
+								>
+									{opt.label}
+								</button>
+							{/each}
 						</div>
 					</div>
-					<div>
-						<h3 class="mb-3 text-sm font-semibold text-danger-strong">
-							Recent delistings ({filteredDelistings.length})
-						</h3>
-						<div class="overflow-x-auto">
-							<table class="min-w-full text-sm">
-								<thead>
-									<tr class="border-b border-line">
-										<th class="pb-2 pr-3 text-left text-xs font-semibold text-muted">Bean</th>
-										<th class="pb-2 pr-3 text-left text-xs font-semibold text-muted">Origin</th>
-										<th class="pb-2 pr-3 text-right text-xs font-semibold text-muted">Last $/lb</th>
-										<th class="pb-2 text-left text-xs font-semibold text-muted">Supplier</th>
-									</tr>
-								</thead>
-								<tbody>
-									{#each filteredDelistings as bean}
-										<tr class="border-b border-line/40 hover:bg-danger-subtle">
-											<td class="py-2 pr-3 font-medium text-ink">{bean.name}</td>
-											<td class="py-2 pr-3 text-muted">{bean.country ?? '—'}</td>
-											<td class="py-2 pr-3 text-right text-ink"
-												>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
-											>
-											<td class="py-2 text-muted">{bean.source ?? '—'}</td>
+					<MovementByOriginChart
+						arrivals={filteredArrivals}
+						delistings={filteredDelistings}
+						maxOrigins={999}
+					/>
+
+					<div class="mt-6 grid grid-cols-1 gap-6 border-t border-line pt-4 lg:grid-cols-2">
+						<div>
+							<h3 class="mb-3 text-sm font-semibold text-success-strong">
+								New arrivals ({filteredArrivals.length})
+							</h3>
+							<div class="overflow-x-auto">
+								<table class="min-w-full text-sm">
+									<thead>
+										<tr class="border-b border-line">
+											<th class="pb-2 pr-3 text-left text-xs font-semibold text-muted">Bean</th>
+											<th class="pb-2 pr-3 text-left text-xs font-semibold text-muted">Origin</th>
+											<th class="pb-2 pr-3 text-right text-xs font-semibold text-muted">$/lb</th>
+											<th class="pb-2 text-left text-xs font-semibold text-muted">Supplier</th>
 										</tr>
-									{/each}
-								</tbody>
-							</table>
+									</thead>
+									<tbody>
+										{#each filteredArrivals as bean}
+											<tr class="border-b border-line/40 hover:bg-success-subtle">
+												<td class="py-2 pr-3 font-medium text-ink">{bean.name}</td>
+												<td class="py-2 pr-3 text-muted">{bean.country ?? '—'}</td>
+												<td class="py-2 pr-3 text-right text-ink"
+													>{bean.price_per_lb != null
+														? '$' + bean.price_per_lb.toFixed(2)
+														: '—'}</td
+												>
+												<td class="py-2 text-muted">{bean.source ?? '—'}</td>
+											</tr>
+										{/each}
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div>
+							<h3 class="mb-3 text-sm font-semibold text-danger-strong">
+								Recent delistings ({filteredDelistings.length})
+							</h3>
+							<div class="overflow-x-auto">
+								<table class="min-w-full text-sm">
+									<thead>
+										<tr class="border-b border-line">
+											<th class="pb-2 pr-3 text-left text-xs font-semibold text-muted">Bean</th>
+											<th class="pb-2 pr-3 text-left text-xs font-semibold text-muted">Origin</th>
+											<th class="pb-2 pr-3 text-right text-xs font-semibold text-muted"
+												>Last $/lb</th
+											>
+											<th class="pb-2 text-left text-xs font-semibold text-muted">Supplier</th>
+										</tr>
+									</thead>
+									<tbody>
+										{#each filteredDelistings as bean}
+											<tr class="border-b border-line/40 hover:bg-danger-subtle">
+												<td class="py-2 pr-3 font-medium text-ink">{bean.name}</td>
+												<td class="py-2 pr-3 text-muted">{bean.country ?? '—'}</td>
+												<td class="py-2 pr-3 text-right text-ink"
+													>{bean.price_per_lb != null
+														? '$' + bean.price_per_lb.toFixed(2)
+														: '—'}</td
+												>
+												<td class="py-2 text-muted">{bean.source ?? '—'}</td>
+											</tr>
+										{/each}
+									</tbody>
+								</table>
+							</div>
 						</div>
 					</div>
 				</div>
-			</div>
-		</ExpandablePanel>
+			</ExpandablePanel>
+		</div>
 
 		<ExpandablePanel
 			title="Supplier catalog health"
@@ -313,6 +322,10 @@
 			>
 				{#if SupplierHealthTableComponent}
 					<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
+						<h2 class="mb-1 text-base font-semibold text-ink">Supplier catalog health</h2>
+						<p class="mb-4 text-sm text-muted">
+							Catalog breadth, active origins, and price coverage by supplier in this scope.
+						</p>
 						<SupplierHealthTableComponent rows={scopedSupplierHealth} />
 					</div>
 				{/if}
@@ -325,6 +338,10 @@
 			totalItems={originBarData.length}
 		>
 			<div class="rounded-lg border border-accent/20 bg-surface-canvas p-6 shadow-sm">
+				<h2 class="mb-1 text-base font-semibold text-ink">Origin benchmarks</h2>
+				<p class="mb-4 text-sm text-muted">
+					Origin-level price range and supplier coverage in the latest market snapshot.
+				</p>
 				{#if hasSnapshots}
 					<div class="overflow-x-auto">
 						<table class="min-w-full text-sm">

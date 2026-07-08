@@ -1138,6 +1138,9 @@
 		<MetadataTrendsSection
 			processSeries={marketInsights?.metadataProcessSeries ?? null}
 			disclosureSeries={marketInsights?.metadataDisclosureSeries ?? null}
+			purveyorScoreSeries={marketInsights?.metadataPurveyorScoreSeries ?? null}
+			purveyorScoreConfidenceSeries={marketInsights?.metadataPurveyorScoreConfidenceSeries ?? null}
+			purveyorScoreTierSeries={marketInsights?.metadataPurveyorScoreTierSeries ?? null}
 			{viewMode}
 			{isParchmentIntelligence}
 		/>

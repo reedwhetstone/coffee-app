@@ -1,7 +1,9 @@
 <script lang="ts">
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
+	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 	import type { MarketSignalItem, MarketSignalsSummary } from '$lib/types/marketIndex.types';
+	import { parseTastingNotes } from '$lib/utils/parseTastingNotes';
 
 	type ViewMode = 'retail' | 'wholesale' | 'all';
 
@@ -120,34 +122,45 @@
 		{#if scopedSignals.length > 0}
 			<section class="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Value signals">
 				{#each scopedSignals as signal (signal.signalType + signal.signalWindow + signal.catalogId + signal.market)}
-					<article
-						class="relative flex flex-col overflow-hidden rounded-lg border border-line bg-surface-raised p-5 pl-7 shadow-sm"
-					>
-						<AccentSpine />
-						<div class="flex items-center justify-between gap-2">
-							<span
-								class="rounded-full bg-accent-subtle/15 px-2.5 py-0.5 text-xs font-semibold text-ink ring-1 ring-accent/25"
-							>
-								{SIGNAL_LABELS[signal.signalType]}
-							</span>
-							<span class="text-sm font-semibold tabular-nums text-ink"
-								>{formatMoney(signal.currentPriceLb)}</span
-							>
-						</div>
-						<h3 class="mt-3 font-serif text-lg font-medium leading-6 text-ink">
-							{signalTitle(signal)}
-						</h3>
-						<p class="mt-0.5 text-xs text-muted">
-							{signal.source ?? 'Supplier undisclosed'} · {signal.market}
-						</p>
-						<p class="mt-2 flex-1 text-sm leading-6 text-muted">{evidenceSentence(signal)}</p>
-						<a
-							href={catalogHref(signal)}
-							class="mt-3 text-sm font-semibold text-link hover:text-accent"
+					{#if signal.coffee}
+						<CoffeeCard
+							coffee={signal.coffee}
+							{parseTastingNotes}
+							compact={true}
+							highlighted={true}
+							showCatalogLink={true}
+							annotation={`${SIGNAL_LABELS[signal.signalType]}: ${evidenceSentence(signal)}`}
+						/>
+					{:else}
+						<article
+							class="relative flex flex-col overflow-hidden rounded-lg border border-line bg-surface-raised p-5 pl-7 shadow-sm"
 						>
-							View in the catalog <span aria-hidden="true">→</span>
-						</a>
-					</article>
+							<AccentSpine />
+							<div class="flex items-center justify-between gap-2">
+								<span
+									class="rounded-full bg-accent-subtle/15 px-2.5 py-0.5 text-xs font-semibold text-ink ring-1 ring-accent/25"
+								>
+									{SIGNAL_LABELS[signal.signalType]}
+								</span>
+								<span class="text-sm font-semibold tabular-nums text-ink"
+									>{formatMoney(signal.currentPriceLb)}</span
+								>
+							</div>
+							<h3 class="mt-3 font-serif text-lg font-medium leading-6 text-ink">
+								{signalTitle(signal)}
+							</h3>
+							<p class="mt-0.5 text-xs text-muted">
+								{signal.source ?? 'Supplier undisclosed'} · {signal.market}
+							</p>
+							<p class="mt-2 flex-1 text-sm leading-6 text-muted">{evidenceSentence(signal)}</p>
+							<a
+								href={catalogHref(signal)}
+								class="mt-3 text-sm font-semibold text-link hover:text-accent"
+							>
+								View in the catalog <span aria-hidden="true">→</span>
+							</a>
+						</article>
+					{/if}
 				{/each}
 			</section>
 		{:else}

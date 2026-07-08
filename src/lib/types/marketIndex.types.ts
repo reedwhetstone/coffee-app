@@ -1,4 +1,5 @@
 import type { components } from '@purveyors/sdk';
+import type { CoffeeCatalog } from '$lib/types/component.types';
 
 /**
  * Shared (client-safe) types for the Market Index decision-surface modules.
@@ -9,6 +10,8 @@ import type { components } from '@purveyors/sdk';
 export type MarketSignalItem = components['schemas']['MarketSignalItem'] & {
 	/** Coffee name from the entitled Parchment response or authorized server enrichment. */
 	name: string | null;
+	/** Catalog row for rendering the canonical CoffeeCard detail drawer on non-catalog surfaces. */
+	coffee?: CoffeeCatalog | null;
 };
 
 export interface MarketSignalsSummary {
@@ -28,4 +31,7 @@ export interface MarketIndexInsights {
 	moveStats: PriceMoveStat[] | null;
 	metadataProcessSeries: MetadataSeriesItem[] | null;
 	metadataDisclosureSeries: MetadataSeriesItem[] | null;
+	metadataPurveyorScoreSeries: MetadataSeriesItem[] | null;
+	metadataPurveyorScoreConfidenceSeries: MetadataSeriesItem[] | null;
+	metadataPurveyorScoreTierSeries: MetadataSeriesItem[] | null;
 }
