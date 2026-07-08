@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import AnalyticsPage from './+page.svelte';
 import type { PageData } from './$types';
+import type { AnalyticsPayload } from './+page.server';
+import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 
 const {
 	goto,
@@ -76,10 +78,8 @@ async function buildSupplierModules() {
 	};
 }
 
-function createData(overrides: Partial<PageData> = {}): PageData {
+function createAnalyticsPayload(overrides: Partial<AnalyticsPayload> = {}): AnalyticsPayload {
 	return {
-		session: null,
-		isParchmentIntelligence: false,
 		stats: {
 			totalBeansTracked: 120,
 			stockedRetailBeans: 84,
@@ -93,6 +93,12 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 			totalSuppliers: 12,
 			originsCount: 7,
 			lastUpdated: '2026-04-08'
+		},
+		marketSummary: {
+			retail_median_7d_change: null,
+			retail_median_30d_change: null,
+			supply_7d_change: null,
+			supply_30d_change: null
 		},
 		snapshots: [
 			{
@@ -238,8 +244,33 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 			metadataPurveyorScoreConfidenceSeries: null,
 			metadataPurveyorScoreTierSeries: null
 		},
-		role: 'viewer',
 		...overrides
+	} as unknown as AnalyticsPayload;
+}
+
+function createData(
+	overrides: Partial<AnalyticsPayload> &
+		Partial<Pick<PageData, 'session' | 'isParchmentIntelligence' | 'role'>> & {
+			analyticsPayload?: Promise<AnalyticsPayload>;
+			analyticsPreview?: AnalyticsPayload;
+		} = {}
+): PageData {
+	const {
+		session = null,
+		isParchmentIntelligence = false,
+		role = 'viewer',
+		analyticsPayload,
+		analyticsPreview,
+		...payloadOverrides
+	} = overrides;
+	const payload = createAnalyticsPayload(payloadOverrides);
+
+	return {
+		session,
+		isParchmentIntelligence,
+		role,
+		analyticsPreview: analyticsPreview ?? payload,
+		analyticsPayload: analyticsPayload ?? Promise.resolve(payload)
 	} as unknown as PageData;
 }
 
@@ -261,17 +292,58 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	pageChatContext.clear();
 	vi.restoreAllMocks();
 });
 
 describe('analytics page loading experience', () => {
+	it('renders the preview market read while the full analytics payload is still streaming', async () => {
+		const payload = deferred<AnalyticsPayload>();
+		const preview = createAnalyticsPayload({
+			snapshots: [],
+			processDistribution: [],
+			originRangeData: [],
+			marketInsights: {
+				valueSignals: null,
+				signalsSummary: null,
+				signalsAsOf: null,
+				moveStats: null,
+				metadataProcessSeries: null,
+				metadataDisclosureSeries: null,
+				metadataPurveyorScoreSeries: null,
+				metadataPurveyorScoreConfidenceSeries: null,
+				metadataPurveyorScoreTierSeries: null
+			}
+		});
+
+		const { container } = render(AnalyticsPage, {
+			data: createData({ analyticsPreview: preview, analyticsPayload: payload.promise })
+		});
+
+		expect(screen.getByText(/7-day movement: 1 arrivals and 1 delistings/i)).toBeTruthy();
+		expect(screen.getByText(/84 active retail listings/i)).toBeTruthy();
+		expect(container.querySelector('[aria-label="Loading Market Index"]')).toBeTruthy();
+		expect(screen.queryByText('Unlock the full market map.')).toBeNull();
+		expect(pageChatContext.current).toBeNull();
+
+		payload.resolve(createAnalyticsPayload());
+
+		await waitFor(() => {
+			expect(screen.getByText('Unlock the full market map.')).toBeTruthy();
+		});
+		expect(pageChatContext.current?.summary).toContain('84 stocked listings');
+	});
+
 	it('shows immediate loading feedback before deferred analytics modules mount', async () => {
 		const trendModule = deferred<Awaited<ReturnType<typeof buildPublicTrendModule>>>();
 		loadPublicTrendAnalyticsModule.mockReturnValueOnce(trendModule.promise);
 
-		render(AnalyticsPage, { data: createData() });
+		const { container } = render(AnalyticsPage, { data: createData() });
 
-		expect(screen.getByText('Loading market visuals')).toBeTruthy();
+		expect(container.querySelector('[aria-label="Loading Market Index"]')).toBeTruthy();
+		await waitFor(() => {
+			expect(screen.getByText('Loading market visuals')).toBeTruthy();
+		});
 		expect(
 			screen.getByText(/the overview is ready first\. charts are loading next\./i)
 		).toBeTruthy();
@@ -609,7 +681,7 @@ describe('analytics command center hierarchy', () => {
 	});
 
 	it('scopes coverage supplier-evidence reads with the selected market', async () => {
-		const baseSnapshot = createData().snapshots[0];
+		const baseSnapshot = createAnalyticsPayload().snapshots[0];
 		render(AnalyticsPage, {
 			data: createData({
 				session: createSession(),
@@ -621,7 +693,7 @@ describe('analytics command center hierarchy', () => {
 						supplier_count: 2,
 						sample_size: 3
 					},
-					{ ...createData().snapshots[1] }
+					{ ...createAnalyticsPayload().snapshots[1] }
 				]
 			})
 		});

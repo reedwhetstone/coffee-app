@@ -3,15 +3,8 @@
 	import type {
 		PriceSnapshot,
 		ProcessBucket,
-		OriginRangeRow,
-		MovementCounts,
 		MovementWindowCounts,
-		ArrivalBean,
-		DelistingBean,
-		ComparisonBean,
-		SupplierHealthRow,
-		SupplierPriceRange,
-		TrackedLotSummary
+		AnalyticsPayload
 	} from './+page.server';
 	import {
 		buildAnalyticsChatHref,
@@ -36,10 +29,75 @@
 	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
 	import ValueSignalsSection from '$lib/components/analytics/sections/ValueSignalsSection.svelte';
 	import MetadataTrendsSection from '$lib/components/analytics/sections/MetadataTrendsSection.svelte';
+	import AnalyticsRouteSkeleton from '$lib/components/analytics/sections/AnalyticsRouteSkeleton.svelte';
 	import { getAnalyticsSectionLinks } from '$lib/components/layout/appNavigation';
 	import type { MarketIndexInsights } from '$lib/types/marketIndex.types';
 
 	let { data } = $props<{ data: PageData }>();
+
+	const EMPTY_MARKET_INSIGHTS: MarketIndexInsights = {
+		valueSignals: null,
+		signalsSummary: null,
+		signalsAsOf: null,
+		moveStats: null,
+		metadataProcessSeries: null,
+		metadataDisclosureSeries: null,
+		metadataPurveyorScoreSeries: null,
+		metadataPurveyorScoreConfidenceSeries: null,
+		metadataPurveyorScoreTierSeries: null
+	};
+
+	const EMPTY_ANALYTICS_PAYLOAD: AnalyticsPayload = {
+		stats: {
+			totalBeansTracked: 0,
+			stockedRetailBeans: 0,
+			stockedWholesaleBeans: 0,
+			stockedRetailOrigins: 0,
+			stockedWholesaleOrigins: 0,
+			stockedOrigins: 0,
+			stockedRetailSuppliers: 0,
+			stockedWholesaleSuppliers: 0,
+			stockedSuppliers: 0,
+			totalSuppliers: 0,
+			originsCount: 0,
+			lastUpdated: null
+		},
+		marketSummary: {
+			retail_median_7d_change: null,
+			retail_median_30d_change: null,
+			supply_7d_change: null,
+			supply_30d_change: null
+		},
+		snapshots: [],
+		processDistribution: [],
+		originRangeData: [],
+		movementCounts: {
+			available: false,
+			arrivals: {
+				sevenDay: { retail: 0, wholesale: 0 },
+				thirtyDay: { retail: 0, wholesale: 0 }
+			},
+			delistings: {
+				sevenDay: { retail: 0, wholesale: 0 },
+				thirtyDay: { retail: 0, wholesale: 0 }
+			}
+		},
+		recentArrivals: [],
+		recentDelistings: [],
+		comparisonBeans: [],
+		supplierPriceRanges: [],
+		supplierHealth: [],
+		trackedLots: [],
+		marketInsights: EMPTY_MARKET_INSIGHTS
+	};
+
+	let analyticsPreview = $derived(
+		(data.analyticsPreview as AnalyticsPayload | undefined) ?? EMPTY_ANALYTICS_PAYLOAD
+	);
+	let resolvedAnalyticsPayload = $state<AnalyticsPayload | null>(null);
+	let analyticsPayload = $derived(resolvedAnalyticsPayload ?? analyticsPreview);
+	let analyticsPayloadResolved = $state(false);
+	let analyticsPayloadError = $state<string | null>(null);
 
 	// Deferred chart module state
 	let OriginLineChartComponent = $state<DeferredAnalyticsComponent | null>(null);
@@ -61,10 +119,10 @@
 	let viewMode = $state<ViewMode>('retail');
 	let windowMode = $state<WindowMode>('7d');
 
+	let session = $derived(data.session);
+	let role = $derived(data.role);
+	let isParchmentIntelligence = $derived(data.isParchmentIntelligence);
 	let {
-		session,
-		role,
-		isParchmentIntelligence,
 		stats,
 		snapshots,
 		processDistribution,
@@ -77,42 +135,35 @@
 		supplierHealth,
 		trackedLots,
 		marketInsights
-	} = $derived(
-		data as {
-			session: PageData['session'];
-			role: PageData['role'];
-			isParchmentIntelligence: boolean;
-			stats: {
-				totalBeansTracked: number;
-				stockedRetailBeans: number;
-				stockedWholesaleBeans: number;
-				stockedRetailOrigins: number;
-				stockedWholesaleOrigins: number;
-				stockedOrigins: number;
-				stockedRetailSuppliers: number;
-				stockedWholesaleSuppliers: number;
-				stockedSuppliers: number;
-				totalSuppliers: number;
-				originsCount: number;
-				lastUpdated: string | null;
-			};
-			snapshots: PriceSnapshot[];
-			processDistribution: ProcessBucket[];
-			originRangeData: OriginRangeRow[];
-			movementCounts: MovementCounts;
-			recentArrivals: ArrivalBean[];
-			recentDelistings: DelistingBean[];
-			comparisonBeans: ComparisonBean[];
-			supplierPriceRanges: SupplierPriceRange[];
-			supplierHealth: SupplierHealthRow[];
-			trackedLots: TrackedLotSummary[];
-			marketInsights: MarketIndexInsights;
-		}
-	);
+	} = $derived(analyticsPayload);
 	let isAnonymous = $derived(!session);
 	let visibleAnalyticsSectionLinks = $derived(
 		getAnalyticsSectionLinks({ includeDisclosureIndex: !isAnonymous })
 	);
+
+	$effect(() => {
+		const payloadPromise = data.analyticsPayload as Promise<AnalyticsPayload>;
+		let cancelled = false;
+		resolvedAnalyticsPayload = null;
+		analyticsPayloadResolved = false;
+		analyticsPayloadError = null;
+
+		void payloadPromise
+			.then((payload: AnalyticsPayload) => {
+				if (cancelled) return;
+				resolvedAnalyticsPayload = payload;
+				analyticsPayloadResolved = true;
+			})
+			.catch((error: unknown) => {
+				if (cancelled) return;
+				console.error('Failed to load analytics payload:', error);
+				analyticsPayloadError = 'Market data could not be loaded. Retry the page in a moment.';
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	});
 
 	// ── Snapshot filtering (scope lens) ──────────────────────────────────────
 
@@ -799,13 +850,17 @@
 		})
 	);
 	let analyticsChatHref = $derived.by(() =>
-		canAskWithAnalyticsContext
+		canAskWithAnalyticsContext && analyticsPayloadResolved
 			? buildAnalyticsChatHref(analyticsChatContext, marketReadHeadline)
 			: undefined
 	);
 
-	// Publish the live market view so chat can ground answers in it.
+	// Publish only the resolved market view so chat never receives preview placeholders.
 	$effect(() => {
+		if (!analyticsPayloadResolved) {
+			pageChatContext.clear();
+			return;
+		}
 		pageChatContext.set({
 			surface: 'analytics',
 			summary: buildAnalyticsPageContextSummary(analyticsChatContext, marketReadHeadline)
@@ -815,6 +870,7 @@
 
 	let askActionHref = $derived.by(() => {
 		if (analyticsChatHref) return analyticsChatHref;
+		if (canAskWithAnalyticsContext && !analyticsPayloadResolved) return undefined;
 		if (!session) return '/auth';
 		return '/subscription?plan=intelligence-monthly&intent=checkout';
 	});
@@ -954,6 +1010,13 @@
 	});
 </script>
 
+{#if analyticsPayloadError}
+	<section class="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-900">
+		<p class="font-semibold">Market data did not load.</p>
+		<p class="mt-1">{analyticsPayloadError}</p>
+	</section>
+{/if}
+
 <MarketReadSection
 	{marketReadHeadline}
 	{marketReadDetail}
@@ -1002,15 +1065,6 @@
 	</div>
 {/if}
 
-<ValueSignalsSection
-	valueSignals={marketInsights?.valueSignals ?? null}
-	signalsSummary={marketInsights?.signalsSummary ?? null}
-	signalsAsOf={marketInsights?.signalsAsOf ?? null}
-	{isParchmentIntelligence}
-	isSignedIn={Boolean(session)}
-	{viewMode}
-/>
-
 <section id="today-signals" class="scroll-mt-28">
 	<AnalyticsSectionHeader
 		title="Today's signals"
@@ -1020,135 +1074,158 @@
 	<KpiStripSection {kpiCards} {insightCards} />
 </section>
 
-{#if !isAnonymous}
-	<WatchlistSignalsSection
-		{scopedTrackedLots}
-		{trackedDelistedCount}
-		{trackedPriceMovers}
-		{viewModeLabel}
-		{viewMode}
-	/>
-{/if}
-
-{#if analyticsShellMessage}
-	<div
-		class="mb-6 rounded-lg border border-accent/20 bg-surface-canvas px-5 py-3 shadow-sm"
-		aria-live="polite"
-	>
-		<div class="flex items-start gap-3">
-			<span class="mt-1 h-2.5 w-2.5 animate-pulse rounded-full bg-accent"></span>
-			<div>
-				<p class="text-sm font-semibold text-ink">Loading market visuals</p>
-				<p class="mt-1 text-xs text-muted">
-					The overview is ready first. {analyticsShellMessage} are loading next.
-				</p>
-			</div>
-		</div>
+{#if analyticsPayloadError}
+	<div class="mt-4 rounded-lg bg-surface-panel p-4 text-xs text-muted">
+		<strong class="text-ink">Data source:</strong> Latest available preview from the Parchment Market
+		Index. Detailed charts and supplier evidence could not load.
 	</div>
-{/if}
-
-<section id="market-index" class="scroll-mt-28">
-	<AnalyticsSectionHeader
-		title="Market Index"
-		description={isAnonymous
-			? 'The main price trend behind the current market read.'
-			: 'Pricing, supplier coverage, arrivals, delistings, and the movement behind the current market read.'}
-	/>
-
-	<EvidenceChartsSection
-		{OriginLineChartComponent}
-		{OriginBarChartComponent}
-		{ProcessDonutChartComponent}
-		{publicChartsError}
-		{filteredSnapshots}
-		{filteredProcessDist}
-		{scopedOriginRangeData}
-		{displayStockedCount}
-		{viewMode}
+{:else if !analyticsPayloadResolved}
+	<AnalyticsRouteSkeleton
 		{isParchmentIntelligence}
-		mainOnly={isAnonymous}
-		onRetry={retryPublicCharts}
+		isSignedIn={Boolean(session)}
+		showSummary={false}
+	/>
+{:else}
+	<ValueSignalsSection
+		valueSignals={marketInsights?.valueSignals ?? null}
+		signalsSummary={marketInsights?.signalsSummary ?? null}
+		signalsAsOf={marketInsights?.signalsAsOf ?? null}
+		{isParchmentIntelligence}
+		isSignedIn={Boolean(session)}
+		{viewMode}
 	/>
 
-	{#if isAnonymous}
-		<section
-			class="mb-8 rounded-lg border border-accent/20 bg-accent-subtle/10 p-5 shadow-sm"
-			aria-label="Market Index upgrade summary"
-		>
-			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-				<div>
-					<h2 class="font-serif text-xl font-medium text-ink">Unlock the full market map.</h2>
-					<ul class="mt-3 grid gap-x-6 gap-y-1 text-sm text-muted sm:grid-cols-2">
-						<li>Supplier price ranges and lot-level previews</li>
-						<li>Arrivals, delistings, and movement by origin</li>
-						<li>Processing and disclosure trends over time</li>
-						<li>Scoped buy signals with evidence per lot</li>
-					</ul>
-				</div>
-				<div class="flex shrink-0 gap-2">
-					<a
-						href="/subscription"
-						class="rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-accent/85"
-					>
-						See plans
-					</a>
-					<a
-						href="/auth"
-						class="rounded-md border border-accent px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-accent"
-					>
-						Sign in
-					</a>
-				</div>
-			</div>
-		</section>
-	{:else}
-		<ParchmentIntelligenceSection
-			{isParchmentIntelligence}
-			{session}
-			{PriceTierChartComponent}
-			{SupplierComparisonTableComponent}
-			{SupplierHealthTableComponent}
-			{memberVisualsError}
-			{snapshots}
-			{scopedComparisonBeans}
-			{scopedSupplierPriceRanges}
-			{scopedSupplierHealth}
-			{filteredArrivals}
-			{filteredDelistings}
-			arrivalTotal={scopedArrivalCount}
-			delistingTotal={scopedDelistingCount}
-			{isMovementDataAvailable}
-			{originBarData}
-			{hasSnapshots}
-			{windowMode}
+	{#if !isAnonymous}
+		<WatchlistSignalsSection
+			{scopedTrackedLots}
+			{trackedDelistedCount}
+			{trackedPriceMovers}
 			{viewModeLabel}
-			onRetry={retryMemberVisuals}
-			onWindowModeChange={(v) => (windowMode = v)}
+			{viewMode}
 		/>
 	{/if}
-</section>
 
-{#if !isAnonymous}
-	<section id="disclosure-index" class="scroll-mt-28">
+	{#if analyticsShellMessage}
+		<div
+			class="mb-6 rounded-lg border border-accent/20 bg-surface-canvas px-5 py-3 shadow-sm"
+			aria-live="polite"
+		>
+			<div class="flex items-start gap-3">
+				<span class="mt-1 h-2.5 w-2.5 animate-pulse rounded-full bg-accent"></span>
+				<div>
+					<p class="text-sm font-semibold text-ink">Loading market visuals</p>
+					<p class="mt-1 text-xs text-muted">
+						The overview is ready first. {analyticsShellMessage} are loading next.
+					</p>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<section id="market-index" class="scroll-mt-28">
 		<AnalyticsSectionHeader
-			title="Disclosure Index"
-			description="Metadata and transparency trends over time: what suppliers are revealing beyond price."
+			title="Market Index"
+			description={isAnonymous
+				? 'The main price trend behind the current market read.'
+				: 'Pricing, supplier coverage, arrivals, delistings, and the movement behind the current market read.'}
 		/>
 
-		<MetadataTrendsSection
-			processSeries={marketInsights?.metadataProcessSeries ?? null}
-			disclosureSeries={marketInsights?.metadataDisclosureSeries ?? null}
-			purveyorScoreSeries={marketInsights?.metadataPurveyorScoreSeries ?? null}
-			purveyorScoreConfidenceSeries={marketInsights?.metadataPurveyorScoreConfidenceSeries ?? null}
-			purveyorScoreTierSeries={marketInsights?.metadataPurveyorScoreTierSeries ?? null}
+		<EvidenceChartsSection
+			{OriginLineChartComponent}
+			{OriginBarChartComponent}
+			{ProcessDonutChartComponent}
+			{publicChartsError}
+			{filteredSnapshots}
+			{filteredProcessDist}
+			{scopedOriginRangeData}
+			{displayStockedCount}
 			{viewMode}
 			{isParchmentIntelligence}
+			mainOnly={isAnonymous}
+			onRetry={retryPublicCharts}
 		/>
-	</section>
-{/if}
 
-<div class="mt-4 rounded-lg bg-surface-panel p-4 text-xs text-muted">
-	<strong class="text-ink">Data source:</strong> Daily prices aggregated from
-	{stats.totalSuppliers} US green coffee importers and roasters. The Parchment Market Index updates each
-	morning, and origin plus processing details come directly from supplier listings.
-</div>
+		{#if isAnonymous}
+			<section
+				class="mb-8 rounded-lg border border-accent/20 bg-accent-subtle/10 p-5 shadow-sm"
+				aria-label="Market Index upgrade summary"
+			>
+				<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+					<div>
+						<h2 class="font-serif text-xl font-medium text-ink">Unlock the full market map.</h2>
+						<ul class="mt-3 grid gap-x-6 gap-y-1 text-sm text-muted sm:grid-cols-2">
+							<li>Supplier price ranges and lot-level previews</li>
+							<li>Arrivals, delistings, and movement by origin</li>
+							<li>Processing and disclosure trends over time</li>
+							<li>Scoped buy signals with evidence per lot</li>
+						</ul>
+					</div>
+					<div class="flex shrink-0 gap-2">
+						<a
+							href="/subscription"
+							class="rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-accent/85"
+						>
+							See plans
+						</a>
+						<a
+							href="/auth"
+							class="rounded-md border border-accent px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-accent"
+						>
+							Sign in
+						</a>
+					</div>
+				</div>
+			</section>
+		{:else}
+			<ParchmentIntelligenceSection
+				{isParchmentIntelligence}
+				{session}
+				{PriceTierChartComponent}
+				{SupplierComparisonTableComponent}
+				{SupplierHealthTableComponent}
+				{memberVisualsError}
+				{snapshots}
+				{scopedComparisonBeans}
+				{scopedSupplierPriceRanges}
+				{scopedSupplierHealth}
+				{filteredArrivals}
+				{filteredDelistings}
+				arrivalTotal={scopedArrivalCount}
+				delistingTotal={scopedDelistingCount}
+				{isMovementDataAvailable}
+				{originBarData}
+				{hasSnapshots}
+				{windowMode}
+				{viewModeLabel}
+				onRetry={retryMemberVisuals}
+				onWindowModeChange={(v) => (windowMode = v)}
+			/>
+		{/if}
+	</section>
+
+	{#if !isAnonymous}
+		<section id="disclosure-index" class="scroll-mt-28">
+			<AnalyticsSectionHeader
+				title="Disclosure Index"
+				description="Metadata and transparency trends over time: what suppliers are revealing beyond price."
+			/>
+
+			<MetadataTrendsSection
+				processSeries={marketInsights?.metadataProcessSeries ?? null}
+				disclosureSeries={marketInsights?.metadataDisclosureSeries ?? null}
+				purveyorScoreSeries={marketInsights?.metadataPurveyorScoreSeries ?? null}
+				purveyorScoreConfidenceSeries={marketInsights?.metadataPurveyorScoreConfidenceSeries ??
+					null}
+				purveyorScoreTierSeries={marketInsights?.metadataPurveyorScoreTierSeries ?? null}
+				{viewMode}
+				{isParchmentIntelligence}
+			/>
+		</section>
+	{/if}
+
+	<div class="mt-4 rounded-lg bg-surface-panel p-4 text-xs text-muted">
+		<strong class="text-ink">Data source:</strong> Daily prices aggregated from
+		{stats.totalSuppliers} US green coffee importers and roasters. The Parchment Market Index updates
+		each morning, and origin plus processing details come directly from supplier listings.
+	</div>
+{/if}

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AnalyticsPayload } from './+page.server';
 
 const { mockCreateAdminClient } = vi.hoisted(() => ({
 	mockCreateAdminClient: vi.fn()
@@ -20,8 +21,15 @@ vi.mock('$lib/supabase-admin', () => ({
 vi.mock('$lib/services/schemaService', () => ({
 	createSchemaService: vi.fn(() => ({
 		generateOrganizationSchema: vi.fn(() => ({ '@type': 'Organization' })),
-		generateDatasetSchema: vi.fn(() => ({ '@type': 'Dataset' })),
-		generateSchemaGraph: vi.fn(() => ({ '@graph': [] }))
+		generateDatasetSchema: vi.fn((dataset) => ({
+			'@type': 'Dataset',
+			...Object.fromEntries(
+				Object.entries(dataset as Record<string, unknown>).filter(
+					([, value]) => value !== undefined
+				)
+			)
+		})),
+		generateSchemaGraph: vi.fn((schemas) => ({ '@graph': schemas }))
 	}))
 }));
 
@@ -427,6 +435,15 @@ function createLoadEvent(client: ReturnType<typeof createAnalyticsClient>) {
 	} as never;
 }
 
+async function loadPayload(
+	client: ReturnType<typeof createAnalyticsClient>
+): Promise<AnalyticsPayload> {
+	const result = (await load(createLoadEvent(client))) as {
+		analyticsPayload: Promise<AnalyticsPayload>;
+	};
+	return result.analyticsPayload;
+}
+
 describe('loadPriceSnapshotsPaginated', () => {
 	it('loads all snapshot pages with a total ordering that survives schema ties', async () => {
 		const fromDate = '2026-01-01';
@@ -490,14 +507,44 @@ describe('analytics load', () => {
 		const client = createAnalyticsClient([{ data: [], error: null }]);
 		currentPriceIndexClient = client;
 
-		const result = (await load(createLoadEvent(client))) as { meta: Record<string, unknown> };
+		const result = (await load(createLoadEvent(client))) as {
+			meta: Record<string, unknown>;
+			analyticsPayload: Promise<AnalyticsPayload>;
+		};
 
 		expect(result.meta.title).toBe('Green Coffee Market Visibility | Parchment Market Index');
 		expect(result.meta.ogTitle).toBe('Green Coffee Market Visibility — Parchment Market Index');
 		expect(result.meta.twitterTitle).toBe(
 			'Green Coffee Market Visibility — Parchment Market Index'
 		);
+		expect(result.meta.schemaData).toMatchObject({
+			'@graph': expect.arrayContaining([
+				expect.objectContaining({
+					'@type': 'Dataset',
+					dateModified: '2026-04-08'
+				})
+			])
+		});
 		expect(JSON.stringify(result.meta)).not.toContain('Purveyors');
+		await result.analyticsPayload;
+	});
+
+	it('omits Dataset dateModified when no market summary freshness date exists', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }], {
+			marketSummaryDate: null
+		});
+		currentPriceIndexClient = client;
+
+		const result = (await load(createLoadEvent(client))) as {
+			meta: Record<string, unknown>;
+			analyticsPayload: Promise<AnalyticsPayload>;
+		};
+		const schemaData = result.meta.schemaData as { '@graph': Array<Record<string, unknown>> };
+		const dataset = schemaData['@graph'].find((entry) => entry['@type'] === 'Dataset');
+
+		expect(dataset).toBeTruthy();
+		expect(dataset).not.toHaveProperty('dateModified');
+		await result.analyticsPayload;
 	});
 
 	it('does not serialize named movement rows to non-Intelligence visitors', async () => {
@@ -527,10 +574,7 @@ describe('analytics load', () => {
 		});
 		currentPriceIndexClient = client;
 
-		const result = (await load(createLoadEvent(client))) as {
-			recentArrivals: import('./+page.server').ArrivalBean[];
-			recentDelistings: import('./+page.server').DelistingBean[];
-		};
+		const result = await loadPayload(client);
 
 		expect(result.recentArrivals).toEqual([]);
 		expect(result.recentDelistings).toEqual([]);
@@ -557,9 +601,7 @@ describe('analytics load', () => {
 			role: 'viewer'
 		});
 
-		const result = (await load(createLoadEvent(client))) as {
-			recentArrivals: import('./+page.server').ArrivalBean[];
-		};
+		const result = await loadPayload(client);
 
 		expect(result.recentArrivals).toHaveLength(1);
 		expect(result.recentArrivals[0]).toMatchObject({
@@ -577,7 +619,7 @@ describe('analytics load', () => {
 			role: 'viewer'
 		});
 
-		await load(createLoadEvent(anonymousClient));
+		await loadPayload(anonymousClient);
 		expect(anonymousClient.snapshotFromDates).toEqual(['2026-01-08']);
 
 		const memberClient = createAnalyticsClient([{ data: [], error: null }]);
@@ -588,7 +630,7 @@ describe('analytics load', () => {
 			role: 'viewer'
 		});
 
-		await load(createLoadEvent(memberClient));
+		await loadPayload(memberClient);
 		expect(memberClient.snapshotFromDates).toEqual(['2025-04-08']);
 	});
 
@@ -598,7 +640,7 @@ describe('analytics load', () => {
 		});
 		currentPriceIndexClient = client;
 
-		await load(createLoadEvent(client));
+		await loadPayload(client);
 
 		expect(client.movementCutoffs).toEqual({
 			arrivals: ['2026-03-01', '2026-03-01'],
@@ -610,9 +652,7 @@ describe('analytics load', () => {
 		const client = createAnalyticsClient([{ data: [], error: null }]);
 		currentPriceIndexClient = client;
 
-		const result = (await load(createLoadEvent(client))) as {
-			movementCounts: import('./+page.server').MovementCounts;
-		};
+		const result = await loadPayload(client);
 
 		expect(result.movementCounts).toEqual({
 			available: true,
@@ -627,9 +667,7 @@ describe('analytics load', () => {
 		});
 		currentPriceIndexClient = client;
 
-		const result = (await load(createLoadEvent(client))) as {
-			movementCounts: import('./+page.server').MovementCounts;
-		};
+		const result = await loadPayload(client);
 
 		expect(result.movementCounts.available).toBe(false);
 		expect(result.movementCounts.arrivals.sevenDay.retail).toBe(0);
@@ -649,9 +687,7 @@ describe('analytics load', () => {
 		});
 		currentPriceIndexClient = client;
 
-		const result = (await load(createLoadEvent(client))) as {
-			originRangeData: import('./+page.server').OriginRangeRow[];
-		};
+		const result = await loadPayload(client);
 		const colombiaRanges = result.originRangeData.filter((row) => row.origin === 'Colombia');
 
 		expect(colombiaRanges.map((row) => row.market_scope).sort()).toEqual([
@@ -712,10 +748,7 @@ describe('analytics load', () => {
 			role: 'viewer'
 		});
 
-		const result = (await load(createLoadEvent(client))) as {
-			comparisonBeans: import('./+page.server').ComparisonBean[];
-			supplierPriceRanges: import('./+page.server').SupplierPriceRange[];
-		};
+		const result = await loadPayload(client);
 
 		expect(result.comparisonBeans).toEqual([]);
 		expect(result.supplierPriceRanges).toEqual([
@@ -759,18 +792,7 @@ describe('analytics load', () => {
 		});
 		currentPriceIndexClient = client;
 
-		const result = (await load(createLoadEvent(client))) as {
-			stats: {
-				stockedRetailOrigins: number;
-				stockedWholesaleOrigins: number;
-				stockedOrigins: number;
-				stockedRetailSuppliers: number;
-				stockedWholesaleSuppliers: number;
-				stockedSuppliers: number;
-				totalSuppliers: number;
-				originsCount: number;
-			};
-		};
+		const result = await loadPayload(client);
 
 		expect(result.stats.originsCount).toBe(18);
 		expect(result.stats.totalSuppliers).toBe(39);
@@ -793,9 +815,7 @@ describe('analytics load', () => {
 		});
 		currentPriceIndexClient = client;
 
-		const result = (await load(createLoadEvent(client))) as {
-			stats: { stockedRetailOrigins: number; stockedRetailSuppliers: number };
-		};
+		const result = await loadPayload(client);
 
 		expect(result.stats.stockedRetailOrigins).toBe(1001);
 		expect(result.stats.stockedRetailSuppliers).toBe(1001);
@@ -811,7 +831,7 @@ describe('analytics load', () => {
 			});
 			currentPriceIndexClient = client;
 
-			await load(createLoadEvent(client));
+			await loadPayload(client);
 
 			expect(client.movementCutoffs).toEqual({
 				arrivals: ['2026-03-01', '2026-03-01'],
@@ -830,7 +850,11 @@ describe('analytics load', () => {
 
 		currentPriceIndexClient = client;
 
-		await expect(load(createLoadEvent(client))).rejects.toThrow(
+		const result = (await load(createLoadEvent(client))) as {
+			analyticsPayload: Promise<AnalyticsPayload>;
+		};
+
+		await expect(result.analyticsPayload).rejects.toThrow(
 			'Failed to load analytics price snapshots page 2: page timeout'
 		);
 	});
