@@ -221,7 +221,7 @@
 	/>
 </FormShell>
 
-<!-- Show instant skeleton only briefly while data loads -->
+<!-- Mounted-page data skeleton; client navigation shells are handled by the root layout. -->
 {#if profitData.length === 0 && salesData.length === 0}
 	<ProfitPageSkeleton />
 {:else}

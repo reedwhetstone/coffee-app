@@ -20,27 +20,22 @@
 	// Cast filtered data to the correct type for this page
 	let typedFilteredData = $derived($filteredData as unknown as RoastProfile[]);
 	import RoastPageSkeleton from '$lib/components/RoastPageSkeleton.svelte';
-	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
 
 	// Lazy load the heavy chart component
 	import type { ComponentType } from 'svelte';
 	let RoastChartInterface = $state<ComponentType | null>(null);
 	let chartComponentLoading = $state(true);
 
-	// Load chart component after initial render
-	$effect(() => {
-		// Use setTimeout to defer loading until after page renders
-		setTimeout(async () => {
-			try {
-				const module = await import('./RoastChartInterface.svelte');
-				RoastChartInterface = module.default as unknown as ComponentType;
-				chartComponentLoading = false;
-			} catch (error) {
-				console.error('Failed to load chart component:', error);
-				chartComponentLoading = false;
-			}
-		}, 100); // Small delay to ensure page renders first
-	});
+	async function loadChartComponent() {
+		try {
+			const module = await import('./RoastChartInterface.svelte');
+			RoastChartInterface = module.default as unknown as ComponentType;
+		} catch (error) {
+			console.error('Failed to load chart component:', error);
+		} finally {
+			chartComponentLoading = false;
+		}
+	}
 	import type { PageData } from './$types';
 	import type { RoastProfile, CoffeeCatalog, RoastFormData } from '$lib/types/component.types';
 
@@ -303,6 +298,8 @@
 	}
 
 	onMount(() => {
+		void loadChartComponent();
+
 		// Check URL params for pre-selected bean — always takes priority regardless of
 		// currentRoastProfile so navigating from a bean profile always pre-fills the form.
 		const beanId = page.url.searchParams.get('beanId');
@@ -783,9 +780,6 @@
 		onSubmit={handleFormSubmit}
 	/>
 </FormShell>
-
-<!-- Global Loading Overlay -->
-<SimpleLoadingScreen show={false} overlay={true} />
 
 <!-- Profile Operation Status -->
 {#if operationInProgress}

@@ -1,0 +1,42 @@
+import { render, screen } from '@testing-library/svelte';
+import { describe, expect, it } from 'vitest';
+import RouteSkeleton from './RouteSkeleton.svelte';
+
+describe('RouteSkeleton', () => {
+	it('renders an accessible route-level loading shell', () => {
+		render(RouteSkeleton, { pathname: '/analytics' });
+
+		const skeleton = screen.getByTestId('route-skeleton');
+		expect(skeleton).toHaveAttribute('aria-busy', 'true');
+		expect(skeleton).toHaveAccessibleName('Loading page');
+	});
+
+	it('renders a destination-specific skeleton for catalog navigation', () => {
+		render(RouteSkeleton, { pathname: '/catalog' });
+
+		expect(screen.getByTestId('route-skeleton')).toBeInTheDocument();
+		expect(document.querySelectorAll('.grid').length).toBeGreaterThan(0);
+	});
+
+	it('renders a chat workspace skeleton for chat navigation', () => {
+		render(RouteSkeleton, { pathname: '/chat' });
+
+		expect(screen.getByTestId('route-skeleton')).toBeInTheDocument();
+		expect(document.querySelectorAll('aside').length).toBe(1);
+		expect(document.querySelectorAll('section').length).toBe(1);
+	});
+
+	it('renders a product-card skeleton for subscription navigation', () => {
+		render(RouteSkeleton, { pathname: '/subscription' });
+
+		expect(screen.getByTestId('route-skeleton')).toBeInTheDocument();
+		expect(document.querySelectorAll('[class*="surface-panel"]').length).toBeGreaterThanOrEqual(4);
+	});
+
+	it('renders a generic skeleton for unmapped routes', () => {
+		render(RouteSkeleton, { pathname: '/settings' });
+
+		expect(screen.getByTestId('route-skeleton')).toBeInTheDocument();
+		expect(document.querySelectorAll('[class*="surface-panel"]').length).toBeGreaterThan(0);
+	});
+});

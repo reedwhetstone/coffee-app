@@ -7,6 +7,8 @@
 	import MobileAppShell from '$lib/components/layout/MobileAppShell.svelte';
 	import ChatDrawer from '$lib/components/chat/ChatDrawer.svelte';
 	import NavigationProgress from '$lib/components/layout/NavigationProgress.svelte';
+	import RouteSkeleton from '$lib/components/layout/RouteSkeleton.svelte';
+	import { shouldShowClientRouteSkeleton } from '$lib/components/layout/routeSkeletons';
 	import { setContext } from 'svelte';
 	import { page, navigating } from '$app/stores';
 
@@ -63,7 +65,15 @@
 	let rightMargin = $derived(rightSidebarOpen || chatDrawerOpen ? 'md:mr-[32rem]' : 'md:mr-0');
 	let contentMargin = $derived(`${activeMenu ? 'md:ml-[22rem]' : 'md:ml-24'} ${rightMargin}`);
 
-	let pathname = $derived($page.url.pathname);
+	let navigationTargetPathname = $derived($navigating?.to?.url.pathname ?? null);
+	let showClientRouteSkeleton = $derived(
+		shouldShowClientRouteSkeleton($navigating?.from?.url, $navigating?.to?.url)
+	);
+	let pathname = $derived(
+		showClientRouteSkeleton && navigationTargetPathname
+			? navigationTargetPathname
+			: $page.url.pathname
+	);
 	let isMarketingPage = $derived(pathname === '/');
 	let usesPublicShell = $derived(
 		pathname === '/' ||
@@ -110,7 +120,11 @@
 
 {#if isMarketingPage}
 	<div class="min-h-screen">
-		{@render children()}
+		{#if showClientRouteSkeleton}
+			<RouteSkeleton pathname={navigationTargetPathname} />
+		{:else}
+			{@render children()}
+		{/if}
 		<CookieBanner />
 	</div>
 {:else if data?.session?.user && !usesPublicShell}
@@ -120,7 +134,11 @@
 
 		<main class="{contentMargin} min-w-0 flex-1 transition-all duration-300 ease-out">
 			<div class="h-full overflow-x-clip px-4 pb-6 pt-20 sm:px-6 md:px-0 md:pb-0 md:pr-12 md:pt-4">
-				{@render children()}
+				{#if showClientRouteSkeleton}
+					<RouteSkeleton pathname={navigationTargetPathname} />
+				{:else}
+					{@render children()}
+				{/if}
 			</div>
 		</main>
 
@@ -150,7 +168,11 @@
 	<div class="min-h-screen overflow-x-clip">
 		<main class="flex-1">
 			<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-				{@render children()}
+				{#if showClientRouteSkeleton}
+					<RouteSkeleton pathname={navigationTargetPathname} />
+				{:else}
+					{@render children()}
+				{/if}
 			</div>
 		</main>
 	</div>
