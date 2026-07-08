@@ -322,6 +322,10 @@ describe('analytics page loading experience', () => {
 
 		expect(screen.getByText(/7-day movement: 1 arrivals and 1 delistings/i)).toBeTruthy();
 		expect(screen.getByText(/84 active retail listings/i)).toBeTruthy();
+		expect(
+			screen.getByText(/price movement is loading with the comparable snapshot layer/i)
+		).toBeTruthy();
+		expect(screen.queryByText(/price movement needs another comparable snapshot/i)).toBeNull();
 		expect(container.querySelector('[aria-label="Loading Market Index"]')).toBeTruthy();
 		expect(screen.queryByText('Unlock the full market map.')).toBeNull();
 		expect(pageChatContext.current).toBeNull();
@@ -331,6 +335,7 @@ describe('analytics page loading experience', () => {
 		await waitFor(() => {
 			expect(screen.getByText('Unlock the full market map.')).toBeTruthy();
 		});
+		expect(screen.getByText(/price movement needs another comparable snapshot/i)).toBeTruthy();
 		expect(pageChatContext.current?.summary).toContain('84 stocked listings');
 	});
 

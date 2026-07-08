@@ -547,8 +547,9 @@
 	});
 
 	let marketReadDetail = $derived.by(() => {
-		const pricePhrase =
-			marketPriceDelta == null
+		const pricePhrase = !analyticsPayloadResolved
+			? 'price movement is loading with the comparable snapshot layer'
+			: marketPriceDelta == null
 				? 'price movement needs another comparable snapshot'
 				: `${formatSigned(marketPriceDelta, 2)}/lb (${formatSigned(marketPriceDeltaPercent, 1)}%) versus the prior comparable snapshot`;
 		if (!isMovementDataAvailable) {
