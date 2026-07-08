@@ -183,6 +183,14 @@ function createAnalyticsClient(
 	const snapshotFromDates: string[] = [];
 	const snapshotRangeCalls: SnapshotQueryCall[] = [];
 	const movementCutoffs = { arrivals: [] as string[], delistings: [] as string[] };
+	const summaryReadCounts = {
+		marketSummary: 0,
+		totalBeans: 0,
+		stockedRetail: 0,
+		stockedWholesale: 0,
+		retailCoverageRanges: 0,
+		wholesaleCoverageRanges: 0
+	};
 
 	function resolveTableResult(
 		table: string,
@@ -193,6 +201,8 @@ function createAnalyticsClient(
 		}
 	) {
 		if (table === 'market_daily_summary') {
+			summaryReadCounts.marketSummary += 1;
+
 			if (options.marketSummaryDate === null) {
 				return { data: null, error: null };
 			}
@@ -279,8 +289,15 @@ function createAnalyticsClient(
 				};
 			}
 
-			if (stocked === true && wholesale === false) return { count: 42, error: null };
-			if (stocked === true && wholesale === true) return { count: 11, error: null };
+			if (stocked === true && wholesale === false) {
+				summaryReadCounts.stockedRetail += 1;
+				return { count: 42, error: null };
+			}
+			if (stocked === true && wholesale === true) {
+				summaryReadCounts.stockedWholesale += 1;
+				return { count: 11, error: null };
+			}
+			summaryReadCounts.totalBeans += 1;
 			return { count: 150, error: null };
 		}
 
@@ -333,6 +350,7 @@ function createAnalyticsClient(
 		snapshotFromDates,
 		snapshotRangeCalls,
 		movementCutoffs,
+		summaryReadCounts,
 		rpc(name: string) {
 			if (name === 'get_supplier_price_ranges') {
 				return Promise.resolve({ data: options.supplierPriceRanges ?? [], error: null });
@@ -394,6 +412,11 @@ function createAnalyticsClient(
 						const wholesale = state.filters.find(
 							(filter) => filter.method === 'eq' && filter.column === 'wholesale'
 						)?.value;
+						if (wholesale) {
+							summaryReadCounts.wholesaleCoverageRanges += 1;
+						} else {
+							summaryReadCounts.retailCoverageRanges += 1;
+						}
 						return Promise.resolve({
 							data: (options.originCoverageRows ?? [])
 								.filter((row) => row.wholesale === wholesale)
@@ -802,6 +825,34 @@ describe('analytics load', () => {
 		expect(result.stats.stockedRetailSuppliers).toBe(2);
 		expect(result.stats.stockedWholesaleSuppliers).toBe(2);
 		expect(result.stats.stockedSuppliers).toBe(4);
+	});
+
+	it('shares route summary reads between the preview and streamed payload', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }], {
+			originCoverageRows: [
+				{ country: 'Colombia', source: 'Atlas', wholesale: false },
+				{ country: 'Brazil', source: 'Royal', wholesale: true }
+			]
+		});
+		currentPriceIndexClient = client;
+
+		const result = (await load(createLoadEvent(client))) as {
+			analyticsPreview: AnalyticsPayload;
+			analyticsPayload: Promise<AnalyticsPayload>;
+		};
+		const payload = await result.analyticsPayload;
+
+		expect(payload.stats).toEqual(result.analyticsPreview.stats);
+		expect(payload.marketSummary).toEqual(result.analyticsPreview.marketSummary);
+		expect(payload.movementCounts).toEqual(result.analyticsPreview.movementCounts);
+		expect(client.summaryReadCounts).toEqual({
+			marketSummary: 1,
+			totalBeans: 1,
+			stockedRetail: 1,
+			stockedWholesale: 1,
+			retailCoverageRanges: 1,
+			wholesaleCoverageRanges: 1
+		});
 	});
 
 	it('paginates active coverage rows before computing scoped origin and supplier totals', async () => {
