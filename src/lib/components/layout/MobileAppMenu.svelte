@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { checkRole, type UserRole } from '$lib/types/auth.types';
 	import {
+		getAnalyticsSectionLinks,
 		getAuthenticatedNavSections,
 		isNavItemActive
 	} from '$lib/components/layout/appNavigation';
@@ -15,6 +16,7 @@
 	let pathname = $derived(page.url.pathname);
 	let userRole = $derived(((data?.role as UserRole | undefined) ?? 'viewer') as UserRole);
 	let userEmail = $derived(((data?.user as { email?: string } | undefined)?.email ?? '') as string);
+	let isSignedIn = $derived(Boolean((data as { user?: unknown }).user));
 	let supabase = $derived(
 		(
 			data as {
@@ -29,6 +31,10 @@
 	let isMember = $derived(checkRole(userRole, 'member'));
 	let ppiAccess = $derived(Boolean((data as { ppiAccess?: boolean }).ppiAccess));
 	let navSections = $derived(getAuthenticatedNavSections(userRole, { ppiAccess }));
+	let isAnalyticsPage = $derived(pathname.startsWith('/analytics'));
+	let marketIndexSectionLinks = $derived(
+		getAnalyticsSectionLinks({ includeDisclosureIndex: isSignedIn })
+	);
 
 	async function navigateTo(href: string) {
 		onClose();
@@ -127,6 +133,26 @@
 						>
 							Open chat
 						</button>
+					</div>
+				</section>
+			{/if}
+
+			{#if isAnalyticsPage}
+				<section class="space-y-3 rounded-xl border border-line bg-surface-panel/40 p-4">
+					<div>
+						<h3 class="text-sm font-semibold text-ink">Market Index sections</h3>
+						<p class="mt-1 text-xs text-muted">Jump to the part of the report you need.</p>
+					</div>
+					<div class="grid grid-cols-2 gap-2">
+						{#each marketIndexSectionLinks as link}
+							<button
+								type="button"
+								onclick={() => navigateTo(link.menuHref)}
+								class="rounded-md bg-surface-canvas px-3 py-2 text-left text-xs font-medium text-ink ring-1 ring-line transition-colors hover:bg-surface-panel"
+							>
+								{link.label}
+							</button>
+						{/each}
 					</div>
 				</section>
 			{/if}

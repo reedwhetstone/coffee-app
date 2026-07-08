@@ -30,7 +30,7 @@ Principles that govern implementation:
 1. **Every module must answer a stakeholder question, not display a dataset.** A module that cannot be titled as a question a roaster, analyst, or buyer would ask gets cut or demoted.
 2. **Signal over noise is a product feature.** Movement should be framed against baseline variance ("down 4.9% — largest weekly move this quarter") rather than reported raw.
 3. **Personalization arrives through GenUI/agents, not more dashboards.** The static page carries the shared, defensible reads; stakeholder-specific mutation (a roaster's watchlist-driven value feed vs. an analyst's origin dislocation view) is the job of the chat/GenUI layer consuming the same tools as the CLI (ADR-006, ADR-007).
-4. **Access levels follow ADR-003/ADR-005.** Value-signal feeds, arbitrage views, and deep metadata trends are member/Intelligence leverage; the public surface keeps proof-level reads. Anonymous surfaces do not grow new signal feeds.
+4. **Access levels follow ADR-005/ADR-010.** Value-signal feeds, arbitrage views, and deep metadata trends are member/Intelligence leverage; the public surface keeps proof-level reads. Anonymous surfaces do not grow new signal feeds.
 5. **The metadata index is a first-class roadmap item.** Positioning language may say "the market index for coffee's metadata, not just its prices" once a first metadata-trend module ships. Per the no-vaporware copy rule, do not market it before it exists.
 
 ## Consequences
@@ -43,7 +43,7 @@ Principles that govern implementation:
 ## References
 
 - `notes/PRODUCT_VISION.md` — data moat, intelligence-replaces-navigation, public-proof principles
-- ADR-003 — public analytics three-chart free gate
+- ADR-010 — public Market Index proof surface
 - ADR-004 — processing transparency schema
 - ADR-005 — catalog access levels (visibility vs. leverage)
 - ADR-006 / ADR-007 — CLI-owned agent tools, API-first extraction (the GenUI substrate)

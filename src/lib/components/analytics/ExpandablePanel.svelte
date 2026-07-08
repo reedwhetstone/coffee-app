@@ -56,6 +56,7 @@
 	};
 
 	let badgeClass = $derived(BADGE_STYLES[badgeColor] ?? BADGE_STYLES.amber);
+	let canExpand = $derived(totalItems == null || totalItems > 0);
 	let computedExpandLabel = $derived(
 		expandLabel ?? (totalItems != null ? `View all ${totalItems} →` : 'Expand')
 	);
@@ -78,14 +79,16 @@
 		{/if}
 	</div>
 
-	<div class="mt-2.5 flex justify-center">
-		<button
-			onclick={open}
-			class="rounded-full border border-line bg-surface-panel px-4 py-1.5 text-sm font-medium text-muted shadow-sm transition-colors duration-150 hover:border-accent hover:text-accent"
-		>
-			{computedExpandLabel}
-		</button>
-	</div>
+	{#if canExpand}
+		<div class="mt-2.5 flex justify-center">
+			<button
+				onclick={open}
+				class="rounded-full border border-line bg-surface-panel px-4 py-1.5 text-sm font-medium text-muted shadow-sm transition-colors duration-150 hover:border-accent hover:text-accent"
+			>
+				{computedExpandLabel}
+			</button>
+		</div>
+	{/if}
 </div>
 
 <!-- Expanded modal overlay -->

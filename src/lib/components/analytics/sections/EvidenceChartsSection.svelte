@@ -23,6 +23,7 @@
 		displayStockedCount: number;
 		viewMode: ViewMode;
 		isParchmentIntelligence: boolean;
+		mainOnly?: boolean;
 		onRetry: () => void;
 	}
 
@@ -43,6 +44,7 @@
 		displayStockedCount,
 		viewMode,
 		isParchmentIntelligence,
+		mainOnly = false,
 		onRetry
 	}: Props = $props();
 
@@ -123,84 +125,92 @@
 		</AnalyticsLoadingPanel>
 	</ExpandablePanel>
 
-	<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-		<ExpandablePanel
-			title="Processing mix"
-			subtitle="How current listings break down by processing style"
-			collapsedMaxHeight="360px"
-			showGradient={false}
-		>
-			<AnalyticsLoadingPanel
-				ready={Boolean(ProcessDonutChartComponent)}
+	{#if !mainOnly}
+		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+			<ExpandablePanel
 				title="Processing mix"
-				description="Loading stocked catalog processing distribution."
-				height="h-56"
-				errorMessage={publicChartsError}
-				{onRetry}
+				subtitle="How current listings break down by processing style"
+				collapsedMaxHeight="340px"
+				showGradient={false}
 			>
-				<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
-					<h2 class="mb-1 text-base font-semibold text-ink">Processing mix</h2>
-					<p class="mb-4 text-sm text-muted">
-						Distribution across {displayStockedCount.toLocaleString()} stocked beans
-						{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
-					</p>
-					{#if filteredProcessDist.length > 0}
-						<div class="h-56 w-full">
-							{#if ProcessDonutChartComponent}
-								<ProcessDonutChartComponent data={filteredProcessDist} />
-							{/if}
-						</div>
-					{:else}
-						<div class="flex h-40 items-center justify-center rounded-lg bg-surface-panel">
-							<p class="text-sm text-muted">No catalog data yet.</p>
-						</div>
-					{/if}
-				</div>
-			</AnalyticsLoadingPanel>
-		</ExpandablePanel>
+				<AnalyticsLoadingPanel
+					ready={Boolean(ProcessDonutChartComponent)}
+					title="Processing mix"
+					description="Loading stocked catalog processing distribution."
+					height="h-64"
+					errorMessage={publicChartsError}
+					{onRetry}
+				>
+					<div
+						class="flex h-full min-h-[22rem] flex-col rounded-lg border border-line bg-surface-canvas p-6 shadow-sm"
+					>
+						<h2 class="mb-1 text-base font-semibold text-ink">Processing mix</h2>
+						<p class="mb-4 text-sm text-muted">
+							Distribution across {displayStockedCount.toLocaleString()} stocked beans
+							{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
+						</p>
+						{#if filteredProcessDist.length > 0}
+							<div class="min-h-64 flex-1">
+								{#if ProcessDonutChartComponent}
+									<ProcessDonutChartComponent data={filteredProcessDist} />
+								{/if}
+							</div>
+						{:else}
+							<div class="flex h-40 items-center justify-center rounded-lg bg-surface-panel">
+								<p class="text-sm text-muted">No catalog data yet.</p>
+							</div>
+						{/if}
+					</div>
+				</AnalyticsLoadingPanel>
+			</ExpandablePanel>
 
-		<ExpandablePanel
-			title="Origin price ranges"
-			subtitle="Compare the pricing spread across top origins. Expand to choose the set you want to review."
-			collapsedMaxHeight="460px"
-			showGradient={false}
-			onExpandChange={(v) => (originChartExpanded = v)}
-		>
-			<AnalyticsLoadingPanel
-				ready={Boolean(OriginBarChartComponent)}
+			<ExpandablePanel
 				title="Origin price ranges"
-				description="Loading live origin price comparisons from the current catalog."
-				height="h-[28rem]"
-				errorMessage={publicChartsError}
-				{onRetry}
+				subtitle="Compare the pricing spread across top origins. Expand to choose the set you want to review."
+				collapsedMaxHeight="460px"
+				showGradient={false}
+				onExpandChange={(v) => (originChartExpanded = v)}
 			>
-				<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
-					<h2 class="mb-1 text-base font-semibold text-ink">Origin price ranges</h2>
-					<p class="mb-4 text-sm text-muted">
-						How current prices spread across the busiest origins. Expand to choose your own
-						comparison set.
-					</p>
-					{#if scopedOriginRangeData.length > 0}
-						<div class="w-full">
-							{#if OriginBarChartComponent}
-								{#key viewMode}
-									<OriginBarChartComponent
-										data={scopedOriginRangeData}
-										expanded={originChartExpanded}
-									/>
-								{/key}
-							{/if}
-						</div>
-					{:else}
-						<div class="flex h-40 flex-col items-center justify-center rounded-lg bg-surface-panel">
-							<p class="text-sm font-medium text-muted">No origin data available</p>
-							<p class="mt-1 text-xs text-muted">
-								Requires stocked beans with price_per_lb values in the catalog.
-							</p>
-						</div>
-					{/if}
-				</div>
-			</AnalyticsLoadingPanel>
-		</ExpandablePanel>
-	</div>
+				<AnalyticsLoadingPanel
+					ready={Boolean(OriginBarChartComponent)}
+					title="Origin price ranges"
+					description="Loading live origin price comparisons from the current catalog."
+					height="h-64"
+					errorMessage={publicChartsError}
+					{onRetry}
+				>
+					<div
+						class="flex h-full min-h-[22rem] flex-col rounded-lg border border-line bg-surface-canvas p-6 shadow-sm"
+					>
+						<h2 class="mb-1 text-base font-semibold text-ink">Origin price ranges</h2>
+						<p class="mb-4 text-sm text-muted">
+							How current prices spread across the busiest origins. Expand to choose your own
+							comparison set.
+						</p>
+						{#if scopedOriginRangeData.length > 0}
+							<div class="min-h-0 flex-1">
+								{#if OriginBarChartComponent}
+									{#key viewMode}
+										<OriginBarChartComponent
+											data={scopedOriginRangeData}
+											expanded={originChartExpanded}
+										/>
+									{/key}
+								{/if}
+							</div>
+						{:else}
+							<div
+								class="flex h-40 flex-col items-center justify-center rounded-lg bg-surface-panel"
+							>
+								<p class="text-sm font-medium text-muted">No origin data available</p>
+								<p class="mt-1 text-xs text-muted">
+									Requires stocked beans with price_per_lb values in the catalog.
+								</p>
+							</div>
+						{/if}
+					</div>
+				</AnalyticsLoadingPanel>
+			</ExpandablePanel>
+		</div>
+	{/if}
 </section>

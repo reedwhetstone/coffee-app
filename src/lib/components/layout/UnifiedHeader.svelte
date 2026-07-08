@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { checkRole, type UserRole } from '$lib/types/auth.types';
 	import {
+		getAnalyticsSectionLinks,
 		publicNavItems,
 		isNavItemActive,
 		type NavItem
@@ -24,6 +25,9 @@
 	let canAccessMemberRoutes = $derived(checkRole(role, 'member'));
 	let isDashboardPage = $derived(currentPath === '/dashboard');
 	let isMarketIndexPage = $derived(currentPath.startsWith('/analytics'));
+	let marketIndexSectionLinks = $derived(
+		getAnalyticsSectionLinks({ includeDisclosureIndex: isSignedIn })
+	);
 	let primaryCtaLabel = $derived(isMarketIndexPage ? 'See plans' : 'Explore Market Index');
 	let primaryCtaHref = $derived(isMarketIndexPage ? '/subscription' : '/analytics');
 	let mobileMenuOpen = $state(false);
@@ -172,6 +176,22 @@
 						</button>
 					{/each}
 				</div>
+
+				{#if isMarketIndexPage}
+					<div class="mt-4 border-t border-line pt-4">
+						<p class="px-3 text-xs font-semibold text-muted">Market Index sections</p>
+						<div class="mt-2 grid grid-cols-2 gap-2">
+							{#each marketIndexSectionLinks as link}
+								<button
+									onclick={() => navigateTo(link.menuHref)}
+									class="rounded-lg bg-surface-panel px-3 py-2 text-left text-xs font-medium text-ink ring-1 ring-line transition-colors hover:bg-accent/10 hover:text-accent"
+								>
+									{link.label}
+								</button>
+							{/each}
+						</div>
+					</div>
+				{/if}
 
 				<div class="mt-4 border-t border-line pt-4">
 					{#if isSignedIn}

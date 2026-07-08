@@ -26,12 +26,10 @@
 	const ROW_H = 30;
 	const PAD = { top: 22, right: 56, bottom: 8, left: 180 };
 
-	let rows = $derived.by((): SupplierRow[] =>
-		[...rangeRows]
-			.filter((row) => row.count > 0 && row.max > 0)
-			.sort((a, b) => a.median - b.median)
-			.slice(0, maxSuppliers)
+	let allRows = $derived.by((): SupplierRow[] =>
+		[...rangeRows].filter((row) => row.count > 0 && row.max > 0).sort((a, b) => a.median - b.median)
 	);
+	let rows = $derived(allRows.slice(0, maxSuppliers));
 
 	let domain = $derived.by(() => {
 		if (rows.length === 0) return { min: 0, max: 10 };
@@ -105,6 +103,11 @@
 		</svg>
 		<p class="mt-2 text-xs text-muted">
 			Bar = min to max $/lb per supplier · dot = median. Sorted cheapest median first.
+			{#if rows.length < allRows.length}
+				Showing {rows.length} of {allRows.length} suppliers.
+			{:else}
+				Showing all {allRows.length} suppliers.
+			{/if}
 		</p>
 	</div>
 {/if}

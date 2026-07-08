@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { render, screen, waitFor, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import AnalyticsPage from './+page.svelte';
@@ -6,11 +6,13 @@ import type { PageData } from './$types';
 
 const {
 	goto,
+	loadPublicTrendAnalyticsModule,
 	loadPublicAnalyticsModules,
 	loadMemberAnalyticsModules,
 	loadSupplierAnalyticsModules
 } = vi.hoisted(() => ({
 	goto: vi.fn(),
+	loadPublicTrendAnalyticsModule: vi.fn(),
 	loadPublicAnalyticsModules: vi.fn(),
 	loadMemberAnalyticsModules: vi.fn(),
 	loadSupplierAnalyticsModules: vi.fn()
@@ -18,6 +20,7 @@ const {
 
 vi.mock('$app/navigation', () => ({ goto }));
 vi.mock('./deferredModules', () => ({
+	loadPublicTrendAnalyticsModule,
 	loadPublicAnalyticsModules,
 	loadMemberAnalyticsModules,
 	loadSupplierAnalyticsModules
@@ -50,6 +53,13 @@ async function buildPublicModules() {
 		OriginLineChartComponent: component,
 		OriginBarChartComponent: component,
 		ProcessDonutChartComponent: component
+	};
+}
+
+async function buildPublicTrendModule() {
+	const component = await loadStubComponent();
+	return {
+		OriginLineChartComponent: component
 	};
 }
 
@@ -194,6 +204,16 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				bag_size: null
 			}
 		],
+		supplierPriceRanges: [
+			{
+				source: 'Atlas',
+				market: 'retail',
+				count: 1,
+				min: 4.25,
+				median: 4.25,
+				max: 4.25
+			}
+		],
 		supplierHealth: [
 			{
 				source: 'Atlas Coffee',
@@ -207,6 +227,17 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 			}
 		],
 		trackedLots: [],
+		marketInsights: {
+			valueSignals: null,
+			signalsSummary: null,
+			signalsAsOf: null,
+			moveStats: null,
+			metadataProcessSeries: null,
+			metadataDisclosureSeries: null,
+			metadataPurveyorScoreSeries: null,
+			metadataPurveyorScoreConfidenceSeries: null,
+			metadataPurveyorScoreTierSeries: null
+		},
 		role: 'viewer',
 		...overrides
 	} as unknown as PageData;
@@ -223,6 +254,7 @@ function expectPromptLine(prompt: string | null, line: string) {
 beforeEach(() => {
 	vi.clearAllMocks();
 	vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-04-09T12:00:00.000Z').getTime());
+	loadPublicTrendAnalyticsModule.mockImplementation(buildPublicTrendModule);
 	loadPublicAnalyticsModules.mockImplementation(buildPublicModules);
 	loadMemberAnalyticsModules.mockImplementation(buildMemberModules);
 	loadSupplierAnalyticsModules.mockImplementation(buildSupplierModules);
@@ -234,8 +266,8 @@ afterEach(() => {
 
 describe('analytics page loading experience', () => {
 	it('shows immediate loading feedback before deferred analytics modules mount', async () => {
-		const publicModules = deferred<Awaited<ReturnType<typeof buildPublicModules>>>();
-		loadPublicAnalyticsModules.mockReturnValueOnce(publicModules.promise);
+		const trendModule = deferred<Awaited<ReturnType<typeof buildPublicTrendModule>>>();
+		loadPublicTrendAnalyticsModule.mockReturnValueOnce(trendModule.promise);
 
 		render(AnalyticsPage, { data: createData() });
 
@@ -243,25 +275,29 @@ describe('analytics page loading experience', () => {
 		expect(
 			screen.getByText(/the overview is ready first\. charts are loading next\./i)
 		).toBeTruthy();
-		expect(screen.getAllByTestId('analytics-loading-panel').length).toBeGreaterThanOrEqual(3);
+		expect(screen.getAllByTestId('analytics-loading-panel').length).toBeGreaterThanOrEqual(1);
 
-		publicModules.resolve(await buildPublicModules());
+		trendModule.resolve(await buildPublicTrendModule());
 
 		await waitFor(() => {
 			expect(screen.queryByText('Loading market visuals')).toBeNull();
 		});
 
-		expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 	});
 
-	it('keeps logged-out and signed-in viewers on the same baseline analytics surface', async () => {
+	it('keeps logged-out viewers on a compact public analytics surface', async () => {
 		const view = render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 		});
 
-		expect(screen.getByText('The supplier layer runs deeper.')).toBeTruthy();
+		expect(loadPublicTrendAnalyticsModule).toHaveBeenCalledTimes(1);
+		expect(loadPublicAnalyticsModules).not.toHaveBeenCalled();
+		expect(screen.getByText('Unlock the full market map.')).toBeTruthy();
+		expect(screen.queryByText('The supplier layer runs deeper.')).toBeNull();
+		expect(screen.queryByText('Processing mix')).toBeNull();
 
 		await view.rerender({ data: createData({ session: createSession() }) });
 
@@ -269,8 +305,26 @@ describe('analytics page loading experience', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
 
+		expect(loadPublicAnalyticsModules).toHaveBeenCalledTimes(1);
 		expect(loadMemberAnalyticsModules).not.toHaveBeenCalled();
 		expect(screen.getByText('The supplier layer runs deeper.')).toBeTruthy();
+	});
+
+	it('does not block anonymous trend chart rendering on hidden public chart chunks', async () => {
+		loadPublicTrendAnalyticsModule.mockResolvedValueOnce(await buildPublicTrendModule());
+		loadPublicAnalyticsModules.mockRejectedValueOnce(new Error('hidden chunk failed'));
+
+		render(AnalyticsPage, { data: createData() });
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
+		});
+
+		expect(loadPublicTrendAnalyticsModule).toHaveBeenCalledTimes(1);
+		expect(loadPublicAnalyticsModules).not.toHaveBeenCalled();
+		expect(
+			screen.queryByText("We couldn't load the overview charts right now. Please retry.")
+		).toBeNull();
 	});
 
 	it('loads the Parchment Intelligence chart when a viewer upgrades on the same route', async () => {
@@ -295,20 +349,20 @@ describe('analytics page loading experience', () => {
 	});
 
 	it('shows an actionable error state when deferred imports fail', async () => {
-		loadPublicAnalyticsModules.mockRejectedValueOnce(new Error('chunk load failed'));
+		loadPublicTrendAnalyticsModule.mockRejectedValueOnce(new Error('chunk load failed'));
 
 		render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
 			expect(
 				screen.getAllByText("We couldn't load the overview charts right now. Please retry.")
-			).toHaveLength(3);
+			).toHaveLength(1);
 		});
 
 		expect(screen.queryByTestId('analytics-loading-panel')).toBeNull();
-		expect(screen.getAllByTestId('analytics-error-panel').length).toBeGreaterThanOrEqual(3);
+		expect(screen.getAllByTestId('analytics-error-panel').length).toBeGreaterThanOrEqual(1);
 		expect(screen.getAllByRole('button', { name: 'Retry loading' }).length).toBeGreaterThanOrEqual(
-			3
+			1
 		);
 	});
 });
@@ -318,7 +372,7 @@ describe('analytics command center hierarchy', () => {
 		const { container } = render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 		});
 
 		expect(screen.getByRole('heading', { name: 'Parchment Market Index' })).toBeTruthy();
@@ -326,27 +380,44 @@ describe('analytics command center hierarchy', () => {
 		expect(screen.getByText('Scope controls')).toBeTruthy();
 		expect(screen.getByText('Price movement')).toBeTruthy();
 		expect(screen.getByText('Availability read')).toBeTruthy();
-		expect(screen.getByText('Ask about this market read.')).toBeTruthy();
 
 		const marketRead = container.querySelector('[aria-labelledby="market-read-heading"]');
 		const scopeControls = container.querySelector('[aria-label="Scope controls"]');
+		const sectionNav = container.querySelector('[aria-label="Market Index sections"]');
 		const kpiStrip = container.querySelector('[aria-label="Market KPI strip"]');
 		const insightCards = container.querySelector('[aria-label="Market insight cards"]');
 		const evidenceCharts = container.querySelector('[aria-label="Evidence charts"]');
-		const actionRail = container.querySelector('[aria-label="Ask about this market read"]');
 
 		expect(marketRead).toBeTruthy();
 		expect(scopeControls).toBeTruthy();
+		expect(sectionNav).toBeTruthy();
 		expect(kpiStrip).toBeTruthy();
 		expect(insightCards).toBeTruthy();
 		expect(evidenceCharts).toBeTruthy();
-		expect(actionRail).toBeTruthy();
+		expect(screen.getByRole('link', { name: 'Read' })).toHaveAttribute('href', '#market-read');
+		expect(screen.getByRole('link', { name: 'Signals' })).toHaveAttribute('href', '#today-signals');
+		expect(screen.getByRole('link', { name: 'Market Index' })).toHaveAttribute(
+			'href',
+			'#market-index'
+		);
+		expect(screen.queryByRole('link', { name: 'Disclosure Index' })).toBeNull();
+
+		const sectionLinks = within(sectionNav as HTMLElement)
+			.getAllByRole('link')
+			.map((link) => link.getAttribute('href'))
+			.filter((href): href is string => Boolean(href?.startsWith('#')));
+		for (const href of sectionLinks) {
+			expect(container.querySelector(href)).toBeTruthy();
+		}
 
 		expect(
 			marketRead!.compareDocumentPosition(scopeControls!) & Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 		expect(
-			scopeControls!.compareDocumentPosition(kpiStrip!) & Node.DOCUMENT_POSITION_FOLLOWING
+			scopeControls!.compareDocumentPosition(sectionNav!) & Node.DOCUMENT_POSITION_FOLLOWING
+		).toBeTruthy();
+		expect(
+			sectionNav!.compareDocumentPosition(kpiStrip!) & Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 		expect(
 			kpiStrip!.compareDocumentPosition(insightCards!) & Node.DOCUMENT_POSITION_FOLLOWING
@@ -355,10 +426,7 @@ describe('analytics command center hierarchy', () => {
 			insightCards!.compareDocumentPosition(evidenceCharts!) & Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 		expect(
-			evidenceCharts!.compareDocumentPosition(actionRail!) & Node.DOCUMENT_POSITION_FOLLOWING
-		).toBeTruthy();
-		expect(
-			actionRail!.compareDocumentPosition(screen.getByText('The supplier layer runs deeper.')) &
+			evidenceCharts!.compareDocumentPosition(screen.getByText('Unlock the full market map.')) &
 				Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 	});
@@ -367,7 +435,7 @@ describe('analytics command center hierarchy', () => {
 		render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 		});
 
 		await screen.getByRole('button', { name: 'All' }).click();
@@ -389,13 +457,16 @@ describe('analytics command center hierarchy', () => {
 					signalsAsOf: '2026-07-06',
 					moveStats: null,
 					metadataProcessSeries: null,
-					metadataDisclosureSeries: null
+					metadataDisclosureSeries: null,
+					metadataPurveyorScoreSeries: null,
+					metadataPurveyorScoreConfidenceSeries: null,
+					metadataPurveyorScoreTierSeries: null
 				}
 			} as Partial<PageData>)
 		});
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 		});
 
 		await screen.getByRole('button', { name: 'Wholesale' }).click();
@@ -439,7 +510,10 @@ describe('analytics command center hierarchy', () => {
 					signalsAsOf: '2026-07-06',
 					moveStats: null,
 					metadataProcessSeries: null,
-					metadataDisclosureSeries: null
+					metadataDisclosureSeries: null,
+					metadataPurveyorScoreSeries: null,
+					metadataPurveyorScoreConfidenceSeries: null,
+					metadataPurveyorScoreTierSeries: null
 				}
 			} as Partial<PageData>)
 		});
@@ -448,16 +522,97 @@ describe('analytics command center hierarchy', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 
+		expect(screen.getByRole('link', { name: /View in the catalog/ })).toHaveAttribute(
+			'href',
+			'/catalog?coffee=11'
+		);
+
 		await screen.getByRole('button', { name: 'Wholesale' }).click();
 
 		expect(screen.getByText(/No strong wholesale buy signals this morning/i)).toBeTruthy();
 		expect(screen.queryByText('View the selected coffee in the catalog.')).toBeNull();
 	});
 
+	it('opens value-signal lot details in the local CoffeeCard drawer when catalog data is attached', async () => {
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				marketInsights: {
+					valueSignals: [
+						{
+							signalType: 'below_market',
+							signalWindow: '7d',
+							catalogId: 11,
+							name: 'Ethiopia Test Lot',
+							source: 'Atlas',
+							market: 'retail',
+							origin: 'Ethiopia',
+							process: 'Natural',
+							currentPriceLb: 4.25,
+							catalogUrl: 'https://example.com/catalog?id=11',
+							scoreValue: null,
+							coffee: {
+								id: 11,
+								name: 'Ethiopia Test Lot',
+								source: 'Atlas',
+								country: 'Ethiopia',
+								continent: 'Africa',
+								region: 'Guji',
+								processing: 'Natural',
+								stocked: true,
+								stocked_date: '2026-07-06',
+								arrival_date: null,
+								last_updated: '2026-07-06',
+								wholesale: false,
+								cost_lb: 4.25,
+								price_per_lb: 4.25,
+								price_tiers: null,
+								ai_tasting_notes: null,
+								ai_description: null,
+								link: 'https://supplier.example/coffee/11',
+								purveyor_score: 82,
+								purveyor_score_confidence: 0.76,
+								purveyor_score_tier: 'Strong',
+								purveyor_score_factors: null,
+								purveyor_score_version: 'purveyor-score-v1'
+							},
+							evidence: {
+								segment: { origin: 'Ethiopia', process: 'Natural', market: 'retail' },
+								discount_vs_median_pct: -12.2,
+								segment_median: 4.85,
+								price_percentile_in_segment: 18
+							}
+						}
+					],
+					signalsSummary: null,
+					signalsAsOf: '2026-07-06',
+					moveStats: null,
+					metadataProcessSeries: null,
+					metadataDisclosureSeries: null,
+					metadataPurveyorScoreSeries: null,
+					metadataPurveyorScoreConfidenceSeries: null,
+					metadataPurveyorScoreTierSeries: null
+				}
+			} as Partial<PageData>)
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+		});
+
+		expect(screen.queryByRole('link', { name: /View in the catalog/ })).toBeNull();
+		await screen.getByRole('button', { name: 'View details for Ethiopia Test Lot' }).click();
+
+		expect(screen.getByRole('heading', { level: 2, name: 'Ethiopia Test Lot' })).toBeTruthy();
+		expect(screen.getAllByText(/Below market:/).length).toBeGreaterThanOrEqual(2);
+	});
+
 	it('scopes coverage supplier-evidence reads with the selected market', async () => {
 		const baseSnapshot = createData().snapshots[0];
 		render(AnalyticsPage, {
 			data: createData({
+				session: createSession(),
 				snapshots: [
 					baseSnapshot,
 					{
@@ -489,6 +644,7 @@ describe('analytics command center hierarchy', () => {
 	it('surfaces watchlist signals scoped to the selected market', async () => {
 		render(AnalyticsPage, {
 			data: createData({
+				session: createSession(),
 				trackedLots: [
 					{
 						catalogId: 1,
@@ -541,17 +697,17 @@ describe('analytics command center hierarchy', () => {
 	});
 });
 
-describe('analytics action CTA rail', () => {
-	it('keeps the investigation rail focused on the chat passthrough only', async () => {
+describe('analytics section navigator', () => {
+	it('keeps section jumps and chat passthrough compact in the sticky navigator', async () => {
 		render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 		});
 
-		expect(screen.getByText('Ask about this market read')).toBeTruthy();
+		expect(screen.getByRole('navigation', { name: 'Market Index sections' })).toBeTruthy();
 		expect(screen.getByRole('link', { name: 'Sign in to ask' })).toHaveAttribute('href', '/auth');
-		expect(screen.getByText(/opens with your current scope and movement window/i)).toBeTruthy();
+		expect(screen.queryByText(/opens with your current scope and movement window/i)).toBeNull();
 		expect(screen.queryByText('Open catalog evidence')).toBeNull();
 		expect(screen.queryByText('Compare supplier evidence')).toBeNull();
 		expect(screen.queryByText('Review machine access')).toBeNull();
@@ -642,6 +798,9 @@ describe('analytics action CTA rail', () => {
 			'href',
 			'/subscription?plan=intelligence-monthly&intent=checkout'
 		);
+		expect(
+			screen.getByRole('link', { name: 'Upgrade to ask from Market Index summary' })
+		).toHaveAttribute('href', '/subscription?plan=intelligence-monthly&intent=checkout');
 		expect(screen.getAllByText(/Parchment Intelligence/).length).toBeGreaterThanOrEqual(1);
 		expect(screen.queryByRole('link', { name: 'Ask with this context' })).toBeNull();
 	});
@@ -652,21 +811,111 @@ describe('analytics premium boundary copy', () => {
 		render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 		});
 
 		expect(screen.queryByRole('button', { name: 'Spread' })).toBeNull();
-		expect(screen.getByText('The supplier layer runs deeper.')).toBeTruthy();
-		expect(
-			screen.getByText(
-				/supplier-by-supplier price ranges, catalog health, the arrivals and delistings feed/i
-			)
-		).toBeTruthy();
-		expect(screen.getByRole('link', { name: 'Start Intelligence' })).toBeTruthy();
+		expect(screen.getByText('Unlock the full market map.')).toBeTruthy();
+		expect(screen.getByText(/Supplier price ranges and lot-level previews/i)).toBeTruthy();
+		expect(screen.getByText(/Arrivals, delistings, and movement by origin/i)).toBeTruthy();
+		expect(screen.queryByText('The supplier layer runs deeper.')).toBeNull();
+		expect(screen.queryByRole('link', { name: 'Start Intelligence' })).toBeNull();
 		expect(screen.getByRole('link', { name: 'See plans' })).toBeTruthy();
 		expect(screen.queryByText('Fresh Ethiopia')).toBeNull();
 		expect(screen.queryByText('Recently Gone')).toBeNull();
-		expect(screen.getAllByText(/Parchment Intelligence/).length).toBeGreaterThanOrEqual(1);
+	});
+
+	it('keeps supplier and movement summaries inside chart descriptions instead of side read panels', async () => {
+		render(AnalyticsPage, {
+			data: createData({ session: createSession(), isParchmentIntelligence: true })
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+		});
+
+		expect(
+			screen.getAllByText((_content, element) =>
+				Boolean(
+					element?.textContent?.match(
+						/Each supplier's price range across public stocked lots in this scope:\s*1 supplier across 1 preview lot/i
+					)
+				)
+			).length
+		).toBeGreaterThan(0);
+		expect(screen.queryByText('Supplier read')).toBeNull();
+		expect(screen.queryByText('Window summary')).toBeNull();
+	});
+
+	it('adds Purveyor Score metadata trends to the Disclosure Index for Intelligence users', async () => {
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				marketInsights: {
+					valueSignals: null,
+					signalsSummary: null,
+					signalsAsOf: null,
+					moveStats: null,
+					metadataProcessSeries: null,
+					metadataDisclosureSeries: [
+						{
+							period: '2026-06-01',
+							lotCount: 20,
+							supplierCount: 4,
+							buckets: [{ key: 'structured', share: 0.55, count: 11, supplierCount: 4 }]
+						}
+					],
+					metadataPurveyorScoreSeries: [
+						{
+							period: '2026-06-01',
+							lotCount: 20,
+							supplierCount: 4,
+							buckets: [
+								{ key: 'p25', value: 66, count: 20, supplierCount: 4 },
+								{ key: 'p50', value: 78, count: 20, supplierCount: 4 },
+								{ key: 'p75', value: 88, count: 20, supplierCount: 4 }
+							]
+						}
+					],
+					metadataPurveyorScoreConfidenceSeries: [
+						{
+							period: '2026-06-01',
+							lotCount: 18,
+							supplierCount: 4,
+							buckets: [
+								{ key: 'p25', value: 0.62, count: 18, supplierCount: 4 },
+								{ key: 'p50', value: 0.74, count: 18, supplierCount: 4 },
+								{ key: 'p75', value: 0.91, count: 18, supplierCount: 4 }
+							]
+						}
+					],
+					metadataPurveyorScoreTierSeries: [
+						{
+							period: '2026-06-01',
+							lotCount: 20,
+							supplierCount: 4,
+							buckets: [
+								{ key: 'Strong', share: 0.4, count: 8, supplierCount: 4 },
+								{ key: 'Solid', share: 0.35, count: 7, supplierCount: 3 },
+								{ key: 'Unscored', share: 0.25, count: 5, supplierCount: 2 }
+							]
+						}
+					]
+				}
+			} as Partial<PageData>)
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+		});
+
+		expect(screen.getByText('Purveyor Score over time')).toBeTruthy();
+		expect(screen.getByText('Purveyor Score confidence over time')).toBeTruthy();
+		expect(screen.getByText('How is listing quality distributed?')).toBeTruthy();
+		expect(screen.getAllByText('Latest median')).toHaveLength(2);
+		expect(screen.getByText('78')).toBeTruthy();
+		expect(screen.getByText('74%')).toBeTruthy();
 	});
 
 	it('restores premium supplier analytics modules instead of static fallback tables', async () => {

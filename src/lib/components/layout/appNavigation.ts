@@ -19,6 +19,40 @@ export interface NavSection {
 	items: NavItem[];
 }
 
+export const analyticsSectionLinks = [
+	{
+		href: '#market-read',
+		menuHref: '/analytics#market-read',
+		label: 'Read',
+		description: 'Current posture and scope'
+	},
+	{
+		href: '#today-signals',
+		menuHref: '/analytics#today-signals',
+		label: 'Signals',
+		description: 'Market read and buy signals'
+	},
+	{
+		href: '#market-index',
+		menuHref: '/analytics#market-index',
+		label: 'Market Index',
+		description: 'Pricing, suppliers, arrivals, and delistings'
+	},
+	{
+		href: '#disclosure-index',
+		menuHref: '/analytics#disclosure-index',
+		label: 'Disclosure Index',
+		description: 'Metadata and transparency trends'
+	}
+] as const;
+
+export function getAnalyticsSectionLinks(options: { includeDisclosureIndex?: boolean } = {}) {
+	return analyticsSectionLinks.filter((link) => {
+		if (link.href === '#disclosure-index') return Boolean(options.includeDisclosureIndex);
+		return true;
+	});
+}
+
 export const publicNavItems: NavItem[] = [
 	{
 		label: 'Catalog',
