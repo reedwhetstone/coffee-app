@@ -1071,7 +1071,23 @@
 		description="The numbers behind this morning's read — availability, movement, and what changed overnight."
 	/>
 
-	<KpiStripSection {kpiCards} {insightCards} />
+	{#if analyticsPayloadResolved}
+		<KpiStripSection {kpiCards} {insightCards} />
+	{:else}
+		<section
+			class="mb-6 grid grid-cols-2 divide-line overflow-hidden rounded-lg border border-line bg-surface-raised shadow-sm max-lg:divide-y lg:grid-cols-4 lg:divide-x"
+			aria-busy="true"
+			aria-label="Loading market signals"
+		>
+			{#each Array.from({ length: 4 }) as _}
+				<div class="p-4 sm:p-5">
+					<div class="h-3 w-24 animate-pulse rounded bg-surface-canvas"></div>
+					<div class="mt-3 h-8 w-20 animate-pulse rounded bg-surface-canvas"></div>
+					<div class="mt-3 h-3 w-full animate-pulse rounded bg-surface-canvas"></div>
+				</div>
+			{/each}
+		</section>
+	{/if}
 </section>
 
 {#if analyticsPayloadError}

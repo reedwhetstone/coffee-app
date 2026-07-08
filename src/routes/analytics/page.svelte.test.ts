@@ -334,6 +334,35 @@ describe('analytics page loading experience', () => {
 		expect(pageChatContext.current?.summary).toContain('84 stocked listings');
 	});
 
+	it('withholds snapshot-derived signal cards until the full analytics payload resolves', async () => {
+		const payload = deferred<AnalyticsPayload>();
+		const preview = createAnalyticsPayload({
+			snapshots: [],
+			processDistribution: [],
+			originRangeData: []
+		});
+
+		render(AnalyticsPage, {
+			data: createData({ analyticsPreview: preview, analyticsPayload: payload.promise })
+		});
+
+		expect(screen.getByLabelText('Loading market signals')).toBeTruthy();
+		expect(screen.queryByLabelText('Market KPI strip')).toBeNull();
+		expect(screen.queryByLabelText('Market insight cards')).toBeNull();
+		expect(screen.queryByText('No indexed origins in this scope yet.')).toBeNull();
+		expect(
+			screen.queryByText('Week-over-week price movement needs a second comparable snapshot.')
+		).toBeNull();
+
+		payload.resolve(createAnalyticsPayload());
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Market KPI strip')).toBeTruthy();
+		});
+		expect(screen.getByLabelText('Market insight cards')).toBeTruthy();
+		expect(screen.queryByLabelText('Loading market signals')).toBeNull();
+	});
+
 	it('shows immediate loading feedback before deferred analytics modules mount', async () => {
 		const trendModule = deferred<Awaited<ReturnType<typeof buildPublicTrendModule>>>();
 		loadPublicTrendAnalyticsModule.mockReturnValueOnce(trendModule.promise);
