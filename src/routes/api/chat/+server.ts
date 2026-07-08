@@ -630,10 +630,7 @@ export const POST: RequestHandler = async (event) => {
 				},
 				marketMetadataIndex: async (input) => {
 					const client = await _createMarketToolParchmentClient(event);
-					// @purveyors/sdk 0.7.0 has a narrower generated enum than the live
-					// metadata-index API. Send the widened app contract until the SDK
-					// catches up.
-					const { data, error } = await client.market.metadataIndex(input as never);
+					const { data, error } = await client.market.metadataIndex(input);
 					return error ?? data;
 				}
 			}
