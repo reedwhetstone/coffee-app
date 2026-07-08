@@ -630,7 +630,11 @@ export const POST: RequestHandler = async (event) => {
 				},
 				marketMetadataIndex: async (input) => {
 					const client = await _createMarketToolParchmentClient(event);
-					const { data, error } = await client.market.metadataIndex(input);
+					// The chat tool contract intentionally accepts the live widened
+					// metadata dimensions while some installed SDK signatures still
+					// narrow this query. Keep this cast until the published SDK contract
+					// is consistently widened across CI installs.
+					const { data, error } = await client.market.metadataIndex(input as never);
 					return error ?? data;
 				}
 			}
