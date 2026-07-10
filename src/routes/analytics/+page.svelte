@@ -1129,7 +1129,20 @@
 		description="The numbers behind this morning's read — availability, movement, and what changed overnight."
 	/>
 
-	{#if signalsReady}
+	{#if coverageState === 'error'}
+		<!-- A failed coverage stream must not present preview zeros as measured
+		     KPI values; settle into a static error notice instead. -->
+		<section
+			class="mb-6 rounded-lg bg-danger-subtle p-5 text-sm ring-1 ring-danger/30"
+			role="alert"
+			aria-label="Market signals unavailable"
+		>
+			<p class="font-semibold text-danger-strong">Today's signals are unavailable.</p>
+			<p class="mt-1 text-danger">
+				Coverage and movement counts did not load. Refresh the page to retry.
+			</p>
+		</section>
+	{:else if signalsReady}
 		<KpiStripSection {kpiCards} {insightCards} />
 	{:else}
 		<!-- Mirrors the KpiStripSection strip geometry so the resolve swap is shift-free. -->

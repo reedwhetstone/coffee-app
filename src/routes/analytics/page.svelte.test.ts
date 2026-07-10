@@ -507,6 +507,24 @@ describe('analytics page loading experience', () => {
 		expect(screen.queryByLabelText('Loading member market evidence')).toBeNull();
 	});
 
+	it('replaces the KPI strip with an error notice when the coverage stream rejects', async () => {
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+		render(AnalyticsPage, {
+			data: createData({
+				analyticsCoverage: Promise.reject(new Error('coverage stream failed'))
+			})
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText("Today's signals are unavailable.")).toBeTruthy();
+		});
+		// No preview zeros presented as measured KPI values, and no permanent skeleton.
+		expect(screen.queryByLabelText('Market KPI strip')).toBeNull();
+		expect(screen.queryByLabelText('Loading market signals')).toBeNull();
+		expect(screen.getByText('Some market data did not load.')).toBeTruthy();
+		consoleError.mockRestore();
+	});
+
 	it('replaces skeletons with an error notice when a streamed dataset rejects', async () => {
 		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { container } = render(AnalyticsPage, {
