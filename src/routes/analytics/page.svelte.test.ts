@@ -3,6 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import AnalyticsPage from './+page.svelte';
 import type { PageData } from './$types';
+import type {
+	AnalyticsCharts,
+	AnalyticsCoverage,
+	AnalyticsMemberData,
+	AnalyticsPreview
+} from './+page.server';
+import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 
 const {
 	goto,
@@ -76,10 +83,8 @@ async function buildSupplierModules() {
 	};
 }
 
-function createData(overrides: Partial<PageData> = {}): PageData {
+function createBaseline() {
 	return {
-		session: null,
-		isParchmentIntelligence: false,
 		stats: {
 			totalBeansTracked: 120,
 			stockedRetailBeans: 84,
@@ -237,9 +242,71 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 			metadataPurveyorScoreSeries: null,
 			metadataPurveyorScoreConfidenceSeries: null,
 			metadataPurveyorScoreTierSeries: null
-		},
-		role: 'viewer',
-		...overrides
+		}
+	};
+}
+
+function createData(overrides: Record<string, unknown> = {}): PageData {
+	const {
+		session = null,
+		isParchmentIntelligence = false,
+		role = 'viewer',
+		analyticsPreview,
+		analyticsCoverage,
+		analyticsCharts,
+		analyticsMember,
+		...flatOverrides
+	} = overrides as {
+		session?: unknown;
+		isParchmentIntelligence?: boolean;
+		role?: string;
+		analyticsPreview?: AnalyticsPreview;
+		analyticsCoverage?: Promise<AnalyticsCoverage>;
+		analyticsCharts?: Promise<AnalyticsCharts>;
+		analyticsMember?: Promise<AnalyticsMemberData>;
+	} & Record<string, unknown>;
+
+	const base = { ...createBaseline(), ...flatOverrides } as ReturnType<typeof createBaseline>;
+
+	const preview: AnalyticsPreview = analyticsPreview ?? {
+		stats: base.stats,
+		marketSummary: {
+			retail_median_7d_change: null,
+			retail_median_30d_change: null,
+			supply_7d_change: null,
+			supply_30d_change: null
+		}
+	};
+
+	return {
+		session,
+		role,
+		isParchmentIntelligence,
+		analyticsPreview: preview,
+		analyticsCoverage:
+			analyticsCoverage ??
+			Promise.resolve({
+				stats: base.stats,
+				movementCounts: base.movementCounts
+			} as AnalyticsCoverage),
+		analyticsCharts:
+			analyticsCharts ??
+			Promise.resolve({
+				snapshots: base.snapshots,
+				processDistribution: base.processDistribution,
+				originRangeData: base.originRangeData,
+				marketInsights: base.marketInsights
+			} as AnalyticsCharts),
+		analyticsMember:
+			analyticsMember ??
+			Promise.resolve({
+				recentArrivals: base.recentArrivals,
+				recentDelistings: base.recentDelistings,
+				comparisonBeans: base.comparisonBeans,
+				supplierPriceRanges: base.supplierPriceRanges,
+				supplierHealth: base.supplierHealth,
+				trackedLots: base.trackedLots
+			} as AnalyticsMemberData)
 	} as unknown as PageData;
 }
 
@@ -261,17 +328,258 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	pageChatContext.clear();
 	vi.restoreAllMocks();
 });
 
 describe('analytics page loading experience', () => {
+	it('renders the preview market read while streamed datasets are still pending', async () => {
+		const coverage = deferred<AnalyticsCoverage>();
+		const charts = deferred<AnalyticsCharts>();
+		const member = deferred<AnalyticsMemberData>();
+		const baseline = createBaseline();
+
+		const { container } = render(AnalyticsPage, {
+			data: createData({
+				analyticsCoverage: coverage.promise,
+				analyticsCharts: charts.promise,
+				analyticsMember: member.promise
+			})
+		});
+
+		// Preview-backed hero renders immediately with loading-aware phrasing —
+		// never "unavailable" claims for data that is still streaming.
+		await waitFor(() => {
+			expect(screen.getByText(/movement and coverage counts are streaming in/i)).toBeTruthy();
+		});
+		expect(
+			screen.getByText(/price movement is loading with the comparable snapshot layer/i)
+		).toBeTruthy();
+		expect(screen.queryByText(/movement data is unavailable/i)).toBeNull();
+		expect(screen.getByLabelText('Loading market signals')).toBeTruthy();
+		expect(screen.queryByLabelText('Market KPI strip')).toBeNull();
+		expect(container.querySelector('[aria-label="Loading Market Index"]')).toBeTruthy();
+		expect(screen.queryByText('Unlock the full market map.')).toBeNull();
+		expect(pageChatContext.current).toBeNull();
+
+		coverage.resolve({ stats: baseline.stats, movementCounts: baseline.movementCounts });
+		charts.resolve({
+			snapshots: baseline.snapshots,
+			processDistribution: baseline.processDistribution,
+			originRangeData: baseline.originRangeData,
+			marketInsights: baseline.marketInsights
+		} as AnalyticsCharts);
+		member.resolve({
+			recentArrivals: [],
+			recentDelistings: [],
+			comparisonBeans: [],
+			supplierPriceRanges: [],
+			supplierHealth: [],
+			trackedLots: []
+		});
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Market KPI strip')).toBeTruthy();
+		});
+		expect(screen.getByText('Unlock the full market map.')).toBeTruthy();
+		expect(screen.queryByLabelText('Loading market signals')).toBeNull();
+		expect(container.querySelector('[aria-label="Loading Market Index"]')).toBeNull();
+		expect(pageChatContext.current?.summary).toContain('84 stocked listings');
+	});
+
+	it('withholds the stability call while chart evidence is still streaming', async () => {
+		const charts = deferred<AnalyticsCharts>();
+		const baseline = createBaseline();
+
+		render(AnalyticsPage, { data: createData({ analyticsCharts: charts.promise }) });
+
+		// Coverage resolves with balanced movement, but no price evidence has
+		// arrived yet — the headline must not fall through to a stability claim.
+		await waitFor(() => {
+			expect(screen.getByText(/movement and coverage signals are streaming next/i)).toBeTruthy();
+		});
+		expect(screen.queryByText(/market read is stable/i)).toBeNull();
+
+		charts.resolve({
+			snapshots: baseline.snapshots,
+			processDistribution: baseline.processDistribution,
+			originRangeData: baseline.originRangeData,
+			marketInsights: baseline.marketInsights
+		} as AnalyticsCharts);
+
+		await waitFor(() => {
+			expect(screen.getByText(/market read is stable/i)).toBeTruthy();
+		});
+	});
+
+	it('renders chart sections without waiting for the member stream', async () => {
+		const member = deferred<AnalyticsMemberData>();
+		const baseline = createBaseline();
+
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				analyticsMember: member.promise
+			})
+		});
+
+		// Chart-backed sections render as soon as the charts stream settles...
+		await waitFor(() => {
+			expect(screen.getAllByText('Origin price trends').length).toBeGreaterThan(0);
+		});
+		// ...while member-backed panels wait on their own loading state instead
+		// of showing misleading empty supplier/movement evidence.
+		expect(screen.getByLabelText('Loading member market evidence')).toBeTruthy();
+		expect(screen.queryByText('Fresh Ethiopia')).toBeNull();
+
+		member.resolve({
+			recentArrivals: baseline.recentArrivals,
+			recentDelistings: baseline.recentDelistings,
+			comparisonBeans: baseline.comparisonBeans,
+			supplierPriceRanges: baseline.supplierPriceRanges,
+			supplierHealth: baseline.supplierHealth,
+			trackedLots: []
+		} as AnalyticsMemberData);
+
+		await waitFor(() => {
+			expect(screen.queryByLabelText('Loading member market evidence')).toBeNull();
+		});
+		await waitFor(() => {
+			expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();
+		});
+	});
+
+	it('keeps member movement evidence loading until coverage resolves', async () => {
+		const coverage = deferred<AnalyticsCoverage>();
+		const baseline = createBaseline();
+
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				analyticsCoverage: coverage.promise
+			})
+		});
+
+		// Charts and member settled while coverage is still pending: chart
+		// sections render…
+		await waitFor(() => {
+			expect(screen.getAllByText('Origin price trends').length).toBeGreaterThan(0);
+		});
+		// …but the member/movement panel stays in its loading state instead of
+		// reporting the empty fallback counts as unavailable movement data.
+		expect(screen.getByLabelText('Loading member market evidence')).toBeTruthy();
+		expect(screen.queryByText(/movement counts are currently unavailable/i)).toBeNull();
+
+		coverage.resolve({
+			stats: baseline.stats,
+			movementCounts: baseline.movementCounts
+		} as AnalyticsCoverage);
+
+		await waitFor(() => {
+			expect(screen.queryByLabelText('Loading member market evidence')).toBeNull();
+		});
+		await waitFor(() => {
+			expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();
+		});
+	});
+
+	it('shows the upgrade teaser to non-Intelligence users without waiting on member or coverage streams', async () => {
+		const coverage = deferred<AnalyticsCoverage>();
+		const member = deferred<AnalyticsMemberData>();
+
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: false,
+				analyticsCoverage: coverage.promise,
+				analyticsMember: member.promise
+			})
+		});
+
+		// The teaser is static — it consumes neither the member nor the coverage
+		// stream, so pending streams must not hide the upgrade CTA.
+		await waitFor(() => {
+			expect(screen.getByText('The supplier layer runs deeper.')).toBeTruthy();
+		});
+		expect(screen.getByRole('link', { name: 'Start Intelligence' })).toBeTruthy();
+		expect(screen.queryByLabelText('Loading member market evidence')).toBeNull();
+	});
+
+	it('replaces the KPI strip with an error notice when the coverage stream rejects', async () => {
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+		render(AnalyticsPage, {
+			data: createData({
+				analyticsCoverage: Promise.reject(new Error('coverage stream failed'))
+			})
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText("Today's signals are unavailable.")).toBeTruthy();
+		});
+		// No preview zeros presented as measured KPI values, and no permanent skeleton.
+		expect(screen.queryByLabelText('Market KPI strip')).toBeNull();
+		expect(screen.queryByLabelText('Loading market signals')).toBeNull();
+		expect(screen.getByText('Some market data did not load.')).toBeTruthy();
+		consoleError.mockRestore();
+	});
+
+	it('replaces the member evidence panels with an error notice when the member stream rejects', async () => {
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				analyticsMember: Promise.reject(new Error('member stream failed'))
+			})
+		});
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Member market evidence unavailable')).toBeTruthy();
+		});
+		// No empty-fallback evidence presented as real supplier data, and no
+		// permanent loading panel.
+		expect(screen.queryByLabelText('Loading member market evidence')).toBeNull();
+		expect(screen.queryByText('Fresh Ethiopia')).toBeNull();
+		expect(screen.getByText('Some market data did not load.')).toBeTruthy();
+		consoleError.mockRestore();
+	});
+
+	it('replaces skeletons with an error notice when a streamed dataset rejects', async () => {
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const { container } = render(AnalyticsPage, {
+			data: createData({
+				analyticsCharts: Promise.reject(new Error('snapshot stream failed'))
+			})
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText('Some market data did not load.')).toBeTruthy();
+		});
+		expect(screen.getByText(/price history and chart evidence/i)).toBeTruthy();
+		// Settled-with-error stops the skeletons instead of pulsing forever.
+		await waitFor(() => {
+			expect(container.querySelector('[aria-label="Loading Market Index"]')).toBeNull();
+		});
+		expect(screen.queryByLabelText('Loading market signals')).toBeNull();
+		// Balanced movement plus a failed price layer must not read as stability.
+		expect(screen.getByText(/makes no stability call/i)).toBeTruthy();
+		expect(screen.queryByText(/market read is stable/i)).toBeNull();
+		// Chat never grounds itself in partially failed data.
+		expect(pageChatContext.current).toBeNull();
+		consoleError.mockRestore();
+	});
+
 	it('shows immediate loading feedback before deferred analytics modules mount', async () => {
 		const trendModule = deferred<Awaited<ReturnType<typeof buildPublicTrendModule>>>();
 		loadPublicTrendAnalyticsModule.mockReturnValueOnce(trendModule.promise);
 
 		render(AnalyticsPage, { data: createData() });
 
-		expect(screen.getByText('Loading market visuals')).toBeTruthy();
+		await waitFor(() => {
+			expect(screen.getByText('Loading market visuals')).toBeTruthy();
+		});
 		expect(
 			screen.getByText(/the overview is ready first\. charts are loading next\./i)
 		).toBeTruthy();
@@ -462,7 +770,7 @@ describe('analytics command center hierarchy', () => {
 					metadataPurveyorScoreConfidenceSeries: null,
 					metadataPurveyorScoreTierSeries: null
 				}
-			} as Partial<PageData>)
+			})
 		});
 
 		await waitFor(() => {
@@ -515,7 +823,7 @@ describe('analytics command center hierarchy', () => {
 					metadataPurveyorScoreConfidenceSeries: null,
 					metadataPurveyorScoreTierSeries: null
 				}
-			} as Partial<PageData>)
+			})
 		});
 
 		await waitFor(() => {
@@ -594,7 +902,7 @@ describe('analytics command center hierarchy', () => {
 					metadataPurveyorScoreConfidenceSeries: null,
 					metadataPurveyorScoreTierSeries: null
 				}
-			} as Partial<PageData>)
+			})
 		});
 
 		await waitFor(() => {
@@ -609,7 +917,7 @@ describe('analytics command center hierarchy', () => {
 	});
 
 	it('scopes coverage supplier-evidence reads with the selected market', async () => {
-		const baseSnapshot = createData().snapshots[0];
+		const baseSnapshot = createBaseline().snapshots[0];
 		render(AnalyticsPage, {
 			data: createData({
 				session: createSession(),
@@ -621,7 +929,7 @@ describe('analytics command center hierarchy', () => {
 						supplier_count: 2,
 						sample_size: 3
 					},
-					{ ...createData().snapshots[1] }
+					{ ...createBaseline().snapshots[1] }
 				]
 			})
 		});
@@ -677,7 +985,7 @@ describe('analytics command center hierarchy', () => {
 						priceDelta: null
 					}
 				]
-			} as Partial<PageData>)
+			})
 		});
 
 		await waitFor(() => {
@@ -903,7 +1211,7 @@ describe('analytics premium boundary copy', () => {
 						}
 					]
 				}
-			} as Partial<PageData>)
+			})
 		});
 
 		await waitFor(() => {

@@ -5,6 +5,7 @@ import { loadMarketIndexInsights } from '$lib/server/marketIndex';
 import { createAdminClient } from '$lib/supabase-admin';
 import { createSchemaService } from '$lib/services/schemaService';
 import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
+import type { MarketIndexInsights } from '$lib/types/marketIndex.types';
 
 export type { TrackedLotSummary } from '$lib/server/trackedLots';
 
@@ -137,6 +138,77 @@ export interface OriginRangeRow {
 	price_q3: number;
 	sample_size: number;
 }
+
+export interface AnalyticsStats {
+	totalBeansTracked: number;
+	stockedRetailBeans: number;
+	stockedWholesaleBeans: number;
+	stockedRetailOrigins: number;
+	stockedWholesaleOrigins: number;
+	stockedOrigins: number;
+	stockedRetailSuppliers: number;
+	stockedWholesaleSuppliers: number;
+	stockedSuppliers: number;
+	totalSuppliers: number;
+	originsCount: number;
+	lastUpdated: string | null;
+}
+
+export interface MarketChangeSummary {
+	retail_median_7d_change: number | null;
+	retail_median_30d_change: number | null;
+	supply_7d_change: number | null;
+	supply_30d_change: number | null;
+}
+
+/**
+ * Rendered in the initial SSR response. Built exclusively from the
+ * precomputed market_daily_summary row so the first byte never waits on
+ * catalog pagination, exact counts, or movement queries.
+ */
+export interface AnalyticsPreview {
+	stats: AnalyticsStats;
+	marketSummary: MarketChangeSummary;
+}
+
+/** Streamed: exact catalog counts, coverage breadth, and movement velocity. */
+export interface AnalyticsCoverage {
+	stats: AnalyticsStats;
+	movementCounts: MovementCounts;
+}
+
+/** Streamed: snapshot history, distribution evidence, and market insights. */
+export interface AnalyticsCharts {
+	snapshots: PriceSnapshot[];
+	processDistribution: ProcessBucket[];
+	originRangeData: OriginRangeRow[];
+	marketInsights: MarketIndexInsights;
+}
+
+/** Streamed: entitlement-gated datasets. Resolves empty (and issues no
+ * queries) for visitors who never render them. */
+export interface AnalyticsMemberData {
+	recentArrivals: ArrivalBean[];
+	recentDelistings: DelistingBean[];
+	comparisonBeans: ComparisonBean[];
+	supplierPriceRanges: SupplierPriceRange[];
+	supplierHealth: SupplierHealthRow[];
+	trackedLots: TrackedLotSummary[];
+}
+
+interface MarketSummaryRow {
+	snapshot_date: string;
+	total_stocked: number;
+	total_suppliers: number;
+	total_origins: number;
+	retail_median: number | null;
+	retail_median_7d_change: number | null;
+	retail_median_30d_change: number | null;
+	supply_7d_change?: number | null;
+	supply_30d_change?: number | null;
+}
+
+type AnalyticsLoadEvent = Parameters<PageServerLoad>[0];
 
 const SNAPSHOT_PAGE_SIZE = 1000;
 const CATALOG_COVERAGE_PAGE_SIZE = 1000;
@@ -274,27 +346,12 @@ export async function _loadPriceSnapshotsPaginated({
 	return snapshots;
 }
 
-export const load: PageServerLoad = async (event) => {
-	// Resolve principal to get explicit Parchment Intelligence access.
-	// Logged-out visitors and logged-in viewers intentionally share the same core analytics view.
-	const principal = await resolvePrincipal(event);
-	const isParchmentIntelligence = principal.isAuthenticated ? principal.ppiAccess : false;
-
-	// ADR-008 decision-surface reads (value signals, movement stats, metadata index).
-	// Kicked off first; resolves in parallel with the Supabase queries below.
-	const marketInsightsPromise = loadMarketIndexInsights(event, { isParchmentIntelligence });
-
+async function loadLatestMarketSummary(
+	event: AnalyticsLoadEvent
+): Promise<MarketSummaryRow | null> {
 	const today = new Date().toISOString().split('T')[0];
-	const supabase = event.locals.supabase;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const sb = supabase as any;
-	// price_index_snapshots is entitlement-sensitive. Public analytics still exposes a
-	// bounded server-rendered slice, but direct anon/auth table access is revoked.
-	const priceIndexSupabase = createAdminClient();
-	const supplierRangeRpcClient = priceIndexSupabase as unknown as {
-		rpc(name: 'get_supplier_price_ranges'): PromiseLike<{ data: unknown; error: unknown }>;
-	};
-
+	const sb = event.locals.supabase as any;
 	const { data: marketSummaryRaw } = await sb
 		.from('market_daily_summary')
 		.select('*')
@@ -303,33 +360,42 @@ export const load: PageServerLoad = async (event) => {
 		.limit(1)
 		.maybeSingle();
 
-	const marketSummary = marketSummaryRaw as {
-		snapshot_date: string;
-		total_stocked: number;
-		total_suppliers: number;
-		total_origins: number;
-		retail_median: number | null;
-		retail_median_7d_change: number | null;
-		retail_median_30d_change: number | null;
-		supply_7d_change?: number | null;
-		supply_30d_change?: number | null;
-	} | null;
+	return marketSummaryRaw as MarketSummaryRow | null;
+}
 
+function buildAnalyticsPreview(marketSummary: MarketSummaryRow | null): AnalyticsPreview {
+	return {
+		stats: {
+			totalBeansTracked: 0,
+			stockedRetailBeans: 0,
+			stockedWholesaleBeans: 0,
+			stockedRetailOrigins: 0,
+			stockedWholesaleOrigins: 0,
+			stockedOrigins: marketSummary?.total_origins ?? 0,
+			stockedRetailSuppliers: 0,
+			stockedWholesaleSuppliers: 0,
+			stockedSuppliers: marketSummary?.total_suppliers ?? 0,
+			totalSuppliers: marketSummary?.total_suppliers ?? 0,
+			originsCount: marketSummary?.total_origins ?? 0,
+			lastUpdated: marketSummary?.snapshot_date ?? null
+		},
+		marketSummary: {
+			retail_median_7d_change: marketSummary?.retail_median_7d_change ?? null,
+			retail_median_30d_change: marketSummary?.retail_median_30d_change ?? null,
+			supply_7d_change: marketSummary?.supply_7d_change ?? null,
+			supply_30d_change: marketSummary?.supply_30d_change ?? null
+		}
+	};
+}
+
+async function loadAnalyticsCoverage(
+	event: AnalyticsLoadEvent,
+	marketSummary: MarketSummaryRow | null
+): Promise<AnalyticsCoverage> {
+	const supabase = event.locals.supabase;
 	const lastUpdated = marketSummary?.snapshot_date ?? null;
-
-	// ─── PUBLIC QUERIES (run for all visitors, in parallel) ─────────────────────
 	const sevenDaysAgoStr = relativeDateString(lastUpdated, 7);
 	const thirtyDaysAgoStr = relativeDateString(lastUpdated, 30);
-	const fromDate = relativeDateString(null, 90);
-
-	// Parchment Intelligence users get up to 365 days of snapshot data for extended trend views.
-	const snapshotFromDate = isParchmentIntelligence
-		? (() => {
-				const d = new Date();
-				d.setDate(d.getDate() - 365);
-				return d.toISOString().split('T')[0];
-			})()
-		: fromDate;
 
 	const [
 		{ count: totalBeansTracked },
@@ -337,13 +403,6 @@ export const load: PageServerLoad = async (event) => {
 		{ count: stockedWholesaleBeans },
 		retailCoverageRows,
 		wholesaleCoverageRows,
-		{ data: processingRows },
-		{ data: retailCatalogPriceRows },
-		{ data: wholesaleCatalogPriceRows },
-		{ data: recentRetailArrivals30 },
-		{ data: recentWholesaleArrivals30 },
-		{ data: recentRetailDelistings30 },
-		{ data: recentWholesaleDelistings30 },
 		{ count: arrivals7dRetail, error: arrivals7dRetailError },
 		{ count: arrivals7dWholesale, error: arrivals7dWholesaleError },
 		{ count: arrivals30dRetail, error: arrivals30dRetailError },
@@ -351,8 +410,7 @@ export const load: PageServerLoad = async (event) => {
 		{ count: delistings7dRetail, error: delistings7dRetailError },
 		{ count: delistings7dWholesale, error: delistings7dWholesaleError },
 		{ count: delistings30dRetail, error: delistings30dRetailError },
-		{ count: delistings30dWholesale, error: delistings30dWholesaleError },
-		snapshotsRaw
+		{ count: delistings30dWholesale, error: delistings30dWholesaleError }
 	] = await Promise.all([
 		// Total beans tracked
 		supabase.from('coffee_catalog').select('*', { count: 'exact', head: true }),
@@ -373,73 +431,8 @@ export const load: PageServerLoad = async (event) => {
 		loadActiveCatalogCoverageRowsPaginated({ supabase, wholesale: false }),
 		// Active wholesale coverage
 		loadActiveCatalogCoverageRowsPaginated({ supabase, wholesale: true }),
-		// Processing method distribution
-		supabase
-			.from('coffee_catalog')
-			.select('processing, wholesale')
-			.eq('stocked', true)
-			.not('processing', 'is', null)
-			.limit(5000),
-		// Retail origin range data (live cross-section). Load each market separately before
-		// the row cap so scoped origin evidence is not biased by the other market's rows.
-		supabase
-			.from('coffee_catalog')
-			.select('country, price_per_lb, wholesale')
-			.eq('stocked', true)
-			.eq('wholesale', false)
-			.not('country', 'is', null)
-			.not('price_per_lb', 'is', null)
-			.gt('price_per_lb', 0)
-			.limit(5000),
-		// Wholesale origin range data (live cross-section)
-		supabase
-			.from('coffee_catalog')
-			.select('country, price_per_lb, wholesale')
-			.eq('stocked', true)
-			.eq('wholesale', true)
-			.not('country', 'is', null)
-			.not('price_per_lb', 'is', null)
-			.gt('price_per_lb', 0)
-			.limit(5000),
-		// Recent retail arrivals (30 days). Load each market separately before the row cap so
-		// scoped movement tables do not lose named lots to the other market's newest rows.
-		supabase
-			.from('coffee_catalog')
-			.select('name, country, processing, price_per_lb, source, stocked_date, wholesale')
-			.eq('stocked', true)
-			.eq('wholesale', false)
-			.gte('stocked_date', thirtyDaysAgoStr)
-			.order('stocked_date', { ascending: false })
-			.limit(50),
-		// Recent wholesale arrivals (30 days)
-		supabase
-			.from('coffee_catalog')
-			.select('name, country, processing, price_per_lb, source, stocked_date, wholesale')
-			.eq('stocked', true)
-			.eq('wholesale', true)
-			.gte('stocked_date', thirtyDaysAgoStr)
-			.order('stocked_date', { ascending: false })
-			.limit(50),
-		// Recent retail delistings (30 days)
-		supabase
-			.from('coffee_catalog')
-			.select('name, country, processing, price_per_lb, source, unstocked_date, wholesale')
-			.eq('stocked', false)
-			.eq('wholesale', false)
-			.gte('unstocked_date', thirtyDaysAgoStr)
-			.order('unstocked_date', { ascending: false })
-			.limit(50),
-		// Recent wholesale delistings (30 days)
-		supabase
-			.from('coffee_catalog')
-			.select('name, country, processing, price_per_lb, source, unstocked_date, wholesale')
-			.eq('stocked', false)
-			.eq('wholesale', true)
-			.gte('unstocked_date', thirtyDaysAgoStr)
-			.order('unstocked_date', { ascending: false })
-			.limit(50),
-		// Public movement velocity intentionally exposes only aggregate retail/wholesale counts
-		// for the KPI strip. Named per-lot movement rows stay Parchment Intelligence-only below.
+		// Public movement velocity intentionally exposes only aggregate retail/wholesale
+		// counts for the KPI strip. Named per-lot movement rows stay gated below.
 		movementCountQuery({
 			supabase,
 			dateColumn: 'stocked_date',
@@ -495,38 +488,9 @@ export const load: PageServerLoad = async (event) => {
 			stocked: false,
 			wholesale: true,
 			fromDate: thirtyDaysAgoStr
-		}),
-		// Price index snapshots — 90 days public, 365 days for Parchment Intelligence users
-		_loadPriceSnapshotsPaginated({
-			supabase: priceIndexSupabase,
-			fromDate: snapshotFromDate
 		})
 	]);
 
-	// Process distribution
-	const processDistribution: ProcessBucket[] = (() => {
-		const retailDist: Record<string, number> = {};
-		const wholesaleDist: Record<string, number> = {};
-		for (const row of processingRows ?? []) {
-			const key = normalizeProcess(row.processing);
-			if (row.wholesale) {
-				wholesaleDist[key] = (wholesaleDist[key] ?? 0) + 1;
-			} else {
-				retailDist[key] = (retailDist[key] ?? 0) + 1;
-			}
-		}
-		const entries: ProcessBucket[] = [];
-		const allKeys = new Set([...Object.keys(retailDist), ...Object.keys(wholesaleDist)]);
-		for (const name of allKeys) {
-			if (retailDist[name]) entries.push({ name, count: retailDist[name], wholesale: false });
-			if (wholesaleDist[name]) entries.push({ name, count: wholesaleDist[name], wholesale: true });
-		}
-		return entries.sort((a, b) => b.count - a.count);
-	})();
-
-	const retailOriginPriceRows = (retailCatalogPriceRows ?? []) as CatalogPriceRow[];
-	const wholesaleOriginPriceRows = (wholesaleCatalogPriceRows ?? []) as CatalogPriceRow[];
-	const allOriginPriceRows = [...retailOriginPriceRows, ...wholesaleOriginPriceRows];
 	const retailActiveCoverageRows = retailCoverageRows ?? [];
 	const wholesaleActiveCoverageRows = wholesaleCoverageRows ?? [];
 	const retailActiveOriginSet = new Set(
@@ -551,6 +515,152 @@ export const load: PageServerLoad = async (event) => {
 	);
 	const activeOriginSet = new Set([...retailActiveOriginSet, ...wholesaleActiveOriginSet]);
 	const activeSupplierSet = new Set([...retailActiveSupplierSet, ...wholesaleActiveSupplierSet]);
+
+	const movementCountsAvailable = ![
+		arrivals7dRetailError,
+		arrivals7dWholesaleError,
+		arrivals30dRetailError,
+		arrivals30dWholesaleError,
+		delistings7dRetailError,
+		delistings7dWholesaleError,
+		delistings30dRetailError,
+		delistings30dWholesaleError
+	].some(Boolean);
+
+	return {
+		stats: {
+			totalBeansTracked: totalBeansTracked ?? 0,
+			stockedRetailBeans: stockedRetailBeans ?? 0,
+			stockedWholesaleBeans: stockedWholesaleBeans ?? 0,
+			stockedRetailOrigins: retailActiveOriginSet.size,
+			stockedWholesaleOrigins: wholesaleActiveOriginSet.size,
+			stockedOrigins: activeOriginSet.size || (marketSummary?.total_origins ?? 0),
+			stockedRetailSuppliers: retailActiveSupplierSet.size,
+			stockedWholesaleSuppliers: wholesaleActiveSupplierSet.size,
+			stockedSuppliers: activeSupplierSet.size || (marketSummary?.total_suppliers ?? 0),
+			totalSuppliers: marketSummary?.total_suppliers ?? 0,
+			originsCount: marketSummary?.total_origins ?? 0,
+			lastUpdated
+		},
+		movementCounts: {
+			available: movementCountsAvailable,
+			arrivals: {
+				sevenDay: { retail: arrivals7dRetail ?? 0, wholesale: arrivals7dWholesale ?? 0 },
+				thirtyDay: { retail: arrivals30dRetail ?? 0, wholesale: arrivals30dWholesale ?? 0 }
+			},
+			delistings: {
+				sevenDay: { retail: delistings7dRetail ?? 0, wholesale: delistings7dWholesale ?? 0 },
+				thirtyDay: { retail: delistings30dRetail ?? 0, wholesale: delistings30dWholesale ?? 0 }
+			}
+		}
+	};
+}
+
+async function loadAnalyticsCharts(
+	event: AnalyticsLoadEvent,
+	{
+		isParchmentIntelligence,
+		isAnonymous,
+		priceIndexSupabase
+	}: {
+		isParchmentIntelligence: boolean;
+		isAnonymous: boolean;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		priceIndexSupabase: any;
+	}
+): Promise<AnalyticsCharts> {
+	// ADR-008 decision-surface reads (value signals, movement stats, metadata index).
+	// Kicked off first; resolves in parallel with the Supabase queries below.
+	const marketInsightsPromise = loadMarketIndexInsights(event, { isParchmentIntelligence });
+
+	const supabase = event.locals.supabase;
+	const fromDate = relativeDateString(null, 90);
+
+	// Parchment Intelligence users get up to 365 days of snapshot data for extended trend views.
+	const snapshotFromDate = isParchmentIntelligence
+		? (() => {
+				const d = new Date();
+				d.setDate(d.getDate() - 365);
+				return d.toISOString().split('T')[0];
+			})()
+		: fromDate;
+
+	// Anonymous visitors render the main trend chart only; the processing-mix and
+	// origin-range panels never mount for them, so skip those catalog reads.
+	const catalogEvidencePromise = isAnonymous
+		? Promise.resolve(null)
+		: Promise.all([
+				// Processing method distribution
+				supabase
+					.from('coffee_catalog')
+					.select('processing, wholesale')
+					.eq('stocked', true)
+					.not('processing', 'is', null)
+					.limit(5000),
+				// Retail origin range data (live cross-section). Load each market separately before
+				// the row cap so scoped origin evidence is not biased by the other market's rows.
+				supabase
+					.from('coffee_catalog')
+					.select('country, price_per_lb, wholesale')
+					.eq('stocked', true)
+					.eq('wholesale', false)
+					.not('country', 'is', null)
+					.not('price_per_lb', 'is', null)
+					.gt('price_per_lb', 0)
+					.limit(5000),
+				// Wholesale origin range data (live cross-section)
+				supabase
+					.from('coffee_catalog')
+					.select('country, price_per_lb, wholesale')
+					.eq('stocked', true)
+					.eq('wholesale', true)
+					.not('country', 'is', null)
+					.not('price_per_lb', 'is', null)
+					.gt('price_per_lb', 0)
+					.limit(5000)
+			]);
+
+	const [snapshotsRaw, catalogEvidence] = await Promise.all([
+		// Price index snapshots — 90 days public, 365 days for Parchment Intelligence users.
+		// price_index_snapshots is entitlement-sensitive. Public analytics still exposes a
+		// bounded server-rendered slice, but direct anon/auth table access is revoked.
+		_loadPriceSnapshotsPaginated({
+			supabase: priceIndexSupabase,
+			fromDate: snapshotFromDate
+		}),
+		catalogEvidencePromise
+	]);
+
+	const [processingResult, retailPriceResult, wholesalePriceResult] = catalogEvidence ?? [
+		{ data: null },
+		{ data: null },
+		{ data: null }
+	];
+
+	// Process distribution
+	const processDistribution: ProcessBucket[] = (() => {
+		const retailDist: Record<string, number> = {};
+		const wholesaleDist: Record<string, number> = {};
+		for (const row of processingResult.data ?? []) {
+			const key = normalizeProcess(row.processing);
+			if (row.wholesale) {
+				wholesaleDist[key] = (wholesaleDist[key] ?? 0) + 1;
+			} else {
+				retailDist[key] = (retailDist[key] ?? 0) + 1;
+			}
+		}
+		const entries: ProcessBucket[] = [];
+		const allKeys = new Set([...Object.keys(retailDist), ...Object.keys(wholesaleDist)]);
+		for (const name of allKeys) {
+			if (retailDist[name]) entries.push({ name, count: retailDist[name], wholesale: false });
+			if (wholesaleDist[name]) entries.push({ name, count: wholesaleDist[name], wholesale: true });
+		}
+		return entries.sort((a, b) => b.count - a.count);
+	})();
+
+	const retailOriginPriceRows = (retailPriceResult.data ?? []) as CatalogPriceRow[];
+	const wholesaleOriginPriceRows = (wholesalePriceResult.data ?? []) as CatalogPriceRow[];
+	const allOriginPriceRows = [...retailOriginPriceRows, ...wholesaleOriginPriceRows];
 
 	const buildOriginRangeRows = (
 		scope: OriginRangeScope,
@@ -607,55 +717,41 @@ export const load: PageServerLoad = async (event) => {
 		...buildOriginRangeRows('wholesale', wholesaleOriginPriceRows)
 	];
 
-	const movementCountsAvailable = ![
-		arrivals7dRetailError,
-		arrivals7dWholesaleError,
-		arrivals30dRetailError,
-		arrivals30dWholesaleError,
-		delistings7dRetailError,
-		delistings7dWholesaleError,
-		delistings30dRetailError,
-		delistings30dWholesaleError
-	].some(Boolean);
+	return {
+		snapshots: snapshotsRaw ?? [],
+		processDistribution,
+		originRangeData,
+		marketInsights: await marketInsightsPromise
+	};
+}
 
-	const movementCounts: MovementCounts = {
-		available: movementCountsAvailable,
-		arrivals: {
-			sevenDay: { retail: arrivals7dRetail ?? 0, wholesale: arrivals7dWholesale ?? 0 },
-			thirtyDay: { retail: arrivals30dRetail ?? 0, wholesale: arrivals30dWholesale ?? 0 }
-		},
-		delistings: {
-			sevenDay: { retail: delistings7dRetail ?? 0, wholesale: delistings7dWholesale ?? 0 },
-			thirtyDay: { retail: delistings30dRetail ?? 0, wholesale: delistings30dWholesale ?? 0 }
-		}
+async function loadAnalyticsMemberData(
+	event: AnalyticsLoadEvent,
+	{
+		principal,
+		isParchmentIntelligence,
+		marketSummary,
+		priceIndexSupabase
+	}: {
+		principal: Awaited<ReturnType<typeof resolvePrincipal>>;
+		isParchmentIntelligence: boolean;
+		marketSummary: MarketSummaryRow | null;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		priceIndexSupabase: any;
+	}
+): Promise<AnalyticsMemberData> {
+	const supabase = event.locals.supabase;
+	const today = new Date().toISOString().split('T')[0];
+	const lastUpdated = marketSummary?.snapshot_date ?? null;
+	const thirtyDaysAgoStr = relativeDateString(lastUpdated, 30);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const sb = supabase as any;
+	const supplierRangeRpcClient = priceIndexSupabase as unknown as {
+		rpc(name: 'get_supplier_price_ranges'): PromiseLike<{ data: unknown; error: unknown }>;
 	};
 
-	const recentArrivals = isParchmentIntelligence
-		? [
-				...((recentRetailArrivals30 ?? []) as ArrivalBean[]),
-				...((recentWholesaleArrivals30 ?? []) as ArrivalBean[])
-			]
-				.sort((a, b) => (b.stocked_date ?? '').localeCompare(a.stocked_date ?? ''))
-				.slice(0, 100)
-		: [];
-	const recentDelistings = isParchmentIntelligence
-		? [
-				...((recentRetailDelistings30 ?? []) as DelistingBean[]),
-				...((recentWholesaleDelistings30 ?? []) as DelistingBean[])
-			]
-				.sort((a, b) => (b.unstocked_date ?? '').localeCompare(a.unstocked_date ?? ''))
-				.slice(0, 100)
-		: [];
-
-	// ─── PARCHMENT INTELLIGENCE QUERIES (only run for entitled users) ───────────
-	const snapshots: PriceSnapshot[] = snapshotsRaw ?? [];
-	let comparisonBeans: ComparisonBean[] = [];
-	let supplierHealth: SupplierHealthRow[] = [];
-	let supplierPriceRanges: SupplierPriceRange[] = [];
-
 	// Watchlist context: members and Parchment Intelligence users see their tracked
-	// lots read against the live index scope. Kicked off here so it runs alongside
-	// the entitled-user queries below.
+	// lots read against the live index scope.
 	const isSourcingMember = event.locals.role === 'member' || event.locals.role === 'admin';
 	const trackedLotsPromise: Promise<TrackedLotSummary[]> =
 		principal.isAuthenticated && (isParchmentIntelligence || isSourcingMember)
@@ -665,94 +761,206 @@ export const load: PageServerLoad = async (event) => {
 				})
 			: Promise.resolve([]);
 
-	if (isParchmentIntelligence) {
-		const [
-			{ data: comparisonBeansRaw },
-			{ data: supplierStatsRaw },
-			{ data: supplierRangesRaw, error: supplierRangesError }
-		] = await Promise.all([
-			// Lot-level comparison rows for the expandable preview table. This is
-			// intentionally capped; SupplierPriceRangeChart uses the aggregate RPC
-			// below so its min/median/max are computed over the full stocked set.
-			supabase
-				.from('coffee_catalog')
-				.select('name, country, processing, price_per_lb, source, wholesale, bag_size')
-				.eq('stocked', true)
-				.not('price_per_lb', 'is', null)
-				.not('country', 'is', null)
-				.order('price_per_lb', { ascending: true })
-				.limit(2000),
-			// Supplier health (pre-computed)
-			sb
-				.from('supplier_daily_stats')
-				.select('*')
-				.lte('snapshot_date', today)
-				.order('snapshot_date', { ascending: false })
-				.order('stocked_count', { ascending: false })
-				.limit(200),
-			supplierRangeRpcClient.rpc('get_supplier_price_ranges')
-		]);
-
-		if (supplierRangesError) {
-			console.error('Error loading analytics supplier price ranges:', supplierRangesError);
-		}
-
-		comparisonBeans = (comparisonBeansRaw ?? []).map((row) => ({
-			...row,
-			source: normalizeSupplierSource(row.source)
-		})) as ComparisonBean[];
-
-		interface SupplierRangeRpcRow {
-			source: string | null;
-			market: 'retail' | 'wholesale' | 'all';
-			lot_count: number | string | null;
-			price_min: number | string | null;
-			price_median: number | string | null;
-			price_max: number | string | null;
-		}
-
-		supplierPriceRanges = ((supplierRangesRaw as SupplierRangeRpcRow[] | null) ?? [])
-			.map((row) => ({
-				source: normalizeSupplierSource(row.source),
-				market: row.market,
-				count: Number(row.lot_count ?? 0),
-				min: Number(row.price_min ?? 0),
-				median: Number(row.price_median ?? 0),
-				max: Number(row.price_max ?? 0)
-			}))
-			.filter((row) => row.count > 0 && row.min > 0 && row.median > 0 && row.max > 0);
-
-		interface SupplierStatRow {
-			snapshot_date: string;
-			source: string;
-			stocked_count: number;
-			origins_count: number;
-			retail_avg: number | null;
-			retail_min: number | null;
-			retail_max: number | null;
-			wholesale_count: number;
-			retail_count: number;
-		}
-
-		const typedSupplierStats: SupplierStatRow[] = supplierStatsRaw ?? [];
-		const mostRecentSupplierDate =
-			typedSupplierStats.length > 0 ? typedSupplierStats[0].snapshot_date : null;
-
-		supplierHealth = typedSupplierStats
-			.filter((row) => row.snapshot_date === mostRecentSupplierDate)
-			.map((row) => ({
-				source: row.source,
-				stockedCount: row.stocked_count ?? 0,
-				origins: row.origins_count ?? 0,
-				avgCostLb: row.retail_avg ?? 0,
-				minCostLb: row.retail_min ?? 0,
-				maxCostLb: row.retail_max ?? 0,
-				wholesaleCount: row.wholesale_count ?? 0,
-				retailCount: row.retail_count ?? 0
-			}));
+	if (!isParchmentIntelligence) {
+		// Anonymous visitors and non-Intelligence viewers never render these
+		// datasets, so their streamed member payload resolves without touching
+		// the movement, comparison, or supplier tables.
+		return {
+			recentArrivals: [],
+			recentDelistings: [],
+			comparisonBeans: [],
+			supplierPriceRanges: [],
+			supplierHealth: [],
+			trackedLots: await trackedLotsPromise
+		};
 	}
 
-	const trackedLots = await trackedLotsPromise;
+	const [
+		{ data: recentRetailArrivals30 },
+		{ data: recentWholesaleArrivals30 },
+		{ data: recentRetailDelistings30 },
+		{ data: recentWholesaleDelistings30 },
+		{ data: comparisonBeansRaw },
+		{ data: supplierStatsRaw },
+		{ data: supplierRangesRaw, error: supplierRangesError }
+	] = await Promise.all([
+		// Recent retail arrivals (30 days). Load each market separately before the row cap so
+		// scoped movement tables do not lose named lots to the other market's newest rows.
+		supabase
+			.from('coffee_catalog')
+			.select('name, country, processing, price_per_lb, source, stocked_date, wholesale')
+			.eq('stocked', true)
+			.eq('wholesale', false)
+			.gte('stocked_date', thirtyDaysAgoStr)
+			.order('stocked_date', { ascending: false })
+			.limit(50),
+		// Recent wholesale arrivals (30 days)
+		supabase
+			.from('coffee_catalog')
+			.select('name, country, processing, price_per_lb, source, stocked_date, wholesale')
+			.eq('stocked', true)
+			.eq('wholesale', true)
+			.gte('stocked_date', thirtyDaysAgoStr)
+			.order('stocked_date', { ascending: false })
+			.limit(50),
+		// Recent retail delistings (30 days)
+		supabase
+			.from('coffee_catalog')
+			.select('name, country, processing, price_per_lb, source, unstocked_date, wholesale')
+			.eq('stocked', false)
+			.eq('wholesale', false)
+			.gte('unstocked_date', thirtyDaysAgoStr)
+			.order('unstocked_date', { ascending: false })
+			.limit(50),
+		// Recent wholesale delistings (30 days)
+		supabase
+			.from('coffee_catalog')
+			.select('name, country, processing, price_per_lb, source, unstocked_date, wholesale')
+			.eq('stocked', false)
+			.eq('wholesale', true)
+			.gte('unstocked_date', thirtyDaysAgoStr)
+			.order('unstocked_date', { ascending: false })
+			.limit(50),
+		// Lot-level comparison rows for the expandable preview table. This is
+		// intentionally capped; SupplierPriceRangeChart uses the aggregate RPC
+		// below so its min/median/max are computed over the full stocked set.
+		supabase
+			.from('coffee_catalog')
+			.select('name, country, processing, price_per_lb, source, wholesale, bag_size')
+			.eq('stocked', true)
+			.not('price_per_lb', 'is', null)
+			.not('country', 'is', null)
+			.order('price_per_lb', { ascending: true })
+			.limit(2000),
+		// Supplier health (pre-computed)
+		sb
+			.from('supplier_daily_stats')
+			.select('*')
+			.lte('snapshot_date', today)
+			.order('snapshot_date', { ascending: false })
+			.order('stocked_count', { ascending: false })
+			.limit(200),
+		supplierRangeRpcClient.rpc('get_supplier_price_ranges')
+	]);
+
+	if (supplierRangesError) {
+		console.error('Error loading analytics supplier price ranges:', supplierRangesError);
+	}
+
+	const recentArrivals = [
+		...((recentRetailArrivals30 ?? []) as ArrivalBean[]),
+		...((recentWholesaleArrivals30 ?? []) as ArrivalBean[])
+	]
+		.sort((a, b) => (b.stocked_date ?? '').localeCompare(a.stocked_date ?? ''))
+		.slice(0, 100);
+	const recentDelistings = [
+		...((recentRetailDelistings30 ?? []) as DelistingBean[]),
+		...((recentWholesaleDelistings30 ?? []) as DelistingBean[])
+	]
+		.sort((a, b) => (b.unstocked_date ?? '').localeCompare(a.unstocked_date ?? ''))
+		.slice(0, 100);
+
+	const comparisonBeans = (comparisonBeansRaw ?? []).map((row) => ({
+		...row,
+		source: normalizeSupplierSource(row.source)
+	})) as ComparisonBean[];
+
+	interface SupplierRangeRpcRow {
+		source: string | null;
+		market: 'retail' | 'wholesale' | 'all';
+		lot_count: number | string | null;
+		price_min: number | string | null;
+		price_median: number | string | null;
+		price_max: number | string | null;
+	}
+
+	const supplierPriceRanges = ((supplierRangesRaw as SupplierRangeRpcRow[] | null) ?? [])
+		.map((row) => ({
+			source: normalizeSupplierSource(row.source),
+			market: row.market,
+			count: Number(row.lot_count ?? 0),
+			min: Number(row.price_min ?? 0),
+			median: Number(row.price_median ?? 0),
+			max: Number(row.price_max ?? 0)
+		}))
+		.filter((row) => row.count > 0 && row.min > 0 && row.median > 0 && row.max > 0);
+
+	interface SupplierStatRow {
+		snapshot_date: string;
+		source: string;
+		stocked_count: number;
+		origins_count: number;
+		retail_avg: number | null;
+		retail_min: number | null;
+		retail_max: number | null;
+		wholesale_count: number;
+		retail_count: number;
+	}
+
+	const typedSupplierStats: SupplierStatRow[] = supplierStatsRaw ?? [];
+	const mostRecentSupplierDate =
+		typedSupplierStats.length > 0 ? typedSupplierStats[0].snapshot_date : null;
+
+	const supplierHealth = typedSupplierStats
+		.filter((row) => row.snapshot_date === mostRecentSupplierDate)
+		.map((row) => ({
+			source: row.source,
+			stockedCount: row.stocked_count ?? 0,
+			origins: row.origins_count ?? 0,
+			avgCostLb: row.retail_avg ?? 0,
+			minCostLb: row.retail_min ?? 0,
+			maxCostLb: row.retail_max ?? 0,
+			wholesaleCount: row.wholesale_count ?? 0,
+			retailCount: row.retail_count ?? 0
+		}));
+
+	return {
+		recentArrivals,
+		recentDelistings,
+		comparisonBeans,
+		supplierPriceRanges,
+		supplierHealth,
+		trackedLots: await trackedLotsPromise
+	};
+}
+
+export const load: PageServerLoad = async (event) => {
+	// Resolve principal to get explicit Parchment Intelligence access.
+	// Logged-out visitors and logged-in viewers intentionally share the same core analytics view.
+	const principal = await resolvePrincipal(event);
+	const isParchmentIntelligence = principal.isAuthenticated ? principal.ppiAccess : false;
+	const session = event.locals.session ?? null;
+	const role = event.locals.role ?? 'viewer';
+	const isAnonymous = !session;
+
+	// The only awaited data read before the first byte: one indexed row from the
+	// precomputed market_daily_summary table. Everything else streams.
+	const marketSummary = await loadLatestMarketSummary(event);
+	const analyticsPreview = buildAnalyticsPreview(marketSummary);
+	const lastUpdated = analyticsPreview.stats.lastUpdated;
+
+	const priceIndexSupabase = createAdminClient();
+
+	// Coverage, charts, and entitlement-gated datasets stream independently so a
+	// slow member query never holds back the public KPI strip and vice versa.
+	const analyticsCoverage = loadAnalyticsCoverage(event, marketSummary);
+	const analyticsCharts = loadAnalyticsCharts(event, {
+		isParchmentIntelligence,
+		isAnonymous,
+		priceIndexSupabase
+	});
+	const analyticsMember = loadAnalyticsMemberData(event, {
+		principal,
+		isParchmentIntelligence,
+		marketSummary,
+		priceIndexSupabase
+	});
+
+	// Mark server-side rejections as handled; the rejection still streams to the
+	// client, which renders a section-level error state for it.
+	analyticsCoverage.catch(() => {});
+	analyticsCharts.catch(() => {});
+	analyticsMember.catch(() => {});
 
 	const baseUrl = `${event.url.protocol}//${event.url.host}`;
 	const schemaService = createSchemaService(baseUrl);
@@ -771,7 +979,7 @@ export const load: PageServerLoad = async (event) => {
 				'coffee origin prices',
 				'coffee supplier comparison'
 			],
-			dateModified: lastUpdated ?? new Date().toISOString().split('T')[0],
+			dateModified: lastUpdated ?? undefined,
 			variableMeasured: [
 				'Price per pound (USD)',
 				'Origin country',
@@ -782,44 +990,14 @@ export const load: PageServerLoad = async (event) => {
 		})
 	]);
 
-	const session = event.locals.session ?? null;
-	const role = event.locals.role ?? 'viewer';
-
 	return {
 		session,
 		role,
 		isParchmentIntelligence,
-		stats: {
-			totalBeansTracked: totalBeansTracked ?? 0,
-			stockedRetailBeans: stockedRetailBeans ?? 0,
-			stockedWholesaleBeans: stockedWholesaleBeans ?? 0,
-			stockedRetailOrigins: retailActiveOriginSet.size,
-			stockedWholesaleOrigins: wholesaleActiveOriginSet.size,
-			stockedOrigins: activeOriginSet.size || (marketSummary?.total_origins ?? 0),
-			stockedRetailSuppliers: retailActiveSupplierSet.size,
-			stockedWholesaleSuppliers: wholesaleActiveSupplierSet.size,
-			stockedSuppliers: activeSupplierSet.size || (marketSummary?.total_suppliers ?? 0),
-			totalSuppliers: marketSummary?.total_suppliers ?? 0,
-			originsCount: marketSummary?.total_origins ?? 0,
-			lastUpdated
-		},
-		marketSummary: {
-			retail_median_7d_change: marketSummary?.retail_median_7d_change ?? null,
-			retail_median_30d_change: marketSummary?.retail_median_30d_change ?? null,
-			supply_7d_change: marketSummary?.supply_7d_change ?? null,
-			supply_30d_change: marketSummary?.supply_30d_change ?? null
-		},
-		snapshots,
-		processDistribution,
-		originRangeData,
-		movementCounts,
-		recentArrivals,
-		recentDelistings,
-		comparisonBeans,
-		supplierPriceRanges,
-		marketInsights: await marketInsightsPromise,
-		supplierHealth,
-		trackedLots,
+		analyticsPreview,
+		analyticsCoverage,
+		analyticsCharts,
+		analyticsMember,
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/analytics',

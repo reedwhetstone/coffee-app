@@ -53,6 +53,11 @@
 	let isFormVisible = $derived(canLogSales && page.url.searchParams.get('modal') === 'new');
 	let selectedSale = $state<SaleData | null>(null);
 	let isSaving = $state<string | null>(null);
+	// Loading, error, and legitimately-empty are distinct states: an account
+	// with no recorded sales gets the real page with an empty-state card, not a
+	// permanent skeleton, and a failed fetch gets a retryable error panel.
+	let profitLoadState = $state<'loading' | 'ready' | 'error'>('loading');
+	let profitLoadError = $state<string | null>(null);
 
 	// Form data state
 	let availableCoffees = $state<AvailableCoffee[]>([]);
@@ -157,14 +162,25 @@
 		}
 	}
 
+	async function loadProfitPageData() {
+		profitLoadState = 'loading';
+		profitLoadError = null;
+		try {
+			await fetchInitialSalesData();
+			profitLoadState = 'ready';
+		} catch (error) {
+			console.error('Error loading profit data:', error);
+			profitLoadError =
+				error instanceof Error ? error.message : 'Failed to load profit and sales data';
+			profitLoadState = 'error';
+			return;
+		}
+		await fetchFormData();
+	}
+
 	// Convert onMount to use $effect
 	$effect(() => {
-		const fetchData = async () => {
-			await fetchInitialSalesData();
-			await fetchFormData();
-		};
-
-		fetchData();
+		void loadProfitPageData();
 	});
 
 	// Removed unused fetchProfitData
@@ -221,9 +237,20 @@
 	/>
 </FormShell>
 
-<!-- Show instant skeleton only briefly while data loads -->
-{#if profitData.length === 0 && salesData.length === 0}
+{#if profitLoadState === 'loading'}
 	<ProfitPageSkeleton />
+{:else if profitLoadState === 'error'}
+	<div class="rounded-lg bg-danger-subtle p-6 text-center ring-1 ring-danger/30">
+		<div class="mb-4 text-6xl opacity-50">⚠️</div>
+		<h3 class="mb-2 text-lg font-semibold text-danger-strong">Failed to load profit data</h3>
+		<p class="mb-4 text-danger">{profitLoadError}</p>
+		<button
+			onclick={() => void loadProfitPageData()}
+			class="rounded-md bg-danger px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-danger-strong focus:outline-none focus:ring-2 focus:ring-danger focus:ring-offset-2"
+		>
+			Try Again
+		</button>
+	</div>
 {:else}
 	<div class="space-y-6">
 		<OperationsHero
