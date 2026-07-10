@@ -567,7 +567,9 @@
 	// ── Market read headline + detail ─────────────────────────────────────────
 
 	let marketReadHeadline = $derived.by(() => {
-		if (!coverageSettled) {
+		// A stability call needs price evidence, so the headline waits for the
+		// charts stream too — not just coverage.
+		if (!coverageSettled || chartsState === 'pending') {
 			return 'The latest index snapshot is in; movement and coverage signals are streaming next.';
 		}
 		if (!isMovementDataAvailable) {
@@ -579,6 +581,9 @@
 		if (scopedDelistingCount > scopedArrivalCount) {
 			return `Availability is tightening in the ${movementWindowLabel} movement window.`;
 		}
+		if (chartsState === 'error') {
+			return `Movement is balanced in the ${movementWindowLabel} window, but the price history layer did not load, so this read makes no stability call.`;
+		}
 		if (marketPriceDelta != null && Math.abs(marketPriceDelta) >= 0.05) {
 			return marketPriceDelta > 0
 				? 'Average visible prices are firming in the latest indexed snapshot.'
@@ -588,11 +593,14 @@
 	});
 
 	let marketReadDetail = $derived.by(() => {
-		const pricePhrase = !chartsSettled
-			? 'price movement is loading with the comparable snapshot layer'
-			: marketPriceDelta == null
-				? 'price movement needs another comparable snapshot'
-				: `${formatSigned(marketPriceDelta, 2)}/lb (${formatSigned(marketPriceDeltaPercent, 1)}%) versus the prior comparable snapshot`;
+		const pricePhrase =
+			chartsState === 'pending'
+				? 'price movement is loading with the comparable snapshot layer'
+				: chartsState === 'error'
+					? 'price movement is unavailable because the price history layer did not load'
+					: marketPriceDelta == null
+						? 'price movement needs another comparable snapshot'
+						: `${formatSigned(marketPriceDelta, 2)}/lb (${formatSigned(marketPriceDeltaPercent, 1)}%) versus the prior comparable snapshot`;
 		if (!coverageSettled) {
 			return `The ${stats.totalSuppliers.toLocaleString()}-supplier index is loaded; movement and coverage counts are streaming in, and ${pricePhrase}.`;
 		}

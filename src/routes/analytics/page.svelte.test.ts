@@ -387,6 +387,31 @@ describe('analytics page loading experience', () => {
 		expect(pageChatContext.current?.summary).toContain('84 stocked listings');
 	});
 
+	it('withholds the stability call while chart evidence is still streaming', async () => {
+		const charts = deferred<AnalyticsCharts>();
+		const baseline = createBaseline();
+
+		render(AnalyticsPage, { data: createData({ analyticsCharts: charts.promise }) });
+
+		// Coverage resolves with balanced movement, but no price evidence has
+		// arrived yet — the headline must not fall through to a stability claim.
+		await waitFor(() => {
+			expect(screen.getByText(/movement and coverage signals are streaming next/i)).toBeTruthy();
+		});
+		expect(screen.queryByText(/market read is stable/i)).toBeNull();
+
+		charts.resolve({
+			snapshots: baseline.snapshots,
+			processDistribution: baseline.processDistribution,
+			originRangeData: baseline.originRangeData,
+			marketInsights: baseline.marketInsights
+		} as AnalyticsCharts);
+
+		await waitFor(() => {
+			expect(screen.getByText(/market read is stable/i)).toBeTruthy();
+		});
+	});
+
 	it('replaces skeletons with an error notice when a streamed dataset rejects', async () => {
 		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { container } = render(AnalyticsPage, {
@@ -404,6 +429,9 @@ describe('analytics page loading experience', () => {
 			expect(container.querySelector('[aria-label="Loading Market Index"]')).toBeNull();
 		});
 		expect(screen.queryByLabelText('Loading market signals')).toBeNull();
+		// Balanced movement plus a failed price layer must not read as stability.
+		expect(screen.getByText(/makes no stability call/i)).toBeTruthy();
+		expect(screen.queryByText(/market read is stable/i)).toBeNull();
 		// Chat never grounds itself in partially failed data.
 		expect(pageChatContext.current).toBeNull();
 		consoleError.mockRestore();
