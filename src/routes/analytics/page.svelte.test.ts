@@ -525,6 +525,27 @@ describe('analytics page loading experience', () => {
 		consoleError.mockRestore();
 	});
 
+	it('replaces the member evidence panels with an error notice when the member stream rejects', async () => {
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				analyticsMember: Promise.reject(new Error('member stream failed'))
+			})
+		});
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Member market evidence unavailable')).toBeTruthy();
+		});
+		// No empty-fallback evidence presented as real supplier data, and no
+		// permanent loading panel.
+		expect(screen.queryByLabelText('Loading member market evidence')).toBeNull();
+		expect(screen.queryByText('Fresh Ethiopia')).toBeNull();
+		expect(screen.getByText('Some market data did not load.')).toBeTruthy();
+		consoleError.mockRestore();
+	});
+
 	it('replaces skeletons with an error notice when a streamed dataset rejects', async () => {
 		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { container } = render(AnalyticsPage, {

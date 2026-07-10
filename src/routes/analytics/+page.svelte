@@ -1257,6 +1257,21 @@
 					</div>
 				</div>
 			</section>
+		{:else if isParchmentIntelligence && memberState === 'error'}
+			<!-- A failed member stream must not render the evidence panels with
+			     empty fallback arrays as if suppliers had no lots; settle into a
+			     static error notice. A coverage-only failure still renders the
+			     section: it degrades honestly via its movement-unavailable mode. -->
+			<section
+				class="mb-8 rounded-lg bg-danger-subtle p-5 text-sm ring-1 ring-danger/30"
+				role="alert"
+				aria-label="Member market evidence unavailable"
+			>
+				<p class="font-semibold text-danger-strong">Member market evidence is unavailable.</p>
+				<p class="mt-1 text-danger">
+					Supplier, comparison, and movement evidence did not load. Refresh the page to retry.
+				</p>
+			</section>
 		{:else if isParchmentIntelligence && (!memberSettled || !coverageSettled)}
 			<!-- Intelligence users' evidence panels wait for the member stream
 			     (supplier and lot-level evidence) AND the coverage stream (the
