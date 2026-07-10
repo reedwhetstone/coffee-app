@@ -412,6 +412,44 @@ describe('analytics page loading experience', () => {
 		});
 	});
 
+	it('renders chart sections without waiting for the member stream', async () => {
+		const member = deferred<AnalyticsMemberData>();
+		const baseline = createBaseline();
+
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				analyticsMember: member.promise
+			})
+		});
+
+		// Chart-backed sections render as soon as the charts stream settles...
+		await waitFor(() => {
+			expect(screen.getAllByText('Origin price trends').length).toBeGreaterThan(0);
+		});
+		// ...while member-backed panels wait on their own loading state instead
+		// of showing misleading empty supplier/movement evidence.
+		expect(screen.getByLabelText('Loading member market evidence')).toBeTruthy();
+		expect(screen.queryByText('Fresh Ethiopia')).toBeNull();
+
+		member.resolve({
+			recentArrivals: baseline.recentArrivals,
+			recentDelistings: baseline.recentDelistings,
+			comparisonBeans: baseline.comparisonBeans,
+			supplierPriceRanges: baseline.supplierPriceRanges,
+			supplierHealth: baseline.supplierHealth,
+			trackedLots: []
+		} as AnalyticsMemberData);
+
+		await waitFor(() => {
+			expect(screen.queryByLabelText('Loading member market evidence')).toBeNull();
+		});
+		await waitFor(() => {
+			expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();
+		});
+	});
+
 	it('replaces skeletons with an error notice when a streamed dataset rejects', async () => {
 		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { container } = render(AnalyticsPage, {

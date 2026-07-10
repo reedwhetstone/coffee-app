@@ -144,10 +144,11 @@
 	let coverageSettled = $derived(coverageState !== 'pending');
 	let chartsSettled = $derived(chartsState !== 'pending');
 	let memberSettled = $derived(memberState !== 'pending');
-	// Signals need movement counts plus snapshot deltas; body sections need
-	// chart evidence plus (for entitled users) member datasets.
+	// Signals need movement counts plus snapshot deltas. Body sections need
+	// only chart evidence — a slow member stream must not hold back the public
+	// chart sections, so member-backed panels gate on memberSettled separately.
 	let signalsReady = $derived(coverageSettled && chartsSettled);
-	let bodyReady = $derived(chartsSettled && memberSettled);
+	let bodyReady = $derived(chartsSettled);
 	let allResolved = $derived(
 		coverageState === 'ready' && chartsState === 'ready' && memberState === 'ready'
 	);
@@ -1242,6 +1243,22 @@
 						</a>
 					</div>
 				</div>
+			</section>
+		{:else if !memberSettled}
+			<!-- Member-backed panels wait for the member stream so entitled users
+			     never see misleading empty supplier/movement states; the chart
+			     sections above render as soon as the charts stream settles. -->
+			<section
+				class="mb-8 grid gap-5 lg:grid-cols-2"
+				aria-busy="true"
+				aria-label="Loading member market evidence"
+			>
+				{#each Array.from({ length: 2 }) as _, index (index)}
+					<div class="rounded-lg border border-line bg-surface-panel p-5 shadow-sm">
+						<div class="h-5 w-44 animate-pulse rounded bg-surface-canvas"></div>
+						<div class="mt-4 h-56 animate-pulse rounded-md bg-surface-canvas"></div>
+					</div>
+				{/each}
 			</section>
 		{:else}
 			<ParchmentIntelligenceSection
