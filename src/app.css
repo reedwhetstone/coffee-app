@@ -20,6 +20,14 @@
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.05'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+/* Skeleton and loading pulses are decorative. Freeze them for users who ask
+   for reduced motion so full-page loading states never animate. */
+@media (prefers-reduced-motion: reduce) {
+	.animate-pulse {
+		animation: none;
+	}
+}
+
 /* iOS Safari auto-zooms the page when a form control with a computed
    font-size below 16px receives focus, and the page stays zoomed in until
    the user pinches back out. Keep form controls at >=16px on touch devices

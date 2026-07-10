@@ -15,7 +15,6 @@
 	// Cast filtered data to the correct type for this page
 	let typedFilteredData = $derived($filteredData as unknown as InventoryWithCatalog[]);
 	import BeansPageSkeleton from '$lib/components/BeansPageSkeleton.svelte';
-	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type {
 		InventoryWithCatalog,
@@ -564,7 +563,7 @@
 			{/if}
 		{:else}
 			<!-- Dashboard Cards Section -->
-			{#if !isLoading && typedFilteredData && typedFilteredData.length > 0}
+			{#if typedFilteredData && typedFilteredData.length > 0}
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
 					<MetricTile
 						label="Portfolio value"
@@ -640,7 +639,7 @@
 			</FormShell>
 
 			<!-- Quick Actions -->
-			{#if !isLoading && typedFilteredData && typedFilteredData.length > 0}
+			{#if typedFilteredData && typedFilteredData.length > 0}
 				<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
 					<div class="text-sm text-muted">
 						Showing {typedFilteredData.length} of {clientData.length || 0} coffees
@@ -648,15 +647,9 @@
 				</div>
 			{/if}
 
-			<!-- Coffee Cards -->
+			<!-- Coffee Cards; the loading branch above owns the skeleton state. -->
 			<div class="flex-1">
-				{#if isLoading}
-					<SimpleLoadingScreen
-						show={true}
-						message="Loading your coffee inventory..."
-						overlay={false}
-					/>
-				{:else if !typedFilteredData || typedFilteredData.length === 0}
+				{#if !typedFilteredData || typedFilteredData.length === 0}
 					<div class="rounded-lg bg-surface-panel p-8 text-center ring-1 ring-line">
 						<div class="mb-4 text-6xl opacity-50">☕</div>
 						<h3 class="mb-2 text-lg font-semibold text-ink">

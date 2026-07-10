@@ -1,4 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type {
+	AnalyticsCharts,
+	AnalyticsCoverage,
+	AnalyticsMemberData,
+	AnalyticsPreview
+} from './+page.server';
 
 const { mockCreateAdminClient } = vi.hoisted(() => ({
 	mockCreateAdminClient: vi.fn()
@@ -20,8 +26,15 @@ vi.mock('$lib/supabase-admin', () => ({
 vi.mock('$lib/services/schemaService', () => ({
 	createSchemaService: vi.fn(() => ({
 		generateOrganizationSchema: vi.fn(() => ({ '@type': 'Organization' })),
-		generateDatasetSchema: vi.fn(() => ({ '@type': 'Dataset' })),
-		generateSchemaGraph: vi.fn(() => ({ '@graph': [] }))
+		generateDatasetSchema: vi.fn((dataset) => ({
+			'@type': 'Dataset',
+			...Object.fromEntries(
+				Object.entries(dataset as Record<string, unknown>).filter(
+					([, value]) => value !== undefined
+				)
+			)
+		})),
+		generateSchemaGraph: vi.fn((schemas) => ({ '@graph': schemas }))
 	}))
 }));
 
@@ -52,6 +65,14 @@ type SnapshotQueryCall = {
 	end: number;
 	orders: Array<{ column: string; ascending: boolean }>;
 };
+
+interface StreamedLoadResult {
+	analyticsPreview: AnalyticsPreview;
+	analyticsCoverage: Promise<AnalyticsCoverage>;
+	analyticsCharts: Promise<AnalyticsCharts>;
+	analyticsMember: Promise<AnalyticsMemberData>;
+	meta: Record<string, unknown>;
+}
 
 let load: typeof import('./+page.server').load;
 let loadPriceSnapshotsPaginated: typeof import('./+page.server')._loadPriceSnapshotsPaginated;
@@ -166,6 +187,7 @@ function createAnalyticsClient(
 			wholesale: boolean;
 		}>;
 		movementCountError?: boolean;
+		hangCoverageQueries?: boolean;
 		recentRetailArrivals?: unknown[];
 		recentWholesaleArrivals?: unknown[];
 		recentRetailDelistings?: unknown[];
@@ -175,6 +197,8 @@ function createAnalyticsClient(
 	const snapshotFromDates: string[] = [];
 	const snapshotRangeCalls: SnapshotQueryCall[] = [];
 	const movementCutoffs = { arrivals: [] as string[], delistings: [] as string[] };
+	const selectCalls: string[] = [];
+	const summaryReadCounts = { marketSummary: 0 };
 
 	function resolveTableResult(
 		table: string,
@@ -185,6 +209,8 @@ function createAnalyticsClient(
 		}
 	) {
 		if (table === 'market_daily_summary') {
+			summaryReadCounts.marketSummary += 1;
+
 			if (options.marketSummaryDate === null) {
 				return { data: null, error: null };
 			}
@@ -325,6 +351,8 @@ function createAnalyticsClient(
 		snapshotFromDates,
 		snapshotRangeCalls,
 		movementCutoffs,
+		selectCalls,
+		summaryReadCounts,
 		rpc(name: string) {
 			if (name === 'get_supplier_price_ranges') {
 				return Promise.resolve({ data: options.supplierPriceRanges ?? [], error: null });
@@ -346,6 +374,7 @@ function createAnalyticsClient(
 				select(columns: string, selectOptions?: { count?: string; head?: boolean }) {
 					state.columns = columns;
 					state.selectOptions = selectOptions;
+					selectCalls.push(`${table}:${columns}${selectOptions?.head ? ':head' : ''}`);
 					return query;
 				},
 				gte(column: string, value: unknown) {
@@ -383,6 +412,9 @@ function createAnalyticsClient(
 				},
 				range(start: number, end: number) {
 					if (table === 'coffee_catalog' && state.columns === 'country, source, wholesale') {
+						if (options.hangCoverageQueries) {
+							return new Promise(() => {});
+						}
 						const wholesale = state.filters.find(
 							(filter) => filter.method === 'eq' && filter.column === 'wholesale'
 						)?.value;
@@ -407,6 +439,13 @@ function createAnalyticsClient(
 					onfulfilled?: ((value: unknown) => TResult1 | PromiseLike<TResult1>) | null,
 					onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
 				) {
+					if (
+						table === 'coffee_catalog' &&
+						state.selectOptions?.head &&
+						options.hangCoverageQueries
+					) {
+						return new Promise(() => {}).then(onfulfilled, onrejected);
+					}
 					return Promise.resolve(resolveTableResult(table, state)).then(onfulfilled, onrejected);
 				}
 			};
@@ -416,15 +455,29 @@ function createAnalyticsClient(
 	};
 }
 
-function createLoadEvent(client: ReturnType<typeof createAnalyticsClient>) {
+function createLoadEvent(
+	client: ReturnType<typeof createAnalyticsClient>,
+	locals: { session?: unknown; role?: string } = {}
+) {
 	return {
 		url: new URL('https://example.com/analytics'),
 		locals: {
 			supabase: client,
-			session: null,
-			role: 'viewer'
+			session: locals.session ?? null,
+			role: locals.role ?? 'viewer'
 		}
 	} as never;
+}
+
+function createSession() {
+	return { user: { id: 'user-1', email: 'user@example.com' } };
+}
+
+async function runLoad(
+	client: ReturnType<typeof createAnalyticsClient>,
+	locals: { session?: unknown; role?: string } = {}
+): Promise<StreamedLoadResult> {
+	return (await load(createLoadEvent(client, locals))) as unknown as StreamedLoadResult;
 }
 
 describe('loadPriceSnapshotsPaginated', () => {
@@ -490,14 +543,112 @@ describe('analytics load', () => {
 		const client = createAnalyticsClient([{ data: [], error: null }]);
 		currentPriceIndexClient = client;
 
-		const result = (await load(createLoadEvent(client))) as { meta: Record<string, unknown> };
+		const result = await runLoad(client);
 
 		expect(result.meta.title).toBe('Green Coffee Market Visibility | Parchment Market Index');
 		expect(result.meta.ogTitle).toBe('Green Coffee Market Visibility — Parchment Market Index');
 		expect(result.meta.twitterTitle).toBe(
 			'Green Coffee Market Visibility — Parchment Market Index'
 		);
+		expect(result.meta.schemaData).toMatchObject({
+			'@graph': expect.arrayContaining([
+				expect.objectContaining({
+					'@type': 'Dataset',
+					dateModified: '2026-04-08'
+				})
+			])
+		});
 		expect(JSON.stringify(result.meta)).not.toContain('Purveyors');
+		await Promise.all([result.analyticsCoverage, result.analyticsCharts, result.analyticsMember]);
+	});
+
+	it('omits Dataset dateModified when no market summary freshness date exists', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }], {
+			marketSummaryDate: null
+		});
+		currentPriceIndexClient = client;
+
+		const result = await runLoad(client);
+		const schemaData = result.meta.schemaData as { '@graph': Array<Record<string, unknown>> };
+		const dataset = schemaData['@graph'].find((entry) => entry['@type'] === 'Dataset');
+
+		expect(dataset).toBeTruthy();
+		expect(dataset).not.toHaveProperty('dateModified');
+		await Promise.all([result.analyticsCoverage, result.analyticsCharts, result.analyticsMember]);
+	});
+
+	it('builds the SSR preview from the market summary alone and streams the rest', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }], {
+			hangCoverageQueries: true
+		});
+		currentPriceIndexClient = client;
+
+		// Coverage counts, coverage pagination, and movement queries all hang; the
+		// route load must still resolve because only market_daily_summary blocks
+		// the first response.
+		const result = await runLoad(client);
+
+		expect(client.summaryReadCounts.marketSummary).toBe(1);
+		expect(result.analyticsPreview.stats).toMatchObject({
+			totalSuppliers: 39,
+			originsCount: 18,
+			stockedOrigins: 18,
+			stockedSuppliers: 39,
+			lastUpdated: '2026-04-08'
+		});
+		// Preview never claims scoped coverage it has not measured.
+		expect(result.analyticsPreview.stats.stockedRetailBeans).toBe(0);
+		expect(result.analyticsPreview.stats.totalBeansTracked).toBe(0);
+		await result.analyticsCharts;
+		await result.analyticsMember;
+	});
+
+	it('streams exact counts, coverage breadth, and movement velocity in the coverage payload', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }], {
+			originCoverageRows: [
+				{ country: 'Colombia', source: 'Atlas', wholesale: false },
+				{ country: 'Colombia', source: 'Atlas', wholesale: false },
+				{ country: 'Ethiopia', source: 'Cafe Imports', wholesale: false },
+				{ country: 'Brazil', source: 'Royal', wholesale: true },
+				{ country: 'Colombia', source: 'Royal', wholesale: true },
+				{ country: null, source: 'Wholesale Only Supplier', wholesale: true }
+			]
+		});
+		currentPriceIndexClient = client;
+
+		const result = await runLoad(client);
+		const coverage = await result.analyticsCoverage;
+
+		expect(coverage.stats.originsCount).toBe(18);
+		expect(coverage.stats.totalSuppliers).toBe(39);
+		expect(coverage.stats.totalBeansTracked).toBe(150);
+		expect(coverage.stats.stockedRetailBeans).toBe(42);
+		expect(coverage.stats.stockedWholesaleBeans).toBe(11);
+		expect(coverage.stats.stockedRetailOrigins).toBe(2);
+		expect(coverage.stats.stockedWholesaleOrigins).toBe(2);
+		expect(coverage.stats.stockedOrigins).toBe(3);
+		expect(coverage.stats.stockedRetailSuppliers).toBe(2);
+		expect(coverage.stats.stockedWholesaleSuppliers).toBe(2);
+		expect(coverage.stats.stockedSuppliers).toBe(4);
+		expect(coverage.movementCounts).toEqual({
+			available: true,
+			arrivals: { sevenDay: { retail: 5, wholesale: 2 }, thirtyDay: { retail: 14, wholesale: 7 } },
+			delistings: { sevenDay: { retail: 3, wholesale: 1 }, thirtyDay: { retail: 10, wholesale: 4 } }
+		});
+	});
+
+	it('marks movement counts unavailable when scoped count queries fail', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }], {
+			movementCountError: true
+		});
+		currentPriceIndexClient = client;
+
+		const result = await runLoad(client);
+		const coverage = await result.analyticsCoverage;
+
+		expect(coverage.movementCounts.available).toBe(false);
+		expect(coverage.movementCounts.arrivals.sevenDay.retail).toBe(0);
+		expect(coverage.movementCounts.delistings.thirtyDay.wholesale).toBe(0);
 	});
 
 	it('does not serialize named movement rows to non-Intelligence visitors', async () => {
@@ -527,13 +678,31 @@ describe('analytics load', () => {
 		});
 		currentPriceIndexClient = client;
 
-		const result = (await load(createLoadEvent(client))) as {
-			recentArrivals: import('./+page.server').ArrivalBean[];
-			recentDelistings: import('./+page.server').DelistingBean[];
-		};
+		const result = await runLoad(client);
+		const member = await result.analyticsMember;
 
-		expect(result.recentArrivals).toEqual([]);
-		expect(result.recentDelistings).toEqual([]);
+		expect(member.recentArrivals).toEqual([]);
+		expect(member.recentDelistings).toEqual([]);
+	});
+
+	it('skips catalog evidence and gated member queries entirely for anonymous visitors', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }]);
+		currentPriceIndexClient = client;
+
+		const result = await runLoad(client);
+		await Promise.all([result.analyticsCoverage, result.analyticsCharts, result.analyticsMember]);
+
+		const catalogSelects = client.selectCalls.filter((call) => call.startsWith('coffee_catalog:'));
+		expect(catalogSelects.filter((call) => call.includes('processing, wholesale'))).toHaveLength(0);
+		expect(
+			catalogSelects.filter((call) => call.includes('country, price_per_lb, wholesale'))
+		).toHaveLength(0);
+		expect(catalogSelects.filter((call) => call.includes('bag_size'))).toHaveLength(0);
+		expect(
+			client.selectCalls.filter((call) => call.startsWith('supplier_daily_stats:'))
+		).toHaveLength(0);
+		// Named movement-row selects (non-head stocked_date/unstocked_date reads) never run.
+		expect(client.movementCutoffs).toEqual({ arrivals: [], delistings: [] });
 	});
 
 	it('keeps named movement rows available for Parchment Intelligence users', async () => {
@@ -557,12 +726,11 @@ describe('analytics load', () => {
 			role: 'viewer'
 		});
 
-		const result = (await load(createLoadEvent(client))) as {
-			recentArrivals: import('./+page.server').ArrivalBean[];
-		};
+		const result = await runLoad(client, { session: createSession() });
+		const member = await result.analyticsMember;
 
-		expect(result.recentArrivals).toHaveLength(1);
-		expect(result.recentArrivals[0]).toMatchObject({
+		expect(member.recentArrivals).toHaveLength(1);
+		expect(member.recentArrivals[0]).toMatchObject({
 			name: 'Wholesale member lot',
 			wholesale: true
 		});
@@ -577,7 +745,8 @@ describe('analytics load', () => {
 			role: 'viewer'
 		});
 
-		await load(createLoadEvent(anonymousClient));
+		const anonymousResult = await runLoad(anonymousClient);
+		await anonymousResult.analyticsCharts;
 		expect(anonymousClient.snapshotFromDates).toEqual(['2026-01-08']);
 
 		const memberClient = createAnalyticsClient([{ data: [], error: null }]);
@@ -588,7 +757,9 @@ describe('analytics load', () => {
 			role: 'viewer'
 		});
 
-		await load(createLoadEvent(memberClient));
+		const memberResult = await runLoad(memberClient, { session: createSession() });
+		await memberResult.analyticsCharts;
+		await memberResult.analyticsMember;
 		expect(memberClient.snapshotFromDates).toEqual(['2025-04-08']);
 	});
 
@@ -597,43 +768,19 @@ describe('analytics load', () => {
 			marketSummaryDate: '2026-03-31'
 		});
 		currentPriceIndexClient = client;
+		resolvePrincipalMock.mockResolvedValueOnce({
+			isAuthenticated: true,
+			ppiAccess: true,
+			role: 'viewer'
+		});
 
-		await load(createLoadEvent(client));
+		const result = await runLoad(client, { session: createSession() });
+		await result.analyticsMember;
 
 		expect(client.movementCutoffs).toEqual({
 			arrivals: ['2026-03-01', '2026-03-01'],
 			delistings: ['2026-03-01', '2026-03-01']
 		});
-	});
-
-	it('returns uncapped scoped movement counts for market scope reads', async () => {
-		const client = createAnalyticsClient([{ data: [], error: null }]);
-		currentPriceIndexClient = client;
-
-		const result = (await load(createLoadEvent(client))) as {
-			movementCounts: import('./+page.server').MovementCounts;
-		};
-
-		expect(result.movementCounts).toEqual({
-			available: true,
-			arrivals: { sevenDay: { retail: 5, wholesale: 2 }, thirtyDay: { retail: 14, wholesale: 7 } },
-			delistings: { sevenDay: { retail: 3, wholesale: 1 }, thirtyDay: { retail: 10, wholesale: 4 } }
-		});
-	});
-
-	it('marks movement counts unavailable when scoped count queries fail', async () => {
-		const client = createAnalyticsClient([{ data: [], error: null }], {
-			movementCountError: true
-		});
-		currentPriceIndexClient = client;
-
-		const result = (await load(createLoadEvent(client))) as {
-			movementCounts: import('./+page.server').MovementCounts;
-		};
-
-		expect(result.movementCounts.available).toBe(false);
-		expect(result.movementCounts.arrivals.sevenDay.retail).toBe(0);
-		expect(result.movementCounts.delistings.thirtyDay.wholesale).toBe(0);
 	});
 
 	it('returns origin price ranges for all, retail, and wholesale scopes', async () => {
@@ -649,10 +796,9 @@ describe('analytics load', () => {
 		});
 		currentPriceIndexClient = client;
 
-		const result = (await load(createLoadEvent(client))) as {
-			originRangeData: import('./+page.server').OriginRangeRow[];
-		};
-		const colombiaRanges = result.originRangeData.filter((row) => row.origin === 'Colombia');
+		const result = await runLoad(client, { session: createSession() });
+		const charts = await result.analyticsCharts;
+		const colombiaRanges = charts.originRangeData.filter((row) => row.origin === 'Colombia');
 
 		expect(colombiaRanges.map((row) => row.market_scope).sort()).toEqual([
 			'all',
@@ -712,13 +858,11 @@ describe('analytics load', () => {
 			role: 'viewer'
 		});
 
-		const result = (await load(createLoadEvent(client))) as {
-			comparisonBeans: import('./+page.server').ComparisonBean[];
-			supplierPriceRanges: import('./+page.server').SupplierPriceRange[];
-		};
+		const result = await runLoad(client, { session: createSession() });
+		const member = await result.analyticsMember;
 
-		expect(result.comparisonBeans).toEqual([]);
-		expect(result.supplierPriceRanges).toEqual([
+		expect(member.comparisonBeans).toEqual([]);
+		expect(member.supplierPriceRanges).toEqual([
 			{
 				source: 'Atlas',
 				market: 'retail',
@@ -746,42 +890,6 @@ describe('analytics load', () => {
 		]);
 	});
 
-	it('returns scoped active origin and supplier coverage counts independently from unscoped summary totals', async () => {
-		const client = createAnalyticsClient([{ data: [], error: null }], {
-			originCoverageRows: [
-				{ country: 'Colombia', source: 'Atlas', wholesale: false },
-				{ country: 'Colombia', source: 'Atlas', wholesale: false },
-				{ country: 'Ethiopia', source: 'Cafe Imports', wholesale: false },
-				{ country: 'Brazil', source: 'Royal', wholesale: true },
-				{ country: 'Colombia', source: 'Royal', wholesale: true },
-				{ country: null, source: 'Wholesale Only Supplier', wholesale: true }
-			]
-		});
-		currentPriceIndexClient = client;
-
-		const result = (await load(createLoadEvent(client))) as {
-			stats: {
-				stockedRetailOrigins: number;
-				stockedWholesaleOrigins: number;
-				stockedOrigins: number;
-				stockedRetailSuppliers: number;
-				stockedWholesaleSuppliers: number;
-				stockedSuppliers: number;
-				totalSuppliers: number;
-				originsCount: number;
-			};
-		};
-
-		expect(result.stats.originsCount).toBe(18);
-		expect(result.stats.totalSuppliers).toBe(39);
-		expect(result.stats.stockedRetailOrigins).toBe(2);
-		expect(result.stats.stockedWholesaleOrigins).toBe(2);
-		expect(result.stats.stockedOrigins).toBe(3);
-		expect(result.stats.stockedRetailSuppliers).toBe(2);
-		expect(result.stats.stockedWholesaleSuppliers).toBe(2);
-		expect(result.stats.stockedSuppliers).toBe(4);
-	});
-
 	it('paginates active coverage rows before computing scoped origin and supplier totals', async () => {
 		const retailCoverageRows = Array.from({ length: 1001 }, (_, index) => ({
 			country: `Origin ${index}`,
@@ -793,12 +901,11 @@ describe('analytics load', () => {
 		});
 		currentPriceIndexClient = client;
 
-		const result = (await load(createLoadEvent(client))) as {
-			stats: { stockedRetailOrigins: number; stockedRetailSuppliers: number };
-		};
+		const result = await runLoad(client);
+		const coverage = await result.analyticsCoverage;
 
-		expect(result.stats.stockedRetailOrigins).toBe(1001);
-		expect(result.stats.stockedRetailSuppliers).toBe(1001);
+		expect(coverage.stats.stockedRetailOrigins).toBe(1001);
+		expect(coverage.stats.stockedRetailSuppliers).toBe(1001);
 	});
 
 	it('keeps date-only movement cutoffs stable in east-of-UTC server timezones', async () => {
@@ -810,8 +917,14 @@ describe('analytics load', () => {
 				marketSummaryDate: '2026-03-31'
 			});
 			currentPriceIndexClient = client;
+			resolvePrincipalMock.mockResolvedValueOnce({
+				isAuthenticated: true,
+				ppiAccess: true,
+				role: 'viewer'
+			});
 
-			await load(createLoadEvent(client));
+			const result = await runLoad(client, { session: createSession() });
+			await result.analyticsMember;
 
 			expect(client.movementCutoffs).toEqual({
 				arrivals: ['2026-03-01', '2026-03-01'],
@@ -822,7 +935,7 @@ describe('analytics load', () => {
 		}
 	});
 
-	it('fails the route load when a later snapshot page errors', async () => {
+	it('rejects the streamed charts payload when a later snapshot page errors without failing the route', async () => {
 		const client = createAnalyticsClient([
 			{ data: Array.from({ length: 1000 }, (_, index) => makeSnapshotRow(index)), error: null },
 			{ data: null, error: { message: 'page timeout' } }
@@ -830,8 +943,11 @@ describe('analytics load', () => {
 
 		currentPriceIndexClient = client;
 
-		await expect(load(createLoadEvent(client))).rejects.toThrow(
+		const result = await runLoad(client);
+
+		await expect(result.analyticsCharts).rejects.toThrow(
 			'Failed to load analytics price snapshots page 2: page timeout'
 		);
+		await Promise.all([result.analyticsCoverage, result.analyticsMember]);
 	});
 });

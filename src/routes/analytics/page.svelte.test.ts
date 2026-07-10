@@ -3,6 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import AnalyticsPage from './+page.svelte';
 import type { PageData } from './$types';
+import type {
+	AnalyticsCharts,
+	AnalyticsCoverage,
+	AnalyticsMemberData,
+	AnalyticsPreview
+} from './+page.server';
+import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 
 const {
 	goto,
@@ -76,10 +83,8 @@ async function buildSupplierModules() {
 	};
 }
 
-function createData(overrides: Partial<PageData> = {}): PageData {
+function createBaseline() {
 	return {
-		session: null,
-		isParchmentIntelligence: false,
 		stats: {
 			totalBeansTracked: 120,
 			stockedRetailBeans: 84,
@@ -237,9 +242,71 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 			metadataPurveyorScoreSeries: null,
 			metadataPurveyorScoreConfidenceSeries: null,
 			metadataPurveyorScoreTierSeries: null
-		},
-		role: 'viewer',
-		...overrides
+		}
+	};
+}
+
+function createData(overrides: Record<string, unknown> = {}): PageData {
+	const {
+		session = null,
+		isParchmentIntelligence = false,
+		role = 'viewer',
+		analyticsPreview,
+		analyticsCoverage,
+		analyticsCharts,
+		analyticsMember,
+		...flatOverrides
+	} = overrides as {
+		session?: unknown;
+		isParchmentIntelligence?: boolean;
+		role?: string;
+		analyticsPreview?: AnalyticsPreview;
+		analyticsCoverage?: Promise<AnalyticsCoverage>;
+		analyticsCharts?: Promise<AnalyticsCharts>;
+		analyticsMember?: Promise<AnalyticsMemberData>;
+	} & Record<string, unknown>;
+
+	const base = { ...createBaseline(), ...flatOverrides } as ReturnType<typeof createBaseline>;
+
+	const preview: AnalyticsPreview = analyticsPreview ?? {
+		stats: base.stats,
+		marketSummary: {
+			retail_median_7d_change: null,
+			retail_median_30d_change: null,
+			supply_7d_change: null,
+			supply_30d_change: null
+		}
+	};
+
+	return {
+		session,
+		role,
+		isParchmentIntelligence,
+		analyticsPreview: preview,
+		analyticsCoverage:
+			analyticsCoverage ??
+			Promise.resolve({
+				stats: base.stats,
+				movementCounts: base.movementCounts
+			} as AnalyticsCoverage),
+		analyticsCharts:
+			analyticsCharts ??
+			Promise.resolve({
+				snapshots: base.snapshots,
+				processDistribution: base.processDistribution,
+				originRangeData: base.originRangeData,
+				marketInsights: base.marketInsights
+			} as AnalyticsCharts),
+		analyticsMember:
+			analyticsMember ??
+			Promise.resolve({
+				recentArrivals: base.recentArrivals,
+				recentDelistings: base.recentDelistings,
+				comparisonBeans: base.comparisonBeans,
+				supplierPriceRanges: base.supplierPriceRanges,
+				supplierHealth: base.supplierHealth,
+				trackedLots: base.trackedLots
+			} as AnalyticsMemberData)
 	} as unknown as PageData;
 }
 
@@ -261,17 +328,96 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	pageChatContext.clear();
 	vi.restoreAllMocks();
 });
 
 describe('analytics page loading experience', () => {
+	it('renders the preview market read while streamed datasets are still pending', async () => {
+		const coverage = deferred<AnalyticsCoverage>();
+		const charts = deferred<AnalyticsCharts>();
+		const member = deferred<AnalyticsMemberData>();
+		const baseline = createBaseline();
+
+		const { container } = render(AnalyticsPage, {
+			data: createData({
+				analyticsCoverage: coverage.promise,
+				analyticsCharts: charts.promise,
+				analyticsMember: member.promise
+			})
+		});
+
+		// Preview-backed hero renders immediately with loading-aware phrasing —
+		// never "unavailable" claims for data that is still streaming.
+		await waitFor(() => {
+			expect(screen.getByText(/movement and coverage counts are streaming in/i)).toBeTruthy();
+		});
+		expect(
+			screen.getByText(/price movement is loading with the comparable snapshot layer/i)
+		).toBeTruthy();
+		expect(screen.queryByText(/movement data is unavailable/i)).toBeNull();
+		expect(screen.getByLabelText('Loading market signals')).toBeTruthy();
+		expect(screen.queryByLabelText('Market KPI strip')).toBeNull();
+		expect(container.querySelector('[aria-label="Loading Market Index"]')).toBeTruthy();
+		expect(screen.queryByText('Unlock the full market map.')).toBeNull();
+		expect(pageChatContext.current).toBeNull();
+
+		coverage.resolve({ stats: baseline.stats, movementCounts: baseline.movementCounts });
+		charts.resolve({
+			snapshots: baseline.snapshots,
+			processDistribution: baseline.processDistribution,
+			originRangeData: baseline.originRangeData,
+			marketInsights: baseline.marketInsights
+		} as AnalyticsCharts);
+		member.resolve({
+			recentArrivals: [],
+			recentDelistings: [],
+			comparisonBeans: [],
+			supplierPriceRanges: [],
+			supplierHealth: [],
+			trackedLots: []
+		});
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Market KPI strip')).toBeTruthy();
+		});
+		expect(screen.getByText('Unlock the full market map.')).toBeTruthy();
+		expect(screen.queryByLabelText('Loading market signals')).toBeNull();
+		expect(container.querySelector('[aria-label="Loading Market Index"]')).toBeNull();
+		expect(pageChatContext.current?.summary).toContain('84 stocked listings');
+	});
+
+	it('replaces skeletons with an error notice when a streamed dataset rejects', async () => {
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const { container } = render(AnalyticsPage, {
+			data: createData({
+				analyticsCharts: Promise.reject(new Error('snapshot stream failed'))
+			})
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText('Some market data did not load.')).toBeTruthy();
+		});
+		expect(screen.getByText(/price history and chart evidence/i)).toBeTruthy();
+		// Settled-with-error stops the skeletons instead of pulsing forever.
+		await waitFor(() => {
+			expect(container.querySelector('[aria-label="Loading Market Index"]')).toBeNull();
+		});
+		expect(screen.queryByLabelText('Loading market signals')).toBeNull();
+		// Chat never grounds itself in partially failed data.
+		expect(pageChatContext.current).toBeNull();
+		consoleError.mockRestore();
+	});
+
 	it('shows immediate loading feedback before deferred analytics modules mount', async () => {
 		const trendModule = deferred<Awaited<ReturnType<typeof buildPublicTrendModule>>>();
 		loadPublicTrendAnalyticsModule.mockReturnValueOnce(trendModule.promise);
 
 		render(AnalyticsPage, { data: createData() });
 
-		expect(screen.getByText('Loading market visuals')).toBeTruthy();
+		await waitFor(() => {
+			expect(screen.getByText('Loading market visuals')).toBeTruthy();
+		});
 		expect(
 			screen.getByText(/the overview is ready first\. charts are loading next\./i)
 		).toBeTruthy();
@@ -462,7 +608,7 @@ describe('analytics command center hierarchy', () => {
 					metadataPurveyorScoreConfidenceSeries: null,
 					metadataPurveyorScoreTierSeries: null
 				}
-			} as Partial<PageData>)
+			})
 		});
 
 		await waitFor(() => {
@@ -515,7 +661,7 @@ describe('analytics command center hierarchy', () => {
 					metadataPurveyorScoreConfidenceSeries: null,
 					metadataPurveyorScoreTierSeries: null
 				}
-			} as Partial<PageData>)
+			})
 		});
 
 		await waitFor(() => {
@@ -594,7 +740,7 @@ describe('analytics command center hierarchy', () => {
 					metadataPurveyorScoreConfidenceSeries: null,
 					metadataPurveyorScoreTierSeries: null
 				}
-			} as Partial<PageData>)
+			})
 		});
 
 		await waitFor(() => {
@@ -609,7 +755,7 @@ describe('analytics command center hierarchy', () => {
 	});
 
 	it('scopes coverage supplier-evidence reads with the selected market', async () => {
-		const baseSnapshot = createData().snapshots[0];
+		const baseSnapshot = createBaseline().snapshots[0];
 		render(AnalyticsPage, {
 			data: createData({
 				session: createSession(),
@@ -621,7 +767,7 @@ describe('analytics command center hierarchy', () => {
 						supplier_count: 2,
 						sample_size: 3
 					},
-					{ ...createData().snapshots[1] }
+					{ ...createBaseline().snapshots[1] }
 				]
 			})
 		});
@@ -677,7 +823,7 @@ describe('analytics command center hierarchy', () => {
 						priceDelta: null
 					}
 				]
-			} as Partial<PageData>)
+			})
 		});
 
 		await waitFor(() => {
@@ -903,7 +1049,7 @@ describe('analytics premium boundary copy', () => {
 						}
 					]
 				}
-			} as Partial<PageData>)
+			})
 		});
 
 		await waitFor(() => {
