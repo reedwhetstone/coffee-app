@@ -3,10 +3,14 @@
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
 	import ProfitPageSkeleton from '$lib/components/ProfitPageSkeleton.svelte';
 	import RoastPageSkeleton from '$lib/components/RoastPageSkeleton.svelte';
+	import AnalyticsRouteSkeleton from '$lib/components/analytics/AnalyticsRouteSkeleton.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	import { getRouteSkeletonKind } from './routeSkeletons';
 
-	let { pathname = '/' }: { pathname?: string | null } = $props();
+	let {
+		pathname = '/',
+		isParchmentIntelligence = false
+	}: { pathname?: string | null; isParchmentIntelligence?: boolean } = $props();
 
 	let kind = $derived(getRouteSkeletonKind(pathname));
 
@@ -24,54 +28,7 @@
 	{:else if kind === 'roast'}
 		<RoastPageSkeleton />
 	{:else if kind === 'analytics'}
-		<div class="space-y-6 motion-safe:animate-pulse">
-			<div class="rounded-lg bg-surface-panel p-5 ring-1 ring-line">
-				<div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-					<div class="max-w-3xl flex-1">
-						<Skeleton class="mb-3 h-3 w-28 opacity-30" />
-						<Skeleton class="mb-3 h-9 w-72 max-w-full opacity-50" />
-						<div class="space-y-2">
-							<Skeleton class="h-4 w-full opacity-25" />
-							<Skeleton class="h-4 w-5/6 opacity-25" />
-						</div>
-					</div>
-					<div class="flex gap-2">
-						<Skeleton class="h-9 w-20 opacity-25" />
-						<Skeleton class="h-9 w-24 opacity-25" />
-						<Skeleton class="h-9 w-20 opacity-25" />
-					</div>
-				</div>
-			</div>
-
-			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-				{#each Array.from({ length: 4 }) as _, index (index)}
-					<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-						<Skeleton class="mb-2 h-4 w-24 opacity-30" />
-						<Skeleton class="mb-2 h-8 w-20 opacity-50" />
-						<Skeleton class="h-3 w-32 opacity-25" />
-					</div>
-				{/each}
-			</div>
-
-			<div class="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
-				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-					<Skeleton class="mb-4 h-6 w-40 opacity-50" />
-					<Skeleton class="h-72 w-full opacity-20" />
-				</div>
-				<div class="space-y-4">
-					{#each Array.from({ length: 3 }) as _, index (index)}
-						<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-							<Skeleton class="mb-3 h-5 w-40 opacity-40" />
-							<div class="space-y-2">
-								<Skeleton class="h-3 w-full opacity-20" />
-								<Skeleton class="h-3 w-4/5 opacity-20" />
-								<Skeleton class="h-3 w-3/5 opacity-20" />
-							</div>
-						</div>
-					{/each}
-				</div>
-			</div>
-		</div>
+		<AnalyticsRouteSkeleton mode="route" {isParchmentIntelligence} />
 	{:else if kind === 'chat'}
 		<div
 			class="grid min-h-[min(720px,calc(100vh-10rem))] gap-4 motion-safe:animate-pulse lg:grid-cols-[280px_minmax(0,1fr)]"

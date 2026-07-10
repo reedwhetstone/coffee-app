@@ -66,7 +66,10 @@
 	let contentMargin = $derived(`${activeMenu ? 'md:ml-[22rem]' : 'md:ml-24'} ${rightMargin}`);
 
 	const ROUTE_SKELETON_DELAY_MS = 120;
-	type RouteSkeletonProps = { pathname?: string | null };
+	type RouteSkeletonProps = {
+		pathname?: string | null;
+		isParchmentIntelligence?: boolean;
+	};
 	let RouteSkeletonComponent = $state<Component<RouteSkeletonProps> | null>(null);
 	let navigationSkeletonPathname = $state<string | null>(null);
 
@@ -86,10 +89,17 @@
 
 		let cancelled = false;
 		const timer = window.setTimeout(async () => {
-			const module = await import('$lib/components/layout/RouteSkeleton.svelte');
-			if (cancelled) return;
-			RouteSkeletonComponent = module.default;
-			navigationSkeletonPathname = targetPathname;
+			try {
+				const module = await import('$lib/components/layout/RouteSkeleton.svelte');
+				if (cancelled) return;
+				RouteSkeletonComponent = module.default;
+				navigationSkeletonPathname = targetPathname;
+			} catch (error) {
+				if (!cancelled) {
+					console.error('Failed to load route skeleton:', error);
+					navigationSkeletonPathname = null;
+				}
+			}
 		}, ROUTE_SKELETON_DELAY_MS);
 
 		return () => {
@@ -150,7 +160,10 @@
 {#if isMarketingPage}
 	<div class="min-h-screen">
 		{#if showClientRouteSkeleton}
-			<RouteSkeletonComponent pathname={navigationSkeletonPathname} />
+			<RouteSkeletonComponent
+				pathname={navigationSkeletonPathname}
+				isParchmentIntelligence={data.ppiAccess === true}
+			/>
 		{:else}
 			{@render children()}
 		{/if}
@@ -164,7 +177,10 @@
 		<main class="{contentMargin} min-w-0 flex-1 transition-all duration-300 ease-out">
 			<div class="h-full overflow-x-clip px-4 pb-6 pt-20 sm:px-6 md:px-0 md:pb-0 md:pr-12 md:pt-4">
 				{#if showClientRouteSkeleton}
-					<RouteSkeletonComponent pathname={navigationSkeletonPathname} />
+					<RouteSkeletonComponent
+						pathname={navigationSkeletonPathname}
+						isParchmentIntelligence={data.ppiAccess === true}
+					/>
 				{:else}
 					{@render children()}
 				{/if}
@@ -198,7 +214,10 @@
 		<main class="flex-1">
 			<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
 				{#if showClientRouteSkeleton}
-					<RouteSkeletonComponent pathname={navigationSkeletonPathname} />
+					<RouteSkeletonComponent
+						pathname={navigationSkeletonPathname}
+						isParchmentIntelligence={data.ppiAccess === true}
+					/>
 				{:else}
 					{@render children()}
 				{/if}
