@@ -1244,13 +1244,14 @@
 					</div>
 				</div>
 			</section>
-		{:else if !memberSettled || !coverageSettled}
-			<!-- Member-backed panels wait for the member stream (supplier and
-			     lot-level evidence) AND the coverage stream (the movement counts
-			     the arrivals/delistings panel reports), so entitled users never
-			     see misleading empty or "unavailable" states for data that is
-			     merely still loading. The chart sections above render as soon as
-			     the charts stream settles. -->
+		{:else if isParchmentIntelligence && (!memberSettled || !coverageSettled)}
+			<!-- Intelligence users' evidence panels wait for the member stream
+			     (supplier and lot-level evidence) AND the coverage stream (the
+			     movement counts the arrivals/delistings panel reports), so they
+			     never see misleading empty or "unavailable" states for data that
+			     is merely still loading. Non-Intelligence users get only the
+			     static upgrade teaser below, which consumes neither stream, so
+			     it renders as soon as the charts stream settles. -->
 			<section
 				class="mb-8 grid gap-5 lg:grid-cols-2"
 				aria-busy="true"

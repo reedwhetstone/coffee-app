@@ -485,6 +485,28 @@ describe('analytics page loading experience', () => {
 		});
 	});
 
+	it('shows the upgrade teaser to non-Intelligence users without waiting on member or coverage streams', async () => {
+		const coverage = deferred<AnalyticsCoverage>();
+		const member = deferred<AnalyticsMemberData>();
+
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: false,
+				analyticsCoverage: coverage.promise,
+				analyticsMember: member.promise
+			})
+		});
+
+		// The teaser is static — it consumes neither the member nor the coverage
+		// stream, so pending streams must not hide the upgrade CTA.
+		await waitFor(() => {
+			expect(screen.getByText('The supplier layer runs deeper.')).toBeTruthy();
+		});
+		expect(screen.getByRole('link', { name: 'Start Intelligence' })).toBeTruthy();
+		expect(screen.queryByLabelText('Loading member market evidence')).toBeNull();
+	});
+
 	it('replaces skeletons with an error notice when a streamed dataset rejects', async () => {
 		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { container } = render(AnalyticsPage, {
