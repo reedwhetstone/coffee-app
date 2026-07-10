@@ -30,7 +30,7 @@
 	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
 	import ValueSignalsSection from '$lib/components/analytics/sections/ValueSignalsSection.svelte';
 	import MetadataTrendsSection from '$lib/components/analytics/sections/MetadataTrendsSection.svelte';
-	import AnalyticsRouteSkeleton from '$lib/components/analytics/sections/AnalyticsRouteSkeleton.svelte';
+	import AnalyticsRouteSkeleton from '$lib/components/analytics/AnalyticsRouteSkeleton.svelte';
 	import { getAnalyticsSectionLinks } from '$lib/components/layout/appNavigation';
 	import type { MarketIndexInsights } from '$lib/types/marketIndex.types';
 
@@ -1138,7 +1138,7 @@
 		Index. Detailed charts and supplier evidence could not load.
 	</div>
 {:else if !analyticsPayloadResolved}
-	<AnalyticsRouteSkeleton {isParchmentIntelligence} />
+	<AnalyticsRouteSkeleton mode="deferred" {isParchmentIntelligence} />
 {:else}
 	<ValueSignalsSection
 		valueSignals={marketInsights?.valueSignals ?? null}
