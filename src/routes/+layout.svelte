@@ -7,9 +7,9 @@
 	import MobileAppShell from '$lib/components/layout/MobileAppShell.svelte';
 	import ChatDrawer from '$lib/components/chat/ChatDrawer.svelte';
 	import NavigationProgress from '$lib/components/layout/NavigationProgress.svelte';
-	import RouteSkeleton from '$lib/components/layout/RouteSkeleton.svelte';
 	import { shouldShowClientRouteSkeleton } from '$lib/components/layout/routeSkeletons';
 	import { setContext } from 'svelte';
+	import type { Component } from 'svelte';
 	import { page, navigating } from '$app/stores';
 
 	import type { PageMeta } from '$lib/types/meta.types';
@@ -65,15 +65,44 @@
 	let rightMargin = $derived(rightSidebarOpen || chatDrawerOpen ? 'md:mr-[32rem]' : 'md:mr-0');
 	let contentMargin = $derived(`${activeMenu ? 'md:ml-[22rem]' : 'md:ml-24'} ${rightMargin}`);
 
-	let navigationTargetPathname = $derived($navigating?.to?.url.pathname ?? null);
+	const ROUTE_SKELETON_DELAY_MS = 120;
+	type RouteSkeletonProps = { pathname?: string | null };
+	let RouteSkeletonComponent = $state<Component<RouteSkeletonProps> | null>(null);
+	let navigationSkeletonPathname = $state<string | null>(null);
+
+	// Keep the current route mounted during fast navigations. The progress bar gives
+	// immediate feedback; only a navigation that outlives the threshold swaps to a
+	// destination-shaped skeleton. Importing after the threshold keeps skeleton code
+	// out of the persistent root bundle.
+	$effect(() => {
+		const navigation = $navigating;
+		if (!shouldShowClientRouteSkeleton(navigation?.from?.url, navigation?.to?.url)) {
+			navigationSkeletonPathname = null;
+			return;
+		}
+
+		const targetPathname = navigation?.to?.url.pathname;
+		if (!targetPathname) return;
+
+		let cancelled = false;
+		const timer = window.setTimeout(async () => {
+			const module = await import('$lib/components/layout/RouteSkeleton.svelte');
+			if (cancelled) return;
+			RouteSkeletonComponent = module.default;
+			navigationSkeletonPathname = targetPathname;
+		}, ROUTE_SKELETON_DELAY_MS);
+
+		return () => {
+			cancelled = true;
+			window.clearTimeout(timer);
+			navigationSkeletonPathname = null;
+		};
+	});
+
 	let showClientRouteSkeleton = $derived(
-		shouldShowClientRouteSkeleton($navigating?.from?.url, $navigating?.to?.url)
+		Boolean(RouteSkeletonComponent && navigationSkeletonPathname)
 	);
-	let pathname = $derived(
-		showClientRouteSkeleton && navigationTargetPathname
-			? navigationTargetPathname
-			: $page.url.pathname
-	);
+	let pathname = $derived(navigationSkeletonPathname ?? $page.url.pathname);
 	let isMarketingPage = $derived(pathname === '/');
 	let usesPublicShell = $derived(
 		pathname === '/' ||
@@ -121,7 +150,7 @@
 {#if isMarketingPage}
 	<div class="min-h-screen">
 		{#if showClientRouteSkeleton}
-			<RouteSkeleton pathname={navigationTargetPathname} />
+			<RouteSkeletonComponent pathname={navigationSkeletonPathname} />
 		{:else}
 			{@render children()}
 		{/if}
@@ -135,7 +164,7 @@
 		<main class="{contentMargin} min-w-0 flex-1 transition-all duration-300 ease-out">
 			<div class="h-full overflow-x-clip px-4 pb-6 pt-20 sm:px-6 md:px-0 md:pb-0 md:pr-12 md:pt-4">
 				{#if showClientRouteSkeleton}
-					<RouteSkeleton pathname={navigationTargetPathname} />
+					<RouteSkeletonComponent pathname={navigationSkeletonPathname} />
 				{:else}
 					{@render children()}
 				{/if}
@@ -169,7 +198,7 @@
 		<main class="flex-1">
 			<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
 				{#if showClientRouteSkeleton}
-					<RouteSkeleton pathname={navigationTargetPathname} />
+					<RouteSkeletonComponent pathname={navigationSkeletonPathname} />
 				{:else}
 					{@render children()}
 				{/if}

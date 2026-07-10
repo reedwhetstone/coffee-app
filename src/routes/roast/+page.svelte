@@ -361,9 +361,6 @@
 			const result = await response.json();
 			const profiles = result.profiles || result; // Handle both new and legacy response formats
 
-			// Close form immediately on successful response
-			hideRoastForm();
-
 			if (profiles && profiles.length > 0) {
 				// Update the selected bean and current profile
 				selectedBean = {

@@ -3,7 +3,7 @@
 	// No props needed - pure skeleton structure
 </script>
 
-<div class="animate-pulse">
+<div class="motion-safe:animate-pulse">
 	<!-- Header Section -->
 	<div class="mb-6">
 		<Skeleton class="mb-2 h-8 w-64 opacity-50" />

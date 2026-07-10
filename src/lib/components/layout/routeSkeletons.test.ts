@@ -11,7 +11,7 @@ describe('route skeleton registry', () => {
 		expect(getRouteSkeletonKind('/profit')).toBe('profit');
 		expect(getRouteSkeletonKind('/roast')).toBe('roast');
 		expect(getRouteSkeletonKind('/subscription')).toBe('subscription');
-		expect(getRouteSkeletonKind('/subscription/success')).toBe('subscription');
+		expect(getRouteSkeletonKind('/subscription/success')).toBe('subscription-success');
 		expect(getRouteSkeletonKind('/api-dashboard/usage')).toBe('dashboard');
 	});
 

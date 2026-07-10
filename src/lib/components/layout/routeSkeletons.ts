@@ -7,6 +7,7 @@ export type RouteSkeletonKind =
 	| 'profit'
 	| 'roast'
 	| 'subscription'
+	| 'subscription-success'
 	| 'generic';
 
 export function getRouteSkeletonKind(pathname: string | null | undefined): RouteSkeletonKind {
@@ -18,6 +19,7 @@ export function getRouteSkeletonKind(pathname: string | null | undefined): Route
 	if (path === '/chat' || path.startsWith('/chat/')) return 'chat';
 	if (path === '/profit' || path.startsWith('/profit/')) return 'profit';
 	if (path === '/roast' || path.startsWith('/roast/')) return 'roast';
+	if (path === '/subscription/success') return 'subscription-success';
 	if (path === '/subscription' || path.startsWith('/subscription/')) return 'subscription';
 	if (
 		path === '/dashboard' ||

@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { prepareDateForAPI } from '$lib/utils/dates';
-	import { loadingStore } from '$lib/stores/loadingStore';
 	import LoadingButton from '$lib/components/LoadingButton.svelte';
 	import type { RoastFormData } from '$lib/types/component.types';
 
@@ -134,15 +133,10 @@
 		}
 	}
 
-	async function uploadArtisanFile(
-		roastId: number,
-		file: File,
-		operationId: string,
-		beanIndex: number
-	) {
+	async function uploadArtisanFile(roastId: number, file: File, beanIndex: number) {
 		console.log(`Uploading Artisan file ${file.name} for roast ID ${roastId}`);
 
-		loadingStore.update(operationId, `Uploading Artisan file for bean ${beanIndex + 1}...`);
+		submissionMessage = `Uploading Artisan file for bean ${beanIndex + 1}...`;
 
 		const formData = new FormData();
 		formData.append('file', file);
@@ -165,6 +159,7 @@
 	}
 
 	let isSubmitting = $state(false);
+	let submissionMessage = $state<string | null>(null);
 
 	async function handleSubmit() {
 		if (!batchBeans || !batchBeans.length) {
@@ -172,11 +167,9 @@
 			return;
 		}
 
-		const operationId = 'create-roast-profiles';
-
 		try {
 			isSubmitting = true;
-			loadingStore.start(operationId, 'Creating roast profiles...');
+			submissionMessage = 'Creating roast profiles...';
 
 			const dataForAPI = {
 				batch_name: formData.batch_name,
@@ -192,7 +185,7 @@
 			};
 
 			// Submit the roast profile data using parent callback
-			loadingStore.update(operationId, 'Saving roast profiles to database...');
+			submissionMessage = 'Saving roast profiles to database...';
 			const roastProfilesResponse = await onSubmit(dataForAPI);
 			console.log('Roast profiles response:', roastProfilesResponse);
 
@@ -205,7 +198,7 @@
 				);
 
 				if (filesToUpload.length > 0) {
-					loadingStore.update(operationId, 'Uploading Artisan files...');
+					submissionMessage = 'Uploading Artisan files...';
 
 					for (let i = 0; i < batchBeans.length; i++) {
 						const bean = batchBeans[i];
@@ -215,7 +208,7 @@
 
 						if (bean.artisan_file && roastId) {
 							try {
-								await uploadArtisanFile(roastId, bean.artisan_file, operationId, i);
+								await uploadArtisanFile(roastId, bean.artisan_file, i);
 								console.log(`Successfully uploaded Artisan file for roast ${roastId}`);
 							} catch (fileError) {
 								console.error(`Failed to upload Artisan file for roast ${roastId}:`, fileError);
@@ -230,16 +223,16 @@
 				console.log('No roast IDs returned or roast_ids is not an array:', roastProfilesResponse);
 			}
 
-			loadingStore.update(operationId, 'Finalizing roast profiles...');
+			submissionMessage = 'Finalizing roast profiles...';
 			// Small delay to show completion message
 			await new Promise((resolve) => setTimeout(resolve, 500));
-			loadingStore.complete(operationId);
+			onClose();
 		} catch (error) {
-			loadingStore.complete(operationId);
 			console.error('Error submitting profile:', error);
 			alert(error instanceof Error ? error.message : 'Failed to save roast profiles');
 		} finally {
 			isSubmitting = false;
+			submissionMessage = null;
 		}
 	}
 </script>
@@ -435,6 +428,11 @@
 
 <!-- Footer -->
 <div class="shrink-0 border-t border-accent/20 p-4 sm:p-6">
+	{#if submissionMessage}
+		<p class="mb-3 text-right text-sm font-medium text-info-strong" aria-live="polite">
+			{submissionMessage}
+		</p>
+	{/if}
 	<div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
 		<button
 			type="button"
@@ -447,7 +445,7 @@
 		<LoadingButton
 			variant="primary"
 			loading={isSubmitting}
-			loadingText="Creating Profiles..."
+			loadingText={submissionMessage ?? 'Creating Profiles...'}
 			onclick={handleSubmit}
 			disabled={coffeesLoading}
 		>

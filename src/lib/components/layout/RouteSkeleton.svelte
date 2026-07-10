@@ -24,7 +24,7 @@
 	{:else if kind === 'roast'}
 		<RoastPageSkeleton />
 	{:else if kind === 'analytics'}
-		<div class="animate-pulse space-y-6">
+		<div class="space-y-6 motion-safe:animate-pulse">
 			<div class="rounded-lg bg-surface-panel p-5 ring-1 ring-line">
 				<div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
 					<div class="max-w-3xl flex-1">
@@ -74,7 +74,7 @@
 		</div>
 	{:else if kind === 'chat'}
 		<div
-			class="grid min-h-[min(720px,calc(100vh-10rem))] animate-pulse gap-4 lg:grid-cols-[280px_minmax(0,1fr)]"
+			class="grid min-h-[min(720px,calc(100vh-10rem))] gap-4 motion-safe:animate-pulse lg:grid-cols-[280px_minmax(0,1fr)]"
 		>
 			<aside class="hidden rounded-lg bg-surface-panel p-4 ring-1 ring-line lg:block">
 				<Skeleton class="mb-4 h-7 w-40 opacity-50" />
@@ -109,7 +109,7 @@
 			</section>
 		</div>
 	{:else if kind === 'dashboard'}
-		<div class="animate-pulse space-y-6">
+		<div class="space-y-6 motion-safe:animate-pulse">
 			<div>
 				<Skeleton class="mb-3 h-8 w-64 max-w-full opacity-50" />
 				<Skeleton class="h-4 w-96 max-w-full opacity-30" />
@@ -129,7 +129,7 @@
 			</div>
 		</div>
 	{:else if kind === 'subscription'}
-		<div class="animate-pulse space-y-8">
+		<div class="space-y-8 motion-safe:animate-pulse">
 			<div class="mx-auto max-w-4xl text-center">
 				<Skeleton class="mx-auto mb-3 h-4 w-32 opacity-30" />
 				<Skeleton class="mx-auto mb-3 h-10 w-[32rem] max-w-full opacity-50" />
@@ -155,8 +155,20 @@
 				{/each}
 			</div>
 		</div>
+	{:else if kind === 'subscription-success'}
+		<div
+			class="mx-auto flex min-h-[28rem] max-w-xl items-center justify-center px-4 motion-safe:animate-pulse"
+			data-testid="subscription-verification-skeleton"
+		>
+			<div class="w-full rounded-lg bg-surface-panel p-8 text-center ring-1 ring-line">
+				<Skeleton class="mx-auto mb-6 h-14 w-14 opacity-35" rounded="rounded-full" />
+				<Skeleton class="mx-auto mb-3 h-8 w-72 max-w-full opacity-50" />
+				<Skeleton class="mx-auto mb-2 h-4 w-96 max-w-full opacity-25" />
+				<Skeleton class="mx-auto h-4 w-64 max-w-full opacity-25" />
+			</div>
+		</div>
 	{:else}
-		<div class="animate-pulse space-y-6">
+		<div class="space-y-6 motion-safe:animate-pulse">
 			<div>
 				<Skeleton class="mb-3 h-8 w-64 max-w-full opacity-50" />
 				<Skeleton class="h-4 w-96 max-w-full opacity-30" />

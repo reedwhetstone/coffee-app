@@ -15,7 +15,6 @@
 	// Cast filtered data to the correct type for this page
 	let typedFilteredData = $derived($filteredData as unknown as InventoryWithCatalog[]);
 	import BeansPageSkeleton from '$lib/components/BeansPageSkeleton.svelte';
-	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type {
 		InventoryWithCatalog,
@@ -650,13 +649,7 @@
 
 			<!-- Coffee Cards -->
 			<div class="flex-1">
-				{#if isLoading}
-					<SimpleLoadingScreen
-						show={true}
-						message="Loading your coffee inventory..."
-						overlay={false}
-					/>
-				{:else if !typedFilteredData || typedFilteredData.length === 0}
+				{#if !typedFilteredData || typedFilteredData.length === 0}
 					<div class="rounded-lg bg-surface-panel p-8 text-center ring-1 ring-line">
 						<div class="mb-4 text-6xl opacity-50">☕</div>
 						<h3 class="mb-2 text-lg font-semibold text-ink">

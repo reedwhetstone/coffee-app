@@ -33,6 +33,15 @@ describe('RouteSkeleton', () => {
 		expect(document.querySelectorAll('[class*="surface-panel"]').length).toBeGreaterThanOrEqual(4);
 	});
 
+	it('renders a centered verification skeleton for subscription success', () => {
+		render(RouteSkeleton, { pathname: '/subscription/success' });
+
+		expect(screen.getByTestId('subscription-verification-skeleton')).toBeInTheDocument();
+		expect(
+			document.querySelectorAll('[data-testid="subscription-verification-skeleton"]')
+		).toHaveLength(1);
+	});
+
 	it('renders a generic skeleton for unmapped routes', () => {
 		render(RouteSkeleton, { pathname: '/settings' });
 

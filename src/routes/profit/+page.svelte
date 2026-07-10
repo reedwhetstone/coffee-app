@@ -48,6 +48,8 @@
 	let profitData = $state<ProfitData[]>([]);
 	// Removed unused roastProfileData
 	let salesData = $state<SaleData[]>([]);
+	let isLoading = $state(true);
+	let loadError = $state<string | null>(null);
 	let { data = { role: 'viewer' } } = $props<{ data?: { role?: UserRole } }>();
 	let canLogSales = $derived(canUseMallardControls(data?.role ?? 'viewer'));
 	let isFormVisible = $derived(canLogSales && page.url.searchParams.get('modal') === 'new');
@@ -160,8 +162,14 @@
 	// Convert onMount to use $effect
 	$effect(() => {
 		const fetchData = async () => {
-			await fetchInitialSalesData();
-			await fetchFormData();
+			try {
+				await Promise.all([fetchInitialSalesData(), fetchFormData()]);
+			} catch (error) {
+				console.error('Error loading profit data:', error);
+				loadError = error instanceof Error ? error.message : 'Failed to load profit data';
+			} finally {
+				isLoading = false;
+			}
 		};
 
 		fetchData();
@@ -181,6 +189,19 @@
 		const data = await response.json();
 		salesData = data.sales || [];
 		profitData = data.profit || [];
+	}
+
+	async function retryInitialLoad() {
+		isLoading = true;
+		loadError = null;
+		try {
+			await fetchInitialSalesData();
+		} catch (error) {
+			console.error('Error retrying profit data:', error);
+			loadError = error instanceof Error ? error.message : 'Failed to load profit data';
+		} finally {
+			isLoading = false;
+		}
 	}
 
 	function hideForm() {
@@ -221,9 +242,44 @@
 	/>
 </FormShell>
 
-<!-- Mounted-page data skeleton; client navigation shells are handled by the root layout. -->
-{#if profitData.length === 0 && salesData.length === 0}
+<!-- Mounted-page states; client navigation shells are handled by the root layout. -->
+{#if isLoading}
 	<ProfitPageSkeleton />
+{:else if loadError}
+	<div class="rounded-lg bg-danger-subtle p-8 text-center ring-1 ring-danger/30">
+		<h2 class="text-xl font-semibold text-danger-strong">Profit data could not be loaded</h2>
+		<p class="mx-auto mt-2 max-w-xl text-danger">{loadError}</p>
+		<button
+			type="button"
+			onclick={retryInitialLoad}
+			class="mt-5 rounded-md bg-danger px-4 py-2 font-medium text-white transition-colors hover:bg-danger-strong"
+		>
+			Try again
+		</button>
+	</div>
+{:else if profitData.length === 0 && salesData.length === 0}
+	<div class="rounded-lg bg-surface-panel p-8 text-center ring-1 ring-line">
+		<h2 class="text-xl font-semibold text-ink">No profit activity yet</h2>
+		<p class="mx-auto mt-2 max-w-xl text-muted">
+			Profit and margin insights will appear after purchased coffee and sales are recorded.
+		</p>
+		<div class="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
+			<a
+				href="/beans"
+				class="rounded-md border border-accent px-4 py-2 font-medium text-accent transition-colors hover:bg-accent hover:text-ink"
+			>
+				Review portfolio
+			</a>
+			{#if canLogSales}
+				<a
+					href="/profit?modal=new"
+					class="rounded-md bg-accent px-4 py-2 font-medium text-ink transition-colors hover:bg-accent/80"
+				>
+					Log first sale
+				</a>
+			{/if}
+		</div>
+	</div>
 {:else}
 	<div class="space-y-6">
 		<OperationsHero
