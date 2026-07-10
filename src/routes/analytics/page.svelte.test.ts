@@ -450,6 +450,41 @@ describe('analytics page loading experience', () => {
 		});
 	});
 
+	it('keeps member movement evidence loading until coverage resolves', async () => {
+		const coverage = deferred<AnalyticsCoverage>();
+		const baseline = createBaseline();
+
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				analyticsCoverage: coverage.promise
+			})
+		});
+
+		// Charts and member settled while coverage is still pending: chart
+		// sections render…
+		await waitFor(() => {
+			expect(screen.getAllByText('Origin price trends').length).toBeGreaterThan(0);
+		});
+		// …but the member/movement panel stays in its loading state instead of
+		// reporting the empty fallback counts as unavailable movement data.
+		expect(screen.getByLabelText('Loading member market evidence')).toBeTruthy();
+		expect(screen.queryByText(/movement counts are currently unavailable/i)).toBeNull();
+
+		coverage.resolve({
+			stats: baseline.stats,
+			movementCounts: baseline.movementCounts
+		} as AnalyticsCoverage);
+
+		await waitFor(() => {
+			expect(screen.queryByLabelText('Loading member market evidence')).toBeNull();
+		});
+		await waitFor(() => {
+			expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();
+		});
+	});
+
 	it('replaces skeletons with an error notice when a streamed dataset rejects', async () => {
 		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { container } = render(AnalyticsPage, {

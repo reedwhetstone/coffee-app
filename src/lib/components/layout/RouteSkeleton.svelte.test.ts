@@ -19,6 +19,18 @@ describe('RouteSkeleton', () => {
 		});
 	});
 
+	it('shows an inline fallback shell until the lazy destination skeleton resolves', async () => {
+		render(RouteSkeleton, { pathname: '/catalog' });
+
+		// The main area must never be blank while the destination chunk is in
+		// flight — the layout has already unmounted the previous page.
+		expect(screen.getByTestId('route-skeleton-fallback')).toBeInTheDocument();
+
+		await waitFor(() => {
+			expect(screen.queryByTestId('route-skeleton-fallback')).not.toBeInTheDocument();
+		});
+	});
+
 	it('renders the shared analytics skeleton contract for analytics navigation', async () => {
 		const { container } = render(RouteSkeleton, { pathname: '/analytics' });
 
