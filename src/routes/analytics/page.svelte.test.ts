@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import AnalyticsPage from './+page.svelte';
 import type { PageData } from './$types';
-import type { AnalyticsPayload } from './+page.server';
+import type { AnalyticsPayload, AnalyticsPayloadResult } from './+page.server';
 import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 
 const {
@@ -95,6 +95,8 @@ function createAnalyticsPayload(overrides: Partial<AnalyticsPayload> = {}): Anal
 			lastUpdated: '2026-04-08'
 		},
 		marketSummary: {
+			total_stocked: 102,
+			retail_median: 4.1,
 			retail_median_7d_change: null,
 			retail_median_30d_change: null,
 			supply_7d_change: null,
@@ -251,7 +253,7 @@ function createAnalyticsPayload(overrides: Partial<AnalyticsPayload> = {}): Anal
 function createData(
 	overrides: Partial<AnalyticsPayload> &
 		Partial<Pick<PageData, 'session' | 'isParchmentIntelligence' | 'role'>> & {
-			analyticsPayload?: Promise<AnalyticsPayload>;
+			analyticsPayload?: Promise<AnalyticsPayloadResult>;
 			analyticsPreview?: AnalyticsPayload;
 		} = {}
 ): PageData {
@@ -270,7 +272,8 @@ function createData(
 		isParchmentIntelligence,
 		role,
 		analyticsPreview: analyticsPreview ?? payload,
-		analyticsPayload: analyticsPayload ?? Promise.resolve(payload)
+		analyticsPayload:
+			analyticsPayload ?? Promise.resolve({ status: 'resolved' as const, data: payload })
 	} as unknown as PageData;
 }
 
@@ -298,7 +301,7 @@ afterEach(() => {
 
 describe('analytics page loading experience', () => {
 	it('renders the preview market read while the full analytics payload is still streaming', async () => {
-		const payload = deferred<AnalyticsPayload>();
+		const payload = deferred<AnalyticsPayloadResult>();
 		const preview = createAnalyticsPayload({
 			snapshots: [],
 			processDistribution: [],
@@ -320,17 +323,19 @@ describe('analytics page loading experience', () => {
 			data: createData({ analyticsPreview: preview, analyticsPayload: payload.promise })
 		});
 
-		expect(screen.getByText(/7-day movement: 1 arrivals and 1 delistings/i)).toBeTruthy();
-		expect(screen.getByText(/84 active retail listings/i)).toBeTruthy();
+		expect(screen.getByText(/the latest market snapshot is ready/i)).toBeTruthy();
 		expect(
-			screen.getByText(/price movement is loading with the comparable snapshot layer/i)
+			screen.getByText(/102 active listings across 12 suppliers across 7 origins/i)
+		).toBeTruthy();
+		expect(
+			screen.getByText(/scoped movement, coverage, and comparable price evidence are loading next/i)
 		).toBeTruthy();
 		expect(screen.queryByText(/price movement needs another comparable snapshot/i)).toBeNull();
-		expect(container.querySelector('[aria-label="Loading Market Index"]')).toBeTruthy();
+		expect(container.querySelector('[aria-label="Loading Market Index details"]')).toBeTruthy();
 		expect(screen.queryByText('Unlock the full market map.')).toBeNull();
 		expect(pageChatContext.current).toBeNull();
 
-		payload.resolve(createAnalyticsPayload());
+		payload.resolve({ status: 'resolved', data: createAnalyticsPayload() });
 
 		await waitFor(() => {
 			expect(screen.getByText('Unlock the full market map.')).toBeTruthy();
@@ -339,8 +344,36 @@ describe('analytics page loading experience', () => {
 		expect(pageChatContext.current?.summary).toContain('84 stocked listings');
 	});
 
+	it('settles into a stable preview-only state when the streamed payload fails', async () => {
+		const payload = deferred<AnalyticsPayloadResult>();
+		render(AnalyticsPage, {
+			data: createData({ analyticsPayload: payload.promise })
+		});
+
+		expect(screen.getByLabelText('Loading market signals')).toBeTruthy();
+		expect(screen.getByLabelText('Loading Market Index details')).toBeTruthy();
+
+		payload.resolve({
+			status: 'failed',
+			message: 'Market data could not be loaded. Retry the page in a moment.'
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText('Market data did not load.')).toBeTruthy();
+		});
+		expect(screen.getByRole('link', { name: 'Retry market data' })).toHaveAttribute(
+			'href',
+			'/analytics'
+		);
+		expect(screen.queryByLabelText('Loading market signals')).toBeNull();
+		expect(screen.queryByLabelText('Loading Market Index details')).toBeNull();
+		expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+		expect(document.querySelector('.animate-pulse')).toBeNull();
+		expect(screen.getByText(/last confirmed preview/i)).toBeTruthy();
+	});
+
 	it('withholds snapshot-derived signal cards until the full analytics payload resolves', async () => {
-		const payload = deferred<AnalyticsPayload>();
+		const payload = deferred<AnalyticsPayloadResult>();
 		const preview = createAnalyticsPayload({
 			snapshots: [],
 			processDistribution: [],
@@ -359,7 +392,7 @@ describe('analytics page loading experience', () => {
 			screen.queryByText('Week-over-week price movement needs a second comparable snapshot.')
 		).toBeNull();
 
-		payload.resolve(createAnalyticsPayload());
+		payload.resolve({ status: 'resolved', data: createAnalyticsPayload() });
 
 		await waitFor(() => {
 			expect(screen.getByLabelText('Market KPI strip')).toBeTruthy();
@@ -374,7 +407,7 @@ describe('analytics page loading experience', () => {
 
 		const { container } = render(AnalyticsPage, { data: createData() });
 
-		expect(container.querySelector('[aria-label="Loading Market Index"]')).toBeTruthy();
+		expect(container.querySelector('[aria-label="Loading Market Index details"]')).toBeTruthy();
 		await waitFor(() => {
 			expect(screen.getByText('Loading market visuals')).toBeTruthy();
 		});

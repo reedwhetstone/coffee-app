@@ -110,6 +110,10 @@ interface CatalogCoverageRow {
 
 type AnalyticsSummary = Pick<AnalyticsPayload, 'stats' | 'marketSummary' | 'movementCounts'>;
 
+export type AnalyticsPayloadResult =
+	| { status: 'resolved'; data: AnalyticsPayload }
+	| { status: 'failed'; message: string };
+
 export interface MovementWindowCounts {
 	retail: number;
 	wholesale: number;
@@ -157,6 +161,8 @@ export interface AnalyticsPayload {
 		lastUpdated: string | null;
 	};
 	marketSummary: {
+		total_stocked: number | null;
+		retail_median: number | null;
 		retail_median_7d_change: number | null;
 		retail_median_30d_change: number | null;
 		supply_7d_change: number | null;
@@ -352,6 +358,8 @@ function buildEmptyAnalyticsPayload(overrides: Partial<AnalyticsPayload> = {}): 
 			lastUpdated: null
 		},
 		marketSummary: {
+			total_stocked: null,
+			retail_median: null,
 			retail_median_7d_change: null,
 			retail_median_30d_change: null,
 			supply_7d_change: null,
@@ -388,22 +396,52 @@ async function loadLatestMarketSummary(
 	const today = new Date().toISOString().split('T')[0];
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const sb = event.locals.supabase as any;
-	const { data: marketSummaryRaw } = await sb
+	const { data: marketSummaryRaw, error } = await sb
 		.from('market_daily_summary')
-		.select('*')
+		.select(
+			'snapshot_date, total_stocked, total_suppliers, total_origins, retail_median, retail_median_7d_change, retail_median_30d_change, supply_7d_change, supply_30d_change'
+		)
 		.lte('snapshot_date', today)
 		.order('snapshot_date', { ascending: false })
 		.limit(1)
 		.maybeSingle();
+	if (error) throw new Error(`Failed to load latest market summary: ${error.message}`);
 
 	return marketSummaryRaw as MarketSummaryRow | null;
 }
 
+function buildAnalyticsPreview(marketSummary: MarketSummaryRow | null): AnalyticsPayload {
+	return buildEmptyAnalyticsPayload({
+		stats: {
+			totalBeansTracked: 0,
+			stockedRetailBeans: 0,
+			stockedWholesaleBeans: 0,
+			stockedRetailOrigins: 0,
+			stockedWholesaleOrigins: 0,
+			stockedOrigins: marketSummary?.total_origins ?? 0,
+			stockedRetailSuppliers: 0,
+			stockedWholesaleSuppliers: 0,
+			stockedSuppliers: marketSummary?.total_suppliers ?? 0,
+			totalSuppliers: marketSummary?.total_suppliers ?? 0,
+			originsCount: marketSummary?.total_origins ?? 0,
+			lastUpdated: marketSummary?.snapshot_date ?? null
+		},
+		marketSummary: {
+			total_stocked: marketSummary?.total_stocked ?? null,
+			retail_median: marketSummary?.retail_median ?? null,
+			retail_median_7d_change: marketSummary?.retail_median_7d_change ?? null,
+			retail_median_30d_change: marketSummary?.retail_median_30d_change ?? null,
+			supply_7d_change: marketSummary?.supply_7d_change ?? null,
+			supply_30d_change: marketSummary?.supply_30d_change ?? null
+		}
+	});
+}
+
 async function loadAnalyticsSummary(
-	event: Parameters<PageServerLoad>[0]
+	event: Parameters<PageServerLoad>[0],
+	marketSummary: MarketSummaryRow | null
 ): Promise<AnalyticsSummary> {
 	const supabase = event.locals.supabase;
-	const marketSummary = await loadLatestMarketSummary(event);
 	const lastUpdated = marketSummary?.snapshot_date ?? null;
 	const sevenDaysAgoStr = relativeDateString(lastUpdated, 7);
 	const thirtyDaysAgoStr = relativeDateString(lastUpdated, 30);
@@ -545,6 +583,8 @@ async function loadAnalyticsSummary(
 			lastUpdated
 		},
 		marketSummary: {
+			total_stocked: marketSummary?.total_stocked ?? null,
+			retail_median: marketSummary?.retail_median ?? null,
 			retail_median_7d_change: marketSummary?.retail_median_7d_change ?? null,
 			retail_median_30d_change: marketSummary?.retail_median_30d_change ?? null,
 			supply_7d_change: marketSummary?.supply_7d_change ?? null,
@@ -564,15 +604,11 @@ async function loadAnalyticsSummary(
 	};
 }
 
-function buildAnalyticsPreview(analyticsSummary: AnalyticsSummary): AnalyticsPayload {
-	return buildEmptyAnalyticsPayload(analyticsSummary);
-}
-
 async function loadAnalyticsPayload(
 	event: Parameters<PageServerLoad>[0],
 	principal: Awaited<ReturnType<typeof resolvePrincipal>>,
 	isParchmentIntelligence: boolean,
-	analyticsSummaryPromise: Promise<AnalyticsSummary>
+	marketSummaryPromise: Promise<MarketSummaryRow | null>
 ): Promise<AnalyticsPayload> {
 	// ADR-008 decision-surface reads (value signals, movement stats, metadata index).
 	// Kicked off first; resolves in parallel with the Supabase queries below.
@@ -580,6 +616,8 @@ async function loadAnalyticsPayload(
 
 	const today = new Date().toISOString().split('T')[0];
 	const supabase = event.locals.supabase;
+	const marketSummary = await marketSummaryPromise;
+	const analyticsSummaryPromise = loadAnalyticsSummary(event, marketSummary);
 	const analyticsSummary = await analyticsSummaryPromise;
 	const lastUpdated = analyticsSummary.stats.lastUpdated;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -603,6 +641,77 @@ async function loadAnalyticsPayload(
 				return d.toISOString().split('T')[0];
 			})()
 		: fromDate;
+	const emptyRows = Promise.resolve({ data: [] as unknown[], error: null });
+	const processingRowsPromise = principal.isAuthenticated
+		? supabase
+				.from('coffee_catalog')
+				.select('processing, wholesale')
+				.eq('stocked', true)
+				.not('processing', 'is', null)
+				.limit(5000)
+		: emptyRows;
+	const retailOriginPricesPromise = principal.isAuthenticated
+		? supabase
+				.from('coffee_catalog')
+				.select('country, price_per_lb, wholesale')
+				.eq('stocked', true)
+				.eq('wholesale', false)
+				.not('country', 'is', null)
+				.not('price_per_lb', 'is', null)
+				.gt('price_per_lb', 0)
+				.limit(5000)
+		: emptyRows;
+	const wholesaleOriginPricesPromise = principal.isAuthenticated
+		? supabase
+				.from('coffee_catalog')
+				.select('country, price_per_lb, wholesale')
+				.eq('stocked', true)
+				.eq('wholesale', true)
+				.not('country', 'is', null)
+				.not('price_per_lb', 'is', null)
+				.gt('price_per_lb', 0)
+				.limit(5000)
+		: emptyRows;
+	const recentRetailArrivalsPromise = isParchmentIntelligence
+		? supabase
+				.from('coffee_catalog')
+				.select('name, country, processing, price_per_lb, source, stocked_date, wholesale')
+				.eq('stocked', true)
+				.eq('wholesale', false)
+				.gte('stocked_date', thirtyDaysAgoStr)
+				.order('stocked_date', { ascending: false })
+				.limit(50)
+		: emptyRows;
+	const recentWholesaleArrivalsPromise = isParchmentIntelligence
+		? supabase
+				.from('coffee_catalog')
+				.select('name, country, processing, price_per_lb, source, stocked_date, wholesale')
+				.eq('stocked', true)
+				.eq('wholesale', true)
+				.gte('stocked_date', thirtyDaysAgoStr)
+				.order('stocked_date', { ascending: false })
+				.limit(50)
+		: emptyRows;
+	const recentRetailDelistingsPromise = isParchmentIntelligence
+		? supabase
+				.from('coffee_catalog')
+				.select('name, country, processing, price_per_lb, source, unstocked_date, wholesale')
+				.eq('stocked', false)
+				.eq('wholesale', false)
+				.gte('unstocked_date', thirtyDaysAgoStr)
+				.order('unstocked_date', { ascending: false })
+				.limit(50)
+		: emptyRows;
+	const recentWholesaleDelistingsPromise = isParchmentIntelligence
+		? supabase
+				.from('coffee_catalog')
+				.select('name, country, processing, price_per_lb, source, unstocked_date, wholesale')
+				.eq('stocked', false)
+				.eq('wholesale', true)
+				.gte('unstocked_date', thirtyDaysAgoStr)
+				.order('unstocked_date', { ascending: false })
+				.limit(50)
+		: emptyRows;
 
 	const [
 		{ data: processingRows },
@@ -614,71 +723,13 @@ async function loadAnalyticsPayload(
 		{ data: recentWholesaleDelistings30 },
 		snapshotsRaw
 	] = await Promise.all([
-		// Processing method distribution
-		supabase
-			.from('coffee_catalog')
-			.select('processing, wholesale')
-			.eq('stocked', true)
-			.not('processing', 'is', null)
-			.limit(5000),
-		// Retail origin range data (live cross-section). Load each market separately before
-		// the row cap so scoped origin evidence is not biased by the other market's rows.
-		supabase
-			.from('coffee_catalog')
-			.select('country, price_per_lb, wholesale')
-			.eq('stocked', true)
-			.eq('wholesale', false)
-			.not('country', 'is', null)
-			.not('price_per_lb', 'is', null)
-			.gt('price_per_lb', 0)
-			.limit(5000),
-		// Wholesale origin range data (live cross-section)
-		supabase
-			.from('coffee_catalog')
-			.select('country, price_per_lb, wholesale')
-			.eq('stocked', true)
-			.eq('wholesale', true)
-			.not('country', 'is', null)
-			.not('price_per_lb', 'is', null)
-			.gt('price_per_lb', 0)
-			.limit(5000),
-		// Recent retail arrivals (30 days). Load each market separately before the row cap so
-		// scoped movement tables do not lose named lots to the other market's newest rows.
-		supabase
-			.from('coffee_catalog')
-			.select('name, country, processing, price_per_lb, source, stocked_date, wholesale')
-			.eq('stocked', true)
-			.eq('wholesale', false)
-			.gte('stocked_date', thirtyDaysAgoStr)
-			.order('stocked_date', { ascending: false })
-			.limit(50),
-		// Recent wholesale arrivals (30 days)
-		supabase
-			.from('coffee_catalog')
-			.select('name, country, processing, price_per_lb, source, stocked_date, wholesale')
-			.eq('stocked', true)
-			.eq('wholesale', true)
-			.gte('stocked_date', thirtyDaysAgoStr)
-			.order('stocked_date', { ascending: false })
-			.limit(50),
-		// Recent retail delistings (30 days)
-		supabase
-			.from('coffee_catalog')
-			.select('name, country, processing, price_per_lb, source, unstocked_date, wholesale')
-			.eq('stocked', false)
-			.eq('wholesale', false)
-			.gte('unstocked_date', thirtyDaysAgoStr)
-			.order('unstocked_date', { ascending: false })
-			.limit(50),
-		// Recent wholesale delistings (30 days)
-		supabase
-			.from('coffee_catalog')
-			.select('name, country, processing, price_per_lb, source, unstocked_date, wholesale')
-			.eq('stocked', false)
-			.eq('wholesale', true)
-			.gte('unstocked_date', thirtyDaysAgoStr)
-			.order('unstocked_date', { ascending: false })
-			.limit(50),
+		processingRowsPromise,
+		retailOriginPricesPromise,
+		wholesaleOriginPricesPromise,
+		recentRetailArrivalsPromise,
+		recentWholesaleArrivalsPromise,
+		recentRetailDelistingsPromise,
+		recentWholesaleDelistingsPromise,
 		// Price index snapshots — 90 days public, 365 days for Parchment Intelligence users
 		_loadPriceSnapshotsPaginated({
 			supabase: priceIndexSupabase,
@@ -690,7 +741,10 @@ async function loadAnalyticsPayload(
 	const processDistribution: ProcessBucket[] = (() => {
 		const retailDist: Record<string, number> = {};
 		const wholesaleDist: Record<string, number> = {};
-		for (const row of processingRows ?? []) {
+		for (const row of (processingRows ?? []) as Array<{
+			processing: string | null;
+			wholesale: boolean;
+		}>) {
 			const key = normalizeProcess(row.processing);
 			if (row.wholesale) {
 				wholesaleDist[key] = (wholesaleDist[key] ?? 0) + 1;
@@ -913,14 +967,24 @@ export const load: PageServerLoad = async (event) => {
 	const principal = await resolvePrincipal(event);
 	const isParchmentIntelligence = principal.isAuthenticated ? principal.ppiAccess : false;
 	const baseUrl = `${event.url.protocol}//${event.url.host}`;
-	const analyticsSummaryPromise = loadAnalyticsSummary(event);
-	const analyticsPayload = loadAnalyticsPayload(
+	const marketSummaryPromise = loadLatestMarketSummary(event);
+	const analyticsPayload: Promise<AnalyticsPayloadResult> = loadAnalyticsPayload(
 		event,
 		principal,
 		isParchmentIntelligence,
-		analyticsSummaryPromise
-	);
-	const analyticsPreview = buildAnalyticsPreview(await analyticsSummaryPromise);
+		marketSummaryPromise
+	)
+		.then((data) => ({ status: 'resolved' as const, data }))
+		.catch((error: unknown) => {
+			console.error('Failed to load analytics payload:', error);
+			return {
+				status: 'failed' as const,
+				message: 'Market data could not be loaded. Retry the page in a moment.'
+			};
+		});
+	const analyticsPreview = await marketSummaryPromise
+		.then(buildAnalyticsPreview)
+		.catch(() => buildEmptyAnalyticsPayload());
 	const schemaService = createSchemaService(baseUrl);
 	const schemaData = schemaService.generateSchemaGraph([
 		schemaService.generateOrganizationSchema(),

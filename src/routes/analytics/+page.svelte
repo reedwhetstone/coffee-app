@@ -4,7 +4,8 @@
 		PriceSnapshot,
 		ProcessBucket,
 		MovementWindowCounts,
-		AnalyticsPayload
+		AnalyticsPayload,
+		AnalyticsPayloadResult
 	} from './+page.server';
 	import {
 		buildAnalyticsChatHref,
@@ -63,6 +64,8 @@
 			lastUpdated: null
 		},
 		marketSummary: {
+			total_stocked: null,
+			retail_median: null,
 			retail_median_7d_change: null,
 			retail_median_30d_change: null,
 			supply_7d_change: null,
@@ -96,7 +99,8 @@
 	);
 	let resolvedAnalyticsPayload = $state<AnalyticsPayload | null>(null);
 	let analyticsPayload = $derived(resolvedAnalyticsPayload ?? analyticsPreview);
-	let analyticsPayloadResolved = $state(false);
+	let analyticsPayloadStatus = $state<'pending' | 'resolved' | 'failed'>('pending');
+	let analyticsPayloadResolved = $derived(analyticsPayloadStatus === 'resolved');
 	let analyticsPayloadError = $state<string | null>(null);
 
 	// Deferred chart module state
@@ -124,6 +128,7 @@
 	let isParchmentIntelligence = $derived(data.isParchmentIntelligence);
 	let {
 		stats,
+		marketSummary,
 		snapshots,
 		processDistribution,
 		originRangeData,
@@ -142,21 +147,27 @@
 	);
 
 	$effect(() => {
-		const payloadPromise = data.analyticsPayload as Promise<AnalyticsPayload>;
+		const payloadPromise = data.analyticsPayload as Promise<AnalyticsPayloadResult>;
 		let cancelled = false;
 		resolvedAnalyticsPayload = null;
-		analyticsPayloadResolved = false;
+		analyticsPayloadStatus = 'pending';
 		analyticsPayloadError = null;
 
 		void payloadPromise
-			.then((payload: AnalyticsPayload) => {
+			.then((result) => {
 				if (cancelled) return;
-				resolvedAnalyticsPayload = payload;
-				analyticsPayloadResolved = true;
+				if (result.status === 'failed') {
+					analyticsPayloadStatus = 'failed';
+					analyticsPayloadError = result.message;
+					return;
+				}
+				resolvedAnalyticsPayload = result.data;
+				analyticsPayloadStatus = 'resolved';
 			})
 			.catch((error: unknown) => {
 				if (cancelled) return;
-				console.error('Failed to load analytics payload:', error);
+				console.error('Failed to decode analytics payload:', error);
+				analyticsPayloadStatus = 'failed';
 				analyticsPayloadError = 'Market data could not be loaded. Retry the page in a moment.';
 			});
 
@@ -529,6 +540,12 @@
 	// ── Market read headline + detail ─────────────────────────────────────────
 
 	let marketReadHeadline = $derived.by(() => {
+		if (analyticsPayloadStatus === 'pending') {
+			return 'The latest market snapshot is ready while deeper evidence loads.';
+		}
+		if (analyticsPayloadStatus === 'failed') {
+			return 'The latest market snapshot is available; deeper evidence is temporarily unavailable.';
+		}
 		if (!isMovementDataAvailable) {
 			return `${movementWindowLabel} movement data is unavailable; use price and coverage evidence until the index refreshes.`;
 		}
@@ -547,6 +564,19 @@
 	});
 
 	let marketReadDetail = $derived.by(() => {
+		if (analyticsPayloadStatus !== 'resolved') {
+			const scopeParts = [
+				marketSummary.total_stocked != null
+					? `${marketSummary.total_stocked.toLocaleString()} active listings`
+					: null,
+				stats.totalSuppliers > 0 ? `${stats.totalSuppliers} suppliers` : null,
+				stats.originsCount > 0 ? `${stats.originsCount} origins` : null
+			].filter(Boolean);
+			const snapshotScope = scopeParts.length > 0 ? scopeParts.join(' across ') : 'Market scope';
+			return `${snapshotScope}; scoped movement, coverage, and comparable price evidence ${
+				analyticsPayloadStatus === 'pending' ? 'are loading next' : 'could not be refreshed'
+			}.`;
+		}
 		const pricePhrase = !analyticsPayloadResolved
 			? 'price movement is loading with the comparable snapshot layer'
 			: marketPriceDelta == null
@@ -1015,6 +1045,7 @@
 	<section class="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-900">
 		<p class="font-semibold">Market data did not load.</p>
 		<p class="mt-1">{analyticsPayloadError}</p>
+		<a class="mt-3 inline-flex font-semibold underline" href="/analytics">Retry market data</a>
 	</section>
 {/if}
 
@@ -1074,7 +1105,7 @@
 
 	{#if analyticsPayloadResolved}
 		<KpiStripSection {kpiCards} {insightCards} />
-	{:else}
+	{:else if analyticsPayloadStatus === 'pending'}
 		<section
 			class="mb-6 grid grid-cols-2 divide-line overflow-hidden rounded-lg border border-line bg-surface-raised shadow-sm max-lg:divide-y lg:grid-cols-4 lg:divide-x"
 			aria-busy="true"
@@ -1082,12 +1113,22 @@
 		>
 			{#each Array.from({ length: 4 }) as _}
 				<div class="p-4 sm:p-5">
-					<div class="h-3 w-24 animate-pulse rounded bg-surface-canvas"></div>
-					<div class="mt-3 h-8 w-20 animate-pulse rounded bg-surface-canvas"></div>
-					<div class="mt-3 h-3 w-full animate-pulse rounded bg-surface-canvas"></div>
+					<div
+						class="h-3 w-24 animate-pulse rounded bg-surface-canvas motion-reduce:animate-none"
+					></div>
+					<div
+						class="mt-3 h-8 w-20 animate-pulse rounded bg-surface-canvas motion-reduce:animate-none"
+					></div>
+					<div
+						class="mt-3 h-3 w-full animate-pulse rounded bg-surface-canvas motion-reduce:animate-none"
+					></div>
 				</div>
 			{/each}
 		</section>
+	{:else}
+		<p class="mb-6 rounded-lg border border-line bg-surface-panel p-4 text-sm text-muted">
+			Signal cards are unavailable. The market snapshot above is the last confirmed preview.
+		</p>
 	{/if}
 </section>
 
@@ -1097,11 +1138,7 @@
 		Index. Detailed charts and supplier evidence could not load.
 	</div>
 {:else if !analyticsPayloadResolved}
-	<AnalyticsRouteSkeleton
-		{isParchmentIntelligence}
-		isSignedIn={Boolean(session)}
-		showSummary={false}
-	/>
+	<AnalyticsRouteSkeleton {isParchmentIntelligence} />
 {:else}
 	<ValueSignalsSection
 		valueSignals={marketInsights?.valueSignals ?? null}

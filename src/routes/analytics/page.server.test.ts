@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AnalyticsPayload } from './+page.server';
+import type { AnalyticsPayload, AnalyticsPayloadResult } from './+page.server';
 
 const { mockCreateAdminClient } = vi.hoisted(() => ({
 	mockCreateAdminClient: vi.fn()
@@ -189,7 +189,10 @@ function createAnalyticsClient(
 		stockedRetail: 0,
 		stockedWholesale: 0,
 		retailCoverageRanges: 0,
-		wholesaleCoverageRanges: 0
+		wholesaleCoverageRanges: 0,
+		processingRows: 0,
+		originPriceRows: 0,
+		namedMovementRows: 0
 	};
 
 	function resolveTableResult(
@@ -301,8 +304,12 @@ function createAnalyticsClient(
 			return { count: 150, error: null };
 		}
 
-		if (state.columns === 'processing, wholesale') return { data: [], error: null };
+		if (state.columns === 'processing, wholesale') {
+			summaryReadCounts.processingRows += 1;
+			return { data: [], error: null };
+		}
 		if (state.columns === 'country, price_per_lb, wholesale') {
+			summaryReadCounts.originPriceRows += 1;
 			const wholesale = state.filters.find(
 				(filter) => filter.method === 'eq' && filter.column === 'wholesale'
 			)?.value;
@@ -312,6 +319,7 @@ function createAnalyticsClient(
 			};
 		}
 		if (state.columns?.includes('unstocked_date')) {
+			summaryReadCounts.namedMovementRows += 1;
 			const cutoff = state.filters.find(
 				(filter) => filter.method === 'gte' && filter.column === 'unstocked_date'
 			)?.value;
@@ -327,6 +335,7 @@ function createAnalyticsClient(
 			};
 		}
 		if (state.columns?.includes('stocked_date')) {
+			summaryReadCounts.namedMovementRows += 1;
 			const cutoff = state.filters.find(
 				(filter) => filter.method === 'gte' && filter.column === 'stocked_date'
 			)?.value;
@@ -462,9 +471,11 @@ async function loadPayload(
 	client: ReturnType<typeof createAnalyticsClient>
 ): Promise<AnalyticsPayload> {
 	const result = (await load(createLoadEvent(client))) as {
-		analyticsPayload: Promise<AnalyticsPayload>;
+		analyticsPayload: Promise<AnalyticsPayloadResult>;
 	};
-	return result.analyticsPayload;
+	const payload = await result.analyticsPayload;
+	if (payload.status !== 'resolved') throw new Error(payload.message);
+	return payload.data;
 }
 
 describe('loadPriceSnapshotsPaginated', () => {
@@ -532,7 +543,7 @@ describe('analytics load', () => {
 
 		const result = (await load(createLoadEvent(client))) as {
 			meta: Record<string, unknown>;
-			analyticsPayload: Promise<AnalyticsPayload>;
+			analyticsPayload: Promise<AnalyticsPayloadResult>;
 		};
 
 		expect(result.meta.title).toBe('Green Coffee Market Visibility | Parchment Market Index');
@@ -560,7 +571,7 @@ describe('analytics load', () => {
 
 		const result = (await load(createLoadEvent(client))) as {
 			meta: Record<string, unknown>;
-			analyticsPayload: Promise<AnalyticsPayload>;
+			analyticsPayload: Promise<AnalyticsPayloadResult>;
 		};
 		const schemaData = result.meta.schemaData as { '@graph': Array<Record<string, unknown>> };
 		const dataset = schemaData['@graph'].find((entry) => entry['@type'] === 'Dataset');
@@ -601,6 +612,9 @@ describe('analytics load', () => {
 
 		expect(result.recentArrivals).toEqual([]);
 		expect(result.recentDelistings).toEqual([]);
+		expect(client.summaryReadCounts.processingRows).toBe(0);
+		expect(client.summaryReadCounts.originPriceRows).toBe(0);
+		expect(client.summaryReadCounts.namedMovementRows).toBe(0);
 	});
 
 	it('keeps named movement rows available for Parchment Intelligence users', async () => {
@@ -662,6 +676,11 @@ describe('analytics load', () => {
 			marketSummaryDate: '2026-03-31'
 		});
 		currentPriceIndexClient = client;
+		resolvePrincipalMock.mockResolvedValueOnce({
+			isAuthenticated: true,
+			ppiAccess: true,
+			role: 'viewer'
+		});
 
 		await loadPayload(client);
 
@@ -709,6 +728,11 @@ describe('analytics load', () => {
 			]
 		});
 		currentPriceIndexClient = client;
+		resolvePrincipalMock.mockResolvedValueOnce({
+			isAuthenticated: true,
+			ppiAccess: false,
+			role: 'viewer'
+		});
 
 		const result = await loadPayload(client);
 		const colombiaRanges = result.originRangeData.filter((row) => row.origin === 'Colombia');
@@ -838,20 +862,29 @@ describe('analytics load', () => {
 
 		const result = (await load(createLoadEvent(client))) as {
 			analyticsPreview: AnalyticsPayload;
-			analyticsPayload: Promise<AnalyticsPayload>;
+			analyticsPayload: Promise<AnalyticsPayloadResult>;
 		};
-		const payload = await result.analyticsPayload;
+		const payloadResult = await result.analyticsPayload;
+		expect(payloadResult.status).toBe('resolved');
+		if (payloadResult.status !== 'resolved') throw new Error(payloadResult.message);
+		const payload = payloadResult.data;
 
-		expect(payload.stats).toEqual(result.analyticsPreview.stats);
+		expect(result.analyticsPreview.stats.totalBeansTracked).toBe(0);
+		expect(result.analyticsPreview.marketSummary.total_stocked).toBe(120);
+		expect(payload.stats.totalBeansTracked).toBe(150);
 		expect(payload.marketSummary).toEqual(result.analyticsPreview.marketSummary);
-		expect(payload.movementCounts).toEqual(result.analyticsPreview.movementCounts);
+		expect(payload.movementCounts.available).toBe(true);
+		expect(result.analyticsPreview.movementCounts.available).toBe(false);
 		expect(client.summaryReadCounts).toEqual({
 			marketSummary: 1,
 			totalBeans: 1,
 			stockedRetail: 1,
 			stockedWholesale: 1,
 			retailCoverageRanges: 1,
-			wholesaleCoverageRanges: 1
+			wholesaleCoverageRanges: 1,
+			processingRows: 0,
+			originPriceRows: 0,
+			namedMovementRows: 0
 		});
 	});
 
@@ -881,6 +914,11 @@ describe('analytics load', () => {
 				marketSummaryDate: '2026-03-31'
 			});
 			currentPriceIndexClient = client;
+			resolvePrincipalMock.mockResolvedValueOnce({
+				isAuthenticated: true,
+				ppiAccess: true,
+				role: 'viewer'
+			});
 
 			await loadPayload(client);
 
@@ -893,7 +931,7 @@ describe('analytics load', () => {
 		}
 	});
 
-	it('fails the route load when a later snapshot page errors', async () => {
+	it('resolves the streamed payload to an explicit failed state when a later snapshot page errors', async () => {
 		const client = createAnalyticsClient([
 			{ data: Array.from({ length: 1000 }, (_, index) => makeSnapshotRow(index)), error: null },
 			{ data: null, error: { message: 'page timeout' } }
@@ -902,11 +940,12 @@ describe('analytics load', () => {
 		currentPriceIndexClient = client;
 
 		const result = (await load(createLoadEvent(client))) as {
-			analyticsPayload: Promise<AnalyticsPayload>;
+			analyticsPayload: Promise<AnalyticsPayloadResult>;
 		};
 
-		await expect(result.analyticsPayload).rejects.toThrow(
-			'Failed to load analytics price snapshots page 2: page timeout'
-		);
+		await expect(result.analyticsPayload).resolves.toEqual({
+			status: 'failed',
+			message: 'Market data could not be loaded. Retry the page in a moment.'
+		});
 	});
 });
