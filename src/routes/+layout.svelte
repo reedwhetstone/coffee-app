@@ -8,6 +8,10 @@
 	import ChatDrawer from '$lib/components/chat/ChatDrawer.svelte';
 	import NavigationProgress from '$lib/components/layout/NavigationProgress.svelte';
 	import NavigationSkeletonOverlay from '$lib/components/layout/NavigationSkeletonOverlay.svelte';
+	import {
+		resolveLayoutShell,
+		usesPublicShell as isPublicShell
+	} from '$lib/components/layout/layoutShell';
 	import { shouldShowClientRouteSkeleton } from '$lib/components/layout/routeSkeletons';
 	import { setContext } from 'svelte';
 	import type { Component } from 'svelte';
@@ -138,15 +142,11 @@
 	let showClientRouteSkeleton = $derived(
 		Boolean(RouteSkeletonComponent && navigationSkeletonPathname)
 	);
-	let pathname = $derived(navigationSkeletonPathname ?? $page.url.pathname);
-	let isMarketingPage = $derived(pathname === '/');
-	let usesPublicShell = $derived(
-		pathname === '/' ||
-			pathname === '/api' ||
-			pathname === '/subscription' ||
-			pathname.startsWith('/docs') ||
-			pathname.startsWith('/blog')
-	);
+	// Shell ownership follows the committed route. A pending destination may
+	// select a skeleton, but must never switch outer branches and destroy source state.
+	let pathname = $derived($page.url.pathname);
+	let usesPublicShell = $derived(isPublicShell(pathname));
+	let layoutShell = $derived(resolveLayoutShell(pathname, Boolean(data?.session?.user)));
 	let shouldShowUnifiedHeader = $derived(
 		usesPublicShell ||
 			(!data.session && (pathname === '/catalog' || pathname.startsWith('/analytics')))
@@ -183,7 +183,7 @@
 	<UnifiedHeader session={data.session} role={data.role} />
 {/if}
 
-{#if isMarketingPage}
+{#if layoutShell === 'marketing'}
 	<div class="min-h-screen">
 		<NavigationSkeletonOverlay
 			active={showClientRouteSkeleton}
@@ -197,7 +197,7 @@
 		</NavigationSkeletonOverlay>
 		<CookieBanner />
 	</div>
-{:else if data?.session?.user && !usesPublicShell}
+{:else if layoutShell === 'app'}
 	<div class="flex min-h-screen">
 		<LeftSidebar {data} onMenuChange={handleMenuChange} />
 		<MobileAppShell {data} />
