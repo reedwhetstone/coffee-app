@@ -33,6 +33,7 @@
 		applyAnalyticsSeedToInput,
 		readAnalyticsSeedFromSearchParams
 	} from '$lib/analytics/actionContext';
+	import { classifyChatFailure } from './chatRecovery';
 
 	let {
 		canUseChat,
@@ -230,6 +231,11 @@
 
 	// ─── Chat error display ──────────────────────────────────────────────────
 	let chatError = $state<string | null>(null);
+	let chatCanRetry = $state(false);
+	let workspaceReady = $state(false);
+	let initializingWorkspace = $state(false);
+	let workspaceInitError = $state<string | null>(null);
+	let lastSubmittedPrompt = $state('');
 	let canvasPersistError = $state<string | null>(null);
 	let displayedError = $derived(canvasPersistError ?? chatError);
 
@@ -253,12 +259,52 @@
 		}),
 		onError: (error) => {
 			console.error('Chat error:', error);
-			chatError = error instanceof Error ? error.message : 'An error occurred. Please try again.';
-			setTimeout(() => {
-				chatError = null;
-			}, 8000);
+			const failure = classifyChatFailure(error);
+			chatError = failure.message;
+			chatCanRetry = failure.retryable;
+			if (!inputMessage && lastSubmittedPrompt) inputMessage = lastSubmittedPrompt;
 		}
 	});
+
+	async function initializeWorkspace() {
+		initializingWorkspace = true;
+		workspaceInitError = null;
+		workspaceReady = false;
+		try {
+			if (initialWorkspaceData) {
+				const { workspaces: list, workspace, messages } = initialWorkspaceData;
+				workspaceStore.hydrate(list, workspace ? { workspace, messages } : null);
+				if (workspace) {
+					applyWorkspaceResult({ workspace, messages });
+					workspaceReady = true;
+					return;
+				}
+			} else {
+				await workspaceStore.loadWorkspaces();
+				if (workspaceStore.error) throw new Error(workspaceStore.error);
+			}
+
+			if (workspaceStore.workspaces.length === 0) {
+				const ws = await workspaceStore.createWorkspace('Coffee', 'general');
+				if (!ws) throw new Error(workspaceStore.error || 'Failed to create workspace');
+				if (!(await loadWorkspace(ws.id))) {
+					throw new Error(workspaceStore.error || 'Failed to activate workspace');
+				}
+			} else {
+				if (!(await loadWorkspace(workspaceStore.workspaces[0].id))) {
+					throw new Error(workspaceStore.error || 'Failed to activate workspace');
+				}
+			}
+			if (!workspaceStore.currentWorkspaceId) {
+				throw new Error(workspaceStore.error || 'Failed to activate workspace');
+			}
+			workspaceReady = true;
+		} catch (error) {
+			workspaceInitError = error instanceof Error ? error.message : 'Workspace setup failed';
+		} finally {
+			initializingWorkspace = false;
+		}
+	}
 
 	// Input state (not managed by Chat class - we control the textarea)
 	let inputMessage = $state('');
@@ -337,25 +383,7 @@
 		// Load (or create) the single continuous conversation. Older multi-
 		// workspace data stays intact; everything funnels into the first one.
 		// Server-prefetched data (page variant) skips the fetch waterfall.
-		(async () => {
-			if (initialWorkspaceData) {
-				const { workspaces: list, workspace, messages } = initialWorkspaceData;
-				workspaceStore.hydrate(list, workspace ? { workspace, messages } : null);
-				if (workspace) {
-					applyWorkspaceResult({ workspace, messages });
-					return;
-				}
-			} else {
-				await workspaceStore.loadWorkspaces();
-			}
-
-			if (workspaceStore.workspaces.length === 0) {
-				const ws = await workspaceStore.createWorkspace('Coffee', 'general');
-				if (ws) await loadWorkspace(ws.id);
-			} else {
-				await loadWorkspace(workspaceStore.workspaces[0].id);
-			}
-		})();
+		void initializeWorkspace();
 
 		return () => {
 			window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -364,10 +392,11 @@
 		};
 	});
 
-	async function loadWorkspace(workspaceId: string) {
+	async function loadWorkspace(workspaceId: string): Promise<boolean> {
 		const result = await workspaceStore.switchWorkspace(workspaceId);
-		if (!result) return;
+		if (!result) return false;
 		applyWorkspaceResult(result);
+		return workspaceStore.currentWorkspaceId === workspaceId;
 	}
 
 	function applyWorkspaceResult(result: { workspace: Workspace; messages: WorkspaceMessage[] }) {
@@ -950,7 +979,7 @@
 	// Snapshotted at send time. The server builds a fresh prompt for every turn,
 	// so opted-in context must accompany every request.
 
-	function buildSendBody(): Record<string, unknown> {
+	function buildSendBody(_forcePageContext = false): Record<string, unknown> {
 		const body: Record<string, unknown> = { workspaceContext: getWorkspaceContext() };
 		if (!includeUserMemoryDoc) body.includeUserMemory = false;
 		const context = includePageContext ? pageChatContext.current : null;
@@ -960,9 +989,12 @@
 
 	// ─── Send Message ──────────────────────────────────────────────────────────
 	async function sendMessage() {
-		if (!inputMessage.trim() || isActive || isClearing) return;
+		if (!inputMessage.trim() || isActive || isClearing || !workspaceReady) return;
 
 		const text = inputMessage.trim();
+		lastSubmittedPrompt = text;
+		chatError = null;
+		chatCanRetry = false;
 
 		// Intercept slash commands
 		const cmd = matchSlashCommand(text, canUseMallardWorkspaces);
@@ -994,6 +1026,17 @@
 		shouldScrollToBottom = true;
 
 		await chat.sendMessage({ text }, { body: buildSendBody() });
+	}
+
+	function stopResponse() {
+		chat.stop();
+		if (!inputMessage && lastSubmittedPrompt) inputMessage = lastSubmittedPrompt;
+	}
+
+	async function retryLastResponse() {
+		chatError = null;
+		chatCanRetry = false;
+		await chat.regenerate({ body: buildSendBody(true) });
 	}
 
 	// ─── Export / Clear ────────────────────────────────────────────────────────
@@ -1112,9 +1155,16 @@
 				{suggestions}
 				{slashCompletions}
 				chatError={displayedError}
+				chatCanRetry={canvasPersistError ? false : chatCanRetry}
+				workspaceError={workspaceInitError}
+				{workspaceReady}
+				{initializingWorkspace}
 				{contextChips}
 				onToggleChip={toggleContextChip}
 				onSend={sendMessage}
+				onStop={stopResponse}
+				onRetry={retryLastResponse}
+				onRetryWorkspace={initializeWorkspace}
 				onDismissError={dismissDisplayedError}
 			/>
 		</div>
