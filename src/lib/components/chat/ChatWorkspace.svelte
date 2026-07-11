@@ -229,6 +229,13 @@
 
 	// ─── Chat error display ──────────────────────────────────────────────────
 	let chatError = $state<string | null>(null);
+	let canvasPersistError = $state<string | null>(null);
+	let displayedError = $derived(canvasPersistError ?? chatError);
+
+	function dismissDisplayedError() {
+		if (canvasPersistError) canvasPersistError = null;
+		else chatError = null;
+	}
 
 	// ─── Vercel AI SDK Chat Instance ───────────────────────────────────────────
 	// Single continuous conversation: only the most recent messages are sent to
@@ -524,7 +531,8 @@
 	async function persistCanvasState(wsId: string) {
 		const canvasStatePayload = buildCanvasStatePayload();
 		await enqueuePersistence(async () => {
-			await workspaceStore.saveCanvasState(wsId, canvasStatePayload);
+			const saved = await workspaceStore.saveCanvasState(wsId, canvasStatePayload);
+			if (!saved) throw new Error('Failed to persist canvas state');
 		});
 	}
 
@@ -540,7 +548,8 @@
 		}
 
 		// Save canvas state (layout, order, pinned, minimized, focus, titles)
-		await workspaceStore.saveCanvasState(wsId, canvasStatePayload);
+		const canvasSaved = await workspaceStore.saveCanvasState(wsId, canvasStatePayload);
+		if (!canvasSaved) throw new Error('Failed to persist canvas state');
 	}
 
 	// Auto-persist when streaming completes (fast debounce).
@@ -589,15 +598,38 @@
 	// writing a reactive value the effect reads would re-invalidate the effect and
 	// cancel its own debounced save.
 	let lastCanvasSignature = '';
+	let canvasPersistRetryAttempt = $state(0);
 	$effect(() => {
 		const wsId = workspaceStore.currentWorkspaceId;
 		const signature = canvasSignature();
+		const retryAttempt = canvasPersistRetryAttempt;
 		if (!wsId || isActive || signature === lastCanvasSignature) return;
-		lastCanvasSignature = signature;
+		let retryTimeout: ReturnType<typeof setTimeout> | undefined;
 		const timeout = setTimeout(() => {
-			persistCanvasState(wsId);
+			void persistCanvasState(wsId).then(
+				() => {
+					lastCanvasSignature = signature;
+					canvasPersistRetryAttempt = 0;
+					canvasPersistError = null;
+				},
+				() => {
+					// Keep the canvas dirty and retry. The workspace ID and state are
+					// re-read by the effect, so a delayed retry cannot leak state across
+					// a workspace switch.
+					if (retryAttempt >= 2) {
+						canvasPersistError = 'Canvas changes are not saving. Retrying in the background.';
+					}
+					const retryDelay = Math.min(2000 * 2 ** retryAttempt, 30_000);
+					retryTimeout = setTimeout(() => {
+						canvasPersistRetryAttempt = retryAttempt + 1;
+					}, retryDelay);
+				}
+			);
 		}, 800);
-		return () => clearTimeout(timeout);
+		return () => {
+			clearTimeout(timeout);
+			if (retryTimeout) clearTimeout(retryTimeout);
+		};
 	});
 
 	// Trigger context compaction after ~10 message pairs
@@ -999,11 +1031,11 @@
 				{canUseMallardWorkspaces}
 				{suggestions}
 				{slashCompletions}
-				{chatError}
+				chatError={displayedError}
 				{contextChips}
 				onToggleChip={toggleContextChip}
 				onSend={sendMessage}
-				onDismissError={() => (chatError = null)}
+				onDismissError={dismissDisplayedError}
 			/>
 		</div>
 

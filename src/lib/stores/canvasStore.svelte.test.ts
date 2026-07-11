@@ -73,6 +73,19 @@ describe('canvasStore pinning', () => {
 
 		expect(canvasStore.blocks[0].title).toBe('Ethiopia naturals');
 	});
+
+	it('durably removes one block without minimizing or clearing its siblings', async () => {
+		const { canvasStore } = await loadCanvasStore();
+
+		canvasStore.dispatch({ type: 'add', block: cards(1), messageId: 'm1' });
+		canvasStore.dispatch({ type: 'add', block: cards(2), messageId: 'm2' });
+		const removedBlockId = canvasStore.blocks[0].id;
+
+		canvasStore.dispatch({ type: 'remove', blockId: removedBlockId });
+
+		expect(canvasStore.blocks.map((block) => block.messageId)).toEqual(['m2']);
+		expect(canvasStore.getMessageIdForBlock(removedBlockId)).toBeUndefined();
+	});
 });
 
 describe('canvasStore layout lock', () => {

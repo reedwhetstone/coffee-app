@@ -12,6 +12,7 @@
 		onAction,
 		onExecuteAction,
 		onMinimize,
+		onRemove,
 		onToggleLock,
 		onExpand
 	} = $props<{
@@ -21,6 +22,7 @@
 		onAction?: (action: BlockAction) => void;
 		onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
 		onMinimize: (blockId: string) => void;
+		onRemove: (blockId: string) => void;
 		onToggleLock: (blockIds: string[]) => void;
 		onExpand?: (blockId: string) => void;
 	}>();
@@ -147,6 +149,23 @@
 							{/if}
 						</svg>
 					</button>
+					<!-- Remove only the active tab. This is intentionally distinct from
+					     minimizing, which keeps the tab in the restore tray. -->
+					<button
+						onclick={() => onRemove(active.id)}
+						class="rounded p-0.5 text-muted transition-colors hover:text-danger"
+						title="Remove active tab"
+						aria-label={`Remove active ${group.label} tab`}
+					>
+						<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M6 18L18 6M6 6l12 12"
+							/>
+						</svg>
+					</button>
 					<!-- Minimize the whole window -->
 					<button
 						onclick={() => minimizeWindow(group)}
@@ -180,7 +199,7 @@
 									>{/if}{subTabLabel(member, i)}
 							</button>
 							<button
-								onclick={() => onMinimize(member.id)}
+								onclick={() => onRemove(member.id)}
 								class="px-1 text-muted opacity-0 transition-opacity hover:text-danger group-hover/subtab:opacity-100"
 								title="Close this tab"
 								aria-label="Close {subTabLabel(member, i)}"
