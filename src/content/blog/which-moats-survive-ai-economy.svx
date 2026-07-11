@@ -50,7 +50,7 @@ That is why operational data beats archival data. A competitor cannot compress a
 
 [Speed matters](https://www.nfx.com/post/speed-and-ai) because AI makes iteration cheaper. Slow teams get punished. But speed by itself is brittle. Nokia was fast. Yahoo shipped constantly. These companies did not fail because they were too dumb to see signal. They failed because the value chain moved and the organization could not reorganize around it.
 
-The moat is not speed. The moat is agility: institutional ability to notice your direction is wrong and change the architecture before the market finishes changing without you. That is harder to copy than raw shipping velocity because it lives in decision rights, incentives, and willingness to kill profitable old assumptions. [Defensibility increasingly comes from proprietary data, deep workflow integration, and specialized domain expertise rather than features alone](https://www.codurance.com/publications/beyond-functionality-building-durable-moats-in-the-ai-era).
+The moat is not speed. It is the ability to notice when a direction has become wrong and let new evidence invalidate the old plan. That requires more than memory. Accumulated context becomes inertia when yesterday's assumptions remain today's instructions. Durable organizations preserve history without preserving every trajectory. The advantage lives in decision rights, incentives, and willingness to kill profitable old assumptions. [Defensibility increasingly comes from proprietary data, deep workflow integration, and specialized domain expertise rather than features alone](https://www.codurance.com/publications/beyond-functionality-building-durable-moats-in-the-ai-era).
 
 ## The Kodak test
 
