@@ -1,0 +1,76 @@
+---
+title: 'Why Does the Context Window Need a Garbage Collector?'
+date: '2026-07-11'
+description: 'Persistent memory solves forgetting, but without intent-aware context cleanup it can make an AI less able to recognize when the work has changed.'
+tags: ['ai-agents', 'context-engineering', 'memory', 'architecture']
+pillar: 'agentic-stack'
+draft: false
+readingTime: 5
+---
+
+The context window is usually described as a scarce resource. Make it larger, the argument goes, and an AI can remember more. That sounds unambiguously useful until a conversation changes direction.
+
+I have watched an agent finish one line of reasoning, receive a clear pivot, and continue answering as if the new request were another detail inside the old task. Nothing was forgotten. That was the problem. The earlier trajectory remained so available that the model mistook continuity of conversation for continuity of intent.
+
+Persistent memory solves forgetting. It also creates **contextual inertia**.
+
+## Memory is not the same as a working set
+
+Operating systems do not keep every byte of available storage in active memory. Garbage collectors do not treat every allocated object as live. They start from a root set, trace what is still reachable, and reclaim what no longer belongs to the running program.
+
+Long-running AI systems need a semantic version of that operation.
+
+The full conversation should remain available. Architectural decisions, corrections, source documents, and unfinished work all have future option value. But availability should not imply equal activation. When the user switches from debugging a deployment to questioning the product strategy, the root set has changed. The prior task may need to be parked, not deleted.
+
+This is where "more context" becomes a misleading goal. The real objective is a better working set.
+
+## The current tools solve pieces of the problem
+
+This is not an untouched area. [MemGPT](https://arxiv.org/abs/2310.08560) framed LLM context management as a virtual-memory problem, moving information between limited active context and larger external storage. [Letta's archival memory](https://docs.letta.com/guides/core-concepts/memory/archival-memory) makes a similar distinction between information held in working memory and information retrieved from long-term storage.
+
+Vendors are also attacking context bloat directly. [Anthropic's context editing](https://platform.claude.com/docs/en/build-with-claude/context-editing) can remove stale tool results and thinking blocks from a conversation. [OpenAI's compaction](https://developers.openai.com/api/docs/guides/compaction) reduces accumulated conversation state into a smaller representation for later turns.
+
+These are useful mechanisms. None, by itself, answers the hardest question: **what does the user's latest message do to the meaning of everything that came before it?**
+
+A summarizer asks what happened. RAG asks what stored material resembles the current query. A trimmer asks what can be removed cheaply. An intent-aware context compiler would ask a different set of questions:
+
+- Is this turn continuing, modifying, challenging, branching from, replacing, or resuming prior work?
+- Which earlier assumptions remain binding?
+- What should be promoted into durable memory before it leaves the working set?
+- What newly relevant evidence should be retrieved?
+- Which old task should remain recoverable but stop influencing the next answer?
+
+That is a bidirectional process. Context flows out to memory and back in from memory before the main model reasons.
+
+## The cold-read test
+
+One useful check is surprisingly simple: **if no prior task were active, what would this message appear to ask?**
+
+The system can compare that cold reading with a continuity-aware interpretation. A large disagreement is evidence that history may be distorting intent. The new turn might be a critique of the current path, while the inherited context makes it look like a request to refine that path.
+
+This is also where context management touches sycophancy. The familiar version of sycophancy preserves the user's framing too readily. A persistent agent can preserve the _joint trajectory_ too readily, including its own previous claims and plans. It favors narrative consistency over recognizing that new evidence changed the task.
+
+The result is not simple agreement. It is trajectory-preserving agreement.
+
+## A compiler can become a hidden editor of reality
+
+The middle layer creates its own risk. A fast model that decides what the main model sees can remove inconvenient evidence, elevate a tentative idea into durable fact, or retrieve a similar old memory that silently pulls the conversation back into its previous lane. Aggressive compression can erase uncertainty, dissent, and reversals while leaving behind a falsely coherent summary.
+
+I think a trustworthy version needs four properties:
+
+1. The original event history remains immutable.
+2. Compiled context is disposable and reconstructable.
+3. Promotions, evictions, retrievals, and supersessions retain provenance.
+4. The main model can follow a compressed claim back to primary evidence.
+
+This is more demanding than ordinary RAG. Semantic similarity is not enough. The compiler has to reason about authority, freshness, task state, contradiction, and whether an earlier decision was accepted, tentative, or superseded.
+
+## Continuous conversation, selective activation
+
+I still think continuous project conversation is the better user experience. Starting a new chat for every task makes the human act as a context compiler: remember the prior discussion, decide what matters, preserve nuance, and restate it without introducing errors. The system saves tokens by exporting cognitive labor to the user.
+
+The better split is continuous history for the person and selective activation for the model. In my own OpenClaw environment, persistent files, retrieval, compaction, and workflow state already approximate parts of this pattern. The gaps become most visible during a pivot, when durable workflow state can remain operationally important without deserving psychological control over the current conversation.
+
+The context window is both workspace and bias. Expanding it increases what the model can know, but also increases the number of stale trajectories it can mistake for the present task.
+
+The useful measure of a persistent agent is not how much history it can keep active. It is whether it can preserve that history while continuously renegotiating what is relevant now.
