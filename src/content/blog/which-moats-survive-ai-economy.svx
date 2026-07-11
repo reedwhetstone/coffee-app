@@ -18,7 +18,7 @@ AI makes that pattern more important. As software becomes faster and cheaper to 
 
 ## Kodak: when the economics become the strategy
 
-Kodak had everything a company is supposed to want: a trusted global brand, retail distribution, manufacturing expertise, patents, and decades of knowledge about photography. Kodak engineer Steve Sasson built the first self-contained digital camera in 1975. The company saw digital coming from inside its own laboratories.
+Kodak had everything a company is supposed to want: a trusted global brand, retail distribution, manufacturing expertise, patents, and decades of knowledge about photography. Kodak engineer Steve Sasson [built the first self-contained digital camera in 1975](https://www.invent.org/inductees/steven-sasson). The company saw digital coming from inside its own laboratories.
 
 The familiar version says Kodak simply ignored the invention. The real history is less tidy. Research into [Kodak's long attempt at strategic renewal](https://web-docs.stern.nyu.edu/management/strategyscience/Kodaks_Surprisingly_Long_Journey.pdf) finds extensive investment in digital products and repeated efforts to adapt. The problem was not a total absence of action. It was that digital photography dismantled the economics beneath Kodak's strength.
 

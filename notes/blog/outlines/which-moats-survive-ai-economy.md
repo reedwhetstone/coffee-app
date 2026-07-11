@@ -56,9 +56,10 @@ Kodak, Nokia, and BlackBerry did not lose because their moats were imaginary. Th
 
 ## Sources
 
-1. [NYU Stern: Kodak's Surprisingly Long Journey Toward Strategic Renewal](https://web-docs.stern.nyu.edu/management/strategyscience/Kodaks_Surprisingly_Long_Journey.pdf)
-2. [Business History: The Curse of Agility, Nokia 2003–2013](https://www.tandfonline.com/doi/full/10.1080/00076791.2019.1593964)
-3. [CNBC: How BlackBerry Moved from Cellphones to Cybersecurity](https://www.cnbc.com/2022/11/19/how-blackberry-moved-from-iconic-cellphones-to-cybersecurity.html)
+1. [National Inventors Hall of Fame: Steven Sasson's digital camera](https://www.invent.org/inductees/steven-sasson)
+2. [NYU Stern: Kodak's Surprisingly Long Journey Toward Strategic Renewal](https://web-docs.stern.nyu.edu/management/strategyscience/Kodaks_Surprisingly_Long_Journey.pdf)
+3. [Business History: The Curse of Agility, Nokia 2003–2013](https://www.tandfonline.com/doi/full/10.1080/00076791.2019.1593964)
+4. [CNBC: How BlackBerry Moved from Cellphones to Cybersecurity](https://www.cnbc.com/2022/11/19/how-blackberry-moved-from-iconic-cellphones-to-cybersecurity.html)
 
 ## Verification
 
