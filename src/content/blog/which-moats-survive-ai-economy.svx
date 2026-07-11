@@ -1,67 +1,57 @@
 ---
-title: "What If Your Moat Becomes a Prison?"
+title: "When Your Moat Becomes a Prison"
 date: "2026-04-28"
-description: "AI makes it easier to build the next product. The lasting advantage is not protecting one position forever, but using today's strengths to reach the next one."
+description: "Kodak, Nokia, and BlackBerry built real advantages. Their trouble began when those advantages made the next market harder to enter."
 tags: ["ai", "moats", "strategy", "agility"]
 pillar: "ai-first-product"
 draft: false
 readingTime: 5
 ---
 
-AI is reducing the cost of building software. Interfaces, integrations, dashboards, and workflow automation that once took months can increasingly be reproduced in days. [Much of SaaS defensibility depended on engineering-time scarcity](https://www.forbes.com/sites/josipamajic/2026/03/31/vcs-rethink-startup-moats-as-ai-compresses-time-to-build/). That scarcity is weakening.
+Most stories about competitive moats end at the moment of success. A company builds distribution, proprietary knowledge, customer loyalty, or infrastructure that competitors cannot easily reproduce. The moat deepens. Margins expand. Strategy appears to have worked.
 
-The usual response is to ask which moats survive. Distribution, proprietary data, regulation, physical infrastructure, network effects, and workflow lock-in all make the list.
+The more interesting story begins afterward.
 
-I think that question stops too early.
+Kodak, Nokia, and BlackBerry did not lose because their moats were imaginary. They lost their defining markets after building unusually strong ones. In each case, the assets that protected the company also shaped its incentives, organization, and understanding of the customer. What kept competitors out eventually made a different future harder to enter.
 
-AI does not only change which advantages endure. It changes what an advantage is for. When building becomes dramatically faster, the winner is not necessarily the company that protects one position the longest. It may be the company best able to use its current position to reach the next one, even when that means destroying what used to make it successful.
+AI makes that pattern more important. As software becomes faster and cheaper to build, companies gain more ways to move beyond their current products. The scarce capability is shifting from protecting one position to being able to leave it.
 
-## A moat should buy options
+## Kodak: when the economics become the strategy
 
-Real moats still matter. AI cannot generate years of customer trust, regulatory approval, physical infrastructure, or repeated transactions. It cannot instantly recreate a marketplace's liquidity or the operational history behind a reliable dataset.
+Kodak had everything a company is supposed to want: a trusted global brand, retail distribution, manufacturing expertise, patents, and decades of knowledge about photography. Kodak engineer Steve Sasson built the first self-contained digital camera in 1975. The company saw digital coming from inside its own laboratories.
 
-Those assets are valuable because they give a company something a new entrant lacks: customers to introduce a new product to, data that reveals where the market is moving, cash to fund the next bet, and time to make mistakes before competitors catch up.
+The familiar version says Kodak simply ignored the invention. The real history is less tidy. Research into [Kodak's long attempt at strategic renewal](https://web-docs.stern.nyu.edu/management/strategyscience/Kodaks_Surprisingly_Long_Journey.pdf) finds extensive investment in digital products and repeated efforts to adapt. The problem was not a total absence of action. It was that digital photography dismantled the economics beneath Kodak's strength.
 
-That is a different conception of a moat. It is not a wall that preserves the current product. It is stored energy for the next one.
+Film produced recurring sales of film, chemicals, paper, and processing. Digital cameras removed most of that system. Kodak's factories, distribution, technical knowledge, and profit model were connected to the same loop. Moving decisively into digital meant using the company's advantages to destroy the business that paid for them.
 
-Distribution can launch a new category. Proprietary data can reveal an adjacent workflow. Regulatory access can create a protected window for reinvention. A standard can become the foundation for a broader platform. The value of each moat is not merely that competitors cannot copy it. The value is that its owner can turn it into something new.
+The moat was real. It was also a prison built from margins.
 
-AI increases that option value. A company can test adjacent products, rebuild internal systems, and explore new delivery models faster and more cheaply than before. The distance between recognizing a shift and shipping a response is collapsing.
+## Nokia: when agility fragments
 
-But only for companies willing to move.
+Nokia's trap looked different. It had carrier relationships, enormous global distribution, hardware expertise, supply-chain scale, and one of the world's most recognized brands. It was not a slow company. Nokia experimented constantly and shipped phones for nearly every market segment.
 
-## Kodak had the tools to win
+That activity concealed a coordination problem. A historical study calls it ["the curse of agility"](https://www.tandfonline.com/doi/full/10.1080/00076791.2019.1593964): decentralized product development helped Nokia respond quickly within the mobile-phone market, but contributed to fragmented software and competing internal priorities as the market reorganized around smartphone platforms.
 
-Kodak is often described as a company blindsided by digital photography. That version is too comfortable. Kodak engineer Steve Sasson [built the first self-contained digital camera in 1975](https://americanhistory.si.edu/collections/object/nmah_760118). The company saw the shift decades before it consumed the film business.
+Nokia could produce another handset. It struggled to reorganize around the idea that the operating system and developer ecosystem now mattered more than the device portfolio. The organization had been optimized to exploit variation inside the old architecture, not to abandon that architecture.
 
-Kodak also had nearly every advantage it could have asked for: a globally trusted brand, retail distribution, manufacturing expertise, intellectual property, customer relationships, and enough cash to fund the transition. Its moats should have made it the natural winner of digital photography.
+This is why speed and agility are not the same. Speed is the rate at which a company moves. Agility is its capacity to change what it is organized around. A company can ship quickly while becoming more efficient at the wrong game.
 
-Instead, those strengths were attached to film economics. The factories, margins, incentives, and corporate identity all rewarded preserving the old value chain. Kodak did not lack foresight or technology. It lacked the organizational ability to act against the business that made it powerful.
+## BlackBerry: when the best customer becomes a blindfold
 
-That is the darker side of defensibility. A moat can become a prison. The stronger it gets, the more capital, status, process, and identity accumulate around defending it.
+BlackBerry's advantages were unusually specific. Its secure network, physical keyboard, battery life, carrier relationships, and grip on enterprise buyers made it the serious smartphone. Those strengths came with a precise picture of what mattered: reliable email, fast typing, centralized control, and security.
 
-Deep workflow embedding creates the same risk. Software becomes difficult to remove because years of exceptions and institutional knowledge accumulate inside it. [That can be a genuine competitive advantage](https://www.edisonpartners.com/blog/ai-where-it-actually-matters-part-3-what-actually-creates-defensibility-in-mission-critical-ai). It can also make both the vendor and its customers slower to notice when the workflow itself should disappear.
+The iPhone changed the basis of competition. The smartphone became a general computing platform shaped by browsers, touch interfaces, consumer demand, and third-party applications. BlackBerry kept improving the attributes its existing customers valued while the category expanded beyond them.
 
-The moat remains real while the protected asset becomes irrelevant.
+The company eventually did escape the device business. [BlackBerry moved into cybersecurity and embedded software](https://www.cnbc.com/2022/11/19/how-blackberry-moved-from-iconic-cellphones-to-cybersecurity.html), carrying parts of its security knowledge into a different market. That is not a clean victory, but it shows what crossing a moat can look like. The transferable asset was not the keyboard or the handset. It was the security capability underneath them.
 
-## Agility is the ability to invalidate yourself
+## AI shortens the useful life of a position
 
-Speed is useful, but speed and agility are not the same. A company can ship quickly while becoming more entrenched in the wrong direction. AI can make that failure faster too.
+These stories share a structure. A moat begins as an advantage, then accumulates dependencies around itself. Factories, incentives, reporting lines, customer research, and professional identity all learn to defend the same source of profit. Eventually the company stops using the moat and starts serving it.
 
-Agility is the ability to let new evidence invalidate the current plan. At an organizational level, it means being able to move capital, people, and attention away from a successful product before its decline becomes obvious. It means treating cannibalization as a transfer of advantage, not an act of sabotage.
+AI increases the cost of that entrenchment. Interfaces, integrations, internal tools, and entirely new software products can be tested in a fraction of the time they once required. Competitors can explore adjacent positions more cheaply. Incumbents can too, but only if their organizations permit the new product to threaten the old one.
 
-That capability is harder to copy than a feature because it lives in incentives and decision rights. Can a team fund a product that threatens its current margins? Can information from the edge overturn an executive assumption? Can the company distinguish customer attachment to an outcome from attachment to the current way that outcome is delivered?
+That makes agility the more durable advantage. Not performative speed, endless prototypes, or shipping for its own sake. The important capability is moving people, capital, and attention away from a successful product before the need becomes undeniable. It is recognizing which assets can travel into the next market and which ones belong to the current business model.
 
-AI makes these questions more important. Cheap building creates more possible moves, but possibility is not the same as permission. A company can have the models, engineers, data, and distribution required to lead the next market and still refuse to cross into it.
+For Purveyors, the website and scraper code are not sacred. The more durable assets are the normalized coffee data, the shared schema, and the operational knowledge accumulated through correcting edge cases. Even those only matter while they improve coffee decisions. If supplier comparison stops being the right interface, the goal is not to preserve the comparison site. It is to carry the useful assets into whatever replaces it.
 
-## The Purveyors test
-
-For Purveyors, the website and scraper code are not the lasting advantage. Both can be reproduced. The more useful assets are the normalized coffee dataset, the schema that makes supplier listings comparable, and the operational history accumulated through correcting edge cases.
-
-But even those assets are not sacred. Their value depends on whether they help people and software make better coffee decisions. If supplier comparison stops being the important interface, the job is not to defend the comparison site. It is to carry the data, schema, and accumulated knowledge into whatever replaces it.
-
-That is the test I find more useful than asking whether a moat will survive AI:
-
-**Does this advantage help me preserve the current position, or does it help me reach the next one?**
-
-The strongest companies will still build moats. They just will not confuse the moat with the destination. In an economy where new software can be created at extraordinary speed, the lasting advantage is the capacity to cross your own defenses, supersede what works today, and bring your best assets with you.
+A moat should buy time and options. When it only gives a company more reasons to protect the current position, its deepest advantage has become its outer wall.
