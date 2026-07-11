@@ -53,7 +53,7 @@ Kodak is the warning. It had the technology, distribution, brand, capital, and e
 ## Sources
 
 1. [Forbes: VCs Rethink Startup Moats as AI Compresses Time to Build](https://www.forbes.com/sites/josipamajic/2026/03/31/vcs-rethink-startup-moats-as-ai-compresses-time-to-build/)
-2. [Smithsonian: Steve Sasson's 1975 digital camera](https://americanhistory.si.edu/collections/object/nmah_760118)
+2. [National Inventors Hall of Fame: Steven Sasson's digital camera](https://www.invent.org/inductees/steven-sasson)
 3. [Edison Partners: What Creates Defensibility in Mission-Critical AI](https://www.edisonpartners.com/blog/ai-where-it-actually-matters-part-3-what-actually-creates-defensibility-in-mission-critical-ai)
 
 ## Voice and editing guardrails
