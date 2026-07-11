@@ -114,9 +114,14 @@
 			for (const f of localFields) {
 				params[f.key] = f.value;
 			}
-			if (onExecute) {
-				await onExecute(block.data.executionId || '', block.data.actionType, params, blockId);
+			// Never report success without an execution handler. Inline cards in
+			// ChatMessageList are rendered without an `onExecute` prop, so clicking
+			// Execute there would otherwise skip /api/chat/execute-action and still
+			// claim the inventory/roast/sale write happened.
+			if (!onExecute) {
+				throw new Error('This action cannot be executed here. Open it in the workspace to run it.');
 			}
+			await onExecute(block.data.executionId || '', block.data.actionType, params, blockId);
 			// Inline cards do not have a canvas block ID, so there is no store update
 			// to drive their status. Canvas cards will converge on this same state
 			// through the reactive block data update.

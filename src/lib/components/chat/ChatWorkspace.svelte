@@ -908,7 +908,22 @@
 					data: { status: 'success', result, error: undefined }
 				});
 				const wsId = workspaceStore.currentWorkspaceId;
-				if (wsId) await persistCanvasState(wsId);
+				// The business write already committed via /api/chat/execute-action.
+				// A follow-up canvas-save failure must not flip the card back to
+				// `failed` or re-throw into the execution catch below; that would
+				// misreport a successful inventory/roast/sale write and invite a
+				// duplicate retry. Persist best-effort and log on failure instead.
+				if (wsId) {
+					try {
+						await persistCanvasState(wsId);
+					} catch (persistErr) {
+						console.error(
+							'Canvas persistence failed after a successful action execution; ' +
+								'the action already committed and remains marked success.',
+							persistErr
+						);
+					}
+				}
 			}
 			return result;
 		} catch (err) {
