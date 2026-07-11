@@ -263,6 +263,7 @@
 			const failure = classifyChatFailure(error);
 			chat.messages = rollbackFailedTurn(chat.messages, messageCountBeforeSubmission);
 			messageCountBeforeSubmission = null;
+			lastSentPageContext = null;
 			chatError = failure.message;
 			chatCanRetry = failure.retryable;
 			if (!inputMessage && lastSubmittedPrompt) inputMessage = lastSubmittedPrompt;
