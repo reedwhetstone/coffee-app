@@ -1,7 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { searchCatalog, type CatalogItem } from '@purveyors/cli/catalog';
 import { listInventory } from '@purveyors/cli/inventory';
 import { compactActionCardOutputForModel } from '$lib/services/toolModelOutput';
 import type { JSONValue } from 'ai';
@@ -11,6 +10,7 @@ import {
 	stripInventoryRoastProfileData,
 	type ChatToolAccess
 } from './shared';
+import { loadInventoryActionCatalog } from './inventoryCatalog';
 
 export function createInventoryTools(
 	supabase: SupabaseClient,
@@ -110,15 +110,15 @@ export function createInventoryTools(
 				//     purchaseDate: params.purchase_date,
 				//   })
 
-				// Fetch all stocked catalog beans for the dropdown using CLI directly
+				// Fetch the complete stocked catalog for the coupled supplier/coffee dropdowns.
 				let allBeans: Array<{ id: number; name: string | null; source?: string | null }> = [];
 				let beanSelectOptions: Array<{ label: string; value: string }> = [];
 				let sourceOptions: Array<{ label: string; value: string }> = [];
+				let catalogOptionsComplete = true;
 				try {
-					const catalogItems: CatalogItem[] = await searchCatalog(supabase, {
-						stocked: true,
-						limit: 500
-					});
+					const catalogResult = await loadInventoryActionCatalog(supabase, catalogId);
+					const catalogItems = catalogResult.items;
+					catalogOptionsComplete = catalogResult.complete;
 					if (catalogItems) {
 						allBeans = catalogItems.map((c) => ({ id: c.id, name: c.name, source: c.source }));
 						beanSelectOptions = allBeans.map((c) => ({
@@ -188,7 +188,19 @@ export function createInventoryTools(
 											value: catalogId || Number(preSelectedValue),
 											type: 'number' as const,
 											editable: false
-										}
+										},
+										...(catalogOptionsComplete
+											? []
+											: [
+													{
+														key: 'catalog_options_notice',
+														label: 'Catalog options',
+														value:
+															'Some catalog options could not be loaded. Try again for the complete list.',
+														type: 'text' as const,
+														editable: false
+													}
+												])
 									]
 								: [
 										...(catalogId
