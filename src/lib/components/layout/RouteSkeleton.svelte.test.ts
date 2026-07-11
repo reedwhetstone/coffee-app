@@ -19,11 +19,19 @@ describe('RouteSkeleton', () => {
 	});
 
 	it('renders a chat workspace skeleton for chat navigation', () => {
-		render(RouteSkeleton, { pathname: '/chat' });
+		render(RouteSkeleton, { pathname: '/chat', authenticated: true, role: 'member' });
 
 		expect(screen.getByTestId('route-skeleton')).toBeInTheDocument();
 		expect(document.querySelectorAll('aside').length).toBe(1);
 		expect(document.querySelectorAll('section').length).toBe(1);
+	});
+
+	it('renders a centered access gate for ineligible chat navigation', () => {
+		render(RouteSkeleton, { pathname: '/chat', authenticated: true, role: 'viewer' });
+
+		expect(screen.getByTestId('access-gate-skeleton')).toBeInTheDocument();
+		expect(document.querySelector('aside')).not.toBeInTheDocument();
+		expect(document.querySelector('section')).not.toBeInTheDocument();
 	});
 
 	it('renders a product-card skeleton for subscription navigation', () => {

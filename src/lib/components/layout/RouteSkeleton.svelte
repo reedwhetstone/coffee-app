@@ -9,10 +9,23 @@
 
 	let {
 		pathname = '/',
-		isParchmentIntelligence = false
-	}: { pathname?: string | null; isParchmentIntelligence?: boolean } = $props();
+		isParchmentIntelligence = false,
+		authenticated = false,
+		role = 'viewer'
+	}: {
+		pathname?: string | null;
+		isParchmentIntelligence?: boolean;
+		authenticated?: boolean;
+		role?: 'viewer' | 'member' | 'admin';
+	} = $props();
 
-	let kind = $derived(getRouteSkeletonKind(pathname));
+	let kind = $derived(
+		getRouteSkeletonKind(pathname, {
+			authenticated,
+			role,
+			ppiAccess: isParchmentIntelligence
+		})
+	);
 
 	const chatMessageRows = [0, 1, 2];
 	const subscriptionCards = [0, 1, 2, 3];
@@ -29,6 +42,19 @@
 		<RoastPageSkeleton />
 	{:else if kind === 'analytics'}
 		<AnalyticsRouteSkeleton mode="route" {isParchmentIntelligence} />
+	{:else if kind === 'access-gate'}
+		<div
+			class="mx-auto flex min-h-[28rem] max-w-xl items-center justify-center px-4 motion-safe:animate-pulse"
+			data-testid="access-gate-skeleton"
+		>
+			<div class="w-full rounded-lg bg-surface-panel p-8 text-center ring-1 ring-line">
+				<Skeleton class="mx-auto mb-6 h-14 w-14 opacity-35" rounded="rounded-full" />
+				<Skeleton class="mx-auto mb-3 h-8 w-72 max-w-full opacity-50" />
+				<Skeleton class="mx-auto mb-2 h-4 w-96 max-w-full opacity-25" />
+				<Skeleton class="mx-auto mb-6 h-4 w-64 max-w-full opacity-25" />
+				<Skeleton class="mx-auto h-10 w-36 opacity-35" rounded="rounded-md" />
+			</div>
+		</div>
 	{:else if kind === 'chat'}
 		<div
 			class="grid min-h-[min(720px,calc(100vh-10rem))] gap-4 motion-safe:animate-pulse lg:grid-cols-[280px_minmax(0,1fr)]"

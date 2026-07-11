@@ -369,7 +369,10 @@
 				};
 
 				// Reload fresh data and re-select the new profile
-				await reloadProfile(profiles[0].roast_id);
+				const reloadedProfile = await reloadProfile(profiles[0].roast_id);
+				if (!reloadedProfile) {
+					throw new Error('Roast profile was created but could not be reloaded');
+				}
 
 				// Return the result for Artisan file upload (already has roast_ids if using new format)
 				return result.roast_ids
@@ -383,7 +386,9 @@
 			}
 		} catch (error: unknown) {
 			console.error('Error creating roast profiles:', error);
-			setProfileError(error instanceof Error ? error.message : 'Failed to create roast profiles');
+			const failure = error instanceof Error ? error : new Error('Failed to create roast profiles');
+			setProfileError(failure.message);
+			throw failure;
 		} finally {
 			setOperation(null);
 		}

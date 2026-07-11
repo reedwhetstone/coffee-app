@@ -7,12 +7,26 @@ describe('route skeleton registry', () => {
 		expect(getRouteSkeletonKind('/catalog/origins')).toBe('catalog');
 		expect(getRouteSkeletonKind('/analytics')).toBe('analytics');
 		expect(getRouteSkeletonKind('/beans')).toBe('beans');
-		expect(getRouteSkeletonKind('/chat')).toBe('chat');
+		expect(getRouteSkeletonKind('/chat', { authenticated: true, role: 'member' })).toBe('chat');
 		expect(getRouteSkeletonKind('/profit')).toBe('profit');
 		expect(getRouteSkeletonKind('/roast')).toBe('roast');
 		expect(getRouteSkeletonKind('/subscription')).toBe('subscription');
 		expect(getRouteSkeletonKind('/subscription/success')).toBe('subscription-success');
-		expect(getRouteSkeletonKind('/api-dashboard/usage')).toBe('dashboard');
+		expect(getRouteSkeletonKind('/api-dashboard/usage', { authenticated: true })).toBe('generic');
+	});
+
+	it('uses an access-gate shell unless chat is available to the current user', () => {
+		expect(getRouteSkeletonKind('/chat')).toBe('access-gate');
+		expect(getRouteSkeletonKind('/chat', { authenticated: true, role: 'viewer' })).toBe(
+			'access-gate'
+		);
+		expect(
+			getRouteSkeletonKind('/chat', {
+				authenticated: true,
+				role: 'viewer',
+				ppiAccess: true
+			})
+		).toBe('chat');
 	});
 
 	it('falls back to a generic shell for routes without a dedicated skeleton', () => {
@@ -41,5 +55,20 @@ describe('route skeleton registry', () => {
 				new URL('https://purveyors.test/catalog#results')
 			)
 		).toBe(false);
+	});
+
+	it('keeps current content for destinations without trusted skeleton geometry', () => {
+		const from = new URL('https://purveyors.test/catalog');
+		for (const destination of ['/dashboard', '/api-dashboard/usage', '/subscription']) {
+			expect(
+				shouldShowClientRouteSkeleton(from, new URL(destination, 'https://purveyors.test'))
+			).toBe(false);
+		}
+		expect(
+			shouldShowClientRouteSkeleton(
+				from,
+				new URL('/subscription/success', 'https://purveyors.test')
+			)
+		).toBe(true);
 	});
 });

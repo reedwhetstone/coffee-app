@@ -69,14 +69,29 @@
 	type RouteSkeletonProps = {
 		pathname?: string | null;
 		isParchmentIntelligence?: boolean;
+		authenticated?: boolean;
+		role?: UserRole;
 	};
 	let RouteSkeletonComponent = $state<Component<RouteSkeletonProps> | null>(null);
 	let navigationSkeletonPathname = $state<string | null>(null);
+	let routeSkeletonImportPromise: Promise<Component<RouteSkeletonProps>> | null = null;
+
+	function loadRouteSkeletonComponent(): Promise<Component<RouteSkeletonProps>> {
+		if (!routeSkeletonImportPromise) {
+			routeSkeletonImportPromise = import('$lib/components/layout/RouteSkeleton.svelte')
+				.then((module) => module.default)
+				.catch((error) => {
+					routeSkeletonImportPromise = null;
+					throw error;
+				});
+		}
+		return routeSkeletonImportPromise;
+	}
 
 	// Keep the current route mounted during fast navigations. The progress bar gives
 	// immediate feedback; only a navigation that outlives the threshold swaps to a
-	// destination-shaped skeleton. Importing after the threshold keeps skeleton code
-	// out of the persistent root bundle.
+	// destination-shaped skeleton. Begin loading the detached skeleton chunk in
+	// parallel so the 120 ms threshold is the only intentional display delay.
 	$effect(() => {
 		const navigation = $navigating;
 		if (!shouldShowClientRouteSkeleton(navigation?.from?.url, navigation?.to?.url)) {
@@ -88,19 +103,29 @@
 		if (!targetPathname) return;
 
 		let cancelled = false;
-		const timer = window.setTimeout(async () => {
-			try {
-				const module = await import('$lib/components/layout/RouteSkeleton.svelte');
-				if (cancelled) return;
-				RouteSkeletonComponent = module.default;
+		let delayElapsed = false;
+		let loadedComponent: Component<RouteSkeletonProps> | null = null;
+		const componentPromise = loadRouteSkeletonComponent();
+		const timer = window.setTimeout(() => {
+			delayElapsed = true;
+			if (loadedComponent && !cancelled) {
 				navigationSkeletonPathname = targetPathname;
-			} catch (error) {
+			}
+		}, ROUTE_SKELETON_DELAY_MS);
+
+		componentPromise
+			.then((component) => {
+				if (cancelled) return;
+				loadedComponent = component;
+				RouteSkeletonComponent = component;
+				if (delayElapsed) navigationSkeletonPathname = targetPathname;
+			})
+			.catch((error) => {
 				if (!cancelled) {
 					console.error('Failed to load route skeleton:', error);
 					navigationSkeletonPathname = null;
 				}
-			}
-		}, ROUTE_SKELETON_DELAY_MS);
+			});
 
 		return () => {
 			cancelled = true;
@@ -163,6 +188,8 @@
 			<RouteSkeletonComponent
 				pathname={navigationSkeletonPathname}
 				isParchmentIntelligence={data.ppiAccess === true}
+				authenticated={Boolean(data.session?.user)}
+				role={data.role}
 			/>
 		{:else}
 			{@render children()}
@@ -180,6 +207,8 @@
 					<RouteSkeletonComponent
 						pathname={navigationSkeletonPathname}
 						isParchmentIntelligence={data.ppiAccess === true}
+						authenticated={Boolean(data.session?.user)}
+						role={data.role}
 					/>
 				{:else}
 					{@render children()}
@@ -217,6 +246,8 @@
 					<RouteSkeletonComponent
 						pathname={navigationSkeletonPathname}
 						isParchmentIntelligence={data.ppiAccess === true}
+						authenticated={Boolean(data.session?.user)}
+						role={data.role}
 					/>
 				{:else}
 					{@render children()}
