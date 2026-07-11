@@ -1,45 +1,67 @@
 ---
-title: "Which Moats Survive When AI Makes Software Cheap?"
+title: "What If Your Moat Becomes a Prison?"
 date: "2026-04-28"
-description: "AI makes software cheaper to reproduce. Durable advantages still require elapsed time, compound through use, and protect something the market will continue to value."
-tags: ["ai", "moats", "strategy", "defensibility"]
+description: "AI makes it easier to build the next product. The lasting advantage is not protecting one position forever, but using today's strengths to reach the next one."
+tags: ["ai", "moats", "strategy", "agility"]
 pillar: "ai-first-product"
 draft: false
-readingTime: 3
+readingTime: 5
 ---
 
 AI is reducing the cost of building software. Interfaces, integrations, dashboards, and workflow automation that once took months can increasingly be reproduced in days. [Much of SaaS defensibility depended on engineering-time scarcity](https://www.forbes.com/sites/josipamajic/2026/03/31/vcs-rethink-startup-moats-as-ai-compresses-time-to-build/). That scarcity is weakening.
 
-This does not make every software company worthless. It changes what deserves to be called a moat.
+The usual response is to ask which moats survive. Distribution, proprietary data, regulation, physical infrastructure, network effects, and workflow lock-in all make the list.
 
-## Elapsed time still matters
+I think that question stops too early.
 
-AI can accelerate work, but it cannot skip the clock.
+AI does not only change which advantages endure. It changes what an advantage is for. When building becomes dramatically faster, the winner is not necessarily the company that protects one position the longest. It may be the company best able to use its current position to reach the next one, even when that means destroying what used to make it successful.
 
-Distribution takes repeated transactions and customer trust. Regulatory approval takes institutional process. Physical infrastructure takes permits, manufacturing, and construction. A standard takes years of adoption before other systems depend on it.
+## A moat should buy options
 
-These advantages are durable because a competitor cannot recreate them by generating more code. A marketplace clone still begins without liquidity. A new bank still lacks a charter. A new protocol still lacks integrations.
+Real moats still matter. AI cannot generate years of customer trust, regulatory approval, physical infrastructure, or repeated transactions. It cannot instantly recreate a marketplace's liquidity or the operational history behind a reliable dataset.
 
-Time alone is not enough, though. A license that merely delays competitors eventually expires as an advantage. Distribution that produces no proprietary learning is just a lead. The strongest time-based assets create a protected period in which something else compounds.
+Those assets are valuable because they give a company something a new entrant lacks: customers to introduce a new product to, data that reveals where the market is moving, cash to fund the next bet, and time to make mistakes before competitors catch up.
 
-## Use must improve the asset
+That is a different conception of a moat. It is not a wall that preserves the current product. It is stored energy for the next one.
 
-"Data moat" usually describes a possession, not a mechanism. A static dataset can be scraped, bought, or rebuilt. Data becomes defensible when operating the product produces information that improves the next decision.
+Distribution can launch a new category. Proprietary data can reveal an adjacent workflow. Regulatory access can create a protected window for reinvention. A standard can become the foundation for a broader platform. The value of each moat is not merely that competitors cannot copy it. The value is that its owner can turn it into something new.
 
-Operational data has this property. It records exceptions, corrections, outcomes, and changes that do not exist in the original source material. A competitor can copy the current output, but not the history that explains how it became reliable.
+AI increases that option value. A company can test adjacent products, rebuild internal systems, and explore new delivery models faster and more cheaply than before. The distance between recognizing a shift and shipping a response is collapsing.
 
-Purveyors is a small example. The scraper code is reproducible. The useful asset is the accumulated knowledge required to normalize inconsistent supplier listings: where arrival dates hide, which origin names refer to the same place, and when a processing label is descriptive versus promotional. Each run exposes new edge cases; resolving them improves the catalog and the schema used by later runs.
+But only for companies willing to move.
 
-[Workflow software can compound similarly](https://www.edisonpartners.com/blog/ai-where-it-actually-matters-part-3-what-actually-creates-defensibility-in-mission-critical-ai) when it captures how real exceptions are handled. But lock-in is not the same as learning. If use creates switching cost without improving the system, the product may be sticky while remaining vulnerable to a better workflow.
+## Kodak had the tools to win
 
-## The moat must protect future value
+Kodak is often described as a company blindsided by digital photography. That version is too comfortable. Kodak engineer Steve Sasson [built the first self-contained digital camera in 1975](https://americanhistory.si.edu/collections/object/nmah_760118). The company saw the shift decades before it consumed the film business.
 
-Kodak had distribution, manufacturing expertise, brand trust, and a profitable ecosystem. Those were real moats around film photography. They did not preserve Kodak's position when value moved away from film.
+Kodak also had nearly every advantage it could have asked for: a globally trusted brand, retail distribution, manufacturing expertise, intellectual property, customer relationships, and enough cash to fund the transition. Its moats should have made it the natural winner of digital photography.
 
-This is the test most moat analysis misses: **will the protected asset still sit in the value chain five years from now?**
+Instead, those strengths were attached to film economics. The factories, margins, incentives, and corporate identity all rewarded preserving the old value chain. Kodak did not lack foresight or technology. It lacked the organizational ability to act against the business that made it powerful.
 
-A proprietary dataset can compound in a shrinking market. A workflow can be deeply embedded until a new system bypasses that workflow. A standard can dominate an object that stops mattering. Defensibility and future value are separate questions.
+That is the darker side of defensibility. A moat can become a prison. The stronger it gets, the more capital, status, process, and identity accumulate around defending it.
 
-Speed does not resolve this problem. Shipping faster along the wrong trajectory only entrenches it. The harder capability is letting new evidence invalidate the current plan. Accumulated context helps until yesterday's assumptions become today's instructions.
+Deep workflow embedding creates the same risk. Software becomes difficult to remove because years of exceptions and institutional knowledge accumulate inside it. [That can be a genuine competitive advantage](https://www.edisonpartners.com/blog/ai-where-it-actually-matters-part-3-what-actually-creates-defensibility-in-mission-critical-ai). It can also make both the vendor and its customers slower to notice when the workflow itself should disappear.
 
-The strongest position combines all three properties: it takes time to reproduce, improves through use, and protects an asset likely to remain important. For Purveyors, that is not the website or scraper. It is the operational history, normalization rules, and shared schema that make fragmented coffee listings comparable. Software carries the system; repeated observation makes it harder to reproduce.
+The moat remains real while the protected asset becomes irrelevant.
+
+## Agility is the ability to invalidate yourself
+
+Speed is useful, but speed and agility are not the same. A company can ship quickly while becoming more entrenched in the wrong direction. AI can make that failure faster too.
+
+Agility is the ability to let new evidence invalidate the current plan. At an organizational level, it means being able to move capital, people, and attention away from a successful product before its decline becomes obvious. It means treating cannibalization as a transfer of advantage, not an act of sabotage.
+
+That capability is harder to copy than a feature because it lives in incentives and decision rights. Can a team fund a product that threatens its current margins? Can information from the edge overturn an executive assumption? Can the company distinguish customer attachment to an outcome from attachment to the current way that outcome is delivered?
+
+AI makes these questions more important. Cheap building creates more possible moves, but possibility is not the same as permission. A company can have the models, engineers, data, and distribution required to lead the next market and still refuse to cross into it.
+
+## The Purveyors test
+
+For Purveyors, the website and scraper code are not the lasting advantage. Both can be reproduced. The more useful assets are the normalized coffee dataset, the schema that makes supplier listings comparable, and the operational history accumulated through correcting edge cases.
+
+But even those assets are not sacred. Their value depends on whether they help people and software make better coffee decisions. If supplier comparison stops being the important interface, the job is not to defend the comparison site. It is to carry the data, schema, and accumulated knowledge into whatever replaces it.
+
+That is the test I find more useful than asking whether a moat will survive AI:
+
+**Does this advantage help me preserve the current position, or does it help me reach the next one?**
+
+The strongest companies will still build moats. They just will not confuse the moat with the destination. In an economy where new software can be created at extraordinary speed, the lasting advantage is the capacity to cross your own defenses, supersede what works today, and bring your best assets with you.
