@@ -1037,9 +1037,9 @@
 
 	function stopResponse() {
 		chat.stop();
-		chat.messages = rollbackFailedTurn(chat.messages, messageCountBeforeSubmission);
+		// Stopping is not a failed turn: preserve the submitted prompt and any
+		// assistant text that has already streamed into the conversation.
 		messageCountBeforeSubmission = null;
-		if (!inputMessage && lastSubmittedPrompt) inputMessage = lastSubmittedPrompt;
 	}
 
 	async function retryLastResponse() {
