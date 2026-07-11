@@ -33,7 +33,7 @@
 		applyAnalyticsSeedToInput,
 		readAnalyticsSeedFromSearchParams
 	} from '$lib/analytics/actionContext';
-	import { classifyChatFailure } from './chatRecovery';
+	import { classifyChatFailure, rollbackFailedTurn } from './chatRecovery';
 
 	let {
 		canUseChat,
@@ -236,6 +236,7 @@
 	let initializingWorkspace = $state(false);
 	let workspaceInitError = $state<string | null>(null);
 	let lastSubmittedPrompt = $state('');
+	let messageCountBeforeSubmission: number | null = null;
 	let canvasPersistError = $state<string | null>(null);
 	let displayedError = $derived(canvasPersistError ?? chatError);
 
@@ -260,6 +261,8 @@
 		onError: (error) => {
 			console.error('Chat error:', error);
 			const failure = classifyChatFailure(error);
+			chat.messages = rollbackFailedTurn(chat.messages, messageCountBeforeSubmission);
+			messageCountBeforeSubmission = null;
 			chatError = failure.message;
 			chatCanRetry = failure.retryable;
 			if (!inputMessage && lastSubmittedPrompt) inputMessage = lastSubmittedPrompt;
@@ -988,7 +991,7 @@
 	}
 
 	// ─── Send Message ──────────────────────────────────────────────────────────
-	async function sendMessage() {
+	async function sendMessage(forcePageContext = false) {
 		if (!inputMessage.trim() || isActive || isClearing || !workspaceReady) return;
 
 		const text = inputMessage.trim();
@@ -1017,7 +1020,9 @@
 			if (cmd.chatText) {
 				inputMessage = '';
 				shouldScrollToBottom = true;
-				await chat.sendMessage({ text: cmd.chatText }, { body: buildSendBody() });
+				messageCountBeforeSubmission = chat.messages.length;
+				await chat.sendMessage({ text: cmd.chatText }, { body: buildSendBody(forcePageContext) });
+				messageCountBeforeSubmission = null;
 				return;
 			}
 		}
@@ -1025,18 +1030,22 @@
 		inputMessage = '';
 		shouldScrollToBottom = true;
 
-		await chat.sendMessage({ text }, { body: buildSendBody() });
+		messageCountBeforeSubmission = chat.messages.length;
+		await chat.sendMessage({ text }, { body: buildSendBody(forcePageContext) });
+		messageCountBeforeSubmission = null;
 	}
 
 	function stopResponse() {
 		chat.stop();
+		chat.messages = rollbackFailedTurn(chat.messages, messageCountBeforeSubmission);
+		messageCountBeforeSubmission = null;
 		if (!inputMessage && lastSubmittedPrompt) inputMessage = lastSubmittedPrompt;
 	}
 
 	async function retryLastResponse() {
 		chatError = null;
 		chatCanRetry = false;
-		await chat.regenerate({ body: buildSendBody(true) });
+		await sendMessage(true);
 	}
 
 	// ─── Export / Clear ────────────────────────────────────────────────────────

@@ -1,5 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { classifyChatFailure } from './chatRecovery';
+import { classifyChatFailure, rollbackFailedTurn } from './chatRecovery';
+
+describe('rollbackFailedTurn', () => {
+	it('removes the failed user turn so a revised prompt replaces it', () => {
+		const messages = [
+			{ id: 'assistant-1', role: 'assistant' },
+			{ id: 'user-failed', role: 'user' },
+			{ id: 'assistant-partial', role: 'assistant' }
+		];
+
+		expect(rollbackFailedTurn(messages, 1)).toEqual([messages[0]]);
+	});
+
+	it('leaves messages unchanged when no submission is being tracked', () => {
+		const messages = [{ id: 'user-1', role: 'user' }];
+		expect(rollbackFailedTurn(messages, null)).toBe(messages);
+	});
+});
 
 describe('classifyChatFailure', () => {
 	it('makes timeouts recoverable', () => {

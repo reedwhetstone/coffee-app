@@ -6,6 +6,14 @@ export type ChatFailureKind =
 	| 'no-results'
 	| 'unknown';
 
+export function rollbackFailedTurn<T>(
+	messages: T[],
+	messageCountBeforeSubmission: number | null
+): T[] {
+	if (messageCountBeforeSubmission === null) return messages;
+	return messages.slice(0, messageCountBeforeSubmission);
+}
+
 export function classifyChatFailure(error: unknown): {
 	kind: ChatFailureKind;
 	message: string;
