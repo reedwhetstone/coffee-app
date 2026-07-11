@@ -9,6 +9,7 @@
 	import NavigationProgress from '$lib/components/layout/NavigationProgress.svelte';
 	import NavigationSkeletonOverlay from '$lib/components/layout/NavigationSkeletonOverlay.svelte';
 	import {
+		resolveLayoutRouteState,
 		resolveLayoutShell,
 		usesPublicShell as isPublicShell
 	} from '$lib/components/layout/layoutShell';
@@ -144,7 +145,10 @@
 	);
 	// Shell ownership follows the committed route. A pending destination may
 	// select a skeleton, but must never switch outer branches and destroy source state.
-	let pathname = $derived($page.url.pathname);
+	let layoutRoute = $derived(
+		resolveLayoutRouteState($page.url.pathname, navigationSkeletonPathname)
+	);
+	let pathname = $derived(layoutRoute.committedPathname);
 	let usesPublicShell = $derived(isPublicShell(pathname));
 	let layoutShell = $derived(resolveLayoutShell(pathname, Boolean(data?.session?.user)));
 	let shouldShowUnifiedHeader = $derived(
@@ -187,7 +191,7 @@
 	<div class="min-h-screen">
 		<NavigationSkeletonOverlay
 			active={showClientRouteSkeleton}
-			pathname={navigationSkeletonPathname}
+			pathname={layoutRoute.skeletonPathname}
 			Skeleton={RouteSkeletonComponent}
 			isParchmentIntelligence={data.ppiAccess === true}
 			authenticated={Boolean(data.session?.user)}
@@ -206,7 +210,7 @@
 			<div class="h-full overflow-x-clip px-4 pb-6 pt-20 sm:px-6 md:px-0 md:pb-0 md:pr-12 md:pt-4">
 				<NavigationSkeletonOverlay
 					active={showClientRouteSkeleton}
-					pathname={navigationSkeletonPathname}
+					pathname={layoutRoute.skeletonPathname}
 					Skeleton={RouteSkeletonComponent}
 					isParchmentIntelligence={data.ppiAccess === true}
 					authenticated={Boolean(data.session?.user)}
@@ -247,7 +251,7 @@
 			<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
 				<NavigationSkeletonOverlay
 					active={showClientRouteSkeleton}
-					pathname={navigationSkeletonPathname}
+					pathname={layoutRoute.skeletonPathname}
 					Skeleton={RouteSkeletonComponent}
 					isParchmentIntelligence={data.ppiAccess === true}
 					authenticated={Boolean(data.session?.user)}

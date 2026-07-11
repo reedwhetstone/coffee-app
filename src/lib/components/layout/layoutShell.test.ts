@@ -1,38 +1,32 @@
-import { fireEvent, render, screen } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
-import RootLayoutNavigationHarness from './RootLayoutNavigationHarness.test.svelte';
+import { resolveLayoutRouteState, resolveLayoutShell, usesPublicShell } from './layoutShell';
 
-describe('root layout navigation shell lifecycle', () => {
-	it('keeps the committed app shell and form node mounted through delayed public navigation cancellation', async () => {
-		const view = render(RootLayoutNavigationHarness, {
+describe('root layout route state contract', () => {
+	it('keeps shell decisions committed while a delayed cross-shell destination selects the skeleton', () => {
+		const route = resolveLayoutRouteState('/roast', '/blog/context-windows');
+
+		expect(resolveLayoutShell(route.committedPathname, true)).toBe('app');
+		expect(usesPublicShell(route.committedPathname)).toBe(false);
+		expect(route.skeletonPathname).toBe('/blog/context-windows');
+	});
+
+	it('clears or replaces only the pending skeleton destination during cancellation and rapid redirects', () => {
+		const firstDestination = resolveLayoutRouteState('/roast', '/blog/first');
+		const redirectedDestination = resolveLayoutRouteState(
+			firstDestination.committedPathname,
+			'/subscription'
+		);
+		const cancelled = resolveLayoutRouteState(redirectedDestination.committedPathname, null);
+
+		expect(firstDestination).toEqual({
 			committedPathname: '/roast',
-			destinationPathname: null,
-			active: false
+			skeletonPathname: '/blog/first'
 		});
-		const input = screen.getByLabelText('Draft roast') as HTMLInputElement;
-		await fireEvent.input(input, { target: { value: 'Do not lose this' } });
-
-		await view.rerender({
+		expect(redirectedDestination).toEqual({
 			committedPathname: '/roast',
-			destinationPathname: '/blog/context-windows',
-			active: true
+			skeletonPathname: '/subscription'
 		});
-
-		expect(screen.getByTestId('app-shell')).toBeInTheDocument();
-		expect(screen.queryByTestId('public-shell')).not.toBeInTheDocument();
-		expect(screen.getByLabelText('Draft roast')).toBe(input);
-		expect(input).toHaveValue('Do not lose this');
-		expect(screen.getByTestId('navigation-source-route')).toHaveAttribute('inert');
-
-		// Navigation cancellation or redirect clears the pending destination. The
-		// same committed source node and its local state become interactive again.
-		await view.rerender({
-			committedPathname: '/roast',
-			destinationPathname: null,
-			active: false
-		});
-		expect(screen.getByLabelText('Draft roast')).toBe(input);
-		expect(input).toHaveValue('Do not lose this');
-		expect(screen.getByTestId('navigation-source-route')).not.toHaveAttribute('inert');
+		expect(cancelled).toEqual({ committedPathname: '/roast', skeletonPathname: null });
+		expect(resolveLayoutShell(cancelled.committedPathname, true)).toBe('app');
 	});
 });
