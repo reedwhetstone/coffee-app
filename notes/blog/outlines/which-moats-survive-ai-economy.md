@@ -11,20 +11,20 @@ Kodak, Nokia, and BlackBerry did not lose because their moats were imaginary. Th
 
 ## Structure
 
-### Opening: the story after the moat succeeds
+### Opening: the effect of a moat on its owner
 
 - Most moat analysis ends when defensibility is achieved.
 - The harder question is what the moat does to the company that owns it.
 - Frame Kodak, Nokia, and BlackBerry as three distinct forms of entrenchment.
 
-### Kodak: the economics become the strategy
+### Kodak's film economics
 
 - Real moat: brand, retail distribution, manufacturing, patents, and photographic knowledge.
 - Kodak invented the first self-contained digital camera and invested extensively in digital.
 - The constraint was structural: digital dismantled the recurring film, chemical, paper, and processing economics beneath Kodak's advantages.
 - Trap: using the moat to enter the future meant destroying the business funding it.
 
-### Nokia: agility fragments
+### Nokia's organizational fragmentation
 
 - Real moat: carrier distribution, hardware expertise, supply-chain scale, brand, and broad device portfolio.
 - Nokia was active and experimental, not simply slow.
@@ -32,7 +32,7 @@ Kodak, Nokia, and BlackBerry did not lose because their moats were imaginary. Th
 - Trap: the organization could make another phone faster than it could reorganize around software ecosystems.
 - Distinction: speed is movement rate; agility is the capacity to change what the organization is built around.
 
-### BlackBerry: the best customer becomes a blindfold
+### BlackBerry's definition of the customer
 
 - Real moat: enterprise security, physical keyboard, battery life, carrier relationships, and centralized control.
 - Those strengths encoded a narrow definition of the smartphone around enterprise communication.
@@ -40,7 +40,7 @@ Kodak, Nokia, and BlackBerry did not lose because their moats were imaginary. Th
 - BlackBerry eventually carried its transferable security knowledge into cybersecurity and embedded software.
 - Trap: confusing the current product with the capability beneath it.
 
-### AI shortens the useful life of a position
+### AI and organizational mobility
 
 - A moat accumulates factories, incentives, reporting structures, customer research, and identity around one profit engine.
 - Cheap software creation gives competitors and incumbents more adjacent moves.
@@ -52,7 +52,7 @@ Kodak, Nokia, and BlackBerry did not lose because their moats were imaginary. Th
 - Website and scraper code are replaceable.
 - Normalized data, shared schema, and operational knowledge are more transferable.
 - Those assets still matter only while they improve coffee decisions.
-- Closing claim: a moat should buy time and options; when it only generates reasons to preserve the current position, the advantage has become the outer wall.
+- Closing claim: a moat is useful when it buys time and options; it becomes a constraint when preserving it matters more than transferring the underlying capability.
 
 ## Sources
 
