@@ -1,0 +1,55 @@
+---
+title: "When Your Moat Becomes a Prison"
+date: "2026-04-28"
+description: "Kodak, Nokia, and BlackBerry show how durable advantages can constrain adaptation when markets change."
+tags: ["ai", "moats", "strategy", "agility"]
+pillar: "ai-first-product"
+draft: false
+readingTime: 4
+---
+
+Competitive moats are usually evaluated by how effectively they exclude rivals. That misses what a durable advantage can do to the company that owns it.
+
+Kodak, Nokia, and BlackBerry did not lose because their moats were imaginary. They lost their defining markets after building unusually strong ones. In each case, the assets that protected the company also shaped its incentives, organization, and understanding of the customer. What kept competitors out eventually made a different future harder to enter.
+
+As software becomes faster and cheaper to build, companies have more ways to move beyond their current products. The harder problem is organizational: whether they can leave a profitable position before the market forces them to.
+
+## Kodak's film economics
+
+Kodak had a trusted global brand, retail distribution, manufacturing expertise, patents, and decades of knowledge about photography. Kodak engineer Steve Sasson [built the first self-contained digital camera in 1975](https://www.invent.org/inductees/steven-sasson). The company saw digital coming from inside its own laboratories.
+
+The familiar version says Kodak simply ignored the invention. The real history is less tidy. Research into [Kodak's long attempt at strategic renewal](https://web-docs.stern.nyu.edu/management/strategyscience/Kodaks_Surprisingly_Long_Journey.pdf) finds extensive investment in digital products and repeated efforts to adapt. The problem was not a total absence of action. It was that digital photography dismantled the economics beneath Kodak's strength.
+
+Film produced recurring sales of film, chemicals, paper, and processing. Digital cameras removed most of that system. Kodak's factories, distribution, technical knowledge, and profit model were connected to the same loop. Moving decisively into digital meant using the company's advantages to destroy the business that paid for them.
+
+Kodak's advantages were inseparable from the economics digital photography was replacing.
+
+## Nokia's organizational fragmentation
+
+Nokia had carrier relationships, global distribution, hardware expertise, supply-chain scale, and a widely recognized brand. It was not a slow company. Nokia experimented constantly and shipped phones for nearly every market segment.
+
+That activity concealed a coordination problem. A historical study calls it ["the curse of agility"](https://www.tandfonline.com/doi/full/10.1080/00076791.2019.1593964): decentralized product development helped Nokia respond quickly within the mobile-phone market, but contributed to fragmented software and competing internal priorities as the market reorganized around smartphone platforms.
+
+Nokia could produce another handset. It struggled to reorganize around the idea that the operating system and developer ecosystem now mattered more than the device portfolio. The organization had been optimized to exploit variation inside the old architecture, not to abandon that architecture.
+
+Speed and agility are not the same. Speed is the rate at which a company moves. Agility is its capacity to change what it is organized around. Nokia could move quickly within its existing structure, but the platform shift required a different structure.
+
+## BlackBerry's definition of the customer
+
+BlackBerry's advantages were unusually specific. Its secure network, physical keyboard, battery life, carrier relationships, and grip on enterprise buyers made it the serious smartphone. Those strengths came with a precise picture of what mattered: reliable email, fast typing, centralized control, and security.
+
+The iPhone changed the basis of competition. The smartphone became a general computing platform shaped by browsers, touch interfaces, consumer demand, and third-party applications. BlackBerry kept improving the attributes its existing customers valued while the category expanded beyond them.
+
+The company eventually left the device business. [BlackBerry moved into cybersecurity and embedded software](https://www.cnbc.com/2022/11/19/how-blackberry-moved-from-iconic-cellphones-to-cybersecurity.html), carrying parts of its security knowledge into a different market. The transferable asset was not the keyboard or the handset. It was the security capability underneath them.
+
+## AI and organizational mobility
+
+These cases share a structure. A durable advantage accumulates dependencies around itself. Factories, incentives, reporting lines, customer research, and professional identity become aligned with the same source of profit. That alignment is useful until the basis of competition changes.
+
+AI increases the cost of that entrenchment. Interfaces, integrations, internal tools, and entirely new software products can be tested in a fraction of the time they once required. Competitors can explore adjacent positions more cheaply. Incumbents can too, but only if their organizations permit the new product to threaten the old one.
+
+This makes organizational agility more valuable. The important capability is moving people, capital, and attention away from a successful product before the need becomes undeniable. It also requires distinguishing assets that can transfer into the next market from those that belong to the current business model.
+
+For Purveyors, the website and scraper code are not sacred. The more durable assets are the normalized coffee data, the shared schema, and the operational knowledge accumulated through correcting edge cases. Even those only matter while they improve coffee decisions. If supplier comparison stops being the right interface, the goal is not to preserve the comparison site. It is to carry the useful assets into whatever replaces it.
+
+A moat is useful when it buys time and options. It becomes a constraint when preserving it matters more than carrying the underlying capability into the next market.
