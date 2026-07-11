@@ -8,6 +8,7 @@
 		badge,
 		badgeColor = 'amber',
 		totalItems,
+		expandLabel,
 		collapsedMaxHeight = '280px',
 		showGradient = true,
 		onExpandChange,
@@ -18,6 +19,7 @@
 		badge?: string;
 		badgeColor?: string;
 		totalItems?: number;
+		expandLabel?: string;
 		collapsedMaxHeight?: string;
 		showGradient?: boolean;
 		onExpandChange?: (expanded: boolean) => void;
@@ -47,14 +49,17 @@
 	});
 
 	const BADGE_STYLES: Record<string, string> = {
-		amber: 'bg-amber-100 text-amber-700',
-		red: 'bg-red-100 text-red-600',
-		green: 'bg-green-100 text-green-700',
-		blue: 'bg-blue-100 text-blue-700'
+		amber: 'bg-warning-subtle text-warning-strong',
+		red: 'bg-danger-subtle text-danger-strong',
+		green: 'bg-success-subtle text-success-strong',
+		blue: 'bg-info-subtle text-info-strong'
 	};
 
 	let badgeClass = $derived(BADGE_STYLES[badgeColor] ?? BADGE_STYLES.amber);
-	let expandLabel = $derived(totalItems != null ? `View all ${totalItems} →` : `Expand ↗`);
+	let canExpand = $derived(totalItems == null || totalItems > 0);
+	let computedExpandLabel = $derived(
+		expandLabel ?? (totalItems != null ? `View all ${totalItems} →` : 'Expand')
+	);
 </script>
 
 <svelte:window
@@ -74,14 +79,16 @@
 		{/if}
 	</div>
 
-	<div class="mt-2.5 flex justify-center">
-		<button
-			onclick={open}
-			class="rounded-full border border-border-light bg-background-secondary-light px-4 py-1.5 text-sm font-medium text-text-secondary-light shadow-sm transition-colors duration-150 hover:border-background-tertiary-light hover:text-background-tertiary-light"
-		>
-			{expandLabel}
-		</button>
-	</div>
+	{#if canExpand}
+		<div class="mt-2.5 flex justify-center">
+			<button
+				onclick={open}
+				class="rounded-full border border-line bg-surface-panel px-4 py-1.5 text-sm font-medium text-muted shadow-sm transition-colors duration-150 hover:border-accent hover:text-accent"
+			>
+				{computedExpandLabel}
+			</button>
+		</div>
+	{/if}
 </div>
 
 <!-- Expanded modal overlay -->
@@ -100,16 +107,16 @@
 			aria-modal="true"
 			aria-label={title}
 			transition:scale={{ duration: 150, start: 0.95 }}
-			class="relative z-10 my-4 w-full max-w-5xl rounded-xl bg-background-primary-light shadow-2xl sm:my-0"
+			class="relative z-10 my-4 w-full max-w-5xl rounded-xl bg-surface-canvas shadow-2xl sm:my-0"
 		>
 			<!-- Modal header -->
 			<div
-				class="flex items-start gap-3 rounded-t-xl border-b border-border-light bg-background-primary-light px-6 py-4"
+				class="flex items-start gap-3 rounded-t-xl border-b border-line bg-surface-canvas px-6 py-4"
 			>
 				<div class="flex-1">
-					<h2 class="text-lg font-semibold text-text-primary-light">{title}</h2>
+					<h2 class="text-lg font-semibold text-ink">{title}</h2>
 					{#if subtitle}
-						<p class="mt-0.5 text-sm text-text-secondary-light">{subtitle}</p>
+						<p class="mt-0.5 text-sm text-muted">{subtitle}</p>
 					{/if}
 				</div>
 				{#if badge}
@@ -119,7 +126,7 @@
 				{/if}
 				<button
 					onclick={close}
-					class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-secondary-light transition-colors hover:bg-background-secondary-light hover:text-text-primary-light"
+					class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 					aria-label="Close panel"
 				>
 					✕

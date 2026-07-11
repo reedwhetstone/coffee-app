@@ -1,8 +1,8 @@
-<section class="bg-background-primary-light py-24 sm:py-32">
+<section class="bg-surface-canvas py-24 sm:py-32">
 	<div class="mx-auto max-w-7xl px-6 lg:px-8">
 		<div class="mx-auto max-w-xl text-center">
-			<h2 class="text-lg font-semibold leading-8 text-background-tertiary-light">Testimonials</h2>
-			<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
+			<h2 class="text-lg font-semibold leading-8 text-accent">Testimonials</h2>
+			<p class="mt-2 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
 				Loved by home roasters everywhere
 			</p>
 		</div>
@@ -11,9 +11,9 @@
 				<!-- Testimonial 1 -->
 				<div class="pt-8 sm:inline-block sm:w-full sm:px-4">
 					<figure
-						class="rounded-2xl bg-background-secondary-light p-8 text-sm leading-6 shadow-sm ring-1 ring-border-light"
+						class="rounded-2xl bg-surface-panel p-8 text-sm leading-6 shadow-sm ring-1 ring-line"
 					>
-						<blockquote class="text-text-primary-light">
+						<blockquote class="text-ink">
 							<p>
 								"I asked the AI for a fruity Ethiopian under $8 and it recommended three amazing
 								options in 2lb bags. I never would have found these small vendors on my own. It's
@@ -21,14 +21,12 @@
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
-							<div
-								class="flex h-10 w-10 items-center justify-center rounded-full bg-background-tertiary-light"
-							>
+							<div class="flex h-10 w-10 items-center justify-center rounded-full bg-accent">
 								<span class="text-sm font-semibold text-white">SM</span>
 							</div>
 							<div>
-								<div class="font-semibold text-text-primary-light">Sarah Martinez</div>
-								<div class="text-text-secondary-light">Home Roaster, Portland</div>
+								<div class="font-semibold text-ink">Sarah Martinez</div>
+								<div class="text-muted">Home Roaster, Portland</div>
 							</div>
 						</figcaption>
 					</figure>
@@ -37,9 +35,9 @@
 				<!-- Testimonial 2 -->
 				<div class="pt-8 sm:inline-block sm:w-full sm:px-4">
 					<figure
-						class="rounded-2xl bg-background-secondary-light p-8 text-sm leading-6 shadow-sm ring-1 ring-border-light"
+						class="rounded-2xl bg-surface-panel p-8 text-sm leading-6 shadow-sm ring-1 ring-line"
 					>
-						<blockquote class="text-text-primary-light">
+						<blockquote class="text-ink">
 							<p>
 								"Importing my Artisan logs was seamless, and seeing my roast curves visualized so
 								beautifully has been game-changing. I can finally see patterns in my roasting and
@@ -47,14 +45,12 @@
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
-							<div
-								class="flex h-10 w-10 items-center justify-center rounded-full bg-background-tertiary-light"
-							>
+							<div class="flex h-10 w-10 items-center justify-center rounded-full bg-accent">
 								<span class="text-sm font-semibold text-white">MC</span>
 							</div>
 							<div>
-								<div class="font-semibold text-text-primary-light">Michael Chen</div>
-								<div class="text-text-secondary-light">Weekend Roaster, San Francisco</div>
+								<div class="font-semibold text-ink">Michael Chen</div>
+								<div class="text-muted">Weekend Roaster, San Francisco</div>
 							</div>
 						</figcaption>
 					</figure>
@@ -63,9 +59,9 @@
 				<!-- Testimonial 3 -->
 				<div class="pt-8 sm:inline-block sm:w-full sm:px-4">
 					<figure
-						class="rounded-2xl bg-background-secondary-light p-8 text-sm leading-6 shadow-sm ring-1 ring-border-light"
+						class="rounded-2xl bg-surface-panel p-8 text-sm leading-6 shadow-sm ring-1 ring-line"
 					>
-						<blockquote class="text-text-primary-light">
+						<blockquote class="text-ink">
 							<p>
 								"As someone new to roasting, being able to describe what I want - 'chocolatey with
 								low acidity' - and get real recommendations has been amazing. I'm discovering so
@@ -73,14 +69,12 @@
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
-							<div
-								class="flex h-10 w-10 items-center justify-center rounded-full bg-background-tertiary-light"
-							>
+							<div class="flex h-10 w-10 items-center justify-center rounded-full bg-accent">
 								<span class="text-sm font-semibold text-white">AR</span>
 							</div>
 							<div>
-								<div class="font-semibold text-text-primary-light">Alex Rodriguez</div>
-								<div class="text-text-secondary-light">Beginner Home Roaster, Denver</div>
+								<div class="font-semibold text-ink">Alex Rodriguez</div>
+								<div class="text-muted">Beginner Home Roaster, Denver</div>
 							</div>
 						</figcaption>
 					</figure>
@@ -89,9 +83,9 @@
 				<!-- Testimonial 4 -->
 				<div class="pt-8 sm:inline-block sm:w-full sm:px-4">
 					<figure
-						class="rounded-2xl bg-background-secondary-light p-8 text-sm leading-6 shadow-sm ring-1 ring-border-light"
+						class="rounded-2xl bg-surface-panel p-8 text-sm leading-6 shadow-sm ring-1 ring-line"
 					>
-						<blockquote class="text-text-primary-light">
+						<blockquote class="text-ink">
 							<p>
 								"I used to keep notes in random places and could never remember which vendors I
 								liked. Now I track everything - my purchases, remaining inventory, and which coffees
@@ -99,14 +93,12 @@
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
-							<div
-								class="flex h-10 w-10 items-center justify-center rounded-full bg-background-tertiary-light"
-							>
+							<div class="flex h-10 w-10 items-center justify-center rounded-full bg-accent">
 								<span class="text-sm font-semibold text-white">JW</span>
 							</div>
 							<div>
-								<div class="font-semibold text-text-primary-light">Jennifer Wong</div>
-								<div class="text-text-secondary-light">Home Roaster, Austin</div>
+								<div class="font-semibold text-ink">Jennifer Wong</div>
+								<div class="text-muted">Home Roaster, Austin</div>
 							</div>
 						</figcaption>
 					</figure>
@@ -115,9 +107,9 @@
 				<!-- Testimonial 5 -->
 				<div class="pt-8 sm:inline-block sm:w-full sm:px-4">
 					<figure
-						class="rounded-2xl bg-background-secondary-light p-8 text-sm leading-6 shadow-sm ring-1 ring-border-light"
+						class="rounded-2xl bg-surface-panel p-8 text-sm leading-6 shadow-sm ring-1 ring-line"
 					>
-						<blockquote class="text-text-primary-light">
+						<blockquote class="text-ink">
 							<p>
 								"I started selling my roasts at the farmers market and needed to track costs and
 								profits. The sales tracking feature helps me understand which coffees are worth the
@@ -125,14 +117,12 @@
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
-							<div
-								class="flex h-10 w-10 items-center justify-center rounded-full bg-background-tertiary-light"
-							>
+							<div class="flex h-10 w-10 items-center justify-center rounded-full bg-accent">
 								<span class="text-sm font-semibold text-white">DK</span>
 							</div>
 							<div>
-								<div class="font-semibold text-text-primary-light">David Kim</div>
-								<div class="text-text-secondary-light">Micro-Roaster, Seattle</div>
+								<div class="font-semibold text-ink">David Kim</div>
+								<div class="text-muted">Micro-Roaster, Seattle</div>
 							</div>
 						</figcaption>
 					</figure>
@@ -141,9 +131,9 @@
 				<!-- Testimonial 6 -->
 				<div class="pt-8 sm:inline-block sm:w-full sm:px-4">
 					<figure
-						class="rounded-2xl bg-background-secondary-light p-8 text-sm leading-6 shadow-sm ring-1 ring-border-light"
+						class="rounded-2xl bg-surface-panel p-8 text-sm leading-6 shadow-sm ring-1 ring-line"
 					>
-						<blockquote class="text-text-primary-light">
+						<blockquote class="text-ink">
 							<p>
 								"I love that I can start logging a roast on my laptop in the garage, then add
 								tasting notes from my phone while I'm drinking the coffee at work. The cross-device
@@ -151,14 +141,12 @@
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
-							<div
-								class="flex h-10 w-10 items-center justify-center rounded-full bg-background-tertiary-light"
-							>
+							<div class="flex h-10 w-10 items-center justify-center rounded-full bg-accent">
 								<span class="text-sm font-semibold text-white">ET</span>
 							</div>
 							<div>
-								<div class="font-semibold text-text-primary-light">Emma Thompson</div>
-								<div class="text-text-secondary-light">Home Roaster, Nashville</div>
+								<div class="font-semibold text-ink">Emma Thompson</div>
+								<div class="text-muted">Home Roaster, Nashville</div>
 							</div>
 						</figcaption>
 					</figure>

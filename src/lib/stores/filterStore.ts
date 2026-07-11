@@ -6,10 +6,60 @@ import {
 	type CatalogFilterValue,
 	type CatalogUrlState
 } from '$lib/catalog/urlState';
+import {
+	isCatalogRoute,
+	getDefaultSortSettings,
+	getFilterableColumns,
+	sanitizeFilters,
+	getFieldValue,
+	processData,
+	arraysEqual,
+	type DataItem
+} from '$lib/data/catalogFilters';
 
 // Define types
-type DataItem = Record<string, unknown>;
 type FilterValue = CatalogFilterValue;
+
+// Field names Parchment may use on a stripped-filter notice to name the
+// filter param it dropped. coffee-app stays a shell: it does not decide which
+// filters are entitled, it only believes the server about what was stripped so
+// the UI can reconcile local active-filter state to the server-applied result.
+const STRIPPED_FILTER_NOTICE_FIELDS = [
+	'deniedParams',
+	'strippedParams',
+	'params',
+	'param',
+	'fields',
+	'field',
+	'filters',
+	'filter'
+] as const;
+
+/**
+ * Extracts the set of filter param keys that upstream reports as stripped from a
+ * lenient website request. Only returns keys the server explicitly names, so a
+ * filter is never cleared unless the API says it was dropped.
+ */
+function extractStrippedFilterKeys(notices: unknown[]): string[] {
+	const keys = new Set<string>();
+	for (const notice of notices) {
+		if (!notice || typeof notice !== 'object') continue;
+		const record = notice as Record<string, unknown>;
+		for (const field of STRIPPED_FILTER_NOTICE_FIELDS) {
+			const value = record[field];
+			if (Array.isArray(value)) {
+				for (const candidate of value) {
+					if (typeof candidate === 'string' && candidate.trim() !== '') {
+						keys.add(candidate.trim());
+					}
+				}
+			} else if (typeof value === 'string' && value.trim() !== '') {
+				keys.add(value.trim());
+			}
+		}
+	}
+	return Array.from(keys);
+}
 
 type CatalogPaginationState = {
 	page: number;
@@ -25,6 +75,7 @@ type FilterState = {
 	sortField: string | null;
 	sortDirection: 'asc' | 'desc' | null;
 	showWholesale: boolean;
+	wholesaleOnly: boolean;
 	filters: Record<string, FilterValue>;
 	uniqueValues: Record<string, unknown[]>;
 	originalData: DataItem[]; // Keep for backward compatibility
@@ -33,7 +84,11 @@ type FilterState = {
 	pagination: CatalogPaginationState;
 	lastProcessedString: string;
 	processing: boolean;
-	isLoading: boolean; // Loading state for server requests
+	isLoading: boolean; // First-mount pending state for server requests (drives full skeleton)
+	isRefetching: boolean; // Refetch pending state while stale rows stay visible (drives overlay)
+	hasLoadedOnce: boolean; // True once server rows have been provided or fetched at least once
+	catalogResponseMeta: Record<string, unknown> | null;
+	catalogNotices: unknown[];
 	initialized: boolean;
 	initializingRoute: string | null;
 	lastDebounceId: NodeJS.Timeout | null;
@@ -59,16 +114,13 @@ function createInitialCatalogPagination(): CatalogPaginationState {
 	};
 }
 
-function isCatalogRoute(routeId: string): boolean {
-	return routeId.includes('/catalog') || routeId === '/';
-}
-
 // Initialize default state
 const initialState: FilterState = {
 	routeId: '',
 	sortField: null,
 	sortDirection: null,
 	showWholesale: false,
+	wholesaleOnly: false,
 	filters: {},
 	uniqueValues: {},
 	originalData: [],
@@ -78,6 +130,10 @@ const initialState: FilterState = {
 	lastProcessedString: '',
 	processing: false,
 	isLoading: false,
+	isRefetching: false,
+	hasLoadedOnce: false,
+	catalogResponseMeta: null,
+	catalogNotices: [],
 	initialized: false,
 	initializingRoute: null,
 	lastDebounceId: null,
@@ -97,6 +153,7 @@ function createFilterStore() {
 			sortField: state.sortField,
 			sortDirection: state.sortDirection,
 			showWholesale: state.showWholesale,
+			wholesaleOnly: state.wholesaleOnly,
 			pagination: {
 				page: state.pagination.page,
 				limit: state.pagination.limit
@@ -127,12 +184,18 @@ function createFilterStore() {
 		}
 	}
 
-	// Server fetch debouncing
+	// Server fetch debouncing plus request-lifecycle guards. The abort controller
+	// cancels an in-flight request when a newer fetch starts; the monotonic
+	// sequence id ensures a slower earlier response can never overwrite newer
+	// filter state even if the transport (or a test mock) ignores the abort.
 	let serverFetchTimeout: NodeJS.Timeout | null = null;
+	let activeAbortController: AbortController | null = null;
+	let requestSequence = 0;
 
 	/**
-	 * Fetches data from the server with current filter/sort/pagination settings
-	 * Includes debouncing to prevent excessive API calls
+	 * Fetches data from the server with current filter/sort/pagination settings.
+	 * Includes debouncing, request cancellation, and a sequence guard so
+	 * stale-while-revalidate interactions stay correct under rapid changes.
 	 */
 	async function fetchServerData() {
 		const state = get({ subscribe });
@@ -147,15 +210,36 @@ function createFilterStore() {
 			clearTimeout(serverFetchTimeout);
 		}
 
+		// Invalidate any request still in flight the moment a newer fetch is
+		// scheduled, not when the debounce fires. Bumping the sequence and
+		// aborting the active controller here closes the window where an earlier
+		// response could resolve during the 150ms debounce and still match
+		// requestSequence, landing stale rows/pagination and stripped-filter
+		// reconciliation against the newer filter state.
+		activeAbortController?.abort();
+		activeAbortController = null;
+		const requestId = ++requestSequence;
+
 		// Debounce server requests for better performance
 		serverFetchTimeout = setTimeout(async () => {
-			update((s) => ({ ...s, isLoading: true }));
+			const controller = new AbortController();
+			activeAbortController = controller;
+
+			// First mount shows the full skeleton; subsequent fetches keep the
+			// already-visible rows and surface a quiet refetch state instead.
+			update((s) => ({
+				...s,
+				isLoading: !s.hasLoadedOnce,
+				isRefetching: s.hasLoadedOnce
+			}));
 
 			try {
 				const currentState = get({ subscribe });
 				const params = buildQueryParams(currentState);
 				const queryString = params.toString();
-				const response = await fetch(`/v1/catalog${queryString ? `?${queryString}` : ''}`);
+				const response = await fetch(`/api/catalog${queryString ? `?${queryString}` : ''}`, {
+					signal: controller.signal
+				});
 
 				if (!response.ok) {
 					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -163,17 +247,73 @@ function createFilterStore() {
 
 				const result = await response.json();
 
-				update((s) => ({
-					...s,
-					serverData: result.data || [],
-					pagination: result.pagination || s.pagination,
-					filteredData: result.data || [], // Keep filteredData in sync for backward compatibility
-					isLoading: false,
-					changeCounter: s.changeCounter + 1
-				}));
+				// A newer request superseded this one while it was in flight; drop
+				// this response so it cannot overwrite fresher state.
+				if (requestId !== requestSequence) {
+					return;
+				}
+
+				const meta =
+					result?.meta && typeof result.meta === 'object'
+						? (result.meta as Record<string, unknown>)
+						: null;
+				const notices = Array.isArray(meta?.notices) ? meta.notices : [];
+				const strippedKeys = extractStrippedFilterKeys(notices);
+
+				if (activeAbortController === controller) {
+					activeAbortController = null;
+				}
+
+				update((s) => {
+					// Reconcile local active-filter state to the server-applied result:
+					// drop any filter the API reported as stripped so the UI never
+					// claims an unentitled filter is still active.
+					const filters =
+						strippedKeys.length > 0
+							? (Object.fromEntries(
+									Object.entries(s.filters).filter(([key]) => !strippedKeys.includes(key))
+								) as Record<string, FilterValue>)
+							: s.filters;
+
+					return {
+						...s,
+						filters,
+						serverData: result.data || [],
+						pagination: result.pagination || s.pagination,
+						filteredData: result.data || [], // Keep filteredData in sync for backward compatibility
+						catalogResponseMeta: meta,
+						catalogNotices: notices,
+						isLoading: false,
+						isRefetching: false,
+						hasLoadedOnce: true,
+						changeCounter: s.changeCounter + 1
+					};
+				});
+
+				// Keep the shareable URL honest about the effective filter state.
+				if (strippedKeys.length > 0) {
+					syncCatalogUrl(get({ subscribe }));
+				}
 			} catch (error) {
+				// An aborted request is expected when a newer fetch supersedes it;
+				// the newer request owns the pending state, so leave it untouched.
+				if (error instanceof DOMException && error.name === 'AbortError') {
+					return;
+				}
+
+				// Ignore late failures from a superseded request.
+				if (requestId !== requestSequence) {
+					return;
+				}
+
+				if (activeAbortController === controller) {
+					activeAbortController = null;
+				}
+
 				console.error('Error fetching server data:', error);
-				update((s) => ({ ...s, isLoading: false }));
+				// Preserve the currently visible rows on error (stale-while-revalidate)
+				// and only clear the pending flags.
+				update((s) => ({ ...s, isLoading: false, isRefetching: false }));
 			}
 		}, 150); // Debounce server requests by 150ms
 	}
@@ -187,6 +327,9 @@ function createFilterStore() {
 			const params = new URLSearchParams();
 			if (state.showWholesale) {
 				params.append('showWholesale', 'true');
+			}
+			if (state.wholesaleOnly) {
+				params.append('wholesaleOnly', 'true');
 			}
 
 			const response = await fetch(`/api/catalog/filters?${params.toString()}`);
@@ -238,6 +381,7 @@ function createFilterStore() {
 			const { field, direction } = getDefaultSortSettings(routeId);
 			state.filters = isServerSideRoute ? { ...catalogUrlState.filters } : {};
 			state.showWholesale = isServerSideRoute ? catalogUrlState.showWholesale : false;
+			state.wholesaleOnly = isServerSideRoute ? catalogUrlState.wholesaleOnly : false;
 			state.sortField = isServerSideRoute ? catalogUrlState.sortField : field;
 			state.sortDirection = isServerSideRoute ? catalogUrlState.sortDirection : direction;
 
@@ -245,6 +389,9 @@ function createFilterStore() {
 			if (routeId.includes('beans')) {
 				state.filters.stocked = 'TRUE';
 			}
+
+			state.isLoading = false;
+			state.isRefetching = false;
 
 			if (isServerSideRoute) {
 				state.serverData = options.serverData ?? data;
@@ -254,6 +401,11 @@ function createFilterStore() {
 					limit: catalogUrlState.pagination.limit
 				};
 				state.filteredData = options.serverData ?? data;
+				state.catalogResponseMeta = null;
+				state.catalogNotices = [];
+				// Server rows provided at init (SSR hydration) count as a first load,
+				// so later interactions revalidate in place instead of re-skeletoning.
+				state.hasLoadedOnce = options.serverData !== undefined || data.length > 0;
 			} else {
 				// For other routes, use client-side processing
 				state.serverData = [];
@@ -265,6 +417,9 @@ function createFilterStore() {
 					state.filters,
 					state.showWholesale
 				);
+				state.catalogResponseMeta = null;
+				state.catalogNotices = [];
+				state.hasLoadedOnce = false;
 			}
 
 			state.initialized = true;
@@ -287,45 +442,6 @@ function createFilterStore() {
 				updateUniqueFilterValues();
 			}, 0);
 		}
-	}
-
-	/**
-	 * Returns default sort settings for different routes
-	 * @param routeId - The route identifier
-	 * @returns Object with field and direction properties
-	 */
-	function getDefaultSortSettings(routeId: string) {
-		if (routeId.includes('beans')) {
-			return { field: 'purchase_date', direction: 'desc' as const };
-		} else if (routeId.includes('roast')) {
-			return { field: 'roast_date', direction: 'desc' as const };
-		} else if (routeId === '/' || routeId === '' || routeId === '/catalog') {
-			return { field: null, direction: null } as const;
-		} else {
-			return { field: null, direction: null } as const;
-		}
-	}
-
-	function isEmptyFilterValue(value: FilterValue): boolean {
-		if (value === undefined || value === null || value === '') {
-			return true;
-		}
-
-		if (Array.isArray(value)) {
-			return value.length === 0;
-		}
-
-		if (typeof value === 'object' && 'min' in value && 'max' in value) {
-			return String(value.min ?? '').trim() === '' && String(value.max ?? '').trim() === '';
-		}
-
-		return false;
-	}
-
-	function sanitizeFilters(filters: Record<string, FilterValue>): Record<string, FilterValue> {
-		return Object.fromEntries(
-			Object.entries(filters).filter(([, value]) => !isEmptyFilterValue(value))
-		) as Record<string, FilterValue>;
 	}
 
 	// Set the default sort for a route
@@ -421,6 +537,30 @@ function createFilterStore() {
 	}
 
 	/**
+	 * Clears a set of filters in one catalog request.
+	 */
+	function clearFiltersByKeys(keys: string[]) {
+		const keySet = new Set(keys);
+		update((state) => {
+			state.filters = Object.fromEntries(
+				Object.entries(state.filters).filter(([key]) => !keySet.has(key))
+			) as Record<string, FilterValue>;
+			if (isCatalogRoute(state.routeId)) {
+				state.pagination.page = 1;
+			}
+			return state;
+		});
+
+		const currentState = get({ subscribe });
+		if (isCatalogRoute(currentState.routeId)) {
+			syncCatalogUrl(currentState);
+			fetchServerData();
+		} else {
+			processAndUpdateFilteredData();
+		}
+	}
+
+	/**
 	 * Toggles wholesale visibility on catalog routes.
 	 * false (default): retail only
 	 * true: show retail + wholesale
@@ -428,6 +568,9 @@ function createFilterStore() {
 	function setShowWholesale(showWholesale: boolean) {
 		update((state) => {
 			state.showWholesale = showWholesale;
+			if (!showWholesale) {
+				state.wholesaleOnly = false;
+			}
 			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
 			}
@@ -482,6 +625,7 @@ function createFilterStore() {
 		update((state) => {
 			state.filters = {};
 			state.showWholesale = false;
+			state.wholesaleOnly = false;
 			// Reset to first page for server-side routes
 			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
@@ -632,256 +776,6 @@ function createFilterStore() {
 		}
 	}
 
-	/**
-	 * Helper function to get field value from item, handling joined data structure
-	 * @param item - The data item
-	 * @param field - The field name to get
-	 * @returns The field value
-	 */
-	function getFieldValue(item: DataItem, field: string): unknown {
-		// Fields that might be in coffee_catalog for joined beans data
-		const catalogFields = [
-			'name',
-			'source',
-			'score_value',
-			'region',
-			'country',
-			'continent',
-			'processing',
-			'cultivar_detail',
-			'arrival_date',
-			'cost_lb',
-			'stocked_date',
-			'type',
-			'grade',
-			'appearance'
-		];
-
-		// For beans page joined data, check coffee_catalog first for these fields
-		const catalog = item.coffee_catalog as DataItem | undefined;
-		if (catalogFields.includes(field) && catalog?.[field] !== undefined) {
-			return catalog[field];
-		}
-
-		// Fallback to direct field access
-		return item[field];
-	}
-
-	// Filter data based on filters
-	function filterData(
-		data: DataItem[],
-		filters: Record<string, FilterValue>,
-		showWholesale: boolean
-	): DataItem[] {
-		// Default catalog behavior: hide wholesale unless explicitly enabled
-		const wholesaleFiltered = showWholesale ? data : data.filter((item) => item.wholesale !== true);
-
-		// Skip if no filters
-		if (!Object.keys(filters).length) return wholesaleFiltered;
-
-		//console.log('Filtering data with filters:', filters);
-
-		return wholesaleFiltered.filter((item) => {
-			// Check each filter
-			return Object.entries(filters).every(([key, value]) => {
-				// Skip empty filters
-				if (value === undefined || value === null || value === '') return true;
-
-				// Get item value using helper function
-				const itemValue = getFieldValue(item, key);
-
-				// Handle stocked_date as a truthful absolute lower-bound date filter
-				if (key === 'stocked_date' && typeof value === 'string' && value !== '') {
-					if (!itemValue) return false;
-					return String(itemValue) >= value;
-				}
-
-				// Handle stocked_days as an explicit relative "last N days" filter
-				if (
-					key === 'stocked_days' &&
-					(typeof value === 'string' || typeof value === 'number') &&
-					value !== ''
-				) {
-					const stockedDateValue = getFieldValue(item, 'stocked_date');
-					if (!stockedDateValue) return false;
-
-					const daysBack = Number.parseInt(String(value), 10);
-					if (!Number.isFinite(daysBack) || daysBack <= 0) return true;
-
-					const cutoffDate = new Date();
-					cutoffDate.setDate(cutoffDate.getDate() - daysBack);
-
-					const stockedDate = new Date(String(stockedDateValue));
-					return stockedDate >= cutoffDate;
-				}
-
-				// Handle stocked boolean filter
-				if (key === 'stocked') {
-					// Skip filtering if value is empty string (All option)
-					if (value === '') return true;
-					// Convert string to boolean for comparison
-					if (value === 'TRUE' || value === 'true') {
-						return itemValue === true;
-					} else if (value === 'FALSE' || value === 'false') {
-						return itemValue === false;
-					}
-					// For other boolean values, use direct comparison
-					return itemValue === value;
-				}
-
-				// Handle roast_id text search
-				if (key === 'roast_id') {
-					// Skip filtering if value is empty string
-					if (value === '') return true;
-					// Convert roast_id to string and do partial match search
-					const roastIdString = String(itemValue || '');
-					const searchString = String(value || '').toLowerCase();
-					return roastIdString.toLowerCase().includes(searchString);
-				}
-
-				// Handle different filter types
-				if (typeof value === 'object' && value !== null) {
-					// Range filter - check if it's a range object (not an array)
-					if (!Array.isArray(value) && 'min' in value && 'max' in value) {
-						const numItemValue =
-							typeof itemValue === 'number' ? itemValue : parseFloat(String(itemValue));
-						return (
-							(value.min === '' || numItemValue >= parseFloat(String(value.min))) &&
-							(value.max === '' || numItemValue <= parseFloat(String(value.max)))
-						);
-					}
-
-					// Array filter - special handling for source to include null/undefined values
-					if (Array.isArray(value)) {
-						// For source filtering, if no specific sources are selected (empty array),
-						// show all items including those with null sources
-						if (key === 'source' && value.length === 0) {
-							return true;
-						}
-						return value.includes(itemValue as string);
-					}
-				} else if (typeof itemValue === 'string' && typeof value === 'string') {
-					// Case-insensitive string search
-					return itemValue.toLowerCase().includes(value.toLowerCase());
-				} else {
-					// Exact match
-					return itemValue === value;
-				}
-
-				return true;
-			});
-		});
-	}
-
-	/**
-	 * Sorts data based on the specified field and direction
-	 * @param data - Array of data items to sort
-	 * @param sortField - Field name to sort by
-	 * @param sortDirection - Sort direction ('asc' or 'desc')
-	 * @returns Sorted array of data items
-	 */
-	function sortData(
-		data: DataItem[],
-		sortField: string | null,
-		sortDirection: 'asc' | 'desc' | null
-	): DataItem[] {
-		// Return unsorted data if no sort criteria specified
-		if (!sortField || !sortDirection) {
-			return data;
-		}
-
-		return [...data].sort((a, b) => {
-			const aValue = getFieldValue(a, sortField);
-			const bValue = getFieldValue(b, sortField);
-
-			// Handle null/undefined values - always sort them to the end
-			if (aValue == null && bValue == null) return 0;
-			if (aValue == null) return 1;
-			if (bValue == null) return -1;
-
-			// Handle date fields specially
-			if (
-				sortField === 'purchase_date' ||
-				sortField === 'arrival_date' ||
-				sortField === 'roast_date' ||
-				sortField === 'stocked_date'
-			) {
-				// Custom date parsing function for handling various date formats
-				const parseMonthYear = (dateStr: string): Date => {
-					if (!dateStr) return new Date(0);
-
-					// Check if it's in the DD-MM-YYYY format
-					if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
-						const [day, month, year] = dateStr.split('-').map(Number);
-						return new Date(year, month - 1, day);
-					}
-
-					// Check if it's in the YYYY-MM format
-					if (/^\d{4}-\d{2}$/.test(dateStr)) {
-						const [year, month] = dateStr.split('-').map(Number);
-						return new Date(year, month - 1);
-					}
-
-					// If it's a database date/time format
-					if (dateStr.includes(' ')) {
-						// Convert MySQL datetime to JS Date
-						return new Date(dateStr.replace(' ', 'T') + 'Z');
-					}
-
-					// Standard date format (YYYY-MM-DD)
-					return new Date(dateStr);
-				};
-
-				const dateA = parseMonthYear(String(aValue));
-				const dateB = parseMonthYear(String(bValue));
-
-				return sortDirection === 'asc'
-					? dateA.getTime() - dateB.getTime()
-					: dateB.getTime() - dateA.getTime();
-			}
-
-			// Handle score_value, roast_id and other numeric fields
-			if (sortField === 'score_value' || sortField === 'cost_lb' || sortField === 'roast_id') {
-				const numA = parseFloat(String(aValue)) || 0;
-				const numB = parseFloat(String(bValue)) || 0;
-
-				return sortDirection === 'asc' ? numA - numB : numB - numA;
-			}
-
-			// Handle string fields (processing, cultivar_detail, name, source, region, etc.)
-			if (typeof aValue === 'string' && typeof bValue === 'string') {
-				return sortDirection === 'asc'
-					? aValue.toLowerCase().localeCompare(bValue.toLowerCase())
-					: bValue.toLowerCase().localeCompare(aValue.toLowerCase());
-			}
-
-			// Fallback for other types - convert to string and compare
-			const strA = String(aValue || '').toLowerCase();
-			const strB = String(bValue || '').toLowerCase();
-
-			return sortDirection === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
-		});
-	}
-
-	// Process data with filters and sorting
-	function processData(
-		data: DataItem[],
-		sortField: string | null,
-		sortDirection: 'asc' | 'desc' | null,
-		filters: Record<string, FilterValue>,
-		showWholesale: boolean
-	): DataItem[] {
-		// Start by filtering
-		const filtered = filterData(data, filters, showWholesale);
-		//	console.log('After filtering:', filtered.length, 'items');
-
-		// Then sort
-		const sorted = sortData(filtered, sortField, sortDirection);
-		//console.log('After sorting:', sorted.length, 'items');
-
-		return sorted;
-	}
-
 	// Process and update filtered data, with optimized debounce
 	function processAndUpdateFilteredData() {
 		// If a debounce timer exists, clear it
@@ -911,7 +805,7 @@ function createFilterStore() {
 					}
 
 					// Optimized processing - avoid unnecessary work
-					const cacheKey = `${state.sortField}-${state.sortDirection}-${state.showWholesale}-${JSON.stringify(state.filters)}`;
+					const cacheKey = `${state.sortField}-${state.sortDirection}-${state.showWholesale}-${state.wholesaleOnly}-${JSON.stringify(state.filters)}`;
 					if (cacheKey === state.lastProcessedString && state.filteredData.length > 0) {
 						state.processing = false;
 						return state;
@@ -956,69 +850,6 @@ function createFilterStore() {
 		});
 	}
 
-	// Efficient array comparison helper
-	function arraysEqual(a: unknown[], b: unknown[]): boolean {
-		if (a.length !== b.length) return false;
-		for (let i = 0; i < a.length; i++) {
-			if (a[i] !== b[i]) return false;
-		}
-		return true;
-	}
-
-	/**
-	 * Returns the list of filterable columns for a specific route
-	 * @param routeId - The route identifier
-	 * @returns Array of column names that can be filtered
-	 */
-	function getFilterableColumns(routeId: string): string[] {
-		if (routeId.includes('beans')) {
-			return [
-				'name',
-				'source',
-				'score_value',
-				'purchase_date',
-				'arrival_date',
-				'type',
-				'grade',
-				'appearance',
-				'continent',
-				'country',
-				'region',
-				'processing',
-				'cultivar_detail',
-				'stocked'
-			];
-		} else if (routeId.includes('roast')) {
-			return [
-				'roast_id',
-				'batch_name',
-				'coffee_name',
-				'roast_date',
-				'roast_notes',
-				'roast_targets',
-				'oz_in',
-				'oz_out'
-			];
-		} else if (routeId === '/' || routeId === '/catalog') {
-			return [
-				'name',
-				'source',
-				'continent',
-				'country',
-				'region',
-				'processing',
-				'cultivar_detail',
-				'type',
-				'grade',
-				'appearance',
-				'score_value',
-				'cost_lb',
-				'stocked_date'
-			];
-		}
-		return [];
-	}
-
 	// Create a filtered data derived store
 	const filteredData = derived({ subscribe }, ($state) => $state.filteredData);
 
@@ -1029,6 +860,7 @@ function createFilterStore() {
 		setSortField,
 		setSortDirection,
 		setFilter,
+		clearFiltersByKeys,
 		setShowWholesale,
 		toggleSort,
 		clearFilters,

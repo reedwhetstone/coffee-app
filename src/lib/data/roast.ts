@@ -5,12 +5,12 @@
  * for validating sessions / API keys before calling these functions.
  *
  * Key design decisions:
- *  - clearRoastData consolidates 3-way duplication from /api/clear-roast,
- *    DELETE /api/roast-profiles, and roastDataUtils.clearRoastData().
+ *  - clearRoastData consolidates source-scoped roast data replacement used by
+ *    the local save helpers.
  *  - calculateWeightLoss is moved here from inline route handler logic.
  *  - Milestone recalculation after PUT stays in computeMilestoneUpdate (private).
  *  - insertTemperatures / insertEvents / saveRoastData are kept here to allow
- *    roastDataUtils.ts to re-export them (backwards compat for artisan-import).
+ *    roastDataUtils.ts to re-export them.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -521,9 +521,7 @@ export async function deleteBatch(
  * Clear ALL roast temperature/event data for a given roast, preserving the profile record.
  * Also clears the artisan_import_log and resets Artisan-specific profile fields.
  *
- * This is the consolidated implementation for:
- *  - DELETE /api/clear-roast
- *  - roastDataUtils.clearRoastData() (full reset variant)
+ * This is the consolidated implementation for local source-scoped roast saves.
  *
  * The `source` parameter controls which temperature/event rows are deleted:
  *  - undefined (full clear): deletes everything, resets all Artisan fields
@@ -664,7 +662,7 @@ export async function insertEvents(supabase: SupabaseClient, entries: EventRow[]
 /**
  * Extract milestone profile data from events and compute phase percentages.
  * Returns an object suitable for updating roast_profiles milestone columns.
- * (Migrated from roastDataUtils.extractMilestoneProfileData — kept for artisan-import compat.)
+ * (Migrated from roastDataUtils.extractMilestoneProfileData.)
  */
 export function extractMilestoneProfileData(
 	events: EventRow[],
@@ -741,7 +739,7 @@ export function extractMilestoneProfileData(
 
 /**
  * Full orchestrator: clear old data, insert temps + events, update profile milestones.
- * (Migrated from roastDataUtils.saveRoastData — kept for artisan-import compat.)
+ * (Migrated from roastDataUtils.saveRoastData.)
  */
 export async function saveRoastData(
 	supabase: SupabaseClient,

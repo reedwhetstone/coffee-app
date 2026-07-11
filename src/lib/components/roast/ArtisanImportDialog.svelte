@@ -118,19 +118,14 @@
 		></button>
 		<div class="flex min-h-screen items-center justify-center p-4">
 			<div
-				class="relative w-full max-w-md rounded-lg bg-background-secondary-light p-6 shadow-xl"
+				class="relative w-full max-w-md rounded-lg bg-surface-panel p-6 shadow-xl"
 				role="dialog"
 				aria-modal="true"
 			>
-				<h3 class="mb-4 text-lg font-semibold text-text-primary-light">
-					Import Artisan Roast File
-				</h3>
+				<h3 class="mb-4 text-lg font-semibold text-ink">Import Artisan Roast File</h3>
 
 				<div class="mb-4">
-					<label
-						for="artisan-file-input"
-						class="mb-2 block text-sm font-medium text-text-primary-light"
-					>
+					<label for="artisan-file-input" class="mb-2 block text-sm font-medium text-ink">
 						Select Artisan .alog file:
 					</label>
 					<input
@@ -138,16 +133,16 @@
 						type="file"
 						accept=".alog,.alog.json,.json"
 						onchange={handleFileSelect}
-						class="block w-full text-sm text-text-primary-light file:mr-4 file:rounded file:border-0 file:bg-background-tertiary-light file:px-4 file:py-2 file:text-sm file:font-semibold file:text-text-primary-light hover:file:bg-background-primary-light"
+						class="block w-full text-sm text-ink file:mr-4 file:rounded file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-semibold file:text-ink hover:file:bg-surface-canvas"
 					/>
-					<p class="mt-2 text-xs text-text-secondary-light">
+					<p class="mt-2 text-xs text-muted">
 						Import roast profile data from Artisan roasting software. This will replace all existing
 						imported data for this profile.
 					</p>
 				</div>
 
 				{#if selectedFile}
-					<p class="mb-4 text-sm text-green-600">
+					<p class="mb-4 text-sm text-success-strong">
 						Selected: {selectedFile.name}
 					</p>
 				{/if}
@@ -155,7 +150,7 @@
 				<div class="flex justify-end space-x-3">
 					<button
 						type="button"
-						class="rounded bg-background-primary-light px-4 py-2 text-text-primary-light hover:bg-background-tertiary-light disabled:cursor-not-allowed disabled:opacity-50"
+						class="rounded bg-surface-canvas px-4 py-2 text-ink hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
 						onclick={close}
 						disabled={isImporting}
 					>
@@ -163,7 +158,7 @@
 					</button>
 					<button
 						type="button"
-						class="flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+						class="flex items-center gap-2 rounded bg-info px-4 py-2 text-white hover:bg-info-strong disabled:cursor-not-allowed disabled:bg-line"
 						onclick={importFile}
 						disabled={!selectedFile || isImporting}
 					>

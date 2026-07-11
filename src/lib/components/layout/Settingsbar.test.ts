@@ -92,14 +92,14 @@ describe('Settingsbar stocked filters', () => {
 
 		const stockedDateInput = screen.getByLabelText('Stocked Date');
 		expect(stockedDateInput).toHaveAttribute('type', 'date');
-		expect(screen.getByText('Stocked Window')).toBeInTheDocument();
+		expect(screen.getByText('Stocked window')).toBeInTheDocument();
 		expect(screen.getByText(/Show coffees stocked on or after this date/i)).toBeInTheDocument();
 		expect(
 			screen.getByText(/Relative filter for coffees stocked within the last N days/i)
 		).toBeInTheDocument();
 
 		await fireEvent.change(stockedDateInput, { target: { value: '2026-03-01' } });
-		await fireEvent.change(screen.getByLabelText('Stocked Window'), {
+		await fireEvent.change(screen.getByLabelText('Stocked window'), {
 			target: { value: '30' }
 		});
 

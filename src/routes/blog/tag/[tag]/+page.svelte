@@ -18,46 +18,46 @@
 
 <a
 	href="/blog"
-	class="mb-8 inline-flex items-center gap-1 text-sm text-text-secondary-light transition-colors hover:text-background-tertiary-light"
+	class="mb-8 inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-accent"
 >
 	← All posts
 </a>
 
-<div class="mb-10 border-l-4 border-background-tertiary-light pl-6">
-	<h1 class="mb-2 text-3xl font-bold text-text-primary-light">
-		Posts tagged <span class="text-background-tertiary-light">"{data.tag}"</span>
+<div class="mb-10 border-l-4 border-accent pl-6">
+	<h1 class="mb-2 font-serif text-3xl font-medium tracking-tight text-ink">
+		Posts tagged <span class="text-accent">"{data.tag}"</span>
 	</h1>
-	<p class="text-text-secondary-light">
+	<p class="text-muted">
 		{data.posts.length} post{data.posts.length !== 1 ? 's' : ''} on this topic
 	</p>
 </div>
 
 {#if data.posts.length === 0}
-	<p class="text-text-secondary-light">No posts with this tag yet.</p>
+	<p class="text-muted">No posts with this tag yet.</p>
 {:else}
 	<div class="space-y-8">
 		{#each data.posts as post}
 			<article
-				class="group rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm transition-all hover:border-background-tertiary-light/40 hover:shadow-md"
+				class="group rounded-lg border border-line bg-surface-canvas p-6 shadow-sm transition-all hover:border-accent/40 hover:shadow-md"
 			>
-				<div class="mb-3 flex items-center gap-3 text-sm text-text-secondary-light">
+				<div class="mb-3 flex items-center gap-3 text-sm text-muted">
 					<time datetime={post.date}>{formatDate(post.date)}</time>
-					<span class="text-border-light">·</span>
+					<span class="text-line">·</span>
 					<span>{post.readingTime} min read</span>
 				</div>
 				<a href="/blog/{post.slug}" class="block">
 					<img
 						src={getHeroImage(post.slug)}
 						alt={post.title}
-						class="mb-4 aspect-[3/2] w-full rounded-md border border-border-light object-cover"
+						class="mb-4 aspect-[3/2] w-full rounded-md border border-line object-cover"
 						onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
 					/>
 					<h2
-						class="mb-2 text-2xl font-semibold text-text-primary-light transition-colors group-hover:text-background-tertiary-light"
+						class="mb-2 font-serif text-2xl font-medium tracking-tight text-ink transition-colors group-hover:text-accent"
 					>
 						{post.title}
 					</h2>
-					<p class="leading-relaxed text-text-secondary-light">{post.description}</p>
+					<p class="leading-relaxed text-muted">{post.description}</p>
 				</a>
 			</article>
 		{/each}

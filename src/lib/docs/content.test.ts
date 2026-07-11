@@ -2,22 +2,38 @@ import { describe, expect, it } from 'vitest';
 
 import { getDocsPage } from '$lib/docs/content';
 
-describe('catalog docs contract', () => {
+describe('api docs contract', () => {
 	const page = getDocsPage('api', 'catalog');
 
-	it('documents anonymous public-query parity and API-key header distinctions', () => {
+	it('documents the basic public catalog query surface and paid process facet boundary', () => {
 		expect(page).toBeDefined();
 
 		const serializedPage = JSON.stringify(page);
 		expect(serializedPage).toContain(
-			'Anonymous, viewer-session, and API-key requests all share the public catalog query surface.'
+			'Anonymous, viewer-session, and API Green requests share the basic public catalog query surface.'
+		);
+		expect(serializedPage).toContain(
+			'Structured process facet filters are gated to member/admin sessions and paid API tiers.'
 		);
 		expect(serializedPage).toContain(
 			'Defaults to 100 rows when page and limit are omitted; page without limit falls back to 15.'
 		);
 		expect(serializedPage).toContain('Public-only catalog data. No X-RateLimit-* headers.');
 		expect(serializedPage).toContain(
-			'Canonical integration path for developers, sync jobs, and agents.'
+			'Canonical integration path for developers, sync jobs, and agents. API Green is for evaluation; API Origin and Enterprise unlock process search leverage.'
+		);
+	});
+
+	it('documents /v1/price-index without overclaiming unsupported premium surfaces', () => {
+		const overview = getDocsPage('api', 'overview');
+		const analytics = getDocsPage('api', 'analytics');
+		const serializedDocs = `${JSON.stringify(overview)} ${JSON.stringify(analytics)}`;
+
+		expect(serializedDocs).toContain('GET /v1/price-index');
+		expect(serializedDocs).toContain('aggregate price_index_snapshots data');
+		expect(serializedDocs).toContain('not raw supplier-level rows');
+		expect(serializedDocs).toContain(
+			'Do not document CSV, alerts, watchlists, webhooks, or supplier-level raw rows as supported.'
 		);
 	});
 
@@ -38,7 +54,7 @@ describe('catalog docs contract', () => {
 			'Privileged member and admin sessions may additionally use showWholesale and wholesaleOnly'
 		);
 		expect(JSON.stringify(accessSection)).toContain(
-			'Viewer sessions stay public-only and keep the same public query surface.'
+			'Viewer sessions stay public-only. Member/admin sessions unlock process facets and may also unlock showWholesale and wholesaleOnly.'
 		);
 	});
 });

@@ -19,7 +19,7 @@
 
 <button
 	onclick={handleClick}
-	class="inline-flex items-center gap-1.5 rounded-md bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 ring-1 ring-inset ring-orange-600/20 transition-all hover:bg-orange-100 hover:ring-orange-600/30"
+	class="inline-flex items-center gap-1.5 rounded-md bg-warning-subtle px-2.5 py-1 text-xs font-medium text-warning-strong ring-1 ring-inset ring-warning/20 transition-all hover:bg-warning/15 hover:ring-warning/30"
 >
 	<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 		<path
@@ -34,7 +34,7 @@
 	{:else}
 		<span>{count} roast profile{count === 1 ? '' : 's'}</span>
 	{/if}
-	<svg class="h-3 w-3 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+	<svg class="h-3 w-3 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 		<path
 			stroke-linecap="round"
 			stroke-linejoin="round"

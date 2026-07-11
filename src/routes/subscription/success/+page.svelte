@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
+	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 
 	interface ReconciledEntitlements {
 		role: string;
@@ -65,15 +66,14 @@
 						resolvedEntitlements = reconciliationResult.entitlements ?? null;
 
 						if (reconciliationResult.entitlementsChanged) {
-							reconciliationMessage =
-								'Your checkout was reconciled and your latest entitlements are now active.';
+							reconciliationMessage = 'Your purchase is confirmed and your new access is active.';
 						} else if (reconciliationResult.alreadyProcessed) {
 							reconciliationMessage =
-								'This checkout session was already reconciled. Your entitlements are current.';
+								'This purchase was already confirmed. Your access is up to date.';
 						} else {
 							reconciliationMessage =
 								reconciliationResult.message ||
-								'Payment verified and entitlements are already up to date.';
+								'Payment verified. Your access is already up to date.';
 						}
 					} else {
 						console.warn(
@@ -81,7 +81,7 @@
 							await reconciliationResponse.text()
 						);
 						reconciliationMessage =
-							'Payment confirmed. Billing reconciliation is still finishing in the background.';
+							'Payment confirmed. Your access is finishing activating in the background.';
 					}
 				} catch (reconciliationError) {
 					console.warn(
@@ -89,7 +89,7 @@
 						reconciliationError
 					);
 					reconciliationMessage =
-						'Payment confirmed. Billing reconciliation is still finishing in the background.';
+						'Payment confirmed. Your access is finishing activating in the background.';
 				}
 
 				await invalidateAll();
@@ -110,20 +110,21 @@
 
 <div class="flex min-h-[calc(100vh-80px)] flex-col items-center justify-center py-10">
 	<div
-		class="max-w-md rounded-2xl border border-background-tertiary-light bg-background-secondary-light p-8 shadow-md"
+		class="relative max-w-md overflow-hidden rounded-lg border border-accent bg-surface-panel p-8 pl-10 shadow-md"
 	>
+		<AccentSpine />
 		{#if loading}
 			<div class="flex flex-col items-center justify-center py-10">
 				<div
-					class="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"
+					class="h-12 w-12 animate-spin rounded-full border-4 border-accent border-t-transparent"
 				></div>
-				<p class="text-primary-light mt-4">Reconciling your checkout session...</p>
+				<p class="mt-4 text-ink">Confirming your payment...</p>
 			</div>
 		{:else if error}
 			<div class="flex flex-col items-center justify-center text-center">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-					class="h-16 w-16 text-red-500"
+					class="h-16 w-16 text-danger"
 					fill="none"
 					viewBox="0 0 24 24"
 					stroke="currentColor"
@@ -135,20 +136,20 @@
 						d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 					/>
 				</svg>
-				<h2 class="text-primary-light mt-4 text-xl font-bold">Something went wrong</h2>
-				<p class="text-primary-light mt-2">{error}</p>
+				<h2 class="mt-4 text-xl font-bold text-ink">Something went wrong</h2>
+				<p class="mt-2 text-ink">{error}</p>
 				<button
 					onclick={() => goto('/subscription')}
-					class="mt-6 rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
+					class="mt-6 rounded-md bg-accent px-4 py-2 font-medium text-ink transition-opacity hover:opacity-90"
 				>
-					Try Again
+					Try again
 				</button>
 			</div>
 		{:else if sessionStatus === 'complete'}
 			<div class="flex flex-col items-center justify-center text-center">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-					class="h-16 w-16 text-green-500"
+					class="h-16 w-16 text-success"
 					fill="none"
 					viewBox="0 0 24 24"
 					stroke="currentColor"
@@ -160,32 +161,32 @@
 						d="M5 13l4 4L19 7"
 					/>
 				</svg>
-				<h2 class="text-primary-light mt-4 text-xl font-bold">Payment Successful</h2>
-				<p class="text-primary-light mt-2">
+				<h2 class="mt-4 text-xl font-bold text-ink">Payment successful</h2>
+				<p class="mt-2 text-ink">
 					Thank you. {reconciliationMessage || 'Your payment has been confirmed.'}
 				</p>
 				{#if reconciliationComplete}
-					<p class="mt-1 text-sm text-green-600">✅ Entitlement reconciliation completed</p>
+					<p class="mt-1 text-sm text-success-strong">Your access is active</p>
 				{:else}
-					<p class="mt-1 text-sm text-blue-600">⏳ Billing reconciliation in progress...</p>
+					<p class="mt-1 text-sm text-info">Activating your access...</p>
 				{/if}
 
 				{#if resolvedEntitlements}
 					<div
-						class="mt-5 w-full rounded-xl border border-border-light bg-background-primary-light p-4 text-left text-sm text-text-secondary-light"
+						class="mt-5 w-full rounded-xl border border-line bg-surface-canvas p-4 text-left text-sm text-muted"
 					>
-						<p class="font-semibold text-text-primary-light">Current product access</p>
+						<p class="font-semibold text-ink">Current product access</p>
 						<ul class="mt-3 space-y-2">
 							<li>
-								<span class="font-medium text-text-primary-light">App role:</span>
+								<span class="font-medium text-ink">App role:</span>
 								{resolvedEntitlements.role}
 							</li>
 							<li>
-								<span class="font-medium text-text-primary-light">API plan:</span>
+								<span class="font-medium text-ink">API plan:</span>
 								{resolvedEntitlements.apiPlan}
 							</li>
 							<li>
-								<span class="font-medium text-text-primary-light">Parchment Intelligence:</span>
+								<span class="font-medium text-ink">Parchment Intelligence:</span>
 								{resolvedEntitlements.ppiAccess ? 'enabled' : 'not enabled'}
 							</li>
 						</ul>
@@ -194,16 +195,16 @@
 
 				<button
 					onclick={returnToSubscription}
-					class="mt-6 rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
+					class="mt-6 rounded-md bg-accent px-4 py-2 font-medium text-ink transition-opacity hover:opacity-90"
 				>
-					Return to Subscription Control Plane
+					Back to your account
 				</button>
 			</div>
 		{:else}
 			<div class="flex flex-col items-center justify-center text-center">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-					class="h-16 w-16 text-yellow-500"
+					class="h-16 w-16 text-warning"
 					fill="none"
 					viewBox="0 0 24 24"
 					stroke="currentColor"
@@ -215,16 +216,16 @@
 						d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 					/>
 				</svg>
-				<h2 class="text-primary-light mt-4 text-xl font-bold">Payment Pending</h2>
-				<p class="text-primary-light mt-2">
-					Your payment is still being processed. We'll reconcile entitlements as soon as Stripe
-					marks the checkout complete.
+				<h2 class="mt-4 text-xl font-bold text-ink">Payment pending</h2>
+				<p class="mt-2 text-ink">
+					Your payment is still being processed. Your access will activate as soon as Stripe
+					confirms the checkout — usually within a few seconds.
 				</p>
 				<button
 					onclick={returnToSubscription}
-					class="mt-6 rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
+					class="mt-6 rounded-md bg-accent px-4 py-2 font-medium text-ink transition-opacity hover:opacity-90"
 				>
-					Return to Subscription Control Plane
+					Back to your account
 				</button>
 			</div>
 		{/if}

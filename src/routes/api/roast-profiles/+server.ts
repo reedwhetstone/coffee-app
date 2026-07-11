@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
+import { checkRole } from '$lib/types/auth.types';
 import {
 	listRoasts,
 	createRoasts,
@@ -26,11 +27,18 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 	}
 };
 
-export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
+		const { supabase, safeGetSession } = locals;
 		const { session, user } = await safeGetSession();
 		if (!session || !user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+		if (!checkRole(locals.role, 'member')) {
+			return json(
+				{ error: 'Mallard Studio membership is required to create roast profiles' },
+				{ status: 403 }
+			);
 		}
 
 		const requestData = (await request.json()) as RoastCreateInput;

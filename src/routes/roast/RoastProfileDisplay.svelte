@@ -131,25 +131,25 @@
 	}
 </script>
 
-<div class="overflow-hidden rounded-lg bg-background-secondary-light p-3 sm:p-6">
+<div class="overflow-hidden rounded-lg bg-surface-panel p-3 sm:p-6">
 	<div class="mb-4">
 		<div class="flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-0">
 			<div class="flex-1 text-center sm:text-left">
-				<h1 class="text-primary-light break-words text-lg font-bold sm:text-xl">
+				<h1 class="break-words text-lg font-bold text-ink sm:text-xl">
 					{profile.coffee_name}
 				</h1>
 				{#if profile.roast_id}
-					<div class="mt-1 text-sm text-text-secondary-light">
+					<div class="mt-1 text-sm text-muted">
 						Roast ID: {profile.roast_id} • {formatDateForDisplay(profile.roast_date)}
 					</div>
 				{/if}
 			</div>
 			<div class="flex gap-2">
 				<button
-					class="rounded border-2 border-red-800 px-3 py-1 text-sm text-text-primary-light hover:bg-red-900"
+					class="rounded border-2 border-danger-strong px-3 py-1 text-sm text-ink hover:bg-danger-subtle"
 					onclick={deleteBatch}
 				>
-					Delete Batch
+					Delete batch
 				</button>
 			</div>
 		</div>
@@ -162,21 +162,20 @@
 					{#each Object.entries(profile) as [key, value]}
 						{#if ['oz_in', 'oz_out', 'roast_notes', 'roast_targets'].includes(key)}
 							<div
-								class="rounded border border-background-tertiary-light p-3 {[
-									'roast_notes',
-									'roast_targets'
-								].includes(key)
+								class="rounded border border-accent p-3 {['roast_notes', 'roast_targets'].includes(
+									key
+								)
 									? 'col-span-1 sm:col-span-2'
 									: ''}"
 							>
 								<div class="flex flex-col">
-									<span class="text-primary-light mb-1 font-medium"
-										>{key.replace(/_/g, ' ').toUpperCase()}:</span
+									<span class="mb-1 font-medium text-ink"
+										>{key.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())}:</span
 									>
 									{#if isEditing}
 										{#if ['roast_notes', 'roast_targets'].includes(key)}
 											<textarea
-												class="relative z-0 min-h-[80px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
+												class="relative z-0 min-h-[80px] w-full rounded bg-surface-canvas px-2 py-1 text-ink"
 												rows="4"
 												bind:value={
 													(editedProfile as Record<string, string | number | null | undefined>)[key]
@@ -187,7 +186,7 @@
 												type="number"
 												step="0.1"
 												min="0"
-												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
+												class="relative z-0 h-[36px] w-full rounded bg-surface-canvas px-2 py-1 text-ink"
 												bind:value={
 													(editedProfile as Record<string, string | number | null | undefined>)[key]
 												}
@@ -195,7 +194,7 @@
 										{:else}
 											<input
 												type="text"
-												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
+												class="relative z-0 h-[36px] w-full rounded bg-surface-canvas px-2 py-1 text-ink"
 												bind:value={
 													(editedProfile as Record<string, string | number | null | undefined>)[key]
 												}
@@ -203,10 +202,7 @@
 										{/if}
 									{:else}
 										<span
-											class="break-words text-text-primary-light {[
-												'roast_notes',
-												'roast_targets'
-											].includes(key)
+											class="break-words text-ink {['roast_notes', 'roast_targets'].includes(key)
 												? 'block whitespace-pre-wrap'
 												: ''}"
 										>
@@ -224,14 +220,12 @@
 	<!-- Milestones Section (read-only) -->
 	{#if profile.tp_time != null || profile.fc_start_time != null || profile.drop_time != null || profile.total_roast_time != null}
 		<div class="mt-4">
-			<h2 class="text-primary-light mb-2 text-sm font-semibold uppercase tracking-wide">
-				Milestones
-			</h2>
+			<h2 class="mb-2 text-sm font-semibold text-ink">Milestones</h2>
 			<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
 				{#if profile.tp_time != null}
-					<div class="rounded border border-background-tertiary-light p-3">
-						<div class="text-primary-light mb-1 text-xs font-medium uppercase">TP</div>
-						<div class="text-sm text-text-primary-light">
+					<div class="rounded border border-accent p-3">
+						<div class="mb-1 text-xs font-medium text-muted">TP</div>
+						<div class="text-sm text-ink">
 							{formatMilestoneTime(profile.tp_time)}{profile.tp_temp != null
 								? ` @ ${profile.tp_temp}°${profile.temperature_unit || 'F'}`
 								: ''}
@@ -239,9 +233,9 @@
 					</div>
 				{/if}
 				{#if profile.fc_start_time != null}
-					<div class="rounded border border-background-tertiary-light p-3">
-						<div class="text-primary-light mb-1 text-xs font-medium uppercase">FC</div>
-						<div class="text-sm text-text-primary-light">
+					<div class="rounded border border-accent p-3">
+						<div class="mb-1 text-xs font-medium text-muted">FC</div>
+						<div class="text-sm text-ink">
 							{formatMilestoneTime(profile.fc_start_time)}{profile.fc_start_temp != null
 								? ` @ ${profile.fc_start_temp}°${profile.temperature_unit || 'F'}`
 								: ''}
@@ -249,9 +243,9 @@
 					</div>
 				{/if}
 				{#if profile.fc_end_time != null}
-					<div class="rounded border border-background-tertiary-light p-3">
-						<div class="text-primary-light mb-1 text-xs font-medium uppercase">FC End</div>
-						<div class="text-sm text-text-primary-light">
+					<div class="rounded border border-accent p-3">
+						<div class="mb-1 text-xs font-medium text-muted">FC end</div>
+						<div class="text-sm text-ink">
 							{formatMilestoneTime(profile.fc_end_time)}{profile.fc_end_temp != null
 								? ` @ ${profile.fc_end_temp}°${profile.temperature_unit || 'F'}`
 								: ''}
@@ -259,9 +253,9 @@
 					</div>
 				{/if}
 				{#if profile.drop_time != null}
-					<div class="rounded border border-background-tertiary-light p-3">
-						<div class="text-primary-light mb-1 text-xs font-medium uppercase">Drop</div>
-						<div class="text-sm text-text-primary-light">
+					<div class="rounded border border-accent p-3">
+						<div class="mb-1 text-xs font-medium text-muted">Drop</div>
+						<div class="text-sm text-ink">
 							{formatMilestoneTime(profile.drop_time)}{profile.drop_temp != null
 								? ` @ ${profile.drop_temp}°${profile.temperature_unit || 'F'}`
 								: ''}
@@ -269,9 +263,9 @@
 					</div>
 				{/if}
 				{#if profile.total_roast_time != null}
-					<div class="rounded border border-background-tertiary-light p-3">
-						<div class="text-primary-light mb-1 text-xs font-medium uppercase">Total</div>
-						<div class="text-sm text-text-primary-light">
+					<div class="rounded border border-accent p-3">
+						<div class="mb-1 text-xs font-medium text-muted">Total</div>
+						<div class="text-sm text-ink">
 							{formatMilestoneTime(profile.total_roast_time)}
 						</div>
 					</div>
@@ -284,14 +278,14 @@
 		<div class="mt-4 flex flex-col justify-end gap-2 sm:flex-row sm:space-x-2">
 			<button
 				class="w-full rounded sm:w-auto {isEditing
-					? 'border-2 border-green-800 hover:bg-green-900'
-					: 'border-2 border-blue-800 hover:bg-blue-900'} px-3 py-1 text-text-primary-light"
+					? 'border-2 border-success-strong hover:bg-success-subtle'
+					: 'border-2 border-info hover:bg-info-subtle'} px-3 py-1 text-ink"
 				onclick={toggleEdit}
 			>
 				{isEditing ? 'Save' : 'Edit'}
 			</button>
 			<button
-				class="w-full rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-900 sm:w-auto"
+				class="w-full rounded border-2 border-danger-strong px-3 py-1 text-ink hover:bg-danger-subtle sm:w-auto"
 				onclick={deleteProfile}
 			>
 				Delete

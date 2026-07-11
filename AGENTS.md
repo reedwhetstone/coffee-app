@@ -119,21 +119,28 @@ Reporting guidance:
 
 ### API model
 
-Treat the API as two layers:
+Treat the web app and the external Parchment API as two separate HTTP surfaces:
 
-1. **Public external API**
+1. **Public external API** (`https://api.purveyors.io/v1/*`)
 
-   - `GET /v1` advertises the public namespace, active resources, and legacy migration hints
-   - `GET /v1/catalog`
-   - Auth: API key, web session, or anonymous (public-only subset unless a privileged session enables wholesale visibility)
+   - `GET https://api.purveyors.io/v1` advertises the public namespace, active resources, and legacy migration hints
+   - `GET https://api.purveyors.io/v1/catalog` is the stable public catalog contract
+   - `GET https://api.purveyors.io/v1/catalog/{id}/similar` is a beta catalog matching contract for member sessions or API keys with API Origin or Enterprise plus `catalog:read`
+   - `GET https://api.purveyors.io/v1/price-index` is an aggregate `price_index_snapshots` contract for API keys with Parchment Intelligence access
+   - Auth varies by route: catalog supports Bearer API key or anonymous access; similarity and price-index require entitlement-backed auth
+   - Full catalog responses include structured process transparency fields and `process.evidence_available`, but not raw evidence quotes
    - Rate-limit headers (`X-RateLimit-*`) are only included in API-key responses
-   - Stable public contract
+   - The same-host coffee-app `/v1/*` routes and the `/api/catalog-api` alias have been removed; external integrations use `https://api.purveyors.io/v1/*`
 
-2. **Platform app API**
+2. **Platform app API** (`/api/*`)
    - `/api/catalog`, `/api/catalog/filters`, `/api/beans`, `/api/roast-profiles`, `/api/profit`, `/api/chat`, `/api/workspaces`, `/api/stripe/*`, `/api/admin/*`, and related helpers
-   - Mixed auth model depending on route: some catalog adapters allow anonymous or API-key access, most product routes require session auth, and chat/workspace routes require the member role
+   - Powers the first-party web app, Console, billing, chat, and admin workflows
+   - Mixed auth model depending on route: catalog BFF adapters can allow anonymous or session access, most product routes require session auth, and chat/workspace routes require either Mallard Studio membership or Parchment Intelligence access
    - Important for contributors, but not a broad public compatibility promise
-   - `/api/catalog-api` is a deprecated API-key-only alias to `/v1/catalog` with `Deprecation: true`, `Link: </v1/catalog>; rel="successor-version"`, and `Sunset: Dec 31 2026` headers; migrate callers to `/v1/catalog`
+   - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
+   - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
+   - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are public metadata or compatibility endpoints; document them as discoverability surfaces, not product APIs
+   - `/auth/callback` and `/auth/cli-callback` are OAuth handoff surfaces; they belong in platform docs only when auth flow behavior matters
    - `/api/tools/*` routes are deprecated; prefer direct CLI-library integration
 
 Do not blur those layers in code comments, docs, or PR descriptions.
@@ -148,6 +155,7 @@ When changing docs, keep these sources aligned:
 - the `/docs` tree under `src/routes/docs`
 - the `/api-dashboard` console surface, including `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate`
 - any legacy docs redirects such as `/api/docs` and `/api-dashboard/docs`
+- metadata and handoff routes such as `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, `/.well-known/appspecific/com.chrome.devtools.json`, `/auth/callback`, and `/auth/cli-callback` when platform route coverage changes
 - `src/routes/api/+page.server.ts` and `/api` copy when plan naming, limits, or route framing changes
 
 ### Docs architecture
@@ -163,11 +171,13 @@ When changing docs, keep these sources aligned:
 
 - Verify behavior from source before documenting it
 - Do not claim an endpoint is public unless it truly is
-- Do not describe `/api/catalog` or `/api/catalog-api` as the canonical contract; that is `/v1/catalog`
+- Do not describe the platform `/api/catalog` tree as the canonical catalog contract; that is `https://api.purveyors.io/v1/catalog`
+- Document `https://api.purveyors.io/v1/catalog/{id}/similar` as beta candidate matching, not canonical identity resolution. Preserve auth requirements, query bounds, 401/403/404/429 behavior, and cautious confidence copy.
 - Do not flatten CLI auth into one rule: catalog commands require an authenticated viewer session; inventory, roast, sales, and tasting require the member role; config, context, and manifest are local or onboarding surfaces that do not require auth; `purvey manifest` is the preferred machine-readable contract; `purvey context --json` and `--pretty` are compatibility-parity aliases for callers already using the context entrypoint; and `--csv` is invalid for context or manifest
 - Do not invent filter/query behavior that the route does not implement
 - Be explicit about auth model, tier limits, row-limit headers, share-token behavior, and session requirements
 - If analytics are a product surface but not a public REST surface, say that clearly
+- Preserve structured process semantics in docs: null supplier metadata is not explicit none, `has_additives=false` means an exact disclosed-none additive array, and raw processing evidence quotes are not public API fields
 
 ## CLI relationship
 

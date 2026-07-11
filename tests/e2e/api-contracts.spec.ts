@@ -52,12 +52,13 @@ test.afterAll(async ({ request }) => {
 // ---------------------------------------------------------------------------
 
 test.describe('Unauthenticated requests are rejected', () => {
-	test('GET /api/beans without auth returns empty data', async () => {
+	test('GET /api/beans without auth requires Portfolio access', async () => {
 		const resp = await rawFetch('/api/beans');
-		expect(resp.status).toBe(200);
+		expect(resp.status).toBe(401);
 		const body = (await resp.json()) as Record<string, unknown>;
 		expect(body).toHaveProperty('data');
 		expect(body.data).toEqual([]);
+		expect(body).toHaveProperty('error');
 	});
 
 	test('GET /api/profit without auth does not crash without auth', async () => {

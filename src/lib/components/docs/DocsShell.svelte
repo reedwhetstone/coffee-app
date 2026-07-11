@@ -28,28 +28,26 @@
 
 	function calloutClasses(tone: 'note' | 'warning' | 'success') {
 		if (tone === 'warning') {
-			return 'border-amber-200 bg-amber-50 text-amber-950';
+			return 'border-warning/30 bg-warning-subtle text-warning-strong';
 		}
 		if (tone === 'success') {
-			return 'border-emerald-200 bg-emerald-50 text-emerald-950';
+			return 'border-success/30 bg-success-subtle text-success-strong';
 		}
-		return 'border-blue-200 bg-blue-50 text-blue-950';
+		return 'border-info/30 bg-info-subtle text-info-strong';
 	}
 </script>
 
 <div class="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)]">
 	<aside class="space-y-4 lg:sticky lg:top-24 lg:self-start">
-		<div class="rounded-2xl border border-border-light bg-background-secondary-light p-5">
-			<p class="text-xs font-semibold uppercase tracking-[0.18em] text-background-tertiary-light">
-				Documentation
-			</p>
-			<h2 class="mt-2 text-lg font-semibold text-text-primary-light">{navSection?.title}</h2>
-			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
+		<div class="rounded-2xl border border-line bg-surface-panel p-5">
+			<p class="text-xs font-semibold text-accent">Documentation</p>
+			<h2 class="mt-2 text-lg font-semibold text-ink">{navSection?.title}</h2>
+			<p class="mt-2 text-sm leading-relaxed text-muted">
 				{navSection?.description}
 			</p>
 		</div>
 
-		<nav class="rounded-2xl border border-border-light bg-background-primary-light p-3">
+		<nav class="rounded-2xl border border-line bg-surface-canvas p-3">
 			<ul class="space-y-1">
 				{#each navSection?.items ?? [] as item}
 					<li>
@@ -57,8 +55,8 @@
 							href={`${navSection?.basePath}/${item.slug}`}
 							class={`block rounded-xl px-3 py-2 transition-colors ${
 								item.slug === slug
-									? 'bg-background-tertiary-light/10 text-background-tertiary-light'
-									: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'
+									? 'bg-accent/10 text-accent'
+									: 'text-muted hover:bg-surface-panel hover:text-ink'
 							}`}
 						>
 							<div class="text-sm font-medium">{item.title}</div>
@@ -70,19 +68,14 @@
 		</nav>
 
 		{#if tocItems.length > 1}
-			<nav
-				aria-label="On this page"
-				class="rounded-2xl border border-border-light bg-background-primary-light p-4"
-			>
-				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-secondary-light">
-					On this page
-				</p>
+			<nav aria-label="On this page" class="rounded-2xl border border-line bg-surface-canvas p-4">
+				<p class="text-xs font-semibold text-muted">On this page</p>
 				<ul class="mt-3 space-y-1">
 					{#each tocItems as toc}
 						<li>
 							<a
 								href={`#${toc.anchor}`}
-								class="block rounded-lg px-2 py-1.5 text-xs leading-snug text-text-secondary-light transition-colors hover:bg-background-secondary-light hover:text-text-primary-light"
+								class="block rounded-lg px-2 py-1.5 text-xs leading-snug text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 							>
 								{toc.title}
 							</a>
@@ -94,20 +87,18 @@
 	</aside>
 
 	<article class="min-w-0 space-y-8">
-		<header
-			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
-		>
-			<p class="text-xs font-semibold uppercase tracking-[0.18em] text-background-tertiary-light">
+		<header class="rounded-2xl border border-line bg-surface-canvas p-6 shadow-sm sm:p-8">
+			<p class="text-xs font-semibold text-accent">
 				{page.eyebrow}
 			</p>
-			<h1 class="mt-3 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
+			<h1 class="mt-3 font-serif text-3xl font-medium tracking-tight text-ink sm:text-4xl">
 				{page.title}
 			</h1>
-			<p class="mt-3 max-w-3xl text-base leading-relaxed text-text-secondary-light sm:text-lg">
+			<p class="mt-3 max-w-3xl text-base leading-relaxed text-muted sm:text-lg">
 				{page.summary}
 			</p>
 
-			<div class="mt-6 space-y-3 text-sm leading-relaxed text-text-primary-light">
+			<div class="mt-6 space-y-3 text-sm leading-relaxed text-ink">
 				{#each page.intro as paragraph}
 					<p>{paragraph}</p>
 				{/each}
@@ -117,12 +108,14 @@
 		{#each page.sections as sectionBlock}
 			<section
 				id={titleToAnchor(sectionBlock.title)}
-				class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
+				class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm sm:p-8"
 			>
-				<h2 class="text-2xl font-semibold text-text-primary-light">{sectionBlock.title}</h2>
+				<h2 class="font-serif text-2xl font-medium tracking-tight text-ink">
+					{sectionBlock.title}
+				</h2>
 
 				{#if sectionBlock.body}
-					<div class="mt-4 space-y-3 text-sm leading-relaxed text-text-primary-light sm:text-base">
+					<div class="mt-4 space-y-3 text-sm leading-relaxed text-ink sm:text-base">
 						{#each sectionBlock.body as paragraph}
 							<p>{paragraph}</p>
 						{/each}
@@ -130,10 +123,10 @@
 				{/if}
 
 				{#if sectionBlock.bullets}
-					<ul class="mt-4 space-y-3 text-sm leading-relaxed text-text-primary-light sm:text-base">
+					<ul class="mt-4 space-y-3 text-sm leading-relaxed text-ink sm:text-base">
 						{#each sectionBlock.bullets as bullet}
 							<li class="flex gap-3">
-								<span class="mt-1 h-2.5 w-2.5 rounded-full bg-background-tertiary-light"></span>
+								<span class="mt-1 h-2.5 w-2.5 rounded-full bg-accent"></span>
 								<span>{bullet}</span>
 							</li>
 						{/each}
@@ -141,18 +134,16 @@
 				{/if}
 
 				{#if sectionBlock.table}
-					<div class="mt-5 overflow-x-auto rounded-2xl border border-border-light">
-						<table class="min-w-full divide-y divide-border-light text-sm">
-							<thead class="bg-background-secondary-light text-left text-text-primary-light">
+					<div class="mt-5 overflow-x-auto rounded-2xl border border-line">
+						<table class="min-w-full divide-y divide-line text-sm">
+							<thead class="bg-surface-panel text-left text-ink">
 								<tr>
 									{#each sectionBlock.table.headers as header}
 										<th class="px-4 py-3 font-semibold">{header}</th>
 									{/each}
 								</tr>
 							</thead>
-							<tbody
-								class="divide-y divide-border-light bg-background-primary-light text-text-secondary-light"
-							>
+							<tbody class="divide-y divide-line bg-surface-canvas text-muted">
 								{#each sectionBlock.table.rows as row}
 									<tr>
 										{#each row as cell}
@@ -168,18 +159,14 @@
 				{#if sectionBlock.codeBlocks}
 					<div class="mt-5 space-y-4">
 						{#each sectionBlock.codeBlocks as block}
-							<div
-								class="overflow-hidden rounded-2xl border border-border-light bg-background-secondary-light"
-							>
+							<div class="overflow-hidden rounded-2xl border border-line bg-surface-panel">
 								{#if block.label}
-									<div
-										class="border-b border-border-light px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary-light"
-									>
+									<div class="border-b border-line px-4 py-2 text-xs font-semibold text-muted">
 										{block.label}
 									</div>
 								{/if}
 								<pre
-									class="overflow-x-auto px-4 py-4 text-xs leading-relaxed text-text-primary-light sm:text-sm"><code
+									class="overflow-x-auto px-4 py-4 text-xs leading-relaxed text-ink sm:text-sm"><code
 										>{block.code}</code
 									></pre>
 							</div>
@@ -198,18 +185,16 @@
 			</section>
 		{/each}
 
-		<section
-			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
-		>
-			<h2 class="text-2xl font-semibold text-text-primary-light">Related links</h2>
+		<section class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm sm:p-8">
+			<h2 class="font-serif text-2xl font-medium tracking-tight text-ink">Related links</h2>
 			<div class="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 				{#each page.related as link}
 					<a
 						href={link.href}
-						class="rounded-2xl border border-border-light bg-background-secondary-light p-4 transition-colors hover:border-background-tertiary-light/40 hover:bg-background-primary-light"
+						class="rounded-2xl border border-line bg-surface-panel p-4 transition-colors hover:border-accent/40 hover:bg-surface-canvas"
 					>
-						<div class="text-sm font-semibold text-text-primary-light">{link.label}</div>
-						<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
+						<div class="text-sm font-semibold text-ink">{link.label}</div>
+						<p class="mt-2 text-sm leading-relaxed text-muted">
 							{link.description}
 						</p>
 					</a>
@@ -221,12 +206,10 @@
 			{#if prevNext.prev}
 				<a
 					href={`${navSection?.basePath}/${prevNext.prev.slug}`}
-					class="rounded-2xl border border-border-light bg-background-primary-light px-5 py-4 text-left shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
+					class="rounded-2xl border border-line bg-surface-canvas px-5 py-4 text-left shadow-sm transition-colors hover:border-accent/40 hover:bg-surface-panel"
 				>
-					<p class="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary-light">
-						Previous
-					</p>
-					<p class="mt-2 text-sm font-semibold text-text-primary-light">{prevNext.prev.title}</p>
+					<p class="text-xs font-semibold text-muted">Previous</p>
+					<p class="mt-2 text-sm font-semibold text-ink">{prevNext.prev.title}</p>
 				</a>
 			{:else}
 				<div></div>
@@ -235,12 +218,10 @@
 			{#if prevNext.next}
 				<a
 					href={`${navSection?.basePath}/${prevNext.next.slug}`}
-					class="rounded-2xl border border-border-light bg-background-primary-light px-5 py-4 text-left shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light sm:text-right"
+					class="rounded-2xl border border-line bg-surface-canvas px-5 py-4 text-left shadow-sm transition-colors hover:border-accent/40 hover:bg-surface-panel sm:text-right"
 				>
-					<p class="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary-light">
-						Next
-					</p>
-					<p class="mt-2 text-sm font-semibold text-text-primary-light">{prevNext.next.title}</p>
+					<p class="text-xs font-semibold text-muted">Next</p>
+					<p class="mt-2 text-sm font-semibold text-ink">{prevNext.next.title}</p>
 				</a>
 			{/if}
 		</nav>

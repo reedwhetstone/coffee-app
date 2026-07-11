@@ -87,10 +87,10 @@
 	function getRoastLevelColor(profile: TableRoastProfile): string {
 		// Use drop_temp if available, otherwise end_temperature
 		const temp = profile.drop_temp || profile.end_temperature;
-		if (!temp) return 'text-text-secondary-light';
-		if (temp < 400) return 'text-yellow-600'; // Light roast
-		if (temp < 420) return 'text-amber-600'; // Medium roast
-		return 'text-orange-700'; // Dark roast
+		if (!temp) return 'text-muted';
+		if (temp < 400) return 'text-chart-gold'; // Light roast
+		if (temp < 420) return 'text-warning'; // Medium roast
+		return 'text-organic-rust'; // Dark roast
 	}
 
 	function getBatchSummary(profiles: TableRoastProfile[]) {
@@ -125,34 +125,45 @@
 
 <div class="w-full max-w-[100vw] overflow-x-hidden">
 	{#if !safeBatchNames || safeBatchNames.length === 0}
-		<div class="rounded-lg bg-background-secondary-light p-8 text-center ring-1 ring-border-light">
-			<div class="mb-4 text-6xl opacity-50">📊</div>
-			<h3 class="mb-2 text-lg font-semibold text-text-primary-light">No Roast Profiles Yet</h3>
-			<p class="text-text-secondary-light">
-				Start roasting to see your profile history and analytics here
-			</p>
+		<div class="rounded-lg bg-surface-panel p-8 text-center ring-1 ring-line">
+			<svg
+				class="mx-auto mb-4 h-12 w-12 text-muted opacity-60"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.5"
+				aria-hidden="true"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"
+				/>
+			</svg>
+			<h3 class="mb-2 text-lg font-semibold text-ink">No roast profiles yet</h3>
+			<p class="text-muted">Start roasting to see your profile history and analytics here</p>
 		</div>
 	{:else}
 		<div class="mb-4 flex items-center gap-2">
 			<button
 				class="rounded-full px-3 py-1 text-xs font-medium transition-colors {wholesaleFilter ===
 				'all'
-					? 'bg-background-tertiary-light text-white'
-					: 'bg-background-secondary-light text-text-secondary-light ring-1 ring-border-light hover:bg-background-primary-light'}"
+					? 'bg-accent text-ink'
+					: 'bg-surface-panel text-muted ring-1 ring-line hover:bg-surface-canvas'}"
 				onclick={() => (wholesaleFilter = 'all')}>All</button
 			>
 			<button
 				class="rounded-full px-3 py-1 text-xs font-medium transition-colors {wholesaleFilter ===
 				'retail'
-					? 'bg-background-tertiary-light text-white'
-					: 'bg-background-secondary-light text-text-secondary-light ring-1 ring-border-light hover:bg-background-primary-light'}"
+					? 'bg-accent text-ink'
+					: 'bg-surface-panel text-muted ring-1 ring-line hover:bg-surface-canvas'}"
 				onclick={() => (wholesaleFilter = 'retail')}>Retail</button
 			>
 			<button
 				class="rounded-full px-3 py-1 text-xs font-medium transition-colors {wholesaleFilter ===
 				'wholesale'
-					? 'bg-background-tertiary-light text-white'
-					: 'bg-background-secondary-light text-text-secondary-light ring-1 ring-border-light hover:bg-background-primary-light'}"
+					? 'bg-accent text-ink'
+					: 'bg-surface-panel text-muted ring-1 ring-line hover:bg-surface-canvas'}"
 				onclick={() => (wholesaleFilter = 'wholesale')}>Wholesale</button
 			>
 		</div>
@@ -162,11 +173,11 @@
 				{@const profiles = safeGroupedProfiles[batchKey] || []}
 				{@const batchSummary = getBatchSummary(profiles)}
 				{@const hasWholesale = profiles.some((p: TableRoastProfile) => p.is_wholesale)}
-				<div class="rounded-lg bg-background-secondary-light ring-1 ring-border-light">
+				<div class="rounded-lg bg-surface-panel ring-1 ring-line">
 					<!-- Batch Header - Following ProfitCards Pattern -->
 					<button
 						type="button"
-						class="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-background-primary-light focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
+						class="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-surface-canvas focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
 						onclick={() => onToggleBatch(batchKey)}
 						onkeydown={(e) => {
 							if (e.key === 'Enter' || e.key === ' ') {
@@ -179,19 +190,21 @@
 						aria-label="Toggle {batchName} batch ({batchSummary.count} roasts)"
 					>
 						<div class="flex items-center gap-3">
-							<div class="text-text-primary-light">
+							<div class="text-ink">
 								{isBatchExpanded(batchKey) ? '▼' : '▶'}
 							</div>
 							<div>
 								<div class="flex items-center gap-1.5">
-									<h3 class="text-lg font-semibold text-text-primary-light">
+									<h3 class="text-lg font-semibold text-ink">
 										{batchName}
 									</h3>
 									{#if hasWholesale}
-										<span class="rounded bg-blue-100 px-1 text-xs text-blue-800">Wholesale</span>
+										<span class="rounded bg-info-subtle px-1 text-xs font-medium text-info-strong"
+											>Wholesale</span
+										>
 									{/if}
 								</div>
-								<p class="text-sm text-text-secondary-light">
+								<p class="text-sm text-muted">
 									{batchSummary.count} roast{batchSummary.count !== 1 ? 's' : ''} • {formatDateForDisplay(
 										profiles[0]?.roast_date
 									)}
@@ -201,16 +214,16 @@
 						<div class="hidden text-right sm:block">
 							<div class="grid grid-cols-3 gap-6 text-sm">
 								<div>
-									<p class="text-text-secondary-light">Total Weight</p>
-									<p class="font-semibold text-blue-500">{batchSummary.totalWeight} oz</p>
+									<p class="text-muted">Total weight</p>
+									<p class="font-semibold tabular-nums text-ink">{batchSummary.totalWeight} oz</p>
 								</div>
 								<div>
-									<p class="text-text-secondary-light">Avg Loss</p>
-									<p class="font-semibold text-red-500">{batchSummary.avgWeightLoss}%</p>
+									<p class="text-muted">Avg loss</p>
+									<p class="font-semibold tabular-nums text-ink">{batchSummary.avgWeightLoss}%</p>
 								</div>
 								<div>
-									<p class="text-text-secondary-light">Roasts</p>
-									<p class="font-semibold text-purple-500">{batchSummary.count}</p>
+									<p class="text-muted">Roasts</p>
+									<p class="font-semibold tabular-nums text-ink">{batchSummary.count}</p>
 								</div>
 							</div>
 						</div>
@@ -219,7 +232,7 @@
 					<!-- Roast Profile Cards -->
 					{#if isBatchExpanded(batchKey) && profiles.length > 0}
 						<div
-							class="border-t border-border-light bg-background-primary-light p-4"
+							class="border-t border-line bg-surface-canvas p-4"
 							id="batch-{batchKey.replace(/\s+/g, '-').toLowerCase()}"
 							role="region"
 							aria-label="Roast profiles for {batchName}"
@@ -228,25 +241,26 @@
 								{#each profiles as profile}
 									<button
 										type="button"
-										class="w-full rounded-lg bg-background-secondary-light p-4 text-left ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2 {currentRoastProfile?.roast_id ===
+										class="w-full rounded-lg bg-surface-panel p-4 text-left ring-1 ring-line transition-all hover:scale-[1.02] hover:ring-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 {currentRoastProfile?.roast_id ===
 										profile.roast_id
-											? 'ring-2 ring-background-tertiary-light'
+											? 'ring-2 ring-accent'
 											: ''}"
 										onclick={() => onSelectProfile(profile)}
 									>
 										<div class="mb-3 flex items-start justify-between">
 											<div>
 												<div class="flex items-center gap-1.5">
-													<h4 class="font-semibold text-text-primary-light">
+													<h4 class="font-semibold text-ink">
 														{profile.coffee_name}
 													</h4>
 													{#if profile.is_wholesale}
-														<span class="rounded bg-blue-100 px-1 text-xs text-blue-800"
+														<span
+															class="rounded bg-info-subtle px-1 text-xs font-medium text-info-strong"
 															>Wholesale</span
 														>
 													{/if}
 												</div>
-												<p class="text-sm text-text-secondary-light">
+												<p class="text-sm text-muted">
 													ID: {profile.roast_id} • {formatDateForDisplay(profile.roast_date)}
 												</p>
 											</div>
@@ -255,25 +269,25 @@
 										<!-- Roast Metrics Grid - Following ProfitCards Pattern -->
 										<div class="grid grid-cols-2 gap-3 text-sm">
 											<div>
-												<p class="text-text-secondary-light">Weight In</p>
-												<p class="font-semibold text-blue-500">
+												<p class="text-muted">Weight in</p>
+												<p class="font-semibold tabular-nums text-ink">
 													{profile.oz_in ? `${profile.oz_in} oz` : 'N/A'}
 												</p>
 											</div>
 											<div>
-												<p class="text-text-secondary-light">Duration</p>
-												<p class="font-semibold text-indigo-500">
+												<p class="text-muted">Duration</p>
+												<p class="font-semibold tabular-nums text-ink">
 													{calculateRoastDuration(profile)}
 												</p>
 											</div>
 											<div>
-												<p class="text-text-secondary-light">Loss %</p>
-												<p class="font-semibold text-red-500">
+												<p class="text-muted">Loss %</p>
+												<p class="font-semibold tabular-nums text-ink">
 													{calculateWeightLossPercentage(profile)}
 												</p>
 											</div>
 											<div>
-												<p class="text-text-secondary-light">Drop Temp</p>
+												<p class="text-muted">Drop temp</p>
 												<p class="font-semibold {getRoastLevelColor(profile)}">
 													{getDropTempDisplay(profile)}
 												</p>
@@ -281,9 +295,9 @@
 										</div>
 
 										{#if profile.notes}
-											<div class="mt-4 border-t border-border-light pt-4">
-												<h5 class="mb-2 font-medium text-text-primary-light">Notes</h5>
-												<p class="text-sm text-text-secondary-light">{profile.notes}</p>
+											<div class="mt-4 border-t border-line pt-4">
+												<h5 class="mb-2 font-medium text-ink">Notes</h5>
+												<p class="text-sm text-muted">{profile.notes}</p>
 											</div>
 										{/if}
 									</button>

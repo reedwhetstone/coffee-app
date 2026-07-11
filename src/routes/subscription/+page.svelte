@@ -56,13 +56,13 @@
 			headline:
 				'Supplier comparisons, arrivals and delistings, origin benchmarks, and the weekly procurement brief.',
 			description:
-				'Parchment Intelligence gives sourcing pros the full market view: supplier health, arriving and departing lots, origin benchmarks, and price history depth across 41+ US importers.',
+				'Parchment Intelligence gives sourcing pros the full market view: supplier health, arriving and departing lots, origin benchmarks, and price history depth across 40+ US importers.',
 			features: [
 				'Weekly procurement brief with market movements and notable arrivals',
 				'Supplier comparisons and supplier health scoring',
 				'Arrivals feed and delisting alerts by origin and supplier',
 				'Origin benchmarks and price history depth',
-				'Extended trend detail across the full analytics surface'
+				'Extended price-trend depth across every Market Index view'
 			],
 			managementCopy: 'Manage Parchment Intelligence billing and access here.',
 			anonymousStateCopy: 'Sign in to see what is on this account.',
@@ -93,11 +93,11 @@
 			family: 'api_plan',
 			name: 'Parchment API',
 			eyebrow: 'Data access',
-			headline: 'Normalized green coffee data from 41+ suppliers through one REST API.',
+			headline: 'Normalized green coffee data from 40+ suppliers through one REST API.',
 			description:
 				'Start with the free Green tier to evaluate the dataset, then move to Origin for production integrations, higher rate limits, and an account-aware console.',
 			features: [
-				'Daily-updated catalog from 41+ US specialty importers',
+				'Daily-updated catalog from 40+ US specialty importers',
 				'Consistent schema across all supplier sources',
 				'Origin tier for production integrations and higher usage limits',
 				'Parchment Console for API keys, docs, and usage visibility'
@@ -220,13 +220,13 @@
 	const toneClasses = (tone: ProductTone) => {
 		switch (tone) {
 			case 'success':
-				return 'border-green-500/30 bg-green-500/10 text-green-300';
+				return 'border-success/30 bg-success-subtle text-success-strong';
 			case 'info':
-				return 'border-blue-500/30 bg-blue-500/10 text-blue-300';
+				return 'border-info/30 bg-info-subtle text-info-strong';
 			case 'warning':
-				return 'border-orange-500/30 bg-orange-500/10 text-orange-300';
+				return 'border-warning/30 bg-warning-subtle text-warning-strong';
 			default:
-				return 'border-border-light bg-background-primary-light text-text-secondary-light';
+				return 'border-line bg-surface-canvas text-muted';
 		}
 	};
 
@@ -359,7 +359,7 @@
 				{
 					label: 'Data and integrations',
 					value: 'Parchment API',
-					description: 'Normalized green coffee data from 41+ suppliers through one REST API.'
+					description: 'Normalized green coffee data from 40+ suppliers through one REST API.'
 				},
 				{
 					label: 'Roaster operations',
@@ -486,24 +486,22 @@
 	});
 </script>
 
-<div class="min-h-[calc(100vh-80px)] bg-background-primary-light">
+<div class="min-h-[calc(100vh-80px)] bg-surface-canvas">
 	{#if data?.user && showCheckout && selectedPurchaseKey}
 		<div class="px-4 py-10 md:px-6">
 			<div class="mx-auto max-w-3xl">
 				<div class="mb-4 flex items-center justify-between gap-4">
 					<div>
-						<p class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light">
-							Checkout
-						</p>
-						<h2 class="text-primary-light text-2xl font-semibold">
+						<p class="text-sm font-semibold text-accent">Checkout</p>
+						<h2 class="text-2xl font-semibold text-ink">
 							{selectedPlanName}
 							{selectedIntervalLabel}
 						</h2>
-						<p class="mt-1 text-sm text-text-secondary-light">{selectedPriceLabel}</p>
+						<p class="mt-1 text-sm text-muted">{selectedPriceLabel}</p>
 					</div>
 					<button
 						onclick={handleCheckoutCancel}
-						class="text-primary-light/70 hover:text-primary-light rounded-full p-1"
+						class="rounded-full p-1 text-ink/70 hover:text-ink"
 						aria-label="Back to subscription page"
 					>
 						<svg
@@ -530,43 +528,39 @@
 			</div>
 		</div>
 	{:else}
-		<section
-			class="border-b border-border-light bg-background-secondary-light px-4 py-14 md:px-6 md:py-20"
-		>
+		<section class="border-b border-line bg-surface-panel px-4 py-14 md:px-6 md:py-20">
 			<div
 				class="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(20rem,0.9fr)] lg:items-end"
 			>
 				<div class="max-w-3xl space-y-5">
-					<p
-						class="text-sm font-semibold uppercase tracking-[0.2em] text-background-tertiary-light"
-					>
+					<p class="text-sm font-semibold text-accent">
 						{isSignedIn ? 'Your account' : 'Plans'}
 					</p>
-					<h1 class="text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
+					<h1 class="font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl">
 						{isSignedIn ? 'Your Purveyors account.' : 'Source greens with the full market in view.'}
 					</h1>
-					<p class="text-lg leading-8 text-text-secondary-light">
+					<p class="text-lg leading-8 text-muted">
 						{isSignedIn
 							? 'Review access and billing in one place.'
-							: 'Daily-normalized data from 41+ US importers. Pricing movement, arrivals, delistings, and origin benchmarks for sourcing pros.'}
+							: 'Daily-normalized data from 40+ US importers. Pricing movement, arrivals, delistings, and origin benchmarks for sourcing pros.'}
 					</p>
 					<div class="flex flex-wrap items-center gap-3">
 						<button
 							onclick={() => goto('/analytics')}
-							class="rounded-xl bg-background-tertiary-light px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+							class="rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
 						>
-							See market analytics
+							See the Market Index
 						</button>
 						<a
 							href="/catalog"
-							class="rounded-xl border border-border-light bg-background-primary-light px-4 py-3 text-sm font-medium text-text-primary-light transition-colors hover:border-background-tertiary-light/40 hover:text-background-tertiary-light"
+							class="rounded-xl border border-line bg-surface-canvas px-4 py-3 text-sm font-medium text-ink transition-colors hover:border-accent/40 hover:text-accent"
 						>
 							Browse catalog
 						</a>
 						{#if !isSignedIn}
 							<a
 								href={signInHref}
-								class="text-sm text-text-secondary-light underline underline-offset-2 transition-colors hover:text-text-primary-light"
+								class="text-sm text-muted underline underline-offset-2 transition-colors hover:text-ink"
 							>
 								Already have an account? Sign in
 							</a>
@@ -574,16 +568,14 @@
 					</div>
 				</div>
 
-				<div
-					class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm"
-				>
-					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-secondary-light">
+				<div class="rounded-3xl border border-line bg-surface-canvas p-6 shadow-sm">
+					<p class="text-xs font-semibold text-muted">
 						{isSignedIn ? 'Account overview' : 'Product line'}
 					</p>
-					<h2 class="mt-3 text-2xl font-semibold text-text-primary-light">
-						{isSignedIn ? 'Current access on this account' : 'One platform, three access tiers'}
+					<h2 class="mt-3 text-2xl font-semibold text-ink">
+						{isSignedIn ? 'Current access on this account' : 'One platform, four products'}
 					</h2>
-					<p class="mt-2 text-sm leading-7 text-text-secondary-light">
+					<p class="mt-2 text-sm leading-7 text-muted">
 						{isSignedIn
 							? 'Confirm what is active before starting a checkout or changing your billing.'
 							: 'Start with the product that matches the job. Sign in when you are ready to subscribe.'}
@@ -591,18 +583,16 @@
 
 					<div class="mt-5 space-y-4">
 						{#each accountOverviewItems as item}
-							<div class="rounded-2xl border border-border-light bg-background-secondary-light p-4">
+							<div class="rounded-2xl border border-line bg-surface-panel p-4">
 								<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 									<div>
-										<p
-											class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-										>
+										<p class="text-xs font-semibold text-muted">
 											{item.label}
 										</p>
-										<p class="mt-1 text-base font-semibold text-text-primary-light">{item.value}</p>
+										<p class="mt-1 text-base font-semibold text-ink">{item.value}</p>
 									</div>
 								</div>
-								<p class="mt-2 text-sm leading-6 text-text-secondary-light">{item.description}</p>
+								<p class="mt-2 text-sm leading-6 text-muted">{item.description}</p>
 							</div>
 						{/each}
 					</div>
@@ -616,17 +606,15 @@
 					{#each productCards as product}
 						{@const state = getProductState(product)}
 						<div
-							class={`rounded-3xl border bg-background-primary-light p-6 shadow-sm ${product.family === 'ppi_addon' ? 'border-background-tertiary-light/40 ring-1 ring-background-tertiary-light/20' : 'border-border-light'}`}
+							class={`rounded-3xl border bg-surface-canvas p-6 shadow-sm ${product.family === 'ppi_addon' ? 'border-accent/40 ring-1 ring-accent/20' : 'border-line'}`}
 						>
 							<div class="flex items-start justify-between gap-4">
 								<div class="space-y-2">
-									<p
-										class="text-xs font-semibold uppercase tracking-[0.18em] text-background-tertiary-light"
-									>
+									<p class="text-xs font-semibold text-accent">
 										{product.eyebrow}
 									</p>
-									<h2 class="text-2xl font-semibold text-text-primary-light">{product.name}</h2>
-									<p class="text-sm font-medium text-text-primary-light">{product.headline}</p>
+									<h2 class="text-2xl font-semibold text-ink">{product.name}</h2>
+									<p class="text-sm font-medium text-ink">{product.headline}</p>
 								</div>
 								<span
 									class={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(state.tone)}`}
@@ -635,65 +623,53 @@
 								</span>
 							</div>
 
-							<p class="mt-4 text-sm leading-7 text-text-secondary-light">{product.description}</p>
+							<p class="mt-4 text-sm leading-7 text-muted">{product.description}</p>
 
-							<ul class="mt-5 space-y-3 text-sm text-text-secondary-light">
+							<ul class="mt-5 space-y-3 text-sm text-muted">
 								{#each product.features as feature}
 									<li class="flex gap-3">
-										<span class="mt-1 h-2 w-2 rounded-full bg-background-tertiary-light"></span>
+										<span class="mt-1 h-2 w-2 rounded-full bg-accent"></span>
 										<span>{feature}</span>
 									</li>
 								{/each}
 							</ul>
 
 							{#if isSignedIn}
-								<div
-									class="mt-5 rounded-2xl border border-border-light bg-background-secondary-light p-4"
-								>
+								<div class="mt-5 rounded-2xl border border-line bg-surface-panel p-4">
 									<div class="flex items-start justify-between gap-3">
 										<div>
-											<p
-												class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-											>
-												Account state
-											</p>
-											<p class="mt-2 text-base font-semibold text-text-primary-light">
+											<p class="text-xs font-semibold text-muted">Account state</p>
+											<p class="mt-2 text-base font-semibold text-ink">
 												{state.label}
 											</p>
 										</div>
 									</div>
 
-									<p class="mt-3 text-sm leading-7 text-text-secondary-light">
+									<p class="mt-3 text-sm leading-7 text-muted">
 										{state.description}
 									</p>
 
 									{#if product.family === 'membership'}
-										<p class="mt-3 text-sm text-text-secondary-light">{product.managementCopy}</p>
+										<p class="mt-3 text-sm text-muted">{product.managementCopy}</p>
 										{#if data.subscription}
-											<div
-												class="mt-4 rounded-2xl border border-border-light bg-background-primary-light p-4"
-											>
-												<p
-													class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-												>
-													Membership billing
-												</p>
-												<div class="mt-3 grid grid-cols-2 gap-3 text-sm text-text-secondary-light">
+											<div class="mt-4 rounded-2xl border border-line bg-surface-canvas p-4">
+												<p class="text-xs font-semibold text-muted">Membership billing</p>
+												<div class="mt-3 grid grid-cols-2 gap-3 text-sm text-muted">
 													<span>Status</span>
-													<span class="text-right font-medium text-text-primary-light">
+													<span class="text-right font-medium text-ink">
 														{data.subscription.status}
 														{#if data.subscription.cancel_at_period_end}
-															<span class="text-orange-400"> (ends at renewal)</span>
+															<span class="text-warning-strong"> (ends at renewal)</span>
 														{/if}
 													</span>
 
 													<span>Plan</span>
-													<span class="text-right font-medium text-text-primary-light">
+													<span class="text-right font-medium text-ink">
 														{normalizePlanName(data.subscription.plan?.name)}
 													</span>
 
 													<span>Renews or ends</span>
-													<span class="text-right font-medium text-text-primary-light">
+													<span class="text-right font-medium text-ink">
 														{data.subscription.current_period_end
 															? formatDate(data.subscription.current_period_end)
 															: 'N/A'}
@@ -704,7 +680,7 @@
 											<div class="mt-4 space-y-3">
 												{#if !membershipState?.canManageSubscription && membershipState?.managementBlockedReason}
 													<div
-														class="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-300"
+														class="rounded-2xl border border-warning/30 bg-warning-subtle p-4 text-sm text-warning-strong"
 													>
 														{membershipState.managementBlockedReason}
 													</div>
@@ -712,69 +688,69 @@
 													<button
 														onclick={() => resumeSubscription()}
 														disabled={resumeLoading}
-														class="w-full rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-medium text-blue-300 transition-colors hover:bg-blue-500/20 disabled:opacity-50"
+														class="w-full rounded-lg border border-info/30 bg-info-subtle px-4 py-2 text-sm font-medium text-info-strong transition-colors hover:bg-info/15 disabled:opacity-50"
 													>
 														{resumeLoading ? 'Processing...' : 'Keep Studio active'}
 													</button>
 													{#if resumeSuccess}
-														<p class="text-sm text-green-400">
+														<p class="text-sm text-success-strong">
 															Studio will continue renewing automatically.
 														</p>
 													{/if}
 													{#if resumeError}
-														<p class="text-sm text-red-400">Error: {resumeError}</p>
+														<p class="text-sm text-danger">Error: {resumeError}</p>
 													{/if}
 												{:else}
 													<button
 														onclick={() => cancelSubscription()}
 														disabled={cancelLoading}
-														class="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+														class="w-full rounded-lg border border-danger/30 bg-danger-subtle px-4 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger/15 disabled:opacity-50"
 													>
 														{cancelLoading ? 'Processing...' : 'End at renewal'}
 													</button>
-													<p class="text-xs text-text-secondary-light">
+													<p class="text-xs text-muted">
 														Studio access stays active through the current billing period.
 													</p>
 													{#if cancelSuccess}
-														<p class="text-sm text-green-400">
+														<p class="text-sm text-success-strong">
 															Studio will end at the close of the current billing period.
 														</p>
 													{/if}
 													{#if cancelError}
-														<p class="text-sm text-red-400">Error: {cancelError}</p>
+														<p class="text-sm text-danger">Error: {cancelError}</p>
 													{/if}
 												{/if}
 											</div>
 										{:else}
 											<div
-												class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4 text-sm text-text-secondary-light"
+												class="mt-3 rounded-2xl border border-dashed border-line bg-surface-canvas p-4 text-sm text-muted"
 											>
 												{product.inactiveStateCopy}
 											</div>
 										{/if}
 									{:else if product.family === 'api_plan'}
 										<div
-											class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4"
+											class="mt-3 rounded-2xl border border-dashed border-line bg-surface-canvas p-4"
 										>
-											<p class="text-sm leading-7 text-text-secondary-light">
+											<p class="text-sm leading-7 text-muted">
 												{apiState?.description}
 											</p>
-											<p class="mt-2 text-sm text-text-secondary-light">{apiState?.note}</p>
+											<p class="mt-2 text-sm text-muted">{apiState?.note}</p>
 										</div>
 									{:else if product.family === 'ppi_addon'}
 										<div
-											class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4"
+											class="mt-3 rounded-2xl border border-dashed border-line bg-surface-canvas p-4"
 										>
-											<p class="text-sm leading-7 text-text-secondary-light">
+											<p class="text-sm leading-7 text-muted">
 												{intelligenceState?.description}
 											</p>
-											<p class="mt-2 text-sm text-text-secondary-light">
+											<p class="mt-2 text-sm text-muted">
 												{intelligenceState?.note}
 											</p>
 										</div>
 									{:else}
 										<div
-											class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4 text-sm text-text-secondary-light"
+											class="mt-3 rounded-2xl border border-dashed border-line bg-surface-canvas p-4 text-sm text-muted"
 										>
 											{product.managementCopy}
 										</div>
@@ -785,24 +761,21 @@
 							{#if product.intervals?.length}
 								<div class="mt-5 grid gap-3 sm:grid-cols-2">
 									{#each product.intervals as option}
-										<div
-											class="rounded-2xl border border-border-light bg-background-secondary-light p-4"
-										>
+										<div class="rounded-2xl border border-line bg-surface-panel p-4">
 											<div class="flex items-start justify-between gap-3">
 												<div>
-													<p class="text-sm font-semibold text-text-primary-light">
+													<p class="text-sm font-semibold text-ink">
 														{option.label}
 													</p>
-													<p class="mt-1 text-2xl font-bold text-text-primary-light">
-														{option.price}<span
-															class="ml-1 text-sm font-normal text-text-secondary-light"
+													<p class="mt-1 text-2xl font-bold text-ink">
+														{option.price}<span class="ml-1 text-sm font-normal text-muted"
 															>{option.interval}</span
 														>
 													</p>
 												</div>
 												{#if option.badge}
 													<span
-														class="rounded-full bg-green-500/15 px-3 py-1 text-xs font-semibold text-green-300"
+														class="rounded-full bg-success-subtle px-3 py-1 text-xs font-semibold text-success-strong"
 													>
 														{option.badge}
 													</span>
@@ -813,14 +786,14 @@
 												<div class="mt-4 space-y-2">
 													<button
 														onclick={() => signInForPlan(option.planSlug)}
-														class="w-full rounded-lg bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+														class="w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
 													>
 														Start {product.name}
 													</button>
 													{#if product.learnMoreHref}
 														<a
 															href={product.learnMoreHref}
-															class="inline-flex w-full items-center justify-center rounded-lg border border-border-light px-4 py-2 text-sm font-medium text-text-primary-light transition-colors hover:border-background-tertiary-light/40 hover:text-background-tertiary-light"
+															class="inline-flex w-full items-center justify-center rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-accent/40 hover:text-accent"
 														>
 															Learn more
 														</a>
@@ -828,26 +801,26 @@
 												</div>
 											{:else if product.family === 'membership' && membershipState?.hasAccess}
 												<div
-													class="mt-4 rounded-lg border border-border-light px-4 py-2 text-center text-sm text-text-secondary-light"
+													class="mt-4 rounded-lg border border-line px-4 py-2 text-center text-sm text-muted"
 												>
 													{product.activeCtaLabel}
 												</div>
 											{:else if product.family === 'api_plan' && apiState?.plan !== 'viewer'}
 												<div
-													class="mt-4 rounded-lg border border-border-light px-4 py-2 text-center text-sm text-text-secondary-light"
+													class="mt-4 rounded-lg border border-line px-4 py-2 text-center text-sm text-muted"
 												>
 													{product.activeCtaLabel}
 												</div>
 											{:else if product.family === 'ppi_addon' && intelligenceState?.enabled}
 												<div
-													class="mt-4 rounded-lg border border-border-light px-4 py-2 text-center text-sm text-text-secondary-light"
+													class="mt-4 rounded-lg border border-line px-4 py-2 text-center text-sm text-muted"
 												>
 													{product.activeCtaLabel}
 												</div>
 											{:else}
 												<button
 													onclick={() => openCheckout(product.name, option)}
-													class="mt-4 w-full rounded-lg bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+													class="mt-4 w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
 												>
 													{product.ctaLabel}
 												</button>
@@ -858,7 +831,7 @@
 							{:else}
 								<a
 									href={product.contactHref}
-									class="mt-5 inline-flex w-full items-center justify-center rounded-lg bg-text-primary-light px-4 py-2 text-sm font-semibold text-background-primary-light transition-opacity hover:opacity-90"
+									class="mt-5 inline-flex w-full items-center justify-center rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-surface-canvas transition-opacity hover:opacity-90"
 								>
 									{product.ctaLabel}
 								</a>

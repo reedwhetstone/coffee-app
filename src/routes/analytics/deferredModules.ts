@@ -3,6 +3,16 @@ import type { Component } from 'svelte';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DeferredAnalyticsComponent = Component<any>;
 
+export async function loadPublicTrendAnalyticsModule(): Promise<{
+	OriginLineChartComponent: DeferredAnalyticsComponent;
+}> {
+	const originLine = await import('$lib/components/analytics/OriginLineChart.svelte');
+
+	return {
+		OriginLineChartComponent: originLine.default
+	};
+}
+
 export async function loadPublicAnalyticsModules(): Promise<{
 	OriginLineChartComponent: DeferredAnalyticsComponent;
 	OriginBarChartComponent: DeferredAnalyticsComponent;

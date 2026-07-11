@@ -28,7 +28,7 @@
 		aria-modal="true"
 	>
 		<div
-			class="flex max-h-[90vh] w-full {maxWidth} flex-col overflow-y-auto rounded-lg bg-background-secondary-light p-4 shadow-lg md:p-6"
+			class="flex max-h-[90vh] w-full {maxWidth} flex-col overflow-y-auto rounded-lg bg-surface-panel p-4 shadow-lg md:p-6"
 		>
 			{@render children()}
 		</div>

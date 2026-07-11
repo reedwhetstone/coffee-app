@@ -16,19 +16,18 @@ export const GET: RequestHandler = async ({ url }) => {
 
 ## Public Pages
 
-- [Market Analytics](${baseUrl}/analytics): Public market-intelligence surface for pricing trends, origin coverage, and supplier movement.
+- [Market Analytics](${baseUrl}/analytics): Public market-intelligence surface for origin price trends, processing mix, origin price ranges, and gated Parchment Intelligence modules.
 - [Coffee Catalog](${baseUrl}/catalog): Public catalog for normalized green coffee listings with origin, processing, pricing, and availability data.
 - [Parchment API](${baseUrl}/api): Product overview for the API, access tiers, and Console entry points.
 - [Parchment Console](${baseUrl}/api-dashboard): Authenticated Console for API keys, usage, and billing.
-- [Developer Docs](${baseUrl}/docs): Canonical docs for the HTTP API, CLI, auth modes, and platform-route guidance.
+- [Developer Docs](${baseUrl}/docs): Product and CLI documentation. Generated API reference lives at https://api.purveyors.io/docs.
 - [Blog](${baseUrl}/blog): Coffee intelligence, product direction, and platform updates.
 
 ## API and Platform
 
-- [Public API namespace](${baseUrl}/v1): Namespace descriptor for the public API surface.
-- [Catalog API](${baseUrl}/docs/api/catalog): Stable contract for GET /v1/catalog, including anonymous discovery, API-key usage, and migration guidance from legacy aliases.
-- [Platform routes](${baseUrl}/docs/api/platform): Route matrix for /api/*, billing flows, Console helpers, and authenticated product internals.
-- /api/* routes are platform routes for the first-party app and Console. They are not the broad public compatibility promise.
+- [Generated Parchment API reference](https://api.purveyors.io/docs): Canonical OpenAPI/Scalar documentation for HTTP integrations.
+- [Parchment API product page](${baseUrl}/api): Access tiers and Console entry points.
+- /api/* routes on this host are private BFF routes for the first-party app and Console. They are not the public API contract.
 
 ## Blog Posts
 
@@ -36,7 +35,8 @@ ${blogPostLines}
 
 ## Data and Workflows
 
-- Normalized supplier listings with origin, processing, grade, pricing, and availability metadata
+- Normalized supplier listings with origin, legacy processing labels, structured process transparency, grade, pricing, availability metadata, and opt-in proof summaries
+- Beta catalog similarity matching for likely-same-bean and similar-profile research with cautious confidence labels
 - Daily pricing and availability snapshots for catalog and analytics surfaces
 - Inventory, roast, sales, tasting, chat, and workspace workflows in the web app
 - Shared CLI-backed tooling for terminal and agent workflows

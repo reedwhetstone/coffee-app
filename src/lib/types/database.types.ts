@@ -90,6 +90,184 @@ export type Database = {
 					}
 				];
 			};
+			bean_identities: {
+				Row: {
+					canonical_name: string | null;
+					created_at: string;
+					id: string;
+					metadata: Json;
+					primary_catalog_id: number | null;
+					status: string;
+					superseded_by: string | null;
+					updated_at: string;
+				};
+				Insert: {
+					canonical_name?: string | null;
+					created_at?: string;
+					id?: string;
+					metadata?: Json;
+					primary_catalog_id?: number | null;
+					status?: string;
+					superseded_by?: string | null;
+					updated_at?: string;
+				};
+				Update: {
+					canonical_name?: string | null;
+					created_at?: string;
+					id?: string;
+					metadata?: Json;
+					primary_catalog_id?: number | null;
+					status?: string;
+					superseded_by?: string | null;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'bean_identities_primary_catalog_id_fkey';
+						columns: ['primary_catalog_id'];
+						isOneToOne: false;
+						referencedRelation: 'coffee_catalog';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'bean_identities_superseded_by_fkey';
+						columns: ['superseded_by'];
+						isOneToOne: false;
+						referencedRelation: 'bean_identities';
+						referencedColumns: ['id'];
+					}
+				];
+			};
+			bean_identity_events: {
+				Row: {
+					action: string;
+					actor_id: string | null;
+					created_at: string;
+					id: string;
+					identity_id: string | null;
+					link_id: string | null;
+					payload: Json;
+				};
+				Insert: {
+					action: string;
+					actor_id?: string | null;
+					created_at?: string;
+					id?: string;
+					identity_id?: string | null;
+					link_id?: string | null;
+					payload?: Json;
+				};
+				Update: {
+					action?: string;
+					actor_id?: string | null;
+					created_at?: string;
+					id?: string;
+					identity_id?: string | null;
+					link_id?: string | null;
+					payload?: Json;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'bean_identity_events_identity_id_fkey';
+						columns: ['identity_id'];
+						isOneToOne: false;
+						referencedRelation: 'bean_identities';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'bean_identity_events_link_id_fkey';
+						columns: ['link_id'];
+						isOneToOne: false;
+						referencedRelation: 'bean_identity_links';
+						referencedColumns: ['id'];
+					}
+				];
+			};
+			bean_identity_links: {
+				Row: {
+					active: boolean;
+					blockers: Json;
+					classifier_version: string | null;
+					coffee_catalog_id: number;
+					created_at: string;
+					dimension_scores: Json;
+					id: string;
+					identity_id: string;
+					metadata: Json;
+					proof_summary_snapshot: Json;
+					proposed_at: string;
+					proposed_by: string | null;
+					reason_codes: string[];
+					reviewed_at: string | null;
+					reviewed_by: string | null;
+					status: string;
+					superseded_by: string | null;
+					updated_at: string;
+				};
+				Insert: {
+					active?: boolean;
+					blockers?: Json;
+					classifier_version?: string | null;
+					coffee_catalog_id: number;
+					created_at?: string;
+					dimension_scores?: Json;
+					id?: string;
+					identity_id: string;
+					metadata?: Json;
+					proof_summary_snapshot?: Json;
+					proposed_at?: string;
+					proposed_by?: string | null;
+					reason_codes?: string[];
+					reviewed_at?: string | null;
+					reviewed_by?: string | null;
+					status?: string;
+					superseded_by?: string | null;
+					updated_at?: string;
+				};
+				Update: {
+					active?: boolean;
+					blockers?: Json;
+					classifier_version?: string | null;
+					coffee_catalog_id?: number;
+					created_at?: string;
+					dimension_scores?: Json;
+					id?: string;
+					identity_id?: string;
+					metadata?: Json;
+					proof_summary_snapshot?: Json;
+					proposed_at?: string;
+					proposed_by?: string | null;
+					reason_codes?: string[];
+					reviewed_at?: string | null;
+					reviewed_by?: string | null;
+					status?: string;
+					superseded_by?: string | null;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'bean_identity_links_coffee_catalog_id_fkey';
+						columns: ['coffee_catalog_id'];
+						isOneToOne: false;
+						referencedRelation: 'coffee_catalog';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'bean_identity_links_identity_id_fkey';
+						columns: ['identity_id'];
+						isOneToOne: false;
+						referencedRelation: 'bean_identities';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'bean_identity_links_superseded_by_fkey';
+						columns: ['superseded_by'];
+						isOneToOne: false;
+						referencedRelation: 'bean_identity_links';
+						referencedColumns: ['id'];
+					}
+				];
+			};
 			artisan_import_log: {
 				Row: {
 					artisan_version: string | null;
@@ -158,6 +336,12 @@ export type Database = {
 					packaging: string | null;
 					price_per_lb: number | null;
 					price_tiers: Json | null;
+					purveyor_score: number | null;
+					purveyor_score_confidence: number | null;
+					purveyor_score_factors: Json;
+					purveyor_score_tier: string | null;
+					purveyor_score_updated_at: string | null;
+					purveyor_score_version: string;
 					processing: string | null;
 					processing_base_method: string | null;
 					fermentation_type: string | null;
@@ -178,6 +362,14 @@ export type Database = {
 					stocked_date: string | null;
 					type: string | null;
 					unstocked_date: string | null;
+					subregion: string | null;
+					locality: string | null;
+					site: string | null;
+					processing_site: string | null;
+					farmer: string | null;
+					cooperative: string | null;
+					elevation_min_masl: number | null;
+					elevation_max_masl: number | null;
 					wholesale: boolean;
 				};
 				Insert: {
@@ -204,6 +396,12 @@ export type Database = {
 					name: string;
 					packaging?: string | null;
 					price_tiers?: Json | null;
+					purveyor_score?: number | null;
+					purveyor_score_confidence?: number | null;
+					purveyor_score_factors?: Json;
+					purveyor_score_tier?: string | null;
+					purveyor_score_updated_at?: string | null;
+					purveyor_score_version?: string;
 					processing?: string | null;
 					processing_base_method?: string | null;
 					fermentation_type?: string | null;
@@ -224,6 +422,14 @@ export type Database = {
 					stocked_date?: string | null;
 					type?: string | null;
 					unstocked_date?: string | null;
+					subregion?: string | null;
+					locality?: string | null;
+					site?: string | null;
+					processing_site?: string | null;
+					farmer?: string | null;
+					cooperative?: string | null;
+					elevation_min_masl?: number | null;
+					elevation_max_masl?: number | null;
 					wholesale?: boolean;
 				};
 				Update: {
@@ -250,6 +456,12 @@ export type Database = {
 					name?: string;
 					packaging?: string | null;
 					price_tiers?: Json | null;
+					purveyor_score?: number | null;
+					purveyor_score_confidence?: number | null;
+					purveyor_score_factors?: Json;
+					purveyor_score_tier?: string | null;
+					purveyor_score_updated_at?: string | null;
+					purveyor_score_version?: string;
 					processing?: string | null;
 					processing_base_method?: string | null;
 					fermentation_type?: string | null;
@@ -270,9 +482,46 @@ export type Database = {
 					stocked_date?: string | null;
 					type?: string | null;
 					unstocked_date?: string | null;
+					subregion?: string | null;
+					locality?: string | null;
+					site?: string | null;
+					processing_site?: string | null;
+					farmer?: string | null;
+					cooperative?: string | null;
+					elevation_min_masl?: number | null;
+					elevation_max_masl?: number | null;
 					wholesale?: boolean;
 				};
 				Relationships: [];
+			};
+			coffee_catalog_origin_actor_evidence: {
+				Row: {
+					coffee_catalog_id: number;
+					created_at: string;
+					evidence: Json;
+					updated_at: string;
+				};
+				Insert: {
+					coffee_catalog_id: number;
+					created_at?: string;
+					evidence?: Json;
+					updated_at?: string;
+				};
+				Update: {
+					coffee_catalog_id?: number;
+					created_at?: string;
+					evidence?: Json;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'coffee_catalog_origin_actor_evidence_coffee_catalog_id_fkey';
+						columns: ['coffee_catalog_id'];
+						isOneToOne: true;
+						referencedRelation: 'coffee_catalog';
+						referencedColumns: ['id'];
+					}
+				];
 			};
 			coffee_chunks: {
 				Row: {
@@ -909,6 +1158,50 @@ export type Database = {
 					}
 				];
 			};
+			sourcing_briefs: {
+				Row: {
+					cadence: string;
+					created_at: string;
+					criteria: Json;
+					id: string;
+					is_active: boolean;
+					last_run_at: string | null;
+					name: string;
+					updated_at: string;
+					user_id: string;
+				};
+				Insert: {
+					cadence?: string;
+					created_at?: string;
+					criteria: Json;
+					id?: string;
+					is_active?: boolean;
+					last_run_at?: string | null;
+					name: string;
+					updated_at?: string;
+					user_id: string;
+				};
+				Update: {
+					cadence?: string;
+					created_at?: string;
+					criteria?: Json;
+					id?: string;
+					is_active?: boolean;
+					last_run_at?: string | null;
+					name?: string;
+					updated_at?: string;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'sourcing_briefs_user_id_fkey';
+						columns: ['user_id'];
+						isOneToOne: false;
+						referencedRelation: 'user_roles';
+						referencedColumns: ['id'];
+					}
+				];
+			};
 			user_roles: {
 				Row: {
 					created_at: string;
@@ -950,6 +1243,7 @@ export type Database = {
 			workspace_messages: {
 				Row: {
 					canvas_mutations: Json | null;
+					client_message_id: string | null;
 					content: string;
 					created_at: string | null;
 					id: string;
@@ -959,6 +1253,7 @@ export type Database = {
 				};
 				Insert: {
 					canvas_mutations?: Json | null;
+					client_message_id?: string | null;
 					content: string;
 					created_at?: string | null;
 					id?: string;
@@ -968,6 +1263,7 @@ export type Database = {
 				};
 				Update: {
 					canvas_mutations?: Json | null;
+					client_message_id?: string | null;
 					content?: string;
 					created_at?: string | null;
 					id?: string;
@@ -1032,6 +1328,15 @@ export type Database = {
 		};
 		Functions: {
 			celsius_to_fahrenheit: { Args: { temp_c: number }; Returns: number };
+			count_similar_beans_aggregated_v2: {
+				Args: {
+					target_coffee_id: number;
+					match_threshold?: number;
+					stocked_only?: boolean;
+					public_only?: boolean;
+				};
+				Returns: number;
+			};
 			fahrenheit_to_celsius: { Args: { temp_f: number }; Returns: number };
 			get_api_usage_summary: {
 				Args: { key_id: string; start_date: string };
@@ -1122,6 +1427,94 @@ export type Database = {
 					environmental_temp: number;
 					ror_bean_temp: number;
 					time_seconds: number;
+				}[];
+			};
+			find_similar_beans_v2: {
+				Args: {
+					target_coffee_id: number;
+					match_threshold?: number;
+					match_count?: number;
+					chunk_types?: string[];
+					stocked_only?: boolean;
+					public_only?: boolean;
+				};
+				Returns: {
+					coffee_id: number;
+					coffee_name: string;
+					source: string | null;
+					origin: string | null;
+					country: string | null;
+					continent: string | null;
+					processing: string | null;
+					processing_base_method: string | null;
+					fermentation_type: string | null;
+					drying_method: string | null;
+					cost_lb: number | null;
+					price_per_lb: number | null;
+					price_tiers: Json[] | null;
+					stocked: boolean | null;
+					similarity: number;
+					chunk_type: string;
+				}[];
+			};
+			find_similar_beans_aggregated_v2: {
+				Args: {
+					target_coffee_id: number;
+					match_threshold?: number;
+					match_count?: number;
+					stocked_only?: boolean;
+					public_only?: boolean;
+				};
+				Returns: {
+					coffee_id: number;
+					coffee_name: string;
+					source: string | null;
+					origin: string | null;
+					country: string | null;
+					continent: string | null;
+					processing: string | null;
+					processing_base_method: string | null;
+					fermentation_type: string | null;
+					drying_method: string | null;
+					cost_lb: number | null;
+					price_per_lb: number | null;
+					price_tiers: Json[] | null;
+					stocked: boolean | null;
+					avg_similarity: number;
+					origin_similarity: number | null;
+					processing_similarity: number | null;
+					tasting_similarity: number | null;
+					chunk_matches: number;
+				}[];
+			};
+			find_similar_beans_aggregated_v3: {
+				Args: {
+					target_coffee_id: number;
+					match_threshold?: number;
+					match_count?: number;
+					stocked_only?: boolean;
+					candidate_pool?: number;
+				};
+				Returns: {
+					coffee_id: number;
+					coffee_name: string;
+					source: string | null;
+					origin: string | null;
+					country: string | null;
+					continent: string | null;
+					processing: string | null;
+					processing_base_method: string | null;
+					fermentation_type: string | null;
+					drying_method: string | null;
+					cost_lb: number | null;
+					price_per_lb: number | null;
+					price_tiers: Json[] | null;
+					stocked: boolean | null;
+					avg_similarity: number;
+					origin_similarity: number | null;
+					processing_similarity: number | null;
+					tasting_similarity: number | null;
+					chunk_matches: number;
 				}[];
 			};
 			match_coffee_catalog: {

@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { checkRole, type UserRole } from '$lib/types/auth.types';
+	import { type UserRole } from '$lib/types/auth.types';
+	import { canManagePortfolio } from '$lib/services/portfolioAccess';
 	import Actionsbar from '$lib/components/layout/Actionsbar.svelte';
 	import Settingsbar from '$lib/components/layout/Settingsbar.svelte';
 	import MobileOverlayShell from '$lib/components/layout/MobileOverlayShell.svelte';
@@ -16,9 +17,10 @@
 	let activeOverlay = $state<null | 'menu' | 'actions' | 'settings'>(null);
 
 	let userRole = $derived(((data?.role as UserRole | undefined) ?? 'viewer') as UserRole);
-	let canUseActions = $derived(checkRole(userRole, 'member'));
+	let ppiAccess = $derived(Boolean((data as { ppiAccess?: boolean }).ppiAccess));
+	let canUseActions = $derived(canManagePortfolio(userRole, ppiAccess));
 	let showSettings = $derived(['/catalog', '/beans', '/roast', '/profit'].includes(currentPath));
-	let routeLabel = $derived(getCurrentRouteLabel(currentPath, userRole));
+	let routeLabel = $derived(getCurrentRouteLabel(currentPath, userRole, { ppiAccess }));
 
 	$effect(() => {
 		const nextPath = page.url.pathname;
@@ -34,21 +36,21 @@
 </script>
 
 <div
-	class="fixed inset-x-0 top-0 z-30 border-b border-border-light bg-background-primary-light/95 backdrop-blur md:hidden"
+	class="fixed inset-x-0 top-0 z-30 border-b border-line bg-surface-canvas/95 backdrop-blur md:hidden"
 >
 	<div class="flex items-center justify-between gap-3 px-4 py-3">
 		<div class="flex min-w-0 items-center gap-3">
 			<button
 				type="button"
 				onclick={() => (activeOverlay = 'menu')}
-				class="rounded-full p-2 text-text-secondary-light transition-colors hover:bg-background-secondary-light hover:text-text-primary-light"
+				class="rounded-full p-2 text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 				aria-label="Open app menu"
 			>
 				<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
-						stroke-width="1.8"
+						stroke-width="1.5"
 						d="M4 7h16M4 12h16M4 17h16"
 					></path>
 				</svg>
@@ -61,8 +63,8 @@
 			>
 				<img src="/purveyors_logo_mark.svg" alt="purveyors.io" class="h-8 w-auto" />
 				<div class="min-w-0">
-					<p class="truncate text-sm font-semibold text-text-primary-light">{routeLabel}</p>
-					<p class="truncate text-xs text-text-secondary-light">Mobile workspace shell</p>
+					<p class="truncate text-sm font-semibold text-ink">{routeLabel}</p>
+					<p class="truncate text-xs text-muted">Mobile workspace shell</p>
 				</div>
 			</button>
 		</div>
@@ -72,14 +74,14 @@
 				<button
 					type="button"
 					onclick={() => (activeOverlay = 'settings')}
-					class="rounded-full p-2 text-text-secondary-light transition-colors hover:bg-background-secondary-light hover:text-text-primary-light"
+					class="rounded-full p-2 text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 					aria-label="Open filters"
 				>
 					<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
-							stroke-width="1.8"
+							stroke-width="1.5"
 							d="M4 6h10M18 6h2M10 12h10M4 12h2M4 18h14M20 18h0"
 						></path>
 						<circle cx="16" cy="6" r="2" fill="currentColor"></circle>
@@ -93,14 +95,14 @@
 				<button
 					type="button"
 					onclick={() => (activeOverlay = 'actions')}
-					class="rounded-full bg-background-tertiary-light p-2 text-white shadow-sm transition-opacity hover:opacity-90"
+					class="rounded-full bg-accent p-2 text-ink shadow-sm transition-opacity hover:opacity-90"
 					aria-label="Open actions"
 				>
 					<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
-							stroke-width="1.8"
+							stroke-width="1.5"
 							d="M12 5v14M5 12h14"
 						></path>
 					</svg>

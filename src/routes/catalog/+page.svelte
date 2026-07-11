@@ -1,22 +1,124 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
 	import { checkRole } from '$lib/types/auth.types';
 
-	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
+	import {
+		summarizeSourcingBriefMatches,
+		type MatchableSourcingLot,
+		type SourcingBriefMatchSummary
+	} from '$lib/procurement/sourcingBriefMatching';
 
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
+	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
+	import { getLotPriceContext } from '$lib/catalog/priceContext';
+	import type { OriginPriceStats, LotPriceContext } from '$lib/catalog/priceContext';
+	import { getDisplayPrice } from '$lib/utils/pricing';
+
+	import PageHeaderSection from '$lib/components/catalog/sections/PageHeaderSection.svelte';
+	import FilterBarSection from '$lib/components/catalog/sections/FilterBarSection.svelte';
+	import ProcessFilterSection from '$lib/components/catalog/sections/ProcessFilterSection.svelte';
+	import UpsellBannerSection from '$lib/components/catalog/sections/UpsellBannerSection.svelte';
+	import WatchlistBannerSection from '$lib/components/catalog/sections/WatchlistBannerSection.svelte';
+	import BriefMatchSection from '$lib/components/catalog/sections/BriefMatchSection.svelte';
+	import ResultsGridSection from '$lib/components/catalog/sections/ResultsGridSection.svelte';
+
+	import type { UserRole } from '$lib/types/auth.types';
 
 	let { data } = $props<{ data: PageData }>();
 
-	let { session, role = 'viewer' } = $derived(data);
+	let { session, role = 'viewer', ppiAccess = false } = $derived(data);
 
-	import type { UserRole } from '$lib/types/auth.types';
+	// Deferred enrichment (origin stats, tracked ids, brief matches, deep-link card)
+	// arrives from the server load as streamed promises. Tests and any non-streamed
+	// path may still pass plain arrays, so seed synchronously from an array when one
+	// is present and let the effects below resolve the promise form as it streams in.
+	function toInitialArray<T>(value: Promise<T[] | null> | T[] | undefined | null): T[] {
+		return Array.isArray(value) ? value : [];
+	}
+
+	let trackedIds = $state<Set<number>>(new Set());
+	let trackedIdsReady = $state(false);
+
+	$effect(() => {
+		const value = data.trackedLotIds;
+		// Streamed form: resolve into the set when it arrives. Guard on Promise so a
+		// non-streamed array seeds synchronously and a later microtask can't clobber an
+		// optimistic track toggle the user made in between.
+		if (value instanceof Promise) {
+			let cancelled = false;
+			trackedIdsReady = false;
+			void value
+				.then((ids) => {
+					if (!cancelled && ids !== null) {
+						trackedIds = new Set(ids ?? []);
+						trackedIdsReady = true;
+					}
+				})
+				.catch(() => {});
+			return () => {
+				cancelled = true;
+			};
+		}
+		trackedIds = new Set(toInitialArray<number>(value));
+		trackedIdsReady = value !== null;
+	});
+
+	// Deep-linked coffee streams in when it is off the current page; prepend it to
+	// the visible rows once it resolves so the main grid never waits on it.
+	let streamedDeepLinkCoffee = $state<CoffeeCatalog | null>(null);
+
+	$effect(() => {
+		let cancelled = false;
+		void Promise.resolve(data.deepLinkCoffee)
+			.then((coffee) => {
+				if (!cancelled) streamedDeepLinkCoffee = (coffee ?? null) as CoffeeCatalog | null;
+			})
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	let deepLinkCoffee = $derived(
+		streamedDeepLinkCoffee ??
+			(data.deepLinkCoffee && !(data.deepLinkCoffee instanceof Promise)
+				? (data.deepLinkCoffee as unknown as CoffeeCatalog)
+				: null)
+	);
+
+	function setTracked(catalogId: number, tracked: boolean) {
+		const next = new Set(trackedIds);
+		if (tracked) next.add(catalogId);
+		else next.delete(catalogId);
+		trackedIds = next;
+	}
+
+	async function handleToggleTrack(catalogId: number) {
+		if (!trackedIdsReady) return;
+
+		const wasTracked = trackedIds.has(catalogId);
+		setTracked(catalogId, !wasTracked);
+		// Optimistic update, reverted on failure.
+		try {
+			const res = await fetch(`/api/catalog/${catalogId}/track`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' }
+			});
+			if (!res.ok) throw new Error('track failed');
+			const body = (await res.json()) as { tracked: boolean };
+			if (body.tracked !== !wasTracked) {
+				setTracked(catalogId, body.tracked);
+			}
+		} catch {
+			setTracked(catalogId, wasTracked);
+		}
+	}
+
 	let userRole: UserRole = $derived(role as UserRole);
 
 	function hasRequiredRole(requiredRole: UserRole): boolean {
@@ -29,41 +131,334 @@
 	let copyLinkStatus = $state<'idle' | 'copied' | 'error'>('idle');
 	let copyLinkResetTimeout: ReturnType<typeof setTimeout> | null = null;
 
+	// Watchlist-only view renders straight from server data and bypasses the
+	// client filter store so its pagination/fetch flows can't replace the tracked set.
+	let trackedOnlyView = $derived(data.trackedOnly === true);
+
+	// /catalog?coffee=<id> deep link (e.g. from chat canvas cards): auto-open
+	// that coffee's detail panel when the card is in the rendered set.
+	let deepLinkCoffeeId = $derived.by(() => {
+		const raw = page.url.searchParams.get('coffee');
+		if (!raw || !/^\d+$/.test(raw)) return null;
+		const parsed = Number.parseInt(raw, 10);
+		return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+	});
+
+	function catalogCoffeeId(coffee: unknown): number | null {
+		const id = (coffee as { id?: unknown }).id;
+		return typeof id === 'number' && Number.isSafeInteger(id) ? id : null;
+	}
+
+	function catalogCoffeeCardKey(coffee: CoffeeCatalog): string {
+		const id = catalogCoffeeId(coffee);
+		return `${id ?? 'unknown'}:${deepLinkCoffeeId === id ? 'open' : 'closed'}`;
+	}
+
+	let hydratedCatalogDataKey = $state<string | null>(null);
+	let incomingCatalogDataKey = $derived.by(() =>
+		JSON.stringify({
+			route: page.url.pathname,
+			deepLinkCoffeeId,
+			rowIds: (data.data ?? []).map((coffee: unknown) => catalogCoffeeId(coffee)),
+			initialCatalogState: data.initialCatalogState,
+			pagination: data.pagination
+		})
+	);
+
 	$effect(() => {
 		const currentRoute = page.url.pathname;
 
-		if (data?.data && (!$filterStore.initialized || $filterStore.routeId !== currentRoute)) {
+		if (
+			!trackedOnlyView &&
+			data?.data &&
+			(!$filterStore.initialized ||
+				$filterStore.routeId !== currentRoute ||
+				hydratedCatalogDataKey !== incomingCatalogDataKey)
+		) {
 			filterStore.initializeForRoute(currentRoute, data.data, {
 				catalogUrlState: data.initialCatalogState,
 				pagination: data.pagination,
 				serverData: data.data
 			});
+			hydratedCatalogDataKey = incomingCatalogDataKey;
 		}
 	});
 
 	let hydratedCatalogState = $derived(
-		$filterStore.initialized && $filterStore.routeId === page.url.pathname
+		!trackedOnlyView && $filterStore.initialized && $filterStore.routeId === page.url.pathname
 	);
+
+	// Full skeleton only on the true first mount / initial-empty state. Once rows
+	// have loaded once, later filter/sort/page fetches keep the existing rows
+	// visible and surface a quiet refetch state instead of blanking the page.
+	let showInitialSkeleton = $derived($filterStore.isLoading && !$filterStore.hasLoadedOnce);
+	let isRefetching = $derived($filterStore.isRefetching);
 
 	let activePagination = $derived(hydratedCatalogState ? $filterStore.pagination : data.pagination);
 
+	function withDeepLinkCoffee(rows: CoffeeCatalog[]): CoffeeCatalog[] {
+		const coffee = deepLinkCoffee;
+		if (!coffee) return rows;
+		const id = catalogCoffeeId(coffee);
+		if (id === null || id !== deepLinkCoffeeId) return rows;
+		if (rows.some((row) => catalogCoffeeId(row) === id)) return rows;
+		return [coffee, ...rows];
+	}
+
 	let displayData = $derived((): CoffeeCatalog[] => {
+		if (trackedOnlyView) {
+			return withDeepLinkCoffee((data?.data ?? []) as unknown as CoffeeCatalog[]);
+		}
+
 		if (hydratedCatalogState) {
-			return $filterStore.serverData as unknown as CoffeeCatalog[];
+			return withDeepLinkCoffee($filterStore.serverData as unknown as CoffeeCatalog[]);
 		}
 
 		if (data?.data) {
-			return data.data as unknown as CoffeeCatalog[];
+			return withDeepLinkCoffee(data.data as unknown as CoffeeCatalog[]);
 		}
 
-		return ($filteredData as unknown as CoffeeCatalog[]).slice(0, displayLimit);
+		return withDeepLinkCoffee(($filteredData as unknown as CoffeeCatalog[]).slice(0, displayLimit));
+	});
+
+	const PROCESS_TRANSPARENCY_FILTER_KEYS = [
+		'processing_base_method',
+		'fermentation_type',
+		'process_additive',
+		'has_additives',
+		'processing_disclosure_level',
+		'processing_confidence_min'
+	] as const;
+
+	function isActiveFilterValue(value: unknown): boolean {
+		if (value === undefined || value === null || value === '') return false;
+		if (Array.isArray(value)) return value.length > 0;
+		return true;
+	}
+
+	function clearProcessTransparencyFilters() {
+		filterStore.clearFiltersByKeys([...PROCESS_TRANSPARENCY_FILTER_KEYS]);
+	}
+
+	let hasAdvancedProcessFilters = $derived(
+		PROCESS_TRANSPARENCY_FILTER_KEYS.some((key) => isActiveFilterValue($filterStore.filters[key]))
+	);
+
+	// Publish what this view shows so chat can ground answers in it.
+	$effect(() => {
+		const items = displayData();
+		const activeFilters = Object.entries($filterStore.filters)
+			.filter(
+				([, value]) =>
+					isActiveFilterValue(value) && (typeof value !== 'object' || Array.isArray(value))
+			)
+			.map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : String(value)}`);
+		const scope = trackedOnlyView
+			? 'tracked lots only'
+			: activeFilters.length > 0
+				? `filtered by ${activeFilters.join('; ')}`
+				: 'no filters applied';
+		pageChatContext.set({
+			surface: 'catalog',
+			summary: `Green coffee catalog (${scope}) — ${items.length} coffees in view.`,
+			entities: items.slice(0, 5).map((coffee) => ({
+				type: 'coffee',
+				id: coffee.id,
+				label: [coffee.name, coffee.source].filter(Boolean).join(' — ') || `Coffee #${coffee.id}`
+			}))
+		});
+		return () => pageChatContext.clear();
 	});
 
 	let hasInlineFilters = $derived(
 		(Array.isArray($filterStore.filters.country) && $filterStore.filters.country.length > 0) ||
 			Boolean($filterStore.filters.processing) ||
-			Boolean($filterStore.filters.name)
+			Boolean($filterStore.filters.name) ||
+			hasAdvancedProcessFilters
 	);
+
+	let canUseBeanMatching = $derived(data.catalogAccess?.canUseBeanMatching === true);
+	let canUseParchmentIntelligence = $derived(ppiAccess === true);
+	let canUseSourcingIntelligence = $derived(
+		canUseParchmentIntelligence || hasRequiredRole('member')
+	);
+	let streamedBriefMatchSummaries = $state<SourcingBriefMatchSummary[] | null>(null);
+
+	$effect(() => {
+		let cancelled = false;
+		void Promise.resolve(data.briefMatchSummaries)
+			.then((summaries) => {
+				if (!cancelled)
+					streamedBriefMatchSummaries = (summaries ?? []) as SourcingBriefMatchSummary[];
+			})
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	let serverBriefMatchSummaries = $derived(
+		streamedBriefMatchSummaries ??
+			toInitialArray<SourcingBriefMatchSummary>(data.briefMatchSummaries)
+	);
+
+	let briefMatchSummaries = $derived(
+		summarizeSourcingBriefMatches(
+			serverBriefMatchSummaries,
+			displayData() as unknown as MatchableSourcingLot[]
+		)
+	);
+	let hasBriefMatches = $derived(briefMatchSummaries.length > 0);
+	let trackedCountOnPage = $derived(
+		displayData().filter((c) => trackedIds.has((c as unknown as { id: number }).id)).length
+	);
+
+	function countDistinctCatalogValues(rows: CoffeeCatalog[], key: 'country' | 'source'): number {
+		return new Set(
+			rows
+				.map((row) => row[key])
+				.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+		).size;
+	}
+
+	function hasCatalogPriceEvidence(row: CoffeeCatalog): boolean {
+		return row.price_per_lb != null || row.cost_lb != null;
+	}
+
+	let catalogResultCount = $derived(activePagination.total || displayData().length);
+	let visibleOriginCount = $derived(countDistinctCatalogValues(displayData(), 'country'));
+	let visibleSupplierCount = $derived(countDistinctCatalogValues(displayData(), 'source'));
+	let visiblePricedCount = $derived(displayData().filter(hasCatalogPriceEvidence).length);
+	let supplierComparisonHref = $derived(
+		canUseParchmentIntelligence ? '/analytics#supplier-comparison' : '/analytics'
+	);
+	let supplierComparisonLabel = $derived(
+		canUseParchmentIntelligence
+			? 'Review supplier comparison evidence'
+			: 'Preview supplier comparison gate'
+	);
+
+	type OriginPriceStatsResponse = {
+		originPriceStats?: OriginPriceStats[];
+	};
+
+	function getOriginStatsScopeKey(showWholesale: boolean, wholesaleOnly: boolean): string {
+		return `${showWholesale ? 'wholesale-visible' : 'retail'}:${wholesaleOnly ? 'only' : 'mixed'}`;
+	}
+
+	function buildOriginStatsParams(showWholesale: boolean, wholesaleOnly: boolean): URLSearchParams {
+		const params = new URLSearchParams();
+		if (showWholesale) params.set('showWholesale', 'true');
+		if (wholesaleOnly) params.set('wholesaleOnly', 'true');
+		return params;
+	}
+
+	let streamedOriginPriceStats = $state<OriginPriceStats[] | null>(null);
+
+	$effect(() => {
+		let cancelled = false;
+		streamedOriginPriceStats = null;
+		void Promise.resolve(data.originPriceStats)
+			.then((stats) => {
+				if (!cancelled) streamedOriginPriceStats = (stats ?? []) as OriginPriceStats[];
+			})
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	let serverOriginPriceStats = $derived(
+		streamedOriginPriceStats ?? toInitialArray<OriginPriceStats>(data.originPriceStats)
+	);
+
+	let serverOriginStatsKey = $derived(
+		getOriginStatsScopeKey(
+			data.initialCatalogState.showWholesale,
+			data.initialCatalogState.wholesaleOnly ?? false
+		)
+	);
+	let originStatsCache = $state<Record<string, OriginPriceStats[]>>({});
+	let originStatsAbortController: AbortController | null = null;
+
+	$effect(() => {
+		const key = serverOriginStatsKey;
+		const stats = serverOriginPriceStats;
+		// Refresh the server-scope entry without discarding stats already fetched
+		// for the user's active scope. untrack avoids a self-triggering effect loop.
+		originStatsCache = { ...untrack(() => originStatsCache), [key]: stats };
+	});
+
+	let activeStatsShowWholesale = $derived(
+		hydratedCatalogState ? $filterStore.showWholesale : data.initialCatalogState.showWholesale
+	);
+	let activeStatsWholesaleOnly = $derived(
+		hydratedCatalogState
+			? $filterStore.wholesaleOnly
+			: (data.initialCatalogState.wholesaleOnly ?? false)
+	);
+
+	let activeOriginStatsKey = $derived(
+		getOriginStatsScopeKey(activeStatsShowWholesale, activeStatsWholesaleOnly)
+	);
+	let currentOriginPriceStats = $derived(
+		originStatsCache[activeOriginStatsKey] ?? serverOriginPriceStats
+	);
+
+	$effect(() => {
+		const key = activeOriginStatsKey;
+		if (originStatsCache[key]) return;
+		if (typeof window === 'undefined') return;
+
+		originStatsAbortController?.abort();
+		const controller = new AbortController();
+		originStatsAbortController = controller;
+		const params = buildOriginStatsParams(activeStatsShowWholesale, activeStatsWholesaleOnly);
+		const queryString = params.toString();
+
+		void fetch(`/api/catalog/origin-price-stats${queryString ? `?${queryString}` : ''}`, {
+			signal: controller.signal
+		})
+			.then(async (response) => {
+				if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+				return (await response.json()) as OriginPriceStatsResponse;
+			})
+			.then((result) => {
+				if (controller.signal.aborted) return;
+				originStatsCache = {
+					...originStatsCache,
+					[key]: result.originPriceStats ?? []
+				};
+			})
+			.catch((error) => {
+				if (error instanceof DOMException && error.name === 'AbortError') return;
+				console.error('Error fetching origin price stats:', error);
+			});
+
+		return () => {
+			controller.abort();
+		};
+	});
+
+	let originPriceMap = $derived(
+		new Map<string, OriginPriceStats>(
+			currentOriginPriceStats.map((s) => [s.origin, s] as [string, OriginPriceStats])
+		)
+	);
+
+	function getCardPriceContext(coffee: CoffeeCatalog): LotPriceContext | null {
+		const price = getDisplayPrice(coffee);
+		return getLotPriceContext(price, originPriceMap.get(coffee.country ?? ''));
+	}
+
+	let activeOriginStats = $derived((): OriginPriceStats | null => {
+		const country = $filterStore.filters.country;
+		let origin: string | null = null;
+		if (Array.isArray(country) && country.length === 1) origin = country[0] as string;
+		else if (typeof country === 'string' && country.length > 0) origin = country;
+		if (!origin) return null;
+		return (originPriceMap.get(origin) as OriginPriceStats | undefined) ?? null;
+	});
 
 	async function handleScroll() {
 		if (!session) {
@@ -165,221 +560,78 @@
 	}
 </script>
 
-{#if $filterStore.isLoading}
+{#if showInitialSkeleton}
 	<CatalogPageSkeleton />
 {:else}
 	<div class="space-y-4">
-		<div class="rounded-lg border border-border-light bg-background-secondary-light px-5 py-4">
-			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-				<div>
-					<h1 class="text-2xl font-bold text-text-primary-light sm:text-3xl">
-						Green Coffee Catalog
-					</h1>
-					<p class="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary-light sm:text-base">
-						Browse stocked green coffees from Purveyors supplier integrations with origin,
-						processing, tasting context, and live pricing. Filter by origin, process, and name to
-						explore what is currently available.
-					</p>
-				</div>
-				<div class="flex flex-col items-start gap-2 sm:items-end">
-					<button
-						onclick={copyFilteredCatalogLink}
-						class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm font-medium text-text-primary-light shadow-sm transition-colors hover:border-background-tertiary-light hover:text-background-tertiary-light"
-					>
-						{copyLinkStatus === 'copied'
-							? 'Copied filtered link'
-							: copyLinkStatus === 'error'
-								? 'Copy failed'
-								: 'Copy filtered link'}
-					</button>
-					<p class="text-xs text-text-secondary-light">
-						Share the current catalog filters, sort, and page with one link.
-					</p>
-				</div>
-			</div>
-		</div>
+		<PageHeaderSection
+			{catalogResultCount}
+			{visibleOriginCount}
+			{visibleSupplierCount}
+			{visiblePricedCount}
+			{canUseSourcingIntelligence}
+			{isRefetching}
+			trackedIdsSize={trackedIds.size}
+			{trackedCountOnPage}
+			{trackedOnlyView}
+			{supplierComparisonHref}
+			{supplierComparisonLabel}
+			{copyLinkStatus}
+			onCopyFilteredCatalogLink={copyFilteredCatalogLink}
+		/>
+
 		{#if !session}
+			<FilterBarSection {hasInlineFilters} />
+		{/if}
+
+		{#if data.catalogSchemaUnavailable}
 			<div
-				class="flex flex-wrap items-center gap-2 rounded-lg border border-border-light bg-background-secondary-light px-4 py-3"
+				class="rounded-lg border border-warning/30 bg-warning-subtle px-4 py-3 text-warning-strong"
 			>
-				<select
-					value={Array.isArray($filterStore.filters.country)
-						? ($filterStore.filters.country[0] ?? '')
-						: ($filterStore.filters.country ?? '')}
-					onchange={(e) => {
-						const val = e.currentTarget.value;
-						filterStore.setFilter('country', val ? [val] : []);
-					}}
-					class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
-				>
-					<option value="">Origin</option>
-					{#each $filterStore.uniqueValues.countries ?? [] as country}
-						<option value={country}>{country}</option>
-					{/each}
-				</select>
-
-				<select
-					value={$filterStore.filters.processing ?? ''}
-					onchange={(e) => filterStore.setFilter('processing', e.currentTarget.value)}
-					class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
-				>
-					<option value="">Process</option>
-					{#each $filterStore.uniqueValues.processing ?? [] as process}
-						<option value={process}>{process}</option>
-					{/each}
-				</select>
-
-				<input
-					type="search"
-					value={$filterStore.filters.name ?? ''}
-					oninput={(e) => filterStore.setFilter('name', e.currentTarget.value)}
-					placeholder="Search coffees..."
-					class="min-w-[160px] flex-1 rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
-				/>
-
-				{#if hasInlineFilters}
-					<button
-						onclick={filterStore.clearFilters}
-						class="rounded-md border border-border-light px-3 py-1.5 text-sm text-text-secondary-light transition-colors hover:border-background-tertiary-light hover:text-background-tertiary-light"
-					>
-						Clear
-					</button>
-				{/if}
+				<h2 class="text-sm font-semibold">Catalog filters are temporarily unavailable</h2>
+				<p class="mt-1 text-sm">
+					{data.catalogSchemaUnavailable.message}
+				</p>
 			</div>
 		{/if}
 
-		{#if session && !hasRequiredRole('member')}
-			<div
-				class="rounded-lg border border-background-tertiary-light/20 bg-gradient-to-r from-background-tertiary-light/10 to-harvest-gold/10 p-6"
-			>
-				<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
-					<div class="text-center sm:text-left">
-						<h3 class="text-lg font-semibold text-text-primary-light">
-							Need more than sourcing snapshots?
-						</h3>
-						<p class="text-sm text-text-secondary-light">
-							Stay in the buyer path here, or step into Mallard Studio when you want saved research,
-							inventory, roasting, tasting, and team workflows around the coffees you shortlist.
-						</p>
-					</div>
-					<div class="flex flex-col gap-3 sm:flex-row">
-						<button
-							onclick={() => goto('/subscription')}
-							class="rounded-md bg-background-tertiary-light px-6 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
-						>
-							Compare paid products
-						</button>
-						<button
-							onclick={() => goto('/')}
-							class="rounded-md border border-background-tertiary-light px-6 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-						>
-							See the product overview
-						</button>
-					</div>
-				</div>
-			</div>
+		<ProcessFilterSection
+			canUseProcessFacets={data.catalogAccess?.canUseProcessFacets ?? false}
+			{hasAdvancedProcessFilters}
+			catalogAccessNotice={data.catalogAccessNotice}
+			onClearProcessTransparencyFilters={clearProcessTransparencyFilters}
+		/>
+
+		{#if session && !hasRequiredRole('member') && !canUseParchmentIntelligence}
+			<UpsellBannerSection />
 		{/if}
 
-		<div class="space-y-4">
-			<div class="flex-1">
-				{#if $filterStore.isLoading}
-					<div class="flex justify-center p-8">
-						<div
-							class="h-8 w-8 animate-spin rounded-full border-4 border-background-primary-dark border-t-background-tertiary-light"
-						></div>
-					</div>
-				{:else if !displayData() || displayData().length === 0}
-					<p class="p-4 text-text-primary-light">
-						No coffee data available {activePagination.total > 0
-							? `(${activePagination.total} total items)`
-							: ''}
-					</p>
-				{:else}
-					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-						{#each session ? displayData() : displayData().slice(0, 15) as coffee}
-							<CoffeeCard {coffee} {parseTastingNotes} />
-						{/each}
+		{#if trackedOnlyView}
+			<WatchlistBannerSection displayCount={displayData().length} />
+		{/if}
 
-						{#if isLoadingMore}
-							<div class="flex justify-center p-4">
-								<div
-									class="h-8 w-8 animate-spin rounded-full border-4 border-background-primary-dark border-t-background-tertiary-light"
-								></div>
-							</div>
-						{/if}
+		{#if hasBriefMatches}
+			<BriefMatchSection {briefMatchSummaries} />
+		{/if}
 
-						{#if !session && (activePagination.total > 15 || displayData().length >= 15)}
-							<div class="col-span-full mt-2">
-								<div
-									class="rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 px-8 py-10 text-center shadow-sm ring-1 ring-amber-200"
-								>
-									<p class="mb-1 text-sm font-medium text-amber-700">
-										You're viewing 15 of {activePagination.total || displayData().length} specialty coffees
-									</p>
-									<h3 class="mb-2 text-xl font-semibold text-text-primary-light">
-										Keep going with a free account
-									</h3>
-									<p class="mb-6 text-sm text-text-secondary-light">
-										Create a free account to browse the full catalog, save sourcing research, and
-										unlock the next step after public market discovery.
-									</p>
-									<div class="flex flex-col items-center justify-center gap-3 sm:flex-row">
-										<button
-											onclick={() => goto('/auth')}
-											class="rounded-md bg-background-tertiary-light px-6 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
-										>
-											Create free account
-										</button>
-										<button
-											onclick={() => goto('/subscription')}
-											class="rounded-md border border-background-tertiary-light px-6 py-2.5 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-										>
-											See products
-										</button>
-									</div>
-								</div>
-							</div>
-						{/if}
-
-						{#if session && activePagination.totalPages > 1}
-							<div class="col-span-full flex items-center justify-center gap-4 p-4">
-								<button
-									onclick={() => filterStore.loadPrevPage()}
-									disabled={!activePagination.hasPrev || $filterStore.isLoading}
-									class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-								>
-									Previous
-								</button>
-
-								<span class="text-sm text-text-secondary-light">
-									Page {activePagination.page} of {activePagination.totalPages}
-									({activePagination.total} total items)
-								</span>
-
-								<button
-									onclick={() => filterStore.loadNextPage()}
-									disabled={!activePagination.hasNext || $filterStore.isLoading}
-									class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-								>
-									Next
-								</button>
-							</div>
-						{/if}
-
-						{#if session && !$filterStore.pagination.totalPages && !isLoadingMore && displayLimit < $filteredData.length}
-							<div class="flex justify-center p-4">
-								<p class="text-primary-light text-sm">Scroll for more coffees...</p>
-							</div>
-						{/if}
-
-						{#if session && !$filterStore.pagination.totalPages && displayLimit >= $filteredData.length && $filteredData.length > 0}
-							<div class="flex justify-center p-4">
-								<p class="text-primary-light text-sm">No more coffees to load</p>
-							</div>
-						{/if}
-					</div>
-				{/if}
-			</div>
-		</div>
+		<ResultsGridSection
+			{session}
+			displayData={displayData()}
+			{isLoadingMore}
+			{isRefetching}
+			{activePagination}
+			activeOriginStats={activeOriginStats()}
+			{trackedIds}
+			{canUseBeanMatching}
+			canUseSourcingIntelligence={canUseSourcingIntelligence && trackedIdsReady}
+			{deepLinkCoffeeId}
+			filteredDataLength={$filteredData.length}
+			{displayLimit}
+			{parseTastingNotes}
+			{getCardPriceContext}
+			{catalogCoffeeId}
+			{catalogCoffeeCardKey}
+			onToggleTrack={handleToggleTrack}
+		/>
 	</div>
 {/if}

@@ -17,6 +17,7 @@ export interface WorkspaceMessage {
 	content: string;
 	parts: unknown[];
 	canvas_mutations: unknown[];
+	client_message_id: string | null;
 	created_at: string;
 }
 
@@ -65,6 +66,25 @@ const sortedWorkspaces = $derived(
 	)
 );
 
+/**
+ * Seed the store from server-prefetched data (chat page load) so the initial
+ * render doesn't need the list-then-load fetch waterfall.
+ */
+function hydrate(
+	list: Workspace[],
+	current: { workspace: Workspace; messages: WorkspaceMessage[] } | null
+): void {
+	workspaces = current
+		? [...list.filter((w: Workspace) => w.id !== current.workspace.id), current.workspace]
+		: list;
+	if (current) {
+		currentWorkspaceId = current.workspace.id;
+		persistWorkspaceId(current.workspace.id);
+		savedMessageCounts = new Map(savedMessageCounts);
+		savedMessageCounts.set(current.workspace.id, current.messages.length);
+	}
+}
+
 async function loadWorkspaces(): Promise<void> {
 	loading = true;
 	error = null;
@@ -93,7 +113,7 @@ async function createWorkspace(
 		if (!res.ok) throw new Error('Failed to create workspace');
 		const data = await res.json();
 		const workspace = data.workspace as Workspace;
-		workspaces = [...workspaces, workspace];
+		workspaces = [...workspaces.filter((w: Workspace) => w.id !== workspace.id), workspace];
 		return workspace;
 	} catch (err) {
 		error = (err as Error).message;
@@ -132,7 +152,14 @@ async function switchWorkspace(
 
 async function saveMessages(
 	workspaceId: string,
-	messages: Array<{ role: string; content: string; parts?: unknown }>
+	messages: Array<{
+		role: string;
+		content: string;
+		parts?: unknown;
+		canvas_mutations?: unknown;
+		client_message_id?: string;
+		client_created_at?: string;
+	}>
 ): Promise<boolean> {
 	try {
 		const res = await fetch(`/api/workspaces/${workspaceId}/messages`, {
@@ -299,6 +326,7 @@ export const workspaceStore = {
 	get workspacesReady() {
 		return workspacesReady;
 	},
+	hydrate,
 	loadWorkspaces,
 	createWorkspace,
 	switchWorkspace,

@@ -6,8 +6,11 @@ import {
 } from '$lib/constants/catalog';
 
 const PUBLIC_CATALOG_SORT_FIELD_LIST = formatAllowedValues(PUBLIC_CATALOG_SORT_FIELDS);
+const DEFAULT_CATALOG_SIMILARITY_THRESHOLD = 0.7;
+const DEFAULT_CATALOG_SIMILARITY_LIMIT = 10;
+const MAX_CATALOG_SIMILARITY_LIMIT = 25;
 
-export type DocsSectionKey = 'api' | 'cli';
+export type DocsSectionKey = 'api' | 'catalog' | 'cli';
 
 export interface DocsCodeBlock {
 	label?: string;
@@ -70,53 +73,28 @@ export const DOCS_NAV: DocsNavSection[] = [
 	{
 		key: 'api',
 		title: 'API docs',
-		description:
-			'Public catalog contract, platform route matrix, analytics, billing flows, auth, and operational guidance.',
+		description: 'Generated OpenAPI/Scalar reference for the deployed Parchment API.',
 		basePath: '/docs/api',
 		items: [
 			{
 				slug: 'overview',
-				title: 'Overview',
-				summary: 'Public versus internal surfaces, auth modes, and how the product fits together.'
-			},
+				title: 'Generated API reference',
+				summary: 'Live Parchment API docs generated from the deployed OpenAPI contract.'
+			}
+		]
+	},
+	{
+		key: 'catalog',
+		title: 'Catalog methodology',
+		description:
+			'Buyer-facing methodology for Purveyor Score, metadata quality, and catalog trust signals.',
+		basePath: '/docs/catalog',
+		items: [
 			{
-				slug: 'catalog',
-				title: 'Catalog',
+				slug: 'purveyor-score',
+				title: 'Purveyor Score',
 				summary:
-					'The stable public /v1/catalog contract: fields, limits, compatibility aliases, headers, and query parameters.'
-			},
-			{
-				slug: 'platform',
-				title: 'Platform routes',
-				summary:
-					'Authenticated and internal /api/* route matrix for catalog app flows, chat, workspaces, and tools.'
-			},
-			{
-				slug: 'inventory',
-				title: 'Inventory',
-				summary: 'Inventory CRUD, share links, stocked-state recalculation, and ownership behavior.'
-			},
-			{
-				slug: 'roast-profiles',
-				title: 'Roast profiles',
-				summary: 'Roast CRUD, Artisan import, chart data, clear flows, and AI classification.'
-			},
-			{
-				slug: 'analytics',
-				title: 'Analytics',
-				summary:
-					'The /analytics product surface and the session-auth roast analysis helpers behind it.'
-			},
-			{
-				slug: 'billing-admin',
-				title: 'Billing and admin',
-				summary:
-					'Stripe lifecycle routes, Console-adjacent flows, webhooks, and admin-only maintenance endpoints.'
-			},
-			{
-				slug: 'errors',
-				title: 'Errors and auth',
-				summary: 'Status codes, auth edge cases, rate limits, and practical troubleshooting notes.'
+					'How Purveyors scores listing metadata depth, structure, buyer usefulness, and confidence.'
 			}
 		]
 	},
@@ -179,21 +157,145 @@ export const DOCS_NAV: DocsNavSection[] = [
 
 const docsPages: DocsPage[] = [
 	{
+		section: 'catalog',
+		slug: 'purveyor-score',
+		title: 'Purveyor Score',
+		summary:
+			'Purveyor Score is a metadata and listing-intelligence score for green coffee listings.',
+		eyebrow: 'Catalog methodology',
+		intro: [
+			'Purveyor Score makes green coffee metadata quality visible at the point of comparison. It rewards structured, comparable, buyer-useful listing information because buyers cannot evaluate what suppliers do not disclose.',
+			'The score is proprietary to Purveyors, deterministic, and intentionally narrow. It is not a cup quality score, supplier verification, certification, regulatory assurance, or a promise that a coffee is better than another coffee.',
+			'This methodology follows the argument in Who Profits When Coffee Data Stays Scarce?: the industry has made progress on price transparency, but product metadata remains inconsistent and relationship-gated. Purveyor Score turns that disclosure gap into an inspectable product signal.'
+		],
+		sections: [
+			{
+				title: 'What it measures',
+				body: [
+					'Purveyor Score is scored from the normalized coffee_catalog metadata already used by the catalog, API, CLI, and analytics surfaces. It favors fields that help a buyer compare similar listings across suppliers: provenance, process transparency, freshness, pricing comparability, and sensory context.',
+					'Confidence is separate from the score. Score measures metadata richness and buyer usefulness. Confidence measures how reliable and structured the inputs look, including recency, processing confidence, and evidence availability.'
+				],
+				table: {
+					headers: ['Dimension', 'Max points', 'Examples'],
+					rows: [
+						[
+							'Provenance depth',
+							'25',
+							'Country, region, farm or producer notes, cultivar, grade, and appearance.'
+						],
+						[
+							'Process transparency',
+							'25',
+							'Base method, fermentation, additives, drying method, duration, disclosure level, and processing confidence.'
+						],
+						[
+							'Freshness and availability',
+							'20',
+							'Stock status, stocked date, arrival date, and last-updated date.'
+						],
+						[
+							'Pricing comparability',
+							'15',
+							'Per-pound price, tiered pricing, and wholesale classification.'
+						],
+						[
+							'Sensory context',
+							'15',
+							'Tasting notes, supplier cup score when present, roast recommendations, and useful catalog descriptions.'
+						]
+					]
+				}
+			},
+			{
+				title: 'Tier language',
+				table: {
+					headers: ['Score', 'Tier', 'Meaning'],
+					rows: [
+						[
+							'85-100',
+							'Exceptional',
+							'Deep, structured metadata across most buyer-relevant dimensions.'
+						],
+						['70-84', 'Strong', 'Enough structured disclosure for confident comparison.'],
+						[
+							'50-69',
+							'Developing',
+							'Useful listing, but key metadata is missing or less structured.'
+						],
+						[
+							'1-49',
+							'Limited',
+							'Sparse metadata. Treat as a starting point, not a complete sourcing picture.'
+						],
+						['0', 'Unscored', 'No usable score inputs are available.']
+					]
+				}
+			},
+			{
+				title: 'Why metadata matters',
+				bullets: [
+					'Price answers whether a transaction may be fair. Metadata answers whether this is the right coffee to buy.',
+					'Decision-critical fields such as arrival date, farm provenance, processing detail, cup score, and cultivar are less consistently disclosed than broad fields such as country.',
+					'Normalizing listings across suppliers makes both disclosed data and missing data visible. That visibility creates an incentive for richer disclosure.',
+					'The scraper and audit loop behind Purveyors treats data quality as something measurable: extraction gaps, field completeness, format validation, and source health all become signals the product can improve over time.'
+				],
+				callout: {
+					tone: 'warning',
+					title: 'Not verification',
+					body: 'Purveyor Score does not verify supplier claims, certify a coffee, replace buyer due diligence, or rate cup quality. It summarizes the listing intelligence Purveyors can currently see.'
+				}
+			},
+			{
+				title: 'Implementation contract',
+				bullets: [
+					'Purveyor Score v1 is stored on coffee_catalog as purveyor_score, purveyor_score_confidence, purveyor_score_tier, purveyor_score_factors, purveyor_score_version, and purveyor_score_updated_at.',
+					'A database function computes the score from normalized fields and a trigger refreshes score fields when relevant metadata changes.',
+					'The score can be recalculated when the formula changes. Consumers should read purveyor_score_version before comparing scores across major methodology updates.',
+					'Raw supplier evidence remains withheld from public catalog responses unless a future product surface explicitly supports safe evidence inspection.'
+				],
+				codeBlocks: [
+					{
+						label: 'Response fragment',
+						language: 'json',
+						code: '{\n  "purveyor_score": 82,\n  "purveyor_score_tier": "Strong",\n  "purveyor_score_confidence": 0.78,\n  "purveyor_score_version": "purveyor-score-v1"\n}'
+					}
+				]
+			}
+		],
+		related: [
+			{
+				href: '/catalog',
+				label: 'Green Coffee Catalog',
+				description: 'Browse the public catalog using the same score language.'
+			},
+			{
+				href: '/docs/api/catalog',
+				label: 'Catalog API',
+				description: 'The public catalog contract that carries normalized listing data.'
+			},
+			{
+				href: '/blog/who-profits-when-coffee-data-stays-scarce',
+				label: 'Metadata scarcity thesis',
+				description: 'The public essay that frames metadata as the real sourcing asymmetry.'
+			}
+		]
+	},
+	{
 		section: 'api',
 		slug: 'overview',
 		title: 'API overview',
 		summary:
-			'Parchment Platform ships one stable public catalog API and a larger internal platform route layer for the web app.',
-		eyebrow: 'Parchment Platform',
+			'Parchment ships stable public catalog and price-index APIs plus the internal route layer that powers the web app.',
+		eyebrow: 'Parchment',
 		intro: [
-			'Parchment is the API and Console layer inside Purveyors. It exposes normalized green coffee catalog data through a small public HTTP contract and a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
-			'The stable public contract is GET /v1/catalog. Anonymous requests are supported for public discovery, while API-key requests are the intended production integration path because they carry plan enforcement and X-RateLimit-* usage headers. Most /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
+			'Parchment is the API and Console layer inside Purveyors. It exposes normalized green coffee catalog data, beta catalog similarity matching, and aggregate market intelligence through small public HTTP contracts plus a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
+			'The stable public catalog contract is GET /v1/catalog. Anonymous requests are supported for public discovery, while API-key requests are the intended production integration path because they carry plan enforcement and X-RateLimit-* usage headers. GET /v1/catalog/{id}/similar is a beta member and paid API route for candidate matching, not a canonical identity claim. GET /v1/price-index is a Parchment Intelligence API-key contract for aggregate price_index_snapshots data only. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
 		],
 		sections: [
 			{
 				title: 'Surface map',
 				body: [
-					'Treat the platform as two layers. /v1/* is the public namespace for external integrations. /api/* is the first-party application layer. Some /api/* routes are still externally reachable, but that does not make them stable public contracts.'
+					'Treat the API model as two layers. /v1/* is the public namespace for external integrations. /api/* is the first-party application layer. Some /api/* routes are still externally reachable, but that does not make them stable public contracts.'
 				],
 				table: {
 					headers: ['Surface', 'Auth', 'Audience', 'Contract'],
@@ -209,6 +311,18 @@ const docsPages: DocsPage[] = [
 							'Anonymous, session, or API key',
 							'External integrations, CLI complements, first-party app',
 							'Stable public contract.'
+						],
+						[
+							'GET /v1/catalog/{id}/similar',
+							'Member session or API key with API Origin or Enterprise and catalog:read',
+							'Matching workflows, substitution research, and account-linked agents',
+							'Beta public contract. Returns cautious candidates, score dimensions, and price deltas, not canonical identity decisions.'
+						],
+						[
+							'GET /v1/price-index',
+							'API key with Parchment Intelligence access',
+							'External integrations and agent workflows consuming market aggregates',
+							'Stable aggregate contract backed by price_index_snapshots. No raw supplier rows, CSV export, alerts, or webhooks.'
 						],
 						[
 							'GET /api/catalog-api',
@@ -248,7 +362,9 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'GET /v1/catalog supports anonymous requests for public-only catalog discovery. Anonymous callers get the same public payload shape, but no API-key billing, quota, or X-RateLimit-* usage headers.',
 					'GET /v1/catalog also supports first-party session requests. Viewer sessions stay public-only; member and admin sessions may unlock richer in-app visibility.',
-					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API-key requests stay public-only, use plan-based limits, and are the intended production path for server-to-server integrations.',
+					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API Green stays on the basic public query surface; paid API tiers add structured process facet filtering while remaining public-catalog scoped. API keys use plan-based limits and are the intended production path for server-to-server integrations.',
+					'GET /v1/catalog/{id}/similar requires a member session or an API key with API Origin or Enterprise plus catalog:read. It returns beta similarity candidates for account-linked matching workflows; anonymous callers get 401 and viewer or API Green callers get 403.',
+					'GET /v1/price-index requires an API key whose owner has Parchment Intelligence access. It returns aggregate price-index snapshots, not raw supplier-level rows.',
 					'GET /api/catalog-api is a deprecated legacy alias to /v1/catalog, but it remains API-key-only for backward-compatible machine access.',
 					'Cookies only matter when they resolve to a valid first-party session. A raw Cookie header is not part of the public API contract.',
 					'Inventory share links are the one notable anonymous data exception on the product side: GET /api/beans?share=... can return a scoped inventory view without a user session.'
@@ -279,6 +395,18 @@ const docsPages: DocsPage[] = [
 							'Public-only data with plan enforcement, X-RateLimit-* headers, and stable HTTP compatibility guarantees.'
 						],
 						[
+							'API-key GET /v1/catalog/{id}/similar',
+							'Beta similar-coffee matching and substitution research',
+							'Authorization: Bearer <api_key> with API Origin or Enterprise plus catalog:read',
+							'Plan-limited beta response with target, matches, score dimensions, match category, confidence labels, price_delta_1lb, X-RateLimit-* headers, and cautious copy.'
+						],
+						[
+							'API-key GET /v1/price-index',
+							'Market-intelligence integrations and agents',
+							'Authorization: Bearer <api_key> plus Parchment Intelligence entitlement',
+							'Aggregate price_index_snapshots data with pagination and rate-limit headers. No CSV, alerts, webhooks, or supplier-level rows.'
+						],
+						[
 							'Session GET /v1/catalog',
 							'First-party product reads that share the canonical resource',
 							'Valid Purveyors session cookie',
@@ -300,6 +428,8 @@ const docsPages: DocsPage[] = [
 					'/api-dashboard is the Parchment Console for API keys, usage, subscriptions, and account-aware billing flows.',
 					'/catalog and /analytics are end-user product surfaces that reflect the same coffee domain model as the API.',
 					'/docs is the shared public documentation tree for both the HTTP API and @purveyors/cli.',
+					'/llms.txt, /sitemap.xml, and /blog/feed.xml are anonymous discoverability endpoints for agents, crawlers, and feed readers. They expose navigation metadata, not integration data contracts.',
+					'/auth/callback and /auth/cli-callback are OAuth handoff surfaces. They are part of login flow reliability, not REST API resources.',
 					'The web app imports @purveyors/cli modules directly for chat tooling, so CLI and product behavior should stay aligned.'
 				]
 			}
@@ -335,15 +465,18 @@ const docsPages: DocsPage[] = [
 			'GET /v1/catalog is the stable public contract for normalized green coffee listings and tier-aware API access.',
 		eyebrow: 'Public endpoint',
 		intro: [
-			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, legacy processing labels, structured process transparency fields, pricing, price tiers, and availability metadata.',
-			`The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous, viewer-session, and API-key requests all share the public catalog query surface. Anonymous and viewer-session requests stay public-only, while member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the intended production integration path because they emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied. Explicit limit values above ${MAX_CATALOG_PAGE_LIMIT} are rejected with HTTP 400 so pagination metadata stays truthful.`
+			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, legacy processing labels, structured process transparency fields, Purveyor Score metadata, pricing, price tiers, and availability metadata.',
+			`The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous, viewer-session, and API Green requests share the basic public catalog query surface. Member/admin sessions and paid API tiers additionally unlock structured process facet filters. Public callers can still inspect factual process fields in full rows; the gated feature is process search leverage, not data visibility. API-key requests use plan-based limits and are the intended production integration path because they emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied. Explicit limit values above ${MAX_CATALOG_PAGE_LIMIT} are rejected with HTTP 400 so pagination metadata stays truthful.`,
+			'Use include=proof when callers need compact proof-summary families for process, provenance, freshness, and pricing. Proof summaries are cautious catalog signals, not certifications, and raw supplier evidence remains withheld. Use GET /v1/catalog/proof-coverage when callers need aggregate proof label distributions and gap counts for the same visible catalog scope.'
 		],
 		sections: [
 			{
 				title: 'Namespace and compatibility',
 				bullets: [
-					'GET /v1 returns the public namespace descriptor and links callers to /v1/catalog.',
+					'GET /v1 returns the public namespace descriptor and links callers to /v1/catalog and /v1/price-index.',
 					'GET /v1/catalog is the source-of-truth public contract for integrations.',
+					'GET /v1/catalog/proof-coverage returns aggregate proof-summary coverage for the visible catalog scope without raw evidence, supplier quotes, certification language, or row-level proof search leverage.',
+					'GET /v1/catalog/{id}/similar is the beta matching endpoint in the catalog family. It is not anonymous, and it should be presented as candidate discovery rather than accepted identity resolution.',
 					'GET /api/catalog-api is a deprecated API-key-only alias to the canonical handler. Responses include Deprecation: true, Link: </v1/catalog>; rel="successor-version", and Sunset: Thu, 31 Dec 2026 23:59:59 GMT.',
 					'GET /api/catalog also delegates to the same catalog resource, but it is an internal adapter with legacy response-shape behavior and should not be treated as a long-term external contract.'
 				],
@@ -357,16 +490,16 @@ const docsPages: DocsPage[] = [
 				title: 'Request and response',
 				body: [
 					'The canonical response includes data, pagination, and meta blocks. The meta block reports auth kind, role, plan, access scope, row-limit state, and cache metadata.',
-					'Full catalog rows include legacy raw processing fields plus a nested process object. Null values stay null when the supplier has not disclosed structured metadata. process.evidence_available reports whether internal provenance exists without exposing raw evidence quotes in the public response.',
-					'The example below shows an API-key response. Anonymous and session responses keep the same top-level shape. The main differences are headers and visibility: only API-key requests emit X-RateLimit-* headers, and only privileged member or admin sessions can widen beyond public-only data.',
-					`Viewer-tier API keys are capped to 25 rows per call. Member and enterprise API plans remove that lower plan cap but still share the ${MAX_CATALOG_PAGE_LIMIT}-row per-request ceiling. Anonymous and viewer-session requests are public-only unless a privileged member session explicitly enables wholesale visibility.`,
+					'Full catalog rows include legacy structured processing fields, Purveyor Score fields, plus a nested process object. Null values stay null when the supplier has not disclosed structured metadata. process.evidence_available reports whether internal provenance exists without exposing raw evidence quotes in the public response.',
+					'The example below shows an API-key response. Anonymous and session responses keep the same top-level shape. The main differences are headers and search leverage: only API-key requests emit X-RateLimit-* headers, and only member/admin sessions or paid API tiers can use structured process facet filters.',
+					`Viewer-tier API keys are capped to 25 rows per call and cannot use structured process facet filters. Member and enterprise API plans remove that lower plan cap and unlock process facet filters, while still sharing the ${MAX_CATALOG_PAGE_LIMIT}-row per-request ceiling. Anonymous and viewer-session requests are public-only unless a privileged member session explicitly enables richer first-party visibility.`,
 					'Cookies are not part of the public API contract. They only matter when they resolve to a valid first-party session, and the legacy /api/catalog-api alias does not accept session auth as a substitute for an API key.'
 				],
 				codeBlocks: [
 					{
 						label: 'GET /v1/catalog',
 						language: 'json',
-						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "drying_method": "Raised beds",\n      "process": {\n        "base_method": "Natural",\n        "fermentation_type": "Anaerobic",\n        "additives": null,\n        "additive_detail": null,\n        "fermentation_duration_hours": 72,\n        "drying_method": "Raised beds",\n        "notes": "Anaerobic natural process disclosed by supplier notes",\n        "disclosure_level": "high_detail",\n        "confidence": 0.92,\n        "evidence_available": true\n      },\n      "price_per_lb": 7.5,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.5 }],\n      "stocked": true,\n      "source": "sweet_marias",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "pagination": {\n    "page": 1,\n    "limit": 25,\n    "total": 814,\n    "totalPages": 33,\n    "hasNext": true,\n    "hasPrev": false\n  },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "viewer" },\n    "access": {\n      "publicOnly": true,\n      "showWholesale": false,\n      "wholesaleOnly": false,\n      "rowLimit": 25,\n      "limited": true,\n      "totalAvailable": 814\n    },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
+						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "drying_method": "Raised beds",\n      "purveyor_score": 82,\n      "purveyor_score_tier": "Strong",\n      "purveyor_score_confidence": 0.78,\n      "purveyor_score_version": "purveyor-score-v1",\n      "process": {\n        "base_method": "Natural",\n        "fermentation_type": "Anaerobic",\n        "additives": null,\n        "additive_detail": null,\n        "fermentation_duration_hours": 72,\n        "drying_method": "Raised beds",\n        "notes": "Anaerobic natural process disclosed by supplier notes",\n        "disclosure_level": "high_detail",\n        "confidence": 0.92,\n        "evidence_available": true\n      },\n      "price_per_lb": 7.5,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.5 }],\n      "stocked": true,\n      "source": "sweet_marias",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "pagination": {\n    "page": 1,\n    "limit": 25,\n    "total": 814,\n    "totalPages": 33,\n    "hasNext": true,\n    "hasPrev": false\n  },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "viewer" },\n    "access": {\n      "publicOnly": true,\n      "showWholesale": false,\n      "wholesaleOnly": false,\n      "rowLimit": 25,\n      "limited": true,\n      "totalAvailable": 814\n    },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
 					},
 					{
 						label: 'GET /v1/catalog?fields=dropdown&page=2&limit=2',
@@ -379,10 +512,11 @@ const docsPages: DocsPage[] = [
 				title: 'Query parameters',
 				body: [
 					`The table below describes the full canonical query surface. If page is supplied without limit, the route uses a ${DEFAULT_PAGINATED_PAGE_SIZE}-row pagination fallback. If both page and limit are omitted, the canonical listing path uses the ${DEFAULT_CATALOG_LISTING_LIMIT}-row default listing contract.`,
-					'Anonymous, viewer-session, and API-key requests all share the public query surface documented below.',
+					'Anonymous, viewer-session, and API Green requests share the basic public query surface. Structured process facet filters are gated to member/admin sessions and paid API tiers.',
 					'fields=dropdown stays compatible with normal page and limit params. The reduced projection is limited to id, source, name, stocked, cost_lb, price_per_lb, price_tiers, and public_coffee.',
-					'Privileged member and admin sessions may additionally use showWholesale and wholesaleOnly to widen first-party visibility.',
-					`Malformed typed params now fail closed with 400 responses instead of silently falling back or bubbling into generic 500s. That applies to fields, stocked, showWholesale, wholesaleOnly, sortField, page, limit, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, and their deprecated cost_lb aliases. Supported sortField values are ${PUBLIC_CATALOG_SORT_FIELD_LIST}.`
+					'include=proof is opt-in. Default full rows keep their existing shape, while proof requests add a cautious proof object with process, provenance, freshness, and pricing families plus explicit limitations.',
+					'Privileged member and admin sessions may additionally use showWholesale and wholesaleOnly to widen first-party visibility. Paid API tiers unlock process facet filters but remain public-catalog scoped.',
+					`Malformed typed params now fail closed with 400 responses instead of silently falling back or bubbling into generic 500s. That applies to include, fields, stocked, showWholesale, wholesaleOnly, has_additives, sortField, sortDirection, page, limit, stocked_date, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, processing_confidence_min, and deprecated cost_lb aliases. Supported sortField values are ${PUBLIC_CATALOG_SORT_FIELD_LIST}.`
 				],
 				table: {
 					headers: ['Parameter', 'Type', 'Default', 'Description'],
@@ -407,13 +541,24 @@ const docsPages: DocsPage[] = [
 							'dropdown returns the reduced projection used by filter UIs and select menus (id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee), and it works with normal page and limit params. Invalid values return 400.'
 						],
 						[
+							'include',
+							'proof',
+							'none',
+							'Opt-in proof summaries for full catalog rows. Unsupported include values return 400. Proof summaries include cautious family signals and limitations, not raw evidence or certification claims.'
+						],
+						[
 							'stocked',
 							'true | false | all',
 							'true',
 							'Filter to stocked-only, unstocked-only, or the full catalog. Invalid values return 400.'
 						],
 						['origin', 'string', 'none', 'Partial match across continent, country, and region.'],
-						['country', 'string', 'none', 'Exact match on country.'],
+						[
+							'country',
+							'string (repeatable)',
+							'none',
+							'Exact match on country. Repeat the parameter to match any of several country labels.'
+						],
 						['continent', 'string', 'none', 'Exact match on continent.'],
 						[
 							'source',
@@ -432,37 +577,37 @@ const docsPages: DocsPage[] = [
 							'processing_base_method',
 							'string',
 							'none',
-							'Exact match on normalized base process, for example Washed, Natural, Honey, Wet-Hulled, Decaf, Other, or Unknown.'
+							'Paid process facet. Exact match on normalized base process, for example Washed, Natural, Honey, Wet-Hulled, Decaf, Other, or Unknown. Requires a member/admin session or paid API tier.'
 						],
 						[
 							'fermentation_type',
 							'string',
 							'none',
-							'Exact match on normalized fermentation technique, for example Anaerobic, Carbonic Maceration, Yeast Inoculated, Co-Fermented, None Stated, or Unknown.'
+							'Paid process facet. Exact match on normalized fermentation technique, for example Anaerobic, Carbonic Maceration, Yeast Inoculated, Co-Fermented, None Stated, or Unknown. Requires a member/admin session or paid API tier.'
 						],
 						[
 							'process_additive',
 							'string',
 							'none',
-							'Array containment filter for disclosed additives such as fruit, yeast, hops, mossto, starter-culture, none, or unspecified.'
+							'Paid process facet. Array containment filter for disclosed additives such as fruit, yeast, hops, mossto, starter-culture, none, or unspecified. Requires a member/admin session or paid API tier.'
 						],
 						[
 							'has_additives',
 							'true | false',
 							'none',
-							'true returns rows with a disclosed additive value. false returns explicit none only, not unknown or unspecified rows.'
+							'Paid process facet. true returns rows with a disclosed additive value. false returns explicit none only, not unknown or unspecified rows. Requires a member/admin session or paid API tier.'
 						],
 						[
 							'processing_disclosure_level',
 							'string',
 							'none',
-							'Exact match on supplier disclosure quality: none, label_only, structured, narrative, or high_detail.'
+							'Paid process facet. Exact match on supplier disclosure quality: none, label_only, structured, narrative, or high_detail. Requires a member/admin session or paid API tier.'
 						],
 						[
 							'processing_confidence_min',
 							'number',
 							'none',
-							'Minimum 0 to 1 confidence score for the structured process breakdown.'
+							'Paid process facet. Minimum 0 to 1 confidence score for the structured process breakdown. Requires a member/admin session or paid API tier.'
 						],
 						['region', 'string', 'none', 'Partial match on region.'],
 						['cultivar_detail', 'string', 'none', 'Partial match on cultivar or variety detail.'],
@@ -480,9 +625,9 @@ const docsPages: DocsPage[] = [
 						['score_value_max', 'number', 'none', 'Maximum cupping or quality score (inclusive).'],
 						[
 							'arrival_date',
-							'string (YYYY-MM-DD)',
+							'string',
 							'none',
-							'Filter to coffees with a specific arrival date.'
+							'Exact match on the stored arrival_date value. Use YYYY-MM-DD when the supplier row has a normalized date.'
 						],
 						[
 							'stocked_date',
@@ -526,6 +671,64 @@ const docsPages: DocsPage[] = [
 				]
 			},
 			{
+				title: 'Proof coverage aggregate',
+				body: [
+					'GET /v1/catalog/proof-coverage summarizes the same proof-summary vocabulary exposed by include=proof. The response is nested under two objects: meta (resource, namespace, version, auth, and access with publicOnly, sampled, and totalAvailable) and coverage (overall labels, family label distributions, signal counts, top missing families, and explicit limitations) for the visible catalog scope.',
+					'The endpoint is aggregate-only. It is safe as a public proof-of-value surface because it does not expose raw processing_evidence, raw supplier quotes, row-level evidence, certification claims, supplier rankings, or paid proof-query filters.',
+					'API-key requests preserve X-RateLimit-* headers and plan-scoped visibility. Anonymous and session requests follow the same catalog visibility and process-facet capability rules as /v1/catalog. Coverage scope and any stocked/filter narrowing are owned by the canonical Parchment surface; the aggregate does not currently accept its own query parameters.'
+				],
+				codeBlocks: [
+					{
+						label: 'GET /v1/catalog/proof-coverage',
+						language: 'json',
+						code: '{\n  "meta": {\n    "resource": "catalog-proof-coverage",\n    "namespace": "/v1/catalog/proof-coverage",\n    "version": "v1",\n    "auth": { "kind": "anonymous", "role": null, "apiPlan": null },\n    "access": { "publicOnly": true, "sampled": 814, "totalAvailable": 814 }\n  },\n  "coverage": {\n    "overall": [{ "label": "strong", "count": 488, "share": 0.6 }],\n    "families": {\n      "process": [{ "label": "disclosed", "count": 260, "share": 0.319 }]\n    },\n    "signals": { "process.base_method": 260 },\n    "top_gaps": [{ "family": "process", "label": "not_available", "count": 320, "share": 0.393 }],\n    "limitations": ["not_certification", "raw_evidence_not_included"]\n  }\n}'
+					},
+					{
+						label: 'Proof coverage smoke test',
+						language: 'bash',
+						code: 'curl "https://purveyors.io/v1/catalog/proof-coverage" \\\
+  -H "Authorization: Bearer $PURVEYORS_API_KEY"'
+					}
+				]
+			},
+			{
+				title: 'Structured process filter edge cases',
+				bullets: [
+					'processing remains the backward-compatible public partial match against the legacy display label. Use the structured filters when an integration has member/admin session access or a paid API tier and needs process transparency semantics instead of text search.',
+					'processing_base_method, fermentation_type, process_additive, processing_disclosure_level, and processing_confidence_min only match rows where the structured metadata is present. Null supplier metadata is preserved and should not be treated as explicit none. These params return 401 for anonymous callers and 403 for viewer/API Green callers.',
+					'has_additives=true matches rows with disclosed additive values such as fruit, yeast, hops, mossto, or starter-culture. has_additives=false matches only rows whose additive array is exactly none; it intentionally excludes unknown, unspecified, null, or mixed values. This is also gated as a process facet.',
+					'process_additive is an array-containment filter. A row with multiple disclosed additives can match any one repeated request pattern only by issuing separate requests today.',
+					'Full rows include process.evidence_available but never expose raw processing_evidence quotes. The dropdown projection does not include the nested process object.',
+					'include=proof adds proof.families.process, provenance, freshness, and pricing plus limitations such as not_certification and raw_evidence_not_included. Badge copy in public cards uses the same cautious vocabulary: disclosed, identified, dated, listed, or tiered.'
+				],
+				codeBlocks: [
+					{
+						label: 'Paid process facet request',
+						language: 'bash',
+						code: 'curl "https://purveyors.io/v1/catalog?fermentation_type=Co-Fermented&has_additives=true&limit=25" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"\n\ncurl "https://purveyors.io/v1/catalog?has_additives=false&processing_disclosure_level=structured&limit=25" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"'
+					}
+				]
+			},
+			{
+				title: 'Proof summaries',
+				body: [
+					'include=proof adds a compact proof object to full catalog rows. It is designed for public cards, agent summaries, and integration UIs that need to explain why a listing looks trustworthy without exposing raw supplier evidence.',
+					'The proof object groups signals into process, provenance, freshness, and pricing families. Each family uses cautious labels and limitations. It is not a certification system, and it does not expose raw processing evidence quotes by default.'
+				],
+				codeBlocks: [
+					{
+						label: 'Catalog proof request',
+						language: 'bash',
+						code: 'curl "https://purveyors.io/v1/catalog?include=proof&country=Ethiopia&limit=5" \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
+					},
+					{
+						label: 'Proof response fragment',
+						language: 'json',
+						code: '{\n  "proof": {\n    "families": {\n      "process": { "label": "disclosed", "confidence": 0.92 },\n      "provenance": { "label": "identified" },\n      "freshness": { "label": "dated" },\n      "pricing": { "label": "tiered" }\n    },\n    "limitations": ["not_certification", "raw_evidence_not_included"]\n  }\n}'
+					}
+				]
+			},
+			{
 				title: 'Access mode comparison',
 				table: {
 					headers: ['Mode', 'Best for', 'Query envelope', 'Headers', 'Notes'],
@@ -533,21 +736,21 @@ const docsPages: DocsPage[] = [
 						[
 							'Anonymous /v1/catalog',
 							'Discovery, evaluation, and public embeds',
-							`Full public query surface. Defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted; page without limit falls back to ${DEFAULT_PAGINATED_PAGE_SIZE}.`,
+							`Basic public query surface only. Structured process facets return 401. Defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted; page without limit falls back to ${DEFAULT_PAGINATED_PAGE_SIZE}.`,
 							'Content-Type only',
 							'Public-only catalog data. No X-RateLimit-* headers.'
 						],
 						[
 							'API-key /v1/catalog',
 							'Production integrations and accounted usage',
-							`Full public query surface, subject to plan caps and row limits. Defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted.`,
+							`Basic public query surface for API Green; paid API tiers add structured process facets. Defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted.`,
 							'Content-Type plus X-RateLimit-*',
-							'Canonical integration path for developers, sync jobs, and agents.'
+							'Canonical integration path for developers, sync jobs, and agents. API Green is for evaluation; API Origin and Enterprise unlock process search leverage.'
 						],
 						[
 							'Session /v1/catalog',
 							'First-party product reads',
-							'Viewer sessions stay public-only and keep the same public query surface. Privileged member/admin sessions may unlock showWholesale and wholesaleOnly.',
+							'Viewer sessions stay public-only. Member/admin sessions unlock process facets and may also unlock showWholesale and wholesaleOnly.',
 							'Session-dependent app headers only',
 							'Cookies are only relevant when they resolve to a valid first-party session.'
 						],
@@ -561,7 +764,7 @@ const docsPages: DocsPage[] = [
 					]
 				},
 				bullets: [
-					'Anonymous calls use the same public query surface as viewer-session and API-key requests, but they stay public-only and do not emit X-RateLimit-* headers.',
+					'Anonymous, viewer-session, and API Green calls share the basic public query surface. Process facet params return 401 for anonymous callers and 403 for viewer/API Green callers.',
 					'If an Authorization header is present but invalid, the route returns 401 instead of silently treating the request as anonymous.'
 				]
 			},
@@ -596,7 +799,13 @@ const docsPages: DocsPage[] = [
 				table: {
 					headers: ['Marketed plan', 'Code key', 'Monthly requests', 'Rows per call', 'Notes'],
 					rows: [
-						['Green', 'viewer', '200', '25', 'Best for evaluation and prototypes.'],
+						[
+							'Green',
+							'viewer',
+							'200',
+							'25',
+							'Best for evaluation and prototypes. Includes public response fields but not structured process facet filtering.'
+						],
 						[
 							'Origin',
 							'member',
@@ -615,6 +824,7 @@ const docsPages: DocsPage[] = [
 				},
 				bullets: [
 					'The public docs use marketed tier names Green, Origin, and Enterprise, while API responses and server code use apiPlan keys viewer, member, and enterprise.',
+					'API Green can read factual process fields in full catalog rows, but structured process facet filtering starts at API Origin.',
 					`All callers share a hard per-request page-size ceiling of ${MAX_CATALOG_PAGE_LIMIT}, even when a paid plan removes the lower viewer-tier row cap.`,
 					'X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset are only emitted for API-key responses.',
 					'429 responses also include Retry-After.',
@@ -634,6 +844,11 @@ const docsPages: DocsPage[] = [
 				description: 'See the product surface that consumes the same data model.'
 			},
 			{
+				href: '/docs/api/catalog-similarity',
+				label: 'Catalog similarity beta',
+				description: 'Find candidate matches for a catalog coffee with member or paid API access.'
+			},
+			{
 				href: '/docs/api/platform',
 				label: 'Platform route matrix',
 				description: 'Internal /api/* companions to the public contract.'
@@ -645,20 +860,313 @@ const docsPages: DocsPage[] = [
 			}
 		]
 	},
+
 	{
 		section: 'api',
-		slug: 'platform',
-		title: 'Platform route matrix',
+		slug: 'catalog-similarity',
+		title: 'Catalog similarity API',
 		summary:
-			'Authenticated and internal /api/* routes that power the Purveyors product surface, grouped by capability and stability.',
-		eyebrow: 'Internal platform routes',
+			'GET /v1/catalog/{id}/similar returns beta similar-coffee candidates for member sessions and paid API-key integrations.',
+		eyebrow: 'Beta endpoint',
 		intro: [
-			'This page is the route map for the first-party platform. These endpoints matter for contributors, support, internal tooling, and advanced product debugging.',
-			'Most of these routes are not public compatibility promises. Document them accurately, but keep external integrations pointed at /v1/catalog or @purveyors/cli whenever possible.'
+			'GET /v1/catalog/{id}/similar finds candidate coffees related to one catalog entry. The route is useful for likely-same-bean checks, substitution research, account-linked agents, and pricing context around comparable lots.',
+			'Matches are beta confidence candidates based on origin, processing, tasting similarity signals, and deterministic identity gates. The endpoint separates canonical candidates from similar recommendations; neither group is an accepted canonical identity.',
+			'Use https://api.purveyors.io/v1/catalog/{id}/similar for new integrations. The older web-host path on purveyors.io is a compatibility proxy and includes Deprecation, Link, and Sunset headers pointing to the canonical Parchment API route.'
 		],
 		sections: [
 			{
-				title: 'Catalog and discovery routes',
+				title: 'Endpoint and access',
+				table: {
+					headers: ['Route', 'Method', 'Auth', 'Status', 'Contract'],
+					rows: [
+						[
+							'/v1/catalog/{id}/similar',
+							'GET',
+							'Member/admin session or API key with API Origin or Enterprise and catalog:read',
+							'Beta',
+							'Returns target plus grouped beta matches, score dimensions, identity classification, blocker reasons, price_delta_1lb, pricing fallbacks, and cautious copy.'
+						]
+					]
+				},
+				bullets: [
+					'Anonymous callers receive 401 auth_required. The response does not leak match data.',
+					'Signed-in viewer sessions and API Green keys receive 403 entitlement_required. Locked teasers return similar_match_count: null so denied requests do not run the expensive similarity count path or leak match rows.',
+					'API-key callers must satisfy requiredPlan member and requiredScope catalog:read. Successful API-key responses include X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset.',
+					'429 responses use the same quota envelope as /v1/catalog and include Retry-After.',
+					'404 means the target catalog coffee was not found after the caller has enough access to request matches.'
+				]
+			},
+			{
+				title: 'Path and query parameters',
+				table: {
+					headers: ['Parameter', 'Type', 'Default', 'Description'],
+					rows: [
+						[
+							'id',
+							'positive integer',
+							'required',
+							'Catalog coffee ID. The route validates against the Postgres int4 ceiling of 2147483647 before any database work.'
+						],
+						[
+							'threshold',
+							'number between 0.5 and 0.99',
+							String(DEFAULT_CATALOG_SIMILARITY_THRESHOLD),
+							'Minimum similarity score sent to the matching RPC.'
+						],
+						[
+							'limit',
+							`positive integer up to ${MAX_CATALOG_SIMILARITY_LIMIT}`,
+							String(DEFAULT_CATALOG_SIMILARITY_LIMIT),
+							'Number of matches returned after any mode filtering.'
+						],
+						[
+							'stocked_only',
+							'true | false',
+							'true',
+							'Whether candidate rows must currently be stocked.'
+						],
+						[
+							'mode',
+							'all | likely_same | similar_profile',
+							'all',
+							'Filters normalized matches after scoring. likely_same asks the server to overfetch before filtering so likely-same rows are not hidden by profile matches.'
+						]
+					]
+				},
+				callout: {
+					tone: 'warning',
+					title: 'Structured validation is part of the contract',
+					body: 'Invalid id, threshold, limit, stocked_only, or mode values return HTTP 400 with error: Invalid query parameter and a details block containing parameter, value, and expected.'
+				}
+			},
+			{
+				title: 'Response shape',
+				body: [
+					'data.target summarizes the requested coffee with origin, process, stocked state, legacy cost_lb compatibility, and canonical pricing fields.',
+					'data.groups.canonical_candidates and data.groups.similar_recommendations are the preferred grouped contract. data.matches remains as a transitional flat list. Each match includes coffee identity fields, canonical pricing, price_delta_1lb, score.average, score.dimensions.origin, score.dimensions.processing, score.dimensions.tasting, score.chunk_matches, match.category, match.classification.kind, match.classification.identity_eligibility, match.classification.blockers, match.confidence, match.beta, match.language, explanation.summary, explanation.signals, and compatibility.cost_lb.',
+					'meta.status is beta. meta.classification_version and meta.query_strategy identify the hard-gated identity contract and bounded vector retrieval path. Preserve the non-canonical identity warning in client copy.'
+				],
+				codeBlocks: [
+					{
+						label: 'Member or API-key request',
+						language: 'bash',
+						code: 'curl "https://api.purveyors.io/v1/catalog/1182/similar?threshold=0.8&limit=5&mode=likely_same" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"'
+					},
+					{
+						label: 'Successful response fragment',
+						language: 'json',
+						code: '{\n  "data": {\n    "target": {\n      "id": 1182,\n      "name": "Ethiopia Guji Natural",\n      "source": "Supplier A",\n      "origin": "Guji",\n      "country": "Ethiopia",\n      "processing": "Natural",\n      "stocked": true,\n      "pricing": {\n        "price_per_lb": null,\n        "price_tiers": [{ "min_lbs": 1, "price": 8 }],\n        "cost_lb": 7.1,\n        "baseline_quantity_lbs": 1,\n        "baseline_price_per_lb": 8,\n        "baseline_source": "price_tiers"\n      }\n    },\n    "matches": [\n      {\n        "coffee": { "id": 2200, "name": "Ethiopia Guji Natural Lot B", "stocked": true },\n        "pricing": { "baseline_price_per_lb": 8.75, "baseline_source": "price_per_lb" },\n        "price_delta_1lb": { "amount": 0.75, "percent": 9.4, "currency": "USD" },\n        "score": {\n          "average": 0.92,\n          "dimensions": { "origin": 0.94, "processing": 0.91, "tasting": 0.87 },\n          "chunk_matches": 3\n        },\n        "match": {\n          "category": "likely_same",\n          "confidence": "high_beta",\n          "beta": true,\n          "language": "High beta confidence likely same coffee candidate. Review supplier details before acting."\n        },\n        "explanation": {\n          "summary": "Beta similarity score based on available origin, processing, and tasting embeddings.",\n          "signals": ["Origin similarity 0.94", "Processing similarity 0.91"]\n        }\n      }\n    ]\n  },\n  "meta": {\n    "resource": "catalog-similarity",\n    "namespace": "/v1/catalog/{id}/similar",\n    "version": "v1",\n    "status": "beta",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "member" },\n    "access": { "requiredCapability": "canUseBeanMatching", "canUseBeanMatching": true },\n    "query": { "threshold": 0.8, "limit": 5, "stockedOnly": true, "mode": "likely_same" }\n  }\n}'
+					}
+				]
+			},
+			{
+				title: 'Error examples',
+				codeBlocks: [
+					{
+						label: '401 anonymous request',
+						language: 'json',
+						code: '{\n  "error": "Authentication required",\n  "message": "Similar coffee matching requires a member account or paid API tier.",\n  "code": "auth_required",\n  "requiredCapability": "canUseBeanMatching"\n}'
+					},
+					{
+						label: '403 locked viewer teaser',
+						language: 'json',
+						code: '{\n  "error": "Insufficient permissions",\n  "message": "Similar coffee matching is available to members and paid API tiers.",\n  "code": "entitlement_required",\n  "requiredCapability": "canUseBeanMatching",\n  "teaser": {\n    "locked": true,\n    "similar_match_count": null,\n    "beta": true\n  }\n}'
+					},
+					{
+						label: '400 invalid query parameter',
+						language: 'json',
+						code: '{\n  "error": "Invalid query parameter",\n  "message": "Query parameter limit must use positive integer less than or equal to 25",\n  "details": {\n    "parameter": "limit",\n    "value": "99",\n    "expected": "positive integer less than or equal to 25"\n  }\n}'
+					}
+				]
+			}
+		],
+		related: [
+			{
+				href: '/docs/api/catalog',
+				label: 'Catalog API',
+				description: 'The stable listing endpoint that provides the target IDs.'
+			},
+			{
+				href: '/docs/cli/catalog',
+				label: 'CLI catalog commands',
+				description: 'Account-linked terminal access to catalog search and similar matching.'
+			},
+			{
+				href: '/docs/api/errors',
+				label: 'Errors and auth',
+				description: 'Shared auth, entitlement, validation, and rate-limit conventions.'
+			}
+		]
+	},
+
+	{
+		section: 'api',
+		slug: 'procurement-briefs',
+		title: 'Procurement briefs API',
+		summary:
+			'Create saved sourcing criteria and run deterministic catalog matches for procurement workflows.',
+		eyebrow: 'Procurement seed',
+		intro: [
+			'Procurement briefs save a narrow, versioned sourcing intent for one account. They are the durable contract for agents, CLI workflows, and later web surfaces that need to ask: what currently matches this buying brief?',
+			'The first version deliberately supports only pre-pagination-safe catalog constraints. Unsupported filters are rejected instead of stored as no-ops, and manual matches explain why each returned listing satisfies the saved criteria without ranking the coffee as objectively better.'
+		],
+		sections: [
+			{
+				title: 'Endpoint and access',
+				table: {
+					headers: ['Route', 'Method', 'Auth', 'Contract'],
+					rows: [
+						[
+							'/v1/procurement/briefs',
+							'GET',
+							'Member/admin session or API key with API Origin or Enterprise plus catalog:read',
+							'Lists active saved briefs owned by the caller.'
+						],
+						[
+							'/v1/procurement/briefs',
+							'POST',
+							'Member/admin session or API key with API Origin or Enterprise plus catalog:read',
+							'Creates one active manual brief after validating the versioned criteria contract.'
+						],
+						[
+							'/v1/procurement/briefs/{id}',
+							'GET',
+							'Member/admin session or API key with API Origin or Enterprise plus catalog:read',
+							'Returns one active caller-owned brief.'
+						],
+						[
+							'/v1/procurement/briefs/{id}/matches',
+							'GET',
+							'Member/admin session or API key with API Origin or Enterprise plus catalog:read',
+							'Applies saved criteria to current catalog rows before pagination and returns match reasons plus limitations.'
+						]
+					]
+				},
+				bullets: [
+					'Anonymous callers receive 401 Authentication required.',
+					'Signed-in viewers and API Green keys receive a structured 403 entitlement error before brief data is read or written.',
+					'API-key requests use the same X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, and Retry-After conventions as other paid API routes.',
+					'Brief records are user-owned; one caller cannot fetch or run another account’s brief.'
+				]
+			},
+			{
+				title: 'Criteria contract',
+				body: [
+					'Every stored criteria object is normalized to version: 1. The supported fields are country, region, processing, processing_base_method, max_price_per_lb, stocked_only, wholesale_only, and stocked_days.',
+					'At least one supported sourcing constraint is required. Unknown fields, wrong value types, empty strings, invalid versions, and out-of-range stocked_days values return 400 with an issues array and allowedFields.'
+				],
+				codeBlocks: [
+					{
+						label: 'Create a washed Colombia brief',
+						language: 'bash',
+						code: 'curl -X POST "https://purveyors.io/v1/procurement/briefs" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key" \\\n  -H "Content-Type: application/json" \\\n  --data \'{\n    "name": "Washed Colombia under 6.50",\n    "criteria": {\n      "country": "Colombia",\n      "processing_base_method": "Washed",\n      "max_price_per_lb": 6.5,\n      "stocked_only": true\n    }\n  }\''
+					}
+				]
+			},
+			{
+				title: 'Manual matches',
+				body: [
+					'GET /v1/procurement/briefs/{id}/matches accepts page and limit query parameters. limit defaults to 25 and is capped at 100.',
+					'The response includes data rows in the catalog resource shape with matchReasons, truthful pagination, generatedAt, the saved brief, the criteria used, and limitations explaining that deterministic matches are not quality rankings.'
+				],
+				codeBlocks: [
+					{
+						label: 'Run one brief manually',
+						language: 'bash',
+						code: 'curl "https://purveyors.io/v1/procurement/briefs/00000000-0000-4000-8000-000000000000/matches?limit=10" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"'
+					},
+					{
+						label: 'Invalid criteria response',
+						language: 'json',
+						code: '{\n  "error": "Invalid criteria",\n  "message": "Sourcing brief criteria contains unsupported or invalid fields",\n  "details": {\n    "issues": [\n      {\n        "field": "unsupported_filter",\n        "message": "unsupported_filter is not supported by sourcing brief criteria"\n      }\n    ],\n    "allowedFields": ["country", "region", "processing", "processing_base_method", "max_price_per_lb", "stocked_only", "wholesale_only", "stocked_days"]\n  }\n}'
+					}
+				]
+			}
+		],
+		related: [
+			{
+				href: '/docs/api/catalog',
+				label: 'Catalog API',
+				description: 'The current catalog rows matched by saved procurement criteria.'
+			},
+			{
+				href: '/docs/api/catalog-similarity',
+				label: 'Catalog similarity',
+				description:
+					'Beta matching primitives that remain separate from deterministic sourcing-brief matches.'
+			},
+			{
+				href: '/docs/api/errors',
+				label: 'Errors and auth',
+				description: 'Shared auth, entitlement, validation, and rate-limit conventions.'
+			}
+		]
+	},
+
+	{
+		section: 'api',
+		slug: 'platform',
+		title: 'Internal app route matrix',
+		summary:
+			'Authenticated and internal /api/* routes that power the Purveyors product surface, grouped by capability and stability.',
+		eyebrow: 'Internal app routes',
+		intro: [
+			'This page distinguishes the stable external v1 contracts, beta catalog endpoints, legacy aliases, internal app APIs, Console control-plane routes, and admin-only surfaces.',
+			'Most /api/* routes are not public compatibility promises. Document them accurately, but keep external integrations pointed at /v1/catalog, /v1/catalog/{id}/similar when matching access is available, /v1/price-index for aggregate market data, or @purveyors/cli whenever possible.'
+		],
+		sections: [
+			{
+				title: 'Public v1 and legacy route families',
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Stability', 'Notes'],
+					rows: [
+						[
+							'/v1',
+							'GET',
+							'Anonymous, session, or API key',
+							'Namespace descriptor',
+							'Advertises the v1 namespace and stable catalog and price-index resources.'
+						],
+						[
+							'/v1/catalog',
+							'GET',
+							'Anonymous, session, or API key',
+							'Stable external contract',
+							'Canonical catalog resource for normalized listing reads, proof summaries, plan caps, and API-key rate-limit headers.'
+						],
+						[
+							'/v1/catalog/{id}/similar',
+							'GET',
+							'Member session or API key with API Origin or Enterprise plus catalog:read',
+							'Beta external contract',
+							'Catalog similarity candidates with target, grouped canonical candidates vs similar recommendations, score dimensions, identity blocker reasons, price deltas, and cautious beta copy.'
+						],
+						[
+							'/v1/procurement/briefs',
+							'GET, POST',
+							'Member session or API key with API Origin or Enterprise plus catalog:read',
+							'Stable external procurement seed',
+							'Creates and lists user-owned saved sourcing criteria. /v1/procurement/briefs/{id} gets one brief, and /v1/procurement/briefs/{id}/matches runs deterministic catalog matches.'
+						],
+						[
+							'/v1/price-index',
+							'GET',
+							'API key with Parchment Intelligence access',
+							'Stable external aggregate contract',
+							'Reads aggregate price_index_snapshots only. No raw supplier rows, CSV, alerts, watchlists, or webhooks.'
+						],
+						[
+							'/api/catalog-api',
+							'GET',
+							'API key only',
+							'Deprecated legacy alias',
+							'API-key-only alias to /v1/catalog. Always public-only. Sunset: Dec 31 2026.'
+						]
+					]
+				}
+			},
+			{
+				title: 'Catalog and discovery app routes',
 				table: {
 					headers: ['Route', 'Methods', 'Auth', 'Stability', 'Notes'],
 					rows: [
@@ -737,9 +1245,9 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/artisan-import',
 							'POST',
-							'Session',
+							'Session + roast:write',
 							'Internal product route',
-							'Accepts multipart form-data with file plus roastId. Supported formats: .alog, .alog.json, .json.'
+							'Accepts multipart form-data with file plus roastId. Supported formats: .alog, .alog.json, .json. Forwards to the canonical Parchment API, which enforces the roast:write entitlement; signed-in callers without it receive a 403.'
 						],
 						[
 							'/api/roast-chart-data',
@@ -758,9 +1266,9 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/clear-roast',
 							'DELETE',
-							'Session + ownership',
+							'Session + roast:write',
 							'Internal maintenance helper',
-							'Requires roast_id query param. Clears imported Artisan data and resets related fields.'
+							'Requires roast_id query param. Forwards to the canonical Parchment API, which clears imported Artisan data and resets related fields.'
 						],
 						[
 							'/api/ai/classify-roast',
@@ -780,49 +1288,49 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/chat',
 							'POST',
-							'Member session',
+							'Chat access session',
 							'Internal product route',
 							'Streams AI chat responses with workspace context and tool execution.'
 						],
 						[
 							'/api/chat/execute-action',
 							'POST',
-							'Member session',
+							'Chat access session',
 							'Internal product route',
-							'Executes a constrained set of proposal-card actions: add_bean_to_inventory, update_bean, create_roast_session, update_roast_notes, and record_sale.'
+							'Executes a constrained set of proposal-card actions. Parchment users can add/update beans; Mallard-only roast, tasting, and sales actions require Mallard Studio membership.'
 						],
 						[
 							'/api/workspaces',
 							'GET POST',
-							'Member session',
+							'Chat access session',
 							'Internal product route',
-							'Lists or creates workspaces. New workspaces default to title "New Workspace" and type "general" when omitted.'
+							'Returns the user\'s single chat workspace or creates one if none exists. New workspaces default to title "Coffee" and type "general" when omitted.'
 						],
 						[
 							'/api/workspaces/[id]',
-							'GET PUT DELETE',
-							'Member session + ownership',
+							'GET PUT',
+							'Chat access session + ownership',
 							'Internal product route',
-							'GET returns workspace details plus up to 50 messages and updates last_accessed_at.'
+							'GET returns workspace details plus up to 50 messages and updates last_accessed_at. PUT updates title/type metadata. DELETE is disabled and returns 405 in the single-chat model.'
 						],
 						[
 							'/api/workspaces/[id]/messages',
 							'POST DELETE',
-							'Member session + ownership',
+							'Chat access session + ownership',
 							'Internal product route',
 							'POST accepts one message or an array and persists parts plus canvas mutations.'
 						],
 						[
 							'/api/workspaces/[id]/canvas',
 							'POST PUT',
-							'Member session + ownership',
+							'Chat access session + ownership',
 							'Internal product route',
 							'Persists canvas_state; POST exists for sendBeacon compatibility.'
 						],
 						[
 							'/api/workspaces/[id]/summarize',
 							'POST',
-							'Member session + ownership',
+							'Chat access session + ownership',
 							'Internal product route',
 							'Compacts recent conversation history into context_summary using the model backend. Returns skipped: true when there are fewer than four saved messages.'
 						]
@@ -861,17 +1369,63 @@ const docsPages: DocsPage[] = [
 				]
 			},
 			{
+				title: 'Metadata, auth handoff, and crawler routes',
+				body: [
+					'These routes are public or browser-reachable support surfaces. They improve agent onboarding, search discovery, feed subscriptions, OAuth reliability, or browser tooling compatibility, but they are not public data APIs.'
+				],
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Stability', 'Notes'],
+					rows: [
+						[
+							'/llms.txt',
+							'GET',
+							'Anonymous',
+							'Agent discoverability metadata',
+							'Plain-text overview for agents with links to public pages, docs, API contracts, blog posts, and supported workflows.'
+						],
+						[
+							'/sitemap.xml',
+							'GET',
+							'Anonymous',
+							'Crawler metadata',
+							'XML sitemap covering public pages, published blog posts, and the docs navigation generated from DOCS_NAV.'
+						],
+						[
+							'/blog/feed.xml',
+							'GET',
+							'Anonymous',
+							'RSS feed',
+							'RSS 2.0 feed for published blog posts. It is content syndication, not a catalog or analytics API.'
+						],
+						[
+							'/auth/callback',
+							'GET',
+							'OAuth code',
+							'Auth handoff route',
+							'Exchanges a Supabase auth code for a session, sanitizes next to an internal path, and redirects to the target or /auth/auth-code-error.'
+						],
+						[
+							'/auth/cli-callback',
+							'GET',
+							'OAuth redirect target',
+							'CLI login helper page',
+							'Browser page that lets remote and headless CLI flows copy the full callback URL back into purvey auth login.'
+						],
+						[
+							'/.well-known/appspecific/com.chrome.devtools.json',
+							'GET',
+							'Anonymous',
+							'Browser tooling compatibility',
+							'Returns an empty JSON object for Chrome DevTools app-specific probing. It has no product data contract.'
+						]
+					]
+				}
+			},
+			{
 				title: 'Deprecated tool routes',
 				table: {
 					headers: ['Route', 'Methods', 'Auth', 'Status', 'Replacement direction'],
 					rows: [
-						[
-							'/api/tools/coffee-catalog',
-							'POST',
-							'Member session',
-							'Deprecated',
-							'Prefer direct CLI-library integration or /v1/catalog for external reads.'
-						],
 						[
 							'/api/tools/green-coffee-inv',
 							'POST',
@@ -1032,7 +1586,7 @@ const docsPages: DocsPage[] = [
 		slug: 'roast-profiles',
 		title: 'Roast profile routes',
 		summary:
-			'Create, import, analyze, and clear roast profiles through session-authenticated platform endpoints.',
+			'Create, import, analyze, and clear roast profiles through session-authenticated internal endpoints.',
 		eyebrow: 'Roasting',
 		intro: [
 			'Roast routes cover CRUD for roast profiles, Artisan import, chart telemetry, chart display settings, data clearing, and AI-assisted classification.',
@@ -1053,8 +1607,8 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/artisan-import',
 							'POST',
-							'Session',
-							'Import an Artisan roast file into an existing roast profile'
+							'Session + roast:write',
+							'Import an Artisan roast file into an existing roast profile via the canonical Parchment API (requires the roast:write entitlement)'
 						],
 						[
 							'/api/roast-chart-data',
@@ -1085,7 +1639,7 @@ const docsPages: DocsPage[] = [
 					'PUT /api/roast-profiles requires an id query parameter. DELETE accepts either id or batch name query parameters.',
 					'POST /api/artisan-import expects multipart form-data with file and roastId. Supported file extensions are .alog, .alog.json, and .json.',
 					'GET /api/roast-chart-data requires roastId and returns sampled telemetry tuned for charting, including performance metadata and derived ranges.',
-					'DELETE /api/clear-roast requires roast_id and verifies ownership before deleting imported telemetry, events, and log rows.',
+					'DELETE /api/clear-roast requires roast_id and forwards to Parchment, which enforces ownership plus roast:write before deleting imported telemetry, events, and log rows.',
 					'POST /api/ai/classify-roast expects alogMetadata plus an inventory array and returns { match } or { match: null }.'
 				]
 			},
@@ -1134,16 +1688,20 @@ const docsPages: DocsPage[] = [
 			'Analytics is a product surface on Purveyors, not a standalone public API family, with session-auth roast analysis helpers behind the scenes.',
 		eyebrow: 'Market intelligence',
 		intro: [
-			'The /analytics page delivers market intelligence derived from the same normalized catalog that powers the public API. Public visitors can browse major market summaries, while deeper product experiences layer on top of authenticated access and platform state.',
-			'Analytics is important to the platform story, but it is not currently sold as a separate API-key namespace. When documenting analytics, keep the distinction between product UI and public REST contract explicit.'
+			'The /analytics page delivers market intelligence derived from the same normalized catalog that powers the public API. Public visitors can browse the core market overview: origin price trends, processing mix, origin price ranges, and the supplier/listing/origin stat bar. Parchment Intelligence users get the deeper supplier comparison, supplier health, arrivals, delistings, and extended trend modules.',
+			'Analytics is important to the product story, but only the aggregate /v1/price-index subset is exposed as a stable API-key contract. Keep the distinction between product UI, internal helpers, and public REST contract explicit.'
 		],
 		sections: [
 			{
 				title: 'What is public today',
 				bullets: [
-					'/analytics is a web product surface, not an API-key endpoint family.',
+					'/analytics is a web product surface, while /v1/price-index is the API-key contract for the aggregate price-index subset backed by price_index_snapshots.',
+					'/v1/price-index intentionally starts with JSON pagination only. Do not document CSV, alerts, watchlists, webhooks, or supplier-level raw rows as supported.',
+					'Logged-out visitors and logged-in viewers share the same core analytics view. The server resolves Parchment Intelligence access separately and uses it to decide whether to load the gated modules.',
+					'Public chart data includes 90 days of price-index snapshots, current stocked processing distribution, current origin price ranges, recent-arrival/delisting counts for the upgrade preview, and the latest market summary counts.',
+					'Parchment Intelligence expands the same page to 365 days of snapshot history plus supplier comparison, supplier health, recent arrivals, recent delistings, and origin-level aggregate modules.',
 					'The public catalog and public analytics should be cross-linked because they describe the same coffee market from different angles: raw records versus curated analysis.',
-					'Authenticated and premium analytics views may expose deeper app features, but they still ride through the first-party product rather than a stable public REST schema.'
+					'Authenticated and premium analytics views may expose deeper app features, but only aggregate price-index snapshots currently ride through the stable public REST schema.'
 				]
 			},
 			{
@@ -1213,7 +1771,7 @@ const docsPages: DocsPage[] = [
 			'Stripe lifecycle routes, Console-adjacent account flows, webhook processing, and admin-only maintenance endpoints.',
 		eyebrow: 'Operations',
 		intro: [
-			'The billing and admin layer sits behind the Parchment Console and subscription flows. These routes are operational, not public platform APIs.',
+			'The billing and admin layer sits behind the Parchment Console and subscription flows. These routes are operational, not public APIs.',
 			'Most billing routes require a user session. The Stripe webhook requires a valid Stripe signature. Admin routes should be treated as support and maintenance surfaces.'
 		],
 		sections: [
@@ -1295,7 +1853,30 @@ const docsPages: DocsPage[] = [
 							'Deactivate an owned API key by keyId'
 						]
 					]
-				}
+				},
+				body: [
+					'These are Console control-plane routes, not public API contracts. A browser session is required because key creation and deactivation mutate the signed-in account.',
+					'generate requires a non-empty JSON name field and returns apiKey only in the creation response. Store it immediately; later Console views should show metadata, not the secret.',
+					'deactivate requires keyId and verifies ownership before marking a key inactive. There is no public delete-by-secret flow.'
+				],
+				codeBlocks: [
+					{
+						label: 'Generate an API key from the signed-in Console session',
+						language: 'bash',
+						code: `curl -X POST https://purveyors.io/api-dashboard/keys/generate \
+  -H "Content-Type: application/json" \
+  -H "Cookie: <signed-in session cookie>" \
+  -d '{"name":"local sync job"}'`
+					},
+					{
+						label: 'Deactivate an owned key',
+						language: 'bash',
+						code: `curl -X POST https://purveyors.io/api-dashboard/keys/deactivate \
+  -H "Content-Type: application/json" \
+  -H "Cookie: <signed-in session cookie>" \
+  -d '{"keyId":"api_key_row_id"}'`
+					}
+				]
 			},
 			{
 				title: 'Admin routes',
@@ -1462,7 +2043,7 @@ const docsPages: DocsPage[] = [
 					'/api-dashboard/keys/generate returns the plaintext apiKey only at creation time. Plan Console UX and support docs around that one-time reveal.',
 					'Cookies only matter when they resolve to a valid first-party session. A stray Cookie header is not part of the public API contract.',
 					'/api/catalog-api is a deprecated API-key-only alias. It should not be treated as an anonymous or session-friendly discovery route.',
-					'Workspace and chat routes mostly use member-role enforcement, so 403 is often the expected failure for logged-in non-members.',
+					'Workspace and chat routes require chat access, which can come from Mallard Studio membership or Parchment Intelligence entitlement; logged-in users with neither should expect a 403.',
 					'AI-backed helpers can return upstream rate-limit or provider errors that are operational rather than domain-model failures.'
 				]
 			},
@@ -1508,7 +2089,7 @@ const docsPages: DocsPage[] = [
 			'The Parchment CLI is a terminal interface for catalog queries, inventory management, roasting workflows, scripting, and agent automation.',
 		eyebrow: '@purveyors/cli',
 		intro: [
-			'The Parchment CLI (purvey) provides terminal access to the same coffee domain model as the web app. Catalog commands require an authenticated viewer session even though GET /v1/catalog supports anonymous and API-key access. Inventory, roast, sales, and tasting commands additionally require the member role.',
+			'The Parchment CLI (purvey) provides terminal access to the same coffee domain model as the web app. Catalog commands require an authenticated viewer session even though GET https://api.purveyors.io/v1/catalog supports anonymous and API-key access. Inventory, roast, sales, and tasting commands additionally require the member role.',
 			'Not every command requires auth. auth, config, context, and manifest are onboarding or local utility surfaces. purvey context is the dense human-readable reference, while purvey manifest is the preferred machine-readable contract.'
 		],
 		sections: [
@@ -1528,6 +2109,7 @@ const docsPages: DocsPage[] = [
 				],
 				bullets: [
 					'Use purvey auth login for browser OAuth or purvey auth login --headless on servers, CI, and agent hosts.',
+					'Headed purvey auth login also supports a pasted callback URL when a browser opens on a different machine, localhost is unreachable, or the automatic callback fails. That manual fallback is intentional for SSH, containers, and agent hosts, not a degraded path.',
 					'Run purvey auth status to confirm both session health and current role before scripting against viewer-only or member-only commands.',
 					'Use purvey manifest when a wrapper needs the preferred machine-readable contract. Use purvey context when a human or model should read the dense reference text first, or use purvey context --json / --pretty when an existing caller needs manifest-parity output.'
 				]
@@ -1552,7 +2134,7 @@ const docsPages: DocsPage[] = [
 					tone: 'note',
 					title:
 						'Catalog commands are authenticated, even though the HTTP API supports anonymous reads',
-					body: 'The CLI intentionally requires a signed-in viewer session for catalog commands so terminal workflows stay account-linked and predictable. For anonymous discovery or API-key production integrations, use GET /v1/catalog instead of shelling out to the CLI.'
+					body: 'The CLI intentionally requires a signed-in viewer session for catalog commands so terminal workflows stay account-linked and predictable. For anonymous discovery or API-key production integrations, use GET https://api.purveyors.io/v1/catalog instead of shelling out to the CLI.'
 				}
 			},
 			{
@@ -1575,12 +2157,12 @@ const docsPages: DocsPage[] = [
 							'Viewer session required'
 						],
 						[
-							'Anonymous GET /v1/catalog',
+							'Anonymous GET https://api.purveyors.io/v1/catalog',
 							'The goal is public discovery, evaluation, or a zero-setup demo',
 							'None'
 						],
 						[
-							'API-key GET /v1/catalog',
+							'API-key GET https://api.purveyors.io/v1/catalog',
 							'The integration needs production usage visibility, quotas, or server-to-server auth',
 							'Bearer API key required'
 						],
@@ -1592,7 +2174,7 @@ const docsPages: DocsPage[] = [
 					]
 				},
 				bullets: [
-					'CLI login is intentional product behavior, not a contradiction of the HTTP API. The CLI is an account-linked tool surface; /v1/catalog is the public network surface.'
+					'CLI login is intentional product behavior, not a contradiction of the HTTP API. The CLI is an account-linked tool surface; https://api.purveyors.io/v1/catalog is the public network surface.'
 				]
 			}
 		],
@@ -1608,9 +2190,10 @@ const docsPages: DocsPage[] = [
 				description: 'Text-first onboarding, manifest output, and wrapper guidance for agents.'
 			},
 			{
-				href: '/docs/api/catalog',
-				label: 'Catalog API docs',
-				description: 'The HTTP endpoint that complements the CLI.'
+				href: 'https://api.purveyors.io/docs',
+				label: 'Parchment API reference',
+				description:
+					'The generated OpenAPI reference for the deployed Parchment API that complements the CLI.'
 			}
 		]
 	},
@@ -1636,7 +2219,8 @@ const docsPages: DocsPage[] = [
 					}
 				],
 				bullets: [
-					'purvey auth login launches the browser OAuth flow. purvey auth login --headless prints a URL and expects a pasted callback URL, which is better for agents and remote hosts.',
+					'purvey auth login launches the browser OAuth flow. If the browser cannot return to the local callback server, paste the full callback URL into the waiting terminal; the command keeps listening after invalid pasted URLs so you can retry.',
+					'purvey auth login --headless prints a URL and expects a pasted callback URL, which is better for agents, CI, containers, and remote hosts.',
 					'purvey auth status does not require an existing valid session. It reports authenticated state, role, and token timing when available.',
 					'Catalog commands require the viewer role. Inventory, roast, sales, and tasting commands require the member role.'
 				]
@@ -1712,7 +2296,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Catalog data',
 		intro: [
 			'Catalog commands are the fastest way to explore the green coffee feed from the terminal when the workflow is tied to a signed-in account. They require an authenticated viewer session; run purvey auth login before using them.',
-			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits. If the goal is anonymous discovery or API-key integration, use GET /v1/catalog instead. See the CLI overview for install and login instructions.'
+			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits. purvey catalog similar <id> mirrors the account-linked matching workflow exposed by the beta https://api.purveyors.io/v1/catalog/{id}/similar endpoint, but the CLI uses viewer-session auth instead of API keys. If the goal is anonymous discovery or API-key integration, use the Parchment HTTP API instead. See the CLI overview for install and login instructions.'
 		],
 		sections: [
 			{
@@ -1729,6 +2313,15 @@ const docsPages: DocsPage[] = [
 						language: 'bash',
 						code: 'purvey catalog search --origin "Ethiopia" --process "natural" --pretty\npurvey catalog search --variety "Heirloom" --stocked --pretty\npurvey catalog search --drying-method "raised bed" --stocked --limit 20\npurvey catalog search --stocked-days 30 --sort newest --pretty\npurvey catalog search --ids "1182,1183,1200" --pretty\npurvey catalog similar 1182 --threshold 0.85 --stocked-only --pretty'
 					}
+				]
+			},
+			{
+				title: 'Similar matching',
+				bullets: [
+					'purvey catalog similar <id> finds beta similar-coffee candidates for one catalog ID. Treat results as leads for comparison, not canonical identity claims.',
+					'--threshold sets the minimum similarity score. The HTTP beta endpoint accepts 0.5 through 0.99 and defaults to 0.7.',
+					'--stocked-only limits matches to currently stocked coffees. The HTTP endpoint defaults stocked_only to true.',
+					'When an integration needs API-key access, rate-limit headers, or explicit beta response metadata, call GET https://api.purveyors.io/v1/catalog/{id}/similar directly.'
 				]
 			},
 			{
@@ -1769,6 +2362,11 @@ const docsPages: DocsPage[] = [
 				href: '/docs/api/catalog',
 				label: 'HTTP catalog docs',
 				description: 'Compare CLI access with the API-key endpoint.'
+			},
+			{
+				href: '/docs/api/catalog-similarity',
+				label: 'Catalog similarity API',
+				description: 'The beta HTTP matching endpoint for member sessions and paid API keys.'
 			},
 			{
 				href: '/docs/cli/overview',
@@ -1879,6 +2477,7 @@ const docsPages: DocsPage[] = [
 					'--coffee-id always refers to green_coffee_inv.id (use purvey inventory list to find IDs), while --catalog-id on roast list cross-references the underlying coffee_catalog row.',
 					'--roast-id filters by the exact roast profile ID while keeping the list output shape, which is useful in scripts that already expect arrays.',
 					'Import extracts roast curves, events, and milestone timing from .alog files.',
+					'Interactive file and directory prompts normalize pasted path input: surrounding quotes are removed, shell-escaped spaces and common special characters are unescaped, and Windows or UNC path separators are preserved.',
 					'Interactive --form mode provides a guided workflow for create, import, and watch setup. On roast watch, --auto-match and --coffee-id are mutually exclusive, session state is saved for --resume, and the command runs until interrupted.'
 				]
 			}

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+
 	let { height = '400px', title = 'Loading chart...' } = $props<{
 		height?: string;
 		title?: string;
@@ -6,10 +8,10 @@
 </script>
 
 <div
-	class="animate-pulse rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light"
+	class="animate-pulse rounded-lg bg-surface-panel p-4 ring-1 ring-line"
 	style="height: {height}"
 >
-	<div class="mb-4 h-6 w-1/3 rounded bg-background-tertiary-light opacity-50"></div>
+	<Skeleton class="mb-4 h-6 w-1/3 opacity-50" />
 
 	<!-- Chart area skeleton -->
 	<div class="relative h-full">
@@ -17,19 +19,19 @@
 		<div class="absolute left-0 top-0 flex h-full flex-col justify-between">
 			<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 			{#each Array(5) as _}
-				<div class="h-4 w-8 rounded bg-background-tertiary-light opacity-30"></div>
+				<Skeleton class="h-4 w-8 opacity-30" />
 			{/each}
 		</div>
 
 		<!-- Chart content -->
 		<div class="ml-12 h-full">
 			<!-- Chart lines -->
-			<div class="relative h-full w-full rounded bg-background-tertiary-light opacity-20">
+			<div class="relative h-full w-full rounded bg-accent opacity-20">
 				<!-- Simulated chart lines -->
 				<div class="absolute inset-4">
-					<div class="h-0.5 w-full bg-background-tertiary-light opacity-40" style="top: 25%"></div>
-					<div class="h-0.5 w-full bg-background-tertiary-light opacity-40" style="top: 50%"></div>
-					<div class="h-0.5 w-full bg-background-tertiary-light opacity-40" style="top: 75%"></div>
+					<div class="h-0.5 w-full bg-accent opacity-40" style="top: 25%"></div>
+					<div class="h-0.5 w-full bg-accent opacity-40" style="top: 50%"></div>
+					<div class="h-0.5 w-full bg-accent opacity-40" style="top: 75%"></div>
 				</div>
 			</div>
 
@@ -37,14 +39,14 @@
 			<div class="mt-2 flex justify-between">
 				<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 				{#each Array(6) as _}
-					<div class="h-4 w-8 rounded bg-background-tertiary-light opacity-30"></div>
+					<Skeleton class="h-4 w-8 opacity-30" />
 				{/each}
 			</div>
 		</div>
 	</div>
 
 	<!-- Loading text -->
-	<div class="mt-4 text-center text-sm text-text-secondary-light">
+	<div class="mt-4 text-center text-sm text-muted">
 		{title}
 	</div>
 </div>

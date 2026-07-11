@@ -6,14 +6,19 @@ export interface Suggestion {
 	icon?: string; // SVG path data
 }
 
+export interface SuggestionAccessContext {
+	canUseMallardWorkspaces?: boolean;
+}
+
 /**
  * Generates context-aware suggestions based on workspace type,
- * canvas state, and whether the chat has messages.
+ * canvas state, whether the chat has messages, and which workflows are available.
  */
 export function getSuggestions(
 	workspaceType: string,
 	canvasBlocks: CanvasBlock[],
-	hasMessages: boolean
+	hasMessages: boolean,
+	access: SuggestionAccessContext = { canUseMallardWorkspaces: true }
 ): Suggestion[] {
 	const suggestions: Suggestion[] = [];
 
@@ -32,12 +37,20 @@ export function getSuggestions(
 	// Deduplicate by label and limit to 4
 	const seen = new Set<string>();
 	return suggestions
+		.filter((s) => isSuggestionAvailable(s, access))
 		.filter((s) => {
 			if (seen.has(s.label)) return false;
 			seen.add(s.label);
 			return true;
 		})
 		.slice(0, 4);
+}
+
+function isSuggestionAvailable(suggestion: Suggestion, access: SuggestionAccessContext): boolean {
+	if (access.canUseMallardWorkspaces !== false) return true;
+
+	const haystack = `${suggestion.label} ${suggestion.text}`.toLowerCase();
+	return !['roast', 'sale', 'profit'].some((term) => haystack.includes(term));
 }
 
 function getCanvasSuggestions(blocks: CanvasBlock[]): Suggestion[] {

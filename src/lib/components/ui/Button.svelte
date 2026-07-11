@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 
-	// Button component following the Coffee App UI Framework
+	// Button component following the Purveyors UI framework
 	let {
 		variant = 'primary',
 		size = 'default',
@@ -22,14 +22,13 @@
 
 	// Base button classes following UI framework
 	const baseClasses =
-		'rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+		'rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
 
 	// Variant classes
 	const variantClasses: Record<'primary' | 'secondary' | 'danger', string> = {
-		primary: 'bg-background-tertiary-light text-white hover:bg-opacity-90',
-		secondary:
-			'border border-background-tertiary-light text-background-tertiary-light hover:bg-background-tertiary-light hover:text-white',
-		danger: 'border border-red-600 text-red-600 hover:bg-red-600 hover:text-white'
+		primary: 'bg-accent text-ink hover:bg-accent/85',
+		secondary: 'border border-accent text-ink hover:bg-accent hover:text-ink',
+		danger: 'border border-danger text-danger hover:bg-danger hover:text-white'
 	};
 
 	// Size classes

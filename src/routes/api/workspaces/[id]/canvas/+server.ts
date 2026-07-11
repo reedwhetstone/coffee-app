@@ -1,16 +1,41 @@
 import { json } from '@sveltejs/kit';
-import { requireMemberRole } from '$lib/server/auth';
+import { z } from 'zod';
+import { requireChatAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
+import type { Json } from '$lib/types/database.types';
+
+const MAX_CANVAS_JSON_CHARS = 200000;
+
+const canvasBodySchema = z.object({
+	canvas_state: z.unknown().optional()
+});
+
+function jsonSize(value: unknown): number {
+	return JSON.stringify(value ?? null).length;
+}
 
 async function persistCanvas(event: Parameters<RequestHandler>[0]) {
-	const { user } = await requireMemberRole(event);
+	const { user } = await requireChatAccess(event);
 	const workspaceId = event.params.id;
-	const body = await event.request.json();
+	const body = await event.request.json().catch(() => null);
+
+	const parsed = canvasBodySchema.safeParse(body);
+	if (!parsed.success) {
+		return json({ error: 'Invalid JSON payload' }, { status: 400 });
+	}
+
+	const canvasState = parsed.data.canvas_state ?? {};
+	if (jsonSize(canvasState) > MAX_CANVAS_JSON_CHARS) {
+		return json(
+			{ error: `canvas_state exceeds ${MAX_CANVAS_JSON_CHARS} serialized characters` },
+			{ status: 413 }
+		);
+	}
 
 	const { error } = await event.locals.supabase
 		.from('workspaces')
 		.update({
-			canvas_state: body.canvas_state || {},
+			canvas_state: canvasState as Json,
 			last_accessed_at: new Date().toISOString()
 		})
 		.eq('id', workspaceId)

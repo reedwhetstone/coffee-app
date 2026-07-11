@@ -31,6 +31,7 @@ The biggest flaw in most AI chat products is not that they lack better models. I
 ## External References
 
 1. **Kirsh and Maglio, "On Distinguishing Epistemic from Pragmatic Action" (Cognitive Science, 1994).**
+
    - URL: https://philpapers.org/rec/KIRODE
    - Key quote: "use the world to improve cognition"
    - Why it matters: The paper gives the post its cognitive anchor. People do not only act to change the world; they also act to simplify thinking. A canvas makes AI interaction partly epistemic: arrange the coffee cards, compare the roast curves, expose what the next decision actually is.

@@ -1,0 +1,396 @@
+import { describe, expect, it } from 'vitest';
+import { catalogSimilarityCalibrationExamples } from './__fixtures__/catalogSimilarityCalibration';
+import {
+	applyCatalogSupplierDiversity,
+	classifyCatalogMatch,
+	deriveCalibrationBand,
+	getPriceFromTiersAtQuantity,
+	normalizeCanonicalPricing,
+	isSameSupplierSource,
+	normalizeSimilarityRow,
+	parseCatalogSimilarityQuery
+} from './catalogSimilarity';
+
+describe('catalog similarity helpers', () => {
+	it('prefers canonical price_per_lb before tier and legacy cost fallback', () => {
+		expect(
+			normalizeCanonicalPricing({
+				price_per_lb: 7.5,
+				price_tiers: [{ min_lbs: 1, price: 7.25 }],
+				cost_lb: 6.1
+			})
+		).toMatchObject({ baseline_price_per_lb: 7.5, baseline_source: 'price_per_lb' });
+
+		expect(
+			normalizeCanonicalPricing({
+				price_per_lb: null,
+				price_tiers: [{ min_lbs: 1, price: 7.25 }],
+				cost_lb: 6.1
+			})
+		).toMatchObject({ baseline_price_per_lb: 7.25, baseline_source: 'price_tiers' });
+
+		expect(
+			normalizeCanonicalPricing({ price_per_lb: null, price_tiers: null, cost_lb: 6.1 })
+		).toMatchObject({ baseline_price_per_lb: 6.1, baseline_source: 'cost_lb' });
+	});
+
+	it('keeps price tiers available for future side-by-side comparison', () => {
+		const priceTiers = [
+			{ min_lbs: 1, price: 8.5 },
+			{ min_lbs: 5, price: 7.9 }
+		];
+
+		expect(getPriceFromTiersAtQuantity(priceTiers, 1)).toBe(8.5);
+		expect(getPriceFromTiersAtQuantity(priceTiers, 5)).toBe(7.9);
+		expect(
+			normalizeCanonicalPricing({ price_per_lb: null, price_tiers: priceTiers, cost_lb: null })
+		).toMatchObject({
+			price_tiers: priceTiers,
+			baseline_quantity_lbs: 1
+		});
+	});
+
+	it('does not treat higher-minimum tiers as a 1 lb baseline', () => {
+		expect(getPriceFromTiersAtQuantity([{ min_lbs: 5, price: 6.25 }], 1)).toBeNull();
+		expect(
+			normalizeCanonicalPricing({
+				price_per_lb: null,
+				price_tiers: [{ min_lbs: 5, price: 6.25 }],
+				cost_lb: null
+			})
+		).toMatchObject({ baseline_price_per_lb: null, baseline_source: null });
+		expect(
+			normalizeCanonicalPricing({
+				price_per_lb: null,
+				price_tiers: [{ min_lbs: 5, price: 6.25 }],
+				cost_lb: 7
+			})
+		).toMatchObject({ baseline_price_per_lb: 7, baseline_source: 'cost_lb' });
+	});
+
+	it('uses raw scores for classification before rounding display scores', () => {
+		const targetPricing = normalizeCanonicalPricing({
+			price_per_lb: 8,
+			price_tiers: null,
+			cost_lb: null
+		});
+
+		const match = normalizeSimilarityRow(
+			{
+				coffee_id: 43,
+				coffee_name: 'Borderline Coffee',
+				source: 'Supplier C',
+				origin: 'Borderline',
+				country: 'Colombia',
+				continent: 'South America',
+				processing: 'Washed',
+				processing_base_method: 'washed',
+				fermentation_type: null,
+				drying_method: null,
+				cost_lb: null,
+				price_per_lb: null,
+				price_tiers: null,
+				stocked: true,
+				avg_similarity: 0.8796,
+				origin_similarity: 0.8996,
+				processing_similarity: 0.8996,
+				tasting_similarity: null,
+				chunk_matches: 2
+			},
+			targetPricing
+		);
+
+		expect(match.score).toMatchObject({
+			average: 0.88,
+			dimensions: { origin: 0.9, processing: 0.9, tasting: null }
+		});
+		expect(match.match).toMatchObject({
+			category: 'similar_profile',
+			confidence: 'medium_beta'
+		});
+	});
+
+	it('normalizes RPC rows with canonical pricing, deltas, dimensions, and confidence copy', () => {
+		const targetPricing = normalizeCanonicalPricing({
+			price_per_lb: null,
+			price_tiers: [{ min_lbs: 1, price: 8 }],
+			cost_lb: 7
+		});
+
+		const match = normalizeSimilarityRow(
+			{
+				coffee_id: 42,
+				coffee_name: 'Ethiopia Guji Natural',
+				source: 'Supplier B',
+				origin: 'Guji',
+				country: 'Ethiopia',
+				continent: 'Africa',
+				processing: 'Natural',
+				processing_base_method: 'natural',
+				fermentation_type: null,
+				drying_method: 'Raised bed',
+				cost_lb: '6.5',
+				price_per_lb: '8.75',
+				price_tiers: [{ min_lbs: 1, price: 8.75 }],
+				stocked: true,
+				avg_similarity: 0.92,
+				origin_similarity: 0.94,
+				processing_similarity: 0.91,
+				tasting_similarity: 0.87,
+				chunk_matches: 3
+			},
+			targetPricing
+		);
+
+		expect(match.pricing).toMatchObject({
+			price_per_lb: 8.75,
+			baseline_price_per_lb: 8.75,
+			baseline_source: 'price_per_lb'
+		});
+		expect(match.compatibility.cost_lb).toBe(6.5);
+		expect(match.price_delta_1lb).toMatchObject({ amount: 0.75, percent: 9.4 });
+		expect(match.score.dimensions).toEqual({ origin: 0.94, processing: 0.91, tasting: 0.87 });
+		expect(match.match).toMatchObject({
+			category: 'likely_same',
+			confidence: 'high_beta',
+			beta: true
+		});
+		expect(match.match.language).toContain('beta confidence');
+	});
+
+	it('blocks identity claims for hard structured conflicts while retaining recommendations', () => {
+		const classification = classifyCatalogMatch({
+			target: {
+				name: 'Colombia Huila Washed',
+				country: 'Colombia',
+				processing: 'Washed',
+				processing_base_method: 'washed',
+				fermentation_type: null
+			},
+			candidate: {
+				name: 'Ethiopia Guji Natural',
+				country: 'Ethiopia',
+				processing: 'Natural',
+				processing_base_method: 'natural',
+				fermentation_type: null
+			},
+			score: { average: 0.94, origin: 0.91, processing: 0.92, chunkMatches: 3 }
+		});
+
+		expect(classification).toMatchObject({
+			kind: 'similar_recommendation',
+			identity_eligibility: 'blocked',
+			blockers: expect.arrayContaining([
+				expect.objectContaining({ code: 'processing_base_method_conflict', severity: 'hard' }),
+				expect.objectContaining({ code: 'country_conflict', severity: 'hard' })
+			])
+		});
+	});
+
+	it('requires structured process evidence before promoting a high score to canonical candidate', () => {
+		const classification = classifyCatalogMatch({
+			target: {
+				name: 'Ethiopia Guji Natural',
+				country: 'Ethiopia',
+				processing: 'Natural',
+				processing_base_method: null,
+				fermentation_type: null
+			},
+			candidate: {
+				name: 'Ethiopia Guji Lot B',
+				country: 'Ethiopia',
+				processing: null,
+				processing_base_method: null,
+				fermentation_type: null
+			},
+			score: { average: 0.97, origin: 0.95, processing: 0.95, chunkMatches: 3 }
+		});
+
+		expect(classification).toMatchObject({
+			kind: 'similar_recommendation',
+			identity_eligibility: 'insufficient_evidence',
+			blockers: [expect.objectContaining({ code: 'insufficient_structured_process' })]
+		});
+	});
+
+	it('promotes high-scoring rows only after identity gates pass', () => {
+		const classification = classifyCatalogMatch({
+			target: {
+				name: 'Ethiopia Guji Natural',
+				country: 'Ethiopia',
+				processing: 'Natural',
+				processing_base_method: 'natural',
+				fermentation_type: null
+			},
+			candidate: {
+				name: 'Ethiopia Guji Natural Lot B',
+				country: 'Ethiopia',
+				processing: 'Natural',
+				processing_base_method: 'natural',
+				fermentation_type: null
+			},
+			score: { average: 0.92, origin: 0.94, processing: 0.91, chunkMatches: 3 }
+		});
+
+		expect(classification).toMatchObject({
+			kind: 'canonical_candidate',
+			identity_eligibility: 'eligible',
+			blockers: []
+		});
+	});
+
+	it('keeps calibrated threshold bands conservative for score-only identity work', () => {
+		expect(
+			deriveCalibrationBand({ average: 0.96, origin: 0.93, processing: 0.92, chunkMatches: 3 })
+		).toBe('auto_link_candidate');
+		expect(
+			deriveCalibrationBand({ average: 0.91, origin: 0.89, processing: 0.88, chunkMatches: 2 })
+		).toBe('likely_same');
+		expect(
+			deriveCalibrationBand({ average: 0.91, origin: 0.72, processing: 0.9, chunkMatches: 3 })
+		).toBe('similar_profile');
+		expect(
+			deriveCalibrationBand({ average: 0.63, origin: 0.7, processing: 0.42, chunkMatches: 2 })
+		).toBe('below_threshold');
+	});
+
+	it('matches the reproducible calibration fixture against score bands and hard identity gates', () => {
+		const evaluated = catalogSimilarityCalibrationExamples.map((example) => {
+			const actualBand = deriveCalibrationBand(example);
+			const classification = classifyCatalogMatch({
+				target: example.target,
+				candidate: example.candidate,
+				score: example
+			});
+			return { ...example, actualBand, classification };
+		});
+
+		expect(evaluated).toEqual(
+			expect.arrayContaining(
+				catalogSimilarityCalibrationExamples.map((example) =>
+					expect.objectContaining({
+						id: example.id,
+						actualBand: example.expectedBand,
+						classification: expect.objectContaining({
+							kind: example.expectedKind,
+							identity_eligibility: example.expectedIdentityEligibility
+						})
+					})
+				)
+			)
+		);
+		expect(
+			evaluated.filter(
+				(example) =>
+					example.classification.kind === 'canonical_candidate' && example.truth !== 'same_bean'
+			)
+		).toHaveLength(0);
+		expect(
+			evaluated.filter(
+				(example) => example.actualBand === 'below_threshold' && example.truth !== 'not_match'
+			)
+		).toHaveLength(0);
+	});
+
+	it('validates threshold, limit, stocked_only, and mode query params', () => {
+		const query = parseCatalogSimilarityQuery(
+			new URL(
+				'https://app.test/v1/catalog/1/similar?threshold=0.82&limit=5&stocked_only=false&mode=likely_same'
+			)
+		);
+
+		expect(query).toEqual({ threshold: 0.82, limit: 5, stockedOnly: false, mode: 'likely_same' });
+		expect(() =>
+			parseCatalogSimilarityQuery(new URL('https://app.test/v1/catalog/1/similar?threshold=0.2'))
+		).toThrow('threshold');
+		expect(() =>
+			parseCatalogSimilarityQuery(new URL('https://app.test/v1/catalog/1/similar?limit=100'))
+		).toThrow('limit');
+		expect(() =>
+			parseCatalogSimilarityQuery(new URL('https://app.test/v1/catalog/1/similar?stocked_only=yes'))
+		).toThrow('stocked_only');
+		expect(() =>
+			parseCatalogSimilarityQuery(new URL('https://app.test/v1/catalog/1/similar?mode=canonical'))
+		).toThrow('mode');
+	});
+});
+
+describe('catalog similarity supplier diversity', () => {
+	function makeMatch(input: {
+		id: number;
+		source: string | null;
+		average: number;
+		sameSupplier: boolean;
+	}) {
+		return {
+			coffee: { id: input.id, source: input.source },
+			score: { average: input.average },
+			match: { same_supplier: input.sameSupplier }
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		} as any;
+	}
+
+	it('flags same-supplier matches case-insensitively and ignores blank sources', () => {
+		expect(isSameSupplierSource('Sweet Maria’s', 'sweet maria’s ')).toBe(true);
+		expect(isSameSupplierSource('Supplier A', 'Supplier B')).toBe(false);
+		expect(isSameSupplierSource(null, 'Supplier B')).toBe(false);
+		expect(isSameSupplierSource('Supplier A', null)).toBe(false);
+		expect(isSameSupplierSource('  ', '  ')).toBe(false);
+	});
+
+	it('caps same-supplier matches so competing suppliers fill the results', () => {
+		const matches = [
+			makeMatch({ id: 1, source: 'Anchor Supplier', average: 0.95, sameSupplier: true }),
+			makeMatch({ id: 2, source: 'Anchor Supplier', average: 0.94, sameSupplier: true }),
+			makeMatch({ id: 3, source: 'Anchor Supplier', average: 0.93, sameSupplier: true }),
+			makeMatch({ id: 4, source: 'Rival One', average: 0.9, sameSupplier: false }),
+			makeMatch({ id: 5, source: 'Rival Two', average: 0.88, sameSupplier: false }),
+			makeMatch({ id: 6, source: 'Rival Three', average: 0.86, sameSupplier: false }),
+			makeMatch({ id: 7, source: 'Rival Four', average: 0.85, sameSupplier: false })
+		];
+
+		const result = applyCatalogSupplierDiversity(matches, 'Anchor Supplier', 4);
+		const ids = result.map((match) => match.coffee.id);
+
+		expect(ids).toHaveLength(4);
+		// Only one same-supplier slot at limit 4 (25% share); the rest are competing suppliers.
+		expect(ids.filter((id) => [1, 2, 3].includes(id))).toHaveLength(1);
+		expect(ids).toContain(4);
+		expect(ids).toContain(5);
+		expect(ids).toContain(6);
+	});
+
+	it('deprioritizes same-supplier matches with a rank penalty even under the cap', () => {
+		const matches = [
+			makeMatch({ id: 1, source: 'Anchor Supplier', average: 0.9, sameSupplier: true }),
+			makeMatch({ id: 2, source: 'Rival One', average: 0.88, sameSupplier: false })
+		];
+
+		const result = applyCatalogSupplierDiversity(matches, 'Anchor Supplier', 2);
+
+		// 0.9 - 0.06 penalty ranks below the 0.88 cross-supplier match.
+		expect(result.map((match) => match.coffee.id)).toEqual([2, 1]);
+	});
+
+	it('backfills with same-supplier matches when cross-supplier supply runs out', () => {
+		const matches = [
+			makeMatch({ id: 1, source: 'Anchor Supplier', average: 0.95, sameSupplier: true }),
+			makeMatch({ id: 2, source: 'Anchor Supplier', average: 0.94, sameSupplier: true }),
+			makeMatch({ id: 3, source: 'Anchor Supplier', average: 0.93, sameSupplier: true }),
+			makeMatch({ id: 4, source: 'Rival One', average: 0.9, sameSupplier: false })
+		];
+
+		const result = applyCatalogSupplierDiversity(matches, 'Anchor Supplier', 4);
+
+		expect(result.map((match) => match.coffee.id).sort()).toEqual([1, 2, 3, 4]);
+	});
+
+	it('returns matches unchanged when the target has no supplier evidence', () => {
+		const matches = [
+			makeMatch({ id: 1, source: 'Supplier A', average: 0.9, sameSupplier: false }),
+			makeMatch({ id: 2, source: 'Supplier B', average: 0.8, sameSupplier: false })
+		];
+
+		expect(applyCatalogSupplierDiversity(matches, null, 1).map((m) => m.coffee.id)).toEqual([1]);
+	});
+});

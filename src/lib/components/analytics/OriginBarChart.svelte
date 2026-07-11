@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { MARKER_PRIMARY, MARKER_SECONDARY } from '$lib/styles/chartColors';
 	import { max } from 'd3-array';
 	import { scaleBand, scaleLinear } from 'd3-scale';
 	import { select } from 'd3-selection';
@@ -173,7 +174,7 @@
 				.attr('y', y)
 				.attr('text-anchor', 'end')
 				.attr('dominant-baseline', 'middle')
-				.attr('fill', 'rgb(107 114 128)')
+				.attr('fill', '#695c4d')
 				.attr('font-size', '12')
 				.text(abbreviateOrigin(row.origin, isNarrow));
 		});
@@ -188,7 +189,7 @@
 			.attr('x2', innerW)
 			.attr('y1', 0)
 			.attr('y2', 0)
-			.attr('stroke', 'rgb(156 163 175)');
+			.attr('stroke', '#a39a8c');
 		tailTicks.forEach((tick) => {
 			const x = xScale(tick);
 			g.append('line')
@@ -196,12 +197,12 @@
 				.attr('x2', x)
 				.attr('y1', 0)
 				.attr('y2', 5)
-				.attr('stroke', 'rgb(156 163 175)');
+				.attr('stroke', '#a39a8c');
 			g.append('text')
 				.attr('x', x)
 				.attr('y', 18)
 				.attr('text-anchor', 'middle')
-				.attr('fill', 'rgb(156 163 175)')
+				.attr('fill', '#a39a8c')
 				.attr('font-size', '11')
 				.text(formatTailTick(tick));
 		});
@@ -258,9 +259,7 @@
 </script>
 
 <div class="flex w-full flex-col">
-	<div
-		class="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-text-secondary-light"
-	>
+	<div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
 		<div>
 			{#if expanded}
 				{#if visibleRows.length > 0}
@@ -281,20 +280,15 @@
 
 	{#if expanded}
 		<div class="mb-3 flex flex-wrap items-start gap-2">
-			<span class="pt-1 text-sm font-medium text-text-secondary-light">Origins:</span>
+			<span class="pt-1 text-sm font-medium text-muted">Origins:</span>
 			<div class="relative">
 				<button
 					type="button"
 					onclick={() => (selectorOpen = !selectorOpen)}
-					class="flex items-center gap-1.5 rounded-md border border-border-light bg-background-secondary-light px-3 py-1.5 text-sm text-text-primary-light transition-colors hover:border-background-tertiary-light"
+					class="flex items-center gap-1.5 rounded-md border border-line bg-surface-panel px-3 py-1.5 text-sm text-ink transition-colors hover:border-accent"
 				>
 					{selectedOrigins.size} of {rankedRows.length} selected
-					<svg
-						class="h-4 w-4 text-text-secondary-light"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
+					<svg class="h-4 w-4 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -305,45 +299,45 @@
 				</button>
 				{#if selectorOpen}
 					<div
-						class="absolute left-0 top-full z-20 mt-1 max-h-72 w-72 overflow-y-auto rounded-lg border border-border-light bg-background-primary-light shadow-lg"
+						class="absolute left-0 top-full z-20 mt-1 max-h-72 w-72 overflow-y-auto rounded-lg border border-line bg-surface-canvas shadow-lg"
 					>
-						<div class="border-b border-border-light px-3 py-2">
-							<div class="mb-1 text-xs text-text-secondary-light">
+						<div class="border-b border-line px-3 py-2">
+							<div class="mb-1 text-xs text-muted">
 								Default selection = top {DEFAULT_VISIBLE_COUNT} origins by bean count.
 							</div>
 							<div class="flex flex-wrap gap-2">
 								<button
 									type="button"
 									onclick={() => setTopOrigins(8)}
-									class="text-xs font-medium text-background-tertiary-light hover:underline"
+									class="text-xs font-medium text-accent hover:underline"
 								>
 									Top 8
 								</button>
 								<button
 									type="button"
 									onclick={() => setTopOrigins(12)}
-									class="text-xs font-medium text-background-tertiary-light hover:underline"
+									class="text-xs font-medium text-accent hover:underline"
 								>
 									Top 12
 								</button>
 								<button
 									type="button"
 									onclick={() => setTopOrigins(20)}
-									class="text-xs font-medium text-background-tertiary-light hover:underline"
+									class="text-xs font-medium text-accent hover:underline"
 								>
 									Top 20
 								</button>
 								<button
 									type="button"
 									onclick={selectAllOrigins}
-									class="text-xs font-medium text-background-tertiary-light hover:underline"
+									class="text-xs font-medium text-accent hover:underline"
 								>
 									All
 								</button>
 								<button
 									type="button"
 									onclick={clearOrigins}
-									class="text-xs font-medium text-red-500 hover:underline"
+									class="text-xs font-medium text-danger hover:underline"
 								>
 									Clear
 								</button>
@@ -354,18 +348,18 @@
 							<button
 								type="button"
 								onclick={() => toggleOrigin(row.origin)}
-								class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-background-secondary-light"
+								class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-panel"
 							>
 								<div
 									class="h-3 w-3 flex-shrink-0 rounded-sm border"
-									class:border-background-tertiary-light={active}
-									class:bg-background-tertiary-light={active}
-									class:border-border-light={!active}
+									class:border-accent={active}
+									class:bg-accent={active}
+									class:border-line={!active}
 								></div>
-								<div class={active ? 'text-text-primary-light' : 'text-text-secondary-light'}>
+								<div class={active ? 'text-ink' : 'text-muted'}>
 									{row.origin}
 								</div>
-								<div class="ml-auto text-xs text-text-secondary-light/60">N {row.sample_size}</div>
+								<div class="ml-auto text-xs text-muted/60">N {row.sample_size}</div>
 							</button>
 						{/each}
 					</div>
@@ -373,29 +367,29 @@
 			</div>
 			{#each visibleRows.slice(0, 8) as row}
 				<span
-					class="inline-flex items-center rounded-full bg-background-secondary-light px-2 py-0.5 text-xs text-text-secondary-light"
+					class="inline-flex items-center rounded-full bg-surface-panel px-2 py-0.5 text-xs text-muted"
 				>
 					{row.origin}
 				</span>
 			{/each}
 			{#if visibleRows.length > 8}
-				<span class="pt-1 text-xs text-text-secondary-light">+{visibleRows.length - 8} more</span>
+				<span class="pt-1 text-xs text-muted">+{visibleRows.length - 8} more</span>
 			{/if}
 		</div>
 	{/if}
 
 	{#if rankedRows.length === 0}
 		<div
-			class="flex h-40 items-center justify-center rounded-lg bg-background-secondary-light text-sm text-text-secondary-light"
+			class="flex h-40 items-center justify-center rounded-lg bg-surface-panel text-sm text-muted"
 		>
 			No origin price data available yet.
 		</div>
 	{:else if visibleRows.length === 0}
 		<div
-			class="flex h-40 flex-col items-center justify-center rounded-lg bg-background-secondary-light px-6 text-center"
+			class="flex h-40 flex-col items-center justify-center rounded-lg bg-surface-panel px-6 text-center"
 		>
-			<p class="text-sm font-medium text-text-secondary-light">No origins selected</p>
-			<p class="mt-1 text-xs text-text-secondary-light">
+			<p class="text-sm font-medium text-muted">No origins selected</p>
+			<p class="mt-1 text-xs text-muted">
 				Choose one or more origins from the selector to render the chart.
 			</p>
 		</div>
@@ -414,7 +408,7 @@
 						y={14}
 						text-anchor="middle"
 						font-size="10"
-						fill="rgb(156 163 175)"
+						fill="#a39a8c"
 					>
 						Price ($/lb)
 					</text>
@@ -429,7 +423,7 @@
 								x2={xScale(tick)}
 								y1={0}
 								y2={innerH}
-								stroke="rgb(156 163 175)"
+								stroke="#a39a8c"
 								stroke-opacity="0.2"
 								stroke-dasharray="4 4"
 							/>
@@ -462,7 +456,7 @@
 								x2={xMax}
 								y1={cy}
 								y2={cy}
-								stroke="rgb(156 163 175)"
+								stroke="#a39a8c"
 								stroke-width="1.5"
 								stroke-opacity="0.6"
 							/>
@@ -471,7 +465,7 @@
 								x2={xMin}
 								y1={cy - 4}
 								y2={cy + 4}
-								stroke="rgb(156 163 175)"
+								stroke="#a39a8c"
 								stroke-width="1.5"
 								stroke-opacity="0.6"
 							/>
@@ -480,7 +474,7 @@
 								x2={xMax}
 								y1={cy - 4}
 								y2={cy + 4}
-								stroke="rgb(156 163 175)"
+								stroke="#a39a8c"
 								stroke-width="1.5"
 								stroke-opacity="0.6"
 							/>
@@ -490,27 +484,21 @@
 								y={cy - yScale.bandwidth() * 0.28}
 								width={Math.max(4, xQ3 - xQ1)}
 								height={yScale.bandwidth() * 0.56}
-								fill="#f59e0b"
+								fill={MARKER_PRIMARY}
 								fill-opacity="0.4"
 								rx="2"
 							/>
 
-							<circle cx={xMedian} {cy} r="5" fill="#f59e0b" />
+							<circle cx={xMedian} {cy} r="5" fill={MARKER_PRIMARY} />
 
 							{#if row.price_median > 0 && Math.abs(row.price_avg - row.price_median) / row.price_median > 0.05}
 								<polygon
 									points="{xMean},{cy - 5} {xMean + 4},{cy} {xMean},{cy + 5} {xMean - 4},{cy}"
-									fill="#14b8a6"
+									fill={MARKER_SECONDARY}
 								/>
 							{/if}
 
-							<text
-								x={innerW + 8}
-								y={cy}
-								dominant-baseline="middle"
-								font-size="10"
-								fill="rgb(107 114 128)"
-							>
+							<text x={innerW + 8} y={cy} dominant-baseline="middle" font-size="10" fill="#695c4d">
 								{row.sample_size}
 							</text>
 						{/each}
@@ -520,48 +508,40 @@
 				{#if tooltip.visible && tooltip.row}
 					{@const row = tooltip.row}
 					<div
-						class="pointer-events-none absolute z-10 rounded-lg border border-border-light bg-background-primary-light px-3 py-2 text-xs shadow-lg"
+						class="pointer-events-none absolute z-10 rounded-lg border border-line bg-surface-canvas px-3 py-2 text-xs shadow-lg"
 						style="left:{Math.min(tooltip.x + 12, Math.max(16, containerW - 210))}px; top:{Math.max(
 							4,
 							Math.min(tooltip.y - 110, chartHeight - 150)
 						)}px; min-width:180px"
 					>
-						<div class="mb-1 font-semibold text-text-primary-light">{row.origin}</div>
-						<div class="space-y-0.5 text-text-secondary-light">
+						<div class="mb-1 font-semibold text-ink">{row.origin}</div>
+						<div class="space-y-0.5 text-muted">
 							<div class="flex justify-between gap-4">
-								<span>Min</span><span class="font-medium text-text-primary-light"
-									>${row.price_min.toFixed(2)}</span
+								<span>Min</span><span class="font-medium text-ink">${row.price_min.toFixed(2)}</span
 								>
 							</div>
 							<div class="flex justify-between gap-4">
-								<span>Q1</span><span class="font-medium text-text-primary-light"
-									>${row.price_q1.toFixed(2)}</span
+								<span>Q1</span><span class="font-medium text-ink">${row.price_q1.toFixed(2)}</span>
+							</div>
+							<div class="flex justify-between gap-4">
+								<span class="font-medium text-warning">Median</span><span
+									class="font-semibold text-warning">${row.price_median.toFixed(2)}</span
 								>
 							</div>
 							<div class="flex justify-between gap-4">
-								<span class="font-medium text-amber-500">Median</span><span
-									class="font-semibold text-amber-500">${row.price_median.toFixed(2)}</span
-								>
-							</div>
-							<div class="flex justify-between gap-4">
-								<span class="text-teal-500">Mean</span><span class="font-medium text-teal-500"
+								<span class="text-chart-teal">Mean</span><span class="font-medium text-chart-teal"
 									>${row.price_avg.toFixed(2)}</span
 								>
 							</div>
 							<div class="flex justify-between gap-4">
-								<span>Q3</span><span class="font-medium text-text-primary-light"
-									>${row.price_q3.toFixed(2)}</span
-								>
+								<span>Q3</span><span class="font-medium text-ink">${row.price_q3.toFixed(2)}</span>
 							</div>
 							<div class="flex justify-between gap-4">
-								<span>Max</span><span class="font-medium text-text-primary-light"
-									>${row.price_max.toFixed(2)}</span
+								<span>Max</span><span class="font-medium text-ink">${row.price_max.toFixed(2)}</span
 								>
 							</div>
-							<div class="mt-1 flex justify-between gap-4 border-t border-border-light pt-1">
-								<span>N beans</span><span class="font-medium text-text-primary-light"
-									>{row.sample_size}</span
-								>
+							<div class="mt-1 flex justify-between gap-4 border-t border-line pt-1">
+								<span>N beans</span><span class="font-medium text-ink">{row.sample_size}</span>
 							</div>
 						</div>
 					</div>
@@ -569,32 +549,30 @@
 			{/if}
 		</div>
 
-		<div
-			class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 px-2 text-xs text-text-secondary-light"
-		>
+		<div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 px-2 text-xs text-muted">
 			<div class="flex items-center gap-1">
-				<div class="h-1 w-5 rounded bg-gray-400 opacity-60"></div>
+				<div class="h-1 w-5 rounded bg-line opacity-60"></div>
 				<span>Full range</span>
 			</div>
 			<div class="flex items-center gap-1">
-				<div class="h-3 w-5 rounded bg-amber-400 opacity-40"></div>
+				<div class="h-3 w-5 rounded bg-warning opacity-40"></div>
 				<span>IQR (Q1–Q3)</span>
 			</div>
 			<div class="flex items-center gap-1">
-				<div class="h-3 w-3 rounded-full bg-amber-400"></div>
+				<div class="h-3 w-3 rounded-full bg-warning"></div>
 				<span>Median</span>
 			</div>
 			<div class="flex items-center gap-1">
 				<div
-					class="h-2.5 w-2.5 rotate-45 bg-teal-400"
+					class="h-2.5 w-2.5 rotate-45 bg-chart-teal"
 					style="clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)"
 				></div>
 				<span>Mean</span>
 			</div>
-			<div class="flex items-center gap-1 text-text-secondary-light/80">
+			<div class="flex items-center gap-1 text-muted/80">
 				<span>Segmented scale: $0–10, $10–25, $25–100, tail compressed beyond $100</span>
 			</div>
-			<div class="ml-auto flex items-center gap-1 text-text-secondary-light/70">
+			<div class="ml-auto flex items-center gap-1 text-muted/70">
 				<span>N = bean count</span>
 			</div>
 		</div>

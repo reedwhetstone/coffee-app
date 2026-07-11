@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { RETAIL_COLOR, WHOLESALE_COLOR } from '$lib/styles/chartColors';
 	import { scaleBand, scaleLinear } from 'd3-scale';
 	import { max } from 'd3-array';
 	import { select } from 'd3-selection';
@@ -25,8 +26,6 @@
 
 	let { snapshots = [] }: { snapshots: PriceSnapshot[] } = $props();
 
-	const RETAIL_COLOR = '#f59e0b';
-	const WHOLESALE_COLOR = '#3b82f6';
 	const MIN_SAMPLES = 3;
 	const MAX_ORIGINS = 10;
 
@@ -151,7 +150,7 @@
 			.attr('x2', innerW)
 			.attr('y1', 0)
 			.attr('y2', 0)
-			.attr('stroke', 'rgb(156 163 175)');
+			.attr('stroke', '#a39a8c');
 		const narrow = containerW < 520;
 		tierData.forEach((row) => {
 			const cx = (xScaleOuter(row.origin) ?? 0) + xScaleOuter.bandwidth() / 2;
@@ -160,7 +159,7 @@
 				.attr('x', cx)
 				.attr('y', 14)
 				.attr('text-anchor', 'middle')
-				.attr('fill', 'rgb(107 114 128)')
+				.attr('fill', '#695c4d')
 				.attr('font-size', narrow ? '9' : '11')
 				.text(label);
 		});
@@ -175,7 +174,7 @@
 			.attr('x2', 0)
 			.attr('y1', 0)
 			.attr('y2', innerH)
-			.attr('stroke', 'rgb(156 163 175)');
+			.attr('stroke', '#a39a8c');
 		const ticks = yScale.ticks(5);
 		ticks.forEach((t) => {
 			const y = yScale(t);
@@ -184,13 +183,13 @@
 				.attr('x2', 0)
 				.attr('y1', y)
 				.attr('y2', y)
-				.attr('stroke', 'rgb(156 163 175)');
+				.attr('stroke', '#a39a8c');
 			g.append('text')
 				.attr('x', -8)
 				.attr('y', y)
 				.attr('text-anchor', 'end')
 				.attr('dominant-baseline', 'middle')
-				.attr('fill', 'rgb(156 163 175)')
+				.attr('fill', '#a39a8c')
 				.attr('font-size', '11')
 				.text(`$${t.toFixed(0)}`);
 			g.append('line')
@@ -198,7 +197,7 @@
 				.attr('x2', innerW)
 				.attr('y1', y)
 				.attr('y2', y)
-				.attr('stroke', 'rgb(156 163 175)')
+				.attr('stroke', '#a39a8c')
 				.attr('stroke-opacity', '0.2')
 				.attr('stroke-dasharray', '4 4');
 		});
@@ -235,7 +234,7 @@
 <div class="flex w-full flex-col" bind:clientWidth={containerW}>
 	{#if !hasData}
 		<div
-			class="flex h-48 items-center justify-center rounded-lg bg-background-secondary-light text-sm text-text-secondary-light"
+			class="flex h-48 items-center justify-center rounded-lg bg-surface-panel text-sm text-muted"
 		>
 			No price tier data available yet. Data accumulates as snapshots are collected.
 		</div>
@@ -255,7 +254,7 @@
 					y={14}
 					text-anchor="middle"
 					font-size="10"
-					fill="rgb(156 163 175)"
+					fill="#a39a8c"
 				>
 					Median $/lb
 				</text>
@@ -367,14 +366,14 @@
 			{#if tooltip.visible && tooltip.row}
 				{@const row = tooltip.row}
 				<div
-					class="pointer-events-none absolute z-10 rounded-lg border border-border-light bg-background-primary-light px-3 py-2 text-xs shadow-lg"
+					class="pointer-events-none absolute z-10 rounded-lg border border-line bg-surface-canvas px-3 py-2 text-xs shadow-lg"
 					style="left:{Math.min(tooltip.x + 12, Math.max(4, containerW - 200))}px; top:{Math.max(
 						4,
 						tooltip.y - 80
 					)}px; min-width:170px"
 				>
-					<div class="mb-1.5 font-semibold text-text-primary-light">{row.origin}</div>
-					<div class="space-y-1 text-text-secondary-light">
+					<div class="mb-1.5 font-semibold text-ink">{row.origin}</div>
+					<div class="space-y-1 text-muted">
 						{#if row.retailMedian != null}
 							<div class="flex items-center justify-between gap-3">
 								<span class="flex items-center gap-1">
@@ -386,7 +385,7 @@
 									>${row.retailMedian.toFixed(2)}</span
 								>
 							</div>
-							<div class="pl-3 text-xs text-text-secondary-light/70">N = {row.retailSamples}</div>
+							<div class="pl-3 text-xs text-muted/70">N = {row.retailSamples}</div>
 						{/if}
 						{#if row.wholesaleMedian != null}
 							<div class="flex items-center justify-between gap-3">
@@ -399,16 +398,14 @@
 									>${row.wholesaleMedian.toFixed(2)}</span
 								>
 							</div>
-							<div class="pl-3 text-xs text-text-secondary-light/70">
+							<div class="pl-3 text-xs text-muted/70">
 								N = {row.wholesaleSamples}
 							</div>
 						{/if}
 						{#if row.spreadPct != null}
-							<div
-								class="mt-1 flex justify-between gap-3 border-t border-border-light pt-1 font-medium"
-							>
+							<div class="mt-1 flex justify-between gap-3 border-t border-line pt-1 font-medium">
 								<span>Spread</span>
-								<span class={row.spreadPct >= 0 ? 'text-emerald-600' : 'text-red-500'}
+								<span class={row.spreadPct >= 0 ? 'text-success-strong' : 'text-danger'}
 									>{row.spreadPct >= 0 ? '+' : ''}{row.spreadPct.toFixed(1)}%</span
 								>
 							</div>
@@ -419,9 +416,7 @@
 		</div>
 
 		<!-- Legend -->
-		<div
-			class="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-xs text-text-secondary-light"
-		>
+		<div class="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-xs text-muted">
 			<div class="flex items-center gap-1.5">
 				<div class="h-3 w-3 rounded-sm" style="background:{RETAIL_COLOR}; opacity:0.85;"></div>
 				<span>Retail median</span>
@@ -431,7 +426,7 @@
 				<span>Wholesale median</span>
 			</div>
 			<div class="flex items-center gap-1.5">
-				<span class="font-semibold text-emerald-600">+%</span>
+				<span class="font-semibold text-success-strong">+%</span>
 				<span>Retail premium over wholesale (spread)</span>
 			</div>
 		</div>

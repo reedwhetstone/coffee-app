@@ -8,10 +8,10 @@
 	}>();
 
 	const statusColors: Record<string, string> = {
-		proposed: 'bg-amber-50 text-amber-700 ring-amber-600/20 hover:bg-amber-100',
-		executing: 'bg-blue-50 text-blue-700 ring-blue-600/20',
-		success: 'bg-green-50 text-green-700 ring-green-600/20',
-		failed: 'bg-red-50 text-red-700 ring-red-600/20 hover:bg-red-100'
+		proposed: 'bg-warning-subtle text-warning-strong ring-warning/20 hover:bg-warning/15',
+		executing: 'bg-info-subtle text-info-strong ring-info/20',
+		success: 'bg-success-subtle text-success-strong ring-success/20',
+		failed: 'bg-danger-subtle text-danger-strong ring-danger/20 hover:bg-danger/15'
 	};
 
 	const statusIcons: Record<string, string> = {

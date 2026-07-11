@@ -18,7 +18,7 @@
 
 <button
 	onclick={handleClick}
-	class="inline-flex items-center gap-1.5 rounded-md bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-600/20 transition-all hover:bg-gray-100 hover:ring-gray-600/30"
+	class="inline-flex items-center gap-1.5 rounded-md bg-surface-panel px-2.5 py-1 text-xs font-medium text-ink ring-1 ring-inset ring-line transition-all hover:bg-surface-panel hover:ring-muted/30"
 >
 	<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 		<path
@@ -29,7 +29,7 @@
 		/>
 	</svg>
 	<span>Table: {rowCount} row{rowCount === 1 ? '' : 's'}</span>
-	<svg class="h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+	<svg class="h-3 w-3 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 		<path
 			stroke-linecap="round"
 			stroke-linejoin="round"

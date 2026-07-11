@@ -96,7 +96,7 @@
 	<div class="fixed inset-0 z-[45] md:hidden">
 		<button
 			type="button"
-			class="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
+			class="absolute inset-0 bg-ink/55 backdrop-blur-sm"
 			onclick={onClose}
 			aria-label="Close overlay"
 			transition:fade={{ duration: 150 }}
@@ -105,7 +105,7 @@
 		<div class="relative flex h-full w-full {variant === 'sheet' ? 'items-end' : 'items-stretch'}">
 			<div
 				bind:this={dialogElement}
-				class="relative flex w-full flex-col overflow-hidden bg-background-primary-light shadow-2xl ring-1 ring-border-light/70 {variant ===
+				class="relative flex w-full flex-col overflow-hidden bg-surface-canvas shadow-2xl ring-1 ring-line/70 {variant ===
 				'full'
 					? 'h-full'
 					: 'max-h-[85dvh] rounded-t-[1.75rem]'}"

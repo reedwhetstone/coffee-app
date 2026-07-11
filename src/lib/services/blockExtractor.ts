@@ -12,7 +12,8 @@ import type {
 	CoffeeCardAnnotation,
 	RoastProfileAnnotation,
 	CanvasMutation,
-	CanvasLayout
+	CanvasLayout,
+	DataTableBlock
 } from '$lib/types/genui';
 import type { TastingNotes, TastingNote } from '$lib/types/coffee.types';
 import type { UIMessage } from 'ai';
@@ -24,12 +25,22 @@ export interface BlockExtractorOptions {
 	hasPresentResults?: boolean;
 }
 
+export interface MessagePartsLike {
+	parts?: unknown[];
+}
+
 /** Tool names whose raw output should be suppressed when present_results is used */
 const PRESENTABLE_TOOLS = new Set([
 	'coffee_catalog_search',
+	'catalog_rank',
+	'market_signals',
 	'green_coffee_inventory',
 	'roast_profiles'
 ]);
+
+/** Tools whose output is a `coffees` array renderable as coffee cards */
+const COFFEE_RESULT_TOOLS = new Set(['coffee_catalog_search', 'catalog_rank']);
+const MARKET_SIGNAL_TOOLS = new Set(['market_signals']);
 
 /**
  * Extracts a single UIBlock from a single message part (tool output).
@@ -68,7 +79,7 @@ export function extractBlockFromPart(part: any, options?: BlockExtractorOptions)
 	}
 
 	if (
-		toolName === 'coffee_catalog_search' &&
+		COFFEE_RESULT_TOOLS.has(toolName) &&
 		'coffees' in output &&
 		Array.isArray(output.coffees) &&
 		output.coffees.length > 0
@@ -78,6 +89,11 @@ export function extractBlockFromPart(part: any, options?: BlockExtractorOptions)
 			version: 1,
 			data: output.coffees
 		} satisfies CoffeeCardsBlock;
+	}
+
+	if (MARKET_SIGNAL_TOOLS.has(toolName)) {
+		const signals = marketSignalItems(output);
+		if (signals.length > 0) return buildMarketSignalsBlock(signals);
 	}
 
 	if (
@@ -165,6 +181,22 @@ export function extractBlockFromPart(part: any, options?: BlockExtractorOptions)
 }
 
 /**
+ * Visible fallback when present_results references items that are not in the
+ * search data cache (e.g. the source search never ran in this conversation, or
+ * the model invented IDs). Without this the presentation fails silently.
+ */
+function presentationCacheMissBlock(sourceTool: string): ErrorBlock {
+	return {
+		type: 'error',
+		version: 1,
+		data: {
+			message: `Couldn't render this presentation — the referenced ${sourceTool.replace(/_/g, ' ')} results weren't found in this conversation. Ask me to re-run the search.`,
+			retryable: false
+		}
+	};
+}
+
+/**
  * Build a UIBlock from a present_results tool output.
  * Merges AI-provided annotations with cached search data.
  */
@@ -183,7 +215,7 @@ function buildPresentedBlock(
 
 	const cache = searchDataCache?.get(sourceTool);
 
-	if (sourceTool === 'coffee_catalog_search') {
+	if (sourceTool === 'coffee_catalog_search' || sourceTool === 'catalog_rank') {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const coffees: any[] = [];
 		const annotations: CoffeeCardAnnotation[] = [];
@@ -200,7 +232,7 @@ function buildPresentedBlock(
 			});
 		}
 
-		if (coffees.length === 0) return null;
+		if (coffees.length === 0) return presentationCacheMissBlock(sourceTool);
 
 		return {
 			type: 'coffee-cards',
@@ -243,7 +275,7 @@ function buildPresentedBlock(
 			});
 		}
 
-		if (profiles.length === 0) return null;
+		if (profiles.length === 0) return presentationCacheMissBlock(sourceTool);
 
 		return {
 			type: 'roast-profiles',
@@ -264,13 +296,40 @@ function buildPresentedBlock(
 			}
 		}
 
-		if (inventory.length === 0) return null;
+		if (inventory.length === 0) return presentationCacheMissBlock(sourceTool);
 
 		return {
 			type: 'inventory-table',
 			version: 1,
 			data: inventory
 		} satisfies InventoryTableBlock;
+	}
+
+	if (sourceTool === 'market_signals') {
+		const signals: Array<Record<string, unknown>> = [];
+
+		for (const item of items) {
+			// A lot can carry several distinct signals (e.g. 7d + 30d price_drop, or
+			// price_drop + below_market). The cache stores them as an array per
+			// catalogId so none are dropped; fall back to a single value for safety.
+			const cached = cache?.get(item.id);
+			const cachedSignals = Array.isArray(cached)
+				? (cached as Array<Record<string, unknown>>)
+				: cached
+					? [cached as Record<string, unknown>]
+					: [];
+			for (const signal of cachedSignals) {
+				signals.push({
+					...signal,
+					presentation_note: item.annotation ?? null,
+					highlight: item.highlight ?? false
+				});
+			}
+		}
+
+		if (signals.length === 0) return presentationCacheMissBlock(sourceTool);
+
+		return buildMarketSignalsBlock(signals);
 	}
 
 	return null;
@@ -309,11 +368,7 @@ export function buildSearchDataCache(parts: any[]): Map<string, Map<number, unkn
 
 		const toolName = part.toolName ?? part.type.replace('tool-', '');
 
-		if (
-			toolName === 'coffee_catalog_search' &&
-			'coffees' in output &&
-			Array.isArray(output.coffees)
-		) {
+		if (COFFEE_RESULT_TOOLS.has(toolName) && 'coffees' in output && Array.isArray(output.coffees)) {
 			const itemMap = new Map<number, unknown>();
 			for (const coffee of output.coffees) {
 				if (coffee.id != null) itemMap.set(coffee.id, coffee);
@@ -325,6 +380,36 @@ export function buildSearchDataCache(parts: any[]): Map<string, Map<number, unkn
 			} else {
 				cache.set(toolName, itemMap);
 			}
+		}
+
+		if (MARKET_SIGNAL_TOOLS.has(toolName)) {
+			// Key by catalogId but keep every distinct signal for a lot: multiple
+			// rows can share a catalogId (different signalType/window/market), so
+			// overwriting by id alone would silently drop all but the last and
+			// misattach annotations. Overlapping tool calls (a broad query then a
+			// refined one) return the same signal twice, so dedupe on the composite
+			// signal identity — the same key the analytics loader uses — keeping
+			// the latest copy.
+			const existing = cache.get(toolName) ?? new Map<number, unknown>();
+			for (const signal of marketSignalItems(output)) {
+				const id = marketSignalCatalogId(signal);
+				if (id == null) continue;
+				const key = marketSignalIdentity(signal);
+				const prior = existing.get(id);
+				if (Array.isArray(prior)) {
+					const duplicateAt = (prior as Array<Record<string, unknown>>).findIndex(
+						(candidate) => marketSignalIdentity(candidate) === key
+					);
+					if (duplicateAt >= 0) {
+						prior[duplicateAt] = signal;
+					} else {
+						prior.push(signal);
+					}
+				} else {
+					existing.set(id, [signal]);
+				}
+			}
+			if (!cache.has(toolName)) cache.set(toolName, existing);
 		}
 
 		if (
@@ -360,6 +445,26 @@ export function buildSearchDataCache(parts: any[]): Map<string, Map<number, unkn
 	}
 
 	return cache;
+}
+
+/**
+ * Builds the present_results lookup cache for one tool part.
+ *
+ * The cache must reflect only causally prior data: all earlier messages and the
+ * current message's parts up through the part being extracted. Later tool parts
+ * in the same assistant message may not satisfy an earlier presentation.
+ */
+export function buildSearchDataCacheThroughPart(
+	messages: MessagePartsLike[],
+	messageIndex: number,
+	partIndex: number
+): Map<string, Map<number, unknown>> {
+	const priorMessageParts = messages
+		.slice(0, Math.max(0, messageIndex))
+		.flatMap((message) => message.parts ?? []);
+	const currentMessageParts = messages[messageIndex]?.parts?.slice(0, partIndex + 1) ?? [];
+
+	return buildSearchDataCache([...priorMessageParts, ...currentMessageParts]);
 }
 
 /**
@@ -441,22 +546,160 @@ export function extractCanvasMutationsFromPart(
 		return mutations;
 	}
 
+	// Error blocks (e.g. presentation cache misses) render inline in the
+	// message only — don't touch the canvas, including layout hints.
+	if (block?.type === 'error') return null;
+
+	// Optional AI-provided tab title for the canvas block.
+	const rawTitle = presentation.canvas_title;
+	const title =
+		typeof rawTitle === 'string' && rawTitle.trim().length > 0
+			? rawTitle.trim().slice(0, 60)
+			: undefined;
+
 	// If we have a block, dispatch it to canvas
 	if (block) {
 		if (canvasAction === 'replace') {
-			mutations.push({ type: 'replace', blocks: [{ block, messageId }] });
+			mutations.push({ type: 'replace', blocks: [{ block, messageId, title }] });
 		} else {
-			mutations.push({ type: 'add', block, messageId });
+			mutations.push({ type: 'add', block, messageId, title });
 		}
 	}
 
-	// Canvas layout hint
+	// Canvas layout hint. Tagged as an agent suggestion so the store can ignore it
+	// once the user owns the layout (manually chosen or anything locked).
 	const canvasLayout: string | undefined = presentation.canvas_layout;
 	if (canvasLayout && ['focus', 'comparison', 'dashboard'].includes(canvasLayout)) {
-		mutations.push({ type: 'layout', layout: canvasLayout as CanvasLayout });
+		mutations.push({ type: 'layout', layout: canvasLayout as CanvasLayout, source: 'agent' });
 	}
 
 	return mutations.length > 0 ? mutations : null;
+}
+
+function marketSignalItems(output: Record<string, unknown>): Array<Record<string, unknown>> {
+	for (const key of ['data', 'signals', 'items']) {
+		const value = output[key];
+		if (Array.isArray(value)) return value.filter(isRecord);
+	}
+	return [];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function marketSignalCatalogId(signal: Record<string, unknown>): number | null {
+	const id = signal.catalogId ?? signal.catalog_id ?? signal.id;
+	return typeof id === 'number' && Number.isFinite(id) ? id : null;
+}
+
+/** Composite signal identity, mirroring the analytics loader's dedupe key. */
+function marketSignalIdentity(signal: Record<string, unknown>): string {
+	const type = signal.signalType ?? signal.signal_type ?? '';
+	const market = signal.market ?? '';
+	const window = signal.signalWindow ?? signal.signal_window ?? '';
+	return `${marketSignalCatalogId(signal) ?? ''}:${type}:${market}:${window}`;
+}
+
+function marketSignalTypeLabel(value: unknown): string {
+	const labels: Record<string, string> = {
+		price_drop: 'Price drop',
+		below_market: 'Below market',
+		value_quality: 'Value for quality'
+	};
+	return typeof value === 'string' ? (labels[value] ?? value.replace(/_/g, ' ')) : 'Signal';
+}
+
+function marketSignalName(signal: Record<string, unknown>): string {
+	for (const key of ['name', 'coffeeName', 'coffee_name', 'catalogName', 'catalog_name']) {
+		const value = signal[key];
+		if (typeof value === 'string' && value.trim()) return value;
+	}
+	const origin =
+		typeof signal.origin === 'string' && signal.origin ? signal.origin : 'Unknown origin';
+	const process =
+		typeof signal.process === 'string' && signal.process && signal.process !== 'undisclosed'
+			? ` - ${signal.process}`
+			: '';
+	return `${origin}${process}`;
+}
+
+function formatMarketSignalMoney(value: unknown): string {
+	return typeof value === 'number' && Number.isFinite(value) ? `$${value.toFixed(2)}/lb` : '-';
+}
+
+function formatMarketSignalPct(value: unknown): string | null {
+	if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+	return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+}
+
+function marketSignalEvidence(signal: Record<string, unknown>): string {
+	const evidence = isRecord(signal.evidence) ? signal.evidence : {};
+	const signalType = signal.signalType ?? signal.signal_type;
+	if (signalType === 'price_drop') {
+		const drop = formatMarketSignalPct(
+			evidence.drop_vs_own_median_pct ?? evidence.dropVsOwnMedianPct
+		);
+		const median = formatMarketSignalMoney(
+			evidence.own_trailing_median ?? evidence.ownTrailingMedian
+		);
+		const window =
+			evidence.own_trailing_window ?? evidence.ownTrailingWindow ?? signal.signalWindow;
+		return [drop ? `${drop} vs own median` : null, median !== '-' ? median : null, window]
+			.filter(Boolean)
+			.join(' - ');
+	}
+	if (signalType === 'below_market') {
+		const discount = formatMarketSignalPct(
+			evidence.discount_vs_median_pct ?? evidence.discountVsMedianPct
+		);
+		const median = formatMarketSignalMoney(evidence.segment_median ?? evidence.segmentMedian);
+		const percentile =
+			evidence.price_percentile_in_segment ?? evidence.pricePercentileInSegment ?? null;
+		return [
+			discount ? `${discount} vs segment median` : null,
+			median !== '-' ? median : null,
+			percentile != null ? `p${percentile}` : null
+		]
+			.filter(Boolean)
+			.join(' - ');
+	}
+	const score = signal.scoreValue ?? signal.score_value;
+	const valueZ = evidence.value_z_score ?? evidence.valueZScore;
+	return [
+		score != null ? `score ${score}` : null,
+		typeof valueZ === 'number' ? `${valueZ.toFixed(1)} sigma value signal` : null
+	]
+		.filter(Boolean)
+		.join(' - ');
+}
+
+function buildMarketSignalsBlock(signals: Array<Record<string, unknown>>): DataTableBlock {
+	const rows = signals.map((signal) => ({
+		id: marketSignalCatalogId(signal) ?? '-',
+		signal: marketSignalTypeLabel(signal.signalType ?? signal.signal_type),
+		lot: marketSignalName(signal),
+		market: signal.market ?? '-',
+		price: formatMarketSignalMoney(signal.currentPriceLb ?? signal.current_price_lb),
+		evidence: marketSignalEvidence(signal) || '-',
+		note: signal.presentation_note ?? null
+	}));
+
+	return {
+		type: 'data-table',
+		version: 1,
+		data: {
+			columns: [
+				{ key: 'signal', label: 'Signal', sortable: true },
+				{ key: 'lot', label: 'Lot', sortable: true },
+				{ key: 'market', label: 'Market', sortable: true },
+				{ key: 'price', label: 'Price', align: 'right' },
+				{ key: 'evidence', label: 'Evidence' },
+				{ key: 'note', label: 'Note' }
+			],
+			rows
+		}
+	};
 }
 
 /**

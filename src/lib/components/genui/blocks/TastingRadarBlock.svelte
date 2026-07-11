@@ -34,10 +34,10 @@
 </script>
 
 <div class="my-4">
-	<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+	<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
 		<div class="mb-2">
-			<h3 class="font-semibold text-text-primary-light">{block.data.beanName}</h3>
-			<p class="text-xs text-text-secondary-light">{sourceLabel}</p>
+			<h3 class="font-semibold text-ink">{block.data.beanName}</h3>
+			<p class="text-xs text-muted">{sourceLabel}</p>
 		</div>
 		<div class="flex justify-center">
 			{#if loading}
@@ -50,7 +50,7 @@
 					lazy={false}
 				/>
 			{:else}
-				<p class="text-sm text-text-secondary-light">Unable to load tasting chart</p>
+				<p class="text-sm text-muted">Unable to load tasting chart</p>
 			{/if}
 		</div>
 	</div>

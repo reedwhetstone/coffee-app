@@ -1,12 +1,52 @@
-# Coffee App UI Framework
+# Purveyors UI Framework
 
-This document defines the standardized UI patterns and components for the Coffee App to ensure consistent design language across all pages and components.
+**Status:** Tactical implementation companion
+**Source of truth:** `BRAND.md`
+
+This document is the tactical Svelte/Tailwind implementation companion for Purveyors UI work.
+Use it when you are building or correcting components and need concrete class patterns, layout
+recipes, and interaction standards.
+
+It is intentionally different from `BRAND.md`:
+
+- `BRAND.md` defines identity, product language, visual principles, color strategy, radius strategy,
+  and the active brand audit log.
+- `UI-FRAMEWORK.md` translates that direction into repeatable component patterns for app screens,
+  dashboards, forms, tables, loading states, and operational workflows.
+
+If these documents conflict, follow `BRAND.md` first and update this file to match.
+
+## When To Use This File
+
+Use this file for:
+
+- building a new app component with existing Purveyors conventions
+- correcting a page after a brand or UI audit
+- choosing default card, button, form, KPI, table, and focus-state classes
+- keeping dense authenticated workflows consistent without re-reading the full brand package
+
+Do not use this file to decide product naming, voice, brand palette direction, public IA, or new
+visual identity decisions. Those live in `BRAND.md`.
 
 ## Design System Foundation
 
 ### Color System
 
+Prefer the role-based tokens from `BRAND.md` for new UI. Existing compatibility tokens are still
+valid during migration.
+
 ```css
+/* Preferred role tokens */
+bg-surface-canvas              /* Page background and quiet public sections */
+bg-surface-panel               /* Cards, tables, filter bars, sidebars */
+bg-surface-raised              /* Raised panels inside dense app views */
+text-ink                       /* Primary text */
+text-muted                     /* Secondary/helper text */
+border-line                    /* Default borders and dividers */
+bg-accent / text-accent        /* Primary CTAs, active states, brand emphasis */
+bg-accent-subtle               /* Selected rows, active pills, soft highlights */
+text-link                      /* Inline text links where orange is too loud */
+
 /* Primary Backgrounds */
 bg-background-primary-light     /* Main content areas */
 bg-background-secondary-light   /* Cards, sections */
@@ -20,14 +60,13 @@ text-text-secondary-light       /* Secondary/helper text */
 ring-1 ring-border-light        /* Standard card borders */
 border-border-light             /* Standard borders */
 
-/* Semantic Colors for KPIs */
-text-green-500                  /* Revenue, positive values */
-text-blue-500                   /* Profit, primary metrics */
-text-purple-500                 /* Margins, percentages */
-text-orange-500                 /* Secondary metrics */
-text-red-500                    /* Costs, negative values */
-text-indigo-500                 /* Inventory counts */
-text-cyan-500                   /* Rates, ratios */
+/* Semantic roles */
+text-success / bg-success-subtle
+text-warning / bg-warning-subtle
+text-danger / bg-danger-subtle
+text-info / bg-info-subtle
+text-intelligence / bg-intelligence-subtle
+text-chart-* / bg-chart-*       /* Chart series only */
 ```
 
 ### Typography Scale
@@ -63,15 +102,55 @@ mt-1                            /* Small top margin for values */
 
 ## Component Patterns
 
+### 0. Brand Accent Patterns (July 2026)
+
+**Artifact card with AccentSpine** — for cards that deliver an insight or invite an action
+(market briefs, insight cards, upsell/CTA cards, blog headers, checkout confirmations).
+At most one spined card per view region; see BRAND.md "Organic Accent System".
+
+```svelte
+<div class="relative overflow-hidden rounded-lg border border-line bg-surface-panel p-5 pl-7">
+	<AccentSpine />
+	<!-- card content -->
+</div>
+```
+
+**Icon tile** — standard visual anchor for section/card headers:
+
+```svelte
+<span
+	class="flex h-9 w-9 items-center justify-center rounded-md bg-accent-subtle/15 ring-1 ring-accent/25"
+>
+	<svg
+		class="h-5 w-5 text-ink"
+		fill="none"
+		viewBox="0 0 24 24"
+		stroke-width="1.5"
+		stroke="currentColor"
+	>
+		<path stroke-linecap="round" stroke-linejoin="round" d={iconPath} />
+	</svg>
+</span>
+```
+
+**Editorial heading** — public/marketing display headings and analytics chapter headers:
+
+```svelte
+<h2 class="font-serif text-3xl font-medium tracking-tight text-ink sm:text-4xl">...</h2>
+<!-- analytics group header: use AnalyticsSectionHeader.svelte -->
+```
+
+**Chart colors** — import from `src/lib/styles/chartColors.ts`; never raw Tailwind hexes in charts.
+
 ### 1. KPI Card Pattern
 
 **Standard KPI Card Structure:**
 
 ```svelte
-<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-	<h3 class="text-sm font-medium text-text-primary-light">[KPI Label]</h3>
+<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+	<h3 class="text-sm font-medium text-ink">[KPI Label]</h3>
 	<p class="mt-1 text-2xl font-bold text-[semantic-color]">[Value]</p>
-	<p class="mt-1 text-xs text-text-secondary-light">[Context/Unit]</p>
+	<p class="mt-1 text-xs text-muted">[Context/Unit]</p>
 </div>
 ```
 
@@ -99,21 +178,21 @@ mt-1                            /* Small top margin for values */
 ```svelte
 <!-- Primary Button -->
 <button
-	class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+	class="rounded-md bg-accent px-4 py-2 font-medium text-ink transition-opacity duration-200 hover:opacity-90"
 >
 	Primary Action
 </button>
 
 <!-- Secondary Button -->
 <button
-	class="rounded-md border border-background-tertiary-light px-4 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+	class="rounded-md border border-accent px-4 py-2 text-accent transition-colors duration-200 hover:bg-accent hover:text-ink"
 >
 	Secondary Action
 </button>
 
 <!-- Danger Button -->
 <button
-	class="rounded-md border border-red-600 px-4 py-2 text-red-600 transition-all duration-200 hover:bg-red-600 hover:text-white"
+	class="rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
 >
 	Delete/Danger Action
 </button>
@@ -122,9 +201,9 @@ mt-1                            /* Small top margin for values */
 ### 3. Content Card Pattern
 
 ```svelte
-<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+<div class="rounded-lg bg-surface-raised p-4 ring-1 ring-line">
 	<div class="mb-4 flex items-center justify-between">
-		<h3 class="font-semibold text-text-primary-light">[Section Title]</h3>
+		<h3 class="font-semibold text-ink">[Section Title]</h3>
 		<!-- Optional action button -->
 	</div>
 	<!-- Content -->
@@ -135,14 +214,14 @@ mt-1                            /* Small top margin for values */
 
 ```svelte
 <button
-	class="group rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
+	class="group rounded-lg bg-surface-raised p-4 text-left shadow-sm ring-1 ring-line transition-all hover:scale-[1.02] hover:ring-accent"
 >
 	<!-- Card Content -->
 
 	<!-- Selection Arrow -->
 	<div class="mt-3 flex items-center justify-end">
 		<svg
-			class="h-4 w-4 text-text-secondary-light transition-transform group-hover:translate-x-1 group-hover:text-background-tertiary-light"
+			class="h-4 w-4 text-muted transition-transform group-hover:translate-x-1 group-hover:text-accent"
 		>
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
 		</svg>
@@ -150,22 +229,53 @@ mt-1                            /* Small top margin for values */
 </button>
 ```
 
+### 4a. Coffee Card Pattern
+
+Coffee cards should use progressive disclosure. The collapsed card is for scanning; the
+user-initiated slide-out is for proof, process, pricing, tasting depth, and member comparison
+tools. Do not treat this expanded surface as a modal: it should add context without dimming or
+blocking the catalog view on desktop, and it may become full-width only on mobile.
+
+Collapsed card must prioritize:
+
+- coffee name and supplier
+- origin/region, process, and freshness cue
+- baseline price
+- compact tasting preview when available, using the tasting-note colors as small dot accents
+- inline `Purveyor Score` as an accent signal, not a boxed card-within-card
+
+Collapsed cards should use the warm primary surface with a subtle ring/shadow. Avoid pure white
+card backgrounds in the catalog grid because they make the surrounding Purveyors canvas read
+browner and heavier.
+
+Interaction should stay quiet: clicking the card opens the slide-out, supplier links should be
+icon-only with accessible labels, and matching actions should be small icon affordances rather
+than full CTA buttons. Use the vertical accent-bar summary pattern for short description copy.
+
+`Purveyor Score` is a Purveyors listing-intelligence metric. It measures metadata completeness,
+structure, confidence, and buyer usefulness. Never describe it as cup quality, certification,
+supplier verification, or regulatory assurance.
+
+Catalog grids should scale beyond the old two-column desktop layout:
+
+```css
+grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4
+```
+
 ### 5. Table/List Pattern (Based on RoastHistoryTable)
 
 ```svelte
 <!-- Collapsible Section Header -->
 <button
-	class="flex w-full items-center justify-between p-4 transition-colors hover:bg-background-tertiary-light/5 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
+	class="flex w-full items-center justify-between p-4 transition-colors hover:bg-accent-subtle/10 focus:outline-none focus:ring-2 focus:ring-accent"
 >
 	<div class="flex items-center gap-3">
-		<span
-			class="text-background-tertiary-light transition-transform duration-200 {expanded
-				? 'rotate-90'
-				: ''}">▶</span
+		<span class="text-accent transition-transform duration-200 {expanded ? 'rotate-90' : ''}"
+			>▶</span
 		>
 		<div class="text-left">
-			<h3 class="text-lg font-semibold text-text-primary-light">[Section Title]</h3>
-			<div class="flex flex-wrap items-center gap-4 text-sm text-text-secondary-light">
+			<h3 class="text-lg font-semibold text-ink">[Section Title]</h3>
+			<div class="flex flex-wrap items-center gap-4 text-sm text-muted">
 				<span>[Metadata]</span>
 			</div>
 		</div>
@@ -184,8 +294,8 @@ mt-1                            /* Small top margin for values */
 
 ```svelte
 <div class="mb-6">
-	<h1 class="mb-2 text-2xl font-bold text-text-primary-light">[Page Title]</h1>
-	<p class="text-text-secondary-light">[Page Description]</p>
+	<h1 class="mb-2 text-2xl font-bold text-ink">[Page Title]</h1>
+	<p class="text-muted">[Page Description]</p>
 </div>
 ```
 
@@ -208,7 +318,7 @@ mt-1                            /* Small top margin for values */
 
 ```css
 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4    /* KPI cards */
-grid-cols-1 md:grid-cols-2                   /* Coffee cards */
+grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 /* Catalog coffee cards */
 grid-cols-1 sm:grid-cols-3                   /* Secondary metrics */
 ```
 
@@ -232,7 +342,7 @@ aria-label="Clear action description"
 ### Focus States
 
 ```css
-focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2
+focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2
 ```
 
 ## Animation Standards

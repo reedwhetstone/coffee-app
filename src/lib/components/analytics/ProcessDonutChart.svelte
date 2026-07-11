@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PROCESS_COLORS, PROCESS_FALLBACK_COLORS } from '$lib/styles/chartColors';
 	import { arc, pie } from 'd3-shape';
 
 	interface Bucket {
@@ -9,16 +10,9 @@
 	let { data = [] }: { data: Bucket[] } = $props();
 
 	// Known-category colors; "Other" always gets neutral gray
-	const KNOWN_COLORS: Record<string, string> = {
-		Washed: '#3b82f6',
-		Natural: '#f59e0b',
-		Honey: '#10b981',
-		Anaerobic: '#ec4899',
-		'Wet Hulled': '#8b5cf6',
-		Unknown: '#9ca3af'
-	};
-	const OTHER_COLOR = '#6b7280';
-	const FALLBACK_COLORS = ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6'];
+	const KNOWN_COLORS: Record<string, string> = PROCESS_COLORS;
+	const OTHER_COLOR = '#a39a8c';
+	const FALLBACK_COLORS = PROCESS_FALLBACK_COLORS;
 
 	let containerH = $state(0);
 	let containerW = $state(0);
@@ -128,58 +122,56 @@
 	let cy = $derived(containerH / 2);
 </script>
 
-<div class="h-full w-full" bind:clientHeight={containerH} bind:clientWidth={containerW}>
-	{#if containerW > 0 && containerH > 0 && slices.length > 0}
-		<svg width={containerW} height={containerH}>
-			<g transform="translate({cx},{cy})">
-				{#each slices as s}
-					<path
-						d={s.path}
-						fill={s.color}
-						fill-opacity="0.85"
-						stroke="transparent"
-						stroke-width="1"
-					/>
-				{/each}
+<div class="flex h-72 w-full flex-col">
+	<div class="min-h-0 flex-1" bind:clientHeight={containerH} bind:clientWidth={containerW}>
+		{#if containerW > 0 && containerH > 0 && slices.length > 0}
+			<svg width={containerW} height={containerH}>
+				<g transform="translate({cx},{cy})">
+					{#each slices as s}
+						<path
+							d={s.path}
+							fill={s.color}
+							fill-opacity="0.85"
+							stroke="transparent"
+							stroke-width="1"
+						/>
+					{/each}
 
-				<!-- Percentage labels inside arcs (top segments >= 8%) -->
-				{#each slices as s}
-					{#if s.showLabel}
-						<text
-							x={s.labelX}
-							y={s.labelY}
-							text-anchor="middle"
-							dominant-baseline="middle"
-							font-size="11"
-							font-weight="600"
-							fill="white"
-							pointer-events="none"
-						>
-							{s.pct}%
-						</text>
-					{/if}
-				{/each}
+					<!-- Percentage labels inside arcs (top segments >= 8%) -->
+					{#each slices as s}
+						{#if s.showLabel}
+							<text
+								x={s.labelX}
+								y={s.labelY}
+								text-anchor="middle"
+								dominant-baseline="middle"
+								font-size="11"
+								font-weight="600"
+								fill="white"
+								pointer-events="none"
+							>
+								{s.pct}%
+							</text>
+						{/if}
+					{/each}
 
-				<!-- Center text -->
-				<text
-					x="0"
-					y="-8"
-					text-anchor="middle"
-					font-size="22"
-					font-weight="600"
-					fill="rgb(55 65 81)">{total}</text
-				>
-				<text x="0" y="12" text-anchor="middle" font-size="11" fill="rgb(107 114 128)">beans</text>
-			</g>
-		</svg>
+					<!-- Center text -->
+					<text x="0" y="-8" text-anchor="middle" font-size="22" font-weight="600" fill="#302f2a"
+						>{total}</text
+					>
+					<text x="0" y="12" text-anchor="middle" font-size="11" fill="#695c4d">beans</text>
+				</g>
+			</svg>
+		{/if}
+	</div>
 
-		<!-- Legend -->
+	{#if slices.length > 0}
 		<div class="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 px-2">
 			{#each slices as s}
-				<div class="flex items-center gap-1.5 text-xs text-text-secondary-light">
+				<div class="flex items-center gap-1.5 text-xs text-muted">
 					<div class="h-2.5 w-2.5 flex-shrink-0 rounded-sm" style="background:{s.color}"></div>
 					<span>{s.name}</span>
-					<span class="font-medium text-text-primary-light">{s.pct}%</span>
+					<span class="font-medium text-ink">{s.pct}%</span>
 				</div>
 			{/each}
 		</div>

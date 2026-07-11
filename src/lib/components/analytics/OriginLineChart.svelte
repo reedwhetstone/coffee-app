@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { CHART_SERIES } from '$lib/styles/chartColors';
 	import { line as d3Line, curveMonotoneX } from 'd3-shape';
 	import { scaleTime, scaleLinear } from 'd3-scale';
 	import { extent, min } from 'd3-array';
@@ -37,18 +38,7 @@
 		spreadData?: SpreadRow[];
 	} = $props();
 
-	const COLORS = [
-		'#f59e0b',
-		'#10b981',
-		'#3b82f6',
-		'#ec4899',
-		'#8b5cf6',
-		'#14b8a6',
-		'#f97316',
-		'#a855f7',
-		'#06b6d4',
-		'#84cc16'
-	];
+	const COLORS = CHART_SERIES;
 
 	const MIN_DISTINCT_DATES = 7;
 
@@ -215,7 +205,7 @@
 			.attr('x2', innerW)
 			.attr('y1', 0)
 			.attr('y2', 0)
-			.attr('stroke', 'rgb(156 163 175)');
+			.attr('stroke', '#a39a8c');
 		const dateRange = xDomain[1].getTime() - xDomain[0].getTime();
 		if (dateRange === 0) return;
 		const tickCount = Math.max(2, Math.min(6, Math.floor(innerW / 80)));
@@ -232,12 +222,12 @@
 				.attr('x2', x)
 				.attr('y1', 0)
 				.attr('y2', 5)
-				.attr('stroke', 'rgb(156 163 175)');
+				.attr('stroke', '#a39a8c');
 			g.append('text')
 				.attr('x', x)
 				.attr('y', 18)
 				.attr('text-anchor', 'middle')
-				.attr('fill', 'rgb(156 163 175)')
+				.attr('fill', '#a39a8c')
 				.attr('font-size', '11')
 				.text(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
 		});
@@ -252,7 +242,7 @@
 			.attr('x2', 0)
 			.attr('y1', 0)
 			.attr('y2', innerH)
-			.attr('stroke', 'rgb(156 163 175)');
+			.attr('stroke', '#a39a8c');
 		const ticks = yScale.ticks(5);
 		ticks.forEach((t) => {
 			const y = yScale(t);
@@ -261,13 +251,13 @@
 				.attr('x2', 0)
 				.attr('y1', y)
 				.attr('y2', y)
-				.attr('stroke', 'rgb(156 163 175)');
+				.attr('stroke', '#a39a8c');
 			g.append('text')
 				.attr('x', -10)
 				.attr('y', y)
 				.attr('text-anchor', 'end')
 				.attr('dominant-baseline', 'middle')
-				.attr('fill', 'rgb(156 163 175)')
+				.attr('fill', '#a39a8c')
 				.attr('font-size', '11')
 				.text(mode === 'spread' ? `${t > 0 ? '+' : ''}${t.toFixed(1)}%` : `$${t.toFixed(2)}`);
 			g.append('line')
@@ -275,7 +265,7 @@
 				.attr('x2', innerW)
 				.attr('y1', y)
 				.attr('y2', y)
-				.attr('stroke', 'rgb(156 163 175)')
+				.attr('stroke', '#a39a8c')
 				.attr('stroke-opacity', '0.2')
 				.attr('stroke-dasharray', '4 4');
 		});
@@ -289,7 +279,7 @@
 					.attr('x2', innerW)
 					.attr('y1', zeroY)
 					.attr('y2', zeroY)
-					.attr('stroke', 'rgb(107 114 128)')
+					.attr('stroke', '#695c4d')
 					.attr('stroke-width', '1.5')
 					.attr('stroke-dasharray', '6 3');
 			}
@@ -366,16 +356,16 @@
 <div class="flex h-full w-full flex-col">
 	{#if !hasEnoughData}
 		<div
-			class="flex h-full w-full flex-col items-center justify-center rounded-lg bg-background-secondary-light px-6 text-center"
+			class="flex h-full w-full flex-col items-center justify-center rounded-lg bg-surface-panel px-6 text-center"
 		>
 			<div class="mb-2 text-2xl">📈</div>
-			<p class="text-sm font-medium text-text-secondary-light">
+			<p class="text-sm font-medium text-muted">
 				Price trend data collection started March 21, 2026.
 			</p>
-			<p class="mt-1 text-xs text-text-secondary-light">
+			<p class="mt-1 text-xs text-muted">
 				Charts will populate once 7+ days of data are available.
 				{#if distinctDateCount > 0}
-					<span class="mt-0.5 block text-text-secondary-light/60"
+					<span class="mt-0.5 block text-muted/60"
 						>({distinctDateCount} of {MIN_DISTINCT_DATES} days collected)</span
 					>
 				{/if}
@@ -385,20 +375,15 @@
 		<!-- Origin selector: only in expanded mode -->
 		{#if expanded}
 			<div class="mb-3 flex flex-wrap items-center gap-2">
-				<span class="text-sm font-medium text-text-secondary-light">Origins:</span>
+				<span class="text-sm font-medium text-muted">Origins:</span>
 				<div class="relative">
 					<button
 						type="button"
 						onclick={() => (selectorOpen = !selectorOpen)}
-						class="flex items-center gap-1.5 rounded-md border border-border-light bg-background-secondary-light px-3 py-1.5 text-sm text-text-primary-light transition-colors hover:border-background-tertiary-light"
+						class="flex items-center gap-1.5 rounded-md border border-line bg-surface-panel px-3 py-1.5 text-sm text-ink transition-colors hover:border-accent"
 					>
 						{enabledOrigins.size} of {allRankedOrigins.length} selected
-						<svg
-							class="h-4 w-4 text-text-secondary-light"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
+						<svg class="h-4 w-4 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
@@ -409,40 +394,37 @@
 					</button>
 					{#if selectorOpen}
 						<div
-							class="absolute left-0 top-full z-20 mt-1 max-h-64 w-64 overflow-y-auto rounded-lg border border-border-light bg-background-primary-light shadow-lg"
+							class="absolute left-0 top-full z-20 mt-1 max-h-64 w-64 overflow-y-auto rounded-lg border border-line bg-surface-canvas shadow-lg"
 						>
-							<div class="border-b border-border-light px-3 py-2">
+							<div class="border-b border-line px-3 py-2">
 								<div class="flex gap-2">
 									<button
 										type="button"
 										onclick={() => {
 											enabledOrigins = new Set(allRankedOrigins.slice(0, 5));
 										}}
-										class="text-xs font-medium text-background-tertiary-light hover:underline"
-										>Top 5</button
+										class="text-xs font-medium text-accent hover:underline">Top 5</button
 									>
 									<button
 										type="button"
 										onclick={() => {
 											enabledOrigins = new Set(allRankedOrigins.slice(0, 10));
 										}}
-										class="text-xs font-medium text-background-tertiary-light hover:underline"
-										>Top 10</button
+										class="text-xs font-medium text-accent hover:underline">Top 10</button
 									>
 									<button
 										type="button"
 										onclick={() => {
 											enabledOrigins = new Set(allRankedOrigins);
 										}}
-										class="text-xs font-medium text-background-tertiary-light hover:underline"
-										>All</button
+										class="text-xs font-medium text-accent hover:underline">All</button
 									>
 									<button
 										type="button"
 										onclick={() => {
 											enabledOrigins = new Set();
 										}}
-										class="text-xs font-medium text-red-500 hover:underline">Clear</button
+										class="text-xs font-medium text-danger hover:underline">Clear</button
 									>
 								</div>
 							</div>
@@ -453,7 +435,7 @@
 								<button
 									type="button"
 									onclick={() => toggleOrigin(origin)}
-									class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-background-secondary-light"
+									class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-panel"
 								>
 									<div
 										class="h-3 w-3 flex-shrink-0 rounded-sm border"
@@ -461,10 +443,8 @@
 											? `background:${color}; border-color:${color};`
 											: 'background:transparent; border-color:#d1d5db;'}
 									></div>
-									<span class={active ? 'text-text-primary-light' : 'text-text-secondary-light'}
-										>{origin}</span
-									>
-									<span class="ml-auto text-xs text-text-secondary-light/60">({vol})</span>
+									<span class={active ? 'text-ink' : 'text-muted'}>{origin}</span>
+									<span class="ml-auto text-xs text-muted/60">({vol})</span>
 								</button>
 							{/each}
 						</div>
@@ -481,7 +461,7 @@
 					</span>
 				{/each}
 				{#if visibleOrigins.length > 8}
-					<span class="text-xs text-text-secondary-light">+{visibleOrigins.length - 8} more</span>
+					<span class="text-xs text-muted">+{visibleOrigins.length - 8} more</span>
 				{/if}
 			</div>
 		{/if}
@@ -527,7 +507,7 @@
 								x2={tooltipData.x}
 								y1={0}
 								y2={innerH}
-								stroke="rgb(156 163 175)"
+								stroke="#a39a8c"
 								stroke-width="1"
 								stroke-dasharray="4 4"
 								pointer-events="none"
@@ -554,9 +534,9 @@
 								pointer-events="none"
 							>
 								<div
-									style="background:white; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.12); padding:8px 10px; font-size:11px; line-height:1.4;"
+									style="background:#FCFAF8; border:1px solid #E4E4E2; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.12); padding:8px 10px; font-size:11px; line-height:1.4;"
 								>
-									<div style="color:#6b7280; font-weight:600; margin-bottom:4px;">
+									<div style="color:#695c4d; font-weight:600; margin-bottom:4px;">
 										{tooltipData.date.toLocaleDateString('en-US', {
 											month: 'short',
 											day: 'numeric',
@@ -569,23 +549,23 @@
 												style="width:8px; height:8px; border-radius:50%; background:{row.color}; flex-shrink:0;"
 											></div>
 											<span
-												style="color:#374151; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+												style="color:#695c4d; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
 												>{row.origin}</span
 											>
-											<span style="color:#111827; font-weight:600; flex-shrink:0;"
+											<span style="color:#302f2a; font-weight:600; flex-shrink:0;"
 												>{mode === 'spread'
 													? `${row.price > 0 ? '+' : ''}${row.price.toFixed(1)}%`
 													: `$${row.price.toFixed(2)}`}</span
 											>
 										</div>
 										{#if mode === 'spread' && row.retailPrice != null && row.wholesalePrice != null}
-											<div style="margin-left:13px; font-size:10px; color:#9ca3af;">
+											<div style="margin-left:13px; font-size:10px; color:#a39a8c;">
 												Retail: ${row.retailPrice.toFixed(2)} · Wholesale: ${row.wholesalePrice.toFixed(
 													2
 												)}
 											</div>
 										{:else if row.p25 != null && row.p75 != null}
-											<div style="margin-left:13px; font-size:10px; color:#9ca3af;">
+											<div style="margin-left:13px; font-size:10px; color:#a39a8c;">
 												IQR: ${row.p25.toFixed(2)} – ${row.p75.toFixed(2)}
 											</div>
 										{/if}
@@ -600,9 +580,9 @@
 
 		<!-- Dashboard legend: simple color dots + names (no toggles) -->
 		{#if !expanded && seriesData.length > 0}
-			<div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-gray-200 px-4 pt-2">
+			<div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-line px-4 pt-2">
 				{#each seriesData as series}
-					<div class="flex items-center gap-1.5 text-xs text-text-secondary-light">
+					<div class="flex items-center gap-1.5 text-xs text-muted">
 						<div class="h-2.5 w-2.5 rounded-full" style="background:{series.color}"></div>
 						{series.origin}
 					</div>

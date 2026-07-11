@@ -268,12 +268,12 @@
 	{#if !isVisible || !d3Loaded}
 		<!-- Loading skeleton -->
 		<div
-			class="flex animate-pulse items-center justify-center rounded-lg bg-background-secondary-light/50 {responsive
+			class="flex animate-pulse items-center justify-center rounded-lg bg-surface-panel/50 {responsive
 				? 'aspect-square'
 				: ''}"
 			style={responsive ? '' : `width: ${size}px; height: ${size}px;`}
 		>
-			<div class="h-4 w-4 animate-pulse rounded-full bg-background-tertiary-light/20"></div>
+			<div class="h-4 w-4 animate-pulse rounded-full bg-accent/20"></div>
 		</div>
 	{:else if (tastingNotes && radarData.length > 0) || (userTastingNotes && userRadarData.length > 0)}
 		<svg
@@ -286,12 +286,12 @@
 	{:else}
 		<!-- Fallback for missing data -->
 		<div
-			class="flex items-center justify-center rounded-lg border border-gray-200 bg-gray-50 {responsive
+			class="flex items-center justify-center rounded-lg border border-line bg-surface-panel {responsive
 				? 'aspect-square'
 				: ''}"
 			style={responsive ? '' : `width: ${size}px; height: ${size}px;`}
 		>
-			<span class="text-xs text-gray-400">No tasting data</span>
+			<span class="text-xs text-muted">No tasting data</span>
 		</div>
 	{/if}
 </div>

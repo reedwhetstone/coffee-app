@@ -5,33 +5,72 @@ export interface NavItem {
 	href: string;
 	description?: string;
 	requiresRole?: UserRole;
+	requiresChatAccess?: boolean;
+	requiresParchmentAccess?: boolean;
 	matches?: string[];
+	locked?: boolean;
+	lockedReason?: string;
+	upgradeHref?: string;
 }
 
 export interface NavSection {
-	id: 'core' | 'secondary' | 'admin';
+	id: 'parchment' | 'portfolio' | 'maillard' | 'developer' | 'admin';
 	label: string;
 	items: NavItem[];
 }
 
+export const analyticsSectionLinks = [
+	{
+		href: '#market-read',
+		menuHref: '/analytics#market-read',
+		label: 'Read',
+		description: 'Current posture and scope'
+	},
+	{
+		href: '#today-signals',
+		menuHref: '/analytics#today-signals',
+		label: 'Signals',
+		description: 'Market read and buy signals'
+	},
+	{
+		href: '#market-index',
+		menuHref: '/analytics#market-index',
+		label: 'Market Index',
+		description: 'Pricing, suppliers, arrivals, and delistings'
+	},
+	{
+		href: '#disclosure-index',
+		menuHref: '/analytics#disclosure-index',
+		label: 'Disclosure Index',
+		description: 'Metadata and transparency trends'
+	}
+] as const;
+
+export function getAnalyticsSectionLinks(options: { includeDisclosureIndex?: boolean } = {}) {
+	return analyticsSectionLinks.filter((link) => {
+		if (link.href === '#disclosure-index') return Boolean(options.includeDisclosureIndex);
+		return true;
+	});
+}
+
 export const publicNavItems: NavItem[] = [
 	{
-		label: 'For Buyers',
+		label: 'Catalog',
 		href: '/catalog',
-		description: 'Browse live coffee inventory and compare sourcing options',
+		description: 'Browse live green coffee inventory and compare sourcing options',
 		matches: ['/catalog']
+	},
+	{
+		label: 'Market Index',
+		href: '/analytics',
+		description: 'Explore current market intelligence',
+		matches: ['/analytics']
 	},
 	{
 		label: 'Pricing',
 		href: '/subscription',
 		description: 'See current plans and contact paths',
 		matches: ['/subscription']
-	},
-	{
-		label: 'Market Data',
-		href: '/analytics',
-		description: 'Explore current market intelligence',
-		matches: ['/analytics']
 	},
 	{
 		label: 'API',
@@ -55,47 +94,63 @@ export const publicNavItems: NavItem[] = [
 
 const authenticatedSections: NavSection[] = [
 	{
-		id: 'core',
-		label: 'Core destinations',
+		id: 'parchment',
+		label: 'Parchment',
 		items: [
-			{ label: 'Dashboard', href: '/dashboard', description: 'Your command center' },
-			{ label: 'Catalog', href: '/catalog', description: 'Browse catalog data' },
+			{ label: 'Dashboard', href: '/dashboard', description: 'Parchment Intelligence home' },
 			{
-				label: 'Roast',
-				href: '/roast',
-				description: 'Manage roasts and profiles',
-				requiresRole: 'member'
-			},
-			{
-				label: 'Inventory',
-				href: '/beans',
-				description: 'Track stocked beans',
-				requiresRole: 'member'
-			},
-			{
-				label: 'Market Data',
+				label: 'Market Index',
 				href: '/analytics',
-				description: 'Review market intelligence',
+				description: 'Market trends, price movement, and sourcing signals',
 				matches: ['/analytics']
 			},
+			{ label: 'Catalog', href: '/catalog', description: 'Browse green coffee supply data' },
 			{
 				label: 'Chat',
 				href: '/chat',
-				description: 'Open Coffee Chat',
-				requiresRole: 'member'
+				description: 'Ask Parchment Intelligence about sourcing and market decisions',
+				requiresChatAccess: true,
+				lockedReason: 'Requires Parchment Intelligence or Mallard Studio access.'
 			}
 		]
 	},
 	{
-		id: 'secondary',
-		label: 'Tools & account',
+		id: 'portfolio',
+		label: 'Portfolio',
 		items: [
+			{
+				label: 'Portfolio',
+				href: '/beans',
+				description: 'Track saved, purchased, and owned green coffees',
+				requiresParchmentAccess: true,
+				lockedReason: 'Portfolio tracking requires Parchment Intelligence or Mallard Studio access.'
+			}
+		]
+	},
+	{
+		id: 'maillard',
+		label: 'Mallard Studio',
+		items: [
+			{
+				label: 'Roast',
+				href: '/roast',
+				description: 'Manage roasts and profiles',
+				requiresRole: 'member',
+				lockedReason: 'Roasting workflows require Mallard Studio.'
+			},
 			{
 				label: 'Profit',
 				href: '/profit',
 				description: 'Review sales and profit',
-				requiresRole: 'member'
-			},
+				requiresRole: 'member',
+				lockedReason: 'Profit workflows require Mallard Studio.'
+			}
+		]
+	},
+	{
+		id: 'developer',
+		label: 'Developer',
+		items: [
 			{
 				label: 'Parchment Console',
 				href: '/api-dashboard',
@@ -105,18 +160,8 @@ const authenticatedSections: NavSection[] = [
 			{
 				label: 'Docs',
 				href: '/docs',
-				description: 'Read the API and platform docs',
+				description: 'Read Parchment API and platform docs',
 				matches: ['/docs']
-			},
-			{
-				label: 'Subscription',
-				href: '/subscription',
-				description: 'Manage billing and plan details'
-			},
-			{
-				label: 'Contact',
-				href: '/contact',
-				description: 'Reach out for support'
 			}
 		]
 	},
@@ -135,19 +180,52 @@ const authenticatedSections: NavSection[] = [
 	}
 ];
 
-export function getAuthenticatedNavSections(role: UserRole): NavSection[] {
+export interface NavAccessContext {
+	ppiAccess?: boolean;
+}
+
+function canUseChat(role: UserRole, context: NavAccessContext): boolean {
+	return context.ppiAccess === true || checkRole(role, 'member');
+}
+
+function resolveNavItemAccess(
+	item: NavItem,
+	role: UserRole,
+	context: NavAccessContext
+): NavItem | null {
+	if (item.requiresRole === 'admin' && !checkRole(role, 'admin')) return null;
+
+	const roleLocked = Boolean(item.requiresRole && !checkRole(role, item.requiresRole));
+	const chatLocked = Boolean(item.requiresChatAccess && !canUseChat(role, context));
+	const parchmentLocked = Boolean(item.requiresParchmentAccess && !canUseChat(role, context));
+	const locked = roleLocked || chatLocked || parchmentLocked;
+
+	return {
+		...item,
+		locked,
+		upgradeHref: locked ? (item.upgradeHref ?? '/subscription') : item.upgradeHref
+	};
+}
+
+export function getAuthenticatedNavSections(
+	role: UserRole,
+	context: NavAccessContext = {}
+): NavSection[] {
 	return authenticatedSections
 		.map((section) => ({
 			...section,
-			items: section.items.filter(
-				(item) => !item.requiresRole || checkRole(role, item.requiresRole)
-			)
+			items: section.items
+				.map((item) => resolveNavItemAccess(item, role, context))
+				.filter((item): item is NavItem => item !== null)
 		}))
 		.filter((section) => section.items.length > 0);
 }
 
-export function getAuthenticatedQuickLinks(role: UserRole): NavItem[] {
-	return getAuthenticatedNavSections(role).flatMap((section) => section.items);
+export function getAuthenticatedQuickLinks(
+	role: UserRole,
+	context: NavAccessContext = {}
+): NavItem[] {
+	return getAuthenticatedNavSections(role, context).flatMap((section) => section.items);
 }
 
 export function isNavItemActive(item: NavItem, pathname: string): boolean {
@@ -155,8 +233,12 @@ export function isNavItemActive(item: NavItem, pathname: string): boolean {
 	return patterns.some((pattern) => pathname === pattern || pathname.startsWith(`${pattern}/`));
 }
 
-export function getCurrentRouteLabel(pathname: string, role: UserRole): string {
-	const items = getAuthenticatedQuickLinks(role);
+export function getCurrentRouteLabel(
+	pathname: string,
+	role: UserRole,
+	context: NavAccessContext = {}
+): string {
+	const items = getAuthenticatedQuickLinks(role, context);
 	const matched = items.find((item) => isNavItemActive(item, pathname));
 	if (matched) return matched.label;
 

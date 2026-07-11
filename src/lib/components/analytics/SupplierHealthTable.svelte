@@ -61,18 +61,10 @@
 		}
 	}
 
-	function sortIcon(key: SortKey): string {
-		if (sortKey !== key) return '↕';
-		return sortAsc ? '↑' : '↓';
+	function sortLabel(key: SortKey): string {
+		if (sortKey !== key) return 'not sorted';
+		return sortAsc ? 'sorted ascending' : 'sorted descending';
 	}
-
-	// Top 3 by stocked count get accent highlight
-	let top3Sources = $derived(
-		[...rows]
-			.sort((a, b) => b.stockedCount - a.stockedCount)
-			.slice(0, 3)
-			.map((r) => r.source)
-	);
 
 	let totalStocked = $derived(rows.reduce((s, r) => s + r.stockedCount, 0));
 	let totalRetail = $derived(rows.reduce((s, r) => s + r.retailCount, 0));
@@ -86,99 +78,103 @@
 	});
 </script>
 
-<div class="overflow-x-auto rounded-lg border border-border-light shadow-sm">
+<div class="overflow-x-auto">
 	<table class="min-w-full text-sm">
 		<thead>
-			<tr class="border-b border-border-light bg-background-secondary-light">
+			<tr class="border-b border-line">
 				<th
-					class="cursor-pointer select-none px-4 py-3 text-left font-semibold text-text-secondary-light hover:text-text-primary-light"
+					class="cursor-pointer select-none py-2 pr-4 text-left font-semibold text-muted hover:text-ink"
 					onclick={() => setSort('source')}
+					aria-sort={sortKey === 'source' ? (sortAsc ? 'ascending' : 'descending') : 'none'}
 				>
-					Supplier {sortIcon('source')}
+					Supplier
+					<span class="sr-only">{sortLabel('source')}</span>
 				</th>
 				<th
-					class="cursor-pointer select-none px-4 py-3 text-right font-semibold text-text-secondary-light hover:text-text-primary-light"
+					class="cursor-pointer select-none py-2 pr-4 text-right font-semibold text-muted hover:text-ink"
 					onclick={() => setSort('stockedCount')}
+					aria-sort={sortKey === 'stockedCount' ? (sortAsc ? 'ascending' : 'descending') : 'none'}
 				>
-					Stocked {sortIcon('stockedCount')}
+					Stocked
+					<span class="sr-only">{sortLabel('stockedCount')}</span>
 				</th>
 				<th
-					class="cursor-pointer select-none px-4 py-3 text-right font-semibold text-text-secondary-light hover:text-text-primary-light"
+					class="cursor-pointer select-none py-2 pr-4 text-right font-semibold text-muted hover:text-ink"
 					onclick={() => setSort('origins')}
+					aria-sort={sortKey === 'origins' ? (sortAsc ? 'ascending' : 'descending') : 'none'}
 				>
-					Origins {sortIcon('origins')}
+					Origins
+					<span class="sr-only">{sortLabel('origins')}</span>
 				</th>
 				<th
-					class="cursor-pointer select-none px-4 py-3 text-right font-semibold text-text-secondary-light hover:text-text-primary-light"
+					class="cursor-pointer select-none py-2 pr-4 text-right font-semibold text-muted hover:text-ink"
 					onclick={() => setSort('avgCostLb')}
+					aria-sort={sortKey === 'avgCostLb' ? (sortAsc ? 'ascending' : 'descending') : 'none'}
 				>
-					Avg $/lb {sortIcon('avgCostLb')}
+					Avg $/lb
+					<span class="sr-only">{sortLabel('avgCostLb')}</span>
 				</th>
 				<th
-					class="hidden cursor-pointer select-none px-4 py-3 text-right font-semibold text-text-secondary-light hover:text-text-primary-light sm:table-cell"
+					class="hidden cursor-pointer select-none py-2 pr-4 text-right font-semibold text-muted hover:text-ink sm:table-cell"
 					onclick={() => setSort('priceRange')}
+					aria-sort={sortKey === 'priceRange' ? (sortAsc ? 'ascending' : 'descending') : 'none'}
 				>
-					Price Range {sortIcon('priceRange')}
+					Price range
+					<span class="sr-only">{sortLabel('priceRange')}</span>
 				</th>
 				<th
-					class="cursor-pointer select-none px-4 py-3 text-right font-semibold text-text-secondary-light hover:text-text-primary-light"
+					class="cursor-pointer select-none py-2 text-right font-semibold text-muted hover:text-ink"
 					onclick={() => setSort('split')}
+					aria-sort={sortKey === 'split' ? (sortAsc ? 'ascending' : 'descending') : 'none'}
 				>
-					R/W Split {sortIcon('split')}
+					Retail / wholesale
+					<span class="sr-only">{sortLabel('split')}</span>
 				</th>
 			</tr>
 		</thead>
 		<tbody>
 			{#each sorted as row, i}
-				{@const isTop3 = top3Sources.includes(row.source)}
 				<tr
-					class="border-b border-border-light/50 transition-colors
-					{i % 2 === 0 ? 'bg-background-primary-light' : 'bg-background-secondary-light/40'}
-					{isTop3 ? 'ring-1 ring-inset ring-background-tertiary-light/20' : ''}
-					hover:bg-background-secondary-light"
+					class="border-b border-line/50 transition-colors
+					{i % 2 === 0 ? 'bg-surface-canvas' : 'bg-surface-panel/40'}
+					hover:bg-surface-panel"
 				>
-					<td class="px-4 py-2.5">
-						<span class="font-medium text-text-primary-light">{formatSourceName(row.source)}</span>
-						{#if isTop3}
-							<span
-								class="ml-2 inline-block rounded-full bg-background-tertiary-light/15 px-1.5 py-0.5 text-xs font-medium text-background-tertiary-light"
-								>Top</span
-							>
-						{/if}
+					<td class="py-2 pr-4">
+						<span class="font-medium text-ink">{formatSourceName(row.source)}</span>
 					</td>
-					<td class="px-4 py-2.5 text-right font-semibold text-text-primary-light">
+					<td class="py-2 pr-4 text-right font-semibold text-ink">
 						{row.stockedCount}
 					</td>
-					<td class="px-4 py-2.5 text-right text-text-secondary-light">
+					<td class="py-2 pr-4 text-right text-muted">
 						{row.origins}
 					</td>
-					<td class="px-4 py-2.5 text-right font-medium text-text-primary-light">
+					<td class="py-2 pr-4 text-right font-medium text-ink">
 						${row.avgCostLb.toFixed(2)}
 					</td>
-					<td class="hidden px-4 py-2.5 text-right text-text-secondary-light sm:table-cell">
+					<td class="hidden py-2 pr-4 text-right text-muted sm:table-cell">
 						${row.minCostLb.toFixed(2)} – ${row.maxCostLb.toFixed(2)}
 					</td>
-					<td class="px-4 py-2.5 text-right text-text-secondary-light">
-						{row.retailCount}R / {row.wholesaleCount}W
+					<td class="py-2 text-right text-muted">
+						{row.retailCount} / {row.wholesaleCount}
 					</td>
 				</tr>
 			{/each}
 		</tbody>
 		<tfoot>
-			<tr class="border-t-2 border-border-light bg-background-secondary-light font-semibold">
-				<td class="px-4 py-3 text-text-primary-light">
+			<tr class="border-t border-line bg-surface-panel/50 font-semibold">
+				<td class="py-3 pr-4 text-ink">
 					{rows.length} suppliers
 				</td>
-				<td class="px-4 py-3 text-right text-text-primary-light">
+				<td class="py-3 pr-4 text-right text-ink">
 					{totalStocked.toLocaleString()} total
 				</td>
-				<td class="px-4 py-3 text-right text-text-secondary-light">—</td>
-				<td class="px-4 py-3 text-right text-text-primary-light">
+				<td class="py-3 pr-4 text-right text-muted">—</td>
+				<td class="py-3 pr-4 text-right text-ink">
 					${overallAvg.toFixed(2)} avg
 				</td>
-				<td class="hidden px-4 py-3 text-right text-text-secondary-light sm:table-cell">—</td>
-				<td class="px-4 py-3 text-right text-text-secondary-light">
-					{totalRetail}R / {totalWholesale}W
+				<td class="hidden py-3 pr-4 text-right text-muted sm:table-cell">—</td>
+				<td class="py-3 text-right text-muted">
+					{totalRetail} / {totalWholesale}
 				</td>
 			</tr>
 		</tfoot>

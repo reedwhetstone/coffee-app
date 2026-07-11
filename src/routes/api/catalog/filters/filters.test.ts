@@ -1,129 +1,130 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockGetCatalogFilterMetadata = vi.fn();
+const mockFacets = vi.fn();
+const mockCreateParchmentServerClient = vi.fn(async () => ({
+	catalog: { facets: mockFacets }
+}));
+const mockResolveCatalogCredentialMode = vi.fn();
+const mockResolvePrincipal = vi.fn();
 
-vi.mock('$lib/data/catalog', () => ({
-	getCatalogFilterMetadata: mockGetCatalogFilterMetadata
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentServerClient: mockCreateParchmentServerClient,
+	resolveCatalogCredentialMode: mockResolveCatalogCredentialMode
+}));
+
+vi.mock('$lib/server/principal', () => ({
+	resolvePrincipal: mockResolvePrincipal
 }));
 
 let GET: typeof import('./+server').GET;
 
-const visibleRows = [
-	{
-		source: 'A',
-		continent: 'Africa',
-		country: 'Ethiopia',
-		processing: 'Washed',
-		processing_base_method: 'Washed',
-		fermentation_type: 'None Stated',
-		process_additives: ['none'],
-		processing_disclosure_level: 'structured',
-		cultivar_detail: 'Heirloom',
-		type: 'Arabica',
-		grade: 'Grade 1',
-		appearance: '15/17',
-		arrival_date: '2024-01-01'
-	},
-	{
-		source: 'B',
-		continent: 'South America',
-		country: 'Brazil',
-		processing: 'Natural',
-		processing_base_method: 'Natural',
-		fermentation_type: 'Anaerobic',
-		process_additives: ['hops', 'fruit'],
-		processing_disclosure_level: 'high_detail',
-		cultivar_detail: 'Bourbon',
-		type: 'Arabica',
-		grade: 'Grade 2',
-		appearance: '16 Screen',
-		arrival_date: '2024-02-01'
-	}
-];
-
 beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
-	mockGetCatalogFilterMetadata.mockResolvedValue(visibleRows);
+	mockResolvePrincipal.mockResolvedValue({ isAuthenticated: false });
+	mockResolveCatalogCredentialMode.mockReturnValue('public-demo');
 	({ GET } = await import('./+server'));
 });
 
-function makeRequest(url: string, role: App.Locals['role'], session: App.Locals['session']) {
+function makeEvent(url: string, init?: RequestInit) {
 	return {
 		url: new URL(url),
-		locals: {
-			supabase: { kind: 'session-client' },
-			role,
-			session
-		}
+		request: new Request(url, init),
+		locals: {}
 	} as unknown as Parameters<NonNullable<typeof GET>>[0];
 }
 
 describe('/api/catalog/filters', () => {
-	it('keeps anonymous requests constrained to canonical public visibility', async () => {
-		const response = await GET(
-			makeRequest('https://app.test/api/catalog/filters?showWholesale=true', 'viewer', null)
-		);
-		const body = await response.json();
+	it('returns the Parchment facet values payload', async () => {
+		mockFacets.mockResolvedValue({
+			data: { values: { sources: ['A', 'B'], processing: ['Natural', 'Washed'] } },
+			error: null
+		});
+
+		const response = await GET(makeEvent('https://app.test/api/catalog/filters'));
 
 		expect(response.status).toBe(200);
-		expect(mockGetCatalogFilterMetadata).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
-			expect.objectContaining({
-				stockedOnly: true,
-				publicOnly: true,
-				showWholesale: false,
-				wholesaleOnly: false
-			})
-		);
-		expect(body.sources).toEqual(['A', 'B']);
-		expect(body.processing_base_method).toEqual(['Natural', 'Washed']);
-		expect(body.fermentation_type).toEqual(['Anaerobic', 'None Stated']);
-		expect(body.process_additives).toEqual(['fruit', 'hops', 'none']);
-		expect(body.processing_disclosure_level).toEqual(['high_detail', 'structured']);
+		expect(await response.json()).toEqual({
+			sources: ['A', 'B'],
+			processing: ['Natural', 'Washed']
+		});
+		// Access-aware gating (premium metadata, visibility) is enforced by
+		// Parchment now, so the endpoint just forwards the request.
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'public-demo',
+			preferHandling: 'lenient'
+		});
+		expect(mockFacets).toHaveBeenCalledWith(expect.objectContaining({ stocked: 'true' }));
 	});
 
-	it('keeps viewer sessions on the same public-only filter metadata policy', async () => {
-		const viewerSession = { access_token: 'cookie-token' } as App.Locals['session'];
+	it('uses session mode for authenticated website facet callers', async () => {
+		mockResolveCatalogCredentialMode.mockReturnValue('session');
+		mockFacets.mockResolvedValue({ data: { values: {} }, error: null });
+
+		await GET(makeEvent('https://app.test/api/catalog/filters'));
+
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session',
+			preferHandling: 'lenient'
+		});
+	});
+
+	it('forwards the wholesale view params to Parchment', async () => {
+		mockFacets.mockResolvedValue({ data: { values: {} }, error: null });
 
 		await GET(
-			makeRequest(
-				'https://app.test/api/catalog/filters?wholesaleOnly=true',
-				'viewer',
-				viewerSession
-			)
+			makeEvent('https://app.test/api/catalog/filters?showWholesale=true&wholesaleOnly=true')
 		);
 
-		expect(mockGetCatalogFilterMetadata).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
-			expect.objectContaining({
-				stockedOnly: true,
-				publicOnly: true,
-				showWholesale: false,
-				wholesaleOnly: false
-			})
+		expect(mockFacets).toHaveBeenCalledWith(
+			expect.objectContaining({ showWholesale: 'true', wholesaleOnly: 'true' })
 		);
 	});
 
-	it('lets member sessions request internal filter metadata when wholesale flags are explicitly requested', async () => {
-		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+	it('does not forward wholesale params that were not requested', async () => {
+		mockFacets.mockResolvedValue({ data: { values: {} }, error: null });
 
-		await GET(
-			makeRequest(
-				'https://app.test/api/catalog/filters?showWholesale=true&wholesaleOnly=true',
-				'member',
-				memberSession
-			)
-		);
+		await GET(makeEvent('https://app.test/api/catalog/filters'));
 
-		expect(mockGetCatalogFilterMetadata).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
-			expect.objectContaining({
-				stockedOnly: true,
-				publicOnly: false,
-				showWholesale: true,
-				wholesaleOnly: true
+		const query = mockFacets.mock.calls[0][0];
+		expect(query).not.toHaveProperty('showWholesale');
+		expect(query).not.toHaveProperty('wholesaleOnly');
+	});
+
+	it('returns 500 when Parchment returns an error envelope', async () => {
+		mockFacets.mockResolvedValue({
+			data: undefined,
+			error: { error: { code: 'schema_unavailable' } }
+		});
+
+		const response = await GET(makeEvent('https://app.test/api/catalog/filters'));
+
+		expect(response.status).toBe(500);
+	});
+
+	it('rejects a present-but-invalid Authorization header before proxying', async () => {
+		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: false });
+
+		const response = await GET(
+			makeEvent('https://app.test/api/catalog/filters', {
+				headers: { Authorization: 'Bearer definitely_invalid' }
 			})
 		);
+
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual({
+			error: 'Authentication required',
+			message: 'Authentication required'
+		});
+		expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
+		expect(mockFacets).not.toHaveBeenCalled();
+	});
+
+	it('returns an empty object when Parchment omits values', async () => {
+		mockFacets.mockResolvedValue({ data: {}, error: null });
+
+		const response = await GET(makeEvent('https://app.test/api/catalog/filters'));
+
+		expect(await response.json()).toEqual({});
 	});
 });

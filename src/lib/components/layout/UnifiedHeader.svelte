@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { checkRole, type UserRole } from '$lib/types/auth.types';
 	import {
+		getAnalyticsSectionLinks,
 		publicNavItems,
 		isNavItemActive,
 		type NavItem
@@ -23,6 +24,12 @@
 	let isSignedIn = $derived(Boolean(session?.user));
 	let canAccessMemberRoutes = $derived(checkRole(role, 'member'));
 	let isDashboardPage = $derived(currentPath === '/dashboard');
+	let isMarketIndexPage = $derived(currentPath.startsWith('/analytics'));
+	let marketIndexSectionLinks = $derived(
+		getAnalyticsSectionLinks({ includeDisclosureIndex: isSignedIn })
+	);
+	let primaryCtaLabel = $derived(isMarketIndexPage ? 'See plans' : 'Explore Market Index');
+	let primaryCtaHref = $derived(isMarketIndexPage ? '/subscription' : '/analytics');
 	let mobileMenuOpen = $state(false);
 
 	let headerNavItems = $derived.by(() => {
@@ -60,9 +67,7 @@
 	});
 </script>
 
-<header
-	class="sticky top-0 z-50 border-b border-border-light bg-background-primary-light/95 backdrop-blur-sm"
->
+<header class="sticky top-0 z-50 border-b border-line bg-surface-canvas/95 backdrop-blur-sm">
 	<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 		<div class="flex items-center justify-between py-4">
 			<div class="flex items-center space-x-4">
@@ -82,8 +87,8 @@
 							item,
 							currentPath
 						)
-							? 'text-background-tertiary-light'
-							: 'text-text-secondary-light hover:text-text-primary-light'}"
+							? 'text-accent'
+							: 'text-muted hover:text-ink'}"
 					>
 						{item.label}
 					</button>
@@ -96,7 +101,7 @@
 						{#each signedInQuickLinks as link}
 							<button
 								onclick={() => navigateTo(link.href)}
-								class="text-sm font-medium text-text-secondary-light transition-colors duration-200 hover:text-background-tertiary-light"
+								class="text-sm font-medium text-muted transition-colors duration-200 hover:text-accent"
 							>
 								{link.label}
 							</button>
@@ -104,8 +109,8 @@
 					</div>
 					<button
 						onclick={() => navigateTo('/dashboard')}
-						class="inline-flex items-center rounded-md bg-background-tertiary-light px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light {isDashboardPage
-							? 'ring-2 ring-background-tertiary-light/30 ring-offset-2 ring-offset-background-primary-light'
+						class="inline-flex items-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent {isDashboardPage
+							? 'ring-2 ring-accent/30 ring-offset-2 ring-offset-surface-canvas'
 							: ''}"
 					>
 						Dashboard
@@ -113,22 +118,22 @@
 				{:else}
 					<button
 						onclick={() => navigateTo('/auth')}
-						class="hidden items-center rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white sm:inline-flex"
+						class="hidden items-center rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent transition-all duration-200 hover:bg-accent hover:text-ink sm:inline-flex"
 					>
-						Sign In
+						Sign in
 					</button>
 					<button
-						onclick={() => navigateTo('/subscription')}
-						class="inline-flex items-center rounded-md bg-background-tertiary-light px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
+						onclick={() => navigateTo(primaryCtaHref)}
+						class="inline-flex items-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
 					>
-						See plans
+						{primaryCtaLabel}
 					</button>
 				{/if}
 
 				<div class="md:hidden">
 					<button
 						type="button"
-						class="inline-flex items-center justify-center rounded-md p-2 text-text-secondary-light transition-colors hover:bg-background-secondary-light hover:text-text-primary-light focus:outline-none focus:ring-2 focus:ring-inset focus:ring-background-tertiary-light"
+						class="inline-flex items-center justify-center rounded-md p-2 text-muted transition-colors hover:bg-surface-panel hover:text-ink focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent"
 						onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
 						aria-expanded={mobileMenuOpen}
 						aria-controls="public-mobile-menu"
@@ -155,7 +160,7 @@
 		</div>
 
 		{#if mobileMenuOpen}
-			<div id="public-mobile-menu" class="border-t border-border-light pb-4 pt-3 md:hidden">
+			<div id="public-mobile-menu" class="border-t border-line pb-4 pt-3 md:hidden">
 				<div class="space-y-2">
 					{#each headerNavItems as item (item.href)}
 						<button
@@ -164,26 +169,42 @@
 								item,
 								currentPath
 							)
-								? 'bg-background-tertiary-light/10 text-background-tertiary-light'
-								: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
+								? 'bg-accent/10 text-accent'
+								: 'text-muted hover:bg-surface-panel hover:text-ink'}"
 						>
 							{item.label}
 						</button>
 					{/each}
 				</div>
 
-				<div class="mt-4 border-t border-border-light pt-4">
+				{#if isMarketIndexPage}
+					<div class="mt-4 border-t border-line pt-4">
+						<p class="px-3 text-xs font-semibold text-muted">Market Index sections</p>
+						<div class="mt-2 grid grid-cols-2 gap-2">
+							{#each marketIndexSectionLinks as link}
+								<button
+									onclick={() => navigateTo(link.menuHref)}
+									class="rounded-lg bg-surface-panel px-3 py-2 text-left text-xs font-medium text-ink ring-1 ring-line transition-colors hover:bg-accent/10 hover:text-accent"
+								>
+									{link.label}
+								</button>
+							{/each}
+						</div>
+					</div>
+				{/if}
+
+				<div class="mt-4 border-t border-line pt-4">
 					{#if isSignedIn}
 						<button
 							onclick={() => navigateTo('/dashboard')}
-							class="mb-2 block w-full rounded-xl bg-background-tertiary-light px-3 py-3 text-left text-sm font-medium text-white"
+							class="mb-2 block w-full rounded-xl bg-accent px-3 py-3 text-left text-sm font-medium text-ink"
 						>
 							Dashboard
 						</button>
 						{#each signedInQuickLinks as link}
 							<button
 								onclick={() => navigateTo(link.href)}
-								class="block w-full rounded-xl px-3 py-3 text-left text-sm font-medium text-text-secondary-light transition-colors duration-200 hover:bg-background-secondary-light hover:text-text-primary-light"
+								class="block w-full rounded-xl px-3 py-3 text-left text-sm font-medium text-muted transition-colors duration-200 hover:bg-surface-panel hover:text-ink"
 							>
 								{link.label}
 							</button>
@@ -191,15 +212,15 @@
 					{:else}
 						<button
 							onclick={() => navigateTo('/auth')}
-							class="block w-full rounded-xl px-3 py-3 text-left text-sm font-medium text-background-tertiary-light transition-colors duration-200 hover:bg-background-secondary-light"
+							class="block w-full rounded-xl px-3 py-3 text-left text-sm font-medium text-accent transition-colors duration-200 hover:bg-surface-panel"
 						>
-							Sign In
+							Sign in
 						</button>
 						<button
-							onclick={() => navigateTo('/subscription')}
-							class="mt-2 block w-full rounded-xl bg-background-tertiary-light px-3 py-3 text-left text-sm font-medium text-white"
+							onclick={() => navigateTo(primaryCtaHref)}
+							class="mt-2 block w-full rounded-xl bg-accent px-3 py-3 text-left text-sm font-medium text-ink"
 						>
-							See plans
+							{primaryCtaLabel}
 						</button>
 					{/if}
 				</div>

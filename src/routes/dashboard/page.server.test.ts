@@ -1,0 +1,171 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mockCatalogList = vi.fn();
+const mockCreateParchmentServerClient = vi.fn();
+const mockGetTrackedLotSummaries = vi.fn();
+
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentServerClient: (...args: unknown[]) => mockCreateParchmentServerClient(...args)
+}));
+
+vi.mock('$lib/server/trackedLots', () => ({
+	getTrackedLotSummaries: (...args: unknown[]) => mockGetTrackedLotSummaries(...args)
+}));
+
+let load: typeof import('./+page.server').load;
+
+beforeEach(async () => {
+	vi.clearAllMocks();
+	mockCatalogList.mockResolvedValue({ data: { data: [] } });
+	mockCreateParchmentServerClient.mockResolvedValue({ catalog: { list: mockCatalogList } });
+	mockGetTrackedLotSummaries.mockResolvedValue([]);
+	({ load } = await import('./+page.server'));
+});
+
+function makeBriefsQuery(rows: Array<Record<string, unknown>>) {
+	return {
+		select: vi.fn().mockReturnThis(),
+		eq: vi.fn().mockReturnThis(),
+		order: vi.fn().mockReturnThis(),
+		limit: vi.fn().mockResolvedValue({ data: rows, error: null })
+	};
+}
+
+function makeLoadInput(input: {
+	role: string;
+	principal: { isAuthenticated: true; userId: string; ppiAccess: boolean } | null;
+	briefRows?: Array<Record<string, unknown>>;
+}) {
+	return {
+		locals: {
+			supabase: { from: vi.fn().mockReturnValue(makeBriefsQuery(input.briefRows ?? [])) },
+			role: input.role,
+			session: input.principal ? { access_token: 'token' } : null,
+			principal: input.principal
+		}
+	} as unknown as Parameters<typeof load>[0];
+}
+
+describe('/dashboard sourcing workspace load', () => {
+	it('loads recent arrivals from Parchment catalog list', async () => {
+		mockCatalogList.mockResolvedValue({
+			data: { data: [{ id: 1, name: 'Fresh Arrival', stocked: true }] }
+		});
+
+		const result = (await load(
+			makeLoadInput({
+				role: 'viewer',
+				principal: { isAuthenticated: true, userId: 'viewer-1', ppiAccess: false }
+			})
+		)) as { recentArrivals: Array<{ id: number; name: string }> };
+
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything());
+		expect(mockCatalogList).toHaveBeenCalledWith({
+			stocked: 'true',
+			sort: 'arrival_date',
+			order: 'desc',
+			limit: 6
+		});
+		expect(result.recentArrivals).toEqual([{ id: 1, name: 'Fresh Arrival', stocked: true }]);
+	});
+
+	it('returns empty workspace context for viewers without sourcing access', async () => {
+		const result = (await load(
+			makeLoadInput({
+				role: 'viewer',
+				principal: { isAuthenticated: true, userId: 'viewer-1', ppiAccess: false }
+			})
+		)) as { trackedLots: unknown[]; activeBriefs: unknown[] };
+
+		expect(result.trackedLots).toEqual([]);
+		expect(result.activeBriefs).toEqual([]);
+		expect(mockGetTrackedLotSummaries).not.toHaveBeenCalled();
+	});
+
+	it('keeps the dashboard rendering when Parchment arrivals fail', async () => {
+		mockCatalogList.mockResolvedValue({ error: { message: 'Parchment unavailable' } });
+
+		const result = (await load(
+			makeLoadInput({
+				role: 'viewer',
+				principal: { isAuthenticated: true, userId: 'viewer-1', ppiAccess: false }
+			})
+		)) as { recentArrivals: unknown[] };
+
+		expect(result.recentArrivals).toEqual([]);
+	});
+
+	it('loads tracked lot summaries and their catalog cards for ppiAccess users', async () => {
+		mockGetTrackedLotSummaries.mockResolvedValue([
+			{ catalogId: 7, name: 'Tracked Lot', stocked: true }
+		]);
+		// Tracked hydration goes through Parchment catalog.list with a coffeeIds
+		// filter; arrivals uses the stocked query. Return the tracked row only for
+		// the coffeeIds call.
+		mockCatalogList.mockImplementation((query: { coffeeIds?: string }) =>
+			Promise.resolve({
+				data: { data: query?.coffeeIds ? [{ id: 7, name: 'Tracked Lot' }] : [] }
+			})
+		);
+
+		const result = (await load(
+			makeLoadInput({
+				role: 'viewer',
+				principal: { isAuthenticated: true, userId: 'ppi-1', ppiAccess: true }
+			})
+		)) as {
+			trackedLots: Array<{ catalogId: number }>;
+			trackedCatalog: Array<{ id: number }>;
+			activeBriefs: unknown[];
+		};
+
+		expect(mockGetTrackedLotSummaries).toHaveBeenCalledWith(expect.anything(), 'ppi-1', 12);
+		expect(mockCatalogList).toHaveBeenCalledWith({
+			coffeeIds: '7',
+			stocked: 'all',
+			showWholesale: 'true',
+			limit: 1
+		});
+		expect(result.trackedLots).toHaveLength(1);
+		expect(result.trackedCatalog).toHaveLength(1);
+		expect(result.activeBriefs).toEqual([]);
+	});
+
+	it('loads tracked lots and active briefs with catalog deep links for members', async () => {
+		mockGetTrackedLotSummaries.mockResolvedValue([]);
+
+		const result = (await load(
+			makeLoadInput({
+				role: 'member',
+				principal: { isAuthenticated: true, userId: 'member-1', ppiAccess: false },
+				briefRows: [
+					{
+						id: 'brief-1',
+						name: 'Colombia brief',
+						criteria: { version: 1, country: 'Colombia', max_price_per_lb: 6 }
+					}
+				]
+			})
+		)) as {
+			activeBriefs: Array<{ id: string; criteriaDescription: string; catalogHref: string }>;
+		};
+
+		expect(result.activeBriefs).toHaveLength(1);
+		expect(result.activeBriefs[0].catalogHref).toBe('/catalog?country=Colombia');
+		expect(result.activeBriefs[0].criteriaDescription).toContain('Colombia');
+	});
+
+	it('keeps the dashboard rendering when sourcing context queries fail', async () => {
+		mockGetTrackedLotSummaries.mockRejectedValue(new Error('rls denied'));
+
+		const result = (await load(
+			makeLoadInput({
+				role: 'member',
+				principal: { isAuthenticated: true, userId: 'member-1', ppiAccess: false }
+			})
+		)) as { trackedLots: unknown[]; activeBriefs: unknown[] };
+
+		expect(result.trackedLots).toEqual([]);
+		expect(result.activeBriefs).toEqual([]);
+	});
+});

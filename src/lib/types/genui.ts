@@ -213,7 +213,7 @@ export type BlockAction =
 
 // ─── Canvas Types ────────────────────────────────────────────────────────────
 
-export type CanvasLayout = 'focus' | 'comparison' | 'dashboard';
+export type CanvasLayout = 'focus' | 'comparison' | 'dashboard' | 'stack';
 
 export interface CanvasBlock {
 	id: string;
@@ -222,19 +222,45 @@ export interface CanvasBlock {
 	pinned: boolean;
 	minimized: boolean;
 	addedAt: number;
+	/**
+	 * Optional tab title. The assistant can name a canvas tab via present_results
+	 * (`canvas_title`); when absent, the UI falls back to a default derived from
+	 * the block type.
+	 */
+	title?: string;
 }
 
 export type CanvasMutation =
-	| { type: 'add'; block: UIBlock; messageId: string }
+	| { type: 'add'; block: UIBlock; messageId: string; title?: string }
 	| { type: 'remove'; blockId: string }
 	| { type: 'focus'; blockId: string }
 	| { type: 'clear' }
-	| { type: 'layout'; layout: CanvasLayout }
-	| { type: 'replace'; blocks: Array<{ block: UIBlock; messageId: string }> }
+	| { type: 'layout'; layout: CanvasLayout; source?: 'user' | 'agent' }
+	| { type: 'replace'; blocks: Array<{ block: UIBlock; messageId: string; title?: string }> }
 	| { type: 'pin'; blockId: string }
 	| { type: 'unpin'; blockId: string }
 	| { type: 'minimize'; blockId: string }
 	| { type: 'restore'; blockId: string };
+
+/** Human-friendly default tab label for a block type when no AI title is set. */
+export function defaultBlockTitle(blockType: UIBlock['type']): string {
+	const labels: Record<UIBlock['type'], string> = {
+		'coffee-cards': 'Coffee cards',
+		'inventory-table': 'Inventory',
+		'roast-chart': 'Roast chart',
+		'roast-comparison': 'Roast comparison',
+		'roast-profiles': 'Roast profiles',
+		'profit-summary': 'Profit summary',
+		'tasting-radar': 'Tasting radar',
+		'data-table': 'Data table',
+		'action-card': 'Action',
+		'bean-form': 'Add bean',
+		'roast-form': 'Log roast',
+		'sale-form': 'Record sale',
+		error: 'Error'
+	};
+	return labels[blockType] ?? blockType.replace(/-/g, ' ');
+}
 
 export interface CanvasState {
 	blocks: CanvasBlock[];

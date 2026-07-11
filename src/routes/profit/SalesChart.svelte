@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { AXIS_TICK_COLOR } from '$lib/styles/chartColors';
 	import { max, sum, group } from 'd3-array';
 	import { scaleBand, scaleLinear } from 'd3-scale';
 	import { LayerCake, Svg } from 'layercake';
@@ -93,55 +94,55 @@
 			value: 'salesCount',
 			label: 'Number of Sales',
 			format: (v: number) => v.toString(),
-			color: 'text-indigo-500'
+			color: '#6D5BD0'
 		},
 		{
 			value: 'ozSold',
 			label: 'Oz Sold',
 			format: (v: number) => `${v.toFixed(1)} oz`,
-			color: 'text-cyan-500'
+			color: '#4E8098'
 		},
 		{
 			value: 'investment',
 			label: 'Investment',
 			format: (v: number) => `$${v.toFixed(2)}`,
-			color: 'text-red-500'
+			color: '#9C4356'
 		},
 		{
 			value: 'revenue',
 			label: 'Revenue',
 			format: (v: number) => `$${v.toFixed(2)}`,
-			color: 'text-green-500'
+			color: '#7FB069'
 		},
 		{
 			value: 'profit',
 			label: 'Profit',
 			format: (v: number) => `$${v.toFixed(2)}`,
-			color: 'text-blue-500'
+			color: '#4E8098'
 		},
 		{
 			value: 'margin',
 			label: 'Margin %',
 			format: (v: number) => `${v.toFixed(1)}%`,
-			color: 'text-purple-500'
+			color: '#6D5BD0'
 		},
 		{
 			value: 'avgPricePerOz',
 			label: 'Avg Price/oz',
 			format: (v: number) => `$${v.toFixed(2)}`,
-			color: 'text-orange-500'
+			color: '#C05B2E'
 		},
 		{
 			value: 'inventoryTurnover',
 			label: 'Inventory Turnover',
 			format: (v: number) => `${v.toFixed(1)}%`,
-			color: 'text-teal-500'
+			color: '#586048'
 		},
 		{
 			value: 'cogs',
 			label: 'COGS per Bean',
 			format: (v: number) => `$${v.toFixed(2)}`,
-			color: 'text-gray-500'
+			color: '#695C4D'
 		}
 	];
 
@@ -311,21 +312,12 @@
 	// Metric colors for the bar chart
 	function getMetricColor(metric: string, hover = false) {
 		const metricConfig = metricOptions.find((m) => m.value === metric);
-		if (!metricConfig) return 'rgb(156 163 175)';
-
-		const colorMap: Record<string, string> = {
-			'text-indigo-500': hover ? 'rgb(99 102 241)' : 'rgb(79 70 229)',
-			'text-cyan-500': hover ? 'rgb(6 182 212)' : 'rgb(14 165 233)',
-			'text-red-500': hover ? 'rgb(239 68 68)' : 'rgb(220 38 38)',
-			'text-green-500': hover ? 'rgb(34 197 94)' : 'rgb(22 163 74)',
-			'text-blue-500': hover ? 'rgb(59 130 246)' : 'rgb(37 99 235)',
-			'text-purple-500': hover ? 'rgb(168 85 247)' : 'rgb(147 51 234)',
-			'text-orange-500': hover ? 'rgb(249 115 22)' : 'rgb(234 88 12)',
-			'text-teal-500': hover ? 'rgb(20 184 166)' : 'rgb(13 148 136)',
-			'text-gray-500': hover ? 'rgb(107 114 128)' : 'rgb(75 85 99)'
-		};
-
-		return colorMap[metricConfig.color] || 'rgb(156 163 175)';
+		const base = metricConfig?.color ?? AXIS_TICK_COLOR;
+		if (!hover) return base;
+		// Hover state: lighten the brand hex ~12% toward white.
+		const [r, g, b] = [1, 3, 5].map((i) => parseInt(base.slice(i, i + 2), 16));
+		const lift = (v: number) => Math.round(v + (255 - v) * 0.22);
+		return `rgb(${lift(r)} ${lift(g)} ${lift(b)})`;
 	}
 
 	function handleTooltipChange(state: {
@@ -364,71 +356,86 @@
 </script>
 
 <!-- Sales Chart Component -->
-<div class="rounded-lg bg-background-secondary-light ring-border-light">
+<section class="rounded-lg border border-line bg-surface-panel p-5 shadow-sm sm:p-6">
+	<div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+		<div>
+			<h2 class="text-2xl font-semibold tracking-tight text-ink">Sales by coffee</h2>
+			<p class="mt-1 text-sm text-muted">
+				Compare revenue, margin, sell-through, and cost concentration across coffees.
+			</p>
+		</div>
+		<p class="text-sm text-muted">
+			{chartData().length} coffee{chartData().length === 1 ? '' : 's'} in view
+		</p>
+	</div>
 	<!-- KPI Summary Panel -->
 	<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Total Sales</h3>
-			<p class="mt-1 text-2xl font-bold text-indigo-500">{formatNumber(kpiSummary().totalSales)}</p>
-			<p class="mt-1 text-xs text-text-secondary-light">Individual transactions</p>
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Total sales</h3>
+			<p class="mt-1 text-3xl font-semibold tabular-nums text-ink">
+				{formatNumber(kpiSummary().totalSales)}
+			</p>
+			<p class="mt-1 text-xs text-muted">Individual transactions</p>
 		</div>
 
-		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Total Revenue</h3>
-			<p class="mt-1 text-2xl font-bold text-green-500">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Total revenue</h3>
+			<p class="mt-1 text-3xl font-semibold tabular-nums text-ink">
 				{formatCurrency(kpiSummary().totalRevenue)}
 			</p>
-			<p class="mt-1 text-xs text-text-secondary-light">From all sales</p>
+			<p class="mt-1 text-xs text-muted">From all sales</p>
 		</div>
 
-		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Total Profit</h3>
-			<p class="mt-1 text-2xl font-bold text-blue-500">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Total profit</h3>
+			<p class="mt-1 text-3xl font-semibold tabular-nums text-ink">
 				{formatCurrency(kpiSummary().totalProfit)}
 			</p>
-			<p class="mt-1 text-xs text-text-secondary-light">Net after costs</p>
+			<p class="mt-1 text-xs text-muted">Net after costs</p>
 		</div>
 
-		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Avg Margin</h3>
-			<p class="mt-1 text-2xl font-bold text-purple-500">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Average margin</h3>
+			<p class="mt-1 text-3xl font-semibold tabular-nums text-ink">
 				{formatPercent(kpiSummary().averageMargin)}
 			</p>
-			<p class="mt-1 text-xs text-text-secondary-light">Weighted average</p>
+			<p class="mt-1 text-xs text-muted">Weighted average</p>
 		</div>
 	</div>
 
 	<!-- Secondary KPIs -->
 	<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Oz Sold</h3>
-			<p class="mt-1 text-xl font-bold text-cyan-500">{kpiSummary().totalOzSold.toFixed(1)}</p>
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Oz sold</h3>
+			<p class="mt-1 text-2xl font-semibold tabular-nums text-ink">
+				{kpiSummary().totalOzSold.toFixed(1)}
+			</p>
 		</div>
 
-		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Investment</h3>
-			<p class="mt-1 text-xl font-bold text-red-500">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Investment</h3>
+			<p class="mt-1 text-2xl font-semibold tabular-nums text-ink">
 				{formatCurrency(kpiSummary().totalInvestment)}
 			</p>
 		</div>
 
-		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Coffee Purchased</h3>
-			<p class="mt-1 text-xl font-bold text-indigo-500">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Coffee purchased</h3>
+			<p class="mt-1 text-2xl font-semibold tabular-nums text-ink">
 				{kpiSummary().totalPoundsRoasted.toFixed(1)} lbs
 			</p>
 		</div>
 
-		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Sell-Through Rate</h3>
-			<p class="mt-1 text-xl font-bold text-orange-500">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Sell-through rate</h3>
+			<p class="mt-1 text-2xl font-semibold tabular-nums text-ink">
 				{formatPercent(kpiSummary().sellThroughRate)}
 			</p>
 		</div>
 
-		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Avg Price/oz</h3>
-			<p class="mt-1 text-xl font-bold text-teal-500">
+		<div class="rounded-lg border border-line bg-surface-canvas p-4">
+			<h3 class="text-sm font-medium text-muted">Avg price/oz</h3>
+			<p class="mt-1 text-2xl font-semibold tabular-nums text-ink">
 				{formatCurrency(kpiSummary().avgSellingPricePerOz)}
 			</p>
 		</div>
@@ -436,22 +443,20 @@
 
 	<!-- Filter Controls -->
 	<div
-		class="mb-6 flex flex-col gap-4 border-t border-border-light pt-6 sm:flex-row sm:items-center sm:justify-between"
+		class="mb-6 flex flex-col gap-4 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between"
 	>
 		<div class="flex flex-wrap items-center gap-4">
 			<!-- Date Range Selector -->
 			<div class="flex items-center gap-2">
-				<span class="text-xs font-medium text-text-secondary-light">Period:</span>
-				<div
-					class="flex overflow-hidden rounded-md border border-border-light bg-background-primary-light"
-				>
+				<span class="text-xs font-medium text-muted">Period:</span>
+				<div class="flex overflow-hidden rounded-md border border-line bg-surface-canvas">
 					{#each dateRangeOptions as option}
 						<button
 							type="button"
 							class="px-3 py-1.5 text-xs font-medium transition-all duration-200 {selectedDateRange ===
 							option.value
-								? 'bg-background-tertiary-light text-white'
-								: 'text-text-secondary-light hover:bg-background-tertiary-light hover:bg-opacity-10 hover:text-text-primary-light'}"
+								? 'bg-accent text-ink'
+								: 'text-muted hover:bg-accent hover:bg-opacity-10 hover:text-ink'}"
 							onclick={() => (selectedDateRange = option.value)}
 						>
 							{option.label}
@@ -462,17 +467,17 @@
 
 			<!-- Purchase Date Multi-Select Toggle -->
 			<div class="flex items-center gap-2">
-				<span class="text-xs font-medium text-text-secondary-light">Purchase Dates:</span>
+				<span class="text-xs font-medium text-muted">Purchase Dates:</span>
 				<button
 					type="button"
-					class="flex items-center gap-2 rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-xs transition-all hover:bg-background-tertiary-light hover:bg-opacity-10"
+					class="flex items-center gap-2 rounded-md border border-line bg-surface-canvas px-3 py-1.5 text-xs transition-all hover:bg-accent hover:bg-opacity-10"
 					onclick={() => (purchaseDatesPanelExpanded = !purchaseDatesPanelExpanded)}
 				>
-					<span class="font-medium text-text-primary-light">
+					<span class="font-medium text-ink">
 						{selectedPurchaseDates.size} selected
 					</span>
 					<span
-						class="text-background-tertiary-light transition-transform duration-200 {purchaseDatesPanelExpanded
+						class="text-accent transition-transform duration-200 {purchaseDatesPanelExpanded
 							? 'rotate-90'
 							: ''}"
 					>
@@ -483,10 +488,10 @@
 
 			<!-- Metric Selector -->
 			<div class="flex items-center gap-2">
-				<span class="text-xs font-medium text-text-secondary-light">Metric:</span>
+				<span class="text-xs font-medium text-muted">Metric:</span>
 				<select
 					bind:value={selectedMetric}
-					class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-xs text-text-primary-light focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
+					class="rounded-md border border-line bg-surface-canvas px-3 py-1.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-accent"
 				>
 					{#each metricOptions as option}
 						<option value={option.value}>{option.label}</option>
@@ -496,16 +501,14 @@
 
 			<!-- Wholesale / Retail Filter -->
 			<div class="flex items-center gap-2">
-				<span class="text-xs font-medium text-text-secondary-light">Source:</span>
-				<div
-					class="flex overflow-hidden rounded-md border border-border-light bg-background-primary-light"
-				>
+				<span class="text-xs font-medium text-muted">Source:</span>
+				<div class="flex overflow-hidden rounded-md border border-line bg-surface-canvas">
 					<button
 						type="button"
 						class="px-3 py-1.5 text-xs font-medium transition-all duration-200 {selectedWholesaleFilter ===
 						'all'
-							? 'bg-background-tertiary-light text-white'
-							: 'text-text-secondary-light hover:bg-background-tertiary-light hover:bg-opacity-10 hover:text-text-primary-light'}"
+							? 'bg-accent text-ink'
+							: 'text-muted hover:bg-accent hover:bg-opacity-10 hover:text-ink'}"
 						onclick={() => (selectedWholesaleFilter = 'all')}
 					>
 						All
@@ -514,8 +517,8 @@
 						type="button"
 						class="px-3 py-1.5 text-xs font-medium transition-all duration-200 {selectedWholesaleFilter ===
 						'wholesale'
-							? 'bg-background-tertiary-light text-white'
-							: 'text-text-secondary-light hover:bg-background-tertiary-light hover:bg-opacity-10 hover:text-text-primary-light'}"
+							? 'bg-accent text-ink'
+							: 'text-muted hover:bg-accent hover:bg-opacity-10 hover:text-ink'}"
 						onclick={() => (selectedWholesaleFilter = 'wholesale')}
 					>
 						Wholesale
@@ -524,8 +527,8 @@
 						type="button"
 						class="px-3 py-1.5 text-xs font-medium transition-all duration-200 {selectedWholesaleFilter ===
 						'retail'
-							? 'bg-background-tertiary-light text-white'
-							: 'text-text-secondary-light hover:bg-background-tertiary-light hover:bg-opacity-10 hover:text-text-primary-light'}"
+							? 'bg-accent text-ink'
+							: 'text-muted hover:bg-accent hover:bg-opacity-10 hover:text-ink'}"
 						onclick={() => (selectedWholesaleFilter = 'retail')}
 					>
 						Retail
@@ -540,22 +543,22 @@
 		{@const availableDates = [
 			...new Set(profitData.map((d: ProfitData) => d.purchase_date))
 		].sort() as string[]}
-		<div class="mb-6 rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+		<div class="mb-6 rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
 			<div class="mb-4 flex items-center justify-between">
-				<h4 class="text-sm font-medium text-text-primary-light">
+				<h4 class="text-sm font-medium text-ink">
 					Select Purchase Dates ({selectedPurchaseDates.size} of {availableDates.length} selected)
 				</h4>
 				<div class="flex gap-2">
 					<button
 						type="button"
-						class="rounded-md border border-background-tertiary-light px-2 py-1 text-xs text-background-tertiary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+						class="rounded-md border border-accent px-2 py-1 text-xs text-accent transition-all hover:bg-accent hover:text-ink"
 						onclick={selectAllPurchaseDates}
 					>
 						All
 					</button>
 					<button
 						type="button"
-						class="rounded-md border border-gray-400 px-2 py-1 text-xs text-gray-600 transition-all hover:bg-gray-400 hover:text-white"
+						class="rounded-md border border-line px-2 py-1 text-xs text-muted transition-all hover:bg-surface-panel hover:text-ink"
 						onclick={clearPurchaseDateSelection}
 					>
 						Clear
@@ -569,9 +572,9 @@
 							type="checkbox"
 							checked={selectedPurchaseDates.has(date)}
 							onchange={() => togglePurchaseDate(date)}
-							class="h-4 w-4 rounded border-border-light bg-background-primary-light text-background-tertiary-light focus:ring-2 focus:ring-background-tertiary-light"
+							class="h-4 w-4 rounded border-line bg-surface-canvas text-accent focus:ring-2 focus:ring-accent"
 						/>
-						<span class="text-xs text-text-primary-light">{formatDateForDisplay(date)}</span>
+						<span class="text-xs text-ink">{formatDateForDisplay(date)}</span>
 					</label>
 				{/each}
 			</div>
@@ -605,20 +608,15 @@
 					</Svg>
 				</LayerCake>
 			{:else}
-				<div
-					class="flex h-full items-center justify-center rounded bg-background-secondary-light bg-opacity-90"
-				>
+				<div class="flex h-full items-center justify-center rounded bg-surface-panel bg-opacity-90">
 					<div class="text-center">
-						<div class="mb-2 text-4xl opacity-50">📊</div>
-						<div class="text-sm text-text-secondary-light">
-							No data available for selected filters
-						</div>
+						<div class="text-sm text-muted">No data available for selected filters</div>
 					</div>
 				</div>
 			{/if}
 		</div>
 	</div>
-</div>
+</section>
 
 <!-- Interactive Tooltip -->
 {#if tooltipState.visible && tooltipState.data}
@@ -641,12 +639,12 @@
 		style="left: {leftPos}px; top: {topPos}px;"
 	>
 		<div
-			class="max-w-xs rounded-lg bg-background-secondary-light bg-opacity-95 p-4 shadow-lg ring-1 ring-border-light backdrop-blur-sm"
+			class="max-w-xs rounded-lg bg-surface-panel bg-opacity-95 p-4 shadow-lg ring-1 ring-line backdrop-blur-sm"
 		>
-			<div class="mb-3 text-sm font-semibold text-text-primary-light">
-				☕ {d.beanName}
+			<div class="mb-3 text-base font-semibold text-ink">
+				{d.beanName}
 				{#if d.rawData.profitData.some((p) => p.wholesale)}
-					<span class="ml-1 rounded bg-blue-100 px-1 text-xs font-normal text-blue-800"
+					<span class="ml-1 rounded bg-info-subtle px-1 text-xs font-normal text-info-strong"
 						>Wholesale</span
 					>
 				{/if}
@@ -654,54 +652,57 @@
 
 			<div class="space-y-2 text-xs">
 				<div class="flex justify-between">
-					<span class="text-text-secondary-light">Sales Count:</span>
-					<span class="font-semibold text-indigo-500"
+					<span class="text-muted">Sales Count:</span>
+					<span class="font-semibold tabular-nums text-ink"
 						>{formatNumber(d.rawData.metrics.salesCount)}</span
 					>
 				</div>
 				<div class="flex justify-between">
-					<span class="text-text-secondary-light">Oz Sold:</span>
-					<span class="font-semibold text-cyan-500">{d.rawData.metrics.ozSold.toFixed(1)} oz</span>
+					<span class="text-muted">Oz Sold:</span>
+					<span class="font-semibold tabular-nums text-ink"
+						>{d.rawData.metrics.ozSold.toFixed(1)} oz</span
+					>
 				</div>
 				<div class="flex justify-between">
-					<span class="text-text-secondary-light">Investment:</span>
-					<span class="font-semibold text-red-500"
+					<span class="text-muted">Investment:</span>
+					<span class="font-semibold tabular-nums text-ink"
 						>{formatCurrency(d.rawData.metrics.investment)}</span
 					>
 				</div>
 				<div class="flex justify-between">
-					<span class="text-text-secondary-light">Revenue:</span>
-					<span class="font-semibold text-green-500"
+					<span class="text-muted">Revenue:</span>
+					<span class="font-semibold tabular-nums text-ink"
 						>{formatCurrency(d.rawData.metrics.revenue)}</span
 					>
 				</div>
 				<div class="flex justify-between">
-					<span class="text-text-secondary-light">Profit:</span>
-					<span class="font-semibold text-blue-500">{formatCurrency(d.rawData.metrics.profit)}</span
+					<span class="text-muted">Profit:</span>
+					<span class="font-semibold tabular-nums text-ink"
+						>{formatCurrency(d.rawData.metrics.profit)}</span
 					>
 				</div>
 				<div class="flex justify-between">
-					<span class="text-text-secondary-light">Margin:</span>
-					<span class="font-semibold text-purple-500"
+					<span class="text-muted">Margin:</span>
+					<span class="font-semibold tabular-nums text-ink"
 						>{formatPercent(d.rawData.metrics.margin)}</span
 					>
 				</div>
 				<div class="flex justify-between">
-					<span class="text-text-secondary-light">Avg Price/oz:</span>
-					<span class="font-semibold text-orange-500"
+					<span class="text-muted">Avg Price/oz:</span>
+					<span class="font-semibold tabular-nums text-ink"
 						>{formatCurrency(d.rawData.metrics.avgPricePerOz)}</span
 					>
 				</div>
 				<div class="flex justify-between">
-					<span class="text-text-secondary-light">Turnover:</span>
-					<span class="font-semibold text-teal-500"
+					<span class="text-muted">Turnover:</span>
+					<span class="font-semibold tabular-nums text-ink"
 						>{formatPercent(d.rawData.metrics.inventoryTurnover)}</span
 					>
 				</div>
 			</div>
 
-			<div class="mt-3 border-t border-border-light pt-3">
-				<div class="mb-1 text-xs font-medium text-text-primary-light">📊 Current Value</div>
+			<div class="mt-3 border-t border-line pt-3">
+				<div class="mb-1 text-xs font-medium text-ink">Current value</div>
 				<div class="text-sm font-bold" style="color: {getMetricColor(selectedMetric)}">
 					{currentMetric().format(d.value)}
 				</div>

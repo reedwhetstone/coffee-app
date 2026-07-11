@@ -1,0 +1,146 @@
+{
+	"auditDate": "2026-05-03",
+	"mode": "strategy-alignment",
+	"canonicalSourcesChecked": [
+		"notes/PRODUCT_VISION.md",
+		"notes/BLOG_STRATEGY.md",
+		"notes/decisions/002-api-first-external-internal-split.md",
+		"notes/decisions/003-public-analytics-three-chart-free-gate.md",
+		"notes/decisions/004-processing-transparency-schema-api.md",
+		"notes/decisions/005-catalog-access-level-positioning.md",
+		"notes/blog/ideas.md",
+		"notes/blog/source-map.md",
+		"notes/blog/outlines/*.md",
+		"open coffee-app blog/docs PRs",
+		"recent coffee-app, coffee-scraper, and purveyors-cli PRs since 2026-04-19"
+	],
+	"activeAlignmentRisks": [
+		{
+			"risk": "api-architecture still has no published post on origin/main despite being central to the product vision",
+			"evidence": [
+				"Published pillar balance remains agentic-stack 7, supply-chain 3, coffee-data-pipeline 2, ai-first-product 1, market-intelligence 1, api-architecture 0.",
+				"Recent work keeps moving toward API-first platform contracts: /v1/catalog hardening, ADR-005 access levels, /v1/price-index, structured process filters, and CLI parity."
+			],
+			"recommendedAction": "After the active moats PR is resolved, draft an api-architecture post before another agentic-stack or broad AI essay."
+		},
+		{
+			"risk": "open blog PR queue is carrying too many parallel drafts and stale Coffee Intelligence pieces",
+			"evidence": [
+				"Open blog PRs include #301, #287, #285, #267, #228, plus outline-only PR #323.",
+				"#285, #267, and #228 are older Wednesday Coffee Intelligence drafts whose data snapshots predate recent price-index, process-transparency, and proof-layer work."
+			],
+			"recommendedAction": "Prefer finishing or closing/rebasing existing draft PRs before creating another market-intelligence draft. Treat stale snapshot data as a credibility risk."
+		},
+		{
+			"risk": "the active backlog is healthy but source-map bookkeeping lagged behind the last week of platform work",
+			"evidence": [
+				"Last source-map coherence audit was 2026-04-26.",
+				"Since then, price-index API, proof-layer planning, certification taxonomy planning, access-tier positioning, process transparency docs, and CLI structured process filters landed."
+			],
+			"recommendedAction": "Capture the new ideas and next-post rationale in the source map instead of relying on git history as the memory layer."
+		}
+	],
+	"newIdeas": [
+		{
+			"title": "Proof passports for coffee claims: why the next marketplace unit is evidence, not listings",
+			"pillar": "api-architecture",
+			"status": "raw",
+			"source": "notes/big-ideas/2026-04-30-purveyors-proof-layer.md; notes/implementation-plans/2026-05-01-catalog-proof-summary-seed*.md; coffee-scraper producer/process evidence work",
+			"whyNow": "The product now has structured process fields, producer evidence extraction, catalog access tiers, and proof-summary implementation plans. The counterintuitive angle is that trustworthy claim evidence may become the monetizable layer above listing visibility."
+		},
+		{
+			"title": "Certification data needs a schema, not a substring search",
+			"pillar": "coffee-data-pipeline",
+			"status": "raw",
+			"source": "coffee-scraper notes/implementation-plans/2026-04-29-certifications-taxonomy-schema.md; coffee-scraper PR #234; coffee-app DEVLOG certification taxonomy item",
+			"whyNow": "Five straight audit emails and a production sample found broad certification evidence trapped in overloaded fields. This is a clean example of schema design turning messy supplier copy into buyer and agent leverage."
+		},
+		{
+			"title": "We Built a Real-Time Specialty Coffee Price Index",
+			"pillar": "market-intelligence",
+			"status": "raw",
+			"source": "notes/implementation-plans/2026-04-29-parchment-intelligence-api-cli-bridge.md; coffee-app PR #312",
+			"whyNow": "The /v1/price-index endpoint has shipped. The launch post should wait until CLI/docs conversion work makes the cross-surface story complete, but the idea is no longer just a future implementation plan."
+		}
+	],
+	"openBlogPrs": [
+		{
+			"number": 323,
+			"title": "Add generative UI expression blog outline",
+			"status": "outline-only, active, aligned with ai-first-product"
+		},
+		{
+			"number": 301,
+			"title": "Which Moats Survive When AI Makes Software Cheap?",
+			"status": "draft PR with hero, current best near-term publish candidate, but ai-first-product does not close the API architecture gap"
+		},
+		{
+			"number": 287,
+			"title": "The Friction We Can't Afford to Lose",
+			"status": "draft PR with hero, less directly tied to Purveyors product vision than API/data posts"
+		},
+		{
+			"number": 285,
+			"title": "Is Coffee Supply More Concentrated Than the Catalog Suggests?",
+			"status": "older Coffee Intelligence draft, likely needs data refresh before publish"
+		},
+		{
+			"number": 267,
+			"title": "Wednesday Coffee Intelligence on co-fermentation taxonomy",
+			"status": "older draft overlaps with already-published co-fermentation post and newer processing transparency schema work"
+		},
+		{
+			"number": 228,
+			"title": "Coffee Intelligence on market depth vs price",
+			"status": "older draft with stale 36-supplier snapshot, should be refreshed or closed before promotion"
+		}
+	],
+	"publicationCadence": {
+		"minimum": "1 post/week",
+		"publishedPostCountOnOriginMain": 14,
+		"latestPublishedFrontmatterDate": "2026-04-07",
+		"latestOpenPublishReadyCandidate": "PR #301",
+		"status": "cadence risk by visible publication dates, mitigated by several open complete draft PRs",
+		"notes": "The most useful next action is not more ideation. It is resolving the open publish-ready queue, then drafting the missing api-architecture piece."
+	},
+	"backlogHealth": {
+		"publishedPillars": {
+			"agentic-stack": 7,
+			"supply-chain": 3,
+			"coffee-data-pipeline": 2,
+			"ai-first-product": 1,
+			"market-intelligence": 1,
+			"api-architecture": 0
+		},
+		"status": "strong volume, weak pillar balance, increasing platform/API evidence quality",
+		"notes": [
+			"API architecture is the clearest gap against PRODUCT_VISION.",
+			"Market-intelligence now has stronger raw material from /v1/price-index but should not ship from stale draft snapshots.",
+			"Coffee-data-pipeline has fresh schema-governance material from certifications and proof/evidence work."
+		]
+	},
+	"nextPriorityPosts": [
+		{
+			"rank": 1,
+			"title": "Which Moats Survive When AI Makes Software Cheap?",
+			"source": "open PR #301",
+			"whyNow": "It is already drafted with hero, source links, and a 1,199-word self-edit. Ship or close it before opening more full drafts."
+		},
+		{
+			"rank": 2,
+			"title": "What If the Real Marketplace Is the Listing Schema?",
+			"source": "notes/blog/outlines/what-if-the-real-marketplace-is-the-listing-schema.md",
+			"whyNow": "It closes the zero-post api-architecture gap and now has fresh proof from /v1/catalog, ADR-004, ADR-005, structured process fields, and the public/API/CLI access split."
+		},
+		{
+			"rank": 3,
+			"title": "We Built a Real-Time Specialty Coffee Price Index",
+			"source": "notes/blog/ideas.md plus PR #312",
+			"whyNow": "The price-index API has shipped and would make the market-intelligence pillar concrete. Wait for CLI/docs bridge or explicitly frame the post as the API contract launch, not a fully complete product launch."
+		}
+	],
+	"publishedPostMaintenanceDecision": {
+		"action": "no retroactive published-post cleanup opened",
+		"reason": "The run found no new broken links or materially false strategic claims beyond the existing 2026-04-26 drift ledger. Current guidance is to avoid churning old posts unless there is a real credibility issue."
+	}
+}

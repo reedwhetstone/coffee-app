@@ -43,8 +43,14 @@ vi.mock('$lib/server/apiAuth', () => ({
 	validateApiKey: mockValidateApiKey
 }));
 
-const { AuthError, requireApiKeyAccess, requireAuth, requireUserAuth, validateAdminAccess } =
-	await import('./auth');
+const {
+	AuthError,
+	requireApiKeyAccess,
+	requireAuth,
+	requireChatAccess,
+	requireUserAuth,
+	validateAdminAccess
+} = await import('./auth');
 
 type EventOptions = {
 	method?: string;
@@ -267,6 +273,43 @@ describe('auth integration', () => {
 
 		await expect(requireAuth(event)).resolves.toMatchObject({
 			id: 'member-user'
+		});
+	});
+
+	it('allows chat access for Parchment Intelligence users without member role', async () => {
+		const event = makeEvent({
+			method: 'POST',
+			origin: 'https://app.test',
+			url: 'https://app.test/api/chat',
+			principal: makeSessionPrincipal({
+				appRoles: ['viewer'],
+				primaryAppRole: 'viewer',
+				ppiAccess: true
+			})
+		});
+
+		await expect(requireChatAccess(event)).resolves.toMatchObject({
+			role: 'viewer',
+			ppiAccess: true,
+			memberAccess: false
+		});
+	});
+
+	it('blocks chat access for viewers without Parchment Intelligence', async () => {
+		const event = makeEvent({
+			method: 'POST',
+			origin: 'https://app.test',
+			url: 'https://app.test/api/chat',
+			principal: makeSessionPrincipal({
+				appRoles: ['viewer'],
+				primaryAppRole: 'viewer',
+				ppiAccess: false
+			})
+		});
+
+		await expect(requireChatAccess(event)).rejects.toMatchObject({
+			message: 'Parchment Intelligence or Mallard Studio access required',
+			status: 403
 		});
 	});
 

@@ -40,17 +40,19 @@
 </script>
 
 <svelte:head>
-	<title>Sign In - Purveyors</title>
+	<title>Sign in - Purveyors</title>
 	<meta name="description" content="Sign in to your Purveyors account" />
 </svelte:head>
 
 <div
-	class="flex min-h-screen items-center justify-center bg-gradient-to-br from-background-primary-light to-background-secondary-light px-4 sm:px-6 lg:px-8"
+	class="flex min-h-screen items-center justify-center bg-gradient-to-br from-surface-canvas to-surface-panel px-4 sm:px-6 lg:px-8"
 >
 	<div class="w-full max-w-md space-y-8">
 		<div class="text-center">
-			<h2 class="mt-6 text-3xl font-bold text-text-primary-light">Sign in to Purveyors</h2>
-			<p class="mt-2 text-sm text-text-secondary-light">
+			<h2 class="mt-6 font-serif text-3xl font-medium tracking-tight text-ink">
+				Sign in to Purveyors
+			</h2>
+			<p class="mt-2 text-sm text-muted">
 				{#if hasCheckoutIntent}
 					Signing you in to complete checkout.
 				{:else}
@@ -59,20 +61,20 @@
 			</p>
 		</div>
 
-		<div class="space-y-6 rounded-lg bg-background-secondary-light p-8 shadow-md">
+		<div class="space-y-6 rounded-lg bg-surface-panel p-8 shadow-md">
 			{#if error}
-				<div class="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
-					<p class="text-sm text-red-400">{error}</p>
+				<div class="rounded-lg border border-danger/20 bg-danger-subtle p-4">
+					<p class="text-sm text-danger">{error}</p>
 				</div>
 			{/if}
 
 			<button
 				onclick={handleGoogleSignIn}
 				disabled={loading}
-				class="flex w-full items-center justify-center rounded-md border border-transparent bg-background-tertiary-light px-4 py-3 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+				class="flex w-full items-center justify-center rounded-md border border-transparent bg-accent px-4 py-3 text-sm font-medium text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if loading}
-					<div class="mr-3 h-5 w-5 animate-spin rounded-full border-b-2 border-white"></div>
+					<div class="mr-3 h-5 w-5 animate-spin rounded-full border-b-2 border-ink"></div>
 					Signing in...
 				{:else}
 					<svg class="mr-3 h-5 w-5" viewBox="0 0 24 24">
@@ -98,7 +100,7 @@
 			</button>
 
 			<div class="text-center">
-				<p class="text-xs text-text-secondary-light">
+				<p class="text-xs text-muted">
 					By signing in, you agree to our terms of service and privacy policy
 				</p>
 			</div>
@@ -107,7 +109,7 @@
 		<div class="text-center">
 			<button
 				onclick={() => goto('/')}
-				class="text-sm text-text-secondary-light transition-colors duration-200 hover:text-text-primary-light"
+				class="text-sm text-muted transition-colors duration-200 hover:text-ink"
 			>
 				&larr; Back to homepage
 			</button>

@@ -81,7 +81,7 @@ test.describe.serial('Critical business workflow', () => {
 		await beansResponse;
 
 		// Either a bean card or the empty state renders
-		const beanCard = page.locator('button.group.relative').first();
+		const beanCard = page.getByRole('button', { name: /view details for/i }).first();
 		const emptyState = page.getByText(/No Coffee Beans Yet|No Coffees Match/i);
 
 		await Promise.race([
