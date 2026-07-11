@@ -1,5 +1,5 @@
 ---
-title: 'Why Does the Context Window Need a Garbage Collector?'
+title: 'Why the Context Window Needs a Garbage Collector'
 date: '2026-07-11'
 description: 'Persistent memory solves forgetting, but without intent-aware context cleanup it can make an AI less able to recognize when the work has changed.'
 tags: ['ai-agents', 'context-engineering', 'memory', 'architecture']

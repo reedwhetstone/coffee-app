@@ -33,12 +33,12 @@ Persistent memory solves forgetting, but it creates contextual inertia. A contin
 
 ## Verification
 
-- [ ] Confirm all four external links resolve and support the adjacent claims.
-- [ ] Keep ordinary summarization, RAG, trimming, and the proposed compiler conceptually distinct.
-- [ ] Do not claim OpenClaw currently implements the complete architecture.
-- [ ] Verify body word count is below 1,200, excluding frontmatter.
-- [ ] Verify `draft: false`, valid pillar, reading time, and date.
-- [ ] Verify no em dashes appear.
-- [ ] Verify every named source has an inline Markdown link.
-- [ ] Verify the immutable-history and provenance requirements are explicit.
-- [ ] Verify the conclusion does not turn into a product pitch or manifesto.
+- [x] Confirm all four external links resolve and support the adjacent claims.
+- [x] Keep ordinary summarization, RAG, trimming, and the proposed compiler conceptually distinct.
+- [x] Do not claim OpenClaw currently implements the complete architecture.
+- [x] Verify body word count is below 1,200, excluding frontmatter.
+- [x] Verify `draft: false`, valid pillar, reading time, and date.
+- [x] Verify no em dashes appear.
+- [x] Verify every named source has an inline Markdown link.
+- [x] Verify the immutable-history and provenance requirements are explicit.
+- [x] Verify the conclusion does not turn into a product pitch or manifesto.
