@@ -38,8 +38,17 @@
 		canvasStore.dispatch({ type: 'minimize', blockId });
 	}
 
+	function handleRemove(blockId: string) {
+		canvasStore.dispatch({ type: 'remove', blockId });
+		if (detailBlockId === blockId) detailBlockId = null;
+	}
+
 	function restoreGroup(blocks: CanvasBlock[]) {
 		for (const b of blocks) canvasStore.dispatch({ type: 'restore', blockId: b.id });
+	}
+
+	function removeGroup(blocks: CanvasBlock[]) {
+		for (const b of blocks) handleRemove(b.id);
 	}
 
 	// ─── Pop-out detail panel ──────────────────────────────────────────────────
@@ -165,6 +174,7 @@
 				{onExecuteAction}
 				onToggleLock={handleToggleLock}
 				onMinimize={handleMinimize}
+				onRemove={handleRemove}
 				onExpand={handleExpand}
 			/>
 		{/if}
@@ -174,24 +184,41 @@
 	{#if minimizedGroups.length > 0}
 		<div class="flex flex-wrap gap-1 border-t border-line px-2 py-1.5">
 			{#each minimizedGroups as group (group.key)}
-				<button
-					onclick={() => restoreGroup(group.blocks)}
-					class="flex items-center gap-1 rounded bg-surface-panel px-2 py-1 text-xs text-muted ring-1 ring-line transition-colors hover:text-ink"
-					title={`Restore ${group.label}`}
-				>
-					<span>{group.label}</span>
-					{#if group.blocks.length > 1}
-						<span class="text-[10px] text-muted/70">{group.blocks.length}</span>
-					{/if}
-					<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-						/>
-					</svg>
-				</button>
+				<div class="flex items-center rounded bg-surface-panel text-xs text-muted ring-1 ring-line">
+					<button
+						onclick={() => restoreGroup(group.blocks)}
+						class="flex items-center gap-1 px-2 py-1 transition-colors hover:text-ink"
+						title={`Restore ${group.label}`}
+					>
+						<span>{group.label}</span>
+						{#if group.blocks.length > 1}
+							<span class="text-[10px] text-muted/70">{group.blocks.length}</span>
+						{/if}
+						<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+							/>
+						</svg>
+					</button>
+					<button
+						onclick={() => removeGroup(group.blocks)}
+						class="border-l border-line px-1.5 py-1 transition-colors hover:text-danger"
+						title={`Remove minimized ${group.label} window`}
+						aria-label={`Remove minimized ${group.label} window`}
+					>
+						<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M6 18L18 6M6 6l12 12"
+							/>
+						</svg>
+					</button>
+				</div>
 			{/each}
 		</div>
 	{/if}
