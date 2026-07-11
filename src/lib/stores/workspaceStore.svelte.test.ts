@@ -18,6 +18,16 @@ async function loadWorkspaceStore(): Promise<WorkspaceModule> {
 }
 
 describe('workspaceStore lifecycle helpers', () => {
+	it('resets saved count only when explicitly committed after a successful clear', async () => {
+		const { workspaceStore } = await loadWorkspaceStore();
+		workspaceStore.hydrate([workspaceFixture], {
+			workspace: workspaceFixture,
+			messages: [{}, {}, {}] as never
+		});
+		expect(workspaceStore.getSavedMessageCount('ws-2')).toBe(3);
+		workspaceStore.resetSavedMessageCount('ws-2');
+		expect(workspaceStore.getSavedMessageCount('ws-2')).toBe(0);
+	});
 	beforeEach(() => {
 		localStorage.clear();
 		vi.restoreAllMocks();

@@ -1,9 +1,15 @@
 <script lang="ts">
 	import type { ActionCardBlock, ActionField } from '$lib/types/genui';
 
-	let { block, onExecute } = $props<{
+	let { block, blockId, onExecute } = $props<{
 		block: ActionCardBlock;
-		onExecute?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
+		blockId?: string;
+		onExecute?: (
+			executionId: string,
+			actionType: string,
+			fields: Record<string, unknown>,
+			blockId?: string
+		) => Promise<unknown>;
 	}>();
 
 	let editing = $state(false);
@@ -109,9 +115,12 @@
 				params[f.key] = f.value;
 			}
 			if (onExecute) {
-				await onExecute(block.data.actionType, params);
-				status = 'success';
+				await onExecute(block.data.executionId || '', block.data.actionType, params, blockId);
 			}
+			// Inline cards do not have a canvas block ID, so there is no store update
+			// to drive their status. Canvas cards will converge on this same state
+			// through the reactive block data update.
+			status = 'success';
 		} catch (err) {
 			status = 'failed';
 			errorMsg = (err as Error).message || 'Execution failed';

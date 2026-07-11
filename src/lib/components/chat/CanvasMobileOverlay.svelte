@@ -13,7 +13,12 @@
 		 * The overlay closes itself first, then delegates to the workspace to scroll.
 		 */
 		onScrollToMessage: (messageId: string) => void;
-		onExecuteAction: (actionType: string, fields: Record<string, unknown>) => Promise<unknown>;
+		onExecuteAction: (
+			executionId: string,
+			actionType: string,
+			fields: Record<string, unknown>,
+			blockId?: string
+		) => Promise<unknown>;
 	}>();
 </script>
 

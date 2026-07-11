@@ -8,6 +8,39 @@ export type Database = {
 	};
 	public: {
 		Tables: {
+			chat_action_executions: {
+				Row: {
+					user_id: string;
+					execution_id: string;
+					action_type: string;
+					fields: Json;
+					status: string;
+					result: Json | null;
+					error: string | null;
+					created_at: string;
+					completed_at: string;
+				};
+				Insert: {
+					user_id: string;
+					execution_id: string;
+					action_type: string;
+					fields: Json;
+					status: string;
+					result?: Json | null;
+					error?: string | null;
+					created_at?: string;
+					completed_at?: string;
+				};
+				Update: {
+					action_type?: string;
+					fields?: Json;
+					status?: string;
+					result?: Json | null;
+					error?: string | null;
+					completed_at?: string;
+				};
+				Relationships: [];
+			};
 			api_keys: {
 				Row: {
 					created_at: string | null;
@@ -1327,6 +1360,10 @@ export type Database = {
 			[_ in never]: never;
 		};
 		Functions: {
+			execute_chat_action: {
+				Args: { p_execution_id: string; p_action_type: string; p_fields: Json };
+				Returns: Json;
+			};
 			celsius_to_fahrenheit: { Args: { temp_c: number }; Returns: number };
 			count_similar_beans_aggregated_v2: {
 				Args: {

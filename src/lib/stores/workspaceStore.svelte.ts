@@ -255,6 +255,11 @@ function getSavedMessageCount(workspaceId: string): number {
 	return savedMessageCounts.get(workspaceId) || 0;
 }
 
+function resetSavedMessageCount(workspaceId: string): void {
+	savedMessageCounts = new Map(savedMessageCounts);
+	savedMessageCounts.set(workspaceId, 0);
+}
+
 // ─── UI Callbacks (registered by chat page, called by LeftSidebar) ──────────
 export interface WorkspaceUICallbacks {
 	onSwitch: (id: string) => WorkspaceCallbackResult;
@@ -338,6 +343,7 @@ export const workspaceStore = {
 	deleteWorkspace,
 	updateTitle,
 	getSavedMessageCount,
+	resetSavedMessageCount,
 	getPersistedWorkspaceId,
 	registerUICallbacks,
 	unregisterUICallbacks

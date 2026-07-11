@@ -64,7 +64,11 @@
 			searchDataCache: hasPresentResults
 				? buildSearchDataCacheThroughPart(chat.messages, messageIndex, partIndex)
 				: undefined,
-			hasPresentResults
+			hasPresentResults,
+			messageId: chat.messages[messageIndex]?.id,
+			allowExecutionIdSynthesis:
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				!(chat.messages[messageIndex] as any)?.metadata?.workspaceRestored
 		};
 	}
 

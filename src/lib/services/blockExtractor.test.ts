@@ -182,6 +182,44 @@ describe('blockExtractor catalog_rank support', () => {
 	});
 });
 
+describe('action-card execution identity', () => {
+	const actionPart = (executionId?: string) => ({
+		type: 'tool-add_bean_to_inventory',
+		toolName: 'add_bean_to_inventory',
+		toolCallId: 'tool-1',
+		state: 'output-available',
+		output: {
+			action_card: {
+				executionId,
+				actionType: 'add_bean_to_inventory',
+				summary: 'Add bean',
+				fields: [],
+				status: 'proposed'
+			}
+		}
+	});
+
+	it('does not invent an ID for a restored pre-migration card', () => {
+		const block = extractBlockFromPart(actionPart(), {
+			messageId: 'assistant-original',
+			allowExecutionIdSynthesis: false
+		});
+		expect(block?.type).toBe('action-card');
+		if (block?.type === 'action-card') expect(block.data.executionId).toBeUndefined();
+	});
+
+	it('preserves an ID that was persisted by a post-migration live proposal', () => {
+		const block = extractBlockFromPart(actionPart('assistant-original:tool-1'), {
+			messageId: 'different-storage-id',
+			allowExecutionIdSynthesis: false
+		});
+		expect(block?.type).toBe('action-card');
+		if (block?.type === 'action-card') {
+			expect(block.data.executionId).toBe('assistant-original:tool-1');
+		}
+	});
+});
+
 describe('blockExtractor market_signals support', () => {
 	it('renders raw market_signals output as a table', () => {
 		const block = extractBlockFromPart(marketSignalsPart());
