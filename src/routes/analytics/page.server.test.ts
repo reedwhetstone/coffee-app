@@ -159,6 +159,8 @@ function createAnalyticsClient(
 	snapshotPages: SnapshotPageResult[],
 	options: {
 		marketSummaryDate?: string | null;
+		marketSummaryError?: boolean;
+		requiredCountError?: boolean;
 		catalogPriceRows?: Array<{ country: string; price_per_lb: number; wholesale: boolean }>;
 		supplierPriceRanges?: Array<{
 			source: string | null;
@@ -205,6 +207,9 @@ function createAnalyticsClient(
 	) {
 		if (table === 'market_daily_summary') {
 			summaryReadCounts.marketSummary += 1;
+			if (options.marketSummaryError) {
+				return { data: null, error: { message: 'summary unavailable' } };
+			}
 
 			if (options.marketSummaryDate === null) {
 				return { data: null, error: null };
@@ -250,6 +255,9 @@ function createAnalyticsClient(
 
 			if (options.movementCountError && (stockedDate || unstockedDate)) {
 				return { count: null, error: { message: 'movement count failed' } };
+			}
+			if (options.requiredCountError && !stockedDate && !unstockedDate) {
+				return { count: null, error: { message: 'required count failed' } };
 			}
 
 			const summaryDate = options.marketSummaryDate ?? '2026-04-08';
@@ -537,6 +545,28 @@ describe('loadPriceSnapshotsPaginated', () => {
 });
 
 describe('analytics load', () => {
+	it('starts the market summary read without waiting for principal resolution', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }]);
+		currentPriceIndexClient = client;
+		let resolvePrincipal!: (value: {
+			isAuthenticated: false;
+			ppiAccess: false;
+			role: 'viewer';
+		}) => void;
+		resolvePrincipalMock.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					resolvePrincipal = resolve;
+				})
+		);
+
+		const loadPromise = load(createLoadEvent(client));
+		expect(client.summaryReadCounts.marketSummary).toBe(1);
+		resolvePrincipal({ isAuthenticated: false, ppiAccess: false, role: 'viewer' });
+		const result = (await loadPromise) as { analyticsPayload: Promise<AnalyticsPayloadResult> };
+		await result.analyticsPayload;
+	});
+
 	it('uses Parchment Market Index naming in public route metadata', async () => {
 		const client = createAnalyticsClient([{ data: [], error: null }]);
 		currentPriceIndexClient = client;
@@ -612,6 +642,8 @@ describe('analytics load', () => {
 
 		expect(result.recentArrivals).toEqual([]);
 		expect(result.recentDelistings).toEqual([]);
+		expect(result.marketInsights.metadataProcessSeries).toBeNull();
+		expect(result.marketInsights.metadataDisclosureSeries).toBeNull();
 		expect(client.summaryReadCounts.processingRows).toBe(0);
 		expect(client.summaryReadCounts.originPriceRows).toBe(0);
 		expect(client.summaryReadCounts.namedMovementRows).toBe(0);
@@ -947,5 +979,33 @@ describe('analytics load', () => {
 			status: 'failed',
 			message: 'Market data could not be loaded. Retry the page in a moment.'
 		});
+	});
+
+	it('marks the preview unavailable and fails the stream when the market summary read fails', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }], {
+			marketSummaryError: true
+		});
+		currentPriceIndexClient = client;
+
+		const result = (await load(createLoadEvent(client))) as {
+			analyticsPreviewAvailable: boolean;
+			analyticsPayload: Promise<AnalyticsPayloadResult>;
+		};
+
+		expect(result.analyticsPreviewAvailable).toBe(false);
+		await expect(result.analyticsPayload).resolves.toMatchObject({ status: 'failed' });
+	});
+
+	it('fails the streamed payload instead of presenting required count errors as zeros', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }], {
+			requiredCountError: true
+		});
+		currentPriceIndexClient = client;
+
+		const result = (await load(createLoadEvent(client))) as {
+			analyticsPayload: Promise<AnalyticsPayloadResult>;
+		};
+
+		await expect(result.analyticsPayload).resolves.toMatchObject({ status: 'failed' });
 	});
 });

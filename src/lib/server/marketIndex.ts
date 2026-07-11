@@ -169,7 +169,7 @@ function signalRank(item: components['schemas']['MarketSignalItem']): number | n
 
 export async function loadMarketIndexInsights(
 	event: RequestEvent,
-	options: { isParchmentIntelligence: boolean }
+	options: { isAuthenticated: boolean; isParchmentIntelligence: boolean }
 ): Promise<MarketIndexInsights> {
 	let client: Awaited<ReturnType<typeof createParchmentServerClient>>;
 	try {
@@ -182,7 +182,7 @@ export async function loadMarketIndexInsights(
 		throw error;
 	}
 
-	const { isParchmentIntelligence } = options;
+	const { isAuthenticated, isParchmentIntelligence } = options;
 
 	// Value signals: entitled viewers get displayed-signal pages per market,
 	// including both price-drop windows (omitting window asks Parchment for the
@@ -223,7 +223,9 @@ export async function loadMarketIndexInsights(
 	);
 
 	const metadataPromise = Promise.allSettled([
-		client.market.metadataIndex({ dimension: 'process', grain: 'month' }),
+		isAuthenticated
+			? client.market.metadataIndex({ dimension: 'process', grain: 'month' })
+			: Promise.resolve(null),
 		isParchmentIntelligence
 			? client.market.metadataIndex({ dimension: 'disclosure', grain: 'month' })
 			: Promise.resolve(null),
@@ -306,7 +308,9 @@ export async function loadMarketIndexInsights(
 	}
 	if (moveStats.length > 0) insights.moveStats = moveStats;
 
-	insights.metadataProcessSeries = settledBody<MetadataBody>(processResult)?.data ?? null;
+	insights.metadataProcessSeries = isAuthenticated
+		? (settledBody<MetadataBody>(processResult)?.data ?? null)
+		: null;
 	insights.metadataDisclosureSeries = settledBody<MetadataBody>(disclosureResult)?.data ?? null;
 	insights.metadataPurveyorScoreSeries =
 		settledBody<MetadataBody>(purveyorScoreResult)?.data ?? null;

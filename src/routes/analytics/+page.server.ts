@@ -447,9 +447,9 @@ async function loadAnalyticsSummary(
 	const thirtyDaysAgoStr = relativeDateString(lastUpdated, 30);
 
 	const [
-		{ count: totalBeansTracked },
-		{ count: stockedRetailBeans },
-		{ count: stockedWholesaleBeans },
+		{ count: totalBeansTracked, error: totalBeansError },
+		{ count: stockedRetailBeans, error: stockedRetailError },
+		{ count: stockedWholesaleBeans, error: stockedWholesaleError },
 		retailCoverageRows,
 		wholesaleCoverageRows,
 		{ count: arrivals7dRetail, error: arrivals7dRetailError },
@@ -531,6 +531,12 @@ async function loadAnalyticsSummary(
 			fromDate: thirtyDaysAgoStr
 		})
 	]);
+	const requiredCountError = totalBeansError ?? stockedRetailError ?? stockedWholesaleError;
+	if (requiredCountError) {
+		throw new Error(
+			`Failed to load required analytics catalog counts: ${requiredCountError.message}`
+		);
+	}
 
 	const retailActiveCoverageRows = retailCoverageRows ?? [];
 	const wholesaleActiveCoverageRows = wholesaleCoverageRows ?? [];
@@ -612,14 +618,16 @@ async function loadAnalyticsPayload(
 ): Promise<AnalyticsPayload> {
 	// ADR-008 decision-surface reads (value signals, movement stats, metadata index).
 	// Kicked off first; resolves in parallel with the Supabase queries below.
-	const marketInsightsPromise = loadMarketIndexInsights(event, { isParchmentIntelligence });
+	const marketInsightsPromise = loadMarketIndexInsights(event, {
+		isAuthenticated: principal.isAuthenticated,
+		isParchmentIntelligence
+	});
 
 	const today = new Date().toISOString().split('T')[0];
 	const supabase = event.locals.supabase;
 	const marketSummary = await marketSummaryPromise;
 	const analyticsSummaryPromise = loadAnalyticsSummary(event, marketSummary);
-	const analyticsSummary = await analyticsSummaryPromise;
-	const lastUpdated = analyticsSummary.stats.lastUpdated;
+	const lastUpdated = marketSummary?.snapshot_date ?? null;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const sb = supabase as any;
 	// price_index_snapshots is entitlement-sensitive. Public analytics still exposes a
@@ -712,17 +720,47 @@ async function loadAnalyticsPayload(
 				.order('unstocked_date', { ascending: false })
 				.limit(50)
 		: emptyRows;
+	const intelligenceQueriesPromise = isParchmentIntelligence
+		? Promise.all([
+				supabase
+					.from('coffee_catalog')
+					.select('name, country, processing, price_per_lb, source, wholesale, bag_size')
+					.eq('stocked', true)
+					.not('price_per_lb', 'is', null)
+					.not('country', 'is', null)
+					.order('price_per_lb', { ascending: true })
+					.limit(2000),
+				sb
+					.from('supplier_daily_stats')
+					.select('*')
+					.lte('snapshot_date', today)
+					.order('snapshot_date', { ascending: false })
+					.order('stocked_count', { ascending: false })
+					.limit(200),
+				supplierRangeRpcClient.rpc('get_supplier_price_ranges')
+			])
+		: null;
+	const isSourcingMember = event.locals.role === 'member' || event.locals.role === 'admin';
+	const trackedLotsPromise: Promise<TrackedLotSummary[]> =
+		principal.isAuthenticated && (isParchmentIntelligence || isSourcingMember)
+			? getTrackedLotSummaries(supabase, principal.userId, 25).catch((error) => {
+					console.error('Error loading analytics watchlist context:', error);
+					return [] as TrackedLotSummary[];
+				})
+			: Promise.resolve([]);
 
 	const [
-		{ data: processingRows },
-		{ data: retailCatalogPriceRows },
-		{ data: wholesaleCatalogPriceRows },
-		{ data: recentRetailArrivals30 },
-		{ data: recentWholesaleArrivals30 },
-		{ data: recentRetailDelistings30 },
-		{ data: recentWholesaleDelistings30 },
+		analyticsSummary,
+		{ data: processingRows, error: processingRowsError },
+		{ data: retailCatalogPriceRows, error: retailCatalogPriceRowsError },
+		{ data: wholesaleCatalogPriceRows, error: wholesaleCatalogPriceRowsError },
+		{ data: recentRetailArrivals30, error: recentRetailArrivalsError },
+		{ data: recentWholesaleArrivals30, error: recentWholesaleArrivalsError },
+		{ data: recentRetailDelistings30, error: recentRetailDelistingsError },
+		{ data: recentWholesaleDelistings30, error: recentWholesaleDelistingsError },
 		snapshotsRaw
 	] = await Promise.all([
+		analyticsSummaryPromise,
 		processingRowsPromise,
 		retailOriginPricesPromise,
 		wholesaleOriginPricesPromise,
@@ -736,6 +774,17 @@ async function loadAnalyticsPayload(
 			fromDate: snapshotFromDate
 		})
 	]);
+	const requiredEvidenceError =
+		processingRowsError ??
+		retailCatalogPriceRowsError ??
+		wholesaleCatalogPriceRowsError ??
+		recentRetailArrivalsError ??
+		recentWholesaleArrivalsError ??
+		recentRetailDelistingsError ??
+		recentWholesaleDelistingsError;
+	if (requiredEvidenceError) {
+		throw new Error(`Failed to load required analytics evidence: ${requiredEvidenceError.message}`);
+	}
 
 	// Process distribution
 	const processDistribution: ProcessBucket[] = (() => {
@@ -843,48 +892,19 @@ async function loadAnalyticsPayload(
 	let supplierHealth: SupplierHealthRow[] = [];
 	let supplierPriceRanges: SupplierPriceRange[] = [];
 
-	// Watchlist context: members and Parchment Intelligence users see their tracked
-	// lots read against the live index scope. Kicked off here so it runs alongside
-	// the entitled-user queries below.
-	const isSourcingMember = event.locals.role === 'member' || event.locals.role === 'admin';
-	const trackedLotsPromise: Promise<TrackedLotSummary[]> =
-		principal.isAuthenticated && (isParchmentIntelligence || isSourcingMember)
-			? getTrackedLotSummaries(supabase, principal.userId, 25).catch((error) => {
-					console.error('Error loading analytics watchlist context:', error);
-					return [] as TrackedLotSummary[];
-				})
-			: Promise.resolve([]);
-
 	if (isParchmentIntelligence) {
 		const [
-			{ data: comparisonBeansRaw },
-			{ data: supplierStatsRaw },
+			{ data: comparisonBeansRaw, error: comparisonBeansError },
+			{ data: supplierStatsRaw, error: supplierStatsError },
 			{ data: supplierRangesRaw, error: supplierRangesError }
-		] = await Promise.all([
-			// Lot-level comparison rows for the expandable preview table. This is
-			// intentionally capped; SupplierPriceRangeChart uses the aggregate RPC
-			// below so its min/median/max are computed over the full stocked set.
-			supabase
-				.from('coffee_catalog')
-				.select('name, country, processing, price_per_lb, source, wholesale, bag_size')
-				.eq('stocked', true)
-				.not('price_per_lb', 'is', null)
-				.not('country', 'is', null)
-				.order('price_per_lb', { ascending: true })
-				.limit(2000),
-			// Supplier health (pre-computed)
-			sb
-				.from('supplier_daily_stats')
-				.select('*')
-				.lte('snapshot_date', today)
-				.order('snapshot_date', { ascending: false })
-				.order('stocked_count', { ascending: false })
-				.limit(200),
-			supplierRangeRpcClient.rpc('get_supplier_price_ranges')
-		]);
+		] = await intelligenceQueriesPromise!;
 
-		if (supplierRangesError) {
-			console.error('Error loading analytics supplier price ranges:', supplierRangesError);
+		const requiredIntelligenceError =
+			comparisonBeansError ?? supplierStatsError ?? supplierRangesError;
+		if (requiredIntelligenceError) {
+			throw new Error(
+				`Failed to load required Parchment Intelligence evidence: ${requiredIntelligenceError.message}`
+			);
 		}
 
 		comparisonBeans = (comparisonBeansRaw ?? []).map((row) => ({
@@ -964,10 +984,11 @@ async function loadAnalyticsPayload(
 export const load: PageServerLoad = async (event) => {
 	// Resolve principal to get explicit Parchment Intelligence access.
 	// Logged-out visitors and logged-in viewers intentionally share the same core analytics view.
-	const principal = await resolvePrincipal(event);
+	const principalPromise = resolvePrincipal(event);
+	const marketSummaryPromise = loadLatestMarketSummary(event);
+	const principal = await principalPromise;
 	const isParchmentIntelligence = principal.isAuthenticated ? principal.ppiAccess : false;
 	const baseUrl = `${event.url.protocol}//${event.url.host}`;
-	const marketSummaryPromise = loadLatestMarketSummary(event);
 	const analyticsPayload: Promise<AnalyticsPayloadResult> = loadAnalyticsPayload(
 		event,
 		principal,
@@ -982,9 +1003,13 @@ export const load: PageServerLoad = async (event) => {
 				message: 'Market data could not be loaded. Retry the page in a moment.'
 			};
 		});
-	const analyticsPreview = await marketSummaryPromise
-		.then(buildAnalyticsPreview)
-		.catch(() => buildEmptyAnalyticsPayload());
+	const previewResult = await marketSummaryPromise
+		.then((summary) => ({
+			available: summary !== null,
+			payload: buildAnalyticsPreview(summary)
+		}))
+		.catch(() => ({ available: false, payload: buildEmptyAnalyticsPayload() }));
+	const analyticsPreview = previewResult.payload;
 	const schemaService = createSchemaService(baseUrl);
 	const schemaData = schemaService.generateSchemaGraph([
 		schemaService.generateOrganizationSchema(),
@@ -1019,6 +1044,7 @@ export const load: PageServerLoad = async (event) => {
 		role,
 		isParchmentIntelligence,
 		analyticsPreview,
+		analyticsPreviewAvailable: previewResult.available,
 		analyticsPayload,
 		meta: buildPublicMeta({
 			baseUrl,

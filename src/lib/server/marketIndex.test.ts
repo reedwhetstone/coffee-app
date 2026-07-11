@@ -98,9 +98,15 @@ describe('loadMarketIndexInsights', () => {
 			priceIndex: { stats: vi.fn().mockResolvedValue({ data: { data: [] } }) }
 		});
 
-		const insights = await loadMarketIndexInsights(makeEvent(), { isParchmentIntelligence: false });
+		const insights = await loadMarketIndexInsights(makeEvent(), {
+			isAuthenticated: false,
+			isParchmentIntelligence: false
+		});
 
 		expect(market.signals).toHaveBeenCalledWith({ summary: 'true' });
+		expect(market.metadataIndex).not.toHaveBeenCalled();
+		expect(insights.metadataProcessSeries).toBeNull();
+		expect(insights.metadataDisclosureSeries).toBeNull();
 		// The public `summary=true` slice is unfiltered (retail + wholesale) and
 		// cannot be market-scoped without entitlement, so it is never labeled retail.
 		expect(insights.signalsSummary).toEqual({
@@ -135,7 +141,10 @@ describe('loadMarketIndexInsights', () => {
 		});
 		mockAdminNameLookup('Dual Window Lot');
 
-		const insights = await loadMarketIndexInsights(makeEvent(), { isParchmentIntelligence: true });
+		const insights = await loadMarketIndexInsights(makeEvent(), {
+			isAuthenticated: true,
+			isParchmentIntelligence: true
+		});
 
 		// Per-market pages only: the 'all' scope is reconstructed from the merged
 		// per-market pages after the rank re-sort, so no 'all' fetches are made.
@@ -211,7 +220,10 @@ describe('loadMarketIndexInsights', () => {
 			priceIndex: { stats: vi.fn().mockResolvedValue({ data: { data: [] } }) }
 		});
 
-		const insights = await loadMarketIndexInsights(makeEvent(), { isParchmentIntelligence: true });
+		const insights = await loadMarketIndexInsights(makeEvent(), {
+			isAuthenticated: true,
+			isParchmentIntelligence: true
+		});
 
 		expect(adminClient.from).toHaveBeenCalledWith('coffee_catalog');
 		const selectColumns = adminClient.from.mock.results[0].value.select.mock.calls[0][0] as string;
@@ -251,7 +263,10 @@ describe('loadMarketIndexInsights', () => {
 			priceIndex: { stats: vi.fn().mockResolvedValue({ data: { data: [] } }) }
 		});
 
-		const insights = await loadMarketIndexInsights(makeEvent(), { isParchmentIntelligence: true });
+		const insights = await loadMarketIndexInsights(makeEvent(), {
+			isAuthenticated: true,
+			isParchmentIntelligence: true
+		});
 
 		expect(mockCreateAdminClient).toHaveBeenCalled();
 		expect(insights.valueSignals?.map((signal) => signal.name)).toEqual(['Parchment Named Lot']);

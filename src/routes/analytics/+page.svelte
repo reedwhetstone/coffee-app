@@ -97,6 +97,7 @@
 	let analyticsPreview = $derived(
 		(data.analyticsPreview as AnalyticsPayload | undefined) ?? EMPTY_ANALYTICS_PAYLOAD
 	);
+	let analyticsPreviewAvailable = $derived(data.analyticsPreviewAvailable === true);
 	let resolvedAnalyticsPayload = $state<AnalyticsPayload | null>(null);
 	let analyticsPayload = $derived(resolvedAnalyticsPayload ?? analyticsPreview);
 	let analyticsPayloadStatus = $state<'pending' | 'resolved' | 'failed'>('pending');
@@ -541,10 +542,14 @@
 
 	let marketReadHeadline = $derived.by(() => {
 		if (analyticsPayloadStatus === 'pending') {
-			return 'The latest market snapshot is ready while deeper evidence loads.';
+			return analyticsPreviewAvailable
+				? 'The latest market snapshot is ready while deeper evidence loads.'
+				: 'The latest market snapshot is unavailable while deeper evidence loads.';
 		}
 		if (analyticsPayloadStatus === 'failed') {
-			return 'The latest market snapshot is available; deeper evidence is temporarily unavailable.';
+			return analyticsPreviewAvailable
+				? 'The latest market snapshot is available; deeper evidence is temporarily unavailable.'
+				: 'The market snapshot and deeper evidence are temporarily unavailable.';
 		}
 		if (!isMovementDataAvailable) {
 			return `${movementWindowLabel} movement data is unavailable; use price and coverage evidence until the index refreshes.`;
@@ -1042,7 +1047,7 @@
 </script>
 
 {#if analyticsPayloadError}
-	<section class="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-900">
+	<section class="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-900" role="alert">
 		<p class="font-semibold">Market data did not load.</p>
 		<p class="mt-1">{analyticsPayloadError}</p>
 		<a class="mt-3 inline-flex font-semibold underline" href="/analytics">Retry market data</a>

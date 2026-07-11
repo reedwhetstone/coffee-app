@@ -252,7 +252,9 @@ function createAnalyticsPayload(overrides: Partial<AnalyticsPayload> = {}): Anal
 
 function createData(
 	overrides: Partial<AnalyticsPayload> &
-		Partial<Pick<PageData, 'session' | 'isParchmentIntelligence' | 'role'>> & {
+		Partial<
+			Pick<PageData, 'session' | 'isParchmentIntelligence' | 'role' | 'analyticsPreviewAvailable'>
+		> & {
 			analyticsPayload?: Promise<AnalyticsPayloadResult>;
 			analyticsPreview?: AnalyticsPayload;
 		} = {}
@@ -263,6 +265,7 @@ function createData(
 		role = 'viewer',
 		analyticsPayload,
 		analyticsPreview,
+		analyticsPreviewAvailable = true,
 		...payloadOverrides
 	} = overrides;
 	const payload = createAnalyticsPayload(payloadOverrides);
@@ -272,6 +275,7 @@ function createData(
 		isParchmentIntelligence,
 		role,
 		analyticsPreview: analyticsPreview ?? payload,
+		analyticsPreviewAvailable,
 		analyticsPayload:
 			analyticsPayload ?? Promise.resolve({ status: 'resolved' as const, data: payload })
 	} as unknown as PageData;
@@ -361,6 +365,7 @@ describe('analytics page loading experience', () => {
 		await waitFor(() => {
 			expect(screen.getByText('Market data did not load.')).toBeTruthy();
 		});
+		expect(screen.getByRole('alert')).toHaveTextContent('Market data did not load.');
 		expect(screen.getByRole('link', { name: 'Retry market data' })).toHaveAttribute(
 			'href',
 			'/analytics'
@@ -370,6 +375,36 @@ describe('analytics page loading experience', () => {
 		expect(document.querySelector('[aria-busy="true"]')).toBeNull();
 		expect(document.querySelector('.animate-pulse')).toBeNull();
 		expect(screen.getByText(/last confirmed preview/i)).toBeTruthy();
+	});
+
+	it('does not claim the market snapshot is ready when the blocking preview read is unavailable', () => {
+		const payload = deferred<AnalyticsPayloadResult>();
+		render(AnalyticsPage, {
+			data: createData({
+				analyticsPreviewAvailable: false,
+				analyticsPayload: payload.promise
+			})
+		});
+
+		expect(screen.getByText(/latest market snapshot is unavailable/i)).toBeTruthy();
+		expect(screen.queryByText(/latest market snapshot is ready/i)).toBeNull();
+	});
+
+	it('does not claim a snapshot is available after both preview and streamed reads fail', async () => {
+		render(AnalyticsPage, {
+			data: createData({
+				analyticsPreviewAvailable: false,
+				analyticsPayload: Promise.resolve({
+					status: 'failed',
+					message: 'Market data could not be loaded. Retry the page in a moment.'
+				})
+			})
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText(/market snapshot and deeper evidence are temporarily unavailable/i)).toBeTruthy();
+		});
+		expect(screen.queryByText(/latest market snapshot is available/i)).toBeNull();
 	});
 
 	it('withholds snapshot-derived signal cards until the full analytics payload resolves', async () => {
