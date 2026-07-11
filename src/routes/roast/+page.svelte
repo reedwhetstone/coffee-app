@@ -13,6 +13,7 @@
 	import { goto } from '$app/navigation';
 	import { roastData, roastEvents, temperatureEntries, eventEntries, msToSeconds } from './stores';
 	import { createRoastTimer } from '$lib/roast';
+	import { refreshAfterCommittedCreate } from '$lib/roast/committed-refresh';
 
 	import RoastProfileTabs from './RoastProfileTabs.svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
@@ -71,6 +72,7 @@
 
 	// Profile operation errors
 	let profileError = $state<string | null>(null);
+	let refreshWarning = $state<string | null>(null);
 	let operationInProgress = $state<string | null>(null);
 
 	// Track processing state
@@ -369,10 +371,9 @@
 				};
 
 				// Reload fresh data and re-select the new profile
-				const reloadedProfile = await reloadProfile(profiles[0].roast_id);
-				if (!reloadedProfile) {
-					throw new Error('Roast profile was created but could not be reloaded');
-				}
+				// The POST is committed. A read-after-write failure must not reject this
+				// submission or leave the form available for an accidental duplicate.
+				refreshWarning = await refreshAfterCommittedCreate(profiles[0].roast_id, reloadProfile);
 
 				// Return the result for Artisan file upload (already has roast_ids if using new format)
 				return result.roast_ids
@@ -792,6 +793,26 @@
 			></div>
 			<span class="text-sm font-medium text-info-strong">{operationInProgress}</span>
 		</div>
+	</div>
+{/if}
+
+{#if refreshWarning}
+	<div
+		class="fixed right-4 top-4 z-50 max-w-md rounded-lg bg-warning-subtle p-4 ring-1 ring-warning/30"
+		role="status"
+	>
+		<p class="text-sm font-medium text-warning-strong">Created, refresh needed</p>
+		<p class="mt-1 text-sm text-warning-strong">{refreshWarning}</p>
+		<button
+			type="button"
+			onclick={async () => {
+				await syncData();
+				if (!error) refreshWarning = null;
+			}}
+			class="mt-3 rounded-md bg-warning px-3 py-1.5 text-sm font-medium text-ink"
+		>
+			Retry refresh
+		</button>
 	</div>
 {/if}
 

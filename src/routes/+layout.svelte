@@ -7,6 +7,7 @@
 	import MobileAppShell from '$lib/components/layout/MobileAppShell.svelte';
 	import ChatDrawer from '$lib/components/chat/ChatDrawer.svelte';
 	import NavigationProgress from '$lib/components/layout/NavigationProgress.svelte';
+	import NavigationSkeletonOverlay from '$lib/components/layout/NavigationSkeletonOverlay.svelte';
 	import { shouldShowClientRouteSkeleton } from '$lib/components/layout/routeSkeletons';
 	import { setContext } from 'svelte';
 	import type { Component } from 'svelte';
@@ -184,16 +185,16 @@
 
 {#if isMarketingPage}
 	<div class="min-h-screen">
-		{#if showClientRouteSkeleton}
-			<RouteSkeletonComponent
-				pathname={navigationSkeletonPathname}
-				isParchmentIntelligence={data.ppiAccess === true}
-				authenticated={Boolean(data.session?.user)}
-				role={data.role}
-			/>
-		{:else}
+		<NavigationSkeletonOverlay
+			active={showClientRouteSkeleton}
+			pathname={navigationSkeletonPathname}
+			Skeleton={RouteSkeletonComponent}
+			isParchmentIntelligence={data.ppiAccess === true}
+			authenticated={Boolean(data.session?.user)}
+			role={data.role}
+		>
 			{@render children()}
-		{/if}
+		</NavigationSkeletonOverlay>
 		<CookieBanner />
 	</div>
 {:else if data?.session?.user && !usesPublicShell}
@@ -203,16 +204,18 @@
 
 		<main class="{contentMargin} min-w-0 flex-1 transition-all duration-300 ease-out">
 			<div class="h-full overflow-x-clip px-4 pb-6 pt-20 sm:px-6 md:px-0 md:pb-0 md:pr-12 md:pt-4">
-				{#if showClientRouteSkeleton}
-					<RouteSkeletonComponent
-						pathname={navigationSkeletonPathname}
-						isParchmentIntelligence={data.ppiAccess === true}
-						authenticated={Boolean(data.session?.user)}
-						role={data.role}
-					/>
-				{:else}
+				<NavigationSkeletonOverlay
+					active={showClientRouteSkeleton}
+					pathname={navigationSkeletonPathname}
+					Skeleton={RouteSkeletonComponent}
+					isParchmentIntelligence={data.ppiAccess === true}
+					authenticated={Boolean(data.session?.user)}
+					role={data.role}
+					overlayClass="md:left-24"
+					skeletonClass="px-4 pb-6 pt-20 sm:px-6 md:px-0 md:pb-0 md:pr-12 md:pt-4"
+				>
 					{@render children()}
-				{/if}
+				</NavigationSkeletonOverlay>
 			</div>
 		</main>
 
@@ -242,16 +245,17 @@
 	<div class="min-h-screen overflow-x-clip">
 		<main class="flex-1">
 			<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-				{#if showClientRouteSkeleton}
-					<RouteSkeletonComponent
-						pathname={navigationSkeletonPathname}
-						isParchmentIntelligence={data.ppiAccess === true}
-						authenticated={Boolean(data.session?.user)}
-						role={data.role}
-					/>
-				{:else}
+				<NavigationSkeletonOverlay
+					active={showClientRouteSkeleton}
+					pathname={navigationSkeletonPathname}
+					Skeleton={RouteSkeletonComponent}
+					isParchmentIntelligence={data.ppiAccess === true}
+					authenticated={Boolean(data.session?.user)}
+					role={data.role}
+					skeletonClass="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8"
+				>
 					{@render children()}
-				{/if}
+				</NavigationSkeletonOverlay>
 			</div>
 		</main>
 	</div>
