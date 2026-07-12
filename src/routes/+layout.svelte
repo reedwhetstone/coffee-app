@@ -121,12 +121,11 @@
 	// Ask Parchment drawer: available on every authenticated app page except
 	// /chat itself (which is the full workspace).
 	let isChatRoute = $derived(pathname === '/chat' || pathname.startsWith('/chat/'));
-	let canUseChatDrawer = $derived(
-		Boolean(data?.session?.user) &&
-			!usesPublicShell &&
-			!isChatRoute &&
-			(data.ppiAccess === true || checkRole(data.role, 'member'))
+	let hasChatAccess = $derived(
+		Boolean(data?.session?.user) && (data.ppiAccess === true || checkRole(data.role, 'member'))
 	);
+	let isChatWorkspace = $derived(isChatRoute && hasChatAccess);
+	let canUseChatDrawer = $derived(hasChatAccess && !usesPublicShell && !isChatRoute);
 
 	$effect(() => {
 		if (!canUseChatDrawer && chatDrawerOpen) chatDrawerOpen = false;
@@ -159,13 +158,13 @@
 		<CookieBanner />
 	</div>
 {:else if data?.session?.user && !usesPublicShell}
-	<div class="flex {isChatRoute ? 'h-dvh overflow-hidden' : 'min-h-screen'}">
+	<div class="flex {isChatWorkspace ? 'h-dvh overflow-hidden' : 'min-h-screen'}">
 		<LeftSidebar {data} onMenuChange={handleMenuChange} />
 		<MobileAppShell {data} />
 
 		<main class="{contentMargin} min-h-0 min-w-0 flex-1 transition-all duration-300 ease-out">
 			<div
-				class="h-full overflow-x-clip {isChatRoute
+				class="h-full overflow-x-clip {isChatWorkspace
 					? 'px-4 pt-20 sm:px-6 md:px-0 md:pr-12 md:pt-4'
 					: 'px-4 pb-6 pt-20 sm:px-6 md:px-0 md:pb-0 md:pr-12 md:pt-4'}"
 			>
