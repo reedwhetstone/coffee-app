@@ -9,6 +9,7 @@ import {
 	principalHasScope,
 	resolvePrincipal,
 	type ApiKeyPrincipal,
+	type AuthenticatedPrincipal,
 	type SessionPrincipal
 } from '$lib/server/principal';
 import type { ApiPlan } from '$lib/server/apiAuth';
@@ -98,6 +99,31 @@ export async function requireMemberRole(
 	}
 
 	return { user, role, principal };
+}
+
+/** Accept either a trusted session mutation or an owner-bound member API key. */
+export async function requireAuthenticatedMemberPrincipal(
+	event: RequestEvent,
+	options: { requiredApiScope?: string } = {}
+): Promise<AuthenticatedPrincipal> {
+	const principal = await resolvePrincipal(event);
+	if (!principal.isAuthenticated) {
+		throw new AuthError('Authentication required');
+	}
+	if (isSessionPrincipal(principal)) {
+		assertSessionMutationIsTrusted(event, principal);
+	}
+	if (!principalHasRole(principal, 'member')) {
+		throw new AuthError('Member role required', 403);
+	}
+	if (
+		isApiKeyPrincipal(principal) &&
+		options.requiredApiScope &&
+		!principalHasScope(principal, options.requiredApiScope)
+	) {
+		throw new AuthError('Insufficient API scope', 403);
+	}
+	return principal;
 }
 
 export async function requireParchmentAccess(event: RequestEvent): Promise<{

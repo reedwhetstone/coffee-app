@@ -57,4 +57,17 @@ describe('api docs contract', () => {
 			'Viewer sessions stay public-only. Member/admin sessions unlock process facets and may also unlock showWholesale and wholesaleOnly.'
 		);
 	});
+
+	it('documents API-key access to roast classification consistently', () => {
+		const overview = getDocsPage('api', 'overview');
+		const roastProfiles = getDocsPage('api', 'roast-profiles');
+		const analytics = getDocsPage('api', 'analytics');
+		const serializedDocs = `${JSON.stringify(overview)} ${JSON.stringify(roastProfiles)} ${JSON.stringify(analytics)}`;
+
+		expect(serializedDocs).not.toContain('Session + member role');
+		expect(serializedDocs).toContain('Member session or member-owned API key + roast:read');
+		expect(JSON.stringify(roastProfiles)).toContain(
+			'accepts a member session or a member-owned API key with roast:read'
+		);
+	});
 });
