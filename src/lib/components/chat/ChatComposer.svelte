@@ -17,9 +17,16 @@
 		suggestions,
 		slashCompletions,
 		chatError,
+		chatCanRetry,
+		workspaceError,
+		workspaceReady,
+		initializingWorkspace,
 		contextChips = [],
 		onToggleChip,
 		onSend,
+		onStop,
+		onRetry,
+		onRetryWorkspace,
 		onDismissError
 	} = $props<{
 		inputMessage?: string;
@@ -28,9 +35,16 @@
 		suggestions: Suggestion[];
 		slashCompletions: SlashCommand[];
 		chatError: string | null;
+		chatCanRetry: boolean;
+		workspaceError: string | null;
+		workspaceReady: boolean;
+		initializingWorkspace: boolean;
 		contextChips?: ContextChip[];
 		onToggleChip?: (id: ContextChip['id']) => void;
 		onSend: () => void;
+		onStop: () => void;
+		onRetry: () => void;
+		onRetryWorkspace: () => void;
 		onDismissError: () => void;
 	}>();
 
@@ -60,6 +74,7 @@
 <!-- Chat error banner -->
 {#if chatError}
 	<div
+		role="alert"
 		class="mx-4 mt-2 flex items-center gap-2 rounded-lg border border-danger/40 bg-danger-subtle px-4 py-2 text-sm text-danger-strong"
 	>
 		<svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,6 +86,8 @@
 			/>
 		</svg>
 		<span class="flex-1">{chatError}</span>
+		{#if chatCanRetry}<button onclick={onRetry} class="shrink-0 font-medium underline">Retry</button
+			>{/if}
 		<button
 			onclick={onDismissError}
 			class="shrink-0 text-danger hover:text-danger-strong"
@@ -84,6 +101,24 @@
 					d="M6 18L18 6M6 6l12 12"
 				/>
 			</svg>
+		</button>
+	</div>
+{/if}
+
+{#if workspaceError}
+	<div
+		role="alert"
+		class="mx-4 mt-2 flex items-center gap-3 rounded-lg border border-danger/40 bg-danger-subtle px-4 py-3 text-sm text-danger-strong"
+	>
+		<span class="flex-1"
+			>Your conversation could not be prepared for saving. Retry before sending.</span
+		>
+		<button
+			onclick={onRetryWorkspace}
+			disabled={initializingWorkspace}
+			class="shrink-0 font-medium underline disabled:opacity-50"
+		>
+			{initializingWorkspace ? 'Retrying…' : 'Retry setup'}
 		</button>
 	</div>
 {/if}
@@ -156,7 +191,7 @@
 					: 'Ask me about sourcing, portfolio, catalog, or coffee market decisions...'}
 				class="flex-1 resize-none rounded-lg border border-line bg-surface-canvas px-4 py-3 text-ink placeholder-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
 				rows="1"
-				disabled={isActive}
+				disabled={isActive || !workspaceReady}
 				onkeydown={(e) => {
 					if (e.key === 'Enter' && !e.shiftKey) {
 						e.preventDefault();
@@ -165,14 +200,16 @@
 				}}
 			></textarea>
 			<button
-				type="submit"
-				disabled={isActive || !inputMessage.trim()}
+				type={isActive ? 'button' : 'submit'}
+				onclick={isActive ? onStop : undefined}
+				disabled={!isActive && (!workspaceReady || !inputMessage.trim())}
+				aria-label={isActive ? 'Stop response' : 'Send message'}
 				class="rounded-lg bg-accent px-4 py-3 text-ink transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if isActive}
-					<div
-						class="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"
-					></div>
+					<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+						><rect x="5" y="5" width="10" height="10" rx="1" /></svg
+					>
 				{:else}
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
