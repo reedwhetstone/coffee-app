@@ -148,7 +148,8 @@ export async function getSupplierList(
 	const nonWholesaleOnly = input.non_wholesale_only ?? false;
 	const response: CatalogSupplierAggregateResponse = unwrapParchment(
 		await client.catalog.suppliers({
-			stocked: stockedOnly ? 'true' : 'false',
+			// The supplier aggregate contract uses an omitted filter for all-visible rows.
+			stocked: stockedOnly ? 'true' : undefined,
 			country: country ?? undefined,
 			nonWholesaleOnly: nonWholesaleOnly ? 'true' : 'false',
 			limit

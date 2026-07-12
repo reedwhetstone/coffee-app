@@ -90,6 +90,16 @@ describe('market tools SDK mapping', () => {
 			suppliers: [{ listings: 2, price_min: 4, price_max: 8, avg_purveyor_score: 77 }]
 		});
 	});
+	it('requests all caller-visible suppliers when stocked-only is disabled', async () => {
+		const suppliers = vi.fn().mockResolvedValue({
+			data: {
+				data: [],
+				meta: { returned: 0, rows_examined: 0, caveats: [], truncated: false }
+			}
+		});
+		await getSupplierList({ catalog: { suppliers } } as never, { stocked_only: false });
+		expect(suppliers).toHaveBeenCalledWith(expect.objectContaining({ stocked: undefined }));
+	});
 	it('maps rank filters', async () => {
 		const rank = vi.fn().mockResolvedValue({
 			data: {

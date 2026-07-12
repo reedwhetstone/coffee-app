@@ -2,6 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { AgentParchmentClient } from './parchment';
 import { unwrapParchment } from './parchment';
+import { toLegacyTastingEnvelope } from './tastingEnvelope';
 
 export function createTastingTools(client: AgentParchmentClient) {
 	return {
@@ -13,18 +14,18 @@ export function createTastingTools(client: AgentParchmentClient) {
 				filter: z.enum(['user', 'supplier', 'both']).default('both')
 			}),
 			execute: async (input) => {
-				// CLI schema field names match execute params (bean_id, filter).
-				// include_radar_data was chat-specific; CLI returns cupping_notes
-				// as raw JSON which contains radar-compatible data.
 				if (!input.bean_id || input.bean_id <= 0) {
 					return {
 						error:
 							'bean_id is required and must be a positive integer. Please specify which bean to get tasting notes for.'
 					};
 				}
-				return unwrapParchment(
-					await client.tasting.get(String(input.bean_id), { filter: input.filter })
+				// Fetch both canonical sources once, then preserve the app-owned envelope
+				// consumed by chat canvas extraction while honoring the requested filter.
+				const data = unwrapParchment(
+					await client.tasting.get(String(input.bean_id), { filter: 'both' })
 				).data;
+				return toLegacyTastingEnvelope(data, input.filter, true);
 			}
 		})
 	};

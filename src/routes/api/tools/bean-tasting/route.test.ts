@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { _readLegacyTasting, _toLegacyTastingEnvelope } from './+server';
+import { toLegacyTastingEnvelope } from '$lib/services/tools/tastingEnvelope';
+import { _readLegacyTasting } from './+server';
 
 const tasting = {
 	beanId: 42,
@@ -26,7 +27,7 @@ const tasting = {
 
 describe('bean tasting legacy envelope', () => {
 	it('preserves the compatibility keys for both notes', () => {
-		const result = _toLegacyTastingEnvelope(tasting, 'both', true);
+		const result = toLegacyTastingEnvelope(tasting, 'both', true);
 		expect(Object.keys(result)).toEqual([
 			'bean_info',
 			'tasting_notes',
@@ -55,7 +56,7 @@ describe('bean tasting legacy envelope', () => {
 	});
 
 	it('keeps catalog and AI context but does not leak supplier notes for user-only output', () => {
-		const result = _toLegacyTastingEnvelope(tasting, 'user', true);
+		const result = toLegacyTastingEnvelope(tasting, 'user', true);
 		expect(result.bean_info.name).toBe('Kenya AA');
 		expect(result.tasting_notes).toMatchObject({
 			user_notes: { notes: 'Juicy' },
@@ -66,7 +67,7 @@ describe('bean tasting legacy envelope', () => {
 	});
 
 	it('returns supplier and AI context without user notes for supplier-only output', () => {
-		const result = _toLegacyTastingEnvelope(tasting, 'supplier', true);
+		const result = toLegacyTastingEnvelope(tasting, 'supplier', true);
 		expect(result.tasting_notes).toMatchObject({
 			supplier_notes: { cupping_notes: 'Blackcurrant' },
 			ai_notes: { description: 'Bright' }
@@ -76,15 +77,15 @@ describe('bean tasting legacy envelope', () => {
 	});
 
 	it('honors include_radar_data=false', () => {
-		expect(_toLegacyTastingEnvelope(tasting, 'both', false).radar_data).toBeUndefined();
+		expect(toLegacyTastingEnvelope(tasting, 'both', false).radar_data).toBeUndefined();
 	});
 
 	it('preserves legacy not-found behavior when canonical catalog context is missing', () => {
 		expect(() =>
-			_toLegacyTastingEnvelope({ ...tasting, filter: 'user', supplier: null }, 'user', true)
+			toLegacyTastingEnvelope({ ...tasting, filter: 'user', supplier: null }, 'user', true)
 		).toThrow('No coffee found with bean_id: 42');
 		try {
-			_toLegacyTastingEnvelope({ ...tasting, filter: 'user', supplier: null }, 'user', true);
+			toLegacyTastingEnvelope({ ...tasting, filter: 'user', supplier: null }, 'user', true);
 		} catch (error) {
 			expect(error).toMatchObject({ status: 404 });
 		}
