@@ -111,7 +111,7 @@
 					const items = part.output?.presentation?.items;
 					const count = Array.isArray(items) ? items.length : 0;
 					steps.push({
-						message: `presenting ${count} item${count === 1 ? '' : 's'} to the canvas`,
+						message: `presenting ${count} item${count === 1 ? '' : 's'} to the evidence workspace`,
 						timestamp: new Date()
 					});
 				} else if (part.state === 'output-error') {

@@ -661,7 +661,8 @@
 					// re-read by the effect, so a delayed retry cannot leak state across
 					// a workspace switch.
 					if (retryAttempt >= 2) {
-						canvasPersistError = 'Canvas changes are not saving. Retrying in the background.';
+						canvasPersistError =
+							'Evidence workspace changes are not saving. Retrying in the background.';
 					}
 					const retryDelay = Math.min(2000 * 2 ** retryAttempt, 30_000);
 					retryTimeout = setTimeout(() => {
