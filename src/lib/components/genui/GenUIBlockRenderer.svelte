@@ -54,7 +54,9 @@
 		{:else if block.type === 'roast-chart'}
 			<RoastChartBlock {block} />
 		{:else if block.type === 'action-card'}
-			<ActionCardBlock {block} onExecute={onExecuteAction} />
+			<!-- Action cards remain executable only in the shared canvas. Rendering the
+			     live card here would create a second, unsynchronized mutation control. -->
+			<ActionCardPreview {block} {onAction} {canvasBlockId} />
 		{:else if block.type === 'data-table'}
 			<DataTableBlock {block} {onAction} />
 		{:else if block.type === 'error'}

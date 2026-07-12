@@ -97,7 +97,7 @@
 </script>
 
 {#if open || keepMounted}
-	<div class="fixed inset-0 z-[45] {hideOnDesktop ? 'md:hidden' : ''} {open ? '' : 'hidden'}">
+	<div class="fixed inset-0 z-[60] {hideOnDesktop ? 'md:hidden' : ''} {open ? '' : 'hidden'}">
 		<button
 			type="button"
 			class="absolute inset-0 bg-ink/55 backdrop-blur-sm"

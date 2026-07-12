@@ -27,6 +27,7 @@ describe('MobileOverlayShell', () => {
 		const secondAction = screen.getByRole('button', { name: 'Second action' });
 
 		expect(dialog).toHaveAttribute('aria-labelledby', 'dialog-title');
+		expect(dialog.closest('.fixed')).toHaveClass('z-[60]');
 		expect(document.body.style.overflow).toBe('hidden');
 		await waitFor(() => expect(firstAction).toHaveFocus());
 
