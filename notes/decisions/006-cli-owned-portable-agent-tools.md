@@ -1,7 +1,8 @@
 # ADR-006: CLI-Owned Portable Agent Tools, App-Owned Agent Scaffolding
 
-**Status:** Accepted (2026-06-11); **partially superseded** 2026-06-29 by
-parchment-api **PADR-0011** and **ADR-007** (headless API extraction).
+**Status:** Superseded (2026-07-12) by the Parchment API/SDK boundary and ADR-007.
+
+Coffee-app agent data consumers use `@purveyors/sdk` session-mode clients. The CLI remains a separate API client and terminal surface; Supabase-compatible CLI library overloads are no longer an app integration boundary.
 
 **Date:** 2026-06-11
 

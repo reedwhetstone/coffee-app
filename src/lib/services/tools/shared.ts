@@ -1,5 +1,7 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { listInventory } from '@purveyors/cli/inventory';
+import type { components } from '@purveyors/sdk';
+import type { AgentParchmentClient } from './parchment';
+import { unwrapParchment } from './parchment';
+import { collectOffsetPages } from './pagination';
 
 /**
  * Coerce falsy or non-positive numeric IDs to undefined.
@@ -10,7 +12,7 @@ export function positiveOrUndef(val: number | undefined | null): number | undefi
 	return typeof val === 'number' && val > 0 ? val : undefined;
 }
 
-export type InventoryResult = Awaited<ReturnType<typeof listInventory>>[number];
+export type InventoryResult = components['schemas']['InventoryResource'];
 
 export function stripInventoryRoastProfileData<T extends InventoryResult>(
 	rows: T[]
@@ -30,22 +32,25 @@ export interface InventoryRoastSummary {
  * without this every canvas inventory table shows 0 roasts.
  */
 export async function attachRoastSummaries<T extends InventoryResult>(
-	supabase: SupabaseClient,
-	userId: string,
+	client: AgentParchmentClient,
 	rows: T[]
 ): Promise<Array<T & { roast_summary: InventoryRoastSummary }>> {
 	const summaries = new Map<number, InventoryRoastSummary>();
 
 	const ids = rows.map((row) => row.id).filter((id): id is number => typeof id === 'number');
 	if (ids.length > 0) {
-		const { data, error } = await supabase
-			.from('roast_profiles')
-			.select('coffee_id, roast_date, oz_in')
-			.eq('user', userId)
-			.in('coffee_id', ids);
-		if (error) throw new Error(`roast_profiles query failed: ${error.message}`);
+		const roasts = (
+			await collectOffsetPages({
+				fetchPage: async (offset) => {
+					const { data, error } = await client.roasts.list({ limit: 200, offset });
+					return unwrapParchment({ data, error }).data;
+				},
+				key: (roast) => roast.roast_id
+			})
+		).filter((roast) => roast.coffee_id != null && ids.includes(roast.coffee_id));
 
-		for (const roast of data ?? []) {
+		for (const roast of roasts) {
+			if (roast.coffee_id == null) continue;
 			const existing = summaries.get(roast.coffee_id) ?? {
 				total_roasts: 0,
 				last_roast_date: null,

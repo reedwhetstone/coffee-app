@@ -430,7 +430,7 @@ const docsPages: DocsPage[] = [
 					'/docs is the shared public documentation tree for both the HTTP API and @purveyors/cli.',
 					'/llms.txt, /sitemap.xml, and /blog/feed.xml are anonymous discoverability endpoints for agents, crawlers, and feed readers. They expose navigation metadata, not integration data contracts.',
 					'/auth/callback and /auth/cli-callback are OAuth handoff surfaces. They are part of login flow reliability, not REST API resources.',
-					'The web app imports @purveyors/cli modules directly for chat tooling, so CLI and product behavior should stay aligned.'
+					'The web app and CLI both consume Parchment API contracts, so their product behavior should stay aligned.'
 				]
 			}
 		],
@@ -2681,7 +2681,7 @@ const docsPages: DocsPage[] = [
 				callout: {
 					tone: 'success',
 					title: 'Prefer the documented contract over internal route coupling',
-					body: 'If an agent can solve the task with purvey or a direct @purveyors/cli import, prefer that path over binding to internal /api/tools/* or chat workspace payloads.'
+					body: 'If an agent can solve the task with purvey or the public Parchment API through @purveyors/sdk, prefer that path over binding to internal /api/tools/* or chat workspace payloads.'
 				}
 			}
 		],
@@ -2694,7 +2694,7 @@ const docsPages: DocsPage[] = [
 			{
 				href: '/docs/cli/agent-integration',
 				label: 'Agent integration',
-				description: 'How the web app and external agents consume CLI modules and contracts.'
+				description: 'How external agents consume CLI commands and Parchment contracts.'
 			},
 			{
 				href: '/docs/api/overview',
@@ -2712,24 +2712,24 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Agent workflows',
 		intro: [
 			'The CLI is the preferred documented automation surface for most non-visual workflows. It gives agents stable command names, explicit auth requirements, predictable output modes, and a machine-readable manifest when needed.',
-			'The Purveyors web app also imports CLI modules directly for chat tools, which keeps browser, terminal, and agent behavior aligned on shared domain logic.'
+			'The Purveyors web app and CLI both consume Parchment API contracts, keeping browser, terminal, and agent behavior aligned without runtime package coupling.'
 		],
 		sections: [
 			{
 				title: 'Recommended agent patterns',
 				bullets: [
 					'For shell-based automation, authenticate once, then call purvey commands with JSON or CSV output that suits the surrounding workflow.',
-					'For code-side integrations, import stable subpaths such as @purveyors/cli/catalog, @purveyors/cli/inventory, @purveyors/cli/roast, @purveyors/cli/sales, @purveyors/cli/tasting, @purveyors/cli/manifest, @purveyors/cli/artisan, or @purveyors/cli/ai instead of screen-scraping CLI help text.',
+					'For code-side integrations, use @purveyors/sdk against the stable Parchment API contracts instead of importing CLI runtime internals or screen-scraping help text.',
 					'Use purvey context first when a model needs dense onboarding text. Use purvey manifest for the preferred machine-readable contract, or purvey context --json when an existing caller needs compatibility-parity output.',
-					'Prefer the CLI or its shared modules over coupling to deprecated /api/tools/* endpoints or private workspace route payloads.'
+					'Prefer purvey CLI commands for shell automation or @purveyors/sdk and the public Parchment API for code integrations; avoid deprecated /api/tools/* endpoints and private workspace route payloads.'
 				]
 			},
 			{
-				title: 'How the web app uses the CLI',
+				title: 'How the web app and CLI stay aligned',
 				bullets: [
-					'The app imports CLI modules for catalog, inventory, roast, sales, and tasting operations inside chat tool execution. The CLI package also publishes manifest, Artisan, and AI helper subpaths for agent and integration surfaces.',
-					'Read tools execute shared CLI functions directly. Write tools stay user-confirmed through proposal cards and constrained execution routes.',
-					'This architecture keeps terminal, browser, and agent workflows aligned on the same domain rules and reduces drift between docs and implementation.'
+					'The app uses session-authenticated @purveyors/sdk clients for catalog, inventory, roast, sales, and tasting operations inside chat tool execution. The CLI remains a separate Parchment API client and terminal surface.',
+					'Read tools execute Parchment API operations directly. Write tools stay user-confirmed through proposal cards and constrained execution routes.',
+					'This API-first architecture keeps terminal, browser, and agent workflows aligned on the same contracts without runtime package coupling.'
 				],
 				codeBlocks: [
 					{
@@ -2754,7 +2754,7 @@ const docsPages: DocsPage[] = [
 			{
 				href: '/chat',
 				label: 'AI chat workspace',
-				description: 'The web UI that consumes CLI modules.'
+				description: 'The web UI that consumes session-mode Parchment SDK clients.'
 			}
 		]
 	}

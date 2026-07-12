@@ -15,7 +15,7 @@ This repo contains:
 - the internal route layer that powers the first-party product
 - the unified `/docs` tree for API and CLI documentation
 
-It also depends on `@purveyors/cli`, which is a first-class interface to the same coffee domain model.
+Its server-side agent tools consume the Parchment API through `@purveyors/sdk`; the CLI is a separate first-class client of the same contracts.
 
 ## Product surfaces
 
@@ -63,13 +63,13 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
    - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are metadata or compatibility endpoints, not catalog or analytics APIs
    - `/auth/callback` and `/auth/cli-callback` are OAuth handoff surfaces, not REST resources
-   - `/api/tools/*` routes are deprecated compatibility shims; prefer shared CLI-library integration for new work
+   - `/api/tools/*` routes are deprecated compatibility shims; prefer session-mode Parchment SDK integration for new work
 
 Do not document the whole coffee-app `/api/*` tree as a stable public contract. The stable public catalog feed is `https://api.purveyors.io/v1/catalog`; `https://api.purveyors.io/v1/catalog/{id}/similar` is beta and access-gated; `https://api.purveyors.io/v1/price-index` is aggregate-only and entitlement-gated. The broader coffee-app `/api/*` tree should be described as platform/internal routes with explicit auth and stability labels.
 
 ## CLI relationship
 
-This repo depends on `@purveyors/cli` and imports its domain logic in the app.
+This repo does not depend on the CLI package. Coffee-app and the CLI independently consume the canonical Parchment API contracts.
 
 CLI auth and output rules are part of the platform contract:
 
@@ -80,15 +80,7 @@ CLI auth and output rules are part of the platform contract:
 - `purvey context` is the shipped dense agent reference; `purvey context --json` and `--pretty` emit manifest-parity output for compatibility
 - stdout stays structured for automation, while operational and fatal messaging is designed to stay on stderr
 
-`src/lib/services/tools.ts` imports CLI modules directly for chat tool execution:
-
-- `@purveyors/cli/catalog`
-- `@purveyors/cli/inventory`
-- `@purveyors/cli/roast`
-- `@purveyors/cli/sales`
-- `@purveyors/cli/tasting`
-
-Improvements to the CLI automatically improve browser and AI chat workflows. The CLI is treated as a first-class platform, not a thin wrapper.
+`src/lib/services/tools.ts` adapts session-authenticated `@purveyors/sdk` clients to chat tool schemas. Shared behavior belongs behind Parchment endpoints so browser, CLI, and agent consumers stay aligned without importing one another's runtime.
 
 ## Tech stack
 

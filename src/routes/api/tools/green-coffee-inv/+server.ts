@@ -1,7 +1,7 @@
 /**
  * @deprecated This endpoint is kept for backward compatibility only.
- * The chat agent now calls @purveyors/cli listInventory() directly.
- * Do not add new consumers — use the CLI library instead.
+ * The chat agent now calls the session-mode Parchment SDK directly.
+ * Do not add new consumers — use the SDK client instead.
  */
 import { json } from '@sveltejs/kit';
 import { requireMemberRole } from '$lib/server/auth';

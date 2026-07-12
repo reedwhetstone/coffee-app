@@ -2,71 +2,18 @@
  * Market intelligence data functions for the chat agent.
  *
  * These back the catalog_facets, supplier_list, and catalog_rank chat tools.
- * They read only the public coffee_catalog surface (RLS limits SELECT to
- * public_coffee = true for every role), so results are identical for all
- * users and safe to cache process-wide.
+ * Results are scoped by the Parchment API to the caller's catalog visibility
+ * and entitlements. Do not cache them process-wide across session clients.
  *
  * Ranking is deterministic and server-side: the LLM narrates orderings, it
  * never invents them. Purveyor Score is the single quality composite —
  * objectives change the sort, not the score.
  */
 
-import {
-	catalogFacetFields,
-	catalogRankObjectives,
-	listCatalogFacets as cliListCatalogFacets,
-	rankCatalog as cliRankCatalog,
-	supplierList as cliSupplierList,
-	type SupplierAggregate,
-	type CatalogFacetField,
-	type CatalogRankObjective
-} from '@purveyors/cli/catalog';
+import type { ParchmentClient, components } from '@purveyors/sdk';
+import { unwrapParchment } from './tools/parchment';
 
-interface CatalogRowsResult {
-	data: Array<Record<string, unknown>> | null;
-	error: { message: string } | null;
-}
-
-interface CatalogQueryBuilder extends PromiseLike<CatalogRowsResult> {
-	eq(column: string, value: string | boolean | number): CatalogQueryBuilder;
-	gte(column: string, value: string | number): CatalogQueryBuilder;
-	lte(column: string, value: string | number): CatalogQueryBuilder;
-	ilike(column: string, pattern: string): CatalogQueryBuilder;
-	or(filter: string): CatalogQueryBuilder;
-	order(column: string, options: { ascending: boolean; nullsFirst?: boolean }): CatalogQueryBuilder;
-	range(from: number, to: number): CatalogQueryBuilder;
-	limit(count: number): CatalogQueryBuilder;
-}
-
-export interface MarketToolsClient {
-	from(table: 'coffee_catalog'): {
-		select(columns: string): CatalogQueryBuilder;
-	};
-}
-
-// ─── Process-wide TTL cache (catalog visibility is uniform across users) ────
-
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
-const cache = new Map<string, { expires: number; value: unknown }>();
-
-function getCached<T>(key: string): T | undefined {
-	const entry = cache.get(key);
-	if (!entry) return undefined;
-	if (Date.now() > entry.expires) {
-		cache.delete(key);
-		return undefined;
-	}
-	return entry.value as T;
-}
-
-function setCached(key: string, value: unknown): void {
-	cache.set(key, { expires: Date.now() + CACHE_TTL_MS, value });
-}
-
-/** Test hook: clear the market tools cache. */
-export function _clearMarketToolsCache(): void {
-	cache.clear();
-}
+export type MarketToolsClient = ParchmentClient;
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -75,14 +22,20 @@ function sanitizeFilterValue(value: string): string {
 	return value.replace(/[%_,()]/g, ' ').trim();
 }
 
-const MAX_ROWS = 5000;
-
 // ─── catalog_facets ──────────────────────────────────────────────────────────
 
-export const CATALOG_FACET_FIELDS = catalogFacetFields;
-export type { CatalogFacetField };
-
-const MAX_FACET_VALUES = 60;
+export const CATALOG_FACET_FIELDS = [
+	'supplier',
+	'country',
+	'processing_base_method',
+	'fermentation_type',
+	'drying_method',
+	'grade',
+	'wholesale'
+] as const;
+export type CatalogFacetField = (typeof CATALOG_FACET_FIELDS)[number];
+type CatalogFacetsResponse = components['schemas']['CatalogFacetsResponse'];
+type CatalogFacetKey = keyof CatalogFacetsResponse['facets'];
 
 export interface CatalogFacetsInput {
 	field: CatalogFacetField;
@@ -93,11 +46,11 @@ export interface CatalogFacetsResult {
 	field: CatalogFacetField;
 	stocked_only: boolean;
 	scope: 'stocked_only' | 'all_visible';
-	rows_examined: number;
-	total_listings: number;
+	rows_examined: number | null;
+	total_listings: number | null;
 	distinct_values: number;
 	values: Array<{ value: string; count: number }>;
-	truncated: boolean;
+	truncated: boolean | null;
 }
 
 export async function getCatalogFacets(
@@ -105,30 +58,34 @@ export async function getCatalogFacets(
 	input: CatalogFacetsInput
 ): Promise<CatalogFacetsResult> {
 	const stockedOnly = input.stocked_only ?? true;
-	const cacheKey = `facets:${input.field}:${stockedOnly}`;
-
-	const cached = getCached<CatalogFacetsResult>(cacheKey);
-	if (cached) return cached;
-
-	const response = await cliListCatalogFacets(client as never, {
-		field: input.field,
-		stockedOnly,
-		limit: MAX_FACET_VALUES,
-		sampleSize: MAX_ROWS
-	});
+	const response: CatalogFacetsResponse = unwrapParchment(
+		await client.catalog.facets({ stocked: stockedOnly ? 'true' : 'all' })
+	);
+	const facetKeys: Record<CatalogFacetField, CatalogFacetKey> = {
+		supplier: 'sources',
+		country: 'countries',
+		processing_base_method: 'processing_base_method',
+		fermentation_type: 'fermentation_type',
+		drying_method: 'drying_method',
+		grade: 'grade',
+		wholesale: 'wholesale'
+	};
+	const facetKey = facetKeys[input.field];
+	const values = (response.facets[facetKey] ?? []) as Array<{ value: string; count: number }>;
 
 	const result: CatalogFacetsResult = {
-		field: response.meta.field,
-		stocked_only: response.meta.stocked_only,
-		scope: response.meta.scope,
-		rows_examined: response.meta.rows_examined,
-		total_listings: response.meta.rows_examined,
-		distinct_values: response.meta.distinct_values,
-		values: response.data,
-		truncated: response.meta.truncated
+		field: input.field,
+		stocked_only: stockedOnly,
+		scope: stockedOnly ? 'stocked_only' : 'all_visible',
+		// The facets endpoint does not expose a sampled-row count or truncation flag.
+		// Counts can overlap for multi-valued dimensions, so they must not be summed.
+		rows_examined: null,
+		total_listings: null,
+		distinct_values: values.length,
+		values,
+		truncated: null
 	};
 
-	setCached(cacheKey, result);
 	return result;
 }
 
@@ -144,7 +101,7 @@ export interface SupplierListInput {
 	limit?: number;
 }
 
-export interface SupplierSummary extends SupplierAggregate {
+export interface SupplierSummary extends Record<string, unknown> {
 	listings: number;
 	non_wholesale_listings?: number;
 	price_min: number | null;
@@ -162,8 +119,11 @@ export interface SupplierListResult {
 	truncated: boolean;
 }
 
+type CatalogSupplierAggregate = components['schemas']['CatalogSupplierAggregate'];
+type CatalogSupplierAggregateResponse = components['schemas']['CatalogSupplierAggregateResponse'];
+
 function toSupplierSummary(
-	supplier: SupplierAggregate,
+	supplier: CatalogSupplierAggregate,
 	input: { nonWholesaleOnly: boolean }
 ): SupplierSummary {
 	return {
@@ -184,19 +144,17 @@ export async function getSupplierList(
 	const stockedOnly = input.stocked_only ?? true;
 	const country = input.country ? sanitizeFilterValue(input.country) : null;
 	const limit = Math.min(Math.max(input.limit ?? DEFAULT_SUPPLIER_LIMIT, 1), MAX_SUPPLIER_LIMIT);
-	const cacheKey = `suppliers:${stockedOnly}:${input.non_wholesale_only ?? false}:${country ?? ''}:${limit}`;
-
-	const cached = getCached<SupplierListResult>(cacheKey);
-	if (cached) return cached;
 
 	const nonWholesaleOnly = input.non_wholesale_only ?? false;
-	const response = await cliSupplierList(client as never, {
-		stocked: stockedOnly,
-		country: country ?? undefined,
-		nonWholesaleOnly,
-		limit,
-		sampleSize: MAX_ROWS
-	});
+	const response: CatalogSupplierAggregateResponse = unwrapParchment(
+		await client.catalog.suppliers({
+			// The supplier aggregate contract uses an omitted filter for all-visible rows.
+			stocked: stockedOnly ? 'true' : undefined,
+			country: country ?? undefined,
+			nonWholesaleOnly: nonWholesaleOnly ? 'true' : 'false',
+			limit
+		})
+	);
 	const result: SupplierListResult = {
 		suppliers: response.data.map((supplier) => toSupplierSummary(supplier, { nonWholesaleOnly })),
 		returned_suppliers: response.meta.returned,
@@ -210,14 +168,14 @@ export async function getSupplierList(
 		truncated: response.meta.truncated
 	};
 
-	setCached(cacheKey, result);
 	return result;
 }
 
 // ─── catalog_rank ────────────────────────────────────────────────────────────
 
-export const RANK_OBJECTIVES = catalogRankObjectives;
-export type RankObjective = CatalogRankObjective;
+export const RANK_OBJECTIVES = ['premium', 'value', 'fresh_arrival', 'rare_origin'] as const;
+export type RankObjective = (typeof RANK_OBJECTIVES)[number];
+type CatalogRankingResponse = components['schemas']['CatalogRankingResponse'];
 
 const DEFAULT_RANK_LIMIT = 8;
 const MAX_RANK_LIMIT = 15;
@@ -252,21 +210,23 @@ export async function rankCatalog(
 	input: RankCatalogInput
 ): Promise<RankCatalogResult> {
 	const limit = Math.min(Math.max(input.limit ?? DEFAULT_RANK_LIMIT, 1), MAX_RANK_LIMIT);
-	const response = await cliRankCatalog(client as never, {
-		objective: input.objective,
-		stockedOnly: input.stocked_only ?? true,
-		supplier: input.supplier,
-		country: input.country,
-		process: input.process,
-		priceMax: input.max_price != null && input.max_price > 0 ? input.max_price : undefined,
-		minScore:
-			input.min_purveyor_score != null && input.min_purveyor_score > 0
-				? input.min_purveyor_score
-				: undefined,
-		nonWholesaleOnly: input.non_wholesale_only,
-		limit,
-		sampleSize: MAX_ROWS
-	});
+	const response: CatalogRankingResponse = unwrapParchment(
+		await client.catalog.rank({
+			objective: input.objective,
+			stockedOnly: (input.stocked_only ?? true) ? 'true' : 'false',
+			supplier: input.supplier,
+			country: input.country,
+			process: input.process,
+			priceMax: input.max_price != null && input.max_price > 0 ? input.max_price : undefined,
+			minScore:
+				input.min_purveyor_score != null && input.min_purveyor_score > 0
+					? input.min_purveyor_score
+					: undefined,
+			nonWholesaleOnly:
+				input.non_wholesale_only == null ? undefined : input.non_wholesale_only ? 'true' : 'false',
+			limit
+		})
+	);
 
 	return {
 		objective: response.meta.objective,

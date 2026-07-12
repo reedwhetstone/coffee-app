@@ -593,7 +593,7 @@ export const POST: RequestHandler = async (event) => {
 		const MAX_REQUEST_MESSAGES = 30;
 		const windowedMessages = messages.slice(-MAX_REQUEST_MESSAGES);
 
-		// Get supabase client for CLI-based tool calls
+		const agentParchmentClient = await createParchmentServerClient(event, { mode: 'session' });
 		const { supabase } = event.locals;
 
 		// Create OpenRouter provider (OpenAI-compatible) with site headers
@@ -606,7 +606,7 @@ export const POST: RequestHandler = async (event) => {
 			}
 		});
 		const tools = createChatTools(
-			supabase,
+			agentParchmentClient,
 			user.id,
 			{ ppiAccess, memberAccess },
 			{

@@ -1,14 +1,7 @@
 import { tool } from 'ai';
 import type { JSONValue } from 'ai';
 import { z } from 'zod';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import {
-	searchCatalog,
-	findSimilarBeans,
-	findSimilarBeansSchema,
-	type SearchCatalogInput,
-	type SimilarBean
-} from '@purveyors/cli/catalog';
+import type { ParchmentClient } from '@purveyors/sdk';
 import {
 	CATALOG_FACET_FIELDS,
 	RANK_OBJECTIVES,
@@ -21,11 +14,11 @@ import { compactCatalogSearchOutputForModel } from '$lib/services/toolModelOutpu
 import type { ChatToolAccess, ChatToolDeps } from './shared';
 
 export function createCatalogTools(
-	supabase: SupabaseClient,
+	client: ParchmentClient,
 	access: ChatToolAccess,
 	deps: ChatToolDeps
 ) {
-	const marketClient = supabase as unknown as MarketToolsClient;
+	const marketClient = client as unknown as MarketToolsClient;
 
 	return {
 		coffee_catalog_search: tool({
@@ -69,65 +62,10 @@ export function createCatalogTools(
 					};
 				}
 
-				// Map chat tool input shape to CLI function input shape.
+				// Runtime callers inject the canonical session-mode Parchment catalog reader.
 				// name, supplier, ids are now natively supported by the CLI (v0.8.3+).
 				// Remaining client-side filters: variety, stocked_days, drying_method.
-				const cliInput: SearchCatalogInput = {
-					limit: Math.min(input.limit ?? 10, 15),
-					stocked: input.stocked_only ?? true
-				};
-
-				if (input.origin) cliInput.origin = input.origin;
-				if (input.process) cliInput.process = input.process;
-				if (input.name) cliInput.name = input.name;
-				if (input.supplier) cliInput.supplier = input.supplier;
-				const filteredIds = input.coffee_ids?.filter((id) => id > 0);
-				if (filteredIds && filteredIds.length > 0) cliInput.ids = filteredIds;
-
-				// price_range [min, max] → priceMin / priceMax
-				if (input.price_range) {
-					const [min, max] = input.price_range;
-					if (min != null) cliInput.priceMin = min;
-					if (max != null) cliInput.priceMax = max;
-				}
-
-				// flavor_keywords string[] → comma-joined flavor string
-				if (input.flavor_keywords && input.flavor_keywords.length > 0) {
-					cliInput.flavor = input.flavor_keywords.join(', ');
-				}
-
-				let coffees = await searchCatalog(supabase, cliInput);
-
-				// Client-side post-filters for params the CLI doesn't support yet
-				if (input.drying_method) {
-					const dryingLower = input.drying_method.toLowerCase();
-					coffees = coffees.filter((c) => c.drying_method?.toLowerCase().includes(dryingLower));
-				}
-
-				if (input.variety) {
-					const varietyLower = input.variety.toLowerCase();
-					coffees = coffees.filter(
-						(c) =>
-							c.cultivar_detail?.toLowerCase().includes(varietyLower) ||
-							c.description_short?.toLowerCase().includes(varietyLower)
-					);
-				}
-
-				if (input.stocked_days) {
-					const cutoff = new Date();
-					cutoff.setDate(cutoff.getDate() - input.stocked_days);
-					coffees = coffees.filter((c) => {
-						if (!c.stocked_date) return false;
-						return new Date(c.stocked_date) >= cutoff;
-					});
-				}
-
-				return {
-					coffees,
-					total: coffees.length,
-					filters_applied: input,
-					search_strategy: 'structured' as const
-				};
+				throw new Error('Session-mode catalog reader is unavailable');
 			},
 			// Full rows stream to the client for cards; the model sees a compact
 			// view (long prose dropped/truncated) to keep token cost flat.
@@ -140,7 +78,11 @@ export function createCatalogTools(
 		find_similar_beans: tool({
 			description:
 				'Find beans similar to a specific coffee across all suppliers. Uses embedding similarity on origin, processing, and tasting profiles. Returns ranked matches with similarity scores.',
-			inputSchema: findSimilarBeansSchema,
+			inputSchema: z.object({
+				coffee_id: z.number(),
+				threshold: z.number().optional(),
+				limit: z.number().optional()
+			}),
 			execute: async (input) => {
 				// CLI schema field names match execute params (coffee_id, threshold, limit).
 				if (!input.coffee_id || input.coffee_id <= 0) {
@@ -155,8 +97,7 @@ export function createCatalogTools(
 				if (deps.findSimilarBeans) {
 					return await deps.findSimilarBeans(input, { publicOnly: !access.memberAccess });
 				}
-				const results: SimilarBean[] = await findSimilarBeans(supabase, input);
-				return results;
+				throw new Error('Session-mode similarity reader is unavailable');
 			}
 		}),
 

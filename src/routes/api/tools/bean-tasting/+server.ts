@@ -1,12 +1,12 @@
 /**
  * @deprecated This endpoint is kept for backward compatibility only.
- * The chat agent now calls @purveyors/cli getTastingNotes() directly.
- * Do not add new consumers — use the CLI library instead.
+ * The chat agent and this compatibility route use the session-mode Parchment SDK.
  */
 import { json } from '@sveltejs/kit';
 import { requireMemberRole } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
-import { getTastingNotes } from '$lib/data/tasting.js';
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import { readLegacyTasting } from '$lib/services/tools/tastingEnvelope';
 
 // Interface for tool input validation
 interface BeanTastingToolInput {
@@ -18,8 +18,7 @@ interface BeanTastingToolInput {
 export const POST: RequestHandler = async (event) => {
 	try {
 		// Require member role for tool access
-		const { user } = await requireMemberRole(event);
-		const { supabase } = event.locals;
+		await requireMemberRole(event);
 
 		const input: BeanTastingToolInput = await event.request.json();
 
@@ -36,10 +35,8 @@ export const POST: RequestHandler = async (event) => {
 
 		let result;
 		try {
-			result = await getTastingNotes(supabase, user.id, bean_id, {
-				filter,
-				includeRadarData: include_radar_data
-			});
+			const client = await createParchmentServerClient(event, { mode: 'session' });
+			result = await readLegacyTasting(client, bean_id, filter, include_radar_data);
 		} catch (err) {
 			const status = (err as { status?: number }).status;
 			if (status === 404) {

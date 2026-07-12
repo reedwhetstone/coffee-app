@@ -1,17 +1,15 @@
-import { searchCatalog, type CatalogItem, type SearchCatalogInput } from '@purveyors/cli/catalog';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { components } from '@purveyors/sdk';
+import type { AgentParchmentClient } from './parchment';
+import { unwrapParchment } from './parchment';
 
 const CATALOG_PAGE_SIZE = 500;
 
 export interface InventoryActionCatalogResult {
-	items: CatalogItem[];
+	items: components['schemas']['CatalogItem'][];
 	complete: boolean;
 }
 
-type CatalogSearch = (
-	supabase: SupabaseClient,
-	input: SearchCatalogInput
-) => Promise<CatalogItem[]>;
+type CatalogItem = components['schemas']['CatalogItem'];
 
 /**
  * Load the complete stocked catalog for the add-inventory action card.
@@ -22,9 +20,8 @@ type CatalogSearch = (
  * the first global sample.
  */
 export async function loadInventoryActionCatalog(
-	supabase: SupabaseClient,
-	requestedCatalogId?: number,
-	search: CatalogSearch = searchCatalog
+	client: AgentParchmentClient,
+	requestedCatalogId?: number
 ): Promise<InventoryActionCatalogResult> {
 	const byId = new Map<number, CatalogItem>();
 	let offset = 0;
@@ -33,29 +30,38 @@ export async function loadInventoryActionCatalog(
 	while (true) {
 		let page: CatalogItem[];
 		try {
-			page = await search(supabase, {
-				stocked: true,
-				sort: 'name',
-				offset,
-				limit: CATALOG_PAGE_SIZE
-			});
+			page = unwrapParchment(
+				await client.catalog.list({
+					stocked: 'true',
+					sort: 'name',
+					page: Math.floor(offset / CATALOG_PAGE_SIZE) + 1,
+					limit: CATALOG_PAGE_SIZE
+				})
+			).data;
 		} catch (error) {
 			if (byId.size === 0) throw error;
 			complete = false;
 			break;
 		}
 
+		const before = byId.size;
 		for (const item of page) byId.set(item.id, item);
 		if (page.length < CATALOG_PAGE_SIZE) break;
+		if (byId.size === before) {
+			complete = false;
+			break;
+		}
 		offset += CATALOG_PAGE_SIZE;
 	}
 
 	if (requestedCatalogId && !byId.has(requestedCatalogId)) {
 		try {
-			const requested = await search(supabase, {
-				ids: [requestedCatalogId],
-				limit: 1
-			});
+			const requested = unwrapParchment(
+				await client.catalog.list({
+					coffeeIds: String(requestedCatalogId),
+					limit: 1
+				})
+			).data;
 			for (const item of requested) byId.set(item.id, item);
 		} catch {
 			complete = false;
