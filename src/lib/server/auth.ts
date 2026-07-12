@@ -103,7 +103,8 @@ export async function requireMemberRole(
 
 /** Accept either a trusted session mutation or an owner-bound member API key. */
 export async function requireAuthenticatedMemberPrincipal(
-	event: RequestEvent
+	event: RequestEvent,
+	options: { requiredApiScope?: string } = {}
 ): Promise<AuthenticatedPrincipal> {
 	const principal = await resolvePrincipal(event);
 	if (!principal.isAuthenticated) {
@@ -114,6 +115,13 @@ export async function requireAuthenticatedMemberPrincipal(
 	}
 	if (!principalHasRole(principal, 'member')) {
 		throw new AuthError('Member role required', 403);
+	}
+	if (
+		isApiKeyPrincipal(principal) &&
+		options.requiredApiScope &&
+		!principalHasScope(principal, options.requiredApiScope)
+	) {
+		throw new AuthError('Insufficient API scope', 403);
 	}
 	return principal;
 }

@@ -35,7 +35,7 @@ interface MatchResult {
 
 export const POST: RequestHandler = async (event) => {
 	try {
-		await requireAuthenticatedMemberPrincipal(event);
+		await requireAuthenticatedMemberPrincipal(event, { requiredApiScope: 'roast:read' });
 
 		// Validate OpenRouter API key
 		if (!OPENROUTER_API_KEY) {
@@ -175,7 +175,7 @@ IMPORTANT: Respond with ONLY the JSON object, no markdown formatting.`,
 			return json({ error: 'Rate limit exceeded' }, { status: 429 });
 		}
 
-		// Auth errors (thrown by requireMemberRole) have a status property
+		// Auth errors have a status property.
 		const authError = error as { status?: number; message?: string };
 		if (authError.status === 401 || authError.status === 403) {
 			return json({ error: authError.message ?? 'Unauthorized' }, { status: authError.status });
