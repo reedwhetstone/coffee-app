@@ -173,6 +173,15 @@ function dispatch(mutation: CanvasMutation) {
 			focusBlockId = mutation.blockId;
 			break;
 		}
+
+		case 'update-action': {
+			blocks = blocks.map((b) =>
+				b.id === mutation.blockId && b.block.type === 'action-card'
+					? { ...b, block: { ...b.block, data: { ...b.block.data, ...mutation.data } } }
+					: b
+			);
+			break;
+		}
 	}
 }
 

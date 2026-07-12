@@ -13,6 +13,33 @@ function cards(id: number): UIBlock {
 }
 
 describe('canvasStore pinning', () => {
+	it('persists completed action status in block state across a store remount snapshot', async () => {
+		const { canvasStore } = await loadCanvasStore();
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'assistant-1',
+			block: {
+				type: 'action-card',
+				version: 1,
+				data: {
+					executionId: 'assistant-1:tool-1',
+					actionType: 'record_sale',
+					summary: 'Record sale',
+					fields: [],
+					status: 'proposed'
+				}
+			}
+		});
+		const blockId = canvasStore.blocks[0].id;
+		canvasStore.dispatch({
+			type: 'update-action',
+			blockId,
+			data: { status: 'success', result: { id: 9 } }
+		});
+		expect(canvasStore.blocks[0].block).toMatchObject({
+			data: { executionId: 'assistant-1:tool-1', status: 'success', result: { id: 9 } }
+		});
+	});
 	beforeEach(() => {
 		vi.restoreAllMocks();
 	});

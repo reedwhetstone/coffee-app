@@ -23,6 +23,10 @@ export interface BlockExtractorOptions {
 	searchDataCache?: Map<string, Map<number, unknown>>;
 	/** Whether this message contains a present_results tool call */
 	hasPresentResults?: boolean;
+	/** Stable assistant-message identity used for durable action execution IDs. */
+	messageId?: string;
+	/** False when hydrating persisted messages, where legacy IDs must not be invented. */
+	allowExecutionIdSynthesis?: boolean;
 }
 
 export interface MessagePartsLike {
@@ -166,6 +170,11 @@ export function extractBlockFromPart(part: any, options?: BlockExtractorOptions)
 			type: 'action-card',
 			version: 1,
 			data: {
+				executionId:
+					(typeof card.executionId === 'string' && card.executionId) ||
+					(options?.messageId && options.allowExecutionIdSynthesis !== false
+						? `${options.messageId}:${String(part.toolCallId ?? toolName)}`
+						: undefined),
 				actionType: card.actionType as ActionType,
 				summary: card.summary as string,
 				reasoning: card.reasoning as string | undefined,

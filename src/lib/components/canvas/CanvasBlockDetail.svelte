@@ -13,7 +13,12 @@
 		canvasBlock?: CanvasBlock | null;
 		onClose: () => void;
 		onAction?: (action: BlockAction) => void;
-		onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
+		onExecuteAction?: (
+			executionId: string,
+			actionType: string,
+			fields: Record<string, unknown>,
+			blockId?: string
+		) => Promise<unknown>;
 	}>();
 
 	let title = $derived(
@@ -83,6 +88,7 @@
 					renderMode="canvas"
 					{onAction}
 					{onExecuteAction}
+					canvasBlockId={canvasBlock.id}
 				/>
 
 				{#if companions.length > 0}

@@ -9,7 +9,8 @@
 		onToggleMobileCanvas,
 		onToggleDesktopCanvas,
 		onExport,
-		onClear
+		onClear,
+		clearDisabled = false
 	} = $props<{
 		/** 'page' = full /chat workbench; 'drawer' = slide-in panel */
 		variant: 'page' | 'drawer';
@@ -22,6 +23,7 @@
 		onToggleDesktopCanvas: () => void;
 		onExport: () => void;
 		onClear: () => void;
+		clearDisabled?: boolean;
 	}>();
 </script>
 
@@ -63,6 +65,7 @@
 			</button>
 			<button
 				onclick={onClear}
+				disabled={clearDisabled}
 				class="rounded-md border border-danger px-2 py-0.5 text-xs text-danger transition-all hover:bg-danger-strong hover:text-white"
 			>
 				Clear

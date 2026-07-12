@@ -1,16 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockRequireChatAccess, mockUpdateStockedStatus } = vi.hoisted(() => ({
-	mockRequireChatAccess: vi.fn(),
-	mockUpdateStockedStatus: vi.fn()
+const { mockRequireChatAccess } = vi.hoisted(() => ({
+	mockRequireChatAccess: vi.fn()
 }));
 
 vi.mock('$lib/server/auth', () => ({
 	requireChatAccess: mockRequireChatAccess
-}));
-
-vi.mock('$lib/server/stockedStatusUtils', () => ({
-	updateStockedStatus: mockUpdateStockedStatus
 }));
 
 let POST: typeof import('./+server').POST;
@@ -29,21 +24,19 @@ beforeEach(async () => {
 });
 
 function createSupabaseMock() {
-	const inventoryInsert = vi.fn(() => ({
-		select: vi.fn(() => ({
-			single: vi.fn(async () => ({ data: { id: 42 }, error: null }))
-		}))
+	const rpc = vi.fn<
+		(
+			...args: unknown[]
+		) => Promise<{ data: unknown; error: null | { code: string; message: string } }>
+	>(async () => ({
+		data: {
+			status: 'success',
+			replayed: false,
+			result: { success: true, id: 42, message: 'Bean added to inventory' }
+		},
+		error: null
 	}));
-
-	const from = vi.fn((table: string) => {
-		if (table === 'green_coffee_inv') {
-			return { insert: inventoryInsert };
-		}
-
-		throw new Error(`Unexpected table lookup: ${table}`);
-	});
-
-	return { from, inventoryInsert };
+	return { rpc };
 }
 
 function makeEvent(body: unknown, supabase = createSupabaseMock()) {
@@ -63,6 +56,7 @@ describe('/api/chat/execute-action entitlement gating', () => {
 		const response = await POST(
 			makeEvent(
 				{
+					executionId: 'message-1:tool-1',
 					actionType: 'add_bean_to_inventory',
 					fields: {
 						catalog_id: 123,
@@ -79,15 +73,12 @@ describe('/api/chat/execute-action entitlement gating', () => {
 		expect(await response.json()).toEqual({
 			success: true,
 			id: 42,
-			message: 'Bean added to inventory'
+			message: 'Bean added to inventory',
+			replayed: false
 		});
-		expect(supabase.inventoryInsert).toHaveBeenCalledWith(
-			expect.objectContaining({
-				user: 'user-123',
-				catalog_id: 123,
-				purchased_qty_lbs: 10,
-				bean_cost: 42.5
-			})
+		expect(supabase.rpc).toHaveBeenCalledWith(
+			'execute_chat_action',
+			expect.objectContaining({ p_execution_id: 'message-1:tool-1' })
 		);
 	});
 
@@ -96,6 +87,7 @@ describe('/api/chat/execute-action entitlement gating', () => {
 		const response = await POST(
 			makeEvent(
 				{
+					executionId: 'message-2:tool-2',
 					actionType: 'record_sale',
 					fields: { green_coffee_inv_id: 42 }
 				},
@@ -107,6 +99,42 @@ describe('/api/chat/execute-action entitlement gating', () => {
 		expect(await response.json()).toEqual({
 			error: 'Mallard Studio access required for this action'
 		});
-		expect(supabase.inventoryInsert).not.toHaveBeenCalled();
+		expect(supabase.rpc).not.toHaveBeenCalled();
+	});
+
+	it('replays the same execution key through the server ledger without another route-level write', async () => {
+		const supabase = createSupabaseMock();
+		supabase.rpc.mockResolvedValue({
+			data: { status: 'success', replayed: true, result: { success: true, id: 42 } },
+			error: null
+		});
+		const response = await POST(
+			makeEvent(
+				{ executionId: 'same-key', actionType: 'update_bean', fields: { bean_id: 42, notes: 'x' } },
+				supabase
+			)
+		);
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ success: true, id: 42, replayed: true });
+		expect(supabase.rpc).toHaveBeenCalledTimes(1);
+	});
+
+	it('returns conflict when an execution key is reused with different fields', async () => {
+		const supabase = createSupabaseMock();
+		supabase.rpc.mockResolvedValue({
+			data: null,
+			error: { code: '23505', message: 'Execution ID conflicts with a different action payload' }
+		});
+		const response = await POST(
+			makeEvent(
+				{
+					executionId: 'conflict-key',
+					actionType: 'update_bean',
+					fields: { bean_id: 42, notes: 'different' }
+				},
+				supabase
+			)
+		);
+		expect(response.status).toBe(409);
 	});
 });

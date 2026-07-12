@@ -28,7 +28,12 @@
 	} = $props<{
 		block: UIBlock;
 		onAction?: (action: BlockAction) => void;
-		onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
+		onExecuteAction?: (
+			executionId: string,
+			actionType: string,
+			fields: Record<string, unknown>,
+			blockId?: string
+		) => Promise<unknown>;
 		renderMode?: 'chat' | 'canvas';
 		canvasBlockId?: string;
 	}>();
@@ -67,7 +72,7 @@
 		{:else if block.type === 'roast-chart'}
 			<RoastChartBlock {block} />
 		{:else if block.type === 'action-card'}
-			<ActionCardBlock {block} onExecute={onExecuteAction} />
+			<ActionCardBlock {block} blockId={canvasBlockId} onExecute={onExecuteAction} />
 		{:else if block.type === 'tasting-radar'}
 			<TastingRadarBlock {block} {onAction} />
 		{:else if block.type === 'data-table'}

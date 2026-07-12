@@ -27,6 +27,7 @@
 		type Workspace,
 		type WorkspaceMessage
 	} from '$lib/stores/workspaceStore.svelte';
+	import { workspaceMessageClientId } from './workspaceMessageIdentity';
 	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 	import {
 		applyAnalyticsSeedToInput,
@@ -376,20 +377,22 @@
 		chat.messages = [];
 		canvasStore.resetAll();
 		dispatchedParts = new Set();
-		lastSentPageContext = null;
 		lastPersistedMessageCount = 0;
 
 		// Restore messages from persisted workspace
 		if (result.messages.length > 0) {
 			// Reconstruct UIMessage-compatible objects from saved messages
 			const restored = result.messages.map((msg: WorkspaceMessage) => ({
-				id: msg.id,
+				// The AI SDK message ID is part of an action card's durable execution
+				// identity. The workspace row UUID is only a storage identifier.
+				id: workspaceMessageClientId(msg),
 				role: msg.role,
 				parts:
 					Array.isArray(msg.parts) && msg.parts.length > 0
 						? msg.parts
 						: [{ type: 'text', text: msg.content }],
-				createdAt: new Date(msg.created_at)
+				createdAt: new Date(msg.created_at),
+				metadata: { workspaceRestored: true }
 			}));
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			chat.messages = restored as any;
@@ -408,7 +411,7 @@
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const p = part as any;
 				if (p?.type?.startsWith('tool-')) {
-					const partKey = `${msg.id}-${p.toolCallId ?? p.toolName ?? p.type}`;
+					const partKey = `${workspaceMessageClientId(msg)}-${p.toolCallId ?? p.toolName ?? p.type}`;
 					dispatchedParts.add(partKey);
 					// Also mark companion blocks
 					const companions = extractCompanionBlocks(p);
@@ -584,6 +587,15 @@
 			focus: canvasStore.focusBlockId,
 			blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
 				t: b.block.type,
+				a:
+					b.block.type === 'action-card'
+						? {
+								id: b.block.data.executionId,
+								status: b.block.data.status,
+								result: b.block.data.result,
+								error: b.block.data.error
+							}
+						: null,
 				title: b.title ?? null,
 				p: b.pinned,
 				m: b.minimized
@@ -687,6 +699,7 @@
 	}
 
 	let isActive = $derived(chat.status === 'streaming' || chat.status === 'submitted');
+	let isClearing = $state(false);
 
 	// Context-aware suggestions above input
 	let suggestions = $derived(
@@ -743,7 +756,17 @@
 				const searchDataCache = hasPR
 					? buildSearchDataCacheThroughPart(chat.messages, messageIndex, partIndex)
 					: undefined;
-				const extractorOptions = { searchDataCache, hasPresentResults: hasPR };
+				const extractorOptions = {
+					searchDataCache,
+					hasPresentResults: hasPR,
+					messageId: message.id,
+					allowExecutionIdSynthesis: false
+				};
+				// New live proposals persist their durable key inside the tool output.
+				// Restored legacy proposals intentionally remain without one.
+				if (p.output?.action_card && !p.output.action_card.executionId) {
+					p.output.action_card.executionId = `${message.id}:${String(p.toolCallId ?? p.toolName ?? part.type)}`;
+				}
 				const block = extractBlockFromPart(p, extractorOptions);
 
 				// If this is a present_results part, use explicit canvas mutations
@@ -837,7 +860,28 @@
 	}
 
 	// ─── Action Card Execution ───────────────────────────────────────────────
-	async function executeAction(actionType: string, fields: Record<string, unknown>) {
+	async function executeAction(
+		executionId: string,
+		actionType: string,
+		fields: Record<string, unknown>,
+		blockId?: string
+	) {
+		if (!executionId)
+			throw new Error(
+				'This action predates durable execution IDs. Ask Parchment to propose it again.'
+			);
+		if (blockId) {
+			const card = canvasStore.blocks.find((b) => b.id === blockId)?.block;
+			const persistedFields =
+				card?.type === 'action-card'
+					? card.data.fields.map((field) => ({ ...field, value: fields[field.key] }))
+					: undefined;
+			canvasStore.dispatch({
+				type: 'update-action',
+				blockId,
+				data: { status: 'executing', fields: persistedFields }
+			});
+		}
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), 30000);
 
@@ -845,7 +889,7 @@
 			const response = await fetch('/api/chat/execute-action', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ actionType, fields }),
+				body: JSON.stringify({ executionId, actionType, fields }),
 				signal: controller.signal
 			});
 
@@ -856,13 +900,46 @@
 				throw new Error(data.error || 'Action execution failed');
 			}
 
-			return response.json();
+			const result = await response.json();
+			if (blockId) {
+				canvasStore.dispatch({
+					type: 'update-action',
+					blockId,
+					data: { status: 'success', result, error: undefined }
+				});
+				const wsId = workspaceStore.currentWorkspaceId;
+				// The business write already committed via /api/chat/execute-action.
+				// A follow-up canvas-save failure must not flip the card back to
+				// `failed` or re-throw into the execution catch below; that would
+				// misreport a successful inventory/roast/sale write and invite a
+				// duplicate retry. Persist best-effort and log on failure instead.
+				if (wsId) {
+					try {
+						await persistCanvasState(wsId);
+					} catch (persistErr) {
+						console.error(
+							'Canvas persistence failed after a successful action execution; ' +
+								'the action already committed and remains marked success.',
+							persistErr
+						);
+					}
+				}
+			}
+			return result;
 		} catch (err) {
 			clearTimeout(timeoutId);
-			if (err instanceof DOMException && err.name === 'AbortError') {
-				throw new Error('Action timed out after 30 seconds');
+			const actionError =
+				err instanceof DOMException && err.name === 'AbortError'
+					? new Error('Action timed out after 30 seconds')
+					: (err as Error);
+			if (blockId) {
+				canvasStore.dispatch({
+					type: 'update-action',
+					blockId,
+					data: { status: 'failed', error: actionError.message }
+				});
 			}
-			throw err;
+			throw actionError;
 		}
 	}
 
@@ -870,27 +947,20 @@
 	let slashCompletions = $derived(getSlashCompletions(inputMessage, canUseMallardWorkspaces));
 
 	// ─── Page context (what the user is looking at elsewhere in the app) ──────
-	// Snapshotted at send time and only attached when changed since the last
-	// message, so the token cost stays bounded.
-	let lastSentPageContext: string | null = null;
+	// Snapshotted at send time. The server builds a fresh prompt for every turn,
+	// so opted-in context must accompany every request.
 
 	function buildSendBody(): Record<string, unknown> {
 		const body: Record<string, unknown> = { workspaceContext: getWorkspaceContext() };
 		if (!includeUserMemoryDoc) body.includeUserMemory = false;
 		const context = includePageContext ? pageChatContext.current : null;
-		if (context) {
-			const serialized = JSON.stringify(context);
-			if (serialized !== lastSentPageContext) {
-				lastSentPageContext = serialized;
-				body.pageContext = context;
-			}
-		}
+		if (context) body.pageContext = context;
 		return body;
 	}
 
 	// ─── Send Message ──────────────────────────────────────────────────────────
 	async function sendMessage() {
-		if (!inputMessage.trim() || isActive) return;
+		if (!inputMessage.trim() || isActive || isClearing) return;
 
 		const text = inputMessage.trim();
 
@@ -956,16 +1026,25 @@
 	}
 
 	async function clearConversation() {
-		if (confirm('Are you sure you want to clear the conversation?')) {
+		if (isClearing || isActive || !confirm('Are you sure you want to clear the conversation?'))
+			return;
+		const wsId = workspaceStore.currentWorkspaceId;
+		if (!wsId) return;
+		isClearing = true;
+		try {
+			await enqueuePersistence(async () => {
+				const response = await fetch(`/api/workspaces/${wsId}/messages`, { method: 'DELETE' });
+				if (!response.ok) throw new Error('Failed to clear the saved conversation');
+				workspaceStore.resetSavedMessageCount(wsId);
+			});
 			chat.messages = [];
 			dispatchedParts = new Set();
 			lastPersistedMessageCount = 0;
-
-			// Clear persisted messages for current workspace. Canvas is intentionally preserved.
-			const wsId = workspaceStore.currentWorkspaceId;
-			if (wsId) {
-				await fetch(`/api/workspaces/${wsId}/messages`, { method: 'DELETE' });
-			}
+			canvasPersistError = null;
+		} catch (err) {
+			canvasPersistError = (err as Error).message;
+		} finally {
+			isClearing = false;
 		}
 	}
 </script>
@@ -992,6 +1071,7 @@
 				}}
 				onExport={exportConversation}
 				onClear={clearConversation}
+				clearDisabled={isActive || isClearing}
 			/>
 
 			<div class="relative flex min-h-0 flex-1 flex-col">
@@ -1027,7 +1107,7 @@
 
 			<ChatComposer
 				bind:inputMessage
-				{isActive}
+				isActive={isActive || isClearing}
 				{canUseMallardWorkspaces}
 				{suggestions}
 				{slashCompletions}

@@ -8,7 +8,12 @@
 	let { onAction, onScrollToMessage, onExecuteAction } = $props<{
 		onAction?: (action: BlockAction) => void;
 		onScrollToMessage?: (messageId: string) => void;
-		onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
+		onExecuteAction?: (
+			executionId: string,
+			actionType: string,
+			fields: Record<string, unknown>,
+			blockId?: string
+		) => Promise<unknown>;
 	}>();
 
 	// Minimized blocks shown as a tray at the bottom, grouped by category so the

@@ -20,7 +20,12 @@
 		layout: CanvasLayout;
 		focusBlockId: string | null;
 		onAction?: (action: BlockAction) => void;
-		onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
+		onExecuteAction?: (
+			executionId: string,
+			actionType: string,
+			fields: Record<string, unknown>,
+			blockId?: string
+		) => Promise<unknown>;
 		onMinimize: (blockId: string) => void;
 		onRemove: (blockId: string) => void;
 		onToggleLock: (blockIds: string[]) => void;
@@ -220,7 +225,13 @@
 
 			<!-- Active block content -->
 			<div class="canvas-block-content overflow-auto p-3">
-				<GenUIBlockRenderer block={active.block} renderMode="canvas" {onAction} {onExecuteAction} />
+				<GenUIBlockRenderer
+					block={active.block}
+					renderMode="canvas"
+					{onAction}
+					{onExecuteAction}
+					canvasBlockId={active.id}
+				/>
 			</div>
 		</div>
 	{/each}

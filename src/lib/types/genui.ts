@@ -142,6 +142,7 @@ export interface ActionField {
 }
 
 export interface ActionCardPayload {
+	executionId?: string;
 	actionType: ActionType;
 	summary: string;
 	reasoning?: string;
@@ -240,7 +241,8 @@ export type CanvasMutation =
 	| { type: 'pin'; blockId: string }
 	| { type: 'unpin'; blockId: string }
 	| { type: 'minimize'; blockId: string }
-	| { type: 'restore'; blockId: string };
+	| { type: 'restore'; blockId: string }
+	| { type: 'update-action'; blockId: string; data: Partial<ActionCardPayload> };
 
 /** Human-friendly default tab label for a block type when no AI title is set. */
 export function defaultBlockTitle(blockType: UIBlock['type']): string {
