@@ -169,19 +169,20 @@
 		<!-- Welcome message -->
 		<div class="mx-auto max-w-2xl text-center">
 			<div class="mb-8 rounded-lg bg-surface-panel p-6">
-				<h2 class="mb-3 text-lg font-semibold text-ink">Welcome to Parchment Intelligence Chat!</h2>
+				<p class="mb-1 text-sm font-medium text-accent">Parchment Intelligence</p>
+				<h2 class="mb-3 text-lg font-semibold text-ink">Ask Parchment about green coffee supply</h2>
 				<p class="mb-4 text-muted">
-					I'm your coffee supply-chain intelligence assistant, here to help with sourcing, catalog,
-					portfolio, and market questions. Ask me anything about:
+					Compare live stocked coffees, supplier breadth, provenance, pricing, and Market Index
+					context. Answers call out the evidence used and where coverage is uncertain.
 				</p>
 				<div class="grid grid-cols-1 gap-2 text-sm text-muted md:grid-cols-2">
-					<div>- Green coffee recommendations</div>
-					<div>- Market and supplier signals</div>
-					<div>- Flavor profiles</div>
-					<div>- Processing methods</div>
-					<div>- Portfolio analysis</div>
+					<div>Source stocked coffees</div>
+					<div>Compare suppliers and prices</div>
+					<div>Track market movement</div>
+					<div>Benchmark a shortlist</div>
+					<div>Find portfolio gaps</div>
 					{#if canUseMallardWorkspaces}
-						<div>- Roasting techniques</div>
+						<div>Apply Mallard Studio roasting context</div>
 					{/if}
 				</div>
 			</div>
@@ -193,12 +194,12 @@
 					<button
 						onclick={() =>
 							onExampleSelect(
-								'Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique processing method.'
+								'Compare stocked Ethiopian coffees with stone fruit notes by supplier, price, process, and provenance.'
 							)}
 						class="block w-full rounded-md border border-line bg-surface-panel p-2 text-left text-muted transition-all hover:bg-accent hover:text-white"
 					>
-						"Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique
-						processing method."
+						"Compare stocked Ethiopian coffees with stone fruit notes by supplier, price, process,
+						and provenance."
 					</button>
 					<button
 						onclick={() =>
@@ -212,10 +213,13 @@
 					{#if canUseMallardWorkspaces}
 						<button
 							onclick={() =>
-								onExampleSelect("What's the best way to roast a washed Costa Rican coffee?")}
+								onExampleSelect(
+									'Use my Mallard Studio context to compare roast approaches for this washed Costa Rican coffee.'
+								)}
 							class="block w-full rounded-md border border-line bg-surface-panel p-2 text-left text-muted transition-all hover:bg-accent hover:text-white"
 						>
-							"What's the best way to roast a washed Costa Rican coffee?"
+							"Use my Mallard Studio context to compare roast approaches for this washed Costa Rican
+							coffee."
 						</button>
 					{/if}
 				</div>
@@ -282,7 +286,7 @@
 										<path
 											stroke-linecap="round"
 											stroke-linejoin="round"
-											stroke-width="2"
+											stroke-width="1.5"
 											d="M9 5l7 7-7 7"
 										/>
 									</svg>

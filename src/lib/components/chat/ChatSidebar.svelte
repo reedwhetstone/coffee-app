@@ -92,12 +92,17 @@
 		>
 			<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				{#if collapsed}
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="1.5"
+						d="M9 5l7 7-7 7"
+					/>
 				{:else}
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
-						stroke-width="2"
+						stroke-width="1.5"
 						d="M15 19l-7-7 7-7"
 					/>
 				{/if}
@@ -158,7 +163,7 @@
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
-								stroke-width="2"
+								stroke-width="1.5"
 								d="M6 18L18 6M6 6l12 12"
 							/>
 						</svg>
@@ -227,7 +232,7 @@
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
-						stroke-width="2"
+						stroke-width="1.5"
 						d="M12 4v16m8-8H4"
 					/>
 				</svg>

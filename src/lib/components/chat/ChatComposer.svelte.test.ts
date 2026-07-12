@@ -25,6 +25,19 @@ function props(overrides: Record<string, unknown> = {}) {
 }
 
 describe('ChatComposer recovery controls', () => {
+	it('frames the action and context controls with the product naming hierarchy', () => {
+		render(
+			ChatComposer,
+			props({
+				contextChips: [
+					{ id: 'page', label: 'Current view', detail: 'Catalog filters', active: true }
+				]
+			})
+		);
+		expect(screen.getByText('Using context')).toBeInTheDocument();
+		expect(screen.getByText(/Ask Parchment/)).toBeInTheDocument();
+	});
+
 	it('replaces send with an accessible stop control during a turn', async () => {
 		const onStop = vi.fn();
 		render(ChatComposer, props({ isActive: true, onStop }));

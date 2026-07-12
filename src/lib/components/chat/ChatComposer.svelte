@@ -81,7 +81,7 @@
 			<path
 				stroke-linecap="round"
 				stroke-linejoin="round"
-				stroke-width="2"
+				stroke-width="1.5"
 				d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"
 			/>
 		</svg>
@@ -97,7 +97,7 @@
 				<path
 					stroke-linecap="round"
 					stroke-linejoin="round"
-					stroke-width="2"
+					stroke-width="1.5"
 					d="M6 18L18 6M6 6l12 12"
 				/>
 			</svg>
@@ -155,7 +155,7 @@
 	{/if}
 	{#if contextChips.length > 0}
 		<div class="mx-auto mb-2 flex max-w-4xl flex-wrap items-center gap-1.5">
-			<span class="text-[11px] uppercase tracking-wide text-muted">Context:</span>
+			<span class="text-[11px] font-medium text-muted">Using context</span>
 			{#each contextChips as chip (chip.id)}
 				<button
 					type="button"
@@ -171,7 +171,7 @@
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
-								stroke-width="2.5"
+								stroke-width="1.5"
 								d="M5 13l4 4L19 7"
 							/>
 						</svg>
@@ -226,6 +226,8 @@
 				{/if}
 			</button>
 		</div>
-		<div class="mt-2 text-xs text-muted">Press Enter to send, Shift+Enter for new line</div>
+		<div class="mt-2 text-xs text-muted">
+			Ask Parchment · Enter to send, Shift+Enter for new line
+		</div>
 	</form>
 </div>
