@@ -28,7 +28,12 @@
 		containerEl?: HTMLDivElement;
 		onScroll: () => void;
 		onBlockAction: (action: BlockAction) => void;
-		onExecuteAction: (actionType: string, fields: Record<string, unknown>) => Promise<unknown>;
+		onExecuteAction: (
+			executionId: string,
+			actionType: string,
+			fields: Record<string, unknown>,
+			blockId?: string
+		) => Promise<unknown>;
 		onExampleSelect: (text: string) => void;
 	}>();
 
