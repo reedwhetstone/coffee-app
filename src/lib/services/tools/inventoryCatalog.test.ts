@@ -57,6 +57,20 @@ describe('loadInventoryActionCatalog', () => {
 		expect(result.items).toHaveLength(501);
 	});
 
+	it('preserves loaded pages and marks the result partial when the requested-id backfill fails', async () => {
+		const search = vi.fn(
+			async (_supabase: SupabaseClient, input: SearchCatalogInput): Promise<CatalogItem[]> => {
+				if (input.ids) throw new Error('transient backfill failure');
+				return [item(1, 'Other')];
+			}
+		);
+
+		const result = await loadInventoryActionCatalog({} as SupabaseClient, 9001, search);
+
+		expect(result.items.map((coffee) => coffee.id)).toEqual([1]);
+		expect(result.complete).toBe(false);
+	});
+
 	it('preserves accumulated options and marks them partial when a later page fails', async () => {
 		const firstPage = Array.from({ length: 500 }, (_, index) => item(index + 1, 'Other'));
 		const search = vi.fn(async (_supabase: SupabaseClient, input: SearchCatalogInput) => {

@@ -51,11 +51,15 @@ export async function loadInventoryActionCatalog(
 	}
 
 	if (requestedCatalogId && !byId.has(requestedCatalogId)) {
-		const requested = await search(supabase, {
-			ids: [requestedCatalogId],
-			limit: 1
-		});
-		for (const item of requested) byId.set(item.id, item);
+		try {
+			const requested = await search(supabase, {
+				ids: [requestedCatalogId],
+				limit: 1
+			});
+			for (const item of requested) byId.set(item.id, item);
+		} catch {
+			complete = false;
+		}
 	}
 
 	return { items: [...byId.values()], complete };
