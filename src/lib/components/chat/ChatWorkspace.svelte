@@ -263,7 +263,6 @@
 			const failure = classifyChatFailure(error);
 			chat.messages = rollbackFailedTurn(chat.messages, messageCountBeforeSubmission);
 			messageCountBeforeSubmission = null;
-			lastSentPageContext = null;
 			chatError = failure.message;
 			chatCanRetry = failure.retryable;
 			if (!inputMessage && lastSubmittedPrompt) inputMessage = lastSubmittedPrompt;
@@ -983,7 +982,7 @@
 	// Snapshotted at send time. The server builds a fresh prompt for every turn,
 	// so opted-in context must accompany every request.
 
-	function buildSendBody(_forcePageContext = false): Record<string, unknown> {
+	function buildSendBody(): Record<string, unknown> {
 		const body: Record<string, unknown> = { workspaceContext: getWorkspaceContext() };
 		if (!includeUserMemoryDoc) body.includeUserMemory = false;
 		const context = includePageContext ? pageChatContext.current : null;
@@ -992,7 +991,7 @@
 	}
 
 	// ─── Send Message ──────────────────────────────────────────────────────────
-	async function sendMessage(forcePageContext = false) {
+	async function sendMessage() {
 		if (!inputMessage.trim() || isActive || isClearing || !workspaceReady) return;
 
 		const text = inputMessage.trim();
@@ -1022,7 +1021,7 @@
 				inputMessage = '';
 				shouldScrollToBottom = true;
 				messageCountBeforeSubmission = chat.messages.length;
-				await chat.sendMessage({ text: cmd.chatText }, { body: buildSendBody(forcePageContext) });
+				await chat.sendMessage({ text: cmd.chatText }, { body: buildSendBody() });
 				messageCountBeforeSubmission = null;
 				return;
 			}
@@ -1032,7 +1031,7 @@
 		shouldScrollToBottom = true;
 
 		messageCountBeforeSubmission = chat.messages.length;
-		await chat.sendMessage({ text }, { body: buildSendBody(forcePageContext) });
+		await chat.sendMessage({ text }, { body: buildSendBody() });
 		messageCountBeforeSubmission = null;
 	}
 
@@ -1046,7 +1045,7 @@
 	async function retryLastResponse() {
 		chatError = null;
 		chatCanRetry = false;
-		await sendMessage(true);
+		await sendMessage();
 	}
 
 	// ─── Export / Clear ────────────────────────────────────────────────────────
