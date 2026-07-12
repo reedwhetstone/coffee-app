@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { toLegacyTastingEnvelope } from '$lib/services/tools/tastingEnvelope';
-import { _readLegacyTasting } from './+server';
+import { readLegacyTasting, toLegacyTastingEnvelope } from '$lib/services/tools/tastingEnvelope';
 
 const tasting = {
 	beanId: 42,
@@ -93,7 +92,7 @@ describe('bean tasting legacy envelope', () => {
 
 	it('fetches canonical both context even for a user-only legacy request', async () => {
 		const get = vi.fn().mockResolvedValue({ data: { data: tasting } });
-		const result = await _readLegacyTasting({ tasting: { get } } as never, 42, 'user', false);
+		const result = await readLegacyTasting({ tasting: { get } } as never, 42, 'user', false);
 		expect(get).toHaveBeenCalledWith('42', { filter: 'both' });
 		expect(result.filter_applied).toBe('user');
 		expect(result.tasting_notes).not.toHaveProperty('supplier_notes');
@@ -105,7 +104,7 @@ describe('bean tasting legacy envelope', () => {
 			response: { status: 404 }
 		});
 		await expect(
-			_readLegacyTasting({ tasting: { get } } as never, 404, 'user', true)
+			readLegacyTasting({ tasting: { get } } as never, 404, 'user', true)
 		).rejects.toMatchObject({ status: 404 });
 	});
 });

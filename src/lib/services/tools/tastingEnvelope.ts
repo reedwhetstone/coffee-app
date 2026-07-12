@@ -1,7 +1,28 @@
-import type { components } from '@purveyors/sdk';
+import type { ParchmentClient, components } from '@purveyors/sdk';
 
 type TastingData = components['schemas']['TastingData'];
 export type TastingFilter = 'user' | 'supplier' | 'both';
+
+/** Read canonical tasting data while preserving the legacy route and canvas envelope. */
+export async function readLegacyTasting(
+	client: Pick<ParchmentClient, 'tasting'>,
+	beanId: number,
+	filter: TastingFilter,
+	includeRadarData: boolean
+) {
+	// The legacy envelope always includes catalog-derived bean/AI context,
+	// even for user-only requests. Fetch both once, then filter the envelope.
+	const response = await client.tasting.get(String(beanId), { filter: 'both' });
+	if (response.error) {
+		const apiError = response.error as { error?: { message?: string }; message?: string };
+		throw Object.assign(
+			new Error(apiError.message ?? apiError.error?.message ?? 'Tasting request failed'),
+			{ status: response.response.status }
+		);
+	}
+	if (!response.data) throw new Error('Tasting request returned no data');
+	return toLegacyTastingEnvelope(response.data.data, filter, includeRadarData);
+}
 
 /** Preserve the app-owned chat/canvas contract while reading canonical data through the SDK. */
 export function toLegacyTastingEnvelope(
