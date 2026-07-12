@@ -147,8 +147,8 @@
 		if (!canvasStore.isEmpty) {
 			chips.push({
 				id: 'canvas',
-				label: `Canvas (${canvasStore.blockCount})`,
-				detail: 'The assistant can see what is on your canvas',
+				label: `Evidence (${canvasStore.blockCount})`,
+				detail: 'The assistant can see what is in your evidence workspace',
 				active: includeCanvasContext
 			});
 		}
