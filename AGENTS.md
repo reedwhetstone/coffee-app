@@ -15,7 +15,7 @@ This repo is the Purveyors web platform. It includes:
 - the internal route layer that powers the first-party product
 - the unified `/docs` tree for API and CLI documentation
 
-It also depends on `@purveyors/cli`, which is a first-class interface to the same coffee domain.
+Its server-side agent tools depend on `@purveyors/sdk`; `@purveyors/cli` is a separate first-class Parchment API client.
 
 ## Stack
 
@@ -26,7 +26,7 @@ It also depends on `@purveyors/cli`, which is a first-class interface to the sam
 - Supabase
 - Stripe
 - OpenRouter via Vercel AI SDK
-- `@purveyors/cli`
+- `@purveyors/sdk`
 - LayerCake (charts and analytics components)
 
 ## Commands
@@ -141,7 +141,7 @@ Treat the web app and the external Parchment API as two separate HTTP surfaces:
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
    - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are public metadata or compatibility endpoints; document them as discoverability surfaces, not product APIs
    - `/auth/callback` and `/auth/cli-callback` are OAuth handoff surfaces; they belong in platform docs only when auth flow behavior matters
-   - `/api/tools/*` routes are deprecated; prefer direct CLI-library integration
+   - `/api/tools/*` routes are deprecated; prefer direct session-mode Parchment SDK integration
 
 Do not blur those layers in code comments, docs, or PR descriptions.
 
@@ -181,7 +181,7 @@ When changing docs, keep these sources aligned:
 
 ## CLI relationship
 
-The web app imports `@purveyors/cli` modules directly in `src/lib/services/tools.ts`.
+The web app uses session-mode `@purveyors/sdk` clients in `src/lib/services/tools.ts`.
 
 CLI auth and output rules matter here too:
 
@@ -198,7 +198,7 @@ That means:
 - chat-tool behavior should stay aligned with CLI behavior
 - shared business logic should move toward reusable modules, not duplicated route code
 
-Deprecated `/api/tools/*` routes still exist for compatibility. Prefer direct CLI-library integration for new work.
+Deprecated `/api/tools/*` routes still exist for compatibility. Prefer direct session-mode SDK integration for new work.
 
 ## Svelte and UI guidance
 

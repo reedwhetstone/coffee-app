@@ -1,7 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { listInventory } from '@purveyors/cli/inventory';
+import type { AgentParchmentClient } from './parchment';
+import { unwrapParchment } from './parchment';
 import { compactActionCardOutputForModel } from '$lib/services/toolModelOutput';
 import type { JSONValue } from 'ai';
 import {
@@ -12,11 +12,7 @@ import {
 } from './shared';
 import { loadInventoryActionCatalog } from './inventoryCatalog';
 
-export function createInventoryTools(
-	supabase: SupabaseClient,
-	userId: string,
-	access: ChatToolAccess
-) {
+export function createInventoryTools(client: AgentParchmentClient, access: ChatToolAccess) {
 	return {
 		green_coffee_inventory: tool({
 			description: access.memberAccess
@@ -44,12 +40,13 @@ export function createInventoryTools(
 				const finalLimit = Math.min(input.limit ?? 15, 15);
 				const includeRoastProfiles = access.memberAccess === true;
 
-				const rawInventory = await listInventory(supabase, userId, {
+				const response = await client.inventory.list({
 					stocked_only: input.stocked_only ?? true,
 					limit: finalLimit
 				});
+				const rawInventory = unwrapParchment(response).data;
 				const inventory = includeRoastProfiles
-					? await attachRoastSummaries(supabase, userId, rawInventory)
+					? await attachRoastSummaries(client, rawInventory)
 					: stripInventoryRoastProfileData(rawInventory);
 
 				const summary = {
@@ -116,11 +113,15 @@ export function createInventoryTools(
 				let sourceOptions: Array<{ label: string; value: string }> = [];
 				let catalogOptionsComplete = true;
 				try {
-					const catalogResult = await loadInventoryActionCatalog(supabase, catalogId);
+					const catalogResult = await loadInventoryActionCatalog(client, catalogId);
 					const catalogItems = catalogResult.items;
 					catalogOptionsComplete = catalogResult.complete;
 					if (catalogItems) {
-						allBeans = catalogItems.map((c) => ({ id: c.id, name: c.name, source: c.source }));
+						allBeans = catalogItems.map((c) => ({
+							id: c.id,
+							name: c.name ?? null,
+							source: c.source ?? null
+						}));
 						beanSelectOptions = allBeans.map((c) => ({
 							label: c.name ?? `Coffee #${c.id}`,
 							value: String(c.id)

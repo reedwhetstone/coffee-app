@@ -1,10 +1,11 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { listRoasts, type RoastProfile } from '@purveyors/cli/roast';
+import type { components } from '@purveyors/sdk';
+import type { AgentParchmentClient } from './parchment';
+import { unwrapParchment } from './parchment';
 import { positiveOrUndef } from './shared';
 
-export function createRoastTools(supabase: SupabaseClient, userId: string) {
+export function createRoastTools(client: AgentParchmentClient) {
 	return {
 		roast_profiles: tool({
 			description:
@@ -50,14 +51,16 @@ export function createRoastTools(supabase: SupabaseClient, userId: string) {
 
 				// CLI listRoasts supports these filters server-side; roast_name and date range
 				// are applied client-side after fetching.
-				let profiles: RoastProfile[] = await listRoasts(supabase, userId, {
-					coffee_id: positiveOrUndef(input.coffee_id),
-					roast_id: positiveOrUndef(input.roast_id ? parseInt(input.roast_id, 10) : undefined),
-					batch_name: input.batch_name,
-					catalog_id: positiveOrUndef(input.catalog_id),
-					stocked_only: input.stocked_only,
-					limit: finalLimit * 3 // fetch more to allow for client-side filtering
-				});
+				let profiles: components['schemas']['RoastListResource'][] = unwrapParchment(
+					await client.roasts.list({
+						coffee_id: positiveOrUndef(input.coffee_id),
+						roast_id: positiveOrUndef(input.roast_id ? parseInt(input.roast_id, 10) : undefined),
+						batch_name: input.batch_name,
+						catalog_id: positiveOrUndef(input.catalog_id),
+						stocked_only: input.stocked_only,
+						limit: finalLimit * 3
+					})
+				).data;
 
 				// Client-side post-filters for params the CLI doesn't support server-side
 				if (input.roast_name) {

@@ -6,11 +6,14 @@ const inventoryMocks = vi.hoisted(() => ({
 	updateInventory: vi.fn()
 }));
 
-vi.mock('@purveyors/cli/inventory', () => inventoryMocks);
-
 import { createChatTools } from './tools';
 
-const supabase = {} as Parameters<typeof createChatTools>[0];
+const supabase = {
+	inventory: {
+		list: vi.fn(async (query) => ({ data: { data: await inventoryMocks.listInventory(query) } }))
+	},
+	roasts: { list: vi.fn().mockResolvedValue({ data: { data: [] } }) }
+} as unknown as Parameters<typeof createChatTools>[0];
 
 function toolNames(access: Parameters<typeof createChatTools>[2]) {
 	return Object.keys(createChatTools(supabase, 'user-123', access)).sort();
@@ -289,7 +292,7 @@ describe('createChatTools entitlement allowlist', () => {
 		}>;
 		const result = await executeInventory({ stocked_only: true, limit: 5 });
 
-		expect(inventoryMocks.listInventory).toHaveBeenCalledWith(supabase, 'user-123', {
+		expect(inventoryMocks.listInventory).toHaveBeenCalledWith({
 			stocked_only: true,
 			limit: 5
 		});
@@ -311,16 +314,21 @@ describe('createChatTools entitlement allowlist', () => {
 		]);
 
 		const roastRows = [
-			{ coffee_id: 1, roast_date: '2026-06-01', oz_in: 16 },
-			{ coffee_id: 1, roast_date: '2026-05-20', oz_in: 12 }
+			{ roast_id: 10, coffee_id: 1, roast_date: '2026-06-01', oz_in: 16 },
+			{ roast_id: 11, coffee_id: 1, roast_date: '2026-05-20', oz_in: 12 }
 		];
-		const inMock = vi.fn().mockResolvedValue({ data: roastRows, error: null });
 		const supabaseWithRoasts = {
-			from: vi.fn(() => ({
-				select: vi.fn(() => ({
-					eq: vi.fn(() => ({ in: inMock }))
+			inventory: {
+				list: vi.fn(async (query) => ({
+					data: { data: await inventoryMocks.listInventory(query) }
 				}))
-			}))
+			},
+			roasts: {
+				list: vi
+					.fn()
+					.mockResolvedValueOnce({ data: { data: roastRows } })
+					.mockResolvedValue({ data: { data: [] } })
+			}
 		} as unknown as Parameters<typeof createChatTools>[0];
 
 		const tools = createChatTools(supabaseWithRoasts, 'user-123', {
@@ -336,7 +344,7 @@ describe('createChatTools entitlement allowlist', () => {
 		}>;
 		const result = await executeInventory({ stocked_only: true, limit: 5 });
 
-		expect(inventoryMocks.listInventory).toHaveBeenCalledWith(supabaseWithRoasts, 'user-123', {
+		expect(inventoryMocks.listInventory).toHaveBeenCalledWith({
 			stocked_only: true,
 			limit: 5
 		});

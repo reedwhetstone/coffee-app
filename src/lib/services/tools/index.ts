@@ -19,7 +19,7 @@
  */
 
 import type { ToolSet } from 'ai';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { ParchmentClient } from '@purveyors/sdk';
 import type { ChatToolAccess, ChatToolDeps } from './shared';
 
 import { createCatalogTools } from './catalogTools';
@@ -35,9 +35,8 @@ export type { ChatToolAccess, ChatToolDeps, InventoryRoastSummary } from './shar
 /**
  * Creates the set of AI tools for the chat service.
  *
- * Most tools call @purveyors/cli library functions directly via the supabase
- * client — no internal HTTP hop required. Catalog search is injected by the
- * chat route so it can use the canonical Parchment API with request credentials.
+ * Data tools call the session-mode Parchment SDK client. Catalog search is
+ * injected by the chat route to preserve its canonical query adapter.
  *
  * READ TOOLS — execute immediately, return data:
  *   coffee_catalog_search  → searchCatalog()
@@ -58,15 +57,15 @@ export type { ChatToolAccess, ChatToolDeps, InventoryRoastSummary } from './shar
  *   record_sale            → execute-action calls recordSale()
  */
 export function createChatTools(
-	supabase: SupabaseClient,
-	userId: string,
+	client: ParchmentClient,
+	_userId: string,
 	access: ChatToolAccess = { memberAccess: false, ppiAccess: false },
 	deps: ChatToolDeps = {}
 ): ToolSet {
-	const catalogTools = createCatalogTools(supabase, access, deps);
-	const inventoryTools = createInventoryTools(supabase, userId, access);
-	const roastTools = createRoastTools(supabase, userId);
-	const tastingTools = createTastingTools(supabase, userId);
+	const catalogTools = createCatalogTools(client, access, deps);
+	const inventoryTools = createInventoryTools(client, access);
+	const roastTools = createRoastTools(client);
+	const tastingTools = createTastingTools(client);
 	const priceIndexTools = createMarketTools(deps) as ToolSet;
 	const marketIndexTools = createMarketIndexTools(deps) as ToolSet;
 	const presentationTools = createPresentationTools();
