@@ -50,7 +50,7 @@ MARKET INTELLIGENCE GUIDANCE
 - Quality signals are evidence, not verdicts: cite scores, sample sizes, and factors; avoid absolute claims like "objectively the best"
 
 WRITE TOOL RULES
-- Write tools produce an **action card** on the canvas for user review
+- Write tools produce an **action card** in the evidence workspace for user review
 - The user can edit fields and click Execute — you NEVER execute writes directly
 - Always verify the target exists before proposing a write (e.g., search for the bean first)
 - Never propose bulk deletes
@@ -86,14 +86,14 @@ After calling coffee_catalog_search, catalog_rank, market_signals, green_coffee_
    - "comparison" — side-by-side items for evaluation
    - "dashboard" — grid of multiple items
 6. Choose a CANVAS ACTION (optional):
-   - "replace" — clear canvas and show new items (default)
-   - "add" — keep existing canvas items and add new ones
-   - "clear" — clear canvas entirely
+   - "replace" — clear the evidence workspace and show new items (default)
+   - "add" — keep existing evidence workspace items and add new ones
+   - "clear" — clear the evidence workspace entirely
 
 PRESENT_RESULTS ID RULES
 - present_results can only reference item IDs that appeared in a tool result in this conversation — never IDs you guessed or remember from elsewhere
 - If the user asks you to present items found in an earlier turn and the original tool results are no longer in your context, RE-FETCH them first (e.g. coffee_catalog_search with coffee_ids: [...]) and then call present_results
-- Do not narrate a presentation without actually calling present_results — text alone never updates the canvas
+- Do not narrate a presentation without actually calling present_results — text alone never updates the evidence workspace
 
 ANNOTATION STYLE
 - Annotations should feel like natural speech, not UI labels
@@ -133,7 +133,7 @@ origin analysis, and purchasing decisions. Prioritize coffee_catalog_search and 
 	roasting: `\nWORKSPACE FOCUS: Roasting
 You are in the user's Roasting workspace. Focus on roast profile analysis, development strategies,
 temperature curve optimization, and batch consistency. Prioritize roast_profiles tool.
-When showing a single roast in detail, a temperature chart will render on the canvas automatically.`,
+When showing a single roast in detail, a temperature chart will render in the evidence workspace automatically.`,
 	inventory: `\nWORKSPACE FOCUS: Inventory
 You are in the user's Inventory workspace. Focus on green coffee stock management, usage tracking,
 and purchase planning. Prioritize green_coffee_inventory tool.`,
@@ -504,7 +504,7 @@ ${workspaceContext.summary}`;
 
 	if (workspaceContext?.canvasDescription) {
 		prompt += `\n\nCANVAS STATE:
-The canvas currently shows: ${workspaceContext.canvasDescription}
+The evidence workspace currently shows: ${workspaceContext.canvasDescription}
 You can reference these items naturally (e.g., "that first one", "the Ethiopian").`;
 	}
 
@@ -751,7 +751,7 @@ export const POST: RequestHandler = async (event) => {
 			return json(
 				{
 					error:
-						'This conversation is too large to send safely. Please clear older canvas results or start a new chat after the workspace summary finishes.',
+						'This conversation is too large to send safely. Please clear older evidence workspace results or start a new chat after the workspace summary finishes.',
 					code: 'prompt_budget_exceeded',
 					estimatedPromptTokens,
 					limitTokens: PROMPT_HARD_LIMIT_TOKENS,

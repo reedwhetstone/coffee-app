@@ -37,7 +37,9 @@ describe('chat system prompt entitlement context', () => {
 
 		expect(prompt).toContain('green coffee supply-chain intelligence assistant');
 		expect(prompt).toContain('the Ethiopian in your evidence workspace');
-		expect(prompt).not.toContain('the Ethiopian on your canvas');
+		expect(prompt).not.toMatch(
+			/action card on the canvas|clear canvas|existing canvas|updates the canvas|render on the canvas|the canvas currently shows|older canvas results/i
+		);
 		expect(prompt).toContain('source, compare, track, benchmark, and decide');
 		expect(prompt).toMatch(/name material\s+uncertainty or missing coverage/);
 		expect(prompt).toContain(
