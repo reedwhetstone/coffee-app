@@ -19,6 +19,7 @@
 		containerEl = $bindable(),
 		onScroll,
 		onBlockAction,
+		onExecuteAction,
 		onExampleSelect
 	} = $props<{
 		chat: Chat;
@@ -27,6 +28,12 @@
 		containerEl?: HTMLDivElement;
 		onScroll: () => void;
 		onBlockAction: (action: BlockAction) => void;
+		onExecuteAction: (
+			executionId: string,
+			actionType: string,
+			fields: Record<string, unknown>,
+			blockId?: string
+		) => Promise<unknown>;
 		onExampleSelect: (text: string) => void;
 	}>();
 
@@ -149,7 +156,15 @@
 </script>
 
 <!-- Chat messages area -->
-<div bind:this={containerEl} class="flex-1 overflow-y-auto p-4" onscroll={onScroll}>
+<div
+	bind:this={containerEl}
+	class="flex-1 overflow-y-auto p-4"
+	onscroll={onScroll}
+	role="log"
+	aria-label="Parchment conversation"
+	aria-live={isActive ? 'off' : 'polite'}
+	aria-relevant="additions text"
+>
 	{#if chat.messages.length === 0}
 		<!-- Welcome message -->
 		<div class="mx-auto max-w-2xl text-center">
@@ -310,6 +325,7 @@
 													{block}
 													renderMode="chat"
 													onAction={onBlockAction}
+													{onExecuteAction}
 													canvasBlockId={canvasId}
 												/>
 											</div>
@@ -321,6 +337,7 @@
 														block={companionBlock}
 														renderMode="chat"
 														onAction={onBlockAction}
+														{onExecuteAction}
 														canvasBlockId={canvasId}
 													/>
 												</div>

@@ -7,7 +7,10 @@
 </script>
 
 <div class="my-4">
-	<div class="flex items-start gap-3 rounded-lg border border-danger/30 bg-danger-subtle p-4">
+	<div
+		class="flex items-start gap-3 rounded-lg border border-danger/30 bg-danger-subtle p-4"
+		role="alert"
+	>
 		<svg
 			class="mt-0.5 h-5 w-5 flex-shrink-0 text-danger"
 			fill="none"

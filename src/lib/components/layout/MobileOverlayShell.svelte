@@ -9,13 +9,17 @@
 		onClose = () => {},
 		label,
 		labelledBy,
+		hideOnDesktop = true,
+		keepMounted = false,
 		children
 	} = $props<{
 		open?: boolean;
-		variant?: 'full' | 'sheet';
+		variant?: 'full' | 'sheet' | 'drawer';
 		onClose?: () => void;
 		label?: string;
 		labelledBy?: string;
+		hideOnDesktop?: boolean;
+		keepMounted?: boolean;
 		children: Snippet;
 	}>();
 
@@ -92,8 +96,8 @@
 	}
 </script>
 
-{#if open}
-	<div class="fixed inset-0 z-[45] md:hidden">
+{#if open || keepMounted}
+	<div class="fixed inset-0 z-[60] {hideOnDesktop ? 'md:hidden' : ''} {open ? '' : 'hidden'}">
 		<button
 			type="button"
 			class="absolute inset-0 bg-ink/55 backdrop-blur-sm"
@@ -102,13 +106,21 @@
 			transition:fade={{ duration: 150 }}
 		></button>
 
-		<div class="relative flex h-full w-full {variant === 'sheet' ? 'items-end' : 'items-stretch'}">
+		<div
+			class="relative flex h-full w-full {variant === 'sheet'
+				? 'items-end'
+				: variant === 'drawer'
+					? 'items-stretch justify-end'
+					: 'items-stretch'}"
+		>
 			<div
 				bind:this={dialogElement}
 				class="relative flex w-full flex-col overflow-hidden bg-surface-canvas shadow-2xl ring-1 ring-line/70 {variant ===
 				'full'
 					? 'h-full'
-					: 'max-h-[85dvh] rounded-t-[1.75rem]'}"
+					: variant === 'drawer'
+						? 'h-full md:w-[32rem]'
+						: 'max-h-[85dvh] rounded-t-[1.75rem]'}"
 				role="dialog"
 				aria-modal="true"
 				aria-label={label}
@@ -116,7 +128,8 @@
 				tabindex="-1"
 				onkeydown={handleKeydown}
 				transition:fly={{
-					y: variant === 'full' ? 0 : 28,
+					x: variant === 'drawer' ? 28 : 0,
+					y: variant === 'sheet' ? 28 : 0,
 					duration: 200
 				}}
 			>

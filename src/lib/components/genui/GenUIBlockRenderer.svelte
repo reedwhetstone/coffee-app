@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import type { UIBlock, BlockAction } from '$lib/types/genui';
 	// Full block components (canvas mode)
 	import CoffeeCardsBlock from './blocks/CoffeeCardsBlock.svelte';
@@ -37,29 +38,68 @@
 		renderMode?: 'chat' | 'canvas';
 		canvasBlockId?: string;
 	}>();
+
+	let isMobileViewport = $state(false);
+
+	onMount(() => {
+		const mobileViewport = window.matchMedia('(max-width: 767px)');
+		const updateViewport = () => {
+			isMobileViewport = mobileViewport.matches;
+		};
+
+		updateViewport();
+		mobileViewport.addEventListener('change', updateViewport);
+
+		return () => mobileViewport.removeEventListener('change', updateViewport);
+	});
 </script>
 
 {#if renderMode === 'chat'}
-	<!-- Chat inline previews: compact styled links -->
-	<span class="genui-preview inline-block">
-		{#if block.type === 'coffee-cards'}
-			<CoffeeCardPreview {block} {onAction} {canvasBlockId} />
-		{:else if block.type === 'inventory-table'}
-			<InventoryPreview {block} {onAction} {canvasBlockId} />
-		{:else if block.type === 'roast-profiles'}
-			<RoastProfilesPreview {block} {onAction} {canvasBlockId} />
-		{:else if block.type === 'tasting-radar'}
-			<TastingRadarPreview {block} {onAction} {canvasBlockId} />
-		{:else if block.type === 'roast-chart'}
-			<RoastChartPreview {block} {onAction} {canvasBlockId} />
-		{:else if block.type === 'action-card'}
-			<ActionCardPreview {block} {onAction} {canvasBlockId} />
-		{:else if block.type === 'data-table'}
-			<DataTablePreview {block} {onAction} {canvasBlockId} />
-		{:else if block.type === 'error'}
-			<ErrorPreview {block} />
-		{/if}
-	</span>
+	<!-- Small screens keep the evidence in the conversation. The compact preview
+	     remains the desktop affordance for jumping into the review canvas. -->
+	{#if isMobileViewport}
+		<div class="genui-inline-evidence w-full md:hidden">
+			{#if block.type === 'coffee-cards'}
+				<CoffeeCardsBlock {block} />
+			{:else if block.type === 'inventory-table'}
+				<InventoryTableBlock {block} {onAction} />
+			{:else if block.type === 'roast-profiles'}
+				<RoastProfilesBlock {block} {onAction} />
+			{:else if block.type === 'tasting-radar'}
+				<TastingRadarBlock {block} {onAction} />
+			{:else if block.type === 'roast-chart'}
+				<RoastChartBlock {block} />
+			{:else if block.type === 'action-card'}
+				<!-- Action cards remain executable only in the shared canvas. Rendering the
+				     live card here would create a second, unsynchronized mutation control. -->
+				<ActionCardPreview {block} {onAction} {canvasBlockId} />
+			{:else if block.type === 'data-table'}
+				<DataTableBlock {block} {onAction} />
+			{:else if block.type === 'error'}
+				<ErrorBlock {block} />
+			{/if}
+		</div>
+	{:else}
+		<span class="genui-preview hidden md:inline-block">
+			{#if block.type === 'coffee-cards'}
+				<CoffeeCardPreview {block} {onAction} {canvasBlockId} />
+			{:else if block.type === 'inventory-table'}
+				<InventoryPreview {block} {onAction} {canvasBlockId} />
+			{:else if block.type === 'roast-profiles'}
+				<RoastProfilesPreview {block} {onAction} {canvasBlockId} />
+			{:else if block.type === 'tasting-radar'}
+				<TastingRadarPreview {block} {onAction} {canvasBlockId} />
+			{:else if block.type === 'roast-chart'}
+				<RoastChartPreview {block} {onAction} {canvasBlockId} />
+			{:else if block.type === 'action-card'}
+				<ActionCardPreview {block} {onAction} {canvasBlockId} />
+			{:else if block.type === 'data-table'}
+				<DataTablePreview {block} {onAction} {canvasBlockId} />
+			{:else if block.type === 'error'}
+				<ErrorPreview {block} />
+			{/if}
+		</span>
+	{/if}
 {:else}
 	<!-- Canvas full blocks -->
 	<div class="genui-block w-full">

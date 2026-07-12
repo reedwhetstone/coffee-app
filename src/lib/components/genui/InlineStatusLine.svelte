@@ -17,7 +17,13 @@
 	}
 </script>
 
-<div class="space-y-1">
+<div
+	class="space-y-1"
+	role="status"
+	aria-live="polite"
+	aria-atomic="true"
+	aria-label={isActive ? 'Parchment is working' : 'Parchment activity'}
+>
 	{#each steps as step, index}
 		{@const isLast = index === steps.length - 1}
 		<div
