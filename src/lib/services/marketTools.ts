@@ -2,43 +2,18 @@
  * Market intelligence data functions for the chat agent.
  *
  * These back the catalog_facets, supplier_list, and catalog_rank chat tools.
- * They read only the public coffee_catalog surface (RLS limits SELECT to
- * public_coffee = true for every role), so results are identical for all
- * users and safe to cache process-wide.
+ * Results are scoped by the Parchment API to the caller's catalog visibility
+ * and entitlements. Do not cache them process-wide across session clients.
  *
  * Ranking is deterministic and server-side: the LLM narrates orderings, it
  * never invents them. Purveyor Score is the single quality composite —
  * objectives change the sort, not the score.
  */
 
-import type { ParchmentClient } from '@purveyors/sdk';
+import type { ParchmentClient, components } from '@purveyors/sdk';
 import { unwrapParchment } from './tools/parchment';
 
 export type MarketToolsClient = ParchmentClient;
-
-// ─── Process-wide TTL cache (catalog visibility is uniform across users) ────
-
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
-const cache = new Map<string, { expires: number; value: unknown }>();
-
-function getCached<T>(key: string): T | undefined {
-	const entry = cache.get(key);
-	if (!entry) return undefined;
-	if (Date.now() > entry.expires) {
-		cache.delete(key);
-		return undefined;
-	}
-	return entry.value as T;
-}
-
-function setCached(key: string, value: unknown): void {
-	cache.set(key, { expires: Date.now() + CACHE_TTL_MS, value });
-}
-
-/** Test hook: clear the market tools cache. */
-export function _clearMarketToolsCache(): void {
-	cache.clear();
-}
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -59,6 +34,8 @@ export const CATALOG_FACET_FIELDS = [
 	'wholesale'
 ] as const;
 export type CatalogFacetField = (typeof CATALOG_FACET_FIELDS)[number];
+type CatalogFacetsResponse = components['schemas']['CatalogFacetsResponse'];
+type CatalogFacetKey = keyof CatalogFacetsResponse['facets'];
 
 export interface CatalogFacetsInput {
 	field: CatalogFacetField;
@@ -81,15 +58,10 @@ export async function getCatalogFacets(
 	input: CatalogFacetsInput
 ): Promise<CatalogFacetsResult> {
 	const stockedOnly = input.stocked_only ?? true;
-	const cacheKey = `facets:${input.field}:${stockedOnly}`;
-
-	const cached = getCached<CatalogFacetsResult>(cacheKey);
-	if (cached) return cached;
-
-	const response = unwrapParchment(
-		await (client as ParchmentClient).catalog.facets({ stocked: stockedOnly ? 'true' : 'false' })
-	) as any;
-	const facetKeys: Record<CatalogFacetField, string> = {
+	const response: CatalogFacetsResponse = unwrapParchment(
+		await client.catalog.facets({ stocked: stockedOnly ? 'true' : 'all' })
+	);
+	const facetKeys: Record<CatalogFacetField, CatalogFacetKey> = {
 		supplier: 'sources',
 		country: 'countries',
 		processing_base_method: 'processing_base_method',
@@ -114,7 +86,6 @@ export async function getCatalogFacets(
 		truncated: null
 	};
 
-	setCached(cacheKey, result);
 	return result;
 }
 
@@ -148,7 +119,13 @@ export interface SupplierListResult {
 	truncated: boolean;
 }
 
-function toSupplierSummary(supplier: any, input: { nonWholesaleOnly: boolean }): SupplierSummary {
+type CatalogSupplierAggregate = components['schemas']['CatalogSupplierAggregate'];
+type CatalogSupplierAggregateResponse = components['schemas']['CatalogSupplierAggregateResponse'];
+
+function toSupplierSummary(
+	supplier: CatalogSupplierAggregate,
+	input: { nonWholesaleOnly: boolean }
+): SupplierSummary {
 	return {
 		...supplier,
 		listings: supplier.total,
@@ -167,24 +144,18 @@ export async function getSupplierList(
 	const stockedOnly = input.stocked_only ?? true;
 	const country = input.country ? sanitizeFilterValue(input.country) : null;
 	const limit = Math.min(Math.max(input.limit ?? DEFAULT_SUPPLIER_LIMIT, 1), MAX_SUPPLIER_LIMIT);
-	const cacheKey = `suppliers:${stockedOnly}:${input.non_wholesale_only ?? false}:${country ?? ''}:${limit}`;
-
-	const cached = getCached<SupplierListResult>(cacheKey);
-	if (cached) return cached;
 
 	const nonWholesaleOnly = input.non_wholesale_only ?? false;
-	const response = unwrapParchment(
-		await (client as ParchmentClient).catalog.suppliers({
+	const response: CatalogSupplierAggregateResponse = unwrapParchment(
+		await client.catalog.suppliers({
 			stocked: stockedOnly ? 'true' : 'false',
 			country: country ?? undefined,
 			nonWholesaleOnly: nonWholesaleOnly ? 'true' : 'false',
 			limit
 		})
-	) as any;
+	);
 	const result: SupplierListResult = {
-		suppliers: response.data.map((supplier: any) =>
-			toSupplierSummary(supplier, { nonWholesaleOnly })
-		),
+		suppliers: response.data.map((supplier) => toSupplierSummary(supplier, { nonWholesaleOnly })),
 		returned_suppliers: response.meta.returned,
 		scope: {
 			stocked_only: stockedOnly,
@@ -196,7 +167,6 @@ export async function getSupplierList(
 		truncated: response.meta.truncated
 	};
 
-	setCached(cacheKey, result);
 	return result;
 }
 
@@ -204,6 +174,7 @@ export async function getSupplierList(
 
 export const RANK_OBJECTIVES = ['premium', 'value', 'fresh_arrival', 'rare_origin'] as const;
 export type RankObjective = (typeof RANK_OBJECTIVES)[number];
+type CatalogRankingResponse = components['schemas']['CatalogRankingResponse'];
 
 const DEFAULT_RANK_LIMIT = 8;
 const MAX_RANK_LIMIT = 15;
@@ -238,8 +209,8 @@ export async function rankCatalog(
 	input: RankCatalogInput
 ): Promise<RankCatalogResult> {
 	const limit = Math.min(Math.max(input.limit ?? DEFAULT_RANK_LIMIT, 1), MAX_RANK_LIMIT);
-	const response = unwrapParchment(
-		await (client as ParchmentClient).catalog.rank({
+	const response: CatalogRankingResponse = unwrapParchment(
+		await client.catalog.rank({
 			objective: input.objective,
 			stockedOnly: (input.stocked_only ?? true) ? 'true' : 'false',
 			supplier: input.supplier,
@@ -254,7 +225,7 @@ export async function rankCatalog(
 				input.non_wholesale_only == null ? undefined : input.non_wholesale_only ? 'true' : 'false',
 			limit
 		})
-	) as any;
+	);
 
 	return {
 		objective: response.meta.objective,

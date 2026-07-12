@@ -44,8 +44,8 @@ export type { ChatToolAccess, ChatToolDeps, InventoryRoastSummary } from './shar
  *   roast_profiles         → listRoasts()
  *   bean_tasting_notes     → getTastingNotes()
  *   find_similar_beans     → findSimilarBeans()
- *   catalog_facets         → getCatalogFacets()  (valid filter values, cached)
- *   supplier_list          → getSupplierList()   (supplier universe, cached)
+ *   catalog_facets         → getCatalogFacets()  (caller-visible valid filter values)
+ *   supplier_list          → getSupplierList()   (caller-visible supplier universe)
  *   catalog_rank           → rankCatalog()       (deterministic objective ranking)
  *   price_index_read       → deps.readPriceIndex (aggregate market index, admin client)
  *

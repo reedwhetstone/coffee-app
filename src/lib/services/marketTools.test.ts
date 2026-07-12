@@ -1,13 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-	_clearMarketToolsCache,
-	getCatalogFacets,
-	getSupplierList,
-	rankCatalog
-} from './marketTools';
+import { describe, expect, it, vi } from 'vitest';
+import { getCatalogFacets, getSupplierList, rankCatalog } from './marketTools';
 
 describe('market tools SDK mapping', () => {
-	beforeEach(() => _clearMarketToolsCache());
 	it.each([
 		['supplier', 'sources'],
 		['country', 'countries'],
@@ -40,6 +34,32 @@ describe('market tools SDK mapping', () => {
 			getCatalogFacets({ catalog: { facets } } as never, { field: 'country' })
 		).rejects.toThrow('denied');
 		expect(facets).toHaveBeenCalledWith({ stocked: 'true' });
+	});
+	it('requests all caller-visible facets when stocked-only is disabled', async () => {
+		const facets = vi.fn().mockResolvedValue({ data: { facets: {}, meta: { access: {} } } });
+		await getCatalogFacets({ catalog: { facets } } as never, {
+			field: 'country',
+			stocked_only: false
+		});
+		expect(facets).toHaveBeenCalledWith({ stocked: 'all' });
+	});
+	it('does not share facet results across session-scoped clients', async () => {
+		const first = vi.fn().mockResolvedValue({
+			data: { facets: { countries: [{ value: 'Kenya', count: 2 }] }, meta: { access: {} } }
+		});
+		const second = vi.fn().mockResolvedValue({
+			data: { facets: { countries: [{ value: 'Rwanda', count: 3 }] }, meta: { access: {} } }
+		});
+		const firstResult = await getCatalogFacets({ catalog: { facets: first } } as never, {
+			field: 'country'
+		});
+		const secondResult = await getCatalogFacets({ catalog: { facets: second } } as never, {
+			field: 'country'
+		});
+		expect(firstResult.values).toEqual([{ value: 'Kenya', count: 2 }]);
+		expect(secondResult.values).toEqual([{ value: 'Rwanda', count: 3 }]);
+		expect(first).toHaveBeenCalledOnce();
+		expect(second).toHaveBeenCalledOnce();
 	});
 	it('maps supplier filters', async () => {
 		const suppliers = vi.fn().mockResolvedValue({
