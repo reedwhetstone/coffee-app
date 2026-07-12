@@ -3,6 +3,8 @@ import { OPENROUTER_API_KEY } from '$env/static/private';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { requireAuthenticatedMemberPrincipal } from '$lib/server/auth';
+import { checkRateLimit, logApiUsage } from '$lib/server/apiAuth';
+import { isApiKeyPrincipal, type ApiKeyPrincipal } from '$lib/server/principal';
 import type { RequestHandler } from './$types';
 
 interface AlogMetadata {
@@ -34,13 +36,48 @@ interface MatchResult {
 }
 
 export const POST: RequestHandler = async (event) => {
+	const startedAt = Date.now();
+	let apiKeyPrincipal: ApiKeyPrincipal | null = null;
+
+	const respond = async (body: unknown, init?: ResponseInit): Promise<Response> => {
+		const response = json(body, init);
+		if (apiKeyPrincipal) {
+			await logApiUsage(
+				apiKeyPrincipal.apiKeyId,
+				'/api/ai/classify-roast',
+				response.status,
+				Date.now() - startedAt,
+				event.request.headers.get('User-Agent') ?? undefined,
+				event.getClientAddress?.()
+			);
+		}
+		return response;
+	};
+
 	try {
-		await requireAuthenticatedMemberPrincipal(event, { requiredApiScope: 'roast:read' });
+		const principal = await requireAuthenticatedMemberPrincipal(event, {
+			requiredApiScope: 'roast:read'
+		});
+		if (isApiKeyPrincipal(principal)) {
+			apiKeyPrincipal = principal;
+			const rateLimit = await checkRateLimit(principal.apiKeyId, principal.apiPlan);
+			if (!rateLimit.allowed) {
+				return respond(
+					{ error: 'API rate limit exceeded' },
+					{
+						status: 429,
+						headers: rateLimit.retryAfter
+							? { 'Retry-After': String(rateLimit.retryAfter) }
+							: undefined
+					}
+				);
+			}
+		}
 
 		// Validate OpenRouter API key
 		if (!OPENROUTER_API_KEY) {
 			console.error('OPENROUTER_API_KEY is missing or empty');
-			return json({ error: 'OpenRouter API key not configured' }, { status: 500 });
+			return respond({ error: 'OpenRouter API key not configured' }, { status: 500 });
 		}
 
 		// Parse request body
@@ -48,15 +85,15 @@ export const POST: RequestHandler = async (event) => {
 		const { alogMetadata, inventory } = body;
 
 		if (!alogMetadata || !alogMetadata.title) {
-			return json({ error: 'alogMetadata.title is required' }, { status: 400 });
+			return respond({ error: 'alogMetadata.title is required' }, { status: 400 });
 		}
 
 		if (!inventory || !Array.isArray(inventory)) {
-			return json({ error: 'inventory must be an array' }, { status: 400 });
+			return respond({ error: 'inventory must be an array' }, { status: 400 });
 		}
 
 		if (inventory.length === 0) {
-			return json({ match: null });
+			return respond({ match: null });
 		}
 
 		// Build OpenRouter provider
@@ -164,25 +201,25 @@ IMPORTANT: Respond with ONLY the JSON object, no markdown formatting.`,
 				match = strippedParse;
 			} else {
 				console.warn('classify-roast: failed to parse AI response:', rawText);
-				return json({ match: null, warning: 'AI response could not be parsed' });
+				return respond({ match: null, warning: 'AI response could not be parsed' });
 			}
 		}
 
-		return json({ match });
+		return respond({ match });
 	} catch (error) {
 		// Pass through rate limit errors from OpenRouter
 		if (error instanceof Error && error.message.includes('429')) {
-			return json({ error: 'Rate limit exceeded' }, { status: 429 });
+			return respond({ error: 'Rate limit exceeded' }, { status: 429 });
 		}
 
 		// Auth errors have a status property.
 		const authError = error as { status?: number; message?: string };
 		if (authError.status === 401 || authError.status === 403) {
-			return json({ error: authError.message ?? 'Unauthorized' }, { status: authError.status });
+			return respond({ error: authError.message ?? 'Unauthorized' }, { status: authError.status });
 		}
 
 		console.error('classify-roast API error:', error);
-		return json(
+		return respond(
 			{ error: error instanceof Error ? error.message : 'Unknown error' },
 			{ status: 500 }
 		);
