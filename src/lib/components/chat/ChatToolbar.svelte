@@ -71,7 +71,7 @@
 						onclick={onExport}
 						class="rounded px-2 py-1.5 text-left text-xs text-muted hover:bg-surface-canvas hover:text-ink"
 					>
-						Export research
+						Export conversation
 					</button>
 					<button
 						onclick={onClear}

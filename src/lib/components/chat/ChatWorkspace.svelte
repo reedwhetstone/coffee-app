@@ -1051,7 +1051,7 @@
 	// ─── Export / Clear ────────────────────────────────────────────────────────
 	function exportConversation() {
 		const timestamp = new Date().toLocaleString();
-		let markdown = `# Parchment Intelligence research export\n\n`;
+		let markdown = `# Parchment Intelligence conversation export\n\n`;
 		markdown += `**Exported:** ${timestamp}\n\n---\n\n`;
 
 		for (const message of chat.messages) {
@@ -1070,7 +1070,7 @@
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
-		a.download = `parchment-intelligence-research-${new Date().toISOString().split('T')[0]}.md`;
+		a.download = `parchment-intelligence-conversation-${new Date().toISOString().split('T')[0]}.md`;
 		document.body.appendChild(a);
 		a.click();
 		document.body.removeChild(a);

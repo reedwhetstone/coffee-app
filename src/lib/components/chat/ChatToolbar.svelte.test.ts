@@ -18,8 +18,12 @@ describe('ChatToolbar progressive disclosure', () => {
 			onClear
 		});
 
-		expect(screen.getByText('Workspace actions')).toBeInTheDocument();
-		await fireEvent.click(screen.getByRole('button', { name: 'Export research' }));
+		const summary = screen.getByText('Workspace actions');
+		const disclosure = summary.closest('details');
+		expect(disclosure).not.toHaveAttribute('open');
+		await fireEvent.click(summary);
+		expect(disclosure).toHaveAttribute('open');
+		await fireEvent.click(screen.getByRole('button', { name: 'Export conversation' }));
 		await fireEvent.click(screen.getByRole('button', { name: 'Clear conversation' }));
 		expect(onExport).toHaveBeenCalledOnce();
 		expect(onClear).toHaveBeenCalledOnce();
