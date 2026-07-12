@@ -73,7 +73,7 @@ begin
         values (p_fields->>'manual_name', v_user, false, current_date) returning id into v_catalog_id;
     end if;
     if v_catalog_id is null then raise exception 'Either catalog_id or manual_name is required' using errcode='22023'; end if;
-    insert into public.green_coffee_inv(user, catalog_id, purchased_qty_lbs, bean_cost,
+    insert into public.green_coffee_inv("user", catalog_id, purchased_qty_lbs, bean_cost,
       tax_ship_cost, purchase_date, notes, stocked, last_updated)
     values (v_user, v_catalog_id, coalesce(nullif(p_fields->>'purchased_qty_lbs','')::numeric,0),
       round(coalesce(nullif(p_fields->>'cost_per_lb','')::numeric,0) * coalesce(nullif(p_fields->>'purchased_qty_lbs','')::numeric,0),2),

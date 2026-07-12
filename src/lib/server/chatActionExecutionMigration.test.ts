@@ -29,6 +29,8 @@ describe('chat action execution ledger migration', () => {
 		}
 		expect(sql).toContain('sum(coalesce(oz_in, 0))');
 		expect(sql).toContain("p_fields ? 'purchased_qty_lbs' and not (p_fields ? 'stocked')");
+		expect(sql).toContain('insert into public.green_coffee_inv("user", catalog_id');
+		expect(sql).not.toMatch(/insert into public\.green_coffee_inv\(user[,)]/);
 	});
 
 	it('allows both members and admins while retaining the Parchment action exception', () => {
