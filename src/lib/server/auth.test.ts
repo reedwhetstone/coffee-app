@@ -46,6 +46,7 @@ vi.mock('$lib/server/apiAuth', () => ({
 const {
 	AuthError,
 	requireApiKeyAccess,
+	requireAuthenticatedMemberPrincipal,
 	requireAuth,
 	requireChatAccess,
 	requireUserAuth,
@@ -164,6 +165,30 @@ beforeEach(() => {
 });
 
 describe('auth integration', () => {
+	it('accepts an owner-bound member API key for the roast classifier', async () => {
+		mockValidateApiKey.mockResolvedValue({
+			valid: true,
+			userId: 'member-user',
+			keyId: 'key-1',
+			keyName: 'purvey-cli-host',
+			permissions: { scopes: ['roast:read'] }
+		});
+		mockUserRolesSingle.mockResolvedValue({
+			data: { user_role: ['member'] },
+			error: null
+		});
+
+		const principal = await requireAuthenticatedMemberPrincipal(
+			makeEvent({
+				method: 'POST',
+				url: 'https://app.test/api/ai/classify-roast',
+				authHeader: 'Bearer pk_live_valid-key'
+			})
+		);
+
+		expect(principal).toMatchObject({ authKind: 'api-key', userId: 'member-user' });
+	});
+
 	it('fails closed for API keys when user role lookup fails', async () => {
 		mockValidateApiKey.mockResolvedValue({
 			valid: true,

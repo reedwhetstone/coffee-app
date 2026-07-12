@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import { OPENROUTER_API_KEY } from '$env/static/private';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
-import { requireAuth } from '$lib/server/auth';
+import { requireAuthenticatedMemberPrincipal } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 
 interface AlogMetadata {
@@ -35,16 +35,7 @@ interface MatchResult {
 
 export const POST: RequestHandler = async (event) => {
 	try {
-		// Require session auth first, then verify member role via principal.
-		// requireAuth ensures the caller is authenticated (cookie or bearer session).
-		await requireAuth(event);
-
-		// Check member role via principal — resolves explicit entitlements from the DB.
-		const { principalHasRole, resolvePrincipal } = await import('$lib/server/principal');
-		const principal = await resolvePrincipal(event);
-		if (!principalHasRole(principal, 'member')) {
-			return json({ error: 'Member role required' }, { status: 403 });
-		}
+		await requireAuthenticatedMemberPrincipal(event);
 
 		// Validate OpenRouter API key
 		if (!OPENROUTER_API_KEY) {
