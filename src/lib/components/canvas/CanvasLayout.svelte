@@ -98,11 +98,11 @@
 							title="Focus window"
 						>
 							<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<circle cx="12" cy="12" r="3" stroke-width="2" />
+								<circle cx="12" cy="12" r="3" stroke-width="1.5" />
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
-									stroke-width="2"
+									stroke-width="1.5"
 									d="M12 2v3m0 14v3m10-10h-3M5 12H2m17.071-7.071-2.121 2.121M7.05 16.95l-2.121 2.121m14.142 0-2.121-2.121M7.05 7.05 4.929 4.929"
 								/>
 							</svg>
@@ -118,7 +118,7 @@
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
-									stroke-width="2"
+									stroke-width="1.5"
 									d="M4 16v2a2 2 0 002 2h2m8 0h2a2 2 0 002-2v-2M16 4h2a2 2 0 012 2v2M8 4H6a2 2 0 00-2 2v2"
 								/>
 							</svg>
@@ -136,19 +136,19 @@
 						aria-pressed={active.pinned}
 					>
 						<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<rect x="5" y="11" width="14" height="9" rx="2" stroke-width="2" />
+							<rect x="5" y="11" width="14" height="9" rx="2" stroke-width="1.5" />
 							{#if active.pinned}
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
-									stroke-width="2"
+									stroke-width="1.5"
 									d="M8 11V7a4 4 0 018 0v4"
 								/>
 							{:else}
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
-									stroke-width="2"
+									stroke-width="1.5"
 									d="M8 11V7a4 4 0 014-4 4 4 0 013.464 2"
 								/>
 							{/if}
@@ -166,7 +166,7 @@
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
-								stroke-width="2"
+								stroke-width="1.5"
 								d="M6 18L18 6M6 6l12 12"
 							/>
 						</svg>
@@ -178,7 +178,12 @@
 						title="Minimize window"
 					>
 						<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="1.5"
+								d="M20 12H4"
+							/>
 						</svg>
 					</button>
 				</div>
@@ -213,7 +218,7 @@
 									<path
 										stroke-linecap="round"
 										stroke-linejoin="round"
-										stroke-width="2"
+										stroke-width="1.5"
 										d="M6 18L18 6M6 6l12 12"
 									/>
 								</svg>

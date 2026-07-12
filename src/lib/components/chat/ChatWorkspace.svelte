@@ -147,8 +147,8 @@
 		if (!canvasStore.isEmpty) {
 			chips.push({
 				id: 'canvas',
-				label: `Canvas (${canvasStore.blockCount})`,
-				detail: 'The assistant can see what is on your canvas',
+				label: `Evidence (${canvasStore.blockCount})`,
+				detail: 'The assistant can see what is in your evidence workspace',
 				active: includeCanvasContext
 			});
 		}
@@ -661,7 +661,8 @@
 					// re-read by the effect, so a delayed retry cannot leak state across
 					// a workspace switch.
 					if (retryAttempt >= 2) {
-						canvasPersistError = 'Canvas changes are not saving. Retrying in the background.';
+						canvasPersistError =
+							'Evidence workspace changes are not saving. Retrying in the background.';
 					}
 					const retryDelay = Math.min(2000 * 2 ** retryAttempt, 30_000);
 					retryTimeout = setTimeout(() => {
@@ -1051,7 +1052,7 @@
 	// ─── Export / Clear ────────────────────────────────────────────────────────
 	function exportConversation() {
 		const timestamp = new Date().toLocaleString();
-		let markdown = `# Coffee Chat Conversation\n\n`;
+		let markdown = `# Parchment Intelligence conversation export\n\n`;
 		markdown += `**Exported:** ${timestamp}\n\n---\n\n`;
 
 		for (const message of chat.messages) {
@@ -1070,7 +1071,7 @@
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
-		a.download = `coffee-chat-${new Date().toISOString().split('T')[0]}.md`;
+		a.download = `parchment-intelligence-conversation-${new Date().toISOString().split('T')[0]}.md`;
 		document.body.appendChild(a);
 		a.click();
 		document.body.removeChild(a);
@@ -1149,7 +1150,7 @@
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
-								stroke-width="2"
+								stroke-width="1.5"
 								d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
 							/>
 						</svg>

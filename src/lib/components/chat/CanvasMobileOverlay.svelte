@@ -34,7 +34,7 @@
 >
 	<div class="flex h-full min-h-0 flex-col bg-surface-canvas">
 		<div class="flex items-center justify-between border-b border-line px-4 py-3">
-			<span class="text-sm font-medium text-ink">Canvas ({canvasStore.blockCount})</span>
+			<span class="text-sm font-medium text-ink">Evidence ({canvasStore.blockCount})</span>
 			<button
 				type="button"
 				onclick={onClose}

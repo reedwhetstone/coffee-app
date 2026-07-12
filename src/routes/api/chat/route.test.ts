@@ -29,6 +29,25 @@ import {
 } from './+server';
 
 describe('chat system prompt entitlement context', () => {
+	it('positions Parchment as evidence-led supply-chain intelligence with Mallard as context', () => {
+		const prompt = _buildSystemPrompt({ type: 'general' }, 'Member User', {
+			ppiAccess: true,
+			memberAccess: true
+		});
+
+		expect(prompt).toContain('green coffee supply-chain intelligence assistant');
+		expect(prompt).toContain('the Ethiopian in your evidence workspace');
+		expect(prompt).not.toMatch(
+			/action card on the canvas|clear canvas|existing canvas|updates the canvas|render on the canvas|the canvas currently shows|older canvas results/i
+		);
+		expect(prompt).toContain('source, compare, track, benchmark, and decide');
+		expect(prompt).toMatch(/name material\s+uncertainty or missing coverage/);
+		expect(prompt).toContain(
+			"Mallard Studio is the user's optional roasting and operating context layer"
+		);
+		expect(prompt).not.toContain('expert coffee consultant');
+	});
+
 	it('only advertises Parchment tools for Parchment Intelligence-only users', () => {
 		const prompt = _buildSystemPrompt({ type: 'roasting' }, 'PPI User', {
 			ppiAccess: true,
