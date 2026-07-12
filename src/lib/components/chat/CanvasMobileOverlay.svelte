@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Canvas from '$lib/components/canvas/Canvas.svelte';
+	import MobileOverlayShell from '$lib/components/layout/MobileOverlayShell.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 	import type { BlockAction } from '$lib/types/genui';
 
@@ -22,29 +23,35 @@
 	}>();
 </script>
 
-<!-- Full-screen canvas overlay (always visible on mobile; desktop only in drawer variant) -->
-<div
-	class="fixed inset-0 z-50 flex flex-col bg-surface-canvas {variant === 'page' ? 'md:hidden' : ''}"
+<!-- Full-screen evidence workspace. Shared shell owns modal semantics, focus trap,
+     Escape handling, scroll locking, and focus return. -->
+<MobileOverlayShell
+	open={true}
+	variant="full"
+	{onClose}
+	label="Evidence workspace"
+	hideOnDesktop={variant === 'page'}
 >
-	<div class="flex items-center justify-between border-b border-line px-4 py-3">
-		<span class="text-sm font-medium text-ink">
-			Canvas ({canvasStore.blockCount})
-		</span>
-		<button
-			onclick={onClose}
-			class="rounded-md px-3 py-1 text-sm text-muted transition-colors hover:text-ink"
-		>
-			Close
-		</button>
+	<div class="flex h-full min-h-0 flex-col bg-surface-canvas">
+		<div class="flex items-center justify-between border-b border-line px-4 py-3">
+			<span class="text-sm font-medium text-ink">Canvas ({canvasStore.blockCount})</span>
+			<button
+				type="button"
+				onclick={onClose}
+				class="rounded-md px-3 py-1 text-sm text-muted transition-colors hover:text-ink"
+			>
+				Close
+			</button>
+		</div>
+		<div class="min-h-0 flex-1 overflow-hidden">
+			<Canvas
+				{onAction}
+				onScrollToMessage={(msgId: string) => {
+					onClose();
+					setTimeout(() => onScrollToMessage(msgId), 300);
+				}}
+				{onExecuteAction}
+			/>
+		</div>
 	</div>
-	<div class="flex-1 overflow-hidden">
-		<Canvas
-			{onAction}
-			onScrollToMessage={(msgId: string) => {
-				onClose();
-				setTimeout(() => onScrollToMessage(msgId), 300);
-			}}
-			{onExecuteAction}
-		/>
-	</div>
-</div>
+</MobileOverlayShell>

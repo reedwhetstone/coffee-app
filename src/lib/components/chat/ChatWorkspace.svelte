@@ -1102,7 +1102,7 @@
 </script>
 
 <!-- Main chat + canvas interface -->
-<div class="flex flex-col bg-surface-canvas {variant === 'page' ? 'h-screen' : 'h-full'}">
+<div class="flex h-full min-h-0 flex-col bg-surface-canvas">
 	<!-- Chat + Canvas split container -->
 	<div class="chat-canvas-container flex flex-1 overflow-hidden">
 		<!-- Chat pane: full width on mobile (the inline canvas pane is md+ only,
@@ -1134,6 +1134,7 @@
 					bind:containerEl={chatContainer}
 					onScroll={handleScroll}
 					onBlockAction={handleBlockAction}
+					onExecuteAction={executeAction}
 					onExampleSelect={(text) => (inputMessage = text)}
 				/>
 

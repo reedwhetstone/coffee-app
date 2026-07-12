@@ -159,12 +159,16 @@
 		<CookieBanner />
 	</div>
 {:else if data?.session?.user && !usesPublicShell}
-	<div class="flex min-h-screen">
+	<div class="flex {isChatRoute ? 'h-dvh overflow-hidden' : 'min-h-screen'}">
 		<LeftSidebar {data} onMenuChange={handleMenuChange} />
 		<MobileAppShell {data} />
 
-		<main class="{contentMargin} min-w-0 flex-1 transition-all duration-300 ease-out">
-			<div class="h-full overflow-x-clip px-4 pb-6 pt-20 sm:px-6 md:px-0 md:pb-0 md:pr-12 md:pt-4">
+		<main class="{contentMargin} min-h-0 min-w-0 flex-1 transition-all duration-300 ease-out">
+			<div
+				class="h-full overflow-x-clip {isChatRoute
+					? 'px-4 pt-20 sm:px-6 md:px-0 md:pr-12 md:pt-4'
+					: 'px-4 pb-6 pt-20 sm:px-6 md:px-0 md:pb-0 md:pr-12 md:pt-4'}"
+			>
 				{#if showClientRouteSkeleton}
 					<RouteSkeleton pathname={navigationTargetPathname} />
 				{:else}

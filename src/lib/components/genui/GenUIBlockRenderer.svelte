@@ -40,8 +40,28 @@
 </script>
 
 {#if renderMode === 'chat'}
-	<!-- Chat inline previews: compact styled links -->
-	<span class="genui-preview inline-block">
+	<!-- Small screens keep the evidence in the conversation. The compact preview
+	     remains the desktop affordance for jumping into the review canvas. -->
+	<div class="genui-inline-evidence w-full md:hidden">
+		{#if block.type === 'coffee-cards'}
+			<CoffeeCardsBlock {block} />
+		{:else if block.type === 'inventory-table'}
+			<InventoryTableBlock {block} {onAction} />
+		{:else if block.type === 'roast-profiles'}
+			<RoastProfilesBlock {block} {onAction} />
+		{:else if block.type === 'tasting-radar'}
+			<TastingRadarBlock {block} {onAction} />
+		{:else if block.type === 'roast-chart'}
+			<RoastChartBlock {block} />
+		{:else if block.type === 'action-card'}
+			<ActionCardBlock {block} onExecute={onExecuteAction} />
+		{:else if block.type === 'data-table'}
+			<DataTableBlock {block} {onAction} />
+		{:else if block.type === 'error'}
+			<ErrorBlock {block} />
+		{/if}
+	</div>
+	<span class="genui-preview hidden md:inline-block">
 		{#if block.type === 'coffee-cards'}
 			<CoffeeCardPreview {block} {onAction} {canvasBlockId} />
 		{:else if block.type === 'inventory-table'}

@@ -76,6 +76,7 @@
 	<div
 		role="alert"
 		class="mx-4 mt-2 flex items-center gap-2 rounded-lg border border-danger/40 bg-danger-subtle px-4 py-2 text-sm text-danger-strong"
+		role="alert"
 	>
 		<svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path
