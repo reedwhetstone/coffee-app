@@ -146,4 +146,26 @@ describe('ChatMessageList conversation controls', () => {
 			[{ type: 'focus-canvas-block', blockId: laterId }]
 		]);
 	});
+
+	it('disables compact evidence links after their canvas targets are cleared', () => {
+		const messages = [
+			{
+				id: 'assistant-tools',
+				role: 'assistant',
+				parts: [
+					{
+						type: 'tool-coffee_catalog_search',
+						toolName: 'coffee_catalog_search',
+						toolCallId: 'coffee-call',
+						state: 'output-available',
+						output: { coffees: [{ id: 7, name: 'Older coffee', country: 'Ethiopia' }] }
+					}
+				]
+			}
+		];
+
+		render(ChatMessageList, props(messages));
+
+		expect(screen.getByRole('button', { name: /Older coffee Ethiopia/ })).toBeDisabled();
+	});
 });

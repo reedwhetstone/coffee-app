@@ -42,7 +42,13 @@
 {#if renderMode === 'chat'}
 	<!-- Chat always renders compact links into the shared canvas. Full evidence blocks
 	     live in canvas mode on every viewport. -->
-	<span class="genui-preview inline-block">
+	<fieldset
+		disabled={!canvasBlockId && block.type !== 'error'}
+		title={!canvasBlockId && block.type !== 'error'
+			? 'No longer available in the evidence workspace'
+			: undefined}
+		class="genui-preview m-0 inline-block min-w-0 border-0 p-0 disabled:cursor-default disabled:opacity-60"
+	>
 		{#if block.type === 'coffee-cards'}
 			<CoffeeCardPreview {block} {onAction} {canvasBlockId} />
 		{:else if block.type === 'inventory-table'}
@@ -60,7 +66,7 @@
 		{:else if block.type === 'error'}
 			<ErrorPreview {block} />
 		{/if}
-	</span>
+	</fieldset>
 {:else}
 	<!-- Canvas full blocks -->
 	<div class="genui-block w-full">
