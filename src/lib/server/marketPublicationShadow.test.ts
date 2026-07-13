@@ -172,7 +172,50 @@ describe('market publication shadow comparison', () => {
 		});
 
 		expect(report.days[0].priceMedianAbsPctDelta.missingMedianPairs).toBe(1);
-		expect(report.verdict.reasons).toContain('2026-07-01 missing_price_median_pairs 1 > 0');
+		expect(
+			report.verdict.reasons.some((reason) =>
+				reason.startsWith('2026-07-01 missing_price_median_pairs 1 > 0:')
+			)
+		).toBe(true);
+	});
+
+	it('rejects duplicate segment identities instead of silently overwriting either side', () => {
+		const date = '2026-07-01';
+		const report = reportFor([date], {
+			publicationSegments: [segment(`publication-${date}`), segment(`publication-${date}`)],
+			legacySegments: [legacy(date), legacy(date)],
+			policy: {
+				...SHADOW_ACCEPTANCE_POLICIES['shadow-cutover-v1'],
+				version: 'test-duplicates',
+				minComparableDays: 1
+			}
+		});
+
+		expect(report.days[0].duplicatePublicationSegments).toHaveLength(1);
+		expect(report.days[0].duplicateLegacySegments).toHaveLength(1);
+		expect(report.verdict.reasons.some((reason) => reason.includes('duplicate publication'))).toBe(
+			true
+		);
+		expect(report.verdict.reasons.some((reason) => reason.includes('duplicate legacy'))).toBe(true);
+	});
+
+	it('rejects synthetic legacy rows defensively even though the loader filters them', () => {
+		const date = '2026-07-01';
+		const report = reportFor([date], {
+			legacySegments: [legacy(date, { synthetic: true })],
+			policy: {
+				...SHADOW_ACCEPTANCE_POLICIES['shadow-cutover-v1'],
+				version: 'test-synthetic',
+				minComparableDays: 1
+			}
+		});
+
+		expect(report.days[0].syntheticLegacySegments).toHaveLength(1);
+		expect(
+			report.verdict.reasons.some((reason) =>
+				reason.includes('synthetic legacy segments entered comparison')
+			)
+		).toBe(true);
 	});
 
 	it('does not pool incompatible policy or methodology versions', () => {
@@ -219,6 +262,48 @@ describe('market publication shadow comparison', () => {
 
 		expect(report.verdict.accepted).toBe(false);
 		expect(report.verdict.reasons).toContain('degraded_days 2 > 1');
+	});
+
+	it('rejects an unusable active day even after seven good comparable days', () => {
+		const dayList = dates(8);
+		const publications = dayList.map((date) => publication(date));
+		const report = reportFor(dayList, {
+			publications,
+			publicationSegments: publications.map((row, index) =>
+				segment(row.id, index === 7 ? { price_median: null } : {})
+			)
+		});
+
+		expect(report.summary.comparableDays).toBe(7);
+		expect(report.verdict.accepted).toBe(false);
+		expect(report.verdict.reasons).toContain(`${dayList[7]} has no usable matched median pairs`);
+		expect(
+			report.verdict.reasons.some((reason) =>
+				reason.startsWith(`${dayList[7]} missing_price_median_pairs 1 > 0:`)
+			)
+		).toBe(true);
+	});
+
+	it('rejects an active day whose only matched pair has a zero legacy baseline mismatch', () => {
+		const dayList = dates(8);
+		const publications = dayList.map((date) => publication(date));
+		const report = reportFor(dayList, {
+			publications,
+			publicationSegments: publications.map((row, index) =>
+				segment(row.id, index === 7 ? { price_median: 1 } : {})
+			),
+			legacySegments: dayList.map((date, index) =>
+				legacy(date, index === 7 ? { price_median: 0 } : {})
+			)
+		});
+
+		expect(report.summary.comparableDays).toBe(7);
+		expect(report.verdict.reasons).toContain(`${dayList[7]} has no usable matched median pairs`);
+		expect(
+			report.verdict.reasons.some((reason) =>
+				reason.startsWith(`${dayList[7]} has non-comparable zero legacy medians:`)
+			)
+		).toBe(true);
 	});
 
 	it('accepts every configured threshold edge and rejects the first value beyond it', () => {
@@ -270,7 +355,7 @@ describe('market publication shadow comparison', () => {
 		);
 	});
 
-	it('rejects p95 price and supplier-count divergence above their named bounds', () => {
+	it('rejects per-day p95 price and supplier-count divergence above their named bounds', () => {
 		const date = '2026-07-01';
 		const current = Array.from({ length: 20 }, (_, index) =>
 			segment(`publication-${date}`, {
@@ -296,7 +381,47 @@ describe('market publication shadow comparison', () => {
 
 		expect(report.summary.priceMedianAbsPctDelta?.p95).toBe(0.2);
 		expect(report.summary.supplierCountAbsDivergence?.p95).toBe(4);
-		expect(report.verdict.reasons).toContain('p95_price_divergence above 0.15');
-		expect(report.verdict.reasons).toContain('p95_supplier_count_divergence above 3');
+		expect(report.verdict.reasons).toContain('2026-07-01 p95_price_divergence above 0.15');
+		expect(report.verdict.reasons).toContain('2026-07-01 p95_supplier_count_divergence above 3');
+	});
+
+	it('prevents high-volume good days from diluting one bad day', () => {
+		const dayList = dates(7);
+		const publications = dayList.map((date) => publication(date));
+		const publicationSegments = publications.flatMap((row, dayIndex) =>
+			Array.from({ length: dayIndex === 6 ? 1 : 100 }, (_, segmentIndex) =>
+				segment(row.id, {
+					origin: `Origin ${segmentIndex}`,
+					price_median: dayIndex === 6 ? 20 : 10
+				})
+			)
+		);
+		const legacySegments = dayList.flatMap((date, dayIndex) =>
+			Array.from({ length: dayIndex === 6 ? 1 : 100 }, (_, segmentIndex) =>
+				legacy(date, { origin: `Origin ${segmentIndex}` })
+			)
+		);
+		const report = reportFor(dayList, { publications, publicationSegments, legacySegments });
+
+		expect(report.summary.priceMedianAbsPctDelta?.median).toBe(0);
+		expect(report.verdict.reasons).toContain(`${dayList[6]} median_price_divergence above 0.05`);
+		expect(report.verdict.reasons).toContain(`${dayList[6]} max_price_divergence above 0.5`);
+	});
+
+	it('rejects an extreme supplier-count outlier through the versioned maximum gate', () => {
+		const date = '2026-07-01';
+		const report = reportFor([date], {
+			publicationSegments: [segment(`publication-${date}`, { supplier_count: 20 })],
+			legacySegments: [legacy(date, { supplier_count: 4 })],
+			policy: {
+				...SHADOW_ACCEPTANCE_POLICIES['shadow-cutover-v1'],
+				version: 'test-supplier-max',
+				minComparableDays: 1,
+				maxMedianSupplierCountDivergence: 100,
+				maxP95SupplierCountDivergence: 100
+			}
+		});
+
+		expect(report.verdict.reasons).toContain('2026-07-01 max_supplier_count_divergence above 5');
 	});
 });
