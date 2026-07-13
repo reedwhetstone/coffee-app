@@ -319,6 +319,9 @@ begin
   select * into strict v_locked_set from public.supplier_observation_sets
   where id = p_observation_set_id for update;
   if v_locked_set.is_complete then raise exception 'Complete supplier observation sets are immutable'; end if;
+  if v_locked_set.status <> 'partial' then
+    raise exception 'Only partial supplier observation sets can be sealed';
+  end if;
   if v_locked_set.scrape_run_id <> v_unlocked_set.scrape_run_id
     or v_locked_set.source <> v_unlocked_set.source
     or v_locked_set.lease_fence <> v_unlocked_set.lease_fence then

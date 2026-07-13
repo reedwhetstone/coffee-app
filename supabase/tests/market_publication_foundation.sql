@@ -9,6 +9,7 @@ declare
   v_lifecycle_run uuid;
   v_recovery_run uuid;
   v_fence bigint;
+  v_failed_fence bigint;
   v_zero_fence bigint;
   v_stale_fence bigint;
   v_new_fence bigint;
@@ -19,6 +20,7 @@ declare
   v_unknown_zero_fence bigint;
   v_legacy_zero_fence bigint;
   v_set uuid;
+  v_failed_set uuid;
   v_zero_set uuid;
   v_stale_set uuid;
   v_late_set uuid;
@@ -75,6 +77,24 @@ begin
     raise exception 'complete observation set was mutable';
   exception when others then
     if sqlerrm = 'complete observation set was mutable' then raise; end if;
+  end;
+
+  -- Failed captures remain incomplete even when they contain partial rows.
+  v_failed_fence := public.acquire_supplier_scrape_lease('failed-fixture', v_other_run, interval '1 hour');
+  insert into public.supplier_observation_sets
+    (scrape_run_id, lease_fence, source, observed_at, status, expected_item_count)
+  values (v_other_run, v_failed_fence, 'failed-fixture', now(), 'failed', 1)
+  returning id into v_failed_set;
+  insert into public.coffee_price_observations
+    (observation_set_id, catalog_id, source, observed_at, price, stocked)
+  select v_failed_set, v_catalog_id, 'failed-fixture', observed_at, 10, true
+  from public.supplier_observation_sets where id = v_failed_set;
+  begin
+    perform public.seal_supplier_observation_set(v_failed_set, v_failed_fence, 1, 1);
+    raise exception 'failed observation set was accepted as complete';
+  exception when others then
+    if sqlerrm = 'failed observation set was accepted as complete' then raise; end if;
+    if position('Only partial supplier observation sets can be sealed' in sqlerrm) = 0 then raise; end if;
   end;
 
   -- An expired lease always advances the fence, even for the same scrape run.
