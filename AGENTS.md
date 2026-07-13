@@ -173,7 +173,7 @@ When changing docs, keep these sources aligned:
 - Do not claim an endpoint is public unless it truly is
 - Do not describe the platform `/api/catalog` tree as the canonical catalog contract; that is `https://api.purveyors.io/v1/catalog`
 - Document `https://api.purveyors.io/v1/catalog/{id}/similar` as beta candidate matching, not canonical identity resolution. Preserve auth requirements, query bounds, 401/403/404/429 behavior, and cautious confidence copy.
-- Do not flatten CLI auth into one rule: catalog commands require an authenticated viewer session; inventory, roast, sales, and tasting require the member role; config, context, and manifest are local or onboarding surfaces that do not require auth; `purvey manifest` is the preferred machine-readable contract; `purvey context --json` and `--pretty` are compatibility-parity aliases for callers already using the context entrypoint; and `--csv` is invalid for context or manifest
+- Do not flatten CLI auth into one rule: catalog search, get, and stats require a Parchment API key with `catalog:read`; structured process filters require member access, and catalog similar additionally requires a member-owned key or an API Origin/Enterprise key; inventory, roast, sales, and tasting require the member role and matching scopes; config, context, and manifest are local or onboarding surfaces that do not require auth; `purvey manifest` is the preferred machine-readable contract; `purvey context --json` and `--pretty` are compatibility-parity aliases for callers already using the context entrypoint; and `--csv` is invalid for context or manifest
 - Do not invent filter/query behavior that the route does not implement
 - Be explicit about auth model, tier limits, row-limit headers, share-token behavior, and session requirements
 - If analytics are a product surface but not a public REST surface, say that clearly
@@ -185,8 +185,9 @@ The web app uses session-mode `@purveyors/sdk` clients in `src/lib/services/tool
 
 CLI auth and output rules matter here too:
 
-- `purvey catalog *` requires an authenticated viewer session
-- `purvey inventory`, `roast`, `sales`, and `tasting` require the member role
+- `purvey auth login` uses browser OAuth once to mint and store a scoped Parchment API key; it does not retain session access or refresh tokens
+- `purvey catalog search`, `get`, and `stats` require a Parchment API key with `catalog:read`; structured process filters require member access, and `purvey catalog similar` additionally requires a member-owned key or an API Origin/Enterprise key
+- `purvey inventory`, `roast`, `sales`, and `tasting` require a member-owned API key with the matching scopes
 - `purvey config`, `purvey context`, and `purvey manifest` do not require auth
 - `purvey context` is the shipped dense agent reference and prints text output by default
 - `purvey manifest` is the preferred machine-readable contract, and `purvey context --json` / `--pretty` provide manifest-parity output for compatibility

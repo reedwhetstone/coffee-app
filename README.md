@@ -73,8 +73,9 @@ This repo does not depend on the CLI package. Coffee-app and the CLI independent
 
 CLI auth and output rules are part of the platform contract:
 
-- `purvey catalog *` requires an authenticated viewer session, including `purvey catalog similar <id>`
-- `purvey inventory`, `roast`, `sales`, and `tasting` require the member role
+- `purvey auth login` uses browser OAuth once to mint and store a scoped Parchment API key; it does not retain session access or refresh tokens
+- `purvey catalog search`, `get`, and `stats` require a Parchment API key with `catalog:read`; structured process filters require member access, and `purvey catalog similar <id>` additionally requires a member-owned key or an API Origin/Enterprise key
+- `purvey inventory`, `roast`, `sales`, and `tasting` require a member-owned API key with the matching scopes
 - `purvey config`, `purvey context`, and `purvey manifest` do not require auth
 - `purvey manifest` is the preferred stable machine-readable contract for shells and agents
 - `purvey context` is the shipped dense agent reference; `purvey context --json` and `--pretty` emit manifest-parity output for compatibility
