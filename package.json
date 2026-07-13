@@ -16,6 +16,7 @@
 		"verify:catalog-http-contract": "tsx scripts/verify-catalog-http-contract.ts",
 		"verify:market-publication-migration": "tsx scripts/verify-market-publication-migration.ts",
 		"verify:market-publication-concurrency": "bash scripts/verify-market-publication-concurrency.sh",
+		"verify:market-publication-builder": "bash scripts/verify-market-publication-builder.sh",
 		"env:check": "node scripts/check-env-contract.mjs check",
 		"env:check:e2e": "node scripts/check-env-contract.mjs e2e",
 		"worktree:bootstrap": "bash scripts/bootstrap-worktree-env.sh",
