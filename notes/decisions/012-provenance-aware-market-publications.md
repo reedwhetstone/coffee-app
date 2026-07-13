@@ -13,7 +13,11 @@ The production cohort also cannot be inferred from every source registered in sc
 
 Market data is built from immutable, supplier-level observation sets. Each observation keeps its true `observed_at`; carried inputs reference the prior complete set and never acquire today's date or fresh stock confidence. Legacy backfill may be labeled `unknown` or `legacy` rather than claiming completeness.
 
+Legacy and unknown-completeness sets are not eligible for production publications. Making reconstructed history publishable requires a separate reviewed backfill policy and methodology version; it cannot reuse the ordinary fresh/carried path.
+
 An explicit, versioned cohort defines expected production suppliers, their weights, enablement, and maximum carry-forward age. Daily publication candidates each own an exact source-to-observation-set manifest and a complete set of publication-scoped aggregates. Candidates can coexist. Promotion selects exactly one active publication per date and cohort atomically; active inputs and aggregates are immutable. A suppressed candidate does not patch the last good publication.
+
+Child writes lock their observation-set or publication parent. Completion and sealing transitions acquire the same row locks, so a child write either commits before the parent is sealed or observes the sealed parent and fails. Cohort definitions and membership become immutable as soon as any candidate references that cohort version.
 
 Quality policy is versioned separately from schema. The initial policy direction is healthy at at least 80% expected-supplier coverage, 70% item coverage, and no more than 20% stale share; degraded at at least 60%, 50%, and no more than 40%; below that is suppressed. These values remain policy inputs so they can change without schema surgery.
 
