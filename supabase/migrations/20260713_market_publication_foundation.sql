@@ -1,5 +1,6 @@
--- Provenance-aware supplier observations and atomic market publications.
--- Additive foundation: legacy snapshot readers and writers remain unchanged.
+-- Additive provenance and cohort storage only.
+-- This migration deliberately contains no publication, aggregate, reader, or
+-- activation primitive. Legacy snapshot readers and writers remain unchanged.
 
 create extension if not exists btree_gist;
 
@@ -7,19 +8,37 @@ create table public.scrape_runs (
   id uuid primary key default gen_random_uuid(),
   command text not null check (length(btrim(command)) > 0),
   code_revision text,
+  publication_scope text not null default 'non-production'
+    check (publication_scope in ('production', 'non-production')),
   requested_source_count integer not null default 0 check (requested_source_count >= 0),
-  selected_source_count integer not null default 0 check (selected_source_count >= 0 and selected_source_count <= requested_source_count),
+  selected_source_count integer not null default 0
+    check (selected_source_count >= 0 and selected_source_count <= requested_source_count),
   started_at timestamptz not null default now(),
   completed_at timestamptz,
-  status text not null default 'running' check (status in ('running', 'succeeded', 'degraded', 'failed', 'cancelled', 'legacy')),
+  status text not null default 'running'
+    check (status in ('running', 'succeeded', 'degraded', 'failed', 'cancelled', 'legacy')),
   created_at timestamptz not null default now(),
-  check (completed_at is null or completed_at >= started_at)
+  check (completed_at is null or completed_at >= started_at),
+  check ((status = 'running') = (completed_at is null))
 );
+
+-- One supplier may be captured by only one live scrape run at a time. The
+-- monotonic fence prevents an expired worker from sealing a newer worker's set.
+create table public.supplier_scrape_leases (
+  source text primary key check (length(btrim(source)) > 0 and source = btrim(source)),
+  scrape_run_id uuid not null references public.scrape_runs(id) on delete restrict,
+  fence bigint not null check (fence > 0),
+  acquired_at timestamptz not null,
+  expires_at timestamptz not null,
+  check (expires_at > acquired_at)
+);
+create sequence public.supplier_scrape_lease_fence_seq;
 
 create table public.supplier_observation_sets (
   id uuid primary key default gen_random_uuid(),
   scrape_run_id uuid references public.scrape_runs(id) on delete restrict,
-  source text not null check (length(btrim(source)) > 0),
+  lease_fence bigint check (lease_fence is null or lease_fence > 0),
+  source text not null check (length(btrim(source)) > 0 and source = btrim(source)),
   observed_at timestamptz not null,
   status text not null check (status in ('complete', 'partial', 'failed', 'skipped', 'unknown', 'legacy')),
   completeness text not null default 'known' check (completeness in ('known', 'unknown', 'legacy')),
@@ -39,7 +58,7 @@ create table public.coffee_price_observations (
   id bigint generated always as identity primary key,
   observation_set_id uuid not null,
   catalog_id integer not null references public.coffee_catalog(id) on delete restrict,
-  source text not null check (length(btrim(source)) > 0),
+  source text not null check (length(btrim(source)) > 0 and source = btrim(source)),
   observed_at timestamptz not null,
   price numeric(12, 4) check (price is null or price >= 0),
   price_tiers jsonb,
@@ -50,7 +69,8 @@ create table public.coffee_price_observations (
   grade text,
   created_at timestamptz not null default now(),
   unique (observation_set_id, catalog_id),
-  foreign key (observation_set_id, source) references public.supplier_observation_sets(id, source) on delete restrict,
+  foreign key (observation_set_id, source)
+    references public.supplier_observation_sets(id, source) on delete restrict,
   check (price_tiers is null or jsonb_typeof(price_tiers) = 'array')
 );
 
@@ -59,333 +79,97 @@ create table public.market_index_cohorts (
   cohort_key text not null check (length(btrim(cohort_key)) > 0),
   version integer not null check (version > 0),
   methodology_version text not null check (length(btrim(methodology_version)) > 0),
-  expected_source_count integer not null check (expected_source_count >= 0),
   description text,
   effective_from date not null,
+  -- Exclusive. Retire v1 at the same boundary where v2 begins.
   effective_to date,
+  frozen_at timestamptz,
   created_at timestamptz not null default now(),
   unique (cohort_key, version),
   exclude using gist (
     cohort_key with =,
-    daterange(effective_from, effective_to, '[]') with &&
+    daterange(effective_from, effective_to, '[)') with &&
   ),
-  check (effective_to is null or effective_to >= effective_from)
+  check (effective_to is null or effective_to > effective_from)
 );
 
 create table public.market_index_cohort_sources (
   cohort_id uuid not null references public.market_index_cohorts(id) on delete restrict,
-  source text not null check (length(btrim(source)) > 0),
-  carry_forward_ttl interval not null default interval '3 days' check (carry_forward_ttl >= interval '0 seconds'),
+  source text not null check (length(btrim(source)) > 0 and source = btrim(source)),
   source_weight numeric(12, 6) not null default 1 check (source_weight > 0),
   enabled boolean not null default true,
   created_at timestamptz not null default now(),
   primary key (cohort_id, source)
 );
 
-create table public.market_publications (
-  id uuid primary key default gen_random_uuid(),
-  as_of_date date not null,
-  cohort_id uuid not null references public.market_index_cohorts(id) on delete restrict,
-  status text not null default 'candidate' check (status in ('candidate', 'active', 'rejected')),
-  policy_version text not null check (length(btrim(policy_version)) > 0),
-  methodology_version text not null check (length(btrim(methodology_version)) > 0),
-  expected_source_count integer not null check (expected_source_count >= 0),
-  represented_source_count integer not null default 0 check (represented_source_count >= 0),
-  fresh_source_count integer not null default 0 check (fresh_source_count >= 0),
-  carried_source_count integer not null default 0 check (carried_source_count >= 0),
-  expired_source_count integer not null default 0 check (expired_source_count >= 0),
-  expected_item_count integer check (expected_item_count is null or expected_item_count >= 0),
-  represented_item_count integer not null default 0 check (represented_item_count >= 0),
-  fresh_item_count integer not null default 0 check (fresh_item_count >= 0),
-  carried_item_count integer not null default 0 check (carried_item_count >= 0),
-  price_index_count integer not null default 0 check (price_index_count >= 0),
-  supplier_coverage_ratio numeric(8, 6) check (supplier_coverage_ratio between 0 and 1),
-  item_coverage_ratio numeric(8, 6) check (item_coverage_ratio between 0 and 1),
-  stale_share numeric(8, 6) check (stale_share between 0 and 1),
-  oldest_observed_at timestamptz,
-  max_observation_age interval check (max_observation_age is null or max_observation_age >= interval '0 seconds'),
-  quality_tier text not null check (quality_tier in ('healthy', 'degraded', 'suppressed', 'unknown', 'legacy')),
-  quality_score numeric(8, 6) check (quality_score between 0 and 1),
-  sealed_at timestamptz,
-  published_at timestamptz,
-  rejected_at timestamptz,
-  created_at timestamptz not null default now(),
-  check (fresh_source_count + carried_source_count <= represented_source_count),
-  check (represented_source_count <= expected_source_count),
-  check (represented_source_count + expired_source_count <= expected_source_count),
-  check (fresh_item_count + carried_item_count <= represented_item_count),
-  check (status <> 'active' or (published_at is not null and sealed_at is not null)),
-  check (status <> 'candidate' or (published_at is null and sealed_at is null)),
-  check (status <> 'candidate' or rejected_at is null),
-  check (status <> 'rejected' or rejected_at is not null)
-);
+-- Cardinality is always derived from membership, never copied into cohort rows.
+create view public.market_index_cohort_enabled_counts as
+select cohort.id as cohort_id, count(source.source)::integer as enabled_source_count
+from public.market_index_cohorts cohort
+left join public.market_index_cohort_sources source
+  on source.cohort_id = cohort.id and source.enabled
+group by cohort.id;
 
-create unique index market_publications_one_active_per_date_cohort
-  on public.market_publications (as_of_date, cohort_id) where status = 'active';
-create index market_publications_candidates on public.market_publications (as_of_date desc, cohort_id, quality_score desc) where status = 'candidate';
-
-create table public.market_publication_inputs (
-  publication_id uuid not null references public.market_publications(id) on delete restrict,
-  source text not null,
-  observation_set_id uuid not null,
-  freshness text not null check (freshness in ('fresh', 'carried')),
-  observation_age interval not null check (observation_age >= interval '0 seconds'),
-  stock_confidence text not null default 'observed' check (stock_confidence in ('observed', 'carried', 'unknown')),
-  created_at timestamptz not null default now(),
-  primary key (publication_id, source),
-  unique (publication_id, observation_set_id),
-  foreign key (observation_set_id, source) references public.supplier_observation_sets(id, source) on delete restrict
-);
-
-create table public.market_publication_price_indexes (
-  id bigint generated always as identity primary key,
-  publication_id uuid not null references public.market_publications(id) on delete restrict,
-  origin text not null,
-  process text,
-  grade text,
-  wholesale_only boolean not null default false,
-  supplier_count integer not null check (supplier_count > 0),
-  sample_size integer not null check (sample_size > 0 and supplier_count <= sample_size),
-  price_min numeric(12, 4) check (price_min is null or price_min >= 0),
-  price_max numeric(12, 4) check (price_max is null or price_max >= 0),
-  price_avg numeric(12, 4) check (price_avg is null or price_avg >= 0),
-  price_median numeric(12, 4) check (price_median is null or price_median >= 0),
-  price_p25 numeric(12, 4) check (price_p25 is null or price_p25 >= 0),
-  price_p75 numeric(12, 4) check (price_p75 is null or price_p75 >= 0),
-  price_stdev numeric(12, 4) check (price_stdev is null or price_stdev >= 0),
-  aggregation_tier smallint not null check (aggregation_tier in (1, 2, 3)),
-  created_at timestamptz not null default now(),
-  check (price_min is null or price_p25 is null or price_min <= price_p25),
-  check (price_p25 is null or price_median is null or price_p25 <= price_median),
-  check (price_median is null or price_p75 is null or price_median <= price_p75),
-  check (price_p75 is null or price_max is null or price_p75 <= price_max),
-  check (price_min is null or price_avg is null or price_min <= price_avg),
-  check (price_avg is null or price_max is null or price_avg <= price_max)
-);
-create unique index market_publication_price_indexes_segment
-  on public.market_publication_price_indexes
-  (publication_id, origin, coalesce(process, ''), coalesce(grade, ''), wholesale_only);
-
-create or replace function public.guard_market_publication_artifact()
-returns trigger language plpgsql set search_path = public as $$
+create or replace function public.acquire_supplier_scrape_lease(
+  p_source text,
+  p_scrape_run_id uuid,
+  p_ttl interval default interval '6 hours'
+) returns bigint language plpgsql security definer
+set search_path = public, pg_temp as $$
 declare
-  v_id uuid;
-  v_sealed_at timestamptz;
-  v_publication_status text;
-  v_set_complete boolean;
-  v_set_status text;
-  v_set_completeness text;
-  v_observed_at timestamptz;
-  v_as_of_date date;
-  v_cutoff timestamptz;
-  v_ttl interval;
+  v_now timestamptz := clock_timestamp();
+  v_fence bigint;
 begin
-  for v_id in
-    select distinct id from unnest(array[
-      case when tg_op <> 'INSERT' then old.publication_id end,
-      case when tg_op <> 'DELETE' then new.publication_id end
-    ]) id where id is not null order by id
-  loop
-    select sealed_at, status into strict v_sealed_at, v_publication_status
-      from public.market_publications where id = v_id for update;
-    if v_sealed_at is not null or v_publication_status = 'rejected' then
-      raise exception 'Sealed or rejected market publication artifacts are immutable';
-    end if;
-  end loop;
-
-  if tg_table_name = 'market_publication_inputs' and tg_op <> 'DELETE' then
-    select is_complete, status, completeness, observed_at
-      into strict v_set_complete, v_set_status, v_set_completeness, v_observed_at
-      from public.supplier_observation_sets where id = new.observation_set_id for update;
-    if not v_set_complete or v_set_status <> 'complete' or v_set_completeness <> 'known' then
-      raise exception 'Publication inputs require a complete, known-completeness supplier observation set';
-    end if;
-    select cs.carry_forward_ttl, p.as_of_date into strict v_ttl, v_as_of_date
-      from public.market_publications p
-      join public.market_index_cohort_sources cs on cs.cohort_id = p.cohort_id and cs.source = new.source
-      where p.id = new.publication_id and cs.enabled;
-    -- Publications use the exclusive UTC end-of-day cutoff. This makes age
-    -- deterministic for a date and independent of builder clock or time zone.
-    v_cutoff := ((v_as_of_date + 1)::timestamp at time zone 'UTC');
-    if v_observed_at >= v_cutoff then
-      raise exception 'Publication input observation is after its UTC as-of date';
-    end if;
-    new.observation_age := v_cutoff - v_observed_at;
-    if v_observed_at >= (v_as_of_date::timestamp at time zone 'UTC') then
-      if new.freshness <> 'fresh' then raise exception 'Same-day observation must be labeled fresh'; end if;
-    else
-      if new.freshness <> 'carried' then raise exception 'Prior-day observation must be labeled carried'; end if;
-    end if;
-    if new.freshness = 'carried' and new.observation_age > v_ttl then
-      raise exception 'Carried publication input exceeds cohort source TTL';
-    end if;
-    if new.freshness = 'carried' and new.stock_confidence = 'observed' then
-      raise exception 'Carried publication input cannot assert freshly observed stock';
-    end if;
+  if p_source is null or p_source = '' or p_source <> btrim(p_source) then
+    raise exception 'source must be a non-empty canonical source key';
   end if;
-  if tg_op = 'DELETE' then return old; else return new; end if;
+  if p_scrape_run_id is null then raise exception 'scrape_run_id is required'; end if;
+  if p_ttl is null or p_ttl <= interval '0 seconds' then
+    raise exception 'lease TTL must be greater than zero';
+  end if;
+
+  perform 1 from public.scrape_runs run
+  where run.id = p_scrape_run_id and run.status = 'running' and run.completed_at is null
+  for update;
+  if not found then raise exception 'supplier scrape leases require a running scrape run'; end if;
+
+  insert into public.supplier_scrape_leases(source, scrape_run_id, fence, acquired_at, expires_at)
+  values (p_source, p_scrape_run_id, nextval('public.supplier_scrape_lease_fence_seq'), v_now, v_now + p_ttl)
+  on conflict (source) do update
+  set scrape_run_id = excluded.scrape_run_id,
+      fence = case
+        when public.supplier_scrape_leases.scrape_run_id = excluded.scrape_run_id
+          then public.supplier_scrape_leases.fence
+        else excluded.fence
+      end,
+      acquired_at = excluded.acquired_at,
+      expires_at = excluded.expires_at
+  where public.supplier_scrape_leases.expires_at <= v_now
+     or public.supplier_scrape_leases.scrape_run_id = excluded.scrape_run_id
+  returning public.supplier_scrape_leases.fence into v_fence;
+  return v_fence;
 end $$;
 
-create trigger guard_active_publication_inputs before insert or update or delete on public.market_publication_inputs
-  for each row execute function public.guard_market_publication_artifact();
-create trigger guard_active_publication_aggregates before insert or update or delete on public.market_publication_price_indexes
-  for each row execute function public.guard_market_publication_artifact();
-
-create or replace function public.guard_market_publication_lifecycle()
-returns trigger language plpgsql set search_path = public as $$
-declare
-  v_expected_source_count integer;
-  v_methodology_version text;
-  v_effective_from date;
-  v_effective_to date;
-  v_manifest_source_count bigint;
-  v_fresh_source_count bigint;
-  v_carried_source_count bigint;
-  v_represented_item_count bigint;
-  v_fresh_item_count bigint;
-  v_carried_item_count bigint;
-  v_price_index_count bigint;
-  v_oldest_observed_at timestamptz;
-  v_max_observation_age interval;
+create or replace function public.release_supplier_scrape_lease(
+  p_source text,
+  p_scrape_run_id uuid,
+  p_fence bigint
+) returns boolean language plpgsql security definer
+set search_path = public, pg_temp as $$
 begin
-  if tg_op = 'INSERT' then
-    if new.status <> 'candidate' or new.sealed_at is not null or new.published_at is not null or new.rejected_at is not null then
-      raise exception 'Market publications must be inserted as unsealed candidates';
-    end if;
-    select expected_source_count, methodology_version, effective_from, effective_to
-      into strict v_expected_source_count, v_methodology_version, v_effective_from, v_effective_to
-      from public.market_index_cohorts where id = new.cohort_id for update;
-    if new.expected_source_count <> v_expected_source_count or new.methodology_version <> v_methodology_version then
-      raise exception 'Publication cohort metrics and methodology must match its frozen cohort version';
-    end if;
-    if new.as_of_date < v_effective_from or (v_effective_to is not null and new.as_of_date > v_effective_to) then
-      raise exception 'Publication date is outside its cohort effective window';
-    end if;
-    return new;
+  if p_source is null or p_source = '' or p_source <> btrim(p_source) then
+    raise exception 'source must be a non-empty canonical source key';
   end if;
-
-  if tg_op = 'DELETE' then
-    if old.status <> 'candidate' then raise exception 'Active and rejected market publications are immutable'; end if;
-    return old;
-  end if;
-
-  if new.id <> old.id or new.as_of_date <> old.as_of_date or new.cohort_id <> old.cohort_id
-    or new.policy_version <> old.policy_version or new.methodology_version <> old.methodology_version
-    or new.created_at <> old.created_at then
-    raise exception 'Publication identity, cohort, policy, methodology, and date are immutable';
-  end if;
-  select expected_source_count, methodology_version, effective_from, effective_to
-    into strict v_expected_source_count, v_methodology_version, v_effective_from, v_effective_to
-    from public.market_index_cohorts where id = new.cohort_id for update;
-  if new.expected_source_count <> v_expected_source_count or new.methodology_version <> v_methodology_version then
-    raise exception 'Publication cohort metrics and methodology must match its frozen cohort version';
-  end if;
-  if new.as_of_date < v_effective_from or (v_effective_to is not null and new.as_of_date > v_effective_to) then
-    raise exception 'Publication date is outside its cohort effective window';
-  end if;
-  if old.status = 'rejected' then raise exception 'Rejected market publications are terminal'; end if;
-  if old.status = 'candidate' and new.status = 'candidate' then return new; end if;
-  if old.status = 'candidate' and new.status = 'active' then
-    if new.sealed_at is null or new.published_at is null or new.rejected_at is not null then
-      raise exception 'Active promotion requires sealed_at and published_at only';
-    end if;
-    if old.quality_tier not in ('healthy', 'degraded') or new.quality_tier not in ('healthy', 'degraded') then
-      raise exception 'Only healthy or degraded market publications may become active';
-    end if;
-    select count(*),
-      count(*) filter (where i.freshness = 'fresh'),
-      count(*) filter (where i.freshness = 'carried'),
-      coalesce(sum(s.observed_item_count), 0),
-      coalesce(sum(s.observed_item_count) filter (where i.freshness = 'fresh'), 0),
-      coalesce(sum(s.observed_item_count) filter (where i.freshness = 'carried'), 0),
-      min(s.observed_at),
-      max(i.observation_age)
-      into v_manifest_source_count, v_fresh_source_count, v_carried_source_count,
-        v_represented_item_count, v_fresh_item_count, v_carried_item_count,
-        v_oldest_observed_at, v_max_observation_age
-      from public.market_publication_inputs i
-      join public.supplier_observation_sets s on s.id = i.observation_set_id
-      where i.publication_id = new.id;
-    if v_manifest_source_count <> new.represented_source_count then
-      raise exception 'Publication manifest source count must match represented_source_count';
-    end if;
-    if v_fresh_source_count <> new.fresh_source_count
-      or v_carried_source_count <> new.carried_source_count then
-      raise exception 'Publication manifest freshness counts must match publication source counts';
-    end if;
-    if v_represented_item_count <> new.represented_item_count
-      or v_fresh_item_count <> new.fresh_item_count
-      or v_carried_item_count <> new.carried_item_count then
-      raise exception 'Publication manifest item counts must match complete observation sets';
-    end if;
-    -- Coverage, staleness, and age are publication facts, not builder claims.
-    -- Derive them from the sealed manifest immediately before activation.
-    new.supplier_coverage_ratio := case when new.expected_source_count = 0 then null
-      else round(v_manifest_source_count::numeric / new.expected_source_count, 6) end;
-    new.item_coverage_ratio := case when new.expected_item_count is null or new.expected_item_count = 0 then null
-      else round(v_represented_item_count::numeric / new.expected_item_count, 6) end;
-    new.stale_share := case when v_manifest_source_count = 0 then null
-      else round(v_carried_source_count::numeric / v_manifest_source_count, 6) end;
-    new.oldest_observed_at := v_oldest_observed_at;
-    new.max_observation_age := v_max_observation_age;
-    select count(*) into v_price_index_count
-      from public.market_publication_price_indexes where publication_id = new.id;
-    if new.price_index_count = 0 or v_price_index_count <> new.price_index_count then
-      raise exception 'Publication aggregate row count must be positive and match price_index_count';
-    end if;
-    if exists (
-      select 1 from public.market_publication_price_indexes
-      where publication_id = new.id
-        and (supplier_count > v_manifest_source_count or sample_size > v_represented_item_count)
-    ) then
-      raise exception 'Publication aggregate samples cannot exceed manifest source or item coverage';
-    end if;
-    if exists (
-      select 1
-      from public.market_publication_price_indexes a
-      cross join lateral (
-        select count(*)::integer as sample_size,
-          count(distinct o.source)::integer as supplier_count
-        from public.market_publication_inputs i
-        join public.coffee_price_observations o on o.observation_set_id = i.observation_set_id
-        where i.publication_id = new.id
-          and o.origin = a.origin
-          and o.process is not distinct from a.process
-          and o.grade is not distinct from a.grade
-          and (o.wholesale is true) = a.wholesale_only
-          and o.stocked is true
-          and o.price is not null
-          and o.price > 0
-      ) observed_segment
-      where a.publication_id = new.id
-        and (a.sample_size <> observed_segment.sample_size
-          or a.supplier_count <> observed_segment.supplier_count)
-    ) then
-      raise exception 'Publication aggregate segment must match manifest observations';
-    end if;
-    return new;
-  end if;
-  if old.status = 'candidate' and new.status = 'rejected' then
-    if new.sealed_at is not null or new.published_at is not null or new.rejected_at is null then
-      raise exception 'Candidate rejection requires only rejected_at';
-    end if;
-    return new;
-  end if;
-  if old.status = 'active' and new.status = 'rejected' then
-    if (to_jsonb(new) - array['status', 'rejected_at']) <> (to_jsonb(old) - array['status', 'rejected_at'])
-      or new.rejected_at is null then
-      raise exception 'Only retirement metadata may change when replacing an active publication';
-    end if;
-    return new;
-  end if;
-  raise exception 'Invalid market publication lifecycle transition: % to %', old.status, new.status;
+  if p_scrape_run_id is null then raise exception 'scrape_run_id is required'; end if;
+  if p_fence is null or p_fence <= 0 then raise exception 'lease fence is required'; end if;
+  delete from public.supplier_scrape_leases lease
+  where lease.source = p_source and lease.scrape_run_id = p_scrape_run_id and lease.fence = p_fence;
+  return found;
 end $$;
-create trigger guard_market_publication_lifecycle before insert or update or delete on public.market_publications
-  for each row execute function public.guard_market_publication_lifecycle();
 
 create or replace function public.guard_observation_artifact()
 returns trigger language plpgsql set search_path = public as $$
-declare v_set_id uuid; v_complete boolean;
+declare v_set_id uuid; v_complete boolean; v_parent_observed_at timestamptz;
 begin
   for v_set_id in
     select distinct id from unnest(array[
@@ -393,9 +177,13 @@ begin
       case when tg_op <> 'DELETE' then new.observation_set_id end
     ]) id where id is not null order by id
   loop
-    select is_complete into strict v_complete
-      from public.supplier_observation_sets where id = v_set_id for update;
+    select is_complete, observed_at into strict v_complete, v_parent_observed_at
+    from public.supplier_observation_sets where id = v_set_id for update;
     if v_complete then raise exception 'Complete supplier observation sets are immutable'; end if;
+    if tg_op <> 'DELETE' and new.observation_set_id = v_set_id
+      and new.observed_at <> v_parent_observed_at then
+      raise exception 'Observation timestamp must equal its supplier observation set timestamp';
+    end if;
   end loop;
   if tg_op = 'DELETE' then return old; else return new; end if;
 end $$;
@@ -404,36 +192,47 @@ create trigger guard_complete_observations before insert or update or delete on 
 
 create or replace function public.guard_observation_set_lifecycle()
 returns trigger language plpgsql set search_path = public as $$
-declare
-  v_observation_count bigint;
-  v_earliest_observed_at timestamptz;
-  v_latest_observed_at timestamptz;
+declare v_lease public.supplier_scrape_leases%rowtype; v_observation_count bigint;
 begin
   if tg_op = 'INSERT' then
-    if new.is_complete and new.status = 'complete' and new.completeness = 'known' then
-      raise exception 'Complete known observation sets must be sealed from an open state';
+    if new.completeness = 'known' and (new.is_complete or new.status = 'complete') then
+      raise exception 'Known observation sets must be inserted open and completed by a fenced lifecycle update';
     end if;
     return new;
   end if;
   if old.is_complete then raise exception 'Complete supplier observation sets are immutable'; end if;
   if tg_op = 'DELETE' then return old; end if;
+  if new.id <> old.id or new.scrape_run_id is distinct from old.scrape_run_id
+    or new.source <> old.source or new.observed_at <> old.observed_at
+    or new.completeness <> old.completeness or new.lease_fence is distinct from old.lease_fence then
+    raise exception 'Observation set identity, provenance, and lease fence are immutable';
+  end if;
   if new.is_complete and new.status not in ('complete', 'legacy') then
     raise exception 'Completing an observation set requires complete or legacy status';
   end if;
-  if new.is_complete and new.status = 'complete' and new.completeness = 'known' then
-    select count(*), min(observed_at), max(observed_at)
-      into v_observation_count, v_earliest_observed_at, v_latest_observed_at
-      from public.coffee_price_observations where observation_set_id = new.id;
+  if new.is_complete and new.completeness = 'known' then
+    if new.scrape_run_id is null or new.lease_fence is null then
+      raise exception 'Completing a known observation set requires its scrape run and lease fence';
+    end if;
+    select * into v_lease from public.supplier_scrape_leases lease
+    where lease.source = new.source for update;
+    if not found or v_lease.scrape_run_id <> new.scrape_run_id
+      or v_lease.fence <> new.lease_fence or v_lease.expires_at <= clock_timestamp() then
+      raise exception 'Completing an observation set requires its live fenced supplier lease';
+    end if;
+    select count(*) into v_observation_count from public.coffee_price_observations observation
+    where observation.observation_set_id = new.id;
+    if v_observation_count = 0 then
+      raise exception 'Zero-result supplier capture is a failure, not a complete observation set';
+    end if;
     if v_observation_count <> new.observed_item_count
-      or new.observed_item_count <> new.expected_item_count then
-      raise exception 'Complete known observation set counts must match stored observations and expected_item_count';
+      or new.observed_item_count <> new.expected_item_count
+      or v_observation_count <> new.snapshot_item_count then
+      raise exception 'Complete known observation set counts must match stored observations, expected_item_count, and snapshot_item_count';
     end if;
-    if v_latest_observed_at > new.observed_at then
-      raise exception 'Complete observation set timestamp must cover every child observation';
-    end if;
-    if (v_earliest_observed_at at time zone 'UTC')::date
-      <> (new.observed_at at time zone 'UTC')::date then
-      raise exception 'Complete observation set children must share the set UTC observation day';
+    if exists (select 1 from public.coffee_price_observations observation
+      where observation.observation_set_id = new.id and observation.observed_at <> new.observed_at) then
+      raise exception 'Observation set contains a child with a mismatched observation timestamp';
     end if;
   end if;
   return new;
@@ -441,64 +240,100 @@ end $$;
 create trigger guard_observation_set_lifecycle before insert or update or delete on public.supplier_observation_sets
   for each row execute function public.guard_observation_set_lifecycle();
 
-create or replace function public.guard_market_cohort_immutability()
+-- Freezing is an ingest/configuration boundary only. Later publication tables
+-- must freeze a cohort in the same transaction before referencing it.
+create or replace function public.freeze_market_index_cohort(p_cohort_id uuid)
+returns integer language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_enabled_count integer;
+begin
+  perform 1 from public.market_index_cohorts where id = p_cohort_id for update;
+  if not found then
+    raise exception 'market index cohort does not exist';
+  end if;
+  select count(*)::integer into v_enabled_count
+  from public.market_index_cohort_sources where cohort_id = p_cohort_id and enabled;
+  if v_enabled_count = 0 then raise exception 'cannot freeze an empty market index cohort'; end if;
+  update public.market_index_cohorts set frozen_at = coalesce(frozen_at, clock_timestamp())
+  where id = p_cohort_id;
+  return v_enabled_count;
+end $$;
+
+create or replace function public.guard_market_cohort_sources()
 returns trigger language plpgsql set search_path = public as $$
 declare v_cohort_id uuid;
 begin
-  for v_cohort_id in
-    select distinct id from unnest(array[
-      case when tg_op <> 'INSERT' then old.cohort_id end,
-      case when tg_op <> 'DELETE' then new.cohort_id end
-    ]) id where id is not null order by id
+  for v_cohort_id in select distinct id from unnest(array[
+    case when tg_op <> 'INSERT' then old.cohort_id end,
+    case when tg_op <> 'DELETE' then new.cohort_id end
+  ]) id where id is not null order by id
   loop
-    perform 1 from public.market_index_cohorts where id = v_cohort_id for update;
-    if exists (select 1 from public.market_publications where cohort_id = v_cohort_id) then
-      raise exception 'Published cohort membership is immutable; create a new cohort version';
-    end if;
+    perform 1 from public.market_index_cohorts where id = v_cohort_id and frozen_at is null for update;
+    if not found then raise exception 'Frozen market cohort membership is immutable; create a successor version'; end if;
   end loop;
   if tg_op = 'DELETE' then return old; else return new; end if;
 end $$;
 create trigger guard_market_cohort_sources before insert or update or delete on public.market_index_cohort_sources
-  for each row execute function public.guard_market_cohort_immutability();
+  for each row execute function public.guard_market_cohort_sources();
 
 create or replace function public.guard_market_cohort_definition()
 returns trigger language plpgsql set search_path = public as $$
 begin
-  if exists (select 1 from public.market_publications where cohort_id = old.id) then
-    raise exception 'Referenced market cohort is immutable; create a new cohort version';
+  if tg_op = 'DELETE' then
+    if old.frozen_at is not null then raise exception 'Frozen market cohort is immutable'; end if;
+    return old;
   end if;
-  if tg_op = 'DELETE' then return old; else return new; end if;
+  if old.frozen_at is not null then
+    if new.id <> old.id or new.cohort_key <> old.cohort_key or new.version <> old.version
+      or new.methodology_version <> old.methodology_version
+      or new.description is distinct from old.description or new.effective_from <> old.effective_from
+      or new.frozen_at <> old.frozen_at or new.created_at <> old.created_at then
+      raise exception 'Frozen market cohort definition is immutable; create a successor version';
+    end if;
+    if old.effective_to is not null and new.effective_to is distinct from old.effective_to then
+      raise exception 'Retired market cohort boundary is immutable';
+    end if;
+  end if;
+  return new;
 end $$;
 create trigger guard_market_cohort_definition before update or delete on public.market_index_cohorts
   for each row execute function public.guard_market_cohort_definition();
 
-create index supplier_observation_sets_source_observed on public.supplier_observation_sets (source, observed_at desc) where is_complete;
+create index supplier_observation_sets_source_observed
+  on public.supplier_observation_sets (source, observed_at desc) where is_complete;
 create index coffee_price_observations_set on public.coffee_price_observations (observation_set_id);
-create index market_publication_inputs_set on public.market_publication_inputs (observation_set_id);
 
-comment on table public.supplier_observation_sets is 'Immutable supplier-level observation identity. Unknown/legacy completeness supports honest backfill without claiming freshness.';
-comment on table public.scrape_runs is 'Operational scrape invocation identity and source-selection outcome; does not itself authorize market publication.';
-comment on table public.coffee_price_observations is 'Observed-at facts; carry-forward references these rows and never fabricates a new publication date or fresh stock assertion.';
-comment on table public.market_index_cohorts is 'Explicit versioned production cohort; membership is not inferred from code-registered scraper sources.';
-comment on table public.market_index_cohort_sources is 'Versioned cohort membership, influence weight, and source-specific carry-forward TTL.';
-comment on table public.market_publications is 'Quality-scored candidate or atomically selected daily publication. Policy thresholds are versioned data/logic, not table constraints.';
-comment on table public.market_publication_inputs is 'Exact provenance manifest from publication source to supplier observation set.';
-comment on table public.market_publication_price_indexes is 'Publication-scoped aggregate segments. Candidate rows coexist and never partially upsert into a shared daily aggregate.';
+comment on table public.scrape_runs is
+  'Operational scrape invocation identity. publication_scope distinguishes canonical production all-runs from recovery, test, source, group, and backfill runs.';
+comment on table public.supplier_scrape_leases is
+  'Fenced ingest ownership. Leases protect observation sealing and do not authorize publication.';
+comment on table public.supplier_observation_sets is
+  'Immutable supplier-level observation identity. A zero-result scrape remains failed or partial and never erases the last known good set.';
+comment on table public.coffee_price_observations is
+  'True-time observations. Later carry-forward references these rows without fabricating a new observation date.';
+comment on table public.market_index_cohorts is
+  'Explicit versioned market cohort. Enabled cardinality is derived from membership; effective_to is an exclusive retirement boundary.';
+comment on table public.market_index_cohort_sources is
+  'Versioned cohort membership and supplier influence. No short carry-forward TTL is stored here.';
 
 do $$ declare t text; begin
-  foreach t in array array['scrape_runs','supplier_observation_sets','coffee_price_observations','market_index_cohorts','market_index_cohort_sources','market_publications','market_publication_inputs','market_publication_price_indexes'] loop
+  foreach t in array array['scrape_runs','supplier_scrape_leases','supplier_observation_sets','coffee_price_observations','market_index_cohorts','market_index_cohort_sources'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('revoke all on table public.%I from public, anon, authenticated', t);
     execute format('grant all on table public.%I to service_role', t);
     execute format('create policy %I on public.%I for all using (auth.role() = ''service_role'') with check (auth.role() = ''service_role'')', 'Service role only ' || t, t);
   end loop;
 end $$;
-
-revoke all on function public.guard_market_publication_artifact() from public, anon, authenticated;
-revoke all on function public.guard_market_publication_lifecycle() from public, anon, authenticated;
+revoke all on public.market_index_cohort_enabled_counts from public, anon, authenticated;
+grant select on public.market_index_cohort_enabled_counts to service_role;
+revoke all on function public.acquire_supplier_scrape_lease(text, uuid, interval) from public, anon, authenticated;
+grant execute on function public.acquire_supplier_scrape_lease(text, uuid, interval) to service_role;
+revoke all on function public.release_supplier_scrape_lease(text, uuid, bigint) from public, anon, authenticated;
+grant execute on function public.release_supplier_scrape_lease(text, uuid, bigint) to service_role;
+revoke all on function public.freeze_market_index_cohort(uuid) from public, anon, authenticated;
+grant execute on function public.freeze_market_index_cohort(uuid) to service_role;
 revoke all on function public.guard_observation_artifact() from public, anon, authenticated;
 revoke all on function public.guard_observation_set_lifecycle() from public, anon, authenticated;
-revoke all on function public.guard_market_cohort_immutability() from public, anon, authenticated;
+revoke all on function public.guard_market_cohort_sources() from public, anon, authenticated;
 revoke all on function public.guard_market_cohort_definition() from public, anon, authenticated;
 grant usage, select on sequence public.coffee_price_observations_id_seq to service_role;
-grant usage, select on sequence public.market_publication_price_indexes_id_seq to service_role;
+grant usage, select on sequence public.supplier_scrape_lease_fence_seq to service_role;
