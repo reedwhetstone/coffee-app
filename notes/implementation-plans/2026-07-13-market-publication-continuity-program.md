@@ -1,6 +1,6 @@
 # Market publication continuity program
 
-**Date:** 2026-07-13  
+**Date:** 2026-07-13
 **Decision:** ADR-012
 
 ## Outcome
