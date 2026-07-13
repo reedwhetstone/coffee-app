@@ -9,6 +9,7 @@ declare
   v_open_set uuid;
   v_other_open_set uuid;
   v_bad_time_set uuid;
+  v_stale_time_set uuid;
   v_complete_set uuid;
   v_legacy_set uuid;
   v_unknown_complete_set uuid;
@@ -66,6 +67,24 @@ begin
     raise exception 'observation set with future child timestamp was completed';
   exception when others then
     if sqlerrm = 'observation set with future child timestamp was completed' then raise; end if;
+  end;
+  insert into public.supplier_observation_sets(source, observed_at, status, completeness, expected_item_count)
+    values ('fixture', now(), 'partial', 'known', 1) returning id into v_stale_time_set;
+  insert into public.coffee_price_observations(observation_set_id, catalog_id, source, observed_at, price)
+    values (
+      v_stale_time_set,
+      v_catalog_id,
+      'fixture',
+      (date_trunc('day', now() at time zone 'UTC') at time zone 'UTC') - interval '1 hour',
+      10
+    );
+  begin
+    update public.supplier_observation_sets
+      set status = 'complete', is_complete = true, observed_item_count = 1, snapshot_item_count = 1
+      where id = v_stale_time_set;
+    raise exception 'observation set with stale child timestamp was completed';
+  exception when others then
+    if sqlerrm = 'observation set with stale child timestamp was completed' then raise; end if;
   end;
   insert into public.supplier_observation_sets(source, observed_at, status, completeness, expected_item_count)
     values ('fixture', now(), 'partial', 'known', 1) returning id into v_complete_set;

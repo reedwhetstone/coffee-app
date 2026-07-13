@@ -377,6 +377,7 @@ create or replace function public.guard_observation_set_lifecycle()
 returns trigger language plpgsql set search_path = public as $$
 declare
   v_observation_count bigint;
+  v_earliest_observed_at timestamptz;
   v_latest_observed_at timestamptz;
 begin
   if tg_op = 'INSERT' then
@@ -391,7 +392,8 @@ begin
     raise exception 'Completing an observation set requires complete or legacy status';
   end if;
   if new.is_complete and new.status = 'complete' and new.completeness = 'known' then
-    select count(*), max(observed_at) into v_observation_count, v_latest_observed_at
+    select count(*), min(observed_at), max(observed_at)
+      into v_observation_count, v_earliest_observed_at, v_latest_observed_at
       from public.coffee_price_observations where observation_set_id = new.id;
     if v_observation_count <> new.observed_item_count
       or new.observed_item_count <> new.expected_item_count then
@@ -399,6 +401,10 @@ begin
     end if;
     if v_latest_observed_at > new.observed_at then
       raise exception 'Complete observation set timestamp must cover every child observation';
+    end if;
+    if (v_earliest_observed_at at time zone 'UTC')::date
+      <> (new.observed_at at time zone 'UTC')::date then
+      raise exception 'Complete observation set children must share the set UTC observation day';
     end if;
   end if;
   return new;
