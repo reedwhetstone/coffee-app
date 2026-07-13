@@ -58,16 +58,12 @@ describe('api docs contract', () => {
 		);
 	});
 
-	it('documents API-key access to roast classification consistently', () => {
+	it('does not advertise the retired coffee-app roast classifier adapter', () => {
 		const overview = getDocsPage('api', 'overview');
 		const roastProfiles = getDocsPage('api', 'roast-profiles');
 		const analytics = getDocsPage('api', 'analytics');
 		const serializedDocs = `${JSON.stringify(overview)} ${JSON.stringify(roastProfiles)} ${JSON.stringify(analytics)}`;
 
-		expect(serializedDocs).not.toContain('Session + member role');
-		expect(serializedDocs).toContain('Member session or member-owned API key + roast:read');
-		expect(JSON.stringify(roastProfiles)).toContain(
-			'accepts a member session or a member-owned API key with roast:read'
-		);
+		expect(serializedDocs).not.toContain('/api/ai/classify-roast');
 	});
 });
