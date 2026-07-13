@@ -140,6 +140,7 @@ create or replace function public.guard_observation_set_lifecycle()
 returns trigger language plpgsql set search_path = public as $$
 declare
   v_lease public.supplier_scrape_leases%rowtype;
+  v_observation_count bigint;
 begin
   if tg_op = 'INSERT' then
     if new.completeness = 'known' and (new.is_complete or new.status = 'complete') then
@@ -166,6 +167,14 @@ begin
     if not found or v_lease.scrape_run_id <> new.scrape_run_id
       or v_lease.fence <> new.lease_fence or v_lease.expires_at <= clock_timestamp() then
       raise exception 'Completing an observation set requires its live fenced supplier lease';
+    end if;
+    select count(*) into v_observation_count
+    from public.coffee_price_observations observation
+    where observation.observation_set_id = new.id;
+    if v_observation_count <> new.observed_item_count
+      or new.observed_item_count <> new.expected_item_count
+      or v_observation_count <> new.snapshot_item_count then
+      raise exception 'Complete known observation set counts must match stored observations, expected_item_count, and snapshot_item_count';
     end if;
     if exists (
       select 1 from public.coffee_price_observations observation
@@ -586,7 +595,13 @@ begin
       v_action := 'rejected_not_better';
     else
       if v_had_old then update public.market_publications set status='rejected',rejected_at=clock_timestamp() where id=v_old.id; end if;
-      update public.market_publications set status='active',sealed_at=clock_timestamp(),published_at=clock_timestamp() where id=v_pub;
+      update public.market_publications
+      set price_index_count=(
+            select count(*) from public.market_publication_price_indexes aggregate
+            where aggregate.publication_id=v_pub
+          ),
+          status='active',sealed_at=clock_timestamp(),published_at=clock_timestamp()
+      where id=v_pub;
       v_action := case when v_had_old then 'replaced' else 'activated' end;
     end if;
   end if;

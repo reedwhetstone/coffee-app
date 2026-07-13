@@ -93,6 +93,21 @@ do $$ begin
 exception when raise_exception then
   if sqlerrm <> 'Observation set contains a child with a mismatched observation timestamp' then raise; end if;
 end $$;
+delete from public.coffee_price_observations
+where observation_set_id='12000000-0000-0000-0000-000000000098';
+update public.supplier_observation_sets
+set expected_item_count=2,observed_item_count=2,snapshot_item_count=2
+where id='12000000-0000-0000-0000-000000000098';
+insert into public.coffee_price_observations(observation_set_id,catalog_id,source,observed_at,price,stocked,origin)
+select '12000000-0000-0000-0000-000000000098',max(id),'seal-test','2026-07-13 22:00Z',99,true,'Colombia'
+from public.coffee_catalog;
+do $$ begin
+  update public.supplier_observation_sets set status='complete',is_complete=true
+  where id='12000000-0000-0000-0000-000000000098';
+  raise exception 'set sealing accepted declared counts that exceeded stored observations';
+exception when raise_exception then
+  if sqlerrm <> 'Complete known observation set counts must match stored observations, expected_item_count, and snapshot_item_count' then raise; end if;
+end $$;
 
 -- Complete day-one sets. Source a has ten items but must have only one supplier vote.
 insert into public.supplier_observation_sets(id,scrape_run_id,lease_fence,source,observed_at,status,completeness,expected_item_count,observed_item_count,snapshot_item_count,is_complete)
@@ -119,6 +134,11 @@ update public.supplier_observation_sets set status='complete',is_complete=true w
 do $$ declare r record; v numeric; begin
   select * into r from public.build_market_publication('2026-07-12','builder-fixture',1);
   if r.action <> 'activated' or r.quality_tier <> 'healthy' then raise exception 'day one was not healthy/active: %',r; end if;
+  if (select price_index_count from public.market_publications where id=r.publication_id) = 0
+    or (select price_index_count from public.market_publications where id=r.publication_id) <>
+       (select count(*) from public.market_publication_price_indexes where publication_id=r.publication_id) then
+    raise exception 'active publication did not persist its aggregate row count';
+  end if;
   select price_avg into v from public.market_publication_price_indexes where publication_id=r.publication_id and origin='Colombia';
   if v <> 20 then raise exception 'supplier-first average expected 20, got %',v; end if;
   if (select sample_size from public.market_publication_price_indexes where publication_id=r.publication_id and origin='Colombia') <> 11 then
