@@ -23,6 +23,7 @@ declare
   v_failed_set uuid;
   v_zero_set uuid;
   v_stale_set uuid;
+  v_replacement_set uuid;
   v_late_set uuid;
   v_unknown_set uuid;
   v_legacy_set uuid;
@@ -122,6 +123,19 @@ begin
     if sqlerrm = 'stale lease fence sealed an observation set' then raise; end if;
     if position('live fenced supplier lease' in sqlerrm) = 0 then raise; end if;
   end;
+  insert into public.supplier_observation_sets
+    (scrape_run_id, lease_fence, source, observed_at, status, expected_item_count)
+  values (v_other_run, v_new_fence, 'stale-fixture', now(), 'partial', 1)
+  returning id into v_replacement_set;
+  insert into public.coffee_price_observations
+    (observation_set_id, catalog_id, source, observed_at, price, stocked)
+  select v_replacement_set, v_catalog_id, 'stale-fixture', observed_at, 11, true
+  from public.supplier_observation_sets where id = v_replacement_set;
+  perform public.seal_supplier_observation_set(v_replacement_set, v_new_fence, 1, 1);
+  if (select is_complete from public.supplier_observation_sets where id = v_stale_set)
+    or not (select is_complete from public.supplier_observation_sets where id = v_replacement_set) then
+    raise exception 'same-run lease rollover did not isolate and seal the replacement capture';
+  end if;
 
   -- Completeness labels do not bypass open-insert or non-empty sealing rules.
   begin

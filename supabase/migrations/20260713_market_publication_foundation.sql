@@ -47,7 +47,10 @@ create table public.supplier_observation_sets (
   snapshot_item_count integer not null default 0 check (snapshot_item_count >= 0),
   is_complete boolean not null default false,
   created_at timestamptz not null default now(),
-  unique (scrape_run_id, source),
+  -- A renewed live lease reuses its fence and therefore cannot create a
+  -- duplicate set. After expiry, the new fence identifies a replacement
+  -- capture attempt while leaving the stale attempt immutable and unsealable.
+  unique (scrape_run_id, source, lease_fence),
   unique (id, source),
   check (not is_complete or status in ('complete', 'legacy')),
   check (status <> 'complete' or is_complete),
