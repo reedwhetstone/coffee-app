@@ -118,7 +118,7 @@ export const DOCS_NAV: DocsNavSection[] = [
 			{
 				slug: 'catalog',
 				title: 'Catalog',
-				summary: 'Search the catalog from your terminal with an authenticated viewer session.'
+				summary: 'Search the catalog from your terminal with a scoped Parchment API key.'
 			},
 			{
 				slug: 'inventory',
@@ -415,8 +415,8 @@ const docsPages: DocsPage[] = [
 						[
 							'purvey catalog',
 							'Terminal workflows, account-linked agents, and stable command automation',
-							'Authenticated viewer session',
-							'CLI contract with explicit auth prompts and predictable stdout/stderr behavior. Use HTTP instead when anonymous or API-key access is the goal.'
+							'Scoped Parchment API key',
+							'CLI contract with explicit auth prompts and predictable stdout/stderr behavior. purvey auth login creates and stores the scoped key used by default.'
 						]
 					]
 				}
@@ -2089,7 +2089,7 @@ const docsPages: DocsPage[] = [
 			'The Parchment CLI is a terminal interface for catalog queries, inventory management, roasting workflows, scripting, and agent automation.',
 		eyebrow: '@purveyors/cli',
 		intro: [
-			'The Parchment CLI (purvey) provides terminal access to the same coffee domain model as the web app. Catalog commands require an authenticated viewer session even though GET https://api.purveyors.io/v1/catalog supports anonymous and API-key access. Inventory, roast, sales, and tasting commands additionally require the member role.',
+			'The Parchment CLI (purvey) provides terminal access to the same coffee domain model as the web app. purvey auth login uses browser OAuth once to create and persist a scoped Parchment API key; the CLI does not retain an ongoing viewer session. Catalog commands require catalog:read, while inventory, roast, sales, and tasting commands additionally require the matching member role and key scopes.',
 			'Not every command requires auth. auth, config, context, and manifest are onboarding or local utility surfaces. purvey context is the dense human-readable reference, while purvey manifest is the preferred machine-readable contract.'
 		],
 		sections: [
@@ -2110,7 +2110,8 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'Use purvey auth login for browser OAuth or purvey auth login --headless on servers, CI, and agent hosts.',
 					'Headed purvey auth login also supports a pasted callback URL when a browser opens on a different machine, localhost is unreachable, or the automatic callback fails. That manual fallback is intentional for SSH, containers, and agent hosts, not a degraded path.',
-					'Run purvey auth status to confirm both session health and current role before scripting against viewer-only or member-only commands.',
+					'Run purvey auth status to confirm the stored API key is valid and inspect the current account role before scripting against viewer-only or member-only commands.',
+					'PARCHMENT_API_KEY or the PURVEYORS_API_KEY compatibility alias overrides the key stored by purvey auth login for command execution.',
 					'Use purvey manifest when a wrapper needs the preferred machine-readable contract. Use purvey context when a human or model should read the dense reference text first, or use purvey context --json / --pretty when an existing caller needs manifest-parity output.'
 				]
 			},
@@ -2120,11 +2121,11 @@ const docsPages: DocsPage[] = [
 					headers: ['Group', 'Examples', 'Auth'],
 					rows: [
 						['auth', 'login, status, logout', 'None'],
-						['catalog', 'search, get, stats, similar', 'Authenticated viewer session'],
+						['catalog', 'search, get, stats, similar', 'API key with catalog:read'],
 						[
 							'inventory / roast / sales / tasting',
 							'Personal data and write workflows',
-							'Authenticated member session'
+							'Member-owned API key with matching scopes'
 						],
 						['config', 'list, get, set, reset', 'None, local-only'],
 						['context / manifest', 'Dense reference text and machine-readable contract', 'None']
@@ -2132,9 +2133,8 @@ const docsPages: DocsPage[] = [
 				},
 				callout: {
 					tone: 'note',
-					title:
-						'Catalog commands are authenticated, even though the HTTP API supports anonymous reads',
-					body: 'The CLI intentionally requires a signed-in viewer session for catalog commands so terminal workflows stay account-linked and predictable. For anonymous discovery or API-key production integrations, use GET https://api.purveyors.io/v1/catalog instead of shelling out to the CLI.'
+					title: 'Catalog commands use scoped API-key authentication',
+					body: 'purvey auth login creates and stores an account-linked scoped Parchment API key for CLI commands. Set PARCHMENT_API_KEY or PURVEYORS_API_KEY to use an explicit key instead. For anonymous discovery, call GET https://api.purveyors.io/v1/catalog directly.'
 				}
 			},
 			{
@@ -2153,8 +2153,8 @@ const docsPages: DocsPage[] = [
 					rows: [
 						[
 							'purvey catalog',
-							'A terminal, script, or agent is acting on behalf of a signed-in account',
-							'Viewer session required'
+							'A terminal, script, or agent is acting with scoped account access',
+							'Stored or explicit Parchment API key'
 						],
 						[
 							'Anonymous GET https://api.purveyors.io/v1/catalog',
@@ -2174,7 +2174,7 @@ const docsPages: DocsPage[] = [
 					]
 				},
 				bullets: [
-					'CLI login is intentional product behavior, not a contradiction of the HTTP API. The CLI is an account-linked tool surface; https://api.purveyors.io/v1/catalog is the public network surface.'
+					'CLI login is a one-time OAuth bootstrap that exchanges the browser session for a scoped Parchment API key. The CLI is an account-linked tool surface; https://api.purveyors.io/v1/catalog is the public network surface.'
 				]
 			}
 		],
@@ -2292,11 +2292,11 @@ const docsPages: DocsPage[] = [
 		slug: 'catalog',
 		title: 'CLI catalog commands',
 		summary:
-			'Search and browse the green coffee catalog from your terminal with an authenticated viewer session.',
+			'Search and browse the green coffee catalog from your terminal with a scoped Parchment API key.',
 		eyebrow: 'Catalog data',
 		intro: [
-			'Catalog commands are the fastest way to explore the green coffee feed from the terminal when the workflow is tied to a signed-in account. They require an authenticated viewer session; run purvey auth login before using them.',
-			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits. purvey catalog similar <id> mirrors the account-linked matching workflow exposed by the beta https://api.purveyors.io/v1/catalog/{id}/similar endpoint, but the CLI uses viewer-session auth instead of API keys. If the goal is anonymous discovery or API-key integration, use the Parchment HTTP API instead. See the CLI overview for install and login instructions.'
+			'Catalog commands are the fastest way to explore the green coffee feed from the terminal with account-linked access. Run purvey auth login to create and store a scoped Parchment API key, or set PARCHMENT_API_KEY or PURVEYORS_API_KEY to supply one explicitly.',
+			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits. purvey catalog similar <id> mirrors the account-linked matching workflow exposed by the beta https://api.purveyors.io/v1/catalog/{id}/similar endpoint and uses the same scoped API-key model. If the goal is anonymous discovery, use the Parchment HTTP API instead. See the CLI overview for install and login instructions.'
 		],
 		sections: [
 			{
