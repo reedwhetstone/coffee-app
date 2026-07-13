@@ -34,8 +34,27 @@ describe('ChatComposer recovery controls', () => {
 				]
 			})
 		);
-		expect(screen.getByText('Using context')).toBeInTheDocument();
+		expect(screen.getByText(/Using 1 of 1 context source/)).toBeInTheDocument();
 		expect(screen.getByText(/Ask Parchment/)).toBeInTheDocument();
+	});
+
+	it('keeps context toggles behind a labeled disclosure', async () => {
+		const onToggleChip = vi.fn();
+		render(
+			ChatComposer,
+			props({
+				contextChips: [
+					{ id: 'page', label: 'Current view', detail: 'Catalog filters', active: true }
+				],
+				onToggleChip
+			})
+		);
+		const summary = screen.getByText(/Using 1 of 1 context source/);
+		const disclosure = summary.closest('details');
+		expect(disclosure).not.toHaveAttribute('open');
+		await fireEvent.click(summary);
+		await fireEvent.click(screen.getByRole('button', { name: 'Current view' }));
+		expect(onToggleChip).toHaveBeenCalledWith('page');
 	});
 
 	it('replaces send with an accessible stop control during a turn', async () => {

@@ -236,6 +236,8 @@
 	let initializingWorkspace = $state(false);
 	let workspaceInitError = $state<string | null>(null);
 	let lastSubmittedPrompt = $state('');
+	let lastSubmittedBody: Record<string, unknown> | null = null;
+	let retryPreservesComposerDraft = false;
 	let messageCountBeforeSubmission: number | null = null;
 	let canvasPersistError = $state<string | null>(null);
 	let displayedError = $derived(canvasPersistError ?? chatError);
@@ -265,7 +267,9 @@
 			messageCountBeforeSubmission = null;
 			chatError = failure.message;
 			chatCanRetry = failure.retryable;
-			if (!inputMessage && lastSubmittedPrompt) inputMessage = lastSubmittedPrompt;
+			if (!retryPreservesComposerDraft && !inputMessage && lastSubmittedPrompt) {
+				inputMessage = lastSubmittedPrompt;
+			}
 		}
 	});
 
@@ -746,22 +750,9 @@
 
 	// ─── Canvas panel state ──────────────────────────────────────────────────
 	let canvasOpen = $state(false);
-	let hasUserClosedCanvas = $state(false);
 	let dividerDragging = $state(false);
 	let chatWidthPercent = $state(60); // Chat takes 60% by default
 	let mobileCanvasOpen = $state(false);
-
-	// Auto-open canvas when blocks arrive, but respect user's explicit close.
-	// The drawer variant has no inline canvas pane, so it never auto-opens.
-	$effect(() => {
-		if (variant === 'page' && !canvasStore.isEmpty && !canvasOpen && !hasUserClosedCanvas) {
-			canvasOpen = true;
-		}
-		// Reset the user-closed flag when canvas is cleared
-		if (canvasStore.isEmpty) {
-			hasUserClosedCanvas = false;
-		}
-	});
 
 	// Track which message IDs have been dispatched to canvas (to avoid duplicates)
 	let dispatchedParts = $state(new Set<string>());
@@ -871,7 +862,6 @@
 			// against a collapsed pane.
 			if (variant === 'page') {
 				canvasOpen = true;
-				hasUserClosedCanvas = false;
 			}
 			// On mobile (and the drawer variant, which has no inline pane) open the
 			// canvas overlay so the focused block is actually visible.
@@ -997,6 +987,8 @@
 
 		const text = inputMessage.trim();
 		lastSubmittedPrompt = text;
+		lastSubmittedBody = buildSendBody();
+		retryPreservesComposerDraft = false;
 		chatError = null;
 		chatCanRetry = false;
 
@@ -1022,7 +1014,7 @@
 				inputMessage = '';
 				shouldScrollToBottom = true;
 				messageCountBeforeSubmission = chat.messages.length;
-				await chat.sendMessage({ text: cmd.chatText }, { body: buildSendBody() });
+				await chat.sendMessage({ text: cmd.chatText }, { body: lastSubmittedBody });
 				messageCountBeforeSubmission = null;
 				return;
 			}
@@ -1032,7 +1024,7 @@
 		shouldScrollToBottom = true;
 
 		messageCountBeforeSubmission = chat.messages.length;
-		await chat.sendMessage({ text }, { body: buildSendBody() });
+		await chat.sendMessage({ text }, { body: lastSubmittedBody });
 		messageCountBeforeSubmission = null;
 	}
 
@@ -1046,7 +1038,47 @@
 	async function retryLastResponse() {
 		chatError = null;
 		chatCanRetry = false;
+		if (retryPreservesComposerDraft && lastSubmittedPrompt) {
+			shouldScrollToBottom = true;
+			messageCountBeforeSubmission = chat.messages.length;
+			await chat.sendMessage(
+				{ text: lastSubmittedPrompt },
+				{ body: lastSubmittedBody ?? buildSendBody() }
+			);
+			messageCountBeforeSubmission = null;
+			return;
+		}
 		await sendMessage();
+	}
+
+	async function askAgainFromAssistantMessage(messageId: string) {
+		if (isActive || isClearing || !workspaceReady) return;
+		const assistantIndex = chat.messages.findIndex(
+			(message) => message.id === messageId && message.role === 'assistant'
+		);
+		if (assistantIndex < 1) return;
+
+		const userMessage = chat.messages
+			.slice(0, assistantIndex)
+			.findLast((message) => message.role === 'user');
+		const prompt = userMessage?.parts
+			.filter((part) => part.type === 'text')
+			.map((part) => part.text)
+			.join('\n')
+			.trim();
+		if (!prompt) return;
+
+		// This is deliberately a new turn, not response regeneration. Send the
+		// originating request directly so an unsent composer draft remains intact.
+		lastSubmittedPrompt = prompt;
+		lastSubmittedBody = buildSendBody();
+		retryPreservesComposerDraft = true;
+		chatError = null;
+		chatCanRetry = false;
+		shouldScrollToBottom = true;
+		messageCountBeforeSubmission = chat.messages.length;
+		await chat.sendMessage({ text: prompt }, { body: lastSubmittedBody });
+		messageCountBeforeSubmission = null;
 	}
 
 	// ─── Export / Clear ────────────────────────────────────────────────────────
@@ -1120,7 +1152,6 @@
 				onToggleMobileCanvas={() => (mobileCanvasOpen = !mobileCanvasOpen)}
 				onToggleDesktopCanvas={() => {
 					canvasOpen = !canvasOpen;
-					hasUserClosedCanvas = !canvasOpen;
 				}}
 				onExport={exportConversation}
 				onClear={clearConversation}
@@ -1137,6 +1168,8 @@
 					onBlockAction={handleBlockAction}
 					onExecuteAction={executeAction}
 					onExampleSelect={(text) => (inputMessage = text)}
+					onAskAgainMessage={askAgainFromAssistantMessage}
+					messageActionsDisabled={isActive || isClearing || !workspaceReady}
 				/>
 
 				<!-- Mobile floating canvas indicator: anchored inside the message

@@ -20,7 +20,9 @@
 		onScroll,
 		onBlockAction,
 		onExecuteAction,
-		onExampleSelect
+		onExampleSelect,
+		onAskAgainMessage,
+		messageActionsDisabled = false
 	} = $props<{
 		chat: Chat;
 		isActive: boolean;
@@ -35,7 +37,36 @@
 			blockId?: string
 		) => Promise<unknown>;
 		onExampleSelect: (text: string) => void;
+		onAskAgainMessage: (messageId: string) => void;
+		messageActionsDisabled?: boolean;
 	}>();
+
+	let copiedMessageId = $state<string | null>(null);
+	let copyFailedMessageId = $state<string | null>(null);
+
+	function assistantText(parts: Array<{ type: string; text?: string }>): string {
+		return parts
+			.filter((part) => part.type === 'text' && part.text?.trim())
+			.map((part) => part.text?.trim() ?? '')
+			.join('\n\n');
+	}
+
+	async function copyAssistantMessage(messageId: string, text: string) {
+		if (!text) return;
+		try {
+			if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+			await navigator.clipboard.writeText(text);
+			copyFailedMessageId = null;
+			copiedMessageId = messageId;
+		} catch {
+			copiedMessageId = null;
+			copyFailedMessageId = messageId;
+		}
+		setTimeout(() => {
+			if (copiedMessageId === messageId) copiedMessageId = null;
+			if (copyFailedMessageId === messageId) copyFailedMessageId = null;
+		}, 1600);
+	}
 
 	// Progressive disclosure: collapse old tool previews
 	// Messages more than COLLAPSE_THRESHOLD exchanges old get collapsed previews
@@ -158,7 +189,7 @@
 <!-- Chat messages area -->
 <div
 	bind:this={containerEl}
-	class="flex-1 overflow-y-auto p-4"
+	class="flex-1 overflow-y-auto px-4 py-6"
 	onscroll={onScroll}
 	role="log"
 	aria-label="Parchment conversation"
@@ -166,68 +197,60 @@
 	aria-relevant="additions text"
 >
 	{#if chat.messages.length === 0}
-		<!-- Welcome message -->
-		<div class="mx-auto max-w-2xl text-center">
-			<div class="mb-8 rounded-lg bg-surface-panel p-6">
-				<p class="mb-1 text-sm font-medium text-accent">Parchment Intelligence</p>
-				<h2 class="mb-3 text-lg font-semibold text-ink">Ask Parchment about green coffee supply</h2>
-				<p class="mb-4 text-muted">
-					Compare live stocked coffees, supplier breadth, provenance, pricing, and Market Index
-					context. Answers call out the evidence used and where coverage is uncertain.
-				</p>
-				<div class="grid grid-cols-1 gap-2 text-sm text-muted md:grid-cols-2">
-					<div>Source stocked coffees</div>
-					<div>Compare suppliers and prices</div>
-					<div>Track market movement</div>
-					<div>Benchmark a shortlist</div>
-					<div>Find portfolio gaps</div>
-					{#if canUseMallardWorkspaces}
-						<div>Apply Mallard Studio roasting context</div>
-					{/if}
-				</div>
-			</div>
+		<div class="mx-auto flex min-h-full max-w-2xl flex-col justify-center py-10 text-center">
+			<p class="mb-2 text-sm font-medium text-accent">Parchment Intelligence</p>
+			<h2 class="font-serif text-2xl font-medium tracking-tight text-ink">
+				What do you need to know about green coffee?
+			</h2>
+			<p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted">
+				Research stocked coffees, suppliers, market movement, and your portfolio with source-aware
+				evidence.
+			</p>
 
-			<!-- Example queries -->
-			<div class="space-y-2">
-				<p class="text-sm font-medium text-ink">Try asking:</p>
-				<div class="space-y-2 text-sm">
-					<button
-						onclick={() =>
-							onExampleSelect(
-								'Compare stocked Ethiopian coffees with stone fruit notes by supplier, price, process, and provenance.'
-							)}
-						class="block w-full rounded-md border border-line bg-surface-panel p-2 text-left text-muted transition-all hover:bg-accent hover:text-white"
-					>
-						"Compare stocked Ethiopian coffees with stone fruit notes by supplier, price, process,
-						and provenance."
-					</button>
-					<button
-						onclick={() =>
-							onExampleSelect(
-								'Review my current portfolio and call out gaps by origin, process, and flavor profile.'
-							)}
-						class="block w-full rounded-md border border-line bg-surface-panel p-2 text-left text-muted transition-all hover:bg-accent hover:text-white"
-					>
-						"Review my current portfolio and call out gaps by origin, process, and flavor profile."
-					</button>
-					{#if canUseMallardWorkspaces}
-						<button
-							onclick={() =>
-								onExampleSelect(
-									'Use my Mallard Studio context to compare roast approaches for this washed Costa Rican coffee.'
-								)}
-							class="block w-full rounded-md border border-line bg-surface-panel p-2 text-left text-muted transition-all hover:bg-accent hover:text-white"
-						>
-							"Use my Mallard Studio context to compare roast approaches for this washed Costa Rican
-							coffee."
-						</button>
-					{/if}
-				</div>
+			<div class="mt-8 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+				<button
+					onclick={() =>
+						onExampleSelect(
+							'Compare stocked Ethiopian coffees with stone fruit notes by supplier, price, process, and provenance.'
+						)}
+					class="block w-full rounded-md border border-line bg-surface-panel px-3 py-2.5 text-left text-muted transition-colors hover:border-accent hover:text-ink"
+				>
+					Compare stocked Ethiopian coffees
+				</button>
+				<button
+					onclick={() =>
+						onExampleSelect(
+							'Review my current portfolio and call out gaps by origin, process, and flavor profile.'
+						)}
+					class="block w-full rounded-md border border-line bg-surface-panel px-3 py-2.5 text-left text-muted transition-colors hover:border-accent hover:text-ink"
+				>
+					Find gaps in my current portfolio
+				</button>
+				<button
+					onclick={() =>
+						onExampleSelect(
+							'What moved in the green coffee market this week, and what evidence supports it?'
+						)}
+					class="block w-full rounded-md border border-line bg-surface-panel px-3 py-2.5 text-left text-muted transition-colors hover:border-accent hover:text-ink"
+				>
+					Review this week’s market movement
+				</button>
+				<button
+					onclick={() =>
+						onExampleSelect(
+							canUseMallardWorkspaces
+								? 'Use my Mallard Studio context to compare roast approaches for this washed Costa Rican coffee.'
+								: 'Build a source-aware shortlist of versatile washed coffees under $9 per pound.'
+						)}
+					class="block w-full rounded-md border border-line bg-surface-panel px-3 py-2.5 text-left text-muted transition-colors hover:border-accent hover:text-ink"
+				>
+					{canUseMallardWorkspaces ? 'Compare roast approaches' : 'Build a sourcing shortlist'}
+				</button>
 			</div>
 		</div>
 	{:else}
 		<!-- Chat messages - interleaved rendering -->
-		<div class="mx-auto max-w-4xl space-y-4">
+		<div class="mx-auto max-w-3xl space-y-6">
 			{#each chat.messages as message, msgIndex (message.id)}
 				{@const isLastMessage = msgIndex === chat.messages.length - 1}
 				{@const isStreaming = isLastMessage && isActive && message.role === 'assistant'}
@@ -235,7 +258,9 @@
 				{#if message.role === 'user'}
 					<!-- User message bubble -->
 					<div id="msg-{message.id}" class="message-fade-in flex justify-end">
-						<div class="max-w-[80%] rounded-lg bg-accent px-4 py-2 text-ink">
+						<div
+							class="max-w-[85%] rounded-lg border border-accent/25 bg-accent/10 px-4 py-2.5 text-ink sm:max-w-[75%]"
+						>
 							{#each message.parts as part}
 								{#if part.type === 'text'}
 									<div class="whitespace-pre-wrap">{part.text}</div>
@@ -260,7 +285,7 @@
 						{#each message.parts as part}
 							{#if part.type === 'text' && part.text.trim()}
 								<div
-									class="prose prose-sm max-w-none text-ink prose-headings:text-ink prose-p:text-ink prose-strong:text-ink prose-ol:text-ink prose-ul:text-ink prose-li:text-ink"
+									class="prose prose-sm max-w-2xl text-ink prose-headings:text-ink prose-p:leading-7 prose-p:text-ink prose-strong:text-ink prose-ol:text-ink prose-ul:text-ink prose-li:text-ink"
 								>
 									<SvelteMarkdown source={part.text} />
 								</div>
@@ -372,6 +397,33 @@
 									</button>
 								{/if}
 							{/if}
+						{/if}
+
+						{#if !isStreaming && assistantText(message.parts)}
+							<div
+								class="flex max-w-2xl items-center gap-1 border-t border-line/70 pt-2 text-xs text-muted"
+							>
+								<button
+									type="button"
+									onclick={() => copyAssistantMessage(message.id, assistantText(message.parts))}
+									aria-live="polite"
+									class="rounded-md px-2 py-1 hover:bg-surface-panel hover:text-ink"
+								>
+									{copyFailedMessageId === message.id
+										? 'Copy failed'
+										: copiedMessageId === message.id
+											? 'Copied'
+											: 'Copy'}
+								</button>
+								<button
+									type="button"
+									onclick={() => onAskAgainMessage(message.id)}
+									disabled={messageActionsDisabled}
+									class="rounded-md px-2 py-1 hover:bg-surface-panel hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									Ask again
+								</button>
+							</div>
 						{/if}
 					</div>
 				{/if}

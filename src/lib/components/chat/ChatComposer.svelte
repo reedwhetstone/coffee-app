@@ -60,6 +60,7 @@
 	const MAX_TEXTAREA_HEIGHT = 192; // ~8 lines
 
 	let textareaEl = $state<HTMLTextAreaElement | null>(null);
+	let activeContextCount = $derived(contextChips.filter((chip: ContextChip) => chip.active).length);
 
 	$effect(() => {
 		void inputMessage;
@@ -123,10 +124,10 @@
 	</div>
 {/if}
 
-<!-- Input area -->
-<div class="border-t border-line bg-surface-panel p-4">
+<!-- Input area: keep the composer visually distinct without turning the full viewport edge into a form. -->
+<div class="bg-surface-canvas px-4 pb-4 pt-2">
 	{#if slashCompletions.length > 0 && inputMessage.startsWith('/')}
-		<div class="mx-auto mb-2 max-w-4xl rounded-lg border border-line bg-surface-canvas shadow-sm">
+		<div class="mx-auto mb-2 max-w-3xl rounded-lg border border-line bg-surface-raised shadow-sm">
 			{#each slashCompletions as cmd (cmd.name)}
 				<button
 					onclick={() => {
@@ -144,7 +145,7 @@
 			{/each}
 		</div>
 	{:else if !isActive && suggestions.length > 0}
-		<div class="mx-auto max-w-4xl">
+		<div class="mx-auto max-w-3xl">
 			<SuggestionChips
 				{suggestions}
 				onSelect={(text) => {
@@ -154,42 +155,49 @@
 		</div>
 	{/if}
 	{#if contextChips.length > 0}
-		<div class="mx-auto mb-2 flex max-w-4xl flex-wrap items-center gap-1.5">
-			<span class="text-[11px] font-medium text-muted">Using context</span>
-			{#each contextChips as chip (chip.id)}
-				<button
-					type="button"
-					onclick={() => onToggleChip?.(chip.id)}
-					title={chip.active ? chip.detail : `${chip.label} — excluded from your next message`}
-					aria-pressed={chip.active}
-					class="flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors {chip.active
-						? 'border-accent bg-accent/10 text-ink'
-						: 'border-line text-muted line-through opacity-60'}"
-				>
-					{#if chip.active}
-						<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="1.5"
-								d="M5 13l4 4L19 7"
-							/>
-						</svg>
-					{/if}
-					{chip.label}
-				</button>
-			{/each}
-		</div>
+		<details class="mx-auto mb-2 max-w-3xl text-xs text-muted">
+			<summary class="cursor-pointer list-none rounded-md px-1 py-1 hover:text-ink">
+				Using {activeContextCount} of {contextChips.length} context
+				{contextChips.length === 1 ? 'source' : 'sources'}
+			</summary>
+			<div class="mt-1 flex flex-wrap items-center gap-1.5" aria-label="Context sources">
+				{#each contextChips as chip (chip.id)}
+					<button
+						type="button"
+						onclick={() => onToggleChip?.(chip.id)}
+						title={chip.active ? chip.detail : `${chip.label} — excluded from your next message`}
+						aria-pressed={chip.active}
+						class="flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors {chip.active
+							? 'border-accent bg-accent/10 text-ink'
+							: 'border-line text-muted line-through opacity-60'}"
+					>
+						{#if chip.active}
+							<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="1.5"
+									d="M5 13l4 4L19 7"
+								/>
+							</svg>
+						{/if}
+						{chip.label}
+					</button>
+				{/each}
+			</div>
+		</details>
 	{/if}
-	<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
-		<div class="flex space-x-2">
+	<form onsubmit={handleSubmit} class="mx-auto max-w-3xl">
+		<div
+			class="flex items-end gap-2 rounded-lg border border-line bg-surface-raised p-2 shadow-lg shadow-ink/5 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
+		>
 			<textarea
 				bind:this={textareaEl}
 				bind:value={inputMessage}
 				placeholder={canUseMallardWorkspaces
 					? 'Ask me about sourcing, portfolio, roasting, or coffee market decisions...'
 					: 'Ask me about sourcing, portfolio, catalog, or coffee market decisions...'}
-				class="flex-1 resize-none rounded-lg border border-line bg-surface-canvas px-4 py-3 text-ink placeholder-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+				class="min-h-11 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-ink placeholder-muted focus:outline-none focus:ring-0"
 				rows="1"
 				disabled={isActive || !workspaceReady}
 				onkeydown={(e) => {
@@ -204,7 +212,7 @@
 				onclick={isActive ? onStop : undefined}
 				disabled={!isActive && (!workspaceReady || !inputMessage.trim())}
 				aria-label={isActive ? 'Stop response' : 'Send message'}
-				class="rounded-lg bg-accent px-4 py-3 text-ink transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+				class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent text-ink transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if isActive}
 					<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
@@ -226,7 +234,7 @@
 				{/if}
 			</button>
 		</div>
-		<div class="mt-2 text-xs text-muted">
+		<div class="mt-1.5 px-1 text-xs text-muted">
 			Ask Parchment · Enter to send, Shift+Enter for new line
 		</div>
 	</form>
