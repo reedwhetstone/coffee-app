@@ -12,6 +12,10 @@ declare
   v_stale_fence bigint;
   v_new_fence bigint;
   v_late_fence bigint;
+  v_unknown_fence bigint;
+  v_legacy_fence bigint;
+  v_unknown_zero_fence bigint;
+  v_legacy_zero_fence bigint;
   v_set uuid;
   v_zero_set uuid;
   v_stale_set uuid;
@@ -63,9 +67,7 @@ begin
     (observation_set_id, catalog_id, source, observed_at, price, stocked)
   select v_set, v_catalog_id, 'fixture', observed_at, 10, true
   from public.supplier_observation_sets where id = v_set;
-  update public.supplier_observation_sets
-    set status = 'complete', is_complete = true, observed_item_count = 1, snapshot_item_count = 1
-    where id = v_set;
+  perform public.seal_supplier_observation_set(v_set, v_fence, 1, 1);
   begin
     update public.coffee_price_observations set price = 11 where observation_set_id = v_set;
     raise exception 'complete observation set was mutable';
@@ -92,9 +94,7 @@ begin
     raise exception 'same-run expired lease reacquire reused its stale fence';
   end if;
   begin
-    update public.supplier_observation_sets
-      set status = 'complete', is_complete = true, observed_item_count = 1, snapshot_item_count = 1
-      where id = v_stale_set;
+    perform public.seal_supplier_observation_set(v_stale_set, v_stale_fence, 1, 1);
     raise exception 'stale lease fence sealed an observation set';
   exception when others then
     if sqlerrm = 'stale lease fence sealed an observation set' then raise; end if;
@@ -120,39 +120,45 @@ begin
     if sqlerrm = 'legacy observation set was inserted complete' then raise; end if;
     if position('All observation sets must be inserted open' in sqlerrm) = 0 then raise; end if;
   end;
-  insert into public.supplier_observation_sets(source, observed_at, status, completeness)
-    values ('unknown-fixture', now(), 'partial', 'unknown') returning id into v_unknown_set;
+  v_unknown_fence := public.acquire_supplier_scrape_lease('unknown-fixture', v_other_run, interval '1 hour');
+  insert into public.supplier_observation_sets
+    (scrape_run_id, lease_fence, source, observed_at, status, completeness)
+    values (v_other_run, v_unknown_fence, 'unknown-fixture', now(), 'partial', 'unknown')
+    returning id into v_unknown_set;
   insert into public.coffee_price_observations
     (observation_set_id, catalog_id, source, observed_at, price)
   select v_unknown_set, v_catalog_id, 'unknown-fixture', observed_at, 10
   from public.supplier_observation_sets where id = v_unknown_set;
-  update public.supplier_observation_sets
-    set status = 'complete', is_complete = true, observed_item_count = 1, snapshot_item_count = 1
-    where id = v_unknown_set;
-  insert into public.supplier_observation_sets(source, observed_at, status, completeness)
-    values ('legacy-fixture', now(), 'partial', 'legacy') returning id into v_legacy_set;
+  perform public.seal_supplier_observation_set(v_unknown_set, v_unknown_fence, 1, 1);
+  v_legacy_fence := public.acquire_supplier_scrape_lease('legacy-fixture', v_other_run, interval '1 hour');
+  insert into public.supplier_observation_sets
+    (scrape_run_id, lease_fence, source, observed_at, status, completeness)
+    values (v_other_run, v_legacy_fence, 'legacy-fixture', now(), 'partial', 'legacy')
+    returning id into v_legacy_set;
   insert into public.coffee_price_observations
     (observation_set_id, catalog_id, source, observed_at, price)
   select v_legacy_set, v_catalog_id, 'legacy-fixture', observed_at, 10
   from public.supplier_observation_sets where id = v_legacy_set;
-  update public.supplier_observation_sets
-    set status = 'complete', is_complete = true, observed_item_count = 1, snapshot_item_count = 1
-    where id = v_legacy_set;
-  insert into public.supplier_observation_sets(source, observed_at, status, completeness)
-    values ('unknown-zero', now(), 'partial', 'unknown') returning id into v_unknown_zero_set;
+  perform public.seal_supplier_observation_set(v_legacy_set, v_legacy_fence, 1, 1);
+  v_unknown_zero_fence := public.acquire_supplier_scrape_lease('unknown-zero', v_other_run, interval '1 hour');
+  insert into public.supplier_observation_sets
+    (scrape_run_id, lease_fence, source, observed_at, status, completeness)
+    values (v_other_run, v_unknown_zero_fence, 'unknown-zero', now(), 'partial', 'unknown')
+    returning id into v_unknown_zero_set;
   begin
-    update public.supplier_observation_sets set status = 'complete', is_complete = true
-      where id = v_unknown_zero_set;
+    perform public.seal_supplier_observation_set(v_unknown_zero_set, v_unknown_zero_fence, 0, 0);
     raise exception 'zero-result unknown set was accepted as complete';
   exception when others then
     if sqlerrm = 'zero-result unknown set was accepted as complete' then raise; end if;
     if position('Zero-result supplier capture is a failure' in sqlerrm) = 0 then raise; end if;
   end;
-  insert into public.supplier_observation_sets(source, observed_at, status, completeness)
-    values ('legacy-zero', now(), 'partial', 'legacy') returning id into v_legacy_zero_set;
+  v_legacy_zero_fence := public.acquire_supplier_scrape_lease('legacy-zero', v_other_run, interval '1 hour');
+  insert into public.supplier_observation_sets
+    (scrape_run_id, lease_fence, source, observed_at, status, completeness)
+    values (v_other_run, v_legacy_zero_fence, 'legacy-zero', now(), 'partial', 'legacy')
+    returning id into v_legacy_zero_set;
   begin
-    update public.supplier_observation_sets set status = 'complete', is_complete = true
-      where id = v_legacy_zero_set;
+    perform public.seal_supplier_observation_set(v_legacy_zero_set, v_legacy_zero_fence, 0, 0);
     raise exception 'zero-result legacy set was accepted as complete';
   exception when others then
     if sqlerrm = 'zero-result legacy set was accepted as complete' then raise; end if;
@@ -186,9 +192,7 @@ begin
     if position('cannot be reopened or relabeled' in sqlerrm) = 0 then raise; end if;
   end;
   begin
-    update public.supplier_observation_sets
-      set status = 'complete', is_complete = true, observed_item_count = 1, snapshot_item_count = 1
-      where id = v_late_set;
+    perform public.seal_supplier_observation_set(v_late_set, v_late_fence, 1, 1);
     raise exception 'observation set sealed after run terminalization';
   exception when others then
     if sqlerrm = 'observation set sealed after run terminalization' then raise; end if;
@@ -200,8 +204,7 @@ begin
     (scrape_run_id, lease_fence, source, observed_at, status, expected_item_count)
   values (v_other_run, v_zero_fence, 'zero-fixture', now(), 'partial', 0) returning id into v_zero_set;
   begin
-    update public.supplier_observation_sets
-      set status = 'complete', is_complete = true where id = v_zero_set;
+    perform public.seal_supplier_observation_set(v_zero_set, v_zero_fence, 0, 0);
     raise exception 'zero-result supplier failure was accepted as complete';
   exception when others then
     if sqlerrm = 'zero-result supplier failure was accepted as complete' then raise; end if;
@@ -268,7 +271,38 @@ begin
 end $$;
 
 set local role service_role;
-do $$ begin
+do $$
+declare
+  v_service_run uuid;
+  v_service_set uuid;
+  v_service_fence bigint;
+begin
+  insert into public.scrape_runs(command, requested_source_count, selected_source_count)
+  values ('service role seal fixture', 1, 1) returning id into v_service_run;
+  v_service_fence := public.acquire_supplier_scrape_lease(
+    'service-role-fixture', v_service_run, interval '1 hour'
+  );
+  insert into public.supplier_observation_sets
+    (scrape_run_id, lease_fence, source, observed_at, status, expected_item_count)
+  values (v_service_run, v_service_fence, 'service-role-fixture', now(), 'partial', 1)
+  returning id into v_service_set;
+  insert into public.coffee_price_observations
+    (observation_set_id, catalog_id, source, observed_at, price)
+  select v_service_set, 1, 'service-role-fixture', observed_at, 10
+  from public.supplier_observation_sets where id = v_service_set;
+  perform public.seal_supplier_observation_set(v_service_set, v_service_fence, 1, 1);
+  if not (select is_complete from public.supplier_observation_sets where id = v_service_set) then
+    raise exception 'service role seal RPC did not complete observation set';
+  end if;
+
+  begin
+    update public.supplier_observation_sets set status = 'complete', is_complete = true
+    where id = v_service_set;
+    raise exception 'service role directly completed supplier observation set';
+  exception when insufficient_privilege then
+    null;
+  end;
+
   begin
     insert into public.supplier_scrape_leases(source, scrape_run_id, fence, acquired_at, expires_at)
     values ('forbidden-direct-dml', gen_random_uuid(), 1, now(), now() + interval '1 hour');

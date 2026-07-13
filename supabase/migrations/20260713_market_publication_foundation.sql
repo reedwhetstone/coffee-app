@@ -194,7 +194,7 @@ begin
 end $$;
 
 create or replace function public.guard_observation_artifact()
-returns trigger language plpgsql set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
 declare v_set_id uuid; v_complete boolean; v_parent_observed_at timestamptz;
 begin
   for v_set_id in
@@ -217,8 +217,8 @@ create trigger guard_complete_observations before insert or update or delete on 
   for each row execute function public.guard_observation_artifact();
 
 create or replace function public.guard_observation_set_lifecycle()
-returns trigger language plpgsql set search_path = public as $$
-declare v_lease public.supplier_scrape_leases%rowtype; v_observation_count bigint;
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_observation_count bigint;
 begin
   if tg_op = 'INSERT' then
     if new.is_complete or new.status = 'complete' then
@@ -237,24 +237,8 @@ begin
     raise exception 'Completing an observation set requires complete status; completeness is separate';
   end if;
   if new.is_complete then
-    if new.scrape_run_id is not null then
-      perform 1 from public.scrape_runs run
-      where run.id = new.scrape_run_id and run.status = 'running' and run.completed_at is null
-      for update;
-      if not found then raise exception 'Observation sets cannot be sealed after their scrape run is terminal'; end if;
-      if new.lease_fence is null then
-        raise exception 'Completing a run-owned observation set requires its lease fence';
-      end if;
-    elsif new.completeness = 'known' or new.lease_fence is not null then
-      raise exception 'Known or fenced observation sets require a scrape run';
-    end if;
-    if new.scrape_run_id is not null then
-      select * into v_lease from public.supplier_scrape_leases lease
-      where lease.source = new.source for update;
-      if not found or v_lease.scrape_run_id <> new.scrape_run_id
-        or v_lease.fence <> new.lease_fence or v_lease.expires_at <= clock_timestamp() then
-        raise exception 'Completing an observation set requires its live fenced supplier lease';
-      end if;
+    if current_setting('app.sealing_supplier_observation_set', true) is distinct from new.id::text then
+      raise exception 'Supplier observation sets may be completed only by seal_supplier_observation_set';
     end if;
     select count(*) into v_observation_count from public.coffee_price_observations observation
     where observation.observation_set_id = new.id;
@@ -277,6 +261,90 @@ begin
 end $$;
 create trigger guard_observation_set_lifecycle before insert or update or delete on public.supplier_observation_sets
   for each row execute function public.guard_observation_set_lifecycle();
+
+-- Canonical lock order for ingest finalization is run -> lease -> observation
+-- set. Lease acquire/reacquire uses the same run -> lease prefix.
+create or replace function public.seal_supplier_observation_set(
+  p_observation_set_id uuid,
+  p_lease_fence bigint,
+  p_observed_item_count integer,
+  p_snapshot_item_count integer
+) returns public.supplier_observation_sets language plpgsql security definer
+set search_path = public, pg_temp as $$
+declare
+  v_unlocked_set public.supplier_observation_sets%rowtype;
+  v_locked_set public.supplier_observation_sets%rowtype;
+  v_lease public.supplier_scrape_leases%rowtype;
+  v_observation_count bigint;
+  v_result public.supplier_observation_sets%rowtype;
+begin
+  if p_observation_set_id is null then raise exception 'observation_set_id is required'; end if;
+  if p_lease_fence is null or p_lease_fence <= 0 then raise exception 'lease fence is required'; end if;
+  if p_observed_item_count is null or p_observed_item_count < 0
+    or p_snapshot_item_count is null or p_snapshot_item_count < 0 then
+    raise exception 'observation counts must be non-negative';
+  end if;
+
+  -- Identity fields are immutable, so this non-locking read safely discovers
+  -- the run needed to start the canonical lock chain.
+  select * into v_unlocked_set from public.supplier_observation_sets
+  where id = p_observation_set_id;
+  if not found then raise exception 'supplier observation set does not exist'; end if;
+  if v_unlocked_set.scrape_run_id is null or v_unlocked_set.lease_fence is null then
+    raise exception 'sealing requires run-owned fenced provenance';
+  end if;
+
+  perform 1 from public.scrape_runs run
+  where run.id = v_unlocked_set.scrape_run_id and run.status = 'running' and run.completed_at is null
+  for update;
+  if not found then raise exception 'Observation sets cannot be sealed after their scrape run is terminal'; end if;
+
+  select * into v_lease from public.supplier_scrape_leases lease
+  where lease.source = v_unlocked_set.source for update;
+  if not found or v_lease.scrape_run_id <> v_unlocked_set.scrape_run_id
+    or v_lease.fence <> p_lease_fence or v_unlocked_set.lease_fence <> p_lease_fence
+    or v_lease.expires_at <= clock_timestamp() then
+    raise exception 'Completing an observation set requires its live fenced supplier lease';
+  end if;
+
+  select * into strict v_locked_set from public.supplier_observation_sets
+  where id = p_observation_set_id for update;
+  if v_locked_set.is_complete then raise exception 'Complete supplier observation sets are immutable'; end if;
+  if v_locked_set.scrape_run_id <> v_unlocked_set.scrape_run_id
+    or v_locked_set.source <> v_unlocked_set.source
+    or v_locked_set.lease_fence <> v_unlocked_set.lease_fence then
+    raise exception 'supplier observation set provenance changed during sealing';
+  end if;
+
+  select count(*) into v_observation_count from public.coffee_price_observations observation
+  where observation.observation_set_id = p_observation_set_id;
+  if v_observation_count = 0 then
+    raise exception 'Zero-result supplier capture is a failure, not a complete observation set';
+  end if;
+  if v_observation_count <> p_observed_item_count
+    or v_observation_count <> p_snapshot_item_count then
+    raise exception 'Complete observation set counts must match stored observations and snapshot_item_count';
+  end if;
+  if v_locked_set.completeness = 'known'
+    and p_observed_item_count <> v_locked_set.expected_item_count then
+    raise exception 'Complete known observation set count must match expected_item_count';
+  end if;
+  if exists (select 1 from public.coffee_price_observations observation
+    where observation.observation_set_id = p_observation_set_id
+      and observation.observed_at <> v_locked_set.observed_at) then
+    raise exception 'Observation set contains a child with a mismatched observation timestamp';
+  end if;
+
+  perform set_config('app.sealing_supplier_observation_set', p_observation_set_id::text, true);
+  update public.supplier_observation_sets
+  set status = 'complete', is_complete = true,
+      observed_item_count = p_observed_item_count,
+      snapshot_item_count = p_snapshot_item_count
+  where id = p_observation_set_id
+  returning * into v_result;
+  perform set_config('app.sealing_supplier_observation_set', '', true);
+  return v_result;
+end $$;
 
 -- Freezing is an ingest/configuration boundary only. Later publication tables
 -- must freeze a cohort in the same transaction before referencing it.
@@ -354,13 +422,20 @@ comment on table public.market_index_cohort_sources is
   'Versioned cohort membership and supplier influence. No short carry-forward TTL is stored here.';
 
 do $$ declare t text; begin
-  foreach t in array array['scrape_runs','supplier_observation_sets','coffee_price_observations','market_index_cohorts','market_index_cohort_sources'] loop
+  foreach t in array array['scrape_runs','coffee_price_observations','market_index_cohorts','market_index_cohort_sources'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('revoke all on table public.%I from public, anon, authenticated', t);
     execute format('grant all on table public.%I to service_role', t);
     execute format('create policy %I on public.%I for all using (auth.role() = ''service_role'') with check (auth.role() = ''service_role'')', 'Service role only ' || t, t);
   end loop;
 end $$;
+alter table public.supplier_observation_sets enable row level security;
+revoke all on table public.supplier_observation_sets from public, anon, authenticated, service_role;
+grant select, insert on table public.supplier_observation_sets to service_role;
+create policy "Service role reads supplier_observation_sets" on public.supplier_observation_sets
+  for select using (auth.role() = 'service_role');
+create policy "Service role inserts supplier_observation_sets" on public.supplier_observation_sets
+  for insert with check (auth.role() = 'service_role');
 alter table public.supplier_scrape_leases enable row level security;
 revoke all on table public.supplier_scrape_leases from public, anon, authenticated, service_role;
 grant select on table public.supplier_scrape_leases to service_role;
@@ -372,6 +447,8 @@ revoke all on function public.acquire_supplier_scrape_lease(text, uuid, interval
 grant execute on function public.acquire_supplier_scrape_lease(text, uuid, interval) to service_role;
 revoke all on function public.release_supplier_scrape_lease(text, uuid, bigint) from public, anon, authenticated;
 grant execute on function public.release_supplier_scrape_lease(text, uuid, bigint) to service_role;
+revoke all on function public.seal_supplier_observation_set(uuid, bigint, integer, integer) from public, anon, authenticated;
+grant execute on function public.seal_supplier_observation_set(uuid, bigint, integer, integer) to service_role;
 revoke all on function public.freeze_market_index_cohort(uuid) from public, anon, authenticated;
 grant execute on function public.freeze_market_index_cohort(uuid) to service_role;
 revoke all on function public.guard_observation_artifact() from public, anon, authenticated;
