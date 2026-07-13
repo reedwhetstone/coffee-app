@@ -585,6 +585,54 @@ export function extractCanvasMutationsFromPart(
 	return mutations.length > 0 ? mutations : null;
 }
 
+export interface ToolCanvasDispatchPlan {
+	mutations: CanvasMutation[] | null;
+	canvasBlocks: UIBlock[];
+	handledWithoutCanvas: boolean;
+}
+
+/**
+ * Describes the canvas contribution for one completed tool part. Both the
+ * workspace dispatcher and transcript preview mapper use this order so each
+ * compact link targets the block that was actually added to the canvas.
+ */
+export function buildToolCanvasDispatchPlan(
+	part: unknown,
+	block: UIBlock | null,
+	messageId: string
+): ToolCanvasDispatchPlan {
+	const mutations = extractCanvasMutationsFromPart(part, block, messageId);
+	if (mutations) {
+		return {
+			mutations,
+			canvasBlocks: mutations.flatMap((mutation) => {
+				if (mutation.type === 'add') return [mutation.block];
+				if (mutation.type === 'replace') return mutation.blocks.map((item) => item.block);
+				return [];
+			}),
+			handledWithoutCanvas: false
+		};
+	}
+
+	const toolPart = part as { state?: unknown; toolName?: unknown; type?: unknown } | null;
+	const isCompletedPresentation =
+		toolPart?.state === 'output-available' &&
+		(toolPart.toolName === 'present_results' || toolPart.type === 'tool-present_results');
+	if (isCompletedPresentation) {
+		return { mutations: null, canvasBlocks: [], handledWithoutCanvas: true };
+	}
+
+	if (!block || block.type === 'error') {
+		return { mutations: null, canvasBlocks: [], handledWithoutCanvas: false };
+	}
+
+	return {
+		mutations: null,
+		canvasBlocks: [block, ...extractCompanionBlocks(toolPart)],
+		handledWithoutCanvas: false
+	};
+}
+
 function marketSignalItems(output: Record<string, unknown>): Array<Record<string, unknown>> {
 	for (const key of ['data', 'signals', 'items']) {
 		const value = output[key];

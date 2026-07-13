@@ -28,7 +28,6 @@ vi.mock('@ai-sdk/svelte', () => ({
 }));
 vi.mock('ai', () => ({ DefaultChatTransport: vi.fn() }));
 vi.mock('@humanspeak/svelte-markdown', () => ({ default: vi.fn() }));
-vi.mock('$lib/components/genui/GenUIBlockRenderer.svelte', () => ({ default: vi.fn() }));
 vi.mock('$lib/components/genui/InlineStatusLine.svelte', () => ({ default: vi.fn() }));
 vi.mock('$lib/components/canvas/Canvas.svelte', () => ({ default: vi.fn() }));
 vi.mock('$lib/components/genui/SuggestionChips.svelte', () => ({ default: vi.fn() }));
@@ -87,6 +86,7 @@ describe('chat analytics seed', () => {
 		chatState.status = 'ready';
 		chatCallbacks.onError = null;
 		pageState.url = new URL('https://example.com/chat');
+		Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
 	});
 
 	it('prefills the input from an analytics prompt for users who can use chat', () => {
@@ -124,6 +124,61 @@ describe('chat analytics seed', () => {
 			expect(screen.getByRole('button', { name: 'Open evidence (1)' })).toBeInTheDocument();
 		});
 		expect(screen.queryByRole('button', { name: 'Hide evidence (1)' })).not.toBeInTheDocument();
+	});
+
+	it('opens the mobile canvas overlay focused on the compact companion preview target', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue(
+				new Response(JSON.stringify({}), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			)
+		);
+		chatState.messages = [
+			{
+				id: 'assistant-roast',
+				role: 'assistant',
+				parts: [
+					{
+						type: 'tool-roast_profiles',
+						toolName: 'roast_profiles',
+						toolCallId: 'roast-call',
+						state: 'output-available',
+						output: { profiles: [{ roast_id: 42, batch_name: 'Batch 42' }] }
+					}
+				]
+			}
+		];
+
+		render(ChatPage, {
+			data: createData({ initialWorkspaceData: createInitialWorkspaceData() } as Partial<PageData>)
+		});
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'assistant-roast',
+			block: {
+				type: 'roast-profiles',
+				version: 1,
+				data: [{ roast_id: '42', batch_name: 'Batch 42' } as never]
+			}
+		});
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'assistant-roast',
+			block: { type: 'roast-chart', version: 1, data: { roastId: 42 } }
+		});
+
+		await fireEvent.click(await screen.findByRole('button', { name: /Roast #42 chart/ }));
+
+		await waitFor(() => {
+			expect(screen.getByRole('dialog', { name: 'Evidence workspace' })).toBeInTheDocument();
+			expect(canvasStore.focusedBlock?.block).toMatchObject({
+				type: 'roast-chart',
+				data: { roastId: 42 }
+			});
+		});
 	});
 
 	it('asks an earlier question again without overwriting the composer draft', async () => {

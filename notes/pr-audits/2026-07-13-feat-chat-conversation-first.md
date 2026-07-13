@@ -43,3 +43,25 @@ The gate required three correction passes before reaching ready:
 ## Known validation limit
 
 No deterministic authenticated screenshot harness was available. Anonymous `/chat` requests redirect, so desktop and mobile visual inspection remains a preview-deployment review item rather than a claimed local validation result.
+
+## Canvas-only evidence amendment
+
+After preview review, the chat rendering contract was tightened so full GenUI components render only in the evidence canvas on every viewport. Desktop and mobile transcripts now use the existing compact preview links; mobile activation opens the canvas overlay focused on the corresponding block.
+
+The amendment's first red-team pass found that companion previews reused their parent canvas ID and shifted later preview IDs. The final implementation centralizes canvas contribution ordering in `buildToolCanvasDispatchPlan`, which both canvas dispatch and transcript mapping consume. Errors use no canvas ID, primary and companion blocks receive distinct IDs, and subsequent tool results remain aligned.
+
+```text
+VERDICT: ready
+P0: 0
+P1: 0
+P2: 0
+P3: 0
+NEXT_ACTION: merge
+CONFIDENCE: high
+SCOPE_ASSESSMENT: mergeable
+```
+
+- Focused Vitest suites: pass, 3 files and 16 tests.
+- `pnpm lint`: pass.
+- Placeholder-env `pnpm check --fail-on-warnings`: pass with 0 errors and 0 warnings.
+- Amendment diff check: pass.

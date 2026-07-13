@@ -2,9 +2,9 @@ import { fireEvent, render, screen } from '@testing-library/svelte';
 import '@testing-library/jest-dom/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ChatMessageList from './ChatMessageList.svelte';
+import { canvasStore } from '$lib/stores/canvasStore.svelte';
 
 vi.mock('@humanspeak/svelte-markdown', () => ({ default: vi.fn() }));
-vi.mock('$lib/components/genui/GenUIBlockRenderer.svelte', () => ({ default: vi.fn() }));
 vi.mock('$lib/components/genui/InlineStatusLine.svelte', () => ({ default: vi.fn() }));
 
 function props(messages: Array<Record<string, unknown>> = []) {
@@ -23,6 +23,7 @@ function props(messages: Array<Record<string, unknown>> = []) {
 
 describe('ChatMessageList conversation controls', () => {
 	beforeEach(() => {
+		canvasStore.resetAll();
 		Object.defineProperty(navigator, 'clipboard', {
 			configurable: true,
 			value: { writeText: vi.fn().mockResolvedValue(undefined) }
@@ -76,5 +77,73 @@ describe('ChatMessageList conversation controls', () => {
 		render(ChatMessageList, componentProps);
 
 		expect(screen.getByRole('button', { name: 'Ask again' })).toBeDisabled();
+	});
+
+	it('maps primary, companion, and later previews to canvas IDs in dispatch order', async () => {
+		const messageId = 'assistant-tools';
+		const roastPart = {
+			type: 'tool-roast_profiles',
+			toolName: 'roast_profiles',
+			toolCallId: 'roast-call',
+			state: 'output-available',
+			output: {
+				profiles: [{ roast_id: 42, batch_name: 'Batch 42' }]
+			}
+		};
+		const laterPart = {
+			type: 'tool-coffee_catalog_search',
+			toolName: 'coffee_catalog_search',
+			toolCallId: 'coffee-call',
+			state: 'output-available',
+			output: { coffees: [{ id: 7, name: 'Later coffee', country: 'Ethiopia' }] }
+		};
+		const messages = [
+			{
+				id: messageId,
+				role: 'assistant',
+				parts: [
+					{ type: 'tool-failed_lookup', state: 'output-error', errorText: 'Lookup failed' },
+					roastPart,
+					laterPart
+				]
+			}
+		];
+
+		canvasStore.dispatch({
+			type: 'add',
+			messageId,
+			block: {
+				type: 'roast-profiles',
+				version: 1,
+				data: [{ roast_id: '42', batch_name: 'Batch 42' } as never]
+			}
+		});
+		canvasStore.dispatch({
+			type: 'add',
+			messageId,
+			block: { type: 'roast-chart', version: 1, data: { roastId: 42 } }
+		});
+		canvasStore.dispatch({
+			type: 'add',
+			messageId,
+			block: {
+				type: 'coffee-cards',
+				version: 1,
+				data: [{ id: 7, name: 'Later coffee', country: 'Ethiopia' } as never]
+			}
+		});
+		const [roastId, chartId, laterId] = canvasStore.blocks.map((block) => block.id);
+		const componentProps = props(messages);
+		render(ChatMessageList, componentProps);
+
+		await fireEvent.click(screen.getByRole('button', { name: /Batch 42/ }));
+		await fireEvent.click(screen.getByRole('button', { name: /Roast #42 chart/ }));
+		await fireEvent.click(screen.getByRole('button', { name: /Later coffee Ethiopia/ }));
+
+		expect(componentProps.onBlockAction.mock.calls).toEqual([
+			[{ type: 'focus-canvas-block', blockId: roastId }],
+			[{ type: 'focus-canvas-block', blockId: chartId }],
+			[{ type: 'focus-canvas-block', blockId: laterId }]
+		]);
 	});
 });

@@ -5,6 +5,7 @@
 	import InlineStatusLine from '$lib/components/genui/InlineStatusLine.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 	import {
+		buildToolCanvasDispatchPlan,
 		extractBlockFromPart,
 		extractCompanionBlocks,
 		buildSearchDataCacheThroughPart,
@@ -321,7 +322,7 @@
 								{@const _lookup = canvasBlockLookup()}
 								{@const _canvasIds = _lookup.get(message.id) || []}
 								{@const _partCanvasMap = (() => {
-									const map = new Map<number, string>();
+									const map = new Map<number, string[]>();
 									let blockIdx = 0;
 									for (let i = 0; i < message.parts.length; i++) {
 										const p = message.parts[i];
@@ -330,9 +331,13 @@
 												p as Record<string, unknown>,
 												buildExtractorOptionsThroughPart(msgIndex, i, hasPR)
 											);
-											if (b) {
-												map.set(i, _canvasIds[blockIdx] ?? '');
-												blockIdx++;
+											const dispatchPlan = buildToolCanvasDispatchPlan(p, b, message.id);
+											if (dispatchPlan.canvasBlocks.length > 0) {
+												map.set(
+													i,
+													_canvasIds.slice(blockIdx, blockIdx + dispatchPlan.canvasBlocks.length)
+												);
+												blockIdx += dispatchPlan.canvasBlocks.length;
 											}
 										}
 									}
@@ -348,26 +353,26 @@
 										)}
 										{@const block = extractBlockFromPart(toolPart, extractorOptions)}
 										{#if block}
-											{@const canvasId = _partCanvasMap.get(partIndex) ?? ''}
+											{@const canvasIds = _partCanvasMap.get(partIndex) ?? []}
 											<div class="preview-fade-in my-1">
 												<GenUIBlockRenderer
 													{block}
 													renderMode="chat"
 													onAction={onBlockAction}
 													{onExecuteAction}
-													canvasBlockId={canvasId}
+													canvasBlockId={canvasIds[0] ?? ''}
 												/>
 											</div>
 											<!-- Companion block previews (e.g., roast chart for single roast) -->
 											{@const companions = extractCompanionBlocks(toolPart)}
-											{#each companions as companionBlock}
+											{#each companions as companionBlock, companionIndex}
 												<div class="preview-fade-in my-1">
 													<GenUIBlockRenderer
 														block={companionBlock}
 														renderMode="chat"
 														onAction={onBlockAction}
 														{onExecuteAction}
-														canvasBlockId={canvasId}
+														canvasBlockId={canvasIds[companionIndex + 1] ?? ''}
 													/>
 												</div>
 											{/each}

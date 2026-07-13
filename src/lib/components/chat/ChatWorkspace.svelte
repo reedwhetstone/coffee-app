@@ -9,8 +9,8 @@
 	import MemoryPanel from '$lib/components/chat/MemoryPanel.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 	import {
+		buildToolCanvasDispatchPlan,
 		extractBlockFromPart,
-		extractCanvasMutationsFromPart,
 		extractCompanionBlocks,
 		buildSearchDataCacheThroughPart,
 		messageHasPresentResults
@@ -793,31 +793,29 @@
 				}
 				const block = extractBlockFromPart(p, extractorOptions);
 
-				// If this is a present_results part, use explicit canvas mutations
-				const mutations = extractCanvasMutationsFromPart(p, block, message.id);
-				if (mutations) {
-					for (const m of mutations) canvasStore.dispatch(m);
+				const dispatchPlan = buildToolCanvasDispatchPlan(p, block, message.id);
+				if (dispatchPlan.mutations) {
+					for (const mutation of dispatchPlan.mutations) canvasStore.dispatch(mutation);
 					dispatchedParts.add(partKey);
-				} else if (
-					p.state === 'output-available' &&
-					(p.toolName === 'present_results' || p.type === 'tool-present_results')
-				) {
+				} else if (dispatchPlan.handledWithoutCanvas) {
 					// Cache-miss/error presentations intentionally render inline only. Mark them
 					// handled so a later completed turn cannot revisit this old part.
 					dispatchedParts.add(partKey);
-				} else if (block && block.type !== 'error') {
-					// Non-present_results tools: auto-add to canvas
-					canvasStore.dispatch({ type: 'add', block, messageId: message.id });
+				} else if (dispatchPlan.canvasBlocks.length > 0) {
+					// Non-present_results tools: auto-add the primary block, then companions.
+					canvasStore.dispatch({
+						type: 'add',
+						block: dispatchPlan.canvasBlocks[0],
+						messageId: message.id
+					});
 					dispatchedParts.add(partKey);
 
-					// Also dispatch companion blocks (e.g., roast-chart for single roast profile)
-					const companions = extractCompanionBlocks(p);
-					for (let ci = 0; ci < companions.length; ci++) {
-						const companionKey = `${partKey}-companion-${ci}`;
+					for (let ci = 1; ci < dispatchPlan.canvasBlocks.length; ci++) {
+						const companionKey = `${partKey}-companion-${ci - 1}`;
 						if (!dispatchedParts.has(companionKey)) {
 							canvasStore.dispatch({
 								type: 'add',
-								block: companions[ci],
+								block: dispatchPlan.canvasBlocks[ci],
 								messageId: message.id
 							});
 							dispatchedParts.add(companionKey);

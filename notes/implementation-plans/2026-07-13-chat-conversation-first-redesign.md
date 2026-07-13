@@ -47,7 +47,7 @@ This is one atomic PR because the shell, composer, transcript spacing, status tr
 ### Trust and responsive behavior
 
 - Completed assistant messages expose copy and ask-again affordances without cluttering streaming messages.
-- Mobile retains inline evidence and can open the full evidence view without losing the conversation path.
+- Mobile retains compact evidence links in chat; activating one opens the full evidence block in the canvas overlay without losing the conversation path.
 - Existing stop/retry, workspace readiness, clear/export, context opt-in, action execution, and persistence behavior remain intact.
 
 ## Validation
