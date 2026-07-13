@@ -172,6 +172,15 @@ begin
       expires_at = excluded.expires_at
   where public.supplier_scrape_leases.expires_at <= v_now
      or public.supplier_scrape_leases.scrape_run_id = excluded.scrape_run_id
+     -- Terminal runs can never seal observations again, so their unexpired
+     -- leases no longer represent live ownership. Reclaiming still consumes a
+     -- new sequence fence, which keeps the abandoned worker fenced out.
+     or not exists (
+       select 1 from public.scrape_runs owner_run
+       where owner_run.id = public.supplier_scrape_leases.scrape_run_id
+         and owner_run.status = 'running'
+         and owner_run.completed_at is null
+     )
   returning public.supplier_scrape_leases.fence into v_fence;
   return v_fence;
 end $$;

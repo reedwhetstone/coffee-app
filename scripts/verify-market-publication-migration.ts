@@ -94,6 +94,8 @@ for (const scenario of [
 	'terminal scrape run was reopened',
 	'terminal scrape run was relabeled',
 	'observation set sealed after run terminalization',
+	'terminal scrape run lease was not reclaimed with a new fence',
+	'reclaimed supplier lease did not transfer ownership',
 	'unknown observation set was inserted complete',
 	'legacy observation set was inserted complete',
 	'zero-result unknown set was accepted as complete',

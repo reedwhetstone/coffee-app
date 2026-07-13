@@ -7,11 +7,13 @@ declare
   v_run uuid;
   v_other_run uuid;
   v_lifecycle_run uuid;
+  v_recovery_run uuid;
   v_fence bigint;
   v_zero_fence bigint;
   v_stale_fence bigint;
   v_new_fence bigint;
   v_late_fence bigint;
+  v_reclaimed_fence bigint;
   v_unknown_fence bigint;
   v_legacy_fence bigint;
   v_unknown_zero_fence bigint;
@@ -198,6 +200,24 @@ begin
     if sqlerrm = 'observation set sealed after run terminalization' then raise; end if;
     if position('cannot be sealed after their scrape run is terminal' in sqlerrm) = 0 then raise; end if;
   end;
+
+  -- A terminal run no longer owns a live lease, even before its TTL expires.
+  insert into public.scrape_runs(command, publication_scope, requested_source_count, selected_source_count)
+    values ('scrape all recovery', 'production', 1, 1) returning id into v_recovery_run;
+  v_reclaimed_fence := public.acquire_supplier_scrape_lease(
+    'late-fixture', v_recovery_run, interval '1 hour'
+  );
+  if v_reclaimed_fence is null or v_reclaimed_fence <= v_late_fence then
+    raise exception 'terminal scrape run lease was not reclaimed with a new fence';
+  end if;
+  if not exists (
+    select 1 from public.supplier_scrape_leases lease
+    where lease.source = 'late-fixture'
+      and lease.scrape_run_id = v_recovery_run
+      and lease.fence = v_reclaimed_fence
+  ) then
+    raise exception 'reclaimed supplier lease did not transfer ownership';
+  end if;
 
   v_zero_fence := public.acquire_supplier_scrape_lease('zero-fixture', v_other_run, interval '1 hour');
   insert into public.supplier_observation_sets
