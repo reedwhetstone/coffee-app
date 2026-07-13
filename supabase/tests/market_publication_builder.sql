@@ -70,16 +70,20 @@ do $$ begin
 exception when raise_exception then
   if sqlerrm <> 'supplier scrape leases require a running scrape run' then raise; end if;
 end $$;
+insert into public.scrape_runs(id,command,requested_source_count,selected_source_count,publication_scope)
+values ('01000000-0000-0000-0000-000000000003','observation-fixtures-day-one',4,4,'production');
 insert into public.scrape_runs(id,command,requested_source_count,selected_source_count)
-values ('01000000-0000-0000-0000-000000000003','observation-fixtures-day-one',5,5);
+values ('01000000-0000-0000-0000-000000000010','seal-test',1,1);
 create temporary table _fixture_fences(source text primary key,fence bigint not null) on commit drop;
 insert into _fixture_fences(source,fence)
 select source,public.acquire_supplier_scrape_lease(source,'01000000-0000-0000-0000-000000000003')
-from unnest(array['a','b','c','d','seal-test']) source;
+from unnest(array['a','b','c','d']) source;
+insert into _fixture_fences(source,fence)
+values ('seal-test',public.acquire_supplier_scrape_lease('seal-test','01000000-0000-0000-0000-000000000010'));
 
 insert into public.supplier_observation_sets(id,scrape_run_id,lease_fence,source,observed_at,status,
   completeness,expected_item_count,observed_item_count,snapshot_item_count,is_complete)
-values ('12000000-0000-0000-0000-000000000098','01000000-0000-0000-0000-000000000003',
+values ('12000000-0000-0000-0000-000000000098','01000000-0000-0000-0000-000000000010',
   (select fence from _fixture_fences where source='seal-test'),'seal-test','2026-07-13 22:00Z','partial','known',1,1,1,false);
 alter table public.coffee_price_observations disable trigger guard_complete_observations;
 insert into public.coffee_price_observations(observation_set_id,catalog_id,source,observed_at,price,stocked,origin)
@@ -130,6 +134,8 @@ update public.coffee_price_observations set stocked=null
 where observation_set_id='11000000-0000-0000-0000-000000000001'
   and catalog_id=(select min(catalog_id) from public.coffee_price_observations where observation_set_id='11000000-0000-0000-0000-000000000001');
 update public.supplier_observation_sets set status='complete',is_complete=true where id::text like '11000000-%';
+update public.scrape_runs set status='succeeded',completed_at=clock_timestamp()
+where id='01000000-0000-0000-0000-000000000003';
 
 do $$ declare r record; v numeric; begin
   select * into r from public.build_market_publication('2026-07-12','builder-fixture',1);
@@ -148,8 +154,8 @@ end $$;
 
 select public.release_supplier_scrape_lease(source,'01000000-0000-0000-0000-000000000003',fence)
 from _fixture_fences where source in ('a','b','c','d');
-insert into public.scrape_runs(id,command,requested_source_count,selected_source_count)
-values ('01000000-0000-0000-0000-000000000004','observation-fixtures-day-two',4,4);
+insert into public.scrape_runs(id,command,requested_source_count,selected_source_count,publication_scope)
+values ('01000000-0000-0000-0000-000000000004','observation-fixtures-day-two',4,4,'production');
 create temporary table _day2_fences(source text primary key,fence bigint not null) on commit drop;
 insert into _day2_fences(source,fence)
 select source,public.acquire_supplier_scrape_lease(source,'01000000-0000-0000-0000-000000000004')
@@ -181,10 +187,37 @@ from (values
 ) s(set_id,source,price,n) join lateral (select id from public.coffee_catalog order by id offset s.n-1 limit 1) c on true;
 update public.supplier_observation_sets set status='complete',is_complete=true
 where id in ('12000000-0000-0000-0000-000000000001','12000000-0000-0000-0000-000000000002','12000000-0000-0000-0000-000000000003');
+update public.scrape_runs set status='degraded',completed_at=clock_timestamp()
+where id='01000000-0000-0000-0000-000000000004';
+
+-- A newer explicit-source recovery set is complete but cannot contaminate the
+-- production publication because its run is non-production by default.
+select public.release_supplier_scrape_lease('a','01000000-0000-0000-0000-000000000004',
+  (select fence from _day2_fences where source='a'));
+insert into public.scrape_runs(id,command,requested_source_count,selected_source_count)
+values ('01000000-0000-0000-0000-000000000008','explicit-source-recovery',1,1);
+create temporary table _adhoc_a_fence(fence bigint not null) on commit drop;
+insert into _adhoc_a_fence values (
+  public.acquire_supplier_scrape_lease('a','01000000-0000-0000-0000-000000000008')
+);
+insert into public.supplier_observation_sets(id,scrape_run_id,lease_fence,source,observed_at,status,
+  completeness,expected_item_count,observed_item_count,snapshot_item_count,is_complete)
+values ('12000000-0000-0000-0000-000000000008','01000000-0000-0000-0000-000000000008',
+  (select fence from _adhoc_a_fence),'a','2026-07-13 20:00Z','partial','known',1,1,1,false);
+insert into public.coffee_price_observations(observation_set_id,catalog_id,source,observed_at,price,stocked,wholesale,origin)
+select '12000000-0000-0000-0000-000000000008',id,'a','2026-07-13 20:00Z',999,true,false,'Colombia'
+from public.coffee_catalog order by id offset 30 limit 1;
+update public.supplier_observation_sets set status='complete',is_complete=true
+where id='12000000-0000-0000-0000-000000000008';
+update public.scrape_runs set status='succeeded',completed_at=clock_timestamp()
+where id='01000000-0000-0000-0000-000000000008';
 
 do $$ declare r record; v_movement numeric; begin
   select * into r from public.build_market_publication('2026-07-13','builder-fixture',1);
   if r.action <> 'activated' or r.quality_tier <> 'healthy' then raise exception 'fresh+carried candidate failed: %',r; end if;
+  if (select observation_set_id from public.market_publication_inputs
+      where publication_id=r.publication_id and source='a') <> '12000000-0000-0000-0000-000000000001' then
+    raise exception 'non-production recovery set contaminated production selection'; end if;
   if (select freshness from public.market_publication_inputs where publication_id=r.publication_id and source='d') <> 'carried' then
     raise exception 'latest eligible whole set was not carried'; end if;
   if (select stock_confidence from public.market_publication_inputs where publication_id=r.publication_id and source='d') <> 'carried' then
@@ -200,12 +233,14 @@ do $$ declare r record; v_movement numeric; begin
   if abs(v_movement - 0.1) > 0.00000001 then
     raise exception 'matched relative should isolate 10 percent repricing, got %',v_movement; end if;
 end $$;
+select public.release_supplier_scrape_lease('a','01000000-0000-0000-0000-000000000008',
+  (select fence from _adhoc_a_fence));
 
 -- A newer complete d set improves freshness and replaces the entire same-day publication.
 select public.release_supplier_scrape_lease('d','01000000-0000-0000-0000-000000000004',
   (select fence from _day2_fences where source='d'));
-insert into public.scrape_runs(id,command,requested_source_count,selected_source_count)
-values ('01000000-0000-0000-0000-000000000005','observation-fixtures-day-two-d-retry',1,1);
+insert into public.scrape_runs(id,command,requested_source_count,selected_source_count,publication_scope)
+values ('01000000-0000-0000-0000-000000000005','observation-fixtures-day-two-full-rerun',4,4,'production');
 create temporary table _day2_d_retry_fence(fence bigint not null) on commit drop;
 insert into _day2_d_retry_fence values (
   (public.acquire_supplier_scrape_lease('d','01000000-0000-0000-0000-000000000005'))
@@ -216,6 +251,8 @@ insert into public.coffee_price_observations(observation_set_id,catalog_id,sourc
 select '12000000-0000-0000-0000-000000000004',id,'d','2026-07-13 12:00Z',44,true,false,'Colombia'
 from public.coffee_catalog order by id offset 22 limit 1;
 update public.supplier_observation_sets set status='complete',is_complete=true where id='12000000-0000-0000-0000-000000000004';
+update public.scrape_runs set status='succeeded',completed_at=clock_timestamp()
+where id='01000000-0000-0000-0000-000000000005';
 do $$ declare r record; v_active integer; v_replaced uuid; v_movement numeric; v_total numeric; v_assortment numeric; begin
   select id into v_replaced from public.market_publications
   where as_of_date='2026-07-13' and cohort_id='10000000-0000-0000-0000-000000000001' and status='active';
@@ -254,8 +291,8 @@ select public.release_supplier_scrape_lease(source,'01000000-0000-0000-0000-0000
 from _day2_fences where source in ('a','b','c');
 select public.release_supplier_scrape_lease('d','01000000-0000-0000-0000-000000000005',
   (select fence from _day2_d_retry_fence));
-insert into public.scrape_runs(id,command,requested_source_count,selected_source_count)
-values ('01000000-0000-0000-0000-000000000006','observation-fixtures-day-three',4,4);
+insert into public.scrape_runs(id,command,requested_source_count,selected_source_count,publication_scope)
+values ('01000000-0000-0000-0000-000000000006','observation-fixtures-day-three',4,4,'production');
 create temporary table _day3_fences(source text primary key,fence bigint not null) on commit drop;
 insert into _day3_fences(source,fence)
 select source,public.acquire_supplier_scrape_lease(source,'01000000-0000-0000-0000-000000000006')
@@ -278,6 +315,8 @@ from (values
 ) s(set_id,source,price,n,origin)
 join lateral (select id from public.coffee_catalog order by id offset s.n-1 limit 1) catalog on true;
 update public.supplier_observation_sets set status='complete',is_complete=true where id::text like '13000000-%';
+update public.scrape_runs set status='succeeded',completed_at=clock_timestamp()
+where id='01000000-0000-0000-0000-000000000006';
 do $$ declare r record; v_total numeric; v_repricing numeric; v_assortment numeric; begin
   select * into r from public.build_market_publication('2026-07-14','builder-fixture',1);
   if r.action <> 'activated' then raise exception 'day-three publication did not activate: %',r; end if;
@@ -299,8 +338,8 @@ end $$;
 -- Once a later active publication references day two, day two is finalized.
 select public.release_supplier_scrape_lease('a','01000000-0000-0000-0000-000000000006',
   (select fence from _day3_fences where source='a'));
-insert into public.scrape_runs(id,command,requested_source_count,selected_source_count)
-values ('01000000-0000-0000-0000-000000000007','observation-fixtures-late-day-two-a',1,1);
+insert into public.scrape_runs(id,command,requested_source_count,selected_source_count,publication_scope)
+values ('01000000-0000-0000-0000-000000000007','observation-fixtures-late-day-two-full-rerun',4,4,'production');
 create temporary table _late_a_fence(fence bigint not null) on commit drop;
 insert into _late_a_fence values (
   (public.acquire_supplier_scrape_lease('a','01000000-0000-0000-0000-000000000007'))
@@ -313,6 +352,8 @@ select '12000000-0000-0000-0000-000000000005',id,'a','2026-07-13 20:00Z',12,true
 from public.coffee_catalog order by id limit 10;
 update public.supplier_observation_sets set status='complete',is_complete=true
 where id='12000000-0000-0000-0000-000000000005';
+update public.scrape_runs set status='succeeded',completed_at=clock_timestamp()
+where id='01000000-0000-0000-0000-000000000007';
 do $$ declare r record; begin
   select * into r from public.build_market_publication('2026-07-13','builder-fixture',1);
   if r.action <> 'rejected_chain_finalized' then
@@ -328,6 +369,38 @@ do $$ declare r record; begin
     raise exception 'expired suppliers were not disclosed individually'; end if;
   if (select count(*) from public.market_publications where cohort_id='10000000-0000-0000-0000-000000000001' and status='active') <> 3 then
     raise exception 'suppression should preserve prior active publication dates'; end if;
+end $$;
+
+-- Healthy source/item coverage cannot activate a publication with no priced,
+-- stocked aggregate rows.
+insert into public.market_index_cohorts(id,cohort_key,version,methodology_version,expected_source_count,effective_from)
+values ('10000000-0000-0000-0000-000000000003','no-index-fixture',1,'supplier-first-matched-relative-v1',1,'2026-07-01');
+insert into public.market_index_cohort_sources(cohort_id,source,carry_forward_ttl,source_weight)
+values ('10000000-0000-0000-0000-000000000003','no-index-source',interval '3 days',1);
+insert into public.scrape_runs(id,command,requested_source_count,selected_source_count,publication_scope)
+values ('01000000-0000-0000-0000-000000000009','no-index-production',1,1,'production');
+create temporary table _no_index_fence(fence bigint not null) on commit drop;
+insert into _no_index_fence values (
+  public.acquire_supplier_scrape_lease('no-index-source','01000000-0000-0000-0000-000000000009')
+);
+insert into public.supplier_observation_sets(id,scrape_run_id,lease_fence,source,observed_at,status,
+  completeness,expected_item_count,observed_item_count,snapshot_item_count,is_complete)
+values ('14000000-0000-0000-0000-000000000009','01000000-0000-0000-0000-000000000009',
+  (select fence from _no_index_fence),'no-index-source','2026-07-13 12:00Z','partial','known',1,1,1,false);
+insert into public.coffee_price_observations(observation_set_id,catalog_id,source,observed_at,price,stocked,wholesale,origin)
+select '14000000-0000-0000-0000-000000000009',max(id),'no-index-source','2026-07-13 12:00Z',12,false,false,'Brazil'
+from public.coffee_catalog;
+update public.supplier_observation_sets set status='complete',is_complete=true
+where id='14000000-0000-0000-0000-000000000009';
+update public.scrape_runs set status='succeeded',completed_at=clock_timestamp()
+where id='01000000-0000-0000-0000-000000000009';
+do $$ declare r record; begin
+  select * into r from public.build_market_publication('2026-07-13','no-index-fixture',1);
+  if r.action <> 'suppressed_no_price_indexes' or r.quality_tier <> 'healthy' then
+    raise exception 'zero-index candidate was not explicitly suppressed: %',r; end if;
+  if (select status from public.market_publications where id=r.publication_id) <> 'rejected'
+    or (select price_index_count from public.market_publications where id=r.publication_id) <> 0 then
+    raise exception 'zero-index candidate reached active publication state'; end if;
 end $$;
 
 -- Frozen expected denominators must agree with enabled cohort membership.

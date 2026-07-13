@@ -10,6 +10,10 @@ values
    date '2026-07-13')
 on conflict (cohort_key, version) do nothing;
 
+alter table public.scrape_runs
+  add column publication_scope text not null default 'non-production'
+    check (publication_scope in ('production', 'non-production'));
+
 insert into public.market_index_cohort_sources (cohort_id, source, carry_forward_ttl, source_weight, enabled)
 select '4f66f0c4-1475-4ca5-9a2d-202607130001', source, interval '3 days', 1, true
 from unnest(array[
@@ -383,6 +387,7 @@ declare
   v_enabled_source_count integer;
   v_had_old boolean;
   v_chain_finalized boolean;
+  v_price_index_count integer;
 begin
   if p_as_of_date is null or p_cohort_key is null or p_cohort_version is null then
     raise exception 'as_of_date, cohort_key, and cohort_version are required';
@@ -416,17 +421,29 @@ begin
     execute 'drop table pg_temp._selected';
   end if;
   create temporary table _selected on commit drop as
-  with members as (
+  with eligible_sets as (
+    select observation_set.*
+    from public.supplier_observation_sets observation_set
+    join public.scrape_runs run on run.id=observation_set.scrape_run_id
+    where observation_set.is_complete
+      and observation_set.status='complete'
+      and observation_set.completeness='known'
+      and run.publication_scope='production'
+      and run.status in ('succeeded','degraded')
+      and run.completed_at is not null
+      and run.requested_source_count=v_enabled_source_count
+      and run.selected_source_count=v_enabled_source_count
+  ), members as (
     select cs.*, (
-      select max(s.expected_item_count) from public.supplier_observation_sets s
-       where s.source=cs.source and s.is_complete and s.status='complete' and s.completeness='known'
+      select max(s.expected_item_count) from eligible_sets s
+       where s.source=cs.source
          and s.observed_at < v_cutoff and s.observed_at >= v_cutoff - v_policy.expected_item_lookback
     ) baseline, chosen.id, chosen.observed_at, chosen.expected_item_count, chosen.snapshot_item_count
     from public.market_index_cohort_sources cs
     left join lateral (
       select s.id, s.observed_at, s.expected_item_count, s.snapshot_item_count
-      from public.supplier_observation_sets s
-      where s.source=cs.source and s.is_complete and s.status='complete' and s.completeness='known'
+      from eligible_sets s
+      where s.source=cs.source
         and s.observed_at < v_cutoff and s.observed_at >= v_cutoff-cs.carry_forward_ttl
       order by s.observed_at desc, s.id desc limit 1
     ) chosen on true
@@ -436,8 +453,7 @@ begin
     greatest(coalesce(baseline,0),coalesce(expected_item_count,0))::integer expected_items,
     id observation_set_id, observed_at, coalesce(snapshot_item_count,0)::integer represented_items,
     case when id is null and exists (
-      select 1 from public.supplier_observation_sets x where x.source=members.source
-       and x.is_complete and x.status='complete' and x.completeness='known' and x.observed_at < v_cutoff
+      select 1 from eligible_sets x where x.source=members.source and x.observed_at < v_cutoff
     ) then 'expired'
     when id is null then 'missing'
     when observed_at >= v_day_start then 'fresh' else 'carried' end selection_state
@@ -508,6 +524,10 @@ begin
   where segment.publication_id=v_pub
   group by segment.origin,segment.process,segment.grade,segment.wholesale_only;
 
+  select count(*) into v_price_index_count
+  from public.market_publication_price_indexes aggregate
+  where aggregate.publication_id=v_pub;
+
   insert into public.market_publication_movements(publication_id,origin,process,grade,wholesale_only,prior_publication_id,
     matched_supplier_count,matched_weight,current_weight,prior_weight,matched_weight_ratio,total_price_relative,
     matched_price_relative,movement_pct,assortment_shift_pct,movement_status)
@@ -564,6 +584,9 @@ begin
   if v_tier='suppressed' then
     update public.market_publications set status='rejected',rejected_at=clock_timestamp() where id=v_pub;
     v_action := 'suppressed';
+  elsif v_price_index_count=0 then
+    update public.market_publications set status='rejected',rejected_at=clock_timestamp() where id=v_pub;
+    v_action := 'suppressed_no_price_indexes';
   else
     select * into v_old from public.market_publications existing
      where existing.as_of_date=p_as_of_date and existing.cohort_id=v_cohort.id and existing.status='active'
@@ -596,10 +619,7 @@ begin
     else
       if v_had_old then update public.market_publications set status='rejected',rejected_at=clock_timestamp() where id=v_old.id; end if;
       update public.market_publications
-      set price_index_count=(
-            select count(*) from public.market_publication_price_indexes aggregate
-            where aggregate.publication_id=v_pub
-          ),
+      set price_index_count=v_price_index_count,
           status='active',sealed_at=clock_timestamp(),published_at=clock_timestamp()
       where id=v_pub;
       v_action := case when v_had_old then 'replaced' else 'activated' end;
@@ -625,6 +645,8 @@ grant usage, select on sequence public.market_publication_movements_id_seq to se
 
 comment on function public.build_market_publication(date,text,integer) is
   'Builds all candidate artifacts, scores against explicit expected denominators, and atomically promotes only a strictly better whole publication.';
+comment on column public.scrape_runs.publication_scope is
+  'Explicit production-selection boundary. Source, group, recovery, test, and backfill runs remain non-production and cannot supply market publications.';
 comment on function public.acquire_supplier_scrape_lease(text,uuid,interval) is
   'Acquires or renews a supplier capture lease and returns its monotonic fence; returns NULL while another run owns a live lease.';
 comment on function public.release_supplier_scrape_lease(text,uuid,bigint) is

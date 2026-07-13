@@ -60,8 +60,8 @@ released=$(pg "-Atqc \"select public.release_supplier_scrape_lease(
 # promotes a whole publication and the waiter must compare against it and
 # reject its equal candidate, leaving exactly one active publication.
 pg "-c \"insert into public.coffee_catalog(name) values ('concurrency-fixture');
-  insert into public.scrape_runs(id,command,requested_source_count,selected_source_count)
-  values ('20000000-0000-0000-0000-000000000010','builder-concurrency',1,1);
+  insert into public.scrape_runs(id,command,requested_source_count,selected_source_count,publication_scope)
+  values ('20000000-0000-0000-0000-000000000010','builder-concurrency',1,1,'production');
   insert into public.market_index_cohorts(id,cohort_key,version,methodology_version,expected_source_count,effective_from)
   values ('20000000-0000-0000-0000-000000000001','builder-concurrency',1,'supplier-first-matched-relative-v1',1,'2026-07-01');
   insert into public.market_index_cohort_sources(cohort_id,source,carry_forward_ttl,source_weight)
@@ -75,7 +75,9 @@ pg "-c \"insert into public.coffee_catalog(name) values ('concurrency-fixture');
   select '21000000-0000-0000-0000-000000000001',max(id),'only-source','2026-07-13 12:00Z',12,true,false,'Peru'
   from public.coffee_catalog;
   update public.supplier_observation_sets set status='complete',is_complete=true
-  where id='21000000-0000-0000-0000-000000000001';\"" >/dev/null
+  where id='21000000-0000-0000-0000-000000000001';
+  update public.scrape_runs set status='succeeded',completed_at=clock_timestamp()
+  where id='20000000-0000-0000-0000-000000000010';\"" >/dev/null
 
 pg "-c \"begin;
   select id from public.market_index_cohorts
@@ -107,8 +109,8 @@ candidate_count=$(pg "-Atqc \"select count(*) from public.market_publications
 only_source_fence=$(pg "-Atqc \"select fence from public.supplier_scrape_leases where source='only-source';\"")
 pg "-c \"select public.release_supplier_scrape_lease('only-source',
     '20000000-0000-0000-0000-000000000010',$only_source_fence);
-  insert into public.scrape_runs(id,command,requested_source_count,selected_source_count)
-  values ('20000000-0000-0000-0000-000000000011','builder-adjacent',1,1);
+  insert into public.scrape_runs(id,command,requested_source_count,selected_source_count,publication_scope)
+  values ('20000000-0000-0000-0000-000000000011','builder-adjacent',1,1,'production');
   insert into public.supplier_observation_sets(id,scrape_run_id,lease_fence,source,observed_at,status,completeness,
     expected_item_count,observed_item_count,snapshot_item_count,is_complete)
   values ('21000000-0000-0000-0000-000000000002','20000000-0000-0000-0000-000000000011',
@@ -118,7 +120,9 @@ pg "-c \"select public.release_supplier_scrape_lease('only-source',
   select '21000000-0000-0000-0000-000000000002',max(id),'only-source','2026-07-14 12:00Z',13,true,false,'Peru'
   from public.coffee_catalog;
   update public.supplier_observation_sets set status='complete',is_complete=true
-  where id='21000000-0000-0000-0000-000000000002';\"" >/dev/null
+  where id='21000000-0000-0000-0000-000000000002';
+  update public.scrape_runs set status='succeeded',completed_at=clock_timestamp()
+  where id='20000000-0000-0000-0000-000000000011';\"" >/dev/null
 pg "-c \"begin;
   select id from public.market_index_cohorts
   where id='20000000-0000-0000-0000-000000000001' for update;
@@ -139,8 +143,8 @@ grep -q 'rejected_chain_finalized' "$TMP/adjacent-day-one.log"
 # A cohort-source mutation locks the cohort parent through its guard trigger.
 # If a builder wins that parent lock, the mutation waits and then rejects once
 # the publication freezes the cohort; it cannot leak half-new weights or TTLs.
-pg "-c \"insert into public.scrape_runs(id,command,requested_source_count,selected_source_count)
-  values ('40000000-0000-0000-0000-000000000010','builder-config-lock',1,1);
+pg "-c \"insert into public.scrape_runs(id,command,requested_source_count,selected_source_count,publication_scope)
+  values ('40000000-0000-0000-0000-000000000010','builder-config-lock',1,1,'production');
   insert into public.market_index_cohorts(id,cohort_key,version,methodology_version,expected_source_count,effective_from)
   values ('40000000-0000-0000-0000-000000000001','builder-config-lock',1,'supplier-first-matched-relative-v1',1,'2026-07-01');
   insert into public.market_index_cohort_sources(cohort_id,source,carry_forward_ttl,source_weight)
@@ -154,7 +158,9 @@ pg "-c \"insert into public.scrape_runs(id,command,requested_source_count,select
   select '41000000-0000-0000-0000-000000000001',max(id),'config-source','2026-07-13 12:00Z',15,true,false,'Kenya'
   from public.coffee_catalog;
   update public.supplier_observation_sets set status='complete',is_complete=true
-  where id='41000000-0000-0000-0000-000000000001';\"" >/dev/null
+  where id='41000000-0000-0000-0000-000000000001';
+  update public.scrape_runs set status='succeeded',completed_at=clock_timestamp()
+  where id='40000000-0000-0000-0000-000000000010';\"" >/dev/null
 pg "-c \"begin;
   select id from public.market_index_cohorts
   where id='40000000-0000-0000-0000-000000000001' for update;
