@@ -38,20 +38,25 @@ end $$;
 create table public.supplier_scrape_leases (
   source text primary key check (length(btrim(source)) > 0 and source = btrim(source)),
   scrape_run_id uuid not null references public.scrape_runs(id) on delete restrict,
+  fence bigint not null check (fence > 0),
   acquired_at timestamptz not null,
   expires_at timestamptz not null,
   check (expires_at > acquired_at)
 );
+create sequence public.supplier_scrape_lease_fence_seq;
+
+alter table public.supplier_observation_sets
+  add column lease_fence bigint check (lease_fence is null or lease_fence > 0);
 
 create or replace function public.acquire_supplier_scrape_lease(
   p_source text,
   p_scrape_run_id uuid,
   p_ttl interval default interval '6 hours'
-) returns boolean language plpgsql security definer
+) returns bigint language plpgsql security definer
 set search_path = public, pg_temp as $$
 declare
   v_now timestamptz := clock_timestamp();
-  v_acquired boolean := false;
+  v_fence bigint;
 begin
   if p_source is null or p_source = '' or p_source <> btrim(p_source) then
     raise exception 'source must be a non-empty canonical source key';
@@ -68,22 +73,28 @@ begin
     raise exception 'supplier scrape leases require a running scrape run';
   end if;
 
-  insert into public.supplier_scrape_leases(source,scrape_run_id,acquired_at,expires_at)
-  values (p_source,p_scrape_run_id,v_now,v_now+p_ttl)
+  insert into public.supplier_scrape_leases(source,scrape_run_id,fence,acquired_at,expires_at)
+  values (p_source,p_scrape_run_id,nextval('public.supplier_scrape_lease_fence_seq'),v_now,v_now+p_ttl)
   on conflict (source) do update
   set scrape_run_id=excluded.scrape_run_id,
+      fence=case
+        when public.supplier_scrape_leases.scrape_run_id=excluded.scrape_run_id
+          then public.supplier_scrape_leases.fence
+        else excluded.fence
+      end,
       acquired_at=excluded.acquired_at,
       expires_at=excluded.expires_at
   where public.supplier_scrape_leases.expires_at <= v_now
      or public.supplier_scrape_leases.scrape_run_id = excluded.scrape_run_id
-  returning true into v_acquired;
+  returning public.supplier_scrape_leases.fence into v_fence;
 
-  return coalesce(v_acquired,false);
+  return v_fence;
 end $$;
 
 create or replace function public.release_supplier_scrape_lease(
   p_source text,
-  p_scrape_run_id uuid
+  p_scrape_run_id uuid,
+  p_fence bigint
 ) returns boolean language plpgsql security definer
 set search_path = public, pg_temp as $$
 begin
@@ -91,15 +102,79 @@ begin
     raise exception 'source must be a non-empty canonical source key';
   end if;
   if p_scrape_run_id is null then raise exception 'scrape_run_id is required'; end if;
+  if p_fence is null or p_fence <= 0 then raise exception 'lease fence is required'; end if;
 
   delete from public.supplier_scrape_leases lease
-  where lease.source = p_source and lease.scrape_run_id = p_scrape_run_id;
+  where lease.source = p_source and lease.scrape_run_id = p_scrape_run_id and lease.fence = p_fence;
   return found;
+end $$;
+
+-- Child facts inherit the supplier set's true observation instant. This
+-- replacement preserves the foundation's parent locking while rejecting
+-- forged old/future child timestamps.
+create or replace function public.guard_observation_artifact()
+returns trigger language plpgsql set search_path = public as $$
+declare
+  v_set_id uuid;
+  v_complete boolean;
+  v_parent_observed_at timestamptz;
+begin
+  for v_set_id in
+    select distinct id from unnest(array[
+      case when tg_op <> 'INSERT' then old.observation_set_id end,
+      case when tg_op <> 'DELETE' then new.observation_set_id end
+    ]) id where id is not null order by id
+  loop
+    select is_complete, observed_at into strict v_complete, v_parent_observed_at
+    from public.supplier_observation_sets where id = v_set_id for update;
+    if v_complete then raise exception 'Complete supplier observation sets are immutable'; end if;
+    if tg_op <> 'DELETE' and new.observation_set_id = v_set_id
+      and new.observed_at <> v_parent_observed_at then
+      raise exception 'Observation timestamp must equal its supplier observation set timestamp';
+    end if;
+  end loop;
+  if tg_op = 'DELETE' then return old; else return new; end if;
+end $$;
+
+create or replace function public.guard_observation_set_lifecycle()
+returns trigger language plpgsql set search_path = public as $$
+declare
+  v_lease public.supplier_scrape_leases%rowtype;
+begin
+  if old.is_complete then raise exception 'Complete supplier observation sets are immutable'; end if;
+  if tg_op = 'DELETE' then return old; end if;
+  if new.id <> old.id or new.scrape_run_id is distinct from old.scrape_run_id
+    or new.source <> old.source or new.observed_at <> old.observed_at
+    or new.completeness <> old.completeness or new.lease_fence is distinct from old.lease_fence then
+    raise exception 'Observation set identity, provenance, and lease fence are immutable';
+  end if;
+  if new.is_complete and new.status not in ('complete', 'legacy') then
+    raise exception 'Completing an observation set requires complete or legacy status';
+  end if;
+  if new.is_complete and new.completeness = 'known' then
+    if new.scrape_run_id is null or new.lease_fence is null then
+      raise exception 'Completing a known observation set requires its scrape run and lease fence';
+    end if;
+    select * into v_lease from public.supplier_scrape_leases lease
+    where lease.source = new.source for update;
+    if not found or v_lease.scrape_run_id <> new.scrape_run_id
+      or v_lease.fence <> new.lease_fence or v_lease.expires_at <= clock_timestamp() then
+      raise exception 'Completing an observation set requires its live fenced supplier lease';
+    end if;
+    if exists (
+      select 1 from public.coffee_price_observations observation
+      where observation.observation_set_id = new.id
+        and observation.observed_at <> new.observed_at
+    ) then
+      raise exception 'Observation set contains a child with a mismatched observation timestamp';
+    end if;
+  end if;
+  return new;
 end $$;
 
 create table public.market_publication_quality_policies (
   policy_version text primary key check (length(btrim(policy_version)) > 0),
-  effective_from date not null,
+  effective_from date not null unique,
   effective_to date,
   expected_item_lookback interval not null default interval '30 days'
     check (expected_item_lookback > interval '0 seconds'),
@@ -135,6 +210,30 @@ insert into public.market_publication_quality_policies (
 alter table public.market_publications
   add constraint market_publications_policy_version_fkey
   foreign key (policy_version) references public.market_publication_quality_policies(policy_version) on delete restrict;
+alter table public.market_publications
+  add column predecessor_publication_id uuid references public.market_publications(id) on delete restrict;
+
+create or replace function public.guard_market_publication_predecessor()
+returns trigger language plpgsql set search_path = public as $$
+declare
+  v_predecessor public.market_publications%rowtype;
+begin
+  if tg_op = 'UPDATE' and new.predecessor_publication_id is distinct from old.predecessor_publication_id then
+    raise exception 'Publication predecessor is immutable';
+  end if;
+  if new.predecessor_publication_id is not null then
+    select * into strict v_predecessor from public.market_publications
+    where id = new.predecessor_publication_id for share;
+    if v_predecessor.cohort_id <> new.cohort_id or v_predecessor.as_of_date >= new.as_of_date
+      or v_predecessor.status <> 'active' then
+      raise exception 'Publication predecessor must be an earlier active publication in the same cohort';
+    end if;
+  end if;
+  return new;
+end $$;
+create trigger guard_market_publication_predecessor
+  before insert or update on public.market_publications
+  for each row execute function public.guard_market_publication_predecessor();
 
 create or replace function public.guard_market_publication_quality_policy()
 returns trigger language plpgsql set search_path = public as $$
@@ -189,7 +288,9 @@ create table public.market_publication_movements (
   matched_supplier_count integer not null check (matched_supplier_count >= 0),
   matched_weight numeric(14,6) not null check (matched_weight >= 0),
   current_weight numeric(14,6) not null check (current_weight >= 0),
+  prior_weight numeric(14,6) not null check (prior_weight >= 0),
   matched_weight_ratio numeric(8,6) check (matched_weight_ratio between 0 and 1),
+  total_price_relative numeric(14,8),
   matched_price_relative numeric(14,8),
   movement_pct numeric(14,8),
   assortment_shift_pct numeric(14,8),
@@ -261,13 +362,19 @@ declare
   v_prior uuid;
   v_action text;
   v_enabled_source_count integer;
+  v_had_old boolean;
+  v_chain_finalized boolean;
 begin
   if p_as_of_date is null or p_cohort_key is null or p_cohort_version is null then
     raise exception 'as_of_date, cohort_key, and cohort_version are required';
   end if;
   select * into strict v_cohort from public.market_index_cohorts
    where cohort_key=p_cohort_key and version=p_cohort_version
-     and effective_from <= p_as_of_date and (effective_to is null or effective_to >= p_as_of_date);
+     and effective_from <= p_as_of_date and (effective_to is null or effective_to >= p_as_of_date)
+   for update;
+  perform 1 from public.market_index_cohort_sources cohort_source
+  where cohort_source.cohort_id = v_cohort.id
+  order by cohort_source.source for share;
   select count(*) into v_enabled_source_count
   from public.market_index_cohort_sources cohort_source
   where cohort_source.cohort_id = v_cohort.id and cohort_source.enabled;
@@ -278,8 +385,14 @@ begin
   select * into strict v_policy
   from public.market_publication_quality_policies policy
   where policy.effective_from <= p_as_of_date
-    and (policy.effective_to is null or policy.effective_to >= p_as_of_date);
+    and (policy.effective_to is null or policy.effective_to >= p_as_of_date)
+  order by policy.effective_from desc
+  limit 1
+  for share;
   perform pg_advisory_xact_lock(hashtextextended(v_cohort.id::text || ':' || p_as_of_date::text, 0));
+  select prior.id into v_prior from public.market_publications prior
+  where prior.cohort_id=v_cohort.id and prior.status='active' and prior.as_of_date<p_as_of_date
+  order by prior.as_of_date desc limit 1 for share;
 
   -- A caller may build more than one candidate in the same transaction.  Keep
   -- the scratch relation session-local, but replace its contents per call.
@@ -340,11 +453,11 @@ begin
     + v_policy.item_coverage_weight*v_item_coverage
     + v_policy.freshness_weight*(1-v_stale));
 
-  insert into public.market_publications(id,as_of_date,cohort_id,policy_version,methodology_version,
+  insert into public.market_publications(id,as_of_date,cohort_id,predecessor_publication_id,policy_version,methodology_version,
     expected_source_count,represented_source_count,fresh_source_count,carried_source_count,expired_source_count,
     expected_item_count,represented_item_count,fresh_item_count,carried_item_count,supplier_coverage_ratio,
     item_coverage_ratio,stale_share,oldest_observed_at,max_observation_age,quality_tier,quality_score)
-  select v_pub,p_as_of_date,v_cohort.id,v_policy.policy_version,v_cohort.methodology_version,v_cohort.expected_source_count,
+  select v_pub,p_as_of_date,v_cohort.id,v_prior,v_policy.policy_version,v_cohort.methodology_version,v_cohort.expected_source_count,
     v_represented_sources,v_fresh_sources,v_carried_sources,v_expired_sources,v_expected_items,v_represented_items,
     v_fresh_items,v_carried_items,v_supplier_coverage,v_item_coverage,v_stale,min(observed_at),
     max(v_cutoff-observed_at),v_tier,v_score from pg_temp._selected where observation_set_id is not null;
@@ -362,7 +475,7 @@ begin
     coalesce(o.wholesale,false),s.source_weight,count(*),
     percentile_cont(.5) within group(order by o.price)::numeric(12,4)
   from pg_temp._selected s join public.coffee_price_observations o on o.observation_set_id=s.observation_set_id
-  where o.price is not null and o.price>0 and o.stocked is distinct from false
+  where o.price is not null and o.price>0 and o.stocked is true
   group by s.source,coalesce(o.origin,'Unknown'),nullif(btrim(o.process),''),nullif(btrim(o.grade),''),coalesce(o.wholesale,false),s.source_weight;
 
   insert into public.market_publication_price_indexes(publication_id,origin,process,grade,wholesale_only,
@@ -379,41 +492,58 @@ begin
   where segment.publication_id=v_pub
   group by segment.origin,segment.process,segment.grade,segment.wholesale_only;
 
-  select prior.id into v_prior from public.market_publications prior
-   where prior.cohort_id=v_cohort.id and prior.status='active' and prior.as_of_date<p_as_of_date
-   order by prior.as_of_date desc limit 1;
   insert into public.market_publication_movements(publication_id,origin,process,grade,wholesale_only,prior_publication_id,
-    matched_supplier_count,matched_weight,current_weight,matched_weight_ratio,matched_price_relative,movement_pct,
-    assortment_shift_pct,movement_status)
+    matched_supplier_count,matched_weight,current_weight,prior_weight,matched_weight_ratio,total_price_relative,
+    matched_price_relative,movement_pct,assortment_shift_pct,movement_status)
   with cur as (
     select segment.* from public.market_publication_supplier_segments segment
     where segment.publication_id=v_pub
   ),
+  prev as (
+    select segment.* from public.market_publication_supplier_segments segment
+    where segment.publication_id=v_prior
+  ),
   matched as (
     select c.*, p.source_price_median prior_median
-    from cur c join public.market_publication_supplier_segments p on p.publication_id=v_prior and p.source=c.source
+    from cur c join prev p on p.source=c.source
       and p.origin=c.origin and p.process is not distinct from c.process and p.grade is not distinct from c.grade
       and p.wholesale_only=c.wholesale_only
-  ), segments as (select origin,process,grade,wholesale_only,sum(source_weight) current_weight from cur group by 1,2,3,4)
-  select v_pub,s.origin,s.process,s.grade,s.wholesale_only,v_prior,count(m.source),coalesce(sum(m.source_weight),0),s.current_weight,
-    coalesce(sum(m.source_weight),0)/nullif(s.current_weight,0),
-    case when v_prior is not null and count(m.source)>=2 and coalesce(sum(m.source_weight),0)/nullif(s.current_weight,0)>=.5
-      then sum((m.source_price_median/nullif(m.prior_median,0))*m.source_weight)/sum(m.source_weight) end,
-    case when v_prior is not null and count(m.source)>=2 and coalesce(sum(m.source_weight),0)/nullif(s.current_weight,0)>=.5
-      then sum((m.source_price_median/nullif(m.prior_median,0))*m.source_weight)/sum(m.source_weight)-1 end,
-    case when count(m.source)>0 then
-      (sum(c.source_price_median*c.source_weight)/nullif(sum(c.source_weight),0)) /
-      (sum(m.source_price_median*m.source_weight)/nullif(sum(m.source_weight),0)) - 1
-    end,
-    case when v_prior is null then 'no_prior' when count(m.source)>=2 and coalesce(sum(m.source_weight),0)/nullif(s.current_weight,0)>=.5
-      then 'publishable' else 'insufficient_overlap' end
-  from segments s
-  join cur c on c.origin=s.origin and c.process is not distinct from s.process
-    and c.grade is not distinct from s.grade and c.wholesale_only=s.wholesale_only
-  left join matched m on m.origin=s.origin and m.process is not distinct from s.process
-    and m.grade is not distinct from s.grade and m.wholesale_only=s.wholesale_only
-    and m.source=c.source
-  group by s.origin,s.process,s.grade,s.wholesale_only,s.current_weight;
+  ), cur_totals as (
+    select origin,process,grade,wholesale_only,sum(source_weight) weight,
+      sum(source_price_median*source_weight)/sum(source_weight) price
+    from cur group by 1,2,3,4
+  ), prev_totals as (
+    select origin,process,grade,wholesale_only,sum(source_weight) weight,
+      sum(source_price_median*source_weight)/sum(source_weight) price
+    from prev group by 1,2,3,4
+  ), matched_totals as (
+    select origin,process,grade,wholesale_only,count(*) supplier_count,sum(source_weight) weight,
+      sum((source_price_median/prior_median)*source_weight)/sum(source_weight) price_relative
+    from matched group by 1,2,3,4
+  ), decomposed as (
+    select c.*,coalesce(p.weight,0) prior_weight,p.price prior_price,
+      coalesce(m.supplier_count,0) matched_supplier_count,coalesce(m.weight,0) matched_weight,
+      m.price_relative matched_price_relative,
+      c.price/nullif(p.price,0) total_price_relative,
+      least(coalesce(m.weight,0)/nullif(c.weight,0),coalesce(m.weight,0)/nullif(p.weight,0)) overlap
+    from cur_totals c
+    left join prev_totals p on p.origin=c.origin and p.process is not distinct from c.process
+      and p.grade is not distinct from c.grade and p.wholesale_only=c.wholesale_only
+    left join matched_totals m on m.origin=c.origin and m.process is not distinct from c.process
+      and m.grade is not distinct from c.grade and m.wholesale_only=c.wholesale_only
+  )
+  select v_pub,d.origin,d.process,d.grade,d.wholesale_only,v_prior,d.matched_supplier_count,
+    d.matched_weight,d.weight,d.prior_weight,d.overlap,d.total_price_relative,
+    case when v_prior is not null and d.matched_supplier_count>=2 and d.overlap>=.5
+      then d.matched_price_relative end,
+    case when v_prior is not null and d.matched_supplier_count>=2 and d.overlap>=.5
+      then d.matched_price_relative-1 end,
+    case when v_prior is not null and d.matched_supplier_count>=2 and d.overlap>=.5
+      then d.total_price_relative/nullif(d.matched_price_relative,0)-1 end,
+    case when v_prior is null then 'no_prior'
+      when d.matched_supplier_count>=2 and d.overlap>=.5 then 'publishable'
+      else 'insufficient_overlap' end
+  from decomposed d;
 
   if v_tier='suppressed' then
     update public.market_publications set status='rejected',rejected_at=clock_timestamp() where id=v_pub;
@@ -422,7 +552,17 @@ begin
     select * into v_old from public.market_publications existing
      where existing.as_of_date=p_as_of_date and existing.cohort_id=v_cohort.id and existing.status='active'
      for update;
-    if found and not (
+    v_had_old := found;
+    select exists (
+      select 1 from public.market_publications successor
+      where successor.cohort_id=v_cohort.id and successor.status='active'
+        and successor.as_of_date>p_as_of_date
+      for share
+    ) into v_chain_finalized;
+    if v_chain_finalized then
+      update public.market_publications set status='rejected',rejected_at=clock_timestamp() where id=v_pub;
+      v_action := 'rejected_chain_finalized';
+    elsif v_had_old and not (
       (case v_tier when 'healthy' then 2 else 1 end, v_score, v_supplier_coverage, v_item_coverage,
        -v_stale, v_fresh_sources, v_fresh_items,
        -extract(epoch from coalesce((select max(v_cutoff-observed_at) from pg_temp._selected where observation_set_id is not null),interval '999 years')),
@@ -438,9 +578,9 @@ begin
       update public.market_publications set status='rejected',rejected_at=clock_timestamp() where id=v_pub;
       v_action := 'rejected_not_better';
     else
-      if found then update public.market_publications set status='rejected',rejected_at=clock_timestamp() where id=v_old.id; end if;
+      if v_had_old then update public.market_publications set status='rejected',rejected_at=clock_timestamp() where id=v_old.id; end if;
       update public.market_publications set status='active',sealed_at=clock_timestamp(),published_at=clock_timestamp() where id=v_pub;
-      v_action := case when v_old.id is null then 'activated' else 'replaced' end;
+      v_action := case when v_had_old then 'replaced' else 'activated' end;
     end if;
   end if;
   return query select v_pub,(select p.status from public.market_publications p where p.id=v_pub),v_tier,
@@ -451,17 +591,19 @@ revoke all on function public.build_market_publication(date,text,integer) from p
 grant execute on function public.build_market_publication(date,text,integer) to service_role;
 revoke all on function public.acquire_supplier_scrape_lease(text,uuid,interval) from public, anon, authenticated;
 grant execute on function public.acquire_supplier_scrape_lease(text,uuid,interval) to service_role;
-revoke all on function public.release_supplier_scrape_lease(text,uuid) from public, anon, authenticated;
-grant execute on function public.release_supplier_scrape_lease(text,uuid) to service_role;
+revoke all on function public.release_supplier_scrape_lease(text,uuid,bigint) from public, anon, authenticated;
+grant execute on function public.release_supplier_scrape_lease(text,uuid,bigint) to service_role;
 revoke all on function public.market_weighted_percentile(numeric[],numeric[],numeric) from public, anon, authenticated;
 grant execute on function public.market_weighted_percentile(numeric[],numeric[],numeric) to service_role;
 revoke all on function public.guard_market_publication_quality_policy() from public, anon, authenticated;
+revoke all on function public.guard_market_publication_predecessor() from public, anon, authenticated;
+grant usage, select on sequence public.supplier_scrape_lease_fence_seq to service_role;
 grant usage, select on sequence public.market_publication_supplier_segments_id_seq to service_role;
 grant usage, select on sequence public.market_publication_movements_id_seq to service_role;
 
 comment on function public.build_market_publication(date,text,integer) is
   'Builds all candidate artifacts, scores against explicit expected denominators, and atomically promotes only a strictly better whole publication.';
 comment on function public.acquire_supplier_scrape_lease(text,uuid,interval) is
-  'Acquires, renews for the same run, or takes over an expired supplier capture lease. Returns false while another run owns a live lease.';
-comment on function public.release_supplier_scrape_lease(text,uuid) is
-  'Releases a supplier capture lease only when the supplied scrape run owns it.';
+  'Acquires or renews a supplier capture lease and returns its monotonic fence; returns NULL while another run owns a live lease.';
+comment on function public.release_supplier_scrape_lease(text,uuid,bigint) is
+  'Releases a supplier capture lease only when the supplied scrape run and monotonic fence own it.';
