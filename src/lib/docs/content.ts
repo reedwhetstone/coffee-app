@@ -1269,13 +1269,6 @@ const docsPages: DocsPage[] = [
 							'Session + roast:write',
 							'Internal maintenance helper',
 							'Requires roast_id query param. Forwards to the canonical Parchment API, which clears imported Artisan data and resets related fields.'
-						],
-						[
-							'/api/ai/classify-roast',
-							'POST',
-							'Member session or member-owned API key + roast:read',
-							'Internal AI helper',
-							'Matches Artisan metadata to inventory candidates. API-key callers must include roast:read. Returns { match } and can emit 429 if the model provider rate-limits.'
 						]
 					]
 				}
@@ -1589,8 +1582,8 @@ const docsPages: DocsPage[] = [
 			'Create, import, analyze, and clear roast profiles through authenticated internal endpoints.',
 		eyebrow: 'Roasting',
 		intro: [
-			'Roast routes cover CRUD for roast profiles, Artisan import, chart telemetry, chart display settings, data clearing, and AI-assisted classification.',
-			'Most roast routes require an authenticated session. The AI classifier accepts either a member session or a member-owned API key with roast:read.'
+			'Roast routes cover CRUD for roast profiles, Artisan import, chart telemetry, chart display settings, and data clearing.',
+			'Roast routes require an authenticated session.'
 		],
 		sections: [
 			{
@@ -1622,12 +1615,6 @@ const docsPages: DocsPage[] = [
 							'DELETE',
 							'Session + ownership',
 							'Clear imported roast telemetry and reset Artisan fields'
-						],
-						[
-							'/api/ai/classify-roast',
-							'POST',
-							'Member session or member-owned API key + roast:read',
-							'Classify a roast against inventory candidates using the model backend'
 						]
 					]
 				}
@@ -1639,8 +1626,7 @@ const docsPages: DocsPage[] = [
 					'PUT /api/roast-profiles requires an id query parameter. DELETE accepts either id or batch name query parameters.',
 					'POST /api/artisan-import expects multipart form-data with file and roastId. Supported file extensions are .alog, .alog.json, and .json.',
 					'GET /api/roast-chart-data requires roastId and returns sampled telemetry tuned for charting, including performance metadata and derived ranges.',
-					'DELETE /api/clear-roast requires roast_id and forwards to Parchment, which enforces ownership plus roast:write before deleting imported telemetry, events, and log rows.',
-					'POST /api/ai/classify-roast accepts a member session or a member-owned API key with roast:read, expects alogMetadata plus an inventory array, and returns { match } or { match: null }.'
+					'DELETE /api/clear-roast requires roast_id and forwards to Parchment, which enforces ownership plus roast:write before deleting imported telemetry, events, and log rows.'
 				]
 			},
 			{
@@ -1716,12 +1702,6 @@ const docsPages: DocsPage[] = [
 							'Sampled roast telemetry and metadata for chart rendering'
 						],
 						['/api/roast-chart-settings', 'GET', 'Session', 'Saved chart axis ranges'],
-						[
-							'/api/ai/classify-roast',
-							'POST',
-							'Member session or member-owned API key + roast:read',
-							'AI-assisted roast-to-inventory matching'
-						],
 						[
 							'/api/clear-roast',
 							'DELETE',

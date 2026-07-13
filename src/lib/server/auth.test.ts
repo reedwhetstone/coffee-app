@@ -46,7 +46,6 @@ vi.mock('$lib/server/apiAuth', () => ({
 const {
 	AuthError,
 	requireApiKeyAccess,
-	requireAuthenticatedMemberPrincipal,
 	requireAuth,
 	requireChatAccess,
 	requireUserAuth,
@@ -165,72 +164,6 @@ beforeEach(() => {
 });
 
 describe('auth integration', () => {
-	it('accepts an owner-bound member API key for the roast classifier', async () => {
-		mockValidateApiKey.mockResolvedValue({
-			valid: true,
-			userId: 'member-user',
-			keyId: 'key-1',
-			keyName: 'purvey-cli-host',
-			permissions: { scopes: ['roast:read'] }
-		});
-		mockUserRolesSingle.mockResolvedValue({
-			data: { user_role: ['member'] },
-			error: null
-		});
-
-		const principal = await requireAuthenticatedMemberPrincipal(
-			makeEvent({
-				method: 'POST',
-				url: 'https://app.test/api/ai/classify-roast',
-				authHeader: 'Bearer pk_live_valid-key'
-			}),
-			{ requiredApiScope: 'roast:read' }
-		);
-
-		expect(principal).toMatchObject({ authKind: 'api-key', userId: 'member-user' });
-	});
-
-	it('rejects a member API key without the roast classifier scope', async () => {
-		mockValidateApiKey.mockResolvedValue({
-			valid: true,
-			userId: 'member-user',
-			keyId: 'key-1',
-			keyName: 'catalog-only',
-			permissions: { scopes: ['catalog:read'] }
-		});
-		mockUserRolesSingle.mockResolvedValue({
-			data: { user_role: ['member'] },
-			error: null
-		});
-
-		await expect(
-			requireAuthenticatedMemberPrincipal(
-				makeEvent({
-					method: 'POST',
-					url: 'https://app.test/api/ai/classify-roast',
-					authHeader: 'Bearer pk_live_valid-key'
-				}),
-				{ requiredApiScope: 'roast:read' }
-			)
-		).rejects.toMatchObject({
-			message: 'Insufficient API scope',
-			status: 403
-		});
-	});
-
-	it('does not require an API scope for a trusted member session', async () => {
-		const event = makeEvent({
-			method: 'POST',
-			origin: 'https://app.test',
-			url: 'https://app.test/api/ai/classify-roast',
-			principal: makeSessionPrincipal({ apiScopes: [] })
-		});
-
-		await expect(
-			requireAuthenticatedMemberPrincipal(event, { requiredApiScope: 'roast:read' })
-		).resolves.toMatchObject({ authKind: 'session', userId: 'member-user' });
-	});
-
 	it('fails closed for API keys when user role lookup fails', async () => {
 		mockValidateApiKey.mockResolvedValue({
 			valid: true,
@@ -307,7 +240,7 @@ describe('auth integration', () => {
 		const crossOriginEvent = makeEvent({
 			method: 'POST',
 			origin: 'https://evil.test',
-			url: 'https://app.test/api/ai/classify-roast',
+			url: 'https://app.test/api/roast-profiles',
 			principal: makeSessionPrincipal()
 		});
 
@@ -319,7 +252,7 @@ describe('auth integration', () => {
 		const sameOriginEvent = makeEvent({
 			method: 'POST',
 			origin: 'https://app.test',
-			url: 'https://app.test/api/ai/classify-roast',
+			url: 'https://app.test/api/roast-profiles',
 			principal: makeSessionPrincipal()
 		});
 
@@ -331,7 +264,7 @@ describe('auth integration', () => {
 	it('allows bearer-session mutations without an Origin header', async () => {
 		const event = makeEvent({
 			method: 'POST',
-			url: 'https://app.test/api/ai/classify-roast',
+			url: 'https://app.test/api/roast-profiles',
 			principal: makeSessionPrincipal({
 				source: 'bearer-session',
 				session: null
