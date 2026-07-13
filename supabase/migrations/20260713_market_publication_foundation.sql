@@ -229,16 +229,21 @@ returns trigger language plpgsql set search_path = public as $$
 declare
   v_expected_source_count integer;
   v_methodology_version text;
+  v_effective_from date;
+  v_effective_to date;
 begin
   if tg_op = 'INSERT' then
     if new.status <> 'candidate' or new.sealed_at is not null or new.published_at is not null or new.rejected_at is not null then
       raise exception 'Market publications must be inserted as unsealed candidates';
     end if;
-    select expected_source_count, methodology_version
-      into strict v_expected_source_count, v_methodology_version
+    select expected_source_count, methodology_version, effective_from, effective_to
+      into strict v_expected_source_count, v_methodology_version, v_effective_from, v_effective_to
       from public.market_index_cohorts where id = new.cohort_id for update;
     if new.expected_source_count <> v_expected_source_count or new.methodology_version <> v_methodology_version then
       raise exception 'Publication cohort metrics and methodology must match its frozen cohort version';
+    end if;
+    if new.as_of_date < v_effective_from or (v_effective_to is not null and new.as_of_date > v_effective_to) then
+      raise exception 'Publication date is outside its cohort effective window';
     end if;
     return new;
   end if;
@@ -253,17 +258,23 @@ begin
     or new.created_at <> old.created_at then
     raise exception 'Publication identity, cohort, policy, methodology, and date are immutable';
   end if;
-  select expected_source_count, methodology_version
-    into strict v_expected_source_count, v_methodology_version
+  select expected_source_count, methodology_version, effective_from, effective_to
+    into strict v_expected_source_count, v_methodology_version, v_effective_from, v_effective_to
     from public.market_index_cohorts where id = new.cohort_id for update;
   if new.expected_source_count <> v_expected_source_count or new.methodology_version <> v_methodology_version then
     raise exception 'Publication cohort metrics and methodology must match its frozen cohort version';
+  end if;
+  if new.as_of_date < v_effective_from or (v_effective_to is not null and new.as_of_date > v_effective_to) then
+    raise exception 'Publication date is outside its cohort effective window';
   end if;
   if old.status = 'rejected' then raise exception 'Rejected market publications are terminal'; end if;
   if old.status = 'candidate' and new.status = 'candidate' then return new; end if;
   if old.status = 'candidate' and new.status = 'active' then
     if new.sealed_at is null or new.published_at is null or new.rejected_at is not null then
       raise exception 'Active promotion requires sealed_at and published_at only';
+    end if;
+    if old.quality_tier not in ('healthy', 'degraded') or new.quality_tier not in ('healthy', 'degraded') then
+      raise exception 'Only healthy or degraded market publications may become active';
     end if;
     return new;
   end if;

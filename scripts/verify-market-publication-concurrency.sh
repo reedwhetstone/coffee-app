@@ -43,7 +43,7 @@ pg "-c \"insert into public.supplier_observation_sets(id, source, observed_at, s
   insert into public.market_publications(id, as_of_date, cohort_id, policy_version, methodology_version,
     expected_source_count, quality_tier)
   values ('00000000-0000-0000-0000-000000000020', current_date,
-    '00000000-0000-0000-0000-000000000010', 'v1', 'v1', 1, 'unknown');\"" >/dev/null
+    '00000000-0000-0000-0000-000000000010', 'v1', 'v1', 1, 'healthy');\"" >/dev/null
 
 # Completion takes the parent lock first. A concurrent child waits, then rejects.
 pg "-c \"begin;

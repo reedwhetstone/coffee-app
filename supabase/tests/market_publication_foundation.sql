@@ -5,6 +5,7 @@ do $$
 declare
   v_catalog_id integer;
   v_cohort uuid;
+  v_expired_cohort uuid;
   v_open_set uuid;
   v_other_open_set uuid;
   v_complete_set uuid;
@@ -23,6 +24,9 @@ begin
     values ('contract', 1, 'supplier-first-v1', 1, current_date) returning id into v_cohort;
   insert into public.market_index_cohort_sources(cohort_id, source, carry_forward_ttl)
     values (v_cohort, 'fixture', interval '3 days');
+  insert into public.market_index_cohorts(cohort_key, version, methodology_version, expected_source_count, effective_from, effective_to)
+    values ('expired-contract', 1, 'supplier-first-v1', 0, current_date - 1, current_date)
+    returning id into v_expired_cohort;
 
   insert into public.supplier_observation_sets(source, observed_at, status, completeness, expected_item_count)
     values ('fixture', now(), 'partial', 'known', 1) returning id into v_open_set;
@@ -50,8 +54,25 @@ begin
     returning id into v_pub;
   insert into public.market_publications(as_of_date, cohort_id, policy_version, methodology_version,
     expected_source_count, represented_source_count, fresh_source_count, quality_tier)
-    values (current_date + 1, v_cohort, 'quality-v1', 'supplier-first-v1', 1, 1, 1, 'unknown')
+    values (current_date + 1, v_cohort, 'quality-v1', 'supplier-first-v1', 1, 1, 1, 'suppressed')
     returning id into v_other_pub;
+
+  begin
+    insert into public.market_publications(as_of_date, cohort_id, policy_version, methodology_version,
+      expected_source_count, quality_tier)
+      values (current_date - 1, v_cohort, 'quality-v1', 'supplier-first-v1', 1, 'healthy');
+    raise exception 'publication before cohort effective window was accepted';
+  exception when others then
+    if sqlerrm = 'publication before cohort effective window was accepted' then raise; end if;
+  end;
+  begin
+    insert into public.market_publications(as_of_date, cohort_id, policy_version, methodology_version,
+      expected_source_count, quality_tier)
+      values (current_date + 1, v_expired_cohort, 'quality-v1', 'supplier-first-v1', 0, 'healthy');
+    raise exception 'publication after cohort effective window was accepted';
+  exception when others then
+    if sqlerrm = 'publication after cohort effective window was accepted' then raise; end if;
+  end;
 
   begin
     insert into public.market_publication_inputs(publication_id, source, observation_set_id, freshness, observation_age)
@@ -107,6 +128,14 @@ begin
     raise exception 'direct active publication insert was accepted';
   exception when others then
     if sqlerrm = 'direct active publication insert was accepted' then raise; end if;
+  end;
+
+  begin
+    update public.market_publications set status = 'active', sealed_at = now(), published_at = now()
+      where id = v_other_pub;
+    raise exception 'suppressed publication was activated';
+  exception when others then
+    if sqlerrm = 'suppressed publication was activated' then raise; end if;
   end;
 
   update public.market_publications set status = 'active', sealed_at = now(), published_at = now() where id = v_pub;
