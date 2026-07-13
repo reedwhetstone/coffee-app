@@ -20,6 +20,7 @@ declare
   v_manifestless_pub uuid;
   v_bad_counts_pub uuid;
   v_bad_item_counts_pub uuid;
+  v_carried_pub uuid;
   v_observation bigint;
   v_aggregate bigint;
 begin
@@ -116,6 +117,11 @@ begin
     represented_item_count, fresh_item_count, price_index_count, quality_tier)
     values (current_date, v_cohort, 'quality-v1', 'supplier-first-v1', 1, 1, 1, 1, 2, 2, 1, 'healthy')
     returning id into v_bad_item_counts_pub;
+  insert into public.market_publications(as_of_date, cohort_id, policy_version, methodology_version,
+    expected_source_count, represented_source_count, carried_source_count, expected_item_count,
+    represented_item_count, carried_item_count, price_index_count, quality_tier)
+    values (current_date + 1, v_cohort, 'quality-v1', 'supplier-first-v1', 1, 1, 1, 1, 1, 1, 1, 'healthy')
+    returning id into v_carried_pub;
 
   begin
     insert into public.market_publications(as_of_date, cohort_id, policy_version, methodology_version,
@@ -184,6 +190,8 @@ begin
     values (v_bad_counts_pub, 'fixture', v_carried_set, 'carried', interval '0 seconds', 'carried');
   insert into public.market_publication_inputs(publication_id, source, observation_set_id, freshness, observation_age)
     values (v_bad_item_counts_pub, 'fixture', v_complete_set, 'fresh', interval '0 seconds');
+  insert into public.market_publication_inputs(publication_id, source, observation_set_id, freshness, observation_age, stock_confidence)
+    values (v_carried_pub, 'fixture', v_carried_set, 'carried', interval '0 seconds', 'carried');
   insert into public.market_publication_price_indexes(publication_id, origin, wholesale_only, supplier_count,
     sample_size, price_min, price_max, price_avg, price_median, price_p25, price_p75, price_stdev, aggregation_tier)
     values (v_pub, 'Active fixture', false, 1, 1, 10, 10, 10, 10, 10, 10, 0, 1);
@@ -193,6 +201,9 @@ begin
   insert into public.market_publication_price_indexes(publication_id, origin, wholesale_only, supplier_count,
     sample_size, price_min, price_max, price_avg, price_median, price_p25, price_p75, price_stdev, aggregation_tier)
     values (v_bad_item_counts_pub, 'Bad item counts fixture', false, 1, 1, 10, 10, 10, 10, 10, 10, 0, 1);
+  insert into public.market_publication_price_indexes(publication_id, origin, wholesale_only, supplier_count,
+    sample_size, price_min, price_max, price_avg, price_median, price_p25, price_p75, price_stdev, aggregation_tier)
+    values (v_carried_pub, 'Carried fixture', false, 1, 1, 10, 10, 10, 10, 10, 10, 0, 1);
 
   begin
     insert into public.market_publications(as_of_date, cohort_id, status, policy_version, methodology_version,
@@ -227,6 +238,18 @@ begin
   exception when others then
     if sqlerrm = 'publication without aggregate rows was activated' then raise; end if;
   end;
+  update public.market_publications set expected_item_count = 1, represented_item_count = 1, fresh_item_count = 1
+    where id = v_manifestless_pub;
+  insert into public.market_publication_price_indexes(publication_id, origin, wholesale_only, supplier_count,
+    sample_size, price_min, price_max, price_avg, price_median, price_p25, price_p75, price_stdev, aggregation_tier)
+    values (v_manifestless_pub, 'Impossible coverage fixture', false, 2, 2, 10, 10, 10, 10, 10, 10, 0, 1);
+  begin
+    update public.market_publications set status = 'active', sealed_at = now(), published_at = now()
+      where id = v_manifestless_pub;
+    raise exception 'publication aggregate samples exceeded manifest coverage';
+  exception when others then
+    if sqlerrm = 'publication aggregate samples exceeded manifest coverage' then raise; end if;
+  end;
 
   begin
     update public.market_publications set status = 'active', sealed_at = now(), published_at = now()
@@ -245,6 +268,21 @@ begin
   end;
 
   update public.market_publications set status = 'active', sealed_at = now(), published_at = now() where id = v_pub;
+  update public.market_publications set status = 'active', sealed_at = now(), published_at = now() where id = v_carried_pub;
+  if not exists (
+    select 1
+    from public.market_publications p
+    join public.market_publication_inputs i on i.publication_id = p.id
+    join public.supplier_observation_sets s on s.id = i.observation_set_id
+    where p.id = v_carried_pub
+      and p.supplier_coverage_ratio = 1
+      and p.item_coverage_ratio = 1
+      and p.stale_share = 1
+      and p.oldest_observed_at = s.observed_at
+      and p.max_observation_age = i.observation_age
+  ) then
+    raise exception 'publication quality metadata was not derived from its manifest';
+  end if;
 
   begin
     update public.market_index_cohort_sources set source_weight = 2 where cohort_id = v_cohort and source = 'fixture';

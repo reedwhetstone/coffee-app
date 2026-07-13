@@ -239,6 +239,8 @@ declare
   v_fresh_item_count bigint;
   v_carried_item_count bigint;
   v_price_index_count bigint;
+  v_oldest_observed_at timestamptz;
+  v_max_observation_age interval;
 begin
   if tg_op = 'INSERT' then
     if new.status <> 'candidate' or new.sealed_at is not null or new.published_at is not null or new.rejected_at is not null then
@@ -289,9 +291,12 @@ begin
       count(*) filter (where i.freshness = 'carried'),
       coalesce(sum(s.observed_item_count), 0),
       coalesce(sum(s.observed_item_count) filter (where i.freshness = 'fresh'), 0),
-      coalesce(sum(s.observed_item_count) filter (where i.freshness = 'carried'), 0)
+      coalesce(sum(s.observed_item_count) filter (where i.freshness = 'carried'), 0),
+      min(s.observed_at),
+      max(i.observation_age)
       into v_manifest_source_count, v_fresh_source_count, v_carried_source_count,
-        v_represented_item_count, v_fresh_item_count, v_carried_item_count
+        v_represented_item_count, v_fresh_item_count, v_carried_item_count,
+        v_oldest_observed_at, v_max_observation_age
       from public.market_publication_inputs i
       join public.supplier_observation_sets s on s.id = i.observation_set_id
       where i.publication_id = new.id;
@@ -307,10 +312,27 @@ begin
       or v_carried_item_count <> new.carried_item_count then
       raise exception 'Publication manifest item counts must match complete observation sets';
     end if;
+    -- Coverage, staleness, and age are publication facts, not builder claims.
+    -- Derive them from the sealed manifest immediately before activation.
+    new.supplier_coverage_ratio := case when new.expected_source_count = 0 then null
+      else round(v_manifest_source_count::numeric / new.expected_source_count, 6) end;
+    new.item_coverage_ratio := case when new.expected_item_count is null or new.expected_item_count = 0 then null
+      else round(v_represented_item_count::numeric / new.expected_item_count, 6) end;
+    new.stale_share := case when v_manifest_source_count = 0 then null
+      else round(v_carried_source_count::numeric / v_manifest_source_count, 6) end;
+    new.oldest_observed_at := v_oldest_observed_at;
+    new.max_observation_age := v_max_observation_age;
     select count(*) into v_price_index_count
       from public.market_publication_price_indexes where publication_id = new.id;
     if new.price_index_count = 0 or v_price_index_count <> new.price_index_count then
       raise exception 'Publication aggregate row count must be positive and match price_index_count';
+    end if;
+    if exists (
+      select 1 from public.market_publication_price_indexes
+      where publication_id = new.id
+        and (supplier_count > v_manifest_source_count or sample_size > v_represented_item_count)
+    ) then
+      raise exception 'Publication aggregate samples cannot exceed manifest source or item coverage';
     end if;
     return new;
   end if;
