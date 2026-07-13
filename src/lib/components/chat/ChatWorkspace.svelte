@@ -799,8 +799,13 @@
 					allowExecutionIdSynthesis: false
 				};
 				// New live proposals persist their durable key inside the tool output.
-				// Restored legacy proposals intentionally remain without one.
-				if (p.output?.action_card && !p.output.action_card.executionId) {
+				// Restored legacy proposals intentionally remain without one (ADR 011):
+				// pre-migration cards must be re-proposed, not resurrected as executable.
+				const isRestoredMessage = Boolean(
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					(message as any)?.metadata?.workspaceRestored
+				);
+				if (!isRestoredMessage && p.output?.action_card && !p.output.action_card.executionId) {
 					p.output.action_card.executionId = `${message.id}:${String(p.toolCallId ?? p.toolName ?? part.type)}`;
 				}
 				const block = extractBlockFromPart(p, extractorOptions);
