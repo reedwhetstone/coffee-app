@@ -63,9 +63,13 @@ for (const invariant of [
 	'frozen market cohort membership is immutable',
 	'retired market cohort boundary is immutable',
 	'revoke all on table public.%i from public, anon, authenticated',
-	'grant all on table public.%i to service_role'
+	'grant select, insert, update, delete on table public.%i to service_role'
 ]) {
 	if (!migration.includes(invariant)) throw new Error(`Missing migration invariant: ${invariant}`);
+}
+
+if (migration.includes('grant all on table public.%i to service_role')) {
+	throw new Error('Foundation tables must not grant TRUNCATE through GRANT ALL');
 }
 
 if (/expected_source_count|carry_forward_ttl/.test(migration)) {
@@ -83,6 +87,7 @@ for (const scenario of [
 	'service role directly completed supplier observation set',
 	'service role directly froze market cohort',
 	'service role inserted a frozen market cohort',
+	'service role retained truncate privilege',
 	'service role freeze rpc did not freeze market cohort',
 	'service role retirement boundary was not preserved',
 	'scrape run scope relabel was accepted',

@@ -431,7 +431,7 @@ do $$ declare t text; begin
   foreach t in array array['scrape_runs','coffee_price_observations','market_index_cohorts','market_index_cohort_sources'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('revoke all on table public.%I from public, anon, authenticated', t);
-    execute format('grant all on table public.%I to service_role', t);
+    execute format('grant select, insert, update, delete on table public.%I to service_role', t);
     execute format('create policy %I on public.%I for all using (auth.role() = ''service_role'') with check (auth.role() = ''service_role'')', 'Service role only ' || t, t);
   end loop;
 end $$;

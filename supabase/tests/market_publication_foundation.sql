@@ -280,6 +280,25 @@ declare
   v_service_enabled_count integer;
   v_service_frozen boolean;
 begin
+  if exists (
+    select 1
+    from unnest(array[
+      'scrape_runs',
+      'supplier_scrape_leases',
+      'supplier_observation_sets',
+      'coffee_price_observations',
+      'market_index_cohorts',
+      'market_index_cohort_sources'
+    ]) as protected_table(name)
+    where has_table_privilege(
+      'service_role',
+      format('public.%I', protected_table.name),
+      'TRUNCATE'
+    )
+  ) then
+    raise exception 'service role retained truncate privilege';
+  end if;
+
   insert into public.scrape_runs(command, requested_source_count, selected_source_count)
   values ('service role seal fixture', 1, 1) returning id into v_service_run;
   v_service_fence := public.acquire_supplier_scrape_lease(
