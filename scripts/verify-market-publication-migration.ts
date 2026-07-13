@@ -71,6 +71,7 @@ for (const scenario of [
 	'publication before cohort effective window was accepted',
 	'publication after cohort effective window was accepted',
 	'suppressed publication was activated',
+	'publication without its represented source manifest was activated',
 	'referenced cohort membership was mutable',
 	'referenced cohort definition was mutable',
 	'artifact update into sealed publication was accepted',

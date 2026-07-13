@@ -16,6 +16,7 @@ declare
   v_future_set uuid;
   v_pub uuid;
   v_other_pub uuid;
+  v_manifestless_pub uuid;
   v_observation bigint;
   v_aggregate bigint;
 begin
@@ -56,6 +57,10 @@ begin
     expected_source_count, represented_source_count, fresh_source_count, quality_tier)
     values (current_date + 1, v_cohort, 'quality-v1', 'supplier-first-v1', 1, 1, 1, 'suppressed')
     returning id into v_other_pub;
+  insert into public.market_publications(as_of_date, cohort_id, policy_version, methodology_version,
+    expected_source_count, represented_source_count, fresh_source_count, quality_tier)
+    values (current_date + 2, v_cohort, 'quality-v1', 'supplier-first-v1', 1, 1, 1, 'healthy')
+    returning id into v_manifestless_pub;
 
   begin
     insert into public.market_publications(as_of_date, cohort_id, policy_version, methodology_version,
@@ -136,6 +141,14 @@ begin
     raise exception 'suppressed publication was activated';
   exception when others then
     if sqlerrm = 'suppressed publication was activated' then raise; end if;
+  end;
+
+  begin
+    update public.market_publications set status = 'active', sealed_at = now(), published_at = now()
+      where id = v_manifestless_pub;
+    raise exception 'publication without its represented source manifest was activated';
+  exception when others then
+    if sqlerrm = 'publication without its represented source manifest was activated' then raise; end if;
   end;
 
   update public.market_publications set status = 'active', sealed_at = now(), published_at = now() where id = v_pub;

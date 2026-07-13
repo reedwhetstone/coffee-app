@@ -231,6 +231,7 @@ declare
   v_methodology_version text;
   v_effective_from date;
   v_effective_to date;
+  v_manifest_source_count bigint;
 begin
   if tg_op = 'INSERT' then
     if new.status <> 'candidate' or new.sealed_at is not null or new.published_at is not null or new.rejected_at is not null then
@@ -275,6 +276,11 @@ begin
     end if;
     if old.quality_tier not in ('healthy', 'degraded') or new.quality_tier not in ('healthy', 'degraded') then
       raise exception 'Only healthy or degraded market publications may become active';
+    end if;
+    select count(*) into v_manifest_source_count
+      from public.market_publication_inputs where publication_id = new.id;
+    if v_manifest_source_count <> new.represented_source_count then
+      raise exception 'Publication manifest source count must match represented_source_count';
     end if;
     return new;
   end if;
