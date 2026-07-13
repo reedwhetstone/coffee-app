@@ -92,6 +92,7 @@ create table public.market_publications (
   represented_item_count integer not null default 0 check (represented_item_count >= 0),
   fresh_item_count integer not null default 0 check (fresh_item_count >= 0),
   carried_item_count integer not null default 0 check (carried_item_count >= 0),
+  price_index_count integer not null default 0 check (price_index_count >= 0),
   supplier_coverage_ratio numeric(8, 6) check (supplier_coverage_ratio between 0 and 1),
   item_coverage_ratio numeric(8, 6) check (item_coverage_ratio between 0 and 1),
   stale_share numeric(8, 6) check (stale_share between 0 and 1),
@@ -232,6 +233,9 @@ declare
   v_effective_from date;
   v_effective_to date;
   v_manifest_source_count bigint;
+  v_fresh_source_count bigint;
+  v_carried_source_count bigint;
+  v_price_index_count bigint;
 begin
   if tg_op = 'INSERT' then
     if new.status <> 'candidate' or new.sealed_at is not null or new.published_at is not null or new.rejected_at is not null then
@@ -277,10 +281,22 @@ begin
     if old.quality_tier not in ('healthy', 'degraded') or new.quality_tier not in ('healthy', 'degraded') then
       raise exception 'Only healthy or degraded market publications may become active';
     end if;
-    select count(*) into v_manifest_source_count
+    select count(*),
+      count(*) filter (where freshness = 'fresh'),
+      count(*) filter (where freshness = 'carried')
+      into v_manifest_source_count, v_fresh_source_count, v_carried_source_count
       from public.market_publication_inputs where publication_id = new.id;
     if v_manifest_source_count <> new.represented_source_count then
       raise exception 'Publication manifest source count must match represented_source_count';
+    end if;
+    if v_fresh_source_count <> new.fresh_source_count
+      or v_carried_source_count <> new.carried_source_count then
+      raise exception 'Publication manifest freshness counts must match publication source counts';
+    end if;
+    select count(*) into v_price_index_count
+      from public.market_publication_price_indexes where publication_id = new.id;
+    if new.price_index_count = 0 or v_price_index_count <> new.price_index_count then
+      raise exception 'Publication aggregate row count must be positive and match price_index_count';
     end if;
     return new;
   end if;
@@ -323,15 +339,31 @@ create trigger guard_complete_observations before insert or update or delete on 
 
 create or replace function public.guard_observation_set_lifecycle()
 returns trigger language plpgsql set search_path = public as $$
+declare
+  v_observation_count bigint;
 begin
+  if tg_op = 'INSERT' then
+    if new.is_complete and new.status = 'complete' and new.completeness = 'known' then
+      raise exception 'Complete known observation sets must be sealed from an open state';
+    end if;
+    return new;
+  end if;
   if old.is_complete then raise exception 'Complete supplier observation sets are immutable'; end if;
   if tg_op = 'DELETE' then return old; end if;
   if new.is_complete and new.status not in ('complete', 'legacy') then
     raise exception 'Completing an observation set requires complete or legacy status';
   end if;
+  if new.is_complete and new.status = 'complete' and new.completeness = 'known' then
+    select count(*) into v_observation_count
+      from public.coffee_price_observations where observation_set_id = new.id;
+    if v_observation_count <> new.observed_item_count
+      or new.observed_item_count <> new.expected_item_count then
+      raise exception 'Complete known observation set counts must match stored observations and expected_item_count';
+    end if;
+  end if;
   return new;
 end $$;
-create trigger guard_observation_set_lifecycle before update or delete on public.supplier_observation_sets
+create trigger guard_observation_set_lifecycle before insert or update or delete on public.supplier_observation_sets
   for each row execute function public.guard_observation_set_lifecycle();
 
 create or replace function public.guard_market_cohort_immutability()

@@ -17,6 +17,7 @@ declare
   v_pub uuid;
   v_other_pub uuid;
   v_manifestless_pub uuid;
+  v_bad_counts_pub uuid;
   v_observation bigint;
   v_aggregate bigint;
 begin
@@ -35,32 +36,67 @@ begin
     values (v_open_set, v_catalog_id, 'fixture', now(), 10) returning id into v_observation;
   insert into public.supplier_observation_sets(source, observed_at, status, completeness, expected_item_count)
     values ('fixture', now(), 'partial', 'known', 1) returning id into v_other_open_set;
-  insert into public.supplier_observation_sets(source, observed_at, status, completeness, expected_item_count, observed_item_count, snapshot_item_count, is_complete)
-    values ('fixture', now(), 'complete', 'known', 1, 1, 1, true) returning id into v_complete_set;
+  begin
+    insert into public.supplier_observation_sets(source, observed_at, status, completeness,
+      expected_item_count, observed_item_count, snapshot_item_count, is_complete)
+      values ('fixture', now(), 'complete', 'known', 1, 1, 1, true);
+    raise exception 'direct complete known observation set was accepted';
+  exception when others then
+    if sqlerrm = 'direct complete known observation set was accepted' then raise; end if;
+  end;
+  begin
+    update public.supplier_observation_sets
+      set status = 'complete', is_complete = true, observed_item_count = 1, snapshot_item_count = 1
+      where id = v_other_open_set;
+    raise exception 'empty observation set was completed';
+  exception when others then
+    if sqlerrm = 'empty observation set was completed' then raise; end if;
+  end;
+  insert into public.supplier_observation_sets(source, observed_at, status, completeness, expected_item_count)
+    values ('fixture', now(), 'partial', 'known', 1) returning id into v_complete_set;
+  insert into public.coffee_price_observations(observation_set_id, catalog_id, source, observed_at, price)
+    values (v_complete_set, v_catalog_id, 'fixture', now(), 10);
+  update public.supplier_observation_sets
+    set status = 'complete', is_complete = true, observed_item_count = 1, snapshot_item_count = 1
+    where id = v_complete_set;
   insert into public.supplier_observation_sets(source, observed_at, status, completeness, observed_item_count, snapshot_item_count, is_complete)
     values ('fixture', now() - interval '1 day', 'legacy', 'legacy', 1, 1, true) returning id into v_legacy_set;
   insert into public.supplier_observation_sets(source, observed_at, status, completeness, observed_item_count, snapshot_item_count, is_complete)
     values ('fixture', now(), 'complete', 'unknown', 1, 1, true) returning id into v_unknown_complete_set;
   insert into public.supplier_observation_sets(source, observed_at, status, completeness, observed_item_count, snapshot_item_count, is_complete)
     values ('fixture', now(), 'complete', 'legacy', 1, 1, true) returning id into v_legacy_complete_set;
-  insert into public.supplier_observation_sets(source, observed_at, status, completeness, expected_item_count, observed_item_count, snapshot_item_count, is_complete)
-    values ('fixture', current_date - interval '1 hour', 'complete', 'known', 1, 1, 1, true) returning id into v_carried_set;
-  insert into public.supplier_observation_sets(source, observed_at, status, completeness, expected_item_count, observed_item_count, snapshot_item_count, is_complete)
-    values ('fixture', current_date + interval '2 days', 'complete', 'known', 1, 1, 1, true) returning id into v_future_set;
+  insert into public.supplier_observation_sets(source, observed_at, status, completeness, expected_item_count)
+    values ('fixture', current_date - interval '1 hour', 'partial', 'known', 1) returning id into v_carried_set;
+  insert into public.coffee_price_observations(observation_set_id, catalog_id, source, observed_at, price)
+    values (v_carried_set, v_catalog_id, 'fixture', current_date - interval '1 hour', 10);
+  update public.supplier_observation_sets
+    set status = 'complete', is_complete = true, observed_item_count = 1, snapshot_item_count = 1
+    where id = v_carried_set;
+  insert into public.supplier_observation_sets(source, observed_at, status, completeness, expected_item_count)
+    values ('fixture', current_date + interval '2 days', 'partial', 'known', 1) returning id into v_future_set;
+  insert into public.coffee_price_observations(observation_set_id, catalog_id, source, observed_at, price)
+    values (v_future_set, v_catalog_id, 'fixture', current_date + interval '2 days', 10);
+  update public.supplier_observation_sets
+    set status = 'complete', is_complete = true, observed_item_count = 1, snapshot_item_count = 1
+    where id = v_future_set;
 
   insert into public.market_publications(as_of_date, cohort_id, policy_version, methodology_version,
     expected_source_count, represented_source_count, fresh_source_count, expected_item_count, represented_item_count, fresh_item_count,
-    supplier_coverage_ratio, item_coverage_ratio, stale_share, quality_tier, quality_score)
-    values (current_date, v_cohort, 'quality-v1', 'supplier-first-v1', 1, 1, 1, 1, 1, 1, 1, 1, 0, 'healthy', 1)
+    price_index_count, supplier_coverage_ratio, item_coverage_ratio, stale_share, quality_tier, quality_score)
+    values (current_date, v_cohort, 'quality-v1', 'supplier-first-v1', 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 'healthy', 1)
     returning id into v_pub;
   insert into public.market_publications(as_of_date, cohort_id, policy_version, methodology_version,
     expected_source_count, represented_source_count, fresh_source_count, quality_tier)
     values (current_date + 1, v_cohort, 'quality-v1', 'supplier-first-v1', 1, 1, 1, 'suppressed')
     returning id into v_other_pub;
   insert into public.market_publications(as_of_date, cohort_id, policy_version, methodology_version,
-    expected_source_count, represented_source_count, fresh_source_count, quality_tier)
-    values (current_date + 2, v_cohort, 'quality-v1', 'supplier-first-v1', 1, 1, 1, 'healthy')
+    expected_source_count, represented_source_count, fresh_source_count, price_index_count, quality_tier)
+    values (current_date, v_cohort, 'quality-v1', 'supplier-first-v1', 1, 1, 1, 1, 'healthy')
     returning id into v_manifestless_pub;
+  insert into public.market_publications(as_of_date, cohort_id, policy_version, methodology_version,
+    expected_source_count, represented_source_count, fresh_source_count, carried_source_count, price_index_count, quality_tier)
+    values (current_date, v_cohort, 'quality-v1', 'supplier-first-v1', 1, 1, 1, 0, 1, 'healthy')
+    returning id into v_bad_counts_pub;
 
   begin
     insert into public.market_publications(as_of_date, cohort_id, policy_version, methodology_version,
@@ -125,6 +161,14 @@ begin
   if not exists (select 1 from public.market_publication_inputs where publication_id = v_other_pub and observation_age > interval '1 day') then
     raise exception 'caller-forged carried age was trusted';
   end if;
+  insert into public.market_publication_inputs(publication_id, source, observation_set_id, freshness, observation_age, stock_confidence)
+    values (v_bad_counts_pub, 'fixture', v_carried_set, 'carried', interval '0 seconds', 'carried');
+  insert into public.market_publication_price_indexes(publication_id, origin, wholesale_only, supplier_count,
+    sample_size, price_min, price_max, price_avg, price_median, price_p25, price_p75, price_stdev, aggregation_tier)
+    values (v_pub, 'Active fixture', false, 1, 1, 10, 10, 10, 10, 10, 10, 0, 1);
+  insert into public.market_publication_price_indexes(publication_id, origin, wholesale_only, supplier_count,
+    sample_size, price_min, price_max, price_avg, price_median, price_p25, price_p75, price_stdev, aggregation_tier)
+    values (v_bad_counts_pub, 'Bad counts fixture', false, 1, 1, 10, 10, 10, 10, 10, 10, 0, 1);
 
   begin
     insert into public.market_publications(as_of_date, cohort_id, status, policy_version, methodology_version,
@@ -149,6 +193,23 @@ begin
     raise exception 'publication without its represented source manifest was activated';
   exception when others then
     if sqlerrm = 'publication without its represented source manifest was activated' then raise; end if;
+  end;
+  insert into public.market_publication_inputs(publication_id, source, observation_set_id, freshness, observation_age)
+    values (v_manifestless_pub, 'fixture', v_complete_set, 'fresh', interval '0 seconds');
+  begin
+    update public.market_publications set status = 'active', sealed_at = now(), published_at = now()
+      where id = v_manifestless_pub;
+    raise exception 'publication without aggregate rows was activated';
+  exception when others then
+    if sqlerrm = 'publication without aggregate rows was activated' then raise; end if;
+  end;
+
+  begin
+    update public.market_publications set status = 'active', sealed_at = now(), published_at = now()
+      where id = v_bad_counts_pub;
+    raise exception 'publication with mismatched freshness counts was activated';
+  exception when others then
+    if sqlerrm = 'publication with mismatched freshness counts was activated' then raise; end if;
   end;
 
   update public.market_publications set status = 'active', sealed_at = now(), published_at = now() where id = v_pub;
