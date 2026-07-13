@@ -2126,11 +2126,7 @@ const docsPages: DocsPage[] = [
 							'search, get, stats',
 							'API key with catalog:read; structured process filters require member access'
 						],
-						[
-							'catalog',
-							'similar',
-							'Member-owned key or API Origin/Enterprise key with catalog:read'
-						],
+						['catalog', 'similar', 'API Origin/Enterprise key with catalog:read'],
 						[
 							'inventory / roast / sales / tasting',
 							'Personal data and write workflows',
