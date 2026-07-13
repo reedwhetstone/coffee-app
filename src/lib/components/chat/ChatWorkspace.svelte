@@ -437,22 +437,34 @@
 		// ready-state effect should not treat them as newly authored messages.
 		lastPersistedMessageCount = chat.messages.length;
 
-		// Mark all tool parts from restored messages as already dispatched
-		// This prevents the $effect from re-dispatching blocks that are
-		// already represented in the restored canvas state
-		for (const msg of result.messages) {
-			if (msg.role !== 'assistant') continue;
-			const parts = Array.isArray(msg.parts) ? msg.parts : [];
-			for (const part of parts) {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const p = part as any;
-				if (p?.type?.startsWith('tool-')) {
-					const partKey = `${workspaceMessageClientId(msg)}-${p.toolCallId ?? p.toolName ?? p.type}`;
-					dispatchedParts.add(partKey);
-					// Also mark companion blocks
-					const companions = extractCompanionBlocks(p);
-					for (let ci = 0; ci < companions.length; ci++) {
-						dispatchedParts.add(`${partKey}-companion-${ci}`);
+		// A missing or empty canvas save is not proof that restored tool results were
+		// dispatched. Leave those parts eligible for the ready-state effect so older
+		// workspaces and failed canvas saves can rebuild their evidence links.
+		const savedCanvasState = result.workspace.canvas_state;
+		const hasSavedCanvasBlocks =
+			savedCanvasState &&
+			typeof savedCanvasState === 'object' &&
+			'blocks' in savedCanvasState &&
+			Array.isArray(savedCanvasState.blocks) &&
+			savedCanvasState.blocks.some(
+				(candidate) => candidate && typeof candidate === 'object' && 'block' in candidate
+			);
+		if (hasSavedCanvasBlocks) {
+			// Prevent the effect from duplicating blocks represented by the restored canvas.
+			for (const msg of result.messages) {
+				if (msg.role !== 'assistant') continue;
+				const parts = Array.isArray(msg.parts) ? msg.parts : [];
+				for (const part of parts) {
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const p = part as any;
+					if (p?.type?.startsWith('tool-')) {
+						const partKey = `${workspaceMessageClientId(msg)}-${p.toolCallId ?? p.toolName ?? p.type}`;
+						dispatchedParts.add(partKey);
+						// Also mark companion blocks
+						const companions = extractCompanionBlocks(p);
+						for (let ci = 0; ci < companions.length; ci++) {
+							dispatchedParts.add(`${partKey}-companion-${ci}`);
+						}
 					}
 				}
 			}

@@ -126,7 +126,7 @@ describe('chat analytics seed', () => {
 		expect(screen.queryByRole('button', { name: 'Hide evidence (1)' })).not.toBeInTheDocument();
 	});
 
-	it('opens the mobile canvas overlay focused on the compact companion preview target', async () => {
+	it('rebuilds missing saved canvas evidence and focuses the compact companion preview target', async () => {
 		vi.stubGlobal(
 			'fetch',
 			vi.fn().mockResolvedValue(
@@ -154,20 +154,6 @@ describe('chat analytics seed', () => {
 
 		render(ChatPage, {
 			data: createData({ initialWorkspaceData: createInitialWorkspaceData() } as Partial<PageData>)
-		});
-		canvasStore.dispatch({
-			type: 'add',
-			messageId: 'assistant-roast',
-			block: {
-				type: 'roast-profiles',
-				version: 1,
-				data: [{ roast_id: '42', batch_name: 'Batch 42' } as never]
-			}
-		});
-		canvasStore.dispatch({
-			type: 'add',
-			messageId: 'assistant-roast',
-			block: { type: 'roast-chart', version: 1, data: { roastId: 42 } }
 		});
 
 		await fireEvent.click(await screen.findByRole('button', { name: /Roast #42 chart/ }));
