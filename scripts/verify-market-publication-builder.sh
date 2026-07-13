@@ -136,4 +136,53 @@ grep -q 'activated' "$TMP/adjacent-day-two.log"
 grep -q 'rejected_chain_finalized' "$TMP/adjacent-day-one.log"
 (( elapsed >= 1200 )) || { echo "Concurrency failure: adjacent builder did not wait (${elapsed}ms)" >&2; exit 1; }
 
-echo "VALIDATION_PASS: fenced supplier leases, sorted replay, publication behavior, and same/adjacent-date atomic promotion"
+# A cohort-source mutation locks the cohort parent through its guard trigger.
+# If a builder wins that parent lock, the mutation waits and then rejects once
+# the publication freezes the cohort; it cannot leak half-new weights or TTLs.
+pg "-c \"insert into public.scrape_runs(id,command,requested_source_count,selected_source_count)
+  values ('40000000-0000-0000-0000-000000000010','builder-config-lock',1,1);
+  insert into public.market_index_cohorts(id,cohort_key,version,methodology_version,expected_source_count,effective_from)
+  values ('40000000-0000-0000-0000-000000000001','builder-config-lock',1,'supplier-first-matched-relative-v1',1,'2026-07-01');
+  insert into public.market_index_cohort_sources(cohort_id,source,carry_forward_ttl,source_weight)
+  values ('40000000-0000-0000-0000-000000000001','config-source',interval '3 days',1);
+  insert into public.supplier_observation_sets(id,scrape_run_id,lease_fence,source,observed_at,status,completeness,
+    expected_item_count,observed_item_count,snapshot_item_count,is_complete)
+  values ('41000000-0000-0000-0000-000000000001','40000000-0000-0000-0000-000000000010',
+    public.acquire_supplier_scrape_lease('config-source','40000000-0000-0000-0000-000000000010'),
+    'config-source','2026-07-13 12:00Z','partial','known',1,1,1,false);
+  insert into public.coffee_price_observations(observation_set_id,catalog_id,source,observed_at,price,stocked,wholesale,origin)
+  select '41000000-0000-0000-0000-000000000001',max(id),'config-source','2026-07-13 12:00Z',15,true,false,'Kenya'
+  from public.coffee_catalog;
+  update public.supplier_observation_sets set status='complete',is_complete=true
+  where id='41000000-0000-0000-0000-000000000001';\"" >/dev/null
+pg "-c \"begin;
+  select id from public.market_index_cohorts
+  where id='40000000-0000-0000-0000-000000000001' for update;
+  select pg_sleep(2);
+  select * from public.build_market_publication('2026-07-13','builder-config-lock',1);
+  commit;\"" >"$TMP/config-builder.log" 2>&1 &
+first_pid=$!
+sleep 0.25
+started=$(date +%s%3N)
+if pg "-c \"set statement_timeout='5s';
+  update public.market_index_cohort_sources set source_weight=2,carry_forward_ttl=interval '4 days'
+  where cohort_id='40000000-0000-0000-0000-000000000001' and source='config-source';\"" >"$TMP/config-mutation.log" 2>&1; then
+  echo "Concurrency failure: source configuration mutated across publication construction" >&2
+  exit 1
+fi
+elapsed=$(( $(date +%s%3N) - started ))
+wait "$first_pid"
+grep -q 'activated' "$TMP/config-builder.log"
+grep -q 'Published cohort membership is immutable' "$TMP/config-mutation.log"
+(( elapsed >= 1200 )) || { echo "Concurrency failure: source mutation did not wait for cohort parent (${elapsed}ms)" >&2; exit 1; }
+config_snapshot=$(pg "-Atqc \"select segment.source_weight || ':' || source.source_weight || ':' || source.carry_forward_ttl
+  from public.market_publication_supplier_segments segment
+  join public.market_publications publication on publication.id=segment.publication_id
+  join public.market_index_cohort_sources source on source.cohort_id=publication.cohort_id and source.source=segment.source
+  where publication.cohort_id='40000000-0000-0000-0000-000000000001' and publication.status='active';\"")
+[[ "$config_snapshot" == "1.000000:1.000000:3 days" ]] || {
+  echo "Concurrency failure: publication/config snapshot was incoherent ($config_snapshot)" >&2
+  exit 1
+}
+
+echo "VALIDATION_PASS: fenced leases, sorted replay, lifecycle guards, publication promotion, and cohort-config serialization"

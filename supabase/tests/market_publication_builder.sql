@@ -8,6 +8,20 @@ select '10000000-0000-0000-0000-000000000001',s,interval '3 days',1
 from unnest(array['a','b','c','d']) s;
 insert into public.coffee_catalog(name) select 'fixture-'||g from generate_series(1,40) g;
 
+do $$ begin
+  insert into public.supplier_observation_sets(id,source,observed_at,status,completeness,
+    expected_item_count,observed_item_count,snapshot_item_count,is_complete)
+  values ('00000000-0000-0000-0000-000000000099','direct-complete','2026-07-12 08:00Z',
+    'complete','known',0,0,0,true);
+  raise exception 'known observation set bypassed open-then-fenced lifecycle';
+exception when raise_exception then
+  if sqlerrm <> 'Known observation sets must be inserted open and completed by a fenced lifecycle update' then raise; end if;
+end $$;
+insert into public.supplier_observation_sets(id,source,observed_at,status,completeness,
+  observed_item_count,snapshot_item_count,is_complete)
+values ('00000000-0000-0000-0000-000000000098','legacy-fixture','2026-07-12 08:00Z',
+  'legacy','legacy',0,0,true);
+
 -- Supplier capture leases are exclusive, expiring, and owner-released.
 insert into public.scrape_runs(id,command,requested_source_count,selected_source_count)
 values

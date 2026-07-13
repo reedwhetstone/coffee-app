@@ -141,6 +141,12 @@ returns trigger language plpgsql set search_path = public as $$
 declare
   v_lease public.supplier_scrape_leases%rowtype;
 begin
+  if tg_op = 'INSERT' then
+    if new.completeness = 'known' and (new.is_complete or new.status = 'complete') then
+      raise exception 'Known observation sets must be inserted open and completed by a fenced lifecycle update';
+    end if;
+    return new;
+  end if;
   if old.is_complete then raise exception 'Complete supplier observation sets are immutable'; end if;
   if tg_op = 'DELETE' then return old; end if;
   if new.id <> old.id or new.scrape_run_id is distinct from old.scrape_run_id
@@ -171,6 +177,10 @@ begin
   end if;
   return new;
 end $$;
+drop trigger guard_observation_set_lifecycle on public.supplier_observation_sets;
+create trigger guard_observation_set_lifecycle
+  before insert or update or delete on public.supplier_observation_sets
+  for each row execute function public.guard_observation_set_lifecycle();
 
 create table public.market_publication_quality_policies (
   policy_version text primary key check (length(btrim(policy_version)) > 0),
@@ -372,9 +382,6 @@ begin
    where cohort_key=p_cohort_key and version=p_cohort_version
      and effective_from <= p_as_of_date and (effective_to is null or effective_to >= p_as_of_date)
    for update;
-  perform 1 from public.market_index_cohort_sources cohort_source
-  where cohort_source.cohort_id = v_cohort.id
-  order by cohort_source.source for share;
   select count(*) into v_enabled_source_count
   from public.market_index_cohort_sources cohort_source
   where cohort_source.cohort_id = v_cohort.id and cohort_source.enabled;
