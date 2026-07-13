@@ -36,8 +36,12 @@ pg "-f '$MIGRATION_COPY'" >/dev/null
 
 pg "-c \"insert into public.supplier_observation_sets(id, source, observed_at, status, completeness, expected_item_count)
   values ('00000000-0000-0000-0000-000000000001', 'fixture', now(), 'partial', 'known', 1);
-  insert into public.coffee_price_observations(observation_set_id, catalog_id, source, observed_at, price)
-  values ('00000000-0000-0000-0000-000000000001', 1, 'fixture', now(), 10);
+  insert into public.coffee_price_observations(
+    observation_set_id, catalog_id, source, observed_at, price, stocked, wholesale, origin, process, grade
+  ) values (
+    '00000000-0000-0000-0000-000000000001', 1, 'fixture', now(), 10,
+    true, false, 'Fixture', 'Washed', 'Specialty'
+  );
   insert into public.market_index_cohorts(id, cohort_key, version, methodology_version, expected_source_count, effective_from)
   values ('00000000-0000-0000-0000-000000000010', 'fixture', 1, 'v1', 1, current_date);
   insert into public.market_index_cohort_sources(cohort_id, source)
@@ -70,9 +74,10 @@ grep -q 'Complete supplier observation sets are immutable' "$LOG_DIR/set-child.l
 pg "-c \"insert into public.market_publication_inputs(publication_id, source, observation_set_id, freshness, observation_age)
   values ('00000000-0000-0000-0000-000000000020', 'fixture',
     '00000000-0000-0000-0000-000000000001', 'fresh', interval '0 seconds');
-  insert into public.market_publication_price_indexes(publication_id, origin, supplier_count, sample_size,
+  insert into public.market_publication_price_indexes(publication_id, origin, process, grade, supplier_count, sample_size,
     price_min, price_max, price_avg, price_median, price_p25, price_p75, price_stdev, aggregation_tier)
-  values ('00000000-0000-0000-0000-000000000020', 'Fixture', 1, 1, 10, 10, 10, 10, 10, 10, 0, 1);\"" >/dev/null
+  values ('00000000-0000-0000-0000-000000000020', 'Fixture', 'Washed', 'Specialty',
+    1, 1, 10, 10, 10, 10, 10, 10, 0, 1);\"" >/dev/null
 
 # Sealing takes the publication lock first. A concurrent artifact waits, then rejects.
 pg "-c \"begin;

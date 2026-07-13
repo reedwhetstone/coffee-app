@@ -1,6 +1,8 @@
 -- Provenance-aware supplier observations and atomic market publications.
 -- Additive foundation: legacy snapshot readers and writers remain unchanged.
 
+create extension if not exists btree_gist;
+
 create table public.scrape_runs (
   id uuid primary key default gen_random_uuid(),
   command text not null check (length(btrim(command)) > 0),
@@ -63,6 +65,10 @@ create table public.market_index_cohorts (
   effective_to date,
   created_at timestamptz not null default now(),
   unique (cohort_key, version),
+  exclude using gist (
+    cohort_key with =,
+    daterange(effective_from, effective_to, '[]') with &&
+  ),
   check (effective_to is null or effective_to >= effective_from)
 );
 
@@ -333,6 +339,29 @@ begin
         and (supplier_count > v_manifest_source_count or sample_size > v_represented_item_count)
     ) then
       raise exception 'Publication aggregate samples cannot exceed manifest source or item coverage';
+    end if;
+    if exists (
+      select 1
+      from public.market_publication_price_indexes a
+      cross join lateral (
+        select count(*)::integer as sample_size,
+          count(distinct o.source)::integer as supplier_count
+        from public.market_publication_inputs i
+        join public.coffee_price_observations o on o.observation_set_id = i.observation_set_id
+        where i.publication_id = new.id
+          and o.origin = a.origin
+          and o.process is not distinct from a.process
+          and o.grade is not distinct from a.grade
+          and (o.wholesale is true) = a.wholesale_only
+          and o.stocked is true
+          and o.price is not null
+          and o.price > 0
+      ) observed_segment
+      where a.publication_id = new.id
+        and (a.sample_size <> observed_segment.sample_size
+          or a.supplier_count <> observed_segment.supplier_count)
+    ) then
+      raise exception 'Publication aggregate segment must match manifest observations';
     end if;
     return new;
   end if;
