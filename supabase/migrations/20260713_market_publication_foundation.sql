@@ -384,6 +384,12 @@ create trigger guard_market_cohort_sources before insert or update or delete on 
 create or replace function public.guard_market_cohort_definition()
 returns trigger language plpgsql set search_path = public as $$
 begin
+  if tg_op = 'INSERT' then
+    if new.frozen_at is not null then
+      raise exception 'Market cohorts must be inserted unfrozen; use the freeze RPC after adding sources';
+    end if;
+    return new;
+  end if;
   if tg_op = 'DELETE' then
     if old.frozen_at is not null then raise exception 'Frozen market cohort is immutable'; end if;
     return old;
@@ -401,7 +407,7 @@ begin
   end if;
   return new;
 end $$;
-create trigger guard_market_cohort_definition before update or delete on public.market_index_cohorts
+create trigger guard_market_cohort_definition before insert or update or delete on public.market_index_cohorts
   for each row execute function public.guard_market_cohort_definition();
 
 create index supplier_observation_sets_source_observed

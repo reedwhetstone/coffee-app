@@ -314,6 +314,16 @@ begin
     null;
   end;
 
+  begin
+    insert into public.market_index_cohorts
+      (cohort_key, version, methodology_version, effective_from, frozen_at)
+    values ('service-role-direct-freeze', 1, 'supplier-first-v1', current_date, now());
+    raise exception 'service role inserted a frozen market cohort';
+  exception when others then
+    if sqlerrm = 'service role inserted a frozen market cohort' then raise; end if;
+    if position('must be inserted unfrozen' in sqlerrm) = 0 then raise; end if;
+  end;
+
   insert into public.market_index_cohorts
     (cohort_key, version, methodology_version, effective_from)
   values ('service-role-freeze', 1, 'supplier-first-v1', current_date)
