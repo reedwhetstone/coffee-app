@@ -235,6 +235,9 @@ declare
   v_manifest_source_count bigint;
   v_fresh_source_count bigint;
   v_carried_source_count bigint;
+  v_represented_item_count bigint;
+  v_fresh_item_count bigint;
+  v_carried_item_count bigint;
   v_price_index_count bigint;
 begin
   if tg_op = 'INSERT' then
@@ -282,16 +285,27 @@ begin
       raise exception 'Only healthy or degraded market publications may become active';
     end if;
     select count(*),
-      count(*) filter (where freshness = 'fresh'),
-      count(*) filter (where freshness = 'carried')
-      into v_manifest_source_count, v_fresh_source_count, v_carried_source_count
-      from public.market_publication_inputs where publication_id = new.id;
+      count(*) filter (where i.freshness = 'fresh'),
+      count(*) filter (where i.freshness = 'carried'),
+      coalesce(sum(s.observed_item_count), 0),
+      coalesce(sum(s.observed_item_count) filter (where i.freshness = 'fresh'), 0),
+      coalesce(sum(s.observed_item_count) filter (where i.freshness = 'carried'), 0)
+      into v_manifest_source_count, v_fresh_source_count, v_carried_source_count,
+        v_represented_item_count, v_fresh_item_count, v_carried_item_count
+      from public.market_publication_inputs i
+      join public.supplier_observation_sets s on s.id = i.observation_set_id
+      where i.publication_id = new.id;
     if v_manifest_source_count <> new.represented_source_count then
       raise exception 'Publication manifest source count must match represented_source_count';
     end if;
     if v_fresh_source_count <> new.fresh_source_count
       or v_carried_source_count <> new.carried_source_count then
       raise exception 'Publication manifest freshness counts must match publication source counts';
+    end if;
+    if v_represented_item_count <> new.represented_item_count
+      or v_fresh_item_count <> new.fresh_item_count
+      or v_carried_item_count <> new.carried_item_count then
+      raise exception 'Publication manifest item counts must match complete observation sets';
     end if;
     select count(*) into v_price_index_count
       from public.market_publication_price_indexes where publication_id = new.id;
@@ -341,6 +355,7 @@ create or replace function public.guard_observation_set_lifecycle()
 returns trigger language plpgsql set search_path = public as $$
 declare
   v_observation_count bigint;
+  v_latest_observed_at timestamptz;
 begin
   if tg_op = 'INSERT' then
     if new.is_complete and new.status = 'complete' and new.completeness = 'known' then
@@ -354,11 +369,14 @@ begin
     raise exception 'Completing an observation set requires complete or legacy status';
   end if;
   if new.is_complete and new.status = 'complete' and new.completeness = 'known' then
-    select count(*) into v_observation_count
+    select count(*), max(observed_at) into v_observation_count, v_latest_observed_at
       from public.coffee_price_observations where observation_set_id = new.id;
     if v_observation_count <> new.observed_item_count
       or new.observed_item_count <> new.expected_item_count then
       raise exception 'Complete known observation set counts must match stored observations and expected_item_count';
+    end if;
+    if v_latest_observed_at > new.observed_at then
+      raise exception 'Complete observation set timestamp must cover every child observation';
     end if;
   end if;
   return new;

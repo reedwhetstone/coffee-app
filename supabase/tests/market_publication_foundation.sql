@@ -8,6 +8,7 @@ declare
   v_expired_cohort uuid;
   v_open_set uuid;
   v_other_open_set uuid;
+  v_bad_time_set uuid;
   v_complete_set uuid;
   v_legacy_set uuid;
   v_unknown_complete_set uuid;
@@ -18,6 +19,7 @@ declare
   v_other_pub uuid;
   v_manifestless_pub uuid;
   v_bad_counts_pub uuid;
+  v_bad_item_counts_pub uuid;
   v_observation bigint;
   v_aggregate bigint;
 begin
@@ -51,6 +53,18 @@ begin
     raise exception 'empty observation set was completed';
   exception when others then
     if sqlerrm = 'empty observation set was completed' then raise; end if;
+  end;
+  insert into public.supplier_observation_sets(source, observed_at, status, completeness, expected_item_count)
+    values ('fixture', now(), 'partial', 'known', 1) returning id into v_bad_time_set;
+  insert into public.coffee_price_observations(observation_set_id, catalog_id, source, observed_at, price)
+    values (v_bad_time_set, v_catalog_id, 'fixture', now() + interval '1 day', 10);
+  begin
+    update public.supplier_observation_sets
+      set status = 'complete', is_complete = true, observed_item_count = 1, snapshot_item_count = 1
+      where id = v_bad_time_set;
+    raise exception 'observation set with future child timestamp was completed';
+  exception when others then
+    if sqlerrm = 'observation set with future child timestamp was completed' then raise; end if;
   end;
   insert into public.supplier_observation_sets(source, observed_at, status, completeness, expected_item_count)
     values ('fixture', now(), 'partial', 'known', 1) returning id into v_complete_set;
@@ -97,6 +111,11 @@ begin
     expected_source_count, represented_source_count, fresh_source_count, carried_source_count, price_index_count, quality_tier)
     values (current_date, v_cohort, 'quality-v1', 'supplier-first-v1', 1, 1, 1, 0, 1, 'healthy')
     returning id into v_bad_counts_pub;
+  insert into public.market_publications(as_of_date, cohort_id, policy_version, methodology_version,
+    expected_source_count, represented_source_count, fresh_source_count, expected_item_count,
+    represented_item_count, fresh_item_count, price_index_count, quality_tier)
+    values (current_date, v_cohort, 'quality-v1', 'supplier-first-v1', 1, 1, 1, 1, 2, 2, 1, 'healthy')
+    returning id into v_bad_item_counts_pub;
 
   begin
     insert into public.market_publications(as_of_date, cohort_id, policy_version, methodology_version,
@@ -163,12 +182,17 @@ begin
   end if;
   insert into public.market_publication_inputs(publication_id, source, observation_set_id, freshness, observation_age, stock_confidence)
     values (v_bad_counts_pub, 'fixture', v_carried_set, 'carried', interval '0 seconds', 'carried');
+  insert into public.market_publication_inputs(publication_id, source, observation_set_id, freshness, observation_age)
+    values (v_bad_item_counts_pub, 'fixture', v_complete_set, 'fresh', interval '0 seconds');
   insert into public.market_publication_price_indexes(publication_id, origin, wholesale_only, supplier_count,
     sample_size, price_min, price_max, price_avg, price_median, price_p25, price_p75, price_stdev, aggregation_tier)
     values (v_pub, 'Active fixture', false, 1, 1, 10, 10, 10, 10, 10, 10, 0, 1);
   insert into public.market_publication_price_indexes(publication_id, origin, wholesale_only, supplier_count,
     sample_size, price_min, price_max, price_avg, price_median, price_p25, price_p75, price_stdev, aggregation_tier)
     values (v_bad_counts_pub, 'Bad counts fixture', false, 1, 1, 10, 10, 10, 10, 10, 10, 0, 1);
+  insert into public.market_publication_price_indexes(publication_id, origin, wholesale_only, supplier_count,
+    sample_size, price_min, price_max, price_avg, price_median, price_p25, price_p75, price_stdev, aggregation_tier)
+    values (v_bad_item_counts_pub, 'Bad item counts fixture', false, 1, 1, 10, 10, 10, 10, 10, 10, 0, 1);
 
   begin
     insert into public.market_publications(as_of_date, cohort_id, status, policy_version, methodology_version,
@@ -210,6 +234,14 @@ begin
     raise exception 'publication with mismatched freshness counts was activated';
   exception when others then
     if sqlerrm = 'publication with mismatched freshness counts was activated' then raise; end if;
+  end;
+
+  begin
+    update public.market_publications set status = 'active', sealed_at = now(), published_at = now()
+      where id = v_bad_item_counts_pub;
+    raise exception 'publication with mismatched item counts was activated';
+  exception when others then
+    if sqlerrm = 'publication with mismatched item counts was activated' then raise; end if;
   end;
 
   update public.market_publications set status = 'active', sealed_at = now(), published_at = now() where id = v_pub;

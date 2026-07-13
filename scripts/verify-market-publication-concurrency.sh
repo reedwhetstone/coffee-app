@@ -43,13 +43,14 @@ pg "-c \"insert into public.supplier_observation_sets(id, source, observed_at, s
   insert into public.market_index_cohort_sources(cohort_id, source)
   values ('00000000-0000-0000-0000-000000000010', 'fixture');
   insert into public.market_publications(id, as_of_date, cohort_id, policy_version, methodology_version,
-    expected_source_count, represented_source_count, fresh_source_count, price_index_count, quality_tier)
+    expected_source_count, represented_source_count, fresh_source_count,
+    represented_item_count, fresh_item_count, price_index_count, quality_tier)
   values ('00000000-0000-0000-0000-000000000020', current_date,
-    '00000000-0000-0000-0000-000000000010', 'v1', 'v1', 1, 1, 1, 1, 'healthy');\"" >/dev/null
+    '00000000-0000-0000-0000-000000000010', 'v1', 'v1', 1, 1, 1, 1, 1, 1, 'healthy');\"" >/dev/null
 
 # Completion takes the parent lock first. A concurrent child waits, then rejects.
 pg "-c \"begin;
-  update public.supplier_observation_sets set status='complete', is_complete=true,
+  update public.supplier_observation_sets set status='complete', is_complete=true, observed_at=now(),
     observed_item_count=1, snapshot_item_count=1 where id='00000000-0000-0000-0000-000000000001';
   select pg_sleep(2); commit;\"" >"$LOG_DIR/set-parent.log" 2>&1 &
 parent_pid=$!
