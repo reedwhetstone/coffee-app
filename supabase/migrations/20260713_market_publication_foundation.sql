@@ -429,6 +429,11 @@ do $$ declare t text; begin
     execute format('create policy %I on public.%I for all using (auth.role() = ''service_role'') with check (auth.role() = ''service_role'')', 'Service role only ' || t, t);
   end loop;
 end $$;
+-- The service role may retire or revise an unfrozen cohort, but only the
+-- security-definer freeze RPC may set frozen_at after validating membership.
+revoke update on table public.market_index_cohorts from service_role;
+grant update (cohort_key, version, methodology_version, description, effective_from, effective_to)
+  on table public.market_index_cohorts to service_role;
 alter table public.supplier_observation_sets enable row level security;
 revoke all on table public.supplier_observation_sets from public, anon, authenticated, service_role;
 grant select, insert on table public.supplier_observation_sets to service_role;

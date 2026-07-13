@@ -276,6 +276,9 @@ declare
   v_service_run uuid;
   v_service_set uuid;
   v_service_fence bigint;
+  v_service_cohort uuid;
+  v_service_enabled_count integer;
+  v_service_frozen boolean;
 begin
   insert into public.scrape_runs(command, requested_source_count, selected_source_count)
   values ('service role seal fixture', 1, 1) returning id into v_service_run;
@@ -310,6 +313,31 @@ begin
   exception when insufficient_privilege then
     null;
   end;
+
+  insert into public.market_index_cohorts
+    (cohort_key, version, methodology_version, effective_from)
+  values ('service-role-freeze', 1, 'supplier-first-v1', current_date)
+  returning id into v_service_cohort;
+  insert into public.market_index_cohort_sources(cohort_id, source)
+  values (v_service_cohort, 'service-role-fixture');
+  begin
+    update public.market_index_cohorts set frozen_at = now() where id = v_service_cohort;
+    raise exception 'service role directly froze market cohort';
+  exception when insufficient_privilege then
+    null;
+  end;
+  v_service_enabled_count := public.freeze_market_index_cohort(v_service_cohort);
+  select frozen_at is not null into v_service_frozen
+  from public.market_index_cohorts where id = v_service_cohort;
+  if v_service_enabled_count <> 1 or not v_service_frozen then
+    raise exception 'service role freeze RPC did not freeze market cohort';
+  end if;
+  update public.market_index_cohorts set effective_to = current_date + 1
+  where id = v_service_cohort;
+  if (select effective_to from public.market_index_cohorts where id = v_service_cohort)
+    <> current_date + 1 then
+    raise exception 'service role retirement boundary was not preserved';
+  end if;
 end $$;
 reset role;
 
