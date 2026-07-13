@@ -6,10 +6,20 @@ declare
   v_catalog_id integer;
   v_run uuid;
   v_other_run uuid;
+  v_lifecycle_run uuid;
   v_fence bigint;
   v_zero_fence bigint;
+  v_stale_fence bigint;
+  v_new_fence bigint;
+  v_late_fence bigint;
   v_set uuid;
   v_zero_set uuid;
+  v_stale_set uuid;
+  v_late_set uuid;
+  v_unknown_set uuid;
+  v_legacy_set uuid;
+  v_unknown_zero_set uuid;
+  v_legacy_zero_set uuid;
   v_cohort uuid;
   v_count integer;
 begin
@@ -29,6 +39,16 @@ begin
   end if;
   insert into public.scrape_runs(command, publication_scope, requested_source_count, selected_source_count)
     values ('scrape all', 'production', 1, 1) returning id into v_other_run;
+  insert into public.scrape_runs(command, publication_scope, requested_source_count, selected_source_count)
+    values ('scrape all lifecycle', 'production', 1, 1) returning id into v_lifecycle_run;
+
+  begin
+    update public.scrape_runs set publication_scope = 'production' where id = v_run;
+    raise exception 'scrape run scope relabel was accepted';
+  exception when others then
+    if sqlerrm = 'scrape run scope relabel was accepted' then raise; end if;
+    if position('scope, selection, and start metadata are immutable' in sqlerrm) = 0 then raise; end if;
+  end;
 
   v_fence := public.acquire_supplier_scrape_lease('fixture', v_run, interval '1 hour');
   if v_fence is null then raise exception 'supplier lease was not acquired'; end if;
@@ -51,6 +71,128 @@ begin
     raise exception 'complete observation set was mutable';
   exception when others then
     if sqlerrm = 'complete observation set was mutable' then raise; end if;
+  end;
+
+  -- An expired lease always advances the fence, even for the same scrape run.
+  v_stale_fence := public.acquire_supplier_scrape_lease('stale-fixture', v_other_run, interval '1 hour');
+  insert into public.supplier_observation_sets
+    (scrape_run_id, lease_fence, source, observed_at, status, expected_item_count)
+  values (v_other_run, v_stale_fence, 'stale-fixture', now(), 'partial', 1)
+  returning id into v_stale_set;
+  insert into public.coffee_price_observations
+    (observation_set_id, catalog_id, source, observed_at, price, stocked)
+  select v_stale_set, v_catalog_id, 'stale-fixture', observed_at, 10, true
+  from public.supplier_observation_sets where id = v_stale_set;
+  update public.supplier_scrape_leases
+    set acquired_at = clock_timestamp() - interval '2 hours',
+        expires_at = clock_timestamp() - interval '1 hour'
+    where source = 'stale-fixture';
+  v_new_fence := public.acquire_supplier_scrape_lease('stale-fixture', v_other_run, interval '1 hour');
+  if v_new_fence <= v_stale_fence then
+    raise exception 'same-run expired lease reacquire reused its stale fence';
+  end if;
+  begin
+    update public.supplier_observation_sets
+      set status = 'complete', is_complete = true, observed_item_count = 1, snapshot_item_count = 1
+      where id = v_stale_set;
+    raise exception 'stale lease fence sealed an observation set';
+  exception when others then
+    if sqlerrm = 'stale lease fence sealed an observation set' then raise; end if;
+    if position('live fenced supplier lease' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- Completeness labels do not bypass open-insert or non-empty sealing rules.
+  begin
+    insert into public.supplier_observation_sets
+      (source, observed_at, status, completeness, is_complete)
+    values ('direct-unknown', now(), 'complete', 'unknown', true);
+    raise exception 'unknown observation set was inserted complete';
+  exception when others then
+    if sqlerrm = 'unknown observation set was inserted complete' then raise; end if;
+    if position('All observation sets must be inserted open' in sqlerrm) = 0 then raise; end if;
+  end;
+  begin
+    insert into public.supplier_observation_sets
+      (source, observed_at, status, completeness, is_complete)
+    values ('direct-legacy', now(), 'complete', 'legacy', true);
+    raise exception 'legacy observation set was inserted complete';
+  exception when others then
+    if sqlerrm = 'legacy observation set was inserted complete' then raise; end if;
+    if position('All observation sets must be inserted open' in sqlerrm) = 0 then raise; end if;
+  end;
+  insert into public.supplier_observation_sets(source, observed_at, status, completeness)
+    values ('unknown-fixture', now(), 'partial', 'unknown') returning id into v_unknown_set;
+  insert into public.coffee_price_observations
+    (observation_set_id, catalog_id, source, observed_at, price)
+  select v_unknown_set, v_catalog_id, 'unknown-fixture', observed_at, 10
+  from public.supplier_observation_sets where id = v_unknown_set;
+  update public.supplier_observation_sets
+    set status = 'complete', is_complete = true, observed_item_count = 1, snapshot_item_count = 1
+    where id = v_unknown_set;
+  insert into public.supplier_observation_sets(source, observed_at, status, completeness)
+    values ('legacy-fixture', now(), 'partial', 'legacy') returning id into v_legacy_set;
+  insert into public.coffee_price_observations
+    (observation_set_id, catalog_id, source, observed_at, price)
+  select v_legacy_set, v_catalog_id, 'legacy-fixture', observed_at, 10
+  from public.supplier_observation_sets where id = v_legacy_set;
+  update public.supplier_observation_sets
+    set status = 'complete', is_complete = true, observed_item_count = 1, snapshot_item_count = 1
+    where id = v_legacy_set;
+  insert into public.supplier_observation_sets(source, observed_at, status, completeness)
+    values ('unknown-zero', now(), 'partial', 'unknown') returning id into v_unknown_zero_set;
+  begin
+    update public.supplier_observation_sets set status = 'complete', is_complete = true
+      where id = v_unknown_zero_set;
+    raise exception 'zero-result unknown set was accepted as complete';
+  exception when others then
+    if sqlerrm = 'zero-result unknown set was accepted as complete' then raise; end if;
+    if position('Zero-result supplier capture is a failure' in sqlerrm) = 0 then raise; end if;
+  end;
+  insert into public.supplier_observation_sets(source, observed_at, status, completeness)
+    values ('legacy-zero', now(), 'partial', 'legacy') returning id into v_legacy_zero_set;
+  begin
+    update public.supplier_observation_sets set status = 'complete', is_complete = true
+      where id = v_legacy_zero_set;
+    raise exception 'zero-result legacy set was accepted as complete';
+  exception when others then
+    if sqlerrm = 'zero-result legacy set was accepted as complete' then raise; end if;
+    if position('Zero-result supplier capture is a failure' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- Run terminalization and set sealing serialize through the scrape run row.
+  v_late_fence := public.acquire_supplier_scrape_lease('late-fixture', v_lifecycle_run, interval '1 hour');
+  insert into public.supplier_observation_sets
+    (scrape_run_id, lease_fence, source, observed_at, status, expected_item_count)
+  values (v_lifecycle_run, v_late_fence, 'late-fixture', now(), 'partial', 1)
+  returning id into v_late_set;
+  insert into public.coffee_price_observations
+    (observation_set_id, catalog_id, source, observed_at, price)
+  select v_late_set, v_catalog_id, 'late-fixture', observed_at, 10
+  from public.supplier_observation_sets where id = v_late_set;
+  update public.scrape_runs set status = 'failed', completed_at = clock_timestamp()
+    where id = v_lifecycle_run;
+  begin
+    update public.scrape_runs set status = 'running', completed_at = null where id = v_lifecycle_run;
+    raise exception 'terminal scrape run was reopened';
+  exception when others then
+    if sqlerrm = 'terminal scrape run was reopened' then raise; end if;
+    if position('cannot be reopened or relabeled' in sqlerrm) = 0 then raise; end if;
+  end;
+  begin
+    update public.scrape_runs set status = 'degraded' where id = v_lifecycle_run;
+    raise exception 'terminal scrape run was relabeled';
+  exception when others then
+    if sqlerrm = 'terminal scrape run was relabeled' then raise; end if;
+    if position('cannot be reopened or relabeled' in sqlerrm) = 0 then raise; end if;
+  end;
+  begin
+    update public.supplier_observation_sets
+      set status = 'complete', is_complete = true, observed_item_count = 1, snapshot_item_count = 1
+      where id = v_late_set;
+    raise exception 'observation set sealed after run terminalization';
+  exception when others then
+    if sqlerrm = 'observation set sealed after run terminalization' then raise; end if;
+    if position('cannot be sealed after their scrape run is terminal' in sqlerrm) = 0 then raise; end if;
   end;
 
   v_zero_fence := public.acquire_supplier_scrape_lease('zero-fixture', v_other_run, interval '1 hour');
@@ -94,6 +236,19 @@ begin
   exception when others then
     if sqlerrm = 'frozen cohort definition was mutable' then raise; end if;
   end;
+  begin
+    update public.market_index_cohorts set frozen_at = null where id = v_cohort;
+    raise exception 'frozen cohort marker was cleared';
+  exception when others then
+    if sqlerrm = 'frozen cohort marker was cleared' then raise; end if;
+  end;
+  begin
+    update public.market_index_cohort_sources set enabled = false
+      where cohort_id = v_cohort and source = 'fixture';
+    raise exception 'cohort membership mutated after frozen marker clear attempt';
+  exception when others then
+    if sqlerrm = 'cohort membership mutated after frozen marker clear attempt' then raise; end if;
+  end;
 
   -- effective_to is exclusive: retirement and successor introduction share a boundary.
   update public.market_index_cohorts set effective_to = current_date + 1 where id = v_cohort;
@@ -111,5 +266,17 @@ begin
     raise exception 'owned supplier lease was not released';
   end if;
 end $$;
+
+set local role service_role;
+do $$ begin
+  begin
+    insert into public.supplier_scrape_leases(source, scrape_run_id, fence, acquired_at, expires_at)
+    values ('forbidden-direct-dml', gen_random_uuid(), 1, now(), now() + interval '1 hour');
+    raise exception 'service role directly mutated supplier lease';
+  exception when insufficient_privilege then
+    null;
+  end;
+end $$;
+reset role;
 
 rollback;

@@ -110,6 +110,31 @@ left join public.market_index_cohort_sources source
   on source.cohort_id = cohort.id and source.enabled
 group by cohort.id;
 
+create or replace function public.guard_scrape_run_lifecycle()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  if tg_op = 'DELETE' then raise exception 'Scrape runs are immutable audit records'; end if;
+  if new.id <> old.id or new.command <> old.command
+    or new.code_revision is distinct from old.code_revision
+    or new.publication_scope <> old.publication_scope
+    or new.requested_source_count <> old.requested_source_count
+    or new.selected_source_count <> old.selected_source_count
+    or new.started_at <> old.started_at or new.created_at <> old.created_at then
+    raise exception 'Scrape run identity, scope, selection, and start metadata are immutable';
+  end if;
+  if old.status <> 'running' then
+    raise exception 'Terminal scrape runs cannot be reopened or relabeled';
+  end if;
+  if new.status = 'running' then
+    if new.completed_at is not null then raise exception 'Running scrape run cannot be completed'; end if;
+    return new;
+  end if;
+  if new.completed_at is null then raise exception 'Terminal scrape run requires completed_at'; end if;
+  return new;
+end $$;
+create trigger guard_scrape_run_lifecycle before update or delete on public.scrape_runs
+  for each row execute function public.guard_scrape_run_lifecycle();
+
 create or replace function public.acquire_supplier_scrape_lease(
   p_source text,
   p_scrape_run_id uuid,
@@ -139,6 +164,7 @@ begin
   set scrape_run_id = excluded.scrape_run_id,
       fence = case
         when public.supplier_scrape_leases.scrape_run_id = excluded.scrape_run_id
+          and public.supplier_scrape_leases.expires_at > v_now
           then public.supplier_scrape_leases.fence
         else excluded.fence
       end,
@@ -195,8 +221,8 @@ returns trigger language plpgsql set search_path = public as $$
 declare v_lease public.supplier_scrape_leases%rowtype; v_observation_count bigint;
 begin
   if tg_op = 'INSERT' then
-    if new.completeness = 'known' and (new.is_complete or new.status = 'complete') then
-      raise exception 'Known observation sets must be inserted open and completed by a fenced lifecycle update';
+    if new.is_complete or new.status = 'complete' then
+      raise exception 'All observation sets must be inserted open';
     end if;
     return new;
   end if;
@@ -207,18 +233,28 @@ begin
     or new.completeness <> old.completeness or new.lease_fence is distinct from old.lease_fence then
     raise exception 'Observation set identity, provenance, and lease fence are immutable';
   end if;
-  if new.is_complete and new.status not in ('complete', 'legacy') then
-    raise exception 'Completing an observation set requires complete or legacy status';
+  if new.is_complete and new.status <> 'complete' then
+    raise exception 'Completing an observation set requires complete status; completeness is separate';
   end if;
-  if new.is_complete and new.completeness = 'known' then
-    if new.scrape_run_id is null or new.lease_fence is null then
-      raise exception 'Completing a known observation set requires its scrape run and lease fence';
+  if new.is_complete then
+    if new.scrape_run_id is not null then
+      perform 1 from public.scrape_runs run
+      where run.id = new.scrape_run_id and run.status = 'running' and run.completed_at is null
+      for update;
+      if not found then raise exception 'Observation sets cannot be sealed after their scrape run is terminal'; end if;
+      if new.lease_fence is null then
+        raise exception 'Completing a run-owned observation set requires its lease fence';
+      end if;
+    elsif new.completeness = 'known' or new.lease_fence is not null then
+      raise exception 'Known or fenced observation sets require a scrape run';
     end if;
-    select * into v_lease from public.supplier_scrape_leases lease
-    where lease.source = new.source for update;
-    if not found or v_lease.scrape_run_id <> new.scrape_run_id
-      or v_lease.fence <> new.lease_fence or v_lease.expires_at <= clock_timestamp() then
-      raise exception 'Completing an observation set requires its live fenced supplier lease';
+    if new.scrape_run_id is not null then
+      select * into v_lease from public.supplier_scrape_leases lease
+      where lease.source = new.source for update;
+      if not found or v_lease.scrape_run_id <> new.scrape_run_id
+        or v_lease.fence <> new.lease_fence or v_lease.expires_at <= clock_timestamp() then
+        raise exception 'Completing an observation set requires its live fenced supplier lease';
+      end if;
     end if;
     select count(*) into v_observation_count from public.coffee_price_observations observation
     where observation.observation_set_id = new.id;
@@ -226,9 +262,11 @@ begin
       raise exception 'Zero-result supplier capture is a failure, not a complete observation set';
     end if;
     if v_observation_count <> new.observed_item_count
-      or new.observed_item_count <> new.expected_item_count
       or v_observation_count <> new.snapshot_item_count then
-      raise exception 'Complete known observation set counts must match stored observations, expected_item_count, and snapshot_item_count';
+      raise exception 'Complete observation set counts must match stored observations and snapshot_item_count';
+    end if;
+    if new.completeness = 'known' and new.observed_item_count <> new.expected_item_count then
+      raise exception 'Complete known observation set count must match expected_item_count';
     end if;
     if exists (select 1 from public.coffee_price_observations observation
       where observation.observation_set_id = new.id and observation.observed_at <> new.observed_at) then
@@ -286,7 +324,7 @@ begin
     if new.id <> old.id or new.cohort_key <> old.cohort_key or new.version <> old.version
       or new.methodology_version <> old.methodology_version
       or new.description is distinct from old.description or new.effective_from <> old.effective_from
-      or new.frozen_at <> old.frozen_at or new.created_at <> old.created_at then
+      or new.frozen_at is distinct from old.frozen_at or new.created_at <> old.created_at then
       raise exception 'Frozen market cohort definition is immutable; create a successor version';
     end if;
     if old.effective_to is not null and new.effective_to is distinct from old.effective_to then
@@ -316,13 +354,18 @@ comment on table public.market_index_cohort_sources is
   'Versioned cohort membership and supplier influence. No short carry-forward TTL is stored here.';
 
 do $$ declare t text; begin
-  foreach t in array array['scrape_runs','supplier_scrape_leases','supplier_observation_sets','coffee_price_observations','market_index_cohorts','market_index_cohort_sources'] loop
+  foreach t in array array['scrape_runs','supplier_observation_sets','coffee_price_observations','market_index_cohorts','market_index_cohort_sources'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('revoke all on table public.%I from public, anon, authenticated', t);
     execute format('grant all on table public.%I to service_role', t);
     execute format('create policy %I on public.%I for all using (auth.role() = ''service_role'') with check (auth.role() = ''service_role'')', 'Service role only ' || t, t);
   end loop;
 end $$;
+alter table public.supplier_scrape_leases enable row level security;
+revoke all on table public.supplier_scrape_leases from public, anon, authenticated, service_role;
+grant select on table public.supplier_scrape_leases to service_role;
+create policy "Service role reads supplier_scrape_leases" on public.supplier_scrape_leases
+  for select using (auth.role() = 'service_role');
 revoke all on public.market_index_cohort_enabled_counts from public, anon, authenticated;
 grant select on public.market_index_cohort_enabled_counts to service_role;
 revoke all on function public.acquire_supplier_scrape_lease(text, uuid, interval) from public, anon, authenticated;
@@ -332,8 +375,8 @@ grant execute on function public.release_supplier_scrape_lease(text, uuid, bigin
 revoke all on function public.freeze_market_index_cohort(uuid) from public, anon, authenticated;
 grant execute on function public.freeze_market_index_cohort(uuid) to service_role;
 revoke all on function public.guard_observation_artifact() from public, anon, authenticated;
+revoke all on function public.guard_scrape_run_lifecycle() from public, anon, authenticated;
 revoke all on function public.guard_observation_set_lifecycle() from public, anon, authenticated;
 revoke all on function public.guard_market_cohort_sources() from public, anon, authenticated;
 revoke all on function public.guard_market_cohort_definition() from public, anon, authenticated;
 grant usage, select on sequence public.coffee_price_observations_id_seq to service_role;
-grant usage, select on sequence public.supplier_scrape_lease_fence_seq to service_role;
