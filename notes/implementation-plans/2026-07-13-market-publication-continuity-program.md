@@ -46,3 +46,23 @@ Historical raw rows may be grouped into observation sets only with `completeness
 - Scraper unit/integration tests for sealing, failure, and dual-write behavior.
 - Database tests for TTL selection, manifest completeness, concurrent promotion, immutability, and rollback.
 - Shadow-run acceptance report before any production reader changes.
+
+## Shadow comparison cutover gate
+
+Run the read-only production cohort comparison after at least seven active publication days exist:
+
+```bash
+pnpm run audit:market-publication-shadow -- --days 30
+```
+
+Use `--as-of YYYY-MM-DD` for a reproducible inclusive UTC window, `--json` for a machine-readable report, or `--cohort-key` and `--cohort-version` to inspect a non-default cohort. For clean JSON stdout without the package-runner banner, use `pnpm --silent run audit:market-publication-shadow -- --days 30 --json > shadow-report.json`; the human summary remains on stderr. The command requires `PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. It performs only PostgREST `select` queries; it does not call RPCs, mutate data, enable flags, or change reader behavior.
+
+Exit status is the cutover contract:
+
+- `0`: every named `shadow-cutover-v1` acceptance gate passed. This is necessary evidence for reader cutover, not authorization to switch readers by itself.
+- `1`: the report ran, but the evidence does not meet the gate. Investigate the JSON/day details and continue shadowing.
+- `2`: invalid arguments, missing credentials (`VALIDATION_BLOCKED_ENV`), absent publication schema, or an unavailable/query-failing service (`VALIDATION_BLOCKED_SERVICE`). This is no verdict about the data.
+
+`shadow-cutover-v1` is a versioned named configuration in `src/lib/server/marketPublicationShadow.ts`. It conservatively requires at least seven comparable days and at most one degraded day. Every healthy day must meet the `coverage-v1` healthy bounds (80% suppliers, 70% expected items, at most 20% stale); the bounded degraded day must still meet its 60%/50%/40% bounds. The gate also requires at least 85% exact segment overlap and bounded matched-segment divergence: median absolute price-median delta at most 5%, p95 at most 15%, maximum at most 50%, with supplier-count divergence median at most 1 and p95 at most 3. Equal zero medians compare as zero; a nonzero publication median against a zero legacy median is explicitly non-comparable and fails the gate. Missing medians on an otherwise matching segment also fail rather than shrinking the comparison sample silently.
+
+The audit detects cohort, methodology, and policy changes. It reports each compatibility group separately and rejects the window rather than silently pooling unlike days. Missing dates and segment entrants/departures remain visible. Legacy `price_index_snapshots` are a divergence baseline, not ground truth: differences can represent defects, supplier-first weighting, bounded carry-forward, or legitimate assortment/composition change. A passing report still requires review of those causes before reader cutover.
