@@ -61,6 +61,12 @@ if (/grant\s+select\s+on\s+(table\s+)?public\.market_/i.test(migration)) {
 
 for (const scenario of [
 	'legacy observation set was accepted',
+	'unknown-completeness complete set was accepted',
+	'legacy-completeness complete set was accepted',
+	'same-day observation was accepted as carried',
+	'future observation was accepted',
+	'caller-forged zero observation age was trusted',
+	'caller-forged carried age was trusted',
 	'direct active publication insert was accepted',
 	'referenced cohort membership was mutable',
 	'referenced cohort definition was mutable',
@@ -69,6 +75,9 @@ for (const scenario of [
 	'observation update out of complete set was accepted',
 	'observation update into complete set was accepted',
 	'rejected publication was not terminal',
+	'rejected publication accepted artifact insert',
+	'rejected publication accepted artifact update',
+	'rejected publication accepted artifact delete',
 	'invalid aggregate was accepted'
 ]) {
 	if (!behaviorTests.includes(scenario))

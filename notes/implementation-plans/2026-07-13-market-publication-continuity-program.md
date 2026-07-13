@@ -41,6 +41,7 @@ Historical raw rows may be grouped into observation sets only with `completeness
 ## Validation gates
 
 - Static DDL contract checks in this slice.
+- Executable SQL behavior checks plus `pnpm run verify:market-publication-concurrency`, which creates an ephemeral local PostgreSQL database and runs two-session parent-transition/child-write races. It requires local `postgres` access through `su`; cleanup drops the database and any test-created roles.
 - Local Supabase reset/migration replay when the service is available.
 - Scraper unit/integration tests for sealing, failure, and dual-write behavior.
 - Database tests for TTL selection, manifest completeness, concurrent promotion, immutability, and rollback.

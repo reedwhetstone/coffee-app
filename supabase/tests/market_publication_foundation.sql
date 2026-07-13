@@ -9,6 +9,10 @@ declare
   v_other_open_set uuid;
   v_complete_set uuid;
   v_legacy_set uuid;
+  v_unknown_complete_set uuid;
+  v_legacy_complete_set uuid;
+  v_carried_set uuid;
+  v_future_set uuid;
   v_pub uuid;
   v_other_pub uuid;
   v_observation bigint;
@@ -30,6 +34,14 @@ begin
     values ('fixture', now(), 'complete', 'known', 1, 1, 1, true) returning id into v_complete_set;
   insert into public.supplier_observation_sets(source, observed_at, status, completeness, observed_item_count, snapshot_item_count, is_complete)
     values ('fixture', now() - interval '1 day', 'legacy', 'legacy', 1, 1, true) returning id into v_legacy_set;
+  insert into public.supplier_observation_sets(source, observed_at, status, completeness, observed_item_count, snapshot_item_count, is_complete)
+    values ('fixture', now(), 'complete', 'unknown', 1, 1, true) returning id into v_unknown_complete_set;
+  insert into public.supplier_observation_sets(source, observed_at, status, completeness, observed_item_count, snapshot_item_count, is_complete)
+    values ('fixture', now(), 'complete', 'legacy', 1, 1, true) returning id into v_legacy_complete_set;
+  insert into public.supplier_observation_sets(source, observed_at, status, completeness, expected_item_count, observed_item_count, snapshot_item_count, is_complete)
+    values ('fixture', current_date - interval '1 hour', 'complete', 'known', 1, 1, 1, true) returning id into v_carried_set;
+  insert into public.supplier_observation_sets(source, observed_at, status, completeness, expected_item_count, observed_item_count, snapshot_item_count, is_complete)
+    values ('fixture', current_date + interval '2 days', 'complete', 'known', 1, 1, 1, true) returning id into v_future_set;
 
   insert into public.market_publications(as_of_date, cohort_id, policy_version, methodology_version,
     expected_source_count, represented_source_count, fresh_source_count, expected_item_count, represented_item_count, fresh_item_count,
@@ -48,9 +60,45 @@ begin
   exception when others then
     if sqlerrm = 'legacy observation set was accepted' then raise; end if;
   end;
+  begin
+    insert into public.market_publication_inputs(publication_id, source, observation_set_id, freshness, observation_age)
+      values (v_pub, 'fixture', v_unknown_complete_set, 'fresh', interval '0 seconds');
+    raise exception 'unknown-completeness complete set was accepted';
+  exception when others then
+    if sqlerrm = 'unknown-completeness complete set was accepted' then raise; end if;
+  end;
+  begin
+    insert into public.market_publication_inputs(publication_id, source, observation_set_id, freshness, observation_age)
+      values (v_pub, 'fixture', v_legacy_complete_set, 'fresh', interval '0 seconds');
+    raise exception 'legacy-completeness complete set was accepted';
+  exception when others then
+    if sqlerrm = 'legacy-completeness complete set was accepted' then raise; end if;
+  end;
+  begin
+    insert into public.market_publication_inputs(publication_id, source, observation_set_id, freshness, observation_age)
+      values (v_pub, 'fixture', v_complete_set, 'carried', interval '0 seconds');
+    raise exception 'same-day observation was accepted as carried';
+  exception when others then
+    if sqlerrm = 'same-day observation was accepted as carried' then raise; end if;
+  end;
+  begin
+    insert into public.market_publication_inputs(publication_id, source, observation_set_id, freshness, observation_age)
+      values (v_pub, 'fixture', v_future_set, 'fresh', interval '0 seconds');
+    raise exception 'future observation was accepted';
+  exception when others then
+    if sqlerrm = 'future observation was accepted' then raise; end if;
+  end;
 
   insert into public.market_publication_inputs(publication_id, source, observation_set_id, freshness, observation_age)
     values (v_pub, 'fixture', v_complete_set, 'fresh', interval '0 seconds');
+  if not exists (select 1 from public.market_publication_inputs where publication_id = v_pub and observation_age > interval '0 seconds') then
+    raise exception 'caller-forged zero observation age was trusted';
+  end if;
+  insert into public.market_publication_inputs(publication_id, source, observation_set_id, freshness, observation_age, stock_confidence)
+    values (v_other_pub, 'fixture', v_carried_set, 'carried', interval '0 seconds', 'carried');
+  if not exists (select 1 from public.market_publication_inputs where publication_id = v_other_pub and observation_age > interval '1 day') then
+    raise exception 'caller-forged carried age was trusted';
+  end if;
 
   begin
     insert into public.market_publications(as_of_date, cohort_id, status, policy_version, methodology_version,
@@ -112,21 +160,41 @@ begin
     if sqlerrm = 'observation update into complete set was accepted' then raise; end if;
   end;
 
-  update public.market_publications set status = 'rejected', rejected_at = now() where id = v_other_pub;
-  begin
-    update public.market_publications set status = 'active', sealed_at = now(), published_at = now(), rejected_at = null
-      where id = v_other_pub;
-    raise exception 'rejected publication was not terminal';
-  exception when others then
-    if sqlerrm = 'rejected publication was not terminal' then raise; end if;
-  end;
-
   begin
     insert into public.market_publication_price_indexes(publication_id, origin, wholesale_only, supplier_count,
       sample_size, price_min, price_max, price_median, price_p25, price_p75, aggregation_tier)
       values (v_other_pub, 'Invalid', false, 2, 1, 20, 10, 15, 18, 12, 4);
     raise exception 'invalid aggregate was accepted';
   exception when check_violation then null;
+  end;
+
+  update public.market_publications set status = 'rejected', rejected_at = now() where id = v_other_pub;
+  begin
+    insert into public.market_publication_price_indexes(publication_id, origin, wholesale_only, supplier_count,
+      sample_size, price_min, price_max, price_avg, price_median, price_p25, price_p75, price_stdev, aggregation_tier)
+      values (v_other_pub, 'Rejected insert', false, 1, 1, 10, 10, 10, 10, 10, 10, 0, 1);
+    raise exception 'rejected publication accepted artifact insert';
+  exception when others then
+    if sqlerrm = 'rejected publication accepted artifact insert' then raise; end if;
+  end;
+  begin
+    update public.market_publication_price_indexes set price_avg = 9 where id = v_aggregate;
+    raise exception 'rejected publication accepted artifact update';
+  exception when others then
+    if sqlerrm = 'rejected publication accepted artifact update' then raise; end if;
+  end;
+  begin
+    delete from public.market_publication_price_indexes where id = v_aggregate;
+    raise exception 'rejected publication accepted artifact delete';
+  exception when others then
+    if sqlerrm = 'rejected publication accepted artifact delete' then raise; end if;
+  end;
+  begin
+    update public.market_publications set status = 'active', sealed_at = now(), published_at = now(), rejected_at = null
+      where id = v_other_pub;
+    raise exception 'rejected publication was not terminal';
+  exception when others then
+    if sqlerrm = 'rejected publication was not terminal' then raise; end if;
   end;
 end $$;
 

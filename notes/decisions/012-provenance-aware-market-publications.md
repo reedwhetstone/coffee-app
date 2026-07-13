@@ -15,6 +15,8 @@ Market data is built from immutable, supplier-level observation sets. Each obser
 
 Legacy and unknown-completeness sets are not eligible for production publications. Making reconstructed history publishable requires a separate reviewed backfill policy and methodology version; it cannot reuse the ordinary fresh/carried path.
 
+Publication age is derived in the database from the supplier set's `observed_at` and the exclusive UTC end-of-day cutoff for `as_of_date`. Same-UTC-day observations are fresh; older observations are carried and subject to cohort TTL; observations at or beyond the cutoff are ineligible. Callers cannot choose or shorten age.
+
 An explicit, versioned cohort defines expected production suppliers, their weights, enablement, and maximum carry-forward age. Daily publication candidates each own an exact source-to-observation-set manifest and a complete set of publication-scoped aggregates. Candidates can coexist. Promotion selects exactly one active publication per date and cohort atomically; active inputs and aggregates are immutable. A suppressed candidate does not patch the last good publication.
 
 Child writes lock their observation-set or publication parent. Completion and sealing transitions acquire the same row locks, so a child write either commits before the parent is sealed or observes the sealed parent and fails. Cohort definitions and membership become immutable as soon as any candidate references that cohort version.

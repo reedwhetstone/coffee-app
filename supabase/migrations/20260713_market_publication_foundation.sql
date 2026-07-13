@@ -164,8 +164,13 @@ returns trigger language plpgsql set search_path = public as $$
 declare
   v_id uuid;
   v_sealed_at timestamptz;
+  v_publication_status text;
   v_set_complete boolean;
   v_set_status text;
+  v_set_completeness text;
+  v_observed_at timestamptz;
+  v_as_of_date date;
+  v_cutoff timestamptz;
   v_ttl interval;
 begin
   for v_id in
@@ -174,21 +179,36 @@ begin
       case when tg_op <> 'DELETE' then new.publication_id end
     ]) id where id is not null order by id
   loop
-    select sealed_at into strict v_sealed_at
+    select sealed_at, status into strict v_sealed_at, v_publication_status
       from public.market_publications where id = v_id for update;
-    if v_sealed_at is not null then raise exception 'Sealed market publication artifacts are immutable'; end if;
+    if v_sealed_at is not null or v_publication_status = 'rejected' then
+      raise exception 'Sealed or rejected market publication artifacts are immutable';
+    end if;
   end loop;
 
   if tg_table_name = 'market_publication_inputs' and tg_op <> 'DELETE' then
-    select is_complete, status into strict v_set_complete, v_set_status
+    select is_complete, status, completeness, observed_at
+      into strict v_set_complete, v_set_status, v_set_completeness, v_observed_at
       from public.supplier_observation_sets where id = new.observation_set_id for update;
-    if not v_set_complete or v_set_status <> 'complete' then
-      raise exception 'Publication inputs require a complete, non-legacy supplier observation set';
+    if not v_set_complete or v_set_status <> 'complete' or v_set_completeness <> 'known' then
+      raise exception 'Publication inputs require a complete, known-completeness supplier observation set';
     end if;
-    select cs.carry_forward_ttl into strict v_ttl
+    select cs.carry_forward_ttl, p.as_of_date into strict v_ttl, v_as_of_date
       from public.market_publications p
       join public.market_index_cohort_sources cs on cs.cohort_id = p.cohort_id and cs.source = new.source
       where p.id = new.publication_id and cs.enabled;
+    -- Publications use the exclusive UTC end-of-day cutoff. This makes age
+    -- deterministic for a date and independent of builder clock or time zone.
+    v_cutoff := ((v_as_of_date + 1)::timestamp at time zone 'UTC');
+    if v_observed_at >= v_cutoff then
+      raise exception 'Publication input observation is after its UTC as-of date';
+    end if;
+    new.observation_age := v_cutoff - v_observed_at;
+    if v_observed_at >= (v_as_of_date::timestamp at time zone 'UTC') then
+      if new.freshness <> 'fresh' then raise exception 'Same-day observation must be labeled fresh'; end if;
+    else
+      if new.freshness <> 'carried' then raise exception 'Prior-day observation must be labeled carried'; end if;
+    end if;
     if new.freshness = 'carried' and new.observation_age > v_ttl then
       raise exception 'Carried publication input exceeds cohort source TTL';
     end if;
