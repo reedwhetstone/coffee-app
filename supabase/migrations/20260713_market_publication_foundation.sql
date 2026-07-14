@@ -207,7 +207,7 @@ end $$;
 
 create or replace function public.guard_observation_artifact()
 returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
-declare v_set_id uuid; v_complete boolean; v_parent_observed_at timestamptz;
+declare v_set_id uuid; v_run_id uuid; v_complete boolean; v_parent_observed_at timestamptz;
 begin
   for v_set_id in
     select distinct id from unnest(array[
@@ -215,6 +215,17 @@ begin
       case when tg_op <> 'DELETE' then new.observation_set_id end
     ]) id where id is not null order by id
   loop
+    -- Child observation writes enter the canonical run -> lease -> set lock
+    -- order at the run row. A transaction that writes rows and later seals
+    -- therefore already owns the run lock, so a concurrent duplicate sealer
+    -- queues at the run instead of holding run -> lease while waiting on this
+    -- set row (an inverse-order deadlock). scrape_run_id is immutable, which
+    -- makes the non-locking discovery read safe.
+    select scrape_run_id into strict v_run_id
+    from public.supplier_observation_sets where id = v_set_id;
+    if v_run_id is not null then
+      perform 1 from public.scrape_runs where id = v_run_id for update;
+    end if;
     select is_complete, observed_at into strict v_complete, v_parent_observed_at
     from public.supplier_observation_sets where id = v_set_id for update;
     if v_complete then raise exception 'Complete supplier observation sets are immutable'; end if;
@@ -275,7 +286,8 @@ create trigger guard_observation_set_lifecycle before insert or update or delete
   for each row execute function public.guard_observation_set_lifecycle();
 
 -- Canonical lock order for ingest finalization is run -> lease -> observation
--- set. Lease acquire/reacquire uses the same run -> lease prefix.
+-- set. Lease acquire/reacquire uses the same run -> lease prefix, and child
+-- observation writes take the run lock before their set-row lock.
 create or replace function public.seal_supplier_observation_set(
   p_observation_set_id uuid,
   p_lease_fence bigint,

@@ -67,3 +67,55 @@ rg -q 'live fenced supplier lease' "$LOG_DIR/seal.log"
 }
 
 echo "VALIDATION_PASS: lease reacquisition and sealing share run -> lease lock order without deadlock"
+
+# A writer that inserts observations and seals in the same transaction takes
+# the run lock inside the child-write trigger, so a concurrent duplicate
+# sealer queues at the run instead of holding run -> lease while waiting on
+# the writer's set row (the inverse-order deadlock).
+pg "-c \"insert into public.scrape_runs(id,command,requested_source_count,selected_source_count)
+  values ('00000000-0000-0000-0000-000000000011','writer seal scrape',1,1);
+  select public.acquire_supplier_scrape_lease('fixture2','00000000-0000-0000-0000-000000000011',interval '1 hour');
+  insert into public.supplier_observation_sets(id,scrape_run_id,lease_fence,source,observed_at,status,expected_item_count)
+  select '00000000-0000-0000-0000-000000000012','00000000-0000-0000-0000-000000000011',lease.fence,'fixture2',now(),'partial',1
+  from public.supplier_scrape_leases lease where lease.source='fixture2';\"" >/dev/null
+
+pg "-c \"begin;
+  insert into public.coffee_price_observations(observation_set_id,catalog_id,source,observed_at,price)
+  select '00000000-0000-0000-0000-000000000012',1,'fixture2',observed_at,12
+  from public.supplier_observation_sets where id='00000000-0000-0000-0000-000000000012';
+  select pg_sleep(2);
+  select public.seal_supplier_observation_set('00000000-0000-0000-0000-000000000012',
+    (select fence from public.supplier_scrape_leases where source='fixture2'),1,1);
+  commit;\"" >"$LOG_DIR/writer_seal.log" 2>&1 &
+writer_pid=$!
+sleep 0.25
+started=$(date +%s%3N)
+if pg "-c \"set statement_timeout='5s';
+  select public.seal_supplier_observation_set('00000000-0000-0000-0000-000000000012',
+    (select fence from public.supplier_scrape_leases where source='fixture2'),1,1);\"" \
+  >"$LOG_DIR/duplicate_seal.log" 2>&1; then
+  echo "Concurrency failure: duplicate sealer completed an already-sealed set" >&2
+  exit 1
+fi
+elapsed=$(( $(date +%s%3N) - started ))
+# The writer's exit code is judged from its log below so a deadlock abort
+# produces the diagnostic instead of a silent set -e exit.
+wait "$writer_pid" || true
+if rg -q 'deadlock detected' "$LOG_DIR/writer_seal.log" "$LOG_DIR/duplicate_seal.log"; then
+  echo "Concurrency failure: same-transaction write+seal deadlocked against duplicate sealer" >&2
+  exit 1
+fi
+if rg -q 'ERROR' "$LOG_DIR/writer_seal.log"; then
+  echo "Concurrency failure: writer transaction did not seal its own observation set" >&2
+  cat "$LOG_DIR/writer_seal.log" >&2
+  exit 1
+fi
+rg -q 'Complete supplier observation sets are immutable' "$LOG_DIR/duplicate_seal.log"
+su postgres -c "psql -X -d '$DB' -Atqc \"select is_complete from public.supplier_observation_sets
+  where id='00000000-0000-0000-0000-000000000012'\"" | rg -q '^t$'
+(( elapsed >= 1200 )) || {
+  echo "Concurrency failure: duplicate sealer did not queue at the run lock (${elapsed}ms)" >&2
+  exit 1
+}
+
+echo "VALIDATION_PASS: same-transaction observation writes and sealing queue duplicate sealers at the run lock"
