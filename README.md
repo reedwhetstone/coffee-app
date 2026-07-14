@@ -62,7 +62,7 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
    - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
    - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are metadata or compatibility endpoints, not catalog or analytics APIs
-   - `/auth/callback` and `/auth/cli-callback` are OAuth handoff surfaces, not REST resources
+   - `/auth/callback` and `/auth/cli-callback` are OAuth handoff surfaces; `/auth/cli` is the signed-in browser consent surface for CLI authorization requests. None are REST resources
    - `/api/tools/*` routes are deprecated compatibility shims; prefer session-mode Parchment SDK integration for new work
 
 Do not document the whole coffee-app `/api/*` tree as a stable public contract. The stable public catalog feed is `https://api.purveyors.io/v1/catalog`; `https://api.purveyors.io/v1/catalog/{id}/similar` is beta and access-gated; `https://api.purveyors.io/v1/price-index` is aggregate-only and entitlement-gated. The broader coffee-app `/api/*` tree should be described as platform/internal routes with explicit auth and stability labels.
