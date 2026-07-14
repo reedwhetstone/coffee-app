@@ -16,6 +16,8 @@
 		"verify:catalog-http-contract": "tsx scripts/verify-catalog-http-contract.ts",
 		"verify:market-publication-migration": "tsx scripts/verify-market-publication-migration.ts",
 		"verify:market-provenance-concurrency": "bash scripts/verify-market-provenance-concurrency.sh",
+		"verify:shopify-backoff-migration": "tsx scripts/verify-shopify-backoff-migration.ts",
+		"verify:shopify-backoff-concurrency": "bash scripts/verify-shopify-backoff-concurrency.sh",
 		"env:check": "node scripts/check-env-contract.mjs check",
 		"env:check:e2e": "node scripts/check-env-contract.mjs e2e",
 		"worktree:bootstrap": "bash scripts/bootstrap-worktree-env.sh",
