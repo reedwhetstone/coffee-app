@@ -120,7 +120,7 @@
 					type="button"
 					onclick={() => togglePin(active)}
 					class="rounded-md p-1.5 transition-colors hover:bg-surface-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent {active.pinned
-						? 'bg-accent-subtle text-accent'
+						? 'bg-accent-subtle/15 text-accent'
 						: 'text-muted hover:text-ink'}"
 					title={active.pinned ? 'Unpin evidence' : 'Pin evidence'}
 					aria-label={active.pinned ? 'Unpin active evidence' : 'Pin active evidence'}
