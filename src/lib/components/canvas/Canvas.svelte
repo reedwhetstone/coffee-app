@@ -2,8 +2,8 @@
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 	import CanvasLayout from './CanvasLayout.svelte';
 	import CanvasBlockDetail from './CanvasBlockDetail.svelte';
-	import { type BlockAction, type CanvasBlock } from '$lib/types/genui';
-	import { groupCanvasBlocks } from '$lib/services/canvasGrouping';
+	import { defaultBlockTitle, type BlockAction, type CanvasBlock } from '$lib/types/genui';
+	import { blockSupportsDetail } from '$lib/services/blockDetail';
 
 	let { onAction, onScrollToMessage, onExecuteAction } = $props<{
 		onAction?: (action: BlockAction) => void;
@@ -16,11 +16,11 @@
 		) => Promise<unknown>;
 	}>();
 
-	// Minimized blocks shown as a tray at the bottom, grouped by category so the
-	// tray mirrors the windowed canvas (one entry per minimized category).
-	let minimizedGroups = $derived(
-		groupCanvasBlocks(canvasStore.blocks.filter((b: CanvasBlock) => b.minimized))
-	);
+	let active = $derived(canvasStore.focusedBlock ?? canvasStore.visibleBlocks[0] ?? null);
+
+	function blockLabel(block: CanvasBlock): string {
+		return block.title?.trim() || defaultBlockTitle(block.block.type);
+	}
 
 	function handleAction(action: BlockAction) {
 		if (action.type === 'scroll-to-message' && onScrollToMessage) {
@@ -30,180 +30,198 @@
 		onAction?.(action);
 	}
 
-	function handleToggleLock(blockIds: string[]) {
-		const shouldUnlock = blockIds.some((blockId) =>
-			canvasStore.blocks.some((b: CanvasBlock) => b.id === blockId && b.pinned)
-		);
-		for (const blockId of blockIds) {
-			canvasStore.dispatch({ type: shouldUnlock ? 'unpin' : 'pin', blockId });
-		}
+	function focusBlock(blockId: string) {
+		canvasStore.dispatch({ type: 'focus', blockId });
 	}
 
-	function handleMinimize(blockId: string) {
-		canvasStore.dispatch({ type: 'minimize', blockId });
+	function togglePin(block: CanvasBlock) {
+		canvasStore.dispatch({ type: block.pinned ? 'unpin' : 'pin', blockId: block.id });
 	}
 
-	function handleRemove(blockId: string) {
+	function removeBlock(blockId: string) {
 		canvasStore.dispatch({ type: 'remove', blockId });
 		if (detailBlockId === blockId) detailBlockId = null;
 	}
 
-	function restoreGroup(blocks: CanvasBlock[]) {
-		for (const b of blocks) canvasStore.dispatch({ type: 'restore', blockId: b.id });
-	}
-
-	function removeGroup(blocks: CanvasBlock[]) {
-		for (const b of blocks) handleRemove(b.id);
-	}
-
-	// ─── Pop-out detail panel ──────────────────────────────────────────────────
 	let detailBlockId = $state<string | null>(null);
 	let detailBlock = $derived(
 		detailBlockId
-			? (canvasStore.blocks.find((b: CanvasBlock) => b.id === detailBlockId) ?? null)
+			? (canvasStore.blocks.find((block: CanvasBlock) => block.id === detailBlockId) ?? null)
 			: null
 	);
-
-	function handleExpand(blockId: string) {
-		detailBlockId = blockId;
-	}
 </script>
 
-<div class="flex h-full flex-col bg-surface-canvas">
-	<!-- Canvas header -->
-	<div class="flex items-center justify-between border-b border-line px-3 py-2">
-		<div class="flex items-center gap-2">
-			<span class="text-sm font-medium text-ink">Evidence workspace</span>
-			<span class="rounded-full bg-accent/10 px-2 py-0.5 text-xs text-muted">
-				{canvasStore.blockCount}
-			</span>
-		</div>
-		<div class="flex items-center gap-1">
-			{#if canvasStore.blockCount > 1}
-				<details class="relative">
-					<summary
-						class="cursor-pointer list-none rounded-md border border-line px-2 py-1 text-xs text-muted hover:text-ink"
+<div class="flex h-full min-h-0 flex-col bg-surface-canvas">
+	{#if active}
+		<header class="flex shrink-0 items-center justify-between gap-3 border-b border-line px-3 py-2">
+			<div class="min-w-0">
+				<div class="flex items-center gap-2">
+					<h2 class="truncate text-sm font-medium text-ink" title={blockLabel(active)}>
+						{blockLabel(active)}
+					</h2>
+					{#if active.pinned}
+						<span
+							class="rounded-full bg-accent-subtle px-1.5 py-0.5 text-[10px] font-medium text-ink"
+						>
+							Pinned
+						</span>
+					{/if}
+				</div>
+				{#if active.title?.trim()}
+					<p class="truncate text-xs text-muted">{defaultBlockTitle(active.block.type)}</p>
+				{/if}
+			</div>
+
+			<div class="flex shrink-0 items-center gap-0.5" aria-label="Active evidence controls">
+				{#if active.messageId && onScrollToMessage}
+					<button
+						type="button"
+						onclick={() => onScrollToMessage?.(active.messageId)}
+						class="rounded-md p-1.5 text-muted transition-colors hover:bg-surface-panel hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+						title="Go to source message"
+						aria-label="Go to source message"
 					>
-						Layout: {canvasStore.layout}
-					</summary>
-					<div
-						class="absolute right-0 z-20 mt-1 flex min-w-36 flex-col rounded-md border border-line bg-surface-raised p-1 shadow-lg"
+						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="1.5"
+								d="M8 10h8M8 14h5m-7 5-3 2v-5a8 8 0 1 1 3 3Z"
+							/>
+						</svg>
+					</button>
+				{/if}
+				{#if blockSupportsDetail(active.block)}
+					<button
+						type="button"
+						onclick={() => (detailBlockId = active?.id ?? null)}
+						class="rounded-md p-1.5 text-muted transition-colors hover:bg-surface-panel hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+						title="Open details"
+						aria-label="Open active evidence details"
 					>
-						{#each ['focus', 'comparison', 'dashboard', 'stack'] as layout}
-							<button
-								onclick={() =>
-									canvasStore.dispatch({
-										type: 'layout',
-										layout: layout as 'focus' | 'comparison' | 'dashboard' | 'stack'
-									})}
-								aria-pressed={canvasStore.layout === layout}
-								class="rounded px-2 py-1.5 text-left text-xs capitalize hover:bg-surface-panel {canvasStore.layout ===
-								layout
-									? 'font-medium text-ink'
-									: 'text-muted'}">{layout}</button
-							>
-						{/each}
-					</div>
-				</details>
-			{/if}
-			{#if canvasStore.blockCount > 0}
+						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="1.5"
+								d="M4 16v2a2 2 0 0 0 2 2h2m8 0h2a2 2 0 0 0 2-2v-2M16 4h2a2 2 0 0 1 2 2v2M8 4H6a2 2 0 0 0-2 2v2"
+							/>
+						</svg>
+					</button>
+				{/if}
 				<button
-					onclick={() => canvasStore.clearAll()}
-					class="ml-1 rounded p-1 text-muted transition-colors hover:text-danger"
-					title="Clear all"
+					type="button"
+					onclick={() => togglePin(active)}
+					class="rounded-md p-1.5 transition-colors hover:bg-surface-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent {active.pinned
+						? 'text-accent'
+						: 'text-muted hover:text-ink'}"
+					title={active.pinned ? 'Unpin evidence' : 'Pin evidence'}
+					aria-label={active.pinned ? 'Unpin active evidence' : 'Pin active evidence'}
+					aria-pressed={active.pinned}
+				>
+					<svg
+						class="h-4 w-4"
+						fill={active.pinned ? 'currentColor' : 'none'}
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="1.5"
+							d="m14 4 6 6-3 1-4 4-1 5-2-2-4 4 2-6-2-2 5-1 4-4-1-3Z"
+						/>
+					</svg>
+				</button>
+				<button
+					type="button"
+					onclick={() => removeBlock(active.id)}
+					class="rounded-md p-1.5 text-muted transition-colors hover:bg-danger-subtle hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+					title="Remove evidence"
+					aria-label="Remove active evidence"
 				>
 					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
 							stroke-width="1.5"
-							d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+							d="M6 18 18 6M6 6l12 12"
 						/>
 					</svg>
 				</button>
-			{/if}
-		</div>
-	</div>
-
-	<!-- Canvas content -->
-	<div class="flex-1 overflow-hidden">
-		{#if canvasStore.visibleBlocks.length === 0 && minimizedGroups.length === 0}
-			<!-- Empty state -->
-			<div class="flex h-full flex-col items-center justify-center p-6 text-center">
-				<svg
-					class="mb-3 h-12 w-12 text-muted/30"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="1.5"
-						d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-					/>
-				</svg>
-				<p class="text-sm font-medium text-ink">Your evidence workspace is ready</p>
-				<p class="mt-1 max-w-xs text-sm text-muted">
-					Ask Parchment to compare or research coffees. Evidence you choose to review will appear
-					here.
-				</p>
 			</div>
-		{:else}
+		</header>
+
+		<main class="min-h-0 flex-1">
 			<CanvasLayout
 				blocks={canvasStore.visibleBlocks}
-				layout={canvasStore.layout}
-				focusBlockId={canvasStore.focusBlockId}
+				focusBlockId={active.id}
 				onAction={handleAction}
 				{onExecuteAction}
-				onToggleLock={handleToggleLock}
-				onMinimize={handleMinimize}
-				onRemove={handleRemove}
-				onExpand={handleExpand}
 			/>
-		{/if}
-	</div>
+		</main>
 
-	<!-- Minimized windows tray (grouped by category) -->
-	{#if minimizedGroups.length > 0}
-		<div class="flex flex-wrap gap-1 border-t border-line px-2 py-1.5">
-			{#each minimizedGroups as group (group.key)}
-				<div class="flex items-center rounded bg-surface-panel text-xs text-muted ring-1 ring-line">
+		<nav
+			class="shrink-0 border-t border-line bg-surface-panel/70 px-2 py-2"
+			aria-label="Evidence shelf"
+		>
+			<div class="mb-1 flex items-center justify-between px-1">
+				<span class="text-xs font-semibold text-muted">Evidence shelf</span>
+				<button
+					type="button"
+					onclick={() => canvasStore.clearAll()}
+					class="rounded-md px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:bg-surface-raised hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+					title="Remove all unpinned evidence"
+				>
+					Clear unpinned
+				</button>
+			</div>
+			<div class="flex gap-1.5 overflow-x-auto pb-0.5">
+				{#each canvasStore.visibleBlocks as shelfBlock (shelfBlock.id)}
 					<button
-						onclick={() => restoreGroup(group.blocks)}
-						class="flex items-center gap-1 px-2 py-1 transition-colors hover:text-ink"
-						title={`Restore ${group.label}`}
+						type="button"
+						onclick={() => focusBlock(shelfBlock.id)}
+						aria-current={shelfBlock.id === active.id ? 'true' : undefined}
+						aria-label={`${blockLabel(shelfBlock)}${shelfBlock.pinned ? ', pinned' : ''}`}
+						class="group flex min-w-[8.5rem] max-w-[11rem] shrink-0 items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent {shelfBlock.id ===
+						active.id
+							? 'border-accent bg-surface-raised text-ink'
+							: shelfBlock.pinned
+								? 'border-accent/40 bg-accent-subtle/40 text-ink hover:border-accent/70'
+								: 'border-line bg-surface-canvas text-muted hover:border-accent/40 hover:text-ink'}"
 					>
-						<span>{group.label}</span>
-						{#if group.blocks.length > 1}
-							<span class="text-[10px] text-muted/70">{group.blocks.length}</span>
+						<span class="min-w-0 flex-1">
+							<span class="block truncate text-xs font-medium">{blockLabel(shelfBlock)}</span>
+							<span class="block truncate text-[10px] text-muted"
+								>{defaultBlockTitle(shelfBlock.block.type)}</span
+							>
+						</span>
+						{#if shelfBlock.pinned}
+							<span class="text-accent" aria-hidden="true">●</span>
 						{/if}
-						<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="1.5"
-								d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-							/>
-						</svg>
 					</button>
-					<button
-						onclick={() => removeGroup(group.blocks)}
-						class="border-l border-line px-1.5 py-1 transition-colors hover:text-danger"
-						title={`Remove minimized ${group.label} window`}
-						aria-label={`Remove minimized ${group.label} window`}
-					>
-						<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="1.5"
-								d="M6 18L18 6M6 6l12 12"
-							/>
-						</svg>
-					</button>
-				</div>
-			{/each}
+				{/each}
+			</div>
+		</nav>
+	{:else}
+		<div class="flex h-full flex-col items-center justify-center p-6 text-center">
+			<svg
+				class="mb-3 h-10 w-10 text-muted/30"
+				fill="none"
+				stroke="currentColor"
+				viewBox="0 0 24 24"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="1.5"
+					d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625A1.125 1.125 0 0 0 4.5 3.375v17.25c0 .621.504 1.125 1.125 1.125h12.75a1.125 1.125 0 0 0 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+				/>
+			</svg>
+			<p class="text-sm font-medium text-ink">Your evidence workspace is ready</p>
+			<p class="mt-1 max-w-xs text-sm text-muted">
+				Open a result from the conversation to explore it here.
+			</p>
 		</div>
 	{/if}
 </div>
