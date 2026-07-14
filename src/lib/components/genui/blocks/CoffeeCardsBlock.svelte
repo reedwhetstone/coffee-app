@@ -26,8 +26,11 @@
 		if (blockKey === initializedKey) return;
 		const focusIndex = block.focusId
 			? block.data.findIndex((coffee: CoffeeCatalog) => coffee.id === block.focusId)
-			: 0;
-		const nextIndex = focusIndex >= 0 ? focusIndex : 0;
+			: -1;
+		const highlightedIndex = block.data.findIndex(
+			(coffee: CoffeeCatalog) => annotationMap().get(coffee.id)?.highlight
+		);
+		const nextIndex = focusIndex >= 0 ? focusIndex : highlightedIndex >= 0 ? highlightedIndex : 0;
 		activeIndex = nextIndex;
 		initializedKey = blockKey;
 		requestAnimationFrame(() => selectCoffee(nextIndex, 'instant'));

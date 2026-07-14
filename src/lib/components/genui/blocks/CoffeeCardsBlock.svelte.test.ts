@@ -53,4 +53,22 @@ describe('CoffeeCardsBlock focused navigation', () => {
 		});
 		expect(container.querySelectorAll('[inert]')).toHaveLength(2);
 	});
+
+	it('starts on the first highlighted coffee when no focus is provided', () => {
+		render(CoffeeCardsBlock, {
+			block: {
+				...block,
+				annotations: [
+					{ id: 2, highlight: true },
+					{ id: 3, highlight: true }
+				]
+			}
+		});
+
+		expect(screen.getByText('Coffee 2 of 3')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Show coffee 2: Guji' })).toHaveAttribute(
+			'aria-current',
+			'true'
+		);
+	});
 });
