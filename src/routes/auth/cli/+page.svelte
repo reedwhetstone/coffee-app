@@ -24,7 +24,7 @@
 				}).format(new Date(data.request.expiresAt))
 			: ''
 	);
-	const signInUrl = '/auth?next=%2Fauth%2Fcli';
+	const signInUrl = '/auth?next=%2Fauth%2Fcli&forceReauth=1';
 </script>
 
 <svelte:head>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { signInWithGoogle } from '$lib/supabase';
+	import { signInWithGoogle, signOut } from '$lib/supabase';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -15,6 +15,7 @@
 	// attacker to bounce newly signed-in users to an external phishing page.
 	const nextUrl = $derived(sanitizeNextPath(page.url.searchParams.get('next'), '/dashboard'));
 	const hasCheckoutIntent = $derived(page.url.searchParams.get('intent') === 'checkout');
+	const forceReauth = $derived(page.url.searchParams.get('forceReauth') === '1');
 
 	async function handleGoogleSignIn() {
 		if (loading) return;
@@ -33,7 +34,13 @@
 	}
 
 	onMount(() => {
-		if (data.session) {
+		if (data.session && forceReauth) {
+			void signOut(data.supabase).then(({ error: signOutError }) => {
+				if (signOutError) {
+					error = 'Failed to reset your session. Please try again.';
+				}
+			});
+		} else if (data.session) {
 			goto(nextUrl);
 		}
 	});

@@ -60,11 +60,6 @@
 		setOpen: handleRightSidebarChange
 	});
 
-	$effect(() => {
-		import('@vercel/speed-insights/sveltekit').then((m) => m.injectSpeedInsights());
-		import('@vercel/analytics/sveltekit').then((m) => m.injectAnalytics());
-	});
-
 	let chatDrawerOpen = $state(false);
 
 	let rightMargin = $derived(rightSidebarOpen || chatDrawerOpen ? 'md:mr-[32rem]' : 'md:mr-0');
@@ -108,6 +103,14 @@
 	);
 	let isMarketingPage = $derived(pathname === '/');
 	let isStandaloneShell = $derived(usesStandaloneShell(pathname));
+
+	$effect(() => {
+		if (isStandaloneShell) return;
+
+		import('@vercel/speed-insights/sveltekit').then((m) => m.injectSpeedInsights());
+		import('@vercel/analytics/sveltekit').then((m) => m.injectAnalytics());
+	});
+
 	let usesPublicShell = $derived(
 		pathname === '/' ||
 			pathname === '/api' ||
