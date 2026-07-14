@@ -92,7 +92,9 @@ describe('load /auth/cli', () => {
 		expect(JSON.stringify(result)).not.toContain('apiKey');
 		expect(event.setHeaders).toHaveBeenCalledWith({
 			'cache-control': 'no-store',
-			'referrer-policy': 'no-referrer'
+			'referrer-policy': 'no-referrer',
+			'content-security-policy': "frame-ancestors 'none'",
+			'x-frame-options': 'DENY'
 		});
 	});
 
@@ -124,6 +126,23 @@ describe('load /auth/cli', () => {
 			}
 		});
 		expect(JSON.stringify(expired)).not.toContain('sensitive upstream detail');
+	});
+
+	it('renders temporary-unavailability copy for any upstream 5xx inspection failure', async () => {
+		mockInspect.mockResolvedValueOnce({
+			error: { error: { code: 'internal_error', message: 'sensitive upstream detail' } },
+			response: new Response(null, { status: 502 })
+		});
+
+		const result = await route.load(makeEvent() as never);
+		expect(result).toEqual({
+			request: null,
+			failure: {
+				title: 'CLI sign-in is temporarily unavailable',
+				message: 'Purveyors could not verify this request right now. Please try again shortly.'
+			}
+		});
+		expect(JSON.stringify(result)).not.toContain('sensitive upstream detail');
 	});
 
 	it('builds a same-origin return path without accepting an external next target', () => {

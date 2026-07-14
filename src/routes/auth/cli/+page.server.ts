@@ -19,7 +19,7 @@ function inspectFailure(status: number): InspectFailure {
 		};
 	}
 
-	if (status === 503) {
+	if (status >= 500) {
 		return {
 			title: 'CLI sign-in is temporarily unavailable',
 			message: 'Purveyors could not verify this request right now. Please try again shortly.'
@@ -43,7 +43,9 @@ export function _buildCliAuthNextPath(requestToken: string): string {
 export const load: PageServerLoad = async (event) => {
 	event.setHeaders({
 		'cache-control': 'no-store',
-		'referrer-policy': 'no-referrer'
+		'referrer-policy': 'no-referrer',
+		'content-security-policy': "frame-ancestors 'none'",
+		'x-frame-options': 'DENY'
 	});
 
 	const requestToken = event.url.searchParams.get('request')?.trim();
