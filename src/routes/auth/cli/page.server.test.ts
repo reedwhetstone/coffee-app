@@ -198,7 +198,7 @@ describe('load /auth/cli', () => {
 		expect(JSON.stringify(result)).not.toContain('sensitive upstream detail');
 	});
 
-	it('reads the request token from the server-only cookie after login', async () => {
+	it('preserves the request cookie during an ordinary consent render', async () => {
 		const event = makeEvent({ requestToken: null });
 		event.cookies.get.mockReturnValue(TOKEN);
 
@@ -206,9 +206,23 @@ describe('load /auth/cli', () => {
 
 		expect(mockInspect).toHaveBeenCalledWith({ requestToken: TOKEN });
 		expect(result).toMatchObject({ requestToken: TOKEN, request: { machineName: 'roaster-host' } });
-		expect(event.cookies.delete).toHaveBeenCalledWith('purveyors_cli_auth_request', {
-			path: '/auth/cli'
+		expect(event.cookies.delete).not.toHaveBeenCalled();
+	});
+
+	it('reuses the request cookie after a consent render is interrupted and refreshed', async () => {
+		const event = makeEvent({ requestToken: null });
+		event.cookies.get.mockReturnValue(TOKEN);
+
+		await route.load(event as never);
+		const refreshed = await route.load(event as never);
+
+		expect(mockInspect).toHaveBeenCalledTimes(2);
+		expect(refreshed).toMatchObject({
+			requestToken: TOKEN,
+			request: { machineName: 'roaster-host' },
+			failure: null
 		});
+		expect(event.cookies.delete).not.toHaveBeenCalled();
 	});
 
 	it('keeps the cookie when cookie-backed inspection is temporarily unavailable', async () => {

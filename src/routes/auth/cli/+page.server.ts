@@ -53,11 +53,6 @@ function clearCliRequest(event: CliAuthEvent) {
 	event.cookies.delete(CLI_REQUEST_COOKIE, { path: AUTH_RETURN_PATH });
 }
 
-function isCliActionLoad(url: URL) {
-	// SvelteKit re-runs load against the action URL after a failed action.
-	return url.searchParams.has('/approve') || url.searchParams.has('/reauthenticate');
-}
-
 function authRedirectLocation() {
 	return `/auth?next=${encodeURIComponent(AUTH_RETURN_PATH)}`;
 }
@@ -132,10 +127,6 @@ export const load: PageServerLoad = async (event) => {
 		if (!session || !user) {
 			rememberCliRequest(event, requestToken);
 			throw redirect(303, authRedirectLocation());
-		}
-
-		if (!isCliActionLoad(event.url)) {
-			clearCliRequest(event);
 		}
 
 		return {
