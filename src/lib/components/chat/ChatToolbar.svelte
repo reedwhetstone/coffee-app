@@ -29,7 +29,12 @@
 
 <!-- Keep the active evidence workspace visible. Less-frequent workspace actions live in a
      labeled menu so the sourcing workflow remains primary. -->
-<div class="flex items-center justify-end border-b border-line px-3 py-1.5">
+
+<div class="flex items-center justify-between border-b border-line px-3 py-2">
+	<div class="min-w-0">
+		<p class="truncate text-sm font-semibold text-ink">Ask Parchment</p>
+		<p class="hidden truncate text-xs text-muted sm:block">Green coffee research and decisions</p>
+	</div>
 	<div class="flex items-center gap-2">
 		{#if !canvasStore.isEmpty}
 			<button
@@ -46,7 +51,7 @@
 					onclick={onToggleDesktopCanvas}
 					class="hidden rounded-md border border-line px-2 py-0.5 text-xs text-muted transition-all hover:text-ink md:block"
 				>
-					{canvasOpen ? 'Hide' : 'Show'} evidence ({canvasStore.blockCount})
+					{canvasOpen ? 'Hide' : 'Open'} evidence ({canvasStore.blockCount})
 				</button>
 			{/if}
 		{/if}

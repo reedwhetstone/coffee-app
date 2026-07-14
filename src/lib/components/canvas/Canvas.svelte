@@ -80,56 +80,31 @@
 		</div>
 		<div class="flex items-center gap-1">
 			{#if canvasStore.blockCount > 1}
-				<!-- Layout toggle buttons -->
-				<button
-					onclick={() => canvasStore.dispatch({ type: 'layout', layout: 'focus' })}
-					class="rounded p-1 text-xs transition-colors {canvasStore.layout === 'focus'
-						? 'bg-accent/10 text-accent'
-						: 'text-muted'}"
-					title="Focus view"
-				>
-					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5" />
-					</svg>
-				</button>
-				<button
-					onclick={() => canvasStore.dispatch({ type: 'layout', layout: 'comparison' })}
-					class="rounded p-1 text-xs transition-colors {canvasStore.layout === 'comparison'
-						? 'bg-accent/10 text-accent'
-						: 'text-muted'}"
-					title="Comparison view"
-				>
-					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<rect x="3" y="3" width="8" height="18" rx="1" stroke-width="1.5" />
-						<rect x="13" y="3" width="8" height="18" rx="1" stroke-width="1.5" />
-					</svg>
-				</button>
-				<button
-					onclick={() => canvasStore.dispatch({ type: 'layout', layout: 'dashboard' })}
-					class="rounded p-1 text-xs transition-colors {canvasStore.layout === 'dashboard'
-						? 'bg-accent/10 text-accent'
-						: 'text-muted'}"
-					title="Dashboard view"
-				>
-					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<rect x="3" y="3" width="7" height="7" rx="1" stroke-width="1.5" />
-						<rect x="14" y="3" width="7" height="7" rx="1" stroke-width="1.5" />
-						<rect x="3" y="14" width="7" height="7" rx="1" stroke-width="1.5" />
-						<rect x="14" y="14" width="7" height="7" rx="1" stroke-width="1.5" />
-					</svg>
-				</button>
-				<button
-					onclick={() => canvasStore.dispatch({ type: 'layout', layout: 'stack' })}
-					class="rounded p-1 text-xs transition-colors {canvasStore.layout === 'stack'
-						? 'bg-accent/10 text-accent'
-						: 'text-muted'}"
-					title="Stacked view"
-				>
-					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<rect x="3" y="4" width="18" height="5" rx="1" stroke-width="1.5" />
-						<rect x="3" y="15" width="18" height="5" rx="1" stroke-width="1.5" />
-					</svg>
-				</button>
+				<details class="relative">
+					<summary
+						class="cursor-pointer list-none rounded-md border border-line px-2 py-1 text-xs text-muted hover:text-ink"
+					>
+						Layout: {canvasStore.layout}
+					</summary>
+					<div
+						class="absolute right-0 z-20 mt-1 flex min-w-36 flex-col rounded-md border border-line bg-surface-raised p-1 shadow-lg"
+					>
+						{#each ['focus', 'comparison', 'dashboard', 'stack'] as layout}
+							<button
+								onclick={() =>
+									canvasStore.dispatch({
+										type: 'layout',
+										layout: layout as 'focus' | 'comparison' | 'dashboard' | 'stack'
+									})}
+								aria-pressed={canvasStore.layout === layout}
+								class="rounded px-2 py-1.5 text-left text-xs capitalize hover:bg-surface-panel {canvasStore.layout ===
+								layout
+									? 'font-medium text-ink'
+									: 'text-muted'}">{layout}</button
+							>
+						{/each}
+					</div>
+				</details>
 			{/if}
 			{#if canvasStore.blockCount > 0}
 				<button

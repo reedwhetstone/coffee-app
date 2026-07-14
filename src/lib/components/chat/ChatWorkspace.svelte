@@ -9,8 +9,8 @@
 	import MemoryPanel from '$lib/components/chat/MemoryPanel.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 	import {
+		buildToolCanvasDispatchPlan,
 		extractBlockFromPart,
-		extractCanvasMutationsFromPart,
 		extractCompanionBlocks,
 		buildSearchDataCacheThroughPart,
 		messageHasPresentResults
@@ -236,6 +236,8 @@
 	let initializingWorkspace = $state(false);
 	let workspaceInitError = $state<string | null>(null);
 	let lastSubmittedPrompt = $state('');
+	let lastSubmittedBody: Record<string, unknown> | null = null;
+	let retryPreservesComposerDraft = false;
 	let messageCountBeforeSubmission: number | null = null;
 	let canvasPersistError = $state<string | null>(null);
 	let displayedError = $derived(canvasPersistError ?? chatError);
@@ -265,7 +267,9 @@
 			messageCountBeforeSubmission = null;
 			chatError = failure.message;
 			chatCanRetry = failure.retryable;
-			if (!inputMessage && lastSubmittedPrompt) inputMessage = lastSubmittedPrompt;
+			if (!retryPreservesComposerDraft && !inputMessage && lastSubmittedPrompt) {
+				inputMessage = lastSubmittedPrompt;
+			}
 		}
 	});
 
@@ -433,22 +437,34 @@
 		// ready-state effect should not treat them as newly authored messages.
 		lastPersistedMessageCount = chat.messages.length;
 
-		// Mark all tool parts from restored messages as already dispatched
-		// This prevents the $effect from re-dispatching blocks that are
-		// already represented in the restored canvas state
-		for (const msg of result.messages) {
-			if (msg.role !== 'assistant') continue;
-			const parts = Array.isArray(msg.parts) ? msg.parts : [];
-			for (const part of parts) {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const p = part as any;
-				if (p?.type?.startsWith('tool-')) {
-					const partKey = `${workspaceMessageClientId(msg)}-${p.toolCallId ?? p.toolName ?? p.type}`;
-					dispatchedParts.add(partKey);
-					// Also mark companion blocks
-					const companions = extractCompanionBlocks(p);
-					for (let ci = 0; ci < companions.length; ci++) {
-						dispatchedParts.add(`${partKey}-companion-${ci}`);
+		// A missing or empty canvas save is not proof that restored tool results were
+		// dispatched. Leave those parts eligible for the ready-state effect so older
+		// workspaces and failed canvas saves can rebuild their evidence links.
+		const savedCanvasState = result.workspace.canvas_state;
+		const hasSavedCanvasBlocks =
+			savedCanvasState &&
+			typeof savedCanvasState === 'object' &&
+			'blocks' in savedCanvasState &&
+			Array.isArray(savedCanvasState.blocks) &&
+			savedCanvasState.blocks.some(
+				(candidate) => candidate && typeof candidate === 'object' && 'block' in candidate
+			);
+		if (hasSavedCanvasBlocks) {
+			// Prevent the effect from duplicating blocks represented by the restored canvas.
+			for (const msg of result.messages) {
+				if (msg.role !== 'assistant') continue;
+				const parts = Array.isArray(msg.parts) ? msg.parts : [];
+				for (const part of parts) {
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const p = part as any;
+					if (p?.type?.startsWith('tool-')) {
+						const partKey = `${workspaceMessageClientId(msg)}-${p.toolCallId ?? p.toolName ?? p.type}`;
+						dispatchedParts.add(partKey);
+						// Also mark companion blocks
+						const companions = extractCompanionBlocks(p);
+						for (let ci = 0; ci < companions.length; ci++) {
+							dispatchedParts.add(`${partKey}-companion-${ci}`);
+						}
 					}
 				}
 			}
@@ -746,22 +762,9 @@
 
 	// ─── Canvas panel state ──────────────────────────────────────────────────
 	let canvasOpen = $state(false);
-	let hasUserClosedCanvas = $state(false);
 	let dividerDragging = $state(false);
 	let chatWidthPercent = $state(60); // Chat takes 60% by default
 	let mobileCanvasOpen = $state(false);
-
-	// Auto-open canvas when blocks arrive, but respect user's explicit close.
-	// The drawer variant has no inline canvas pane, so it never auto-opens.
-	$effect(() => {
-		if (variant === 'page' && !canvasStore.isEmpty && !canvasOpen && !hasUserClosedCanvas) {
-			canvasOpen = true;
-		}
-		// Reset the user-closed flag when canvas is cleared
-		if (canvasStore.isEmpty) {
-			hasUserClosedCanvas = false;
-		}
-	});
 
 	// Track which message IDs have been dispatched to canvas (to avoid duplicates)
 	let dispatchedParts = $state(new Set<string>());
@@ -796,37 +799,40 @@
 					allowExecutionIdSynthesis: false
 				};
 				// New live proposals persist their durable key inside the tool output.
-				// Restored legacy proposals intentionally remain without one.
-				if (p.output?.action_card && !p.output.action_card.executionId) {
+				// Restored legacy proposals intentionally remain without one (ADR 011):
+				// pre-migration cards must be re-proposed, not resurrected as executable.
+				const isRestoredMessage = Boolean(
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					(message as any)?.metadata?.workspaceRestored
+				);
+				if (!isRestoredMessage && p.output?.action_card && !p.output.action_card.executionId) {
 					p.output.action_card.executionId = `${message.id}:${String(p.toolCallId ?? p.toolName ?? part.type)}`;
 				}
 				const block = extractBlockFromPart(p, extractorOptions);
 
-				// If this is a present_results part, use explicit canvas mutations
-				const mutations = extractCanvasMutationsFromPart(p, block, message.id);
-				if (mutations) {
-					for (const m of mutations) canvasStore.dispatch(m);
+				const dispatchPlan = buildToolCanvasDispatchPlan(p, block, message.id);
+				if (dispatchPlan.mutations) {
+					for (const mutation of dispatchPlan.mutations) canvasStore.dispatch(mutation);
 					dispatchedParts.add(partKey);
-				} else if (
-					p.state === 'output-available' &&
-					(p.toolName === 'present_results' || p.type === 'tool-present_results')
-				) {
+				} else if (dispatchPlan.handledWithoutCanvas) {
 					// Cache-miss/error presentations intentionally render inline only. Mark them
 					// handled so a later completed turn cannot revisit this old part.
 					dispatchedParts.add(partKey);
-				} else if (block && block.type !== 'error') {
-					// Non-present_results tools: auto-add to canvas
-					canvasStore.dispatch({ type: 'add', block, messageId: message.id });
+				} else if (dispatchPlan.canvasBlocks.length > 0) {
+					// Non-present_results tools: auto-add the primary block, then companions.
+					canvasStore.dispatch({
+						type: 'add',
+						block: dispatchPlan.canvasBlocks[0],
+						messageId: message.id
+					});
 					dispatchedParts.add(partKey);
 
-					// Also dispatch companion blocks (e.g., roast-chart for single roast profile)
-					const companions = extractCompanionBlocks(p);
-					for (let ci = 0; ci < companions.length; ci++) {
-						const companionKey = `${partKey}-companion-${ci}`;
+					for (let ci = 1; ci < dispatchPlan.canvasBlocks.length; ci++) {
+						const companionKey = `${partKey}-companion-${ci - 1}`;
 						if (!dispatchedParts.has(companionKey)) {
 							canvasStore.dispatch({
 								type: 'add',
-								block: companions[ci],
+								block: dispatchPlan.canvasBlocks[ci],
 								messageId: message.id
 							});
 							dispatchedParts.add(companionKey);
@@ -871,7 +877,6 @@
 			// against a collapsed pane.
 			if (variant === 'page') {
 				canvasOpen = true;
-				hasUserClosedCanvas = false;
 			}
 			// On mobile (and the drawer variant, which has no inline pane) open the
 			// canvas overlay so the focused block is actually visible.
@@ -997,6 +1002,8 @@
 
 		const text = inputMessage.trim();
 		lastSubmittedPrompt = text;
+		lastSubmittedBody = buildSendBody();
+		retryPreservesComposerDraft = false;
 		chatError = null;
 		chatCanRetry = false;
 
@@ -1022,7 +1029,7 @@
 				inputMessage = '';
 				shouldScrollToBottom = true;
 				messageCountBeforeSubmission = chat.messages.length;
-				await chat.sendMessage({ text: cmd.chatText }, { body: buildSendBody() });
+				await chat.sendMessage({ text: cmd.chatText }, { body: lastSubmittedBody });
 				messageCountBeforeSubmission = null;
 				return;
 			}
@@ -1032,7 +1039,7 @@
 		shouldScrollToBottom = true;
 
 		messageCountBeforeSubmission = chat.messages.length;
-		await chat.sendMessage({ text }, { body: buildSendBody() });
+		await chat.sendMessage({ text }, { body: lastSubmittedBody });
 		messageCountBeforeSubmission = null;
 	}
 
@@ -1046,7 +1053,47 @@
 	async function retryLastResponse() {
 		chatError = null;
 		chatCanRetry = false;
+		if (retryPreservesComposerDraft && lastSubmittedPrompt) {
+			shouldScrollToBottom = true;
+			messageCountBeforeSubmission = chat.messages.length;
+			await chat.sendMessage(
+				{ text: lastSubmittedPrompt },
+				{ body: lastSubmittedBody ?? buildSendBody() }
+			);
+			messageCountBeforeSubmission = null;
+			return;
+		}
 		await sendMessage();
+	}
+
+	async function askAgainFromAssistantMessage(messageId: string) {
+		if (isActive || isClearing || !workspaceReady) return;
+		const assistantIndex = chat.messages.findIndex(
+			(message) => message.id === messageId && message.role === 'assistant'
+		);
+		if (assistantIndex < 1) return;
+
+		const userMessage = chat.messages
+			.slice(0, assistantIndex)
+			.findLast((message) => message.role === 'user');
+		const prompt = userMessage?.parts
+			.filter((part) => part.type === 'text')
+			.map((part) => part.text)
+			.join('\n')
+			.trim();
+		if (!prompt) return;
+
+		// This is deliberately a new turn, not response regeneration. Send the
+		// originating request directly so an unsent composer draft remains intact.
+		lastSubmittedPrompt = prompt;
+		lastSubmittedBody = buildSendBody();
+		retryPreservesComposerDraft = true;
+		chatError = null;
+		chatCanRetry = false;
+		shouldScrollToBottom = true;
+		messageCountBeforeSubmission = chat.messages.length;
+		await chat.sendMessage({ text: prompt }, { body: lastSubmittedBody });
+		messageCountBeforeSubmission = null;
 	}
 
 	// ─── Export / Clear ────────────────────────────────────────────────────────
@@ -1120,7 +1167,6 @@
 				onToggleMobileCanvas={() => (mobileCanvasOpen = !mobileCanvasOpen)}
 				onToggleDesktopCanvas={() => {
 					canvasOpen = !canvasOpen;
-					hasUserClosedCanvas = !canvasOpen;
 				}}
 				onExport={exportConversation}
 				onClear={clearConversation}
@@ -1137,6 +1183,8 @@
 					onBlockAction={handleBlockAction}
 					onExecuteAction={executeAction}
 					onExampleSelect={(text) => (inputMessage = text)}
+					onAskAgainMessage={askAgainFromAssistantMessage}
+					messageActionsDisabled={isActive || isClearing || !workspaceReady}
 				/>
 
 				<!-- Mobile floating canvas indicator: anchored inside the message
