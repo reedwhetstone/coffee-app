@@ -53,9 +53,9 @@ function clearCliRequest(event: CliAuthEvent) {
 	event.cookies.delete(CLI_REQUEST_COOKIE, { path: AUTH_RETURN_PATH });
 }
 
-function isApproveActionLoad(url: URL) {
-	// SvelteKit re-runs load against /auth/cli?/approve after a failed action.
-	return url.searchParams.has('/approve');
+function isCliActionLoad(url: URL) {
+	// SvelteKit re-runs load against the action URL after a failed action.
+	return url.searchParams.has('/approve') || url.searchParams.has('/reauthenticate');
 }
 
 function authRedirectLocation() {
@@ -134,7 +134,7 @@ export const load: PageServerLoad = async (event) => {
 			throw redirect(303, authRedirectLocation());
 		}
 
-		if (!isApproveActionLoad(event.url)) {
+		if (!isCliActionLoad(event.url)) {
 			clearCliRequest(event);
 		}
 

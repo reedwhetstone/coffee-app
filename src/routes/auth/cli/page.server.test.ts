@@ -53,9 +53,9 @@ function makeActionEvent(requestToken = TOKEN, authenticated = true) {
 	};
 }
 
-function makeActionLoadEvent(requestToken = TOKEN, authenticated = true) {
+function makeActionLoadEvent(action = '/approve', requestToken = TOKEN, authenticated = true) {
 	const event = makeEvent({ authenticated, requestToken: null });
-	event.url.search = '?/approve';
+	event.url.search = `?${action}`;
 	event.cookies.get.mockReturnValue(requestToken);
 	return event;
 }
@@ -230,6 +230,15 @@ describe('load /auth/cli', () => {
 
 	it('keeps the request cookie during the load that follows a retryable approval failure', async () => {
 		const event = makeActionLoadEvent();
+
+		const result = await route.load(event as never);
+
+		expect(result).toMatchObject({ requestToken: TOKEN, request: { machineName: 'roaster-host' } });
+		expect(event.cookies.delete).not.toHaveBeenCalled();
+	});
+
+	it('keeps the request cookie during the load that follows a reauthentication failure', async () => {
+		const event = makeActionLoadEvent('/reauthenticate');
 
 		const result = await route.load(event as never);
 
