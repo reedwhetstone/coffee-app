@@ -9,13 +9,6 @@ const config = {
 	preprocess: [vitePreprocess(), mdsvex()],
 
 	kit: {
-		// Vercel canonicalizes the apex domain to www. Trust both owned production
-		// origins explicitly to cover proxy-origin mismatches without admitting any
-		// unrelated form origin. Production still requires a live approval canary.
-		csrf: {
-			trustedOrigins: ['https://purveyors.io', 'https://www.purveyors.io']
-		},
-
 		// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
 		// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
 		// See https://svelte.dev/docs/kit/adapters for more information about adapters.

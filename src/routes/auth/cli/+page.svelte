@@ -1,7 +1,18 @@
 <script lang="ts">
-	import type { ActionData, PageData } from './$types';
+	import type { PageData } from './$types';
 
-	let { data, form } = $props<{ data: PageData; form: ActionData }>();
+	let { data } = $props<{ data: PageData }>();
+
+	type ApprovalResult = {
+		approved: boolean;
+		signedOut: boolean;
+		terminal: boolean;
+		error?: string;
+		redirectTo?: string;
+	};
+
+	let approvalResult = $state<ApprovalResult | null>(null);
+	let submitting = $state(false);
 
 	const scopeLabels: Record<string, string> = {
 		'catalog:read': 'Browse the coffee catalog',
@@ -24,6 +35,56 @@
 				}).format(new Date(data.request.expiresAt))
 			: ''
 	);
+
+	async function postJson(path: string, body: Record<string, unknown> = {}) {
+		const response = await fetch(path, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body)
+		});
+		return (await response.json()) as ApprovalResult;
+	}
+
+	async function approve() {
+		if (!data.requestToken || submitting) return;
+
+		submitting = true;
+		try {
+			approvalResult = await postJson('/auth/cli/approve', { request: data.requestToken });
+		} catch {
+			approvalResult = {
+				approved: false,
+				signedOut: false,
+				terminal: false,
+				error: 'Purveyors could not approve this request right now. Please try again shortly.'
+			};
+		} finally {
+			submitting = false;
+		}
+	}
+
+	async function reauthenticate() {
+		if (submitting) return;
+
+		submitting = true;
+		try {
+			const result = await postJson('/auth/cli/reauthenticate');
+			if (result.redirectTo) {
+				window.location.assign(result.redirectTo);
+				return;
+			}
+			approvalResult = result;
+		} catch {
+			approvalResult = {
+				approved: false,
+				signedOut: false,
+				terminal: false,
+				error: 'Failed to reset your session. Please try again.'
+			};
+		} finally {
+			submitting = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -38,7 +99,7 @@
 	<section
 		class="w-full max-w-lg rounded-xl border border-line bg-surface-panel p-6 shadow-md sm:p-8"
 	>
-		{#if form?.approved}
+		{#if approvalResult?.approved}
 			<div class="text-center" data-testid="cli-auth-approved">
 				<div
 					class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success-subtle text-xl text-success-strong"
@@ -89,29 +150,35 @@
 
 			<p class="mt-4 text-xs text-muted">This request expires at {expiresAt}.</p>
 
-			{#if form?.error}
+			{#if approvalResult?.error}
 				<div class="mt-5 rounded-lg border border-danger/20 bg-danger-subtle p-4" role="alert">
-					<p class="text-sm text-danger">{form.error}</p>
-					{#if form.signedOut}
-						<form method="POST" action="?/reauthenticate" class="mt-2">
-							<button type="submit" class="text-sm font-medium text-danger underline">
+					<p class="text-sm text-danger">{approvalResult.error}</p>
+					{#if approvalResult.signedOut}
+						<div class="mt-2">
+							<button
+								type="button"
+								onclick={reauthenticate}
+								disabled={submitting}
+								class="text-sm font-medium text-danger underline disabled:opacity-50"
+							>
 								Sign in again
 							</button>
-						</form>
+						</div>
 					{/if}
 				</div>
 			{/if}
 
-			{#if !form?.terminal}
-				<form method="POST" action="?/approve" class="mt-6">
-					<input type="hidden" name="request" value={data.requestToken} />
+			{#if !approvalResult?.terminal}
+				<div class="mt-6">
 					<button
-						type="submit"
-						class="w-full rounded-md bg-accent px-4 py-3 text-sm font-medium text-ink shadow-sm transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+						type="button"
+						onclick={approve}
+						disabled={submitting}
+						class="w-full rounded-md bg-accent px-4 py-3 text-sm font-medium text-ink shadow-sm transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
 					>
-						Authorize CLI
+						{submitting ? 'Authorizing…' : 'Authorize CLI'}
 					</button>
-				</form>
+				</div>
 			{/if}
 
 			<p class="mt-4 text-center text-xs leading-5 text-muted">
