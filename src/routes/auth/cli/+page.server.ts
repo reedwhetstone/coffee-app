@@ -22,7 +22,7 @@ function inspectFailure(status: number): InspectFailure {
 		};
 	}
 
-	if (status >= 500) {
+	if (isRetryableInspectFailure(status)) {
 		return {
 			title: 'CLI sign-in is temporarily unavailable',
 			message: 'Purveyors could not verify this request right now. Please try again shortly.'
@@ -33,6 +33,10 @@ function inspectFailure(status: number): InspectFailure {
 		title: 'Invalid sign-in request',
 		message: DEFAULT_FAILURE
 	};
+}
+
+function isRetryableInspectFailure(status: number) {
+	return status === 429 || status >= 500;
 }
 
 function rememberCliRequest(event: CliAuthEvent, requestToken: string) {
@@ -83,7 +87,7 @@ export const load: PageServerLoad = async (event) => {
 		const { data, error, response } = await client.cliAuth.inspect({ requestToken });
 
 		if (error || !data) {
-			if (!requestTokenFromCookie || response.status < 500) {
+			if (!requestTokenFromCookie || !isRetryableInspectFailure(response.status)) {
 				clearCliRequest(event);
 			}
 			return {

@@ -165,6 +165,27 @@ describe('load /auth/cli', () => {
 		expect(JSON.stringify(result)).not.toContain('sensitive upstream detail');
 	});
 
+	it('keeps the request cookie and retryable copy for rate-limited inspection', async () => {
+		const event = makeEvent({ requestToken: null });
+		event.cookies.get.mockReturnValue(TOKEN);
+		mockInspect.mockResolvedValueOnce({
+			error: { error: { code: 'rate_limited', message: 'sensitive upstream detail' } },
+			response: new Response(null, { status: 429 })
+		});
+
+		const result = await route.load(event as never);
+
+		expect(result).toEqual({
+			request: null,
+			failure: {
+				title: 'CLI sign-in is temporarily unavailable',
+				message: 'Purveyors could not verify this request right now. Please try again shortly.'
+			}
+		});
+		expect(event.cookies.delete).not.toHaveBeenCalled();
+		expect(JSON.stringify(result)).not.toContain('sensitive upstream detail');
+	});
+
 	it('reads the request token from the server-only cookie after login', async () => {
 		const event = makeEvent({ requestToken: null });
 		event.cookies.get.mockReturnValue(TOKEN);
