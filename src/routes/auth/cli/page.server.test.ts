@@ -51,6 +51,13 @@ function makeActionEvent(requestToken = TOKEN, authenticated = true) {
 	};
 }
 
+function makeActionLoadEvent(requestToken = TOKEN, authenticated = true) {
+	const event = makeEvent({ authenticated, requestToken: null });
+	event.url.search = '?/approve';
+	event.cookies.get.mockReturnValue(requestToken);
+	return event;
+}
+
 beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
@@ -170,6 +177,15 @@ describe('load /auth/cli', () => {
 			path: '/auth'
 		});
 	});
+
+	it('keeps the request cookie during the load that follows a retryable approval failure', async () => {
+		const event = makeActionLoadEvent();
+
+		const result = await route.load(event as never);
+
+		expect(result).toMatchObject({ requestToken: TOKEN, request: { machineName: 'roaster-host' } });
+		expect(event.cookies.delete).not.toHaveBeenCalled();
+	});
 });
 
 describe('approve action', () => {
@@ -211,6 +227,28 @@ describe('approve action', () => {
 		expect(result).toMatchObject({
 			status: 401,
 			data: { approved: false, signedOut: true, terminal: false }
+		});
+		expect(event.cookies.set).toHaveBeenCalledWith('purveyors_cli_auth_request', TOKEN, {
+			httpOnly: true,
+			maxAge: 600,
+			path: '/auth',
+			sameSite: 'lax',
+			secure: true
+		});
+	});
+
+	it('stores the request server-side for transient approval failures', async () => {
+		mockApprove.mockResolvedValueOnce({
+			error: { error: { code: 'internal_error', message: 'sensitive detail' } },
+			response: new Response(null, { status: 503 })
+		});
+		const event = makeActionEvent();
+
+		const result = await route.actions.approve(event as never);
+
+		expect(result).toMatchObject({
+			status: 503,
+			data: { approved: false, signedOut: false, terminal: false }
 		});
 		expect(event.cookies.set).toHaveBeenCalledWith('purveyors_cli_auth_request', TOKEN, {
 			httpOnly: true,

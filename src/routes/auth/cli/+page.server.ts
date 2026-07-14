@@ -49,6 +49,11 @@ function clearCliRequest(event: CliAuthEvent) {
 	event.cookies.delete(CLI_REQUEST_COOKIE, { path: '/auth' });
 }
 
+function isApproveActionLoad(url: URL) {
+	// SvelteKit re-runs load against /auth/cli?/approve after a failed action.
+	return url.searchParams.has('/approve');
+}
+
 function authRedirectLocation() {
 	return `/auth?next=${encodeURIComponent(AUTH_RETURN_PATH)}`;
 }
@@ -75,7 +80,9 @@ export const load: PageServerLoad = async (event) => {
 		const { data, error, response } = await client.cliAuth.inspect({ requestToken });
 
 		if (error || !data) {
-			clearCliRequest(event);
+			if (!isApproveActionLoad(event.url) || response.status < 500) {
+				clearCliRequest(event);
+			}
 			return {
 				request: null,
 				failure: inspectFailure(response.status)
@@ -88,7 +95,9 @@ export const load: PageServerLoad = async (event) => {
 			throw redirect(303, authRedirectLocation());
 		}
 
-		clearCliRequest(event);
+		if (!isApproveActionLoad(event.url)) {
+			clearCliRequest(event);
+		}
 
 		return {
 			requestToken,
@@ -104,7 +113,9 @@ export const load: PageServerLoad = async (event) => {
 			throw cause;
 		}
 
-		clearCliRequest(event);
+		if (!isApproveActionLoad(event.url)) {
+			clearCliRequest(event);
+		}
 		console.error('Failed to inspect CLI sign-in request');
 		return {
 			request: null,
@@ -145,7 +156,11 @@ export const actions: Actions = {
 			if (error || !data?.approved) {
 				const terminal = [400, 403, 409, 410].includes(response.status);
 				const signedOut = response.status === 401;
-				if (signedOut) rememberCliRequest(event, normalizedRequestToken);
+				if (terminal) {
+					clearCliRequest(event);
+				} else {
+					rememberCliRequest(event, normalizedRequestToken);
+				}
 				const message = terminal
 					? DEFAULT_FAILURE
 					: response.status === 401
@@ -163,12 +178,14 @@ export const actions: Actions = {
 			// The approval response intentionally contains no API key. The CLI receives
 			// the one-time secret later by exchanging its private PKCE verifier directly
 			// with Parchment.
+			clearCliRequest(event);
 			return {
 				approved: true,
 				signedOut: false,
 				terminal: true
 			};
 		} catch (_cause) {
+			rememberCliRequest(event, normalizedRequestToken);
 			console.error('Failed to approve CLI sign-in request');
 			return fail(502, {
 				approved: false,
