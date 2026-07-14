@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockCreateParchmentServerClient = vi.fn();
 const mockInspect = vi.fn();
 const mockApprove = vi.fn();
+const mockSignOut = vi.fn();
 
 vi.mock('$lib/server/parchmentClient', () => ({
 	createParchmentServerClient: mockCreateParchmentServerClient
@@ -33,7 +34,8 @@ function makeEvent(options: { authenticated?: boolean; requestToken?: string | n
 			delete: vi.fn()
 		},
 		locals: {
-			safeGetSession: vi.fn().mockResolvedValue(authenticated ? AUTHED : UNAUTHED)
+			safeGetSession: vi.fn().mockResolvedValue(authenticated ? AUTHED : UNAUTHED),
+			supabase: { auth: { signOut: mockSignOut } }
 		}
 	};
 }
@@ -58,6 +60,15 @@ function makeActionLoadEvent(requestToken = TOKEN, authenticated = true) {
 	return event;
 }
 
+function makeReauthenticateActionEvent(authenticated = true) {
+	const event = makeEvent({ authenticated, requestToken: null });
+	event.cookies.get.mockReturnValue(TOKEN);
+	event.request = new Request('https://purveyors.io/auth/cli?/reauthenticate', {
+		method: 'POST'
+	});
+	return event;
+}
+
 beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
@@ -78,6 +89,7 @@ beforeEach(async () => {
 		},
 		response: new Response(null, { status: 200 })
 	});
+	mockSignOut.mockResolvedValue({ error: null });
 	mockCreateParchmentServerClient.mockResolvedValue({
 		cliAuth: { inspect: mockInspect, approve: mockApprove }
 	});
@@ -223,6 +235,35 @@ describe('load /auth/cli', () => {
 
 		expect(result).toMatchObject({ requestToken: TOKEN, request: { machineName: 'roaster-host' } });
 		expect(event.cookies.delete).not.toHaveBeenCalled();
+	});
+});
+
+describe('reauthenticate action', () => {
+	it('requires the CLI request cookie and signs out through an explicit POST action', async () => {
+		const event = makeReauthenticateActionEvent();
+
+		await expect(route.actions.reauthenticate(event as never)).rejects.toMatchObject({
+			status: 303,
+			location: `/auth?next=${encodeURIComponent('/auth/cli')}`
+		});
+		expect(event.cookies.get).toHaveBeenCalledWith('purveyors_cli_auth_request');
+		expect(mockSignOut).toHaveBeenCalledTimes(1);
+		expect(event.cookies.delete).not.toHaveBeenCalledWith('purveyors_cli_auth_request', {
+			path: '/auth/cli'
+		});
+	});
+
+	it('does not sign out without the preserved CLI request cookie', async () => {
+		const event = makeReauthenticateActionEvent();
+		event.cookies.get.mockReturnValue(undefined);
+
+		const result = await route.actions.reauthenticate(event as never);
+
+		expect(result).toMatchObject({
+			status: 400,
+			data: { signedOut: false, terminal: true }
+		});
+		expect(mockSignOut).not.toHaveBeenCalled();
 	});
 });
 

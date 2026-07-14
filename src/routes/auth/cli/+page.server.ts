@@ -1,4 +1,4 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -60,6 +60,38 @@ function isApproveActionLoad(url: URL) {
 
 function authRedirectLocation() {
 	return `/auth?next=${encodeURIComponent(AUTH_RETURN_PATH)}`;
+}
+
+async function reauthenticate(event: RequestEvent) {
+	// SvelteKit form actions enforce same-origin POSTs. Requiring the short-lived
+	// CLI request cookie as well prevents an unrelated auth-page navigation from
+	// becoming a session reset.
+	const requestToken = event.cookies.get(CLI_REQUEST_COOKIE)?.trim();
+	if (!requestToken) {
+		return fail(400, {
+			approved: false,
+			signedOut: false,
+			terminal: true,
+			error: DEFAULT_FAILURE
+		});
+	}
+
+	const { session, user } = await event.locals.safeGetSession();
+	if (!session || !user) {
+		throw redirect(303, authRedirectLocation());
+	}
+
+	const { error } = await event.locals.supabase.auth.signOut();
+	if (error) {
+		return fail(502, {
+			approved: false,
+			signedOut: false,
+			terminal: false,
+			error: 'Failed to reset your session. Please try again.'
+		});
+	}
+
+	throw redirect(303, authRedirectLocation());
 }
 
 export const load: PageServerLoad = async (event) => {
@@ -135,6 +167,7 @@ export const load: PageServerLoad = async (event) => {
 };
 
 export const actions: Actions = {
+	reauthenticate,
 	approve: async (event) => {
 		const formData = await event.request.formData();
 		const requestToken = formData.get('request');

@@ -24,7 +24,6 @@
 				}).format(new Date(data.request.expiresAt))
 			: ''
 	);
-	const signInUrl = '/auth?next=%2Fauth%2Fcli&forceReauth=1';
 </script>
 
 <svelte:head>
@@ -94,9 +93,11 @@
 				<div class="mt-5 rounded-lg border border-danger/20 bg-danger-subtle p-4" role="alert">
 					<p class="text-sm text-danger">{form.error}</p>
 					{#if form.signedOut}
-						<a class="mt-2 inline-block text-sm font-medium text-danger underline" href={signInUrl}>
-							Sign in again
-						</a>
+						<form method="POST" action="?/reauthenticate" class="mt-2">
+							<button type="submit" class="text-sm font-medium text-danger underline">
+								Sign in again
+							</button>
+						</form>
 					{/if}
 				</div>
 			{/if}
