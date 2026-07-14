@@ -95,6 +95,8 @@ create or replace function public._record_scraper_platform_rate_limit(
 set search_path = public, pg_temp as $$
 declare
   v_state public.scraper_platform_backoff%rowtype;
+  v_observed_at timestamptz;
+  v_result_observed_at timestamptz;
   v_new_strikes bigint;
   v_exponential_seconds bigint;
   v_jitter_ceiling_seconds bigint;
@@ -113,14 +115,14 @@ begin
     and (p_retry_after_seconds < 0 or p_retry_after_seconds > 3155760000) then
     raise exception 'Retry-After seconds must be between zero and 100 years';
   end if;
-  if p_observed_at is null then
-    raise exception 'observation time is required';
-  end if;
-
   select state.* into strict v_state
   from public.scraper_platform_backoff state
   where state.scope = p_scope
   for update;
+
+  -- Runtime callers pass NULL so the rate-limit observation is anchored after
+  -- any row-lock wait. Tests may supply a deterministic timestamp.
+  v_observed_at := coalesce(p_observed_at, clock_timestamp());
 
   if v_state.consecutive_rate_limited_runs = 9223372036854775807 then
     raise exception 'rate-limited run counter exhausted';
@@ -158,19 +160,20 @@ begin
   );
   v_next_eligible_at := greatest(
     coalesce(v_state.next_eligible_at, '-infinity'::timestamptz),
-    p_observed_at + make_interval(secs => v_effective_delay_seconds::double precision)
+    v_observed_at + make_interval(secs => v_effective_delay_seconds::double precision)
   );
 
   update public.scraper_platform_backoff state
   set consecutive_rate_limited_runs = v_new_strikes,
       next_eligible_at = v_next_eligible_at,
-      last_rate_limited_at = p_observed_at,
+      last_rate_limited_at = v_observed_at,
       last_rate_limited_source = p_source,
       last_retry_after_seconds = p_retry_after_seconds,
-      updated_at = p_observed_at
+      updated_at = v_observed_at
   where state.scope = p_scope
   returning state.* into strict v_state;
 
+  v_result_observed_at := clock_timestamp();
   return query
   select v_state.scope,
     v_state.consecutive_rate_limited_runs,
@@ -180,9 +183,9 @@ begin
     v_state.last_retry_after_seconds,
     v_state.last_clean_run_at,
     v_state.updated_at,
-    p_observed_at,
+    v_result_observed_at,
     v_effective_delay_seconds,
-    false;
+    v_state.next_eligible_at <= v_result_observed_at;
 end $$;
 
 create or replace function public.record_scraper_platform_rate_limit(
@@ -207,12 +210,15 @@ set search_path = public, pg_temp as $$
     p_scope,
     p_source,
     p_retry_after_seconds,
-    clock_timestamp(),
+    null,
     null
   );
 $$;
 
-create or replace function public.reset_scraper_platform_backoff(p_scope text)
+create or replace function public.reset_scraper_platform_backoff(
+  p_scope text,
+  p_expected_consecutive_rate_limited_runs bigint
+)
 returns table (
   scope text,
   consecutive_rate_limited_runs bigint,
@@ -223,7 +229,8 @@ returns table (
   last_clean_run_at timestamptz,
   updated_at timestamptz,
   observed_at timestamptz,
-  is_eligible boolean
+  is_eligible boolean,
+  reset_applied boolean
 ) language plpgsql security definer
 set search_path = public, pg_temp as $$
 declare
@@ -233,6 +240,10 @@ begin
   if p_scope is distinct from 'shopify_fleet' then
     raise exception 'unsupported scraper platform backoff scope';
   end if;
+  if p_expected_consecutive_rate_limited_runs is null
+    or p_expected_consecutive_rate_limited_runs < 0 then
+    raise exception 'expected rate-limited run count must be non-negative';
+  end if;
 
   update public.scraper_platform_backoff state
   set consecutive_rate_limited_runs = 0,
@@ -240,7 +251,28 @@ begin
       last_clean_run_at = v_observed_at,
       updated_at = v_observed_at
   where state.scope = p_scope
-  returning state.* into strict v_state;
+    and state.consecutive_rate_limited_runs = p_expected_consecutive_rate_limited_runs
+  returning state.* into v_state;
+
+  if not found then
+    select state.* into strict v_state
+    from public.scraper_platform_backoff state
+    where state.scope = p_scope;
+
+    return query
+    select v_state.scope,
+      v_state.consecutive_rate_limited_runs,
+      v_state.next_eligible_at,
+      v_state.last_rate_limited_at,
+      v_state.last_rate_limited_source,
+      v_state.last_retry_after_seconds,
+      v_state.last_clean_run_at,
+      v_state.updated_at,
+      v_observed_at,
+      v_state.next_eligible_at is null or v_state.next_eligible_at <= v_observed_at,
+      false;
+    return;
+  end if;
 
   return query
   select v_state.scope,
@@ -252,6 +284,7 @@ begin
     v_state.last_clean_run_at,
     v_state.updated_at,
     v_observed_at,
+    true,
     true;
 exception
   when no_data_found then
@@ -261,10 +294,6 @@ end $$;
 alter table public.scraper_platform_backoff enable row level security;
 revoke all on table public.scraper_platform_backoff
   from public, anon, authenticated, service_role;
-grant select on table public.scraper_platform_backoff to service_role;
-create policy "Service role reads scraper_platform_backoff"
-  on public.scraper_platform_backoff
-  for select using (auth.role() = 'service_role');
 
 revoke all on function public.get_scraper_platform_backoff(text)
   from public, anon, authenticated;
@@ -273,9 +302,9 @@ revoke all on function public.record_scraper_platform_rate_limit(text, text, big
   from public, anon, authenticated;
 grant execute on function public.record_scraper_platform_rate_limit(text, text, bigint)
   to service_role;
-revoke all on function public.reset_scraper_platform_backoff(text)
+revoke all on function public.reset_scraper_platform_backoff(text, bigint)
   from public, anon, authenticated;
-grant execute on function public.reset_scraper_platform_backoff(text) to service_role;
+grant execute on function public.reset_scraper_platform_backoff(text, bigint) to service_role;
 revoke all on function public._record_scraper_platform_rate_limit(
   text, text, bigint, timestamptz, bigint
 ) from public, anon, authenticated, service_role;

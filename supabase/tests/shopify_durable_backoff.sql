@@ -39,7 +39,7 @@ begin
     raise exception 'rate-limited run counter did not advance atomically';
   end if;
 
-  perform public.reset_scraper_platform_backoff('shopify_fleet');
+  perform public.reset_scraper_platform_backoff('shopify_fleet', 11);
   select * into strict v_state
   from public._record_scraper_platform_rate_limit(
     'shopify_fleet', 'retry-after-low', 60, v_observed_at, 1
@@ -48,7 +48,7 @@ begin
     raise exception 'short Retry-After reduced the local exponential delay';
   end if;
 
-  perform public.reset_scraper_platform_backoff('shopify_fleet');
+  perform public.reset_scraper_platform_backoff('shopify_fleet', 1);
   select * into strict v_state
   from public._record_scraper_platform_rate_limit(
     'shopify_fleet', 'retry-after-high', 200000, v_observed_at, 1
@@ -67,16 +67,30 @@ begin
   end if;
 
   select * into strict v_state
-  from public.reset_scraper_platform_backoff('shopify_fleet');
+  from public.reset_scraper_platform_backoff('shopify_fleet', 2);
   if v_state.consecutive_rate_limited_runs <> 0
     or v_state.next_eligible_at is not null
     or v_state.last_clean_run_at is null
-    or not v_state.is_eligible then
+    or not v_state.is_eligible
+    or not v_state.reset_applied then
     raise exception 'clean-run reset did not clear strikes and eligibility';
   end if;
   if v_state.last_rate_limited_source <> 'retry-after-followup' then
     raise exception 'clean-run reset erased diagnostic rate-limit history';
   end if;
+
+  select * into strict v_state
+  from public._record_scraper_platform_rate_limit(
+    'shopify_fleet', 'newer-rate-limit', null, v_observed_at, 1
+  );
+  select * into strict v_state
+  from public.reset_scraper_platform_backoff('shopify_fleet', 0);
+  if v_state.reset_applied
+    or v_state.consecutive_rate_limited_runs <> 1
+    or v_state.next_eligible_at is null then
+    raise exception 'stale clean-run generation erased a newer rate limit';
+  end if;
+  perform public.reset_scraper_platform_backoff('shopify_fleet', 1);
 
   begin
     perform public.get_scraper_platform_backoff('other_fleet');
@@ -111,10 +125,8 @@ begin
     or has_table_privilege('authenticated', 'public.scraper_platform_backoff', 'SELECT') then
     raise exception 'anonymous or authenticated role can read backoff state';
   end if;
-  if not has_table_privilege('service_role', 'public.scraper_platform_backoff', 'SELECT') then
-    raise exception 'service role cannot read backoff state';
-  end if;
-  if has_table_privilege('service_role', 'public.scraper_platform_backoff', 'INSERT')
+  if has_table_privilege('service_role', 'public.scraper_platform_backoff', 'SELECT')
+    or has_table_privilege('service_role', 'public.scraper_platform_backoff', 'INSERT')
     or has_table_privilege('service_role', 'public.scraper_platform_backoff', 'UPDATE')
     or has_table_privilege('service_role', 'public.scraper_platform_backoff', 'DELETE')
     or has_table_privilege('service_role', 'public.scraper_platform_backoff', 'TRUNCATE') then
@@ -132,7 +144,7 @@ begin
   ) or not has_function_privilege(
     'service_role', 'public.get_scraper_platform_backoff(text)', 'EXECUTE'
   ) or not has_function_privilege(
-    'service_role', 'public.reset_scraper_platform_backoff(text)', 'EXECUTE'
+    'service_role', 'public.reset_scraper_platform_backoff(text,bigint)', 'EXECUTE'
   ) then
     raise exception 'service role cannot execute public backoff RPCs';
   end if;
@@ -171,8 +183,10 @@ begin
   end;
 
   select * into strict v_state
-  from public.reset_scraper_platform_backoff('shopify_fleet');
-  if v_state.consecutive_rate_limited_runs <> 0 or not v_state.is_eligible then
+  from public.reset_scraper_platform_backoff('shopify_fleet', 1);
+  if v_state.consecutive_rate_limited_runs <> 0
+    or not v_state.is_eligible
+    or not v_state.reset_applied then
     raise exception 'service-role clean reset RPC did not restore eligibility';
   end if;
 end $$;

@@ -33,10 +33,9 @@ pg "-c \"create schema auth;
 pg "-f '$LOG_DIR/migration.sql'" >/dev/null
 pg "-f '$LOG_DIR/behavior.sql'" >/dev/null
 
-OBSERVED_AT="2026-07-14 12:00:00+00"
 pg "-c \"begin;
-  select * from public._record_scraper_platform_rate_limit(
-    'shopify_fleet','concurrency-a',null,'$OBSERVED_AT',1
+  select * from public.record_scraper_platform_rate_limit(
+    'shopify_fleet','concurrency-a',null
   );
   select pg_sleep(2);
   commit;\"" >"$LOG_DIR/first.log" 2>&1 &
@@ -45,17 +44,19 @@ sleep 0.25
 
 started=$(date +%s%3N)
 pg "-c \"set statement_timeout='5s';
-  select * from public._record_scraper_platform_rate_limit(
-    'shopify_fleet','concurrency-b',null,'$OBSERVED_AT',1
+  select * from public.record_scraper_platform_rate_limit(
+    'shopify_fleet','concurrency-b',null
   );\"" >"$LOG_DIR/second.log" 2>&1
 elapsed=$(( $(date +%s%3N) - started ))
 wait "$first_pid"
 
 state=$(pg "-Atqc \"select consecutive_rate_limited_runs || '|' ||
-  extract(epoch from (next_eligible_at - '$OBSERVED_AT'::timestamptz))::bigint
+  extract(epoch from (next_eligible_at - last_rate_limited_at))::bigint
   from public.scraper_platform_backoff where scope='shopify_fleet'\"")
-[[ "$state" == "2|601" ]] || {
-  echo "Concurrency failure: expected serialized state 2|601, got $state" >&2
+strike_count="${state%%|*}"
+delay_seconds="${state##*|}"
+[[ "$strike_count" == "2" ]] && (( delay_seconds >= 601 && delay_seconds <= 660 )) || {
+  echo "Concurrency failure: expected serialized count 2 and second-strike delay 601-660s, got $state" >&2
   exit 1
 }
 (( elapsed >= 1200 )) || {
@@ -63,4 +64,32 @@ state=$(pg "-Atqc \"select consecutive_rate_limited_runs || '|' ||
   exit 1
 }
 
-echo "VALIDATION_PASS: concurrent Shopify rate-limit transitions serialize without lost increments"
+pg "-c \"select * from public.reset_scraper_platform_backoff('shopify_fleet', 2);\"" >/dev/null
+
+# A clean run admitted at generation zero must not erase a newer 429 that wins
+# the row lock while that clean run is finishing.
+pg "-c \"begin;
+  select * from public.record_scraper_platform_rate_limit(
+    'shopify_fleet','newer-rate-limit',null
+  );
+  select pg_sleep(2);
+  commit;\"" >"$LOG_DIR/newer-rate-limit.log" 2>&1 &
+rate_limit_pid=$!
+sleep 0.25
+
+started=$(date +%s%3N)
+reset_result=$(pg "-Atqc \"set statement_timeout='5s';
+  select reset_applied || '|' || consecutive_rate_limited_runs
+  from public.reset_scraper_platform_backoff('shopify_fleet', 0)\"")
+elapsed=$(( $(date +%s%3N) - started ))
+wait "$rate_limit_pid"
+[[ "$reset_result" == "false|1" ]] || {
+  echo "Concurrency failure: stale clean reset erased or misreported a newer 429 ($reset_result)" >&2
+  exit 1
+}
+(( elapsed >= 1200 )) || {
+  echo "Concurrency failure: stale reset did not wait for the row lock (${elapsed}ms)" >&2
+  exit 1
+}
+
+echo "VALIDATION_PASS: concurrent transitions serialize and stale clean resets cannot erase newer 429s"

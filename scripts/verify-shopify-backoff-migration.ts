@@ -22,11 +22,11 @@ for (const invariant of [
 	'v_new_strikes := v_state.consecutive_rate_limited_runs + 1',
 	'v_effective_delay_seconds := greatest',
 	'v_next_eligible_at := greatest',
+	'p_expected_consecutive_rate_limited_runs',
 	'172800',
 	'security definer',
 	'set search_path = public, pg_temp',
 	'revoke all on table public.scraper_platform_backoff',
-	'grant select on table public.scraper_platform_backoff to service_role',
 	'revoke all on function public._record_scraper_platform_rate_limit',
 	'from public, anon, authenticated, service_role'
 ]) {
@@ -47,6 +47,7 @@ for (const scenario of [
 	'short retry-after reduced the local exponential delay',
 	'retry-after above 48 hours was not honored',
 	'later transition shortened an existing cooldown',
+	'stale clean-run generation erased a newer rate limit',
 	'clean-run reset did not clear strikes and eligibility',
 	'anonymous or authenticated role can read backoff state',
 	'service role can directly mutate backoff state',
