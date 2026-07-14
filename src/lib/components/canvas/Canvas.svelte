@@ -81,13 +81,20 @@
 						title="Go to source message"
 						aria-label="Go to source message"
 					>
-						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg
+							class="h-4 w-4"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							viewBox="0 0 24 24"
+							aria-hidden="true"
+						>
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
-								stroke-width="1.5"
-								d="M8 10h8M8 14h5m-7 5-3 2v-5a8 8 0 1 1 3 3Z"
+								d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"
 							/>
+							<path stroke-linecap="round" d="M8 8h8M8 12h6" />
 						</svg>
 					</button>
 				{/if}
@@ -113,7 +120,7 @@
 					type="button"
 					onclick={() => togglePin(active)}
 					class="rounded-md p-1.5 transition-colors hover:bg-surface-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent {active.pinned
-						? 'text-accent'
+						? 'bg-accent-subtle text-accent'
 						: 'text-muted hover:text-ink'}"
 					title={active.pinned ? 'Unpin evidence' : 'Pin evidence'}
 					aria-label={active.pinned ? 'Unpin active evidence' : 'Pin active evidence'}
@@ -121,15 +128,16 @@
 				>
 					<svg
 						class="h-4 w-4"
-						fill={active.pinned ? 'currentColor' : 'none'}
+						fill="none"
 						stroke="currentColor"
+						stroke-width="2"
 						viewBox="0 0 24 24"
+						aria-hidden="true"
 					>
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
-							stroke-width="1.5"
-							d="m14 4 6 6-3 1-4 4-1 5-2-2-4 4 2-6-2-2 5-1 4-4-1-3Z"
+							d="M12 17v5M5 17h14M6 17h12l-1-5 2-2H5l2 2-1 5ZM9 10V4h6v6"
 						/>
 					</svg>
 				</button>
