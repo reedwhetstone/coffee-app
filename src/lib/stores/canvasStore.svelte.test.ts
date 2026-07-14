@@ -113,6 +113,23 @@ describe('canvasStore pinning', () => {
 		expect(canvasStore.blocks.map((block) => block.messageId)).toEqual(['m2']);
 		expect(canvasStore.getMessageIdForBlock(removedBlockId)).toBeUndefined();
 	});
+
+	it('chooses the removal fallback from the pinned-first shelf order', async () => {
+		const { canvasStore } = await loadCanvasStore();
+
+		canvasStore.dispatch({ type: 'add', block: cards(1), messageId: 'm1' });
+		canvasStore.dispatch({ type: 'add', block: cards(2), messageId: 'm2' });
+		canvasStore.dispatch({ type: 'add', block: cards(3), messageId: 'm3' });
+		const pinned = canvasStore.blocks[1];
+		canvasStore.dispatch({ type: 'pin', blockId: pinned.id });
+		canvasStore.dispatch({ type: 'focus', blockId: pinned.id });
+
+		expect(canvasStore.visibleBlocks.map((block) => block.messageId)).toEqual(['m2', 'm1', 'm3']);
+
+		canvasStore.dispatch({ type: 'remove', blockId: pinned.id });
+
+		expect(canvasStore.focusedBlock?.messageId).toBe('m1');
+	});
 });
 
 describe('canvasStore layout lock', () => {
