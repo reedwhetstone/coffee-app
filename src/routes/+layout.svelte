@@ -8,6 +8,7 @@
 	import ChatDrawer from '$lib/components/chat/ChatDrawer.svelte';
 	import NavigationProgress from '$lib/components/layout/NavigationProgress.svelte';
 	import RouteSkeleton from '$lib/components/layout/RouteSkeleton.svelte';
+	import { usesStandaloneShell } from '$lib/components/layout/routeShells';
 	import {
 		ROUTE_SKELETON_DELAY_MS,
 		loadRouteSkeletonComponent,
@@ -106,6 +107,7 @@
 			: $page.url.pathname
 	);
 	let isMarketingPage = $derived(pathname === '/');
+	let isStandaloneShell = $derived(usesStandaloneShell(pathname));
 	let usesPublicShell = $derived(
 		pathname === '/' ||
 			pathname === '/api' ||
@@ -125,7 +127,9 @@
 		Boolean(data?.session?.user) && (data.ppiAccess === true || checkRole(data.role, 'member'))
 	);
 	let isChatWorkspace = $derived(isChatRoute && hasChatAccess);
-	let canUseChatDrawer = $derived(hasChatAccess && !usesPublicShell && !isChatRoute);
+	let canUseChatDrawer = $derived(
+		hasChatAccess && !isStandaloneShell && !usesPublicShell && !isChatRoute
+	);
 
 	$effect(() => {
 		if (!canUseChatDrawer && chatDrawerOpen) chatDrawerOpen = false;
@@ -157,6 +161,12 @@
 		{/if}
 		<CookieBanner />
 	</div>
+{:else if isStandaloneShell}
+	{#if showClientRouteSkeleton}
+		<RouteSkeleton pathname={navigationTargetPathname} />
+	{:else}
+		{@render children()}
+	{/if}
 {:else if data?.session?.user && !usesPublicShell}
 	<div class="flex {isChatWorkspace ? 'h-dvh overflow-hidden' : 'min-h-screen'}">
 		<LeftSidebar {data} onMenuChange={handleMenuChange} />
