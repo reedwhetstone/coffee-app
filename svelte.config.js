@@ -9,12 +9,11 @@ const config = {
 	preprocess: [vitePreprocess(), mdsvex()],
 
 	kit: {
-		// Vercel canonicalizes the apex domain to www. During auth handoffs, a browser
-		// can retain the owned apex origin for the first form submission after that
-		// redirect. Trust only that production alias so SvelteKit still rejects form
-		// submissions from every unrelated origin.
+		// Vercel canonicalizes the apex domain to www. Trust both owned production
+		// origins explicitly to cover proxy-origin mismatches without admitting any
+		// unrelated form origin. Production still requires a live approval canary.
 		csrf: {
-			trustedOrigins: ['https://purveyors.io']
+			trustedOrigins: ['https://purveyors.io', 'https://www.purveyors.io']
 		},
 
 		// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
