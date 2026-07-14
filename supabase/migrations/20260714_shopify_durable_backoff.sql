@@ -6,6 +6,8 @@ create table public.scraper_platform_backoff (
   scope text primary key check (scope = 'shopify_fleet'),
   consecutive_rate_limited_runs bigint not null default 0
     check (consecutive_rate_limited_runs >= 0),
+  rate_limit_generation bigint not null default 0
+    check (rate_limit_generation >= 0),
   next_eligible_at timestamptz,
   last_rate_limited_at timestamptz,
   last_rate_limited_source text
@@ -34,6 +36,7 @@ create or replace function public.get_scraper_platform_backoff(p_scope text)
 returns table (
   scope text,
   consecutive_rate_limited_runs bigint,
+  rate_limit_generation bigint,
   next_eligible_at timestamptz,
   last_rate_limited_at timestamptz,
   last_rate_limited_source text,
@@ -54,6 +57,7 @@ begin
   return query
   select state.scope,
     state.consecutive_rate_limited_runs,
+    state.rate_limit_generation,
     state.next_eligible_at,
     state.last_rate_limited_at,
     state.last_rate_limited_source,
@@ -82,6 +86,7 @@ create or replace function public._record_scraper_platform_rate_limit(
 ) returns table (
   scope text,
   consecutive_rate_limited_runs bigint,
+  rate_limit_generation bigint,
   next_eligible_at timestamptz,
   last_rate_limited_at timestamptz,
   last_rate_limited_source text,
@@ -98,6 +103,7 @@ declare
   v_observed_at timestamptz;
   v_result_observed_at timestamptz;
   v_new_strikes bigint;
+  v_new_generation bigint;
   v_exponential_seconds bigint;
   v_jitter_ceiling_seconds bigint;
   v_jitter_seconds bigint;
@@ -127,7 +133,11 @@ begin
   if v_state.consecutive_rate_limited_runs = 9223372036854775807 then
     raise exception 'rate-limited run counter exhausted';
   end if;
+  if v_state.rate_limit_generation = 9223372036854775807 then
+    raise exception 'rate-limit generation exhausted';
+  end if;
   v_new_strikes := v_state.consecutive_rate_limited_runs + 1;
+  v_new_generation := v_state.rate_limit_generation + 1;
 
   -- 5m, 10m, 20m, ... 21h20m, 42h40m, then 48h capped.
   if v_new_strikes >= 11 then
@@ -165,6 +175,7 @@ begin
 
   update public.scraper_platform_backoff state
   set consecutive_rate_limited_runs = v_new_strikes,
+      rate_limit_generation = v_new_generation,
       next_eligible_at = v_next_eligible_at,
       last_rate_limited_at = v_observed_at,
       last_rate_limited_source = p_source,
@@ -177,6 +188,7 @@ begin
   return query
   select v_state.scope,
     v_state.consecutive_rate_limited_runs,
+    v_state.rate_limit_generation,
     v_state.next_eligible_at,
     v_state.last_rate_limited_at,
     v_state.last_rate_limited_source,
@@ -195,6 +207,7 @@ create or replace function public.record_scraper_platform_rate_limit(
 ) returns table (
   scope text,
   consecutive_rate_limited_runs bigint,
+  rate_limit_generation bigint,
   next_eligible_at timestamptz,
   last_rate_limited_at timestamptz,
   last_rate_limited_source text,
@@ -217,11 +230,12 @@ $$;
 
 create or replace function public.reset_scraper_platform_backoff(
   p_scope text,
-  p_expected_consecutive_rate_limited_runs bigint
+  p_expected_rate_limit_generation bigint
 )
 returns table (
   scope text,
   consecutive_rate_limited_runs bigint,
+  rate_limit_generation bigint,
   next_eligible_at timestamptz,
   last_rate_limited_at timestamptz,
   last_rate_limited_source text,
@@ -240,9 +254,9 @@ begin
   if p_scope is distinct from 'shopify_fleet' then
     raise exception 'unsupported scraper platform backoff scope';
   end if;
-  if p_expected_consecutive_rate_limited_runs is null
-    or p_expected_consecutive_rate_limited_runs < 0 then
-    raise exception 'expected rate-limited run count must be non-negative';
+  if p_expected_rate_limit_generation is null
+    or p_expected_rate_limit_generation < 0 then
+    raise exception 'expected rate-limit generation must be non-negative';
   end if;
 
   update public.scraper_platform_backoff state
@@ -251,7 +265,7 @@ begin
       last_clean_run_at = v_observed_at,
       updated_at = v_observed_at
   where state.scope = p_scope
-    and state.consecutive_rate_limited_runs = p_expected_consecutive_rate_limited_runs
+    and state.rate_limit_generation = p_expected_rate_limit_generation
   returning state.* into v_state;
 
   if not found then
@@ -262,6 +276,7 @@ begin
     return query
     select v_state.scope,
       v_state.consecutive_rate_limited_runs,
+      v_state.rate_limit_generation,
       v_state.next_eligible_at,
       v_state.last_rate_limited_at,
       v_state.last_rate_limited_source,
@@ -277,6 +292,7 @@ begin
   return query
   select v_state.scope,
     v_state.consecutive_rate_limited_runs,
+    v_state.rate_limit_generation,
     v_state.next_eligible_at,
     v_state.last_rate_limited_at,
     v_state.last_rate_limited_source,

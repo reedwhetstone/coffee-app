@@ -22,7 +22,7 @@ and direct table reads duplicated the read RPC contract.
 
 Corrections:
 
-- Fenced clean resets with the strike generation captured at admission. A
+- Fenced clean resets with a monotonic rate-limit generation captured at admission. A
   stale reset now reports `reset_applied = false` and preserves the newer 429.
 - Anchored production transition time after row-lock acquisition and computed
   returned eligibility from fresh database time.
@@ -43,3 +43,14 @@ Corrections:
 ## Final gate
 
 Pending focused re-review of the corrected contract.
+
+## Round 2
+
+**Verdict:** `ready_with_fixes`
+**Findings:** P0 0, P1 1, P2 0, P3 0
+
+The focused re-review found that the resettable strike count was ABA-prone. The
+fence now uses a separate monotonic `rate_limit_generation` that increments on
+every 429 and is never cleared by a clean reset. Regression coverage exercises
+the `1 → 2 → reset → 1` strike-count sequence and proves that the oldest clean
+run's captured generation cannot erase the latest cooldown.

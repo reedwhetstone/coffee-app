@@ -66,7 +66,7 @@ delay_seconds="${state##*|}"
 
 pg "-c \"select * from public.reset_scraper_platform_backoff('shopify_fleet', 2);\"" >/dev/null
 
-# A clean run admitted at generation zero must not erase a newer 429 that wins
+# A clean run admitted at generation two must not erase a newer 429 that wins
 # the row lock while that clean run is finishing.
 pg "-c \"begin;
   select * from public.record_scraper_platform_rate_limit(
@@ -80,7 +80,7 @@ sleep 0.25
 started=$(date +%s%3N)
 reset_result=$(pg "-Atqc \"set statement_timeout='5s';
   select reset_applied || '|' || consecutive_rate_limited_runs
-  from public.reset_scraper_platform_backoff('shopify_fleet', 0)\"")
+  from public.reset_scraper_platform_backoff('shopify_fleet', 2)\"")
 elapsed=$(( $(date +%s%3N) - started ))
 wait "$rate_limit_pid"
 [[ "$reset_result" == "false|1" ]] || {

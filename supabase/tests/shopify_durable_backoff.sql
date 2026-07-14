@@ -13,6 +13,7 @@ begin
   select * into strict v_state
   from public.get_scraper_platform_backoff('shopify_fleet');
   if v_state.consecutive_rate_limited_runs <> 0
+    or v_state.rate_limit_generation <> 0
     or v_state.next_eligible_at is not null
     or not v_state.is_eligible then
     raise exception 'initial Shopify fleet state was not eligible with zero strikes';
@@ -38,6 +39,9 @@ begin
   if v_state.consecutive_rate_limited_runs <> 11 then
     raise exception 'rate-limited run counter did not advance atomically';
   end if;
+  if v_state.rate_limit_generation <> 11 then
+    raise exception 'rate-limit generation did not advance monotonically';
+  end if;
 
   perform public.reset_scraper_platform_backoff('shopify_fleet', 11);
   select * into strict v_state
@@ -48,7 +52,7 @@ begin
     raise exception 'short Retry-After reduced the local exponential delay';
   end if;
 
-  perform public.reset_scraper_platform_backoff('shopify_fleet', 1);
+  perform public.reset_scraper_platform_backoff('shopify_fleet', 12);
   select * into strict v_state
   from public._record_scraper_platform_rate_limit(
     'shopify_fleet', 'retry-after-high', 200000, v_observed_at, 1
@@ -67,7 +71,7 @@ begin
   end if;
 
   select * into strict v_state
-  from public.reset_scraper_platform_backoff('shopify_fleet', 2);
+  from public.reset_scraper_platform_backoff('shopify_fleet', 14);
   if v_state.consecutive_rate_limited_runs <> 0
     or v_state.next_eligible_at is not null
     or v_state.last_clean_run_at is null
@@ -84,13 +88,36 @@ begin
     'shopify_fleet', 'newer-rate-limit', null, v_observed_at, 1
   );
   select * into strict v_state
-  from public.reset_scraper_platform_backoff('shopify_fleet', 0);
+  from public.reset_scraper_platform_backoff('shopify_fleet', 14);
   if v_state.reset_applied
     or v_state.consecutive_rate_limited_runs <> 1
+    or v_state.rate_limit_generation <> 15
     or v_state.next_eligible_at is null then
     raise exception 'stale clean-run generation erased a newer rate limit';
   end if;
-  perform public.reset_scraper_platform_backoff('shopify_fleet', 1);
+  perform public.reset_scraper_platform_backoff('shopify_fleet', 15);
+
+  -- ABA regression: the resettable strike count repeats, but the monotonic
+  -- generation captured by the oldest clean run never does.
+  perform public._record_scraper_platform_rate_limit(
+    'shopify_fleet', 'aba-first', null, v_observed_at, 1
+  );
+  perform public._record_scraper_platform_rate_limit(
+    'shopify_fleet', 'aba-second', null, v_observed_at, 1
+  );
+  perform public.reset_scraper_platform_backoff('shopify_fleet', 17);
+  perform public._record_scraper_platform_rate_limit(
+    'shopify_fleet', 'aba-third', null, v_observed_at, 1
+  );
+  select * into strict v_state
+  from public.reset_scraper_platform_backoff('shopify_fleet', 16);
+  if v_state.reset_applied
+    or v_state.consecutive_rate_limited_runs <> 1
+    or v_state.rate_limit_generation <> 18
+    or v_state.next_eligible_at is null then
+    raise exception 'ABA strike-count reuse bypassed the monotonic reset fence';
+  end if;
+  perform public.reset_scraper_platform_backoff('shopify_fleet', 18);
 
   begin
     perform public.get_scraper_platform_backoff('other_fleet');
@@ -183,7 +210,7 @@ begin
   end;
 
   select * into strict v_state
-  from public.reset_scraper_platform_backoff('shopify_fleet', 1);
+  from public.reset_scraper_platform_backoff('shopify_fleet', 19);
   if v_state.consecutive_rate_limited_runs <> 0
     or not v_state.is_eligible
     or not v_state.reset_applied then
