@@ -21,8 +21,8 @@ importers:
         specifier: ^0.8.10
         version: 0.8.14(svelte@5.48.0)
       '@purveyors/sdk':
-        specifier: ^0.8.0
-        version: 0.8.0
+        specifier: ^0.11.0
+        version: 0.11.0
       '@supabase/ssr':
         specifier: ^0.5.2
         version: 0.5.2(@supabase/supabase-js@2.99.1(bufferutil@4.1.0)(utf-8-validate@6.0.6))
@@ -818,8 +818,8 @@ packages:
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
-  '@purveyors/sdk@0.8.0':
-    resolution: {integrity: sha512-+kiDrbYINBbYPCtu2efjIegvOlRJ3aqfnjKWY06Q73PC0KQhx6W7HHbUU5P1lPJEklqULi/XnXVRep+aywcC+g==}
+  '@purveyors/sdk@0.11.0':
+    resolution: {integrity: sha512-hqKEQpUwAqnNg5dTaFibXuZ6h5kBwv8+ORy2IKOCR6XhmgtC9dGmGHBjMv5+foiHzt5ncut4srbN08+BZfISxA==}
 
   '@rollup/pluginutils@5.3.0':
     resolution: {integrity: sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q==}
@@ -3459,7 +3459,7 @@ snapshots:
 
   '@polka/url@1.0.0-next.29': {}
 
-  '@purveyors/sdk@0.8.0':
+  '@purveyors/sdk@0.11.0':
     dependencies:
       openapi-fetch: 0.13.8
 
