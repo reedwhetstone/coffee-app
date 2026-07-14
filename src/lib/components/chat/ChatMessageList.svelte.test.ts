@@ -168,4 +168,43 @@ describe('ChatMessageList conversation controls', () => {
 
 		expect(screen.getByRole('button', { name: /Older coffee Ethiopia/ })).toBeDisabled();
 	});
+
+	it('matches later compact evidence links by block identity after an earlier tab is removed', async () => {
+		const messageId = 'assistant-tools';
+		const roastPart = {
+			type: 'tool-roast_profiles',
+			toolName: 'roast_profiles',
+			toolCallId: 'roast-call',
+			state: 'output-available',
+			output: { profiles: [{ roast_id: 42, batch_name: 'Batch 42' }] }
+		};
+		const messages = [{ id: messageId, role: 'assistant', parts: [roastPart] }];
+
+		canvasStore.dispatch({
+			type: 'add',
+			messageId,
+			block: {
+				type: 'roast-profiles',
+				version: 1,
+				data: [{ roast_id: '42', batch_name: 'Batch 42' } as never]
+			}
+		});
+		canvasStore.dispatch({
+			type: 'add',
+			messageId,
+			block: { type: 'roast-chart', version: 1, data: { roastId: 42 } }
+		});
+		const [profilesId, chartId] = canvasStore.blocks.map((block) => block.id);
+		canvasStore.dispatch({ type: 'remove', blockId: profilesId });
+
+		const componentProps = props(messages);
+		render(ChatMessageList, componentProps);
+
+		expect(screen.getByRole('button', { name: /Batch 42/ })).toBeDisabled();
+		await fireEvent.click(screen.getByRole('button', { name: /Roast #42 chart/ }));
+		expect(componentProps.onBlockAction).toHaveBeenCalledWith({
+			type: 'focus-canvas-block',
+			blockId: chartId
+		});
+	});
 });

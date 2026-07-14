@@ -5,13 +5,14 @@
 	import InlineStatusLine from '$lib/components/genui/InlineStatusLine.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 	import {
+		blockIdentityKey,
 		buildToolCanvasDispatchPlan,
 		extractBlockFromPart,
 		extractCompanionBlocks,
 		buildSearchDataCacheThroughPart,
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
-	import type { BlockAction } from '$lib/types/genui';
+	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
 
 	let {
 		chat,
@@ -111,15 +112,15 @@
 		};
 	}
 
-	// Build a lookup: messageId → canvasBlockId[] (supports multiple blocks per message)
+	// Build a lookup: messageId → canvas blocks (supports multiple blocks per message)
 	let canvasBlockLookup = $derived(() => {
-		const map = new Map<string, string[]>();
+		const map = new Map<string, CanvasBlock[]>();
 		for (const cb of canvasStore.blocks) {
 			const existing = map.get(cb.messageId);
 			if (existing) {
-				existing.push(cb.id);
+				existing.push(cb);
 			} else {
-				map.set(cb.messageId, [cb.id]);
+				map.set(cb.messageId, [cb]);
 			}
 		}
 		return map;
@@ -320,10 +321,10 @@
 								</button>
 							{:else}
 								{@const _lookup = canvasBlockLookup()}
-								{@const _canvasIds = _lookup.get(message.id) || []}
+								{@const _canvasBlocks = _lookup.get(message.id) || []}
 								{@const _partCanvasMap = (() => {
 									const map = new Map<number, string[]>();
-									let blockIdx = 0;
+									const remaining = _canvasBlocks.slice();
 									for (let i = 0; i < message.parts.length; i++) {
 										const p = message.parts[i];
 										if (p.type.startsWith('tool-')) {
@@ -333,11 +334,15 @@
 											);
 											const dispatchPlan = buildToolCanvasDispatchPlan(p, b, message.id);
 											if (dispatchPlan.canvasBlocks.length > 0) {
-												map.set(
-													i,
-													_canvasIds.slice(blockIdx, blockIdx + dispatchPlan.canvasBlocks.length)
-												);
-												blockIdx += dispatchPlan.canvasBlocks.length;
+												const canvasIds = dispatchPlan.canvasBlocks.map((expectedBlock) => {
+													const expectedKey = blockIdentityKey(expectedBlock);
+													const matchIndex = remaining.findIndex(
+														(canvasBlock) => blockIdentityKey(canvasBlock.block) === expectedKey
+													);
+													if (matchIndex < 0) return '';
+													return remaining.splice(matchIndex, 1)[0].id;
+												});
+												map.set(i, canvasIds);
 											}
 										}
 									}

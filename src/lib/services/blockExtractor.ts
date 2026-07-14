@@ -33,6 +33,48 @@ export interface MessagePartsLike {
 	parts?: unknown[];
 }
 
+/**
+ * Returns a stable identity for a rendered block so transcript links can find
+ * their canvas target even when an earlier tab has been removed.
+ *
+ * Action-card status is mutable in the canvas, so durable execution IDs are the
+ * identity for those blocks. Other blocks use a key-sorted structural
+ * representation, which also works after canvas state has been persisted and
+ * restored as new object instances.
+ */
+export function blockIdentityKey(block: UIBlock): string {
+	if (block.type === 'action-card' && block.data.executionId) {
+		return `action-card:${block.data.executionId}`;
+	}
+	if (block.type === 'coffee-cards') {
+		return `coffee-cards:${block.data.map((coffee) => String(coffee.id)).join(',')}`;
+	}
+	if (block.type === 'roast-profiles') {
+		return `roast-profiles:${block.data.map((profile) => String(profile.roast_id)).join(',')}`;
+	}
+	if (block.type === 'inventory-table') {
+		return `inventory-table:${block.data.map((item) => String(item.id)).join(',')}`;
+	}
+	if (block.type === 'data-table') {
+		return `data-table:${stableSerialize(block.data.rows)}`;
+	}
+	return stableSerialize(block);
+}
+
+function stableSerialize(value: unknown): string {
+	if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`;
+	if (value && typeof value === 'object') {
+		return `{${Object.keys(value)
+			.sort()
+			.map(
+				(key) =>
+					`${JSON.stringify(key)}:${stableSerialize((value as Record<string, unknown>)[key])}`
+			)
+			.join(',')}}`;
+	}
+	return JSON.stringify(value) ?? String(value);
+}
+
 /** Tool names whose raw output should be suppressed when present_results is used */
 const PRESENTABLE_TOOLS = new Set([
 	'coffee_catalog_search',
