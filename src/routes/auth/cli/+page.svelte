@@ -24,11 +24,7 @@
 				}).format(new Date(data.request.expiresAt))
 			: ''
 	);
-	const signInUrl = $derived(
-		data.requestToken
-			? `/auth?next=${encodeURIComponent(`/auth/cli?request=${encodeURIComponent(data.requestToken)}`)}`
-			: '/auth'
-	);
+	const signInUrl = '/auth?next=%2Fauth%2Fcli';
 </script>
 
 <svelte:head>

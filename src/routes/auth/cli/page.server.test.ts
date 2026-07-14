@@ -27,6 +27,11 @@ function makeEvent(options: { authenticated?: boolean; requestToken?: string | n
 		request: new Request(url, { method: 'GET' }),
 		fetch: vi.fn(),
 		setHeaders: vi.fn(),
+		cookies: {
+			get: vi.fn(),
+			set: vi.fn(),
+			delete: vi.fn()
+		},
 		locals: {
 			safeGetSession: vi.fn().mockResolvedValue(authenticated ? AUTHED : UNAUTHED)
 		}
@@ -99,9 +104,17 @@ describe('load /auth/cli', () => {
 	});
 
 	it('sends an unauthenticated user through the existing login and preserves only this request', async () => {
-		await expect(route.load(makeEvent({ authenticated: false }) as never)).rejects.toMatchObject({
+		const event = makeEvent({ authenticated: false });
+		await expect(route.load(event as never)).rejects.toMatchObject({
 			status: 303,
-			location: `/auth?next=${encodeURIComponent(`/auth/cli?request=${encodeURIComponent(TOKEN)}`)}`
+			location: `/auth?next=${encodeURIComponent('/auth/cli')}`
+		});
+		expect(event.cookies.set).toHaveBeenCalledWith('purveyors_cli_auth_request', TOKEN, {
+			httpOnly: true,
+			maxAge: 600,
+			path: '/auth',
+			sameSite: 'lax',
+			secure: true
 		});
 		expect(mockInspect).toHaveBeenCalledWith({ requestToken: TOKEN });
 	});
@@ -145,12 +158,17 @@ describe('load /auth/cli', () => {
 		expect(JSON.stringify(result)).not.toContain('sensitive upstream detail');
 	});
 
-	it('builds a same-origin return path without accepting an external next target', () => {
-		const malicious = 'token?next=https://attacker.example';
-		const next = route._buildCliAuthNextPath(malicious);
+	it('reads the request token from the server-only cookie after login', async () => {
+		const event = makeEvent({ requestToken: null });
+		event.cookies.get.mockReturnValue(TOKEN);
 
-		expect(next).toBe(`/auth/cli?request=${encodeURIComponent(malicious)}`);
-		expect(new URL(next, 'https://purveyors.io').origin).toBe('https://purveyors.io');
+		const result = await route.load(event as never);
+
+		expect(mockInspect).toHaveBeenCalledWith({ requestToken: TOKEN });
+		expect(result).toMatchObject({ requestToken: TOKEN, request: { machineName: 'roaster-host' } });
+		expect(event.cookies.delete).toHaveBeenCalledWith('purveyors_cli_auth_request', {
+			path: '/auth'
+		});
 	});
 });
 
@@ -166,13 +184,41 @@ describe('approve action', () => {
 	});
 
 	it('returns a signed-out approval safely to the same request after login', async () => {
-		await expect(
-			route.actions.approve(makeActionEvent(TOKEN, false) as never)
-		).rejects.toMatchObject({
+		const event = makeActionEvent(TOKEN, false);
+		await expect(route.actions.approve(event as never)).rejects.toMatchObject({
 			status: 303,
-			location: `/auth?next=${encodeURIComponent(`/auth/cli?request=${encodeURIComponent(TOKEN)}`)}`
+			location: `/auth?next=${encodeURIComponent('/auth/cli')}`
+		});
+		expect(event.cookies.set).toHaveBeenCalledWith('purveyors_cli_auth_request', TOKEN, {
+			httpOnly: true,
+			maxAge: 600,
+			path: '/auth',
+			sameSite: 'lax',
+			secure: true
 		});
 		expect(mockApprove).not.toHaveBeenCalled();
+	});
+
+	it('stores the request server-side when the approval session expires', async () => {
+		mockApprove.mockResolvedValueOnce({
+			error: { error: { code: 'session_expired', message: 'sensitive detail' } },
+			response: new Response(null, { status: 401 })
+		});
+		const event = makeActionEvent();
+
+		const result = await route.actions.approve(event as never);
+
+		expect(result).toMatchObject({
+			status: 401,
+			data: { approved: false, signedOut: true, terminal: false }
+		});
+		expect(event.cookies.set).toHaveBeenCalledWith('purveyors_cli_auth_request', TOKEN, {
+			httpOnly: true,
+			maxAge: 600,
+			path: '/auth',
+			sameSite: 'lax',
+			secure: true
+		});
 	});
 
 	it('turns expired or already-invalid approval requests into terminal safe failures', async () => {

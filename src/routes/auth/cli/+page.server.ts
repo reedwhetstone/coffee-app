@@ -1,15 +1,18 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
-import { sanitizeNextPath } from '$lib/utils/safeRedirect';
 import type { Actions, PageServerLoad } from './$types';
 
 const DEFAULT_FAILURE =
 	'This CLI sign-in request is invalid or no longer available. Start a new login from the CLI.';
+const CLI_REQUEST_COOKIE = 'purveyors_cli_auth_request';
+const AUTH_RETURN_PATH = '/auth/cli';
 
 type InspectFailure = {
 	title: string;
 	message: string;
 };
+
+type CliAuthEvent = Pick<Parameters<PageServerLoad>[0], 'url' | 'cookies'>;
 
 function inspectFailure(status: number): InspectFailure {
 	if (status === 410) {
@@ -32,12 +35,22 @@ function inspectFailure(status: number): InspectFailure {
 	};
 }
 
-/**
- * Rebuild the post-login destination from the one signed request value this
- * route understands. Never forward an arbitrary `next` value from the URL.
- */
-export function _buildCliAuthNextPath(requestToken: string): string {
-	return sanitizeNextPath(`/auth/cli?request=${encodeURIComponent(requestToken)}`, '/auth/cli');
+function rememberCliRequest(event: CliAuthEvent, requestToken: string) {
+	event.cookies.set(CLI_REQUEST_COOKIE, requestToken, {
+		httpOnly: true,
+		maxAge: 10 * 60,
+		path: '/auth',
+		sameSite: 'lax',
+		secure: event.url.protocol === 'https:'
+	});
+}
+
+function clearCliRequest(event: CliAuthEvent) {
+	event.cookies.delete(CLI_REQUEST_COOKIE, { path: '/auth' });
+}
+
+function authRedirectLocation() {
+	return `/auth?next=${encodeURIComponent(AUTH_RETURN_PATH)}`;
 }
 
 export const load: PageServerLoad = async (event) => {
@@ -48,7 +61,8 @@ export const load: PageServerLoad = async (event) => {
 		'x-frame-options': 'DENY'
 	});
 
-	const requestToken = event.url.searchParams.get('request')?.trim();
+	const requestToken =
+		event.url.searchParams.get('request')?.trim() || event.cookies.get(CLI_REQUEST_COOKIE)?.trim();
 	if (!requestToken) {
 		return {
 			request: null,
@@ -61,6 +75,7 @@ export const load: PageServerLoad = async (event) => {
 		const { data, error, response } = await client.cliAuth.inspect({ requestToken });
 
 		if (error || !data) {
+			clearCliRequest(event);
 			return {
 				request: null,
 				failure: inspectFailure(response.status)
@@ -69,9 +84,11 @@ export const load: PageServerLoad = async (event) => {
 
 		const { session, user } = await event.locals.safeGetSession();
 		if (!session || !user) {
-			const next = _buildCliAuthNextPath(requestToken);
-			throw redirect(303, `/auth?next=${encodeURIComponent(next)}`);
+			rememberCliRequest(event, requestToken);
+			throw redirect(303, authRedirectLocation());
 		}
+
+		clearCliRequest(event);
 
 		return {
 			requestToken,
@@ -87,6 +104,7 @@ export const load: PageServerLoad = async (event) => {
 			throw cause;
 		}
 
+		clearCliRequest(event);
 		console.error('Failed to inspect CLI sign-in request');
 		return {
 			request: null,
@@ -114,8 +132,8 @@ export const actions: Actions = {
 		const normalizedRequestToken = requestToken.trim();
 		const { session, user } = await event.locals.safeGetSession();
 		if (!session || !user) {
-			const next = _buildCliAuthNextPath(normalizedRequestToken);
-			throw redirect(303, `/auth?next=${encodeURIComponent(next)}`);
+			rememberCliRequest(event, normalizedRequestToken);
+			throw redirect(303, authRedirectLocation());
 		}
 
 		try {
@@ -126,6 +144,8 @@ export const actions: Actions = {
 
 			if (error || !data?.approved) {
 				const terminal = [400, 403, 409, 410].includes(response.status);
+				const signedOut = response.status === 401;
+				if (signedOut) rememberCliRequest(event, normalizedRequestToken);
 				const message = terminal
 					? DEFAULT_FAILURE
 					: response.status === 401
@@ -134,7 +154,7 @@ export const actions: Actions = {
 
 				return fail(response.status >= 400 && response.status < 600 ? response.status : 502, {
 					approved: false,
-					signedOut: response.status === 401,
+					signedOut,
 					terminal,
 					error: message
 				});
