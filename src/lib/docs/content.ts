@@ -429,7 +429,7 @@ const docsPages: DocsPage[] = [
 					'/catalog and /analytics are end-user product surfaces that reflect the same coffee domain model as the API.',
 					'/docs is the shared public documentation tree for both the HTTP API and @purveyors/cli.',
 					'/llms.txt, /sitemap.xml, and /blog/feed.xml are anonymous discoverability endpoints for agents, crawlers, and feed readers. They expose navigation metadata, not integration data contracts.',
-					'/auth/callback and /auth/cli-callback are OAuth handoff surfaces. They are part of login flow reliability, not REST API resources.',
+					'/auth/callback and /auth/cli-callback are OAuth handoff surfaces, while /auth/cli is the signed-in browser consent surface for CLI authorization requests. They are part of login flow reliability, not REST API resources.',
 					'The web app and CLI both consume Parchment API contracts, so their product behavior should stay aligned.'
 				]
 			}
@@ -1403,6 +1403,13 @@ const docsPages: DocsPage[] = [
 							'OAuth redirect target',
 							'CLI login helper page',
 							'Browser page that lets remote and headless CLI flows copy the full callback URL back into purvey auth login.'
+						],
+						[
+							'/auth/cli',
+							'GET, POST',
+							'Signed CLI request plus user session for approval',
+							'CLI authorization consent page',
+							'Browser page that inspects a short-lived CLI authorization request and lets a signed-in user approve it.'
 						],
 						[
 							'/.well-known/appspecific/com.chrome.devtools.json',
