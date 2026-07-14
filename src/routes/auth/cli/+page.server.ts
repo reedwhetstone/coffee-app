@@ -39,14 +39,14 @@ function rememberCliRequest(event: CliAuthEvent, requestToken: string) {
 	event.cookies.set(CLI_REQUEST_COOKIE, requestToken, {
 		httpOnly: true,
 		maxAge: 10 * 60,
-		path: '/auth',
+		path: AUTH_RETURN_PATH,
 		sameSite: 'lax',
 		secure: event.url.protocol === 'https:'
 	});
 }
 
 function clearCliRequest(event: CliAuthEvent) {
-	event.cookies.delete(CLI_REQUEST_COOKIE, { path: '/auth' });
+	event.cookies.delete(CLI_REQUEST_COOKIE, { path: AUTH_RETURN_PATH });
 }
 
 function isApproveActionLoad(url: URL) {
@@ -66,8 +66,11 @@ export const load: PageServerLoad = async (event) => {
 		'x-frame-options': 'DENY'
 	});
 
-	const requestToken =
-		event.url.searchParams.get('request')?.trim() || event.cookies.get(CLI_REQUEST_COOKIE)?.trim();
+	const requestTokenFromQuery = event.url.searchParams.get('request')?.trim();
+	const requestTokenFromCookie = requestTokenFromQuery
+		? undefined
+		: event.cookies.get(CLI_REQUEST_COOKIE)?.trim();
+	const requestToken = requestTokenFromQuery || requestTokenFromCookie;
 	if (!requestToken) {
 		return {
 			request: null,
@@ -80,7 +83,7 @@ export const load: PageServerLoad = async (event) => {
 		const { data, error, response } = await client.cliAuth.inspect({ requestToken });
 
 		if (error || !data) {
-			if (!isApproveActionLoad(event.url) || response.status < 500) {
+			if (!requestTokenFromCookie || response.status < 500) {
 				clearCliRequest(event);
 			}
 			return {
@@ -113,7 +116,7 @@ export const load: PageServerLoad = async (event) => {
 			throw cause;
 		}
 
-		if (!isApproveActionLoad(event.url)) {
+		if (!requestTokenFromCookie) {
 			clearCliRequest(event);
 		}
 		console.error('Failed to inspect CLI sign-in request');

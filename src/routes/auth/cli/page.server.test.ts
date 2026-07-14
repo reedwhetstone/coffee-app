@@ -119,7 +119,7 @@ describe('load /auth/cli', () => {
 		expect(event.cookies.set).toHaveBeenCalledWith('purveyors_cli_auth_request', TOKEN, {
 			httpOnly: true,
 			maxAge: 600,
-			path: '/auth',
+			path: '/auth/cli',
 			sameSite: 'lax',
 			secure: true
 		});
@@ -174,8 +174,25 @@ describe('load /auth/cli', () => {
 		expect(mockInspect).toHaveBeenCalledWith({ requestToken: TOKEN });
 		expect(result).toMatchObject({ requestToken: TOKEN, request: { machineName: 'roaster-host' } });
 		expect(event.cookies.delete).toHaveBeenCalledWith('purveyors_cli_auth_request', {
-			path: '/auth'
+			path: '/auth/cli'
 		});
+	});
+
+	it('keeps the cookie when cookie-backed inspection is temporarily unavailable', async () => {
+		const event = makeEvent({ requestToken: null });
+		event.cookies.get.mockReturnValue(TOKEN);
+		mockInspect.mockResolvedValueOnce({
+			error: { error: { code: 'internal_error', message: 'sensitive upstream detail' } },
+			response: new Response(null, { status: 503 })
+		});
+
+		const result = await route.load(event as never);
+
+		expect(result).toMatchObject({
+			request: null,
+			failure: { title: 'CLI sign-in is temporarily unavailable' }
+		});
+		expect(event.cookies.delete).not.toHaveBeenCalled();
 	});
 
 	it('keeps the request cookie during the load that follows a retryable approval failure', async () => {
@@ -208,7 +225,7 @@ describe('approve action', () => {
 		expect(event.cookies.set).toHaveBeenCalledWith('purveyors_cli_auth_request', TOKEN, {
 			httpOnly: true,
 			maxAge: 600,
-			path: '/auth',
+			path: '/auth/cli',
 			sameSite: 'lax',
 			secure: true
 		});
@@ -231,7 +248,7 @@ describe('approve action', () => {
 		expect(event.cookies.set).toHaveBeenCalledWith('purveyors_cli_auth_request', TOKEN, {
 			httpOnly: true,
 			maxAge: 600,
-			path: '/auth',
+			path: '/auth/cli',
 			sameSite: 'lax',
 			secure: true
 		});
@@ -253,7 +270,7 @@ describe('approve action', () => {
 		expect(event.cookies.set).toHaveBeenCalledWith('purveyors_cli_auth_request', TOKEN, {
 			httpOnly: true,
 			maxAge: 600,
-			path: '/auth',
+			path: '/auth/cli',
 			sameSite: 'lax',
 			secure: true
 		});
