@@ -429,7 +429,7 @@ const docsPages: DocsPage[] = [
 					'/catalog and /analytics are end-user product surfaces that reflect the same coffee domain model as the API.',
 					'/docs is the shared public documentation tree for both the HTTP API and @purveyors/cli.',
 					'/llms.txt, /sitemap.xml, and /blog/feed.xml are anonymous discoverability endpoints for agents, crawlers, and feed readers. They expose navigation metadata, not integration data contracts.',
-					'/auth/callback and /auth/cli-callback are OAuth handoff surfaces, while /auth/cli is the signed-in browser consent surface for CLI authorization requests. They are part of login flow reliability, not REST API resources.',
+					'/auth/callback is the web OAuth handoff surface, while /auth/cli is the signed-in browser consent surface for CLI authorization requests. They are part of login flow reliability, not REST API resources.',
 					'The web app and CLI both consume Parchment API contracts, so their product behavior should stay aligned.'
 				]
 			}
@@ -1396,13 +1396,6 @@ const docsPages: DocsPage[] = [
 							'OAuth code',
 							'Auth handoff route',
 							'Exchanges a Supabase auth code for a session, sanitizes next to an internal path, and redirects to the target or /auth/auth-code-error.'
-						],
-						[
-							'/auth/cli-callback',
-							'GET',
-							'OAuth redirect target',
-							'CLI login helper page',
-							'Browser page that lets remote and headless CLI flows copy the full callback URL back into purvey auth login.'
 						],
 						[
 							'/auth/cli',

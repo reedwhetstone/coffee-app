@@ -6,10 +6,7 @@ describe('usesStandaloneShell', () => {
 		expect(usesStandaloneShell(pathname)).toBe(true);
 	});
 
-	it.each(['/auth', '/auth/cli-callback', '/catalog', '/'])(
-		'does not isolate route %s',
-		(pathname) => {
-			expect(usesStandaloneShell(pathname)).toBe(false);
-		}
-	);
+	it.each(['/auth', '/catalog', '/'])('does not isolate route %s', (pathname) => {
+		expect(usesStandaloneShell(pathname)).toBe(false);
+	});
 });
