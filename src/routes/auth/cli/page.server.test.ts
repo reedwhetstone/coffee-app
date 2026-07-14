@@ -2,8 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockCreateParchmentServerClient = vi.fn();
 const mockInspect = vi.fn();
-const mockApprove = vi.fn();
-const mockSignOut = vi.fn();
 
 vi.mock('$lib/server/parchmentClient', () => ({
 	createParchmentServerClient: mockCreateParchmentServerClient
@@ -35,38 +33,9 @@ function makeEvent(options: { authenticated?: boolean; requestToken?: string | n
 		},
 		locals: {
 			safeGetSession: vi.fn().mockResolvedValue(authenticated ? AUTHED : UNAUTHED),
-			supabase: { auth: { signOut: mockSignOut } }
+			supabase: { auth: { signOut: vi.fn() } }
 		}
 	};
-}
-
-function makeActionEvent(requestToken = TOKEN, authenticated = true) {
-	const event = makeEvent({ authenticated, requestToken });
-	const form = new FormData();
-	form.set('request', requestToken);
-	return {
-		...event,
-		request: new Request('https://purveyors.io/auth/cli?/approve', {
-			method: 'POST',
-			body: form
-		})
-	};
-}
-
-function makeActionLoadEvent(action = '/approve', requestToken = TOKEN, authenticated = true) {
-	const event = makeEvent({ authenticated, requestToken: null });
-	event.url.search = `?${action}`;
-	event.cookies.get.mockReturnValue(requestToken);
-	return event;
-}
-
-function makeReauthenticateActionEvent(authenticated = true) {
-	const event = makeEvent({ authenticated, requestToken: null });
-	event.cookies.get.mockReturnValue(TOKEN);
-	event.request = new Request('https://purveyors.io/auth/cli?/reauthenticate', {
-		method: 'POST'
-	});
-	return event;
 }
 
 beforeEach(async () => {
@@ -82,16 +51,8 @@ beforeEach(async () => {
 		},
 		response: new Response(null, { status: 200 })
 	});
-	mockApprove.mockResolvedValue({
-		data: {
-			requestId: '11111111-1111-4111-8111-111111111111',
-			approved: true
-		},
-		response: new Response(null, { status: 200 })
-	});
-	mockSignOut.mockResolvedValue({ error: null });
 	mockCreateParchmentServerClient.mockResolvedValue({
-		cliAuth: { inspect: mockInspect, approve: mockApprove }
+		cliAuth: { inspect: mockInspect }
 	});
 
 	route = await import('./+page.server');
@@ -114,6 +75,13 @@ describe('load /auth/cli', () => {
 			failure: null
 		});
 		expect(JSON.stringify(result)).not.toContain('apiKey');
+		expect(event.cookies.set).toHaveBeenCalledWith('purveyors_cli_auth_request', TOKEN, {
+			httpOnly: true,
+			maxAge: 600,
+			path: '/auth/cli',
+			sameSite: 'lax',
+			secure: true
+		});
 		expect(event.setHeaders).toHaveBeenCalledWith({
 			'cache-control': 'no-store',
 			'referrer-policy': 'no-referrer',
@@ -240,142 +208,5 @@ describe('load /auth/cli', () => {
 			failure: { title: 'CLI sign-in is temporarily unavailable' }
 		});
 		expect(event.cookies.delete).not.toHaveBeenCalled();
-	});
-
-	it('keeps the request cookie during the load that follows a retryable approval failure', async () => {
-		const event = makeActionLoadEvent();
-
-		const result = await route.load(event as never);
-
-		expect(result).toMatchObject({ requestToken: TOKEN, request: { machineName: 'roaster-host' } });
-		expect(event.cookies.delete).not.toHaveBeenCalled();
-	});
-
-	it('keeps the request cookie during the load that follows a reauthentication failure', async () => {
-		const event = makeActionLoadEvent('/reauthenticate');
-
-		const result = await route.load(event as never);
-
-		expect(result).toMatchObject({ requestToken: TOKEN, request: { machineName: 'roaster-host' } });
-		expect(event.cookies.delete).not.toHaveBeenCalled();
-	});
-});
-
-describe('reauthenticate action', () => {
-	it('requires the CLI request cookie and signs out through an explicit POST action', async () => {
-		const event = makeReauthenticateActionEvent();
-
-		await expect(route.actions.reauthenticate(event as never)).rejects.toMatchObject({
-			status: 303,
-			location: `/auth?next=${encodeURIComponent('/auth/cli')}`
-		});
-		expect(event.cookies.get).toHaveBeenCalledWith('purveyors_cli_auth_request');
-		expect(mockSignOut).toHaveBeenCalledTimes(1);
-		expect(event.cookies.delete).not.toHaveBeenCalledWith('purveyors_cli_auth_request', {
-			path: '/auth/cli'
-		});
-	});
-
-	it('does not sign out without the preserved CLI request cookie', async () => {
-		const event = makeReauthenticateActionEvent();
-		event.cookies.get.mockReturnValue(undefined);
-
-		const result = await route.actions.reauthenticate(event as never);
-
-		expect(result).toMatchObject({
-			status: 400,
-			data: { signedOut: false, terminal: true }
-		});
-		expect(mockSignOut).not.toHaveBeenCalled();
-	});
-});
-
-describe('approve action', () => {
-	it('requires an explicit POST action and forwards the current session to Parchment', async () => {
-		const event = makeActionEvent();
-		const result = await route.actions.approve(event as never);
-
-		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(event, { mode: 'session' });
-		expect(mockApprove).toHaveBeenCalledWith({ requestToken: TOKEN });
-		expect(result).toEqual({ approved: true, signedOut: false, terminal: true });
-		expect(JSON.stringify(result)).not.toContain('apiKey');
-	});
-
-	it('returns a signed-out approval safely to the same request after login', async () => {
-		const event = makeActionEvent(TOKEN, false);
-		await expect(route.actions.approve(event as never)).rejects.toMatchObject({
-			status: 303,
-			location: `/auth?next=${encodeURIComponent('/auth/cli')}`
-		});
-		expect(event.cookies.set).toHaveBeenCalledWith('purveyors_cli_auth_request', TOKEN, {
-			httpOnly: true,
-			maxAge: 600,
-			path: '/auth/cli',
-			sameSite: 'lax',
-			secure: true
-		});
-		expect(mockApprove).not.toHaveBeenCalled();
-	});
-
-	it('stores the request server-side when the approval session expires', async () => {
-		mockApprove.mockResolvedValueOnce({
-			error: { error: { code: 'session_expired', message: 'sensitive detail' } },
-			response: new Response(null, { status: 401 })
-		});
-		const event = makeActionEvent();
-
-		const result = await route.actions.approve(event as never);
-
-		expect(result).toMatchObject({
-			status: 401,
-			data: { approved: false, signedOut: true, terminal: false }
-		});
-		expect(event.cookies.set).toHaveBeenCalledWith('purveyors_cli_auth_request', TOKEN, {
-			httpOnly: true,
-			maxAge: 600,
-			path: '/auth/cli',
-			sameSite: 'lax',
-			secure: true
-		});
-	});
-
-	it('stores the request server-side for transient approval failures', async () => {
-		mockApprove.mockResolvedValueOnce({
-			error: { error: { code: 'internal_error', message: 'sensitive detail' } },
-			response: new Response(null, { status: 503 })
-		});
-		const event = makeActionEvent();
-
-		const result = await route.actions.approve(event as never);
-
-		expect(result).toMatchObject({
-			status: 503,
-			data: { approved: false, signedOut: false, terminal: false }
-		});
-		expect(event.cookies.set).toHaveBeenCalledWith('purveyors_cli_auth_request', TOKEN, {
-			httpOnly: true,
-			maxAge: 600,
-			path: '/auth/cli',
-			sameSite: 'lax',
-			secure: true
-		});
-	});
-
-	it('turns expired or already-invalid approval requests into terminal safe failures', async () => {
-		mockApprove.mockResolvedValueOnce({
-			error: { error: { code: 'request_consumed', message: 'sensitive detail' } },
-			response: new Response(null, { status: 410 })
-		});
-
-		const result = await route.actions.approve(makeActionEvent() as never);
-		expect(result).toMatchObject({
-			status: 410,
-			data: {
-				approved: false,
-				terminal: true,
-				error: expect.stringContaining('no longer available')
-			}
-		});
-		expect(JSON.stringify(result)).not.toContain('sensitive detail');
 	});
 });
