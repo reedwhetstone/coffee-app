@@ -31,6 +31,8 @@ describe('Web Bot Auth key directory', () => {
 			'tag="http-message-signatures-directory"'
 		);
 		expect(response.headers.get('signature-input')).toContain('"@authority";req');
+		expect(response.headers.get('signature-input')).toContain('"content-digest"');
+		expect(response.headers.get('content-digest')).toMatch(/^sha-256=:[A-Za-z0-9+/]+={0,2}:$/);
 		expect(response.headers.get('signature-input')).toContain(
 			`created=${Math.floor(now.getTime() / 1000)}`
 		);

@@ -56,6 +56,9 @@ importers:
       glob:
         specifier: ^10.3.10
         version: 10.5.0
+      http-message-sig:
+        specifier: 0.2.0
+        version: 0.2.0
       jose:
         specifier: ^5.9.6
         version: 5.10.0
@@ -138,9 +141,6 @@ importers:
       happy-dom:
         specifier: ^20.7.0
         version: 20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
-      http-message-sig:
-        specifier: 0.2.0
-        version: 0.2.0
       mdsvex:
         specifier: ^0.11.2
         version: 0.11.2(svelte@5.48.0)

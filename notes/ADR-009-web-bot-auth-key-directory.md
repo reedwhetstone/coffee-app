@@ -22,9 +22,11 @@ Signatures, and returns `503` when the identity is absent or malformed.
 
 The same private JWK is deployed to the coffee-scraper runtime so outgoing
 Shopify requests and the public directory share one cryptographic identity.
-Keys are environment secrets, never repository content. Rotation uses a staged
-overlap: publish both public keys, deploy the new signer, then remove the old
-key after caches and registrations have expired.
+Keys are environment secrets, never repository content. The first release
+supports one active key. Rotation therefore requires a maintenance window:
+pause signed traffic, replace the shared secret and registration, wait for the
+five-minute directory cache to expire, then resume. Multi-key overlap is a
+future hardening step and must be implemented before zero-downtime rotation.
 
 ## Consequences
 

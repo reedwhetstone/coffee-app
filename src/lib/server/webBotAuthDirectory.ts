@@ -1,4 +1,6 @@
-import { MediaType, directoryResponseHeaders, type Signer } from 'web-bot-auth';
+import { createHash } from 'node:crypto';
+import { signatureHeaders } from 'http-message-sig';
+import { MediaType, type Signer } from 'web-bot-auth';
 import { signerFromJWK } from 'web-bot-auth/crypto';
 
 export const WEB_BOT_AUTH_DIRECTORY_PATH = '/.well-known/http-message-signatures-directory';
@@ -49,20 +51,30 @@ export async function createWebBotAuthDirectoryResponse(
 	const privateJwk = parsePrivateJwk(privateJwkRaw);
 	const signer: Signer = await signerFromJWK(privateJwk);
 	const body = JSON.stringify({ keys: [publicJwk(privateJwk)] });
+	const contentDigest = `sha-256=:${createHash('sha256').update(body).digest('base64')}:`;
 	const response = new Response(body, {
 		status: 200,
 		headers: {
 			'Content-Type': WEB_BOT_AUTH_DIRECTORY_MEDIA_TYPE,
 			'Cache-Control': 'public, max-age=300, s-maxage=300',
+			'Content-Digest': contentDigest,
 			'X-Content-Type-Options': 'nosniff'
 		}
 	});
-	const signatureHeaders = await directoryResponseHeaders({ request, response }, [signer], {
-		created: now,
-		expires: new Date(now.getTime() + 60 * 60 * 1000)
-	});
+	const signed = await signatureHeaders(
+		{ request, response },
+		{
+			signer,
+			components: [{ name: '@authority', parameters: new Map([['req', true]]) }, 'content-digest'],
+			created: now,
+			expires: new Date(now.getTime() + 60 * 60 * 1000),
+			keyid: signer.keyid,
+			key: 'binding0',
+			tag: 'http-message-signatures-directory'
+		}
+	);
 
-	response.headers.set('Signature', signatureHeaders.Signature);
-	response.headers.set('Signature-Input', signatureHeaders['Signature-Input']);
+	response.headers.set('Signature', signed.Signature);
+	response.headers.set('Signature-Input', signed['Signature-Input']);
 	return response;
 }
