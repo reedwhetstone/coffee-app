@@ -1391,6 +1391,13 @@ const docsPages: DocsPage[] = [
 							'RSS 2.0 feed for published blog posts. It is content syndication, not a catalog or analytics API.'
 						],
 						[
+							'/.well-known/http-message-signatures-directory',
+							'GET',
+							'Anonymous',
+							'Web Bot Auth key directory',
+							'Publishes the configured public Ed25519 key in a signed directory response. The response is cached for five minutes and returns 503 when the signing identity is absent or malformed.'
+						],
+						[
 							'/auth/callback',
 							'GET',
 							'OAuth code',

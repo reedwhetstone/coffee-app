@@ -61,7 +61,7 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
    - Mixed auth model depending on route: catalog BFF adapters can allow anonymous or session access, most product routes require session auth, and chat/workspace routes require either Mallard Studio membership or Parchment Intelligence access
    - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
-   - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are metadata or compatibility endpoints, not catalog or analytics APIs
+   - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, `/.well-known/http-message-signatures-directory`, and `/.well-known/appspecific/com.chrome.devtools.json` are metadata or compatibility endpoints, not catalog or analytics APIs
    - `/auth/callback` is the web OAuth handoff surface; `/auth/cli` is the signed-in browser consent surface for CLI authorization requests. Neither is a REST resource
    - `/api/tools/*` routes are deprecated compatibility shims; prefer session-mode Parchment SDK integration for new work
 
