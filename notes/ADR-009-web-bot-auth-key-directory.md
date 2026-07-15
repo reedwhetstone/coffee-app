@@ -12,6 +12,14 @@ HTTPS identity that Shopify can verify without publishing private signing
 material. The scraper host is not a public HTTPS service, while coffee-app
 already owns the canonical `purveyors.io` public origin.
 
+This is Shopify's bot-operator flow, not the merchant Crawler Access flow.
+Shopify's operator registration form requires each bot to send its own
+`Signature-Agent` value and expose its own public-key directory before
+registration. The Shopify-admin signatures with
+`Signature-Agent: "https://shopify.com"` are domain-scoped credentials for a
+merchant crawling a store that merchant controls. Purveyors does not administer
+supplier stores, so those merchant-issued credentials are not applicable.
+
 ## Decision
 
 Coffee-app will serve the required signed JWKS response at
