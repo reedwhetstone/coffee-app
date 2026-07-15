@@ -140,7 +140,7 @@ Treat the web app and the external Parchment API as two separate HTTP surfaces:
    - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
    - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are public metadata or compatibility endpoints; document them as discoverability surfaces, not product APIs
-   - `/auth/callback` and `/auth/cli-callback` are OAuth handoff surfaces; `/auth/cli` is the signed-in browser consent surface for CLI authorization requests. They belong in platform docs only when auth flow behavior matters
+   - `/auth/callback` is the web OAuth handoff surface; `/auth/cli` is the signed-in browser consent surface for CLI authorization requests. They belong in platform docs only when auth flow behavior matters
    - `/api/tools/*` routes are deprecated; prefer direct session-mode Parchment SDK integration
 
 Do not blur those layers in code comments, docs, or PR descriptions.
@@ -155,7 +155,7 @@ When changing docs, keep these sources aligned:
 - the `/docs` tree under `src/routes/docs`
 - the `/api-dashboard` console surface, including `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate`
 - any legacy docs redirects such as `/api/docs` and `/api-dashboard/docs`
-- metadata and handoff routes such as `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, `/.well-known/appspecific/com.chrome.devtools.json`, `/auth/callback`, `/auth/cli-callback`, and `/auth/cli` when platform route coverage changes
+- metadata and handoff routes such as `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, `/.well-known/appspecific/com.chrome.devtools.json`, `/auth/callback`, and `/auth/cli` when platform route coverage changes
 - `src/routes/api/+page.server.ts` and `/api` copy when plan naming, limits, or route framing changes
 
 ### Docs architecture

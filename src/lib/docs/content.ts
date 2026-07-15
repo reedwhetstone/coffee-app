@@ -429,7 +429,7 @@ const docsPages: DocsPage[] = [
 					'/catalog and /analytics are end-user product surfaces that reflect the same coffee domain model as the API.',
 					'/docs is the shared public documentation tree for both the HTTP API and @purveyors/cli.',
 					'/llms.txt, /sitemap.xml, and /blog/feed.xml are anonymous discoverability endpoints for agents, crawlers, and feed readers. They expose navigation metadata, not integration data contracts.',
-					'/auth/callback and /auth/cli-callback are OAuth handoff surfaces, while /auth/cli is the signed-in browser consent surface for CLI authorization requests. They are part of login flow reliability, not REST API resources.',
+					'/auth/callback is the web OAuth handoff surface, while /auth/cli is the signed-in browser consent surface for CLI authorization requests. They are part of login flow reliability, not REST API resources.',
 					'The web app and CLI both consume Parchment API contracts, so their product behavior should stay aligned.'
 				]
 			}
@@ -1398,13 +1398,6 @@ const docsPages: DocsPage[] = [
 							'Exchanges a Supabase auth code for a session, sanitizes next to an internal path, and redirects to the target or /auth/auth-code-error.'
 						],
 						[
-							'/auth/cli-callback',
-							'GET',
-							'OAuth redirect target',
-							'CLI login helper page',
-							'Browser page that lets remote and headless CLI flows copy the full callback URL back into purvey auth login.'
-						],
-						[
 							'/auth/cli',
 							'GET, POST',
 							'Signed CLI request plus user session for approval',
@@ -2096,7 +2089,7 @@ const docsPages: DocsPage[] = [
 				],
 				bullets: [
 					'Use purvey auth login for browser OAuth or purvey auth login --headless on servers, CI, and agent hosts.',
-					'Headed purvey auth login also supports a pasted callback URL when a browser opens on a different machine, localhost is unreachable, or the automatic callback fails. That manual fallback is intentional for SSH, containers, and agent hosts, not a degraded path.',
+					'purvey auth login opens a request-specific browser consent page where you review the machine name and requested scopes before authorizing. The CLI receives the scoped Parchment API key directly; the browser never displays the key.',
 					'Run purvey auth status to confirm the stored API key is valid and inspect its account email, role, key ID, and creation time before scripting against basic catalog or member-level commands.',
 					'PARCHMENT_API_KEY or the PURVEYORS_API_KEY compatibility alias overrides the key stored by purvey auth login for command execution.',
 					'Use purvey manifest when a wrapper needs the preferred machine-readable contract. Use purvey context when a human or model should read the dense reference text first, or use purvey context --json / --pretty when an existing caller needs manifest-parity output.'
@@ -2211,8 +2204,8 @@ const docsPages: DocsPage[] = [
 					}
 				],
 				bullets: [
-					'purvey auth login launches the browser OAuth flow. If the browser cannot return to the local callback server, paste the full callback URL into the waiting terminal; the command keeps listening after invalid pasted URLs so you can retry.',
-					'purvey auth login --headless prints a URL and expects a pasted callback URL, which is better for agents, CI, containers, and remote hosts.',
+					'purvey auth login opens the browser consent flow. Review the requesting machine and scopes at /auth/cli, authorize the request, and return to the terminal; the CLI exchanges its private verifier for the scoped Parchment API key.',
+					'purvey auth login --headless prints the consent URL for agents, CI, containers, and remote hosts. Open it in any browser and authorize the request; the browser approval completes the sign-in without a manual URL handoff.',
 					'Login uses the OAuth session only to mint a machine-named scoped Parchment API key. The CLI stores that key plus non-secret identity metadata, not session access or refresh tokens.',
 					'purvey auth status validates the stored API key. On success it reports authenticated state, account email, role, key ID, and key creation time; an invalid or revoked key is reported as unauthenticated.',
 					'Catalog search, get, and stats require catalog:read; structured process filters require member access. Catalog similar additionally requires a member-owned key or an API Origin/Enterprise key. Inventory, roast, sales, and tasting require the member role and matching key scopes.'
