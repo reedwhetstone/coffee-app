@@ -128,7 +128,7 @@ Exit evidence:
 
 ### Deployment gate 4: Shadow writer activation
 
-Deploy current coffee-scraper `main` after gate 2. Run a low-impact single-source non-production canary, then one scheduled production `all` run.
+Deploy current coffee-scraper `main` after deployment gate 3. Run a low-impact single-source non-production canary, then one scheduled production `all` run.
 
 Acceptance:
 
@@ -209,7 +209,7 @@ Produce a checked-in acceptance report. Any threshold or weight change creates a
 ### PR 8: Versioned reader/API cutover
 
 **Repository:** coffee-app, with CLI/API consumers updated as required
-**Boundary:** reversible consumer switch after gate 6
+**Boundary:** reversible consumer switch after Gate 7 shadow comparison and policy acceptance
 
 - Expose active publication identity, cohort, methodology, coverage, freshness, carried share, oldest observation, quality, level, matched movement, and assortment effect.
 - Use a compatibility view or versioned shared query contract consumed consistently by web, CLI, and API.
