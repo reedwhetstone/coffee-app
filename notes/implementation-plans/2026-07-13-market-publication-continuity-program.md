@@ -2,6 +2,7 @@
 
 **Date:** 2026-07-13
 **Decision:** ADR-012
+**Status:** Superseded by `2026-07-16-market-publication-recovery-and-activation.md`, which incorporates the first production run after the provenance writer merged and replaces the rejected builder boundary.
 
 ## Outcome
 
