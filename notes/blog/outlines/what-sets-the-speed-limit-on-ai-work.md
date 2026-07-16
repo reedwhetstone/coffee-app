@@ -1,9 +1,13 @@
 # Outline: What Actually Sets the Speed Limit on AI Work?
 
-**Created:** 2026-07-16  
-**Pillar:** agentic-stack  
-**Status:** drafted (PR #479)  
-**Source:** #blog discussion 2026-07-16; `brain/ideas/verifier-latency-canonical-constraints.md`  
+**Created:** 2026-07-16
+
+**Pillar:** agentic-stack
+
+**Status:** drafted (PR #479)
+
+**Source:** #blog discussion 2026-07-16; `brain/ideas/verifier-latency-canonical-constraints.md`
+
 **Target length:** 900-1,100 words
 
 ## Thesis
@@ -50,13 +54,20 @@ The framework does not claim to define universally good design. It defines what 
 
 ## Sources
 
-1. [Google Cloud, "Announcing the 2024 DORA report"](https://cloud.google.com/blog/products/devops-sre/announcing-the-2024-dora-report)  
+1. [Google Cloud, "Announcing the 2024 DORA report"](https://cloud.google.com/blog/products/devops-sre/announcing-the-2024-dora-report)
+
    Supports the measured gap between individual AI-assisted improvements and software delivery throughput/stability; also names small batches and robust testing as necessary foundations.
-2. [Michael E. Porter, "What Is Strategy?", Harvard Business Review](https://hbr.org/1996/11/what-is-strategy)  
+
+2. [Michael E. Porter, "What Is Strategy?", Harvard Business Review](https://hbr.org/1996/11/what-is-strategy)
+
    Supports strategy as a system of tradeoffs rather than universal best-practice optimization.
-3. [GOV.UK, "Government Design Principles"](https://www.gov.uk/guidance/government-design-principles)  
+
+3. [GOV.UK, "Government Design Principles"](https://www.gov.uk/guidance/government-design-principles)
+
    Concrete example of opinionated, context-aware design constraints that explicitly remain open to improvement as user needs change.
-4. ["When a Measure Becomes a Target, It Ceases to be a Good Measure", Journal of Graduate Medical Education / PubMed Central](https://pmc.ncbi.nlm.nih.gov/articles/PMC7901608/)  
+
+4. ["When a Measure Becomes a Target, It Ceases to be a Good Measure", Journal of Graduate Medical Education / PubMed Central](https://pmc.ncbi.nlm.nih.gov/articles/PMC7901608/)
+
    Provides Goodhart's law and practical mitigation against proxy optimization and rule gaming.
 
 ## Verification
