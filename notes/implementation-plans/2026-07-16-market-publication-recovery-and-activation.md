@@ -165,7 +165,7 @@ Start from current `main`; do not revive or stack on closed PR #465.
 The transaction must:
 
 1. serialize by publication date and cohort;
-2. select each enabled supplier's newest complete set with known completeness (never `unknown` or `legacy`) at or before the exclusive UTC day cutoff;
+2. select each enabled supplier's newest complete set with known completeness (never `unknown` or `legacy`) whose parent `scrape_runs` row has `publication_scope = 'production'` and `command = 'all'`, at or before the exclusive UTC day cutoff;
 3. preserve source observation time and classify each manifest entry as fresh, carried, or unavailable;
 4. compute supplier-first segment levels with bounded/versioned cohort weights;
 5. compute repricing movement only from fresh supplier-segment pairs matched to the active predecessor;
@@ -187,6 +187,7 @@ Required adversarial tests:
 - concurrent same-day and adjacent-day builders;
 - predecessor replacement after later movement depends on it;
 - partial insert or computation failure rollback;
+- non-production canary/source runs and production non-`all` runs cannot supply publication inputs;
 - source-registration changes that do not alter a frozen cohort;
 - recovery/test/source/group runs that cannot invoke publication;
 - carried suppliers affecting level but never fresh movement;
