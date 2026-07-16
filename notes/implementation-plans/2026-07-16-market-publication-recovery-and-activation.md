@@ -165,7 +165,7 @@ Start from current `main`; do not revive or stack on closed PR #465.
 The transaction must:
 
 1. serialize by publication date and cohort;
-2. select each enabled supplier's newest complete set with known completeness (never `unknown` or `legacy`) whose parent `scrape_runs` row has `publication_scope = 'production'` and `command = 'all'`, at or before the exclusive UTC day cutoff;
+2. select each enabled supplier's newest complete set with known completeness (never `unknown` or `legacy`) whose parent `scrape_runs` row is terminal, has `publication_scope = 'production'` and `command = 'all'`, and is at or before the exclusive UTC day cutoff;
 3. preserve source observation time and classify each manifest entry as fresh, carried, or unavailable;
 4. compute supplier-first segment levels with bounded/versioned cohort weights;
 5. compute repricing movement only from fresh supplier-segment pairs matched to the active predecessor;
@@ -188,6 +188,7 @@ Required adversarial tests:
 - predecessor replacement after later movement depends on it;
 - partial insert or computation failure rollback;
 - non-production canary/source runs and production non-`all` runs cannot supply publication inputs;
+- overlapping production `all` runs cannot supply a sealed set while the parent run is still in progress; the set becomes eligible only after that parent reaches a terminal status;
 - terminal non-production canary/source/test/backfill runs no-op publication invocation while retaining truthful terminal status and audit provenance;
 - source-registration changes that do not alter a frozen cohort;
 - recovery/test/source/group runs that cannot invoke publication;
