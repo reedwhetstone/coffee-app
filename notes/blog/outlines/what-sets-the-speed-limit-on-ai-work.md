@@ -4,7 +4,7 @@
 
 **Pillar:** agentic-stack
 
-**Status:** drafted (PR #479)
+**Status:** drafted (PR #480)
 
 **Source:** #blog discussion 2026-07-16; `brain/ideas/verifier-latency-canonical-constraints.md`
 
