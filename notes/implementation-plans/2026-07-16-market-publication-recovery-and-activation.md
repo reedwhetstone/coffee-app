@@ -165,7 +165,7 @@ Start from current `main`; do not revive or stack on closed PR #465.
 The transaction must:
 
 1. serialize by publication date and cohort;
-2. select each enabled supplier's newest complete set at or before the exclusive UTC day cutoff;
+2. select each enabled supplier's newest complete set with known completeness (never `unknown` or `legacy`) at or before the exclusive UTC day cutoff;
 3. preserve source observation time and classify each manifest entry as fresh, carried, or unavailable;
 4. compute supplier-first segment levels with bounded/versioned cohort weights;
 5. compute repricing movement only from fresh supplier-segment pairs matched to the active predecessor;
@@ -194,7 +194,7 @@ Required adversarial tests:
 
 ### Gate 7: Shadow comparison and policy acceptance
 
-Build shadow publications for at least 10 successful production runs spanning at least 14 calendar days, unless a shorter window already contains a real supplier failure and recovery. Compare:
+Build shadow publications for at least 10 successful production runs spanning at least 14 calendar days, and require the evidence set to include a real supplier failure and subsequent recovery. A shorter window may be accepted only when it contains that failure/recovery evidence and the remaining comparison criteria. If no real incident occurs, run and document a controlled supplier failure/recovery rehearsal before cutover. Compare:
 
 - legacy versus supplier-first level and segment composition;
 - source and item coverage;
