@@ -8,7 +8,7 @@
 
 **Source:** #blog discussion 2026-07-16; `brain/ideas/verifier-latency-canonical-constraints.md`
 
-**Target length:** 900-1,100 words
+**Target length:** approximately 600 words
 
 ## Thesis
 
@@ -37,19 +37,17 @@ The framework does not claim to define universally good design. It defines what 
 - GOV.UK provides a concrete design constitution: principles such as start with user needs, do less, design with data, iterate, and be consistent rather than uniform.
 - A useful principle excludes at least one plausible choice; otherwise it is a value-shaped platitude.
 
-### 4. Two feedback loops and three rule layers
+### 4. Two feedback loops
 
 - Fast coherence loop before implementation or experimentation.
 - Slow reality loop after contact with users and the market.
-- Constitutional principles: hard to vary, identity-level.
-- Operating rules: revisable interpretations.
-- Hypotheses: disposable tests.
+- Canonical principles: hard-to-vary identity constraints.
+- Operating rules and hypotheses remain revisable when reality contradicts them.
 
 ### 5. Every constitution needs an amendment gate
 
 - New evidence should first challenge the hypothesis, then the operating rule, and finally the constitutional principle.
 - Require repeated contradiction, name the identity consequence, and update downstream rules with the principle.
-- Use Goodhart's law as the counterweight: proxies and formal rules can distort the behavior they were meant to guide.
 - End on the implication: AI makes explicit judgment infrastructure more important because generation is cheap.
 
 ## Sources
@@ -66,15 +64,11 @@ The framework does not claim to define universally good design. It defines what 
 
    Concrete example of opinionated, context-aware design constraints that explicitly remain open to improvement as user needs change.
 
-4. ["When a Measure Becomes a Target, It Ceases to be a Good Measure", Journal of Graduate Medical Education / PubMed Central](https://pmc.ncbi.nlm.nih.gov/articles/PMC7901608/)
-
-   Provides Goodhart's law and practical mitigation against proxy optimization and rule gaming.
-
 ## Verification
 
-- [x] Body is under 1,200 words excluding frontmatter (929 words).
-- [x] All four sources return HTTP 200 and are linked inline in the post.
-- [x] DORA percentages match the cited 2024 report summary.
+- [x] Body is approximately 600 words excluding frontmatter.
+- [x] All three sources return HTTP 200 and are linked inline in the post.
+- [x] DORA directionality matches the cited 2024 report summary.
 - [x] No em dashes.
 - [x] No unsupported universal claim that design quality can be empirically settled.
 - [x] Constitutional principles are described as hard to vary, not immutable.
