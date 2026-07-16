@@ -175,7 +175,7 @@ The transaction must:
 9. promote only a whole candidate that deterministically improves on the current same-day publication;
 10. remain invisible to existing readers.
 
-Invocation must be database-owned and wired in the same PR. Terminalizing any production-scoped `all` scrape run invokes build-and-activate exactly once after observations are sealed. Terminal non-production runs are rejected by the caller. The terminalization hook must run the builder inside an exception-isolated database subtransaction: builder writes roll back together on failure, the failure is recorded outside that subtransaction, and the truthful scrape-run terminal transition still commits. This avoids an unimplemented external queue while preserving atomic publication replacement. The hook and builder need a bounded execution budget so publication work cannot hold the scrape-run lock indefinitely.
+Invocation must be database-owned and wired in the same PR. Terminalizing any production-scoped `all` scrape run invokes build-and-activate exactly once after observations are sealed. Terminal non-production runs and production-scoped non-`all` runs successfully skip/no-op publication invocation; they preserve their truthful terminal status and audit provenance and cannot provide publication inputs. The terminalization hook must run the builder inside an exception-isolated database subtransaction: builder writes roll back together on failure, the failure is recorded outside that subtransaction, and the truthful scrape-run terminal transition still commits. This avoids an unimplemented external queue while preserving atomic publication replacement. The hook and builder need a bounded execution budget so publication work cannot hold the scrape-run lock indefinitely.
 
 Required adversarial tests:
 
@@ -188,6 +188,7 @@ Required adversarial tests:
 - predecessor replacement after later movement depends on it;
 - partial insert or computation failure rollback;
 - non-production canary/source runs and production non-`all` runs cannot supply publication inputs;
+- terminal non-production canary/source/test/backfill runs no-op publication invocation while retaining truthful terminal status and audit provenance;
 - source-registration changes that do not alter a frozen cohort;
 - recovery/test/source/group runs that cannot invoke publication;
 - carried suppliers affecting level but never fresh movement;
