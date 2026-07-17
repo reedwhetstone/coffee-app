@@ -1,0 +1,62 @@
+---
+title: 'What Should an Organization Refuse to Build?'
+date: '2026-07-17'
+description: 'Strategy becomes useful when it gives different specialists a shared direction, earns conviction, and makes its tradeoffs consequential.'
+tags: ['strategy', 'decision-making', 'ai', 'organizations']
+pillar: 'agentic-stack'
+draft: false
+readingTime: 4
+---
+
+Most organizations have strategy documents. Far fewer have a strategy capable of saying no.
+
+A strategy becomes useful when it gives people with different expertise and perspectives a shared, opinionated frame for deciding what good work looks like, which opportunities deserve attention, and which differentiators matter. It also has to be explicit enough to exclude attractive alternatives and reasoned enough to earn conviction. Without those properties, strategy can describe an ambition without changing the work produced in its name.
+
+I first arrived at a version of this through product marking work at Gates, where plants operated at very different levels of technical maturity. More recently, I have found the same structure unusually effective for coordinating AI agents. The domains look different, but the failure is the same: people and agents can produce individually excellent work that moves the larger system in the wrong direction.
+
+## Strategy has to exclude something
+
+A consequential strategy is not a catalog of agreeable values. It is a set of opinionated commitments describing the direction an organization has chosen, the tradeoffs it accepts, and the plausible opportunities it will refuse.
+
+Michael Porter argued in ["What Is Strategy?"](https://hbr.org/1996/11/what-is-strategy) that strategy depends on fit among activities and choices about what not to do. That is the test of a useful commitment. "Put customers first" rarely resolves a contested decision. "Accessibility outranks elegance" can.
+
+The [GOV.UK design principles](https://www.gov.uk/guidance/government-design-principles) work because they carry consequences. "Do less" directs teams toward reusable platforms instead of duplicating services. "This is for everyone" explicitly accepts sacrificing elegance for accessibility. These are not universal design laws. They define coherent decisions for a particular institution.
+
+The broader the organization, the more tempting it is to soften these statements until every division can agree with them. That produces values with no consequence. Strategy becomes a collection of sweet nothings.
+
+## Put the conviction on record
+
+A commitment without its reasoning eventually becomes dogma or gets casually reversed. I think each consequential choice should therefore have a **Strategic Conviction Record**: a durable document that puts both the strategy and the basis for believing in it on the record.
+
+A useful Conviction Record would identify:
+
+- the strategic choice and intended direction;
+- the tradeoff being accepted and alternatives being rejected;
+- the assumptions and evidence supporting the choice;
+- the scope and time horizon;
+- the evidence that would strengthen, challenge, or overturn the conviction;
+- the decision's status and revision history.
+
+This adapts Michael Nygard's [architecture decision record](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions), which preserves the context, decision, status, and consequences behind a technical choice. Missing rationale forces future teams into blind acceptance or blind reversal. Strategy suffers from the same failure at a larger scale.
+
+The record is not a measure of how strongly leadership feels. It makes conviction legible and calibrated. When the assumptions keep surviving contact with reality, confidence can strengthen. When they stop surviving, the record identifies what needs to change and why. Superseding the old record preserves institutional memory instead of rewriting history.
+
+## Conviction should improve output
+
+The point is not documentation for its own sake. A well-defined strategy gives specialists a shared qualitative standard even when they begin with different technical maturity, incentives, or perspectives. Teams can take different local paths toward the same future state without reopening the destination during every project. A roadmap, product brief, design, architecture, or marketing idea can be tested against the same commitments before the organization invests deeply in it.
+
+Explicit choices also reduce the search space. They let teams spend less time reopening foundational questions and more time exploring within a coherent direction. If a proposal conflicts, it can be parked, reshaped, or used to challenge the strategy with evidence. Quiet exceptions are more dangerous because they create an unofficial strategy without requiring anyone to defend it.
+
+The same clarity can sharpen go-to-market strategy. Once a product names its chosen tradeoffs and differentiators, it becomes easier to focus on the customers who value them instead of disappearing into the noise of a broad market. Refusal is therefore not the whole value of strategy. It is evidence that the shared direction carries enough consequence to align product, technical, design, and commercial decisions.
+
+This still leaves room for exploration. Some experiments should deliberately test the assumptions inside a Conviction Record. The distinction is that the exception is visible, time-bounded, and designed to produce evidence rather than quietly dissolving the commitment.
+
+## AI makes the gap impossible to ignore
+
+AI did not invent this problem. It makes the cost visible because execution has become so cheap. Anthropic's [Constitutional AI research](https://www.anthropic.com/research/constitutional-ai-harmlessness-from-ai-feedback) demonstrates the direct version: a model uses an explicit set of principles to critique and revise its own output. The strategy can participate in the production loop rather than sitting in a document someone is expected to remember.
+
+AI adds another reason to put conviction on record. An agent does not inherit the meetings, tradeoffs, and institutional memory that produced a strategy. When the relevant Conviction Record is available, it provides more than a rule. Its rationale and reversal conditions help an agent recognize when a request conflicts with the strategy or when new evidence may challenge the strategy itself. For consequential work, that supports a useful preflight: restate the objective, identify the relevant commitments, surface assumptions or conflicts, and propose an interpretation before acting. The record does not cure literalism or sycophancy. It gives the agent a defensible basis for pushback.
+
+The same pattern is useful beyond model safety. Coding has compilers and tests that can quickly reject broken behavior. Product, design, marketing, and organizational strategy often wait much longer for trustworthy evidence, and the evidence can be backward-looking by the time it arrives. A Conviction Record cannot tell those groups whether the strategy is true, and it should not impersonate quantitative feedback. It can provide a forward-looking coherence check while the slower reality check is still pending.
+
+When people and agents can generate endless plausible directions, producing options is no longer the scarce capability. The scarce capability is choosing a future clearly enough that different specialists can build toward it, and explaining that choice well enough that reality can still overturn it. A Strategic Conviction Record preserves both sides of that bargain, giving an organization a point of view strong enough to organize action without pretending it has escaped uncertainty.
