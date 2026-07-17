@@ -52,7 +52,7 @@ AI makes the value unusually visible because cheap generation produces more plau
 - Bound the preflight to consequential work: restate the objective, identify relevant commitments, surface assumptions or conflicts, and propose an interpretation.
 - Acknowledge that records do not cure literalism or sycophancy.
 - Return to verifier latency: Conviction Records give data-starved functions a forward-looking coherence check, not empirical truth or quantitative evidence.
-- Close with the operational test: can the strategy reject a reasonable proposal, explain why, and name the evidence required to change the answer?
+- Close on the emerging scarcity: generating plausible options is cheap, while choosing a future that different specialists can build toward remains difficult. The record preserves both conviction and revisability without pretending to eliminate uncertainty.
 
 ## Sources
 
@@ -74,7 +74,7 @@ AI makes the value unusually visible because cheap generation produces more plau
 
 ## Verification
 
-- [x] Body is under 1,200 words excluding frontmatter (1,035 words).
+- [x] Body is under 1,200 words excluding frontmatter (1,052 words).
 - [x] All four sources return HTTP 200 and are linked inline in the post.
 - [x] No em dashes.
 - [x] Strategic conviction is clearly separated from empirical validation.
