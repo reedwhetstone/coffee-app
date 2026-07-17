@@ -1,0 +1,59 @@
+---
+title: 'What Should an Organization Refuse to Build?'
+date: '2026-07-17'
+description: 'A vision becomes useful when it can reject plausible work, explain why, and change when its underlying assumptions stop being true.'
+tags: ['strategy', 'governance', 'ai', 'organizations']
+pillar: 'agentic-stack'
+draft: false
+readingTime: 5
+---
+
+Most organizations have vision statements. Far fewer have vision systems.
+
+A statement describes where an organization wants to go. A system determines which work is allowed to move it there, preserves why that direction was chosen, and defines what evidence would justify changing it.
+
+I first arrived at a version of this while building a marketing strategy at Gates. More recently, I have found the same structure unusually effective for coordinating AI agents. The domains look different, but the failure is the same: vision lives in one place while execution happens somewhere else. People and agents can produce individually excellent work that moves the larger system in the wrong direction.
+
+The answer is a two-layer governance system: a small canonical vision layer and a much larger execution layer governed against it.
+
+## The canon has to exclude something
+
+The canonical layer is not a catalog of agreeable values. It is a set of opinionated throughlines describing what the organization is becoming, the tradeoffs it accepts, and the plausible opportunities it will refuse.
+
+Michael Porter argued in ["What Is Strategy?"](https://hbr.org/1996/11/what-is-strategy) that strategy depends on fit among activities and choices about what not to do. That is the test of a useful throughline. "Put customers first" rarely resolves a contested decision. "Accessibility outranks elegance" can.
+
+The [GOV.UK design principles](https://www.gov.uk/guidance/government-design-principles) work because they carry consequences. "Do less" directs teams toward reusable platforms instead of duplicating services. "This is for everyone" explicitly accepts sacrificing elegance for accessibility. These are not universal design laws. They define coherent decisions for a particular institution.
+
+The broader the organization, the more tempting it is to soften these statements until every division can agree with them. That produces values with no consequence. Design for everyone becomes design for no one; strategy becomes a collection of sweet nothings.
+
+## Pair every throughline with a decision record
+
+A canon without its reasoning eventually becomes dogma. Each throughline should therefore have a **Vision Decision Record**, or VDR, explaining:
+
+- the conditions and assumptions behind the decision;
+- the tradeoff being made and the alternatives being rejected;
+- the time horizon, whether it covers enduring identity, a multi-year strategy, or a shorter operating period;
+- the consequences the organization is accepting;
+- the evidence that would cause the decision to be revised or superseded.
+
+This adapts Michael Nygard's [architecture decision record](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions), which preserves the context, decision, status, and consequences behind a technical choice. Nygard's key insight is that missing rationale forces future teams into blind acceptance or blind reversal. Vision suffers from the same failure at a larger scale.
+
+The VDR may be more important than the throughline itself. It allows an organization to hold a position with conviction without pretending it is timeless. When the assumptions keep surviving contact with reality, conviction should strengthen. When they stop surviving, the record identifies what needs to change and why. Superseding the old record also preserves institutional memory instead of rewriting history.
+
+## The second layer turns belief into behavior
+
+The supporting infrastructure, or execution layer, includes roadmaps, budgets, briefs, incentives, review gates, software architecture, prompts, and the people or agents doing the work. Every meaningful proposal should map back to a canonical throughline. If it conflicts, the useful responses are to park it, reshape it, or challenge the canon with evidence. Quiet exceptions create a second, unofficial strategy.
+
+This is where most corporate mission systems fail. The ideals sit above the organization rather than inside its machinery. A division can optimize its own incentives while violating the parent strategy, and a technically correct implementation can survive even when it should never have been built. Local teams can have more specific canons, but those should inherit from the larger one rather than compete with it.
+
+Government offers a useful, limited analogy. A constitution supplies continuity; the administrative system turns it into action. A VDR is less like a supreme court than a living record of constitutional reasoning and amendment. The analogy breaks if it suggests permanence. Different throughlines need different clocks, and a six-month strategic commitment should not masquerade as an immutable identity.
+
+## AI makes the gap impossible to ignore
+
+AI did not invent this organizational problem. It makes the cost visible because execution has become so cheap. Anthropic's [Constitutional AI research](https://www.anthropic.com/research/constitutional-ai-harmlessness-from-ai-feedback) demonstrates the direct version: a model uses an explicit set of principles to critique and revise its own output. The principle layer becomes part of the production loop rather than a document someone is expected to remember.
+
+The same pattern is useful beyond model safety. Coding has compilers and tests that can quickly reject broken behavior. Product, design, marketing, and organizational strategy often wait much longer for trustworthy evidence. A canon cannot tell those groups whether the strategy is true, and it should not impersonate quantitative feedback. It can provide an immediate coherence check while the slower reality check is still pending.
+
+That distinction matters. The canonical layer protects direction; the execution layer tests it against the world. Canon without execution is brand theater. Execution without canon is efficient drift. The VDR keeps conviction from hardening into standards for their own sake.
+
+The practical test is not whether people can repeat the vision. It is whether a reasonable proposal can be rejected because of it, whether everyone can see why, and whether the organization knows what evidence would earn a different answer.
