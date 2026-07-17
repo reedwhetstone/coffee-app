@@ -77,6 +77,7 @@ _Last coherence audit: 2026-05-10_
 | Sycophancy Is the Last Hard Problem in AI-Assisted Software Development | `sycophancy-is-the-last-hard-problem`              | 2026-03-26 | agentic-stack        | #173        | Clean        |
 | Is Co-Fermentation Cheating? Wrong Question.                            | `co-fermentation-wrong-question`                   | 2026-04-02 | supply-chain         | #208        | Needs update |
 | What a New Hire Learns That Enterprise AI Still Misses                  | `enterprise-second-brains-are-not-knowledge-bases` | 2026-04-07 | agentic-stack        | #226/#227   | Clean        |
+| What Should an Organization Refuse to Build?                            | `what-should-an-organization-refuse-to-build`      | 2026-07-17 | agentic-stack        | #480        | Clean        |
 
 ## Drift Flags (2026-04-26)
 
