@@ -1,4 +1,4 @@
-# Sourcing Radar MVP PR 3: Personalized Dashboard and Parchment Agent
+# Sourcing Radar MVP PR 4: Personalized Dashboard and Parchment Agent
 
 **Program:** Purveyors Sourcing Radar, index-first MVP
 **Repository:** `coffee-app`
@@ -12,7 +12,7 @@ This is the buyer-facing MVP. It is a product with passive analytics, not a qual
 
 ## Why this slice comes now
 
-PR 1 makes the evidence contract canonical. PR 2 lets PPI customers securely own and refine the intent that drives it. This PR closes the loop: show the current result where the customer already works, let Parchment explain it without inventing facts, and connect it to existing supplier and tracked-lot actions.
+PR 1 makes the evidence contract canonical. PR 2 makes the intent lifecycle canonical and API-enforced. PR 3 gives PPI customers a thin self-service experience for the intent that drives Radar. This PR closes the loop: show the current result where the customer already works, let Parchment explain it without inventing facts, and connect it to existing supplier and tracked-lot actions.
 
 ## In scope
 
@@ -113,4 +113,4 @@ Analytics payloads contain fixed event names and identifiers only where required
 
 ## Exact follow-on dependency
 
-Launch the product to five sourcing decision-makers, treating three as the operational floor, for eight to twelve weeks or across a heavy arrival season. Use passive product behavior, internal evidence audits, and supplemental interviews to refine relevance. Plan external recurring delivery only when repeat in-product use demonstrates value and customers ask to receive Radar without opening Purveyors.
+Launch after PR 3 is deployed and a PPI-only test account can create and maintain an owned active brief through the product path. Recruit five sourcing decision-makers, treating three as the operational floor, for eight to twelve weeks or across a heavy arrival season. Use passive product behavior, internal evidence audits, and supplemental interviews to refine relevance. Plan external recurring delivery only when repeat in-product use demonstrates value and customers ask to receive Radar without opening Purveyors.
