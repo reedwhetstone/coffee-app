@@ -18,10 +18,10 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 - Server-first loading through the Parchment SDK.
 - Fresh result rows with lot identity, current price, brief-match reasons, eligible signal evidence, lot-age context (crop year / first-observed date, or the API's `ageContext: unknown` disclosure rendered honestly), source, publication freshness/quality, limitations, and one source-detail action.
 - Honest stale, unavailable, empty, denied, and error states.
-- Concierge pilot onboarding: before each PPI-only participant starts, an authorized operator uses the private participant-seed runbook below to provision one active brief under that participant's user ID; the caller-owned `POST /v1/procurement/briefs` contract is not used with the operator's credentials, and no new self-service brief capture is added.
+- Concierge pilot onboarding: before each PPI-only participant starts, an authorized operator uses the private participant-seed runbook below to provision one active brief under that participant's user ID; the caller-owned `POST /v1/procurement/briefs` contract is not used with the operator's credentials, and no new self-service brief capture is added. Before exposing PPI-owned brief cards, the implementation must replace the current owner-only `sourcing_briefs` write policies with membership-aware RLS: authenticated PPI-only principals cannot insert, update, or delete rows through Supabase REST, existing member/admin writes remain supported, and the private control-plane/service-role seed path remains the sole way to create a participant-owned pilot brief.
 - Minimal events for Radar open, indexed row impression, source-detail click, source verification, and pilot disposition. This introduces a small new pilot-event helper and a durable, append-only `radar_pilot_events` table in the coffee-app Supabase project; the repo has no general client event-tracking pattern today, so this is new telemetry surface, kept deliberately minimal: server-side capture, fixed event names, participant/brief/catalog identifiers only where applicable, fixed disposition and freshness-outcome enums, and no criteria, source payloads, or user-entered text in payloads. The table is server-side only and is not recommendation-run history.
 - The fixed pilot disposition enum is `already_known`, `past_crop_clearance`, `investigate`, `shortlist`, `sample_quote`, or `not_relevant`; the UI may display “sample/quote” and “past-crop/clearance” labels.
-- Source-detail clicks and source verification are separate events. The click records the participant, brief, catalog row, and click timestamp. Immediately after inspecting the supplier page, the participant or operator records a fixed `freshness_outcome` of `matched`, `mismatched`, `unavailable`, or `not_verified`, with the same identifiers and verification timestamp. This persists staleness-at-click without storing a source URL, source payload, or free text.
+- Source-detail clicks and source verification are separate events. The click records the participant, brief, catalog row, and click timestamp. Immediately after inspecting the supplier page, the participant records a fixed `freshness_outcome` of `matched`, `mismatched`, `unavailable`, or `not_verified`, with the same identifiers and verification timestamp. This persists staleness-at-click without storing a source URL, source payload, or free text.
 - Focused tests and existing docs/copy alignment where required.
 
 ## Out of scope
@@ -30,17 +30,17 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 - Automatic refresh, scheduler, email, Discord, webhook, SMS, or push delivery.
 - Stored recommendation runs, notification preferences, team workflows, or history charts.
 - Client-side ranking, freshness decisions, signal calculation, or AI summaries.
-- PPI self-service brief creation/editing, CLI changes, pricing, checkout, or public teaser work. The pilot is explicitly concierge-seeded through a private operator control-plane path; this PR adds no new public/member brief-write route or permission broadening. The only schema addition is the server-side pilot-event sink defined above.
+- PPI self-service brief creation/editing, CLI changes, pricing, checkout, or public teaser work. The pilot is explicitly concierge-seeded through a private operator control-plane path; this PR adds no new PPI brief-write route or permission broadening. The implementation does include the security migration that removes PPI-only direct-write access, plus the server-side pilot-event sink defined above.
 - Purchase, RFQ, supplier-message, inventory-write, or other external actions.
 
 ## PPI-only participant seed runbook
 
-The documented procurement contract is caller-owned: `POST /v1/procurement/briefs` stores `user_id` from the authenticated caller, and the read/match routes reject a different owner. An operator token therefore cannot create a participant-owned brief by calling that endpoint. The pilot must use this private, operator-only setup path instead:
+The documented procurement contract is caller-owned: `POST /v1/procurement/briefs` stores `user_id` from the authenticated caller, and the read/match routes reject a different owner. An operator token therefore cannot create a participant-owned brief by calling that endpoint. The pilot must use this private, operator-only setup path instead. The implementation must also ship the RLS hardening before the dashboard exposes PPI-owned cards: keep owner-scoped SELECT, but make authenticated INSERT/UPDATE/DELETE require the existing member/admin capability, while the private control-plane/service-role seed operation remains the only writer for participant-owned rows. Add negative coverage proving a PPI-only session cannot create, mutate, or delete a brief through Supabase REST.
 
 1. Confirm the participant's canonical authenticated principal ID from the enrollment record and verify it with the participant before writing anything.
 2. Run the approved private Parchment control-plane seed operation, such as an admin-only command/RPC or a one-time service-role transaction in the private API environment. Insert exactly one active manual brief with `user_id` set to the participant principal, normalized versioned criteria, a participant-safe name, `cadence: manual`, and `is_active: true`. Never expose the service-role credential to the browser, participant, or coffee-app runtime, and never use the ordinary caller-owned POST with an operator credential.
 3. Record the returned brief ID, participant principal ID, criteria version, operator, and UTC timestamp in the restricted pilot log. Do not record credentials or copy sensitive brief criteria into analytics payloads.
-4. Verify the result as the participant through PPI-readable surfaces: the participant's dashboard must show the owned active brief, and the PPI-entitled `GET /v1/procurement/briefs/{id}/radar` response must identify that same owner-scoped brief. Do not use the member-gated `GET /v1/procurement/briefs/{id}` response as the pilot verification gate.
+4. Hand verification to the participant. Using their own authenticated session and credentials, the participant must open the dashboard, confirm the owned active brief, and open the PPI-entitled `GET /v1/procurement/briefs/{id}/radar` flow. The participant confirms that the response and dashboard show the same owner-scoped brief. The operator must not authenticate as the participant, request or copy participant credentials/session data, or use an unreviewed impersonation path. Do not use the member-gated `GET /v1/procurement/briefs/{id}` response as the pilot verification gate.
 
 This is a pilot prerequisite, not a new self-service or public API capability. If the private control-plane operation does not exist, stop onboarding and make its implementation an explicitly reviewed `parchment-api` prerequisite; do not substitute an ad hoc database edit or broaden the caller-owned contract.
 
@@ -59,13 +59,15 @@ This is a pilot prerequisite, not a new self-service or public API capability. I
 - `src/routes/procurement/briefs/[id]/radar/+page.svelte`
 - focused route/component tests
 - `src/routes/dashboard/+page.server.ts`, `src/routes/dashboard/+page.svelte`, and their tests
+- `supabase/migrations/<timestamp>_harden_sourcing_brief_writes.sql` plus focused Supabase REST/RLS negative coverage for PPI-only, member/admin, and private seed callers
 - `supabase/migrations/<timestamp>_radar_pilot_events.sql` and a small server-side pilot-event helper for the append-only sink; there is no browser write path
 - dependency/lockfile updates only if the Parchment SDK release requires them
 
 ## Acceptance criteria
 
 - A PPI-only entitled owner can see their owned active briefs on the dashboard and open Radar from the “Review indexed matches” action; Mallard membership is not required.
-- A PPI-only pilot participant is onboarded through the seed runbook with one brief whose stored owner is the participant, and the participant's dashboard plus PPI-readable Radar response prove that ownership before the test starts.
+- A PPI-only pilot participant is onboarded through the seed runbook with one brief whose stored owner is the participant, and the participant's own authenticated dashboard session plus PPI-readable Radar response prove that ownership before the test starts; no operator impersonation or credential sharing is used.
+- A PPI-only authenticated session cannot insert, update, or delete `sourcing_briefs` through Supabase REST, while member/admin write behavior remains supported and the private control-plane seed path can create the participant-owned row.
 - A member/admin without `ppiAccess` retains the existing brief/catalog workflow but does not receive the Radar action.
 - Another user, anonymous user, and insufficiently entitled user receive the correct server-enforced state.
 - Fresh rows render canonical evidence, including lot-age context or its `unknown` disclosure, and link to the correct source/lot.
@@ -80,7 +82,8 @@ This is a pilot prerequisite, not a new self-service or public API capability. I
 - Server-load tests for ownership-safe not-found, entitlement denial, fresh, stale, unavailable, empty, and upstream failure, including the PPI-readable Radar ownership path without relying on the member-gated base brief GET.
 - Component/route tests for evidence, source links, limitations, status copy, the complete disposition enum, source-verification outcomes, keyboard use, and mobile layout.
 - Dashboard server-load and component tests prove that PPI-only owners receive active-brief cards and the Radar action, while users without `ppiAccess` do not receive that action.
-- Pilot setup documentation proves that operator seeding writes the participant owner through the private control-plane path, does not rely on the caller-owned create contract, and verifies ownership through the PPI-readable Radar/dashboard paths.
+- Pilot setup documentation proves that operator seeding writes the participant owner through the private control-plane path, does not rely on the caller-owned create contract, and hands ownership verification to the participant's own authenticated Radar/dashboard session without impersonation or credential sharing.
+- RLS/API negative tests prove that a PPI-only session cannot create, mutate, or delete `sourcing_briefs` through Supabase REST, while member/admin writes and the private seed operation retain their intended behavior.
 - Pilot-event helper, migration, and persistence tests prove the fixed event names/fields, including `past_crop_clearance` and source-verification outcomes, server-only access, append-only behavior, and exclusion of criteria, source payloads, and user-entered text.
 - `pnpm check --fail-on-warnings`, focused tests, lint, and production build using the repository's documented environment path.
 - One post-deploy smoke with an owned test brief and manual source reconciliation.
