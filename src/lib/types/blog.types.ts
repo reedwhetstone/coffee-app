@@ -24,7 +24,7 @@ export const BLOG_TAGS = [
 
 export type BlogTag = (typeof BLOG_TAGS)[number];
 
-export const BLOG_TAG_ALIASES: Readonly<Record<string, BlogTag>> = {
+export const BLOG_TAG_ALIASES = {
 	agentic: 'agents',
 	agility: 'strategy',
 	'ai-agents': 'agents',
@@ -45,10 +45,24 @@ export const BLOG_TAG_ALIASES: Readonly<Record<string, BlogTag>> = {
 	organizations: 'product',
 	pricing: 'strategy',
 	purveyors: 'product'
-};
+} as const satisfies Readonly<Record<string, BlogTag>>;
 
 export function isBlogTag(value: string): value is BlogTag {
 	return BLOG_TAGS.includes(value as BlogTag);
+}
+
+export function getCanonicalBlogTag(value: string): BlogTag | undefined {
+	return (BLOG_TAG_ALIASES as Readonly<Record<string, BlogTag>>)[value];
+}
+
+export function validateBlogPostTags(
+	slug: string,
+	tags: readonly string[]
+): asserts tags is BlogTag[] {
+	const invalidTags = tags.filter((tag) => !isBlogTag(tag));
+	if (invalidTags.length > 0) {
+		throw new Error(`Blog post ${slug} uses non-canonical tags: ${invalidTags.join(', ')}`);
+	}
 }
 
 export interface BlogPostModule {

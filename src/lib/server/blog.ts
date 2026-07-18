@@ -1,4 +1,10 @@
-import { BLOG_TAGS, isBlogTag, type BlogPost, type BlogPostModule } from '$lib/types/blog.types';
+import {
+	BLOG_TAGS,
+	isBlogTag,
+	validateBlogPostTags,
+	type BlogPost,
+	type BlogPostModule
+} from '$lib/types/blog.types';
 
 /**
  * Load all blog posts from src/content/blog/*.svx
@@ -12,10 +18,7 @@ export async function getAllPosts(): Promise<BlogPost[]> {
 	for (const [path, module] of Object.entries(modules)) {
 		const slug = path.split('/').pop()?.replace('.svx', '') ?? '';
 		const metadata = module.metadata;
-		const invalidTags = metadata.tags.filter((tag) => !isBlogTag(tag));
-		if (invalidTags.length > 0) {
-			throw new Error(`Blog post ${slug} uses non-canonical tags: ${invalidTags.join(', ')}`);
-		}
+		validateBlogPostTags(slug, metadata.tags);
 
 		// Skip drafts in production
 		if (metadata.draft && import.meta.env.PROD) continue;
