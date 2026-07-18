@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { filterStore } from '$lib/stores/filterStore';
 	import {
 		formatProcessDisplayValue,
@@ -134,7 +133,7 @@
 	</div>
 {:else}
 	<div class="rounded-lg border border-line bg-surface-panel px-4 py-3">
-		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+		<div>
 			<div>
 				<h2 class="text-sm font-semibold text-ink">Members unlock structured process filters</h2>
 				<p class="mt-1 text-sm text-muted">
@@ -147,13 +146,6 @@
 					</p>
 				{/if}
 			</div>
-			<button
-				type="button"
-				onclick={() => goto('/subscription')}
-				class="rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent hover:text-ink"
-			>
-				Compare paid products
-			</button>
 		</div>
 	</div>
 {/if}

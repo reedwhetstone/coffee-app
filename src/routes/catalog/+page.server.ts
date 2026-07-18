@@ -17,6 +17,8 @@ import {
 	parseCatalogUrlState,
 	type CatalogUrlState
 } from '$lib/catalog/urlState';
+import { toParchmentCatalogQuery, type CatalogQueryValue } from '$lib/catalog/parchmentQuery';
+import { isPublicCatalogSortField } from '$lib/catalog/publicQueryContract';
 import {
 	createParchmentServerClient,
 	resolveCatalogCredentialMode
@@ -62,6 +64,7 @@ type ParchmentCatalogListQuery = CatalogListQuery & {
 	price_per_lb_max?: number;
 	arrival_date?: string;
 	stocked_date?: string;
+	stocked_days?: number;
 	sortField?: string;
 	sortDirection?: 'asc' | 'desc';
 	ids?: number[];
@@ -177,12 +180,15 @@ function buildParchmentCatalogQuery(
 	appendNumberParam(query, 'price_per_lb_max', searchState.pricePerLbMax);
 	appendStringParam(query, 'arrival_date', searchState.arrivalDate);
 	appendStringParam(query, 'stocked_date', searchState.stockedDate);
+	appendNumberParam(query, 'stocked_days', searchState.stockedDays);
 
 	if (options.coffeeIds && options.coffeeIds.length > 0) {
 		query.ids = options.coffeeIds;
 	}
 
-	return query;
+	return toParchmentCatalogQuery(
+		query as unknown as Record<string, CatalogQueryValue>
+	) as ParchmentCatalogListQuery;
 }
 
 // openapi-fetch resolves non-2xx catalog responses as `{ error: <json body> }`
@@ -263,6 +269,21 @@ function stripProcessFacetFilters(state: CatalogUrlState): CatalogUrlState {
 		...state,
 		filters
 	};
+}
+
+function stripPriceScoreRangeFilters(state: CatalogUrlState): CatalogUrlState {
+	const { score_value: _scoreValue, cost_lb: _costLb, ...filters } = state.filters;
+	return { ...state, filters };
+}
+
+function stripFreshnessFilters(state: CatalogUrlState): CatalogUrlState {
+	const { stocked_date: _stockedDate, stocked_days: _stockedDays, ...filters } = state.filters;
+	return { ...state, filters };
+}
+
+function stripAdvancedSort(state: CatalogUrlState): CatalogUrlState {
+	if (!state.sortField || isPublicCatalogSortField(state.sortField)) return state;
+	return { ...state, sortField: null, sortDirection: null };
 }
 
 // Schema graph is SEO metadata on the critical path; bound it to the visible page
@@ -359,9 +380,18 @@ export const load: PageServerLoad = async (event) => {
 		isAuthenticated: locals.principal?.isAuthenticated ?? Boolean(locals.session),
 		deniedParams: deniedProcessParams
 	});
-	const authorizedCatalogState = catalogAccess.canUseProcessFacets
+	const processAuthorizedCatalogState = catalogAccess.canUseProcessFacets
 		? requestedCatalogState
 		: stripProcessFacetFilters(requestedCatalogState);
+	const freshnessAuthorizedCatalogState = catalogAccess.canUseAdvancedFilters
+		? processAuthorizedCatalogState
+		: stripFreshnessFilters(processAuthorizedCatalogState);
+	const rangeAuthorizedCatalogState = catalogAccess.canUsePriceScoreRanges
+		? freshnessAuthorizedCatalogState
+		: stripPriceScoreRangeFilters(freshnessAuthorizedCatalogState);
+	const authorizedCatalogState = catalogAccess.canUseAdvancedSorts
+		? rangeAuthorizedCatalogState
+		: stripAdvancedSort(rangeAuthorizedCatalogState);
 	const visibility = resolveCatalogVisibility({
 		session: locals.session,
 		role: locals.role,
@@ -399,7 +429,17 @@ export const load: PageServerLoad = async (event) => {
 	// deep-link reads so every Parchment call presents the same principal and
 	// shares one client per load.
 	let catalogClient: ParchmentClient | null = null;
-	let effectiveCatalogState: CatalogUrlState = initialCatalogState;
+	const effectiveCatalogState: CatalogUrlState = trackedOnly
+		? {
+				...initialCatalogState,
+				filters: {},
+				sortField: null,
+				sortDirection: null,
+				showWholesale: true,
+				wholesaleOnly: false,
+				pagination: { page: 1, limit: TRACKED_VIEW_LIMIT }
+			}
+		: initialCatalogState;
 
 	try {
 		if (!trackedOnly || trackedLotIdsForQuery.length > 0) {
@@ -407,13 +447,6 @@ export const load: PageServerLoad = async (event) => {
 				mode: resolveCatalogCredentialMode(locals)
 			});
 			catalogClient = client;
-			effectiveCatalogState = trackedOnly
-				? {
-						...initialCatalogState,
-						showWholesale: true,
-						wholesaleOnly: false
-					}
-				: initialCatalogState;
 			const catalogResult = (await client.catalog.list(
 				buildParchmentCatalogQuery(effectiveCatalogState, {
 					stocked: trackedOnly ? 'all' : 'true',
@@ -456,7 +489,7 @@ export const load: PageServerLoad = async (event) => {
 	});
 
 	// Origin price context: public, non-critical.
-	const originPriceStats = streamOriginPriceStats(catalogClient, visibility);
+	const originPriceStats = streamOriginPriceStats(catalogClient, effectiveCatalogState);
 
 	// Member-only enrichment. Anonymous loads resolve to [] with no server work, so
 	// user-specific watchlist/procurement data never enters the public render and is
@@ -495,7 +528,7 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		data: catalogResources,
 		trainingData: catalogResources,
-		initialCatalogState,
+		initialCatalogState: effectiveCatalogState,
 		originPriceStats,
 		ppiAccess:
 			locals.principal?.isAuthenticated === true ? locals.principal.ppiAccess === true : false,
@@ -507,13 +540,7 @@ export const load: PageServerLoad = async (event) => {
 		catalogAccessNotice,
 		catalogSchemaUnavailable,
 		pagination: trackedOnly
-			? buildPagination(
-					{
-						...initialCatalogState,
-						pagination: { page: 1, limit: TRACKED_VIEW_LIMIT }
-					},
-					count ?? catalogResources.length
-				)
+			? buildPagination(effectiveCatalogState, count ?? catalogResources.length)
 			: buildPagination(initialCatalogState, count ?? catalogResources.length),
 		meta: buildPublicMeta({
 			baseUrl,

@@ -1014,7 +1014,7 @@ describe('analytics section navigator', () => {
 		});
 
 		expect(screen.getByRole('navigation', { name: 'Market Index sections' })).toBeTruthy();
-		expect(screen.getByRole('link', { name: 'Sign in to ask' })).toHaveAttribute('href', '/auth');
+		expect(screen.queryByRole('link', { name: 'Sign in to ask' })).toBeNull();
 		expect(screen.queryByText(/opens with your current scope and movement window/i)).toBeNull();
 		expect(screen.queryByText('Open catalog evidence')).toBeNull();
 		expect(screen.queryByText('Compare supplier evidence')).toBeNull();
@@ -1095,20 +1095,18 @@ describe('analytics section navigator', () => {
 		expect(prompt).toContain('supplier-comparison');
 	});
 
-	it('uses upgrade language instead of chat context for signed-in viewers without intelligence access', async () => {
+	it('uses one primary upgrade CTA for signed-in viewers without intelligence access', async () => {
 		render(AnalyticsPage, { data: createData({ session: createSession(), role: 'viewer' }) });
 
 		await waitFor(() => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
 
-		expect(screen.getByRole('link', { name: 'Upgrade to ask' })).toHaveAttribute(
-			'href',
-			'/subscription?plan=intelligence-monthly&intent=checkout'
-		);
+		expect(screen.queryByRole('link', { name: 'Upgrade to ask' })).toBeNull();
 		expect(
-			screen.getByRole('link', { name: 'Upgrade to ask from Market Index summary' })
-		).toHaveAttribute('href', '/subscription?plan=intelligence-monthly&intent=checkout');
+			screen.queryByRole('link', { name: 'Upgrade to ask from Market Index summary' })
+		).toBeNull();
+		expect(screen.getAllByRole('link', { name: 'Start Intelligence' })).toHaveLength(1);
 		expect(screen.getAllByText(/Parchment Intelligence/).length).toBeGreaterThanOrEqual(1);
 		expect(screen.queryByRole('link', { name: 'Ask with this context' })).toBeNull();
 	});

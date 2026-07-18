@@ -15,18 +15,12 @@
 				connects the catalog to your own inventory, roasts, and margins.
 			</p>
 		</div>
-		<div class="flex flex-col gap-3 sm:flex-row">
+		<div>
 			<button
 				onclick={() => goto('/subscription')}
 				class="rounded-md bg-accent px-6 py-2 font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 			>
 				Compare paid products
-			</button>
-			<button
-				onclick={() => goto('/analytics')}
-				class="rounded-md border border-accent px-6 py-2 text-accent transition-all duration-200 hover:bg-accent hover:text-ink"
-			>
-				Open Market Index
 			</button>
 		</div>
 	</div>

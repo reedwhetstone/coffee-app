@@ -18,6 +18,10 @@ export const PUBLIC_CATALOG_SORT_FIELDS = [
 
 export type PublicCatalogSortField = (typeof PUBLIC_CATALOG_SORT_FIELDS)[number];
 
+export function isPublicCatalogSortField(value: string): value is PublicCatalogSortField {
+	return (PUBLIC_CATALOG_SORT_FIELDS as readonly string[]).includes(value);
+}
+
 export const PUBLIC_CATALOG_FIELD_VALUES = ['full', 'dropdown'] as const;
 export const PUBLIC_CATALOG_STOCKED_VALUES = ['true', 'false', 'all'] as const;
 export const PUBLIC_CATALOG_BOOLEAN_VALUES = ['true', 'false'] as const;

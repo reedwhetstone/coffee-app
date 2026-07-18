@@ -1100,7 +1100,7 @@
 				{link.label}
 			</a>
 		{/each}
-		{#if askActionHref}
+		{#if canAskWithAnalyticsContext && askActionHref}
 			<a
 				href={askActionHref}
 				class="rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-ink transition-colors hover:bg-accent/85"
@@ -1111,7 +1111,7 @@
 	</div>
 </nav>
 
-{#if askActionHref}
+{#if canAskWithAnalyticsContext && askActionHref}
 	<div class="mb-6 md:hidden">
 		<a
 			href={askActionHref}
@@ -1172,7 +1172,6 @@
 		signalsSummary={marketInsights?.signalsSummary ?? null}
 		signalsAsOf={marketInsights?.signalsAsOf ?? null}
 		{isParchmentIntelligence}
-		isSignedIn={Boolean(session)}
 		{viewMode}
 	/>
 

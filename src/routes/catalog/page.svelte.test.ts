@@ -269,14 +269,11 @@ describe('/catalog intelligence connective tissue', () => {
 			'href',
 			'/analytics'
 		);
-		expect(screen.getByRole('link', { name: 'Preview supplier comparison gate' })).toHaveAttribute(
-			'href',
-			'/analytics'
-		);
+		expect(screen.queryByRole('link', { name: 'Preview supplier comparison gate' })).toBeNull();
 		expect(screen.queryByText(/save sourcing research/i)).not.toBeInTheDocument();
 	});
 
-	it('deep-links to supplier comparison only when Parchment Intelligence access makes the anchor concrete', () => {
+	it('does not repeat the Market Index CTA for Intelligence users', () => {
 		renderCatalog(
 			createData({
 				session: { access_token: 'ppi-token' } as PageData['session'],
@@ -284,17 +281,31 @@ describe('/catalog intelligence connective tissue', () => {
 			} as unknown as Partial<PageData>)
 		);
 
-		expect(
-			screen.getByRole('link', { name: 'Review supplier comparison evidence' })
-		).toHaveAttribute('href', '/analytics#supplier-comparison');
+		expect(screen.getAllByRole('link', { name: 'Open the Market Index' })).toHaveLength(1);
+		expect(screen.queryByRole('link', { name: 'Review supplier comparison evidence' })).toBeNull();
 		expect(
 			screen.queryByText('Need workflow leverage from this supply layer?')
 		).not.toBeInTheDocument();
 	});
 
-	it('routes empty catalog queries back to the broader market read instead of pretending a saved workflow exists', () => {
+	it('uses one market CTA and one paid-product CTA for signed-in free users', () => {
 		renderCatalog(
 			createData({
+				session: { access_token: 'viewer-token' } as PageData['session'],
+				role: 'viewer'
+			} as unknown as Partial<PageData>)
+		);
+
+		expect(screen.getAllByRole('link', { name: 'Open the Market Index' })).toHaveLength(1);
+		expect(screen.getAllByRole('button', { name: 'Compare paid products' })).toHaveLength(1);
+		expect(screen.queryByRole('link', { name: 'Preview supplier comparison gate' })).toBeNull();
+	});
+
+	it('uses one contextual Market Index CTA for signed-in viewers with empty results', () => {
+		renderCatalog(
+			createData({
+				session: { access_token: 'viewer-token' } as PageData['session'],
+				role: 'viewer',
 				data: [],
 				trainingData: [],
 				pagination: {
@@ -316,6 +327,8 @@ describe('/catalog intelligence connective tissue', () => {
 			'href',
 			'/analytics'
 		);
+		expect(screen.queryByRole('link', { name: 'Open the Market Index' })).toBeNull();
+		expect(screen.getAllByRole('link', { name: /Market Index/i })).toHaveLength(1);
 	});
 
 	it('keeps existing rows visible with a quiet pending indicator during a filter refetch instead of the full skeleton', async () => {
@@ -848,5 +861,48 @@ describe('/catalog process controls', () => {
 		expect(screen.getByLabelText('Fermentation')).toBeInTheDocument();
 		expect(screen.getByLabelText('Confidence')).toBeInTheDocument();
 		expect(screen.queryByText('Members unlock structured process filters')).not.toBeInTheDocument();
+	});
+
+	it('hides disconnected process controls in tracked-only mode', () => {
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' } as PageData['session'],
+				role: 'member',
+				trackedOnly: true,
+				catalogAccess: {
+					...createData().catalogAccess,
+					canUseProcessFacets: true
+				}
+			} as unknown as Partial<PageData>)
+		);
+
+		expect(screen.queryByText('Advanced process transparency')).not.toBeInTheDocument();
+		expect(screen.queryByText('Members unlock structured process filters')).not.toBeInTheDocument();
+	});
+
+	it('gives an empty tracked-only view one honest path back to the catalog', () => {
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' } as PageData['session'],
+				role: 'member',
+				trackedOnly: true,
+				data: [],
+				pagination: {
+					page: 1,
+					limit: 15,
+					total: 0,
+					totalPages: 0,
+					hasNext: false,
+					hasPrev: false
+				}
+			} as unknown as Partial<PageData>)
+		);
+
+		expect(screen.getByText('No tracked lots to show')).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Show full catalog' })).toHaveAttribute(
+			'href',
+			'/catalog'
+		);
+		expect(screen.queryByRole('button', { name: 'Clear catalog filters' })).toBeNull();
 	});
 });

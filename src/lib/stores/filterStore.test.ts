@@ -692,4 +692,66 @@ describe('filterStore stale-while-revalidate catalog interactions', () => {
 		expect(state.filters).toEqual({ country: ['Ethiopia'] });
 		expect(state.catalogNotices).toEqual(notices);
 	});
+
+	it('reconciles canonical Parchment denial names back to app filter keys', async () => {
+		const notices = [
+			{
+				code: 'filter_stripped',
+				deniedParams: ['pricePerLbMin', 'pricePerLbMax'],
+				message: 'Price filters require a member account.'
+			}
+		];
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+			if (url.startsWith('/api/catalog/filters?')) return emptyFiltersResponse();
+			if (url.startsWith('/api/catalog?')) return catalogDataResponse([1], { notices });
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { filterStore } = await loadFilterStore();
+		hydratedInit(filterStore);
+		await vi.runOnlyPendingTimersAsync();
+		filterStore.setFilter('cost_lb', { min: '7', max: '9' });
+		await vi.runOnlyPendingTimersAsync();
+
+		expect(get(filterStore).filters).not.toHaveProperty('cost_lb');
+	});
+
+	it('clears a stripped advanced sort from local state and the effective URL', async () => {
+		const notices = [
+			{
+				code: 'entitlement_required',
+				deniedParams: ['sort'],
+				message: 'Advanced sorting requires a member account.'
+			}
+		];
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+			if (url.startsWith('/api/catalog/filters?')) return emptyFiltersResponse();
+			if (url.startsWith('/api/catalog?')) return catalogDataResponse([1], { notices });
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { filterStore } = await loadFilterStore();
+		filterStore.initializeForRoute('/catalog', [{ id: 1, wholesale: false }], {
+			catalogUrlState: {
+				filters: {},
+				sortField: 'purveyor_score',
+				sortDirection: 'desc',
+				showWholesale: false,
+				wholesaleOnly: false,
+				pagination: { page: 1, limit: 15 }
+			},
+			serverData: [{ id: 1, wholesale: false }]
+		});
+		await vi.runOnlyPendingTimersAsync();
+		filterStore.setSortDirection('asc');
+		await vi.runOnlyPendingTimersAsync();
+
+		const state = get(filterStore);
+		expect(state.sortField).toBeNull();
+		expect(state.sortDirection).toBeNull();
+	});
 });

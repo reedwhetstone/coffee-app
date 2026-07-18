@@ -31,6 +31,7 @@
 
 	// Close menus when route changes, but store the current route to prevent unnecessary closing
 	let currentRoute = $state(page.url.pathname);
+	let trackedCatalogRoute = $state(Boolean((page.data as { trackedOnly?: boolean }).trackedOnly));
 
 	import type { UserRole } from '$lib/types/auth.types';
 
@@ -42,8 +43,8 @@
 
 	// Pages where settings (filters) should be shown
 	let showSettings = $derived(() => {
-		const filterPages = ['/catalog', '/beans', '/roast', '/profit'];
-		return filterPages.includes(currentRoute);
+		const filterPages = ['/catalog', '/beans', '/roast'];
+		return filterPages.includes(currentRoute) && !trackedCatalogRoute;
 	});
 
 	// Debug data object to see what's being passed to the ActionsButton
@@ -134,6 +135,12 @@
 		// Only close menus if the route actually changed
 		if (newRoute !== currentRoute) {
 			currentRoute = newRoute;
+			closeAllMenus();
+		}
+
+		const newTrackedCatalogRoute = Boolean((page.data as { trackedOnly?: boolean }).trackedOnly);
+		if (newTrackedCatalogRoute !== trackedCatalogRoute) {
+			trackedCatalogRoute = newTrackedCatalogRoute;
 			closeAllMenus();
 		}
 	});

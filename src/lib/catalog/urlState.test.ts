@@ -183,7 +183,8 @@ describe('catalog URL state helpers', () => {
 			processing_confidence_min: 0.8,
 			score_value: { min: '86', max: '90' },
 			cost_lb: { min: '7.5', max: '9.25' },
-			stocked_date: '30'
+			stocked_date: '2026-04-01',
+			stocked_days: 30
 		};
 		state.pagination.page = 3;
 		state.sortField = 'score_value';
@@ -212,11 +213,23 @@ describe('catalog URL state helpers', () => {
 			pricePerLbMin: 7.5,
 			pricePerLbMax: 9.25,
 			arrivalDate: undefined,
-			stockedDate: '30',
+			stockedDate: '2026-04-01',
+			stockedDays: 30,
 			orderBy: 'score_value',
 			orderDirection: 'asc',
 			limit: 15,
 			offset: 30
 		});
+	});
+
+	it('round-trips the relative stocked window through URL and search state', () => {
+		const state = parseCatalogUrlState(
+			new URL('https://app.test/catalog?stocked_days=30'),
+			'/catalog'
+		);
+
+		expect(state.filters.stocked_days).toBe(30);
+		expect(buildCatalogShareParams(state, '/catalog').toString()).toBe('stocked_days=30');
+		expect(catalogUrlStateToSearchState(state).stockedDays).toBe(30);
 	});
 });
