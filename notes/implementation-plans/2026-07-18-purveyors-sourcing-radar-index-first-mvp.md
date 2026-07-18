@@ -9,7 +9,7 @@
 
 ## Executive decision
 
-Build a four-PR, index-first Sourcing Radar MVP after the active Market Index publication is fresh and provenance-aware.
+Build a five-PR, index-first Sourcing Radar MVP after the active Market Index publication is fresh and provenance-aware.
 
 The MVP fulfills one complete customer promise: **Tell Purveyors what you need, and your dashboard and Parchment agent will surface the few current coffees across the market worth your attention.** It joins self-service sourcing intent to the existing deterministic brief-match and Parchment Market Index signal contracts, presents the result in a personalized dashboard, and lets the customer investigate it with Parchment or continue to the supplier.
 
