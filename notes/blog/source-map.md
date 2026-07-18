@@ -6,20 +6,20 @@ _Last coherence audit: 2026-05-10_
 
 ## Core strategy sources
 
-| Source File                                                                                 | Current role                                         | Blog links                                                                           |
-| ------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `notes/PRODUCT_VISION.md`                                                                   | Canonical product direction                          | Grounds product, intelligence, API, public-surface, and marketplace-standard framing |
-| `notes/BLOG_STRATEGY.md`                                                                    | Canonical blog positioning, cadence, and quality bar | Governs pillar balance, cadence, voice, and maintenance rules                        |
-| `notes/genui-platform-transition-plan.md`                                                   | Primary ai-first-product source                      | Feeds GenUI, canvas, propose/confirm, memory, and AI-first product ideas             |
-| `brain/ideas/cognitive-monorepo-continuous-project-conversation.md`                         | External workspace idea source                      | Feeds contextual inertia, intent transitions, and continuous-conversation architecture          |
-| `notes/API_notes/API-strategy.md`                                                           | Primary API / B2CC source                            | Feeds dual-audience API, agent-first QA, pricing, and docs-as-product ideas          |
-| `notes/decisions/002-api-first-external-internal-split.md`                                  | API-first architecture decision                      | Supports public discovery, paid API, and endpoint governance posts                   |
-| `notes/decisions/004-processing-transparency-schema-api.md`                                 | Structured process metadata decision                 | Supports processing transparency, schema-as-market, and disclosure-quality posts     |
-| `notes/archive/legacy-product/MARKET_ANALYSIS.md`                                           | Historical source for early supply-chain posts       | Feeds `what-is-purveyors` and legacy supply-chain infrastructure framing             |
-| `brain/references/b2cc-agents-as-customers.md`                                              | External theory / reference                          | Feeds agents-as-customers, docs-as-product, and allowlist-governance ideas           |
-| `notes/big-ideas/2026-04-30-purveyors-proof-layer.md`                                       | Strategic proof-layer proposal                       | Feeds claim provenance, proof passport, and evidence-as-product ideas                |
-| `notes/implementation-plans/2026-04-29-parchment-intelligence-api-cli-bridge.md`            | Price-index API and CLI bridge plan                  | Feeds Parchment Intelligence launch and machine-readable market-data posts           |
-| `../coffee-scraper/notes/implementation-plans/2026-04-29-certifications-taxonomy-schema.md` | Certification taxonomy schema plan                   | Feeds certification schema and structured claim-data ideas                           |
+| Source File                                                                                 | Current role                                         | Blog links                                                                             |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `notes/PRODUCT_VISION.md`                                                                   | Canonical product direction                          | Grounds product, intelligence, API, public-surface, and marketplace-standard framing   |
+| `notes/BLOG_STRATEGY.md`                                                                    | Canonical blog positioning, cadence, and quality bar | Governs pillar balance, cadence, voice, and maintenance rules                          |
+| `notes/genui-platform-transition-plan.md`                                                   | Primary ai-first-product source                      | Feeds GenUI, canvas, propose/confirm, memory, and AI-first product ideas               |
+| `brain/ideas/cognitive-monorepo-continuous-project-conversation.md`                         | External workspace idea source                       | Feeds contextual inertia, intent transitions, and continuous-conversation architecture |
+| `notes/API_notes/API-strategy.md`                                                           | Primary API / B2CC source                            | Feeds dual-audience API, agent-first QA, pricing, and docs-as-product ideas            |
+| `notes/decisions/002-api-first-external-internal-split.md`                                  | API-first architecture decision                      | Supports public discovery, paid API, and endpoint governance posts                     |
+| `notes/decisions/004-processing-transparency-schema-api.md`                                 | Structured process metadata decision                 | Supports processing transparency, schema-as-market, and disclosure-quality posts       |
+| `notes/archive/legacy-product/MARKET_ANALYSIS.md`                                           | Historical source for early supply-chain posts       | Feeds `what-is-purveyors` and legacy supply-chain infrastructure framing               |
+| `brain/references/b2cc-agents-as-customers.md`                                              | External theory / reference                          | Feeds agents-as-customers, docs-as-product, and allowlist-governance ideas             |
+| `notes/big-ideas/2026-04-30-purveyors-proof-layer.md`                                       | Strategic proof-layer proposal                       | Feeds claim provenance, proof passport, and evidence-as-product ideas                  |
+| `notes/implementation-plans/2026-04-29-parchment-intelligence-api-cli-bridge.md`            | Price-index API and CLI bridge plan                  | Feeds Parchment Intelligence launch and machine-readable market-data posts             |
+| `../coffee-scraper/notes/implementation-plans/2026-04-29-certifications-taxonomy-schema.md` | Certification taxonomy schema plan                   | Feeds certification schema and structured claim-data ideas                             |
 
 ## Recent source material checked in this audit (2026-04-19 to 2026-04-26)
 
