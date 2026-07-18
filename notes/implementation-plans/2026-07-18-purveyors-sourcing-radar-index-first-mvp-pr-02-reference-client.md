@@ -19,7 +19,7 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 - Fresh result rows with lot identity, current price, brief-match reasons, eligible signal evidence, lot-age context (crop year / first-observed date, or the API's `ageContext: unknown` disclosure rendered honestly), source, publication freshness/quality, limitations, and one source-detail action.
 - Honest stale, unavailable, empty, denied, and error states.
 - Concierge pilot onboarding: before each PPI-only participant starts, an authorized operator uses the private participant-seed runbook below to provision one active brief under that participant's user ID; the caller-owned `POST /v1/procurement/briefs` contract is not used with the operator's credentials, and no new self-service brief capture is added.
-- Minimal events for Radar open, indexed row impression, source-detail click, and pilot disposition. This introduces a small new pilot-event helper — the repo has no general client event-tracking pattern today, so this is new telemetry surface, kept deliberately minimal: server-side capture, fixed event names, no criteria or user-entered text in payloads.
+- Minimal events for Radar open, indexed row impression, source-detail click, and pilot disposition. This introduces a small new pilot-event helper and a durable, append-only `radar_pilot_events` table in the coffee-app Supabase project; the repo has no general client event-tracking pattern today, so this is new telemetry surface, kept deliberately minimal: server-side capture, fixed event names, participant/brief/catalog identifiers only where applicable, a fixed disposition enum, and no criteria, source payloads, or user-entered text in payloads. The table is server-side only and is not recommendation-run history.
 - A compact pilot disposition control: already known, investigate, shortlist, sample/quote, or not relevant.
 - Focused tests and existing docs/copy alignment where required.
 
@@ -29,7 +29,7 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 - Automatic refresh, scheduler, email, Discord, webhook, SMS, or push delivery.
 - Stored recommendation runs, notification preferences, team workflows, or history charts.
 - Client-side ranking, freshness decisions, signal calculation, or AI summaries.
-- PPI self-service brief creation/editing, CLI changes, pricing, checkout, or public teaser work. The pilot is explicitly concierge-seeded through a private operator control-plane path; this PR adds no new public/member write route, schema, or permission broadening.
+- PPI self-service brief creation/editing, CLI changes, pricing, checkout, or public teaser work. The pilot is explicitly concierge-seeded through a private operator control-plane path; this PR adds no new public/member brief-write route or permission broadening. The only schema addition is the server-side pilot-event sink defined above.
 - Purchase, RFQ, supplier-message, inventory-write, or other external actions.
 
 ## PPI-only participant seed runbook
@@ -58,7 +58,7 @@ This is a pilot prerequisite, not a new self-service or public API capability. I
 - `src/routes/procurement/briefs/[id]/radar/+page.svelte`
 - focused route/component tests
 - `src/routes/dashboard/+page.server.ts`, `src/routes/dashboard/+page.svelte`, and their tests
-- a small new pilot-event helper (no existing client event pattern to reuse; define where events land — a server-side log table is sufficient for the pilot)
+- `supabase/migrations/<timestamp>_radar_pilot_events.sql` and a small server-side pilot-event helper for the append-only sink; there is no browser write path
 - dependency/lockfile updates only if the Parchment SDK release requires them
 
 ## Acceptance criteria
@@ -70,7 +70,7 @@ This is a pilot prerequisite, not a new self-service or public API capability. I
 - Fresh rows render canonical evidence, including lot-age context or its `unknown` disclosure, and link to the correct source/lot.
 - Stale, unavailable, empty, denied, and upstream-error fixtures have distinct, truthful UI.
 - No recommendation card renders when the API status is not `fresh`.
-- Events distinguish page opens, evidence shown, source clicks, and explicit pilot dispositions without storing sensitive brief criteria in analytics payloads.
+- Events distinguish page opens, evidence shown, source clicks, and explicit pilot dispositions; the server-side append-only sink persists only the fixed event fields and rejects sensitive brief criteria, source payloads, and user-entered text.
 - Existing dashboard, catalog brief matches, Market Index, and chat behavior remain unchanged.
 - Keyboard, screen-reader, mobile, loading, and reduced-motion behavior meet existing route standards.
 
@@ -80,7 +80,7 @@ This is a pilot prerequisite, not a new self-service or public API capability. I
 - Component/route tests for evidence, source links, limitations, status copy, dispositions, keyboard use, and mobile layout.
 - Dashboard server-load and component tests prove that PPI-only owners receive active-brief cards and the Radar action, while users without `ppiAccess` do not receive that action.
 - Pilot setup documentation proves that operator seeding writes the participant owner through the private control-plane path, does not rely on the caller-owned create contract, and verifies ownership through the PPI-readable Radar/dashboard paths.
-- Event tests that exclude criteria and user-entered text.
+- Pilot-event helper, migration, and persistence tests prove the fixed event names/fields, server-only access, append-only behavior, and exclusion of criteria, source payloads, and user-entered text.
 - `pnpm check --fail-on-warnings`, focused tests, lint, and production build using the repository's documented environment path.
 - One post-deploy smoke with an owned test brief and manual source reconciliation.
 

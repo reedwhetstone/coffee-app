@@ -116,7 +116,7 @@ Prototype code may be exercised against stale/unavailable fixtures, but the buye
 
 The existing procurement contract is caller-owned: `POST /v1/procurement/briefs` assigns the authenticated caller as `user_id`, and the read/match routes are owner-scoped. It cannot be used with an operator/admin/API-Origin credential to create a participant-owned brief.
 
-Before onboarding a PPI-only participant, the operator must use the private control-plane procedure defined in the PR 2 plan: verify the participant principal ID, run an approved admin-only command/RPC or one-time service-role transaction in the private API environment that inserts one active manual brief under that ID, and record the brief ID plus non-sensitive audit metadata in the restricted pilot log. The operator must then authenticate as the participant and verify both `GET /v1/procurement/briefs/{id}` and dashboard visibility. No service-role credential may reach the browser or coffee-app runtime.
+Before onboarding a PPI-only participant, the operator must use the private control-plane procedure defined in the PR 2 plan: verify the participant principal ID, run an approved admin-only command/RPC or one-time service-role transaction in the private API environment that inserts one active manual brief under that ID, and record the brief ID plus non-sensitive audit metadata in the restricted pilot log. The operator must then authenticate as the participant and verify the PPI-readable `GET /v1/procurement/briefs/{id}/radar` response plus dashboard visibility. Do not use the member-gated base brief GET as this pilot gate. No service-role credential may reach the browser or coffee-app runtime.
 
 If that private seed operation is unavailable, onboarding stops and the operation becomes an explicitly reviewed `parchment-api` prerequisite. An ad hoc database edit or a caller-owned operator-created brief does not satisfy this gate.
 
@@ -197,9 +197,9 @@ The pilot fails if the output mostly restates obvious catalog matches, if stale/
 - `stale` and `unavailable` states return no indexed opportunity rows and use no recommendation language.
 - No client hardcodes or recomputes freshness, signal rank, or entitlement.
 - Direct URL and API calls enforce ownership and Parchment Intelligence access.
-- Each PPI-only pilot participant can be onboarded with one participant-owned active brief through the private seed prerequisite, proven by participant-authenticated GET and dashboard checks; brief creation/editing UX remains out of scope for this MVP.
+- Each PPI-only pilot participant can be onboarded with one participant-owned active brief through the private seed prerequisite, proven by the participant-authenticated PPI-readable Radar response and dashboard checks; brief creation/editing UX remains out of scope for this MVP.
 - The user reaches the supplier/source record in one action.
-- No runtime in any repository adds a scheduler, delivery side effect, new score, or run-history storage.
+- No runtime in any repository adds a scheduler, delivery side effect, new score, or recommendation-run history; the PR 2 pilot-event sink is limited to the fixed append-only event rows defined in its plan.
 
 ## Validation expectations
 
