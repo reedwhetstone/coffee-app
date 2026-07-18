@@ -1,4 +1,4 @@
-# Sourcing Radar MVP PR 4: Coffee-App Self-Service Intent
+# Sourcing Radar MVP PR 3: Coffee-App Self-Service Intent
 
 **Program:** Purveyors Sourcing Radar, index-first MVP
 **Repository:** `coffee-app`
@@ -6,7 +6,7 @@
 
 ## Why this slice comes now
 
-PR 2 makes intent ownership, entitlement, validation, and persistence canonical in Parchment. PR 3 adds the minimal Parchment-owned event contract that the personalized product will later consume. Coffee-app can now deliver the customer workflow without becoming a second backend: broker the authenticated session through its thin BFF, render the supported criteria, and preserve the API's success and error semantics.
+PR 2 makes intent ownership, entitlement, validation, and persistence canonical in Parchment. Coffee-app can now deliver the customer workflow without becoming a second backend: broker the authenticated session through its thin BFF, render the supported criteria, and preserve the API's success and error semantics.
 
 This slice is independently useful even if personalized Radar presentation ships later. A PPI customer can tell Purveyors what they are sourcing, inspect existing canonical matches, refine the need, and deactivate it without operator intervention.
 
@@ -17,7 +17,7 @@ This slice is independently useful even if personalized Radar presentation ships
 - Thin same-origin BFF/resource calls that broker the session credential and forward canonical requests without adding authorization or procurement logic.
 - Focused setup UX in the existing authenticated product shell, with an obvious “Tell Parchment what you are sourcing” entry point.
 - Honest loading, validation, denied, conflict, unavailable, empty, and success states derived from the canonical response.
-- Existing matches are the immediate post-save utility while personalized Radar waits for PR 5. After a successful save, the BFF consumes `GET /v1/procurement/briefs/{id}/matches` through the published SDK and renders the owned response for PPI-only customers; it does not fall back to member-gated catalog brief summaries or a local database read.
+- Existing matches are the immediate post-save utility while personalized Radar waits for PR 4. After a successful save, the BFF consumes `GET /v1/procurement/briefs/{id}/matches` through the published SDK and renders the owned response for PPI-only customers; it does not fall back to member-gated catalog brief summaries or a local database read.
 - A cursor-paginated brief-management list using PR 2's active/inactive/all contract, so lifecycle management and on-demand Radar access are not limited by the dashboard's five-brief fan-out cap.
 - Focused route, BFF, component, accessibility, and regression tests.
 
@@ -37,7 +37,7 @@ This slice is independently useful even if personalized Radar presentation ships
 3. Coffee-app sends the canonical request through the thin BFF; Parchment validates and stores it under the authenticated owner.
 4. After save, the customer can inspect the owned brief's existing matches through the canonical Parchment matches read, then refine the constraints, activate another saved need, or deactivate it.
 5. The customer can continue through all owned briefs with the cursor-paginated management list; selecting an additional active brief loads its Radar detail on demand rather than adding another dashboard fan-out.
-6. PR 5 uses the same owned active brief as the input to the personalized Radar experience.
+6. PR 4 uses the same owned active brief as the input to the personalized Radar experience.
 
 This should feel like configuring an agent, not filing an internal research form.
 
@@ -90,4 +90,4 @@ This should feel like configuring an agent, not filing an internal research form
 
 ## Exact follow-on dependency
 
-PR 5 begins after the PPI setup flow is deployed, a PPI-only test account can create and maintain an owned active brief through the product path, and that brief returns a canonical Radar result from PR 1 without direct database access.
+PR 4 begins after the PPI setup flow is deployed, a PPI-only test account can create and maintain an owned active brief through the product path, and that brief returns a canonical Radar result from PR 1 without direct database access.

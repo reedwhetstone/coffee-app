@@ -6,7 +6,7 @@
 **Mode:** plan red-team plus competitive-advantage and MVP-wedge analysis (codebase verification, external fact-check, deep market research)
 **Final verdict:** Corrections required before merge
 
-> **Product-direction addendum, 2026-07-18:** This audit evaluated the original two-PR manual validation boundary. Its evidence-quality, pilot-arithmetic, entitlement, telemetry, supply-risk, and freshness findings remain valid. After those corrections, product-owner review identified a higher-level flaw outside the audit's original hypothesis: the customer experience had become a qualification harness rather than a complete product promise. The final plan therefore preserves the audit's trust safeguards but replaces mandatory validation/disposition work and concierge seeding with secure PPI self-service intent, a personalized dashboard, an Ask Parchment investigation loop, useful tracked-lot/source actions, and passive analytics. Later architecture reviews also corrected repository ownership and lifecycle completeness: Parchment owns the canonical intent and event contracts, authorization, SDKs, and database migration path; inactive briefs remain discoverable for reactivation; coffee-app owns only the thin self-service BFF/UX and personalized product surface. The program is now five independently mergeable product slices.
+> **Product-direction addendum, 2026-07-18:** This audit evaluated the original two-PR manual validation boundary. Its evidence-quality, pilot-arithmetic, entitlement, supply-risk, and freshness findings remain valid. Product-owner review subsequently identified two higher-level flaws outside the audit's original hypothesis: the customer experience had become a qualification harness, and the proposed telemetry had become a separate user-interaction tracking product. The final plan preserves the trust safeguards but replaces mandatory validation/disposition work and concierge seeding with secure PPI self-service intent, a personalized dashboard, an Ask Parchment investigation loop, and useful tracked-lot/source actions. The audit's telemetry recommendation is explicitly superseded; the MVP adds no event tokens, click/exposure tracking, watchlist attribution, event API, or analytics persistence. Parchment owns the canonical read and intent contracts, authorization, SDKs, and database migration path; inactive briefs remain discoverable for reactivation; coffee-app owns only the thin self-service BFF/UX and personalized product surface. The program is now four independently mergeable product slices.
 
 ## Executive assessment
 
@@ -64,6 +64,8 @@ PR 1 gates on "existing Parchment Intelligence entitlement" — a real $39/mo / 
 
 ### 6. PR 2's "existing analytics event pattern" does not exist
 
+> **Superseded by product-owner decision:** the final MVP removes new interaction tracking entirely, so no event helper or sink is introduced.
+
 The repo has analytics _page_ modules and API-usage accounting, but no client event-tracking helper — no `trackEvent`, no event bus, no product-analytics pipeline (verified by grep across `src/`). PR 2's "minimal events… using the existing event pattern" is therefore new telemetry surface, not reuse, and its scope estimate and privacy constraints ("no criteria in payloads") need to be written against that reality. **Correction:** amend the PR 2 plan to say a minimal pilot-event helper is being _introduced_, define where events land (server log table vs third party), and keep the existing no-criteria/no-free-text constraint.
 
 ### 7. Prerequisite status is understated; the pilot has no earliest-start reality check
@@ -109,7 +111,7 @@ The two-PR, index-first, manual, fail-closed shape is the right MVP — this red
 2. Pilot threshold becomes behavioral (source visit + sample request within the freshness window), over 8–12 weeks or an arrival season, with five partners targeted (P1-2).
 3. Supply-side risk register plus a source-consent posture, with the pilot's deep links framed as the opening of an importer partnership track (P1-3).
 4. Radar explicitly behind `ppi_access`; interview anchors moved to the $29–$49 band; "why now" reframed around volatility, tariff churn, and EUDR; pricing citations corrected (P2-4, P2-5).
-5. PR 2 telemetry described as new minimal surface; staleness-at-click added to pilot metrics; earliest-start note tied to the recovery program's actual undeployed status (P2-6, P2-7, P2-8).
+5. The original telemetry recommendation was later superseded by the product-owner decision to add no interaction tracking; the earliest-start note remains tied to the recovery program's actual undeployed status (P2-6, P2-7, P2-8).
 
 The strategic reframe worth writing into the program doc: the Radar pilot is the demand test, but the compounding asset is the multi-harvest price-history dataset the recovery program makes trustworthy. Every scope decision should protect that dataset's continuity — it, not the alert, is what survives a competitor.
 
