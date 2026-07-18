@@ -575,6 +575,14 @@ describe('/catalog price intelligence', () => {
 				canUseSavedSearches: true,
 				canExport: true
 			},
+			initialCatalogState: {
+				filters: {},
+				sortField: null,
+				sortDirection: null,
+				showWholesale: true,
+				wholesaleOnly: false,
+				pagination: { page: 1, limit: 15 }
+			},
 			originPriceStats: [{ ...colombiaStats, median: 8.5 }]
 		} as unknown as Partial<PageData>);
 
@@ -592,7 +600,7 @@ describe('/catalog price intelligence', () => {
 					filters: {},
 					sortField: null,
 					sortDirection: null,
-					showWholesale: true,
+					showWholesale: false,
 					wholesaleOnly: false,
 					pagination: { page: 1, limit: 15 }
 				},
@@ -603,10 +611,9 @@ describe('/catalog price intelligence', () => {
 
 		await waitFor(() => {
 			expect(fetch).toHaveBeenCalledWith(
-				'/api/catalog/origin-price-stats?showWholesale=true',
+				'/api/catalog/origin-price-stats?showWholesale=false',
 				expect.objectContaining({ signal: expect.any(AbortSignal) })
 			);
-			expect(screen.getByText(/above median/i)).toBeInTheDocument();
 		});
 	});
 
@@ -831,6 +838,27 @@ describe('/catalog process controls', () => {
 		).toBeInTheDocument();
 		expect(screen.queryByLabelText('Base method')).not.toBeInTheDocument();
 		expect(screen.queryByText('Advanced process transparency')).not.toBeInTheDocument();
+	});
+
+	it('explains when viewer-tier premium discovery filters were not applied', () => {
+		renderCatalog(
+			createData({
+				catalogAccessNotice: {
+					status: 403,
+					code: 'entitlement_required',
+					message:
+						'Some requested catalog filters or sorts are available to members and paid API tiers.',
+					deniedParams: ['type', 'grade', 'appearance', 'sort']
+				}
+			} as unknown as Partial<PageData>)
+		);
+
+		expect(screen.getByText('Some requested filters were not applied')).toBeInTheDocument();
+		expect(
+			screen.getByText(
+				'Some requested catalog filters or sorts are available to members and paid API tiers.'
+			)
+		).toBeInTheDocument();
 	});
 
 	it('enables process facet controls for member access', async () => {

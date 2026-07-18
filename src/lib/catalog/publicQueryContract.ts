@@ -8,9 +8,6 @@ export const PUBLIC_CATALOG_SORT_FIELDS = [
 	'region',
 	'processing',
 	'cultivar_detail',
-	'type',
-	'grade',
-	'appearance',
 	'score_value',
 	'cost_lb',
 	'price_per_lb'

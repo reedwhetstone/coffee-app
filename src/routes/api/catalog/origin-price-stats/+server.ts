@@ -34,7 +34,9 @@ export const GET: RequestHandler = async (event) => {
 	const visibility = resolveCatalogVisibility({
 		session: locals.session,
 		role: locals.role,
-		showWholesaleRequested: url.searchParams.get('showWholesale') === 'true',
+		showWholesaleRequested: url.searchParams.has('showWholesale')
+			? url.searchParams.get('showWholesale') === 'true'
+			: undefined,
 		wholesaleOnlyRequested: url.searchParams.get('wholesaleOnly') === 'true'
 	});
 
@@ -50,8 +52,9 @@ export const GET: RequestHandler = async (event) => {
 
 		// Forward the resolved (privilege-gated) view params so the data scope
 		// Parchment computes stays consistent with the meta.access we report below.
-		const query: CatalogOriginPriceStatsQuery = {};
-		if (visibility.showWholesale) query.showWholesale = 'true';
+		const query: CatalogOriginPriceStatsQuery = {
+			showWholesale: visibility.showWholesale ? 'true' : 'false'
+		};
 		if (visibility.wholesaleOnly) query.wholesaleOnly = 'true';
 
 		// openapi-fetch resolves non-2xx responses as `{ error, response }` rather

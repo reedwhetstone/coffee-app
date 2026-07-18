@@ -56,7 +56,25 @@ describe('/api/catalog route', () => {
 			preferHandling: 'lenient'
 		});
 		expect(mockCatalogList).toHaveBeenCalledWith(
-			expect.objectContaining({ page: '2', limit: '10' })
+			expect.objectContaining({ page: '2', limit: '10', showWholesale: 'true' })
+		);
+	});
+
+	it('preserves an explicit hobbyist-only catalog scope', async () => {
+		await GET(makeEvent('https://app.test/api/catalog?page=1&limit=15&showWholesale=false'));
+
+		expect(mockCatalogList).toHaveBeenCalledWith(
+			expect.objectContaining({ showWholesale: 'false' })
+		);
+	});
+
+	it('normalizes contradictory wholesale-only catalog scope flags', async () => {
+		await GET(
+			makeEvent('https://app.test/api/catalog?page=1&showWholesale=false&wholesaleOnly=true')
+		);
+
+		expect(mockCatalogList).toHaveBeenCalledWith(
+			expect.objectContaining({ showWholesale: 'true', wholesaleOnly: 'true' })
 		);
 	});
 

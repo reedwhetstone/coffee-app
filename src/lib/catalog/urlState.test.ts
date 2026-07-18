@@ -76,6 +76,33 @@ describe('catalog URL state helpers', () => {
 		);
 	});
 
+	it('normalizes contradictory wholesale-only URLs to a wholesale-inclusive scope', () => {
+		const state = parseCatalogUrlState(
+			new URL('https://app.test/catalog?showWholesale=false&wholesaleOnly=true'),
+			'/catalog'
+		);
+
+		expect(state.showWholesale).toBe(true);
+		expect(state.wholesaleOnly).toBe(true);
+		expect(buildCatalogShareParams(state, '/catalog').toString()).toBe(
+			'showWholesale=true&wholesaleOnly=true'
+		);
+	});
+
+	it('defaults to all coffees and preserves the explicit hobbyist-only scope', () => {
+		const defaultState = parseCatalogUrlState(new URL('https://app.test/catalog'), '/catalog');
+		const hobbyistState = parseCatalogUrlState(
+			new URL('https://app.test/catalog?showWholesale=false'),
+			'/catalog'
+		);
+
+		expect(defaultState.showWholesale).toBe(true);
+		expect(hobbyistState.showWholesale).toBe(false);
+		expect(buildCatalogShareParams(hobbyistState, '/catalog').toString()).toBe(
+			'showWholesale=false'
+		);
+	});
+
 	it('maps process transparency filters onto shared catalog search options', () => {
 		const state = createDefaultCatalogUrlState('/catalog');
 		state.filters = {

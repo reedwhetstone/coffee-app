@@ -339,7 +339,7 @@
 
 	function buildOriginStatsParams(showWholesale: boolean, wholesaleOnly: boolean): URLSearchParams {
 		const params = new URLSearchParams();
-		if (showWholesale) params.set('showWholesale', 'true');
+		params.set('showWholesale', showWholesale ? 'true' : 'false');
 		if (wholesaleOnly) params.set('wholesaleOnly', 'true');
 		return params;
 	}
@@ -584,11 +584,19 @@
 			</div>
 		{/if}
 
+		{#if data.catalogAccessNotice}
+			<div
+				class="rounded-lg border border-warning/30 bg-warning-subtle px-4 py-3 text-warning-strong"
+			>
+				<h2 class="text-sm font-semibold">Some requested filters were not applied</h2>
+				<p class="mt-1 text-sm">{data.catalogAccessNotice.message}</p>
+			</div>
+		{/if}
+
 		{#if !trackedOnlyView}
 			<ProcessFilterSection
 				canUseProcessFacets={data.catalogAccess?.canUseProcessFacets ?? false}
 				{hasAdvancedProcessFilters}
-				catalogAccessNotice={data.catalogAccessNotice}
 				onClearProcessTransparencyFilters={clearProcessTransparencyFilters}
 			/>
 		{/if}

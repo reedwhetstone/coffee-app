@@ -3,9 +3,11 @@ import type { CatalogListQuery, ParchmentClient, components } from '@purveyors/s
 import { toCatalogResourceItem } from '$lib/catalog/catalogResourceItem';
 import { CatalogSchemaUnavailableError } from '$lib/data/catalog';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
+import { PREMIUM_DISCOVERY_FILTER_KEYS } from '$lib/catalog/accessPolicy';
 import {
 	PROCESS_FACET_FILTER_KEYS,
-	createProcessFacetDeniedNotice,
+	createCatalogAccessDeniedNotice,
+	getRequestedPremiumDiscoveryParams,
 	getRequestedProcessFacetParams,
 	resolveCatalogAccessCapabilities,
 	type CatalogAccessDeniedNotice
@@ -271,6 +273,15 @@ function stripProcessFacetFilters(state: CatalogUrlState): CatalogUrlState {
 	};
 }
 
+function stripPremiumDiscoveryFilters(state: CatalogUrlState): CatalogUrlState {
+	const filters = { ...state.filters };
+	for (const key of PREMIUM_DISCOVERY_FILTER_KEYS) {
+		delete filters[key];
+	}
+
+	return { ...state, filters };
+}
+
 function stripPriceScoreRangeFilters(state: CatalogUrlState): CatalogUrlState {
 	const { score_value: _scoreValue, cost_lb: _costLb, ...filters } = state.filters;
 	return { ...state, filters };
@@ -300,8 +311,9 @@ async function streamOriginPriceStats(
 ): Promise<CatalogOriginPriceStats> {
 	if (!client) return [];
 	try {
-		const statsQuery: CatalogOriginPriceStatsQuery = {};
-		if (visibility.showWholesale) statsQuery.showWholesale = 'true';
+		const statsQuery: CatalogOriginPriceStatsQuery = {
+			showWholesale: visibility.showWholesale ? 'true' : 'false'
+		};
 		if (visibility.wholesaleOnly) statsQuery.wholesaleOnly = 'true';
 
 		const { data } = await client.catalog.originPriceStats(statsQuery);
@@ -376,16 +388,28 @@ export const load: PageServerLoad = async (event) => {
 	const deniedProcessParams = catalogAccess.canUseProcessFacets
 		? []
 		: getRequestedProcessFacetParams(url.searchParams);
-	const catalogAccessNotice: CatalogAccessDeniedNotice | null = createProcessFacetDeniedNotice({
+	const deniedPremiumDiscoveryParams = catalogAccess.canUseAdvancedFilters
+		? []
+		: getRequestedPremiumDiscoveryParams(url.searchParams);
+	const deniedAdvancedSort =
+		!catalogAccess.canUseAdvancedSorts &&
+		Boolean(requestedCatalogState.sortField) &&
+		!isPublicCatalogSortField(requestedCatalogState.sortField ?? '');
+	const catalogAccessNotice: CatalogAccessDeniedNotice | null = createCatalogAccessDeniedNotice({
 		isAuthenticated: locals.principal?.isAuthenticated ?? Boolean(locals.session),
-		deniedParams: deniedProcessParams
+		processParams: deniedProcessParams,
+		premiumDiscoveryParams: deniedPremiumDiscoveryParams,
+		advancedSortRequested: deniedAdvancedSort
 	});
 	const processAuthorizedCatalogState = catalogAccess.canUseProcessFacets
 		? requestedCatalogState
 		: stripProcessFacetFilters(requestedCatalogState);
-	const freshnessAuthorizedCatalogState = catalogAccess.canUseAdvancedFilters
+	const discoveryAuthorizedCatalogState = catalogAccess.canUseAdvancedFilters
 		? processAuthorizedCatalogState
-		: stripFreshnessFilters(processAuthorizedCatalogState);
+		: stripPremiumDiscoveryFilters(processAuthorizedCatalogState);
+	const freshnessAuthorizedCatalogState = catalogAccess.canUseAdvancedFilters
+		? discoveryAuthorizedCatalogState
+		: stripFreshnessFilters(discoveryAuthorizedCatalogState);
 	const rangeAuthorizedCatalogState = catalogAccess.canUsePriceScoreRanges
 		? freshnessAuthorizedCatalogState
 		: stripPriceScoreRangeFilters(freshnessAuthorizedCatalogState);

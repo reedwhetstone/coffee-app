@@ -130,7 +130,7 @@ const initialState: FilterState = {
 	routeId: '',
 	sortField: null,
 	sortDirection: null,
-	showWholesale: false,
+	showWholesale: true,
 	wholesaleOnly: false,
 	filters: {},
 	uniqueValues: {},
@@ -339,9 +339,7 @@ function createFilterStore() {
 		try {
 			const state = get({ subscribe });
 			const params = new URLSearchParams();
-			if (state.showWholesale) {
-				params.append('showWholesale', 'true');
-			}
+			params.set('showWholesale', state.showWholesale ? 'true' : 'false');
 			if (state.wholesaleOnly) {
 				params.append('wholesaleOnly', 'true');
 			}
@@ -576,8 +574,8 @@ function createFilterStore() {
 
 	/**
 	 * Toggles wholesale visibility on catalog routes.
-	 * false (default): retail only
-	 * true: show retail + wholesale
+	 * true (default): show retail + wholesale
+	 * false: hobbyist suppliers only
 	 */
 	function setShowWholesale(showWholesale: boolean) {
 		update((state) => {
@@ -638,7 +636,7 @@ function createFilterStore() {
 	function clearFilters() {
 		update((state) => {
 			state.filters = {};
-			state.showWholesale = false;
+			state.showWholesale = true;
 			state.wholesaleOnly = false;
 			// Reset to first page for server-side routes
 			if (isCatalogRoute(state.routeId)) {

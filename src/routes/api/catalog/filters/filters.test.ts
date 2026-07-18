@@ -54,7 +54,9 @@ describe('/api/catalog/filters', () => {
 			mode: 'public-demo',
 			preferHandling: 'lenient'
 		});
-		expect(mockFacets).toHaveBeenCalledWith(expect.objectContaining({ stocked: 'true' }));
+		expect(mockFacets).toHaveBeenCalledWith(
+			expect.objectContaining({ stocked: 'true', showWholesale: 'true' })
+		);
 	});
 
 	it('uses session mode for authenticated website facet callers', async () => {
@@ -81,13 +83,25 @@ describe('/api/catalog/filters', () => {
 		);
 	});
 
-	it('does not forward wholesale params that were not requested', async () => {
+	it('normalizes contradictory wholesale-only facet scope flags', async () => {
 		mockFacets.mockResolvedValue({ data: { values: {} }, error: null });
 
-		await GET(makeEvent('https://app.test/api/catalog/filters'));
+		await GET(
+			makeEvent('https://app.test/api/catalog/filters?showWholesale=false&wholesaleOnly=true')
+		);
+
+		expect(mockFacets).toHaveBeenCalledWith(
+			expect.objectContaining({ showWholesale: 'true', wholesaleOnly: 'true' })
+		);
+	});
+
+	it('preserves hobbyist-only visibility explicitly', async () => {
+		mockFacets.mockResolvedValue({ data: { values: {} }, error: null });
+
+		await GET(makeEvent('https://app.test/api/catalog/filters?showWholesale=false'));
 
 		const query = mockFacets.mock.calls[0][0];
-		expect(query).not.toHaveProperty('showWholesale');
+		expect(query).toMatchObject({ showWholesale: 'false' });
 		expect(query).not.toHaveProperty('wholesaleOnly');
 	});
 

@@ -65,6 +65,26 @@ const memberLocals = {
 };
 
 describe('/api/catalog/origin-price-stats', () => {
+	it('includes wholesale in the default public stats scope', async () => {
+		const response = await GET(makeEvent('https://app.test/api/catalog/origin-price-stats'));
+
+		expect(mockOriginPriceStats).toHaveBeenCalledWith({ showWholesale: 'true' });
+		expect(await response.json()).toMatchObject({
+			meta: { access: { publicOnly: true, showWholesale: true, wholesaleOnly: false } }
+		});
+	});
+
+	it('preserves the explicit hobbyist-only stats scope', async () => {
+		const response = await GET(
+			makeEvent('https://app.test/api/catalog/origin-price-stats?showWholesale=false')
+		);
+
+		expect(mockOriginPriceStats).toHaveBeenCalledWith({ showWholesale: 'false' });
+		expect(await response.json()).toMatchObject({
+			meta: { access: { publicOnly: true, showWholesale: false, wholesaleOnly: false } }
+		});
+	});
+
 	it('relays Parchment origin price stats and preserves the meta.access shape', async () => {
 		const response = await GET(makeEvent('https://app.test/api/catalog/origin-price-stats'));
 
@@ -72,13 +92,13 @@ describe('/api/catalog/origin-price-stats', () => {
 		expect(await response.json()).toEqual({
 			originPriceStats: parchmentStats,
 			meta: {
-				access: { publicOnly: true, showWholesale: false, wholesaleOnly: false }
+				access: { publicOnly: true, showWholesale: true, wholesaleOnly: false }
 			}
 		});
-		// Anonymous caller: no wholesale flags forwarded; Parchment derives scope
-		// (and publicOnly) from the forwarded credential.
+		// The default scope explicitly includes wholesale while Parchment derives publicOnly
+		// from the forwarded credential.
 		const query = mockOriginPriceStats.mock.calls[0][0];
-		expect(query).not.toHaveProperty('showWholesale');
+		expect(query).toMatchObject({ showWholesale: 'true' });
 		expect(query).not.toHaveProperty('wholesaleOnly');
 		// Anonymous refresh must reuse the public-demo credential (matching the SSR
 		// loader), not a token-less session call that Parchment can reject with 401.
@@ -122,19 +142,19 @@ describe('/api/catalog/origin-price-stats', () => {
 		expect(query).not.toHaveProperty('wholesaleOnly');
 	});
 
-	it('does not grant wholesale scope to an unprivileged caller even when requested', async () => {
+	it('includes wholesale in the public catalog while keeping wholesale-only privileged', async () => {
 		const response = await GET(
 			makeEvent(
 				'https://app.test/api/catalog/origin-price-stats?showWholesale=true&wholesaleOnly=true'
 			)
 		);
 
-		// Anonymous → resolveCatalogVisibility gates both flags off, so nothing is forwarded.
+		// Wholesale is part of the default discovery surface; wholesale-only remains privileged.
 		const query = mockOriginPriceStats.mock.calls[0][0];
-		expect(query).not.toHaveProperty('showWholesale');
+		expect(query).toMatchObject({ showWholesale: 'true' });
 		expect(query).not.toHaveProperty('wholesaleOnly');
 		expect(await response.json()).toMatchObject({
-			meta: { access: { publicOnly: true, showWholesale: false, wholesaleOnly: false } }
+			meta: { access: { publicOnly: true, showWholesale: true, wholesaleOnly: false } }
 		});
 	});
 

@@ -204,7 +204,7 @@ describe('/catalog page load', () => {
 			1,
 			expect.objectContaining({
 				stocked: 'true',
-				showWholesale: 'false',
+				showWholesale: 'true',
 				wholesaleOnly: 'false',
 				page: 1,
 				limit: 15
@@ -224,7 +224,7 @@ describe('/catalog page load', () => {
 		});
 		expect(result.trainingData).toEqual(result.data);
 		expect(result.initialCatalogState).toMatchObject({
-			showWholesale: false,
+			showWholesale: true,
 			sortField: null,
 			sortDirection: null
 		});
@@ -306,7 +306,7 @@ describe('/catalog page load', () => {
 			expect.objectContaining({
 				country: 'Ethiopia',
 				stocked: 'true',
-				showWholesale: 'false',
+				showWholesale: 'true',
 				wholesaleOnly: 'false',
 				page: 2,
 				limit: 15
@@ -320,7 +320,7 @@ describe('/catalog page load', () => {
 			expect.objectContaining({
 				coffeeIds: '99',
 				stocked: 'all',
-				showWholesale: 'false',
+				showWholesale: 'true',
 				wholesaleOnly: 'false',
 				page: 1,
 				limit: 1
@@ -490,6 +490,78 @@ describe('/catalog page load', () => {
 		expect(mockCatalogList).toHaveBeenLastCalledWith(
 			expect.not.objectContaining({ stockedDate: '2026-07-15', stockedDays: 7 })
 		);
+	});
+
+	it('strips premium discovery filters and sorts from viewer SSR state', async () => {
+		const result = (await load(
+			makeLoadInput(
+				'viewer',
+				{ access_token: 'cookie-token' } as App.Locals['session'],
+				'https://app.test/catalog?type=Importer+A&grade=1800&appearance=clean&sortField=type&sortDirection=asc&country=Ethiopia'
+			)
+		)) as {
+			initialCatalogState: {
+				filters: Record<string, unknown>;
+				sortField: string | null;
+				sortDirection: string | null;
+			};
+			catalogAccessNotice: { status: number; message: string; deniedParams: string[] } | null;
+		};
+
+		expect(result.initialCatalogState).toMatchObject({
+			filters: { country: ['Ethiopia'] },
+			sortField: null,
+			sortDirection: null
+		});
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.not.objectContaining({
+				type: 'Importer A',
+				grade: '1800',
+				appearance: 'clean',
+				sort: 'type'
+			})
+		);
+		expect(result.catalogAccessNotice).toMatchObject({
+			status: 403,
+			message:
+				'Some requested catalog filters or sorts are available to members and paid API tiers.',
+			deniedParams: ['type', 'grade', 'appearance', 'sort']
+		});
+	});
+
+	it('preserves premium discovery filters and sorts for any paid app subscription', async () => {
+		for (const role of ['member', 'admin'] as const) {
+			vi.clearAllMocks();
+			mockCatalogList.mockResolvedValue({
+				data: { data: catalogRows, pagination: { total: 42 } }
+			});
+			const result = (await load(
+				makeLoadInput(
+					role,
+					{ access_token: 'cookie-token' } as App.Locals['session'],
+					'https://app.test/catalog?type=Importer+A&grade=1800&appearance=clean&sortField=type&sortDirection=asc'
+				)
+			)) as {
+				initialCatalogState: {
+					filters: Record<string, unknown>;
+					sortField: string | null;
+				};
+			};
+
+			expect(result.initialCatalogState).toMatchObject({
+				filters: { type: 'Importer A', grade: '1800', appearance: 'clean' },
+				sortField: 'type'
+			});
+			expect(mockCatalogList).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					type: 'Importer A',
+					grade: '1800',
+					appearance: 'clean',
+					sort: 'type',
+					order: 'asc'
+				})
+			);
+		}
 	});
 
 	it('lets member and admin SSR previews pass process transparency query params to catalog search', async () => {
@@ -697,14 +769,22 @@ describe('/catalog page load', () => {
 			originPriceStats: Promise<Array<{ origin: string; median: number; sample_size: number }>>;
 		};
 
-		// Member with no wholesale params → neither view flag is forwarded; Parchment
-		// derives the scope (and publicOnly) from the forwarded credential.
+		// The neutral catalog scope includes all coffees by default.
 		const statsQuery = mockCatalogOriginPriceStats.mock.calls[0][0];
-		expect(statsQuery).not.toHaveProperty('showWholesale');
+		expect(statsQuery).toMatchObject({ showWholesale: 'true' });
 		expect(statsQuery).not.toHaveProperty('wholesaleOnly');
 		expect(await result.originPriceStats).toEqual([
 			expect.objectContaining({ origin: 'Colombia', median: 9, sample_size: 3 })
 		]);
+	});
+
+	it('preserves hobbyist-only scope for SSR origin price stats', async () => {
+		const result = (await load(
+			makeLoadInput('viewer', null, 'https://app.test/catalog?showWholesale=false')
+		)) as { originPriceStats: Promise<unknown[]> };
+
+		expect(mockCatalogOriginPriceStats).toHaveBeenCalledWith({ showWholesale: 'false' });
+		await result.originPriceStats;
 	});
 
 	it('forwards the wholesale view param to Parchment when wholesale rows are visible', async () => {

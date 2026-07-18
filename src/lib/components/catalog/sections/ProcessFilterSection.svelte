@@ -6,23 +6,14 @@
 	} from '$lib/catalog/processDisplay';
 	import { PROCESSING_CONFIDENCE_OPTIONS } from '$lib/catalog/urlState';
 
-	interface CatalogAccessNotice {
-		message: string;
-	}
-
 	interface Props {
 		canUseProcessFacets: boolean;
 		hasAdvancedProcessFilters: boolean;
-		catalogAccessNotice: CatalogAccessNotice | null;
 		onClearProcessTransparencyFilters: () => void;
 	}
 
-	let {
-		canUseProcessFacets,
-		hasAdvancedProcessFilters,
-		catalogAccessNotice,
-		onClearProcessTransparencyFilters
-	}: Props = $props();
+	let { canUseProcessFacets, hasAdvancedProcessFilters, onClearProcessTransparencyFilters }: Props =
+		$props();
 
 	function formatFilterOption(value: unknown): string {
 		if (value === undefined || value === null || value === '') return '';
@@ -140,11 +131,6 @@
 					Coffee cards still show disclosed process facts. Member search adds process facets,
 					confidence thresholds, and other sourcing leverage.
 				</p>
-				{#if catalogAccessNotice}
-					<p class="mt-1 text-xs text-muted">
-						{catalogAccessNotice.message}
-					</p>
-				{/if}
 			</div>
 		</div>
 	</div>

@@ -156,6 +156,8 @@ export function catalogProxyErrorResponse(error: unknown): CatalogProxyErrorResp
 }
 
 export interface ProxyCatalogListOptions {
+	/** Default wholesale visibility when the first-party caller omits the scope param. */
+	defaultShowWholesale?: boolean;
 	/**
 	 * When the caller omits both `page` and `limit`, request up to this many rows
 	 * so the endpoint approximates its historical unbounded full-list contract
@@ -178,6 +180,17 @@ export interface ProxyCatalogListOptions {
 	preferHandling?: ParchmentPreferHandling;
 }
 
+/** Keep the broad visibility flag coherent with the narrower wholesale-only scope. */
+export function normalizeCatalogWholesaleScope(query: Record<string, string | string[]>): void {
+	const wholesaleOnly = query.wholesaleOnly;
+	if (
+		wholesaleOnly === 'true' ||
+		(Array.isArray(wholesaleOnly) && wholesaleOnly.includes('true'))
+	) {
+		query.showWholesale = 'true';
+	}
+}
+
 /**
  * Proxy a catalog list request to Parchment, forwarding the caller credential.
  *
@@ -198,6 +211,10 @@ export async function proxyCatalogList(
 	if (options.defaultLimit != null && !hasPaging) {
 		query.limit = String(options.defaultLimit);
 	}
+	if (options.defaultShowWholesale && !event.url.searchParams.has('showWholesale')) {
+		query.showWholesale = 'true';
+	}
+	normalizeCatalogWholesaleScope(query);
 
 	// Public API proxy: relay Parchment's status/body verbatim and preserve the
 	// external caller's own `Prefer` (default strict), so gated failures are not
