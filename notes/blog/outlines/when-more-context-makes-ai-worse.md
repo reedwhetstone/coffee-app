@@ -6,34 +6,42 @@
 
 ## Thesis
 
-Persistent memory solves forgetting, but it creates contextual inertia. The problem is not storage capacity; it is deciding which parts of history retain semantic authority after the user's intent changes. Long-running agents need an intent-aware context compiler that preserves immutable history while producing a disposable, task-specific working set.
+The future of agent interaction will likely combine continuous conversation with structured workspaces. The problem is not choosing one interface; it is making either interface a hidden correctness requirement. Users should be able to organize or fluidly redirect their work without understanding how the agent's memory scaffolding must be managed. That requires separating primary history, active task state, and interface container, then compiling a warm working set that can be rebuilt when intent changes.
 
 ## Argument-role map
 
-- **Central thesis:** More context can make an AI worse when stale conversational history retains authority after the task changes.
-- **Mechanism:** A context compiler cold-reads the new turn, classifies its relationship to prior work, preserves durable residue, retrieves newly relevant evidence, and constructs the active working set before execution.
-- **Coequal benefits:** Continuous conversation remains convenient for the person; selective activation reduces task interference for the model; immutable history and provenance make the projection auditable.
-- **Examples:** A shift from deployment debugging to product strategy; OpenClaw workflow state remaining operationally relevant during a conversational pivot.
-- **AI-specific application:** Separating intent interpretation from task execution can reduce trajectory-preserving agreement and task-switch interference.
-- **Limitation:** The compiler becomes a hidden editor that can suppress evidence or promote tentative claims before the main model reasons.
-- **Excluded branches:** Model training, a detailed RAG implementation, cognitive-science claims about human memory, and a broad theory of AI governance.
-- **Novelty posture:** Synthesis and application. Context editing, compaction, task-interference research, and mediator architectures already exist; the post connects them through semantic authority and provenance during intent transitions.
+- **Central thesis:** Session structure should remain an organizational choice rather than a defensive technique for protecting output quality.
+- **Mechanism:** A warm-start context compiler preserves recent verbatim conversation and explicit task state, retrieves older evidence when relevant, and rebuilds the active working set when a pivot changes what prior history should govern.
+- **Coequal benefits:** Continuous conversation preserves flow and high-fidelity common ground; workspaces support organization and boundaries; selective activation reduces task interference in either interface.
+- **Examples:** A product question emerging during debugging; a critique invalidating the plan it appears to continue; a natural side comment becoming the actual priority.
+- **AI-specific application:** Separating intent interpretation from task execution can reduce task-switch interference and trajectory-preserving agreement.
+- **Limitation:** The compiler becomes a hidden editor that can omit evidence, flatten uncertainty, or reintroduce stale context before the main model reasons.
+- **Excluded branches:** Predicting one universal future interface, detailed RAG implementation, cognitive-science claims about human memory, and a broad theory of AI governance.
+- **Novelty posture:** Synthesis and application. Task-interference research, mediator architectures, context editing, and compaction already exist; the post connects them to the UX cost of making session hygiene a prerequisite for reliable output.
 
 ## Target
 
 - Under 1,200 body words
 - First-person, technical, HN-friendly
-- OpenClaw as one illustration, not a product pitch
+- OpenClaw as background experience, not a product pitch
 
 ## Argument
 
-1. Long context looks like intelligence until the conversation pivots.
-2. Task-switch research grounds contextual inertia as a measurable failure, not merely an anecdote.
-3. Context editing and compaction manage volume; mediator architectures get closer to intent interpretation.
-4. The synthesis is an intent-aware compiler that changes activation without deleting history.
-5. A cold-read comparison helps detect when continuity is distorting the latest request.
-6. Immutable history and provenance constrain the compiler's power as a hidden editor.
-7. The practical target is continuous conversational UX with disposable, provenance-preserving context projections.
+1. New sessions prevent some memory interference but force the user to reconstruct context.
+2. Long-running sessions preserve flow but can let stale tasks retain authority.
+3. The likely interface is hybrid; rigidity is the failure, not either organizational model.
+4. Task-switch research grounds contextual inertia as a measurable output problem.
+5. Primary history, active task state, and interface container should not be forced into one boundary.
+6. A warm-start compiler preserves recent verbatim context and rebuilds the working set only when intent changes.
+7. Full blank-slate reconstruction is slower, lossier, less deterministic, and gives the compiler excessive editorial power.
+8. A recoverable primary record with explicit corrections and supersession makes compiled context auditable and reversible.
+9. The closing resolves the tension: session structure should organize work, not defend the model from natural conversation.
+
+## Loss audit from the prior version
+
+- **Preserved:** contextual inertia, EMNLP task-switch evidence, vendor context-management precedents, mediator architecture, cold-read test, trajectory-preserving agreement, hidden-editor risk, and recoverable provenance.
+- **Strengthened:** the value of conversational flow, the role of workspaces, the warm-start architecture, and the distinction between speed and high-fidelity common ground.
+- **Removed deliberately:** garbage collection terminology, the assumption that continuous conversation is universally preferred, and literal immutability without privacy or deletion controls.
 
 ## Sources
 
@@ -45,14 +53,14 @@ Persistent memory solves forgetting, but it creates contextual inertia. The prob
 ## Verification
 
 - [x] Confirm all four external links resolve and support the adjacent claims.
-- [x] Calibrate the proposal as a synthesis of task-interference research, mediator architectures, context editing, and compaction.
-- [x] Keep history, working context, storage, compression, and intent interpretation conceptually distinct.
-- [x] Explain why garbage collection is only a partial analogy rather than the proposed architecture.
-- [x] Do not claim OpenClaw currently implements the complete architecture.
+- [x] Avoid predicting that continuous conversation or workspaces will become the universal interface.
+- [x] Treat session rigidity and memory scaffolding as the UX problem.
+- [x] Explain why warm-start context differs from full blank-slate reconstruction.
+- [x] Keep history, active task state, interface container, retrieval, and compaction conceptually distinct.
+- [x] Replace literal immutability with a recoverable primary record plus explicit deletion and redaction controls.
 - [x] Verify body word count is below 1,200, excluding frontmatter.
 - [x] Verify `draft: false`, valid pillar, reading time, and date.
 - [x] Verify no em dashes appear.
 - [x] Verify every named source has an inline Markdown link.
-- [x] Verify the immutable-history and provenance requirements are explicit.
 - [x] Include one AI-specific mechanism and one limitation.
-- [x] Verify the conclusion does not turn into a product pitch or manifesto.
+- [x] Verify the conclusion resolves the interface-versus-reliability tension without becoming a commandment.

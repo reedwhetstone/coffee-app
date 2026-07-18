@@ -1,70 +1,67 @@
 ---
 title: 'When Does More Context Make an AI Worse?'
 date: '2026-07-11'
-description: 'Persistent memory solves forgetting, but it can also make an AI less able to recognize when the task has changed.'
+description: 'Agents should support fluid conversation and structured workspaces without making users understand the context machinery that keeps either one reliable.'
 tags: ['ai-agents', 'context-engineering', 'memory', 'architecture']
 pillar: 'agentic-stack'
 draft: false
-readingTime: 4
+readingTime: 5
 ---
 
-The context window is usually described as a scarce resource. Make it larger, the argument goes, and an AI can remember more. That sounds unambiguously useful until the conversation changes direction.
+The easiest fix for an AI that carries too much history is to start a new session. It works, but it turns context management into the user's job. The person has to decide when the old conversation became dangerous, open the right workspace, and reconstruct whatever still matters.
 
-I have watched an agent finish one line of reasoning, receive a clear pivot, and continue answering as if the new request were another detail inside the old task. Nothing was forgotten. That was the problem. The earlier trajectory remained so available that the model mistook continuity of conversation for continuity of intent.
+One long-running session creates the opposite problem. It preserves conversational flow, exact wording, corrections, and shared references. It can also let an old task keep steering the model after the work has changed.
 
-This is not just an anecdotal failure. A 2024 EMNLP [study of task interference](https://aclanthology.org/2024.emnlp-main.811/) tested 15 task switches across five datasets and found that irrelevant conversational history could significantly degrade performance. Persistent memory solves forgetting. It also creates **contextual inertia**.
+I doubt the future chooses one interface. Workspaces are useful for organization, ownership, and access boundaries. Continuous conversation is useful when the work crosses categories or develops through half-formed thoughts. The problem begins when either structure becomes mandatory for good output. If speaking naturally to an agent can misuse its memory, the scaffolding is exporting an implementation constraint into the user experience.
 
-## Memory is not the same as a working set
+This is not just an anecdotal concern. A 2024 EMNLP [study of task interference](https://aclanthology.org/2024.emnlp-main.811/) tested 15 task switches across five datasets and found that irrelevant conversational history could significantly degrade performance. Nothing had been forgotten. The model had too much of the wrong history influencing the current task.
 
-Long-running agents need two different things that are often collapsed into one: an immutable history of what happened and a working set for what matters now.
+Persistent memory solves forgetting. It also creates **contextual inertia**.
 
-The full conversation has future value. Decisions, corrections, source documents, and unfinished work may all become relevant again. But availability should not imply equal authority. When the user switches from debugging a deployment to questioning the product strategy, the prior task should remain recoverable without continuing to steer the answer.
+## Organization should not be a correctness requirement
 
-Garbage collection is a useful but incomplete analogy. A collector traces what is live and reclaims the rest. Old context is rarely garbage, and deleting it would destroy provenance. The system needs to change what is active without pretending the inactive history never existed.
+Current agent interfaces often collapse three different things into one container: the record of what happened, the task currently being executed, and the place where the user happens to be talking. Those layers do not always share the same boundary.
 
-The scarce resource is not storage. It is semantic authority.
+A workspace can collect related files and permissions without requiring every conversation inside it to serve one task. A continuous session can move between tasks without making every earlier plan binding. Starting a new session should remain an organizational choice, not a ritual for purging accidental influence.
 
-## Context tools manage volume better than intent
+That distinction matters because real work does not arrive pre-sorted. A product question can emerge from debugging. A critique can invalidate the plan it appears to continue. A side comment can become the actual priority. Rigid session boundaries make the user classify the work before fully understanding it. Unbounded continuity makes the model preserve a trajectory after its relevance has decayed.
 
-Current systems solve important parts of this problem. [Anthropic's context editing](https://platform.claude.com/docs/en/build-with-claude/context-editing) can clear stale tool results and thinking blocks while the client retains the original history. [OpenAI's compaction](https://developers.openai.com/api/docs/guides/compaction) carries prior state into a smaller representation for subsequent turns. Both reduce context pressure.
+The interface needs room for both. The context machinery has to absorb the ambiguity.
 
-But removing old tool output and compressing a transcript are mostly answers to a quantity problem. They do not necessarily decide what the latest message does to the authority of everything before it.
+## History is not the same as a working set
 
-A 2026 paper on [intent mismatch in multi-turn conversation](https://arxiv.org/abs/2602.07338) gets closer. It separates intent understanding from task execution through a mediator that rewrites an evolving conversation into an explicit instruction for the assistant. That suggests the missing layer is not a novel memory store. It is an intent-aware context compiler that combines several existing ideas:
+The full conversation may have future value. Decisions, corrections, source documents, and unfinished work can all become relevant again. But availability should not imply equal authority. An agent needs a primary history of what happened and a smaller working set for what matters now.
 
-1. Read the new message without assuming the prior task still governs it.
-2. Classify the transition: continue, revise, challenge, branch, replace, or resume.
-3. Preserve durable residue such as accepted decisions, corrections, and unfinished obligations.
-4. Retrieve evidence relevant to the newly inferred task.
-5. Compile a disposable working set for the main model.
+Current systems solve important parts of this problem. [Anthropic's context editing](https://platform.claude.com/docs/en/build-with-claude/context-editing) can clear stale tool results and thinking blocks while the client retains the original history. [OpenAI's compaction](https://developers.openai.com/api/docs/guides/compaction) carries prior state into a smaller representation for subsequent turns. Both reduce context pressure, but they mostly answer a quantity problem.
 
-## The cold-read test
+A 2026 paper on [intent mismatch in multi-turn conversation](https://arxiv.org/abs/2602.07338) gets closer. It separates intent understanding from task execution through a mediator that rewrites an evolving conversation into an explicit instruction for the assistant.
 
-The first step supports a useful check: **if no prior task were active, what would this message appear to ask?**
+The practical architecture looks less like a blank slate and more like a warm start:
 
-The system can compare that cold reading with a continuity-aware interpretation. A large disagreement is evidence that history may be distorting intent. The new turn might be a critique of the current path, while the inherited context makes it look like a request to refine that path.
+1. Keep a recent verbatim tail so local references and corrections survive.
+2. Track the active task, accepted constraints, and unresolved obligations explicitly.
+3. Preserve durable decisions and evidence outside the immediate window.
+4. Retrieve older material when the current task makes it relevant.
+5. Detect pivots that should invalidate and rebuild the active working set.
 
-This is also where context management touches sycophancy. The familiar version of sycophancy preserves the user's framing too readily. A persistent agent can preserve the _joint trajectory_ too readily, including its own previous claims and plans. It favors narrative consistency over recognizing that new evidence changed the task.
+One useful pivot check is simple: **if no prior task were active, what would this message appear to ask?** A large disagreement between that cold reading and the continuity-aware interpretation suggests that history may be distorting intent.
 
-The result is not simple agreement. It is trajectory-preserving agreement.
+This is also where context management touches sycophancy. A persistent agent can preserve the joint trajectory too readily, including its own previous claims and plans. It favors narrative consistency over recognizing that new evidence changed the task. The result is not simple agreement. It is trajectory-preserving agreement.
 
-## The compiler can become a hidden editor of reality
+## Why not rebuild everything from scratch?
 
-This middle layer creates its own risk. A fast model that decides what the main model sees can remove inconvenient evidence, elevate a tentative idea into durable fact, or retrieve a similar old memory that silently pulls the conversation back into its previous lane. Aggressive compression can erase uncertainty, dissent, and reversals while leaving behind a falsely coherent summary.
+A system could take every new message, discard the thread, and reconstruct context from event history, retrieval, memory, and tool calls. That would reduce some forms of inertia. It would also make every turn dependent on a lossy editorial process.
 
-I think a trustworthy version needs four properties:
+Retrieval can miss a correction, a negative constraint, or the earlier sentence that gave "this" its meaning. Summaries flatten uncertainty. Reassembly adds latency, cost, and nondeterminism. Most importantly, it gives the compiler complete control over what the main model is allowed to see.
 
-1. The original event history remains immutable.
-2. Compiled context is disposable and reconstructable.
-3. Promotions, evictions, retrievals, and supersessions retain provenance.
-4. The main model can follow a compressed claim back to primary evidence.
+The value of maintaining a thread is therefore not just speed. It is high-fidelity common ground. Recent verbatim conversation is usually the best representation of the current task until there is evidence that the task changed. Recompilation should be triggered by a pivot, not performed as a ritual on every turn.
 
-Semantic similarity is not enough. The compiler has to reason about authority, freshness, task state, contradiction, and whether an earlier decision was accepted, tentative, or superseded. Its limitation is structural: the component meant to prevent context bias can introduce a new bias before the main model ever sees the evidence.
+## The compiler can become a hidden editor
 
-## Continuous conversation, selective activation
+Any layer that decides what the main model sees can remove inconvenient evidence, elevate a tentative idea into durable fact, or retrieve an old memory that pulls the conversation back into its previous lane. The component meant to prevent context bias can introduce a new bias before reasoning begins.
 
-I still think continuous project conversation is the better user experience. Starting a new chat for every task makes the human act as a context compiler: remember the prior discussion, decide what matters, preserve nuance, and restate it without introducing errors. The system saves tokens by exporting cognitive labor to the user.
+A trustworthy version needs a recoverable primary record. Original messages should remain available as evidence unless intentionally deleted or redacted. Corrections and supersessions should be explicit rather than silently rewriting the past. Compiled working sets should be disposable, reconstructable, and linked back to the claims and sources from which they were built.
 
-The better split is continuous history for the person and selective activation for the model. In my own OpenClaw environment, persistent files, retrieval, compaction, and workflow state approximate parts of this pattern. The gaps become most visible during a pivot, when durable workflow state can remain operationally important without deserving control over the current conversation.
+That is more than provenance for its own sake. It makes a bad compilation debuggable. The main model can inspect primary evidence, the system can build a different projection, and a tentative claim remains distinguishable from an accepted decision.
 
-Larger context windows make history cheaper to retain. They do not make that history easier to govern. The useful measure of a persistent agent is whether it can preserve the record while recognizing when an earlier trajectory no longer has authority over the task at hand.
+Some work benefits from a fresh workspace. Some benefits from one flowing conversation. Most agentic work will probably move between the two. More context becomes harmful when that interface choice silently changes the quality of the reasoning. The goal is not one endless session. It is to make session structure an organizational decision rather than a defensive technique.
