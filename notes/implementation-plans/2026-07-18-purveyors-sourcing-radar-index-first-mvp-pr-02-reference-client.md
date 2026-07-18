@@ -18,7 +18,7 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 - Server-first loading through the Parchment SDK.
 - Fresh result rows with lot identity, current price, brief-match reasons, eligible signal evidence, lot-age context (crop year / first-observed date, or the API's `ageContext: unknown` disclosure rendered honestly), source, publication freshness/quality, limitations, and one source-detail action.
 - Honest stale, unavailable, empty, denied, and error states.
-- Concierge pilot onboarding: an authorized operator provisions one owned active brief through the existing privileged brief-creation contract before each PPI-only participant starts; no new self-service brief capture is added.
+- Concierge pilot onboarding: before each PPI-only participant starts, an authorized operator uses the private participant-seed runbook below to provision one active brief under that participant's user ID; the caller-owned `POST /v1/procurement/briefs` contract is not used with the operator's credentials, and no new self-service brief capture is added.
 - Minimal events for Radar open, indexed row impression, source-detail click, and pilot disposition. This introduces a small new pilot-event helper — the repo has no general client event-tracking pattern today, so this is new telemetry surface, kept deliberately minimal: server-side capture, fixed event names, no criteria or user-entered text in payloads.
 - A compact pilot disposition control: already known, investigate, shortlist, sample/quote, or not relevant.
 - Focused tests and existing docs/copy alignment where required.
@@ -29,8 +29,19 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 - Automatic refresh, scheduler, email, Discord, webhook, SMS, or push delivery.
 - Stored recommendation runs, notification preferences, team workflows, or history charts.
 - Client-side ranking, freshness decisions, signal calculation, or AI summaries.
-- PPI self-service brief creation/editing, CLI changes, pricing, checkout, or public teaser work. The pilot is explicitly concierge-seeded through the existing authorized contract; this PR adds no new write route, schema, or permission broadening.
+- PPI self-service brief creation/editing, CLI changes, pricing, checkout, or public teaser work. The pilot is explicitly concierge-seeded through a private operator control-plane path; this PR adds no new public/member write route, schema, or permission broadening.
 - Purchase, RFQ, supplier-message, inventory-write, or other external actions.
+
+## PPI-only participant seed runbook
+
+The documented procurement contract is caller-owned: `POST /v1/procurement/briefs` stores `user_id` from the authenticated caller, and the read/match routes reject a different owner. An operator token therefore cannot create a participant-owned brief by calling that endpoint. The pilot must use this private, operator-only setup path instead:
+
+1. Confirm the participant's canonical authenticated principal ID from the enrollment record and verify it with the participant before writing anything.
+2. Run the approved private Parchment control-plane seed operation, such as an admin-only command/RPC or a one-time service-role transaction in the private API environment. Insert exactly one active manual brief with `user_id` set to the participant principal, normalized versioned criteria, a participant-safe name, `cadence: manual`, and `is_active: true`. Never expose the service-role credential to the browser, participant, or coffee-app runtime, and never use the ordinary caller-owned POST with an operator credential.
+3. Record the returned brief ID, participant principal ID, criteria version, operator, and UTC timestamp in the restricted pilot log. Do not record credentials or copy sensitive brief criteria into analytics payloads.
+4. Verify the result as the participant: `GET /v1/procurement/briefs/{id}` must return the brief to the participant, and the participant's dashboard must show the owned active brief. Then verify that the Radar route uses that same owner-scoped brief.
+
+This is a pilot prerequisite, not a new self-service or public API capability. If the private control-plane operation does not exist, stop onboarding and make its implementation an explicitly reviewed `parchment-api` prerequisite; do not substitute an ad hoc database edit or broaden the caller-owned contract.
 
 ## UX invariants
 
@@ -53,7 +64,7 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 ## Acceptance criteria
 
 - A PPI-only entitled owner can see their owned active briefs on the dashboard and open Radar from the “Review indexed matches” action; Mallard membership is not required.
-- A PPI-only pilot participant is onboarded with one operator-provisioned owned active brief, so the out-of-scope capture UI is not a hidden prerequisite for the test.
+- A PPI-only pilot participant is onboarded through the seed runbook with one brief whose stored owner is the participant, and participant-authenticated GET/dashboard checks prove the ownership before the test starts.
 - A member/admin without `ppiAccess` retains the existing brief/catalog workflow but does not receive the Radar action.
 - Another user, anonymous user, and insufficiently entitled user receive the correct server-enforced state.
 - Fresh rows render canonical evidence, including lot-age context or its `unknown` disclosure, and link to the correct source/lot.
@@ -68,6 +79,7 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 - Server-load tests for ownership-safe not-found, entitlement denial, fresh, stale, unavailable, empty, and upstream failure.
 - Component/route tests for evidence, source links, limitations, status copy, dispositions, keyboard use, and mobile layout.
 - Dashboard server-load and component tests prove that PPI-only owners receive active-brief cards and the Radar action, while users without `ppiAccess` do not receive that action.
+- Pilot setup documentation proves that operator seeding writes the participant owner through the private control-plane path and does not rely on the caller-owned create contract.
 - Event tests that exclude criteria and user-entered text.
 - `pnpm check --fail-on-warnings`, focused tests, lint, and production build using the repository's documented environment path.
 - One post-deploy smoke with an owned test brief and manual source reconciliation.

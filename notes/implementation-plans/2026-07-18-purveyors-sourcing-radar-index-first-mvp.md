@@ -98,7 +98,7 @@ Prototype code may be exercised against stale/unavailable fixtures, but the buye
 - Fresh, stale, unavailable, empty, and denied states.
 - The existing Parchment Intelligence entitlement (`ppi_access`, the $39/month add-on). Radar is not a member-tier or public surface.
 - Source-detail clicks and a minimal pilot feedback capture.
-- Concierge onboarding for the pilot: before a PPI-only participant starts, an authorized operator provisions one owned active brief through the existing privileged brief-creation contract and confirms that it appears in the participant's dashboard. This is pilot setup, not a new PPI self-service create/edit surface.
+- Concierge onboarding for the pilot: before a PPI-only participant starts, an authorized operator uses the private participant-seed runbook in the PR 2 plan to provision one active brief under that participant's user ID and confirms participant-authenticated visibility in the dashboard. The caller-owned `POST /v1/procurement/briefs` contract is not used with operator credentials. This is pilot setup, not a new PPI self-service create/edit surface.
 - A concierge pilot after the live gate: target five partners with three as the floor, running eight to twelve weeks or timed to a heavy arrival season.
 
 ### Out of scope
@@ -111,6 +111,14 @@ Prototype code may be exercised against stale/unavailable fixtures, but the buye
 - New price plans, checkout changes, public access, team workflows, exports, or integrations.
 - Scraper changes or publication work already owned by the July 16 recovery program.
 - Dashboard or Market Index redesign.
+
+### PPI-only participant seed prerequisite
+
+The existing procurement contract is caller-owned: `POST /v1/procurement/briefs` assigns the authenticated caller as `user_id`, and the read/match routes are owner-scoped. It cannot be used with an operator/admin/API-Origin credential to create a participant-owned brief.
+
+Before onboarding a PPI-only participant, the operator must use the private control-plane procedure defined in the PR 2 plan: verify the participant principal ID, run an approved admin-only command/RPC or one-time service-role transaction in the private API environment that inserts one active manual brief under that ID, and record the brief ID plus non-sensitive audit metadata in the restricted pilot log. The operator must then authenticate as the participant and verify both `GET /v1/procurement/briefs/{id}` and dashboard visibility. No service-role credential may reach the browser or coffee-app runtime.
+
+If that private seed operation is unavailable, onboarding stops and the operation becomes an explicitly reviewed `parchment-api` prerequisite. An ad hoc database edit or a caller-owned operator-created brief does not satisfy this gate.
 
 ## Strategy Alignment Audit
 
@@ -189,7 +197,7 @@ The pilot fails if the output mostly restates obvious catalog matches, if stale/
 - `stale` and `unavailable` states return no indexed opportunity rows and use no recommendation language.
 - No client hardcodes or recomputes freshness, signal rank, or entitlement.
 - Direct URL and API calls enforce ownership and Parchment Intelligence access.
-- Each PPI-only pilot participant can be onboarded with one operator-provisioned owned active brief; brief creation/editing UX remains out of scope for this MVP.
+- Each PPI-only pilot participant can be onboarded with one participant-owned active brief through the private seed prerequisite, proven by participant-authenticated GET and dashboard checks; brief creation/editing UX remains out of scope for this MVP.
 - The user reaches the supplier/source record in one action.
 - No runtime in any repository adds a scheduler, delivery side effect, new score, or run-history storage.
 
