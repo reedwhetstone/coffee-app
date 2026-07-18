@@ -3,6 +3,7 @@ import type { CatalogListQuery, ParchmentClient, components } from '@purveyors/s
 import { toCatalogResourceItem } from '$lib/catalog/catalogResourceItem';
 import { CatalogSchemaUnavailableError } from '$lib/data/catalog';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
+import { PREMIUM_DISCOVERY_FILTER_KEYS } from '$lib/catalog/accessPolicy';
 import {
 	PROCESS_FACET_FILTER_KEYS,
 	createProcessFacetDeniedNotice,
@@ -271,6 +272,15 @@ function stripProcessFacetFilters(state: CatalogUrlState): CatalogUrlState {
 	};
 }
 
+function stripPremiumDiscoveryFilters(state: CatalogUrlState): CatalogUrlState {
+	const filters = { ...state.filters };
+	for (const key of PREMIUM_DISCOVERY_FILTER_KEYS) {
+		delete filters[key];
+	}
+
+	return { ...state, filters };
+}
+
 function stripPriceScoreRangeFilters(state: CatalogUrlState): CatalogUrlState {
 	const { score_value: _scoreValue, cost_lb: _costLb, ...filters } = state.filters;
 	return { ...state, filters };
@@ -384,9 +394,12 @@ export const load: PageServerLoad = async (event) => {
 	const processAuthorizedCatalogState = catalogAccess.canUseProcessFacets
 		? requestedCatalogState
 		: stripProcessFacetFilters(requestedCatalogState);
-	const freshnessAuthorizedCatalogState = catalogAccess.canUseAdvancedFilters
+	const discoveryAuthorizedCatalogState = catalogAccess.canUseAdvancedFilters
 		? processAuthorizedCatalogState
-		: stripFreshnessFilters(processAuthorizedCatalogState);
+		: stripPremiumDiscoveryFilters(processAuthorizedCatalogState);
+	const freshnessAuthorizedCatalogState = catalogAccess.canUseAdvancedFilters
+		? discoveryAuthorizedCatalogState
+		: stripFreshnessFilters(discoveryAuthorizedCatalogState);
 	const rangeAuthorizedCatalogState = catalogAccess.canUsePriceScoreRanges
 		? freshnessAuthorizedCatalogState
 		: stripPriceScoreRangeFilters(freshnessAuthorizedCatalogState);

@@ -362,7 +362,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'GET /v1/catalog supports anonymous discovery across all publishable retail and wholesale rows using the public field projection. Anonymous callers get the same public payload shape, but no API-key billing, quota, or X-RateLimit-* usage headers.',
 					'GET /v1/catalog also supports first-party session requests. Viewer sessions share the publishable row scope; member and admin sessions may additionally access non-public rows, richer fields, and more search leverage.',
-					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API Green stays on the basic public query surface; paid API tiers add structured process facet filtering while remaining public-catalog scoped. API keys use plan-based limits and are the intended production path for server-to-server integrations.',
+					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API Green stays on the basic public query surface; paid API tiers add importer, elevation, appearance, and structured process filtering while remaining public-catalog scoped. API keys use plan-based limits and are the intended production path for server-to-server integrations.',
 					'GET /v1/catalog/{id}/similar requires a member session or an API key with API Origin or Enterprise plus catalog:read. It returns beta similarity candidates for account-linked matching workflows; anonymous callers get 401 and viewer or API Green callers get 403.',
 					'GET /v1/price-index requires an API key whose owner has Parchment Intelligence access. It returns aggregate price-index snapshots, not raw supplier-level rows.',
 					'GET /api/catalog-api is a deprecated legacy alias to /v1/catalog, but it remains API-key-only for backward-compatible machine access.',
@@ -466,7 +466,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Public endpoint',
 		intro: [
 			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, legacy processing labels, structured process transparency fields, Purveyor Score metadata, pricing, price tiers, and availability metadata.',
-			`The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous, viewer-session, and API Green requests share the basic public catalog query surface. Member/admin sessions and paid API tiers additionally unlock structured process facet filters. Public callers can still inspect factual process fields in full rows; the gated feature is process search leverage, not data visibility. API-key requests use plan-based limits and are the intended production integration path because they emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied. Explicit limit values above ${MAX_CATALOG_PAGE_LIMIT} are rejected with HTTP 400 so pagination metadata stays truthful.`,
+			`The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous, viewer-session, and API Green requests share the basic public catalog query surface. Member/admin sessions and paid API tiers additionally unlock importer, elevation, appearance, and structured process filters. Public callers can still inspect those factual fields in full rows; the gated feature is search leverage, not data visibility. API-key requests use plan-based limits and are the intended production integration path because they emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied. Explicit limit values above ${MAX_CATALOG_PAGE_LIMIT} are rejected with HTTP 400 so pagination metadata stays truthful.`,
 			'Use include=proof when callers need compact proof-summary families for process, provenance, freshness, and pricing. Proof summaries are cautious catalog signals, not certifications, and raw supplier evidence remains withheld. Use GET /v1/catalog/proof-coverage when callers need aggregate proof label distributions and gap counts for the same visible catalog scope.'
 		],
 		sections: [
@@ -491,8 +491,8 @@ const docsPages: DocsPage[] = [
 				body: [
 					'The canonical response includes data, pagination, and meta blocks. The meta block reports auth kind, role, plan, access scope, row-limit state, and cache metadata.',
 					'Full catalog rows include legacy structured processing fields, Purveyor Score fields, plus a nested process object. Null values stay null when the supplier has not disclosed structured metadata. process.evidence_available reports whether internal provenance exists without exposing raw evidence quotes in the public response.',
-					'The example below shows an API-key response. Anonymous and session responses keep the same top-level shape. The main differences are headers and search leverage: only API-key requests emit X-RateLimit-* headers, and only member/admin sessions or paid API tiers can use structured process facet filters.',
-					`Viewer-tier API keys are capped to 25 rows per call and cannot use structured process facet filters. Member and enterprise API plans remove that lower plan cap and unlock process facet filters, while still sharing the ${MAX_CATALOG_PAGE_LIMIT}-row per-request ceiling. Every caller can discover publishable retail and wholesale coffees by default; richer field projections remain limited to privileged member sessions.`,
+					'The example below shows an API-key response. Anonymous and session responses keep the same top-level shape. The main differences are headers and search leverage: only API-key requests emit X-RateLimit-* headers, and only member/admin sessions or paid API tiers can use importer, elevation, appearance, and structured process filters.',
+					`Viewer-tier API keys are capped to 25 rows per call and cannot use importer, elevation, appearance, or structured process filters. Member and enterprise API plans remove that lower plan cap and unlock those filters, while still sharing the ${MAX_CATALOG_PAGE_LIMIT}-row per-request ceiling. Every caller can discover publishable retail and wholesale coffees by default; richer field projections remain limited to privileged member sessions.`,
 					'Cookies are not part of the public API contract. They only matter when they resolve to a valid first-party session, and the legacy /api/catalog-api alias does not accept session auth as a substitute for an API key.'
 				],
 				codeBlocks: [
@@ -512,7 +512,7 @@ const docsPages: DocsPage[] = [
 				title: 'Query parameters',
 				body: [
 					`The table below describes the full canonical query surface. If page is supplied without limit, the route uses a ${DEFAULT_PAGINATED_PAGE_SIZE}-row pagination fallback. If both page and limit are omitted, the canonical listing path uses the ${DEFAULT_CATALOG_LISTING_LIMIT}-row default listing contract.`,
-					'Anonymous, viewer-session, and API Green requests share the basic public query surface. Structured process facet filters are gated to member/admin sessions and paid API tiers.',
+					'Anonymous, viewer-session, and API Green requests share the basic public query surface. Importer, elevation, appearance, and structured process filters are gated to member/admin sessions and paid API tiers.',
 					'fields=dropdown stays compatible with normal page and limit params. The reduced projection is limited to id, source, name, stocked, cost_lb, price_per_lb, price_tiers, and public_coffee.',
 					'include=proof is opt-in. Default full rows keep their existing shape, while proof requests add a cautious proof object with process, provenance, freshness, and pricing families plus explicit limitations.',
 					'All callers include wholesale rows by default. Set showWholesale=false to narrow to hobbyist-friendly suppliers. wholesaleOnly remains limited to privileged member and admin sessions.',
@@ -611,9 +611,9 @@ const docsPages: DocsPage[] = [
 						],
 						['region', 'string', 'none', 'Partial match on region.'],
 						['cultivar_detail', 'string', 'none', 'Partial match on cultivar or variety detail.'],
-						['type', 'string', 'none', 'Partial match on type.'],
-						['grade', 'string', 'none', 'Partial match on grade.'],
-						['appearance', 'string', 'none', 'Partial match on appearance.'],
+						['type', 'string', 'none', 'Paid importer/type filter.'],
+						['grade', 'string', 'none', 'Paid elevation/grade filter.'],
+						['appearance', 'string', 'none', 'Paid appearance filter.'],
 						['price_per_lb_min / price_per_lb_max', 'number', 'none', 'Canonical price filters.'],
 						[
 							'cost_lb_min / cost_lb_max',
@@ -743,14 +743,14 @@ const docsPages: DocsPage[] = [
 						[
 							'API-key /v1/catalog',
 							'Production integrations and accounted usage',
-							`Basic public query surface for API Green; paid API tiers add structured process facets. Defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted.`,
+							`Basic public query surface for API Green; paid API tiers add importer, elevation, appearance, and structured process filters. Defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted.`,
 							'Content-Type plus X-RateLimit-*',
-							'Canonical integration path for developers, sync jobs, and agents. API Green is for evaluation; API Origin and Enterprise unlock process search leverage.'
+							'Canonical integration path for developers, sync jobs, and agents. API Green is for evaluation; API Origin and Enterprise unlock premium search leverage.'
 						],
 						[
 							'Session /v1/catalog',
 							'First-party product reads',
-							'All sessions include wholesale rows by default. Member/admin sessions unlock process facets, richer fields, and wholesaleOnly.',
+							'All sessions include wholesale rows by default. Member/admin sessions unlock premium discovery filters, richer fields, and wholesaleOnly.',
 							'Session-dependent app headers only',
 							'Cookies are only relevant when they resolve to a valid first-party session.'
 						],
@@ -764,7 +764,7 @@ const docsPages: DocsPage[] = [
 					]
 				},
 				bullets: [
-					'Anonymous, viewer-session, and API Green calls share the basic public query surface. Process facet params return 401 for anonymous callers and 403 for viewer/API Green callers.',
+					'Anonymous, viewer-session, and API Green calls share the basic public query surface. Premium discovery params return 401 for anonymous callers and 403 for viewer/API Green callers.',
 					'If an Authorization header is present but invalid, the route returns 401 instead of silently treating the request as anonymous.'
 				]
 			},
@@ -804,7 +804,7 @@ const docsPages: DocsPage[] = [
 							'viewer',
 							'200',
 							'25',
-							'Best for evaluation and prototypes. Includes public response fields but not structured process facet filtering.'
+							'Best for evaluation and prototypes. Includes public response fields but not premium discovery filtering.'
 						],
 						[
 							'Origin',
@@ -824,7 +824,7 @@ const docsPages: DocsPage[] = [
 				},
 				bullets: [
 					'The public docs use marketed tier names Green, Origin, and Enterprise, while API responses and server code use apiPlan keys viewer, member, and enterprise.',
-					'API Green can read factual process fields in full catalog rows, but structured process facet filtering starts at API Origin.',
+					'API Green can read factual importer, elevation, appearance, and process fields in full catalog rows, but filtering by those premium fields starts at API Origin.',
 					`All callers share a hard per-request page-size ceiling of ${MAX_CATALOG_PAGE_LIMIT}, even when a paid plan removes the lower viewer-tier row cap.`,
 					'X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset are only emitted for API-key responses.',
 					'429 responses also include Retry-After.',

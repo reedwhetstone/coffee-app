@@ -492,6 +492,71 @@ describe('/catalog page load', () => {
 		);
 	});
 
+	it('strips premium discovery filters and sorts from viewer SSR state', async () => {
+		const result = (await load(
+			makeLoadInput(
+				'viewer',
+				{ access_token: 'cookie-token' } as App.Locals['session'],
+				'https://app.test/catalog?type=Importer+A&grade=1800&appearance=clean&sortField=type&sortDirection=asc&country=Ethiopia'
+			)
+		)) as {
+			initialCatalogState: {
+				filters: Record<string, unknown>;
+				sortField: string | null;
+				sortDirection: string | null;
+			};
+		};
+
+		expect(result.initialCatalogState).toMatchObject({
+			filters: { country: ['Ethiopia'] },
+			sortField: null,
+			sortDirection: null
+		});
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.not.objectContaining({
+				type: 'Importer A',
+				grade: '1800',
+				appearance: 'clean',
+				sort: 'type'
+			})
+		);
+	});
+
+	it('preserves premium discovery filters and sorts for any paid app subscription', async () => {
+		for (const role of ['member', 'admin'] as const) {
+			vi.clearAllMocks();
+			mockCatalogList.mockResolvedValue({
+				data: { data: catalogRows, pagination: { total: 42 } }
+			});
+			const result = (await load(
+				makeLoadInput(
+					role,
+					{ access_token: 'cookie-token' } as App.Locals['session'],
+					'https://app.test/catalog?type=Importer+A&grade=1800&appearance=clean&sortField=type&sortDirection=asc'
+				)
+			)) as {
+				initialCatalogState: {
+					filters: Record<string, unknown>;
+					sortField: string | null;
+				};
+			};
+
+			expect(result.initialCatalogState).toMatchObject({
+				filters: { type: 'Importer A', grade: '1800', appearance: 'clean' },
+				sortField: 'type'
+			});
+			expect(mockCatalogList).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					type: 'Importer A',
+					grade: '1800',
+					appearance: 'clean',
+					sort: 'type',
+					order: 'asc'
+				})
+			);
+		}
+	});
+
 	it('lets member and admin SSR previews pass process transparency query params to catalog search', async () => {
 		for (const role of ['member', 'admin'] as const) {
 			vi.clearAllMocks();

@@ -42,7 +42,15 @@ const { afterNavigate, pageState, storeState, filterStore } = vi.hoisted(() => {
 		storeState,
 		filterStore: {
 			subscribe: storeState.subscribe.bind(storeState),
-			getFilterableColumns: vi.fn(() => ['name', 'score_value', 'cost_lb', 'stocked_date']),
+			getFilterableColumns: vi.fn(() => [
+				'name',
+				'type',
+				'grade',
+				'appearance',
+				'score_value',
+				'cost_lb',
+				'stocked_date'
+			]),
 			setFilter: vi.fn(),
 			setSortField: vi.fn(),
 			setSortDirection: vi.fn(),
@@ -115,8 +123,14 @@ describe('Settingsbar stocked filters', () => {
 		expect(screen.queryByLabelText('Cost Lb')).not.toBeInTheDocument();
 		expect(screen.queryByLabelText('Stocked Date')).not.toBeInTheDocument();
 		expect(screen.queryByLabelText('Stocked window')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Importer')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Elevation (MASL)')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Appearance')).not.toBeInTheDocument();
 		expect(screen.getByLabelText('Name')).toBeInTheDocument();
 		expect(screen.getByRole('option', { name: 'Score Value' })).toBeInTheDocument();
+		expect(screen.queryByRole('option', { name: 'Importer' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('option', { name: 'Elevation (MASL)' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('option', { name: 'Appearance' })).not.toBeInTheDocument();
 	});
 
 	it('applies the same free catalog controls to the root catalog alias', () => {
@@ -128,6 +142,9 @@ describe('Settingsbar stocked filters', () => {
 		expect(screen.queryByLabelText('Cost Lb')).not.toBeInTheDocument();
 		expect(screen.queryByLabelText('Stocked Date')).not.toBeInTheDocument();
 		expect(screen.queryByLabelText('Stocked window')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Importer')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Elevation (MASL)')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Appearance')).not.toBeInTheDocument();
 		expect(screen.getByLabelText('Name')).toBeInTheDocument();
 	});
 
@@ -137,6 +154,9 @@ describe('Settingsbar stocked filters', () => {
 		expect(screen.getByText('Hobbyist suppliers only')).toBeInTheDocument();
 		expect(screen.getByLabelText('Score Value')).toBeInTheDocument();
 		expect(screen.getByLabelText('Cost Lb')).toBeInTheDocument();
+		expect(screen.getByLabelText('Importer')).toBeInTheDocument();
+		expect(screen.getByLabelText('Elevation (MASL)')).toBeInTheDocument();
+		expect(screen.getByLabelText('Appearance')).toBeInTheDocument();
 	});
 
 	it('turns off wholesale visibility when hobbyist-only is selected', async () => {

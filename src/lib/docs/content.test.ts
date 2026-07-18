@@ -5,7 +5,7 @@ import { getDocsPage } from '$lib/docs/content';
 describe('api docs contract', () => {
 	const page = getDocsPage('api', 'catalog');
 
-	it('documents the basic public catalog query surface and paid process facet boundary', () => {
+	it('documents the basic public catalog query surface and paid discovery boundary', () => {
 		expect(page).toBeDefined();
 
 		const serializedPage = JSON.stringify(page);
@@ -13,7 +13,7 @@ describe('api docs contract', () => {
 			'Anonymous, viewer-session, and API Green requests share the basic public catalog query surface.'
 		);
 		expect(serializedPage).toContain(
-			'Structured process facet filters are gated to member/admin sessions and paid API tiers.'
+			'Importer, elevation, appearance, and structured process filters are gated to member/admin sessions and paid API tiers.'
 		);
 		expect(serializedPage).toContain(
 			'Defaults to 100 rows when page and limit are omitted; page without limit falls back to 15.'
@@ -22,7 +22,7 @@ describe('api docs contract', () => {
 			'Publishable retail and wholesale catalog rows with the public field projection. No X-RateLimit-* headers.'
 		);
 		expect(serializedPage).toContain(
-			'Canonical integration path for developers, sync jobs, and agents. API Green is for evaluation; API Origin and Enterprise unlock process search leverage.'
+			'Canonical integration path for developers, sync jobs, and agents. API Green is for evaluation; API Origin and Enterprise unlock premium search leverage.'
 		);
 	});
 
@@ -56,7 +56,7 @@ describe('api docs contract', () => {
 			'All callers include wholesale rows by default.'
 		);
 		expect(JSON.stringify(accessSection)).toContain(
-			'All sessions include wholesale rows by default. Member/admin sessions unlock process facets, richer fields, and wholesaleOnly.'
+			'All sessions include wholesale rows by default. Member/admin sessions unlock premium discovery filters, richer fields, and wholesaleOnly.'
 		);
 	});
 

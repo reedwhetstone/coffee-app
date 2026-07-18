@@ -22,6 +22,7 @@ The following boundaries from ADR-005 remain in force:
 - `wholesaleOnly=true` is restricted to member and admin sessions.
 - Non-public rows and richer member fields remain gated.
 - Advanced facets, sorting, and search leverage remain gated according to the current entitlement model.
+- Importer, elevation, and appearance remain visible coffee attributes, but filtering, facet metadata, and sorting by them require any paid subscription/API tier.
 - Public callers remain constrained to the public field projection.
 
 Parchment PADR-0017 is the source of truth for row visibility. Parchment must deploy the wholesale-inclusive public contract before this Coffee App behavior is released.

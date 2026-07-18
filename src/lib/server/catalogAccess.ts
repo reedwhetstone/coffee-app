@@ -44,6 +44,8 @@ export const PROCESS_FACET_FILTER_KEYS = [
 	'processing_confidence_min'
 ] as const;
 
+export { PREMIUM_DISCOVERY_FILTER_KEYS } from '$lib/catalog/accessPolicy';
+
 const API_PLAN_HIERARCHY: Record<ApiPlan, number> = {
 	viewer: 0,
 	member: 1,

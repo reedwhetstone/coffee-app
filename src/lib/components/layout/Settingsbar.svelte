@@ -9,6 +9,9 @@
 	import { filterStore } from '$lib/stores/filterStore';
 	import { afterNavigate } from '$app/navigation';
 	import { checkRole, type UserRole } from '$lib/types/auth.types';
+	import { PREMIUM_DISCOVERY_FILTER_KEYS } from '$lib/catalog/accessPolicy';
+
+	const premiumDiscoveryFilterColumns = new Set<string>(PREMIUM_DISCOVERY_FILTER_KEYS);
 
 	// Component props interface
 	let { data, onClose = () => {} } = $props<{
@@ -23,10 +26,19 @@
 		checkRole((data.role as UserRole | undefined) ?? 'viewer', 'member')
 	);
 	let filterableColumns = $derived(filterStore.getFilterableColumns(routeId));
+	let visibleSortColumns = $derived(
+		(routeId === '/' || routeId === '/catalog') && !canUseMemberCatalogControls
+			? filterableColumns.filter((column) => !premiumDiscoveryFilterColumns.has(column))
+			: filterableColumns
+	);
 	let visibleFilterColumns = $derived(
 		(routeId === '/' || routeId === '/catalog') && !canUseMemberCatalogControls
 			? filterableColumns.filter(
-					(column) => column !== 'score_value' && column !== 'cost_lb' && column !== 'stocked_date'
+					(column) =>
+						column !== 'score_value' &&
+						column !== 'cost_lb' &&
+						column !== 'stocked_date' &&
+						!premiumDiscoveryFilterColumns.has(column)
 				)
 			: filterableColumns
 	);
@@ -103,7 +115,7 @@
 					class="mt-1 w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
 				>
 					<option value="">None</option>
-					{#each filterableColumns as column}
+					{#each visibleSortColumns as column}
 						<option value={column}>
 							{formatColumnName(column)}
 						</option>
