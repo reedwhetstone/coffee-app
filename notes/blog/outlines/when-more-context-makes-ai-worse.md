@@ -35,12 +35,13 @@ The future of agent interaction will likely combine continuous conversation with
 6. A warm-start compiler preserves recent verbatim context and rebuilds the working set only when intent changes.
 7. Full blank-slate reconstruction is slower, lossier, less deterministic, and gives the compiler excessive editorial power.
 8. A recoverable primary record with explicit corrections and supersession makes compiled context auditable and reversible.
-9. The closing resolves the tension: session structure should organize work, not defend the model from natural conversation.
+9. The closing resolves the tension at the product layer: the interface should organize the work while the context machinery quietly revises what remains active.
 
 ## Loss audit from the prior version
 
 - **Preserved:** contextual inertia, EMNLP task-switch evidence, vendor context-management precedents, mediator architecture, cold-read test, trajectory-preserving agreement, hidden-editor risk, and recoverable provenance.
 - **Strengthened:** the value of conversational flow, the role of workspaces, the warm-start architecture, and the distinction between speed and high-fidelity common ground.
+- **Ending revision:** the hidden-editor limitation now supports the blank-slate analysis, while the final section resolves the argument around invisible context machinery rather than recapping prior claims.
 - **Removed deliberately:** garbage collection terminology, the assumption that continuous conversation is universally preferred, and literal immutability without privacy or deletion controls.
 
 ## Sources

@@ -54,14 +54,18 @@ A system could take every new message, discard the thread, and reconstruct conte
 
 Retrieval can miss a correction, a negative constraint, or the earlier sentence that gave "this" its meaning. Summaries flatten uncertainty. Reassembly adds latency, cost, and nondeterminism. Most importantly, it gives the compiler complete control over what the main model is allowed to see.
 
-The value of maintaining a thread is therefore not just speed. It is high-fidelity common ground. Recent verbatim conversation is usually the best representation of the current task until there is evidence that the task changed. Recompilation should be triggered by a pivot, not performed as a ritual on every turn.
-
-## The compiler can become a hidden editor
-
 Any layer that decides what the main model sees can remove inconvenient evidence, elevate a tentative idea into durable fact, or retrieve an old memory that pulls the conversation back into its previous lane. The component meant to prevent context bias can introduce a new bias before reasoning begins.
 
 A trustworthy version needs a recoverable primary record. Original messages should remain available as evidence unless intentionally deleted or redacted. Corrections and supersessions should be explicit rather than silently rewriting the past. Compiled working sets should be disposable, reconstructable, and linked back to the claims and sources from which they were built.
 
 That is more than provenance for its own sake. It makes a bad compilation debuggable. The main model can inspect primary evidence, the system can build a different projection, and a tentative claim remains distinguishable from an accepted decision.
 
-Some work benefits from a fresh workspace. Some benefits from one flowing conversation. Most agentic work will probably move between the two. More context becomes harmful when that interface choice silently changes the quality of the reasoning. The goal is not one endless session. It is to make session structure an organizational decision rather than a defensive technique.
+The value of maintaining a thread is therefore not just speed. It is high-fidelity common ground. Recent verbatim conversation is usually the best representation of the current task until there is evidence that the task changed. Recompilation should be triggered by a pivot, not performed as a ritual on every turn.
+
+## The machinery should disappear from the interface
+
+A context compiler only improves the experience if the user does not have to manage it. That requires more than selecting the right history. Selection is itself an editorial act: a compiler can omit a correction, preserve an outdated assumption, or turn a tentative idea into an accepted fact. Its working set therefore needs to remain a reversible projection over a recoverable primary record, with explicit corrections, supersessions, and deletion controls.
+
+The point of that machinery is not to make one endless conversation possible, or to make workspaces obsolete. It is to let people move between both modes without treating session hygiene as a prerequisite for reliable output. A workspace can provide structure when structure helps. A continuous conversation can preserve common ground when the work refuses to stay neatly categorized.
+
+The interface should organize the work. It should not determine which parts of the past still control the model's reasoning. That distinction belongs underneath the product, where the agent can revise its working set as the user's intent changes, rather than forcing the user to revise their behavior around the agent.
