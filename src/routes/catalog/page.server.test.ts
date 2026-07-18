@@ -239,11 +239,12 @@ describe('/catalog page load', () => {
 	});
 
 	it('hydrates filtered catalog URLs from query params on first load', async () => {
+		const memberSession = { access_token: 'member-token' } as App.Locals['session'];
 		await load(
 			makeLoadInput(
-				'viewer',
-				null,
-				'https://app.test/catalog?country=Ethiopia&processing=Washed&cultivar_detail=Gesha&name=guji&score_value_min=86&score_value_max=90&price_per_lb_min=7.25&price_per_lb_max=8.5&arrival_date=2026-03-01&stocked_date=2026-04-01&page=2&sortField=score_value&sortDirection=asc'
+				'member',
+				memberSession,
+				'https://app.test/catalog?country=Ethiopia&processing=Washed&cultivar_detail=Gesha&name=guji&score_value_min=86&score_value_max=90&price_per_lb_min=7.25&price_per_lb_max=8.5&arrival_date=2026-03-01&stocked_date=2026-04-01&stocked_days=30&page=2&sortField=score_value&sortDirection=asc'
 			)
 		);
 
@@ -251,18 +252,19 @@ describe('/catalog page load', () => {
 			expect.objectContaining({
 				country: 'Ethiopia',
 				processing: 'Washed',
-				cultivar_detail: 'Gesha',
+				variety: 'Gesha',
 				name: 'guji',
-				score_value_min: 86,
-				score_value_max: 90,
-				price_per_lb_min: 7.25,
-				price_per_lb_max: 8.5,
-				arrival_date: '2026-03-01',
-				stocked_date: '2026-04-01',
+				scoreValueMin: 86,
+				scoreValueMax: 90,
+				pricePerLbMin: 7.25,
+				pricePerLbMax: 8.5,
+				arrivalDate: '2026-03-01',
+				stockedDate: '2026-04-01',
+				stockedDays: 30,
 				page: 2,
 				limit: 15,
-				sortField: 'score_value',
-				sortDirection: 'asc'
+				sort: 'score_value',
+				order: 'asc'
 			})
 		);
 	});
@@ -316,7 +318,7 @@ describe('/catalog page load', () => {
 		expect(mockCatalogList).toHaveBeenNthCalledWith(
 			2,
 			expect.objectContaining({
-				ids: [99],
+				coffeeIds: '99',
 				stocked: 'all',
 				showWholesale: 'false',
 				wholesaleOnly: 'false',
@@ -435,6 +437,59 @@ describe('/catalog page load', () => {
 			status: 403,
 			deniedParams: ['processing_base_method']
 		});
+	});
+
+	it('strips advanced sorts from viewer SSR state while preserving public sorts', async () => {
+		const advancedResult = (await load(
+			makeLoadInput(
+				'viewer',
+				{ access_token: 'cookie-token' } as App.Locals['session'],
+				'https://app.test/catalog?sortField=purveyor_score&sortDirection=asc'
+			)
+		)) as { initialCatalogState: { sortField: string | null; sortDirection: string | null } };
+
+		expect(advancedResult.initialCatalogState).toMatchObject({
+			sortField: null,
+			sortDirection: null
+		});
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.not.objectContaining({ sort: 'purveyor_score' })
+		);
+
+		vi.clearAllMocks();
+		mockCatalogList.mockResolvedValue({
+			data: { data: catalogRows, pagination: { total: 42 } }
+		});
+		const publicResult = (await load(
+			makeLoadInput(
+				'viewer',
+				null,
+				'https://app.test/catalog?sortField=score_value&sortDirection=asc'
+			)
+		)) as { initialCatalogState: { sortField: string | null; sortDirection: string | null } };
+
+		expect(publicResult.initialCatalogState).toMatchObject({
+			sortField: 'score_value',
+			sortDirection: 'asc'
+		});
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.objectContaining({ sort: 'score_value', order: 'asc' })
+		);
+	});
+
+	it('strips member-only freshness filters from viewer SSR state', async () => {
+		const result = (await load(
+			makeLoadInput(
+				'viewer',
+				{ access_token: 'cookie-token' } as App.Locals['session'],
+				'https://app.test/catalog?stocked_date=2026-07-15&stocked_days=7&country=Ethiopia'
+			)
+		)) as { initialCatalogState: { filters: Record<string, unknown> } };
+
+		expect(result.initialCatalogState.filters).toEqual({ country: ['Ethiopia'] });
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.not.objectContaining({ stockedDate: '2026-07-15', stockedDays: 7 })
+		);
 	});
 
 	it('lets member and admin SSR previews pass process transparency query params to catalog search', async () => {
@@ -892,21 +947,38 @@ describe('/catalog tracked-only watchlist view', () => {
 				'viewer',
 				session,
 				principal,
-				'https://app.test/catalog?tracked=only'
+				'https://app.test/catalog?tracked=only&country=Ethiopia&sortField=name&sortDirection=asc'
 			)
-		)) as { trackedOnly: boolean; trackedLotIds: Promise<number[]> };
+		)) as {
+			trackedOnly: boolean;
+			trackedLotIds: Promise<number[]>;
+			initialCatalogState: {
+				filters: Record<string, unknown>;
+				sortField: string | null;
+				sortDirection: string | null;
+			};
+		};
 
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
 			mode: 'session'
 		});
 		expect(mockCatalogList).toHaveBeenCalledWith(
 			expect.objectContaining({
-				ids: [5, 9],
+				coffeeIds: '5,9',
 				stocked: 'all',
 				showWholesale: 'true'
 			})
 		);
+		const trackedQuery = mockCatalogList.mock.calls[0][0] as Record<string, unknown>;
+		expect(trackedQuery).not.toHaveProperty('country');
+		expect(trackedQuery).not.toHaveProperty('sort');
+		expect(trackedQuery).not.toHaveProperty('order');
 		expect(result.trackedOnly).toBe(true);
+		expect(result.initialCatalogState).toMatchObject({
+			filters: {},
+			sortField: null,
+			sortDirection: null
+		});
 		expect(await result.trackedLotIds).toEqual([5, 9]);
 	});
 

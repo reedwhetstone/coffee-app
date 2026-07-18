@@ -8,9 +8,10 @@
 	import { page } from '$app/state';
 	import { filterStore } from '$lib/stores/filterStore';
 	import { afterNavigate } from '$app/navigation';
+	import { checkRole, type UserRole } from '$lib/types/auth.types';
 
 	// Component props interface
-	let { onClose = () => {} } = $props<{
+	let { data, onClose = () => {} } = $props<{
 		data: Record<string, unknown>;
 		isOpen?: boolean;
 		onClose?: () => void;
@@ -18,6 +19,17 @@
 
 	// Track current route for dynamic filter options
 	let routeId = $state(page.url.pathname);
+	let canUseMemberCatalogControls = $derived(
+		checkRole((data.role as UserRole | undefined) ?? 'viewer', 'member')
+	);
+	let filterableColumns = $derived(filterStore.getFilterableColumns(routeId));
+	let visibleFilterColumns = $derived(
+		(routeId === '/' || routeId === '/catalog') && !canUseMemberCatalogControls
+			? filterableColumns.filter(
+					(column) => column !== 'score_value' && column !== 'cost_lb' && column !== 'stocked_date'
+				)
+			: filterableColumns
+	);
 
 	// Update route tracking and close sidebar on navigation
 	afterNavigate(() => {
@@ -91,7 +103,7 @@
 					class="mt-1 w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
 				>
 					<option value="">None</option>
-					{#each filterStore.getFilterableColumns(routeId) as column}
+					{#each filterableColumns as column}
 						<option value={column}>
 							{formatColumnName(column)}
 						</option>
@@ -116,47 +128,51 @@
 				<h4 class="mb-3 text-sm font-medium text-ink">Filters</h4>
 				<div class="space-y-3">
 					{#if routeId === '/' || routeId === '/catalog'}
-						<div class="rounded-md border border-line bg-surface-canvas p-3">
-							<label class="flex items-center justify-between gap-3">
-								<div>
-									<div class="text-xs font-medium text-ink">Show wholesale</div>
-									<p class="text-[11px] text-muted">
-										Off by default. Enable to include wholesale coffees in catalog results.
-									</p>
-								</div>
-								<input
-									type="checkbox"
-									checked={$filterStore.showWholesale}
-									onchange={(e) => filterStore.setShowWholesale(e.currentTarget.checked)}
-									class="h-4 w-4 rounded border border-line bg-surface-canvas text-accent focus:ring-2 focus:ring-accent"
-								/>
-							</label>
-						</div>
+						{#if canUseMemberCatalogControls}
+							<div class="rounded-md border border-line bg-surface-canvas p-3">
+								<label class="flex items-center justify-between gap-3">
+									<div>
+										<div class="text-xs font-medium text-ink">Show wholesale</div>
+										<p class="text-[11px] text-muted">
+											Off by default. Enable to include wholesale coffees in catalog results.
+										</p>
+									</div>
+									<input
+										type="checkbox"
+										checked={$filterStore.showWholesale}
+										onchange={(e) => filterStore.setShowWholesale(e.currentTarget.checked)}
+										class="h-4 w-4 rounded border border-line bg-surface-canvas text-accent focus:ring-2 focus:ring-accent"
+									/>
+								</label>
+							</div>
+						{/if}
 
-						<div class="space-y-1">
-							<label for="stocked_days" class="block text-xs font-medium text-ink">
-								Stocked window
-							</label>
-							<select
-								id="stocked_days"
-								value={$filterStore.filters.stocked_days || ''}
-								onchange={(e) => filterStore.setFilter('stocked_days', e.currentTarget.value)}
-								class="mt-1 w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
-							>
-								<option value="">Any time</option>
-								<option value="7">Last 7 days</option>
-								<option value="14">Last 14 days</option>
-								<option value="30">Last 30 days</option>
-								<option value="60">Last 60 days</option>
-								<option value="90">Last 90 days</option>
-							</select>
-							<p class="text-[11px] text-muted">
-								Relative filter for coffees stocked within the last N days.
-							</p>
-						</div>
+						{#if canUseMemberCatalogControls}
+							<div class="space-y-1">
+								<label for="stocked_days" class="block text-xs font-medium text-ink">
+									Stocked window
+								</label>
+								<select
+									id="stocked_days"
+									value={$filterStore.filters.stocked_days || ''}
+									onchange={(e) => filterStore.setFilter('stocked_days', e.currentTarget.value)}
+									class="mt-1 w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
+								>
+									<option value="">Any time</option>
+									<option value="7">Last 7 days</option>
+									<option value="14">Last 14 days</option>
+									<option value="30">Last 30 days</option>
+									<option value="60">Last 60 days</option>
+									<option value="90">Last 90 days</option>
+								</select>
+								<p class="text-[11px] text-muted">
+									Relative filter for coffees stocked within the last N days.
+								</p>
+							</div>
+						{/if}
 					{/if}
 
-					{#each filterStore.getFilterableColumns(routeId) as column}
+					{#each visibleFilterColumns as column}
 						<div class="space-y-1">
 							<label for={column} class="block text-xs font-medium text-ink">
 								{formatColumnName(column)}
@@ -219,6 +235,7 @@
 								</div>
 							{:else if column === 'continent' && $filterStore.uniqueValues?.continents?.length}
 								<select
+									id={column}
 									value={$filterStore.filters.continent || ''}
 									onchange={(e) => filterStore.setFilter('continent', e.currentTarget.value)}
 									class="mt-1 w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
@@ -287,6 +304,7 @@
 							{:else if column === 'score_value'}
 								<div class="flex gap-2">
 									<input
+										id={column}
 										type="number"
 										value={(
 											$filterStore.filters.score_value as
@@ -310,6 +328,7 @@
 										step="0.1"
 									/>
 									<input
+										aria-label="Maximum Score Value"
 										type="number"
 										value={(
 											$filterStore.filters.score_value as
@@ -336,6 +355,7 @@
 							{:else if column === 'cost_lb'}
 								<div class="flex gap-2">
 									<input
+										id={column}
 										type="number"
 										value={(
 											$filterStore.filters.cost_lb as
@@ -358,6 +378,7 @@
 										step="0.01"
 									/>
 									<input
+										aria-label="Maximum Cost Lb"
 										type="number"
 										value={(
 											$filterStore.filters.cost_lb as
@@ -382,6 +403,7 @@
 								</div>
 							{:else if column === 'arrival_date' && $filterStore.uniqueValues?.arrivalDates?.length}
 								<select
+									id={column}
 									value={$filterStore.filters.arrival_date || ''}
 									onchange={(e) => filterStore.setFilter('arrival_date', e.currentTarget.value)}
 									class="mt-1 w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
@@ -393,6 +415,7 @@
 								</select>
 							{:else if column === 'purchase_date' && $filterStore.uniqueValues?.purchaseDates?.length}
 								<select
+									id={column}
 									value={$filterStore.filters.purchase_date || ''}
 									onchange={(e) => filterStore.setFilter('purchase_date', e.currentTarget.value)}
 									class="mt-1 w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
@@ -404,6 +427,7 @@
 								</select>
 							{:else if column === 'roast_date' && $filterStore.uniqueValues?.roastDates?.length}
 								<select
+									id={column}
 									value={$filterStore.filters.roast_date || ''}
 									onchange={(e) => filterStore.setFilter('roast_date', e.currentTarget.value)}
 									class="mt-1 w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
@@ -426,6 +450,7 @@
 								</div>
 							{:else if column === 'batch_name' && $filterStore.uniqueValues?.batchNames?.length}
 								<select
+									id={column}
 									value={$filterStore.filters.batch_name || ''}
 									onchange={(e) => filterStore.setFilter('batch_name', e.currentTarget.value)}
 									class="mt-1 w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
@@ -437,6 +462,7 @@
 								</select>
 							{:else if column === 'roast_id'}
 								<input
+									id={column}
 									type="text"
 									value={$filterStore.filters.roast_id || ''}
 									oninput={(e) => filterStore.setFilter('roast_id', e.currentTarget.value)}
@@ -445,6 +471,7 @@
 								/>
 							{:else if column === 'stocked'}
 								<select
+									id={column}
 									value={$filterStore.filters.stocked || ''}
 									onchange={(e) => filterStore.setFilter('stocked', e.currentTarget.value)}
 									class="mt-1 w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
@@ -455,6 +482,7 @@
 								</select>
 							{:else}
 								<input
+									id={column}
 									type="text"
 									value={$filterStore.filters[column] || ''}
 									oninput={(e) => filterStore.setFilter(column, e.currentTarget.value)}

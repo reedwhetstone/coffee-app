@@ -10,8 +10,6 @@
 		trackedIdsSize: number;
 		trackedCountOnPage: number;
 		trackedOnlyView: boolean;
-		supplierComparisonHref: string;
-		supplierComparisonLabel: string;
 		copyLinkStatus: 'idle' | 'copied' | 'error';
 		onCopyFilteredCatalogLink: () => void;
 	}
@@ -26,8 +24,6 @@
 		trackedIdsSize,
 		trackedCountOnPage,
 		trackedOnlyView,
-		supplierComparisonHref,
-		supplierComparisonLabel,
 		copyLinkStatus,
 		onCopyFilteredCatalogLink
 	}: Props = $props();
@@ -103,20 +99,16 @@
 				The Market Index tracks price movement, arrivals, and supplier coverage across this whole
 				catalog — then come back here for the named lots.
 			</p>
-			<div class="mt-3 flex flex-col gap-2 sm:flex-row lg:flex-col">
-				<a
-					href="/analytics"
-					class="rounded-md bg-accent px-3 py-2 text-center text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
-				>
-					Open the Market Index
-				</a>
-				<a
-					href={supplierComparisonHref}
-					class="rounded-md border border-accent px-3 py-2 text-center text-sm font-medium text-accent transition-all duration-200 hover:bg-accent hover:text-ink"
-				>
-					{supplierComparisonLabel}
-				</a>
-			</div>
+			{#if catalogResultCount > 0}
+				<div class="mt-3">
+					<a
+						href="/analytics"
+						class="rounded-md bg-accent px-3 py-2 text-center text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
+					>
+						Open the Market Index
+					</a>
+				</div>
+			{/if}
 			<div class="mt-3 border-t border-line pt-3">
 				<button
 					onclick={onCopyFilteredCatalogLink}

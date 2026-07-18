@@ -60,6 +60,24 @@ describe('/api/catalog route', () => {
 		);
 	});
 
+	it('translates stable app filter aliases into the current Parchment query contract', async () => {
+		await GET(
+			makeEvent(
+				'https://app.test/api/catalog?stocked_date=2026-07-15&stocked_days=7&sortField=stocked_date&sortDirection=asc&ids=433&ids=584'
+			)
+		);
+
+		expect(mockCatalogList).toHaveBeenCalledWith(
+			expect.objectContaining({
+				stockedDate: '2026-07-15',
+				stockedDays: '7',
+				sort: 'stocked_date',
+				order: 'asc',
+				coffeeIds: '433,584'
+			})
+		);
+	});
+
 	it('unwraps the canonical envelope into the legacy paginated shape', async () => {
 		const response = await GET(makeEvent('https://app.test/api/catalog?page=1&limit=15'));
 

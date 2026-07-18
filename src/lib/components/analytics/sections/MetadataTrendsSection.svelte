@@ -350,12 +350,6 @@
 							confidence, and tier distribution over time.
 						</p>
 					</div>
-					<a
-						href="/subscription?plan=intelligence-monthly&intent=checkout"
-						class="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink transition-all duration-200 hover:bg-accent/85"
-					>
-						Start Intelligence
-					</a>
 				</div>
 			</div>
 		{/if}

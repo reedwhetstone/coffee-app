@@ -25,6 +25,7 @@
 		trackedIds: Set<number>;
 		canUseBeanMatching: boolean;
 		canUseSourcingIntelligence: boolean;
+		trackedOnlyView: boolean;
 		deepLinkCoffeeId: number | null;
 		filteredDataLength: number;
 		displayLimit: number;
@@ -45,6 +46,7 @@
 		trackedIds,
 		canUseBeanMatching,
 		canUseSourcingIntelligence,
+		trackedOnlyView,
 		deepLinkCoffeeId,
 		filteredDataLength,
 		displayLimit,
@@ -76,26 +78,39 @@
 		>
 			{#if !displayData || displayData.length === 0}
 				<div class="rounded-lg border border-line bg-surface-panel p-6 text-center">
-					<h2 class="text-lg font-semibold text-ink">No catalog rows match this supply query</h2>
-					<p class="mx-auto mt-2 max-w-2xl text-sm text-muted">
-						Clear or broaden the filters to inspect named coffees, or use the Parchment Market Index
-						to review broader origin, supplier, and pricing evidence before returning to row-level
-						catalog inspection.
-					</p>
-					<div class="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
-						<button
-							onclick={filterStore.clearFilters}
-							class="rounded-md border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-accent hover:text-accent"
-						>
-							Clear catalog filters
-						</button>
+					{#if trackedOnlyView}
+						<h2 class="text-lg font-semibold text-ink">No tracked lots to show</h2>
+						<p class="mx-auto mt-2 max-w-2xl text-sm text-muted">
+							Track coffees from the full catalog to build a watchlist here.
+						</p>
 						<a
-							href="/analytics"
-							class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
+							href="/catalog"
+							class="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 						>
-							Review broader Market Index
+							Show full catalog
 						</a>
-					</div>
+					{:else}
+						<h2 class="text-lg font-semibold text-ink">No catalog rows match this supply query</h2>
+						<p class="mx-auto mt-2 max-w-2xl text-sm text-muted">
+							Clear or broaden the filters to inspect named coffees, or use the Parchment Market
+							Index to review broader origin, supplier, and pricing evidence before returning to
+							row-level catalog inspection.
+						</p>
+						<div class="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
+							<button
+								onclick={filterStore.clearFilters}
+								class="rounded-md border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-accent hover:text-accent"
+							>
+								Clear catalog filters
+							</button>
+							<a
+								href="/analytics"
+								class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
+							>
+								Review broader Market Index
+							</a>
+						</div>
+					{/if}
 				</div>
 			{:else}
 				{#if activeOriginStats}

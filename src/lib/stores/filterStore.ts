@@ -35,6 +35,17 @@ const STRIPPED_FILTER_NOTICE_FIELDS = [
 	'filter'
 ] as const;
 
+const UPSTREAM_NOTICE_TO_APP_FILTER_KEY: Readonly<Record<string, string>> = {
+	scoreValueMin: 'score_value',
+	scoreValueMax: 'score_value',
+	pricePerLbMin: 'cost_lb',
+	pricePerLbMax: 'cost_lb',
+	stockedDate: 'stocked_date',
+	stockedDays: 'stocked_days',
+	arrivalDate: 'arrival_date',
+	variety: 'cultivar_detail'
+};
+
 /**
  * Extracts the set of filter param keys that upstream reports as stripped from a
  * lenient website request. Only returns keys the server explicitly names, so a
@@ -58,7 +69,7 @@ function extractStrippedFilterKeys(notices: unknown[]): string[] {
 			}
 		}
 	}
-	return Array.from(keys);
+	return Array.from(keys, (key) => UPSTREAM_NOTICE_TO_APP_FILTER_KEY[key] ?? key);
 }
 
 type CatalogPaginationState = {
@@ -259,6 +270,7 @@ function createFilterStore() {
 						: null;
 				const notices = Array.isArray(meta?.notices) ? meta.notices : [];
 				const strippedKeys = extractStrippedFilterKeys(notices);
+				const sortWasStripped = strippedKeys.includes('sort');
 
 				if (activeAbortController === controller) {
 					activeAbortController = null;
@@ -278,6 +290,8 @@ function createFilterStore() {
 					return {
 						...s,
 						filters,
+						sortField: sortWasStripped ? null : s.sortField,
+						sortDirection: sortWasStripped ? null : s.sortDirection,
 						serverData: result.data || [],
 						pagination: result.pagination || s.pagination,
 						filteredData: result.data || [], // Keep filteredData in sync for backward compatibility

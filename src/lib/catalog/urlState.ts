@@ -42,6 +42,7 @@ export interface CatalogSearchState {
 	pricePerLbMax?: number;
 	arrivalDate?: string;
 	stockedDate?: string;
+	stockedDays?: number;
 	orderBy?: string;
 	orderDirection?: 'asc' | 'desc';
 	limit: number;
@@ -95,7 +96,8 @@ const FILTER_SERIALIZATION_ORDER = [
 	'score_value',
 	'cost_lb',
 	'arrival_date',
-	'stocked_date'
+	'stocked_date',
+	'stocked_days'
 ] as const;
 
 export const PROCESSING_CONFIDENCE_OPTIONS = [
@@ -218,6 +220,11 @@ export function parseCatalogUrlState(url: URL, routeId = '/catalog'): CatalogUrl
 	const hasAdditives = parseStrictBoolean(url.searchParams.get('has_additives'));
 	if (hasAdditives !== undefined) {
 		filters.has_additives = hasAdditives;
+	}
+
+	const stockedDays = parsePositiveInteger(url.searchParams.get('stocked_days'), 0);
+	if (stockedDays > 0) {
+		filters.stocked_days = stockedDays;
 	}
 
 	const sortField = url.searchParams.get('sortField') ?? defaultSort.field;
@@ -458,6 +465,8 @@ export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSea
 		pricePerLbMax: priceRange?.max,
 		arrivalDate: readStringValue(state.filters.arrival_date),
 		stockedDate: readStringValue(state.filters.stocked_date),
+		stockedDays:
+			parsePositiveInteger(state.filters.stocked_days?.toString() ?? null, 0) || undefined,
 		orderBy: state.sortField ?? undefined,
 		orderDirection: state.sortDirection ?? undefined,
 		limit: state.pagination.limit,

@@ -329,15 +329,6 @@
 	let visibleOriginCount = $derived(countDistinctCatalogValues(displayData(), 'country'));
 	let visibleSupplierCount = $derived(countDistinctCatalogValues(displayData(), 'source'));
 	let visiblePricedCount = $derived(displayData().filter(hasCatalogPriceEvidence).length);
-	let supplierComparisonHref = $derived(
-		canUseParchmentIntelligence ? '/analytics#supplier-comparison' : '/analytics'
-	);
-	let supplierComparisonLabel = $derived(
-		canUseParchmentIntelligence
-			? 'Review supplier comparison evidence'
-			: 'Preview supplier comparison gate'
-	);
-
 	type OriginPriceStatsResponse = {
 		originPriceStats?: OriginPriceStats[];
 	};
@@ -574,8 +565,6 @@
 			trackedIdsSize={trackedIds.size}
 			{trackedCountOnPage}
 			{trackedOnlyView}
-			{supplierComparisonHref}
-			{supplierComparisonLabel}
 			{copyLinkStatus}
 			onCopyFilteredCatalogLink={copyFilteredCatalogLink}
 		/>
@@ -595,12 +584,14 @@
 			</div>
 		{/if}
 
-		<ProcessFilterSection
-			canUseProcessFacets={data.catalogAccess?.canUseProcessFacets ?? false}
-			{hasAdvancedProcessFilters}
-			catalogAccessNotice={data.catalogAccessNotice}
-			onClearProcessTransparencyFilters={clearProcessTransparencyFilters}
-		/>
+		{#if !trackedOnlyView}
+			<ProcessFilterSection
+				canUseProcessFacets={data.catalogAccess?.canUseProcessFacets ?? false}
+				{hasAdvancedProcessFilters}
+				catalogAccessNotice={data.catalogAccessNotice}
+				onClearProcessTransparencyFilters={clearProcessTransparencyFilters}
+			/>
+		{/if}
 
 		{#if session && !hasRequiredRole('member') && !canUseParchmentIntelligence}
 			<UpsellBannerSection />
@@ -624,6 +615,7 @@
 			{trackedIds}
 			{canUseBeanMatching}
 			canUseSourcingIntelligence={canUseSourcingIntelligence && trackedIdsReady}
+			{trackedOnlyView}
 			{deepLinkCoffeeId}
 			filteredDataLength={$filteredData.length}
 			{displayLimit}

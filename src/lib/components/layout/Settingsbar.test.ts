@@ -42,7 +42,7 @@ const { afterNavigate, pageState, storeState, filterStore } = vi.hoisted(() => {
 		storeState,
 		filterStore: {
 			subscribe: storeState.subscribe.bind(storeState),
-			getFilterableColumns: vi.fn(() => ['name', 'stocked_date']),
+			getFilterableColumns: vi.fn(() => ['name', 'score_value', 'cost_lb', 'stocked_date']),
 			setFilter: vi.fn(),
 			setSortField: vi.fn(),
 			setSortDirection: vi.fn(),
@@ -86,7 +86,7 @@ describe('Settingsbar stocked filters', () => {
 
 	it('separates absolute stocked_date input from explicit stocked_days window control', async () => {
 		render(Settingsbar, {
-			data: {},
+			data: { role: 'member' },
 			onClose: vi.fn()
 		});
 
@@ -105,5 +105,37 @@ describe('Settingsbar stocked filters', () => {
 
 		expect(filterStore.setFilter).toHaveBeenNthCalledWith(1, 'stocked_date', '2026-03-01');
 		expect(filterStore.setFilter).toHaveBeenNthCalledWith(2, 'stocked_days', '30');
+	});
+
+	it('hides filters that the free catalog API strips while keeping basic filters and sorting', () => {
+		render(Settingsbar, { data: { role: 'viewer' }, onClose: vi.fn() });
+
+		expect(screen.queryByText('Show wholesale')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Score Value')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Cost Lb')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Stocked Date')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Stocked window')).not.toBeInTheDocument();
+		expect(screen.getByLabelText('Name')).toBeInTheDocument();
+		expect(screen.getByRole('option', { name: 'Score Value' })).toBeInTheDocument();
+	});
+
+	it('applies the same free catalog controls to the root catalog alias', () => {
+		pageState.url = new URL('http://localhost/');
+		render(Settingsbar, { data: { role: 'viewer' }, onClose: vi.fn() });
+
+		expect(screen.queryByText('Show wholesale')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Score Value')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Cost Lb')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Stocked Date')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Stocked window')).not.toBeInTheDocument();
+		expect(screen.getByLabelText('Name')).toBeInTheDocument();
+	});
+
+	it('shows wholesale and paid range filters to member sessions', () => {
+		render(Settingsbar, { data: { role: 'member' }, onClose: vi.fn() });
+
+		expect(screen.getByText('Show wholesale')).toBeInTheDocument();
+		expect(screen.getByLabelText('Score Value')).toBeInTheDocument();
+		expect(screen.getByLabelText('Cost Lb')).toBeInTheDocument();
 	});
 });

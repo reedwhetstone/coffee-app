@@ -5,6 +5,7 @@ import {
 	type ParchmentCredentialMode,
 	type ParchmentPreferHandling
 } from '$lib/server/parchmentClient';
+import { toParchmentCatalogQuery, type CatalogQueryValue } from '$lib/catalog/parchmentQuery';
 
 /**
  * Thin proxy helpers for the legacy catalog listing routes.
@@ -26,24 +27,24 @@ const FORWARDED_UPSTREAM_HEADERS = [
 /**
  * Convert the incoming request's search params into an SDK catalog list query.
  *
- * This is a verbatim passthrough: repeated params (e.g. `source`, `country`,
- * `ids`) become arrays and everything else forwards as-is. Parchment owns
- * validation, filtering, sorting, and projection, so coffee-app deliberately does
- * not parse or reshape these values.
+ * Repeated params (e.g. `source`, `country`, `ids`) become arrays. Stable app
+ * URL aliases are translated to the generated Parchment SDK names; values are
+ * otherwise untouched. Parchment still owns validation, filtering, sorting,
+ * and projection.
  */
 export function toCatalogListQuery(url: URL): CatalogListQuery {
-	const query: Record<string, string | string[]> = {};
+	const appQuery: Record<string, CatalogQueryValue> = {};
 
 	for (const key of new Set(url.searchParams.keys())) {
 		const values = url.searchParams.getAll(key);
-		query[key] = values.length > 1 ? values : values[0];
+		appQuery[key] = values.length > 1 ? values : values[0];
 	}
 
 	// The installed SDK's CatalogListQuery type only models the core paging params;
 	// the full public catalog contract accepts many more filter keys that Parchment
 	// parses server-side. openapi-fetch serializes the whole object regardless of
 	// the compile-time type, so the cast keeps the passthrough faithful.
-	return query as CatalogListQuery;
+	return toParchmentCatalogQuery(appQuery) as CatalogListQuery;
 }
 
 const CATALOG_SIMILAR_QUERY_KEYS = ['threshold', 'limit', 'stocked_only', 'mode'] as const;

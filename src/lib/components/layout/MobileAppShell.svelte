@@ -14,18 +14,27 @@
 	}>();
 
 	let currentPath = $state(page.url.pathname);
+	let trackedCatalogRoute = $state(Boolean((page.data as { trackedOnly?: boolean }).trackedOnly));
 	let activeOverlay = $state<null | 'menu' | 'actions' | 'settings'>(null);
 
 	let userRole = $derived(((data?.role as UserRole | undefined) ?? 'viewer') as UserRole);
 	let ppiAccess = $derived(Boolean((data as { ppiAccess?: boolean }).ppiAccess));
 	let canUseActions = $derived(canManagePortfolio(userRole, ppiAccess));
-	let showSettings = $derived(['/catalog', '/beans', '/roast', '/profit'].includes(currentPath));
+	let showSettings = $derived(
+		['/catalog', '/beans', '/roast'].includes(currentPath) && !trackedCatalogRoute
+	);
 	let routeLabel = $derived(getCurrentRouteLabel(currentPath, userRole, { ppiAccess }));
 
 	$effect(() => {
 		const nextPath = page.url.pathname;
 		if (nextPath !== currentPath) {
 			currentPath = nextPath;
+			activeOverlay = null;
+		}
+
+		const nextTrackedCatalogRoute = Boolean((page.data as { trackedOnly?: boolean }).trackedOnly);
+		if (nextTrackedCatalogRoute !== trackedCatalogRoute) {
+			trackedCatalogRoute = nextTrackedCatalogRoute;
 			activeOverlay = null;
 		}
 	});

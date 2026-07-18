@@ -12,18 +12,11 @@
 		signalsSummary: MarketSignalsSummary | null;
 		signalsAsOf: string | null;
 		isParchmentIntelligence: boolean;
-		isSignedIn: boolean;
 		viewMode: ViewMode;
 	}
 
-	let {
-		valueSignals,
-		signalsSummary,
-		signalsAsOf,
-		isParchmentIntelligence,
-		isSignedIn,
-		viewMode
-	}: Props = $props();
+	let { valueSignals, signalsSummary, signalsAsOf, isParchmentIntelligence, viewMode }: Props =
+		$props();
 
 	const SIGNAL_LABELS: Record<MarketSignalItem['signalType'], string> = {
 		price_drop: 'Price drop',
@@ -200,16 +193,6 @@
 						the evidence behind each one.
 					</p>
 				</div>
-				{#if isSignedIn}
-					<div class="flex shrink-0 flex-col gap-2 sm:flex-row">
-						<a
-							href="/subscription?plan=intelligence-monthly&intent=checkout"
-							class="rounded-md bg-accent px-4 py-2 text-center text-sm font-semibold text-ink transition-all duration-200 hover:bg-accent/85"
-						>
-							Start Intelligence
-						</a>
-					</div>
-				{/if}
 			</div>
 		</section>
 	{/if}
