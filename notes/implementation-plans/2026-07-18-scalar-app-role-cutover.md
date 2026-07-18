@@ -23,7 +23,7 @@ Keep non-role entitlements in their existing explicit columns:
 - `api_plan`: `viewer | member | enterprise`
 - `ppi_access`: boolean
 
-Retire the `user_role text[]` column. It is a compatibility mirror that still acts as an authorization source in several consumers, which creates two writable truths and permits drift.
+Retire the `user_role text[]` column. It is a compatibility mirror that still acts as an authorization source in several consumers, which creates two writable truths and permits drift. During the expand/cutover window it remains a write-only rollback aid; no active consumer may use it for authorization.
 
 Rename and narrow the PostgreSQL enum to `public.app_role`. Leaving the scalar column typed as `public.user_role` after dropping the similarly named `user_role` column would preserve most of the current ambiguity. The replacement enum should contain only `viewer`, `member`, and `admin`; the old API pseudo-role values belong in `api_plan`, not the app-role type.
 
@@ -88,7 +88,8 @@ Application contracts should expose one `UserRole`, not `UserRole | UserRole[]`.
   - Continue failing closed when the entitlement row cannot be read.
 - `src/lib/server/billing/entitlements.ts`
   - Remove `userRole` from `ResolvedBillingEntitlements`.
-  - Remove `buildUserRoleMirror`, array comparisons, array reads, and array writes.
+  - Retain a private `buildUserRoleMirror` write path through PR 3, deriving the mirror from scalar role and explicit entitlements; remove array reads and comparisons from authorization and discrepancy decisions.
+  - Delete the compatibility writer when PR 3 drops the column.
   - Preserve admin behavior, Stripe role reconciliation, `api_plan`, and `ppi_access` independently.
 - `src/lib/server/billing/reconcile-session.ts`
   - Stop selecting and returning `user_role`.
@@ -242,7 +243,7 @@ This PR must land first because Parchment API deploys independently and would fa
 Repository: `coffee-app`
 
 1. Cut principal resolution to scalar `role`.
-2. Remove all runtime reads and writes of `user_role`.
+2. Remove all runtime reads of `user_role` from authorization. Keep the billing reconciliation write as a private compatibility mirror until PR 3 drops the column.
 3. Simplify billing reconciliation and admin discrepancy surfaces.
 4. Replace signup and chat authorization database functions using a forward migration or function-only migration that remains compatible with both table shapes.
 5. Harden live RLS and column privileges if the preflight confirms authenticated self-update access.
@@ -250,7 +251,9 @@ Repository: `coffee-app`
 7. Deploy while `user_role` still exists.
 8. Canary login, navigation, billing upgrade/downgrade, admin access, member actions, Intelligence access, and chat action execution.
 
-At the end of PR 2, repository-wide runtime search should find no non-historical `user_role` column access in coffee-app or Parchment API.
+At the end of PR 2, repository-wide runtime search should find no non-historical `user_role` authorization reads in coffee-app or Parchment API. The only permitted runtime access is the documented, write-only billing compatibility mirror, which is removed by PR 3.
+
+During the PR 2-to-PR 3 observation window, billing reconciliation must continue updating `user_role` from scalar role and explicit entitlement state. This keeps an application rollback to the current array-reading version safe for upgrades and downgrades while the old column still exists. The mirror must never grant or deny access in the scalar-consuming deployments.
 
 ### Observation gate
 
