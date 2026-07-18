@@ -39,7 +39,7 @@ The documented procurement contract is caller-owned: `POST /v1/procurement/brief
 1. Confirm the participant's canonical authenticated principal ID from the enrollment record and verify it with the participant before writing anything.
 2. Run the approved private Parchment control-plane seed operation, such as an admin-only command/RPC or a one-time service-role transaction in the private API environment. Insert exactly one active manual brief with `user_id` set to the participant principal, normalized versioned criteria, a participant-safe name, `cadence: manual`, and `is_active: true`. Never expose the service-role credential to the browser, participant, or coffee-app runtime, and never use the ordinary caller-owned POST with an operator credential.
 3. Record the returned brief ID, participant principal ID, criteria version, operator, and UTC timestamp in the restricted pilot log. Do not record credentials or copy sensitive brief criteria into analytics payloads.
-4. Verify the result as the participant: `GET /v1/procurement/briefs/{id}` must return the brief to the participant, and the participant's dashboard must show the owned active brief. Then verify that the Radar route uses that same owner-scoped brief.
+4. Verify the result as the participant through PPI-readable surfaces: the participant's dashboard must show the owned active brief, and the PPI-entitled `GET /v1/procurement/briefs/{id}/radar` response must identify that same owner-scoped brief. Do not use the member-gated `GET /v1/procurement/briefs/{id}` response as the pilot verification gate.
 
 This is a pilot prerequisite, not a new self-service or public API capability. If the private control-plane operation does not exist, stop onboarding and make its implementation an explicitly reviewed `parchment-api` prerequisite; do not substitute an ad hoc database edit or broaden the caller-owned contract.
 
@@ -64,7 +64,7 @@ This is a pilot prerequisite, not a new self-service or public API capability. I
 ## Acceptance criteria
 
 - A PPI-only entitled owner can see their owned active briefs on the dashboard and open Radar from the “Review indexed matches” action; Mallard membership is not required.
-- A PPI-only pilot participant is onboarded through the seed runbook with one brief whose stored owner is the participant, and participant-authenticated GET/dashboard checks prove the ownership before the test starts.
+- A PPI-only pilot participant is onboarded through the seed runbook with one brief whose stored owner is the participant, and the participant's dashboard plus PPI-readable Radar response prove that ownership before the test starts.
 - A member/admin without `ppiAccess` retains the existing brief/catalog workflow but does not receive the Radar action.
 - Another user, anonymous user, and insufficiently entitled user receive the correct server-enforced state.
 - Fresh rows render canonical evidence, including lot-age context or its `unknown` disclosure, and link to the correct source/lot.
@@ -76,10 +76,10 @@ This is a pilot prerequisite, not a new self-service or public API capability. I
 
 ## Test plan
 
-- Server-load tests for ownership-safe not-found, entitlement denial, fresh, stale, unavailable, empty, and upstream failure.
+- Server-load tests for ownership-safe not-found, entitlement denial, fresh, stale, unavailable, empty, and upstream failure, including the PPI-readable Radar ownership path without relying on the member-gated base brief GET.
 - Component/route tests for evidence, source links, limitations, status copy, dispositions, keyboard use, and mobile layout.
 - Dashboard server-load and component tests prove that PPI-only owners receive active-brief cards and the Radar action, while users without `ppiAccess` do not receive that action.
-- Pilot setup documentation proves that operator seeding writes the participant owner through the private control-plane path and does not rely on the caller-owned create contract.
+- Pilot setup documentation proves that operator seeding writes the participant owner through the private control-plane path, does not rely on the caller-owned create contract, and verifies ownership through the PPI-readable Radar/dashboard paths.
 - Event tests that exclude criteria and user-entered text.
 - `pnpm check --fail-on-warnings`, focused tests, lint, and production build using the repository's documented environment path.
 - One post-deploy smoke with an owned test brief and manual source reconciliation.
