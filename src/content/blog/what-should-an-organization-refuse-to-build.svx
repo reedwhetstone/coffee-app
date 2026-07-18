@@ -2,7 +2,7 @@
 title: 'What Should an Organization Refuse to Build?'
 date: '2026-07-17'
 description: 'Strategy becomes useful when it gives different specialists a shared direction, earns conviction, and makes its tradeoffs consequential.'
-tags: ['strategy', 'decision-making', 'ai', 'organizations']
+tags: ['ai', 'product', 'strategy']
 pillar: 'agentic-stack'
 draft: false
 readingTime: 4

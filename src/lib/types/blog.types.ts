@@ -3,11 +3,52 @@ export interface BlogPost {
 	title: string;
 	date: string;
 	description: string;
-	tags: string[];
+	tags: BlogTag[];
 	pillar: string;
 	draft: boolean;
 	author?: string;
 	readingTime?: number;
+}
+
+export const BLOG_TAGS = [
+	'ai',
+	'agents',
+	'coffee',
+	'data',
+	'engineering',
+	'enterprise',
+	'product',
+	'strategy',
+	'supply-chain'
+] as const;
+
+export type BlogTag = (typeof BLOG_TAGS)[number];
+
+export const BLOG_TAG_ALIASES: Readonly<Record<string, BlogTag>> = {
+	agentic: 'agents',
+	agility: 'strategy',
+	'ai-agents': 'agents',
+	architecture: 'engineering',
+	benchmarks: 'engineering',
+	coding: 'engineering',
+	context: 'engineering',
+	'context-engineering': 'engineering',
+	'data-pipeline': 'data',
+	'decision-making': 'strategy',
+	'fair-use': 'data',
+	infrastructure: 'engineering',
+	'market-intelligence': 'data',
+	memory: 'agents',
+	microsoft: 'enterprise',
+	moats: 'strategy',
+	operations: 'engineering',
+	organizations: 'product',
+	pricing: 'strategy',
+	purveyors: 'product'
+};
+
+export function isBlogTag(value: string): value is BlogTag {
+	return BLOG_TAGS.includes(value as BlogTag);
 }
 
 export interface BlogPostModule {

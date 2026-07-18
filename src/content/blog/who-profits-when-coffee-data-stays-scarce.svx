@@ -2,7 +2,7 @@
 title: "Who Profits When Coffee Data Stays Scarce?"
 date: "2026-03-11"
 description: "The specialty coffee industry solved price transparency. The harder problem, product metadata, remains relationship-gated. Across 35 suppliers, disclosure ranges from 1 to 13 attributes per listing. That gap is not an accident; it is an economic structure with beneficiaries."
-tags: ["coffee", "data", "supply-chain", "market-intelligence"]
+tags: ["coffee", "data", "strategy", "supply-chain"]
 pillar: "market-intelligence"
 draft: false
 readingTime: 8

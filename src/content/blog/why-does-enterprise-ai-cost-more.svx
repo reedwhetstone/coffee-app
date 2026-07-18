@@ -2,7 +2,7 @@
 title: "Why Does Enterprise AI Cost More and Deliver Less?"
 date: "2026-03-12"
 description: "Microsoft shipped an enterprise Anthropic integration in weeks. They clearly can deliver frontier AI. So why does Copilot for 365 feel like a downgrade from a $20 subscription?"
-tags: ["ai", "enterprise", "microsoft", "infrastructure"]
+tags: ["ai", "engineering", "enterprise", "strategy"]
 pillar: "agentic-stack"
 draft: false
 readingTime: 8

@@ -2,7 +2,7 @@
 title: "When Your Moat Becomes a Prison"
 date: "2026-04-28"
 description: "Kodak, Nokia, and BlackBerry show how durable advantages can constrain adaptation when markets change."
-tags: ["ai", "moats", "strategy", "agility"]
+tags: ["ai", "product", "strategy"]
 pillar: "ai-first-product"
 draft: false
 readingTime: 4

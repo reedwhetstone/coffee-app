@@ -2,7 +2,7 @@
 title: 'When Does More Context Make an AI Worse?'
 date: '2026-07-11'
 description: 'Agents should support fluid conversation and structured workspaces without making users understand the context machinery that keeps either one reliable.'
-tags: ['ai-agents', 'context-engineering', 'memory', 'architecture']
+tags: ['ai', 'agents', 'engineering']
 pillar: 'agentic-stack'
 draft: false
 readingTime: 5

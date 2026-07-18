@@ -1,11 +1,11 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { PILLARS } from '$lib/types/blog.types';
-	import type { BlogPost } from '$lib/types/blog.types';
+	import type { BlogPost, BlogTag } from '$lib/types/blog.types';
 
 	let { data } = $props<{ data: PageData }>();
 
-	let selectedTag = $state<string | null>(null);
+	let selectedTag = $state<BlogTag | null>(null);
 
 	let filteredPosts = $derived(
 		selectedTag ? data.posts.filter((p: BlogPost) => p.tags.includes(selectedTag!)) : data.posts

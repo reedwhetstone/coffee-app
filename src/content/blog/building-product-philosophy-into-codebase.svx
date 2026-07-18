@@ -2,7 +2,7 @@
 title: "The Codebase Is the Onboarding Manual"
 date: "2026-03-26"
 description: "If agents are blank slate coworkers, product strategy can no longer live in Slack, Notion, or someone else's head. It has to become part of the execution environment."
-tags: ["ai", "agentic", "product", "context"]
+tags: ["ai", "agents", "product"]
 pillar: "agentic-stack"
 draft: false
 readingTime: 7
