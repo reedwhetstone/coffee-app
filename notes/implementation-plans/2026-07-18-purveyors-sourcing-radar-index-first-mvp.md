@@ -5,6 +5,7 @@
 **Owning repositories:** `parchment-api`, then `coffee-app`
 **Governing direction:** Product Vision, ADR-005, ADR-007, ADR-008, ADR-010, ADR-012, and the Parchment API ownership ADRs
 **Strategy source:** [Purveyors Sourcing Radar proposal](https://github.com/reedwhetstone/second-brain/blob/main/brain/moonshots/2026-07-15-purveyors-sourcing-radar.md)
+**Red-team:** `notes/pr-audits/2026-07-18-pr-482-sourcing-radar-red-team.md` (corrections from that audit are incorporated below)
 
 ## Executive decision
 
@@ -27,13 +28,14 @@ The July 15 proposal correctly identified a recurring brief as the strategic pro
 
 The research supports decision support but argues against a broad procurement product:
 
-- The ICO's June 2026 report recorded a 17.4% intra-month rebound in its composite price and a 13.3% monthly decline in US certified Arabica stocks. USDA simultaneously forecast record 2025/26 production, record consumption, and a fifth consecutive decline in ending stocks. The useful product is monitoring and context, not a one-directional scarcity forecast.
+- The ICO's June 2026 report recorded a 17.4% intra-month trough-to-peak rebound in its composite price (the June monthly average still declined 2.8%) and a 13.3% monthly decline in US certified Arabica stocks. USDA's December 2025 outlook forecast record 2025/26 production, record consumption, and a fifth consecutive decline in ending stocks — but its June 2026 update forecasts a record 2026/27 Brazil crop, and surplus projections are now circulating. The durable "why now" is volatility and policy whipsaw (tariff churn with green coffee currently exempted, EUDR compliance landing December 2026), not one-directional scarcity. The useful product is monitoring and context, and it must stay useful in a falling market.
 - FAO reported average world coffee prices up 38.8% in 2024 and called for greater market transparency. The Specialty Coffee Transaction Guide shows why a commodity benchmark is insufficient for specialty buying: price varies with quality, lot size, region, and country.
-- Royal, Cafe Imports, Genuine Origin, and Algrano expose materially different catalog, price, order, position, and logistics models. Cross-supplier normalization is the wedge. Purveyors should not imitate their buying, financing, sampling, or logistics workflows.
-- Algrano describes sourcing as a multi-stage discover, sample, purchase, and receive process. Radar can shorten discovery. It cannot replace sensory evaluation or supplier trust.
-- Vesper packages meaningful-change alerts and personalized market intelligence. Cropster, RoastLog, and RoasterTools charge from roughly $95 or $129 per month into four figures for broader operational suites. This suggests willingness to pay for decision leverage, but does not validate Purveyors pricing.
+- In specialty green, a discount is frequently an age signal, not a bargain: importers merchandise dedicated past-crop and clearance sections precisely to move fading lots. Price evidence without crop/arrival context preferentially surfaces the inventory suppliers most want to offload. Radar therefore treats a price signal as an anomaly to verify against crop age and cup, never as standalone value.
+- Royal, Cafe Imports, Genuine Origin, and Algrano expose materially different catalog, price, order, position, and logistics models. Cross-supplier normalization is the wedge — and it is currently unoccupied: the one direct precedent, Beanstock (2016), aggregated a dozen importers' spot lists with their consent and is defunct. Purveyors should not imitate supplier buying, financing, sampling, or logistics workflows.
+- Algrano describes sourcing as a multi-stage discover, sample, purchase, and receive process. Radar can shorten discovery. It cannot replace sensory evaluation or supplier trust — and the sample request, not the purchase, is the observable unit of buyer intent.
+- Vesper packages meaningful-change alerts and personalized market intelligence for industrial buyers at roughly $400+ per user per month — adjacent, not comparable. The software small roasters actually pay for starts lower: RoastLog at $29–$99 per month flat, Cropster small-shop packages from a free tier to roughly $79 per month, RoasterTools from $199 per month for wholesale operations. This suggests willingness to pay for decision leverage, but no roaster currently pays anything for third-party sourcing discovery, so Purveyors pricing is unvalidated category creation.
 
-The durable value proposition is faster qualified discovery across fragmented suppliers. It is not perpetual market urgency, universal fair-price claims, or a green-coffee ERP.
+The durable value proposition is faster qualified discovery across fragmented suppliers. It is not perpetual market urgency, universal fair-price claims, or a green-coffee ERP. The compounding asset underneath it is the longitudinal, lot-level, cross-supplier price and lifecycle history that the publication program makes trustworthy; every scope decision here protects that dataset's continuity.
 
 ## Current-state reconciliation
 
@@ -70,9 +72,12 @@ For one saved brief, the response:
 3. includes only existing `price_drop` and `below_market` evidence;
 4. orders by the strongest existing signal rank, then a stable catalog-ID tie-breaker;
 5. returns all applicable evidence, source URL, match reasons, publication identity, `marketAsOf`, `computedAt`, quality/freshness state, and limitations;
-6. never blends fields into a new opaque Radar score.
+6. carries lot-age context on every indexed row — crop year and/or first-observed/arrival date where the catalog has them, and an explicit `ageContext: known | unknown` disclosure where it does not — because a price drop on an aging lot is clearance, not value;
+7. never blends fields into a new opaque Radar score.
 
 `value_quality` is excluded because its current supplier-stated score input is not a trusted Purveyors product metric. New-arrival events, newly matching lots, restocks, and delistings require comparison history and are deferred.
+
+Publication freshness (below) and lot freshness are different problems. The gate guarantees the evidence is recent; the lot-age context guarantees the evidence is interpretable. Radar evidence copy is always "price anomaly — verify crop and cup," never "opportunity" or "deal."
 
 ## Freshness and trust gate
 
@@ -91,9 +96,9 @@ Prototype code may be exercised against stale/unavailable fixtures, but the buye
 - One read-only Parchment API/SDK contract for an owned brief.
 - One manual coffee-app route linked from existing active-brief cards.
 - Fresh, stale, unavailable, empty, and denied states.
-- Existing Parchment Intelligence entitlements.
+- The existing Parchment Intelligence entitlement (`ppi_access`, the $39/month add-on). Radar is not a member-tier or public surface.
 - Source-detail clicks and a minimal pilot feedback capture.
-- A three-partner, four-week concierge test after the live gate.
+- A concierge pilot after the live gate: target five partners with three as the floor, running eight to twelve weeks or timed to a heavy arrival season.
 
 ### Out of scope
 
@@ -129,7 +134,9 @@ Prototype code may be exercised against stale/unavailable fixtures, but the buye
 
 Complete the applicable gates in `2026-07-16-market-publication-recovery-and-activation.md` through the versioned reader/API cutover. Confirm the market signal read is derived from the accepted active publication and exposes publication identity, quality, coverage, age, and methodology. Stop if that contract is not fresh and fail-closed.
 
-This gate is valuable independently of Radar and is not respecified here.
+**Earliest-start honesty:** as of this plan's date the recovery program's provenance foundation is merged but not deployed to production (no workflow applies `supabase/migrations` to production yet), and its builder, automatic invocation, shadow-comparison evidence (≥10 runs over ≥14 days including a real failure/recovery), and reader cutover are all unbuilt. This gate is a multi-PR program, not a checkbox. Do not recruit pilot partners or schedule the pilot window until the cutover has a date; a recruited partner waiting on frozen data is a burned partner.
+
+This gate is valuable independently of Radar and is not respecified here. It is also not merely a prerequisite: the trustworthy publication history it produces is the compounding data asset the whole Radar thesis rests on.
 
 ### PR 1: Parchment brief Radar read plus SDK
 
@@ -139,32 +146,35 @@ Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-01-parchment-read.
 
 ### PR 2: Coffee-app manual value test
 
-Add one member route for an owned active brief, linked from the existing dashboard brief cards. Render evidence or an honest stale/unavailable state, hand the user to the supplier/source record, and capture the minimum pilot signals. This is the complete buyer-facing MVP.
+Add one Parchment Intelligence–entitled route for an owned active brief, linked from the existing dashboard brief cards. Render evidence or an honest stale/unavailable state, hand the user to the supplier/source record, and capture the minimum pilot signals. This is the complete buyer-facing MVP.
 
 Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-02-reference-client.md`.
 
 ## Stop points
 
 - After the prerequisite: stop if publication quality or freshness cannot support decision language.
-- After PR 1: stop if the endpoint rarely produces eligible rows for realistic saved briefs, or if source comparability makes ordering misleading.
-- After PR 2 and the pilot: stop if fewer than two of three partners report at least one genuinely new qualified lead over four weeks.
+- After PR 1: stop if the endpoint rarely produces eligible rows for realistic saved briefs, if lot-age context is mostly `unknown`, or if source comparability makes ordering misleading.
+- After PR 2 and the pilot: stop if the behavioral threshold below is not met, or if partner-reported past-crop/already-known rates show the signal is surfacing clearance rather than value.
 - Only plan recurring delivery if the manual workflow passes the value threshold and users ask to receive it without opening Purveyors.
 
 ## Pilot and proof threshold
 
-Recruit three actual sourcing decision-makers. Capture one live brief each and establish how they currently build a shortlist. Run Radar manually for four weeks.
+Recruit toward five actual sourcing decision-makers, treating three as the floor rather than the design. Capture one live brief each and establish how they currently build a shortlist. Run Radar manually for eight to twelve weeks, or time the window to a heavy arrival season. Rationale: small roasters make roughly zero to one real spot decision per month (most volume moves on forward contracts), so a three-partner, four-week window plausibly contains three to six genuine buying decisions total — too few for any partner-count vote to mean anything.
 
-Primary proof:
+Primary proof is behavioral, not a vote:
 
-- at least two partners identify at least one qualified lot they had not already found, and
-- that finding results in a source-detail visit plus an explicit “investigate,” “sample,” “quote,” or “shortlist” disposition.
+- Radar-surfaced lots the partner had not already found lead to source-detail visits **and explicit "sample" or "quote" dispositions within the freshness window**, for a majority of active partners. Sampling is the real unit of buyer intent in this market; a lead that never reaches a cupping table did not change discovery behavior.
+
+Primary falsifier:
+
+- the partner-reported past-crop/already-known rate. If the evidence mostly restates known lots or surfaces clearance inventory, the signal is inverted and the pilot fails regardless of engagement.
 
 Secondary evidence:
 
 - time from sourcing need to qualified shortlist;
-- eligible indexed matches per active brief;
+- eligible indexed matches per active brief, and the share with known lot-age context;
 - Radar-open to source-detail click-through;
-- false-positive or already-known rate;
+- staleness-at-click: whether source price and availability still match at the moment the partner opens the source page (distinguishes "the signal is wrong" from "the feed is truthful but too slow");
 - user-confirmed hours of catalog review avoided;
 - willingness to pay tested as an interview hypothesis, not a checkout change.
 
@@ -189,18 +199,20 @@ The pilot fails if the output mostly restates obvious catalog matches, if stale/
 
 ## Risks and rollback
 
+- **The signal surfaces past-crop clearance as value.** Importers discount lots primarily to clear aging inventory, so `price_drop` and cohort-relative `below_market` preferentially select the oldest coffee unless interpreted. Mitigation: lot-age context on every row, "verify crop and cup" language, and the past-crop rate as the pilot's primary falsifier.
 - **Stale evidence appears actionable.** Fail closed in the API. The client cannot override freshness.
 - **A price signal is mistaken for purchase advice.** Use “worth inspecting” language, show comparable evidence and limitations, and link to source verification.
 - **Signal ordering hides relevant matches.** Keep the existing full matches path available and make Radar a separate view.
 - **The endpoint becomes a second ranking system.** Reuse existing signal ranks only. No combined score.
 - **Alert ambitions expand the MVP.** There is no cadence, delivery, stored run, or preference model in either PR.
+- **Supply-side: the feed itself is at risk, and the plan cannot be silent about it.** Importers are simultaneously the data source, competitors for the deal-discovery moment (their own portals and clearance pages), and the party able to break the feed unilaterally. Before the pilot: audit which of the scraped sources require authenticated sessions for the prices the index uses, classify each as public-page, gated, or consented, and set an explicit policy for gated sources (drop, seek consent, or accept documented exposure) — logged-in scraping is the one clearly losing legal posture post-hiQ. The pilot's source-detail deep links send importers qualified sample-request traffic; treat that as the opening of a consent/partnership track, which is also the path to the two-sided moat the product currently lacks (Beanstock launched on importer opt-in).
 - **Rollback:** disable the reference-client link and endpoint feature flag. The existing brief-match, Market Index, dashboard, catalog, and CLI workflows remain unchanged.
 
 ## Deferred decisions
 
 - Product label: “Sourcing Radar” versus “Sourcing Index.” Use Radar as the pilot label; validate comprehension before broader launch.
 - Final maximum-age threshold. Start from a 48-hour candidate and set it through the publication serving policy after observing real daily-run timing.
-- Paid packaging and price. Test `$39`, `$79`, and `$99` monthly anchors in interviews only; do not build pricing until value is demonstrated.
+- Paid packaging and price. Test `$29`, `$49`, and `$79` monthly anchors in interviews only; do not build pricing until value is demonstrated. Evidence sets the band low: the suites small roasters pay for start at $29–$79, no roaster currently pays for third-party sourcing discovery, and Purveyors' own public anchor is a $9 add-on — $79 is the stretch probe, not the floor.
 - Recurring brief format, delivery channel, diff storage, new/restock/delist events, CLI convenience command, and integrations.
 
 ## References
@@ -221,3 +233,9 @@ The pilot fails if the output mostly restates obvious catalog matches, if stale/
 - [Cropster packages](https://www.cropster.com/packages/)
 - [RoastLog pricing](https://roastlog.com/pricing)
 - [RoasterTools pricing](https://www.roastertools.com/pricing)
+- [Covoya past-crop deals](https://www.covoyacoffee.com/deals/past-crop.html)
+- [Sweet Maria's: green coffee freshness](https://library.sweetmarias.com/green-coffee-freshness-how-old-is-too-old/)
+- [Daily Coffee News: Beanstock launch, 2016](https://dailycoffeenews.com/2016/06/02/green-coffee-aggregator-beanstock-makes-official-launch-following-scaa-success/)
+- [Royal NY account and pricing FAQ](https://www.royalny.com/frequently-asked-questions/)
+- [USDA Coffee: World Markets and Trade, June 2026 update](https://www.fas.usda.gov/data/coffee-world-markets-and-trade)
+- [hiQ v. LinkedIn scraping analysis (Farella)](https://www.fbm.com/publications/what-recent-rulings-in-hiq-v-linkedin-and-other-cases-say-about-the-legality-of-data-scraping/)

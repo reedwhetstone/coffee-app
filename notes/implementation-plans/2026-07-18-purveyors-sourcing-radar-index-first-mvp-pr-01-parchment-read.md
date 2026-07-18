@@ -6,7 +6,7 @@
 
 ## Why this slice comes now
 
-Saved brief ownership, criteria, deterministic matches, market signals, auth, entitlements, and SDK clients already exist. After the accepted publication reader cutover, Parchment has every primitive required to answer the pilot question without new persistence or scoring.
+Saved brief ownership, criteria, deterministic matches, market signals, auth, entitlements, and SDK clients already exist. After the accepted publication reader cutover, Parchment has every primitive required to answer the pilot question without new persistence or scoring. Before estimating this PR, re-verify those primitives in `parchment-api` itself — the claim was audited from `coffee-app`, which computes brief matches locally, and the Parchment-side `/matches`, signal-serving, and entitlement primitives were not directly inspectable there.
 
 This PR must not start until the active market publication contract is provenance-aware, fresh, and fail-closed. It remains independently useful to API consumers if coffee-app never adds a reference-client route.
 
@@ -18,6 +18,7 @@ This PR must not start until the active market publication contract is provenanc
 - Intersect matching IDs with eligible `price_drop` and `below_market` rows from the accepted active publication.
 - Order by strongest existing signal rank, then stable catalog ID.
 - Return the brief, current match total, indexed rows, all applicable signal evidence, source URL, match reasons, publication identity, methodology, quality/coverage, `marketAsOf`, `computedAt`, age/status, freshness threshold, limitations, and cursor metadata.
+- Lot-age context on every indexed row: crop year and/or first-observed/arrival date where the catalog has them, plus an explicit `ageContext: known | unknown` disclosure where it does not. A price drop without age context is not interpretable as value.
 - `fresh | stale | unavailable` response states.
 - Existing Parchment Intelligence entitlement, ownership, rate-limit, and error-envelope behavior.
 - OpenAPI, SDK fixtures, and focused tests.
@@ -38,6 +39,7 @@ This PR must not start until the active market publication contract is provenanc
 - `stale` and `unavailable` responses contain zero indexed rows. They may include the current plain-match count and explicit limitations.
 - The maximum accepted age is server-configured and disclosed. Clients do not recompute it.
 - Signal fields and ranks are preserved verbatim. If a lot has both eligible signal types, the response retains both and orders by the strongest rank.
+- Every indexed row carries lot-age context or an explicit `ageContext: unknown` disclosure. The API never labels a row an "opportunity" or "deal"; response vocabulary is anomaly/evidence-oriented.
 - Supplier-stated score fields and `value_quality` are absent from the MVP contract.
 
 ## Likely files
@@ -58,6 +60,7 @@ This PR must not start until the active market publication contract is provenanc
 - A fixture with eligible signals proves criteria are applied before pagination and ordering is stable.
 - Fresh fixtures return evidence; stale, unavailable, low-quality, and missing-publication fixtures return no indexed rows.
 - The response discloses publication identity, method, quality/coverage, timestamps, age/status, threshold, and limitations.
+- A fixture with missing crop/arrival data returns `ageContext: unknown` rather than omitting the field or implying freshness.
 - OpenAPI and SDK types match the runtime response.
 - Existing `/matches` and Market Index responses do not change.
 
@@ -73,6 +76,7 @@ This PR must not start until the active market publication contract is provenanc
 
 - **Risk:** a join after pagination hides stronger rows. Test the pre-pagination query boundary explicitly.
 - **Risk:** “price signal” reads as “buy.” Keep response vocabulary evidence-oriented and return limitations.
+- **Risk:** the signal surfaces past-crop clearance as value — importers discount aging lots to move them, so `price_drop`/`below_market` preferentially select old inventory. The lot-age context fields exist to make this interpretable; test that rows without age data disclose `unknown`.
 - **Risk:** freshness logic forks from publication policy. Consume the canonical serving status rather than derive a second policy.
 - **Rollback:** disable/remove the additive route and SDK method. Existing procurement matches and market reads remain unchanged.
 
