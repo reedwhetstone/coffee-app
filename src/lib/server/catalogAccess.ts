@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { ApiPlan } from '$lib/server/apiAuth';
 import type { RequestPrincipal } from '$lib/server/principal';
 import { checkRole, type UserRole } from '$lib/types/auth.types';
+import { PREMIUM_DISCOVERY_FILTER_KEYS } from '$lib/catalog/accessPolicy';
 
 export interface CatalogAccessCapabilities {
 	canViewPublicCatalog: boolean;
@@ -44,7 +45,7 @@ export const PROCESS_FACET_FILTER_KEYS = [
 	'processing_confidence_min'
 ] as const;
 
-export { PREMIUM_DISCOVERY_FILTER_KEYS } from '$lib/catalog/accessPolicy';
+export { PREMIUM_DISCOVERY_FILTER_KEYS };
 
 const API_PLAN_HIERARCHY: Record<ApiPlan, number> = {
 	viewer: 0,
@@ -116,6 +117,61 @@ function hasNonEmptyParamValue(searchParams: URLSearchParams, key: string): bool
 
 export function getRequestedProcessFacetParams(searchParams: URLSearchParams): string[] {
 	return PROCESS_FACET_FILTER_KEYS.filter((key) => hasNonEmptyParamValue(searchParams, key));
+}
+
+export function getRequestedPremiumDiscoveryParams(searchParams: URLSearchParams): string[] {
+	return PREMIUM_DISCOVERY_FILTER_KEYS.filter((key) => hasNonEmptyParamValue(searchParams, key));
+}
+
+export function createCatalogAccessDeniedNotice(input: {
+	isAuthenticated: boolean;
+	processParams?: string[];
+	premiumDiscoveryParams?: string[];
+	advancedSortRequested?: boolean;
+}): CatalogAccessDeniedNotice | null {
+	const processParams = input.processParams ?? [];
+	const premiumDiscoveryParams = input.premiumDiscoveryParams ?? [];
+	const advancedSortRequested = input.advancedSortRequested ?? false;
+	const deniedParams = [
+		...new Set([
+			...processParams,
+			...premiumDiscoveryParams,
+			...(advancedSortRequested ? ['sort'] : [])
+		])
+	];
+
+	if (deniedParams.length === 0) return null;
+
+	let authMessage = 'Some requested catalog filters or sorts require a member account.';
+	let entitlementMessage =
+		'Some requested catalog filters or sorts are available to members and paid API tiers.';
+
+	if (processParams.length > 0 && premiumDiscoveryParams.length === 0 && !advancedSortRequested) {
+		authMessage = 'Structured process filters require a member account.';
+		entitlementMessage = 'Structured process filters are available to members and paid API tiers.';
+	} else if (
+		premiumDiscoveryParams.length > 0 &&
+		processParams.length === 0 &&
+		!advancedSortRequested
+	) {
+		authMessage = 'Importer, elevation, and appearance filters require a member account.';
+		entitlementMessage =
+			'Importer, elevation, and appearance filters are available to members and paid API tiers.';
+	} else if (
+		advancedSortRequested &&
+		processParams.length === 0 &&
+		premiumDiscoveryParams.length === 0
+	) {
+		authMessage = 'This sort field requires a member account.';
+		entitlementMessage = 'Advanced sort fields are available to members and paid API tiers.';
+	}
+
+	return {
+		status: input.isAuthenticated ? 403 : 401,
+		code: input.isAuthenticated ? 'entitlement_required' : 'auth_required',
+		message: input.isAuthenticated ? entitlementMessage : authMessage,
+		deniedParams
+	};
 }
 
 export function createProcessFacetDeniedNotice(input: {

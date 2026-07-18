@@ -505,6 +505,7 @@ describe('/catalog page load', () => {
 				sortField: string | null;
 				sortDirection: string | null;
 			};
+			catalogAccessNotice: { status: number; message: string; deniedParams: string[] } | null;
 		};
 
 		expect(result.initialCatalogState).toMatchObject({
@@ -520,6 +521,12 @@ describe('/catalog page load', () => {
 				sort: 'type'
 			})
 		);
+		expect(result.catalogAccessNotice).toMatchObject({
+			status: 403,
+			message:
+				'Some requested catalog filters or sorts are available to members and paid API tiers.',
+			deniedParams: ['type', 'grade', 'appearance', 'sort']
+		});
 	});
 
 	it('preserves premium discovery filters and sorts for any paid app subscription', async () => {

@@ -6,7 +6,8 @@ import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import { PREMIUM_DISCOVERY_FILTER_KEYS } from '$lib/catalog/accessPolicy';
 import {
 	PROCESS_FACET_FILTER_KEYS,
-	createProcessFacetDeniedNotice,
+	createCatalogAccessDeniedNotice,
+	getRequestedPremiumDiscoveryParams,
 	getRequestedProcessFacetParams,
 	resolveCatalogAccessCapabilities,
 	type CatalogAccessDeniedNotice
@@ -387,9 +388,18 @@ export const load: PageServerLoad = async (event) => {
 	const deniedProcessParams = catalogAccess.canUseProcessFacets
 		? []
 		: getRequestedProcessFacetParams(url.searchParams);
-	const catalogAccessNotice: CatalogAccessDeniedNotice | null = createProcessFacetDeniedNotice({
+	const deniedPremiumDiscoveryParams = catalogAccess.canUseAdvancedFilters
+		? []
+		: getRequestedPremiumDiscoveryParams(url.searchParams);
+	const deniedAdvancedSort =
+		!catalogAccess.canUseAdvancedSorts &&
+		Boolean(requestedCatalogState.sortField) &&
+		!isPublicCatalogSortField(requestedCatalogState.sortField ?? '');
+	const catalogAccessNotice: CatalogAccessDeniedNotice | null = createCatalogAccessDeniedNotice({
 		isAuthenticated: locals.principal?.isAuthenticated ?? Boolean(locals.session),
-		deniedParams: deniedProcessParams
+		processParams: deniedProcessParams,
+		premiumDiscoveryParams: deniedPremiumDiscoveryParams,
+		advancedSortRequested: deniedAdvancedSort
 	});
 	const processAuthorizedCatalogState = catalogAccess.canUseProcessFacets
 		? requestedCatalogState

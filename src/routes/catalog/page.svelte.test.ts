@@ -840,6 +840,27 @@ describe('/catalog process controls', () => {
 		expect(screen.queryByText('Advanced process transparency')).not.toBeInTheDocument();
 	});
 
+	it('explains when viewer-tier premium discovery filters were not applied', () => {
+		renderCatalog(
+			createData({
+				catalogAccessNotice: {
+					status: 403,
+					code: 'entitlement_required',
+					message:
+						'Some requested catalog filters or sorts are available to members and paid API tiers.',
+					deniedParams: ['type', 'grade', 'appearance', 'sort']
+				}
+			} as unknown as Partial<PageData>)
+		);
+
+		expect(screen.getByText('Some requested filters were not applied')).toBeInTheDocument();
+		expect(
+			screen.getByText(
+				'Some requested catalog filters or sorts are available to members and paid API tiers.'
+			)
+		).toBeInTheDocument();
+	});
+
 	it('enables process facet controls for member access', async () => {
 		renderCatalog(
 			createData({
