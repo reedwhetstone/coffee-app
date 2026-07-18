@@ -94,8 +94,8 @@ Prototype code may be exercised against stale/unavailable fixtures, but the buye
 ### In scope
 
 - One read-only Parchment API/SDK contract for an owned brief.
-- Self-service creation and refinement of one or more owner-scoped sourcing briefs for authenticated PPI customers, using the existing constrained criteria contract.
-- A personalized Sourcing Radar module on the authenticated dashboard, with a focused detail route for the full result.
+- Self-service creation and refinement of one or more owner-scoped sourcing briefs for authenticated PPI customers, using the existing constrained criteria contract and cursor-paginated lifecycle list.
+- A personalized Sourcing Radar module on the authenticated dashboard, bounded to five Radar reads per visit with on-demand detail for additional active briefs.
 - An Ask Parchment action that opens the current brief and canonical Radar evidence in the existing chat workspace so the customer can compare lots, refine the need, and ask follow-up questions without reconstructing context.
 - Existing watchlist/tracked-lot and supplier-source actions as the useful continuation from a Radar result. No new shortlist storage is required.
 - Fresh, stale, unavailable, empty, and denied states.
@@ -238,7 +238,7 @@ The initial product direction is supported when multiple customers repeatedly in
 
 - Brief criteria are applied before pagination and before ranking.
 - Web and SDK clients receive identical canonical evidence and ordering.
-- Every indexed row carries source, observation/publication time, match reasons, signal evidence, and limitations.
+- Every indexed row carries source, observation/publication time, match reasons, signal evidence, limitations, and a Parchment-minted result token for bound result-level events.
 - `stale` and `unavailable` states return no indexed opportunity rows and use no recommendation language.
 - No client hardcodes or recomputes freshness, signal rank, or entitlement.
 - Direct URL and API calls enforce ownership and Parchment Intelligence access.

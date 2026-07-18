@@ -18,6 +18,7 @@ This slice is independently useful even if personalized Radar presentation ships
 - Focused setup UX in the existing authenticated product shell, with an obvious “Tell Parchment what you are sourcing” entry point.
 - Honest loading, validation, denied, conflict, unavailable, empty, and success states derived from the canonical response.
 - Existing matches are the immediate post-save utility while personalized Radar waits for PR 5. After a successful save, the BFF consumes `GET /v1/procurement/briefs/{id}/matches` through the published SDK and renders the owned response for PPI-only customers; it does not fall back to member-gated catalog brief summaries or a local database read.
+- A cursor-paginated brief-management list using PR 2's active/inactive/all contract, so lifecycle management and on-demand Radar access are not limited by the dashboard's five-brief fan-out cap.
 - Focused route, BFF, component, accessibility, and regression tests.
 
 ## Out of scope
@@ -35,7 +36,8 @@ This slice is independently useful even if personalized Radar presentation ships
 2. They name the need and select from the currently supported constraints.
 3. Coffee-app sends the canonical request through the thin BFF; Parchment validates and stores it under the authenticated owner.
 4. After save, the customer can inspect the owned brief's existing matches through the canonical Parchment matches read, then refine the constraints, activate another saved need, or deactivate it.
-5. PR 5 uses the same owned active brief as the input to the personalized Radar experience.
+5. The customer can continue through all owned briefs with the cursor-paginated management list; selecting an additional active brief loads its Radar detail on demand rather than adding another dashboard fan-out.
+6. PR 5 uses the same owned active brief as the input to the personalized Radar experience.
 
 This should feel like configuring an agent, not filing an internal research form.
 
@@ -66,6 +68,7 @@ This should feel like configuring an agent, not filing an internal research form
 - Existing member/admin brief behavior remains available and covered.
 - The setup flow is keyboard accessible, screen-reader coherent, mobile usable, and honest about supported constraints.
 - After saving, a PPI-only customer reaches the owned existing-matches response through the canonical Parchment/SDK path, or receives a truthful empty, denied, unavailable, or error state with the next useful action; the flow never depends on Mallard membership or a member-gated catalog summary.
+- All owned active and inactive briefs remain reachable across management-list pages, and an active brief beyond the dashboard cap can open its Radar detail on demand.
 - No Radar presentation, notification, recommendation history, database migration, or external side effect is added.
 
 ## Test plan
@@ -73,6 +76,7 @@ This should feel like configuring an agent, not filing an internal research form
 - Thin BFF tests proving request/response forwarding, session credential brokerage, CSRF/trusted-mutation enforcement, and canonical error preservation.
 - Post-save matches tests proving the PPI session reaches the canonical `/v1/procurement/briefs/{id}/matches` SDK path and does not call a member-only catalog summary.
 - Component tests for setup, edit, activation, deactivation, validation, loading, empty, conflict, denied, and unavailable states.
+- Management-list tests cover bounded pages, cursor continuation, deterministic ordering, and on-demand Radar navigation for briefs beyond the dashboard cap.
 - Negative test proving the browser path has no direct Supabase mutation.
 - Regression coverage for existing dashboard and member/admin brief workflows.
 - `pnpm check --fail-on-warnings`, focused tests, lint, and production build using the repository's documented environment path.

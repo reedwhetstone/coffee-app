@@ -16,15 +16,15 @@ PR 1 makes the evidence contract canonical. PR 2 makes the intent lifecycle cano
 
 ## In scope
 
-- A personalized Sourcing Radar module on the authenticated dashboard for `ppiAccess` owners that renders one independently identified summary for every owned active brief; it never assumes a singular current brief or silently chooses one.
+- A personalized Sourcing Radar module on the authenticated dashboard for `ppiAccess` owners that renders one independently identified summary for at most five owned active briefs per visit, using the deterministic PR 2 list order. Five matches the existing dashboard brief cap. Additional active briefs remain reachable through the cursor-paginated PR 4 brief-management surface and open their Radar detail on demand; the dashboard shows that continuation instead of issuing unbounded Radar calls.
 - A focused detail route, proposed as `/procurement/briefs/[id]/radar`, for the full canonical result.
 - Dashboard summary copy such as “3 coffees worth inspecting across 2 suppliers,” derived separately from each canonical response and never shown for stale/unavailable evidence.
-- Fresh result rows with lot identity, current price, brief-match reasons, eligible market-scoped signal evidence, lot-age context, source, publication freshness/quality, and limitations.
+- Fresh result rows with lot identity, current price, brief-match reasons, eligible market-scoped signal evidence, lot-age context, source, publication freshness/quality, limitations, and the Parchment-minted `radarEventToken` needed for result-level analytics.
 - Honest stale, unavailable, empty, denied, and upstream-error states.
 - Existing tracked-lot/watchlist and supplier-source actions as useful next steps. Do not create a parallel shortlist store.
 - An Ask Parchment action that opens the existing chat workspace with structured context containing the owned brief, canonical Radar rows, publication metadata, evidence, and limitations.
 - Parchment may explain, compare, and help refine the sourcing need. It cannot invent evidence, change canonical ordering, or label an anomaly a deal.
-- Passive product analytics for dashboard exposure, Radar open, result open, Ask Parchment handoff, supplier click, tracked-lot/watchlist action, brief refinement, and repeat use. Exposure/open events include only the fixed PR 3 response metadata (`evidenceStatus`, `publicationId` when present, `resultCount`, and `knownLotAgeCount`) needed to interpret what the customer saw after brief or publication changes.
+- Passive product analytics for dashboard exposure, Radar open, result open, Ask Parchment handoff, supplier click, tracked-lot/watchlist action, brief refinement, and repeat use. Exposure/open events include only the fixed PR 3 response metadata (`evidenceStatus`, `publicationId` when present, `resultCount`, and `knownLotAgeCount`) needed to interpret what the customer saw after brief or publication changes; result-level actions forward the matching `radarEventToken` rather than arbitrary catalog IDs.
 - Reuse durable records such as tracked lots, brief updates, and chat conversations as the source of truth for those actions. Send non-durable exposures and clicks through the canonical Parchment event contract shipped in PR 3; this PR does not add a coffee-app table, event schema, or migration.
 - Focused tests and existing docs/copy alignment.
 
@@ -40,7 +40,7 @@ PR 1 makes the evidence contract canonical. PR 2 makes the intent lifecycle cano
 
 ## Customer workflow
 
-1. The customer opens Purveyors and immediately sees one personalized Radar summary for each active sourcing need, with no implicit or arbitrary current-brief selection.
+1. The customer opens Purveyors and immediately sees one personalized Radar summary for up to five active sourcing needs in deterministic order, with no implicit or arbitrary current-brief selection. If more active briefs exist, a continuation opens the cursor-paginated brief-management surface and Radar detail loads on demand for the selected brief.
 2. They inspect each short list of current matching coffees with clear reasons, price evidence, crop-age context, provenance, and limitations.
 3. They ask Parchment to compare candidates, explain the evidence, or help refine the brief without reconstructing context.
 4. They continue through an existing useful action: track the lot or open the supplier record.
@@ -57,6 +57,8 @@ The customer receives value from every step. Analytics observe the workflow; the
 - A row with `ageContext: unknown` says so where the buyer will see it.
 - One action reaches the canonical supplier/source record; one action opens Ask Parchment with structured context.
 - Each active brief keeps its own summary, detail route, Radar request, and Ask Parchment context; multiple active briefs cannot be collapsed or cross-wired.
+- Each dashboard visit performs at most five Radar reads and corresponding exposure emissions; additional briefs are paginated and loaded on demand rather than fanning out without a bound.
+- Result-level supplier/sample actions forward the row's `radarEventToken` and matching `briefId`; the client never invents a result identifier.
 - No UI or chat code recalculates score, rank, age, freshness, or entitlement.
 
 ## Analytics checkpoints
@@ -83,7 +85,8 @@ Analytics payloads contain fixed event names, required identifiers, and the boun
 
 - A PPI-only owner with zero active briefs sees a truthful empty/setup state and no Radar summary.
 - A PPI-only owner with one active brief sees exactly one summary and its matching detail route; Mallard membership is not required.
-- A PPI-only owner with multiple active briefs sees exactly one summary per active brief, with each SDK request, detail route, and Ask Parchment handoff carrying the correct `briefId`; no active brief is silently dropped or selected arbitrarily.
+- A PPI-only owner with two to five active briefs sees exactly one summary per active brief, with each SDK request, detail route, and Ask Parchment handoff carrying the correct `briefId`.
+- A PPI-only owner with more than five active briefs sees exactly five dashboard summaries in deterministic order plus a continuation to the paginated brief-management surface; additional Radar results load only when selected, and no brief is silently or arbitrarily substituted for another.
 - A member/admin without `ppiAccess` retains existing brief/catalog behavior but does not receive Radar.
 - Another user, anonymous user, and insufficiently entitled user receive the correct server-enforced state.
 - Fresh rows render canonical evidence and the correct supplier/tracked-lot actions.
@@ -96,10 +99,10 @@ Analytics payloads contain fixed event names, required identifiers, and the boun
 
 ## Test plan
 
-- Dashboard and server-load tests for zero, one, and multiple active briefs, including per-brief identity and no cross-wiring, plus PPI personalization, ownership, entitlement, fresh, stale, unavailable, empty, and upstream failure.
+- Dashboard and server-load tests for zero, one, two-to-five, and more-than-five active briefs, including the five-call fan-out cap, cursor continuation, per-brief identity, no cross-wiring, and no silent omission, plus PPI personalization, ownership, entitlement, fresh, stale, unavailable, empty, and upstream failure.
 - Component tests for evidence, source/tracked-lot actions, limitations, keyboard use, and mobile layout.
 - Structured Ask Parchment context tests, including stale/unavailable suppression and evidence fidelity.
-- Analytics client tests for the fixed PR 3 event shape, bounded response metadata, and exclusion of sensitive fields; persistence and append-only behavior remain covered by Parchment.
+- Analytics client tests for the fixed PR 3 event shape, bounded response metadata, result-token forwarding/rejection, and exclusion of sensitive fields; persistence and append-only behavior remain covered by Parchment.
 - Regression coverage for existing dashboard, Market Index, tracked-lot, and chat workflows.
 - `pnpm check --fail-on-warnings`, focused tests, lint, and production build using the repository's documented environment path.
 - One post-deploy smoke with an owned test brief and manual source reconciliation performed internally before customer exposure.

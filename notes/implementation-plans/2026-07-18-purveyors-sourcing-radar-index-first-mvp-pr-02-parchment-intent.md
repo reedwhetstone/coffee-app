@@ -42,7 +42,7 @@ The contract and tests may be developed before the transfer finishes, but the PR
 
 The existing resource becomes the single lifecycle contract:
 
-- `GET /v1/procurement/briefs?status=active|inactive|all` lists the principal's briefs under the resolved entitlement. Preserve the current active-only default for backward compatibility; self-service clients use an explicit status when managing lifecycle state.
+- `GET /v1/procurement/briefs?status=active|inactive|all` lists the principal's briefs under the resolved entitlement with cursor pagination and a finite server-enforced page size. Preserve the current active-only default for backward compatibility; self-service clients use an explicit status when managing lifecycle state. The ordering is deterministic so callers can continue through the list without duplication or omission.
 - `POST /v1/procurement/briefs` creates a validated brief for the principal-derived owner.
 - `GET /v1/procurement/briefs/{id}` returns an owned brief without revealing cross-owner existence.
 - `GET /v1/procurement/briefs/{id}/matches` is readable by an authenticated `ppiAccess` session owner for that owner's brief, while preserving the existing member/admin session and supported owner-bound API-key behavior for other callers.
@@ -88,7 +88,7 @@ The generated SDK exposes equivalent list, create, get, matches, update, activat
 
 ## Test plan
 
-- Resource and route tests for active-default, inactive, and all-status listing; create, get, matches, update, activate, deactivate; reload/reactivation; invalid criteria, invalid fields, ownership, entitlement, and non-enumeration.
+- Resource and route tests for active-default, inactive, and all-status listing; bounded limits, cursors, deterministic continuation, and no duplicate/omitted rows across pages; create, get, matches, update, activate, deactivate; reload/reactivation; invalid criteria, invalid fields, ownership, entitlement, and non-enumeration.
 - Two-step negative test: attempted role promotion is denied, then direct brief mutation remains denied.
 - Direct Supabase REST/RLS negative coverage for PPI-only, anonymous, cross-owner, and insufficiently entitled sessions.
 - Regression coverage for intended member/admin and existing API-key behavior.

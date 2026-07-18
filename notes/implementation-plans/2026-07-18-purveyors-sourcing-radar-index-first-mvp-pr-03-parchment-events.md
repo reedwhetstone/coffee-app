@@ -18,7 +18,7 @@ This slice makes telemetry a small canonical backend capability before the refer
 ## In scope
 
 - `POST /v1/analytics/events`, a Parchment-owned authenticated ingestion endpoint for the closed non-durable Radar MVP event set: dashboard exposure, Radar open, result open, Ask Parchment handoff, supplier click, and optional sample/quote intent.
-- Principal-derived identity, PPI entitlement enforcement, brief ownership checks, fixed event names, bounded identifiers, schema validation, and idempotency/deduplication appropriate to retries.
+- Principal-derived identity, PPI entitlement enforcement, brief ownership checks, fixed event names, bounded identifiers, Radar result-token validation, schema validation, and idempotency/deduplication appropriate to retries.
 - Minimal append-only persistence through the canonical Parchment migration ledger for events that are not already represented by durable product records.
 - Use existing tracked-lot, brief, and chat records directly for watchlist, refinement, and conversation analytics rather than emitting duplicate product events for those actions.
 - Data minimization: no brief criteria, source payloads, chat text, free text, credentials, or customer-supplied metadata.
@@ -38,6 +38,7 @@ This slice makes telemetry a small canonical backend capability before the refer
 - Accept only a versioned closed union of Radar MVP event names and their minimal identifiers through `POST /v1/analytics/events`.
 - Resolve the principal and entitlement server-side. The caller cannot choose a user or organization identity.
 - Verify that any `briefId` belongs to the authenticated principal without revealing cross-owner existence.
+- Result-level events (`result_open`, `supplier_click`, and optional sample/quote intent) require the short-lived `radarEventToken` returned on the canonical Radar row. Parchment validates its owner, brief, canonical result, publication, signature, and expiry before persistence; arbitrary catalog/result IDs or a token from another result cannot satisfy the binding. Persist the derived identifiers and outcome metadata, not the raw token.
 - Treat repeated delivery of the same client event identifier idempotently within a bounded retry window.
 - For dashboard exposure, Radar open, and result open, accept only the allowlisted response metadata fields and bounded values above so later brief refinements or publication changes do not erase what the customer saw.
 - Return a small canonical acknowledgement. Do not return analytics rows or create an end-user reporting API in this slice.
@@ -58,6 +59,7 @@ This slice makes telemetry a small canonical backend capability before the refer
 - Anonymous, insufficiently entitled, malformed, arbitrary-name, cross-owner, oversized, and replay-abuse attempts fail with canonical behavior.
 - The server derives identity and rejects customer text or unapproved properties.
 - Exposure and open events retain the canonical evidence status, publication identity when present, result count, and known-lot-age count without storing criteria, source payloads, or result rows.
+- Result-level analytics cannot be cross-wired: missing, expired, malformed, cross-owner, cross-brief, cross-publication, and cross-result tokens are rejected before the event is stored.
 - Non-durable events persist append-only through the Parchment-owned migration path; no coffee-app migration or direct browser write is required.
 - Durable product actions are referenced rather than copied with sensitive payloads.
 - OpenAPI and SDK expose the exact closed event union consumed by PR 5.
@@ -65,8 +67,9 @@ This slice makes telemetry a small canonical backend capability before the refer
 
 ## Test plan
 
-- Route/resource tests for every allowed event and each denied principal/ownership case.
+- Route/resource tests for every allowed event and each denied principal/ownership/result-binding case.
 - Schema tests proving arbitrary names, extra properties, text, criteria, source payloads, and unbounded response metadata are rejected while the allowlisted bounded response metadata is preserved.
+- Result-token tests cover valid result-open/supplier-click/sample-intent events and missing, expired, malformed, cross-owner, cross-brief, cross-publication, and cross-result tokens.
 - Idempotency and bounded retry tests.
 - Migration, grant, append-only, retention, and index checks through the canonical database workflow.
 - OpenAPI generation and SDK client/type tests.
@@ -76,6 +79,7 @@ This slice makes telemetry a small canonical backend capability before the refer
 
 - **Risk:** telemetry grows into an analytics platform. Keep the event union closed and product-specific; require a new plan for generalized analytics.
 - **Risk:** sensitive sourcing intent leaks into events. Reject arbitrary properties and persist identifiers only.
+- **Risk:** a client fabricates a supplier/result event for a coffee it never saw. Require the Parchment-minted Radar result token and validate its binding before persistence; do not accept a bare catalog ID as proof.
 - **Risk:** retries inflate activity. Require idempotency keys and test duplicate delivery.
 - **Rollback:** disable event ingestion and stop the coffee-app calls. Radar remains useful; durable tracked-lot, brief, and chat actions still provide partial behavioral evidence.
 
