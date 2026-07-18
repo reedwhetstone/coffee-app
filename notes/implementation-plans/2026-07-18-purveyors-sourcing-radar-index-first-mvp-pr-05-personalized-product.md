@@ -24,7 +24,7 @@ PR 1 makes the evidence contract canonical. PR 2 makes the intent lifecycle cano
 - Existing tracked-lot/watchlist and supplier-source actions as useful next steps. Do not create a parallel shortlist store.
 - An Ask Parchment action that opens the existing chat workspace with structured context containing the owned brief, canonical Radar rows, publication metadata, evidence, and limitations.
 - Parchment may explain, compare, and help refine the sourcing need. It cannot invent evidence, change canonical ordering, or label an anomaly a deal.
-- Passive product analytics for dashboard exposure, Radar open, result open, Ask Parchment handoff, supplier click, tracked-lot/watchlist action, brief refinement, and repeat use.
+- Passive product analytics for dashboard exposure, Radar open, result open, Ask Parchment handoff, supplier click, tracked-lot/watchlist action, brief refinement, and repeat use. Exposure/open events include only the fixed PR 3 response metadata (`evidenceStatus`, `publicationId` when present, `resultCount`, and `knownLotAgeCount`) needed to interpret what the customer saw after brief or publication changes.
 - Reuse durable records such as tracked lots, brief updates, and chat conversations as the source of truth for those actions. Send non-durable exposures and clicks through the canonical Parchment event contract shipped in PR 3; this PR does not add a coffee-app table, event schema, or migration.
 - Focused tests and existing docs/copy alignment.
 
@@ -67,7 +67,7 @@ The customer receives value from every step. Analytics observe the workflow; the
 - **Habit:** repeat Radar visits and repeat investigation behavior.
 - **Optional feedback:** “not relevant,” “already tracked,” or “past crop” may be added only if it helps the customer tune the product. It is never required and is not the primary success mechanism.
 
-Analytics payloads contain fixed event names and identifiers only where required. They do not persist brief criteria, source payloads, chat text, or other customer-entered content.
+Analytics payloads contain fixed event names, required identifiers, and the bounded canonical response metadata defined by PR 3. They do not persist brief criteria, source payloads, result rows, chat text, or other customer-entered content.
 
 ## Likely files
 
@@ -99,7 +99,7 @@ Analytics payloads contain fixed event names and identifiers only where required
 - Dashboard and server-load tests for zero, one, and multiple active briefs, including per-brief identity and no cross-wiring, plus PPI personalization, ownership, entitlement, fresh, stale, unavailable, empty, and upstream failure.
 - Component tests for evidence, source/tracked-lot actions, limitations, keyboard use, and mobile layout.
 - Structured Ask Parchment context tests, including stale/unavailable suppression and evidence fidelity.
-- Analytics client tests for the fixed PR 3 event shape and exclusion of sensitive fields; persistence and append-only behavior remain covered by Parchment.
+- Analytics client tests for the fixed PR 3 event shape, bounded response metadata, and exclusion of sensitive fields; persistence and append-only behavior remain covered by Parchment.
 - Regression coverage for existing dashboard, Market Index, tracked-lot, and chat workflows.
 - `pnpm check --fail-on-warnings`, focused tests, lint, and production build using the repository's documented environment path.
 - One post-deploy smoke with an owned test brief and manual source reconciliation performed internally before customer exposure.

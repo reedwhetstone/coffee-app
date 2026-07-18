@@ -22,6 +22,7 @@ This slice makes telemetry a small canonical backend capability before the refer
 - Minimal append-only persistence through the canonical Parchment migration ledger for events that are not already represented by durable product records.
 - Use existing tracked-lot, brief, and chat records directly for watchlist, refinement, and conversation analytics rather than emitting duplicate product events for those actions.
 - Data minimization: no brief criteria, source payloads, chat text, free text, credentials, or customer-supplied metadata.
+- For dashboard exposure, Radar open, and result open events, preserve only bounded canonical response metadata: `evidenceStatus` (`fresh|stale|unavailable`), `publicationId` when present, `resultCount`, and `knownLotAgeCount`. These are response facts, not customer-supplied properties.
 - OpenAPI and SDK support for the fixed event contract.
 - Retention, indexing, observability, and focused authorization/privacy tests sufficient for the limited launch.
 
@@ -38,6 +39,7 @@ This slice makes telemetry a small canonical backend capability before the refer
 - Resolve the principal and entitlement server-side. The caller cannot choose a user or organization identity.
 - Verify that any `briefId` belongs to the authenticated principal without revealing cross-owner existence.
 - Treat repeated delivery of the same client event identifier idempotently within a bounded retry window.
+- For dashboard exposure, Radar open, and result open, accept only the allowlisted response metadata fields and bounded values above so later brief refinements or publication changes do not erase what the customer saw.
 - Return a small canonical acknowledgement. Do not return analytics rows or create an end-user reporting API in this slice.
 - Expose the same typed event union through OpenAPI and `@purveyors/sdk` as `recordProductEvent`.
 
@@ -55,6 +57,7 @@ This slice makes telemetry a small canonical backend capability before the refer
 - An authenticated PPI owner can submit only the fixed Radar events for their own brief.
 - Anonymous, insufficiently entitled, malformed, arbitrary-name, cross-owner, oversized, and replay-abuse attempts fail with canonical behavior.
 - The server derives identity and rejects customer text or unapproved properties.
+- Exposure and open events retain the canonical evidence status, publication identity when present, result count, and known-lot-age count without storing criteria, source payloads, or result rows.
 - Non-durable events persist append-only through the Parchment-owned migration path; no coffee-app migration or direct browser write is required.
 - Durable product actions are referenced rather than copied with sensitive payloads.
 - OpenAPI and SDK expose the exact closed event union consumed by PR 5.
@@ -63,7 +66,7 @@ This slice makes telemetry a small canonical backend capability before the refer
 ## Test plan
 
 - Route/resource tests for every allowed event and each denied principal/ownership case.
-- Schema tests proving arbitrary names, extra properties, text, criteria, and source payloads are rejected.
+- Schema tests proving arbitrary names, extra properties, text, criteria, source payloads, and unbounded response metadata are rejected while the allowlisted bounded response metadata is preserved.
 - Idempotency and bounded retry tests.
 - Migration, grant, append-only, retention, and index checks through the canonical database workflow.
 - OpenAPI generation and SDK client/type tests.
