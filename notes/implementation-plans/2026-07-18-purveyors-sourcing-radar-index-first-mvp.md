@@ -146,7 +146,7 @@ Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-01-parchment-read.
 
 ### PR 2: Coffee-app manual value test
 
-Add one Parchment Intelligence–entitled route for an owned active brief, linked from the existing dashboard brief cards. Render evidence or an honest stale/unavailable state, hand the user to the supplier/source record, and capture the minimum pilot signals. This is the complete buyer-facing MVP.
+Add one Parchment Intelligence–entitled route for an owned active brief, linked from the existing dashboard brief cards. The coffee-app slice must also make those owned active-brief cards available to authenticated PPI-only users; the current member-only dashboard query cannot be the discovery gate for a `ppi_access` product. Render evidence or an honest stale/unavailable state, hand the user to the supplier/source record, and capture the minimum pilot signals. This is the complete buyer-facing MVP.
 
 Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-02-reference-client.md`.
 
@@ -194,7 +194,7 @@ The pilot fails if the output mostly restates obvious catalog matches, if stale/
 ## Validation expectations
 
 - Parchment API: focused unit/route tests for pre-pagination composition, freshness states, deterministic ordering, ownership, entitlement, and response shape; package typecheck/build; OpenAPI and SDK fixture validation.
-- Coffee-app: server-load tests for access and status mapping; component/route tests for fresh, stale, unavailable, empty, and denied states; source-link and event tests; `pnpm check --fail-on-warnings` and lint.
+- Coffee-app: server-load tests proving PPI-only owners receive active-brief discovery without granting Radar to members lacking `ppiAccess`, plus access/status mapping tests; component/route tests for fresh, stale, unavailable, empty, and denied states; source-link and event tests; `pnpm check --fail-on-warnings` and lint.
 - Live gate: one owned test brief against the deployed accepted publication, with evidence manually reconciled to its source lot and Market Index row.
 
 ## Risks and rollback

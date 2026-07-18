@@ -2,7 +2,7 @@
 
 **Program:** Purveyors Sourcing Radar, index-first MVP
 **Repository:** `coffee-app`
-**PR goal:** Add one Parchment Intelligence–entitled (`ppi_access`) manual Radar route that tests whether indexed brief matches improve qualified discovery. Radar is not a member-tier ($9 membership) or public surface.
+**PR goal:** Add one Parchment Intelligence–entitled (`ppi_access`) manual Radar route that tests whether indexed brief matches improve qualified discovery. Radar is not a member-tier ($9 membership) or public surface. PPI-only users must be able to discover the route from their owned active-brief dashboard cards; Mallard membership is not an additional prerequisite.
 
 ## Why this slice comes now
 
@@ -14,6 +14,7 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 
 - One route for an owned active brief, proposed as `/procurement/briefs/[id]/radar`.
 - A “Review indexed matches” action on existing dashboard active-brief cards.
+- Dashboard active-brief loading for authenticated `ppiAccess` principals as well as members/admins, preserving the existing owner-scoped query and without broadening brief creation or editing permissions. The Radar action is shown only when `ppiAccess` is true.
 - Server-first loading through the Parchment SDK.
 - Fresh result rows with lot identity, current price, brief-match reasons, eligible signal evidence, lot-age context (crop year / first-observed date, or the API's `ageContext: unknown` disclosure rendered honestly), source, publication freshness/quality, limitations, and one source-detail action.
 - Honest stale, unavailable, empty, denied, and error states.
@@ -23,7 +24,7 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 
 ## Out of scope
 
-- Dashboard redesign, a new global nav destination, or Market Index page changes.
+- Dashboard redesign, a new global nav destination, or Market Index page changes. The additive dashboard server-load change needed to expose owned active briefs to PPI-only users is in scope.
 - Automatic refresh, scheduler, email, Discord, webhook, SMS, or push delivery.
 - Stored recommendation runs, notification preferences, team workflows, or history charts.
 - Client-side ranking, freshness decisions, signal calculation, or AI summaries.
@@ -44,13 +45,14 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 - `src/routes/procurement/briefs/[id]/radar/+page.server.ts`
 - `src/routes/procurement/briefs/[id]/radar/+page.svelte`
 - focused route/component tests
-- `src/routes/dashboard/+page.svelte` and its tests
+- `src/routes/dashboard/+page.server.ts`, `src/routes/dashboard/+page.svelte`, and their tests
 - a small new pilot-event helper (no existing client event pattern to reuse; define where events land — a server-side log table is sufficient for the pilot)
 - dependency/lockfile updates only if the Parchment SDK release requires them
 
 ## Acceptance criteria
 
-- An entitled owner can open Radar from an existing dashboard brief card.
+- A PPI-only entitled owner can see their owned active briefs on the dashboard and open Radar from the “Review indexed matches” action; Mallard membership is not required.
+- A member/admin without `ppiAccess` retains the existing brief/catalog workflow but does not receive the Radar action.
 - Another user, anonymous user, and insufficiently entitled user receive the correct server-enforced state.
 - Fresh rows render canonical evidence, including lot-age context or its `unknown` disclosure, and link to the correct source/lot.
 - Stale, unavailable, empty, denied, and upstream-error fixtures have distinct, truthful UI.
@@ -63,7 +65,7 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 
 - Server-load tests for ownership-safe not-found, entitlement denial, fresh, stale, unavailable, empty, and upstream failure.
 - Component/route tests for evidence, source links, limitations, status copy, dispositions, keyboard use, and mobile layout.
-- Dashboard test for the additive Radar action.
+- Dashboard server-load and component tests prove that PPI-only owners receive active-brief cards and the Radar action, while users without `ppiAccess` do not receive that action.
 - Event tests that exclude criteria and user-entered text.
 - `pnpm check --fail-on-warnings`, focused tests, lint, and production build using the repository's documented environment path.
 - One post-deploy smoke with an owned test brief and manual source reconciliation.
