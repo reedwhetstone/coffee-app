@@ -210,6 +210,7 @@ The product provides value first and generates checkpoints through natural use:
 - **Discovery:** dashboard Radar impressions, result opens, supplier-detail visits, and the share of surfaced lots that were not already tracked.
 - **Investigation:** Ask Parchment handoffs and follow-up questions, tracked-lot/watchlist actions, and brief refinements prompted by the evidence.
 - **Habit:** repeat Radar visits and repeat investigation behavior over the launch window.
+- **Sourcing intent:** optional sample or quote-request evidence, captured through a fixed non-blocking action when the outcome is known or a supplemental launch interview checkpoint, distinguishes investigation from buyer intent. This is a measurement, not a required workflow or customer QA chore.
 - **Business:** retained PPI usage and willingness to keep paying, supported by interviews rather than a checkout experiment.
 
 Primary product falsifiers:
@@ -224,7 +225,7 @@ Customer feedback remains useful but subordinate to the product:
 - Source freshness should be monitored from the publication and subsequent observations wherever possible; do not make the customer perform routine data QA.
 - Interviews ask whether Radar shortened discovery, improved a shortlist, or changed what the customer investigated.
 
-The initial product direction is supported when multiple customers repeatedly investigate or track Radar-surfaced coffees and return to the workflow. Exact numeric launch thresholds should be set after baseline traffic and match density are known; analytics are decision inputs, not a pretense of statistical certainty from five users.
+The initial product direction is supported when multiple customers repeatedly investigate or track Radar-surfaced coffees, return to the workflow, and the launch evidence includes explicit sample or quote-request intent where available. Repeated passive investigation alone does not establish sourcing intent or recurring value. Exact numeric launch thresholds should be set after baseline traffic and match density are known; analytics are decision inputs, not a pretense of statistical certainty from five users.
 
 ## Program acceptance criteria
 
@@ -238,6 +239,7 @@ The initial product direction is supported when multiple customers repeatedly in
 - A PPI-only session cannot promote itself through `user_roles`, mutate another user's brief, bypass criteria validation, or write through an unreviewed direct REST path; negative coverage proves the denial while preserving intended member/admin behavior.
 - The authenticated dashboard presents a personalized Radar summary and full result, and Ask Parchment receives the same canonical brief and evidence context.
 - The user reaches the supplier/source record in one action.
+- Limited-launch evaluation distinguishes passive investigation/tracking from explicit sample or quote-request intent through a non-blocking optional action or supplemental interview checkpoint; sampling remains off-platform and is never required to use Radar.
 - Useful customer actions rely on existing tracked-lot/watchlist and chat workflows rather than new procurement storage.
 - Passive analytics distinguish exposure, investigation, useful action, and repeat use without requiring a customer questionnaire or persisting sensitive brief criteria/source payloads.
 - No runtime in any repository adds a scheduler, external delivery side effect, new score, or recommendation-run history.
