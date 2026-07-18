@@ -19,8 +19,9 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 - Fresh result rows with lot identity, current price, brief-match reasons, eligible signal evidence, lot-age context (crop year / first-observed date, or the API's `ageContext: unknown` disclosure rendered honestly), source, publication freshness/quality, limitations, and one source-detail action.
 - Honest stale, unavailable, empty, denied, and error states.
 - Concierge pilot onboarding: before each PPI-only participant starts, an authorized operator uses the private participant-seed runbook below to provision one active brief under that participant's user ID; the caller-owned `POST /v1/procurement/briefs` contract is not used with the operator's credentials, and no new self-service brief capture is added.
-- Minimal events for Radar open, indexed row impression, source-detail click, and pilot disposition. This introduces a small new pilot-event helper and a durable, append-only `radar_pilot_events` table in the coffee-app Supabase project; the repo has no general client event-tracking pattern today, so this is new telemetry surface, kept deliberately minimal: server-side capture, fixed event names, participant/brief/catalog identifiers only where applicable, a fixed disposition enum, and no criteria, source payloads, or user-entered text in payloads. The table is server-side only and is not recommendation-run history.
-- A compact pilot disposition control: already known, investigate, shortlist, sample/quote, or not relevant.
+- Minimal events for Radar open, indexed row impression, source-detail click, source verification, and pilot disposition. This introduces a small new pilot-event helper and a durable, append-only `radar_pilot_events` table in the coffee-app Supabase project; the repo has no general client event-tracking pattern today, so this is new telemetry surface, kept deliberately minimal: server-side capture, fixed event names, participant/brief/catalog identifiers only where applicable, fixed disposition and freshness-outcome enums, and no criteria, source payloads, or user-entered text in payloads. The table is server-side only and is not recommendation-run history.
+- The fixed pilot disposition enum is `already_known`, `past_crop_clearance`, `investigate`, `shortlist`, `sample_quote`, or `not_relevant`; the UI may display “sample/quote” and “past-crop/clearance” labels.
+- Source-detail clicks and source verification are separate events. The click records the participant, brief, catalog row, and click timestamp. Immediately after inspecting the supplier page, the participant or operator records a fixed `freshness_outcome` of `matched`, `mismatched`, `unavailable`, or `not_verified`, with the same identifiers and verification timestamp. This persists staleness-at-click without storing a source URL, source payload, or free text.
 - Focused tests and existing docs/copy alignment where required.
 
 ## Out of scope
@@ -70,24 +71,24 @@ This is a pilot prerequisite, not a new self-service or public API capability. I
 - Fresh rows render canonical evidence, including lot-age context or its `unknown` disclosure, and link to the correct source/lot.
 - Stale, unavailable, empty, denied, and upstream-error fixtures have distinct, truthful UI.
 - No recommendation card renders when the API status is not `fresh`.
-- Events distinguish page opens, evidence shown, source clicks, and explicit pilot dispositions; the server-side append-only sink persists only the fixed event fields and rejects sensitive brief criteria, source payloads, and user-entered text.
+- Events distinguish page opens, evidence shown, source clicks, source-verification outcomes, and explicit pilot dispositions, including `past_crop_clearance`; the server-side append-only sink persists only the fixed event fields and rejects sensitive brief criteria, source payloads, and user-entered text.
 - Existing dashboard, catalog brief matches, Market Index, and chat behavior remain unchanged.
 - Keyboard, screen-reader, mobile, loading, and reduced-motion behavior meet existing route standards.
 
 ## Test plan
 
 - Server-load tests for ownership-safe not-found, entitlement denial, fresh, stale, unavailable, empty, and upstream failure, including the PPI-readable Radar ownership path without relying on the member-gated base brief GET.
-- Component/route tests for evidence, source links, limitations, status copy, dispositions, keyboard use, and mobile layout.
+- Component/route tests for evidence, source links, limitations, status copy, the complete disposition enum, source-verification outcomes, keyboard use, and mobile layout.
 - Dashboard server-load and component tests prove that PPI-only owners receive active-brief cards and the Radar action, while users without `ppiAccess` do not receive that action.
 - Pilot setup documentation proves that operator seeding writes the participant owner through the private control-plane path, does not rely on the caller-owned create contract, and verifies ownership through the PPI-readable Radar/dashboard paths.
-- Pilot-event helper, migration, and persistence tests prove the fixed event names/fields, server-only access, append-only behavior, and exclusion of criteria, source payloads, and user-entered text.
+- Pilot-event helper, migration, and persistence tests prove the fixed event names/fields, including `past_crop_clearance` and source-verification outcomes, server-only access, append-only behavior, and exclusion of criteria, source payloads, and user-entered text.
 - `pnpm check --fail-on-warnings`, focused tests, lint, and production build using the repository's documented environment path.
 - One post-deploy smoke with an owned test brief and manual source reconciliation.
 
 ## Risks and rollback
 
 - **Risk:** the page overstates price evidence. Preserve API language, comparable context, and limitations.
-- **Risk:** pilot instrumentation becomes a product feedback system. Keep fixed dispositions and no free-text persistence in the MVP.
+- **Risk:** pilot instrumentation becomes a product feedback system. Keep fixed dispositions, fixed source-verification outcomes, and no free-text persistence in the MVP.
 - **Risk:** a new route expands navigation. Link only from existing active brief cards during the pilot.
 - **Risk:** the feed goes partial or dark mid-pilot (supplier blocks, layout churn, or a gated source dropped for consent reasons). The stale/unavailable states must make "the feed is down" visibly different from "no matches for your brief," and the pilot log should record staleness-at-click so slow-feed outcomes are distinguishable from wrong-signal outcomes.
 - **Rollback:** remove or feature-disable the dashboard action and route. The Parchment endpoint, existing brief matches, and all current app workflows remain useful.
