@@ -489,7 +489,7 @@ export const load: PageServerLoad = async (event) => {
 	});
 
 	// Origin price context: public, non-critical.
-	const originPriceStats = streamOriginPriceStats(catalogClient, visibility);
+	const originPriceStats = streamOriginPriceStats(catalogClient, effectiveCatalogState);
 
 	// Member-only enrichment. Anonymous loads resolve to [] with no server work, so
 	// user-specific watchlist/procurement data never enters the public render and is

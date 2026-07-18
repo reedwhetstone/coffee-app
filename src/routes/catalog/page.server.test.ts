@@ -982,6 +982,24 @@ describe('/catalog tracked-only watchlist view', () => {
 		expect(await result.trackedLotIds).toEqual([5, 9]);
 	});
 
+	it('fetches origin price stats for the forced tracked-only wholesale scope', async () => {
+		const session = { access_token: 'ppi-token' } as App.Locals['session'];
+		const principal = { isAuthenticated: true as const, userId: 'ppi-user-1', ppiAccess: true };
+		mockGetTrackedLotIds.mockResolvedValue([5, 9]);
+
+		const result = (await load(
+			makeLoadInputWithPrincipal(
+				'viewer',
+				session,
+				principal,
+				'https://app.test/catalog?tracked=only'
+			)
+		)) as { originPriceStats: Promise<unknown[]> };
+
+		await result.originPriceStats;
+		expect(mockCatalogOriginPriceStats).toHaveBeenCalledWith({ showWholesale: 'true' });
+	});
+
 	it('skips the catalog query entirely when the watchlist is empty', async () => {
 		const session = { access_token: 'ppi-token' } as App.Locals['session'];
 		const principal = { isAuthenticated: true as const, userId: 'ppi-user-1', ppiAccess: true };
