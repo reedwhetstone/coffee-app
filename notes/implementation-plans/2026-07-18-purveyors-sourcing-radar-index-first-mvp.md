@@ -101,7 +101,7 @@ Prototype code may be exercised against stale/unavailable fixtures, but the buye
 - Fresh, stale, unavailable, empty, and denied states.
 - The existing Parchment Intelligence entitlement (`ppi_access`, the $39/month add-on). Radar is not a member-tier or public surface.
 - Parchment-owned security hardening for `sourcing_briefs` and the client-writable `user_roles` escalation path before PPI self-service launches. Owner-scoped mutations must go through the reviewed canonical API contract and a service-owned entitlement source; direct Supabase REST bypass remains denied.
-- Passive product analytics for exposure, Radar opens, result opens, Ask Parchment handoffs, supplier clicks, watchlist actions, brief refinement, and repeat use. Reuse durable product records where they already express the action; add only the minimal server-side event sink needed for non-durable exposures and clicks.
+- Passive product analytics for exposure, Radar opens, result opens, Ask Parchment handoffs, supplier clicks, watchlist actions, brief refinement, and repeat use. Reuse durable product records where they already express the action; add a separate minimal Parchment-owned event contract and append-only sink for non-durable exposures and clicks before the product client depends on it.
 - A limited product launch after the live gate: target five sourcing decision-makers with three as the floor, running eight to twelve weeks or timed to a heavy arrival season. Participants receive the actual product, not a separate research harness.
 
 ### Out of scope
@@ -131,20 +131,20 @@ This is core product infrastructure, not pilot administration. A user who pays f
 
 ### Database migration ownership prerequisite
 
-The shared Supabase migration ledger is still a legacy coffee-app responsibility even though the canonical backend and authorization boundary have moved to the private Parchment workspace. Before PR 2 merges its RLS, grant, or entitlement-source changes, complete the separate Parchment plan `docs/plans/2026-07-18-database-migration-ownership-transfer.md` through its guarded canary.
+The shared Supabase migration ledger is still a legacy coffee-app responsibility even though the canonical backend and authorization boundary have moved to the private Parchment workspace. Before PR 2 or PR 3 merges Parchment-owned schema changes, complete the separate Parchment plan `docs/plans/2026-07-18-database-migration-ownership-transfer.md` through its guarded canary.
 
 - Parchment becomes the single physical migration authority for the shared database.
 - Historical applied versions remain immutable and are reconciled against production before cutover.
 - Coffee-app stops authoring migrations and remains a thin BFF/reference client.
 - Radar does not absorb the transfer or use a new coffee-app migration as a shortcut.
 
-PR 1 is read-only and may be developed in parallel after the publication gate. PR 2 may be developed against fixtures, but it cannot merge until the canonical Parchment migration path is operational.
+PR 1 is read-only and may be developed in parallel after the publication gate. PR 2 and PR 3 may be developed against fixtures, but neither can merge schema changes until the canonical Parchment migration path is operational.
 
 ## Strategy Alignment Audit
 
 - **Canonical direction:** This turns the existing normalized catalog and Market Index into a trustworthy sourcing decision while preserving Parchment API as the intelligence owner and coffee-app as the reference client.
 - **Product principle supported:** Data moat over feature sprawl. The slice composes shipped intent and evidence instead of adding another disconnected feature.
-- **Cross-surface effect:** The canonical read and owner-scoped intent contract live in Parchment API and SDK. The dashboard and Parchment chat consume the same result without recomputing ranking or freshness.
+- **Cross-surface effect:** The canonical read, owner-scoped intent, and fixed product-event contracts live in Parchment API and SDK. The dashboard and Parchment chat consume the same result without recomputing ranking or freshness, and coffee-app emits analytics without owning their schema or persistence.
 - **Public value legibility:** This is paid Parchment Intelligence workflow leverage. It does not expand the public proof surface or add a new price plan.
 - **Moonshot check:** It graduates the July 15 Sourcing Radar proposal into the smallest complete personalized sourcing product.
 - **Scope check:** It includes the agent explanation and investigation loop because that is part of the promise, while excluding external recurrence, new models, and procurement operations.
@@ -152,10 +152,10 @@ PR 1 is read-only and may be developed in parallel after the publication gate. P
 ## Cross-repo ownership
 
 - `coffee-scraper`: observes supplier truth. No Radar MVP changes.
-- Existing market-publication recovery program: owns the active provenance-aware publication and its serving quality. Existing prerequisite, not respecified by these four PRs.
-- `parchment-api`: owns the physical database migration ledger after the separate ownership transfer, brief-to-index composition, owner-scoped PPI intent contracts, authorization, ordering, freshness policy, entitlement, and SDK types.
+- Existing market-publication recovery program: owns the active provenance-aware publication and its serving quality. Existing prerequisite, not respecified by these five PRs.
+- `parchment-api`: owns the physical database migration ledger after the separate ownership transfer, brief-to-index composition, owner-scoped PPI intent contracts, authorization, ordering, freshness policy, entitlement, fixed Radar product-event contract and persistence, and SDK types.
 - `purveyors-cli`: no MVP change. Existing procurement and market reads remain available.
-- `coffee-app`: owns self-service intent UX, personalized dashboard presentation, Ask Parchment handoff, existing tracked-lot/source actions, and product analytics.
+- `coffee-app`: owns self-service intent UX, personalized dashboard presentation, Ask Parchment handoff, existing tracked-lot/source actions, and thin emission of canonical product events. It does not own event schema or persistence.
 
 ## Ordered implementation
 
@@ -179,25 +179,32 @@ In Parchment API, secure the entitlement source and RLS boundary, expose owner-s
 
 Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-02-parchment-intent.md`.
 
-### PR 3: Coffee-app self-service intent UX and thin BFF
+### PR 3: Canonical Parchment product-event contract and SDK
+
+In Parchment API, add the closed, privacy-minimized event-ingestion contract and append-only persistence required for non-durable Radar exposures and clicks. Reuse durable tracked-lot, brief, and chat records rather than duplicating their contents. Publish the fixed event union through OpenAPI and the SDK. This prevents the buyer-facing app PR from smuggling in backend authority or a second migration path.
+
+Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-03-parchment-events.md`.
+
+### PR 4: Coffee-app self-service intent UX and thin BFF
 
 Consume PR 2 through the published SDK and add the lightweight authenticated setup/refinement experience. Coffee-app brokers the session and presents canonical results; it does not own authorization, validation, persistence, or migrations. This slice is independently useful because a PPI customer can maintain a real sourcing need and use existing matches before personalized Radar ships.
 
-Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-03-coffee-app-intent.md`.
+Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-04-coffee-app-intent.md`.
 
-### PR 4: Personalized Radar dashboard and Parchment agent
+### PR 5: Personalized Radar dashboard and Parchment agent
 
-Add the personalized dashboard module and focused Radar detail route, preserve the canonical evidence and honest stale/unavailable states, and provide source, tracked-lot, and Ask Parchment actions. Parchment receives the current brief and Radar evidence as structured context so it can explain and compare without inventing ranking or facts. Add passive analytics around the natural workflow, not a mandatory validation questionnaire. This is the complete buyer-facing MVP.
+Add the personalized dashboard module and focused Radar detail route, preserve the canonical evidence and honest stale/unavailable states, and provide source, tracked-lot, and Ask Parchment actions. Parchment receives the current brief and Radar evidence as structured context so it can explain and compare without inventing ranking or facts. Consume PR 3 for passive analytics around the natural workflow, not a mandatory validation questionnaire. This is the complete buyer-facing MVP.
 
-Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-04-personalized-product.md`.
+Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-05-personalized-product.md`.
 
 ## Stop points
 
 - After the prerequisite: stop if publication quality or freshness cannot support decision language.
 - After PR 1: stop if the endpoint rarely produces eligible rows for realistic saved briefs, if lot-age context is mostly `unknown`, or if source comparability makes ordering misleading.
 - After PR 2: stop if secure PPI intent cannot be expressed as one canonical API/SDK contract without coffee-app authorization or direct database writes.
-- After PR 3: stop if the self-service product path cannot remain a thin client over that contract or becomes more complex than the sourcing need it captures.
-- After PR 4 and the limited launch: refine or stop if behavior shows customers do not investigate, track, or revisit Radar results, or if internal evidence audits show the signal is surfacing clearance rather than useful discovery.
+- After PR 3: stop if useful passive analytics require arbitrary event payloads, sensitive sourcing content, or coffee-app-owned persistence rather than a small canonical Parchment contract.
+- After PR 4: stop if the self-service product path cannot remain a thin client over the intent contract or becomes more complex than the sourcing need it captures.
+- After PR 5 and the limited launch: refine or stop if behavior shows customers do not investigate, track, or revisit Radar results, or if internal evidence audits show the signal is surfacing clearance rather than useful discovery.
 - Only plan external recurring delivery if the in-product workflow creates repeat value and customers ask to receive it without opening Purveyors.
 
 ## Limited launch and product checkpoints
@@ -236,6 +243,7 @@ The initial product direction is supported when multiple customers repeatedly in
 - No client hardcodes or recomputes freshness, signal rank, or entitlement.
 - Direct URL and API calls enforce ownership and Parchment Intelligence access.
 - A PPI customer can create, view, refine, and deactivate their own constrained sourcing brief without operator intervention; identity and entitlement remain server-enforced.
+- Deactivated briefs remain discoverable through an explicit status filter and can be reactivated after reload without a remembered object ID.
 - A PPI-only session cannot promote itself through `user_roles`, mutate another user's brief, bypass criteria validation, or write through an unreviewed direct REST path; negative coverage proves the denial while preserving intended member/admin behavior.
 - The authenticated dashboard presents a personalized Radar summary and full result, and Ask Parchment receives the same canonical brief and evidence context.
 - The user reaches the supplier/source record in one action.
@@ -246,7 +254,7 @@ The initial product direction is supported when multiple customers repeatedly in
 
 ## Validation expectations
 
-- Parchment API: focused unit/route tests for pre-pagination composition, freshness states, deterministic ordering, owner-scoped intent lifecycle, authorization, RLS/direct-REST denial, and response shape; migration-path validation; package typecheck/build; OpenAPI and SDK fixture validation.
+- Parchment API: focused unit/route tests for pre-pagination composition, freshness states, deterministic ordering, owner-scoped intent lifecycle including inactive discovery/reactivation, authorization, RLS/direct-REST denial, fixed event ingestion, event privacy/idempotency, and response shape; migration-path validation; package typecheck/build; OpenAPI and SDK fixture validation.
 - Coffee-app: thin BFF and self-service intent UX tests with no direct database mutation; dashboard and route tests for fresh, stale, unavailable, empty, and denied states; structured Ask Parchment context tests; source/tracked-lot action and passive analytics tests; `pnpm check --fail-on-warnings` and lint.
 - Live gate: one owned test brief against the deployed accepted publication, with evidence manually reconciled to its source lot and Market Index row.
 
@@ -259,7 +267,7 @@ The initial product direction is supported when multiple customers repeatedly in
 - **The endpoint becomes a second ranking system.** Reuse existing signal ranks only. No combined score.
 - **The product collapses back into a research harness.** Analytics remain passive and customer feedback remains optional. Every customer-facing control must help the customer source, investigate, track, or refine intent.
 - **Agent explanation drifts from evidence.** Parchment receives canonical Radar rows as structured context, cites their limitations, and cannot invent or reorder evidence.
-- **Alert ambitions expand the MVP.** There is no cadence, external delivery, stored run, or notification preference model in the four PRs.
+- **Alert ambitions expand the MVP.** There is no cadence, external delivery, stored run, or notification preference model in the five PRs.
 - **Supply-side: the feed itself is at risk, and the plan cannot be silent about it.** Importers are simultaneously the data source, competitors for the deal-discovery moment (their own portals and clearance pages), and the party able to break the feed unilaterally. Before launch: audit which of the scraped sources require authenticated sessions for the prices the index uses, classify each as public-page, gated, or consented, and set an explicit policy for gated sources (drop, seek consent, or accept documented exposure) — logged-in scraping is the one clearly losing legal posture post-hiQ. Product source-detail links send importers qualified traffic; treat that as the opening of a consent/partnership track, which is also the path to the two-sided moat the product currently lacks (Beanstock launched on importer opt-in).
 - **Rollback:** disable the personalized Radar module, detail route, and Parchment handoff. The secure brief-intent contract, Parchment endpoint, existing brief matches, Market Index, dashboard, catalog, and CLI workflows remain useful.
 

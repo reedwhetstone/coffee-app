@@ -1,4 +1,4 @@
-# Sourcing Radar MVP PR 4: Personalized Dashboard and Parchment Agent
+# Sourcing Radar MVP PR 5: Personalized Dashboard and Parchment Agent
 
 **Program:** Purveyors Sourcing Radar, index-first MVP
 **Repository:** `coffee-app`
@@ -12,7 +12,7 @@ This is the buyer-facing MVP. It is a product with passive analytics, not a qual
 
 ## Why this slice comes now
 
-PR 1 makes the evidence contract canonical. PR 2 makes the intent lifecycle canonical and API-enforced. PR 3 gives PPI customers a thin self-service experience for the intent that drives Radar. This PR closes the loop: show the current result where the customer already works, let Parchment explain it without inventing facts, and connect it to existing supplier and tracked-lot actions.
+PR 1 makes the evidence contract canonical. PR 2 makes the intent lifecycle canonical and API-enforced. PR 3 provides the canonical event contract. PR 4 gives PPI customers a thin self-service experience for the intent that drives Radar. This PR closes the loop: show the current result where the customer already works, let Parchment explain it without inventing facts, and connect it to existing supplier and tracked-lot actions.
 
 ## In scope
 
@@ -25,7 +25,7 @@ PR 1 makes the evidence contract canonical. PR 2 makes the intent lifecycle cano
 - An Ask Parchment action that opens the existing chat workspace with structured context containing the owned brief, canonical Radar rows, publication metadata, evidence, and limitations.
 - Parchment may explain, compare, and help refine the sourcing need. It cannot invent evidence, change canonical ordering, or label an anomaly a deal.
 - Passive product analytics for dashboard exposure, Radar open, result open, Ask Parchment handoff, supplier click, tracked-lot/watchlist action, brief refinement, and repeat use.
-- Reuse durable records such as tracked lots, brief updates, and chat conversations as the source of truth for those actions. Add only a minimal append-only event contract for non-durable exposures and clicks, persisted through the Parchment-owned analytics/event path; this PR does not add a coffee-app table or migration.
+- Reuse durable records such as tracked lots, brief updates, and chat conversations as the source of truth for those actions. Send non-durable exposures and clicks through the canonical Parchment event contract shipped in PR 3; this PR does not add a coffee-app table, event schema, or migration.
 - Focused tests and existing docs/copy alignment.
 
 ## Out of scope
@@ -75,8 +75,7 @@ Analytics payloads contain fixed event names and identifiers only where required
 - `src/routes/procurement/briefs/[id]/radar/+page.svelte`
 - existing chat action/context handoff modules and tests
 - existing tracked-lot/watchlist action integration
-- the Parchment-owned analytics/event contract and migration path only if existing telemetry cannot represent non-durable events; no `supabase/migrations` file or database-authority change belongs in coffee-app
-- a thin BFF/SDK call for fixed analytics events, with persistence owned by Parchment and no browser database write path
+- a thin BFF/SDK call to the fixed Parchment event contract from PR 3, with no browser database write path
 - dependency/lockfile updates only if the Parchment SDK release requires them
 
 ## Acceptance criteria
@@ -97,7 +96,7 @@ Analytics payloads contain fixed event names and identifiers only where required
 - Dashboard and server-load tests for PPI personalization, ownership, entitlement, fresh, stale, unavailable, empty, and upstream failure.
 - Component tests for evidence, source/tracked-lot actions, limitations, keyboard use, and mobile layout.
 - Structured Ask Parchment context tests, including stale/unavailable suppression and evidence fidelity.
-- Analytics contract/client tests for fixed event shape and exclusion of sensitive fields; persistence and append-only behavior are owned and tested by Parchment.
+- Analytics client tests for the fixed PR 3 event shape and exclusion of sensitive fields; persistence and append-only behavior remain covered by Parchment.
 - Regression coverage for existing dashboard, Market Index, tracked-lot, and chat workflows.
 - `pnpm check --fail-on-warnings`, focused tests, lint, and production build using the repository's documented environment path.
 - One post-deploy smoke with an owned test brief and manual source reconciliation performed internally before customer exposure.
@@ -113,4 +112,4 @@ Analytics payloads contain fixed event names and identifiers only where required
 
 ## Exact follow-on dependency
 
-Launch after PR 3 is deployed and a PPI-only test account can create and maintain an owned active brief through the product path. Recruit five sourcing decision-makers, treating three as the operational floor, for eight to twelve weeks or across a heavy arrival season. Use passive product behavior, internal evidence audits, and supplemental interviews to refine relevance. Plan external recurring delivery only when repeat in-product use demonstrates value and customers ask to receive Radar without opening Purveyors.
+Launch after PR 4 is deployed and a PPI-only test account can create and maintain an owned active brief through the product path. Recruit five sourcing decision-makers, treating three as the operational floor, for eight to twelve weeks or across a heavy arrival season. Use passive product behavior, internal evidence audits, and supplemental interviews to refine relevance. Plan external recurring delivery only when repeat in-product use demonstrates value and customers ask to receive Radar without opening Purveyors.

@@ -83,4 +83,4 @@ This PR must not start until the active market publication contract is provenanc
 
 ## Exact follow-on dependency
 
-PR 2 may proceed in parallel on the secure intent boundary after the database migration ownership prerequisite is operational. PR 3 begins after this Radar contract is deployed to staging, its fresh/stale fixtures are stable, PR 2's intent SDK is published, and one live owned brief has been reconciled internally against source and publication evidence.
+PR 2 may proceed in parallel on the secure intent boundary after the database migration ownership prerequisite is operational. PR 3 depends on PR 2's principal and ownership contract, not on the Radar read. PR 5 begins after this Radar contract is deployed to staging, its fresh/stale fixtures are stable, PR 2's intent SDK and PR 3's event SDK are published, PR 4's customer intent path is deployed, and one live owned brief has been reconciled internally against source and publication evidence.

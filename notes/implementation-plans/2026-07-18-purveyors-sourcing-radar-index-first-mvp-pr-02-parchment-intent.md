@@ -42,7 +42,7 @@ The contract and tests may be developed before the transfer finishes, but the PR
 
 The existing resource becomes the single lifecycle contract:
 
-- `GET /v1/procurement/briefs` lists the principal's briefs under the resolved entitlement.
+- `GET /v1/procurement/briefs?status=active|inactive|all` lists the principal's briefs under the resolved entitlement. Preserve the current active-only default for backward compatibility; self-service clients use an explicit status when managing lifecycle state.
 - `POST /v1/procurement/briefs` creates a validated brief for the principal-derived owner.
 - `GET /v1/procurement/briefs/{id}` returns an owned brief without revealing cross-owner existence.
 - `PATCH /v1/procurement/briefs/{id}` updates supported name, criteria, and active-state fields with optimistic conflict behavior where required by the existing resource model.
@@ -75,6 +75,7 @@ The generated SDK exposes equivalent list, create, get, update, activate, and de
 ## Acceptance criteria
 
 - A PPI-only authenticated session can create, list, get, update, activate, and deactivate its own valid sourcing brief without Mallard membership or operator intervention.
+- Deactivated briefs remain discoverable after reload through the explicit inactive/all list filter and can be reactivated without a remembered object ID.
 - Identity is principal-derived and cross-owner access is denied without resource enumeration.
 - Unsupported criteria and unsupported mutation fields fail closed and never silently no-op.
 - A PPI-only session cannot promote itself through `user_roles` or bypass the reviewed brief mutation contract through direct Supabase REST.
@@ -85,7 +86,7 @@ The generated SDK exposes equivalent list, create, get, update, activate, and de
 
 ## Test plan
 
-- Resource and route tests for list, create, get, update, activate, deactivate, invalid criteria, invalid fields, ownership, entitlement, and non-enumeration.
+- Resource and route tests for active-default, inactive, and all-status listing; create, get, update, activate, deactivate; reload/reactivation; invalid criteria, invalid fields, ownership, entitlement, and non-enumeration.
 - Two-step negative test: attempted role promotion is denied, then direct brief mutation remains denied.
 - Direct Supabase REST/RLS negative coverage for PPI-only, anonymous, cross-owner, and insufficiently entitled sessions.
 - Regression coverage for intended member/admin and existing API-key behavior.
