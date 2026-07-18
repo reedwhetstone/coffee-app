@@ -27,7 +27,7 @@ export function resolveCatalogVisibility(input: CatalogVisibilityInput): Catalog
 	return {
 		isPrivilegedSession,
 		publicOnly: !isPrivilegedSession,
-		showWholesale: isPrivilegedSession && Boolean(input.showWholesaleRequested),
+		showWholesale: input.showWholesaleRequested !== false,
 		wholesaleOnly: isPrivilegedSession && Boolean(input.wholesaleOnlyRequested)
 	};
 }

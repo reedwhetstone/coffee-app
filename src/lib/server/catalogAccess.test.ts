@@ -27,6 +27,7 @@ describe('resolveCatalogAccessCapabilities', () => {
 
 		for (const capabilities of [anonymous, viewer]) {
 			expect(capabilities.canViewPublicCatalog).toBe(true);
+			expect(capabilities.canViewWholesale).toBe(true);
 			expect(capabilities.canUseBasicFilters).toBe(true);
 			expect(capabilities.canViewFullCatalog).toBe(false);
 			expect(capabilities.canUseProcessFacets).toBe(false);

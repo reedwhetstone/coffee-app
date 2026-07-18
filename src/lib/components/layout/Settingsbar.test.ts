@@ -110,7 +110,7 @@ describe('Settingsbar stocked filters', () => {
 	it('hides filters that the free catalog API strips while keeping basic filters and sorting', () => {
 		render(Settingsbar, { data: { role: 'viewer' }, onClose: vi.fn() });
 
-		expect(screen.queryByText('Show wholesale')).not.toBeInTheDocument();
+		expect(screen.getByText('Hobbyist suppliers only')).toBeInTheDocument();
 		expect(screen.queryByLabelText('Score Value')).not.toBeInTheDocument();
 		expect(screen.queryByLabelText('Cost Lb')).not.toBeInTheDocument();
 		expect(screen.queryByLabelText('Stocked Date')).not.toBeInTheDocument();
@@ -123,7 +123,7 @@ describe('Settingsbar stocked filters', () => {
 		pageState.url = new URL('http://localhost/');
 		render(Settingsbar, { data: { role: 'viewer' }, onClose: vi.fn() });
 
-		expect(screen.queryByText('Show wholesale')).not.toBeInTheDocument();
+		expect(screen.getByText('Hobbyist suppliers only')).toBeInTheDocument();
 		expect(screen.queryByLabelText('Score Value')).not.toBeInTheDocument();
 		expect(screen.queryByLabelText('Cost Lb')).not.toBeInTheDocument();
 		expect(screen.queryByLabelText('Stocked Date')).not.toBeInTheDocument();
@@ -131,11 +131,25 @@ describe('Settingsbar stocked filters', () => {
 		expect(screen.getByLabelText('Name')).toBeInTheDocument();
 	});
 
-	it('shows wholesale and paid range filters to member sessions', () => {
+	it('shows the hobbyist-only scope and paid range filters to member sessions', () => {
 		render(Settingsbar, { data: { role: 'member' }, onClose: vi.fn() });
 
-		expect(screen.getByText('Show wholesale')).toBeInTheDocument();
+		expect(screen.getByText('Hobbyist suppliers only')).toBeInTheDocument();
 		expect(screen.getByLabelText('Score Value')).toBeInTheDocument();
 		expect(screen.getByLabelText('Cost Lb')).toBeInTheDocument();
+	});
+
+	it('turns off wholesale visibility when hobbyist-only is selected', async () => {
+		storeState.set({
+			...storeState.value,
+			showWholesale: true
+		});
+		render(Settingsbar, { data: { role: 'viewer' }, onClose: vi.fn() });
+
+		const checkbox = screen.getByRole('checkbox', { name: /Hobbyist suppliers only/i });
+		expect(checkbox).not.toBeChecked();
+		await fireEvent.click(checkbox);
+
+		expect(filterStore.setShowWholesale).toHaveBeenCalledWith(false);
 	});
 });

@@ -128,24 +128,22 @@
 				<h4 class="mb-3 text-sm font-medium text-ink">Filters</h4>
 				<div class="space-y-3">
 					{#if routeId === '/' || routeId === '/catalog'}
-						{#if canUseMemberCatalogControls}
-							<div class="rounded-md border border-line bg-surface-canvas p-3">
-								<label class="flex items-center justify-between gap-3">
-									<div>
-										<div class="text-xs font-medium text-ink">Show wholesale</div>
-										<p class="text-[11px] text-muted">
-											Off by default. Enable to include wholesale coffees in catalog results.
-										</p>
-									</div>
-									<input
-										type="checkbox"
-										checked={$filterStore.showWholesale}
-										onchange={(e) => filterStore.setShowWholesale(e.currentTarget.checked)}
-										class="h-4 w-4 rounded border border-line bg-surface-canvas text-accent focus:ring-2 focus:ring-accent"
-									/>
-								</label>
-							</div>
-						{/if}
+						<div class="rounded-md border border-line bg-surface-canvas p-3">
+							<label class="flex items-center justify-between gap-3">
+								<div>
+									<div class="text-xs font-medium text-ink">Hobbyist suppliers only</div>
+									<p class="text-[11px] text-muted">
+										Narrow the catalog to suppliers that sell in hobbyist-friendly quantities.
+									</p>
+								</div>
+								<input
+									type="checkbox"
+									checked={!$filterStore.showWholesale}
+									onchange={(e) => filterStore.setShowWholesale(!e.currentTarget.checked)}
+									class="h-4 w-4 rounded border border-line bg-surface-canvas text-accent focus:ring-2 focus:ring-accent"
+								/>
+							</label>
+						</div>
 
 						{#if canUseMemberCatalogControls}
 							<div class="space-y-1">

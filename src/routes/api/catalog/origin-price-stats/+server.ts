@@ -34,7 +34,9 @@ export const GET: RequestHandler = async (event) => {
 	const visibility = resolveCatalogVisibility({
 		session: locals.session,
 		role: locals.role,
-		showWholesaleRequested: url.searchParams.get('showWholesale') === 'true',
+		showWholesaleRequested: url.searchParams.has('showWholesale')
+			? url.searchParams.get('showWholesale') === 'true'
+			: undefined,
 		wholesaleOnlyRequested: url.searchParams.get('wholesaleOnly') === 'true'
 	});
 

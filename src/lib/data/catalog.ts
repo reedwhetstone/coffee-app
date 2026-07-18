@@ -48,7 +48,7 @@ export interface CatalogSearchOptions {
 
 	// Visibility filters (for internal catalog endpoint)
 	publicOnly?: boolean; // eq public_coffee=true
-	showWholesale?: boolean; // include wholesale=true rows (default: false hides them)
+	showWholesale?: boolean; // include wholesale=true rows (default: true; false narrows to hobbyist suppliers)
 	wholesaleOnly?: boolean; // eq wholesale=true
 
 	// Pagination

@@ -94,7 +94,7 @@ export function resolveCatalogAccessCapabilities(
 	return {
 		canViewPublicCatalog: true,
 		canViewFullCatalog: hasMemberSessionRole,
-		canViewWholesale: hasMemberSessionRole,
+		canViewWholesale: true,
 		canUseBasicFilters: true,
 		canUseAdvancedFilters: canUseMemberSearchLeverage,
 		canUseProcessFacets: canUseMemberSearchLeverage,

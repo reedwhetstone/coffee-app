@@ -204,7 +204,7 @@ describe('/catalog page load', () => {
 			1,
 			expect.objectContaining({
 				stocked: 'true',
-				showWholesale: 'false',
+				showWholesale: 'true',
 				wholesaleOnly: 'false',
 				page: 1,
 				limit: 15
@@ -224,7 +224,7 @@ describe('/catalog page load', () => {
 		});
 		expect(result.trainingData).toEqual(result.data);
 		expect(result.initialCatalogState).toMatchObject({
-			showWholesale: false,
+			showWholesale: true,
 			sortField: null,
 			sortDirection: null
 		});
@@ -306,7 +306,7 @@ describe('/catalog page load', () => {
 			expect.objectContaining({
 				country: 'Ethiopia',
 				stocked: 'true',
-				showWholesale: 'false',
+				showWholesale: 'true',
 				wholesaleOnly: 'false',
 				page: 2,
 				limit: 15
@@ -320,7 +320,7 @@ describe('/catalog page load', () => {
 			expect.objectContaining({
 				coffeeIds: '99',
 				stocked: 'all',
-				showWholesale: 'false',
+				showWholesale: 'true',
 				wholesaleOnly: 'false',
 				page: 1,
 				limit: 1
@@ -697,10 +697,9 @@ describe('/catalog page load', () => {
 			originPriceStats: Promise<Array<{ origin: string; median: number; sample_size: number }>>;
 		};
 
-		// Member with no wholesale params → neither view flag is forwarded; Parchment
-		// derives the scope (and publicOnly) from the forwarded credential.
+		// The neutral catalog scope includes all coffees by default.
 		const statsQuery = mockCatalogOriginPriceStats.mock.calls[0][0];
-		expect(statsQuery).not.toHaveProperty('showWholesale');
+		expect(statsQuery).toMatchObject({ showWholesale: 'true' });
 		expect(statsQuery).not.toHaveProperty('wholesaleOnly');
 		expect(await result.originPriceStats).toEqual([
 			expect.objectContaining({ origin: 'Colombia', median: 9, sample_size: 3 })

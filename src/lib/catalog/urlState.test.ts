@@ -69,10 +69,22 @@ describe('catalog URL state helpers', () => {
 		state.wholesaleOnly = true;
 
 		expect(buildCatalogRequestParams(state, '/catalog').toString()).toBe(
-			'page=1&limit=15&showWholesale=true&wholesaleOnly=true'
+			'page=1&limit=15&wholesaleOnly=true'
 		);
-		expect(buildCatalogShareParams(state, '/catalog').toString()).toBe(
-			'showWholesale=true&wholesaleOnly=true'
+		expect(buildCatalogShareParams(state, '/catalog').toString()).toBe('wholesaleOnly=true');
+	});
+
+	it('defaults to all coffees and preserves the explicit hobbyist-only scope', () => {
+		const defaultState = parseCatalogUrlState(new URL('https://app.test/catalog'), '/catalog');
+		const hobbyistState = parseCatalogUrlState(
+			new URL('https://app.test/catalog?showWholesale=false'),
+			'/catalog'
+		);
+
+		expect(defaultState.showWholesale).toBe(true);
+		expect(hobbyistState.showWholesale).toBe(false);
+		expect(buildCatalogShareParams(hobbyistState, '/catalog').toString()).toBe(
+			'showWholesale=false'
 		);
 	});
 

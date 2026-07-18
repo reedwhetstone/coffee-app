@@ -38,6 +38,7 @@ export const GET: RequestHandler = async (event) => {
 	try {
 		proxied = await proxyCatalogList(event, {
 			defaultLimit: MAX_CATALOG_PAGE_LIMIT,
+			defaultShowWholesale: true,
 			mode: resolveCatalogCredentialMode(event.locals),
 			preferHandling: isApiKeyPrincipal(principal) ? 'inherit' : 'lenient'
 		});

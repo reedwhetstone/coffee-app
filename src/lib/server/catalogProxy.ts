@@ -156,6 +156,8 @@ export function catalogProxyErrorResponse(error: unknown): CatalogProxyErrorResp
 }
 
 export interface ProxyCatalogListOptions {
+	/** Default wholesale visibility when the first-party caller omits the scope param. */
+	defaultShowWholesale?: boolean;
 	/**
 	 * When the caller omits both `page` and `limit`, request up to this many rows
 	 * so the endpoint approximates its historical unbounded full-list contract
@@ -197,6 +199,9 @@ export async function proxyCatalogList(
 	const hasPaging = event.url.searchParams.has('page') || event.url.searchParams.has('limit');
 	if (options.defaultLimit != null && !hasPaging) {
 		query.limit = String(options.defaultLimit);
+	}
+	if (options.defaultShowWholesale && !event.url.searchParams.has('showWholesale')) {
+		query.showWholesale = 'true';
 	}
 
 	// Public API proxy: relay Parchment's status/body verbatim and preserve the

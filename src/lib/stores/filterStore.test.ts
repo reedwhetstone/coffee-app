@@ -93,12 +93,12 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 
 		const state = get(filterStore);
 		expect(state.filters).toEqual({});
-		expect(state.showWholesale).toBe(false);
+		expect(state.showWholesale).toBe(true);
 		expect(state.wholesaleOnly).toBe(false);
 		expect(state.sortField).toBe('score_value');
 		expect(state.sortDirection).toBe('asc');
 		expect(state.pagination.page).toBe(1);
-		expect(fetchSpy).toHaveBeenNthCalledWith(1, '/api/catalog/filters?');
+		expect(fetchSpy).toHaveBeenNthCalledWith(1, '/api/catalog/filters?showWholesale=true');
 		expect(fetchSpy).toHaveBeenNthCalledWith(
 			2,
 			'/api/catalog?page=1&limit=15&sortField=score_value&sortDirection=asc',
@@ -322,7 +322,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		expect(state.pagination.page).toBe(1);
 		expect(fetchSpy).toHaveBeenNthCalledWith(
 			1,
-			'/api/catalog?page=1&limit=15&country=Ethiopia',
+			'/api/catalog?page=1&limit=15&showWholesale=false&country=Ethiopia',
 			expect.objectContaining({ signal: expect.any(AbortSignal) })
 		);
 	});
