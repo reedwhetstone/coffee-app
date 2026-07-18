@@ -25,7 +25,7 @@ PR 1 makes the evidence contract canonical. PR 2 makes the intent lifecycle cano
 - An Ask Parchment action that opens the existing chat workspace with structured context containing the owned brief, canonical Radar rows, publication metadata, evidence, and limitations.
 - Parchment may explain, compare, and help refine the sourcing need. It cannot invent evidence, change canonical ordering, or label an anomaly a deal.
 - Passive product analytics for dashboard exposure, Radar open, result open, Ask Parchment handoff, supplier click, tracked-lot/watchlist action, brief refinement, and repeat use.
-- Reuse durable records such as tracked lots, brief updates, and chat conversations as the source of truth for those actions. Add only a minimal append-only server event sink for non-durable exposures and clicks.
+- Reuse durable records such as tracked lots, brief updates, and chat conversations as the source of truth for those actions. Add only a minimal append-only event contract for non-durable exposures and clicks, persisted through the Parchment-owned analytics/event path; this PR does not add a coffee-app table or migration.
 - Focused tests and existing docs/copy alignment.
 
 ## Out of scope
@@ -75,8 +75,8 @@ Analytics payloads contain fixed event names and identifiers only where required
 - `src/routes/procurement/briefs/[id]/radar/+page.svelte`
 - existing chat action/context handoff modules and tests
 - existing tracked-lot/watchlist action integration
-- `supabase/migrations/<timestamp>_radar_product_events.sql` only if existing telemetry cannot represent non-durable events
-- a small server-side analytics helper with no browser database write path
+- the Parchment-owned analytics/event contract and migration path only if existing telemetry cannot represent non-durable events; no `supabase/migrations` file or database-authority change belongs in coffee-app
+- a thin BFF/SDK call for fixed analytics events, with persistence owned by Parchment and no browser database write path
 - dependency/lockfile updates only if the Parchment SDK release requires them
 
 ## Acceptance criteria
@@ -97,7 +97,7 @@ Analytics payloads contain fixed event names and identifiers only where required
 - Dashboard and server-load tests for PPI personalization, ownership, entitlement, fresh, stale, unavailable, empty, and upstream failure.
 - Component tests for evidence, source/tracked-lot actions, limitations, keyboard use, and mobile layout.
 - Structured Ask Parchment context tests, including stale/unavailable suppression and evidence fidelity.
-- Analytics tests for fixed event shape, server-only persistence, append-only behavior, and exclusion of sensitive fields.
+- Analytics contract/client tests for fixed event shape and exclusion of sensitive fields; persistence and append-only behavior are owned and tested by Parchment.
 - Regression coverage for existing dashboard, Market Index, tracked-lot, and chat workflows.
 - `pnpm check --fail-on-warnings`, focused tests, lint, and production build using the repository's documented environment path.
 - One post-deploy smoke with an owned test brief and manual source reconciliation performed internally before customer exposure.
