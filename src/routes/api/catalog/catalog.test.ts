@@ -68,6 +68,16 @@ describe('/api/catalog route', () => {
 		);
 	});
 
+	it('normalizes contradictory wholesale-only catalog scope flags', async () => {
+		await GET(
+			makeEvent('https://app.test/api/catalog?page=1&showWholesale=false&wholesaleOnly=true')
+		);
+
+		expect(mockCatalogList).toHaveBeenCalledWith(
+			expect.objectContaining({ showWholesale: 'true', wholesaleOnly: 'true' })
+		);
+	});
+
 	it('translates stable app filter aliases into the current Parchment query contract', async () => {
 		await GET(
 			makeEvent(

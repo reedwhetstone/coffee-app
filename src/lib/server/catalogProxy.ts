@@ -180,6 +180,17 @@ export interface ProxyCatalogListOptions {
 	preferHandling?: ParchmentPreferHandling;
 }
 
+/** Keep the broad visibility flag coherent with the narrower wholesale-only scope. */
+export function normalizeCatalogWholesaleScope(query: Record<string, string | string[]>): void {
+	const wholesaleOnly = query.wholesaleOnly;
+	if (
+		wholesaleOnly === 'true' ||
+		(Array.isArray(wholesaleOnly) && wholesaleOnly.includes('true'))
+	) {
+		query.showWholesale = 'true';
+	}
+}
+
 /**
  * Proxy a catalog list request to Parchment, forwarding the caller credential.
  *
@@ -203,6 +214,7 @@ export async function proxyCatalogList(
 	if (options.defaultShowWholesale && !event.url.searchParams.has('showWholesale')) {
 		query.showWholesale = 'true';
 	}
+	normalizeCatalogWholesaleScope(query);
 
 	// Public API proxy: relay Parchment's status/body verbatim and preserve the
 	// external caller's own `Prefer` (default strict), so gated failures are not

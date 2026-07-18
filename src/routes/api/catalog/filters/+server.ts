@@ -5,6 +5,7 @@ import {
 	resolveCatalogCredentialMode
 } from '$lib/server/parchmentClient';
 import { resolvePrincipal } from '$lib/server/principal';
+import { normalizeCatalogWholesaleScope } from '$lib/server/catalogProxy';
 import { applyBffCatalogCacheHeaders, applyBffCatalogNoStore } from '$lib/server/cacheHeaders';
 import type { RequestHandler } from './$types';
 
@@ -43,6 +44,7 @@ export const GET: RequestHandler = async (event) => {
 		if (url.searchParams.get('wholesaleOnly') === 'true') {
 			query.wholesaleOnly = 'true';
 		}
+		normalizeCatalogWholesaleScope(query as Record<string, string | string[]>);
 
 		const { data, error } = await client.catalog.facets(query);
 		if (error) {

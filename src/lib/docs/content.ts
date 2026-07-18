@@ -386,13 +386,13 @@ const docsPages: DocsPage[] = [
 							'Anonymous GET /v1/catalog',
 							'Public discovery, quick evaluation, and proof-of-value embeds',
 							'None',
-							'Retail and wholesale rows with the public field projection. No X-RateLimit-* headers or API-key usage accounting.'
+							'Publishable retail and wholesale rows with the public field projection. No X-RateLimit-* headers or API-key usage accounting.'
 						],
 						[
 							'API-key GET /v1/catalog',
 							'Production integrations, sync jobs, and server-to-server tooling',
 							'Authorization: Bearer <api_key>',
-							'Retail and wholesale rows with the public field projection, plan enforcement, X-RateLimit-* headers, and stable HTTP compatibility guarantees.'
+							'Publishable retail and wholesale rows with the public field projection, plan enforcement, X-RateLimit-* headers, and stable HTTP compatibility guarantees.'
 						],
 						[
 							'API-key GET /v1/catalog/{id}/similar',
@@ -492,7 +492,7 @@ const docsPages: DocsPage[] = [
 					'The canonical response includes data, pagination, and meta blocks. The meta block reports auth kind, role, plan, access scope, row-limit state, and cache metadata.',
 					'Full catalog rows include legacy structured processing fields, Purveyor Score fields, plus a nested process object. Null values stay null when the supplier has not disclosed structured metadata. process.evidence_available reports whether internal provenance exists without exposing raw evidence quotes in the public response.',
 					'The example below shows an API-key response. Anonymous and session responses keep the same top-level shape. The main differences are headers and search leverage: only API-key requests emit X-RateLimit-* headers, and only member/admin sessions or paid API tiers can use structured process facet filters.',
-					`Viewer-tier API keys are capped to 25 rows per call and cannot use structured process facet filters. Member and enterprise API plans remove that lower plan cap and unlock process facet filters, while still sharing the ${MAX_CATALOG_PAGE_LIMIT}-row per-request ceiling. Every caller can discover retail and wholesale coffees by default; richer field projections remain limited to privileged member sessions.`,
+					`Viewer-tier API keys are capped to 25 rows per call and cannot use structured process facet filters. Member and enterprise API plans remove that lower plan cap and unlock process facet filters, while still sharing the ${MAX_CATALOG_PAGE_LIMIT}-row per-request ceiling. Every caller can discover publishable retail and wholesale coffees by default; richer field projections remain limited to privileged member sessions.`,
 					'Cookies are not part of the public API contract. They only matter when they resolve to a valid first-party session, and the legacy /api/catalog-api alias does not accept session auth as a substitute for an API key.'
 				],
 				codeBlocks: [
@@ -738,7 +738,7 @@ const docsPages: DocsPage[] = [
 							'Discovery, evaluation, and public embeds',
 							`Basic public query surface only. Structured process facets return 401. Defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted; page without limit falls back to ${DEFAULT_PAGINATED_PAGE_SIZE}.`,
 							'Content-Type only',
-							'Retail and wholesale catalog rows with the public field projection. No X-RateLimit-* headers.'
+							'Publishable retail and wholesale catalog rows with the public field projection. No X-RateLimit-* headers.'
 						],
 						[
 							'API-key /v1/catalog',
@@ -1182,7 +1182,7 @@ const docsPages: DocsPage[] = [
 							'GET',
 							'Anonymous or session',
 							'Internal UI helper',
-							'Returns stocked-only filter metadata across retail and wholesale rows by default. Callers can opt into hobbyist-only values.'
+							'Returns stocked-only filter metadata across publishable retail and wholesale rows by default. Callers can opt into hobbyist-only values.'
 						],
 						[
 							'/api/catalog-api',

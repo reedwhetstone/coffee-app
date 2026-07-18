@@ -83,6 +83,18 @@ describe('/api/catalog/filters', () => {
 		);
 	});
 
+	it('normalizes contradictory wholesale-only facet scope flags', async () => {
+		mockFacets.mockResolvedValue({ data: { values: {} }, error: null });
+
+		await GET(
+			makeEvent('https://app.test/api/catalog/filters?showWholesale=false&wholesaleOnly=true')
+		);
+
+		expect(mockFacets).toHaveBeenCalledWith(
+			expect.objectContaining({ showWholesale: 'true', wholesaleOnly: 'true' })
+		);
+	});
+
 	it('preserves hobbyist-only visibility explicitly', async () => {
 		mockFacets.mockResolvedValue({ data: { values: {} }, error: null });
 

@@ -19,7 +19,7 @@ describe('api docs contract', () => {
 			'Defaults to 100 rows when page and limit are omitted; page without limit falls back to 15.'
 		);
 		expect(serializedPage).toContain(
-			'Retail and wholesale catalog rows with the public field projection. No X-RateLimit-* headers.'
+			'Publishable retail and wholesale catalog rows with the public field projection. No X-RateLimit-* headers.'
 		);
 		expect(serializedPage).toContain(
 			'Canonical integration path for developers, sync jobs, and agents. API Green is for evaluation; API Origin and Enterprise unlock process search leverage.'
