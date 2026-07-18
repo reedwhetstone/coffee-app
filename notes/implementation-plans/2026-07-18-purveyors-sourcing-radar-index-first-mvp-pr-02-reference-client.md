@@ -18,6 +18,7 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 - Server-first loading through the Parchment SDK.
 - Fresh result rows with lot identity, current price, brief-match reasons, eligible signal evidence, lot-age context (crop year / first-observed date, or the API's `ageContext: unknown` disclosure rendered honestly), source, publication freshness/quality, limitations, and one source-detail action.
 - Honest stale, unavailable, empty, denied, and error states.
+- Concierge pilot onboarding: an authorized operator provisions one owned active brief through the existing privileged brief-creation contract before each PPI-only participant starts; no new self-service brief capture is added.
 - Minimal events for Radar open, indexed row impression, source-detail click, and pilot disposition. This introduces a small new pilot-event helper — the repo has no general client event-tracking pattern today, so this is new telemetry surface, kept deliberately minimal: server-side capture, fixed event names, no criteria or user-entered text in payloads.
 - A compact pilot disposition control: already known, investigate, shortlist, sample/quote, or not relevant.
 - Focused tests and existing docs/copy alignment where required.
@@ -28,7 +29,7 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 - Automatic refresh, scheduler, email, Discord, webhook, SMS, or push delivery.
 - Stored recommendation runs, notification preferences, team workflows, or history charts.
 - Client-side ranking, freshness decisions, signal calculation, or AI summaries.
-- Brief creation/editing, CLI changes, pricing, checkout, or public teaser work.
+- PPI self-service brief creation/editing, CLI changes, pricing, checkout, or public teaser work. The pilot is explicitly concierge-seeded through the existing authorized contract; this PR adds no new write route, schema, or permission broadening.
 - Purchase, RFQ, supplier-message, inventory-write, or other external actions.
 
 ## UX invariants
@@ -52,6 +53,7 @@ This PR is the complete buyer-facing MVP. It is not the first step of an assumed
 ## Acceptance criteria
 
 - A PPI-only entitled owner can see their owned active briefs on the dashboard and open Radar from the “Review indexed matches” action; Mallard membership is not required.
+- A PPI-only pilot participant is onboarded with one operator-provisioned owned active brief, so the out-of-scope capture UI is not a hidden prerequisite for the test.
 - A member/admin without `ppiAccess` retains the existing brief/catalog workflow but does not receive the Radar action.
 - Another user, anonymous user, and insufficiently entitled user receive the correct server-enforced state.
 - Fresh rows render canonical evidence, including lot-age context or its `unknown` disclosure, and link to the correct source/lot.

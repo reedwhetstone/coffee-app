@@ -98,6 +98,7 @@ Prototype code may be exercised against stale/unavailable fixtures, but the buye
 - Fresh, stale, unavailable, empty, and denied states.
 - The existing Parchment Intelligence entitlement (`ppi_access`, the $39/month add-on). Radar is not a member-tier or public surface.
 - Source-detail clicks and a minimal pilot feedback capture.
+- Concierge onboarding for the pilot: before a PPI-only participant starts, an authorized operator provisions one owned active brief through the existing privileged brief-creation contract and confirms that it appears in the participant's dashboard. This is pilot setup, not a new PPI self-service create/edit surface.
 - A concierge pilot after the live gate: target five partners with three as the floor, running eight to twelve weeks or timed to a heavy arrival season.
 
 ### Out of scope
@@ -188,6 +189,7 @@ The pilot fails if the output mostly restates obvious catalog matches, if stale/
 - `stale` and `unavailable` states return no indexed opportunity rows and use no recommendation language.
 - No client hardcodes or recomputes freshness, signal rank, or entitlement.
 - Direct URL and API calls enforce ownership and Parchment Intelligence access.
+- Each PPI-only pilot participant can be onboarded with one operator-provisioned owned active brief; brief creation/editing UX remains out of scope for this MVP.
 - The user reaches the supplier/source record in one action.
 - No runtime in any repository adds a scheduler, delivery side effect, new score, or run-history storage.
 
