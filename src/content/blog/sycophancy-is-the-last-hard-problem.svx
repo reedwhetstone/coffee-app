@@ -2,7 +2,7 @@
 title: "Sycophancy Is the Last Hard Problem in AI-Assisted Software Development"
 date: "2026-03-26"
 description: "RLHF-trained coding agents do not just make mistakes. They silently implement the wrong thing, accruing alignment debt that passes tests and leaves the codebase worse off."
-tags: ["ai", "agentic", "coding", "infrastructure"]
+tags: ["ai", "agents", "engineering"]
 pillar: "agentic-stack"
 draft: false
 readingTime: 8

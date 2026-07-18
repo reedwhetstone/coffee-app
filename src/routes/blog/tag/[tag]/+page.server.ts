@@ -1,7 +1,9 @@
 import type { PageServerLoad } from './$types';
+import { error, redirect } from '@sveltejs/kit';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { getPostsByTag } from '$lib/server/blog';
 import { createSchemaService } from '$lib/services/schemaService';
+import { getCanonicalBlogTag, isBlogTag } from '$lib/types/blog.types';
 
 function formatTagLabel(tag: string): string {
 	return tag
@@ -11,6 +13,14 @@ function formatTagLabel(tag: string): string {
 }
 
 export const load: PageServerLoad = async ({ params, url }) => {
+	const canonicalTag = getCanonicalBlogTag(params.tag);
+	if (canonicalTag) {
+		throw redirect(308, `/blog/tag/${canonicalTag}`);
+	}
+	if (!isBlogTag(params.tag)) {
+		throw error(404, 'Blog tag not found');
+	}
+
 	const posts = await getPostsByTag(params.tag);
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const pageUrl = `${baseUrl}${url.pathname}`;

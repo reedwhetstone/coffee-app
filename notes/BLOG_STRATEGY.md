@@ -1,8 +1,8 @@
 # Purveyors Blog Proposal
 
-**Status:** Active (10 posts live)
+**Status:** Active (17 posts live)
 **Created:** 2026-02-19
-**Updated:** 2026-03-20
+**Updated:** 2026-07-18
 
 ---
 
@@ -70,6 +70,24 @@ Ship one high-signal Coffee Intelligence piece every Wednesday that can be publi
 Wednesdays are reserved for Coffee Intelligence output first; other blog experiments happen around this anchor.
 
 ## Content Pillars
+
+### Tag taxonomy
+
+Pillars identify the post's primary editorial lane. Tags are a smaller set of cross-cutting reader filters. A post should use 3 canonical tags by default and 4 only when the fourth adds a genuinely distinct retrieval path.
+
+Canonical tags:
+
+- `ai` — model behavior, inference, and AI capabilities or limits
+- `agents` — agentic software, workflows, and human-agent collaboration
+- `coffee` — the coffee domain, including producers, roasters, and the product itself
+- `data` — collection, normalization, evidence, and information economics
+- `engineering` — architecture, coding, infrastructure, operations, and technical evaluation
+- `enterprise` — enterprise adoption, constraints, and economics
+- `product` — product design, organizational choices, and user experience
+- `strategy` — competition, moats, pricing, and decision-making
+- `supply-chain` — sourcing, market structure, and physical coffee flows
+
+Do not mint a tag for a company, article-specific phrase, or one-off concept. Use the title and description for specificity. Add a new canonical tag only when at least three existing or firmly planned posts need a reader-facing filter that the current set cannot express.
 
 ### 1. Building an AI-First Product (GenUI + Purveyors)
 
@@ -176,7 +194,7 @@ Each post is a `.svx` file with frontmatter:
 ---
 title: 'The Architecture of a Coffee Data Pipeline'
 date: 2026-02-25
-tags: [scraper, architecture, data]
+tags: [coffee, data, engineering]
 pillar: coffee-data-pipeline
 description: 'How we built a multi-supplier scraper that normalizes green coffee data from 26 sources.'
 draft: false

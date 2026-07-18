@@ -2,7 +2,7 @@
 title: "Inference Is in the Name"
 date: "2026-03-05"
 description: "If your workflow has no unknowns, runtime LLM inference is often the wrong architecture. Build deterministic cores, then add AI where adaptation actually matters."
-tags: ["ai", "agentic", "infrastructure", "operations"]
+tags: ["ai", "agents", "engineering"]
 pillar: "agentic-stack"
 draft: false
 readingTime: 9

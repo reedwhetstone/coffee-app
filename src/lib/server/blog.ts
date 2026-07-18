@@ -1,4 +1,10 @@
-import type { BlogPost, BlogPostModule } from '$lib/types/blog.types';
+import {
+	BLOG_TAGS,
+	isBlogTag,
+	validateBlogPostTags,
+	type BlogPost,
+	type BlogPostModule
+} from '$lib/types/blog.types';
 
 /**
  * Load all blog posts from src/content/blog/*.svx
@@ -12,6 +18,7 @@ export async function getAllPosts(): Promise<BlogPost[]> {
 	for (const [path, module] of Object.entries(modules)) {
 		const slug = path.split('/').pop()?.replace('.svx', '') ?? '';
 		const metadata = module.metadata;
+		validateBlogPostTags(slug, metadata.tags);
 
 		// Skip drafts in production
 		if (metadata.draft && import.meta.env.PROD) continue;
@@ -44,13 +51,15 @@ export async function getAllTags(): Promise<string[]> {
 			tags.add(tag);
 		}
 	}
-	return [...tags].sort();
+	return BLOG_TAGS.filter((tag) => tags.has(tag));
 }
 
 /**
  * Get posts filtered by tag
  */
 export async function getPostsByTag(tag: string): Promise<BlogPost[]> {
+	if (!isBlogTag(tag)) return [];
+
 	const posts = await getAllPosts();
 	return posts.filter((p) => p.tags.includes(tag));
 }

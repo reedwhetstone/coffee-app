@@ -2,7 +2,7 @@
 title: "Building a Coffee Data Pipeline from Scratch"
 date: "2026-02-20"
 description: "The most interesting thing about the purveyors data pipeline isn't the scraping. It's the recursive feedback loop, and what it reveals about directing AI agents."
-tags: ["data-pipeline", "agentic", "coffee"]
+tags: ["agents", "coffee", "data", "engineering"]
 pillar: "coffee-data-pipeline"
 draft: false
 readingTime: 12
