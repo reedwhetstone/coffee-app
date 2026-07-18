@@ -46,6 +46,20 @@
 		class="min-w-[160px] flex-1 rounded-md border border-line bg-surface-canvas px-3 py-1.5 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
 	/>
 
+	<label
+		for="anonymous-hobbyist-suppliers-only"
+		class="flex items-center gap-2 rounded-md border border-line bg-surface-canvas px-3 py-1.5 text-sm text-ink"
+	>
+		<input
+			id="anonymous-hobbyist-suppliers-only"
+			type="checkbox"
+			checked={!$filterStore.showWholesale}
+			onchange={(e) => filterStore.setShowWholesale(!e.currentTarget.checked)}
+			class="h-4 w-4 rounded border border-line text-accent focus:ring-2 focus:ring-accent"
+		/>
+		<span>Hobbyist suppliers only</span>
+	</label>
+
 	{#if hasInlineFilters}
 		<button
 			onclick={filterStore.clearFilters}
