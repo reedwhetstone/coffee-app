@@ -17,7 +17,7 @@ This slice is independently useful even if personalized Radar presentation ships
 - Thin same-origin BFF/resource calls that broker the session credential and forward canonical requests without adding authorization or procurement logic.
 - Focused setup UX in the existing authenticated product shell, with an obvious “Tell Parchment what you are sourcing” entry point.
 - Honest loading, validation, denied, conflict, unavailable, empty, and success states derived from the canonical response.
-- Existing matches as the immediate post-save utility while personalized Radar waits for PR 5.
+- Existing matches are the immediate post-save utility while personalized Radar waits for PR 5. After a successful save, the BFF consumes `GET /v1/procurement/briefs/{id}/matches` through the published SDK and renders the owned response for PPI-only customers; it does not fall back to member-gated catalog brief summaries or a local database read.
 - Focused route, BFF, component, accessibility, and regression tests.
 
 ## Out of scope
@@ -34,7 +34,7 @@ This slice is independently useful even if personalized Radar presentation ships
 1. The customer chooses “Tell Parchment what you are sourcing” from the authenticated PPI experience.
 2. They name the need and select from the currently supported constraints.
 3. Coffee-app sends the canonical request through the thin BFF; Parchment validates and stores it under the authenticated owner.
-4. The customer can inspect existing matches, refine the constraints, activate another saved need, or deactivate it.
+4. After save, the customer can inspect the owned brief's existing matches through the canonical Parchment matches read, then refine the constraints, activate another saved need, or deactivate it.
 5. PR 5 uses the same owned active brief as the input to the personalized Radar experience.
 
 This should feel like configuring an agent, not filing an internal research form.
@@ -44,6 +44,7 @@ This should feel like configuring an agent, not filing an internal research form
 - Coffee-app never sends or accepts a caller-selected `user_id`.
 - The browser never writes `sourcing_briefs` or `user_roles` directly.
 - The BFF attaches credentials and preserves the canonical request/response contract; it does not decide entitlement or revalidate business rules independently.
+- The post-save handoff uses the canonical Parchment matches SDK method and preserves its fresh, empty, denied, unavailable, and error states; it never substitutes a member-only catalog summary.
 - No service-role credential reaches the browser or ordinary coffee-app runtime.
 - The UI may be more restrictive than the API but never presents a control the canonical entitlement will reject as supposedly available.
 - Existing member/admin brief presentation remains coherent.
@@ -64,12 +65,13 @@ This should feel like configuring an agent, not filing an internal research form
 - Canonical invalid-criteria, denied, conflict, unavailable, and upstream-error responses render distinct, useful states.
 - Existing member/admin brief behavior remains available and covered.
 - The setup flow is keyboard accessible, screen-reader coherent, mobile usable, and honest about supported constraints.
-- After saving, the customer reaches existing matches or the next useful action without being asked to validate the product.
+- After saving, a PPI-only customer reaches the owned existing-matches response through the canonical Parchment/SDK path, or receives a truthful empty, denied, unavailable, or error state with the next useful action; the flow never depends on Mallard membership or a member-gated catalog summary.
 - No Radar presentation, notification, recommendation history, database migration, or external side effect is added.
 
 ## Test plan
 
 - Thin BFF tests proving request/response forwarding, session credential brokerage, CSRF/trusted-mutation enforcement, and canonical error preservation.
+- Post-save matches tests proving the PPI session reaches the canonical `/v1/procurement/briefs/{id}/matches` SDK path and does not call a member-only catalog summary.
 - Component tests for setup, edit, activation, deactivation, validation, loading, empty, conflict, denied, and unavailable states.
 - Negative test proving the browser path has no direct Supabase mutation.
 - Regression coverage for existing dashboard and member/admin brief workflows.

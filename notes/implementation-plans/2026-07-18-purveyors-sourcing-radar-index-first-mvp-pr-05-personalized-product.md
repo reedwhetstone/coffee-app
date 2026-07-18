@@ -16,9 +16,9 @@ PR 1 makes the evidence contract canonical. PR 2 makes the intent lifecycle cano
 
 ## In scope
 
-- A personalized Sourcing Radar module on the authenticated dashboard for `ppiAccess` owners with active briefs.
+- A personalized Sourcing Radar module on the authenticated dashboard for `ppiAccess` owners that renders one independently identified summary for every owned active brief; it never assumes a singular current brief or silently chooses one.
 - A focused detail route, proposed as `/procurement/briefs/[id]/radar`, for the full canonical result.
-- Dashboard summary copy such as “3 coffees worth inspecting across 2 suppliers,” derived from the canonical response and never shown for stale/unavailable evidence.
+- Dashboard summary copy such as “3 coffees worth inspecting across 2 suppliers,” derived separately from each canonical response and never shown for stale/unavailable evidence.
 - Fresh result rows with lot identity, current price, brief-match reasons, eligible market-scoped signal evidence, lot-age context, source, publication freshness/quality, and limitations.
 - Honest stale, unavailable, empty, denied, and upstream-error states.
 - Existing tracked-lot/watchlist and supplier-source actions as useful next steps. Do not create a parallel shortlist store.
@@ -40,8 +40,8 @@ PR 1 makes the evidence contract canonical. PR 2 makes the intent lifecycle cano
 
 ## Customer workflow
 
-1. The customer opens Purveyors and immediately sees a personalized Radar summary for their active sourcing need.
-2. They inspect a short list of current matching coffees with clear reasons, price evidence, crop-age context, provenance, and limitations.
+1. The customer opens Purveyors and immediately sees one personalized Radar summary for each active sourcing need, with no implicit or arbitrary current-brief selection.
+2. They inspect each short list of current matching coffees with clear reasons, price evidence, crop-age context, provenance, and limitations.
 3. They ask Parchment to compare candidates, explain the evidence, or help refine the brief without reconstructing context.
 4. They continue through an existing useful action: track the lot or open the supplier record.
 5. On later visits, Radar evaluates the latest accepted publication against the current brief. No scheduler or external alert is required for the MVP.
@@ -56,6 +56,7 @@ The customer receives value from every step. Analytics observe the workflow; the
 - `stale` and `unavailable` states never render recommendation-style cards. They explain why indexed evidence is withheld and may link to plain catalog matches.
 - A row with `ageContext: unknown` says so where the buyer will see it.
 - One action reaches the canonical supplier/source record; one action opens Ask Parchment with structured context.
+- Each active brief keeps its own summary, detail route, Radar request, and Ask Parchment context; multiple active briefs cannot be collapsed or cross-wired.
 - No UI or chat code recalculates score, rank, age, freshness, or entitlement.
 
 ## Analytics checkpoints
@@ -80,7 +81,9 @@ Analytics payloads contain fixed event names and identifiers only where required
 
 ## Acceptance criteria
 
-- A PPI-only owner with an active brief sees a personalized Radar summary on the dashboard and can open the full result; Mallard membership is not required.
+- A PPI-only owner with zero active briefs sees a truthful empty/setup state and no Radar summary.
+- A PPI-only owner with one active brief sees exactly one summary and its matching detail route; Mallard membership is not required.
+- A PPI-only owner with multiple active briefs sees exactly one summary per active brief, with each SDK request, detail route, and Ask Parchment handoff carrying the correct `briefId`; no active brief is silently dropped or selected arbitrarily.
 - A member/admin without `ppiAccess` retains existing brief/catalog behavior but does not receive Radar.
 - Another user, anonymous user, and insufficiently entitled user receive the correct server-enforced state.
 - Fresh rows render canonical evidence and the correct supplier/tracked-lot actions.
@@ -93,7 +96,7 @@ Analytics payloads contain fixed event names and identifiers only where required
 
 ## Test plan
 
-- Dashboard and server-load tests for PPI personalization, ownership, entitlement, fresh, stale, unavailable, empty, and upstream failure.
+- Dashboard and server-load tests for zero, one, and multiple active briefs, including per-brief identity and no cross-wiring, plus PPI personalization, ownership, entitlement, fresh, stale, unavailable, empty, and upstream failure.
 - Component tests for evidence, source/tracked-lot actions, limitations, keyboard use, and mobile layout.
 - Structured Ask Parchment context tests, including stale/unavailable suppression and evidence fidelity.
 - Analytics client tests for the fixed PR 3 event shape and exclusion of sensitive fields; persistence and append-only behavior remain covered by Parchment.

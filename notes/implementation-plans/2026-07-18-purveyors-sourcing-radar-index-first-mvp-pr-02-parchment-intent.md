@@ -18,7 +18,7 @@ The contract and tests may be developed before the transfer finishes, but the PR
 
 ## In scope
 
-- Extend the canonical procurement brief resource so an authenticated `ppiAccess` session owner can create, list, get, update, activate, and deactivate their own constrained sourcing briefs.
+- Extend the canonical procurement brief resource so an authenticated `ppiAccess` session owner can create, list, get, update, activate, and deactivate their own constrained sourcing briefs, and read the existing matches subresource for an owned brief.
 - Preserve current member/admin session and supported owner-bound API-key behavior deliberately. Do not widen API-key writes implicitly or let wildcard scopes gain new mutation authority.
 - Reuse the existing versioned, closed-set criteria schema and validation. Do not add new criteria merely to make setup feel richer.
 - Derive `user_id` from the authenticated principal. Callers cannot submit or override ownership.
@@ -45,10 +45,11 @@ The existing resource becomes the single lifecycle contract:
 - `GET /v1/procurement/briefs?status=active|inactive|all` lists the principal's briefs under the resolved entitlement. Preserve the current active-only default for backward compatibility; self-service clients use an explicit status when managing lifecycle state.
 - `POST /v1/procurement/briefs` creates a validated brief for the principal-derived owner.
 - `GET /v1/procurement/briefs/{id}` returns an owned brief without revealing cross-owner existence.
+- `GET /v1/procurement/briefs/{id}/matches` is readable by an authenticated `ppiAccess` session owner for that owner's brief, while preserving the existing member/admin session and supported owner-bound API-key behavior for other callers.
 - `PATCH /v1/procurement/briefs/{id}` updates supported name, criteria, and active-state fields with optimistic conflict behavior where required by the existing resource model.
 - `DELETE /v1/procurement/briefs/{id}` is not introduced for the MVP. Deactivation preserves history and remains the customer-facing removal path.
 
-The generated SDK exposes equivalent list, create, get, update, activate, and deactivate methods. Coffee-app and future machine consumers use those methods instead of writing `sourcing_briefs` directly.
+The generated SDK exposes equivalent list, create, get, matches, update, activate, and deactivate methods. Coffee-app and future machine consumers use those methods instead of writing `sourcing_briefs` directly.
 
 ## Authorization and database invariants
 
@@ -75,6 +76,7 @@ The generated SDK exposes equivalent list, create, get, update, activate, and de
 ## Acceptance criteria
 
 - A PPI-only authenticated session can create, list, get, update, activate, and deactivate its own valid sourcing brief without Mallard membership or operator intervention.
+- A PPI-only authenticated session can read the canonical matches for its own brief through `GET /v1/procurement/briefs/{id}/matches` and the generated SDK; cross-owner and insufficient-entitlement reads remain denied without enumeration.
 - Deactivated briefs remain discoverable after reload through the explicit inactive/all list filter and can be reactivated without a remembered object ID.
 - Identity is principal-derived and cross-owner access is denied without resource enumeration.
 - Unsupported criteria and unsupported mutation fields fail closed and never silently no-op.
@@ -86,11 +88,11 @@ The generated SDK exposes equivalent list, create, get, update, activate, and de
 
 ## Test plan
 
-- Resource and route tests for active-default, inactive, and all-status listing; create, get, update, activate, deactivate; reload/reactivation; invalid criteria, invalid fields, ownership, entitlement, and non-enumeration.
+- Resource and route tests for active-default, inactive, and all-status listing; create, get, matches, update, activate, deactivate; reload/reactivation; invalid criteria, invalid fields, ownership, entitlement, and non-enumeration.
 - Two-step negative test: attempted role promotion is denied, then direct brief mutation remains denied.
 - Direct Supabase REST/RLS negative coverage for PPI-only, anonymous, cross-owner, and insufficiently entitled sessions.
 - Regression coverage for intended member/admin and existing API-key behavior.
-- OpenAPI snapshot/generation and SDK client tests for every method and response.
+- OpenAPI snapshot/generation and SDK client tests for every method and response, including the PPI-readable matches method.
 - Migration history, disposable-schema, and grant/policy checks from the accepted database migration release path.
 - Repository typecheck, test, lint, and build.
 
