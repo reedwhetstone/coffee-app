@@ -74,6 +74,17 @@ describe('/api/catalog/origin-price-stats', () => {
 		});
 	});
 
+	it('preserves the explicit hobbyist-only stats scope', async () => {
+		const response = await GET(
+			makeEvent('https://app.test/api/catalog/origin-price-stats?showWholesale=false')
+		);
+
+		expect(mockOriginPriceStats).toHaveBeenCalledWith({ showWholesale: 'false' });
+		expect(await response.json()).toMatchObject({
+			meta: { access: { publicOnly: true, showWholesale: false, wholesaleOnly: false } }
+		});
+	});
+
 	it('relays Parchment origin price stats and preserves the meta.access shape', async () => {
 		const response = await GET(makeEvent('https://app.test/api/catalog/origin-price-stats'));
 

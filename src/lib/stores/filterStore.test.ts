@@ -307,6 +307,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		);
 
 		await vi.runOnlyPendingTimersAsync();
+		expect(fetchSpy).toHaveBeenCalledWith('/api/catalog/filters?showWholesale=false');
 		fetchSpy.mockClear();
 
 		filterStore.clearFiltersByKeys([

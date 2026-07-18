@@ -575,6 +575,14 @@ describe('/catalog price intelligence', () => {
 				canUseSavedSearches: true,
 				canExport: true
 			},
+			initialCatalogState: {
+				filters: {},
+				sortField: null,
+				sortDirection: null,
+				showWholesale: true,
+				wholesaleOnly: false,
+				pagination: { page: 1, limit: 15 }
+			},
 			originPriceStats: [{ ...colombiaStats, median: 8.5 }]
 		} as unknown as Partial<PageData>);
 
@@ -592,7 +600,7 @@ describe('/catalog price intelligence', () => {
 					filters: {},
 					sortField: null,
 					sortDirection: null,
-					showWholesale: true,
+					showWholesale: false,
 					wholesaleOnly: false,
 					pagination: { page: 1, limit: 15 }
 				},
@@ -603,10 +611,9 @@ describe('/catalog price intelligence', () => {
 
 		await waitFor(() => {
 			expect(fetch).toHaveBeenCalledWith(
-				'/api/catalog/origin-price-stats?showWholesale=true',
+				'/api/catalog/origin-price-stats?showWholesale=false',
 				expect.objectContaining({ signal: expect.any(AbortSignal) })
 			);
-			expect(screen.getByText(/above median/i)).toBeInTheDocument();
 		});
 	});
 

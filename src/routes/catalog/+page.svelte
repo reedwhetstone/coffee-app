@@ -339,7 +339,7 @@
 
 	function buildOriginStatsParams(showWholesale: boolean, wholesaleOnly: boolean): URLSearchParams {
 		const params = new URLSearchParams();
-		if (showWholesale) params.set('showWholesale', 'true');
+		params.set('showWholesale', showWholesale ? 'true' : 'false');
 		if (wholesaleOnly) params.set('wholesaleOnly', 'true');
 		return params;
 	}

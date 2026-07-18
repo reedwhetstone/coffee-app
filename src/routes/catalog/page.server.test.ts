@@ -706,6 +706,15 @@ describe('/catalog page load', () => {
 		]);
 	});
 
+	it('preserves hobbyist-only scope for SSR origin price stats', async () => {
+		const result = (await load(
+			makeLoadInput('viewer', null, 'https://app.test/catalog?showWholesale=false')
+		)) as { originPriceStats: Promise<unknown[]> };
+
+		expect(mockCatalogOriginPriceStats).toHaveBeenCalledWith({ showWholesale: 'false' });
+		await result.originPriceStats;
+	});
+
 	it('forwards the wholesale view param to Parchment when wholesale rows are visible', async () => {
 		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
 		mockCatalogOriginPriceStats.mockResolvedValue({

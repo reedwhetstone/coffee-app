@@ -360,8 +360,8 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Authentication model',
 				bullets: [
-					'GET /v1/catalog supports anonymous discovery across retail and wholesale rows using the public field projection. Anonymous callers get the same public payload shape, but no API-key billing, quota, or X-RateLimit-* usage headers.',
-					'GET /v1/catalog also supports first-party session requests. Viewer sessions share the full row scope; member and admin sessions may unlock richer fields and search leverage.',
+					'GET /v1/catalog supports anonymous discovery across all publishable retail and wholesale rows using the public field projection. Anonymous callers get the same public payload shape, but no API-key billing, quota, or X-RateLimit-* usage headers.',
+					'GET /v1/catalog also supports first-party session requests. Viewer sessions share the publishable row scope; member and admin sessions may additionally access non-public rows, richer fields, and more search leverage.',
 					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API Green stays on the basic public query surface; paid API tiers add structured process facet filtering while remaining public-catalog scoped. API keys use plan-based limits and are the intended production path for server-to-server integrations.',
 					'GET /v1/catalog/{id}/similar requires a member session or an API key with API Origin or Enterprise plus catalog:read. It returns beta similarity candidates for account-linked matching workflows; anonymous callers get 401 and viewer or API Green callers get 403.',
 					'GET /v1/price-index requires an API key whose owner has Parchment Intelligence access. It returns aggregate price-index snapshots, not raw supplier-level rows.',
@@ -410,7 +410,7 @@ const docsPages: DocsPage[] = [
 							'Session GET /v1/catalog',
 							'First-party product reads that share the canonical resource',
 							'Valid Purveyors session cookie',
-							'All sessions share the full retail and wholesale row scope. Member and admin sessions may unlock richer fields and search leverage. First-party product path only; not the recommended external integration mode.'
+							'Viewer sessions receive all publishable retail and wholesale rows. Member and admin sessions may additionally access non-public rows, richer fields, and more search leverage. First-party product path only; not the recommended external integration mode.'
 						],
 						[
 							'purvey catalog',

@@ -339,9 +339,7 @@ function createFilterStore() {
 		try {
 			const state = get({ subscribe });
 			const params = new URLSearchParams();
-			if (state.showWholesale) {
-				params.append('showWholesale', 'true');
-			}
+			params.set('showWholesale', state.showWholesale ? 'true' : 'false');
 			if (state.wholesaleOnly) {
 				params.append('wholesaleOnly', 'true');
 			}

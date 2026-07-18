@@ -235,13 +235,14 @@ export function parseCatalogUrlState(url: URL, routeId = '/catalog'): CatalogUrl
 			: sortField
 				? 'desc'
 				: defaultSort.direction;
+	const wholesaleOnly = url.searchParams.get('wholesaleOnly') === 'true';
 
 	return {
 		filters,
 		sortField,
 		sortDirection,
-		showWholesale: url.searchParams.get('showWholesale') !== 'false',
-		wholesaleOnly: url.searchParams.get('wholesaleOnly') === 'true',
+		showWholesale: wholesaleOnly || url.searchParams.get('showWholesale') !== 'false',
+		wholesaleOnly,
 		pagination: {
 			page: parsePositiveInteger(url.searchParams.get('page'), DEFAULT_PAGE),
 			limit: parsePositiveInteger(url.searchParams.get('limit'), DEFAULT_LIMIT)
@@ -332,10 +333,11 @@ function buildCatalogQueryParams(
 		}
 	}
 
-	if (!state.showWholesale) {
+	if (!state.showWholesale && !state.wholesaleOnly) {
 		params.append('showWholesale', 'false');
 	}
 	if (state.wholesaleOnly) {
+		params.append('showWholesale', 'true');
 		params.append('wholesaleOnly', 'true');
 	}
 

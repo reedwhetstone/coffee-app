@@ -300,8 +300,9 @@ async function streamOriginPriceStats(
 ): Promise<CatalogOriginPriceStats> {
 	if (!client) return [];
 	try {
-		const statsQuery: CatalogOriginPriceStatsQuery = {};
-		if (visibility.showWholesale) statsQuery.showWholesale = 'true';
+		const statsQuery: CatalogOriginPriceStatsQuery = {
+			showWholesale: visibility.showWholesale ? 'true' : 'false'
+		};
 		if (visibility.wholesaleOnly) statsQuery.wholesaleOnly = 'true';
 
 		const { data } = await client.catalog.originPriceStats(statsQuery);

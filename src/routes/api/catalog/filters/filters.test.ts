@@ -83,13 +83,13 @@ describe('/api/catalog/filters', () => {
 		);
 	});
 
-	it('omits wholesale visibility when hobbyist-only is explicitly requested', async () => {
+	it('preserves hobbyist-only visibility explicitly', async () => {
 		mockFacets.mockResolvedValue({ data: { values: {} }, error: null });
 
 		await GET(makeEvent('https://app.test/api/catalog/filters?showWholesale=false'));
 
 		const query = mockFacets.mock.calls[0][0];
-		expect(query).not.toHaveProperty('showWholesale');
+		expect(query).toMatchObject({ showWholesale: 'false' });
 		expect(query).not.toHaveProperty('wholesaleOnly');
 	});
 

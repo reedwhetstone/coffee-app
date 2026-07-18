@@ -23,11 +23,12 @@ export function hasPrivilegedCatalogSession(
 
 export function resolveCatalogVisibility(input: CatalogVisibilityInput): CatalogVisibility {
 	const isPrivilegedSession = hasPrivilegedCatalogSession(input);
+	const wholesaleOnly = isPrivilegedSession && Boolean(input.wholesaleOnlyRequested);
 
 	return {
 		isPrivilegedSession,
 		publicOnly: !isPrivilegedSession,
-		showWholesale: input.showWholesaleRequested !== false,
-		wholesaleOnly: isPrivilegedSession && Boolean(input.wholesaleOnlyRequested)
+		showWholesale: wholesaleOnly || input.showWholesaleRequested !== false,
+		wholesaleOnly
 	};
 }

@@ -39,9 +39,7 @@ export const GET: RequestHandler = async (event) => {
 		});
 
 		const query: CatalogFacetsQuery = { stocked: 'true' };
-		if (url.searchParams.get('showWholesale') !== 'false') {
-			query.showWholesale = 'true';
-		}
+		query.showWholesale = url.searchParams.get('showWholesale') === 'false' ? 'false' : 'true';
 		if (url.searchParams.get('wholesaleOnly') === 'true') {
 			query.wholesaleOnly = 'true';
 		}
