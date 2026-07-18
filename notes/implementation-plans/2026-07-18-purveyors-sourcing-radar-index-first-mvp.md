@@ -1,6 +1,6 @@
 # Purveyors Sourcing Radar: Index-First MVP
 
-**Status:** Proposed validation program
+**Status:** Proposed product MVP
 **Date:** 2026-07-18
 **Owning repositories:** `parchment-api`, then `coffee-app`
 **Governing direction:** Product Vision, ADR-005, ADR-007, ADR-008, ADR-010, ADR-012, and the Parchment API ownership ADRs
@@ -9,11 +9,11 @@
 
 ## Executive decision
 
-Build a two-PR, manual, index-first Sourcing Radar MVP after the active Market Index publication is fresh and provenance-aware.
+Build a three-PR, index-first Sourcing Radar MVP after the active Market Index publication is fresh and provenance-aware.
 
-The MVP answers one question for one saved sourcing brief: **Which current matches carry decision-worthy price evidence right now?** It joins the existing deterministic brief-match contract to the existing Parchment Market Index signal contract. It does not create another score, recommendation model, scheduler, alert system, run-history table, CLI command, or procurement suite.
+The MVP fulfills one complete customer promise: **Tell Purveyors what you need, and your dashboard and Parchment agent will surface the few current coffees across the market worth your attention.** It joins self-service sourcing intent to the existing deterministic brief-match and Parchment Market Index signal contracts, presents the result in a personalized dashboard, and lets the customer investigate it with Parchment or continue to the supplier.
 
-This is a proving slice for the larger Sourcing Radar thesis, not the recurring product itself.
+Minimum describes the number of capabilities, not the completeness of the value proposition. This is a real paid product with passive measurement, not a qualification surface that asks customers to prove whether Purveyors helped them. It does not create another score, recommendation model, scheduler, external alert system, run-history product, CLI command, or procurement suite.
 
 ## Why this boundary changed
 
@@ -22,7 +22,7 @@ The July 15 proposal correctly identified a recurring brief as the strategic pro
 - Saved sourcing intent, deterministic matches, watchlists, dashboard context, market signals, Market Index reads, SDK methods, and CLI reads already exist. Rebuilding them would be duplicate work.
 - Legacy aggregate publication is intentionally frozen. Current Parchment readers select the latest available snapshot and disclose `asOf`/`computedAt`, but do not reject stale evidence. A new buyer-facing surface cannot silently turn the latest stale row into a recommendation.
 - The accepted publication recovery program already owns provenance deployment, cohort policy, transactional publication, shadow comparison, reader cutover, and rollback. Radar should depend on that trust bridge rather than absorb it.
-- The cheapest credible value test is one manual read and one reference-client surface. Recurrence and delivery only become rational after buyers demonstrate that the output changes discovery behavior.
+- The smallest credible product is one canonical read, self-service PPI sourcing intent, a personalized dashboard module, and an Ask Parchment handoff. Recurrence and external delivery only become rational after product behavior shows that buyers repeatedly use the output to investigate or track coffee.
 
 ## External evidence and product implication
 
@@ -57,9 +57,9 @@ This program does not recreate work from PRs #354, #382, #383, #423, or #437. It
 
 **Initial user:** a specialty roaster or green buyer who repeatedly checks several supplier catalogs against a constrained need.
 
-**Job:** “When I have a live sourcing need, show me the matching lots whose current price evidence is unusual enough to inspect, tell me exactly why, and let me verify the source.”
+**Job:** “Remember what I am sourcing, monitor the current market against it, show me the few matching lots worth my attention, explain why, and help me investigate without restarting my search.”
 
-The MVP accelerates discovery only. Sampling, contracting, shipping, financing, inventory planning, and final purchase decisions remain in the buyer's existing workflow.
+The MVP owns the discovery and investigation loop: capture intent, surface relevant evidence, answer follow-up questions, and hand off to an existing watchlist or supplier workflow. Sampling, contracting, shipping, financing, inventory planning, and final purchase decisions remain in the buyer's existing workflow.
 
 ## What “index-first” means
 
@@ -94,48 +94,57 @@ Prototype code may be exercised against stale/unavailable fixtures, but the buye
 ### In scope
 
 - One read-only Parchment API/SDK contract for an owned brief.
-- One manual coffee-app route linked from existing active-brief cards.
+- Self-service creation and refinement of one or more owner-scoped sourcing briefs for authenticated PPI customers, using the existing constrained criteria contract.
+- A personalized Sourcing Radar module on the authenticated dashboard, with a focused detail route for the full result.
+- An Ask Parchment action that opens the current brief and canonical Radar evidence in the existing chat workspace so the customer can compare lots, refine the need, and ask follow-up questions without reconstructing context.
+- Existing watchlist/tracked-lot and supplier-source actions as the useful continuation from a Radar result. No new shortlist storage is required.
 - Fresh, stale, unavailable, empty, and denied states.
 - The existing Parchment Intelligence entitlement (`ppi_access`, the $39/month add-on). Radar is not a member-tier or public surface.
-- Source-detail clicks and a minimal pilot feedback capture.
-- Concierge onboarding for the pilot: before a PPI-only participant starts, an authorized operator uses the private participant-seed runbook in the PR 2 plan to provision one active brief under that participant's user ID. Before PPI-owned cards are exposed, PR 2 must harden `sourcing_briefs` with membership-aware RLS backed by a service-owned entitlement source: authenticated `user_roles` writes, including the current owner-update path, must be revoked or replaced by an equivalent non-client-writable source/security-definer capability function. PPI-only sessions cannot insert, update, or delete rows through Supabase REST; existing member/admin writes remain supported, and the private control-plane/service-role seed path is the sole writer for participant-owned pilot rows. The caller-owned `POST /v1/procurement/briefs` contract is not used with operator credentials. This is pilot setup, not a new PPI self-service create/edit surface.
-- A concierge pilot after the live gate: target five partners with three as the floor, running eight to twelve weeks or timed to a heavy arrival season.
+- Security hardening for `sourcing_briefs` and the client-writable `user_roles` escalation path before PPI self-service launches. Owner-scoped mutations must go through the reviewed server contract and a service-owned entitlement source; direct Supabase REST bypass remains denied.
+- Passive product analytics for exposure, Radar opens, result opens, Ask Parchment handoffs, supplier clicks, watchlist actions, brief refinement, and repeat use. Reuse durable product records where they already express the action; add only the minimal server-side event sink needed for non-durable exposures and clicks.
+- A limited product launch after the live gate: target five sourcing decision-makers with three as the floor, running eight to twelve weeks or timed to a heavy arrival season. Participants receive the actual product, not a separate research harness.
 
 ### Out of scope
 
 - Email, Discord, SMS, webhook, push, or scheduled delivery.
-- Stored Radar runs, week-over-week diffs, notification preferences, or cadence settings.
-- CLI additions. Existing CLI/API reads are sufficient for internal and agent-assisted pilot work.
-- LLM ranking, summarization, autonomous actions, RFQs, supplier messages, or purchases.
+- Stored Radar runs, week-over-week diffs, notification preferences, or cadence settings. The dashboard evaluates the current accepted publication on visit.
+- CLI additions. Existing CLI/API reads are sufficient for internal and agent-assisted launch work.
+- LLM ranking or invented evidence, autonomous actions, RFQs, supplier messages, or purchases. Parchment may explain and compare canonical Radar results but cannot change their order or facts.
 - A new scoring model, `value_quality`, cup-score use, or a generalized recommendation engine.
 - New price plans, checkout changes, public access, team workflows, exports, or integrations.
 - Scraper changes or publication work already owned by the July 16 recovery program.
-- Dashboard or Market Index redesign.
+- A dashboard or Market Index redesign beyond the focused personalized Radar module.
+- Mandatory customer disposition questionnaires, required source-verification chores, or concierge database seeding as the normal onboarding path.
 
-### PPI-only participant seed prerequisite
+### PPI self-service and security prerequisite
 
-The existing procurement contract is caller-owned: `POST /v1/procurement/briefs` assigns the authenticated caller as `user_id`, and the read/match routes are owner-scoped. It cannot be used with an operator/admin/API-Origin credential to create a participant-owned brief. The PR 2 implementation must also replace the current owner-only `sourcing_briefs` INSERT/UPDATE/DELETE policies with membership-aware RLS backed by a service-owned entitlement source before exposing PPI-owned cards. A client-writable `user_roles` row cannot be the authoritative capability source: revoke authenticated INSERT/UPDATE/DELETE, including the current owner-update policy, or use an equivalent non-client-writable source/security-definer capability function. A PPI-only authenticated session must be denied at the Supabase REST boundary; owner-scoped SELECT remains available for the participant's seeded row, and the private control-plane/service-role path is the only participant-row writer. Add two-step negative coverage proving that a PPI-only session cannot first promote itself through `user_roles` and then write `sourcing_briefs`.
+The current procurement and database contracts do not provide a coherent PPI-only product: the documented create contract is not PPI-session accessible, while direct owner writes through Supabase REST are broader than the intended product boundary and `user_roles` is client-writable. The MVP must fix that architecture instead of hiding it behind concierge seeding.
 
-Before onboarding a PPI-only participant, the operator must use the private control-plane procedure defined in the PR 2 plan: verify the participant principal ID, run an approved admin-only command/RPC or one-time service-role transaction in the private API environment that inserts one active manual brief under that ID, and record the brief ID plus non-sensitive audit metadata in the restricted pilot log. The participant, using their own authenticated session and credentials, must then verify the PPI-readable `GET /v1/procurement/briefs/{id}/radar` response plus dashboard visibility. The operator must not impersonate the participant, request or copy participant credentials/session data, or substitute an unreviewed impersonation path. Do not use the member-gated base brief GET as this pilot gate. No service-role credential may reach the browser or coffee-app runtime.
+- Give an authenticated `ppi_access` owner a canonical, server-enforced create/list/get/update/deactivate path for their own constrained sourcing briefs.
+- Keep identity derived from the authenticated principal; clients cannot choose or override `user_id`.
+- Revoke authenticated `user_roles` INSERT/UPDATE/DELETE, including the current owner-update policy, or replace role checks with an equivalent non-client-writable entitlement source/security-definer capability function.
+- Replace direct broad brief-write policies with policies or server functions that preserve existing member/admin behavior and allow the reviewed PPI owner contract without permitting raw REST bypass.
+- Add two-step negative coverage proving that a PPI-only session cannot promote itself and cannot mutate another user's brief or bypass criteria validation.
+- No service-role credential reaches the browser or ordinary coffee-app runtime.
 
-If that private seed operation is unavailable, onboarding stops and the operation becomes an explicitly reviewed `parchment-api` prerequisite. An ad hoc database edit or a caller-owned operator-created brief does not satisfy this gate.
+This is core product infrastructure, not pilot administration. A user who pays for Parchment Intelligence must be able to tell the product what they are sourcing and refine it without operator intervention.
 
 ## Strategy Alignment Audit
 
 - **Canonical direction:** This turns the existing normalized catalog and Market Index into a trustworthy sourcing decision while preserving Parchment API as the intelligence owner and coffee-app as the reference client.
 - **Product principle supported:** Data moat over feature sprawl. The slice composes shipped intent and evidence instead of adding another disconnected feature.
-- **Cross-surface effect:** The canonical read lives in Parchment API and SDK. The web app consumes it without recomputing ranking or freshness.
-- **Public value legibility:** The pilot is paid/member workflow leverage. It does not expand the public proof surface or change entitlements.
-- **Moonshot check:** It graduates the July 15 Sourcing Radar proposal into the cheapest falsifiable product slice.
-- **Scope check:** It excludes recurrence, agents, new models, and procurement operations until the manual workflow proves value.
+- **Cross-surface effect:** The canonical read and owner-scoped intent contract live in Parchment API and SDK. The dashboard and Parchment chat consume the same result without recomputing ranking or freshness.
+- **Public value legibility:** This is paid Parchment Intelligence workflow leverage. It does not expand the public proof surface or add a new price plan.
+- **Moonshot check:** It graduates the July 15 Sourcing Radar proposal into the smallest complete personalized sourcing product.
+- **Scope check:** It includes the agent explanation and investigation loop because that is part of the promise, while excluding external recurrence, new models, and procurement operations.
 
 ## Cross-repo ownership
 
 - `coffee-scraper`: observes supplier truth. No Radar MVP changes.
 - `coffee-app` database/publication program: owns the active provenance-aware market publication and its serving quality. Existing prerequisite, not part of these two PRs.
-- `parchment-api`: owns brief-to-index composition, ordering, freshness policy, entitlement, and SDK types.
+- `parchment-api`: owns brief-to-index composition, owner-scoped PPI intent contracts, ordering, freshness policy, entitlement, and SDK types.
 - `purveyors-cli`: no MVP change. Existing procurement and market reads remain available.
-- `coffee-app`: owns the reference-client route, source handoff, and pilot measurement.
+- `coffee-app`: owns self-service intent UX, personalized dashboard presentation, Ask Parchment handoff, existing tracked-lot/source actions, and product analytics.
 
 ## Ordered implementation
 
@@ -143,7 +152,7 @@ If that private seed operation is unavailable, onboarding stops and the operatio
 
 Complete the applicable gates in `2026-07-16-market-publication-recovery-and-activation.md` through the versioned reader/API cutover. Confirm the market signal read is derived from the accepted active publication and exposes publication identity, quality, coverage, age, and methodology. Stop if that contract is not fresh and fail-closed.
 
-**Earliest-start honesty:** the provenance foundation migration (`20260713_market_publication_foundation.sql`) was applied to production manually on 2026-07-18 after a sentinel check found it had been skipped while later migrations shipped — evidence for the recovery program's guarded release workflow (its PR 2), which remains unbuilt. The builder, automatic invocation, shadow-comparison evidence (≥10 runs over ≥14 days including a real failure/recovery), and reader cutover are also all unbuilt; the evidence clock starts with the first clean production `all` run against the new tables. This gate is a multi-PR program, not a checkbox. Do not recruit pilot partners or schedule the pilot window until the cutover has a date; a recruited partner waiting on frozen data is a burned partner.
+**Earliest-start honesty:** the provenance foundation migration (`20260713_market_publication_foundation.sql`) was applied to production manually on 2026-07-18 after a sentinel check found it had been skipped while later migrations shipped — evidence for the recovery program's guarded release workflow (its PR 2), which remains unbuilt. The builder, automatic invocation, shadow-comparison evidence (≥10 runs over ≥14 days including a real failure/recovery), and reader cutover are also all unbuilt; the evidence clock starts with the first clean production `all` run against the new tables. This gate is a multi-PR program, not a checkbox. Do not recruit launch customers or promise a launch window until the cutover has a date; a customer waiting on frozen data is a burned customer.
 
 This gate is valuable independently of Radar and is not respecified here. It is also not merely a prerequisite: the trustworthy publication history it produces is the compounding data asset the whole Radar thesis rests on.
 
@@ -153,41 +162,51 @@ Add `GET /v1/procurement/briefs/{id}/radar` and its SDK method. Reuse canonical 
 
 Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-01-parchment-read.md`.
 
-### PR 2: Coffee-app manual value test
+### PR 2: PPI self-service sourcing intent and security
 
-Add one Parchment Intelligence–entitled route for an owned active brief, linked from the existing dashboard brief cards. The coffee-app slice must also make those owned active-brief cards available to authenticated PPI-only users; the current member-only dashboard query cannot be the discovery gate for a `ppi_access` product. Render evidence or an honest stale/unavailable state, hand the user to the supplier/source record, and capture the minimum pilot signals. This is the complete buyer-facing MVP.
+Make the existing sourcing-brief substrate a coherent PPI product capability: secure the entitlement source and RLS boundary, expose owner-scoped create/list/get/update/deactivate through the canonical server contract, and add lightweight self-service intent capture/refinement. This slice is independently useful because a PPI customer can save and maintain sourcing intent and use existing matches even if Radar presentation ships later.
 
-Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-02-reference-client.md`.
+Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-02-self-service-intent.md`.
+
+### PR 3: Personalized Radar dashboard and Parchment agent
+
+Add the personalized dashboard module and focused Radar detail route, preserve the canonical evidence and honest stale/unavailable states, and provide source, tracked-lot, and Ask Parchment actions. Parchment receives the current brief and Radar evidence as structured context so it can explain and compare without inventing ranking or facts. Add passive analytics around the natural workflow, not a mandatory validation questionnaire. This is the complete buyer-facing MVP.
+
+Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-03-personalized-product.md`.
 
 ## Stop points
 
 - After the prerequisite: stop if publication quality or freshness cannot support decision language.
 - After PR 1: stop if the endpoint rarely produces eligible rows for realistic saved briefs, if lot-age context is mostly `unknown`, or if source comparability makes ordering misleading.
-- After PR 2 and the pilot: stop if the behavioral threshold below is not met, or if partner-reported past-crop/already-known rates show the signal is surfacing clearance rather than value.
-- Only plan recurring delivery if the manual workflow passes the value threshold and users ask to receive it without opening Purveyors.
+- After PR 2: stop if secure PPI self-service intent cannot be made simpler than the current fragmented entitlement paths.
+- After PR 3 and the limited launch: refine or stop if behavior shows customers do not investigate, track, or revisit Radar results, or if internal evidence audits show the signal is surfacing clearance rather than useful discovery.
+- Only plan external recurring delivery if the in-product workflow creates repeat value and customers ask to receive it without opening Purveyors.
 
-## Pilot and proof threshold
+## Limited launch and product checkpoints
 
-Recruit toward five actual sourcing decision-makers, treating three as the floor rather than the design. Capture one live brief each and establish how they currently build a shortlist. Run Radar manually for eight to twelve weeks, or time the window to a heavy arrival season. Rationale: small roasters make roughly zero to one real spot decision per month (most volume moves on forward contracts), so a three-partner, four-week window plausibly contains three to six genuine buying decisions total — too few for any partner-count vote to mean anything.
+Launch the actual product to five sourcing decision-makers, treating three as the operational floor, for eight to twelve weeks or across a heavy arrival season. Each customer creates and maintains a real sourcing brief, sees their personalized Radar in the dashboard, and can investigate it through Parchment, tracked lots, and supplier links. Research interviews may supplement the evidence, but there is no separate pilot harness and no requirement that customers validate Purveyors through a disposition questionnaire.
 
-Primary proof is behavioral, not a vote:
+The product provides value first and generates checkpoints through natural use:
 
-- Radar-surfaced lots the partner had not already found lead to source-detail visits **and explicit "sample" or "quote" dispositions within the freshness window**, for a majority of active partners. Sampling is the real unit of buyer intent in this market; a lead that never reaches a cupping table did not change discovery behavior.
+- **Data health:** accepted-publication freshness, eligible matches per brief, known lot-age coverage, source availability, and supplier-feed continuity.
+- **Discovery:** dashboard Radar impressions, result opens, supplier-detail visits, and the share of surfaced lots that were not already tracked.
+- **Investigation:** Ask Parchment handoffs and follow-up questions, tracked-lot/watchlist actions, and brief refinements prompted by the evidence.
+- **Habit:** repeat Radar visits and repeat investigation behavior over the launch window.
+- **Business:** retained PPI usage and willingness to keep paying, supported by interviews rather than a checkout experiment.
 
-Primary falsifier:
+Primary product falsifiers:
 
-- the partner-reported past-crop/already-known rate. If the evidence mostly restates known lots or surfaces clearance inventory, the signal is inverted and the pilot fails regardless of engagement.
+- Internal source reconciliation and optional customer feedback show that the evidence mostly surfaces past-crop clearance, stale inventory, or lots the customer already tracks.
+- Customers see results but rarely open, investigate, track, or revisit them.
+- The product cannot reliably produce current eligible results for realistic briefs.
 
-Secondary evidence:
+Customer feedback remains useful but subordinate to the product:
 
-- time from sourcing need to qualified shortlist;
-- eligible indexed matches per active brief, and the share with known lot-age context;
-- Radar-open to source-detail click-through;
-- staleness-at-click: whether source price and availability still match at the moment the partner opens the source page (distinguishes "the signal is wrong" from "the feed is truthful but too slow");
-- user-confirmed hours of catalog review avoided;
-- willingness to pay tested as an interview hypothesis, not a checkout change.
+- Optional “not relevant,” “already tracked,” or “past crop” feedback may improve relevance, but it is never required to use Radar.
+- Source freshness should be monitored from the publication and subsequent observations wherever possible; do not make the customer perform routine data QA.
+- Interviews ask whether Radar shortened discovery, improved a shortlist, or changed what the customer investigated.
 
-The pilot fails if the output mostly restates obvious catalog matches, if stale/partial coverage dominates, or if sensory and logistics gaps prevent the evidence from changing discovery behavior.
+The initial product direction is supported when multiple customers repeatedly investigate or track Radar-surfaced coffees and return to the workflow. Exact numeric launch thresholds should be set after baseline traffic and match density are known; analytics are decision inputs, not a pretense of statistical certainty from five users.
 
 ## Program acceptance criteria
 
@@ -197,34 +216,39 @@ The pilot fails if the output mostly restates obvious catalog matches, if stale/
 - `stale` and `unavailable` states return no indexed opportunity rows and use no recommendation language.
 - No client hardcodes or recomputes freshness, signal rank, or entitlement.
 - Direct URL and API calls enforce ownership and Parchment Intelligence access.
-- Each PPI-only pilot participant can be onboarded with one participant-owned active brief through the private seed prerequisite, proven by the participant's own authenticated PPI-readable Radar response and dashboard checks; operator impersonation and credential sharing are prohibited, and brief creation/editing UX remains out of scope for this MVP.
-- A PPI-only session cannot bypass concierge onboarding by promoting itself through `user_roles` and then inserting, updating, or deleting `sourcing_briefs` through Supabase REST; two-step negative coverage proves the denial while preserving member/admin writes and the private participant seed path.
+- A PPI customer can create, view, refine, and deactivate their own constrained sourcing brief without operator intervention; identity and entitlement remain server-enforced.
+- A PPI-only session cannot promote itself through `user_roles`, mutate another user's brief, bypass criteria validation, or write through an unreviewed direct REST path; negative coverage proves the denial while preserving intended member/admin behavior.
+- The authenticated dashboard presents a personalized Radar summary and full result, and Ask Parchment receives the same canonical brief and evidence context.
 - The user reaches the supplier/source record in one action.
-- No runtime in any repository adds a scheduler, delivery side effect, new score, or recommendation-run history; the PR 2 pilot-event sink is limited to the fixed append-only event rows defined in its plan.
+- Useful customer actions rely on existing tracked-lot/watchlist and chat workflows rather than new procurement storage.
+- Passive analytics distinguish exposure, investigation, useful action, and repeat use without requiring a customer questionnaire or persisting sensitive brief criteria/source payloads.
+- No runtime in any repository adds a scheduler, external delivery side effect, new score, or recommendation-run history.
 
 ## Validation expectations
 
 - Parchment API: focused unit/route tests for pre-pagination composition, freshness states, deterministic ordering, ownership, entitlement, and response shape; package typecheck/build; OpenAPI and SDK fixture validation.
-- Coffee-app: server-load tests proving PPI-only owners receive active-brief discovery without granting Radar to members lacking `ppiAccess`, plus access/status mapping tests; component/route tests for fresh, stale, unavailable, empty, and denied states; source-link and event tests; `pnpm check --fail-on-warnings` and lint.
+- Coffee-app: server and RLS tests for secure PPI self-service intent; dashboard and route tests for fresh, stale, unavailable, empty, and denied states; structured Ask Parchment context tests; source/tracked-lot action and passive analytics tests; `pnpm check --fail-on-warnings` and lint.
 - Live gate: one owned test brief against the deployed accepted publication, with evidence manually reconciled to its source lot and Market Index row.
 
 ## Risks and rollback
 
-- **The signal surfaces past-crop clearance as value.** Importers discount lots primarily to clear aging inventory, so `price_drop` and cohort-relative `below_market` preferentially select the oldest coffee unless interpreted. Mitigation: lot-age context on every row, "verify crop and cup" language, and the past-crop rate as the pilot's primary falsifier.
+- **The signal surfaces past-crop clearance as value.** Importers discount lots primarily to clear aging inventory, so `price_drop` and cohort-relative `below_market` preferentially select the oldest coffee unless interpreted. Mitigation: lot-age context on every row, "verify crop and cup" language, internal source reconciliation, and optional past-crop feedback as a product falsifier.
 - **Stale evidence appears actionable.** Fail closed in the API. The client cannot override freshness.
 - **A price signal is mistaken for purchase advice.** Use “worth inspecting” language, show comparable evidence and limitations, and link to source verification.
 - **Signal ordering hides relevant matches.** Keep the existing full matches path available and make Radar a separate view.
 - **The endpoint becomes a second ranking system.** Reuse existing signal ranks only. No combined score.
-- **Alert ambitions expand the MVP.** There is no cadence, delivery, stored run, or preference model in either PR.
-- **Supply-side: the feed itself is at risk, and the plan cannot be silent about it.** Importers are simultaneously the data source, competitors for the deal-discovery moment (their own portals and clearance pages), and the party able to break the feed unilaterally. Before the pilot: audit which of the scraped sources require authenticated sessions for the prices the index uses, classify each as public-page, gated, or consented, and set an explicit policy for gated sources (drop, seek consent, or accept documented exposure) — logged-in scraping is the one clearly losing legal posture post-hiQ. The pilot's source-detail deep links send importers qualified sample-request traffic; treat that as the opening of a consent/partnership track, which is also the path to the two-sided moat the product currently lacks (Beanstock launched on importer opt-in).
-- **Rollback:** disable the reference-client link and endpoint feature flag. The existing brief-match, Market Index, dashboard, catalog, and CLI workflows remain unchanged.
+- **The product collapses back into a research harness.** Analytics remain passive and customer feedback remains optional. Every customer-facing control must help the customer source, investigate, track, or refine intent.
+- **Agent explanation drifts from evidence.** Parchment receives canonical Radar rows as structured context, cites their limitations, and cannot invent or reorder evidence.
+- **Alert ambitions expand the MVP.** There is no cadence, external delivery, stored run, or notification preference model in the three PRs.
+- **Supply-side: the feed itself is at risk, and the plan cannot be silent about it.** Importers are simultaneously the data source, competitors for the deal-discovery moment (their own portals and clearance pages), and the party able to break the feed unilaterally. Before launch: audit which of the scraped sources require authenticated sessions for the prices the index uses, classify each as public-page, gated, or consented, and set an explicit policy for gated sources (drop, seek consent, or accept documented exposure) — logged-in scraping is the one clearly losing legal posture post-hiQ. Product source-detail links send importers qualified traffic; treat that as the opening of a consent/partnership track, which is also the path to the two-sided moat the product currently lacks (Beanstock launched on importer opt-in).
+- **Rollback:** disable the personalized Radar module, detail route, and Parchment handoff. The secure brief-intent contract, Parchment endpoint, existing brief matches, Market Index, dashboard, catalog, and CLI workflows remain useful.
 
 ## Deferred decisions
 
-- Product label: “Sourcing Radar” versus “Sourcing Index.” Use Radar as the pilot label; validate comprehension before broader launch.
+- Product label: “Sourcing Radar” versus “Sourcing Index.” Use Radar for the initial product and refine naming from customer comprehension.
 - Final maximum-age threshold. Start from a 48-hour candidate and set it through the publication serving policy after observing real daily-run timing.
 - Paid packaging and price. Test `$29`, `$49`, and `$79` monthly anchors in interviews only; do not build pricing until value is demonstrated. Evidence sets the band low: the suites small roasters pay for start at $29–$79, no roaster currently pays for third-party sourcing discovery, and Purveyors' own public anchor is a $9 add-on — $79 is the stretch probe, not the floor.
-- Recurring brief format, delivery channel, diff storage, new/restock/delist events, CLI convenience command, and integrations.
+- External recurring brief format, delivery channel, diff storage, new/restock/delist events, CLI convenience command, and integrations.
 
 ## References
 
