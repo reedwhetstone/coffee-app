@@ -3,14 +3,12 @@
 
 	interface BillingEntitlementActualState {
 		role: string | null;
-		userRole: string[];
 		apiPlan: string | null;
 		ppiAccess: boolean | null;
 	}
 
 	interface BillingEntitlementExpectedState {
 		role: string;
-		userRole: string[];
 		apiPlan: string;
 		ppiAccess: boolean;
 	}
@@ -34,7 +32,7 @@
 		stripeCustomerId?: string;
 		actual: BillingEntitlementActualState;
 		expected: BillingEntitlementExpectedState;
-		issueFields: Array<'role' | 'user_role' | 'api_plan' | 'ppi_access'>;
+		issueFields: Array<'role' | 'api_plan' | 'ppi_access'>;
 		issueSummary: string[];
 		lastEntitlementUpdate?: string;
 		billingSubscriptions: BillingSubscriptionSnapshotSummary[];
@@ -134,10 +132,6 @@
 		}
 
 		return value;
-	}
-
-	function formatRoleMirror(value: string[]) {
-		return value.length > 0 ? `[${value.join(', ')}]` : '[]';
 	}
 
 	function getRoleColor(role: string | null) {
@@ -282,10 +276,6 @@
 										</span>
 									</p>
 									<p>
-										<span class="font-medium">user_role:</span>
-										{formatRoleMirror(discrepancy.actual.userRole)}
-									</p>
-									<p>
 										<span class="font-medium">api_plan:</span>
 										{formatScalar(discrepancy.actual.apiPlan)}
 									</p>
@@ -306,10 +296,6 @@
 										<span class={getRoleColor(discrepancy.expected.role)}>
 											{discrepancy.expected.role}
 										</span>
-									</p>
-									<p>
-										<span class="font-medium">user_role:</span>
-										{formatRoleMirror(discrepancy.expected.userRole)}
 									</p>
 									<p><span class="font-medium">api_plan:</span> {discrepancy.expected.apiPlan}</p>
 									<p>

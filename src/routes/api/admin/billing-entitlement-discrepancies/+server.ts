@@ -31,14 +31,13 @@ export const GET: RequestHandler = async (event) => {
 
 		const { data: userRoles, error: userRolesError } = (await supabase
 			.from('user_roles')
-			.select('id, email, name, role, user_role, api_plan, ppi_access, updated_at')) as {
+			.select('id, email, name, role, api_plan, ppi_access, updated_at')) as {
 			data:
 				| {
 						id: string;
 						email: string | null;
 						name: string | null;
 						role: Database['public']['Tables']['user_roles']['Row']['role'];
-						user_role: string[];
 						api_plan: Database['public']['Tables']['user_roles']['Row']['api_plan'];
 						ppi_access: boolean;
 						updated_at: string;

@@ -8,7 +8,7 @@ import {
 } from './admin-discrepancies';
 
 describe('billing entitlement admin discrepancies', () => {
-	it('detects entitlement drift from billing snapshots and compatibility-mirror mismatches', () => {
+	it('detects canonical entitlement drift from billing snapshots', () => {
 		const report = buildBillingEntitlementDiscrepancyReport({
 			userRoles: [
 				{
@@ -16,7 +16,6 @@ describe('billing entitlement admin discrepancies', () => {
 					email: 'member@example.com',
 					name: 'Member Drift',
 					role: 'viewer',
-					user_role: ['viewer', 'ppi-member'],
 					api_plan: null as never,
 					ppi_access: null as never,
 					updated_at: '2026-04-12T00:00:00.000Z'
@@ -58,17 +57,15 @@ describe('billing entitlement admin discrepancies', () => {
 			stripeCustomerId: 'cus_123',
 			actual: {
 				role: 'viewer',
-				userRole: ['viewer', 'ppi-member'],
 				apiPlan: null,
 				ppiAccess: null
 			},
 			expected: {
 				role: 'member',
-				userRole: ['member'],
 				apiPlan: 'viewer',
 				ppiAccess: false
 			},
-			issueFields: ['role', 'user_role', 'api_plan', 'ppi_access']
+			issueFields: ['role', 'api_plan', 'ppi_access']
 		});
 		expect(report.discrepancies[0].billingSubscriptions).toHaveLength(1);
 	});
@@ -81,7 +78,6 @@ describe('billing entitlement admin discrepancies', () => {
 					email: 'admin@example.com',
 					name: 'Admin Drift',
 					role: 'admin',
-					user_role: ['admin'],
 					api_plan: null as never,
 					ppi_access: false,
 					updated_at: '2026-04-12T00:00:00.000Z'
@@ -98,13 +94,11 @@ describe('billing entitlement admin discrepancies', () => {
 			userId: 'admin_123',
 			actual: {
 				role: 'admin',
-				userRole: ['admin'],
 				apiPlan: null,
 				ppiAccess: false
 			},
 			expected: {
 				role: 'admin',
-				userRole: ['admin'],
 				apiPlan: 'enterprise',
 				ppiAccess: false
 			},
@@ -118,7 +112,6 @@ describe('billing entitlement admin discrepancies', () => {
 		const maybeSingle = vi.fn(async () => ({
 			data: {
 				role: 'viewer',
-				user_role: ['viewer', 'ppi-member'],
 				api_plan: null as never,
 				ppi_access: null as never
 			},
@@ -181,7 +174,6 @@ describe('billing entitlement admin discrepancies', () => {
 		expect(result.changed).toBe(true);
 		expect(result.resolvedEntitlements).toEqual({
 			role: 'member',
-			userRole: ['member'],
 			apiPlan: 'viewer',
 			ppiAccess: false
 		});
@@ -199,7 +191,7 @@ describe('billing entitlement admin discrepancies', () => {
 		expect(insert).toHaveBeenCalledWith(
 			expect.objectContaining({
 				user_id: 'user_123',
-				old_role: 'viewer,ppi-member',
+				old_role: 'viewer',
 				new_role: 'member',
 				trigger_type: 'admin_change',
 				metadata: expect.objectContaining({
@@ -218,7 +210,6 @@ describe('billing entitlement admin discrepancies', () => {
 		const maybeSingle = vi.fn(async () => ({
 			data: {
 				role: 'admin',
-				user_role: ['admin'],
 				api_plan: null as never,
 				ppi_access: false
 			},
@@ -261,7 +252,6 @@ describe('billing entitlement admin discrepancies', () => {
 		expect(result.changed).toBe(true);
 		expect(result.resolvedEntitlements).toEqual({
 			role: 'admin',
-			userRole: ['admin'],
 			apiPlan: 'enterprise',
 			ppiAccess: false
 		});

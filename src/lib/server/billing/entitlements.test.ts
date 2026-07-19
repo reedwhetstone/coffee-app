@@ -52,7 +52,6 @@ describe('billing entitlement reconciliation', () => {
 
 		expect(resolved).toEqual({
 			role: 'member',
-			userRole: ['member'],
 			apiPlan: 'viewer',
 			ppiAccess: false
 		});
@@ -73,7 +72,6 @@ describe('billing entitlement reconciliation', () => {
 
 		expect(resolved).toEqual({
 			role: 'viewer',
-			userRole: ['viewer'],
 			apiPlan: 'enterprise',
 			ppiAccess: true
 		});
@@ -94,7 +92,6 @@ describe('billing entitlement reconciliation', () => {
 
 		expect(resolved).toEqual({
 			role: 'viewer',
-			userRole: ['viewer'],
 			apiPlan: 'member',
 			ppiAccess: false
 		});
@@ -123,7 +120,6 @@ describe('billing entitlement reconciliation', () => {
 
 		expect(resolved).toEqual({
 			role: 'member',
-			userRole: ['member'],
 			apiPlan: 'member',
 			ppiAccess: true
 		});
@@ -144,7 +140,6 @@ describe('billing entitlement reconciliation', () => {
 
 		expect(resolved).toEqual({
 			role: 'admin',
-			userRole: ['admin'],
 			apiPlan: 'enterprise',
 			ppiAccess: true
 		});
@@ -160,7 +155,6 @@ describe('billing entitlement reconciliation', () => {
 
 		expect(resolved).toEqual({
 			role: 'admin',
-			userRole: ['admin'],
 			apiPlan: 'enterprise',
 			ppiAccess: false
 		});
@@ -181,7 +175,6 @@ describe('billing entitlement reconciliation', () => {
 
 		expect(resolved).toEqual({
 			role: 'member',
-			userRole: ['member'],
 			apiPlan: 'enterprise',
 			ppiAccess: false
 		});
@@ -202,7 +195,6 @@ describe('billing entitlement reconciliation', () => {
 
 		expect(resolved).toEqual({
 			role: 'member',
-			userRole: ['member'],
 			apiPlan: 'viewer',
 			ppiAccess: true
 		});
@@ -213,7 +205,6 @@ describe('billing entitlement reconciliation', () => {
 		const maybeSingle = vi.fn(async () => ({
 			data: {
 				role: 'viewer',
-				user_role: ['viewer'],
 				api_plan: null as never,
 				ppi_access: null as never
 			},
@@ -244,9 +235,9 @@ describe('billing entitlement reconciliation', () => {
 		const result = await recomputeUserBillingEntitlements({ from } as never, 'user_123');
 
 		expect(result.changed).toBe(true);
+		expect(selectUserRoles).toHaveBeenCalledWith('role, api_plan, ppi_access');
 		expect(result.resolvedEntitlements).toEqual({
 			role: 'viewer',
-			userRole: ['viewer'],
 			apiPlan: 'viewer',
 			ppiAccess: false
 		});

@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createMilestoneCalculationService } from '$lib/services/milestoneCalculationService';
+import { checkRole, type UserRole } from '$lib/types/auth.types';
 
 export const POST: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	try {
@@ -9,14 +10,14 @@ export const POST: RequestHandler = async ({ locals: { supabase, safeGetSession 
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		// Check if user has admin/member role (you may want to add additional role checking here)
+		// Read the canonical scalar app role. Admin inherits member access through checkRole.
 		const { data: userRole } = (await supabase
 			.from('user_roles')
-			.select('user_role')
+			.select('role')
 			.eq('id', user.id)
-			.single()) as { data: { user_role: string[] } | null };
+			.single()) as { data: { role: UserRole } | null };
 
-		if (!userRole || !userRole.user_role.includes('member')) {
+		if (!userRole || !checkRole(userRole.role, 'member')) {
 			return json({ error: 'Insufficient permissions' }, { status: 403 });
 		}
 

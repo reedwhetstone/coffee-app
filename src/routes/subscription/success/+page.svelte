@@ -6,7 +6,6 @@
 
 	interface ReconciledEntitlements {
 		role: string;
-		userRole: string[];
 		apiPlan: string;
 		ppiAccess: boolean;
 	}

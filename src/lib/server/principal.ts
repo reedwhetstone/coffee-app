@@ -1,9 +1,4 @@
-import {
-	API_KEY_PREFIX,
-	deriveApiPlanFromRoles,
-	validateApiKey,
-	type ApiPlan
-} from '$lib/server/apiAuth';
+import { API_KEY_PREFIX, validateApiKey, type ApiPlan } from '$lib/server/apiAuth';
 import { createAdminClient } from '$lib/supabase-admin';
 import { checkRole, type UserRole } from '$lib/types/auth.types';
 import type { Database, Json } from '$lib/types/database.types';
@@ -127,35 +122,8 @@ function normalizeScopeValue(value: unknown): string[] {
 	return value.filter((scope): scope is string => typeof scope === 'string' && scope.length > 0);
 }
 
-/**
- * Normalize a raw role string to a clean UserRole.
- * Pseudo-roles (api-member, api-enterprise, ppi-member) are dropped here —
- * they are handled via explicit entitlement fields (apiPlan, ppiAccess) instead.
- */
-function normalizeRoleValue(role: string): UserRole | null {
-	if (role === 'viewer' || role === 'api_viewer') return 'viewer';
-	if (role === 'member') return 'member';
-	if (role === 'admin') return 'admin';
-	// Pseudo-roles: intentionally not mapped to a UserRole.
-	// They are consumed by deriveApiPlanFromRoles / ppiAccess derivation instead.
-	return null;
-}
-
-function normalizeResolvedUserRoles(rawRoles: unknown): UserRole[] | null {
-	if (!Array.isArray(rawRoles)) {
-		return null;
-	}
-
-	const normalized = rawRoles
-		.filter((role): role is string => typeof role === 'string')
-		.map(normalizeRoleValue)
-		.filter((role): role is UserRole => role !== null);
-
-	return normalized.length > 0 ? Array.from(new Set(normalized)) : null;
-}
-
-export function normalizeUserRoles(rawRoles: unknown): UserRole[] {
-	return normalizeResolvedUserRoles(rawRoles) ?? ['viewer'];
+function normalizeScalarUserRole(role: unknown): UserRole | null {
+	return role === 'viewer' || role === 'member' || role === 'admin' ? role : null;
 }
 
 interface UserEntitlements {
@@ -164,93 +132,61 @@ interface UserEntitlements {
 	ppiAccess: boolean;
 }
 
-/**
- * Derive ppiAccess from the raw user_role array (legacy: ppi-member pseudo-role).
- * Used during backfill transition when ppi_access column is not yet present.
- */
-function derivePpiAccessFromRoles(rawRoles: string[]): boolean {
-	return rawRoles.includes('ppi-member');
+function normalizeApiPlan(plan: unknown): ApiPlan {
+	return plan === 'member' || plan === 'enterprise' ? plan : 'viewer';
 }
 
-/**
- * Derive ApiPlan from the explicit api_plan column, falling back to role-based derivation.
- */
-function resolveApiPlan(explicitPlan: string | null | undefined, rawRoles: string[]): ApiPlan {
-	if (explicitPlan === 'viewer' || explicitPlan === 'member' || explicitPlan === 'enterprise') {
-		return explicitPlan;
+function logEntitlementReadFailure(
+	reason: 'query_error' | 'missing_row' | 'invalid_role',
+	errorCode?: string
+): void {
+	const message = JSON.stringify({
+		event: 'entitlement_read_failed',
+		reason,
+		...(errorCode ? { errorCode } : {})
+	});
+
+	if (reason === 'query_error') {
+		console.error(message);
+	} else {
+		console.warn(message);
 	}
-	// Admin users always get enterprise API access
-	if (rawRoles.includes('admin')) {
-		return 'enterprise';
-	}
-	return deriveApiPlanFromRoles(rawRoles);
 }
 
 async function getUserEntitlements(
 	supabase: SupabaseClient<Database>,
 	userId: string
 ): Promise<UserEntitlements | null> {
-	// Primary query: select the base role array plus the explicit entitlement columns.
-	// We still fall back to role-derived values when older environments have not run the
-	// migration yet, or if unexpected nulls remain during the backfill window.
 	const { data, error } = await supabase
 		.from('user_roles')
-		.select('user_role, api_plan, ppi_access')
+		.select('role, api_plan, ppi_access')
 		.eq('id', userId)
 		.single();
 
 	if (error) {
-		// If the query failed because the new columns don't exist yet (pre-schema-migration),
-		// fall back to the safe user_role-only query.
-		// PostgreSQL error 42703 = undefined_column; Supabase wraps this in the error object.
-		const isColumnMissingError =
-			error.code === '42703' ||
-			error.code === 'PGRST200' ||
-			error.message?.includes('does not exist') ||
-			error.message?.includes('api_plan') ||
-			error.message?.includes('ppi_access');
-		if (isColumnMissingError) {
-			const { data: fallbackData, error: fallbackError } = await supabase
-				.from('user_roles')
-				.select('user_role')
-				.eq('id', userId)
-				.single();
-
-			if (fallbackError || !fallbackData) {
-				return null;
-			}
-
-			const rawRoles: string[] = Array.isArray(fallbackData.user_role)
-				? fallbackData.user_role.filter((r): r is string => typeof r === 'string')
-				: [];
-			const roles = normalizeResolvedUserRoles(rawRoles) ?? ['viewer'];
-			return {
-				roles,
-				apiPlan: resolveApiPlan(null, rawRoles),
-				ppiAccess: derivePpiAccessFromRoles(rawRoles)
-			};
-		}
-		// Other errors (no row found, network error, etc.) — fail closed
+		logEntitlementReadFailure(
+			error.code === 'PGRST116' ? 'missing_row' : 'query_error',
+			error.code
+		);
 		return null;
 	}
 
 	if (!data) {
+		logEntitlementReadFailure('missing_row');
 		return null;
 	}
 
-	const rawRoles: string[] = Array.isArray(data.user_role)
-		? data.user_role.filter((r): r is string => typeof r === 'string')
-		: [];
+	const role = normalizeScalarUserRole(data.role);
+	if (!role) {
+		logEntitlementReadFailure('invalid_role');
+		return null;
+	}
 
-	const roles = normalizeResolvedUserRoles(rawRoles) ?? ['viewer'];
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const row = data as any;
-	const apiPlan = resolveApiPlan(row.api_plan, rawRoles);
-	const ppiAccess: boolean =
-		typeof row.ppi_access === 'boolean' ? row.ppi_access : derivePpiAccessFromRoles(rawRoles);
-
-	return { roles, apiPlan, ppiAccess };
+	return {
+		roles: [role],
+		apiPlan: normalizeApiPlan(data.api_plan),
+		ppiAccess: data.ppi_access === true
+	};
 }
 
 export async function getUserRoles(
@@ -471,22 +407,11 @@ export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrin
 
 	const sessionContext = await event.locals.safeGetSession();
 	if (sessionContext.session && sessionContext.user) {
-		// For cookie sessions, derive entitlements from the session context roles
-		// (already fetched in the session middleware) plus explicit columns.
-		const rawRoles: string[] = Array.isArray(sessionContext.roles)
-			? (sessionContext.roles as string[])
-			: ['viewer'];
-
-		const normalizedRoles = normalizeResolvedUserRoles(rawRoles) ?? ['viewer'];
-		const apiPlan = resolveApiPlan(null, rawRoles);
-		const ppiAccess = derivePpiAccessFromRoles(rawRoles);
-
-		// Attempt to fetch explicit entitlements for the full picture
 		const explicitEntitlements = await getUserEntitlements(adminSupabase, sessionContext.user.id);
 		const entitlements: UserEntitlements = explicitEntitlements ?? {
-			roles: normalizedRoles,
-			apiPlan,
-			ppiAccess
+			roles: sessionContext.roles,
+			apiPlan: 'viewer',
+			ppiAccess: false
 		};
 
 		event.locals.principal = createSessionPrincipal({

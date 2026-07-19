@@ -13,7 +13,6 @@ type BillingSubscriptionRow = Database['public']['Tables']['billing_subscription
 
 export interface BillingEntitlementActualState {
 	role: UserRolesRow['role'] | null;
-	userRole: string[];
 	apiPlan: UserRolesRow['api_plan'] | null;
 	ppiAccess: boolean | null;
 }
@@ -39,7 +38,7 @@ export interface BillingEntitlementDiscrepancy {
 	stripeCustomerId?: string;
 	actual: BillingEntitlementActualState;
 	expected: ResolvedBillingEntitlements;
-	issueFields: Array<'role' | 'user_role' | 'api_plan' | 'ppi_access'>;
+	issueFields: Array<'role' | 'api_plan' | 'ppi_access'>;
 	issueSummary: string[];
 	lastEntitlementUpdate?: string;
 	billingSubscriptions: BillingSubscriptionSnapshotSummary[];
@@ -75,17 +74,9 @@ interface BillingTrackedUser {
 	stripeCustomerId?: string;
 	userRoleRow: Pick<
 		UserRolesRow,
-		'id' | 'email' | 'name' | 'role' | 'user_role' | 'api_plan' | 'ppi_access' | 'updated_at'
+		'id' | 'email' | 'name' | 'role' | 'api_plan' | 'ppi_access' | 'updated_at'
 	> | null;
 	billingSubscriptions: BillingSubscriptionRow[];
-}
-
-function arraysEqual(left: string[], right: string[]): boolean {
-	if (left.length !== right.length) {
-		return false;
-	}
-
-	return left.every((value, index) => value === right[index]);
 }
 
 function summarizeBillingSubscription(
@@ -115,8 +106,6 @@ function buildIssueSummary(input: {
 		switch (field) {
 			case 'role':
 				return `role is ${input.actual.role ?? 'null'} but should be ${input.expected.role}`;
-			case 'user_role':
-				return `user_role is [${input.actual.userRole.join(', ')}] but should mirror [${input.expected.userRole.join(', ')}]`;
 			case 'api_plan':
 				return `api_plan is ${input.actual.apiPlan ?? 'null'} but should be ${input.expected.apiPlan}`;
 			case 'ppi_access':
@@ -130,9 +119,6 @@ export function buildBillingEntitlementDiscrepancy(
 ): BillingEntitlementDiscrepancy | null {
 	const actual: BillingEntitlementActualState = {
 		role: trackedUser.userRoleRow?.role ?? null,
-		userRole: Array.isArray(trackedUser.userRoleRow?.user_role)
-			? trackedUser.userRoleRow.user_role
-			: [],
 		apiPlan: trackedUser.userRoleRow?.api_plan ?? null,
 		ppiAccess:
 			typeof trackedUser.userRoleRow?.ppi_access === 'boolean'
@@ -151,10 +137,6 @@ export function buildBillingEntitlementDiscrepancy(
 
 	if (actual.role !== expected.role) {
 		issueFields.push('role');
-	}
-
-	if (!arraysEqual(actual.userRole, expected.userRole)) {
-		issueFields.push('user_role');
 	}
 
 	if (actual.apiPlan !== expected.apiPlan) {
@@ -185,10 +167,7 @@ export function buildBillingEntitlementDiscrepancy(
 
 export function buildBillingEntitlementDiscrepancyReport(input: {
 	userRoles: Array<
-		Pick<
-			UserRolesRow,
-			'id' | 'email' | 'name' | 'role' | 'user_role' | 'api_plan' | 'ppi_access' | 'updated_at'
-		>
+		Pick<UserRolesRow, 'id' | 'email' | 'name' | 'role' | 'api_plan' | 'ppi_access' | 'updated_at'>
 	>;
 	stripeCustomers: Array<{
 		user_id: string;
@@ -251,7 +230,6 @@ export function buildBillingEntitlementDiscrepancyReport(input: {
 function serializeEntitlements(entitlements: ResolvedBillingEntitlements): Json {
 	return {
 		role: entitlements.role,
-		userRole: entitlements.userRole,
 		apiPlan: entitlements.apiPlan,
 		ppiAccess: entitlements.ppiAccess
 	};
@@ -269,8 +247,8 @@ export async function repairBillingEntitlementDiscrepancy(
 
 	const { error: auditError } = await supabase.from('role_audit_logs').insert({
 		user_id: input.userId,
-		old_role: recomputeResult.previousEntitlements.userRole.join(','),
-		new_role: recomputeResult.resolvedEntitlements.userRole.join(','),
+		old_role: recomputeResult.previousEntitlements.role,
+		new_role: recomputeResult.resolvedEntitlements.role,
 		trigger_type: 'admin_change',
 		metadata: {
 			reason: input.reason || 'Admin entitlement recompute',
