@@ -123,7 +123,18 @@ function normalizeScopeValue(value: unknown): string[] {
 }
 
 function normalizeScalarUserRole(role: unknown): UserRole | null {
-	return role === 'viewer' || role === 'member' || role === 'admin' ? role : null;
+	if (role === 'viewer' || role === 'member' || role === 'admin') {
+		return role;
+	}
+
+	// API tiers are separate from application roles. Preserve authentication for
+	// rows carrying a legacy API enum value while the explicit api_plan column
+	// remains authoritative for API access.
+	if (role === 'api_viewer' || role === 'api_member' || role === 'api_enterprise') {
+		return 'viewer';
+	}
+
+	return null;
 }
 
 interface UserEntitlements {
