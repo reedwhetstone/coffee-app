@@ -118,7 +118,8 @@ describe('Settingsbar stocked filters', () => {
 	it('hides filters that the free catalog API strips while keeping basic filters and sorting', () => {
 		render(Settingsbar, { data: { role: 'viewer' }, onClose: vi.fn() });
 
-		expect(screen.getByText('Hobbyist suppliers only')).toBeInTheDocument();
+		expect(screen.getByText('Home Roaster Suppliers Only')).toBeInTheDocument();
+		expect(screen.getByText('Filter out wholesale quantities')).toBeInTheDocument();
 		expect(screen.queryByLabelText('Score Value')).not.toBeInTheDocument();
 		expect(screen.queryByLabelText('Cost Lb')).not.toBeInTheDocument();
 		expect(screen.queryByLabelText('Stocked Date')).not.toBeInTheDocument();
@@ -137,7 +138,7 @@ describe('Settingsbar stocked filters', () => {
 		pageState.url = new URL('http://localhost/');
 		render(Settingsbar, { data: { role: 'viewer' }, onClose: vi.fn() });
 
-		expect(screen.getByText('Hobbyist suppliers only')).toBeInTheDocument();
+		expect(screen.getByText('Home Roaster Suppliers Only')).toBeInTheDocument();
 		expect(screen.queryByLabelText('Score Value')).not.toBeInTheDocument();
 		expect(screen.queryByLabelText('Cost Lb')).not.toBeInTheDocument();
 		expect(screen.queryByLabelText('Stocked Date')).not.toBeInTheDocument();
@@ -148,10 +149,10 @@ describe('Settingsbar stocked filters', () => {
 		expect(screen.getByLabelText('Name')).toBeInTheDocument();
 	});
 
-	it('shows the hobbyist-only scope and paid range filters to member sessions', () => {
+	it('shows the home-roaster scope and paid range filters to member sessions', () => {
 		render(Settingsbar, { data: { role: 'member' }, onClose: vi.fn() });
 
-		expect(screen.getByText('Hobbyist suppliers only')).toBeInTheDocument();
+		expect(screen.getByText('Home Roaster Suppliers Only')).toBeInTheDocument();
 		expect(screen.getByLabelText('Score Value')).toBeInTheDocument();
 		expect(screen.getByLabelText('Cost Lb')).toBeInTheDocument();
 		expect(screen.getByLabelText('Importer')).toBeInTheDocument();
@@ -159,14 +160,14 @@ describe('Settingsbar stocked filters', () => {
 		expect(screen.getByLabelText('Appearance')).toBeInTheDocument();
 	});
 
-	it('turns off wholesale visibility when hobbyist-only is selected', async () => {
+	it('turns off wholesale visibility when home-roaster suppliers only is selected', async () => {
 		storeState.set({
 			...storeState.value,
 			showWholesale: true
 		});
 		render(Settingsbar, { data: { role: 'viewer' }, onClose: vi.fn() });
 
-		const checkbox = screen.getByRole('checkbox', { name: /Hobbyist suppliers only/i });
+		const checkbox = screen.getByRole('checkbox', { name: /Home Roaster Suppliers Only/i });
 		expect(checkbox).not.toBeChecked();
 		await fireEvent.click(checkbox);
 
