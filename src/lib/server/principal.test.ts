@@ -244,15 +244,11 @@ describe('principal helpers', () => {
 		});
 	});
 
-	it.each([
-		['api_viewer', 'viewer'],
-		['api_member', 'member'],
-		['api_enterprise', 'enterprise']
-	] as const)('preserves legacy scalar %s with explicit entitlements', async (role, apiPlan) => {
+	it('fails closed when the scalar app role is outside the accepted contract', async () => {
 		mockAdminSingle.mockResolvedValue({
 			data: {
-				role,
-				api_plan: apiPlan,
+				role: 'api_member',
+				api_plan: 'member',
 				ppi_access: true
 			},
 			error: null
@@ -261,11 +257,12 @@ describe('principal helpers', () => {
 		const principal = await resolvePrincipal(makeCookieSessionEvent(['viewer']));
 
 		expect(principal).toMatchObject({
+			subjectType: 'user',
 			source: 'cookie-session',
 			appRoles: ['viewer'],
 			primaryAppRole: 'viewer',
-			apiPlan,
-			ppiAccess: true
+			apiPlan: 'viewer',
+			ppiAccess: false
 		});
 	});
 

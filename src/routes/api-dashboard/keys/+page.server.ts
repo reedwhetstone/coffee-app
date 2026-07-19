@@ -16,7 +16,7 @@ export const load: PageServerLoad = async (event) => {
 	// Get authenticated session
 	const { session, user } = await locals.safeGetSession();
 
-	// Allow authenticated users (free tier defaults to api_viewer)
+	// Allow authenticated users (free tier defaults to the viewer API plan)
 	if (!session || !user) {
 		throw redirect(303, '/');
 	}

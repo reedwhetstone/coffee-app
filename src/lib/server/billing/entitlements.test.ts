@@ -245,7 +245,6 @@ describe('billing entitlement reconciliation', () => {
 			{
 				id: 'user_123',
 				role: 'viewer',
-				user_role: ['viewer'],
 				api_plan: 'viewer',
 				ppi_access: false,
 				updated_at: expect.any(String)
