@@ -201,6 +201,27 @@ describe('principal helpers', () => {
 		});
 	});
 
+	it('preserves an explicit viewer plan for admin roles', async () => {
+		mockAdminSingle.mockResolvedValue({
+			data: {
+				role: 'admin',
+				api_plan: 'viewer',
+				ppi_access: false
+			},
+			error: null
+		});
+
+		const principal = await resolvePrincipal(makeCookieSessionEvent(['admin']));
+
+		expect(principal).toMatchObject({
+			source: 'cookie-session',
+			appRoles: ['admin'],
+			primaryAppRole: 'admin',
+			apiPlan: 'viewer',
+			ppiAccess: false
+		});
+	});
+
 	it('preserves the admin enterprise fallback when api_plan is unset', async () => {
 		mockAdminSingle.mockResolvedValue({
 			data: {

@@ -133,7 +133,7 @@ interface UserEntitlements {
 }
 
 function normalizeApiPlan(plan: unknown, role: UserRole): ApiPlan {
-	if (plan === 'member' || plan === 'enterprise') {
+	if (plan === 'viewer' || plan === 'member' || plan === 'enterprise') {
 		return plan;
 	}
 
