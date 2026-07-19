@@ -1241,9 +1241,8 @@ export type Database = {
 					email: string | null;
 					id: string;
 					name: string | null;
-					role: Database['public']['Enums']['user_role'];
+					role: Database['public']['Enums']['app_role'];
 					updated_at: string;
-					user_role: string[];
 					/** Explicit API access plan. */
 					api_plan: 'viewer' | 'member' | 'enterprise';
 					/** Explicit PPI (Price Index) access entitlement. */
@@ -1254,9 +1253,8 @@ export type Database = {
 					email?: string | null;
 					id: string;
 					name?: string | null;
-					role?: Database['public']['Enums']['user_role'];
+					role?: Database['public']['Enums']['app_role'];
 					updated_at?: string;
-					user_role?: string[];
 					api_plan?: 'viewer' | 'member' | 'enterprise';
 					ppi_access?: boolean;
 				};
@@ -1265,9 +1263,8 @@ export type Database = {
 					email?: string | null;
 					id?: string;
 					name?: string | null;
-					role?: Database['public']['Enums']['user_role'];
+					role?: Database['public']['Enums']['app_role'];
 					updated_at?: string;
-					user_role?: string[];
 					api_plan?: 'viewer' | 'member' | 'enterprise';
 					ppi_access?: boolean;
 				};
@@ -1715,7 +1712,7 @@ export type Database = {
 				| 'captain_coffee'
 				| 'genuine_origin'
 				| 'showroom_coffee';
-			user_role: 'viewer' | 'member' | 'admin' | 'api_viewer' | 'api_member' | 'api_enterprise';
+			app_role: 'viewer' | 'member' | 'admin';
 		};
 		CompositeTypes: {
 			[_ in never]: never;
@@ -1850,7 +1847,7 @@ export const Constants = {
 				'genuine_origin',
 				'showroom_coffee'
 			],
-			user_role: ['viewer', 'member', 'admin', 'api_viewer', 'api_member', 'api_enterprise']
+			app_role: ['viewer', 'member', 'admin']
 		}
 	}
 } as const;

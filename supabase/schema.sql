@@ -302,12 +302,11 @@ CREATE TABLE public.billing_subscriptions (
 );
 CREATE TABLE public.user_roles (
   id uuid NOT NULL,
-  role USER-DEFINED NOT NULL DEFAULT 'viewer'::user_role,
+  role USER-DEFINED NOT NULL DEFAULT 'viewer'::app_role,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   email text,
   name text,
-  user_role ARRAY NOT NULL DEFAULT '{viewer}'::text[],
   api_plan text NOT NULL DEFAULT 'viewer'::text,
   ppi_access boolean NOT NULL DEFAULT false,
   CONSTRAINT user_roles_pkey PRIMARY KEY (id),
