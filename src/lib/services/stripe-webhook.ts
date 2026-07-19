@@ -21,14 +21,9 @@ interface RoleAuditLog {
 	metadata?: Json;
 }
 
-function serializeCompatibilityRole(entitlements: ResolvedBillingEntitlements): string {
-	return entitlements.userRole.join(',');
-}
-
 function serializeEntitlements(entitlements: ResolvedBillingEntitlements): Json {
 	return {
 		role: entitlements.role,
-		userRole: entitlements.userRole,
 		apiPlan: entitlements.apiPlan,
 		ppiAccess: entitlements.ppiAccess
 	};
@@ -180,8 +175,8 @@ export async function reconcileStripeSubscription(
 
 	await logRoleChange(supabase, {
 		user_id: userId,
-		old_role: serializeCompatibilityRole(reconciliation.previousEntitlements),
-		new_role: serializeCompatibilityRole(reconciliation.resolvedEntitlements),
+		old_role: reconciliation.previousEntitlements.role,
+		new_role: reconciliation.resolvedEntitlements.role,
 		trigger_type: 'webhook_processing',
 		stripe_customer_id: customerId,
 		stripe_subscription_id: subscription.id,

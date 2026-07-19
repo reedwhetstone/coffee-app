@@ -25,7 +25,6 @@ interface RoleAuditLog {
 function serializeEntitlements(entitlements: ResolvedBillingEntitlements): Json {
 	return {
 		role: entitlements.role,
-		userRole: entitlements.userRole,
 		apiPlan: entitlements.apiPlan,
 		ppiAccess: entitlements.ppiAccess
 	};
@@ -52,7 +51,7 @@ async function loadCurrentEntitlements(
 ): Promise<Json | null> {
 	const { data, error } = await supabase
 		.from('user_roles')
-		.select('role, user_role, api_plan, ppi_access')
+		.select('role, api_plan, ppi_access')
 		.eq('id', userId)
 		.maybeSingle();
 
@@ -271,8 +270,8 @@ export async function handleReconcileStripeSession(event: RequestEvent) {
 			if (reconciliation.changed) {
 				await logRoleChange(supabase, {
 					user_id: user.id,
-					old_role: reconciliation.previousEntitlements.userRole.join(','),
-					new_role: reconciliation.resolvedEntitlements.userRole.join(','),
+					old_role: reconciliation.previousEntitlements.role,
+					new_role: reconciliation.resolvedEntitlements.role,
 					trigger_type: 'checkout_success',
 					stripe_customer_id: customerId,
 					stripe_subscription_id: subscriptionId,

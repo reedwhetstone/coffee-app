@@ -3,6 +3,7 @@ import type { ApiKeyPrincipal, SessionPrincipal } from './principal';
 
 const mockAdminGetUser = vi.fn();
 const mockAdminSingle = vi.fn();
+const mockValidateApiKey = vi.fn();
 const mockAdminEq = vi.fn(() => ({ single: mockAdminSingle }));
 const mockAdminSelect = vi.fn(() => ({ eq: mockAdminEq }));
 const mockAdminFrom = vi.fn(() => ({ select: mockAdminSelect }));
@@ -16,12 +17,16 @@ vi.mock('$lib/supabase-admin', () => ({
 	})
 }));
 
+vi.mock('$lib/server/apiAuth', () => ({
+	API_KEY_PREFIX: 'pk_live_',
+	validateApiKey: mockValidateApiKey
+}));
+
 const {
 	getLegacyAuthState,
 	getPrimaryUserRole,
 	isTrustedMutationRequest,
 	normalizeApiScopes,
-	normalizeUserRoles,
 	principalHasApiPlan,
 	principalHasRole,
 	principalHasScope,
@@ -48,6 +53,20 @@ function makeCookieSessionEvent(sessionRoles: string[] = ['viewer']) {
 	} as unknown as Parameters<typeof resolvePrincipal>[0];
 }
 
+function makeAuthorizationEvent(token: string) {
+	return {
+		request: {
+			method: 'GET',
+			headers: new Headers({ Authorization: `Bearer ${token}` })
+		},
+		url: new URL('https://app.test/catalog'),
+		locals: {
+			principal: undefined,
+			safeGetSession: vi.fn()
+		}
+	} as unknown as Parameters<typeof resolvePrincipal>[0];
+}
+
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockAdminGetUser.mockResolvedValue({
@@ -58,19 +77,13 @@ beforeEach(() => {
 		data: null,
 		error: { message: 'not found' }
 	});
+	mockValidateApiKey.mockResolvedValue({
+		valid: false,
+		error: 'Invalid API key'
+	});
 });
 
 describe('principal helpers', () => {
-	it('normalizes user roles — pseudo-roles are dropped, clean app roles are preserved', () => {
-		// api and api-member pseudo-roles no longer map to a UserRole
-		expect(normalizeUserRoles(['member', 'member'])).toEqual(['member']);
-		expect(normalizeUserRoles(['api_viewer', 'member'])).toEqual(['viewer', 'member']);
-		// ppi-member and api-member/api-enterprise are pseudo-roles — they drop from appRoles
-		expect(normalizeUserRoles(['viewer', 'api-member', 'ppi-member'])).toEqual(['viewer']);
-		expect(normalizeUserRoles(['admin', 'api-enterprise'])).toEqual(['admin']);
-		expect(normalizeUserRoles('nope')).toEqual(['viewer']);
-	});
-
 	it('selects the highest-priority primary app role', () => {
 		expect(getPrimaryUserRole(['viewer', 'member'])).toBe('member');
 		expect(getPrimaryUserRole(['viewer', 'admin'])).toBe('admin');
@@ -139,12 +152,12 @@ describe('principal helpers', () => {
 		expect(principalHasApiPlan(memberPrincipal, 'enterprise')).toBe(false);
 	});
 
-	it('falls back to legacy role-derived entitlements when explicit columns are null', async () => {
+	it('reads scalar app role independently from explicit API and Intelligence entitlements', async () => {
 		mockAdminSingle.mockResolvedValue({
 			data: {
-				user_role: ['viewer', 'api-member', 'ppi-member'],
-				api_plan: null,
-				ppi_access: null
+				role: 'viewer',
+				api_plan: 'member',
+				ppi_access: true
 			},
 			error: null
 		});
@@ -161,12 +174,13 @@ describe('principal helpers', () => {
 			apiPlan: 'member',
 			ppiAccess: true
 		});
+		expect(mockAdminSelect).toHaveBeenCalledWith('role, api_plan, ppi_access');
 	});
 
-	it('prefers explicit viewer defaults over legacy pseudo-role derivation', async () => {
+	it('uses explicit viewer defaults without consulting the legacy role mirror', async () => {
 		mockAdminSingle.mockResolvedValue({
 			data: {
-				user_role: ['viewer'],
+				role: 'viewer',
 				api_plan: 'viewer',
 				ppi_access: false
 			},
@@ -184,6 +198,155 @@ describe('principal helpers', () => {
 			appRoles: ['viewer'],
 			apiPlan: 'viewer',
 			ppiAccess: false
+		});
+	});
+
+	it('preserves an explicit viewer plan for admin roles', async () => {
+		mockAdminSingle.mockResolvedValue({
+			data: {
+				role: 'admin',
+				api_plan: 'viewer',
+				ppi_access: false
+			},
+			error: null
+		});
+
+		const principal = await resolvePrincipal(makeCookieSessionEvent(['admin']));
+
+		expect(principal).toMatchObject({
+			source: 'cookie-session',
+			appRoles: ['admin'],
+			primaryAppRole: 'admin',
+			apiPlan: 'viewer',
+			ppiAccess: false
+		});
+	});
+
+	it('preserves the admin enterprise fallback when api_plan is unset', async () => {
+		mockAdminSingle.mockResolvedValue({
+			data: {
+				role: 'admin',
+				api_plan: null,
+				ppi_access: false
+			},
+			error: null
+		});
+
+		const principal = await resolvePrincipal(makeCookieSessionEvent(['admin']));
+
+		expect(principal).toMatchObject({
+			subjectType: 'user',
+			source: 'cookie-session',
+			primaryAppRole: 'admin',
+			appRoles: ['admin'],
+			apiPlan: 'enterprise',
+			ppiAccess: false
+		});
+	});
+
+	it.each([
+		['api_viewer', 'viewer'],
+		['api_member', 'member'],
+		['api_enterprise', 'enterprise']
+	] as const)('preserves legacy scalar %s with explicit entitlements', async (role, apiPlan) => {
+		mockAdminSingle.mockResolvedValue({
+			data: {
+				role,
+				api_plan: apiPlan,
+				ppi_access: true
+			},
+			error: null
+		});
+
+		const principal = await resolvePrincipal(makeCookieSessionEvent(['viewer']));
+
+		expect(principal).toMatchObject({
+			source: 'cookie-session',
+			appRoles: ['viewer'],
+			primaryAppRole: 'viewer',
+			apiPlan,
+			ppiAccess: true
+		});
+	});
+
+	it.each(['member', 'admin'] as const)(
+		'exposes scalar %s as exactly one application role',
+		async (role) => {
+			mockAdminSingle.mockResolvedValue({
+				data: {
+					role,
+					api_plan: role === 'admin' ? 'enterprise' : 'member',
+					ppi_access: false
+				},
+				error: null
+			});
+
+			const principal = await resolvePrincipal(makeCookieSessionEvent([role]));
+
+			expect(principal.appRoles).toEqual([role]);
+			expect(principal.primaryAppRole).toBe(role);
+		}
+	);
+
+	it('downgrades invalid explicit entitlements to viewer-safe values', async () => {
+		mockAdminSingle.mockResolvedValue({
+			data: {
+				role: 'viewer',
+				api_plan: 'legacy-enterprise',
+				ppi_access: 'true'
+			},
+			error: null
+		});
+
+		const principal = await resolvePrincipal(makeCookieSessionEvent(['viewer']));
+
+		expect(principal).toMatchObject({
+			source: 'cookie-session',
+			appRoles: ['viewer'],
+			apiPlan: 'viewer',
+			ppiAccess: false
+		});
+	});
+
+	it('fails closed when cookie, bearer, or API-key auth sees an invalid scalar role', async () => {
+		mockAdminSingle.mockResolvedValue({
+			data: {
+				role: 'invalid_role',
+				api_plan: 'enterprise',
+				ppi_access: true
+			},
+			error: null
+		});
+
+		const cookiePrincipal = await resolvePrincipal(makeCookieSessionEvent(['viewer']));
+		expect(cookiePrincipal).toMatchObject({
+			source: 'cookie-session',
+			appRoles: ['viewer'],
+			apiPlan: 'viewer',
+			ppiAccess: false
+		});
+
+		mockAdminGetUser.mockResolvedValue({
+			data: { user: { id: 'bearer-user' } },
+			error: null
+		});
+		const bearerPrincipal = await resolvePrincipal(makeAuthorizationEvent('session-token'));
+		expect(bearerPrincipal).toMatchObject({
+			subjectType: 'anonymous',
+			isAuthenticated: false,
+			appRoles: []
+		});
+
+		mockValidateApiKey.mockResolvedValue({
+			valid: true,
+			userId: 'api-user',
+			keyId: 'key-1'
+		});
+		const apiKeyPrincipal = await resolvePrincipal(makeAuthorizationEvent('pk_live_valid-key'));
+		expect(apiKeyPrincipal).toMatchObject({
+			subjectType: 'anonymous',
+			isAuthenticated: false,
+			appRoles: []
 		});
 	});
 

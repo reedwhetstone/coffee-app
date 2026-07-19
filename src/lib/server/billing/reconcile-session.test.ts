@@ -24,7 +24,6 @@ let handleReconcileStripeSession: typeof import('./reconcile-session').handleRec
 
 function makeUserRolesTable(row: {
 	role: string | null;
-	user_role: string[] | null;
 	api_plan: string | null;
 	ppi_access: boolean | null;
 }) {
@@ -61,7 +60,6 @@ function makeSupabase(options: {
 	existingCompletedRow?: { role_updated: boolean } | null;
 	userRoleRow?: {
 		role: string | null;
-		user_role: string[] | null;
 		api_plan: string | null;
 		ppi_access: boolean | null;
 	};
@@ -72,7 +70,6 @@ function makeSupabase(options: {
 	const userRoles = makeUserRolesTable(
 		options.userRoleRow ?? {
 			role: 'viewer',
-			user_role: ['viewer'],
 			api_plan: 'viewer',
 			ppi_access: false
 		}
@@ -153,7 +150,6 @@ describe('handleReconcileStripeSession', () => {
 			existingCompletedRow: { role_updated: false },
 			userRoleRow: {
 				role: 'member',
-				user_role: ['member'],
 				api_plan: 'viewer',
 				ppi_access: false
 			}
@@ -172,7 +168,6 @@ describe('handleReconcileStripeSession', () => {
 			alreadyProcessed: true,
 			entitlements: {
 				role: 'member',
-				userRole: ['member'],
 				apiPlan: 'viewer',
 				ppiAccess: false
 			}
@@ -183,7 +178,6 @@ describe('handleReconcileStripeSession', () => {
 		const { supabase, mocks } = makeSupabase({
 			userRoleRow: {
 				role: 'viewer',
-				user_role: ['viewer'],
 				api_plan: 'viewer',
 				ppi_access: false
 			}
@@ -222,13 +216,11 @@ describe('handleReconcileStripeSession', () => {
 			unknownPriceIds: [],
 			previousEntitlements: {
 				role: 'viewer',
-				userRole: ['viewer'],
 				apiPlan: 'viewer',
 				ppiAccess: false
 			},
 			resolvedEntitlements: {
 				role: 'member',
-				userRole: ['member'],
 				apiPlan: 'viewer',
 				ppiAccess: false
 			},
@@ -255,7 +247,6 @@ describe('handleReconcileStripeSession', () => {
 			message: 'Checkout session reconciled and entitlements updated',
 			entitlements: {
 				role: 'member',
-				userRole: ['member'],
 				apiPlan: 'viewer',
 				ppiAccess: false
 			},

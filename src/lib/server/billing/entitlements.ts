@@ -20,7 +20,6 @@ const API_PLAN_PRIORITY: Record<ApiPlan, number> = {
 
 export interface ResolvedBillingEntitlements {
 	role: UserRole;
-	userRole: string[];
 	apiPlan: ApiPlan;
 	ppiAccess: boolean;
 }
@@ -78,27 +77,15 @@ function buildUserRoleMirror(role: UserRole): string[] {
 }
 
 export function resolveStoredBillingEntitlements(
-	row: Pick<UserRoleRow, 'role' | 'user_role' | 'api_plan' | 'ppi_access'> | null | undefined
+	row: Pick<UserRoleRow, 'role' | 'api_plan' | 'ppi_access'> | null | undefined
 ): ResolvedBillingEntitlements {
 	const role = normalizeStoredRole(row?.role);
 
 	return {
 		role,
-		userRole:
-			Array.isArray(row?.user_role) && row.user_role.length > 0
-				? row.user_role
-				: buildUserRoleMirror(role),
 		apiPlan: resolveStoredApiPlan(row?.role, row?.api_plan),
 		ppiAccess: row?.ppi_access === true
 	};
-}
-
-function arraysEqual(left: string[], right: string[]): boolean {
-	if (left.length !== right.length) {
-		return false;
-	}
-
-	return left.every((value, index) => value === right[index]);
 }
 
 function toIsoTimestamp(seconds: number | null | undefined): string | null {
@@ -128,7 +115,6 @@ export function resolveBillingEntitlements(input: {
 
 	const resolved: ResolvedBillingEntitlements = {
 		role: preserveAdmin ? 'admin' : 'viewer',
-		userRole: buildUserRoleMirror(preserveAdmin ? 'admin' : 'viewer'),
 		apiPlan: resolveStoredApiPlan(input.currentRole, input.currentApiPlan),
 		ppiAccess: input.currentPpiAccess === true
 	};
@@ -156,7 +142,6 @@ export function resolveBillingEntitlements(input: {
 		}
 	}
 
-	resolved.userRole = buildUserRoleMirror(resolved.role);
 	return resolved;
 }
 
@@ -277,7 +262,7 @@ export async function recomputeUserBillingEntitlements(
 ): Promise<BillingRecomputeResult> {
 	const { data: currentUserRoleRow, error: currentUserRoleError } = await supabase
 		.from('user_roles')
-		.select('role, user_role, api_plan, ppi_access')
+		.select('role, api_plan, ppi_access')
 		.eq('id', userId)
 		.maybeSingle();
 
@@ -303,24 +288,19 @@ export async function recomputeUserBillingEntitlements(
 		subscriptions: subscriptions ?? []
 	});
 
-	const storedUserRole =
-		Array.isArray(currentUserRoleRow?.user_role) && currentUserRoleRow.user_role.length > 0
-			? currentUserRoleRow.user_role
-			: [];
-
 	const changed =
 		!currentUserRoleRow ||
 		currentUserRoleRow.role !== resolvedEntitlements.role ||
 		currentUserRoleRow.api_plan !== resolvedEntitlements.apiPlan ||
-		currentUserRoleRow.ppi_access !== resolvedEntitlements.ppiAccess ||
-		!arraysEqual(storedUserRole, resolvedEntitlements.userRole);
+		currentUserRoleRow.ppi_access !== resolvedEntitlements.ppiAccess;
 
 	if (!currentUserRoleRow || changed) {
 		const { error: upsertError } = await supabase.from('user_roles').upsert(
 			{
 				id: userId,
 				role: resolvedEntitlements.role,
-				user_role: resolvedEntitlements.userRole,
+				// Write-only rollback mirror. No authorization or discrepancy path reads this column.
+				user_role: buildUserRoleMirror(resolvedEntitlements.role),
 				api_plan: resolvedEntitlements.apiPlan,
 				ppi_access: resolvedEntitlements.ppiAccess,
 				updated_at: new Date().toISOString()

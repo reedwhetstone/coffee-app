@@ -35,11 +35,6 @@ vi.mock('$lib/supabase-admin', () => ({
 
 vi.mock('$lib/server/apiAuth', () => ({
 	API_KEY_PREFIX: 'pk_live_',
-	deriveApiPlanFromRoles: (roles: string[]) => {
-		if (roles.includes('admin') || roles.includes('api-enterprise')) return 'enterprise';
-		if (roles.includes('api-member')) return 'member';
-		return 'viewer';
-	},
 	validateApiKey: mockValidateApiKey
 }));
 
@@ -158,7 +153,7 @@ beforeEach(() => {
 		error: 'Invalid API key'
 	});
 	mockUserRolesSingle.mockResolvedValue({
-		data: { user_role: ['viewer'] },
+		data: { role: 'viewer', api_plan: 'viewer', ppi_access: false },
 		error: null
 	});
 });
