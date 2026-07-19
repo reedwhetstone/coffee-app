@@ -22,8 +22,9 @@
  *   PUBLIC_SUPABASE_ANON_KEY  — Anon key (read-only access for catalog fetch)
  *   SUPABASE_SERVICE_ROLE_KEY — Service role key (required for inserts)
  *
- * Prerequisites (run SQL migration first):
- *   supabase/migrations/20260322_backfill_supply_index.sql
+ * Prerequisite: the historical 20260322 backfill migration must already be
+ * present in the target database. Parchment owns the canonical migration
+ * archive and all future production DDL.
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -414,7 +415,7 @@ async function main() {
 		console.log('-- Supply Index Backfill: Synthetic price_index_snapshots');
 		console.log(`-- Generated: ${new Date().toISOString()}`);
 		console.log(`-- Rows: ${ppiRows.length} across ${origins.size} origins, ${weeks.size} weeks`);
-		console.log('-- Run AFTER: supabase/migrations/20260322_backfill_supply_index.sql');
+		console.log('-- Requires the historical 20260322 backfill migration');
 		console.log('-- =============================================================================');
 		console.log('');
 		console.log('BEGIN;');
