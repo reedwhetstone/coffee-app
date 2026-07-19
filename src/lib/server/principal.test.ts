@@ -201,6 +201,28 @@ describe('principal helpers', () => {
 		});
 	});
 
+	it('preserves the admin enterprise fallback when api_plan is unset', async () => {
+		mockAdminSingle.mockResolvedValue({
+			data: {
+				role: 'admin',
+				api_plan: null,
+				ppi_access: false
+			},
+			error: null
+		});
+
+		const principal = await resolvePrincipal(makeCookieSessionEvent(['admin']));
+
+		expect(principal).toMatchObject({
+			subjectType: 'user',
+			source: 'cookie-session',
+			primaryAppRole: 'admin',
+			appRoles: ['admin'],
+			apiPlan: 'enterprise',
+			ppiAccess: false
+		});
+	});
+
 	it.each(['member', 'admin'] as const)(
 		'exposes scalar %s as exactly one application role',
 		async (role) => {

@@ -132,8 +132,12 @@ interface UserEntitlements {
 	ppiAccess: boolean;
 }
 
-function normalizeApiPlan(plan: unknown): ApiPlan {
-	return plan === 'member' || plan === 'enterprise' ? plan : 'viewer';
+function normalizeApiPlan(plan: unknown, role: UserRole): ApiPlan {
+	if (plan === 'member' || plan === 'enterprise') {
+		return plan;
+	}
+
+	return role === 'admin' ? 'enterprise' : 'viewer';
 }
 
 function logEntitlementReadFailure(
@@ -184,7 +188,7 @@ async function getUserEntitlements(
 
 	return {
 		roles: [role],
-		apiPlan: normalizeApiPlan(data.api_plan),
+		apiPlan: normalizeApiPlan(data.api_plan, role),
 		ppiAccess: data.ppi_access === true
 	};
 }
