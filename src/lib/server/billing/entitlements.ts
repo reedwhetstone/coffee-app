@@ -72,10 +72,6 @@ function resolveStoredApiPlan(
 	return normalizeStoredRole(role) === 'admin' ? 'enterprise' : 'viewer';
 }
 
-function buildUserRoleMirror(role: UserRole): string[] {
-	return [role];
-}
-
 export function resolveStoredBillingEntitlements(
 	row: Pick<UserRoleRow, 'role' | 'api_plan' | 'ppi_access'> | null | undefined
 ): ResolvedBillingEntitlements {
@@ -299,8 +295,6 @@ export async function recomputeUserBillingEntitlements(
 			{
 				id: userId,
 				role: resolvedEntitlements.role,
-				// Write-only rollback mirror. No authorization or discrepancy path reads this column.
-				user_role: buildUserRoleMirror(resolvedEntitlements.role),
 				api_plan: resolvedEntitlements.apiPlan,
 				ppi_access: resolvedEntitlements.ppiAccess,
 				updated_at: new Date().toISOString()

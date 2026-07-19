@@ -324,42 +324,6 @@ export async function validateApiRequest(request: Request): Promise<{
 }
 
 /**
- * Derive API plan from the user's app role array when no explicit entitlement is stored.
- * This provides backward-compatible fallback during the migration period.
- * Prefer reading the explicit api_plan column from user_roles instead of calling this.
- */
-export function deriveApiPlanFromRoles(roles: string[]): ApiPlan {
-	// Legacy pseudo-roles → explicit plan names
-	if (roles.some((r) => r === 'admin' || r === 'api-enterprise' || r === 'api_enterprise')) {
-		return 'enterprise';
-	}
-	if (
-		roles.some(
-			(r) =>
-				r === 'api-member' ||
-				r === 'api_member' ||
-				r === 'api' ||
-				r === 'developer' ||
-				r === 'growth'
-		)
-	) {
-		return 'member';
-	}
-	return 'viewer';
-}
-
-/**
- * Get user's API subscription tier from their role.
- * @deprecated Prefer reading the explicit api_plan column via principal.apiPlan.
- * This function is kept for backward-compatible callers that pass raw role strings.
- */
-export function getUserApiTier(role: string | string[] | null): ApiPlan {
-	if (!role) return 'viewer';
-	const roles = Array.isArray(role) ? role : role.split(',').map((r) => r.trim());
-	return deriveApiPlanFromRoles(roles);
-}
-
-/**
  * Get row limit for user's API tier
  */
 export function getApiRowLimit(tier: ApiPlan): number {

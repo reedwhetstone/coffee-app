@@ -270,9 +270,26 @@ Hold the destructive migration until both deployments are live and the following
 
 Use at least one normal deploy observation window. A full billing webhook cycle or explicit non-destructive reconciliation canary is preferable to time alone.
 
-### PR 3: Contract the schema
+### PR 3: Coordinated contract release
 
-Repository: `coffee-app`
+Repositories: `coffee-app`, then `parchment-api`
+
+The contract release has two ordered changes because application and database
+deployments cannot be atomic across repositories:
+
+1. Merge and deploy the coffee-app cleanup that stops writing the legacy mirror
+   and removes the final pseudo-role compatibility helpers.
+2. With the reviewed Parchment plan manifest already available, immediately
+   apply the Parchment-owned schema migration through the guarded workflow.
+
+Do not introduce another observation window between these steps. Once the
+coffee-app cleanup is deployed, ordinary rollback to an array-reading build is
+no longer supported even though the column may exist briefly. If the schema
+apply aborts, keep the scalar deployment live, diagnose the failed precondition,
+and produce a new reviewed plan. Restore the legacy schema before any rollback
+to array-reading code.
+
+Repository: `parchment-api`
 
 Add one transactional forward migration that:
 
@@ -289,7 +306,11 @@ Add one transactional forward migration that:
 
 Do not silently map legacy enum values in this destructive migration. Any `api_*` scalar value indicates the preflight or earlier backfill failed, and the transaction should abort.
 
-Regenerate database types and update schema snapshots in the same PR. Prove `supabase db reset` succeeds from an empty database so historical migrations followed by the new migration converge.
+After the production apply succeeds, regenerate coffee-app database types in a
+mechanical follow-up so the checked-in snapshot reflects `public.app_role` and
+the removed mirror. Prove the Parchment migration chain converges on a
+disposable database before submission whenever the local service is available;
+otherwise require that execution signal from CI before apply.
 
 ### PR 4: Optional mechanical type simplification
 

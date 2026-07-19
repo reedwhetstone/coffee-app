@@ -181,7 +181,6 @@ describe('billing entitlement admin discrepancies', () => {
 			{
 				id: 'user_123',
 				role: 'member',
-				user_role: ['member'],
 				api_plan: 'viewer',
 				ppi_access: false,
 				updated_at: expect.any(String)
@@ -259,7 +258,6 @@ describe('billing entitlement admin discrepancies', () => {
 			{
 				id: 'admin_123',
 				role: 'admin',
-				user_role: ['admin'],
 				api_plan: 'enterprise',
 				ppi_access: false,
 				updated_at: expect.any(String)
