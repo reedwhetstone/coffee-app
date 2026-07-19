@@ -143,10 +143,8 @@
 						<div class="rounded-md border border-line bg-surface-canvas p-3">
 							<label class="flex items-center justify-between gap-3">
 								<div>
-									<div class="text-xs font-medium text-ink">Hobbyist suppliers only</div>
-									<p class="text-[11px] text-muted">
-										Narrow the catalog to suppliers that sell in hobbyist-friendly quantities.
-									</p>
+									<div class="text-xs font-medium text-ink">Home Roaster Suppliers Only</div>
+									<p class="text-[11px] text-muted">Filter out wholesale quantities</p>
 								</div>
 								<input
 									type="checkbox"
