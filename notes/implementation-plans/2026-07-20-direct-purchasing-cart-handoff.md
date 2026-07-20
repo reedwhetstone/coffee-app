@@ -24,7 +24,7 @@ The generic Shopify scraper (`coffee-scraper/scrape/sources/generic/shopify-scra
 
 ## Contract boundary
 
-`price_tiers` remains a pricing-only contract. Shopify `variant_id`, platform, and cart mode belong in a separate additive `purchase_options` contract keyed to the catalog row and tier, not inside `price_tiers`.
+`price_tiers` remains a pricing-only contract. Platform and cart metadata belong in a separate additive `purchase_options` contract keyed to the catalog row and tier, not inside `price_tiers`. Each option carries the appropriate platform identifier where available: Shopify `variant_id` or WooCommerce `product_id`, alongside `platform` and `cart_mode`. Custom-platform options may have no purchasable identifier and must use the deep-link fallback.
 
 The canonical catalog resource must not blindly relay that storage field. A dedicated cart-handoff projection explicitly selects the purchase fields needed to build a handoff URL; price continues to come from `price_tiers`. This keeps `/v1/catalog` and its coffee-app proxy compatible for existing machine and browser consumers while giving cart flows an intentional public contract.
 
@@ -33,7 +33,7 @@ The canonical catalog resource must not blindly relay that storage field. A dedi
 ### Phase 1: attribution + handoff (no merchant cooperation required)
 
 **PR 1 (coffee-scraper): persist purchase identity.**
-- Extend purchase-option extraction so each option carries `min_lbs`, `variant_id` where available, `platform: shopify|woocommerce|custom`, and the appropriate `cart_mode` in the additive `purchase_options` field. Leave `price_tiers` unchanged.
+- Extend purchase-option extraction so each option carries `min_lbs`, `variant_id` for Shopify where available, `product_id` for WooCommerce where available, `platform: shopify|woocommerce|custom`, and the appropriate `cart_mode` in the additive `purchase_options` field. Leave `price_tiers` unchanged.
 - Ship compile-safe defaults first per the schema rollout rule. Backfill occurs naturally on the next scrape cycle.
 
 **PR 2 (coffee-app): UTM everything.**
@@ -41,7 +41,7 @@ The canonical catalog resource must not blindly relay that storage field. A dedi
 
 **PR 3 (coffee-app): cart + supplier handoff.**
 - Client-side cart grouping items by supplier (carts are per-store; a mixed cart becomes one handoff per supplier).
-- "Checkout at {supplier}" consumes the dedicated purchase-options projection and builds the cart permalink from persisted variant IDs + quantities + UTMs for Shopify suppliers; `add-to-cart` URL for WooCommerce single items; deep link fallback for custom platforms. It must not depend on raw catalog storage or overload `price_tiers`.
+- "Checkout at {supplier}" consumes the dedicated purchase-options projection and builds the cart permalink from persisted Shopify variant IDs + quantities + UTMs for Shopify suppliers; the WooCommerce `add-to-cart` URL from the persisted product ID for single items; deep link fallback for custom platforms or options without a usable identifier. It must not depend on raw catalog storage or overload `price_tiers`.
 - Log every handoff event (supplier, items, estimated value) so we hold our own side of the attribution ledger.
 
 ### Phase 2: monetization conversations (after ~4-8 weeks of data)
@@ -58,6 +58,6 @@ The canonical catalog resource must not blindly relay that storage field. A dedi
 
 ## Success criteria
 
-- Phase 1: >95% of eligible Shopify catalog rows carry variant IDs in `purchase_options`; handoff events logged; UTMs on all outbound links; the default catalog projection continues to expose pricing tiers as `{min_lbs, price}` without cart metadata.
+- Phase 1: >95% of eligible Shopify catalog rows carry variant IDs in `purchase_options`, eligible WooCommerce rows carry product IDs where available, handoff events are logged, and UTMs are present on all outbound links; the default catalog projection continues to expose pricing tiers as `{min_lbs, price}` without cart metadata.
 - Phase 2: at least one supplier discount-code agreement signed.
 - Risks: permalink behavior varies slightly across themes (test top suppliers first); variant IDs go stale between scrapes (revalidate freshness at handoff time, fall back to product deep link).

@@ -38,7 +38,7 @@ Reframe the repo's identity from "scraper" to the business's pipeline layer, fou
   - `GET /v1/wire/latest` — public, the current edition (JSON).
   - `GET /v1/wire/editions` + `GET /v1/wire/editions/:n` — list public; older bodies email-gated/entitled per the freemium line.
   - `GET /v1/wire/edition-facts` (internal/admin) — deterministic facts payload for the generation job.
-  - `POST /v1/wire/editions` (internal/admin, service-auth) — the generation job submits a draft; publish flips state in **one database-owned transaction** (hard lesson from the PR #464 red team: no activatable publication state computed outside the DB, editions immutable once published, corrections append).
+  - `POST /v1/wire/editions` (internal/admin, service-auth) — the generation job submits a draft; an explicit publish action flips state and records a pending dispatch intent in **one database-owned transaction** (hard lesson from the PR #464 red team: no activatable publication state computed outside the DB, editions immutable once published, corrections append).
   - Later (Phase 2): personalized wire + alert endpoints keyed to saved sourcing intent, gated by `ppiAccess`.
 - RSS/Atom can be served by parchment-api or rendered by coffee-app from `/v1/wire/latest`; recommend coffee-app renders it (keeps API JSON-only).
 
@@ -52,7 +52,7 @@ Reframe the repo's identity from "scraper" to the business's pipeline layer, fou
 
 - **ESP: Resend** (dev-first, cheap at pilot scale, broadcast + audiences API, good DX from Node). Buttondown is the fallback if we want more built-in newsletter mechanics.
 - **Subscriber source of truth: the existing Supabase user/roles model.** Email-first signup creates a passwordless account via magic link; the ESP audience is a synced projection, never the master list. See the decided subscriber model in the data-model section below.
-- Send is triggered by the publication step: after `POST /v1/wire/editions` publish succeeds, the pipeline job renders the email from the canonical object and calls the ESP broadcast API. One object, web/email/RSS renderers, no parallel editorial.
+- Publication, not the draft-generation cron, owns dispatch. The explicit publish action flips the edition to published and inserts a pending `wire_dispatch_log` row in the same database transaction. After commit, a retryable dispatch worker claims that row, renders the email from the canonical object, and calls the ESP broadcast API idempotently. This keeps delivery alive after the human gate even if the scraper process that submitted the draft has exited; a failed dispatch remains visible and retryable rather than silently skipping a published edition. One object, web/email/RSS renderers, no parallel editorial.
 
 ## 3. Data model sketch (Supabase)
 
@@ -71,7 +71,7 @@ Runs e.g. Sunday evening MT (after the week's last nightly scrape, before Monday
 4. **Numeric validation pass (deterministic):** every number in prose must match the facts payload; mismatch → regenerate section, then fail loudly. Reuses the audit-agent pattern.
 5. `POST /v1/wire/editions` as draft.
 6. **Human gate (edition 1 and early production):** Reed/OpenClaw review the draft (Discord notification with preview link); publish is an explicit action. Automation earns removal of this gate later, not before.
-7. On publish: transaction flips state → coffee-app pages live → email render + ESP broadcast → RSS updates.
+7. On explicit publish: the database transaction flips state and records the dispatch intent → coffee-app pages and RSS read the published edition → a post-commit dispatch worker renders the email and broadcasts it through the ESP. Dispatch retries are keyed by `wire_dispatch_log` and do not require the draft-generation cron to remain alive.
 
 Failure modes: any stage failing leaves no partial publication (draft-only writes); the job emails/reports like the nightly scrape does; a missed week is a loud alert, not a silent skip (cadence is the product).
 
@@ -98,7 +98,7 @@ Work packages, each a mergeable slice (build order):
 - **WP-1 — parchment-api: wire contract.** `wire_editions` (jsonb `facts`/`content` with `schema_version`) plus `wire_dispatch_log` for per-edition send idempotency and webhook state, `GET /v1/wire/edition-facts` (internal; v1 = thin rollup over existing signals/index primitives), `POST /v1/wire/editions` draft submit, publish as one DB transaction, `GET /v1/wire/latest` + editions list. Subscriber state remains on the existing user/roles model; no separate `wire_subscribers` table. PADR for the wire contract. No personalization, no scoreboard table yet.
 - **WP-2 — coffee-scraper: generation job.** Weekly cron on the scraper host: macro + news ingesters (social sweep deferred), LLM editorial pass producing schema-validated sections, deterministic numeric-validation gate, draft submit, Discord notification for the human publish gate. Scraper ADR reframing the repo as ingestion + generation layer.
 - **WP-3 — coffee-app: wire surface.** `/wire` SSR pages (latest public + indexable, archive email-gated), signup with double opt-in updating subscriber state in the existing user/roles model, RSS/Atom render, coffee-app ADR for the subscriber model.
-- **WP-4 — email dispatch.** Resend integration triggered by publish; email render from the canonical object. Smallest slice; can ride with WP-3 if convenient.
+- **WP-4 — email dispatch.** A post-commit, retryable Resend worker consumes the durable publish intents in `wire_dispatch_log`, renders from the canonical object, and records idempotent send/webhook state. It is triggered by publish and does not depend on the draft-generation cron remaining alive. Smallest slice; can ride with WP-3 if convenient.
 
 Integration order mirrors the Market Index program: WP-1 first (contract live), WP-2/WP-3 in parallel against it, WP-4 last. Human publish gate stays until the pipeline has earned autonomy over several editions.
 
