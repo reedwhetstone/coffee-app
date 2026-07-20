@@ -51,7 +51,7 @@ Reframe the repo's identity from "scraper" to the business's pipeline layer, fou
 ### Email infrastructure
 
 - **ESP: Resend** (dev-first, cheap at pilot scale, broadcast + audiences API, good DX from Node). Buttondown is the fallback if we want more built-in newsletter mechanics.
-- **Source of truth for subscribers: Supabase** (`wire_subscribers`: email, user_id nullable, status, double-opt-in timestamps, source/attribution). ESP audience is a synced projection, never the master list. Free email subs become lightweight accounts on first site login (open question resolved toward: don't force account creation at subscribe time; minimize signup friction).
+- **Subscriber source of truth: the existing Supabase user/roles model.** Email-first signup creates a passwordless account via magic link; the ESP audience is a synced projection, never the master list. See the decided subscriber model in the data-model section below.
 - Send is triggered by the publication step: after `POST /v1/wire/editions` publish succeeds, the pipeline job renders the email from the canonical object and calls the ESP broadcast API. One object, web/email/RSS renderers, no parallel editorial.
 
 ## 3. Data model sketch (Supabase)
@@ -95,9 +95,9 @@ Design principle: **minimal and flexible.** The stable, permanent contract is th
 
 Work packages, each a mergeable slice (build order):
 
-- **WP-1 — parchment-api: wire contract.** `wire_editions` + `wire_subscribers` tables (jsonb `facts`/`content` with `schema_version`), `GET /v1/wire/edition-facts` (internal; v1 = thin rollup over existing signals/index primitives), `POST /v1/wire/editions` draft submit, publish as one DB transaction, `GET /v1/wire/latest` + editions list. PADR for the wire contract. No personalization, no scoreboard table yet.
+- **WP-1 — parchment-api: wire contract.** `wire_editions` (jsonb `facts`/`content` with `schema_version`) plus `wire_dispatch_log` for per-edition send idempotency and webhook state, `GET /v1/wire/edition-facts` (internal; v1 = thin rollup over existing signals/index primitives), `POST /v1/wire/editions` draft submit, publish as one DB transaction, `GET /v1/wire/latest` + editions list. Subscriber state remains on the existing user/roles model; no separate `wire_subscribers` table. PADR for the wire contract. No personalization, no scoreboard table yet.
 - **WP-2 — coffee-scraper: generation job.** Weekly cron on the scraper host: macro + news ingesters (social sweep deferred), LLM editorial pass producing schema-validated sections, deterministic numeric-validation gate, draft submit, Discord notification for the human publish gate. Scraper ADR reframing the repo as ingestion + generation layer.
-- **WP-3 — coffee-app: wire surface.** `/wire` SSR pages (latest public + indexable, archive email-gated), signup with double opt-in writing `wire_subscribers`, RSS/Atom render, coffee-app ADR for the subscriber model.
+- **WP-3 — coffee-app: wire surface.** `/wire` SSR pages (latest public + indexable, archive email-gated), signup with double opt-in updating subscriber state in the existing user/roles model, RSS/Atom render, coffee-app ADR for the subscriber model.
 - **WP-4 — email dispatch.** Resend integration triggered by publish; email render from the canonical object. Smallest slice; can ride with WP-3 if convenient.
 
 Integration order mirrors the Market Index program: WP-1 first (contract live), WP-2/WP-3 in parallel against it, WP-4 last. Human publish gate stays until the pipeline has earned autonomy over several editions.
