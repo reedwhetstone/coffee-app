@@ -64,11 +64,11 @@ Saved sourcing intent (origins, processes, suppliers, price ceilings, score floo
 
 ## Build sequencing
 
-- **Phase 0 (now, ~4 weeks, no product code):** manual pilot per the moonshot. OpenClaw generates weekly editions from existing Market Index signals + fetched external context; publish as blog posts + a simple email list; direct-outreach 50 named prospects; founding offer $12/$5/$15. Gate: ≥50 qualified free subs and ≥5 paid founders (or equivalent design-partner signal).
-- **Phase 1:** canonical publication object + `/wire` pages + automated email + RSS. The L1/L2/L3 pipeline replaces manual assembly.
-- **Phase 2:** personalization, immediate alerts, API projection, CLI reads.
+- **Phase 0 (now, ~4 weeks):** build the minimal core in the approved mergeable order: WP-1 wire contract, WP-2 generation job, WP-3 `/wire` surface, and WP-4 email dispatch. Run the first editions through the explicit human publish gate while the pipeline proves its cadence and content quality; OpenClaw may assist with review, but production generation lives in the scraper/parchment-api/coffee-app pipeline. Direct outreach and the founding offer ($12/$5/$15) remain part of launch validation, with ≥50 qualified free subscribers and ≥5 paid founders (or equivalent design-partner signal) as the commercial checkpoint.
+- **Phase 1:** operate and refine the core publication pipeline, content schema, audience funnel, and delivery reliability. Remove the human gate only after several successful editions earn that autonomy.
+- **Phase 2:** personalization, immediate alerts, API projection, and CLI reads.
 
-Infrastructure investment is explicitly deferred until Phase 0 proves subscribers return and convert.
+Infrastructure is built now as the permanent minimal, flexible core; only the Phase 2 capabilities and earned automation are deferred behind launch evidence.
 
 ## Business-model grounding (external best practices)
 
