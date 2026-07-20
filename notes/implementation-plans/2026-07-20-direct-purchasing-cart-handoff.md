@@ -16,15 +16,15 @@ Purveyors recommends and compares green coffee but hands the buyer nothing more 
 3. **Discount codes are the strongest attribution + partnership primitive.** A supplier-created `PURVEYORS` code auto-applied via permalink gives per-order tracking that survives cookie loss and gives buyers a reason to route through us. Indie-merchant affiliate tooling (Shopify Collabs, Refersion, UpPromote) all rides on codes + UTMs. Green coffee importers are not on Amazon-style affiliate networks; the realistic revenue path is direct rev-share deals backed by our own attribution data.
 4. **Storefront API (`cartCreate` → `checkoutUrl`) requires a merchant-issued access token.** That is a cooperating-supplier feature, not a starting point.
 5. **Universal-checkout aggregators (Rye, Violet) exist** for multi-merchant carts and agentic checkout, but they take a cut and add a dependency. Overkill while the majority of the catalog is Shopify with a free native mechanism.
-6. **WooCommerce equivalent:** `?add-to-cart={product_id}&quantity={n}` works for single items (multi-item requires plugin support). Custom-platform suppliers (Covoya, Genuine Origin, etc.) fall back to deep links with UTMs.
+6. **WooCommerce equivalent:** `?add-to-cart={product_id}&quantity={n}` works for simple products; variable products require the parent `product_id`, `variation_id`, and the selected `attribute_*` parameters (multi-item requires plugin support). Custom-platform suppliers (Covoya, Genuine Origin, etc.) fall back to deep links with UTMs.
 
 ## Current gap on our side
 
-The generic Shopify scraper (`coffee-scraper/scrape/sources/generic/shopify-scraper.ts`) already parses `ShopifyVariant.id` but discards it. `coffee_catalog.price_tiers` intentionally stores the stable public pricing shape `{min_lbs, price}`. Without persisted variant IDs we cannot construct cart permalinks.
+The generic Shopify scraper (`coffee-scraper/scrape/sources/generic/shopify-scraper.ts`) already parses `ShopifyVariant.id` but discards it. `coffee_catalog.price_tiers` intentionally stores the stable public pricing shape `{min_lbs, price}`. Without persisted Shopify variant IDs or WooCommerce product/variation IDs we cannot construct reliable cart handoffs.
 
 ## Contract boundary
 
-`price_tiers` remains a pricing-only contract. Platform and cart metadata belong in a separate additive `purchase_options` contract keyed to the catalog row and tier, not inside `price_tiers`. Each option carries the appropriate platform identifier where available: Shopify `variant_id` or WooCommerce `product_id`, alongside `platform` and `cart_mode`. Custom-platform options may have no purchasable identifier and must use the deep-link fallback.
+`price_tiers` remains a pricing-only contract. Platform and cart metadata belong in a separate additive `purchase_options` contract keyed to the catalog row and tier, not inside `price_tiers`. Each option carries the appropriate platform identifier where available: Shopify `variant_id`, or WooCommerce `product_id` plus `variation_id` for variable products, alongside `platform` and `cart_mode`. WooCommerce variation attributes required by the add-to-cart request should travel with the option as well; a simple WooCommerce product needs only its `product_id`. Custom-platform options may have no purchasable identifier and must use the deep-link fallback.
 
 The canonical catalog resource must not blindly relay that storage field. A dedicated cart-handoff projection explicitly selects the purchase fields needed to build a handoff URL; price continues to come from `price_tiers`. This keeps `/v1/catalog` and its coffee-app proxy compatible for existing machine and browser consumers while giving cart flows an intentional public contract.
 
@@ -33,7 +33,7 @@ The canonical catalog resource must not blindly relay that storage field. A dedi
 ### Phase 1: attribution + handoff (no merchant cooperation required)
 
 **PR 1 (coffee-scraper): persist purchase identity.**
-- Extend purchase-option extraction so each option carries `min_lbs`, `variant_id` for Shopify where available, `product_id` for WooCommerce where available, `platform: shopify|woocommerce|custom`, and the appropriate `cart_mode` in the additive `purchase_options` field. Leave `price_tiers` unchanged.
+- Extend purchase-option extraction so each option carries `min_lbs`, `variant_id` for Shopify where available, `product_id` for WooCommerce where available, and `variation_id` plus any required variation attributes for WooCommerce variable products, alongside `platform: shopify|woocommerce|custom` and the appropriate `cart_mode` in the additive `purchase_options` field. Leave `price_tiers` unchanged.
 - Ship compile-safe defaults first per the schema rollout rule. Backfill occurs naturally on the next scrape cycle.
 
 **PR 2 (coffee-app): UTM everything.**
@@ -41,7 +41,7 @@ The canonical catalog resource must not blindly relay that storage field. A dedi
 
 **PR 3 (coffee-app): cart + supplier handoff.**
 - Client-side cart grouping items by supplier (carts are per-store; a mixed cart becomes one handoff per supplier).
-- "Checkout at {supplier}" consumes the dedicated purchase-options projection and builds the cart permalink from persisted Shopify variant IDs + quantities + UTMs for Shopify suppliers; the WooCommerce `add-to-cart` URL from the persisted product ID for single items; deep link fallback for custom platforms or options without a usable identifier. It must not depend on raw catalog storage or overload `price_tiers`.
+- "Checkout at {supplier}" consumes the dedicated purchase-options projection and builds the cart permalink from persisted Shopify variant IDs + quantities + UTMs for Shopify suppliers; for WooCommerce, it uses the persisted parent `product_id` plus `variation_id` and required variation attributes for variable products, and `product_id` alone only for simple products. Use the deep-link fallback for custom platforms or options without a usable identifier. It must not depend on raw catalog storage or overload `price_tiers`.
 - Log every handoff event (supplier, items, estimated value) so we hold our own side of the attribution ledger.
 
 ### Phase 2: monetization conversations (after ~4-8 weeks of data)
@@ -58,6 +58,6 @@ The canonical catalog resource must not blindly relay that storage field. A dedi
 
 ## Success criteria
 
-- Phase 1: >95% of eligible Shopify catalog rows carry variant IDs in `purchase_options`, eligible WooCommerce rows carry product IDs where available, handoff events are logged, and UTMs are present on all outbound links; the default catalog projection continues to expose pricing tiers as `{min_lbs, price}` without cart metadata.
+- Phase 1: >95% of eligible Shopify catalog rows carry variant IDs in `purchase_options`, eligible WooCommerce simple-product rows carry product IDs and variable-product rows carry product plus variation IDs where available, handoff events are logged, and UTMs are present on all outbound links; the default catalog projection continues to expose pricing tiers as `{min_lbs, price}` without cart metadata.
 - Phase 2: at least one supplier discount-code agreement signed.
-- Risks: permalink behavior varies slightly across themes (test top suppliers first); variant IDs go stale between scrapes (revalidate freshness at handoff time, fall back to product deep link).
+- Risks: permalink behavior varies slightly across themes (test top suppliers first); product and variant/variation IDs go stale between scrapes (revalidate freshness at handoff time, fall back to product deep link).
