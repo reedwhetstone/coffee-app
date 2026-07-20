@@ -58,7 +58,7 @@ Reframe the repo's identity from "scraper" to the business's pipeline layer, fou
 
 - `wire_editions` — `edition_number` (the collectible "Edition #N"), `status` (draft/published), `published_at`, `facts` jsonb (edition-facts payload, immutable), `content` jsonb (structured sections: headline, stories, vibes, macro, deep-dive, scoreboard entries), `citations` jsonb, `methodology_version`. Append-only after publish; corrections as child rows.
 - `wire_external_observations` — macro/news/social items: `kind`, `source`, `url`, `payload` jsonb, `observed_at`, `engagement` jsonb. Written by scraper-repo ingesters; read by edition-facts and generation.
-- Subscriber model (decided 2026-07-19): **no separate `wire_subscribers` table.** Subscription lives on the existing user/roles model: email-first signup auto-creates a passwordless Supabase account via magic link (confirmation click = double opt-in + first login), sub state + bounce/complaint status are columns there, and existing users toggle in coffee-app settings. One-click unsubscribe via signed token requires no session; ESP audience is a projection. A small `wire_dispatch_log` table records per-edition sends for idempotency and webhook state. Magic-link/confirmation emails route through Resend custom SMTP on the warmed wire subdomain.
+- Subscriber model (decided 2026-07-19): **no separate `wire_subscribers` table.** Subscription lives on the existing user/roles model: email-first signup auto-creates a passwordless Supabase account via magic link (confirmation click = double opt-in + first login), sub state + bounce/complaint status are columns there, and existing users toggle in coffee-app settings. One-click unsubscribe via signed token requires no session; ESP audience is a projection. A small `wire_dispatch_log` table records durable per-edition post-publish tasks, including email and knowledge-ingest intents, with task kind, idempotency, and worker/delivery state. Magic-link/confirmation emails route through Resend custom SMTP on the warmed wire subdomain.
 - `wire_calls` — the public scoreboard: named call, edition made, resolution edition, grade. Small but load-bearing for the brand.
 
 ## 4. The weekly generation job (scraper repo, cron on scraper host)
@@ -71,7 +71,7 @@ Runs e.g. Sunday evening MT (after the week's last nightly scrape, before Monday
 4. **Numeric validation pass (deterministic):** every number in prose must match the facts payload; mismatch → regenerate section, then fail loudly. Reuses the audit-agent pattern.
 5. `POST /v1/wire/editions` as draft.
 6. **Human gate (edition 1 and early production):** Reed/OpenClaw review the draft (Discord notification with preview link); publish is an explicit action. Automation earns removal of this gate later, not before.
-7. On explicit publish: the database transaction flips state and records the dispatch intent → coffee-app pages and RSS read the published edition → a post-commit dispatch worker renders the email and broadcasts it through the ESP. Dispatch retries are keyed by `wire_dispatch_log` and do not require the draft-generation cron to remain alive.
+7. On explicit publish: the database transaction flips state and records durable email and knowledge-ingest intents → coffee-app pages and RSS read the published edition → post-commit workers render the email and ingest the canonical published edition into the knowledge corpus. Both workers are retryable and idempotent, keyed by `wire_dispatch_log`, and do not require the draft-generation cron to remain alive.
 
 Failure modes: any stage failing leaves no partial publication (draft-only writes); the job emails/reports like the nightly scrape does; a missed week is a loud alert, not a silent skip (cadence is the product).
 
@@ -95,10 +95,10 @@ Design principle: **minimal and flexible.** The stable, permanent contract is th
 
 Work packages, each a mergeable slice (build order):
 
-- **WP-1 — parchment-api: wire contract.** `wire_editions` (jsonb `facts`/`content` with `schema_version`) plus `wire_dispatch_log` for per-edition send idempotency and webhook state, `GET /v1/wire/edition-facts` (internal; v1 = thin rollup over existing signals/index primitives), `POST /v1/wire/editions` draft submit, publish as one DB transaction, `GET /v1/wire/latest` + editions list. Subscriber state remains on the existing user/roles model; no separate `wire_subscribers` table. PADR for the wire contract. No personalization, no scoreboard table yet.
+- **WP-1 — parchment-api: wire contract.** `wire_editions` (jsonb `facts`/`content` with `schema_version`) plus `wire_dispatch_log` for durable per-edition email and knowledge-ingest intents, task idempotency, and worker state, `GET /v1/wire/edition-facts` (internal; v1 = thin rollup over existing signals/index primitives), `POST /v1/wire/editions` draft submit, publish as one DB transaction, `GET /v1/wire/latest` + editions list. Subscriber state remains on the existing user/roles model; no separate `wire_subscribers` table. PADR for the wire contract. No personalization, no scoreboard table yet.
 - **WP-2 — coffee-scraper: generation job.** Weekly cron on the scraper host: macro + news ingesters (social sweep deferred), LLM editorial pass producing schema-validated sections, deterministic numeric-validation gate, draft submit, Discord notification for the human publish gate. Scraper ADR reframing the repo as ingestion + generation layer.
 - **WP-3 — coffee-app: wire surface.** `/wire` SSR pages (latest public + indexable, archive email-gated), signup with double opt-in updating subscriber state in the existing user/roles model, RSS/Atom render, coffee-app ADR for the subscriber model.
-- **WP-4 — email dispatch.** A post-commit, retryable Resend worker consumes the durable publish intents in `wire_dispatch_log`, renders from the canonical object, and records idempotent send/webhook state. It is triggered by publish and does not depend on the draft-generation cron remaining alive. Smallest slice; can ride with WP-3 if convenient.
+- **WP-4 — post-publish workers.** Retryable workers consume the durable publish intents in `wire_dispatch_log`: the email worker renders from the canonical object and records idempotent send/webhook state, while the knowledge worker chunks and embeds only the now-published edition and records idempotent corpus state. Both are triggered by publish and do not depend on the draft-generation cron remaining alive. Smallest slice; the email portion can ride with WP-3 if convenient.
 
 Integration order mirrors the Market Index program: WP-1 first (contract live), WP-2/WP-3 in parallel against it, WP-4 last. Human publish gate stays until the pipeline has earned autonomy over several editions.
 
@@ -123,8 +123,8 @@ Current corpus is `coffee_chunks`: per-coffee `profile/tasting/origin/commercial
 - Provenance: `source_url`, engagement stats for social items, and a `trust_class` — `our_data | external_reported | community_take` — which the chat agent must surface when citing
 - Lifecycle: editions and blog posts are permanent; news/social items get freshness-decayed retrieval weighting rather than deletion.
 
-### Ingestion (small delta on the existing pipeline)
-The wire pipeline already produces categorized artifacts: edition sections are structured JSON, social-sweep items arrive scored and classified, news items are curated with URLs. RAGification is one added post-publish stage in the weekly job: chunk → embed (same embedding service as `coffee_chunks`) → upsert with categories. Blog posts ingest via the same stage on merge. Critically, **the categorized raw corpus is stored from edition #1** even if retrieval serving ships later — the archive compounds regardless.
+### Ingestion (durable post-publish path)
+The wire pipeline already produces categorized artifacts: edition sections are structured JSON, social-sweep items arrive scored and classified, news items are curated with URLs. Publishing creates a durable knowledge-ingest intent; a retryable post-commit worker then reads only the canonical published edition, chunks → embeds (same embedding service as `coffee_chunks`) → upserts with categories, and records idempotent progress. This is not a later stage of the draft-generation cron: drafts never enter the corpus, and ingestion continues if that cron exits while the human gate is pending. Blog posts ingest via their own merge-triggered path. Critically, **the categorized raw corpus is stored from the first published edition** even if retrieval serving ships later — the archive compounds without admitting unpublished content.
 
 ### Serving
 - parchment-api: `GET /v1/knowledge/search` — query embedding + structured filters (source_type, topics, entities, week range, trust_class), returning chunks with citations. Entitlement: Intelligence gets the full corpus (news, social, macro context); anonymous callers get **latest-published-edition content only**; authenticated free email subscribers get published-edition content across the archive. The API must enforce that latest-only anonymous scope explicitly, rather than treating every published edition as public. Contextual depth remains paid (general and published free; personalized, immediate, and historical data paid).
@@ -132,7 +132,7 @@ The wire pipeline already produces categorized artifacts: edition sections are s
 - CLI later: `purvey knowledge search` once the API contract stabilizes (ADR-006 ordering).
 
 ### Sequencing
-- WP-2 (generation job) gains the corpus-write stage — cheap, do from edition #1.
+- The post-publish worker gains the corpus-write stage — cheap, durable, and safe to run from the first published edition; the draft-generation job never writes corpus rows.
 - Knowledge serving (`knowledge_search` endpoint + chat tool + coffee_chunks retirement slice) is **WP-5**, after the MVP wire ships. The coffee_chunks retirement is its own small PR: drop retired chunk types from generation and retrieval, keep sensory search.
 
 ## 8. Weak spots and pre-build validation (added 2026-07-19)

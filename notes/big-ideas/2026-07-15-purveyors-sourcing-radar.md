@@ -119,7 +119,7 @@ The MVP is now deliberately smaller:
 3. Add one manual coffee-app reference-client route.
 4. Test with three real sourcing decision-makers for four weeks.
 
-No new score, stored recommendation run, scheduler, alert delivery, CLI command, LLM ranking, RFQ, or purchase workflow belongs in the MVP. A recurring brief earns implementation only if at least two pilot partners surface and act on a genuinely new qualified lead.
+No new score, stored recommendation run, scheduler, external alert or delivery channel, CLI command, LLM ranking, RFQ, or purchase workflow belongs in the MVP. The in-app route and agent surface must still show current, explainable matches and useful next actions; the pilot measures whether those recommendations are genuinely new and useful rather than making customers prove the product's value through a research harness.
 
 External research strengthens this boundary. ICO, USDA, and FAO data show meaningful volatility alongside record production and declining stocks, which supports monitoring rather than a perpetual-scarcity thesis. The Specialty Coffee Transaction Guide shows that specialty prices require like-for-like context beyond commodity benchmarks. Royal, Cafe Imports, Genuine Origin, and Algrano demonstrate fragmented catalog and transaction models. Vesper and roastery software vendors demonstrate paid demand for decision and planning leverage, but not willingness to pay for this specific Purveyors product.
 
@@ -127,7 +127,7 @@ The detailed evidence, freshness contract, two-PR sequence, stop points, and pil
 
 ## Recommendation
 
-Proceed with the index-first manual MVP in coffee-app #482 after the provenance-aware publication reader cutover. Do not build recurring delivery until the manual pilot proves that indexed matches change sourcing discovery behavior.
+Proceed with the smallest coherent personalized MVP in coffee-app #482 after the provenance-aware publication reader cutover. It should capture a real sourcing intent, apply trustworthy indexed evidence, and present a short current result through the personalized dashboard and agent surface, with evidence links and natural next actions such as inspect, ask, watch, or shortlist. The three-partner, four-week pilot is a validation and measurement loop around that product, not a manual-only qualification surface. Keep external delivery, scheduled recurring briefs, autonomous purchasing, RFQs, generalized procurement operations, and new opaque scoring deferred.
 
 ## Product-conviction correction, 2026-07-18
 
