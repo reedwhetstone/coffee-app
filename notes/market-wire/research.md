@@ -1,8 +1,8 @@
 # Purveyors Market Wire — Full Research Package
 
 _Created: 2026-07-19_
-_Status: Research package (pre-build). Nothing in this document authorizes coding; the pilot gate does._
-_Companions: `purveyors-market-wire.md` (end-to-end product/pipeline design), `brain/moonshots/2026-07-19-purveyors-market-wire.md` (original strategic proposal)_
+_Status: Research package and strategic reference for the approved MVP infrastructure direction. The companion infrastructure plan is authoritative for build sequencing; the manual pilot gate was rejected, and launch validation runs on the pipeline from edition #1._
+_Companions: `notes/market-wire/design.md` (end-to-end product/pipeline design), `notes/market-wire/infrastructure.md` (authoritative implementation plan), `brain/moonshots/2026-07-19-purveyors-market-wire.md` (original strategic proposal)_
 
 ## 1. Executive summary
 
@@ -94,7 +94,7 @@ Free-to-paid at 2-5% (4% B2B pipeline bar); paid newsletter medians $83-$230/sub
 
 1. **The Number** — one headline stat from our data (e.g., median Ethiopia washed ask moved X%).
 2. **Market shape this week** — arrivals, delistings, movers by origin/process; index moves with significance framing. All from edition-facts JSON.
-3. **Three short stories** — LLM-drafted from structured facts + cited external context; opinionated, human-edited in pilot.
+3. **Three short stories** — LLM-drafted from structured facts + cited external context; opinionated, human-edited before the human publish gate.
 4. **Hot takes / vibes** — week-of community discourse from the 7-day social sweep (Reddit, X, YouTube, HN), engagement-cited; memes live here.
 5. **Macro corner** — KC/robusta levels, ICO indicator, FX, one-paragraph framing with attribution. Deliberately short; this is the commodity everyone else gives away.
 6. **Deep dive (rotating)** — one origin, supplier pattern, or market mechanic per week; the analytic showcase and upsell surface.
@@ -106,9 +106,9 @@ Pipeline and guardrails (edition-facts JSON, LLM narrates only payload facts, nu
 
 ## 9. GTM (revised 2026-07-19: pilot rejected, building core infrastructure now)
 
-Reed's call: weekly report generation at cadence is a foundational capability for an intelligence company, not a hypothesis to test with a handmade artifact. The MVP infrastructure gets built now — minimal and flexible (stable pipeline contract, schema-versioned report contents) — per the work packages in `purveyors-market-wire-infrastructure.md` §7.
+Reed's call: weekly report generation at cadence is a foundational capability for an intelligence company, not a hypothesis to test with a handmade artifact. The MVP infrastructure gets built now — minimal and flexible (stable pipeline contract, schema-versioned report contents) — per the work packages in `notes/market-wire/infrastructure.md` §7.
 
-GTM mechanics that survive from the pilot concept, now running on real infrastructure from edition #1:
+GTM mechanics carried forward from the launch concept, now running on real infrastructure from edition #1:
 1. Direct outreach to 50 named roasters, buyers, writers, supplier-side contacts to seed the list.
 2. Founding offer: $12 Intelligence / $5 Studio / $15 bundle, price-locked first 50.
 3. Measure from launch: subscriber growth, open rate, evidence clicks, replies, repeat visits, paid conversions. Same success metrics (§11), now informing iteration rather than gating the build.
@@ -119,19 +119,18 @@ GTM mechanics that survive from the pilot concept, now running on real infrastru
 - **Cannibalization:** free wire satisfies demand; mitigated by the five-pattern paywall line (delayed/aggregate/general/recent/read free; immediate/granular/personal/historical/act paid).
 - **Supplier tension / MLS backlash:** neutral evidence-led framing, buyer-traffic value, provenance discipline; watch for de-listing pressure.
 - **Trust damage from staleness or LLM error:** freshness metadata honesty and numeric validation are hard gates; corrections policy public.
-- **Cadence collapse:** weekly is the product; pilot proves the operational load before automation, automation protects cadence after.
+- **Cadence collapse:** weekly is the product; the staged pipeline, human publish gate, and explicit cadence alerts protect reliability while automation is earned.
 - **StoneX response:** possible but their structure (trading-book conflict, trader price points) makes matching the open position hard without undermining their model — that is the counter-positioning working.
 - **Voice drift toward corporate:** the brand spec above is the guardrail; if it reads like a trade bulletin, it has failed.
 
 ## 11. Success metrics
 
-Pilot: list growth to 50+, open rate >45% (small warm list), evidence CTR, reply rate, 5 paid founders. Post-build: qualified list growth rate, 4-week retention (repeat opens), free-to-paid ≥2-3% at scale, citation/syndication count (RSS pulls, backlinks, social quotes of wire data), supplier inbound.
+Launch checkpoint: list growth to 50+, open rate >45% (small warm list), evidence CTR, reply rate, 5 paid founders. Ongoing: qualified list growth rate, 4-week retention (repeat opens), free-to-paid ≥2-3% at scale, citation/syndication count (RSS pulls, backlinks, social quotes of wire data), supplier inbound.
 
 ## 12. Open questions
 
 1. ESP choice; whether free email subs create app accounts immediately or on first site login.
-2. Pilot editions at `/blog` (fastest) vs provisional `/wire` route.
-3. Futures-data licensing: editorial mention with attribution (pilot answer) vs licensed display later.
-4. Social sweep implementation: install last30days-skill with 7-day window and pinned coffee queries vs slim custom `last7days-coffee` sweep.
-5. Whether to pursue SCTG citation/partnership explicitly in early editions.
-6. Sponsorship policy: whether importers can ever sponsor, and under what disclosure rules, without corrupting the independence position.
+2. Futures-data licensing: editorial mention with attribution at launch vs licensed display later.
+3. Social sweep implementation: install last30days-skill with 7-day window and pinned coffee queries vs slim custom `last7days-coffee` sweep.
+4. Whether to pursue SCTG citation/partnership explicitly in early editions.
+5. Sponsorship policy: whether importers can ever sponsor, and under what disclosure rules, without corrupting the independence position.
