@@ -1,7 +1,7 @@
 # Proposal: Purveyors Market Wire
 
 _Created: 2026-07-19_
-_Status: Proposal_
+_Status: Strategic proposal aligned to the approved build-now infrastructure direction; launch validation runs from edition #1_
 _Domain: Purveyors ecosystem_
 _Canonical source: second brain_
 
@@ -67,17 +67,17 @@ It solves the actual bottleneck. The platform already has more capability than m
 
 Free recurring intelligence could satisfy too much demand, train users not to pay, or create supplier tension when Purveyors highlights delistings and unfavorable price comparisons. A noisy or stale feed would also damage the trust advantage. The free edition must be useful but delayed and general; paid value must come from relevance, immediacy, history, and workflow.
 
-## Cheapest proving experiment
+## Launch validation on the build-now core
 
-Run a four-week manual Market Wire pilot before building a publication system:
+Build the minimal core in the approved mergeable order: WP-1 wire contract, WP-2 generation job, WP-3 `/wire` surface, and WP-4 email dispatch. Run the first editions through the explicit human publish gate while the pipeline proves its cadence and content quality:
 
-1. Produce one concise weekly edition from existing Market Index signals.
+1. Generate each concise weekly edition from the canonical edition-facts and publication pipeline.
 2. Recruit 50 named roasters, buyers, coffee writers, and supplier-side contacts through direct outreach.
 3. Publish each edition as an indexable web page and email, with tracked links to the underlying Market Index evidence.
 4. Offer a founding plan: $12 Intelligence, $5 Studio, or $15 bundled, price-locked for the first 50 customers.
 5. Measure subscriber growth, open rate, evidence clicks, replies, repeat visits, and paid conversions.
 
-The experiment earns product investment if it attracts at least 50 qualified free subscribers and five paid founding customers, or produces equivalent high-signal design-partner demand. It fails if distribution requires constant personal chasing and readers do not return for subsequent editions.
+These launch metrics inform iteration and commercial validation from edition #1; they are not a gate that delays the foundational publication infrastructure. The validation loop succeeds with at least 50 qualified free subscribers and five paid founding customers, or equivalent high-signal design-partner demand. It signals a distribution problem if outreach requires constant personal chasing and readers do not return for subsequent editions.
 
 ## What would need to be true
 
@@ -91,16 +91,16 @@ The experiment earns product investment if it attracts at least 50 qualified fre
 ## Cross-product implications
 
 - coffee-scraper: preserve immutable, publication-ready observations and truthful freshness metadata.
-- parchment-api: expose a stable public wire projection and paid filtered/history contracts after the manual pilot proves demand.
+- parchment-api: establish the stable public wire projection in WP-1 from edition #1; add paid filtered/history contracts after the core publication loop is operating.
 - purveyors-cli: add wire reads only after a canonical API contract exists; preserve citations and observation timestamps for agents.
 - coffee-app: publish indexable editions and signal pages, collect email conversion, and route paid subscribers into Intelligence, Sourcing Radar, and Studio.
 
 ## Source-of-truth routing
 
-- Canonical archive: `brain/moonshots/`
-- If promoted: GTM and publication plan in `repos/coffee-app/notes/`, with repo-local implementation plans and ADRs for canonical publication contracts
+- Canonical implementation plan: `notes/market-wire/infrastructure.md`; this proposal records the strategic context and launch-validation metrics.
+- Original source: `brain/moonshots/2026-07-19-purveyors-market-wire.md` (retained as the originating moonshot/pointer after consolidation)
 - Product repo mirror or PR: n/a
 
 ## Recommendation
 
-Explore immediately as a manual four-week distribution and pricing test. Do not build syndication infrastructure until the first editions prove that qualified buyers subscribe, return, and convert.
+Build the minimal publication core now, with a human publish gate and direct outreach from edition #1. Use subscriber, retention, evidence-click, and paid-founder metrics to refine the product and earn automation; do not delay syndication infrastructure until demand proof.

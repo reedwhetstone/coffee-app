@@ -1,12 +1,12 @@
 # Purveyors Market Wire — End-to-End Design
 
 _Created: 2026-07-19_
-_Status: Concept design (pre-build); canonical strategic proposal at `brain/moonshots/2026-07-19-purveyors-market-wire.md`_
-_Related: `repos/coffee-app/notes/implementation-plans/market-index-decision-surface-plan.md` (signal backbone), ADR-005/007/008_
+_Status: Concept design aligned to the approved build-now direction; implementation authority: `notes/market-wire/infrastructure.md`_
+_Related: `notes/implementation-plans/market-index-decision-surface-plan.md` (signal backbone), ADR-005/007/008_
 
 ## Product definition
 
-A free weekly green-coffee market brief, published as a blog-like web area plus email edition. Each edition blends:
+A free weekly green-coffee market brief, published in the `/wire` web area plus email edition. Each edition blends:
 
 1. **Proprietary market view** — arrivals, delistings, price moves, below-market lots, index moves with significance framing, metadata/origin trends. All from existing scraper observations and Parchment market signals.
 2. **Full-market context** — ICE Arabica C (KC) and Robusta futures levels, ICO composite indicator, differentials commentary, FX (USD/BRL, USD/COP), harvest/weather items, and major industry news stories.
@@ -56,7 +56,7 @@ One `wire_editions` record (structured JSON: metadata, sections, stories, eviden
 - **coffee-app:** `/wire` pages, email capture, archive gating, subscriber → Intelligence upsell path through existing checkout.
 - **Blog:** stays the deep-analysis surface; the wire is the cadence surface. Wire items that deserve depth graduate into blog posts; blog posts get cited in wire editions. Shared audience funnel, separate formats.
 - **Sourcing Radar (future):** the personalized paid wire *is* Sourcing Radar's notification surface; same intent objects, two delivery modes.
-- **Existing internal analog:** the Wednesday Coffee Intelligence Report cron already produces an internal weekly market report from this data — the wire is its productization, and that cron is the natural pilot engine.
+- **Existing internal analog:** the Wednesday Coffee Intelligence Report cron already produces an internal weekly market report from this data — the wire is its productization, and that report can inform launch validation without becoming a substitute for the production pipeline.
 
 ## Personalization (paid) mechanics
 
@@ -102,4 +102,4 @@ Trade houses and importers (StoneX, Sucafina, major importers) already publish f
 1. ESP choice and whether free email subs create app accounts immediately or at first login.
 2. Exact public-archive gating (free-with-account vs. trailing N editions public) — affects SEO vs. conversion tradeoff.
 3. Futures-data display licensing vs. editorial-mention approach.
-4. Whether the pilot editions live at `/blog` (fastest) or a provisional `/wire` route (cleaner migration).
+4. **Resolved:** launch editions live at `/wire`; `/blog` remains the deep-analysis surface, with cross-links between the two formats.

@@ -2,7 +2,7 @@
 
 _Created: 2026-07-19_
 _Status: Architecture recommendation — approved direction 2026-07-19. Reed rejected the manual pilot: the wire pipeline is foundational infrastructure for an intelligence company (weekly report generation at cadence), to be built now as a minimal, flexible core. Report contents will evolve; the pipeline is permanent._
-_Companions: `purveyors-market-wire-research.md` (research package), `purveyors-market-wire.md` (product/pipeline design)_
+_Companions: `notes/market-wire/research.md` (research package), `notes/market-wire/design.md` (product/pipeline design)_
 
 ## 0. Recommendation up front
 
@@ -70,7 +70,7 @@ Runs e.g. Sunday evening MT (after the week's last nightly scrape, before Monday
 3. LLM editorial pass (existing `llmClient` pattern + a new editorial preset): drafts sections from facts + cited context. Same discipline as the cleaning pipeline: schema-validated JSON out (Zod), bounded retries.
 4. **Numeric validation pass (deterministic):** every number in prose must match the facts payload; mismatch → regenerate section, then fail loudly. Reuses the audit-agent pattern.
 5. `POST /v1/wire/editions` as draft.
-6. **Human gate (pilot and early production):** Reed/OpenClaw review the draft (Discord notification with preview link); publish is an explicit action. Automation earns removal of this gate later, not before.
+6. **Human gate (edition 1 and early production):** Reed/OpenClaw review the draft (Discord notification with preview link); publish is an explicit action. Automation earns removal of this gate later, not before.
 7. On publish: transaction flips state → coffee-app pages live → email render + ESP broadcast → RSS updates.
 
 Failure modes: any stage failing leaves no partial publication (draft-only writes); the job emails/reports like the nightly scrape does; a missed week is a loud alert, not a silent skip (cadence is the product).
@@ -80,7 +80,7 @@ Failure modes: any stage failing leaves no partial publication (draft-only write
 - Scraper VM cron: nightly scrape (exists), weekly ingesters + generation job (new).
 - Render (parchment-api): edition-facts computation on request, wire endpoints, publication transaction. No long-running jobs; the weekly rollup is cheap SQL over existing snapshots.
 - Vercel (coffee-app): SSR wire pages, RSS, email templates, signup/checkout.
-- OpenClaw (this workspace): Phase 0 pilot only — assembles editions manually with existing Market Index signals + ad-hoc sweeps; also the human-gate notifier. The production pipeline must not depend on OpenClaw.
+- OpenClaw (this workspace): launch-validation support and the human-gate notifier; it may assist with review, but it is not the production generation dependency. The production pipeline runs in the scraper/parchment-api/coffee-app system.
 
 ## 6. Alternatives considered
 

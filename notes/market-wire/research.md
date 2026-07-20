@@ -102,7 +102,7 @@ Free-to-paid at 2-5% (4% B2B pipeline bar); paid newsletter medians $83-$230/sub
 8. **The locked moment** — one personalized paid tease ("3 lots matched your Ethiopia mandate this week"), not a generic banner.
 9. **Sign-off** — business on top, personal at the bottom; the human ending gets forwarded.
 
-Pipeline and guardrails (edition-facts JSON, LLM narrates only payload facts, numeric validation pass, canonical publication object rendering to web/email/RSS) are specified in `purveyors-market-wire.md`.
+Pipeline and guardrails (edition-facts JSON, LLM narrates only payload facts, numeric validation pass, canonical publication object rendering to web/email/RSS) are specified in `notes/market-wire/design.md` and implemented through the work packages in `notes/market-wire/infrastructure.md`.
 
 ## 9. GTM (revised 2026-07-19: pilot rejected, building core infrastructure now)
 
