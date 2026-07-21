@@ -6,25 +6,29 @@ This directory contains a mix of canonical product material, active planning, au
 
 If the goal is to understand the current product direction, implementation contract, or naming system, start here:
 
-1. `PRODUCT_VISION.md`
+1. `DEVLOG.md`
+   - Canonical, ordered, cross-product Purveyors backlog and intake rules
+2. `PRODUCT_VISION.md`
    - Canonical product direction and strategy test
-2. `BRAND.md`
+3. `BRAND.md`
    - Working brand identity, product language, visual rules, UI/UX principles, and inconsistency log
-3. `UI-FRAMEWORK.md`
+4. `UI-FRAMEWORK.md`
    - Tactical Svelte/Tailwind component implementation companion for applying `BRAND.md`
-4. `decisions/`
+5. `decisions/`
    - Accepted ADRs for real shipped behavior
-5. `API_notes/APITIER.md`
+6. `API_notes/APITIER.md`
    - Current Parchment API tier model
-6. `API_notes/API-strategy.md`
+7. `API_notes/API-strategy.md`
    - Current API strategy, with older speculative ideas trimmed back
-7. `marketing-audits/`
+8. `marketing-audits/`
    - Recent product-language and funnel audits
-8. `implementation-plans/`
+9. `implementation-plans/`
    - Active or recent execution plans
 
 ## Current directories
 
+- `DEVLOG.md`
+  - The only ordered cross-product backlog. Detailed plans and repo-local checklists support it but do not compete with it for priority.
 - `API_notes/`
   - Current API product notes and implementation references
 - `BRAND.md`

@@ -3,7 +3,7 @@
 _Created: 2026-05-07_
 _Status: Proposal_
 _Domain: Purveyors ecosystem_
-_Canonical source: second brain_
+_Canonical source: this repo_
 
 ## One-line thesis
 
@@ -136,7 +136,7 @@ Falsification threshold: buyers refuse to provide actionable intent, matches are
 
 ## Source-of-truth routing
 
-- Canonical archive: `brain/moonshots/`
+- Original workspace pointer: `brain/moonshots/2026-05-07-purveyors-coffee-intent-exchange.md`
 - If promoted: product strategy note in `brain/projects/` plus implementation plans in `repos/coffee-app/notes/implementation-plans/`, a coffee-app ADR for privacy/access-level rules, and CLI/API follow-up notes in the relevant repos.
 - Product repo mirror or PR: n/a
 
