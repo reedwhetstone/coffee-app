@@ -3,7 +3,7 @@
 _Created: 2026-07-15_
 _Status: Graduated to MVP planning_
 _Domain: Purveyors ecosystem_
-_Canonical source: second brain_
+_Canonical source: this repo_
 
 ## One-line thesis
 
@@ -102,7 +102,7 @@ The experiment succeeds if at least two partners identify multiple recommendatio
 
 ## Source-of-truth routing
 
-- Canonical archive: `brain/moonshots/`
+- Original workspace pointer: `brain/moonshots/2026-07-15-purveyors-sourcing-radar.md`
 - If promoted: cross-repo program plan in `repos/coffee-app/notes/implementation-plans/`, with repo-local ADRs and mergeable slices owned by each product repo
 - Product repo mirror or PR: [coffee-app #482](https://github.com/reedwhetstone/coffee-app/pull/482)
 

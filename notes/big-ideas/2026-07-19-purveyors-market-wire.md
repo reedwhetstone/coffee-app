@@ -3,7 +3,7 @@
 _Created: 2026-07-19_
 _Status: Strategic proposal aligned to the approved build-now infrastructure direction; launch validation runs from edition #1_
 _Domain: Purveyors ecosystem_
-_Canonical source: second brain_
+_Canonical source: this repo_
 
 ## One-line thesis
 
