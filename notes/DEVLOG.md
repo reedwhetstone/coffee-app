@@ -136,7 +136,7 @@
       `notes/market-wire/infrastructure.md#7b-knowledge-layer-ragify-the-wire-corpus-added-2026-07-20`.
 
 - [ ] **Build Sourcing Radar after aggregate freshness is proven.** Deliver the
-      four mergeable slices in order: canonical Parchment Radar read, PPI-owned intent
+      four mergeable slices in order: canonical Parchment Radar read, Parchment API-owned intent
       contract, coffee-app self-service setup, then personalized dashboard and agent.
       Keep deterministic matching and explainable evidence ahead of notifications or
       autonomous procurement. Plan:
