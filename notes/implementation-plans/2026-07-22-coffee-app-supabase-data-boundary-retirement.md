@@ -11,11 +11,15 @@ Retire every direct coffee-app Supabase read, write, and RPC that implements
 shared Purveyors product behavior. Replace those paths with Parchment HTTP
 contracts consumed through `@purveyors/sdk`, then enforce the boundary in CI.
 
-This is not a "remove Supabase from package.json" program. Supabase remains the
-authentication and web-session source of truth. Coffee-app may also retain
+This is not a "remove Supabase from package.json" program. Supabase Auth remains
+the browser identity and session provider. Parchment already owns API
+authentication and product authorization: it validates forwarded user JWTs and
+Parchment API keys, resolves the canonical principal, and enforces product
+roles, plans, scopes, ownership, and entitlements. Coffee-app may also retain
 explicitly app-local persistence until a separate decision moves it:
 
-- Auth session creation, refresh, user resolution, sign-in, and sign-out
+- Supabase Auth OAuth initiation, session creation and refresh, signed-in user
+  resolution, sign-out, and server-side JWT forwarding
 - web chat `workspaces`, `workspace_messages`, canvas state, and `user_memory`
 - Stripe checkout/webhook/reconciliation data while coffee-app remains the
   billing front end
@@ -89,10 +93,12 @@ This creates four production risks:
    - Parchment already ships owner-scoped inventory, roast, Artisan import,
      sales, and tasting reads/writes, but some web parity gaps remain
 
-4. **API control plane**
+4. **API control plane and product authorization**
 
    - Direct `api_keys`, `api_usage`, `get_api_usage_summary`, rate-limit, and
      local API-key validation paths
+   - Admin-client JWT validation, direct `user_roles`/entitlement reads, and
+     coffee-app principal construction that duplicates Parchment
    - Key management pages already use the SDK; usage dashboards and legacy
      compatibility authorization still bypass Parchment
 
@@ -118,10 +124,14 @@ This creates four production risks:
 The following direct Supabase categories are tracked as allowed web-local
 boundaries, not counted as completed extraction debt:
 
-- `auth.*`, request-local session clients, and token forwarding
+- Supabase Auth OAuth/session operations, request-local session clients, and JWT
+  forwarding. This allowlist does not include admin-client token validation,
+  product-principal construction, role lookup, or entitlement resolution.
 - `workspaces`, `workspace_messages`, and `user_memory`
 - `billing_subscriptions`, `stripe_customers`, `stripe_session_processing`,
-  `user_roles`, and `role_audit_logs` used by the current billing front end
+  and billing audit state used by the current billing front end. Product-role
+  and entitlement reads/writes are not retained merely because billing remains
+  web-local.
 
 Their schemas still move only through Parchment-owned migrations. A future
 decision to move chat orchestration or billing behind Parchment should create a
@@ -136,6 +146,9 @@ At program completion:
 - The browser never receives a Parchment demo key or raw API key.
 - Parchment enforces row ownership, entitlement, scope, rate limits,
   idempotency, and shared business rules.
+- Coffee-app uses Supabase Auth only to establish and refresh the browser
+  identity session, then uses Parchment's authenticated principal response for
+  product route UX and presentation.
 - Coffee-app BFF routes are limited to token custody, request/response adaptation,
   cache/header policy, presentation shaping, and web-specific orchestration.
 - No shared-data Supabase table or RPC appears in active coffee-app runtime code.
@@ -173,7 +186,8 @@ Plan:
 Repo: parchment-api. Fill only verified contract gaps needed by the web:
 canonical analytics/market overview data, owner-scoped portfolio/watchlist
 operations, sourcing-brief lifecycle parity, and owner API-usage summaries.
-Extend OpenAPI and the SDK in the same PR or release train.
+Add an authenticated self/principal projection for the web's route and
+presentation needs. Extend OpenAPI and the SDK in the same PR or release train.
 
 Plan:
 `2026-07-22-coffee-app-supabase-data-boundary-pr-02-platform-contracts.md`
@@ -182,7 +196,10 @@ Plan:
 
 Repo: coffee-app. Repoint analytics, dashboard, beans/catalog tracking, chat
 sourcing context, price-index readers, and API-usage pages to the released SDK.
-Delete direct catalog/market/tracked-lot/brief/api-key/usage query logic.
+Replace local API-key validation, admin-client JWT validation, direct
+role/entitlement reads, and local product-principal construction with the
+Parchment principal contract. Delete direct
+catalog/market/tracked-lot/brief/api-key/usage query logic.
 
 Plan:
 `2026-07-22-coffee-app-supabase-data-boundary-pr-03-platform-consumers.md`
@@ -245,9 +262,10 @@ Plan:
 
 ### PR 10: Final boundary contraction
 
-Repo: coffee-app. Remove dead shared database types, admin-client use, legacy API
-auth helpers, compatibility routes, and allowlist entries. Update architecture
-docs with the exact retained Supabase boundary and run the production canary
+Repo: coffee-app. Remove dead shared database types, all product-authorization
+admin-client use, legacy API auth helpers, compatibility routes, and allowlist
+entries. Retain only the minimal Supabase Auth browser-session integration.
+Update architecture docs with the exact boundary and run the production canary
 matrix.
 
 Plan:
@@ -294,9 +312,10 @@ if later slices never land.
   admin principals as applicable.
 - CLI and direct SDK canaries remain unchanged because Parchment contracts are
   additive and canonical.
-- Auth, workspaces/memory, and billing direct callers are explicitly named in
-  the retained allowlist and architecture doc; there is no claim of zero
-  Supabase usage.
+- Supabase Auth session operations, workspaces/memory, and billing persistence
+  callers are explicitly named in the retained allowlist and architecture doc;
+  product-role and entitlement resolution are absent, and there is no claim of
+  zero Supabase usage.
 - Database migrations and shared schema artifacts exist only in parchment-api.
 
 ## Test plan

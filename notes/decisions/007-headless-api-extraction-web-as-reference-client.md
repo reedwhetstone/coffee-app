@@ -56,11 +56,13 @@ Concretely, for this repo:
 - **No proprietary logic in coffee-app.** Server-side business logic currently in
   `src/routes/api/*` and `src/lib/server/*` moves behind the private API. What
   remains here is presentation, generic SDK usage, and a thin BFF.
-- **BFF auth-forwarding stays.** The SvelteKit server keeps the secure session
-  cookie and forwards a Supabase Bearer token to the API. This preserves the
-  existing cookie security model (Supabase remains the auth source of truth via
-  the unified `principal` model) and is itself exemplary reference code for
-  integrators. The browser never holds raw API keys.
+- **BFF identity/session forwarding stays.** Supabase Auth remains the browser
+  identity and session provider: SvelteKit initiates OAuth, keeps the secure
+  session cookie refreshed, and forwards the resulting user JWT. Parchment,
+  rather than coffee-app, validates API credentials, resolves the canonical
+  principal, and enforces product roles, plans, scopes, ownership, and
+  entitlements. Coffee-app consumes that result for route UX; it does not
+  maintain a second authorization model. The browser never holds raw API keys.
 - **AI chat/agent becomes a client of a streaming API endpoint.** The chat UI
   consumes the API's streaming `/chat` + `/agent` endpoints rather than running
   agent orchestration in this repo's server routes.

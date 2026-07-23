@@ -3,7 +3,7 @@
 ## PR goal
 
 Fill verified Parchment/SDK contract gaps required to remove coffee-app's direct
-market, watchlist, sourcing-brief, and API-usage reads.
+market, watchlist, sourcing-brief, API-usage, and product-authorization reads.
 
 ## Why this slice comes now
 
@@ -20,6 +20,10 @@ foundations, so additive capability-shaped contracts are the smallest safe move.
 - Owner-scoped portfolio/watchlist list/toggle operations with catalog summaries
 - Missing sourcing-brief lifecycle operations proven necessary by callers
 - Owner API usage and per-key summary/time-series reads
+- An authenticated self/principal resource that returns the canonical subject,
+  roles, plan, scopes, and product entitlements needed for coffee-app route UX
+- A reviewed billing-to-entitlement mutation or reconciliation contract if the
+  current Stripe flow must change product access
 - OpenAPI, generated SDK helpers, authorization, limits, and tests
 
 ## Out of scope
@@ -40,6 +44,8 @@ foundations, so additive capability-shaped contracts are the smallest safe move.
 - One API call or bounded parallel set can reproduce each current web view
   without direct database access or N+1 HTTP requests.
 - Owner isolation and entitlement behavior match current production.
+- Forwarded Supabase user JWTs and Parchment API keys resolve through the same
+  canonical principal model; coffee-app needs no direct role lookup.
 - SDK release contains typed helpers and no breaking contract changes.
 
 ## Test plan

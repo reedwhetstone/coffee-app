@@ -18,6 +18,8 @@ independently mergeable.
 - A deterministic repository check that fails on new unclassified access
 - CI/package-script integration
 - Documentation of allowed auth, workspace/memory, and billing categories
+- Separate classification of Supabase Auth session operations from PostgREST,
+  RPC, admin-client credential validation, and product-authorization access
 - Tests for detection, allowlist matching, stale entries, and renamed files
 
 ## Out of scope
@@ -37,6 +39,9 @@ independently mergeable.
 ## Acceptance criteria
 
 - Every active direct Supabase runtime caller is classified.
+- The retained auth allowlist covers only OAuth/session lifecycle and JWT
+  forwarding; it does not permit local product-principal, role, or entitlement
+  resolution.
 - New unclassified tables, RPCs, admin-client creation, or Supabase data helpers
   fail locally and in CI.
 - Deleted callers require deleting their manifest entries.

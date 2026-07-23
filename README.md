@@ -88,7 +88,8 @@ Coffee-app's server-side chat tools adapt session-authenticated `@purveyors/sdk`
 - **Framework:** SvelteKit 2 + Svelte 5 + TypeScript
 - **Styling:** Tailwind CSS
 - **Data:** Parchment API through `@purveyors/sdk`, plus remaining direct Supabase paths documented in `notes/ARCHITECTURE.md`
-- **Auth:** Supabase Auth
+- **Auth:** Supabase Auth for browser identity and session lifecycle; Parchment
+  for API credential validation, principal resolution, and product authorization
 - **Payments:** Stripe
 - **AI:** OpenRouter via Vercel AI SDK; Qwen3 embeddings via OpenRouter
 - **Charts:** LayerCake, D3.js, and custom analytics components

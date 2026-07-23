@@ -22,7 +22,30 @@ complete, this document is the implementation-state correction.
   import CLI functions.
 - **Coffee-app owns the web experience.** That includes SvelteKit pages, browser
   session handling, BFF credential brokering, chat tool schemas and rendering,
-  billing UI, and app-specific presentation behavior.
+  billing UI, and app-specific presentation behavior. Supabase Auth creates and
+  refreshes the browser session; it does not make coffee-app the authority for
+  product roles, plans, scopes, or entitlements.
+
+## Authentication and authorization boundary
+
+Two distinct auth responsibilities are intentionally composed:
+
+1. **Supabase Auth is the browser identity and session provider.** Coffee-app
+   initiates Google OAuth, stores and refreshes the secure browser session,
+   resolves the signed-in user, handles sign-out, and forwards the resulting
+   user JWT from its server-side BFF. This is identity/session plumbing, not
+   direct product-data access.
+2. **Parchment authenticates API credentials and authorizes product behavior.**
+   Parchment validates forwarded user JWTs and Parchment API keys, resolves the
+   canonical principal, and enforces roles, plans, scopes, ownership, and product
+   entitlements at the data source.
+
+The current coffee-app implementation still duplicates parts of the second
+responsibility through admin-client JWT validation, local API-key validation,
+and direct `user_roles` or entitlement reads. Those paths are migration debt,
+not part of the retained Supabase Auth boundary. The target BFF keeps only the
+Supabase browser session client, forwards its JWT to Parchment, and consumes a
+Parchment self/principal contract for route UX and presentation decisions.
 
 The canonical external API reference is
 <https://api.purveyors.io/docs>. Product and CLI guidance lives at
@@ -56,11 +79,13 @@ ADR-007. Direct calls still exist in several categories.
 
 These calls are expected to remain local unless a later decision moves them:
 
-- Supabase Auth session creation, user resolution, sign-in, and sign-out
+- Supabase Auth OAuth initiation, browser session creation and refresh,
+  signed-in user resolution, sign-out, and server-side JWT forwarding
 - web-only workspace and message persistence
 - user memory and UI-specific state
 - Stripe checkout, webhook, subscription reconciliation, and local billing UI
-  state while coffee-app remains the billing front end
+  state while coffee-app remains the billing front end; product-entitlement
+  resolution and mutation still belong behind Parchment
 
 Even in these areas, shared schema changes still belong to Parchment's migration
 authority.
@@ -78,6 +103,9 @@ replacement or retirement:
 - legacy catalog RAG reads and `match_coffee_chunks`
 - local API-key and usage-table access where the Parchment control plane should
   be authoritative
+- admin-client JWT validation, direct `user_roles`/entitlement reads, and local
+  principal construction that duplicate Parchment API authentication and
+  authorization
 - inventory, roast, sales, and tasting data helpers that still write Supabase
   directly even though equivalent account-linked Parchment contracts now exist
 

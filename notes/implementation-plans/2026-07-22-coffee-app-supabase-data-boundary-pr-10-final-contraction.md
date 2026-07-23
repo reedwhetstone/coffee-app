@@ -3,7 +3,7 @@
 ## PR goal
 
 Remove residual shared-data compatibility code and lock coffee-app to the
-explicit auth/workspace/billing Supabase boundary.
+explicit browser-session/workspace/billing-persistence Supabase boundary.
 
 ## Why this slice comes now
 
@@ -15,7 +15,8 @@ guard into the durable architecture rule.
 - Delete dead shared database types, admin-client callers, local API-key/rate
   limit helpers, and compatibility routes
 - Remove shared table/RPC entries from the boundary manifest
-- Tighten CI to allow only named auth, workspace/memory, and billing categories
+- Tighten CI to allow only named Supabase Auth OAuth/session operations,
+  workspace/memory persistence, and billing persistence categories
 - Update architecture, route, and deployment docs
 - Cross-surface production canary matrix
 
@@ -36,7 +37,10 @@ guard into the durable architecture rule.
 
 - Repository scan finds no active shared-data table/RPC access.
 - The allowlist contains only explicitly retained web-local categories.
-- `createAdminClient()` is absent outside those named categories.
+- `createAdminClient()` is absent from credential validation, principal
+  construction, role lookup, and entitlement resolution.
+- Supabase Auth remains only for OAuth and browser session lifecycle; Parchment
+  is the sole product authorization authority.
 - Public, viewer, Intelligence, member, admin, CLI, and SDK canaries pass.
 - `notes/ARCHITECTURE.md` states the exact final boundary without claiming zero
   Supabase use.

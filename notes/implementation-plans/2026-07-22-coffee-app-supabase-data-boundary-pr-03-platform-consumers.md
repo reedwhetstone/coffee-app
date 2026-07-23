@@ -19,6 +19,9 @@ largest remaining read-only divergence without touching Mallard writes.
 - sourcing-brief summaries in dashboard/chat
 - API dashboard usage/key summaries and local API-key validation compatibility
   paths that can now delegate to Parchment
+- route guards, navigation, and presentation entitlement decisions moved from
+  direct `user_roles`/admin-client resolution to the Parchment self/principal
+  contract; Supabase Auth remains only for browser session lifecycle
 - Deletion of replaced shared query/RPC code and boundary-manifest entries
 
 ## Out of scope
@@ -39,6 +42,8 @@ largest remaining read-only divergence without touching Mallard writes.
 - A shared-data Supabase client is never used by the affected surfaces.
 - Public/member/Intelligence behavior and current page data shapes are preserved.
 - Parchment errors, timeouts, and entitlements map consistently.
+- Coffee-app does not validate API credentials or resolve product roles,
+  plans, scopes, or entitlements from Supabase.
 - Replaced direct table/RPC access is deleted.
 
 ## Test plan
