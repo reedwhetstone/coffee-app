@@ -127,7 +127,7 @@ Treat the web app and the external Parchment API as two separate HTTP surfaces:
    - `GET https://api.purveyors.io/v1/catalog` is the stable public catalog contract
    - `GET https://api.purveyors.io/v1/catalog/{id}/similar` is a beta catalog matching contract for member sessions or API keys with API Origin or Enterprise plus `catalog:read`
    - `GET https://api.purveyors.io/v1/price-index` is an aggregate `price_index_snapshots` contract for API keys with Parchment Intelligence access
-   - Parchment data endpoints require a Bearer credential. Public website pages use a server-held demo key through the BFF; they do not rely on anonymous upstream access
+   - Parchment catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages use a server-held demo key through the BFF; deliberately designated Market Index teaser slices remain anonymous upstream
    - Full catalog responses include structured process transparency fields and `process.evidence_available`, but not raw evidence quotes
    - Rate-limit headers (`X-RateLimit-*`) are only included in API-key responses
    - The same-host coffee-app `/v1/*` routes and the `/api/catalog-api` alias have been removed; external integrations use `https://api.purveyors.io/v1/*`
