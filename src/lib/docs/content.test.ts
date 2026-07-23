@@ -10,16 +10,16 @@ describe('api docs contract', () => {
 
 		const serializedPage = JSON.stringify(page);
 		expect(serializedPage).toContain(
-			'Anonymous, viewer-session, and API Green requests share the basic public catalog query surface.'
+			'Viewer-session, public/demo-key, and API Green requests share the basic public query surface.'
 		);
 		expect(serializedPage).toContain(
 			'Importer, elevation, appearance, and structured process filters are gated to member/admin sessions and paid API tiers.'
 		);
 		expect(serializedPage).toContain(
-			'Defaults to 100 rows when page and limit are omitted; page without limit falls back to 15.'
+			'canonical listing path uses the 100-row default listing contract.'
 		);
 		expect(serializedPage).toContain(
-			'Publishable retail and wholesale catalog rows with the public field projection. No X-RateLimit-* headers.'
+			'Publishable retail and wholesale catalog rows with the public field projection. The demo credential never reaches the browser.'
 		);
 		expect(serializedPage).toContain(
 			'Canonical integration path for developers, sync jobs, and agents. API Green is for evaluation; API Origin and Enterprise unlock premium search leverage.'
