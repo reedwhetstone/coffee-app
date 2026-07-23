@@ -46,6 +46,7 @@
       verified gaps into small repo-owned slices. Starting references:
       `notes/decisions/007-headless-api-extraction-web-as-reference-client.md`,
       `notes/ARCHITECTURE.md`,
+      `notes/implementation-plans/2026-07-22-coffee-app-supabase-data-boundary-retirement.md`,
       `notes/implementation-plans/2026-07-01-span-b-legacy-v1-catalog-proxy.md`, and
       `notes/implementation-plans/2026-07-04-catalog-shell-performance-headless-plan.md`.
 
