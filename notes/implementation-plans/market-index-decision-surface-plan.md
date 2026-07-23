@@ -1,9 +1,14 @@
 # Market Index Decision Surface — Implementation Plan & Handoff Spec
 
 **Date:** 2026-07-05 (expanded for multi-repo handoff)
-**Status:** Approved direction (ADR-008); ready for work-package handoff
-**Implements:** ADR-008 (actionable insight, value signals, metadata index)
-**Constraints:** ADR-003/005 (access levels), ADR-006 + parchment-api PADR-0011 (CLI owns portable tool surface, API owns proprietary behavior), ADR-007 (Parchment API owns intelligence computation; coffee-app is a reference client)
+**Status:** Historical handoff; product direction remains active in ADR-015
+**Implements:** ADR-015 (actionable insight, value signals, metadata index)
+**Constraints:** ADR-003/005 (access levels), ADR-007 (Parchment API owns intelligence computation; coffee-app is a reference client), and the current SDK/CLI boundary in `notes/ARCHITECTURE.md`
+
+> The work-package ownership and sequencing below record the July 2026 planning
+> state. They are not the current backlog or database-ownership contract.
+> Parchment now owns the shared migration ledger, and `notes/DEVLOG.md` owns any
+> remaining work.
 
 This document is written to be **handed off in pieces**. Each work package (WP) is self-contained: an implementing agent should be able to build its package from its section plus the Shared Contracts section, without reading the others.
 
@@ -17,7 +22,7 @@ Integration order: WP-1 first (contracts live in staging), then WP-2 and WP-3 in
 
 ## 1. Product goal (context for all packages)
 
-Evolve the Market Index (`/analytics`) from a dashboard of market data into a **decision surface** organized around three insight families (ADR-008):
+Evolve the Market Index (`/analytics`) from a dashboard of market data into a **decision surface** organized around three insight families (ADR-015):
 
 | Family              | Question it answers                        | v1 modules                                                                |
 | ------------------- | ------------------------------------------ | ------------------------------------------------------------------------- |
@@ -31,7 +36,7 @@ Non-negotiable product rules (apply to every package):
 2. Significance is **segment-level** (origin × process), never per-coffee: lots churn too fast for long baselines; the index series persists through basket turnover. Lot-level history is only used on short windows (7d/30d) inside value signals.
 3. Access follows ADR-005: signal feeds and deep trends are Intelligence/paid-API leverage; anonymous surfaces get proof (counts, one designated public chart), never lot identity.
 4. Cultivar/drying-method dimensions are **out of scope for v1** (await ADR-005 taxonomy normalization). Null metadata is reported as `undisclosed`, never silently dropped.
-5. Do not market the "metadata index" anywhere until the first metadata module ships (ADR-008 rule 5).
+5. Do not market the "metadata index" anywhere until the first metadata module ships (ADR-015 rule 5).
 
 ## 2. Data foundation (already exists — no new collection)
 

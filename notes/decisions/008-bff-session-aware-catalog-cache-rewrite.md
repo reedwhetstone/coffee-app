@@ -34,9 +34,9 @@ and therefore the only place the leak can be closed.
 
 The BFF **re-derives** `Cache-Control` from its own session view instead of
 relaying the upstream value for catalog reads. Single source of truth:
-`src/lib/server/cacheHeaders.ts`, consumed by all four catalog BFF routes
-(`/api/catalog`, `/api/catalog/filters`, `/api/catalog/origin-price-stats`,
-`/api/catalog-api`).
+`src/lib/server/cacheHeaders.ts`, consumed by the current catalog BFF routes
+(`/api/catalog`, `/api/catalog/filters`, and
+`/api/catalog/origin-price-stats`).
 
 - **Anonymous caller** → `public, s-maxage=60, stale-while-revalidate=300` plus
   `Vary: Cookie, Authorization` (so a shared cache keys on every credential
@@ -44,7 +44,6 @@ relaying the upstream value for catalog reads. Single source of truth:
   caller).
 - **Any authenticated caller** (cookie session or API key) → `private, no-store`.
 - **Every error / degraded response** → `private, no-store` (never shared-cacheable).
-- `/api/catalog-api` is API-key gated (metered), so it is always `no-store`.
 
 This is header translation only. No other business logic is added to the BFF; it
 remains a credential-attaching relay in every other respect. This is the **one

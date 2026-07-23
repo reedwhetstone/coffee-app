@@ -2,7 +2,7 @@
 
 **Status:** Canonical product direction
 **Owner:** Reed Whetstone
-**Last updated:** 2026-05-10
+**Last updated:** 2026-07-22
 
 ## What Purveyors is
 
@@ -18,7 +18,7 @@ This is not just a marketplace and not a roasting tool. The core value is struct
 - **Commercial roasters, green buyers, and coffee businesses** who need systematic supply-chain visibility, quality context, and operational leverage
 - **Serious home roasters and micro-roasters** who benefit from the same market intelligence plus Mallard Studio personalization for inventory, roasting, tasting, and margin decisions
 - **Developers and API consumers** who want normalized green coffee data and machine-friendly platform access
-- **AI agents and internal automations** that consume Purveyors through the CLI, shared library functions, and external API contracts
+- **AI agents and internal automations** that consume Purveyors through the CLI, generated SDK clients, and external API contracts
 
 ### Secondary users
 
@@ -33,7 +33,7 @@ This is not just a marketplace and not a roasting tool. The core value is struct
    Supplier ingestion quality, field normalization, availability tracking, pricing structure, provenance, and semantic retrieval are strategic assets. Work that strengthens this moat compounds.
 
 3. **API-first is product strategy, not implementation detail.**
-   The same structured data and workflows should serve the web app, CLI, external API users, and agentic consumers. If we build logic that only works in one surface, that is usually a design smell. Within that stack, the CLI and its exported functions are agent-first product surfaces. Human terminal UX matters, but machine clarity, explicitness, and composability come first because the website and internal agents depend on the same functions.
+   The same structured data and workflows should serve the web app, CLI, external API users, and agentic consumers. If we build logic that only works in one surface, that is usually a design smell. Parchment owns shared behavior behind HTTP contracts; `@purveyors/sdk` is the generated typed client; coffee-app and `@purveyors/cli` are independent consumers. Human terminal UX matters, but machine clarity, explicitness, and composability come first.
 
 4. **The CLI is not a sidecar utility. It is a core product surface.**
    The CLI should be designed as the easiest way for an agent to understand, call, and trust Purveyors workflows. Commands, arguments, manifest metadata, output modes, error envelopes, and auth flows should optimize for reliable machine use first, then layer human ergonomics on top.
@@ -60,7 +60,7 @@ This is not just a marketplace and not a roasting tool. The core value is struct
 - A trusted, normalized green coffee catalog with meaningful member-level filtering and semantic search
 - Public analytics that prove the value of the underlying supply-chain data asset without turning anonymous access into the power-user surface
 - A stable v1 API that external developers and agents can build against
-- A first-class CLI that is designed agent-first, shares business logic with the web app, and remains easy to call directly from real agent workflows
+- A first-class CLI that is designed agent-first, consumes the same Parchment API contracts as the web app, and remains easy to call directly from real agent workflows
 - Scraper quality systems that improve data coverage, provenance, and resilience over time
 - A conversational / agentic interface layer that helps users act on the data, not just browse it
 - Mallard Studio workflows that enrich intelligence with owned-stock and roaster-side context without becoming the core product category
@@ -103,11 +103,13 @@ A piece of work is strategically weak if it mainly:
 
 When documents conflict, use this order:
 
-1. **`notes/PRODUCT_VISION.md`** — canonical direction, brand, scope, and product principles
-2. **ADRs in `notes/decisions/`** — canonical rationale for local architectural and product decisions
-3. **`notes/MARKET_ANALYSIS.md`, `notes/API_notes/API-strategy.md`, `notes/BLOG_STRATEGY.md`** — supporting strategy docs
-4. **Implementation plans and PR audits** — task-specific context and historical execution details
-5. **Blog posts** — public articulation and examples, not the source of truth
+1. **`notes/PRODUCT_VISION.md`:** canonical direction, brand, scope, and product principles
+2. **ADRs in `notes/decisions/`:** canonical rationale for local architectural and product decisions
+3. **`notes/ARCHITECTURE.md`:** verified current implementation state and migration boundary
+4. **`notes/DEVLOG.md`:** the only ordered cross-product backlog
+5. **`notes/BLOG_STRATEGY.md` and current product notes:** supporting strategy docs
+6. **Implementation plans and PR audits:** task-specific context and historical execution details
+7. **Blog posts:** public articulation and examples, not the source of truth
 
 ## How to use this file
 
@@ -116,5 +118,5 @@ When planning, building, or reviewing work:
 - read this file first
 - explicitly note alignment or tension with it
 - prefer work that compounds across multiple surfaces
-- when a change touches shared workflows, test the CLI or exported CLI function directly instead of relying only on the web UI
+- when a change touches shared workflows, test the Parchment contract and each affected client surface instead of relying only on the web UI
 - treat this file as the product compass, not just background reading

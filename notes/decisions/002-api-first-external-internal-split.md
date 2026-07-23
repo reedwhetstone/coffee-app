@@ -1,7 +1,15 @@
 # ADR-002: External/Internal API Split and Migration to /v1/catalog
 
-**Status:** Accepted
+**Status:** Superseded by ADR-007 and the deployed Parchment API boundary
 **Date:** 2026-01-15 (approximate)
+
+> **Production correction (2026-07-22):** The coffee-app-owned `/v1/*` routes and
+> `/api/catalog-api` alias described below have been removed. The canonical
+> catalog contract is `GET https://api.purveyors.io/v1/catalog`, which requires a
+> Bearer credential. Public coffee-app pages use a server-held demo key through
+> the `/api/catalog` BFF. `GET https://api.purveyors.io/` is the service
+> descriptor; `GET /v1` does not exist. The remainder of this ADR records the
+> historical migration seam.
 
 ## Context
 
