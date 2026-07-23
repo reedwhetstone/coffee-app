@@ -13,7 +13,7 @@ This repo contains:
 - the authenticated app: inventory, roast, profit, chat, and subscription workflows
 - the Parchment Console for API keys, usage analytics, and billing
 - the internal route layer that powers the first-party product
-- the unified `/docs` tree for API and CLI documentation
+- the `/docs` tree for product and CLI guidance; the generated API reference lives at `api.purveyors.io/docs`
 
 Its server-side agent tools consume the Parchment API through `@purveyors/sdk`; the CLI is a separate first-class client of the same contracts.
 
@@ -47,13 +47,13 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
 
 1. **Public external API** (`https://api.purveyors.io/v1/*`)
 
-   - `GET https://api.purveyors.io/v1` advertises the public namespace and resource map
+   - `GET https://api.purveyors.io/` advertises the service, docs, health, and OpenAPI resources
    - `GET https://api.purveyors.io/v1/catalog` is the stable public contract for external integrations
    - `GET https://api.purveyors.io/v1/catalog/{id}/similar` is a beta catalog matching endpoint for member sessions or API keys with API Origin or Enterprise plus `catalog:read`
    - `GET https://api.purveyors.io/v1/price-index` exposes aggregate `price_index_snapshots` for API keys with Parchment Intelligence access
-   - Auth varies by route: catalog supports Bearer API key or anonymous access; similarity and price-index require entitlement-backed auth
+   - Parchment catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages use a server-held demo key through the coffee-app BFF; deliberately designated Market Index teaser slices remain anonymous
    - Full catalog responses include structured process transparency fields and `process.evidence_available`, but not raw evidence quotes
-   - API-key routes emit rate-limit headers; anonymous catalog reads do not
+   - API-key routes emit rate-limit headers according to the resolved plan
    - [See API docs](https://api.purveyors.io/docs)
 
 2. **Platform app API** (`/api/*`)
@@ -81,13 +81,13 @@ CLI auth and output rules are part of the platform contract:
 - `purvey context` is the shipped dense agent reference; `purvey context --json` and `--pretty` emit manifest-parity output for compatibility
 - stdout stays structured for automation, while operational and fatal messaging is designed to stay on stderr
 
-`src/lib/services/tools.ts` adapts session-authenticated `@purveyors/sdk` clients to chat tool schemas. Shared behavior belongs behind Parchment endpoints so browser, CLI, and agent consumers stay aligned without importing one another's runtime.
+Coffee-app's server-side chat tools adapt session-authenticated `@purveyors/sdk` clients to chat schemas. Shared behavior belongs behind Parchment endpoints so browser, CLI, and agent consumers stay aligned without importing one another's runtime.
 
 ## Tech stack
 
 - **Framework:** SvelteKit 2 + Svelte 5 + TypeScript
 - **Styling:** Tailwind CSS
-- **Data:** Supabase
+- **Data:** Parchment API through `@purveyors/sdk`, plus remaining direct Supabase paths documented in `notes/ARCHITECTURE.md`
 - **Auth:** Supabase Auth
 - **Payments:** Stripe
 - **AI:** OpenRouter via Vercel AI SDK; Qwen3 embeddings via OpenRouter
@@ -158,6 +158,10 @@ Many `/api/*` routes are important, but they are platform routes, not broad publ
 ### Prefer shared domain logic over duplicate behavior
 
 The catalog, inventory, roast, sales, and tasting workflows span web app, CLI, and chat tooling. When the same workflow shows up in more than one interface, move the business logic into reusable modules instead of repeating it in route handlers.
+
+### The SDK is the shared client boundary
+
+Coffee-app does not import CLI functions. The SDK is generated from Parchment's OpenAPI contract and provides typed HTTP clients for both coffee-app and the CLI. It does not depend on the CLI. See [`notes/ARCHITECTURE.md`](notes/ARCHITECTURE.md) for the verified current boundary and the remaining direct-Supabase migration debt.
 
 ## Validation
 

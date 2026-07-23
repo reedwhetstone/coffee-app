@@ -13,7 +13,7 @@ This repo is the Purveyors web platform. It includes:
 - the authenticated app for inventory, roast, profit, chat, and subscription workflows
 - the Parchment Console for keys and usage
 - the internal route layer that powers the first-party product
-- the unified `/docs` tree for API and CLI documentation
+- the `/docs` tree for product and CLI guidance; the generated API reference lives at `api.purveyors.io/docs`
 
 Its server-side agent tools depend on `@purveyors/sdk`; `@purveyors/cli` is a separate first-class Parchment API client.
 
@@ -123,11 +123,11 @@ Treat the web app and the external Parchment API as two separate HTTP surfaces:
 
 1. **Public external API** (`https://api.purveyors.io/v1/*`)
 
-   - `GET https://api.purveyors.io/v1` advertises the public namespace, active resources, and legacy migration hints
+   - `GET https://api.purveyors.io/` advertises the service, docs, health, and OpenAPI resources; `GET /v1` is not a route
    - `GET https://api.purveyors.io/v1/catalog` is the stable public catalog contract
    - `GET https://api.purveyors.io/v1/catalog/{id}/similar` is a beta catalog matching contract for member sessions or API keys with API Origin or Enterprise plus `catalog:read`
    - `GET https://api.purveyors.io/v1/price-index` is an aggregate `price_index_snapshots` contract for API keys with Parchment Intelligence access
-   - Auth varies by route: catalog supports Bearer API key or anonymous access; similarity and price-index require entitlement-backed auth
+   - Parchment data endpoints require a Bearer credential. Public website pages use a server-held demo key through the BFF; they do not rely on anonymous upstream access
    - Full catalog responses include structured process transparency fields and `process.evidence_available`, but not raw evidence quotes
    - Rate-limit headers (`X-RateLimit-*`) are only included in API-key responses
    - The same-host coffee-app `/v1/*` routes and the `/api/catalog-api` alias have been removed; external integrations use `https://api.purveyors.io/v1/*`
@@ -161,7 +161,7 @@ When changing docs, keep these sources aligned:
 ### Docs architecture
 
 - Public docs live under `/docs`
-- API docs live under `/docs/api/*`
+- Authored API guides live under `/docs/api/*`; the canonical generated API reference is `https://api.purveyors.io/docs`
 - CLI docs live under `/docs/cli/*`
 - `src/lib/docs/content.ts` is the shared source of truth for docs IA and long-form content
 - Prefer shared docs data/components over duplicated long-form pages
@@ -170,6 +170,7 @@ When changing docs, keep these sources aligned:
 ### Accuracy rules
 
 - Verify behavior from source before documenting it
+- Use `notes/ARCHITECTURE.md` as the current implementation-state map. Product direction lives in `notes/PRODUCT_VISION.md`, decisions in `notes/decisions/`, and priority in `notes/DEVLOG.md`.
 - Do not claim an endpoint is public unless it truly is
 - Do not describe the platform `/api/catalog` tree as the canonical catalog contract; that is `https://api.purveyors.io/v1/catalog`
 - Document `https://api.purveyors.io/v1/catalog/{id}/similar` as beta candidate matching, not canonical identity resolution. Preserve auth requirements, query bounds, 401/403/404/429 behavior, and cautious confidence copy.
@@ -181,7 +182,7 @@ When changing docs, keep these sources aligned:
 
 ## CLI relationship
 
-The web app uses session-mode `@purveyors/sdk` clients in `src/lib/services/tools.ts`.
+The web app uses session-mode `@purveyors/sdk` clients in its server-side chat tool adapters. It does not import `@purveyors/cli`.
 
 CLI auth and output rules matter here too:
 

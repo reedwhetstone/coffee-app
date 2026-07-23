@@ -9,7 +9,7 @@ ADR-003 made three analytics charts visible without authentication. That was use
 when `/analytics` was mostly a proof page with a few market charts and a deeper
 auth gate.
 
-The Market Index is now moving toward the ADR-008 decision surface: a market read,
+The Market Index is now moving toward the ADR-015 decision surface: a market read,
 signals, pricing movement, supplier intelligence, and disclosure trends. Keeping the
 old three-chart anonymous contract inside this larger page creates scroll fatigue and
 turns the public surface into a dense preview of the paid product instead of a clear
@@ -59,7 +59,7 @@ navigation cannot link to hidden or non-rendered paid sections.
 ## References
 
 - ADR-003: Public Analytics — 3 Free Charts, Auth Gate for the Rest
-- ADR-008: Market Index direction — actionable insight, value signals, and the
+- ADR-015: Market Index direction: actionable insight, value signals, and the
   metadata index
 - `notes/PRODUCT_VISION.md` — public analytics as proof of value without turning
   anonymous access into the power-user surface

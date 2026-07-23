@@ -289,7 +289,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Parchment',
 		intro: [
 			'Parchment is the API and Console layer inside Purveyors. It exposes normalized green coffee catalog data, beta catalog similarity matching, and aggregate market intelligence through small public HTTP contracts plus a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
-			'The stable public catalog contract is GET /v1/catalog. Anonymous requests are supported for public discovery, while API-key requests are the intended production integration path because they carry plan enforcement and X-RateLimit-* usage headers. GET /v1/catalog/{id}/similar is a beta member and paid API route for candidate matching, not a canonical identity claim. GET /v1/price-index is a Parchment Intelligence API-key contract for aggregate price_index_snapshots data only. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
+			'The stable public catalog contract is GET https://api.purveyors.io/v1/catalog. Production catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages remain browsable without a user login because the coffee-app BFF presents a server-held public/demo key upstream. Deliberately designated Market Index teaser slices remain anonymous as a narrow route contract. GET /v1/catalog/{id}/similar is a beta member and paid API route for candidate matching, not a canonical identity claim. GET /v1/price-index is a Parchment Intelligence API-key contract for aggregate price_index_snapshots data only. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most coffee-app /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
 		],
 		sections: [
 			{
@@ -301,14 +301,14 @@ const docsPages: DocsPage[] = [
 					headers: ['Surface', 'Auth', 'Audience', 'Contract'],
 					rows: [
 						[
-							'GET /v1',
-							'Anonymous, session, or API key',
+							'GET /',
+							'None',
 							'External integrators and discovery',
-							'Public namespace root. Advertises the v1 family.'
+							'Service descriptor at api.purveyors.io. Links health, docs, OpenAPI, and llms.txt. GET /v1 does not exist.'
 						],
 						[
 							'GET /v1/catalog',
-							'Anonymous, session, or API key',
+							'Bearer session token or API key',
 							'External integrations, CLI complements, first-party app',
 							'Stable public contract.'
 						],
@@ -323,12 +323,6 @@ const docsPages: DocsPage[] = [
 							'API key with Parchment Intelligence access',
 							'External integrations and agent workflows consuming market aggregates',
 							'Stable aggregate contract backed by price_index_snapshots. No raw supplier rows, CSV export, alerts, or webhooks.'
-						],
-						[
-							'GET /api/catalog-api',
-							'API key only',
-							'Legacy callers only',
-							'Deprecated API-key-only alias. Delegates to /v1/catalog with the public field projection plus Deprecation and Sunset headers. Sunset: Dec 31 2026.'
 						],
 						[
 							'GET /api/catalog and /api/catalog/filters',
@@ -360,20 +354,21 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Authentication model',
 				bullets: [
-					'GET /v1/catalog supports anonymous discovery across all publishable retail and wholesale rows using the public field projection. Anonymous callers get the same public payload shape, but no API-key billing, quota, or X-RateLimit-* usage headers.',
-					'GET /v1/catalog also supports first-party session requests. Viewer sessions share the publishable row scope; member and admin sessions may additionally access non-public rows, richer fields, and more search leverage.',
+					'Parchment catalog, owner, and entitled data endpoints require Authorization: Bearer <credential>. GET /v1/catalog returns 401 when no credential is supplied. Deliberately designated Market Index teaser slices remain anonymous.',
+					'GET /v1/catalog accepts first-party session Bearer tokens. Viewer sessions share the publishable row scope; member and admin sessions may additionally access non-public rows, richer fields, and more search leverage.',
 					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API Green stays on the basic public query surface; paid API tiers add importer, elevation, appearance, and structured process filtering while remaining public-catalog scoped. API keys use plan-based limits and are the intended production path for server-to-server integrations.',
-					'GET /v1/catalog/{id}/similar requires a member session or an API key with API Origin or Enterprise plus catalog:read. It returns beta similarity candidates for account-linked matching workflows; anonymous callers get 401 and viewer or API Green callers get 403.',
+					'Public website catalog and analytics pages use a server-only PARCHMENT_PUBLIC_DEMO_API_KEY through the coffee-app BFF. The browser receives public data without receiving that credential.',
+					'GET /v1/catalog/{id}/similar requires a member session token or an API key with API Origin or Enterprise plus catalog:read. It returns beta similarity candidates for account-linked matching workflows; missing credentials get 401 and viewer or API Green callers get 403.',
 					'GET /v1/price-index requires an API key whose owner has Parchment Intelligence access. It returns aggregate price-index snapshots, not raw supplier-level rows.',
-					'GET /api/catalog-api is a deprecated legacy alias to /v1/catalog, but it remains API-key-only for backward-compatible machine access.',
-					'Cookies only matter when they resolve to a valid first-party session. A raw Cookie header is not part of the public API contract.',
+					'The retired coffee-app same-host /v1/* and /api/catalog-api paths are not integration contracts. External callers use https://api.purveyors.io/v1/*.',
+					'Cookies are not part of the public API contract. Coffee-app may forward a valid first-party session as a Bearer token.',
 					'Inventory share links are the one notable anonymous data exception on the product side: GET /api/beans?share=... can return a scoped inventory view without a user session.'
 				],
 				codeBlocks: [
 					{
 						label: 'Public catalog request',
 						language: 'bash',
-						code: 'curl https://purveyors.io/v1/catalog \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
+						code: 'curl https://api.purveyors.io/v1/catalog \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
 					}
 				]
 			},
@@ -383,10 +378,10 @@ const docsPages: DocsPage[] = [
 					headers: ['Surface', 'Best for', 'Auth', 'Operational contract'],
 					rows: [
 						[
-							'Anonymous GET /v1/catalog',
-							'Public discovery, quick evaluation, and proof-of-value embeds',
-							'None',
-							'Publishable retail and wholesale rows with the public field projection. No X-RateLimit-* headers or API-key usage accounting.'
+							'Public website catalog',
+							'Public discovery and proof of value in the Purveyors UI',
+							'No user login; coffee-app supplies a server-held demo key upstream',
+							'Publishable retail and wholesale rows with the public field projection. This is a BFF-backed product surface, not anonymous Parchment API access.'
 						],
 						[
 							'API-key GET /v1/catalog',
@@ -407,7 +402,7 @@ const docsPages: DocsPage[] = [
 							'Aggregate price_index_snapshots data with pagination and rate-limit headers. No CSV, alerts, webhooks, or supplier-level rows.'
 						],
 						[
-							'Session GET /v1/catalog',
+							'Bearer-session GET /v1/catalog',
 							'First-party product reads that share the canonical resource',
 							'Valid Purveyors session cookie',
 							'Viewer sessions receive all publishable retail and wholesale rows. Member and admin sessions may additionally access non-public rows, richer fields, and more search leverage. First-party product path only; not the recommended external integration mode.'
@@ -427,7 +422,7 @@ const docsPages: DocsPage[] = [
 					'/api is the public-facing product page for plans, positioning, and quick start.',
 					'/api-dashboard is the Parchment Console for API keys, usage, subscriptions, and account-aware billing flows.',
 					'/catalog and /analytics are end-user product surfaces that reflect the same coffee domain model as the API.',
-					'/docs is the shared public documentation tree for both the HTTP API and @purveyors/cli.',
+					'/docs is the public product and CLI guidance tree. The canonical generated API reference is https://api.purveyors.io/docs.',
 					'/llms.txt, /sitemap.xml, and /blog/feed.xml are anonymous discoverability endpoints for agents, crawlers, and feed readers. They expose navigation metadata, not integration data contracts.',
 					'/auth/callback is the web OAuth handoff surface, while /auth/cli is the signed-in browser consent surface for CLI authorization requests. They are part of login flow reliability, not REST API resources.',
 					'The web app and CLI both consume Parchment API contracts, so their product behavior should stay aligned.'
@@ -465,25 +460,25 @@ const docsPages: DocsPage[] = [
 			'GET /v1/catalog is the stable public contract for normalized green coffee listings and tier-aware API access.',
 		eyebrow: 'Public endpoint',
 		intro: [
-			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, legacy processing labels, structured process transparency fields, Purveyor Score metadata, pricing, price tiers, and availability metadata.',
-			`The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous, viewer-session, and API Green requests share the basic public catalog query surface. Member/admin sessions and paid API tiers additionally unlock importer, elevation, appearance, and structured process filters. Public callers can still inspect those factual fields in full rows; the gated feature is search leverage, not data visibility. API-key requests use plan-based limits and are the intended production integration path because they emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied. Explicit limit values above ${MAX_CATALOG_PAGE_LIMIT} are rejected with HTTP 400 so pagination metadata stays truthful.`,
+			'GET https://api.purveyors.io/v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, legacy processing labels, structured process transparency fields, Purveyor Score metadata, pricing, price tiers, and availability metadata.',
+			`The endpoint requires a Bearer credential and supports first-party session tokens and API keys. Viewer sessions and API Green requests share the basic public catalog query surface. Member/admin sessions and paid API tiers additionally unlock importer, elevation, appearance, and structured process filters. Public website pages use a server-held demo API key through the coffee-app BFF, not anonymous upstream API access. API-key requests use plan-based limits and emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied. Explicit limit values above ${MAX_CATALOG_PAGE_LIMIT} are rejected with HTTP 400 so pagination metadata stays truthful.`,
 			'Use include=proof when callers need compact proof-summary families for process, provenance, freshness, and pricing. Proof summaries are cautious catalog signals, not certifications, and raw supplier evidence remains withheld. Use GET /v1/catalog/proof-coverage when callers need aggregate proof label distributions and gap counts for the same visible catalog scope.'
 		],
 		sections: [
 			{
 				title: 'Namespace and compatibility',
 				bullets: [
-					'GET /v1 returns the public namespace descriptor and links callers to /v1/catalog and /v1/price-index.',
+					'GET https://api.purveyors.io/ returns the service descriptor and links callers to docs, OpenAPI, health, and llms.txt. GET /v1 does not exist.',
 					'GET /v1/catalog is the source-of-truth public contract for integrations.',
 					'GET /v1/catalog/proof-coverage returns aggregate proof-summary coverage for the visible catalog scope without raw evidence, supplier quotes, certification language, or row-level proof search leverage.',
 					'GET /v1/catalog/{id}/similar is the beta matching endpoint in the catalog family. It is not anonymous, and it should be presented as candidate discovery rather than accepted identity resolution.',
-					'GET /api/catalog-api is a deprecated API-key-only alias to the canonical handler. Responses include Deprecation: true, Link: </v1/catalog>; rel="successor-version", and Sunset: Thu, 31 Dec 2026 23:59:59 GMT.',
-					'GET /api/catalog also delegates to the same catalog resource, but it is an internal adapter with legacy response-shape behavior and should not be treated as a long-term external contract.'
+					'The coffee-app same-host /v1/* and /api/catalog-api routes are retired. Do not use them as compatibility paths.',
+					'GET /api/catalog on purveyors.io delegates to the same catalog resource for the first-party product, but it is an internal BFF adapter and not an external contract.'
 				],
 				callout: {
 					tone: 'note',
 					title: 'External integrations should target /v1/catalog',
-					body: 'If a caller currently uses /api/catalog-api or /api/catalog, migrate it to /v1/catalog. The v1 route is the compatibility promise. The others are transitional or first-party adapters.'
+					body: 'External callers use https://api.purveyors.io/v1/catalog. The same-host coffee-app /v1/* and /api/catalog-api routes are retired; /api/catalog remains a first-party BFF adapter only.'
 				}
 			},
 			{
@@ -491,9 +486,9 @@ const docsPages: DocsPage[] = [
 				body: [
 					'The canonical response includes data, pagination, and meta blocks. The meta block reports auth kind, role, plan, access scope, row-limit state, and cache metadata.',
 					'Full catalog rows include legacy structured processing fields, Purveyor Score fields, plus a nested process object. Null values stay null when the supplier has not disclosed structured metadata. process.evidence_available reports whether internal provenance exists without exposing raw evidence quotes in the public response.',
-					'The example below shows an API-key response. Anonymous and session responses keep the same top-level shape. The main differences are headers and search leverage: only API-key requests emit X-RateLimit-* headers, and only member/admin sessions or paid API tiers can use importer, elevation, appearance, and structured process filters.',
+					'The example below shows an API-key response. Bearer-session responses keep the same top-level shape. The main differences are headers and search leverage: API-key requests emit X-RateLimit-* headers, and only member/admin sessions or paid API tiers can use importer, elevation, appearance, and structured process filters.',
 					`Viewer-tier API keys are capped to 25 rows per call and cannot use importer, elevation, appearance, or structured process filters. Member and enterprise API plans remove that lower plan cap and unlock those filters, while still sharing the ${MAX_CATALOG_PAGE_LIMIT}-row per-request ceiling. Every caller can discover publishable retail and wholesale coffees by default; richer field projections remain limited to privileged member sessions.`,
-					'Cookies are not part of the public API contract. They only matter when they resolve to a valid first-party session, and the legacy /api/catalog-api alias does not accept session auth as a substitute for an API key.'
+					'Cookies are not part of the public API contract. Coffee-app can forward a resolved first-party session as a Bearer token.'
 				],
 				codeBlocks: [
 					{
@@ -504,7 +499,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'GET /v1/catalog?fields=dropdown&page=2&limit=2',
 						language: 'json',
-						code: '{\n  "data": [\n    {\n      "id": 205,\n      "source": "sweet_marias",\n      "name": "Kenya Nyeri AB",\n      "stocked": true,\n      "cost_lb": 8.1,\n      "price_per_lb": 8.1,\n      "price_tiers": [{ "min_lbs": 1, "price": 8.1 }],\n      "public_coffee": true\n    },\n    {\n      "id": 204,\n      "source": "cafe_imports",\n      "name": "Colombia Huila Washed",\n      "stocked": true,\n      "cost_lb": 7.65,\n      "price_per_lb": 7.65,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.65 }],\n      "public_coffee": true\n    }\n  ],\n  "pagination": {\n    "page": 2,\n    "limit": 2,\n    "total": 814,\n    "totalPages": 407,\n    "hasNext": true,\n    "hasPrev": true\n  },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "anonymous", "role": null, "apiPlan": null },\n    "access": {\n      "publicOnly": true,\n      "showWholesale": true,\n      "wholesaleOnly": false,\n      "rowLimit": null,\n      "limited": false,\n      "totalAvailable": 814\n    },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
+						code: '{\n  "data": [\n    {\n      "id": 205,\n      "source": "sweet_marias",\n      "name": "Kenya Nyeri AB",\n      "stocked": true,\n      "cost_lb": 8.1,\n      "price_per_lb": 8.1,\n      "price_tiers": [{ "min_lbs": 1, "price": 8.1 }],\n      "public_coffee": true\n    },\n    {\n      "id": 204,\n      "source": "cafe_imports",\n      "name": "Colombia Huila Washed",\n      "stocked": true,\n      "cost_lb": 7.65,\n      "price_per_lb": 7.65,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.65 }],\n      "public_coffee": true\n    }\n  ],\n  "pagination": {\n    "page": 2,\n    "limit": 2,\n    "total": 814,\n    "totalPages": 407,\n    "hasNext": true,\n    "hasPrev": true\n  },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "viewer" },\n    "access": {\n      "publicOnly": true,\n      "showWholesale": true,\n      "wholesaleOnly": false,\n      "rowLimit": null,\n      "limited": false,\n      "totalAvailable": 814\n    },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
 					}
 				]
 			},
@@ -512,7 +507,7 @@ const docsPages: DocsPage[] = [
 				title: 'Query parameters',
 				body: [
 					`The table below describes the full canonical query surface. If page is supplied without limit, the route uses a ${DEFAULT_PAGINATED_PAGE_SIZE}-row pagination fallback. If both page and limit are omitted, the canonical listing path uses the ${DEFAULT_CATALOG_LISTING_LIMIT}-row default listing contract.`,
-					'Anonymous, viewer-session, and API Green requests share the basic public query surface. Importer, elevation, appearance, and structured process filters are gated to member/admin sessions and paid API tiers.',
+					'Viewer-session, public/demo-key, and API Green requests share the basic public query surface. Importer, elevation, appearance, and structured process filters are gated to member/admin sessions and paid API tiers.',
 					'fields=dropdown stays compatible with normal page and limit params. The reduced projection is limited to id, source, name, stocked, cost_lb, price_per_lb, price_tiers, and public_coffee.',
 					'include=proof is opt-in. Default full rows keep their existing shape, while proof requests add a cautious proof object with process, provenance, freshness, and pricing families plus explicit limitations.',
 					'All callers include wholesale rows by default. Set showWholesale=false to narrow to hobbyist-friendly suppliers. wholesaleOnly remains limited to privileged member and admin sessions.',
@@ -666,7 +661,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Paginated dropdown projection',
 						language: 'bash',
-						code: 'curl "https://purveyors.io/v1/catalog?fields=dropdown&page=2&limit=15"'
+						code: 'curl "https://api.purveyors.io/v1/catalog?fields=dropdown&page=2&limit=15" \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
 					}
 				]
 			},
@@ -674,19 +669,19 @@ const docsPages: DocsPage[] = [
 				title: 'Proof coverage aggregate',
 				body: [
 					'GET /v1/catalog/proof-coverage summarizes the same proof-summary vocabulary exposed by include=proof. The response is nested under two objects: meta (resource, namespace, version, auth, and access with publicOnly, sampled, and totalAvailable) and coverage (overall labels, family label distributions, signal counts, top missing families, and explicit limitations) for the visible catalog scope.',
-					'The endpoint is aggregate-only. It is safe as a public proof-of-value surface because it does not expose raw processing_evidence, raw supplier quotes, row-level evidence, certification claims, supplier rankings, or paid proof-query filters.',
-					'API-key requests preserve X-RateLimit-* headers and plan-scoped visibility. Anonymous and session requests follow the same catalog visibility and process-facet capability rules as /v1/catalog. Coverage scope and any stocked/filter narrowing are owned by the canonical Parchment surface; the aggregate does not currently accept its own query parameters.'
+					'The endpoint is aggregate-only. It can back a public proof-of-value website surface through the server-held demo key because it does not expose raw processing_evidence, raw supplier quotes, row-level evidence, certification claims, supplier rankings, or paid proof-query filters.',
+					'API-key requests preserve X-RateLimit-* headers and plan-scoped visibility. Bearer-session requests follow the same catalog visibility and process-facet capability rules as /v1/catalog. Coverage scope and any stocked/filter narrowing are owned by the canonical Parchment surface; the aggregate does not currently accept its own query parameters.'
 				],
 				codeBlocks: [
 					{
 						label: 'GET /v1/catalog/proof-coverage',
 						language: 'json',
-						code: '{\n  "meta": {\n    "resource": "catalog-proof-coverage",\n    "namespace": "/v1/catalog/proof-coverage",\n    "version": "v1",\n    "auth": { "kind": "anonymous", "role": null, "apiPlan": null },\n    "access": { "publicOnly": true, "sampled": 814, "totalAvailable": 814 }\n  },\n  "coverage": {\n    "overall": [{ "label": "strong", "count": 488, "share": 0.6 }],\n    "families": {\n      "process": [{ "label": "disclosed", "count": 260, "share": 0.319 }]\n    },\n    "signals": { "process.base_method": 260 },\n    "top_gaps": [{ "family": "process", "label": "not_available", "count": 320, "share": 0.393 }],\n    "limitations": ["not_certification", "raw_evidence_not_included"]\n  }\n}'
+						code: '{\n  "meta": {\n    "resource": "catalog-proof-coverage",\n    "namespace": "/v1/catalog/proof-coverage",\n    "version": "v1",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "viewer" },\n    "access": { "publicOnly": true, "sampled": 814, "totalAvailable": 814 }\n  },\n  "coverage": {\n    "overall": [{ "label": "strong", "count": 488, "share": 0.6 }],\n    "families": {\n      "process": [{ "label": "disclosed", "count": 260, "share": 0.319 }]\n    },\n    "signals": { "process.base_method": 260 },\n    "top_gaps": [{ "family": "process", "label": "not_available", "count": 320, "share": 0.393 }],\n    "limitations": ["not_certification", "raw_evidence_not_included"]\n  }\n}'
 					},
 					{
 						label: 'Proof coverage smoke test',
 						language: 'bash',
-						code: 'curl "https://purveyors.io/v1/catalog/proof-coverage" \\\
+						code: 'curl "https://api.purveyors.io/v1/catalog/proof-coverage" \\\
   -H "Authorization: Bearer $PURVEYORS_API_KEY"'
 					}
 				]
@@ -695,7 +690,7 @@ const docsPages: DocsPage[] = [
 				title: 'Structured process filter edge cases',
 				bullets: [
 					'processing remains the backward-compatible public partial match against the legacy display label. Use the structured filters when an integration has member/admin session access or a paid API tier and needs process transparency semantics instead of text search.',
-					'processing_base_method, fermentation_type, process_additive, processing_disclosure_level, and processing_confidence_min only match rows where the structured metadata is present. Null supplier metadata is preserved and should not be treated as explicit none. These params return 401 for anonymous callers and 403 for viewer/API Green callers.',
+					'processing_base_method, fermentation_type, process_additive, processing_disclosure_level, and processing_confidence_min only match rows where the structured metadata is present. Null supplier metadata is preserved and should not be treated as explicit none. These params return 401 when credentials are missing and 403 for viewer/API Green callers.',
 					'has_additives=true matches rows with disclosed additive values such as fruit, yeast, hops, mossto, or starter-culture. has_additives=false matches only rows whose additive array is exactly none; it intentionally excludes unknown, unspecified, null, or mixed values. This is also gated as a process facet.',
 					'process_additive is an array-containment filter. A row with multiple disclosed additives can match any one repeated request pattern only by issuing separate requests today.',
 					'Full rows include process.evidence_available but never expose raw processing_evidence quotes. The dropdown projection does not include the nested process object.',
@@ -705,7 +700,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Paid process facet request',
 						language: 'bash',
-						code: 'curl "https://purveyors.io/v1/catalog?fermentation_type=Co-Fermented&has_additives=true&limit=25" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"\n\ncurl "https://purveyors.io/v1/catalog?has_additives=false&processing_disclosure_level=structured&limit=25" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"'
+						code: 'curl "https://api.purveyors.io/v1/catalog?fermentation_type=Co-Fermented&has_additives=true&limit=25" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"\n\ncurl "https://api.purveyors.io/v1/catalog?has_additives=false&processing_disclosure_level=structured&limit=25" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"'
 					}
 				]
 			},
@@ -719,7 +714,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Catalog proof request',
 						language: 'bash',
-						code: 'curl "https://purveyors.io/v1/catalog?include=proof&country=Ethiopia&limit=5" \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
+						code: 'curl "https://api.purveyors.io/v1/catalog?include=proof&country=Ethiopia&limit=5" \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
 					},
 					{
 						label: 'Proof response fragment',
@@ -734,11 +729,11 @@ const docsPages: DocsPage[] = [
 					headers: ['Mode', 'Best for', 'Query envelope', 'Headers', 'Notes'],
 					rows: [
 						[
-							'Anonymous /v1/catalog',
-							'Discovery, evaluation, and public embeds',
-							`Basic public query surface only. Structured process facets return 401. Defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted; page without limit falls back to ${DEFAULT_PAGINATED_PAGE_SIZE}.`,
-							'Content-Type only',
-							'Publishable retail and wholesale catalog rows with the public field projection. No X-RateLimit-* headers.'
+							'Public website BFF',
+							'Discovery and evaluation in the Purveyors web product',
+							`Coffee-app supplies its server-held demo key. The upstream request uses the basic public query surface and defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted.`,
+							'Browser-facing BFF headers',
+							'Publishable retail and wholesale catalog rows with the public field projection. The demo credential never reaches the browser.'
 						],
 						[
 							'API-key /v1/catalog',
@@ -748,49 +743,42 @@ const docsPages: DocsPage[] = [
 							'Canonical integration path for developers, sync jobs, and agents. API Green is for evaluation; API Origin and Enterprise unlock premium search leverage.'
 						],
 						[
-							'Session /v1/catalog',
+							'Bearer-session /v1/catalog',
 							'First-party product reads',
 							'All sessions include wholesale rows by default. Member/admin sessions unlock premium discovery filters, richer fields, and wholesaleOnly.',
-							'Session-dependent app headers only',
-							'Cookies are only relevant when they resolve to a valid first-party session.'
-						],
-						[
-							'GET /api/catalog-api',
-							'Legacy API-key callers during migration',
-							'Uses the same API-key query contract as /v1/catalog.',
-							'Deprecation, Sunset, Link, plus X-RateLimit-*',
-							'API-key-only deprecated alias. Sunset: Dec 31 2026.'
+							'Session-dependent headers only',
+							'Coffee-app resolves the browser session and forwards its access token as a Bearer credential.'
 						]
 					]
 				},
 				bullets: [
-					'Anonymous, viewer-session, and API Green calls share the basic public query surface. Premium discovery params return 401 for anonymous callers and 403 for viewer/API Green callers.',
-					'If an Authorization header is present but invalid, the route returns 401 instead of silently treating the request as anonymous.'
+					'Viewer-session, public/demo-key, and API Green calls share the basic public query surface. Premium discovery params return 401 when credentials are missing and 403 for viewer/API Green callers.',
+					'Missing or invalid Authorization credentials return 401.'
 				]
 			},
 			{
 				title: 'Example requests',
 				codeBlocks: [
 					{
-						label: 'Anonymous discovery request',
+						label: 'API Green discovery request',
 						language: 'bash',
-						code: 'curl "https://purveyors.io/v1/catalog?country=Ethiopia&processing=Natural&limit=15"'
+						code: 'curl "https://api.purveyors.io/v1/catalog?country=Ethiopia&processing=Natural&limit=15" \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
 					},
 					{
 						label: 'API-key request with production headers',
 						language: 'bash',
-						code: 'curl "https://purveyors.io/v1/catalog?stocked_days=30&price_per_lb_max=9&limit=50" \
+						code: 'curl "https://api.purveyors.io/v1/catalog?stocked_days=30&price_per_lb_max=9&limit=50" \
   -H "Authorization: Bearer pk_live_your_key_here"'
 					},
 					{
 						label: 'JavaScript fetch',
 						language: 'js',
-						code: 'const response = await fetch("https://purveyors.io/v1/catalog?country=Colombia&limit=25", {\n  headers: { Authorization: `Bearer ${process.env.PARCHMENT_API_KEY}` }\n});\n\nconst payload = await response.json();\nconsole.log(payload.meta.access, payload.data.length);'
+						code: 'const response = await fetch("https://api.purveyors.io/v1/catalog?country=Colombia&limit=25", {\n  headers: { Authorization: `Bearer ${process.env.PARCHMENT_API_KEY}` }\n});\n\nconst payload = await response.json();\nconsole.log(payload.meta.access, payload.data.length);'
 					},
 					{
 						label: 'Python requests',
 						language: 'python',
-						code: 'import os\nimport requests\n\nresponse = requests.get(\n    "https://purveyors.io/v1/catalog",\n    params={"processing": "washed", "limit": 25},\n    headers={"Authorization": f"Bearer {os.environ[\'PARCHMENT_API_KEY\']}"},\n    timeout=30,\n)\nresponse.raise_for_status()\npayload = response.json()\nprint(payload["pagination"]["total"], payload["meta"]["auth"])'
+						code: 'import os\nimport requests\n\nresponse = requests.get(\n    "https://api.purveyors.io/v1/catalog",\n    params={"processing": "washed", "limit": 25},\n    headers={"Authorization": f"Bearer {os.environ[\'PARCHMENT_API_KEY\']}"},\n    timeout=30,\n)\nresponse.raise_for_status()\npayload = response.json()\nprint(payload["pagination"]["total"], payload["meta"]["auth"])'
 					}
 				]
 			},
@@ -828,7 +816,7 @@ const docsPages: DocsPage[] = [
 					`All callers share a hard per-request page-size ceiling of ${MAX_CATALOG_PAGE_LIMIT}, even when a paid plan removes the lower viewer-tier row cap.`,
 					'X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset are only emitted for API-key responses.',
 					'429 responses also include Retry-After.',
-					'Anonymous and session-based catalog requests are not counted against an API-key quota and therefore do not receive those headers.'
+					'Bearer-session requests are not counted against an API-key quota and therefore do not receive those headers.'
 				]
 			}
 		],
@@ -871,7 +859,7 @@ const docsPages: DocsPage[] = [
 		intro: [
 			'GET /v1/catalog/{id}/similar finds candidate coffees related to one catalog entry. The route is useful for likely-same-bean checks, substitution research, account-linked agents, and pricing context around comparable lots.',
 			'Matches are beta confidence candidates based on origin, processing, tasting similarity signals, and deterministic identity gates. The endpoint separates canonical candidates from similar recommendations; neither group is an accepted canonical identity.',
-			'Use https://api.purveyors.io/v1/catalog/{id}/similar for new integrations. The older web-host path on purveyors.io is a compatibility proxy and includes Deprecation, Link, and Sunset headers pointing to the canonical Parchment API route.'
+			'Use https://api.purveyors.io/v1/catalog/{id}/similar for integrations. The older web-host path on purveyors.io is retired.'
 		],
 		sections: [
 			{
@@ -1059,7 +1047,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Create a washed Colombia brief',
 						language: 'bash',
-						code: 'curl -X POST "https://purveyors.io/v1/procurement/briefs" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key" \\\n  -H "Content-Type: application/json" \\\n  --data \'{\n    "name": "Washed Colombia under 6.50",\n    "criteria": {\n      "country": "Colombia",\n      "processing_base_method": "Washed",\n      "max_price_per_lb": 6.5,\n      "stocked_only": true\n    }\n  }\''
+						code: 'curl -X POST "https://api.purveyors.io/v1/procurement/briefs" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key" \\\n  -H "Content-Type: application/json" \\\n  --data \'{\n    "name": "Washed Colombia under 6.50",\n    "criteria": {\n      "country": "Colombia",\n      "processing_base_method": "Washed",\n      "max_price_per_lb": 6.5,\n      "stocked_only": true\n    }\n  }\''
 					}
 				]
 			},
@@ -1073,7 +1061,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Run one brief manually',
 						language: 'bash',
-						code: 'curl "https://purveyors.io/v1/procurement/briefs/00000000-0000-4000-8000-000000000000/matches?limit=10" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"'
+						code: 'curl "https://api.purveyors.io/v1/procurement/briefs/00000000-0000-4000-8000-000000000000/matches?limit=10" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"'
 					},
 					{
 						label: 'Invalid criteria response',
@@ -1111,26 +1099,26 @@ const docsPages: DocsPage[] = [
 			'Authenticated and internal /api/* routes that power the Purveyors product surface, grouped by capability and stability.',
 		eyebrow: 'Internal app routes',
 		intro: [
-			'This page distinguishes the stable external v1 contracts, beta catalog endpoints, legacy aliases, internal app APIs, Console control-plane routes, and admin-only surfaces.',
-			'Most /api/* routes are not public compatibility promises. Document them accurately, but keep external integrations pointed at /v1/catalog, /v1/catalog/{id}/similar when matching access is available, /v1/price-index for aggregate market data, or @purveyors/cli whenever possible.'
+			'This page distinguishes the stable external Parchment contracts, beta catalog endpoints, internal app APIs, Console control-plane routes, and admin-only surfaces.',
+			'Most coffee-app /api/* routes are not public compatibility promises. Keep external integrations pointed at https://api.purveyors.io/v1/* or @purveyors/cli.'
 		],
 		sections: [
 			{
-				title: 'Public v1 and legacy route families',
+				title: 'External Parchment route families',
 				table: {
 					headers: ['Route', 'Methods', 'Auth', 'Stability', 'Notes'],
 					rows: [
 						[
-							'/v1',
+							'/',
 							'GET',
-							'Anonymous, session, or API key',
-							'Namespace descriptor',
-							'Advertises the v1 namespace and stable catalog and price-index resources.'
+							'None',
+							'Service descriptor',
+							'At api.purveyors.io. Links health, docs, OpenAPI, and llms.txt. GET /v1 does not exist.'
 						],
 						[
 							'/v1/catalog',
 							'GET',
-							'Anonymous, session, or API key',
+							'Bearer session token or API key',
 							'Stable external contract',
 							'Canonical catalog resource for normalized listing reads, proof summaries, plan caps, and API-key rate-limit headers.'
 						],
@@ -1154,13 +1142,6 @@ const docsPages: DocsPage[] = [
 							'API key with Parchment Intelligence access',
 							'Stable external aggregate contract',
 							'Reads aggregate price_index_snapshots only. No raw supplier rows, CSV, alerts, watchlists, or webhooks.'
-						],
-						[
-							'/api/catalog-api',
-							'GET',
-							'API key only',
-							'Deprecated legacy alias',
-							'API-key-only alias to /v1/catalog with the public field projection. Sunset: Dec 31 2026.'
 						]
 					]
 				}
@@ -1183,13 +1164,6 @@ const docsPages: DocsPage[] = [
 							'Anonymous or session',
 							'Internal UI helper',
 							'Returns stocked-only filter metadata across publishable retail and wholesale rows by default. Callers can opt into hobbyist-only values.'
-						],
-						[
-							'/api/catalog-api',
-							'GET',
-							'API key only',
-							'Deprecated',
-							'Legacy API-key-only alias to /v1/catalog with the public field projection. Sunset: Dec 31 2026.'
 						]
 					]
 				}
@@ -2015,14 +1989,14 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Edge cases worth knowing',
 				bullets: [
-					'For external catalog access, prefer /v1/catalog. Use an API key for machine-to-machine access or authenticate the CLI with purvey auth login.',
-					'Anonymous /v1/catalog calls use the same public query surface as other public callers. If page is supplied without limit, the route falls back to 15 rows; if both page and limit are omitted, the canonical listing response defaults to 100 rows.',
+					'For external catalog access, use https://api.purveyors.io/v1/catalog with a Bearer credential or authenticate the CLI with purvey auth login.',
+					'Public website catalog reads go through coffee-app with a server-held demo key. Direct Parchment requests without a credential return 401.',
 					'GET /api/beans with no session and no valid share token returns an empty data array, not a 401. Do not mistake that behavior for public inventory access.',
-					'Catalog rate-limit headers only exist on API-key requests. Anonymous and session requests to /v1/catalog do not emit X-RateLimit-* headers.',
-					'An invalid Authorization header on the public catalog can turn what looks like an anonymous request into a 401 because the route detects an auth attempt that failed.',
+					'Catalog rate-limit headers are emitted for API-key requests. Bearer-session requests are not API-key quota calls.',
+					'Missing or invalid Authorization credentials return 401 on Parchment catalog and entitled endpoints. Deliberately designated Market Index teaser slices remain anonymous.',
 					'/api-dashboard/keys/generate returns the plaintext apiKey only at creation time. Plan Console UX and support docs around that one-time reveal.',
 					'Cookies only matter when they resolve to a valid first-party session. A stray Cookie header is not part of the public API contract.',
-					'/api/catalog-api is a deprecated API-key-only alias. It should not be treated as an anonymous or session-friendly discovery route.',
+					'The same-host coffee-app /v1/* routes and /api/catalog-api alias are retired.',
 					'Workspace and chat routes require chat access, which can come from Mallard Studio membership or Parchment Intelligence entitlement; logged-in users with neither should expect a 403.',
 					'AI-backed helpers can return upstream rate-limit or provider errors that are operational rather than domain-model failures.'
 				]
@@ -2030,7 +2004,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Troubleshooting path',
 				bullets: [
-					'External integration failing? Confirm it is calling /v1/catalog, not an internal /api/* route.',
+					'External integration failing? Confirm it is calling https://api.purveyors.io/v1/catalog with a Bearer credential, not a same-host or internal coffee-app route.',
 					'Getting a 400 on catalog? Double-check date inputs like stocked_date=YYYY-MM-DD and any other validated query params.',
 					'Unexpected 403 on product routes? Check role and ownership assumptions before debugging auth cookies.',
 					'Hit a 429 on catalog? Inspect X-RateLimit-* and Retry-After or upgrade the plan in the Parchment Console.',
@@ -2119,7 +2093,7 @@ const docsPages: DocsPage[] = [
 				callout: {
 					tone: 'note',
 					title: 'Catalog commands use scoped API-key authentication',
-					body: 'purvey auth login creates and stores an account-linked scoped Parchment API key for CLI commands. Set PARCHMENT_API_KEY or PURVEYORS_API_KEY to use an explicit key instead. For anonymous discovery, call GET https://api.purveyors.io/v1/catalog directly.'
+					body: 'purvey auth login creates and stores an account-linked scoped Parchment API key for CLI commands. Set PARCHMENT_API_KEY or PURVEYORS_API_KEY to use an explicit key instead. Direct Parchment catalog and entitled calls also require a Bearer credential; public no-login catalog discovery lives in the Purveyors web catalog, while designated Market Index teaser slices remain anonymous.'
 				}
 			},
 			{
@@ -2142,9 +2116,9 @@ const docsPages: DocsPage[] = [
 							'Stored or explicit Parchment API key'
 						],
 						[
-							'Anonymous GET https://api.purveyors.io/v1/catalog',
+							'Purveyors web catalog',
 							'The goal is public discovery, evaluation, or a zero-setup demo',
-							'None'
+							'No user login; coffee-app uses its server-held demo key upstream'
 						],
 						[
 							'API-key GET https://api.purveyors.io/v1/catalog',
@@ -2159,7 +2133,7 @@ const docsPages: DocsPage[] = [
 					]
 				},
 				bullets: [
-					'CLI login is a one-time OAuth bootstrap that exchanges the browser session for a scoped Parchment API key. The CLI is an account-linked tool surface; https://api.purveyors.io/v1/catalog is the public network surface.'
+					'CLI login is a one-time OAuth bootstrap that exchanges the browser session for a scoped Parchment API key. The CLI and direct API are credentialed surfaces; the public no-login discovery surface is https://purveyors.io/catalog.'
 				]
 			}
 		],
@@ -2269,7 +2243,8 @@ const docsPages: DocsPage[] = [
 			{
 				href: '/docs/cli/agent-integration',
 				label: 'Agent integration',
-				description: 'See how the web app and external agents consume the CLI.'
+				description:
+					'See how the web app, CLI, and external agents share Parchment contracts without runtime coupling.'
 			}
 		]
 	},
@@ -2282,7 +2257,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Catalog data',
 		intro: [
 			'Catalog commands are the fastest way to explore the green coffee feed from the terminal with account-linked access. Run purvey auth login to create and store a scoped Parchment API key, or set PARCHMENT_API_KEY or PURVEYORS_API_KEY to supply one explicitly.',
-			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits. purvey catalog similar <id> mirrors the account-linked matching workflow exposed by the beta https://api.purveyors.io/v1/catalog/{id}/similar endpoint and uses the same scoped API-key model, including its member or API Origin/Enterprise entitlement requirement. API Green keys receive 403. If the goal is anonymous discovery, use the Parchment HTTP API instead. See the CLI overview for install and login instructions.'
+			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits. purvey catalog similar <id> mirrors the account-linked matching workflow exposed by the beta https://api.purveyors.io/v1/catalog/{id}/similar endpoint and uses the same scoped API-key model, including its member or API Origin/Enterprise entitlement requirement. API Green keys receive 403. If the goal is public no-login discovery, use https://purveyors.io/catalog. See the CLI overview for install and login instructions.'
 		],
 		sections: [
 			{
@@ -2713,7 +2688,8 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'How the web app and CLI stay aligned',
 				bullets: [
-					'The app uses session-authenticated @purveyors/sdk clients for catalog, inventory, roast, sales, and tasting operations inside chat tool execution. The CLI remains a separate Parchment API client and terminal surface.',
+					'The app uses session-authenticated @purveyors/sdk clients for migrated chat operations. The CLI remains a separate Parchment API client and terminal surface; neither runtime imports the other.',
+					'Coffee-app still has direct Supabase paths, including some inventory, roast, sales, tasting, catalog, market, and agent helpers. Those are tracked migration debt, not evidence that the CLI is the app integration layer.',
 					'Read tools execute Parchment API operations directly. Write tools stay user-confirmed through proposal cards and constrained execution routes.',
 					'This API-first architecture keeps terminal, browser, and agent workflows aligned on the same contracts without runtime package coupling.'
 				],

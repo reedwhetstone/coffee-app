@@ -4,6 +4,12 @@
 
 Coffee-app agent data consumers use `@purveyors/sdk` session-mode clients. The CLI remains a separate API client and terminal surface; Supabase-compatible CLI library overloads are no longer an app integration boundary.
 
+**Current boundary:** Parchment owns shared behavior behind HTTP endpoints.
+`@purveyors/sdk` is the generated typed client. Coffee-app and
+`@purveyors/cli` are independent SDK/API consumers; the SDK does not use the CLI,
+and coffee-app does not import CLI exports. Everything below this note records
+the superseded 2026-06-11 design.
+
 **Date:** 2026-06-11
 
 > **Update (2026-06-29) — behavior vs surface.** The headless extraction
@@ -25,7 +31,7 @@ Coffee-app agent data consumers use `@purveyors/sdk` session-mode clients. The C
 > endpoints), never by moving a proprietary algorithm into the public package.
 > The decision rule and the full reconciliation live in parchment-api PADR-0011.
 
-## Context
+## Historical context
 
 Purveyors has three related but distinct surfaces:
 
@@ -37,7 +43,7 @@ Coffee-app previously carried local implementations for catalog intelligence too
 
 `@purveyors/cli` is the better owner for generic agent tools because it is already the portable interface over Purveyors data and APIs. Coffee-app should consume CLI library functions and adapt them to its chat runtime, not reimplement the tool semantics.
 
-## Decision
+## Historical decision
 
 `@purveyors/cli` owns portable agent tools. Coffee-app owns agent scaffolding and presentation.
 
