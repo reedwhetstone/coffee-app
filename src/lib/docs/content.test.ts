@@ -22,6 +22,9 @@ describe('api docs contract', () => {
 			'Publishable retail and wholesale catalog rows with the public field projection. The demo credential never reaches the browser.'
 		);
 		expect(serializedPage).toContain(
+			'Its /api/catalog BFF injects a 1000-row default when page and limit are omitted for legacy unpaged consumers; the /catalog UI explicitly requests a 15-row page.'
+		);
+		expect(serializedPage).toContain(
 			'Canonical integration path for developers, sync jobs, and agents. API Green is for evaluation; API Origin and Enterprise unlock premium search leverage.'
 		);
 	});

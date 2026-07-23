@@ -731,7 +731,7 @@ const docsPages: DocsPage[] = [
 						[
 							'Public website BFF',
 							'Discovery and evaluation in the Purveyors web product',
-							`Coffee-app supplies its server-held demo key. The upstream request uses the basic public query surface and defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted.`,
+							`Coffee-app supplies its server-held demo key. Its /api/catalog BFF injects a ${MAX_CATALOG_PAGE_LIMIT}-row default when page and limit are omitted for legacy unpaged consumers; the /catalog UI explicitly requests a ${DEFAULT_PAGINATED_PAGE_SIZE}-row page.`,
 							'Browser-facing BFF headers',
 							'Publishable retail and wholesale catalog rows with the public field projection. The demo credential never reaches the browser.'
 						],
