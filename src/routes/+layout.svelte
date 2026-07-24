@@ -114,6 +114,7 @@
 	let usesPublicShell = $derived(
 		pathname === '/' ||
 			pathname === '/api' ||
+			pathname === '/bot' ||
 			pathname === '/subscription' ||
 			pathname.startsWith('/docs') ||
 			pathname.startsWith('/blog')

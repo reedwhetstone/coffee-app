@@ -78,6 +78,9 @@
 								<a href="/blog" class="text-sm text-on-dark/70 hover:text-on-dark"> Blog </a>
 							</li>
 							<li>
+								<a href="/bot" class="text-sm text-on-dark/70 hover:text-on-dark"> PurveyorsBot </a>
+							</li>
+							<li>
 								<a href="/auth" class="text-sm text-on-dark/70 hover:text-on-dark"> Sign in </a>
 							</li>
 						</ul>
