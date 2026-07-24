@@ -38,6 +38,15 @@ describe('api docs contract', () => {
 		expect(serializedDocs).toContain('aggregate price_index_snapshots data');
 		expect(serializedDocs).toContain('not raw supplier-level rows');
 		expect(serializedDocs).toContain(
+			'Public website catalog pages use a server-only PARCHMENT_PUBLIC_DEMO_API_KEY through the coffee-app BFF.'
+		);
+		expect(serializedDocs).toContain(
+			'Anonymous Market Index teaser slices stay in session mode and call their deliberately anonymous upstream routes without the demo key.'
+		);
+		expect(serializedDocs).not.toContain(
+			'Public website catalog and analytics pages use a server-only PARCHMENT_PUBLIC_DEMO_API_KEY'
+		);
+		expect(serializedDocs).toContain(
 			'Do not document CSV, alerts, watchlists, webhooks, or supplier-level raw rows as supported.'
 		);
 	});

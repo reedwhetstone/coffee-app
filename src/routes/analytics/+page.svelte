@@ -516,7 +516,7 @@
 		return `${sign}${Math.abs(value).toFixed(precision)}`;
 	}
 
-	// ── Movement significance (ADR-008: signal vs noise) ─────────────────────
+	// ── Movement significance (ADR-015: signal vs noise) ────────────────────
 
 	let currentMoveStat = $derived.by(() => {
 		const stats = marketInsights?.moveStats;
