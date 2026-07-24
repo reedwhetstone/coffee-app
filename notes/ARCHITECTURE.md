@@ -14,9 +14,13 @@ complete, this document is the implementation-state correction.
   business behavior.** Its repository is the sole migration authority for the
   shared Supabase project.
 - **`@purveyors/sdk` is the generated typed HTTP client.** Coffee-app creates
-  server-only SDK clients, attaches either the caller's session credential or a
-  server-held public/demo API key, and calls Parchment endpoints. The SDK does
-  not call or embed the CLI.
+  server-only SDK clients and, depending on the route, forwards the caller's
+  session credential, a server-held public/demo API key, or no credential at
+  all. Public website catalog reads use the demo key. Anonymous Market Index
+  teaser slices use the default session-mode client without a session
+  credential and call only their deliberately anonymous upstream
+  signals-summary, retail-stats, and process-metadata routes. The SDK does not
+  call or embed the CLI.
 - **`@purveyors/cli` is an independent API client and terminal product.** It
   depends on the SDK and Parchment contracts. Coffee-app does not depend on or
   import CLI functions.
