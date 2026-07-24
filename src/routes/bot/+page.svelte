@@ -62,8 +62,8 @@
 					<h2 class="text-2xl font-semibold text-ink">Request policy</h2>
 					<ul class="mt-4 list-disc space-y-3 pl-6 leading-7 text-muted">
 						<li>
-							Shopify requests use one shared queue with a maximum concurrency of one and a
-							randomized 3–6 second baseline between request starts.
+							Within each scraper process, Shopify requests use one shared queue with a maximum
+							concurrency of one and a randomized 3–6 second baseline between request starts.
 						</li>
 						<li>
 							The registered fleet is audited for an applicable <code>Crawl-delay</code> for PurveyorsBot
@@ -73,6 +73,10 @@
 						<li>
 							HTTP 429 stops further Shopify traffic for the run. The crawler honors
 							<code>Retry-After</code> and does not replay the same limited request through another transport.
+						</li>
+						<li>
+							Durable fleet state carries a rate-limit hold across later runs and fails closed when
+							that control-plane state is unavailable.
 						</li>
 						<li>
 							Web Bot Auth signatures are generated after queue admission and refreshed for each
