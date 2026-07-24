@@ -404,7 +404,7 @@ const docsPages: DocsPage[] = [
 						[
 							'Bearer-session GET /v1/catalog',
 							'First-party product reads that share the canonical resource',
-							'Valid Purveyors session cookie',
+							'Authorization: Bearer <session_token>; coffee-app resolves the Purveyors session cookie server-side and forwards the session access token',
 							'Viewer sessions receive all publishable retail and wholesale rows. Member and admin sessions may additionally access non-public rows, richer fields, and more search leverage. First-party product path only; not the recommended external integration mode.'
 						],
 						[
