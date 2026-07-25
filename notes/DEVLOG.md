@@ -94,14 +94,22 @@
       policies before scaling distribution. Strategy:
       `notes/big-ideas/2026-07-19-purveyors-market-wire.md`.
 
-- [ ] **Reprice the self-serve product family.** Change Parchment Intelligence
-      from $39 to about $12/month, Mallard Studio from $9 to about $5/month, and add a
-      combined founding bundle at $15/month. Preserve Parchment API as a separate
-      Green / Origin / Enterprise product. Audit actual OpenRouter, email, storage,
-      and support cost exposure first; then align Stripe products/prices, purchase
-      keys, entitlements, checkout, annual pricing, upgrades/downgrades, existing
-      customer treatment, public copy, tests, and analytics. The current working offer
-      is $12 Intelligence, $5 Studio, and $15 bundle for the first 50 customers.
+- [ ] **Reevaluate pricing and the pricing model for the current growth stage.**
+      Price for subscriber acquisition, interest, and word of mouth, not for
+      long-term value capture or near-term cost recovery. The target buyer
+      reaction is "there is so much value here it would be crazy not to
+      subscribe." Treat the 2026-07-19 working numbers ($12 Intelligence, $5
+      Studio, $15 founding bundle for the first 50 customers, down from $39/$9)
+      as a hypothesis to re-derive under that lens, not a decision: revisit
+      free-tier depth, founding-price locks, annual framing, tier contents, and
+      the $0-to-paid cliff before locking numbers. Preserve Parchment API as a
+      separate Green / Origin / Enterprise product. Audit actual OpenRouter,
+      email, storage, and support cost exposure to establish the floor (the
+      2026-07-19 review found most Studio and Market Index functionality is
+      database-backed, so marginal cost tolerates aggressive growth-stage
+      pricing); then align Stripe products/prices, purchase keys, entitlements,
+      checkout, annual pricing, upgrades/downgrades, existing customer
+      treatment, public copy, tests, and analytics.
 
 - [ ] **Make the blog a recurring publication system.** Establish a minimum
       weekly cadence with one canonical queue from idea to sourced outline, draft,
