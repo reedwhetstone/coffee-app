@@ -520,6 +520,26 @@ export function scanSource(source: string, file: string): Access[] {
 		const parsed = ts.createSourceFile(file, unit, ts.ScriptTarget.Latest, true, scriptKind(file));
 		const authAliases = new Set<string>();
 
+		const collectAuthAliasesFromBinding = (name: ts.BindingName): void => {
+			if (!ts.isObjectBindingPattern(name)) {
+				return;
+			}
+
+			for (const element of name.elements) {
+				if (!ts.isBindingElement(element)) {
+					continue;
+				}
+				const propertyName = element.propertyName;
+				const boundName = element.name;
+				const isAuthProperty =
+					(propertyName && ts.isIdentifier(propertyName) && propertyName.text === 'auth') ||
+					(!propertyName && ts.isIdentifier(boundName) && boundName.text === 'auth');
+				if (isAuthProperty && ts.isIdentifier(boundName)) {
+					authAliases.add(boundName.text);
+				}
+			}
+		};
+
 		const collectAuthAliases = (node: ts.Node): void => {
 			if (ts.isVariableDeclaration(node)) {
 				if (
@@ -530,21 +550,11 @@ export function scanSource(source: string, file: string): Access[] {
 					authAliases.add(node.name.text);
 				}
 
-				if (ts.isObjectBindingPattern(node.name)) {
-					for (const element of node.name.elements) {
-						if (!ts.isBindingElement(element)) {
-							continue;
-						}
-						const propertyName = element.propertyName;
-						const boundName = element.name;
-						const isAuthProperty =
-							(propertyName && ts.isIdentifier(propertyName) && propertyName.text === 'auth') ||
-							(!propertyName && ts.isIdentifier(boundName) && boundName.text === 'auth');
-						if (isAuthProperty && ts.isIdentifier(boundName)) {
-							authAliases.add(boundName.text);
-						}
-					}
-				}
+				collectAuthAliasesFromBinding(node.name);
+			}
+
+			if (ts.isParameter(node)) {
+				collectAuthAliasesFromBinding(node.name);
 			}
 
 			ts.forEachChild(node, collectAuthAliases);

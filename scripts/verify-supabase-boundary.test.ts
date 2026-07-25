@@ -137,6 +137,13 @@ describe('scanSource', () => {
 			)
 		).toEqual([{ file: 'src/lib/alias.ts', kind: 'auth-session', name: 'getUser' }]);
 
+		expect(
+			scanSource(
+				'function validate({ auth: identity }: SupabaseClient) { return identity.getUser(token); }',
+				'src/lib/parameter-alias.ts'
+			)
+		).toEqual([{ file: 'src/lib/parameter-alias.ts', kind: 'auth-session', name: 'getUser' }]);
+
 		expect(scanSource('const header = request.auth.token;', 'src/lib/b.ts')).toEqual([
 			{ file: 'src/lib/b.ts', kind: 'auth-session', name: '<memberAccess>' }
 		]);
