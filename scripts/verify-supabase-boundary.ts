@@ -12,10 +12,10 @@
  *   __fixtures__, __mocks__, or __tests__ segment.
  *
  * Detections (deterministic and syntax-aware):
- * - kind "table": `.from('<name>')` with a string-literal table name. Dynamic
- *   names fail closed. Known non-Supabase receivers such as `Array.from(...)`
- *   are excluded and covered by fixture tests.
- * - kind "rpc": `.rpc('<name>'` with a string-literal function name.
+ * - kind "table": `.from('<name>')` with a string-literal table name on a
+ *   Supabase-shaped receiver. Dynamic names and unknown receivers fail closed.
+ * - kind "rpc": `.rpc('<name>'` with a string-literal function name on a
+ *   Supabase-shaped receiver.
  * - kind "admin-client": any reference to `createAdminClient` or an import of
  *   the `supabase-admin` module (one hit per file).
  * - kind "client-factory": a runtime import of createClient,
@@ -58,7 +58,7 @@
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, normalize, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parse as parseSvelte } from 'svelte/compiler';
 import ts from 'typescript';
@@ -103,25 +103,6 @@ const EXCLUDED_FILE_PATTERNS = [/\.test\.(ts|js|mjs|cjs)$/, /\.spec\.(ts|js|mjs|
 const EXCLUDED_PATH_SEGMENTS = ['__fixtures__', '__mocks__', '__tests__'];
 
 const EXCLUDED_FILES = new Set(['src/test-setup.ts']);
-
-/** Receivers whose `.from(...)` is never a Supabase table read. */
-const NON_SUPABASE_FROM_RECEIVERS = new Set([
-	'Array',
-	'ArrayBuffer',
-	'BigInt64Array',
-	'BigUint64Array',
-	'Buffer',
-	'Float32Array',
-	'Float64Array',
-	'Int8Array',
-	'Int16Array',
-	'Int32Array',
-	'Object',
-	'Uint8Array',
-	'Uint8ClampedArray',
-	'Uint16Array',
-	'Uint32Array'
-]);
 
 /**
  * Retained auth-session entries may cover only OAuth/session lifecycle. JWT
@@ -215,6 +196,37 @@ const SUPABASE_CLIENT_FACTORIES = new Set([
 const SUPABASE_PACKAGES = new Set(['@supabase/ssr', '@supabase/supabase-js']);
 const DYNAMIC_ACCESS_NAME = '<dynamic>';
 
+type FactoryProvenance =
+	| 'createBrowserClient'
+	| 'createClient'
+	| 'createServerClient'
+	| 'admin-client';
+
+interface ParsedModule {
+	file: string;
+	units: string[];
+	asts: ts.SourceFile[];
+	markupAccesses: Access[];
+}
+
+interface ModuleSymbols {
+	factoryBindings: Map<string, FactoryProvenance>;
+	factoryNamespaces: Map<string, Map<string, FactoryProvenance>>;
+	factoryExports: Map<string, FactoryProvenance>;
+	supabaseNamespaces: Set<string>;
+}
+
+interface ModuleSymbolTable {
+	modules: Map<string, ModuleSymbols>;
+}
+
+const EMPTY_MODULE_SYMBOLS = (): ModuleSymbols => ({
+	factoryBindings: new Map(),
+	factoryNamespaces: new Map(),
+	factoryExports: new Map(),
+	supabaseNamespaces: new Set()
+});
+
 function scriptKind(file: string): ts.ScriptKind {
 	return /\.(?:js|mjs|cjs)$/.test(file) ? ts.ScriptKind.JS : ts.ScriptKind.TS;
 }
@@ -232,6 +244,10 @@ interface SvelteScriptBlock {
 
 /** Names that mark a markup expression as Supabase-shaped. */
 const MARKUP_CALL_NAMES = new Set(['from', 'rpc']);
+
+function isSupabaseShapedName(name: string | undefined): boolean {
+	return name === 'supabase' || name === 'client' || Boolean(name && /supabase/i.test(name));
+}
 
 /**
  * Parses a Svelte file with svelte/compiler and returns script-block sources
@@ -294,10 +310,11 @@ function sourceUnits(source: string, file: string): SourceUnits {
 					receiver?.type === 'Identifier' && typeof receiver.name === 'string'
 						? receiver.name
 						: undefined;
-				if ((typeof method === 'string' && MARKUP_CALL_NAMES.has(method)) || method === 'auth') {
-					if (receiverName === undefined || !NON_SUPABASE_FROM_RECEIVERS.has(receiverName)) {
-						markupNames.add(String(method));
-					}
+				if (
+					((typeof method === 'string' && MARKUP_CALL_NAMES.has(method)) || method === 'auth') &&
+					isSupabaseShapedName(receiverName)
+				) {
+					markupNames.add(String(method));
 				}
 			}
 			const calleeMember = record.callee as
@@ -322,6 +339,363 @@ function sourceUnits(source: string, file: string): SourceUnits {
 		units,
 		markupAccesses: [...markupNames].sort().map((name) => ({ file, kind: 'markup', name }))
 	};
+}
+
+function parseModule(source: string, file: string): ParsedModule {
+	const { units, markupAccesses } = sourceUnits(source, file);
+	return {
+		file,
+		units,
+		asts: units.map((unit) =>
+			ts.createSourceFile(file, unit, ts.ScriptTarget.Latest, true, scriptKind(file))
+		),
+		markupAccesses
+	};
+}
+
+function normalizedModulePath(file: string): string {
+	return normalize(file).split('\\').join('/').replace(/^\.\//, '');
+}
+
+function resolveModuleSpecifier(
+	fromFile: string,
+	specifier: string,
+	knownFiles: Set<string>
+): string | undefined {
+	let base: string;
+	if (specifier.startsWith('./') || specifier.startsWith('../')) {
+		base = normalizedModulePath(join(dirname(fromFile), specifier));
+	} else if (specifier.startsWith('$lib/')) {
+		base = normalizedModulePath(join('src/lib', specifier.slice('$lib/'.length)));
+	} else {
+		return undefined;
+	}
+
+	const withoutExtension = base.replace(/\.(?:ts|js|mjs|cjs|svelte)$/, '');
+	const candidates = [
+		base,
+		`${withoutExtension}.ts`,
+		`${withoutExtension}.js`,
+		`${withoutExtension}.mjs`,
+		`${withoutExtension}.cjs`,
+		`${withoutExtension}.svelte`,
+		`${withoutExtension}/index.ts`,
+		`${withoutExtension}/index.js`
+	];
+	return candidates.find((candidate) => knownFiles.has(candidate));
+}
+
+function literalModuleSpecifier(expression: ts.Expression | undefined): string | undefined {
+	if (!expression) {
+		return undefined;
+	}
+	let current = unwrapExpression(expression);
+	if (ts.isAwaitExpression(current)) {
+		current = unwrapExpression(current.expression);
+	}
+	if (!ts.isCallExpression(current)) {
+		return undefined;
+	}
+	const isRequire = ts.isIdentifier(current.expression) && current.expression.text === 'require';
+	const isDynamicImport = current.expression.kind === ts.SyntaxKind.ImportKeyword;
+	if (!(isRequire || isDynamicImport)) {
+		return undefined;
+	}
+	const argument = current.arguments[0];
+	return argument && ts.isStringLiteralLike(argument) ? argument.text : undefined;
+}
+
+function addFactoryBinding(
+	bindings: Map<string, FactoryProvenance>,
+	name: string,
+	provenance: FactoryProvenance
+): boolean {
+	if (bindings.get(name) === provenance) {
+		return false;
+	}
+	if (bindings.has(name)) {
+		return false;
+	}
+	bindings.set(name, provenance);
+	return true;
+}
+
+function sameFactoryMap(
+	left: Map<string, FactoryProvenance> | undefined,
+	right: Map<string, FactoryProvenance>
+): boolean {
+	if (!left || left.size !== right.size) {
+		return false;
+	}
+	for (const [name, provenance] of right) {
+		if (left.get(name) !== provenance) {
+			return false;
+		}
+	}
+	return true;
+}
+
+function factoryFromProperty(
+	expression: ts.Expression,
+	facts: ModuleSymbols
+): FactoryProvenance | undefined {
+	const member = unwrapExpression(expression);
+	if (!ts.isPropertyAccessExpression(member) && !ts.isElementAccessExpression(member)) {
+		return undefined;
+	}
+	const receiver = member.expression;
+	if (!ts.isIdentifier(receiver)) {
+		return undefined;
+	}
+	const name = memberName(member);
+	if (!name) {
+		return undefined;
+	}
+	if (facts.supabaseNamespaces.has(receiver.text) && SUPABASE_CLIENT_FACTORIES.has(name)) {
+		return name as FactoryProvenance;
+	}
+	return facts.factoryNamespaces.get(receiver.text)?.get(name);
+}
+
+function factoryFromExpression(
+	expression: ts.Expression | undefined,
+	facts: ModuleSymbols
+): FactoryProvenance | undefined {
+	if (!expression) {
+		return undefined;
+	}
+	const current = unwrapExpression(expression);
+	if (ts.isIdentifier(current)) {
+		return facts.factoryBindings.get(current.text);
+	}
+	return factoryFromProperty(current, facts);
+}
+
+function bindingElements(name: ts.BindingName): Array<{ localName: string; importedName: string }> {
+	if (ts.isIdentifier(name)) {
+		return [{ localName: name.text, importedName: name.text }];
+	}
+	const result: Array<{ localName: string; importedName: string }> = [];
+	for (const element of name.elements) {
+		if (!ts.isBindingElement(element) || !ts.isIdentifier(element.name)) {
+			continue;
+		}
+		const propertyName = element.propertyName;
+		const importedName =
+			propertyName && ts.isIdentifier(propertyName) ? propertyName.text : element.name.text;
+		result.push({ localName: element.name.text, importedName });
+	}
+	return result;
+}
+
+function buildModuleSymbolTable(parsedModules: ParsedModule[]): ModuleSymbolTable {
+	const knownFiles = new Set(parsedModules.map((module) => normalizedModulePath(module.file)));
+	const modules = new Map<string, ModuleSymbols>();
+	for (const module of parsedModules) {
+		modules.set(normalizedModulePath(module.file), EMPTY_MODULE_SYMBOLS());
+	}
+
+	const addNamespace = (
+		facts: ModuleSymbols,
+		name: string,
+		exports: Map<string, FactoryProvenance>
+	) => {
+		const existing = facts.factoryNamespaces.get(name);
+		if (sameFactoryMap(existing, exports)) {
+			return false;
+		}
+		facts.factoryNamespaces.set(name, new Map(exports));
+		return true;
+	};
+
+	const resolveExports = (fromFile: string, specifier: string): Map<string, FactoryProvenance> => {
+		const resolved = resolveModuleSpecifier(fromFile, specifier, knownFiles);
+		return resolved ? (modules.get(resolved)?.factoryExports ?? new Map()) : new Map();
+	};
+
+	const applyExportDeclaration = (
+		module: ParsedModule,
+		facts: ModuleSymbols,
+		statement: ts.ExportDeclaration
+	): boolean => {
+		const specifier = statement.moduleSpecifier;
+		const source = specifier && ts.isStringLiteral(specifier) ? specifier.text : undefined;
+		const sourceExports = source ? resolveExports(module.file, source) : new Map();
+		let changed = false;
+
+		if (!statement.exportClause) {
+			for (const [name, provenance] of sourceExports) {
+				changed = addFactoryBinding(facts.factoryExports, name, provenance) || changed;
+			}
+			return changed;
+		}
+
+		if (!ts.isNamedExports(statement.exportClause)) {
+			return false;
+		}
+		for (const element of statement.exportClause.elements) {
+			const importedName = element.propertyName?.text ?? element.name.text;
+			const exportedName = element.name.text;
+			let provenance: FactoryProvenance | undefined;
+			if (source) {
+				if (SUPABASE_PACKAGES.has(source) && SUPABASE_CLIENT_FACTORIES.has(importedName)) {
+					provenance = importedName as FactoryProvenance;
+				} else {
+					provenance = sourceExports.get(importedName);
+				}
+			} else {
+				provenance = facts.factoryBindings.get(importedName);
+			}
+			if (provenance) {
+				changed = addFactoryBinding(facts.factoryExports, exportedName, provenance) || changed;
+			}
+		}
+		return changed;
+	};
+
+	const applyModule = (module: ParsedModule, facts: ModuleSymbols): boolean => {
+		let changed = false;
+		for (const ast of module.asts) {
+			const visit = (node: ts.Node): void => {
+				if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+					const source = node.moduleSpecifier.text;
+					const clause = node.importClause;
+					if (!clause || clause.isTypeOnly) {
+						return;
+					}
+					if (source.includes('supabase-admin')) {
+						if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+							for (const element of clause.namedBindings.elements) {
+								if (
+									!element.isTypeOnly &&
+									(element.propertyName?.text ?? element.name.text) === 'createAdminClient'
+								) {
+									changed =
+										addFactoryBinding(facts.factoryBindings, element.name.text, 'admin-client') ||
+										changed;
+								}
+							}
+						}
+						return;
+					}
+					if (SUPABASE_PACKAGES.has(source)) {
+						if (clause.namedBindings && ts.isNamespaceImport(clause.namedBindings)) {
+							facts.supabaseNamespaces.add(clause.namedBindings.name.text);
+						}
+						if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+							for (const element of clause.namedBindings.elements) {
+								if (element.isTypeOnly) continue;
+								const importedName = element.propertyName?.text ?? element.name.text;
+								if (SUPABASE_CLIENT_FACTORIES.has(importedName)) {
+									changed =
+										addFactoryBinding(
+											facts.factoryBindings,
+											element.name.text,
+											importedName as FactoryProvenance
+										) || changed;
+								}
+							}
+						}
+						if (clause.name && SUPABASE_CLIENT_FACTORIES.has(clause.name.text)) {
+							changed =
+								addFactoryBinding(
+									facts.factoryBindings,
+									clause.name.text,
+									clause.name.text as FactoryProvenance
+								) || changed;
+						}
+					} else {
+						const sourceExports = resolveExports(module.file, source);
+						if (clause.namedBindings && ts.isNamespaceImport(clause.namedBindings)) {
+							changed =
+								addNamespace(facts, clause.namedBindings.name.text, sourceExports) || changed;
+						}
+						if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+							for (const element of clause.namedBindings.elements) {
+								if (element.isTypeOnly) continue;
+								const importedName = element.propertyName?.text ?? element.name.text;
+								const provenance = sourceExports.get(importedName);
+								if (provenance) {
+									changed =
+										addFactoryBinding(facts.factoryBindings, element.name.text, provenance) ||
+										changed;
+								}
+							}
+						}
+					}
+					return;
+				}
+
+				if (ts.isVariableDeclaration(node) && node.initializer) {
+					const source = literalModuleSpecifier(node.initializer);
+					if (source) {
+						const sourceExports = SUPABASE_PACKAGES.has(source)
+							? new Map<string, FactoryProvenance>(
+									[...SUPABASE_CLIENT_FACTORIES].map((name) => [name, name as FactoryProvenance])
+								)
+							: resolveExports(module.file, source);
+						if (ts.isIdentifier(node.name)) {
+							if (SUPABASE_PACKAGES.has(source)) {
+								facts.supabaseNamespaces.add(node.name.text);
+							} else {
+								changed = addNamespace(facts, node.name.text, sourceExports) || changed;
+							}
+						} else {
+							for (const { localName, importedName } of bindingElements(node.name)) {
+								const provenance = sourceExports.get(importedName);
+								if (provenance) {
+									changed =
+										addFactoryBinding(facts.factoryBindings, localName, provenance) || changed;
+								}
+							}
+						}
+					} else if (ts.isIdentifier(node.name)) {
+						const provenance = factoryFromExpression(node.initializer, facts);
+						if (provenance) {
+							changed =
+								addFactoryBinding(facts.factoryBindings, node.name.text, provenance) || changed;
+						}
+					}
+				}
+
+				if (ts.isExportDeclaration(node)) {
+					changed = applyExportDeclaration(module, facts, node) || changed;
+				}
+
+				if (
+					ts.isVariableStatement(node) &&
+					node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)
+				) {
+					for (const declaration of node.declarationList.declarations) {
+						if (ts.isIdentifier(declaration.name)) {
+							const provenance = facts.factoryBindings.get(declaration.name.text);
+							if (provenance) {
+								changed =
+									addFactoryBinding(facts.factoryExports, declaration.name.text, provenance) ||
+									changed;
+							}
+						}
+					}
+				}
+
+				ts.forEachChild(node, visit);
+			};
+			visit(ast);
+		}
+		return changed;
+	};
+
+	const limit = Math.max(2, parsedModules.length * 2);
+	for (let pass = 0; pass < limit; pass += 1) {
+		let changed = false;
+		for (const module of parsedModules) {
+			const facts = modules.get(normalizedModulePath(module.file));
+			if (facts) changed = applyModule(module, facts) || changed;
+		}
+		if (!changed) break;
+	}
+
+	return { modules };
 }
 
 function memberName(expression: ts.Expression): string | undefined {
@@ -404,7 +778,8 @@ function authClientExpression(expression: ts.Expression): ts.Expression | undefi
 function isRecognizedFactoryCall(
 	expression: ts.Expression,
 	factoryNames: Set<string>,
-	supabaseNamespaces: Set<string>
+	supabaseNamespaces: Set<string>,
+	factoryNamespaces: Map<string, Map<string, FactoryProvenance>> = new Map()
 ): boolean {
 	const call = unwrapExpression(expression);
 	if (!ts.isCallExpression(call)) {
@@ -418,8 +793,9 @@ function isRecognizedFactoryCall(
 	return (
 		ts.isPropertyAccessExpression(call.expression) &&
 		ts.isIdentifier(call.expression.expression) &&
-		supabaseNamespaces.has(call.expression.expression.text) &&
-		SUPABASE_CLIENT_FACTORIES.has(call.expression.name.text)
+		((supabaseNamespaces.has(call.expression.expression.text) &&
+			SUPABASE_CLIENT_FACTORIES.has(call.expression.name.text)) ||
+			factoryNamespaces.get(call.expression.expression.text)?.has(call.expression.name.text))
 	);
 }
 
@@ -439,15 +815,18 @@ function isSupabaseClientExpression(
 	expression: ts.Expression,
 	supabaseClientNames: Set<string>,
 	supabaseFactoryNames: Set<string>,
-	supabaseNamespaces: Set<string>
+	supabaseNamespaces: Set<string>,
+	factoryNamespaces: Map<string, Map<string, FactoryProvenance>> = new Map()
 ): boolean {
 	const segments = memberChainSegments(expression);
 	const root = segments[0];
 	return (
 		(root !== undefined &&
 			!segments.includes('auth') &&
-			(supabaseClientNames.has(root) || segments.some((segment) => /supabase/i.test(segment)))) ||
-		isRecognizedFactoryCall(expression, supabaseFactoryNames, supabaseNamespaces)
+			(supabaseClientNames.has(root) ||
+				isSupabaseShapedName(root) ||
+				segments.some((segment) => /supabase/i.test(segment)))) ||
+		isRecognizedFactoryCall(expression, supabaseFactoryNames, supabaseNamespaces, factoryNamespaces)
 	);
 }
 
@@ -456,7 +835,8 @@ function isSupabaseAuthExpression(
 	supabaseClientNames: Set<string>,
 	supabaseAuthNames: Set<string>,
 	supabaseFactoryNames: Set<string>,
-	supabaseNamespaces: Set<string>
+	supabaseNamespaces: Set<string>,
+	factoryNamespaces: Map<string, Map<string, FactoryProvenance>> = new Map()
 ): boolean {
 	const segments = memberChainSegments(expression);
 	const root = segments[0];
@@ -471,7 +851,8 @@ function isSupabaseAuthExpression(
 			client,
 			supabaseClientNames,
 			supabaseFactoryNames,
-			supabaseNamespaces
+			supabaseNamespaces,
+			factoryNamespaces
 		)
 	) {
 		return true;
@@ -491,7 +872,8 @@ function isSupabaseAuthReceiver(
 	supabaseClientNames: Set<string>,
 	supabaseAuthNames: Set<string>,
 	supabaseFactoryNames: Set<string>,
-	supabaseNamespaces: Set<string>
+	supabaseNamespaces: Set<string>,
+	factoryNamespaces: Map<string, Map<string, FactoryProvenance>> = new Map()
 ): boolean {
 	const segments = memberChainSegments(receiver);
 	const authIndex = segments.indexOf('auth');
@@ -508,8 +890,28 @@ function isSupabaseAuthReceiver(
 				client,
 				supabaseClientNames,
 				supabaseFactoryNames,
-				supabaseNamespaces
+				supabaseNamespaces,
+				factoryNamespaces
 			))
+	);
+}
+
+function isSupabaseDataReceiver(
+	receiver: ts.Expression | undefined,
+	supabaseClientNames: Set<string>,
+	supabaseFactoryNames: Set<string>,
+	supabaseNamespaces: Set<string>,
+	factoryNamespaces: Map<string, Map<string, FactoryProvenance>>
+): boolean {
+	if (!receiver) {
+		return false;
+	}
+	return isSupabaseClientExpression(
+		receiver,
+		supabaseClientNames,
+		supabaseFactoryNames,
+		supabaseNamespaces,
+		factoryNamespaces
 	);
 }
 
@@ -518,39 +920,34 @@ function literalResource(call: ts.CallExpression): string {
 	return argument && ts.isStringLiteralLike(argument) ? argument.text : DYNAMIC_ACCESS_NAME;
 }
 
-/** Scans one source file with TypeScript's syntax tree and returns deduplicated accesses. */
-export function scanSource(source: string, file: string): Access[] {
+function scanParsedModule(module: ParsedModule, table: ModuleSymbolTable): Access[] {
 	const accessesByKey = new Map<string, Access>();
-
+	const facts = table.modules.get(normalizedModulePath(module.file)) ?? EMPTY_MODULE_SYMBOLS();
 	const record = (kind: AccessKind, name: string) => {
 		const key = `${kind}|${name}`;
 		if (!accessesByKey.has(key)) {
-			accessesByKey.set(key, { file, kind, name });
+			accessesByKey.set(key, { file: module.file, kind, name });
 		}
 	};
 
-	const { units, markupAccesses } = sourceUnits(source, file);
-	for (const access of markupAccesses) {
+	for (const access of module.markupAccesses) {
 		record(access.kind, access.name);
 	}
 
-	for (const unit of units) {
-		const parsed = ts.createSourceFile(file, unit, ts.ScriptTarget.Latest, true, scriptKind(file));
-		const importedFactories = new Map<string, string>();
-		const supabaseNamespaces = new Set<string>();
-		const supabaseClientNames = new Set<string>(['supabase']);
-		const supabaseAuthNames = new Set<string>();
-		const adminFactoryNames = new Set(['createAdminClient']);
-		const supabaseFactoryNames = new Set(['createAdminClient']);
-		const supabaseClientTypeNames = new Set<string>(['SupabaseClient']);
+	const supabaseClientNames = new Set<string>(['supabase']);
+	const supabaseAuthNames = new Set<string>();
+	const supabaseFactoryNames = new Set<string>([
+		'createAdminClient',
+		...facts.factoryBindings.keys()
+	]);
+	const supabaseClientTypeNames = new Set<string>(['SupabaseClient']);
 
-		for (const statement of parsed.statements) {
-			if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
-				const moduleName = statement.moduleSpecifier.text;
-				const clause = statement.importClause;
-
+	for (const ast of module.asts) {
+		const collectTypeNames = (node: ts.Node): void => {
+			if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+				const clause = node.importClause;
 				if (
-					moduleName === '@supabase/supabase-js' &&
+					node.moduleSpecifier.text === '@supabase/supabase-js' &&
 					clause?.namedBindings &&
 					ts.isNamedImports(clause.namedBindings)
 				) {
@@ -561,60 +958,21 @@ export function scanSource(source: string, file: string): Access[] {
 						}
 					}
 				}
-
-				if (moduleName.includes('supabase-admin') && clause && !clause.isTypeOnly) {
-					record('admin-client', 'createAdminClient');
-					if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
-						for (const element of clause.namedBindings.elements) {
-							if (!element.isTypeOnly && element.propertyName?.text === 'createAdminClient') {
-								adminFactoryNames.add(element.name.text);
-								supabaseFactoryNames.add(element.name.text);
-							}
-						}
-					}
-				}
-
-				if (!SUPABASE_PACKAGES.has(moduleName) || !clause || clause.isTypeOnly) {
-					continue;
-				}
-
-				const bindings = clause.namedBindings;
-				if (bindings && ts.isNamedImports(bindings)) {
-					for (const element of bindings.elements) {
-						if (element.isTypeOnly) {
-							continue;
-						}
-						const importedName = element.propertyName?.text ?? element.name.text;
-						if (SUPABASE_CLIENT_FACTORIES.has(importedName)) {
-							importedFactories.set(element.name.text, importedName);
-							supabaseFactoryNames.add(element.name.text);
-							record('client-factory', importedName);
-						}
-					}
-				} else if (bindings && ts.isNamespaceImport(bindings)) {
-					supabaseNamespaces.add(bindings.name.text);
-				}
 			}
-		}
-
-		for (const statement of parsed.statements) {
 			if (
-				ts.isTypeAliasDeclaration(statement) &&
-				isSupabaseClientType(statement.type, supabaseClientTypeNames)
+				ts.isTypeAliasDeclaration(node) &&
+				isSupabaseClientType(node.type, supabaseClientTypeNames)
 			) {
-				supabaseClientTypeNames.add(statement.name.text);
+				supabaseClientTypeNames.add(node.name.text);
 			}
-			if (ts.isInterfaceDeclaration(statement)) {
-				const extendsSupabaseClient = statement.heritageClauses?.some((clause) =>
+			if (ts.isInterfaceDeclaration(node)) {
+				const extendsSupabaseClient = node.heritageClauses?.some((clause) =>
 					clause.types.some((type) => isSupabaseClientType(type, supabaseClientTypeNames))
 				);
 				if (extendsSupabaseClient) {
-					supabaseClientTypeNames.add(statement.name.text);
+					supabaseClientTypeNames.add(node.name.text);
 				}
 			}
-		}
-
-		const collectSupabaseTypeNames = (node: ts.Node): void => {
 			if (
 				ts.isTypeParameterDeclaration(node) &&
 				node.constraint &&
@@ -622,77 +980,64 @@ export function scanSource(source: string, file: string): Access[] {
 			) {
 				supabaseClientTypeNames.add(node.name.text);
 			}
-			ts.forEachChild(node, collectSupabaseTypeNames);
+			ts.forEachChild(node, collectTypeNames);
 		};
-		collectSupabaseTypeNames(parsed);
+		collectTypeNames(ast);
+	}
 
-		const factoryCallName = (expression: ts.Expression): string | undefined => {
-			const call = unwrapExpression(expression);
-			if (!ts.isCallExpression(call)) {
-				return undefined;
-			}
+	const isRecognizedFactory = (expression: ts.Expression): boolean =>
+		isRecognizedFactoryCall(
+			expression,
+			supabaseFactoryNames,
+			facts.supabaseNamespaces,
+			facts.factoryNamespaces
+		);
 
-			if (ts.isIdentifier(call.expression)) {
-				if (adminFactoryNames.has(call.expression.text)) {
-					return 'admin-client';
-				}
-				return importedFactories.get(call.expression.text);
-			}
-
-			if (ts.isPropertyAccessExpression(call.expression)) {
-				const receiver = call.expression.expression;
-				if (ts.isIdentifier(receiver) && supabaseNamespaces.has(receiver.text)) {
-					return SUPABASE_CLIENT_FACTORIES.has(call.expression.name.text)
-						? call.expression.name.text
-						: undefined;
-				}
-			}
-
-			return undefined;
-		};
-
-		const collectClientBindings = (node: ts.Node): void => {
-			if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
-				const factory = factoryCallName(node.initializer);
-				if (factory) {
-					supabaseClientNames.add(node.name.text);
-				} else if (
-					isSupabaseAuthExpression(
-						node.initializer,
-						supabaseClientNames,
-						supabaseAuthNames,
-						supabaseFactoryNames,
-						supabaseNamespaces
-					)
-				) {
-					supabaseAuthNames.add(node.name.text);
-				} else if (
-					isSupabaseClientExpression(
-						node.initializer,
-						supabaseClientNames,
-						supabaseFactoryNames,
-						supabaseNamespaces
-					) ||
-					isSupabaseClientType(node.type, supabaseClientTypeNames)
-				) {
-					supabaseClientNames.add(node.name.text);
-				}
-			}
-			if (
-				ts.isParameter(node) &&
-				ts.isIdentifier(node.name) &&
+	const collectClientBindings = (node: ts.Node): void => {
+		if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+			if (isRecognizedFactory(node.initializer)) {
+				supabaseClientNames.add(node.name.text);
+			} else if (
+				isSupabaseAuthExpression(
+					node.initializer,
+					supabaseClientNames,
+					supabaseAuthNames,
+					supabaseFactoryNames,
+					facts.supabaseNamespaces,
+					facts.factoryNamespaces
+				)
+			) {
+				supabaseAuthNames.add(node.name.text);
+			} else if (
+				isSupabaseClientExpression(
+					node.initializer,
+					supabaseClientNames,
+					supabaseFactoryNames,
+					facts.supabaseNamespaces,
+					facts.factoryNamespaces
+				) ||
 				isSupabaseClientType(node.type, supabaseClientTypeNames)
 			) {
 				supabaseClientNames.add(node.name.text);
 			}
-			ts.forEachChild(node, collectClientBindings);
-		};
-		let previousBindingCount = -1;
-		while (previousBindingCount !== supabaseClientNames.size + supabaseAuthNames.size) {
-			previousBindingCount = supabaseClientNames.size + supabaseAuthNames.size;
-			collectClientBindings(parsed);
 		}
+		if (
+			ts.isParameter(node) &&
+			ts.isIdentifier(node.name) &&
+			isSupabaseClientType(node.type, supabaseClientTypeNames)
+		) {
+			supabaseClientNames.add(node.name.text);
+		}
+		ts.forEachChild(node, collectClientBindings);
+	};
 
+	for (let pass = 0; pass < module.asts.length + 1; pass += 1) {
+		for (const ast of module.asts) {
+			collectClientBindings(ast);
+		}
+	}
+
+	for (const ast of module.asts) {
 		const visit = (node: ts.Node): void => {
 			if (
 				(ts.isFunctionDeclaration(node) && node.name?.text === 'createAdminClient') ||
@@ -701,6 +1046,77 @@ export function scanSource(source: string, file: string): Access[] {
 					node.name.text === 'createAdminClient')
 			) {
 				record('admin-client', 'createAdminClient');
+			}
+
+			if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+				const source = node.moduleSpecifier.text;
+				const clause = node.importClause;
+				if (clause && !clause.isTypeOnly && source.includes('supabase-admin')) {
+					record('admin-client', 'createAdminClient');
+				}
+				if (clause && !clause.isTypeOnly && SUPABASE_PACKAGES.has(source)) {
+					if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+						for (const element of clause.namedBindings.elements) {
+							if (!element.isTypeOnly) {
+								const importedName = element.propertyName?.text ?? element.name.text;
+								if (SUPABASE_CLIENT_FACTORIES.has(importedName)) {
+									record('client-factory', importedName);
+								}
+							}
+						}
+					}
+				}
+				if (
+					clause &&
+					!clause.isTypeOnly &&
+					!SUPABASE_PACKAGES.has(source) &&
+					!source.includes('supabase-admin')
+				) {
+					if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+						for (const element of clause.namedBindings.elements) {
+							const provenance = facts.factoryBindings.get(element.name.text);
+							if (provenance) {
+								record(
+									provenance === 'admin-client' ? 'admin-client' : 'client-factory',
+									provenance === 'admin-client' ? 'createAdminClient' : provenance
+								);
+							}
+						}
+					}
+				}
+				return;
+			}
+
+			if (
+				ts.isExportDeclaration(node) &&
+				node.moduleSpecifier &&
+				ts.isStringLiteral(node.moduleSpecifier)
+			) {
+				const source = node.moduleSpecifier.text;
+				if (SUPABASE_PACKAGES.has(source)) {
+					const exportedFactories =
+						node.exportClause && ts.isNamedExports(node.exportClause)
+							? node.exportClause.elements
+									.map((element) => element.propertyName?.text ?? element.name.text)
+									.filter((name) => SUPABASE_CLIENT_FACTORIES.has(name))
+							: [...SUPABASE_CLIENT_FACTORIES];
+					for (const factory of exportedFactories) {
+						record('client-factory', factory);
+					}
+				} else if (facts.factoryExports.size > 0) {
+					for (const element of node.exportClause && ts.isNamedExports(node.exportClause)
+						? node.exportClause.elements
+						: []) {
+						const provenance = facts.factoryExports.get(element.name.text);
+						if (provenance) {
+							record(
+								provenance === 'admin-client' ? 'admin-client' : 'client-factory',
+								provenance === 'admin-client' ? 'createAdminClient' : provenance
+							);
+						}
+					}
+				}
+				return;
 			}
 
 			if (ts.isCallExpression(node)) {
@@ -713,7 +1129,6 @@ export function scanSource(source: string, file: string): Access[] {
 				) {
 					record('client-factory', 'commonJsRequire');
 				}
-
 				if (
 					node.expression.kind === ts.SyntaxKind.ImportKeyword &&
 					node.arguments[0] &&
@@ -722,40 +1137,45 @@ export function scanSource(source: string, file: string): Access[] {
 				) {
 					record('client-factory', 'dynamicImport');
 				}
-
 				if (ts.isIdentifier(node.expression)) {
-					if (node.expression.text === 'createAdminClient') {
+					const provenance = facts.factoryBindings.get(node.expression.text);
+					if (node.expression.text === 'createAdminClient' || provenance === 'admin-client') {
 						record('admin-client', 'createAdminClient');
+					} else if (provenance) {
+						record('client-factory', provenance);
 					}
-					const importedFactory = importedFactories.get(node.expression.text);
-					if (importedFactory) {
-						record('client-factory', importedFactory);
-					}
+				}
+				const propertyProvenance = factoryFromProperty(node.expression, facts);
+				if (propertyProvenance) {
+					record(
+						propertyProvenance === 'admin-client' ? 'admin-client' : 'client-factory',
+						propertyProvenance === 'admin-client' ? 'createAdminClient' : propertyProvenance
+					);
 				}
 
 				const name = memberName(node.expression);
 				const receiver = memberReceiver(node.expression);
 				if (
-					name &&
-					SUPABASE_CLIENT_FACTORIES.has(name) &&
-					receiver &&
-					ts.isIdentifier(receiver) &&
-					supabaseNamespaces.has(receiver.text)
+					name === 'from' &&
+					isSupabaseDataReceiver(
+						receiver,
+						supabaseClientNames,
+						supabaseFactoryNames,
+						facts.supabaseNamespaces,
+						facts.factoryNamespaces
+					)
 				) {
-					record('client-factory', name);
-				}
-
-				if (name === 'from') {
-					if (
-						receiver &&
-						ts.isIdentifier(receiver) &&
-						NON_SUPABASE_FROM_RECEIVERS.has(receiver.text)
-					) {
-						ts.forEachChild(node, visit);
-						return;
-					}
 					record('table', literalResource(node));
-				} else if (name === 'rpc') {
+				} else if (
+					name === 'rpc' &&
+					isSupabaseDataReceiver(
+						receiver,
+						supabaseClientNames,
+						supabaseFactoryNames,
+						facts.supabaseNamespaces,
+						facts.factoryNamespaces
+					)
+				) {
 					record('rpc', literalResource(node));
 				} else if (
 					receiver &&
@@ -764,7 +1184,8 @@ export function scanSource(source: string, file: string): Access[] {
 						supabaseClientNames,
 						supabaseAuthNames,
 						supabaseFactoryNames,
-						supabaseNamespaces
+						facts.supabaseNamespaces,
+						facts.factoryNamespaces
 					)
 				) {
 					record('auth-session', name ?? DYNAMIC_ACCESS_NAME);
@@ -773,11 +1194,15 @@ export function scanSource(source: string, file: string): Access[] {
 
 			ts.forEachChild(node, visit);
 		};
-
-		visit(parsed);
+		visit(ast);
 	}
 
 	return [...accessesByKey.values()];
+}
+
+export function scanSource(source: string, file: string): Access[] {
+	const module = parseModule(source, file);
+	return scanParsedModule(module, buildModuleSymbolTable([module]));
 }
 
 function walk(dir: string, out: string[]): void {
@@ -802,14 +1227,17 @@ export function collectAccesses(rootDir: string): Access[] {
 		}
 	}
 
-	const accesses: Access[] = [];
+	const modules: ParsedModule[] = [];
 	for (const file of files) {
 		const relPath = relative(rootDir, file).split('\\').join('/');
 		if (!isRuntimeFile(relPath)) {
 			continue;
 		}
-		accesses.push(...scanSource(readFileSync(file, 'utf8'), relPath));
+		modules.push(parseModule(readFileSync(file, 'utf8'), relPath));
 	}
+
+	const table = buildModuleSymbolTable(modules);
+	const accesses = modules.flatMap((module) => scanParsedModule(module, table));
 
 	return accesses.sort(
 		(a, b) =>

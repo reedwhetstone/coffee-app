@@ -234,6 +234,7 @@ describe('scanSource', () => {
 	it('detects computed and generic Supabase calls', () => {
 		const source = [
 			"await supabase['from']('computed_table').select('*');",
+			'const client = supabase;',
 			"await client.from<Row>('generic_table').select('*');",
 			"await supabase['rpc']('computed_rpc');"
 		].join('\n');
@@ -258,6 +259,20 @@ describe('scanSource', () => {
 		]);
 	});
 
+	it('preserves dynamic-import factory provenance through client aliases', () => {
+		const source = [
+			"const { createClient: makeClient } = await import('@supabase/supabase-js');",
+			"const db = makeClient('url', 'key');",
+			'await db.auth.signOut();'
+		].join('\n');
+
+		expect(scanSource(source, 'scripts/example.mjs')).toEqual([
+			{ file: 'scripts/example.mjs', kind: 'client-factory', name: 'dynamicImport' },
+			{ file: 'scripts/example.mjs', kind: 'client-factory', name: 'createClient' },
+			{ file: 'scripts/example.mjs', kind: 'auth-session', name: 'signOut' }
+		]);
+	});
+
 	it('detects destructured and namespace CommonJS Supabase imports', () => {
 		const source = [
 			"const { createClient } = require('@supabase/supabase-js');",
@@ -267,7 +282,44 @@ describe('scanSource', () => {
 		].join('\n');
 
 		expect(scanSource(source, 'scripts/example.cjs')).toEqual([
-			{ file: 'scripts/example.cjs', kind: 'client-factory', name: 'commonJsRequire' }
+			{ file: 'scripts/example.cjs', kind: 'client-factory', name: 'commonJsRequire' },
+			{ file: 'scripts/example.cjs', kind: 'client-factory', name: 'createClient' }
+		]);
+	});
+
+	it('resolves Supabase factory re-exports and consumer aliases across modules', () => {
+		writeSourceFile(
+			'src/lib/barrel.ts',
+			"export { createClient as makeClient } from '@supabase/supabase-js';"
+		);
+		writeSourceFile(
+			'src/lib/consumer.ts',
+			[
+				"import { makeClient as factory } from './barrel';",
+				"const db = factory('url', 'key');",
+				"await db.from('consumer_table').select('*');",
+				'await db.auth.signOut();'
+			].join('\n')
+		);
+
+		expect(collectAccesses(root)).toEqual([
+			{ file: 'src/lib/barrel.ts', kind: 'client-factory', name: 'createClient' },
+			{ file: 'src/lib/consumer.ts', kind: 'auth-session', name: 'signOut' },
+			{ file: 'src/lib/consumer.ts', kind: 'client-factory', name: 'createClient' },
+			{ file: 'src/lib/consumer.ts', kind: 'table', name: 'consumer_table' }
+		]);
+	});
+
+	it('only detects from and rpc on Supabase-shaped receivers', () => {
+		const source = [
+			'const client = supabase;',
+			"await client.from('known_table').select('*');",
+			'await Readable.from(items);',
+			"await unrelated.rpc('not_supabase');"
+		].join('\n');
+
+		expect(scanSource(source, 'src/lib/example.ts')).toEqual([
+			{ file: 'src/lib/example.ts', kind: 'table', name: 'known_table' }
 		]);
 	});
 });
