@@ -150,6 +150,31 @@ describe('scanSource', () => {
 		]);
 	});
 
+	it('tracks auth calls on directly returned factory clients', () => {
+		const source = [
+			"import { createAdminClient } from '$lib/supabase-admin';",
+			"import { createServerClient } from '@supabase/ssr';",
+			'await createAdminClient().auth.getUser(token);',
+			'await createServerClient().auth.getSession();'
+		].join('\n');
+
+		expect(scanSource(source, 'src/lib/direct-factory.ts')).toEqual([
+			{ file: 'src/lib/direct-factory.ts', kind: 'admin-client', name: 'createAdminClient' },
+			{ file: 'src/lib/direct-factory.ts', kind: 'client-factory', name: 'createServerClient' },
+			{
+				file: 'src/lib/direct-factory.ts',
+				kind: 'auth-session',
+				name: 'getUser',
+				authContext: 'admin-client'
+			},
+			{
+				file: 'src/lib/direct-factory.ts',
+				kind: 'auth-session',
+				name: 'getSession'
+			}
+		]);
+	});
+
 	it('scans Svelte script blocks with whitespace in the closing tag', () => {
 		const source = [
 			'<script lang="ts">',

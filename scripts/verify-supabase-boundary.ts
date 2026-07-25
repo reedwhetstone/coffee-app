@@ -310,6 +310,44 @@ function memberChainSegments(expression: ts.Expression): string[] {
 	return segments;
 }
 
+function authClientExpression(expression: ts.Expression): ts.Expression | undefined {
+	let current: ts.Expression | undefined = unwrapExpression(expression);
+
+	while (current) {
+		if (memberName(current) === 'auth') {
+			return memberReceiver(current);
+		}
+		current = memberReceiver(current);
+		if (current) {
+			current = unwrapExpression(current);
+		}
+	}
+
+	return undefined;
+}
+
+function isRecognizedFactoryCall(
+	expression: ts.Expression,
+	factoryNames: Set<string>,
+	supabaseNamespaces: Set<string>
+): boolean {
+	const call = unwrapExpression(expression);
+	if (!ts.isCallExpression(call)) {
+		return false;
+	}
+
+	if (ts.isIdentifier(call.expression)) {
+		return factoryNames.has(call.expression.text);
+	}
+
+	return (
+		ts.isPropertyAccessExpression(call.expression) &&
+		ts.isIdentifier(call.expression.expression) &&
+		supabaseNamespaces.has(call.expression.expression.text) &&
+		SUPABASE_CLIENT_FACTORIES.has(call.expression.name.text)
+	);
+}
+
 function isSupabaseClientType(type: ts.TypeNode | undefined, typeNames: Set<string>): boolean {
 	if (!type) {
 		return false;
@@ -324,26 +362,43 @@ function isSupabaseClientType(type: ts.TypeNode | undefined, typeNames: Set<stri
 
 function isSupabaseClientExpression(
 	expression: ts.Expression,
-	supabaseClientNames: Set<string>
+	supabaseClientNames: Set<string>,
+	supabaseFactoryNames: Set<string>,
+	supabaseNamespaces: Set<string>
 ): boolean {
 	const segments = memberChainSegments(expression);
 	const root = segments[0];
 	return (
-		root !== undefined &&
-		!segments.includes('auth') &&
-		(supabaseClientNames.has(root) || segments.some((segment) => /supabase/i.test(segment)))
+		(root !== undefined &&
+			!segments.includes('auth') &&
+			(supabaseClientNames.has(root) || segments.some((segment) => /supabase/i.test(segment)))) ||
+		isRecognizedFactoryCall(expression, supabaseFactoryNames, supabaseNamespaces)
 	);
 }
 
 function isSupabaseAuthExpression(
 	expression: ts.Expression,
 	supabaseClientNames: Set<string>,
-	supabaseAuthNames: Set<string>
+	supabaseAuthNames: Set<string>,
+	supabaseFactoryNames: Set<string>,
+	supabaseNamespaces: Set<string>
 ): boolean {
 	const segments = memberChainSegments(expression);
 	const root = segments[0];
 	const authIndex = segments.indexOf('auth');
 	if (root !== undefined && supabaseAuthNames.has(root)) {
+		return true;
+	}
+	const client = authClientExpression(expression);
+	if (
+		client &&
+		isSupabaseClientExpression(
+			client,
+			supabaseClientNames,
+			supabaseFactoryNames,
+			supabaseNamespaces
+		)
+	) {
 		return true;
 	}
 	if (authIndex === -1 || root === undefined) {
@@ -359,33 +414,46 @@ function isSupabaseAuthExpression(
 function isSupabaseAuthReceiver(
 	receiver: ts.Expression,
 	supabaseClientNames: Set<string>,
-	supabaseAuthNames: Set<string>
+	supabaseAuthNames: Set<string>,
+	supabaseFactoryNames: Set<string>,
+	supabaseNamespaces: Set<string>
 ): boolean {
 	const segments = memberChainSegments(receiver);
 	const authIndex = segments.indexOf('auth');
 	const root = segments[0];
+	const client = authClientExpression(receiver);
 	return (
-		root !== undefined &&
-		(supabaseAuthNames.has(root) ||
-			(authIndex !== -1 &&
-				(supabaseClientNames.has(root) ||
-					segments.slice(0, authIndex).some((segment) => /supabase/i.test(segment)))))
+		(root !== undefined &&
+			(supabaseAuthNames.has(root) ||
+				(authIndex !== -1 &&
+					(supabaseClientNames.has(root) ||
+						segments.slice(0, authIndex).some((segment) => /supabase/i.test(segment)))))) ||
+		(client !== undefined &&
+			isSupabaseClientExpression(
+				client,
+				supabaseClientNames,
+				supabaseFactoryNames,
+				supabaseNamespaces
+			))
 	);
 }
 
 function isAdminAuthReceiver(
 	receiver: ts.Expression,
 	adminClientNames: Set<string>,
-	adminAuthNames: Set<string>
+	adminAuthNames: Set<string>,
+	adminFactoryNames: Set<string>
 ): boolean {
 	const segments = memberChainSegments(receiver);
 	const authIndex = segments.indexOf('auth');
 	const root = segments[0];
+	const client = authClientExpression(receiver);
 	return (
-		root !== undefined &&
-		(adminAuthNames.has(root) ||
-			(authIndex !== -1 &&
-				(segments.slice(authIndex + 1).includes('admin') || adminClientNames.has(root))))
+		(root !== undefined &&
+			(adminAuthNames.has(root) ||
+				(authIndex !== -1 &&
+					(segments.slice(authIndex + 1).includes('admin') || adminClientNames.has(root))))) ||
+		(client !== undefined && isRecognizedFactoryCall(client, adminFactoryNames, new Set()))
 	);
 }
 
@@ -419,6 +487,7 @@ export function scanSource(source: string, file: string): Access[] {
 		const adminClientNames = new Set<string>();
 		const adminAuthNames = new Set<string>();
 		const adminFactoryNames = new Set(['createAdminClient']);
+		const supabaseFactoryNames = new Set(['createAdminClient']);
 		const supabaseClientTypeNames = new Set<string>(['SupabaseClient']);
 
 		for (const statement of parsed.statements) {
@@ -445,6 +514,7 @@ export function scanSource(source: string, file: string): Access[] {
 						for (const element of clause.namedBindings.elements) {
 							if (!element.isTypeOnly && element.propertyName?.text === 'createAdminClient') {
 								adminFactoryNames.add(element.name.text);
+								supabaseFactoryNames.add(element.name.text);
 							}
 						}
 					}
@@ -463,6 +533,7 @@ export function scanSource(source: string, file: string): Access[] {
 						const importedName = element.propertyName?.text ?? element.name.text;
 						if (SUPABASE_CLIENT_FACTORIES.has(importedName)) {
 							importedFactories.set(element.name.text, importedName);
+							supabaseFactoryNames.add(element.name.text);
 							record('client-factory', importedName);
 						}
 					}
@@ -535,14 +606,32 @@ export function scanSource(source: string, file: string): Access[] {
 						adminClientNames.add(node.name.text);
 					}
 				} else if (
-					isSupabaseAuthExpression(node.initializer, supabaseClientNames, supabaseAuthNames)
+					isSupabaseAuthExpression(
+						node.initializer,
+						supabaseClientNames,
+						supabaseAuthNames,
+						supabaseFactoryNames,
+						supabaseNamespaces
+					)
 				) {
 					supabaseAuthNames.add(node.name.text);
-					if (isAdminAuthReceiver(node.initializer, adminClientNames, adminAuthNames)) {
+					if (
+						isAdminAuthReceiver(
+							node.initializer,
+							adminClientNames,
+							adminAuthNames,
+							adminFactoryNames
+						)
+					) {
 						adminAuthNames.add(node.name.text);
 					}
 				} else if (
-					isSupabaseClientExpression(node.initializer, supabaseClientNames) ||
+					isSupabaseClientExpression(
+						node.initializer,
+						supabaseClientNames,
+						supabaseFactoryNames,
+						supabaseNamespaces
+					) ||
 					isSupabaseClientType(node.type, supabaseClientTypeNames)
 				) {
 					supabaseClientNames.add(node.name.text);
@@ -629,10 +718,16 @@ export function scanSource(source: string, file: string): Access[] {
 					record('rpc', literalResource(node));
 				} else if (
 					receiver &&
-					isSupabaseAuthReceiver(receiver, supabaseClientNames, supabaseAuthNames)
+					isSupabaseAuthReceiver(
+						receiver,
+						supabaseClientNames,
+						supabaseAuthNames,
+						supabaseFactoryNames,
+						supabaseNamespaces
+					)
 				) {
 					record('auth-session', name ?? DYNAMIC_ACCESS_NAME, {
-						...(isAdminAuthReceiver(receiver, adminClientNames, adminAuthNames)
+						...(isAdminAuthReceiver(receiver, adminClientNames, adminAuthNames, adminFactoryNames)
 							? { authContext: 'admin-client' as const }
 							: {})
 					});
