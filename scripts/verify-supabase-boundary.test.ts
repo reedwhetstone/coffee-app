@@ -458,7 +458,7 @@ describe('checkBoundary', () => {
 				"import { createAdminClient } from '$lib/supabase-admin';",
 				'const admin = createAdminClient();',
 				'const client = admin;',
-				'await client.auth.getUser(token);'
+				'await client.auth.signOut();'
 			].join('\n')
 		);
 
@@ -475,7 +475,7 @@ describe('checkBoundary', () => {
 				{
 					file: 'src/lib/server/aliased-admin.ts',
 					kind: 'auth-session',
-					name: 'getUser',
+					name: 'signOut',
 					classification: 'retained-web-local',
 					owner: 'auth-session',
 					disposition: 'Retain.'
@@ -485,6 +485,34 @@ describe('checkBoundary', () => {
 
 		expect(result.errors).toHaveLength(1);
 		expect(result.errors[0]).toContain('Admin-client Supabase auth access can never be retained');
+	});
+
+	it('rejects retained getUser in a helper that may receive an external client', () => {
+		writeSourceFile(
+			'src/lib/server/billing/identity-helper.ts',
+			[
+				'type AuthClient = { auth: { getUser(token: string): Promise<unknown> } };',
+				'export async function resolvePrincipal(client: AuthClient, token: string) {',
+				'	return client.auth.getUser(token);',
+				'}'
+			].join('\n')
+		);
+
+		const result = checkBoundary(root, {
+			entries: [
+				{
+					file: 'src/lib/server/billing/identity-helper.ts',
+					kind: 'auth-session',
+					name: 'getUser',
+					classification: 'retained-web-local',
+					owner: 'auth-session',
+					disposition: 'Retain.'
+				}
+			]
+		});
+
+		expect(result.errors).toHaveLength(1);
+		expect(result.errors[0]).toContain('externally supplied clients');
 	});
 
 	it('fails on Supabase-shaped access in Svelte template markup', () => {

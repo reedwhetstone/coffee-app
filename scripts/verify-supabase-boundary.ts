@@ -57,10 +57,13 @@
  *   admin-client custody in billing code. Product-principal construction,
  *   role lookup, and entitlement resolution (user_roles, api_keys, api_usage,
  *   and admin-client JWT validation) can never be classified as retained.
- * - File-level admin invariant: any file with a classified admin-client
- *   candidate may never hold a retained-web-local auth-session entry. This is
- *   enforced on file identity, not call-chain tracing, so aliasing cannot
- *   launder admin JWT validation into a retained classification.
+ * - Admin-client custody invariant: retained `auth.getUser` access is limited
+ *   to the explicit browser-session boundary files. Helper consumers can receive
+ *   an externally supplied client, so their auth access must remain shared-data
+ *   debt even when the admin client was created in another module. Local
+ *   admin-client files also may not retain auth-session access. These checks are
+ *   enforced on file identity, not call-chain tracing, so aliasing cannot launder
+ *   admin JWT validation into a retained classification.
  * - Dynamic table/RPC names can never be classified (fail closed); they can
  *   only be suppressed as non-Supabase.
  *
@@ -179,6 +182,16 @@ const RETAINED_AUTH_SESSION_METHODS = new Set([
 	'signUp',
 	// Bare (non-call) session-client auth access, e.g. `const s = supabase.auth`.
 	'<memberAccess>'
+]);
+
+/**
+ * These are the only files allowed to retain `auth.getUser`. Any other caller
+ * may receive a client from another module, including a service-role client,
+ * so its JWT validation remains shared-data debt until the private API cutover.
+ */
+const RETAINED_AUTH_GET_USER_FILES = new Set([
+	'src/hooks.server.ts',
+	'src/routes/auth/callback/+server.ts'
 ]);
 
 const RETAINED_WORKSPACE_TABLES = new Set(['user_memory', 'workspace_messages', 'workspaces']);
@@ -823,6 +836,17 @@ export function validateManifest(manifest: Manifest): string[] {
 			continue;
 		}
 
+		if (
+			entry.kind === 'auth-session' &&
+			entry.name === 'getUser' &&
+			!RETAINED_AUTH_GET_USER_FILES.has(entry.file)
+		) {
+			errors.push(
+				`retained auth-session getUser access is limited to explicit browser session boundaries; helper consumers of externally supplied clients must remain shared-data-debt: ${key}`
+			);
+			continue;
+		}
+
 		switch (entry.owner) {
 			case 'auth-session':
 				if (
@@ -895,6 +919,7 @@ export function checkBoundary(rootDir: string, manifest: Manifest): BoundaryResu
 	for (const entry of manifestEntries) {
 		if (
 			entry.kind === 'auth-session' &&
+			entry.name !== 'getUser' &&
 			entry.classification === 'retained-web-local' &&
 			adminClientFiles.has(entry.file)
 		) {
