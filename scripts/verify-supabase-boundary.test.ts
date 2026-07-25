@@ -322,6 +322,54 @@ describe('scanSource', () => {
 			{ file: 'src/lib/example.ts', kind: 'table', name: 'known_table' }
 		]);
 	});
+
+	it('traces table and rpc calls through schema selectors', () => {
+		const source = [
+			"await supabase.schema('private').from('hidden_table').select('*');",
+			"await supabase.schema('private').rpc('hidden_rpc');"
+		].join('\n');
+
+		expect(scanSource(source, 'src/lib/schema.ts')).toEqual([
+			{ file: 'src/lib/schema.ts', kind: 'table', name: 'hidden_table' },
+			{ file: 'src/lib/schema.ts', kind: 'rpc', name: 'hidden_rpc' }
+		]);
+	});
+
+	it('propagates factory provenance through star re-exports', () => {
+		writeSourceFile('src/lib/star-barrel.ts', "export * from '@supabase/supabase-js';");
+		writeSourceFile(
+			'src/lib/star-consumer.ts',
+			[
+				"import { createClient } from './star-barrel';",
+				"const db = createClient('url', 'key');",
+				"await db.from('star_table').select('*');"
+			].join('\n')
+		);
+
+		expect(collectAccesses(root)).toEqual([
+			{ file: 'src/lib/star-barrel.ts', kind: 'client-factory', name: 'createBrowserClient' },
+			{ file: 'src/lib/star-barrel.ts', kind: 'client-factory', name: 'createClient' },
+			{ file: 'src/lib/star-barrel.ts', kind: 'client-factory', name: 'createServerClient' },
+			{ file: 'src/lib/star-consumer.ts', kind: 'client-factory', name: 'createClient' },
+			{ file: 'src/lib/star-consumer.ts', kind: 'table', name: 'star_table' }
+		]);
+	});
+
+	it('carries script client aliases into markup without banning scalar names', () => {
+		const source = [
+			'<script lang="ts">',
+			"import { supabase } from '$lib/supabase';",
+			'const db = supabase;',
+			'const supabaseStatus = "ready";',
+			'</script>',
+			'<p>{supabaseStatus}</p>',
+			"<button onclick={() => db.from('hidden_table')}>Load</button>"
+		].join('\n');
+
+		expect(scanSource(source, 'src/routes/account/+page.svelte')).toEqual([
+			{ file: 'src/routes/account/+page.svelte', kind: 'markup', name: 'db' }
+		]);
+	});
 });
 
 describe('isRuntimeFile', () => {

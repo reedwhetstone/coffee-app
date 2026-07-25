@@ -206,7 +206,7 @@ interface ParsedModule {
 	file: string;
 	units: string[];
 	asts: ts.SourceFile[];
-	markupAccesses: Access[];
+	markupFragment?: unknown;
 }
 
 interface ModuleSymbols {
@@ -234,16 +234,13 @@ function scriptKind(file: string): ts.ScriptKind {
 interface SourceUnits {
 	/** Script sources to run through the TypeScript scanner. */
 	units: string[];
-	/** Banned Supabase-shaped expressions found in Svelte template markup. */
-	markupAccesses: Access[];
+	/** Svelte template fragment retained for provenance-aware markup scanning. */
+	markupFragment?: unknown;
 }
 
 interface SvelteScriptBlock {
 	content?: { start?: number; end?: number };
 }
-
-/** Names that mark a markup expression as Supabase-shaped. */
-const MARKUP_CALL_NAMES = new Set(['from', 'rpc']);
 
 function isSupabaseShapedName(name: string | undefined): boolean {
 	return name === 'supabase' || name === 'client' || Boolean(name && /supabase/i.test(name));
@@ -257,7 +254,7 @@ function isSupabaseShapedName(name: string | undefined): boolean {
  */
 function sourceUnits(source: string, file: string): SourceUnits {
 	if (!file.endsWith('.svelte')) {
-		return { units: [source], markupAccesses: [] };
+		return { units: [source] };
 	}
 
 	let ast: { instance?: SvelteScriptBlock; module?: SvelteScriptBlock; fragment?: unknown };
@@ -277,79 +274,18 @@ function sourceUnits(source: string, file: string): SourceUnits {
 		}
 	}
 
-	const markupNames = new Set<string>();
-	const visitMarkup = (node: unknown): void => {
-		if (!node || typeof node !== 'object') {
-			return;
-		}
-		if (Array.isArray(node)) {
-			for (const child of node) {
-				visitMarkup(child);
-			}
-			return;
-		}
-		const record = node as Record<string, unknown> & { type?: string; name?: unknown };
-
-		if (record.type === 'Identifier' && typeof record.name === 'string') {
-			if (/supabase/i.test(record.name) || SUPABASE_CLIENT_FACTORIES.has(record.name)) {
-				markupNames.add(record.name);
-			}
-			if (record.name === 'createAdminClient') {
-				markupNames.add(record.name);
-			}
-		}
-
-		if (record.type === 'CallExpression') {
-			const callee = record.callee as
-				| { type?: string; property?: { type?: string; name?: unknown }; object?: unknown }
-				| undefined;
-			if (callee?.type === 'MemberExpression' && callee.property?.type === 'Identifier') {
-				const method = callee.property.name;
-				const receiver = callee.object as { type?: string; name?: unknown } | undefined;
-				const receiverName =
-					receiver?.type === 'Identifier' && typeof receiver.name === 'string'
-						? receiver.name
-						: undefined;
-				if (
-					((typeof method === 'string' && MARKUP_CALL_NAMES.has(method)) || method === 'auth') &&
-					isSupabaseShapedName(receiverName)
-				) {
-					markupNames.add(String(method));
-				}
-			}
-			const calleeMember = record.callee as
-				| { type?: string; object?: { property?: { type?: string; name?: unknown } } }
-				| undefined;
-			const parentProperty = calleeMember?.object?.property;
-			if (parentProperty?.type === 'Identifier' && parentProperty.name === 'auth') {
-				markupNames.add('auth');
-			}
-		}
-
-		for (const [key, value] of Object.entries(record)) {
-			if (key === 'start' || key === 'end' || key === 'loc' || key === 'parent') {
-				continue;
-			}
-			visitMarkup(value);
-		}
-	};
-	visitMarkup(ast.fragment);
-
-	return {
-		units,
-		markupAccesses: [...markupNames].sort().map((name) => ({ file, kind: 'markup', name }))
-	};
+	return { units, markupFragment: ast.fragment };
 }
 
 function parseModule(source: string, file: string): ParsedModule {
-	const { units, markupAccesses } = sourceUnits(source, file);
+	const { units, markupFragment } = sourceUnits(source, file);
 	return {
 		file,
 		units,
 		asts: units.map((unit) =>
 			ts.createSourceFile(file, unit, ts.ScriptTarget.Latest, true, scriptKind(file))
 		),
-		markupAccesses
+		markupFragment
 	};
 }
 
@@ -494,6 +430,8 @@ function buildModuleSymbolTable(parsedModules: ParsedModule[]): ModuleSymbolTabl
 	for (const module of parsedModules) {
 		modules.set(normalizedModulePath(module.file), EMPTY_MODULE_SYMBOLS());
 	}
+	const packageFactoryExports = (): Map<string, FactoryProvenance> =>
+		new Map([...SUPABASE_CLIENT_FACTORIES].map((name) => [name, name as FactoryProvenance]));
 
 	const addNamespace = (
 		facts: ModuleSymbols,
@@ -520,7 +458,11 @@ function buildModuleSymbolTable(parsedModules: ParsedModule[]): ModuleSymbolTabl
 	): boolean => {
 		const specifier = statement.moduleSpecifier;
 		const source = specifier && ts.isStringLiteral(specifier) ? specifier.text : undefined;
-		const sourceExports = source ? resolveExports(module.file, source) : new Map();
+		const sourceExports = source
+			? SUPABASE_PACKAGES.has(source)
+				? packageFactoryExports()
+				: resolveExports(module.file, source)
+			: new Map<string, FactoryProvenance>();
 		let changed = false;
 
 		if (!statement.exportClause) {
@@ -630,9 +572,7 @@ function buildModuleSymbolTable(parsedModules: ParsedModule[]): ModuleSymbolTabl
 					const source = literalModuleSpecifier(node.initializer);
 					if (source) {
 						const sourceExports = SUPABASE_PACKAGES.has(source)
-							? new Map<string, FactoryProvenance>(
-									[...SUPABASE_CLIENT_FACTORIES].map((name) => [name, name as FactoryProvenance])
-								)
+							? packageFactoryExports()
 							: resolveExports(module.file, source);
 						if (ts.isIdentifier(node.name)) {
 							if (SUPABASE_PACKAGES.has(source)) {
@@ -818,6 +758,20 @@ function isSupabaseClientExpression(
 	supabaseNamespaces: Set<string>,
 	factoryNamespaces: Map<string, Map<string, FactoryProvenance>> = new Map()
 ): boolean {
+	const current = unwrapExpression(expression);
+	if (ts.isCallExpression(current) && memberName(current.expression) === 'schema') {
+		const schemaReceiver = memberReceiver(current.expression);
+		return (
+			schemaReceiver !== undefined &&
+			isSupabaseClientExpression(
+				schemaReceiver,
+				supabaseClientNames,
+				supabaseFactoryNames,
+				supabaseNamespaces,
+				factoryNamespaces
+			)
+		);
+	}
 	const segments = memberChainSegments(expression);
 	const root = segments[0];
 	return (
@@ -920,6 +874,245 @@ function literalResource(call: ts.CallExpression): string {
 	return argument && ts.isStringLiteralLike(argument) ? argument.text : DYNAMIC_ACCESS_NAME;
 }
 
+function markupMemberName(expression: unknown): string | undefined {
+	if (!expression || typeof expression !== 'object') {
+		return undefined;
+	}
+	const member = expression as {
+		type?: string;
+		property?: { type?: string; name?: unknown; value?: unknown };
+		computed?: boolean;
+	};
+	if (member.type !== 'MemberExpression' || !member.property) {
+		return undefined;
+	}
+	if (member.property.type === 'Identifier' && typeof member.property.name === 'string') {
+		return member.property.name;
+	}
+	if (
+		member.computed &&
+		member.property.type === 'Literal' &&
+		typeof member.property.value === 'string'
+	) {
+		return member.property.value;
+	}
+	return undefined;
+}
+
+function markupMemberReceiver(expression: unknown): unknown {
+	if (!expression || typeof expression !== 'object') {
+		return undefined;
+	}
+	const member = expression as { type?: string; object?: unknown };
+	return member.type === 'MemberExpression' ? member.object : undefined;
+}
+
+function unwrapMarkupExpression(expression: unknown): unknown {
+	let current = expression as { type?: string; expression?: unknown } | undefined;
+	while (
+		current &&
+		['ChainExpression', 'ParenthesizedExpression', 'TSAsExpression', 'TSTypeAssertion'].includes(
+			current.type ?? ''
+		)
+	) {
+		current = current.expression as { type?: string; expression?: unknown } | undefined;
+	}
+	return current;
+}
+
+function markupMemberChainSegments(expression: unknown): string[] {
+	const segments: string[] = [];
+	let current = unwrapMarkupExpression(expression) as { type?: string; name?: unknown } | undefined;
+	while (current) {
+		if (current.type === 'Identifier' && typeof current.name === 'string') {
+			segments.unshift(current.name);
+			break;
+		}
+		const name = markupMemberName(current);
+		if (name) {
+			segments.unshift(name);
+			current = unwrapMarkupExpression(markupMemberReceiver(current)) as
+				| { type?: string; name?: unknown }
+				| undefined;
+			continue;
+		}
+		if (current.type === 'CallExpression') {
+			current = unwrapMarkupExpression((current as { callee?: unknown }).callee) as
+				| { type?: string; name?: unknown }
+				| undefined;
+			continue;
+		}
+		break;
+	}
+	return segments;
+}
+
+function isRecognizedMarkupFactory(
+	expression: unknown,
+	supabaseFactoryNames: Set<string>,
+	facts: ModuleSymbols
+): boolean {
+	const current = unwrapMarkupExpression(expression) as
+		| { type?: string; callee?: unknown }
+		| undefined;
+	if (!current || current.type !== 'CallExpression') {
+		return false;
+	}
+	const callee = unwrapMarkupExpression(current.callee) as
+		| { type?: string; name?: unknown }
+		| undefined;
+	if (callee?.type === 'Identifier' && typeof callee.name === 'string') {
+		return supabaseFactoryNames.has(callee.name);
+	}
+	const memberNameValue = markupMemberName(callee);
+	const receiver = unwrapMarkupExpression(markupMemberReceiver(callee)) as
+		| { type?: string; name?: unknown }
+		| undefined;
+	return (
+		typeof memberNameValue === 'string' &&
+		receiver?.type === 'Identifier' &&
+		typeof receiver.name === 'string' &&
+		((facts.supabaseNamespaces.has(receiver.name) &&
+			SUPABASE_CLIENT_FACTORIES.has(memberNameValue)) ||
+			facts.factoryNamespaces.get(receiver.name)?.has(memberNameValue))
+	);
+}
+
+function isSupabaseMarkupClientExpression(
+	expression: unknown,
+	supabaseClientNames: Set<string>,
+	supabaseFactoryNames: Set<string>,
+	facts: ModuleSymbols
+): boolean {
+	const current = unwrapMarkupExpression(expression) as
+		| {
+				type?: string;
+				name?: unknown;
+				callee?: unknown;
+		  }
+		| undefined;
+	if (!current) {
+		return false;
+	}
+	if (current.type === 'Identifier' && typeof current.name === 'string') {
+		return supabaseClientNames.has(current.name) || isSupabaseShapedName(current.name);
+	}
+	if (current.type !== 'CallExpression') {
+		return false;
+	}
+	if (isRecognizedMarkupFactory(current, supabaseFactoryNames, facts)) {
+		return true;
+	}
+	const callee = unwrapMarkupExpression(current.callee);
+	if (markupMemberName(callee) === 'schema') {
+		return isSupabaseMarkupClientExpression(
+			markupMemberReceiver(callee),
+			supabaseClientNames,
+			supabaseFactoryNames,
+			facts
+		);
+	}
+	return false;
+}
+
+function markupAuthClientExpression(expression: unknown): unknown {
+	const current = unwrapMarkupExpression(expression);
+	if (markupMemberName(current) === 'auth') {
+		return markupMemberReceiver(current);
+	}
+	const receiver = markupMemberReceiver(current);
+	return receiver === undefined ? undefined : markupAuthClientExpression(receiver);
+}
+
+function isSupabaseMarkupAuthReceiver(
+	receiver: unknown,
+	supabaseClientNames: Set<string>,
+	supabaseAuthNames: Set<string>,
+	supabaseFactoryNames: Set<string>,
+	facts: ModuleSymbols
+): boolean {
+	const segments = markupMemberChainSegments(receiver);
+	const root = segments[0];
+	if (root && supabaseAuthNames.has(root)) {
+		return true;
+	}
+	const client = markupAuthClientExpression(receiver);
+	return (
+		client !== undefined &&
+		isSupabaseMarkupClientExpression(client, supabaseClientNames, supabaseFactoryNames, facts)
+	);
+}
+
+function markupRootName(expression: unknown): string | undefined {
+	const segments = markupMemberChainSegments(expression);
+	return segments[0];
+}
+
+function collectMarkupAccesses(
+	fragment: unknown,
+	file: string,
+	supabaseClientNames: Set<string>,
+	supabaseAuthNames: Set<string>,
+	supabaseFactoryNames: Set<string>,
+	facts: ModuleSymbols
+): Access[] {
+	if (!fragment) {
+		return [];
+	}
+	const accesses = new Map<string, Access>();
+	const record = (name: string | undefined) => {
+		if (!name) {
+			return;
+		}
+		const key = `markup|${name}`;
+		if (!accesses.has(key)) {
+			accesses.set(key, { file, kind: 'markup', name });
+		}
+	};
+	const visit = (node: unknown): void => {
+		if (!node || typeof node !== 'object') {
+			return;
+		}
+		if (Array.isArray(node)) {
+			for (const child of node) visit(child);
+			return;
+		}
+		const recordNode = node as { type?: string; callee?: unknown };
+		if (recordNode.type === 'CallExpression') {
+			const callee = unwrapMarkupExpression(recordNode.callee);
+			const method = markupMemberName(callee);
+			const receiver = markupMemberReceiver(callee);
+			if (
+				receiver !== undefined &&
+				(method === 'from' || method === 'rpc') &&
+				isSupabaseMarkupClientExpression(receiver, supabaseClientNames, supabaseFactoryNames, facts)
+			) {
+				record(markupRootName(receiver) ?? method);
+			} else if (
+				receiver !== undefined &&
+				isSupabaseMarkupAuthReceiver(
+					receiver,
+					supabaseClientNames,
+					supabaseAuthNames,
+					supabaseFactoryNames,
+					facts
+				)
+			) {
+				record(markupRootName(receiver) ?? method);
+			} else if (isRecognizedMarkupFactory(callee, supabaseFactoryNames, facts)) {
+				const factoryRoot = markupRootName(callee);
+				record(factoryRoot ?? method ?? 'factory');
+			}
+		}
+		for (const [key, value] of Object.entries(node)) {
+			if (key === 'start' || key === 'end' || key === 'loc' || key === 'parent') continue;
+			visit(value);
+		}
+	};
+	visit(fragment);
+	return [...accesses.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 function scanParsedModule(module: ParsedModule, table: ModuleSymbolTable): Access[] {
 	const accessesByKey = new Map<string, Access>();
 	const facts = table.modules.get(normalizedModulePath(module.file)) ?? EMPTY_MODULE_SYMBOLS();
@@ -929,10 +1122,6 @@ function scanParsedModule(module: ParsedModule, table: ModuleSymbolTable): Acces
 			accessesByKey.set(key, { file: module.file, kind, name });
 		}
 	};
-
-	for (const access of module.markupAccesses) {
-		record(access.kind, access.name);
-	}
 
 	const supabaseClientNames = new Set<string>(['supabase']);
 	const supabaseAuthNames = new Set<string>();
@@ -1035,6 +1224,17 @@ function scanParsedModule(module: ParsedModule, table: ModuleSymbolTable): Acces
 		for (const ast of module.asts) {
 			collectClientBindings(ast);
 		}
+	}
+
+	for (const access of collectMarkupAccesses(
+		module.markupFragment,
+		module.file,
+		supabaseClientNames,
+		supabaseAuthNames,
+		supabaseFactoryNames,
+		facts
+	)) {
+		record(access.kind, access.name);
 	}
 
 	for (const ast of module.asts) {
