@@ -10,7 +10,7 @@
 **Canonical repo:** `coffee-app`
 
 **Canonical path:** `notes/DEVLOG.md`
-**Last reconciled:** 2026-07-21
+**Last reconciled:** 2026-07-22
 
 ## How to use this backlog
 
@@ -45,6 +45,8 @@
       missing canaries, and migrations that shipped in code but not production. Turn
       verified gaps into small repo-owned slices. Starting references:
       `notes/decisions/007-headless-api-extraction-web-as-reference-client.md`,
+      `notes/ARCHITECTURE.md`,
+      `notes/implementation-plans/2026-07-22-coffee-app-supabase-data-boundary-retirement.md`,
       `notes/implementation-plans/2026-07-01-span-b-legacy-v1-catalog-proxy.md`, and
       `notes/implementation-plans/2026-07-04-catalog-shell-performance-headless-plan.md`.
 
@@ -156,8 +158,8 @@
 
 ## P2: Expand API, commerce, and agent leverage
 
-- [ ] **Complete canonical API and CLI parity.** Finish price-index CLI access and
-      conversion docs; move compatible read-only catalog and intelligence commands to
+- [ ] **Complete canonical API and CLI parity.** Keep the shipped price-index CLI
+      command and conversion docs aligned; move remaining compatible read-only catalog and intelligence commands to
       Parchment contracts; add the `fields=summary` projection and fail-closed query
       aliases where still needed; generate or vendor a small CLI manifest fragment for
       coffee-app docs. Keep owned inventory, roast, sales, and tasting writes behind

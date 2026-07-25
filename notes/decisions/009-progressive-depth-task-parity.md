@@ -10,7 +10,7 @@ Purveyors now has several analytical product surfaces: the public and member Mar
 
 The app has historically used responsive layout as the default adaptation mechanism. That is necessary, but not sufficient for analytics. A compressed desktop dashboard can preserve visual elements while losing the decision the user came to make. This is especially risky for coffee-market workflows where the user needs a complete chain from signal to evidence to action.
 
-ADR-008 established that the Market Index should become a decision surface rather than a dataset display. This ADR generalizes that standard across analytical experiences in coffee-app.
+ADR-015 established that the Market Index should become a decision surface rather than a dataset display. This ADR generalizes that standard across analytical experiences in coffee-app.
 
 ## Decision
 
@@ -68,5 +68,5 @@ Each analytical module must declare:
 - ADR-005: catalog access levels and visibility vs leverage
 - ADR-006: CLI-owned portable agent tools
 - ADR-007: headless API extraction, web as reference client
-- ADR-008: Market Index actionable insight direction
+- ADR-015: Market Index actionable insight direction
 - `notes/implementation-plans/2026-07-07-progressive-depth-task-parity-audit.md`

@@ -35,7 +35,7 @@ export function createMarketTools(deps: ChatToolDeps) {
 }
 
 /**
- * ADR-008 Market Index decision-surface tools. Thin adapters over the
+ * ADR-015 Market Index decision-surface tools. Thin adapters over the
  * request-credentialed Parchment reads injected by the chat route; entitlement
  * is enforced server-side by Parchment (403s surface as upgrade guidance).
  */

@@ -1,5 +1,11 @@
 # Parchment Intelligence CLI Activation
 
+**Status:** Completed and historical
+**Completed:** The price-index CLI surface shipped; current follow-up belongs in `notes/DEVLOG.md`.
+
+> The statements below that describe price-index CLI access as missing are
+> historical planning context, not current product truth.
+
 **Date:** 2026-05-08  
 **Planning mode:** Planning only, no code changes in this PR  
 **Selected program:** Ship the first `purvey intelligence price-index` command in `purveyors-cli`, then update coffee-app public docs and conversion copy once the CLI release exists.  

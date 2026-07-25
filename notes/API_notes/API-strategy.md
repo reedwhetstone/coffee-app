@@ -1,5 +1,14 @@
 # API Strategy: Building a Robust Coffee Intelligence Platform
 
+**Status:** Superseded historical strategy
+**Superseded:** 2026-07-22 by Parchment API, `@purveyors/sdk`, and coffee-app ADR-007
+
+> This file preserves the original coffee-app-owned API proposal for migration
+> archaeology. It is not current guidance. Parchment API now owns shared schema,
+> public contracts, and shared business behavior. The canonical API reference is
+> <https://api.purveyors.io/docs>; current implementation boundaries are in
+> `notes/ARCHITECTURE.md`; ordered work is in `notes/DEVLOG.md`.
+
 ## Executive Summary
 
 This document outlines the strategic approach for developing Purveyors into a true API-first platform that serves both internal application needs and external customers. The strategy focuses on leveraging our unique coffee data assets, AI capabilities, and professional expertise to create high-value API services.

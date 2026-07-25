@@ -1,5 +1,11 @@
 # MCP Server Proposal for Purveyors.io
 
+**Status:** Archived and not planned near term
+
+> Historical research only. REST/OpenAPI plus `@purveyors/sdk` is the active
+> integration strategy. Purveyors has no implemented MCP surface and MCP is not
+> on the near-term roadmap.
+
 ## Executive Summary
 
 This document explores the business case for building a Model Context Protocol (MCP) server for purveyors.io. MCP is Anthropic's open standard (now under the Linux Foundation) for connecting AI assistants to external data sources and tools. With 97M+ monthly SDK downloads and adoption by Anthropic, OpenAI, Google, and Microsoft, MCP has become the universal standard for AI-to-enterprise connectivity.

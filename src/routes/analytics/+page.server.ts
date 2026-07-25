@@ -569,7 +569,7 @@ async function loadAnalyticsCharts(
 		priceIndexSupabase: any;
 	}
 ): Promise<AnalyticsCharts> {
-	// ADR-008 decision-surface reads (value signals, movement stats, metadata index).
+	// ADR-015 decision-surface reads (value signals, movement stats, metadata index).
 	// Kicked off first; resolves in parallel with the Supabase queries below.
 	const marketInsightsPromise = loadMarketIndexInsights(event, { isParchmentIntelligence });
 

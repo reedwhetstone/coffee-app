@@ -1,5 +1,11 @@
 # MCP-First Architecture for Purveyors.io
 
+**Status:** Archived and superseded
+
+> Historical exploration only. MCP-first is not the current architecture and
+> MCP is not a near-term target. Parchment REST/OpenAPI contracts and the
+> generated `@purveyors/sdk` are the active shared boundary.
+
 ## What Does "MCP-First" Actually Mean?
 
 **Traditional Architecture** (current):

@@ -14,21 +14,25 @@ If the goal is to understand the current product direction, implementation contr
    - Working brand identity, product language, visual rules, UI/UX principles, and inconsistency log
 4. `UI-FRAMEWORK.md`
    - Tactical Svelte/Tailwind component implementation companion for applying `BRAND.md`
-5. `decisions/`
+5. `ARCHITECTURE.md`
+   - Verified current runtime boundaries, SDK/CLI relationship, and direct-Supabase migration debt
+6. `decisions/`
    - Accepted ADRs for real shipped behavior
-6. `API_notes/APITIER.md`
+7. `API_notes/APITIER.md`
    - Current Parchment API tier model
-7. `API_notes/API-strategy.md`
-   - Current API strategy, with older speculative ideas trimmed back
-8. `marketing-audits/`
+8. `API_notes/API-strategy.md`
+   - Superseded historical strategy; retained for migration archaeology only
+9. `marketing-audits/`
    - Recent product-language and funnel audits
-9. `implementation-plans/`
-   - Active or recent execution plans
+10. `implementation-plans/`
+    - Active or recent execution plans
 
 ## Current directories
 
 - `DEVLOG.md`
   - The only ordered cross-product backlog. Detailed plans and repo-local checklists support it but do not compete with it for priority.
+- `ARCHITECTURE.md`
+  - Current implementation truth for the Parchment, SDK, CLI, coffee-app, and Supabase boundaries
 - `API_notes/`
   - Current API product notes and implementation references
 - `BRAND.md`

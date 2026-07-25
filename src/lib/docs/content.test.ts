@@ -10,16 +10,19 @@ describe('api docs contract', () => {
 
 		const serializedPage = JSON.stringify(page);
 		expect(serializedPage).toContain(
-			'Anonymous, viewer-session, and API Green requests share the basic public catalog query surface.'
+			'Viewer-session, public/demo-key, and API Green requests share the basic public query surface.'
 		);
 		expect(serializedPage).toContain(
 			'Importer, elevation, appearance, and structured process filters are gated to member/admin sessions and paid API tiers.'
 		);
 		expect(serializedPage).toContain(
-			'Defaults to 100 rows when page and limit are omitted; page without limit falls back to 15.'
+			'canonical listing path uses the 100-row default listing contract.'
 		);
 		expect(serializedPage).toContain(
-			'Publishable retail and wholesale catalog rows with the public field projection. No X-RateLimit-* headers.'
+			'Publishable retail and wholesale catalog rows with the public field projection. The demo credential never reaches the browser.'
+		);
+		expect(serializedPage).toContain(
+			'Its /api/catalog BFF injects a 1000-row default when page and limit are omitted for legacy unpaged consumers; the /catalog UI explicitly requests a 15-row page.'
 		);
 		expect(serializedPage).toContain(
 			'Canonical integration path for developers, sync jobs, and agents. API Green is for evaluation; API Origin and Enterprise unlock premium search leverage.'
@@ -34,6 +37,15 @@ describe('api docs contract', () => {
 		expect(serializedDocs).toContain('GET /v1/price-index');
 		expect(serializedDocs).toContain('aggregate price_index_snapshots data');
 		expect(serializedDocs).toContain('not raw supplier-level rows');
+		expect(serializedDocs).toContain(
+			'Public website catalog pages use a server-only PARCHMENT_PUBLIC_DEMO_API_KEY through the coffee-app BFF.'
+		);
+		expect(serializedDocs).toContain(
+			'Anonymous Market Index teaser slices stay in session mode and call their deliberately anonymous upstream routes without the demo key.'
+		);
+		expect(serializedDocs).not.toContain(
+			'Public website catalog and analytics pages use a server-only PARCHMENT_PUBLIC_DEMO_API_KEY'
+		);
 		expect(serializedDocs).toContain(
 			'Do not document CSV, alerts, watchlists, webhooks, or supplier-level raw rows as supported.'
 		);

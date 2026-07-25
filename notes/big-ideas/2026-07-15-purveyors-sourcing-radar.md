@@ -31,7 +31,7 @@ The important constraint is that the intelligence publication backbone is not fi
 ## Existing assets this leverages
 
 - coffee-scraper: 43 documented live sources, structured extraction, proof-quality auditing, price observations, immutable supplier observation sets, true observation timestamps, and durable Shopify coordination.
-- parchment-api: catalog, proof, similarity, ranking, procurement brief/match endpoints, market signals, price-index statistics, metadata index, OpenAPI, MCP direction, and generated SDK.
+- parchment-api: catalog, proof, similarity, ranking, procurement brief/match endpoints, market signals, price-index statistics, metadata index, OpenAPI, and the generated SDK. MCP is not a near-term target.
 - purveyors-cli: machine-readable manifest, stable JSON/error contracts, device authentication, market and procurement reads, and agent-ready catalog/inventory/roast/tasting/sales workflows.
 - coffee-app: public catalog and Market Index, member watchlists, saved sourcing criteria, conversational market tools, active evidence shelf, subscription surface, and idempotent confirmed actions.
 

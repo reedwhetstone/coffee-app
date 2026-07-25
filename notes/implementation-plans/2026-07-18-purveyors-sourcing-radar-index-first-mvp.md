@@ -3,7 +3,7 @@
 **Status:** Proposed product MVP
 **Date:** 2026-07-18
 **Owning repositories:** `parchment-api`, then `coffee-app`
-**Governing direction:** Product Vision, ADR-005, ADR-007, ADR-008, ADR-010, ADR-012, and the Parchment API ownership ADRs
+**Governing direction:** Product Vision, ADR-005, ADR-007, ADR-010, ADR-012, ADR-015, and the Parchment API ownership ADRs
 **Strategy source:** [Purveyors Sourcing Radar proposal](https://github.com/reedwhetstone/second-brain/blob/main/brain/moonshots/2026-07-15-purveyors-sourcing-radar.md)
 **Red-team:** `notes/pr-audits/2026-07-18-pr-482-sourcing-radar-red-team.md` (corrections from that audit are incorporated below)
 

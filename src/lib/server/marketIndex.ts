@@ -5,7 +5,7 @@ import { createParchmentServerClient, ParchmentConfigError } from './parchmentCl
 import type { CoffeeCatalog } from '$lib/types/component.types';
 
 /**
- * BFF loader for the Market Index decision-surface modules (ADR-008 / WP-3).
+ * BFF loader for the Market Index decision-surface modules (ADR-015 / WP-3).
  *
  * Fetches the Parchment market-intelligence reads in parallel:
  * - value signals (full feed for Parchment Intelligence; public count summary

@@ -1,8 +1,17 @@
 # Market Index Decision Surface — Backend & API Build Plan
 
+**Status:** Superseded historical build plan
+**Superseded:** 2026-07-22 by the shipped cross-repo implementation and Parchment-owned migration authority
+
+> Do not use the coffee-app schema ownership or anonymous Parchment access claims
+> below as current guidance. Parchment owns the shared migration ledger and
+> Parchment data endpoints require a Bearer credential. Public website reads use
+> coffee-app's server-held demo key. Current boundaries are documented in
+> `notes/ARCHITECTURE.md`; remaining work is ordered in `notes/DEVLOG.md`.
+
 **Date:** 2026-07-05
 **Author:** OpenClaw (audit + build plan for Reed)
-**Source of truth:** `notes/implementation-plans/market-index-decision-surface-plan.md` (PR #437, merged) + ADR-008
+**Historical source:** `notes/implementation-plans/market-index-decision-surface-plan.md` (PR #437, merged) + ADR-015
 **Scope:** Backend + API infrastructure only (data model, computation job, backfill, `/v1` endpoints, CLI wrappers). Frontend (WP-3 coffee-app `/analytics` UI, chat/GenUI adapters) is handed to the designer/frontend dev and is out of scope here.
 
 This is the execution plan Reed asked me to implement. It keeps the PR #437 **contracts** (§3 shared contracts, signal math, entitlement matrix) intact, but **re-routes the work packages to where the code actually lives** after auditing the four repos.
@@ -11,7 +20,7 @@ This is the execution plan Reed asked me to implement. It keeps the PR #437 **co
 
 ## 1. Audit findings (what I verified against the repos)
 
-I read PR #437's plan, ADR-008, and the real code in `coffee-app`, `parchment-api`, `coffee-scraper`, and `purveyors-cli`. The contract layer is strong and internally consistent. Three findings change the build shape; five are smaller flags.
+I read PR #437's plan, ADR-015, and the real code in `coffee-app`, `parchment-api`, `coffee-scraper`, and `purveyors-cli`. The contract layer is strong and internally consistent. Three findings change the build shape; five are smaller flags.
 
 ### F1 — The "daily job" and table DDL do NOT live in parchment-api (biggest)
 

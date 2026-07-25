@@ -2,6 +2,10 @@
 
 > **Status update, 2026-07-18:** The durable intent and manual-match substrate described here shipped through PRs #354, #382, #383, and #423, with canonical procurement ownership now in Parchment API. The proposed shadow-recommendation stage did not ship. Its remaining product question is superseded by `2026-07-18-purveyors-sourcing-radar-index-first-mvp.md`, which defines a focused but complete personalized Sourcing Radar product over the shipped brief and Market Index contracts.
 
+> **Ownership correction, 2026-07-22:** Parchment owns the shared schema and
+> migration ledger. References below to coffee-app-owned schema or `/v1` routes
+> record the pre-extraction architecture.
+
 **Selected program:** Turn the new watchlist/procurement-alert DEVLOG item into a constrained, API-first saved sourcing brief product that can later power procurement briefs, agent workflows, and alerts.
 
 **Recommended first PR:** PR 1, saved sourcing brief contract and manual match API in `coffee-app`.

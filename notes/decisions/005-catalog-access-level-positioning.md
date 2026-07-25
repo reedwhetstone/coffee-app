@@ -4,6 +4,13 @@
 
 **Date:** 2026-04-29
 
+> **Production correction (2026-07-22):** References below to anonymous direct
+> `/v1/catalog` access describe the former coffee-app-owned endpoint. The current
+> Parchment endpoint requires a Bearer credential. Public website discovery is
+> still available, but the coffee-app BFF supplies a server-held public/demo API
+> key. ADR-014 separately supersedes the wholesale-visibility portion of this
+> decision.
+
 ## Context
 
 PR #302 exposed advanced process-transparency filters on the public catalog. That made a local implementation question visible as a product strategy question: what should anonymous visitors, free signed-in viewers, subscribed members, API customers, and admins each be able to see and do?

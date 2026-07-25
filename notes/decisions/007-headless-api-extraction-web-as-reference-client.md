@@ -1,17 +1,25 @@
 # ADR-007: Headless API Extraction — coffee-app Becomes a Public Reference Client
 
-**Status:** Accepted
+**Status:** Accepted; migration in progress
 **Date:** 2026-06-28
 
 > Companion ADR. The parchment-api repo carries the mirror decision from the API
-> side. The full cross-repo blueprint (architecture, milestones, PR-level plan)
-> lives in the second brain at
-> `brain/projects/parchment-api-extraction-spec.md`. This ADR records what the
-> decision means _for coffee-app specifically_.
+> side. This ADR records the destination for coffee-app. Current implementation
+> state and remaining direct-Supabase debt are tracked in
+> `notes/ARCHITECTURE.md` and the headless-cutover entry in `notes/DEVLOG.md`.
+
+## Current implementation status
+
+The catalog BFF and server-side chat tools use `@purveyors/sdk`, and coffee-app
+does not depend on `@purveyors/cli`. The extraction is not complete. Coffee-app
+still performs direct Supabase reads and writes for auth, billing, workspaces,
+Mallard Studio workflows, and several shared catalog, market, similarity,
+tracking, RAG, API-key, and usage paths. Parchment is the sole shared-schema
+migration authority even while these callers remain.
 
 ## Context
 
-coffee-app today is both the web UI and the de facto home of the platform's
+At the time of this decision, coffee-app was both the web UI and the de facto home of the platform's
 backend logic: SvelteKit server routes under `/api/*` (40+ handlers) and the
 canonical `/v1/*` contract, plus the AI chat/agent surface, billing, and the
 shared service layer (`src/lib/server/*`). ADR-002 already established a
@@ -37,22 +45,24 @@ this public repo.
 
 ## Decision
 
-Extract the backend into a new **private** `parchment-api` repo (a long-running
-Node service, Hono framework) that becomes the single source of truth serving all
-surfaces. **coffee-app becomes a thin, public reference client** that consumes the
-platform exclusively through the published `@purveyors/sdk` (generated from the
-API's OpenAPI spec).
+Extract the backend into the **private** `parchment-api` repo (a long-running
+Node service, Hono framework) as the single source of truth serving all surfaces.
+The destination is a thin, public coffee-app reference client that consumes
+shared platform behavior through published `@purveyors/sdk` contracts generated
+from the API's OpenAPI spec.
 
 Concretely, for this repo:
 
 - **No proprietary logic in coffee-app.** Server-side business logic currently in
   `src/routes/api/*` and `src/lib/server/*` moves behind the private API. What
   remains here is presentation, generic SDK usage, and a thin BFF.
-- **BFF auth-forwarding stays.** The SvelteKit server keeps the secure session
-  cookie and forwards a Supabase Bearer token to the API. This preserves the
-  existing cookie security model (Supabase remains the auth source of truth via
-  the unified `principal` model) and is itself exemplary reference code for
-  integrators. The browser never holds raw API keys.
+- **BFF identity/session forwarding stays.** Supabase Auth remains the browser
+  identity and session provider: SvelteKit initiates OAuth, keeps the secure
+  session cookie refreshed, and forwards the resulting user JWT. Parchment,
+  rather than coffee-app, validates API credentials, resolves the canonical
+  principal, and enforces product roles, plans, scopes, ownership, and
+  entitlements. Coffee-app consumes that result for route UX; it does not
+  maintain a second authorization model. The browser never holds raw API keys.
 - **AI chat/agent becomes a client of a streaming API endpoint.** The chat UI
   consumes the API's streaming `/chat` + `/agent` endpoints rather than running
   agent orchestration in this repo's server routes.

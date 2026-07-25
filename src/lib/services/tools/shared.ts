@@ -126,7 +126,7 @@ export interface ChatToolDeps {
 		},
 		options: { publicOnly: boolean }
 	) => Promise<unknown>;
-	/** ADR-008 Market Index reads. Injected by the chat route with request credentials. */
+	/** ADR-015 Market Index reads. Injected by the chat route with request credentials. */
 	marketSignals?: (input: {
 		type?: string[];
 		origin?: string;
