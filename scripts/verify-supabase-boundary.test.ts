@@ -100,11 +100,73 @@ describe('scanSource', () => {
 		]);
 	});
 
+	it('traces aliased auth receivers and SupabaseClient-typed parameters', () => {
+		const source = [
+			"import type { SupabaseClient } from '@supabase/supabase-js';",
+			'const auth = supabase.auth;',
+			'await auth.resend({ type: "signup", email });',
+			'const clientAlias = supabase;',
+			'await clientAlias.auth.getUser(token);',
+			'function read<T extends SupabaseClient>(client: T) {',
+			'\treturn client.auth.getUser(token);',
+			'}'
+		].join('\n');
+
+		expect(scanSource(source, 'src/lib/example.ts')).toEqual([
+			{ file: 'src/lib/example.ts', kind: 'auth-session', name: 'resend' },
+			{ file: 'src/lib/example.ts', kind: 'auth-session', name: 'getUser' }
+		]);
+
+		expect(
+			scanSource(
+				[
+					"import type { SupabaseClient } from '@supabase/supabase-js';",
+					'function read<T extends SupabaseClient>(client: T) {',
+					'\treturn client.auth.getUser(token);',
+					'}'
+				].join('\n'),
+				'src/lib/generic.ts'
+			)
+		).toEqual([{ file: 'src/lib/generic.ts', kind: 'auth-session', name: 'getUser' }]);
+
+		expect(
+			scanSource(
+				[
+					"import { createAdminClient } from '$lib/supabase-admin';",
+					'const admin = createAdminClient();',
+					'const adminAuth = admin.auth;',
+					'await adminAuth.getUser(token);'
+				].join('\n'),
+				'src/lib/admin.ts'
+			)
+		).toEqual([
+			{ file: 'src/lib/admin.ts', kind: 'admin-client', name: 'createAdminClient' },
+			{
+				file: 'src/lib/admin.ts',
+				kind: 'auth-session',
+				name: 'getUser',
+				authContext: 'admin-client'
+			}
+		]);
+	});
+
 	it('scans Svelte script blocks with whitespace in the closing tag', () => {
 		const source = [
 			'<script lang="ts">',
 			"await supabase.from('coffee_catalog').select('*');",
 			'</script >'
+		].join('\n');
+
+		expect(scanSource(source, 'src/routes/catalog/+page.svelte')).toEqual([
+			{ file: 'src/routes/catalog/+page.svelte', kind: 'table', name: 'coffee_catalog' }
+		]);
+	});
+
+	it('scans Svelte script blocks with arbitrary closing-tag whitespace', () => {
+		const source = [
+			'<script lang="ts">',
+			"await supabase.from('coffee_catalog').select('*');",
+			'</script\t\n bar>'
 		].join('\n');
 
 		expect(scanSource(source, 'src/routes/catalog/+page.svelte')).toEqual([

@@ -199,9 +199,53 @@ function sourceUnits(source: string, file: string): string[] {
 		return [source];
 	}
 
-	const scripts = [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script\s*>/gi)].map(
-		(match) => match[1]
-	);
+	const lowerSource = source.toLowerCase();
+	const scripts: string[] = [];
+	let cursor = 0;
+	const isTagBoundary = (index: number): boolean => {
+		const character = lowerSource[index];
+		const code = character?.charCodeAt(0);
+		return (
+			character === '>' ||
+			character === undefined ||
+			(code !== undefined &&
+				(code === 0x09 || code === 0x0a || code === 0x0c || code === 0x0d || code === 0x20))
+		);
+	};
+
+	while (cursor < source.length) {
+		const openingStart = lowerSource.indexOf('<script', cursor);
+		if (openingStart === -1) {
+			break;
+		}
+		if (!isTagBoundary(openingStart + '<script'.length)) {
+			cursor = openingStart + '<script'.length;
+			continue;
+		}
+
+		const openingEnd = lowerSource.indexOf('>', openingStart + '<script'.length);
+		if (openingEnd === -1) {
+			break;
+		}
+
+		const closingStart = lowerSource.indexOf('</script', openingEnd + 1);
+		if (closingStart === -1) {
+			break;
+		}
+		if (!isTagBoundary(closingStart + '</script'.length)) {
+			cursor = closingStart + '</script'.length;
+			continue;
+		}
+
+		const closingEnd = lowerSource.indexOf('>', closingStart + '</script'.length);
+		if (closingEnd === -1) {
+			break;
+		}
+
+		scripts.push(source.slice(openingEnd + 1, closingStart));
+		cursor = closingEnd + 1;
+	}
+
 	return scripts.length > 0 ? scripts : [''];
 }
 
@@ -266,29 +310,82 @@ function memberChainSegments(expression: ts.Expression): string[] {
 	return segments;
 }
 
-function isSupabaseAuthReceiver(
-	receiver: ts.Expression,
-	supabaseClientNames: Set<string>
-): boolean {
-	const segments = memberChainSegments(receiver);
-	const authIndex = segments.indexOf('auth');
-	if (authIndex === -1) {
+function isSupabaseClientType(type: ts.TypeNode | undefined, typeNames: Set<string>): boolean {
+	if (!type) {
 		return false;
 	}
 
-	const root = segments[0];
-	return (
-		(supabaseClientNames.has(root) || segments.some((segment) => /supabase/i.test(segment))) &&
-		root !== undefined
+	const normalized = type.getText().replace(/\s/g, '');
+	return [...typeNames].some(
+		(name) =>
+			normalized === name || normalized.startsWith(`${name}<`) || normalized.startsWith(`${name}[`)
 	);
 }
 
-function isAdminAuthReceiver(receiver: ts.Expression, adminClientNames: Set<string>): boolean {
+function isSupabaseClientExpression(
+	expression: ts.Expression,
+	supabaseClientNames: Set<string>
+): boolean {
+	const segments = memberChainSegments(expression);
+	const root = segments[0];
+	return (
+		root !== undefined &&
+		!segments.includes('auth') &&
+		(supabaseClientNames.has(root) || segments.some((segment) => /supabase/i.test(segment)))
+	);
+}
+
+function isSupabaseAuthExpression(
+	expression: ts.Expression,
+	supabaseClientNames: Set<string>,
+	supabaseAuthNames: Set<string>
+): boolean {
+	const segments = memberChainSegments(expression);
+	const root = segments[0];
+	const authIndex = segments.indexOf('auth');
+	if (root !== undefined && supabaseAuthNames.has(root)) {
+		return true;
+	}
+	if (authIndex === -1 || root === undefined) {
+		return false;
+	}
+
+	return (
+		supabaseClientNames.has(root) ||
+		segments.slice(0, authIndex).some((segment) => /supabase/i.test(segment))
+	);
+}
+
+function isSupabaseAuthReceiver(
+	receiver: ts.Expression,
+	supabaseClientNames: Set<string>,
+	supabaseAuthNames: Set<string>
+): boolean {
 	const segments = memberChainSegments(receiver);
 	const authIndex = segments.indexOf('auth');
+	const root = segments[0];
 	return (
-		authIndex !== -1 &&
-		(segments.slice(authIndex + 1).includes('admin') || adminClientNames.has(segments[0] ?? ''))
+		root !== undefined &&
+		(supabaseAuthNames.has(root) ||
+			(authIndex !== -1 &&
+				(supabaseClientNames.has(root) ||
+					segments.slice(0, authIndex).some((segment) => /supabase/i.test(segment)))))
+	);
+}
+
+function isAdminAuthReceiver(
+	receiver: ts.Expression,
+	adminClientNames: Set<string>,
+	adminAuthNames: Set<string>
+): boolean {
+	const segments = memberChainSegments(receiver);
+	const authIndex = segments.indexOf('auth');
+	const root = segments[0];
+	return (
+		root !== undefined &&
+		(adminAuthNames.has(root) ||
+			(authIndex !== -1 &&
+				(segments.slice(authIndex + 1).includes('admin') || adminClientNames.has(root))))
 	);
 }
 
@@ -317,14 +414,30 @@ export function scanSource(source: string, file: string): Access[] {
 		const parsed = ts.createSourceFile(file, unit, ts.ScriptTarget.Latest, true, scriptKind(file));
 		const importedFactories = new Map<string, string>();
 		const supabaseNamespaces = new Set<string>();
-		const supabaseClientNames = new Set<string>();
+		const supabaseClientNames = new Set<string>(['supabase']);
+		const supabaseAuthNames = new Set<string>();
 		const adminClientNames = new Set<string>();
+		const adminAuthNames = new Set<string>();
 		const adminFactoryNames = new Set(['createAdminClient']);
+		const supabaseClientTypeNames = new Set<string>(['SupabaseClient']);
 
 		for (const statement of parsed.statements) {
 			if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
 				const moduleName = statement.moduleSpecifier.text;
 				const clause = statement.importClause;
+
+				if (
+					moduleName === '@supabase/supabase-js' &&
+					clause?.namedBindings &&
+					ts.isNamedImports(clause.namedBindings)
+				) {
+					for (const element of clause.namedBindings.elements) {
+						const importedName = element.propertyName?.text ?? element.name.text;
+						if (importedName === 'SupabaseClient') {
+							supabaseClientTypeNames.add(element.name.text);
+						}
+					}
+				}
 
 				if (moduleName.includes('supabase-admin') && clause && !clause.isTypeOnly) {
 					record('admin-client', 'createAdminClient');
@@ -359,6 +472,35 @@ export function scanSource(source: string, file: string): Access[] {
 			}
 		}
 
+		for (const statement of parsed.statements) {
+			if (
+				ts.isTypeAliasDeclaration(statement) &&
+				isSupabaseClientType(statement.type, supabaseClientTypeNames)
+			) {
+				supabaseClientTypeNames.add(statement.name.text);
+			}
+			if (ts.isInterfaceDeclaration(statement)) {
+				const extendsSupabaseClient = statement.heritageClauses?.some((clause) =>
+					clause.types.some((type) => isSupabaseClientType(type, supabaseClientTypeNames))
+				);
+				if (extendsSupabaseClient) {
+					supabaseClientTypeNames.add(statement.name.text);
+				}
+			}
+		}
+
+		const collectSupabaseTypeNames = (node: ts.Node): void => {
+			if (
+				ts.isTypeParameterDeclaration(node) &&
+				node.constraint &&
+				isSupabaseClientType(node.constraint, supabaseClientTypeNames)
+			) {
+				supabaseClientTypeNames.add(node.name.text);
+			}
+			ts.forEachChild(node, collectSupabaseTypeNames);
+		};
+		collectSupabaseTypeNames(parsed);
+
 		const factoryCallName = (expression: ts.Expression): string | undefined => {
 			const call = unwrapExpression(expression);
 			if (!ts.isCallExpression(call)) {
@@ -392,11 +534,34 @@ export function scanSource(source: string, file: string): Access[] {
 					if (factory === 'admin-client') {
 						adminClientNames.add(node.name.text);
 					}
+				} else if (
+					isSupabaseAuthExpression(node.initializer, supabaseClientNames, supabaseAuthNames)
+				) {
+					supabaseAuthNames.add(node.name.text);
+					if (isAdminAuthReceiver(node.initializer, adminClientNames, adminAuthNames)) {
+						adminAuthNames.add(node.name.text);
+					}
+				} else if (
+					isSupabaseClientExpression(node.initializer, supabaseClientNames) ||
+					isSupabaseClientType(node.type, supabaseClientTypeNames)
+				) {
+					supabaseClientNames.add(node.name.text);
 				}
+			}
+			if (
+				ts.isParameter(node) &&
+				ts.isIdentifier(node.name) &&
+				isSupabaseClientType(node.type, supabaseClientTypeNames)
+			) {
+				supabaseClientNames.add(node.name.text);
 			}
 			ts.forEachChild(node, collectClientBindings);
 		};
-		collectClientBindings(parsed);
+		let previousBindingCount = -1;
+		while (previousBindingCount !== supabaseClientNames.size + supabaseAuthNames.size) {
+			previousBindingCount = supabaseClientNames.size + supabaseAuthNames.size;
+			collectClientBindings(parsed);
+		}
 
 		const visit = (node: ts.Node): void => {
 			if (
@@ -462,9 +627,12 @@ export function scanSource(source: string, file: string): Access[] {
 					record('table', literalResource(node));
 				} else if (name === 'rpc') {
 					record('rpc', literalResource(node));
-				} else if (receiver && isSupabaseAuthReceiver(receiver, supabaseClientNames)) {
+				} else if (
+					receiver &&
+					isSupabaseAuthReceiver(receiver, supabaseClientNames, supabaseAuthNames)
+				) {
 					record('auth-session', name ?? DYNAMIC_ACCESS_NAME, {
-						...(isAdminAuthReceiver(receiver, adminClientNames)
+						...(isAdminAuthReceiver(receiver, adminClientNames, adminAuthNames)
 							? { authContext: 'admin-client' as const }
 							: {})
 					});
