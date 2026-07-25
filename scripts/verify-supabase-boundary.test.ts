@@ -91,12 +91,7 @@ describe('scanSource', () => {
 			{ file: 'src/lib/example.ts', kind: 'auth-session', name: 'resend' },
 			{ file: 'src/lib/example.ts', kind: 'auth-session', name: 'signInAnonymously' },
 			{ file: 'src/lib/example.ts', kind: 'auth-session', name: 'linkIdentity' },
-			{
-				file: 'src/lib/example.ts',
-				kind: 'auth-session',
-				name: 'deleteUser',
-				authContext: 'admin-client'
-			}
+			{ file: 'src/lib/example.ts', kind: 'auth-session', name: 'deleteUser' }
 		]);
 	});
 
@@ -141,12 +136,7 @@ describe('scanSource', () => {
 			)
 		).toEqual([
 			{ file: 'src/lib/admin.ts', kind: 'admin-client', name: 'createAdminClient' },
-			{
-				file: 'src/lib/admin.ts',
-				kind: 'auth-session',
-				name: 'getUser',
-				authContext: 'admin-client'
-			}
+			{ file: 'src/lib/admin.ts', kind: 'auth-session', name: 'getUser' }
 		]);
 	});
 
@@ -161,25 +151,51 @@ describe('scanSource', () => {
 		expect(scanSource(source, 'src/lib/direct-factory.ts')).toEqual([
 			{ file: 'src/lib/direct-factory.ts', kind: 'admin-client', name: 'createAdminClient' },
 			{ file: 'src/lib/direct-factory.ts', kind: 'client-factory', name: 'createServerClient' },
-			{
-				file: 'src/lib/direct-factory.ts',
-				kind: 'auth-session',
-				name: 'getUser',
-				authContext: 'admin-client'
-			},
-			{
-				file: 'src/lib/direct-factory.ts',
-				kind: 'auth-session',
-				name: 'getSession'
-			}
+			{ file: 'src/lib/direct-factory.ts', kind: 'auth-session', name: 'getUser' },
+			{ file: 'src/lib/direct-factory.ts', kind: 'auth-session', name: 'getSession' }
 		]);
 	});
 
-	it('scans Svelte script blocks with whitespace in the closing tag', () => {
+	it('scans Svelte instance and module script blocks via svelte/compiler', () => {
+		const source = [
+			'<script lang="ts" module>',
+			"await supabase.rpc('module_rpc');",
+			'</script>',
+			'<script lang="ts">',
+			"await supabase.from('coffee_catalog').select('*');",
+			'</script>',
+			'<p>catalog</p>'
+		].join('\n');
+
+		expect(scanSource(source, 'src/routes/catalog/+page.svelte')).toEqual([
+			{ file: 'src/routes/catalog/+page.svelte', kind: 'table', name: 'coffee_catalog' },
+			{ file: 'src/routes/catalog/+page.svelte', kind: 'rpc', name: 'module_rpc' }
+		]);
+	});
+
+	it('flags Supabase access in Svelte template markup as banned markup access', () => {
+		const source = [
+			'<script lang="ts">',
+			"import { supabase } from '$lib/supabase';",
+			'</script>',
+			'<button onclick={() => supabase.auth.signOut()}>Sign out</button>'
+		].join('\n');
+
+		const accesses = scanSource(source, 'src/routes/account/+page.svelte');
+		expect(accesses).toContainEqual({
+			file: 'src/routes/account/+page.svelte',
+			kind: 'markup',
+			name: 'supabase'
+		});
+	});
+
+	it('does not flag Supabase-free Svelte markup', () => {
 		const source = [
 			'<script lang="ts">',
 			"await supabase.from('coffee_catalog').select('*');",
-			'</script >'
+			'</script>',
+			'<p>{catalog.length} coffees from {supplierName}</p>',
+			'<span class="supabase-note">plain text mentioning supabase is fine</span>'
 		].join('\n');
 
 		expect(scanSource(source, 'src/routes/catalog/+page.svelte')).toEqual([
@@ -187,16 +203,10 @@ describe('scanSource', () => {
 		]);
 	});
 
-	it('scans Svelte script blocks with arbitrary closing-tag whitespace', () => {
-		const source = [
-			'<script lang="ts">',
-			"await supabase.from('coffee_catalog').select('*');",
-			'</script\t\n bar>'
-		].join('\n');
-
-		expect(scanSource(source, 'src/routes/catalog/+page.svelte')).toEqual([
-			{ file: 'src/routes/catalog/+page.svelte', kind: 'table', name: 'coffee_catalog' }
-		]);
+	it('fails closed on unparseable Svelte files', () => {
+		expect(() => scanSource('<script>const x = ;</script>', 'src/routes/bad/+page.svelte')).toThrow(
+			/Failed to parse Svelte file/
+		);
 	});
 
 	it('ignores Supabase-looking text in comments and strings', () => {
@@ -381,6 +391,58 @@ describe('checkBoundary', () => {
 
 		expect(result.errors).toHaveLength(1);
 		expect(result.errors[0]).toContain('Admin-client Supabase auth access can never be retained');
+	});
+
+	it('rejects retained auth even when the admin client is laundered through aliases', () => {
+		writeSourceFile(
+			'src/lib/server/aliased-admin.ts',
+			[
+				"import { createAdminClient } from '$lib/supabase-admin';",
+				'const admin = createAdminClient();',
+				'const client = admin;',
+				'await client.auth.getUser(token);'
+			].join('\n')
+		);
+
+		const result = checkBoundary(root, {
+			entries: [
+				{
+					file: 'src/lib/server/aliased-admin.ts',
+					kind: 'admin-client',
+					name: 'createAdminClient',
+					classification: 'shared-data-debt',
+					plannedRemovalPr: 'PR-03',
+					disposition: 'Replace.'
+				},
+				{
+					file: 'src/lib/server/aliased-admin.ts',
+					kind: 'auth-session',
+					name: 'getUser',
+					classification: 'retained-web-local',
+					owner: 'auth-session',
+					disposition: 'Retain.'
+				}
+			]
+		});
+
+		expect(result.errors).toHaveLength(1);
+		expect(result.errors[0]).toContain('Admin-client Supabase auth access can never be retained');
+		expect(result.errors[0]).toContain('holds admin-client custody');
+	});
+
+	it('fails on Supabase access in Svelte template markup', () => {
+		writeSourceFile(
+			'src/routes/account/+page.svelte',
+			[
+				'<script lang="ts">',
+				"import { supabase } from '$lib/supabase';",
+				'</script>',
+				'<button onclick={() => supabase.auth.signOut()}>Sign out</button>'
+			].join('\n')
+		);
+
+		const result = checkBoundary(root, manifestOf());
+		expect(result.errors.some((e) => e.includes('Svelte template markup is banned'))).toBe(true);
 	});
 
 	it('does not require classification for test files', () => {

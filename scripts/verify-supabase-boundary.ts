@@ -23,6 +23,10 @@
  * - kind "auth-session": any method call rooted beneath a Supabase `auth`
  *   member. Unknown methods and dynamic names fail closed through manifest
  *   classification rather than being silently ignored.
+ * - kind "markup": any Supabase-shaped expression inside Svelte template
+ *   markup. Markup access is banned outright (never classifiable); Supabase
+ *   calls must live in script blocks where the scanner can classify them.
+ *   Svelte files are parsed with svelte/compiler, not regex extraction.
  *
  * Enforcement:
  * - Every detected access must have a manifest entry (file + kind + name).
@@ -34,6 +38,21 @@
  *   admin-client custody in billing code. Product-principal construction, role
  *   lookup, and entitlement resolution (user_roles, api_keys, api_usage, and
  *   admin-client JWT validation) can never be classified as retained.
+ * - File-level admin invariant: any file with a detected admin-client access
+ *   may never hold a retained-web-local auth-session entry. This is enforced
+ *   on file identity (the supabase-admin import), not on call-chain tracing,
+ *   so aliasing, factory-call receivers, or parameter passing inside the file
+ *   cannot launder admin JWT validation into a retained classification.
+ *
+ * Scope contract: this guard is a deterministic review trip-wire over
+ * conventional Supabase access patterns (imports of Supabase packages and the
+ * supabase-admin module, supabase-named bindings, SupabaseClient-typed values,
+ * and auth member chains). Deliberate intra-repo obfuscation, such as threading
+ * a client through untyped renames that never mention Supabase, is out of
+ * scope: it cannot occur without a conventional origin (import, factory call,
+ * or typed binding) in some file, which this guard does classify, and PR review
+ * owns the rest. Findings that require deliberate evasion do not contradict
+ * this contract.
  *
  * Exit codes: 0 on pass, 1 on any failure.
  */
@@ -41,15 +60,21 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { parse as parseSvelte } from 'svelte/compiler';
 import ts from 'typescript';
 
-export type AccessKind = 'table' | 'rpc' | 'admin-client' | 'client-factory' | 'auth-session';
+export type AccessKind =
+	| 'table'
+	| 'rpc'
+	| 'admin-client'
+	| 'client-factory'
+	| 'auth-session'
+	| 'markup';
 
 export interface Access {
 	file: string;
 	kind: AccessKind;
 	name: string;
-	authContext?: 'admin-client';
 }
 
 export type RetainedOwner = 'auth-session' | 'workspace-memory' | 'billing';
@@ -194,59 +219,109 @@ function scriptKind(file: string): ts.ScriptKind {
 	return /\.(?:js|mjs|cjs)$/.test(file) ? ts.ScriptKind.JS : ts.ScriptKind.TS;
 }
 
-function sourceUnits(source: string, file: string): string[] {
+interface SourceUnits {
+	/** Script sources to run through the TypeScript scanner. */
+	units: string[];
+	/** Banned Supabase-shaped expressions found in Svelte template markup. */
+	markupAccesses: Access[];
+}
+
+interface SvelteScriptBlock {
+	content?: { start?: number; end?: number };
+}
+
+/** Names that mark a markup expression as Supabase-shaped. */
+const MARKUP_CALL_NAMES = new Set(['from', 'rpc']);
+
+/**
+ * Parses a Svelte file with svelte/compiler and returns script-block sources
+ * plus any Supabase-shaped expressions found in template markup. Markup access
+ * is banned: it cannot be classified against the manifest, so it always fails.
+ * Unparseable Svelte files fail closed by throwing.
+ */
+function sourceUnits(source: string, file: string): SourceUnits {
 	if (!file.endsWith('.svelte')) {
-		return [source];
+		return { units: [source], markupAccesses: [] };
 	}
 
-	const lowerSource = source.toLowerCase();
-	const scripts: string[] = [];
-	let cursor = 0;
-	const isTagBoundary = (index: number): boolean => {
-		const character = lowerSource[index];
-		const code = character?.charCodeAt(0);
-		return (
-			character === '>' ||
-			character === undefined ||
-			(code !== undefined &&
-				(code === 0x09 || code === 0x0a || code === 0x0c || code === 0x0d || code === 0x20))
+	let ast: { instance?: SvelteScriptBlock; module?: SvelteScriptBlock; fragment?: unknown };
+	try {
+		ast = parseSvelte(source, { filename: file, modern: true }) as typeof ast;
+	} catch (error) {
+		throw new Error(
+			`Failed to parse Svelte file ${file}: ${error instanceof Error ? error.message : String(error)}`
 		);
-	};
-
-	while (cursor < source.length) {
-		const openingStart = lowerSource.indexOf('<script', cursor);
-		if (openingStart === -1) {
-			break;
-		}
-		if (!isTagBoundary(openingStart + '<script'.length)) {
-			cursor = openingStart + '<script'.length;
-			continue;
-		}
-
-		const openingEnd = lowerSource.indexOf('>', openingStart + '<script'.length);
-		if (openingEnd === -1) {
-			break;
-		}
-
-		const closingStart = lowerSource.indexOf('</script', openingEnd + 1);
-		if (closingStart === -1) {
-			break;
-		}
-		if (!isTagBoundary(closingStart + '</script'.length)) {
-			cursor = closingStart + '</script'.length;
-			continue;
-		}
-
-		const closingEnd = lowerSource.indexOf('>', closingStart + '</script'.length);
-		if (closingEnd === -1) {
-			break;
-		}
-
-		scripts.push(source.slice(openingEnd + 1, closingStart));
-		cursor = closingEnd + 1;
 	}
 
-	return scripts.length > 0 ? scripts : [''];
+	const units: string[] = [];
+	for (const block of [ast.instance, ast.module]) {
+		const content = block?.content;
+		if (content && typeof content.start === 'number' && typeof content.end === 'number') {
+			units.push(source.slice(content.start, content.end));
+		}
+	}
+
+	const markupNames = new Set<string>();
+	const visitMarkup = (node: unknown): void => {
+		if (!node || typeof node !== 'object') {
+			return;
+		}
+		if (Array.isArray(node)) {
+			for (const child of node) {
+				visitMarkup(child);
+			}
+			return;
+		}
+		const record = node as Record<string, unknown> & { type?: string; name?: unknown };
+
+		if (record.type === 'Identifier' && typeof record.name === 'string') {
+			if (/supabase/i.test(record.name) || SUPABASE_CLIENT_FACTORIES.has(record.name)) {
+				markupNames.add(record.name);
+			}
+			if (record.name === 'createAdminClient') {
+				markupNames.add(record.name);
+			}
+		}
+
+		if (record.type === 'CallExpression') {
+			const callee = record.callee as
+				| { type?: string; property?: { type?: string; name?: unknown }; object?: unknown }
+				| undefined;
+			if (callee?.type === 'MemberExpression' && callee.property?.type === 'Identifier') {
+				const method = callee.property.name;
+				const receiver = callee.object as { type?: string; name?: unknown } | undefined;
+				const receiverName =
+					receiver?.type === 'Identifier' && typeof receiver.name === 'string'
+						? receiver.name
+						: undefined;
+				if ((typeof method === 'string' && MARKUP_CALL_NAMES.has(method)) || method === 'auth') {
+					if (receiverName === undefined || !NON_SUPABASE_FROM_RECEIVERS.has(receiverName)) {
+						markupNames.add(String(method));
+					}
+				}
+			}
+			const calleeMember = record.callee as
+				| { type?: string; object?: { property?: { type?: string; name?: unknown } } }
+				| undefined;
+			const parentProperty = calleeMember?.object?.property;
+			if (parentProperty?.type === 'Identifier' && parentProperty.name === 'auth') {
+				markupNames.add('auth');
+			}
+		}
+
+		for (const [key, value] of Object.entries(record)) {
+			if (key === 'start' || key === 'end' || key === 'loc' || key === 'parent') {
+				continue;
+			}
+			visitMarkup(value);
+		}
+	};
+	visitMarkup(ast.fragment);
+
+	return {
+		units,
+		markupAccesses: [...markupNames].sort().map((name) => ({ file, kind: 'markup', name }))
+	};
 }
 
 function memberName(expression: ts.Expression): string | undefined {
@@ -438,25 +513,6 @@ function isSupabaseAuthReceiver(
 	);
 }
 
-function isAdminAuthReceiver(
-	receiver: ts.Expression,
-	adminClientNames: Set<string>,
-	adminAuthNames: Set<string>,
-	adminFactoryNames: Set<string>
-): boolean {
-	const segments = memberChainSegments(receiver);
-	const authIndex = segments.indexOf('auth');
-	const root = segments[0];
-	const client = authClientExpression(receiver);
-	return (
-		(root !== undefined &&
-			(adminAuthNames.has(root) ||
-				(authIndex !== -1 &&
-					(segments.slice(authIndex + 1).includes('admin') || adminClientNames.has(root))))) ||
-		(client !== undefined && isRecognizedFactoryCall(client, adminFactoryNames, new Set()))
-	);
-}
-
 function literalResource(call: ts.CallExpression): string {
 	const argument = call.arguments[0];
 	return argument && ts.isStringLiteralLike(argument) ? argument.text : DYNAMIC_ACCESS_NAME;
@@ -466,26 +522,24 @@ function literalResource(call: ts.CallExpression): string {
 export function scanSource(source: string, file: string): Access[] {
 	const accessesByKey = new Map<string, Access>();
 
-	const record = (kind: AccessKind, name: string, metadata: Pick<Access, 'authContext'> = {}) => {
+	const record = (kind: AccessKind, name: string) => {
 		const key = `${kind}|${name}`;
-		const existing = accessesByKey.get(key);
-		if (!existing) {
-			accessesByKey.set(key, { file, kind, name, ...metadata });
-		} else if (metadata.authContext === 'admin-client') {
-			// If the same file uses a method through both session and admin clients,
-			// preserve the stricter context for retained-classification validation.
-			existing.authContext = metadata.authContext;
+		if (!accessesByKey.has(key)) {
+			accessesByKey.set(key, { file, kind, name });
 		}
 	};
 
-	for (const unit of sourceUnits(source, file)) {
+	const { units, markupAccesses } = sourceUnits(source, file);
+	for (const access of markupAccesses) {
+		record(access.kind, access.name);
+	}
+
+	for (const unit of units) {
 		const parsed = ts.createSourceFile(file, unit, ts.ScriptTarget.Latest, true, scriptKind(file));
 		const importedFactories = new Map<string, string>();
 		const supabaseNamespaces = new Set<string>();
 		const supabaseClientNames = new Set<string>(['supabase']);
 		const supabaseAuthNames = new Set<string>();
-		const adminClientNames = new Set<string>();
-		const adminAuthNames = new Set<string>();
 		const adminFactoryNames = new Set(['createAdminClient']);
 		const supabaseFactoryNames = new Set(['createAdminClient']);
 		const supabaseClientTypeNames = new Set<string>(['SupabaseClient']);
@@ -602,9 +656,6 @@ export function scanSource(source: string, file: string): Access[] {
 				const factory = factoryCallName(node.initializer);
 				if (factory) {
 					supabaseClientNames.add(node.name.text);
-					if (factory === 'admin-client') {
-						adminClientNames.add(node.name.text);
-					}
 				} else if (
 					isSupabaseAuthExpression(
 						node.initializer,
@@ -615,16 +666,6 @@ export function scanSource(source: string, file: string): Access[] {
 					)
 				) {
 					supabaseAuthNames.add(node.name.text);
-					if (
-						isAdminAuthReceiver(
-							node.initializer,
-							adminClientNames,
-							adminAuthNames,
-							adminFactoryNames
-						)
-					) {
-						adminAuthNames.add(node.name.text);
-					}
 				} else if (
 					isSupabaseClientExpression(
 						node.initializer,
@@ -726,11 +767,7 @@ export function scanSource(source: string, file: string): Access[] {
 						supabaseNamespaces
 					)
 				) {
-					record('auth-session', name ?? DYNAMIC_ACCESS_NAME, {
-						...(isAdminAuthReceiver(receiver, adminClientNames, adminAuthNames, adminFactoryNames)
-							? { authContext: 'admin-client' as const }
-							: {})
-					});
+					record('auth-session', name ?? DYNAMIC_ACCESS_NAME);
 				}
 			}
 
@@ -926,12 +963,27 @@ export function checkBoundary(rootDir: string, manifest: Manifest): BoundaryResu
 	const manifestEntries = Array.isArray(manifest.entries) ? manifest.entries : [];
 	const accessKeys = new Set(accesses.map(accessKey));
 
-	for (const access of accesses) {
-		const entry = manifestEntries.find((candidate) => accessKey(candidate) === accessKey(access));
-		if (access.authContext === 'admin-client' && entry?.classification === 'retained-web-local') {
+	const adminClientFiles = new Set(
+		accesses.filter((access) => access.kind === 'admin-client').map((access) => access.file)
+	);
+	for (const entry of manifestEntries) {
+		if (
+			entry.kind === 'auth-session' &&
+			entry.classification === 'retained-web-local' &&
+			adminClientFiles.has(entry.file)
+		) {
 			errors.push(
-				`Admin-client Supabase auth access can never be retained-web-local: ${accessKey(access)}. Classify admin JWT or administrative auth work as shared-data-debt.`
+				`Admin-client Supabase auth access can never be retained-web-local: ${accessKey(entry)}. ${entry.file} holds admin-client custody, so every auth-session entry in it must be classified shared-data-debt.`
 			);
+		}
+	}
+
+	for (const access of accesses) {
+		if (access.kind === 'markup') {
+			errors.push(
+				`Supabase access in Svelte template markup is banned: ${accessKey(access)}. Move the expression into a script block so it can be scanned and classified.`
+			);
+			continue;
 		}
 		if (!manifestKeys.has(accessKey(access))) {
 			errors.push(

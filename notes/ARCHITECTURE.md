@@ -131,6 +131,18 @@ hit must have a classified entry in `config/supabase-boundary-manifest.json`,
 and every manifest entry must still match a live caller; deleting or renaming a
 caller requires updating the manifest in the same change.
 
+Svelte files are parsed with `svelte/compiler`: script blocks feed the
+TypeScript scanner, and Supabase-shaped expressions in template markup are
+banned outright rather than classified, so template access cannot bypass the
+manifest. Two invariants are enforced on file identity instead of call-chain
+tracing, which makes them robust to aliasing and factory-call indirection: a
+file with any detected admin-client access can never hold a retained
+`auth-session` manifest entry, and unparseable files fail closed. The guard is
+a deterministic review trip-wire over conventional access patterns; deliberate
+intra-repo obfuscation is out of scope and owned by PR review, since any real
+client still has a conventional origin (import, factory, or typed binding) that
+the guard classifies.
+
 Entries are classified either as `retained-web-local` with an owner of
 `auth-session`, `workspace-memory`, or `billing`, or as `shared-data-debt` with
 a `plannedRemovalPr` pointing at the retirement program slice that deletes the
