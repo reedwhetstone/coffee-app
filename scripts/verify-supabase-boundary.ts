@@ -20,8 +20,9 @@
  *   the `supabase-admin` module (one hit per file).
  * - kind "client-factory": a runtime import of createClient,
  *   createServerClient, or createBrowserClient from a Supabase package.
- * - kind "auth-session": `.auth.<method>` where <method> is a known Supabase
- *   auth client method.
+ * - kind "auth-session": any method call rooted beneath a Supabase `auth`
+ *   member. Unknown methods and dynamic names fail closed through manifest
+ *   classification rather than being silently ignored.
  *
  * Enforcement:
  * - Every detected access must have a manifest entry (file + kind + name).
@@ -48,6 +49,7 @@ export interface Access {
 	file: string;
 	kind: AccessKind;
 	name: string;
+	authContext?: 'admin-client';
 }
 
 export type RetainedOwner = 'auth-session' | 'workspace-memory' | 'billing';
@@ -94,24 +96,6 @@ const NON_SUPABASE_FROM_RECEIVERS = new Set([
 	'Uint8ClampedArray',
 	'Uint16Array',
 	'Uint32Array'
-]);
-
-/** Supabase auth client methods detected as auth-session access. */
-const SUPABASE_AUTH_METHODS = new Set([
-	'exchangeCodeForSession',
-	'getSession',
-	'getUser',
-	'onAuthStateChange',
-	'refreshSession',
-	'resetPasswordForEmail',
-	'setSession',
-	'signInWithOAuth',
-	'signInWithOtp',
-	'signInWithPassword',
-	'signOut',
-	'signUp',
-	'updateUser',
-	'verifyOtp'
 ]);
 
 /**
@@ -215,7 +199,7 @@ function sourceUnits(source: string, file: string): string[] {
 		return [source];
 	}
 
-	const scripts = [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(
+	const scripts = [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script\s*>/gi)].map(
 		(match) => match[1]
 	);
 	return scripts.length > 0 ? scripts : [''];
@@ -242,6 +226,72 @@ function memberReceiver(expression: ts.Expression): ts.Expression | undefined {
 	return undefined;
 }
 
+function unwrapExpression(expression: ts.Expression): ts.Expression {
+	let current = expression;
+	while (
+		ts.isAsExpression(current) ||
+		ts.isTypeAssertionExpression(current) ||
+		ts.isNonNullExpression(current) ||
+		ts.isParenthesizedExpression(current)
+	) {
+		current = current.expression;
+	}
+	return current;
+}
+
+function memberChainSegments(expression: ts.Expression): string[] {
+	const segments: string[] = [];
+	let current: ts.Expression | undefined = unwrapExpression(expression);
+
+	while (current) {
+		if (ts.isIdentifier(current)) {
+			segments.unshift(current.text);
+			break;
+		}
+		if (ts.isPropertyAccessExpression(current)) {
+			segments.unshift(current.name.text);
+			current = current.expression;
+			continue;
+		}
+		if (ts.isElementAccessExpression(current)) {
+			if (current.argumentExpression && ts.isStringLiteralLike(current.argumentExpression)) {
+				segments.unshift(current.argumentExpression.text);
+			}
+			current = current.expression;
+			continue;
+		}
+		break;
+	}
+
+	return segments;
+}
+
+function isSupabaseAuthReceiver(
+	receiver: ts.Expression,
+	supabaseClientNames: Set<string>
+): boolean {
+	const segments = memberChainSegments(receiver);
+	const authIndex = segments.indexOf('auth');
+	if (authIndex === -1) {
+		return false;
+	}
+
+	const root = segments[0];
+	return (
+		(supabaseClientNames.has(root) || segments.some((segment) => /supabase/i.test(segment))) &&
+		root !== undefined
+	);
+}
+
+function isAdminAuthReceiver(receiver: ts.Expression, adminClientNames: Set<string>): boolean {
+	const segments = memberChainSegments(receiver);
+	const authIndex = segments.indexOf('auth');
+	return (
+		authIndex !== -1 &&
+		(segments.slice(authIndex + 1).includes('admin') || adminClientNames.has(segments[0] ?? ''))
+	);
+}
+
 function literalResource(call: ts.CallExpression): string {
 	const argument = call.arguments[0];
 	return argument && ts.isStringLiteralLike(argument) ? argument.text : DYNAMIC_ACCESS_NAME;
@@ -249,14 +299,17 @@ function literalResource(call: ts.CallExpression): string {
 
 /** Scans one source file with TypeScript's syntax tree and returns deduplicated accesses. */
 export function scanSource(source: string, file: string): Access[] {
-	const seen = new Set<string>();
-	const accesses: Access[] = [];
+	const accessesByKey = new Map<string, Access>();
 
-	const record = (kind: AccessKind, name: string) => {
+	const record = (kind: AccessKind, name: string, metadata: Pick<Access, 'authContext'> = {}) => {
 		const key = `${kind}|${name}`;
-		if (!seen.has(key)) {
-			seen.add(key);
-			accesses.push({ file, kind, name });
+		const existing = accessesByKey.get(key);
+		if (!existing) {
+			accessesByKey.set(key, { file, kind, name, ...metadata });
+		} else if (metadata.authContext === 'admin-client') {
+			// If the same file uses a method through both session and admin clients,
+			// preserve the stricter context for retained-classification validation.
+			existing.authContext = metadata.authContext;
 		}
 	};
 
@@ -264,6 +317,9 @@ export function scanSource(source: string, file: string): Access[] {
 		const parsed = ts.createSourceFile(file, unit, ts.ScriptTarget.Latest, true, scriptKind(file));
 		const importedFactories = new Map<string, string>();
 		const supabaseNamespaces = new Set<string>();
+		const supabaseClientNames = new Set<string>();
+		const adminClientNames = new Set<string>();
+		const adminFactoryNames = new Set(['createAdminClient']);
 
 		for (const statement of parsed.statements) {
 			if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
@@ -272,6 +328,13 @@ export function scanSource(source: string, file: string): Access[] {
 
 				if (moduleName.includes('supabase-admin') && clause && !clause.isTypeOnly) {
 					record('admin-client', 'createAdminClient');
+					if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+						for (const element of clause.namedBindings.elements) {
+							if (!element.isTypeOnly && element.propertyName?.text === 'createAdminClient') {
+								adminFactoryNames.add(element.name.text);
+							}
+						}
+					}
 				}
 
 				if (!SUPABASE_PACKAGES.has(moduleName) || !clause || clause.isTypeOnly) {
@@ -295,6 +358,45 @@ export function scanSource(source: string, file: string): Access[] {
 				}
 			}
 		}
+
+		const factoryCallName = (expression: ts.Expression): string | undefined => {
+			const call = unwrapExpression(expression);
+			if (!ts.isCallExpression(call)) {
+				return undefined;
+			}
+
+			if (ts.isIdentifier(call.expression)) {
+				if (adminFactoryNames.has(call.expression.text)) {
+					return 'admin-client';
+				}
+				return importedFactories.get(call.expression.text);
+			}
+
+			if (ts.isPropertyAccessExpression(call.expression)) {
+				const receiver = call.expression.expression;
+				if (ts.isIdentifier(receiver) && supabaseNamespaces.has(receiver.text)) {
+					return SUPABASE_CLIENT_FACTORIES.has(call.expression.name.text)
+						? call.expression.name.text
+						: undefined;
+				}
+			}
+
+			return undefined;
+		};
+
+		const collectClientBindings = (node: ts.Node): void => {
+			if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+				const factory = factoryCallName(node.initializer);
+				if (factory) {
+					supabaseClientNames.add(node.name.text);
+					if (factory === 'admin-client') {
+						adminClientNames.add(node.name.text);
+					}
+				}
+			}
+			ts.forEachChild(node, collectClientBindings);
+		};
+		collectClientBindings(parsed);
 
 		const visit = (node: ts.Node): void => {
 			if (
@@ -360,10 +462,12 @@ export function scanSource(source: string, file: string): Access[] {
 					record('table', literalResource(node));
 				} else if (name === 'rpc') {
 					record('rpc', literalResource(node));
-				} else if (name && SUPABASE_AUTH_METHODS.has(name) && receiver) {
-					if (memberName(receiver) === 'auth') {
-						record('auth-session', name);
-					}
+				} else if (receiver && isSupabaseAuthReceiver(receiver, supabaseClientNames)) {
+					record('auth-session', name ?? DYNAMIC_ACCESS_NAME, {
+						...(isAdminAuthReceiver(receiver, adminClientNames)
+							? { authContext: 'admin-client' as const }
+							: {})
+					});
 				}
 			}
 
@@ -373,7 +477,7 @@ export function scanSource(source: string, file: string): Access[] {
 		visit(parsed);
 	}
 
-	return accesses;
+	return [...accessesByKey.values()];
 }
 
 function walk(dir: string, out: string[]): void {
@@ -556,9 +660,16 @@ export function checkBoundary(rootDir: string, manifest: Manifest): BoundaryResu
 	const manifestKeys = new Set(
 		Array.isArray(manifest.entries) ? manifest.entries.map(accessKey) : []
 	);
+	const manifestEntries = Array.isArray(manifest.entries) ? manifest.entries : [];
 	const accessKeys = new Set(accesses.map(accessKey));
 
 	for (const access of accesses) {
+		const entry = manifestEntries.find((candidate) => accessKey(candidate) === accessKey(access));
+		if (access.authContext === 'admin-client' && entry?.classification === 'retained-web-local') {
+			errors.push(
+				`Admin-client Supabase auth access can never be retained-web-local: ${accessKey(access)}. Classify admin JWT or administrative auth work as shared-data-debt.`
+			);
+		}
 		if (!manifestKeys.has(accessKey(access))) {
 			errors.push(
 				`Unclassified Supabase access: ${accessKey(access)}. Add a classified entry to config/supabase-boundary-manifest.json or remove the access.`

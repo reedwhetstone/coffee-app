@@ -79,6 +79,39 @@ describe('scanSource', () => {
 		expect(scanSource(source, 'src/lib/example.ts')).toEqual([]);
 	});
 
+	it('detects unknown and nested methods beneath a Supabase auth member', () => {
+		const source = [
+			'await supabase.auth.resend({ type: "signup", email });',
+			'await supabase.auth.signInAnonymously();',
+			'await supabase.auth.linkIdentity(identity);',
+			'await supabase.auth.admin.deleteUser(userId);'
+		].join('\n');
+
+		expect(scanSource(source, 'src/lib/example.ts')).toEqual([
+			{ file: 'src/lib/example.ts', kind: 'auth-session', name: 'resend' },
+			{ file: 'src/lib/example.ts', kind: 'auth-session', name: 'signInAnonymously' },
+			{ file: 'src/lib/example.ts', kind: 'auth-session', name: 'linkIdentity' },
+			{
+				file: 'src/lib/example.ts',
+				kind: 'auth-session',
+				name: 'deleteUser',
+				authContext: 'admin-client'
+			}
+		]);
+	});
+
+	it('scans Svelte script blocks with whitespace in the closing tag', () => {
+		const source = [
+			'<script lang="ts">',
+			"await supabase.from('coffee_catalog').select('*');",
+			'</script >'
+		].join('\n');
+
+		expect(scanSource(source, 'src/routes/catalog/+page.svelte')).toEqual([
+			{ file: 'src/routes/catalog/+page.svelte', kind: 'table', name: 'coffee_catalog' }
+		]);
+	});
+
 	it('ignores Supabase-looking text in comments and strings', () => {
 		const source = [
 			"// await supabase.from('commented_table').select('*');",
@@ -226,6 +259,41 @@ describe('checkBoundary', () => {
 				(e) => e.includes('Unclassified Supabase access') && e.includes('renamed.ts')
 			)
 		).toBe(true);
+	});
+
+	it('rejects retained admin JWT validation after the caller is renamed', () => {
+		writeSourceFile(
+			'src/lib/server/renamed-principal.ts',
+			[
+				"import { createAdminClient } from '$lib/supabase-admin';",
+				'const renamedClient = createAdminClient();',
+				'await renamedClient.auth.getUser(token);'
+			].join('\n')
+		);
+
+		const result = checkBoundary(root, {
+			entries: [
+				{
+					file: 'src/lib/server/renamed-principal.ts',
+					kind: 'admin-client',
+					name: 'createAdminClient',
+					classification: 'shared-data-debt',
+					plannedRemovalPr: 'PR-03',
+					disposition: 'Replace.'
+				},
+				{
+					file: 'src/lib/server/renamed-principal.ts',
+					kind: 'auth-session',
+					name: 'getUser',
+					classification: 'retained-web-local',
+					owner: 'auth-session',
+					disposition: 'Retain.'
+				}
+			]
+		});
+
+		expect(result.errors).toHaveLength(1);
+		expect(result.errors[0]).toContain('Admin-client Supabase auth access can never be retained');
 	});
 
 	it('does not require classification for test files', () => {
