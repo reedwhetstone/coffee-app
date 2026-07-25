@@ -86,14 +86,6 @@
       hygiene. Resend is the current recommendation; make the final provider decision
       during the implementation slice.
 
-- [ ] **Launch and measure the Wire.** Publish early editions through the human
-      gate, recruit the first 50 qualified roasters/buyers/writers/supplier contacts,
-      and measure subscriber growth, open rate, evidence clicks, repeat visits,
-      replies, and paid conversions. Establish corrections, independence,
-      sponsorship, attribution, futures-data, and observable-market methodology
-      policies before scaling distribution. Strategy:
-      `notes/big-ideas/2026-07-19-purveyors-market-wire.md`.
-
 - [ ] **Reevaluate pricing and the pricing model for the current growth stage.**
       Price for subscriber acquisition, interest, and word of mouth, not for
       long-term value capture or near-term cost recovery. The target buyer
@@ -110,6 +102,15 @@
       pricing); then align Stripe products/prices, purchase keys, entitlements,
       checkout, annual pricing, upgrades/downgrades, existing customer
       treatment, public copy, tests, and analytics.
+
+- [ ] **Launch and measure the Wire.** After the growth-stage pricing evaluation
+      establishes the launch offer, publish early editions through the human
+      gate, recruit the first 50 qualified roasters/buyers/writers/supplier contacts,
+      and measure subscriber growth, open rate, evidence clicks, repeat visits,
+      replies, and paid conversions. Establish corrections, independence,
+      sponsorship, attribution, futures-data, and observable-market methodology
+      policies before scaling distribution. Strategy:
+      `notes/big-ideas/2026-07-19-purveyors-market-wire.md`.
 
 - [ ] **Make the blog a recurring publication system.** Establish a minimum
       weekly cadence with one canonical queue from idea to sourced outline, draft,

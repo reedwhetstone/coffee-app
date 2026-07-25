@@ -12,13 +12,13 @@ A free weekly green-coffee market brief, published in the `/wire` web area plus 
 2. **Full-market context** — ICE Arabica C (KC) and Robusta futures levels, ICO composite indicator, differentials commentary, FX (USD/BRL, USD/COP), harvest/weather items, and major industry news stories.
 3. **Editorial layer** — a few short LLM-written stories and "hot coverage" items synthesized from the structured data, with citations back to evidence.
 
-Positioning: the wire is the recurring habit and distribution engine; Market Index is the interactive proof surface; Intelligence ($12/mo) is the personalized, immediate, historical upgrade.
+Positioning: the wire is the recurring habit and distribution engine; Market Index is the interactive proof surface; Intelligence is the personalized, immediate, historical upgrade. Its exact growth-stage price remains subject to the pricing evaluation.
 
 ## Freemium line
 
 - **Anonymous web:** latest edition fully readable and indexable (SEO/citation surface). Archive list visible, older editions gated.
 - **Free email subscriber:** weekly edition in inbox + full archive access on site while logged in. Email capture is the conversion asset.
-- **Intelligence ($12/mo):** immediate (not weekly-delayed) alerts, personalized wire filtered to their origins/suppliers/price ceilings, full history + comparisons + exports, evidence deep-links into gated Market Index views, Ask Parchment analysis on any wire item.
+- **Intelligence (candidate paid tier):** immediate (not weekly-delayed) alerts, personalized wire filtered to their origins/suppliers/price ceilings, full history + comparisons + exports, evidence deep-links into gated Market Index views, Ask Parchment analysis on any wire item. The exact offer is subject to the growth-stage pricing evaluation.
 - Principle from the moonshot: free is *general and delayed*, paid is *personal, immediate, historical, actionable*. Proof is never hidden; leverage is.
 
 ## Pipeline architecture (5 layers)
@@ -64,7 +64,7 @@ Saved sourcing intent (origins, processes, suppliers, price ceilings, score floo
 
 ## Build sequencing
 
-- **Phase 0 (now, ~4 weeks):** build the minimal core in the approved mergeable order: WP-1 wire contract, WP-2 generation job, WP-3 `/wire` surface, and WP-4 email dispatch. Run the first editions through the explicit human publish gate while the pipeline proves its cadence and content quality; OpenClaw may assist with review, but production generation lives in the scraper/parchment-api/coffee-app pipeline. Direct outreach and the founding offer ($12/$5/$15) remain part of launch validation, with ≥50 qualified free subscribers and ≥5 paid founders (or equivalent design-partner signal) as the commercial checkpoint.
+- **Phase 0 (now, ~4 weeks):** build the minimal core in the approved mergeable order: WP-1 wire contract, WP-2 generation job, WP-3 `/wire` surface, and WP-4 email dispatch. Run the first editions through the explicit human publish gate while the pipeline proves its cadence and content quality; OpenClaw may assist with review, but production generation lives in the scraper/parchment-api/coffee-app pipeline. Complete the growth-stage pricing evaluation before selecting the founding offer used in launch validation; the current $12/$5/$15 figures remain a hypothesis. Use the approved offer with ≥50 qualified free subscribers and ≥5 paid founders (or equivalent design-partner signal) as the commercial checkpoint.
 - **Phase 1:** operate and refine the core publication pipeline, content schema, audience funnel, and delivery reliability. Remove the human gate only after several successful editions earn that autonomy.
 - **Phase 2:** personalization, immediate alerts, API projection, and CLI reads.
 
@@ -74,7 +74,7 @@ Infrastructure is built now as the permanent minimal, flexible core; only the Ph
 
 ### Benchmarks that frame expectations
 - Freemium free→paid conversion typically lands at 2-5%; ~4% is the commonly cited B2B threshold for the free tier to be a pipeline rather than a cost center. Traditional funnels see ~13% visitor→free and ~2.6% free→paid. Early KPI should therefore be qualified list growth and retention (opens, evidence clicks, return visits), not paid conversion.
-- Paid newsletters earn a median $83-$230 per subscriber per year by vertical, with investing/market verticals at the top. A $12/mo ($144/yr) Intelligence price sits squarely in the market-intelligence band; $15 bundle is defensible. Offer an annual at ~$120/yr (two months free) — standard churn-reduction practice.
+- Paid newsletters earn a median $83-$230 per subscriber per year by vertical, with investing/market verticals at the top. The current $12/mo ($144/yr) Intelligence and $15 bundle hypotheses sit in a plausible market-intelligence band, but the pricing evaluation must select the launch offer. Consider an annual discount after that decision; two months free is a standard churn-reduction practice.
 - Newsletter playbook consensus: the paid tier must feel like *a different product*, not the same newsletter with bonus paragraphs. That validates the design: paid is a decision surface (personalization, alerts, history queries, Ask Parchment), not "more wire."
 
 ### How data-intelligence products conventionally draw the line
@@ -92,7 +92,8 @@ Distinguish the **edition archive** from **data history**. Best practice for lis
 Trade houses and importers (StoneX, Sucafina, major importers) already publish free weekly macro coffee-market commentary as marketing. Macro commentary is table stakes and cannot be the paid line. The differentiated, non-replicable asset is the structured micro-data: offer-list changes across 40+ US importers with provenance. The free edition should lead with a taste of that micro-data (it is the shareable hook nobody else has); macro context frames it but never carries it.
 
 ### Standard growth mechanics to adopt
-- Founding-member scarcity with price lock (already in the moonshot: first 50).
+- Founding-member scarcity and any price lock should follow the growth-stage pricing
+  evaluation; the first-50 lock is only part of the current working hypothesis.
 - Double opt-in, plain-text-leaning email design, consistent send time.
 - Referral loop and social share cards per signal page later, once cadence is proven.
 - Every edition ends with one clear paid-tier moment: a blurred/locked personalized insight ("3 lots matched your Ethiopia mandate this week") rather than a generic upgrade banner.

@@ -50,11 +50,16 @@ The paid product applies leverage rather than hiding proof:
 - Sourcing Radar matches and actions tied to the buyer's own intent
 - Mallard Studio context for owned inventory, roasting, and margin decisions
 
-The commercial packaging can remain simple during validation: Intelligence at $12/month, Studio at $5/month, or a $15/month founding bundle. Parchment API remains a separate developer and platform product.
+The commercial packaging can remain simple during validation, but the exact offer is a
+growth-stage pricing hypothesis rather than a settled decision. The current working
+hypothesis is Intelligence at $12/month, Studio at $5/month, or a $15/month founding
+bundle; complete the repricing evaluation before using those numbers as the launch
+offer or locking them for founding customers. Parchment API remains a separate
+developer and platform product.
 
 ## Strategic upside
 
-- Revenue: Creates a low-friction paid upgrade from a recurring free habit and gives the $12 Intelligence plan an obvious distinction: personalization, speed, depth, and action.
+- Revenue: Creates a low-friction paid upgrade from a recurring free habit and gives the Intelligence plan an obvious distinction: personalization, speed, depth, and action.
 - Growth / funnel: Every brief, signal, supplier citation, RSS subscriber, and embedded chart becomes a distribution node rather than a one-time page view.
 - Defensibility: The archive compounds into a longitudinal record of specialty green-coffee availability and price movement that becomes more valuable over time.
 - Product positioning: Establishes Purveyors as the source people cite when describing what changed in the green-coffee market.
@@ -74,7 +79,10 @@ Build the minimal core in the approved mergeable order: WP-1 wire contract, WP-2
 1. Generate each concise weekly edition from the canonical edition-facts and publication pipeline.
 2. Recruit 50 named roasters, buyers, coffee writers, and supplier-side contacts through direct outreach.
 3. Publish each edition as an indexable web page and email, with tracked links to the underlying Market Index evidence.
-4. Offer a founding plan: $12 Intelligence, $5 Studio, or $15 bundled, price-locked for the first 50 customers.
+4. Once the growth-stage pricing evaluation establishes the launch offer, offer that
+   founding plan and decide whether a first-50 price lock is warranted. The current
+   $12 Intelligence / $5 Studio / $15 bundle is only the working hypothesis under
+   evaluation.
 5. Measure subscriber growth, open rate, evidence clicks, replies, repeat visits, and paid conversions.
 
 These launch metrics inform iteration and commercial validation from edition #1; they are not a gate that delays the foundational publication infrastructure. The validation loop succeeds with at least 50 qualified free subscribers and five paid founding customers, or equivalent high-signal design-partner demand. It signals a distribution problem if outreach requires constant personal chasing and readers do not return for subsequent editions.

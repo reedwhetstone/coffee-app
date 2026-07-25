@@ -81,8 +81,8 @@ Litquidity = insider fluency + neutrality. Prof G = data + accountable opinions.
 ### Free tier (distribution engine)
 Weekly edition, web (indexable, latest edition public) + email (double opt-in). Free email sub unlocks the full edition archive on site. RSS/Atom open. Leads every week with micro-data nobody else has; macro context frames but never carries.
 
-### Paid: Parchment Intelligence ($12/mo, ~$120/yr annual)
-Personalized "your market" section from saved sourcing intent; immediate alerts between editions; full data history, comparisons, exports via Market Index; Ask Parchment on any wire item; evidence deep links. Studio $5/mo, founding bundle $15/mo, price-locked for first 50 (per moonshot). Positioning: a different product (decision surface), not a longer newsletter.
+### Paid: Parchment Intelligence (candidate packaging, pending growth-stage evaluation)
+Personalized "your market" section from saved sourcing intent; immediate alerts between editions; full data history, comparisons, exports via Market Index; Ask Parchment on any wire item; evidence deep links. The current working hypothesis is $12/mo Intelligence, $5/mo Studio, and a $15/mo founding bundle, possibly price-locked for the first 50. These figures and the lock are not launch commitments until the growth-stage pricing evaluation re-derives the offer. Positioning: a different product (decision surface), not a longer newsletter.
 
 ### Later, sequenced (Litquidity lesson: not simultaneously)
 Sponsorships/ads once list size justifies it (newsletter CPMs in trade niches are strong); API projections for developers; possible jobs/comp adjacencies. Parchment API remains a separate developer product.
@@ -110,7 +110,9 @@ Reed's call: weekly report generation at cadence is a foundational capability fo
 
 GTM mechanics carried forward from the launch concept, now running on real infrastructure from edition #1:
 1. Direct outreach to 50 named roasters, buyers, writers, supplier-side contacts to seed the list.
-2. Founding offer: $12 Intelligence / $5 Studio / $15 bundle, price-locked first 50.
+2. After the growth-stage pricing evaluation, test the approved founding offer and
+   decide whether to price-lock the first 50. The current $12 Intelligence / $5
+   Studio / $15 bundle is a hypothesis, not a launch commitment.
 3. Measure from launch: subscriber growth, open rate, evidence clicks, replies, repeat visits, paid conversions. Same success metrics (§11), now informing iteration rather than gating the build.
 4. Human publish gate on every edition until the pipeline earns autonomy.
 
