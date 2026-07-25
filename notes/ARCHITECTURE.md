@@ -118,6 +118,35 @@ it. The canonical backlog tracks this as the headless-cutover debt audit. Each
 path needs a source-level caller inventory, a replacement contract, and a
 mergeable deletion or migration slice before it can be called complete.
 
+### Supabase boundary guard
+
+The caller inventory above is machine-enforced. `pnpm verify:supabase-boundary`
+runs `scripts/verify-supabase-boundary.ts`, which scans `src/` runtime files and
+`scripts/` operational files (`.ts`, `.svelte`, `.js`, `.mjs`, and `.cjs`,
+excluding test and fixture files) with syntax-aware parsing for direct Supabase
+access: `.from('<table>')`, `.rpc('<function>')`,
+`createAdminClient` or `supabase-admin` imports, Supabase client factories, and
+Supabase auth client methods. Nonliteral table or RPC names fail closed. Every
+hit must have a classified entry in `config/supabase-boundary-manifest.json`,
+and every manifest entry must still match a live caller; deleting or renaming a
+caller requires updating the manifest in the same change.
+
+Entries are classified either as `retained-web-local` with an owner of
+`auth-session`, `workspace-memory`, or `billing`, or as `shared-data-debt` with
+a `plannedRemovalPr` pointing at the retirement program slice that deletes the
+caller (PR-03 catalog/market/portfolio/procurement/API control plane and
+product authorization, PR-04 inventory/tasting, PR-06 roast/sales/profit,
+PR-08 bean identity and chat actions, PR-09 legacy RAG, PR-10 final
+contraction). The retained auth allowlist covers only OAuth/session lifecycle
+methods; admin-client JWT validation, product-principal construction,
+`user_roles` lookups, and entitlement resolution can never be classified as
+retained and are tracked as PR-03 debt. Each consumer PR in
+`notes/implementation-plans/2026-07-22-coffee-app-supabase-data-boundary-retirement.md`
+must shrink the manifest as it deletes its callers.
+
+The check runs in CI through the existing lint workflow because it is the first
+step of the `lint` package script.
+
 ## Chat and agent flow
 
 Coffee-app's chat route builds a session-mode `ParchmentClient` from

@@ -6,7 +6,7 @@ export default defineConfig({
 	plugins: [sveltekit(), svelteTesting()],
 
 	test: {
-		include: ['src/**/*.{test,spec}.{js,ts}'],
+		include: ['src/**/*.{test,spec}.{js,ts}', 'scripts/**/*.{test,spec}.{js,ts}'],
 		// Use happy-dom for component tests (faster than jsdom)
 		environment: 'happy-dom',
 		// Setup file for @testing-library/jest-dom matchers
