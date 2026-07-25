@@ -120,29 +120,28 @@ describe('scanSource', () => {
 		]);
 	});
 
-	it('does not flag non-auth names, but records bare auth references at the alias site', () => {
+	it('does not chase aliases, but records protected namespace escapes at their syntax site', () => {
 		expect(scanSource('oauth2.authorize(); reauthorize();', 'src/lib/example.ts')).toEqual([]);
 
 		expect(
 			scanSource('const session = supabase.auth; await session.getUser(token);', 'src/lib/a.ts')
-		).toEqual([
-			{ file: 'src/lib/a.ts', kind: 'auth-session', name: '<memberAccess>' },
-			{ file: 'src/lib/a.ts', kind: 'auth-session', name: 'getUser' }
-		]);
+		).toEqual([{ file: 'src/lib/a.ts', kind: 'auth-session', name: '<memberAccess>' }]);
 
 		expect(
 			scanSource(
 				'const { auth: identity } = client; await identity.getUser(token);',
 				'src/lib/alias.ts'
 			)
-		).toEqual([{ file: 'src/lib/alias.ts', kind: 'auth-session', name: 'getUser' }]);
+		).toEqual([{ file: 'src/lib/alias.ts', kind: 'auth-session', name: '<memberAccess>' }]);
 
 		expect(
 			scanSource(
 				'function validate({ auth: identity }: SupabaseClient) { return identity.getUser(token); }',
 				'src/lib/parameter-alias.ts'
 			)
-		).toEqual([{ file: 'src/lib/parameter-alias.ts', kind: 'auth-session', name: 'getUser' }]);
+		).toEqual([
+			{ file: 'src/lib/parameter-alias.ts', kind: 'auth-session', name: '<memberAccess>' }
+		]);
 
 		expect(scanSource('const header = request.auth.token;', 'src/lib/b.ts')).toEqual([
 			{ file: 'src/lib/b.ts', kind: 'auth-session', name: '<memberAccess>' }
@@ -152,6 +151,64 @@ describe('scanSource', () => {
 			{ file: 'src/lib/c.ts', kind: 'auth-session', name: 'getUser' }
 		]);
 	});
+
+	it.each([
+		['destructuring', 'const { auth: identity } = client;', 'auth-session', '<memberAccess>'],
+		['assignment', 'let identity; identity = client.auth;', 'auth-session', '<memberAccess>'],
+		[
+			'destructuring assignment',
+			'let identity; ({ auth: identity } = client);',
+			'auth-session',
+			'<memberAccess>'
+		],
+		[
+			'default parameter',
+			'function validate(client = supabase.auth) {}',
+			'auth-session',
+			'<memberAccess>'
+		],
+		[
+			'regular parameter',
+			'function validate(client: Client) { return client.auth; }',
+			'auth-session',
+			'<memberAccess>'
+		],
+		[
+			'destructured default parameter',
+			'function validate({ auth: identity } = client) {}',
+			'auth-session',
+			'<memberAccess>'
+		],
+		[
+			'destructured regular parameter',
+			'function validate({ auth: identity }: Client) {}',
+			'auth-session',
+			'<memberAccess>'
+		],
+		['argument', 'consume(client.auth);', 'auth-session', '<memberAccess>'],
+		['return', 'function get(client) { return client.auth; }', 'auth-session', '<memberAccess>'],
+		[
+			'object property',
+			'const value = { session: client.auth };',
+			'auth-session',
+			'<memberAccess>'
+		],
+		['module export', 'export const sessionAuth = client.auth;', 'auth-session', '<memberAccess>'],
+		[
+			'service destructuring',
+			'const { functions: edge } = client;',
+			'service',
+			'functions.<memberAccess>'
+		],
+		['service assignment', 'const edge = client.functions;', 'service', 'functions.<memberAccess>']
+	] as const)(
+		'records the %s protected namespace escape without alias chasing',
+		(_, source, kind, name) => {
+			expect(scanSource(source, 'src/lib/escape.ts')).toEqual([
+				{ file: 'src/lib/escape.ts', kind, name }
+			]);
+		}
+	);
 
 	it('detects Supabase service operations (functions, storage, realtime, channel)', () => {
 		const source = [
@@ -302,6 +359,22 @@ describe('scanSource', () => {
 			kind: 'markup',
 			name: 'from'
 		});
+	});
+
+	it('flags bare protected namespace members in Svelte expressions', () => {
+		const source = [
+			'<script lang="ts">',
+			'const client = getClient();',
+			'</script>',
+			'<Widget auth={client.auth} service={client.functions} />',
+			'{client.storage}'
+		].join('\n');
+
+		expect(scanSource(source, 'src/routes/account/+page.svelte')).toEqual([
+			{ file: 'src/routes/account/+page.svelte', kind: 'markup', name: 'auth' },
+			{ file: 'src/routes/account/+page.svelte', kind: 'markup', name: 'functions' },
+			{ file: 'src/routes/account/+page.svelte', kind: 'markup', name: 'storage' }
+		]);
 	});
 
 	it('does not flag scalar supabase-named markup values or builtin calls', () => {
@@ -632,6 +705,21 @@ describe('validateManifest', () => {
 				file: 'src/lib/server/example.ts',
 				kind: 'table',
 				name: 'coffee_catalog',
+				classification: 'retained-web-local',
+				owner: 'auth-session',
+				disposition: 'Retain.'
+			})
+		);
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toContain('OAuth/session lifecycle');
+	});
+
+	it('rejects retained protected namespace escapes', () => {
+		const errors = validateManifest(
+			manifestOf({
+				file: 'src/lib/supabase.ts',
+				kind: 'auth-session',
+				name: '<memberAccess>',
 				classification: 'retained-web-local',
 				owner: 'auth-session',
 				disposition: 'Retain.'

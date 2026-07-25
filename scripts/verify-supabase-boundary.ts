@@ -23,13 +23,15 @@
  * - "auth-session": any call whose callee member chain contains an `auth`
  *   segment (`supabase.auth.getUser(...)`, `auth.resend(...)`,
  *   `createAdminClient().auth.admin.deleteUser(...)`, `db.auth.signOut()`),
- *   plus any bare (non-call) `.auth` member access such as
- *   `const session = supabase.auth`, recorded as `<memberAccess>`, so renamed
- *   auth aliases still leave a classifiable footprint at the alias site.
+ *   plus any non-callee (non-operation) `auth`, `functions`, `storage`, or
+ *   `realtime` member access such as `const session = supabase.auth`, recorded
+ *   as a protected namespace escape at the access site. Aliases are deliberately
+ *   not chased; the escape itself is the fail-closed ledger candidate.
  * - "service": any call whose callee member chain contains a `functions`,
  *   `realtime`, or `storage` segment (`supabase.functions.invoke(...)`,
  *   `supabase.storage.from('bucket').upload(...)` also records its `.from`
- *   as a table candidate), plus any `.channel(...)` call. Keeps edge
+ *   as a table candidate), plus any `.channel(...)` call and any protected
+ *   service namespace escape outside a direct operation chain. Keeps edge
  *   functions, storage, and realtime on the ledger instead of invisible.
  * - "admin-client": any runtime import of a `supabase-admin` module or any
  *   reference, declaration, or call of `createAdminClient`.
@@ -179,9 +181,7 @@ const RETAINED_AUTH_SESSION_METHODS = new Set([
 	'signInWithOAuth',
 	'signInWithPassword',
 	'signOut',
-	'signUp',
-	// Bare (non-call) session-client auth access, e.g. `const s = supabase.auth`.
-	'<memberAccess>'
+	'signUp'
 ]);
 
 /**
@@ -246,6 +246,14 @@ const VALID_KINDS = new Set<string>([
 /** Member-chain segments that mark a call as a Supabase service operation. */
 const SERVICE_SEGMENTS = new Set(['functions', 'realtime', 'storage']);
 
+/**
+ * Namespace members that must leave a ledger footprint when they escape a
+ * direct operation chain. The scanner intentionally records the escape site
+ * instead of trying to follow the resulting alias through later code.
+ */
+const PROTECTED_NAMESPACE_SEGMENTS = new Set(['auth', ...SERVICE_SEGMENTS]);
+const PROTECTED_MEMBER_ACCESS_NAME = '<memberAccess>';
+
 const VALID_REMOVAL_PRS = /^PR-(0[3-9]|10)$/;
 
 const SUPABASE_PACKAGES = new Set(['@supabase/ssr', '@supabase/supabase-js']);
@@ -309,6 +317,118 @@ function memberReceiver(expression: ts.Expression): ts.Expression | undefined {
 		return expression.expression;
 	}
 	return undefined;
+}
+
+function protectedNamespaceName(name: string | undefined): string | undefined {
+	return name !== undefined && PROTECTED_NAMESPACE_SEGMENTS.has(name) ? name : undefined;
+}
+
+function recordProtectedNamespaceEscape(
+	namespace: string,
+	record: (kind: AccessKind, name: string) => void
+): void {
+	if (namespace === 'auth') {
+		record('auth-session', PROTECTED_MEMBER_ACCESS_NAME);
+	} else {
+		record('service', `${namespace}.${PROTECTED_MEMBER_ACCESS_NAME}`);
+	}
+}
+
+/**
+ * A protected member is an operation candidate when it remains inside a call
+ * callee chain. Otherwise it is an escape site, such as an assignment,
+ * argument, return value, object property, or exported value. The escape site
+ * is the only fact the scanner needs; it must not infer where an alias goes.
+ */
+function isCalleeMemberAccess(
+	node: ts.PropertyAccessExpression | ts.ElementAccessExpression
+): boolean {
+	let current: ts.Node = node;
+	let parent: ts.Node | undefined = current.parent;
+	while (
+		parent &&
+		((ts.isPropertyAccessExpression(parent) && parent.expression === current) ||
+			(ts.isElementAccessExpression(parent) && parent.expression === current) ||
+			(ts.isCallExpression(parent) && parent.expression === current) ||
+			((ts.isParenthesizedExpression(parent) ||
+				ts.isAsExpression(parent) ||
+				ts.isNonNullExpression(parent) ||
+				ts.isSatisfiesExpression(parent)) &&
+				parent.expression === current))
+	) {
+		if (ts.isCallExpression(parent) && parent.expression === current) {
+			return true;
+		}
+		current = parent;
+		parent = current.parent;
+	}
+	return false;
+}
+
+function bindingPropertyName(element: ts.BindingElement): string | undefined {
+	const propertyName = element.propertyName;
+	if (propertyName) {
+		if (ts.isIdentifier(propertyName) || ts.isStringLiteralLike(propertyName)) {
+			return propertyName.text;
+		}
+		return undefined;
+	}
+	return ts.isIdentifier(element.name) ? element.name.text : undefined;
+}
+
+function recordProtectedBindings(
+	name: ts.BindingName,
+	record: (kind: AccessKind, name: string) => void
+): void {
+	if (ts.isIdentifier(name)) {
+		return;
+	}
+
+	for (const element of name.elements) {
+		if (ts.isBindingElement(element)) {
+			const namespace = protectedNamespaceName(bindingPropertyName(element));
+			if (namespace) {
+				recordProtectedNamespaceEscape(namespace, record);
+			}
+			recordProtectedBindings(element.name, record);
+		}
+	}
+}
+
+/** Records destructuring-assignment escapes, whose AST uses object literals. */
+function recordProtectedAssignmentPattern(
+	node: ts.Node,
+	record: (kind: AccessKind, name: string) => void
+): void {
+	if (!ts.isObjectLiteralExpression(node)) {
+		return;
+	}
+
+	const parent = node.parent;
+	const isAssignmentPattern =
+		(ts.isBinaryExpression(parent) &&
+			parent.left === node &&
+			parent.operatorToken.kind === ts.SyntaxKind.EqualsToken) ||
+		((ts.isForOfStatement(parent) || ts.isForInStatement(parent)) && parent.initializer === node);
+	if (!isAssignmentPattern) {
+		return;
+	}
+
+	for (const property of node.properties) {
+		if (ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property)) {
+			const name = property.name;
+			const namespace =
+				ts.isIdentifier(name) || ts.isStringLiteralLike(name)
+					? protectedNamespaceName(name.text)
+					: undefined;
+			if (namespace) {
+				recordProtectedNamespaceEscape(namespace, record);
+			}
+			if (ts.isPropertyAssignment(property)) {
+				recordProtectedAssignmentPattern(property.initializer, record);
+			}
+		}
+	}
 }
 
 function unwrapExpression(expression: ts.Expression): ts.Expression {
@@ -453,6 +573,24 @@ function sourceUnits(source: string, file: string): SourceUnits {
 		}
 		const record = node as EstreeNode;
 
+		if (record.type === 'MemberExpression') {
+			const property = record.property as EstreeNode | undefined;
+			const propertyName =
+				property?.type === 'Identifier' && typeof property.name === 'string'
+					? property.name
+					: property?.type === 'Literal' &&
+						  typeof (property as { value?: unknown }).value === 'string'
+						? (property as { value: string }).value
+						: undefined;
+			const namespace = protectedNamespaceName(propertyName);
+			if (namespace) {
+				// Markup is banned regardless of whether the protected member is a
+				// direct operation or an escaped value. Recording the member at the
+				// syntax site keeps this rule in lockstep with script scanning.
+				markupNames.add(namespace);
+			}
+		}
+
 		if (record.type === 'CallExpression') {
 			const segments = estreeCalleeSegments(record.callee as EstreeNode | undefined);
 			const method = segments[segments.length - 1];
@@ -518,49 +656,6 @@ export function scanSource(source: string, file: string): Access[] {
 
 	for (const unit of units) {
 		const parsed = ts.createSourceFile(file, unit, ts.ScriptTarget.Latest, true, scriptKind(file));
-		const authAliases = new Set<string>();
-
-		const collectAuthAliasesFromBinding = (name: ts.BindingName): void => {
-			if (!ts.isObjectBindingPattern(name)) {
-				return;
-			}
-
-			for (const element of name.elements) {
-				if (!ts.isBindingElement(element)) {
-					continue;
-				}
-				const propertyName = element.propertyName;
-				const boundName = element.name;
-				const isAuthProperty =
-					(propertyName && ts.isIdentifier(propertyName) && propertyName.text === 'auth') ||
-					(!propertyName && ts.isIdentifier(boundName) && boundName.text === 'auth');
-				if (isAuthProperty && ts.isIdentifier(boundName)) {
-					authAliases.add(boundName.text);
-				}
-			}
-		};
-
-		const collectAuthAliases = (node: ts.Node): void => {
-			if (ts.isVariableDeclaration(node)) {
-				if (
-					ts.isIdentifier(node.name) &&
-					node.initializer &&
-					calleeChainSegments(node.initializer).includes('auth')
-				) {
-					authAliases.add(node.name.text);
-				}
-
-				collectAuthAliasesFromBinding(node.name);
-			}
-
-			if (ts.isParameter(node)) {
-				collectAuthAliasesFromBinding(node.name);
-			}
-
-			ts.forEachChild(node, collectAuthAliases);
-		};
-
-		collectAuthAliases(parsed);
 
 		for (const statement of parsed.statements) {
 			if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
@@ -614,6 +709,11 @@ export function scanSource(source: string, file: string): Access[] {
 		}
 
 		const visit = (node: ts.Node): void => {
+			if (ts.isVariableDeclaration(node) || ts.isParameter(node)) {
+				recordProtectedBindings(node.name, record);
+			}
+			recordProtectedAssignmentPattern(node, record);
+
 			if (
 				(ts.isFunctionDeclaration(node) && node.name?.text === 'createAdminClient') ||
 				(ts.isVariableDeclaration(node) &&
@@ -668,10 +768,7 @@ export function scanSource(source: string, file: string): Access[] {
 					if (!isBuiltin) {
 						record(method === 'from' ? 'table' : 'rpc', literalResource(node));
 					}
-				} else if (
-					segments.slice(0, -1).includes('auth') ||
-					(segments.length >= 2 && authAliases.has(segments[0]))
-				) {
+				} else if (segments.slice(0, -1).includes('auth')) {
 					record('auth-session', method ?? DYNAMIC_ACCESS_NAME);
 				} else {
 					const service = segments.slice(0, -1).find((segment) => SERVICE_SEGMENTS.has(segment));
@@ -689,37 +786,10 @@ export function scanSource(source: string, file: string): Access[] {
 				}
 			}
 
-			if (
-				(ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) &&
-				memberName(node) === 'auth'
-			) {
-				// Climb through the member/call chain this access is embedded in; if it
-				// terminates as the callee of a call, the call rules above own it.
-				// Otherwise it is a bare auth reference (alias, argument, return) and
-				// must leave a classifiable footprint at the alias site.
-				let current: ts.Node = node;
-				let parent: ts.Node | undefined = current.parent;
-				while (
-					parent &&
-					((ts.isPropertyAccessExpression(parent) && parent.expression === current) ||
-						(ts.isElementAccessExpression(parent) && parent.expression === current) ||
-						(ts.isCallExpression(parent) && parent.expression === current) ||
-						((ts.isParenthesizedExpression(parent) ||
-							ts.isAsExpression(parent) ||
-							ts.isNonNullExpression(parent) ||
-							ts.isSatisfiesExpression(parent)) &&
-							parent.expression === current))
-				) {
-					if (ts.isCallExpression(parent) && parent.expression === current) {
-						break;
-					}
-					current = parent;
-					parent = current.parent;
-				}
-				const isCallee =
-					parent !== undefined && ts.isCallExpression(parent) && parent.expression === current;
-				if (!isCallee) {
-					record('auth-session', '<memberAccess>');
+			if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
+				const namespace = protectedNamespaceName(memberName(node));
+				if (namespace && !isCalleeMemberAccess(node)) {
+					recordProtectedNamespaceEscape(namespace, record);
 				}
 			}
 

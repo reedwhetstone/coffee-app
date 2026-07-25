@@ -132,10 +132,12 @@ against that model and still missed production callers). Instead, every
 `.from(...)` and `.rpc(...)` call regardless of receiver (minus an exact-name
 platform-builtin list like `Array.from`), every call through an `auth`,
 `functions`, `storage`, or `realtime` member chain, every `.channel(...)`
-call, every bare `.auth` member access (so renamed auth aliases leave a
-footprint at the alias site), every known factory-name call, and every
-Supabase package import, require, dynamic import, or runtime re-export is a
-candidate. Every candidate
+call, every non-callee `auth`, `functions`, `storage`, or `realtime` member
+access (so aliases leave a fail-closed footprint at the escape site), every
+known factory-name call, and every Supabase package import, require, dynamic
+import, or runtime re-export is a candidate. Direct operation chains remain
+operation candidates; the scanner deliberately does not chase aliases after a
+protected namespace escapes its call chain. Every candidate
 must be classified in `config/supabase-boundary-manifest.json` or explicitly
 suppressed there with a reason asserting it is not Supabase access. A missed
 classification is a loud lint failure, not a silent ledger gap; false
@@ -158,7 +160,8 @@ deletes the caller (PR-03 catalog/market/portfolio/procurement/API control
 plane and product authorization, PR-04 inventory/tasting, PR-06
 roast/sales/profit, PR-08 bean identity and chat actions, PR-09 legacy RAG,
 PR-10 final contraction). The retained auth allowlist covers only
-OAuth/session lifecycle methods; admin-client JWT validation,
+OAuth/session lifecycle methods and rejects protected namespace escapes by
+default; admin-client JWT validation,
 product-principal construction, `user_roles` lookups, and entitlement
 resolution can never be classified as retained and are tracked as PR-03 debt.
 Each consumer PR in
