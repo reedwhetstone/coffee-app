@@ -1,0 +1,1067 @@
+{
+	"description": "Supabase boundary ledger. Every Supabase-shaped candidate detected by scripts/verify-supabase-boundary.ts must be classified here as retained-web-local (with an owner) or shared-data-debt (with a plannedRemovalPr), or explicitly suppressed under 'suppressions' with a reason asserting it is not Supabase access. Detection is receiver-independent and fail-closed: misses are loud lint failures, not silent gaps.",
+	"entries": [
+		{
+			"file": "scripts/backfill-supply-index.ts",
+			"kind": "client-factory",
+			"name": "createClient",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Retire or move this shared-market operational writer behind the Parchment migration boundary before the market consumer cutover."
+		},
+		{
+			"file": "scripts/backfill-supply-index.ts",
+			"kind": "table",
+			"name": "coffee_catalog",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Retire or move this shared-market operational writer behind the Parchment migration boundary before the market consumer cutover."
+		},
+		{
+			"file": "scripts/backfill-supply-index.ts",
+			"kind": "table",
+			"name": "price_index_snapshots",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Retire or move this shared-market operational writer behind the Parchment migration boundary before the market consumer cutover."
+		},
+		{
+			"file": "src/hooks.server.ts",
+			"kind": "auth-session",
+			"name": "getSession",
+			"classification": "retained-web-local",
+			"owner": "auth-session",
+			"disposition": "Retain: Supabase Auth OAuth/session lifecycle stays web-local."
+		},
+		{
+			"file": "src/hooks.server.ts",
+			"kind": "auth-session",
+			"name": "getUser",
+			"classification": "retained-web-local",
+			"owner": "auth-session",
+			"disposition": "Retain: Supabase Auth OAuth/session lifecycle stays web-local."
+		},
+		{
+			"file": "src/hooks.server.ts",
+			"kind": "client-factory",
+			"name": "createServerClient",
+			"classification": "retained-web-local",
+			"owner": "auth-session",
+			"disposition": "Retain: this factory establishes and refreshes the browser identity session."
+		},
+		{
+			"file": "src/lib/components/layout/AuthSidebar.svelte",
+			"kind": "auth-session",
+			"name": "signOut",
+			"classification": "retained-web-local",
+			"owner": "auth-session",
+			"disposition": "Retain: Supabase Auth OAuth/session lifecycle stays web-local."
+		},
+		{
+			"file": "src/lib/components/layout/MobileAppMenu.svelte",
+			"kind": "auth-session",
+			"name": "signOut",
+			"classification": "retained-web-local",
+			"owner": "auth-session",
+			"disposition": "Retain: Supabase Auth OAuth/session lifecycle stays web-local."
+		},
+		{
+			"file": "src/lib/data/api-usage.ts",
+			"kind": "table",
+			"name": "api_usage",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/data/inventory.ts",
+			"kind": "table",
+			"name": "coffee_catalog",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-04",
+			"disposition": "Replace with the Parchment contract cutover in PR-04.",
+			"note": "Catalog join in the inventory flow; removed with the inventory cutover."
+		},
+		{
+			"file": "src/lib/data/inventory.ts",
+			"kind": "table",
+			"name": "green_coffee_inv",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-04",
+			"disposition": "Replace with the Parchment contract cutover in PR-04."
+		},
+		{
+			"file": "src/lib/data/inventory.ts",
+			"kind": "table",
+			"name": "roast_events",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-04",
+			"disposition": "Replace with the Parchment contract cutover in PR-04.",
+			"note": "Cascade cleanup of dependent roast rows during inventory deletion; removed with the PR-04 inventory cutover."
+		},
+		{
+			"file": "src/lib/data/inventory.ts",
+			"kind": "table",
+			"name": "roast_profiles",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-04",
+			"disposition": "Replace with the Parchment contract cutover in PR-04.",
+			"note": "Cascade cleanup of dependent roast rows during inventory deletion; removed with the PR-04 inventory cutover."
+		},
+		{
+			"file": "src/lib/data/inventory.ts",
+			"kind": "table",
+			"name": "roast_temperatures",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-04",
+			"disposition": "Replace with the Parchment contract cutover in PR-04.",
+			"note": "Cascade cleanup of dependent roast rows during inventory deletion; removed with the PR-04 inventory cutover."
+		},
+		{
+			"file": "src/lib/data/inventory.ts",
+			"kind": "table",
+			"name": "sales",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-04",
+			"disposition": "Replace with the Parchment contract cutover in PR-04.",
+			"note": "Cascade cleanup of dependent sales rows during inventory deletion; removed with the PR-04 inventory cutover."
+		},
+		{
+			"file": "src/lib/data/roast.ts",
+			"kind": "table",
+			"name": "artisan_import_log",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06."
+		},
+		{
+			"file": "src/lib/data/roast.ts",
+			"kind": "table",
+			"name": "green_coffee_inv",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06.",
+			"note": "Inventory reads/updates inside the roast flow; removed with the roast cutover."
+		},
+		{
+			"file": "src/lib/data/roast.ts",
+			"kind": "table",
+			"name": "roast_events",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06."
+		},
+		{
+			"file": "src/lib/data/roast.ts",
+			"kind": "table",
+			"name": "roast_profiles",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06."
+		},
+		{
+			"file": "src/lib/data/roast.ts",
+			"kind": "table",
+			"name": "roast_temperatures",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06."
+		},
+		{
+			"file": "src/lib/data/sales.ts",
+			"kind": "table",
+			"name": "green_coffee_inv",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06.",
+			"note": "Inventory join inside the sales flow; removed with the sales cutover."
+		},
+		{
+			"file": "src/lib/data/sales.ts",
+			"kind": "table",
+			"name": "sales",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06."
+		},
+		{
+			"file": "src/lib/data/tasting.ts",
+			"kind": "table",
+			"name": "coffee_catalog",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-04",
+			"disposition": "Replace with the Parchment contract cutover in PR-04.",
+			"note": "Catalog join in the tasting flow; removed with the inventory/tasting cutover."
+		},
+		{
+			"file": "src/lib/data/tasting.ts",
+			"kind": "table",
+			"name": "green_coffee_inv",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-04",
+			"disposition": "Replace with the Parchment contract cutover in PR-04."
+		},
+		{
+			"file": "src/lib/server/agentPriceIndex.ts",
+			"kind": "admin-client",
+			"name": "createAdminClient",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/agentPriceIndex.ts",
+			"kind": "table",
+			"name": "price_index_snapshots",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/agentSimilarity.ts",
+			"kind": "admin-client",
+			"name": "createAdminClient",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/apiAuth.ts",
+			"kind": "admin-client",
+			"name": "createAdminClient",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/apiAuth.ts",
+			"kind": "rpc",
+			"name": "get_api_usage_summary",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/apiAuth.ts",
+			"kind": "table",
+			"name": "api_keys",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/apiAuth.ts",
+			"kind": "table",
+			"name": "api_usage",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/beanIdentity.ts",
+			"kind": "rpc",
+			"name": "create_bean_identity_candidate",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-08",
+			"disposition": "Replace with the Parchment contract cutover in PR-08."
+		},
+		{
+			"file": "src/lib/server/beanIdentity.ts",
+			"kind": "rpc",
+			"name": "review_bean_identity_link",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-08",
+			"disposition": "Replace with the Parchment contract cutover in PR-08."
+		},
+		{
+			"file": "src/lib/server/beanIdentity.ts",
+			"kind": "table",
+			"name": "bean_identities",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-08",
+			"disposition": "Replace with the Parchment contract cutover in PR-08."
+		},
+		{
+			"file": "src/lib/server/beanIdentity.ts",
+			"kind": "table",
+			"name": "bean_identity_events",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-08",
+			"disposition": "Replace with the Parchment contract cutover in PR-08."
+		},
+		{
+			"file": "src/lib/server/beanIdentity.ts",
+			"kind": "table",
+			"name": "bean_identity_links",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-08",
+			"disposition": "Replace with the Parchment contract cutover in PR-08."
+		},
+		{
+			"file": "src/lib/server/billing/admin-discrepancies.ts",
+			"kind": "table",
+			"name": "role_audit_logs",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/lib/server/billing/entitlements.ts",
+			"kind": "table",
+			"name": "billing_subscriptions",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/lib/server/billing/entitlements.ts",
+			"kind": "table",
+			"name": "user_roles",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/billing/reconcile-session.ts",
+			"kind": "admin-client",
+			"name": "createAdminClient",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/lib/server/billing/reconcile-session.ts",
+			"kind": "table",
+			"name": "role_audit_logs",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/lib/server/billing/reconcile-session.ts",
+			"kind": "table",
+			"name": "stripe_customers",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/lib/server/billing/reconcile-session.ts",
+			"kind": "table",
+			"name": "stripe_session_processing",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/lib/server/billing/reconcile-session.ts",
+			"kind": "table",
+			"name": "user_roles",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/briefMatchSummary.ts",
+			"kind": "table",
+			"name": "sourcing_briefs",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/catalogSimilarity.ts",
+			"kind": "rpc",
+			"name": "find_similar_beans_aggregated",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/catalogSimilarity.ts",
+			"kind": "rpc",
+			"name": "find_similar_beans_aggregated_v2",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/catalogSimilarity.ts",
+			"kind": "rpc",
+			"name": "find_similar_beans_aggregated_v3",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/catalogSimilarity.ts",
+			"kind": "table",
+			"name": "coffee_catalog",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/greenCoffeeUtils.ts",
+			"kind": "table",
+			"name": "green_coffee_inv",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-04",
+			"disposition": "Replace with the Parchment contract cutover in PR-04."
+		},
+		{
+			"file": "src/lib/server/marketIndex.ts",
+			"kind": "admin-client",
+			"name": "createAdminClient",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/marketIndex.ts",
+			"kind": "table",
+			"name": "coffee_catalog",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/principal.ts",
+			"kind": "admin-client",
+			"name": "createAdminClient",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03.",
+			"note": "Service-role client used for JWT validation and product-principal construction that Parchment already owns."
+		},
+		{
+			"file": "src/lib/server/principal.ts",
+			"kind": "auth-session",
+			"name": "getUser",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03.",
+			"note": "Admin-client JWT validation feeding product-principal construction; not session lifecycle, so it is not retainable under the auth allowlist."
+		},
+		{
+			"file": "src/lib/server/principal.ts",
+			"kind": "table",
+			"name": "user_roles",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/trackedLots.ts",
+			"kind": "table",
+			"name": "coffee_catalog",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/trackedLots.ts",
+			"kind": "table",
+			"name": "tracked_lots",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/lib/server/updateUtils.ts",
+			"kind": "rpc",
+			"name": "update_green_coffee_from_catalog",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-04",
+			"disposition": "Replace with the Parchment contract cutover in PR-04."
+		},
+		{
+			"file": "src/lib/server/userMemory.ts",
+			"kind": "table",
+			"name": "user_memory",
+			"classification": "retained-web-local",
+			"owner": "workspace-memory",
+			"disposition": "Retained chat workspace memory persistence; reads and writes flow through the narrow MemoryClient facade.",
+			"note": "Missed by the superseded provenance-based scanner (PR #497); the structurally typed cast hid the receiver."
+		},
+		{
+			"file": "src/lib/server/workspaces/canonicalWorkspace.ts",
+			"kind": "table",
+			"name": "workspace_messages",
+			"classification": "retained-web-local",
+			"owner": "workspace-memory",
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+		},
+		{
+			"file": "src/lib/server/workspaces/canonicalWorkspace.ts",
+			"kind": "table",
+			"name": "workspaces",
+			"classification": "retained-web-local",
+			"owner": "workspace-memory",
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+		},
+		{
+			"file": "src/lib/services/milestoneCalculationService.ts",
+			"kind": "table",
+			"name": "roast_events",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06."
+		},
+		{
+			"file": "src/lib/services/milestoneCalculationService.ts",
+			"kind": "table",
+			"name": "roast_profiles",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06."
+		},
+		{
+			"file": "src/lib/services/milestoneCalculationService.ts",
+			"kind": "table",
+			"name": "roast_temperatures",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06."
+		},
+		{
+			"file": "src/lib/services/ragService.ts",
+			"kind": "rpc",
+			"name": "match_coffee_chunks",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-09",
+			"disposition": "Delete with the PR-09 legacy RAG retirement (deletion-first)."
+		},
+		{
+			"file": "src/lib/services/ragService.ts",
+			"kind": "table",
+			"name": "coffee_catalog",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-09",
+			"disposition": "Delete with the PR-09 legacy RAG retirement (deletion-first).",
+			"note": "Catalog join inside the legacy RAG service."
+		},
+		{
+			"file": "src/lib/services/stripe-webhook.ts",
+			"kind": "admin-client",
+			"name": "createAdminClient",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/lib/services/stripe-webhook.ts",
+			"kind": "table",
+			"name": "role_audit_logs",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/lib/services/stripe-webhook.ts",
+			"kind": "table",
+			"name": "stripe_customers",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/lib/services/stripe.ts",
+			"kind": "admin-client",
+			"name": "createAdminClient",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/lib/services/stripe.ts",
+			"kind": "table",
+			"name": "stripe_customers",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/lib/supabase-admin.ts",
+			"kind": "admin-client",
+			"name": "createAdminClient",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local.",
+			"note": "Factory module for the service-role client. Retained for billing/webhook credential custody; every product-authorization caller of this factory is tracked as shared-data-debt and PR-10 removes those uses."
+		},
+		{
+			"file": "src/lib/supabase-admin.ts",
+			"kind": "client-factory",
+			"name": "createClient",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: the service-role client factory remains only for explicitly allowed billing persistence callers."
+		},
+		{
+			"file": "src/lib/supabase.ts",
+			"kind": "auth-session",
+			"name": "signInWithOAuth",
+			"classification": "retained-web-local",
+			"owner": "auth-session",
+			"disposition": "Retain: Supabase Auth OAuth/session lifecycle stays web-local."
+		},
+		{
+			"file": "src/lib/supabase.ts",
+			"kind": "auth-session",
+			"name": "signOut",
+			"classification": "retained-web-local",
+			"owner": "auth-session",
+			"disposition": "Retain: Supabase Auth OAuth/session lifecycle stays web-local."
+		},
+		{
+			"file": "src/lib/supabase.ts",
+			"kind": "client-factory",
+			"name": "createBrowserClient",
+			"classification": "retained-web-local",
+			"owner": "auth-session",
+			"disposition": "Retain: this factory establishes the browser identity session."
+		},
+		{
+			"file": "src/routes/+layout.ts",
+			"kind": "client-factory",
+			"name": "createSupabaseLoadClient",
+			"classification": "retained-web-local",
+			"owner": "auth-session",
+			"disposition": "Standard SvelteKit session load client; retained web-local auth/session plumbing.",
+			"note": "Missed by the superseded provenance-based scanner (PR #497); the local wrapper had no factory provenance."
+		},
+		{
+			"file": "src/routes/analytics/+page.server.ts",
+			"kind": "admin-client",
+			"name": "createAdminClient",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/routes/analytics/+page.server.ts",
+			"kind": "rpc",
+			"name": "get_supplier_price_ranges",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/routes/analytics/+page.server.ts",
+			"kind": "table",
+			"name": "coffee_catalog",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/routes/analytics/+page.server.ts",
+			"kind": "table",
+			"name": "market_daily_summary",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/routes/analytics/+page.server.ts",
+			"kind": "table",
+			"name": "price_index_snapshots",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/routes/analytics/+page.server.ts",
+			"kind": "table",
+			"name": "supplier_daily_stats",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/routes/api-dashboard/+page.server.ts",
+			"kind": "admin-client",
+			"name": "createAdminClient",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/routes/api-dashboard/usage/+page.server.ts",
+			"kind": "admin-client",
+			"name": "createAdminClient",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/routes/api/admin/backfill-milestones/+server.ts",
+			"kind": "table",
+			"name": "user_roles",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/routes/api/admin/billing-entitlement-discrepancies/+server.ts",
+			"kind": "admin-client",
+			"name": "createAdminClient",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local.",
+			"note": "Admin billing reconciliation audit. The user_roles reads made through this client are tracked separately as PR-03 debt."
+		},
+		{
+			"file": "src/routes/api/admin/billing-entitlement-discrepancies/+server.ts",
+			"kind": "table",
+			"name": "billing_subscriptions",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/routes/api/admin/billing-entitlement-discrepancies/+server.ts",
+			"kind": "table",
+			"name": "role_audit_logs",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/routes/api/admin/billing-entitlement-discrepancies/+server.ts",
+			"kind": "table",
+			"name": "stripe_customers",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/routes/api/admin/billing-entitlement-discrepancies/+server.ts",
+			"kind": "table",
+			"name": "user_roles",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/routes/api/beans/+server.ts",
+			"kind": "table",
+			"name": "coffee_catalog",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/routes/api/beans/+server.ts",
+			"kind": "table",
+			"name": "shared_links",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-04",
+			"disposition": "Replace with the Parchment contract cutover in PR-04.",
+			"note": "Not named in the master plan debt inventory; share-link persistence for the beans sharing flow, grouped with the PR-04 inventory cutover."
+		},
+		{
+			"file": "src/routes/api/chat/+server.ts",
+			"kind": "table",
+			"name": "sourcing_briefs",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/routes/api/chat/+server.ts",
+			"kind": "table",
+			"name": "workspaces",
+			"classification": "retained-web-local",
+			"owner": "workspace-memory",
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+		},
+		{
+			"file": "src/routes/api/chat/execute-action/+server.ts",
+			"kind": "rpc",
+			"name": "execute_chat_action",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-08",
+			"disposition": "Replace with the Parchment contract cutover in PR-08."
+		},
+		{
+			"file": "src/routes/api/profit/+server.ts",
+			"kind": "table",
+			"name": "green_coffee_inv",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06.",
+			"note": "Inventory join inside the profit flow; removed with the profit cutover."
+		},
+		{
+			"file": "src/routes/api/profit/+server.ts",
+			"kind": "table",
+			"name": "sales",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06."
+		},
+		{
+			"file": "src/routes/api/roast-chart-data/+server.ts",
+			"kind": "rpc",
+			"name": "get_chart_data_sampled",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06."
+		},
+		{
+			"file": "src/routes/api/roast-chart-data/+server.ts",
+			"kind": "rpc",
+			"name": "get_chart_metadata",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06."
+		},
+		{
+			"file": "src/routes/api/roast-chart-settings/+server.ts",
+			"kind": "table",
+			"name": "roast_profiles",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06."
+		},
+		{
+			"file": "src/routes/api/share/+server.ts",
+			"kind": "table",
+			"name": "green_coffee_inv",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-04",
+			"disposition": "Replace with the Parchment contract cutover in PR-04."
+		},
+		{
+			"file": "src/routes/api/share/+server.ts",
+			"kind": "table",
+			"name": "shared_links",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-04",
+			"disposition": "Replace with the Parchment contract cutover in PR-04.",
+			"note": "Not named in the master plan debt inventory; share-link persistence for the beans sharing flow, grouped with the PR-04 inventory cutover."
+		},
+		{
+			"file": "src/routes/api/stripe/cancel-subscription/+server.ts",
+			"kind": "table",
+			"name": "billing_subscriptions",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/routes/api/stripe/create-checkout-session/+server.ts",
+			"kind": "table",
+			"name": "billing_subscriptions",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/routes/api/stripe/resume-subscription/+server.ts",
+			"kind": "table",
+			"name": "billing_subscriptions",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/routes/api/tools/coffee-chunks/+server.ts",
+			"kind": "rpc",
+			"name": "match_coffee_chunks",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-09",
+			"disposition": "Delete with the PR-09 legacy RAG retirement (deletion-first)."
+		},
+		{
+			"file": "src/routes/api/tools/coffee-chunks/+server.ts",
+			"kind": "table",
+			"name": "coffee_catalog",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-09",
+			"disposition": "Delete with the PR-09 legacy RAG retirement (deletion-first).",
+			"note": "Catalog join inside the legacy coffee-chunks tool route."
+		},
+		{
+			"file": "src/routes/api/tools/roast-profiles/+server.ts",
+			"kind": "table",
+			"name": "green_coffee_inv",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06.",
+			"note": "Inventory join inside the roast tool route; removed with the roast cutover."
+		},
+		{
+			"file": "src/routes/api/tools/roast-profiles/+server.ts",
+			"kind": "table",
+			"name": "roast_profiles",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06."
+		},
+		{
+			"file": "src/routes/api/update-stocked-status/+server.ts",
+			"kind": "table",
+			"name": "green_coffee_inv",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06.",
+			"note": "Stock-derived update behavior named in the PR-06 roast/sales/profit cutover."
+		},
+		{
+			"file": "src/routes/api/workspaces/+server.ts",
+			"kind": "table",
+			"name": "workspaces",
+			"classification": "retained-web-local",
+			"owner": "workspace-memory",
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+		},
+		{
+			"file": "src/routes/api/workspaces/[id]/+server.ts",
+			"kind": "table",
+			"name": "workspace_messages",
+			"classification": "retained-web-local",
+			"owner": "workspace-memory",
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+		},
+		{
+			"file": "src/routes/api/workspaces/[id]/+server.ts",
+			"kind": "table",
+			"name": "workspaces",
+			"classification": "retained-web-local",
+			"owner": "workspace-memory",
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+		},
+		{
+			"file": "src/routes/api/workspaces/[id]/canvas/+server.ts",
+			"kind": "table",
+			"name": "workspaces",
+			"classification": "retained-web-local",
+			"owner": "workspace-memory",
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+		},
+		{
+			"file": "src/routes/api/workspaces/[id]/messages/+server.ts",
+			"kind": "table",
+			"name": "workspace_messages",
+			"classification": "retained-web-local",
+			"owner": "workspace-memory",
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+		},
+		{
+			"file": "src/routes/api/workspaces/[id]/messages/+server.ts",
+			"kind": "table",
+			"name": "workspaces",
+			"classification": "retained-web-local",
+			"owner": "workspace-memory",
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+		},
+		{
+			"file": "src/routes/api/workspaces/[id]/summarize/+server.ts",
+			"kind": "table",
+			"name": "workspace_messages",
+			"classification": "retained-web-local",
+			"owner": "workspace-memory",
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+		},
+		{
+			"file": "src/routes/api/workspaces/[id]/summarize/+server.ts",
+			"kind": "table",
+			"name": "workspaces",
+			"classification": "retained-web-local",
+			"owner": "workspace-memory",
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+		},
+		{
+			"file": "src/routes/auth/+page.server.ts",
+			"kind": "auth-session",
+			"name": "signInWithPassword",
+			"classification": "retained-web-local",
+			"owner": "auth-session",
+			"disposition": "Retain: Supabase Auth OAuth/session lifecycle stays web-local."
+		},
+		{
+			"file": "src/routes/auth/+page.server.ts",
+			"kind": "auth-session",
+			"name": "signUp",
+			"classification": "retained-web-local",
+			"owner": "auth-session",
+			"disposition": "Retain: Supabase Auth OAuth/session lifecycle stays web-local."
+		},
+		{
+			"file": "src/routes/auth/callback/+server.ts",
+			"kind": "auth-session",
+			"name": "exchangeCodeForSession",
+			"classification": "retained-web-local",
+			"owner": "auth-session",
+			"disposition": "Retain: Supabase Auth OAuth/session lifecycle stays web-local."
+		},
+		{
+			"file": "src/routes/auth/callback/+server.ts",
+			"kind": "auth-session",
+			"name": "getUser",
+			"classification": "retained-web-local",
+			"owner": "auth-session",
+			"disposition": "Retain: Supabase Auth OAuth/session lifecycle stays web-local."
+		},
+		{
+			"file": "src/routes/auth/cli/reauthenticate/+server.ts",
+			"kind": "auth-session",
+			"name": "signOut",
+			"classification": "retained-web-local",
+			"owner": "auth-session",
+			"disposition": "Retain: Supabase Auth OAuth/session lifecycle stays web-local."
+		},
+		{
+			"file": "src/routes/chat/+page.server.ts",
+			"kind": "table",
+			"name": "workspace_messages",
+			"classification": "retained-web-local",
+			"owner": "workspace-memory",
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+		},
+		{
+			"file": "src/routes/chat/+page.server.ts",
+			"kind": "table",
+			"name": "workspaces",
+			"classification": "retained-web-local",
+			"owner": "workspace-memory",
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+		},
+		{
+			"file": "src/routes/dashboard/+page.server.ts",
+			"kind": "table",
+			"name": "sourcing_briefs",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-03",
+			"disposition": "Replace with the Parchment contract cutover in PR-03."
+		},
+		{
+			"file": "src/routes/roast/+page.server.ts",
+			"kind": "table",
+			"name": "roast_profiles",
+			"classification": "shared-data-debt",
+			"plannedRemovalPr": "PR-06",
+			"disposition": "Replace with the Parchment contract cutover in PR-06."
+		},
+		{
+			"file": "src/routes/subscription/+page.server.ts",
+			"kind": "table",
+			"name": "billing_subscriptions",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		},
+		{
+			"file": "src/routes/subscription/success/+page.server.ts",
+			"kind": "table",
+			"name": "stripe_customers",
+			"classification": "retained-web-local",
+			"owner": "billing",
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+		}
+	],
+	"suppressions": []
+}
