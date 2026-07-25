@@ -36,9 +36,9 @@
  * - "admin-client": any runtime import of a `supabase-admin` module or any
  *   reference, declaration, or call of `createAdminClient`.
  * - "client-factory": any runtime import, require, or dynamic import of a
- *   Supabase package; any runtime re-export (named or star) from a Supabase
- *   package or a supabase-named local module; and any call of a known factory
- *   name (`createClient`, `createServerClient`, `createBrowserClient`,
+ *   Supabase package or supabase-named local module; any runtime re-export
+ *   (named or star) from either; and any call of a known factory name
+ *   (`createClient`, `createServerClient`, `createBrowserClient`,
  *   `createSupabaseLoadClient`), regardless of where it was imported from.
  * - "markup": any of the above operation shapes appearing inside Svelte
  *   template markup. Markup access is banned: it must move into a script
@@ -51,6 +51,8 @@
  * - Every candidate must match exactly one manifest record: a classified
  *   entry (`entries`) or a suppression (`suppressions`, with a reason
  *   asserting the call is not Supabase access).
+ *   Repeated identical syntax-site candidates are grouped with a count, and
+ *   the manifest count must match.
  * - Every entry and every suppression must still match a live candidate;
  *   stale records fail.
  * - Retained classifications are constrained: auth-session may cover only
@@ -100,6 +102,8 @@ export interface Access {
 	file: string;
 	kind: AccessKind;
 	name: string;
+	/** Number of syntax-site occurrences when the same candidate repeats. */
+	count?: number;
 }
 
 export type RetainedOwner = 'auth-session' | 'workspace-memory' | 'billing';
@@ -108,6 +112,8 @@ export interface ManifestEntry {
 	file: string;
 	kind: AccessKind;
 	name: string;
+	/** Required count when a file contains multiple identical call sites. */
+	count?: number;
 	classification: 'retained-web-local' | 'shared-data-debt';
 	owner?: RetainedOwner;
 	plannedRemovalPr?: string;
@@ -119,6 +125,8 @@ export interface Suppression {
 	file: string;
 	kind: AccessKind;
 	name: string;
+	/** Required count when a suppressed shape repeats in one file. */
+	count?: number;
 	reason: string;
 }
 
@@ -638,15 +646,28 @@ function sourceUnits(source: string, file: string): SourceUnits {
 	};
 }
 
-/** Scans one source file and returns deduplicated Supabase-shaped candidates. */
+/** Scans one source file and groups identical candidates with their live count. */
 export function scanSource(source: string, file: string): Access[] {
 	const accessesByKey = new Map<string, Access>();
+	const siteCounts = new Map<string, number>();
 
 	const record = (kind: AccessKind, name: string) => {
 		const key = `${kind}|${name}`;
 		if (!accessesByKey.has(key)) {
 			accessesByKey.set(key, { file, kind, name });
 		}
+	};
+
+	const recordSite = (kind: AccessKind, name: string) => {
+		const key = `${kind}|${name}`;
+		const existing = accessesByKey.get(key);
+		const access = existing ?? { file, kind, name };
+		const count = (siteCounts.get(key) ?? 0) + 1;
+		siteCounts.set(key, count);
+		if (count > 1) {
+			access.count = count;
+		}
+		accessesByKey.set(key, access);
 	};
 
 	const { units, markupAccesses } = sourceUnits(source, file);
@@ -667,7 +688,7 @@ export function scanSource(source: string, file: string): Access[] {
 				if (isAdminModule(moduleName)) {
 					record('admin-client', 'createAdminClient');
 				}
-				if (SUPABASE_PACKAGES.has(moduleName)) {
+				if (isSupabaseModule(moduleName)) {
 					if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
 						for (const element of clause.namedBindings.elements) {
 							if (element.isTypeOnly) {
@@ -710,9 +731,9 @@ export function scanSource(source: string, file: string): Access[] {
 
 		const visit = (node: ts.Node): void => {
 			if (ts.isVariableDeclaration(node) || ts.isParameter(node)) {
-				recordProtectedBindings(node.name, record);
+				recordProtectedBindings(node.name, recordSite);
 			}
-			recordProtectedAssignmentPattern(node, record);
+			recordProtectedAssignmentPattern(node, recordSite);
 
 			if (
 				(ts.isFunctionDeclaration(node) && node.name?.text === 'createAdminClient') ||
@@ -766,30 +787,30 @@ export function scanSource(source: string, file: string): Access[] {
 							unwrapExpression(memberReceiver(unwrapExpression(node.expression)) as ts.Expression)
 						);
 					if (!isBuiltin) {
-						record(method === 'from' ? 'table' : 'rpc', literalResource(node));
+						recordSite(method === 'from' ? 'table' : 'rpc', literalResource(node));
 					}
 				} else if (segments.slice(0, -1).includes('auth')) {
-					record('auth-session', method ?? DYNAMIC_ACCESS_NAME);
+					recordSite('auth-session', method ?? DYNAMIC_ACCESS_NAME);
 				} else {
 					const service = segments.slice(0, -1).find((segment) => SERVICE_SEGMENTS.has(segment));
 					if (service !== undefined) {
-						record('service', `${service}.${method ?? DYNAMIC_ACCESS_NAME}`);
+						recordSite('service', `${service}.${method ?? DYNAMIC_ACCESS_NAME}`);
 					} else if (method === 'channel') {
-						record('service', 'channel');
+						recordSite('service', 'channel');
 					}
 				}
 
 				if (method === 'createAdminClient') {
-					record('admin-client', 'createAdminClient');
+					recordSite('admin-client', 'createAdminClient');
 				} else if (method !== undefined && FACTORY_CALL_NAMES.has(method)) {
-					record('client-factory', method);
+					recordSite('client-factory', method);
 				}
 			}
 
 			if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
 				const namespace = protectedNamespaceName(memberName(node));
 				if (namespace && !isCalleeMemberAccess(node)) {
-					recordProtectedNamespaceEscape(namespace, record);
+					recordProtectedNamespaceEscape(namespace, recordSite);
 				}
 			}
 
@@ -843,6 +864,21 @@ function accessKey(access: { file: string; kind: string; name: string }): string
 	return `${access.file} [${access.kind}:${access.name}]`;
 }
 
+function accessCount(access: { count?: number }): number {
+	return access.count ?? 1;
+}
+
+function validateCount(
+	access: { count?: number },
+	key: string,
+	label: 'Manifest entry' | 'Suppression',
+	errors: string[]
+): void {
+	if (access.count !== undefined && (!Number.isInteger(access.count) || access.count < 1)) {
+		errors.push(`${label} count must be a positive integer: ${key}`);
+	}
+}
+
 /** Validates manifest shape, suppression shape, and retained-classification constraints. */
 export function validateManifest(manifest: Manifest): string[] {
 	const errors: string[] = [];
@@ -858,6 +894,7 @@ export function validateManifest(manifest: Manifest): string[] {
 
 	for (const suppression of suppressions) {
 		const key = accessKey(suppression);
+		validateCount(suppression, key, 'Suppression', errors);
 		if (!suppression.file || !suppression.name || !VALID_KINDS.has(suppression.kind)) {
 			errors.push(`Invalid suppression (file, kind, and name are required): ${key}`);
 			continue;
@@ -874,6 +911,7 @@ export function validateManifest(manifest: Manifest): string[] {
 
 	for (const entry of manifest.entries) {
 		const key = accessKey(entry);
+		validateCount(entry, key, 'Manifest entry', errors);
 
 		if (!entry.file || !entry.name || !VALID_KINDS.has(entry.kind)) {
 			errors.push(`Invalid manifest entry (file, kind, and name are required): ${key}`);
@@ -1026,6 +1064,10 @@ export function checkBoundary(rootDir: string, manifest: Manifest): BoundaryResu
 	const entryKeys = new Set(manifestEntries.map(accessKey));
 	const suppressionKeys = new Set(suppressions.map(accessKey));
 	const accessKeys = new Set(accesses.map(accessKey));
+	const entriesByKey = new Map(manifestEntries.map((entry) => [accessKey(entry), entry]));
+	const suppressionsByKey = new Map(
+		suppressions.map((suppression) => [accessKey(suppression), suppression])
+	);
 
 	const adminClientFiles = new Set(
 		accesses
@@ -1047,6 +1089,12 @@ export function checkBoundary(rootDir: string, manifest: Manifest): BoundaryResu
 	for (const access of accesses) {
 		const key = accessKey(access);
 		if (suppressionKeys.has(key)) {
+			const suppression = suppressionsByKey.get(key)!;
+			if (accessCount(access) !== accessCount(suppression)) {
+				errors.push(
+					`Suppression call-site count mismatch: ${key}. Live scanner found ${accessCount(access)}; suppression declares ${accessCount(suppression)}.`
+				);
+			}
 			continue;
 		}
 		if (access.kind === 'markup') {
@@ -1055,14 +1103,20 @@ export function checkBoundary(rootDir: string, manifest: Manifest): BoundaryResu
 			);
 			continue;
 		}
+		const entry = entriesByKey.get(key);
 		if (!entryKeys.has(key)) {
 			errors.push(
 				`Unclassified Supabase-shaped access: ${key}. Add a classified entry (or a suppression, if this is not Supabase) to config/supabase-boundary-manifest.json.`
 			);
+		} else if (accessCount(access) !== accessCount(entry!)) {
+			errors.push(
+				`Manifest call-site count mismatch: ${key}. Live scanner found ${accessCount(access)}; manifest declares ${accessCount(entry!)}.`
+			);
 		}
 	}
 
-	for (const key of entryKeys) {
+	for (const entry of manifestEntries) {
+		const key = accessKey(entry);
 		if (!accessKeys.has(key)) {
 			errors.push(
 				`Stale manifest entry: ${key}. The caller no longer exists (or moved); delete or update its manifest entry.`
@@ -1073,7 +1127,8 @@ export function checkBoundary(rootDir: string, manifest: Manifest): BoundaryResu
 		}
 	}
 
-	for (const key of suppressionKeys) {
+	for (const suppression of suppressions) {
+		const key = accessKey(suppression);
 		if (!accessKeys.has(key)) {
 			errors.push(
 				`Stale suppression: ${key}. The call no longer exists (or moved); delete or update its suppression.`

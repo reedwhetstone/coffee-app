@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { signInWithGoogle, createClient } from '$lib/supabase';
+	import { signInWithGoogle } from '$lib/supabase';
+	import type { createClient } from '$lib/supabase';
 	import { getContext } from 'svelte';
 
 	const supabase = getContext('supabase') as ReturnType<typeof createClient>;

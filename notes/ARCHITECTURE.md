@@ -134,10 +134,14 @@ platform-builtin list like `Array.from`), every call through an `auth`,
 `functions`, `storage`, or `realtime` member chain, every `.channel(...)`
 call, every non-callee `auth`, `functions`, `storage`, or `realtime` member
 access (so aliases leave a fail-closed footprint at the escape site), every
-known factory-name call, and every Supabase package import, require, dynamic
-import, or runtime re-export is a candidate. Direct operation chains remain
-operation candidates; the scanner deliberately does not chase aliases after a
-protected namespace escapes its call chain. Every candidate
+known factory-name call, and every Supabase package or Supabase-named local
+module import, require, dynamic import, or runtime re-export is a candidate.
+Known factory imports are recorded under their original imported name before a
+consumer aliases them. Direct operation chains remain operation candidates;
+the scanner deliberately does not chase aliases after a protected namespace
+escapes its call chain. Repeated identical candidates carry a live call-site
+count, and the manifest must carry the same count, so adding or deleting one
+caller cannot hide behind a deduplicated record. Every candidate
 must be classified in `config/supabase-boundary-manifest.json` or explicitly
 suppressed there with a reason asserting it is not Supabase access. A missed
 classification is a loud lint failure, not a silent ledger gap; false

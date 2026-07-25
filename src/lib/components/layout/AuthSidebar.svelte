@@ -1,6 +1,7 @@
 <!-- src/lib/components/layout/AuthSidebar.svelte -->
 <script lang="ts">
-	import { signInWithGoogle, createClient } from '$lib/supabase';
+	import { signInWithGoogle } from '$lib/supabase';
+	import type { createClient } from '$lib/supabase';
 	import { goto } from '$app/navigation';
 
 	import type { User } from '@supabase/supabase-js';

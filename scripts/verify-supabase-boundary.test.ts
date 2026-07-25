@@ -93,6 +93,17 @@ describe('scanSource', () => {
 		]);
 	});
 
+	it('preserves repeated call-site counts for identical candidates', () => {
+		const source = [
+			"await first.from('workspaces').select('*');",
+			"await second.from('workspaces').select('*');"
+		].join('\n');
+
+		expect(scanSource(source, 'src/lib/server/workspaces.ts')).toEqual([
+			{ file: 'src/lib/server/workspaces.ts', kind: 'table', name: 'workspaces', count: 2 }
+		]);
+	});
+
 	it('detects schema-qualified data calls', () => {
 		const source = "await supabase.schema('private').from('hidden_table').select('*');";
 		expect(scanSource(source, 'src/lib/example.ts')).toEqual([
@@ -115,7 +126,7 @@ describe('scanSource', () => {
 			{ file: 'src/lib/example.ts', kind: 'auth-session', name: 'deleteUser' },
 			{ file: 'src/lib/example.ts', kind: 'auth-session', name: '<memberAccess>' },
 			{ file: 'src/lib/example.ts', kind: 'auth-session', name: 'linkIdentity' },
-			{ file: 'src/lib/example.ts', kind: 'auth-session', name: 'getUser' },
+			{ file: 'src/lib/example.ts', kind: 'auth-session', name: 'getUser', count: 2 },
 			{ file: 'src/lib/example.ts', kind: 'admin-client', name: 'createAdminClient' }
 		]);
 	});
@@ -237,6 +248,17 @@ describe('scanSource', () => {
 		expect(scanSource(source, 'src/lib/example.ts')).toEqual([
 			{ file: 'src/lib/example.ts', kind: 'client-factory', name: 'createClient' },
 			{ file: 'src/lib/example.ts', kind: 'client-factory', name: 'createSupabaseLoadClient' }
+		]);
+	});
+
+	it('records known factory imports from local Supabase modules before aliasing', () => {
+		const source = [
+			"import { createBrowserClient as build } from '$lib/supabase';",
+			'const client = build(fetch);'
+		].join('\n');
+
+		expect(scanSource(source, 'src/lib/feature.ts')).toEqual([
+			{ file: 'src/lib/feature.ts', kind: 'client-factory', name: 'createBrowserClient' }
 		]);
 	});
 
@@ -440,6 +462,28 @@ describe('checkBoundary', () => {
 		expect(result.errors).toHaveLength(1);
 		expect(result.errors[0]).toContain('Unclassified Supabase-shaped access');
 		expect(result.errors[0]).toContain('table:mystery_table');
+	});
+
+	it('requires the manifest count to match repeated call sites', () => {
+		writeSourceFile(
+			'src/lib/server/workspaces.ts',
+			[
+				"await first.from('workspaces').select('*');",
+				"await second.from('workspaces').select('*');"
+			].join('\n')
+		);
+
+		const missingCount = checkBoundary(
+			root,
+			manifestOf(tableEntry('src/lib/server/workspaces.ts', 'workspaces'))
+		);
+		expect(missingCount.errors).toHaveLength(1);
+		expect(missingCount.errors[0]).toContain('Manifest call-site count mismatch');
+
+		const matched = checkBoundary(root, {
+			entries: [{ ...tableEntry('src/lib/server/workspaces.ts', 'workspaces'), count: 2 }]
+		});
+		expect(matched.errors).toEqual([]);
 	});
 
 	it('fails loudly on structurally typed clients instead of silently passing', () => {
@@ -819,6 +863,14 @@ describe('validateManifest', () => {
 		});
 		expect(errors).toHaveLength(1);
 		expect(errors[0]).toContain('missing a reason');
+	});
+
+	it('requires positive integer manifest counts', () => {
+		const errors = validateManifest(
+			manifestOf({ ...tableEntry('src/lib/server/example.ts', 'coffee_catalog'), count: 0 })
+		);
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toContain('count must be a positive integer');
 	});
 
 	it('rejects duplicate records across entries and suppressions', () => {

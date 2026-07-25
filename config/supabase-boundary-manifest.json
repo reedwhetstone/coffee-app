@@ -71,7 +71,8 @@
 			"name": "api_usage",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-03",
-			"disposition": "Replace with the Parchment contract cutover in PR-03."
+			"disposition": "Replace with the Parchment contract cutover in PR-03.",
+			"count": 2
 		},
 		{
 			"file": "src/lib/data/inventory.ts",
@@ -80,7 +81,8 @@
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-04",
 			"disposition": "Replace with the Parchment contract cutover in PR-04.",
-			"note": "Catalog join in the inventory flow; removed with the inventory cutover."
+			"note": "Catalog join in the inventory flow; removed with the inventory cutover.",
+			"count": 2
 		},
 		{
 			"file": "src/lib/data/inventory.ts",
@@ -88,7 +90,8 @@
 			"name": "green_coffee_inv",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-04",
-			"disposition": "Replace with the Parchment contract cutover in PR-04."
+			"disposition": "Replace with the Parchment contract cutover in PR-04.",
+			"count": 8
 		},
 		{
 			"file": "src/lib/data/inventory.ts",
@@ -106,7 +109,8 @@
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-04",
 			"disposition": "Replace with the Parchment contract cutover in PR-04.",
-			"note": "Cascade cleanup of dependent roast rows during inventory deletion; removed with the PR-04 inventory cutover."
+			"note": "Cascade cleanup of dependent roast rows during inventory deletion; removed with the PR-04 inventory cutover.",
+			"count": 4
 		},
 		{
 			"file": "src/lib/data/inventory.ts",
@@ -141,7 +145,8 @@
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-06",
 			"disposition": "Replace with the Parchment contract cutover in PR-06.",
-			"note": "Inventory reads/updates inside the roast flow; removed with the roast cutover."
+			"note": "Inventory reads/updates inside the roast flow; removed with the roast cutover.",
+			"count": 2
 		},
 		{
 			"file": "src/lib/data/roast.ts",
@@ -149,7 +154,8 @@
 			"name": "roast_events",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-06",
-			"disposition": "Replace with the Parchment contract cutover in PR-06."
+			"disposition": "Replace with the Parchment contract cutover in PR-06.",
+			"count": 6
 		},
 		{
 			"file": "src/lib/data/roast.ts",
@@ -157,7 +163,8 @@
 			"name": "roast_profiles",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-06",
-			"disposition": "Replace with the Parchment contract cutover in PR-06."
+			"disposition": "Replace with the Parchment contract cutover in PR-06.",
+			"count": 14
 		},
 		{
 			"file": "src/lib/data/roast.ts",
@@ -165,7 +172,8 @@
 			"name": "roast_temperatures",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-06",
-			"disposition": "Replace with the Parchment contract cutover in PR-06."
+			"disposition": "Replace with the Parchment contract cutover in PR-06.",
+			"count": 5
 		},
 		{
 			"file": "src/lib/data/sales.ts",
@@ -174,7 +182,8 @@
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-06",
 			"disposition": "Replace with the Parchment contract cutover in PR-06.",
-			"note": "Inventory join inside the sales flow; removed with the sales cutover."
+			"note": "Inventory join inside the sales flow; removed with the sales cutover.",
+			"count": 2
 		},
 		{
 			"file": "src/lib/data/sales.ts",
@@ -182,7 +191,8 @@
 			"name": "sales",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-06",
-			"disposition": "Replace with the Parchment contract cutover in PR-06."
+			"disposition": "Replace with the Parchment contract cutover in PR-06.",
+			"count": 4
 		},
 		{
 			"file": "src/lib/data/tasting.ts",
@@ -247,7 +257,8 @@
 			"name": "api_keys",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-03",
-			"disposition": "Replace with the Parchment contract cutover in PR-03."
+			"disposition": "Replace with the Parchment contract cutover in PR-03.",
+			"count": 3
 		},
 		{
 			"file": "src/lib/server/apiAuth.ts",
@@ -255,7 +266,8 @@
 			"name": "api_usage",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-03",
-			"disposition": "Replace with the Parchment contract cutover in PR-03."
+			"disposition": "Replace with the Parchment contract cutover in PR-03.",
+			"count": 3
 		},
 		{
 			"file": "src/lib/server/beanIdentity.ts",
@@ -279,7 +291,8 @@
 			"name": "bean_identities",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-08",
-			"disposition": "Replace with the Parchment contract cutover in PR-08."
+			"disposition": "Replace with the Parchment contract cutover in PR-08.",
+			"count": 2
 		},
 		{
 			"file": "src/lib/server/beanIdentity.ts",
@@ -287,7 +300,8 @@
 			"name": "bean_identity_events",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-08",
-			"disposition": "Replace with the Parchment contract cutover in PR-08."
+			"disposition": "Replace with the Parchment contract cutover in PR-08.",
+			"count": 2
 		},
 		{
 			"file": "src/lib/server/beanIdentity.ts",
@@ -295,7 +309,8 @@
 			"name": "bean_identity_links",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-08",
-			"disposition": "Replace with the Parchment contract cutover in PR-08."
+			"disposition": "Replace with the Parchment contract cutover in PR-08.",
+			"count": 6
 		},
 		{
 			"file": "src/lib/server/billing/admin-discrepancies.ts",
@@ -311,7 +326,8 @@
 			"name": "billing_subscriptions",
 			"classification": "retained-web-local",
 			"owner": "billing",
-			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local.",
+			"count": 4
 		},
 		{
 			"file": "src/lib/server/billing/entitlements.ts",
@@ -319,7 +335,8 @@
 			"name": "user_roles",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-03",
-			"disposition": "Replace with the Parchment contract cutover in PR-03."
+			"disposition": "Replace with the Parchment contract cutover in PR-03.",
+			"count": 2
 		},
 		{
 			"file": "src/lib/server/billing/reconcile-session.ts",
@@ -351,7 +368,8 @@
 			"name": "stripe_session_processing",
 			"classification": "retained-web-local",
 			"owner": "billing",
-			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local.",
+			"count": 3
 		},
 		{
 			"file": "src/lib/server/billing/reconcile-session.ts",
@@ -391,7 +409,8 @@
 			"name": "find_similar_beans_aggregated_v3",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-03",
-			"disposition": "Replace with the Parchment contract cutover in PR-03."
+			"disposition": "Replace with the Parchment contract cutover in PR-03.",
+			"count": 2
 		},
 		{
 			"file": "src/lib/server/catalogSimilarity.ts",
@@ -399,7 +418,8 @@
 			"name": "coffee_catalog",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-03",
-			"disposition": "Replace with the Parchment contract cutover in PR-03."
+			"disposition": "Replace with the Parchment contract cutover in PR-03.",
+			"count": 2
 		},
 		{
 			"file": "src/lib/server/greenCoffeeUtils.ts",
@@ -457,7 +477,8 @@
 			"name": "coffee_catalog",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-03",
-			"disposition": "Replace with the Parchment contract cutover in PR-03."
+			"disposition": "Replace with the Parchment contract cutover in PR-03.",
+			"count": 2
 		},
 		{
 			"file": "src/lib/server/trackedLots.ts",
@@ -465,7 +486,8 @@
 			"name": "tracked_lots",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-03",
-			"disposition": "Replace with the Parchment contract cutover in PR-03."
+			"disposition": "Replace with the Parchment contract cutover in PR-03.",
+			"count": 5
 		},
 		{
 			"file": "src/lib/server/updateUtils.ts",
@@ -482,7 +504,8 @@
 			"classification": "retained-web-local",
 			"owner": "workspace-memory",
 			"disposition": "Retained chat workspace memory persistence; reads and writes flow through the narrow MemoryClient facade.",
-			"note": "Missed by the superseded provenance-based scanner (PR #497); the structurally typed cast hid the receiver."
+			"note": "Missed by the superseded provenance-based scanner (PR #497); the structurally typed cast hid the receiver.",
+			"count": 2
 		},
 		{
 			"file": "src/lib/server/workspaces/canonicalWorkspace.ts",
@@ -514,7 +537,8 @@
 			"name": "roast_profiles",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-06",
-			"disposition": "Replace with the Parchment contract cutover in PR-06."
+			"disposition": "Replace with the Parchment contract cutover in PR-06.",
+			"count": 3
 		},
 		{
 			"file": "src/lib/services/milestoneCalculationService.ts",
@@ -530,7 +554,8 @@
 			"name": "match_coffee_chunks",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-09",
-			"disposition": "Delete with the PR-09 legacy RAG retirement (deletion-first)."
+			"disposition": "Delete with the PR-09 legacy RAG retirement (deletion-first).",
+			"count": 2
 		},
 		{
 			"file": "src/lib/services/ragService.ts",
@@ -563,7 +588,8 @@
 			"name": "stripe_customers",
 			"classification": "retained-web-local",
 			"owner": "billing",
-			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local.",
+			"count": 2
 		},
 		{
 			"file": "src/lib/services/stripe.ts",
@@ -571,7 +597,8 @@
 			"name": "createAdminClient",
 			"classification": "retained-web-local",
 			"owner": "billing",
-			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local.",
+			"count": 3
 		},
 		{
 			"file": "src/lib/services/stripe.ts",
@@ -579,7 +606,8 @@
 			"name": "stripe_customers",
 			"classification": "retained-web-local",
 			"owner": "billing",
-			"disposition": "Retain: Stripe billing front-end persistence stays web-local."
+			"disposition": "Retain: Stripe billing front-end persistence stays web-local.",
+			"count": 3
 		},
 		{
 			"file": "src/lib/supabase-admin.ts",
@@ -620,7 +648,8 @@
 			"name": "createBrowserClient",
 			"classification": "retained-web-local",
 			"owner": "auth-session",
-			"disposition": "Retain: this factory establishes the browser identity session."
+			"disposition": "Retain: this factory establishes the browser identity session.",
+			"count": 2
 		},
 		{
 			"file": "src/routes/+layout.ts",
@@ -653,7 +682,8 @@
 			"name": "coffee_catalog",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-03",
-			"disposition": "Replace with the Parchment contract cutover in PR-03."
+			"disposition": "Replace with the Parchment contract cutover in PR-03.",
+			"count": 13
 		},
 		{
 			"file": "src/routes/analytics/+page.server.ts",
@@ -710,7 +740,8 @@
 			"classification": "retained-web-local",
 			"owner": "billing",
 			"disposition": "Retain: Stripe billing front-end persistence stays web-local.",
-			"note": "Admin billing reconciliation audit. The user_roles reads made through this client are tracked separately as PR-03 debt."
+			"note": "Admin billing reconciliation audit. The user_roles reads made through this client are tracked separately as PR-03 debt.",
+			"count": 2
 		},
 		{
 			"file": "src/routes/api/admin/billing-entitlement-discrepancies/+server.ts",
@@ -750,7 +781,8 @@
 			"name": "coffee_catalog",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-03",
-			"disposition": "Replace with the Parchment contract cutover in PR-03."
+			"disposition": "Replace with the Parchment contract cutover in PR-03.",
+			"count": 2
 		},
 		{
 			"file": "src/routes/api/beans/+server.ts",
@@ -800,7 +832,8 @@
 			"name": "sales",
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-06",
-			"disposition": "Replace with the Parchment contract cutover in PR-06."
+			"disposition": "Replace with the Parchment contract cutover in PR-06.",
+			"count": 2
 		},
 		{
 			"file": "src/routes/api/roast-chart-data/+server.ts",
@@ -908,7 +941,8 @@
 			"classification": "shared-data-debt",
 			"plannedRemovalPr": "PR-06",
 			"disposition": "Replace with the Parchment contract cutover in PR-06.",
-			"note": "Stock-derived update behavior named in the PR-06 roast/sales/profit cutover."
+			"note": "Stock-derived update behavior named in the PR-06 roast/sales/profit cutover.",
+			"count": 2
 		},
 		{
 			"file": "src/routes/api/workspaces/+server.ts",
@@ -932,7 +966,8 @@
 			"name": "workspaces",
 			"classification": "retained-web-local",
 			"owner": "workspace-memory",
-			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local.",
+			"count": 3
 		},
 		{
 			"file": "src/routes/api/workspaces/[id]/canvas/+server.ts",
@@ -948,7 +983,8 @@
 			"name": "workspace_messages",
 			"classification": "retained-web-local",
 			"owner": "workspace-memory",
-			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local.",
+			"count": 3
 		},
 		{
 			"file": "src/routes/api/workspaces/[id]/messages/+server.ts",
@@ -956,7 +992,8 @@
 			"name": "workspaces",
 			"classification": "retained-web-local",
 			"owner": "workspace-memory",
-			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local.",
+			"count": 3
 		},
 		{
 			"file": "src/routes/api/workspaces/[id]/summarize/+server.ts",
@@ -972,7 +1009,8 @@
 			"name": "workspaces",
 			"classification": "retained-web-local",
 			"owner": "workspace-memory",
-			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local.",
+			"count": 2
 		},
 		{
 			"file": "src/routes/auth/+page.server.ts",
@@ -1028,7 +1066,8 @@
 			"name": "workspaces",
 			"classification": "retained-web-local",
 			"owner": "workspace-memory",
-			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
+			"disposition": "Retain: web chat workspace and memory persistence stays web-local.",
+			"count": 2
 		},
 		{
 			"file": "src/routes/dashboard/+page.server.ts",
