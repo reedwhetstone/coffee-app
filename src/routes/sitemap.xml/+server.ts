@@ -97,6 +97,14 @@ ${docsEntries}
 		<priority>0.5</priority>
 	</url>
 
+	<!-- Public crawler operator disclosure -->
+	<url>
+		<loc>${baseUrl}/bot</loc>
+		<lastmod>${currentDate}</lastmod>
+		<changefreq>monthly</changefreq>
+		<priority>0.4</priority>
+	</url>
+
 	<!-- Authentication pages - Medium priority -->
 	<url>
 		<loc>${baseUrl}/auth</loc>

@@ -29,6 +29,7 @@ Its server-side agent tools consume the Parchment API through `@purveyors/sdk`; 
 | `/api`       | API product page: plans, pricing, and quick start                                     |
 | `/docs`      | Unified documentation for API and CLI                                                 |
 | `/blog`      | Coffee content and platform updates                                                   |
+| `/bot`       | PurveyorsBot crawler identity, request policy, and operator contact                   |
 
 ### Authenticated
 

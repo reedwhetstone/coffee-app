@@ -107,6 +107,7 @@ Reporting guidance:
 - `/api`
 - `/docs`
 - `/blog`
+- `/bot`
 
 ### Authenticated product routes
 
