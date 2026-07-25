@@ -120,5 +120,15 @@
 				Market intelligence: pricing trends, supplier coverage, and origin analysis.
 			</p>
 		</a>
+		<a
+			href="/bot"
+			class="rounded-2xl border border-line bg-surface-canvas p-5 shadow-sm transition-colors hover:border-accent/40 hover:bg-surface-panel"
+		>
+			<div class="text-sm font-semibold text-ink">PurveyorsBot operator policy</div>
+			<p class="mt-2 text-sm leading-relaxed text-muted">
+				Crawler identity, request behavior, data use, and opt-out instructions for website
+				operators.
+			</p>
+		</a>
 	</section>
 </div>
