@@ -125,7 +125,17 @@ describe('scanSource', () => {
 
 		expect(
 			scanSource('const session = supabase.auth; await session.getUser(token);', 'src/lib/a.ts')
-		).toEqual([{ file: 'src/lib/a.ts', kind: 'auth-session', name: '<memberAccess>' }]);
+		).toEqual([
+			{ file: 'src/lib/a.ts', kind: 'auth-session', name: '<memberAccess>' },
+			{ file: 'src/lib/a.ts', kind: 'auth-session', name: 'getUser' }
+		]);
+
+		expect(
+			scanSource(
+				'const { auth: identity } = client; await identity.getUser(token);',
+				'src/lib/alias.ts'
+			)
+		).toEqual([{ file: 'src/lib/alias.ts', kind: 'auth-session', name: 'getUser' }]);
 
 		expect(scanSource('const header = request.auth.token;', 'src/lib/b.ts')).toEqual([
 			{ file: 'src/lib/b.ts', kind: 'auth-session', name: '<memberAccess>' }
@@ -513,6 +523,41 @@ describe('checkBoundary', () => {
 
 		expect(result.errors).toHaveLength(1);
 		expect(result.errors[0]).toContain('externally supplied clients');
+	});
+
+	it('rejects retained getUser when an admin client shares the same file', () => {
+		writeSourceFile(
+			'src/routes/auth/callback/+server.ts',
+			[
+				"import { createAdminClient } from '$lib/supabase-admin';",
+				'const admin = createAdminClient();',
+				'await admin.auth.getUser(token);'
+			].join('\n')
+		);
+
+		const result = checkBoundary(root, {
+			entries: [
+				{
+					file: 'src/routes/auth/callback/+server.ts',
+					kind: 'admin-client',
+					name: 'createAdminClient',
+					classification: 'shared-data-debt',
+					plannedRemovalPr: 'PR-03',
+					disposition: 'Replace.'
+				},
+				{
+					file: 'src/routes/auth/callback/+server.ts',
+					kind: 'auth-session',
+					name: 'getUser',
+					classification: 'retained-web-local',
+					owner: 'auth-session',
+					disposition: 'Retain.'
+				}
+			]
+		});
+
+		expect(result.errors).toHaveLength(1);
+		expect(result.errors[0]).toContain('Admin-client Supabase auth access can never be retained');
 	});
 
 	it('fails on Supabase-shaped access in Svelte template markup', () => {

@@ -518,6 +518,39 @@ export function scanSource(source: string, file: string): Access[] {
 
 	for (const unit of units) {
 		const parsed = ts.createSourceFile(file, unit, ts.ScriptTarget.Latest, true, scriptKind(file));
+		const authAliases = new Set<string>();
+
+		const collectAuthAliases = (node: ts.Node): void => {
+			if (ts.isVariableDeclaration(node)) {
+				if (
+					ts.isIdentifier(node.name) &&
+					node.initializer &&
+					calleeChainSegments(node.initializer).includes('auth')
+				) {
+					authAliases.add(node.name.text);
+				}
+
+				if (ts.isObjectBindingPattern(node.name)) {
+					for (const element of node.name.elements) {
+						if (!ts.isBindingElement(element)) {
+							continue;
+						}
+						const propertyName = element.propertyName;
+						const boundName = element.name;
+						const isAuthProperty =
+							(propertyName && ts.isIdentifier(propertyName) && propertyName.text === 'auth') ||
+							(!propertyName && ts.isIdentifier(boundName) && boundName.text === 'auth');
+						if (isAuthProperty && ts.isIdentifier(boundName)) {
+							authAliases.add(boundName.text);
+						}
+					}
+				}
+			}
+
+			ts.forEachChild(node, collectAuthAliases);
+		};
+
+		collectAuthAliases(parsed);
 
 		for (const statement of parsed.statements) {
 			if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
@@ -625,7 +658,10 @@ export function scanSource(source: string, file: string): Access[] {
 					if (!isBuiltin) {
 						record(method === 'from' ? 'table' : 'rpc', literalResource(node));
 					}
-				} else if (segments.slice(0, -1).includes('auth')) {
+				} else if (
+					segments.slice(0, -1).includes('auth') ||
+					(segments.length >= 2 && authAliases.has(segments[0]))
+				) {
 					record('auth-session', method ?? DYNAMIC_ACCESS_NAME);
 				} else {
 					const service = segments.slice(0, -1).find((segment) => SERVICE_SEGMENTS.has(segment));
@@ -919,7 +955,6 @@ export function checkBoundary(rootDir: string, manifest: Manifest): BoundaryResu
 	for (const entry of manifestEntries) {
 		if (
 			entry.kind === 'auth-session' &&
-			entry.name !== 'getUser' &&
 			entry.classification === 'retained-web-local' &&
 			adminClientFiles.has(entry.file)
 		) {
