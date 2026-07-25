@@ -476,14 +476,6 @@
 			"disposition": "Replace with the Parchment contract cutover in PR-04."
 		},
 		{
-			"file": "src/lib/server/userMemory.ts",
-			"kind": "table",
-			"name": "user_memory",
-			"classification": "retained-web-local",
-			"owner": "workspace-memory",
-			"disposition": "Retain: web chat workspace and memory persistence stays web-local."
-		},
-		{
 			"file": "src/lib/server/workspaces/canonicalWorkspace.ts",
 			"kind": "table",
 			"name": "workspace_messages",

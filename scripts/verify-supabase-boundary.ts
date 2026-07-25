@@ -243,7 +243,7 @@ interface SvelteScriptBlock {
 }
 
 function isSupabaseShapedName(name: string | undefined): boolean {
-	return name === 'supabase' || name === 'client' || Boolean(name && /supabase/i.test(name));
+	return Boolean(name && /supabase/i.test(name));
 }
 
 /**
@@ -432,6 +432,9 @@ function buildModuleSymbolTable(parsedModules: ParsedModule[]): ModuleSymbolTabl
 	}
 	const packageFactoryExports = (): Map<string, FactoryProvenance> =>
 		new Map([...SUPABASE_CLIENT_FACTORIES].map((name) => [name, name as FactoryProvenance]));
+	const localFactoryProvenance = (name: string): FactoryProvenance | undefined => {
+		return name === 'createAdminClient' ? 'admin-client' : undefined;
+	};
 
 	const addNamespace = (
 		facts: ModuleSymbols,
@@ -499,6 +502,17 @@ function buildModuleSymbolTable(parsedModules: ParsedModule[]): ModuleSymbolTabl
 		let changed = false;
 		for (const ast of module.asts) {
 			const visit = (node: ts.Node): void => {
+				if (
+					(ts.isFunctionDeclaration(node) && node.name) ||
+					(ts.isVariableDeclaration(node) && ts.isIdentifier(node.name))
+				) {
+					const name = node.name.text;
+					const provenance = localFactoryProvenance(name);
+					if (provenance) {
+						changed = addFactoryBinding(facts.factoryBindings, name, provenance) || changed;
+					}
+				}
+
 				if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
 					const source = node.moduleSpecifier.text;
 					const clause = node.importClause;
@@ -1213,7 +1227,8 @@ function scanParsedModule(module: ParsedModule, table: ModuleSymbolTable): Acces
 		if (
 			ts.isParameter(node) &&
 			ts.isIdentifier(node.name) &&
-			isSupabaseClientType(node.type, supabaseClientTypeNames)
+			((node.initializer !== undefined && isRecognizedFactory(node.initializer)) ||
+				isSupabaseClientType(node.type, supabaseClientTypeNames))
 		) {
 			supabaseClientNames.add(node.name.text);
 		}

@@ -323,6 +323,16 @@ describe('scanSource', () => {
 		]);
 	});
 
+	it('requires provenance for generic client receivers', () => {
+		const source = [
+			'const client = createTransport();',
+			"await client.rpc('health.check');",
+			"await client.from('not_supabase');"
+		].join('\n');
+
+		expect(scanSource(source, 'src/lib/transport.ts')).toEqual([]);
+	});
+
 	it('traces table and rpc calls through schema selectors', () => {
 		const source = [
 			"await supabase.schema('private').from('hidden_table').select('*');",
@@ -352,6 +362,32 @@ describe('scanSource', () => {
 			{ file: 'src/lib/star-barrel.ts', kind: 'client-factory', name: 'createServerClient' },
 			{ file: 'src/lib/star-consumer.ts', kind: 'client-factory', name: 'createClient' },
 			{ file: 'src/lib/star-consumer.ts', kind: 'table', name: 'star_table' }
+		]);
+	});
+
+	it('propagates locally declared factory provenance through re-exports', () => {
+		writeSourceFile(
+			'src/lib/local-barrel.ts',
+			"export { createAdminClient as makeAdmin } from './local-factory';"
+		);
+		writeSourceFile(
+			'src/lib/local-consumer.ts',
+			[
+				"import { makeAdmin } from './local-barrel';",
+				'const db = makeAdmin();',
+				"await db.from('local_table').select('*');"
+			].join('\n')
+		);
+		writeSourceFile(
+			'src/lib/local-factory.ts',
+			"export const createAdminClient = () => createClient('url', 'key');"
+		);
+
+		expect(collectAccesses(root)).toEqual([
+			{ file: 'src/lib/local-barrel.ts', kind: 'admin-client', name: 'createAdminClient' },
+			{ file: 'src/lib/local-consumer.ts', kind: 'admin-client', name: 'createAdminClient' },
+			{ file: 'src/lib/local-consumer.ts', kind: 'table', name: 'local_table' },
+			{ file: 'src/lib/local-factory.ts', kind: 'admin-client', name: 'createAdminClient' }
 		]);
 	});
 
