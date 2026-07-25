@@ -8,7 +8,7 @@
 
 Two ideas surfaced from the parchment-api entitlement ADR (PADR-0013) work and are worth holding together:
 
-1. **API infrastructure separates cleanly into two planes.** A *product plane* (data delivery and data logic — the single canonical model) and a *user governance plane* (authentication + authorization + entitlement, and arguably pricing/metering). PADR-0013 draws exactly this line: the product never forks per tier; a resolved entitlement projects it. This split is reusable scaffolding, not a one-off.
+1. **API infrastructure separates cleanly into two planes.** A _product plane_ (data delivery and data logic — the single canonical model) and a _user governance plane_ (authentication + authorization + entitlement, and arguably pricing/metering). PADR-0013 draws exactly this line: the product never forks per tier; a resolved entitlement projects it. This split is reusable scaffolding, not a one-off.
 
 2. **The agentic layer is emerging as a structurally new kind of API consumer.** Programmatic agents are not humans behind a UI and not classic server-to-server integrations either. They authenticate, carry entitlements, and act autonomously, but they have no front-end to hide state and no human to notice a silently-stripped filter. That changes what the governance layer must do.
 
@@ -26,7 +26,7 @@ No single product cleanly bundles authN + authZ + entitlement + pricing. The mar
 - **Authorization engines (access side):** Oso, OpenFGA / Auth0 FGA, Cerbos, Permit.io, SpiceDB (AuthZed), Warrant (WorkOS), AWS Verified Permissions / Cedar. Have authZ; no pricing.
 - **Identity / B2B reaching inward:** Kinde and Frontegg bundle auth + entitlements + billing for B2B SaaS; WorkOS assembles authN + org + RBAC + FGA; Okta/Auth0 IGA is enterprise-IT-flavored.
 
-The gap: a clean, opinionated, developer-first governance-layer SDK that unifies authorization + entitlement + pricing with API-enforced resolution — the exact thing PADR-0013 sketches — is owned end-to-end by no one. It is underserved *and* hard to do well (each silo is a company because authZ correctness, billing correctness, and identity are each hard, and coupling them limits TAM). The differentiated angle would be doing this for the **API-first / agent-consumer era specifically**, which the incumbents predate.
+The gap: a clean, opinionated, developer-first governance-layer SDK that unifies authorization + entitlement + pricing with API-enforced resolution — the exact thing PADR-0013 sketches — is owned end-to-end by no one. It is underserved _and_ hard to do well (each silo is a company because authZ correctness, billing correctness, and identity are each hard, and coupling them limits TAM). The differentiated angle would be doing this for the **API-first / agent-consumer era specifically**, which the incumbents predate.
 
 ## Framing for Purveyors
 

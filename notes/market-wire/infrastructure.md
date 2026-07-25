@@ -109,13 +109,17 @@ Deferred (Phase 2, unchanged): in-repo social sweep, personalization + immediate
 **Principle: tables for facts, RAG for narrative.** Anything numeric, current, or exactly filterable (prices, availability, signals, index moves, supplier stats) is served by structured Parchment tool calls. The knowledge corpus holds prose with provenance: wire editions and sections, deep dives, blog posts, curated news summaries, social-sweep threads, macro notes. The chat agent gets both: tool calls answer "what does Ethiopia washed cost this week," retrieval answers "what's been going on with Ethiopian coffee lately."
 
 ### Reassessment of the existing RAG (verified 2026-07-20)
+
 Current corpus is `coffee_chunks`: per-coffee `profile/tasting/origin/commercial/processing` chunks embedded from catalog rows, retrieved by `RAGService` as semantic inventory search. Verdict per the tables-vs-RAG principle:
+
 - **Keep vectors for sensory/discovery search** (`tasting`/`profile` chunks): fuzzy queries like "chocolatey comfort coffee" are the legitimate embedding use case, and bean-similarity already depends on vectors.
 - **Retire `origin`/`commercial`/`processing` chunk types**: they are structured catalog fields rendered to prose — tool calls against catalog/Parchment are exact, fresher (chunks drift stale after catalog updates), and cheaper to maintain.
 - Nothing currently feeds the RAG on a schedule; that is fine — the wire pipeline becomes its feeder.
 
 ### Corpus schema
+
 `knowledge_documents` (+ `knowledge_chunks` with pgvector embeddings), categorized at write time — categorization is the load-bearing feature:
+
 - `source_type`: `wire_edition | edition_section | deep_dive | blog_post | news_item | social_thread | macro_note`
 - `topics[]`: controlled vocabulary (market_movement, origin_report, pricing, processing, supply_chain, futures_macro, community/vibes, meta)
 - `entities`: origins, suppliers, processes, varieties — normalized to the same vocabularies the catalog uses, so retrieval filters join cleanly with tool-call filters
@@ -124,14 +128,17 @@ Current corpus is `coffee_chunks`: per-coffee `profile/tasting/origin/commercial
 - Lifecycle: editions and blog posts are permanent; news/social items get freshness-decayed retrieval weighting rather than deletion.
 
 ### Ingestion (durable post-publish path)
+
 The wire pipeline already produces categorized artifacts: edition sections are structured JSON, social-sweep items arrive scored and classified, news items are curated with URLs. Publishing creates a durable knowledge-ingest intent; a retryable post-commit worker then reads only the canonical published edition, chunks → embeds (same embedding service as `coffee_chunks`) → upserts with categories, and records idempotent progress. This is not a later stage of the draft-generation cron: drafts never enter the corpus, and ingestion continues if that cron exits while the human gate is pending. Blog posts ingest via their own merge-triggered path. Critically, **the categorized raw corpus is stored from the first published edition** even if retrieval serving ships later — the archive compounds without admitting unpublished content.
 
 ### Serving
+
 - parchment-api: `GET /v1/knowledge/search` — query embedding + structured filters (source_type, topics, entities, week range, trust_class), returning chunks with citations. Entitlement: Intelligence gets the full corpus (news, social, macro context); anonymous callers get **latest-published-edition content only**; authenticated free email subscribers get published-edition content across the archive. The API must enforce that latest-only anonymous scope explicitly, rather than treating every published edition as public. Contextual depth remains paid (general and published free; personalized, immediate, and historical data paid).
 - coffee-app chat: a `search_market_knowledge` tool alongside the existing structured tools; the system prompt directs facts to tools and context to retrieval, with citations rendered.
 - CLI later: `purvey knowledge search` once the API contract stabilizes (ADR-006 ordering).
 
 ### Sequencing
+
 - The post-publish worker gains the corpus-write stage — cheap, durable, and safe to run from the first published edition; the draft-generation job never writes corpus rows.
 - Knowledge serving (`knowledge_search` endpoint + chat tool + coffee_chunks retirement slice) is **WP-5**, after the MVP wire ships. The coffee_chunks retirement is its own small PR: drop retired chunk types from generation and retrieval, keep sensory search.
 
@@ -141,14 +148,14 @@ Verified live 2026-07-19: `/v1/price-index/stats` serves real prod data (retail 
 
 1. **Dry-week risk (measure now):** quantify a typical week from `coffee_price_snapshots` — arrivals, delistings, qualifying price moves per week, by season. If some weeks are thin, the edition template needs deep-dive/vibes ballast by design, and the facts endpoint needs a "quiet week" honesty mode.
 2. **Signals population — RCA complete (2026-07-19):** `market_signals` has never populated in prod. The compute functions shipped Jul 5 (coffee-app migrations `20260705_01/02`) and scraper PR #354 wired `compute_market_signals` / `compute_metadata_index` / `compute_price_move_stats` into the all-source nightly path the same day — but that wiring sits inside the `shouldPublishLegacyDailyAggregates` gate, and scraper commit `68c9636` (Jul 13, Shopify 429 incident response) froze the gate via `PUBLISH_LEGACY_DAILY_AGGREGATES = false`. In the Jul 5–13 window the VM was revision-drifted and mid-429-meltdown, so no clean all-source aggregate pass appears to have completed before the freeze. Blast radius: `price_index_snapshots`, period changes, market summary, supplier stats, metadata index, and signals all frozen since Jul 13 (Market Index UI serving stale index data); `/v1/price-index/stats` unaffected because it computes inline from raw `coffee_price_snapshots`, which stay fresh — raw scraping and snapshot writes are healthy, only aggregate publication is off. The freeze's stated successor ("provenance-aware market publication path") was the PR #464/#465 effort, which the red team rescoped — so the replacement doesn't exist either. Remediation: reviewed unfreeze PR (flip the flag; the test suite explicitly models this as a deliberate reviewed switch) once nightly-run stability under the PR #363 scheduler is confirmed; verify signals emit rows the next morning via the existing `marketIndexHealth` checks; backfill the Jul 13→unfreeze gap for the backfillable aggregates; debug the signals SQL only if a clean run still emits zero.
-3. **Coverage honesty:** the wire describes the *observable public spot market* — relationship-only importers (ofi, InterAmerican, Mercon class) publish no offer lists and are invisible to us. Methodology page must say so plainly; overclaiming "the US market" invites the credibility attack.
+3. **Coverage honesty:** the wire describes the _observable public spot market_ — relationship-only importers (ofi, InterAmerican, Mercon class) publish no offer lists and are invisible to us. Methodology page must say so plainly; overclaiming "the US market" invites the credibility attack.
 4. **Freshness gates:** a failed scrape or blocked supplier must suppress affected segments from edition-facts (truthful-freshness rule), not silently publish stale numbers. Interacts with the unresolved scraper publication-layer rework (PR #464/465 lessons).
 5. **Scraper-host operational debt:** single VM, random-delay cron, email-report monitoring, recent 429/revision-drift incidents. The wire makes Sunday-night reliability a product SLA; host hardening or at least run-verification belongs in WP-2.
 6. **Human editorial load:** LLMs draft competently but the brand promise is opinionated and funny. Named calls (scoreboard), memes, and voice are human functions. Unresolved: whose voice (Reed first-person, Purveyors editorial "we," or a persona), and Reed's weekly minutes budget for review/punch-up.
 7. **Distribution beyond the first 50:** SEO compounds slowly; memes need an audience; no Purveyors social presence exists today. Needs a channel plan (X/IG/Reddit presence, who posts, cross-post cadence) or growth stalls at outreach scale.
 8. **Paid wedge timing:** personalization (the real conversion driver) is Phase 2; MVP paid pitch leans on existing Intelligence features. Set conversion expectations accordingly.
 9. **Independence policy:** sponsorship rules (can importers sponsor? disclosure?), affiliate/marketplace conflicts if those ever emerge, and the public corrections policy are brand-load-bearing and undecided.
-10. **Legal hygiene:** CAN-SPAM/GDPR basics for the list, privacy-policy update for email collection, futures-data licensing (editorial mention with attribution for MVP), and the standing scraping/ToS posture now applied to *republication* at attribution level.
+10. **Legal hygiene:** CAN-SPAM/GDPR basics for the list, privacy-policy update for email collection, futures-data licensing (editorial mention with attribution for MVP), and the standing scraping/ToS posture now applied to _republication_ at attribution level.
 11. **Naming:** "Market Wire" vs existing "Market Index" adjacency — deliberate family or confusing? Quick trademark sanity check before public use.
 
 ## 9. Open items folded forward
