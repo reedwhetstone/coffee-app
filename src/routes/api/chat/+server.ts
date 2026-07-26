@@ -11,7 +11,10 @@ import { getUserMemory } from '$lib/server/userMemory';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
 import { getTrackedLotIds } from '$lib/server/trackedLots';
 import { fetchParchmentCatalogItemsByIds } from '$lib/server/parchmentCatalog';
-import { listActiveSourcingBriefs } from '$lib/server/parchmentProcurement';
+import {
+	listActiveSourcingBriefs,
+	type SourcingBriefResource
+} from '$lib/server/parchmentProcurement';
 import {
 	describeSourcingBriefCriteria,
 	validateSourcingBriefCriteria
@@ -560,6 +563,18 @@ export function _createMarketToolParchmentClient(event: RequestEvent) {
 	return createParchmentServerClient(event, { preferHandling: 'inherit' });
 }
 
+export async function _loadSourcingIntelligenceSeeds(
+	loadTrackedIds: () => Promise<number[]>,
+	loadBriefs: () => Promise<SourcingBriefResource[]>
+): Promise<{ trackedIds: number[]; briefRows: SourcingBriefResource[] }> {
+	const [trackedIds, briefRows] = await Promise.all([
+		loadTrackedIds().catch(() => []),
+		loadBriefs().catch(() => [])
+	]);
+
+	return { trackedIds, briefRows };
+}
+
 export const POST: RequestHandler = async (event) => {
 	try {
 		// Chat is available to Parchment Intelligence users and Mallard Studio members.
@@ -658,10 +673,10 @@ export const POST: RequestHandler = async (event) => {
 		// Build sourcing intelligence context from live DB state
 		let sourcingContext: SourcingIntelligenceContext | undefined;
 		try {
-			const [trackedIds, briefRows] = await Promise.all([
-				getTrackedLotIds(supabase, user.id),
-				listActiveSourcingBriefs(agentParchmentClient, 5)
-			]);
+			const { trackedIds, briefRows } = await _loadSourcingIntelligenceSeeds(
+				() => getTrackedLotIds(supabase, user.id),
+				() => listActiveSourcingBriefs(agentParchmentClient, 5)
+			);
 
 			const trackedLots = trackedIds.length
 				? (
