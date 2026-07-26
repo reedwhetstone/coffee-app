@@ -5,6 +5,7 @@ import { loadMarketIndexInsights } from '$lib/server/marketIndex';
 import { createAdminClient } from '$lib/supabase-admin';
 import { createSchemaService } from '$lib/services/schemaService';
 import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import type { MarketIndexInsights } from '$lib/types/marketIndex.types';
 
 export type { TrackedLotSummary } from '$lib/server/trackedLots';
@@ -755,10 +756,12 @@ async function loadAnalyticsMemberData(
 	const isSourcingMember = event.locals.role === 'member' || event.locals.role === 'admin';
 	const trackedLotsPromise: Promise<TrackedLotSummary[]> =
 		principal.isAuthenticated && (isParchmentIntelligence || isSourcingMember)
-			? getTrackedLotSummaries(supabase, principal.userId, 25).catch((error) => {
-					console.error('Error loading analytics watchlist context:', error);
-					return [] as TrackedLotSummary[];
-				})
+			? createParchmentServerClient(event, { mode: 'session' })
+					.then((client) => getTrackedLotSummaries(client, 25))
+					.catch((error) => {
+						console.error('Error loading analytics watchlist context:', error);
+						return [] as TrackedLotSummary[];
+					})
 			: Promise.resolve([]);
 
 	if (!isParchmentIntelligence) {

@@ -441,18 +441,32 @@ export const load: PageServerLoad = async (event) => {
 	const trackedOnly =
 		url.searchParams.get('tracked') === 'only' && Boolean(userId && hasParchmentAccess);
 
+	// Reused for catalog reads and authenticated portfolio enrichment. For
+	// authenticated callers the catalog credential resolver selects session mode,
+	// so one request-bound client can serve both contracts.
+	let catalogClient: ParchmentClient | null = null;
+	const getSessionParchmentClient = async (): Promise<ParchmentClient> => {
+		if (catalogClient) return catalogClient;
+		catalogClient = await createParchmentServerClient(event, { mode: 'session' });
+		return catalogClient;
+	};
+
 	// Tracked-only rows are queried by id, so the watchlist ids are the one piece of
 	// user-specific data on the critical path — and only for that view. The normal
 	// public catalog never blocks on watchlist/procurement enrichment.
-	let trackedLotIdsForQuery: number[] = [];
+	let trackedLotIdsForQuery: number[] | null = [];
 	if (trackedOnly && userId) {
-		trackedLotIdsForQuery = await getTrackedLotIds(locals.supabase, userId);
+		try {
+			trackedLotIdsForQuery = await getTrackedLotIds(await getSessionParchmentClient());
+		} catch (error) {
+			console.error('Error loading tracked-only lot ids:', error);
+			trackedLotIdsForQuery = null;
+		}
 	}
 
 	// Reused for the critical catalog list plus the deferred origin-stats and
 	// deep-link reads so every Parchment call presents the same principal and
 	// shares one client per load.
-	let catalogClient: ParchmentClient | null = null;
 	const effectiveCatalogState: CatalogUrlState = trackedOnly
 		? {
 				...initialCatalogState,
@@ -466,17 +480,18 @@ export const load: PageServerLoad = async (event) => {
 		: initialCatalogState;
 
 	try {
-		if (!trackedOnly || trackedLotIdsForQuery.length > 0) {
-			const client = await createParchmentServerClient(event, {
-				mode: resolveCatalogCredentialMode(locals)
-			});
+		if (!trackedOnly || (trackedLotIdsForQuery !== null && trackedLotIdsForQuery.length > 0)) {
+			const client =
+				catalogClient ??
+				(await createParchmentServerClient(event, {
+					mode: resolveCatalogCredentialMode(locals)
+				}));
 			catalogClient = client;
+			const trackedQueryIds = trackedLotIdsForQuery ?? [];
 			const catalogResult = (await client.catalog.list(
 				buildParchmentCatalogQuery(effectiveCatalogState, {
 					stocked: trackedOnly ? 'all' : 'true',
-					...(trackedOnly
-						? { coffeeIds: trackedLotIdsForQuery, limit: TRACKED_VIEW_LIMIT, page: 1 }
-						: {})
+					...(trackedOnly ? { coffeeIds: trackedQueryIds, limit: TRACKED_VIEW_LIMIT, page: 1 } : {})
 				}) as CatalogListQuery
 			)) as CatalogListResult;
 			const catalogBody = extractParchmentCatalogBody(catalogResult);
@@ -508,7 +523,7 @@ export const load: PageServerLoad = async (event) => {
 		deepLinkCoffeeId,
 		catalogData,
 		trackedOnly,
-		trackedLotIds: trackedLotIdsForQuery,
+		trackedLotIds: trackedLotIdsForQuery ?? [],
 		baseState: effectiveCatalogState
 	});
 
@@ -523,10 +538,12 @@ export const load: PageServerLoad = async (event) => {
 	const trackedLotIds: Promise<number[] | null> = trackedOnly
 		? Promise.resolve(trackedLotIdsForQuery)
 		: userId && hasParchmentAccess
-			? getTrackedLotIds(locals.supabase, userId).catch((error) => {
-					console.error('Error loading tracked lot ids:', error);
-					return null;
-				})
+			? getSessionParchmentClient()
+					.then((client) => getTrackedLotIds(client))
+					.catch((error) => {
+						console.error('Error loading tracked lot ids:', error);
+						return null;
+					})
 			: Promise.resolve([]);
 
 	const briefMatchSummaries: Promise<BriefMatchSummary[]> =

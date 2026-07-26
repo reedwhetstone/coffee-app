@@ -18,6 +18,7 @@
 	import { getLotPriceContext } from '$lib/catalog/priceContext';
 	import type { OriginPriceStats, LotPriceContext } from '$lib/catalog/priceContext';
 	import { getDisplayPrice } from '$lib/utils/pricing';
+	import { createTrackedLotStateController } from '$lib/client/trackedLots';
 
 	import PageHeaderSection from '$lib/components/catalog/sections/PageHeaderSection.svelte';
 	import FilterBarSection from '$lib/components/catalog/sections/FilterBarSection.svelte';
@@ -98,25 +99,13 @@
 		trackedIds = next;
 	}
 
+	const trackedLotStateController = createTrackedLotStateController(fetch, setTracked);
+
 	async function handleToggleTrack(catalogId: number) {
 		if (!trackedIdsReady) return;
 
 		const wasTracked = trackedIds.has(catalogId);
-		setTracked(catalogId, !wasTracked);
-		// Optimistic update, reverted on failure.
-		try {
-			const res = await fetch(`/api/catalog/${catalogId}/track`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' }
-			});
-			if (!res.ok) throw new Error('track failed');
-			const body = (await res.json()) as { tracked: boolean };
-			if (body.tracked !== !wasTracked) {
-				setTracked(catalogId, body.tracked);
-			}
-		} catch {
-			setTracked(catalogId, wasTracked);
-		}
+		await trackedLotStateController.setDesiredState(catalogId, wasTracked, !wasTracked);
 	}
 
 	let userRole: UserRole = $derived(role as UserRole);
@@ -605,7 +594,7 @@
 			<UpsellBannerSection />
 		{/if}
 
-		{#if trackedOnlyView}
+		{#if trackedOnlyView && trackedIdsReady}
 			<WatchlistBannerSection displayCount={displayData().length} />
 		{/if}
 
@@ -624,6 +613,7 @@
 			{canUseBeanMatching}
 			canUseSourcingIntelligence={canUseSourcingIntelligence && trackedIdsReady}
 			{trackedOnlyView}
+			trackedLotsKnown={trackedIdsReady}
 			{deepLinkCoffeeId}
 			filteredDataLength={$filteredData.length}
 			{displayLimit}

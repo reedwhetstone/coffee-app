@@ -670,7 +670,8 @@ describe('/catalog watchlist and sourcing briefs', () => {
 		await waitFor(() => expect(button).toHaveAttribute('aria-pressed', 'true'));
 		expect(fetch).toHaveBeenCalledWith('/api/catalog/1/track', {
 			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' }
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ tracked: true })
 		});
 	});
 
@@ -932,5 +933,21 @@ describe('/catalog process controls', () => {
 			'/catalog'
 		);
 		expect(screen.queryByRole('button', { name: 'Clear catalog filters' })).toBeNull();
+	});
+
+	it('does not claim an empty watchlist when tracked-only state is unknown', () => {
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' } as PageData['session'],
+				role: 'member',
+				trackedOnly: true,
+				trackedLotIds: null,
+				data: []
+			} as unknown as Partial<PageData>)
+		);
+
+		expect(screen.getByText('Watchlist temporarily unavailable')).toBeInTheDocument();
+		expect(screen.queryByText('No tracked lots to show')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Tracked lots filter')).not.toBeInTheDocument();
 	});
 });

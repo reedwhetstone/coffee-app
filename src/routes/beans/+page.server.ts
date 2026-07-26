@@ -17,8 +17,8 @@ export const load: PageServerLoad = async (event) => {
 	let trackedCatalog: Record<string, unknown>[] = [];
 	if (user && hasSourcingAccess) {
 		try {
-			trackedLots = await getTrackedLotSummaries(locals.supabase, user.id, 100);
-			const parchment = await createParchmentServerClient(event);
+			const parchment = await createParchmentServerClient(event, { mode: 'session' });
+			trackedLots = await getTrackedLotSummaries(parchment, 100);
 			trackedCatalog = (await fetchParchmentCatalogItemsByIds(
 				parchment,
 				trackedLots.map((lot) => lot.catalogId)

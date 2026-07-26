@@ -670,20 +670,17 @@ export const POST: RequestHandler = async (event) => {
 			? getUserMemory(supabase, user.id).catch(() => null)
 			: Promise.resolve(null);
 
-		// Build sourcing intelligence context from live DB state
+		// Build sourcing intelligence context from the request-bound Parchment client.
 		let sourcingContext: SourcingIntelligenceContext | undefined;
 		try {
 			const { trackedIds, briefRows } = await _loadSourcingIntelligenceSeeds(
-				() => getTrackedLotIds(supabase, user.id),
+				() => getTrackedLotIds(agentParchmentClient),
 				() => listActiveSourcingBriefs(agentParchmentClient, 5)
 			);
 
 			const trackedLots = trackedIds.length
 				? (
-						await fetchParchmentCatalogItemsByIds(
-							await createParchmentServerClient(event),
-							trackedIds.slice(0, 10)
-						)
+						await fetchParchmentCatalogItemsByIds(agentParchmentClient, trackedIds.slice(0, 10))
 					).map((lot) => ({
 						id: lot.id,
 						name: lot.name ?? `Lot #${lot.id}`,

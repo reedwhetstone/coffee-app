@@ -26,6 +26,7 @@
 		canUseBeanMatching: boolean;
 		canUseSourcingIntelligence: boolean;
 		trackedOnlyView: boolean;
+		trackedLotsKnown: boolean;
 		deepLinkCoffeeId: number | null;
 		filteredDataLength: number;
 		displayLimit: number;
@@ -47,6 +48,7 @@
 		canUseBeanMatching,
 		canUseSourcingIntelligence,
 		trackedOnlyView,
+		trackedLotsKnown,
 		deepLinkCoffeeId,
 		filteredDataLength,
 		displayLimit,
@@ -79,10 +81,17 @@
 			{#if !displayData || displayData.length === 0}
 				<div class="rounded-lg border border-line bg-surface-panel p-6 text-center">
 					{#if trackedOnlyView}
-						<h2 class="text-lg font-semibold text-ink">No tracked lots to show</h2>
-						<p class="mx-auto mt-2 max-w-2xl text-sm text-muted">
-							Track coffees from the full catalog to build a watchlist here.
-						</p>
+						{#if trackedLotsKnown}
+							<h2 class="text-lg font-semibold text-ink">No tracked lots to show</h2>
+							<p class="mx-auto mt-2 max-w-2xl text-sm text-muted">
+								Track coffees from the full catalog to build a watchlist here.
+							</p>
+						{:else}
+							<h2 class="text-lg font-semibold text-ink">Watchlist temporarily unavailable</h2>
+							<p class="mx-auto mt-2 max-w-2xl text-sm text-muted">
+								Tracked-lot status could not be loaded. Refresh to try again.
+							</p>
+						{/if}
 						<a
 							href="/catalog"
 							class="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"

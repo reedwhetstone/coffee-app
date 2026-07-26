@@ -9,6 +9,7 @@
 	import { goto } from '$app/navigation';
 	import { canManagePortfolio } from '$lib/services/portfolioAccess';
 	import { loadBeanPickerCatalog } from './catalogPicker';
+	import { createTrackedLotStateController } from '$lib/client/trackedLots';
 
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 
@@ -103,23 +104,11 @@
 		trackedIds = next;
 	}
 
+	const trackedLotStateController = createTrackedLotStateController(fetch, setTracked);
+
 	async function handleToggleTrack(catalogId: number) {
 		const wasTracked = trackedIds.has(catalogId);
-		setTracked(catalogId, !wasTracked);
-		// Optimistic update, reverted on failure.
-		try {
-			const res = await fetch(`/api/catalog/${catalogId}/track`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' }
-			});
-			if (!res.ok) throw new Error('track failed');
-			const body = (await res.json()) as { tracked: boolean };
-			if (body.tracked !== !wasTracked) {
-				setTracked(catalogId, body.tracked);
-			}
-		} catch {
-			setTracked(catalogId, wasTracked);
-		}
+		await trackedLotStateController.setDesiredState(catalogId, wasTracked, !wasTracked);
 	}
 
 	function watchlistAnnotation(lot: TrackedLotContext): string {

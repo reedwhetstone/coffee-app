@@ -119,7 +119,10 @@ describe('/dashboard sourcing workspace load', () => {
 			activeBriefs: unknown[];
 		};
 
-		expect(mockGetTrackedLotSummaries).toHaveBeenCalledWith(expect.anything(), 'ppi-1', 12);
+		expect(mockGetTrackedLotSummaries).toHaveBeenCalledWith(
+			expect.objectContaining({ catalog: expect.anything() }),
+			12
+		);
 		expect(mockCatalogList).toHaveBeenCalledWith({
 			coffeeIds: '7',
 			stocked: 'all',

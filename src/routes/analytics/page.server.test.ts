@@ -6,9 +6,12 @@ import type {
 	AnalyticsPreview
 } from './+page.server';
 
-const { mockCreateAdminClient } = vi.hoisted(() => ({
-	mockCreateAdminClient: vi.fn()
-}));
+const { mockCreateAdminClient, mockCreateParchmentServerClient, mockGetTrackedLotSummaries } =
+	vi.hoisted(() => ({
+		mockCreateAdminClient: vi.fn(),
+		mockCreateParchmentServerClient: vi.fn(),
+		mockGetTrackedLotSummaries: vi.fn()
+	}));
 
 vi.mock('$lib/server/principal', () => ({
 	resolvePrincipal: vi.fn()
@@ -21,6 +24,14 @@ vi.mock('$lib/seo/meta', () => ({
 
 vi.mock('$lib/supabase-admin', () => ({
 	createAdminClient: mockCreateAdminClient
+}));
+
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentServerClient: mockCreateParchmentServerClient
+}));
+
+vi.mock('$lib/server/trackedLots', () => ({
+	getTrackedLotSummaries: mockGetTrackedLotSummaries
 }));
 
 vi.mock('$lib/services/schemaService', () => ({
@@ -86,6 +97,17 @@ beforeEach(async () => {
 	vi.setSystemTime(new Date('2026-04-08T12:00:00.000Z'));
 	currentPriceIndexClient = undefined;
 	mockCreateAdminClient.mockImplementation(() => currentPriceIndexClient);
+	mockCreateParchmentServerClient.mockResolvedValue({
+		kind: 'session-client',
+		market: {
+			signals: vi.fn().mockResolvedValue({ error: new Error('Parchment unavailable') }),
+			metadataIndex: vi.fn().mockResolvedValue({ error: new Error('Parchment unavailable') })
+		},
+		priceIndex: {
+			stats: vi.fn().mockResolvedValue({ error: new Error('Parchment unavailable') })
+		}
+	});
+	mockGetTrackedLotSummaries.mockResolvedValue([]);
 
 	({ load, _loadPriceSnapshotsPaginated: loadPriceSnapshotsPaginated } = await import(
 		'./+page.server'
@@ -729,6 +751,13 @@ describe('analytics load', () => {
 		const result = await runLoad(client, { session: createSession() });
 		const member = await result.analyticsMember;
 
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session'
+		});
+		expect(mockGetTrackedLotSummaries).toHaveBeenCalledWith(
+			expect.objectContaining({ kind: 'session-client' }),
+			25
+		);
 		expect(member.recentArrivals).toHaveLength(1);
 		expect(member.recentArrivals[0]).toMatchObject({
 			name: 'Wholesale member lot',
