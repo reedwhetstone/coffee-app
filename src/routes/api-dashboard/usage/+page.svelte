@@ -4,10 +4,9 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	// Calculate usage percentages based on user's actual tier
-	let monthlyUsagePercent = $derived(() => {
-		if (!data.currentStats || data.currentStats.monthlyLimit === -1) return 0;
-		return Math.min((data.currentStats.monthlyUsage / data.currentStats.monthlyLimit) * 100, 100);
+	// Quotas apply per key. Aggregate owner traffic must not be divided by this limit.
+	let highestKeyUsagePercent = $derived(() => {
+		return data.currentStats?.highestKeyQuota?.monthlyPercent ?? 0;
 	});
 
 	let tierDisplayName = $derived(() => {
@@ -35,20 +34,6 @@
 			month: 'short',
 			day: 'numeric'
 		});
-	}
-
-	// Get status color based on usage percentage
-	function getUsageColor(percent: number): string {
-		if (percent >= 90) return 'text-danger';
-		if (percent >= 75) return 'text-warning';
-		return 'text-success-strong';
-	}
-
-	// Get background color for progress bars
-	function getProgressColor(percent: number): string {
-		if (percent >= 90) return 'bg-danger';
-		if (percent >= 75) return 'bg-warning';
-		return 'bg-success';
 	}
 
 	onMount(() => {
@@ -84,37 +69,28 @@
 				<div class="text-sm text-danger">{data.error}</div>
 			</div>
 		{:else}
+			{#if data.bounds?.seriesTruncated}
+				<div class="mb-8 rounded-md bg-warning-subtle p-4 text-sm text-warning-strong">
+					Daily and recent activity are partial because the analytics window reached its safety
+					limit. Monthly totals and per-key monthly counts remain exact.
+				</div>
+			{/if}
+			{#if data.bounds?.keysTruncated}
+				<div class="mb-8 rounded-md bg-warning-subtle p-4 text-sm text-warning-strong">
+					At most {data.bounds.keyLimit.toLocaleString()} API keys are shown. Some keys were omitted,
+					so highest-key quota status is unavailable. Exact owner totals still include every key.
+				</div>
+			{/if}
+
 			<!-- Usage Overview Cards -->
 			<div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 				<!-- Monthly Usage -->
 				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-					<h3 class="text-sm font-medium text-muted">Monthly Usage</h3>
-					<p class="mt-1 text-2xl font-bold {getUsageColor(monthlyUsagePercent())}">
+					<h3 class="text-sm font-medium text-muted">Owner Traffic This Month</h3>
+					<p class="mt-1 text-2xl font-bold text-ink">
 						{formatNumber(data.currentStats?.monthlyUsage || 0)}
 					</p>
-					<div class="mt-2">
-						<div class="flex items-center justify-between text-xs text-muted">
-							{#if data.currentStats?.monthlyLimit === -1}
-								<span>Unlimited (Enterprise)</span>
-								<span>∞</span>
-							{:else}
-								<span>of {formatNumber(data.currentStats?.monthlyLimit || 200)}</span>
-								<span>{Math.round(monthlyUsagePercent())}%</span>
-							{/if}
-						</div>
-						<div class="mt-1 h-2 w-full rounded-full bg-surface-canvas">
-							{#if data.currentStats?.monthlyLimit === -1}
-								<div class="h-2 w-full rounded-full bg-info"></div>
-							{:else}
-								<div
-									class="h-2 rounded-full transition-all duration-300 {getProgressColor(
-										monthlyUsagePercent()
-									)}"
-									style="width: {monthlyUsagePercent()}%"
-								></div>
-							{/if}
-						</div>
-					</div>
+					<p class="mt-2 text-xs text-muted">Aggregate traffic across all API keys</p>
 				</div>
 
 				<!-- Current Plan -->
@@ -155,7 +131,7 @@
 							? Math.round(data.dailySummary[0]?.avg_response_time || 0)
 							: 0}ms
 					</p>
-					<p class="mt-1 text-xs text-muted">Last 24 hours</p>
+					<p class="mt-1 text-xs text-muted">Latest UTC day</p>
 				</div>
 			</div>
 
@@ -163,10 +139,12 @@
 			<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
 				<!-- Daily Usage Chart -->
 				<div class="rounded-lg bg-surface-panel p-6 ring-1 ring-line">
-					<h2 class="mb-4 text-lg font-semibold text-ink">Daily Usage (Last 30 Days)</h2>
+					<h2 class="mb-4 text-lg font-semibold text-ink">
+						Daily Usage (Last {data.bounds?.windowDays ?? 30} Days)
+					</h2>
 					{#if data.dailySummary && data.dailySummary.length > 0}
 						<div class="space-y-3">
-							{#each data.dailySummary.slice(0, 10) as day}
+							{#each data.dailySummary as day}
 								<div class="flex items-center justify-between">
 									<div class="flex items-center space-x-3">
 										<span class="w-16 text-sm font-medium text-ink">
@@ -203,6 +181,10 @@
 				<!-- API Keys Usage Breakdown -->
 				<div class="rounded-lg bg-surface-panel p-6 ring-1 ring-line">
 					<h2 class="mb-4 text-lg font-semibold text-ink">Usage by API Key</h2>
+					<p class="mb-4 text-xs text-muted">
+						Recent activity is a sample of up to {data.bounds?.recentPerKey ?? 25} records per returned
+						key. Monthly request counts are exact.
+					</p>
 					{#if data.usageData && data.usageData.length > 0}
 						<div class="space-y-4">
 							{#each data.usageData as keyUsage}
@@ -210,30 +192,36 @@
 									<div class="mb-2 flex items-center justify-between">
 										<h3 class="font-medium text-ink">{keyUsage.keyName}</h3>
 										<span class="text-sm text-muted">
-											{keyUsage.usage?.length || 0} requests
+											{formatNumber(keyUsage.monthlyRequests)} this month
 										</span>
 									</div>
 									{#if keyUsage.usage && keyUsage.usage.length > 0}
 										<div class="text-xs text-muted">
-											Last used: {new Date(keyUsage.usage[0].timestamp).toLocaleDateString()}
+											{keyUsage.usage[0].timestamp
+												? `Last used: ${new Date(keyUsage.usage[0].timestamp).toLocaleDateString()}`
+												: 'Last-used time unavailable'}
 										</div>
 										<div class="mt-2 flex items-center space-x-4">
 											<div class="flex items-center space-x-1">
 												<div class="h-2 w-2 rounded-full bg-success"></div>
 												<span class="text-xs text-muted">
-													{keyUsage.usage.filter(
-														(u: Record<string, unknown>) => (u.status_code as number) < 400
-													).length} success
+													{keyUsage.recentSuccessRequests} recent success
 												</span>
 											</div>
 											<div class="flex items-center space-x-1">
 												<div class="h-2 w-2 rounded-full bg-danger"></div>
 												<span class="text-xs text-muted">
-													{keyUsage.usage.filter(
-														(u: Record<string, unknown>) => (u.status_code as number) >= 400
-													).length} errors
+													{keyUsage.recentErrorRequests} recent errors
 												</span>
 											</div>
+											{#if keyUsage.recentPendingRequests > 0}
+												<div class="flex items-center space-x-1">
+													<div class="h-2 w-2 rounded-full bg-warning"></div>
+													<span class="text-xs text-muted">
+														{keyUsage.recentPendingRequests} pending
+													</span>
+												</div>
+											{/if}
 										</div>
 									{:else}
 										<div class="text-xs text-muted">No recent usage</div>
@@ -256,7 +244,7 @@
 			</div>
 
 			<!-- Rate Limit Status with Upgrade CTAs -->
-			{#if data.currentStats?.userTier !== 'enterprise' && monthlyUsagePercent() >= 75}
+			{#if data.currentStats?.highestKeyQuota && highestKeyUsagePercent() >= 75}
 				<div class="mt-8 rounded-md bg-warning-subtle p-4 ring-1 ring-warning/30">
 					<div class="flex">
 						<div class="flex-shrink-0">
@@ -270,7 +258,7 @@
 						</div>
 						<div class="ml-3">
 							<h3 class="text-sm font-medium text-warning-strong">
-								{#if monthlyUsagePercent() >= 95}
+								{#if highestKeyUsagePercent() >= 100}
 									Rate Limit Reached
 								{:else}
 									Approaching Rate Limit
@@ -278,9 +266,10 @@
 							</h3>
 							<div class="mt-2 text-sm text-warning-strong">
 								<p>
-									You've used {Math.round(monthlyUsagePercent())}% of your {formatNumber(
-										data.currentStats?.monthlyLimit || 200
-									)} monthly API calls.
+									{data.currentStats.highestKeyQuota.keyName} has used
+									{Math.round(highestKeyUsagePercent())}% of its
+									{formatNumber(data.currentStats.highestKeyQuota.monthlyLimitPerKey)} monthly API calls.
+									Limits apply separately to each key.
 									{#if data.currentStats?.userTier === 'viewer'}
 										Upgrade to Origin for 10,000 calls/month and advanced features.
 									{:else}

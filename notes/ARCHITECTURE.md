@@ -105,8 +105,8 @@ replacement or retirement:
 - bean-identity candidate and review operations over shared identity tables
 - sourcing brief summaries against shared catalog rows
 - legacy catalog RAG reads and `match_coffee_chunks`
-- local API-key and usage-table access where the Parchment control plane should
-  be authoritative
+- local API-key validation where the Parchment control plane should be
+  authoritative
 - admin-client JWT validation, direct `user_roles`/entitlement reads, and local
   principal construction that duplicate Parchment API authentication and
   authorization
@@ -120,6 +120,12 @@ mergeable deletion or migration slice before it can be called complete.
 
 Tracked-lot portfolio reads and writes are no longer included in this debt list;
 coffee-app now consumes the Parchment-owned portfolio contract through the SDK.
+
+Parchment Console API-usage pages also consume the session-only
+`ParchmentClient.apiUsage.get` contract. Owner traffic totals remain aggregate,
+while monthly quota state is derived only from exact per-key counts because plan
+limits apply independently to each API key. Coffee-app retains only the
+presentation mapping for these analytics.
 
 ## Chat and agent flow
 

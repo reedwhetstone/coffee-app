@@ -1,187 +1,191 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { API_RATE_LIMITS } from '$lib/server/apiAuth';
+import type { OwnerApiUsage } from '@purveyors/sdk';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-export interface ApiUsageRecord {
-	timestamp: string | null;
-	status_code: number | null;
-	response_time_ms: number | null;
-	// Supabase returns joined rows as an array when using !inner
-	api_keys: { user_id: string }[] | { user_id: string } | null;
+export interface ApiKeyView {
+	id: string;
+	name: string;
+	created_at: string | null;
+	last_used_at: string | null;
+	is_active: boolean;
 }
 
-export interface UsageStats {
-	monthlyUsage: number;
-	hourlyUsage: number;
-	monthlyLimit: number;
-	userTier: 'viewer' | 'member' | 'enterprise';
-	monthlyPercent: number;
-	nearLimit: boolean;
-	atLimit: boolean;
-}
-
-export interface ApiKeyUsageData {
+export interface ApiUsageRecordView {
 	endpoint: string;
 	timestamp: string | null;
 	status_code: number | null;
 	response_time_ms: number | null;
 }
 
-export interface DailySummary {
+export interface ApiKeyUsageView {
+	keyId: string;
+	keyName: string;
+	monthlyRequests: number;
+	windowRequests: number;
+	windowTruncated: boolean;
+	recentSuccessRequests: number;
+	recentErrorRequests: number;
+	recentPendingRequests: number;
+	usage: ApiUsageRecordView[];
+}
+
+export interface DailySummaryView {
 	date: string;
 	total_requests: number;
 	success_requests: number;
 	error_requests: number;
+	pending_requests: number;
 	avg_response_time: number;
-	total_response_time: number;
 }
 
-// ─── Query helpers ────────────────────────────────────────────────────────────
-
-/**
- * Get API usage records for a user (last 30 days by default).
- * Requires an admin Supabase client to bypass RLS and join through api_keys.
- */
-export async function getApiUsage(
-	supabase: SupabaseClient,
-	userId: string,
-	options?: { days?: number }
-): Promise<ApiUsageRecord[]> {
-	const days = options?.days ?? 30;
-	const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-
-	const { data, error } = await supabase
-		.from('api_usage')
-		.select(
-			`
-			timestamp,
-			status_code,
-			response_time_ms,
-			api_keys!inner(user_id)
-		`
-		)
-		.eq('api_keys.user_id', userId)
-		.gte('timestamp', since)
-		.order('timestamp', { ascending: false });
-
-	if (error) {
-		console.error('Error fetching api_usage for user', userId, error);
-		return [];
-	}
-
-	return (data ?? []) as ApiUsageRecord[];
+export interface KeyQuotaStatus {
+	keyId: string;
+	keyName: string;
+	monthlyRequests: number;
+	monthlyLimitPerKey: number;
+	monthlyPercent: number;
+	nearLimit: boolean;
+	atLimit: boolean;
 }
 
-/**
- * Calculate monthly/hourly usage stats and limit percentages from raw records.
- * Pure function — no DB calls.
- */
-export function calculateUsageStats(
-	usageRecords: ApiUsageRecord[],
-	userTier: 'viewer' | 'member' | 'enterprise'
-): UsageStats {
-	const monthlyLimit = API_RATE_LIMITS[userTier];
+export interface UsageStatsView {
+	monthlyUsage: number;
+	hourlyUsage: number;
+	monthlyLimitPerKey: number;
+	userTier: OwnerApiUsage['plan']['id'];
+	unlimited: boolean;
+	totalKeys: number;
+	activeKeys: number;
+	quotaCoverage: 'complete' | 'keys_truncated';
+	highestKeyQuota: KeyQuotaStatus | null;
+}
 
-	const now = new Date();
-	const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-	const startOfHour = new Date(now.getTime() - 60 * 60 * 1000);
+export interface ApiUsageBoundsView {
+	windowDays: number;
+	recordLimit: number;
+	seriesTruncated: boolean;
+	keyLimit: number;
+	keysTruncated: boolean;
+	recentPerKey: number;
+}
 
-	const monthlyUsage = usageRecords.filter(
-		(r) => r.timestamp && new Date(r.timestamp) >= startOfMonth
-	).length;
+export interface ApiUsagePageData {
+	apiKeys: ApiKeyView[];
+	usageData: ApiKeyUsageView[];
+	dailySummary: DailySummaryView[];
+	usageStats: UsageStatsView;
+	currentStats: {
+		monthlyUsage: number;
+		hourlyUsage: number;
+		monthlyLimitPerKey: number;
+		userTier: OwnerApiUsage['plan']['id'];
+		unlimited: boolean;
+		totalKeys: number;
+		activeKeys: number;
+		quotaCoverage: 'complete' | 'keys_truncated';
+		highestKeyQuota: KeyQuotaStatus | null;
+	};
+	bounds: ApiUsageBoundsView;
+}
 
-	const hourlyUsage = usageRecords.filter(
-		(r) => r.timestamp && new Date(r.timestamp) >= startOfHour
-	).length;
+function keyQuotaStatus(
+	usage: OwnerApiUsage,
+	key: OwnerApiUsage['keys'][number] | undefined
+): KeyQuotaStatus | null {
+	if (!key || usage.plan.unlimited || usage.plan.monthlyRequestLimitPerKey === -1) return null;
 
-	let monthlyPercent = 0;
-	let nearLimit = false;
-	let atLimit = false;
-
-	if (monthlyLimit === -1) {
-		// Enterprise unlimited tier
-		monthlyPercent = 0;
-		nearLimit = false;
-		atLimit = false;
-	} else {
-		monthlyPercent = Math.min((monthlyUsage / monthlyLimit) * 100, 100);
-		nearLimit = monthlyUsage / monthlyLimit >= 0.8;
-		atLimit = monthlyUsage / monthlyLimit >= 0.95;
-	}
-
+	const ratio = key.monthlyRequests / usage.plan.monthlyRequestLimitPerKey;
 	return {
-		monthlyUsage,
-		hourlyUsage,
-		monthlyLimit,
-		userTier,
-		monthlyPercent,
-		nearLimit,
-		atLimit
+		keyId: key.id,
+		keyName: key.name,
+		monthlyRequests: key.monthlyRequests,
+		monthlyLimitPerKey: usage.plan.monthlyRequestLimitPerKey,
+		monthlyPercent: Math.min(ratio * 100, 100),
+		nearLimit: ratio >= 0.8,
+		atLimit: ratio >= 1
 	};
 }
 
 /**
- * Get usage records for a single API key (last 30 days by default).
- * Requires an admin Supabase client.
+ * Adapt the capability-shaped Parchment response to the existing Console page
+ * shapes. Aggregate owner traffic and per-key quota state remain deliberately
+ * separate because the plan limit applies independently to each API key.
  */
-export async function getApiKeyUsage(
-	supabase: SupabaseClient,
-	keyId: string,
-	options?: { days?: number }
-): Promise<ApiKeyUsageData[]> {
-	const days = options?.days ?? 30;
-	const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+export function mapOwnerApiUsage(usage: OwnerApiUsage): ApiUsagePageData {
+	const quotaCoverage = usage.bounds.keysTruncated ? 'keys_truncated' : 'complete';
+	const highestUsageKey =
+		quotaCoverage === 'complete'
+			? usage.keys
+					.filter((key) => key.isActive)
+					.reduce<
+						OwnerApiUsage['keys'][number] | undefined
+					>((highest, key) => (!highest || key.monthlyRequests > highest.monthlyRequests ? key : highest), undefined)
+			: undefined;
+	const highestKeyQuota = keyQuotaStatus(usage, highestUsageKey);
 
-	const { data, error } = await supabase
-		.from('api_usage')
-		.select('endpoint, timestamp, status_code, response_time_ms')
-		.eq('api_key_id', keyId)
-		.gte('timestamp', since)
-		.order('timestamp', { ascending: false })
-		.limit(1000);
-
-	if (error) {
-		console.error('Error fetching api_usage for key', keyId, error);
-		return [];
-	}
-
-	return (data ?? []) as ApiKeyUsageData[];
-}
-
-/**
- * Aggregate raw usage records into per-day summaries.
- * Pure function — no DB calls.
- */
-export function buildDailySummary(usageRecords: ApiUsageRecord[]): DailySummary[] {
-	const dailyGroups = usageRecords.reduce<Record<string, DailySummary>>((acc, record) => {
-		if (!record.timestamp) return acc;
-		const date = new Date(record.timestamp).toISOString().split('T')[0];
-		if (!acc[date]) {
-			acc[date] = {
-				date,
-				total_requests: 0,
-				success_requests: 0,
-				error_requests: 0,
-				avg_response_time: 0,
-				total_response_time: 0
-			};
+	return {
+		apiKeys: usage.keys.map((key) => ({
+			id: key.id,
+			name: key.name,
+			created_at: key.createdAt,
+			last_used_at: key.lastUsedAt,
+			is_active: key.isActive
+		})),
+		usageData: usage.keys.map((key) => ({
+			keyId: key.id,
+			keyName: key.name,
+			monthlyRequests: key.monthlyRequests,
+			windowRequests: key.windowRequests,
+			windowTruncated: key.windowTruncated,
+			recentSuccessRequests: key.recent.filter(
+				(record) => record.statusCode !== null && record.statusCode < 400
+			).length,
+			recentErrorRequests: key.recent.filter(
+				(record) => record.statusCode !== null && record.statusCode >= 400
+			).length,
+			recentPendingRequests: key.recent.filter((record) => record.statusCode === null).length,
+			usage: key.recent.map((record) => ({
+				endpoint: record.endpoint,
+				timestamp: record.timestamp,
+				status_code: record.statusCode,
+				response_time_ms: record.responseTimeMs
+			}))
+		})),
+		dailySummary: usage.daily.map((day) => ({
+			date: day.date,
+			total_requests: day.totalRequests,
+			success_requests: day.successRequests,
+			error_requests: day.errorRequests,
+			pending_requests: day.pendingRequests,
+			avg_response_time: day.averageResponseTimeMs
+		})),
+		usageStats: {
+			monthlyUsage: usage.summary.monthlyRequests,
+			hourlyUsage: usage.summary.hourlyRequests,
+			monthlyLimitPerKey: usage.plan.monthlyRequestLimitPerKey,
+			userTier: usage.plan.id,
+			unlimited: usage.plan.unlimited,
+			totalKeys: usage.summary.totalKeys,
+			activeKeys: usage.summary.activeKeys,
+			quotaCoverage,
+			highestKeyQuota
+		},
+		currentStats: {
+			monthlyUsage: usage.summary.monthlyRequests,
+			hourlyUsage: usage.summary.hourlyRequests,
+			monthlyLimitPerKey: usage.plan.monthlyRequestLimitPerKey,
+			userTier: usage.plan.id,
+			unlimited: usage.plan.unlimited,
+			totalKeys: usage.summary.totalKeys,
+			activeKeys: usage.summary.activeKeys,
+			quotaCoverage,
+			highestKeyQuota
+		},
+		bounds: {
+			windowDays: usage.window.days,
+			recordLimit: usage.window.recordLimit,
+			seriesTruncated: usage.window.truncated || usage.keys.some((key) => key.windowTruncated),
+			keyLimit: usage.bounds.keyLimit,
+			keysTruncated: usage.bounds.keysTruncated,
+			recentPerKey: usage.bounds.recentPerKey
 		}
-		acc[date].total_requests++;
-		if ((record.status_code ?? 500) < 400) {
-			acc[date].success_requests++;
-		} else {
-			acc[date].error_requests++;
-		}
-		acc[date].total_response_time += record.response_time_ms ?? 0;
-		return acc;
-	}, {});
-
-	return Object.values(dailyGroups)
-		.map((day) => ({
-			...day,
-			avg_response_time:
-				day.total_requests > 0 ? Math.round(day.total_response_time / day.total_requests) : 0
-		}))
-		.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+	};
 }

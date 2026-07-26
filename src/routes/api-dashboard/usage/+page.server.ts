@@ -1,12 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
-import { getUserApiKeys, getApiKeyUsage, API_RATE_LIMITS } from '$lib/server/apiAuth';
-import { resolvePrincipal } from '$lib/server/principal';
-import { createAdminClient } from '$lib/supabase-admin';
-import { getApiUsage, buildDailySummary } from '$lib/data/api-usage';
-import type { ApiPlan } from '$lib/server/apiAuth';
-
-const supabase = createAdminClient();
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import { mapOwnerApiUsage } from '$lib/data/api-usage';
 
 export const load: PageServerLoad = async (event) => {
 	const { locals } = event;
@@ -19,79 +14,32 @@ export const load: PageServerLoad = async (event) => {
 		throw redirect(303, '/');
 	}
 
-	// Resolve principal for explicit entitlement data
-	const principal = await resolvePrincipal(event);
-	const userTier: ApiPlan = principal.isAuthenticated ? (principal.apiPlan ?? 'viewer') : 'viewer';
-
 	try {
-		// Get user's API keys
-		const apiKeysResult = await getUserApiKeys(user.id);
-		if (!apiKeysResult.success) {
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const { data, error, response } = await client.apiUsage.get({ days: 30, recentPerKey: 25 });
+
+		if (error || !data || !response.ok) {
+			console.error('Failed to load API usage analytics:', response.status);
 			return {
-				error: 'Failed to load API keys',
+				error: 'Failed to load usage analytics',
 				apiKeys: [],
 				usageData: [],
-				summary: null
+				dailySummary: [],
+				currentStats: null,
+				bounds: null
 			};
 		}
 
-		const apiKeys = (apiKeysResult.data || []) as Record<string, unknown>[];
-
-		// Get usage data for all user's API keys
-		const usagePromises = apiKeys.map(async (key) => {
-			const usage = await getApiKeyUsage(key.id as string);
-			return {
-				keyId: key.id,
-				keyName: key.name,
-				usage: usage.success ? usage.data : []
-			};
-		});
-
-		const usageResults = await Promise.all(usagePromises);
-
-		// Get aggregated usage across all user's keys for daily summary
-		let dailySummary: ReturnType<typeof buildDailySummary> = [];
-		if (apiKeys.length > 0) {
-			const allUsageRecords = await getApiUsage(supabase, user.id);
-			dailySummary = buildDailySummary(allUsageRecords);
-		}
-
-		const monthlyLimit = API_RATE_LIMITS[userTier];
-
-		const now = new Date();
-		const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-		const startOfHour = new Date(now.getTime() - 60 * 60 * 1000);
-
-		const monthlyUsage = dailySummary
-			.filter((day) => new Date(day.date) >= startOfMonth)
-			.reduce((sum, day) => sum + day.total_requests, 0);
-
-		const hourlyUsage = usageResults
-			.flatMap((result) => result.usage || [])
-			.filter(
-				(record: Record<string, unknown>) => new Date(record.timestamp as string) >= startOfHour
-			).length;
-
-		return {
-			apiKeys,
-			usageData: usageResults,
-			dailySummary,
-			currentStats: {
-				monthlyUsage,
-				hourlyUsage,
-				monthlyLimit,
-				userTier,
-				totalKeys: apiKeys.length,
-				activeKeys: apiKeys.filter((key) => key.is_active).length
-			}
-		};
+		return mapOwnerApiUsage(data);
 	} catch (error) {
 		console.error('Error loading usage analytics:', error);
 		return {
 			error: 'Failed to load usage analytics',
 			apiKeys: [],
 			usageData: [],
-			summary: null
+			dailySummary: [],
+			currentStats: null,
+			bounds: null
 		};
 	}
 };
