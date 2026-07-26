@@ -74,15 +74,16 @@ timestamps. It does not duplicate the user's email address or store Resend-speci
 identifiers. Provider projection and event state belong in a dependent connector
 contract.
 
-MVP preference states are:
+MVP consent states are:
 
 - `subscribed`: active explicit consent;
-- `unsubscribed`: user-revoked consent;
-- `suppressed`: delivery blocked by hard bounce, complaint, or an operator safety
-  action.
+- `unsubscribed`: user-revoked consent.
 
 Consent source and timestamps remain durable. Provider event IDs, contact IDs, retry
-state, and broadcast IDs live outside this canonical preference row.
+state, broadcast IDs, and deliverability suppression live outside this canonical
+preference row. Consent and delivery health are independent: an address can be
+suppressed while the user's last recorded preference remains subscribed, and a
+suppressed user must still be able to revoke consent.
 
 ### State behavior
 
@@ -226,7 +227,7 @@ substitute for this ledger because deployments and workflows can be replayed.
 
 Resend is a delivery projection:
 
-- Purveyors stores canonical consent and suppression state.
+- Purveyors stores canonical consent and separate delivery-suppression state.
 - Resend Topics group the projected recipients.
 - Resend webhooks update local unsubscribe, hard-bounce, and complaint state.
 - Provider identifiers and event IDs support idempotent reconciliation.
