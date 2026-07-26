@@ -125,7 +125,7 @@
 							? Math.round(data.dailySummary[0]?.avg_response_time || 0)
 							: 0}ms
 					</p>
-					<p class="mt-1 text-xs text-muted">Last 24 hours</p>
+					<p class="mt-1 text-xs text-muted">Latest UTC day</p>
 				</div>
 			</div>
 
@@ -185,7 +185,9 @@
 									</div>
 									{#if keyUsage.usage && keyUsage.usage.length > 0}
 										<div class="text-xs text-muted">
-											Last used: {new Date(keyUsage.usage[0].timestamp).toLocaleDateString()}
+											{keyUsage.usage[0].timestamp
+												? `Last used: ${new Date(keyUsage.usage[0].timestamp).toLocaleDateString()}`
+												: 'Last-used time unavailable'}
 										</div>
 										<div class="mt-2 flex items-center space-x-4">
 											<div class="flex items-center space-x-1">

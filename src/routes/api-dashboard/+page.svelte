@@ -37,7 +37,7 @@
 				<p class="mt-1 text-2xl font-bold text-ink">
 					{data.apiKeys?.length || 0}
 				</p>
-				<p class="mt-1 text-xs text-muted">Active keys</p>
+				<p class="mt-1 text-xs text-muted">Total keys</p>
 			</div>
 
 			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
@@ -149,7 +149,9 @@
 								<div>
 									<p class="font-medium text-ink">{apiKey.name}</p>
 									<p class="text-sm text-muted">
-										Created {new Date(apiKey.created_at).toLocaleDateString()}
+										{apiKey.created_at
+											? `Created ${new Date(apiKey.created_at).toLocaleDateString()}`
+											: 'Creation date unavailable'}
 									</p>
 								</div>
 								<div class="flex items-center">

@@ -133,4 +133,30 @@ describe('mapOwnerApiUsage', () => {
 
 		expect(mapOwnerApiUsage(fixture).usageStats.highestKeyQuota).toBeNull();
 	});
+
+	it('does not warn on an inactive key that can no longer consume quota', () => {
+		const fixture = usageFixture({
+			keys: [
+				{
+					...usageFixture().keys[0],
+					isActive: false,
+					monthlyRequests: 10000
+				},
+				{
+					...usageFixture().keys[1],
+					isActive: true,
+					monthlyRequests: 100
+				}
+			]
+		});
+
+		expect(mapOwnerApiUsage(fixture).usageStats.highestKeyQuota).toEqual(
+			expect.objectContaining({
+				keyId: 'key-2',
+				monthlyRequests: 100,
+				nearLimit: false,
+				atLimit: false
+			})
+		);
+	});
 });

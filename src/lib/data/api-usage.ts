@@ -94,10 +94,11 @@ function keyQuotaStatus(
  * separate because the plan limit applies independently to each API key.
  */
 export function mapOwnerApiUsage(usage: OwnerApiUsage): ApiUsagePageData {
-	const highestUsageKey = usage.keys.reduce<OwnerApiUsage['keys'][number] | undefined>(
-		(highest, key) => (!highest || key.monthlyRequests > highest.monthlyRequests ? key : highest),
-		undefined
-	);
+	const highestUsageKey = usage.keys
+		.filter((key) => key.isActive)
+		.reduce<
+			OwnerApiUsage['keys'][number] | undefined
+		>((highest, key) => (!highest || key.monthlyRequests > highest.monthlyRequests ? key : highest), undefined);
 	const highestKeyQuota = keyQuotaStatus(usage, highestUsageKey);
 
 	return {
