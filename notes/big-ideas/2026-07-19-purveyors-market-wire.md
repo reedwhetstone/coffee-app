@@ -1,7 +1,10 @@
-# Proposal: Purveyors Market Brief
+# Proposal: Purveyors Market Wire
 
 _Created: 2026-07-19_
-_Status: Strategic proposal aligned to the approved build-now infrastructure direction; launch validation runs from edition #1_
+_Status: Original strategic proposal. Market Brief naming, product corrections, and
+implementation authority now live in `notes/market-wire/implementation-plan.md`._
+_The proposal below is preserved unchanged as historical context and must not be
+used as implementation guidance._
 _Domain: Purveyors ecosystem_
 _Canonical source: this repo_
 
@@ -13,14 +16,14 @@ Build the Reuters wire for green coffee: a free, citation-rich stream of market 
 
 Purveyors has an unusually broad data asset but no repeatable distribution engine. A visitor can inspect the catalog or Market Index, yet must already know that Purveyors exists and choose to return. Lower subscription prices may improve conversion after discovery, but they do not solve discovery itself.
 
-The underlying scraper already observes the raw material for a compelling recurring media product: new arrivals, delistings, price moves, below-market lots, supplier changes, proof gaps, and origin trends. Publishing those changes as a trustworthy Market Brief turns the data layer into a habit and gives every cited supplier, shared chart, newsletter excerpt, RSS reader, and agent integration a reason to distribute Purveyors.
+The underlying scraper already observes the raw material for a compelling recurring media product: new arrivals, delistings, price moves, below-market lots, supplier changes, proof gaps, and origin trends. Publishing those changes as a trustworthy wire turns the data layer into a habit and gives every cited supplier, shared chart, newsletter excerpt, RSS reader, and agent integration a reason to distribute Purveyors.
 
 ## Why now
 
 - The normalized catalog covers 40+ US importers and is already publicly discoverable.
 - Market signals, price history, supplier statistics, metadata indexes, proof summaries, and sourcing briefs exist across the platform.
 - The public Market Index establishes the proof-first funnel, while Parchment Intelligence already has a paid entitlement and checkout path.
-- Sourcing Radar defines the personalized paid destination; Market Brief can become its public acquisition loop.
+- Sourcing Radar defines the personalized paid destination; Market Wire can become its public acquisition loop.
 - External coffee intelligence products validate demand for recurring market information, but none appears to own a broad, public, structured feed of US specialty green-coffee offer-list changes.
 
 ## Existing assets this leverages
@@ -28,18 +31,18 @@ The underlying scraper already observes the raw material for a compelling recurr
 - coffee-scraper: daily supplier observations, arrivals, availability, pricing, provenance, and quality audits.
 - parchment-api: catalog, market signals, statistics, metadata indexes, proof, SDK, and machine-readable contracts.
 - coffee-app: public catalog and Market Index, subscription entitlements, saved sourcing intent, watchlists, chat, and evidence views.
-- purveyors-cli: agent-first market and procurement reads that already keep Purveyors data portable beyond the website.
+- purveyors-cli: agent-first market and procurement reads that can make the wire portable beyond the website.
 - blog and search footprint: an existing editorial surface that can explain important changes and acquire both coffee and developer audiences.
 
 ## The concept
 
-Purveyors Market Brief is a continuously updated, provenance-backed publication layer over the green-coffee market.
+Purveyors Market Wire is a continuously updated, provenance-backed publication layer over the green-coffee market.
 
 The free product publishes a deliberately useful subset:
 
 1. A weekly email and web edition with the most important arrivals, delistings, price moves, and origin changes.
 2. Stable, indexable signal pages with source links, observation time, and methodology.
-3. RSS/Atom summaries and links so writers, communities, agents, and niche tools can follow the feed. A public edition API projection is explicitly deferred (plan §11).
+3. RSS/Atom and a small free API projection so writers, communities, agents, and niche tools can syndicate the feed.
 4. Supplier and origin snapshots designed to be cited and shared.
 
 The paid product applies leverage rather than hiding proof:
@@ -61,7 +64,7 @@ The commercial packaging can remain simple during validation: Intelligence at $1
 
 ## Why this could be a great idea
 
-It solves the actual bottleneck. The platform already has more capability than market awareness. A media-like Market Brief makes the data asset legible before asking for payment, then converts recurring attention into personalized decision support. It also connects the public proof surface, weekly procurement brief, Sourcing Radar, API, CLI, and blog into one coherent funnel.
+It solves the actual bottleneck. The platform already has more capability than market awareness. A media-like wire makes the data asset legible before asking for payment, then converts recurring attention into personalized decision support. It also connects the public proof surface, weekly procurement brief, Sourcing Radar, API, CLI, and blog into one coherent funnel.
 
 ## Why this could be a terrible idea
 
@@ -69,9 +72,9 @@ Free recurring intelligence could satisfy too much demand, train users not to pa
 
 ## Launch validation on the build-now core
 
-Build the minimal core in the approved dependency order from `notes/market-wire/implementation-plan.md` §10: the account-owned email-subscription contract (MR-1), Resend projection and reconciliation (MR-2), the coffee-app signup and preference surface (MR-3), the account-deletion prerequisites and orchestration (MR-4, MR-5) that keep account-coupled email safe to launch, the `/blog` Market Brief content and archive surface (MR-6), the external-source observation contract (MR-7) with its RSS and social capture ingesters (MR-8, MR-9), the weekly source packet and draft PR (MR-10) that consumes them, and production-success-to-Resend-draft dispatch (MR-11). Run the first editions through the explicit human publish gate while the pipeline proves its cadence and content quality:
+Build the minimal core in the approved mergeable order: WP-1 wire contract, WP-2 generation job, WP-3 `/wire` surface, and WP-4 email dispatch. Run the first editions through the explicit human publish gate while the pipeline proves its cadence and content quality:
 
-1. Assemble the weekly source packet and Parchment facts, then draft and review the canonical `.svx` Market Brief file.
+1. Generate each concise weekly edition from the canonical edition-facts and publication pipeline.
 2. Recruit 50 named roasters, buyers, coffee writers, and supplier-side contacts through direct outreach.
 3. Publish each edition as an indexable web page and email, with tracked links to the underlying Market Index evidence.
 4. Offer a founding plan: $12 Intelligence, $5 Studio, or $15 bundled, price-locked for the first 50 customers.
@@ -91,13 +94,13 @@ These launch metrics inform iteration and commercial validation from edition #1;
 ## Cross-product implications
 
 - coffee-scraper: preserve immutable, publication-ready observations and truthful freshness metadata.
-- parchment-api: own the account-owned email-subscription, Resend projection, and external-source observation contracts (MR-1, MR-2, MR-7); edition publication stays out of MR-7 scope, and a public edition API projection is explicitly deferred (plan §11).
-- purveyors-cli: public Market Brief read commands are explicitly deferred (plan §11); when added later they must consume a canonical Parchment contract and preserve citations and observation timestamps for agents.
-- coffee-app: own the Market Brief content and archive surface (MR-6), publish indexable editions and signal pages, collect email conversion, and route paid subscribers into Intelligence, Sourcing Radar, and Studio.
+- parchment-api: establish the stable public wire projection in WP-1 from edition #1; add paid filtered/history contracts after the core publication loop is operating.
+- purveyors-cli: add wire reads only after a canonical API contract exists; preserve citations and observation timestamps for agents.
+- coffee-app: publish indexable editions and signal pages, collect email conversion, and route paid subscribers into Intelligence, Sourcing Radar, and Studio.
 
 ## Source-of-truth routing
 
-- Canonical implementation plan: `notes/market-wire/implementation-plan.md`; `design.md` and `infrastructure.md` are retained as superseded concept records, while this proposal records the strategic context and launch-validation metrics.
+- Canonical implementation plan: `notes/market-wire/infrastructure.md`; this proposal records the strategic context and launch-validation metrics.
 - Original source: `brain/moonshots/2026-07-19-purveyors-market-wire.md` (retained as the originating moonshot/pointer after consolidation)
 - Product repo mirror or PR: n/a
 

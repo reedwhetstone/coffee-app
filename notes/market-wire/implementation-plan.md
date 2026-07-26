@@ -7,6 +7,12 @@
 product choices in `design.md` and `infrastructure.md`. `research.md` remains the
 research record.
 
+**Naming contract:** **Market Brief** is the user-facing publication name and
+`market-brief` is its coffee-app format/slug. The already-deployed Parchment
+publication key remains `market_read`, including the
+`/v1/email-subscriptions/market-read` route. Do not rename that internal contract as
+part of this MVP.
+
 ## 1. Product definition
 
 Purveyors Market Brief is a reliable weekly read of the micro-movements shaping green
@@ -60,7 +66,8 @@ Every Market Brief email subscriber must have:
 
 - a Supabase Auth user;
 - the normal `public.user_roles` row with baseline `role = viewer`;
-- a separate account-owned email-subscription record for the `market_brief` topic.
+- a separate account-owned email-subscription record for the deployed `market_read`
+  topic.
 
 The model has three independent axes:
 
@@ -322,29 +329,38 @@ Repository: coffee-app. Documentation only.
 - Align `BLOG_STRATEGY.md` and `DEVLOG.md`.
 - Remove the unrelated knowledge/vector work from Market Brief scope.
 
-### MR-1: Account-owned email-subscription contract
+### MR-1A: Account-owned email-subscription foundation
 
-Repository: parchment-api.
+Repository: parchment-api. **Merged and deployed in PR #109.**
 
 - Add the normalized email-subscription schema and constraints.
 - Require an existing Purveyors user.
 - Add session-only preference-read and idempotent subscribe/unsubscribe contracts.
+- Preserve `market_read` as the publication key and
+  `/v1/email-subscriptions/market-read` as the deployed route.
+- Reject anonymous, public-demo, and API-key preference mutation.
+- Do not add account deletion, provider identifiers, Resend network calls, UI, or
+  edition storage.
+
+### MR-1B: Purpose-bound no-login unsubscribe
+
+Repository: parchment-api. **Pending.**
+
 - Add a Parchment-owned token-issuance contract, exposed through the generated SDK
   to an authorized bounded sender. It returns a purpose-bound, expiring
-  `market_brief_unsubscribe` token for exactly one account/topic and never exposes
+  `market_read_unsubscribe` token for exactly one account/topic and never exposes
   signing material.
 - Add the no-login unsubscribe contract, which accepts only a valid Parchment-issued
   token and cannot subscribe or read preferences.
 - Add token-issuance, token-validation, idempotency, and authorization tests,
   including expired, wrong-purpose, wrong-topic, and forged tokens.
 - Reject anonymous, public-demo, and API-key mutation without that valid token.
-- Do not add account deletion, provider identifiers, Resend network calls, UI, or
-  edition storage.
+- Do not add provider identifiers, Resend network calls, UI, or edition storage.
 
 ### MR-2: Resend projection and event reconciliation
 
 Repository: parchment-api. The bounded projection worker is the Parchment-owned
-**Market Brief projection worker** (`market-brief-projection`); no coffee-app-side
+**Market Brief projection worker** (`market-read-projection`); no coffee-app-side
 component owns this shared provider or preference state.
 
 - Add an atomic preference-change plus provider-outbox contract.
@@ -353,14 +369,14 @@ component owns this shared provider or preference state.
   and complaint suppression locally; each reconciliation is idempotent on the
   provider event ID.
 - Define the authenticated sender-facing recipient contract owned by the
-  `market-brief-projection` worker:
+  `market-read-projection` worker:
   - **Authentication:** only a service-authenticated sender (the MR-11 deployment
     worker) may call it; anonymous, public-demo, and API-key callers are rejected.
   - **Audience reference:** it returns a topic-scoped, broadcast-ready
     audience/projection reference for the current Market Brief Topic, never a raw
     list of account IDs, provider contact IDs, or shared preference rows.
   - **Token rendering:** it performs recipient selection and renders each
-    recipient's purpose-bound, no-login unsubscribe link using the MR-1 Parchment
+    recipient's purpose-bound, no-login unsubscribe link using the MR-1B Parchment
     token issuance; coffee-app never enumerates accounts, reads provider/shared
     state, or mints tokens.
   - **Idempotency:** repeated calls for the same (Topic, edition) return the same
@@ -369,7 +385,7 @@ component owns this shared provider or preference state.
     recipient payload and cannot expand the audience or reach provider state
     directly.
 - Provide the no-login one-click unsubscribe path through Resend's native topic
-  unsubscribe or the MR-1 purpose-bound Parchment token if provider behavior
+  unsubscribe or the MR-1B purpose-bound Parchment token if provider behavior
   requires it. The path may only unsubscribe one account/topic and must be
   idempotent.
 - Do not send a Market Brief edition.
@@ -381,7 +397,7 @@ Repository: coffee-app.
 - Add authenticated Market Brief opt-in.
 - Route anonymous subscribe intent through login and back to confirmation.
 - Add Settings status and unsubscribe control.
-- Add the MR-2 no-login unsubscribe landing behavior, forwarding the existing
+- Add the MR-1B no-login unsubscribe landing behavior, forwarding the existing
   provider or Parchment token without minting one or giving coffee-app direct write
   access to the shared preference row.
 - Keep paid entitlements independent.
@@ -477,7 +493,7 @@ Repositories: coffee-app, with Parchment provider-state support if needed.
 
 - Add the successful-deployment trigger.
 - Render email-safe HTML from the canonical edition.
-- Consume the MR-2 `market-brief-projection` worker's topic-scoped
+- Consume the MR-2 `market-read-projection` worker's topic-scoped
   audience/projection reference and rendered recipient payload when creating the
   draft; coffee-app must not enumerate recipients, mint tokens, or read shared
   provider state.

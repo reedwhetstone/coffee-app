@@ -1,12 +1,17 @@
-# Purveyors Market Brief - Full Research Package
+# Purveyors Market Wire — Full Research Package
 
 _Created: 2026-07-19_
-_Status: Research record. Product corrections and authoritative build sequencing live in `notes/market-wire/implementation-plan.md`._
-_Companions: `notes/market-wire/implementation-plan.md` (authoritative plan), `notes/market-wire/design.md` and `notes/market-wire/infrastructure.md` (original concept records)_
+_Status: Original research record. Market Brief naming, product corrections, and
+implementation authority now live in `notes/market-wire/implementation-plan.md`._
+_The research below is preserved unchanged as historical context and must not be
+used as implementation guidance._
+_Companions: `notes/market-wire/implementation-plan.md` (authoritative plan),
+`notes/market-wire/design.md` and `notes/market-wire/infrastructure.md` (original
+concept records)_
 
 ## 1. Executive summary
 
-Purveyors Market Brief is a free weekly green-coffee market publication (web + email) built on the one dataset nobody else publishes: structured, current, cross-importer offer-list data spanning 40+ US importers, from hobby bags to wholesale pallets. Competitive research confirms the position is genuinely empty: every incumbent information product is either trader marketing (Sucafina, Royal-republishing-StoneX), a $100s-to-$1,000s/mo trader terminal (StoneX CoffeeNetwork), an anonymized annual retrospective (Specialty Coffee Transaction Guide), or futures-and-vibes media. Nobody measures the importer-to-roaster spread that hobby and small-wholesale buyers actually pay.
+Purveyors Market Wire is a free weekly green-coffee market brief (web + email) built on the one dataset nobody else publishes: structured, current, cross-importer offer-list data spanning 40+ US importers, from hobby bags to wholesale pallets. Competitive research confirms the position is genuinely empty: every incumbent information product is either trader marketing (Sucafina, Royal-republishing-StoneX), a $100s-to-$1,000s/mo trader terminal (StoneX CoffeeNetwork), an anonymized annual retrospective (Specialty Coffee Transaction Guide), or futures-and-vibes media. Nobody measures the importer-to-roaster spread that hobby and small-wholesale buyers actually pay.
 
 The strategy: occupy the Zillow position against the industry's MLS. Free consumer-grade transparency funded by a paid pro tier (personalization, immediacy, history, analytics), independent of any trading book. Brand voice is the second moat: informal, comfortable, well-researched, opinionated; memes and market vibes welcome; no corporate motive beyond open ideas and love of coffee.
 
@@ -34,12 +39,12 @@ Algrano and Typica publish real price transparency but only inside their own mar
 
 ### Demand signal
 
-Roasters post importer offer sheets to Reddit asking peers "is this insane?" — exactly the comp-database demand Market Brief answers weekly.
+Roasters post importer offer sheets to Reddit asking peers "is this insane?" — exactly the comp-database demand a wire answers weekly.
 
 ### Watch items
 
 1. StoneX could extend Differential Insight toward US spot; they have the relationships.
-2. Importers may resist republication of offer metadata the way MLSs fought Zillow (selective de-listing, ToS pressure). Mitigations: neutral evidence-led framing, supplier traffic value (Market Brief drives buyers to them), and the existing provenance/citation discipline.
+2. Importers may resist republication of offer metadata the way MLSs fought Zillow (selective de-listing, ToS pressure). Mitigations: neutral evidence-led framing, supplier traffic value (wire drives buyers to them), and the existing provenance/citation discipline.
 3. SCTG is complementary, not competitive: cite it as the annual FOB baseline under the weekly spot layer; partnering borrows its credibility halo.
 
 ## 4. Inspiration teardowns and what to borrow
@@ -59,19 +64,19 @@ Model: free ad-supported flagship everywhere; paid tier ($~$1M ARR year one) = a
 ### Thoughtful Coffee (radical-transparency micro roaster)
 
 Model: tiny Brooklyn roaster whose numbered blog ("Roast #48") publishes actual unit economics including embarrassing ones (money-losing subscription and wholesale SKUs), grades its own goals publicly with [done]/[miss] tags, and shows uncertainty explicitly ("nothing below has any scientific basis").
-**Borrow:** open-books operation — publish the Market Brief's own subscriber count, revenue, and costs annually; transparency about yourself is the strongest proof you'll be honest about the market. The [done]/[miss] goal ledger. Numbered-series identity (Edition #N) making the archive collectible. Labeled confidence levels instead of false precision. Generosity toward the ecosystem: name and link suppliers, roasters, even competitors — Thoughtful's partners became its acquisition channel.
-**Skip:** cadence collapse (4 posts/year kills a weekly Market Brief); goodwill-only economics with no margin discipline.
+**Borrow:** open-books operation — publish the Wire's own subscriber count, revenue, and costs annually; transparency about yourself is the strongest proof you'll be honest about the market. The [done]/[miss] goal ledger. Numbered-series identity (Edition #N) making the archive collectible. Labeled confidence levels instead of false precision. Generosity toward the ecosystem: name and link suppliers, roasters, even competitors — Thoughtful's partners became its acquisition channel.
+**Skip:** cadence collapse (4 posts/year kills a weekly wire); goodwill-only economics with no margin discipline.
 
 ### The combined trust formula
 
-Litquidity = insider fluency + neutrality. Prof G = data + accountable opinions. Thoughtful = open books + epistemic humility. Market Brief can uniquely run all three at once — trader-grade data, named calls with a scoreboard, and open-books operation — against incumbents that all sound like trade association bulletins.
+Litquidity = insider fluency + neutrality. Prof G = data + accountable opinions. Thoughtful = open books + epistemic humility. Market Wire can uniquely run all three at once — trader-grade data, named calls with a scoreboard, and open-books operation — against incumbents that all sound like trade association bulletins.
 
 ## 5. Audience segmentation (full spectrum)
 
 - **Hobby/home roasters:** price sanity-checking, arrivals discovery, "what should I try." Currently zero market visibility. Free tier is fully sufficient; they are the meme-sharing distribution engine and the community.
 - **Nano/micro roasters (sub-container):** the core paid target. Buy from the same importers as hobbyists but with margin at stake. "Is this offer fair," below-market alerts on their origins, price history before committing to a lot.
-- **Mid-size roasters/green buyers:** rep relationships plus gut feel today. Paid: mandate-filtered Market Brief, history/exports, spread context.
-- **Supplier-side (importers/exporters/producers):** see US resale spreads today only via private relationships. Long-term: cited-supplier dynamics make Market Brief distribution, not a threat; some become data partners or sponsors.
+- **Mid-size roasters/green buyers:** rep relationships plus gut feel today. Paid: mandate-filtered wire, history/exports, spread context.
+- **Supplier-side (importers/exporters/producers):** see US resale spreads today only via private relationships. Long-term: cited-supplier dynamics make the wire distribution, not a threat; some become data partners or sponsors.
 - **Coffee-curious/writers/agents:** RSS, free API projection, citation surface. They syndicate the brand.
 
 ## 6. Brand and voice specification
@@ -82,25 +87,17 @@ Litquidity = insider fluency + neutrality. Prof G = data + accountable opinions.
 - **Humor policy:** memes and market-vibes coverage are first-class content (C-market pain, container delays, freight absurdity, cupping culture), used as top-of-funnel; never used to carry a data claim.
 - **Transparency policy:** annual open-books wrap-up (subscribers, revenue, costs, [done]/[miss] goals); corrections appended publicly, never silently edited.
 - **Ecosystem generosity:** name and link importers, roasters, writers; celebrate good actors including competitors. Suppliers are cited subjects and beneficiaries of buyer traffic, not targets.
-- Voice canon for drafting remains `VOICE.md` (Reed's authored voice) adapted to the Market Brief's slightly looser register.
+- Voice canon for drafting remains `VOICE.md` (Reed's authored voice) adapted to the wire's slightly looser register.
 
 ## 7. Business model
 
 ### Free tier (distribution engine)
 
-Weekly edition, web (the latest three editions public) + email (authenticated explicit opt-in).
-Email consent controls delivery, not archive entitlement. Older titles and summaries
-remain visible; full older editions require Parchment Intelligence. RSS/Atom carries
-summaries and links. The edition leads with current conversation and uses Purveyors
-micro-data where it adds evidence or buying context.
+Weekly edition, web (indexable, latest edition public) + email (double opt-in). Free email sub unlocks the full edition archive on site. RSS/Atom open. Leads every week with micro-data nobody else has; macro context frames but never carries.
 
 ### Paid: Parchment Intelligence ($12/mo, ~$120/yr annual)
 
-Full Market Brief archive; personalized "your market" section from saved sourcing
-intent; immediate alerts between editions; full data history, comparisons, exports via
-Market Index; Ask Parchment on any Market Brief item; evidence deep links. Studio
-$5/mo, founding bundle $15/mo, price-locked for first 50 (per moonshot).
-Positioning: a decision surface and historical product, not a longer newsletter.
+Personalized "your market" section from saved sourcing intent; immediate alerts between editions; full data history, comparisons, exports via Market Index; Ask Parchment on any wire item; evidence deep links. Studio $5/mo, founding bundle $15/mo, price-locked for first 50 (per moonshot). Positioning: a different product (decision surface), not a longer newsletter.
 
 ### Later, sequenced (Litquidity lesson: not simultaneously)
 
@@ -122,11 +119,11 @@ Free-to-paid at 2-5% (4% B2B pipeline bar); paid newsletter medians $83-$230/sub
 8. **The locked moment** — one personalized paid tease ("3 lots matched your Ethiopia mandate this week"), not a generic banner.
 9. **Sign-off** — business on top, personal at the bottom; the human ending gets forwarded.
 
-Pipeline and guardrails (edition-facts JSON, LLM narrates only payload facts, numeric validation pass, canonical publication object rendering to web/email/RSS) are now sequenced by the authoritative `notes/market-wire/implementation-plan.md`; `design.md` and `infrastructure.md` remain the superseded concept records.
+Pipeline and guardrails (edition-facts JSON, LLM narrates only payload facts, numeric validation pass, canonical publication object rendering to web/email/RSS) are specified in `notes/market-wire/design.md` and implemented through the work packages in `notes/market-wire/infrastructure.md`.
 
 ## 9. GTM (revised 2026-07-19: pilot rejected, building core infrastructure now)
 
-Reed's call: weekly report generation at cadence is a foundational capability for an intelligence company, not a hypothesis to test with a handmade artifact. The MVP infrastructure gets built now — minimal and flexible (stable pipeline contract, schema-versioned report contents) — per the dependency-ordered PR slices in `notes/market-wire/implementation-plan.md` §10.
+Reed's call: weekly report generation at cadence is a foundational capability for an intelligence company, not a hypothesis to test with a handmade artifact. The MVP infrastructure gets built now — minimal and flexible (stable pipeline contract, schema-versioned report contents) — per the work packages in `notes/market-wire/infrastructure.md` §7.
 
 GTM mechanics carried forward from the launch concept, now running on real infrastructure from edition #1:
 
@@ -137,7 +134,7 @@ GTM mechanics carried forward from the launch concept, now running on real infra
 
 ## 10. Risks
 
-- **Cannibalization:** free Market Brief satisfies demand; mitigated by the five-pattern paywall line (delayed/aggregate/general/recent/read free; immediate/granular/personal/historical/act paid).
+- **Cannibalization:** free wire satisfies demand; mitigated by the five-pattern paywall line (delayed/aggregate/general/recent/read free; immediate/granular/personal/historical/act paid).
 - **Supplier tension / MLS backlash:** neutral evidence-led framing, buyer-traffic value, provenance discipline; watch for de-listing pressure.
 - **Trust damage from staleness or LLM error:** freshness metadata honesty and numeric validation are hard gates; corrections policy public.
 - **Cadence collapse:** weekly is the product; the staged pipeline, human publish gate, and explicit cadence alerts protect reliability while automation is earned.
@@ -146,7 +143,7 @@ GTM mechanics carried forward from the launch concept, now running on real infra
 
 ## 11. Success metrics
 
-Launch checkpoint: list growth to 50+, open rate >45% (small warm list), evidence CTR, reply rate, 5 paid founders. Ongoing: qualified list growth rate, 4-week retention (repeat opens), free-to-paid ≥2-3% at scale, citation/syndication count (RSS pulls, backlinks, social quotes of Market Brief data), supplier inbound.
+Launch checkpoint: list growth to 50+, open rate >45% (small warm list), evidence CTR, reply rate, 5 paid founders. Ongoing: qualified list growth rate, 4-week retention (repeat opens), free-to-paid ≥2-3% at scale, citation/syndication count (RSS pulls, backlinks, social quotes of wire data), supplier inbound.
 
 ## 12. Open questions
 

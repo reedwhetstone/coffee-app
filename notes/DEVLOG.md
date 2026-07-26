@@ -32,8 +32,8 @@
       Confirm the production revision, run the bounded Jul 13 to deployment backfill
       for eligible aggregates, and verify fresh `price_index_snapshots`, period
       changes, market summary, supplier stats, metadata index, and non-empty market
-      signals. Hold Signal-dependent Market Brief and Radar reads until freshness
-      and health checks pass. Plans:
+      signals. Do not advance Signal-dependent Wire or Radar reads until freshness and
+      health checks pass. Plans:
       `notes/implementation-plans/2026-07-16-market-publication-recovery-and-activation.md`
       and `notes/implementation-plans/2026-07-13-market-publication-continuity-program.md`.
 
@@ -66,13 +66,10 @@
 
 ## P1: Build the distribution and revenue engine
 
-- [ ] **Build the Market Brief MVP in dependency order.** Use
-      `notes/market-wire/implementation-plan.md` as the authoritative plan. Start with
-      the Parchment account-owned email-consent contract, then coffee-app signup and
-      preferences, account deletion, the shared blog/Market Brief content surface,
-      Parchment external-source storage, scraper social/news capture, weekly PR
-      generation, and successful-deployment-to-Resend-draft delivery. Keep the first
-      sends manually approved.
+- [ ] **Build the Market Brief MVP.** Use
+      `notes/market-wire/implementation-plan.md` as the sole authority for product
+      contracts, dependency order, and implementation status. Do not restate its PR
+      sequence in DEVLOG.
 
 - [ ] **Launch and measure Market Brief.** Publish early editions through the human
       gate, recruit the first 50 qualified roasters/buyers/writers/supplier contacts,
@@ -96,9 +93,7 @@
       Reed-voice review, image, links, metadata, publish, email, and performance
       review. Resolve the current open PR queue before creating more drafts: refresh
       or close stale PRs #287, #358, and #369. Market Brief and essays are distinct
-      formats in one blog system: Market Brief is recurring market reporting; essays
-      carry deeper product, market, API, and agentic arguments. Sources:
-      `notes/blog/ideas.md`,
+      formats in one blog system. Sources: `notes/blog/ideas.md`,
       `notes/blog/source-map.md`, and `notes/BLOG_STRATEGY.md`.
 
 - [ ] **Close the full public conversion loop.** Connect catalog, analytics,
@@ -110,22 +105,10 @@
 
 ## P1: Build the market knowledge and decision layer
 
-- [ ] **Design a provenance-aware market knowledge corpus as a separate project.** Add
-      `knowledge_documents` and `knowledge_chunks` for published Market Brief editions,
-      sections, deep dives, blog posts, curated news, social threads, and macro notes.
-      Store source type, controlled topics, normalized entities, time window, URL, and
-      trust class. This is not a Market Brief MVP dependency.
-
-- [ ] **Ship market-knowledge retrieval and evaluation independently.** Add filtered,
-      citation-preserving Parchment knowledge search, coffee-app chat integration, and
-      a retrieval evaluation set. Route current numeric/filterable questions to
-      structured tools and narrative/history questions to retrieval. Enforce the
-      recent-three full-edition boundary, summary-only access to older editions for
-      anonymous, viewer, email-subscriber, and Studio readers, and full older editions
-      only for Intelligence and admin access. Retire structured `origin`,
-      `commercial`, and `processing` catalog prose chunks in a separate slice while
-      preserving sensory/profile vector search. Do not couple this work to Market Brief
-      publication or delivery.
+- [ ] **Plan the market knowledge and decision layer separately.** Knowledge
+      documents, vector search, chat integration, and catalog-chunk retirement are
+      explicitly outside the Market Brief MVP. Do not make them publication or
+      delivery dependencies; see `notes/market-wire/implementation-plan.md`.
 
 - [ ] **Build Sourcing Radar after aggregate freshness is proven.** Deliver the
       four mergeable slices in order: canonical Parchment Radar read, Parchment API-owned intent
