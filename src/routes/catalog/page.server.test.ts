@@ -890,8 +890,7 @@ describe('/catalog tracked lots and brief matches', () => {
 		};
 
 		expect(mockGetTrackedLotIds).toHaveBeenCalledWith(
-			expect.objectContaining({ kind: 'session-client' }),
-			'ppi-user-1'
+			expect.objectContaining({ catalog: expect.anything() })
 		);
 		expect(await result.trackedLotIds).toEqual([10, 42]);
 		// ppiAccess non-member: briefs not fetched
@@ -917,8 +916,7 @@ describe('/catalog tracked lots and brief matches', () => {
 		};
 
 		expect(mockGetTrackedLotIds).toHaveBeenCalledWith(
-			expect.objectContaining({ kind: 'session-client' }),
-			'member-user-1'
+			expect.objectContaining({ catalog: expect.anything() })
 		);
 		expect(await result.trackedLotIds).toEqual([7]);
 		const briefMatchSummaries = await result.briefMatchSummaries;

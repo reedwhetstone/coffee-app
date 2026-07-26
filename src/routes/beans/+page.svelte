@@ -9,6 +9,7 @@
 	import { goto } from '$app/navigation';
 	import { canManagePortfolio } from '$lib/services/portfolioAccess';
 	import { loadBeanPickerCatalog } from './catalogPicker';
+	import { setTrackedLotState } from '$lib/client/trackedLots';
 
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 
@@ -108,12 +109,7 @@
 		setTracked(catalogId, !wasTracked);
 		// Optimistic update, reverted on failure.
 		try {
-			const res = await fetch(`/api/catalog/${catalogId}/track`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' }
-			});
-			if (!res.ok) throw new Error('track failed');
-			const body = (await res.json()) as { tracked: boolean };
+			const body = await setTrackedLotState(fetch, catalogId, !wasTracked);
 			if (body.tracked !== !wasTracked) {
 				setTracked(catalogId, body.tracked);
 			}

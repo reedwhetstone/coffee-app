@@ -69,7 +69,8 @@ export const load: PageServerLoad = async (event) => {
 		catalog: Record<string, unknown>[];
 	}> =
 		userId && hasSourcingAccess
-			? getTrackedLotSummaries(locals.supabase, userId, 12)
+			? parchmentClientPromise
+					.then((client) => getTrackedLotSummaries(client, 12))
 					.then(async (summaries) => ({
 						summaries,
 						catalog: (await fetchParchmentCatalogItemsByIds(

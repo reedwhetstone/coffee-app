@@ -10,6 +10,7 @@
 	} from '$lib/dashboard/intelligenceHome';
 	import { parseTastingNotes } from '$lib/utils/parseTastingNotes';
 	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
+	import { setTrackedLotState } from '$lib/client/trackedLots';
 
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 
@@ -68,12 +69,7 @@
 		setTracked(catalogId, !wasTracked);
 		// Optimistic update, reverted on failure.
 		try {
-			const res = await fetch(`/api/catalog/${catalogId}/track`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' }
-			});
-			if (!res.ok) throw new Error('track failed');
-			const body = (await res.json()) as { tracked: boolean };
+			const body = await setTrackedLotState(fetch, catalogId, !wasTracked);
 			if (body.tracked !== !wasTracked) {
 				setTracked(catalogId, body.tracked);
 			}

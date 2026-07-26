@@ -18,6 +18,7 @@
 	import { getLotPriceContext } from '$lib/catalog/priceContext';
 	import type { OriginPriceStats, LotPriceContext } from '$lib/catalog/priceContext';
 	import { getDisplayPrice } from '$lib/utils/pricing';
+	import { setTrackedLotState } from '$lib/client/trackedLots';
 
 	import PageHeaderSection from '$lib/components/catalog/sections/PageHeaderSection.svelte';
 	import FilterBarSection from '$lib/components/catalog/sections/FilterBarSection.svelte';
@@ -105,12 +106,7 @@
 		setTracked(catalogId, !wasTracked);
 		// Optimistic update, reverted on failure.
 		try {
-			const res = await fetch(`/api/catalog/${catalogId}/track`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' }
-			});
-			if (!res.ok) throw new Error('track failed');
-			const body = (await res.json()) as { tracked: boolean };
+			const body = await setTrackedLotState(fetch, catalogId, !wasTracked);
 			if (body.tracked !== !wasTracked) {
 				setTracked(catalogId, body.tracked);
 			}

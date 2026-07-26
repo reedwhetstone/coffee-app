@@ -670,7 +670,8 @@ describe('/catalog watchlist and sourcing briefs', () => {
 		await waitFor(() => expect(button).toHaveAttribute('aria-pressed', 'true'));
 		expect(fetch).toHaveBeenCalledWith('/api/catalog/1/track', {
 			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' }
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ tracked: true })
 		});
 	});
 
