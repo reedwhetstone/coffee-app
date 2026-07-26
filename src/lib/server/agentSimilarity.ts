@@ -1,35 +1,25 @@
-import { createAdminClient } from '$lib/supabase-admin';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import {
-	DEFAULT_CATALOG_SIMILARITY_LIMIT,
-	DEFAULT_CATALOG_SIMILARITY_THRESHOLD,
-	MAX_CATALOG_SIMILARITY_LIMIT,
-	MAX_CATALOG_SIMILARITY_THRESHOLD,
-	MIN_CATALOG_SIMILARITY_THRESHOLD,
-	fetchCatalogSimilarityMatches,
-	type CatalogSimilarityMatch
-} from '$lib/server/catalogSimilarity';
+import type { ParchmentClient, components } from '@purveyors/sdk';
 
 /**
  * Similarity reader for the chat agent's find_similar_beans tool.
  *
- * The bounded v2/v3 similarity RPCs revoke EXECUTE from anon/authenticated
- * (only service_role may call them), so this must use the admin client. The
- * legacy CLI path called the unbounded v1 RPC on the user-scoped client,
- * which now exceeds the Postgres statement timeout as coffee_chunks has
- * grown. Entitlement is enforced upstream: the tool is only registered for
- * authenticated chat sessions.
+ * Parchment owns retrieval, classification, row projection, and entitlement.
+ * The chat route supplies its request-bound session client so member access is
+ * enforced by the same contract used by the catalog comparison BFF and SDK.
  */
+
+type CatalogSimilarityMatch = components['schemas']['CatalogSimilarityMatch'];
+
+const DEFAULT_CATALOG_SIMILARITY_LIMIT = 8;
+const DEFAULT_CATALOG_SIMILARITY_THRESHOLD = 0.72;
+const MAX_CATALOG_SIMILARITY_LIMIT = 15;
+const MAX_CATALOG_SIMILARITY_THRESHOLD = 0.95;
+const MIN_CATALOG_SIMILARITY_THRESHOLD = 0.5;
 
 export interface AgentSimilarityInput {
 	coffee_id: number;
 	threshold?: number;
 	limit?: number;
-}
-
-export interface AgentSimilarityOptions {
-	client?: SupabaseClient;
-	publicOnly?: boolean;
 }
 
 export interface AgentSimilarBean {
@@ -67,6 +57,26 @@ export interface AgentSimilarityResult {
 
 export type AgentSimilarityReader = (input: AgentSimilarityInput) => Promise<AgentSimilarityResult>;
 
+function formatParchmentError(error: unknown): string {
+	if (typeof error !== 'object' || error === null) return 'unknown Parchment error';
+
+	const envelope = error as {
+		message?: unknown;
+		error?: unknown;
+	};
+	if (typeof envelope.message === 'string') return envelope.message;
+	if (typeof envelope.error === 'string') return envelope.error;
+	if (
+		typeof envelope.error === 'object' &&
+		envelope.error !== null &&
+		'message' in envelope.error &&
+		typeof envelope.error.message === 'string'
+	) {
+		return envelope.error.message;
+	}
+	return 'unknown Parchment error';
+}
+
 function toAgentSimilarBean(match: CatalogSimilarityMatch): AgentSimilarBean {
 	return {
 		coffee_id: match.coffee.id,
@@ -90,10 +100,8 @@ function toAgentSimilarBean(match: CatalogSimilarityMatch): AgentSimilarBean {
 
 export async function findSimilarBeansForAgent(
 	input: AgentSimilarityInput,
-	options: AgentSimilarityOptions = {}
+	client: ParchmentClient
 ): Promise<AgentSimilarityResult> {
-	const client = options.client ?? createAdminClient();
-	const publicOnly = options.publicOnly ?? true;
 	const threshold = Math.min(
 		Math.max(
 			input.threshold ?? DEFAULT_CATALOG_SIMILARITY_THRESHOLD,
@@ -106,24 +114,28 @@ export async function findSimilarBeansForAgent(
 		MAX_CATALOG_SIMILARITY_LIMIT
 	);
 
-	const result = await fetchCatalogSimilarityMatches({
-		supabase: client,
-		coffeeId: input.coffee_id,
-		query: { threshold, limit, stockedOnly: true, mode: 'all' },
-		publicOnly
+	const { data, error } = await client.catalog.similar(String(input.coffee_id), {
+		threshold: String(threshold),
+		limit,
+		stocked_only: 'true',
+		mode: 'all'
 	});
+	if (error) {
+		throw new Error(`Parchment catalog similarity query failed: ${formatParchmentError(error)}`);
+	}
+	if (!data) throw new Error('Parchment catalog similarity query returned no data');
 
 	return {
 		target: {
-			coffee_id: result.target.id,
-			coffee_name: result.target.name,
-			source: result.target.source,
-			origin: result.target.origin,
-			country: result.target.country,
-			processing: result.target.processing
+			coffee_id: data.data.target.id,
+			coffee_name: data.data.target.name,
+			source: data.data.target.source,
+			origin: data.data.target.origin,
+			country: data.data.target.country,
+			processing: data.data.target.processing
 		},
-		matches: result.matches.map(toAgentSimilarBean),
-		total: result.matches.length,
-		query_strategy: result.queryStrategy
+		matches: data.data.matches.map(toAgentSimilarBean),
+		total: data.data.matches.length,
+		query_strategy: data.meta.query_strategy
 	};
 }

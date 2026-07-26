@@ -39,8 +39,8 @@ TOOL USAGE
 {{TOOL_ACCESS_CONTEXT}}
 
 SIMILARITY GUIDANCE
-When a user asks about alternatives, similar coffees, or "what else is like this", use find_similar_beans with their bean's catalog ID.
-Combine with present_results to surface and annotate the top matches.
+When find_similar_beans is available and a user asks about alternatives, similar coffees, or "what else is like this", use it with their bean's catalog ID.
+Combine with present_results to surface and annotate the top matches. Otherwise, use catalog search and explain that advanced bean matching is unavailable in the current access tier.
 
 {{MARKET_INTELLIGENCE_GUIDANCE}}
 
@@ -137,7 +137,7 @@ const WORKSPACE_TYPE_CONTEXT: Record<string, string> = {
 	general: '',
 	sourcing: `\nWORKSPACE FOCUS: Sourcing
 You are in the user's Sourcing workspace. Focus on green coffee discovery, supplier comparisons,
-origin analysis, and purchasing decisions. Prioritize coffee_catalog_search and find_similar_beans tools.`,
+origin analysis, and purchasing decisions. Prioritize coffee_catalog_search and use find_similar_beans when available.`,
 	roasting: `\nWORKSPACE FOCUS: Roasting
 You are in the user's Roasting workspace. Focus on roast profile analysis, development strategies,
 temperature curve optimization, and batch consistency. Prioritize roast_profiles tool.
@@ -206,8 +206,10 @@ const pageContextSchema = z.object({
 export type PageContext = z.infer<typeof pageContextSchema>;
 
 const PAGE_ENTITY_ID_HINTS: Record<PageContext['surface'], string> = {
-	catalog: 'catalog IDs usable with coffee_catalog_search, catalog_rank, and find_similar_beans',
-	analytics: 'catalog IDs usable with coffee_catalog_search and find_similar_beans',
+	catalog:
+		'catalog IDs usable with coffee_catalog_search and catalog_rank, plus find_similar_beans when available',
+	analytics:
+		'catalog IDs usable with coffee_catalog_search, plus find_similar_beans when available',
 	dashboard: 'catalog IDs usable with coffee_catalog_search',
 	beans: 'inventory IDs usable with green_coffee_inventory and update_bean',
 	roast: 'roast IDs usable with roast_profiles',
@@ -219,21 +221,20 @@ const PARCHMENT_TOOL_ACCESS_PROMPT = `You have access to Parchment Intelligence 
 READ TOOLS (query data):
 1. coffee_catalog_search - Query supplier inventories of green coffee
 2. green_coffee_inventory - Query the user's green coffee Portfolio and notes
-3. find_similar_beans - Find beans similar to a specific coffee using embedding similarity across all suppliers
-4. catalog_facets - List valid values (with counts) for supplier/origin/process/grade fields — use before filtering by unverified names
-5. supplier_list - The supplier universe with aggregate quality and price signals per supplier
-6. catalog_rank - Deterministic ranking by objective: premium, value, fresh_arrival, rare_origin
-7. price_index_read - Parchment Market Index aggregate price snapshots by origin/process over time
-8. market_signals - Actionable buy signals: price drops, below-market lots, and price-for-quality outliers
-9. market_stats - Price movement significance with quiet/normal/notable/exceptional classification and move-driver context
-10. market_metadata - Market composition trends for process mix, disclosure level, and Purveyor Score distribution; supplier cup-score trends are unavailable
-11. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
+3. catalog_facets - List valid values (with counts) for supplier/origin/process/grade fields — use before filtering by unverified names
+4. supplier_list - The supplier universe with aggregate quality and price signals per supplier
+5. catalog_rank - Deterministic ranking by objective: premium, value, fresh_arrival, rare_origin
+6. price_index_read - Parchment Market Index aggregate price snapshots by origin/process over time
+7. market_signals - Actionable buy signals: price drops, below-market lots, and price-for-quality outliers
+8. market_stats - Price movement significance with quiet/normal/notable/exceptional classification and move-driver context
+9. market_metadata - Market composition trends for process mix, disclosure level, and Purveyor Score distribution; supplier cup-score trends are unavailable
+10. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
 
 WRITE TOOLS (propose changes — user must confirm before execution):
-12. add_bean_to_inventory - Propose adding a bean to the user's Portfolio
-13. update_bean - Propose updating an existing Portfolio bean
+11. add_bean_to_inventory - Propose adding a bean to the user's Portfolio
+12. update_bean - Propose updating an existing Portfolio bean
 
-Mallard-only roast, tasting, and sales tools are unavailable in this access tier.`;
+Advanced bean matching plus Mallard-only roast, tasting, and sales tools are unavailable in this access tier.`;
 
 const MALLARD_TOOL_ACCESS_PROMPT = `You have access to these tools in two categories:
 
@@ -661,7 +662,7 @@ export const POST: RequestHandler = async (event) => {
 					return rows as unknown as Record<string, unknown>[];
 				},
 				readPriceIndex: (input) => readPriceIndexForAgent(input, agentParchmentClient),
-				findSimilarBeans: (input, options) => findSimilarBeansForAgent(input, options),
+				findSimilarBeans: (input) => findSimilarBeansForAgent(input, agentParchmentClient),
 				marketSignals: async (input) => {
 					const client = await _createMarketToolParchmentClient(event);
 					const { data, error } = await client.market.signals({
