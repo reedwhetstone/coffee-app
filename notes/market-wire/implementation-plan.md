@@ -1,7 +1,7 @@
-# Purveyors Market Read MVP Implementation Plan
+# Purveyors Market Brief MVP Implementation Plan
 
 **Status:** Accepted for implementation
-**Working name:** Purveyors Market Read
+**Working name:** Purveyors Market Brief
 **Updated:** 2026-07-26
 **Authority:** This document supersedes the implementation sequencing and unresolved
 product choices in `design.md` and `infrastructure.md`. `research.md` remains the
@@ -9,7 +9,7 @@ research record.
 
 ## 1. Product definition
 
-Purveyors Market Read is a reliable weekly read of the micro-movements shaping green
+Purveyors Market Brief is a reliable weekly read of the micro-movements shaping green
 coffee: what people are noticing, discussing, buying, questioning, and reacting to,
 supported by Purveyors market data where it adds evidence.
 
@@ -18,16 +18,20 @@ Purveyors data validates, challenges, or adds buying context. Broad macro commen
 is supporting context because established coffee publications and importers already
 cover it well.
 
-Market Read and the existing blog are two formats in one publishing system:
+Market Brief and the existing blog are two formats in one publishing system:
 
 - `essay`: sporadic, idea-led analysis using the current blog workflow.
-- `market-read`: a weekly, source-led review of green-coffee news, sentiment, and
+- `market-brief`: a weekly, source-led review of green-coffee news, sentiment, and
   buying signals.
 
 Both formats live under `/blog`, share the same visual system and PR review workflow,
 and can link to catalog, Market Index, and Parchment Intelligence. The blog index
-provides format tabs or filters. A future `/market-read` vanity path may redirect to
+provides format tabs or filters. A future `/market-brief` vanity path may redirect to
 the filtered blog view, but a separate publication application is not part of MVP.
+
+The existing `/analytics#market-read` live index snapshot keeps its current name.
+The weekly publication therefore uses the distinct user-facing label **Market Brief**
+and the `market-brief` format/vanity slug, avoiding one product name for two surfaces.
 
 ## 2. MVP principles
 
@@ -37,7 +41,7 @@ the filtered blog view, but a separate publication application is not part of MV
    narrative; Purveyors data supplies evidence and buying context.
 3. **Facts precede prose.** Numeric and product claims come from deterministic,
    cited inputs before the LLM drafts.
-4. **One reviewed artifact feeds every channel.** The merged Market Read content file
+4. **One reviewed artifact feeds every channel.** The merged Market Brief content file
    is the canonical MVP edition. Web, RSS, and email derive from it.
 5. **Merge is not send.** Email draft creation starts only after the production
    deployment succeeds. Initial sends always require manual approval in Resend.
@@ -52,18 +56,18 @@ the filtered blog view, but a separate publication application is not part of MV
 
 ## 3. Identity, consent, and entitlement model
 
-Every Market Read email subscriber must have:
+Every Market Brief email subscriber must have:
 
 - a Supabase Auth user;
 - the normal `public.user_roles` row with baseline `role = viewer`;
-- a separate account-owned email-subscription record for the `market_read` topic.
+- a separate account-owned email-subscription record for the `market_brief` topic.
 
 The model has three independent axes:
 
 - `user_roles.role`: application role. `viewer` is free; `member` grants Mallard
   Studio; `admin` is operational.
 - `user_roles.ppi_access`: Parchment Intelligence entitlement.
-- `email_subscriptions.status`: permission to deliver Market Read email.
+- `email_subscriptions.status`: permission to deliver Market Brief email.
 
 The email record is not a second user system. It is a normalized child of the
 Purveyors account. It exists separately because consent, unsubscribe, bounce, and
@@ -87,12 +91,12 @@ suppressed user must still be able to revoke consent.
 
 ### State behavior
 
-- Creating a Purveyors account does not automatically opt the user into Market Read.
+- Creating a Purveyors account does not automatically opt the user into Market Brief.
 - Subscribing requires authentication and explicit consent.
 - Upgrading to Intelligence does not automatically subscribe the user to email.
 - Unsubscribing does not remove Studio or Intelligence access.
 - Canceling a paid product does not unsubscribe the free email.
-- Deleting the Purveyors account ends Market Read delivery.
+- Deleting the Purveyors account ends Market Brief delivery.
 - One-click unsubscribe must work without login and update the same canonical
   subscription state.
 
@@ -113,11 +117,11 @@ and `Intelligence user` rather than the ambiguous word `subscriber`.
 
 ## 4. Canonical MVP edition
 
-Market Read reuses the current MDsveX blog pipeline. A published issue is an `.svx`
+Market Brief reuses the current MDsveX blog pipeline. A published issue is an `.svx`
 file with the existing blog metadata plus:
 
 ```yaml
-format: market-read
+format: market-brief
 edition: 1
 windowStart: '2026-07-20'
 windowEnd: '2026-07-26'
@@ -184,7 +188,7 @@ engagement. The job produces a bounded source packet, not a raw social-media dum
 
 ### Drafting
 
-The LLM receives the source packet, structured facts, Market Read editorial rules,
+The LLM receives the source packet, structured facts, Market Brief editorial rules,
 and Reed's canonical voice guidance. It proposes:
 
 1. the week's throughline;
@@ -201,7 +205,7 @@ Validation rejects:
 - unsupported claims about the entire market when coverage is partial;
 - missing inline links;
 - invalid frontmatter or non-canonical tags;
-- missing hero art or Market Read visual treatment.
+- missing hero art or Market Brief visual treatment.
 
 The job opens a coffee-app PR containing the edition, hero asset, and validation
 summary. Reed reviews the Vercel preview and iterates through the PR.
@@ -210,9 +214,9 @@ summary. Reed reviews the Vercel preview and iterates through the PR.
 
 The launch sequence is:
 
-1. Market Read PR merges.
+1. Market Brief PR merges.
 2. Vercel production deployment reports success.
-3. A GitHub Action identifies the newly published Market Read edition.
+3. A GitHub Action identifies the newly published Market Brief edition.
 4. The action invokes a protected, idempotent draft-creation path.
 5. The canonical edition is rendered into email-safe HTML.
 6. Resend creates or updates a Broadcast with `send: false`.
@@ -228,7 +232,7 @@ substitute for this ledger because deployments and workflows can be replayed.
 Resend is a delivery projection:
 
 - Purveyors stores canonical consent and separate delivery-suppression state.
-- Resend Topics group the projected recipients.
+- Resend Topics group the projected Market Brief recipients.
 - Resend webhooks update local unsubscribe, hard-bounce, and complaint state.
 - Provider identifiers and event IDs support idempotent reconciliation.
 
@@ -246,7 +250,7 @@ flow.
 The Settings danger-zone flow must:
 
 1. require a recent authenticated session and explicit confirmation;
-2. show that Market Read delivery, archive access, and saved product data will end;
+2. show that Market Brief delivery, archive access, and saved product data will end;
 3. identify active Stripe products and apply an explicit cancellation policy;
 4. remove or suppress the Resend contact;
 5. delete the Auth user through a service-owned endpoint;
@@ -292,7 +296,11 @@ expansion policy, and automatic sending are not required for MVP.
 
 ## 9. Learning loop
 
-Seven days after publication, generate a review packet containing:
+Measure web performance from the publication timestamp. Start the email learning
+window seven days after a provider-confirmed send timestamp, not merely after web
+publication. If an edition remains an unsent draft, record the no-send reason and
+omit email performance metrics rather than treating the publication date as a proxy.
+After a confirmed send, generate a review packet containing:
 
 - first generated draft versus merged edition;
 - PR feedback and major rewrites;
@@ -312,7 +320,7 @@ Repository: coffee-app. Documentation only.
 - Add this implementation plan.
 - Mark the earlier Market Wire implementation sequencing as superseded.
 - Align `BLOG_STRATEGY.md` and `DEVLOG.md`.
-- Remove the unrelated knowledge/vector work from Market Read scope.
+- Remove the unrelated knowledge/vector work from Market Brief scope.
 
 ### MR-1: Account-owned email-subscription contract
 
@@ -323,7 +331,7 @@ Repository: parchment-api.
 - Add session-only preference-read and idempotent subscribe/unsubscribe contracts.
 - Add a Parchment-owned token-issuance contract, exposed through the generated SDK
   to an authorized bounded sender. It returns a purpose-bound, expiring
-  `market_read_unsubscribe` token for exactly one account/topic and never exposes
+  `market_brief_unsubscribe` token for exactly one account/topic and never exposes
   signing material.
 - Add the no-login unsubscribe contract, which accepts only a valid Parchment-issued
   token and cannot subscribe or read preferences.
@@ -338,20 +346,25 @@ Repository: parchment-api.
 Repositories: parchment-api and the selected bounded worker owner.
 
 - Add an atomic preference-change plus provider-outbox contract.
-- Project active preferences into the Resend Market Read Topic.
+- Project active preferences into the Resend Market Brief Topic.
 - Deduplicate provider webhooks by event ID.
 - Reconcile unsubscribe, hard-bounce, and complaint suppression locally.
+- Define an authenticated sender-facing recipient projection contract owned by the
+  bounded projection worker. It handles recipient selection and recipient-specific
+  unsubscribe rendering, then exposes MR-11 only a sender-authenticated,
+  topic-scoped, broadcast-ready audience/projection reference; coffee-app must not
+  enumerate accounts, read provider/shared state, or mint tokens.
 - Provide the no-login one-click unsubscribe path through Resend's native topic
   unsubscribe or the MR-1 purpose-bound Parchment token if provider behavior
   requires it. The path may only unsubscribe one account/topic and must be
   idempotent.
-- Do not send a Market Read edition.
+- Do not send a Market Brief edition.
 
 ### MR-3: Coffee-app signup and preference surface
 
 Repository: coffee-app.
 
-- Add authenticated Market Read opt-in.
+- Add authenticated Market Brief opt-in.
 - Route anonymous subscribe intent through login and back to confirmation.
 - Add Settings status and unsubscribe control.
 - Add the MR-2 no-login unsubscribe landing behavior, forwarding the existing
@@ -383,13 +396,13 @@ Repositories: dependency-ordered Parchment contract, then coffee-app UI.
 - Add danger-zone UI and consequence copy.
 - Update privacy and retention copy to match actual behavior.
 
-### MR-6: Market Read content and archive surface
+### MR-6: Market Brief content and archive surface
 
 Repository: coffee-app.
 
-- Add `essay | market-read` metadata.
+- Add `essay | market-brief` metadata.
 - Add format filters or tabs to `/blog`.
-- Add edition metadata and Market Read treatment.
+- Add edition metadata and Market Brief treatment.
 - Enforce recent-three versus Intelligence archive access server-side.
 - Add summary-only RSS behavior.
 
@@ -431,7 +444,7 @@ Repository: coffee-scraper.
 - Keep Reddit disabled until an approved API route is confirmed.
 
 Social capture remains MVP scope because current conversation is the editorial
-center of Market Read. It follows the smaller RSS capture slice so provenance,
+center of Market Brief. It follows the smaller RSS capture slice so provenance,
 sanitization, and idempotent ingestion are proven before paid or rate-limited sources
 are added.
 
@@ -450,13 +463,14 @@ Repositories: coffee-app, with Parchment provider-state support if needed.
 
 - Add the successful-deployment trigger.
 - Render email-safe HTML from the canonical edition.
-- Obtain each recipient's provider-native topic URL or call the MR-1 Parchment
-  token-issuance contract through the generated SDK before rendering; coffee-app must
-  not mint, sign, or validate the token itself.
+- Consume the MR-2 bounded, topic-scoped audience/projection reference when creating
+  the draft; coffee-app must not enumerate recipients, mint tokens, or read shared
+  provider state.
 - Create or update an idempotent Resend Broadcast draft.
 - Record the production commit, edition slug, broadcast ID, and status durably in
   Parchment.
-- Process unsubscribe, bounce, and complaint webhooks.
+- Reuse MR-2's provider reconciliation and suppression state; do not process
+  unsubscribe, bounce, or complaint webhooks in this deployment slice.
 - Keep manual send approval.
 
 ### MR-12: Learning report
@@ -473,13 +487,13 @@ Repository: coffee-app after Reed supplies the matching Stripe price identifiers
 
 - Change Intelligence to $12, Studio to $5, and the bundle to $15.
 - Update annual pricing, checkout, marketing copy, and tests together.
-- Keep this independent of Market Read delivery correctness.
+- Keep this independent of Market Brief delivery correctness.
 
 ## 11. Explicitly deferred
 
 - automatic email sending;
 - personalized editions and immediate alerts;
-- public Market Read API and CLI commands;
+- public Market Brief API and CLI commands;
 - vector ingestion, knowledge search, chat integration, and catalog-chunk retirement;
 - live futures widgets;
 - cross-platform social posting;

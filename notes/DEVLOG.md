@@ -32,8 +32,8 @@
       Confirm the production revision, run the bounded Jul 13 to deployment backfill
       for eligible aggregates, and verify fresh `price_index_snapshots`, period
       changes, market summary, supplier stats, metadata index, and non-empty market
-      signals. Do not advance Signal-dependent Wire or Radar reads until freshness and
-      health checks pass. Plans:
+      signals. Hold Signal-dependent Market Brief and Radar reads until freshness
+      and health checks pass. Plans:
       `notes/implementation-plans/2026-07-16-market-publication-recovery-and-activation.md`
       and `notes/implementation-plans/2026-07-13-market-publication-continuity-program.md`.
 
@@ -66,15 +66,15 @@
 
 ## P1: Build the distribution and revenue engine
 
-- [ ] **Build the Market Read MVP in dependency order.** Use
+- [ ] **Build the Market Brief MVP in dependency order.** Use
       `notes/market-wire/implementation-plan.md` as the authoritative plan. Start with
       the Parchment account-owned email-consent contract, then coffee-app signup and
-      preferences, account deletion, the shared blog/Market Read content surface,
+      preferences, account deletion, the shared blog/Market Brief content surface,
       Parchment external-source storage, scraper social/news capture, weekly PR
       generation, and successful-deployment-to-Resend-draft delivery. Keep the first
       sends manually approved.
 
-- [ ] **Launch and measure Market Read.** Publish early editions through the human
+- [ ] **Launch and measure Market Brief.** Publish early editions through the human
       gate, recruit the first 50 qualified roasters/buyers/writers/supplier contacts,
       and measure subscriber growth, open rate, evidence clicks, repeat visits,
       replies, and paid conversions. Establish corrections, independence,
@@ -95,14 +95,14 @@
       weekly cadence with one canonical queue from idea to sourced outline, draft,
       Reed-voice review, image, links, metadata, publish, email, and performance
       review. Resolve the current open PR queue before creating more drafts: refresh
-      or close stale PRs #287, #358, and #369. Market Read and essays are distinct
-      formats in one blog system: Market Read is recurring market reporting; essays
+      or close stale PRs #287, #358, and #369. Market Brief and essays are distinct
+      formats in one blog system: Market Brief is recurring market reporting; essays
       carry deeper product, market, API, and agentic arguments. Sources:
       `notes/blog/ideas.md`,
       `notes/blog/source-map.md`, and `notes/BLOG_STRATEGY.md`.
 
 - [ ] **Close the full public conversion loop.** Connect catalog, analytics,
-      Market Index, Wire, blog, email, subscription, and checkout with coherent CTAs
+      Market Index, blog, Market Brief email, subscription, and checkout with coherent CTAs
       and attribution. Validate sitemap, `llms.txt`, feeds, social metadata, structured
       data, shared URLs, event naming, and post-purchase return paths. Use real funnel
       data to prioritize the next conversion fix instead of accumulating generic
@@ -111,10 +111,10 @@
 ## P1: Build the market knowledge and decision layer
 
 - [ ] **Design a provenance-aware market knowledge corpus as a separate project.** Add
-      `knowledge_documents` and `knowledge_chunks` for published Wire editions,
+      `knowledge_documents` and `knowledge_chunks` for published Market Brief editions,
       sections, deep dives, blog posts, curated news, social threads, and macro notes.
       Store source type, controlled topics, normalized entities, time window, URL, and
-      trust class. This is not a Market Read MVP dependency.
+      trust class. This is not a Market Brief MVP dependency.
 
 - [ ] **Ship market-knowledge retrieval and evaluation independently.** Add filtered,
       citation-preserving Parchment knowledge search, coffee-app chat integration, and
@@ -124,7 +124,7 @@
       anonymous, viewer, email-subscriber, and Studio readers, and full older editions
       only for Intelligence and admin access. Retire structured `origin`,
       `commercial`, and `processing` catalog prose chunks in a separate slice while
-      preserving sensory/profile vector search. Do not couple this work to Market Read
+      preserving sensory/profile vector search. Do not couple this work to Market Brief
       publication or delivery.
 
 - [ ] **Build Sourcing Radar after aggregate freshness is proven.** Deliver the

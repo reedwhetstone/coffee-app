@@ -45,7 +45,7 @@ A public blog at `purveyors.io/blog` that serves as Reed's thinking-out-loud spa
 - Hero image missing from draft PR. Must be in the same PR, always.
 - One complete PR per post. Never merge post without hero.
 
-## Purveyors Market Read
+## Purveyors Market Brief
 
 ### Objective
 
@@ -53,7 +53,7 @@ Ship one reliable weekly read of the micro-movements shaping green coffee: curre
 industry conversation, news, sentiment, and buying signals, supported by Purveyors
 market data where it adds evidence.
 
-Market Read is the recurring publication and distribution engine. Existing essays
+Market Brief is the recurring publication and distribution engine. Existing essays
 remain sporadic, idea-led pieces. Both formats share the blog publishing system,
 visual language, PR review, and recursive learning loop.
 
@@ -66,8 +66,9 @@ visual language, PR review, and recursive learning loop.
 - Review: Reed reviews the Vercel preview and iterates through the PR.
 - Publication: merge, wait for successful production deployment, then create a
   manually approved Resend draft.
-- Seven days later: review draft changes and performance signals before the next
-  edition.
+- Seven days after a provider-confirmed send: review email performance signals;
+  measure web performance from publication separately. If an edition is not sent,
+  record the no-send reason instead of inferring email performance.
 
 ### Required structure
 
@@ -80,7 +81,7 @@ visual language, PR review, and recursive learning loop.
 
 ### Operating rule
 
-Weekly Market Read production takes precedence over optional essay work. The exact
+Weekly Market Brief production takes precedence over optional essay work. The exact
 send day remains configurable until the first production schedule is chosen.
 
 ## Content Pillars
@@ -288,10 +289,10 @@ The GenUI thesis. What "AI-first" means beyond the buzzword. The canvas architec
 - "Scraper Feedback Loops: When Your CI Pipeline Generates Its Own Improvements"
 - API docs: Getting Started with the Purveyors API
 
-### Ongoing: Cadence
+### Ongoing: Essay cadence
 
-- 2 posts/month minimum
-- 1 market pulse per month (data-driven, unique content)
+- 2 essay posts/month minimum (idea-led or technical deep dives)
+- 1 Market Brief edition every week (recurring market reporting)
 - 1 technical deep dive per month
 - Ad hoc: insights, opinions, interesting problems as they arise
 
@@ -313,7 +314,7 @@ The GenUI thesis. What "AI-first" means beyond the buzzword. The canvas architec
 ## Decisions
 
 - **Comments:** Yes, via Giscus (GitHub discussions). Comments are public engagement, NOT second brain inputs. The second brain remains exclusively Reed's private space.
-- **Newsletter:** Yes. Purveyors Market Read is the account-coupled weekly email
+- **Newsletter:** Yes. Purveyors Market Brief is the account-coupled weekly email
   format. Resend is the delivery provider for MVP; Purveyors owns consent and
   entitlement state.
 - **Domain:** purveyors.io/blog (keep it on the main domain for SEO value)
