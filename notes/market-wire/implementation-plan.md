@@ -343,17 +343,31 @@ Repository: parchment-api.
 
 ### MR-2: Resend projection and event reconciliation
 
-Repositories: parchment-api and the selected bounded worker owner.
+Repository: parchment-api. The bounded projection worker is the Parchment-owned
+**Market Brief projection worker** (`market-brief-projection`); no coffee-app-side
+component owns this shared provider or preference state.
 
 - Add an atomic preference-change plus provider-outbox contract.
 - Project active preferences into the Resend Market Brief Topic.
-- Deduplicate provider webhooks by event ID.
-- Reconcile unsubscribe, hard-bounce, and complaint suppression locally.
-- Define an authenticated sender-facing recipient projection contract owned by the
-  bounded projection worker. It handles recipient selection and recipient-specific
-  unsubscribe rendering, then exposes MR-11 only a sender-authenticated,
-  topic-scoped, broadcast-ready audience/projection reference; coffee-app must not
-  enumerate accounts, read provider/shared state, or mint tokens.
+- Deduplicate provider webhooks by event ID and reconcile unsubscribe, hard-bounce,
+  and complaint suppression locally; each reconciliation is idempotent on the
+  provider event ID.
+- Define the authenticated sender-facing recipient contract owned by the
+  `market-brief-projection` worker:
+  - **Authentication:** only a service-authenticated sender (the MR-11 deployment
+    worker) may call it; anonymous, public-demo, and API-key callers are rejected.
+  - **Audience reference:** it returns a topic-scoped, broadcast-ready
+    audience/projection reference for the current Market Brief Topic, never a raw
+    list of account IDs, provider contact IDs, or shared preference rows.
+  - **Token rendering:** it performs recipient selection and renders each
+    recipient's purpose-bound, no-login unsubscribe link using the MR-1 Parchment
+    token issuance; coffee-app never enumerates accounts, reads provider/shared
+    state, or mints tokens.
+  - **Idempotency:** repeated calls for the same (Topic, edition) return the same
+    audience reference without duplicating projection or suppression state.
+  - **MR-11 consumption:** MR-11 receives only this reference plus the rendered
+    recipient payload and cannot expand the audience or reach provider state
+    directly.
 - Provide the no-login one-click unsubscribe path through Resend's native topic
   unsubscribe or the MR-1 purpose-bound Parchment token if provider behavior
   requires it. The path may only unsubscribe one account/topic and must be
@@ -463,8 +477,9 @@ Repositories: coffee-app, with Parchment provider-state support if needed.
 
 - Add the successful-deployment trigger.
 - Render email-safe HTML from the canonical edition.
-- Consume the MR-2 bounded, topic-scoped audience/projection reference when creating
-  the draft; coffee-app must not enumerate recipients, mint tokens, or read shared
+- Consume the MR-2 `market-brief-projection` worker's topic-scoped
+  audience/projection reference and rendered recipient payload when creating the
+  draft; coffee-app must not enumerate recipients, mint tokens, or read shared
   provider state.
 - Create or update an idempotent Resend Broadcast draft.
 - Record the production commit, edition slug, broadcast ID, and status durably in

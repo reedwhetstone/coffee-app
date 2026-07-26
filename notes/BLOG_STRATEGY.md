@@ -166,7 +166,7 @@ Writing a blog post about your architecture forces you to articulate decisions t
 
 ### The coffee data is genuinely unique content
 
-Nobody else is publishing aggregated, normalized green coffee market data. A weekly or bi-weekly "market pulse" post with actual data visualizations from the scraper would be the highest-value SEO content. Roasters searching for sourcing insights land on purveyors.io and discover the platform.
+Nobody else is publishing aggregated, normalized green coffee market data. A weekly "market pulse" post, now the recurring **Market Brief**, with actual data visualizations from the scraper is the highest-value SEO content. Roasters searching for sourcing insights land on purveyors.io and discover the platform.
 
 ### Build-in-public as business development
 
@@ -284,17 +284,17 @@ The GenUI thesis. What "AI-first" means beyond the buzzword. The canvas architec
 
 ### Month 2: Depth (3-4 posts)
 
-- Green coffee market pulse (first data-driven market analysis post)
+- Green coffee market pulse: the first Market Brief edition (data-driven market analysis)
 - "Your API Docs Are Your New Landing Page: Building for Agent Customers" (the B2CC thesis applied to purveyors, referencing Caleb John's framework [[b2cc-agents-as-customers]])
 - "Scraper Feedback Loops: When Your CI Pipeline Generates Its Own Improvements"
 - API docs: Getting Started with the Purveyors API
 
-### Ongoing: Essay cadence
+### Ongoing cadence
 
-- 2 essay posts/month minimum (idea-led or technical deep dives)
-- 1 Market Brief edition every week (recurring market reporting)
-- 1 technical deep dive per month
-- Ad hoc: insights, opinions, interesting problems as they arise
+- **Market Brief: one edition every week.** The core recurring publication and the
+  operating rule; weekly production takes precedence over optional essay work.
+- Essays: two idea-led or technical posts per month minimum.
+- Ad hoc: insights, opinions, interesting problems as they arise.
 
 ## Success Metrics
 
