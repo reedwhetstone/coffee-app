@@ -58,6 +58,12 @@ function usageFixture(overrides: Partial<OwnerApiUsage> = {}): OwnerApiUsage {
 						timestamp: '2026-07-26T11:00:00Z',
 						statusCode: 200,
 						responseTimeMs: 42
+					},
+					{
+						endpoint: '/v1/catalog',
+						timestamp: '2026-07-26T11:01:00Z',
+						statusCode: null,
+						responseTimeMs: null
 					}
 				]
 			},
@@ -115,6 +121,13 @@ describe('mapOwnerApiUsage', () => {
 			status_code: 200,
 			response_time_ms: 42
 		});
+		expect(mapped.usageData[0]).toEqual(
+			expect.objectContaining({
+				recentSuccessRequests: 1,
+				recentErrorRequests: 0,
+				recentPendingRequests: 1
+			})
+		);
 		expect(mapped.dailySummary[0]).toEqual(
 			expect.objectContaining({ total_requests: 3, avg_response_time: 41 })
 		);

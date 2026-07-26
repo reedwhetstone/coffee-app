@@ -21,6 +21,9 @@ export interface ApiKeyUsageView {
 	monthlyRequests: number;
 	windowRequests: number;
 	windowTruncated: boolean;
+	recentSuccessRequests: number;
+	recentErrorRequests: number;
+	recentPendingRequests: number;
 	usage: ApiUsageRecordView[];
 }
 
@@ -132,6 +135,13 @@ export function mapOwnerApiUsage(usage: OwnerApiUsage): ApiUsagePageData {
 			monthlyRequests: key.monthlyRequests,
 			windowRequests: key.windowRequests,
 			windowTruncated: key.windowTruncated,
+			recentSuccessRequests: key.recent.filter(
+				(record) => record.statusCode !== null && record.statusCode < 400
+			).length,
+			recentErrorRequests: key.recent.filter(
+				(record) => record.statusCode !== null && record.statusCode >= 400
+			).length,
+			recentPendingRequests: key.recent.filter((record) => record.statusCode === null).length,
 			usage: key.recent.map((record) => ({
 				endpoint: record.endpoint,
 				timestamp: record.timestamp,

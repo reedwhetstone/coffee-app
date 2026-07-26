@@ -205,19 +205,23 @@
 											<div class="flex items-center space-x-1">
 												<div class="h-2 w-2 rounded-full bg-success"></div>
 												<span class="text-xs text-muted">
-													{keyUsage.usage.filter(
-														(u: Record<string, unknown>) => (u.status_code as number) < 400
-													).length} recent success
+													{keyUsage.recentSuccessRequests} recent success
 												</span>
 											</div>
 											<div class="flex items-center space-x-1">
 												<div class="h-2 w-2 rounded-full bg-danger"></div>
 												<span class="text-xs text-muted">
-													{keyUsage.usage.filter(
-														(u: Record<string, unknown>) => (u.status_code as number) >= 400
-													).length} recent errors
+													{keyUsage.recentErrorRequests} recent errors
 												</span>
 											</div>
+											{#if keyUsage.recentPendingRequests > 0}
+												<div class="flex items-center space-x-1">
+													<div class="h-2 w-2 rounded-full bg-warning"></div>
+													<span class="text-xs text-muted">
+														{keyUsage.recentPendingRequests} pending
+													</span>
+												</div>
+											{/if}
 										</div>
 									{:else}
 										<div class="text-xs text-muted">No recent usage</div>
