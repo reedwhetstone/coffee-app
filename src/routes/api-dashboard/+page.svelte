@@ -41,42 +41,11 @@
 			</div>
 
 			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-				<h3 class="text-sm font-medium text-muted">This Month</h3>
-				<p
-					class="mt-1 text-2xl font-bold {data.usageStats?.nearLimit
-						? 'text-warning'
-						: data.usageStats?.atLimit
-							? 'text-danger'
-							: 'text-success-strong'}"
-				>
+				<h3 class="text-sm font-medium text-muted">Owner Traffic This Month</h3>
+				<p class="mt-1 text-2xl font-bold text-ink">
 					{data.usageStats?.monthlyUsage?.toLocaleString() || 0}
 				</p>
-				<div class="mt-1">
-					<p class="text-xs text-muted">
-						{#if data.usageStats?.monthlyLimit === -1}
-							Unlimited (Enterprise)
-						{:else}
-							of {data.usageStats?.monthlyLimit?.toLocaleString() || '200'}
-							({Math.round(data.usageStats?.monthlyPercent || 0)}%)
-						{/if}
-					</p>
-					{#if data.usageStats && data.usageStats.monthlyLimit !== -1}
-						<div class="mt-1 h-1 w-full rounded-full bg-surface-canvas">
-							<div
-								class="h-1 rounded-full transition-all duration-300 {data.usageStats.atLimit
-									? 'bg-danger'
-									: data.usageStats.nearLimit
-										? 'bg-warning'
-										: 'bg-success'}"
-								style="width: {data.usageStats.monthlyPercent}%"
-							></div>
-						</div>
-					{:else if data.usageStats?.monthlyLimit === -1}
-						<div class="mt-1 h-1 w-full rounded-full bg-surface-canvas">
-							<div class="h-1 w-full rounded-full bg-info"></div>
-						</div>
-					{/if}
-				</div>
+				<p class="mt-1 text-xs text-muted">Aggregate traffic across all API keys</p>
 			</div>
 
 			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
@@ -102,25 +71,29 @@
 			</div>
 
 			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-				<h3 class="text-sm font-medium text-muted">Status</h3>
+				<h3 class="text-sm font-medium text-muted">Highest Key Quota</h3>
 				<p
-					class="mt-1 text-2xl font-bold {data.usageStats?.atLimit
+					class="mt-1 text-2xl font-bold {data.usageStats?.highestKeyQuota?.atLimit
 						? 'text-red-500'
-						: data.usageStats?.nearLimit
+						: data.usageStats?.highestKeyQuota?.nearLimit
 							? 'text-warning'
 							: 'text-green-500'}"
 				>
-					{#if data.usageStats?.userTier === 'enterprise'}
+					{#if data.usageStats?.unlimited}
 						Unlimited
-					{:else if data.usageStats?.atLimit}
+					{:else if data.usageStats?.highestKeyQuota?.atLimit}
 						At Limit
-					{:else if data.usageStats?.nearLimit}
+					{:else if data.usageStats?.highestKeyQuota?.nearLimit}
 						Near Limit
 					{:else}
 						Active
 					{/if}
 				</p>
-				<p class="mt-1 text-xs text-muted">Parchment API tier</p>
+				<p class="mt-1 text-xs text-muted">
+					{data.usageStats?.highestKeyQuota
+						? `${data.usageStats.highestKeyQuota.keyName}: ${Math.round(data.usageStats.highestKeyQuota.monthlyPercent)}%`
+						: 'Per-key monthly limit'}
+				</p>
 			</div>
 		</div>
 
@@ -273,8 +246,8 @@
 		{/if}
 
 		<!-- Usage Accountability Alerts with Upgrade CTAs -->
-		{#if data.usageStats && data.usageStats.userTier !== 'enterprise'}
-			{#if data.usageStats.atLimit}
+		{#if data.usageStats?.highestKeyQuota}
+			{#if data.usageStats.highestKeyQuota.atLimit}
 				<div class="mt-8 rounded-md bg-danger-subtle p-4 ring-1 ring-danger/30">
 					<div class="flex">
 						<div class="flex-shrink-0">
@@ -290,8 +263,9 @@
 							<h3 class="text-sm font-medium text-danger-strong">Rate limit reached</h3>
 							<div class="mt-2 text-sm text-danger">
 								<p>
-									You have reached your {data.usageStats.monthlyLimit.toLocaleString()} monthly API call
-									limit.
+									{data.usageStats.highestKeyQuota.keyName} has reached
+									{data.usageStats.highestKeyQuota.monthlyRequests.toLocaleString()} of its
+									{data.usageStats.highestKeyQuota.monthlyLimitPerKey.toLocaleString()} monthly API calls.
 									{#if data.usageStats.userTier === 'viewer'}
 										Upgrade to Origin for 10,000 calls/month.
 									{:else}
@@ -318,7 +292,7 @@
 						</div>
 					</div>
 				</div>
-			{:else if data.usageStats.nearLimit}
+			{:else if data.usageStats.highestKeyQuota.nearLimit}
 				<div class="mt-8 rounded-md bg-warning-subtle p-4 ring-1 ring-warning/30">
 					<div class="flex">
 						<div class="flex-shrink-0">
@@ -334,8 +308,9 @@
 							<h3 class="text-sm font-medium text-warning-strong">Approaching rate limit</h3>
 							<div class="mt-2 text-sm text-warning-strong">
 								<p>
-									You're using {Math.round(data.usageStats.monthlyPercent)}% of your {data.usageStats.monthlyLimit.toLocaleString()}
-									monthly API calls.
+									{data.usageStats.highestKeyQuota.keyName} is using
+									{Math.round(data.usageStats.highestKeyQuota.monthlyPercent)}% of its
+									{data.usageStats.highestKeyQuota.monthlyLimitPerKey.toLocaleString()} monthly API calls.
 									{#if data.usageStats.userTier === 'viewer'}
 										Consider upgrading to Origin for 10,000 calls/month.
 									{:else}
@@ -343,16 +318,12 @@
 									{/if}
 								</p>
 								<div class="mt-3 flex space-x-4">
-									{#if data.usageStats.monthlyPercent >= 75}
-										<a
-											href={data.usageStats.userTier === 'viewer' ? '/subscription' : '/contact'}
-											class="font-medium text-warning-strong underline hover:text-warning"
-										>
-											{data.usageStats.userTier === 'viewer'
-												? 'Upgrade to Origin'
-												: 'Contact sales'}
-										</a>
-									{/if}
+									<a
+										href={data.usageStats.userTier === 'viewer' ? '/subscription' : '/contact'}
+										class="font-medium text-warning-strong underline hover:text-warning"
+									>
+										{data.usageStats.userTier === 'viewer' ? 'Upgrade to Origin' : 'Contact sales'}
+									</a>
 									<a
 										href="/api-dashboard/usage"
 										class="font-medium text-warning-strong underline hover:text-warning"
@@ -370,7 +341,7 @@
 						</div>
 					</div>
 				</div>
-			{:else if data.usageStats.monthlyPercent >= 75}
+			{:else if data.usageStats.highestKeyQuota.monthlyPercent >= 75}
 				<!-- Upgrade CTA at 75% usage as specified in APITIER.md -->
 				<div class="mt-8 rounded-md bg-info-subtle p-4 ring-1 ring-info/30">
 					<div class="flex">
@@ -387,8 +358,9 @@
 							<h3 class="text-sm font-medium text-info-strong">Consider upgrading</h3>
 							<div class="mt-2 text-sm text-info-strong">
 								<p>
-									You've used {Math.round(data.usageStats.monthlyPercent)}% of your monthly API
-									calls.
+									{data.usageStats.highestKeyQuota.keyName} has used
+									{Math.round(data.usageStats.highestKeyQuota.monthlyPercent)}% of its monthly API
+									calls. Limits apply separately to each key.
 									{#if data.usageStats.userTier === 'viewer'}
 										Upgrade to Origin for 50x more calls and advanced features.
 									{:else}

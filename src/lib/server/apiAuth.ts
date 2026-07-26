@@ -108,29 +108,6 @@ export async function validateApiKey(key: string): Promise<ApiKeyValidationResul
 }
 
 /**
- * Get user's API keys (without revealing the actual keys)
- */
-export async function getUserApiKeys(userId: string) {
-	try {
-		const { data, error } = await supabase
-			.from('api_keys')
-			.select('id, name, created_at, last_used_at, is_active')
-			.eq('user_id', userId)
-			.order('created_at', { ascending: false });
-
-		if (error) {
-			console.error('Error fetching user API keys:', error);
-			return { success: false, error: 'Failed to fetch API keys' };
-		}
-
-		return { success: true, data };
-	} catch (error) {
-		console.error('Get user API keys error:', error);
-		return { success: false, error: 'Fetch failed' };
-	}
-}
-
-/**
  * Log API usage
  */
 export async function logApiUsage(
@@ -224,63 +201,6 @@ export async function checkRateLimit(
 			remaining: fallbackLimit,
 			resetTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 		};
-	}
-}
-
-/**
- * Get usage statistics for an API key
- */
-export async function getApiKeyUsage(apiKeyId: string, startDate?: Date, endDate?: Date) {
-	try {
-		let query = supabase
-			.from('api_usage')
-			.select('endpoint, timestamp, status_code, response_time_ms')
-			.eq('api_key_id', apiKeyId)
-			.order('timestamp', { ascending: false });
-
-		if (startDate) {
-			query = query.gte('timestamp', startDate.toISOString());
-		}
-
-		if (endDate) {
-			query = query.lte('timestamp', endDate.toISOString());
-		}
-
-		const { data, error } = await query.limit(1000); // Limit for performance
-
-		if (error) {
-			console.error('Error fetching API key usage:', error);
-			return { success: false, error: 'Failed to fetch usage data' };
-		}
-
-		return { success: true, data };
-	} catch (error) {
-		console.error('Get API key usage error:', error);
-		return { success: false, error: 'Fetch failed' };
-	}
-}
-
-/**
- * Get usage summary by day for charts
- */
-export async function getUsageSummary(apiKeyId: string, days: number = 30) {
-	try {
-		const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-
-		const { data, error } = await supabase.rpc('get_api_usage_summary', {
-			key_id: apiKeyId,
-			start_date: startDate.toISOString()
-		});
-
-		if (error) {
-			console.error('Error fetching usage summary:', error);
-			return { success: false, error: 'Failed to fetch usage summary' };
-		}
-
-		return { success: true, data };
-	} catch (error) {
-		console.error('Get usage summary error:', error);
-		return { success: false, error: 'Fetch failed' };
 	}
 }
 
