@@ -90,11 +90,25 @@ describe('chat system prompt entitlement context', () => {
 		expect(prompt).toContain('roast_profiles');
 		expect(prompt).toContain('record_sale');
 		expect(prompt).toContain('catalog_rank');
+		expect(prompt).not.toContain('price_index_read');
+		expect(prompt).not.toContain('market_signals');
+		expect(prompt).not.toContain('market_stats');
+		expect(prompt).not.toContain('market_metadata');
+		expect(prompt).toContain('WORKSPACE FOCUS: Roasting');
+	});
+
+	it('adds PPI market guidance for users with both products', () => {
+		const prompt = _buildSystemPrompt({ type: 'roasting' }, 'Bundle User', {
+			ppiAccess: true,
+			memberAccess: true
+		});
+
+		expect(prompt).toContain('roast_profiles');
+		expect(prompt).toContain('PARCHMENT INTELLIGENCE MARKET TOOLS');
 		expect(prompt).toContain('price_index_read');
 		expect(prompt).toContain('market_signals');
 		expect(prompt).toContain('market_stats');
 		expect(prompt).toContain('market_metadata');
-		expect(prompt).toContain('WORKSPACE FOCUS: Roasting');
 	});
 });
 
