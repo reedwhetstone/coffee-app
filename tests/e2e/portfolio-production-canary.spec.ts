@@ -44,9 +44,10 @@ test('production tracked-lot session path restores its prior state', async ({ pa
 
 	let tracked = false;
 	try {
-		const trackResponse = await page.request.put(`/api/catalog/${catalogId}/track`, {
-			data: { tracked: true }
-		});
+		const trackResponse = await page.request.put(
+			`${PARCHMENT_API}/v1/portfolio/tracked-lots/${catalogId}`,
+			{ headers }
+		);
 		const trackBody = await trackResponse.json();
 		expect(trackResponse.status(), JSON.stringify(trackBody)).toBe(200);
 		expect(trackBody).toMatchObject({ catalogId, tracked: true });
@@ -60,16 +61,17 @@ test('production tracked-lot session path restores its prior state', async ({ pa
 		const trackedState = (await trackedResponse.json()) as { data: { catalogIds: number[] } };
 		expect(trackedState.data.catalogIds).toContain(catalogId);
 
-		const untrackResponse = await page.request.put(`/api/catalog/${catalogId}/track`, {
-			data: { tracked: false }
-		});
+		const untrackResponse = await page.request.delete(
+			`${PARCHMENT_API}/v1/portfolio/tracked-lots/${catalogId}`,
+			{ headers }
+		);
 		expect(untrackResponse.status()).toBe(200);
 		expect(await untrackResponse.json()).toMatchObject({ catalogId, tracked: false });
 		tracked = false;
 	} finally {
 		if (tracked && catalogId !== undefined) {
-			await page.request.put(`/api/catalog/${catalogId}/track`, {
-				data: { tracked: false }
+			await page.request.delete(`${PARCHMENT_API}/v1/portfolio/tracked-lots/${catalogId}`, {
+				headers
 			});
 		}
 	}
