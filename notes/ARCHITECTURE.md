@@ -103,7 +103,7 @@ replacement or retirement:
   `market_daily_summary`, and `supplier_daily_stats`
 - local similarity and matching RPCs over catalog data
 - bean-identity candidate and review operations over shared identity tables
-- sourcing brief summaries and tracked-lot joins against shared catalog rows
+- sourcing brief summaries against shared catalog rows
 - legacy catalog RAG reads and `match_coffee_chunks`
 - local API-key and usage-table access where the Parchment control plane should
   be authoritative
@@ -117,6 +117,9 @@ The existence of a Parchment endpoint does not prove coffee-app has migrated to
 it. The canonical backlog tracks this as the headless-cutover debt audit. Each
 path needs a source-level caller inventory, a replacement contract, and a
 mergeable deletion or migration slice before it can be called complete.
+
+Tracked-lot portfolio reads and writes are no longer included in this debt list;
+coffee-app now consumes the Parchment-owned portfolio contract through the SDK.
 
 ## Chat and agent flow
 
