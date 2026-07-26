@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { SourcingBriefResource } from '$lib/server/parchmentProcurement';
 
 const { mockCreateParchmentServerClient } = vi.hoisted(() => ({
 	mockCreateParchmentServerClient: vi.fn()
@@ -25,7 +26,8 @@ import {
 	_createMarketToolParchmentClient,
 	_buildSystemPrompt,
 	_fetchAgentCatalogRowsForSearch,
-	_filterAgentCatalogRowsForUnsupportedFilters
+	_filterAgentCatalogRowsForUnsupportedFilters,
+	_loadSourcingIntelligenceSeeds
 } from './+server';
 
 describe('chat system prompt entitlement context', () => {
@@ -106,6 +108,36 @@ describe('chat market tool Parchment client', () => {
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(event, {
 			preferHandling: 'inherit'
 		});
+	});
+});
+
+describe('chat sourcing intelligence enrichment', () => {
+	it('preserves tracked lots when the sourcing-brief API fails', async () => {
+		const result = await _loadSourcingIntelligenceSeeds(
+			() => Promise.resolve([7, 9]),
+			() => Promise.reject(new Error('briefs unavailable'))
+		);
+
+		expect(result).toEqual({ trackedIds: [7, 9], briefRows: [] });
+	});
+
+	it('preserves sourcing briefs when tracked-lot loading fails', async () => {
+		const brief = {
+			id: 'brief-1',
+			name: 'Ethiopia naturals',
+			criteria: { version: 1 as const, country: 'Ethiopia' },
+			cadence: 'manual' as const,
+			isActive: true,
+			lastRunAt: null,
+			createdAt: '2026-07-01T00:00:00Z',
+			updatedAt: '2026-07-01T00:00:00Z'
+		} as unknown as SourcingBriefResource;
+		const result = await _loadSourcingIntelligenceSeeds(
+			() => Promise.reject(new Error('tracked lots unavailable')),
+			() => Promise.resolve([brief])
+		);
+
+		expect(result).toEqual({ trackedIds: [], briefRows: [brief] });
 	});
 });
 

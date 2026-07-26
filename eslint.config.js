@@ -47,5 +47,19 @@ export default ts.config(
 				parser: ts.parser
 			}
 		}
+	},
+	{
+		files: ['src/**/*.{ts,svelte}'],
+		rules: {
+			'no-restricted-syntax': [
+				'error',
+				{
+					selector:
+						"CallExpression[callee.property.name='from'][arguments.0.value='sourcing_briefs']",
+					message:
+						'Read sourcing briefs through the canonical Parchment procurement API, not Supabase.'
+				}
+			]
+		}
 	}
 );

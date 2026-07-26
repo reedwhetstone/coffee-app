@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockCatalogList = vi.fn();
+const mockBriefsList = vi.fn();
 const mockCreateParchmentServerClient = vi.fn();
 const mockGetTrackedLotSummaries = vi.fn();
 
@@ -17,28 +18,27 @@ let load: typeof import('./+page.server').load;
 beforeEach(async () => {
 	vi.clearAllMocks();
 	mockCatalogList.mockResolvedValue({ data: { data: [] } });
-	mockCreateParchmentServerClient.mockResolvedValue({ catalog: { list: mockCatalogList } });
+	mockBriefsList.mockResolvedValue({ data: { data: [] } });
+	mockCreateParchmentServerClient.mockResolvedValue({
+		catalog: { list: mockCatalogList },
+		procurement: { briefs: { list: mockBriefsList } }
+	});
 	mockGetTrackedLotSummaries.mockResolvedValue([]);
 	({ load } = await import('./+page.server'));
 });
-
-function makeBriefsQuery(rows: Array<Record<string, unknown>>) {
-	return {
-		select: vi.fn().mockReturnThis(),
-		eq: vi.fn().mockReturnThis(),
-		order: vi.fn().mockReturnThis(),
-		limit: vi.fn().mockResolvedValue({ data: rows, error: null })
-	};
-}
 
 function makeLoadInput(input: {
 	role: string;
 	principal: { isAuthenticated: true; userId: string; ppiAccess: boolean } | null;
 	briefRows?: Array<Record<string, unknown>>;
 }) {
+	if (input.briefRows) {
+		mockBriefsList.mockResolvedValue({ data: { data: input.briefRows } });
+	}
+
 	return {
 		locals: {
-			supabase: { from: vi.fn().mockReturnValue(makeBriefsQuery(input.briefRows ?? [])) },
+			supabase: {},
 			role: input.role,
 			session: input.principal ? { access_token: 'token' } : null,
 			principal: input.principal
@@ -151,6 +151,7 @@ describe('/dashboard sourcing workspace load', () => {
 		};
 
 		expect(result.activeBriefs).toHaveLength(1);
+		expect(mockBriefsList).toHaveBeenCalledOnce();
 		expect(result.activeBriefs[0].catalogHref).toBe('/catalog?country=Colombia');
 		expect(result.activeBriefs[0].criteriaDescription).toContain('Colombia');
 	});

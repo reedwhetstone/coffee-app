@@ -48,14 +48,13 @@ const lots: MatchableLot[] = [
 	}
 ];
 
-function makeSupabase(briefs: unknown[]) {
+function makeClient(briefs: unknown[]) {
 	return {
-		from: vi.fn().mockReturnValue({
-			select: vi.fn().mockReturnThis(),
-			eq: vi.fn().mockReturnThis(),
-			order: vi.fn().mockReturnThis(),
-			limit: vi.fn().mockResolvedValue({ data: briefs, error: null })
-		})
+		procurement: {
+			briefs: {
+				list: vi.fn().mockResolvedValue({ data: { data: briefs } })
+			}
+		}
 	};
 }
 
@@ -66,7 +65,7 @@ afterEach(() => {
 describe('getBriefMatchSummaries', () => {
 	it('returns empty array when user has no active briefs', async () => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const result = await getBriefMatchSummaries(makeSupabase([]) as any, 'user-1', lots);
+		const result = await getBriefMatchSummaries(makeClient([]) as any, lots);
 		expect(result).toEqual([]);
 	});
 
@@ -75,7 +74,7 @@ describe('getBriefMatchSummaries', () => {
 			{ id: 'b1', name: 'Ethiopia brief', criteria: { version: 1, country: 'Ethiopia' } }
 		];
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const result = await getBriefMatchSummaries(makeSupabase(briefs) as any, 'user-1', []);
+		const result = await getBriefMatchSummaries(makeClient(briefs) as any, []);
 		expect(result).toEqual([]);
 	});
 
@@ -84,7 +83,7 @@ describe('getBriefMatchSummaries', () => {
 			{ id: 'b1', name: 'Ethiopia brief', criteria: { version: 1, country: 'Ethiopia' } }
 		];
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const result = await getBriefMatchSummaries(makeSupabase(briefs) as any, 'user-1', lots);
+		const result = await getBriefMatchSummaries(makeClient(briefs) as any, lots);
 		expect(result).toHaveLength(1);
 		expect(result[0].briefName).toBe('Ethiopia brief');
 		expect(result[0].matchCount).toBe(2);
@@ -97,7 +96,7 @@ describe('getBriefMatchSummaries', () => {
 			{ id: 'b2', name: 'Budget brief', criteria: { version: 1, max_price_per_lb: 6.0 } }
 		];
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const result = await getBriefMatchSummaries(makeSupabase(briefs) as any, 'user-1', lots);
+		const result = await getBriefMatchSummaries(makeClient(briefs) as any, lots);
 		expect(result[0].matchingIds).toContain(1); // $5.50
 		expect(result[0].matchingIds).toContain(2); // $6.00
 		expect(result[0].matchingIds).not.toContain(3); // $7.00
@@ -110,7 +109,7 @@ describe('getBriefMatchSummaries', () => {
 			{ id: 'b2', name: 'Ethiopia brief', criteria: { version: 1, country: 'Ethiopia' } }
 		];
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const result = await getBriefMatchSummaries(makeSupabase(briefs) as any, 'user-1', lots);
+		const result = await getBriefMatchSummaries(makeClient(briefs) as any, lots);
 		expect(result).toHaveLength(1);
 		expect(result[0].briefName).toBe('Ethiopia brief');
 	});
@@ -121,7 +120,7 @@ describe('getBriefMatchSummaries', () => {
 			{ id: 'b2', name: 'Good brief', criteria: { version: 1, country: 'Colombia' } }
 		];
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const result = await getBriefMatchSummaries(makeSupabase(briefs) as any, 'user-1', lots);
+		const result = await getBriefMatchSummaries(makeClient(briefs) as any, lots);
 		expect(result).toHaveLength(1);
 		expect(result[0].briefName).toBe('Good brief');
 	});
@@ -131,7 +130,7 @@ describe('getBriefMatchSummaries', () => {
 			{ id: 'b1', name: 'Washed brief', criteria: { version: 1, processing: 'Washed' } }
 		];
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const result = await getBriefMatchSummaries(makeSupabase(briefs) as any, 'user-1', lots);
+		const result = await getBriefMatchSummaries(makeClient(briefs) as any, lots);
 		expect(result[0].criteria).toMatchObject({ processing: 'Washed' });
 	});
 
@@ -141,7 +140,7 @@ describe('getBriefMatchSummaries', () => {
 		const briefs = [{ id: 'b1', name: 'Fresh brief', criteria: { version: 1, stocked_days: 7 } }];
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const result = await getBriefMatchSummaries(makeSupabase(briefs) as any, 'user-1', lots);
+		const result = await getBriefMatchSummaries(makeClient(briefs) as any, lots);
 		expect(result[0].matchingIds).toEqual([1, 3]);
 	});
 });
