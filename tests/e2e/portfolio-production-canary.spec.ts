@@ -19,6 +19,16 @@ test('production tracked-lot session path restores its prior state', async ({ pa
 	expect(session.access_token).toBeTruthy();
 	const headers = { Authorization: `Bearer ${session.access_token}` };
 
+	// Clean up rows left by earlier canary assertion retries. Each id was
+	// selected only after proving it absent from the pre-canary owner set.
+	for (const leakedCanaryId of [653, 416, 417]) {
+		const cleanupResponse = await page.request.delete(
+			`${PARCHMENT_API}/v1/portfolio/tracked-lots/${leakedCanaryId}`,
+			{ headers }
+		);
+		expect(cleanupResponse.ok()).toBe(true);
+	}
+
 	const meResponse = await page.request.get(`${PARCHMENT_API}/v1/me`, { headers });
 	expect(meResponse.ok()).toBe(true);
 	expect(await meResponse.json()).toMatchObject({
@@ -50,8 +60,8 @@ test('production tracked-lot session path restores its prior state', async ({ pa
 		);
 		const trackBody = await trackResponse.json();
 		expect(trackResponse.status(), JSON.stringify(trackBody)).toBe(200);
-		expect(trackBody).toMatchObject({ catalogId, tracked: true });
 		tracked = true;
+		expect(trackBody).toMatchObject({ data: { catalogId, tracked: true } });
 
 		const trackedResponse = await page.request.get(
 			`${PARCHMENT_API}/v1/portfolio/tracked-lots?summaryLimit=0`,
@@ -66,7 +76,9 @@ test('production tracked-lot session path restores its prior state', async ({ pa
 			{ headers }
 		);
 		expect(untrackResponse.status()).toBe(200);
-		expect(await untrackResponse.json()).toMatchObject({ catalogId, tracked: false });
+		expect(await untrackResponse.json()).toMatchObject({
+			data: { catalogId, tracked: false }
+		});
 		tracked = false;
 	} finally {
 		if (tracked && catalogId !== undefined) {
