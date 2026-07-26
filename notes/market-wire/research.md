@@ -88,7 +88,7 @@ Litquidity = insider fluency + neutrality. Prof G = data + accountable opinions.
 
 ### Free tier (distribution engine)
 
-Weekly edition, web (the latest three editions public) + email (double opt-in).
+Weekly edition, web (the latest three editions public) + email (authenticated explicit opt-in).
 Email consent controls delivery, not archive entitlement. Older titles and summaries
 remain visible; full older editions require Parchment Intelligence. RSS/Atom carries
 summaries and links. The edition leads with current conversation and uses Purveyors

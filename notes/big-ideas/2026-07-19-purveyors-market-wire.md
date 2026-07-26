@@ -71,7 +71,7 @@ Free recurring intelligence could satisfy too much demand, train users not to pa
 
 Build the minimal core in the approved dependency order from `notes/market-wire/implementation-plan.md` §10: the account-owned email-subscription contract (MR-1), Resend projection and reconciliation (MR-2), the coffee-app signup and preference surface (MR-3), the account-deletion prerequisites and orchestration (MR-4, MR-5) that keep account-coupled email safe to launch, the `/blog` Market Brief content and archive surface (MR-6), the external-source observation contract (MR-7) with its RSS and social capture ingesters (MR-8, MR-9), the weekly source packet and draft PR (MR-10) that consumes them, and production-success-to-Resend-draft dispatch (MR-11). Run the first editions through the explicit human publish gate while the pipeline proves its cadence and content quality:
 
-1. Generate each concise weekly edition from the canonical edition-facts and publication pipeline.
+1. Assemble the weekly source packet and Parchment facts, then draft and review the canonical `.svx` Market Brief file.
 2. Recruit 50 named roasters, buyers, coffee writers, and supplier-side contacts through direct outreach.
 3. Publish each edition as an indexable web page and email, with tracked links to the underlying Market Index evidence.
 4. Offer a founding plan: $12 Intelligence, $5 Studio, or $15 bundled, price-locked for the first 50 customers.
