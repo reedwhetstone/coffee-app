@@ -95,7 +95,7 @@ describe('API usage dashboard loaders', () => {
 			usageData: [],
 			dailySummary: [],
 			currentStats: null,
-			seriesTruncated: false
+			bounds: null
 		});
 	});
 
@@ -110,6 +110,31 @@ describe('API usage dashboard loaders', () => {
 				currentStats: expect.objectContaining({
 					monthlyUsage: 0,
 					monthlyLimitPerKey: 200
+				})
+			})
+		);
+	});
+
+	it('uses exact owner key totals even when the bounded key list is incomplete', async () => {
+		mockApiUsageGet.mockResolvedValue({
+			data: {
+				...usage,
+				summary: { ...usage.summary, totalKeys: 125, activeKeys: 110 },
+				bounds: { ...usage.bounds, keysTruncated: true }
+			},
+			response: new Response(null, { status: 200 })
+		});
+
+		const result = await overview.load(makeEvent());
+
+		expect(result).toEqual(
+			expect.objectContaining({
+				apiKeys: [],
+				usageStats: expect.objectContaining({
+					totalKeys: 125,
+					activeKeys: 110,
+					quotaCoverage: 'keys_truncated',
+					highestKeyQuota: null
 				})
 			})
 		);

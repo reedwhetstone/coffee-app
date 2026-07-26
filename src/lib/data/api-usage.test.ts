@@ -118,6 +118,14 @@ describe('mapOwnerApiUsage', () => {
 		expect(mapped.dailySummary[0]).toEqual(
 			expect.objectContaining({ total_requests: 3, avg_response_time: 41 })
 		);
+		expect(mapped.bounds).toEqual({
+			windowDays: 30,
+			recordLimit: 20000,
+			seriesTruncated: false,
+			keyLimit: 100,
+			keysTruncated: false,
+			recentPerKey: 25
+		});
 		expect(JSON.stringify(mapped)).not.toContain('pk_live_');
 	});
 
@@ -156,6 +164,51 @@ describe('mapOwnerApiUsage', () => {
 				monthlyRequests: 100,
 				nearLimit: false,
 				atLimit: false
+			})
+		);
+	});
+
+	it('suppresses highest-key quota when the returned key set is incomplete', () => {
+		const fixture = usageFixture({
+			summary: {
+				monthlyRequests: 50000,
+				hourlyRequests: 50,
+				totalKeys: 125,
+				activeKeys: 110
+			},
+			bounds: { keyLimit: 100, keysTruncated: true, recentPerKey: 25 }
+		});
+
+		const mapped = mapOwnerApiUsage(fixture);
+
+		expect(mapped.usageStats).toEqual(
+			expect.objectContaining({
+				totalKeys: 125,
+				activeKeys: 110,
+				quotaCoverage: 'keys_truncated',
+				highestKeyQuota: null
+			})
+		);
+		expect(mapped.bounds).toEqual(
+			expect.objectContaining({
+				keysTruncated: true,
+				seriesTruncated: false
+			})
+		);
+	});
+
+	it('represents a complete account with no active keys without inventing quota status', () => {
+		const base = usageFixture();
+		const fixture = usageFixture({
+			summary: { ...base.summary, activeKeys: 0 },
+			keys: base.keys.map((key) => ({ ...key, isActive: false }))
+		});
+
+		expect(mapOwnerApiUsage(fixture).usageStats).toEqual(
+			expect.objectContaining({
+				activeKeys: 0,
+				quotaCoverage: 'complete',
+				highestKeyQuota: null
 			})
 		);
 	});

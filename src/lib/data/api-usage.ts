@@ -49,7 +49,19 @@ export interface UsageStatsView {
 	monthlyLimitPerKey: number;
 	userTier: OwnerApiUsage['plan']['id'];
 	unlimited: boolean;
+	totalKeys: number;
+	activeKeys: number;
+	quotaCoverage: 'complete' | 'keys_truncated';
 	highestKeyQuota: KeyQuotaStatus | null;
+}
+
+export interface ApiUsageBoundsView {
+	windowDays: number;
+	recordLimit: number;
+	seriesTruncated: boolean;
+	keyLimit: number;
+	keysTruncated: boolean;
+	recentPerKey: number;
 }
 
 export interface ApiUsagePageData {
@@ -65,9 +77,10 @@ export interface ApiUsagePageData {
 		unlimited: boolean;
 		totalKeys: number;
 		activeKeys: number;
+		quotaCoverage: 'complete' | 'keys_truncated';
 		highestKeyQuota: KeyQuotaStatus | null;
 	};
-	seriesTruncated: boolean;
+	bounds: ApiUsageBoundsView;
 }
 
 function keyQuotaStatus(
@@ -94,11 +107,15 @@ function keyQuotaStatus(
  * separate because the plan limit applies independently to each API key.
  */
 export function mapOwnerApiUsage(usage: OwnerApiUsage): ApiUsagePageData {
-	const highestUsageKey = usage.keys
-		.filter((key) => key.isActive)
-		.reduce<
-			OwnerApiUsage['keys'][number] | undefined
-		>((highest, key) => (!highest || key.monthlyRequests > highest.monthlyRequests ? key : highest), undefined);
+	const quotaCoverage = usage.bounds.keysTruncated ? 'keys_truncated' : 'complete';
+	const highestUsageKey =
+		quotaCoverage === 'complete'
+			? usage.keys
+					.filter((key) => key.isActive)
+					.reduce<
+						OwnerApiUsage['keys'][number] | undefined
+					>((highest, key) => (!highest || key.monthlyRequests > highest.monthlyRequests ? key : highest), undefined)
+			: undefined;
 	const highestKeyQuota = keyQuotaStatus(usage, highestUsageKey);
 
 	return {
@@ -136,6 +153,9 @@ export function mapOwnerApiUsage(usage: OwnerApiUsage): ApiUsagePageData {
 			monthlyLimitPerKey: usage.plan.monthlyRequestLimitPerKey,
 			userTier: usage.plan.id,
 			unlimited: usage.plan.unlimited,
+			totalKeys: usage.summary.totalKeys,
+			activeKeys: usage.summary.activeKeys,
+			quotaCoverage,
 			highestKeyQuota
 		},
 		currentStats: {
@@ -146,11 +166,16 @@ export function mapOwnerApiUsage(usage: OwnerApiUsage): ApiUsagePageData {
 			unlimited: usage.plan.unlimited,
 			totalKeys: usage.summary.totalKeys,
 			activeKeys: usage.summary.activeKeys,
+			quotaCoverage,
 			highestKeyQuota
 		},
-		seriesTruncated:
-			usage.window.truncated ||
-			usage.bounds.keysTruncated ||
-			usage.keys.some((key) => key.windowTruncated)
+		bounds: {
+			windowDays: usage.window.days,
+			recordLimit: usage.window.recordLimit,
+			seriesTruncated: usage.window.truncated || usage.keys.some((key) => key.windowTruncated),
+			keyLimit: usage.bounds.keyLimit,
+			keysTruncated: usage.bounds.keysTruncated,
+			recentPerKey: usage.bounds.recentPerKey
+		}
 	};
 }

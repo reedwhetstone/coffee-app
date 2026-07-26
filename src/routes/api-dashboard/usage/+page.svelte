@@ -69,10 +69,16 @@
 				<div class="text-sm text-danger">{data.error}</div>
 			</div>
 		{:else}
-			{#if data.seriesTruncated}
+			{#if data.bounds?.seriesTruncated}
 				<div class="mb-8 rounded-md bg-warning-subtle p-4 text-sm text-warning-strong">
 					Daily and recent activity are partial because the analytics window reached its safety
 					limit. Monthly totals and per-key monthly counts remain exact.
+				</div>
+			{/if}
+			{#if data.bounds?.keysTruncated}
+				<div class="mb-8 rounded-md bg-warning-subtle p-4 text-sm text-warning-strong">
+					At most {data.bounds.keyLimit.toLocaleString()} API keys are shown. Some keys were omitted,
+					so highest-key quota status is unavailable. Exact owner totals still include every key.
 				</div>
 			{/if}
 
@@ -133,10 +139,12 @@
 			<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
 				<!-- Daily Usage Chart -->
 				<div class="rounded-lg bg-surface-panel p-6 ring-1 ring-line">
-					<h2 class="mb-4 text-lg font-semibold text-ink">Daily Usage (Last 30 Days)</h2>
+					<h2 class="mb-4 text-lg font-semibold text-ink">
+						Daily Usage (Last {data.bounds?.windowDays ?? 30} Days)
+					</h2>
 					{#if data.dailySummary && data.dailySummary.length > 0}
 						<div class="space-y-3">
-							{#each data.dailySummary.slice(0, 10) as day}
+							{#each data.dailySummary as day}
 								<div class="flex items-center justify-between">
 									<div class="flex items-center space-x-3">
 										<span class="w-16 text-sm font-medium text-ink">
@@ -173,6 +181,10 @@
 				<!-- API Keys Usage Breakdown -->
 				<div class="rounded-lg bg-surface-panel p-6 ring-1 ring-line">
 					<h2 class="mb-4 text-lg font-semibold text-ink">Usage by API Key</h2>
+					<p class="mb-4 text-xs text-muted">
+						Recent activity is a sample of up to {data.bounds?.recentPerKey ?? 25} records per returned
+						key. Monthly request counts are exact.
+					</p>
 					{#if data.usageData && data.usageData.length > 0}
 						<div class="space-y-4">
 							{#each data.usageData as keyUsage}

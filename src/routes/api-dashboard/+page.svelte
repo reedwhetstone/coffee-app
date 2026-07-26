@@ -30,72 +30,95 @@
 			</p>
 		</div>
 
+		{#if data.error}
+			<div class="mb-8 rounded-md bg-danger-subtle p-4 ring-1 ring-danger/30">
+				<div class="text-sm text-danger">
+					{data.error}. Account usage and quota status are currently unavailable.
+				</div>
+			</div>
+		{/if}
+
 		<!-- Quick Stats -->
-		<div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-				<h3 class="text-sm font-medium text-muted">API Keys</h3>
-				<p class="mt-1 text-2xl font-bold text-ink">
-					{data.apiKeys?.length || 0}
-				</p>
-				<p class="mt-1 text-xs text-muted">Total keys</p>
-			</div>
+		{#if data.usageStats}
+			<div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+					<h3 class="text-sm font-medium text-muted">API Keys</h3>
+					<p class="mt-1 text-2xl font-bold text-ink">
+						{data.usageStats.totalKeys.toLocaleString()}
+					</p>
+					<p class="mt-1 text-xs text-muted">
+						{data.usageStats.activeKeys.toLocaleString()} active
+					</p>
+				</div>
 
-			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-				<h3 class="text-sm font-medium text-muted">Owner Traffic This Month</h3>
-				<p class="mt-1 text-2xl font-bold text-ink">
-					{data.usageStats?.monthlyUsage?.toLocaleString() || 0}
-				</p>
-				<p class="mt-1 text-xs text-muted">Aggregate traffic across all API keys</p>
-			</div>
+				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+					<h3 class="text-sm font-medium text-muted">Owner Traffic This Month</h3>
+					<p class="mt-1 text-2xl font-bold text-ink">
+						{data.usageStats.monthlyUsage.toLocaleString()}
+					</p>
+					<p class="mt-1 text-xs text-muted">Aggregate traffic across all API keys</p>
+				</div>
 
-			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-				<h3 class="text-sm font-medium text-muted">Current Tier</h3>
-				<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
-					{#if data.usageStats?.userTier === 'enterprise'}
-						Enterprise
-					{:else if data.usageStats?.userTier === 'member'}
-						Origin
-					{:else}
-						Green
-					{/if}
-				</p>
-				<p class="mt-1 text-xs text-muted">
-					{#if data.usageStats?.userTier === 'enterprise'}
-						Unlimited API calls
-					{:else if data.usageStats?.userTier === 'member'}
-						Paid Origin tier
-					{:else}
-						Free Green tier
-					{/if}
-				</p>
-			</div>
+				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+					<h3 class="text-sm font-medium text-muted">Current Tier</h3>
+					<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
+						{#if data.usageStats.userTier === 'enterprise'}
+							Enterprise
+						{:else if data.usageStats.userTier === 'member'}
+							Origin
+						{:else}
+							Green
+						{/if}
+					</p>
+					<p class="mt-1 text-xs text-muted">
+						{#if data.usageStats.userTier === 'enterprise'}
+							Unlimited API calls
+						{:else if data.usageStats.userTier === 'member'}
+							Paid Origin tier
+						{:else}
+							Free Green tier
+						{/if}
+					</p>
+				</div>
 
-			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-				<h3 class="text-sm font-medium text-muted">Highest Key Quota</h3>
-				<p
-					class="mt-1 text-2xl font-bold {data.usageStats?.highestKeyQuota?.atLimit
-						? 'text-red-500'
-						: data.usageStats?.highestKeyQuota?.nearLimit
-							? 'text-warning'
-							: 'text-green-500'}"
-				>
-					{#if data.usageStats?.unlimited}
-						Unlimited
-					{:else if data.usageStats?.highestKeyQuota?.atLimit}
-						At Limit
-					{:else if data.usageStats?.highestKeyQuota?.nearLimit}
-						Near Limit
-					{:else}
-						Active
-					{/if}
-				</p>
-				<p class="mt-1 text-xs text-muted">
-					{data.usageStats?.highestKeyQuota
-						? `${data.usageStats.highestKeyQuota.keyName}: ${Math.round(data.usageStats.highestKeyQuota.monthlyPercent)}%`
-						: 'Per-key monthly limit'}
-				</p>
+				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+					<h3 class="text-sm font-medium text-muted">Highest Active-Key Quota</h3>
+					<p
+						class="mt-1 text-2xl font-bold {data.usageStats.highestKeyQuota?.atLimit
+							? 'text-red-500'
+							: data.usageStats.highestKeyQuota?.nearLimit
+								? 'text-warning'
+								: 'text-ink'}"
+					>
+						{#if data.usageStats.unlimited}
+							Unlimited
+						{:else if data.usageStats.quotaCoverage === 'keys_truncated'}
+							Unavailable
+						{:else if data.usageStats.activeKeys === 0}
+							No active keys
+						{:else if data.usageStats.highestKeyQuota?.atLimit}
+							At Limit
+						{:else if data.usageStats.highestKeyQuota?.nearLimit}
+							Near Limit
+						{:else if data.usageStats.highestKeyQuota}
+							Active
+						{:else}
+							Unavailable
+						{/if}
+					</p>
+					<p class="mt-1 text-xs text-muted">
+						{#if data.usageStats.quotaCoverage === 'keys_truncated'}
+							Some keys were omitted; quota comparison is suppressed
+						{:else if data.usageStats.highestKeyQuota}
+							{data.usageStats.highestKeyQuota.keyName}:
+							{Math.round(data.usageStats.highestKeyQuota.monthlyPercent)}%
+						{:else}
+							Per-key monthly limit
+						{/if}
+					</p>
+				</div>
 			</div>
-		</div>
+		{/if}
 
 		<!-- Navigation Tabs -->
 		<div class="mb-8">
@@ -142,7 +165,12 @@
 					</button>
 				</div>
 
-				{#if data.apiKeys && data.apiKeys.length > 0}
+				{#if data.error}
+					<div class="py-8 text-center">
+						<p class="text-muted">API key list unavailable</p>
+						<p class="text-sm text-muted">Try refreshing the Console in a moment.</p>
+					</div>
+				{:else if data.apiKeys && data.apiKeys.length > 0}
 					<div class="space-y-3">
 						{#each data.apiKeys.slice(0, 3) as apiKey}
 							<div class="flex items-center justify-between rounded-md bg-surface-canvas p-3">
@@ -240,12 +268,6 @@
 				</div>
 			</div>
 		</div>
-
-		{#if data.error}
-			<div class="mt-8 rounded-md bg-danger-subtle p-4">
-				<div class="text-sm text-danger">{data.error}</div>
-			</div>
-		{/if}
 
 		<!-- Usage Accountability Alerts with Upgrade CTAs -->
 		{#if data.usageStats?.highestKeyQuota}

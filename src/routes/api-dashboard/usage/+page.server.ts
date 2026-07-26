@@ -26,7 +26,7 @@ export const load: PageServerLoad = async (event) => {
 				usageData: [],
 				dailySummary: [],
 				currentStats: null,
-				seriesTruncated: false
+				bounds: null
 			};
 		}
 
@@ -39,7 +39,7 @@ export const load: PageServerLoad = async (event) => {
 			usageData: [],
 			dailySummary: [],
 			currentStats: null,
-			seriesTruncated: false
+			bounds: null
 		};
 	}
 };
