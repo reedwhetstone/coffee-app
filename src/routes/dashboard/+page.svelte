@@ -10,7 +10,7 @@
 	} from '$lib/dashboard/intelligenceHome';
 	import { parseTastingNotes } from '$lib/utils/parseTastingNotes';
 	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
-	import { setTrackedLotState } from '$lib/client/trackedLots';
+	import { createTrackedLotStateController } from '$lib/client/trackedLots';
 
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 
@@ -64,18 +64,11 @@
 		trackedIds = next;
 	}
 
+	const trackedLotStateController = createTrackedLotStateController(fetch, setTracked);
+
 	async function handleToggleTrack(catalogId: number) {
 		const wasTracked = trackedIds.has(catalogId);
-		setTracked(catalogId, !wasTracked);
-		// Optimistic update, reverted on failure.
-		try {
-			const body = await setTrackedLotState(fetch, catalogId, !wasTracked);
-			if (body.tracked !== !wasTracked) {
-				setTracked(catalogId, body.tracked);
-			}
-		} catch {
-			setTracked(catalogId, wasTracked);
-		}
+		await trackedLotStateController.setDesiredState(catalogId, wasTracked, !wasTracked);
 	}
 
 	function watchlistAnnotation(lot: {

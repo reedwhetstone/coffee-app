@@ -454,9 +454,14 @@ export const load: PageServerLoad = async (event) => {
 	// Tracked-only rows are queried by id, so the watchlist ids are the one piece of
 	// user-specific data on the critical path — and only for that view. The normal
 	// public catalog never blocks on watchlist/procurement enrichment.
-	let trackedLotIdsForQuery: number[] = [];
+	let trackedLotIdsForQuery: number[] | null = [];
 	if (trackedOnly && userId) {
-		trackedLotIdsForQuery = await getTrackedLotIds(await getSessionParchmentClient());
+		try {
+			trackedLotIdsForQuery = await getTrackedLotIds(await getSessionParchmentClient());
+		} catch (error) {
+			console.error('Error loading tracked-only lot ids:', error);
+			trackedLotIdsForQuery = null;
+		}
 	}
 
 	// Reused for the critical catalog list plus the deferred origin-stats and
@@ -475,19 +480,18 @@ export const load: PageServerLoad = async (event) => {
 		: initialCatalogState;
 
 	try {
-		if (!trackedOnly || trackedLotIdsForQuery.length > 0) {
+		if (!trackedOnly || (trackedLotIdsForQuery !== null && trackedLotIdsForQuery.length > 0)) {
 			const client =
 				catalogClient ??
 				(await createParchmentServerClient(event, {
 					mode: resolveCatalogCredentialMode(locals)
 				}));
 			catalogClient = client;
+			const trackedQueryIds = trackedLotIdsForQuery ?? [];
 			const catalogResult = (await client.catalog.list(
 				buildParchmentCatalogQuery(effectiveCatalogState, {
 					stocked: trackedOnly ? 'all' : 'true',
-					...(trackedOnly
-						? { coffeeIds: trackedLotIdsForQuery, limit: TRACKED_VIEW_LIMIT, page: 1 }
-						: {})
+					...(trackedOnly ? { coffeeIds: trackedQueryIds, limit: TRACKED_VIEW_LIMIT, page: 1 } : {})
 				}) as CatalogListQuery
 			)) as CatalogListResult;
 			const catalogBody = extractParchmentCatalogBody(catalogResult);
@@ -519,7 +523,7 @@ export const load: PageServerLoad = async (event) => {
 		deepLinkCoffeeId,
 		catalogData,
 		trackedOnly,
-		trackedLotIds: trackedLotIdsForQuery,
+		trackedLotIds: trackedLotIdsForQuery ?? [],
 		baseState: effectiveCatalogState
 	});
 

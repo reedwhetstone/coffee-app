@@ -1014,6 +1014,30 @@ describe('/catalog tracked lots and brief matches', () => {
 });
 
 describe('/catalog tracked-only watchlist view', () => {
+	it('keeps tracked-only state unknown and skips catalog data when the ID read fails', async () => {
+		const session = { access_token: 'ppi-token' } as App.Locals['session'];
+		const principal = { isAuthenticated: true as const, userId: 'ppi-user-1', ppiAccess: true };
+		mockGetTrackedLotIds.mockRejectedValue(new Error('portfolio unavailable'));
+
+		const result = (await load(
+			makeLoadInputWithPrincipal(
+				'viewer',
+				session,
+				principal,
+				'https://app.test/catalog?tracked=only'
+			)
+		)) as {
+			trackedOnly: boolean;
+			trackedLotIds: Promise<number[] | null>;
+			data: unknown[];
+		};
+
+		expect(result.trackedOnly).toBe(true);
+		expect(result.data).toEqual([]);
+		expect(await result.trackedLotIds).toBeNull();
+		expect(mockCatalogList).not.toHaveBeenCalled();
+	});
+
 	it('restricts results to tracked lots including delisted ones for entitled users', async () => {
 		const session = { access_token: 'ppi-token' } as App.Locals['session'];
 		const principal = { isAuthenticated: true as const, userId: 'ppi-user-1', ppiAccess: true };
