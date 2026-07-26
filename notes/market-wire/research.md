@@ -22,18 +22,22 @@ Four pillars, in Reed's framing:
 ## 3. Competitive landscape (researched 2026-07-19)
 
 ### The four quadrants
+
 - **Free + narrative:** importer weekly reports (Sucafina, DRWakefield, Royal), ICO monthly report, Daily Coffee News/Sprudge. Futures commentary and origin color; zero structured spot data; conflicted or lagging.
 - **Paid + data:** StoneX CoffeeNetwork and its Coffee Essential / Coffee Differential Insight plans (weekly origin FOB differential indications; sibling StoneX ag subscriptions run $1,000-$12,000/mo; CoffeeNetwork historically low hundreds/mo). Audience is traders and large roasters; publisher is a competitor-counterparty.
 - **Free + structured but stale/anonymized:** SCTG (~105k contracts aggregated, annual, anonymized FOB; governed by its importer/exporter data donors — an MLS publishing yearly ZIP-code medians), ICO composite indicator, USDA FAS semi-annual.
 - **Free + structured + current + cross-importer: empty except Purveyors.** Nobody publishes "the shape of the US spot market this week: N lots, median ask by origin/process/score band, movers, arrivals, spreads across 40+ importers."
 
 ### Adjacent transparency plays (contained)
+
 Algrano and Typica publish real price transparency but only inside their own marketplaces (platform GMV motive). Covoya/Copan Trade show live pricing for their own catalogs only. Cropster's marketplace became Vollers' V-Hub; no market-intel product.
 
 ### Demand signal
+
 Roasters post importer offer sheets to Reddit asking peers "is this insane?" — exactly the comp-database demand a wire answers weekly.
 
 ### Watch items
+
 1. StoneX could extend Differential Insight toward US spot; they have the relationships.
 2. Importers may resist republication of offer metadata the way MLSs fought Zillow (selective de-listing, ToS pressure). Mitigations: neutral evidence-led framing, supplier traffic value (wire drives buyers to them), and the existing provenance/citation discipline.
 3. SCTG is complementary, not competitive: cite it as the annual FOB baseline under the weekly spot layer; partnering borrows its credibility halo.
@@ -41,21 +45,25 @@ Roasters post importer offer sheets to Reddit asking peers "is this insane?" —
 ## 4. Inspiration teardowns and what to borrow
 
 ### Litquidity / Exec Sum (finance meme media, ~$2M lean media business)
+
 Model: free daily newsletter (300k+ subs) monetized by ads/sponsorships, plus meme-account portfolio as top of funnel, merch, recruiting JV, ventures. Voice: insider fluency, self-deprecating, irreverent but credible; anonymity became a neutrality asset (people leak to him because he is the trusted open channel).
 **Borrow:** the Exec Sum formula (curated market brief "with a touch of memes," free forever, written as the product a buyer wishes they had at their desk); humor as top-of-funnel with data as retention; a weekly deep-dive slot that shows analytic chops and becomes the paid upsell surface; annual transparent year-end letter including the Ls; monetizing adjacencies the audience needs (comp reports, jobs) later.
 **Skip:** founder anonymity (accountability matters for a numbers brand); simultaneous-everything diversification chaos.
 
 ### Prof G Markets / Prof G Media (~$20M podcast-ad business + Prof G+ subs)
+
 Model: free ad-supported flagship everywhere; paid tier ($~$1M ARR year one) = ad-free, full archives, analyst deep dives, community. Explicit logic: never paywall the news; paywall depth, convenience, access. Voice: "Rigorous analysis. No sacred cows. Data... lots of data," bold falsifiable predictions with public accountability, business-on-top-personal-at-the-bottom newsletter architecture, expert+apprentice co-host dynamic.
 **Borrow:** the paywall geometry (identical to our five-pattern line); named market calls with a public scoreboard — the accountability ritual is the trust product; newsletter/audio twinning from one editorial effort; the apprentice dynamic for accessibility across the hobby-to-pro spectrum; the human ending that gets forwarded.
 **Skip:** celebrity-founder dependency; multi-show portfolio cost structure before the flagship works.
 
 ### Thoughtful Coffee (radical-transparency micro roaster)
+
 Model: tiny Brooklyn roaster whose numbered blog ("Roast #48") publishes actual unit economics including embarrassing ones (money-losing subscription and wholesale SKUs), grades its own goals publicly with [done]/[miss] tags, and shows uncertainty explicitly ("nothing below has any scientific basis").
 **Borrow:** open-books operation — publish the Wire's own subscriber count, revenue, and costs annually; transparency about yourself is the strongest proof you'll be honest about the market. The [done]/[miss] goal ledger. Numbered-series identity (Edition #N) making the archive collectible. Labeled confidence levels instead of false precision. Generosity toward the ecosystem: name and link suppliers, roasters, even competitors — Thoughtful's partners became its acquisition channel.
 **Skip:** cadence collapse (4 posts/year kills a weekly wire); goodwill-only economics with no margin discipline.
 
 ### The combined trust formula
+
 Litquidity = insider fluency + neutrality. Prof G = data + accountable opinions. Thoughtful = open books + epistemic humility. Market Wire can uniquely run all three at once — trader-grade data, named calls with a scoreboard, and open-books operation — against incumbents that all sound like trade association bulletins.
 
 ## 5. Audience segmentation (full spectrum)
@@ -79,15 +87,19 @@ Litquidity = insider fluency + neutrality. Prof G = data + accountable opinions.
 ## 7. Business model
 
 ### Free tier (distribution engine)
+
 Weekly edition, web (indexable, latest edition public) + email (double opt-in). Free email sub unlocks the full edition archive on site. RSS/Atom open. Leads every week with micro-data nobody else has; macro context frames but never carries.
 
 ### Paid: Parchment Intelligence ($12/mo, ~$120/yr annual)
+
 Personalized "your market" section from saved sourcing intent; immediate alerts between editions; full data history, comparisons, exports via Market Index; Ask Parchment on any wire item; evidence deep links. Studio $5/mo, founding bundle $15/mo, price-locked for first 50 (per moonshot). Positioning: a different product (decision surface), not a longer newsletter.
 
 ### Later, sequenced (Litquidity lesson: not simultaneously)
+
 Sponsorships/ads once list size justifies it (newsletter CPMs in trade niches are strong); API projections for developers; possible jobs/comp adjacencies. Parchment API remains a separate developer product.
 
 ### Benchmarks framing expectations
+
 Free-to-paid at 2-5% (4% B2B pipeline bar); paid newsletter medians $83-$230/subscriber/yr with market verticals at top ($144/yr in band); early KPIs are qualified list growth, opens, evidence clicks, return visits — not conversion rate. Full grounding in the design doc's business-model section.
 
 ## 8. Content architecture (weekly edition template)
@@ -102,13 +114,14 @@ Free-to-paid at 2-5% (4% B2B pipeline bar); paid newsletter medians $83-$230/sub
 8. **The locked moment** — one personalized paid tease ("3 lots matched your Ethiopia mandate this week"), not a generic banner.
 9. **Sign-off** — business on top, personal at the bottom; the human ending gets forwarded.
 
-Pipeline and guardrails (edition-facts JSON, LLM narrates only payload facts, numeric validation pass, canonical publication object rendering to web/email/RSS) are specified in `notes/market-wire/design.md` and implemented through the work packages in `notes/market-wire/infrastructure.md`.
+Pipeline and guardrails (edition-facts JSON, LLM narrates only payload facts, numeric validation pass, canonical publication object rendering to web/email/RSS) are now sequenced by the authoritative `notes/market-wire/implementation-plan.md`; `design.md` and `infrastructure.md` remain the superseded concept records.
 
 ## 9. GTM (revised 2026-07-19: pilot rejected, building core infrastructure now)
 
-Reed's call: weekly report generation at cadence is a foundational capability for an intelligence company, not a hypothesis to test with a handmade artifact. The MVP infrastructure gets built now — minimal and flexible (stable pipeline contract, schema-versioned report contents) — per the work packages in `notes/market-wire/infrastructure.md` §7.
+Reed's call: weekly report generation at cadence is a foundational capability for an intelligence company, not a hypothesis to test with a handmade artifact. The MVP infrastructure gets built now — minimal and flexible (stable pipeline contract, schema-versioned report contents) — per the dependency-ordered PR slices in `notes/market-wire/implementation-plan.md` §10.
 
 GTM mechanics carried forward from the launch concept, now running on real infrastructure from edition #1:
+
 1. Direct outreach to 50 named roasters, buyers, writers, supplier-side contacts to seed the list.
 2. Founding offer: $12 Intelligence / $5 Studio / $15 bundle, price-locked first 50.
 3. Measure from launch: subscriber growth, open rate, evidence clicks, replies, repeat visits, paid conversions. Same success metrics (§11), now informing iteration rather than gating the build.

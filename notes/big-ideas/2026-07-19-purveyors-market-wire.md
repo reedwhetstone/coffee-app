@@ -97,7 +97,7 @@ These launch metrics inform iteration and commercial validation from edition #1;
 
 ## Source-of-truth routing
 
-- Canonical implementation plan: `notes/market-wire/infrastructure.md`; this proposal records the strategic context and launch-validation metrics.
+- Canonical implementation plan: `notes/market-wire/implementation-plan.md`; `design.md` and `infrastructure.md` are retained as superseded concept records, while this proposal records the strategic context and launch-validation metrics.
 - Original source: `brain/moonshots/2026-07-19-purveyors-market-wire.md` (retained as the originating moonshot/pointer after consolidation)
 - Product repo mirror or PR: n/a
 

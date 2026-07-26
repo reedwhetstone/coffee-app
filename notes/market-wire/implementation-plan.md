@@ -97,14 +97,14 @@ state, and broadcast IDs live outside this canonical preference row.
 
 ### Access matrix
 
-| Principal | Recent three editions | Older edition summaries | Older full editions | Weekly email |
-| --- | --- | --- | --- | --- |
-| Anonymous | Yes | Yes | No | No |
-| Viewer, not email subscribed | Yes | Yes | No | No |
-| Viewer, email subscribed | Yes | Yes | No | Yes |
-| Mallard Studio only | Yes | Yes | No | Optional |
-| Parchment Intelligence | Yes | Yes | Yes | Optional |
-| Admin | Yes | Yes | Yes | Optional |
+| Principal                    | Recent three editions | Older edition summaries | Older full editions | Weekly email |
+| ---------------------------- | --------------------- | ----------------------- | ------------------- | ------------ |
+| Anonymous                    | Yes                   | Yes                     | No                  | No           |
+| Viewer, not email subscribed | Yes                   | Yes                     | No                  | No           |
+| Viewer, email subscribed     | Yes                   | Yes                     | No                  | Yes          |
+| Mallard Studio only          | Yes                   | Yes                     | No                  | Optional     |
+| Parchment Intelligence       | Yes                   | Yes                     | Yes                 | Optional     |
+| Admin                        | Yes                   | Yes                     | Yes                 | Optional     |
 
 Email delivery is the free distribution relationship. Parchment Intelligence is the
 historical and decision-support product. Code and copy must use `email subscriber`
@@ -118,9 +118,9 @@ file with the existing blog metadata plus:
 ```yaml
 format: market-read
 edition: 1
-windowStart: "2026-07-20"
-windowEnd: "2026-07-26"
-dataAsOf: "2026-07-26T06:00:00-06:00"
+windowStart: '2026-07-20'
+windowEnd: '2026-07-26'
+dataAsOf: '2026-07-26T06:00:00-06:00'
 observedSourceCount: 17
 ```
 
@@ -320,8 +320,13 @@ Repository: parchment-api.
 - Add the normalized email-subscription schema and constraints.
 - Require an existing Purveyors user.
 - Add session-only preference-read and idempotent subscribe/unsubscribe contracts.
-- Add idempotency and authorization tests.
-- Reject anonymous, public-demo, and API-key mutation.
+- Add a dedicated `POST /v1/email-subscriptions/market-read/unsubscribe` contract for
+  no-login links. It accepts only a Parchment-issued, purpose-bound, expiring
+  `market_read_unsubscribe` token. The token targets one account/topic, cannot
+  subscribe or read preferences, and the operation is idempotent.
+- Add token-validation, idempotency, and authorization tests, including expired,
+  wrong-purpose, wrong-topic, and forged tokens.
+- Reject anonymous, public-demo, and API-key mutation without that signed token.
 - Do not add account deletion, provider identifiers, Resend network calls, UI, or
   edition storage.
 
@@ -342,7 +347,8 @@ Repository: coffee-app.
 - Add authenticated Market Read opt-in.
 - Route anonymous subscribe intent through login and back to confirmation.
 - Add Settings status and unsubscribe control.
-- Add signed one-click unsubscribe handling.
+- Add signed one-click unsubscribe link handling against MR-1's token contract;
+  coffee-app forwards the token and does not mutate the shared subscription row.
 - Keep paid entitlements independent.
 
 The existing Google login is sufficient for the first account-coupled flow. Adding
