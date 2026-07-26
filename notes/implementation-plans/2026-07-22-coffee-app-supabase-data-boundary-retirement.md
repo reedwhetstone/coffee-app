@@ -172,11 +172,32 @@ At program completion:
 
 ## Ordered PR sequence
 
+### Execution correction: resource slices replace the global ledger
+
+PRs #497 and #498 proved that a general Supabase-call inventory is the wrong
+prerequisite. Their analyzers grew into open-ended provenance scanners while
+still missing valid runtime callers, so both were closed and must not be revived.
+
+Proceed one shared resource at a time:
+
+1. verify that the required Parchment contract is deployed and published;
+2. add the smallest missing Parchment capability only when the contract is
+   incomplete;
+3. cut every coffee-app caller for that resource to the typed SDK in one
+   independently mergeable consumer PR;
+4. delete the replaced database code and add a narrow resource-name guard; and
+5. run the affected product canaries before selecting the next resource.
+
+The first consumer slice is `sourcing_briefs`: its deployed procurement contract
+already has parity for the three active coffee-app readers. The broad PR 02 and
+PR 03 scopes below are capability maps, not single-PR boundaries. Global
+contraction checks belong at the end of the program, after the individual
+resources are gone.
+
 ### PR 01: Boundary ledger and CI guard
 
-Repo: coffee-app. Add a machine-checked inventory of allowed Supabase callers,
-classify each by owner, and fail CI on any new unclassified table/RPC/import.
-This establishes an honest baseline without changing runtime behavior.
+Disposition: abandoned. Do not reopen or replace this with another general
+scanner. Resource-specific guards land with the resource cutovers they protect.
 
 Plan:
 `2026-07-22-coffee-app-supabase-data-boundary-pr-01-guard.md`
@@ -303,7 +324,9 @@ if later slices never land.
 
 ## Acceptance criteria
 
-- CI reports zero unclassified Supabase access.
+- Every retired shared resource has a narrow CI guard preventing its direct
+  reintroduction; the final contraction reports no remaining shared-resource
+  access.
 - Active coffee-app runtime has no direct access to shared catalog, market,
   portfolio, procurement, inventory, roast, tasting, sales, API-control-plane,
   bean-identity, or legacy RAG tables/RPCs.
@@ -350,8 +373,9 @@ Final contraction:
   route/page fixtures.
 - **Independent deploy order:** Land and deploy Parchment first; do not merge a
   consumer against an unpublished SDK.
-- **Hidden callers:** PR 01's ledger and PR 09's usage proof prevent deleting a
-  path based only on imports.
+- **Hidden callers:** Each resource cutover starts with a literal-name caller
+  search and ends with a resource-specific guard; PR 09's usage proof remains
+  the production check before schema cleanup.
 - **Latency:** Prefer server-side Parchment composite resources for genuinely
   reusable decision views; do not replace one database query with dozens of
   sequential HTTP calls.
