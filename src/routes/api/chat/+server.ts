@@ -11,6 +11,7 @@ import { getUserMemory } from '$lib/server/userMemory';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
 import { getTrackedLotIds } from '$lib/server/trackedLots';
 import { fetchParchmentCatalogItemsByIds } from '$lib/server/parchmentCatalog';
+import { listActiveSourcingBriefs } from '$lib/server/parchmentProcurement';
 import {
 	describeSourcingBriefCriteria,
 	validateSourcingBriefCriteria
@@ -659,13 +660,7 @@ export const POST: RequestHandler = async (event) => {
 		try {
 			const [trackedIds, briefRows] = await Promise.all([
 				getTrackedLotIds(supabase, user.id),
-				supabase
-					.from('sourcing_briefs')
-					.select('name, criteria')
-					.eq('user_id', user.id)
-					.eq('is_active', true)
-					.order('created_at', { ascending: false })
-					.limit(5)
+				listActiveSourcingBriefs(agentParchmentClient, 5)
 			]);
 
 			const trackedLots = trackedIds.length
@@ -682,9 +677,7 @@ export const POST: RequestHandler = async (event) => {
 					}))
 				: [];
 
-			const activeBriefs = (
-				(briefRows.data ?? []) as Array<{ name: string; criteria: unknown }>
-			).flatMap((b) => {
+			const activeBriefs = briefRows.flatMap((b) => {
 				try {
 					const criteria = validateSourcingBriefCriteria(b.criteria);
 					return [{ name: b.name, criteriaDescription: describeSourcingBriefCriteria(criteria) }];

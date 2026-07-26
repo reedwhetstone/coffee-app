@@ -2,6 +2,7 @@ import type { PageServerLoad } from './$types';
 import type { CatalogListQuery, components } from '@purveyors/sdk';
 import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import { listActiveSourcingBriefs } from '$lib/server/parchmentProcurement';
 import {
 	extractParchmentCatalogRows,
 	fetchParchmentCatalogItemsByIds
@@ -84,19 +85,13 @@ export const load: PageServerLoad = async (event) => {
 
 	const briefsPromise =
 		userId && isMember
-			? Promise.resolve(
-					locals.supabase
-						.from('sourcing_briefs')
-						.select('id, name, criteria')
-						.eq('user_id', userId)
-						.eq('is_active', true)
-						.order('created_at', { ascending: false })
-						.limit(5)
-				).catch((error) => {
-					console.error('Error loading dashboard briefs:', error);
-					return { data: null };
-				})
-			: Promise.resolve({ data: null });
+			? parchmentClientPromise
+					.then((client) => listActiveSourcingBriefs(client, 5))
+					.catch((error) => {
+						console.error('Error loading dashboard briefs:', error);
+						return [];
+					})
+			: Promise.resolve([]);
 
 	const [arrivalsResult, trackedResult, briefRows] = await Promise.all([
 		arrivalsPromise,
@@ -105,9 +100,7 @@ export const load: PageServerLoad = async (event) => {
 	]);
 
 	const recentArrivals = arrivalsResult as unknown as Record<string, unknown>[];
-	const activeBriefs: DashboardBriefSummary[] = (
-		(briefRows.data ?? []) as Array<{ id: string; name: string; criteria: unknown }>
-	).flatMap((brief) => {
+	const activeBriefs: DashboardBriefSummary[] = briefRows.flatMap((brief) => {
 		try {
 			const criteria = validateSourcingBriefCriteria(brief.criteria);
 			return [

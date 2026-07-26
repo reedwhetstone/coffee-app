@@ -370,11 +370,11 @@ async function streamDeepLinkCoffee(options: {
 async function resolveBriefMatchCatalogLots(
 	catalogData: SdkCatalogItem[],
 	deepLinkCoffee: Promise<CatalogResourceItem | null>
-): Promise<Parameters<typeof getBriefMatchSummaries>[2]> {
+): Promise<Parameters<typeof getBriefMatchSummaries>[1]> {
 	const streamedCoffee = await deepLinkCoffee;
-	if (!streamedCoffee) return catalogData as Parameters<typeof getBriefMatchSummaries>[2];
+	if (!streamedCoffee) return catalogData as Parameters<typeof getBriefMatchSummaries>[1];
 
-	return [...catalogData, streamedCoffee] as Parameters<typeof getBriefMatchSummaries>[2];
+	return [...catalogData, streamedCoffee] as Parameters<typeof getBriefMatchSummaries>[1];
 }
 
 export const load: PageServerLoad = async (event) => {
@@ -532,7 +532,15 @@ export const load: PageServerLoad = async (event) => {
 	const briefMatchSummaries: Promise<BriefMatchSummary[]> =
 		userId && hasParchmentAccess && isMember
 			? resolveBriefMatchCatalogLots(catalogData, deepLinkCoffee)
-					.then((lots) => getBriefMatchSummaries(locals.supabase, userId, lots))
+					.then(async (lots) =>
+						getBriefMatchSummaries(
+							catalogClient ??
+								(await createParchmentServerClient(event, {
+									mode: 'session'
+								})),
+							lots
+						)
+					)
 					.catch((error) => {
 						console.error('Error loading brief match summaries:', error);
 						return [];

@@ -975,8 +975,7 @@ describe('/catalog tracked lots and brief matches', () => {
 			expect.objectContaining({ briefId: 'b1', matchingIds: [99] })
 		]);
 		expect(mockGetBriefMatchSummaries).toHaveBeenCalledWith(
-			expect.objectContaining({ kind: 'session-client' }),
-			'member-user-1',
+			expect.objectContaining({ catalog: expect.anything() }),
 			expect.arrayContaining([
 				expect.objectContaining({ id: 1 }),
 				expect.objectContaining({ id: 99 })
