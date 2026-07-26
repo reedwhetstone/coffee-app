@@ -233,6 +233,7 @@ describe('scanSource', () => {
 			{ file: 'src/lib/example.ts', kind: 'service', name: 'functions.invoke' },
 			{ file: 'src/lib/example.ts', kind: 'service', name: 'storage.upload' },
 			{ file: 'src/lib/example.ts', kind: 'table', name: 'avatars' },
+			{ file: 'src/lib/example.ts', kind: 'service', name: 'storage.from' },
 			{ file: 'src/lib/example.ts', kind: 'service', name: 'channel' },
 			{ file: 'src/lib/example.ts', kind: 'service', name: 'realtime.setAuth' }
 		]);

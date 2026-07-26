@@ -29,8 +29,9 @@
  *   not chased; the escape itself is the fail-closed ledger candidate.
  * - "service": any call whose callee member chain contains a `functions`,
  *   `realtime`, or `storage` segment (`supabase.functions.invoke(...)`,
- *   `supabase.storage.from('bucket').upload(...)` also records its `.from`
- *   as a table candidate), plus any `.channel(...)` call and any protected
+ *   `supabase.storage.from('bucket').upload(...)` records both its `.from`
+ *   table candidate and its `storage.from` service candidate), plus any
+ *   `.channel(...)` call and any protected
  *   service namespace escape outside a direct operation chain. Keeps edge
  *   functions, storage, and realtime on the ledger instead of invisible.
  * - "admin-client": any runtime import of a `supabase-admin` module or any
@@ -789,15 +790,17 @@ export function scanSource(source: string, file: string): Access[] {
 					if (!isBuiltin) {
 						recordSite(method === 'from' ? 'table' : 'rpc', literalResource(node));
 					}
-				} else if (segments.slice(0, -1).includes('auth')) {
+				}
+
+				if (segments.slice(0, -1).includes('auth')) {
 					recordSite('auth-session', method ?? DYNAMIC_ACCESS_NAME);
-				} else {
-					const service = segments.slice(0, -1).find((segment) => SERVICE_SEGMENTS.has(segment));
-					if (service !== undefined) {
-						recordSite('service', `${service}.${method ?? DYNAMIC_ACCESS_NAME}`);
-					} else if (method === 'channel') {
-						recordSite('service', 'channel');
-					}
+				}
+
+				const service = segments.slice(0, -1).find((segment) => SERVICE_SEGMENTS.has(segment));
+				if (service !== undefined) {
+					recordSite('service', `${service}.${method ?? DYNAMIC_ACCESS_NAME}`);
+				} else if (method === 'channel') {
+					recordSite('service', 'channel');
 				}
 
 				if (method === 'createAdminClient') {
