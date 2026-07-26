@@ -45,29 +45,43 @@ A public blog at `purveyors.io/blog` that serves as Reed's thinking-out-loud spa
 - Hero image missing from draft PR. Must be in the same PR, always.
 - One complete PR per post. Never merge post without hero.
 
-## Weekly Wednesday Coffee Intelligence System
+## Purveyors Market Read
 
 ### Objective
 
-Ship one high-signal Coffee Intelligence piece every Wednesday that can be published same day after review.
+Ship one reliable weekly read of the micro-movements shaping green coffee: current
+industry conversation, news, sentiment, and buying signals, supported by Purveyors
+market data where it adds evidence.
+
+Market Read is the recurring publication and distribution engine. Existing essays
+remain sporadic, idea-led pieces. Both formats share the blog publishing system,
+visual language, PR review, and recursive learning loop.
 
 ### Weekly cadence
 
-- **Tuesday:** choose thesis + collect evidence stack
-- **Wednesday morning:** write draft (`draft: false`), generate hero image, open single complete PR
-- **Wednesday afternoon:** Reed reviews and merges to publish
+- Daily: capture approved social, industry, and market sources into a rolling
+  seven-day window.
+- Draft day: assemble a bounded source packet, choose the throughline, generate the
+  edition and hero, validate claims, and open one complete PR.
+- Review: Reed reviews the Vercel preview and iterates through the PR.
+- Publication: merge, wait for successful production deployment, then create a
+  manually approved Resend draft.
+- Seven days later: review draft changes and performance signals before the next
+  edition.
 
-### Required structure per piece
+### Required structure
 
-1. Counterintuitive thesis
-2. Immediate vs tail risk map
-3. Opportunity map (actionable plays)
-4. Product implication for purveyors (what we should build/measure)
-5. 3-4 canonical tags
+1. One clear weekly throughline grounded in current sources
+2. Three to five short movements or stories
+3. Purveyors evidence callouts only where current data supports them
+4. Inline source links and a compact methodology note
+5. One specific Intelligence conversion moment
+6. Three canonical tags by default
 
 ### Operating rule
 
-Wednesdays are reserved for Coffee Intelligence output first; other blog experiments happen around this anchor.
+Weekly Market Read production takes precedence over optional essay work. The exact
+send day remains configurable until the first production schedule is chosen.
 
 ## Content Pillars
 
@@ -299,7 +313,9 @@ The GenUI thesis. What "AI-first" means beyond the buzzword. The canvas architec
 ## Decisions
 
 - **Comments:** Yes, via Giscus (GitHub discussions). Comments are public engagement, NOT second brain inputs. The second brain remains exclusively Reed's private space.
-- **Newsletter:** No. If the blog builds traction, may pivot to Substack or similar later.
+- **Newsletter:** Yes. Purveyors Market Read is the account-coupled weekly email
+  format. Resend is the delivery provider for MVP; Purveyors owns consent and
+  entitlement state.
 - **Domain:** purveyors.io/blog (keep it on the main domain for SEO value)
 - **Scraper data:** Yes, publish aggregated market data (pricing trends, availability patterns, origin analysis). No raw supplier copy, no security-sensitive implementation details. The LLM content pipeline for fair use handling is itself a topic worth writing about.
 

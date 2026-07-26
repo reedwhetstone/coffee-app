@@ -1,8 +1,8 @@
-# Purveyors Market Wire — Full Research Package
+# Purveyors Market Wire - Full Research Package
 
 _Created: 2026-07-19_
-_Status: Research package and strategic reference for the approved MVP infrastructure direction. The companion infrastructure plan is authoritative for build sequencing; the manual pilot gate was rejected, and launch validation runs on the pipeline from edition #1._
-_Companions: `notes/market-wire/design.md` (end-to-end product/pipeline design), `notes/market-wire/infrastructure.md` (authoritative implementation plan), `brain/moonshots/2026-07-19-purveyors-market-wire.md` (original strategic proposal)_
+_Status: Research record. Product corrections and authoritative build sequencing live in `notes/market-wire/implementation-plan.md`._
+_Companions: `notes/market-wire/implementation-plan.md` (authoritative plan), `notes/market-wire/design.md` and `notes/market-wire/infrastructure.md` (original concept records)_
 
 ## 1. Executive summary
 

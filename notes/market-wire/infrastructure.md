@@ -1,7 +1,7 @@
-# Purveyors Market Wire — Pipeline & Technology Infrastructure (Recommendation)
+# Purveyors Market Wire - Original Pipeline & Technology Recommendation
 
 _Created: 2026-07-19_
-_Status: Architecture recommendation — approved direction 2026-07-19. Reed rejected the manual pilot: the wire pipeline is foundational infrastructure for an intelligence company (weekly report generation at cadence), to be built now as a minimal, flexible core. Report contents will evolve; the pipeline is permanent._
+_Status: Superseded for implementation by `notes/market-wire/implementation-plan.md` on 2026-07-26. Retained for architectural history._
 _Companions: `notes/market-wire/research.md` (research package), `notes/market-wire/design.md` (product/pipeline design)_
 
 ## 0. Recommendation up front

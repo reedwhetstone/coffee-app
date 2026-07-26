@@ -1,7 +1,7 @@
-# Purveyors Market Wire — End-to-End Design
+# Purveyors Market Wire - Original End-to-End Design
 
 _Created: 2026-07-19_
-_Status: Concept design aligned to the approved build-now direction; implementation authority: `notes/market-wire/infrastructure.md`_
+_Status: Superseded for implementation by `notes/market-wire/implementation-plan.md` on 2026-07-26. Retained as the original concept record._
 _Related: `notes/implementation-plans/market-index-decision-surface-plan.md` (signal backbone), ADR-005/007/008_
 
 ## Product definition
