@@ -69,7 +69,7 @@ Free recurring intelligence could satisfy too much demand, train users not to pa
 
 ## Launch validation on the build-now core
 
-Build the minimal core in the approved dependency order from `notes/market-wire/implementation-plan.md` §10: the account-owned email-subscription contract (MR-1), Resend projection and reconciliation (MR-2), the coffee-app signup and preference surface (MR-3), the `/blog` Market Brief content and archive surface (MR-6), the weekly source packet and draft PR (MR-10), and production-success-to-Resend-draft dispatch (MR-11). Run the first editions through the explicit human publish gate while the pipeline proves its cadence and content quality:
+Build the minimal core in the approved dependency order from `notes/market-wire/implementation-plan.md` §10: the account-owned email-subscription contract (MR-1), Resend projection and reconciliation (MR-2), the coffee-app signup and preference surface (MR-3), the account-deletion prerequisites and orchestration (MR-4, MR-5) that keep account-coupled email safe to launch, the `/blog` Market Brief content and archive surface (MR-6), the external-source observation contract (MR-7) with its RSS and social capture ingesters (MR-8, MR-9), the weekly source packet and draft PR (MR-10) that consumes them, and production-success-to-Resend-draft dispatch (MR-11). Run the first editions through the explicit human publish gate while the pipeline proves its cadence and content quality:
 
 1. Generate each concise weekly edition from the canonical edition-facts and publication pipeline.
 2. Recruit 50 named roasters, buyers, coffee writers, and supplier-side contacts through direct outreach.
@@ -91,9 +91,9 @@ These launch metrics inform iteration and commercial validation from edition #1;
 ## Cross-product implications
 
 - coffee-scraper: preserve immutable, publication-ready observations and truthful freshness metadata.
-- parchment-api: own the account-owned email-subscription, Resend projection, and edition/archive contracts (MR-1, MR-2, MR-7); a public edition API projection is explicitly deferred (plan §11).
+- parchment-api: own the account-owned email-subscription, Resend projection, and external-source observation contracts (MR-1, MR-2, MR-7); edition publication stays out of MR-7 scope, and a public edition API projection is explicitly deferred (plan §11).
 - purveyors-cli: public Market Brief read commands are explicitly deferred (plan §11); when added later they must consume a canonical Parchment contract and preserve citations and observation timestamps for agents.
-- coffee-app: publish indexable editions and signal pages, collect email conversion, and route paid subscribers into Intelligence, Sourcing Radar, and Studio.
+- coffee-app: own the Market Brief content and archive surface (MR-6), publish indexable editions and signal pages, collect email conversion, and route paid subscribers into Intelligence, Sourcing Radar, and Studio.
 
 ## Source-of-truth routing
 
