@@ -47,8 +47,9 @@ test('production tracked-lot session path restores its prior state', async ({ pa
 		const trackResponse = await page.request.put(`/api/catalog/${catalogId}/track`, {
 			data: { tracked: true }
 		});
-		expect(trackResponse.status()).toBe(200);
-		expect(await trackResponse.json()).toMatchObject({ catalogId, tracked: true });
+		const trackBody = await trackResponse.json();
+		expect(trackResponse.status(), JSON.stringify(trackBody)).toBe(200);
+		expect(trackBody).toMatchObject({ catalogId, tracked: true });
 		tracked = true;
 
 		const trackedResponse = await page.request.get(
