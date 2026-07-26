@@ -321,8 +321,15 @@ Repository: parchment-api.
 - Add the normalized email-subscription schema and constraints.
 - Require an existing Purveyors user.
 - Add session-only preference-read and idempotent subscribe/unsubscribe contracts.
-- Add idempotency and authorization tests.
-- Reject anonymous, public-demo, and API-key mutation.
+- Add a Parchment-owned token-issuance contract, exposed through the generated SDK
+  to an authorized bounded sender. It returns a purpose-bound, expiring
+  `market_read_unsubscribe` token for exactly one account/topic and never exposes
+  signing material.
+- Add the no-login unsubscribe contract, which accepts only a valid Parchment-issued
+  token and cannot subscribe or read preferences.
+- Add token-issuance, token-validation, idempotency, and authorization tests,
+  including expired, wrong-purpose, wrong-topic, and forged tokens.
+- Reject anonymous, public-demo, and API-key mutation without that valid token.
 - Do not add account deletion, provider identifiers, Resend network calls, UI, or
   edition storage.
 
@@ -335,8 +342,9 @@ Repositories: parchment-api and the selected bounded worker owner.
 - Deduplicate provider webhooks by event ID.
 - Reconcile unsubscribe, hard-bounce, and complaint suppression locally.
 - Provide the no-login one-click unsubscribe path through Resend's native topic
-  unsubscribe or a purpose-bound Parchment token if provider behavior requires it.
-  The path may only unsubscribe one account/topic and must be idempotent.
+  unsubscribe or the MR-1 purpose-bound Parchment token if provider behavior
+  requires it. The path may only unsubscribe one account/topic and must be
+  idempotent.
 - Do not send a Market Read edition.
 
 ### MR-3: Coffee-app signup and preference surface
@@ -346,8 +354,9 @@ Repository: coffee-app.
 - Add authenticated Market Read opt-in.
 - Route anonymous subscribe intent through login and back to confirmation.
 - Add Settings status and unsubscribe control.
-- Add the MR-2 no-login unsubscribe landing behavior without giving coffee-app direct
-  write access to the shared preference row.
+- Add the MR-2 no-login unsubscribe landing behavior, forwarding the existing
+  provider or Parchment token without minting one or giving coffee-app direct write
+  access to the shared preference row.
 - Keep paid entitlements independent.
 
 The existing Google login is sufficient for the first account-coupled flow. Adding
@@ -441,6 +450,9 @@ Repositories: coffee-app, with Parchment provider-state support if needed.
 
 - Add the successful-deployment trigger.
 - Render email-safe HTML from the canonical edition.
+- Obtain each recipient's provider-native topic URL or call the MR-1 Parchment
+  token-issuance contract through the generated SDK before rendering; coffee-app must
+  not mint, sign, or validate the token itself.
 - Create or update an idempotent Resend Broadcast draft.
 - Record the production commit, edition slug, broadcast ID, and status durably in
   Parchment.

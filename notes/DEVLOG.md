@@ -119,11 +119,13 @@
 - [ ] **Ship market-knowledge retrieval and evaluation independently.** Add filtered,
       citation-preserving Parchment knowledge search, coffee-app chat integration, and
       a retrieval evaluation set. Route current numeric/filterable questions to
-      structured tools and narrative/history questions to retrieval. Enforce latest
-      public, free-subscriber archive, and Intelligence full-corpus boundaries. Retire
-      structured `origin`, `commercial`, and `processing` catalog prose chunks in a
-      separate slice while preserving sensory/profile vector search. Do not couple
-      this work to Market Read publication or delivery.
+      structured tools and narrative/history questions to retrieval. Enforce the
+      recent-three full-edition boundary, summary-only access to older editions for
+      anonymous, viewer, email-subscriber, and Studio readers, and full older editions
+      only for Intelligence and admin access. Retire structured `origin`,
+      `commercial`, and `processing` catalog prose chunks in a separate slice while
+      preserving sensory/profile vector search. Do not couple this work to Market Read
+      publication or delivery.
 
 - [ ] **Build Sourcing Radar after aggregate freshness is proven.** Deliver the
       four mergeable slices in order: canonical Parchment Radar read, Parchment API-owned intent
