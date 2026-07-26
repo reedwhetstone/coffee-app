@@ -320,7 +320,7 @@ const docsPages: DocsPage[] = [
 						],
 						[
 							'GET /v1/price-index',
-							'API key with Parchment Intelligence access',
+							'Entitled first-party session or customer API key with Parchment Intelligence access',
 							'External integrations and agent workflows consuming market aggregates',
 							'Stable aggregate contract backed by price_index_snapshots. No raw supplier rows, CSV export, alerts, or webhooks.'
 						],
@@ -359,7 +359,7 @@ const docsPages: DocsPage[] = [
 					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API Green stays on the basic public query surface; paid API tiers add importer, elevation, appearance, and structured process filtering while remaining public-catalog scoped. API keys use plan-based limits and are the intended production path for server-to-server integrations.',
 					'Public website catalog pages use a server-only PARCHMENT_PUBLIC_DEMO_API_KEY through the coffee-app BFF. The browser receives public catalog data without receiving that credential. Anonymous Market Index teaser slices stay in session mode and call their deliberately anonymous upstream routes without the demo key.',
 					'GET /v1/catalog/{id}/similar requires a member session token or an API key with API Origin or Enterprise plus catalog:read. It returns beta similarity candidates for account-linked matching workflows; missing credentials get 401 and viewer or API Green callers get 403.',
-					'GET /v1/price-index requires an API key whose owner has Parchment Intelligence access. It returns aggregate price-index snapshots, not raw supplier-level rows.',
+					'GET /v1/price-index accepts an entitled first-party session token or a customer API key whose owner has Parchment Intelligence access. It returns aggregate price-index snapshots, not raw supplier-level rows.',
 					'The retired coffee-app same-host /v1/* and /api/catalog-api paths are not integration contracts. External callers use https://api.purveyors.io/v1/*.',
 					'Cookies are not part of the public API contract. Coffee-app may forward a valid first-party session as a Bearer token.',
 					'Inventory share links are the one notable anonymous data exception on the product side: GET /api/beans?share=... can return a scoped inventory view without a user session.'
@@ -399,7 +399,7 @@ const docsPages: DocsPage[] = [
 							'Entitled GET /v1/price-index',
 							'Market-intelligence integrations and agents',
 							'Authorization: Bearer <session_token or api_key> plus Parchment Intelligence entitlement',
-							'Aggregate price_index_snapshots data with pagination and rate-limit headers. No CSV, alerts, webhooks, or supplier-level rows.'
+							'Aggregate price_index_snapshots data with pagination. API-key responses include X-RateLimit-* headers; session responses do not include API-key quota headers. No CSV, alerts, webhooks, or supplier-level rows.'
 						],
 						[
 							'Bearer-session GET /v1/catalog',
@@ -1139,9 +1139,9 @@ const docsPages: DocsPage[] = [
 						[
 							'/v1/price-index',
 							'GET',
-							'API key with Parchment Intelligence access',
+							'Entitled first-party session or customer API key with Parchment Intelligence access',
 							'Stable external aggregate contract',
-							'Reads aggregate price_index_snapshots only. No raw supplier rows, CSV, alerts, watchlists, or webhooks.'
+							'Reads aggregate price_index_snapshots only. API-key responses include X-RateLimit-* headers; session responses do not include API-key quota headers. No raw supplier rows, CSV, alerts, watchlists, or webhooks.'
 						]
 					]
 				}
