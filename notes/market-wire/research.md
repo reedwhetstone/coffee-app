@@ -88,11 +88,19 @@ Litquidity = insider fluency + neutrality. Prof G = data + accountable opinions.
 
 ### Free tier (distribution engine)
 
-Weekly edition, web (indexable, latest edition public) + email (double opt-in). Free email sub unlocks the full edition archive on site. RSS/Atom open. Leads every week with micro-data nobody else has; macro context frames but never carries.
+Weekly edition, web (the latest three editions public) + email (double opt-in).
+Email consent controls delivery, not archive entitlement. Older titles and summaries
+remain visible; full older editions require Parchment Intelligence. RSS/Atom carries
+summaries and links. The edition leads with current conversation and uses Purveyors
+micro-data where it adds evidence or buying context.
 
 ### Paid: Parchment Intelligence ($12/mo, ~$120/yr annual)
 
-Personalized "your market" section from saved sourcing intent; immediate alerts between editions; full data history, comparisons, exports via Market Index; Ask Parchment on any wire item; evidence deep links. Studio $5/mo, founding bundle $15/mo, price-locked for first 50 (per moonshot). Positioning: a different product (decision surface), not a longer newsletter.
+Full Market Read archive; personalized "your market" section from saved sourcing
+intent; immediate alerts between editions; full data history, comparisons, exports via
+Market Index; Ask Parchment on any Market Read item; evidence deep links. Studio
+$5/mo, founding bundle $15/mo, price-locked for first 50 (per moonshot).
+Positioning: a decision surface and historical product, not a longer newsletter.
 
 ### Later, sequenced (Litquidity lesson: not simultaneously)
 

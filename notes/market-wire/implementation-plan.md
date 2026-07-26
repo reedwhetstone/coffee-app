@@ -321,13 +321,8 @@ Repository: parchment-api.
 - Add the normalized email-subscription schema and constraints.
 - Require an existing Purveyors user.
 - Add session-only preference-read and idempotent subscribe/unsubscribe contracts.
-- Add a dedicated `POST /v1/email-subscriptions/market-read/unsubscribe` contract for
-  no-login links. It accepts only a Parchment-issued, purpose-bound, expiring
-  `market_read_unsubscribe` token. The token targets one account/topic, cannot
-  subscribe or read preferences, and the operation is idempotent.
-- Add token-validation, idempotency, and authorization tests, including expired,
-  wrong-purpose, wrong-topic, and forged tokens.
-- Reject anonymous, public-demo, and API-key mutation without that signed token.
+- Add idempotency and authorization tests.
+- Reject anonymous, public-demo, and API-key mutation.
 - Do not add account deletion, provider identifiers, Resend network calls, UI, or
   edition storage.
 
@@ -339,6 +334,9 @@ Repositories: parchment-api and the selected bounded worker owner.
 - Project active preferences into the Resend Market Read Topic.
 - Deduplicate provider webhooks by event ID.
 - Reconcile unsubscribe, hard-bounce, and complaint suppression locally.
+- Provide the no-login one-click unsubscribe path through Resend's native topic
+  unsubscribe or a purpose-bound Parchment token if provider behavior requires it.
+  The path may only unsubscribe one account/topic and must be idempotent.
 - Do not send a Market Read edition.
 
 ### MR-3: Coffee-app signup and preference surface
@@ -348,8 +346,8 @@ Repository: coffee-app.
 - Add authenticated Market Read opt-in.
 - Route anonymous subscribe intent through login and back to confirmation.
 - Add Settings status and unsubscribe control.
-- Add signed one-click unsubscribe link handling against MR-1's token contract;
-  coffee-app forwards the token and does not mutate the shared subscription row.
+- Add the MR-2 no-login unsubscribe landing behavior without giving coffee-app direct
+  write access to the shared preference row.
 - Keep paid entitlements independent.
 
 The existing Google login is sufficient for the first account-coupled flow. Adding
