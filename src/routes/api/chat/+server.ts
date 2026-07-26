@@ -42,16 +42,7 @@ SIMILARITY GUIDANCE
 When a user asks about alternatives, similar coffees, or "what else is like this", use find_similar_beans with their bean's catalog ID.
 Combine with present_results to surface and annotate the top matches.
 
-MARKET INTELLIGENCE GUIDANCE
-- For ranked catalog shortlists ("best / top / premium / just landed / unusual"), use catalog_rank with the matching objective — do not approximate with coffee_catalog_search and your own ordering
-- For actionable buy opportunities, below-market lots, price drops, "value" asks, or scoped retail/wholesale signal questions, use market_signals when available before falling back to catalog_rank
-- Rankings are deterministic and grounded in Purveyor Score; explain them via rank_basis and purveyor_score_factors, and always carry the returned caveats into your answer
-- Before filtering by a supplier, origin, or process value you have not seen in this conversation, verify it with catalog_facets or supplier_list — never guess names
-- For market pricing questions ("is this priced well?", "what are naturals going for?"), use price_index_read and compare a lot's price to the matching segment's median/p25/p75
-- For movement significance questions ("did prices really move?", "is this signal or noise?"), use market_stats when available and explain the classification, sample size, and move driver
-- For market composition questions ("is anaerobic growing?", "is disclosure improving?", "how is Purveyor Score trending?"), use market_metadata when available; only Purveyor Score dimensions are available, not supplier score_value trends
-- catalog_facets and supplier_list results are cached and stable — reuse them within a conversation instead of calling them again
-- Quality signals are evidence, not verdicts: cite scores, sample sizes, and factors; avoid absolute claims like "objectively the best"
+{{MARKET_INTELLIGENCE_GUIDANCE}}
 
 WRITE TOOL RULES
 - Write tools produce an **action card** in the evidence workspace for user review
@@ -76,9 +67,9 @@ STRATEGIC APPROACH
 5. If tools fail or return no results → acknowledge it, explain, and give general guidance
 
 PRESENTING RESULTS
-After calling coffee_catalog_search, catalog_rank, market_signals, green_coffee_inventory, or another presentable read tool, you MUST call present_results to control what the user sees:
+After calling {{PRESENTABLE_READ_TOOLS}} or another presentable read tool, you MUST call present_results to control what the user sees:
 
-1. SELECT 2-5 most relevant items from the search results (don't show all 10+). For market_signals, use the returned catalogId as the presentation item ID.
+1. SELECT 2-5 most relevant items from the search results (don't show all 10+).{{MARKET_SIGNAL_PRESENTATION_RULE}}
 2. ANNOTATE each with a natural language note explaining WHY it's relevant
 3. Choose a LAYOUT:
    - "inline" — vertical stack, best for exploration and browsing
@@ -128,6 +119,19 @@ RESPONSE FORMAT
 - Be direct, useful, and precise; prefer decision-relevant evidence over generic coffee enthusiasm
 - Always ground advice in data where possible (tool results, user data)
 - Default to stocked data; only fetch historical when explicitly requested`;
+
+const COMMON_MARKET_INTELLIGENCE_GUIDANCE = `MARKET INTELLIGENCE GUIDANCE
+- For ranked catalog shortlists ("best / top / premium / just landed / unusual"), use catalog_rank with the matching objective — do not approximate with coffee_catalog_search and your own ordering
+- Rankings are deterministic and grounded in Purveyor Score; explain them via rank_basis and purveyor_score_factors, and always carry the returned caveats into your answer
+- Before filtering by a supplier, origin, or process value you have not seen in this conversation, verify it with catalog_facets or supplier_list — never guess names
+- catalog_facets and supplier_list results are cached and stable — reuse them within a conversation instead of calling them again
+- Quality signals are evidence, not verdicts: cite scores, sample sizes, and factors; avoid absolute claims like "objectively the best"`;
+
+const PPI_MARKET_INTELLIGENCE_GUIDANCE = `${COMMON_MARKET_INTELLIGENCE_GUIDANCE}
+- For actionable buy opportunities, below-market lots, price drops, "value" asks, or scoped retail/wholesale signal questions, use market_signals when available before falling back to catalog_rank
+- For market pricing questions ("is this priced well?", "what are naturals going for?"), use price_index_read and compare a lot's price to the matching segment's median/p25/p75
+- For movement significance questions ("did prices really move?", "is this signal or noise?"), use market_stats when available and explain the classification, sample size, and move driver
+- For market composition questions ("is anaerobic growing?", "is disclosure improving?", "how is Purveyor Score trending?"), use market_metadata when available; only Purveyor Score dimensions are available, not supplier score_value trends`;
 
 const WORKSPACE_TYPE_CONTEXT: Record<string, string> = {
 	general: '',
@@ -242,18 +246,22 @@ READ TOOLS (query data):
 6. catalog_facets - List valid values (with counts) for supplier/origin/process/grade fields — use before filtering by unverified names
 7. supplier_list - The supplier universe with aggregate quality and price signals per supplier
 8. catalog_rank - Deterministic ranking by objective: premium, value, fresh_arrival, rare_origin
-9. price_index_read - Parchment Market Index aggregate price snapshots by origin/process over time
-10. market_signals - Actionable buy signals: price drops, below-market lots, and price-for-quality outliers
-11. market_stats - Price movement significance with quiet/normal/notable/exceptional classification and move-driver context
-12. market_metadata - Market composition trends for process mix, disclosure level, and Purveyor Score distribution; supplier cup-score trends are unavailable
-13. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
+9. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
 
 WRITE TOOLS (propose changes — user must confirm before execution):
-14. add_bean_to_inventory - Propose adding a bean to the user's inventory
-15. update_bean - Propose updating an existing inventory bean
-16. create_roast_session - Propose creating a new roast session/profile
-17. update_roast_notes - Propose updating roast notes
-18. record_sale - Propose recording a sale`;
+10. add_bean_to_inventory - Propose adding a bean to the user's inventory
+11. update_bean - Propose updating an existing inventory bean
+12. create_roast_session - Propose creating a new roast session/profile
+13. update_roast_notes - Propose updating roast notes
+14. record_sale - Propose recording a sale`;
+
+const MALLARD_PPI_TOOL_ACCESS_PROMPT = `${MALLARD_TOOL_ACCESS_PROMPT}
+
+PARCHMENT INTELLIGENCE MARKET TOOLS:
+15. price_index_read - Parchment Market Index aggregate price snapshots by origin/process over time
+16. market_signals - Actionable buy signals: price drops, below-market lots, and price-for-quality outliers
+17. market_stats - Price movement significance with quiet/normal/notable/exceptional classification and move-driver context
+18. market_metadata - Market composition trends for process mix, disclosure level, and Purveyor Score distribution; supplier cup-score trends are unavailable`;
 
 const PARCHMENT_WORKSPACE_TYPES = new Set(['general', 'sourcing', 'inventory']);
 const APPROX_CHARS_PER_TOKEN = 4;
@@ -282,7 +290,8 @@ function trimMessagesToPromptBudget(systemPrompt: string, messages: UIMessage[])
 }
 
 function toolAccessPrompt(access?: { ppiAccess: boolean; memberAccess: boolean }): string {
-	return access?.memberAccess ? MALLARD_TOOL_ACCESS_PROMPT : PARCHMENT_TOOL_ACCESS_PROMPT;
+	if (!access?.memberAccess) return PARCHMENT_TOOL_ACCESS_PROMPT;
+	return access.ppiAccess ? MALLARD_PPI_TOOL_ACCESS_PROMPT : MALLARD_TOOL_ACCESS_PROMPT;
 }
 
 function resolveWorkspaceType(
@@ -475,6 +484,23 @@ export function _buildSystemPrompt(
 		'{{TOOL_ACCESS_CONTEXT}}',
 		toolAccessPrompt(access)
 	);
+	prompt = prompt
+		.replace(
+			'{{MARKET_INTELLIGENCE_GUIDANCE}}',
+			access?.ppiAccess ? PPI_MARKET_INTELLIGENCE_GUIDANCE : COMMON_MARKET_INTELLIGENCE_GUIDANCE
+		)
+		.replace(
+			'{{PRESENTABLE_READ_TOOLS}}',
+			access?.ppiAccess
+				? 'coffee_catalog_search, catalog_rank, market_signals, green_coffee_inventory,'
+				: 'coffee_catalog_search, catalog_rank, green_coffee_inventory,'
+		)
+		.replace(
+			'{{MARKET_SIGNAL_PRESENTATION_RULE}}',
+			access?.ppiAccess
+				? ' For market_signals, use the returned catalogId as the presentation item ID.'
+				: ''
+		);
 
 	if (userName) {
 		// Strip control characters to prevent prompt injection via user-controlled display name.
@@ -634,7 +660,7 @@ export const POST: RequestHandler = async (event) => {
 					);
 					return rows as unknown as Record<string, unknown>[];
 				},
-				readPriceIndex: (input) => readPriceIndexForAgent(input),
+				readPriceIndex: (input) => readPriceIndexForAgent(input, agentParchmentClient),
 				findSimilarBeans: (input, options) => findSimilarBeansForAgent(input, options),
 				marketSignals: async (input) => {
 					const client = await _createMarketToolParchmentClient(event);

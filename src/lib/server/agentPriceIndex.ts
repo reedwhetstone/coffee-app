@@ -1,42 +1,19 @@
-import { createAdminClient } from '$lib/supabase-admin';
+import type { ParchmentClient, PriceIndexQuery, components } from '@purveyors/sdk';
 
 /**
  * Aggregate price-index reader for the chat agent's price_index_read tool.
  *
- * price_index_snapshots revokes SELECT from anon/authenticated, so this must
- * use the admin client. It exposes only the tier-aggregate columns that
- * /v1/price-index already serves — never raw supplier rows. Entitlement is
- * enforced upstream: the tool is only registered for Parchment Intelligence
- * and Mallard Studio chat sessions.
+ * Parchment owns the aggregate query and entitlement check. The chat route
+ * supplies its request-bound session client so the caller's credential reaches
+ * /v1/price-index without exposing raw supplier rows.
  */
 
-interface SnapshotRowsResult {
-	data: Array<Record<string, unknown>> | null;
-	error: { message: string } | null;
-}
-
-interface SnapshotQueryBuilder extends PromiseLike<SnapshotRowsResult> {
-	gte(column: string, value: string): SnapshotQueryBuilder;
-	eq(column: string, value: boolean): SnapshotQueryBuilder;
-	ilike(column: string, pattern: string): SnapshotQueryBuilder;
-	order(column: string, options: { ascending: boolean }): SnapshotQueryBuilder;
-	limit(count: number): SnapshotQueryBuilder;
-}
-
-interface SnapshotClient {
-	from(table: 'price_index_snapshots'): {
-		select(columns: string): SnapshotQueryBuilder;
-	};
-}
-
-const SNAPSHOT_COLUMNS =
-	'snapshot_date, origin, process, grade, wholesale_only, price_min, price_max, price_avg, price_median, price_p25, price_p75, supplier_count, sample_size, synthetic';
+type PriceIndexItem = components['schemas']['PriceIndexItem'];
 
 const DEFAULT_DAYS = 90;
 const MAX_DAYS = 365;
 const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 60;
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour — snapshots are recomputed daily
 
 export interface AgentPriceIndexInput {
 	origin?: string;
@@ -75,29 +52,28 @@ export interface AgentPriceIndexResult {
 
 export type AgentPriceIndexReader = (input: AgentPriceIndexInput) => Promise<AgentPriceIndexResult>;
 
-const cache = new Map<string, { expires: number; value: AgentPriceIndexResult }>();
-
-/** Test hook: clear the agent price index cache. */
-export function _clearAgentPriceIndexCache(): void {
-	cache.clear();
-}
-
 function sanitizeFilterValue(value: string): string {
 	return value.replace(/[%_,()]/g, ' ').trim();
 }
 
-function toNullableNumber(value: unknown): number | null {
-	if (typeof value === 'number' && Number.isFinite(value)) return value;
-	if (typeof value === 'string') {
-		const parsed = Number.parseFloat(value);
-		return Number.isFinite(parsed) ? parsed : null;
+function formatParchmentError(error: unknown): string {
+	if (
+		typeof error === 'object' &&
+		error !== null &&
+		'error' in error &&
+		typeof error.error === 'object' &&
+		error.error !== null &&
+		'message' in error.error &&
+		typeof error.error.message === 'string'
+	) {
+		return error.error.message;
 	}
-	return null;
+	return 'unknown Parchment error';
 }
 
 export async function readPriceIndexForAgent(
 	input: AgentPriceIndexInput,
-	client: SnapshotClient = createAdminClient() as unknown as SnapshotClient
+	client: ParchmentClient
 ): Promise<AgentPriceIndexResult> {
 	const days = Math.min(Math.max(input.days ?? DEFAULT_DAYS, 1), MAX_DAYS);
 	const limit = Math.min(Math.max(input.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
@@ -105,53 +81,46 @@ export async function readPriceIndexForAgent(
 	const process = input.process ? sanitizeFilterValue(input.process) : null;
 	const wholesale = input.wholesale ?? null;
 
-	const cacheKey = JSON.stringify({ days, limit, origin, process, wholesale });
-	const cached = cache.get(cacheKey);
-	if (cached && Date.now() <= cached.expires) return cached.value;
-
 	const cutoff = new Date();
-	cutoff.setDate(cutoff.getDate() - days);
+	cutoff.setUTCDate(cutoff.getUTCDate() - days);
 
-	let query = client
-		.from('price_index_snapshots')
-		.select(SNAPSHOT_COLUMNS)
-		.gte('snapshot_date', cutoff.toISOString().slice(0, 10));
+	const query: PriceIndexQuery = {
+		page: 1,
+		limit,
+		order: 'desc',
+		from: cutoff.toISOString().slice(0, 10),
+		...(origin ? { origin } : {}),
+		...(process ? { process } : {}),
+		...(wholesale === null ? {} : { wholesale: wholesale ? 'true' : 'false' })
+	};
+	const { data, error } = await client.priceIndex.list(query);
 
-	if (origin) query = query.ilike('origin', `%${origin}%`);
-	if (process) query = query.ilike('process', `%${process}%`);
-	if (wholesale !== null) query = query.eq('wholesale_only', wholesale);
+	if (error) throw new Error(`Parchment price index query failed: ${formatParchmentError(error)}`);
 
-	const { data, error } = await query.order('snapshot_date', { ascending: false }).limit(limit);
-
-	if (error) throw new Error(`price_index_snapshots query failed: ${error.message}`);
-
-	const snapshots: AgentPriceIndexItem[] = (data ?? []).map((row) => ({
-		date: String(row.snapshot_date ?? ''),
-		origin: String(row.origin ?? ''),
-		process: typeof row.process === 'string' ? row.process : null,
-		grade: typeof row.grade === 'string' ? row.grade : null,
-		wholesale: row.wholesale_only === true,
+	const snapshots: AgentPriceIndexItem[] = (data?.data ?? []).map((row: PriceIndexItem) => ({
+		date: row.date,
+		origin: row.origin,
+		process: row.process,
+		grade: row.grade,
+		wholesale: row.wholesale,
 		price: {
-			min: toNullableNumber(row.price_min),
-			p25: toNullableNumber(row.price_p25),
-			median: toNullableNumber(row.price_median),
-			avg: toNullableNumber(row.price_avg),
-			p75: toNullableNumber(row.price_p75),
-			max: toNullableNumber(row.price_max)
+			min: row.price.min,
+			p25: row.price.p25,
+			median: row.price.median,
+			avg: row.price.avg,
+			p75: row.price.p75,
+			max: row.price.max
 		},
-		suppliers: toNullableNumber(row.supplier_count) ?? 0,
-		listings: toNullableNumber(row.sample_size) ?? 0,
-		synthetic: row.synthetic === true
+		suppliers: row.sample.suppliers,
+		listings: row.sample.listings,
+		synthetic: row.provenance.synthetic
 	}));
 
-	const result: AgentPriceIndexResult = {
+	return {
 		snapshots,
 		total_returned: snapshots.length,
 		window_days: days,
 		filters_applied: { origin, process, wholesale },
 		source: { table: 'price_index_snapshots', aggregate_only: true }
 	};
-
-	cache.set(cacheKey, { expires: Date.now() + CACHE_TTL_MS, value: result });
-	return result;
 }

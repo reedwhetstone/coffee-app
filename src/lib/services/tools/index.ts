@@ -47,7 +47,7 @@ export type { ChatToolAccess, ChatToolDeps, InventoryRoastSummary } from './shar
  *   catalog_facets         → getCatalogFacets()  (caller-visible valid filter values)
  *   supplier_list          → getSupplierList()   (caller-visible supplier universe)
  *   catalog_rank           → rankCatalog()       (deterministic objective ranking)
- *   price_index_read       → deps.readPriceIndex (aggregate market index, admin client)
+ *   price_index_read       → deps.readPriceIndex (aggregate market index via Parchment)
  *
  * WRITE TOOLS — proposal pattern, return action_card for user confirmation:
  *   add_bean_to_inventory  → execute-action calls addInventory()
@@ -78,10 +78,12 @@ export function createChatTools(
 		...presentationTools
 	};
 
-	// price_index_read requires a server-injected reader (admin client); it is
-	// only registered when the chat route provides one.
+	// price_index_read is only registered when the chat route provides its
+	// request-bound Parchment adapter.
 
-	if (access.memberAccess) return { ...tools, ...priceIndexTools, ...marketIndexTools };
+	if (access.memberAccess) {
+		return access.ppiAccess ? { ...tools, ...priceIndexTools, ...marketIndexTools } : tools;
+	}
 
 	if (access.ppiAccess) {
 		const ppiTools: ToolSet = {

@@ -1,7 +1,7 @@
 # Coffee-app architecture and migration boundary
 
 **Status:** Current implementation truth
-**Last verified:** 2026-07-22
+**Last verified:** 2026-07-26
 
 This document describes what coffee-app does today. `notes/PRODUCT_VISION.md`
 defines product direction, ADRs preserve decisions, and `notes/DEVLOG.md` owns
@@ -99,8 +99,8 @@ authority.
 These direct paths cross the intended Parchment API boundary and need explicit
 replacement or retirement:
 
-- catalog and market reads from `coffee_catalog`, `price_index_snapshots`,
-  `market_daily_summary`, and `supplier_daily_stats`
+- catalog and market reads from `coffee_catalog`, `market_daily_summary`, and
+  `supplier_daily_stats`, plus analytics-page reads from `price_index_snapshots`
 - local similarity and matching RPCs over catalog data
 - bean-identity candidate and review operations over shared identity tables
 - sourcing brief summaries against shared catalog rows
@@ -133,6 +133,10 @@ The CLI reaches those same endpoint families as a peer consumer. The shared
 layer is the API contract and generated SDK, not CLI source code. Historical
 plans in which coffee-app imported `@purveyors/cli/*` describe a former
 architecture and are not current guidance.
+
+The chat agent's `price_index_read` adapter consumes `ParchmentClient.priceIndex.list`
+through the request's session-mode client and maps the API response into its
+app-owned tool result. It no longer queries shared price-index storage directly.
 
 ## Near-term protocol direction
 

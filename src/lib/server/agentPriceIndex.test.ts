@@ -1,123 +1,119 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, expect, it, vi } from 'vitest';
+import { readPriceIndexForAgent } from './agentPriceIndex';
 
-vi.mock('$lib/supabase-admin', () => ({ createAdminClient: vi.fn() }));
-
-import { _clearAgentPriceIndexCache, readPriceIndexForAgent } from './agentPriceIndex';
-
-type Row = Record<string, unknown>;
-type Call = [method: string, ...args: unknown[]];
-
-function createMockClient(rows: Row[], calls: Call[] = []) {
-	const client = {
-		from(table: 'price_index_snapshots') {
-			calls.push(['from', table]);
-			return {
-				select(columns: string) {
-					calls.push(['select', columns]);
-					const builder = {
-						gte(column: string, value: string) {
-							calls.push(['gte', column, value]);
-							return builder;
-						},
-						eq(column: string, value: boolean) {
-							calls.push(['eq', column, value]);
-							return builder;
-						},
-						ilike(column: string, pattern: string) {
-							calls.push(['ilike', column, pattern]);
-							return builder;
-						},
-						order(column: string, options: { ascending: boolean }) {
-							calls.push(['order', column, options]);
-							return builder;
-						},
-						limit(count: number) {
-							calls.push(['limit', count]);
-							return builder;
-						},
-						then(onFulfilled: (value: { data: Row[]; error: null }) => unknown) {
-							return Promise.resolve({ data: rows, error: null }).then(onFulfilled);
-						}
-					};
-					return builder;
-				}
-			};
-		}
-	};
-
+function createMockClient(result: unknown) {
 	return {
-		client: client as unknown as Parameters<typeof readPriceIndexForAgent>[1],
-		calls
+		priceIndex: {
+			list: vi.fn().mockResolvedValue(result)
+		}
 	};
 }
 
-beforeEach(() => {
-	_clearAgentPriceIndexCache();
-});
+const priceIndexItem = {
+	date: '2026-06-09',
+	origin: 'Ethiopia',
+	process: 'Natural',
+	grade: 'G1',
+	wholesale: false,
+	price: {
+		min: 5.5,
+		max: 12,
+		avg: 8.25,
+		median: 8,
+		p25: 6.75,
+		p75: 9.5,
+		stdev: 1.2
+	},
+	sample: { suppliers: 4, listings: 23, aggregationTier: 2 },
+	provenance: { synthetic: false }
+};
 
 describe('readPriceIndexForAgent', () => {
-	const snapshotRow: Row = {
-		snapshot_date: '2026-06-09',
-		origin: 'Ethiopia',
-		process: 'Natural',
-		grade: 'G1',
-		wholesale_only: false,
-		price_min: '5.50',
-		price_max: 12,
-		price_avg: '8.25',
-		price_median: 8,
-		price_p25: 6.75,
-		price_p75: 9.5,
-		supplier_count: '4',
-		sample_size: 23,
-		synthetic: false
-	};
-
-	it('maps snapshot rows to compact aggregate items', async () => {
-		const { client, calls } = createMockClient([snapshotRow]);
+	it('queries the SDK with a bounded ISO date window and maps the response shape', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-07-26T12:00:00.000Z'));
+		const client = createMockClient({ data: { data: [priceIndexItem] } });
 
 		const result = await readPriceIndexForAgent(
-			{ origin: 'Ethiopia', process: 'natural', days: 30, wholesale: false },
-			client
+			{ origin: 'Ethiopia', process: 'natural', days: 30, wholesale: false, limit: 20 },
+			client as never
 		);
 
-		expect(result.snapshots).toEqual([
-			{
-				date: '2026-06-09',
-				origin: 'Ethiopia',
-				process: 'Natural',
-				grade: 'G1',
-				wholesale: false,
-				price: { min: 5.5, p25: 6.75, median: 8, avg: 8.25, p75: 9.5, max: 12 },
-				suppliers: 4,
-				listings: 23,
-				synthetic: false
-			}
-		]);
-		expect(result.window_days).toBe(30);
-		expect(result.source).toEqual({ table: 'price_index_snapshots', aggregate_only: true });
-		expect(calls).toContainEqual(['ilike', 'origin', '%Ethiopia%']);
-		expect(calls).toContainEqual(['ilike', 'process', '%natural%']);
-		expect(calls).toContainEqual(['eq', 'wholesale_only', false]);
-		expect(calls).toContainEqual(['order', 'snapshot_date', { ascending: false }]);
+		expect(client.priceIndex.list).toHaveBeenCalledWith({
+			page: 1,
+			limit: 20,
+			order: 'desc',
+			from: '2026-06-26',
+			origin: 'Ethiopia',
+			process: 'natural',
+			wholesale: 'false'
+		});
+		expect(result).toEqual({
+			snapshots: [
+				{
+					date: '2026-06-09',
+					origin: 'Ethiopia',
+					process: 'Natural',
+					grade: 'G1',
+					wholesale: false,
+					price: { min: 5.5, p25: 6.75, median: 8, avg: 8.25, p75: 9.5, max: 12 },
+					suppliers: 4,
+					listings: 23,
+					synthetic: false
+				}
+			],
+			total_returned: 1,
+			window_days: 30,
+			filters_applied: { origin: 'Ethiopia', process: 'natural', wholesale: false },
+			source: { table: 'price_index_snapshots', aggregate_only: true }
+		});
 	});
 
-	it('clamps the lookback window and limit', async () => {
-		const { client, calls } = createMockClient([]);
+	it('clamps the lookback and limit before calling Parchment', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-07-26T12:00:00.000Z'));
+		const client = createMockClient({ data: { data: [] } });
 
-		const result = await readPriceIndexForAgent({ days: 9999, limit: 500 }, client);
+		const result = await readPriceIndexForAgent({ days: 9999, limit: 500 }, client as never);
 
 		expect(result.window_days).toBe(365);
-		expect(calls).toContainEqual(['limit', 60]);
+		expect(client.priceIndex.list).toHaveBeenCalledWith({
+			page: 1,
+			limit: 60,
+			order: 'desc',
+			from: '2025-07-26'
+		});
 	});
 
-	it('serves repeat calls from the cache without re-querying', async () => {
-		const { client, calls } = createMockClient([snapshotRow]);
+	it('authorizes repeat calls through the request-bound SDK client', async () => {
+		const client = createMockClient({ data: { data: [priceIndexItem] } });
 
-		await readPriceIndexForAgent({ origin: 'Ethiopia' }, client);
-		const fromCallsAfterFirst = calls.filter(([m]) => m === 'from').length;
-		await readPriceIndexForAgent({ origin: 'Ethiopia' }, client);
+		await readPriceIndexForAgent({ origin: 'Ethiopia' }, client as never);
+		await readPriceIndexForAgent({ origin: 'Ethiopia' }, client as never);
 
-		expect(calls.filter(([m]) => m === 'from').length).toBe(fromCallsAfterFirst);
+		expect(client.priceIndex.list).toHaveBeenCalledTimes(2);
+	});
+
+	it('surfaces API errors and does not cache them', async () => {
+		const client = createMockClient({
+			error: { error: { code: 'auth_required', message: 'Authentication required' } }
+		});
+
+		await expect(readPriceIndexForAgent({}, client as never)).rejects.toThrow(
+			'Parchment price index query failed: Authentication required'
+		);
+		await expect(readPriceIndexForAgent({}, client as never)).rejects.toThrow(
+			'Parchment price index query failed: Authentication required'
+		);
+		expect(client.priceIndex.list).toHaveBeenCalledTimes(2);
+	});
+
+	it('contains no direct Supabase query in the retired reader', () => {
+		const source = readFileSync(resolve('src/lib/server/agentPriceIndex.ts'), 'utf8');
+
+		expect(source).not.toContain('createAdminClient');
+		expect(source).not.toMatch(/\.from\(['"]price_index_snapshots['"]\)/);
 	});
 });

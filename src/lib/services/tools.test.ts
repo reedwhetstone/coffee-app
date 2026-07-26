@@ -57,7 +57,7 @@ describe('createChatTools entitlement allowlist', () => {
 		]);
 	});
 
-	it('registers price_index_read only when the server injects a reader', () => {
+	it('registers price_index_read only for PPI-entitled users when the server injects a reader', () => {
 		const readPriceIndex = vi.fn();
 
 		const memberNames = Object.keys(
@@ -76,6 +76,14 @@ describe('createChatTools entitlement allowlist', () => {
 				{ readPriceIndex }
 			)
 		);
+		const combinedNames = Object.keys(
+			createChatTools(
+				supabase,
+				'user-123',
+				{ memberAccess: true, ppiAccess: true },
+				{ readPriceIndex }
+			)
+		);
 		const viewerNames = Object.keys(
 			createChatTools(
 				supabase,
@@ -85,8 +93,9 @@ describe('createChatTools entitlement allowlist', () => {
 			)
 		);
 
-		expect(memberNames).toContain('price_index_read');
+		expect(memberNames).not.toContain('price_index_read');
 		expect(ppiNames).toContain('price_index_read');
+		expect(combinedNames).toContain('price_index_read');
 		expect(viewerNames).not.toContain('price_index_read');
 		expect(toolNames({ memberAccess: true, ppiAccess: false })).not.toContain('price_index_read');
 	});

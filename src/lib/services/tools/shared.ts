@@ -91,11 +91,7 @@ export type MarketMetadataDimension =
 	| 'purveyor_score_confidence'
 	| 'purveyor_score_tier';
 
-/**
- * Server-injected dependencies for tools that cannot run on the user-scoped
- * client (e.g. price_index_read needs the admin client because
- * price_index_snapshots revokes SELECT from authenticated users).
- */
+/** Server-injected adapters for chat tools with app-owned result shaping. */
 export interface ChatToolDeps {
 	searchCatalog?: (input: {
 		origin?: string;

@@ -289,7 +289,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Parchment',
 		intro: [
 			'Parchment is the API and Console layer inside Purveyors. It exposes normalized green coffee catalog data, beta catalog similarity matching, and aggregate market intelligence through small public HTTP contracts plus a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
-			'The stable public catalog contract is GET https://api.purveyors.io/v1/catalog. Production catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages remain browsable without a user login because the coffee-app BFF presents a server-held public/demo key upstream. Deliberately designated Market Index teaser slices remain anonymous as a narrow route contract. GET /v1/catalog/{id}/similar is a beta member and paid API route for candidate matching, not a canonical identity claim. GET /v1/price-index is a Parchment Intelligence API-key contract for aggregate price_index_snapshots data only. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most coffee-app /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
+			'The stable public catalog contract is GET https://api.purveyors.io/v1/catalog. Production catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages remain browsable without a user login because the coffee-app BFF presents a server-held public/demo key upstream. Deliberately designated Market Index teaser slices remain anonymous as a narrow route contract. GET /v1/catalog/{id}/similar is a beta member and paid API route for candidate matching, not a canonical identity claim. GET /v1/price-index is an authenticated Parchment Intelligence contract for aggregate price_index_snapshots data only; it accepts entitled first-party sessions and customer API keys. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most coffee-app /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
 		],
 		sections: [
 			{
@@ -320,7 +320,7 @@ const docsPages: DocsPage[] = [
 						],
 						[
 							'GET /v1/price-index',
-							'API key with Parchment Intelligence access',
+							'Entitled first-party session or customer API key with Parchment Intelligence access',
 							'External integrations and agent workflows consuming market aggregates',
 							'Stable aggregate contract backed by price_index_snapshots. No raw supplier rows, CSV export, alerts, or webhooks.'
 						],
@@ -359,7 +359,7 @@ const docsPages: DocsPage[] = [
 					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API Green stays on the basic public query surface; paid API tiers add importer, elevation, appearance, and structured process filtering while remaining public-catalog scoped. API keys use plan-based limits and are the intended production path for server-to-server integrations.',
 					'Public website catalog pages use a server-only PARCHMENT_PUBLIC_DEMO_API_KEY through the coffee-app BFF. The browser receives public catalog data without receiving that credential. Anonymous Market Index teaser slices stay in session mode and call their deliberately anonymous upstream routes without the demo key.',
 					'GET /v1/catalog/{id}/similar requires a member session token or an API key with API Origin or Enterprise plus catalog:read. It returns beta similarity candidates for account-linked matching workflows; missing credentials get 401 and viewer or API Green callers get 403.',
-					'GET /v1/price-index requires an API key whose owner has Parchment Intelligence access. It returns aggregate price-index snapshots, not raw supplier-level rows.',
+					'GET /v1/price-index accepts an entitled first-party session token or a customer API key whose owner has Parchment Intelligence access. It returns aggregate price-index snapshots, not raw supplier-level rows.',
 					'The retired coffee-app same-host /v1/* and /api/catalog-api paths are not integration contracts. External callers use https://api.purveyors.io/v1/*.',
 					'Cookies are not part of the public API contract. Coffee-app may forward a valid first-party session as a Bearer token.',
 					'Inventory share links are the one notable anonymous data exception on the product side: GET /api/beans?share=... can return a scoped inventory view without a user session.'
@@ -396,10 +396,10 @@ const docsPages: DocsPage[] = [
 							'Plan-limited beta response with target, matches, score dimensions, match category, confidence labels, price_delta_1lb, X-RateLimit-* headers, and cautious copy.'
 						],
 						[
-							'API-key GET /v1/price-index',
+							'Entitled GET /v1/price-index',
 							'Market-intelligence integrations and agents',
-							'Authorization: Bearer <api_key> plus Parchment Intelligence entitlement',
-							'Aggregate price_index_snapshots data with pagination and rate-limit headers. No CSV, alerts, webhooks, or supplier-level rows.'
+							'Authorization: Bearer <session_token or api_key> plus Parchment Intelligence entitlement',
+							'Aggregate price_index_snapshots data with pagination. API-key responses include X-RateLimit-* headers; session responses do not include API-key quota headers. No CSV, alerts, webhooks, or supplier-level rows.'
 						],
 						[
 							'Bearer-session GET /v1/catalog',
@@ -1139,9 +1139,9 @@ const docsPages: DocsPage[] = [
 						[
 							'/v1/price-index',
 							'GET',
-							'API key with Parchment Intelligence access',
+							'Entitled first-party session or customer API key with Parchment Intelligence access',
 							'Stable external aggregate contract',
-							'Reads aggregate price_index_snapshots only. No raw supplier rows, CSV, alerts, watchlists, or webhooks.'
+							'Reads aggregate price_index_snapshots only. API-key responses include X-RateLimit-* headers; session responses do not include API-key quota headers. No raw supplier rows, CSV, alerts, watchlists, or webhooks.'
 						]
 					]
 				}
@@ -1649,13 +1649,13 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Market intelligence',
 		intro: [
 			'The /analytics page delivers market intelligence derived from the same normalized catalog that powers the public API. Public visitors can browse the core market overview: origin price trends, processing mix, origin price ranges, and the supplier/listing/origin stat bar. Parchment Intelligence users get the deeper supplier comparison, supplier health, arrivals, delistings, and extended trend modules.',
-			'Analytics is important to the product story, but only the aggregate /v1/price-index subset is exposed as a stable API-key contract. Keep the distinction between product UI, internal helpers, and public REST contract explicit.'
+			'Analytics is important to the product story, but only the aggregate /v1/price-index subset is exposed as a stable authenticated contract for entitled first-party sessions and customer API keys. Keep the distinction between product UI, internal helpers, and public REST contract explicit.'
 		],
 		sections: [
 			{
 				title: 'What is public today',
 				bullets: [
-					'/analytics is a web product surface, while /v1/price-index is the API-key contract for the aggregate price-index subset backed by price_index_snapshots.',
+					'/analytics is a web product surface, while /v1/price-index is the authenticated Parchment Intelligence contract for the aggregate price-index subset backed by price_index_snapshots.',
 					'/v1/price-index intentionally starts with JSON pagination only. Do not document CSV, alerts, watchlists, webhooks, or supplier-level raw rows as supported.',
 					'Logged-out visitors and logged-in viewers share the same core analytics view. The server resolves Parchment Intelligence access separately and uses it to decide whether to load the gated modules.',
 					'Public chart data includes 90 days of price-index snapshots, current stocked processing distribution, current origin price ranges, recent-arrival/delisting counts for the upgrade preview, and the latest market summary counts.',
