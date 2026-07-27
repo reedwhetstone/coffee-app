@@ -32,6 +32,14 @@ function idempotencyKey(fetchMock: ReturnType<typeof vi.fn>, call: number): stri
 	return options.headers?.['Idempotency-Key'];
 }
 
+function requestPayload(
+	fetchMock: ReturnType<typeof vi.fn>,
+	call: number
+): Record<string, unknown> {
+	const options = fetchMock.mock.calls[call][1] as { body?: string };
+	return JSON.parse(options.body ?? '{}') as Record<string, unknown>;
+}
+
 describe('BeanForm manual-create idempotency', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
@@ -56,6 +64,9 @@ describe('BeanForm manual-create idempotency', () => {
 			catalogBeans: []
 		});
 		await fillManualRows(['Retry lot']);
+		await fireEvent.input(screen.getByLabelText('Total Tax & Shipping ($)'), {
+			target: { value: '3' }
+		});
 
 		const form = container.querySelector('form');
 		expect(form).not.toBeNull();
@@ -66,6 +77,8 @@ describe('BeanForm manual-create idempotency', () => {
 
 		expect(idempotencyKey(fetchMock, 0)).toBe(UUIDS[0]);
 		expect(idempotencyKey(fetchMock, 1)).toBe(UUIDS[0]);
+		expect(requestPayload(fetchMock, 0).tax_ship_cost).toBe(3);
+		expect(requestPayload(fetchMock, 1).tax_ship_cost).toBe(3);
 	});
 
 	it('keeps surviving row keys aligned and gives a replacement row a fresh key', async () => {
@@ -90,6 +103,9 @@ describe('BeanForm manual-create idempotency', () => {
 		await fireEvent.click(addRowButton!);
 		await fireEvent.click(addRowButton!);
 		await fillManualRows(['First lot', 'Removed lot', 'Replacement lot']);
+		await fireEvent.input(screen.getByLabelText('Total Tax & Shipping ($)'), {
+			target: { value: '9' }
+		});
 
 		const form = container.querySelector('form');
 		expect(form).not.toBeNull();
@@ -98,11 +114,13 @@ describe('BeanForm manual-create idempotency', () => {
 
 		await fireEvent.click(screen.getAllByRole('button', { name: '✕' })[0]);
 		await fireEvent.submit(form!);
-		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
 
 		expect(idempotencyKey(fetchMock, 0)).toBe(UUIDS[0]);
 		expect(idempotencyKey(fetchMock, 1)).toBe(UUIDS[1]);
-		expect(idempotencyKey(fetchMock, 2)).toBe(UUIDS[0]);
-		expect(idempotencyKey(fetchMock, 3)).toBe(UUIDS[2]);
+		expect(idempotencyKey(fetchMock, 2)).toBe(UUIDS[2]);
+		expect(requestPayload(fetchMock, 0).tax_ship_cost).toBe(3);
+		expect(requestPayload(fetchMock, 1).tax_ship_cost).toBe(3);
+		expect(requestPayload(fetchMock, 2).tax_ship_cost).toBe(4.5);
 	});
 });

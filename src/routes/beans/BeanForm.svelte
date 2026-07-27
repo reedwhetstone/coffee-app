@@ -56,6 +56,12 @@
 
 	let selectedOptionalFields = $state<string[]>([]);
 	let manualIdempotencyKeys = $state<string[]>([]);
+	type ManualSubmission = {
+		payload: CoffeeFormData;
+		result: unknown;
+		completed: boolean;
+	};
+	let manualSubmissionRecords = $state<Record<string, ManualSubmission>>({});
 
 	function manualIdempotencyKey(index: number): string {
 		const existing = manualIdempotencyKeys[index];
@@ -146,6 +152,7 @@
 			}
 		];
 		manualIdempotencyKeys = [];
+		manualSubmissionRecords = {};
 	}
 
 	// Filter catalog beans based on stocked status
@@ -259,6 +266,17 @@
 			// Process each bean in the batch
 			for (let i = 0; i < batchBeans.length; i++) {
 				const beanData = batchBeans[i];
+				const existingIdempotencyKey = isManualEntry ? manualIdempotencyKeys[i] : undefined;
+				const priorSubmission = existingIdempotencyKey
+					? manualSubmissionRecords[existingIdempotencyKey]
+					: undefined;
+
+				// Keep completed rows out of retries so their submitted allocation stays unchanged
+				// when the current batch length changes.
+				if (priorSubmission?.completed) {
+					createdBeans.push(priorSubmission.result);
+					continue;
+				}
 
 				// Validate required fields based on mode
 				if (!isManualEntry && !beanData.catalog_id) {
@@ -323,21 +341,47 @@
 					}
 				}
 
+				const idempotencyKey = isManualEntry
+					? (existingIdempotencyKey ?? manualIdempotencyKey(i))
+					: undefined;
+				const submittedPayload = priorSubmission?.payload ?? cleanedBean;
+
+				if (idempotencyKey && !priorSubmission) {
+					manualSubmissionRecords = {
+						...manualSubmissionRecords,
+						[idempotencyKey]: {
+							payload: { ...cleanedBean },
+							result: undefined,
+							completed: false
+						}
+					};
+				}
+
 				const headers: Record<string, string> = {
 					'Content-Type': 'application/json'
 				};
-				if (isManualEntry) {
-					headers['Idempotency-Key'] = manualIdempotencyKey(i);
+				if (idempotencyKey) {
+					headers['Idempotency-Key'] = idempotencyKey;
 				}
 
 				const response = await fetch('/api/beans', {
 					method: 'POST',
 					headers,
-					body: JSON.stringify(cleanedBean)
+					body: JSON.stringify(submittedPayload)
 				});
 
 				if (response.ok) {
 					const newBean = await response.json();
+					if (idempotencyKey) {
+						manualSubmissionRecords = {
+							...manualSubmissionRecords,
+							[idempotencyKey]: {
+								payload: priorSubmission?.payload ?? { ...cleanedBean },
+								result: newBean,
+								completed: true
+							}
+						};
+					}
 					createdBeans.push(newBean);
 				} else {
 					const data = await response.json();
