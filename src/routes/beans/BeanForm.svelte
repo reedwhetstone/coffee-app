@@ -71,8 +71,9 @@
 		return created;
 	}
 
-	function isDefinitiveClientError(status: number): boolean {
-		return status >= 400 && status < 500 && ![408, 409, 425, 429].includes(status);
+	function isDefinitiveClientError(status: number, message?: unknown): boolean {
+		if (status === 409) return message === 'Key belongs to another request';
+		return status >= 400 && status < 500 && ![408, 425, 429].includes(status);
 	}
 
 	function resetManualRetryState(index: number, idempotencyKey: string): void {
@@ -400,7 +401,7 @@
 					createdBeans.push(newBean);
 				} else {
 					const data = await response.json();
-					if (idempotencyKey && isDefinitiveClientError(response.status)) {
+					if (idempotencyKey && isDefinitiveClientError(response.status, data.error)) {
 						resetManualRetryState(i, idempotencyKey);
 					}
 					alert(`Failed to create bean ${i + 1}: ${data.error}`);
