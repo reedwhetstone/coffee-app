@@ -10,10 +10,10 @@ import type { ParchmentClient, components } from '@purveyors/sdk';
 
 type CatalogSimilarityMatch = components['schemas']['CatalogSimilarityMatch'];
 
-const DEFAULT_CATALOG_SIMILARITY_LIMIT = 8;
-const DEFAULT_CATALOG_SIMILARITY_THRESHOLD = 0.72;
-const MAX_CATALOG_SIMILARITY_LIMIT = 15;
-const MAX_CATALOG_SIMILARITY_THRESHOLD = 0.95;
+const DEFAULT_CATALOG_SIMILARITY_LIMIT = 10;
+const DEFAULT_CATALOG_SIMILARITY_THRESHOLD = 0.7;
+const MAX_CATALOG_SIMILARITY_LIMIT = 25;
+const MAX_CATALOG_SIMILARITY_THRESHOLD = 0.99;
 const MIN_CATALOG_SIMILARITY_THRESHOLD = 0.5;
 
 export interface AgentSimilarityInput {

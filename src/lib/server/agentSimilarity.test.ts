@@ -89,8 +89,8 @@ describe('findSimilarBeansForAgent', () => {
 		const result = await findSimilarBeansForAgent({ coffee_id: 42 }, client);
 
 		expect(catalogSimilar).toHaveBeenCalledWith('42', {
-			threshold: '0.72',
-			limit: 8,
+			threshold: '0.7',
+			limit: 10,
 			stocked_only: 'true',
 			mode: 'all'
 		});
@@ -114,12 +114,21 @@ describe('findSimilarBeansForAgent', () => {
 		});
 	});
 
+	it('preserves model-supplied values within the supported contract range', async () => {
+		await findSimilarBeansForAgent({ coffee_id: 42, threshold: 0.98, limit: 16 }, client);
+
+		expect(catalogSimilar).toHaveBeenCalledWith(
+			'42',
+			expect.objectContaining({ threshold: '0.98', limit: 16 })
+		);
+	});
+
 	it('clamps model-supplied threshold and limit to the supported contract range', async () => {
 		await findSimilarBeansForAgent({ coffee_id: 42, threshold: 0.2, limit: 100 }, client);
 
 		expect(catalogSimilar).toHaveBeenCalledWith(
 			'42',
-			expect.objectContaining({ threshold: '0.5', limit: 15 })
+			expect.objectContaining({ threshold: '0.5', limit: 25 })
 		);
 	});
 
