@@ -25,6 +25,7 @@ const dataMocks = vi.hoisted(() => ({
 		rows.map((row) => ({ ...row, roast_profiles: [] }))
 	),
 	addToInventory: vi.fn(),
+	getInventoryItem: vi.fn(),
 	updateInventory: vi.fn(),
 	deleteInventoryItem: vi.fn()
 }));
@@ -58,6 +59,7 @@ vi.mock('$lib/server/greenCoffeeUtils.js', () => ({
 
 vi.mock('$lib/data/inventory.js', () => ({
 	addToInventory: dataMocks.addToInventory,
+	getInventoryItem: dataMocks.getInventoryItem,
 	updateInventory: dataMocks.updateInventory,
 	deleteInventoryItem: dataMocks.deleteInventoryItem
 }));
@@ -112,6 +114,12 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		});
 		authMocks.getUserRoles.mockResolvedValue(['viewer']);
 		dataMocks.addToInventory.mockResolvedValue({ id: 1 });
+		dataMocks.getInventoryItem.mockResolvedValue({
+			id: 42,
+			catalog_id: 99,
+			coffee_catalog: { id: 99, name: 'Private lot', public_coffee: false },
+			roast_profiles: []
+		});
 		dataMocks.updateInventory.mockResolvedValue({ id: 1 });
 		dataMocks.deleteInventoryItem.mockResolvedValue(undefined);
 		parchmentMocks.createParchmentServerClient.mockResolvedValue({
@@ -313,10 +321,12 @@ describe('/api/beans Portfolio entitlement gating', () => {
 			{ idempotencyKey: 'manual-lot-request-1' }
 		);
 		expect(dataMocks.addToInventory).not.toHaveBeenCalled();
+		expect(dataMocks.getInventoryItem).toHaveBeenCalledWith(expect.anything(), 42, 'ppi-user');
 		expect(await response.json()).toMatchObject({
 			id: 42,
 			catalog_id: 99,
-			coffee_catalog: { public_coffee: false }
+			coffee_catalog: { public_coffee: false },
+			roast_profiles: []
 		});
 	});
 

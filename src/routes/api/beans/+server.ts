@@ -8,7 +8,12 @@ import {
 	processGreenCoffeeData,
 	stripRoastProfileData
 } from '$lib/server/greenCoffeeUtils.js';
-import { addToInventory, updateInventory, deleteInventoryItem } from '$lib/data/inventory.js';
+import {
+	addToInventory,
+	getInventoryItem,
+	updateInventory,
+	deleteInventoryItem
+} from '$lib/data/inventory.js';
 import { GREEN_COFFEE_INV_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
 
 type ManualInventoryCreateRequest = Extract<
@@ -173,7 +178,12 @@ export const POST: RequestHandler = async (event) => {
 				return json({ error: parchmentErrorMessage(error) }, { status: response?.status ?? 500 });
 			}
 
-			return json(data.data);
+			const created = await getInventoryItem(supabase, data.data.id, user.id);
+			if (!created) {
+				throw new Error('Parchment-created inventory could not be projected');
+			}
+
+			return json(created);
 		}
 
 		if (!catalogId) {
