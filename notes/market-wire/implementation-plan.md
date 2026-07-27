@@ -370,9 +370,14 @@ component owns this shared provider or preference state.
   provider event ID.
 - Define one authenticated draft-operation contract owned by the
   `market-read-projection` worker:
-  - **Authentication:** only the service-authenticated coffee-app deployment
-    worker may invoke the bounded operation; anonymous, public-demo, and API-key
-    callers are rejected.
+  - **Authentication and provisioning:** before MR-11, Parchment adds the exact
+    machine scope `market_read:projection:draft` and provisions a dedicated
+    machine credential for it. The generated SDK exposes a server-only machine
+    authentication mode; coffee-app's post-deployment worker stores the
+    credential only as a deployment secret and uses that mode for this operation.
+    Anonymous, public-demo, session, and API-key callers without this exact
+    machine scope are rejected. The credential must never reach the browser, and
+    MR-11 must fail closed rather than fall back to a user or public credential.
   - **Audience and rendering:** the operation selects the topic-scoped audience
     and renders each recipient's purpose-bound, no-login unsubscribe link using
     the MR-1B Parchment token issuance. It never returns a raw list of account
@@ -381,6 +386,14 @@ component owns this shared provider or preference state.
     and records its provider identifiers, delivery status, and idempotency ledger
     in Parchment. Coffee-app does not own shared preference or provider lifecycle
     state.
+  - **Broadcast lifecycle:** MR-2 also reconciles the provider-confirmed
+    broadcast send event after manual send, through the provider webhook or a
+    bounded provider-status poll. It records the provider event ID, status, and
+    immutable `provider_sent_at` on the Parchment delivery ledger, with
+    idempotency by provider event or status transition. Draft creation never sets
+    `provider_sent_at`. Expose a Parchment-owned read contract keyed by
+    `(production_commit, edition_slug)` so MR-12 can obtain the confirmed send
+    timestamp without reading provider state directly.
   - **Idempotency:** repeated calls for the same (Topic, edition, production
     commit) return the existing draft receipt without duplicating projection,
     suppression, broadcast, or ledger state.
@@ -503,7 +516,9 @@ draft operation from MR-2.
   idempotent Resend Broadcast draft, and records the production commit, edition
   slug, broadcast ID, and status durably in Parchment. Coffee-app receives only a
   bounded draft receipt; it must not enumerate recipients, mint tokens, or read
-  shared provider state.
+  shared provider state. This invocation uses only the dedicated MR-2 machine
+  credential and `market_read:projection:draft` scope; it must fail closed when
+  the deployment secret or scope is unavailable.
 - Reuse MR-2's provider reconciliation and suppression state; do not process
   unsubscribe, bounce, or complaint webhooks in this deployment slice.
 - Keep manual send approval.
@@ -513,7 +528,12 @@ draft operation from MR-2.
 Repository: coffee-scraper or the established editorial automation owner.
 
 - Compare generated and merged content.
-- Collect bounded seven-day performance signals.
+- Read the edition's provider-confirmed `provider_sent_at` through the Parchment
+  delivery-ledger contract. Start the seven-day email learning window only after
+  that timestamp; never infer it from web publication, deployment, draft creation,
+  or a scheduled-send request. If the edition remains unsent, record the no-send
+  reason and omit email performance metrics.
+- Collect bounded seven-day performance signals after the confirmed-send anchor.
 - Produce reviewed editorial lessons.
 
 ### MR-13: Pricing
@@ -545,6 +565,8 @@ The MVP is operationally ready when:
 - daily capture produces a bounded seven-day source packet;
 - the weekly job opens a valid previewable PR;
 - a merged edition deploys successfully before a Resend draft is created;
+- a manual send produces one durable provider-confirmed send timestamp, and the
+  learning job refuses to start the email window until that timestamp exists;
 - Reed can approve the email manually;
 - failures are visible and retryable;
 - the first three editions publish on schedule.
