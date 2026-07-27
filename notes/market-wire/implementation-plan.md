@@ -236,12 +236,39 @@ Parchment records the durable `(production commit, edition slug)` delivery key,
 provider broadcast ID, and draft status. GitHub workflow concurrency is not a
 substitute for this ledger because deployments and workflows can be replayed.
 
-Resend is a delivery projection:
+Resend is a delivery projection. Parchment owns the canonical delivery ledger and
+analytics contract; neither coffee-app nor coffee-scraper may read Resend state or
+call Resend directly.
 
-- Purveyors stores canonical consent and separate delivery-suppression state.
-- Resend Topics group the projected Market Brief recipients.
-- Resend webhooks update local unsubscribe, hard-bounce, and complaint state.
-- Provider identifiers and event IDs support idempotent reconciliation.
+The ledger's append-only event is `market_brief_delivery_event`. Each event carries
+`event_id`, `source_event_key`, `event_type`, `production_commit`, `edition_slug`,
+`broadcast_id`, an opaque Parchment-owned `recipient_ref`, `occurred_at`,
+`ingested_at`, and `source`. `event_type` is one of `sent`, `delivered`, `opened`,
+`clicked`, `unsubscribed`, `bounced`, or `complained`. Parchment keeps provider
+identifiers and redacted diagnostic metadata in the private ledger; the generated
+SDK read contract returns aggregates only. `source_event_key` is unique within the
+provider and event type, so webhook retries and status-poll replays are harmless.
+
+The source and reconciliation rules are:
+
+- `sent`: a Resend send webhook is authoritative. A bounded provider-status poll
+  may backfill a missing webhook using a deterministic key. The first confirmed
+  event sets immutable `provider_sent_at`; draft creation and scheduled-send
+  requests never do.
+- `delivered`, `opened`, and `clicked`: Resend webhooks are ingested into the
+  ledger and reconciled by provider event key. Duplicate events do not increment
+  an aggregate.
+- `unsubscribed`: a Resend topic-unsubscribe webhook or successful MR-1B
+  purpose-bound unsubscribe mutation produces the canonical event. Parchment
+  updates consent and delivery suppression idempotently, linking a provider event
+  when one exists.
+- `bounced` and `complained`: Resend webhooks are authoritative for the provider
+  event and update Parchment suppression state idempotently.
+
+Replies and evidence-link usage are explicitly deferred from the MVP delivery
+event model. They must not be represented as zero-valued metrics or recovered by
+direct provider access. A later inbound-reply or first-party-link-analytics
+contract can add them as versioned event types.
 
 RSS publishes summaries and links. It does not expose the complete paid archive.
 The recent-three boundary is ordered by publication date descending, with slug as a
@@ -304,15 +331,38 @@ expansion policy, and automatic sending are not required for MVP.
 ## 9. Learning loop
 
 Measure web performance from the publication timestamp. Start the email learning
-window seven days after a provider-confirmed send timestamp, not merely after web
-publication. If an edition remains an unsent draft, record the no-send reason and
-omit email performance metrics rather than treating the publication date as a proxy.
-After a confirmed send, generate a review packet containing:
+window at the immutable `provider_sent_at` from the Parchment delivery ledger, not
+merely after web publication, draft creation, or a scheduled-send request. The
+seven-day email window is `[provider_sent_at, provider_sent_at + 7 days)`. Parchment
+accepts late-arriving events through an explicit `analytics_watermark_at` set to
+`provider_sent_at + 7 days + 48 hours`; after that watermark the aggregate is
+immutable. Events received later remain auditable in the ledger but are excluded
+from the reported window. If an edition remains an unsent draft, record the no-send
+reason and omit email performance metrics rather than treating the publication date
+as a proxy.
+
+MR-12 reads one exact generated-SDK contract, `GET
+/v1/email-subscriptions/market-read/delivery-analytics`, keyed by the query
+parameters `production_commit` and `edition_slug`, using the dedicated machine
+scope `market_read:delivery:read`. Its generated SDK operation accepts exactly
+`{ productionCommit, editionSlug }` and returns the confirmed send timestamp,
+window bounds, analytics watermark, and bounded aggregate counts and rates for
+`sent`, `delivered`, `opened`, `clicked`, `unsubscribed`, `bounced`, and
+`complained`. It contains no recipient rows, raw provider payloads, provider
+identifiers, or provider state. Each metric counts distinct recipient references
+per event type after idempotent ingestion, so repeated opens or clicks cannot
+create unbounded output; each count is bounded by the distinct sent-recipient
+count. Rates use that sent count as the denominator and are null when there is no
+denominator. The response also names `replies` and `evidence_link_usage` as
+deferred rather than fabricating values.
+
+After a confirmed send and the analytics watermark, generate a review packet containing:
 
 - first generated draft versus merged edition;
 - PR feedback and major rewrites;
 - headline and subject-line changes;
-- opens, clicks, replies, unsubscribes, and evidence-link usage;
+- the Parchment delivery aggregates and the explicitly deferred replies and
+  evidence-link usage signals;
 - proposed editorial lessons for the next issue.
 
 The LLM may propose lessons but cannot silently rewrite its durable editorial prompt.
@@ -367,7 +417,9 @@ component owns this shared provider or preference state.
 - Project active preferences into the Resend Market Brief Topic.
 - Deduplicate provider webhooks by event ID and reconcile unsubscribe, hard-bounce,
   and complaint suppression locally; each reconciliation is idempotent on the
-  provider event ID.
+  provider event ID. Record the canonical `market_brief_delivery_event` for
+  `sent`, `delivered`, `opened`, `clicked`, `unsubscribed`, `bounced`, and
+  `complained`, with the source and occurred-at fields defined in section 6.
 - Define one authenticated draft-operation contract owned by the
   `market-read-projection` worker:
   - **Authentication and provisioning:** before MR-11, Parchment adds the exact
@@ -391,9 +443,17 @@ component owns this shared provider or preference state.
     bounded provider-status poll. It records the provider event ID, status, and
     immutable `provider_sent_at` on the Parchment delivery ledger, with
     idempotency by provider event or status transition. Draft creation never sets
-    `provider_sent_at`. Expose a Parchment-owned read contract keyed by
-    `(production_commit, edition_slug)` so MR-12 can obtain the confirmed send
-    timestamp without reading provider state directly.
+    `provider_sent_at`. Expose the generated-SDK read contract keyed by
+    `(production_commit, edition_slug)` under the exact machine scope
+    `market_read:delivery:read`. It returns only the bounded delivery aggregates,
+    window, watermark, and deferred-signal names required by MR-12; it never
+    returns recipient rows, raw provider payloads, or direct Resend state.
+  - **Analytics window:** accept events whose `occurred_at` is inside the
+    seven-day window after `provider_sent_at` until the explicit 48-hour late-event
+    watermark. Freeze the aggregate after the watermark. Deduplicate by
+    `(broadcast_id, event_type, recipient_ref)` for aggregate purposes and retain
+    later events only as auditable late records. Replies and evidence-link usage
+    are deferred and are not emitted as zeroes.
   - **Idempotency:** repeated calls for the same (Topic, edition, production
     commit) return the existing draft receipt without duplicating projection,
     suppression, broadcast, or ledger state.
@@ -521,6 +581,9 @@ draft operation from MR-2.
   the deployment secret or scope is unavailable.
 - Reuse MR-2's provider reconciliation and suppression state; do not process
   unsubscribe, bounce, or complaint webhooks in this deployment slice.
+- Do not read Resend, enumerate recipients, or collect delivery analytics in
+  coffee-app. MR-2 remains the sole owner of provider lifecycle and delivery-event
+  reconciliation.
 - Keep manual send approval.
 
 ### MR-12: Learning report
@@ -528,12 +591,17 @@ draft operation from MR-2.
 Repository: coffee-scraper or the established editorial automation owner.
 
 - Compare generated and merged content.
-- Read the edition's provider-confirmed `provider_sent_at` through the Parchment
-  delivery-ledger contract. Start the seven-day email learning window only after
-  that timestamp; never infer it from web publication, deployment, draft creation,
-  or a scheduled-send request. If the edition remains unsent, record the no-send
-  reason and omit email performance metrics.
-- Collect bounded seven-day performance signals after the confirmed-send anchor.
+- Read the edition's provider-confirmed `provider_sent_at` and bounded delivery
+  aggregates from the generated SDK's `delivery-analytics` operation for the exact
+  `(production_commit, edition_slug)` key, using only
+  `market_read:delivery:read`. Coffee-scraper must not call Resend or read provider
+  state directly.
+- Run only after the seven-day window and 48-hour late-event watermark. If the
+  edition remains unsent, record the no-send reason and omit email performance
+  metrics.
+- Collect `sent`, `delivered`, `opened`, `clicked`, `unsubscribed`, `bounced`, and
+  `complained` aggregates. Treat `replies` and `evidence_link_usage` as deferred
+  signals with no fabricated zero values.
 - Produce reviewed editorial lessons.
 
 ### MR-13: Pricing
@@ -565,8 +633,14 @@ The MVP is operationally ready when:
 - daily capture produces a bounded seven-day source packet;
 - the weekly job opens a valid previewable PR;
 - a merged edition deploys successfully before a Resend draft is created;
-- a manual send produces one durable provider-confirmed send timestamp, and the
-  learning job refuses to start the email window until that timestamp exists;
+- a manual send produces one durable provider-confirmed `sent` event and timestamp;
+- Parchment exposes the generated-SDK delivery read contract for the exact
+  `(production_commit, edition_slug)` key and `market_read:delivery:read` scope;
+- the learning job refuses to finalize the seven-day aggregate until the explicit
+  48-hour late-event watermark, and late events cannot mutate a finalized report;
+- the delivery contract exposes bounded aggregates for sent, delivered, opened,
+  clicked, unsubscribed, bounced, and complained events while explicitly deferring
+  replies and evidence-link usage;
 - Reed can approve the email manually;
 - failures are visible and retryable;
 - the first three editions publish on schedule.
