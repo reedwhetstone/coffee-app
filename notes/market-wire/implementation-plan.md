@@ -169,12 +169,16 @@ Coffee-scraper runs small daily ingesters into a rolling seven-day window:
 Each observation records:
 
 - platform and source;
+- stable source identity: the platform's external ID when available, otherwise the
+  canonical URL;
 - author and canonical URL;
 - sanitized, length-capped excerpt;
 - published and observed timestamps;
 - engagement snapshot;
 - discovery query or feed;
-- content hash for deduplication.
+- content hash for change detection and revision tracking only. Deduplication uses
+  the stable source identity, so corrected metadata at the same external ID or URL
+  updates the observation rather than creating a second observation.
 
 External content is untrusted data. It is sanitized before storage and wrapped as
 untrusted before any LLM call. Engagement is compared within a platform, not across
@@ -233,8 +237,9 @@ The system must not create a broadcast on merge alone because a deployment can f
 It must never send directly from the deployment event during MVP.
 
 Parchment records the durable `(production commit, edition slug)` delivery key,
-provider broadcast ID, and draft status. GitHub workflow concurrency is not a
-substitute for this ledger because deployments and workflows can be replayed.
+provider broadcast ID, draft status, production deployment timestamp, and draft
+creation timestamp. GitHub workflow concurrency is not a substitute for this
+ledger because deployments and workflows can be replayed.
 
 Resend is a delivery projection. Parchment owns the canonical delivery ledger and
 analytics contract; neither coffee-app nor coffee-scraper may read Resend state or
@@ -259,9 +264,13 @@ The source and reconciliation rules are:
   ledger and reconciled by provider event key. Duplicate events do not increment
   an aggregate.
 - `unsubscribed`: a Resend topic-unsubscribe webhook or successful MR-1B
-  purpose-bound unsubscribe mutation produces the canonical event. Parchment
-  updates consent and delivery suppression idempotently, linking a provider event
-  when one exists.
+  purpose-bound unsubscribe mutation produces the canonical event. Email-issued
+  MR-1B tokens are bound to the delivery context above, so Parchment can attribute
+  the event to the production commit, edition slug, and broadcast. A topic-level
+  authenticated preference change without delivery context is recorded as a
+  separate `market_brief_consent_event` and is excluded from per-edition delivery
+  aggregates. Parchment updates consent and delivery suppression idempotently,
+  linking a provider event when one exists.
 - `bounced` and `complained`: Resend webhooks are authoritative for the provider
   event and update Parchment suppression state idempotently.
 
@@ -337,9 +346,15 @@ seven-day email window is `[provider_sent_at, provider_sent_at + 7 days)`. Parch
 accepts late-arriving events through an explicit `analytics_watermark_at` set to
 `provider_sent_at + 7 days + 48 hours`; after that watermark the aggregate is
 immutable. Events received later remain auditable in the ledger but are excluded
-from the reported window. If an edition remains an unsent draft, record the no-send
-reason and omit email performance metrics rather than treating the publication date
-as a proxy.
+from the reported window.
+
+An edition with no `provider_sent_at` has a separate unsent-draft deadline:
+`unsent_deadline_at = max(production_deployed_at, draft_created_at) + 14 days`.
+MR-12 runs after either the provider analytics watermark or this unsent deadline.
+When the unsent deadline passes, it records an idempotent no-send reason and omits
+email performance metrics rather than treating the publication date as a proxy or
+waiting forever for a provider watermark. A provider send recorded after that
+no-send report remains auditable but does not reopen the finalized report.
 
 MR-12 reads one exact generated-SDK contract, `GET
 /v1/email-subscriptions/market-read/delivery-analytics`, keyed by the query
@@ -397,13 +412,18 @@ Repository: parchment-api. **Merged and deployed in PR #109.**
 Repository: parchment-api. **Pending.**
 
 - Add a Parchment-owned token-issuance contract, exposed through the generated SDK
-  to an authorized bounded sender. It returns a purpose-bound, expiring
-  `market_read_unsubscribe` token for exactly one account/topic and never exposes
-  signing material.
+  to an authorized bounded sender. It returns an opaque, purpose-bound
+  `market_read_unsubscribe` token for exactly one account/topic and one delivery
+  context: `(production_commit, edition_slug, broadcast_id)`. The MVP applies no
+  time-based expiry to an issued unsubscribe link, so it remains valid for as long
+  as the delivered edition can be opened. Parchment retains a revocable token hash,
+  checks canonical consent and account state on every use, and does not invalidate
+  already-delivered links during signing-key rotation. It never exposes signing
+  material.
 - Add the no-login unsubscribe contract, which accepts only a valid Parchment-issued
   token and cannot subscribe or read preferences.
 - Add token-issuance, token-validation, idempotency, and authorization tests,
-  including expired, wrong-purpose, wrong-topic, and forged tokens.
+  including revoked, wrong-purpose, wrong-topic, forged, and replayed tokens.
 - Reject anonymous, public-demo, and API-key mutation without that valid token.
 - Do not add provider identifiers, Resend network calls, UI, or edition storage.
 
@@ -432,8 +452,9 @@ component owns this shared provider or preference state.
     MR-11 must fail closed rather than fall back to a user or public credential.
   - **Audience and rendering:** the operation selects the topic-scoped audience
     and renders each recipient's purpose-bound, no-login unsubscribe link using
-    the MR-1B Parchment token issuance. It never returns a raw list of account
-    IDs, provider contact IDs, or shared preference rows to coffee-app.
+    MR-1B token issuance bound to `(production_commit, edition_slug,
+broadcast_id)`. It never returns a raw list of account IDs, provider contact
+    IDs, or shared preference rows to coffee-app.
   - **Provider ownership:** the operation creates or updates the Resend Broadcast
     and records its provider identifiers, delivery status, and idempotency ledger
     in Parchment. Coffee-app does not own shared preference or provider lifecycle
@@ -537,6 +558,11 @@ Repository: coffee-scraper.
 - Add XML/entity safety, byte caps, deduplication, and a seven-day window.
 - Write through the Parchment contract.
 - Add dry-run fixtures and prove two idempotent reruns.
+- Own the production scheduler entrypoint for MR-8 and MR-9 capture. Invoke the
+  capture job at least once every 24 hours, independently of the nightly
+  all-supplier scrape; use bounded retries for transient failures and expose the
+  last successful run, final failure, and stale-window condition to MR-10 and
+  operations.
 - Keep this command independent of the nightly all-supplier scrape.
 
 ### MR-9: Social-source capture
@@ -552,7 +578,8 @@ Repository: coffee-scraper.
 Social capture remains MVP scope because current conversation is the editorial
 center of Market Brief. It follows the smaller RSS capture slice so provenance,
 sanitization, and idempotent ingestion are proven before paid or rate-limited sources
-are added.
+are added. The MR-8 production scheduler invokes these adapters; they are not a
+manual-only dependency.
 
 ### MR-10: Weekly source packet and draft PR
 
@@ -596,9 +623,10 @@ Repository: coffee-scraper or the established editorial automation owner.
   `(production_commit, edition_slug)` key, using only
   `market_read:delivery:read`. Coffee-scraper must not call Resend or read provider
   state directly.
-- Run only after the seven-day window and 48-hour late-event watermark. If the
-  edition remains unsent, record the no-send reason and omit email performance
-  metrics.
+- Run after the seven-day window and 48-hour late-event watermark when
+  `provider_sent_at` exists, or after `unsent_deadline_at` when it does not. If the
+  edition remains unsent, record the idempotent no-send reason and omit email
+  performance metrics.
 - Collect `sent`, `delivered`, `opened`, `clicked`, `unsubscribed`, `bounced`, and
   `complained` aggregates. Treat `replies` and `evidence_link_usage` as deferred
   signals with no fabricated zero values.
