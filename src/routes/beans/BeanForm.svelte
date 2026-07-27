@@ -71,8 +71,8 @@
 		return created;
 	}
 
-	function isDefinitiveClientError(status: number, message?: unknown): boolean {
-		if (status === 409) return message === 'Key belongs to another request';
+	function isDefinitiveClientError(status: number, code?: unknown): boolean {
+		if (status === 409) return code === 'idempotency_conflict';
 		return status >= 400 && status < 500 && ![408, 425, 429].includes(status);
 	}
 
@@ -400,8 +400,8 @@
 					}
 					createdBeans.push(newBean);
 				} else {
-					const data = await response.json();
-					if (idempotencyKey && isDefinitiveClientError(response.status, data.error)) {
+					const data = (await response.json()) as { error?: unknown; code?: unknown };
+					if (idempotencyKey && isDefinitiveClientError(response.status, data.code)) {
 						resetManualRetryState(i, idempotencyKey);
 					}
 					alert(`Failed to create bean ${i + 1}: ${data.error}`);

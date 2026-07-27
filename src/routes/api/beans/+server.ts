@@ -8,12 +8,7 @@ import {
 	processGreenCoffeeData,
 	stripRoastProfileData
 } from '$lib/server/greenCoffeeUtils.js';
-import {
-	addToInventory,
-	getInventoryItem,
-	updateInventory,
-	deleteInventoryItem
-} from '$lib/data/inventory.js';
+import { addToInventory, updateInventory, deleteInventoryItem } from '$lib/data/inventory.js';
 import { GREEN_COFFEE_INV_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
 
 type ManualInventoryCreateRequest = Extract<
@@ -70,17 +65,25 @@ function manualInventoryRequest(bean: Record<string, unknown>): ManualInventoryC
 	};
 }
 
-function parchmentErrorMessage(error: unknown): string {
+function parchmentErrorResponse(error: unknown): { error: string; code?: string } {
 	if (typeof error !== 'object' || error === null || !('error' in error)) {
-		return 'Failed to create bean';
+		return { error: 'Failed to create bean' };
 	}
 	const envelope = error.error;
-	return typeof envelope === 'object' &&
-		envelope !== null &&
-		'message' in envelope &&
-		typeof envelope.message === 'string'
-		? envelope.message
-		: 'Failed to create bean';
+	if (typeof envelope !== 'object' || envelope === null) {
+		return { error: 'Failed to create bean' };
+	}
+
+	const response = {
+		error:
+			'message' in envelope && typeof envelope.message === 'string'
+				? envelope.message
+				: 'Failed to create bean'
+	} as { error: string; code?: string };
+	if ('code' in envelope && typeof envelope.code === 'string') {
+		response.code = envelope.code;
+	}
+	return response;
 }
 
 export const GET: RequestHandler = async (event) => {
@@ -174,16 +177,14 @@ export const POST: RequestHandler = async (event) => {
 				{ idempotencyKey }
 			);
 
-			if (error || !data) {
-				return json({ error: parchmentErrorMessage(error) }, { status: response?.status ?? 500 });
+			if (error || !data?.data) {
+				return json(parchmentErrorResponse(error), { status: response?.status ?? 500 });
 			}
 
-			const created = await getInventoryItem(supabase, data.data.id, user.id);
-			if (!created) {
-				throw new Error('Parchment-created inventory could not be projected');
-			}
-
-			return json(created);
+			// Parchment owns the authenticated mutation and returns the same owner-scoped
+			// resource. Do not re-query it through the cookie-only Supabase client: a
+			// bearer-session request has no Supabase auth cookie to authorize that query.
+			return json(stripRoastProfileData([data.data])[0]);
 		}
 
 		if (!catalogId) {

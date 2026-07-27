@@ -25,7 +25,6 @@ const dataMocks = vi.hoisted(() => ({
 		rows.map((row) => ({ ...row, roast_profiles: [] }))
 	),
 	addToInventory: vi.fn(),
-	getInventoryItem: vi.fn(),
 	updateInventory: vi.fn(),
 	deleteInventoryItem: vi.fn()
 }));
@@ -59,7 +58,6 @@ vi.mock('$lib/server/greenCoffeeUtils.js', () => ({
 
 vi.mock('$lib/data/inventory.js', () => ({
 	addToInventory: dataMocks.addToInventory,
-	getInventoryItem: dataMocks.getInventoryItem,
 	updateInventory: dataMocks.updateInventory,
 	deleteInventoryItem: dataMocks.deleteInventoryItem
 }));
@@ -114,12 +112,6 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		});
 		authMocks.getUserRoles.mockResolvedValue(['viewer']);
 		dataMocks.addToInventory.mockResolvedValue({ id: 1 });
-		dataMocks.getInventoryItem.mockResolvedValue({
-			id: 42,
-			catalog_id: 99,
-			coffee_catalog: { id: 99, name: 'Private lot', public_coffee: false },
-			roast_profiles: []
-		});
 		dataMocks.updateInventory.mockResolvedValue({ id: 1 });
 		dataMocks.deleteInventoryItem.mockResolvedValue(undefined);
 		parchmentMocks.createParchmentServerClient.mockResolvedValue({
@@ -271,30 +263,29 @@ describe('/api/beans Portfolio entitlement gating', () => {
 	});
 
 	it('creates a manual coffee and inventory lot atomically through the session SDK client', async () => {
-		const response = await POST(
-			makeEvent('/api/beans', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'Idempotency-Key': 'manual-lot-request-1'
-				},
-				body: JSON.stringify({
-					manual_name: 'Private lot',
-					purchased_qty_lbs: 5,
-					purchase_date: '2026-07-26',
-					bean_cost: 42.5,
-					tax_ship_cost: 3.25,
-					notes: 'Direct trade sample',
-					region: 'Huila',
-					drying_method: 'Raised beds',
-					roast_recs: 'Light roast',
-					description_short: 'Pink Bourbon microlot',
-					cost_lb: 8.5,
-					cupping_notes: 'Peach and florals',
-					score_value: 87
-				})
-			}) as never
-		);
+		const event = makeEvent('/api/beans', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Idempotency-Key': 'manual-lot-request-1'
+			},
+			body: JSON.stringify({
+				manual_name: 'Private lot',
+				purchased_qty_lbs: 5,
+				purchase_date: '2026-07-26',
+				bean_cost: 42.5,
+				tax_ship_cost: 3.25,
+				notes: 'Direct trade sample',
+				region: 'Huila',
+				drying_method: 'Raised beds',
+				roast_recs: 'Light roast',
+				description_short: 'Pink Bourbon microlot',
+				cost_lb: 8.5,
+				cupping_notes: 'Peach and florals',
+				score_value: 87
+			})
+		});
+		const response = await POST(event as never);
 
 		expect(response.status).toBe(200);
 		expect(parchmentMocks.createParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
@@ -321,7 +312,7 @@ describe('/api/beans Portfolio entitlement gating', () => {
 			{ idempotencyKey: 'manual-lot-request-1' }
 		);
 		expect(dataMocks.addToInventory).not.toHaveBeenCalled();
-		expect(dataMocks.getInventoryItem).toHaveBeenCalledWith(expect.anything(), 42, 'ppi-user');
+		expect(event.locals.supabase.from).not.toHaveBeenCalled();
 		expect(await response.json()).toMatchObject({
 			id: 42,
 			catalog_id: 99,
@@ -383,7 +374,10 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		);
 
 		expect(response.status).toBe(409);
-		expect(await response.json()).toEqual({ error: 'Key belongs to another request' });
+		expect(await response.json()).toEqual({
+			error: 'Key belongs to another request',
+			code: 'idempotency_conflict'
+		});
 	});
 
 	it('keeps catalog-backed creation on the existing path in this atomic slice', async () => {
