@@ -62,7 +62,7 @@ export function createChatTools(
 	access: ChatToolAccess = { memberAccess: false, ppiAccess: false },
 	deps: ChatToolDeps = {}
 ): ToolSet {
-	const catalogTools = createCatalogTools(client, access, deps);
+	const catalogTools = createCatalogTools(client, deps);
 	const inventoryTools = createInventoryTools(client, access);
 	const roastTools = createRoastTools(client);
 	const tastingTools = createTastingTools(client);
@@ -89,7 +89,6 @@ export function createChatTools(
 		const ppiTools: ToolSet = {
 			coffee_catalog_search: tools.coffee_catalog_search,
 			green_coffee_inventory: tools.green_coffee_inventory,
-			find_similar_beans: tools.find_similar_beans,
 			catalog_facets: tools.catalog_facets,
 			supplier_list: tools.supplier_list,
 			catalog_rank: tools.catalog_rank,

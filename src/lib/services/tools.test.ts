@@ -49,7 +49,6 @@ describe('createChatTools entitlement allowlist', () => {
 			'catalog_facets',
 			'catalog_rank',
 			'coffee_catalog_search',
-			'find_similar_beans',
 			'green_coffee_inventory',
 			'present_results',
 			'supplier_list',
@@ -100,24 +99,7 @@ describe('createChatTools entitlement allowlist', () => {
 		expect(toolNames({ memberAccess: true, ppiAccess: false })).not.toContain('price_index_read');
 	});
 
-	it('keeps similarity reads public-only for Parchment Intelligence-only users', async () => {
-		const findSimilarBeans = vi.fn().mockResolvedValue({ matches: [] });
-		const tools = createChatTools(
-			supabase,
-			'user-123',
-			{ memberAccess: false, ppiAccess: true },
-			{ findSimilarBeans }
-		);
-		const executeSimilarity = tools.find_similar_beans.execute as unknown as (input: {
-			coffee_id: number;
-		}) => Promise<unknown>;
-
-		await executeSimilarity({ coffee_id: 42 });
-
-		expect(findSimilarBeans).toHaveBeenCalledWith({ coffee_id: 42 }, { publicOnly: true });
-	});
-
-	it('allows full-catalog similarity reads for Mallard Studio members', async () => {
+	it('uses the injected session similarity reader for Mallard Studio members', async () => {
 		const findSimilarBeans = vi.fn().mockResolvedValue({ matches: [] });
 		const tools = createChatTools(
 			supabase,
@@ -131,7 +113,7 @@ describe('createChatTools entitlement allowlist', () => {
 
 		await executeSimilarity({ coffee_id: 42 });
 
-		expect(findSimilarBeans).toHaveBeenCalledWith({ coffee_id: 42 }, { publicOnly: false });
+		expect(findSimilarBeans).toHaveBeenCalledWith({ coffee_id: 42 });
 	});
 
 	it('gives viewers only catalog search, facets, and presentation', () => {
@@ -272,6 +254,7 @@ describe('createChatTools entitlement allowlist', () => {
 	it('does not expose roasting-only tools to Parchment Intelligence-only users', () => {
 		const names = toolNames({ memberAccess: false, ppiAccess: true });
 
+		expect(names).not.toContain('find_similar_beans');
 		expect(names).not.toContain('roast_profiles');
 		expect(names).not.toContain('bean_tasting_notes');
 		expect(names).not.toContain('create_roast_session');

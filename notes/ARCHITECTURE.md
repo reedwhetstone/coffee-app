@@ -101,7 +101,6 @@ replacement or retirement:
 
 - catalog and market reads from `coffee_catalog`, `market_daily_summary`, and
   `supplier_daily_stats`, plus analytics-page reads from `price_index_snapshots`
-- local similarity and matching RPCs over catalog data
 - bean-identity candidate and review operations over shared identity tables
 - sourcing brief summaries against shared catalog rows
 - legacy catalog RAG reads and `match_coffee_chunks`
@@ -143,6 +142,13 @@ architecture and are not current guidance.
 The chat agent's `price_index_read` adapter consumes `ParchmentClient.priceIndex.list`
 through the request's session-mode client and maps the API response into its
 app-owned tool result. It no longer queries shared price-index storage directly.
+
+The chat agent's `find_similar_beans` adapter likewise consumes
+`ParchmentClient.catalog.similar`. Bean matching remains available only where
+Parchment grants `canUseBeanMatching`; PPI access by itself does not widen that
+capability or the catalog row projection. The former service-role Supabase RPC
+implementation and duplicated similarity classifier have been removed from
+coffee-app.
 
 ## Near-term protocol direction
 

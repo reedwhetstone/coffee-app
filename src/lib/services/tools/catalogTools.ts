@@ -11,13 +11,9 @@ import {
 	type MarketToolsClient
 } from '$lib/services/marketTools';
 import { compactCatalogSearchOutputForModel } from '$lib/services/toolModelOutput';
-import type { ChatToolAccess, ChatToolDeps } from './shared';
+import type { ChatToolDeps } from './shared';
 
-export function createCatalogTools(
-	client: ParchmentClient,
-	access: ChatToolAccess,
-	deps: ChatToolDeps
-) {
+export function createCatalogTools(client: ParchmentClient, deps: ChatToolDeps) {
 	const marketClient = client as unknown as MarketToolsClient;
 
 	return {
@@ -91,11 +87,9 @@ export function createCatalogTools(
 							'coffee_id is required and must be a positive integer. Please specify which coffee to find similar beans for.'
 					};
 				}
-				// The bounded v3 similarity RPC is service_role-only, so the server
-				// injects a reader backed by the admin client. The CLI path is a
-				// fallback for callers that construct tools without deps.
+				// Runtime callers inject the canonical session-mode Parchment reader.
 				if (deps.findSimilarBeans) {
-					return await deps.findSimilarBeans(input, { publicOnly: !access.memberAccess });
+					return await deps.findSimilarBeans(input);
 				}
 				throw new Error('Session-mode similarity reader is unavailable');
 			}

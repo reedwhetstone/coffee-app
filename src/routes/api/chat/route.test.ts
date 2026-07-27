@@ -59,7 +59,8 @@ describe('chat system prompt entitlement context', () => {
 		expect(prompt).toContain('You have access to Parchment Intelligence tools');
 		expect(prompt).toContain('coffee_catalog_search');
 		expect(prompt).toContain('green_coffee_inventory');
-		expect(prompt).toContain('find_similar_beans');
+		expect(prompt).toContain('advanced bean matching is unavailable in the current access tier');
+		expect(prompt).not.toContain('3. find_similar_beans');
 		expect(prompt).toContain('catalog_facets');
 		expect(prompt).toContain('supplier_list');
 		expect(prompt).toContain('catalog_rank');

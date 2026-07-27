@@ -114,14 +114,11 @@ export interface ChatToolDeps {
 		wholesale?: boolean;
 		limit?: number;
 	}) => Promise<unknown>;
-	findSimilarBeans?: (
-		input: {
-			coffee_id: number;
-			threshold?: number;
-			limit?: number;
-		},
-		options: { publicOnly: boolean }
-	) => Promise<unknown>;
+	findSimilarBeans?: (input: {
+		coffee_id: number;
+		threshold?: number;
+		limit?: number;
+	}) => Promise<unknown>;
 	/** ADR-015 Market Index reads. Injected by the chat route with request credentials. */
 	marketSignals?: (input: {
 		type?: string[];
