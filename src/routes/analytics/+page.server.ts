@@ -7,6 +7,7 @@ import { createSchemaService } from '$lib/services/schemaService';
 import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import type { MarketIndexInsights } from '$lib/types/marketIndex.types';
+import type { ParchmentClient, components } from '@purveyors/sdk';
 
 export type { TrackedLotSummary } from '$lib/server/trackedLots';
 
@@ -213,20 +214,8 @@ type AnalyticsLoadEvent = Parameters<PageServerLoad>[0];
 
 const SNAPSHOT_PAGE_SIZE = 1000;
 const CATALOG_COVERAGE_PAGE_SIZE = 1000;
-const SNAPSHOT_SELECT =
-	'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, price_p25, price_p75, price_stdev, supplier_count, sample_size, wholesale_only, aggregation_tier';
-// Keep synthetic backfill rows in the analytics history for now. Because real and
-// synthetic rows can coexist for the same segment/date, pagination must use a
-// total order that includes the schema differentiators plus a unique tiebreaker.
-const SNAPSHOT_ORDER_COLUMNS = [
-	'snapshot_date',
-	'origin',
-	'process',
-	'grade',
-	'wholesale_only',
-	'synthetic',
-	'id'
-] as const;
+
+type PriceIndexHistoryItem = components['schemas']['PriceIndexHistoryItem'];
 
 function relativeDateString(referenceDate: string | null, daysAgo: number): string {
 	const reference = referenceDate ? new Date(`${referenceDate}T00:00:00.000Z`) : new Date();
@@ -303,45 +292,73 @@ function normalizeProcess(raw: string | null | undefined): string {
 	return 'Other';
 }
 
+function formatParchmentError(error: unknown): string {
+	if (
+		typeof error === 'object' &&
+		error !== null &&
+		'error' in error &&
+		typeof error.error === 'object' &&
+		error.error !== null &&
+		'message' in error.error &&
+		typeof error.error.message === 'string'
+	) {
+		return error.error.message;
+	}
+	return 'unknown Parchment error';
+}
+
+function mapPriceIndexHistoryItem(row: PriceIndexHistoryItem): PriceSnapshot {
+	return {
+		snapshot_date: row.date,
+		origin: row.origin,
+		process: row.process,
+		price_avg: row.price.avg,
+		price_median: row.price.median,
+		price_min: row.price.min,
+		price_max: row.price.max,
+		price_p25: row.price.p25,
+		price_p75: row.price.p75,
+		price_stdev: row.price.stdev,
+		supplier_count: row.sample.suppliers,
+		sample_size: row.sample.listings,
+		wholesale_only: row.wholesale,
+		aggregation_tier: row.sample.aggregationTier
+	};
+}
+
 export async function _loadPriceSnapshotsPaginated({
-	supabase,
-	fromDate
+	client,
+	windowDays
 }: {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	supabase: any;
-	fromDate: string;
+	client: ParchmentClient;
+	windowDays: 90 | 365;
 }): Promise<PriceSnapshot[]> {
 	const snapshots: PriceSnapshot[] = [];
 
-	for (let start = 0; ; start += SNAPSHOT_PAGE_SIZE) {
-		const end = start + SNAPSHOT_PAGE_SIZE - 1;
-		let query = supabase
-			.from('price_index_snapshots')
-			.select(SNAPSHOT_SELECT)
-			.gte('snapshot_date', fromDate)
-			.eq('aggregation_tier', 1);
-
-		for (const column of SNAPSHOT_ORDER_COLUMNS) {
-			query = query.order(column, { ascending: true });
-		}
-
-		const { data, error } = await query.range(start, end);
+	for (let page = 1; ; page += 1) {
+		const { data, error } = await client.priceIndex.history({
+			windowDays,
+			page,
+			limit: SNAPSHOT_PAGE_SIZE,
+			order: 'asc'
+		});
 
 		if (error) {
-			const pageNumber = Math.floor(start / SNAPSHOT_PAGE_SIZE) + 1;
 			throw new Error(
-				`Failed to load analytics price snapshots page ${pageNumber}: ${error.message}`,
+				`Failed to load analytics price snapshots page ${page}: ${formatParchmentError(error)}`,
 				{ cause: error }
 			);
 		}
 
-		const page = (data ?? []) as PriceSnapshot[];
+		const pageRows = data?.data ?? [];
+		snapshots.push(...pageRows.map(mapPriceIndexHistoryItem));
 
-		if (page.length === 0) break;
-
-		snapshots.push(...page);
-
-		if (page.length < SNAPSHOT_PAGE_SIZE) break;
+		if (!data?.pagination.hasNext) break;
+		if (pageRows.length === 0) {
+			throw new Error(
+				`Failed to load analytics price snapshots page ${page}: upstream returned an empty page with hasNext=true`
+			);
+		}
 	}
 
 	return snapshots;
@@ -561,13 +578,10 @@ async function loadAnalyticsCharts(
 	event: AnalyticsLoadEvent,
 	{
 		isParchmentIntelligence,
-		isAnonymous,
-		priceIndexSupabase
+		isAnonymous
 	}: {
 		isParchmentIntelligence: boolean;
 		isAnonymous: boolean;
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		priceIndexSupabase: any;
 	}
 ): Promise<AnalyticsCharts> {
 	// ADR-015 decision-surface reads (value signals, movement stats, metadata index).
@@ -575,16 +589,8 @@ async function loadAnalyticsCharts(
 	const marketInsightsPromise = loadMarketIndexInsights(event, { isParchmentIntelligence });
 
 	const supabase = event.locals.supabase;
-	const fromDate = relativeDateString(null, 90);
-
-	// Parchment Intelligence users get up to 365 days of snapshot data for extended trend views.
-	const snapshotFromDate = isParchmentIntelligence
-		? (() => {
-				const d = new Date();
-				d.setDate(d.getDate() - 365);
-				return d.toISOString().split('T')[0];
-			})()
-		: fromDate;
+	const snapshotWindowDays = isParchmentIntelligence ? 365 : 90;
+	const priceIndexClientPromise = createParchmentServerClient(event, { mode: 'session' });
 
 	// Anonymous visitors render the main trend chart only; the processing-mix and
 	// origin-range panels never mount for them, so skip those catalog reads.
@@ -622,13 +628,14 @@ async function loadAnalyticsCharts(
 			]);
 
 	const [snapshotsRaw, catalogEvidence] = await Promise.all([
-		// Price index snapshots — 90 days public, 365 days for Parchment Intelligence users.
-		// price_index_snapshots is entitlement-sensitive. Public analytics still exposes a
-		// bounded server-rendered slice, but direct anon/auth table access is revoked.
-		_loadPriceSnapshotsPaginated({
-			supabase: priceIndexSupabase,
-			fromDate: snapshotFromDate
-		}),
+		// Parchment owns entitlement and returns synthetic and observed tier-one rows
+		// in deterministic ascending order: 90 days anonymously, 365 for PPI sessions.
+		priceIndexClientPromise.then((client) =>
+			_loadPriceSnapshotsPaginated({
+				client,
+				windowDays: snapshotWindowDays
+			})
+		),
 		catalogEvidencePromise
 	]);
 
@@ -949,8 +956,7 @@ export const load: PageServerLoad = async (event) => {
 	const analyticsCoverage = loadAnalyticsCoverage(event, marketSummary);
 	const analyticsCharts = loadAnalyticsCharts(event, {
 		isParchmentIntelligence,
-		isAnonymous,
-		priceIndexSupabase
+		isAnonymous
 	});
 	const analyticsMember = loadAnalyticsMemberData(event, {
 		principal,

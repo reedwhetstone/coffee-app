@@ -69,12 +69,14 @@ This creates four production risks:
 
 1. **Catalog, market, and similarity**
 
-   - Direct `coffee_catalog`, `price_index_snapshots`,
-     `market_daily_summary`, and `supplier_daily_stats` reads
+   - Direct `coffee_catalog`, `market_daily_summary`, and
+     `supplier_daily_stats` reads
    - Local `find_similar_beans_aggregated*` RPC fallbacks
    - Local `get_supplier_price_ranges` and agent price-index reads
    - Primary callers: analytics, chat context, tracked-lot enrichment, legacy
      beans/tool routes, `catalogSimilarity.ts`, and `agentPriceIndex.ts`
+   - Completed resource slice: analytics price-index history consumes its typed
+     Parchment SDK contract
 
 2. **Portfolio and procurement**
 

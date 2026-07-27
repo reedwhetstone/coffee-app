@@ -100,7 +100,7 @@ These direct paths cross the intended Parchment API boundary and need explicit
 replacement or retirement:
 
 - catalog and market reads from `coffee_catalog`, `market_daily_summary`, and
-  `supplier_daily_stats`, plus analytics-page reads from `price_index_snapshots`
+  `supplier_daily_stats`
 - bean-identity candidate and review operations over shared identity tables
 - sourcing brief summaries against shared catalog rows
 - legacy catalog RAG reads and `match_coffee_chunks`
@@ -142,6 +142,13 @@ architecture and are not current guidance.
 The chat agent's `price_index_read` adapter consumes `ParchmentClient.priceIndex.list`
 through the request's session-mode client and maps the API response into its
 app-owned tool result. It no longer queries shared price-index storage directly.
+
+The analytics page's historical price chart consumes
+`ParchmentClient.priceIndex.history` through the request's session-mode client.
+Anonymous requests use the contract's optional-auth 90-day window; authenticated
+Parchment Intelligence sessions receive the entitled 365-day window. Coffee-app
+paginates the typed response and retains only presentation mapping into its
+existing chart shape; it no longer reads `price_index_snapshots` directly.
 
 The chat agent's `find_similar_beans` adapter likewise consumes
 `ParchmentClient.catalog.similar`. Bean matching remains available only where
