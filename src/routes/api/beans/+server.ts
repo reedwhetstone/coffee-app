@@ -65,6 +65,77 @@ function manualInventoryRequest(bean: Record<string, unknown>): ManualInventoryC
 	};
 }
 
+const MANUAL_CATALOG_PROJECTION_FIELDS = [
+	'name',
+	'score_value',
+	'arrival_date',
+	'continent',
+	'country',
+	'region',
+	'processing',
+	'drying_method',
+	'lot_size',
+	'bag_size',
+	'packaging',
+	'cultivar_detail',
+	'grade',
+	'appearance',
+	'roast_recs',
+	'type',
+	'description_short',
+	'description_long',
+	'farm_notes',
+	'link',
+	'cost_lb',
+	'price_per_lb',
+	'source',
+	'stocked',
+	'cupping_notes',
+	'stocked_date',
+	'unstocked_date',
+	'ai_description',
+	'ai_tasting_notes',
+	'public_coffee',
+	'wholesale',
+	'price_tiers'
+] as const;
+
+/**
+ * The inventory SDK intentionally returns a compact catalog projection. Manual
+ * creation already has the authoritative submitted catalog fields, so merge
+ * those fields back into the established coffee-app projection without making
+ * a second cookie-bound Supabase query.
+ */
+function adaptManualInventoryResponse(
+	resource: Record<string, unknown>,
+	bean: Record<string, unknown>
+): Record<string, unknown> {
+	const upstreamCatalog =
+		typeof resource.coffee_catalog === 'object' && resource.coffee_catalog !== null
+			? (resource.coffee_catalog as Record<string, unknown>)
+			: {};
+	const catalog: Record<string, unknown> = Object.fromEntries(
+		MANUAL_CATALOG_PROJECTION_FIELDS.map((field) => [field, null])
+	);
+
+	Object.assign(catalog, upstreamCatalog);
+	for (const field of Object.keys(MANUAL_COFFEE_FIELD_MAP)) {
+		const value = bean[field];
+		if (value !== undefined && value !== null && value !== '') {
+			catalog[field] = value;
+		}
+	}
+
+	catalog.id = upstreamCatalog.id ?? resource.catalog_id ?? null;
+	catalog.name = upstreamCatalog.name ?? bean.manual_name ?? null;
+	catalog.public_coffee = upstreamCatalog.public_coffee ?? false;
+
+	return {
+		...resource,
+		coffee_catalog: catalog
+	};
+}
+
 function parchmentErrorResponse(error: unknown): { error: string; code?: string } {
 	if (typeof error !== 'object' || error === null || !('error' in error)) {
 		return { error: 'Failed to create bean' };
@@ -184,7 +255,14 @@ export const POST: RequestHandler = async (event) => {
 			// Parchment owns the authenticated mutation and returns the same owner-scoped
 			// resource. Do not re-query it through the cookie-only Supabase client: a
 			// bearer-session request has no Supabase auth cookie to authorize that query.
-			return json(stripRoastProfileData([data.data])[0]);
+			return json(
+				stripRoastProfileData([
+					adaptManualInventoryResponse(
+						data.data as unknown as Record<string, unknown>,
+						bean as Record<string, unknown>
+					)
+				])[0]
+			);
 		}
 
 		if (!catalogId) {

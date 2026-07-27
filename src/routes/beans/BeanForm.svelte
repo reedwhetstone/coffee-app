@@ -300,6 +300,13 @@
 					? Math.max(0, (sharedFormData.tax_ship_cost - reservedTaxShipCost) / unsubmittedBeanCount)
 					: 0;
 
+			if (Math.round(sharedFormData.tax_ship_cost * 100) < Math.round(reservedTaxShipCost * 100)) {
+				alert(
+					`Total Tax & Shipping cannot be less than $${reservedTaxShipCost.toFixed(2)} already committed to submitted beans.`
+				);
+				return;
+			}
+
 			const createdBeans = [];
 
 			// Process each bean in the batch

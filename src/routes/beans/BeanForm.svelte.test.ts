@@ -271,4 +271,34 @@ describe('BeanForm manual-create idempotency', () => {
 		expect(requestPayload(fetchMock, 1).tax_ship_cost).toBe(3);
 		expect(requestPayload(fetchMock, 2).tax_ship_cost).toBe(6);
 	});
+
+	it('rejects a new total below an allocation already frozen by an uncertain retry', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response(false, { error: 'Connection interrupted' }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { container } = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: []
+		});
+		await fillManualRows(['Frozen allocation lot']);
+		const taxShipInput = screen.getByLabelText('Total Tax & Shipping ($)');
+		await fireEvent.input(taxShipInput, { target: { value: '3' } });
+
+		const form = container.querySelector('form');
+		expect(form).not.toBeNull();
+		await fireEvent.submit(form!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+		await fireEvent.input(taxShipInput, { target: { value: '1' } });
+		await fireEvent.submit(form!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+		expect(globalThis.alert).toHaveBeenCalledWith(
+			'Total Tax & Shipping cannot be less than $3.00 already committed to submitted beans.'
+		);
+	});
 });

@@ -316,7 +316,14 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		expect(await response.json()).toMatchObject({
 			id: 42,
 			catalog_id: 99,
-			coffee_catalog: { public_coffee: false },
+			coffee_catalog: {
+				public_coffee: false,
+				region: 'Huila',
+				drying_method: 'Raised beds',
+				roast_recs: 'Light roast',
+				description_short: 'Pink Bourbon microlot',
+				score_value: 87
+			},
 			roast_profiles: []
 		});
 	});
