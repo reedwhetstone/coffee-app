@@ -27,6 +27,7 @@ test.describe.serial('Critical business workflow', () => {
 	let testRoastId: number | null = null;
 	let testSaleId: number | null = null;
 	const testBeanName = `E2E_TEST_BEAN_${Date.now()}`;
+	const testBeanIdempotencyKey = `critical-path-manual-bean-${Date.now()}`;
 	const testRoastName = `E2E_TEST_ROAST_${Date.now()}`;
 
 	test.afterAll(async ({ request }) => {
@@ -51,6 +52,7 @@ test.describe.serial('Critical business workflow', () => {
 
 	test('create a bean via API', async ({ request }) => {
 		const resp = await request.post('/api/beans', {
+			headers: { 'Idempotency-Key': testBeanIdempotencyKey },
 			data: {
 				manual_name: testBeanName,
 				purchase_date: new Date().toISOString().split('T')[0],

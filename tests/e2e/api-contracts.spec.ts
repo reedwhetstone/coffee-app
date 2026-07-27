@@ -147,7 +147,9 @@ test.describe('POST /api/beans — create inventory', () => {
 	test('creates a bean with manual_name and returns the new inventory item', async ({
 		request
 	}) => {
+		const idempotencyKey = `api-contract-manual-bean-${Date.now()}`;
 		const resp = await request.post('/api/beans', {
+			headers: { 'Idempotency-Key': idempotencyKey },
 			data: {
 				manual_name: `API_TEST_BEAN_${Date.now()}`,
 				purchase_date: new Date().toISOString().split('T')[0],
