@@ -368,22 +368,25 @@ component owns this shared provider or preference state.
 - Deduplicate provider webhooks by event ID and reconcile unsubscribe, hard-bounce,
   and complaint suppression locally; each reconciliation is idempotent on the
   provider event ID.
-- Define the authenticated sender-facing recipient contract owned by the
+- Define one authenticated draft-operation contract owned by the
   `market-read-projection` worker:
-  - **Authentication:** only a service-authenticated sender (the MR-11 deployment
-    worker) may call it; anonymous, public-demo, and API-key callers are rejected.
-  - **Audience reference:** it returns a topic-scoped, broadcast-ready
-    audience/projection reference for the current Market Brief Topic, never a raw
-    list of account IDs, provider contact IDs, or shared preference rows.
-  - **Token rendering:** it performs recipient selection and renders each
-    recipient's purpose-bound, no-login unsubscribe link using the MR-1B Parchment
-    token issuance; coffee-app never enumerates accounts, reads provider/shared
-    state, or mints tokens.
-  - **Idempotency:** repeated calls for the same (Topic, edition) return the same
-    audience reference without duplicating projection or suppression state.
-  - **MR-11 consumption:** MR-11 receives only this reference plus the rendered
-    recipient payload and cannot expand the audience or reach provider state
-    directly.
+  - **Authentication:** only the service-authenticated coffee-app deployment
+    worker may invoke the bounded operation; anonymous, public-demo, and API-key
+    callers are rejected.
+  - **Audience and rendering:** the operation selects the topic-scoped audience
+    and renders each recipient's purpose-bound, no-login unsubscribe link using
+    the MR-1B Parchment token issuance. It never returns a raw list of account
+    IDs, provider contact IDs, or shared preference rows to coffee-app.
+  - **Provider ownership:** the operation creates or updates the Resend Broadcast
+    and records its provider identifiers, delivery status, and idempotency ledger
+    in Parchment. Coffee-app does not own shared preference or provider lifecycle
+    state.
+  - **Idempotency:** repeated calls for the same (Topic, edition, production
+    commit) return the existing draft receipt without duplicating projection,
+    suppression, broadcast, or ledger state.
+  - **MR-11 consumption:** coffee-app submits only the production commit, edition
+    slug, and rendered email content, then receives a bounded draft receipt. It
+    cannot expand the audience or reach provider state directly.
 - Provide the no-login one-click unsubscribe path through Resend's native topic
   unsubscribe or the MR-1B purpose-bound Parchment token if provider behavior
   requires it. The path may only unsubscribe one account/topic and must be
@@ -489,17 +492,18 @@ Repository: coffee-scraper.
 
 ### MR-11: Production-success to Resend draft
 
-Repositories: coffee-app, with Parchment provider-state support if needed.
+Repositories: coffee-app plus the Parchment-owned `market-read-projection`
+draft operation from MR-2.
 
 - Add the successful-deployment trigger.
 - Render email-safe HTML from the canonical edition.
-- Consume the MR-2 `market-read-projection` worker's topic-scoped
-  audience/projection reference and rendered recipient payload when creating the
-  draft; coffee-app must not enumerate recipients, mint tokens, or read shared
-  provider state.
-- Create or update an idempotent Resend Broadcast draft.
-- Record the production commit, edition slug, broadcast ID, and status durably in
-  Parchment.
+- Invoke the authenticated MR-2 draft operation with the production commit,
+  edition slug, and rendered email content. The Parchment worker selects the
+  audience, renders recipient-specific unsubscribe links, creates or updates the
+  idempotent Resend Broadcast draft, and records the production commit, edition
+  slug, broadcast ID, and status durably in Parchment. Coffee-app receives only a
+  bounded draft receipt; it must not enumerate recipients, mint tokens, or read
+  shared provider state.
 - Reuse MR-2's provider reconciliation and suppression state; do not process
   unsubscribe, bounce, or complaint webhooks in this deployment slice.
 - Keep manual send approval.
