@@ -3,8 +3,10 @@ import type {
 	AnalyticsCharts,
 	AnalyticsCoverage,
 	AnalyticsMemberData,
-	AnalyticsPreview
+	AnalyticsPreview,
+	PriceSnapshot
 } from './+page.server';
+import type { components, ParchmentClient } from '@purveyors/sdk';
 
 const { mockCreateAdminClient, mockCreateParchmentServerClient, mockGetTrackedLotSummaries } =
 	vi.hoisted(() => ({
@@ -49,33 +51,21 @@ vi.mock('$lib/services/schemaService', () => ({
 	}))
 }));
 
-type SnapshotRow = {
-	snapshot_date: string;
-	origin: string;
-	process: string | null;
-	price_avg: number | null;
-	price_median: number | null;
-	price_min: number | null;
-	price_max: number | null;
-	price_p25: number | null;
-	price_p75: number | null;
-	price_stdev: number | null;
-	supplier_count: number;
-	sample_size: number;
-	wholesale_only: boolean;
-	aggregation_tier: number;
-};
+type HistoryRow = components['schemas']['PriceIndexHistoryItem'];
 
 type SnapshotPageResult = {
-	data: SnapshotRow[] | null;
-	error: { message: string } | null;
+	data: HistoryRow[] | null;
+	error: { error: { message: string } } | null;
 };
 
-type SnapshotQueryCall = {
-	start: number;
-	end: number;
-	orders: Array<{ column: string; ascending: boolean }>;
+type HistoryQueryCall = {
+	windowDays?: number;
+	page?: number;
+	limit?: number;
+	order?: 'asc' | 'desc';
 };
+
+const SNAPSHOT_PAGE_SIZE_FOR_TEST = 1000;
 
 interface StreamedLoadResult {
 	analyticsPreview: AnalyticsPreview;
@@ -97,15 +87,29 @@ beforeEach(async () => {
 	vi.setSystemTime(new Date('2026-04-08T12:00:00.000Z'));
 	currentPriceIndexClient = undefined;
 	mockCreateAdminClient.mockImplementation(() => currentPriceIndexClient);
-	mockCreateParchmentServerClient.mockResolvedValue({
-		kind: 'session-client',
-		market: {
-			signals: vi.fn().mockResolvedValue({ error: new Error('Parchment unavailable') }),
-			metadataIndex: vi.fn().mockResolvedValue({ error: new Error('Parchment unavailable') })
-		},
-		priceIndex: {
-			stats: vi.fn().mockResolvedValue({ error: new Error('Parchment unavailable') })
-		}
+	mockCreateParchmentServerClient.mockImplementation(async () => {
+		const analyticsClient = currentPriceIndexClient as
+			| ReturnType<typeof createAnalyticsClient>
+			| undefined;
+		return (
+			analyticsClient?.parchmentClient ?? {
+				kind: 'session-client',
+				market: {
+					signals: vi.fn().mockResolvedValue({ error: new Error('Parchment unavailable') }),
+					metadataIndex: vi.fn().mockResolvedValue({ error: new Error('Parchment unavailable') })
+				},
+				priceIndex: {
+					history: vi.fn().mockResolvedValue({
+						data: {
+							data: [],
+							pagination: { hasNext: false }
+						},
+						error: undefined
+					}),
+					stats: vi.fn().mockResolvedValue({ error: new Error('Parchment unavailable') })
+				}
+			}
+		);
 	});
 	mockGetTrackedLotSummaries.mockResolvedValue([]);
 
@@ -126,67 +130,71 @@ afterEach(() => {
 	vi.useRealTimers();
 });
 
-function makeSnapshotRow(index: number): SnapshotRow {
+function makeHistoryRow(index: number): HistoryRow {
 	return {
-		snapshot_date: `2026-01-${String((index % 28) + 1).padStart(2, '0')}`,
+		date: `2026-01-${String((index % 28) + 1).padStart(2, '0')}`,
 		origin: `Origin ${String(index).padStart(4, '0')}`,
 		process: index % 2 === 0 ? 'Washed' : 'Natural',
-		price_avg: 3 + index / 100,
-		price_median: 3 + index / 100,
-		price_min: 2 + index / 100,
-		price_max: 4 + index / 100,
-		price_p25: 2.5 + index / 100,
-		price_p75: 3.5 + index / 100,
-		price_stdev: 0.25,
-		supplier_count: 10,
-		sample_size: 25,
-		wholesale_only: index % 3 === 0,
-		aggregation_tier: 1
+		grade: null,
+		wholesale: index % 3 === 0,
+		price: {
+			avg: 3 + index / 100,
+			median: 3 + index / 100,
+			min: 2 + index / 100,
+			max: 4 + index / 100,
+			p25: 2.5 + index / 100,
+			p75: 3.5 + index / 100,
+			stdev: 0.25
+		},
+		sample: {
+			suppliers: 10,
+			listings: 25,
+			aggregationTier: 1
+		},
+		provenance: {
+			synthetic: index % 5 === 0
+		}
 	};
 }
 
-function createSnapshotClient(
-	pageResults: Array<SnapshotRow[] | SnapshotPageResult>,
-	fromDate: string
-) {
-	const rangeCalls: SnapshotQueryCall[] = [];
+function mapExpectedSnapshot(row: HistoryRow): PriceSnapshot {
+	return {
+		snapshot_date: row.date,
+		origin: row.origin,
+		process: row.process,
+		price_avg: row.price.avg,
+		price_median: row.price.median,
+		price_min: row.price.min,
+		price_max: row.price.max,
+		price_p25: row.price.p25,
+		price_p75: row.price.p75,
+		price_stdev: row.price.stdev,
+		supplier_count: row.sample.suppliers,
+		sample_size: row.sample.listings,
+		wholesale_only: row.wholesale,
+		aggregation_tier: row.sample.aggregationTier
+	};
+}
+
+function createHistoryClient(pageResults: SnapshotPageResult[]) {
+	const historyCalls: HistoryQueryCall[] = [];
+	const history = vi.fn(async (query: HistoryQueryCall) => {
+		historyCalls.push(query);
+		const result = pageResults[historyCalls.length - 1] ?? { data: [], error: null };
+		return {
+			data: result.data
+				? {
+						data: result.data,
+						pagination: { hasNext: result.data.length === 1000 }
+					}
+				: undefined,
+			error: result.error ?? undefined
+		};
+	});
 
 	return {
-		rangeCalls,
-		from(table: string) {
-			expect(table).toBe('price_index_snapshots');
-
-			const orders: Array<{ column: string; ascending: boolean }> = [];
-
-			return {
-				select(columns: string) {
-					expect(columns).toContain('snapshot_date');
-					return this;
-				},
-				gte(column: string, value: string) {
-					expect(column).toBe('snapshot_date');
-					expect(value).toBe(fromDate);
-					return this;
-				},
-				eq(column: string, value: number) {
-					expect(column).toBe('aggregation_tier');
-					expect(value).toBe(1);
-					return this;
-				},
-				order(column: string, options: { ascending: boolean }) {
-					orders.push({ column, ascending: options.ascending });
-					return this;
-				},
-				range(start: number, end: number) {
-					rangeCalls.push({ start, end, orders: [...orders] });
-					const page = pageResults[rangeCalls.length - 1] ?? [];
-					if (Array.isArray(page)) {
-						return Promise.resolve({ data: page, error: null });
-					}
-					return Promise.resolve(page);
-				}
-			};
-		}
+		historyCalls,
+		client: { priceIndex: { history } } as unknown as ParchmentClient
 	};
 }
 
@@ -216,11 +224,35 @@ function createAnalyticsClient(
 		recentWholesaleDelistings?: unknown[];
 	} = {}
 ) {
-	const snapshotFromDates: string[] = [];
-	const snapshotRangeCalls: SnapshotQueryCall[] = [];
+	const historyCalls: HistoryQueryCall[] = [];
 	const movementCutoffs = { arrivals: [] as string[], delistings: [] as string[] };
+	const fromCalls: string[] = [];
 	const selectCalls: string[] = [];
 	const summaryReadCounts = { marketSummary: 0 };
+	const history = vi.fn(async (query: HistoryQueryCall) => {
+		historyCalls.push(query);
+		const result = snapshotPages[historyCalls.length - 1] ?? { data: [], error: null };
+		return {
+			data: result.data
+				? {
+						data: result.data,
+						pagination: { hasNext: result.data.length === SNAPSHOT_PAGE_SIZE_FOR_TEST }
+					}
+				: undefined,
+			error: result.error ?? undefined
+		};
+	});
+	const parchmentClient = {
+		kind: 'session-client',
+		market: {
+			signals: vi.fn().mockResolvedValue({ error: new Error('Parchment unavailable') }),
+			metadataIndex: vi.fn().mockResolvedValue({ error: new Error('Parchment unavailable') })
+		},
+		priceIndex: {
+			history,
+			stats: vi.fn().mockResolvedValue({ error: new Error('Parchment unavailable') })
+		}
+	} as unknown as ParchmentClient;
 
 	function resolveTableResult(
 		table: string,
@@ -370,9 +402,10 @@ function createAnalyticsClient(
 	}
 
 	return {
-		snapshotFromDates,
-		snapshotRangeCalls,
+		historyCalls,
+		parchmentClient,
 		movementCutoffs,
+		fromCalls,
 		selectCalls,
 		summaryReadCounts,
 		rpc(name: string) {
@@ -382,6 +415,7 @@ function createAnalyticsClient(
 			throw new Error(`Unexpected RPC in analytics test client: ${name}`);
 		},
 		from(table: string) {
+			fromCalls.push(table);
 			const state: {
 				columns?: string;
 				selectOptions?: { count?: string; head?: boolean };
@@ -401,9 +435,6 @@ function createAnalyticsClient(
 				},
 				gte(column: string, value: unknown) {
 					state.filters.push({ method: 'gte', column, value });
-					if (table === 'price_index_snapshots' && column === 'snapshot_date') {
-						snapshotFromDates.push(String(value));
-					}
 					return query;
 				},
 				eq(column: string, value: unknown) {
@@ -448,14 +479,7 @@ function createAnalyticsClient(
 						});
 					}
 
-					if (table !== 'price_index_snapshots') {
-						throw new Error(`Unexpected range() on ${table}`);
-					}
-
-					snapshotRangeCalls.push({ start, end, orders: [...state.orders] });
-					return Promise.resolve(
-						snapshotPages[snapshotRangeCalls.length - 1] ?? { data: [], error: null }
-					);
+					throw new Error(`Unexpected range() on ${table}`);
 				},
 				then<TResult1 = unknown, TResult2 = never>(
 					onfulfilled?: ((value: unknown) => TResult1 | PromiseLike<TResult1>) | null,
@@ -503,60 +527,52 @@ async function runLoad(
 }
 
 describe('loadPriceSnapshotsPaginated', () => {
-	it('loads all snapshot pages with a total ordering that survives schema ties', async () => {
-		const fromDate = '2026-01-01';
-		const client = createSnapshotClient(
-			[
-				Array.from({ length: 1000 }, (_, index) => makeSnapshotRow(index)),
-				Array.from({ length: 1000 }, (_, index) => makeSnapshotRow(index + 1000)),
-				Array.from({ length: 25 }, (_, index) => makeSnapshotRow(index + 2000))
-			],
-			fromDate
-		);
+	it('loads every history page in ascending order and maps the SDK response shape', async () => {
+		const { client, historyCalls } = createHistoryClient([
+			{
+				data: Array.from({ length: 1000 }, (_, index) => makeHistoryRow(index)),
+				error: null
+			},
+			{
+				data: Array.from({ length: 1000 }, (_, index) => makeHistoryRow(index + 1000)),
+				error: null
+			},
+			{
+				data: Array.from({ length: 25 }, (_, index) => makeHistoryRow(index + 2000)),
+				error: null
+			}
+		]);
 
 		const snapshots = await loadPriceSnapshotsPaginated({
-			supabase: client,
-			fromDate
+			client,
+			windowDays: 365
 		});
 
 		expect(snapshots).toHaveLength(2025);
-		expect(snapshots[0]).toEqual(makeSnapshotRow(0));
-		expect(snapshots.at(-1)).toEqual(makeSnapshotRow(2024));
-		expect(client.rangeCalls.map(({ start, end }) => ({ start, end }))).toEqual([
-			{ start: 0, end: 999 },
-			{ start: 1000, end: 1999 },
-			{ start: 2000, end: 2999 }
+		expect(snapshots[0]).toEqual(mapExpectedSnapshot(makeHistoryRow(0)));
+		expect(snapshots.at(-1)).toEqual(mapExpectedSnapshot(makeHistoryRow(2024)));
+		expect(historyCalls).toEqual([
+			{ windowDays: 365, page: 1, limit: 1000, order: 'asc' },
+			{ windowDays: 365, page: 2, limit: 1000, order: 'asc' },
+			{ windowDays: 365, page: 3, limit: 1000, order: 'asc' }
 		]);
-
-		for (const call of client.rangeCalls) {
-			expect(call.orders).toEqual([
-				{ column: 'snapshot_date', ascending: true },
-				{ column: 'origin', ascending: true },
-				{ column: 'process', ascending: true },
-				{ column: 'grade', ascending: true },
-				{ column: 'wholesale_only', ascending: true },
-				{ column: 'synthetic', ascending: true },
-				{ column: 'id', ascending: true }
-			]);
-		}
 	});
 
 	it('throws when an intermediate snapshot page fails instead of returning partial data', async () => {
-		const fromDate = '2026-01-01';
-		const client = createSnapshotClient(
-			[
-				Array.from({ length: 1000 }, (_, index) => makeSnapshotRow(index)),
-				{ data: null, error: { message: 'db blew up' } }
-			],
-			fromDate
-		);
+		const { client } = createHistoryClient([
+			{
+				data: Array.from({ length: 1000 }, (_, index) => makeHistoryRow(index)),
+				error: null
+			},
+			{ data: null, error: { error: { message: 'API blew up' } } }
+		]);
 
 		await expect(
 			loadPriceSnapshotsPaginated({
-				supabase: client,
-				fromDate
+				client,
+				windowDays: 90
 			})
-		).rejects.toThrow('Failed to load analytics price snapshots page 2: db blew up');
+		).rejects.toThrow('Failed to load analytics price snapshots page 2: API blew up');
 	});
 });
 
@@ -765,7 +781,7 @@ describe('analytics load', () => {
 		});
 	});
 
-	it('preserves the 90-day baseline window and 365-day Parchment Intelligence window', async () => {
+	it('uses optional-auth session clients with 90 public days and 365 PPI days', async () => {
 		const anonymousClient = createAnalyticsClient([{ data: [], error: null }]);
 		currentPriceIndexClient = anonymousClient;
 		resolvePrincipalMock.mockResolvedValueOnce({
@@ -776,8 +792,16 @@ describe('analytics load', () => {
 
 		const anonymousResult = await runLoad(anonymousClient);
 		await anonymousResult.analyticsCharts;
-		expect(anonymousClient.snapshotFromDates).toEqual(['2026-01-08']);
+		expect(anonymousClient.historyCalls).toEqual([
+			{ windowDays: 90, page: 1, limit: 1000, order: 'asc' }
+		]);
+		expect(anonymousClient.fromCalls).not.toContain('price_index_snapshots');
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session'
+		});
+		expect(mockCreateParchmentServerClient.mock.calls[0][0].locals.session).toBeNull();
 
+		mockCreateParchmentServerClient.mockClear();
 		const memberClient = createAnalyticsClient([{ data: [], error: null }]);
 		currentPriceIndexClient = memberClient;
 		resolvePrincipalMock.mockResolvedValueOnce({
@@ -789,7 +813,19 @@ describe('analytics load', () => {
 		const memberResult = await runLoad(memberClient, { session: createSession() });
 		await memberResult.analyticsCharts;
 		await memberResult.analyticsMember;
-		expect(memberClient.snapshotFromDates).toEqual(['2025-04-08']);
+		expect(memberClient.historyCalls).toEqual([
+			{ windowDays: 365, page: 1, limit: 1000, order: 'asc' }
+		]);
+		expect(memberClient.fromCalls).not.toContain('price_index_snapshots');
+		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session'
+		});
+		expect(mockCreateParchmentServerClient.mock.calls[0][0].locals.session).toEqual(
+			createSession()
+		);
+		expect(mockCreateParchmentServerClient).not.toHaveBeenCalledWith(expect.anything(), {
+			mode: 'public-demo'
+		});
 	});
 
 	it('anchors arrival and delisting query cutoffs to the latest market summary date', async () => {
@@ -966,8 +1002,8 @@ describe('analytics load', () => {
 
 	it('rejects the streamed charts payload when a later snapshot page errors without failing the route', async () => {
 		const client = createAnalyticsClient([
-			{ data: Array.from({ length: 1000 }, (_, index) => makeSnapshotRow(index)), error: null },
-			{ data: null, error: { message: 'page timeout' } }
+			{ data: Array.from({ length: 1000 }, (_, index) => makeHistoryRow(index)), error: null },
+			{ data: null, error: { error: { message: 'page timeout' } } }
 		]);
 
 		currentPriceIndexClient = client;
