@@ -274,8 +274,31 @@
 		try {
 			isSubmitting = true;
 
-			// Calculate tax/ship cost per bean
-			const taxShipPerBean = sharedFormData.tax_ship_cost / batchBeans.length;
+			// Preserve allocations already attached to submitted or uncertain manual rows.
+			// Only unsubmitted rows share the remaining total, so removing an unsubmitted
+			// row cannot change the payload frozen for an earlier retry.
+			const reservedTaxShipCost = isManualEntry
+				? batchBeans.reduce((total, _, index) => {
+						const idempotencyKey = manualIdempotencyKeys[index];
+						const allocation = idempotencyKey
+							? manualSubmissionRecords[idempotencyKey]?.payload.tax_ship_cost
+							: undefined;
+						return (
+							total +
+							(typeof allocation === 'number' && Number.isFinite(allocation) ? allocation : 0)
+						);
+					}, 0)
+				: 0;
+			const unsubmittedBeanCount = isManualEntry
+				? batchBeans.reduce((count, _, index) => {
+						const idempotencyKey = manualIdempotencyKeys[index];
+						return count + (idempotencyKey && manualSubmissionRecords[idempotencyKey] ? 0 : 1);
+					}, 0)
+				: batchBeans.length;
+			const taxShipPerUnsubmittedBean =
+				unsubmittedBeanCount > 0
+					? Math.max(0, (sharedFormData.tax_ship_cost - reservedTaxShipCost) / unsubmittedBeanCount)
+					: 0;
 
 			const createdBeans = [];
 
@@ -338,7 +361,7 @@
 					),
 					// Add shared form data
 					purchase_date: sharedFormData.purchase_date,
-					tax_ship_cost: taxShipPerBean, // Divided cost
+					tax_ship_cost: priorSubmission?.payload.tax_ship_cost ?? taxShipPerUnsubmittedBean,
 					notes: sharedFormData.notes,
 					last_updated: new Date().toISOString()
 				};

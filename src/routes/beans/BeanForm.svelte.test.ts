@@ -226,6 +226,49 @@ describe('BeanForm manual-create idempotency', () => {
 		expect(idempotencyKey(fetchMock, 2)).toBe(UUIDS[2]);
 		expect(requestPayload(fetchMock, 0).tax_ship_cost).toBe(3);
 		expect(requestPayload(fetchMock, 1).tax_ship_cost).toBe(3);
-		expect(requestPayload(fetchMock, 2).tax_ship_cost).toBe(4.5);
+		expect(requestPayload(fetchMock, 2).tax_ship_cost).toBe(6);
+	});
+
+	it('allocates the remaining total after removing an unsubmitted row', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response(false, { error: 'Connection interrupted' }))
+			.mockResolvedValueOnce(response(true, { id: 42 }))
+			.mockResolvedValueOnce(response(true, { id: 43 }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { container } = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: []
+		});
+		const addRowButton = Array.from(container.querySelectorAll('button')).find((button) =>
+			button.textContent?.includes('+')
+		);
+		expect(addRowButton).toBeDefined();
+		await fireEvent.click(addRowButton!);
+		await fireEvent.click(addRowButton!);
+		await fillManualRows(['Uncertain lot', 'Unsubmitted lot', 'Removed lot']);
+		await fireEvent.input(screen.getByLabelText('Total Tax & Shipping ($)'), {
+			target: { value: '9' }
+		});
+
+		const form = container.querySelector('form');
+		expect(form).not.toBeNull();
+		await fireEvent.submit(form!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+		await fireEvent.click(screen.getAllByRole('button', { name: '✕' })[1]);
+		await waitFor(() => expect(screen.getAllByLabelText('Coffee Name')).toHaveLength(2));
+		await fireEvent.submit(form!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+
+		expect(idempotencyKey(fetchMock, 0)).toBe(UUIDS[0]);
+		expect(idempotencyKey(fetchMock, 1)).toBe(UUIDS[0]);
+		expect(idempotencyKey(fetchMock, 2)).toBe(UUIDS[1]);
+		expect(requestPayload(fetchMock, 0).tax_ship_cost).toBe(3);
+		expect(requestPayload(fetchMock, 1).tax_ship_cost).toBe(3);
+		expect(requestPayload(fetchMock, 2).tax_ship_cost).toBe(6);
 	});
 });
