@@ -55,7 +55,7 @@
 	});
 
 	let selectedOptionalFields = $state<string[]>([]);
-	let manualIdempotencyKeys = $state<string[]>([]);
+	let manualIdempotencyKeys = $state<(string | undefined)[]>([]);
 	type ManualSubmission = {
 		payload: CoffeeFormData;
 		result: unknown;
@@ -69,6 +69,21 @@
 		const created = crypto.randomUUID();
 		manualIdempotencyKeys[index] = created;
 		return created;
+	}
+
+	function isDefinitiveClientError(status: number): boolean {
+		return status >= 400 && status < 500 && ![408, 409, 425, 429].includes(status);
+	}
+
+	function resetManualRetryState(index: number, idempotencyKey: string): void {
+		// A corrected payload must use a fresh key; reusing the old key would be an
+		// idempotency conflict even though the previous request was rejected.
+		manualIdempotencyKeys = manualIdempotencyKeys.map((key, keyIndex) =>
+			keyIndex === index ? undefined : key
+		);
+		const nextRecords = { ...manualSubmissionRecords };
+		delete nextRecords[idempotencyKey];
+		manualSubmissionRecords = nextRecords;
 	}
 
 	// Shared form data for batch-level fields
@@ -385,6 +400,9 @@
 					createdBeans.push(newBean);
 				} else {
 					const data = await response.json();
+					if (idempotencyKey && isDefinitiveClientError(response.status)) {
+						resetManualRetryState(i, idempotencyKey);
+					}
 					alert(`Failed to create bean ${i + 1}: ${data.error}`);
 					return;
 				}

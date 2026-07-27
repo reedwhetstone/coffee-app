@@ -8,9 +8,10 @@ const UUIDS = [
 	'00000000-0000-4000-8000-000000000003'
 ] as const;
 
-function response(ok: boolean, body: unknown) {
+function response(ok: boolean, body: unknown, status = ok ? 200 : 503) {
 	return {
 		ok,
+		status,
 		json: vi.fn().mockResolvedValue(body)
 	};
 }
@@ -79,6 +80,38 @@ describe('BeanForm manual-create idempotency', () => {
 		expect(idempotencyKey(fetchMock, 1)).toBe(UUIDS[0]);
 		expect(requestPayload(fetchMock, 0).tax_ship_cost).toBe(3);
 		expect(requestPayload(fetchMock, 1).tax_ship_cost).toBe(3);
+	});
+
+	it('resets retry state after a definitive validation error', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response(false, { error: 'Invalid score' }, 422))
+			.mockResolvedValueOnce(response(true, { id: 42 }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { container } = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: []
+		});
+		await fillManualRows(['Invalid lot']);
+
+		const form = container.querySelector('form');
+		expect(form).not.toBeNull();
+		await fireEvent.submit(form!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+		await fireEvent.input(screen.getByLabelText('Coffee Name'), {
+			target: { value: 'Corrected lot' }
+		});
+		await fireEvent.submit(form!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		expect(idempotencyKey(fetchMock, 0)).toBe(UUIDS[0]);
+		expect(idempotencyKey(fetchMock, 1)).toBe(UUIDS[1]);
+		expect(requestPayload(fetchMock, 0).manual_name).toBe('Invalid lot');
+		expect(requestPayload(fetchMock, 1).manual_name).toBe('Corrected lot');
 	});
 
 	it('keeps surviving row keys aligned and gives a replacement row a fresh key', async () => {
