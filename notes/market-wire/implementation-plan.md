@@ -221,6 +221,26 @@ Validation rejects:
 The job opens a coffee-app PR containing the edition, hero asset, and validation
 summary. Reed reviews the Vercel preview and iterates through the PR.
 
+### Weekly generation trigger and failure visibility
+
+MR-10 owns the production weekly-generation scheduler in coffee-scraper. It is a
+separate trigger from the daily MR-8/MR-9 capture scheduler and runs on the scraper
+host at **21:00 America/Denver every Sunday**, after the completed Monday-through-
+Sunday editorial window and before the Monday review/send window. The scheduler
+passes that immutable window to one generation run keyed by `(market-brief,
+windowEnd)`; retries reuse the key and cannot open duplicate edition PRs.
+
+The scheduler permits the initial attempt plus bounded retries at 15 minutes, 60
+minutes, and 180 minutes for transient fetch, provider, or deployment failures.
+Validation, authentication, and contract failures stop the run and alert
+operations rather than retrying indefinitely. Each run emits a status receipt with
+the window, schedule time, attempt, outcome, error classification, and generated
+PR URL when one exists. A final failure or a missing Sunday trigger produces one
+idempotent missed-edition alert for that window and remains visible as a stale
+weekly-generation condition until a successful run clears it. MR-10 consumes the
+daily capture health from MR-8/MR-9 and omits or qualifies stale source data rather
+than silently generating a falsely complete edition.
+
 ## 6. Publication and delivery
 
 The launch sequence is:
@@ -585,10 +605,15 @@ manual-only dependency.
 
 Repository: coffee-scraper.
 
+- Own and install the production weekly-generation scheduler defined in section 5;
+  keep it independent from the daily MR-8/MR-9 capture trigger.
 - Assemble the seven-day source packet and Parchment facts.
 - Generate and validate the `.svx` edition.
 - Generate the hero asset through the established blog pipeline.
 - Open a reviewable coffee-app PR with a validation summary.
+- Emit the bounded run receipt, retry transient failures with the same idempotency
+  key, and send the idempotent missed-edition or final-failure alert described in
+  section 5.
 
 ### MR-11: Production-success to Resend draft
 
@@ -660,6 +685,8 @@ The MVP is operationally ready when:
 - account deletion cannot orphan a renewing paid subscription or email contact;
 - daily capture produces a bounded seven-day source packet;
 - the weekly job opens a valid previewable PR;
+- the MR-10 scheduler has a successful weekly run receipt, bounded retry behavior,
+  and a visible missed-run/final-failure alert path;
 - a merged edition deploys successfully before a Resend draft is created;
 - a manual send produces one durable provider-confirmed `sent` event and timestamp;
 - Parchment exposes the generated-SDK delivery read contract for the exact
