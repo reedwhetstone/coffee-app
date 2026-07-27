@@ -55,6 +55,15 @@
 	});
 
 	let selectedOptionalFields = $state<string[]>([]);
+	let manualIdempotencyKeys = $state<string[]>([]);
+
+	function manualIdempotencyKey(index: number): string {
+		const existing = manualIdempotencyKeys[index];
+		if (existing) return existing;
+		const created = crypto.randomUUID();
+		manualIdempotencyKeys[index] = created;
+		return created;
+	}
 
 	// Shared form data for batch-level fields
 	let sharedFormData = $state({
@@ -118,6 +127,7 @@
 
 	function removeBeanFromBatch(index: number) {
 		batchBeans = batchBeans.filter((_, i) => i !== index);
+		manualIdempotencyKeys = manualIdempotencyKeys.filter((_, i) => i !== index);
 	}
 
 	function resetFormData() {
@@ -135,6 +145,7 @@
 				catalog_id: null
 			}
 		];
+		manualIdempotencyKeys = [];
 	}
 
 	// Filter catalog beans based on stocked status
@@ -312,11 +323,16 @@
 					}
 				}
 
+				const headers: Record<string, string> = {
+					'Content-Type': 'application/json'
+				};
+				if (isManualEntry) {
+					headers['Idempotency-Key'] = manualIdempotencyKey(i);
+				}
+
 				const response = await fetch('/api/beans', {
 					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
+					headers,
 					body: JSON.stringify(cleanedBean)
 				});
 

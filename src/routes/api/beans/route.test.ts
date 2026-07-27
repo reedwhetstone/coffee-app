@@ -29,6 +29,21 @@ const dataMocks = vi.hoisted(() => ({
 	deleteInventoryItem: vi.fn()
 }));
 
+const parchmentMocks = vi.hoisted(() => {
+	class MockParchmentConfigError extends Error {
+		constructor(message: string) {
+			super(message);
+			this.name = 'ParchmentConfigError';
+		}
+	}
+
+	return {
+		ParchmentConfigError: MockParchmentConfigError,
+		createParchmentServerClient: vi.fn(),
+		createInventory: vi.fn()
+	};
+});
+
 vi.mock('$lib/server/auth', () => ({
 	AuthError: authMocks.AuthError,
 	getUserRoles: authMocks.getUserRoles,
@@ -45,6 +60,11 @@ vi.mock('$lib/data/inventory.js', () => ({
 	addToInventory: dataMocks.addToInventory,
 	updateInventory: dataMocks.updateInventory,
 	deleteInventoryItem: dataMocks.deleteInventoryItem
+}));
+
+vi.mock('$lib/server/parchmentClient', () => ({
+	ParchmentConfigError: parchmentMocks.ParchmentConfigError,
+	createParchmentServerClient: parchmentMocks.createParchmentServerClient
 }));
 
 import { DELETE, GET, POST, PUT } from './+server';
@@ -94,6 +114,20 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		dataMocks.addToInventory.mockResolvedValue({ id: 1 });
 		dataMocks.updateInventory.mockResolvedValue({ id: 1 });
 		dataMocks.deleteInventoryItem.mockResolvedValue(undefined);
+		parchmentMocks.createParchmentServerClient.mockResolvedValue({
+			inventory: { create: parchmentMocks.createInventory }
+		});
+		parchmentMocks.createInventory.mockResolvedValue({
+			data: {
+				data: {
+					id: 42,
+					catalog_id: 99,
+					coffee_catalog: { id: 99, name: 'Private lot', public_coffee: false }
+				}
+			},
+			error: undefined,
+			response: new Response(null, { status: 201 })
+		});
 	});
 
 	it('requires Parchment Intelligence or Mallard Studio access for user-owned reads', async () => {
@@ -226,5 +260,143 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		expect(dataMocks.addToInventory).not.toHaveBeenCalled();
 		expect(dataMocks.updateInventory).not.toHaveBeenCalled();
 		expect(dataMocks.deleteInventoryItem).not.toHaveBeenCalled();
+	});
+
+	it('creates a manual coffee and inventory lot atomically through the session SDK client', async () => {
+		const response = await POST(
+			makeEvent('/api/beans', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Idempotency-Key': 'manual-lot-request-1'
+				},
+				body: JSON.stringify({
+					manual_name: 'Private lot',
+					purchased_qty_lbs: 5,
+					purchase_date: '2026-07-26',
+					bean_cost: 42.5,
+					tax_ship_cost: 3.25,
+					notes: 'Direct trade sample',
+					region: 'Huila',
+					drying_method: 'Raised beds',
+					roast_recs: 'Light roast',
+					description_short: 'Pink Bourbon microlot',
+					cost_lb: 8.5,
+					cupping_notes: 'Peach and florals',
+					score_value: 87
+				})
+			}) as never
+		);
+
+		expect(response.status).toBe(200);
+		expect(parchmentMocks.createParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session'
+		});
+		expect(parchmentMocks.createInventory).toHaveBeenCalledWith(
+			{
+				manualCoffee: {
+					name: 'Private lot',
+					region: 'Huila',
+					dryingMethod: 'Raised beds',
+					roastRecommendations: 'Light roast',
+					shortDescription: 'Pink Bourbon microlot',
+					costPerLb: 8.5,
+					supplierCuppingNotes: 'Peach and florals',
+					scoreValue: 87
+				},
+				qty: 5,
+				purchaseDate: '2026-07-26',
+				cost: 42.5,
+				taxShip: 3.25,
+				notes: 'Direct trade sample'
+			},
+			{ idempotencyKey: 'manual-lot-request-1' }
+		);
+		expect(dataMocks.addToInventory).not.toHaveBeenCalled();
+		expect(await response.json()).toMatchObject({
+			id: 42,
+			catalog_id: 99,
+			coffee_catalog: { public_coffee: false }
+		});
+	});
+
+	it('requires a browser-stable idempotency key before creating a manual lot', async () => {
+		const response = await POST(
+			makeEvent('/api/beans', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ manual_name: 'Private lot', purchased_qty_lbs: 5 })
+			}) as never
+		);
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({
+			error: 'Idempotency-Key is required for manual coffee creation'
+		});
+		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
+		expect(dataMocks.addToInventory).not.toHaveBeenCalled();
+	});
+
+	it('rejects catalog-less inventory when no manual coffee name is supplied', async () => {
+		const response = await POST(
+			makeEvent('/api/beans', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ manual_name: '   ', purchased_qty_lbs: 5 })
+			}) as never
+		);
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({
+			error: 'A catalog reference or manual coffee name is required'
+		});
+		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
+		expect(dataMocks.addToInventory).not.toHaveBeenCalled();
+	});
+
+	it('preserves the Parchment status and message when manual creation is rejected', async () => {
+		parchmentMocks.createInventory.mockResolvedValue({
+			data: undefined,
+			error: { error: { code: 'idempotency_conflict', message: 'Key belongs to another request' } },
+			response: new Response(null, { status: 409 })
+		});
+
+		const response = await POST(
+			makeEvent('/api/beans', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Idempotency-Key': 'reused-key'
+				},
+				body: JSON.stringify({ manual_name: 'Private lot', purchased_qty_lbs: 5 })
+			}) as never
+		);
+
+		expect(response.status).toBe(409);
+		expect(await response.json()).toEqual({ error: 'Key belongs to another request' });
+	});
+
+	it('keeps catalog-backed creation on the existing path in this atomic slice', async () => {
+		const catalogQuery = {
+			select: vi.fn(() => catalogQuery),
+			eq: vi.fn(() => catalogQuery),
+			single: vi.fn(async () => ({ data: { id: 7 }, error: null }))
+		};
+		const event = makeEvent('/api/beans', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ catalog_id: 7, purchased_qty_lbs: 5 })
+		}) as ReturnType<typeof makeEvent>;
+		event.locals.supabase.from = vi.fn(() => catalogQuery);
+
+		const response = await POST(event as never);
+
+		expect(response.status).toBe(200);
+		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
+		expect(dataMocks.addToInventory).toHaveBeenCalledWith(
+			event.locals.supabase,
+			'ppi-user',
+			expect.objectContaining({ catalog_id: 7, purchased_qty_lbs: 5 })
+		);
 	});
 });

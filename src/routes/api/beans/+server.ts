@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
 import { AuthError, getUserRoles, requireParchmentAccess } from '$lib/server/auth';
+import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 import type { RequestHandler } from './$types';
-import type { Database } from '$lib/types/database.types';
+import type { InventoryCreateRequest } from '@purveyors/sdk';
 import {
 	buildGreenCoffeeQuery,
 	processGreenCoffeeData,
@@ -9,6 +10,73 @@ import {
 } from '$lib/server/greenCoffeeUtils.js';
 import { addToInventory, updateInventory, deleteInventoryItem } from '$lib/data/inventory.js';
 import { GREEN_COFFEE_INV_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
+
+type ManualInventoryCreateRequest = Extract<
+	InventoryCreateRequest,
+	{ manualCoffee: Record<string, unknown> }
+>;
+
+const MANUAL_COFFEE_FIELD_MAP = {
+	country: 'country',
+	region: 'region',
+	processing: 'processing',
+	drying_method: 'dryingMethod',
+	roast_recs: 'roastRecommendations',
+	lot_size: 'lotSize',
+	bag_size: 'bagSize',
+	packaging: 'packaging',
+	cultivar_detail: 'cultivarDetail',
+	grade: 'grade',
+	appearance: 'appearance',
+	description_short: 'shortDescription',
+	farm_notes: 'farmNotes',
+	type: 'type',
+	description_long: 'longDescription',
+	cost_lb: 'costPerLb',
+	source: 'source',
+	cupping_notes: 'supplierCuppingNotes',
+	arrival_date: 'arrivalDate',
+	score_value: 'scoreValue'
+} as const;
+
+function manualInventoryRequest(bean: Record<string, unknown>): ManualInventoryCreateRequest {
+	const manualCoffee: Record<string, string | number> = {
+		name: String(bean.manual_name ?? '')
+	};
+
+	for (const [legacyField, parchmentField] of Object.entries(MANUAL_COFFEE_FIELD_MAP)) {
+		const value = bean[legacyField];
+		if (typeof value === 'string' && value.trim() !== '') {
+			manualCoffee[parchmentField] = value;
+		} else if (typeof value === 'number' && Number.isFinite(value)) {
+			manualCoffee[parchmentField] = value;
+		}
+	}
+
+	return {
+		manualCoffee: manualCoffee as ManualInventoryCreateRequest['manualCoffee'],
+		qty: bean.purchased_qty_lbs as number,
+		...(typeof bean.purchase_date === 'string' && bean.purchase_date
+			? { purchaseDate: bean.purchase_date }
+			: {}),
+		...(typeof bean.bean_cost === 'number' ? { cost: bean.bean_cost } : {}),
+		...(typeof bean.tax_ship_cost === 'number' ? { taxShip: bean.tax_ship_cost } : {}),
+		...(typeof bean.notes === 'string' && bean.notes ? { notes: bean.notes } : {})
+	};
+}
+
+function parchmentErrorMessage(error: unknown): string {
+	if (typeof error !== 'object' || error === null || !('error' in error)) {
+		return 'Failed to create bean';
+	}
+	const envelope = error.error;
+	return typeof envelope === 'object' &&
+		envelope !== null &&
+		'message' in envelope &&
+		typeof envelope.message === 'string'
+		? envelope.message
+		: 'Failed to create bean';
+}
 
 export const GET: RequestHandler = async (event) => {
 	const { url, locals } = event;
@@ -84,75 +152,46 @@ export const POST: RequestHandler = async (event) => {
 		const { supabase } = event.locals;
 
 		const bean = await event.request.json();
-		let catalogId = bean.catalog_id;
+		const catalogId = bean.catalog_id;
 
-		// If this is a manual entry (no catalog_id but has manual_name), create catalog entry first
-		if (!catalogId && bean.manual_name) {
-			const catalogData: Record<string, unknown> = {
-				name: bean.manual_name,
-				coffee_user: user.id,
-				public_coffee: false,
-				last_updated: new Date().toISOString().split('T')[0] // date format
-			};
-
-			// Add optional catalog fields if they exist
-			const optionalCatalogFields = [
-				'region',
-				'processing',
-				'drying_method',
-				'roast_recs',
-				'lot_size',
-				'bag_size',
-				'packaging',
-				'cultivar_detail',
-				'grade',
-				'appearance',
-				'description_short',
-				'farm_notes',
-				'type',
-				'description_long',
-				'cost_lb',
-				'price_per_lb',
-				'price_tiers',
-				'source',
-				'cupping_notes',
-				'arrival_date',
-				'score_value',
-				'ai_description',
-				'ai_tasting_notes'
-			];
-
-			optionalCatalogFields.forEach((field) => {
-				if (bean[field] !== undefined && bean[field] !== null && bean[field] !== '') {
-					catalogData[field] = bean[field];
-				}
-			});
-
-			const { data: newCatalogEntry, error: catalogError } = await supabase
-				.from('coffee_catalog')
-				.insert(catalogData as Database['public']['Tables']['coffee_catalog']['Insert'])
-				.select('id')
-				.single();
-
-			if (catalogError) {
-				console.error('Error creating catalog entry:', catalogError);
-				return json({ error: 'Failed to create catalog entry' }, { status: 500 });
+		if (!catalogId && typeof bean.manual_name === 'string' && bean.manual_name.trim()) {
+			const idempotencyKey = event.request.headers.get('idempotency-key')?.trim();
+			if (!idempotencyKey) {
+				return json(
+					{ error: 'Idempotency-Key is required for manual coffee creation' },
+					{ status: 400 }
+				);
 			}
 
-			catalogId = newCatalogEntry.id;
+			const client = await createParchmentServerClient(event, { mode: 'session' });
+			const { data, error, response } = await client.inventory.create(
+				manualInventoryRequest(bean),
+				{ idempotencyKey }
+			);
+
+			if (error || !data) {
+				return json({ error: parchmentErrorMessage(error) }, { status: response?.status ?? 500 });
+			}
+
+			return json(data.data);
+		}
+
+		if (!catalogId) {
+			return json(
+				{ error: 'A catalog reference or manual coffee name is required' },
+				{ status: 400 }
+			);
 		}
 
 		// If this bean references a catalog item, verify it exists
-		if (catalogId) {
-			const { data: catalogBean, error: catalogError } = await supabase
-				.from('coffee_catalog')
-				.select('id')
-				.eq('id', catalogId)
-				.single();
+		const { data: catalogBean, error: catalogError } = await supabase
+			.from('coffee_catalog')
+			.select('id')
+			.eq('id', catalogId)
+			.single();
 
-			if (catalogError || !catalogBean) {
-				return json({ error: 'Invalid catalog reference' }, { status: 400 });
-			}
+		if (catalogError || !catalogBean) {
+			return json({ error: 'Invalid catalog reference' }, { status: 400 });
 		}
 
 		const created = await addToInventory(supabase, user.id, {
@@ -171,6 +210,12 @@ export const POST: RequestHandler = async (event) => {
 	} catch (error) {
 		if (error instanceof AuthError) {
 			return json({ error: error.message }, { status: error.status });
+		}
+		if (error instanceof ParchmentConfigError) {
+			return json(
+				{ error: 'Manual inventory creation is temporarily unavailable' },
+				{ status: 503 }
+			);
 		}
 
 		console.error('Error creating bean:', error);

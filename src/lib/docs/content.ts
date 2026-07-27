@@ -1498,7 +1498,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Mutation behavior',
 				bullets: [
-					'POST /api/beans can create manual catalog entries when no catalog_id is supplied and manual_name is present.',
+					'POST /api/beans creates manual coffees through Parchment when no catalog_id is supplied and manual_name is present. The browser supplies an Idempotency-Key so the owner-private catalog row and linked inventory lot are created atomically and can be retried safely.',
 					'PUT /api/beans requires an id query parameter and filters updates down to known inventory columns before writing.',
 					'DELETE /api/beans requires an id query parameter and enforces ownership before removing inventory and dependent data.',
 					"POST /api/update-stocked-status recalculates one item by coffee_id. PUT scans the caller's full inventory and batch-updates any mismatched stocked flags."
