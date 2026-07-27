@@ -4,6 +4,13 @@ _Created: 2026-07-19_
 _Status: Superseded for implementation by `notes/market-wire/implementation-plan.md` on 2026-07-26. Retained as the original concept record._
 _Related: `notes/implementation-plans/market-index-decision-surface-plan.md` (signal backbone), ADR-005/007/008_
 
+> **Historical-only record. Do not implement from this file.** Every section below
+> preserves the original Market Wire concept, including the superseded `/wire`,
+> `wire_editions`, edition-facts, free-subscriber archive, and WP-1 through WP-4
+> assumptions. For current Market Brief naming, contracts, and dependency order,
+> use `notes/market-wire/implementation-plan.md`. If any text below conflicts with
+> that plan, this record is historical and the implementation plan wins.
+
 ## Product definition
 
 A free weekly green-coffee market brief, published in the `/wire` web area plus email edition. Each edition blends:
@@ -68,7 +75,7 @@ One `wire_editions` record (structured JSON: metadata, sections, stories, eviden
 
 Saved sourcing intent (origins, processes, suppliers, price ceilings, score floors) filters the same edition-facts stream. Paid subscribers get: an "your market" section prepended to their email, immediate signal alerts between editions, and archive queries scoped to their intent. This reuses watchlist/saved-intent primitives rather than inventing a second preference model.
 
-## Build sequencing
+## Historical build sequencing (superseded)
 
 - **Phase 0 (now, ~4 weeks):** build the minimal core in the approved mergeable order: WP-1 wire contract, WP-2 generation job, WP-3 `/wire` surface, and WP-4 email dispatch. Run the first editions through the explicit human publish gate while the pipeline proves its cadence and content quality; OpenClaw may assist with review, but production generation lives in the scraper/parchment-api/coffee-app pipeline. Direct outreach and the founding offer ($12/$5/$15) remain part of launch validation, with ≥50 qualified free subscribers and ≥5 paid founders (or equivalent design-partner signal) as the commercial checkpoint.
 - **Phase 1:** operate and refine the core publication pipeline, content schema, audience funnel, and delivery reliability. Remove the human gate only after several successful editions earn that autonomy.
@@ -114,4 +121,4 @@ Trade houses and importers (StoneX, Sucafina, major importers) already publish f
 1. ESP choice and whether free email subs create app accounts immediately or at first login.
 2. Exact public-archive gating (free-with-account vs. trailing N editions public) — affects SEO vs. conversion tradeoff.
 3. Futures-data display licensing vs. editorial-mention approach.
-4. **Resolved:** launch editions live at `/wire`; `/blog` remains the deep-analysis surface, with cross-links between the two formats.
+4. **Historical resolution:** the original concept placed launch editions at `/wire` and kept `/blog` as the deep-analysis surface. This is superseded by the current `notes/market-wire/implementation-plan.md` plan, which places both formats under `/blog`.

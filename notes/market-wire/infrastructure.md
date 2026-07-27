@@ -4,7 +4,15 @@ _Created: 2026-07-19_
 _Status: Superseded for implementation by `notes/market-wire/implementation-plan.md` on 2026-07-26. Retained for architectural history._
 _Companions: `notes/market-wire/research.md` (research package), `notes/market-wire/design.md` (product/pipeline design)_
 
-## 0. Recommendation up front
+> **Historical-only record. Do not implement from this file.** Every section below
+> preserves the original Market Wire pipeline recommendation, including the
+> superseded `/wire`, `wire_editions`, edition-facts, publication-object, and WP-1
+> through WP-4 assumptions. For current Market Brief ownership, contracts, and MR
+> dependency order, use `notes/market-wire/implementation-plan.md`. If any text
+> below conflicts with that plan, this record is historical and the implementation
+> plan wins.
+
+## 0. Historical recommendation (superseded)
 
 Yes to repositioning coffee-scraper as the **ingestion and generation layer** of the business, with one hard boundary: coffee-scraper produces and assembles; **parchment-api remains the canonical contract layer** that stores, gates, and serves editions. Coffee-app stays a renderer. The weekly wire cron runs on the scraper host alongside the nightly scrape.
 
@@ -89,7 +97,7 @@ Failure modes: any stage failing leaves no partial publication (draft-only write
 - **coffee-app owns generation:** rejected outright; it is a reference client and a serverless deploy with no batch profile.
 - **OpenClaw owns production generation:** rejected; fine for the pilot, but the business pipeline can't depend on a personal agent host. OpenClaw remains the R&D and review loop.
 
-## 7. MVP build plan (pilot rejected; building core now)
+## 7. Historical MVP build plan (superseded)
 
 Design principle: **minimal and flexible.** The stable, permanent contract is the pipeline shape — facts in, validated sections out, one canonical edition object, publish transaction, renderers. Section types and report contents are schema-versioned jsonb payloads that can change every quarter without touching the pipeline. Reliability comes from the draft/publish separation, the deterministic numeric-validation gate, and loud cadence-failure alerts — not from content stability.
 

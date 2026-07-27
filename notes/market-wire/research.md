@@ -3,8 +3,14 @@
 _Created: 2026-07-19_
 _Status: Original research record. Market Brief naming, product corrections, and
 implementation authority now live in `notes/market-wire/implementation-plan.md`._
-_The research below is preserved unchanged as historical context and must not be
-used as implementation guidance._
+
+> **Historical-only record.** The material below preserves the original 2026-07-19
+> research and is not current product, pipeline, access, or implementation guidance.
+> References to Market Wire, `/wire`, edition-facts, `wire_editions`, publication
+> objects, free-subscriber archive access, and WP-1 through WP-4 are historical
+> concepts. Use `notes/market-wire/implementation-plan.md` for the current Market
+> Brief contracts and dependency order.
+
 _Companions: `notes/market-wire/implementation-plan.md` (authoritative plan),
 `notes/market-wire/design.md` and `notes/market-wire/infrastructure.md` (original
 concept records)_
@@ -119,13 +125,21 @@ Free-to-paid at 2-5% (4% B2B pipeline bar); paid newsletter medians $83-$230/sub
 8. **The locked moment** — one personalized paid tease ("3 lots matched your Ethiopia mandate this week"), not a generic banner.
 9. **Sign-off** — business on top, personal at the bottom; the human ending gets forwarded.
 
-Pipeline and guardrails (edition-facts JSON, LLM narrates only payload facts, numeric validation pass, canonical publication object rendering to web/email/RSS) are specified in `notes/market-wire/design.md` and implemented through the work packages in `notes/market-wire/infrastructure.md`.
+Historical pipeline note: this original research described edition-facts JSON,
+LLM narration constrained to a facts payload, numeric validation, and a shared
+publication object. That design is superseded. Current edition generation and
+delivery guidance lives only in `notes/market-wire/implementation-plan.md`.
 
-## 9. GTM (revised 2026-07-19: pilot rejected, building core infrastructure now)
+## 9. Historical GTM framing (superseded)
 
-Reed's call: weekly report generation at cadence is a foundational capability for an intelligence company, not a hypothesis to test with a handmade artifact. The MVP infrastructure gets built now — minimal and flexible (stable pipeline contract, schema-versioned report contents) — per the work packages in `notes/market-wire/infrastructure.md` §7.
+Historical GTM note: the original proposal treated weekly report generation as a
+foundational build rather than a handmade pilot and referred to the old work
+packages in `notes/market-wire/infrastructure.md`. That recommendation is
+retained as research context only; the current MR sequence is defined solely in
+`notes/market-wire/implementation-plan.md`.
 
-GTM mechanics carried forward from the launch concept, now running on real infrastructure from edition #1:
+The original GTM framing carried forward these launch mechanics for a hypothetical
+first edition:
 
 1. Direct outreach to 50 named roasters, buyers, writers, supplier-side contacts to seed the list.
 2. Founding offer: $12 Intelligence / $5 Studio / $15 bundle, price-locked first 50.

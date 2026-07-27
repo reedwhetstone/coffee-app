@@ -76,8 +76,9 @@
       and measure subscriber growth, open rate, evidence clicks, repeat visits,
       replies, and paid conversions. Establish corrections, independence,
       sponsorship, attribution, futures-data, and observable-market methodology
-      policies before scaling distribution. Strategy:
-      `notes/big-ideas/2026-07-19-purveyors-market-wire.md`.
+      policies before scaling distribution. Current contracts and dependency order
+      remain solely in `notes/market-wire/implementation-plan.md`; the original
+      Market Wire proposal is retained only as historical strategic context.
 
 - [ ] **Reprice the self-serve product family.** Change Parchment Intelligence
       from $39 to about $12/month, Mallard Studio from $9 to about $5/month, and add a
