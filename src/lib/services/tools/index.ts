@@ -42,7 +42,7 @@ export type { ChatToolAccess, ChatToolDeps, InventoryRoastSummary } from './shar
  *   coffee_catalog_search  → searchCatalog()
  *   green_coffee_inventory → listInventory()
  *   roast_profiles         → listRoasts()
- *   bean_tasting_notes     → getTastingNotes()
+ *   bean_tasting_notes     → client.tasting.get()
  *   find_similar_beans     → findSimilarBeans()
  *   catalog_facets         → getCatalogFacets()  (caller-visible valid filter values)
  *   supplier_list          → getSupplierList()   (caller-visible supplier universe)

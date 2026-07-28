@@ -51,7 +51,10 @@
       `notes/implementation-plans/2026-07-04-catalog-shell-performance-headless-plan.md`.
       Shipped coffee-app consumer slices now cover sourcing briefs (#500), tracked
       lots (#501), chat price index (#503), API usage (#504), chat similarity (#505),
-      analytics price history (#506), and the legacy green-inventory tool (#508).
+      analytics price history (#506), the legacy green-inventory tool (#508), and
+      authenticated Portfolio reads (#509). Authenticated tasting reads already use
+      the SDK; the obsolete direct-Supabase helper is removed by the current tasting
+      boundary cleanup.
       Manual inventory PR #507 was closed after repeated review showed batch
       transaction semantics belonged upstream; Parchment PR #133 is the replacement
       prerequisite. Continue with independently mergeable consumers while that
