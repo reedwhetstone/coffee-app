@@ -24,6 +24,7 @@ export interface InventoryRoastSummary {
 	total_roasts: number;
 	last_roast_date: string | null;
 	total_oz_in: number;
+	total_oz_out: number;
 }
 
 /**
@@ -40,24 +41,36 @@ export async function attachRoastSummaries<T extends InventoryResult>(
 	const ids = rows.map((row) => row.id).filter((id): id is number => typeof id === 'number');
 	if (ids.length > 0) {
 		const roasts = (
-			await collectOffsetPages({
-				fetchPage: async (offset) => {
-					const { data, error } = await client.roasts.list({ limit: 200, offset });
-					return unwrapParchment({ data, error }).data;
-				},
-				key: (roast) => roast.roast_id
-			})
-		).filter((roast) => roast.coffee_id != null && ids.includes(roast.coffee_id));
+			await Promise.all(
+				ids.map((coffeeId) =>
+					collectOffsetPages({
+						fetchPage: async (offset) => {
+							const { data, error } = await client.roasts.list({
+								coffee_id: coffeeId,
+								limit: 200,
+								offset
+							});
+							return unwrapParchment({ data, error }).data;
+						},
+						key: (roast) => roast.roast_id
+					})
+				)
+			)
+		)
+			.flat()
+			.filter((roast) => roast.coffee_id != null && ids.includes(roast.coffee_id));
 
 		for (const roast of roasts) {
 			if (roast.coffee_id == null) continue;
 			const existing = summaries.get(roast.coffee_id) ?? {
 				total_roasts: 0,
 				last_roast_date: null,
-				total_oz_in: 0
+				total_oz_in: 0,
+				total_oz_out: 0
 			};
 			existing.total_roasts += 1;
 			existing.total_oz_in += typeof roast.oz_in === 'number' ? roast.oz_in : 0;
+			existing.total_oz_out += typeof roast.oz_out === 'number' ? roast.oz_out : 0;
 			const roastDate = typeof roast.roast_date === 'string' ? roast.roast_date : null;
 			if (roastDate && (!existing.last_roast_date || roastDate > existing.last_roast_date)) {
 				existing.last_roast_date = roastDate;
@@ -71,7 +84,8 @@ export async function attachRoastSummaries<T extends InventoryResult>(
 		roast_summary: summaries.get(row.id as number) ?? {
 			total_roasts: 0,
 			last_roast_date: null,
-			total_oz_in: 0
+			total_oz_in: 0,
+			total_oz_out: 0
 		}
 	}));
 }

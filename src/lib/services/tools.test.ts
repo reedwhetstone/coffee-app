@@ -344,7 +344,8 @@ describe('createChatTools entitlement allowlist', () => {
 		expect(result?.inventory[0].roast_summary).toEqual({
 			total_roasts: 2,
 			last_roast_date: '2026-06-01',
-			total_oz_in: 28
+			total_oz_in: 28,
+			total_oz_out: 0
 		});
 		expect(result?.filters_applied.include_roast_summary).toBe(true);
 	});
