@@ -44,8 +44,15 @@ describe('portfolio inventory deletion', () => {
 		expect(refresh).not.toHaveBeenCalled();
 	});
 
+	it('refreshes a stale portfolio when the inventory row is already absent', async () => {
+		const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 404 }));
+		const refresh = vi.fn().mockResolvedValue(undefined);
+
+		await expect(deletePortfolioBean(fetcher, 17, refresh)).resolves.toEqual({ ok: true });
+		expect(refresh).toHaveBeenCalledOnce();
+	});
+
 	it.each([
-		[404, 'This coffee is no longer in your inventory.'],
 		[429, 'Too many inventory changes were requested. Wait a moment, then try again.'],
 		[503, 'Inventory deletion is temporarily unavailable. Try again shortly.']
 	])('maps status %i to useful feedback', async (status, message) => {

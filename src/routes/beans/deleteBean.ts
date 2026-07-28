@@ -57,6 +57,14 @@ export async function deletePortfolioBean(
 		return { ok: true };
 	}
 
+	// A 404 means the desired end state is already true, usually because this
+	// page is stale relative to another session. Refresh instead of leaving a
+	// nonexistent inventory row visible.
+	if (response.status === 404) {
+		await onDeleted();
+		return { ok: true };
+	}
+
 	let body: unknown;
 	try {
 		body = await response.json();
