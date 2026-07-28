@@ -378,6 +378,8 @@
 	}
 
 	async function handleSubmit() {
+		if (isSubmitting) return;
+
 		if (isManualEntry && pendingManualBatchId) {
 			try {
 				isSubmitting = true;
