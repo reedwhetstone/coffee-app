@@ -11,7 +11,8 @@ describe('attachRoastSummaries pagination', () => {
 			roast_id: index + 1,
 			coffee_id: 7,
 			roast_date: `2026-01-${String((index % 28) + 1).padStart(2, '0')}`,
-			oz_in: 1
+			oz_in: 1,
+			oz_out: 0.8
 		}));
 		const list = vi.fn(async ({ offset }: { offset?: number }) => {
 			const start = offset ?? 0;
@@ -22,6 +23,7 @@ describe('attachRoastSummaries pagination', () => {
 		const result = await attachRoastSummaries({ roasts: { list } } as never, inventory);
 		expect(result[0].roast_summary.total_roasts).toBe(550);
 		expect(result[0].roast_summary.total_oz_in).toBe(550);
+		expect(result[0].roast_summary.total_oz_out).toBeCloseTo(440);
 		expect(list.mock.calls.length).toBeGreaterThan(5);
 	});
 
