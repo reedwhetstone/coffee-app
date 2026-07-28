@@ -1498,7 +1498,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Mutation behavior',
 				bullets: [
-					'POST /api/beans can create manual catalog entries when no catalog_id is supplied and manual_name is present.',
+					'POST /api/beans keeps catalog-backed creation and the legacy scalar manual payload on their compatibility paths, while the coffee-app form sends manual multi-row purchases through one atomic Parchment batch. After an uncertain response, GET /api/beans?manualBatchId=<uuid> reconciles the durable batch result.',
 					'PUT /api/beans requires an id query parameter and filters updates down to known inventory columns before writing.',
 					'DELETE /api/beans requires an id query parameter and enforces ownership. Deletion is blocked while roast profiles or sales depend on the inventory item.',
 					"POST /api/update-stocked-status recalculates one item by coffee_id. PUT scans the caller's full inventory and batch-updates any mismatched stocked flags."

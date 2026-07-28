@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import LoadingButton from '$lib/components/LoadingButton.svelte';
 	import {
 		calculatePurchaseTotal,
@@ -12,6 +13,34 @@
 		CoffeeCatalog,
 		CoffeeFormData
 	} from '$lib/types/component.types';
+	import type { components } from '@purveyors/sdk';
+
+	type ManualCoffeeCreate = components['schemas']['ManualCoffeeCreate'];
+	type ManualInventoryBatchCreateRequest =
+		components['schemas']['ManualInventoryBatchCreateRequest'];
+
+	const MANUAL_COFFEE_FIELD_MAP = {
+		region: 'region',
+		processing: 'processing',
+		drying_method: 'dryingMethod',
+		roast_recs: 'roastRecommendations',
+		lot_size: 'lotSize',
+		bag_size: 'bagSize',
+		packaging: 'packaging',
+		cultivar_detail: 'cultivarDetail',
+		grade: 'grade',
+		appearance: 'appearance',
+		description_short: 'shortDescription',
+		farm_notes: 'farmNotes',
+		type: 'type',
+		description_long: 'longDescription',
+		cost_lb: 'costPerLb',
+		source: 'source',
+		cupping_notes: 'supplierCuppingNotes',
+		arrival_date: 'arrivalDate',
+		score_value: 'scoreValue'
+	} as const;
+	const PENDING_MANUAL_BATCH_STORAGE_KEY = 'purveyors:pending-manual-inventory-batch';
 
 	const {
 		bean = null,
@@ -21,7 +50,7 @@
 	} = $props<{
 		bean: InventoryWithCatalog | null;
 		onClose: () => void;
-		onSubmit: (bean: CoffeeFormData) => void;
+		onSubmit: (beans: CoffeeFormData[]) => void;
 		catalogBeans?: CoffeeCatalog[];
 	}>();
 
@@ -55,6 +84,29 @@
 	});
 
 	let selectedOptionalFields = $state<string[]>([]);
+	let pendingManualBatchId = $state<string | null>(
+		browser ? sessionStorage.getItem(PENDING_MANUAL_BATCH_STORAGE_KEY) : null
+	);
+
+	function setPendingManualBatchId(batchId: string | null) {
+		pendingManualBatchId = batchId;
+		if (!browser) return;
+		if (batchId) {
+			sessionStorage.setItem(PENDING_MANUAL_BATCH_STORAGE_KEY, batchId);
+		} else {
+			sessionStorage.removeItem(PENDING_MANUAL_BATCH_STORAGE_KEY);
+		}
+	}
+
+	function isDefinitiveManualBatchFailure(response: Response, data: { code?: unknown }): boolean {
+		if ([401, 403, 408, 425, 429].includes(response.status) || response.status >= 500) {
+			return false;
+		}
+		if (response.status === 409) {
+			return data.code === 'idempotency_conflict';
+		}
+		return true;
+	}
 
 	// Shared form data for batch-level fields
 	let sharedFormData = $state({
@@ -226,7 +278,99 @@
 		});
 	}
 
+	function manualCoffee(
+		beanData: (typeof batchBeans)[number],
+		beanIndex: number
+	): ManualCoffeeCreate {
+		const coffee: Record<string, string | number> = {
+			name: String(beanData.manual_name).trim()
+		};
+
+		if (beanIndex === 0) {
+			for (const fieldName of selectedOptionalFields) {
+				const parchmentField =
+					MANUAL_COFFEE_FIELD_MAP[fieldName as keyof typeof MANUAL_COFFEE_FIELD_MAP];
+				const value = optionalFields[fieldName];
+				if (
+					parchmentField &&
+					((typeof value === 'string' && value.trim() !== '') ||
+						(typeof value === 'number' && Number.isFinite(value)))
+				) {
+					coffee[parchmentField] = value;
+				}
+			}
+		}
+
+		return coffee as ManualCoffeeCreate;
+	}
+
+	function manualBatchRequest(): ManualInventoryBatchCreateRequest {
+		return {
+			purchaseDate: sharedFormData.purchase_date,
+			taxShipTotal: sharedFormData.tax_ship_cost,
+			...(sharedFormData.notes ? { notes: sharedFormData.notes } : {}),
+			items: batchBeans.map((beanData, beanIndex) => ({
+				rowId: crypto.randomUUID(),
+				manualCoffee: manualCoffee(beanData, beanIndex),
+				qty: Number(beanData.purchased_qty_lbs),
+				...(typeof beanData.bean_cost === 'number' ? { cost: beanData.bean_cost } : {})
+			}))
+		};
+	}
+
+	async function finishManualBatch(response: Response): Promise<boolean> {
+		if (response.ok) {
+			const createdBeans = (await response.json()) as CoffeeFormData[];
+			setPendingManualBatchId(null);
+			onSubmit(createdBeans);
+			onClose();
+			return true;
+		}
+
+		const data = (await response.json()) as { error?: unknown; code?: unknown };
+		if (isDefinitiveManualBatchFailure(response, data)) {
+			setPendingManualBatchId(null);
+		}
+		alert(`Failed to create beans: ${String(data.error ?? 'Unknown error')}`);
+		return false;
+	}
+
+	async function submitManualBatch(): Promise<void> {
+		if (pendingManualBatchId) {
+			const response = await fetch(
+				`/api/beans?manualBatchId=${encodeURIComponent(pendingManualBatchId)}`
+			);
+			await finishManualBatch(response);
+			return;
+		}
+
+		const batchId = crypto.randomUUID();
+		setPendingManualBatchId(batchId);
+		const response = await fetch('/api/beans', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Idempotency-Key': batchId
+			},
+			body: JSON.stringify(manualBatchRequest())
+		});
+		await finishManualBatch(response);
+	}
+
 	async function handleSubmit() {
+		if (isManualEntry && pendingManualBatchId) {
+			try {
+				isSubmitting = true;
+				await submitManualBatch();
+			} catch (error) {
+				console.error('Error reconciling manual inventory batch:', error);
+				alert('Failed to reconcile this batch. Please try again.');
+			} finally {
+				isSubmitting = false;
+			}
+			return;
+		}
+
 		if (!batchBeans || !batchBeans.length) {
 			alert('Please add at least one bean to the batch');
 			return;
@@ -240,12 +384,7 @@
 		try {
 			isSubmitting = true;
 
-			// Calculate tax/ship cost per bean
-			const taxShipPerBean = sharedFormData.tax_ship_cost / batchBeans.length;
-
-			const createdBeans = [];
-
-			// Process each bean in the batch
+			// Validate the whole batch before any mutation.
 			for (let i = 0; i < batchBeans.length; i++) {
 				const beanData = batchBeans[i];
 
@@ -282,7 +421,18 @@
 						}
 					}
 				}
+			}
 
+			if (isManualEntry) {
+				await submitManualBatch();
+				return;
+			}
+
+			const taxShipPerBean = sharedFormData.tax_ship_cost / batchBeans.length;
+			const createdBeans = [];
+
+			for (let i = 0; i < batchBeans.length; i++) {
+				const beanData = batchBeans[i];
 				// Prepare bean data for submission
 				const cleanedBean: CoffeeFormData = {
 					...Object.fromEntries(
@@ -297,20 +447,6 @@
 					notes: sharedFormData.notes,
 					last_updated: new Date().toISOString()
 				};
-
-				// For manual entry, include optional catalog fields (only for first bean)
-				if (isManualEntry && beanData.manual_name && i === 0) {
-					// Add selected optional fields to the submission
-					selectedOptionalFields.forEach((fieldName) => {
-						if (optionalFields[fieldName] !== '' && optionalFields[fieldName] !== null) {
-							cleanedBean[fieldName] = optionalFields[fieldName];
-						}
-					});
-					// Don't set catalog_id for manual entries - let the API create it
-					if (cleanedBean.catalog_id === null) {
-						delete cleanedBean.catalog_id;
-					}
-				}
 
 				const response = await fetch('/api/beans', {
 					method: 'POST',
@@ -473,7 +609,7 @@
 						required
 					/>
 					<p class="text-xs text-muted">
-						This amount will be divided equally among all beans in this purchase
+						Parchment will allocate this total across the batch in exact cents
 					</p>
 				</div>
 			</div>

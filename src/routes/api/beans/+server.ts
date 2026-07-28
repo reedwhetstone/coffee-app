@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { AuthError, getUserRoles, requireParchmentAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
+import type { components } from '@purveyors/sdk';
 import type { Database } from '$lib/types/database.types';
 import {
 	buildGreenCoffeeQuery,
@@ -9,18 +10,50 @@ import {
 } from '$lib/server/greenCoffeeUtils.js';
 import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 import {
+	createParchmentManualInventoryBatch,
 	deleteParchmentInventoryItem,
 	fetchParchmentInventoryProjection,
+	getParchmentManualInventoryBatch,
 	ParchmentInventoryError
 } from '$lib/server/parchmentInventory';
 import { addToInventory, updateInventory } from '$lib/data/inventory.js';
 import { GREEN_COFFEE_INV_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
 
+type ManualInventoryBatchCreateRequest = components['schemas']['ManualInventoryBatchCreateRequest'];
+
+function legacyParchmentError(body: unknown): { error: string; code?: string } {
+	if (
+		typeof body !== 'object' ||
+		body === null ||
+		!('error' in body) ||
+		typeof body.error !== 'object' ||
+		body.error === null
+	) {
+		return { error: 'Parchment inventory request failed' };
+	}
+
+	const envelope = body.error as Record<string, unknown>;
+	return {
+		error:
+			typeof envelope.message === 'string'
+				? envelope.message
+				: 'Parchment inventory request failed',
+		...(typeof envelope.code === 'string' ? { code: envelope.code } : {})
+	};
+}
+
 export const GET: RequestHandler = async (event) => {
 	const { url, locals } = event;
+	const manualBatchId = url.searchParams.get('manualBatchId');
 	try {
 		const id = url.searchParams.get('id');
 		const shareToken = url.searchParams.get('share');
+
+		if (manualBatchId) {
+			await requireParchmentAccess(event);
+			const client = await createParchmentServerClient(event, { mode: 'session' });
+			return json(await getParchmentManualInventoryBatch(client, manualBatchId));
+		}
 
 		// If share token is provided, verify it and show shared data
 		if (shareToken) {
@@ -79,6 +112,15 @@ export const GET: RequestHandler = async (event) => {
 		if (error instanceof AuthError) {
 			return json({ data: [], error: error.message }, { status: error.status });
 		}
+		if (manualBatchId && error instanceof ParchmentInventoryError) {
+			return json(legacyParchmentError(error.body), { status: error.status });
+		}
+		if (manualBatchId && error instanceof ParchmentConfigError) {
+			return json(
+				{ error: 'Manual inventory reconciliation is temporarily unavailable' },
+				{ status: 503 }
+			);
+		}
 
 		console.error('Error querying beans:', error);
 		return json({ data: [], error: 'Failed to fetch beans' });
@@ -91,18 +133,35 @@ export const POST: RequestHandler = async (event) => {
 		const { supabase } = event.locals;
 
 		const bean = await event.request.json();
+		if (Array.isArray(bean.items)) {
+			const batchId = event.request.headers.get('idempotency-key')?.trim();
+			if (!batchId) {
+				return json(
+					{ error: 'Idempotency-Key is required for manual inventory batches' },
+					{ status: 400 }
+				);
+			}
+
+			const client = await createParchmentServerClient(event, { mode: 'session' });
+			const created = await createParchmentManualInventoryBatch(
+				client,
+				bean as ManualInventoryBatchCreateRequest,
+				batchId
+			);
+			return json(created, { status: 201 });
+		}
+
 		let catalogId = bean.catalog_id;
 
-		// If this is a manual entry (no catalog_id but has manual_name), create catalog entry first
+		// Preserve the established scalar contract while supported callers move to
+		// the atomic batch shape. The coffee-app form no longer uses this bridge.
 		if (!catalogId && bean.manual_name) {
 			const catalogData: Record<string, unknown> = {
 				name: bean.manual_name,
 				coffee_user: user.id,
 				public_coffee: false,
-				last_updated: new Date().toISOString().split('T')[0] // date format
+				last_updated: new Date().toISOString().split('T')[0]
 			};
-
-			// Add optional catalog fields if they exist
 			const optionalCatalogFields = [
 				'region',
 				'processing',
@@ -129,23 +188,21 @@ export const POST: RequestHandler = async (event) => {
 				'ai_tasting_notes'
 			];
 
-			optionalCatalogFields.forEach((field) => {
+			for (const field of optionalCatalogFields) {
 				if (bean[field] !== undefined && bean[field] !== null && bean[field] !== '') {
 					catalogData[field] = bean[field];
 				}
-			});
+			}
 
 			const { data: newCatalogEntry, error: catalogError } = await supabase
 				.from('coffee_catalog')
 				.insert(catalogData as Database['public']['Tables']['coffee_catalog']['Insert'])
 				.select('id')
 				.single();
-
 			if (catalogError) {
 				console.error('Error creating catalog entry:', catalogError);
 				return json({ error: 'Failed to create catalog entry' }, { status: 500 });
 			}
-
 			catalogId = newCatalogEntry.id;
 		}
 
@@ -160,6 +217,11 @@ export const POST: RequestHandler = async (event) => {
 			if (catalogError || !catalogBean) {
 				return json({ error: 'Invalid catalog reference' }, { status: 400 });
 			}
+		} else {
+			return json(
+				{ error: 'A catalog reference or manual inventory batch is required' },
+				{ status: 400 }
+			);
 		}
 
 		const created = await addToInventory(supabase, user.id, {
@@ -178,6 +240,15 @@ export const POST: RequestHandler = async (event) => {
 	} catch (error) {
 		if (error instanceof AuthError) {
 			return json({ error: error.message }, { status: error.status });
+		}
+		if (error instanceof ParchmentInventoryError) {
+			return json(legacyParchmentError(error.body), { status: error.status });
+		}
+		if (error instanceof ParchmentConfigError) {
+			return json(
+				{ error: 'Manual inventory creation is temporarily unavailable' },
+				{ status: 503 }
+			);
 		}
 
 		console.error('Error creating bean:', error);

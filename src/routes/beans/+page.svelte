@@ -252,7 +252,7 @@
 
 	// Function to handle editing
 
-	async function handleFormSubmit(_formData: CoffeeFormData) {
+	async function handleFormSubmit(_formData: CoffeeFormData[]) {
 		isSaving = 'Saving...';
 		try {
 			await refreshData();
