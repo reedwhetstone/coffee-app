@@ -27,6 +27,11 @@ vi.mock('$lib/server/parchmentSales', () => ({
 	fetchParchmentSales: parchmentMocks.fetchParchmentSales
 }));
 
+vi.mock('$lib/server/principal', () => ({
+	isSessionPrincipal: (principal: { authKind?: string } | undefined) =>
+		principal?.authKind === 'session'
+}));
+
 import { GET, POST } from './+server';
 
 function makeEvent(role: 'viewer' | 'member' | 'admin' = 'viewer') {
@@ -46,16 +51,34 @@ function makeEvent(role: 'viewer' | 'member' | 'admin' = 'viewer') {
 	};
 }
 
-function makeGetEvent(authenticated = true) {
+function makeGetEvent(
+	authenticated = true,
+	options: { principalUserId?: string; cookieUserId?: string; authorization?: string } = {}
+) {
+	const principalUserId = options.principalUserId ?? 'user-1';
+	const cookieUserId = options.cookieUserId ?? principalUserId;
 	return {
-		request: new Request('https://app.test/api/profit'),
+		request: new Request('https://app.test/api/profit', {
+			headers: options.authorization ? { Authorization: options.authorization } : undefined
+		}),
 		locals: {
 			supabase: { direct: true },
+			principal: authenticated
+				? {
+						authKind: 'session',
+						isAuthenticated: true,
+						userId: principalUserId
+					}
+				: {
+						authKind: 'anonymous',
+						isAuthenticated: false,
+						userId: null
+					},
 			safeGetSession: vi.fn().mockResolvedValue(
 				authenticated
 					? {
 							session: { access_token: 'token' },
-							user: { id: 'user-1' }
+							user: { id: cookieUserId }
 						}
 					: { session: null, user: null }
 			)
@@ -95,6 +118,30 @@ describe('/api/profit GET', () => {
 		});
 		expect(parchmentMocks.fetchParchmentSales).toHaveBeenCalledWith(client);
 		expect(salesMocks.getProfitData).toHaveBeenCalledWith(event.locals.supabase, 'user-1');
+	});
+
+	it('uses the normalized session principal for both sales and profit on mixed credentials', async () => {
+		const event = makeGetEvent(true, {
+			principalUserId: 'header-user',
+			cookieUserId: 'cookie-user',
+			authorization: 'Bearer header-session-token'
+		});
+		const client = { sales: { list: vi.fn() } };
+		parchmentMocks.createParchmentServerClient.mockResolvedValue(client);
+		parchmentMocks.fetchParchmentSales.mockResolvedValue([]);
+		salesMocks.getProfitData.mockResolvedValue([]);
+
+		const response = await GET(event as never);
+
+		expect(response.status).toBe(200);
+		expect(parchmentMocks.createParchmentServerClient).toHaveBeenCalledWith(event, {
+			mode: 'session'
+		});
+		expect(salesMocks.getProfitData).toHaveBeenCalledWith(
+			event.locals.supabase,
+			'header-user'
+		);
+		expect(event.locals.safeGetSession).not.toHaveBeenCalled();
 	});
 
 	it('rejects unauthenticated requests before creating a Parchment client', async () => {

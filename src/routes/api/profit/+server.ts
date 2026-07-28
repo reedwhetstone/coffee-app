@@ -10,21 +10,21 @@ import {
 } from '$lib/data/sales.js';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { fetchParchmentSales } from '$lib/server/parchmentSales';
+import { isSessionPrincipal } from '$lib/server/principal';
 import { SALES_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
 import { checkRole } from '$lib/types/auth.types';
 
 export const GET: RequestHandler = async (event) => {
 	try {
-		const { supabase, safeGetSession } = event.locals;
-		const { session, user } = await safeGetSession();
-		if (!session || !user) {
+		const { supabase, principal } = event.locals;
+		if (!principal || !isSessionPrincipal(principal)) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
 		const client = await createParchmentServerClient(event, { mode: 'session' });
 		const [sales, profit] = await Promise.all([
 			fetchParchmentSales(client),
-			getProfitData(supabase, user.id)
+			getProfitData(supabase, principal.userId)
 		]);
 
 		return json({ sales, profit });
