@@ -9,6 +9,7 @@
 	import { goto } from '$app/navigation';
 	import { canManagePortfolio } from '$lib/services/portfolioAccess';
 	import { loadBeanPickerCatalog } from './catalogPicker';
+	import { deletePortfolioBean } from './deleteBean';
 	import { createTrackedLotStateController } from '$lib/client/trackedLots';
 
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
@@ -136,6 +137,7 @@
 	let isSharedPortfolioView = $derived(Boolean(page.url.searchParams.get('share')));
 	let canAddPortfolioCoffee = $derived(canManagePortfolioRows && !isSharedPortfolioView);
 	let error = $state<string | null>(null);
+	let deleteError = $state<string | null>(null);
 	let isSaving = $state<string | null>(null);
 	let catalogLoadPromise: Promise<void> | null = null;
 
@@ -234,21 +236,15 @@
 	// Function to handle bean deletion
 	async function deleteBean(id: number) {
 		isSaving = 'Deleting bean...';
+		deleteError = null;
 		try {
-			const response = await fetch(`/api/beans?id=${id}`, {
-				method: 'DELETE'
-			});
-
-			if (response.ok) {
-				await refreshData();
-			} else {
-				const errorData = await response.json();
-				console.error('Failed to delete bean:', errorData.error || 'Unknown error');
-				await refreshData();
+			const result = await deletePortfolioBean(fetch, id, refreshData);
+			if (!result.ok) {
+				deleteError = result.message || 'Failed to delete this coffee.';
 			}
 		} catch (error) {
 			console.error('Error deleting bean:', error);
-			await refreshData();
+			deleteError = 'Inventory deletion is temporarily unavailable. Try again shortly.';
 		} finally {
 			isSaving = null;
 		}
@@ -628,6 +624,15 @@
 			</FormShell>
 
 			<!-- Quick Actions -->
+			{#if deleteError}
+				<div
+					class="mb-6 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger"
+					role="alert"
+				>
+					{deleteError}
+				</div>
+			{/if}
+
 			{#if typedFilteredData && typedFilteredData.length > 0}
 				<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
 					<div class="text-sm text-muted">

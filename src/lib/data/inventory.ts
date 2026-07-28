@@ -11,9 +11,6 @@
  *    a re-export shim for backwards compatibility).
  *  - getInventoryWithRoastSummary handles the GenUI tool's joined query; the
  *    route handler is responsible for reshaping into its response envelope.
- *  - deleteInventoryItem cascades to sales, roast_profiles (and their
- *    temps/events), then deletes the inventory row and optionally the
- *    user-owned catalog entry.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -253,93 +250,6 @@ export async function updateInventory(
 	const { data: updatedRow } = await buildGreenCoffeeQuery(supabase).eq('id', id).single();
 
 	return processGreenCoffeeData([updatedRow])[0];
-}
-
-/**
- * Delete an inventory item, cascading to roast_profiles (and their temps/events),
- * then optionally the user-owned private catalog entry.
- *
- * Verifies user ownership before deleting.
- */
-export async function deleteInventoryItem(
-	supabase: SupabaseClient,
-	id: number,
-	userId: string
-): Promise<void> {
-	// Verify ownership and get catalog_id for potential cascade
-	const { data: existing } = await supabase
-		.from('green_coffee_inv')
-		.select('user, catalog_id')
-		.eq('id', id)
-		.single();
-
-	if (!existing || existing.user !== userId) {
-		throw new Error('Unauthorized');
-	}
-
-	// Cascade-delete sales rows referencing this inventory item
-	const { error: salesError } = await supabase.from('sales').delete().eq('green_coffee_inv_id', id);
-	if (salesError) throw salesError;
-
-	// Cascade-delete roast profiles: temps and events first, then profiles
-	const { data: roastProfiles, error: selectError } = await supabase
-		.from('roast_profiles')
-		.select('roast_id')
-		.eq('coffee_id', id);
-
-	if (selectError) throw selectError;
-
-	if (roastProfiles && roastProfiles.length > 0) {
-		const roastIds = roastProfiles.map((p: { roast_id: number }) => p.roast_id);
-
-		const { error: tempError } = await supabase
-			.from('roast_temperatures')
-			.delete()
-			.in('roast_id', roastIds);
-		if (tempError) throw tempError;
-
-		const { error: eventError } = await supabase
-			.from('roast_events')
-			.delete()
-			.in('roast_id', roastIds);
-		if (eventError) throw eventError;
-
-		const { error: profileError } = await supabase
-			.from('roast_profiles')
-			.delete()
-			.eq('coffee_id', id);
-		if (profileError) throw profileError;
-	}
-
-	// Delete the inventory row
-	const { error: deleteError } = await supabase.from('green_coffee_inv').delete().eq('id', id);
-
-	if (deleteError) throw deleteError;
-
-	// Optionally cascade-delete the private user-owned catalog entry
-	if (existing.catalog_id) {
-		const { data: catalogEntry } = await supabase
-			.from('coffee_catalog')
-			.select('coffee_user, public_coffee')
-			.eq('id', existing.catalog_id)
-			.single();
-
-		if (
-			catalogEntry &&
-			catalogEntry.coffee_user === userId &&
-			catalogEntry.public_coffee === false
-		) {
-			const { error: catalogDeleteError } = await supabase
-				.from('coffee_catalog')
-				.delete()
-				.eq('id', existing.catalog_id);
-
-			if (catalogDeleteError) {
-				console.error('Error deleting user-owned catalog entry:', catalogDeleteError);
-				// Don't fail the whole operation if catalog deletion fails
-			}
-		}
-	}
 }
 
 /**

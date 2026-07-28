@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchParchmentInventoryProjection } from './parchmentInventory';
+import {
+	deleteParchmentInventoryItem,
+	fetchParchmentInventoryProjection,
+	ParchmentInventoryError
+} from './parchmentInventory';
 
 describe('fetchParchmentInventoryProjection', () => {
 	it('paginates owner resources and preserves the beans-page projection', async () => {
@@ -129,5 +133,51 @@ describe('fetchParchmentInventoryProjection', () => {
 			})
 		).toEqual([]);
 		expect(roastList).not.toHaveBeenCalled();
+	});
+
+	it('accepts the canonical inventory delete response', async () => {
+		const inventoryDelete = vi.fn().mockResolvedValue({
+			data: { data: { id: 7, deleted: true } }
+		});
+
+		await expect(
+			deleteParchmentInventoryItem({ inventory: { delete: inventoryDelete } } as never, 7)
+		).resolves.toBeUndefined();
+		expect(inventoryDelete).toHaveBeenCalledWith(7);
+	});
+
+	it('preserves Parchment inventory status and body', async () => {
+		const body = {
+			error: {
+				code: 'dependency_conflict',
+				message: 'Inventory item has dependent records'
+			}
+		};
+		const inventoryDelete = vi.fn().mockResolvedValue({
+			error: body,
+			response: new Response(null, { status: 409 })
+		});
+
+		const promise = deleteParchmentInventoryItem(
+			{ inventory: { delete: inventoryDelete } } as never,
+			7
+		);
+
+		await expect(promise).rejects.toMatchObject({
+			name: 'ParchmentInventoryError',
+			status: 409,
+			body
+		});
+		await expect(promise).rejects.toBeInstanceOf(ParchmentInventoryError);
+	});
+
+	it('rejects a malformed inventory delete success response', async () => {
+		const inventoryDelete = vi.fn().mockResolvedValue({
+			data: { data: { id: 8, deleted: true } }
+		});
+
+		await expect(
+			deleteParchmentInventoryItem({ inventory: { delete: inventoryDelete } } as never, 7)
+		).rejects.toThrow('Parchment returned an invalid inventory delete response');
 	});
 });

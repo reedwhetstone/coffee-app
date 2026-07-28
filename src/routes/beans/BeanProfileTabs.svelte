@@ -8,6 +8,7 @@
 	import CuppingTab from './tabs/CuppingTab.svelte';
 	import RoastingTab from './tabs/RoastingTab.svelte';
 	import AnalyticsTab from './tabs/AnalyticsTab.svelte';
+	import { INVENTORY_DELETE_CONFIRMATION } from './deleteBean';
 
 	let {
 		selectedBean,
@@ -22,7 +23,7 @@
 		canManagePortfolio?: boolean;
 		embedded?: boolean;
 		onUpdate: (bean: InventoryWithCatalog) => void;
-		onDelete: (id: number) => void;
+		onDelete: (id: number) => void | Promise<void>;
 	}>();
 
 	let currentTab = $state('overview');
@@ -202,17 +203,13 @@
 	async function deleteBean() {
 		if (processingUpdate) return;
 
-		if (
-			confirm(
-				'Are you sure you want to delete this bean? This will also delete all associated sales records, roast profiles, and logs.'
-			)
-		) {
+		if (confirm(INVENTORY_DELETE_CONFIRMATION)) {
+			processingUpdate = true;
 			try {
-				processingUpdate = true;
-				onDelete(selectedBean.id);
-				processingUpdate = false;
+				await onDelete(selectedBean.id);
 			} catch (error) {
 				console.error('Error during bean deletion:', error);
+			} finally {
 				processingUpdate = false;
 			}
 		}
