@@ -120,6 +120,12 @@ mergeable deletion or migration slice before it can be called complete.
 Tracked-lot portfolio reads and writes are no longer included in this debt list;
 coffee-app now consumes the Parchment-owned portfolio contract through the SDK.
 
+Authenticated tasting reads are also no longer migration debt. The chat tool and
+legacy compatibility route consume the Parchment tasting contract through the
+SDK, and the obsolete direct-Supabase tasting helper has been removed. Owner
+cupping-note and rating writes remain part of the inventory-mutation cutover so
+the web preserves its complete notes payload and overall rating.
+
 Parchment Console API-usage pages also consume the session-only
 `ParchmentClient.apiUsage.get` contract. Owner traffic totals remain aggregate,
 while monthly quota state is derived only from exact per-key counts because plan
