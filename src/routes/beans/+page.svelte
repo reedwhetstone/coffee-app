@@ -56,6 +56,7 @@
 		catalogData?: CoffeeCatalog[];
 		role?: 'viewer' | 'member' | 'admin';
 		ppiAccess?: boolean;
+		user?: { id: string } | null;
 		trackedLots?: Array<{
 			catalogId: number;
 			stocked: boolean | null;
@@ -620,6 +621,7 @@
 					onClose={hideForm}
 					onSubmit={handleFormSubmit}
 					catalogBeans={catalogData}
+					ownerId={data?.user?.id ?? null}
 				/>
 			</FormShell>
 

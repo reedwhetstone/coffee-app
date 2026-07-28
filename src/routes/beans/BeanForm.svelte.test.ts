@@ -54,7 +54,8 @@ describe('BeanForm atomic manual inventory batches', () => {
 			bean: null,
 			onClose: vi.fn(),
 			onSubmit,
-			catalogBeans: []
+			catalogBeans: [],
+			ownerId: 'user-a'
 		});
 		await fireEvent.click(screen.getAllByRole('button', { name: /Add Bean/ })[0]);
 		await fillManualRows(['First lot', 'Second lot']);
@@ -97,7 +98,8 @@ describe('BeanForm atomic manual inventory batches', () => {
 			bean: null,
 			onClose: vi.fn(),
 			onSubmit: vi.fn(),
-			catalogBeans: []
+			catalogBeans: [],
+			ownerId: 'user-a'
 		});
 
 		expect(
@@ -133,7 +135,8 @@ describe('BeanForm atomic manual inventory batches', () => {
 			bean: null,
 			onClose: vi.fn(),
 			onSubmit,
-			catalogBeans: []
+			catalogBeans: [],
+			ownerId: 'user-a'
 		});
 		await fireEvent.click(screen.getAllByRole('button', { name: /Add Bean/ })[0]);
 		await fillManualRows(['Committed first lot', 'Committed second lot']);
@@ -174,7 +177,8 @@ describe('BeanForm atomic manual inventory batches', () => {
 			bean: null,
 			onClose: firstClose,
 			onSubmit: vi.fn(),
-			catalogBeans: []
+			catalogBeans: [],
+			ownerId: 'user-a'
 		});
 		await fillManualRows(['Committed lot']);
 		await fireEvent.submit(first.container.querySelector('form')!);
@@ -188,7 +192,8 @@ describe('BeanForm atomic manual inventory batches', () => {
 			bean: null,
 			onClose: vi.fn(),
 			onSubmit,
-			catalogBeans: []
+			catalogBeans: [],
+			ownerId: 'user-a'
 		});
 		expect(screen.getByRole('status')).toHaveTextContent(
 			'Editing is locked until it is reconciled'
@@ -204,6 +209,73 @@ describe('BeanForm atomic manual inventory batches', () => {
 			)
 		).toHaveLength(1);
 		expect(onSubmit).toHaveBeenCalledWith(committed);
+	});
+
+	it('isolates pending batches between owners in the same tab', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID')
+			.mockReturnValueOnce(UUIDS[0])
+			.mockReturnValueOnce(UUIDS[1])
+			.mockReturnValueOnce(UUIDS[2])
+			.mockReturnValueOnce(UUIDS[3]);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response(503, { error: 'Response was uncertain' }))
+			.mockResolvedValueOnce(response(201, [{ id: 42 }]))
+			.mockResolvedValueOnce(response(200, [{ id: 41 }]));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const ownerA = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: [],
+			ownerId: 'user-a'
+		});
+		await fillManualRows(['Owner A lot']);
+		await fireEvent.submit(ownerA.container.querySelector('form')!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+		expect(sessionStorage.getItem('purveyors:pending-manual-inventory-batch:user-a')).toBe(
+			UUIDS[0]
+		);
+		ownerA.unmount();
+
+		const ownerBSubmit = vi.fn();
+		const ownerB = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: ownerBSubmit,
+			catalogBeans: [],
+			ownerId: 'user-b'
+		});
+		expect(screen.queryByRole('status')).not.toBeInTheDocument();
+		await fillManualRows(['Owner B lot']);
+		await fireEvent.submit(ownerB.container.querySelector('form')!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+		expect(fetchMock.mock.calls[1][0]).toBe('/api/beans');
+		expect((fetchMock.mock.calls[1][1] as RequestInit).method).toBe('POST');
+		expect(sessionStorage.getItem('purveyors:pending-manual-inventory-batch:user-a')).toBe(
+			UUIDS[0]
+		);
+		expect(sessionStorage.getItem('purveyors:pending-manual-inventory-batch:user-b')).toBeNull();
+		expect(ownerBSubmit).toHaveBeenCalledWith([{ id: 42 }]);
+		ownerB.unmount();
+
+		const ownerASubmit = vi.fn();
+		const reopenedOwnerA = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: ownerASubmit,
+			catalogBeans: [],
+			ownerId: 'user-a'
+		});
+		expect(screen.getByRole('status')).toHaveTextContent(
+			'Editing is locked until it is reconciled'
+		);
+		await fireEvent.submit(reopenedOwnerA.container.querySelector('form')!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+		expect(fetchMock.mock.calls[2][0]).toBe(`/api/beans?manualBatchId=${UUIDS[0]}`);
+		expect(ownerASubmit).toHaveBeenCalledWith([{ id: 41 }]);
+		expect(sessionStorage.getItem('purveyors:pending-manual-inventory-batch:user-a')).toBeNull();
 	});
 
 	it('uses a fresh batch UUID after a definitive validation rejection', async () => {
@@ -222,7 +294,8 @@ describe('BeanForm atomic manual inventory batches', () => {
 			bean: null,
 			onClose: vi.fn(),
 			onSubmit: vi.fn(),
-			catalogBeans: []
+			catalogBeans: [],
+			ownerId: 'user-a'
 		});
 		await fillManualRows(['Invalid lot']);
 

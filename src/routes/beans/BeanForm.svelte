@@ -46,12 +46,14 @@
 		bean = null,
 		onClose,
 		onSubmit,
-		catalogBeans = []
+		catalogBeans = [],
+		ownerId = null
 	} = $props<{
 		bean: InventoryWithCatalog | null;
 		onClose: () => void;
 		onSubmit: (beans: CoffeeFormData[]) => void;
 		catalogBeans?: CoffeeCatalog[];
+		ownerId?: string | null;
 	}>();
 
 	let isManualEntry = $state(true);
@@ -84,17 +86,35 @@
 	});
 
 	let selectedOptionalFields = $state<string[]>([]);
-	let pendingManualBatchId = $state<string | null>(
-		browser ? sessionStorage.getItem(PENDING_MANUAL_BATCH_STORAGE_KEY) : null
-	);
+
+	function pendingManualBatchStorageKey(ownerId: string | null): string | null {
+		return ownerId ? `${PENDING_MANUAL_BATCH_STORAGE_KEY}:${ownerId}` : null;
+	}
+
+	function readPendingManualBatchId(ownerId: string | null): string | null {
+		const storageKey = pendingManualBatchStorageKey(ownerId);
+		return browser && storageKey ? sessionStorage.getItem(storageKey) : null;
+	}
+
+	let pendingManualBatchId = $state<string | null>(null);
+	let activeOwnerId = $state<string | null>(null);
+
+	$effect(() => {
+		const currentOwnerId = ownerId;
+		if (currentOwnerId === activeOwnerId) return;
+		activeOwnerId = currentOwnerId;
+		pendingManualBatchId = readPendingManualBatchId(currentOwnerId);
+	});
 
 	function setPendingManualBatchId(batchId: string | null) {
 		pendingManualBatchId = batchId;
 		if (!browser) return;
+		const storageKey = pendingManualBatchStorageKey(ownerId);
+		if (!storageKey) return;
 		if (batchId) {
-			sessionStorage.setItem(PENDING_MANUAL_BATCH_STORAGE_KEY, batchId);
+			sessionStorage.setItem(storageKey, batchId);
 		} else {
-			sessionStorage.removeItem(PENDING_MANUAL_BATCH_STORAGE_KEY);
+			sessionStorage.removeItem(storageKey);
 		}
 	}
 
