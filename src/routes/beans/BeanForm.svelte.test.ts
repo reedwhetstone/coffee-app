@@ -63,6 +63,7 @@ describe('BeanForm atomic manual inventory batches', () => {
 			target: { value: '5.01' }
 		});
 
+		expect(screen.getByRole('button', { name: 'Add 2 Beans' })).toHaveAttribute('type', 'button');
 		await fireEvent.submit(container.querySelector('form')!);
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
 

@@ -989,6 +989,7 @@
 			</button>
 			<LoadingButton
 				variant="primary"
+				type="button"
 				loading={isSubmitting}
 				loadingText={pendingManualBatchId
 					? 'Reconciling Batch...'
