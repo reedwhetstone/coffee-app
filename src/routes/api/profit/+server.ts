@@ -2,25 +2,28 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { Database } from '$lib/types/database.types';
 import {
-	listSales,
 	getProfitData,
 	recordSale,
 	updateSale,
 	deleteSale,
 	type SaleCreateInput
 } from '$lib/data/sales.js';
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import { fetchParchmentSales } from '$lib/server/parchmentSales';
 import { SALES_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
 import { checkRole } from '$lib/types/auth.types';
 
-export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async (event) => {
 	try {
+		const { supabase, safeGetSession } = event.locals;
 		const { session, user } = await safeGetSession();
 		if (!session || !user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
+		const client = await createParchmentServerClient(event, { mode: 'session' });
 		const [sales, profit] = await Promise.all([
-			listSales(supabase, user.id),
+			fetchParchmentSales(client),
 			getProfitData(supabase, user.id)
 		]);
 
