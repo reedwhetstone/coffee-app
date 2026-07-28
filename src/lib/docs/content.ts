@@ -1500,7 +1500,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'POST /api/beans can create manual catalog entries when no catalog_id is supplied and manual_name is present.',
 					'PUT /api/beans requires an id query parameter and filters updates down to known inventory columns before writing.',
-					'DELETE /api/beans requires an id query parameter and enforces ownership before removing inventory and dependent data.',
+					'DELETE /api/beans requires an id query parameter and enforces ownership. Deletion is blocked while roast profiles or sales depend on the inventory item.',
 					"POST /api/update-stocked-status recalculates one item by coffee_id. PUT scans the caller's full inventory and batch-updates any mismatched stocked flags."
 				],
 				callout: {

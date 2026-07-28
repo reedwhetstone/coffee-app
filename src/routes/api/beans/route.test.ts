@@ -25,13 +25,13 @@ const dataMocks = vi.hoisted(() => ({
 		rows.map((row) => ({ ...row, roast_profiles: [] }))
 	),
 	addToInventory: vi.fn(),
-	updateInventory: vi.fn(),
-	deleteInventoryItem: vi.fn()
+	updateInventory: vi.fn()
 }));
 
 const parchmentMocks = vi.hoisted(() => ({
 	createParchmentServerClient: vi.fn(),
-	fetchParchmentInventoryProjection: vi.fn()
+	fetchParchmentInventoryProjection: vi.fn(),
+	inventoryDelete: vi.fn()
 }));
 
 vi.mock('$lib/server/auth', () => ({
@@ -48,17 +48,20 @@ vi.mock('$lib/server/greenCoffeeUtils.js', () => ({
 
 vi.mock('$lib/data/inventory.js', () => ({
 	addToInventory: dataMocks.addToInventory,
-	updateInventory: dataMocks.updateInventory,
-	deleteInventoryItem: dataMocks.deleteInventoryItem
+	updateInventory: dataMocks.updateInventory
 }));
 
 vi.mock('$lib/server/parchmentClient', () => ({
 	createParchmentServerClient: parchmentMocks.createParchmentServerClient
 }));
 
-vi.mock('$lib/server/parchmentInventory', () => ({
-	fetchParchmentInventoryProjection: parchmentMocks.fetchParchmentInventoryProjection
-}));
+vi.mock('$lib/server/parchmentInventory', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('$lib/server/parchmentInventory')>();
+	return {
+		...actual,
+		fetchParchmentInventoryProjection: parchmentMocks.fetchParchmentInventoryProjection
+	};
+});
 
 import { DELETE, GET, POST, PUT } from './+server';
 
@@ -106,8 +109,13 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		authMocks.getUserRoles.mockResolvedValue(['viewer']);
 		dataMocks.addToInventory.mockResolvedValue({ id: 1 });
 		dataMocks.updateInventory.mockResolvedValue({ id: 1 });
-		dataMocks.deleteInventoryItem.mockResolvedValue(undefined);
-		parchmentMocks.createParchmentServerClient.mockResolvedValue({ kind: 'parchment-client' });
+		parchmentMocks.inventoryDelete.mockResolvedValue({
+			data: { data: { id: 1, deleted: true } }
+		});
+		parchmentMocks.createParchmentServerClient.mockResolvedValue({
+			kind: 'parchment-client',
+			inventory: { delete: parchmentMocks.inventoryDelete }
+		});
 		parchmentMocks.fetchParchmentInventoryProjection.mockResolvedValue([]);
 	});
 
@@ -195,7 +203,7 @@ describe('/api/beans Portfolio entitlement gating', () => {
 			mode: 'session'
 		});
 		expect(parchmentMocks.fetchParchmentInventoryProjection).toHaveBeenCalledWith(
-			{ kind: 'parchment-client' },
+			expect.objectContaining({ kind: 'parchment-client' }),
 			{ id: undefined, includeRoastProfiles: false }
 		);
 		expect(dataMocks.buildGreenCoffeeQuery).not.toHaveBeenCalled();
@@ -217,7 +225,7 @@ describe('/api/beans Portfolio entitlement gating', () => {
 
 		expect(response.status).toBe(200);
 		expect(parchmentMocks.fetchParchmentInventoryProjection).toHaveBeenCalledWith(
-			{ kind: 'parchment-client' },
+			expect.objectContaining({ kind: 'parchment-client' }),
 			{ id: 1, includeRoastProfiles: true }
 		);
 		expect(dataMocks.buildGreenCoffeeQuery).not.toHaveBeenCalled();
@@ -265,6 +273,73 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		expect(del.status).toBe(403);
 		expect(dataMocks.addToInventory).not.toHaveBeenCalled();
 		expect(dataMocks.updateInventory).not.toHaveBeenCalled();
-		expect(dataMocks.deleteInventoryItem).not.toHaveBeenCalled();
+		expect(parchmentMocks.inventoryDelete).not.toHaveBeenCalled();
 	});
+
+	it('deletes through a session-mode Parchment client and preserves the legacy success envelope', async () => {
+		const response = await DELETE(makeEvent('/api/beans?id=1', { method: 'DELETE' }) as never);
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ success: true });
+		expect(authMocks.requireParchmentAccess).toHaveBeenCalledOnce();
+		expect(parchmentMocks.createParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session'
+		});
+		expect(parchmentMocks.inventoryDelete).toHaveBeenCalledWith(1);
+	});
+
+	it.each([
+		['missing', '/api/beans'],
+		['non-numeric', '/api/beans?id=abc'],
+		['zero', '/api/beans?id=0'],
+		['negative', '/api/beans?id=-1'],
+		['decimal', '/api/beans?id=1.5'],
+		['outside PostgreSQL int4', '/api/beans?id=2147483648']
+	])('returns 400 for a %s inventory ID', async (_case, path) => {
+		const response = await DELETE(makeEvent(path, { method: 'DELETE' }) as never);
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({
+			success: false,
+			error: 'Invalid or missing inventory ID'
+		});
+		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
+		expect(parchmentMocks.inventoryDelete).not.toHaveBeenCalled();
+	});
+
+	it('returns 403 without constructing a Parchment client when access is denied', async () => {
+		authMocks.requireParchmentAccess.mockRejectedValue(
+			new authMocks.AuthError('Parchment Intelligence or Mallard Studio access required', 403)
+		);
+
+		const response = await DELETE(makeEvent('/api/beans?id=1', { method: 'DELETE' }) as never);
+
+		expect(response.status).toBe(403);
+		expect(await response.json()).toEqual({
+			success: false,
+			error: 'Parchment Intelligence or Mallard Studio access required'
+		});
+		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
+	});
+
+	it.each([404, 409, 429, 503])(
+		'relays upstream inventory delete status %i and body',
+		async (status) => {
+			const body = {
+				error: {
+					code: status === 409 ? 'dependency_conflict' : 'upstream_error',
+					message: `Parchment status ${status}`
+				}
+			};
+			parchmentMocks.inventoryDelete.mockResolvedValue({
+				error: body,
+				response: new Response(null, { status })
+			});
+
+			const response = await DELETE(makeEvent('/api/beans?id=1', { method: 'DELETE' }) as never);
+
+			expect(response.status).toBe(status);
+			expect(await response.json()).toEqual(body);
+		}
+	);
 });

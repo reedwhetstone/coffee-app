@@ -19,6 +19,37 @@ export type ParchmentInventoryProjection = Omit<InventoryResource, 'coffee_catal
 	}>;
 };
 
+type InventoryDeleteResult = {
+	data?: {
+		data?: {
+			id?: unknown;
+			deleted?: unknown;
+		};
+	};
+	error?: unknown;
+	response?: Response;
+};
+
+export class ParchmentInventoryError extends Error {
+	constructor(
+		public status: number,
+		public body: unknown
+	) {
+		super(
+			typeof body === 'object' &&
+				body !== null &&
+				'error' in body &&
+				typeof body.error === 'object' &&
+				body.error !== null &&
+				'message' in body.error &&
+				typeof body.error.message === 'string'
+				? body.error.message
+				: 'Parchment inventory request failed'
+		);
+		this.name = 'ParchmentInventoryError';
+	}
+}
+
 const PAGE_LIMIT = 200;
 
 function roastProjection(roast: RoastResource) {
@@ -119,4 +150,27 @@ export async function fetchParchmentInventoryProjection(
 				: []
 		};
 	});
+}
+
+/**
+ * Delete one owner-scoped inventory row through Parchment's safe mutation
+ * contract. Dependent roasts or sales remain intact and produce a 409.
+ */
+export async function deleteParchmentInventoryItem(
+	client: ParchmentClient,
+	id: number
+): Promise<void> {
+	const result = (await client.inventory.delete(id)) as InventoryDeleteResult;
+	if (result.error) {
+		if (result.response) {
+			throw new ParchmentInventoryError(result.response.status, result.error);
+		}
+		throw result.error instanceof Error
+			? result.error
+			: new Error('Parchment inventory request failed', { cause: result.error });
+	}
+
+	if (result.data?.data?.id !== id || result.data.data.deleted !== true) {
+		throw new Error('Parchment returned an invalid inventory delete response');
+	}
 }

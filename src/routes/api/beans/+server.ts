@@ -7,9 +7,13 @@ import {
 	processGreenCoffeeData,
 	stripRoastProfileData
 } from '$lib/server/greenCoffeeUtils.js';
-import { createParchmentServerClient } from '$lib/server/parchmentClient';
-import { fetchParchmentInventoryProjection } from '$lib/server/parchmentInventory';
-import { addToInventory, updateInventory, deleteInventoryItem } from '$lib/data/inventory.js';
+import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
+import {
+	deleteParchmentInventoryItem,
+	fetchParchmentInventoryProjection,
+	ParchmentInventoryError
+} from '$lib/server/parchmentInventory';
+import { addToInventory, updateInventory } from '$lib/data/inventory.js';
 import { GREEN_COFFEE_INV_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
 
 export const GET: RequestHandler = async (event) => {
@@ -223,31 +227,37 @@ export const PUT: RequestHandler = async (event) => {
 
 export const DELETE: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireParchmentAccess(event);
-		const { supabase } = event.locals;
+		await requireParchmentAccess(event);
 		const { url } = event;
 
 		const id = url.searchParams.get('id');
-		if (!id) {
-			return json({ success: false, error: 'No ID provided' }, { status: 400 });
+		if (!id || !/^\d+$/.test(id)) {
+			return json({ success: false, error: 'Invalid or missing inventory ID' }, { status: 400 });
 		}
 
-		try {
-			await deleteInventoryItem(supabase, Number(id), user.id);
-		} catch (err) {
-			if (err instanceof Error && err.message === 'Unauthorized') {
-				return json({ error: 'Unauthorized' }, { status: 403 });
-			}
-			throw err;
+		const inventoryId = Number(id);
+		if (!Number.isSafeInteger(inventoryId) || inventoryId <= 0 || inventoryId > 2_147_483_647) {
+			return json({ success: false, error: 'Invalid or missing inventory ID' }, { status: 400 });
 		}
 
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		await deleteParchmentInventoryItem(client, inventoryId);
 		return json({ success: true });
 	} catch (error) {
 		if (error instanceof AuthError) {
 			return json({ success: false, error: error.message }, { status: error.status });
 		}
+		if (error instanceof ParchmentInventoryError) {
+			return json(error.body, { status: error.status });
+		}
+		if (error instanceof ParchmentConfigError) {
+			return json(
+				{ success: false, error: 'Inventory deletion is temporarily unavailable' },
+				{ status: 503 }
+			);
+		}
 
-		console.error('Error deleting bean and associated data:', error);
+		console.error('Error deleting inventory item:', error);
 		return json({ success: false, error: 'Failed to delete bean' }, { status: 500 });
 	}
 };
