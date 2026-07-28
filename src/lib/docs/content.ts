@@ -1176,7 +1176,7 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/beans',
 							'GET POST PUT DELETE',
-							'GET: session or share token; writes: session',
+							'GET: Parchment Intelligence or Mallard Studio session, or share token; writes: Parchment Intelligence or Mallard Studio session',
 							'Internal product route',
 							"GET without a valid session returns an empty data array rather than a 401. share=<token> scopes reads to a shared bean or the owner's full inventory."
 						],
@@ -1468,7 +1468,7 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/beans',
 							'GET POST PUT DELETE',
-							'GET: session or share token; writes: session',
+							'GET: Parchment Intelligence or Mallard Studio session, or share token; writes: Parchment Intelligence or Mallard Studio session',
 							'Inventory CRUD plus shared-link reads'
 						],
 						[
@@ -1498,7 +1498,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Mutation behavior',
 				bullets: [
-					'POST /api/beans keeps catalog-backed creation and the legacy scalar manual payload on their compatibility paths, while the coffee-app form sends manual multi-row purchases through one atomic Parchment batch. After an uncertain response, GET /api/beans?manualBatchId=<uuid> reconciles the durable batch result.',
+					'POST /api/beans keeps catalog-backed creation and the legacy scalar manual payload on their compatibility paths, while the coffee-app form sends manual multi-row purchases through one atomic Parchment batch. Batch creation and GET /api/beans?manualBatchId=<uuid> both require a Parchment Intelligence or Mallard Studio session; after an uncertain response, that GET reconciles the durable batch result.',
 					'PUT /api/beans requires an id query parameter and filters updates down to known inventory columns before writing.',
 					'DELETE /api/beans requires an id query parameter and enforces ownership. Deletion is blocked while roast profiles or sales depend on the inventory item.',
 					"POST /api/update-stocked-status recalculates one item by coffee_id. PUT scans the caller's full inventory and batch-updates any mismatched stocked flags."

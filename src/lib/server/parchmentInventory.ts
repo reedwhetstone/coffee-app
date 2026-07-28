@@ -84,7 +84,19 @@ function projectManualBatch(
 	return result.items.map(({ resource }) => projectInventoryResource(resource));
 }
 
-function throwParchmentResultError(result: { error?: unknown; response?: Response }): never {
+function throwParchmentResultError(
+	result: { error?: unknown; response?: Response },
+	protocolError = false
+): never {
+	if (protocolError) {
+		throw new ParchmentInventoryError(502, {
+			error: {
+				code: 'invalid_response',
+				message: 'Parchment inventory response did not include a batch payload'
+			}
+		});
+	}
+
 	if (result.response) {
 		throw new ParchmentInventoryError(result.response.status, result.error);
 	}
@@ -198,8 +210,11 @@ export async function createParchmentManualInventoryBatch(
 	batchId: string
 ): Promise<ParchmentInventoryProjection[]> {
 	const result = await client.inventory.createManualBatch(body, { idempotencyKey: batchId });
-	if (result.error || !result.data?.data) {
-		throwParchmentResultError(result);
+	if (!result.data?.data) {
+		throwParchmentResultError(
+			result,
+			result.response?.ok === true || (!result.error && !result.response)
+		);
 	}
 	return projectManualBatch(result.data.data, batchId);
 }
@@ -210,8 +225,11 @@ export async function getParchmentManualInventoryBatch(
 	batchId: string
 ): Promise<ParchmentInventoryProjection[]> {
 	const result = await client.inventory.getManualBatch(batchId);
-	if (result.error || !result.data?.data) {
-		throwParchmentResultError(result);
+	if (!result.data?.data) {
+		throwParchmentResultError(
+			result,
+			result.response?.ok === true || (!result.error && !result.response)
+		);
 	}
 	return projectManualBatch(result.data.data, batchId);
 }

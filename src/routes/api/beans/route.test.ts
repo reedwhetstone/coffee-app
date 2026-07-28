@@ -497,6 +497,24 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		});
 	});
 
+	it('returns a non-2xx response for a malformed successful reconciliation payload', async () => {
+		parchmentMocks.getManualBatch.mockResolvedValue({
+			data: { data: undefined },
+			error: undefined,
+			response: new Response(null, { status: 200 })
+		});
+
+		const response = await GET(
+			makeEvent('/api/beans?manualBatchId=00000000-0000-4000-8000-000000000009') as never
+		);
+
+		expect(response.status).toBe(502);
+		expect(await response.json()).toEqual({
+			error: 'Parchment inventory response did not include a batch payload',
+			code: 'invalid_response'
+		});
+	});
+
 	it('preserves Parchment batch rejection status and error details', async () => {
 		parchmentMocks.createManualBatch.mockResolvedValue({
 			data: undefined,
