@@ -531,6 +531,16 @@
 		</p>
 	</div>
 
+	{#if pendingManualBatchId}
+		<div
+			class="mb-6 rounded-md border border-warning bg-warning-subtle p-3 text-sm text-warning-strong"
+			role="status"
+		>
+			A previous manual batch has an uncertain result. Editing is locked until it is reconciled.
+			Select the button below to check its status before starting a new purchase.
+		</div>
+	{/if}
+
 	<form
 		onsubmit={(e) => {
 			e.preventDefault();
@@ -548,6 +558,7 @@
 						bind:group={isManualEntry}
 						value={true}
 						onchange={resetFormData}
+						disabled={!!pendingManualBatchId}
 						class="sr-only"
 					/>
 					<div
@@ -562,7 +573,13 @@
 					</div>
 				</label>
 				<label class="inline-flex cursor-pointer items-center">
-					<input type="radio" bind:group={isManualEntry} value={false} class="sr-only" />
+					<input
+						type="radio"
+						bind:group={isManualEntry}
+						value={false}
+						disabled={!!pendingManualBatchId}
+						class="sr-only"
+					/>
 					<div
 						class="flex items-center gap-2 rounded-md border px-4 py-2 transition-all duration-200"
 						class:bg-accent={!isManualEntry}
@@ -589,6 +606,7 @@
 						id="purchase_date"
 						type="date"
 						bind:value={sharedFormData.purchase_date}
+						disabled={!!pendingManualBatchId}
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 						required
 					/>
@@ -605,6 +623,7 @@
 						min="0"
 						placeholder="0.00"
 						bind:value={sharedFormData.tax_ship_cost}
+						disabled={!!pendingManualBatchId}
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 						required
 					/>
@@ -629,6 +648,7 @@
 						id="source"
 						bind:value={sourceFilter}
 						onchange={handleSourceChange}
+						disabled={!!pendingManualBatchId}
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 					>
 						<option value="">All Sources</option>
@@ -648,6 +668,7 @@
 					type="button"
 					class="flex items-center gap-2 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 					onclick={addBeanToBatch}
+					disabled={!!pendingManualBatchId}
 				>
 					<span class="text-lg">+</span>
 					<span>Add Bean</span>
@@ -678,6 +699,7 @@
 								type="button"
 								class="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-xs text-white hover:bg-danger-strong"
 								onclick={() => removeBeanFromBatch(index)}
+								disabled={!!pendingManualBatchId}
 							>
 								✕
 							</button>
@@ -695,6 +717,7 @@
 										type="text"
 										bind:value={beanData.manual_name}
 										placeholder="Enter coffee name"
+										disabled={!!pendingManualBatchId}
 										class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 										required
 									/>
@@ -708,6 +731,7 @@
 										id="catalog-bean-{index}"
 										class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 										required
+										disabled={!!pendingManualBatchId}
 										value={beanData.catalog_id || ''}
 										onchange={(e) => handleBeanSelect(e, index)}
 									>
@@ -776,6 +800,7 @@
 									min="0"
 									bind:value={beanData.purchased_qty_lbs}
 									placeholder="0"
+									disabled={!!pendingManualBatchId}
 									class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 									required
 								/>
@@ -796,7 +821,7 @@
 									min="0"
 									placeholder="0.00"
 									bind:value={beanData.bean_cost}
-									disabled={!isManualEntry && !!tiers}
+									disabled={!!pendingManualBatchId || (!isManualEntry && !!tiers)}
 									class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 									required
 								/>
@@ -825,6 +850,7 @@
 						<select
 							id="field-selector"
 							class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
+							disabled={!!pendingManualBatchId}
 							onchange={(e) => {
 								const target = e.target as HTMLSelectElement;
 								const field = target.value;
@@ -869,6 +895,7 @@
 										id={`field-${fieldName}`}
 										bind:value={optionalFields[fieldName]}
 										rows="3"
+										disabled={!!pendingManualBatchId}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									></textarea>
 								{:else if fieldName === 'cost_lb' || fieldName === 'score_value'}
@@ -877,6 +904,7 @@
 										type="number"
 										step="0.01"
 										bind:value={optionalFields[fieldName]}
+										disabled={!!pendingManualBatchId}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									/>
 								{:else if fieldName === 'arrival_date'}
@@ -884,6 +912,7 @@
 										id={`field-${fieldName}`}
 										type="date"
 										bind:value={optionalFields[fieldName]}
+										disabled={!!pendingManualBatchId}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									/>
 								{:else}
@@ -891,6 +920,7 @@
 										id={`field-${fieldName}`}
 										type="text"
 										bind:value={optionalFields[fieldName]}
+										disabled={!!pendingManualBatchId}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									/>
 								{/if}
@@ -898,6 +928,7 @@
 							<button
 								type="button"
 								class="mt-6 rounded-md bg-danger px-2 py-1 text-xs text-white hover:bg-danger-strong"
+								disabled={!!pendingManualBatchId}
 								onclick={() => {
 									selectedOptionalFields = selectedOptionalFields.filter(
 										(f: string) => f !== fieldName
@@ -918,6 +949,7 @@
 					<textarea
 						id="notes"
 						bind:value={sharedFormData.notes}
+						disabled={!!pendingManualBatchId}
 						rows="3"
 						placeholder="Add any notes about this purchase..."
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
@@ -938,17 +970,21 @@
 			<LoadingButton
 				variant="primary"
 				loading={isSubmitting}
-				loadingText={batchBeans.length === 1
-					? 'Saving Bean...'
-					: `Saving ${batchBeans.length} Beans...`}
+				loadingText={pendingManualBatchId
+					? 'Reconciling Batch...'
+					: batchBeans.length === 1
+						? 'Saving Bean...'
+						: `Saving ${batchBeans.length} Beans...`}
 				onclick={handleSubmit}
 				disabled={catalogLoading}
 			>
-				{bean
-					? 'Update Bean'
-					: batchBeans.length === 1
-						? 'Add Bean'
-						: `Add ${batchBeans.length} Beans`}
+				{pendingManualBatchId
+					? 'Reconcile Pending Batch'
+					: bean
+						? 'Update Bean'
+						: batchBeans.length === 1
+							? 'Add Bean'
+							: `Add ${batchBeans.length} Beans`}
 			</LoadingButton>
 		</div>
 	</form>

@@ -116,7 +116,7 @@ describe('BeanForm atomic manual inventory batches', () => {
 		).toBeInTheDocument();
 	});
 
-	it('reconciles an uncertain batch UUID instead of retrying rows after one is removed', async () => {
+	it('locks the draft after an uncertain batch instead of allowing edits before reconciliation', async () => {
 		vi.spyOn(globalThis.crypto, 'randomUUID')
 			.mockReturnValueOnce(UUIDS[0])
 			.mockReturnValueOnce(UUIDS[1])
@@ -141,7 +141,10 @@ describe('BeanForm atomic manual inventory batches', () => {
 		const form = container.querySelector('form')!;
 		await fireEvent.submit(form);
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-		await fireEvent.click(screen.getByRole('button', { name: '✕' }));
+		expect(screen.getByRole('status')).toHaveTextContent(
+			'Editing is locked until it is reconciled'
+		);
+		expect(screen.getAllByLabelText('Coffee Name')[0]).toBeDisabled();
 		await fireEvent.submit(form);
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 
@@ -187,6 +190,10 @@ describe('BeanForm atomic manual inventory batches', () => {
 			onSubmit,
 			catalogBeans: []
 		});
+		expect(screen.getByRole('status')).toHaveTextContent(
+			'Editing is locked until it is reconciled'
+		);
+		expect(screen.getByLabelText('Coffee Name')).toBeDisabled();
 		await fireEvent.submit(reopened.container.querySelector('form')!);
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 
