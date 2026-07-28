@@ -29,6 +29,11 @@ const dataMocks = vi.hoisted(() => ({
 	deleteInventoryItem: vi.fn()
 }));
 
+const parchmentMocks = vi.hoisted(() => ({
+	createParchmentServerClient: vi.fn(),
+	fetchParchmentInventoryProjection: vi.fn()
+}));
+
 vi.mock('$lib/server/auth', () => ({
 	AuthError: authMocks.AuthError,
 	getUserRoles: authMocks.getUserRoles,
@@ -45,6 +50,14 @@ vi.mock('$lib/data/inventory.js', () => ({
 	addToInventory: dataMocks.addToInventory,
 	updateInventory: dataMocks.updateInventory,
 	deleteInventoryItem: dataMocks.deleteInventoryItem
+}));
+
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentServerClient: parchmentMocks.createParchmentServerClient
+}));
+
+vi.mock('$lib/server/parchmentInventory', () => ({
+	fetchParchmentInventoryProjection: parchmentMocks.fetchParchmentInventoryProjection
 }));
 
 import { DELETE, GET, POST, PUT } from './+server';
@@ -94,6 +107,8 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		dataMocks.addToInventory.mockResolvedValue({ id: 1 });
 		dataMocks.updateInventory.mockResolvedValue({ id: 1 });
 		dataMocks.deleteInventoryItem.mockResolvedValue(undefined);
+		parchmentMocks.createParchmentServerClient.mockResolvedValue({ kind: 'parchment-client' });
+		parchmentMocks.fetchParchmentInventoryProjection.mockResolvedValue([]);
 	});
 
 	it('requires Parchment Intelligence or Mallard Studio access for user-owned reads', async () => {
@@ -164,8 +179,9 @@ describe('/api/beans Portfolio entitlement gating', () => {
 	});
 
 	it('allows Parchment Intelligence users to read only their own Portfolio rows without roast history', async () => {
-		const query = makeQuery([{ id: 1, roast_profiles: [{ roast_id: 10 }] }]);
-		dataMocks.buildGreenCoffeeQuery.mockReturnValue(query);
+		parchmentMocks.fetchParchmentInventoryProjection.mockResolvedValue([
+			{ id: 1, roast_profiles: [] }
+		]);
 		authMocks.requireParchmentAccess.mockResolvedValue({
 			user: { id: 'ppi-user' },
 			ppiAccess: true,
@@ -175,30 +191,54 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		const response = await GET(makeEvent() as never);
 
 		expect(response.status).toBe(200);
-		expect(query.eq).toHaveBeenCalledWith('user', 'ppi-user');
-		expect(dataMocks.stripRoastProfileData).toHaveBeenCalledWith([
-			{ id: 1, roast_profiles: [{ roast_id: 10 }] }
-		]);
+		expect(parchmentMocks.createParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session'
+		});
+		expect(parchmentMocks.fetchParchmentInventoryProjection).toHaveBeenCalledWith(
+			{ kind: 'parchment-client' },
+			{ id: undefined, includeRoastProfiles: false }
+		);
+		expect(dataMocks.buildGreenCoffeeQuery).not.toHaveBeenCalled();
 		expect(await response.json()).toMatchObject({ data: [{ id: 1, roast_profiles: [] }] });
 	});
 
 	it('keeps roast history in Portfolio reads for Mallard Studio members', async () => {
 		const roastProfiles = [{ roast_id: 10 }];
-		const query = makeQuery([{ id: 1, roast_profiles: roastProfiles }]);
-		dataMocks.buildGreenCoffeeQuery.mockReturnValue(query);
+		parchmentMocks.fetchParchmentInventoryProjection.mockResolvedValue([
+			{ id: 1, roast_profiles: roastProfiles }
+		]);
 		authMocks.requireParchmentAccess.mockResolvedValue({
 			user: { id: 'member-user' },
 			ppiAccess: false,
 			memberAccess: true
 		});
 
-		const response = await GET(makeEvent() as never);
+		const response = await GET(makeEvent('/api/beans?id=1') as never);
 
 		expect(response.status).toBe(200);
-		expect(dataMocks.stripRoastProfileData).not.toHaveBeenCalled();
+		expect(parchmentMocks.fetchParchmentInventoryProjection).toHaveBeenCalledWith(
+			{ kind: 'parchment-client' },
+			{ id: 1, includeRoastProfiles: true }
+		);
+		expect(dataMocks.buildGreenCoffeeQuery).not.toHaveBeenCalled();
 		expect(await response.json()).toMatchObject({
 			data: [{ id: 1, roast_profiles: roastProfiles }]
 		});
+	});
+
+	it('preserves the legacy closed response when Parchment inventory fails', async () => {
+		parchmentMocks.fetchParchmentInventoryProjection.mockRejectedValue(
+			new Error('Parchment unavailable')
+		);
+
+		const response = await GET(makeEvent() as never);
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({
+			data: [],
+			error: 'Failed to fetch beans'
+		});
+		expect(dataMocks.buildGreenCoffeeQuery).not.toHaveBeenCalled();
 	});
 
 	it('requires Portfolio entitlement for create, update, and delete writes', async () => {

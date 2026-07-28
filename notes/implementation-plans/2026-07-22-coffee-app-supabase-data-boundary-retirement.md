@@ -75,15 +75,14 @@ This creates four production risks:
    - Local `get_supplier_price_ranges` and agent price-index reads
    - Primary callers: analytics, chat context, tracked-lot enrichment, legacy
      beans/tool routes, `catalogSimilarity.ts`, and `agentPriceIndex.ts`
-   - Completed resource slice: analytics price-index history consumes its typed
-     Parchment SDK contract
+   - Completed resource slices: chat price index (#503), chat similarity (#505),
+     and analytics price-index history (#506) consume typed Parchment contracts
 
 2. **Portfolio and procurement**
 
-   - Direct `tracked_lots` reads/writes and catalog joins
-   - Direct `sourcing_briefs` summaries in dashboard/chat
-   - Parchment already owns brief list/create/get/matches; it lacks the complete
-     portfolio/watchlist contract and some brief lifecycle/parity operations
+   - Completed resource slices: sourcing briefs (#500) and tracked lots (#501)
+     retired their direct reads/writes and consume the deployed procurement and
+     portfolio contracts
 
 3. **Mallard Studio owner data**
 
@@ -94,6 +93,11 @@ This creates four production risks:
      stocked-status, batch-delete, and profit behavior
    - Parchment already ships owner-scoped inventory, roast, Artisan import,
      sales, and tasting reads/writes, but some web parity gaps remain
+   - Completed resource slice: the deprecated green-inventory tool route (#508)
+     reads inventory, catalog detail, and roast summaries through Parchment
+   - Manual inventory PR #507 was closed and superseded after its browser retry
+     state became a batch transaction protocol. Parchment PR #133 is the
+     upstream-first atomic batch prerequisite for the replacement consumer.
 
 4. **API control plane and product authorization**
 
@@ -101,8 +105,10 @@ This creates four production risks:
      local API-key validation paths
    - Admin-client JWT validation, direct `user_roles`/entitlement reads, and
      coffee-app principal construction that duplicates Parchment
-   - Key management pages already use the SDK; usage dashboards and legacy
-     compatibility authorization still bypass Parchment
+   - Key management and Parchment Console usage pages use the SDK; legacy
+     compatibility authorization still bypasses Parchment
+   - Completed resource slice: usage dashboards (#504) consume the session-owner
+     API-usage contract
 
 5. **Bean identity**
 
@@ -232,6 +238,11 @@ Plan:
 Repo: coffee-app. Use the already-shipped owner inventory and tasting contracts
 for beans, inventory tools, tasting routes, and catalog enrichment. Preserve
 web response shapes and remove direct inventory/tasting table access.
+
+Execution status: the legacy green-inventory tool reader shipped in #508. The
+next independent slice moves authenticated `/api/beans` reads to Parchment while
+retaining shared-token reads as an explicit app-local boundary. Manual batch
+creation remains sequenced behind Parchment PR #133.
 
 Plan:
 `2026-07-22-coffee-app-supabase-data-boundary-pr-04-inventory-tasting.md`

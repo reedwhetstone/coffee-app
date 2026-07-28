@@ -10,7 +10,7 @@
 **Canonical repo:** `coffee-app`
 
 **Canonical path:** `notes/DEVLOG.md`
-**Last reconciled:** 2026-07-22
+**Last reconciled:** 2026-07-27
 
 ## How to use this backlog
 
@@ -49,6 +49,13 @@
       `notes/implementation-plans/2026-07-22-coffee-app-supabase-data-boundary-retirement.md`,
       `notes/implementation-plans/2026-07-01-span-b-legacy-v1-catalog-proxy.md`, and
       `notes/implementation-plans/2026-07-04-catalog-shell-performance-headless-plan.md`.
+      Shipped coffee-app consumer slices now cover sourcing briefs (#500), tracked
+      lots (#501), chat price index (#503), API usage (#504), chat similarity (#505),
+      analytics price history (#506), and the legacy green-inventory tool (#508).
+      Manual inventory PR #507 was closed after repeated review showed batch
+      transaction semantics belonged upstream; Parchment PR #133 is the replacement
+      prerequisite. Continue with independently mergeable consumers while that
+      upstream contract is reviewed.
 
 - [ ] **Finish the scalar entitlement cutover safely.** The Parchment and
       coffee-app consumer changes have landed; complete the production observation,
