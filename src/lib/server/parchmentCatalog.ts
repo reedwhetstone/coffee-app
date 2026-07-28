@@ -40,9 +40,10 @@ export function extractParchmentCatalogRows(result: CatalogListResult): SdkCatal
  * `coffeeIds` (IN) filter, ordered as the API returns them.
  *
  * Consumers join the result to their own records by `id`, so ordering is not
- * significant. The page limit is sized to the id count (capped to the contract
- * maximum) so every requested row is returned in a single call; first-party
- * session callers are exempt from per-plan row caps.
+ * significant. Requests are split at the contract's page-size ceiling so every
+ * requested row is hydrated, including when the id set exceeds 1,000 rows.
+ * First-party session callers are exempt from per-plan row caps, but the
+ * per-request contract ceiling still applies.
  *
  * Visibility is widened to `stocked: 'all'` and `showWholesale: 'true'` to
  * match the legacy direct `coffee_catalog` id lookup this replaces. Tracked
@@ -59,12 +60,17 @@ export async function fetchParchmentCatalogItemsByIds(
 		return [];
 	}
 
-	const result = await client.catalog.list({
-		coffeeIds: ids.join(','),
-		stocked: 'all',
-		showWholesale: 'true',
-		limit: Math.min(ids.length, MAX_CATALOG_PAGE_LIMIT)
-	});
+	const rows: SdkCatalogItem[] = [];
+	for (let offset = 0; offset < ids.length; offset += MAX_CATALOG_PAGE_LIMIT) {
+		const batch = ids.slice(offset, offset + MAX_CATALOG_PAGE_LIMIT);
+		const result = await client.catalog.list({
+			coffeeIds: batch.join(','),
+			stocked: 'all',
+			showWholesale: 'true',
+			limit: batch.length
+		});
+		rows.push(...extractParchmentCatalogRows(result as CatalogListResult));
+	}
 
-	return extractParchmentCatalogRows(result as CatalogListResult);
+	return rows;
 }

@@ -55,3 +55,12 @@ provenance-aware knowledge corpus for narrative retrieval.
 
 Any required narrative retrieval waits for the separately planned Parchment
 knowledge-search contract.
+
+## 2026-07-27 assessment
+
+The repository caller graph contains no supported runtime caller for
+`/api/tools/coffee-chunks`; only its own route, public-doc references, and
+historical/planning notes remain. Production route telemetry was not available
+from the current environment, however, so the deletion gate is not satisfied.
+Do not remove the route or `ragService.ts` until Vercel access evidence or an
+explicit observation window confirms there is no external caller.
