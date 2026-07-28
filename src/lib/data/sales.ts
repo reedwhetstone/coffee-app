@@ -1,12 +1,12 @@
 /**
- * Sales data layer — single source of truth for all sales and profit queries.
+ * Direct-Supabase sales mutation and profit-summary data layer.
  *
  * Auth is intentionally excluded from this module. Route handlers are responsible
  * for validating sessions / API keys before calling these functions.
  *
  * Key design decisions:
- *  - listSales returns enriched sale rows with coffee_name joined from catalog.
- *  - getProfitData returns per-inventory-item profit calculations.
+ *  - Sales reads use the Parchment SDK through src/lib/server/parchmentSales.ts.
+ *  - getProfitData remains the deferred direct-Supabase profit-summary dependency.
  *  - recordSale / updateSale / deleteSale are thin wrappers that do ownership
  *    verification at the route layer, not here. The route handler must confirm
  *    ownership before calling mutating functions.
@@ -22,11 +22,6 @@ import type { Database } from '$lib/types/database.types';
 type CoffeeCatalogName = { name: string; wholesale?: boolean };
 type GreenCoffeeWithCatalog = Database['public']['Tables']['green_coffee_inv']['Row'] & {
 	coffee_catalog: CoffeeCatalogName | CoffeeCatalogName[] | null;
-};
-
-/** Raw row returned by the sales join query. */
-type SaleWithDetails = Database['public']['Tables']['sales']['Row'] & {
-	green_coffee_inv: GreenCoffeeWithCatalog | null;
 };
 
 /** Raw row returned by the profit join query. */
@@ -72,52 +67,6 @@ export type SaleCreateInput = Omit<
 export type SaleUpdateInput = Database['public']['Tables']['sales']['Update'];
 
 // ── Query functions ───────────────────────────────────────────────────────────
-
-/**
- * List all sales for a user, enriched with the linked coffee name.
- * Results are ordered by sell_date descending.
- */
-export async function listSales(supabase: SupabaseClient, userId: string): Promise<Sale[]> {
-	const { data: salesRaw, error: salesError } = await supabase
-		.from('sales')
-		.select(
-			`
-			*,
-			green_coffee_inv!inner (
-				id,
-				catalog_id,
-				coffee_catalog!catalog_id (
-					name,
-					wholesale
-				)
-			)
-		`
-		)
-		.eq('user', userId)
-		.order('sell_date', { ascending: false });
-
-	if (salesError) {
-		throw new Error(salesError.message);
-	}
-
-	const sales = (salesRaw ?? []) as unknown as SaleWithDetails[];
-
-	return sales.map((sale) => {
-		const catalog = sale.green_coffee_inv?.coffee_catalog;
-		const coffeeName = Array.isArray(catalog)
-			? catalog[0]?.name
-			: (catalog as CoffeeCatalogName)?.name;
-		const wholesale = Array.isArray(catalog)
-			? catalog[0]?.wholesale
-			: (catalog as CoffeeCatalogName)?.wholesale;
-
-		return {
-			...sale,
-			coffee_name: coffeeName || null,
-			wholesale: wholesale ?? false
-		};
-	});
-}
 
 /**
  * Return per-inventory-item profit calculations for a user.

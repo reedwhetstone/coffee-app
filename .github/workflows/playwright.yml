@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DISCORD_CODEBASE_WEBHOOK_URL: ${{ secrets.DISCORD_CODEBASE_WEBHOOK_URL }}
+      PARCHMENT_API_BASE_URL: https://api.purveyors.io
     steps:
       - uses: actions/checkout@v4
 
