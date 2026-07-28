@@ -66,11 +66,13 @@ function makeGetEvent(
 			principal: authenticated
 				? {
 						authKind: 'session',
+						source: options.authorization ? 'bearer-session' : 'cookie-session',
 						isAuthenticated: true,
 						userId: principalUserId
 					}
 				: {
 						authKind: 'anonymous',
+						source: 'none',
 						isAuthenticated: false,
 						userId: null
 					},
@@ -120,7 +122,7 @@ describe('/api/profit GET', () => {
 		expect(salesMocks.getProfitData).toHaveBeenCalledWith(event.locals.supabase, 'user-1');
 	});
 
-	it('uses the normalized session principal for both sales and profit on mixed credentials', async () => {
+	it('rejects mixed bearer and cookie credentials before either query', async () => {
 		const event = makeGetEvent(true, {
 			principalUserId: 'header-user',
 			cookieUserId: 'cookie-user',
@@ -133,14 +135,11 @@ describe('/api/profit GET', () => {
 
 		const response = await GET(event as never);
 
-		expect(response.status).toBe(200);
-		expect(parchmentMocks.createParchmentServerClient).toHaveBeenCalledWith(event, {
-			mode: 'session'
-		});
-		expect(salesMocks.getProfitData).toHaveBeenCalledWith(
-			event.locals.supabase,
-			'header-user'
-		);
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual({ error: 'Unauthorized' });
+		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
+		expect(parchmentMocks.fetchParchmentSales).not.toHaveBeenCalled();
+		expect(salesMocks.getProfitData).not.toHaveBeenCalled();
 		expect(event.locals.safeGetSession).not.toHaveBeenCalled();
 	});
 

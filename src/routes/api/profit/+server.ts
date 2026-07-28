@@ -17,7 +17,7 @@ import { checkRole } from '$lib/types/auth.types';
 export const GET: RequestHandler = async (event) => {
 	try {
 		const { supabase, principal } = event.locals;
-		if (!principal || !isSessionPrincipal(principal)) {
+		if (!principal || !isSessionPrincipal(principal) || principal.source !== 'cookie-session') {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
