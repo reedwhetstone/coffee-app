@@ -24,6 +24,7 @@ describe('attachRoastSummaries pagination', () => {
 		expect(result[0].roast_summary.total_roasts).toBe(550);
 		expect(result[0].roast_summary.total_oz_in).toBe(550);
 		expect(result[0].roast_summary.total_oz_out).toBeCloseTo(440);
+		expect(list).toHaveBeenCalledWith({ coffee_id: 7, limit: 200, offset: 0 });
 		expect(list.mock.calls.length).toBeGreaterThan(5);
 	});
 

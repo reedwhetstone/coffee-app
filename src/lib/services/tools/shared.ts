@@ -41,14 +41,24 @@ export async function attachRoastSummaries<T extends InventoryResult>(
 	const ids = rows.map((row) => row.id).filter((id): id is number => typeof id === 'number');
 	if (ids.length > 0) {
 		const roasts = (
-			await collectOffsetPages({
-				fetchPage: async (offset) => {
-					const { data, error } = await client.roasts.list({ limit: 200, offset });
-					return unwrapParchment({ data, error }).data;
-				},
-				key: (roast) => roast.roast_id
-			})
-		).filter((roast) => roast.coffee_id != null && ids.includes(roast.coffee_id));
+			await Promise.all(
+				ids.map((coffeeId) =>
+					collectOffsetPages({
+						fetchPage: async (offset) => {
+							const { data, error } = await client.roasts.list({
+								coffee_id: coffeeId,
+								limit: 200,
+								offset
+							});
+							return unwrapParchment({ data, error }).data;
+						},
+						key: (roast) => roast.roast_id
+					})
+				)
+			)
+		)
+			.flat()
+			.filter((roast) => roast.coffee_id != null && ids.includes(roast.coffee_id));
 
 		for (const roast of roasts) {
 			if (roast.coffee_id == null) continue;

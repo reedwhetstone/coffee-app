@@ -14,6 +14,7 @@ import {
 	type InventoryRoastSummary
 } from '$lib/services/tools/shared';
 import { unwrapParchment } from '$lib/services/tools/parchment';
+import { collectOffsetPages } from '$lib/services/tools/pagination';
 
 // Interface for tool input validation
 interface GreenCoffeeInvToolInput {
@@ -28,6 +29,16 @@ type LegacyInventoryItem = Omit<InventoryResult, 'coffee_catalog'> & {
 	coffee_name?: string;
 	roast_summary?: InventoryRoastSummary;
 };
+
+function comparePurchaseDateDescending(a: InventoryResult, b: InventoryResult): number {
+	if (a.purchase_date == null) return b.purchase_date == null ? compareLastUpdated(a, b) : -1;
+	if (b.purchase_date == null) return 1;
+	return b.purchase_date.localeCompare(a.purchase_date) || compareLastUpdated(a, b);
+}
+
+function compareLastUpdated(a: InventoryResult, b: InventoryResult): number {
+	return b.last_updated.localeCompare(a.last_updated);
+}
 
 export const POST: RequestHandler = async (event) => {
 	try {
@@ -47,11 +58,18 @@ export const POST: RequestHandler = async (event) => {
 		const finalLimit = Math.min(limit || 15, 15);
 
 		const client = await createParchmentServerClient(event, { mode: 'session' });
-		const response = await client.inventory.list({
-			stocked_only,
-			limit: finalLimit
+		const allInventory = await collectOffsetPages({
+			fetchPage: async (offset) => {
+				const response = await client.inventory.list({
+					stocked_only,
+					limit: 200,
+					offset
+				});
+				return unwrapParchment(response).data;
+			},
+			key: (bean) => bean.id
 		});
-		const rawInventory = unwrapParchment(response).data;
+		const rawInventory = [...allInventory].sort(comparePurchaseDateDescending).slice(0, finalLimit);
 		let inventory: LegacyInventoryItem[] = include_roast_summary
 			? await attachRoastSummaries(client, rawInventory)
 			: rawInventory;

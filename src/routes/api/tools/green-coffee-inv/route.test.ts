@@ -47,21 +47,26 @@ describe('legacy green-coffee inventory tool route', () => {
 		vi.clearAllMocks();
 		mocks.requireMemberRole.mockResolvedValue({ user: { id: 'owner-1' } });
 		mocks.createParchmentServerClient.mockResolvedValue(client);
-		inventoryList.mockResolvedValue({
+		inventoryList.mockImplementation(async ({ offset = 0 }: { offset?: number }) => ({
 			data: {
-				data: [
-					{
-						id: 7,
-						catalog_id: 101,
-						purchased_qty_lbs: 5,
-						bean_cost: 42,
-						tax_ship_cost: 3,
-						stocked: true,
-						coffee_catalog: { id: 101, name: 'Compact name' }
-					}
-				]
+				data:
+					offset === 0
+						? [
+								{
+									id: 7,
+									catalog_id: 101,
+									purchase_date: '2026-07-26',
+									last_updated: '2026-07-26T00:00:00Z',
+									purchased_qty_lbs: 5,
+									bean_cost: 42,
+									tax_ship_cost: 3,
+									stocked: true,
+									coffee_catalog: { id: 101, name: 'Compact name' }
+								}
+							]
+						: []
 			}
-		});
+		}));
 		mocks.attachRoastSummaries.mockImplementation(async (_client, rows) =>
 			rows.map((row: Record<string, unknown>) => ({
 				...row,
@@ -93,7 +98,7 @@ describe('legacy green-coffee inventory tool route', () => {
 		expect(mocks.createParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
 			mode: 'session'
 		});
-		expect(inventoryList).toHaveBeenCalledWith({ stocked_only: false, limit: 15 });
+		expect(inventoryList).toHaveBeenCalledWith({ stocked_only: false, limit: 200, offset: 0 });
 		expect(mocks.attachRoastSummaries).toHaveBeenCalledWith(
 			client,
 			expect.arrayContaining([expect.objectContaining({ id: 7 })])
@@ -141,7 +146,7 @@ describe('legacy green-coffee inventory tool route', () => {
 		);
 
 		expect(response.status).toBe(200);
-		expect(inventoryList).toHaveBeenCalledWith({ stocked_only: true, limit: 5 });
+		expect(inventoryList).toHaveBeenCalledWith({ stocked_only: true, limit: 200, offset: 0 });
 		expect(mocks.attachRoastSummaries).not.toHaveBeenCalled();
 		expect(mocks.fetchParchmentCatalogItemsByIds).not.toHaveBeenCalled();
 		expect(await response.json()).toMatchObject({
@@ -156,5 +161,36 @@ describe('legacy green-coffee inventory tool route', () => {
 				include_roast_summary: false
 			}
 		});
+	});
+
+	it('preserves purchase-date ordering before applying the legacy cap', async () => {
+		const rows = Array.from({ length: 16 }, (_, index) => ({
+			id: index + 1,
+			purchase_date: `2026-07-${String(28 - index).padStart(2, '0')}`,
+			last_updated: `2026-07-${String(index + 1).padStart(2, '0')}T00:00:00Z`,
+			purchased_qty_lbs: 1,
+			bean_cost: 1,
+			tax_ship_cost: 0,
+			stocked: true,
+			coffee_catalog: { name: `Bean ${index + 1}` }
+		}));
+		const apiOrder = [...rows].reverse();
+		inventoryList.mockImplementation(async ({ offset = 0 }: { offset?: number }) => ({
+			data: { data: apiOrder.slice(offset, offset + 8) }
+		}));
+
+		const response = await POST(
+			makeEvent({
+				include_catalog_details: false,
+				include_roast_summary: false,
+				limit: 15
+			}) as never
+		);
+		const body = await response.json();
+
+		expect(body.inventory.map((bean: { id: number }) => bean.id)).toEqual(
+			Array.from({ length: 15 }, (_, index) => index + 1)
+		);
+		expect(body.total).toBe(15);
 	});
 });
