@@ -483,6 +483,20 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		});
 	});
 
+	it('returns a failure for unexpected reconciliation errors', async () => {
+		parchmentMocks.getManualBatch.mockRejectedValue(new TypeError('Response decoding failed'));
+
+		const response = await GET(
+			makeEvent('/api/beans?manualBatchId=00000000-0000-4000-8000-000000000009') as never
+		);
+
+		expect(response.status).toBe(500);
+		expect(await response.json()).toEqual({
+			data: [],
+			error: 'Failed to reconcile manual inventory batch'
+		});
+	});
+
 	it('preserves Parchment batch rejection status and error details', async () => {
 		parchmentMocks.createManualBatch.mockResolvedValue({
 			data: undefined,

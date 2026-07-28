@@ -123,6 +123,12 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		console.error('Error querying beans:', error);
+		if (manualBatchId) {
+			return json(
+				{ data: [], error: 'Failed to reconcile manual inventory batch' },
+				{ status: 500 }
+			);
+		}
 		return json({ data: [], error: 'Failed to fetch beans' });
 	}
 };

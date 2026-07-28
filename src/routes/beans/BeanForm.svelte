@@ -609,7 +609,11 @@
 						required
 					/>
 					<p class="text-xs text-muted">
-						Parchment will allocate this total across the batch in exact cents
+						{#if isManualEntry}
+							Parchment will allocate this total across the manual batch in exact cents
+						{:else}
+							This total will be divided evenly across catalog items
+						{/if}
 					</p>
 				</div>
 			</div>

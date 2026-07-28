@@ -92,6 +92,30 @@ describe('BeanForm atomic manual inventory batches', () => {
 		expect(onSubmit).toHaveBeenCalledWith(created);
 	});
 
+	it('shows exact-cent allocation copy only for manual batches', async () => {
+		render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: []
+		});
+
+		expect(
+			screen.getByText('Parchment will allocate this total across the manual batch in exact cents')
+		).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByText('Select from Catalog'));
+
+		expect(
+			screen.queryByText(
+				'Parchment will allocate this total across the manual batch in exact cents'
+			)
+		).not.toBeInTheDocument();
+		expect(
+			screen.getByText('This total will be divided evenly across catalog items')
+		).toBeInTheDocument();
+	});
+
 	it('reconciles an uncertain batch UUID instead of retrying rows after one is removed', async () => {
 		vi.spyOn(globalThis.crypto, 'randomUUID')
 			.mockReturnValueOnce(UUIDS[0])
