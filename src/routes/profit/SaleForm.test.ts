@@ -1,4 +1,6 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
+import SaleForm from './SaleForm.svelte';
 
 function createHandleSubmit({
 	onSubmit,
@@ -101,5 +103,228 @@ describe('SaleForm submit failure handling', () => {
 		expect(onSubmit).toHaveBeenCalledWith({ id: 456 });
 		expect(alertFn).not.toHaveBeenCalled();
 		expect(onClose).not.toHaveBeenCalled();
+	});
+});
+
+describe('SaleForm create idempotency', () => {
+	it('uses one stable key and blocks a concurrent duplicate submit', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
+			'00000000-0000-4000-8000-000000000001'
+		);
+		let resolveFetch!: (response: Response) => void;
+		const fetchMock = vi.fn(
+			(_input: RequestInfo | URL, _init?: RequestInit) =>
+				new Promise<Response>((resolve) => {
+					resolveFetch = resolve;
+				})
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		const onSubmit = vi.fn();
+		const { container } = render(SaleForm, {
+			onClose: vi.fn(),
+			onSubmit,
+			availableCoffees: [],
+			availableBatches: []
+		});
+		const form = container.querySelector('form')!;
+
+		await fireEvent.submit(form);
+		await fireEvent.submit(form);
+
+		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(fetchMock.mock.calls[0][1]?.headers).toEqual({
+			'Content-Type': 'application/json',
+			'Idempotency-Key': '00000000-0000-4000-8000-000000000001'
+		});
+		expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+
+		resolveFetch(
+			new Response(JSON.stringify({ id: 31 }), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' }
+			})
+		);
+		await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ id: 31 }));
+	});
+
+	it('uses a new key when the payload changes after an ambiguous network failure', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID')
+			.mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
+			.mockReturnValueOnce('00000000-0000-4000-8000-000000000002');
+		vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const fetchMock = vi
+			.fn((_input: RequestInfo | URL, _init?: RequestInit) => Promise.resolve(new Response()))
+			.mockRejectedValueOnce(new Error('connection lost'))
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ id: 31 }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			);
+		vi.stubGlobal('fetch', fetchMock);
+		const { container } = render(SaleForm, {
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			availableCoffees: [],
+			availableBatches: []
+		});
+		const form = container.querySelector('form')!;
+
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+		await fireEvent.input(screen.getByLabelText('Buyer'), { target: { value: 'Changed buyer' } });
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		const firstHeaders = fetchMock.mock.calls[0][1]?.headers as Record<string, string>;
+		const secondHeaders = fetchMock.mock.calls[1][1]?.headers as Record<string, string>;
+		expect(firstHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000001');
+		expect(secondHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000002');
+	});
+
+	it('reuses the key when the same payload is retried after an ambiguous network failure', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
+			'00000000-0000-4000-8000-000000000001'
+		);
+		vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const fetchMock = vi
+			.fn((_input: RequestInfo | URL, _init?: RequestInit) => Promise.resolve(new Response()))
+			.mockRejectedValueOnce(new Error('connection lost'))
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ id: 31 }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			);
+		vi.stubGlobal('fetch', fetchMock);
+		const { container } = render(SaleForm, {
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			availableCoffees: [],
+			availableBatches: []
+		});
+		const form = container.querySelector('form')!;
+
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		const firstHeaders = fetchMock.mock.calls[0][1]?.headers as Record<string, string>;
+		const secondHeaders = fetchMock.mock.calls[1][1]?.headers as Record<string, string>;
+		expect(firstHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000001');
+		expect(secondHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000001');
+	});
+
+	it('reuses the key after an ambiguous HTTP failure response', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
+			'00000000-0000-4000-8000-000000000001'
+		);
+		vi.stubGlobal('alert', vi.fn());
+		const fetchMock = vi
+			.fn((_input: RequestInfo | URL, _init?: RequestInit) => Promise.resolve(new Response()))
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ error: 'Writes are temporarily disabled' }), {
+					status: 503,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			)
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ id: 31 }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			);
+		vi.stubGlobal('fetch', fetchMock);
+		const { container } = render(SaleForm, {
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			availableCoffees: [],
+			availableBatches: []
+		});
+		const form = container.querySelector('form')!;
+
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		const firstHeaders = fetchMock.mock.calls[0][1]?.headers as Record<string, string>;
+		const secondHeaders = fetchMock.mock.calls[1][1]?.headers as Record<string, string>;
+		expect(firstHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000001');
+		expect(secondHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000001');
+	});
+
+	it('rotates the key after a definitive HTTP failure response', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID')
+			.mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
+			.mockReturnValueOnce('00000000-0000-4000-8000-000000000002');
+		vi.stubGlobal('alert', vi.fn());
+		const fetchMock = vi
+			.fn((_input: RequestInfo | URL, _init?: RequestInit) => Promise.resolve(new Response()))
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ error: 'Invalid sale' }), {
+					status: 400,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			)
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ id: 31 }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			);
+		vi.stubGlobal('fetch', fetchMock);
+		const { container } = render(SaleForm, {
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			availableCoffees: [],
+			availableBatches: []
+		});
+		const form = container.querySelector('form')!;
+
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		const firstHeaders = fetchMock.mock.calls[0][1]?.headers as Record<string, string>;
+		const secondHeaders = fetchMock.mock.calls[1][1]?.headers as Record<string, string>;
+		expect(firstHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000001');
+		expect(secondHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000002');
+	});
+
+	it('reuses the key when a successful response body cannot be consumed', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
+			'00000000-0000-4000-8000-000000000001'
+		);
+		vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const fetchMock = vi
+			.fn((_input: RequestInfo | URL, _init?: RequestInit) => Promise.resolve(new Response()))
+			.mockResolvedValueOnce(new Response('not-json', { status: 200 }))
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ id: 31 }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			);
+		vi.stubGlobal('fetch', fetchMock);
+		const { container } = render(SaleForm, {
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			availableCoffees: [],
+			availableBatches: []
+		});
+		const form = container.querySelector('form')!;
+
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		const firstHeaders = fetchMock.mock.calls[0][1]?.headers as Record<string, string>;
+		const secondHeaders = fetchMock.mock.calls[1][1]?.headers as Record<string, string>;
+		expect(firstHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000001');
+		expect(secondHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000001');
 	});
 });

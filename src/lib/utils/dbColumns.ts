@@ -6,18 +6,6 @@
  * on that table in the database schema.
  */
 
-export const SALES_COLUMNS = [
-	'id',
-	'user',
-	'green_coffee_inv_id',
-	'oz_sold',
-	'price',
-	'buyer',
-	'batch_name',
-	'sell_date',
-	'purchase_date'
-] as const;
-
 export const GREEN_COFFEE_INV_COLUMNS = [
 	'id',
 	'rank',

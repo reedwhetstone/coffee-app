@@ -21,6 +21,12 @@
 
 	// Extract defaultBean from sale if it exists
 	const defaultBean = sale?.defaultBean || null;
+	let isSubmitting = $state(false);
+	let createAttempt: { payload: string; idempotencyKey: string } | null = null;
+
+	function isAmbiguousCreateFailure(status: number): boolean {
+		return status === 408 || status === 425 || status === 429 || status >= 500;
+	}
 
 	let formData = $state(
 		sale?.id
@@ -38,6 +44,8 @@
 	);
 
 	async function handleSubmit() {
+		if (isSubmitting) return;
+		isSubmitting = true;
 		const isUpdate = sale?.id !== undefined && sale?.id !== null;
 
 		try {
@@ -47,17 +55,22 @@
 					value === '' || value === undefined ? null : value
 				])
 			);
+			const payload = JSON.stringify(cleanedSale);
+			if (!isUpdate && createAttempt?.payload !== payload) {
+				createAttempt = { payload, idempotencyKey: crypto.randomUUID() };
+			}
 
 			const response = await fetch(isUpdate ? `/api/profit?id=${sale.id}` : '/api/profit', {
 				method: isUpdate ? 'PUT' : 'POST',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					...(!isUpdate && createAttempt ? { 'Idempotency-Key': createAttempt.idempotencyKey } : {})
 				},
-				body: JSON.stringify(cleanedSale)
+				body: payload
 			});
-
 			if (response.ok) {
 				const newSale = await response.json();
+				if (!isUpdate) createAttempt = null;
 				try {
 					await onSubmit(newSale);
 				} catch (error) {
@@ -66,11 +79,16 @@
 					onClose();
 				}
 			} else {
+				if (!isUpdate && !isAmbiguousCreateFailure(response.status)) {
+					createAttempt = null;
+				}
 				const data = await response.json();
 				alert(`Failed to ${isUpdate ? 'update' : 'create'} sale: ${data.error}`);
 			}
 		} catch (error) {
 			console.error(`Error ${isUpdate ? 'updating' : 'creating'} sale:`, error);
+		} finally {
+			isSubmitting = false;
 		}
 	}
 
@@ -272,9 +290,10 @@
 			</button>
 			<button
 				type="submit"
+				disabled={isSubmitting}
 				class="rounded-md bg-accent px-4 py-2 font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 			>
-				{sale?.id ? 'Update Sale' : 'Create Sale'}
+				{isSubmitting ? 'Saving…' : sale?.id ? 'Update Sale' : 'Create Sale'}
 			</button>
 		</div>
 	</form>
