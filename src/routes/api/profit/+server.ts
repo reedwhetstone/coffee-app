@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestEvent, RequestHandler } from './$types';
-import { getProfitData } from '$lib/data/sales.js';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import { fetchParchmentProfit } from '$lib/server/parchmentProfit';
 import {
 	createParchmentSale,
 	deleteParchmentSale,
@@ -96,11 +96,10 @@ export const GET: RequestHandler = async (event) => {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const { supabase, principal } = event.locals;
 		const client = await createParchmentServerClient(event, { mode: 'session' });
 		const [sales, profit] = await Promise.all([
 			fetchParchmentSales(client),
-			getProfitData(supabase, principal!.userId!)
+			fetchParchmentProfit(client)
 		]);
 
 		return json({ sales, profit });
