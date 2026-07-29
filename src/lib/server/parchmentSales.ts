@@ -43,7 +43,38 @@ function extractParchmentMessage(body: unknown): string {
 	return 'Parchment sales request failed';
 }
 
-function unwrapMutation<T>(result: ParchmentMutationResult<T>, isValid: (data: T) => boolean): T {
+function isNullableString(value: unknown): value is string | null {
+	return value === null || typeof value === 'string';
+}
+
+function isNullableNumber(value: unknown): value is number | null {
+	return value === null || (typeof value === 'number' && Number.isFinite(value));
+}
+
+function isSaleProjection(value: unknown): value is ParchmentSaleProjection {
+	if (typeof value !== 'object' || value === null) return false;
+	const sale = value as Record<string, unknown>;
+	return (
+		Number.isInteger(sale.id) &&
+		(sale.id as number) > 0 &&
+		Number.isInteger(sale.green_coffee_inv_id) &&
+		(sale.green_coffee_inv_id as number) > 0 &&
+		isNullableString(sale.batch_name) &&
+		isNullableString(sale.buyer) &&
+		isNullableNumber(sale.oz_sold) &&
+		isNullableNumber(sale.price) &&
+		isNullableString(sale.purchase_date) &&
+		isNullableString(sale.sell_date) &&
+		isNullableString(sale.user) &&
+		isNullableString(sale.coffee_name) &&
+		typeof sale.wholesale === 'boolean'
+	);
+}
+
+function unwrapMutation<T extends object>(
+	result: ParchmentMutationResult<T>,
+	isValid: (data: T) => boolean
+): T {
 	if (result.error) {
 		if (result.response) throw new ParchmentSalesError(result.response.status, result.error);
 		throw result.error instanceof Error
@@ -52,7 +83,7 @@ function unwrapMutation<T>(result: ParchmentMutationResult<T>, isValid: (data: T
 	}
 
 	const data = result.data?.data;
-	if (data === undefined || !isValid(data)) {
+	if (typeof data !== 'object' || data === null || !isValid(data)) {
 		throw new ParchmentSalesError(502, {
 			error: {
 				code: 'invalid_response',
@@ -85,7 +116,7 @@ export async function createParchmentSale(
 		body,
 		idempotencyKey ? { idempotencyKey } : undefined
 	)) as ParchmentMutationResult<ParchmentSaleProjection>;
-	return unwrapMutation(result, (data) => Number.isInteger(data.id) && data.id > 0);
+	return unwrapMutation(result, isSaleProjection);
 }
 
 /** Update one owner-scoped sale through Parchment. */
@@ -98,7 +129,7 @@ export async function updateParchmentSale(
 		id,
 		body
 	)) as ParchmentMutationResult<ParchmentSaleProjection>;
-	return unwrapMutation(result, (data) => data.id === id);
+	return unwrapMutation(result, (data) => isSaleProjection(data) && data.id === id);
 }
 
 /** Delete one owner-scoped sale through Parchment. */

@@ -22,7 +22,7 @@
 	// Extract defaultBean from sale if it exists
 	const defaultBean = sale?.defaultBean || null;
 	let isSubmitting = $state(false);
-	let createIdempotencyKey: string | null = null;
+	let createAttempt: { payload: string; idempotencyKey: string } | null = null;
 
 	let formData = $state(
 		sale?.id
@@ -51,16 +51,18 @@
 					value === '' || value === undefined ? null : value
 				])
 			);
+			const payload = JSON.stringify(cleanedSale);
+			if (!isUpdate && createAttempt?.payload !== payload) {
+				createAttempt = { payload, idempotencyKey: crypto.randomUUID() };
+			}
 
 			const response = await fetch(isUpdate ? `/api/profit?id=${sale.id}` : '/api/profit', {
 				method: isUpdate ? 'PUT' : 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					...(!isUpdate
-						? { 'Idempotency-Key': (createIdempotencyKey ??= crypto.randomUUID()) }
-						: {})
+					...(!isUpdate && createAttempt ? { 'Idempotency-Key': createAttempt.idempotencyKey } : {})
 				},
-				body: JSON.stringify(cleanedSale)
+				body: payload
 			});
 
 			if (response.ok) {

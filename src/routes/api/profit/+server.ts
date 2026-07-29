@@ -11,7 +11,7 @@ import {
 	type ParchmentSaleCreateRequest,
 	type ParchmentSaleUpdateRequest
 } from '$lib/server/parchmentSales';
-import { isSessionPrincipal } from '$lib/server/principal';
+import { isSessionPrincipal, isTrustedMutationRequest } from '$lib/server/principal';
 import { checkRole } from '$lib/types/auth.types';
 
 function isCookieSessionEvent(event: RequestEvent): boolean {
@@ -80,6 +80,16 @@ function parchmentFailure(error: ParchmentSalesError) {
 	return json(legacyParchmentError(error.body), { status: error.status });
 }
 
+function mutationAuthFailure(event: RequestEvent) {
+	if (!isCookieSessionEvent(event)) {
+		return json({ error: 'Unauthorized' }, { status: 401 });
+	}
+	if (!isTrustedMutationRequest(event, event.locals.principal!)) {
+		return json({ error: 'Cross-site session mutation blocked' }, { status: 403 });
+	}
+	return null;
+}
+
 export const GET: RequestHandler = async (event) => {
 	try {
 		if (!isCookieSessionEvent(event)) {
@@ -102,9 +112,8 @@ export const GET: RequestHandler = async (event) => {
 
 export const PUT: RequestHandler = async (event) => {
 	try {
-		if (!isCookieSessionEvent(event)) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
-		}
+		const authFailure = mutationAuthFailure(event);
+		if (authFailure) return authFailure;
 
 		const id = parseSaleId(event.url);
 		if (id === null) {
@@ -124,9 +133,8 @@ export const PUT: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async (event) => {
 	try {
-		if (!isCookieSessionEvent(event)) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
-		}
+		const authFailure = mutationAuthFailure(event);
+		if (authFailure) return authFailure;
 		if (!checkRole(event.locals.role, 'member')) {
 			return json(
 				{ error: 'Mallard Studio membership is required to record sales' },
@@ -148,9 +156,8 @@ export const POST: RequestHandler = async (event) => {
 
 export const DELETE: RequestHandler = async (event) => {
 	try {
-		if (!isCookieSessionEvent(event)) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
-		}
+		const authFailure = mutationAuthFailure(event);
+		if (authFailure) return authFailure;
 
 		const id = parseSaleId(event.url);
 		if (id === null) {

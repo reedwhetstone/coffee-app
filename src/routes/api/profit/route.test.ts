@@ -12,6 +12,10 @@ const parchmentMocks = vi.hoisted(() => ({
 	deleteParchmentSale: vi.fn()
 }));
 
+const principalMocks = vi.hoisted(() => ({
+	isTrustedMutationRequest: vi.fn()
+}));
+
 vi.mock('$lib/data/sales.js', () => ({
 	getProfitData: salesMocks.getProfitData
 }));
@@ -38,7 +42,8 @@ vi.mock('$lib/server/parchmentSales', () => ({
 
 vi.mock('$lib/server/principal', () => ({
 	isSessionPrincipal: (principal: { authKind?: string } | undefined) =>
-		principal?.authKind === 'session'
+		principal?.authKind === 'session',
+	isTrustedMutationRequest: principalMocks.isTrustedMutationRequest
 }));
 
 import { ParchmentSalesError } from '$lib/server/parchmentSales';
@@ -53,12 +58,14 @@ function makeEvent(
 		authenticated?: boolean;
 		authorization?: string;
 		idempotencyKey?: string;
+		origin?: string;
 	} = {}
 ) {
 	const authenticated = options.authenticated ?? true;
 	const headers = new Headers();
 	if (options.authorization) headers.set('Authorization', options.authorization);
 	if (options.idempotencyKey) headers.set('Idempotency-Key', options.idempotencyKey);
+	if (options.origin) headers.set('Origin', options.origin);
 	if (options.body) headers.set('Content-Type', 'application/json');
 	const url = new URL('https://app.test/api/profit');
 	if (options.id !== undefined) url.searchParams.set('id', options.id);
@@ -142,6 +149,7 @@ describe('/api/profit sales mutations', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		parchmentMocks.createParchmentServerClient.mockResolvedValue({ sales: {} });
+		principalMocks.isTrustedMutationRequest.mockReturnValue(true);
 	});
 
 	it('rejects viewer sale creation before creating a Parchment client', async () => {
@@ -255,6 +263,30 @@ describe('/api/profit sales mutations', () => {
 
 		expect(response.status).toBe(401);
 		expect(await response.json()).toEqual({ error: 'Unauthorized' });
+		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['PUT', PUT],
+		['POST', POST],
+		['DELETE', DELETE]
+	] as const)('rejects a cross-site cookie-session %s mutation', async (method, handler) => {
+		principalMocks.isTrustedMutationRequest.mockReturnValue(false);
+		const event = makeEvent(method, {
+			role: 'member',
+			id: '31',
+			origin: 'https://evil.test',
+			body: method === 'DELETE' ? undefined : { green_coffee_inv_id: 7, oz_sold: 8, price: 12 }
+		});
+
+		const response = await handler(event as never);
+
+		expect(response.status).toBe(403);
+		expect(await response.json()).toEqual({ error: 'Cross-site session mutation blocked' });
+		expect(principalMocks.isTrustedMutationRequest).toHaveBeenCalledWith(
+			event,
+			event.locals.principal
+		);
 		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
 	});
 

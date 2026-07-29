@@ -7,21 +7,23 @@ import {
 	updateParchmentSale
 } from './parchmentSales';
 
+const saleResource = {
+	id: 31,
+	green_coffee_inv_id: 7,
+	batch_name: 'Batch 7',
+	buyer: 'Cafe',
+	oz_sold: 12,
+	price: 24,
+	purchase_date: '2026-07-01',
+	sell_date: '2026-07-27',
+	user: 'owner-1',
+	coffee_name: 'Ethiopia Guji',
+	wholesale: true
+};
+
 describe('fetchParchmentSales', () => {
 	it('paginates all owner sales and preserves the legacy projection', async () => {
-		const firstSale = {
-			id: 11,
-			green_coffee_inv_id: 7,
-			batch_name: 'Batch 7',
-			buyer: 'Cafe',
-			oz_sold: 12,
-			price: 24,
-			purchase_date: '2026-07-01',
-			sell_date: '2026-07-27',
-			user: 'owner-1',
-			coffee_name: 'Ethiopia Guji',
-			wholesale: true
-		};
+		const firstSale = { ...saleResource, id: 11 };
 		const salesList = vi
 			.fn()
 			.mockResolvedValueOnce({ data: { data: [firstSale] } })
@@ -48,7 +50,7 @@ describe('fetchParchmentSales', () => {
 
 describe('Parchment sales mutations', () => {
 	it('creates with an optional idempotency key and unwraps the sale', async () => {
-		const created = { id: 31, green_coffee_inv_id: 7 };
+		const created = saleResource;
 		const create = vi.fn().mockResolvedValue({ data: { data: created } });
 
 		await expect(
@@ -65,7 +67,7 @@ describe('Parchment sales mutations', () => {
 	});
 
 	it('updates and requires the response id to match', async () => {
-		const update = vi.fn().mockResolvedValue({ data: { data: { id: 32 } } });
+		const update = vi.fn().mockResolvedValue({ data: { data: { ...saleResource, id: 32 } } });
 
 		await expect(
 			updateParchmentSale({ sales: { update } } as never, 31, { price: 30 })
@@ -75,6 +77,24 @@ describe('Parchment sales mutations', () => {
 		});
 	});
 
+	it.each([null, 42, { id: 31 }])(
+		'rejects a malformed create resource as a protocol failure',
+		async (data) => {
+			const create = vi.fn().mockResolvedValue({ data: { data } });
+
+			await expect(
+				createParchmentSale({ sales: { create } } as never, {
+					greenCoffeeInvId: 7,
+					ozSold: 12,
+					price: 24
+				})
+			).rejects.toMatchObject({
+				name: 'ParchmentSalesError',
+				status: 502
+			});
+		}
+	);
+
 	it('deletes only when Parchment confirms the requested id', async () => {
 		const deleteSale = vi.fn().mockResolvedValue({ data: { data: { id: 31, deleted: true } } });
 
@@ -83,6 +103,20 @@ describe('Parchment sales mutations', () => {
 		).resolves.toBeUndefined();
 		expect(deleteSale).toHaveBeenCalledWith(31);
 	});
+
+	it.each([null, 42, { id: 31 }, { id: 31, deleted: false }])(
+		'rejects a malformed delete confirmation',
+		async (data) => {
+			const deleteSale = vi.fn().mockResolvedValue({ data: { data } });
+
+			await expect(
+				deleteParchmentSale({ sales: { delete: deleteSale } } as never, 31)
+			).rejects.toMatchObject({
+				name: 'ParchmentSalesError',
+				status: 502
+			});
+		}
+	);
 
 	it('preserves an upstream error response', async () => {
 		const create = vi.fn().mockResolvedValue({
