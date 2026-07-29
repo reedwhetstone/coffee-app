@@ -216,10 +216,10 @@ describe('SaleForm create idempotency', () => {
 		expect(secondHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000001');
 	});
 
-	it('rotates the key after a definitive HTTP failure response', async () => {
-		vi.spyOn(globalThis.crypto, 'randomUUID')
-			.mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
-			.mockReturnValueOnce('00000000-0000-4000-8000-000000000002');
+	it('reuses the key after an ambiguous HTTP failure response', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
+			'00000000-0000-4000-8000-000000000001'
+		);
 		vi.stubGlobal('alert', vi.fn());
 		const fetchMock = vi
 			.fn((_input: RequestInfo | URL, _init?: RequestInit) => Promise.resolve(new Response()))
@@ -252,6 +252,79 @@ describe('SaleForm create idempotency', () => {
 		const firstHeaders = fetchMock.mock.calls[0][1]?.headers as Record<string, string>;
 		const secondHeaders = fetchMock.mock.calls[1][1]?.headers as Record<string, string>;
 		expect(firstHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000001');
+		expect(secondHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000001');
+	});
+
+	it('rotates the key after a definitive HTTP failure response', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID')
+			.mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
+			.mockReturnValueOnce('00000000-0000-4000-8000-000000000002');
+		vi.stubGlobal('alert', vi.fn());
+		const fetchMock = vi
+			.fn((_input: RequestInfo | URL, _init?: RequestInit) => Promise.resolve(new Response()))
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ error: 'Invalid sale' }), {
+					status: 400,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			)
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ id: 31 }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			);
+		vi.stubGlobal('fetch', fetchMock);
+		const { container } = render(SaleForm, {
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			availableCoffees: [],
+			availableBatches: []
+		});
+		const form = container.querySelector('form')!;
+
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		const firstHeaders = fetchMock.mock.calls[0][1]?.headers as Record<string, string>;
+		const secondHeaders = fetchMock.mock.calls[1][1]?.headers as Record<string, string>;
+		expect(firstHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000001');
 		expect(secondHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000002');
+	});
+
+	it('reuses the key when a successful response body cannot be consumed', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
+			'00000000-0000-4000-8000-000000000001'
+		);
+		vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const fetchMock = vi
+			.fn((_input: RequestInfo | URL, _init?: RequestInit) => Promise.resolve(new Response()))
+			.mockResolvedValueOnce(new Response('not-json', { status: 200 }))
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ id: 31 }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			);
+		vi.stubGlobal('fetch', fetchMock);
+		const { container } = render(SaleForm, {
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			availableCoffees: [],
+			availableBatches: []
+		});
+		const form = container.querySelector('form')!;
+
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		const firstHeaders = fetchMock.mock.calls[0][1]?.headers as Record<string, string>;
+		const secondHeaders = fetchMock.mock.calls[1][1]?.headers as Record<string, string>;
+		expect(firstHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000001');
+		expect(secondHeaders['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000001');
 	});
 });

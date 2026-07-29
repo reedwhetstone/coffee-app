@@ -24,6 +24,10 @@
 	let isSubmitting = $state(false);
 	let createAttempt: { payload: string; idempotencyKey: string } | null = null;
 
+	function isAmbiguousCreateFailure(status: number): boolean {
+		return status === 408 || status === 425 || status === 429 || status >= 500;
+	}
+
 	let formData = $state(
 		sale?.id
 			? { ...sale }
@@ -64,10 +68,9 @@
 				},
 				body: payload
 			});
-			if (!isUpdate) createAttempt = null;
-
 			if (response.ok) {
 				const newSale = await response.json();
+				if (!isUpdate) createAttempt = null;
 				try {
 					await onSubmit(newSale);
 				} catch (error) {
@@ -76,6 +79,9 @@
 					onClose();
 				}
 			} else {
+				if (!isUpdate && !isAmbiguousCreateFailure(response.status)) {
+					createAttempt = null;
+				}
 				const data = await response.json();
 				alert(`Failed to ${isUpdate ? 'update' : 'create'} sale: ${data.error}`);
 			}
