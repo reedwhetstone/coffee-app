@@ -1,11 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const salesMocks = vi.hoisted(() => ({
-	getProfitData: vi.fn()
-}));
-
 const parchmentMocks = vi.hoisted(() => ({
 	createParchmentServerClient: vi.fn(),
+	fetchParchmentProfit: vi.fn(),
 	fetchParchmentSales: vi.fn(),
 	createParchmentSale: vi.fn(),
 	updateParchmentSale: vi.fn(),
@@ -16,12 +13,12 @@ const principalMocks = vi.hoisted(() => ({
 	isTrustedMutationRequest: vi.fn()
 }));
 
-vi.mock('$lib/data/sales.js', () => ({
-	getProfitData: salesMocks.getProfitData
-}));
-
 vi.mock('$lib/server/parchmentClient', () => ({
 	createParchmentServerClient: parchmentMocks.createParchmentServerClient
+}));
+
+vi.mock('$lib/server/parchmentProfit', () => ({
+	fetchParchmentProfit: parchmentMocks.fetchParchmentProfit
 }));
 
 vi.mock('$lib/server/parchmentSales', () => ({
@@ -104,7 +101,7 @@ describe('/api/profit GET', () => {
 		vi.clearAllMocks();
 	});
 
-	it('combines paginated Parchment sales with the deferred profit summary', async () => {
+	it('combines paginated Parchment sales and profit summaries', async () => {
 		const event = makeEvent('GET');
 		const client = { sales: { list: vi.fn() } };
 		const sales = [
@@ -119,7 +116,7 @@ describe('/api/profit GET', () => {
 		const profit = [{ id: 7, profit: 12 }];
 		parchmentMocks.createParchmentServerClient.mockResolvedValue(client);
 		parchmentMocks.fetchParchmentSales.mockResolvedValue(sales);
-		salesMocks.getProfitData.mockResolvedValue(profit);
+		parchmentMocks.fetchParchmentProfit.mockResolvedValue(profit);
 
 		const response = await GET(event as never);
 
@@ -129,7 +126,7 @@ describe('/api/profit GET', () => {
 			mode: 'session'
 		});
 		expect(parchmentMocks.fetchParchmentSales).toHaveBeenCalledWith(client);
-		expect(salesMocks.getProfitData).toHaveBeenCalledWith(event.locals.supabase, 'user-1');
+		expect(parchmentMocks.fetchParchmentProfit).toHaveBeenCalledWith(client);
 	});
 
 	it('rejects mixed bearer and cookie credentials before either query', async () => {
@@ -141,7 +138,7 @@ describe('/api/profit GET', () => {
 		expect(await response.json()).toEqual({ error: 'Unauthorized' });
 		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
 		expect(parchmentMocks.fetchParchmentSales).not.toHaveBeenCalled();
-		expect(salesMocks.getProfitData).not.toHaveBeenCalled();
+		expect(parchmentMocks.fetchParchmentProfit).not.toHaveBeenCalled();
 	});
 });
 
