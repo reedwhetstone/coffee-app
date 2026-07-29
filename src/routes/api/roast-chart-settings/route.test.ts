@@ -10,15 +10,31 @@ vi.mock('$lib/server/parchmentClient', () => ({
 
 import { GET } from './+server';
 
-function makeEvent(options: { authenticated?: boolean; roastId?: string } = {}) {
+function makeEvent(
+	options: {
+		authenticated?: boolean;
+		authoritativeAuthenticated?: boolean;
+		roastId?: string;
+		authorization?: string;
+	} = {}
+) {
 	const authenticated = options.authenticated ?? true;
+	const authoritativeAuthenticated = options.authoritativeAuthenticated ?? authenticated;
 	const roastId = options.roastId ?? '42';
+	const requestInit = options.authorization
+		? { headers: { Authorization: options.authorization } }
+		: undefined;
 
 	return {
 		url: new URL(`https://app.test/api/roast-chart-settings?roastId=${roastId}`),
-		request: new Request(`https://app.test/api/roast-chart-settings?roastId=${roastId}`),
+		request: new Request(
+			`https://app.test/api/roast-chart-settings?roastId=${roastId}`,
+			requestInit
+		),
 		fetch: vi.fn(),
 		locals: {
+			session: authoritativeAuthenticated ? { access_token: 'authoritative-session-token' } : null,
+			user: authoritativeAuthenticated ? { id: 'authoritative-user-1' } : null,
 			safeGetSession: vi.fn().mockResolvedValue({
 				session: authenticated ? { access_token: 'session-token' } : null,
 				user: authenticated ? { id: 'user-1' } : null
@@ -78,6 +94,20 @@ describe('/api/roast-chart-settings GET', () => {
 
 	it('rejects unauthenticated callers before constructing a Parchment client', async () => {
 		const response = await GET(makeEvent({ authenticated: false }) as never);
+
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual({ error: 'Authentication required' });
+		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
+	});
+
+	it('does not let a cookie session bypass an Authorization header rejected by the auth hook', async () => {
+		const response = await GET(
+			makeEvent({
+				authenticated: true,
+				authoritativeAuthenticated: false,
+				authorization: 'Bearer invalid-header-credential'
+			}) as never
+		);
 
 		expect(response.status).toBe(401);
 		expect(await response.json()).toEqual({ error: 'Authentication required' });

@@ -5,10 +5,12 @@ import { unwrapParchment } from '$lib/services/tools/parchment';
 
 export const GET: RequestHandler = async (event) => {
 	const { url, locals } = event;
-	const { safeGetSession } = locals;
-	const { user } = await safeGetSession();
 
-	if (!user) {
+	// Use the auth state resolved by hooks.server.ts. Re-reading the Supabase
+	// cookie here could disagree with an Authorization header that the hook
+	// treated as authoritative, causing the Parchment lookup to use a different
+	// principal than the one that passed this route's auth gate.
+	if (!locals.session || !locals.user) {
 		return json({ error: 'Authentication required' }, { status: 401 });
 	}
 
