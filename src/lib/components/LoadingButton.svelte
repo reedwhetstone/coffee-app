@@ -2,6 +2,7 @@
 	let {
 		loading = false,
 		disabled = false,
+		type = 'button',
 		variant = 'primary',
 		size = 'medium',
 		onclick,
@@ -11,6 +12,7 @@
 	} = $props<{
 		loading?: boolean;
 		disabled?: boolean;
+		type?: 'button' | 'submit' | 'reset';
 		variant: 'primary' | 'secondary' | 'danger' | 'success';
 		size?: 'small' | 'medium' | 'large';
 		onclick?: () => void | Promise<void>;
@@ -66,6 +68,7 @@
 	class="{baseStyles} {variantStyles[variant as keyof typeof variantStyles]} {sizeStyles[
 		size as keyof typeof sizeStyles
 	]} {customClass}"
+	{type}
 	onclick={handleClick}
 	disabled={isDisabled}
 >

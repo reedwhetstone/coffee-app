@@ -80,4 +80,22 @@ describe('api docs contract', () => {
 
 		expect(serializedDocs).not.toContain('/api/ai/classify-roast');
 	});
+
+	it('states one consistent inventory session and share-token contract', () => {
+		const inventory = getDocsPage('api', 'inventory');
+		const serializedInventory = JSON.stringify(inventory);
+
+		expect(serializedInventory).toContain(
+			'Authenticated reads and writes require Parchment Intelligence or Mallard Studio access'
+		);
+		expect(serializedInventory).toContain(
+			'Missing sessions return 401; authenticated accounts without either entitlement return 403.'
+		);
+		expect(serializedInventory).toContain(
+			'If a supplied share token is invalid or expired, GET /api/beans returns an empty data array and does not fall back to the current session.'
+		);
+		expect(serializedInventory).not.toContain(
+			'no session and no valid share token returns an empty data array'
+		);
+	});
 });

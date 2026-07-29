@@ -1176,9 +1176,9 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/beans',
 							'GET POST PUT DELETE',
-							'GET: session or share token; writes: session',
+							'GET: Parchment Intelligence or Mallard Studio session, or share token; writes: Parchment Intelligence or Mallard Studio session',
 							'Internal product route',
-							"GET without a valid session returns an empty data array rather than a 401. share=<token> scopes reads to a shared bean or the owner's full inventory."
+							"Without a share parameter, GET /api/beans requires a current Parchment Intelligence or Mallard Studio session; missing sessions return 401 and authenticated accounts without either entitlement return 403. A supplied invalid or expired share token returns an empty data array and does not fall back to the current session. Valid share tokens scope reads to a shared bean or the owner's full inventory."
 						],
 						[
 							'/api/share',
@@ -1453,10 +1453,10 @@ const docsPages: DocsPage[] = [
 		slug: 'inventory',
 		title: 'Inventory routes',
 		summary:
-			'Manage green coffee inventory, generate share links, and keep stocked state accurate through session-authenticated product routes.',
+			'Manage green coffee inventory through Parchment Intelligence or Mallard Studio sessions, generate scoped share links, and keep stocked state accurate.',
 		eyebrow: 'Inventory',
 		intro: [
-			'Inventory is where public catalog data becomes account-owned operational data. The core route is /api/beans, backed by session auth for writes and optional share-token reads for scoped external viewing.',
+			'Inventory is where public catalog data becomes account-owned operational data. The core route is /api/beans. Authenticated reads and writes require Parchment Intelligence or Mallard Studio access; optional share-token reads provide scoped external viewing.',
 			'Inventory IDs are not catalog IDs. Roast and downstream workflows use green_coffee_inv.id values.'
 		],
 		sections: [
@@ -1468,7 +1468,7 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/beans',
 							'GET POST PUT DELETE',
-							'GET: session or share token; writes: session',
+							'GET: Parchment Intelligence or Mallard Studio session, or share token; writes: Parchment Intelligence or Mallard Studio session',
 							'Inventory CRUD plus shared-link reads'
 						],
 						[
@@ -1490,7 +1490,8 @@ const docsPages: DocsPage[] = [
 				title: 'Read and share behavior',
 				bullets: [
 					'GET /api/beans?share=<token> returns a scoped view if the token exists, is active, and has not expired.',
-					'Without a valid share token, GET /api/beans falls back to the current session. If no session is present, the route returns { data: [] } instead of a 401.',
+					'If a supplied share token is invalid or expired, GET /api/beans returns an empty data array and does not fall back to the current session.',
+					'Without a share parameter, GET /api/beans requires a current Parchment Intelligence or Mallard Studio session. Missing sessions return 401; authenticated accounts without either entitlement return 403.',
 					'POST /api/share accepts resourceId plus an optional expiresIn value such as 7d. The response is a shareUrl under /beans?share=....',
 					'Share links reveal inventory data only; they do not grant broader session or account access.'
 				]
@@ -1498,7 +1499,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Mutation behavior',
 				bullets: [
-					'POST /api/beans can create manual catalog entries when no catalog_id is supplied and manual_name is present.',
+					'POST /api/beans keeps catalog-backed creation and the legacy scalar manual payload on their compatibility paths, while the coffee-app form sends manual multi-row purchases through one atomic Parchment batch. Batch creation and GET /api/beans?manualBatchId=<uuid> both require a Parchment Intelligence or Mallard Studio session; after an uncertain response, that GET reconciles the durable batch result.',
 					'PUT /api/beans requires an id query parameter and filters updates down to known inventory columns before writing.',
 					'DELETE /api/beans requires an id query parameter and enforces ownership. Deletion is blocked while roast profiles or sales depend on the inventory item.',
 					"POST /api/update-stocked-status recalculates one item by coffee_id. PUT scans the caller's full inventory and batch-updates any mismatched stocked flags."
@@ -1991,7 +1992,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'For external catalog access, use https://api.purveyors.io/v1/catalog with a Bearer credential or authenticate the CLI with purvey auth login.',
 					'Public website catalog reads go through coffee-app with a server-held demo key. Direct Parchment requests without a credential return 401.',
-					'GET /api/beans with no session and no valid share token returns an empty data array, not a 401. Do not mistake that behavior for public inventory access.',
+					'GET /api/beans without a share parameter returns 401 when no session is present and 403 when the session lacks Parchment Intelligence or Mallard Studio access. A supplied invalid or expired share token returns an empty data array without falling back to the session.',
 					'Catalog rate-limit headers are emitted for API-key requests. Bearer-session requests are not API-key quota calls.',
 					'Missing or invalid Authorization credentials return 401 on Parchment catalog and entitled endpoints. Deliberately designated Market Index teaser slices remain anonymous.',
 					'/api-dashboard/keys/generate returns the plaintext apiKey only at creation time. Plan Console UX and support docs around that one-time reveal.',

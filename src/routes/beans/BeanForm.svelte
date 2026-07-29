@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import LoadingButton from '$lib/components/LoadingButton.svelte';
 	import {
 		calculatePurchaseTotal,
@@ -12,17 +13,47 @@
 		CoffeeCatalog,
 		CoffeeFormData
 	} from '$lib/types/component.types';
+	import type { components } from '@purveyors/sdk';
+
+	type ManualCoffeeCreate = components['schemas']['ManualCoffeeCreate'];
+	type ManualInventoryBatchCreateRequest =
+		components['schemas']['ManualInventoryBatchCreateRequest'];
+
+	const MANUAL_COFFEE_FIELD_MAP = {
+		region: 'region',
+		processing: 'processing',
+		drying_method: 'dryingMethod',
+		roast_recs: 'roastRecommendations',
+		lot_size: 'lotSize',
+		bag_size: 'bagSize',
+		packaging: 'packaging',
+		cultivar_detail: 'cultivarDetail',
+		grade: 'grade',
+		appearance: 'appearance',
+		description_short: 'shortDescription',
+		farm_notes: 'farmNotes',
+		type: 'type',
+		description_long: 'longDescription',
+		cost_lb: 'costPerLb',
+		source: 'source',
+		cupping_notes: 'supplierCuppingNotes',
+		arrival_date: 'arrivalDate',
+		score_value: 'scoreValue'
+	} as const;
+	const PENDING_MANUAL_BATCH_STORAGE_KEY = 'purveyors:pending-manual-inventory-batch';
 
 	const {
 		bean = null,
 		onClose,
 		onSubmit,
-		catalogBeans = []
+		catalogBeans = [],
+		ownerId = null
 	} = $props<{
 		bean: InventoryWithCatalog | null;
 		onClose: () => void;
-		onSubmit: (bean: CoffeeFormData) => void;
+		onSubmit: (beans: CoffeeFormData[]) => void;
 		catalogBeans?: CoffeeCatalog[];
+		ownerId?: string | null;
 	}>();
 
 	let isManualEntry = $state(true);
@@ -55,6 +86,47 @@
 	});
 
 	let selectedOptionalFields = $state<string[]>([]);
+
+	function pendingManualBatchStorageKey(ownerId: string | null): string | null {
+		return ownerId ? `${PENDING_MANUAL_BATCH_STORAGE_KEY}:${ownerId}` : null;
+	}
+
+	function readPendingManualBatchId(ownerId: string | null): string | null {
+		const storageKey = pendingManualBatchStorageKey(ownerId);
+		return browser && storageKey ? sessionStorage.getItem(storageKey) : null;
+	}
+
+	let pendingManualBatchId = $state<string | null>(null);
+	let activeOwnerId = $state<string | null>(null);
+
+	$effect(() => {
+		const currentOwnerId = ownerId;
+		if (currentOwnerId === activeOwnerId) return;
+		activeOwnerId = currentOwnerId;
+		pendingManualBatchId = readPendingManualBatchId(currentOwnerId);
+	});
+
+	function setPendingManualBatchId(batchId: string | null) {
+		pendingManualBatchId = batchId;
+		if (!browser) return;
+		const storageKey = pendingManualBatchStorageKey(ownerId);
+		if (!storageKey) return;
+		if (batchId) {
+			sessionStorage.setItem(storageKey, batchId);
+		} else {
+			sessionStorage.removeItem(storageKey);
+		}
+	}
+
+	function isDefinitiveManualBatchFailure(response: Response, data: { code?: unknown }): boolean {
+		if ([401, 403, 408, 425, 429].includes(response.status) || response.status >= 500) {
+			return false;
+		}
+		if (response.status === 409) {
+			return data.code === 'idempotency_conflict';
+		}
+		return true;
+	}
 
 	// Shared form data for batch-level fields
 	let sharedFormData = $state({
@@ -226,7 +298,101 @@
 		});
 	}
 
+	function manualCoffee(
+		beanData: (typeof batchBeans)[number],
+		beanIndex: number
+	): ManualCoffeeCreate {
+		const coffee: Record<string, string | number> = {
+			name: String(beanData.manual_name).trim()
+		};
+
+		if (beanIndex === 0) {
+			for (const fieldName of selectedOptionalFields) {
+				const parchmentField =
+					MANUAL_COFFEE_FIELD_MAP[fieldName as keyof typeof MANUAL_COFFEE_FIELD_MAP];
+				const value = optionalFields[fieldName];
+				if (
+					parchmentField &&
+					((typeof value === 'string' && value.trim() !== '') ||
+						(typeof value === 'number' && Number.isFinite(value)))
+				) {
+					coffee[parchmentField] = value;
+				}
+			}
+		}
+
+		return coffee as ManualCoffeeCreate;
+	}
+
+	function manualBatchRequest(): ManualInventoryBatchCreateRequest {
+		return {
+			purchaseDate: sharedFormData.purchase_date,
+			taxShipTotal: sharedFormData.tax_ship_cost,
+			...(sharedFormData.notes ? { notes: sharedFormData.notes } : {}),
+			items: batchBeans.map((beanData, beanIndex) => ({
+				rowId: crypto.randomUUID(),
+				manualCoffee: manualCoffee(beanData, beanIndex),
+				qty: Number(beanData.purchased_qty_lbs),
+				...(typeof beanData.bean_cost === 'number' ? { cost: beanData.bean_cost } : {})
+			}))
+		};
+	}
+
+	async function finishManualBatch(response: Response): Promise<boolean> {
+		if (response.ok) {
+			const createdBeans = (await response.json()) as CoffeeFormData[];
+			setPendingManualBatchId(null);
+			onSubmit(createdBeans);
+			onClose();
+			return true;
+		}
+
+		const data = (await response.json()) as { error?: unknown; code?: unknown };
+		if (isDefinitiveManualBatchFailure(response, data)) {
+			setPendingManualBatchId(null);
+		}
+		alert(`Failed to create beans: ${String(data.error ?? 'Unknown error')}`);
+		return false;
+	}
+
+	async function submitManualBatch(): Promise<void> {
+		if (pendingManualBatchId) {
+			const response = await fetch(
+				`/api/beans?manualBatchId=${encodeURIComponent(pendingManualBatchId)}`
+			);
+			await finishManualBatch(response);
+			return;
+		}
+
+		const batchId = crypto.randomUUID();
+		setPendingManualBatchId(batchId);
+		const response = await fetch('/api/beans', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Idempotency-Key': batchId
+			},
+			body: JSON.stringify(manualBatchRequest())
+		});
+		await finishManualBatch(response);
+	}
+
 	async function handleSubmit() {
+		if (isSubmitting) return;
+
+		if (isManualEntry && pendingManualBatchId) {
+			try {
+				isSubmitting = true;
+				await submitManualBatch();
+			} catch (error) {
+				console.error('Error reconciling manual inventory batch:', error);
+				alert('Failed to reconcile this batch. Please try again.');
+			} finally {
+				isSubmitting = false;
+			}
+			return;
+		}
+
 		if (!batchBeans || !batchBeans.length) {
 			alert('Please add at least one bean to the batch');
 			return;
@@ -240,12 +406,7 @@
 		try {
 			isSubmitting = true;
 
-			// Calculate tax/ship cost per bean
-			const taxShipPerBean = sharedFormData.tax_ship_cost / batchBeans.length;
-
-			const createdBeans = [];
-
-			// Process each bean in the batch
+			// Validate the whole batch before any mutation.
 			for (let i = 0; i < batchBeans.length; i++) {
 				const beanData = batchBeans[i];
 
@@ -282,7 +443,18 @@
 						}
 					}
 				}
+			}
 
+			if (isManualEntry) {
+				await submitManualBatch();
+				return;
+			}
+
+			const taxShipPerBean = sharedFormData.tax_ship_cost / batchBeans.length;
+			const createdBeans = [];
+
+			for (let i = 0; i < batchBeans.length; i++) {
+				const beanData = batchBeans[i];
 				// Prepare bean data for submission
 				const cleanedBean: CoffeeFormData = {
 					...Object.fromEntries(
@@ -297,20 +469,6 @@
 					notes: sharedFormData.notes,
 					last_updated: new Date().toISOString()
 				};
-
-				// For manual entry, include optional catalog fields (only for first bean)
-				if (isManualEntry && beanData.manual_name && i === 0) {
-					// Add selected optional fields to the submission
-					selectedOptionalFields.forEach((fieldName) => {
-						if (optionalFields[fieldName] !== '' && optionalFields[fieldName] !== null) {
-							cleanedBean[fieldName] = optionalFields[fieldName];
-						}
-					});
-					// Don't set catalog_id for manual entries - let the API create it
-					if (cleanedBean.catalog_id === null) {
-						delete cleanedBean.catalog_id;
-					}
-				}
 
 				const response = await fetch('/api/beans', {
 					method: 'POST',
@@ -395,6 +553,16 @@
 		</p>
 	</div>
 
+	{#if pendingManualBatchId}
+		<div
+			class="mb-6 rounded-md border border-warning bg-warning-subtle p-3 text-sm text-warning-strong"
+			role="status"
+		>
+			A previous manual batch has an uncertain result. Editing is locked until it is reconciled.
+			Select the button below to check its status before starting a new purchase.
+		</div>
+	{/if}
+
 	<form
 		onsubmit={(e) => {
 			e.preventDefault();
@@ -412,6 +580,7 @@
 						bind:group={isManualEntry}
 						value={true}
 						onchange={resetFormData}
+						disabled={!!pendingManualBatchId}
 						class="sr-only"
 					/>
 					<div
@@ -426,7 +595,13 @@
 					</div>
 				</label>
 				<label class="inline-flex cursor-pointer items-center">
-					<input type="radio" bind:group={isManualEntry} value={false} class="sr-only" />
+					<input
+						type="radio"
+						bind:group={isManualEntry}
+						value={false}
+						disabled={!!pendingManualBatchId}
+						class="sr-only"
+					/>
 					<div
 						class="flex items-center gap-2 rounded-md border px-4 py-2 transition-all duration-200"
 						class:bg-accent={!isManualEntry}
@@ -453,6 +628,7 @@
 						id="purchase_date"
 						type="date"
 						bind:value={sharedFormData.purchase_date}
+						disabled={!!pendingManualBatchId}
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 						required
 					/>
@@ -469,11 +645,16 @@
 						min="0"
 						placeholder="0.00"
 						bind:value={sharedFormData.tax_ship_cost}
+						disabled={!!pendingManualBatchId}
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 						required
 					/>
 					<p class="text-xs text-muted">
-						This amount will be divided equally among all beans in this purchase
+						{#if isManualEntry}
+							Parchment will allocate this total across the manual batch in exact cents
+						{:else}
+							This total will be divided evenly across catalog items
+						{/if}
 					</p>
 				</div>
 			</div>
@@ -489,6 +670,7 @@
 						id="source"
 						bind:value={sourceFilter}
 						onchange={handleSourceChange}
+						disabled={!!pendingManualBatchId}
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 					>
 						<option value="">All Sources</option>
@@ -508,6 +690,7 @@
 					type="button"
 					class="flex items-center gap-2 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 					onclick={addBeanToBatch}
+					disabled={!!pendingManualBatchId}
 				>
 					<span class="text-lg">+</span>
 					<span>Add Bean</span>
@@ -538,6 +721,7 @@
 								type="button"
 								class="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-xs text-white hover:bg-danger-strong"
 								onclick={() => removeBeanFromBatch(index)}
+								disabled={!!pendingManualBatchId}
 							>
 								✕
 							</button>
@@ -555,6 +739,7 @@
 										type="text"
 										bind:value={beanData.manual_name}
 										placeholder="Enter coffee name"
+										disabled={!!pendingManualBatchId}
 										class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 										required
 									/>
@@ -568,6 +753,7 @@
 										id="catalog-bean-{index}"
 										class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 										required
+										disabled={!!pendingManualBatchId}
 										value={beanData.catalog_id || ''}
 										onchange={(e) => handleBeanSelect(e, index)}
 									>
@@ -636,6 +822,7 @@
 									min="0"
 									bind:value={beanData.purchased_qty_lbs}
 									placeholder="0"
+									disabled={!!pendingManualBatchId}
 									class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 									required
 								/>
@@ -656,7 +843,7 @@
 									min="0"
 									placeholder="0.00"
 									bind:value={beanData.bean_cost}
-									disabled={!isManualEntry && !!tiers}
+									disabled={!!pendingManualBatchId || (!isManualEntry && !!tiers)}
 									class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 									required
 								/>
@@ -685,6 +872,7 @@
 						<select
 							id="field-selector"
 							class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
+							disabled={!!pendingManualBatchId}
 							onchange={(e) => {
 								const target = e.target as HTMLSelectElement;
 								const field = target.value;
@@ -729,6 +917,7 @@
 										id={`field-${fieldName}`}
 										bind:value={optionalFields[fieldName]}
 										rows="3"
+										disabled={!!pendingManualBatchId}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									></textarea>
 								{:else if fieldName === 'cost_lb' || fieldName === 'score_value'}
@@ -737,6 +926,7 @@
 										type="number"
 										step="0.01"
 										bind:value={optionalFields[fieldName]}
+										disabled={!!pendingManualBatchId}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									/>
 								{:else if fieldName === 'arrival_date'}
@@ -744,6 +934,7 @@
 										id={`field-${fieldName}`}
 										type="date"
 										bind:value={optionalFields[fieldName]}
+										disabled={!!pendingManualBatchId}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									/>
 								{:else}
@@ -751,6 +942,7 @@
 										id={`field-${fieldName}`}
 										type="text"
 										bind:value={optionalFields[fieldName]}
+										disabled={!!pendingManualBatchId}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									/>
 								{/if}
@@ -758,6 +950,7 @@
 							<button
 								type="button"
 								class="mt-6 rounded-md bg-danger px-2 py-1 text-xs text-white hover:bg-danger-strong"
+								disabled={!!pendingManualBatchId}
 								onclick={() => {
 									selectedOptionalFields = selectedOptionalFields.filter(
 										(f: string) => f !== fieldName
@@ -778,6 +971,7 @@
 					<textarea
 						id="notes"
 						bind:value={sharedFormData.notes}
+						disabled={!!pendingManualBatchId}
 						rows="3"
 						placeholder="Add any notes about this purchase..."
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
@@ -797,18 +991,23 @@
 			</button>
 			<LoadingButton
 				variant="primary"
+				type="button"
 				loading={isSubmitting}
-				loadingText={batchBeans.length === 1
-					? 'Saving Bean...'
-					: `Saving ${batchBeans.length} Beans...`}
+				loadingText={pendingManualBatchId
+					? 'Reconciling Batch...'
+					: batchBeans.length === 1
+						? 'Saving Bean...'
+						: `Saving ${batchBeans.length} Beans...`}
 				onclick={handleSubmit}
 				disabled={catalogLoading}
 			>
-				{bean
-					? 'Update Bean'
-					: batchBeans.length === 1
-						? 'Add Bean'
-						: `Add ${batchBeans.length} Beans`}
+				{pendingManualBatchId
+					? 'Reconcile Pending Batch'
+					: bean
+						? 'Update Bean'
+						: batchBeans.length === 1
+							? 'Add Bean'
+							: `Add ${batchBeans.length} Beans`}
 			</LoadingButton>
 		</div>
 	</form>

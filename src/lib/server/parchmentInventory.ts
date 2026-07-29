@@ -4,6 +4,7 @@ import { collectOffsetPages } from '$lib/services/tools/pagination';
 import { unwrapParchment } from '$lib/services/tools/parchment';
 
 type InventoryResource = components['schemas']['InventoryResource'];
+type ManualInventoryBatchCreateRequest = components['schemas']['ManualInventoryBatchCreateRequest'];
 type RoastResource = components['schemas']['RoastListResource'];
 
 export type ParchmentInventoryProjection = Omit<InventoryResource, 'coffee_catalog'> & {
@@ -51,6 +52,58 @@ export class ParchmentInventoryError extends Error {
 }
 
 const PAGE_LIMIT = 200;
+
+function projectInventoryResource(
+	row: InventoryResource,
+	roastProfiles: ParchmentInventoryProjection['roast_profiles'] = []
+): ParchmentInventoryProjection {
+	const aiTastingNotes = row.coffee_catalog?.ai_tasting_notes;
+
+	return {
+		...row,
+		ai_tasting_notes: aiTastingNotes ? JSON.stringify(aiTastingNotes) : null,
+		coffee_catalog:
+			row.coffee_catalog === null
+				? null
+				: {
+						...row.coffee_catalog,
+						ai_tasting_notes: aiTastingNotes ? JSON.stringify(aiTastingNotes) : null
+					},
+		roast_profiles: roastProfiles
+	};
+}
+
+function projectManualBatch(
+	result: components['schemas']['ManualInventoryBatchResult'],
+	expectedBatchId: string
+): ParchmentInventoryProjection[] {
+	if (result.batchId !== expectedBatchId) {
+		throw new Error('Parchment returned the wrong manual inventory batch');
+	}
+
+	return result.items.map(({ resource }) => projectInventoryResource(resource));
+}
+
+function throwParchmentResultError(
+	result: { error?: unknown; response?: Response },
+	protocolError = false
+): never {
+	if (protocolError) {
+		throw new ParchmentInventoryError(502, {
+			error: {
+				code: 'invalid_response',
+				message: 'Parchment inventory response did not include a batch payload'
+			}
+		});
+	}
+
+	if (result.response) {
+		throw new ParchmentInventoryError(result.response.status, result.error);
+	}
+	throw result.error instanceof Error
+		? result.error
+		: new Error('Parchment inventory request failed', { cause: result.error });
+}
 
 function roastProjection(roast: RoastResource) {
 	return {
@@ -133,23 +186,52 @@ export async function fetchParchmentInventoryProjection(
 						...(row.coffee_catalog as Record<string, unknown> | null),
 						...fullCatalog
 					};
-		const aiTastingNotes = coffeeCatalog?.ai_tasting_notes;
-
-		return {
-			...row,
-			ai_tasting_notes: aiTastingNotes ? JSON.stringify(aiTastingNotes) : null,
-			coffee_catalog:
-				coffeeCatalog === null
-					? null
-					: {
-							...coffeeCatalog,
-							ai_tasting_notes: aiTastingNotes ? JSON.stringify(aiTastingNotes) : null
-						},
-			roast_profiles: options.includeRoastProfiles
+		return projectInventoryResource(
+			{
+				...row,
+				coffee_catalog:
+					coffeeCatalog === null
+						? null
+						: ({
+								...coffeeCatalog
+							} as InventoryResource['coffee_catalog'])
+			},
+			options.includeRoastProfiles
 				? (roastsByInventoryId.get(row.id) ?? []).map(roastProjection)
 				: []
-		};
+		);
 	});
+}
+
+/** Create one atomic owner-private manual inventory batch through Parchment. */
+export async function createParchmentManualInventoryBatch(
+	client: ParchmentClient,
+	body: ManualInventoryBatchCreateRequest,
+	batchId: string
+): Promise<ParchmentInventoryProjection[]> {
+	const result = await client.inventory.createManualBatch(body, { idempotencyKey: batchId });
+	if (!result.data?.data) {
+		throwParchmentResultError(
+			result,
+			result.response?.ok === true || (!result.error && !result.response)
+		);
+	}
+	return projectManualBatch(result.data.data, batchId);
+}
+
+/** Reconcile an uncertain atomic manual inventory batch by its stable batch UUID. */
+export async function getParchmentManualInventoryBatch(
+	client: ParchmentClient,
+	batchId: string
+): Promise<ParchmentInventoryProjection[]> {
+	const result = await client.inventory.getManualBatch(batchId);
+	if (!result.data?.data) {
+		throwParchmentResultError(
+			result,
+			result.response?.ok === true || (!result.error && !result.response)
+		);
+	}
+	return projectManualBatch(result.data.data, batchId);
 }
 
 /**

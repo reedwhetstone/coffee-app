@@ -56,6 +56,7 @@
 		catalogData?: CoffeeCatalog[];
 		role?: 'viewer' | 'member' | 'admin';
 		ppiAccess?: boolean;
+		user?: { id: string } | null;
 		trackedLots?: Array<{
 			catalogId: number;
 			stocked: boolean | null;
@@ -252,7 +253,7 @@
 
 	// Function to handle editing
 
-	async function handleFormSubmit(_formData: CoffeeFormData) {
+	async function handleFormSubmit(_formData: CoffeeFormData[]) {
 		isSaving = 'Saving...';
 		try {
 			await refreshData();
@@ -620,6 +621,7 @@
 					onClose={hideForm}
 					onSubmit={handleFormSubmit}
 					catalogBeans={catalogData}
+					ownerId={data?.user?.id ?? null}
 				/>
 			</FormShell>
 

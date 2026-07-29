@@ -28,11 +28,18 @@ const dataMocks = vi.hoisted(() => ({
 	updateInventory: vi.fn()
 }));
 
-const parchmentMocks = vi.hoisted(() => ({
-	createParchmentServerClient: vi.fn(),
-	fetchParchmentInventoryProjection: vi.fn(),
-	inventoryDelete: vi.fn()
-}));
+const parchmentMocks = vi.hoisted(() => {
+	class MockParchmentConfigError extends Error {}
+
+	return {
+		ParchmentConfigError: MockParchmentConfigError,
+		createParchmentServerClient: vi.fn(),
+		fetchParchmentInventoryProjection: vi.fn(),
+		inventoryDelete: vi.fn(),
+		createManualBatch: vi.fn(),
+		getManualBatch: vi.fn()
+	};
+});
 
 vi.mock('$lib/server/auth', () => ({
 	AuthError: authMocks.AuthError,
@@ -52,6 +59,7 @@ vi.mock('$lib/data/inventory.js', () => ({
 }));
 
 vi.mock('$lib/server/parchmentClient', () => ({
+	ParchmentConfigError: parchmentMocks.ParchmentConfigError,
 	createParchmentServerClient: parchmentMocks.createParchmentServerClient
 }));
 
@@ -114,9 +122,42 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		});
 		parchmentMocks.createParchmentServerClient.mockResolvedValue({
 			kind: 'parchment-client',
-			inventory: { delete: parchmentMocks.inventoryDelete }
+			inventory: {
+				delete: parchmentMocks.inventoryDelete,
+				createManualBatch: parchmentMocks.createManualBatch,
+				getManualBatch: parchmentMocks.getManualBatch
+			}
 		});
 		parchmentMocks.fetchParchmentInventoryProjection.mockResolvedValue([]);
+		const batchResult = {
+			data: {
+				data: {
+					batchId: '00000000-0000-4000-8000-000000000001',
+					items: [
+						{
+							rowId: '00000000-0000-4000-8000-000000000002',
+							resource: {
+								id: 42,
+								catalog_id: 99,
+								coffee_catalog: {
+									id: 99,
+									name: 'Private lot',
+									public_coffee: false,
+									ai_tasting_notes: ['Peach', 'Floral']
+								}
+							}
+						}
+					]
+				}
+			},
+			error: undefined,
+			response: new Response(null, { status: 201 })
+		};
+		parchmentMocks.createManualBatch.mockResolvedValue(batchResult);
+		parchmentMocks.getManualBatch.mockResolvedValue({
+			...batchResult,
+			response: new Response(null, { status: 200 })
+		});
 	});
 
 	it('requires Parchment Intelligence or Mallard Studio access for user-owned reads', async () => {
@@ -274,6 +315,266 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		expect(dataMocks.addToInventory).not.toHaveBeenCalled();
 		expect(dataMocks.updateInventory).not.toHaveBeenCalled();
 		expect(parchmentMocks.inventoryDelete).not.toHaveBeenCalled();
+	});
+
+	it('creates one manual batch through the session SDK and preserves the beans projection', async () => {
+		const batchId = '00000000-0000-4000-8000-000000000001';
+		const body = {
+			purchaseDate: '2026-07-28',
+			taxShipTotal: 3.25,
+			notes: 'Direct trade samples',
+			items: [
+				{
+					rowId: '00000000-0000-4000-8000-000000000002',
+					manualCoffee: { name: 'Private lot', region: 'Huila' },
+					qty: 5,
+					cost: 42.5
+				}
+			]
+		};
+		const event = makeEvent('/api/beans', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Idempotency-Key': batchId
+			},
+			body: JSON.stringify(body)
+		});
+
+		const response = await POST(event as never);
+
+		expect(response.status).toBe(201);
+		expect(parchmentMocks.createParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session'
+		});
+		expect(parchmentMocks.createManualBatch).toHaveBeenCalledWith(body, {
+			idempotencyKey: batchId
+		});
+		expect(event.locals.supabase.from).not.toHaveBeenCalled();
+		expect(dataMocks.addToInventory).not.toHaveBeenCalled();
+		expect(await response.json()).toEqual([
+			expect.objectContaining({
+				id: 42,
+				catalog_id: 99,
+				ai_tasting_notes: '["Peach","Floral"]',
+				coffee_catalog: expect.objectContaining({
+					id: 99,
+					name: 'Private lot',
+					ai_tasting_notes: '["Peach","Floral"]'
+				}),
+				roast_profiles: []
+			})
+		]);
+	});
+
+	it('requires a browser-stable batch UUID before calling Parchment', async () => {
+		const response = await POST(
+			makeEvent('/api/beans', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ items: [] })
+			}) as never
+		);
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({
+			error: 'Idempotency-Key is required for manual inventory batches'
+		});
+		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
+		expect(parchmentMocks.createManualBatch).not.toHaveBeenCalled();
+	});
+
+	it('preserves the full legacy scalar manual compatibility contract', async () => {
+		const catalogInsertQuery = {
+			insert: vi.fn(() => catalogInsertQuery),
+			select: vi.fn(() => catalogInsertQuery),
+			eq: vi.fn(() => catalogInsertQuery),
+			single: vi.fn(async () => ({ data: { id: 99 }, error: null }))
+		};
+		const event = makeEvent('/api/beans', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				manual_name: 'Legacy private lot',
+				purchase_date: '2026-07-28',
+				purchased_qty_lbs: 2,
+				bean_cost: 18,
+				tax_ship_cost: 1.25,
+				region: 'Huila',
+				rank: 4,
+				stocked: false,
+				cupping_notes: { aroma: 8 },
+				price_per_lb: 9.5,
+				price_tiers: [{ min_lbs: 1, price: 9.5 }],
+				ai_description: 'Floral and sweet',
+				ai_tasting_notes: ['Peach', 'Jasmine']
+			})
+		});
+		event.locals.supabase.from = vi.fn(() => catalogInsertQuery);
+		dataMocks.addToInventory.mockResolvedValueOnce({ id: 42, catalog_id: 99 });
+		const response = await POST(event as never);
+
+		expect(response.status).toBe(200);
+		expect(catalogInsertQuery.insert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'Legacy private lot',
+				coffee_user: 'ppi-user',
+				public_coffee: false,
+				region: 'Huila',
+				cupping_notes: { aroma: 8 },
+				price_per_lb: 9.5,
+				price_tiers: [{ min_lbs: 1, price: 9.5 }],
+				ai_description: 'Floral and sweet',
+				ai_tasting_notes: ['Peach', 'Jasmine']
+			})
+		);
+		expect(dataMocks.addToInventory).toHaveBeenCalledWith(event.locals.supabase, 'ppi-user', {
+			catalog_id: 99,
+			rank: 4,
+			notes: undefined,
+			purchase_date: '2026-07-28',
+			purchased_qty_lbs: 2,
+			bean_cost: 18,
+			tax_ship_cost: 1.25,
+			stocked: false,
+			cupping_notes: { aroma: 8 }
+		});
+		expect(parchmentMocks.createManualBatch).not.toHaveBeenCalled();
+		expect(await response.json()).toEqual(expect.objectContaining({ id: 42, catalog_id: 99 }));
+	});
+
+	it('reconciles an uncertain manual batch through its durable batch UUID', async () => {
+		const batchId = '00000000-0000-4000-8000-000000000001';
+
+		const response = await GET(makeEvent(`/api/beans?manualBatchId=${batchId}`) as never);
+
+		expect(response.status).toBe(200);
+		expect(parchmentMocks.getManualBatch).toHaveBeenCalledWith(batchId);
+		expect(parchmentMocks.fetchParchmentInventoryProjection).not.toHaveBeenCalled();
+		expect(await response.json()).toEqual([
+			expect.objectContaining({
+				id: 42,
+				catalog_id: 99,
+				roast_profiles: []
+			})
+		]);
+	});
+
+	it('preserves Parchment reconciliation status and error details', async () => {
+		parchmentMocks.getManualBatch.mockResolvedValue({
+			data: undefined,
+			error: {
+				error: {
+					code: 'not_found',
+					message: 'Manual inventory batch not found'
+				}
+			},
+			response: new Response(null, { status: 404 })
+		});
+
+		const response = await GET(
+			makeEvent('/api/beans?manualBatchId=00000000-0000-4000-8000-000000000009') as never
+		);
+
+		expect(response.status).toBe(404);
+		expect(await response.json()).toEqual({
+			error: 'Manual inventory batch not found',
+			code: 'not_found'
+		});
+	});
+
+	it('returns a failure for unexpected reconciliation errors', async () => {
+		parchmentMocks.getManualBatch.mockRejectedValue(new TypeError('Response decoding failed'));
+
+		const response = await GET(
+			makeEvent('/api/beans?manualBatchId=00000000-0000-4000-8000-000000000009') as never
+		);
+
+		expect(response.status).toBe(500);
+		expect(await response.json()).toEqual({
+			data: [],
+			error: 'Failed to reconcile manual inventory batch'
+		});
+	});
+
+	it('returns a non-2xx response for a malformed successful reconciliation payload', async () => {
+		parchmentMocks.getManualBatch.mockResolvedValue({
+			data: { data: undefined },
+			error: undefined,
+			response: new Response(null, { status: 200 })
+		});
+
+		const response = await GET(
+			makeEvent('/api/beans?manualBatchId=00000000-0000-4000-8000-000000000009') as never
+		);
+
+		expect(response.status).toBe(502);
+		expect(await response.json()).toEqual({
+			error: 'Parchment inventory response did not include a batch payload',
+			code: 'invalid_response'
+		});
+	});
+
+	it('preserves Parchment batch rejection status and error details', async () => {
+		parchmentMocks.createManualBatch.mockResolvedValue({
+			data: undefined,
+			error: {
+				error: {
+					code: 'idempotency_conflict',
+					message: 'Batch UUID belongs to another request'
+				}
+			},
+			response: new Response(null, { status: 409 })
+		});
+
+		const response = await POST(
+			makeEvent('/api/beans', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Idempotency-Key': '00000000-0000-4000-8000-000000000001'
+				},
+				body: JSON.stringify({
+					items: [
+						{
+							rowId: '00000000-0000-4000-8000-000000000002',
+							manualCoffee: { name: 'Private lot' },
+							qty: 5
+						}
+					]
+				})
+			}) as never
+		);
+
+		expect(response.status).toBe(409);
+		expect(await response.json()).toEqual({
+			error: 'Batch UUID belongs to another request',
+			code: 'idempotency_conflict'
+		});
+	});
+
+	it('keeps catalog-backed creation on the existing path', async () => {
+		const catalogQuery = {
+			select: vi.fn(() => catalogQuery),
+			eq: vi.fn(() => catalogQuery),
+			single: vi.fn(async () => ({ data: { id: 7 }, error: null }))
+		};
+		const event = makeEvent('/api/beans', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ catalog_id: 7, purchased_qty_lbs: 5 })
+		});
+		event.locals.supabase.from = vi.fn(() => catalogQuery);
+
+		const response = await POST(event as never);
+
+		expect(response.status).toBe(200);
+		expect(parchmentMocks.createManualBatch).not.toHaveBeenCalled();
+		expect(dataMocks.addToInventory).toHaveBeenCalledWith(
+			event.locals.supabase,
+			'ppi-user',
+			expect.objectContaining({ catalog_id: 7, purchased_qty_lbs: 5 })
+		);
 	});
 
 	it('deletes through a session-mode Parchment client and preserves the legacy success envelope', async () => {

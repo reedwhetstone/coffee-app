@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+	createParchmentManualInventoryBatch,
 	deleteParchmentInventoryItem,
 	fetchParchmentInventoryProjection,
+	getParchmentManualInventoryBatch,
 	ParchmentInventoryError
 } from './parchmentInventory';
 
@@ -180,4 +182,39 @@ describe('fetchParchmentInventoryProjection', () => {
 			deleteParchmentInventoryItem({ inventory: { delete: inventoryDelete } } as never, 7)
 		).rejects.toThrow('Parchment returned an invalid inventory delete response');
 	});
+
+	it.each([
+		['create', createParchmentManualInventoryBatch, 'createManualBatch'],
+		['reconcile', getParchmentManualInventoryBatch, 'getManualBatch']
+	])(
+		'rejects a malformed 2xx %s batch response as a gateway error',
+		async (_name, helper, method) => {
+			const batchId = '00000000-0000-4000-8000-000000000001';
+			const batchMethod = vi.fn().mockResolvedValue({
+				data: { data: undefined },
+				error: undefined,
+				response: new Response(null, { status: method === 'createManualBatch' ? 201 : 200 })
+			});
+			const client = { inventory: { [method]: batchMethod } };
+
+			const promise =
+				method === 'createManualBatch'
+					? (helper as typeof createParchmentManualInventoryBatch)(
+							client as never,
+							{ items: [{ rowId: batchId, manualCoffee: { name: 'Test lot' }, qty: 1 }] },
+							batchId
+						)
+					: (helper as typeof getParchmentManualInventoryBatch)(client as never, batchId);
+
+			await expect(promise).rejects.toMatchObject({
+				name: 'ParchmentInventoryError',
+				status: 502,
+				body: {
+					error: {
+						code: 'invalid_response'
+					}
+				}
+			});
+		}
+	);
 });
