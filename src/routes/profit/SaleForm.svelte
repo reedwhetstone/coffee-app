@@ -64,6 +64,7 @@
 				},
 				body: payload
 			});
+			if (!isUpdate) createAttempt = null;
 
 			if (response.ok) {
 				const newSale = await response.json();
