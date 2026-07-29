@@ -30,12 +30,21 @@ dropped accepted fields and changed the success status. The final patch
 preserves the scalar route unchanged and classifies reconciliation outcomes by
 status and structured Parchment error code.
 
+The lifecycle gate remains blocked. With `@purveyors/sdk@0.19.0`, a reload or
+remount can reconcile the retained UUID while the original batch POST is still
+in flight. Parchment can return a temporary 404 before that POST commits, and
+the current client then clears the UUID even though the batch may later be
+committed. Coffee-app must not paper over that distributed transaction race in
+the BFF or browser. Parchment PR #147 must first provide a durable, typed
+accepted/in-progress lifecycle and the SDK must publish it as `0.20.0`; this
+PR can then consume that contract and add the overlap coverage.
+
 ```text
-VERDICT: ready
-P0/P1/P2/P3: 0/0/0/0
-NEXT_ACTION: merge
+VERDICT: blocked
+P0/P1/P2/P3: 0/1/0/0
+NEXT_ACTION: blocked
 CONFIDENCE: high
-SCOPE_ASSESSMENT: mergeable
+SCOPE_ASSESSMENT: blocked by upstream lifecycle prerequisite
 ```
 
 ## Validation
