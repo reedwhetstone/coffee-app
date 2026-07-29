@@ -21,6 +21,8 @@
 
 	// Extract defaultBean from sale if it exists
 	const defaultBean = sale?.defaultBean || null;
+	let isSubmitting = $state(false);
+	let createIdempotencyKey: string | null = null;
 
 	let formData = $state(
 		sale?.id
@@ -38,6 +40,8 @@
 	);
 
 	async function handleSubmit() {
+		if (isSubmitting) return;
+		isSubmitting = true;
 		const isUpdate = sale?.id !== undefined && sale?.id !== null;
 
 		try {
@@ -51,7 +55,10 @@
 			const response = await fetch(isUpdate ? `/api/profit?id=${sale.id}` : '/api/profit', {
 				method: isUpdate ? 'PUT' : 'POST',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					...(!isUpdate
+						? { 'Idempotency-Key': (createIdempotencyKey ??= crypto.randomUUID()) }
+						: {})
 				},
 				body: JSON.stringify(cleanedSale)
 			});
@@ -71,6 +78,8 @@
 			}
 		} catch (error) {
 			console.error(`Error ${isUpdate ? 'updating' : 'creating'} sale:`, error);
+		} finally {
+			isSubmitting = false;
 		}
 	}
 
@@ -272,9 +281,10 @@
 			</button>
 			<button
 				type="submit"
+				disabled={isSubmitting}
 				class="rounded-md bg-accent px-4 py-2 font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 			>
-				{sale?.id ? 'Update Sale' : 'Create Sale'}
+				{isSubmitting ? 'Saving…' : sale?.id ? 'Update Sale' : 'Create Sale'}
 			</button>
 		</div>
 	</form>

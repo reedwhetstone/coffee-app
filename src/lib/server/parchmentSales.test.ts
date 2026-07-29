@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchParchmentSales } from './parchmentSales';
+import {
+	createParchmentSale,
+	deleteParchmentSale,
+	fetchParchmentSales,
+	ParchmentSalesError,
+	updateParchmentSale
+} from './parchmentSales';
 
 describe('fetchParchmentSales', () => {
 	it('paginates all owner sales and preserves the legacy projection', async () => {
@@ -37,5 +43,63 @@ describe('fetchParchmentSales', () => {
 		await expect(fetchParchmentSales({ sales: { list: salesList } } as never)).rejects.toThrow(
 			'sales unavailable'
 		);
+	});
+});
+
+describe('Parchment sales mutations', () => {
+	it('creates with an optional idempotency key and unwraps the sale', async () => {
+		const created = { id: 31, green_coffee_inv_id: 7 };
+		const create = vi.fn().mockResolvedValue({ data: { data: created } });
+
+		await expect(
+			createParchmentSale(
+				{ sales: { create } } as never,
+				{ greenCoffeeInvId: 7, ozSold: 12, price: 24 },
+				'sale-create-1'
+			)
+		).resolves.toBe(created);
+		expect(create).toHaveBeenCalledWith(
+			{ greenCoffeeInvId: 7, ozSold: 12, price: 24 },
+			{ idempotencyKey: 'sale-create-1' }
+		);
+	});
+
+	it('updates and requires the response id to match', async () => {
+		const update = vi.fn().mockResolvedValue({ data: { data: { id: 32 } } });
+
+		await expect(
+			updateParchmentSale({ sales: { update } } as never, 31, { price: 30 })
+		).rejects.toMatchObject({
+			name: 'ParchmentSalesError',
+			status: 502
+		});
+	});
+
+	it('deletes only when Parchment confirms the requested id', async () => {
+		const deleteSale = vi.fn().mockResolvedValue({ data: { data: { id: 31, deleted: true } } });
+
+		await expect(
+			deleteParchmentSale({ sales: { delete: deleteSale } } as never, 31)
+		).resolves.toBeUndefined();
+		expect(deleteSale).toHaveBeenCalledWith(31);
+	});
+
+	it('preserves an upstream error response', async () => {
+		const create = vi.fn().mockResolvedValue({
+			error: { error: { code: 'writes_disabled', message: 'Sales writes are disabled' } },
+			response: new Response(null, { status: 503 })
+		});
+
+		const promise = createParchmentSale({ sales: { create } } as never, {
+			greenCoffeeInvId: 7,
+			ozSold: 12,
+			price: 24
+		});
+
+		await expect(promise).rejects.toBeInstanceOf(ParchmentSalesError);
+		await expect(promise).rejects.toMatchObject({
+			status: 503,
+			body: { error: { code: 'writes_disabled', message: 'Sales writes are disabled' } }
+		});
 	});
 });

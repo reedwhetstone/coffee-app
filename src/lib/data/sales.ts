@@ -1,17 +1,9 @@
 /**
- * Direct-Supabase sales mutation and profit-summary data layer.
+ * Deferred direct-Supabase profit-summary data layer.
  *
- * Auth is intentionally excluded from this module. Route handlers are responsible
- * for validating sessions / API keys before calling these functions.
- *
- * Key design decisions:
- *  - Sales reads use the Parchment SDK through src/lib/server/parchmentSales.ts.
- *  - getProfitData remains the deferred direct-Supabase profit-summary dependency.
- *  - recordSale / updateSale / deleteSale are thin wrappers that do ownership
- *    verification at the route layer, not here. The route handler must confirm
- *    ownership before calling mutating functions.
- *  - All response shapes are identical to what the original route handlers
- *    returned to preserve wire-compatibility.
+ * Sales reads and mutations use the Parchment SDK through
+ * src/lib/server/parchmentSales.ts. The joined profit summary remains here
+ * until Parchment exposes its canonical replacement.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -20,10 +12,6 @@ import type { Database } from '$lib/types/database.types';
 // ── Internal query types ──────────────────────────────────────────────────────
 
 type CoffeeCatalogName = { name: string; wholesale?: boolean };
-type GreenCoffeeWithCatalog = Database['public']['Tables']['green_coffee_inv']['Row'] & {
-	coffee_catalog: CoffeeCatalogName | CoffeeCatalogName[] | null;
-};
-
 /** Raw row returned by the profit join query. */
 type ProfitDataRow = Database['public']['Tables']['green_coffee_inv']['Row'] & {
 	coffee_catalog: CoffeeCatalogName | CoffeeCatalogName[] | null;
@@ -32,12 +20,6 @@ type ProfitDataRow = Database['public']['Tables']['green_coffee_inv']['Row'] & {
 };
 
 // ── Public output types ───────────────────────────────────────────────────────
-
-/** Enriched sale row as returned by listSales. */
-export type Sale = Database['public']['Tables']['sales']['Row'] & {
-	coffee_name: string | null;
-	wholesale: boolean;
-};
 
 /** Per-inventory-item profit summary as returned by getProfitData. */
 export interface ProfitItem {
@@ -56,15 +38,6 @@ export interface ProfitItem {
 	profit_margin: number;
 	wholesale: boolean;
 }
-
-// ── Input types ───────────────────────────────────────────────────────────────
-
-export type SaleCreateInput = Omit<
-	Database['public']['Tables']['sales']['Insert'],
-	'user' | 'id'
-> & { green_coffee_inv_id: number };
-
-export type SaleUpdateInput = Database['public']['Tables']['sales']['Update'];
 
 // ── Query functions ───────────────────────────────────────────────────────────
 
@@ -152,91 +125,4 @@ export async function getProfitData(
 			wholesale: wholesale ?? false
 		};
 	});
-}
-
-/**
- * Record a new sale. The caller must verify that userId owns the
- * green_coffee_inv_id before calling this function.
- *
- * Returns the created sale enriched with coffee_name and purchase_date
- * (matches the original POST response shape).
- */
-export async function recordSale(
-	supabase: SupabaseClient,
-	userId: string,
-	data: SaleCreateInput
-): Promise<Sale & { purchase_date?: string | null }> {
-	const { data: newSale, error: insertError } = await supabase
-		.from('sales')
-		.insert({ ...data, user: userId } as Database['public']['Tables']['sales']['Insert'])
-		.select()
-		.single();
-
-	if (insertError) {
-		throw new Error(insertError.message);
-	}
-
-	// Fetch coffee name for the response (preserves original POST shape)
-	const { data: coffeeDataRaw } = await supabase
-		.from('green_coffee_inv')
-		.select(
-			`
-			purchase_date,
-			coffee_catalog!catalog_id (
-				name
-			)
-		`
-		)
-		.eq('id', data.green_coffee_inv_id)
-		.single();
-
-	const coffeeData = coffeeDataRaw as unknown as GreenCoffeeWithCatalog;
-
-	return {
-		...newSale,
-		coffee_name: Array.isArray(coffeeData?.coffee_catalog)
-			? (coffeeData?.coffee_catalog[0] as { name: string })?.name || null
-			: (coffeeData?.coffee_catalog as { name: string })?.name || null,
-		purchase_date: coffeeData?.purchase_date || null
-	};
-}
-
-/**
- * Update an existing sale. The caller must verify ownership before calling.
- * Returns the updated sale row.
- */
-export async function updateSale(
-	supabase: SupabaseClient,
-	id: number,
-	userId: string,
-	data: SaleUpdateInput
-): Promise<Database['public']['Tables']['sales']['Row']> {
-	const { data: updated, error } = await supabase
-		.from('sales')
-		.update(data as Database['public']['Tables']['sales']['Update'])
-		.eq('id', id)
-		.eq('user', userId)
-		.select()
-		.single();
-
-	if (error) {
-		throw new Error(error.message);
-	}
-
-	return updated;
-}
-
-/**
- * Delete a sale. The caller must verify ownership before calling.
- */
-export async function deleteSale(
-	supabase: SupabaseClient,
-	id: number,
-	userId: string
-): Promise<void> {
-	const { error } = await supabase.from('sales').delete().eq('id', id).eq('user', userId);
-
-	if (error) {
-		throw new Error(error.message);
-	}
 }
