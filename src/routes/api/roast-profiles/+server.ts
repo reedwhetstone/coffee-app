@@ -1,9 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import { fetchParchmentRoasts } from '$lib/server/parchmentRoasts';
 import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
 import { checkRole } from '$lib/types/auth.types';
 import {
-	listRoasts,
 	createRoasts,
 	updateRoast,
 	deleteRoast,
@@ -12,14 +13,15 @@ import {
 	type RoastUpdateInput
 } from '$lib/data/roast.js';
 
-export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async (event) => {
 	try {
-		const { session, user } = await safeGetSession();
+		const { session, user } = event.locals;
 		if (!session || !user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const data = await listRoasts(supabase, user.id);
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const data = await fetchParchmentRoasts(client);
 		return json({ data });
 	} catch (error) {
 		console.error('Error fetching roast profiles:', error);
