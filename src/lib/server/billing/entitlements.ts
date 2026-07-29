@@ -305,14 +305,20 @@ export async function recomputeUserBillingEntitlements(
 		currentUserRoleRow.api_plan !== resolvedEntitlements.apiPlan ||
 		currentUserRoleRow.ppi_access !== resolvedEntitlements.ppiAccess;
 
+	const updatePayload = changed
+		? {
+				role: resolvedEntitlements.role,
+				api_plan: resolvedEntitlements.apiPlan,
+				ppi_access: resolvedEntitlements.ppiAccess,
+				updated_at: new Date().toISOString()
+			}
+		: {
+				updated_at: new Date().toISOString()
+			};
+
 	const { data: updatedUserRoleRow, error: updateError } = await supabase
 		.from('user_roles')
-		.update({
-			role: resolvedEntitlements.role,
-			api_plan: resolvedEntitlements.apiPlan,
-			ppi_access: resolvedEntitlements.ppiAccess,
-			updated_at: new Date().toISOString()
-		})
+		.update(updatePayload)
 		.eq('id', userId)
 		.select('id')
 		.maybeSingle();

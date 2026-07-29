@@ -329,6 +329,9 @@ describe('billing entitlement reconciliation', () => {
 		});
 
 		expect(update).toHaveBeenCalledOnce();
+		expect(update).toHaveBeenCalledWith({
+			updated_at: expect.any(String)
+		});
 		expect(eqUpdatedUserRole).toHaveBeenCalledWith('id', 'user_123');
 	});
 
