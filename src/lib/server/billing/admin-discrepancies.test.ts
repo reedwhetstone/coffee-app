@@ -113,8 +113,12 @@ describe('billing entitlement admin discrepancies', () => {
 			error: null
 		}));
 		const selectUpdatedUserRole = vi.fn(() => ({ maybeSingle: maybeSingleUpdatedUserRole }));
-		const eqUpdatedUserRole = vi.fn(() => ({ select: selectUpdatedUserRole }));
-		const update = vi.fn(() => ({ eq: eqUpdatedUserRole }));
+		const updateQuery = {
+			eq: vi.fn(() => updateQuery),
+			is: vi.fn(() => updateQuery),
+			select: selectUpdatedUserRole
+		};
+		const update = vi.fn(() => updateQuery);
 		const maybeSingle = vi.fn(async () => ({
 			data: {
 				role: 'viewer',
@@ -189,7 +193,7 @@ describe('billing entitlement admin discrepancies', () => {
 			ppi_access: false,
 			updated_at: expect.any(String)
 		});
-		expect(eqUpdatedUserRole).toHaveBeenCalledWith('id', 'user_123');
+		expect(updateQuery.eq).toHaveBeenCalledWith('id', 'user_123');
 		expect(insert).toHaveBeenCalledWith(
 			expect.objectContaining({
 				user_id: 'user_123',
@@ -213,8 +217,12 @@ describe('billing entitlement admin discrepancies', () => {
 			error: null
 		}));
 		const selectUpdatedUserRole = vi.fn(() => ({ maybeSingle: maybeSingleUpdatedUserRole }));
-		const eqUpdatedUserRole = vi.fn(() => ({ select: selectUpdatedUserRole }));
-		const update = vi.fn(() => ({ eq: eqUpdatedUserRole }));
+		const updateQuery = {
+			eq: vi.fn(() => updateQuery),
+			is: vi.fn(() => updateQuery),
+			select: selectUpdatedUserRole
+		};
+		const update = vi.fn(() => updateQuery);
 		const maybeSingle = vi.fn(async () => ({
 			data: {
 				role: 'admin',
@@ -269,7 +277,7 @@ describe('billing entitlement admin discrepancies', () => {
 			ppi_access: false,
 			updated_at: expect.any(String)
 		});
-		expect(eqUpdatedUserRole).toHaveBeenCalledWith('id', 'admin_123');
+		expect(updateQuery.eq).toHaveBeenCalledWith('id', 'admin_123');
 		expect(insert).toHaveBeenCalledWith(
 			expect.objectContaining({
 				user_id: 'admin_123',
