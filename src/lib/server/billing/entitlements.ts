@@ -12,6 +12,7 @@ type BillingSubscriptionRow = Database['public']['Tables']['billing_subscription
 type BillingSubscriptionInsert = Database['public']['Tables']['billing_subscriptions']['Insert'];
 
 const ACTIVE_BILLING_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing']);
+const BILLING_ENTITLEMENT_UPDATE_MAX_ATTEMPTS = 3;
 const API_PLAN_PRIORITY: Record<ApiPlan, number> = {
 	viewer: 0,
 	member: 1,
@@ -50,6 +51,33 @@ export class BillingCatalogDriftError extends Error {
 		);
 		this.name = 'BillingCatalogDriftError';
 		this.unknownPriceIds = unknownPriceIds;
+	}
+}
+
+export class BillingAuthorityMissingError extends Error {
+	readonly userId: string;
+	readonly phase: 'read' | 'update';
+
+	constructor(userId: string, phase: 'read' | 'update') {
+		super(`Billing reconciliation aborted because user_roles authority is missing during ${phase}`);
+		this.name = 'BillingAuthorityMissingError';
+		this.userId = userId;
+		this.phase = phase;
+	}
+}
+
+export class BillingEntitlementConflictError extends Error {
+	readonly userId: string;
+	readonly attempts: number;
+	readonly retryable = true;
+
+	constructor(userId: string, attempts: number) {
+		super(
+			`Billing reconciliation could not persist entitlements after ${attempts} concurrent update attempts`
+		);
+		this.name = 'BillingEntitlementConflictError';
+		this.userId = userId;
+		this.attempts = attempts;
 	}
 }
 
@@ -256,63 +284,102 @@ export async function recomputeUserBillingEntitlements(
 	supabase: SupabaseClient<Database>,
 	userId: string
 ): Promise<BillingRecomputeResult> {
-	const { data: currentUserRoleRow, error: currentUserRoleError } = await supabase
-		.from('user_roles')
-		.select('role, api_plan, ppi_access')
-		.eq('id', userId)
-		.maybeSingle();
+	for (let attempt = 1; attempt <= BILLING_ENTITLEMENT_UPDATE_MAX_ATTEMPTS; attempt += 1) {
+		const { data: currentUserRoleRow, error: currentUserRoleError } = await supabase
+			.from('user_roles')
+			.select('role, api_plan, ppi_access')
+			.eq('id', userId)
+			.maybeSingle();
 
-	if (currentUserRoleError) {
-		throw new Error(`Failed to load current user entitlements: ${currentUserRoleError.message}`);
-	}
+		if (currentUserRoleError) {
+			throw new Error(`Failed to load current user entitlements: ${currentUserRoleError.message}`);
+		}
 
-	const { data: subscriptions, error: subscriptionsError } = await supabase
-		.from('billing_subscriptions')
-		.select('*')
-		.eq('user_id', userId);
+		if (!currentUserRoleRow) {
+			throw new BillingAuthorityMissingError(userId, attempt === 1 ? 'read' : 'update');
+		}
 
-	if (subscriptionsError) {
-		throw new Error(`Failed to load billing subscriptions: ${subscriptionsError.message}`);
-	}
+		const { data: subscriptions, error: subscriptionsError } = await supabase
+			.from('billing_subscriptions')
+			.select('*')
+			.eq('user_id', userId);
 
-	const previousEntitlements = resolveStoredBillingEntitlements(currentUserRoleRow);
+		if (subscriptionsError) {
+			throw new Error(`Failed to load billing subscriptions: ${subscriptionsError.message}`);
+		}
 
-	const resolvedEntitlements = resolveBillingEntitlements({
-		currentRole: currentUserRoleRow?.role,
-		currentApiPlan: currentUserRoleRow?.api_plan,
-		currentPpiAccess: currentUserRoleRow?.ppi_access,
-		subscriptions: subscriptions ?? []
-	});
+		const previousEntitlements = resolveStoredBillingEntitlements(currentUserRoleRow);
+		const resolvedEntitlements = resolveBillingEntitlements({
+			currentRole: currentUserRoleRow.role,
+			currentApiPlan: currentUserRoleRow.api_plan,
+			currentPpiAccess: currentUserRoleRow.ppi_access,
+			subscriptions: subscriptions ?? []
+		});
+		const changed =
+			currentUserRoleRow.role !== resolvedEntitlements.role ||
+			currentUserRoleRow.api_plan !== resolvedEntitlements.apiPlan ||
+			currentUserRoleRow.ppi_access !== resolvedEntitlements.ppiAccess;
 
-	const changed =
-		!currentUserRoleRow ||
-		currentUserRoleRow.role !== resolvedEntitlements.role ||
-		currentUserRoleRow.api_plan !== resolvedEntitlements.apiPlan ||
-		currentUserRoleRow.ppi_access !== resolvedEntitlements.ppiAccess;
+		if (!changed) {
+			return {
+				previousEntitlements,
+				resolvedEntitlements,
+				changed: false,
+				subscriptions: subscriptions ?? []
+			};
+		}
 
-	if (!currentUserRoleRow || changed) {
-		const { error: upsertError } = await supabase.from('user_roles').upsert(
-			{
-				id: userId,
+		let updateQuery = supabase
+			.from('user_roles')
+			.update({
 				role: resolvedEntitlements.role,
 				api_plan: resolvedEntitlements.apiPlan,
 				ppi_access: resolvedEntitlements.ppiAccess,
 				updated_at: new Date().toISOString()
-			},
-			{ onConflict: 'id' }
-		);
+			})
+			.eq('id', userId);
 
-		if (upsertError) {
-			throw new Error(`Failed to persist reconciled entitlements: ${upsertError.message}`);
+		for (const [column, value] of [
+			['role', currentUserRoleRow.role],
+			['api_plan', currentUserRoleRow.api_plan],
+			['ppi_access', currentUserRoleRow.ppi_access]
+		] as const) {
+			updateQuery = value === null ? updateQuery.is(column, null) : updateQuery.eq(column, value);
+		}
+
+		const { data: updatedUserRoleRow, error: updateError } = await updateQuery
+			.select('id')
+			.maybeSingle();
+
+		if (updateError) {
+			throw new Error(`Failed to persist reconciled entitlements: ${updateError.message}`);
+		}
+
+		if (updatedUserRoleRow) {
+			return {
+				previousEntitlements,
+				resolvedEntitlements,
+				changed: true,
+				subscriptions: subscriptions ?? []
+			};
+		}
+
+		const { data: authorityRow, error: authorityError } = await supabase
+			.from('user_roles')
+			.select('id')
+			.eq('id', userId)
+			.maybeSingle();
+
+		if (authorityError) {
+			throw new Error(`Failed to verify user entitlement authority: ${authorityError.message}`);
+		}
+
+		if (!authorityRow) {
+			throw new BillingAuthorityMissingError(userId, 'update');
 		}
 	}
 
-	return {
-		previousEntitlements,
-		resolvedEntitlements,
-		changed,
-		subscriptions: subscriptions ?? []
-	};
+	throw new BillingEntitlementConflictError(userId, BILLING_ENTITLEMENT_UPDATE_MAX_ATTEMPTS);
 }
 
 export async function reconcileStripeSubscriptionEntitlements(

@@ -10,6 +10,86 @@ import {
 	syncBillingSubscriptionSnapshotFromStripeSubscription
 } from './entitlements';
 
+type StoredEntitlementRow = {
+	role: 'admin' | 'member' | 'viewer' | null;
+	api_plan: 'enterprise' | 'member' | 'viewer' | null;
+	ppi_access: boolean | null;
+};
+
+function createRecomputeMock(input: {
+	roleReads: Array<StoredEntitlementRow | null>;
+	casResults?: Array<'success' | 'conflict'>;
+	authorityChecks?: Array<boolean>;
+	subscriptions?: Array<{ product_key: string; status: string }>;
+}) {
+	const roleReads = [...input.roleReads];
+	const casResults = [...(input.casResults ?? [])];
+	const authorityChecks = [...(input.authorityChecks ?? [])];
+	const updates: Array<Record<string, unknown>> = [];
+	const predicates: Array<Array<{ method: 'eq' | 'is'; column: string; value: unknown }>> = [];
+
+	const from = vi.fn((table: string) => {
+		if (table === 'billing_subscriptions') {
+			return {
+				select: vi.fn(() => ({
+					eq: vi.fn(async () => ({ data: input.subscriptions ?? [], error: null }))
+				}))
+			};
+		}
+
+		if (table !== 'user_roles') {
+			throw new Error(`Unexpected table lookup: ${table}`);
+		}
+
+		return {
+			select: vi.fn((columns: string) => ({
+				eq: vi.fn(() => ({
+					maybeSingle: vi.fn(async () => {
+						if (columns === 'id') {
+							return {
+								data: authorityChecks.shift() ? { id: 'user_123' } : null,
+								error: null
+							};
+						}
+
+						return { data: roleReads.shift() ?? null, error: null };
+					})
+				}))
+			})),
+			update: vi.fn((payload: Record<string, unknown>) => {
+				updates.push(payload);
+				const updatePredicates: Array<{
+					method: 'eq' | 'is';
+					column: string;
+					value: unknown;
+				}> = [];
+				predicates.push(updatePredicates);
+
+				const builder = {
+					eq: vi.fn((column: string, value: unknown) => {
+						updatePredicates.push({ method: 'eq', column, value });
+						return builder;
+					}),
+					is: vi.fn((column: string, value: unknown) => {
+						updatePredicates.push({ method: 'is', column, value });
+						return builder;
+					}),
+					select: vi.fn(() => ({
+						maybeSingle: vi.fn(async () => ({
+							data: casResults.shift() === 'success' ? { id: 'user_123' } : null,
+							error: null
+						}))
+					}))
+				};
+
+				return builder;
+			})
+		};
+	});
+
+	return { supabase: { from } as never, from, updates, predicates };
+}
+
 function makeSubscription(
 	overrides: Partial<Stripe.Subscription> = {},
 	priceId = 'price_1RgGYuKwI9NkGqAnm4oiHpbx'
@@ -200,57 +280,147 @@ describe('billing entitlement reconciliation', () => {
 		});
 	});
 
-	it('repairs null explicit entitlements by persisting canonical defaults from shared recompute logic', async () => {
-		const upsert = vi.fn(async () => ({ error: null }));
-		const maybeSingle = vi.fn(async () => ({
-			data: {
-				role: 'viewer',
-				api_plan: null as never,
-				ppi_access: null as never
-			},
-			error: null
-		}));
-		const eqUserRoles = vi.fn(() => ({ maybeSingle }));
-		const selectUserRoles = vi.fn(() => ({ eq: eqUserRoles }));
-		const selectBillingSubscriptions = vi.fn(() => ({
-			eq: vi.fn(async () => ({ data: [], error: null }))
-		}));
-		const from = vi.fn((table: string) => {
-			if (table === 'user_roles') {
-				return {
-					select: selectUserRoles,
-					upsert
-				};
-			}
-
-			if (table === 'billing_subscriptions') {
-				return {
-					select: selectBillingSubscriptions
-				};
-			}
-
-			throw new Error(`Unexpected table lookup: ${table}`);
+	it('returns without writing when resolved entitlements are unchanged', async () => {
+		const mock = createRecomputeMock({
+			roleReads: [{ role: 'viewer', api_plan: 'viewer', ppi_access: false }]
 		});
 
-		const result = await recomputeUserBillingEntitlements({ from } as never, 'user_123');
+		const result = await recomputeUserBillingEntitlements(mock.supabase, 'user_123');
+
+		expect(result.changed).toBe(false);
+		expect(mock.updates).toEqual([]);
+	});
+
+	it('updates changed entitlements with null-safe predicates for every originally read value', async () => {
+		const mock = createRecomputeMock({
+			roleReads: [{ role: 'viewer', api_plan: null, ppi_access: null }],
+			casResults: ['success']
+		});
+
+		const result = await recomputeUserBillingEntitlements(mock.supabase, 'user_123');
 
 		expect(result.changed).toBe(true);
-		expect(selectUserRoles).toHaveBeenCalledWith('role, api_plan, ppi_access');
 		expect(result.resolvedEntitlements).toEqual({
 			role: 'viewer',
 			apiPlan: 'viewer',
 			ppiAccess: false
 		});
-		expect(upsert).toHaveBeenCalledWith(
+		expect(mock.updates).toEqual([
 			{
-				id: 'user_123',
 				role: 'viewer',
 				api_plan: 'viewer',
 				ppi_access: false,
 				updated_at: expect.any(String)
-			},
-			{ onConflict: 'id' }
+			}
+		]);
+		expect(mock.predicates).toEqual([
+			[
+				{ method: 'eq', column: 'id', value: 'user_123' },
+				{ method: 'eq', column: 'role', value: 'viewer' },
+				{ method: 'is', column: 'api_plan', value: null },
+				{ method: 'is', column: 'ppi_access', value: null }
+			]
+		]);
+	});
+
+	it('fails closed without reading subscriptions or writing when user_roles authority is absent', async () => {
+		const mock = createRecomputeMock({ roleReads: [null] });
+
+		await expect(recomputeUserBillingEntitlements(mock.supabase, 'user_123')).rejects.toMatchObject(
+			{
+				name: 'BillingAuthorityMissingError',
+				userId: 'user_123',
+				phase: 'read'
+			}
 		);
+
+		expect(mock.from).toHaveBeenCalledTimes(1);
+		expect(mock.updates).toEqual([]);
+	});
+
+	it('fails closed when user_roles authority disappears between read and update', async () => {
+		const mock = createRecomputeMock({
+			roleReads: [{ role: 'viewer', api_plan: 'viewer', ppi_access: false }],
+			casResults: ['conflict'],
+			authorityChecks: [false],
+			subscriptions: [
+				{
+					product_key: BILLING_PURCHASE_KEYS.membershipMonthly,
+					status: 'active'
+				}
+			]
+		});
+
+		await expect(recomputeUserBillingEntitlements(mock.supabase, 'user_123')).rejects.toMatchObject(
+			{
+				name: 'BillingAuthorityMissingError',
+				userId: 'user_123',
+				phase: 'update'
+			}
+		);
+
+		expect(mock.updates).toHaveLength(1);
+	});
+
+	it('retries one conflict and preserves a concurrent explicit API grant', async () => {
+		const mock = createRecomputeMock({
+			roleReads: [
+				{ role: 'viewer', api_plan: 'viewer', ppi_access: false },
+				{ role: 'viewer', api_plan: 'enterprise', ppi_access: false }
+			],
+			casResults: ['conflict', 'success'],
+			authorityChecks: [true],
+			subscriptions: [
+				{
+					product_key: BILLING_PURCHASE_KEYS.membershipMonthly,
+					status: 'active'
+				}
+			]
+		});
+
+		const result = await recomputeUserBillingEntitlements(mock.supabase, 'user_123');
+
+		expect(result.resolvedEntitlements).toEqual({
+			role: 'member',
+			apiPlan: 'enterprise',
+			ppiAccess: false
+		});
+		expect(mock.updates).toHaveLength(2);
+		expect(mock.updates[1]).toMatchObject({
+			role: 'member',
+			api_plan: 'enterprise',
+			ppi_access: false
+		});
+		expect(mock.predicates[1]).toContainEqual({
+			method: 'eq',
+			column: 'api_plan',
+			value: 'enterprise'
+		});
+	});
+
+	it('terminates with a typed retryable conflict after repeated concurrent updates', async () => {
+		const row = { role: 'viewer', api_plan: 'viewer', ppi_access: false } as const;
+		const mock = createRecomputeMock({
+			roleReads: [row, row, row],
+			casResults: ['conflict', 'conflict', 'conflict'],
+			authorityChecks: [true, true, true],
+			subscriptions: [
+				{
+					product_key: BILLING_PURCHASE_KEYS.membershipMonthly,
+					status: 'active'
+				}
+			]
+		});
+
+		await expect(recomputeUserBillingEntitlements(mock.supabase, 'user_123')).rejects.toMatchObject(
+			{
+				name: 'BillingEntitlementConflictError',
+				userId: 'user_123',
+				attempts: 3,
+				retryable: true
+			}
+		);
+		expect(mock.updates).toHaveLength(3);
 	});
 
 	it('maps Stripe subscription items into local billing snapshot rows', () => {
