@@ -53,6 +53,18 @@ export class BillingCatalogDriftError extends Error {
 	}
 }
 
+export class BillingAuthorityMissingError extends Error {
+	readonly userId: string;
+	readonly phase: 'read' | 'update';
+
+	constructor(userId: string, phase: 'read' | 'update') {
+		super(`Billing reconciliation aborted because user_roles authority is missing during ${phase}`);
+		this.name = 'BillingAuthorityMissingError';
+		this.userId = userId;
+		this.phase = phase;
+	}
+}
+
 function normalizeStoredRole(role: UserRoleRow['role'] | null | undefined): UserRole {
 	if (role === 'admin' || role === 'member' || role === 'viewer') {
 		return role;
@@ -266,6 +278,10 @@ export async function recomputeUserBillingEntitlements(
 		throw new Error(`Failed to load current user entitlements: ${currentUserRoleError.message}`);
 	}
 
+	if (!currentUserRoleRow) {
+		throw new BillingAuthorityMissingError(userId, 'read');
+	}
+
 	const { data: subscriptions, error: subscriptionsError } = await supabase
 		.from('billing_subscriptions')
 		.select('*')
@@ -285,26 +301,28 @@ export async function recomputeUserBillingEntitlements(
 	});
 
 	const changed =
-		!currentUserRoleRow ||
 		currentUserRoleRow.role !== resolvedEntitlements.role ||
 		currentUserRoleRow.api_plan !== resolvedEntitlements.apiPlan ||
 		currentUserRoleRow.ppi_access !== resolvedEntitlements.ppiAccess;
 
-	if (!currentUserRoleRow || changed) {
-		const { error: upsertError } = await supabase.from('user_roles').upsert(
-			{
-				id: userId,
-				role: resolvedEntitlements.role,
-				api_plan: resolvedEntitlements.apiPlan,
-				ppi_access: resolvedEntitlements.ppiAccess,
-				updated_at: new Date().toISOString()
-			},
-			{ onConflict: 'id' }
-		);
+	const { data: updatedUserRoleRow, error: updateError } = await supabase
+		.from('user_roles')
+		.update({
+			role: resolvedEntitlements.role,
+			api_plan: resolvedEntitlements.apiPlan,
+			ppi_access: resolvedEntitlements.ppiAccess,
+			updated_at: new Date().toISOString()
+		})
+		.eq('id', userId)
+		.select('id')
+		.maybeSingle();
 
-		if (upsertError) {
-			throw new Error(`Failed to persist reconciled entitlements: ${upsertError.message}`);
-		}
+	if (updateError) {
+		throw new Error(`Failed to persist reconciled entitlements: ${updateError.message}`);
+	}
+
+	if (!updatedUserRoleRow) {
+		throw new BillingAuthorityMissingError(userId, 'update');
 	}
 
 	return {

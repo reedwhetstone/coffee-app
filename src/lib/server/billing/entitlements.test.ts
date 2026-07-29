@@ -201,7 +201,13 @@ describe('billing entitlement reconciliation', () => {
 	});
 
 	it('repairs null explicit entitlements by persisting canonical defaults from shared recompute logic', async () => {
-		const upsert = vi.fn(async () => ({ error: null }));
+		const maybeSingleUpdatedUserRole = vi.fn(async () => ({
+			data: { id: 'user_123' },
+			error: null
+		}));
+		const selectUpdatedUserRole = vi.fn(() => ({ maybeSingle: maybeSingleUpdatedUserRole }));
+		const eqUpdatedUserRole = vi.fn(() => ({ select: selectUpdatedUserRole }));
+		const update = vi.fn(() => ({ eq: eqUpdatedUserRole }));
 		const maybeSingle = vi.fn(async () => ({
 			data: {
 				role: 'viewer',
@@ -219,7 +225,7 @@ describe('billing entitlement reconciliation', () => {
 			if (table === 'user_roles') {
 				return {
 					select: selectUserRoles,
-					upsert
+					update
 				};
 			}
 
@@ -241,16 +247,89 @@ describe('billing entitlement reconciliation', () => {
 			apiPlan: 'viewer',
 			ppiAccess: false
 		});
-		expect(upsert).toHaveBeenCalledWith(
-			{
-				id: 'user_123',
+		expect(update).toHaveBeenCalledWith({
+			role: 'viewer',
+			api_plan: 'viewer',
+			ppi_access: false,
+			updated_at: expect.any(String)
+		});
+		expect(eqUpdatedUserRole).toHaveBeenCalledWith('id', 'user_123');
+		expect(selectUpdatedUserRole).toHaveBeenCalledWith('id');
+	});
+
+	it('fails closed without reading subscriptions or writing when user_roles authority is absent', async () => {
+		const maybeSingle = vi.fn(async () => ({ data: null, error: null }));
+		const eqUserRoles = vi.fn(() => ({ maybeSingle }));
+		const selectUserRoles = vi.fn(() => ({ eq: eqUserRoles }));
+		const update = vi.fn();
+		const from = vi.fn((table: string) => {
+			if (table === 'user_roles') {
+				return {
+					select: selectUserRoles,
+					update
+				};
+			}
+
+			throw new Error(`Unexpected table lookup: ${table}`);
+		});
+
+		await expect(
+			recomputeUserBillingEntitlements({ from } as never, 'user_123')
+		).rejects.toMatchObject({
+			name: 'BillingAuthorityMissingError',
+			userId: 'user_123',
+			phase: 'read'
+		});
+
+		expect(from).toHaveBeenCalledTimes(1);
+		expect(update).not.toHaveBeenCalled();
+	});
+
+	it('fails closed when user_roles authority disappears between read and update', async () => {
+		const maybeSingleUpdatedUserRole = vi.fn(async () => ({ data: null, error: null }));
+		const selectUpdatedUserRole = vi.fn(() => ({ maybeSingle: maybeSingleUpdatedUserRole }));
+		const eqUpdatedUserRole = vi.fn(() => ({ select: selectUpdatedUserRole }));
+		const update = vi.fn(() => ({ eq: eqUpdatedUserRole }));
+		const maybeSingle = vi.fn(async () => ({
+			data: {
 				role: 'viewer',
 				api_plan: 'viewer',
-				ppi_access: false,
-				updated_at: expect.any(String)
+				ppi_access: false
 			},
-			{ onConflict: 'id' }
-		);
+			error: null
+		}));
+		const eqUserRoles = vi.fn(() => ({ maybeSingle }));
+		const selectUserRoles = vi.fn(() => ({ eq: eqUserRoles }));
+		const selectBillingSubscriptions = vi.fn(() => ({
+			eq: vi.fn(async () => ({ data: [], error: null }))
+		}));
+		const from = vi.fn((table: string) => {
+			if (table === 'user_roles') {
+				return {
+					select: selectUserRoles,
+					update
+				};
+			}
+
+			if (table === 'billing_subscriptions') {
+				return {
+					select: selectBillingSubscriptions
+				};
+			}
+
+			throw new Error(`Unexpected table lookup: ${table}`);
+		});
+
+		await expect(
+			recomputeUserBillingEntitlements({ from } as never, 'user_123')
+		).rejects.toMatchObject({
+			name: 'BillingAuthorityMissingError',
+			userId: 'user_123',
+			phase: 'update'
+		});
+
+		expect(update).toHaveBeenCalledOnce();
+		expect(eqUpdatedUserRole).toHaveBeenCalledWith('id', 'user_123');
 	});
 
 	it('maps Stripe subscription items into local billing snapshot rows', () => {
