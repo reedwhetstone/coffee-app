@@ -1178,7 +1178,7 @@ const docsPages: DocsPage[] = [
 							'GET POST PUT DELETE',
 							'GET: Parchment Intelligence or Mallard Studio session, or share token; writes: Parchment Intelligence or Mallard Studio session',
 							'Internal product route',
-							"GET without a valid session returns an empty data array rather than a 401. share=<token> scopes reads to a shared bean or the owner's full inventory."
+							"Without a share parameter, GET /api/beans requires a current Parchment Intelligence or Mallard Studio session; missing sessions return 401 and authenticated accounts without either entitlement return 403. A supplied invalid or expired share token returns an empty data array and does not fall back to the current session. Valid share tokens scope reads to a shared bean or the owner's full inventory."
 						],
 						[
 							'/api/share',
