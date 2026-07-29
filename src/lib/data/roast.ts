@@ -1,5 +1,5 @@
 /**
- * Roast data layer — single source of truth for all roast_profiles queries.
+ * Legacy roast write and detail data helpers.
  *
  * Auth is intentionally excluded from this module. Route handlers are responsible
  * for validating sessions / API keys before calling these functions.
@@ -26,12 +26,6 @@ type CoffeeCatalogName = { name: string };
 type GreenCoffeeWithCatalog = Database['public']['Tables']['green_coffee_inv']['Row'] & {
 	coffee_catalog: CoffeeCatalogName | CoffeeCatalogName[] | null;
 };
-
-export interface RoastListOptions {
-	/** Order by field (default: roast_date desc) */
-	orderBy?: string;
-	ascending?: boolean;
-}
 
 export interface RoastCreateSingleInput {
 	coffee_id: number;
@@ -173,35 +167,6 @@ function resolveCatalogName(
 }
 
 // ── Core functions ────────────────────────────────────────────────────────────
-
-/**
- * List roast profiles for a user, ordered by roast_date desc by default.
- * Joins through green_coffee_inv → coffee_catalog to attach is_wholesale.
- */
-export async function listRoasts(
-	supabase: SupabaseClient,
-	userId: string,
-	options: RoastListOptions = {}
-): Promise<(RoastProfile & { is_wholesale: boolean })[]> {
-	const { orderBy = 'roast_date', ascending = false } = options;
-	const { data, error } = await supabase
-		.from('roast_profiles')
-		.select('*, green_coffee_inv!coffee_id ( coffee_catalog!catalog_id ( wholesale ) )')
-		.eq('user', userId)
-		.order(orderBy, { ascending });
-
-	if (error) throw error;
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const profiles = (data ?? []).map((row: any) => {
-		const inv = row.green_coffee_inv;
-		const catalog = inv?.coffee_catalog;
-		const wholesale = Array.isArray(catalog) ? catalog[0]?.wholesale : catalog?.wholesale;
-		const { green_coffee_inv: _, ...profile } = row;
-		return { ...profile, is_wholesale: wholesale === true };
-	});
-	return profiles;
-}
 
 /**
  * Get a single roast profile by ID, verifying user ownership.
