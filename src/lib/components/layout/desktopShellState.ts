@@ -1,7 +1,7 @@
 import type { CatalogFilterValue } from '$lib/catalog/urlState';
 import { isEmptyFilterValue } from '$lib/data/catalogFilters';
 
-export const DESKTOP_SHELL_CONTENT_MARGIN = 'md:ml-20 xl:ml-72';
+export const DESKTOP_SHELL_CONTENT_MARGIN = 'md:ml-24';
 
 type FilterBadgeState = {
 	routeId: string;

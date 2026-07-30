@@ -98,7 +98,7 @@ describe('LeftSidebar', () => {
 		});
 	});
 
-	it('exposes labeled wide-screen controls and active filter counts', () => {
+	it('keeps navigation closed behind one compact, labeled desktop action bar', async () => {
 		render(LeftSidebar, {
 			data: {
 				role: 'member',
@@ -108,24 +108,21 @@ describe('LeftSidebar', () => {
 			}
 		});
 
-		expect(screen.getByText('Current workspace')).toBeTruthy();
-		expect(screen.getByText('Catalog')).toBeTruthy();
-		expect(screen.getAllByRole('button', { name: /Account/ })).toHaveLength(2);
-		expect(screen.getAllByRole('button', { name: /Chat/ })).toHaveLength(2);
-		expect(screen.getAllByLabelText('2 active filters')).toHaveLength(2);
+		const actionBar = screen.getByLabelText('Desktop action bar');
+		const navigationTrigger = within(actionBar).getByRole('button', { name: 'Open navigation' });
+		expect(screen.queryByLabelText('Main navigation menu')).toBeNull();
+		expect(navigationTrigger).toBeTruthy();
+		expect(within(actionBar).getByRole('button', { name: 'Open chat' })).toBeTruthy();
+		expect(within(actionBar).getByRole('button', { name: 'Open actions' })).toBeTruthy();
+		expect(within(actionBar).getByRole('button', { name: 'Open filters' })).toBeTruthy();
+		expect(within(actionBar).getByRole('button', { name: 'Open account' })).toBeTruthy();
+		expect(screen.getAllByLabelText('2 active filters')).toHaveLength(1);
+
+		await fireEvent.click(navigationTrigger);
+		expect(screen.getAllByLabelText('Main navigation menu')).toHaveLength(1);
 	});
 
-	it('opens one filters panel without changing the shell width', async () => {
-		vi.mocked(window.matchMedia).mockImplementation((query: string) => ({
-			matches: false,
-			media: query,
-			onchange: null,
-			addListener: vi.fn(),
-			removeListener: vi.fn(),
-			addEventListener: vi.fn(),
-			removeEventListener: vi.fn(),
-			dispatchEvent: vi.fn()
-		}));
+	it('opens one overlay filters panel without changing the action-bar width', async () => {
 		render(LeftSidebar, {
 			data: {
 				role: 'member',
@@ -136,8 +133,8 @@ describe('LeftSidebar', () => {
 		});
 
 		const shell = screen.getByTestId('desktop-app-shell');
-		const mediumControls = screen.getByLabelText('Desktop workspace controls');
-		const filterTrigger = within(mediumControls).getByRole('button', { name: /Filters/ });
+		const actionBar = screen.getByLabelText('Desktop action bar');
+		const filterTrigger = within(actionBar).getByRole('button', { name: 'Open filters' });
 		const initialClass = shell.getAttribute('class');
 		await fireEvent.click(filterTrigger);
 
@@ -164,8 +161,8 @@ describe('LeftSidebar', () => {
 			}
 		});
 
-		const wideNavigation = screen.getByLabelText('Desktop workspace navigation');
-		const accountTrigger = within(wideNavigation).getByRole('button', { name: /Account/ });
+		const actionBar = screen.getByLabelText('Desktop action bar');
+		const accountTrigger = within(actionBar).getByRole('button', { name: 'Open account' });
 		await fireEvent.click(accountTrigger);
 
 		const panel = document.getElementById('desktop-shell-panel');
@@ -200,7 +197,7 @@ describe('LeftSidebar', () => {
 			}
 		});
 
-		expect(screen.getAllByLabelText('1 active filters')).toHaveLength(2);
+		expect(screen.getAllByLabelText('1 active filters')).toHaveLength(1);
 	});
 
 	it('suppresses stale filter badges while the store belongs to another route', () => {
@@ -235,8 +232,8 @@ describe('LeftSidebar', () => {
 			}
 		});
 
-		const wideNavigation = screen.getByLabelText('Desktop workspace navigation');
-		const accountTrigger = within(wideNavigation).getByRole('button', { name: /Account/ });
+		const actionBar = screen.getByLabelText('Desktop action bar');
+		const accountTrigger = within(actionBar).getByRole('button', { name: 'Open account' });
 		await fireEvent.click(accountTrigger);
 
 		const escapeEvent = new KeyboardEvent('keydown', {
@@ -261,7 +258,7 @@ describe('LeftSidebar', () => {
 			}
 		});
 
-		await fireEvent.click(screen.getAllByRole('button', { name: /Chat/ })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Open chat' }));
 
 		expect(goto).toHaveBeenCalledWith('/chat');
 	});

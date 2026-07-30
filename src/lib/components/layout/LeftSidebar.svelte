@@ -5,7 +5,6 @@
 	import { filterStore } from '$lib/stores/filterStore';
 	import { checkRole, type UserRole } from '$lib/types/auth.types';
 	import { canManagePortfolio } from '$lib/services/portfolioAccess';
-	import { getCurrentRouteLabel } from '$lib/components/layout/appNavigation';
 	import Navbar from '$lib/components/layout/Navbar.svelte';
 	import Settingsbar from '$lib/components/layout/Settingsbar.svelte';
 	import Actionsbar from '$lib/components/layout/Actionsbar.svelte';
@@ -37,7 +36,6 @@
 			'Purveyors member') as string
 	);
 	let userInitial = $derived(userEmail.charAt(0).toUpperCase() || 'P');
-	let currentRouteLabel = $derived(getCurrentRouteLabel(currentRoute, userRole, { ppiAccess }));
 	let showSettings = $derived(
 		['/catalog', '/beans', '/roast'].includes(currentRoute) && !trackedCatalogRoute
 	);
@@ -150,136 +148,44 @@
 	data-testid="desktop-app-shell"
 >
 	<aside
-		class="hidden h-full w-72 flex-col border-r border-line bg-surface-canvas shadow-sm xl:flex"
-		aria-label="Desktop workspace navigation"
-	>
-		<div class="flex min-h-0 flex-1 flex-col" class:hidden={activeMenu !== null}>
-			<div class="persistent-navigation min-h-0 flex-1">
-				<Navbar {data} />
-			</div>
-
-			<div class="border-t border-line p-3">
-				<p class="px-2 text-xs font-semibold text-muted">Current workspace</p>
-				<p class="mt-1 truncate px-2 text-sm font-medium text-ink">{currentRouteLabel}</p>
-
-				<div class="mt-3 grid grid-cols-2 gap-2">
-					<button
-						type="button"
-						onclick={(event) => toggleMenu('auth', event.currentTarget)}
-						class="flex items-center gap-2 rounded-md border border-line px-3 py-2 text-left text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
-						aria-controls="desktop-shell-panel"
-						aria-expanded={activeMenu === 'auth'}
-					>
-						<span
-							class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-ink"
-							>{userInitial}</span
-						>
-						Account
-					</button>
-					<button
-						type="button"
-						onclick={handleChatClick}
-						class="flex items-center gap-2 rounded-md border border-accent/40 bg-accent/10 px-3 py-2 text-left text-xs font-medium text-ink transition-colors hover:bg-accent/20"
-					>
-						<DesktopShellIcon name="chat" />
-						Chat
-					</button>
-					{#if canUseActions}
-						<button
-							type="button"
-							onclick={(event) => toggleMenu('actions', event.currentTarget)}
-							class="flex items-center gap-2 rounded-md border border-line px-3 py-2 text-left text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
-							aria-controls="desktop-shell-panel"
-							aria-expanded={activeMenu === 'actions'}
-						>
-							<DesktopShellIcon name="actions" />
-							Actions
-						</button>
-					{/if}
-					{#if showSettings}
-						<button
-							type="button"
-							onclick={(event) => toggleMenu('settings', event.currentTarget)}
-							class="flex items-center gap-2 rounded-md border border-line px-3 py-2 text-left text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
-							aria-controls="desktop-shell-panel"
-							aria-expanded={activeMenu === 'settings'}
-						>
-							<DesktopShellIcon name="filters" />
-							<span>Filters</span>
-							{#if activeFilterCount > 0}
-								<span
-									class="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-ink"
-									aria-label={`${activeFilterCount} active filters`}>{activeFilterCount}</span
-								>
-							{/if}
-						</button>
-					{/if}
-					{#if isAdmin}
-						<button
-							type="button"
-							onclick={(event) => toggleMenu('admin', event.currentTarget)}
-							class="flex items-center gap-2 rounded-md border border-line px-3 py-2 text-left text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
-							aria-controls="desktop-shell-panel"
-							aria-expanded={activeMenu === 'admin'}
-						>
-							<DesktopShellIcon name="admin" />
-							Admin
-						</button>
-					{/if}
-				</div>
-			</div>
-		</div>
-	</aside>
-
-	<aside
-		class="flex h-full w-20 flex-col items-center gap-3 border-r border-line bg-surface-canvas py-4 shadow-sm xl:hidden"
-		aria-label="Desktop workspace controls"
+		class="flex h-full w-24 flex-col items-center border-r border-line bg-surface-canvas px-2 py-3 shadow-sm"
+		aria-label="Desktop action bar"
 	>
 		<button
 			type="button"
-			onclick={(event) => toggleMenu('auth', event.currentTarget)}
-			class="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-sm font-semibold text-ink transition-transform hover:scale-105"
-			aria-label="Account"
+			onclick={(event) => toggleMenu('nav', event.currentTarget)}
+			class="mb-2 flex w-20 flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+			class:bg-surface-panel={activeMenu === 'nav'}
+			class:text-ink={activeMenu === 'nav'}
+			aria-label={activeMenu === 'nav' ? 'Close navigation' : 'Open navigation'}
 			aria-controls="desktop-shell-panel"
-			aria-expanded={activeMenu === 'auth'}
+			aria-expanded={activeMenu === 'nav'}
 		>
-			{userInitial}
+			<img src="/purveyors_logo_mark.svg" alt="" class="h-8 w-auto" />
+			<span>Menu</span>
 		</button>
 
 		<button
 			type="button"
 			onclick={handleChatClick}
-			class="flex h-11 w-11 items-center justify-center rounded-lg border border-accent/40 bg-accent/10 text-ink transition-colors hover:bg-accent/20"
-			aria-label="Chat"
+			class="flex w-20 flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-ink transition-colors hover:bg-accent/20"
+			aria-label="Open chat"
 		>
 			<DesktopShellIcon name="chat" />
-		</button>
-
-		<button
-			type="button"
-			onclick={(event) => toggleMenu('nav', event.currentTarget)}
-			class="flex h-11 w-11 items-center justify-center rounded-lg border border-line text-muted transition-colors hover:bg-surface-panel hover:text-ink"
-			class:bg-surface-panel={activeMenu === 'nav'}
-			class:text-ink={activeMenu === 'nav'}
-			aria-label="Navigation"
-			aria-controls="desktop-shell-panel"
-			aria-expanded={activeMenu === 'nav'}
-		>
-			<DesktopShellIcon name="navigation" />
+			<span>Chat</span>
 		</button>
 
 		{#if canUseActions}
 			<button
 				type="button"
 				onclick={(event) => toggleMenu('actions', event.currentTarget)}
-				class="flex h-11 w-11 items-center justify-center rounded-lg border border-line text-muted transition-colors hover:bg-surface-panel hover:text-ink"
-				class:bg-surface-panel={activeMenu === 'actions'}
-				class:text-ink={activeMenu === 'actions'}
-				aria-label="Actions"
+				class="mt-1 flex w-20 flex-col items-center gap-1 rounded-lg bg-accent px-2 py-2 text-xs font-semibold text-ink shadow-sm transition-opacity hover:opacity-90"
+				aria-label={activeMenu === 'actions' ? 'Close actions' : 'Open actions'}
 				aria-controls="desktop-shell-panel"
 				aria-expanded={activeMenu === 'actions'}
 			>
 				<DesktopShellIcon name="actions" />
+				<span>New</span>
 			</button>
 		{/if}
 
@@ -287,17 +193,18 @@
 			<button
 				type="button"
 				onclick={(event) => toggleMenu('settings', event.currentTarget)}
-				class="relative flex h-11 w-11 items-center justify-center rounded-lg border border-line text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+				class="relative mt-1 flex w-20 flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 				class:bg-surface-panel={activeMenu === 'settings'}
 				class:text-ink={activeMenu === 'settings'}
-				aria-label="Filters"
+				aria-label={activeMenu === 'settings' ? 'Close filters' : 'Open filters'}
 				aria-controls="desktop-shell-panel"
 				aria-expanded={activeMenu === 'settings'}
 			>
 				<DesktopShellIcon name="filters" />
+				<span>Filters</span>
 				{#if activeFilterCount > 0}
 					<span
-						class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-ink"
+						class="absolute right-2 top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-ink"
 						aria-label={`${activeFilterCount} active filters`}>{activeFilterCount}</span
 					>
 				{/if}
@@ -308,23 +215,43 @@
 			<button
 				type="button"
 				onclick={(event) => toggleMenu('admin', event.currentTarget)}
-				class="flex h-11 w-11 items-center justify-center rounded-lg border border-line text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+				class="mt-1 flex w-20 flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 				class:bg-surface-panel={activeMenu === 'admin'}
 				class:text-ink={activeMenu === 'admin'}
-				aria-label="Admin"
+				aria-label={activeMenu === 'admin' ? 'Close admin tools' : 'Open admin tools'}
 				aria-controls="desktop-shell-panel"
 				aria-expanded={activeMenu === 'admin'}
 			>
 				<DesktopShellIcon name="admin" />
+				<span>Admin</span>
 			</button>
 		{/if}
+
+		<div class="mt-auto border-t border-line pt-3">
+			<button
+				type="button"
+				onclick={(event) => toggleMenu('auth', event.currentTarget)}
+				class="flex w-20 flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+				class:bg-surface-panel={activeMenu === 'auth'}
+				class:text-ink={activeMenu === 'auth'}
+				aria-label={activeMenu === 'auth' ? 'Close account' : 'Open account'}
+				aria-controls="desktop-shell-panel"
+				aria-expanded={activeMenu === 'auth'}
+			>
+				<span
+					class="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-semibold text-ink"
+					>{userInitial}</span
+				>
+				<span>Account</span>
+			</button>
+		</div>
 	</aside>
 </div>
 
 {#if activeMenu}
 	<div
 		id="desktop-shell-panel"
-		class="fixed inset-y-0 left-20 z-50 hidden w-72 border-r border-line bg-surface-canvas shadow-xl md:block xl:left-0"
+		class="fixed inset-y-0 left-24 z-50 hidden w-72 border-r border-line bg-surface-canvas shadow-xl md:block"
 		bind:this={panel}
 		tabindex="-1"
 		role="region"
@@ -334,11 +261,3 @@
 		{@render menuPanel(activeMenu)}
 	</div>
 {/if}
-
-<style>
-	@media (min-width: 1280px) {
-		.persistent-navigation :global(header button[aria-label='Close navigation panel']) {
-			display: none;
-		}
-	}
-</style>

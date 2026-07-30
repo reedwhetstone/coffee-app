@@ -21,7 +21,7 @@ describe('desktop shell state', () => {
 		);
 	});
 
-	it('keeps medium and wide content offsets in one stable geometry contract', () => {
-		expect(DESKTOP_SHELL_CONTENT_MARGIN).toBe('md:ml-20 xl:ml-72');
+	it('keeps one compact desktop action-bar offset at every desktop width', () => {
+		expect(DESKTOP_SHELL_CONTENT_MARGIN).toBe('md:ml-24');
 	});
 });
