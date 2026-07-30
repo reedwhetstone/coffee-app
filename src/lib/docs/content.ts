@@ -1188,13 +1188,6 @@ const docsPages: DocsPage[] = [
 							'Creates /beans?share=... links for one inventory item or all items.'
 						],
 						[
-							'/api/update-stocked-status',
-							'POST PUT',
-							'Session',
-							'Internal helper',
-							"POST recalculates one inventory item by coffee_id. PUT bulk-recomputes the caller's entire inventory."
-						],
-						[
 							'/api/profit',
 							'GET POST PUT DELETE',
 							'Session',
@@ -1476,12 +1469,6 @@ const docsPages: DocsPage[] = [
 							'POST',
 							'Session',
 							'Create share links for one bean or the whole inventory'
-						],
-						[
-							'/api/update-stocked-status',
-							'POST PUT',
-							'Session',
-							'Recalculate stocked status for one item or the entire account'
 						]
 					]
 				}
@@ -1501,8 +1488,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'POST /api/beans keeps catalog-backed creation and the legacy scalar manual payload on their compatibility paths, while the coffee-app form sends manual multi-row purchases through one atomic Parchment batch. Batch creation and GET /api/beans?manualBatchId=<uuid> both require a Parchment Intelligence or Mallard Studio session; after an uncertain response, that GET reconciles the durable batch result.',
 					'PUT /api/beans requires an id query parameter and filters updates down to known inventory columns before writing.',
-					'DELETE /api/beans requires an id query parameter and enforces ownership. Deletion is blocked while roast profiles or sales depend on the inventory item.',
-					"POST /api/update-stocked-status recalculates one item by coffee_id. PUT scans the caller's full inventory and batch-updates any mismatched stocked flags."
+					'DELETE /api/beans requires an id query parameter and enforces ownership. Deletion is blocked while roast profiles or sales depend on the inventory item.'
 				],
 				callout: {
 					tone: 'note',
