@@ -28,7 +28,7 @@ vi.mock('$lib/server/parchmentRoasts', () => ({
 	fetchParchmentRoasts: parchmentMocks.fetchParchmentRoasts
 }));
 
-vi.mock('$lib/server/stockedStatusUtils', () => ({
+vi.mock('$lib/data/inventory.js', () => ({
 	updateStockedStatus: roastMocks.updateStockedStatus
 }));
 

@@ -9,8 +9,8 @@
  *    the local save helpers.
  *  - calculateWeightLoss is moved here from inline route handler logic.
  *  - Milestone recalculation after PUT stays in computeMilestoneUpdate (private).
- *  - insertTemperatures / insertEvents / saveRoastData are kept here to allow
- *    roastDataUtils.ts to re-export them.
+ *  - insertTemperatures / insertEvents / saveRoastData support the retained
+ *    direct roast mutation paths.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -167,29 +167,6 @@ function resolveCatalogName(
 }
 
 // ── Core functions ────────────────────────────────────────────────────────────
-
-/**
- * Get a single roast profile by ID, verifying user ownership.
- * Returns null when not found.
- */
-export async function getRoast(
-	supabase: SupabaseClient,
-	roastId: number,
-	userId: string
-): Promise<RoastProfile | null> {
-	const { data, error } = await supabase
-		.from('roast_profiles')
-		.select('*')
-		.eq('roast_id', roastId)
-		.eq('user', userId)
-		.single();
-
-	if (error) {
-		if (error.code === 'PGRST116') return null;
-		throw error;
-	}
-	return data as RoastProfile;
-}
 
 /**
  * Verify ownership of a roast profile and return it.
@@ -568,7 +545,7 @@ export async function clearRoastData(
 			})
 			.eq('roast_id', roastId);
 	} else {
-		// Source-scoped clear: matches old roastDataUtils.clearRoastData() behaviour
+		// Source-scoped clear preserves data from the other import path.
 		console.log(`Clearing existing ${source} data for roast ${roastId}...`);
 
 		await supabase
@@ -627,7 +604,6 @@ export async function insertEvents(supabase: SupabaseClient, entries: EventRow[]
 /**
  * Extract milestone profile data from events and compute phase percentages.
  * Returns an object suitable for updating roast_profiles milestone columns.
- * (Migrated from roastDataUtils.extractMilestoneProfileData.)
  */
 export function extractMilestoneProfileData(
 	events: EventRow[],
@@ -704,7 +680,6 @@ export function extractMilestoneProfileData(
 
 /**
  * Full orchestrator: clear old data, insert temps + events, update profile milestones.
- * (Migrated from roastDataUtils.saveRoastData.)
  */
 export async function saveRoastData(
 	supabase: SupabaseClient,
