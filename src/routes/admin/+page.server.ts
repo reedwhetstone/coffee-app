@@ -17,8 +17,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	return {
-		user,
-		role,
 		meta: {
 			title: 'Admin Dashboard - Purveyors',
 			description: 'Administrative dashboard for managing users, roles, and system monitoring'

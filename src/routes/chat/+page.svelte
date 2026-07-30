@@ -6,12 +6,11 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	// Destructure with default values to prevent undefined errors
-	let { session, role = 'viewer', ppiAccess = false } = $derived(data);
+	let auth = $derived(data.auth);
 
 	// User role management
-	let userRole: UserRole = $derived(role as UserRole);
-	let canUseChat = $derived(Boolean(ppiAccess) || checkRole(userRole, 'member'));
+	let userRole: UserRole = $derived(auth.role as UserRole);
+	let canUseChat = $derived(auth.ppiAccess || checkRole(userRole, 'member'));
 	let canUseMallardWorkspaces = $derived(checkRole(userRole, 'member'));
 </script>
 
@@ -23,7 +22,7 @@
 	/>
 </svelte:head>
 
-{#if !session}
+{#if !auth.isSignedIn}
 	<!-- Unauthenticated state -->
 	<div class="flex min-h-screen items-center justify-center bg-surface-canvas">
 		<div class="mx-auto max-w-md rounded-lg bg-surface-panel p-8 text-center shadow-lg">

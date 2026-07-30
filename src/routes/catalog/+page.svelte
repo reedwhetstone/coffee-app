@@ -32,7 +32,10 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	let { session, role = 'viewer', ppiAccess = false } = $derived(data);
+	let auth = $derived(data.auth);
+	let isSignedIn = $derived(auth.isSignedIn);
+	let role = $derived(auth.role);
+	let ppiAccess = $derived(auth.ppiAccess);
 
 	// Deferred enrichment (origin stats, tracked ids, brief matches, deep-link card)
 	// arrives from the server load as streamed promises. Tests and any non-streamed
@@ -441,7 +444,7 @@
 	});
 
 	async function handleScroll() {
-		if (!session) {
+		if (!isSignedIn) {
 			return;
 		}
 
@@ -558,7 +561,7 @@
 			onCopyFilteredCatalogLink={copyFilteredCatalogLink}
 		/>
 
-		{#if !session}
+		{#if !isSignedIn}
 			<FilterBarSection {hasInlineFilters} />
 		{/if}
 
@@ -590,7 +593,7 @@
 			/>
 		{/if}
 
-		{#if session && !hasRequiredRole('member') && !canUseParchmentIntelligence}
+		{#if isSignedIn && !hasRequiredRole('member') && !canUseParchmentIntelligence}
 			<UpsellBannerSection />
 		{/if}
 
@@ -603,7 +606,7 @@
 		{/if}
 
 		<ResultsGridSection
-			{session}
+			{isSignedIn}
 			displayData={displayData()}
 			{isLoadingMore}
 			{isRefetching}

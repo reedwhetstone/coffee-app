@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
-	import { checkRole } from '$lib/types/auth.types';
+	import { checkRole, type PageAuthView } from '$lib/types/auth.types';
 	import { canManagePortfolio } from '$lib/services/portfolioAccess';
 
 	// Props declaration
@@ -12,14 +12,12 @@
 	}>();
 
 	// Destructure with default values
-	let { role = 'viewer', ppiAccess = false } = $derived(
-		data as { role?: string; ppiAccess?: boolean }
-	);
+	let auth = $derived((data as { auth: PageAuthView }).auth);
 
 	// Import global UserRole type
 	import type { UserRole } from '$lib/types/auth.types';
-	let userRole: UserRole = $derived(role as UserRole);
-	let canManagePortfolioRows = $derived(canManagePortfolio(userRole, ppiAccess === true));
+	let userRole: UserRole = $derived(auth.role);
+	let canManagePortfolioRows = $derived(canManagePortfolio(userRole, auth.ppiAccess));
 
 	// Use the imported checkRole function
 	function hasRequiredRole(requiredRole: UserRole): boolean {

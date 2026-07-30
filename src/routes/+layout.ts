@@ -8,9 +8,6 @@ export const load: LayoutLoad = async ({ data, depends }) => {
 
 	return {
 		...data,
-		supabase,
-		session: data.session,
-		role: data.role,
-		user: data.user
+		supabase
 	};
 };

@@ -31,6 +31,10 @@ vi.mock('$lib/components/layout/Actionsbar.svelte', () => ({
 	default: vi.fn()
 }));
 
+function auth(role: 'viewer' | 'member', ppiAccess: boolean) {
+	return { isSignedIn: true, user: null, role, ppiAccess };
+}
+
 describe('MobileAppShell actions launcher', () => {
 	beforeEach(() => {
 		pageState.url = new URL('http://localhost/beans');
@@ -38,20 +42,20 @@ describe('MobileAppShell actions launcher', () => {
 	});
 
 	it('lets Parchment Intelligence-only viewers open portfolio actions', () => {
-		render(MobileAppShell, { data: { role: 'viewer', ppiAccess: true } });
+		render(MobileAppShell, { data: { auth: auth('viewer', true) } });
 
 		expect(screen.getByLabelText('Open actions')).toBeTruthy();
 	});
 
 	it('keeps the actions launcher hidden for ordinary viewers', () => {
-		render(MobileAppShell, { data: { role: 'viewer', ppiAccess: false } });
+		render(MobileAppShell, { data: { auth: auth('viewer', false) } });
 
 		expect(screen.queryByLabelText('Open actions')).toBeNull();
 	});
 
 	it('does not show an empty filters launcher on profit', () => {
 		pageState.url = new URL('http://localhost/profit');
-		render(MobileAppShell, { data: { role: 'member', ppiAccess: false } });
+		render(MobileAppShell, { data: { auth: auth('member', false) } });
 
 		expect(screen.queryByLabelText('Open filters')).toBeNull();
 	});
@@ -59,7 +63,7 @@ describe('MobileAppShell actions launcher', () => {
 	it('hides catalog filters in the tracked-only view', () => {
 		pageState.url = new URL('http://localhost/catalog?tracked=only');
 		pageState.data = { trackedOnly: true };
-		render(MobileAppShell, { data: { role: 'member', ppiAccess: false } });
+		render(MobileAppShell, { data: { auth: auth('member', false) } });
 
 		expect(screen.queryByLabelText('Open filters')).toBeNull();
 	});
@@ -67,7 +71,7 @@ describe('MobileAppShell actions launcher', () => {
 	it('keeps filters visible when an unauthorized tracked query renders the normal catalog', () => {
 		pageState.url = new URL('http://localhost/catalog?tracked=only');
 		pageState.data = { trackedOnly: false };
-		render(MobileAppShell, { data: { role: 'viewer', ppiAccess: false } });
+		render(MobileAppShell, { data: { auth: auth('viewer', false) } });
 
 		expect(screen.getByLabelText('Open filters')).toBeTruthy();
 	});

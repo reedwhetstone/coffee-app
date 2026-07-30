@@ -54,6 +54,11 @@ authorization. `locals.safeGetIdentity()` remains narrowly scoped to Supabase
 browser identity hydration; legacy `locals.session`, `locals.user`,
 `locals.role`, and `safeGetSession()` aliases are intentionally absent.
 
+The browser receives only a sanitized `PageAuthView` containing signed-in state,
+user ID/email, primary app role, and Parchment Intelligence access. Supabase
+access tokens, refresh tokens, expiry metadata, and provider user/session
+objects remain server-side and are never serialized into SvelteKit page data.
+
 The canonical external API reference is
 <https://api.purveyors.io/docs>. Product and CLI guidance lives at
 <https://purveyors.io/docs>.

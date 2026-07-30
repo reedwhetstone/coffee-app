@@ -179,8 +179,9 @@
 	let viewMode = $state<ViewMode>('retail');
 	let windowMode = $state<WindowMode>('7d');
 
-	let session = $derived(data.session as PageData['session']);
-	let role = $derived(data.role as PageData['role']);
+	let auth = $derived(data.auth);
+	let isSignedIn = $derived(auth.isSignedIn);
+	let role = $derived(auth.role);
 	let isParchmentIntelligence = $derived(Boolean(data.isParchmentIntelligence));
 	let analyticsPreview = $derived(data.analyticsPreview as AnalyticsPreview);
 
@@ -198,7 +199,7 @@
 	let supplierPriceRanges = $derived(memberData?.supplierPriceRanges ?? []);
 	let supplierHealth = $derived(memberData?.supplierHealth ?? []);
 	let trackedLots = $derived(memberData?.trackedLots ?? []);
-	let isAnonymous = $derived(!session);
+	let isAnonymous = $derived(!isSignedIn);
 	// ── Snapshot filtering (scope lens) ──────────────────────────────────────
 
 	let filteredSnapshots = $derived.by(() => {
@@ -860,7 +861,7 @@
 
 	let analyticsEntitlement = $derived(
 		resolveAnalyticsEntitlement({
-			session,
+			isSignedIn,
 			role,
 			ppiAccess: isParchmentIntelligence
 		})
@@ -921,12 +922,12 @@
 	let askActionHref = $derived.by(() => {
 		if (analyticsChatHref) return analyticsChatHref;
 		if (canAskWithAnalyticsContext && !allResolved) return undefined;
-		if (!session) return '/auth';
+		if (!isSignedIn) return '/auth';
 		return '/subscription?plan=intelligence-monthly&intent=checkout';
 	});
 	let askActionLabel = $derived.by(() => {
 		if (canAskWithAnalyticsContext) return 'Ask with this context';
-		if (!session) return 'Sign in to ask';
+		if (!isSignedIn) return 'Sign in to ask';
 		return 'Upgrade to ask';
 	});
 
@@ -1135,7 +1136,7 @@
 {#if !bodyReady}
 	<!-- Same skeleton contract the root-layout route skeleton renders, minus the
 	     hero, which is already resolved above. -->
-	<AnalyticsPageSkeleton showHero={false} isSignedIn={Boolean(session)} {isParchmentIntelligence} />
+	<AnalyticsPageSkeleton showHero={false} {isSignedIn} {isParchmentIntelligence} />
 {:else}
 	<ValueSignalsSection
 		valueSignals={marketInsights?.valueSignals ?? null}
@@ -1264,7 +1265,7 @@
 		{:else}
 			<ParchmentIntelligenceSection
 				{isParchmentIntelligence}
-				{session}
+				{isSignedIn}
 				{PriceTierChartComponent}
 				{SupplierComparisonTableComponent}
 				{SupplierHealthTableComponent}

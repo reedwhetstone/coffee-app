@@ -39,6 +39,13 @@ vi.mock('$lib/components/layout/appNavigation', () => ({
 	isNavItemActive: () => false
 }));
 
+const memberAuth = {
+	isSignedIn: true,
+	user: { id: 'user-1', email: 'member@example.com' },
+	role: 'member',
+	ppiAccess: false
+} as const;
+
 describe('MobileAppMenu', () => {
 	beforeEach(() => {
 		pageState.url = new URL('http://localhost/dashboard');
@@ -48,7 +55,7 @@ describe('MobileAppMenu', () => {
 	it('offers the single continuous Coffee Chat instead of a workspace picker', async () => {
 		const onClose = vi.fn();
 		render(MobileAppMenu, {
-			data: { role: 'member', user: { email: 'member@example.com' } },
+			data: { auth: memberAuth },
 			onClose
 		});
 
@@ -67,7 +74,7 @@ describe('MobileAppMenu', () => {
 		pageState.url = new URL('http://localhost/analytics');
 
 		render(MobileAppMenu, {
-			data: { role: 'member', user: { email: 'member@example.com' } },
+			data: { auth: memberAuth },
 			onClose
 		});
 

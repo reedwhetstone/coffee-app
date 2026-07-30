@@ -72,6 +72,10 @@ vi.mock('$lib/stores/filterStore', () => ({
 	filterStore
 }));
 
+function auth(role: 'viewer' | 'member') {
+	return { isSignedIn: true, user: null, role, ppiAccess: false };
+}
+
 describe('Settingsbar stocked filters', () => {
 	beforeEach(() => {
 		pageState.url = new URL('http://localhost/catalog');
@@ -94,7 +98,7 @@ describe('Settingsbar stocked filters', () => {
 
 	it('separates absolute stocked_date input from explicit stocked_days window control', async () => {
 		render(Settingsbar, {
-			data: { role: 'member' },
+			data: { auth: auth('member') },
 			onClose: vi.fn()
 		});
 
@@ -116,7 +120,7 @@ describe('Settingsbar stocked filters', () => {
 	});
 
 	it('hides filters that the free catalog API strips while keeping basic filters and sorting', () => {
-		render(Settingsbar, { data: { role: 'viewer' }, onClose: vi.fn() });
+		render(Settingsbar, { data: { auth: auth('viewer') }, onClose: vi.fn() });
 
 		expect(screen.getByText('Home Roaster Suppliers Only')).toBeInTheDocument();
 		expect(screen.getByText('Filter out wholesale quantities')).toBeInTheDocument();
@@ -136,7 +140,7 @@ describe('Settingsbar stocked filters', () => {
 
 	it('applies the same free catalog controls to the root catalog alias', () => {
 		pageState.url = new URL('http://localhost/');
-		render(Settingsbar, { data: { role: 'viewer' }, onClose: vi.fn() });
+		render(Settingsbar, { data: { auth: auth('viewer') }, onClose: vi.fn() });
 
 		expect(screen.getByText('Home Roaster Suppliers Only')).toBeInTheDocument();
 		expect(screen.queryByLabelText('Score Value')).not.toBeInTheDocument();
@@ -150,7 +154,7 @@ describe('Settingsbar stocked filters', () => {
 	});
 
 	it('shows the home-roaster scope and paid range filters to member sessions', () => {
-		render(Settingsbar, { data: { role: 'member' }, onClose: vi.fn() });
+		render(Settingsbar, { data: { auth: auth('member') }, onClose: vi.fn() });
 
 		expect(screen.getByText('Home Roaster Suppliers Only')).toBeInTheDocument();
 		expect(screen.getByLabelText('Score Value')).toBeInTheDocument();
@@ -165,7 +169,7 @@ describe('Settingsbar stocked filters', () => {
 			...storeState.value,
 			showWholesale: true
 		});
-		render(Settingsbar, { data: { role: 'viewer' }, onClose: vi.fn() });
+		render(Settingsbar, { data: { auth: auth('viewer') }, onClose: vi.fn() });
 
 		const checkbox = screen.getByRole('checkbox', { name: /Home Roaster Suppliers Only/i });
 		expect(checkbox).not.toBeChecked();

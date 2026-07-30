@@ -577,8 +577,6 @@ export const load: PageServerLoad = async (event) => {
 		trainingData: catalogResources,
 		initialCatalogState: effectiveCatalogState,
 		originPriceStats,
-		ppiAccess:
-			locals.principal?.isAuthenticated === true ? locals.principal.ppiAccess === true : false,
 		trackedLotIds,
 		trackedOnly,
 		briefMatchSummaries,

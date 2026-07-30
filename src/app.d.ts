@@ -4,7 +4,7 @@
 // for information about these interfaces
 import { SupabaseClient, Session, User } from '@supabase/supabase-js';
 import type { Database } from '$lib/types/database.types';
-import type { UserRole } from '$lib/types/auth.types';
+import type { PageAuthView } from '$lib/types/auth.types';
 import type { RequestPrincipal } from '$lib/server/principal';
 
 declare global {
@@ -19,24 +19,7 @@ declare global {
 			}>;
 		}
 		interface PageData {
-			session: {
-				access_token: string;
-				refresh_token: string;
-				expires_in: number;
-				expires_at: number | undefined;
-				user: {
-					id: string;
-					email: string | undefined;
-					role: string | undefined;
-				};
-			} | null;
-			user: {
-				id: string;
-				email: string | undefined;
-				role: string | undefined;
-			} | null;
-			role: UserRole;
-			ppiAccess: boolean;
+			auth: PageAuthView;
 		}
 		// interface PageState {}
 		// interface Platform {}

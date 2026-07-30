@@ -16,9 +16,9 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	let role = $derived((data.role ?? 'viewer') as UserRole);
+	let role = $derived(data.auth.role as UserRole);
 	let canAccessMallard = $derived(checkRole(role, 'member'));
-	let canUseParchmentWorkflows = $derived(data.ppiAccess === true || canAccessMallard);
+	let canUseParchmentWorkflows = $derived(data.auth.ppiAccess || canAccessMallard);
 	let trackedLots = $derived(data.trackedLots ?? []);
 	let activeBriefs = $derived(data.activeBriefs ?? []);
 	let delistedTrackedCount = $derived(
@@ -86,8 +86,8 @@
 		}
 		return parts.join(' · ');
 	}
-	let displayName = $derived(data.session?.user?.email?.split('@')[0] ?? 'there');
-	let dashboardContext = $derived({ role, ppiAccess: data.ppiAccess === true });
+	let displayName = $derived(data.auth.user?.email?.split('@')[0] ?? 'there');
+	let dashboardContext = $derived({ role, ppiAccess: data.auth.ppiAccess });
 	let dashboardSections = $derived(getDashboardSections(dashboardContext));
 	let upgradePrompt = $derived(getDashboardUpgradePrompt(dashboardContext));
 

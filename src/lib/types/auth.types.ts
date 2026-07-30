@@ -5,6 +5,16 @@ export type UserRole = 'viewer' | 'member' | 'admin';
 // Support for multiple roles per user
 export type UserRoles = UserRole | UserRole[];
 
+export interface PageAuthView {
+	isSignedIn: boolean;
+	user: {
+		id: string;
+		email: string | null;
+	} | null;
+	role: UserRole;
+	ppiAccess: boolean;
+}
+
 export const roleHierarchy = {
 	viewer: 0,
 	member: 1,

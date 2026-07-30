@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { checkRole, type UserRole } from '$lib/types/auth.types';
+	import { checkRole, type PageAuthView } from '$lib/types/auth.types';
 	import {
 		getAnalyticsSectionLinks,
 		publicNavItems,
@@ -9,20 +9,13 @@
 		type NavItem
 	} from '$lib/components/layout/appNavigation';
 
-	interface SessionData {
-		user?: {
-			email?: string;
-		};
-	}
-
-	let { session = null, role = 'viewer' } = $props<{
-		session?: SessionData | null;
-		role?: UserRole;
+	let { auth } = $props<{
+		auth: PageAuthView;
 	}>();
 
 	let currentPath = $derived(page.url.pathname);
-	let isSignedIn = $derived(Boolean(session?.user));
-	let canAccessMemberRoutes = $derived(checkRole(role, 'member'));
+	let isSignedIn = $derived(auth.isSignedIn);
+	let canAccessMemberRoutes = $derived(checkRole(auth.role, 'member'));
 	let isDashboardPage = $derived(currentPath === '/dashboard');
 	let isMarketIndexPage = $derived(currentPath.startsWith('/analytics'));
 	let marketIndexSectionLinks = $derived(

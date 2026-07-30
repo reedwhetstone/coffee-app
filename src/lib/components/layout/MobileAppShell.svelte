@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { type UserRole } from '$lib/types/auth.types';
+	import type { PageAuthView } from '$lib/types/auth.types';
 	import { canManagePortfolio } from '$lib/services/portfolioAccess';
 	import Actionsbar from '$lib/components/layout/Actionsbar.svelte';
 	import Settingsbar from '$lib/components/layout/Settingsbar.svelte';
@@ -17,8 +17,9 @@
 	let trackedCatalogRoute = $state(Boolean((page.data as { trackedOnly?: boolean }).trackedOnly));
 	let activeOverlay = $state<null | 'menu' | 'actions' | 'settings'>(null);
 
-	let userRole = $derived(((data?.role as UserRole | undefined) ?? 'viewer') as UserRole);
-	let ppiAccess = $derived(Boolean((data as { ppiAccess?: boolean }).ppiAccess));
+	let auth = $derived((data as { auth: PageAuthView }).auth);
+	let userRole = $derived(auth.role);
+	let ppiAccess = $derived(auth.ppiAccess);
 	let canUseActions = $derived(canManagePortfolio(userRole, ppiAccess));
 	let showSettings = $derived(
 		['/catalog', '/beans', '/roast'].includes(currentPath) && !trackedCatalogRoute
