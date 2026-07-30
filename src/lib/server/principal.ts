@@ -114,14 +114,6 @@ interface CanonicalPrincipal {
 	apiScopes: string[];
 }
 
-function normalizeApiPlan(plan: unknown, role: UserRole | null): ApiPlan {
-	if (plan === 'viewer' || plan === 'member' || plan === 'enterprise') {
-		return plan;
-	}
-
-	return role === 'admin' ? 'enterprise' : 'viewer';
-}
-
 export function getPrimaryUserRole(roles: UserRole[]): UserRole {
 	for (const role of USER_ROLE_PRIORITY) {
 		if (roles.includes(role)) {
@@ -167,7 +159,7 @@ function createSessionPrincipal(input: {
 		session: input.session,
 		appRoles: input.canonical.roles.length > 0 ? input.canonical.roles : [primaryRole],
 		primaryAppRole: primaryRole,
-		apiPlan: input.canonical.apiPlan ?? normalizeApiPlan(null, primaryRole),
+		apiPlan: input.canonical.apiPlan ?? 'viewer',
 		ppiAccess: input.canonical.ppiAccess,
 		apiScopes: input.canonical.apiScopes
 	};
@@ -189,7 +181,7 @@ function createApiKeyPrincipal(input: {
 		session: null,
 		appRoles: input.canonical.roles.length > 0 ? input.canonical.roles : [primaryRole],
 		primaryAppRole: primaryRole,
-		apiPlan: input.canonical.apiPlan ?? normalizeApiPlan(null, primaryRole),
+		apiPlan: input.canonical.apiPlan ?? 'viewer',
 		ppiAccess: input.canonical.ppiAccess,
 		apiScopes: input.canonical.apiScopes
 	};

@@ -182,6 +182,40 @@ describe('principal helpers', () => {
 		});
 	});
 
+	it.each([
+		{
+			name: 'cookie session',
+			authKind: 'session',
+			userId: 'user-1',
+			makeEvent: makeCookieSessionEvent
+		},
+		{
+			name: 'API key',
+			authKind: 'api-key',
+			userId: 'api-user',
+			makeEvent: () => makeAuthorizationEvent('pk_live_admin-key')
+		}
+	])('defaults a canonical null API plan to viewer for an admin $name', async (testCase) => {
+		successfulMe({
+			authenticated: true,
+			authKind: testCase.authKind,
+			userId: testCase.userId,
+			appRoles: ['admin'],
+			primaryAppRole: 'admin',
+			apiPlan: null,
+			ppiAccess: false,
+			apiScopes: []
+		});
+
+		const principal = await resolvePrincipal(testCase.makeEvent());
+
+		expect(principal).toMatchObject({
+			isAuthenticated: true,
+			primaryAppRole: 'admin',
+			apiPlan: 'viewer'
+		});
+	});
+
 	it('fails closed when Parchment is unavailable for a valid cookie user', async () => {
 		mockMe.mockRejectedValue(new TypeError('fetch failed'));
 		const event = makeCookieSessionEvent();
