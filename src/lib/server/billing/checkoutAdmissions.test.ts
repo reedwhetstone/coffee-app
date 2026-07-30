@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	buildCheckoutAdmissionMetadata,
 	checkoutAdmissionContextFromMetadata,
 	checkoutPurchaseFingerprint,
-	resolveCheckoutAdmissionRollout
+	normalizeCheckoutStripePriceIds,
+	resolveCheckoutAdmissionRollout,
+	verifyPublishedCheckoutReplay
 } from './checkoutAdmissions';
 
 const partialAdmissionMetadata: Array<Record<string, string>> = [
@@ -14,14 +17,64 @@ const partialAdmissionMetadata: Array<Record<string, string>> = [
 ];
 
 describe('checkoutPurchaseFingerprint', () => {
-	it('is stable across equivalent purchase ordering and changes with the purchase set', () => {
+	it('is stable across normalized equivalent purchase ordering and changes with the purchase set', () => {
 		const first = checkoutPurchaseFingerprint(['price_b', 'price_a']);
-		const reordered = checkoutPurchaseFingerprint(['price_a', 'price_b']);
+		const reordered = checkoutPurchaseFingerprint([' price_a', 'price_b', 'price_a ']);
 		const changed = checkoutPurchaseFingerprint(['price_a', 'price_c']);
 
 		expect(first).toMatch(/^[a-f0-9]{64}$/);
 		expect(reordered).toBe(first);
 		expect(changed).not.toBe(first);
+		expect(normalizeCheckoutStripePriceIds([' price_b ', 'price_a', 'price_b'])).toEqual([
+			'price_a',
+			'price_b'
+		]);
+	});
+});
+
+describe('published checkout replay verification', () => {
+	const expected = {
+		ownerId: 'user-123',
+		admissionId: 'admission-123',
+		requestId: 'request-123',
+		purchaseFingerprint: checkoutPurchaseFingerprint(['price_b', 'price_a'])
+	};
+	const session = {
+		client_reference_id: 'user-123',
+		client_secret: 'cs_secret',
+		status: 'open',
+		metadata: buildCheckoutAdmissionMetadata(expected)
+	};
+
+	it.each([
+		['exact replay', expected, session, true],
+		[
+			'order-equivalent replay',
+			{ ...expected, purchaseFingerprint: checkoutPurchaseFingerprint(['price_a', 'price_b']) },
+			session,
+			true
+		],
+		[
+			'changed bundle',
+			{ ...expected, purchaseFingerprint: checkoutPurchaseFingerprint(['price_a', 'price_c']) },
+			session,
+			false
+		],
+		[
+			'incomplete metadata',
+			expected,
+			{
+				...session,
+				metadata: Object.fromEntries(
+					Object.entries(session.metadata).filter(([key]) => key !== 'checkout_request_id')
+				)
+			},
+			false
+		],
+		['completed session', expected, { ...session, status: 'complete' }, false],
+		['missing client secret', expected, { ...session, client_secret: null }, false]
+	] as const)('%s', (_label, replayExpectation, replaySession, valid) => {
+		expect(verifyPublishedCheckoutReplay(replaySession, replayExpectation)).toBe(valid);
 	});
 });
 

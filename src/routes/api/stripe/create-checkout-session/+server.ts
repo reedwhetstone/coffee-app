@@ -11,11 +11,12 @@ import { isCookieSessionPrincipal, isTrustedMutationRequest } from '$lib/server/
 import {
 	abandonCheckoutAdmission,
 	acquireCheckoutAdmission,
-	CHECKOUT_ADMISSION_METADATA,
 	checkoutPurchaseFingerprint,
 	checkoutAdmissionsEnabled,
 	CheckoutAdmissionError,
-	publishCheckoutAdmission
+	normalizeCheckoutStripePriceIds,
+	publishCheckoutAdmission,
+	verifyPublishedCheckoutReplay
 } from '$lib/server/billing/checkoutAdmissions';
 import { ParchmentConfigError } from '$lib/server/parchmentClient';
 
@@ -245,9 +246,11 @@ export const POST: RequestHandler = async (event) => {
 
 		const origin = request.headers.get('origin') || new URL(request.url).origin;
 		const stripeCustomerId = await getStripeCustomerId(user.id);
-		const stripePriceIds = requestedCatalogEntries
-			.map((entry) => entry.stripePriceId)
-			.filter((stripePriceId): stripePriceId is string => Boolean(stripePriceId));
+		const stripePriceIds = normalizeCheckoutStripePriceIds(
+			requestedCatalogEntries
+				.map((entry) => entry.stripePriceId)
+				.filter((stripePriceId): stripePriceId is string => Boolean(stripePriceId))
+		);
 		const purchaseFingerprint = checkoutPurchaseFingerprint(stripePriceIds);
 
 		if (!useAdmissions) {
@@ -271,15 +274,13 @@ export const POST: RequestHandler = async (event) => {
 
 		if (admission.status === 'published' && admission.stripeSessionId) {
 			const replayed = await getStripe().checkout.sessions.retrieve(admission.stripeSessionId);
-			const replayOwner = replayed.client_reference_id;
-			const replayAdmission = replayed.metadata?.[CHECKOUT_ADMISSION_METADATA.admissionId];
-			const replayPurchaseFingerprint =
-				replayed.metadata?.[CHECKOUT_ADMISSION_METADATA.purchaseFingerprint];
 			if (
-				replayOwner !== user.id ||
-				replayAdmission !== admission.admissionId ||
-				replayPurchaseFingerprint !== purchaseFingerprint ||
-				!replayed.client_secret
+				!verifyPublishedCheckoutReplay(replayed, {
+					ownerId: user.id,
+					admissionId: admission.admissionId,
+					requestId: requestId!,
+					purchaseFingerprint
+				})
 			) {
 				return json(
 					{

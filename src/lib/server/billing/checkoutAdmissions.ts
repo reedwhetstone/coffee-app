@@ -19,6 +19,27 @@ export interface CheckoutAdmissionContext {
 	stripeSessionId: string;
 }
 
+export interface CheckoutAdmissionMetadataValues {
+	ownerId: string;
+	admissionId: string;
+	requestId: string;
+	purchaseFingerprint: string;
+}
+
+export interface PublishedCheckoutReplaySession {
+	client_reference_id?: string | null;
+	client_secret?: string | null;
+	status?: string | null;
+	metadata?: Record<string, string> | null;
+}
+
+export interface PublishedCheckoutReplayExpectation {
+	ownerId: string;
+	admissionId: string;
+	requestId: string;
+	purchaseFingerprint: string;
+}
+
 export interface CheckoutAdmission {
 	admissionId: string;
 	status: 'creating' | 'published' | 'closed';
@@ -62,10 +83,44 @@ export function legacyCheckoutDrainEnabled(): boolean {
 	return resolveCheckoutAdmissionRollout(env).legacyDrainEnabled;
 }
 
+export function normalizeCheckoutStripePriceIds(stripePriceIds: string[]): string[] {
+	return Array.from(
+		new Set(stripePriceIds.map((stripePriceId) => stripePriceId.trim()).filter(Boolean))
+	).sort();
+}
+
 export function checkoutPurchaseFingerprint(stripePriceIds: string[]): string {
 	return createHash('sha256')
-		.update([...stripePriceIds].sort().join('\n'))
+		.update(normalizeCheckoutStripePriceIds(stripePriceIds).join('\n'))
 		.digest('hex');
+}
+
+export function buildCheckoutAdmissionMetadata(
+	values: CheckoutAdmissionMetadataValues
+): Record<string, string> {
+	return {
+		[CHECKOUT_ADMISSION_METADATA.ownerId]: values.ownerId,
+		[CHECKOUT_ADMISSION_METADATA.admissionId]: values.admissionId,
+		[CHECKOUT_ADMISSION_METADATA.requestId]: values.requestId,
+		[CHECKOUT_ADMISSION_METADATA.purchaseFingerprint]: values.purchaseFingerprint
+	};
+}
+
+export function verifyPublishedCheckoutReplay(
+	session: PublishedCheckoutReplaySession,
+	expected: PublishedCheckoutReplayExpectation
+): boolean {
+	const metadata = session.metadata;
+	return (
+		session.status === 'open' &&
+		typeof session.client_secret === 'string' &&
+		session.client_secret.length > 0 &&
+		session.client_reference_id === expected.ownerId &&
+		metadata?.[CHECKOUT_ADMISSION_METADATA.ownerId] === expected.ownerId &&
+		metadata?.[CHECKOUT_ADMISSION_METADATA.admissionId] === expected.admissionId &&
+		metadata?.[CHECKOUT_ADMISSION_METADATA.requestId] === expected.requestId &&
+		metadata?.[CHECKOUT_ADMISSION_METADATA.purchaseFingerprint] === expected.purchaseFingerprint
+	);
 }
 
 function providerCredential(): string {

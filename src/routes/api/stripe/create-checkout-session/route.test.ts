@@ -13,6 +13,8 @@ const mockPublishCheckoutAdmission = vi.fn();
 const mockAbandonCheckoutAdmission = vi.fn();
 const mockCheckoutAdmissionsEnabled = vi.fn();
 const mockCheckoutPurchaseFingerprint = vi.fn();
+const mockNormalizeCheckoutStripePriceIds = vi.fn();
+const mockVerifyPublishedCheckoutReplay = vi.fn();
 
 vi.mock('$lib/services/stripe', () => ({
 	createCheckoutSession: mockCreateCheckoutSession,
@@ -23,7 +25,9 @@ vi.mock('$lib/services/stripe', () => ({
 
 vi.mock('$lib/server/billing/checkoutAdmissions', () => ({
 	CHECKOUT_ADMISSION_METADATA: {
+		ownerId: 'supabase_user_id',
 		admissionId: 'parchment_admission_id',
+		requestId: 'checkout_request_id',
 		purchaseFingerprint: 'checkout_purchase_fingerprint'
 	},
 	CheckoutAdmissionError: class CheckoutAdmissionError extends Error {
@@ -39,7 +43,9 @@ vi.mock('$lib/server/billing/checkoutAdmissions', () => ({
 	publishCheckoutAdmission: mockPublishCheckoutAdmission,
 	abandonCheckoutAdmission: mockAbandonCheckoutAdmission,
 	checkoutAdmissionsEnabled: mockCheckoutAdmissionsEnabled,
-	checkoutPurchaseFingerprint: mockCheckoutPurchaseFingerprint
+	checkoutPurchaseFingerprint: mockCheckoutPurchaseFingerprint,
+	normalizeCheckoutStripePriceIds: mockNormalizeCheckoutStripePriceIds,
+	verifyPublishedCheckoutReplay: mockVerifyPublishedCheckoutReplay
 }));
 
 let POST: typeof import('./+server').POST;
@@ -55,6 +61,8 @@ beforeEach(async () => {
 	mockGetStripeCustomerId.mockResolvedValue(null);
 	mockCheckoutAdmissionsEnabled.mockReturnValue(false);
 	mockCheckoutPurchaseFingerprint.mockReturnValue('purchase-fingerprint');
+	mockNormalizeCheckoutStripePriceIds.mockImplementation((priceIds: string[]) => priceIds);
+	mockVerifyPublishedCheckoutReplay.mockReturnValue(true);
 	mockAcquireCheckoutAdmission.mockResolvedValue({
 		admissionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 		status: 'creating',
@@ -433,8 +441,11 @@ describe('/api/stripe/create-checkout-session', () => {
 					retrieve: vi.fn(async () => ({
 						client_reference_id: 'user-123',
 						client_secret: 'cs_existing_secret',
+						status: 'open',
 						metadata: {
+							supabase_user_id: 'user-123',
 							parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+							checkout_request_id: requestId,
 							checkout_purchase_fingerprint: 'purchase-fingerprint'
 						}
 					}))
@@ -456,10 +467,19 @@ describe('/api/stripe/create-checkout-session', () => {
 		});
 		expect(mockCreateCheckoutSession).not.toHaveBeenCalled();
 		expect(mockPublishCheckoutAdmission).not.toHaveBeenCalled();
+		expect(mockVerifyPublishedCheckoutReplay).toHaveBeenCalledWith(
+			expect.objectContaining({ status: 'open' }),
+			expect.objectContaining({
+				ownerId: 'user-123',
+				admissionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+				requestId
+			})
+		);
 	});
 
 	it('rejects a published admission replay when the requested purchase set changed', async () => {
 		mockCheckoutAdmissionsEnabled.mockReturnValue(true);
+		mockVerifyPublishedCheckoutReplay.mockReturnValue(false);
 		mockAcquireCheckoutAdmission.mockResolvedValue({
 			admissionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 			status: 'published',
@@ -471,8 +491,11 @@ describe('/api/stripe/create-checkout-session', () => {
 					retrieve: vi.fn(async () => ({
 						client_reference_id: 'user-123',
 						client_secret: 'cs_existing_secret',
+						status: 'open',
 						metadata: {
+							supabase_user_id: 'user-123',
 							parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+							checkout_request_id: '11111111-1111-4111-8111-111111111111',
 							checkout_purchase_fingerprint: 'different-purchase-fingerprint'
 						}
 					}))

@@ -5,6 +5,7 @@ import {
 	getBillingCatalogEntryByStripePriceId,
 	type BillingProductFamily
 } from '$lib/server/billing/catalog';
+import { buildCheckoutAdmissionMetadata } from '$lib/server/billing/checkoutAdmissions';
 
 // Initialize Stripe with the latest API version
 export const getStripe = () =>
@@ -249,12 +250,12 @@ export async function createCheckoutSession(
 	const stripe = getStripe();
 
 	const metadata = input
-		? {
-				supabase_user_id: clientReferenceId,
-				parchment_admission_id: input.admissionId,
-				checkout_request_id: input.requestId,
-				checkout_purchase_fingerprint: input.purchaseFingerprint
-			}
+		? buildCheckoutAdmissionMetadata({
+				ownerId: clientReferenceId,
+				admissionId: input.admissionId,
+				requestId: input.requestId,
+				purchaseFingerprint: input.purchaseFingerprint
+			})
 		: undefined;
 	const sessionParams: Stripe.Checkout.SessionCreateParams = {
 		payment_method_types: ['card'],
