@@ -14,10 +14,15 @@
 	const premiumDiscoveryFilterColumns = new Set<string>(PREMIUM_DISCOVERY_FILTER_KEYS);
 
 	// Component props interface
-	let { data, onClose = () => {} } = $props<{
+	let {
+		data,
+		onClose = () => {},
+		variant = 'default'
+	} = $props<{
 		data: Record<string, unknown>;
 		isOpen?: boolean;
 		onClose?: () => void;
+		variant?: 'default' | 'rail';
 	}>();
 
 	// Track current route for dynamic filter options
@@ -74,9 +79,9 @@
 </script>
 
 <!-- Settings panel - full height -->
-<div class="flex h-full flex-col">
+<div class="flex h-full flex-col" class:rail-panel={variant === 'rail'}>
 	<!-- Header with close button that handles keyboard events -->
-	<header class="flex items-center justify-between border-b border-line p-4">
+	<header class="flex items-center justify-between border-b border-line px-5 py-4">
 		<h3 class="text-lg font-semibold text-ink" id="filters-dialog-title">Filters</h3>
 		<button
 			onclick={(e) => {
@@ -103,10 +108,16 @@
 	</header>
 
 	<!-- Filter content -->
-	<main class="flex-1 overflow-y-auto p-4">
-		<div class="space-y-4">
+	<main
+		class={variant === 'rail' ? 'flex-1 overflow-y-auto px-5 py-5' : 'flex-1 overflow-y-auto p-4'}
+	>
+		<div class={variant === 'rail' ? 'space-y-7' : 'space-y-4'}>
 			<!-- Sort Controls -->
-			<section class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+			<section
+				class={variant === 'rail'
+					? 'space-y-2'
+					: 'rounded-lg bg-surface-panel p-4 ring-1 ring-line'}
+			>
 				<label for="sort-field" class="block text-sm font-medium text-ink">Sort by</label>
 				<select
 					id="sort-field"
@@ -136,11 +147,25 @@
 			</section>
 
 			<!-- Filter Controls -->
-			<section class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-				<h4 class="mb-3 text-sm font-medium text-ink">Filters</h4>
-				<div class="space-y-3">
+			<section
+				class={variant === 'rail'
+					? 'space-y-4'
+					: 'rounded-lg bg-surface-panel p-4 ring-1 ring-line'}
+			>
+				<h4
+					class={variant === 'rail'
+						? 'text-sm font-semibold text-ink'
+						: 'mb-3 text-sm font-medium text-ink'}
+				>
+					Filters
+				</h4>
+				<div class={variant === 'rail' ? 'space-y-5' : 'space-y-3'}>
 					{#if routeId === '/' || routeId === '/catalog'}
-						<div class="rounded-md border border-line bg-surface-canvas p-3">
+						<div
+							class={variant === 'rail'
+								? 'py-1'
+								: 'rounded-md border border-line bg-surface-canvas p-3'}
+						>
 							<label class="flex items-center justify-between gap-3">
 								<div>
 									<div class="text-xs font-medium text-ink">Home Roaster Suppliers Only</div>
@@ -208,7 +233,7 @@
 										</button>
 									</div>
 									<div
-										class="max-h-40 overflow-y-auto rounded-md border border-line bg-surface-canvas p-2"
+										class="filter-list max-h-40 overflow-y-auto rounded-md border border-line bg-surface-canvas p-2"
 									>
 										{#each $filterStore.uniqueValues.sources as source}
 											<label class="flex items-center gap-2 py-1">
@@ -276,7 +301,7 @@
 										</button>
 									</div>
 									<div
-										class="max-h-40 overflow-y-auto rounded-md border border-line bg-surface-canvas p-2"
+										class="filter-list max-h-40 overflow-y-auto rounded-md border border-line bg-surface-canvas p-2"
 									>
 										{#each $filterStore.uniqueValues.countries as country}
 											<label class="flex items-center gap-2 py-1">
@@ -513,3 +538,14 @@
 		</div>
 	</main>
 </div>
+
+<style>
+	.rail-panel :global(select),
+	.rail-panel :global(input:not([type='checkbox'])) {
+		box-shadow: none;
+	}
+
+	.rail-panel :global(.filter-list) {
+		background: transparent;
+	}
+</style>

@@ -121,23 +121,23 @@
 {#snippet menuPanel(menu: MenuId)}
 	{#if menu === 'auth'}
 		<aside class="h-full bg-surface-canvas text-ink" aria-label="Account menu">
-			<AuthSidebar {data} onClose={closeAllMenus} />
+			<AuthSidebar {data} onClose={closeAllMenus} variant="rail" />
 		</aside>
 	{:else if menu === 'nav'}
 		<aside class="h-full bg-surface-canvas text-ink" aria-label="Main navigation menu">
-			<Navbar {data} onClose={closeAllMenus} />
+			<Navbar {data} onClose={closeAllMenus} variant="rail" />
 		</aside>
 	{:else if menu === 'actions'}
 		<aside class="h-full bg-surface-canvas text-ink" aria-label="Actions menu">
-			<Actionsbar {data} onClose={closeAllMenus} />
+			<Actionsbar {data} onClose={closeAllMenus} variant="rail" />
 		</aside>
 	{:else if menu === 'settings'}
 		<aside class="h-full bg-surface-canvas text-ink" aria-label="Filters menu">
-			<Settingsbar {data} isOpen={true} onClose={closeAllMenus} />
+			<Settingsbar {data} isOpen={true} onClose={closeAllMenus} variant="rail" />
 		</aside>
 	{:else}
 		<aside class="h-full bg-surface-canvas text-ink" aria-label="Admin menu">
-			<AdminSidebar {data} onClose={closeAllMenus} />
+			<AdminSidebar {data} onClose={closeAllMenus} variant="rail" />
 		</aside>
 	{/if}
 {/snippet}
@@ -148,44 +148,69 @@
 	data-testid="desktop-app-shell"
 >
 	<aside
-		class="flex h-full w-24 flex-col items-center border-r border-line bg-surface-canvas px-2 py-3 shadow-sm"
+		class="flex h-full w-16 flex-col items-center border-r border-line bg-surface-canvas px-2 py-3"
 		aria-label="Desktop action bar"
 	>
 		<button
 			type="button"
 			onclick={(event) => toggleMenu('nav', event.currentTarget)}
-			class="mb-2 flex w-20 flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+			class="group relative mb-3 flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 			class:bg-surface-panel={activeMenu === 'nav'}
 			class:text-ink={activeMenu === 'nav'}
 			aria-label={activeMenu === 'nav' ? 'Close navigation' : 'Open navigation'}
 			aria-controls="desktop-shell-panel"
 			aria-expanded={activeMenu === 'nav'}
 		>
-			<img src="/purveyors_logo_mark.svg" alt="" class="h-8 w-auto" />
-			<span>Menu</span>
+			<svg class="h-7 w-7" viewBox="0 0 525 525" aria-hidden="true">
+				<circle cx="262.5" cy="262.5" r="262.5" fill="#F9A57B" />
+				<ellipse
+					cx="242.411"
+					cy="274.034"
+					rx="104.188"
+					ry="163.452"
+					transform="rotate(-25.9612 242.411 274.034)"
+					fill="none"
+					stroke="white"
+					stroke-width="27"
+				/>
+				<ellipse
+					cx="323.193"
+					cy="217.918"
+					rx="100.451"
+					ry="99.0536"
+					transform="rotate(-25.9612 323.193 217.918)"
+					fill="none"
+					stroke="white"
+					stroke-width="27"
+				/>
+			</svg>
+			<span class="rail-tooltip">Menu</span>
 		</button>
 
 		<button
 			type="button"
 			onclick={handleChatClick}
-			class="flex w-20 flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-ink transition-colors hover:bg-accent/20"
+			class="group relative flex h-10 w-10 items-center justify-center rounded-lg bg-surface-panel text-ink ring-1 ring-accent/50 transition-colors hover:bg-accent/15"
+			style="box-shadow: 0 0 18px rgba(249, 165, 123, 0.42);"
 			aria-label="Open chat"
 		>
 			<DesktopShellIcon name="chat" />
-			<span>Chat</span>
+			<span class="rail-tooltip">Chat</span>
 		</button>
 
 		{#if canUseActions}
 			<button
 				type="button"
 				onclick={(event) => toggleMenu('actions', event.currentTarget)}
-				class="mt-1 flex w-20 flex-col items-center gap-1 rounded-lg bg-accent px-2 py-2 text-xs font-semibold text-ink shadow-sm transition-opacity hover:opacity-90"
+				class="group relative mt-2 flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+				class:bg-surface-panel={activeMenu === 'actions'}
+				class:text-ink={activeMenu === 'actions'}
 				aria-label={activeMenu === 'actions' ? 'Close actions' : 'Open actions'}
 				aria-controls="desktop-shell-panel"
 				aria-expanded={activeMenu === 'actions'}
 			>
 				<DesktopShellIcon name="actions" />
-				<span>New</span>
+				<span class="rail-tooltip">New</span>
 			</button>
 		{/if}
 
@@ -193,7 +218,7 @@
 			<button
 				type="button"
 				onclick={(event) => toggleMenu('settings', event.currentTarget)}
-				class="relative mt-1 flex w-20 flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+				class="group relative mt-2 flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 				class:bg-surface-panel={activeMenu === 'settings'}
 				class:text-ink={activeMenu === 'settings'}
 				aria-label={activeMenu === 'settings' ? 'Close filters' : 'Open filters'}
@@ -201,10 +226,10 @@
 				aria-expanded={activeMenu === 'settings'}
 			>
 				<DesktopShellIcon name="filters" />
-				<span>Filters</span>
+				<span class="rail-tooltip">Filters</span>
 				{#if activeFilterCount > 0}
 					<span
-						class="absolute right-2 top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-ink"
+						class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-semibold text-ink"
 						aria-label={`${activeFilterCount} active filters`}>{activeFilterCount}</span
 					>
 				{/if}
@@ -215,7 +240,7 @@
 			<button
 				type="button"
 				onclick={(event) => toggleMenu('admin', event.currentTarget)}
-				class="mt-1 flex w-20 flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+				class="group relative mt-2 flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 				class:bg-surface-panel={activeMenu === 'admin'}
 				class:text-ink={activeMenu === 'admin'}
 				aria-label={activeMenu === 'admin' ? 'Close admin tools' : 'Open admin tools'}
@@ -223,15 +248,15 @@
 				aria-expanded={activeMenu === 'admin'}
 			>
 				<DesktopShellIcon name="admin" />
-				<span>Admin</span>
+				<span class="rail-tooltip">Admin</span>
 			</button>
 		{/if}
 
-		<div class="mt-auto border-t border-line pt-3">
+		<div class="mt-auto">
 			<button
 				type="button"
 				onclick={(event) => toggleMenu('auth', event.currentTarget)}
-				class="flex w-20 flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+				class="group relative flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 				class:bg-surface-panel={activeMenu === 'auth'}
 				class:text-ink={activeMenu === 'auth'}
 				aria-label={activeMenu === 'auth' ? 'Close account' : 'Open account'}
@@ -239,10 +264,10 @@
 				aria-expanded={activeMenu === 'auth'}
 			>
 				<span
-					class="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-semibold text-ink"
+					class="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-semibold text-ink"
 					>{userInitial}</span
 				>
-				<span>Account</span>
+				<span class="rail-tooltip">Account</span>
 			</button>
 		</div>
 	</aside>
@@ -251,7 +276,7 @@
 {#if activeMenu}
 	<div
 		id="desktop-shell-panel"
-		class="fixed inset-y-0 left-24 z-50 hidden w-72 border-r border-line bg-surface-canvas shadow-xl md:block"
+		class="fixed inset-y-0 left-16 z-50 hidden w-80 border-r border-line bg-surface-canvas shadow-[8px_0_24px_rgba(0,0,0,0.08)] md:block"
 		bind:this={panel}
 		tabindex="-1"
 		role="region"
@@ -261,3 +286,30 @@
 		{@render menuPanel(activeMenu)}
 	</div>
 {/if}
+
+<style>
+	.rail-tooltip {
+		position: absolute;
+		left: calc(100% + 0.75rem);
+		z-index: 70;
+		white-space: nowrap;
+		border-radius: 0.375rem;
+		background: var(--color-ink, #2f2c29);
+		padding: 0.25rem 0.5rem;
+		color: var(--color-surface-canvas, #fffdf9);
+		font-size: 0.75rem;
+		line-height: 1rem;
+		opacity: 0;
+		pointer-events: none;
+		transform: translateX(-0.25rem);
+		transition:
+			opacity 120ms ease,
+			transform 120ms ease;
+	}
+
+	.group:hover .rail-tooltip,
+	.group:focus-visible .rail-tooltip {
+		opacity: 1;
+		transform: translateX(0);
+	}
+</style>

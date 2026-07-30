@@ -22,6 +22,6 @@ describe('desktop shell state', () => {
 	});
 
 	it('keeps one compact desktop action-bar offset at every desktop width', () => {
-		expect(DESKTOP_SHELL_CONTENT_MARGIN).toBe('md:ml-24');
+		expect(DESKTOP_SHELL_CONTENT_MARGIN).toBe('md:ml-16');
 	});
 });

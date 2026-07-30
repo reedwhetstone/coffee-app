@@ -9,9 +9,14 @@
 		type NavSection
 	} from '$lib/components/layout/appNavigation';
 
-	let { data, onClose = () => {} } = $props<{
+	let {
+		data,
+		onClose = () => {},
+		variant = 'default'
+	} = $props<{
 		data: Record<string, unknown>;
 		onClose?: () => void;
+		variant?: 'default' | 'rail';
 	}>();
 
 	let currentPath = $state(page.url.pathname);
@@ -71,10 +76,14 @@
 </script>
 
 <div class="flex h-full flex-col">
-	<header class="flex items-center justify-between border-b border-line p-4">
+	<header class="flex items-center justify-between border-b border-line px-5 py-4">
 		<div>
-			<h2 class="text-lg font-semibold text-ink" id="nav-dialog-title">Navigation</h2>
-			<p class="mt-1 text-sm text-muted">Mobile and desktop share the same route map now.</p>
+			<h2 class="text-lg font-semibold text-ink" id="nav-dialog-title">
+				{variant === 'rail' ? 'Menu' : 'Navigation'}
+			</h2>
+			{#if variant !== 'rail'}
+				<p class="mt-1 text-sm text-muted">Mobile and desktop share the same route map now.</p>
+			{/if}
 		</div>
 		<button
 			onclick={(event) => {
@@ -100,31 +109,39 @@
 		</button>
 	</header>
 
-	<main class="flex-grow overflow-y-auto p-4">
-		<div class="space-y-6">
+	<main class="flex-grow overflow-y-auto px-3 py-4">
+		<div class={variant === 'rail' ? 'space-y-5' : 'space-y-6'}>
 			{#each navSections as section (section.id)}
 				<section>
-					<div class="mb-3">
-						<h3 class="text-xs font-semibold text-muted">
+					<div class={variant === 'rail' ? 'mb-1 px-3' : 'mb-3'}>
+						<h3 class="text-[11px] font-semibold uppercase tracking-wide text-muted">
 							{section.label}
 						</h3>
-						<p class="mt-1 text-xs text-muted/80">{sectionIntro(section)}</p>
+						{#if variant !== 'rail'}
+							<p class="mt-1 text-xs text-muted/80">{sectionIntro(section)}</p>
+						{/if}
 					</div>
-					<ul class="space-y-2">
+					<ul class={variant === 'rail' ? 'space-y-0.5' : 'space-y-2'}>
 						{#each section.items as item (item.href)}
 							<li>
 								<a
 									href={item.locked ? (item.upgradeHref ?? '/subscription') : item.href}
 									onclick={handleNavClick}
 									onmouseenter={() => handleMouseEnter(item)}
-									class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-line transition-all duration-200 {isNavItemActive(
+									class="block rounded-md px-3 py-2 text-left text-sm transition-colors duration-150 {isNavItemActive(
 										item,
 										currentPath
 									)
-										? 'bg-accent text-ink'
+										? variant === 'rail'
+											? 'bg-surface-panel font-medium text-ink'
+											: 'bg-accent text-ink ring-1 ring-line'
 										: item.locked
-											? 'bg-surface-panel text-muted opacity-70 hover:bg-surface-panel'
-											: 'bg-surface-panel text-ink hover:bg-accent hover:text-ink'}"
+											? variant === 'rail'
+												? 'text-muted opacity-70 hover:bg-surface-panel'
+												: 'bg-surface-panel text-muted opacity-70 ring-1 ring-line hover:bg-surface-panel'
+											: variant === 'rail'
+												? 'text-ink hover:bg-surface-panel'
+												: 'bg-surface-panel text-ink ring-1 ring-line hover:bg-accent hover:text-ink'}"
 								>
 									<div class="flex items-center gap-2 font-medium">
 										<span>{item.label}</span>
@@ -143,10 +160,10 @@
 												/></svg
 											>{/if}
 									</div>
-									{#if item.description}
+									{#if item.description && variant !== 'rail'}
 										<p class="mt-1 text-xs opacity-80">{item.description}</p>
 									{/if}
-									{#if item.locked && item.lockedReason}
+									{#if item.locked && item.lockedReason && variant !== 'rail'}
 										<p class="mt-1 text-[11px] opacity-75">{item.lockedReason}</p>
 									{/if}
 								</a>
@@ -156,7 +173,7 @@
 				</section>
 			{/each}
 
-			{#if canAccessAdminRoutes}
+			{#if canAccessAdminRoutes && variant !== 'rail'}
 				<p class="rounded-md border border-line px-3 py-2 text-xs text-muted">
 					Admin tools remain grouped separately so the main navigation stays readable on mobile.
 				</p>

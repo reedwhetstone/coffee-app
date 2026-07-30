@@ -98,7 +98,7 @@ describe('LeftSidebar', () => {
 		});
 	});
 
-	it('keeps navigation closed behind one compact, labeled desktop action bar', async () => {
+	it('keeps navigation closed behind one narrow desktop icon rail', async () => {
 		render(LeftSidebar, {
 			data: {
 				role: 'member',
@@ -110,10 +110,13 @@ describe('LeftSidebar', () => {
 
 		const actionBar = screen.getByLabelText('Desktop action bar');
 		const navigationTrigger = within(actionBar).getByRole('button', { name: 'Open navigation' });
+		const chatTrigger = within(actionBar).getByRole('button', { name: 'Open chat' });
+		const actionsTrigger = within(actionBar).getByRole('button', { name: 'Open actions' });
 		expect(screen.queryByLabelText('Main navigation menu')).toBeNull();
+		expect(actionBar).toHaveClass('w-16');
 		expect(navigationTrigger).toBeTruthy();
-		expect(within(actionBar).getByRole('button', { name: 'Open chat' })).toBeTruthy();
-		expect(within(actionBar).getByRole('button', { name: 'Open actions' })).toBeTruthy();
+		expect(chatTrigger.getAttribute('style')).toContain('box-shadow');
+		expect(actionsTrigger).not.toHaveClass('bg-accent');
 		expect(within(actionBar).getByRole('button', { name: 'Open filters' })).toBeTruthy();
 		expect(within(actionBar).getByRole('button', { name: 'Open account' })).toBeTruthy();
 		expect(screen.getAllByLabelText('2 active filters')).toHaveLength(1);
@@ -142,6 +145,7 @@ describe('LeftSidebar', () => {
 		expect(shell.getAttribute('class')).toBe(initialClass);
 		const panel = document.getElementById('desktop-shell-panel');
 		expect(document.querySelectorAll('#desktop-shell-panel')).toHaveLength(1);
+		expect(panel).toHaveClass('left-16');
 		expect(panel?.getAttribute('role')).toBe('region');
 		expect(panel?.getAttribute('aria-label')).toBe('Filters panel');
 		await waitFor(() => expect(document.activeElement).toBe(panel));
