@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { anonymousPrincipal } from '$lib/server/principal.test-utils';
 
 const mockGetPageAuthState = vi.fn();
 
@@ -19,7 +20,10 @@ describe('root layout server load', () => {
 			getAll: vi.fn(() => [{ name: 'purveyors_cli_auth_request', value: 'signed-request-secret' }])
 		};
 
-		const result = await route.load({ locals: {}, cookies } as never);
+		const result = await route.load({
+			locals: { principal: anonymousPrincipal() },
+			cookies
+		} as never);
 
 		expect(cookies.getAll).not.toHaveBeenCalled();
 		expect(result).not.toHaveProperty('cookies');

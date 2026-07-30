@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { checkRole, type UserRole } from '$lib/types/auth.types';
 	import {
+		getAnalyticsSectionLinks,
 		getAuthenticatedNavSections,
 		isNavItemActive,
 		type NavItem,
@@ -26,6 +27,11 @@
 	let ppiAccess = $derived(Boolean((data as { ppiAccess?: boolean }).ppiAccess));
 	let navSections = $derived(getAuthenticatedNavSections(userRole, { ppiAccess }));
 	let canAccessAdminRoutes = $derived(checkRole(userRole, 'admin'));
+	let isSignedIn = $derived(Boolean((data as { user?: unknown }).user));
+	let isAnalyticsPage = $derived(currentPath.startsWith('/analytics'));
+	let analyticsSectionLinks = $derived(
+		getAnalyticsSectionLinks({ includeDisclosureIndex: isSignedIn })
+	);
 
 	afterNavigate(() => {
 		currentPath = page.url.pathname;
@@ -111,6 +117,37 @@
 
 	<main class="flex-grow overflow-y-auto px-3 py-4">
 		<div class={variant === 'rail' ? 'space-y-5' : 'space-y-6'}>
+			{#if isAnalyticsPage}
+				<section
+					class={variant === 'rail' ? '' : 'rounded-lg border border-line bg-surface-panel/40 p-3'}
+				>
+					<div class={variant === 'rail' ? 'mb-1 px-3' : 'mb-3'}>
+						<h3
+							class={variant === 'rail'
+								? 'text-[11px] font-semibold uppercase tracking-wide text-muted'
+								: 'text-xs font-semibold text-ink'}
+						>
+							On this report
+						</h3>
+						{#if variant !== 'rail'}
+							<p class="mt-1 text-xs text-muted">Jump to a Market Index section.</p>
+						{/if}
+					</div>
+					<ul class={variant === 'rail' ? 'space-y-0.5' : 'space-y-1'}>
+						{#each analyticsSectionLinks as link}
+							<li>
+								<a
+									href={link.menuHref}
+									onclick={handleNavClick}
+									class="block rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+								>
+									{link.label}
+								</a>
+							</li>
+						{/each}
+					</ul>
+				</section>
+			{/if}
 			{#each navSections as section (section.id)}
 				<section>
 					<div class={variant === 'rail' ? 'mb-1 px-3' : 'mb-3'}>

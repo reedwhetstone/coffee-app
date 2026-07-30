@@ -7,6 +7,7 @@ import type {
 	PriceSnapshot
 } from './+page.server';
 import type { components, ParchmentClient } from '@purveyors/sdk';
+import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principal.test-utils';
 
 const { mockCreateAdminClient, mockCreateParchmentServerClient, mockGetTrackedLotSummaries } =
 	vi.hoisted(() => ({
@@ -14,10 +15,6 @@ const { mockCreateAdminClient, mockCreateParchmentServerClient, mockGetTrackedLo
 		mockCreateParchmentServerClient: vi.fn(),
 		mockGetTrackedLotSummaries: vi.fn()
 	}));
-
-vi.mock('$lib/server/principal', () => ({
-	resolvePrincipal: vi.fn()
-}));
 
 vi.mock('$lib/seo/meta', () => ({
 	buildPublicMeta: vi.fn((value) => value),
@@ -77,7 +74,6 @@ interface StreamedLoadResult {
 
 let load: typeof import('./+page.server').load;
 let loadPriceSnapshotsPaginated: typeof import('./+page.server')._loadPriceSnapshotsPaginated;
-let resolvePrincipalMock: ReturnType<typeof vi.fn>;
 let currentPriceIndexClient: unknown;
 
 beforeEach(async () => {
@@ -116,14 +112,6 @@ beforeEach(async () => {
 	({ load, _loadPriceSnapshotsPaginated: loadPriceSnapshotsPaginated } = await import(
 		'./+page.server'
 	));
-
-	const principalModule = await import('$lib/server/principal');
-	resolvePrincipalMock = vi.mocked(principalModule.resolvePrincipal);
-	resolvePrincipalMock.mockResolvedValue({
-		isAuthenticated: false,
-		ppiAccess: false,
-		role: 'viewer'
-	});
 });
 
 afterEach(() => {
@@ -503,14 +491,20 @@ function createAnalyticsClient(
 
 function createLoadEvent(
 	client: ReturnType<typeof createAnalyticsClient>,
-	locals: { session?: unknown; role?: string } = {}
+	locals: { session?: unknown; ppiAccess?: boolean } = {}
 ) {
+	const principal = locals.session
+		? cookieSessionPrincipal('viewer', {
+				session: locals.session as never,
+				ppiAccess: locals.ppiAccess ?? false
+			})
+		: anonymousPrincipal();
+
 	return {
 		url: new URL('https://example.com/analytics'),
 		locals: {
 			supabase: client,
-			session: locals.session ?? null,
-			role: locals.role ?? 'viewer'
+			principal
 		}
 	} as never;
 }
@@ -521,7 +515,7 @@ function createSession() {
 
 async function runLoad(
 	client: ReturnType<typeof createAnalyticsClient>,
-	locals: { session?: unknown; role?: string } = {}
+	locals: { session?: unknown; ppiAccess?: boolean } = {}
 ): Promise<StreamedLoadResult> {
 	return (await load(createLoadEvent(client, locals))) as unknown as StreamedLoadResult;
 }
@@ -758,13 +752,7 @@ describe('analytics load', () => {
 			]
 		});
 		currentPriceIndexClient = client;
-		resolvePrincipalMock.mockResolvedValueOnce({
-			isAuthenticated: true,
-			ppiAccess: true,
-			role: 'viewer'
-		});
-
-		const result = await runLoad(client, { session: createSession() });
+		const result = await runLoad(client, { session: createSession(), ppiAccess: true });
 		const member = await result.analyticsMember;
 
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
@@ -784,12 +772,6 @@ describe('analytics load', () => {
 	it('uses optional-auth session clients with 90 public days and 365 PPI days', async () => {
 		const anonymousClient = createAnalyticsClient([{ data: [], error: null }]);
 		currentPriceIndexClient = anonymousClient;
-		resolvePrincipalMock.mockResolvedValueOnce({
-			isAuthenticated: false,
-			ppiAccess: false,
-			role: 'viewer'
-		});
-
 		const anonymousResult = await runLoad(anonymousClient);
 		await anonymousResult.analyticsCharts;
 		expect(anonymousClient.historyCalls).toEqual([
@@ -799,18 +781,15 @@ describe('analytics load', () => {
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
 			mode: 'session'
 		});
-		expect(mockCreateParchmentServerClient.mock.calls[0][0].locals.session).toBeNull();
+		expect(mockCreateParchmentServerClient.mock.calls[0][0].locals.principal.session).toBeNull();
 
 		mockCreateParchmentServerClient.mockClear();
 		const memberClient = createAnalyticsClient([{ data: [], error: null }]);
 		currentPriceIndexClient = memberClient;
-		resolvePrincipalMock.mockResolvedValueOnce({
-			isAuthenticated: true,
-			ppiAccess: true,
-			role: 'viewer'
+		const memberResult = await runLoad(memberClient, {
+			session: createSession(),
+			ppiAccess: true
 		});
-
-		const memberResult = await runLoad(memberClient, { session: createSession() });
 		await memberResult.analyticsCharts;
 		await memberResult.analyticsMember;
 		expect(memberClient.historyCalls).toEqual([
@@ -820,7 +799,7 @@ describe('analytics load', () => {
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
 			mode: 'session'
 		});
-		expect(mockCreateParchmentServerClient.mock.calls[0][0].locals.session).toEqual(
+		expect(mockCreateParchmentServerClient.mock.calls[0][0].locals.principal.session).toEqual(
 			createSession()
 		);
 		expect(mockCreateParchmentServerClient).not.toHaveBeenCalledWith(expect.anything(), {
@@ -833,13 +812,7 @@ describe('analytics load', () => {
 			marketSummaryDate: '2026-03-31'
 		});
 		currentPriceIndexClient = client;
-		resolvePrincipalMock.mockResolvedValueOnce({
-			isAuthenticated: true,
-			ppiAccess: true,
-			role: 'viewer'
-		});
-
-		const result = await runLoad(client, { session: createSession() });
+		const result = await runLoad(client, { session: createSession(), ppiAccess: true });
 		await result.analyticsMember;
 
 		expect(client.movementCutoffs).toEqual({
@@ -917,13 +890,7 @@ describe('analytics load', () => {
 			]
 		});
 		currentPriceIndexClient = client;
-		resolvePrincipalMock.mockResolvedValueOnce({
-			isAuthenticated: true,
-			ppiAccess: true,
-			role: 'viewer'
-		});
-
-		const result = await runLoad(client, { session: createSession() });
+		const result = await runLoad(client, { session: createSession(), ppiAccess: true });
 		const member = await result.analyticsMember;
 
 		expect(member.comparisonBeans).toEqual([]);
@@ -982,13 +949,10 @@ describe('analytics load', () => {
 				marketSummaryDate: '2026-03-31'
 			});
 			currentPriceIndexClient = client;
-			resolvePrincipalMock.mockResolvedValueOnce({
-				isAuthenticated: true,
-				ppiAccess: true,
-				role: 'viewer'
+			const result = await runLoad(client, {
+				session: createSession(),
+				ppiAccess: true
 			});
-
-			const result = await runLoad(client, { session: createSession() });
 			await result.analyticsMember;
 
 			expect(client.movementCutoffs).toEqual({

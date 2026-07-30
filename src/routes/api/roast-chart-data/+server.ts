@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { unwrapParchment } from '$lib/services/tools/parchment';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 
 // Raw chart data structure from optimized database functions
 export interface RawChartData {
@@ -34,7 +35,7 @@ export const GET: RequestHandler = async (event) => {
 	const startTime = performance.now();
 	const { url, locals } = event;
 
-	if (!locals.session || !locals.user) {
+	if (!isCookieSessionPrincipal(locals.principal)) {
 		return json({ error: 'Authentication required' }, { status: 401 });
 	}
 

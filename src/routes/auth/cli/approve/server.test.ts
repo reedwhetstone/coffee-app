@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principal.test-utils';
 
 const mockCreateParchmentServerClient = vi.fn();
 const mockApprove = vi.fn();
@@ -43,9 +44,12 @@ function makeEvent(
 			delete: vi.fn()
 		},
 		locals: {
-			safeGetSession: vi
-				.fn()
-				.mockResolvedValue(authenticated ? AUTHED : { session: null, user: null })
+			principal: authenticated
+				? cookieSessionPrincipal('viewer', {
+						session: AUTHED.session as never,
+						user: AUTHED.user as never
+					})
+				: anonymousPrincipal()
 		}
 	};
 }
@@ -84,7 +88,6 @@ describe('POST /auth/cli/approve', () => {
 			const event = makeEvent({ cookieToken });
 			const response = await POST(event as never);
 			expect(response.status).toBe(403);
-			expect(event.locals.safeGetSession).not.toHaveBeenCalled();
 		}
 		expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
 	});
@@ -94,7 +97,6 @@ describe('POST /auth/cli/approve', () => {
 		const response = await POST(event as never);
 
 		expect(response.status).toBe(415);
-		expect(event.locals.safeGetSession).not.toHaveBeenCalled();
 		expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
 	});
 

@@ -12,7 +12,7 @@ import {
 	type ParchmentSaleUpdateRequest
 } from '$lib/server/parchmentSales';
 import { isSessionPrincipal, isTrustedMutationRequest } from '$lib/server/principal';
-import { checkRole } from '$lib/types/auth.types';
+import { principalHasRole } from '$lib/server/principal';
 
 function isCookieSessionEvent(event: RequestEvent): boolean {
 	const principal = event.locals.principal;
@@ -134,7 +134,7 @@ export const POST: RequestHandler = async (event) => {
 	try {
 		const authFailure = mutationAuthFailure(event);
 		if (authFailure) return authFailure;
-		if (!checkRole(event.locals.role, 'member')) {
+		if (!principalHasRole(event.locals.principal, 'member')) {
 			return json(
 				{ error: 'Mallard Studio membership is required to record sales' },
 				{ status: 403 }

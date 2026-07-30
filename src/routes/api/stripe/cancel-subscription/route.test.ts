@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principal.test-utils';
 
 const mockCancelSubscription = vi.fn();
 
@@ -58,7 +59,13 @@ function makeEvent(
 			body: JSON.stringify(body)
 		}),
 		locals: {
-			session: user ? { user } : null,
+			principal: user
+				? cookieSessionPrincipal('member', {
+						userId: user.id,
+						user: user as never,
+						session: { user } as never
+					})
+				: anonymousPrincipal(),
 			supabase: createSupabaseMock(billingSubscriptions)
 		}
 	} as unknown as Parameters<NonNullable<typeof POST>>[0];

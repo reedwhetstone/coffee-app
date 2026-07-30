@@ -159,6 +159,23 @@
 			</div>
 		</div>
 
+		{#if isMarketIndexPage}
+			<nav
+				class="hidden items-center gap-1 border-t border-line py-2 md:flex"
+				aria-label="Market Index report sections"
+			>
+				<span class="mr-2 text-xs font-semibold text-muted">On this report</span>
+				{#each marketIndexSectionLinks as link}
+					<a
+						href={link.menuHref}
+						class="rounded-md px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+					>
+						{link.label}
+					</a>
+				{/each}
+			</nav>
+		{/if}
+
 		{#if mobileMenuOpen}
 			<div id="public-mobile-menu" class="border-t border-line pb-4 pt-3 md:hidden">
 				<div class="space-y-2">

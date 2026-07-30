@@ -1,8 +1,8 @@
 import type { PageServerLoad } from './$types';
+import { getPageAuthState } from '$lib/server/pageAuth';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	const { session, user } = await locals.safeGetSession();
-	const role = locals.role || 'viewer';
+	const { session, user, role } = getPageAuthState(locals.principal);
 
 	// If user is logged in, check if they already have a Stripe customer ID
 	if (user) {

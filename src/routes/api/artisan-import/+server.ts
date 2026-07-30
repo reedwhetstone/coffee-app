@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 
 /**
  * Replace an existing roast's curve/events from an Artisan export.
@@ -22,8 +23,7 @@ import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/p
 export const POST: RequestHandler = async (event) => {
 	const { request, locals } = event;
 	try {
-		const { session, user } = await locals.safeGetSession();
-		if (!session || !user) {
+		if (!isCookieSessionPrincipal(locals.principal)) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 

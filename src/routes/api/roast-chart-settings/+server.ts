@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { unwrapParchment } from '$lib/services/tools/parchment';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 
 export const GET: RequestHandler = async (event) => {
 	const { url, locals } = event;
@@ -10,7 +11,7 @@ export const GET: RequestHandler = async (event) => {
 	// cookie here could disagree with an Authorization header that the hook
 	// treated as authoritative, causing the Parchment lookup to use a different
 	// principal than the one that passed this route's auth gate.
-	if (!locals.session || !locals.user) {
+	if (!isCookieSessionPrincipal(locals.principal)) {
 		return json({ error: 'Authentication required' }, { status: 401 });
 	}
 

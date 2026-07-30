@@ -16,11 +16,9 @@ const API_PLAN_HIERARCHY: Record<ApiPlan, number> = {
 	enterprise: 2
 };
 
-export interface SessionContext {
+export interface SessionIdentity {
 	session: Session | null;
 	user: User | null;
-	role: UserRole;
-	roles: UserRole[];
 }
 
 interface PrincipalBase {
@@ -187,33 +185,6 @@ function createApiKeyPrincipal(input: {
 	};
 }
 
-export function getLegacyAuthState(principal: RequestPrincipal): SessionContext {
-	if (isSessionPrincipal(principal)) {
-		return {
-			session: principal.session,
-			user: principal.user,
-			role: principal.primaryAppRole,
-			roles: principal.appRoles
-		};
-	}
-
-	if (isApiKeyPrincipal(principal)) {
-		return {
-			session: null,
-			user: null,
-			role: principal.primaryAppRole,
-			roles: principal.appRoles
-		};
-	}
-
-	return {
-		session: null,
-		user: null,
-		role: 'viewer',
-		roles: ['viewer']
-	};
-}
-
 function getBearerToken(request: Request): string | null {
 	const authHeader = request.headers.get('Authorization');
 
@@ -366,6 +337,16 @@ export function isAuthenticatedPrincipal(
 
 export function isSessionPrincipal(principal: RequestPrincipal): principal is SessionPrincipal {
 	return principal.authKind === 'session';
+}
+
+export function isCookieSessionPrincipal(
+	principal: RequestPrincipal
+): principal is SessionPrincipal & { source: 'cookie-session'; session: Session } {
+	return (
+		isSessionPrincipal(principal) &&
+		principal.source === 'cookie-session' &&
+		principal.session !== null
+	);
 }
 
 export function isApiKeyPrincipal(principal: RequestPrincipal): principal is ApiKeyPrincipal {

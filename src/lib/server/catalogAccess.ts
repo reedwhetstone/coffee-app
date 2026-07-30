@@ -1,4 +1,3 @@
-import type { Session } from '@supabase/supabase-js';
 import type { ApiPlan, RequestPrincipal } from '$lib/server/principal';
 import { checkRole, type UserRole } from '$lib/types/auth.types';
 import { PREMIUM_DISCOVERY_FILTER_KEYS } from '$lib/catalog/accessPolicy';
@@ -20,9 +19,7 @@ export interface CatalogAccessCapabilities {
 }
 
 export interface CatalogAccessInput {
-	session?: Session | null;
-	role?: UserRole | null;
-	principal?: RequestPrincipal | null;
+	principal: RequestPrincipal;
 	apiPlan?: ApiPlan | null;
 }
 
@@ -67,25 +64,16 @@ function resolveSubject(input: CatalogAccessInput): {
 	role: UserRole | null;
 	apiPlan: ApiPlan | null;
 } {
-	if (input.principal) {
-		return {
-			isAuthenticated: input.principal.isAuthenticated,
-			isApiKey: input.principal.authKind === 'api-key',
-			role: input.principal.primaryAppRole,
-			apiPlan: input.principal.apiPlan
-		};
-	}
-
 	return {
-		isAuthenticated: Boolean(input.session),
-		isApiKey: false,
-		role: input.role ?? null,
-		apiPlan: input.apiPlan ?? null
+		isAuthenticated: input.principal.isAuthenticated,
+		isApiKey: input.principal.authKind === 'api-key',
+		role: input.principal.primaryAppRole,
+		apiPlan: input.principal.apiPlan ?? input.apiPlan ?? null
 	};
 }
 
 export function resolveCatalogAccessCapabilities(
-	input: CatalogAccessInput = {}
+	input: CatalogAccessInput
 ): CatalogAccessCapabilities {
 	const subject = resolveSubject(input);
 	const hasMemberSessionRole =

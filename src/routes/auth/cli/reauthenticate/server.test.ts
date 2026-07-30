@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principal.test-utils';
 
 let POST: typeof import('./+server').POST;
 
@@ -20,9 +21,12 @@ function makeEvent(options: { authenticated?: boolean; cookieToken?: string | nu
 		}),
 		cookies: { get: vi.fn().mockReturnValue(cookieToken) },
 		locals: {
-			safeGetSession: vi
-				.fn()
-				.mockResolvedValue(authenticated ? AUTHED : { session: null, user: null }),
+			principal: authenticated
+				? cookieSessionPrincipal('viewer', {
+						session: AUTHED.session as never,
+						user: AUTHED.user as never
+					})
+				: anonymousPrincipal(),
 			supabase: { auth: { signOut: vi.fn().mockResolvedValue({ error: null }) } }
 		}
 	};
@@ -40,7 +44,6 @@ describe('POST /auth/cli/reauthenticate', () => {
 		const response = await POST(event as never);
 
 		expect(response.status).toBe(403);
-		expect(event.locals.safeGetSession).not.toHaveBeenCalled();
 		expect(event.locals.supabase.auth.signOut).not.toHaveBeenCalled();
 	});
 

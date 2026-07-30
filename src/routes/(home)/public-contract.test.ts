@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Session } from '@supabase/supabase-js';
+import type { UserRole } from '$lib/types/auth.types';
+import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principal.test-utils';
 import type { components } from '@purveyors/sdk';
 import type { CoffeeCatalog } from '$lib/types/component.types';
 
@@ -156,12 +159,10 @@ beforeEach(async () => {
 	({ load } = await import('./+page.server'));
 });
 
-function makeLoadInput(session: App.Locals['session'], role: App.Locals['role'] = 'viewer') {
+function makeLoadInput(session: Session | null, role: UserRole = 'viewer') {
 	return {
 		locals: {
-			safeGetSession: vi.fn().mockResolvedValue({ session, role }),
-			session,
-			role,
+			principal: session ? cookieSessionPrincipal(role, { session }) : anonymousPrincipal(),
 			supabase: { kind: 'public-client' }
 		},
 		url: new URL('https://purveyors.test/'),
@@ -176,7 +177,7 @@ describe('homepage public contract', () => {
 			user: {
 				email: 'viewer@purveyors.test'
 			}
-		} as App.Locals['session'];
+		} as Session | null;
 
 		await load(makeLoadInput(null));
 		await load(makeLoadInput(viewerSession, 'viewer'));
@@ -200,7 +201,7 @@ describe('homepage public contract', () => {
 			user: {
 				email: 'member@purveyors.test'
 			}
-		} as App.Locals['session'];
+		} as Session | null;
 
 		await load(makeLoadInput(memberSession, 'member'));
 
