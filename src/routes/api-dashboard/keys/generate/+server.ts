@@ -47,14 +47,23 @@ export const POST: RequestHandler = async (event) => {
 		const { data, error, response } = await client.apiKeys.create({ name: name.trim() });
 
 		if (error || !data) {
-			const parchmentError = error as { error?: { message?: string } } | undefined;
+			const upstreamMessage =
+				typeof error === 'object' &&
+				error !== null &&
+				'error' in error &&
+				typeof error.error === 'object' &&
+				error.error !== null &&
+				'message' in error.error &&
+				typeof error.error.message === 'string'
+					? error.error.message
+					: null;
 			// Relay Parchment's status (e.g. 401/403 entitlement, 503 unavailable) so
 			// the dashboard surfaces the real authorization decision instead of a
 			// blanket 500.
 			return json(
 				{
 					success: false,
-					error: parchmentError?.error?.message || 'Failed to create API key'
+					error: upstreamMessage || 'Failed to create API key'
 				},
 				{ status: response?.status ?? 500 }
 			);
