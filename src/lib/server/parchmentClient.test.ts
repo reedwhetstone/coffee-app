@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestPrincipal } from './principal';
 
 // Hoisted so the (also-hoisted) vi.mock factories can reference them safely.
 const { mockEnv, createParchmentClient } = vi.hoisted(() => ({
@@ -23,17 +24,13 @@ import {
 
 /** Minimal RequestEvent stub with just the fields the helper touches. */
 function makeEvent(overrides: {
-	accessToken?: string | null;
-	safeGetSessionToken?: string | null;
-	includeSafeGetSession?: boolean;
+	sessionToken?: string | null;
 	authorizationHeader?: string | null;
 	principalAuthenticated?: boolean;
 	preferHeader?: string | null;
 }): RequestEvent {
 	const {
-		accessToken = null,
-		safeGetSessionToken = null,
-		includeSafeGetSession = true,
+		sessionToken = null,
 		authorizationHeader = null,
 		principalAuthenticated = false,
 		preferHeader = null
@@ -49,18 +46,29 @@ function makeEvent(overrides: {
 		headers.set('prefer', preferHeader);
 	}
 
-	const locals = {
-		session: accessToken ? { access_token: accessToken } : null,
-		principal: { isAuthenticated: principalAuthenticated },
-		safeGetSession: includeSafeGetSession
-			? vi.fn(async () => ({
-					session: safeGetSessionToken ? { access_token: safeGetSessionToken } : null,
-					user: null,
-					role: 'viewer',
-					roles: ['viewer']
-				}))
-			: undefined
-	} as unknown as App.Locals;
+	const principal = authorizationHeader
+		? ({
+				authKind: principalAuthenticated ? 'api-key' : 'anonymous',
+				isAuthenticated: principalAuthenticated
+			} as RequestPrincipal)
+		: sessionToken
+			? ({
+					subjectType: 'user',
+					authKind: 'session',
+					source: 'cookie-session',
+					isAuthenticated: true,
+					userId: 'user-1',
+					user: { id: 'user-1' },
+					session: { access_token: sessionToken },
+					appRoles: ['viewer'],
+					primaryAppRole: 'viewer',
+					apiPlan: 'viewer',
+					ppiAccess: false,
+					apiScopes: []
+				} as unknown as RequestPrincipal)
+			: ({ authKind: 'anonymous', isAuthenticated: false } as RequestPrincipal);
+
+	const locals = { principal } as App.Locals;
 
 	return { locals, fetch: fetchImpl, request: { headers } } as unknown as RequestEvent;
 }
@@ -186,54 +194,37 @@ describe('createParchmentServerClient', () => {
 		await expect(createParchmentServerClient(event)).rejects.toBeInstanceOf(ParchmentConfigError);
 	});
 
-	it('forwards the session access token from locals.session as a bearer credential', async () => {
-		const event = makeEvent({ accessToken: 'direct-token' });
+	it('forwards the canonical cookie-session principal credential', async () => {
+		const event = makeEvent({ sessionToken: 'cookie-session-token' });
 		await createParchmentServerClient(event);
 
-		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: 'direct-token' });
-		// The direct token short-circuits safeGetSession.
-		expect(event.locals.safeGetSession as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
-	});
-
-	it('falls back to safeGetSession when locals.session is absent', async () => {
-		const event = makeEvent({ accessToken: null, safeGetSessionToken: 'fallback-token' });
-		await createParchmentServerClient(event);
-
-		expect(event.locals.safeGetSession).toHaveBeenCalledTimes(1);
-		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: 'fallback-token' });
+		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({
+			token: 'cookie-session-token'
+		});
 	});
 
 	it('creates an anonymous client (no token) when there is no session anywhere', async () => {
-		const event = makeEvent({ accessToken: null, safeGetSessionToken: null });
+		const event = makeEvent({ sessionToken: null });
 		const client = await createParchmentServerClient(event);
 
 		expect(client).toBeDefined();
 		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: undefined });
 	});
 
-	it('creates an anonymous client when safeGetSession is unavailable', async () => {
-		const event = makeEvent({ accessToken: null, includeSafeGetSession: false });
-		await createParchmentServerClient(event);
-
-		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: undefined });
-	});
-
 	it('forwards the authorized Authorization header credential over a cookie session (mixed credentials)', async () => {
 		// Authorization API key + Supabase cookie present at the same time. The
-		// hook authenticates the header and leaves locals.session null, so the
-		// header credential must win over safeGetSession's cookie token.
+		// hook authenticates the header as the canonical principal, so the header
+		// credential must win over the cookie token.
 		const event = makeEvent({
 			authorizationHeader: 'Bearer pcsk_authorized_api_key',
 			principalAuthenticated: true,
-			safeGetSessionToken: 'cookie-user-token'
+			sessionToken: 'cookie-user-token'
 		});
 		await createParchmentServerClient(event);
 
 		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({
 			token: 'pcsk_authorized_api_key'
 		});
-		// The cookie session must never be consulted once a header is present.
-		expect(event.locals.safeGetSession as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
 	});
 
 	it('forwards no credential for an invalid Authorization header and does not fall back to cookies', async () => {
@@ -242,12 +233,11 @@ describe('createParchmentServerClient', () => {
 		const event = makeEvent({
 			authorizationHeader: 'Bearer not-a-valid-token',
 			principalAuthenticated: false,
-			safeGetSessionToken: 'cookie-user-token'
+			sessionToken: 'cookie-user-token'
 		});
 		await createParchmentServerClient(event);
 
 		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: undefined });
-		expect(event.locals.safeGetSession as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
 	});
 
 	it('routes requests through event.fetch (via the Prefer-injecting wrapper)', async () => {
@@ -264,7 +254,7 @@ describe('createParchmentServerClient', () => {
 	});
 
 	it('defaults to session mode (forwards the session token) when no mode is given', async () => {
-		const event = makeEvent({ accessToken: 'direct-token' });
+		const event = makeEvent({ sessionToken: 'direct-token' });
 		await createParchmentServerClient(event);
 
 		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: 'direct-token' });
@@ -283,8 +273,7 @@ describe('createParchmentPrincipalClient', () => {
 
 	it('uses the exact credential chosen by auth bootstrap without reading session state', () => {
 		const event = makeEvent({
-			accessToken: 'different-local-token',
-			safeGetSessionToken: 'different-cookie-token',
+			sessionToken: 'different-cookie-token',
 			authorizationHeader: 'Bearer different-header-token',
 			principalAuthenticated: false
 		});
@@ -295,7 +284,6 @@ describe('createParchmentPrincipalClient', () => {
 			baseUrl: 'https://api.test.purveyors.io',
 			token: 'canonical-bootstrap-token'
 		});
-		expect(event.locals.safeGetSession as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
 	});
 
 	it('does not request lenient handling for the authorization decision', async () => {
@@ -328,8 +316,7 @@ describe('createParchmentServerClient credential modes', () => {
 			mockEnv.PARCHMENT_PUBLIC_DEMO_API_KEY = 'pcsk_demo_key';
 			// Populate every session source to prove none of them are consulted.
 			const event = makeEvent({
-				accessToken: 'session-token',
-				safeGetSessionToken: 'cookie-token',
+				sessionToken: 'cookie-token',
 				authorizationHeader: 'Bearer header-token',
 				principalAuthenticated: true
 			});
@@ -337,7 +324,6 @@ describe('createParchmentServerClient credential modes', () => {
 			await createParchmentServerClient(event, { mode: 'public-demo' });
 
 			expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: 'pcsk_demo_key' });
-			expect(event.locals.safeGetSession as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
 		});
 
 		it('trims surrounding whitespace from the demo key', async () => {
@@ -374,7 +360,7 @@ describe('createParchmentServerClient credential modes', () => {
 	describe('session mode', () => {
 		it('forwards the session access token and never uses the demo key as fallback', async () => {
 			mockEnv.PARCHMENT_PUBLIC_DEMO_API_KEY = 'pcsk_demo_key';
-			const event = makeEvent({ accessToken: 'direct-token' });
+			const event = makeEvent({ sessionToken: 'direct-token' });
 
 			await createParchmentServerClient(event, { mode: 'session' });
 
@@ -385,7 +371,7 @@ describe('createParchmentServerClient credential modes', () => {
 			const event = makeEvent({
 				authorizationHeader: 'Bearer pcsk_authorized_api_key',
 				principalAuthenticated: true,
-				safeGetSessionToken: 'cookie-user-token'
+				sessionToken: 'cookie-user-token'
 			});
 
 			await createParchmentServerClient(event, { mode: 'session' });
@@ -393,14 +379,13 @@ describe('createParchmentServerClient credential modes', () => {
 			expect(createParchmentClient.mock.calls[0][0]).toMatchObject({
 				token: 'pcsk_authorized_api_key'
 			});
-			expect(event.locals.safeGetSession as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
 		});
 
 		it('sends no token for an unauthenticated caller and does NOT fall back to the demo key', async () => {
 			// Demo key is configured, but session mode must never borrow it for a
 			// caller who simply has no session.
 			mockEnv.PARCHMENT_PUBLIC_DEMO_API_KEY = 'pcsk_demo_key';
-			const event = makeEvent({ accessToken: null, safeGetSessionToken: null });
+			const event = makeEvent({ sessionToken: null });
 
 			await createParchmentServerClient(event, { mode: 'session' });
 
@@ -412,8 +397,7 @@ describe('createParchmentServerClient credential modes', () => {
 		it('sends no token and never reads the session or the demo key', async () => {
 			mockEnv.PARCHMENT_PUBLIC_DEMO_API_KEY = 'pcsk_demo_key';
 			const event = makeEvent({
-				accessToken: 'session-token',
-				safeGetSessionToken: 'cookie-token',
+				sessionToken: 'cookie-token',
 				authorizationHeader: 'Bearer header-token',
 				principalAuthenticated: true
 			});
@@ -421,7 +405,6 @@ describe('createParchmentServerClient credential modes', () => {
 			await createParchmentServerClient(event, { mode: 'anonymous' });
 
 			expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: undefined });
-			expect(event.locals.safeGetSession as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
 		});
 
 		it('still requires the base URL to be configured', async () => {

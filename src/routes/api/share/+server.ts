@@ -1,13 +1,15 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import crypto from 'crypto';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 
-export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
-		const { session, user } = await safeGetSession();
-		if (!session || !user) {
+		if (!isCookieSessionPrincipal(locals.principal)) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
+		const { user } = locals.principal;
+		const { supabase } = locals;
 
 		const { resourceId, expiresIn = '7d' } = await request.json();
 

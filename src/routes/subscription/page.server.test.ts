@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Session } from '@supabase/supabase-js';
+import { cookieSessionPrincipal } from '$lib/server/principal.test-utils';
 
 const mockGetStripeCustomerId = vi.fn();
 const mockGetSubscriptionDetails = vi.fn();
@@ -52,16 +54,16 @@ function makeLoadInput(
 	}> = []
 ) {
 	const user = { id: 'user-123', email: 'member@example.com' };
-	const session = { user } as App.Locals['session'];
+	const session = { user } as Session | null;
 
 	return {
 		locals: {
-			safeGetSession: vi.fn().mockResolvedValue({ session, user }),
-			role: 'viewer',
-			principal: {
+			principal: cookieSessionPrincipal('viewer', {
+				session,
+				user: user as never,
 				apiPlan: 'viewer',
 				ppiAccess: false
-			},
+			}),
 			supabase: createSupabaseMock(billingSubscriptions)
 		}
 	} as unknown as Parameters<typeof load>[0];

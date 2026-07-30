@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principal.test-utils';
 
 const mockCreateParchmentServerClient = vi.fn();
 const mockApiUsageGet = vi.fn();
@@ -40,14 +41,11 @@ function makeEvent(authenticated = true) {
 		request: new Request('https://app.test/api-dashboard'),
 		fetch: vi.fn(),
 		locals: {
-			safeGetSession: vi.fn().mockResolvedValue(
-				authenticated
-					? {
-							session: { access_token: 'session-token' },
-							user: { id: 'user-1', email: 'user@test.dev' }
-						}
-					: { session: null, user: null }
-			)
+			principal: authenticated
+				? cookieSessionPrincipal('viewer', {
+						user: { id: 'user-1', email: 'user@test.dev' } as never
+					})
+				: anonymousPrincipal()
 		}
 	} as never;
 }

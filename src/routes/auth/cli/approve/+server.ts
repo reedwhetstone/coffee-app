@@ -8,6 +8,7 @@ import {
 	rememberCliRequest
 } from '$lib/server/cliAuthConsent';
 import type { RequestHandler } from './$types';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 
 type ApprovalBody = {
 	request?: unknown;
@@ -53,8 +54,7 @@ export const POST: RequestHandler = async (event) => {
 		});
 	}
 
-	const { session, user } = await event.locals.safeGetSession();
-	if (!session || !user) {
+	if (!isCookieSessionPrincipal(event.locals.principal)) {
 		rememberCliRequest(event, requestToken);
 		return response(401, {
 			approved: false,

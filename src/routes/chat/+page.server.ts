@@ -3,6 +3,7 @@ import { selectCanonicalWorkspace } from '$lib/server/workspaces/canonicalWorksp
 import { checkRole, type UserRole } from '$lib/types/auth.types';
 import type { Workspace, WorkspaceMessage } from '$lib/stores/workspaceStore.svelte';
 import type { PageServerLoad } from './$types';
+import { getPageAuthState } from '$lib/server/pageAuth';
 
 export interface InitialWorkspaceData {
 	workspaces: Workspace[];
@@ -68,9 +69,8 @@ async function loadInitialWorkspaceData(
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Get session and user data using the existing pattern from other routes
-	const { session, user, role } = await locals.safeGetSession();
-	const ppiAccess =
-		locals.principal?.isAuthenticated === true ? locals.principal.ppiAccess === true : false;
+	const { session, user, role } = getPageAuthState(locals.principal);
+	const ppiAccess = locals.principal.isAuthenticated ? locals.principal.ppiAccess === true : false;
 
 	const canUseChat = session && user && (ppiAccess || checkRole(role as UserRole, 'member'));
 	const initialWorkspaceData = canUseChat

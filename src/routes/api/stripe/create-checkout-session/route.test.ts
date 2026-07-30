@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BILLING_PURCHASE_KEYS } from '$lib/billing/purchaseKeys';
+import type { UserRole } from '$lib/types/auth.types';
+import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principal.test-utils';
 
 const mockCreateCheckoutSession = vi.fn();
 const mockGetStripeCustomerId = vi.fn();
@@ -40,7 +42,7 @@ function makeEvent(
 	body: unknown,
 	options: {
 		user?: { id: string; email?: string } | null;
-		role?: App.Locals['role'];
+		role?: UserRole;
 		existingSubscriptions?: Array<{ product_family: string; product_key: string; status: string }>;
 	} = {}
 ) {
@@ -60,7 +62,9 @@ function makeEvent(
 			body: JSON.stringify(body)
 		}),
 		locals: {
-			safeGetSession: vi.fn().mockResolvedValue({ user, role, roles: [role] }),
+			principal: user
+				? cookieSessionPrincipal(role, { user: user as never })
+				: anonymousPrincipal(),
 			supabase: createSupabaseMock(existingSubscriptions)
 		}
 	} as unknown as Parameters<NonNullable<typeof POST>>[0];

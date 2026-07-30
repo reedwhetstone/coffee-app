@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import { getPageAuthState } from '$lib/server/pageAuth';
 
 /**
  * Load the signed-in user's API keys for the dashboard.
@@ -14,7 +15,7 @@ import { createParchmentServerClient } from '$lib/server/parchmentClient';
 export const load: PageServerLoad = async (event) => {
 	const { locals } = event;
 	// Get authenticated session
-	const { session, user } = await locals.safeGetSession();
+	const { session, user } = getPageAuthState(locals.principal);
 
 	// Allow authenticated users (free tier defaults to the viewer API plan)
 	if (!session || !user) {

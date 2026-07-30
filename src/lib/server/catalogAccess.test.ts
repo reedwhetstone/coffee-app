@@ -20,9 +20,16 @@ function apiPrincipal(apiPlan: 'viewer' | 'member' | 'enterprise'): RequestPrinc
 	} as RequestPrincipal;
 }
 
+const anonymousPrincipal = {
+	authKind: 'anonymous',
+	isAuthenticated: false,
+	primaryAppRole: null,
+	apiPlan: null
+} as RequestPrincipal;
+
 describe('resolveCatalogAccessCapabilities', () => {
 	it('keeps anonymous and viewer access in read/evaluation mode', () => {
-		const anonymous = resolveCatalogAccessCapabilities();
+		const anonymous = resolveCatalogAccessCapabilities({ principal: anonymousPrincipal });
 		const viewer = resolveCatalogAccessCapabilities({ principal: sessionPrincipal('viewer') });
 
 		for (const capabilities of [anonymous, viewer]) {

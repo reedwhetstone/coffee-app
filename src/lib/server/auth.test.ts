@@ -78,8 +78,7 @@ function makeEvent(options: EventOptions = {}) {
 			safeGetIdentity: vi.fn().mockResolvedValue({
 				session: sessionContext.session,
 				user: sessionContext.user
-			}),
-			safeGetSession: vi.fn().mockResolvedValue(sessionContext)
+			})
 		},
 		fetch: vi.fn()
 	} as unknown as Parameters<typeof requireUserAuth>[0];
@@ -153,7 +152,6 @@ describe('auth integration', () => {
 			message: 'API key authentication required',
 			status: 401
 		});
-		expect(event.locals.safeGetSession).not.toHaveBeenCalled();
 	});
 
 	it('authorizes an API key from the canonical Parchment principal', async () => {
@@ -198,7 +196,6 @@ describe('auth integration', () => {
 			message: 'Authentication required',
 			status: 401
 		});
-		expect(event.locals.safeGetSession).not.toHaveBeenCalled();
 	});
 
 	it('blocks cross-origin admin mutations but allows same-origin ones', async () => {

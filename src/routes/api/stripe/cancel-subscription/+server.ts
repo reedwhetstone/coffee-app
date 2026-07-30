@@ -2,13 +2,14 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { cancelSubscription } from '$lib/services/stripe';
 import { resolveMembershipSubscriptionManagementState } from '$lib/server/billing/subscription-management';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Ensure the user is authenticated
-	const session = locals.session;
-	if (!session?.user) {
+	if (!isCookieSessionPrincipal(locals.principal)) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
 	}
+	const user = locals.principal.user;
 
 	try {
 		const { subscriptionId } = await request.json();
@@ -20,7 +21,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const { data: billingSubscriptions, error: billingSubscriptionsError } = await locals.supabase
 			.from('billing_subscriptions')
 			.select('stripe_subscription_id, product_family, status')
-			.eq('user_id', session.user.id)
+			.eq('user_id', user.id)
 			.eq('stripe_subscription_id', subscriptionId);
 
 		if (billingSubscriptionsError) {

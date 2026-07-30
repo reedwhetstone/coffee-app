@@ -1,9 +1,11 @@
-import type { Session } from '@supabase/supabase-js';
-import { checkRole, type UserRole } from '$lib/types/auth.types';
+import {
+	isCookieSessionPrincipal,
+	principalHasRole,
+	type RequestPrincipal
+} from '$lib/server/principal';
 
 export interface CatalogVisibilityInput {
-	session: Session | null | undefined;
-	role: UserRole | null | undefined;
+	principal: RequestPrincipal;
 	showWholesaleRequested?: boolean;
 	wholesaleOnlyRequested?: boolean;
 }
@@ -16,9 +18,9 @@ export interface CatalogVisibility {
 }
 
 export function hasPrivilegedCatalogSession(
-	input: Pick<CatalogVisibilityInput, 'session' | 'role'>
+	input: Pick<CatalogVisibilityInput, 'principal'>
 ): boolean {
-	return Boolean(input.session) && checkRole(input.role ?? undefined, 'member');
+	return isCookieSessionPrincipal(input.principal) && principalHasRole(input.principal, 'member');
 }
 
 export function resolveCatalogVisibility(input: CatalogVisibilityInput): CatalogVisibility {

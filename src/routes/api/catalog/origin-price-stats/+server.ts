@@ -32,8 +32,7 @@ type CatalogOriginPriceStatsQuery = NonNullable<
 export const GET: RequestHandler = async (event) => {
 	const { locals, url } = event;
 	const visibility = resolveCatalogVisibility({
-		session: locals.session,
-		role: locals.role,
+		principal: locals.principal,
 		showWholesaleRequested: url.searchParams.has('showWholesale')
 			? url.searchParams.get('showWholesale') === 'true'
 			: undefined,
@@ -43,7 +42,7 @@ export const GET: RequestHandler = async (event) => {
 	// Session-aware cache signal, derived the same way as the credential mode
 	// (authenticated principal or a session cookie ⇒ private/no-store). Avoids an
 	// extra admin-client round-trip on this UI stats-refresh route.
-	const isAuthenticated = locals.principal?.isAuthenticated === true || Boolean(locals.session);
+	const isAuthenticated = locals.principal.isAuthenticated;
 
 	try {
 		const client = await createParchmentServerClient(event, {

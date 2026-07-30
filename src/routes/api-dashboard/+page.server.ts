@@ -2,12 +2,13 @@ import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { mapOwnerApiUsage } from '$lib/data/api-usage';
+import { getPageAuthState } from '$lib/server/pageAuth';
 
 export const load: PageServerLoad = async (event) => {
 	const { locals } = event;
 
 	// Get authenticated session
-	const { session, user } = await locals.safeGetSession();
+	const { session, user } = getPageAuthState(locals.principal);
 
 	// Allow authenticated users
 	if (!session || !user) {

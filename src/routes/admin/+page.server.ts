@@ -1,12 +1,10 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { requireRole } from '$lib/server/auth';
+import { getPageAuthState } from '$lib/server/pageAuth';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	const sessionData = await locals.safeGetSession();
-	// sessionData is already typed from safeGetSession, so we can destructure directly or use type assertion if needed but avoid any
-	const { session, user } = sessionData;
-	const role = locals.role || 'viewer';
+	const { session, user, role } = getPageAuthState(locals.principal);
 
 	// Require authentication
 	if (!session || !user) {

@@ -381,9 +381,7 @@ export const load: PageServerLoad = async (event) => {
 	const { locals, url } = event;
 	const requestedCatalogState = parseCatalogUrlState(url, '/catalog');
 	const catalogAccess = resolveCatalogAccessCapabilities({
-		principal: locals.principal,
-		session: locals.session,
-		role: locals.role
+		principal: locals.principal
 	});
 	const deniedProcessParams = catalogAccess.canUseProcessFacets
 		? []
@@ -396,7 +394,7 @@ export const load: PageServerLoad = async (event) => {
 		Boolean(requestedCatalogState.sortField) &&
 		!isPublicCatalogSortField(requestedCatalogState.sortField ?? '');
 	const catalogAccessNotice: CatalogAccessDeniedNotice | null = createCatalogAccessDeniedNotice({
-		isAuthenticated: locals.principal?.isAuthenticated ?? Boolean(locals.session),
+		isAuthenticated: locals.principal.isAuthenticated,
 		processParams: deniedProcessParams,
 		premiumDiscoveryParams: deniedPremiumDiscoveryParams,
 		advancedSortRequested: deniedAdvancedSort
@@ -417,8 +415,7 @@ export const load: PageServerLoad = async (event) => {
 		? rangeAuthorizedCatalogState
 		: stripAdvancedSort(rangeAuthorizedCatalogState);
 	const visibility = resolveCatalogVisibility({
-		session: locals.session,
-		role: locals.role,
+		principal: locals.principal,
 		showWholesaleRequested: authorizedCatalogState.showWholesale,
 		wholesaleOnlyRequested: url.searchParams.get('wholesaleOnly') === 'true'
 	});
@@ -432,10 +429,11 @@ export const load: PageServerLoad = async (event) => {
 	let count: number | null = 0;
 	let catalogSchemaUnavailable: { message: string } | null = null;
 
-	const userId = locals.principal?.isAuthenticated ? locals.principal.userId : null;
-	const isMember = locals.role === 'member' || locals.role === 'admin';
+	const userId = locals.principal.isAuthenticated ? locals.principal.userId : null;
+	const isMember =
+		locals.principal.primaryAppRole === 'member' || locals.principal.primaryAppRole === 'admin';
 	const hasParchmentAccess =
-		isMember || (locals.principal?.isAuthenticated === true && locals.principal.ppiAccess === true);
+		isMember || (locals.principal.isAuthenticated && locals.principal.ppiAccess === true);
 	// Watchlist-only view: restrict results to the user's tracked lots, including
 	// delisted ones, so the whole watchlist is reviewable in one place.
 	const trackedOnly =

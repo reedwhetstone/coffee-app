@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockCreateServerClient = vi.fn();
 const mockResolvePrincipal = vi.fn();
-const mockGetLegacyAuthState = vi.fn();
 const mockGetSession = vi.fn();
 const mockGetUser = vi.fn();
 
@@ -49,8 +48,16 @@ vi.mock('@sveltejs/kit/hooks', () => ({
 
 vi.mock('$lib/server/principal', () => ({
 	resolvePrincipal: mockResolvePrincipal,
-	getLegacyAuthState: mockGetLegacyAuthState,
-	isSessionPrincipal: (principal: { authKind?: string }) => principal.authKind === 'session'
+	isCookieSessionPrincipal: (principal: {
+		authKind?: string;
+		source?: string;
+		session?: unknown;
+	}) =>
+		principal.authKind === 'session' &&
+		principal.source === 'cookie-session' &&
+		Boolean(principal.session),
+	principalHasRole: (principal: { appRoles?: string[] }, role: string) =>
+		principal.appRoles?.includes(role) ?? false
 }));
 
 let handle: typeof import('./hooks.server').handle;
@@ -104,7 +111,6 @@ describe('hooks auth guard integration', () => {
 			})
 		).rejects.toMatchObject({ name: 'PrincipalResolutionError' });
 
-		expect(mockGetLegacyAuthState).not.toHaveBeenCalled();
 		expect(resolve).not.toHaveBeenCalled();
 	});
 
@@ -123,31 +129,18 @@ describe('hooks auth guard integration', () => {
 		}
 	])('does not recover the cookie identity after a $name wins', async ({ principal }) => {
 		mockResolvePrincipal.mockResolvedValue(principal);
-		mockGetLegacyAuthState.mockReturnValue({
-			session: null,
-			user: null,
-			role: 'viewer',
-			roles: ['viewer']
-		});
-
 		const response = await handle({
 			event: makeEvent('/api/share', {
 				Authorization: 'Bearer authoritative-header'
 			}),
-			resolve: vi.fn(async (event) => {
-				const auth = await event.locals.safeGetSession();
-				return Response.json({
-					hasSession: Boolean(auth.session),
-					hasUser: Boolean(auth.user)
-				});
-			})
+			resolve: vi.fn(async (event) => Response.json({ principal: event.locals.principal.authKind }))
 		});
 
-		expect(await response.json()).toEqual({ hasSession: false, hasUser: false });
+		expect(await response.json()).toEqual({ principal: principal.authKind });
 		expect(mockGetSession).not.toHaveBeenCalled();
 	});
 
-	it('returns the canonical cookie identity from the compatibility helper', async () => {
+	it('exposes the canonical cookie identity only through the principal', async () => {
 		const principal = {
 			isAuthenticated: true,
 			authKind: 'session',
@@ -158,35 +151,21 @@ describe('hooks auth guard integration', () => {
 			appRoles: ['member']
 		};
 		mockResolvePrincipal.mockResolvedValue(principal);
-		mockGetLegacyAuthState.mockReturnValue({
-			session: principal.session,
-			user: principal.user,
-			role: 'member',
-			roles: ['member']
-		});
-
 		const response = await handle({
 			event: makeEvent('/dashboard'),
-			resolve: vi.fn(async (event) => Response.json(await event.locals.safeGetSession()))
+			resolve: vi.fn(async (event) => Response.json(event.locals.principal))
 		});
 
 		expect(await response.json()).toMatchObject({
 			session: { access_token: 'canonical-cookie-token' },
 			user: { id: 'canonical-cookie-user' },
-			role: 'member',
-			roles: ['member']
+			primaryAppRole: 'member',
+			appRoles: ['member']
 		});
 	});
 
 	it('rejects invalid Authorization headers on dashboard routes even if a cookie session exists', async () => {
 		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: false });
-		mockGetLegacyAuthState.mockReturnValue({
-			session: null,
-			user: null,
-			role: 'viewer',
-			roles: ['viewer']
-		});
-
 		await expect(
 			handle({
 				event: makeEvent('/dashboard', {
@@ -201,13 +180,6 @@ describe('hooks auth guard integration', () => {
 
 	it('treats bearer-session page requests as non-cookie page auth and redirects protected routes', async () => {
 		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: true, authKind: 'session' });
-		mockGetLegacyAuthState.mockReturnValue({
-			session: null,
-			user: { id: 'bearer-user' },
-			role: 'member',
-			roles: ['member']
-		});
-
 		await expect(
 			handle({
 				event: makeEvent('/beans', {
@@ -222,12 +194,6 @@ describe('hooks auth guard integration', () => {
 
 	it('preserves upstream status and headers for no-cookie public API responses', async () => {
 		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: false });
-		mockGetLegacyAuthState.mockReturnValue({
-			session: null,
-			user: null,
-			role: 'viewer',
-			roles: ['viewer']
-		});
 
 		const response = await handle({
 			event: makeEvent('/v1/catalog', {
@@ -264,17 +230,16 @@ describe('hooks auth guard integration', () => {
 		expect(mockGetSession).not.toHaveBeenCalled();
 	});
 
-	it('allows cookie-backed member page requests through with normalized locals', async () => {
+	it('allows cookie-backed member page requests through with a normalized principal', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: true,
 			authKind: 'session',
-			ppiAccess: false
-		});
-		mockGetLegacyAuthState.mockReturnValue({
+			source: 'cookie-session',
 			session: { access_token: 'cookie-token' },
 			user: { id: 'cookie-user' },
-			role: 'member',
-			roles: ['member']
+			appRoles: ['member'],
+			primaryAppRole: 'member',
+			ppiAccess: false
 		});
 
 		const response = await handle({
@@ -283,8 +248,8 @@ describe('hooks auth guard integration', () => {
 				(event) =>
 					new Response(
 						JSON.stringify({
-							hasSession: Boolean(event.locals.session),
-							role: event.locals.role
+							hasSession: Boolean(event.locals.principal.session),
+							role: event.locals.principal.primaryAppRole
 						}),
 						{ status: 200, headers: { 'Content-Type': 'application/json' } }
 					)
@@ -300,13 +265,12 @@ describe('hooks auth guard integration', () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: true,
 			authKind: 'session',
-			ppiAccess: true
-		});
-		mockGetLegacyAuthState.mockReturnValue({
+			source: 'cookie-session',
 			session: { access_token: 'cookie-token' },
 			user: { id: 'ppi-user' },
-			role: 'viewer',
-			roles: ['viewer']
+			appRoles: ['viewer'],
+			primaryAppRole: 'viewer',
+			ppiAccess: true
 		});
 
 		const response = await handle({
@@ -315,9 +279,9 @@ describe('hooks auth guard integration', () => {
 				(event) =>
 					new Response(
 						JSON.stringify({
-							hasSession: Boolean(event.locals.session),
-							role: event.locals.role,
-							ppiAccess: event.locals.data.ppiAccess
+							hasSession: Boolean(event.locals.principal.session),
+							role: event.locals.principal.primaryAppRole,
+							ppiAccess: event.locals.principal.ppiAccess
 						}),
 						{ status: 200, headers: { 'Content-Type': 'application/json' } }
 					)
@@ -332,13 +296,12 @@ describe('hooks auth guard integration', () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: true,
 			authKind: 'session',
-			ppiAccess: true
-		});
-		mockGetLegacyAuthState.mockReturnValue({
+			source: 'cookie-session',
 			session: { access_token: 'cookie-token' },
 			user: { id: 'ppi-user' },
-			role: 'viewer',
-			roles: ['viewer']
+			appRoles: ['viewer'],
+			primaryAppRole: 'viewer',
+			ppiAccess: true
 		});
 
 		const response = await handle({
@@ -347,9 +310,9 @@ describe('hooks auth guard integration', () => {
 				(event) =>
 					new Response(
 						JSON.stringify({
-							hasSession: Boolean(event.locals.session),
-							role: event.locals.role,
-							ppiAccess: event.locals.data.ppiAccess
+							hasSession: Boolean(event.locals.principal.session),
+							role: event.locals.principal.primaryAppRole,
+							ppiAccess: event.locals.principal.ppiAccess
 						}),
 						{ status: 200, headers: { 'Content-Type': 'application/json' } }
 					)
@@ -364,13 +327,12 @@ describe('hooks auth guard integration', () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: true,
 			authKind: 'session',
-			ppiAccess: false
-		});
-		mockGetLegacyAuthState.mockReturnValue({
+			source: 'cookie-session',
 			session: { access_token: 'cookie-token' },
 			user: { id: 'viewer-user' },
-			role: 'viewer',
-			roles: ['viewer']
+			appRoles: ['viewer'],
+			primaryAppRole: 'viewer',
+			ppiAccess: false
 		});
 
 		await expect(

@@ -1,13 +1,14 @@
 import { json } from '@sveltejs/kit';
 import { createStripeCustomer, getStripeCustomerId } from '$lib/services/stripe';
 import type { RequestEvent } from '@sveltejs/kit';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 
 export async function POST({ request, locals }: RequestEvent) {
 	// Ensure the user is authenticated
-	const { user } = await locals.safeGetSession();
-	if (!user) {
+	if (!isCookieSessionPrincipal(locals.principal)) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
 	}
+	const { user } = locals.principal;
 
 	try {
 		const { email, name } = await request.json();

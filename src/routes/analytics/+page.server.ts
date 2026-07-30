@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
-import { resolvePrincipal } from '$lib/server/principal';
+import type { RequestPrincipal } from '$lib/server/principal';
+import { getPageAuthState } from '$lib/server/pageAuth';
 import { loadMarketIndexInsights } from '$lib/server/marketIndex';
 import { createAdminClient } from '$lib/supabase-admin';
 import { createSchemaService } from '$lib/services/schemaService';
@@ -741,7 +742,7 @@ async function loadAnalyticsMemberData(
 		marketSummary,
 		priceIndexSupabase
 	}: {
-		principal: Awaited<ReturnType<typeof resolvePrincipal>>;
+		principal: RequestPrincipal;
 		isParchmentIntelligence: boolean;
 		marketSummary: MarketSummaryRow | null;
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -760,7 +761,8 @@ async function loadAnalyticsMemberData(
 
 	// Watchlist context: members and Parchment Intelligence users see their tracked
 	// lots read against the live index scope.
-	const isSourcingMember = event.locals.role === 'member' || event.locals.role === 'admin';
+	const isSourcingMember =
+		principal.primaryAppRole === 'member' || principal.primaryAppRole === 'admin';
 	const trackedLotsPromise: Promise<TrackedLotSummary[]> =
 		principal.isAuthenticated && (isParchmentIntelligence || isSourcingMember)
 			? createParchmentServerClient(event, { mode: 'session' })
@@ -937,10 +939,9 @@ async function loadAnalyticsMemberData(
 export const load: PageServerLoad = async (event) => {
 	// Resolve principal to get explicit Parchment Intelligence access.
 	// Logged-out visitors and logged-in viewers intentionally share the same core analytics view.
-	const principal = await resolvePrincipal(event);
+	const principal = event.locals.principal;
 	const isParchmentIntelligence = principal.isAuthenticated ? principal.ppiAccess : false;
-	const session = event.locals.session ?? null;
-	const role = event.locals.role ?? 'viewer';
+	const { session, role } = getPageAuthState(principal);
 	const isAnonymous = !session;
 
 	// The only awaited data read before the first byte: one indexed row from the
