@@ -9,6 +9,7 @@
 	import NavigationProgress from '$lib/components/layout/NavigationProgress.svelte';
 	import RouteSkeleton from '$lib/components/layout/RouteSkeleton.svelte';
 	import { usesStandaloneShell } from '$lib/components/layout/routeShells';
+	import { DESKTOP_SHELL_CONTENT_MARGIN } from '$lib/components/layout/desktopShellState';
 	import {
 		ROUTE_SKELETON_DELAY_MS,
 		loadRouteSkeletonComponent,
@@ -58,7 +59,7 @@
 	let chatDrawerOpen = $state(false);
 
 	let rightMargin = $derived(rightSidebarOpen || chatDrawerOpen ? 'md:mr-[32rem]' : 'md:mr-0');
-	let contentMargin = $derived(`md:ml-20 xl:ml-72 ${rightMargin}`);
+	let contentMargin = $derived(`${DESKTOP_SHELL_CONTENT_MARGIN} ${rightMargin}`);
 
 	// Cross-route client navigations keep the current page mounted for the
 	// first ROUTE_SKELETON_DELAY_MS (the thin progress bar is the immediate
