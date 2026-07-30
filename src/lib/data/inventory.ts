@@ -9,8 +9,8 @@
  *    re-used here to avoid query duplication.
  *  - updateStockedStatus is absorbed from stockedStatusUtils.ts (which becomes
  *    a re-export shim for backwards compatibility).
- *  - getInventoryWithRoastSummary handles the GenUI tool's joined query; the
- *    route handler is responsible for reshaping into its response envelope.
+ *  - Shared-data reads use Parchment contracts; this module retains the
+ *    compatibility mutations that have not moved upstream yet.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -26,18 +26,6 @@ export type {
 } from '$lib/server/greenCoffeeUtils.js';
 
 // ── Input / option types ──────────────────────────────────────────────────────
-
-export interface InventoryListOptions {
-	/** Filter to a single item by ID */
-	id?: number;
-	/** Filter to only stocked items */
-	stockedOnly?: boolean;
-	/** Max number of results */
-	limit?: number;
-	/** Order by field (default: purchase_date) */
-	orderBy?: string;
-	ascending?: boolean;
-}
 
 export interface InventoryCreateInput {
 	catalog_id?: number | null;
@@ -65,107 +53,7 @@ export interface InventoryUpdateInput {
 	cupping_notes?: Database['public']['Tables']['green_coffee_inv']['Update']['cupping_notes'];
 }
 
-export interface InventoryWithSummaryOptions {
-	stockedOnly?: boolean;
-	includeCatalogDetails?: boolean;
-	includeRoastSummary?: boolean;
-	limit?: number;
-}
-
-export interface RoastSummary {
-	total_roasts: number;
-	total_oz_in: number;
-	total_oz_out: number;
-}
-
-// Raw shape returned by the GenUI join query
-export interface InventoryWithSummaryRow {
-	id: number;
-	purchased_qty_lbs?: number | null;
-	bean_cost?: number | null;
-	tax_ship_cost?: number | null;
-	stocked: boolean | null;
-	coffee_catalog?: {
-		name?: string;
-		arrival_date?: string | null;
-		region?: string | null;
-		processing?: string | null;
-		drying_method?: string | null;
-		lot_size?: string | null;
-		bag_size?: string | null;
-		packaging?: string | null;
-		cultivar_detail?: string | null;
-		grade?: string | null;
-		appearance?: string | null;
-		roast_recs?: string | null;
-		type?: string | null;
-		description_short?: string | null;
-		description_long?: string | null;
-		farm_notes?: string | null;
-		link?: string | null;
-		cost_lb?: number | null;
-		price_per_lb?: number | null;
-		source?: string | null;
-		cupping_notes?: string | null;
-		stocked?: boolean | null;
-		stocked_date?: string | null;
-		unstocked_date?: string | null;
-		ai_description?: string | null;
-		ai_tasting_notes?: Record<string, unknown> | null;
-		public_coffee?: boolean | null;
-		[key: string]: unknown;
-	} | null;
-	roast_summary?: RoastSummary;
-	coffee_name?: string;
-	[key: string]: unknown;
-}
-
 // ── Public API ────────────────────────────────────────────────────────────────
-
-/**
- * List inventory for a user, using the standard joined query (catalog + roast profiles).
- * Supports optional id filter, stocked filter, limit, and ordering.
- */
-export async function listInventory(
-	supabase: SupabaseClient,
-	userId: string,
-	options: InventoryListOptions = {}
-) {
-	let query = buildGreenCoffeeQuery(supabase).eq('user', userId);
-
-	if (options.id !== undefined) {
-		query = query.eq('id', options.id);
-	}
-	if (options.stockedOnly) {
-		query = query.eq('stocked', true);
-	}
-	if (options.limit) {
-		query = query.limit(options.limit);
-	}
-
-	const { data: rows, error } = await query;
-	if (error) throw error;
-
-	return processGreenCoffeeData(rows ?? []);
-}
-
-/**
- * Get a single inventory item by ID, verifying user ownership.
- * Returns null when not found or not owned by the user.
- */
-export async function getInventoryItem(supabase: SupabaseClient, id: number, userId: string) {
-	const { data, error } = await buildGreenCoffeeQuery(supabase)
-		.eq('id', id)
-		.eq('user', userId)
-		.single();
-
-	if (error) {
-		if (error.code === 'PGRST116') return null;
-		throw error;
-	}
-
-	return processGreenCoffeeData([data])[0] ?? null;
-}
 
 /**
  * Add a new item to the user's inventory.
@@ -326,128 +214,4 @@ export async function updateStockedStatus(
 		console.error('Error in updateStockedStatus:', error);
 		return { success: false, error: 'Unexpected error' };
 	}
-}
-
-/**
- * Get inventory with roast summary data for the GenUI tool endpoint.
- * Returns raw rows; the route handler reshapes them into its response envelope.
- */
-export async function getInventoryWithRoastSummary(
-	supabase: SupabaseClient,
-	userId: string,
-	options: InventoryWithSummaryOptions = {}
-): Promise<InventoryWithSummaryRow[]> {
-	const {
-		stockedOnly = true,
-		includeRoastSummary = true,
-		includeCatalogDetails = true,
-		limit = 15
-	} = options;
-
-	let query = supabase
-		.from('green_coffee_inv')
-		.select(
-			`
-			*,
-			coffee_catalog!catalog_id (
-				name,
-				arrival_date,
-				continent,
-				country,
-				region,
-				processing,
-				drying_method,
-				lot_size,
-				bag_size,
-				packaging,
-				cultivar_detail,
-				grade,
-				appearance,
-				roast_recs,
-				type,
-				description_short,
-				description_long,
-				farm_notes,
-				link,
-				cost_lb,
-				price_per_lb,
-				source,
-				score_value,
-				stocked,
-				cupping_notes,
-				stocked_date,
-				unstocked_date,
-				ai_description,
-				ai_tasting_notes,
-				public_coffee,
-				wholesale,
-				price_tiers
-			)
-		`
-		)
-		.eq('user', userId)
-		.order('purchase_date', { ascending: false });
-
-	if (stockedOnly !== false) {
-		query = query.eq('stocked', true);
-	}
-
-	const finalLimit = Math.min(limit || 15, 15);
-	if (finalLimit > 0) {
-		query = query.limit(finalLimit);
-	}
-
-	const { data: inventoryData, error } = await query;
-
-	if (error) throw error;
-
-	let processedInventory = (inventoryData as unknown as InventoryWithSummaryRow[]) ?? [];
-
-	// Optionally attach roast summary
-	if (includeRoastSummary && processedInventory.length > 0) {
-		const coffeeIds = processedInventory.map((bean) => bean.id);
-
-		const { data: roastProfiles } = (await supabase
-			.from('roast_profiles')
-			.select('coffee_id, oz_in, oz_out, roast_id, batch_name, roast_date')
-			.in('coffee_id', coffeeIds)
-			.eq('user', userId)) as {
-			data: Array<{
-				coffee_id: number;
-				oz_in: number | null;
-				oz_out: number | null;
-				roast_id: number;
-				batch_name: string;
-				roast_date: string;
-			}> | null;
-		};
-
-		processedInventory = processedInventory.map((bean) => ({
-			...bean,
-			roast_summary: {
-				total_roasts: roastProfiles?.filter((p) => p.coffee_id === bean.id).length || 0,
-				total_oz_in:
-					roastProfiles
-						?.filter((p) => p.coffee_id === bean.id)
-						.reduce((sum, p) => sum + (p.oz_in || 0), 0) || 0,
-				total_oz_out:
-					roastProfiles
-						?.filter((p) => p.coffee_id === bean.id)
-						.reduce((sum, p) => sum + (p.oz_out || 0), 0) || 0
-			}
-		}));
-	}
-
-	// Optionally strip catalog details, retaining only the coffee name
-	if (!includeCatalogDetails) {
-		processedInventory = processedInventory.map((bean) => {
-			const { coffee_catalog, ...beanWithoutCatalog } = bean;
-			return {
-				...beanWithoutCatalog,
-				coffee_name: coffee_catalog?.name || 'Unknown'
-			};
-		});
-	}
-
-	return processedInventory;
 }
