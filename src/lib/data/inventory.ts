@@ -7,8 +7,8 @@
  * Key design decisions:
  *  - buildGreenCoffeeQuery / processGreenCoffeeData from greenCoffeeUtils are
  *    re-used here to avoid query duplication.
- *  - updateStockedStatus is absorbed from stockedStatusUtils.ts (which becomes
- *    a re-export shim for backwards compatibility).
+ *  - updateStockedStatus is the retained mutation helper used after roast and
+ *    inventory changes.
  *  - Shared-data reads use Parchment contracts; this module retains the
  *    compatibility mutations that have not moved upstream yet.
  */
@@ -142,7 +142,7 @@ export async function updateInventory(
 
 /**
  * Update stocked status for a bean based on purchased quantity vs total oz roasted.
- * Absorbed from stockedStatusUtils.ts (which now re-exports this function).
+ * Retained here as part of the inventory mutation boundary.
  */
 export async function updateStockedStatus(
 	supabase: SupabaseClient,

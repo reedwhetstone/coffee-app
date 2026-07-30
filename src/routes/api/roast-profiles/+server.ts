@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { fetchParchmentRoasts } from '$lib/server/parchmentRoasts';
-import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
+import { updateStockedStatus } from '$lib/data/inventory.js';
 import { checkRole } from '$lib/types/auth.types';
 import {
 	createRoasts,
