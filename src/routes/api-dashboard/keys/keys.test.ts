@@ -182,8 +182,7 @@ describe('load /api-dashboard/keys', () => {
 					created_at: '2026-01-01T00:00:00Z',
 					last_used_at: '2026-02-01T00:00:00Z'
 				}
-			],
-			user: { id: 'user-1', email: 'user@test.dev' }
+			]
 		});
 	});
 

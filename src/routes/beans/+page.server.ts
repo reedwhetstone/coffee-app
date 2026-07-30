@@ -29,9 +29,6 @@ export const load: PageServerLoad = async (event) => {
 	}
 
 	return {
-		role,
-		ppiAccess,
-		user: user ? { id: user.id } : null,
 		trackedLots,
 		trackedCatalog
 	};

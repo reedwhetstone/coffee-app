@@ -27,7 +27,7 @@
 
 	interface Props {
 		isParchmentIntelligence: boolean;
-		session: unknown;
+		isSignedIn: boolean;
 		PriceTierChartComponent: DeferredAnalyticsComponent | null;
 		SupplierComparisonTableComponent: DeferredAnalyticsComponent | null;
 		SupplierHealthTableComponent: DeferredAnalyticsComponent | null;
@@ -53,7 +53,7 @@
 
 	let {
 		isParchmentIntelligence,
-		session,
+		isSignedIn,
 		PriceTierChartComponent,
 		SupplierComparisonTableComponent,
 		SupplierHealthTableComponent,
@@ -134,7 +134,7 @@
 				>
 					Start Intelligence
 				</a>
-				{#if !session}
+				{#if !isSignedIn}
 					<a
 						href="/subscription"
 						class="rounded-md border border-accent px-6 py-2.5 text-center text-sm font-medium text-ink transition-all duration-200 hover:bg-accent"

@@ -42,10 +42,12 @@ vi.mock('$lib/stores/workspaceStore.svelte', async () => {
 
 function createData(overrides: Partial<PageData> = {}): PageData {
 	return {
-		session: { user: { id: 'user-1' } },
-		user: { id: 'user-1' },
-		role: 'viewer',
-		ppiAccess: true,
+		auth: {
+			isSignedIn: true,
+			user: { id: 'user-1', email: 'user@example.com' },
+			role: 'viewer',
+			ppiAccess: true
+		},
 		...overrides
 	} as unknown as PageData;
 }
@@ -104,7 +106,16 @@ describe('chat analytics seed', () => {
 			'https://example.com/chat?source=analytics&prompt=Review%20Colombia%20market%20signals'
 		);
 
-		render(ChatPage, { data: createData({ ppiAccess: false }) });
+		render(ChatPage, {
+			data: createData({
+				auth: {
+					isSignedIn: true,
+					user: { id: 'user-1', email: 'user@example.com' },
+					role: 'viewer',
+					ppiAccess: false
+				}
+			})
+		});
 
 		expect(screen.queryByRole('textbox')).toBeNull();
 		expect(

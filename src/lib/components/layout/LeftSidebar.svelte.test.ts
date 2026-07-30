@@ -70,6 +70,15 @@ vi.mock('$lib/components/layout/AdminSidebar.svelte', async () => ({
 }));
 
 describe('LeftSidebar', () => {
+	const memberData = {
+		auth: {
+			isSignedIn: true,
+			user: { id: 'member-1', email: 'member@example.com' },
+			role: 'member' as const,
+			ppiAccess: true
+		}
+	};
+
 	beforeEach(() => {
 		goto.mockReset();
 		vi.stubGlobal(
@@ -99,14 +108,7 @@ describe('LeftSidebar', () => {
 	});
 
 	it('keeps navigation closed behind one narrow desktop icon rail', async () => {
-		render(LeftSidebar, {
-			data: {
-				role: 'member',
-				ppiAccess: true,
-				user: { email: 'member@example.com' },
-				session: { user: { email: 'member@example.com' } }
-			}
-		});
+		render(LeftSidebar, { data: memberData });
 
 		const actionBar = screen.getByLabelText('Desktop action bar');
 		const navigationTrigger = within(actionBar).getByRole('button', { name: 'Open navigation' });
@@ -126,14 +128,7 @@ describe('LeftSidebar', () => {
 	});
 
 	it('opens one overlay filters panel without changing the action-bar width', async () => {
-		render(LeftSidebar, {
-			data: {
-				role: 'member',
-				ppiAccess: true,
-				user: { email: 'member@example.com' },
-				session: { user: { email: 'member@example.com' } }
-			}
-		});
+		render(LeftSidebar, { data: memberData });
 
 		const shell = screen.getByTestId('desktop-app-shell');
 		const actionBar = screen.getByLabelText('Desktop action bar');
@@ -156,14 +151,7 @@ describe('LeftSidebar', () => {
 	});
 
 	it('moves focus into the shared panel and restores its trigger on Escape', async () => {
-		render(LeftSidebar, {
-			data: {
-				role: 'member',
-				ppiAccess: true,
-				user: { email: 'member@example.com' },
-				session: { user: { email: 'member@example.com' } }
-			}
-		});
+		render(LeftSidebar, { data: memberData });
 
 		const actionBar = screen.getByLabelText('Desktop action bar');
 		const accountTrigger = within(actionBar).getByRole('button', { name: 'Open account' });
@@ -192,14 +180,7 @@ describe('LeftSidebar', () => {
 			}
 		});
 
-		render(LeftSidebar, {
-			data: {
-				role: 'member',
-				ppiAccess: true,
-				user: { email: 'member@example.com' },
-				session: { user: { email: 'member@example.com' } }
-			}
-		});
+		render(LeftSidebar, { data: memberData });
 
 		expect(screen.getAllByLabelText('1 active filters')).toHaveLength(1);
 	});
@@ -214,27 +195,13 @@ describe('LeftSidebar', () => {
 			}
 		});
 
-		render(LeftSidebar, {
-			data: {
-				role: 'member',
-				ppiAccess: true,
-				user: { email: 'member@example.com' },
-				session: { user: { email: 'member@example.com' } }
-			}
-		});
+		render(LeftSidebar, { data: memberData });
 
 		expect(screen.queryAllByLabelText(/active filters/)).toHaveLength(0);
 	});
 
 	it('leaves the panel open when a higher modal layer already handled Escape', async () => {
-		render(LeftSidebar, {
-			data: {
-				role: 'member',
-				ppiAccess: true,
-				user: { email: 'member@example.com' },
-				session: { user: { email: 'member@example.com' } }
-			}
-		});
+		render(LeftSidebar, { data: memberData });
 
 		const actionBar = screen.getByLabelText('Desktop action bar');
 		const accountTrigger = within(actionBar).getByRole('button', { name: 'Open account' });
@@ -253,14 +220,7 @@ describe('LeftSidebar', () => {
 	});
 
 	it('opens chat directly from the desktop shell', async () => {
-		render(LeftSidebar, {
-			data: {
-				role: 'member',
-				ppiAccess: true,
-				user: { email: 'member@example.com' },
-				session: { user: { email: 'member@example.com' } }
-			}
-		});
+		render(LeftSidebar, { data: memberData });
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Open chat' }));
 

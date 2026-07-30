@@ -19,27 +19,10 @@
 	import { page, navigating } from '$app/stores';
 
 	import type { PageMeta } from '$lib/types/meta.types';
-	import { checkRole, type UserRole } from '$lib/types/auth.types';
+	import { checkRole, type PageAuthView } from '$lib/types/auth.types';
 
 	interface LayoutData {
-		session: {
-			access_token: string;
-			refresh_token: string;
-			expires_in: number;
-			expires_at: number | undefined;
-			user: {
-				id: string;
-				email: string;
-				role: string;
-			};
-		} | null;
-		user: {
-			id: string;
-			email: string;
-			role: string;
-		} | null;
-		role: UserRole;
-		ppiAccess?: boolean;
+		auth: PageAuthView;
 		data?: unknown[];
 		meta?: PageMeta;
 	}
@@ -117,14 +100,14 @@
 	);
 	let shouldShowUnifiedHeader = $derived(
 		usesPublicShell ||
-			(!data.session && (pathname === '/catalog' || pathname.startsWith('/analytics')))
+			(!data.auth.isSignedIn && (pathname === '/catalog' || pathname.startsWith('/analytics')))
 	);
 
 	// Ask Parchment drawer: available on every authenticated app page except
 	// /chat itself (which is the full workspace).
 	let isChatRoute = $derived(pathname === '/chat' || pathname.startsWith('/chat/'));
 	let hasChatAccess = $derived(
-		Boolean(data?.session?.user) && (data.ppiAccess === true || checkRole(data.role, 'member'))
+		data.auth.isSignedIn && (data.auth.ppiAccess === true || checkRole(data.auth.role, 'member'))
 	);
 	let isChatWorkspace = $derived(isChatRoute && hasChatAccess);
 	let canUseChatDrawer = $derived(
@@ -149,7 +132,7 @@
 <NavigationProgress active={Boolean($navigating)} />
 
 {#if shouldShowUnifiedHeader}
-	<UnifiedHeader session={data.session} role={data.role} />
+	<UnifiedHeader auth={data.auth} />
 {/if}
 
 {#if isMarketingPage}
@@ -167,7 +150,7 @@
 	{:else}
 		{@render children()}
 	{/if}
-{:else if data?.session?.user && !usesPublicShell}
+{:else if data.auth.isSignedIn && !usesPublicShell}
 	<div class="flex {isChatWorkspace ? 'h-dvh overflow-hidden' : 'min-h-screen'}">
 		<LeftSidebar {data} />
 		<MobileAppShell {data} />
@@ -205,7 +188,11 @@
 					Ask
 				</button>
 			{/if}
-			<ChatDrawer bind:open={chatDrawerOpen} role={data.role} ppiAccess={data.ppiAccess === true} />
+			<ChatDrawer
+				bind:open={chatDrawerOpen}
+				role={data.auth.role}
+				ppiAccess={data.auth.ppiAccess}
+			/>
 		{/if}
 	</div>
 {:else}

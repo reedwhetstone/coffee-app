@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PageAuthView } from '$lib/types/auth.types';
 import Navbar from './Navbar.svelte';
 
 const { pageState } = vi.hoisted(() => ({
@@ -20,6 +21,20 @@ vi.mock('$lib/types/auth.types', () => ({
 	checkRole: () => false
 }));
 
+const signedInAuth: PageAuthView = {
+	isSignedIn: true,
+	user: { id: 'viewer-id', email: 'viewer@example.com' },
+	role: 'viewer',
+	ppiAccess: false
+};
+
+const anonymousAuth: PageAuthView = {
+	isSignedIn: false,
+	user: null,
+	role: 'viewer',
+	ppiAccess: false
+};
+
 describe('Navbar', () => {
 	beforeEach(() => {
 		pageState.url = new URL('http://localhost/dashboard');
@@ -27,7 +42,7 @@ describe('Navbar', () => {
 
 	it('keeps report sections contextual to the Market Index route', () => {
 		const { unmount } = render(Navbar, {
-			data: { role: 'viewer', user: { email: 'viewer@example.com' } }
+			data: { auth: signedInAuth }
 		});
 
 		expect(screen.queryByText('On this report')).toBeNull();
@@ -35,7 +50,7 @@ describe('Navbar', () => {
 
 		pageState.url = new URL('http://localhost/analytics');
 		render(Navbar, {
-			data: { role: 'viewer', user: { email: 'viewer@example.com' } }
+			data: { auth: signedInAuth }
 		});
 
 		expect(screen.getByText('On this report')).toBeTruthy();
@@ -49,7 +64,7 @@ describe('Navbar', () => {
 		pageState.url = new URL('http://localhost/analytics');
 
 		render(Navbar, {
-			data: { role: 'viewer', user: null }
+			data: { auth: anonymousAuth }
 		});
 
 		expect(screen.getByRole('link', { name: 'Read' })).toBeTruthy();
@@ -61,7 +76,7 @@ describe('Navbar', () => {
 		pageState.url = new URL('http://localhost/analytics');
 
 		render(Navbar, {
-			data: { role: 'viewer', user: { email: 'viewer@example.com' } },
+			data: { auth: signedInAuth },
 			onClose
 		});
 
@@ -74,7 +89,7 @@ describe('Navbar', () => {
 		const onOpenAccount = vi.fn();
 
 		render(Navbar, {
-			data: { role: 'viewer', user: { email: 'viewer@example.com' } },
+			data: { auth: signedInAuth },
 			onOpenAccount,
 			variant: 'rail'
 		});

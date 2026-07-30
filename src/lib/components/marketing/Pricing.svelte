@@ -1,17 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import type { PageAuthView } from '$lib/types/auth.types';
 
-	interface SessionData {
-		user?: {
-			email?: string;
-		};
-	}
-
-	let { session = null } = $props<{
-		session?: SessionData | null;
+	let { auth } = $props<{
+		auth: PageAuthView;
 	}>();
 
-	let isSignedIn = $derived(Boolean(session?.user));
+	let isSignedIn = $derived(auth.isSignedIn);
 
 	function handleSelectPlan(plan: 'studio' | 'api' | 'intelligence' | 'enterprise') {
 		if (plan === 'enterprise') {

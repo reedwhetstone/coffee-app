@@ -9,7 +9,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { canUseMallardControls } from '$lib/services/portfolioAccess';
-	import type { UserRole } from '$lib/types/auth.types';
+	import type { PageAuthView } from '$lib/types/auth.types';
 	import type { AvailableCoffee, BatchItem } from '$lib/types/component.types';
 
 	interface ProfitData {
@@ -48,8 +48,9 @@
 	let profitData = $state<ProfitData[]>([]);
 	// Removed unused roastProfileData
 	let salesData = $state<SaleData[]>([]);
-	let { data = { role: 'viewer' } } = $props<{ data?: { role?: UserRole } }>();
-	let canLogSales = $derived(canUseMallardControls(data?.role ?? 'viewer'));
+	let { data = { auth: { isSignedIn: false, user: null, role: 'viewer', ppiAccess: false } } } =
+		$props<{ data?: { auth?: PageAuthView } }>();
+	let canLogSales = $derived(canUseMallardControls(data.auth?.role ?? 'viewer'));
 	let isFormVisible = $derived(canLogSales && page.url.searchParams.get('modal') === 'new');
 	let selectedSale = $state<SaleData | null>(null);
 	let isSaving = $state<string | null>(null);

@@ -1,25 +1,16 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { checkRole } from '$lib/types/auth.types';
+	import { checkRole, type PageAuthView } from '$lib/types/auth.types';
 	import OrganicBand from '$lib/components/marketing/OrganicBand.svelte';
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 
-	import type { UserRole } from '$lib/types/auth.types';
-
-	interface SessionData {
-		user?: {
-			email?: string;
-		};
-	}
-
-	let { session = null, role = 'viewer' } = $props<{
-		session?: SessionData | null;
-		role?: UserRole;
+	let { auth } = $props<{
+		auth: PageAuthView;
 	}>();
 
-	let isSignedIn = $derived(Boolean(session?.user));
-	let canAccessMemberRoutes = $derived(checkRole(role, 'member'));
-	let userLabel = $derived(session?.user?.email?.split('@')[0] ?? 'there');
+	let isSignedIn = $derived(auth.isSignedIn);
+	let canAccessMemberRoutes = $derived(checkRole(auth.role, 'member'));
+	let userLabel = $derived(auth.user?.email?.split('@')[0] ?? 'there');
 
 	function handlePrimaryAction() {
 		goto('/analytics');

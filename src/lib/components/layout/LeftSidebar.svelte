@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount, tick } from 'svelte';
 	import { filterStore } from '$lib/stores/filterStore';
-	import { checkRole, type UserRole } from '$lib/types/auth.types';
+	import { checkRole, type PageAuthView } from '$lib/types/auth.types';
 	import { canManagePortfolio } from '$lib/services/portfolioAccess';
 	import Navbar from '$lib/components/layout/Navbar.svelte';
 	import Settingsbar from '$lib/components/layout/Settingsbar.svelte';
@@ -26,15 +26,12 @@
 	let currentRoute = $state(page.url.pathname);
 	let trackedCatalogRoute = $state(Boolean((page.data as { trackedOnly?: boolean }).trackedOnly));
 
-	let userRole = $derived(((data?.role as UserRole | undefined) ?? 'viewer') as UserRole);
-	let ppiAccess = $derived(Boolean((data as { ppiAccess?: boolean }).ppiAccess));
+	let auth = $derived((data as { auth: PageAuthView }).auth);
+	let userRole = $derived(auth.role);
+	let ppiAccess = $derived(auth.ppiAccess);
 	let canUseActions = $derived(canManagePortfolio(userRole, ppiAccess));
 	let isAdmin = $derived(checkRole(userRole, 'admin'));
-	let userEmail = $derived(
-		((data?.user as { email?: string } | undefined)?.email ??
-			(data?.session as { user?: { email?: string } } | undefined)?.user?.email ??
-			'Purveyors member') as string
-	);
+	let userEmail = $derived(auth.user?.email ?? 'Purveyors member');
 	let userInitial = $derived(userEmail.charAt(0).toUpperCase() || 'P');
 	let showSettings = $derived(
 		['/catalog', '/beans', '/roast'].includes(currentRoute) && !trackedCatalogRoute

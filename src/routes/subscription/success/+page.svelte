@@ -20,7 +20,7 @@
 
 	onMount(async () => {
 		try {
-			if (!data?.user) {
+			if (!data.auth.isSignedIn) {
 				goto('/');
 				return;
 			}

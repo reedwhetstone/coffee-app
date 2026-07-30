@@ -16,11 +16,13 @@ vi.mock('$lib/supabase', () => ({ signInWithGoogle, signOut }));
 
 function createData() {
 	return {
-		session: { user: { id: 'user-1' } },
-		user: { id: 'user-1' },
-		supabase: {},
-		role: 'viewer',
-		ppiAccess: false
+		auth: {
+			isSignedIn: true,
+			user: { id: 'user-1', email: 'user@example.com' },
+			role: 'viewer',
+			ppiAccess: false
+		},
+		supabase: {}
 	} as never;
 }
 

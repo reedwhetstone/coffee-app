@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
-	import { checkRole, type UserRole } from '$lib/types/auth.types';
+	import { checkRole, type PageAuthView } from '$lib/types/auth.types';
 	import {
 		getAnalyticsSectionLinks,
 		getAuthenticatedNavSections,
@@ -23,13 +23,12 @@
 	}>();
 
 	let currentPath = $state(page.url.pathname);
-	let userRole = $derived(
-		(((data as { role?: string }).role as UserRole | undefined) ?? 'viewer') as UserRole
-	);
-	let ppiAccess = $derived(Boolean((data as { ppiAccess?: boolean }).ppiAccess));
+	let auth = $derived((data as { auth: PageAuthView }).auth);
+	let userRole = $derived(auth.role);
+	let ppiAccess = $derived(auth.ppiAccess);
 	let navSections = $derived(getAuthenticatedNavSections(userRole, { ppiAccess }));
 	let canAccessAdminRoutes = $derived(checkRole(userRole, 'admin'));
-	let isSignedIn = $derived(Boolean((data as { user?: unknown }).user));
+	let isSignedIn = $derived(auth.isSignedIn);
 	let isAnalyticsPage = $derived(currentPath.startsWith('/analytics'));
 	let analyticsSectionLinks = $derived(
 		getAnalyticsSectionLinks({ includeDisclosureIndex: isSignedIn })

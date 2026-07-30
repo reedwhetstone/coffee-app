@@ -47,13 +47,7 @@ export const load: PageServerLoad = async (event) => {
 			last_used_at: key.lastUsedAt
 		}));
 
-		return {
-			apiKeys,
-			user: {
-				id: user.id,
-				email: user.email
-			}
-		};
+		return { apiKeys };
 	} catch (err) {
 		console.error('Error loading API keys:', err);
 		return {

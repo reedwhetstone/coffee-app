@@ -18,9 +18,13 @@ vi.mock('$app/state', () => ({
 	page: pageState
 }));
 
+function auth(role: 'viewer' | 'member', ppiAccess: boolean) {
+	return { isSignedIn: true, user: null, role, ppiAccess };
+}
+
 describe('Actionsbar portfolio controls', () => {
 	it('shows only Portfolio creation for Parchment Intelligence-only viewers', () => {
-		render(Actionsbar, { data: { role: 'viewer', ppiAccess: true } });
+		render(Actionsbar, { data: { auth: auth('viewer', true) } });
 
 		expect(screen.getByText('New bean')).toBeTruthy();
 		expect(screen.queryByText('New roast')).toBeNull();
@@ -28,7 +32,7 @@ describe('Actionsbar portfolio controls', () => {
 	});
 
 	it('keeps Mallard actions available for members', () => {
-		render(Actionsbar, { data: { role: 'member', ppiAccess: false } });
+		render(Actionsbar, { data: { auth: auth('member', false) } });
 
 		expect(screen.getByText('New bean')).toBeTruthy();
 		expect(screen.getByText('New roast')).toBeTruthy();

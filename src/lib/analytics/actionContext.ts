@@ -26,17 +26,17 @@ export interface AnalyticsChatContext {
 }
 
 export interface AnalyticsEntitlementInput {
-	session: unknown;
+	isSignedIn: boolean;
 	role: UserRole | UserRole[] | undefined;
 	ppiAccess: boolean;
 }
 
 export function resolveAnalyticsEntitlement({
-	session,
+	isSignedIn,
 	role,
 	ppiAccess
 }: AnalyticsEntitlementInput): AnalyticsEntitlement {
-	if (!session) return 'anonymous';
+	if (!isSignedIn) return 'anonymous';
 	const hasRoasting = checkRole(role, 'member');
 	if (ppiAccess && hasRoasting) return 'both';
 	if (ppiAccess) return 'intelligence';

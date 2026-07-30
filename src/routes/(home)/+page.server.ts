@@ -13,7 +13,6 @@ import {
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
-import { getPageAuthState } from '$lib/server/pageAuth';
 
 type SdkCatalogItem = components['schemas']['CatalogItem'];
 // API PR #25 already exposes these homepage card fields; the installed SDK
@@ -50,8 +49,7 @@ function extractHomepageCatalogRows(
 }
 
 export const load: PageServerLoad = async (event) => {
-	const { locals, url } = event;
-	const { session } = getPageAuthState(locals.principal);
+	const { url } = event;
 
 	let stockedData: Record<string, unknown>[] = [];
 	try {
@@ -76,7 +74,6 @@ export const load: PageServerLoad = async (event) => {
 	}
 
 	return {
-		session,
 		data: stockedData,
 		trainingData: stockedData,
 		meta: buildPublicMeta({

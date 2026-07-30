@@ -11,12 +11,12 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	let isSignedIn = $derived(Boolean(data.session?.user));
-	let canAccessMemberRoutes = $derived(checkRole(data.role ?? 'viewer', 'member'));
+	let isSignedIn = $derived(data.auth.isSignedIn);
+	let canAccessMemberRoutes = $derived(checkRole(data.auth.role, 'member'));
 </script>
 
 <div class="min-h-screen">
-	<Hero session={data.session} role={data.role} />
+	<Hero auth={data.auth} />
 
 	<PersonaRouter />
 
@@ -142,7 +142,7 @@
 		{#snippet children()}
 			{#await import('$lib/components/marketing/Pricing.svelte') then module}
 				{@const Pricing = module.default}
-				<Pricing session={data.session} />
+				<Pricing auth={data.auth} />
 			{:catch}
 				<div class="py-16 text-center">
 					<p class="text-muted">Content temporarily unavailable</p>
@@ -154,7 +154,7 @@
 		{#snippet children()}
 			{#await import('$lib/components/marketing/CTA.svelte') then module}
 				{@const CTA = module.default}
-				<CTA session={data.session} />
+				<CTA auth={data.auth} />
 			{:catch}
 				<div class="py-16 text-center">
 					<p class="text-muted">Content temporarily unavailable</p>

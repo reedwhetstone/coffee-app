@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import type { PageAuthView } from '$lib/types/auth.types';
 
 	let {
 		data,
@@ -10,6 +11,7 @@
 		onClose: () => void;
 		variant?: 'default' | 'rail';
 	}>();
+	let auth = $derived((data as { auth: PageAuthView }).auth);
 
 	// Admin navigation items
 	const adminNavItems = [
@@ -76,16 +78,14 @@
 		<div class="flex items-center space-x-3">
 			<div class="flex h-8 w-8 items-center justify-center rounded-full bg-accent">
 				<span class="text-sm font-medium text-ink">
-					{(data?.user as { email?: string })?.email?.charAt(0).toUpperCase() || 'A'}
+					{auth.user?.email?.charAt(0).toUpperCase() || 'A'}
 				</span>
 			</div>
 			<div>
 				<p class="text-sm font-medium text-ink">
-					{(data?.user as { email?: string })?.email || 'Admin User'}
+					{auth.user?.email || 'Admin User'}
 				</p>
-				<p class="text-xs capitalize text-muted">
-					{(data?.role as string) || 'admin'} Role
-				</p>
+				<p class="text-xs capitalize text-muted">{auth.role} Role</p>
 			</div>
 		</div>
 	</div>

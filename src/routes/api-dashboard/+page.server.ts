@@ -31,11 +31,7 @@ export const load: PageServerLoad = async (event) => {
 		const mapped = mapOwnerApiUsage(data);
 		return {
 			apiKeys: mapped.apiKeys,
-			usageStats: mapped.usageStats,
-			user: {
-				id: user.id,
-				email: user.email
-			}
+			usageStats: mapped.usageStats
 		};
 	} catch (error) {
 		console.error('Error loading API usage:', error);

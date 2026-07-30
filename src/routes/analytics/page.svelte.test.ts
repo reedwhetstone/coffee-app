@@ -280,8 +280,12 @@ function createData(overrides: Record<string, unknown> = {}): PageData {
 	};
 
 	return {
-		session,
-		role,
+		auth: {
+			isSignedIn: Boolean(session),
+			user: session ? { id: 'user-1', email: 'user@example.com' } : null,
+			role,
+			ppiAccess: isParchmentIntelligence
+		},
 		isParchmentIntelligence,
 		analyticsPreview: preview,
 		analyticsCoverage:
@@ -312,7 +316,7 @@ function createData(overrides: Record<string, unknown> = {}): PageData {
 }
 
 function createSession() {
-	return { user: { id: 'user-1' } } as NonNullable<PageData['session']>;
+	return { user: { id: 'user-1' } };
 }
 
 function expectPromptLine(prompt: string | null, line: string) {

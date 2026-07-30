@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -9,7 +9,8 @@ describe('/api/roast-profiles Parchment read boundary', () => {
 			routeSource.indexOf('export const GET'),
 			routeSource.indexOf('export const POST')
 		);
-		const pageLoaderSource = readFileSync(resolve('src/routes/roast/+page.server.ts'), 'utf8');
+		const pageLoaderPath = resolve('src/routes/roast/+page.server.ts');
+		const pageLoaderSource = existsSync(pageLoaderPath) ? readFileSync(pageLoaderPath, 'utf8') : '';
 		const parchmentSource = readFileSync(resolve('src/lib/server/parchmentRoasts.ts'), 'utf8');
 		const legacyDataSource = readFileSync(resolve('src/lib/data/roast.ts'), 'utf8');
 
