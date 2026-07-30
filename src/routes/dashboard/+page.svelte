@@ -305,7 +305,7 @@
 						>
 							<div class="flex items-start justify-between gap-3">
 								<div
-									class="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md bg-accent-subtle/15 px-2 text-xs font-semibold tracking-wide text-accent"
+									class="inline-flex h-10 min-w-10 flex-shrink-0 items-center justify-center whitespace-nowrap rounded-md bg-accent-subtle/15 px-2 text-xs font-semibold tracking-wide text-accent"
 								>
 									{card.label}
 								</div>
