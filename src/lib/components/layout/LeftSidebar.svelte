@@ -42,7 +42,17 @@
 	let showSettings = $derived(
 		['/catalog', '/beans', '/roast'].includes(currentRoute) && !trackedCatalogRoute
 	);
-	let activeFilterCount = $derived(countActiveCatalogFilters($filterStore));
+	let activeFilterCount = $derived(
+		countActiveCatalogFilters({ ...$filterStore, routeId: currentRoute })
+	);
+
+	function getMenuLabel(menu: MenuId): string {
+		if (menu === 'auth') return 'Account';
+		if (menu === 'nav') return 'Main navigation';
+		if (menu === 'actions') return 'Actions';
+		if (menu === 'settings') return 'Filters';
+		return 'Admin';
+	}
 
 	async function setMenu(menu: MenuId | null, trigger?: HTMLElement) {
 		if (trigger) returnFocusTarget = trigger;
@@ -86,7 +96,7 @@
 	}
 
 	function handleGlobalKeydown(event: KeyboardEvent) {
-		if (event.key !== 'Escape' || !activeMenu) return;
+		if (event.defaultPrevented || event.key !== 'Escape' || !activeMenu) return;
 		event.preventDefault();
 		void closeAllMenus();
 	}
@@ -226,6 +236,8 @@
 				class="min-h-0 flex-1"
 				bind:this={widePanel}
 				tabindex="-1"
+				role="region"
+				aria-label={`${getMenuLabel(activeMenu)} panel`}
 				data-menu-panel="true"
 			>
 				{@render menuPanel(activeMenu)}
@@ -329,6 +341,8 @@
 		class="fixed inset-y-0 left-20 z-50 hidden w-72 border-r border-line bg-surface-canvas shadow-xl md:block xl:hidden"
 		bind:this={overlayPanel}
 		tabindex="-1"
+		role="region"
+		aria-label={`${getMenuLabel(activeMenu)} panel`}
 		data-menu-panel="true"
 	>
 		{@render menuPanel(activeMenu)}

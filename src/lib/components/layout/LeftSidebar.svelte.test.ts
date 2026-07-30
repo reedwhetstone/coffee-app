@@ -134,9 +134,10 @@ describe('LeftSidebar', () => {
 
 		expect(screen.getAllByLabelText('Filters menu').length).toBeGreaterThan(0);
 		expect(shell.getAttribute('class')).toBe(initialClass);
-		await waitFor(() =>
-			expect(document.activeElement).toBe(document.getElementById('desktop-shell-panel-medium'))
-		);
+		const mediumPanel = document.getElementById('desktop-shell-panel-medium');
+		expect(mediumPanel?.getAttribute('role')).toBe('region');
+		expect(mediumPanel?.getAttribute('aria-label')).toBe('Filters panel');
+		await waitFor(() => expect(document.activeElement).toBe(mediumPanel));
 
 		await fireEvent.keyDown(window, { key: 'Escape' });
 		await waitFor(() => expect(document.activeElement).toBe(filterTrigger));
@@ -157,9 +158,10 @@ describe('LeftSidebar', () => {
 		const accountTrigger = within(wideNavigation).getByRole('button', { name: /Account/ });
 		await fireEvent.click(accountTrigger);
 
-		await waitFor(() =>
-			expect(document.activeElement).toBe(document.getElementById('desktop-shell-panel-wide'))
-		);
+		const widePanel = document.getElementById('desktop-shell-panel-wide');
+		expect(widePanel?.getAttribute('role')).toBe('region');
+		expect(widePanel?.getAttribute('aria-label')).toBe('Account panel');
+		await waitFor(() => expect(document.activeElement).toBe(widePanel));
 		expect(accountTrigger.getAttribute('aria-expanded')).toBe('true');
 
 		await fireEvent.keyDown(window, { key: 'Escape' });
@@ -187,6 +189,32 @@ describe('LeftSidebar', () => {
 		});
 
 		expect(screen.getAllByLabelText('1 active filters')).toHaveLength(2);
+	});
+
+	it('leaves the panel open when a higher modal layer already handled Escape', async () => {
+		render(LeftSidebar, {
+			data: {
+				role: 'member',
+				ppiAccess: true,
+				user: { email: 'member@example.com' },
+				session: { user: { email: 'member@example.com' } }
+			}
+		});
+
+		const wideNavigation = screen.getByLabelText('Desktop workspace navigation');
+		const accountTrigger = within(wideNavigation).getByRole('button', { name: /Account/ });
+		await fireEvent.click(accountTrigger);
+
+		const escapeEvent = new KeyboardEvent('keydown', {
+			key: 'Escape',
+			bubbles: true,
+			cancelable: true
+		});
+		escapeEvent.preventDefault();
+		window.dispatchEvent(escapeEvent);
+
+		expect(screen.getAllByRole('region', { name: 'Account panel', hidden: true })).toHaveLength(2);
+		expect(accountTrigger.getAttribute('aria-expanded')).toBe('true');
 	});
 
 	it('opens chat directly from the desktop shell', async () => {
