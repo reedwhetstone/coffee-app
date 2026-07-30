@@ -3,11 +3,15 @@ import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/p
 import { createAdminClient } from '$lib/supabase-admin';
 import {
 	ACCOUNT_DELETION_CONFIRMATION,
+	ACCOUNT_DELETION_RETRY_COOKIE,
+	ACCOUNT_DELETION_RETRY_MAX_AGE_SECONDS,
 	AccountDeletionConfigError,
 	AccountDeletionProviderError,
 	captureStripeCustomerId,
+	createAccountDeletionRetryToken,
 	getAccountDeletionProviderCredential,
 	hasRecentSignIn,
+	readAccountDeletionRetryOperation,
 	unlinkStripeCustomer
 } from '$lib/server/accountDeletion';
 import type { RequestHandler } from './$types';
@@ -83,19 +87,26 @@ export const POST: RequestHandler = async (event) => {
 		});
 	}
 
-	if (!hasRecentSignIn(user)) {
-		return response(403, {
-			error: {
-				code: 'recent_sign_in_required',
-				message: 'Sign in with Google again before deleting your account.'
-			}
-		});
-	}
-
 	try {
+		// The signing credential is preflighted before deciding whether a retry
+		// capability can replace recent reauthentication.
+		const providerCredential = getAccountDeletionProviderCredential();
+		const retryOperationId = readAccountDeletionRetryOperation(
+			event.cookies.get(ACCOUNT_DELETION_RETRY_COOKIE),
+			user.id,
+			providerCredential
+		);
+		if (!retryOperationId && !hasRecentSignIn(user)) {
+			return response(403, {
+				error: {
+					code: 'recent_sign_in_required',
+					message: 'Sign in with Google again before deleting your account.'
+				}
+			});
+		}
+
 		// Preflight everything needed after Parchment quiesces the owner. The
 		// retained mapping is deliberately read before the first deletion request.
-		const providerCredential = getAccountDeletionProviderCredential();
 		const stripeCustomerId = await captureStripeCustomerId(user.id);
 		const client = await createParchmentServerClient(event, {
 			mode: 'session',
@@ -106,6 +117,27 @@ export const POST: RequestHandler = async (event) => {
 		if (requestResult.error || !requestResult.data) {
 			return upstreamError(requestResult, 'Parchment could not start account deletion.');
 		}
+
+		if (retryOperationId !== null && retryOperationId !== requestResult.data.operationId) {
+			return response(409, {
+				error: {
+					code: 'operation_mismatch',
+					message: 'The account deletion retry does not match the active operation.'
+				}
+			});
+		}
+
+		event.cookies.set(
+			ACCOUNT_DELETION_RETRY_COOKIE,
+			createAccountDeletionRetryToken(requestResult.data.operationId, user.id, providerCredential),
+			{
+				path: '/api/account-deletion',
+				httpOnly: true,
+				sameSite: 'strict',
+				secure: event.url.protocol === 'https:',
+				maxAge: ACCOUNT_DELETION_RETRY_MAX_AGE_SECONDS
+			}
+		);
 
 		await unlinkStripeCustomer(stripeCustomerId, user.id);
 
@@ -134,6 +166,9 @@ export const POST: RequestHandler = async (event) => {
 			});
 		}
 
+		event.cookies.delete(ACCOUNT_DELETION_RETRY_COOKIE, {
+			path: '/api/account-deletion'
+		});
 		return response(200, {
 			operationId: finalizationResult.data.operationId,
 			status: finalizationResult.data.status

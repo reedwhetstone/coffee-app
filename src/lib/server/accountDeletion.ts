@@ -3,9 +3,12 @@ import { createAdminClient } from '$lib/supabase-admin';
 import { getStripe } from '$lib/services/stripe';
 import { ACCOUNT_DELETION_CONFIRMATION } from '$lib/accountDeletion';
 import type { User } from '@supabase/supabase-js';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export { ACCOUNT_DELETION_CONFIRMATION };
 export const RECENT_SIGN_IN_MAX_AGE_MS = 10 * 60 * 1000;
+export const ACCOUNT_DELETION_RETRY_COOKIE = 'account_deletion_operation';
+export const ACCOUNT_DELETION_RETRY_MAX_AGE_SECONDS = 24 * 60 * 60;
 
 export class AccountDeletionConfigError extends Error {
 	constructor(message: string) {
@@ -36,6 +39,58 @@ export function hasRecentSignIn(user: Pick<User, 'last_sign_in_at'>, now = Date.
 	const signedInAt = Date.parse(user.last_sign_in_at);
 	const age = now - signedInAt;
 	return Number.isFinite(signedInAt) && age >= 0 && age <= RECENT_SIGN_IN_MAX_AGE_MS;
+}
+
+function retrySignature(
+	operationId: string,
+	issuedAt: number,
+	userId: string,
+	credential: string
+): Buffer {
+	return createHmac('sha256', credential).update(`${userId}:${operationId}:${issuedAt}`).digest();
+}
+
+export function createAccountDeletionRetryToken(
+	operationId: string,
+	userId: string,
+	credential: string,
+	now = Date.now()
+): string {
+	const signature = retrySignature(operationId, now, userId, credential).toString('base64url');
+	return `${operationId}.${now}.${signature}`;
+}
+
+export function readAccountDeletionRetryOperation(
+	token: string | undefined,
+	userId: string,
+	credential: string,
+	now = Date.now()
+): string | null {
+	if (!token) return null;
+	const parts = token.split('.');
+	if (parts.length !== 3) return null;
+	const [operationId, encodedIssuedAt, encodedSignature] = parts;
+	const issuedAt = Number(encodedIssuedAt);
+	const age = now - issuedAt;
+	if (
+		!operationId ||
+		!Number.isSafeInteger(issuedAt) ||
+		age < 0 ||
+		age > ACCOUNT_DELETION_RETRY_MAX_AGE_SECONDS * 1000
+	) {
+		return null;
+	}
+
+	let received: Buffer;
+	try {
+		received = Buffer.from(encodedSignature, 'base64url');
+	} catch {
+		return null;
+	}
+
+	const expected = retrySignature(operationId, issuedAt, userId, credential);
+	if (received.length !== expected.length || !timingSafeEqual(received, expected)) return null;
+	return operationId;
 }
 
 /**

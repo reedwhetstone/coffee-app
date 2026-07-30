@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => {
 		unlinkStripeCustomer: vi.fn(),
 		getProviderCredential: vi.fn(),
 		hasRecentSignIn: vi.fn(),
+		readRetryOperation: vi.fn(),
+		createRetryToken: vi.fn(),
 		deleteUser: vi.fn(),
 		AccountDeletionConfigError,
 		AccountDeletionProviderError,
@@ -23,12 +25,16 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('$lib/server/accountDeletion', () => ({
 	ACCOUNT_DELETION_CONFIRMATION: 'DELETE MY ACCOUNT',
+	ACCOUNT_DELETION_RETRY_COOKIE: 'account_deletion_operation',
+	ACCOUNT_DELETION_RETRY_MAX_AGE_SECONDS: 86400,
 	AccountDeletionConfigError: mocks.AccountDeletionConfigError,
 	AccountDeletionProviderError: mocks.AccountDeletionProviderError,
 	captureStripeCustomerId: mocks.captureStripeCustomerId,
 	unlinkStripeCustomer: mocks.unlinkStripeCustomer,
 	getAccountDeletionProviderCredential: mocks.getProviderCredential,
-	hasRecentSignIn: mocks.hasRecentSignIn
+	hasRecentSignIn: mocks.hasRecentSignIn,
+	readAccountDeletionRetryOperation: mocks.readRetryOperation,
+	createAccountDeletionRetryToken: mocks.createRetryToken
 }));
 
 vi.mock('$lib/server/parchmentClient', () => ({
@@ -56,6 +62,7 @@ function makeEvent(
 		contentType?: string;
 		body?: unknown;
 		authenticated?: boolean;
+		retryCookie?: string;
 	} = {}
 ) {
 	const origin = options.origin === undefined ? 'https://app.test' : options.origin;
@@ -64,6 +71,8 @@ function makeEvent(
 	if (options.authorization) headers.set('authorization', options.authorization);
 	headers.set('content-type', options.contentType ?? 'application/json');
 	const body = options.body ?? { confirmation: 'DELETE MY ACCOUNT' };
+	const cookieSet = vi.fn((name: string) => mocks.order.push(`set-cookie:${name}`));
+	const cookieDelete = vi.fn((name: string) => mocks.order.push(`delete-cookie:${name}`));
 
 	return {
 		request: {
@@ -71,6 +80,11 @@ function makeEvent(
 			json: vi.fn().mockResolvedValue(body)
 		},
 		url: new URL('https://app.test/api/account-deletion'),
+		cookies: {
+			get: vi.fn().mockReturnValue(options.retryCookie),
+			set: cookieSet,
+			delete: cookieDelete
+		},
 		locals: {
 			session: { access_token: 'session-token' },
 			safeGetSession: vi.fn().mockResolvedValue(
@@ -106,6 +120,8 @@ describe('POST /api/account-deletion', () => {
 			return 'cus_123';
 		});
 		mocks.hasRecentSignIn.mockReturnValue(true);
+		mocks.readRetryOperation.mockReturnValue(null);
+		mocks.createRetryToken.mockReturnValue('signed-retry-token');
 		mocks.requestDeletion.mockImplementation(async () => {
 			mocks.order.push('request');
 			return { data: operation, response: new Response(null, { status: 200 }) };
@@ -143,9 +159,11 @@ describe('POST /api/account-deletion', () => {
 			'credential',
 			'capture-stripe',
 			'request',
+			'set-cookie:account_deletion_operation',
 			'unlink-stripe',
 			'finalize',
-			'delete-auth'
+			'delete-auth',
+			'delete-cookie:account_deletion_operation'
 		]);
 		expect(mocks.createParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
 			mode: 'session',
@@ -161,6 +179,83 @@ describe('POST /api/account-deletion', () => {
 				},
 				body: { operationId: operation.operationId }
 			}
+		);
+	});
+
+	it('allows a stale sign-in to resume with a valid owner-bound retry cookie', async () => {
+		mocks.hasRecentSignIn.mockReturnValue(false);
+		mocks.readRetryOperation.mockReturnValue(operation.operationId);
+
+		const event = makeEvent({ retryCookie: 'valid-signed-token' }) as never;
+		const response = await POST(event);
+
+		expect(response.status).toBe(200);
+		expect(mocks.readRetryOperation).toHaveBeenCalledWith(
+			'valid-signed-token',
+			'user-1',
+			'provider-secret'
+		);
+		expect(mocks.requestDeletion).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		['absent', undefined],
+		['forged', 'forged-token']
+	])('rejects a stale sign-in with an %s retry cookie before Parchment', async (_label, token) => {
+		mocks.hasRecentSignIn.mockReturnValue(false);
+		mocks.readRetryOperation.mockReturnValue(null);
+
+		const response = await POST(makeEvent({ retryCookie: token }));
+
+		expect(response.status).toBe(403);
+		expect((await response.json()).error.code).toBe('recent_sign_in_required');
+		expect(mocks.captureStripeCustomerId).not.toHaveBeenCalled();
+		expect(mocks.requestDeletion).not.toHaveBeenCalled();
+	});
+
+	it('blocks a valid retry cookie for a different operation before provider cleanup', async () => {
+		mocks.hasRecentSignIn.mockReturnValue(false);
+		mocks.readRetryOperation.mockReturnValue('different-operation-id');
+
+		const response = await POST(makeEvent({ retryCookie: 'valid-but-stale-token' }));
+
+		expect(response.status).toBe(409);
+		expect((await response.json()).error.code).toBe('operation_mismatch');
+		expect(mocks.unlinkStripeCustomer).not.toHaveBeenCalled();
+		expect(mocks.finalizeDeletion).not.toHaveBeenCalled();
+		expect(mocks.deleteUser).not.toHaveBeenCalled();
+	});
+
+	it('sets a strict HttpOnly retry cookie after Parchment and clears it after Auth deletion', async () => {
+		const event = makeEvent() as unknown as {
+			cookies: {
+				set: ReturnType<typeof vi.fn>;
+				delete: ReturnType<typeof vi.fn>;
+			};
+		};
+
+		const response = await POST(event as never);
+
+		expect(response.status).toBe(200);
+		expect(event.cookies.set).toHaveBeenCalledWith(
+			'account_deletion_operation',
+			'signed-retry-token',
+			{
+				path: '/api/account-deletion',
+				httpOnly: true,
+				sameSite: 'strict',
+				secure: true,
+				maxAge: 86400
+			}
+		);
+		expect(event.cookies.delete).toHaveBeenCalledWith('account_deletion_operation', {
+			path: '/api/account-deletion'
+		});
+		expect(mocks.order.indexOf('request')).toBeLessThan(
+			mocks.order.indexOf('set-cookie:account_deletion_operation')
+		);
+		expect(mocks.order.indexOf('delete-auth')).toBeLessThan(
+			mocks.order.indexOf('delete-cookie:account_deletion_operation')
 		);
 	});
 

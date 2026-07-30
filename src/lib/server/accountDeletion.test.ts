@@ -32,8 +32,10 @@ vi.mock('$lib/services/stripe', () => ({
 import {
 	AccountDeletionProviderError,
 	captureStripeCustomerId,
+	createAccountDeletionRetryToken,
 	getAccountDeletionProviderCredential,
 	hasRecentSignIn,
+	readAccountDeletionRetryOperation,
 	unlinkStripeCustomer
 } from './accountDeletion';
 
@@ -52,6 +54,42 @@ describe('account deletion provider helpers', () => {
 		expect(hasRecentSignIn({ last_sign_in_at: '2026-07-30T17:49:59.000Z' }, now)).toBe(false);
 		expect(hasRecentSignIn({ last_sign_in_at: '2026-07-30T18:00:01.000Z' }, now)).toBe(false);
 		expect(hasRecentSignIn({ last_sign_in_at: undefined }, now)).toBe(false);
+	});
+
+	it('accepts only retry tokens signed for the same owner and operation', () => {
+		const issuedAt = Date.parse('2026-07-30T18:00:00.000Z');
+		const token = createAccountDeletionRetryToken(
+			'operation-1',
+			'user-1',
+			'provider-secret',
+			issuedAt
+		);
+
+		expect(
+			readAccountDeletionRetryOperation(token, 'user-1', 'provider-secret', issuedAt + 1000)
+		).toBe('operation-1');
+		expect(
+			readAccountDeletionRetryOperation(token, 'user-2', 'provider-secret', issuedAt + 1000)
+		).toBeNull();
+		expect(
+			readAccountDeletionRetryOperation(token, 'user-1', 'different-secret', issuedAt + 1000)
+		).toBeNull();
+		expect(
+			readAccountDeletionRetryOperation(
+				`${token.slice(0, -1)}x`,
+				'user-1',
+				'provider-secret',
+				issuedAt + 1000
+			)
+		).toBeNull();
+		expect(
+			readAccountDeletionRetryOperation(
+				token,
+				'user-1',
+				'provider-secret',
+				issuedAt + 24 * 60 * 60 * 1000 + 1
+			)
+		).toBeNull();
 	});
 
 	it('distinguishes a missing Stripe mapping from a database failure', async () => {
