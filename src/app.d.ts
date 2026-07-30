@@ -4,7 +4,7 @@
 // for information about these interfaces
 import { SupabaseClient, Session, User } from '@supabase/supabase-js';
 import type { Database } from '$lib/types/database.types';
-import type { PageAuthView, UserRole } from '$lib/types/auth.types';
+import type { PageAuthView } from '$lib/types/auth.types';
 import type { RequestPrincipal } from '$lib/server/principal';
 
 declare global {
