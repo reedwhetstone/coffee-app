@@ -147,4 +147,92 @@ describe('Stripe webhook Checkout admission fence', () => {
 		const response = await POST(makeEvent());
 		expect(response.status).toBe(200);
 	});
+
+	it.each(['customer.subscription.updated', 'customer.subscription.deleted'])(
+		'reconciles legacy %s events after the open-session drain closes',
+		async (type) => {
+			mockConstructStripeEvent.mockResolvedValue({
+				type,
+				data: {
+					object: {
+						id: 'sub_legacy',
+						metadata: {}
+					}
+				}
+			});
+
+			const response = await POST(makeEvent());
+
+			expect(response.status).toBe(200);
+			expect(mockCheckoutProviderIsEligible).not.toHaveBeenCalled();
+			expect(mockReconcileStripeSubscription).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'sub_legacy' }),
+				expect.anything()
+			);
+		}
+	);
+
+	it('checks managed subscription eligibility before reconciliation', async () => {
+		mockGetStripe.mockReturnValue({
+			checkout: {
+				sessions: {
+					list: vi.fn(async () => ({ data: [{ id: 'cs_managed' }] }))
+				}
+			}
+		});
+		mockConstructStripeEvent.mockResolvedValue({
+			type: 'customer.subscription.updated',
+			data: {
+				object: {
+					id: 'sub_managed',
+					metadata: {
+						supabase_user_id: 'user-123',
+						parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+						checkout_request_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+					}
+				}
+			}
+		});
+
+		const response = await POST(makeEvent());
+
+		expect(response.status).toBe(200);
+		expect(mockCheckoutProviderIsEligible).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				admissionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+				stripeSessionId: 'cs_managed'
+			})
+		);
+		expect(mockCheckoutProviderIsEligible.mock.invocationCallOrder[0]).toBeLessThan(
+			mockReconcileStripeSubscription.mock.invocationCallOrder[0]
+		);
+	});
+
+	it('fails retryably when managed subscription context cannot be resolved', async () => {
+		mockGetStripe.mockReturnValue({
+			checkout: {
+				sessions: {
+					list: vi.fn(async () => ({ data: [] }))
+				}
+			}
+		});
+		mockConstructStripeEvent.mockResolvedValue({
+			type: 'customer.subscription.updated',
+			data: {
+				object: {
+					id: 'sub_managed',
+					metadata: {
+						supabase_user_id: 'user-123',
+						parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+					}
+				}
+			}
+		});
+
+		const response = await POST(makeEvent());
+
+		expect(response.status).toBe(400);
+		expect(mockReconcileStripeSubscription).not.toHaveBeenCalled();
+	});
 });

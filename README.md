@@ -117,6 +117,28 @@ pnpm verify:catalog-http-contract  # verify the public catalog HTTP contract
 pnpm audit:discoverability         # audit public SEO and discoverability metadata
 ```
 
+### Checkout admission rollout
+
+Self-serve Stripe Checkout can participate in Parchment's account-deletion
+admission fence. The consumer is dark by default so merging or deploying the
+app before the upstream database migration cannot interrupt Checkout.
+
+Roll out in this order:
+
+1. Apply Parchment migration `20260730150000_account_deletion_checkout_admission_fence.sql`.
+2. Provision the same 32-or-more-character
+   `PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL` in Parchment and coffee-app.
+3. Ensure the Stripe webhook delivers `checkout.session.expired`.
+4. Set `PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED=true` in coffee-app.
+5. If Checkout sessions created before step 4 remain open, temporarily set
+   `PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED=true`. Disable it after
+   those sessions expire or complete.
+
+The legacy-drain flag applies only to pre-cutover `checkout.session` events.
+Historical `customer.subscription` updates and deletions remain authoritative
+for the subscription's lifetime and do not depend on the drain window. Never
+expose the provider credential through a `PUBLIC_` variable or browser code.
+
 ### Worktree-friendly local validation
 
 `pnpm check` and `pnpm test` expect repo-local environment files when you run the app from a fresh worktree. Before validating in a new checkout:

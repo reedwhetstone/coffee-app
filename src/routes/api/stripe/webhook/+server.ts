@@ -136,6 +136,11 @@ export async function POST(requestEvent: RequestEvent) {
 				if (checkoutAdmissionsEnabled()) {
 					const ownerId = subscription.metadata?.supabase_user_id;
 					const admissionId = subscription.metadata?.parchment_admission_id;
+					const requestId = subscription.metadata?.checkout_request_id;
+					const hasManagedAdmissionMetadata = Boolean(ownerId || admissionId || requestId);
+					if (hasManagedAdmissionMetadata && (!ownerId || !admissionId)) {
+						throw new Error('Managed subscription is missing Checkout admission metadata');
+					}
 					if (ownerId && admissionId) {
 						const stripe = getStripe();
 						const sessions = await stripe.checkout.sessions.list({
@@ -143,17 +148,25 @@ export async function POST(requestEvent: RequestEvent) {
 							limit: 1
 						});
 						const checkoutSession = sessions.data[0];
-						if (checkoutSession) {
-							admissionContext = {
-								ownerId,
-								admissionId,
-								requestId: subscription.metadata?.checkout_request_id,
-								stripeSessionId: checkoutSession.id
-							};
+						if (!checkoutSession) {
+							throw new Error('Managed subscription Checkout session could not be resolved');
 						}
+						admissionContext = {
+							ownerId,
+							admissionId,
+							requestId,
+							stripeSessionId: checkoutSession.id
+						};
 					}
 				}
-				if (await requireProviderEligibility(requestEvent, admissionContext)) {
+				// Historical subscriptions predate the one-time Checkout admission
+				// protocol and remain reconcilable for their full lifetime. The
+				// legacy drain flag applies only to outstanding checkout.session
+				// events during cutover, never to ordinary subscription maintenance.
+				if (
+					!admissionContext ||
+					(await checkoutProviderIsEligible(requestEvent, admissionContext))
+				) {
 					await reconcileStripeSubscription(subscription, supabase);
 				} else {
 					console.warn('Subscription provider writes rejected by Parchment admission fence');

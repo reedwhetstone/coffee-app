@@ -2,6 +2,12 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import type { BillingPurchaseKey } from '$lib/billing/purchaseKeys';
+	import {
+		clearCheckoutRequestId,
+		getOrCreateCheckoutRequestId,
+		isTerminalCheckoutFailure,
+		parseCheckoutFailure
+	} from '$lib/billing/checkoutRequest';
 
 	const { purchaseKey, onSuccess = () => {} } = $props<{
 		purchaseKey: BillingPurchaseKey;
@@ -16,16 +22,8 @@
 	let checkout: any;
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-	function requestStorageKey(): string {
-		return `checkout-request:${purchaseKey}`;
-	}
-
 	function getCheckoutRequestId(): string {
-		const existing = sessionStorage.getItem(requestStorageKey());
-		if (existing) return existing;
-		const created = crypto.randomUUID();
-		sessionStorage.setItem(requestStorageKey(), created);
-		return created;
+		return getOrCreateCheckoutRequestId(sessionStorage, purchaseKey, () => crypto.randomUUID());
 	}
 
 	const initializeCheckout = async () => {
@@ -61,14 +59,14 @@
 			});
 
 			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(
-					errorData.error || errorData.message || 'Failed to create checkout session'
-				);
+				const failure = parseCheckoutFailure(await response.json());
+				if (isTerminalCheckoutFailure(failure.code)) {
+					clearCheckoutRequestId(sessionStorage, purchaseKey);
+				}
+				throw new Error(failure.message);
 			}
 
 			const { clientSecret } = await response.json();
-			sessionStorage.removeItem(requestStorageKey());
 
 			// Initialize Stripe Elements
 			if (!stripe) {
@@ -83,6 +81,7 @@
 				clientSecret,
 				onComplete: () => {
 					// Handle successful payment
+					clearCheckoutRequestId(sessionStorage, purchaseKey);
 					onSuccess();
 				}
 			});
