@@ -1,41 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mockMe = vi.fn();
 const mockBearerGetUser = vi.fn();
-const mockValidateApiKey = vi.fn();
-const mockUserRolesSingle = vi.fn();
 
-vi.mock('$lib/supabase', () => ({
-	createClient: () => ({
-		auth: {
-			getUser: mockBearerGetUser
-		}
-	})
-}));
-
-vi.mock('$lib/supabase-admin', () => ({
-	createAdminClient: () => ({
-		auth: {
-			getUser: mockBearerGetUser
-		},
-		from: (table: string) => {
-			if (table !== 'user_roles') {
-				throw new Error(`Unexpected table lookup in auth test: ${table}`);
-			}
-
-			return {
-				select: () => ({
-					eq: () => ({
-						single: mockUserRolesSingle
-					})
-				})
-			};
-		}
-	})
-}));
-
-vi.mock('$lib/server/apiAuth', () => ({
-	API_KEY_PREFIX: 'pk_live_',
-	validateApiKey: mockValidateApiKey
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentPrincipalClient: () => ({ me: mockMe })
 }));
 
 const {
@@ -71,9 +40,6 @@ type EventOptions = {
 		apiPlan: 'viewer' | 'member' | 'enterprise';
 		ppiAccess: boolean;
 		apiScopes: string[];
-		apiKeyId: null;
-		apiKeyName: null;
-		apiKeyPermissions: null;
 	};
 };
 
@@ -104,8 +70,14 @@ function makeEvent(options: EventOptions = {}) {
 		url: new URL(url),
 		locals: {
 			principal: options.principal,
+			supabase: {
+				auth: {
+					getUser: mockBearerGetUser
+				}
+			},
 			safeGetSession: vi.fn().mockResolvedValue(sessionContext)
-		}
+		},
+		fetch: vi.fn()
 	} as unknown as Parameters<typeof requireUserAuth>[0];
 }
 
@@ -125,9 +97,6 @@ function makeSessionPrincipal(
 		apiPlan: 'viewer' as const,
 		ppiAccess: false,
 		apiScopes: ['catalog:read'],
-		apiKeyId: null,
-		apiKeyName: null,
-		apiKeyPermissions: null,
 		...overrides
 	};
 }
@@ -148,28 +117,24 @@ beforeEach(() => {
 		data: { user: null },
 		error: { message: 'Invalid token' }
 	});
-	mockValidateApiKey.mockResolvedValue({
-		valid: false,
-		error: 'Invalid API key'
-	});
-	mockUserRolesSingle.mockResolvedValue({
-		data: { role: 'viewer', api_plan: 'viewer', ppi_access: false },
-		error: null
+	mockMe.mockResolvedValue({
+		data: {
+			authenticated: false,
+			authKind: 'anonymous',
+			userId: null,
+			appRoles: [],
+			primaryAppRole: null,
+			apiPlan: null,
+			ppiAccess: false,
+			apiScopes: []
+		},
+		error: undefined,
+		response: new Response(null, { status: 200 })
 	});
 });
 
 describe('auth integration', () => {
-	it('fails closed for API keys when user role lookup fails', async () => {
-		mockValidateApiKey.mockResolvedValue({
-			valid: true,
-			userId: 'user-1',
-			keyId: 'key-1'
-		});
-		mockUserRolesSingle.mockResolvedValue({
-			data: null,
-			error: { message: 'lookup failed' }
-		});
-
+	it('fails closed for API keys when Parchment does not authenticate them', async () => {
 		const event = makeEvent({
 			authHeader: 'Bearer pk_live_valid-key',
 			sessionContext: {
@@ -185,6 +150,33 @@ describe('auth integration', () => {
 			status: 401
 		});
 		expect(event.locals.safeGetSession).not.toHaveBeenCalled();
+	});
+
+	it('authorizes an API key from the canonical Parchment principal', async () => {
+		mockMe.mockResolvedValue({
+			data: {
+				authenticated: true,
+				authKind: 'api-key',
+				userId: 'user-1',
+				appRoles: ['viewer'],
+				primaryAppRole: 'viewer',
+				apiPlan: 'member',
+				ppiAccess: false,
+				apiScopes: ['catalog:read']
+			},
+			error: undefined,
+			response: new Response(null, { status: 200 })
+		});
+
+		await expect(
+			requireApiKeyAccess(makeEvent({ authHeader: 'Bearer pk_live_valid-key' }), {
+				requiredPlan: 'member',
+				requiredScope: 'catalog:read'
+			})
+		).resolves.toMatchObject({
+			userId: 'user-1',
+			apiPlan: 'member'
+		});
 	});
 
 	it('treats an explicit invalid Authorization header as authoritative over cookies', async () => {

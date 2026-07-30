@@ -15,7 +15,11 @@ vi.mock('@purveyors/sdk', () => ({
 	createParchmentClient: (options: unknown) => createParchmentClient(options)
 }));
 
-import { ParchmentConfigError, createParchmentServerClient } from './parchmentClient';
+import {
+	ParchmentConfigError,
+	createParchmentPrincipalClient,
+	createParchmentServerClient
+} from './parchmentClient';
 
 /** Minimal RequestEvent stub with just the fields the helper touches. */
 function makeEvent(overrides: {
@@ -264,6 +268,47 @@ describe('createParchmentServerClient', () => {
 		await createParchmentServerClient(event);
 
 		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({ token: 'direct-token' });
+	});
+});
+
+describe('createParchmentPrincipalClient', () => {
+	beforeEach(() => {
+		mockEnv.PARCHMENT_API_BASE_URL = 'https://api.test.purveyors.io';
+		createParchmentClient.mockClear();
+	});
+
+	afterEach(() => {
+		delete mockEnv.PARCHMENT_API_BASE_URL;
+	});
+
+	it('uses the exact credential chosen by auth bootstrap without reading session state', () => {
+		const event = makeEvent({
+			accessToken: 'different-local-token',
+			safeGetSessionToken: 'different-cookie-token',
+			authorizationHeader: 'Bearer different-header-token',
+			principalAuthenticated: false
+		});
+
+		createParchmentPrincipalClient(event, 'canonical-bootstrap-token');
+
+		expect(createParchmentClient.mock.calls[0][0]).toMatchObject({
+			baseUrl: 'https://api.test.purveyors.io',
+			token: 'canonical-bootstrap-token'
+		});
+		expect(event.locals.safeGetSession as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
+	});
+
+	it('does not request lenient handling for the authorization decision', async () => {
+		const event = makeEvent({});
+		createParchmentPrincipalClient(event, 'canonical-bootstrap-token');
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		await wrappedFetch('https://api.test.purveyors.io/v1/me');
+
+		const init = baseFetch.mock.calls[0][1] as RequestInit;
+		expect(new Headers(init.headers).get('prefer')).toBeNull();
 	});
 });
 

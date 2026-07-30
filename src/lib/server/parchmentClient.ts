@@ -297,3 +297,25 @@ export async function createParchmentServerClient(
 		fetch: withPreferHandling(event.fetch, preferHandling, inheritedPrefer)
 	});
 }
+
+/**
+ * Create the Parchment client used while bootstrapping coffee-app's request
+ * principal.
+ *
+ * Principal resolution runs before `event.locals.principal` exists, so the
+ * normal `session` mode cannot safely infer which incoming credential won.
+ * The caller must pass the exact credential selected by the auth hook. Keeping
+ * construction here preserves the single server-only base URL and fetch path.
+ */
+export function createParchmentPrincipalClient(
+	event: RequestEvent,
+	token: string
+): ParchmentClient {
+	return createParchmentClient({
+		baseUrl: resolveBaseUrl(),
+		token,
+		// Principal resolution is an authorization decision, not a degradable
+		// first-party data read. Do not attach the BFF's lenient handling signal.
+		fetch: withPreferHandling(event.fetch, 'inherit', undefined)
+	});
+}

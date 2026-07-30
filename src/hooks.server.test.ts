@@ -90,6 +90,25 @@ beforeEach(async () => {
 });
 
 describe('hooks auth guard integration', () => {
+	it('does not downgrade an authenticated request when canonical principal resolution is unavailable', async () => {
+		mockResolvePrincipal.mockRejectedValue(
+			Object.assign(new Error('Parchment principal resolution failed'), {
+				name: 'PrincipalResolutionError'
+			})
+		);
+		const resolve = vi.fn();
+
+		await expect(
+			handle({
+				event: makeEvent('/dashboard'),
+				resolve
+			})
+		).rejects.toMatchObject({ name: 'PrincipalResolutionError' });
+
+		expect(mockGetLegacyAuthState).not.toHaveBeenCalled();
+		expect(resolve).not.toHaveBeenCalled();
+	});
+
 	it('rejects invalid Authorization headers on dashboard routes even if a cookie session exists', async () => {
 		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: false });
 		mockGetLegacyAuthState.mockReturnValue({

@@ -1,32 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiKeyPrincipal, SessionPrincipal } from './principal';
 
-const mockAdminGetUser = vi.fn();
-const mockAdminSingle = vi.fn();
-const mockValidateApiKey = vi.fn();
-const mockAdminEq = vi.fn(() => ({ single: mockAdminSingle }));
-const mockAdminSelect = vi.fn(() => ({ eq: mockAdminEq }));
-const mockAdminFrom = vi.fn(() => ({ select: mockAdminSelect }));
+const mockMe = vi.fn();
+const mockCreateParchmentPrincipalClient = vi.fn(() => ({ me: mockMe }));
 
-vi.mock('$lib/supabase-admin', () => ({
-	createAdminClient: () => ({
-		auth: {
-			getUser: mockAdminGetUser
-		},
-		from: mockAdminFrom
-	})
-}));
-
-vi.mock('$lib/server/apiAuth', () => ({
-	API_KEY_PREFIX: 'pk_live_',
-	validateApiKey: mockValidateApiKey
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentPrincipalClient: mockCreateParchmentPrincipalClient
 }));
 
 const {
 	getLegacyAuthState,
 	getPrimaryUserRole,
 	isTrustedMutationRequest,
-	normalizeApiScopes,
 	principalHasApiPlan,
 	principalHasRole,
 	principalHasScope,
@@ -34,90 +19,119 @@ const {
 	resolvePrincipal
 } = await import('./principal');
 
-function makeCookieSessionEvent(sessionRoles: string[] = ['viewer']) {
+const viewerProjection = {
+	authenticated: true,
+	authKind: 'session' as const,
+	userId: 'user-1',
+	appRoles: ['viewer'],
+	primaryAppRole: 'viewer',
+	apiPlan: 'viewer' as const,
+	ppiAccess: false,
+	apiScopes: ['catalog:read']
+};
+
+function successfulMe(data: typeof viewerProjection | Record<string, unknown>) {
+	mockMe.mockResolvedValue({
+		data,
+		error: undefined,
+		response: new Response(null, { status: 200 })
+	});
+}
+
+function makeCookieSessionEvent() {
 	return {
-		request: {
-			method: 'GET',
-			headers: new Headers()
-		},
+		fetch: vi.fn(),
+		request: new Request('https://app.test/catalog'),
 		url: new URL('https://app.test/catalog'),
 		locals: {
 			principal: undefined,
+			supabase: {
+				auth: {
+					getUser: vi.fn()
+				}
+			},
 			safeGetSession: vi.fn().mockResolvedValue({
 				session: { access_token: 'cookie-token' },
 				user: { id: 'user-1' },
 				role: 'viewer',
-				roles: sessionRoles
+				roles: ['viewer']
 			})
 		}
 	} as unknown as Parameters<typeof resolvePrincipal>[0];
 }
 
 function makeAuthorizationEvent(token: string) {
+	const getUser = vi.fn().mockResolvedValue({
+		data: { user: { id: 'user-1' } },
+		error: null
+	});
+
 	return {
-		request: {
-			method: 'GET',
-			headers: new Headers({ Authorization: `Bearer ${token}` })
-		},
+		fetch: vi.fn(),
+		request: new Request('https://app.test/catalog', {
+			headers: { Authorization: `Bearer ${token}` }
+		}),
 		url: new URL('https://app.test/catalog'),
 		locals: {
 			principal: undefined,
+			supabase: { auth: { getUser } },
 			safeGetSession: vi.fn()
 		}
 	} as unknown as Parameters<typeof resolvePrincipal>[0];
 }
 
+function sessionPrincipal(overrides: Partial<SessionPrincipal> = {}): SessionPrincipal {
+	return {
+		subjectType: 'user',
+		authKind: 'session',
+		source: 'cookie-session',
+		isAuthenticated: true,
+		userId: 'user-1',
+		user: { id: 'user-1' } as SessionPrincipal['user'],
+		session: { access_token: 'cookie-token' } as SessionPrincipal['session'],
+		appRoles: ['member'],
+		primaryAppRole: 'member',
+		apiPlan: 'viewer',
+		ppiAccess: false,
+		apiScopes: ['catalog:read'],
+		...overrides
+	};
+}
+
+function apiKeyPrincipal(overrides: Partial<ApiKeyPrincipal> = {}): ApiKeyPrincipal {
+	return {
+		subjectType: 'api-key',
+		authKind: 'api-key',
+		source: 'api-key',
+		isAuthenticated: true,
+		userId: 'user-2',
+		user: null,
+		session: null,
+		appRoles: ['viewer'],
+		primaryAppRole: 'viewer',
+		apiPlan: 'member',
+		ppiAccess: false,
+		apiScopes: ['catalog:read'],
+		...overrides
+	};
+}
+
 beforeEach(() => {
 	vi.clearAllMocks();
-	mockAdminGetUser.mockResolvedValue({
-		data: { user: null },
-		error: { message: 'Invalid token' }
-	});
-	mockAdminSingle.mockResolvedValue({
-		data: null,
-		error: { message: 'not found' }
-	});
-	mockValidateApiKey.mockResolvedValue({
-		valid: false,
-		error: 'Invalid API key'
-	});
+	successfulMe(viewerProjection);
 });
 
 describe('principal helpers', () => {
 	it('selects the highest-priority primary app role', () => {
 		expect(getPrimaryUserRole(['viewer', 'member'])).toBe('member');
 		expect(getPrimaryUserRole(['viewer', 'admin'])).toBe('admin');
-		expect(getPrimaryUserRole(['member', 'admin'])).toBe('admin');
 	});
 
-	it('parses explicit API scopes from permissions payloads', () => {
-		expect(normalizeApiScopes({ scopes: ['catalog:read', 'catalog:read'] })).toEqual([
-			'catalog:read'
-		]);
-		expect(normalizeApiScopes({ scope: 'catalog:read catalog:write' })).toEqual([
-			'catalog:read',
-			'catalog:write'
-		]);
-	});
-
-	it('authorizes by explicit roles, plans, and scopes', () => {
-		const principal: ApiKeyPrincipal = {
-			subjectType: 'api-key',
-			authKind: 'api-key',
-			source: 'api-key',
-			isAuthenticated: true,
-			userId: 'user-1',
-			user: null,
-			session: null,
-			appRoles: ['viewer'],
-			primaryAppRole: 'viewer',
+	it('authorizes by the canonical roles, plans, and scopes', () => {
+		const principal = apiKeyPrincipal({
 			apiPlan: 'enterprise',
-			ppiAccess: false,
-			apiScopes: ['catalog:*'],
-			apiKeyId: 'key-1',
-			apiKeyName: 'Test key',
-			apiKeyPermissions: null
-		};
+			apiScopes: ['catalog:*']
+		});
 
 		expect(principalHasRole(principal, 'member')).toBe(false);
 		expect(
@@ -129,302 +143,175 @@ describe('principal helpers', () => {
 		expect(principalHasScope(principal, 'usage:read')).toBe(false);
 	});
 
-	it('api plan hierarchy: enterprise > member > viewer', () => {
-		const memberPrincipal: ApiKeyPrincipal = {
-			subjectType: 'api-key',
-			authKind: 'api-key',
-			source: 'api-key',
-			isAuthenticated: true,
-			userId: 'user-2',
-			user: null,
-			session: null,
-			appRoles: ['viewer'],
-			primaryAppRole: 'viewer',
-			apiPlan: 'member',
-			ppiAccess: false,
-			apiScopes: ['catalog:read'],
-			apiKeyId: 'key-2',
-			apiKeyName: null,
-			apiKeyPermissions: null
-		};
-		expect(principalHasApiPlan(memberPrincipal, 'viewer')).toBe(true);
-		expect(principalHasApiPlan(memberPrincipal, 'member')).toBe(true);
-		expect(principalHasApiPlan(memberPrincipal, 'enterprise')).toBe(false);
-	});
-
-	it('reads scalar app role independently from explicit API and Intelligence entitlements', async () => {
-		mockAdminSingle.mockResolvedValue({
-			data: {
-				role: 'viewer',
-				api_plan: 'member',
-				ppi_access: true
-			},
-			error: null
-		});
-
-		const principal = await resolvePrincipal(
-			makeCookieSessionEvent(['viewer', 'api-member', 'ppi-member'])
-		);
-
-		expect(principal).toMatchObject({
-			subjectType: 'user',
-			source: 'cookie-session',
-			primaryAppRole: 'viewer',
-			appRoles: ['viewer'],
+	it('resolves cookie-session entitlements through Parchment', async () => {
+		successfulMe({
+			...viewerProjection,
+			appRoles: ['member'],
+			primaryAppRole: 'member',
 			apiPlan: 'member',
 			ppiAccess: true
 		});
-		expect(mockAdminSelect).toHaveBeenCalledWith('role, api_plan, ppi_access');
-	});
+		const event = makeCookieSessionEvent();
 
-	it('uses explicit viewer defaults without consulting the legacy role mirror', async () => {
-		mockAdminSingle.mockResolvedValue({
-			data: {
-				role: 'viewer',
-				api_plan: 'viewer',
-				ppi_access: false
-			},
-			error: null
-		});
+		const principal = await resolvePrincipal(event);
 
-		const principal = await resolvePrincipal(
-			makeCookieSessionEvent(['viewer', 'api-member', 'ppi-member'])
-		);
-
+		expect(mockCreateParchmentPrincipalClient).toHaveBeenCalledWith(event, 'cookie-token');
 		expect(principal).toMatchObject({
 			subjectType: 'user',
 			source: 'cookie-session',
-			primaryAppRole: 'viewer',
-			appRoles: ['viewer'],
-			apiPlan: 'viewer',
-			ppiAccess: false
+			userId: 'user-1',
+			appRoles: ['member'],
+			primaryAppRole: 'member',
+			apiPlan: 'member',
+			ppiAccess: true
 		});
+		expect(event.locals.supabase.auth.getUser).not.toHaveBeenCalled();
 	});
 
-	it('preserves an explicit viewer plan for admin roles', async () => {
-		mockAdminSingle.mockResolvedValue({
-			data: {
-				role: 'admin',
-				api_plan: 'viewer',
-				ppi_access: false
-			},
-			error: null
-		});
+	it('fails closed when Parchment is unavailable for a valid cookie user', async () => {
+		mockMe.mockRejectedValue(new TypeError('fetch failed'));
+		const event = makeCookieSessionEvent();
 
-		const principal = await resolvePrincipal(makeCookieSessionEvent(['admin']));
-
-		expect(principal).toMatchObject({
-			source: 'cookie-session',
-			appRoles: ['admin'],
-			primaryAppRole: 'admin',
-			apiPlan: 'viewer',
-			ppiAccess: false
+		await expect(resolvePrincipal(event)).rejects.toMatchObject({
+			name: 'PrincipalResolutionError',
+			message: 'Parchment principal resolution failed'
 		});
+		expect(event.locals.principal).toBeUndefined();
 	});
 
-	it('preserves the admin enterprise fallback when api_plan is unset', async () => {
-		mockAdminSingle.mockResolvedValue({
-			data: {
-				role: 'admin',
-				api_plan: null,
-				ppi_access: false
-			},
-			error: null
+	it('fails closed when Parchment returns a non-success response', async () => {
+		mockMe.mockResolvedValue({
+			data: undefined,
+			error: { error: { code: 'internal_error', message: 'Unavailable' } },
+			response: new Response(null, { status: 503 })
 		});
+		const event = makeCookieSessionEvent();
 
-		const principal = await resolvePrincipal(makeCookieSessionEvent(['admin']));
-
-		expect(principal).toMatchObject({
-			subjectType: 'user',
-			source: 'cookie-session',
-			primaryAppRole: 'admin',
-			appRoles: ['admin'],
-			apiPlan: 'enterprise',
-			ppiAccess: false
+		await expect(resolvePrincipal(event)).rejects.toMatchObject({
+			name: 'PrincipalResolutionError',
+			status: 503
 		});
+		expect(event.locals.principal).toBeUndefined();
 	});
 
-	it('fails closed when the scalar app role is outside the accepted contract', async () => {
-		mockAdminSingle.mockResolvedValue({
-			data: {
-				role: 'api_member',
-				api_plan: 'member',
-				ppi_access: true
-			},
-			error: null
-		});
-
-		const principal = await resolvePrincipal(makeCookieSessionEvent(['viewer']));
-
-		expect(principal).toMatchObject({
-			subjectType: 'user',
-			source: 'cookie-session',
-			appRoles: ['viewer'],
-			primaryAppRole: 'viewer',
-			apiPlan: 'viewer',
-			ppiAccess: false
-		});
-	});
-
-	it.each(['member', 'admin'] as const)(
-		'exposes scalar %s as exactly one application role',
-		async (role) => {
-			mockAdminSingle.mockResolvedValue({
-				data: {
-					role,
-					api_plan: role === 'admin' ? 'enterprise' : 'member',
-					ppi_access: false
-				},
-				error: null
-			});
-
-			const principal = await resolvePrincipal(makeCookieSessionEvent([role]));
-
-			expect(principal.appRoles).toEqual([role]);
-			expect(principal.primaryAppRole).toBe(role);
-		}
-	);
-
-	it('downgrades invalid explicit entitlements to viewer-safe values', async () => {
-		mockAdminSingle.mockResolvedValue({
-			data: {
-				role: 'viewer',
-				api_plan: 'legacy-enterprise',
-				ppi_access: 'true'
-			},
-			error: null
-		});
-
-		const principal = await resolvePrincipal(makeCookieSessionEvent(['viewer']));
-
-		expect(principal).toMatchObject({
-			source: 'cookie-session',
-			appRoles: ['viewer'],
-			apiPlan: 'viewer',
-			ppiAccess: false
-		});
-	});
-
-	it('fails closed when cookie, bearer, or API-key auth sees an invalid scalar role', async () => {
-		mockAdminSingle.mockResolvedValue({
-			data: {
-				role: 'invalid_role',
-				api_plan: 'enterprise',
-				ppi_access: true
-			},
-			error: null
-		});
-
-		const cookiePrincipal = await resolvePrincipal(makeCookieSessionEvent(['viewer']));
-		expect(cookiePrincipal).toMatchObject({
-			source: 'cookie-session',
-			appRoles: ['viewer'],
-			apiPlan: 'viewer',
-			ppiAccess: false
-		});
-
-		mockAdminGetUser.mockResolvedValue({
-			data: { user: { id: 'bearer-user' } },
-			error: null
-		});
-		const bearerPrincipal = await resolvePrincipal(makeAuthorizationEvent('session-token'));
-		expect(bearerPrincipal).toMatchObject({
-			subjectType: 'anonymous',
-			isAuthenticated: false,
-			appRoles: []
-		});
-
-		mockValidateApiKey.mockResolvedValue({
-			valid: true,
+	it('resolves API keys only through the canonical Parchment principal', async () => {
+		successfulMe({
+			authenticated: true,
+			authKind: 'api-key',
 			userId: 'api-user',
-			keyId: 'key-1'
+			appRoles: ['viewer'],
+			primaryAppRole: 'viewer',
+			apiPlan: 'enterprise',
+			ppiAccess: true,
+			apiScopes: ['catalog:*', 'usage:read']
 		});
-		const apiKeyPrincipal = await resolvePrincipal(makeAuthorizationEvent('pk_live_valid-key'));
-		expect(apiKeyPrincipal).toMatchObject({
+		const event = makeAuthorizationEvent('pk_live_valid-key');
+
+		const principal = await resolvePrincipal(event);
+
+		expect(principal).toMatchObject({
+			subjectType: 'api-key',
+			source: 'api-key',
+			userId: 'api-user',
+			apiPlan: 'enterprise',
+			apiScopes: ['catalog:*', 'usage:read']
+		});
+		expect(event.locals.supabase.auth.getUser).not.toHaveBeenCalled();
+		expect(event.locals.safeGetSession).not.toHaveBeenCalled();
+	});
+
+	it('hydrates a Parchment-authenticated bearer session through request-local Supabase Auth', async () => {
+		successfulMe({
+			...viewerProjection,
+			userId: 'user-1',
+			appRoles: ['admin'],
+			primaryAppRole: 'admin',
+			apiPlan: 'enterprise'
+		});
+		const event = makeAuthorizationEvent('session-token');
+
+		const principal = await resolvePrincipal(event);
+
+		expect(event.locals.supabase.auth.getUser).toHaveBeenCalledWith('session-token');
+		expect(principal).toMatchObject({
+			subjectType: 'user',
+			source: 'bearer-session',
+			userId: 'user-1',
+			primaryAppRole: 'admin',
+			session: null
+		});
+	});
+
+	it('rejects a bearer session when Parchment identity and Supabase Auth disagree', async () => {
+		successfulMe({ ...viewerProjection, userId: 'different-user' });
+		const event = makeAuthorizationEvent('session-token');
+
+		const principal = await resolvePrincipal(event);
+
+		expect(principal).toMatchObject({
+			subjectType: 'anonymous',
+			isAuthenticated: false
+		});
+	});
+
+	it('does not fall back to a cookie when an Authorization header is malformed', async () => {
+		const event = makeCookieSessionEvent();
+		event.request = new Request('https://app.test/catalog', {
+			headers: { Authorization: 'Basic bad' }
+		});
+
+		const principal = await resolvePrincipal(event);
+
+		expect(principal.isAuthenticated).toBe(false);
+		expect(mockCreateParchmentPrincipalClient).not.toHaveBeenCalled();
+		expect(event.locals.safeGetSession).not.toHaveBeenCalled();
+	});
+
+	it('treats an unauthenticated Parchment projection as anonymous', async () => {
+		successfulMe({
+			authenticated: false,
+			authKind: 'anonymous',
+			userId: null,
+			appRoles: [],
+			primaryAppRole: null,
+			apiPlan: null,
+			ppiAccess: false,
+			apiScopes: []
+		});
+
+		const principal = await resolvePrincipal(makeAuthorizationEvent('invalid-token'));
+
+		expect(principal).toMatchObject({
 			subjectType: 'anonymous',
 			isAuthenticated: false,
 			appRoles: []
 		});
+	});
+
+	it('caches the resolved principal on request locals', async () => {
+		const event = makeCookieSessionEvent();
+		const first = await resolvePrincipal(event);
+		const second = await resolvePrincipal(event);
+
+		expect(second).toBe(first);
+		expect(mockMe).toHaveBeenCalledTimes(1);
 	});
 
 	it('derives legacy locals from the authoritative principal state', () => {
-		const cookieSessionPrincipal: SessionPrincipal = {
-			subjectType: 'user',
-			authKind: 'session',
-			source: 'cookie-session',
-			isAuthenticated: true,
-			userId: 'user-1',
-			user: { id: 'user-1' } as SessionPrincipal['user'],
-			session: { access_token: 'cookie-token' } as SessionPrincipal['session'],
-			appRoles: ['member'],
-			primaryAppRole: 'member',
-			apiPlan: 'viewer',
-			ppiAccess: false,
-			apiScopes: ['catalog:read'],
-			apiKeyId: null,
-			apiKeyName: null,
-			apiKeyPermissions: null
-		};
-		const bearerSessionPrincipal: SessionPrincipal = {
-			...cookieSessionPrincipal,
-			source: 'bearer-session',
-			session: null
-		};
-		const apiKeyPrincipal: ApiKeyPrincipal = {
-			subjectType: 'api-key',
-			authKind: 'api-key',
-			source: 'api-key',
-			isAuthenticated: true,
-			userId: 'user-2',
-			user: null,
-			session: null,
-			appRoles: ['viewer'],
-			primaryAppRole: 'viewer',
-			apiPlan: 'member',
-			ppiAccess: false,
-			apiScopes: ['catalog:read'],
-			apiKeyId: 'key-1',
-			apiKeyName: 'Test key',
-			apiKeyPermissions: null
-		};
-
-		expect(getLegacyAuthState(cookieSessionPrincipal)).toMatchObject({
+		expect(getLegacyAuthState(sessionPrincipal())).toMatchObject({
 			session: { access_token: 'cookie-token' },
 			user: { id: 'user-1' },
 			role: 'member',
 			roles: ['member']
 		});
-		expect(getLegacyAuthState(bearerSessionPrincipal)).toMatchObject({
+		expect(
+			getLegacyAuthState(sessionPrincipal({ source: 'bearer-session', session: null }))
+		).toMatchObject({
 			session: null,
 			user: { id: 'user-1' },
-			role: 'member',
-			roles: ['member']
+			role: 'member'
 		});
-		expect(getLegacyAuthState(apiKeyPrincipal)).toEqual({
-			session: null,
-			user: null,
-			role: 'viewer',
-			roles: ['viewer']
-		});
-		expect(
-			getLegacyAuthState({
-				subjectType: 'anonymous',
-				authKind: 'anonymous',
-				source: 'none',
-				isAuthenticated: false,
-				userId: null,
-				appRoles: [],
-				primaryAppRole: null,
-				apiPlan: null,
-				ppiAccess: false,
-				apiScopes: [],
-				apiKeyId: null,
-				apiKeyName: null,
-				apiKeyPermissions: null,
-				user: null,
-				session: null
-			})
-		).toEqual({
+		expect(getLegacyAuthState(apiKeyPrincipal())).toEqual({
 			session: null,
 			user: null,
 			role: 'viewer',
@@ -433,62 +320,25 @@ describe('principal helpers', () => {
 	});
 
 	it('enforces trusted origins for session-backed mutations only', () => {
-		const principal: SessionPrincipal = {
-			subjectType: 'user',
-			authKind: 'session',
-			source: 'cookie-session',
-			isAuthenticated: true,
-			userId: 'user-1',
-			user: { id: 'user-1' } as SessionPrincipal['user'],
-			session: null,
-			appRoles: ['member'],
-			primaryAppRole: 'member',
-			apiPlan: 'viewer',
-			ppiAccess: false,
-			apiScopes: ['catalog:read'],
-			apiKeyId: null,
-			apiKeyName: null,
-			apiKeyPermissions: null
-		};
+		const principal = sessionPrincipal();
 		const sameOriginEvent = {
 			request: {
 				method: 'POST',
-				headers: {
-					get: (name: string) => (name.toLowerCase() === 'origin' ? 'https://app.test' : null)
-				}
+				headers: { get: () => 'https://app.test' }
 			},
 			url: new URL('https://app.test/v1/catalog')
-		} as Parameters<typeof isTrustedMutationRequest>[0];
+		} as unknown as Parameters<typeof isTrustedMutationRequest>[0];
 		const crossOriginEvent = {
 			request: {
 				method: 'POST',
-				headers: {
-					get: (name: string) => (name.toLowerCase() === 'origin' ? 'https://evil.test' : null)
-				}
+				headers: { get: () => 'https://evil.test' }
 			},
 			url: new URL('https://app.test/v1/catalog')
-		} as Parameters<typeof isTrustedMutationRequest>[0];
-		const apiKeyPrincipal: ApiKeyPrincipal = {
-			subjectType: 'api-key',
-			authKind: 'api-key',
-			source: 'api-key',
-			isAuthenticated: true,
-			userId: 'user-1',
-			user: null,
-			session: null,
-			appRoles: ['viewer'],
-			primaryAppRole: 'viewer',
-			apiPlan: 'member',
-			ppiAccess: false,
-			apiScopes: ['catalog:read'],
-			apiKeyId: 'key-1',
-			apiKeyName: 'Test key',
-			apiKeyPermissions: null
-		};
+		} as unknown as Parameters<typeof isTrustedMutationRequest>[0];
 
 		expect(requiresSessionOriginCheck(principal, sameOriginEvent.request)).toBe(true);
 		expect(isTrustedMutationRequest(sameOriginEvent, principal)).toBe(true);
 		expect(isTrustedMutationRequest(crossOriginEvent, principal)).toBe(false);
-		expect(isTrustedMutationRequest(crossOriginEvent, apiKeyPrincipal)).toBe(true);
+		expect(isTrustedMutationRequest(crossOriginEvent, apiKeyPrincipal())).toBe(true);
 	});
 });

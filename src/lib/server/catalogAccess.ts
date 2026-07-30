@@ -1,6 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
-import type { ApiPlan } from '$lib/server/apiAuth';
-import type { RequestPrincipal } from '$lib/server/principal';
+import type { ApiPlan, RequestPrincipal } from '$lib/server/principal';
 import { checkRole, type UserRole } from '$lib/types/auth.types';
 import { PREMIUM_DISCOVERY_FILTER_KEYS } from '$lib/catalog/accessPolicy';
 
@@ -71,7 +70,7 @@ function resolveSubject(input: CatalogAccessInput): {
 	if (input.principal) {
 		return {
 			isAuthenticated: input.principal.isAuthenticated,
-			isApiKey: input.principal.authKind === 'api-key' || Boolean(input.principal.apiKeyId),
+			isApiKey: input.principal.authKind === 'api-key',
 			role: input.principal.primaryAppRole,
 			apiPlan: input.principal.apiPlan
 		};

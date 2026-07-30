@@ -1,7 +1,7 @@
 # Coffee-app architecture and migration boundary
 
 **Status:** Current implementation truth
-**Last verified:** 2026-07-26
+**Last verified:** 2026-07-30
 
 This document describes what coffee-app does today. `notes/PRODUCT_VISION.md`
 defines product direction, ADRs preserve decisions, and `notes/DEVLOG.md` owns
@@ -44,12 +44,11 @@ Two distinct auth responsibilities are intentionally composed:
    canonical principal, and enforces roles, plans, scopes, ownership, and product
    entitlements at the data source.
 
-The current coffee-app implementation still duplicates parts of the second
-responsibility through admin-client JWT validation, local API-key validation,
-and direct `user_roles` or entitlement reads. Those paths are migration debt,
-not part of the retained Supabase Auth boundary. The target BFF keeps only the
-Supabase browser session client, forwards its JWT to Parchment, and consumes a
-Parchment self/principal contract for route UX and presentation decisions.
+Coffee-app keeps only the Supabase browser session client, forwards its JWT to
+Parchment, and consumes `GET /v1/me` through `@purveyors/sdk` for canonical
+request-principal, role, plan, scope, and entitlement decisions. The projection
+is cached on request locals. Invalid credentials resolve anonymously; an
+upstream principal-resolution failure is not downgraded to viewer access.
 
 The canonical external API reference is
 <https://api.purveyors.io/docs>. Product and CLI guidance lives at
@@ -104,13 +103,12 @@ replacement or retirement:
 - bean-identity candidate and review operations over shared identity tables
 - sourcing brief summaries against shared catalog rows
 - legacy catalog RAG reads and `match_coffee_chunks`
-- local API-key validation where the Parchment control plane should be
-  authoritative
-- admin-client JWT validation, direct `user_roles`/entitlement reads, and local
-  principal construction that duplicate Parchment API authentication and
-  authorization
 - inventory, roast, sales, and tasting data helpers that still write Supabase
   directly even though equivalent account-linked Parchment contracts now exist
+
+The legacy shared-bean route still reads the share owner's scalar role. That is
+an intentional cross-principal exception until Parchment exposes a share-grant
+projection; it is not used to authorize the current request principal.
 
 The existence of a Parchment endpoint does not prove coffee-app has migrated to
 it. The canonical backlog tracks this as the headless-cutover debt audit. Each

@@ -1,26 +1,19 @@
-import { API_KEY_PREFIX, validateApiKey, type ApiPlan } from '$lib/server/apiAuth';
-import { createAdminClient } from '$lib/supabase-admin';
+import { createParchmentPrincipalClient } from '$lib/server/parchmentClient';
 import { checkRole, type UserRole } from '$lib/types/auth.types';
-import type { Database, Json } from '$lib/types/database.types';
 import type { RequestEvent } from '@sveltejs/kit';
-import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
+import type { Session, User } from '@supabase/supabase-js';
 
-const adminSupabase = createAdminClient() as SupabaseClient<Database>;
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 // App role priority — only clean app roles; pseudo-roles are gone.
 const USER_ROLE_PRIORITY: UserRole[] = ['admin', 'member', 'viewer'];
 
+export type ApiPlan = 'viewer' | 'member' | 'enterprise';
+
 const API_PLAN_HIERARCHY: Record<ApiPlan, number> = {
 	viewer: 0,
 	member: 1,
 	enterprise: 2
-};
-
-const DEFAULT_API_SCOPES_BY_PLAN: Record<ApiPlan, string[]> = {
-	viewer: ['catalog:read'],
-	member: ['catalog:read'],
-	enterprise: ['catalog:read']
 };
 
 export interface SessionContext {
@@ -41,9 +34,6 @@ interface PrincipalBase {
 	apiPlan: ApiPlan | null;
 	ppiAccess: boolean;
 	apiScopes: string[];
-	apiKeyId: string | null;
-	apiKeyName: string | null;
-	apiKeyPermissions: Json | null;
 }
 
 export interface AnonymousPrincipal extends PrincipalBase {
@@ -57,9 +47,6 @@ export interface AnonymousPrincipal extends PrincipalBase {
 	apiPlan: null;
 	ppiAccess: false;
 	apiScopes: [];
-	apiKeyId: null;
-	apiKeyName: null;
-	apiKeyPermissions: null;
 	user: null;
 	session: null;
 }
@@ -77,9 +64,6 @@ export interface SessionPrincipal extends PrincipalBase {
 	apiPlan: ApiPlan;
 	ppiAccess: boolean;
 	apiScopes: string[];
-	apiKeyId: null;
-	apiKeyName: null;
-	apiKeyPermissions: null;
 }
 
 export interface ApiKeyPrincipal extends PrincipalBase {
@@ -95,31 +79,20 @@ export interface ApiKeyPrincipal extends PrincipalBase {
 	apiPlan: ApiPlan;
 	ppiAccess: boolean;
 	apiScopes: string[];
-	apiKeyId: string;
-	apiKeyName: string | null;
-	apiKeyPermissions: Json | null;
 }
 
 export type AuthenticatedPrincipal = SessionPrincipal | ApiKeyPrincipal;
 export type RequestPrincipal = AnonymousPrincipal | AuthenticatedPrincipal;
 
-function uniqueStrings(values: string[]): string[] {
-	return Array.from(new Set(values.filter(Boolean)));
-}
-
-function normalizeScopeValue(value: unknown): string[] {
-	if (typeof value === 'string') {
-		return value
-			.split(/[\s,]+/)
-			.map((scope) => scope.trim())
-			.filter(Boolean);
+export class PrincipalResolutionError extends Error {
+	constructor(
+		message: string,
+		public status?: number,
+		options?: ErrorOptions
+	) {
+		super(message, options);
+		this.name = 'PrincipalResolutionError';
 	}
-
-	if (!Array.isArray(value)) {
-		return [];
-	}
-
-	return value.filter((scope): scope is string => typeof scope === 'string' && scope.length > 0);
 }
 
 function normalizeScalarUserRole(role: unknown): UserRole | null {
@@ -130,79 +103,23 @@ function normalizeScalarUserRole(role: unknown): UserRole | null {
 	return null;
 }
 
-interface UserEntitlements {
+interface CanonicalPrincipal {
+	authenticated: boolean;
+	authKind: 'anonymous' | 'session' | 'api-key';
+	userId: string | null;
 	roles: UserRole[];
-	apiPlan: ApiPlan;
+	primaryRole: UserRole | null;
+	apiPlan: ApiPlan | null;
 	ppiAccess: boolean;
+	apiScopes: string[];
 }
 
-function normalizeApiPlan(plan: unknown, role: UserRole): ApiPlan {
+function normalizeApiPlan(plan: unknown, role: UserRole | null): ApiPlan {
 	if (plan === 'viewer' || plan === 'member' || plan === 'enterprise') {
 		return plan;
 	}
 
 	return role === 'admin' ? 'enterprise' : 'viewer';
-}
-
-function logEntitlementReadFailure(
-	reason: 'query_error' | 'missing_row' | 'invalid_role',
-	errorCode?: string
-): void {
-	const message = JSON.stringify({
-		event: 'entitlement_read_failed',
-		reason,
-		...(errorCode ? { errorCode } : {})
-	});
-
-	if (reason === 'query_error') {
-		console.error(message);
-	} else {
-		console.warn(message);
-	}
-}
-
-async function getUserEntitlements(
-	supabase: SupabaseClient<Database>,
-	userId: string
-): Promise<UserEntitlements | null> {
-	const { data, error } = await supabase
-		.from('user_roles')
-		.select('role, api_plan, ppi_access')
-		.eq('id', userId)
-		.single();
-
-	if (error) {
-		logEntitlementReadFailure(
-			error.code === 'PGRST116' ? 'missing_row' : 'query_error',
-			error.code
-		);
-		return null;
-	}
-
-	if (!data) {
-		logEntitlementReadFailure('missing_row');
-		return null;
-	}
-
-	const role = normalizeScalarUserRole(data.role);
-	if (!role) {
-		logEntitlementReadFailure('invalid_role');
-		return null;
-	}
-
-	return {
-		roles: [role],
-		apiPlan: normalizeApiPlan(data.api_plan, role),
-		ppiAccess: data.ppi_access === true
-	};
-}
-
-export async function getUserRoles(
-	supabase: SupabaseClient<Database>,
-	userId: string
-): Promise<UserRole[]> {
-	const entitlements = await getUserEntitlements(supabase, userId);
-	return entitlements?.roles ?? ['viewer'];
 }
 
 export function getPrimaryUserRole(roles: UserRole[]): UserRole {
@@ -213,22 +130,6 @@ export function getPrimaryUserRole(roles: UserRole[]): UserRole {
 	}
 
 	return 'viewer';
-}
-
-export function normalizeApiScopes(permissions: Json | null | undefined): string[] {
-	if (!permissions || Array.isArray(permissions) || typeof permissions !== 'object') {
-		return normalizeScopeValue(permissions);
-	}
-
-	const record = permissions as Record<string, Json | undefined>;
-	return uniqueStrings([
-		...normalizeScopeValue(record.scope),
-		...normalizeScopeValue(record.scopes)
-	]);
-}
-
-function mergeApiScopes(plan: ApiPlan, permissions: Json | null | undefined): string[] {
-	return uniqueStrings([...DEFAULT_API_SCOPES_BY_PLAN[plan], ...normalizeApiScopes(permissions)]);
 }
 
 function createAnonymousPrincipal(): AnonymousPrincipal {
@@ -243,9 +144,6 @@ function createAnonymousPrincipal(): AnonymousPrincipal {
 		apiPlan: null,
 		ppiAccess: false,
 		apiScopes: [],
-		apiKeyId: null,
-		apiKeyName: null,
-		apiKeyPermissions: null,
 		user: null,
 		session: null
 	};
@@ -255,9 +153,9 @@ function createSessionPrincipal(input: {
 	source: SessionPrincipal['source'];
 	session: Session | null;
 	user: User;
-	entitlements: UserEntitlements;
+	canonical: CanonicalPrincipal;
 }): SessionPrincipal {
-	const { roles, apiPlan, ppiAccess } = input.entitlements;
+	const primaryRole = input.canonical.primaryRole ?? 'viewer';
 
 	return {
 		subjectType: 'user',
@@ -267,25 +165,19 @@ function createSessionPrincipal(input: {
 		userId: input.user.id,
 		user: input.user,
 		session: input.session,
-		appRoles: roles,
-		primaryAppRole: getPrimaryUserRole(roles),
-		apiPlan,
-		ppiAccess,
-		apiScopes: mergeApiScopes(apiPlan, null),
-		apiKeyId: null,
-		apiKeyName: null,
-		apiKeyPermissions: null
+		appRoles: input.canonical.roles.length > 0 ? input.canonical.roles : [primaryRole],
+		primaryAppRole: primaryRole,
+		apiPlan: input.canonical.apiPlan ?? normalizeApiPlan(null, primaryRole),
+		ppiAccess: input.canonical.ppiAccess,
+		apiScopes: input.canonical.apiScopes
 	};
 }
 
 function createApiKeyPrincipal(input: {
+	canonical: CanonicalPrincipal;
 	userId: string;
-	apiKeyId: string;
-	apiKeyName?: string;
-	apiKeyPermissions?: Json | null;
-	entitlements: UserEntitlements;
 }): ApiKeyPrincipal {
-	const { roles, apiPlan, ppiAccess } = input.entitlements;
+	const primaryRole = input.canonical.primaryRole ?? 'viewer';
 
 	return {
 		subjectType: 'api-key',
@@ -295,14 +187,11 @@ function createApiKeyPrincipal(input: {
 		userId: input.userId,
 		user: null,
 		session: null,
-		appRoles: roles,
-		primaryAppRole: getPrimaryUserRole(roles),
-		apiPlan,
-		ppiAccess,
-		apiScopes: mergeApiScopes(apiPlan, input.apiKeyPermissions),
-		apiKeyId: input.apiKeyId,
-		apiKeyName: input.apiKeyName ?? null,
-		apiKeyPermissions: input.apiKeyPermissions ?? null
+		appRoles: input.canonical.roles.length > 0 ? input.canonical.roles : [primaryRole],
+		primaryAppRole: primaryRole,
+		apiPlan: input.canonical.apiPlan ?? normalizeApiPlan(null, primaryRole),
+		ppiAccess: input.canonical.ppiAccess,
+		apiScopes: input.canonical.apiScopes
 	};
 }
 
@@ -344,52 +233,60 @@ function getBearerToken(request: Request): string | null {
 	return token.length > 0 ? token : null;
 }
 
-async function resolveBearerSessionPrincipal(token: string): Promise<SessionPrincipal | null> {
+async function hydrateBearerUser(event: RequestEvent, token: string): Promise<User | null> {
 	const {
 		data: { user },
 		error
-	} = await adminSupabase.auth.getUser(token);
-
-	if (error || !user) {
-		return null;
-	}
-
-	const entitlements = await getUserEntitlements(adminSupabase, user.id);
-	if (!entitlements) {
-		return null;
-	}
-
-	return createSessionPrincipal({
-		source: 'bearer-session',
-		session: null,
-		user,
-		entitlements
-	});
+	} = await event.locals.supabase.auth.getUser(token);
+	return error ? null : user;
 }
 
-async function resolveApiKeyPrincipal(apiKey: string): Promise<ApiKeyPrincipal | null> {
-	if (!apiKey.startsWith(API_KEY_PREFIX)) {
-		return null;
+async function resolveCanonicalPrincipal(
+	event: RequestEvent,
+	token: string
+): Promise<CanonicalPrincipal> {
+	try {
+		const client = createParchmentPrincipalClient(event, token);
+		const { data, error, response } = await client.me();
+		if (error || !response.ok || !data) {
+			throw new PrincipalResolutionError(
+				`Parchment principal resolution failed with status ${response.status}`,
+				response.status
+			);
+		}
+
+		const roles = data.appRoles
+			.map(normalizeScalarUserRole)
+			.filter((role): role is UserRole => role !== null);
+		const primaryRole = normalizeScalarUserRole(data.primaryAppRole);
+
+		return {
+			authenticated: data.authenticated,
+			authKind: data.authKind,
+			userId: data.userId,
+			roles,
+			primaryRole,
+			apiPlan: data.apiPlan,
+			ppiAccess: data.ppiAccess,
+			apiScopes: data.apiScopes
+		};
+	} catch (error) {
+		console.error(
+			JSON.stringify({
+				event: 'parchment_principal_resolution_failed',
+				reason: error instanceof Error ? error.name : 'unknown',
+				...(error instanceof PrincipalResolutionError && error.status
+					? { status: error.status }
+					: {})
+			})
+		);
+		if (error instanceof PrincipalResolutionError) {
+			throw error;
+		}
+		throw new PrincipalResolutionError('Parchment principal resolution failed', undefined, {
+			cause: error
+		});
 	}
-
-	const validation = await validateApiKey(apiKey);
-
-	if (!validation.valid || !validation.userId || !validation.keyId) {
-		return null;
-	}
-
-	const entitlements = await getUserEntitlements(adminSupabase, validation.userId);
-	if (!entitlements) {
-		return null;
-	}
-
-	return createApiKeyPrincipal({
-		userId: validation.userId,
-		apiKeyId: validation.keyId,
-		apiKeyName: validation.keyName,
-		apiKeyPermissions: validation.permissions,
-		entitlements
-	});
 }
 
 export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrincipal> {
@@ -399,34 +296,62 @@ export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrin
 
 	const authorizationHeader = event.request.headers.get('Authorization');
 	if (authorizationHeader !== null) {
-		const bearerToken = getBearerToken(event.request);
-		if (!bearerToken) {
+		const token = getBearerToken(event.request);
+		if (!token) {
 			event.locals.principal = createAnonymousPrincipal();
 			return event.locals.principal;
 		}
 
-		const bearerPrincipal = bearerToken.startsWith(API_KEY_PREFIX)
-			? await resolveApiKeyPrincipal(bearerToken)
-			: await resolveBearerSessionPrincipal(bearerToken);
+		const canonical = await resolveCanonicalPrincipal(event, token);
+		if (!canonical.authenticated || !canonical.userId) {
+			event.locals.principal = createAnonymousPrincipal();
+			return event.locals.principal;
+		}
 
-		event.locals.principal = bearerPrincipal ?? createAnonymousPrincipal();
+		if (canonical.authKind === 'api-key') {
+			event.locals.principal = createApiKeyPrincipal({
+				canonical,
+				userId: canonical.userId
+			});
+			return event.locals.principal;
+		}
+
+		if (canonical.authKind !== 'session') {
+			event.locals.principal = createAnonymousPrincipal();
+			return event.locals.principal;
+		}
+
+		const user = await hydrateBearerUser(event, token);
+		event.locals.principal =
+			user && user.id === canonical.userId
+				? createSessionPrincipal({
+						source: 'bearer-session',
+						session: null,
+						user,
+						canonical
+					})
+				: createAnonymousPrincipal();
 		return event.locals.principal;
 	}
 
 	const sessionContext = await event.locals.safeGetSession();
 	if (sessionContext.session && sessionContext.user) {
-		const explicitEntitlements = await getUserEntitlements(adminSupabase, sessionContext.user.id);
-		const entitlements: UserEntitlements = explicitEntitlements ?? {
-			roles: sessionContext.roles,
-			apiPlan: 'viewer',
-			ppiAccess: false
-		};
+		const canonical = await resolveCanonicalPrincipal(event, sessionContext.session.access_token);
+
+		if (
+			!canonical.authenticated ||
+			canonical.authKind !== 'session' ||
+			canonical.userId !== sessionContext.user.id
+		) {
+			event.locals.principal = createAnonymousPrincipal();
+			return event.locals.principal;
+		}
 
 		event.locals.principal = createSessionPrincipal({
 			source: 'cookie-session',
 			session: sessionContext.session,
 			user: sessionContext.user,
-			entitlements
+			canonical
 		});
 		return event.locals.principal;
 	}

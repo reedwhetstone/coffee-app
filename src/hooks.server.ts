@@ -4,13 +4,7 @@ import type { Database } from '$lib/types/database.types';
 import { type Handle, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { requireRole } from '$lib/server/auth';
-import {
-	getLegacyAuthState,
-	getPrimaryUserRole,
-	getUserRoles,
-	resolvePrincipal,
-	type SessionContext
-} from '$lib/server/principal';
+import { getLegacyAuthState, resolvePrincipal, type SessionContext } from '$lib/server/principal';
 import type { CookieSerializeOptions } from 'cookie';
 
 const handleStripeRedirects: Handle = async ({ event, resolve }) => {
@@ -42,51 +36,47 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		}
 	) as unknown as App.Locals['supabase'];
 
-	let sessionContextPromise: Promise<SessionContext> | null = null;
+	let identityPromise: Promise<Pick<SessionContext, 'session' | 'user'>> | null = null;
 	event.locals.safeGetSession = async () => {
-		if (sessionContextPromise) {
-			return sessionContextPromise;
+		if (!identityPromise) {
+			identityPromise = (async () => {
+				const {
+					data: { session }
+				} = await event.locals.supabase.auth.getSession();
+
+				if (!session) {
+					return {
+						session: null,
+						user: null
+					};
+				}
+
+				const {
+					data: { user },
+					error: userError
+				} = await event.locals.supabase.auth.getUser();
+
+				return userError || !user
+					? {
+							session: null,
+							user: null
+						}
+					: { session, user };
+			})();
 		}
 
-		sessionContextPromise = (async () => {
-			const {
-				data: { session }
-			} = await event.locals.supabase.auth.getSession();
+		const identity = await identityPromise;
+		const principal = event.locals.principal;
+		const roles =
+			principal?.authKind === 'session' && principal.isAuthenticated
+				? principal.appRoles
+				: (['viewer'] as const);
+		const role =
+			principal?.authKind === 'session' && principal.isAuthenticated
+				? principal.primaryAppRole
+				: 'viewer';
 
-			if (!session) {
-				return {
-					session: null,
-					user: null,
-					role: 'viewer' as const,
-					roles: ['viewer']
-				};
-			}
-
-			const {
-				data: { user },
-				error: userError
-			} = await event.locals.supabase.auth.getUser();
-
-			if (userError || !user) {
-				return {
-					session: null,
-					user: null,
-					role: 'viewer' as const,
-					roles: ['viewer']
-				};
-			}
-
-			const roles = await getUserRoles(event.locals.supabase, user.id);
-
-			return {
-				session,
-				user,
-				role: getPrimaryUserRole(roles),
-				roles
-			};
-		})();
-
-		return sessionContextPromise;
+		return { ...identity, role, roles: [...roles] };
 	};
 
 	// Resolve the normalized principal first, then derive legacy locals from that
