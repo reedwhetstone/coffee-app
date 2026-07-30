@@ -34,7 +34,6 @@
 	import ValueSignalsSection from '$lib/components/analytics/sections/ValueSignalsSection.svelte';
 	import MetadataTrendsSection from '$lib/components/analytics/sections/MetadataTrendsSection.svelte';
 	import AnalyticsPageSkeleton from '$lib/components/analytics/AnalyticsPageSkeleton.svelte';
-	import { getAnalyticsSectionLinks } from '$lib/components/layout/appNavigation';
 	import type { MarketIndexInsights } from '$lib/types/marketIndex.types';
 
 	let { data } = $props<{ data: PageData }>();
@@ -200,10 +199,6 @@
 	let supplierHealth = $derived(memberData?.supplierHealth ?? []);
 	let trackedLots = $derived(memberData?.trackedLots ?? []);
 	let isAnonymous = $derived(!session);
-	let visibleAnalyticsSectionLinks = $derived(
-		getAnalyticsSectionLinks({ includeDisclosureIndex: !isAnonymous })
-	);
-
 	// ── Snapshot filtering (scope lens) ──────────────────────────────────────
 
 	let filteredSnapshots = $derived.by(() => {
@@ -1087,36 +1082,11 @@
 	onWindowModeChange={(v) => (windowMode = v)}
 />
 
-<nav
-	class="sticky top-16 z-20 mb-6 hidden overflow-x-auto border-y border-line bg-surface-canvas/95 py-2 backdrop-blur md:block"
-	aria-label="Market Index sections"
->
-	<div class="flex min-w-max items-center gap-2">
-		{#each visibleAnalyticsSectionLinks as link}
-			<a
-				href={link.href}
-				class="rounded-full border border-line bg-surface-panel px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-ink"
-			>
-				{link.label}
-			</a>
-		{/each}
-		{#if canAskWithAnalyticsContext && askActionHref}
-			<a
-				href={askActionHref}
-				class="rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-ink transition-colors hover:bg-accent/85"
-			>
-				{askActionLabel}
-			</a>
-		{/if}
-	</div>
-</nav>
-
 {#if canAskWithAnalyticsContext && askActionHref}
-	<div class="mb-6 md:hidden">
+	<div class="mb-6 flex md:justify-end">
 		<a
 			href={askActionHref}
-			aria-label={`${askActionLabel} from Market Index summary`}
-			class="flex w-full items-center justify-center rounded-md bg-accent px-4 py-3 text-sm font-semibold text-ink shadow-sm transition-colors hover:bg-accent/85"
+			class="flex w-full items-center justify-center rounded-md bg-accent px-4 py-3 text-sm font-semibold text-ink shadow-sm transition-colors hover:bg-accent/85 md:w-auto"
 		>
 			{askActionLabel}
 		</a>

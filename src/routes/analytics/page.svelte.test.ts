@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/svelte';
+import { render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import AnalyticsPage from './+page.svelte';
@@ -691,41 +691,20 @@ describe('analytics command center hierarchy', () => {
 
 		const marketRead = container.querySelector('[aria-labelledby="market-read-heading"]');
 		const scopeControls = container.querySelector('[aria-label="Scope controls"]');
-		const sectionNav = container.querySelector('[aria-label="Market Index sections"]');
 		const kpiStrip = container.querySelector('[aria-label="Market KPI strip"]');
 		const insightCards = container.querySelector('[aria-label="Market insight cards"]');
 		const evidenceCharts = container.querySelector('[aria-label="Evidence charts"]');
 
 		expect(marketRead).toBeTruthy();
 		expect(scopeControls).toBeTruthy();
-		expect(sectionNav).toBeTruthy();
 		expect(kpiStrip).toBeTruthy();
 		expect(insightCards).toBeTruthy();
 		expect(evidenceCharts).toBeTruthy();
-		expect(screen.getByRole('link', { name: 'Read' })).toHaveAttribute('href', '#market-read');
-		expect(screen.getByRole('link', { name: 'Signals' })).toHaveAttribute('href', '#today-signals');
-		expect(screen.getByRole('link', { name: 'Market Index' })).toHaveAttribute(
-			'href',
-			'#market-index'
-		);
-		expect(screen.queryByRole('link', { name: 'Disclosure Index' })).toBeNull();
-
-		const sectionLinks = within(sectionNav as HTMLElement)
-			.getAllByRole('link')
-			.map((link) => link.getAttribute('href'))
-			.filter((href): href is string => Boolean(href?.startsWith('#')));
-		for (const href of sectionLinks) {
-			expect(container.querySelector(href)).toBeTruthy();
-		}
-
 		expect(
 			marketRead!.compareDocumentPosition(scopeControls!) & Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 		expect(
-			scopeControls!.compareDocumentPosition(sectionNav!) & Node.DOCUMENT_POSITION_FOLLOWING
-		).toBeTruthy();
-		expect(
-			sectionNav!.compareDocumentPosition(kpiStrip!) & Node.DOCUMENT_POSITION_FOLLOWING
+			scopeControls!.compareDocumentPosition(kpiStrip!) & Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
 		expect(
 			kpiStrip!.compareDocumentPosition(insightCards!) & Node.DOCUMENT_POSITION_FOLLOWING
@@ -1006,14 +985,14 @@ describe('analytics command center hierarchy', () => {
 });
 
 describe('analytics section navigator', () => {
-	it('keeps section jumps and chat passthrough compact in the sticky navigator', async () => {
+	it('keeps page-local section navigation out of the report body', async () => {
 		render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
 		});
 
-		expect(screen.getByRole('navigation', { name: 'Market Index sections' })).toBeTruthy();
+		expect(screen.queryByRole('navigation', { name: 'Market Index sections' })).toBeNull();
 		expect(screen.queryByRole('link', { name: 'Sign in to ask' })).toBeNull();
 		expect(screen.queryByText(/opens with your current scope and movement window/i)).toBeNull();
 		expect(screen.queryByText('Open catalog evidence')).toBeNull();
