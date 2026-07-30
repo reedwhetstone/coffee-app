@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { cookieSessionPrincipal } from '$lib/server/principal.test-utils';
+import type { UserRole } from '$lib/types/auth.types';
 
 const mockCatalogList = vi.fn();
 const mockBriefsList = vi.fn();
@@ -39,9 +41,12 @@ function makeLoadInput(input: {
 	return {
 		locals: {
 			supabase: {},
-			role: input.role,
-			session: input.principal ? { access_token: 'token' } : null,
 			principal: input.principal
+				? cookieSessionPrincipal(input.role as UserRole, {
+						userId: input.principal.userId,
+						ppiAccess: input.principal.ppiAccess
+					})
+				: null
 		}
 	} as unknown as Parameters<typeof load>[0];
 }

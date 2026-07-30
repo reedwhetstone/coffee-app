@@ -3,12 +3,11 @@ import { createServerClient } from '@supabase/ssr';
 import type { Database } from '$lib/types/database.types';
 import { type Handle, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
-import { requireRole } from '$lib/server/auth';
 import {
-	getLegacyAuthState,
-	isSessionPrincipal,
+	isCookieSessionPrincipal,
+	principalHasRole,
 	resolvePrincipal,
-	type SessionContext
+	type SessionIdentity
 } from '$lib/server/principal';
 import type { CookieSerializeOptions } from 'cookie';
 
@@ -41,7 +40,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		}
 	) as unknown as App.Locals['supabase'];
 
-	let identityPromise: Promise<Pick<SessionContext, 'session' | 'user'>> | null = null;
+	let identityPromise: Promise<SessionIdentity> | null = null;
 	event.locals.safeGetIdentity = async () => {
 		if (!identityPromise) {
 			identityPromise = (async () => {
@@ -73,45 +72,8 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		return identityPromise;
 	};
 
-	event.locals.safeGetSession = async () => {
-		const principal = await resolvePrincipal(event);
-		if (
-			isSessionPrincipal(principal) &&
-			principal.source === 'cookie-session' &&
-			principal.session
-		) {
-			return {
-				session: principal.session,
-				user: principal.user,
-				role: principal.primaryAppRole,
-				roles: [...principal.appRoles]
-			};
-		}
-
-		return {
-			session: null,
-			user: null,
-			role: 'viewer',
-			roles: ['viewer']
-		};
-	};
-
-	// Resolve the normalized principal first, then derive legacy locals from that
-	// authoritative auth state so bearer/API-key requests cannot diverge from
-	// event.locals.session/user/role.
 	const principal = await resolvePrincipal(event);
-	const legacyAuthState = getLegacyAuthState(principal);
-
 	event.locals.principal = principal;
-	event.locals.session = legacyAuthState.session;
-	event.locals.user = legacyAuthState.user;
-	event.locals.role = legacyAuthState.role;
-	event.locals.data = {
-		session: event.locals.session,
-		user: event.locals.user,
-		role: event.locals.role,
-		ppiAccess: principal.isAuthenticated ? principal.ppiAccess === true : false
-	};
 
 	return resolve(event, {
 		filterSerializedResponseHeaders(name) {
@@ -135,43 +97,42 @@ const authGuard: Handle = async ({ event, resolve }) => {
 		throw redirect(307, '/docs/api/overview');
 	}
 
-	const session = event.locals.session;
+	const principal = event.locals.principal;
+	const hasBrowserSession = isCookieSessionPrincipal(principal);
 
-	if (requiresDashboardAccess && !session) {
+	if (requiresDashboardAccess && !hasBrowserSession) {
 		throw redirect(303, '/auth');
 	}
 
 	if (requiresProtection) {
-		if (!session) {
+		if (!hasBrowserSession) {
 			throw redirect(303, '/catalog');
 		}
 
 		const isChatRoute = currentPath.startsWith('/chat');
 		const isPortfolioRoute = currentPath.startsWith('/beans');
-		const hasParchmentAccess =
-			(event.locals.principal?.isAuthenticated === true && event.locals.principal.ppiAccess) ||
-			requireRole(event.locals.role, 'member');
+		const hasParchmentAccess = principal.ppiAccess || principalHasRole(principal, 'member');
 
 		if (isChatRoute || isPortfolioRoute) {
 			if (!hasParchmentAccess) {
 				throw redirect(303, '/dashboard');
 			}
-		} else if (!requireRole(event.locals.role, 'member')) {
+		} else if (!principalHasRole(principal, 'member')) {
 			throw redirect(303, '/dashboard');
 		}
 	}
 
 	if (requiresAdminAccess) {
-		if (!session) {
+		if (!hasBrowserSession) {
 			throw redirect(303, '/catalog');
 		}
 
-		if (!requireRole(event.locals.role, 'admin')) {
+		if (!principalHasRole(principal, 'admin')) {
 			throw redirect(303, '/dashboard');
 		}
 	}
 
-	if (requiresApiAccess && !session) {
+	if (requiresApiAccess && !hasBrowserSession) {
 		throw redirect(303, '/catalog');
 	}
 

@@ -6,7 +6,7 @@ import { fetchParchmentCatalogItemsByIds } from '$lib/server/parchmentCatalog';
 
 export const load: PageServerLoad = async (event) => {
 	const { locals } = event;
-	const { user, role } = getPageAuthState(locals);
+	const { user, role } = getPageAuthState(locals.principal);
 	const ppiAccess =
 		locals.principal?.isAuthenticated === true ? locals.principal.ppiAccess === true : false;
 	const isMember = role === 'member' || role === 'admin';

@@ -8,6 +8,7 @@ import {
 	rememberCliRequest
 } from '$lib/server/cliAuthConsent';
 import type { PageServerLoad } from './$types';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 
 type InspectFailure = {
 	title: string;
@@ -71,8 +72,7 @@ export const load: PageServerLoad = async (event) => {
 			};
 		}
 
-		const { session, user } = await event.locals.safeGetSession();
-		if (!session || !user) {
+		if (!isCookieSessionPrincipal(event.locals.principal)) {
 			rememberCliRequest(event, requestToken);
 			throw redirect(303, cliAuthRedirectLocation());
 		}

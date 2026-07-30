@@ -9,7 +9,6 @@ vi.mock('$lib/server/parchmentClient', () => ({
 }));
 
 const {
-	getLegacyAuthState,
 	getPrimaryUserRole,
 	isTrustedMutationRequest,
 	principalHasApiPlan,
@@ -343,28 +342,6 @@ describe('principal helpers', () => {
 
 		expect(second).toBe(first);
 		expect(mockMe).toHaveBeenCalledTimes(1);
-	});
-
-	it('derives legacy locals from the authoritative principal state', () => {
-		expect(getLegacyAuthState(sessionPrincipal())).toMatchObject({
-			session: { access_token: 'cookie-token' },
-			user: { id: 'user-1' },
-			role: 'member',
-			roles: ['member']
-		});
-		expect(
-			getLegacyAuthState(sessionPrincipal({ source: 'bearer-session', session: null }))
-		).toMatchObject({
-			session: null,
-			user: { id: 'user-1' },
-			role: 'member'
-		});
-		expect(getLegacyAuthState(apiKeyPrincipal())).toEqual({
-			session: null,
-			user: null,
-			role: 'viewer',
-			roles: ['viewer']
-		});
 	});
 
 	it('enforces trusted origins for session-backed mutations only', () => {

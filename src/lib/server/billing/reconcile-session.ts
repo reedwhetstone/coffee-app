@@ -4,6 +4,7 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { getStripe } from '$lib/services/stripe';
 import { createAdminClient } from '$lib/supabase-admin';
 import type { Database, Json } from '$lib/types/database.types';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 
 import {
 	reconcileStripeSubscriptionEntitlements,
@@ -150,10 +151,10 @@ export async function handleReconcileStripeSession(event: RequestEvent) {
 	let userId: string | null = null;
 
 	try {
-		const { session, user } = await event.locals.safeGetSession();
-		if (!session?.user || !user) {
+		if (!isCookieSessionPrincipal(event.locals.principal)) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
+		const { user } = event.locals.principal;
 
 		userId = user.id;
 

@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 
 /**
  * Deactivate (revoke) an API key owned by the signed-in dashboard user.
@@ -15,9 +16,7 @@ export const POST: RequestHandler = async (event) => {
 	const { request, locals } = event;
 	try {
 		// Local session guard: only signed-in dashboard users may revoke keys.
-		const { session, user } = await locals.safeGetSession();
-
-		if (!session || !user) {
+		if (!isCookieSessionPrincipal(locals.principal)) {
 			return json(
 				{
 					success: false,

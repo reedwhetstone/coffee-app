@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { principalHasRole } from '$lib/server/principal';
 import type { CatalogListQuery, components } from '@purveyors/sdk';
 import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
@@ -44,10 +45,10 @@ function briefCatalogHref(criteria: SourcingBriefCriteria): string {
 
 export const load: PageServerLoad = async (event) => {
 	const { locals } = event;
-	const userId = locals.principal?.isAuthenticated ? locals.principal.userId : null;
-	const isMember = locals.role === 'member' || locals.role === 'admin';
+	const userId = locals.principal.isAuthenticated ? locals.principal.userId : null;
+	const isMember = principalHasRole(locals.principal, 'member');
 	const hasSourcingAccess =
-		isMember || (locals.principal?.isAuthenticated === true && locals.principal.ppiAccess === true);
+		isMember || (locals.principal.isAuthenticated && locals.principal.ppiAccess === true);
 
 	// One request-bound Parchment client feeds both the public arrivals preview
 	// and the gated tracked-lot catalog hydration below.

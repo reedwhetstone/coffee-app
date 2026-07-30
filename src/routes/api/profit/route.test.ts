@@ -40,7 +40,10 @@ vi.mock('$lib/server/parchmentSales', () => ({
 vi.mock('$lib/server/principal', () => ({
 	isSessionPrincipal: (principal: { authKind?: string } | undefined) =>
 		principal?.authKind === 'session',
-	isTrustedMutationRequest: principalMocks.isTrustedMutationRequest
+	isTrustedMutationRequest: principalMocks.isTrustedMutationRequest,
+	principalHasRole: (principal: { primaryAppRole?: string }, role: string) =>
+		role === 'member' &&
+		(principal.primaryAppRole === 'member' || principal.primaryAppRole === 'admin')
 }));
 
 import { ParchmentSalesError } from '$lib/server/parchmentSales';
@@ -75,23 +78,30 @@ function makeEvent(
 			body: options.body ? JSON.stringify(options.body) : undefined
 		}),
 		locals: {
-			role: options.role ?? 'viewer',
 			supabase: { direct: true },
-			session: authenticated ? { access_token: 'cookie-token' } : null,
 			principal: authenticated
 				? {
+						subjectType: 'user',
 						authKind: 'session',
 						source: options.authorization ? 'bearer-session' : 'cookie-session',
 						isAuthenticated: true,
-						userId: 'user-1'
+						userId: 'user-1',
+						user: { id: 'user-1' },
+						session: options.authorization ? null : { access_token: 'cookie-token' },
+						appRoles: [options.role ?? 'viewer'],
+						primaryAppRole: options.role ?? 'viewer',
+						apiPlan: 'viewer',
+						ppiAccess: false,
+						apiScopes: []
 					}
 				: {
+						subjectType: 'anonymous',
 						authKind: 'anonymous',
 						source: 'none',
 						isAuthenticated: false,
-						userId: null
-					},
-			safeGetSession: vi.fn()
+						userId: null,
+						primaryAppRole: null
+					}
 		}
 	};
 }

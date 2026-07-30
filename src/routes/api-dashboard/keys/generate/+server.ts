@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 
 /**
  * Mint a new API key for the signed-in dashboard user.
@@ -17,9 +18,7 @@ export const POST: RequestHandler = async (event) => {
 	try {
 		// Local session guard: only signed-in dashboard users may mint keys. The
 		// credential itself is forwarded to Parchment, which enforces entitlement.
-		const { session, user } = await locals.safeGetSession();
-
-		if (!session || !user) {
+		if (!isCookieSessionPrincipal(locals.principal)) {
 			return json(
 				{
 					success: false,

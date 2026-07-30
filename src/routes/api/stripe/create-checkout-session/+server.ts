@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createCheckoutSession, getStripeCustomerId } from '$lib/services/stripe';
 import { getBillingCatalogEntry, type BillingCatalogEntry } from '$lib/server/billing/catalog';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 
 type ExistingBillingSubscription = {
 	product_family: string;
@@ -110,10 +111,10 @@ function getExistingFamilyConflict(input: {
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
-		const { user } = await locals.safeGetSession();
-		if (!user) {
+		if (!isCookieSessionPrincipal(locals.principal)) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
+		const { user } = locals.principal;
 
 		const requestBody = await request.json();
 		const purchaseKeys = normalizeRequestedPurchaseKeys(requestBody);

@@ -1,4 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+	anonymousPrincipal,
+	apiKeyPrincipal,
+	cookieSessionPrincipal
+} from '$lib/server/principal.test-utils';
 
 const roastMocks = vi.hoisted(() => ({
 	createRoasts: vi.fn(),
@@ -55,18 +60,14 @@ function makeEvent(
 		}),
 		fetch: vi.fn(),
 		locals: {
-			role,
 			supabase: { from: vi.fn() },
-			session: authenticated ? { access_token: 'token' } : null,
-			user: authenticated ? { id: 'user-1' } : null,
-			principal: {
-				isAuthenticated: options.principalAuthenticated ?? authenticated,
-				authKind: options.authorization ? 'api-key' : authenticated ? 'session' : 'anonymous'
-			},
-			safeGetSession: vi.fn().mockResolvedValue({
-				session: authenticated ? { access_token: 'token' } : null,
-				user: authenticated ? { id: 'user-1' } : null
-			})
+			principal: options.authorization
+				? options.principalAuthenticated === false
+					? anonymousPrincipal()
+					: apiKeyPrincipal()
+				: authenticated
+					? cookieSessionPrincipal(role)
+					: anonymousPrincipal()
 		}
 	};
 }
@@ -92,7 +93,6 @@ describe('/api/roast-profiles GET', () => {
 		});
 		expect(parchmentMocks.fetchParchmentRoasts).toHaveBeenCalledWith(client);
 		expect(event.locals.supabase.from).not.toHaveBeenCalled();
-		expect(event.locals.safeGetSession).not.toHaveBeenCalled();
 	});
 
 	it('rejects unauthenticated callers before constructing a Parchment client', async () => {

@@ -12,25 +12,10 @@ declare global {
 		// interface Error {}
 		interface Locals {
 			supabase: SupabaseClient<Database>;
-			session: Session | null;
-			user: User | null;
-			role: UserRole;
-			principal?: RequestPrincipal;
-			data: {
-				session: Session | null;
-				user: User | null;
-				role: UserRole;
-				ppiAccess: boolean;
-			};
+			principal: RequestPrincipal;
 			safeGetIdentity(): Promise<{
 				session: Session | null;
 				user: User | null;
-			}>;
-			safeGetSession(): Promise<{
-				session: Session | null;
-				user: User | null;
-				role: UserRole;
-				roles: UserRole[];
 			}>;
 		}
 		interface PageData {

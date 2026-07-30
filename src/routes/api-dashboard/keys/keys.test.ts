@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principal.test-utils';
 
 /**
  * Route tests for the API-key dashboard surfaces after the #40 repoint.
@@ -43,7 +44,13 @@ function makeEvent(init: { method?: string; body?: unknown; session?: unknown } 
 		request,
 		fetch: vi.fn(),
 		locals: {
-			safeGetSession: vi.fn().mockResolvedValue(session)
+			principal:
+				session === AUTHED
+					? cookieSessionPrincipal('viewer', {
+							user: AUTHED.user as never,
+							session: AUTHED.session as never
+						})
+					: anonymousPrincipal()
 		}
 	} as never;
 }

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principal.test-utils';
 import { ParchmentConfigError } from '$lib/server/parchmentClient';
 
 const { mockClearArtisanImport, mockCreateParchmentServerClient } = vi.hoisted(() => {
@@ -37,9 +38,7 @@ function makeEvent(url = 'https://app.test/api/clear-roast?roast_id=42', session
 		url: new URL(url),
 		request: new Request(url, { method: 'DELETE' }),
 		locals: {
-			safeGetSession: vi.fn(async () =>
-				session ? { session: { access_token: 'jwt' }, user: { id: 'user-1' } } : {}
-			)
+			principal: session ? cookieSessionPrincipal() : anonymousPrincipal()
 		}
 	} as unknown as Parameters<NonNullable<typeof DELETE>>[0];
 }

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principal.test-utils';
 
 const mockCreateAdminClient = vi.fn();
 const mockGetStripe = vi.fn();
@@ -118,12 +119,9 @@ function makeEvent(options: {
 			body: JSON.stringify(options.body ?? { sessionId: 'cs_test_123' })
 		}),
 		locals: {
-			safeGetSession: vi.fn().mockResolvedValue({
-				session: user ? { user } : null,
-				user,
-				role: 'viewer',
-				roles: ['viewer']
-			})
+			principal: user
+				? cookieSessionPrincipal('viewer', { user: user as never })
+				: anonymousPrincipal()
 		}
 	} as unknown as Parameters<typeof handleReconcileStripeSession>[0];
 }

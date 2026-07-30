@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { fetchParchmentRoasts } from '$lib/server/parchmentRoasts';
 import { updateStockedStatus } from '$lib/data/inventory.js';
-import { checkRole } from '$lib/types/auth.types';
+import { isCookieSessionPrincipal, principalHasRole } from '$lib/server/principal';
 import {
 	createRoasts,
 	updateRoast,
@@ -15,8 +15,7 @@ import {
 
 export const GET: RequestHandler = async (event) => {
 	try {
-		const { session, user } = event.locals;
-		if (!session || !user) {
+		if (!isCookieSessionPrincipal(event.locals.principal)) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
@@ -31,12 +30,12 @@ export const GET: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
-		const { supabase, safeGetSession } = locals;
-		const { session, user } = await safeGetSession();
-		if (!session || !user) {
+		const { supabase } = locals;
+		if (!isCookieSessionPrincipal(locals.principal)) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
-		if (!checkRole(locals.role, 'member')) {
+		const { user } = locals.principal;
+		if (!principalHasRole(locals.principal, 'member')) {
 			return json(
 				{ error: 'Mallard Studio membership is required to create roast profiles' },
 				{ status: 403 }
@@ -70,12 +69,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 };
 
-export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+export const DELETE: RequestHandler = async ({ url, locals }) => {
 	try {
-		const { session, user } = await safeGetSession();
-		if (!session || !user) {
+		if (!isCookieSessionPrincipal(locals.principal)) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
+		const { supabase } = locals;
+		const { user } = locals.principal;
 
 		const id = url.searchParams.get('id');
 		const batchName = url.searchParams.get('name');
@@ -102,16 +102,13 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 	}
 };
 
-export const PUT: RequestHandler = async ({
-	request,
-	url,
-	locals: { supabase, safeGetSession }
-}) => {
+export const PUT: RequestHandler = async ({ request, url, locals }) => {
 	try {
-		const { session, user } = await safeGetSession();
-		if (!session || !user) {
+		if (!isCookieSessionPrincipal(locals.principal)) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
+		const { supabase } = locals;
+		const { user } = locals.principal;
 
 		const id = url.searchParams.get('id');
 		if (!id) {

@@ -1,12 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getStripe } from '$lib/services/stripe';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
 		// Verify that the user is authenticated
-		const session = locals.session;
-		if (!session?.user) {
+		if (!isCookieSessionPrincipal(locals.principal)) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 

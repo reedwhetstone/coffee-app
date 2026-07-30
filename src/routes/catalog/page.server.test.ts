@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Session } from '@supabase/supabase-js';
+import type { UserRole } from '$lib/types/auth.types';
+import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principal.test-utils';
 
 const mockCreateParchmentServerClient = vi.fn();
 const mockCatalogList = vi.fn();
@@ -135,16 +138,16 @@ function makeMockSupabase(pricingRows: Array<Record<string, unknown>> = []) {
 }
 
 function makeLoadInput(
-	role: App.Locals['role'],
-	session: App.Locals['session'],
+	role: UserRole,
+	session: Session | null,
 	url = 'https://app.test/catalog',
 	pricingRows: Array<Record<string, unknown>> = []
 ) {
+	const principal = session ? cookieSessionPrincipal(role, { session }) : anonymousPrincipal();
 	return {
 		locals: {
 			supabase: makeMockSupabase(pricingRows),
-			role,
-			session
+			principal
 		},
 		url: new URL(url),
 		request: new Request(url),
@@ -153,17 +156,20 @@ function makeLoadInput(
 }
 
 function makeLoadInputWithPrincipal(
-	role: App.Locals['role'],
-	session: App.Locals['session'],
+	role: UserRole,
+	session: Session | null,
 	principal: { isAuthenticated: true; userId: string; ppiAccess: boolean },
 	url = 'https://app.test/catalog'
 ) {
+	const canonicalPrincipal = cookieSessionPrincipal(role, {
+		session,
+		userId: principal.userId,
+		ppiAccess: principal.ppiAccess
+	});
 	return {
 		locals: {
 			supabase: makeMockSupabase(),
-			role,
-			session,
-			principal
+			principal: canonicalPrincipal
 		},
 		url: new URL(url),
 		request: new Request(url),
@@ -173,7 +179,7 @@ function makeLoadInputWithPrincipal(
 
 describe('/catalog page load', () => {
 	it('uses public-demo for anonymous catalog reads and session mode for viewer sessions', async () => {
-		const viewerSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		const viewerSession = { access_token: 'cookie-token' } as Session | null;
 
 		const result = (await load(makeLoadInput('viewer', null))) as {
 			data: Array<Record<string, unknown>>;
@@ -239,7 +245,7 @@ describe('/catalog page load', () => {
 	});
 
 	it('hydrates filtered catalog URLs from query params on first load', async () => {
-		const memberSession = { access_token: 'member-token' } as App.Locals['session'];
+		const memberSession = { access_token: 'member-token' } as Session | null;
 		await load(
 			makeLoadInput(
 				'member',
@@ -413,7 +419,7 @@ describe('/catalog page load', () => {
 	});
 
 	it('strips viewer process transparency query params before catalog search', async () => {
-		const viewerSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		const viewerSession = { access_token: 'cookie-token' } as Session | null;
 
 		const result = (await load(
 			makeLoadInput(
@@ -443,7 +449,7 @@ describe('/catalog page load', () => {
 		const advancedResult = (await load(
 			makeLoadInput(
 				'viewer',
-				{ access_token: 'cookie-token' } as App.Locals['session'],
+				{ access_token: 'cookie-token' } as Session | null,
 				'https://app.test/catalog?sortField=purveyor_score&sortDirection=asc'
 			)
 		)) as { initialCatalogState: { sortField: string | null; sortDirection: string | null } };
@@ -481,7 +487,7 @@ describe('/catalog page load', () => {
 		const result = (await load(
 			makeLoadInput(
 				'viewer',
-				{ access_token: 'cookie-token' } as App.Locals['session'],
+				{ access_token: 'cookie-token' } as Session | null,
 				'https://app.test/catalog?stocked_date=2026-07-15&stocked_days=7&country=Ethiopia'
 			)
 		)) as { initialCatalogState: { filters: Record<string, unknown> } };
@@ -496,7 +502,7 @@ describe('/catalog page load', () => {
 		const result = (await load(
 			makeLoadInput(
 				'viewer',
-				{ access_token: 'cookie-token' } as App.Locals['session'],
+				{ access_token: 'cookie-token' } as Session | null,
 				'https://app.test/catalog?type=Importer+A&grade=1800&appearance=clean&sortField=type&sortDirection=asc&country=Ethiopia'
 			)
 		)) as {
@@ -538,7 +544,7 @@ describe('/catalog page load', () => {
 			const result = (await load(
 				makeLoadInput(
 					role,
-					{ access_token: 'cookie-token' } as App.Locals['session'],
+					{ access_token: 'cookie-token' } as Session | null,
 					'https://app.test/catalog?type=Importer+A&grade=1800&appearance=clean&sortField=type&sortDirection=asc'
 				)
 			)) as {
@@ -581,7 +587,7 @@ describe('/catalog page load', () => {
 						.mockResolvedValue({ data: { originPriceStats: [] }, error: null })
 				}
 			});
-			const session = { access_token: 'cookie-token' } as App.Locals['session'];
+			const session = { access_token: 'cookie-token' } as Session | null;
 
 			const result = (await load(
 				makeLoadInput(
@@ -610,7 +616,7 @@ describe('/catalog page load', () => {
 	});
 
 	it('returns a controlled catalog schema unavailable response instead of throwing SSR 500', async () => {
-		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		const memberSession = { access_token: 'cookie-token' } as Session | null;
 		mockCatalogList.mockRejectedValue(
 			new MockCatalogSchemaUnavailableError('Structured process filters are unavailable.')
 		);
@@ -637,7 +643,7 @@ describe('/catalog page load', () => {
 	});
 
 	it('routes the SDK 503 schema-unavailable error body into the controlled fallback', async () => {
-		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		const memberSession = { access_token: 'cookie-token' } as Session | null;
 		// openapi-fetch resolves non-2xx responses as `{ error: <body> }` rather than
 		// rejecting, so the load must translate the parsed 503 body, not just catch throws.
 		// Parchment's real 503 envelope is `{ error: { code, message } }` (see
@@ -673,7 +679,7 @@ describe('/catalog page load', () => {
 	});
 
 	it('routes the legacy flat schema-unavailable error body into the controlled fallback', async () => {
-		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		const memberSession = { access_token: 'cookie-token' } as Session | null;
 		// Backward-compatibility: earlier/flat `{ error: 'Catalog schema unavailable' }`
 		// bodies must still resolve to the controlled fallback.
 		mockCatalogList.mockResolvedValue({
@@ -725,7 +731,7 @@ describe('/catalog page load', () => {
 	});
 
 	it('lets member SSR previews use the internal catalog visibility policy', async () => {
-		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		const memberSession = { access_token: 'cookie-token' } as Session | null;
 
 		await load(
 			makeLoadInput('member', memberSession, 'https://app.test/catalog?showWholesale=true')
@@ -744,7 +750,7 @@ describe('/catalog page load', () => {
 	});
 
 	it('sources member origin price stats from Parchment for the member-visible scope', async () => {
-		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		const memberSession = { access_token: 'cookie-token' } as Session | null;
 		mockCatalogOriginPriceStats.mockResolvedValue({
 			data: {
 				originPriceStats: [
@@ -788,7 +794,7 @@ describe('/catalog page load', () => {
 	});
 
 	it('forwards the wholesale view param to Parchment when wholesale rows are visible', async () => {
-		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		const memberSession = { access_token: 'cookie-token' } as Session | null;
 		mockCatalogOriginPriceStats.mockResolvedValue({
 			data: {
 				originPriceStats: [
@@ -823,7 +829,7 @@ describe('/catalog page load', () => {
 	});
 
 	it('forwards wholesaleOnly to Parchment on member wholesale-only catalog loads', async () => {
-		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		const memberSession = { access_token: 'cookie-token' } as Session | null;
 		mockCatalogOriginPriceStats.mockResolvedValue({
 			data: {
 				originPriceStats: [
@@ -880,7 +886,7 @@ describe('/catalog tracked lots and brief matches', () => {
 	});
 
 	it('fetches tracked lot IDs for a ppiAccess user', async () => {
-		const session = { access_token: 'ppi-token' } as App.Locals['session'];
+		const session = { access_token: 'ppi-token' } as Session | null;
 		const principal = { isAuthenticated: true as const, userId: 'ppi-user-1', ppiAccess: true };
 		mockGetTrackedLotIds.mockResolvedValue([10, 42]);
 
@@ -899,7 +905,7 @@ describe('/catalog tracked lots and brief matches', () => {
 	});
 
 	it('fetches tracked lot IDs and brief match summaries for a member', async () => {
-		const session = { access_token: 'member-token' } as App.Locals['session'];
+		const session = { access_token: 'member-token' } as Session | null;
 		const principal = {
 			isAuthenticated: true as const,
 			userId: 'member-user-1',
@@ -926,7 +932,7 @@ describe('/catalog tracked lots and brief matches', () => {
 	});
 
 	it('includes a streamed deep-link coffee in member brief match summaries', async () => {
-		const session = { access_token: 'member-token' } as App.Locals['session'];
+		const session = { access_token: 'member-token' } as Session | null;
 		const principal = {
 			isAuthenticated: true as const,
 			userId: 'member-user-1',
@@ -982,7 +988,7 @@ describe('/catalog tracked lots and brief matches', () => {
 	});
 
 	it('still returns catalog rows when a member enrichment source rejects (degraded, not blank)', async () => {
-		const session = { access_token: 'member-token' } as App.Locals['session'];
+		const session = { access_token: 'member-token' } as Session | null;
 		const principal = {
 			isAuthenticated: true as const,
 			userId: 'member-user-1',
@@ -1015,7 +1021,7 @@ describe('/catalog tracked lots and brief matches', () => {
 
 describe('/catalog tracked-only watchlist view', () => {
 	it('keeps tracked-only state unknown and skips catalog data when the ID read fails', async () => {
-		const session = { access_token: 'ppi-token' } as App.Locals['session'];
+		const session = { access_token: 'ppi-token' } as Session | null;
 		const principal = { isAuthenticated: true as const, userId: 'ppi-user-1', ppiAccess: true };
 		mockGetTrackedLotIds.mockRejectedValue(new Error('portfolio unavailable'));
 
@@ -1039,7 +1045,7 @@ describe('/catalog tracked-only watchlist view', () => {
 	});
 
 	it('restricts results to tracked lots including delisted ones for entitled users', async () => {
-		const session = { access_token: 'ppi-token' } as App.Locals['session'];
+		const session = { access_token: 'ppi-token' } as Session | null;
 		const principal = { isAuthenticated: true as const, userId: 'ppi-user-1', ppiAccess: true };
 		mockGetTrackedLotIds.mockResolvedValue([5, 9]);
 
@@ -1084,7 +1090,7 @@ describe('/catalog tracked-only watchlist view', () => {
 	});
 
 	it('fetches origin price stats for the forced tracked-only wholesale scope', async () => {
-		const session = { access_token: 'ppi-token' } as App.Locals['session'];
+		const session = { access_token: 'ppi-token' } as Session | null;
 		const principal = { isAuthenticated: true as const, userId: 'ppi-user-1', ppiAccess: true };
 		mockGetTrackedLotIds.mockResolvedValue([5, 9]);
 
@@ -1102,7 +1108,7 @@ describe('/catalog tracked-only watchlist view', () => {
 	});
 
 	it('skips the catalog query entirely when the watchlist is empty', async () => {
-		const session = { access_token: 'ppi-token' } as App.Locals['session'];
+		const session = { access_token: 'ppi-token' } as Session | null;
 		const principal = { isAuthenticated: true as const, userId: 'ppi-user-1', ppiAccess: true };
 		mockGetTrackedLotIds.mockResolvedValue([]);
 
@@ -1121,7 +1127,7 @@ describe('/catalog tracked-only watchlist view', () => {
 	});
 
 	it('ignores the tracked-only param for users without sourcing access', async () => {
-		const session = { access_token: 'viewer-token' } as App.Locals['session'];
+		const session = { access_token: 'viewer-token' } as Session | null;
 		const principal = {
 			isAuthenticated: true as const,
 			userId: 'viewer-1',

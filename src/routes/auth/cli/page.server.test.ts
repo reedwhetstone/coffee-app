@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principal.test-utils';
 
 const mockCreateParchmentServerClient = vi.fn();
 const mockInspect = vi.fn();
@@ -14,7 +15,6 @@ const AUTHED = {
 	session: { access_token: 'session-token' },
 	user: { id: 'user-1', email: 'user@example.com' }
 };
-const UNAUTHED = { session: null, user: null };
 
 function makeEvent(options: { authenticated?: boolean; requestToken?: string | null } = {}) {
 	const { authenticated = true, requestToken = TOKEN } = options;
@@ -32,7 +32,12 @@ function makeEvent(options: { authenticated?: boolean; requestToken?: string | n
 			delete: vi.fn()
 		},
 		locals: {
-			safeGetSession: vi.fn().mockResolvedValue(authenticated ? AUTHED : UNAUTHED),
+			principal: authenticated
+				? cookieSessionPrincipal('viewer', {
+						session: AUTHED.session as never,
+						user: AUTHED.user as never
+					})
+				: anonymousPrincipal(),
 			supabase: { auth: { signOut: vi.fn() } }
 		}
 	};

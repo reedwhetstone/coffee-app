@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/private';
 import { createParchmentClient, type ParchmentClient } from '@purveyors/sdk';
 import type { RequestEvent } from '@sveltejs/kit';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 
 /**
  * Server-only Backend-for-Frontend (BFF) helper for the Parchment API.
@@ -58,9 +59,7 @@ export type ParchmentCredentialMode = 'public-demo' | 'session' | 'anonymous';
  * back to `session`).
  */
 export function resolveCatalogCredentialMode(locals: App.Locals): ParchmentCredentialMode {
-	return locals.principal?.isAuthenticated === true || Boolean(locals.session)
-		? 'session'
-		: 'public-demo';
+	return locals.principal.isAuthenticated ? 'session' : 'public-demo';
 }
 
 /**
@@ -158,8 +157,7 @@ function resolveAuthorizationHeaderToken(event: RequestEvent): string | undefine
  * alone and never consults the Supabase cookie. We honor the same authority
  * here. Otherwise a mixed-credential request (`Authorization` API key/bearer
  * *plus* a Supabase cookie) would forward the cookie user's access token instead
- * of the API key that was actually authorized, letting `safeGetSession()` win
- * over the authoritative header credential and presenting the wrong principal to
+ * of the API key that was actually authorized, presenting the wrong principal to
  * Parchment.
  *
  * - Authorization header present + principal authenticated: forward the header
@@ -167,9 +165,8 @@ function resolveAuthorizationHeaderToken(event: RequestEvent): string | undefine
  * - Authorization header present but not authenticated (invalid header): forward
  *   nothing — the hook treats this as anonymous and does not fall back to the
  *   cookie, so neither do we.
- * - No Authorization header: cookie-authenticated path. Prefer the already
- *   resolved `event.locals.session`, falling back to `safeGetSession()` for
- *   callers that run before/around hook resolution.
+ * - No Authorization header: forward the credential from the canonical
+ *   cookie-session principal.
  *
  * Returns `undefined` for anonymous callers, which is intentional: public
  * endpoints are usable without a credential. This path deliberately never reads
@@ -183,17 +180,9 @@ async function resolveSessionToken(event: RequestEvent): Promise<string | undefi
 			: undefined;
 	}
 
-	const directToken = event.locals.session?.access_token;
-	if (directToken) {
-		return directToken;
-	}
-
-	if (typeof event.locals.safeGetSession === 'function') {
-		const { session } = await event.locals.safeGetSession();
-		return session?.access_token ?? undefined;
-	}
-
-	return undefined;
+	return isCookieSessionPrincipal(event.locals.principal)
+		? event.locals.principal.session.access_token
+		: undefined;
 }
 
 /**

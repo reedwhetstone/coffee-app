@@ -49,6 +49,10 @@ Parchment, and consumes `GET /v1/me` through `@purveyors/sdk` for canonical
 request-principal, role, plan, scope, and entitlement decisions. The projection
 is cached on request locals. Invalid credentials resolve anonymously; an
 upstream principal-resolution failure is not downgraded to viewer access.
+Server routes consume only `locals.principal` for request authentication and
+authorization. `locals.safeGetIdentity()` remains narrowly scoped to Supabase
+browser identity hydration; legacy `locals.session`, `locals.user`,
+`locals.role`, and `safeGetSession()` aliases are intentionally absent.
 
 The canonical external API reference is
 <https://api.purveyors.io/docs>. Product and CLI guidance lives at

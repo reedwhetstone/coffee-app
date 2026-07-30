@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principal.test-utils';
 
 const parchmentMocks = vi.hoisted(() => ({
 	createParchmentServerClient: vi.fn()
@@ -32,12 +33,12 @@ function makeEvent(
 		request: new Request(`https://app.test/api/roast-chart-data?roastId=${roastId}`, requestInit),
 		fetch: vi.fn(),
 		locals: {
-			session: authoritativeAuthenticated ? { access_token: 'authoritative-session-token' } : null,
-			user: authoritativeAuthenticated ? { id: 'authoritative-user-1' } : null,
-			safeGetSession: vi.fn().mockResolvedValue({
-				session: authenticated ? { access_token: 'session-token' } : null,
-				user: authenticated ? { id: 'user-1' } : null
-			})
+			principal: authoritativeAuthenticated
+				? cookieSessionPrincipal('viewer', {
+						user: { id: 'authoritative-user-1' } as never,
+						session: { access_token: 'authoritative-session-token' } as never
+					})
+				: anonymousPrincipal()
 		}
 	};
 }

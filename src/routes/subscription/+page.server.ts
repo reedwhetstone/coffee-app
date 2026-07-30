@@ -1,9 +1,10 @@
 import { buildSubscriptionControlPlaneState } from '$lib/server/billing/control-plane';
 import { getStripeCustomerId, getSubscriptionDetails } from '$lib/services/stripe';
 import type { PageServerLoad } from './$types';
+import { getPageAuthState } from '$lib/server/pageAuth';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	const { session, user } = await locals.safeGetSession();
+	const { session, user, role } = getPageAuthState(locals.principal);
 
 	if (!user) {
 		return {
@@ -17,9 +18,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		};
 	}
 
-	const role = locals.role || 'viewer';
-	const apiPlan = locals.principal?.apiPlan ?? 'viewer';
-	const ppiAccess = locals.principal?.ppiAccess ?? false;
+	const apiPlan = locals.principal.apiPlan ?? 'viewer';
+	const ppiAccess = locals.principal.ppiAccess;
 	const stripeCustomerId = await getStripeCustomerId(user.id);
 
 	let subscription = null;

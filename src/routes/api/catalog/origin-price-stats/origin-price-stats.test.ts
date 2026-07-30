@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Session } from '@supabase/supabase-js';
+import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principal.test-utils';
 
 const mockOriginPriceStats = vi.fn();
 const mockCreateParchmentServerClient = vi.fn(async () => ({
@@ -10,9 +12,7 @@ vi.mock('$lib/server/parchmentClient', () => ({
 	// Mirror the real helper so the route's credential-mode selection is exercised
 	// under test (anonymous → public-demo, authenticated/session → session).
 	resolveCatalogCredentialMode: (locals: App.Locals) =>
-		locals.principal?.isAuthenticated === true || Boolean(locals.session)
-			? 'session'
-			: 'public-demo',
+		locals.principal.isAuthenticated ? 'session' : 'public-demo',
 	ParchmentConfigError: class ParchmentConfigError extends Error {
 		constructor(message: string) {
 			super(message);
@@ -55,13 +55,14 @@ function makeEvent(
 ): Parameters<NonNullable<typeof GET>>[0] {
 	return {
 		url: new URL(url),
-		locals: { session: null, role: null, ...locals }
+		locals: { principal: anonymousPrincipal(), ...locals }
 	} as unknown as Parameters<NonNullable<typeof GET>>[0];
 }
 
 const memberLocals = {
-	session: { access_token: 'cookie-token' } as App.Locals['session'],
-	role: 'member' as App.Locals['role']
+	principal: cookieSessionPrincipal('member', {
+		session: { access_token: 'cookie-token' } as Session
+	})
 };
 
 describe('/api/catalog/origin-price-stats', () => {
