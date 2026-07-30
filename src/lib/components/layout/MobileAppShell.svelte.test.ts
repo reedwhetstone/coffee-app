@@ -65,6 +65,14 @@ describe('MobileAppShell actions launcher', () => {
 		expect(screen.getByLabelText('Open actions')).toBeTruthy();
 	});
 
+	it('uses the circle-only Purveyors mark in the mobile menu trigger', () => {
+		render(MobileAppShell, { data: auth('member', false) });
+
+		const menuTrigger = screen.getByLabelText('Open app menu');
+		expect(menuTrigger.querySelector('img')).toBeNull();
+		expect(menuTrigger.querySelector('svg[viewBox="0 0 525 525"]')).toBeTruthy();
+	});
+
 	it('keeps the actions launcher hidden for ordinary viewers', () => {
 		render(MobileAppShell, { data: auth('viewer', false) });
 

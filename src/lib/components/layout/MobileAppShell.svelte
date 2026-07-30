@@ -9,6 +9,7 @@
 	import Navbar from '$lib/components/layout/Navbar.svelte';
 	import AuthSidebar from '$lib/components/layout/AuthSidebar.svelte';
 	import DesktopShellIcon from '$lib/components/layout/DesktopShellIcon.svelte';
+	import PurveyorsCircleMark from '$lib/components/layout/PurveyorsCircleMark.svelte';
 	import MobileOverlayShell from '$lib/components/layout/MobileOverlayShell.svelte';
 	import { getCurrentRouteLabel } from '$lib/components/layout/appNavigation';
 	import { countActiveCatalogFilters } from '$lib/components/layout/desktopShellState';
@@ -69,7 +70,7 @@
 				class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 				aria-label="Open app menu"
 			>
-				<img src="/purveyors_logo_mark.svg" alt="" class="h-7 w-7" />
+				<PurveyorsCircleMark />
 			</button>
 
 			<button

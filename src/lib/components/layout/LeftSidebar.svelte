@@ -11,6 +11,7 @@
 	import AuthSidebar from '$lib/components/layout/AuthSidebar.svelte';
 	import AdminSidebar from '$lib/components/layout/AdminSidebar.svelte';
 	import DesktopShellIcon from '$lib/components/layout/DesktopShellIcon.svelte';
+	import PurveyorsCircleMark from '$lib/components/layout/PurveyorsCircleMark.svelte';
 	import { countActiveCatalogFilters } from '$lib/components/layout/desktopShellState';
 
 	type MenuId = 'auth' | 'nav' | 'settings' | 'actions' | 'admin';
@@ -158,29 +159,7 @@
 			aria-controls="desktop-shell-panel"
 			aria-expanded={activeMenu === 'nav'}
 		>
-			<svg class="h-7 w-7" viewBox="0 0 525 525" aria-hidden="true">
-				<circle cx="262.5" cy="262.5" r="262.5" fill="#F9A57B" />
-				<ellipse
-					cx="242.411"
-					cy="274.034"
-					rx="104.188"
-					ry="163.452"
-					transform="rotate(-25.9612 242.411 274.034)"
-					fill="none"
-					stroke="white"
-					stroke-width="27"
-				/>
-				<ellipse
-					cx="323.193"
-					cy="217.918"
-					rx="100.451"
-					ry="99.0536"
-					transform="rotate(-25.9612 323.193 217.918)"
-					fill="none"
-					stroke="white"
-					stroke-width="27"
-				/>
-			</svg>
+			<PurveyorsCircleMark />
 			<span class="rail-tooltip">Menu</span>
 		</button>
 
