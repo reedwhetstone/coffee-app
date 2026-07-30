@@ -45,12 +45,7 @@
 
 	import type { Snippet } from 'svelte';
 	let { data, children } = $props<{ data: LayoutData; children: Snippet }>();
-	let activeMenu = $state<string | null>(null);
 	let rightSidebarOpen = $state(false);
-
-	function handleMenuChange(menu: string | null) {
-		activeMenu = menu;
-	}
 
 	function handleRightSidebarChange(isOpen: boolean) {
 		rightSidebarOpen = isOpen;
@@ -63,7 +58,7 @@
 	let chatDrawerOpen = $state(false);
 
 	let rightMargin = $derived(rightSidebarOpen || chatDrawerOpen ? 'md:mr-[32rem]' : 'md:mr-0');
-	let contentMargin = $derived(`${activeMenu ? 'md:ml-[22rem]' : 'md:ml-24'} ${rightMargin}`);
+	let contentMargin = $derived(`md:ml-20 xl:ml-72 ${rightMargin}`);
 
 	// Cross-route client navigations keep the current page mounted for the
 	// first ROUTE_SKELETON_DELAY_MS (the thin progress bar is the immediate
@@ -173,14 +168,14 @@
 	{/if}
 {:else if data?.session?.user && !usesPublicShell}
 	<div class="flex {isChatWorkspace ? 'h-dvh overflow-hidden' : 'min-h-screen'}">
-		<LeftSidebar {data} onMenuChange={handleMenuChange} />
+		<LeftSidebar {data} />
 		<MobileAppShell {data} />
 
 		<main class="{contentMargin} min-h-0 min-w-0 flex-1 transition-all duration-300 ease-out">
 			<div
 				class="h-full overflow-x-clip {isChatWorkspace
-					? 'px-4 pt-20 sm:px-6 md:px-0 md:pr-12 md:pt-4'
-					: 'px-4 pb-6 pt-20 sm:px-6 md:px-0 md:pb-0 md:pr-12 md:pt-4'}"
+					? 'px-4 pt-20 sm:px-6 md:pl-6 md:pr-12 md:pt-4'
+					: 'px-4 pb-6 pt-20 sm:px-6 md:pb-0 md:pl-6 md:pr-12 md:pt-4'}"
 			>
 				{#if showClientRouteSkeleton}
 					<RouteSkeleton pathname={navigationTargetPathname} />
