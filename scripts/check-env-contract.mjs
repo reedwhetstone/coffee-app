@@ -73,6 +73,8 @@ const requiredVars =
 	mode === 'e2e' ? [...STATIC_VALIDATION_VARS, ...E2E_ONLY_VARS] : STATIC_VALIDATION_VARS;
 const checkoutAdmissionsEnabled =
 	combinedEnv[CHECKOUT_ADMISSION_FLAG]?.trim().toLowerCase() === 'true';
+const checkoutLegacyDrainEnabled =
+	combinedEnv[CHECKOUT_LEGACY_DRAIN_FLAG]?.trim().toLowerCase() === 'true';
 if (checkoutAdmissionsEnabled) requiredVars.push(CHECKOUT_ADMISSION_CREDENTIAL);
 const missingVars = requiredVars.filter((key) => {
 	const value = combinedEnv[key];
@@ -92,7 +94,7 @@ console.log(
 	`Checkout admission rollout: ${CHECKOUT_ADMISSION_FLAG}=${checkoutAdmissionsEnabled ? 'true' : 'false'}`
 );
 console.log(
-	`Legacy open-session drain: ${CHECKOUT_LEGACY_DRAIN_FLAG}=${combinedEnv[CHECKOUT_LEGACY_DRAIN_FLAG] ?? 'false'}`
+	`Legacy open-session drain: ${CHECKOUT_LEGACY_DRAIN_FLAG}=${checkoutLegacyDrainEnabled ? 'true' : 'false'}`
 );
 
 if (mode === 'e2e') {

@@ -172,11 +172,16 @@ export function checkoutAdmissionContextFromMetadata(
 ): CheckoutAdmissionContext | null {
 	const ownerId = metadata?.[CHECKOUT_ADMISSION_METADATA.ownerId];
 	const admissionId = metadata?.[CHECKOUT_ADMISSION_METADATA.admissionId];
+	const requestId = metadata?.[CHECKOUT_ADMISSION_METADATA.requestId];
+	const hasManagedAdmissionMetadata = Boolean(ownerId || admissionId || requestId);
+	if (hasManagedAdmissionMetadata && (!ownerId || !admissionId)) {
+		throw new Error('Managed checkout session is missing Checkout admission metadata');
+	}
 	if (!ownerId || !admissionId) return null;
 	return {
 		ownerId,
 		admissionId,
-		requestId: metadata?.[CHECKOUT_ADMISSION_METADATA.requestId],
+		requestId,
 		stripeSessionId
 	};
 }

@@ -33,14 +33,15 @@ vi.mock('$lib/server/billing/checkoutAdmissions', () => ({
 	checkoutAdmissionContextFromMetadata: (
 		metadata: Record<string, string> | null,
 		stripeSessionId: string
-	) =>
-		metadata?.parchment_admission_id && metadata?.supabase_user_id
-			? {
-					ownerId: metadata.supabase_user_id,
-					admissionId: metadata.parchment_admission_id,
-					stripeSessionId
-				}
-			: null,
+	) => {
+		const ownerId = metadata?.supabase_user_id;
+		const admissionId = metadata?.parchment_admission_id;
+		const requestId = metadata?.checkout_request_id;
+		if ((ownerId || admissionId || requestId) && (!ownerId || !admissionId)) {
+			throw new Error('Managed checkout session is missing Checkout admission metadata');
+		}
+		return ownerId && admissionId ? { ownerId, admissionId, requestId, stripeSessionId } : null;
+	},
 	checkoutProviderIsEligible: mockCheckoutProviderIsEligible,
 	terminalizeExpiredCheckoutAdmission: mockTerminalizeExpiredCheckoutAdmission
 }));
@@ -97,6 +98,24 @@ describe('Stripe webhook Checkout admission fence', () => {
 		expect(response.status).toBe(200);
 		expect(mockCheckoutProviderIsEligible).toHaveBeenCalled();
 		expect(customerUpdate).not.toHaveBeenCalled();
+		expect(mockReconcileStripeSubscription).not.toHaveBeenCalled();
+	});
+
+	it('rejects partial admission metadata so Stripe retries the event', async () => {
+		mockConstructStripeEvent.mockResolvedValue({
+			type: 'checkout.session.completed',
+			data: {
+				object: {
+					id: 'cs_partial',
+					metadata: { supabase_user_id: 'user-123' }
+				}
+			}
+		});
+
+		const response = await POST(makeEvent());
+
+		expect(response.status).toBe(400);
+		expect(mockGetStripe).not.toHaveBeenCalled();
 		expect(mockReconcileStripeSubscription).not.toHaveBeenCalled();
 	});
 

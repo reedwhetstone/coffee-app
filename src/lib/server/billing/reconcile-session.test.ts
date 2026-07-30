@@ -22,14 +22,15 @@ vi.mock('./checkoutAdmissions', () => ({
 	checkoutAdmissionContextFromMetadata: (
 		metadata: Record<string, string> | null,
 		stripeSessionId: string
-	) =>
-		metadata?.parchment_admission_id && metadata?.supabase_user_id
-			? {
-					ownerId: metadata.supabase_user_id,
-					admissionId: metadata.parchment_admission_id,
-					stripeSessionId
-				}
-			: null,
+	) => {
+		const ownerId = metadata?.supabase_user_id;
+		const admissionId = metadata?.parchment_admission_id;
+		const requestId = metadata?.checkout_request_id;
+		if ((ownerId || admissionId || requestId) && (!ownerId || !admissionId)) {
+			throw new Error('Managed checkout session is missing Checkout admission metadata');
+		}
+		return ownerId && admissionId ? { ownerId, admissionId, requestId, stripeSessionId } : null;
+	},
 	checkoutProviderIsEligible: mockCheckoutProviderIsEligible
 }));
 
@@ -344,6 +345,33 @@ describe('handleReconcileStripeSession', () => {
 		);
 		expect(mocks.stripeSessionProcessing.upsert).not.toHaveBeenCalled();
 		expect(mocks.stripeCustomersUpsert).not.toHaveBeenCalled();
+		expect(mockReconcileStripeSubscriptionEntitlements).not.toHaveBeenCalled();
+	});
+
+	it('rejects partial admission metadata instead of using the legacy path', async () => {
+		const { supabase, mocks } = makeSupabase({});
+		mockCreateAdminClient.mockReturnValue(supabase);
+		mockCheckoutAdmissionsEnabled.mockReturnValue(true);
+		mockLegacyCheckoutDrainEnabled.mockReturnValue(true);
+		mockGetStripe.mockReturnValue({
+			checkout: {
+				sessions: {
+					retrieve: vi.fn(async () => ({
+						id: 'cs_test_123',
+						status: 'complete',
+						payment_status: 'paid',
+						client_reference_id: 'user-123',
+						metadata: { supabase_user_id: 'user-123' }
+					}))
+				}
+			}
+		});
+
+		const response = await handleReconcileStripeSession(makeEvent({}));
+
+		expect(response.status).toBe(500);
+		expect(mocks.stripeSessionProcessing.upsert).not.toHaveBeenCalled();
+		expect(mockCheckoutProviderIsEligible).not.toHaveBeenCalled();
 		expect(mockReconcileStripeSubscriptionEntitlements).not.toHaveBeenCalled();
 	});
 });
