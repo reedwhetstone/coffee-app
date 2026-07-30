@@ -4,6 +4,9 @@ import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principa
 const mockCreateAdminClient = vi.fn();
 const mockGetStripe = vi.fn();
 const mockReconcileStripeSubscriptionEntitlements = vi.fn();
+const mockCheckoutAdmissionsEnabled = vi.fn();
+const mockCheckoutProviderIsEligible = vi.fn();
+const mockLegacyCheckoutDrainEnabled = vi.fn();
 
 vi.mock('$lib/supabase-admin', () => ({
 	createAdminClient: mockCreateAdminClient
@@ -11,6 +14,24 @@ vi.mock('$lib/supabase-admin', () => ({
 
 vi.mock('$lib/services/stripe', () => ({
 	getStripe: mockGetStripe
+}));
+
+vi.mock('./checkoutAdmissions', () => ({
+	checkoutAdmissionsEnabled: mockCheckoutAdmissionsEnabled,
+	legacyCheckoutDrainEnabled: mockLegacyCheckoutDrainEnabled,
+	checkoutAdmissionContextFromMetadata: (
+		metadata: Record<string, string> | null,
+		stripeSessionId: string
+	) => {
+		const ownerId = metadata?.supabase_user_id;
+		const admissionId = metadata?.parchment_admission_id;
+		const requestId = metadata?.checkout_request_id;
+		if ((ownerId || admissionId || requestId) && (!ownerId || !admissionId)) {
+			throw new Error('Managed checkout session is missing Checkout admission metadata');
+		}
+		return ownerId && admissionId ? { ownerId, admissionId, requestId, stripeSessionId } : null;
+	},
+	checkoutProviderIsEligible: mockCheckoutProviderIsEligible
 }));
 
 vi.mock('./entitlements', async () => {
@@ -129,6 +150,9 @@ function makeEvent(options: {
 beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
+	mockCheckoutAdmissionsEnabled.mockReturnValue(false);
+	mockLegacyCheckoutDrainEnabled.mockReturnValue(false);
+	mockCheckoutProviderIsEligible.mockResolvedValue(true);
 	({ handleReconcileStripeSession } = await import('./reconcile-session'));
 });
 
@@ -285,5 +309,98 @@ describe('handleReconcileStripeSession', () => {
 
 		expect(response.status).toBe(403);
 		expect(await response.json()).toEqual({ error: 'Session user mismatch' });
+	});
+
+	it('checks provider eligibility before any reconciliation write', async () => {
+		const { supabase, mocks } = makeSupabase({});
+		mockCreateAdminClient.mockReturnValue(supabase);
+		mockCheckoutAdmissionsEnabled.mockReturnValue(true);
+		mockCheckoutProviderIsEligible.mockResolvedValue(false);
+		mockGetStripe.mockReturnValue({
+			checkout: {
+				sessions: {
+					retrieve: vi.fn(async () => ({
+						id: 'cs_test_123',
+						status: 'complete',
+						payment_status: 'paid',
+						client_reference_id: 'user-123',
+						metadata: {
+							supabase_user_id: 'user-123',
+							parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+						}
+					}))
+				}
+			}
+		});
+
+		const response = await handleReconcileStripeSession(makeEvent({}));
+
+		expect(response.status).toBe(409);
+		expect(mockCheckoutProviderIsEligible).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				ownerId: 'user-123',
+				stripeSessionId: 'cs_test_123'
+			})
+		);
+		expect(mocks.stripeSessionProcessing.upsert).not.toHaveBeenCalled();
+		expect(mocks.stripeCustomersUpsert).not.toHaveBeenCalled();
+		expect(mockReconcileStripeSubscriptionEntitlements).not.toHaveBeenCalled();
+	});
+
+	it('keeps managed sessions fenced after the rollout flag is disabled', async () => {
+		const { supabase, mocks } = makeSupabase({});
+		mockCreateAdminClient.mockReturnValue(supabase);
+		mockCheckoutProviderIsEligible.mockResolvedValue(false);
+		mockGetStripe.mockReturnValue({
+			checkout: {
+				sessions: {
+					retrieve: vi.fn(async () => ({
+						id: 'cs_test_123',
+						status: 'complete',
+						payment_status: 'paid',
+						client_reference_id: 'user-123',
+						metadata: {
+							supabase_user_id: 'user-123',
+							parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+						}
+					}))
+				}
+			}
+		});
+
+		const response = await handleReconcileStripeSession(makeEvent({}));
+
+		expect(response.status).toBe(409);
+		expect(mockCheckoutProviderIsEligible).toHaveBeenCalled();
+		expect(mocks.stripeSessionProcessing.upsert).not.toHaveBeenCalled();
+		expect(mockReconcileStripeSubscriptionEntitlements).not.toHaveBeenCalled();
+	});
+
+	it('rejects partial admission metadata instead of using the legacy path', async () => {
+		const { supabase, mocks } = makeSupabase({});
+		mockCreateAdminClient.mockReturnValue(supabase);
+		mockCheckoutAdmissionsEnabled.mockReturnValue(true);
+		mockLegacyCheckoutDrainEnabled.mockReturnValue(true);
+		mockGetStripe.mockReturnValue({
+			checkout: {
+				sessions: {
+					retrieve: vi.fn(async () => ({
+						id: 'cs_test_123',
+						status: 'complete',
+						payment_status: 'paid',
+						client_reference_id: 'user-123',
+						metadata: { supabase_user_id: 'user-123' }
+					}))
+				}
+			}
+		});
+
+		const response = await handleReconcileStripeSession(makeEvent({}));
+
+		expect(response.status).toBe(500);
+		expect(mocks.stripeSessionProcessing.upsert).not.toHaveBeenCalled();
+		expect(mockCheckoutProviderIsEligible).not.toHaveBeenCalled();
+		expect(mockReconcileStripeSubscriptionEntitlements).not.toHaveBeenCalled();
 	});
 });

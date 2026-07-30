@@ -6,10 +6,46 @@ import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principa
 
 const mockCreateCheckoutSession = vi.fn();
 const mockGetStripeCustomerId = vi.fn();
+const mockGetStripe = vi.fn();
+const mockIsDefinitiveCheckoutCreationFailure = vi.fn();
+const mockAcquireCheckoutAdmission = vi.fn();
+const mockPublishCheckoutAdmission = vi.fn();
+const mockAbandonCheckoutAdmission = vi.fn();
+const mockCheckoutAdmissionsEnabled = vi.fn();
+const mockCheckoutPurchaseFingerprint = vi.fn();
+const mockNormalizeCheckoutStripePriceIds = vi.fn();
+const mockVerifyPublishedCheckoutReplay = vi.fn();
 
 vi.mock('$lib/services/stripe', () => ({
 	createCheckoutSession: mockCreateCheckoutSession,
-	getStripeCustomerId: mockGetStripeCustomerId
+	getStripeCustomerId: mockGetStripeCustomerId,
+	getStripe: mockGetStripe,
+	isDefinitiveCheckoutCreationFailure: mockIsDefinitiveCheckoutCreationFailure
+}));
+
+vi.mock('$lib/server/billing/checkoutAdmissions', () => ({
+	CHECKOUT_ADMISSION_METADATA: {
+		ownerId: 'supabase_user_id',
+		admissionId: 'parchment_admission_id',
+		requestId: 'checkout_request_id',
+		purchaseFingerprint: 'checkout_purchase_fingerprint'
+	},
+	CheckoutAdmissionError: class CheckoutAdmissionError extends Error {
+		constructor(
+			message: string,
+			public status: number,
+			public payload: unknown
+		) {
+			super(message);
+		}
+	},
+	acquireCheckoutAdmission: mockAcquireCheckoutAdmission,
+	publishCheckoutAdmission: mockPublishCheckoutAdmission,
+	abandonCheckoutAdmission: mockAbandonCheckoutAdmission,
+	checkoutAdmissionsEnabled: mockCheckoutAdmissionsEnabled,
+	checkoutPurchaseFingerprint: mockCheckoutPurchaseFingerprint,
+	normalizeCheckoutStripePriceIds: mockNormalizeCheckoutStripePriceIds,
+	verifyPublishedCheckoutReplay: mockVerifyPublishedCheckoutReplay
 }));
 
 let POST: typeof import('./+server').POST;
@@ -18,8 +54,26 @@ beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
 	({ POST } = await import('./+server'));
-	mockCreateCheckoutSession.mockResolvedValue('cs_test_secret');
+	mockCreateCheckoutSession.mockResolvedValue({
+		id: 'cs_test_123',
+		clientSecret: 'cs_test_secret'
+	});
 	mockGetStripeCustomerId.mockResolvedValue(null);
+	mockCheckoutAdmissionsEnabled.mockReturnValue(false);
+	mockCheckoutPurchaseFingerprint.mockReturnValue('purchase-fingerprint');
+	mockNormalizeCheckoutStripePriceIds.mockImplementation((priceIds: string[]) => priceIds);
+	mockVerifyPublishedCheckoutReplay.mockReturnValue(true);
+	mockAcquireCheckoutAdmission.mockResolvedValue({
+		admissionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+		status: 'creating',
+		stripeSessionId: null
+	});
+	mockPublishCheckoutAdmission.mockResolvedValue({
+		admissionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+		status: 'published',
+		stripeSessionId: 'cs_test_123'
+	});
+	mockIsDefinitiveCheckoutCreationFailure.mockReturnValue(false);
 });
 
 function createSupabaseMock(
@@ -44,28 +98,45 @@ function makeEvent(
 		user?: { id: string; email?: string } | null;
 		role?: UserRole;
 		existingSubscriptions?: Array<{ product_family: string; product_key: string; status: string }>;
+		origin?: string;
+		authorization?: string;
 	} = {}
 ) {
 	const {
 		user = { id: 'user-123', email: 'viewer@example.com' },
 		role = 'viewer',
-		existingSubscriptions = []
+		existingSubscriptions = [],
+		origin = 'https://app.test',
+		authorization
 	} = options;
+	const headers = new Headers({
+		'Content-Type': 'application/json',
+		origin
+	});
+	if (authorization) headers.set('Authorization', authorization);
 
+	const request = new Request('https://app.test/api/stripe/create-checkout-session', {
+		method: 'POST',
+		headers,
+		body: JSON.stringify(body)
+	});
+	request.headers.set('origin', origin);
 	return {
-		request: new Request('https://app.test/api/stripe/create-checkout-session', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				origin: 'https://app.test'
-			},
-			body: JSON.stringify(body)
-		}),
+		request,
+		url: new URL('https://app.test/api/stripe/create-checkout-session'),
 		locals: {
 			principal: user
 				? cookieSessionPrincipal(role, { user: user as never })
 				: anonymousPrincipal(),
-			supabase: createSupabaseMock(existingSubscriptions)
+			supabase: createSupabaseMock(existingSubscriptions),
+			safeGetIdentity: vi.fn(async () =>
+				user
+					? {
+							session: { access_token: 'cookie-token' },
+							user
+						}
+					: { session: null, user: null }
+			)
 		}
 	} as unknown as Parameters<NonNullable<typeof POST>>[0];
 }
@@ -275,5 +346,194 @@ describe('/api/stripe/create-checkout-session', () => {
 			'viewer@example.com',
 			'https://app.test'
 		);
+	});
+
+	it('rejects bearer or mixed credentials and cross-origin mutations', async () => {
+		const body = {
+			purchaseKeys: [BILLING_PURCHASE_KEYS.apiPlanMonthly],
+			requestId: '11111111-1111-4111-8111-111111111111'
+		};
+		const bearer = await POST(makeEvent(body, { authorization: 'Bearer token' }));
+		const crossOrigin = await POST(makeEvent(body, { origin: 'https://evil.test' }));
+
+		expect(bearer.status).toBe(401);
+		expect(crossOrigin.status).toBe(403);
+		expect(mockAcquireCheckoutAdmission).not.toHaveBeenCalled();
+	});
+
+	it('acquires, creates with the admission idempotency key, then publishes before responding', async () => {
+		mockCheckoutAdmissionsEnabled.mockReturnValue(true);
+		const requestId = '11111111-1111-4111-8111-111111111111';
+
+		const response = await POST(
+			makeEvent({
+				purchaseKeys: [BILLING_PURCHASE_KEYS.apiPlanMonthly],
+				requestId
+			})
+		);
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ clientSecret: 'cs_test_secret', requestId });
+		expect(mockAcquireCheckoutAdmission).toHaveBeenCalledWith(expect.anything(), requestId);
+		expect(mockCreateCheckoutSession).toHaveBeenCalledWith(
+			['price_1TLTecKwI9NkGqAn07hkozWj'],
+			null,
+			'user-123',
+			'viewer@example.com',
+			'https://app.test',
+			{
+				admissionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+				requestId,
+				purchaseFingerprint: 'purchase-fingerprint'
+			}
+		);
+		expect(mockPublishCheckoutAdmission).toHaveBeenCalledWith(
+			expect.anything(),
+			'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+			'cs_test_123'
+		);
+		expect(mockAcquireCheckoutAdmission.mock.invocationCallOrder[0]).toBeLessThan(
+			mockCreateCheckoutSession.mock.invocationCallOrder[0]
+		);
+		expect(mockCreateCheckoutSession.mock.invocationCallOrder[0]).toBeLessThan(
+			mockPublishCheckoutAdmission.mock.invocationCallOrder[0]
+		);
+	});
+
+	it('abandons only a definite no-session failure and retains ambiguous admissions', async () => {
+		mockCheckoutAdmissionsEnabled.mockReturnValue(true);
+		const request = {
+			purchaseKeys: [BILLING_PURCHASE_KEYS.apiPlanMonthly],
+			requestId: '11111111-1111-4111-8111-111111111111'
+		};
+		const definitive = Object.assign(new Error('bad request'), {
+			type: 'StripeInvalidRequestError'
+		});
+		mockCreateCheckoutSession.mockRejectedValueOnce(definitive);
+		mockIsDefinitiveCheckoutCreationFailure.mockReturnValueOnce(true);
+
+		const rejected = await POST(makeEvent(request));
+		expect(rejected.status).toBe(400);
+		expect(mockAbandonCheckoutAdmission).toHaveBeenCalledWith(
+			expect.anything(),
+			'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+		);
+
+		mockCreateCheckoutSession.mockRejectedValueOnce(new Error('socket reset'));
+		mockIsDefinitiveCheckoutCreationFailure.mockReturnValueOnce(false);
+		mockAbandonCheckoutAdmission.mockClear();
+		const ambiguous = await POST(makeEvent(request));
+		expect(ambiguous.status).toBe(503);
+		expect((await ambiguous.json()).error.requestId).toBe(request.requestId);
+		expect(mockAbandonCheckoutAdmission).not.toHaveBeenCalled();
+	});
+
+	it('replays an already-published admission by verifying the exact Stripe session', async () => {
+		mockCheckoutAdmissionsEnabled.mockReturnValue(true);
+		mockAcquireCheckoutAdmission.mockResolvedValue({
+			admissionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+			status: 'published',
+			stripeSessionId: 'cs_existing'
+		});
+		mockGetStripe.mockReturnValue({
+			checkout: {
+				sessions: {
+					retrieve: vi.fn(async () => ({
+						client_reference_id: 'user-123',
+						client_secret: 'cs_existing_secret',
+						status: 'open',
+						metadata: {
+							supabase_user_id: 'user-123',
+							parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+							checkout_request_id: requestId,
+							checkout_purchase_fingerprint: 'purchase-fingerprint'
+						}
+					}))
+				}
+			}
+		});
+		const requestId = '11111111-1111-4111-8111-111111111111';
+
+		const response = await POST(
+			makeEvent({
+				purchaseKeys: [BILLING_PURCHASE_KEYS.apiPlanMonthly],
+				requestId
+			})
+		);
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({
+			clientSecret: 'cs_existing_secret',
+			requestId
+		});
+		expect(mockCreateCheckoutSession).not.toHaveBeenCalled();
+		expect(mockPublishCheckoutAdmission).not.toHaveBeenCalled();
+		expect(mockVerifyPublishedCheckoutReplay).toHaveBeenCalledWith(
+			expect.objectContaining({ status: 'open' }),
+			expect.objectContaining({
+				ownerId: 'user-123',
+				admissionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+				requestId
+			})
+		);
+	});
+
+	it('rejects a published admission replay when the requested purchase set changed', async () => {
+		mockCheckoutAdmissionsEnabled.mockReturnValue(true);
+		mockVerifyPublishedCheckoutReplay.mockReturnValue(false);
+		mockAcquireCheckoutAdmission.mockResolvedValue({
+			admissionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+			status: 'published',
+			stripeSessionId: 'cs_existing'
+		});
+		mockGetStripe.mockReturnValue({
+			checkout: {
+				sessions: {
+					retrieve: vi.fn(async () => ({
+						client_reference_id: 'user-123',
+						client_secret: 'cs_existing_secret',
+						status: 'open',
+						metadata: {
+							supabase_user_id: 'user-123',
+							parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+							checkout_request_id: '11111111-1111-4111-8111-111111111111',
+							checkout_purchase_fingerprint: 'different-purchase-fingerprint'
+						}
+					}))
+				}
+			}
+		});
+
+		const response = await POST(
+			makeEvent({
+				purchaseKeys: [BILLING_PURCHASE_KEYS.apiPlanMonthly],
+				requestId: '11111111-1111-4111-8111-111111111111'
+			})
+		);
+
+		expect(response.status).toBe(409);
+		expect(await response.json()).toEqual({
+			error: {
+				code: 'checkout_replay_mismatch',
+				message: 'Checkout replay could not be verified'
+			}
+		});
+		expect(mockCreateCheckoutSession).not.toHaveBeenCalled();
+	});
+
+	it.each([409, 429, 503])('preserves structured upstream %s responses', async (status) => {
+		mockCheckoutAdmissionsEnabled.mockReturnValue(true);
+		const { CheckoutAdmissionError } = await import('$lib/server/billing/checkoutAdmissions');
+		const payload = { error: { code: `upstream_${status}`, message: 'Actionable failure' } };
+		mockAcquireCheckoutAdmission.mockRejectedValue(
+			new CheckoutAdmissionError('Actionable failure', status, payload)
+		);
+		const response = await POST(
+			makeEvent({
+				purchaseKeys: [BILLING_PURCHASE_KEYS.apiPlanMonthly],
+				requestId: '11111111-1111-4111-8111-111111111111'
+			})
+		);
+		expect(response.status).toBe(status);
+		expect(await response.json()).toEqual(payload);
 	});
 });

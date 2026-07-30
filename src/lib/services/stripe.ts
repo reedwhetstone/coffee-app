@@ -5,6 +5,7 @@ import {
 	getBillingCatalogEntryByStripePriceId,
 	type BillingProductFamily
 } from '$lib/server/billing/catalog';
+import { buildCheckoutAdmissionMetadata } from '$lib/server/billing/checkoutAdmissions';
 
 // Initialize Stripe with the latest API version
 export const getStripe = () =>
@@ -239,40 +240,63 @@ export async function createCheckoutSession(
 	customerId: string | null,
 	clientReferenceId: string,
 	customerEmail: string,
-	origin: string
-): Promise<string | null> {
-	try {
-		const stripe = getStripe();
-
-		const sessionParams: Stripe.Checkout.SessionCreateParams = {
-			payment_method_types: ['card'],
-			line_items: priceIds.map((priceId) => ({
-				price: priceId,
-				quantity: 1
-			})),
-			mode: 'subscription',
-			ui_mode: 'embedded',
-			return_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-			client_reference_id: clientReferenceId,
-			allow_promotion_codes: true,
-			subscription_data: {
-				trial_period_days: 14
-			}
-		};
-
-		// Add customer info
-		if (customerId) {
-			sessionParams.customer = customerId;
-		} else if (customerEmail) {
-			sessionParams.customer_email = customerEmail;
-		}
-
-		const session = await stripe.checkout.sessions.create(sessionParams);
-		return session.client_secret;
-	} catch (error) {
-		console.error('Error creating checkout session:', error);
-		return null;
+	origin: string,
+	input?: {
+		admissionId: string;
+		requestId: string;
+		purchaseFingerprint: string;
 	}
+): Promise<{ id: string; clientSecret: string }> {
+	const stripe = getStripe();
+
+	const metadata = input
+		? buildCheckoutAdmissionMetadata({
+				ownerId: clientReferenceId,
+				admissionId: input.admissionId,
+				requestId: input.requestId,
+				purchaseFingerprint: input.purchaseFingerprint
+			})
+		: undefined;
+	const sessionParams: Stripe.Checkout.SessionCreateParams = {
+		payment_method_types: ['card'],
+		line_items: priceIds.map((priceId) => ({
+			price: priceId,
+			quantity: 1
+		})),
+		mode: 'subscription',
+		ui_mode: 'embedded',
+		return_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+		client_reference_id: clientReferenceId,
+		...(metadata ? { metadata } : {}),
+		allow_promotion_codes: true,
+		subscription_data: metadata ? { trial_period_days: 14, metadata } : { trial_period_days: 14 }
+	};
+
+	// Add customer info
+	if (customerId) {
+		sessionParams.customer = customerId;
+	} else if (customerEmail) {
+		sessionParams.customer_email = customerEmail;
+	}
+
+	const session = await stripe.checkout.sessions.create(
+		sessionParams,
+		input ? { idempotencyKey: input.admissionId } : undefined
+	);
+	if (!session.client_secret) {
+		throw new Error('Stripe Checkout session did not return a client secret');
+	}
+	return { id: session.id, clientSecret: session.client_secret };
+}
+
+export function isDefinitiveCheckoutCreationFailure(error: unknown): boolean {
+	if (!error || typeof error !== 'object') return false;
+	const type = (error as { type?: unknown }).type;
+	return (
+		type === 'StripeInvalidRequestError' ||
+		type === 'StripeAuthenticationError' ||
+		type === 'StripePermissionError'
+	);
 }
 
 /**

@@ -117,6 +117,47 @@ pnpm verify:catalog-http-contract  # verify the public catalog HTTP contract
 pnpm audit:discoverability         # audit public SEO and discoverability metadata
 ```
 
+### Checkout admission rollout
+
+Self-serve Stripe Checkout can participate in Parchment's account-deletion
+admission fence. The consumer is dark by default so merging or deploying the
+app before the upstream database migration cannot interrupt Checkout.
+
+Roll out in this order:
+
+1. Apply Parchment migration `20260730150000_account_deletion_checkout_admission_fence.sql`.
+2. Provision one identical 32-or-more-character secret as
+   `ACCOUNT_DELETION_PROVIDER_FINALIZATION_SECRET` in Parchment and
+   `PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL` in coffee-app.
+3. Ensure the Stripe webhook delivers `checkout.session.expired`.
+4. Choose one cutover:
+   - **Clean cutover:** pause new Checkout creation, expire or finish every open
+     pre-cutover Checkout Session, and confirm every completed session's
+     `checkout.session.completed` event was delivered and processed
+     successfully. Then set
+     `PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED=true`, deploy, and reopen Checkout.
+     Leave `PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED=false`.
+   - **Zero-downtime cutover:** inventory pre-cutover Checkout Sessions and set
+     `PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED=true` in the same
+     deployment that enables admissions.
+5. For a zero-downtime cutover, disable the legacy-drain flag only after every
+   pre-cutover session has either expired, or has had its corresponding
+   `checkout.session.completed` event delivered and processed successfully.
+   Confirm the Stripe event delivery/application handling for each completed
+   session; a session reaching `complete` in Stripe is not sufficient.
+
+The legacy-drain flag applies only to pre-cutover `checkout.session` events.
+Historical `customer.subscription` updates and deletions remain authoritative
+for the subscription's lifetime and do not depend on the drain window. Never
+expose the provider credential through a `PUBLIC_` variable or browser code.
+
+Both flags are rollout scaffolding, not permanent application configuration.
+After the cutover has survived the agreed rollback window and all pre-cutover
+sessions are reconciled, remove both flags and the metadata-free
+`checkout.session` compatibility branch in a bounded cleanup PR. Retain the
+server-only provider credential because it authorizes the ongoing
+coffee-app-to-Parchment provider boundary.
+
 ### Worktree-friendly local validation
 
 `pnpm check` and `pnpm test` expect repo-local environment files when you run the app from a fresh worktree. Before validating in a new checkout:

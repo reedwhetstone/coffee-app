@@ -75,6 +75,8 @@ printf '  Use one of: VALIDATION_PASS, VALIDATION_FAIL, VALIDATION_BLOCKED_ENV, 
 
 printf '\nNotes\n'
 printf '  - Placeholder values may unblock static validation, but they do not guarantee runtime or E2E correctness.\n'
+printf '  - Checkout admissions default off. Enabling PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED=true requires PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL (32+ characters) to match Parchment.\n'
+printf '  - PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED=true is temporary and applies only to pre-cutover checkout.session events. Historical customer.subscription events remain reconcilable after the drain closes.\n'
 printf '  - This helper does not copy secrets from outside the repo. Fill values manually in repo-local env files.\n'
 printf '  - This does not solve detached-worktree module-resolution or stale temp-path install issues.\n'
 
