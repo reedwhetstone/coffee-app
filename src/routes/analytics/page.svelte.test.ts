@@ -10,6 +10,7 @@ import type {
 	AnalyticsPreview
 } from './+page.server';
 import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
+import { getAnalyticsSectionLinks } from '$lib/components/layout/appNavigation';
 
 const {
 	goto,
@@ -1002,6 +1003,33 @@ describe('analytics section navigator', () => {
 		expect(screen.queryByRole('link', { name: 'Open catalog' })).toBeNull();
 		expect(screen.queryByRole('link', { name: 'Review API plans' })).toBeNull();
 		expect(screen.queryByRole('button', { name: 'Watchlists not live' })).toBeNull();
+	});
+
+	it('renders an anchor target for every anonymous report-section link', async () => {
+		const { container } = render(AnalyticsPage, { data: createData() });
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(1);
+		});
+
+		for (const link of getAnalyticsSectionLinks({ includeDisclosureIndex: false })) {
+			expect(container.querySelector(link.href)).toBeTruthy();
+		}
+		expect(container.querySelector('#disclosure-index')).toBeNull();
+	});
+
+	it('renders an anchor target for every signed-in report-section link', async () => {
+		const { container } = render(AnalyticsPage, {
+			data: createData({ session: createSession(), role: 'viewer' })
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		for (const link of getAnalyticsSectionLinks({ includeDisclosureIndex: true })) {
+			expect(container.querySelector(link.href)).toBeTruthy();
+		}
 	});
 
 	it('includes bounded analytics context in the chat CTA prompt for entitled users', async () => {

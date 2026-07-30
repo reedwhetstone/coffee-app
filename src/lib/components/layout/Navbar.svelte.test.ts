@@ -45,6 +45,17 @@ describe('Navbar', () => {
 		expect(screen.getByRole('link', { name: 'Disclosure Index' })).toBeTruthy();
 	});
 
+	it('does not advertise signed-in report sections without a signed-in user', () => {
+		pageState.url = new URL('http://localhost/analytics');
+
+		render(Navbar, {
+			data: { role: 'viewer', user: null }
+		});
+
+		expect(screen.getByRole('link', { name: 'Read' })).toBeTruthy();
+		expect(screen.queryByRole('link', { name: 'Disclosure Index' })).toBeNull();
+	});
+
 	it('closes the desktop panel after a report-section jump', async () => {
 		const onClose = vi.fn();
 		pageState.url = new URL('http://localhost/analytics');
