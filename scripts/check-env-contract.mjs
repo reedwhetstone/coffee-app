@@ -75,6 +75,11 @@ const checkoutAdmissionsEnabled =
 	combinedEnv[CHECKOUT_ADMISSION_FLAG]?.trim().toLowerCase() === 'true';
 const checkoutLegacyDrainEnabled =
 	combinedEnv[CHECKOUT_LEGACY_DRAIN_FLAG]?.trim().toLowerCase() === 'true';
+if (checkoutLegacyDrainEnabled && !checkoutAdmissionsEnabled) {
+	console.error('VALIDATION_BLOCKED_ENV');
+	console.error(`${CHECKOUT_LEGACY_DRAIN_FLAG}=true requires ${CHECKOUT_ADMISSION_FLAG}=true.`);
+	process.exit(1);
+}
 if (checkoutAdmissionsEnabled) requiredVars.push(CHECKOUT_ADMISSION_CREDENTIAL);
 const missingVars = requiredVars.filter((key) => {
 	const value = combinedEnv[key];

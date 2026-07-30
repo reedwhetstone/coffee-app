@@ -12,6 +12,7 @@ import {
 	abandonCheckoutAdmission,
 	acquireCheckoutAdmission,
 	CHECKOUT_ADMISSION_METADATA,
+	checkoutPurchaseFingerprint,
 	checkoutAdmissionsEnabled,
 	CheckoutAdmissionError,
 	publishCheckoutAdmission
@@ -247,6 +248,7 @@ export const POST: RequestHandler = async (event) => {
 		const stripePriceIds = requestedCatalogEntries
 			.map((entry) => entry.stripePriceId)
 			.filter((stripePriceId): stripePriceId is string => Boolean(stripePriceId));
+		const purchaseFingerprint = checkoutPurchaseFingerprint(stripePriceIds);
 
 		if (!useAdmissions) {
 			const checkoutSession = await createCheckoutSession(
@@ -271,9 +273,12 @@ export const POST: RequestHandler = async (event) => {
 			const replayed = await getStripe().checkout.sessions.retrieve(admission.stripeSessionId);
 			const replayOwner = replayed.client_reference_id;
 			const replayAdmission = replayed.metadata?.[CHECKOUT_ADMISSION_METADATA.admissionId];
+			const replayPurchaseFingerprint =
+				replayed.metadata?.[CHECKOUT_ADMISSION_METADATA.purchaseFingerprint];
 			if (
 				replayOwner !== user.id ||
 				replayAdmission !== admission.admissionId ||
+				replayPurchaseFingerprint !== purchaseFingerprint ||
 				!replayed.client_secret
 			) {
 				return json(
@@ -297,7 +302,11 @@ export const POST: RequestHandler = async (event) => {
 				user.id,
 				user.email || '',
 				origin,
-				{ admissionId: admission.admissionId, requestId: requestId! }
+				{
+					admissionId: admission.admissionId,
+					requestId: requestId!,
+					purchaseFingerprint
+				}
 			);
 		} catch (error) {
 			if (isDefinitiveCheckoutCreationFailure(error)) {

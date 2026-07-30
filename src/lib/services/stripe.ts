@@ -243,6 +243,7 @@ export async function createCheckoutSession(
 	input?: {
 		admissionId: string;
 		requestId: string;
+		purchaseFingerprint: string;
 	}
 ): Promise<{ id: string; clientSecret: string }> {
 	const stripe = getStripe();
@@ -251,7 +252,8 @@ export async function createCheckoutSession(
 		? {
 				supabase_user_id: clientReferenceId,
 				parchment_admission_id: input.admissionId,
-				checkout_request_id: input.requestId
+				checkout_request_id: input.requestId,
+				checkout_purchase_fingerprint: input.purchaseFingerprint
 			}
 		: undefined;
 	const sessionParams: Stripe.Checkout.SessionCreateParams = {

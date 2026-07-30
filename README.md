@@ -130,12 +130,18 @@ Roll out in this order:
    `ACCOUNT_DELETION_PROVIDER_FINALIZATION_SECRET` in Parchment and
    `PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL` in coffee-app.
 3. Ensure the Stripe webhook delivers `checkout.session.expired`.
-4. Inventory Checkout sessions created before the cutover. If any remain open,
-   set `PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED=true` in the same
-   deployment that enables admissions.
-5. Set `PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED=true` in coffee-app.
-6. Disable the legacy-drain flag only after a cutover checklist confirms that
-   every pre-cutover session has either expired, or has had its corresponding
+4. Choose one cutover:
+   - **Clean cutover:** pause new Checkout creation, expire or finish every open
+     pre-cutover Checkout Session, and confirm every completed session's
+     `checkout.session.completed` event was delivered and processed
+     successfully. Then set
+     `PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED=true`, deploy, and reopen Checkout.
+     Leave `PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED=false`.
+   - **Zero-downtime cutover:** inventory pre-cutover Checkout Sessions and set
+     `PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED=true` in the same
+     deployment that enables admissions.
+5. For a zero-downtime cutover, disable the legacy-drain flag only after every
+   pre-cutover session has either expired, or has had its corresponding
    `checkout.session.completed` event delivered and processed successfully.
    Confirm the Stripe event delivery/application handling for each completed
    session; a session reaching `complete` in Stripe is not sufficient.
@@ -144,6 +150,13 @@ The legacy-drain flag applies only to pre-cutover `checkout.session` events.
 Historical `customer.subscription` updates and deletions remain authoritative
 for the subscription's lifetime and do not depend on the drain window. Never
 expose the provider credential through a `PUBLIC_` variable or browser code.
+
+Both flags are rollout scaffolding, not permanent application configuration.
+After the cutover has survived the agreed rollback window and all pre-cutover
+sessions are reconciled, remove both flags and the metadata-free
+`checkout.session` compatibility branch in a bounded cleanup PR. Retain the
+server-only provider credential because it authorizes the ongoing
+coffee-app-to-Parchment provider boundary.
 
 ### Worktree-friendly local validation
 

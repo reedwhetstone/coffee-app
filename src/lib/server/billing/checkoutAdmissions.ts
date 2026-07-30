@@ -1,13 +1,15 @@
 import { env } from '$env/dynamic/private';
 import type { ParchmentClient } from '@purveyors/sdk';
 import type { RequestEvent } from '@sveltejs/kit';
+import { createHash } from 'node:crypto';
 
 import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 
 export const CHECKOUT_ADMISSION_METADATA = {
 	ownerId: 'supabase_user_id',
 	admissionId: 'parchment_admission_id',
-	requestId: 'checkout_request_id'
+	requestId: 'checkout_request_id',
+	purchaseFingerprint: 'checkout_purchase_fingerprint'
 } as const;
 
 export interface CheckoutAdmissionContext {
@@ -34,12 +36,36 @@ export class CheckoutAdmissionError extends Error {
 	}
 }
 
+export function resolveCheckoutAdmissionRollout(
+	source: Record<string, string | undefined> & {
+		PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED?: string;
+		PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED?: string;
+	}
+): { admissionsEnabled: boolean; legacyDrainEnabled: boolean } {
+	const admissionsEnabled =
+		source.PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED?.trim().toLowerCase() === 'true';
+	const legacyDrainEnabled =
+		source.PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED?.trim().toLowerCase() === 'true';
+	if (legacyDrainEnabled && !admissionsEnabled) {
+		throw new ParchmentConfigError(
+			'PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED=true requires PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED=true.'
+		);
+	}
+	return { admissionsEnabled, legacyDrainEnabled };
+}
+
 export function checkoutAdmissionsEnabled(): boolean {
-	return env.PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED?.trim().toLowerCase() === 'true';
+	return resolveCheckoutAdmissionRollout(env).admissionsEnabled;
 }
 
 export function legacyCheckoutDrainEnabled(): boolean {
-	return env.PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED?.trim().toLowerCase() === 'true';
+	return resolveCheckoutAdmissionRollout(env).legacyDrainEnabled;
+}
+
+export function checkoutPurchaseFingerprint(stripePriceIds: string[]): string {
+	return createHash('sha256')
+		.update([...stripePriceIds].sort().join('\n'))
+		.digest('hex');
 }
 
 function providerCredential(): string {
@@ -173,7 +199,10 @@ export function checkoutAdmissionContextFromMetadata(
 	const ownerId = metadata?.[CHECKOUT_ADMISSION_METADATA.ownerId];
 	const admissionId = metadata?.[CHECKOUT_ADMISSION_METADATA.admissionId];
 	const requestId = metadata?.[CHECKOUT_ADMISSION_METADATA.requestId];
-	const hasManagedAdmissionMetadata = Boolean(ownerId || admissionId || requestId);
+	const purchaseFingerprint = metadata?.[CHECKOUT_ADMISSION_METADATA.purchaseFingerprint];
+	const hasManagedAdmissionMetadata = Boolean(
+		ownerId || admissionId || requestId || purchaseFingerprint
+	);
 	if (hasManagedAdmissionMetadata && (!ownerId || !admissionId)) {
 		throw new Error('Managed checkout session is missing Checkout admission metadata');
 	}

@@ -1,12 +1,66 @@
 import { describe, expect, it } from 'vitest';
 
-import { checkoutAdmissionContextFromMetadata } from './checkoutAdmissions';
+import {
+	checkoutAdmissionContextFromMetadata,
+	checkoutPurchaseFingerprint,
+	resolveCheckoutAdmissionRollout
+} from './checkoutAdmissions';
 
 const partialAdmissionMetadata: Array<Record<string, string>> = [
 	{ supabase_user_id: 'user-123' },
 	{ parchment_admission_id: 'admission-123' },
-	{ checkout_request_id: 'request-123' }
+	{ checkout_request_id: 'request-123' },
+	{ checkout_purchase_fingerprint: 'fingerprint-123' }
 ];
+
+describe('checkoutPurchaseFingerprint', () => {
+	it('is stable across equivalent purchase ordering and changes with the purchase set', () => {
+		const first = checkoutPurchaseFingerprint(['price_b', 'price_a']);
+		const reordered = checkoutPurchaseFingerprint(['price_a', 'price_b']);
+		const changed = checkoutPurchaseFingerprint(['price_a', 'price_c']);
+
+		expect(first).toMatch(/^[a-f0-9]{64}$/);
+		expect(reordered).toBe(first);
+		expect(changed).not.toBe(first);
+	});
+});
+
+describe('resolveCheckoutAdmissionRollout', () => {
+	it('rejects a legacy drain without managed Checkout creation', () => {
+		expect(() =>
+			resolveCheckoutAdmissionRollout({
+				PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED: 'false',
+				PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED: 'true'
+			})
+		).toThrow(
+			'PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED=true requires PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED=true.'
+		);
+	});
+
+	it('allows disabled, clean-cutover, and zero-downtime states', () => {
+		expect(resolveCheckoutAdmissionRollout({})).toEqual({
+			admissionsEnabled: false,
+			legacyDrainEnabled: false
+		});
+		expect(
+			resolveCheckoutAdmissionRollout({
+				PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED: 'true'
+			})
+		).toEqual({
+			admissionsEnabled: true,
+			legacyDrainEnabled: false
+		});
+		expect(
+			resolveCheckoutAdmissionRollout({
+				PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED: 'true',
+				PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED: 'true'
+			})
+		).toEqual({
+			admissionsEnabled: true,
+			legacyDrainEnabled: true
+		});
+	});
+});
 
 describe('checkoutAdmissionContextFromMetadata', () => {
 	it('returns no context for pre-cutover sessions without admission metadata', () => {
