@@ -1,411 +1,291 @@
-<!-- src/lib/components/layout/LeftSidebar.svelte -->
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { slide } from 'svelte/transition';
-	import { quintOut } from 'svelte/easing';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
+	import { filterStore } from '$lib/stores/filterStore';
 	import { checkRole, type PageAuthView } from '$lib/types/auth.types';
 	import { canManagePortfolio } from '$lib/services/portfolioAccess';
-
-	// Props for the sidebar
-	let { data, onMenuChange = () => {} } = $props<{
-		data: Record<string, unknown>;
-		onMenuChange?: (menu: string | null) => void;
-	}>();
-
-	// Import the menu components
-	import NavbarButton from '$lib/components/layout/Navbar.svelte';
-	import SettingsButton from '$lib/components/layout/Settingsbar.svelte';
-	import ActionsButton from '$lib/components/layout/Actionsbar.svelte';
+	import Navbar from '$lib/components/layout/Navbar.svelte';
+	import Settingsbar from '$lib/components/layout/Settingsbar.svelte';
+	import Actionsbar from '$lib/components/layout/Actionsbar.svelte';
 	import AuthSidebar from '$lib/components/layout/AuthSidebar.svelte';
 	import AdminSidebar from '$lib/components/layout/AdminSidebar.svelte';
+	import DesktopShellIcon from '$lib/components/layout/DesktopShellIcon.svelte';
+	import PurveyorsCircleMark from '$lib/components/layout/PurveyorsCircleMark.svelte';
+	import { countActiveCatalogFilters } from '$lib/components/layout/desktopShellState';
 
-	// State for tracking which menu is open
-	let activeMenu = $state<string | null>(null);
+	type MenuId = 'auth' | 'nav' | 'settings' | 'actions' | 'admin';
 
-	// Reference to the sidebar buttons container
-	let sidebarButtonsContainer = $state<HTMLElement | null>(null);
-	// Reference to the menu panels container
-	let menuPanelsContainer = $state<HTMLElement | null>(null);
+	let { data } = $props<{
+		data: Record<string, unknown>;
+	}>();
 
-	// Close menus when route changes, but store the current route to prevent unnecessary closing
+	let activeMenu = $state<MenuId | null>(null);
+	let shellContainer = $state<HTMLElement | null>(null);
+	let panel = $state<HTMLElement | null>(null);
+	let returnFocusTarget = $state<HTMLElement | null>(null);
 	let currentRoute = $state(page.url.pathname);
 	let trackedCatalogRoute = $state(Boolean((page.data as { trackedOnly?: boolean }).trackedOnly));
 
-	// Role checking logic
 	let auth = $derived((data as { auth: PageAuthView }).auth);
 	let userRole = $derived(auth.role);
 	let ppiAccess = $derived(auth.ppiAccess);
 	let canUseActions = $derived(canManagePortfolio(userRole, ppiAccess));
 	let isAdmin = $derived(checkRole(userRole, 'admin'));
+	let userEmail = $derived(auth.user?.email ?? 'Purveyors member');
+	let userInitial = $derived(userEmail.charAt(0).toUpperCase() || 'P');
+	let showSettings = $derived(
+		['/catalog', '/beans', '/roast'].includes(currentRoute) && !trackedCatalogRoute
+	);
+	let activeFilterCount = $derived(
+		$filterStore.routeId === currentRoute
+			? countActiveCatalogFilters({ ...$filterStore, routeId: currentRoute })
+			: 0
+	);
 
-	// Pages where settings (filters) should be shown
-	let showSettings = $derived(() => {
-		const filterPages = ['/catalog', '/beans', '/roast'];
-		return filterPages.includes(currentRoute) && !trackedCatalogRoute;
-	});
+	function getMenuLabel(menu: MenuId): string {
+		if (menu === 'auth') return 'Account';
+		if (menu === 'nav') return 'Main navigation';
+		if (menu === 'actions') return 'Actions';
+		if (menu === 'settings') return 'Filters';
+		return 'Admin';
+	}
 
-	// Debug data object to see what's being passed to the ActionsButton
-	$effect(() => {
-		if (activeMenu === 'actions') {
-			//console.log('LeftSidebar data passed to ActionsButton:', data);
-			//console.log('Route ID when opening actions menu:', page.route.id);
+	async function setMenu(menu: MenuId | null, trigger?: HTMLElement) {
+		if (trigger) returnFocusTarget = trigger;
+		activeMenu = menu;
+		if (!menu) return;
+
+		await tick();
+		panel?.focus();
+	}
+
+	function toggleMenu(menu: MenuId, trigger: HTMLElement) {
+		if (activeMenu === menu) {
+			void closeAllMenus();
+			return;
 		}
-	});
-
-	// Function to toggle a menu
-	function toggleMenu(menuId: string) {
-		//console.log('toggleMenu called with menuId:', menuId);
-		//console.log('Current activeMenu:', activeMenu);
-
-		// Simple toggle: if the same menu is clicked, close it; otherwise open the new one
-		activeMenu = activeMenu === menuId ? null : menuId;
-
-		//console.log('New activeMenu:', activeMenu);
-		// Notify parent components about the menu state change
-		onMenuChange(activeMenu);
+		void setMenu(menu, trigger);
 	}
 
-	// Function to toggle the auth menu
-	function toggleAuthMenu() {
-		toggleMenu('auth');
-	}
-
-	// Function to toggle the nav menu
-	function toggleNavMenu() {
-		toggleMenu('nav');
-	}
-
-	// Function to toggle the settings menu
-	function toggleSettingsMenu() {
-		toggleMenu('settings');
-	}
-
-	// Function to toggle the actions menu
-	function toggleActionsMenu() {
-		toggleMenu('actions');
-	}
-
-	// Function to toggle the admin menu
-	function toggleAdminMenu() {
-		toggleMenu('admin');
-	}
-
-	// Function to handle Coffee Chat button click — one continuous
-	// conversation, so this always navigates to the chat workbench.
-	function handleChatClick() {
-		goto('/chat');
-	}
-
-	// Function to close all menus
-	function closeAllMenus() {
+	async function closeAllMenus(restoreFocus = true) {
+		const focusTarget = returnFocusTarget;
 		activeMenu = null;
-		// Notify parent components about the menu state change
-		onMenuChange(activeMenu);
+		returnFocusTarget = null;
+
+		if (restoreFocus && focusTarget) {
+			await tick();
+			focusTarget.focus();
+		}
 	}
 
-	// Handle clicks on the document to close menus when clicking outside
+	function handleChatClick() {
+		void closeAllMenus(false);
+		void goto('/chat');
+	}
+
 	function handleDocumentClick(event: MouseEvent) {
-		// If no menu is open, do nothing
 		if (!activeMenu) return;
-
-		const target = event.target as HTMLElement;
-
-		// Check if the click is on an element with data-menu-toggle attribute or its descendant
-		// This covers the sidebar buttons that toggle the menus
-		if (sidebarButtonsContainer && sidebarButtonsContainer.contains(target)) {
-			return;
-		}
-
-		// Check if the click is on an element with data-menu-panel attribute or its descendant
-		// This covers the menu panels
-		if (menuPanelsContainer && menuPanelsContainer.contains(target)) {
-			return;
-		}
-
-		// If we get here, the click was outside both the sidebar buttons and menu panels
-		closeAllMenus();
+		const target = event.target as Node;
+		if (shellContainer?.contains(target) || panel?.contains(target)) return;
+		void closeAllMenus(false);
 	}
 
-	// Close menus when route changes
+	function handleGlobalKeydown(event: KeyboardEvent) {
+		if (event.defaultPrevented || event.key !== 'Escape' || !activeMenu) return;
+		event.preventDefault();
+		void closeAllMenus();
+	}
+
 	$effect(() => {
-		const newRoute = page.url.pathname;
-		// Only close menus if the route actually changed
-		if (newRoute !== currentRoute) {
-			currentRoute = newRoute;
-			closeAllMenus();
-		}
+		const nextRoute = page.url.pathname;
+		const nextTrackedCatalogRoute = Boolean((page.data as { trackedOnly?: boolean }).trackedOnly);
 
-		const newTrackedCatalogRoute = Boolean((page.data as { trackedOnly?: boolean }).trackedOnly);
-		if (newTrackedCatalogRoute !== trackedCatalogRoute) {
-			trackedCatalogRoute = newTrackedCatalogRoute;
-			closeAllMenus();
+		if (nextRoute !== currentRoute || nextTrackedCatalogRoute !== trackedCatalogRoute) {
+			currentRoute = nextRoute;
+			trackedCatalogRoute = nextTrackedCatalogRoute;
+			void closeAllMenus(false);
 		}
 	});
 
-	// Set up and clean up document click handler
 	onMount(() => {
-		// Add click handler to the document
 		document.addEventListener('mousedown', handleDocumentClick);
-
-		// Clean up on component destruction
-		return () => {
-			document.removeEventListener('mousedown', handleDocumentClick);
-		};
+		return () => document.removeEventListener('mousedown', handleDocumentClick);
 	});
-
-	// Calculate sidebar position based on active menu
-	let sidebarPosition = $derived(activeMenu ? 'left-64' : 'left-0');
 </script>
 
-<div
-	class="fixed top-0 z-50 hidden h-full {sidebarPosition} transition-all duration-300 ease-out md:block"
-	bind:this={sidebarButtonsContainer}
->
-	{#if auth.isSignedIn}
-		<div class="flex h-full w-16 flex-col items-center space-y-4 bg-surface-canvas py-4 shadow-lg">
-			<!-- Auth Menu Button -->
-			<div class="relative">
-				<button
-					onclick={toggleAuthMenu}
-					class="rounded-full bg-surface-panel p-2 text-ink shadow-sm ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
-					aria-label="Toggle authentication menu"
-				>
-					{#if auth.user}
-						<!-- User Avatar/Icon -->
-						<div
-							class="flex h-8 w-8 items-center justify-center rounded-full bg-accent font-medium text-ink"
-						>
-							{auth.user.email?.[0].toUpperCase() || 'U'}
-						</div>
-					{:else}
-						<!-- Default Profile Icon -->
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-8 w-8"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="1.5"
-								d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-							/>
-						</svg>
-					{/if}
-				</button>
-			</div>
+<svelte:window onkeydown={handleGlobalKeydown} />
 
-			<!-- Coffee Chat Button with Orange Glow -->
-			<div class="relative">
-				<button
-					onclick={handleChatClick}
-					class="flex items-center justify-center rounded-full bg-surface-panel p-2 text-ink ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink hover:ring-accent"
-					style="box-shadow: 0 0 20px rgba(249, 165, 123, 0.5), 0 1px 2px 0 rgb(0 0 0 / 0.05);"
-					aria-label="Coffee Chat"
-				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-8 w-8"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="1.5"
-							d="m19 19-3.5-3.5m0 0a6 6 0 1 0-8.485-8.485 6 6 0 0 0 8.485 8.485z"
-						/>
-					</svg>
-				</button>
-			</div>
-
-			<!-- Navigation Menu -->
-			<div class="relative">
-				<button
-					onclick={toggleNavMenu}
-					class="rounded-full bg-surface-panel p-2 text-ink shadow-sm ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
-					aria-label="Toggle navigation menu"
-				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-8 w-8"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="1.5"
-							d="M4 6h16M4 12h16M4 18h16"
-						/>
-					</svg>
-				</button>
-			</div>
-
-			<!-- Actions Menu - Portfolio managers only; PPI users get PPI-safe actions inside -->
-			{#if canUseActions}
-				<div class="relative">
-					<button
-						onclick={toggleActionsMenu}
-						class="rounded-full bg-surface-panel p-2 text-ink shadow-sm ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
-						aria-label="Toggle actions"
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-8 w-8"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="1.5"
-								d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-							/>
-						</svg>
-					</button>
-				</div>
-			{/if}
-
-			<!-- Admin Menu - Only for admin users -->
-			{#if isAdmin}
-				<div class="relative">
-					<button
-						onclick={toggleAdminMenu}
-						class="rounded-full bg-surface-panel p-2 text-ink shadow-sm ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
-						aria-label="Toggle admin menu"
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-8 w-8"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="1.5"
-								d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-							/>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="1.5"
-								d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-							/>
-						</svg>
-					</button>
-				</div>
-			{/if}
-
-			<!-- Settings Menu - Only on specific pages -->
-			{#if showSettings()}
-				<div class="relative">
-					<button
-						onclick={toggleSettingsMenu}
-						class="rounded-full bg-surface-panel p-2 text-ink shadow-sm ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
-						aria-label="Toggle filters"
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-8 w-8"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<!-- Three horizontal lines with slider dots -->
-							<g stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5">
-								<!-- First line with dot -->
-								<line x1="4" y1="7" x2="12" y2="7" />
-								<circle cx="14" cy="7" r="1.5" fill="currentColor" />
-								<line x1="16" y1="7" x2="20" y2="7" />
-
-								<!-- Second line with dot -->
-								<line x1="4" y1="12" x2="8" y2="12" />
-								<circle cx="10" cy="12" r="1.5" fill="currentColor" />
-								<line x1="12" y1="12" x2="20" y2="12" />
-
-								<!-- Third line with dot -->
-								<line x1="4" y1="17" x2="14" y2="17" />
-								<circle cx="16" cy="17" r="1.5" fill="currentColor" />
-								<line x1="18" y1="17" x2="20" y2="17" />
-							</g>
-						</svg>
-					</button>
-				</div>
-			{/if}
-
-			<!-- Spacer to push potential future buttons to the bottom -->
-			<div class="flex-grow"></div>
-		</div>
+{#snippet menuPanel(menu: MenuId)}
+	{#if menu === 'auth'}
+		<aside class="h-full bg-surface-canvas text-ink" aria-label="Account menu">
+			<AuthSidebar {data} onClose={closeAllMenus} variant="rail" />
+		</aside>
+	{:else if menu === 'nav'}
+		<aside class="h-full bg-surface-canvas text-ink" aria-label="Main navigation menu">
+			<Navbar {data} onClose={closeAllMenus} variant="rail" />
+		</aside>
+	{:else if menu === 'actions'}
+		<aside class="h-full bg-surface-canvas text-ink" aria-label="Actions menu">
+			<Actionsbar {data} onClose={closeAllMenus} variant="rail" />
+		</aside>
+	{:else if menu === 'settings'}
+		<aside class="h-full bg-surface-canvas text-ink" aria-label="Filters menu">
+			<Settingsbar {data} isOpen={true} onClose={closeAllMenus} variant="rail" />
+		</aside>
+	{:else}
+		<aside class="h-full bg-surface-canvas text-ink" aria-label="Admin menu">
+			<AdminSidebar {data} onClose={closeAllMenus} variant="rail" />
+		</aside>
 	{/if}
+{/snippet}
+
+<div
+	class="fixed inset-y-0 left-0 z-40 hidden md:flex"
+	bind:this={shellContainer}
+	data-testid="desktop-app-shell"
+>
+	<aside
+		class="flex h-full w-16 flex-col items-center border-r border-line bg-surface-canvas px-2 py-3"
+		aria-label="Desktop action bar"
+	>
+		<button
+			type="button"
+			onclick={(event) => toggleMenu('nav', event.currentTarget)}
+			class="group relative mb-3 flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+			class:bg-surface-panel={activeMenu === 'nav'}
+			class:text-ink={activeMenu === 'nav'}
+			aria-label={activeMenu === 'nav' ? 'Close navigation' : 'Open navigation'}
+			aria-controls="desktop-shell-panel"
+			aria-expanded={activeMenu === 'nav'}
+		>
+			<PurveyorsCircleMark />
+			<span class="rail-tooltip">Menu</span>
+		</button>
+
+		<button
+			type="button"
+			onclick={handleChatClick}
+			class="group relative flex h-10 w-10 items-center justify-center rounded-lg bg-surface-panel text-ink ring-1 ring-accent/50 transition-colors hover:bg-accent/15"
+			style="box-shadow: 0 0 18px rgba(249, 165, 123, 0.42);"
+			aria-label="Open chat"
+		>
+			<DesktopShellIcon name="chat" />
+			<span class="rail-tooltip">Chat</span>
+		</button>
+
+		{#if canUseActions}
+			<button
+				type="button"
+				onclick={(event) => toggleMenu('actions', event.currentTarget)}
+				class="group relative mt-2 flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+				class:bg-surface-panel={activeMenu === 'actions'}
+				class:text-ink={activeMenu === 'actions'}
+				aria-label={activeMenu === 'actions' ? 'Close actions' : 'Open actions'}
+				aria-controls="desktop-shell-panel"
+				aria-expanded={activeMenu === 'actions'}
+			>
+				<DesktopShellIcon name="actions" />
+				<span class="rail-tooltip">New</span>
+			</button>
+		{/if}
+
+		{#if showSettings}
+			<button
+				type="button"
+				onclick={(event) => toggleMenu('settings', event.currentTarget)}
+				class="group relative mt-2 flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+				class:bg-surface-panel={activeMenu === 'settings'}
+				class:text-ink={activeMenu === 'settings'}
+				aria-label={activeMenu === 'settings' ? 'Close filters' : 'Open filters'}
+				aria-controls="desktop-shell-panel"
+				aria-expanded={activeMenu === 'settings'}
+			>
+				<DesktopShellIcon name="filters" />
+				<span class="rail-tooltip">Filters</span>
+				{#if activeFilterCount > 0}
+					<span
+						class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-semibold text-ink"
+						aria-label={`${activeFilterCount} active filters`}>{activeFilterCount}</span
+					>
+				{/if}
+			</button>
+		{/if}
+
+		{#if isAdmin}
+			<button
+				type="button"
+				onclick={(event) => toggleMenu('admin', event.currentTarget)}
+				class="group relative mt-2 flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+				class:bg-surface-panel={activeMenu === 'admin'}
+				class:text-ink={activeMenu === 'admin'}
+				aria-label={activeMenu === 'admin' ? 'Close admin tools' : 'Open admin tools'}
+				aria-controls="desktop-shell-panel"
+				aria-expanded={activeMenu === 'admin'}
+			>
+				<DesktopShellIcon name="admin" />
+				<span class="rail-tooltip">Admin</span>
+			</button>
+		{/if}
+
+		<div class="mt-auto">
+			<button
+				type="button"
+				onclick={(event) => toggleMenu('auth', event.currentTarget)}
+				class="group relative flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+				class:bg-surface-panel={activeMenu === 'auth'}
+				class:text-ink={activeMenu === 'auth'}
+				aria-label={activeMenu === 'auth' ? 'Close account' : 'Open account'}
+				aria-controls="desktop-shell-panel"
+				aria-expanded={activeMenu === 'auth'}
+			>
+				<span
+					class="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-semibold text-ink"
+					>{userInitial}</span
+				>
+				<span class="rail-tooltip">Account</span>
+			</button>
+		</div>
+	</aside>
 </div>
 
-<!-- Menu panels container - positioned fixed to the left of the screen -->
 {#if activeMenu}
 	<div
-		class="fixed left-0 top-0 z-40 hidden h-full md:block"
-		transition:slide={{ duration: 300, easing: quintOut, axis: 'x' }}
-		bind:this={menuPanelsContainer}
+		id="desktop-shell-panel"
+		class="fixed inset-y-0 left-16 z-50 hidden w-80 border-r border-line bg-surface-canvas shadow-[8px_0_24px_rgba(0,0,0,0.08)] md:block"
+		bind:this={panel}
+		tabindex="-1"
+		role="region"
+		aria-label={`${getMenuLabel(activeMenu)} panel`}
 		data-menu-panel="true"
 	>
-		<!-- Auth Menu Panel -->
-		{#if activeMenu === 'auth'}
-			<aside
-				class="h-full w-64 bg-surface-canvas text-ink shadow-xl ring-1 ring-line"
-				aria-label="User Login Menu"
-			>
-				<AuthSidebar {data} onClose={closeAllMenus} />
-			</aside>
-		{/if}
-
-		<!-- Navigation Menu Panel -->
-		{#if activeMenu === 'nav'}
-			<aside
-				class="h-full w-64 bg-surface-canvas text-ink shadow-xl ring-1 ring-line"
-				role="navigation"
-				aria-label="Main navigation menu"
-			>
-				<NavbarButton {data} onClose={closeAllMenus} />
-			</aside>
-		{/if}
-
-		<!-- Actions Menu Panel -->
-		{#if activeMenu === 'actions'}
-			<aside
-				class="h-full w-64 bg-surface-canvas text-ink shadow-xl ring-1 ring-line"
-				aria-label="Actions menu"
-			>
-				<ActionsButton {data} onClose={closeAllMenus} />
-			</aside>
-		{/if}
-
-		<!-- Settings Menu Panel -->
-		{#if activeMenu === 'settings'}
-			<aside
-				class="h-full w-64 bg-surface-canvas text-ink shadow-xl ring-1 ring-line"
-				aria-label="Settings menu"
-			>
-				<SettingsButton {data} isOpen={true} onClose={closeAllMenus} />
-			</aside>
-		{/if}
-
-		<!-- Admin Menu Panel -->
-		{#if activeMenu === 'admin'}
-			<aside
-				class="h-full w-64 bg-surface-canvas text-ink shadow-xl ring-1 ring-line"
-				aria-label="Admin menu"
-			>
-				<AdminSidebar {data} onClose={closeAllMenus} />
-			</aside>
-		{/if}
+		{@render menuPanel(activeMenu)}
 	</div>
 {/if}
+
+<style>
+	.rail-tooltip {
+		position: absolute;
+		left: calc(100% + 0.75rem);
+		z-index: 70;
+		white-space: nowrap;
+		border-radius: 0.375rem;
+		background: var(--color-ink, #2f2c29);
+		padding: 0.25rem 0.5rem;
+		color: var(--color-surface-canvas, #fffdf9);
+		font-size: 0.75rem;
+		line-height: 1rem;
+		opacity: 0;
+		pointer-events: none;
+		transform: translateX(-0.25rem);
+		transition:
+			opacity 120ms ease,
+			transform 120ms ease;
+	}
+
+	.group:hover .rail-tooltip,
+	.group:focus-visible .rail-tooltip {
+		opacity: 1;
+		transform: translateX(0);
+	}
+</style>

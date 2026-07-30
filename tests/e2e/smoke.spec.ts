@@ -135,7 +135,7 @@ test.describe('Protected pages load with auth', () => {
 		await expect(page.getByRole('heading', { name: 'Parchment Market Index' })).toBeVisible();
 		await expect(page.getByRole('heading', { name: 'Ask Parchment' })).toBeVisible();
 		await expect(page.getByRole('heading', { name: 'Mallard Studio' })).toBeVisible();
-		await expect(page.locator('[aria-label="Toggle authentication menu"]')).toHaveCount(1);
+		await expect(page.getByRole('button', { name: 'Open account' })).toHaveCount(1);
 	});
 
 	test('/beans renders without server error', async ({ page }) => {

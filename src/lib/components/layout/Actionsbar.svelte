@@ -6,9 +6,14 @@
 	import { canManagePortfolio } from '$lib/services/portfolioAccess';
 
 	// Props declaration
-	let { data, onClose = () => {} } = $props<{
+	let {
+		data,
+		onClose = () => {},
+		variant = 'default'
+	} = $props<{
 		data: Record<string, unknown>;
 		onClose?: () => void;
+		variant?: 'default' | 'rail';
 	}>();
 
 	// Destructure with default values
@@ -87,8 +92,10 @@
 
 <div class="flex h-full flex-col">
 	<!-- Header with close button -->
-	<header class="flex items-center justify-between border-b border-line p-4">
-		<h2 class="text-lg font-semibold text-ink" id="actions-dialog-title">Actions</h2>
+	<header class="flex items-center justify-between border-b border-line px-5 py-4">
+		<h2 class="text-lg font-semibold text-ink" id="actions-dialog-title">
+			{variant === 'rail' ? 'New' : 'Actions'}
+		</h2>
 		<button
 			onclick={(e) => {
 				e.stopPropagation();
@@ -113,31 +120,43 @@
 		</button>
 	</header>
 
-	<main class="flex-grow overflow-y-auto p-4">
+	<main class="flex-grow overflow-y-auto p-3">
 		{#if canManagePortfolioRows}
-			<div class="space-y-2">
+			<div class={variant === 'rail' ? 'space-y-0.5' : 'space-y-2'}>
 				<!-- Always show Portfolio functions regardless of current page -->
 				<button
-					class="block w-full rounded-md bg-surface-panel px-3 py-2 text-left text-sm font-medium text-ink ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
+					class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-ink transition-colors duration-150 {variant ===
+					'rail'
+						? 'hover:bg-surface-panel'
+						: 'bg-surface-panel ring-1 ring-line hover:bg-accent'}"
 					onclick={handleNewBean}
 				>
 					New bean
 				</button>
 				{#if hasRequiredRole('member')}
 					<button
-						class="block w-full rounded-md bg-surface-panel px-3 py-2 text-left text-sm font-medium text-ink ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
+						class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-ink transition-colors duration-150 {variant ===
+						'rail'
+							? 'hover:bg-surface-panel'
+							: 'bg-surface-panel ring-1 ring-line hover:bg-accent'}"
 						onclick={handleNewRoast}
 					>
 						New roast
 					</button>
 					<button
-						class="block w-full rounded-md bg-surface-panel px-3 py-2 text-left text-sm font-medium text-ink ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
+						class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-ink transition-colors duration-150 {variant ===
+						'rail'
+							? 'hover:bg-surface-panel'
+							: 'bg-surface-panel ring-1 ring-line hover:bg-accent'}"
 						onclick={handleNewSale}
 					>
 						New sale
 					</button>
 					<button
-						class="block w-full rounded-md border border-accent px-3 py-2 text-left text-sm font-medium text-accent transition-all duration-200 hover:bg-accent hover:text-ink"
+						class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-150 {variant ===
+						'rail'
+							? 'text-ink hover:bg-surface-panel'
+							: 'border border-accent text-accent hover:bg-accent hover:text-ink'}"
 						onclick={handleShareAllBeans}
 					>
 						Share all beans

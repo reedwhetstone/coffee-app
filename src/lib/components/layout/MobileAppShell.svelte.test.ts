@@ -19,7 +19,11 @@ vi.mock('$app/state', () => ({
 	page: pageState
 }));
 
-vi.mock('$lib/components/layout/MobileAppMenu.svelte', () => ({
+vi.mock('$lib/components/layout/Navbar.svelte', () => ({
+	default: vi.fn()
+}));
+
+vi.mock('$lib/components/layout/AuthSidebar.svelte', () => ({
 	default: vi.fn()
 }));
 
@@ -31,31 +35,53 @@ vi.mock('$lib/components/layout/Actionsbar.svelte', () => ({
 	default: vi.fn()
 }));
 
-function auth(role: 'viewer' | 'member', ppiAccess: boolean) {
-	return { isSignedIn: true, user: null, role, ppiAccess };
-}
+vi.mock('$lib/stores/filterStore', () => ({
+	filterStore: {
+		subscribe: (run: (value: Record<string, unknown>) => void) => {
+			run({ routeId: '/beans', filters: {}, sortField: '', sortDirection: '' });
+			return () => {};
+		}
+	}
+}));
 
 describe('MobileAppShell actions launcher', () => {
+	const auth = (role: 'viewer' | 'member', ppiAccess: boolean) => ({
+		auth: {
+			isSignedIn: true,
+			user: { id: 'user-1', email: 'member@example.com' },
+			role,
+			ppiAccess
+		}
+	});
+
 	beforeEach(() => {
 		pageState.url = new URL('http://localhost/beans');
 		pageState.data = {};
 	});
 
 	it('lets Parchment Intelligence-only viewers open portfolio actions', () => {
-		render(MobileAppShell, { data: { auth: auth('viewer', true) } });
+		render(MobileAppShell, { data: auth('viewer', true) });
 
 		expect(screen.getByLabelText('Open actions')).toBeTruthy();
 	});
 
+	it('uses the circle-only Purveyors mark in the mobile menu trigger', () => {
+		render(MobileAppShell, { data: auth('member', false) });
+
+		const menuTrigger = screen.getByLabelText('Open app menu');
+		expect(menuTrigger.querySelector('img')).toBeNull();
+		expect(menuTrigger.querySelector('svg[viewBox="0 0 525 525"]')).toBeTruthy();
+	});
+
 	it('keeps the actions launcher hidden for ordinary viewers', () => {
-		render(MobileAppShell, { data: { auth: auth('viewer', false) } });
+		render(MobileAppShell, { data: auth('viewer', false) });
 
 		expect(screen.queryByLabelText('Open actions')).toBeNull();
 	});
 
 	it('does not show an empty filters launcher on profit', () => {
 		pageState.url = new URL('http://localhost/profit');
-		render(MobileAppShell, { data: { auth: auth('member', false) } });
+		render(MobileAppShell, { data: auth('member', false) });
 
 		expect(screen.queryByLabelText('Open filters')).toBeNull();
 	});
@@ -63,7 +89,7 @@ describe('MobileAppShell actions launcher', () => {
 	it('hides catalog filters in the tracked-only view', () => {
 		pageState.url = new URL('http://localhost/catalog?tracked=only');
 		pageState.data = { trackedOnly: true };
-		render(MobileAppShell, { data: { auth: auth('member', false) } });
+		render(MobileAppShell, { data: auth('member', false) });
 
 		expect(screen.queryByLabelText('Open filters')).toBeNull();
 	});
@@ -71,7 +97,7 @@ describe('MobileAppShell actions launcher', () => {
 	it('keeps filters visible when an unauthorized tracked query renders the normal catalog', () => {
 		pageState.url = new URL('http://localhost/catalog?tracked=only');
 		pageState.data = { trackedOnly: false };
-		render(MobileAppShell, { data: { auth: auth('viewer', false) } });
+		render(MobileAppShell, { data: auth('viewer', false) });
 
 		expect(screen.getByLabelText('Open filters')).toBeTruthy();
 	});

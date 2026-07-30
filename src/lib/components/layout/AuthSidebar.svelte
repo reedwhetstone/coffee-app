@@ -2,13 +2,17 @@
 <script lang="ts">
 	import { signInWithGoogle, createClient } from '$lib/supabase';
 	import { goto } from '$app/navigation';
-
 	import type { PageAuthView } from '$lib/types/auth.types';
 
 	// Props with default values to prevent undefined errors
-	let { data, onClose = () => {} } = $props<{
+	let {
+		data,
+		onClose = () => {},
+		variant = 'default'
+	} = $props<{
 		data: Record<string, unknown>;
 		onClose?: () => void;
+		variant?: 'default' | 'rail';
 	}>();
 
 	// Destructure with default values
@@ -44,7 +48,7 @@
 <!-- Authentication menu panel - full height -->
 <div class="flex h-full flex-col">
 	<!-- Header with close button that handles keyboard events -->
-	<header class="flex items-center justify-between border-b border-line p-4">
+	<header class="flex items-center justify-between border-b border-line px-5 py-4">
 		<h2 class="text-lg font-semibold text-ink" id="auth-dialog-title">Account</h2>
 		<button
 			onclick={(e) => {
@@ -70,7 +74,9 @@
 		</button>
 	</header>
 
-	<main class="flex-grow overflow-y-auto p-4">
+	<main
+		class={variant === 'rail' ? 'flex-grow overflow-y-auto p-5' : 'flex-grow overflow-y-auto p-4'}
+	>
 		{#if auth.user}
 			<div class="mb-4">
 				<h3 class="mb-2 font-medium text-ink">Signed in as:</h3>
@@ -78,7 +84,10 @@
 
 				<button
 					onclick={handleSignOut}
-					class="w-full rounded-md border border-danger px-4 py-2 text-left text-sm text-danger transition-all duration-200 hover:bg-danger hover:text-white"
+					class="w-full rounded-md px-3 py-2 text-left text-sm text-danger transition-colors duration-150 {variant ===
+					'rail'
+						? 'hover:bg-surface-panel'
+						: 'border border-danger hover:bg-danger hover:text-white'}"
 				>
 					Sign out
 				</button>
@@ -90,7 +99,10 @@
 
 				<button
 					onclick={handleSignIn}
-					class="w-full rounded-md bg-accent px-4 py-2 text-left text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
+					class="w-full rounded-md px-3 py-2 text-left text-sm font-medium text-ink transition-colors duration-150 {variant ===
+					'rail'
+						? 'hover:bg-surface-panel'
+						: 'bg-accent hover:bg-opacity-90'}"
 				>
 					Sign in with Google
 				</button>
@@ -98,7 +110,10 @@
 		{/if}
 		<button
 			onclick={navigateToSubscription}
-			class="mb-3 w-full rounded-md border border-accent px-4 py-2 text-left text-sm text-accent transition-all duration-200 hover:bg-accent hover:text-ink"
+			class="mb-3 w-full rounded-md px-3 py-2 text-left text-sm transition-colors duration-150 {variant ===
+			'rail'
+				? 'text-ink hover:bg-surface-panel'
+				: 'border border-accent text-accent hover:bg-accent hover:text-ink'}"
 		>
 			Subscription
 		</button>
