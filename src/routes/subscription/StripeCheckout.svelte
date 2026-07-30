@@ -2,6 +2,12 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import type { BillingPurchaseKey } from '$lib/billing/purchaseKeys';
+	import {
+		clearCheckoutRequestId,
+		getOrCreateCheckoutRequestId,
+		isTerminalCheckoutFailure,
+		parseCheckoutFailure
+	} from '$lib/billing/checkoutRequest';
 
 	const { purchaseKey, onSuccess = () => {} } = $props<{
 		purchaseKey: BillingPurchaseKey;
@@ -16,6 +22,9 @@
 	let checkout: any;
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	function getCheckoutRequestId(): string {
+		return getOrCreateCheckoutRequestId(sessionStorage, purchaseKey, () => crypto.randomUUID());
+	}
 
 	const initializeCheckout = async () => {
 		try {
@@ -44,15 +53,17 @@
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					purchaseKeys: [purchaseKey]
+					purchaseKeys: [purchaseKey],
+					requestId: getCheckoutRequestId()
 				})
 			});
 
 			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(
-					errorData.error || errorData.message || 'Failed to create checkout session'
-				);
+				const failure = parseCheckoutFailure(await response.json());
+				if (isTerminalCheckoutFailure(failure.code)) {
+					clearCheckoutRequestId(sessionStorage, purchaseKey);
+				}
+				throw new Error(failure.message);
 			}
 
 			const { clientSecret } = await response.json();
@@ -70,6 +81,7 @@
 				clientSecret,
 				onComplete: () => {
 					// Handle successful payment
+					clearCheckoutRequestId(sessionStorage, purchaseKey);
 					onSuccess();
 				}
 			});

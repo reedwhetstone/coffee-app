@@ -8,8 +8,29 @@ import {
 	reconcileStripeSubscription
 } from '$lib/services/stripe-webhook';
 import { getStripe } from '$lib/services/stripe';
+import {
+	checkoutAdmissionContextFromMetadata,
+	checkoutAdmissionsEnabled,
+	checkoutProviderIsEligible,
+	CheckoutAdmissionError,
+	legacyCheckoutDrainEnabled,
+	terminalizeExpiredCheckoutAdmission,
+	type CheckoutAdmissionContext
+} from '$lib/server/billing/checkoutAdmissions';
 
-export async function POST({ request }: RequestEvent) {
+async function requireProviderEligibility(
+	event: RequestEvent,
+	context: CheckoutAdmissionContext | null
+): Promise<boolean> {
+	// Managed sessions stay fenced even if the creation rollout is disabled
+	// during rollback or configuration drift. The flag only controls whether
+	// metadata-free legacy sessions remain admissible during the drain.
+	if (context) return checkoutProviderIsEligible(event, context);
+	return !checkoutAdmissionsEnabled() || legacyCheckoutDrainEnabled();
+}
+
+export async function POST(requestEvent: RequestEvent) {
+	const { request } = requestEvent;
 	console.log('🔔 Webhook endpoint called');
 
 	const supabase = createAdminSupabase();
@@ -33,21 +54,30 @@ export async function POST({ request }: RequestEvent) {
 			return json({ error: 'Empty body' }, { status: 400 });
 		}
 
-		const event = await constructStripeEvent(body, signature, STRIPE_WEBHOOK_SECRET);
-		if (!event) {
+		const stripeEvent = await constructStripeEvent(body, signature, STRIPE_WEBHOOK_SECRET);
+		if (!stripeEvent) {
 			return json({ error: 'Invalid signature' }, { status: 400 });
 		}
 
 		console.log('✅ Webhook signature verified successfully');
-		console.log(`📣 Received Stripe event: ${event.type}`);
-		console.log('📊 Event data:', JSON.stringify(event.data.object).substring(0, 200) + '...');
+		console.log(`📣 Received Stripe event: ${stripeEvent.type}`);
+		console.log(
+			'📊 Event data:',
+			JSON.stringify(stripeEvent.data.object).substring(0, 200) + '...'
+		);
 
-		switch (event.type) {
+		switch (stripeEvent.type) {
 			case 'checkout.session.completed': {
-				const session = event.data.object;
+				const session = stripeEvent.data.object;
 				console.log('💰 Checkout session completed');
 				console.log('🧑 Customer ID:', session.customer);
 				console.log('📝 Subscription ID:', session.subscription);
+
+				const admissionContext = checkoutAdmissionContextFromMetadata(session.metadata, session.id);
+				if (!(await requireProviderEligibility(requestEvent, admissionContext))) {
+					console.warn('Checkout provider writes rejected by Parchment admission fence');
+					break;
+				}
 
 				if (session.client_reference_id && session.customer) {
 					console.log('🔑 Client reference ID found:', session.client_reference_id);
@@ -86,14 +116,66 @@ export async function POST({ request }: RequestEvent) {
 				break;
 			}
 
+			case 'checkout.session.expired': {
+				const session = stripeEvent.data.object;
+				const admissionContext = checkoutAdmissionContextFromMetadata(session.metadata, session.id);
+				if (admissionContext) {
+					try {
+						await terminalizeExpiredCheckoutAdmission(requestEvent, admissionContext);
+					} catch (error) {
+						if (!(error instanceof CheckoutAdmissionError && error.status === 409)) throw error;
+						console.info('Account deletion owns expired Checkout reconciliation');
+					}
+				}
+				break;
+			}
+
 			case 'customer.subscription.created':
 			case 'customer.subscription.updated':
-			case 'customer.subscription.deleted':
-				await reconcileStripeSubscription(event.data.object, supabase);
+			case 'customer.subscription.deleted': {
+				const subscription = stripeEvent.data.object;
+				let admissionContext: CheckoutAdmissionContext | null = null;
+				const ownerId = subscription.metadata?.supabase_user_id;
+				const admissionId = subscription.metadata?.parchment_admission_id;
+				const requestId = subscription.metadata?.checkout_request_id;
+				const hasManagedAdmissionMetadata = Boolean(ownerId || admissionId || requestId);
+				if (hasManagedAdmissionMetadata && (!ownerId || !admissionId)) {
+					throw new Error('Managed subscription is missing Checkout admission metadata');
+				}
+				if (ownerId && admissionId) {
+					const stripe = getStripe();
+					const sessions = await stripe.checkout.sessions.list({
+						subscription: subscription.id,
+						limit: 1
+					});
+					const checkoutSession = sessions.data[0];
+					if (!checkoutSession) {
+						throw new Error('Managed subscription Checkout session could not be resolved');
+					}
+					admissionContext = {
+						ownerId,
+						admissionId,
+						requestId,
+						stripeSessionId: checkoutSession.id
+					};
+				}
+				// Historical subscriptions predate the one-time Checkout admission
+				// protocol and remain reconcilable for their full lifetime. The
+				// legacy drain flag applies only to outstanding checkout.session
+				// events during cutover, never to ordinary subscription maintenance.
+				if (
+					!admissionContext ||
+					(await checkoutProviderIsEligible(requestEvent, admissionContext))
+				) {
+					await reconcileStripeSubscription(subscription, supabase);
+				} else {
+					console.warn('Subscription provider writes rejected by Parchment admission fence');
+				}
 				break;
+			}
 
 			default:
-				console.log(`⚠️ Unhandled event type: ${event.type}`);
+				console.log(`⚠️ Unhandled event type: ${stripeEvent.type}`);
 		}
 
 		console.log('✅ Webhook processing completed successfully');
