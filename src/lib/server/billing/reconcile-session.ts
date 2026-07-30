@@ -5,6 +5,12 @@ import { getStripe } from '$lib/services/stripe';
 import { createAdminClient } from '$lib/supabase-admin';
 import type { Database, Json } from '$lib/types/database.types';
 import { isCookieSessionPrincipal } from '$lib/server/principal';
+import {
+	checkoutAdmissionContextFromMetadata,
+	checkoutAdmissionsEnabled,
+	checkoutProviderIsEligible,
+	legacyCheckoutDrainEnabled
+} from './checkoutAdmissions';
 
 import {
 	reconcileStripeSubscriptionEntitlements,
@@ -190,12 +196,28 @@ export async function handleReconcileStripeSession(event: RequestEvent) {
 			});
 		}
 
-		await upsertSessionProcessingRow(supabase, sessionId, user.id);
-
 		const stripe = getStripe();
 		const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId, {
 			expand: ['subscription']
 		});
+
+		if (checkoutAdmissionsEnabled()) {
+			const admissionContext = checkoutAdmissionContextFromMetadata(
+				checkoutSession.metadata,
+				checkoutSession.id
+			);
+			if (!admissionContext && !legacyCheckoutDrainEnabled()) {
+				return json({ error: 'Checkout session is missing admission evidence' }, { status: 409 });
+			}
+			if (admissionContext && !(await checkoutProviderIsEligible(event, admissionContext))) {
+				return json(
+					{ error: 'Checkout session is no longer eligible for reconciliation' },
+					{ status: 409 }
+				);
+			}
+		}
+
+		await upsertSessionProcessingRow(supabase, sessionId, user.id);
 
 		if (checkoutSession.status !== 'complete' || checkoutSession.payment_status !== 'paid') {
 			await markSessionProcessingStatus(supabase, {

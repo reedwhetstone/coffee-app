@@ -16,6 +16,17 @@
 	let checkout: any;
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	function requestStorageKey(): string {
+		return `checkout-request:${purchaseKey}`;
+	}
+
+	function getCheckoutRequestId(): string {
+		const existing = sessionStorage.getItem(requestStorageKey());
+		if (existing) return existing;
+		const created = crypto.randomUUID();
+		sessionStorage.setItem(requestStorageKey(), created);
+		return created;
+	}
 
 	const initializeCheckout = async () => {
 		try {
@@ -44,7 +55,8 @@
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					purchaseKeys: [purchaseKey]
+					purchaseKeys: [purchaseKey],
+					requestId: getCheckoutRequestId()
 				})
 			});
 
@@ -56,6 +68,7 @@
 			}
 
 			const { clientSecret } = await response.json();
+			sessionStorage.removeItem(requestStorageKey());
 
 			// Initialize Stripe Elements
 			if (!stripe) {
