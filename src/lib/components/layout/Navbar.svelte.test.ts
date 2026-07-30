@@ -69,4 +69,18 @@ describe('Navbar', () => {
 
 		expect(onClose).toHaveBeenCalledTimes(1);
 	});
+
+	it('exposes the shared account entry when the mobile shell supplies its account handler', async () => {
+		const onOpenAccount = vi.fn();
+
+		render(Navbar, {
+			data: { role: 'viewer', user: { email: 'viewer@example.com' } },
+			onOpenAccount,
+			variant: 'rail'
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Account settings' }));
+
+		expect(onOpenAccount).toHaveBeenCalledTimes(1);
+	});
 });

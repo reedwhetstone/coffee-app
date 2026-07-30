@@ -1,13 +1,17 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { filterStore } from '$lib/stores/filterStore';
 	import { type UserRole } from '$lib/types/auth.types';
 	import { canManagePortfolio } from '$lib/services/portfolioAccess';
 	import Actionsbar from '$lib/components/layout/Actionsbar.svelte';
 	import Settingsbar from '$lib/components/layout/Settingsbar.svelte';
+	import Navbar from '$lib/components/layout/Navbar.svelte';
+	import AuthSidebar from '$lib/components/layout/AuthSidebar.svelte';
+	import DesktopShellIcon from '$lib/components/layout/DesktopShellIcon.svelte';
 	import MobileOverlayShell from '$lib/components/layout/MobileOverlayShell.svelte';
-	import MobileAppMenu from '$lib/components/layout/MobileAppMenu.svelte';
 	import { getCurrentRouteLabel } from '$lib/components/layout/appNavigation';
+	import { countActiveCatalogFilters } from '$lib/components/layout/desktopShellState';
 
 	let { data } = $props<{
 		data: Record<string, unknown>;
@@ -15,7 +19,7 @@
 
 	let currentPath = $state(page.url.pathname);
 	let trackedCatalogRoute = $state(Boolean((page.data as { trackedOnly?: boolean }).trackedOnly));
-	let activeOverlay = $state<null | 'menu' | 'actions' | 'settings'>(null);
+	let activeOverlay = $state<null | 'menu' | 'actions' | 'settings' | 'auth'>(null);
 
 	let userRole = $derived(((data?.role as UserRole | undefined) ?? 'viewer') as UserRole);
 	let ppiAccess = $derived(Boolean((data as { ppiAccess?: boolean }).ppiAccess));
@@ -24,6 +28,11 @@
 		['/catalog', '/beans', '/roast'].includes(currentPath) && !trackedCatalogRoute
 	);
 	let routeLabel = $derived(getCurrentRouteLabel(currentPath, userRole, { ppiAccess }));
+	let activeFilterCount = $derived(
+		$filterStore.routeId === currentPath
+			? countActiveCatalogFilters({ ...$filterStore, routeId: currentPath })
+			: 0
+	);
 
 	$effect(() => {
 		const nextPath = page.url.pathname;
@@ -42,61 +51,60 @@
 	function closeOverlay() {
 		activeOverlay = null;
 	}
+
+	function openAccount() {
+		activeOverlay = 'auth';
+	}
 </script>
 
 <div
 	class="fixed inset-x-0 top-0 z-30 border-b border-line bg-surface-canvas/95 backdrop-blur md:hidden"
 >
-	<div class="flex items-center justify-between gap-3 px-4 py-3">
-		<div class="flex min-w-0 items-center gap-3">
+	<div class="flex h-16 items-center justify-between gap-2 px-3">
+		<div class="flex min-w-0 items-center gap-2">
 			<button
 				type="button"
 				onclick={() => (activeOverlay = 'menu')}
-				class="rounded-full p-2 text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+				class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 				aria-label="Open app menu"
 			>
-				<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="1.5"
-						d="M4 7h16M4 12h16M4 17h16"
-					></path>
-				</svg>
+				<img src="/purveyors_logo_mark.svg" alt="" class="h-7 w-7" />
 			</button>
 
 			<button
 				type="button"
 				onclick={() => goto('/dashboard')}
-				class="flex items-center gap-3 text-left transition-opacity hover:opacity-90"
+				class="min-w-0 rounded-md px-1.5 py-2 text-left transition-colors hover:bg-surface-panel"
 			>
-				<img src="/purveyors_logo_mark.svg" alt="purveyors.io" class="h-8 w-auto" />
-				<div class="min-w-0">
-					<p class="truncate text-sm font-semibold text-ink">{routeLabel}</p>
-					<p class="truncate text-xs text-muted">Mobile workspace shell</p>
-				</div>
+				<p class="truncate text-sm font-semibold text-ink">{routeLabel}</p>
 			</button>
 		</div>
 
-		<div class="flex items-center gap-1.5">
+		<div class="flex shrink-0 items-center gap-1">
+			<button
+				type="button"
+				onclick={() => goto('/chat')}
+				class="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-panel text-ink ring-1 ring-accent/50 transition-colors hover:bg-accent/15"
+				style="box-shadow: 0 0 18px rgba(249, 165, 123, 0.42);"
+				aria-label="Open chat"
+			>
+				<DesktopShellIcon name="chat" />
+			</button>
+
 			{#if showSettings}
 				<button
 					type="button"
 					onclick={() => (activeOverlay = 'settings')}
-					class="rounded-full p-2 text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+					class="relative flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 					aria-label="Open filters"
 				>
-					<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="1.5"
-							d="M4 6h10M18 6h2M10 12h10M4 12h2M4 18h14M20 18h0"
-						></path>
-						<circle cx="16" cy="6" r="2" fill="currentColor"></circle>
-						<circle cx="8" cy="12" r="2" fill="currentColor"></circle>
-						<circle cx="18" cy="18" r="2" fill="currentColor"></circle>
-					</svg>
+					<DesktopShellIcon name="filters" />
+					{#if activeFilterCount > 0}
+						<span
+							class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-semibold text-ink"
+							aria-label={`${activeFilterCount} active filters`}>{activeFilterCount}</span
+						>
+					{/if}
 				</button>
 			{/if}
 
@@ -104,17 +112,10 @@
 				<button
 					type="button"
 					onclick={() => (activeOverlay = 'actions')}
-					class="rounded-full bg-accent p-2 text-ink shadow-sm transition-opacity hover:opacity-90"
+					class="flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 					aria-label="Open actions"
 				>
-					<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="1.5"
-							d="M12 5v14M5 12h14"
-						></path>
-					</svg>
+					<DesktopShellIcon name="actions" />
 				</button>
 			{/if}
 		</div>
@@ -126,9 +127,9 @@
 	variant="full"
 	onClose={closeOverlay}
 	label="App menu"
-	labelledBy="app-menu-dialog-title"
+	labelledBy="nav-dialog-title"
 >
-	<MobileAppMenu {data} onClose={closeOverlay} />
+	<Navbar {data} onClose={closeOverlay} onOpenAccount={openAccount} variant="rail" />
 </MobileOverlayShell>
 
 <MobileOverlayShell
@@ -138,7 +139,7 @@
 	label="Filters"
 	labelledBy="filters-dialog-title"
 >
-	<Settingsbar {data} isOpen={true} onClose={closeOverlay} />
+	<Settingsbar {data} isOpen={true} onClose={closeOverlay} variant="rail" />
 </MobileOverlayShell>
 
 <MobileOverlayShell
@@ -148,5 +149,15 @@
 	label="Actions"
 	labelledBy="actions-dialog-title"
 >
-	<Actionsbar {data} onClose={closeOverlay} />
+	<Actionsbar {data} onClose={closeOverlay} variant="rail" />
+</MobileOverlayShell>
+
+<MobileOverlayShell
+	open={activeOverlay === 'auth'}
+	variant="sheet"
+	onClose={closeOverlay}
+	label="Account"
+	labelledBy="auth-dialog-title"
+>
+	<AuthSidebar {data} onClose={closeOverlay} variant="rail" />
 </MobileOverlayShell>

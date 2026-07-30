@@ -13,10 +13,12 @@
 	let {
 		data,
 		onClose = () => {},
+		onOpenAccount,
 		variant = 'default'
 	} = $props<{
 		data: Record<string, unknown>;
 		onClose?: () => void;
+		onOpenAccount?: () => void;
 		variant?: 'default' | 'rail';
 	}>();
 
@@ -209,6 +211,21 @@
 					</ul>
 				</section>
 			{/each}
+
+			{#if onOpenAccount}
+				<section>
+					<div class="mb-1 px-3">
+						<h3 class="text-[11px] font-semibold uppercase tracking-wide text-muted">Account</h3>
+					</div>
+					<button
+						type="button"
+						onclick={onOpenAccount}
+						class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-ink transition-colors hover:bg-surface-panel"
+					>
+						Account settings
+					</button>
+				</section>
+			{/if}
 
 			{#if canAccessAdminRoutes && variant !== 'rail'}
 				<p class="rounded-md border border-line px-3 py-2 text-xs text-muted">

@@ -19,7 +19,11 @@ vi.mock('$app/state', () => ({
 	page: pageState
 }));
 
-vi.mock('$lib/components/layout/MobileAppMenu.svelte', () => ({
+vi.mock('$lib/components/layout/Navbar.svelte', () => ({
+	default: vi.fn()
+}));
+
+vi.mock('$lib/components/layout/AuthSidebar.svelte', () => ({
 	default: vi.fn()
 }));
 
@@ -29,6 +33,15 @@ vi.mock('$lib/components/layout/Settingsbar.svelte', () => ({
 
 vi.mock('$lib/components/layout/Actionsbar.svelte', () => ({
 	default: vi.fn()
+}));
+
+vi.mock('$lib/stores/filterStore', () => ({
+	filterStore: {
+		subscribe: (run: (value: Record<string, unknown>) => void) => {
+			run({ routeId: '/beans', filters: {}, sortField: '', sortDirection: '' });
+			return () => {};
+		}
+	}
 }));
 
 describe('MobileAppShell actions launcher', () => {
