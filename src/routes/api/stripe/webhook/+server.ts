@@ -22,9 +22,11 @@ async function requireProviderEligibility(
 	event: RequestEvent,
 	context: CheckoutAdmissionContext | null
 ): Promise<boolean> {
-	if (!checkoutAdmissionsEnabled()) return true;
-	if (!context) return legacyCheckoutDrainEnabled();
-	return checkoutProviderIsEligible(event, context);
+	// Managed sessions stay fenced even if the creation rollout is disabled
+	// during rollback or configuration drift. The flag only controls whether
+	// metadata-free legacy sessions remain admissible during the drain.
+	if (context) return checkoutProviderIsEligible(event, context);
+	return !checkoutAdmissionsEnabled() || legacyCheckoutDrainEnabled();
 }
 
 export async function POST(requestEvent: RequestEvent) {
@@ -117,7 +119,7 @@ export async function POST(requestEvent: RequestEvent) {
 			case 'checkout.session.expired': {
 				const session = stripeEvent.data.object;
 				const admissionContext = checkoutAdmissionContextFromMetadata(session.metadata, session.id);
-				if (checkoutAdmissionsEnabled() && admissionContext) {
+				if (admissionContext) {
 					try {
 						await terminalizeExpiredCheckoutAdmission(requestEvent, admissionContext);
 					} catch (error) {
@@ -133,31 +135,29 @@ export async function POST(requestEvent: RequestEvent) {
 			case 'customer.subscription.deleted': {
 				const subscription = stripeEvent.data.object;
 				let admissionContext: CheckoutAdmissionContext | null = null;
-				if (checkoutAdmissionsEnabled()) {
-					const ownerId = subscription.metadata?.supabase_user_id;
-					const admissionId = subscription.metadata?.parchment_admission_id;
-					const requestId = subscription.metadata?.checkout_request_id;
-					const hasManagedAdmissionMetadata = Boolean(ownerId || admissionId || requestId);
-					if (hasManagedAdmissionMetadata && (!ownerId || !admissionId)) {
-						throw new Error('Managed subscription is missing Checkout admission metadata');
+				const ownerId = subscription.metadata?.supabase_user_id;
+				const admissionId = subscription.metadata?.parchment_admission_id;
+				const requestId = subscription.metadata?.checkout_request_id;
+				const hasManagedAdmissionMetadata = Boolean(ownerId || admissionId || requestId);
+				if (hasManagedAdmissionMetadata && (!ownerId || !admissionId)) {
+					throw new Error('Managed subscription is missing Checkout admission metadata');
+				}
+				if (ownerId && admissionId) {
+					const stripe = getStripe();
+					const sessions = await stripe.checkout.sessions.list({
+						subscription: subscription.id,
+						limit: 1
+					});
+					const checkoutSession = sessions.data[0];
+					if (!checkoutSession) {
+						throw new Error('Managed subscription Checkout session could not be resolved');
 					}
-					if (ownerId && admissionId) {
-						const stripe = getStripe();
-						const sessions = await stripe.checkout.sessions.list({
-							subscription: subscription.id,
-							limit: 1
-						});
-						const checkoutSession = sessions.data[0];
-						if (!checkoutSession) {
-							throw new Error('Managed subscription Checkout session could not be resolved');
-						}
-						admissionContext = {
-							ownerId,
-							admissionId,
-							requestId,
-							stripeSessionId: checkoutSession.id
-						};
-					}
+					admissionContext = {
+						ownerId,
+						admissionId,
+						requestId,
+						stripeSessionId: checkoutSession.id
+					};
 				}
 				// Historical subscriptions predate the one-time Checkout admission
 				// protocol and remain reconcilable for their full lifetime. The

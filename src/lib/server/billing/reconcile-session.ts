@@ -201,20 +201,18 @@ export async function handleReconcileStripeSession(event: RequestEvent) {
 			expand: ['subscription']
 		});
 
-		if (checkoutAdmissionsEnabled()) {
-			const admissionContext = checkoutAdmissionContextFromMetadata(
-				checkoutSession.metadata,
-				checkoutSession.id
+		const admissionContext = checkoutAdmissionContextFromMetadata(
+			checkoutSession.metadata,
+			checkoutSession.id
+		);
+		if (admissionContext && !(await checkoutProviderIsEligible(event, admissionContext))) {
+			return json(
+				{ error: 'Checkout session is no longer eligible for reconciliation' },
+				{ status: 409 }
 			);
-			if (!admissionContext && !legacyCheckoutDrainEnabled()) {
-				return json({ error: 'Checkout session is missing admission evidence' }, { status: 409 });
-			}
-			if (admissionContext && !(await checkoutProviderIsEligible(event, admissionContext))) {
-				return json(
-					{ error: 'Checkout session is no longer eligible for reconciliation' },
-					{ status: 409 }
-				);
-			}
+		}
+		if (checkoutAdmissionsEnabled() && !admissionContext && !legacyCheckoutDrainEnabled()) {
+			return json({ error: 'Checkout session is missing admission evidence' }, { status: 409 });
 		}
 
 		await upsertSessionProcessingRow(supabase, sessionId, user.id);

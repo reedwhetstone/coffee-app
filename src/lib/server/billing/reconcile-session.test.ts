@@ -348,6 +348,35 @@ describe('handleReconcileStripeSession', () => {
 		expect(mockReconcileStripeSubscriptionEntitlements).not.toHaveBeenCalled();
 	});
 
+	it('keeps managed sessions fenced after the rollout flag is disabled', async () => {
+		const { supabase, mocks } = makeSupabase({});
+		mockCreateAdminClient.mockReturnValue(supabase);
+		mockCheckoutProviderIsEligible.mockResolvedValue(false);
+		mockGetStripe.mockReturnValue({
+			checkout: {
+				sessions: {
+					retrieve: vi.fn(async () => ({
+						id: 'cs_test_123',
+						status: 'complete',
+						payment_status: 'paid',
+						client_reference_id: 'user-123',
+						metadata: {
+							supabase_user_id: 'user-123',
+							parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+						}
+					}))
+				}
+			}
+		});
+
+		const response = await handleReconcileStripeSession(makeEvent({}));
+
+		expect(response.status).toBe(409);
+		expect(mockCheckoutProviderIsEligible).toHaveBeenCalled();
+		expect(mocks.stripeSessionProcessing.upsert).not.toHaveBeenCalled();
+		expect(mockReconcileStripeSubscriptionEntitlements).not.toHaveBeenCalled();
+	});
+
 	it('rejects partial admission metadata instead of using the legacy path', async () => {
 		const { supabase, mocks } = makeSupabase({});
 		mockCreateAdminClient.mockReturnValue(supabase);

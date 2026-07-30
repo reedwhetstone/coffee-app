@@ -134,8 +134,11 @@ Roll out in this order:
    set `PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED=true` in the same
    deployment that enables admissions.
 5. Set `PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED=true` in coffee-app.
-6. Disable the legacy-drain flag after every pre-cutover session expires or
-   completes.
+6. Disable the legacy-drain flag only after a cutover checklist confirms that
+   every pre-cutover session has either expired, or has had its corresponding
+   `checkout.session.completed` event delivered and processed successfully.
+   Confirm the Stripe event delivery/application handling for each completed
+   session; a session reaching `complete` in Stripe is not sufficient.
 
 The legacy-drain flag applies only to pre-cutover `checkout.session` events.
 Historical `customer.subscription` updates and deletions remain authoritative

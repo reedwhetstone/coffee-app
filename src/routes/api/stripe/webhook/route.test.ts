@@ -101,6 +101,34 @@ describe('Stripe webhook Checkout admission fence', () => {
 		expect(mockReconcileStripeSubscription).not.toHaveBeenCalled();
 	});
 
+	it('keeps managed sessions fenced after the rollout flag is disabled', async () => {
+		mockCheckoutAdmissionsEnabled.mockReturnValue(false);
+		mockCheckoutProviderIsEligible.mockResolvedValue(false);
+		mockConstructStripeEvent.mockResolvedValue({
+			type: 'checkout.session.completed',
+			data: {
+				object: {
+					id: 'cs_managed',
+					mode: 'subscription',
+					client_reference_id: 'user-123',
+					customer: 'cus_123',
+					subscription: 'sub_123',
+					metadata: {
+						supabase_user_id: 'user-123',
+						parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+					}
+				}
+			}
+		});
+
+		const response = await POST(makeEvent());
+
+		expect(response.status).toBe(200);
+		expect(mockCheckoutProviderIsEligible).toHaveBeenCalled();
+		expect(mockGetStripe).not.toHaveBeenCalled();
+		expect(mockReconcileStripeSubscription).not.toHaveBeenCalled();
+	});
+
 	it('rejects partial admission metadata so Stripe retries the event', async () => {
 		mockConstructStripeEvent.mockResolvedValue({
 			type: 'checkout.session.completed',
@@ -119,7 +147,8 @@ describe('Stripe webhook Checkout admission fence', () => {
 		expect(mockReconcileStripeSubscription).not.toHaveBeenCalled();
 	});
 
-	it('terminalizes expired sessions and safely accepts exact replay', async () => {
+	it('terminalizes managed expired sessions after rollout disable and safely accepts replay', async () => {
+		mockCheckoutAdmissionsEnabled.mockReturnValue(false);
 		mockConstructStripeEvent.mockResolvedValue({
 			type: 'checkout.session.expired',
 			data: {
@@ -191,7 +220,9 @@ describe('Stripe webhook Checkout admission fence', () => {
 		}
 	);
 
-	it('checks managed subscription eligibility before reconciliation', async () => {
+	it('keeps managed subscription events fenced after rollout disable', async () => {
+		mockCheckoutAdmissionsEnabled.mockReturnValue(false);
+		mockCheckoutProviderIsEligible.mockResolvedValue(false);
 		mockGetStripe.mockReturnValue({
 			checkout: {
 				sessions: {
@@ -223,9 +254,7 @@ describe('Stripe webhook Checkout admission fence', () => {
 				stripeSessionId: 'cs_managed'
 			})
 		);
-		expect(mockCheckoutProviderIsEligible.mock.invocationCallOrder[0]).toBeLessThan(
-			mockReconcileStripeSubscription.mock.invocationCallOrder[0]
-		);
+		expect(mockReconcileStripeSubscription).not.toHaveBeenCalled();
 	});
 
 	it('fails retryably when managed subscription context cannot be resolved', async () => {
