@@ -6,8 +6,7 @@ import { sequence } from '@sveltejs/kit/hooks';
 import { requireRole } from '$lib/server/auth';
 import {
 	getLegacyAuthState,
-	getPrimaryUserRole,
-	getUserRoles,
+	isSessionPrincipal,
 	resolvePrincipal,
 	type SessionContext
 } from '$lib/server/principal';
@@ -42,51 +41,59 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		}
 	) as unknown as App.Locals['supabase'];
 
-	let sessionContextPromise: Promise<SessionContext> | null = null;
-	event.locals.safeGetSession = async () => {
-		if (sessionContextPromise) {
-			return sessionContextPromise;
+	let identityPromise: Promise<Pick<SessionContext, 'session' | 'user'>> | null = null;
+	event.locals.safeGetIdentity = async () => {
+		if (!identityPromise) {
+			identityPromise = (async () => {
+				const {
+					data: { session }
+				} = await event.locals.supabase.auth.getSession();
+
+				if (!session) {
+					return {
+						session: null,
+						user: null
+					};
+				}
+
+				const {
+					data: { user },
+					error: userError
+				} = await event.locals.supabase.auth.getUser();
+
+				return userError || !user
+					? {
+							session: null,
+							user: null
+						}
+					: { session, user };
+			})();
 		}
 
-		sessionContextPromise = (async () => {
-			const {
-				data: { session }
-			} = await event.locals.supabase.auth.getSession();
+		return identityPromise;
+	};
 
-			if (!session) {
-				return {
-					session: null,
-					user: null,
-					role: 'viewer' as const,
-					roles: ['viewer']
-				};
-			}
-
-			const {
-				data: { user },
-				error: userError
-			} = await event.locals.supabase.auth.getUser();
-
-			if (userError || !user) {
-				return {
-					session: null,
-					user: null,
-					role: 'viewer' as const,
-					roles: ['viewer']
-				};
-			}
-
-			const roles = await getUserRoles(event.locals.supabase, user.id);
-
+	event.locals.safeGetSession = async () => {
+		const principal = await resolvePrincipal(event);
+		if (
+			isSessionPrincipal(principal) &&
+			principal.source === 'cookie-session' &&
+			principal.session
+		) {
 			return {
-				session,
-				user,
-				role: getPrimaryUserRole(roles),
-				roles
+				session: principal.session,
+				user: principal.user,
+				role: principal.primaryAppRole,
+				roles: [...principal.appRoles]
 			};
-		})();
+		}
 
-		return sessionContextPromise;
+		return {
+			session: null,
+			user: null,
+			role: 'viewer',
+			roles: ['viewer']
+		};
 	};
 
 	// Resolve the normalized principal first, then derive legacy locals from that

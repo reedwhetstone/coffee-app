@@ -22,6 +22,10 @@ declare global {
 				role: UserRole;
 				ppiAccess: boolean;
 			};
+			safeGetIdentity(): Promise<{
+				session: Session | null;
+				user: User | null;
+			}>;
 			safeGetSession(): Promise<{
 				session: Session | null;
 				user: User | null;
