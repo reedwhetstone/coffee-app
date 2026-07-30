@@ -43,7 +43,9 @@
 		['/catalog', '/beans', '/roast'].includes(currentRoute) && !trackedCatalogRoute
 	);
 	let activeFilterCount = $derived(
-		countActiveCatalogFilters({ ...$filterStore, routeId: currentRoute })
+		$filterStore.routeId === currentRoute
+			? countActiveCatalogFilters({ ...$filterStore, routeId: currentRoute })
+			: 0
 	);
 
 	function getMenuLabel(menu: MenuId): string {
@@ -92,7 +94,7 @@
 		if (!activeMenu) return;
 		const target = event.target as Node;
 		if (shellContainer?.contains(target) || overlayPanel?.contains(target)) return;
-		void closeAllMenus();
+		void closeAllMenus(false);
 	}
 
 	function handleGlobalKeydown(event: KeyboardEvent) {

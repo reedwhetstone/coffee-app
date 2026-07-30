@@ -3,7 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LeftSidebar from './LeftSidebar.svelte';
 
 const { goto, pageState, filterState } = vi.hoisted(() => {
-	let currentFilterState = {
+	type CurrentFilterState = {
+		routeId: string;
+		showWholesale: boolean;
+		wholesaleOnly: boolean;
+		filters: Record<string, string | string[]>;
+	};
+
+	let currentFilterState: CurrentFilterState = {
+		routeId: '/catalog',
 		showWholesale: true,
 		wholesaleOnly: false,
 		filters: {
@@ -80,6 +88,7 @@ describe('LeftSidebar', () => {
 		pageState.url = new URL('http://localhost/catalog');
 		pageState.data = {};
 		filterState.set({
+			routeId: '/catalog',
 			showWholesale: true,
 			wholesaleOnly: false,
 			filters: {
@@ -171,6 +180,7 @@ describe('LeftSidebar', () => {
 
 	it('counts supplier visibility together with field filters', async () => {
 		filterState.set({
+			routeId: '/catalog',
 			showWholesale: false,
 			wholesaleOnly: false,
 			filters: {
@@ -189,6 +199,28 @@ describe('LeftSidebar', () => {
 		});
 
 		expect(screen.getAllByLabelText('1 active filters')).toHaveLength(2);
+	});
+
+	it('suppresses stale filter badges while the store belongs to another route', () => {
+		filterState.set({
+			routeId: '/beans',
+			showWholesale: false,
+			wholesaleOnly: false,
+			filters: {
+				stocked: 'TRUE'
+			}
+		});
+
+		render(LeftSidebar, {
+			data: {
+				role: 'member',
+				ppiAccess: true,
+				user: { email: 'member@example.com' },
+				session: { user: { email: 'member@example.com' } }
+			}
+		});
+
+		expect(screen.queryAllByLabelText(/active filters/)).toHaveLength(0);
 	});
 
 	it('leaves the panel open when a higher modal layer already handled Escape', async () => {
