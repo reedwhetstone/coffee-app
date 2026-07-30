@@ -1,5 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import { unwrapParchment } from '$lib/services/tools/parchment';
 
 // Raw chart data structure from optimized database functions
 export interface RawChartData {
@@ -28,12 +30,11 @@ export interface RawChartData {
 	};
 }
 
-export const GET: RequestHandler = async ({ url, locals }) => {
+export const GET: RequestHandler = async (event) => {
 	const startTime = performance.now();
-	const { safeGetSession, supabase } = locals;
-	const { user } = await safeGetSession();
+	const { url, locals } = event;
 
-	if (!user) {
+	if (!locals.session || !locals.user) {
 		return json({ error: 'Authentication required' }, { status: 401 });
 	}
 
@@ -45,43 +46,25 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	const roastIdNum = parseInt(roastId);
 
 	try {
-		console.log(`=== RAW CHART DATA API: Roast ${roastIdNum} ===`);
-
 		const dbQueryStart = performance.now();
-
-		// Use time-based adaptive sampling - single RPC call replaces 4+ previous queries
-		const [{ data: chartData, error: dataError }, { data: metadata, error: metaError }] =
-			await Promise.all([
-				supabase.rpc('get_chart_data_sampled', {
-					roast_id_param: roastIdNum,
-					target_points: 400 // Stay under 1,000 row limit
-				}),
-				supabase.rpc('get_chart_metadata', { roast_id_param: roastIdNum })
-			]);
-
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const data = unwrapParchment(
+			await client.roasts.chartData(String(roastIdNum), { target_points: 400 })
+		).data;
 		const dbQueryTime = performance.now() - dbQueryStart;
-
-		if (dataError || metaError) {
-			console.error('Database query error:', { dataError, metaError });
-			return json({ error: 'Failed to fetch chart data' }, { status: 500 });
-		}
-
 		const processingStart = performance.now();
+		const metadata = data.metadata;
 
-		// Database now returns time_milliseconds directly - no conversion needed
 		const responseData: RawChartData = {
-			rawData: chartData || [],
+			rawData: data.points,
 			metadata: {
-				dataPoints: metadata?.[0]?.total_data_points || 0,
-				roastDurationMinutes: metadata?.[0]?.roast_duration_minutes || 0,
-				sampleRate: Math.ceil((metadata?.[0]?.total_data_points || 0) / 400), // Calculate from actual data
-				timeRange: [
-					metadata?.[0]?.time_min_ms || 0, // Keep in milliseconds
-					metadata?.[0]?.time_max_ms || 0 // Keep in milliseconds
-				],
-				tempRange: [metadata?.[0]?.temp_min || 0, metadata?.[0]?.temp_max || 500],
-				rorRange: [metadata?.[0]?.ror_min || 0, metadata?.[0]?.ror_max || 50],
-				chargeTime: metadata?.[0]?.charge_time_ms || 0, // Keep in milliseconds
+				dataPoints: metadata.total_data_points,
+				roastDurationMinutes: metadata.roast_duration_minutes ?? 0,
+				sampleRate: Math.ceil(metadata.total_data_points / metadata.target_points),
+				timeRange: [metadata.time_min_ms ?? 0, metadata.time_max_ms ?? 0],
+				tempRange: [metadata.temp_min ?? 0, metadata.temp_max ?? 500],
+				rorRange: [metadata.ror_min ?? 0, metadata.ror_max ?? 50],
+				chargeTime: metadata.charge_time_ms ?? 0,
 				performanceMetrics: {
 					dbQueryTime,
 					processingTime: 0,
@@ -97,20 +80,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		responseData.metadata.performanceMetrics.processingTime = processingTime;
 		responseData.metadata.performanceMetrics.totalApiTime = totalApiTime;
 
-		console.log(`Raw chart data API results for ${roastIdNum}:`, {
-			rawRows: chartData?.length || 0,
-			dbQueryTime: `${dbQueryTime.toFixed(2)}ms`,
-			processingTime: `${processingTime.toFixed(2)}ms`,
-			totalApiTime: `${totalApiTime.toFixed(2)}ms`,
-			estimatedSampleRate: responseData.metadata.sampleRate,
-			temperatureRange: responseData.metadata.tempRange,
-			timeRange: responseData.metadata.timeRange,
-			chargeTime: responseData.metadata.chargeTime
-		});
-
 		return json(responseData);
 	} catch (error) {
-		console.error('Error fetching raw chart data:', error);
+		console.error('Error fetching roast chart data from Parchment:', error);
 		return json({ error: 'Failed to process chart data' }, { status: 500 });
 	}
 };
