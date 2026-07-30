@@ -6,33 +6,12 @@ const supabase = createAdminClient();
 
 // Type aliases for database operations
 type ApiKeyRow = Database['public']['Tables']['api_keys']['Row'];
-//type ApiKeyInsert = Database['public']['Tables']['api_keys']['Insert'];
-//type ApiKeyUpdate = Database['public']['Tables']['api_keys']['Update'];
-//type ApiUsageInsert = Database['public']['Tables']['api_usage']['Insert'];
-
 // API key configuration
 export const API_KEY_PREFIX = 'pk_live_';
 
 // API access plans — separate from app roles.
 // viewer = Green tier, member = Origin tier, enterprise = Enterprise tier.
-const RATE_LIMITS = {
-	viewer: 200, // Green tier - basic API access
-	member: 10000, // Origin tier - enhanced API access
-	enterprise: -1 // Enterprise tier - unlimited API access
-} as const;
-
-// Row limits per API call by tier
-const ROW_LIMITS = {
-	viewer: 25, // Green tier - limited rows per call
-	member: -1, // Origin tier - no additional plan row cap beyond the shared request limit
-	enterprise: -1 // Enterprise tier - no additional plan row cap beyond the shared request limit
-} as const;
-
-// Export rate limits and row limits for use in other modules
-export const API_RATE_LIMITS = RATE_LIMITS;
-export const API_ROW_LIMITS = ROW_LIMITS;
-
-export type ApiPlan = keyof typeof RATE_LIMITS;
+export type ApiPlan = 'viewer' | 'member' | 'enterprise';
 
 export interface ApiKeyValidationResult {
 	valid: boolean;
@@ -41,14 +20,6 @@ export interface ApiKeyValidationResult {
 	keyName?: string;
 	permissions?: Json | null;
 	error?: string;
-}
-
-export interface RateLimitResult {
-	allowed: boolean;
-	limit: number;
-	remaining: number;
-	resetTime: Date;
-	retryAfter?: number;
 }
 
 /**
@@ -105,197 +76,4 @@ export async function validateApiKey(key: string): Promise<ApiKeyValidationResul
 		console.error('API key validation error:', error);
 		return { valid: false, error: 'Validation failed' };
 	}
-}
-
-/**
- * Log API usage
- */
-export async function logApiUsage(
-	apiKeyId: string,
-	endpoint: string,
-	statusCode: number,
-	responseTimeMs: number,
-	userAgent?: string,
-	ipAddress?: string
-): Promise<void> {
-	try {
-		await supabase.from('api_usage').insert({
-			api_key_id: apiKeyId,
-			endpoint,
-			status_code: statusCode,
-			response_time_ms: responseTimeMs,
-			user_agent: userAgent,
-			ip_address: ipAddress as unknown
-		});
-	} catch (error) {
-		// Don't throw on logging errors, just log them
-		console.error('Error logging API usage:', error);
-	}
-}
-
-/**
- * Check rate limit for an API key (monthly sliding window)
- */
-export async function checkRateLimit(
-	apiKeyId: string,
-	tier: ApiPlan = 'viewer'
-): Promise<RateLimitResult> {
-	try {
-		const limit = RATE_LIMITS[tier];
-
-		// Enterprise tier has unlimited requests
-		if (limit === -1) {
-			return {
-				allowed: true,
-				limit: -1,
-				remaining: -1,
-				resetTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Next month
-			};
-		}
-
-		// Count requests in the current month
-		const now = new Date();
-		const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-		const { error, count } = await supabase
-			.from('api_usage')
-			.select('*', { count: 'exact', head: true })
-			.eq('api_key_id', apiKeyId)
-			.gte('timestamp', startOfMonth.toISOString());
-
-		if (error) {
-			console.error('Error checking rate limit:', error);
-			// On error, allow the request but log it
-			return {
-				allowed: true,
-				limit,
-				remaining: limit,
-				resetTime: new Date(now.getFullYear(), now.getMonth() + 1, 1) // Start of next month
-			};
-		}
-
-		const requestCount = count || 0;
-		const remaining = Math.max(0, limit - requestCount);
-		const allowed = requestCount < limit;
-
-		// Calculate seconds until start of next month for retryAfter
-		const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-		const retryAfterSeconds = allowed
-			? undefined
-			: Math.ceil((nextMonth.getTime() - now.getTime()) / 1000);
-
-		return {
-			allowed,
-			limit,
-			remaining,
-			resetTime: nextMonth,
-			retryAfter: retryAfterSeconds
-		};
-	} catch (error) {
-		console.error('Rate limit check error:', error);
-		// On error, allow the request
-		const fallbackLimit = RATE_LIMITS[tier] === -1 ? -1 : RATE_LIMITS[tier];
-		return {
-			allowed: true,
-			limit: fallbackLimit,
-			remaining: fallbackLimit,
-			resetTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-		};
-	}
-}
-
-/**
- * Middleware function to validate API requests with rate limiting
- */
-export async function validateApiRequest(request: Request): Promise<{
-	valid: boolean;
-	userId?: string;
-	keyId?: string;
-	error?: string;
-	rateLimitExceeded?: boolean;
-	retryAfter?: number;
-}> {
-	const authHeader = request.headers.get('Authorization');
-
-	if (!authHeader || !authHeader.startsWith('Bearer ')) {
-		return { valid: false, error: 'Missing or invalid Authorization header' };
-	}
-
-	const apiKey = authHeader.replace('Bearer ', '');
-	const validation = await validateApiKey(apiKey);
-
-	if (!validation.valid) {
-		return validation;
-	}
-
-	// Check rate limits (default to member tier)
-	const rateLimit = await checkRateLimit(validation.keyId!, 'member');
-
-	if (!rateLimit.allowed) {
-		return {
-			valid: false,
-			error: 'Rate limit exceeded',
-			rateLimitExceeded: true,
-			retryAfter: rateLimit.retryAfter
-		};
-	}
-
-	return validation;
-}
-
-/**
- * Get row limit for user's API tier
- */
-export function getApiRowLimit(tier: ApiPlan): number {
-	return ROW_LIMITS[tier];
-}
-
-/**
- * @deprecated No longer needed — checkRateLimit now accepts ApiPlan directly.
- * Kept temporarily for any callers that haven't been updated yet.
- */
-export function getLegacyRateLimitTier(tier: ApiPlan): ApiPlan {
-	return tier;
-}
-
-/**
- * Enhanced API middleware with automatic usage logging and rate limiting
- */
-export async function validateAndLogApiRequest(
-	request: Request,
-	endpoint: string
-): Promise<{
-	valid: boolean;
-	userId?: string;
-	keyId?: string;
-	error?: string;
-	rateLimitExceeded?: boolean;
-	retryAfter?: number;
-	logUsage: (statusCode: number, responseTimeMs: number) => Promise<void>;
-}> {
-	const validation = await validateApiRequest(request);
-
-	const logUsage = async (statusCode: number, responseTimeMs: number) => {
-		if (validation.keyId) {
-			const userAgent = request.headers.get('User-Agent') || undefined;
-			const ipAddress =
-				request.headers.get('CF-Connecting-IP') ||
-				request.headers.get('X-Forwarded-For') ||
-				undefined;
-
-			await logApiUsage(
-				validation.keyId,
-				endpoint,
-				statusCode,
-				responseTimeMs,
-				userAgent,
-				ipAddress
-			);
-		}
-	};
-
-	return {
-		...validation,
-		logUsage
-	};
 }
