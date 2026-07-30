@@ -38,6 +38,7 @@ describe('Checkout request identity', () => {
 		expect(isTerminalCheckoutFailure('checkout_creation_ambiguous')).toBe(false);
 		expect(isTerminalCheckoutFailure('stripe_checkout_rejected')).toBe(true);
 		expect(isTerminalCheckoutFailure('checkout_admission_closed')).toBe(true);
+		expect(isTerminalCheckoutFailure('checkout_replay_mismatch')).toBe(true);
 
 		clearCheckoutRequestId(storage, 'membership.monthly');
 		const next = getOrCreateCheckoutRequestId(storage, 'membership.monthly', () => 'request-two');

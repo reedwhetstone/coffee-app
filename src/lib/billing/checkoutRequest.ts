@@ -1,4 +1,8 @@
-const TERMINAL_CHECKOUT_CODES = new Set(['stripe_checkout_rejected', 'checkout_admission_closed']);
+const TERMINAL_CHECKOUT_CODES = new Set([
+	'stripe_checkout_rejected',
+	'checkout_admission_closed',
+	'checkout_replay_mismatch'
+]);
 
 export interface CheckoutFailure {
 	code: string | null;

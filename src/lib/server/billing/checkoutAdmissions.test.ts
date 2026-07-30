@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import { checkoutAdmissionContextFromMetadata } from './checkoutAdmissions';
 
+const partialAdmissionMetadata: Array<Record<string, string>> = [
+	{ supabase_user_id: 'user-123' },
+	{ parchment_admission_id: 'admission-123' },
+	{ checkout_request_id: 'request-123' }
+];
+
 describe('checkoutAdmissionContextFromMetadata', () => {
 	it('returns no context for pre-cutover sessions without admission metadata', () => {
 		expect(checkoutAdmissionContextFromMetadata({}, 'cs_legacy')).toBeNull();
@@ -25,11 +31,7 @@ describe('checkoutAdmissionContextFromMetadata', () => {
 		});
 	});
 
-	it.each([
-		{ supabase_user_id: 'user-123' },
-		{ parchment_admission_id: 'admission-123' },
-		{ checkout_request_id: 'request-123' }
-	])('rejects partial admission metadata: %o', (metadata) => {
+	it.each(partialAdmissionMetadata)('rejects partial admission metadata: %o', (metadata) => {
 		expect(() => checkoutAdmissionContextFromMetadata(metadata, 'cs_partial')).toThrow(
 			'Managed checkout session is missing Checkout admission metadata'
 		);
