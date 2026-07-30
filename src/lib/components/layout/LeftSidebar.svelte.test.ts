@@ -115,7 +115,7 @@ describe('LeftSidebar', () => {
 		expect(screen.getAllByLabelText('2 active filters')).toHaveLength(2);
 	});
 
-	it('opens filters as an overlay without changing the shell width', async () => {
+	it('opens one filters panel without changing the shell width', async () => {
 		vi.mocked(window.matchMedia).mockImplementation((query: string) => ({
 			matches: false,
 			media: query,
@@ -141,19 +141,20 @@ describe('LeftSidebar', () => {
 		const initialClass = shell.getAttribute('class');
 		await fireEvent.click(filterTrigger);
 
-		expect(screen.getAllByLabelText('Filters menu').length).toBeGreaterThan(0);
+		expect(screen.getAllByLabelText('Filters menu')).toHaveLength(1);
 		expect(shell.getAttribute('class')).toBe(initialClass);
-		const mediumPanel = document.getElementById('desktop-shell-panel-medium');
-		expect(mediumPanel?.getAttribute('role')).toBe('region');
-		expect(mediumPanel?.getAttribute('aria-label')).toBe('Filters panel');
-		await waitFor(() => expect(document.activeElement).toBe(mediumPanel));
+		const panel = document.getElementById('desktop-shell-panel');
+		expect(document.querySelectorAll('#desktop-shell-panel')).toHaveLength(1);
+		expect(panel?.getAttribute('role')).toBe('region');
+		expect(panel?.getAttribute('aria-label')).toBe('Filters panel');
+		await waitFor(() => expect(document.activeElement).toBe(panel));
 
 		await fireEvent.keyDown(window, { key: 'Escape' });
 		await waitFor(() => expect(document.activeElement).toBe(filterTrigger));
 		expect(filterTrigger.getAttribute('aria-expanded')).toBe('false');
 	});
 
-	it('moves focus into the wide panel and restores its trigger on Escape', async () => {
+	it('moves focus into the shared panel and restores its trigger on Escape', async () => {
 		render(LeftSidebar, {
 			data: {
 				role: 'member',
@@ -167,10 +168,11 @@ describe('LeftSidebar', () => {
 		const accountTrigger = within(wideNavigation).getByRole('button', { name: /Account/ });
 		await fireEvent.click(accountTrigger);
 
-		const widePanel = document.getElementById('desktop-shell-panel-wide');
-		expect(widePanel?.getAttribute('role')).toBe('region');
-		expect(widePanel?.getAttribute('aria-label')).toBe('Account panel');
-		await waitFor(() => expect(document.activeElement).toBe(widePanel));
+		const panel = document.getElementById('desktop-shell-panel');
+		expect(document.querySelectorAll('#desktop-shell-panel')).toHaveLength(1);
+		expect(panel?.getAttribute('role')).toBe('region');
+		expect(panel?.getAttribute('aria-label')).toBe('Account panel');
+		await waitFor(() => expect(document.activeElement).toBe(panel));
 		expect(accountTrigger.getAttribute('aria-expanded')).toBe('true');
 
 		await fireEvent.keyDown(window, { key: 'Escape' });
@@ -245,7 +247,7 @@ describe('LeftSidebar', () => {
 		escapeEvent.preventDefault();
 		window.dispatchEvent(escapeEvent);
 
-		expect(screen.getAllByRole('region', { name: 'Account panel', hidden: true })).toHaveLength(2);
+		expect(screen.getAllByRole('region', { name: 'Account panel', hidden: true })).toHaveLength(1);
 		expect(accountTrigger.getAttribute('aria-expanded')).toBe('true');
 	});
 

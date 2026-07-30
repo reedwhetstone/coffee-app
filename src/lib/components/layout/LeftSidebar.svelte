@@ -22,8 +22,7 @@
 
 	let activeMenu = $state<MenuId | null>(null);
 	let shellContainer = $state<HTMLElement | null>(null);
-	let widePanel = $state<HTMLElement | null>(null);
-	let overlayPanel = $state<HTMLElement | null>(null);
+	let panel = $state<HTMLElement | null>(null);
 	let returnFocusTarget = $state<HTMLElement | null>(null);
 	let currentRoute = $state(page.url.pathname);
 	let trackedCatalogRoute = $state(Boolean((page.data as { trackedOnly?: boolean }).trackedOnly));
@@ -62,8 +61,7 @@
 		if (!menu) return;
 
 		await tick();
-		const isWideViewport = window.matchMedia('(min-width: 1280px)').matches;
-		(isWideViewport ? widePanel : overlayPanel)?.focus();
+		panel?.focus();
 	}
 
 	function toggleMenu(menu: MenuId, trigger: HTMLElement) {
@@ -93,7 +91,7 @@
 	function handleDocumentClick(event: MouseEvent) {
 		if (!activeMenu) return;
 		const target = event.target as Node;
-		if (shellContainer?.contains(target) || overlayPanel?.contains(target)) return;
+		if (shellContainer?.contains(target) || panel?.contains(target)) return;
 		void closeAllMenus(false);
 	}
 
@@ -169,7 +167,7 @@
 						type="button"
 						onclick={(event) => toggleMenu('auth', event.currentTarget)}
 						class="flex items-center gap-2 rounded-md border border-line px-3 py-2 text-left text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
-						aria-controls="desktop-shell-panel-wide"
+						aria-controls="desktop-shell-panel"
 						aria-expanded={activeMenu === 'auth'}
 					>
 						<span
@@ -191,7 +189,7 @@
 							type="button"
 							onclick={(event) => toggleMenu('actions', event.currentTarget)}
 							class="flex items-center gap-2 rounded-md border border-line px-3 py-2 text-left text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
-							aria-controls="desktop-shell-panel-wide"
+							aria-controls="desktop-shell-panel"
 							aria-expanded={activeMenu === 'actions'}
 						>
 							<DesktopShellIcon name="actions" />
@@ -203,7 +201,7 @@
 							type="button"
 							onclick={(event) => toggleMenu('settings', event.currentTarget)}
 							class="flex items-center gap-2 rounded-md border border-line px-3 py-2 text-left text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
-							aria-controls="desktop-shell-panel-wide"
+							aria-controls="desktop-shell-panel"
 							aria-expanded={activeMenu === 'settings'}
 						>
 							<DesktopShellIcon name="filters" />
@@ -221,7 +219,7 @@
 							type="button"
 							onclick={(event) => toggleMenu('admin', event.currentTarget)}
 							class="flex items-center gap-2 rounded-md border border-line px-3 py-2 text-left text-xs font-medium text-muted transition-colors hover:bg-surface-panel hover:text-ink"
-							aria-controls="desktop-shell-panel-wide"
+							aria-controls="desktop-shell-panel"
 							aria-expanded={activeMenu === 'admin'}
 						>
 							<DesktopShellIcon name="admin" />
@@ -231,20 +229,6 @@
 				</div>
 			</div>
 		</div>
-
-		{#if activeMenu}
-			<div
-				id="desktop-shell-panel-wide"
-				class="min-h-0 flex-1"
-				bind:this={widePanel}
-				tabindex="-1"
-				role="region"
-				aria-label={`${getMenuLabel(activeMenu)} panel`}
-				data-menu-panel="true"
-			>
-				{@render menuPanel(activeMenu)}
-			</div>
-		{/if}
 	</aside>
 
 	<aside
@@ -256,7 +240,7 @@
 			onclick={(event) => toggleMenu('auth', event.currentTarget)}
 			class="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-sm font-semibold text-ink transition-transform hover:scale-105"
 			aria-label="Account"
-			aria-controls="desktop-shell-panel-medium"
+			aria-controls="desktop-shell-panel"
 			aria-expanded={activeMenu === 'auth'}
 		>
 			{userInitial}
@@ -278,7 +262,7 @@
 			class:bg-surface-panel={activeMenu === 'nav'}
 			class:text-ink={activeMenu === 'nav'}
 			aria-label="Navigation"
-			aria-controls="desktop-shell-panel-medium"
+			aria-controls="desktop-shell-panel"
 			aria-expanded={activeMenu === 'nav'}
 		>
 			<DesktopShellIcon name="navigation" />
@@ -292,7 +276,7 @@
 				class:bg-surface-panel={activeMenu === 'actions'}
 				class:text-ink={activeMenu === 'actions'}
 				aria-label="Actions"
-				aria-controls="desktop-shell-panel-medium"
+				aria-controls="desktop-shell-panel"
 				aria-expanded={activeMenu === 'actions'}
 			>
 				<DesktopShellIcon name="actions" />
@@ -307,7 +291,7 @@
 				class:bg-surface-panel={activeMenu === 'settings'}
 				class:text-ink={activeMenu === 'settings'}
 				aria-label="Filters"
-				aria-controls="desktop-shell-panel-medium"
+				aria-controls="desktop-shell-panel"
 				aria-expanded={activeMenu === 'settings'}
 			>
 				<DesktopShellIcon name="filters" />
@@ -328,7 +312,7 @@
 				class:bg-surface-panel={activeMenu === 'admin'}
 				class:text-ink={activeMenu === 'admin'}
 				aria-label="Admin"
-				aria-controls="desktop-shell-panel-medium"
+				aria-controls="desktop-shell-panel"
 				aria-expanded={activeMenu === 'admin'}
 			>
 				<DesktopShellIcon name="admin" />
@@ -339,9 +323,9 @@
 
 {#if activeMenu}
 	<div
-		id="desktop-shell-panel-medium"
-		class="fixed inset-y-0 left-20 z-50 hidden w-72 border-r border-line bg-surface-canvas shadow-xl md:block xl:hidden"
-		bind:this={overlayPanel}
+		id="desktop-shell-panel"
+		class="fixed inset-y-0 left-20 z-50 hidden w-72 border-r border-line bg-surface-canvas shadow-xl md:block xl:left-0"
+		bind:this={panel}
 		tabindex="-1"
 		role="region"
 		aria-label={`${getMenuLabel(activeMenu)} panel`}
