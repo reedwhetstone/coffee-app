@@ -1,39 +1,40 @@
-# Revision verification: `feat/desktop-navigation-shell`
+# Verification: `feat/desktop-navigation-shell`
 
-VERDICT: ready
-P0: 0
-P1: 0
-P2: 0
-P3: 0
-NEXT_ACTION: merge
+VERDICT: ready  
+P0: 0  
+P1: 0  
+P2: 0  
+P3: 0  
+NEXT_ACTION: merge  
 TOP_FIXES:
 
 - None.
-  CONFIDENCE: high
-  SCOPE_ASSESSMENT: mergeable
-  VALIDATION_STATUS:
-- `pnpm exec vitest run src/lib/components/layout/LeftSidebar.svelte.test.ts src/lib/components/layout/desktopShellState.test.ts src/lib/components/layout/MobileAppShell.svelte.test.ts src/lib/components/layout/MobileOverlayShell.test.ts`: VALIDATION_PASS (27 tests)
-- `pnpm check --fail-on-warnings` with static environment placeholders: VALIDATION_PASS (0 errors, 0 warnings)
-- `pnpm exec eslint src/lib/components/layout/LeftSidebar.svelte src/lib/components/layout/LeftSidebar.svelte.test.ts src/lib/components/layout/desktopShellState.ts src/lib/components/layout/desktopShellState.test.ts`: VALIDATION_PASS
-- `git diff --check origin/main...HEAD`: VALIDATION_PASS
-- `git diff --check`: VALIDATION_PASS
 
-## Revision result
+CONFIDENCE: high  
+SCOPE_ASSESSMENT: coherent
 
-The user-feedback revision removes the permanently open wide-screen navigation column. Desktop
-now uses one compact, labeled action bar at every desktop width:
+## Validation
 
-- Menu, Chat, New, Filters, Admin, and Account controls use visible text instead of relying on
-  icon recognition.
-- Navigation, actions, filters, admin, and account content stay closed until requested.
-- Every secondary surface uses the same 288px overlay panel adjacent to the action bar. Opening a
-  panel does not change the action-bar width or shift page content.
-- The desktop content offset is one stable 96px contract at all desktop breakpoints.
+- `pnpm run check` with the repo validation environment: `VALIDATION_PASS` (0 errors, 0 warnings)
+- `pnpm vitest run src/lib/components/layout`: `VALIDATION_PASS` (69 tests)
+- Focused shell and layout-server suite after reconciling merged PR #530: `VALIDATION_PASS` (27 tests)
+- ESLint on the changed shell components and tests: `VALIDATION_PASS`
+- Prettier check on the layout surface: `VALIDATION_PASS`
+- `git diff --check origin/main...HEAD`: `VALIDATION_PASS`
 
-The existing interaction contracts remain intact: panels are named regions and receive focus on
-open; Escape closes and restores the trigger; outside clicks close without stealing focus; a
-previously prevented Escape is left for the higher modal layer; active filter counts remain
-route-aware. Focused tests now explicitly assert that navigation is absent until the Menu control
-opens it.
+## Result
 
-No P0, P1, P2, or P3 findings remain in the revision. The branch is ready for resubmission.
+Desktop uses a 64px icon rail and one 320px overlay panel. The rail stays fixed, panels open only
+when requested, and page content no longer shifts. Chat is the emphasized action; New and the
+remaining utilities are neutral.
+
+Mobile now uses the same navigation, filter, action, account, icon, access-control, and active
+filter-count components as desktop. Mobile-specific behavior is limited to presentation through
+full-screen or bottom-sheet overlays. The previous card-heavy `MobileAppMenu` implementation was
+removed so the two surfaces cannot drift independently.
+
+The branch was reconciled with merged PR #530's sanitized `PageAuthView` contract. No shell
+component reads legacy browser auth fields.
+
+Focus trapping, Escape handling, outside-click behavior, trigger focus restoration, route-aware
+filter counts, and entitlement gating remain covered. No P0, P1, P2, or P3 findings remain.
