@@ -19,6 +19,12 @@ vi.mock('$lib/services/stripe', () => ({
 }));
 
 vi.mock('$lib/server/billing/checkoutAdmissions', () => ({
+	CHECKOUT_ADMISSION_METADATA: {
+		ownerId: 'supabase_user_id',
+		admissionId: 'parchment_admission_id',
+		requestId: 'checkout_request_id',
+		purchaseFingerprint: 'checkout_purchase_fingerprint'
+	},
 	CheckoutAdmissionError: class CheckoutAdmissionError extends Error {
 		constructor(
 			message: string,
@@ -254,6 +260,24 @@ describe('Stripe webhook Checkout admission fence', () => {
 				stripeSessionId: 'cs_managed'
 			})
 		);
+		expect(mockReconcileStripeSubscription).not.toHaveBeenCalled();
+	});
+
+	it('rejects fingerprint-only managed subscription metadata', async () => {
+		mockConstructStripeEvent.mockResolvedValue({
+			type: 'customer.subscription.updated',
+			data: {
+				object: {
+					id: 'sub_partial',
+					metadata: { checkout_purchase_fingerprint: 'fingerprint-123' }
+				}
+			}
+		});
+
+		const response = await POST(makeEvent());
+
+		expect(response.status).toBe(400);
+		expect(mockGetStripe).not.toHaveBeenCalled();
 		expect(mockReconcileStripeSubscription).not.toHaveBeenCalled();
 	});
 

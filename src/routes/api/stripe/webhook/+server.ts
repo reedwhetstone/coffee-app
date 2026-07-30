@@ -12,6 +12,7 @@ import {
 	checkoutAdmissionContextFromMetadata,
 	checkoutAdmissionsEnabled,
 	checkoutProviderIsEligible,
+	CHECKOUT_ADMISSION_METADATA,
 	CheckoutAdmissionError,
 	legacyCheckoutDrainEnabled,
 	terminalizeExpiredCheckoutAdmission,
@@ -135,10 +136,14 @@ export async function POST(requestEvent: RequestEvent) {
 			case 'customer.subscription.deleted': {
 				const subscription = stripeEvent.data.object;
 				let admissionContext: CheckoutAdmissionContext | null = null;
-				const ownerId = subscription.metadata?.supabase_user_id;
-				const admissionId = subscription.metadata?.parchment_admission_id;
-				const requestId = subscription.metadata?.checkout_request_id;
-				const hasManagedAdmissionMetadata = Boolean(ownerId || admissionId || requestId);
+				const ownerId = subscription.metadata?.[CHECKOUT_ADMISSION_METADATA.ownerId];
+				const admissionId = subscription.metadata?.[CHECKOUT_ADMISSION_METADATA.admissionId];
+				const requestId = subscription.metadata?.[CHECKOUT_ADMISSION_METADATA.requestId];
+				const purchaseFingerprint =
+					subscription.metadata?.[CHECKOUT_ADMISSION_METADATA.purchaseFingerprint];
+				const hasManagedAdmissionMetadata = Boolean(
+					ownerId || admissionId || requestId || purchaseFingerprint
+				);
 				if (hasManagedAdmissionMetadata && (!ownerId || !admissionId)) {
 					throw new Error('Managed subscription is missing Checkout admission metadata');
 				}
