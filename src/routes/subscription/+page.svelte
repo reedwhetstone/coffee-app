@@ -196,7 +196,7 @@
 	const membershipState = $derived(data.controlPlane?.membership ?? null);
 	const apiState = $derived(data.controlPlane?.api ?? null);
 	const intelligenceState = $derived(data.controlPlane?.ppi ?? null);
-	const isSignedIn = $derived(Boolean(data?.user));
+	const isSignedIn = $derived(data.auth.isSignedIn);
 
 	// Purchase intent from URL params (set before sign-in to preserve selection).
 	// Auto-open is gated on the explicit `intent=checkout` marker so that
@@ -487,7 +487,7 @@
 </script>
 
 <div class="min-h-[calc(100vh-80px)] bg-surface-canvas">
-	{#if data?.user && showCheckout && selectedPurchaseKey}
+	{#if data.auth.isSignedIn && showCheckout && selectedPurchaseKey}
 		<div class="px-4 py-10 md:px-6">
 			<div class="mx-auto max-w-3xl">
 				<div class="mb-4 flex items-center justify-between gap-4">

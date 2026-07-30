@@ -33,7 +33,7 @@
 	}
 
 	onMount(() => {
-		if (data.session) {
+		if (data.auth.isSignedIn) {
 			goto(nextUrl);
 		}
 	});

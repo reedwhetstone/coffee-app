@@ -8,7 +8,7 @@
 	import { page } from '$app/state';
 	import { filterStore } from '$lib/stores/filterStore';
 	import { afterNavigate } from '$app/navigation';
-	import { checkRole, type UserRole } from '$lib/types/auth.types';
+	import { checkRole, type PageAuthView } from '$lib/types/auth.types';
 	import { PREMIUM_DISCOVERY_FILTER_KEYS } from '$lib/catalog/accessPolicy';
 
 	const premiumDiscoveryFilterColumns = new Set<string>(PREMIUM_DISCOVERY_FILTER_KEYS);
@@ -23,7 +23,7 @@
 	// Track current route for dynamic filter options
 	let routeId = $state(page.url.pathname);
 	let canUseMemberCatalogControls = $derived(
-		checkRole((data.role as UserRole | undefined) ?? 'viewer', 'member')
+		checkRole((data as { auth: PageAuthView }).auth.role, 'member')
 	);
 	let filterableColumns = $derived(filterStore.getFilterableColumns(routeId));
 	let visibleSortColumns = $derived(

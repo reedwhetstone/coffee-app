@@ -4,13 +4,10 @@ import type { PageServerLoad } from './$types';
 import { getPageAuthState } from '$lib/server/pageAuth';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	const { session, user, role } = getPageAuthState(locals.principal);
+	const { user, role } = getPageAuthState(locals.principal);
 
 	if (!user) {
 		return {
-			session,
-			user: null,
-			role: 'viewer' as const,
 			stripeCustomerId: null,
 			subscription: null,
 			billingSubscriptions: [],
@@ -41,9 +38,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	return {
-		session,
-		user,
-		role,
 		stripeCustomerId,
 		subscription,
 		billingSubscriptions: billingSubscriptions ?? [],

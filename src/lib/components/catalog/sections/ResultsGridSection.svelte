@@ -16,7 +16,7 @@
 	}
 
 	interface Props {
-		session: unknown;
+		isSignedIn: boolean;
 		displayData: CoffeeCatalog[];
 		isLoadingMore: boolean;
 		isRefetching: boolean;
@@ -38,7 +38,7 @@
 	}
 
 	let {
-		session,
+		isSignedIn,
 		displayData,
 		isLoadingMore,
 		isRefetching,
@@ -154,7 +154,7 @@
 					</div>
 				{/if}
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-					{#each session ? displayData : displayData.slice(0, 15) as coffee (catalogCoffeeCardKey(coffee))}
+					{#each isSignedIn ? displayData : displayData.slice(0, 15) as coffee (catalogCoffeeCardKey(coffee))}
 						<CoffeeCard
 							{coffee}
 							{parseTastingNotes}
@@ -175,7 +175,7 @@
 						</div>
 					{/if}
 
-					{#if !session && (activePagination.total > 15 || displayData.length >= 15)}
+					{#if !isSignedIn && (activePagination.total > 15 || displayData.length >= 15)}
 						<div class="col-span-full mt-2">
 							<div
 								class="rounded-lg bg-surface-panel px-8 py-10 text-center shadow-sm ring-1 ring-accent/30"
@@ -206,7 +206,7 @@
 						</div>
 					{/if}
 
-					{#if session && activePagination.totalPages > 1}
+					{#if isSignedIn && activePagination.totalPages > 1}
 						<div class="col-span-full flex items-center justify-center gap-4 p-4">
 							<button
 								onclick={() => filterStore.loadPrevPage()}
@@ -231,13 +231,13 @@
 						</div>
 					{/if}
 
-					{#if session && !$filterStore.pagination.totalPages && !isLoadingMore && displayLimit < filteredDataLength}
+					{#if isSignedIn && !$filterStore.pagination.totalPages && !isLoadingMore && displayLimit < filteredDataLength}
 						<div class="flex justify-center p-4">
 							<p class="text-sm text-ink">Scroll for more coffees...</p>
 						</div>
 					{/if}
 
-					{#if session && !$filterStore.pagination.totalPages && displayLimit >= filteredDataLength && filteredDataLength > 0}
+					{#if isSignedIn && !$filterStore.pagination.totalPages && displayLimit >= filteredDataLength && filteredDataLength > 0}
 						<div class="flex justify-center p-4">
 							<p class="text-sm text-ink">No more coffees to load</p>
 						</div>

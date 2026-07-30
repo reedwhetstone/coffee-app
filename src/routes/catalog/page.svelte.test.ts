@@ -6,6 +6,7 @@ import CatalogPage from './+page.svelte';
 import type { PageData } from './$types';
 import { createCatalogProofSummary } from '$lib/catalog/proofSummary';
 import { filterStore } from '$lib/stores/filterStore';
+import type { UserRole } from '$lib/types/auth.types';
 
 const { goto, pageState } = vi.hoisted(() => ({
 	goto: vi.fn(),
@@ -15,11 +16,22 @@ const { goto, pageState } = vi.hoisted(() => ({
 vi.mock('$app/navigation', () => ({ goto }));
 vi.mock('$app/state', () => ({ page: pageState }));
 
-function createData(overrides: Partial<PageData> = {}): PageData {
+function createData(
+	overrides: Partial<PageData> & {
+		session?: unknown;
+		role?: UserRole;
+		ppiAccess?: boolean;
+	} = {}
+): PageData {
+	const { session = null, role = 'viewer', ppiAccess = false, ...pageOverrides } = overrides;
+
 	return {
-		session: null,
-		user: null,
-		role: 'viewer',
+		auth: {
+			isSignedIn: Boolean(session),
+			user: session ? { id: 'user-1', email: 'user@example.com' } : null,
+			role,
+			ppiAccess
+		},
 		data: [
 			{
 				id: 1,
@@ -82,10 +94,9 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 			hasPrev: false
 		},
 		meta: {},
-		ppiAccess: false,
 		trackedLotIds: [],
 		briefMatchSummaries: [],
-		...overrides
+		...pageOverrides
 	} as unknown as PageData;
 }
 
@@ -276,7 +287,7 @@ describe('/catalog intelligence connective tissue', () => {
 	it('does not repeat the Market Index CTA for Intelligence users', () => {
 		renderCatalog(
 			createData({
-				session: { access_token: 'ppi-token' } as PageData['session'],
+				session: { access_token: 'ppi-token' },
 				ppiAccess: true
 			} as unknown as Partial<PageData>)
 		);
@@ -291,7 +302,7 @@ describe('/catalog intelligence connective tissue', () => {
 	it('uses one market CTA and one paid-product CTA for signed-in free users', () => {
 		renderCatalog(
 			createData({
-				session: { access_token: 'viewer-token' } as PageData['session'],
+				session: { access_token: 'viewer-token' },
 				role: 'viewer'
 			} as unknown as Partial<PageData>)
 		);
@@ -304,7 +315,7 @@ describe('/catalog intelligence connective tissue', () => {
 	it('uses one contextual Market Index CTA for signed-in viewers with empty results', () => {
 		renderCatalog(
 			createData({
-				session: { access_token: 'viewer-token' } as PageData['session'],
+				session: { access_token: 'viewer-token' },
 				role: 'viewer',
 				data: [],
 				trainingData: [],
@@ -422,7 +433,7 @@ describe('/catalog intelligence connective tissue', () => {
 
 		renderCatalog(
 			createData({
-				session: { access_token: 'member-token' } as PageData['session'],
+				session: { access_token: 'member-token' },
 				role: 'member',
 				trackedLotIds
 			} as unknown as Partial<PageData>)
@@ -447,7 +458,7 @@ describe('/catalog intelligence connective tissue', () => {
 	it('keeps watchlist toggles hidden when streamed tracked ids fail', async () => {
 		renderCatalog(
 			createData({
-				session: { access_token: 'member-token' } as PageData['session'],
+				session: { access_token: 'member-token' },
 				role: 'member',
 				trackedLotIds: Promise.resolve(null)
 			} as unknown as Partial<PageData>)
@@ -558,7 +569,7 @@ describe('/catalog price intelligence', () => {
 
 	it('refreshes origin price stats when the wholesale scope changes after hydration', async () => {
 		const pageData = createData({
-			session: { access_token: 'member-token' } as PageData['session'],
+			session: { access_token: 'member-token' },
 			role: 'member',
 			catalogAccess: {
 				canViewPublicCatalog: true,
@@ -655,7 +666,7 @@ describe('/catalog watchlist and sourcing briefs', () => {
 	it('lets Mallard members use watchlist controls without Parchment Intelligence entitlement', async () => {
 		renderCatalog(
 			createData({
-				session: { access_token: 'member-token' } as PageData['session'],
+				session: { access_token: 'member-token' },
 				role: 'member',
 				ppiAccess: false,
 				trackedLotIds: []
@@ -716,7 +727,7 @@ describe('/catalog watchlist and sourcing briefs', () => {
 
 		renderCatalog(
 			createData({
-				session: { access_token: 'member-token' } as PageData['session'],
+				session: { access_token: 'member-token' },
 				role: 'member',
 				pagination: {
 					page: 1,
@@ -772,7 +783,7 @@ describe('/catalog similar comparison controls', () => {
 	it('shows signed-in non-members the locked matches detail without fetching member data', async () => {
 		renderCatalog(
 			createData({
-				session: { access_token: 'viewer-token' } as PageData['session'],
+				session: { access_token: 'viewer-token' },
 				role: 'viewer'
 			} as unknown as Partial<PageData>)
 		);
@@ -789,7 +800,7 @@ describe('/catalog similar comparison controls', () => {
 	it('lets members open an on-demand similar coffee comparison panel', async () => {
 		renderCatalog(
 			createData({
-				session: { access_token: 'member-token' } as PageData['session'],
+				session: { access_token: 'member-token' },
 				role: 'member',
 				catalogAccess: {
 					canViewPublicCatalog: true,
@@ -865,7 +876,7 @@ describe('/catalog process controls', () => {
 	it('enables process facet controls for member access', async () => {
 		renderCatalog(
 			createData({
-				session: { access_token: 'member-token' } as PageData['session'],
+				session: { access_token: 'member-token' },
 				role: 'member',
 				catalogAccess: {
 					canViewPublicCatalog: true,
@@ -895,7 +906,7 @@ describe('/catalog process controls', () => {
 	it('hides disconnected process controls in tracked-only mode', () => {
 		renderCatalog(
 			createData({
-				session: { access_token: 'member-token' } as PageData['session'],
+				session: { access_token: 'member-token' },
 				role: 'member',
 				trackedOnly: true,
 				catalogAccess: {
@@ -912,7 +923,7 @@ describe('/catalog process controls', () => {
 	it('gives an empty tracked-only view one honest path back to the catalog', () => {
 		renderCatalog(
 			createData({
-				session: { access_token: 'member-token' } as PageData['session'],
+				session: { access_token: 'member-token' },
 				role: 'member',
 				trackedOnly: true,
 				data: [],
@@ -938,7 +949,7 @@ describe('/catalog process controls', () => {
 	it('does not claim an empty watchlist when tracked-only state is unknown', () => {
 		renderCatalog(
 			createData({
-				session: { access_token: 'member-token' } as PageData['session'],
+				session: { access_token: 'member-token' },
 				role: 'member',
 				trackedOnly: true,
 				trackedLotIds: null,

@@ -43,8 +43,13 @@
 	let currentRoastProfile = $state<RoastProfile | null>(null);
 
 	// Page data
-	let { data = { data: [], role: 'viewer' } } = $props<{ data?: Partial<PageData> }>();
-	let canCreateRoastProfiles = $derived(canUseMallardControls(data?.role ?? 'viewer'));
+	let {
+		data = {
+			data: [],
+			auth: { isSignedIn: false, user: null, role: 'viewer', ppiAccess: false }
+		}
+	} = $props<{ data?: Partial<PageData> }>();
+	let canCreateRoastProfiles = $derived(canUseMallardControls(data.auth?.role ?? 'viewer'));
 
 	// Main state variables
 	let isFormVisible = $derived(

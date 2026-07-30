@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PageAuthView } from '$lib/types/auth.types';
 import UnifiedHeader from './UnifiedHeader.svelte';
 
 const { goto, pageState } = vi.hoisted(() => ({
@@ -19,6 +20,20 @@ vi.mock('$lib/types/auth.types', async (importOriginal) => {
 	};
 });
 
+const signedInAuth: PageAuthView = {
+	isSignedIn: true,
+	user: { id: 'viewer-id', email: 'viewer@example.com' },
+	role: 'viewer',
+	ppiAccess: false
+};
+
+const anonymousAuth: PageAuthView = {
+	isSignedIn: false,
+	user: null,
+	role: 'viewer',
+	ppiAccess: false
+};
+
 describe('UnifiedHeader', () => {
 	beforeEach(() => {
 		goto.mockReset();
@@ -26,7 +41,7 @@ describe('UnifiedHeader', () => {
 	});
 
 	it('keeps anonymous desktop report navigation access-aware', () => {
-		render(UnifiedHeader, { session: null, role: 'viewer' });
+		render(UnifiedHeader, { auth: anonymousAuth });
 
 		expect(screen.getByRole('navigation', { name: 'Market Index report sections' })).toBeTruthy();
 		expect(screen.getByRole('link', { name: 'Read' }).getAttribute('href')).toBe(
@@ -36,10 +51,7 @@ describe('UnifiedHeader', () => {
 	});
 
 	it('includes signed-in report depth when that section can render', () => {
-		render(UnifiedHeader, {
-			session: { user: { email: 'viewer@example.com' } },
-			role: 'viewer'
-		});
+		render(UnifiedHeader, { auth: signedInAuth });
 
 		expect(screen.getByRole('link', { name: 'Disclosure Index' }).getAttribute('href')).toBe(
 			'/analytics#disclosure-index'
@@ -49,7 +61,7 @@ describe('UnifiedHeader', () => {
 	it('does not add report navigation to unrelated public pages', () => {
 		pageState.url = new URL('http://localhost/catalog');
 
-		render(UnifiedHeader, { session: null, role: 'viewer' });
+		render(UnifiedHeader, { auth: anonymousAuth });
 
 		expect(screen.queryByRole('navigation', { name: 'Market Index report sections' })).toBeNull();
 	});

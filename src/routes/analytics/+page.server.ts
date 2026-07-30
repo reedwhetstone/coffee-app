@@ -941,7 +941,7 @@ export const load: PageServerLoad = async (event) => {
 	// Logged-out visitors and logged-in viewers intentionally share the same core analytics view.
 	const principal = event.locals.principal;
 	const isParchmentIntelligence = principal.isAuthenticated ? principal.ppiAccess : false;
-	const { session, role } = getPageAuthState(principal);
+	const { session } = getPageAuthState(principal);
 	const isAnonymous = !session;
 
 	// The only awaited data read before the first byte: one indexed row from the
@@ -1001,8 +1001,6 @@ export const load: PageServerLoad = async (event) => {
 	]);
 
 	return {
-		session,
-		role,
 		isParchmentIntelligence,
 		analyticsPreview,
 		analyticsCoverage,

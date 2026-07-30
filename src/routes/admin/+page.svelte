@@ -6,8 +6,8 @@
 
 	// Admin dashboard stats - can be enhanced later
 	let adminStats = $derived({
-		userRole: data.role,
-		userEmail: data.user?.email || 'Unknown',
+		userRole: data.auth.role,
+		userEmail: data.auth.user?.email || 'Unknown',
 		dashboardTitle: 'Admin Dashboard'
 	});
 </script>

@@ -3,7 +3,7 @@
 	import { signInWithGoogle, createClient } from '$lib/supabase';
 	import { goto } from '$app/navigation';
 
-	import type { User } from '@supabase/supabase-js';
+	import type { PageAuthView } from '$lib/types/auth.types';
 
 	// Props with default values to prevent undefined errors
 	let { data, onClose = () => {} } = $props<{
@@ -12,8 +12,8 @@
 	}>();
 
 	// Destructure with default values
-	let { supabase, user } = $derived(
-		data as { supabase: ReturnType<typeof createClient>; user: User | null }
+	let { supabase, auth } = $derived(
+		data as { supabase: ReturnType<typeof createClient>; auth: PageAuthView }
 	);
 
 	async function handleSignIn() {
@@ -71,10 +71,10 @@
 	</header>
 
 	<main class="flex-grow overflow-y-auto p-4">
-		{#if user}
+		{#if auth.user}
 			<div class="mb-4">
 				<h3 class="mb-2 font-medium text-ink">Signed in as:</h3>
-				<p class="mb-4 text-sm text-muted">{user.email}</p>
+				<p class="mb-4 text-sm text-muted">{auth.user.email}</p>
 
 				<button
 					onclick={handleSignOut}

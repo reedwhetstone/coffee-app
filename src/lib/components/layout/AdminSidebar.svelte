@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import type { PageAuthView } from '$lib/types/auth.types';
 
 	let { data, onClose } = $props<{
 		data: Record<string, unknown>;
 		onClose: () => void;
 	}>();
+	let auth = $derived((data as { auth: PageAuthView }).auth);
 
 	// Admin navigation items
 	const adminNavItems = [
@@ -73,15 +75,15 @@
 				class="flex h-8 w-8 items-center justify-center rounded-full bg-background-tertiary-light"
 			>
 				<span class="text-sm font-medium text-white">
-					{(data?.user as { email?: string })?.email?.charAt(0).toUpperCase() || 'A'}
+					{auth.user?.email?.charAt(0).toUpperCase() || 'A'}
 				</span>
 			</div>
 			<div>
 				<p class="text-sm font-medium text-text-primary-light">
-					{(data?.user as { email?: string })?.email || 'Admin User'}
+					{auth.user?.email || 'Admin User'}
 				</p>
 				<p class="text-xs capitalize text-text-secondary-light">
-					{(data?.role as string) || 'admin'} Role
+					{auth.role} Role
 				</p>
 			</div>
 		</div>

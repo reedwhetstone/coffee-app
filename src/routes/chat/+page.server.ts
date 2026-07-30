@@ -78,10 +78,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 		: null;
 
 	return {
-		session,
-		user,
-		role,
-		ppiAccess,
 		initialWorkspaceData
 	};
 };

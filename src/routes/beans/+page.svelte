@@ -11,6 +11,7 @@
 	import { loadBeanPickerCatalog } from './catalogPicker';
 	import { deletePortfolioBean } from './deleteBean';
 	import { createTrackedLotStateController } from '$lib/client/trackedLots';
+	import type { PageAuthView } from '$lib/types/auth.types';
 
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 
@@ -54,9 +55,7 @@
 			}>;
 		}>;
 		catalogData?: CoffeeCatalog[];
-		role?: 'viewer' | 'member' | 'admin';
-		ppiAccess?: boolean;
-		user?: { id: string } | null;
+		auth: PageAuthView;
 		trackedLots?: Array<{
 			catalogId: number;
 			stocked: boolean | null;
@@ -66,7 +65,13 @@
 		trackedCatalog?: CoffeeCatalog[];
 	};
 
-	let { data = { data: [], role: 'viewer', ppiAccess: false, catalogData: [] } } = $props<{
+	let {
+		data = {
+			data: [],
+			auth: { isSignedIn: false, user: null, role: 'viewer', ppiAccess: false },
+			catalogData: []
+		}
+	} = $props<{
 		data?: Partial<PageData>;
 	}>();
 
@@ -79,7 +84,7 @@
 	};
 
 	let canUseWatchlist = $derived(
-		data?.role === 'member' || data?.role === 'admin' || data?.ppiAccess === true
+		data.auth?.role === 'member' || data.auth?.role === 'admin' || data.auth?.ppiAccess === true
 	);
 	let trackedLotsList = $derived((data?.trackedLots ?? []) as TrackedLotContext[]);
 	let trackedCatalogById = $derived(
@@ -133,7 +138,7 @@
 	let clientData = $state<PageData['data']>([]);
 	let catalogData = $state<CoffeeCatalog[]>([]);
 	let canManagePortfolioRows = $derived(
-		canManagePortfolio(data?.role || 'viewer', data?.ppiAccess === true)
+		canManagePortfolio(data.auth?.role || 'viewer', data.auth?.ppiAccess === true)
 	);
 	let isSharedPortfolioView = $derived(Boolean(page.url.searchParams.get('share')));
 	let canAddPortfolioCoffee = $derived(canManagePortfolioRows && !isSharedPortfolioView);
@@ -621,7 +626,7 @@
 					onClose={hideForm}
 					onSubmit={handleFormSubmit}
 					catalogBeans={catalogData}
-					ownerId={data?.user?.id ?? null}
+					ownerId={data.auth?.user?.id ?? null}
 				/>
 			</FormShell>
 
@@ -687,7 +692,7 @@
 									{#snippet detailContent()}
 										<BeanProfileTabs
 											selectedBean={bean}
-											role={data?.role || 'viewer'}
+											role={data.auth?.role || 'viewer'}
 											canManagePortfolio={canManagePortfolioRows}
 											embedded={true}
 											onUpdate={(updatedBean) => {

@@ -5,7 +5,7 @@
 	import { slide } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 	import { onMount } from 'svelte';
-	import { checkRole } from '$lib/types/auth.types';
+	import { checkRole, type PageAuthView } from '$lib/types/auth.types';
 	import { canManagePortfolio } from '$lib/services/portfolioAccess';
 
 	// Props for the sidebar
@@ -33,11 +33,10 @@
 	let currentRoute = $state(page.url.pathname);
 	let trackedCatalogRoute = $state(Boolean((page.data as { trackedOnly?: boolean }).trackedOnly));
 
-	import type { UserRole } from '$lib/types/auth.types';
-
 	// Role checking logic
-	let userRole = $derived((data?.role as UserRole) || 'viewer');
-	let ppiAccess = $derived(Boolean((data as { ppiAccess?: boolean }).ppiAccess));
+	let auth = $derived((data as { auth: PageAuthView }).auth);
+	let userRole = $derived(auth.role);
+	let ppiAccess = $derived(auth.ppiAccess);
 	let canUseActions = $derived(canManagePortfolio(userRole, ppiAccess));
 	let isAdmin = $derived(checkRole(userRole, 'admin'));
 
@@ -164,7 +163,7 @@
 	class="fixed top-0 z-50 hidden h-full {sidebarPosition} transition-all duration-300 ease-out md:block"
 	bind:this={sidebarButtonsContainer}
 >
-	{#if (data?.session as { user?: { email?: string } })?.user}
+	{#if auth.isSignedIn}
 		<div class="flex h-full w-16 flex-col items-center space-y-4 bg-surface-canvas py-4 shadow-lg">
 			<!-- Auth Menu Button -->
 			<div class="relative">
@@ -173,12 +172,12 @@
 					class="rounded-full bg-surface-panel p-2 text-ink shadow-sm ring-1 ring-line transition-all duration-200 hover:bg-accent hover:text-ink"
 					aria-label="Toggle authentication menu"
 				>
-					{#if data?.user as { email?: string }}
+					{#if auth.user}
 						<!-- User Avatar/Icon -->
 						<div
 							class="flex h-8 w-8 items-center justify-center rounded-full bg-accent font-medium text-ink"
 						>
-							{(data.user as { email?: string }).email?.[0].toUpperCase() || 'U'}
+							{auth.user.email?.[0].toUpperCase() || 'U'}
 						</div>
 					{:else}
 						<!-- Default Profile Icon -->

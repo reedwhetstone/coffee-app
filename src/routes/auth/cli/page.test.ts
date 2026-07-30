@@ -7,10 +7,12 @@ const TOKEN = 'signed.request.token'.padEnd(80, 'x');
 const mockFetch = vi.fn();
 
 const data: PageData = {
-	session: null,
-	user: { id: 'user-1', email: 'user@example.com', role: 'authenticated' },
-	role: 'viewer',
-	ppiAccess: false,
+	auth: {
+		isSignedIn: true,
+		user: { id: 'user-1', email: 'user@example.com' },
+		role: 'viewer',
+		ppiAccess: false
+	},
 	supabase: {} as PageData['supabase'],
 	requestToken: TOKEN,
 	request: {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { checkRole, type UserRole } from '$lib/types/auth.types';
+	import { checkRole, type PageAuthView } from '$lib/types/auth.types';
 	import {
 		getAnalyticsSectionLinks,
 		getAuthenticatedNavSections,
@@ -14,9 +14,10 @@
 	}>();
 
 	let pathname = $derived(page.url.pathname);
-	let userRole = $derived(((data?.role as UserRole | undefined) ?? 'viewer') as UserRole);
-	let userEmail = $derived(((data?.user as { email?: string } | undefined)?.email ?? '') as string);
-	let isSignedIn = $derived(Boolean((data as { user?: unknown }).user));
+	let auth = $derived((data as { auth: PageAuthView }).auth);
+	let userRole = $derived(auth.role);
+	let userEmail = $derived(auth.user?.email ?? '');
+	let isSignedIn = $derived(auth.isSignedIn);
 	let supabase = $derived(
 		(
 			data as {
@@ -29,7 +30,7 @@
 		).supabase
 	);
 	let isMember = $derived(checkRole(userRole, 'member'));
-	let ppiAccess = $derived(Boolean((data as { ppiAccess?: boolean }).ppiAccess));
+	let ppiAccess = $derived(auth.ppiAccess);
 	let navSections = $derived(getAuthenticatedNavSections(userRole, { ppiAccess }));
 	let isAnalyticsPage = $derived(pathname.startsWith('/analytics'));
 	let marketIndexSectionLinks = $derived(
