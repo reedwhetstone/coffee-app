@@ -1,28 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createMilestoneCalculationService } from '$lib/services/milestoneCalculationService';
-import { checkRole, type UserRole } from '$lib/types/auth.types';
+import { AuthError, requireMemberRole } from '$lib/server/auth';
 
-export const POST: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
+export const POST: RequestHandler = async (event) => {
 	try {
-		const { session, user } = await safeGetSession();
-		if (!session || !user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
-		}
-
-		// Read the canonical scalar app role. Admin inherits member access through checkRole.
-		const { data: userRole } = (await supabase
-			.from('user_roles')
-			.select('role')
-			.eq('id', user.id)
-			.single()) as { data: { role: UserRole } | null };
-
-		if (!userRole || !checkRole(userRole.role, 'member')) {
-			return json({ error: 'Insufficient permissions' }, { status: 403 });
-		}
+		await requireMemberRole(event);
 
 		console.log('Starting milestone backfill process...');
-		const milestoneService = createMilestoneCalculationService(supabase);
+		const milestoneService = createMilestoneCalculationService(event.locals.supabase);
 		const stats = await milestoneService.backfillNullMilestones();
 
 		return json({
@@ -31,6 +17,13 @@ export const POST: RequestHandler = async ({ locals: { supabase, safeGetSession 
 			stats
 		});
 	} catch (error) {
+		if (error instanceof AuthError) {
+			return json(
+				{ error: error.status === 401 ? 'Unauthorized' : 'Insufficient permissions' },
+				{ status: error.status }
+			);
+		}
+
 		console.error('Error in milestone backfill:', error);
 		return json(
 			{

@@ -1,6 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockBackfillNullMilestones = vi.fn();
+const authMocks = vi.hoisted(() => {
+	class AuthError extends Error {
+		constructor(
+			message: string,
+			public status = 401
+		) {
+			super(message);
+			this.name = 'AuthError';
+		}
+	}
+
+	return {
+		AuthError,
+		requireMemberRole: vi.fn()
+	};
+});
+
+vi.mock('$lib/server/auth', () => authMocks);
 
 vi.mock('$lib/services/milestoneCalculationService', () => ({
 	createMilestoneCalculationService: () => ({
@@ -10,25 +28,17 @@ vi.mock('$lib/services/milestoneCalculationService', () => ({
 
 const { POST } = await import('./+server');
 
-function makeEvent(role: 'viewer' | 'member' | 'admin' | null) {
-	const single = vi.fn(async () => ({ data: role ? { role } : null, error: null }));
-	const eq = vi.fn(() => ({ single }));
-	const select = vi.fn(() => ({ eq }));
-	const from = vi.fn(() => ({ select }));
-	const user = role === null ? null : { id: 'user-123' };
-
+function makeEvent() {
 	return {
-		event: {
-			locals: {
-				supabase: { from },
-				safeGetSession: vi.fn(async () => ({
-					session: user ? { access_token: 'token' } : null,
-					user
-				}))
-			}
-		} as never,
-		mocks: { select, eq, single }
-	};
+		locals: {
+			supabase: {}
+		},
+		request: new Request('https://app.test/api/admin/backfill-milestones', {
+			method: 'POST',
+			headers: { Origin: 'https://app.test' }
+		}),
+		url: new URL('https://app.test/api/admin/backfill-milestones')
+	} as never;
 }
 
 beforeEach(() => {
@@ -38,28 +48,37 @@ beforeEach(() => {
 
 describe('POST /api/admin/backfill-milestones', () => {
 	it('requires an authenticated session', async () => {
-		const { event } = makeEvent(null);
-		const response = await POST(event);
+		authMocks.requireMemberRole.mockRejectedValue(
+			new authMocks.AuthError('Authentication required')
+		);
+		const response = await POST(makeEvent());
 
 		expect(response.status).toBe(401);
 		expect(mockBackfillNullMilestones).not.toHaveBeenCalled();
 	});
 
-	it('rejects a scalar viewer role', async () => {
-		const { event, mocks } = makeEvent('viewer');
-		const response = await POST(event);
+	it('rejects a canonical viewer principal', async () => {
+		authMocks.requireMemberRole.mockRejectedValue(
+			new authMocks.AuthError('Member role required', 403)
+		);
+		const response = await POST(makeEvent());
 
 		expect(response.status).toBe(403);
-		expect(mocks.select).toHaveBeenCalledWith('role');
 		expect(mockBackfillNullMilestones).not.toHaveBeenCalled();
 	});
 
-	it.each(['member', 'admin'] as const)('allows a scalar %s role', async (role) => {
-		const { event } = makeEvent(role);
+	it.each(['member', 'admin'] as const)('allows a canonical %s principal', async (role) => {
+		authMocks.requireMemberRole.mockResolvedValue({
+			user: { id: 'user-123' },
+			role,
+			principal: { primaryAppRole: role }
+		});
+		const event = makeEvent();
 		const response = await POST(event);
 
 		expect(response.status).toBe(200);
 		expect(await response.json()).toMatchObject({ success: true, stats: { updated: 2 } });
 		expect(mockBackfillNullMilestones).toHaveBeenCalledOnce();
+		expect(authMocks.requireMemberRole).toHaveBeenCalledWith(event);
 	});
 });

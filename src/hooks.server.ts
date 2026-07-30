@@ -4,7 +4,12 @@ import type { Database } from '$lib/types/database.types';
 import { type Handle, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { requireRole } from '$lib/server/auth';
-import { getLegacyAuthState, resolvePrincipal, type SessionContext } from '$lib/server/principal';
+import {
+	getLegacyAuthState,
+	isSessionPrincipal,
+	resolvePrincipal,
+	type SessionContext
+} from '$lib/server/principal';
 import type { CookieSerializeOptions } from 'cookie';
 
 const handleStripeRedirects: Handle = async ({ event, resolve }) => {
@@ -37,7 +42,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	) as unknown as App.Locals['supabase'];
 
 	let identityPromise: Promise<Pick<SessionContext, 'session' | 'user'>> | null = null;
-	event.locals.safeGetSession = async () => {
+	event.locals.safeGetIdentity = async () => {
 		if (!identityPromise) {
 			identityPromise = (async () => {
 				const {
@@ -65,18 +70,30 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			})();
 		}
 
-		const identity = await identityPromise;
-		const principal = event.locals.principal;
-		const roles =
-			principal?.authKind === 'session' && principal.isAuthenticated
-				? principal.appRoles
-				: (['viewer'] as const);
-		const role =
-			principal?.authKind === 'session' && principal.isAuthenticated
-				? principal.primaryAppRole
-				: 'viewer';
+		return identityPromise;
+	};
 
-		return { ...identity, role, roles: [...roles] };
+	event.locals.safeGetSession = async () => {
+		const principal = await resolvePrincipal(event);
+		if (
+			isSessionPrincipal(principal) &&
+			principal.source === 'cookie-session' &&
+			principal.session
+		) {
+			return {
+				session: principal.session,
+				user: principal.user,
+				role: principal.primaryAppRole,
+				roles: [...principal.appRoles]
+			};
+		}
+
+		return {
+			session: null,
+			user: null,
+			role: 'viewer',
+			roles: ['viewer']
+		};
 	};
 
 	// Resolve the normalized principal first, then derive legacy locals from that

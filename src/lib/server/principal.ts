@@ -258,7 +258,13 @@ async function resolveCanonicalPrincipal(
 		const roles = data.appRoles
 			.map(normalizeScalarUserRole)
 			.filter((role): role is UserRole => role !== null);
-		const primaryRole = normalizeScalarUserRole(data.primaryAppRole);
+		const projectedPrimaryRole = normalizeScalarUserRole(data.primaryAppRole);
+		const primaryRole =
+			projectedPrimaryRole && roles.includes(projectedPrimaryRole)
+				? projectedPrimaryRole
+				: roles.length > 0
+					? getPrimaryUserRole(roles)
+					: null;
 
 		return {
 			authenticated: data.authenticated,
@@ -334,14 +340,14 @@ export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrin
 		return event.locals.principal;
 	}
 
-	const sessionContext = await event.locals.safeGetSession();
-	if (sessionContext.session && sessionContext.user) {
-		const canonical = await resolveCanonicalPrincipal(event, sessionContext.session.access_token);
+	const identity = await event.locals.safeGetIdentity();
+	if (identity.session && identity.user) {
+		const canonical = await resolveCanonicalPrincipal(event, identity.session.access_token);
 
 		if (
 			!canonical.authenticated ||
 			canonical.authKind !== 'session' ||
-			canonical.userId !== sessionContext.user.id
+			canonical.userId !== identity.user.id
 		) {
 			event.locals.principal = createAnonymousPrincipal();
 			return event.locals.principal;
@@ -349,8 +355,8 @@ export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrin
 
 		event.locals.principal = createSessionPrincipal({
 			source: 'cookie-session',
-			session: sessionContext.session,
-			user: sessionContext.user,
+			session: identity.session,
+			user: identity.user,
 			canonical
 		});
 		return event.locals.principal;

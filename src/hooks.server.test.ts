@@ -50,8 +50,7 @@ vi.mock('@sveltejs/kit/hooks', () => ({
 vi.mock('$lib/server/principal', () => ({
 	resolvePrincipal: mockResolvePrincipal,
 	getLegacyAuthState: mockGetLegacyAuthState,
-	getUserRoles: vi.fn(),
-	getPrimaryUserRole: vi.fn()
+	isSessionPrincipal: (principal: { authKind?: string }) => principal.authKind === 'session'
 }));
 
 let handle: typeof import('./hooks.server').handle;
@@ -107,6 +106,76 @@ describe('hooks auth guard integration', () => {
 
 		expect(mockGetLegacyAuthState).not.toHaveBeenCalled();
 		expect(resolve).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{
+			name: 'API key',
+			principal: { isAuthenticated: true, authKind: 'api-key', source: 'api-key' }
+		},
+		{
+			name: 'bearer session',
+			principal: { isAuthenticated: true, authKind: 'session', source: 'bearer-session' }
+		},
+		{
+			name: 'invalid Authorization header',
+			principal: { isAuthenticated: false, authKind: 'anonymous', source: 'none' }
+		}
+	])('does not recover the cookie identity after a $name wins', async ({ principal }) => {
+		mockResolvePrincipal.mockResolvedValue(principal);
+		mockGetLegacyAuthState.mockReturnValue({
+			session: null,
+			user: null,
+			role: 'viewer',
+			roles: ['viewer']
+		});
+
+		const response = await handle({
+			event: makeEvent('/api/share', {
+				Authorization: 'Bearer authoritative-header'
+			}),
+			resolve: vi.fn(async (event) => {
+				const auth = await event.locals.safeGetSession();
+				return Response.json({
+					hasSession: Boolean(auth.session),
+					hasUser: Boolean(auth.user)
+				});
+			})
+		});
+
+		expect(await response.json()).toEqual({ hasSession: false, hasUser: false });
+		expect(mockGetSession).not.toHaveBeenCalled();
+	});
+
+	it('returns the canonical cookie identity from the compatibility helper', async () => {
+		const principal = {
+			isAuthenticated: true,
+			authKind: 'session',
+			source: 'cookie-session',
+			session: { access_token: 'canonical-cookie-token' },
+			user: { id: 'canonical-cookie-user' },
+			primaryAppRole: 'member',
+			appRoles: ['member']
+		};
+		mockResolvePrincipal.mockResolvedValue(principal);
+		mockGetLegacyAuthState.mockReturnValue({
+			session: principal.session,
+			user: principal.user,
+			role: 'member',
+			roles: ['member']
+		});
+
+		const response = await handle({
+			event: makeEvent('/dashboard'),
+			resolve: vi.fn(async (event) => Response.json(await event.locals.safeGetSession()))
+		});
+
+		expect(await response.json()).toMatchObject({
+			session: { access_token: 'canonical-cookie-token' },
+			user: { id: 'canonical-cookie-user' },
+			role: 'member',
+			roles: ['member']
+		});
 	});
 
 	it('rejects invalid Authorization headers on dashboard routes even if a cookie session exists', async () => {

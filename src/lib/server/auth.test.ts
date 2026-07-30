@@ -75,6 +75,10 @@ function makeEvent(options: EventOptions = {}) {
 					getUser: mockBearerGetUser
 				}
 			},
+			safeGetIdentity: vi.fn().mockResolvedValue({
+				session: sessionContext.session,
+				user: sessionContext.user
+			}),
 			safeGetSession: vi.fn().mockResolvedValue(sessionContext)
 		},
 		fetch: vi.fn()

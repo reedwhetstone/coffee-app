@@ -50,11 +50,9 @@ function makeCookieSessionEvent() {
 					getUser: vi.fn()
 				}
 			},
-			safeGetSession: vi.fn().mockResolvedValue({
+			safeGetIdentity: vi.fn().mockResolvedValue({
 				session: { access_token: 'cookie-token' },
-				user: { id: 'user-1' },
-				role: 'viewer',
-				roles: ['viewer']
+				user: { id: 'user-1' }
 			})
 		}
 	} as unknown as Parameters<typeof resolvePrincipal>[0];
@@ -75,7 +73,7 @@ function makeAuthorizationEvent(token: string) {
 		locals: {
 			principal: undefined,
 			supabase: { auth: { getUser } },
-			safeGetSession: vi.fn()
+			safeGetIdentity: vi.fn()
 		}
 	} as unknown as Parameters<typeof resolvePrincipal>[0];
 }
@@ -168,6 +166,22 @@ describe('principal helpers', () => {
 		expect(event.locals.supabase.auth.getUser).not.toHaveBeenCalled();
 	});
 
+	it('never grants a projected primary role that is absent from canonical roles', async () => {
+		successfulMe({
+			...viewerProjection,
+			appRoles: ['viewer'],
+			primaryAppRole: 'admin',
+			apiPlan: 'viewer'
+		});
+
+		const principal = await resolvePrincipal(makeCookieSessionEvent());
+
+		expect(principal).toMatchObject({
+			appRoles: ['viewer'],
+			primaryAppRole: 'viewer'
+		});
+	});
+
 	it('fails closed when Parchment is unavailable for a valid cookie user', async () => {
 		mockMe.mockRejectedValue(new TypeError('fetch failed'));
 		const event = makeCookieSessionEvent();
@@ -217,7 +231,7 @@ describe('principal helpers', () => {
 			apiScopes: ['catalog:*', 'usage:read']
 		});
 		expect(event.locals.supabase.auth.getUser).not.toHaveBeenCalled();
-		expect(event.locals.safeGetSession).not.toHaveBeenCalled();
+		expect(event.locals.safeGetIdentity).not.toHaveBeenCalled();
 	});
 
 	it('hydrates a Parchment-authenticated bearer session through request-local Supabase Auth', async () => {
@@ -264,7 +278,7 @@ describe('principal helpers', () => {
 
 		expect(principal.isAuthenticated).toBe(false);
 		expect(mockCreateParchmentPrincipalClient).not.toHaveBeenCalled();
-		expect(event.locals.safeGetSession).not.toHaveBeenCalled();
+		expect(event.locals.safeGetIdentity).not.toHaveBeenCalled();
 	});
 
 	it('treats an unauthenticated Parchment projection as anonymous', async () => {
