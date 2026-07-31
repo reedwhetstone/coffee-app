@@ -19,6 +19,7 @@ import {
 	createAccountDeletionCompletionToken,
 	hasValidAccountDeletionReauth
 } from '$lib/server/accountDeletionReauth';
+import { checkoutAdmissionsReadyForAccountDeletion } from '$lib/server/billing/checkoutAdmissions';
 import { isCookieSessionPrincipal } from '$lib/server/principal';
 import type { RequestHandler } from './$types';
 
@@ -95,6 +96,15 @@ export const POST: RequestHandler = async (event) => {
 	}
 
 	try {
+		if (!checkoutAdmissionsReadyForAccountDeletion()) {
+			return response(503, {
+				error: {
+					code: 'deletion_unavailable',
+					message: 'Account deletion is temporarily unavailable.'
+				}
+			});
+		}
+
 		// The signing credential is preflighted before deciding whether a retry
 		// capability can replace recent reauthentication.
 		const providerCredential = getAccountDeletionProviderCredential();
@@ -118,10 +128,9 @@ export const POST: RequestHandler = async (event) => {
 			});
 		}
 
-		// Preflight everything needed after Parchment quiesces the owner. The
-		// retained customer identities are deliberately captured before the first
-		// deletion request.
-		const stripeCustomerIds = await captureStripeCustomerIds(user.id);
+		// Retain the pre-fence identities for retry-safe union semantics. The
+		// authoritative rescan happens after Parchment has fenced Checkout.
+		const preFenceStripeCustomerIds = await captureStripeCustomerIds(user.id);
 		const client = await createParchmentServerClient(event, {
 			mode: 'session',
 			preferHandling: 'inherit'
@@ -140,6 +149,13 @@ export const POST: RequestHandler = async (event) => {
 				}
 			});
 		}
+
+		// Parchment's request establishes and reconciles the owner fence. Rescan
+		// after it succeeds so any identity retained through the fence is covered.
+		const postFenceStripeCustomerIds = await captureStripeCustomerIds(user.id);
+		const stripeCustomerIds = [
+			...new Set([...preFenceStripeCustomerIds, ...postFenceStripeCustomerIds])
+		];
 
 		event.cookies.set(
 			ACCOUNT_DELETION_RETRY_COOKIE,

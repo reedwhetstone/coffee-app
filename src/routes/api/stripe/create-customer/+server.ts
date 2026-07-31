@@ -1,42 +1,17 @@
-import { json } from '@sveltejs/kit';
-import { createStripeCustomer, getStripeCustomerId } from '$lib/services/stripe';
-import type { RequestEvent } from '@sveltejs/kit';
-import { isCookieSessionPrincipal } from '$lib/server/principal';
+import { json, type RequestHandler } from '@sveltejs/kit';
 
-export async function POST({ request, locals }: RequestEvent) {
-	// Ensure the user is authenticated
-	if (!isCookieSessionPrincipal(locals.principal)) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
-	}
-	const { user } = locals.principal;
-
-	try {
-		const { email, name } = await request.json();
-
-		if (!email) {
-			return json({ error: 'Email is required' }, { status: 400 });
-		}
-
-		// Check if user already has a Stripe customer ID
-		const existingCustomerId = await getStripeCustomerId(user.id);
-
-		if (existingCustomerId) {
-			return json({
-				customerId: existingCustomerId,
-				existing: true
-			});
-		}
-
-		// Create a new Stripe customer
-		const customerId = await createStripeCustomer(user.id, email, name);
-
-		if (!customerId) {
-			return json({ error: 'Failed to create customer' }, { status: 500 });
-		}
-
-		return json({ customerId, new: true });
-	} catch (error) {
-		console.error('Error creating Stripe customer:', error);
-		return json({ error: 'Failed to create customer' }, { status: 500 });
-	}
-}
+/**
+ * Retired legacy customer-creation lane. Stripe identities are now created
+ * only as part of a fenced Checkout admission and reconciled before account
+ * deletion can finalize.
+ */
+export const POST: RequestHandler = () =>
+	json(
+		{
+			error: {
+				code: 'stripe_customer_creation_retired',
+				message: 'Use the Checkout flow to create Stripe customer identities.'
+			}
+		},
+		{ status: 410, headers: { 'cache-control': 'no-store' } }
+	);

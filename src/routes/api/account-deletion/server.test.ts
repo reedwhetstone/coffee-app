@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => {
 		createRetryToken: vi.fn(),
 		hasValidReauth: vi.fn(),
 		createCompletionToken: vi.fn(),
+		checkoutAdmissionsReadyForAccountDeletion: vi.fn(),
 		deleteUser: vi.fn(),
 		AccountDeletionProviderError,
 		ParchmentConfigError
@@ -40,6 +41,10 @@ vi.mock('$lib/server/accountDeletionReauth', () => ({
 	ACCOUNT_DELETION_REAUTH_COOKIE: 'account_deletion_reauthenticated',
 	hasValidAccountDeletionReauth: mocks.hasValidReauth,
 	createAccountDeletionCompletionToken: mocks.createCompletionToken
+}));
+
+vi.mock('$lib/server/billing/checkoutAdmissions', () => ({
+	checkoutAdmissionsReadyForAccountDeletion: mocks.checkoutAdmissionsReadyForAccountDeletion
 }));
 
 vi.mock('$lib/server/parchmentClient', () => ({
@@ -115,6 +120,7 @@ describe('POST /api/account-deletion', () => {
 	beforeEach(() => {
 		mocks.order.length = 0;
 		vi.clearAllMocks();
+		mocks.checkoutAdmissionsReadyForAccountDeletion.mockReturnValue(true);
 		mocks.getProviderCredential.mockImplementation(() => {
 			mocks.order.push('credential');
 			return 'provider-secret';
@@ -152,6 +158,16 @@ describe('POST /api/account-deletion', () => {
 	});
 
 	it('runs the provider lifecycle in order and deletes Auth last for completed operations', async () => {
+		mocks.captureStripeCustomerIds
+			.mockImplementationOnce(async () => {
+				mocks.order.push('capture-stripe');
+				return ['cus_preflight', 'cus_shared'];
+			})
+			.mockImplementationOnce(async () => {
+				mocks.order.push('capture-stripe');
+				return ['cus_shared', 'cus_postfence'];
+			});
+
 		const response = await POST(makeEvent());
 
 		expect(response.status).toBe(200);
@@ -164,6 +180,7 @@ describe('POST /api/account-deletion', () => {
 			'credential',
 			'capture-stripe',
 			'request',
+			'capture-stripe',
 			'set-cookie:account_deletion_operation',
 			'unlink-stripe',
 			'finalize',
@@ -176,7 +193,10 @@ describe('POST /api/account-deletion', () => {
 			mode: 'session',
 			preferHandling: 'inherit'
 		});
-		expect(mocks.unlinkStripeCustomers).toHaveBeenCalledWith(['cus_123'], 'user-1');
+		expect(mocks.unlinkStripeCustomers).toHaveBeenCalledWith(
+			['cus_preflight', 'cus_shared', 'cus_postfence'],
+			'user-1'
+		);
 		expect(mocks.finalizeDeletion).toHaveBeenCalledWith(
 			'/v1/account-deletion/provider-finalization',
 			{
@@ -188,6 +208,18 @@ describe('POST /api/account-deletion', () => {
 				body: { operationId: operation.operationId }
 			}
 		);
+	});
+
+	it('fails closed until managed Checkout admissions are enabled and drained', async () => {
+		mocks.checkoutAdmissionsReadyForAccountDeletion.mockReturnValue(false);
+
+		const response = await POST(makeEvent());
+
+		expect(response.status).toBe(503);
+		expect((await response.json()).error.code).toBe('deletion_unavailable');
+		expect(mocks.getProviderCredential).not.toHaveBeenCalled();
+		expect(mocks.captureStripeCustomerIds).not.toHaveBeenCalled();
+		expect(mocks.requestDeletion).not.toHaveBeenCalled();
 	});
 
 	it('keeps Auth and the completion banner pending for nonterminal operations', async () => {
@@ -210,6 +242,7 @@ describe('POST /api/account-deletion', () => {
 			'credential',
 			'capture-stripe',
 			'request',
+			'capture-stripe',
 			'set-cookie:account_deletion_operation',
 			'unlink-stripe'
 		]);

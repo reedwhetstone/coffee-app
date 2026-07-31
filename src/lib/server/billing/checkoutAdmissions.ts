@@ -84,6 +84,17 @@ export function legacyCheckoutDrainEnabled(): boolean {
 	return resolveCheckoutAdmissionRollout(env).legacyDrainEnabled;
 }
 
+/**
+ * Account deletion can only establish a complete provider fence after every
+ * new Checkout mutation is admitted and the pre-cutover legacy drain is over.
+ */
+export function checkoutAdmissionsReadyForAccountDeletion(
+	source: Parameters<typeof resolveCheckoutAdmissionRollout>[0] = env
+): boolean {
+	const { admissionsEnabled, legacyDrainEnabled } = resolveCheckoutAdmissionRollout(source);
+	return admissionsEnabled && !legacyDrainEnabled;
+}
+
 export function normalizeCheckoutStripePriceIds(stripePriceIds: string[]): string[] {
 	return Array.from(
 		new Set(stripePriceIds.map((stripePriceId) => stripePriceId.trim()).filter(Boolean))

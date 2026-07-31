@@ -1758,8 +1758,8 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/stripe/create-customer',
 							'POST',
-							'Session',
-							"Create or reuse the caller's Stripe customer record and customer mapping"
+							'None',
+							'Retired compatibility endpoint; always returns 410. Stripe customer identities are created through fenced Checkout.'
 						],
 						[
 							'/api/stripe/cancel-subscription',
