@@ -1,46 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
-	class AccountDeletionProviderError extends Error {}
 	class ParchmentConfigError extends Error {}
-
 	return {
 		order: [] as string[],
-		requestDeletion: vi.fn(),
-		finalizeDeletion: vi.fn(),
+		requestOrchestrated: vi.fn(),
 		createParchmentServerClient: vi.fn(),
-		captureStripeCustomerIds: vi.fn(),
-		unlinkStripeCustomers: vi.fn(),
 		getProviderCredential: vi.fn(),
-		readRetryOperation: vi.fn(),
-		createRetryToken: vi.fn(),
 		hasValidReauth: vi.fn(),
-		createCompletionToken: vi.fn(),
+		createAcceptedToken: vi.fn(),
 		checkoutAdmissionsReadyForAccountDeletion: vi.fn(),
-		deleteUser: vi.fn(),
-		AccountDeletionProviderError,
 		ParchmentConfigError
 	};
 });
 
-vi.mock('$lib/server/accountDeletion', () => ({
-	ACCOUNT_DELETION_CONFIRMATION: 'DELETE MY ACCOUNT',
-	ACCOUNT_DELETION_RETRY_COOKIE: 'account_deletion_operation',
-	ACCOUNT_DELETION_RETRY_MAX_AGE_SECONDS: 86400,
-	AccountDeletionProviderError: mocks.AccountDeletionProviderError,
-	captureStripeCustomerIds: mocks.captureStripeCustomerIds,
-	unlinkStripeCustomers: mocks.unlinkStripeCustomers,
-	getAccountDeletionProviderCredential: mocks.getProviderCredential,
-	readAccountDeletionRetryOperation: mocks.readRetryOperation,
-	createAccountDeletionRetryToken: mocks.createRetryToken
+vi.mock('$lib/server/accountDeletionProvider', () => ({
+	getAccountDeletionProviderCredential: mocks.getProviderCredential
 }));
 
 vi.mock('$lib/server/accountDeletionReauth', () => ({
-	ACCOUNT_DELETION_COMPLETION_COOKIE: 'account_deletion_completed',
-	ACCOUNT_DELETION_COMPLETION_MAX_AGE_SECONDS: 600,
+	ACCOUNT_DELETION_ACCEPTED_COOKIE: 'account_deletion_accepted',
+	ACCOUNT_DELETION_ACCEPTED_MAX_AGE_SECONDS: 600,
 	ACCOUNT_DELETION_REAUTH_COOKIE: 'account_deletion_reauthenticated',
 	hasValidAccountDeletionReauth: mocks.hasValidReauth,
-	createAccountDeletionCompletionToken: mocks.createCompletionToken
+	createAccountDeletionAcceptedToken: mocks.createAcceptedToken
 }));
 
 vi.mock('$lib/server/billing/checkoutAdmissions', () => ({
@@ -52,17 +35,14 @@ vi.mock('$lib/server/parchmentClient', () => ({
 	createParchmentServerClient: mocks.createParchmentServerClient
 }));
 
-vi.mock('$lib/supabase-admin', () => ({
-	createAdminClient: () => ({
-		auth: { admin: { deleteUser: mocks.deleteUser } }
-	})
-}));
-
 import { POST } from './+server';
 
 const operation = {
 	operationId: '9dc525f2-b855-4af1-9908-661f030e716c',
-	status: 'awaiting_provider_finalization'
+	status: 'awaiting_provider_finalization',
+	protocolVersion: 2,
+	providerWorkPrepared: true,
+	providerCleanupVerified: false
 };
 
 function makeEvent(
@@ -72,7 +52,6 @@ function makeEvent(
 		contentType?: string;
 		body?: unknown;
 		authenticated?: boolean;
-		retryCookie?: string;
 		reauthCookie?: string;
 	} = {}
 ) {
@@ -81,20 +60,17 @@ function makeEvent(
 	if (origin !== null) headers.set('origin', origin);
 	if (options.authorization) headers.set('authorization', options.authorization);
 	headers.set('content-type', options.contentType ?? 'application/json');
-	const body = options.body ?? { confirmation: 'DELETE MY ACCOUNT' };
 	const cookieSet = vi.fn((name: string) => mocks.order.push(`set-cookie:${name}`));
 	const cookieDelete = vi.fn((name: string) => mocks.order.push(`delete-cookie:${name}`));
 
 	return {
 		request: {
 			headers: { get: (name: string) => headers.get(name.toLowerCase()) ?? null },
-			json: vi.fn().mockResolvedValue(body)
+			json: vi.fn().mockResolvedValue(options.body ?? { confirmation: 'DELETE MY ACCOUNT' })
 		},
 		url: new URL('https://app.test/api/account-deletion'),
 		cookies: {
-			get: vi.fn((name: string) =>
-				name === 'account_deletion_operation' ? options.retryCookie : options.reauthCookie
-			),
+			get: vi.fn(() => options.reauthCookie),
 			set: cookieSet,
 			delete: cookieDelete
 		},
@@ -106,10 +82,7 @@ function makeEvent(
 							authKind: 'session',
 							source: 'cookie-session',
 							session: { access_token: 'session-token' },
-							user: {
-								id: 'user-1',
-								email: 'owner@example.com'
-							}
+							user: { id: 'user-1', email: 'owner@example.com' }
 						}
 		},
 		fetch: vi.fn()
@@ -125,198 +98,51 @@ describe('POST /api/account-deletion', () => {
 			mocks.order.push('credential');
 			return 'provider-secret';
 		});
-		mocks.captureStripeCustomerIds.mockImplementation(async () => {
-			mocks.order.push('capture-stripe');
-			return ['cus_123'];
-		});
 		mocks.hasValidReauth.mockReturnValue(true);
-		mocks.readRetryOperation.mockReturnValue(null);
-		mocks.createRetryToken.mockReturnValue('signed-retry-token');
-		mocks.createCompletionToken.mockReturnValue('signed-completion-token');
-		mocks.requestDeletion.mockImplementation(async () => {
+		mocks.createAcceptedToken.mockReturnValue('signed-accepted-token');
+		mocks.requestOrchestrated.mockImplementation(async () => {
 			mocks.order.push('request');
-			return { data: operation, response: new Response(null, { status: 200 }) };
-		});
-		mocks.unlinkStripeCustomers.mockImplementation(async () => {
-			mocks.order.push('unlink-stripe');
-		});
-		mocks.finalizeDeletion.mockImplementation(async () => {
-			mocks.order.push('finalize');
-			return {
-				data: { ...operation, status: 'completed' },
-				response: new Response(null, { status: 200 })
-			};
-		});
-		mocks.deleteUser.mockImplementation(async () => {
-			mocks.order.push('delete-auth');
-			return { error: null };
+			return { data: operation, response: new Response(null, { status: 202 }) };
 		});
 		mocks.createParchmentServerClient.mockResolvedValue({
-			accountDeletion: { request: mocks.requestDeletion },
-			raw: { POST: mocks.finalizeDeletion }
+			accountDeletion: { requestOrchestrated: mocks.requestOrchestrated }
 		});
 	});
 
-	it('runs the provider lifecycle in order and deletes Auth last for completed operations', async () => {
-		mocks.captureStripeCustomerIds
-			.mockImplementationOnce(async () => {
-				mocks.order.push('capture-stripe');
-				return ['cus_preflight', 'cus_shared'];
-			})
-			.mockImplementationOnce(async () => {
-				mocks.order.push('capture-stripe');
-				return ['cus_shared', 'cus_postfence'];
-			});
-
+	it('accepts the service-owned saga and leaves every provider/Auth retry to Parchment', async () => {
 		const response = await POST(makeEvent());
 
-		expect(response.status).toBe(200);
+		expect(response.status).toBe(202);
 		expect(response.headers.get('cache-control')).toBe('no-store');
 		expect(await response.json()).toEqual({
 			operationId: operation.operationId,
-			status: 'completed'
+			status: operation.status
 		});
 		expect(mocks.order).toEqual([
 			'credential',
-			'capture-stripe',
 			'request',
-			'capture-stripe',
-			'set-cookie:account_deletion_operation',
-			'unlink-stripe',
-			'finalize',
-			'delete-auth',
-			'set-cookie:account_deletion_completed',
-			'delete-cookie:account_deletion_reauthenticated',
-			'delete-cookie:account_deletion_operation'
+			'set-cookie:account_deletion_accepted',
+			'delete-cookie:account_deletion_reauthenticated'
 		]);
 		expect(mocks.createParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
 			mode: 'session',
 			preferHandling: 'inherit'
 		});
-		expect(mocks.unlinkStripeCustomers).toHaveBeenCalledWith(
-			['cus_preflight', 'cus_shared', 'cus_postfence'],
-			'user-1'
-		);
-		expect(mocks.finalizeDeletion).toHaveBeenCalledWith(
-			'/v1/account-deletion/provider-finalization',
-			{
-				params: {
-					header: {
-						'x-account-deletion-provider-credential': 'provider-secret'
-					}
-				},
-				body: { operationId: operation.operationId }
-			}
-		);
-	});
-
-	it('fails closed until managed Checkout admissions are enabled and drained', async () => {
-		mocks.checkoutAdmissionsReadyForAccountDeletion.mockReturnValue(false);
-
-		const response = await POST(makeEvent());
-
-		expect(response.status).toBe(503);
-		expect((await response.json()).error.code).toBe('deletion_unavailable');
-		expect(mocks.getProviderCredential).not.toHaveBeenCalled();
-		expect(mocks.captureStripeCustomerIds).not.toHaveBeenCalled();
-		expect(mocks.requestDeletion).not.toHaveBeenCalled();
-	});
-
-	it('keeps Auth and the completion banner pending for nonterminal operations', async () => {
-		mocks.finalizeDeletion.mockResolvedValue({
-			data: { ...operation, status: 'ready' },
-			response: new Response(null, { status: 200 })
+		expect(mocks.requestOrchestrated).toHaveBeenCalledWith({
+			'x-account-deletion-provider-credential': 'provider-secret'
 		});
-
-		const response = await POST(makeEvent());
-
-		expect(response.status).toBe(202);
-		expect(await response.json()).toEqual({
-			operationId: operation.operationId,
-			status: 'ready'
-		});
-		expect(mocks.finalizeDeletion).toHaveBeenCalled();
-		expect(mocks.deleteUser).not.toHaveBeenCalled();
-		expect(mocks.createCompletionToken).not.toHaveBeenCalled();
-		expect(mocks.order).toEqual([
-			'credential',
-			'capture-stripe',
-			'request',
-			'capture-stripe',
-			'set-cookie:account_deletion_operation',
-			'unlink-stripe'
-		]);
 	});
 
-	it('allows a stale sign-in to resume with a valid owner-bound retry cookie', async () => {
-		mocks.hasValidReauth.mockReturnValue(false);
-		mocks.readRetryOperation.mockReturnValue(operation.operationId);
-
-		const event = makeEvent({ retryCookie: 'valid-signed-token' }) as never;
-		const response = await POST(event);
-
-		expect(response.status).toBe(200);
-		expect(mocks.readRetryOperation).toHaveBeenCalledWith(
-			'valid-signed-token',
-			'user-1',
-			'provider-secret'
-		);
-		expect(mocks.requestDeletion).toHaveBeenCalledTimes(1);
-	});
-
-	it.each([
-		['absent', undefined],
-		['forged', 'forged-token']
-	])('rejects a stale sign-in with an %s retry cookie before Parchment', async (_label, token) => {
-		mocks.hasValidReauth.mockReturnValue(false);
-		mocks.readRetryOperation.mockReturnValue(null);
-
-		const response = await POST(makeEvent({ retryCookie: token }));
-
-		expect(response.status).toBe(403);
-		expect((await response.json()).error.code).toBe('recent_sign_in_required');
-		expect(mocks.captureStripeCustomerIds).not.toHaveBeenCalled();
-		expect(mocks.requestDeletion).not.toHaveBeenCalled();
-	});
-
-	it('blocks a valid retry cookie for a different operation before provider cleanup', async () => {
-		mocks.hasValidReauth.mockReturnValue(false);
-		mocks.readRetryOperation.mockReturnValue('different-operation-id');
-
-		const response = await POST(makeEvent({ retryCookie: 'valid-but-stale-token' }));
-
-		expect(response.status).toBe(409);
-		expect((await response.json()).error.code).toBe('operation_mismatch');
-		expect(mocks.unlinkStripeCustomers).not.toHaveBeenCalled();
-		expect(mocks.finalizeDeletion).not.toHaveBeenCalled();
-		expect(mocks.deleteUser).not.toHaveBeenCalled();
-	});
-
-	it('sets a strict HttpOnly retry cookie after Parchment and clears it after Auth deletion', async () => {
+	it('sets the accepted banner only after Parchment durably accepts protocol v2', async () => {
 		const event = makeEvent() as unknown as {
-			cookies: {
-				set: ReturnType<typeof vi.fn>;
-				delete: ReturnType<typeof vi.fn>;
-			};
+			cookies: { set: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
 		};
-
 		const response = await POST(event as never);
 
-		expect(response.status).toBe(200);
+		expect(response.status).toBe(202);
 		expect(event.cookies.set).toHaveBeenCalledWith(
-			'account_deletion_operation',
-			'signed-retry-token',
-			{
-				path: '/api/account-deletion',
-				httpOnly: true,
-				sameSite: 'strict',
-				secure: true,
-				maxAge: 86400
-			}
-		);
-		expect(event.cookies.set).toHaveBeenCalledWith(
-			'account_deletion_completed',
-			'signed-completion-token',
+			'account_deletion_accepted',
+			'signed-accepted-token',
 			{
 				path: '/',
 				httpOnly: true,
@@ -328,131 +154,85 @@ describe('POST /api/account-deletion', () => {
 		expect(event.cookies.delete).toHaveBeenCalledWith('account_deletion_reauthenticated', {
 			path: '/api/account-deletion'
 		});
-		expect(event.cookies.delete).toHaveBeenCalledWith('account_deletion_operation', {
-			path: '/api/account-deletion'
-		});
-		expect(mocks.order.indexOf('request')).toBeLessThan(
-			mocks.order.indexOf('set-cookie:account_deletion_operation')
-		);
-		expect(mocks.order.indexOf('delete-auth')).toBeLessThan(
-			mocks.order.indexOf('delete-cookie:account_deletion_operation')
-		);
 	});
 
-	it('requires a cookie session and rejects bearer credentials', async () => {
-		const anonymous = await POST(makeEvent({ authenticated: false }));
-		const bearer = await POST(makeEvent({ authorization: 'Bearer api-key' }));
-
-		expect(anonymous.status).toBe(401);
-		expect(bearer.status).toBe(401);
-		expect(mocks.createParchmentServerClient).not.toHaveBeenCalled();
-	});
-
-	it('requires an explicit same-origin request', async () => {
-		for (const origin of [null, 'https://evil.test']) {
-			const response = await POST(makeEvent({ origin }));
-			expect(response.status).toBe(403);
-			expect(response.headers.get('cache-control')).toBe('no-store');
-		}
-	});
-
-	it('requires the exact confirmation before any preflight work', async () => {
-		const response = await POST(makeEvent({ body: { confirmation: 'delete my account' } }));
-
-		expect(response.status).toBe(400);
-		expect((await response.json()).error.code).toBe('confirmation_required');
-		expect(mocks.captureStripeCustomerIds).not.toHaveBeenCalled();
-	});
-
-	it('requires a current-session reauthentication capability', async () => {
-		mocks.hasValidReauth.mockReturnValue(false);
-
-		const response = await POST(makeEvent());
-
-		expect(response.status).toBe(403);
-		expect((await response.json()).error.code).toBe('recent_sign_in_required');
-		expect(mocks.captureStripeCustomerIds).not.toHaveBeenCalled();
-	});
-
-	it('preflights provider configuration before quiescing', async () => {
-		mocks.getProviderCredential.mockImplementation(() => {
-			throw new mocks.ParchmentConfigError('missing');
+	it('rejects a response that did not establish the provider-work contract', async () => {
+		mocks.requestOrchestrated.mockResolvedValue({
+			data: { ...operation, protocolVersion: 1, providerWorkPrepared: false },
+			response: new Response(null, { status: 202 })
 		});
 
-		const response = await POST(makeEvent());
+		const event = makeEvent() as never;
+		const response = await POST(event);
 
+		expect(response.status).toBe(502);
+		expect((await response.json()).error.code).toBe('invalid_deletion_contract');
+		expect(mocks.createAcceptedToken).not.toHaveBeenCalled();
+	});
+
+	it('fails closed until managed Checkout admissions are enabled and drained', async () => {
+		mocks.checkoutAdmissionsReadyForAccountDeletion.mockReturnValue(false);
+		const response = await POST(makeEvent());
 		expect(response.status).toBe(503);
 		expect((await response.json()).error.code).toBe('deletion_unavailable');
-		expect(mocks.requestDeletion).not.toHaveBeenCalled();
+		expect(mocks.requestOrchestrated).not.toHaveBeenCalled();
 	});
 
-	it('preserves actionable active_billing conflicts without provider work', async () => {
-		mocks.requestDeletion.mockResolvedValue({
+	it('requires a current-session reauthentication capability on every request', async () => {
+		mocks.hasValidReauth.mockReturnValue(false);
+		const response = await POST(makeEvent({ reauthCookie: 'stale' }));
+		expect(response.status).toBe(403);
+		expect((await response.json()).error.code).toBe('recent_sign_in_required');
+		expect(mocks.requestOrchestrated).not.toHaveBeenCalled();
+	});
+
+	it('preserves actionable nonterminal billing conflicts', async () => {
+		mocks.requestOrchestrated.mockResolvedValue({
 			error: {
 				error: {
 					code: 'active_billing',
-					message: 'Cancel active or trialing billing before deletion.'
+					message: 'Resolve every nonterminal subscription before deletion.'
 				}
 			},
 			response: new Response(null, { status: 409 })
 		});
 
 		const response = await POST(makeEvent());
-
 		expect(response.status).toBe(409);
-		expect(await response.json()).toEqual({
-			error: {
-				code: 'active_billing',
-				message: 'Cancel active or trialing billing before deletion.'
-			}
-		});
-		expect(mocks.unlinkStripeCustomers).not.toHaveBeenCalled();
-		expect(mocks.finalizeDeletion).not.toHaveBeenCalled();
-		expect(mocks.deleteUser).not.toHaveBeenCalled();
+		expect((await response.json()).error.code).toBe('active_billing');
+		expect(mocks.createAcceptedToken).not.toHaveBeenCalled();
 	});
 
-	it('does not publish finalization when Stripe cleanup fails', async () => {
-		mocks.unlinkStripeCustomers.mockRejectedValue(
-			new mocks.AccountDeletionProviderError('stripe failed')
+	it('requires a cookie session, exact confirmation, JSON, and same-origin request', async () => {
+		expect((await POST(makeEvent({ authenticated: false }))).status).toBe(401);
+		expect((await POST(makeEvent({ authorization: 'Bearer api-key' }))).status).toBe(401);
+		expect((await POST(makeEvent({ origin: null }))).status).toBe(403);
+		expect((await POST(makeEvent({ origin: 'https://evil.test' }))).status).toBe(403);
+		expect((await POST(makeEvent({ contentType: 'text/plain' }))).status).toBe(415);
+		expect((await POST(makeEvent({ body: { confirmation: 'delete my account' } }))).status).toBe(
+			400
 		);
-
-		const response = await POST(makeEvent());
-
-		expect(response.status).toBe(502);
-		expect((await response.json()).error.code).toBe('provider_cleanup_failed');
-		expect(mocks.finalizeDeletion).not.toHaveBeenCalled();
-		expect(mocks.deleteUser).not.toHaveBeenCalled();
 	});
 
-	it('does not delete Auth when provider finalization fails', async () => {
-		mocks.finalizeDeletion.mockResolvedValue({
-			error: { error: { code: 'provider_failure', message: 'Try again.' } },
-			response: new Response(null, { status: 503 })
+	it('preflights provider configuration before calling Parchment', async () => {
+		mocks.getProviderCredential.mockImplementation(() => {
+			throw new mocks.ParchmentConfigError('missing');
 		});
-
 		const response = await POST(makeEvent());
-
 		expect(response.status).toBe(503);
-		expect((await response.json()).error.code).toBe('provider_failure');
-		expect(mocks.deleteUser).not.toHaveBeenCalled();
+		expect((await response.json()).error.code).toBe('deletion_unavailable');
+		expect(mocks.requestOrchestrated).not.toHaveBeenCalled();
 	});
 
-	it('keeps auth-delete failure retryable and reports the operation', async () => {
-		mocks.deleteUser.mockImplementation(async () => {
-			mocks.order.push('delete-auth');
-			return { error: new Error('auth unavailable') };
-		});
+	it('does not emit account or provider identifiers when an unexpected request fails', async () => {
+		const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		mocks.requestOrchestrated.mockRejectedValue(new Error('user-1 cus_private'));
 
 		const response = await POST(makeEvent());
-
 		expect(response.status).toBe(502);
-		expect(await response.json()).toEqual({
-			error: {
-				code: 'auth_delete_failed',
-				message: 'Provider cleanup finished, but sign-in removal failed. Please try again.'
-			},
-			operation: { ...operation, status: 'completed' }
-		});
-		expect(mocks.order.at(-1)).toBe('delete-auth');
+		expect(errorLog).toHaveBeenCalledWith('Account deletion request failed');
+		expect(JSON.stringify(errorLog.mock.calls)).not.toContain('user-1');
+		expect(JSON.stringify(errorLog.mock.calls)).not.toContain('cus_private');
+		errorLog.mockRestore();
 	});
 });

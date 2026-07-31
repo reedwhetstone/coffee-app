@@ -1,7 +1,7 @@
 # Coffee-app architecture and migration boundary
 
 **Status:** Current implementation truth
-**Last verified:** 2026-07-30
+**Last verified:** 2026-07-31
 
 This document describes what coffee-app does today. `notes/PRODUCT_VISION.md`
 defines product direction, ADRs preserve decisions, and `notes/DEVLOG.md` owns
@@ -62,6 +62,30 @@ objects remain server-side and are never serialized into SvelteKit page data.
 The canonical external API reference is
 <https://api.purveyors.io/docs>. Product and CLI guidance lives at
 <https://purveyors.io/docs>.
+
+## Account deletion boundary
+
+Parchment owns the durable account-deletion saga. Coffee-app requires a current
+cookie session, same-origin request, exact confirmation, and recent Google
+reauthentication, then calls Parchment's orchestrated deletion contract. A
+durable `202` acceptance is terminal for the browser: it signs out locally while
+Parchment discovers and verifies the complete Stripe work set, erases mutable
+provider identity links, deletes account-owned database records, and deletes
+Supabase Auth last. Retries and reconciliation belong to Parchment, not to a
+browser capability.
+
+New Stripe Checkout Sessions and Subscriptions carry only their private
+Parchment admission ID and request fingerprint. Parchment resolves the account
+owner from its admission ledger for webhook processing, so coffee-app does not
+copy the Supabase user UUID into new Stripe metadata or `client_reference_id`.
+Stripe may retain immutable historical transaction references under its own
+legal and platform retention rules; the Parchment evidence surface counts
+those legacy references instead of misrepresenting them as erased.
+
+No external Market Read mailing provider is live. Before one is enabled, its
+subscriber discovery, erasure or suppression, retry semantics, and aggregate
+evidence must be added to Parchment's provider phase. Deleting only the local
+subscription row is not a sufficient future integration contract.
 
 ## Public data flow
 

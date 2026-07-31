@@ -2,11 +2,11 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 
 export const ACCOUNT_DELETION_REAUTH_CHALLENGE_COOKIE = 'account_deletion_reauth_challenge';
 export const ACCOUNT_DELETION_REAUTH_COOKIE = 'account_deletion_reauthenticated';
-export const ACCOUNT_DELETION_COMPLETION_COOKIE = 'account_deletion_completed';
+export const ACCOUNT_DELETION_ACCEPTED_COOKIE = 'account_deletion_accepted';
 export const ACCOUNT_DELETION_REAUTH_MAX_AGE_SECONDS = 10 * 60;
-export const ACCOUNT_DELETION_COMPLETION_MAX_AGE_SECONDS = 10 * 60;
+export const ACCOUNT_DELETION_ACCEPTED_MAX_AGE_SECONDS = 10 * 60;
 
-type TokenPurpose = 'reauth-challenge' | 'reauth-completion' | 'deletion-completion';
+type TokenPurpose = 'reauth-challenge' | 'reauth-completion' | 'deletion-accepted';
 
 function encodeUserId(userId: string): string {
 	return Buffer.from(userId, 'utf8').toString('base64url');
@@ -146,24 +146,24 @@ export function hasValidAccountDeletionReauth(
 	);
 }
 
-export function createAccountDeletionCompletionToken(
+export function createAccountDeletionAcceptedToken(
 	userId: string,
 	credential: string,
 	now = Date.now()
 ): string {
-	return createUserToken('deletion-completion', userId, credential, now);
+	return createUserToken('deletion-accepted', userId, credential, now);
 }
 
-export function readAccountDeletionCompletionUser(
+export function readAccountDeletionAcceptedUser(
 	token: string | undefined,
 	credential: string,
 	now = Date.now()
 ): string | null {
 	return readUserToken(
 		token,
-		'deletion-completion',
+		'deletion-accepted',
 		credential,
-		ACCOUNT_DELETION_COMPLETION_MAX_AGE_SECONDS,
+		ACCOUNT_DELETION_ACCEPTED_MAX_AGE_SECONDS,
 		now
 	);
 }

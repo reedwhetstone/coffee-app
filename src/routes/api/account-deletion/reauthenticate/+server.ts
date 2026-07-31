@@ -59,7 +59,7 @@ export const POST: RequestHandler = async (event) => {
 			});
 		}
 
-		console.error('Could not start account reauthentication:', error);
+		console.error('Could not start account reauthentication');
 		return response(503, {
 			error: {
 				code: 'reauthentication_unavailable',

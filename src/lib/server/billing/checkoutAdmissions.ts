@@ -7,21 +7,18 @@ import { createHash } from 'node:crypto';
 import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 
 export const CHECKOUT_ADMISSION_METADATA = {
-	ownerId: 'supabase_user_id',
 	admissionId: 'parchment_admission_id',
 	requestId: 'checkout_request_id',
 	purchaseFingerprint: 'checkout_purchase_fingerprint'
 } as const;
 
 export interface CheckoutAdmissionContext {
-	ownerId: string;
 	admissionId: string;
 	requestId?: string;
 	stripeSessionId: string;
 }
 
 export interface CheckoutAdmissionMetadataValues {
-	ownerId: string;
 	admissionId: string;
 	requestId: string;
 	purchaseFingerprint: string;
@@ -35,7 +32,6 @@ export interface PublishedCheckoutReplaySession {
 }
 
 export interface PublishedCheckoutReplayExpectation {
-	ownerId: string;
 	admissionId: string;
 	requestId: string;
 	purchaseFingerprint: string;
@@ -111,7 +107,6 @@ export function buildCheckoutAdmissionMetadata(
 	values: CheckoutAdmissionMetadataValues
 ): Record<string, string> {
 	return {
-		[CHECKOUT_ADMISSION_METADATA.ownerId]: values.ownerId,
 		[CHECKOUT_ADMISSION_METADATA.admissionId]: values.admissionId,
 		[CHECKOUT_ADMISSION_METADATA.requestId]: values.requestId,
 		[CHECKOUT_ADMISSION_METADATA.purchaseFingerprint]: values.purchaseFingerprint
@@ -127,8 +122,7 @@ export function verifyPublishedCheckoutReplay(
 		session.status === 'open' &&
 		typeof session.client_secret === 'string' &&
 		session.client_secret.length > 0 &&
-		session.client_reference_id === expected.ownerId &&
-		metadata?.[CHECKOUT_ADMISSION_METADATA.ownerId] === expected.ownerId &&
+		session.client_reference_id === expected.admissionId &&
 		metadata?.[CHECKOUT_ADMISSION_METADATA.admissionId] === expected.admissionId &&
 		metadata?.[CHECKOUT_ADMISSION_METADATA.requestId] === expected.requestId &&
 		metadata?.[CHECKOUT_ADMISSION_METADATA.purchaseFingerprint] === expected.purchaseFingerprint
@@ -212,17 +206,16 @@ export async function abandonCheckoutAdmission(
 export async function checkoutProviderIsEligible(
 	event: RequestEvent,
 	context: CheckoutAdmissionContext
-): Promise<boolean> {
+): Promise<{ eligible: boolean; ownerId: string | null }> {
 	const client = await providerClient(event);
 	const result = await client.raw.POST('/v1/checkout-admissions/provider-eligibility', {
 		params: { header: providerHeaders() },
 		body: {
-			ownerId: context.ownerId,
 			admissionId: context.admissionId,
 			stripeSessionId: context.stripeSessionId
 		}
 	});
-	return unwrap(result, 'Checkout provider eligibility is unavailable').eligible;
+	return unwrap(result, 'Checkout provider eligibility is unavailable');
 }
 
 export async function terminalizeExpiredCheckoutAdmission(
@@ -234,7 +227,6 @@ export async function terminalizeExpiredCheckoutAdmission(
 		await client.raw.POST('/v1/checkout-admissions/provider-terminalization', {
 			params: { header: providerHeaders() },
 			body: {
-				ownerId: context.ownerId,
 				admissionId: context.admissionId,
 				stripeSessionId: context.stripeSessionId,
 				terminalStatus: 'expired'
@@ -248,19 +240,15 @@ export function checkoutAdmissionContextFromMetadata(
 	metadata: Record<string, string> | null | undefined,
 	stripeSessionId: string
 ): CheckoutAdmissionContext | null {
-	const ownerId = metadata?.[CHECKOUT_ADMISSION_METADATA.ownerId];
 	const admissionId = metadata?.[CHECKOUT_ADMISSION_METADATA.admissionId];
 	const requestId = metadata?.[CHECKOUT_ADMISSION_METADATA.requestId];
 	const purchaseFingerprint = metadata?.[CHECKOUT_ADMISSION_METADATA.purchaseFingerprint];
-	const hasManagedAdmissionMetadata = Boolean(
-		ownerId || admissionId || requestId || purchaseFingerprint
-	);
-	if (hasManagedAdmissionMetadata && (!ownerId || !admissionId)) {
+	const hasManagedAdmissionMetadata = Boolean(admissionId || requestId || purchaseFingerprint);
+	if (hasManagedAdmissionMetadata && !admissionId) {
 		throw new Error('Managed checkout session is missing Checkout admission metadata');
 	}
-	if (!ownerId || !admissionId) return null;
+	if (!admissionId) return null;
 	return {
-		ownerId,
 		admissionId,
 		requestId,
 		stripeSessionId

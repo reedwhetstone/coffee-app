@@ -276,7 +276,6 @@ export const POST: RequestHandler = async (event) => {
 			const replayed = await getStripe().checkout.sessions.retrieve(admission.stripeSessionId);
 			if (
 				!verifyPublishedCheckoutReplay(replayed, {
-					ownerId: user.id,
 					admissionId: admission.admissionId,
 					requestId: requestId!,
 					purchaseFingerprint
