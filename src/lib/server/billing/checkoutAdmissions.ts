@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/private';
+import { getAccountDeletionProviderCredential } from '$lib/server/accountDeletionProvider';
 import type { ParchmentClient } from '@purveyors/sdk';
 import type { RequestEvent } from '@sveltejs/kit';
 import { createHash } from 'node:crypto';
@@ -123,21 +124,6 @@ export function verifyPublishedCheckoutReplay(
 	);
 }
 
-function providerCredential(): string {
-	const credential = env.PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL?.trim();
-	if (!credential) {
-		throw new ParchmentConfigError(
-			'PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL is not configured.'
-		);
-	}
-	if (credential.length < 32) {
-		throw new ParchmentConfigError(
-			'PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL must be at least 32 characters.'
-		);
-	}
-	return credential;
-}
-
 function upstreamMessage(error: unknown, fallback: string): string {
 	if (!error || typeof error !== 'object') return fallback;
 	const candidate = error as {
@@ -169,7 +155,7 @@ async function providerClient(event: RequestEvent): Promise<ParchmentClient> {
 }
 
 const providerHeaders = () => ({
-	'x-account-deletion-provider-credential': providerCredential()
+	'x-account-deletion-provider-credential': getAccountDeletionProviderCredential()
 });
 
 export async function acquireCheckoutAdmission(

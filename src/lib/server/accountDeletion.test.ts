@@ -1,13 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+	env: {
+		PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL: ` ${'p'.repeat(32)} ` as string | undefined
+	},
 	maybeSingle: vi.fn(),
 	retrieve: vi.fn(),
 	update: vi.fn()
 }));
 
 vi.mock('$env/dynamic/private', () => ({
-	env: { PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL: ' provider-secret ' }
+	env: mocks.env
 }));
 
 vi.mock('$lib/supabase-admin', () => ({
@@ -42,10 +45,19 @@ import {
 describe('account deletion provider helpers', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.env.PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL = ` ${'p'.repeat(32)} `;
 	});
 
 	it('uses the trimmed server-only finalization credential', () => {
-		expect(getAccountDeletionProviderCredential()).toBe('provider-secret');
+		expect(getAccountDeletionProviderCredential()).toBe('p'.repeat(32));
+	});
+
+	it('rejects missing and undersized provider credentials', () => {
+		mocks.env.PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL = undefined;
+		expect(() => getAccountDeletionProviderCredential()).toThrow('is not configured');
+
+		mocks.env.PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL = 'too-short';
+		expect(() => getAccountDeletionProviderCredential()).toThrow('must be at least 32 characters');
 	});
 
 	it('enforces a ten-minute recent-sign-in window', () => {

@@ -76,6 +76,7 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		data: stockedData,
 		trainingData: stockedData,
+		accountDeleted: url.searchParams.get('accountDeleted') === '1',
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/',

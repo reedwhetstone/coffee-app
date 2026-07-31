@@ -1,7 +1,7 @@
-import { env } from '$env/dynamic/private';
 import { createAdminClient } from '$lib/supabase-admin';
 import { getStripe } from '$lib/services/stripe';
 import { ACCOUNT_DELETION_CONFIRMATION } from '$lib/accountDeletion';
+export { getAccountDeletionProviderCredential } from '$lib/server/accountDeletionProvider';
 import type { User } from '@supabase/supabase-js';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
@@ -10,28 +10,11 @@ export const RECENT_SIGN_IN_MAX_AGE_MS = 10 * 60 * 1000;
 export const ACCOUNT_DELETION_RETRY_COOKIE = 'account_deletion_operation';
 export const ACCOUNT_DELETION_RETRY_MAX_AGE_SECONDS = 24 * 60 * 60;
 
-export class AccountDeletionConfigError extends Error {
-	constructor(message: string) {
-		super(message);
-		this.name = 'AccountDeletionConfigError';
-	}
-}
-
 export class AccountDeletionProviderError extends Error {
 	constructor(message: string) {
 		super(message);
 		this.name = 'AccountDeletionProviderError';
 	}
-}
-
-export function getAccountDeletionProviderCredential(): string {
-	const credential = env.PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL?.trim();
-	if (!credential) {
-		throw new AccountDeletionConfigError(
-			'PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL is not configured'
-		);
-	}
-	return credential;
 }
 
 export function hasRecentSignIn(user: Pick<User, 'last_sign_in_at'>, now = Date.now()): boolean {

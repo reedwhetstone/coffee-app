@@ -5,7 +5,6 @@ import {
 	ACCOUNT_DELETION_CONFIRMATION,
 	ACCOUNT_DELETION_RETRY_COOKIE,
 	ACCOUNT_DELETION_RETRY_MAX_AGE_SECONDS,
-	AccountDeletionConfigError,
 	AccountDeletionProviderError,
 	captureStripeCustomerId,
 	createAccountDeletionRetryToken,
@@ -14,6 +13,7 @@ import {
 	readAccountDeletionRetryOperation,
 	unlinkStripeCustomer
 } from '$lib/server/accountDeletion';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 import type { RequestHandler } from './$types';
 
 function response(status: number, body: Record<string, unknown>) {
@@ -57,12 +57,12 @@ export const POST: RequestHandler = async (event) => {
 		});
 	}
 
-	const { session, user } = await event.locals.safeGetSession();
-	if (!session || !user) {
+	if (!isCookieSessionPrincipal(event.locals.principal)) {
 		return response(401, {
 			error: { code: 'session_required', message: 'Sign in before deleting your account.' }
 		});
 	}
+	const { user } = event.locals.principal;
 
 	let body: unknown;
 	try {
@@ -174,7 +174,7 @@ export const POST: RequestHandler = async (event) => {
 			status: finalizationResult.data.status
 		});
 	} catch (error) {
-		if (error instanceof AccountDeletionConfigError || error instanceof ParchmentConfigError) {
+		if (error instanceof ParchmentConfigError) {
 			return response(503, {
 				error: {
 					code: 'deletion_unavailable',

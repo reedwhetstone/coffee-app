@@ -1,13 +1,13 @@
 import { redirect } from '@sveltejs/kit';
+import { isCookieSessionPrincipal } from '$lib/server/principal';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	const { session, user } = await locals.safeGetSession();
-	if (!session || !user) {
+	if (!isCookieSessionPrincipal(locals.principal)) {
 		throw redirect(303, '/auth?next=/account');
 	}
 
 	return {
-		email: user.email ?? ''
+		email: locals.principal.user.email ?? ''
 	};
 };

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
-	class AccountDeletionConfigError extends Error {}
 	class AccountDeletionProviderError extends Error {}
 	class ParchmentConfigError extends Error {}
 
@@ -17,7 +16,6 @@ const mocks = vi.hoisted(() => {
 		readRetryOperation: vi.fn(),
 		createRetryToken: vi.fn(),
 		deleteUser: vi.fn(),
-		AccountDeletionConfigError,
 		AccountDeletionProviderError,
 		ParchmentConfigError
 	};
@@ -27,7 +25,6 @@ vi.mock('$lib/server/accountDeletion', () => ({
 	ACCOUNT_DELETION_CONFIRMATION: 'DELETE MY ACCOUNT',
 	ACCOUNT_DELETION_RETRY_COOKIE: 'account_deletion_operation',
 	ACCOUNT_DELETION_RETRY_MAX_AGE_SECONDS: 86400,
-	AccountDeletionConfigError: mocks.AccountDeletionConfigError,
 	AccountDeletionProviderError: mocks.AccountDeletionProviderError,
 	captureStripeCustomerId: mocks.captureStripeCustomerId,
 	unlinkStripeCustomer: mocks.unlinkStripeCustomer,
@@ -86,22 +83,19 @@ function makeEvent(
 			delete: cookieDelete
 		},
 		locals: {
-			session: { access_token: 'session-token' },
-			safeGetSession: vi.fn().mockResolvedValue(
+			principal:
 				options.authenticated === false
-					? { session: null, user: null, role: 'viewer', roles: ['viewer'] }
+					? { authKind: 'anonymous', source: 'none', session: null, user: null }
 					: {
+							authKind: 'session',
+							source: 'cookie-session',
 							session: { access_token: 'session-token' },
 							user: {
 								id: 'user-1',
 								email: 'owner@example.com',
 								last_sign_in_at: new Date().toISOString()
-							},
-							// A quiesced retry can have no retained user_roles.
-							role: 'viewer',
-							roles: ['viewer']
+							}
 						}
-			)
 		},
 		fetch: vi.fn()
 	} as never;
@@ -296,7 +290,7 @@ describe('POST /api/account-deletion', () => {
 
 	it('preflights provider configuration before quiescing', async () => {
 		mocks.getProviderCredential.mockImplementation(() => {
-			throw new mocks.AccountDeletionConfigError('missing');
+			throw new mocks.ParchmentConfigError('missing');
 		});
 
 		const response = await POST(makeEvent());

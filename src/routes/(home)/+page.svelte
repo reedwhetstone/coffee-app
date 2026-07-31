@@ -16,6 +16,14 @@
 </script>
 
 <div class="min-h-screen">
+	{#if data.accountDeleted}
+		<div
+			class="border-b border-success/30 bg-success-subtle px-4 py-3 text-center text-sm font-medium text-success-strong"
+			role="status"
+		>
+			Your Purveyors account and saved data were deleted.
+		</div>
+	{/if}
 	<Hero auth={data.auth} />
 
 	<PersonaRouter />
