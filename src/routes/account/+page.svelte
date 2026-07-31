@@ -54,6 +54,11 @@
 						: (result?.error?.message ?? 'Account deletion could not be completed.');
 				return;
 			}
+			if (result?.status !== 'completed') {
+				message =
+					'Account deletion is scheduled and still processing. Try again shortly to finish it.';
+				return;
+			}
 
 			await data.supabase.auth.signOut({ scope: 'local' });
 			await goto('/', { replaceState: true });

@@ -111,6 +111,7 @@ Reporting guidance:
 
 ### Authenticated product routes
 
+- `/account`
 - `/beans`
 - `/roast`
 - `/profit`
@@ -134,14 +135,14 @@ Treat the web app and the external Parchment API as two separate HTTP surfaces:
    - The same-host coffee-app `/v1/*` routes and the `/api/catalog-api` alias have been removed; external integrations use `https://api.purveyors.io/v1/*`
 
 2. **Platform app API** (`/api/*`)
-   - `/api/catalog`, `/api/catalog/filters`, `/api/beans`, `/api/roast-profiles`, `/api/profit`, `/api/chat`, `/api/workspaces`, `/api/stripe/*`, `/api/admin/*`, and related helpers
+   - `/api/catalog`, `/api/catalog/filters`, `/api/beans`, `/api/roast-profiles`, `/api/profit`, `/api/chat`, `/api/workspaces`, `/api/account-deletion`, `/api/account-deletion/reauthenticate`, `/api/stripe/*`, `/api/admin/*`, and related helpers
    - Powers the first-party web app, Console, billing, chat, and admin workflows
    - Mixed auth model depending on route: catalog BFF adapters can allow anonymous or session access, most product routes require session auth, and chat/workspace routes require either Mallard Studio membership or Parchment Intelligence access
    - Important for contributors, but not a broad public compatibility promise
    - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
    - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are public metadata or compatibility endpoints; document them as discoverability surfaces, not product APIs
-   - `/auth/callback` is the web OAuth handoff surface; `/auth/cli` is the signed-in browser consent surface for CLI authorization requests. They belong in platform docs only when auth flow behavior matters
+   - `/auth/callback` is the web OAuth handoff surface and can mint the short-lived, session-bound account-deletion reauthentication capability before returning to `/account`; `/auth/cli` is the signed-in browser consent surface for CLI authorization requests. They belong in platform docs only when auth flow behavior matters
    - `/api/tools/*` routes are deprecated; prefer direct session-mode Parchment SDK integration
 
 Do not blur those layers in code comments, docs, or PR descriptions.

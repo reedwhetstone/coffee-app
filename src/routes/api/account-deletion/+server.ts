@@ -165,6 +165,12 @@ export const POST: RequestHandler = async (event) => {
 		if (finalizationResult.error || !finalizationResult.data) {
 			return upstreamError(finalizationResult, 'Parchment could not finalize provider cleanup.');
 		}
+		if (finalizationResult.data.status !== 'completed') {
+			return response(202, {
+				operationId: finalizationResult.data.operationId,
+				status: finalizationResult.data.status
+			});
+		}
 
 		// This is intentionally the final external action. If it fails, the
 		// browser session remains available to retry the idempotent operation.

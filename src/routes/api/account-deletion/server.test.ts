@@ -137,7 +137,7 @@ describe('POST /api/account-deletion', () => {
 		mocks.finalizeDeletion.mockImplementation(async () => {
 			mocks.order.push('finalize');
 			return {
-				data: { ...operation, status: 'ready' },
+				data: { ...operation, status: 'completed' },
 				response: new Response(null, { status: 200 })
 			};
 		});
@@ -151,14 +151,14 @@ describe('POST /api/account-deletion', () => {
 		});
 	});
 
-	it('runs the provider lifecycle in order and deletes Auth last', async () => {
+	it('runs the provider lifecycle in order and deletes Auth last for completed operations', async () => {
 		const response = await POST(makeEvent());
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get('cache-control')).toBe('no-store');
 		expect(await response.json()).toEqual({
 			operationId: operation.operationId,
-			status: 'ready'
+			status: 'completed'
 		});
 		expect(mocks.order).toEqual([
 			'credential',
@@ -187,6 +187,31 @@ describe('POST /api/account-deletion', () => {
 				body: { operationId: operation.operationId }
 			}
 		);
+	});
+
+	it('keeps Auth and the completion banner pending for nonterminal operations', async () => {
+		mocks.finalizeDeletion.mockResolvedValue({
+			data: { ...operation, status: 'ready' },
+			response: new Response(null, { status: 200 })
+		});
+
+		const response = await POST(makeEvent());
+
+		expect(response.status).toBe(202);
+		expect(await response.json()).toEqual({
+			operationId: operation.operationId,
+			status: 'ready'
+		});
+		expect(mocks.finalizeDeletion).toHaveBeenCalled();
+		expect(mocks.deleteUser).not.toHaveBeenCalled();
+		expect(mocks.createCompletionToken).not.toHaveBeenCalled();
+		expect(mocks.order).toEqual([
+			'credential',
+			'capture-stripe',
+			'request',
+			'set-cookie:account_deletion_operation',
+			'unlink-stripe'
+		]);
 	});
 
 	it('allows a stale sign-in to resume with a valid owner-bound retry cookie', async () => {
@@ -392,7 +417,7 @@ describe('POST /api/account-deletion', () => {
 				code: 'auth_delete_failed',
 				message: 'Provider cleanup finished, but sign-in removal failed. Please try again.'
 			},
-			operation: { ...operation, status: 'ready' }
+			operation: { ...operation, status: 'completed' }
 		});
 		expect(mocks.order.at(-1)).toBe('delete-auth');
 	});

@@ -10,7 +10,7 @@ This repo contains:
 
 - the public marketing site and blog
 - the public catalog and analytics surfaces (browsable without login)
-- the authenticated app: inventory, roast, profit, chat, and subscription workflows
+- the authenticated app: account, inventory, roast, profit, chat, and subscription workflows
 - the Parchment Console for API keys, usage analytics, and billing
 - the internal route layer that powers the first-party product
 - the `/docs` tree for product and CLI guidance; the generated API reference lives at `api.purveyors.io/docs`
@@ -40,6 +40,7 @@ Its server-side agent tools consume the Parchment API through `@purveyors/sdk`; 
 | `/profit`        | Sales and margin tracking                           |
 | `/chat`          | AI workspace with tool results and action cards     |
 | `/api-dashboard` | Parchment Console: API keys, usage, and billing     |
+| `/account`       | Account settings and self-service deletion          |
 | `/subscription`  | Paid plan management                                |
 
 ## API layers
@@ -60,6 +61,7 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
 2. **Platform app API** (`/api/*`)
    - Powers the first-party web app, Console, billing, chat, and admin workflows
    - Mixed auth model depending on route: catalog BFF adapters can allow anonymous or session access, most product routes require session auth, and chat/workspace routes require either Mallard Studio membership or Parchment Intelligence access
+   - `/api/account-deletion` and `/api/account-deletion/reauthenticate` are browser-session-only internal BFF routes; they require same-origin requests plus recent Google reauthentication or a valid owner-bound retry capability, and never form part of the external Parchment API
    - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
    - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are metadata or compatibility endpoints, not catalog or analytics APIs
