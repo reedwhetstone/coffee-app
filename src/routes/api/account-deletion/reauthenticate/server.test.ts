@@ -103,4 +103,19 @@ describe('POST /api/account-deletion/reauthenticate', () => {
 		expect(response.status).toBe(503);
 		expect((await response.json()).error.code).toBe('reauthentication_unavailable');
 	});
+
+	it('does not log account or provider identifiers on an unexpected failure', async () => {
+		const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		mocks.createChallenge.mockImplementation(() => {
+			throw new Error('user-1 provider-private');
+		});
+
+		const response = await POST(makeEvent().event as never);
+
+		expect(response.status).toBe(503);
+		expect(errorLog).toHaveBeenCalledWith('Could not start account reauthentication');
+		expect(JSON.stringify(errorLog.mock.calls)).not.toContain('user-1');
+		expect(JSON.stringify(errorLog.mock.calls)).not.toContain('provider-private');
+		errorLog.mockRestore();
+	});
 });

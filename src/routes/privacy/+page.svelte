@@ -124,8 +124,11 @@
 			<h2 class="mb-4 text-xl font-semibold text-ink">9. Data Retention</h2>
 			<p class="mb-4 text-muted">
 				We retain your personal information only as long as necessary to provide our services and
-				comply with legal obligations. When you delete your account, we will remove your personal
-				data within 30 days, except where retention is required by law.
+				comply with legal obligations. Account deletion removes account-owned application data and
+				mutable links to payment-provider records. Stripe may retain transaction records and
+				immutable historical references where required for payment processing, fraud prevention,
+				tax, accounting, or other legal obligations. Remaining provider records are governed by
+				Stripe's retention terms.
 			</p>
 		</section>
 

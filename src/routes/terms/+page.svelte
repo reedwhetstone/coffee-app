@@ -98,8 +98,10 @@
 
 			<h3 class="mb-3 text-lg font-medium text-ink">6.3 Data Export and Deletion</h3>
 			<p class="mb-4 text-muted">
-				You may export your data at any time. Upon account deletion, we will remove your personal
-				data within 30 days, subject to legal retention requirements.
+				You may export your data at any time. Account deletion removes account-owned application
+				data and mutable provider identity links. Payment transaction records may remain with Stripe
+				where required for payment processing, fraud prevention, tax, accounting, or other legal
+				obligations.
 			</p>
 		</section>
 

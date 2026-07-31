@@ -50,13 +50,8 @@
 				needsReauthentication = result?.error?.code === 'recent_sign_in_required';
 				message =
 					result?.error?.code === 'active_billing'
-						? 'Cancel your active or trialing subscription before deleting your account.'
+						? 'Resolve every open or unpaid subscription before deleting your account.'
 						: (result?.error?.message ?? 'Account deletion could not be completed.');
-				return;
-			}
-			if (result?.status !== 'completed') {
-				message =
-					'Account deletion is scheduled and still processing. Try again shortly to finish it.';
 				return;
 			}
 

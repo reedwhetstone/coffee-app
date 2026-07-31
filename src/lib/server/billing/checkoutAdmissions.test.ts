@@ -11,8 +11,6 @@ import {
 } from './checkoutAdmissions';
 
 const partialAdmissionMetadata: Array<Record<string, string>> = [
-	{ supabase_user_id: 'user-123' },
-	{ parchment_admission_id: 'admission-123' },
 	{ checkout_request_id: 'request-123' },
 	{ checkout_purchase_fingerprint: 'fingerprint-123' }
 ];
@@ -35,13 +33,12 @@ describe('checkoutPurchaseFingerprint', () => {
 
 describe('published checkout replay verification', () => {
 	const expected = {
-		ownerId: 'user-123',
 		admissionId: 'admission-123',
 		requestId: 'request-123',
 		purchaseFingerprint: checkoutPurchaseFingerprint(['price_b', 'price_a'])
 	};
 	const session = {
-		client_reference_id: 'user-123',
+		client_reference_id: 'admission-123',
 		client_secret: 'cs_secret',
 		status: 'open',
 		metadata: buildCheckoutAdmissionMetadata(expected)
@@ -134,20 +131,21 @@ describe('resolveCheckoutAdmissionRollout', () => {
 describe('checkoutAdmissionContextFromMetadata', () => {
 	it('returns no context for pre-cutover sessions without admission metadata', () => {
 		expect(checkoutAdmissionContextFromMetadata({}, 'cs_legacy')).toBeNull();
+		expect(
+			checkoutAdmissionContextFromMetadata({ supabase_user_id: 'legacy-user' }, 'cs_legacy')
+		).toBeNull();
 	});
 
 	it('returns context for complete admission metadata', () => {
 		expect(
 			checkoutAdmissionContextFromMetadata(
 				{
-					supabase_user_id: 'user-123',
 					parchment_admission_id: 'admission-123',
 					checkout_request_id: 'request-123'
 				},
 				'cs_managed'
 			)
 		).toEqual({
-			ownerId: 'user-123',
 			admissionId: 'admission-123',
 			requestId: 'request-123',
 			stripeSessionId: 'cs_managed'

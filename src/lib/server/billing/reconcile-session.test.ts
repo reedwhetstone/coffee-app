@@ -23,13 +23,12 @@ vi.mock('./checkoutAdmissions', () => ({
 		metadata: Record<string, string> | null,
 		stripeSessionId: string
 	) => {
-		const ownerId = metadata?.supabase_user_id;
 		const admissionId = metadata?.parchment_admission_id;
 		const requestId = metadata?.checkout_request_id;
-		if ((ownerId || admissionId || requestId) && (!ownerId || !admissionId)) {
+		if (requestId && !admissionId) {
 			throw new Error('Managed checkout session is missing Checkout admission metadata');
 		}
-		return ownerId && admissionId ? { ownerId, admissionId, requestId, stripeSessionId } : null;
+		return admissionId ? { admissionId, requestId, stripeSessionId } : null;
 	},
 	checkoutProviderIsEligible: mockCheckoutProviderIsEligible
 }));
@@ -152,7 +151,7 @@ beforeEach(async () => {
 	vi.clearAllMocks();
 	mockCheckoutAdmissionsEnabled.mockReturnValue(false);
 	mockLegacyCheckoutDrainEnabled.mockReturnValue(false);
-	mockCheckoutProviderIsEligible.mockResolvedValue(true);
+	mockCheckoutProviderIsEligible.mockResolvedValue({ eligible: true, ownerId: 'user-123' });
 	({ handleReconcileStripeSession } = await import('./reconcile-session'));
 });
 
@@ -315,7 +314,7 @@ describe('handleReconcileStripeSession', () => {
 		const { supabase, mocks } = makeSupabase({});
 		mockCreateAdminClient.mockReturnValue(supabase);
 		mockCheckoutAdmissionsEnabled.mockReturnValue(true);
-		mockCheckoutProviderIsEligible.mockResolvedValue(false);
+		mockCheckoutProviderIsEligible.mockResolvedValue({ eligible: false, ownerId: 'user-123' });
 		mockGetStripe.mockReturnValue({
 			checkout: {
 				sessions: {
@@ -323,9 +322,8 @@ describe('handleReconcileStripeSession', () => {
 						id: 'cs_test_123',
 						status: 'complete',
 						payment_status: 'paid',
-						client_reference_id: 'user-123',
+						client_reference_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 						metadata: {
-							supabase_user_id: 'user-123',
 							parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 						}
 					}))
@@ -339,7 +337,7 @@ describe('handleReconcileStripeSession', () => {
 		expect(mockCheckoutProviderIsEligible).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({
-				ownerId: 'user-123',
+				admissionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 				stripeSessionId: 'cs_test_123'
 			})
 		);
@@ -351,7 +349,7 @@ describe('handleReconcileStripeSession', () => {
 	it('keeps managed sessions fenced after the rollout flag is disabled', async () => {
 		const { supabase, mocks } = makeSupabase({});
 		mockCreateAdminClient.mockReturnValue(supabase);
-		mockCheckoutProviderIsEligible.mockResolvedValue(false);
+		mockCheckoutProviderIsEligible.mockResolvedValue({ eligible: false, ownerId: 'user-123' });
 		mockGetStripe.mockReturnValue({
 			checkout: {
 				sessions: {
@@ -359,9 +357,8 @@ describe('handleReconcileStripeSession', () => {
 						id: 'cs_test_123',
 						status: 'complete',
 						payment_status: 'paid',
-						client_reference_id: 'user-123',
+						client_reference_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 						metadata: {
-							supabase_user_id: 'user-123',
 							parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 						}
 					}))
@@ -390,7 +387,7 @@ describe('handleReconcileStripeSession', () => {
 						status: 'complete',
 						payment_status: 'paid',
 						client_reference_id: 'user-123',
-						metadata: { supabase_user_id: 'user-123' }
+						metadata: { checkout_request_id: 'request-without-admission' }
 					}))
 				}
 			}

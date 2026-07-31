@@ -16,12 +16,13 @@
 </script>
 
 <div class="min-h-screen">
-	{#if data.accountDeleted}
+	{#if data.accountDeletionAccepted}
 		<div
 			class="border-b border-success/30 bg-success-subtle px-4 py-3 text-center text-sm font-medium text-success-strong"
 			role="status"
 		>
-			Your Purveyors account and saved data were deleted.
+			Your account deletion request was accepted. Purveyors is securely finishing cleanup; no
+			further action is needed.
 		</div>
 	{/if}
 	<Hero auth={data.auth} />

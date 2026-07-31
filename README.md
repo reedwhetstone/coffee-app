@@ -61,7 +61,7 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
 2. **Platform app API** (`/api/*`)
    - Powers the first-party web app, Console, billing, chat, and admin workflows
    - Mixed auth model depending on route: catalog BFF adapters can allow anonymous or session access, most product routes require session auth, and chat/workspace routes require either Mallard Studio membership or Parchment Intelligence access
-   - `/api/account-deletion` and `/api/account-deletion/reauthenticate` are browser-session-only internal BFF routes; they require same-origin requests plus recent Google reauthentication or a valid owner-bound retry capability, and never form part of the external Parchment API
+   - `/api/account-deletion` and `/api/account-deletion/reauthenticate` are browser-session-only internal BFF routes; they require same-origin requests plus recent Google reauthentication. The deletion route durably starts Parchment's service-owned provider, local-data, and Auth saga, then signs the browser out. They never form part of the external Parchment API
    - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
    - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are metadata or compatibility endpoints, not catalog or analytics APIs
@@ -127,7 +127,8 @@ app before the upstream database migration cannot interrupt Checkout.
 
 Roll out in this order:
 
-1. Apply Parchment migration `20260730150000_account_deletion_checkout_admission_fence.sql`.
+1. Apply Parchment migrations `20260730150000_account_deletion_checkout_admission_fence.sql`
+   and `20260731170000_account_deletion_provider_convergence.sql`.
 2. Provision one identical 32-or-more-character secret as
    `ACCOUNT_DELETION_PROVIDER_FINALIZATION_SECRET` in Parchment and
    `PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL` in coffee-app.
@@ -152,6 +153,11 @@ The legacy-drain flag applies only to pre-cutover `checkout.session` events.
 Historical `customer.subscription` updates and deletions remain authoritative
 for the subscription's lifetime and do not depend on the drain window. Never
 expose the provider credential through a `PUBLIC_` variable or browser code.
+
+Managed Checkout sessions and subscriptions use the Parchment admission ID as
+their Stripe correlation key. New provider objects must not copy the Supabase
+user UUID into Stripe metadata or `client_reference_id`. Parchment resolves the
+owner through its private admission ledger when a webhook is processed.
 
 Both flags are rollout scaffolding, not permanent application configuration.
 After the cutover has survived the agreed rollback window and all pre-cutover
