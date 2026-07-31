@@ -9,8 +9,7 @@ const roastMocks = vi.hoisted(() => ({
 	createRoasts: vi.fn(),
 	updateRoast: vi.fn(),
 	deleteRoast: vi.fn(),
-	deleteBatch: vi.fn(),
-	updateStockedStatus: vi.fn()
+	deleteBatch: vi.fn()
 }));
 
 const parchmentMocks = vi.hoisted(() => ({
@@ -31,10 +30,6 @@ vi.mock('$lib/server/parchmentClient', () => ({
 
 vi.mock('$lib/server/parchmentRoasts', () => ({
 	fetchParchmentRoasts: parchmentMocks.fetchParchmentRoasts
-}));
-
-vi.mock('$lib/data/inventory.js', () => ({
-	updateStockedStatus: roastMocks.updateStockedStatus
 }));
 
 import { GET, POST } from './+server';

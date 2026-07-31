@@ -166,19 +166,28 @@
 
 		try {
 			processingUpdate = true;
-			const dataForAPI = {
-				...selectedBean, // Start with the original bean to preserve non-editable fields
-				...Object.fromEntries(
-					Object.entries(editedBean).filter(([key]) => editableFields.includes(key))
-				), // Only include editable fields from editedBean
-				purchase_date: prepareDateForAPI(editedBean.purchase_date ?? ''),
-				last_updated: new Date().toISOString()
-			};
+			const selectedRecord = selectedBean as unknown as Record<string, unknown>;
+			const editedRecord = editedBean as unknown as Record<string, unknown>;
+			const dataForAPI = Object.fromEntries(
+				editableFields
+					.filter((key) => editedRecord[key] !== selectedRecord[key])
+					.map((key) => [key, editedRecord[key]])
+			);
+			if ('purchase_date' in dataForAPI) {
+				dataForAPI.purchase_date = prepareDateForAPI(editedBean.purchase_date ?? '');
+			}
+
+			if (Object.keys(dataForAPI).length === 0) {
+				isEditing = false;
+				processingUpdate = false;
+				return;
+			}
 
 			const response = await fetch(`/api/beans?id=${selectedBean.id}`, {
 				method: 'PUT',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					...(selectedBean.last_updated ? { 'If-Match': selectedBean.last_updated } : {})
 				},
 				body: JSON.stringify(dataForAPI)
 			});
@@ -220,16 +229,15 @@
 		try {
 			processingUpdate = true;
 			const dataForAPI = {
-				...selectedBean,
 				cupping_notes: JSON.stringify(notes),
-				rank: rating,
-				last_updated: new Date().toISOString()
+				rank: rating
 			};
 
 			const response = await fetch(`/api/beans?id=${selectedBean.id}`, {
 				method: 'PUT',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					...(selectedBean.last_updated ? { 'If-Match': selectedBean.last_updated } : {})
 				},
 				body: JSON.stringify(dataForAPI)
 			});

@@ -2,7 +2,6 @@ import { json } from '@sveltejs/kit';
 import { AuthError, getUserRoles, requireParchmentAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 import type { components } from '@purveyors/sdk';
-import type { Database } from '$lib/types/database.types';
 import {
 	buildGreenCoffeeQuery,
 	processGreenCoffeeData,
@@ -10,16 +9,71 @@ import {
 } from '$lib/server/greenCoffeeUtils.js';
 import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 import {
+	createParchmentCatalogInventoryItem,
 	createParchmentManualInventoryBatch,
 	deleteParchmentInventoryItem,
 	fetchParchmentInventoryProjection,
 	getParchmentManualInventoryBatch,
-	ParchmentInventoryError
+	ParchmentInventoryError,
+	updateParchmentInventoryItem
 } from '$lib/server/parchmentInventory';
-import { addToInventory, updateInventory } from '$lib/data/inventory.js';
-import { GREEN_COFFEE_INV_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
 
+type CatalogInventoryCreateRequest = components['schemas']['CatalogInventoryCreateRequest'];
+type InventoryUpdateRequest = components['schemas']['InventoryUpdateRequest'];
 type ManualInventoryBatchCreateRequest = components['schemas']['ManualInventoryBatchCreateRequest'];
+
+const MAX_POSTGRES_INTEGER = 2_147_483_647;
+
+function inventoryId(value: string | null): number | null {
+	if (!value || !/^\d+$/.test(value)) return null;
+	const parsed = Number(value);
+	return Number.isSafeInteger(parsed) && parsed > 0 && parsed <= MAX_POSTGRES_INTEGER
+		? parsed
+		: null;
+}
+
+function catalogInventoryCreateRequest(
+	bean: Record<string, unknown>,
+	catalogId: number
+): CatalogInventoryCreateRequest {
+	const body = {
+		catalogId,
+		qty: bean.purchased_qty_lbs
+	} as CatalogInventoryCreateRequest;
+
+	if (typeof bean.purchase_date === 'string') body.purchaseDate = bean.purchase_date;
+	if (typeof bean.bean_cost === 'number') body.cost = bean.bean_cost;
+	if (typeof bean.tax_ship_cost === 'number') body.taxShip = bean.tax_ship_cost;
+	if (typeof bean.notes === 'string') body.notes = bean.notes;
+	if (typeof bean.rank === 'number' || bean.rank === null) body.rank = bean.rank;
+	if (typeof bean.stocked === 'boolean') body.stocked = bean.stocked;
+	if (bean.cupping_notes !== undefined) {
+		body.cuppingNotes = bean.cupping_notes as CatalogInventoryCreateRequest['cuppingNotes'];
+	}
+
+	return body;
+}
+
+function inventoryUpdateRequest(updates: Record<string, unknown>): InventoryUpdateRequest {
+	const body: InventoryUpdateRequest = {};
+	if (updates.purchased_qty_lbs !== undefined) {
+		body.qty = updates.purchased_qty_lbs as number;
+	}
+	if (typeof updates.purchase_date === 'string') body.purchaseDate = updates.purchase_date;
+	if (typeof updates.bean_cost === 'number' || updates.bean_cost === null) {
+		body.cost = updates.bean_cost;
+	}
+	if (typeof updates.tax_ship_cost === 'number' || updates.tax_ship_cost === null) {
+		body.taxShip = updates.tax_ship_cost;
+	}
+	if (typeof updates.notes === 'string' || updates.notes === null) body.notes = updates.notes;
+	if (typeof updates.stocked === 'boolean') body.stocked = updates.stocked;
+	if (typeof updates.rank === 'number' || updates.rank === null) body.rank = updates.rank;
+	if (updates.cupping_notes !== undefined) {
+		body.cuppingNotes = updates.cupping_notes as InventoryUpdateRequest['cuppingNotes'];
+	}
+	return body;
+}
 
 function legacyParchmentError(body: unknown): { error: string; code?: string } {
 	if (
@@ -135,10 +189,12 @@ export const GET: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireParchmentAccess(event);
-		const { supabase } = event.locals;
+		await requireParchmentAccess(event);
 
-		const bean = await event.request.json();
+		const bean = (await event.request.json()) as Record<string, unknown>;
+		if (typeof bean !== 'object' || bean === null || Array.isArray(bean)) {
+			return json({ error: 'Invalid inventory request' }, { status: 400 });
+		}
 		if (Array.isArray(bean.items)) {
 			const batchId = event.request.headers.get('idempotency-key')?.trim();
 			if (!batchId) {
@@ -157,90 +213,28 @@ export const POST: RequestHandler = async (event) => {
 			return json(created, { status: 201 });
 		}
 
-		let catalogId = bean.catalog_id;
-
-		// Preserve the established scalar contract while supported callers move to
-		// the atomic batch shape. The coffee-app form no longer uses this bridge.
-		if (!catalogId && bean.manual_name) {
-			const catalogData: Record<string, unknown> = {
-				name: bean.manual_name,
-				coffee_user: user.id,
-				public_coffee: false,
-				last_updated: new Date().toISOString().split('T')[0]
-			};
-			const optionalCatalogFields = [
-				'region',
-				'processing',
-				'drying_method',
-				'roast_recs',
-				'lot_size',
-				'bag_size',
-				'packaging',
-				'cultivar_detail',
-				'grade',
-				'appearance',
-				'description_short',
-				'farm_notes',
-				'type',
-				'description_long',
-				'cost_lb',
-				'price_per_lb',
-				'price_tiers',
-				'source',
-				'cupping_notes',
-				'arrival_date',
-				'score_value',
-				'ai_description',
-				'ai_tasting_notes'
-			];
-
-			for (const field of optionalCatalogFields) {
-				if (bean[field] !== undefined && bean[field] !== null && bean[field] !== '') {
-					catalogData[field] = bean[field];
-				}
-			}
-
-			const { data: newCatalogEntry, error: catalogError } = await supabase
-				.from('coffee_catalog')
-				.insert(catalogData as Database['public']['Tables']['coffee_catalog']['Insert'])
-				.select('id')
-				.single();
-			if (catalogError) {
-				console.error('Error creating catalog entry:', catalogError);
-				return json({ error: 'Failed to create catalog entry' }, { status: 500 });
-			}
-			catalogId = newCatalogEntry.id;
-		}
-
-		// If this bean references a catalog item, verify it exists
-		if (catalogId) {
-			const { data: catalogBean, error: catalogError } = await supabase
-				.from('coffee_catalog')
-				.select('id')
-				.eq('id', catalogId)
-				.single();
-
-			if (catalogError || !catalogBean) {
-				return json({ error: 'Invalid catalog reference' }, { status: 400 });
-			}
-		} else {
+		const catalogId =
+			typeof bean.catalog_id === 'number' && Number.isInteger(bean.catalog_id)
+				? bean.catalog_id
+				: null;
+		if (catalogId === null || catalogId <= 0 || catalogId > MAX_POSTGRES_INTEGER) {
 			return json(
-				{ error: 'A catalog reference or manual inventory batch is required' },
+				{
+					error: bean.manual_name
+						? 'Manual inventory creation requires the batch contract'
+						: 'Invalid catalog reference'
+				},
 				{ status: 400 }
 			);
 		}
 
-		const created = await addToInventory(supabase, user.id, {
-			catalog_id: catalogId ?? null,
-			rank: bean.rank,
-			notes: bean.notes,
-			purchase_date: bean.purchase_date,
-			purchased_qty_lbs: bean.purchased_qty_lbs,
-			bean_cost: bean.bean_cost,
-			tax_ship_cost: bean.tax_ship_cost,
-			stocked: bean.stocked,
-			cupping_notes: bean.cupping_notes
-		});
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const idempotencyKey = event.request.headers.get('idempotency-key')?.trim() || undefined;
+		const created = await createParchmentCatalogInventoryItem(
+			client,
+			catalogInventoryCreateRequest(bean, catalogId),
+			idempotencyKey
+		);
 
 		return json(created);
 	} catch (error) {
@@ -251,10 +245,7 @@ export const POST: RequestHandler = async (event) => {
 			return json(legacyParchmentError(error.body), { status: error.status });
 		}
 		if (error instanceof ParchmentConfigError) {
-			return json(
-				{ error: 'Manual inventory creation is temporarily unavailable' },
-				{ status: 503 }
-			);
+			return json({ error: 'Inventory creation is temporarily unavailable' }, { status: 503 });
 		}
 
 		console.error('Error creating bean:', error);
@@ -264,37 +255,41 @@ export const POST: RequestHandler = async (event) => {
 
 export const PUT: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireParchmentAccess(event);
-		const { supabase } = event.locals;
+		await requireParchmentAccess(event);
 		const { url, request } = event;
 
-		const id = url.searchParams.get('id');
-		if (!id) {
-			return json({ error: 'No ID provided' }, { status: 400 });
+		const parsedId = inventoryId(url.searchParams.get('id'));
+		if (parsedId === null) {
+			return json({ error: 'Invalid or missing inventory ID' }, { status: 400 });
 		}
 
-		const updates = await request.json();
-		const { id: _, ...rawUpdateData } = updates;
-
-		// Filter to only include actual green_coffee_inv table columns
-		const updateData = pickColumns(rawUpdateData, GREEN_COFFEE_INV_COLUMNS);
-
-		let updated;
-		try {
-			updated = await updateInventory(supabase, Number(id), user.id, updateData);
-		} catch (err) {
-			if (err instanceof Error && err.message === 'Unauthorized') {
-				return json({ error: 'Unauthorized' }, { status: 403 });
-			}
-			throw err;
+		const updates = (await request.json()) as Record<string, unknown>;
+		if (typeof updates !== 'object' || updates === null || Array.isArray(updates)) {
+			return json({ error: 'Invalid inventory update' }, { status: 400 });
 		}
 
-		// Stocked status auto-update is handled inside updateInventory()
-		// when purchased_qty_lbs changes, so the returned data is always fresh.
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const ifMatch = request.headers.get('if-match')?.trim() || undefined;
+		const updated = await updateParchmentInventoryItem(
+			client,
+			parsedId,
+			inventoryUpdateRequest(updates),
+			ifMatch
+		);
+
 		return json(updated);
 	} catch (error) {
 		if (error instanceof AuthError) {
 			return json({ success: false, error: error.message }, { status: error.status });
+		}
+		if (error instanceof ParchmentInventoryError) {
+			return json(legacyParchmentError(error.body), { status: error.status });
+		}
+		if (error instanceof ParchmentConfigError) {
+			return json(
+				{ success: false, error: 'Inventory update is temporarily unavailable' },
+				{ status: 503 }
+			);
 		}
 
 		console.error('Error updating bean:', error);
@@ -307,18 +302,13 @@ export const DELETE: RequestHandler = async (event) => {
 		await requireParchmentAccess(event);
 		const { url } = event;
 
-		const id = url.searchParams.get('id');
-		if (!id || !/^\d+$/.test(id)) {
-			return json({ success: false, error: 'Invalid or missing inventory ID' }, { status: 400 });
-		}
-
-		const inventoryId = Number(id);
-		if (!Number.isSafeInteger(inventoryId) || inventoryId <= 0 || inventoryId > 2_147_483_647) {
+		const parsedId = inventoryId(url.searchParams.get('id'));
+		if (parsedId === null) {
 			return json({ success: false, error: 'Invalid or missing inventory ID' }, { status: 400 });
 		}
 
 		const client = await createParchmentServerClient(event, { mode: 'session' });
-		await deleteParchmentInventoryItem(client, inventoryId);
+		await deleteParchmentInventoryItem(client, parsedId);
 		return json({ success: true });
 	} catch (error) {
 		if (error instanceof AuthError) {

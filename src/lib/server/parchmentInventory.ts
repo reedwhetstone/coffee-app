@@ -4,6 +4,8 @@ import { collectOffsetPages } from '$lib/services/tools/pagination';
 import { unwrapParchment } from '$lib/services/tools/parchment';
 
 type InventoryResource = components['schemas']['InventoryResource'];
+type CatalogInventoryCreateRequest = components['schemas']['CatalogInventoryCreateRequest'];
+type InventoryUpdateRequest = components['schemas']['InventoryUpdateRequest'];
 type ManualInventoryBatchCreateRequest = components['schemas']['ManualInventoryBatchCreateRequest'];
 type RoastResource = components['schemas']['RoastListResource'];
 
@@ -26,6 +28,14 @@ type InventoryDeleteResult = {
 			id?: unknown;
 			deleted?: unknown;
 		};
+	};
+	error?: unknown;
+	response?: Response;
+};
+
+type InventoryMutationResult = {
+	data?: {
+		data?: InventoryResource;
 	};
 	error?: unknown;
 	response?: Response;
@@ -84,15 +94,28 @@ function projectManualBatch(
 	return result.items.map(({ resource }) => projectInventoryResource(resource));
 }
 
+function projectInventoryMutation(result: InventoryMutationResult): ParchmentInventoryProjection {
+	if (result.error || !result.data?.data) {
+		throwParchmentResultError(
+			result,
+			!result.error && (result.response?.ok === true || !result.response),
+			'Parchment inventory response did not include a resource payload'
+		);
+	}
+
+	return projectInventoryResource(result.data.data);
+}
+
 function throwParchmentResultError(
 	result: { error?: unknown; response?: Response },
-	protocolError = false
+	protocolError = false,
+	protocolMessage = 'Parchment inventory response did not include a batch payload'
 ): never {
 	if (protocolError) {
 		throw new ParchmentInventoryError(502, {
 			error: {
 				code: 'invalid_response',
-				message: 'Parchment inventory response did not include a batch payload'
+				message: protocolMessage
 			}
 		});
 	}
@@ -232,6 +255,39 @@ export async function getParchmentManualInventoryBatch(
 		);
 	}
 	return projectManualBatch(result.data.data, batchId);
+}
+
+/** Create one owner-scoped catalog-backed inventory lot through Parchment. */
+export async function createParchmentCatalogInventoryItem(
+	client: ParchmentClient,
+	body: CatalogInventoryCreateRequest,
+	idempotencyKey?: string
+): Promise<ParchmentInventoryProjection> {
+	const result = (await client.inventory.create(
+		body,
+		idempotencyKey ? { idempotencyKey } : undefined
+	)) as InventoryMutationResult;
+
+	return projectInventoryMutation(result);
+}
+
+/**
+ * Update one owner-scoped inventory lot through Parchment's canonical mutation.
+ * Quantity changes and their derived stocked projection complete atomically.
+ */
+export async function updateParchmentInventoryItem(
+	client: ParchmentClient,
+	id: number,
+	body: InventoryUpdateRequest,
+	ifMatch?: string
+): Promise<ParchmentInventoryProjection> {
+	const result = (await client.inventory.update(
+		id,
+		body,
+		ifMatch ? { ifMatch } : undefined
+	)) as InventoryMutationResult;
+
+	return projectInventoryMutation(result);
 }
 
 /**
