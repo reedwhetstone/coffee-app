@@ -33,6 +33,50 @@
 	let processingUpdate = $state(false);
 	let lastSelectedBeanId = $state<number | null>(null);
 
+	function cloneBeanForEdit(bean: InventoryWithCatalog): InventoryWithCatalog {
+		const cloned = JSON.parse(JSON.stringify(bean)) as InventoryWithCatalog;
+		if (cloned.stocked === null || cloned.stocked === undefined) {
+			cloned.stocked = false;
+		}
+		return cloned;
+	}
+
+	function isSelectedInventory(value: unknown): value is InventoryWithCatalog {
+		return (
+			typeof value === 'object' &&
+			value !== null &&
+			'id' in value &&
+			(value as { id?: unknown }).id === selectedBean.id
+		);
+	}
+
+	async function refreshSelectedBeanAfterConflict(): Promise<boolean> {
+		try {
+			const response = await fetch(`/api/beans?id=${selectedBean.id}`);
+			if (!response.ok) throw new Error(`Refresh failed with status ${response.status}`);
+
+			const payload = (await response.json()) as { data?: unknown };
+			const refreshedBean = Array.isArray(payload.data)
+				? payload.data.find((value) => isSelectedInventory(value))
+				: null;
+			if (!refreshedBean) throw new Error('Refresh response did not include the inventory item');
+
+			editedBean = cloneBeanForEdit(refreshedBean);
+			lastSelectedBeanId = refreshedBean.id;
+			onUpdate(refreshedBean);
+			alert(
+				'This inventory item changed elsewhere. The latest values are loaded; review them and retry your changes.'
+			);
+			return true;
+		} catch (error) {
+			console.error('Error refreshing inventory after a concurrency conflict:', error);
+			alert(
+				'This inventory item changed elsewhere, but its latest values could not be loaded. Please reload and try again.'
+			);
+			return false;
+		}
+	}
+
 	// Parse AI tasting notes
 	let aiTastingNotes = $derived((): TastingNotes | null => {
 		if (selectedBean.coffee_catalog?.ai_tasting_notes) {
@@ -151,14 +195,7 @@
 			lastSelectedBeanId = bean.id;
 
 			// Deep clone to avoid reference issues
-			const cloned = JSON.parse(JSON.stringify(bean));
-
-			// Ensure stocked has a boolean value (default to false if null/undefined)
-			if (cloned.stocked === null || cloned.stocked === undefined) {
-				cloned.stocked = false;
-			}
-
-			editedBean = cloned;
+			editedBean = cloneBeanForEdit(bean);
 		});
 	});
 
@@ -199,8 +236,12 @@
 				onUpdate(mergeInventoryMutationProjection(selectedBean, updatedBean));
 				processingUpdate = false;
 			} else {
-				const data = await response.json();
-				alert(`Failed to update bean: ${data.error}`);
+				const data = (await response.json()) as { error?: unknown; code?: unknown };
+				if (response.status === 409 && data.code === 'precondition_failed') {
+					await refreshSelectedBeanAfterConflict();
+				} else {
+					alert(`Failed to update bean: ${String(data.error ?? 'Unknown error')}`);
+				}
 				processingUpdate = false;
 			}
 		} catch (error) {
@@ -249,8 +290,12 @@
 				processingUpdate = false;
 				return true;
 			} else {
-				const data = await response.json();
-				alert(`Failed to save cupping notes: ${data.error}`);
+				const data = (await response.json()) as { error?: unknown; code?: unknown };
+				if (response.status === 409 && data.code === 'precondition_failed') {
+					await refreshSelectedBeanAfterConflict();
+				} else {
+					alert(`Failed to save cupping notes: ${String(data.error ?? 'Unknown error')}`);
+				}
 				processingUpdate = false;
 				return false;
 			}

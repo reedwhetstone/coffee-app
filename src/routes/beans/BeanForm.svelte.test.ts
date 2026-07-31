@@ -422,6 +422,45 @@ describe('BeanForm atomic manual inventory batches', () => {
 		expect(requestPayload(fetchMock, 1)).toMatchObject({ purchased_qty_lbs: 3 });
 	});
 
+	it('preserves unattempted catalog rows after a definitive rejection', async () => {
+		const queue = createCatalogCreateQueue('user-a', [
+			{ idempotencyKey: UUIDS[0], payloadJson: JSON.stringify({ catalog_id: 7 }) },
+			{ idempotencyKey: UUIDS[1], payloadJson: JSON.stringify({ catalog_id: 8 }) },
+			{ idempotencyKey: UUIDS[2], payloadJson: JSON.stringify({ catalog_id: 9 }) }
+		]);
+		writeCatalogCreateQueue(localStorage, queue);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response(201, { id: 41, catalog_id: 7 }))
+			.mockResolvedValueOnce(response(400, { error: 'Invalid quantity' }));
+		vi.stubGlobal('fetch', fetchMock);
+		const onClose = vi.fn();
+		const onSubmit = vi.fn();
+
+		const { container } = render(BeanForm, {
+			bean: null,
+			onClose,
+			onSubmit,
+			catalogBeans: [],
+			ownerId: 'user-a'
+		});
+
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Retry Pending Purchase' })).toBeInTheDocument()
+		);
+		await fireEvent.submit(container.querySelector('form')!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		const stored = JSON.parse(localStorage.getItem(catalogCreateQueueStorageKey('user-a'))!) as {
+			completedCount: number;
+			items: Array<{ idempotencyKey: string; payloadJson: string }>;
+		};
+		expect(stored.completedCount).toBe(2);
+		expect(stored.items).toEqual([{ ...queue.items[2] }]);
+		await waitFor(() => expect(onSubmit).toHaveBeenCalledWith([{ id: 41, catalog_id: 7 }]));
+		await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+	});
+
 	it('submits every manual row once with one batch UUID and a shared exact-cent total', async () => {
 		vi.spyOn(globalThis.crypto, 'randomUUID')
 			.mockReturnValueOnce(UUIDS[0])

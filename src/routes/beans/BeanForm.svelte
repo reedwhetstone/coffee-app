@@ -108,8 +108,11 @@
 	let pendingManualBatchId = $state<string | null>(null);
 	let pendingCatalogCreateQueue = $state<PendingCatalogCreateQueue | null>(null);
 	let activeOwnerId = $state<string | null>(null);
+	let catalogCreateClock = $state(Date.now());
 	let pendingCatalogCreateExpired = $derived(
-		pendingCatalogCreateQueue ? isCatalogCreateQueueExpired(pendingCatalogCreateQueue) : false
+		pendingCatalogCreateQueue
+			? isCatalogCreateQueueExpired(pendingCatalogCreateQueue, catalogCreateClock)
+			: false
 	);
 	let pendingMutationLocked = $derived(Boolean(pendingManualBatchId || pendingCatalogCreateQueue));
 
@@ -123,6 +126,17 @@
 		if (pendingCatalogCreateQueue && !pendingManualBatchId) {
 			isManualEntry = false;
 		}
+	});
+
+	$effect(() => {
+		if (!browser || !pendingCatalogCreateQueue) return;
+
+		catalogCreateClock = Date.now();
+		const interval = window.setInterval(() => {
+			catalogCreateClock = Date.now();
+		}, 1000);
+
+		return () => window.clearInterval(interval);
 	});
 
 	function setPendingManualBatchId(batchId: string | null) {
@@ -491,8 +505,13 @@
 
 			const data = (await response.json()) as { error?: unknown; code?: unknown };
 			if (isDefinitiveMutationFailure(response, data)) {
-				if (!setPendingCatalogCreateQueue(null, queue.ownerId)) {
-					throw new Error('Unable to clear rejected catalog queue');
+				const nextQueue = advanceCatalogCreateQueue(queue);
+				if (nextQueue.items.length === 0) {
+					if (!setPendingCatalogCreateQueue(null, queue.ownerId)) {
+						throw new Error('Unable to clear rejected catalog queue');
+					}
+				} else if (!setPendingCatalogCreateQueue(nextQueue)) {
+					throw new Error('Unable to preserve unattempted catalog queue rows');
 				}
 				alert(`Failed to create bean: ${String(data.error ?? 'Unknown error')}`);
 				return { created, outcome: 'definitive_failure' };
