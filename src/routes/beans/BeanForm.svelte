@@ -42,6 +42,7 @@
 	} as const;
 	const PENDING_MANUAL_BATCH_STORAGE_KEY = 'purveyors:pending-manual-inventory-batch';
 	const CATALOG_CREATE_IDEMPOTENCY_KEY = 'catalog_create_idempotency_key';
+	const CATALOG_CREATE_ATTEMPT_PAYLOAD_KEY = 'catalog_create_attempt_payload';
 
 	const {
 		bean = null,
@@ -119,7 +120,7 @@
 		}
 	}
 
-	function isDefinitiveManualBatchFailure(response: Response, data: { code?: unknown }): boolean {
+	function isDefinitiveMutationFailure(response: Response, data: { code?: unknown }): boolean {
 		if ([401, 403, 408, 425, 429].includes(response.status) || response.status >= 500) {
 			return false;
 		}
@@ -283,9 +284,13 @@
 		const subtotalFallback =
 			perLbFallback != null && qty > 0 ? Math.round(perLbFallback * qty * 100) / 100 : null;
 
+		// Selecting a new catalog item starts a new idempotency attempt.
+		const nextBean = { ...batchBeans[beanIndex] } as Record<string, unknown>;
+		delete nextBean[CATALOG_CREATE_ATTEMPT_PAYLOAD_KEY];
+
 		// Only set catalog_id and default cost from catalog for the specific bean
 		batchBeans[beanIndex] = {
-			...batchBeans[beanIndex], // Keep existing user fields
+			...nextBean, // Keep existing user fields
 			catalog_id: catalogBean.id,
 			[CATALOG_CREATE_IDEMPOTENCY_KEY]: crypto.randomUUID(),
 			purchased_qty_lbs: qty,
@@ -298,6 +303,23 @@
 			catalogBean,
 			beanData: batchBeans[beanIndex]
 		});
+	}
+
+	function readCatalogCreateAttemptPayload(value: unknown): CoffeeFormData | null {
+		if (typeof value !== 'string') return null;
+		try {
+			return JSON.parse(value) as CoffeeFormData;
+		} catch {
+			return null;
+		}
+	}
+
+	function clearCatalogCreateAttempt(beanIndex: number) {
+		const nextBean = { ...batchBeans[beanIndex] } as Record<string, unknown>;
+		delete nextBean[CATALOG_CREATE_IDEMPOTENCY_KEY];
+		delete nextBean[CATALOG_CREATE_ATTEMPT_PAYLOAD_KEY];
+		batchBeans[beanIndex] = nextBean as (typeof batchBeans)[number];
+		batchBeans = [...batchBeans];
 	}
 
 	function manualCoffee(
@@ -350,7 +372,7 @@
 		}
 
 		const data = (await response.json()) as { error?: unknown; code?: unknown };
-		if (isDefinitiveManualBatchFailure(response, data)) {
+		if (isDefinitiveMutationFailure(response, data)) {
 			setPendingManualBatchId(null);
 		}
 		alert(`Failed to create beans: ${String(data.error ?? 'Unknown error')}`);
@@ -458,32 +480,51 @@
 			for (let i = 0; i < batchBeans.length; i++) {
 				const beanData = batchBeans[i];
 				const existingIdempotencyKey = beanData[CATALOG_CREATE_IDEMPOTENCY_KEY];
+				const attemptedPayload = readCatalogCreateAttemptPayload(
+					beanData[CATALOG_CREATE_ATTEMPT_PAYLOAD_KEY]
+				);
 				const idempotencyKey =
 					beanData.catalog_id && typeof existingIdempotencyKey === 'string'
 						? existingIdempotencyKey
 						: beanData.catalog_id
 							? crypto.randomUUID()
 							: undefined;
-				if (beanData.catalog_id && idempotencyKey && !existingIdempotencyKey) {
-					batchBeans[i] = { ...beanData, [CATALOG_CREATE_IDEMPOTENCY_KEY]: idempotencyKey };
+
+				// Preserve the exact wire payload while the result is uncertain. A
+				// retry with the same key must never carry edited fields.
+				const cleanedBean =
+					attemptedPayload ??
+					(() => {
+						const beanPayload = Object.fromEntries(
+							Object.entries(beanData).filter(
+								([key]) =>
+									key !== CATALOG_CREATE_IDEMPOTENCY_KEY &&
+									key !== CATALOG_CREATE_ATTEMPT_PAYLOAD_KEY
+							)
+						);
+						return {
+							...Object.fromEntries(
+								Object.entries(beanPayload).map(([key, value]) => [
+									key,
+									value === '' || value === undefined ? null : value
+								])
+							),
+							// Add shared form data
+							purchase_date: sharedFormData.purchase_date,
+							tax_ship_cost: taxShipPerBean, // Divided cost
+							notes: sharedFormData.notes,
+							last_updated: new Date().toISOString()
+						} as CoffeeFormData;
+					})();
+
+				if (!attemptedPayload && beanData.catalog_id && idempotencyKey) {
+					batchBeans[i] = {
+						...beanData,
+						[CATALOG_CREATE_IDEMPOTENCY_KEY]: idempotencyKey,
+						[CATALOG_CREATE_ATTEMPT_PAYLOAD_KEY]: JSON.stringify(cleanedBean)
+					};
+					batchBeans = [...batchBeans];
 				}
-				const beanPayload = Object.fromEntries(
-					Object.entries(beanData).filter(([key]) => key !== CATALOG_CREATE_IDEMPOTENCY_KEY)
-				);
-				// Prepare bean data for submission
-				const cleanedBean: CoffeeFormData = {
-					...Object.fromEntries(
-						Object.entries(beanPayload).map(([key, value]) => [
-							key,
-							value === '' || value === undefined ? null : value
-						])
-					),
-					// Add shared form data
-					purchase_date: sharedFormData.purchase_date,
-					tax_ship_cost: taxShipPerBean, // Divided cost
-					notes: sharedFormData.notes,
-					last_updated: new Date().toISOString()
-				};
 
 				const response = await fetch('/api/beans', {
 					method: 'POST',
@@ -498,7 +539,10 @@
 					const newBean = await response.json();
 					createdBeans.push(newBean);
 				} else {
-					const data = await response.json();
+					const data = (await response.json()) as { error?: unknown; code?: unknown };
+					if (isDefinitiveMutationFailure(response, data)) {
+						clearCatalogCreateAttempt(i);
+					}
 					alert(`Failed to create bean ${i + 1}: ${data.error}`);
 					return;
 				}

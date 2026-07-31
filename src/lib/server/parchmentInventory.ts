@@ -170,8 +170,14 @@ async function projectInventoryMutationWithRoasts(
 		return projectInventoryMutation(result);
 	}
 
-	const roastProfiles = await fetchParchmentRoastProfiles(client, result.data.data.id);
-	return projectInventoryResource(result.data.data, roastProfiles.map(roastProjection));
+	try {
+		const roastProfiles = await fetchParchmentRoastProfiles(client, result.data.data.id);
+		return projectInventoryResource(result.data.data, roastProfiles.map(roastProjection));
+	} catch {
+		// The mutation has already committed. A projection read must not turn that
+		// success into a retryable failure with a stale optimistic-concurrency token.
+		return projectInventoryResource(result.data.data);
+	}
 }
 
 /**

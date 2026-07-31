@@ -228,6 +228,38 @@ describe('fetchParchmentInventoryProjection', () => {
 		);
 	});
 
+	it('returns the committed mutation when roast hydration fails', async () => {
+		const update = vi.fn().mockResolvedValue({
+			data: {
+				data: {
+					id: 7,
+					catalog_id: 101,
+					purchased_qty_lbs: 6,
+					last_updated: '2026-07-31T17:00:01.000Z',
+					coffee_catalog: null
+				}
+			}
+		});
+		const roastList = vi.fn().mockRejectedValue(new Error('roast service unavailable'));
+
+		await expect(
+			updateParchmentInventoryItem(
+				{ inventory: { update }, roasts: { list: roastList } } as never,
+				7,
+				{ qty: 6 },
+				'2026-07-31T17:00:00.000Z',
+				true
+			)
+		).resolves.toEqual(
+			expect.objectContaining({
+				id: 7,
+				purchased_qty_lbs: 6,
+				last_updated: '2026-07-31T17:00:01.000Z',
+				roast_profiles: []
+			})
+		);
+	});
+
 	it('rejects malformed successful inventory mutation responses', async () => {
 		const promise = updateParchmentInventoryItem(
 			{

@@ -77,6 +77,9 @@ describe('BeanForm atomic manual inventory batches', () => {
 		const form = container.querySelector('form')!;
 		await fireEvent.submit(form);
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+		await fireEvent.input(screen.getByLabelText('Purchased Quantity (lbs)'), {
+			target: { value: '3' }
+		});
 		await fireEvent.submit(form);
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 
@@ -87,7 +90,63 @@ describe('BeanForm atomic manual inventory batches', () => {
 		expect((fetchMock.mock.calls[1][1] as RequestInit).headers).toEqual(
 			(fetchMock.mock.calls[0][1] as RequestInit).headers
 		);
+		expect(requestPayload(fetchMock, 1)).toEqual(requestPayload(fetchMock, 0));
 		expect(requestPayload(fetchMock, 0)).not.toHaveProperty('catalog_create_idempotency_key');
+	});
+
+	it('starts a new catalog attempt after a definitive rejection', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID')
+			.mockReturnValueOnce(UUIDS[0])
+			.mockReturnValueOnce(UUIDS[1]);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response(400, { error: 'Invalid quantity' }))
+			.mockResolvedValueOnce(response(201, { id: 42 }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { container } = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: [
+				{
+					id: 7,
+					name: 'Catalog lot',
+					source: 'Test source',
+					stocked: true,
+					price_tiers: null,
+					price_per_lb: 5,
+					cost_lb: null
+				} as CoffeeCatalog
+			]
+		});
+
+		await fireEvent.click(screen.getByText('Select from Catalog'));
+		await fireEvent.change(screen.getByLabelText('Select Coffee Bean'), {
+			target: { value: '7' }
+		});
+		await fireEvent.input(screen.getByLabelText('Purchased Quantity (lbs)'), {
+			target: { value: '2' }
+		});
+
+		const form = container.querySelector('form')!;
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+		await fireEvent.input(screen.getByLabelText('Purchased Quantity (lbs)'), {
+			target: { value: '3' }
+		});
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toEqual({
+			'Content-Type': 'application/json',
+			'Idempotency-Key': UUIDS[0]
+		});
+		expect((fetchMock.mock.calls[1][1] as RequestInit).headers).toEqual({
+			'Content-Type': 'application/json',
+			'Idempotency-Key': UUIDS[1]
+		});
+		expect(requestPayload(fetchMock, 1)).toMatchObject({ purchased_qty_lbs: 3 });
 	});
 
 	it('submits every manual row once with one batch UUID and a shared exact-cent total', async () => {
