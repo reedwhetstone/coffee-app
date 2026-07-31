@@ -77,22 +77,48 @@ export function readAccountDeletionRetryOperation(
 }
 
 /**
- * Read the retained Stripe mapping before Parchment quiesces and later deletes
- * owner rows. A database failure is not the same as no customer: failing closed
- * here keeps provider finalization unpublished and the account retryable.
+ * Read every known Stripe identity before Parchment quiesces and later deletes
+ * owner rows. The local mapping is the read-after-write source of truth, while
+ * the metadata search recovers older Stripe customers that are no longer in the
+ * mapping table. A database or Stripe failure is not the same as no customer:
+ * failing closed here keeps provider finalization unpublished and the account
+ * retryable.
  */
-export async function captureStripeCustomerId(userId: string): Promise<string | null> {
+export async function captureStripeCustomerIds(userId: string): Promise<string[]> {
 	const { data, error } = await createAdminClient()
 		.from('stripe_customers')
 		.select('customer_id')
-		.eq('user_id', userId)
-		.maybeSingle();
+		.eq('user_id', userId);
 
 	if (error) {
 		throw new AccountDeletionProviderError('Unable to read the Stripe customer mapping');
 	}
 
-	return data?.customer_id ?? null;
+	const customerIds = new Set(
+		(data ?? [])
+			.map(({ customer_id }) => customer_id)
+			.filter((customerId): customerId is string => Boolean(customerId))
+	);
+
+	try {
+		const stripe = getStripe();
+		let page: string | undefined;
+
+		do {
+			const result = await stripe.customers.search({
+				query: `metadata['supabaseUserId']:'${userId}'`,
+				limit: 100,
+				...(page ? { page } : {})
+			});
+
+			for (const customer of result.data) customerIds.add(customer.id);
+			page = result.next_page ?? undefined;
+		} while (page);
+	} catch {
+		throw new AccountDeletionProviderError('Unable to find the Stripe customers');
+	}
+
+	return [...customerIds];
 }
 
 /**
@@ -146,5 +172,11 @@ export async function unlinkStripeCustomer(
 			return;
 		}
 		throw new AccountDeletionProviderError('Unable to unlink the Stripe customer');
+	}
+}
+
+export async function unlinkStripeCustomers(customerIds: string[], userId: string): Promise<void> {
+	for (const customerId of customerIds) {
+		await unlinkStripeCustomer(customerId, userId);
 	}
 }

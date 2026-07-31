@@ -9,8 +9,8 @@ const mocks = vi.hoisted(() => {
 		requestDeletion: vi.fn(),
 		finalizeDeletion: vi.fn(),
 		createParchmentServerClient: vi.fn(),
-		captureStripeCustomerId: vi.fn(),
-		unlinkStripeCustomer: vi.fn(),
+		captureStripeCustomerIds: vi.fn(),
+		unlinkStripeCustomers: vi.fn(),
 		getProviderCredential: vi.fn(),
 		readRetryOperation: vi.fn(),
 		createRetryToken: vi.fn(),
@@ -27,8 +27,8 @@ vi.mock('$lib/server/accountDeletion', () => ({
 	ACCOUNT_DELETION_RETRY_COOKIE: 'account_deletion_operation',
 	ACCOUNT_DELETION_RETRY_MAX_AGE_SECONDS: 86400,
 	AccountDeletionProviderError: mocks.AccountDeletionProviderError,
-	captureStripeCustomerId: mocks.captureStripeCustomerId,
-	unlinkStripeCustomer: mocks.unlinkStripeCustomer,
+	captureStripeCustomerIds: mocks.captureStripeCustomerIds,
+	unlinkStripeCustomers: mocks.unlinkStripeCustomers,
 	getAccountDeletionProviderCredential: mocks.getProviderCredential,
 	readAccountDeletionRetryOperation: mocks.readRetryOperation,
 	createAccountDeletionRetryToken: mocks.createRetryToken
@@ -119,9 +119,9 @@ describe('POST /api/account-deletion', () => {
 			mocks.order.push('credential');
 			return 'provider-secret';
 		});
-		mocks.captureStripeCustomerId.mockImplementation(async () => {
+		mocks.captureStripeCustomerIds.mockImplementation(async () => {
 			mocks.order.push('capture-stripe');
-			return 'cus_123';
+			return ['cus_123'];
 		});
 		mocks.hasValidReauth.mockReturnValue(true);
 		mocks.readRetryOperation.mockReturnValue(null);
@@ -131,7 +131,7 @@ describe('POST /api/account-deletion', () => {
 			mocks.order.push('request');
 			return { data: operation, response: new Response(null, { status: 200 }) };
 		});
-		mocks.unlinkStripeCustomer.mockImplementation(async () => {
+		mocks.unlinkStripeCustomers.mockImplementation(async () => {
 			mocks.order.push('unlink-stripe');
 		});
 		mocks.finalizeDeletion.mockImplementation(async () => {
@@ -176,6 +176,7 @@ describe('POST /api/account-deletion', () => {
 			mode: 'session',
 			preferHandling: 'inherit'
 		});
+		expect(mocks.unlinkStripeCustomers).toHaveBeenCalledWith(['cus_123'], 'user-1');
 		expect(mocks.finalizeDeletion).toHaveBeenCalledWith(
 			'/v1/account-deletion/provider-finalization',
 			{
@@ -241,7 +242,7 @@ describe('POST /api/account-deletion', () => {
 
 		expect(response.status).toBe(403);
 		expect((await response.json()).error.code).toBe('recent_sign_in_required');
-		expect(mocks.captureStripeCustomerId).not.toHaveBeenCalled();
+		expect(mocks.captureStripeCustomerIds).not.toHaveBeenCalled();
 		expect(mocks.requestDeletion).not.toHaveBeenCalled();
 	});
 
@@ -253,7 +254,7 @@ describe('POST /api/account-deletion', () => {
 
 		expect(response.status).toBe(409);
 		expect((await response.json()).error.code).toBe('operation_mismatch');
-		expect(mocks.unlinkStripeCustomer).not.toHaveBeenCalled();
+		expect(mocks.unlinkStripeCustomers).not.toHaveBeenCalled();
 		expect(mocks.finalizeDeletion).not.toHaveBeenCalled();
 		expect(mocks.deleteUser).not.toHaveBeenCalled();
 	});
@@ -327,7 +328,7 @@ describe('POST /api/account-deletion', () => {
 
 		expect(response.status).toBe(400);
 		expect((await response.json()).error.code).toBe('confirmation_required');
-		expect(mocks.captureStripeCustomerId).not.toHaveBeenCalled();
+		expect(mocks.captureStripeCustomerIds).not.toHaveBeenCalled();
 	});
 
 	it('requires a current-session reauthentication capability', async () => {
@@ -337,7 +338,7 @@ describe('POST /api/account-deletion', () => {
 
 		expect(response.status).toBe(403);
 		expect((await response.json()).error.code).toBe('recent_sign_in_required');
-		expect(mocks.captureStripeCustomerId).not.toHaveBeenCalled();
+		expect(mocks.captureStripeCustomerIds).not.toHaveBeenCalled();
 	});
 
 	it('preflights provider configuration before quiescing', async () => {
@@ -372,13 +373,13 @@ describe('POST /api/account-deletion', () => {
 				message: 'Cancel active or trialing billing before deletion.'
 			}
 		});
-		expect(mocks.unlinkStripeCustomer).not.toHaveBeenCalled();
+		expect(mocks.unlinkStripeCustomers).not.toHaveBeenCalled();
 		expect(mocks.finalizeDeletion).not.toHaveBeenCalled();
 		expect(mocks.deleteUser).not.toHaveBeenCalled();
 	});
 
 	it('does not publish finalization when Stripe cleanup fails', async () => {
-		mocks.unlinkStripeCustomer.mockRejectedValue(
+		mocks.unlinkStripeCustomers.mockRejectedValue(
 			new mocks.AccountDeletionProviderError('stripe failed')
 		);
 

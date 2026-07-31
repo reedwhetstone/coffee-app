@@ -4,7 +4,8 @@ const mocks = vi.hoisted(() => ({
 	env: {
 		PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL: ` ${'p'.repeat(32)} ` as string | undefined
 	},
-	maybeSingle: vi.fn(),
+	selectCustomers: vi.fn(),
+	search: vi.fn(),
 	retrieve: vi.fn(),
 	update: vi.fn()
 }));
@@ -17,7 +18,7 @@ vi.mock('$lib/supabase-admin', () => ({
 	createAdminClient: () => ({
 		from: () => ({
 			select: () => ({
-				eq: () => ({ maybeSingle: mocks.maybeSingle })
+				eq: mocks.selectCustomers
 			})
 		})
 	})
@@ -26,6 +27,7 @@ vi.mock('$lib/supabase-admin', () => ({
 vi.mock('$lib/services/stripe', () => ({
 	getStripe: () => ({
 		customers: {
+			search: mocks.search,
 			retrieve: mocks.retrieve,
 			update: mocks.update
 		}
@@ -34,7 +36,7 @@ vi.mock('$lib/services/stripe', () => ({
 
 import {
 	AccountDeletionProviderError,
-	captureStripeCustomerId,
+	captureStripeCustomerIds,
 	createAccountDeletionRetryToken,
 	getAccountDeletionProviderCredential,
 	hasRecentSignIn,
@@ -46,6 +48,8 @@ describe('account deletion provider helpers', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.env.PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL = ` ${'p'.repeat(32)} `;
+		mocks.selectCustomers.mockResolvedValue({ data: [], error: null });
+		mocks.search.mockResolvedValue({ data: [], next_page: null });
 	});
 
 	it('uses the trimmed server-only finalization credential', () => {
@@ -104,14 +108,41 @@ describe('account deletion provider helpers', () => {
 		).toBeNull();
 	});
 
-	it('distinguishes a missing Stripe mapping from a database failure', async () => {
-		mocks.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
-		await expect(captureStripeCustomerId('user-1')).resolves.toBeNull();
+	it('distinguishes missing Stripe mappings from a database failure', async () => {
+		await expect(captureStripeCustomerIds('user-1')).resolves.toEqual([]);
 
-		mocks.maybeSingle.mockResolvedValueOnce({ data: null, error: new Error('db unavailable') });
-		await expect(captureStripeCustomerId('user-1')).rejects.toBeInstanceOf(
+		mocks.selectCustomers.mockResolvedValueOnce({ data: null, error: new Error('db unavailable') });
+		await expect(captureStripeCustomerIds('user-1')).rejects.toBeInstanceOf(
 			AccountDeletionProviderError
 		);
+	});
+
+	it('captures mapped and metadata-linked Stripe customers across search pages', async () => {
+		mocks.selectCustomers.mockResolvedValue({
+			data: [{ customer_id: 'cus_mapped' }],
+			error: null
+		});
+		mocks.search
+			.mockResolvedValueOnce({
+				data: [{ id: 'cus_mapped' }, { id: 'cus_older' }],
+				next_page: 'page-2'
+			})
+			.mockResolvedValueOnce({ data: [{ id: 'cus_oldest' }], next_page: null });
+
+		await expect(captureStripeCustomerIds('user-1')).resolves.toEqual([
+			'cus_mapped',
+			'cus_older',
+			'cus_oldest'
+		]);
+		expect(mocks.search).toHaveBeenNthCalledWith(1, {
+			query: "metadata['supabaseUserId']:'user-1'",
+			limit: 100
+		});
+		expect(mocks.search).toHaveBeenNthCalledWith(2, {
+			query: "metadata['supabaseUserId']:'user-1'",
+			limit: 100,
+			page: 'page-2'
+		});
 	});
 
 	it('clears only the matching external Stripe identity metadata', async () => {

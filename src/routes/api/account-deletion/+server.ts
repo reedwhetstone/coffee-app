@@ -6,11 +6,11 @@ import {
 	ACCOUNT_DELETION_RETRY_COOKIE,
 	ACCOUNT_DELETION_RETRY_MAX_AGE_SECONDS,
 	AccountDeletionProviderError,
-	captureStripeCustomerId,
+	captureStripeCustomerIds,
 	createAccountDeletionRetryToken,
 	getAccountDeletionProviderCredential,
 	readAccountDeletionRetryOperation,
-	unlinkStripeCustomer
+	unlinkStripeCustomers
 } from '$lib/server/accountDeletion';
 import {
 	ACCOUNT_DELETION_COMPLETION_COOKIE,
@@ -119,8 +119,9 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		// Preflight everything needed after Parchment quiesces the owner. The
-		// retained mapping is deliberately read before the first deletion request.
-		const stripeCustomerId = await captureStripeCustomerId(user.id);
+		// retained customer identities are deliberately captured before the first
+		// deletion request.
+		const stripeCustomerIds = await captureStripeCustomerIds(user.id);
 		const client = await createParchmentServerClient(event, {
 			mode: 'session',
 			preferHandling: 'inherit'
@@ -152,7 +153,7 @@ export const POST: RequestHandler = async (event) => {
 			}
 		);
 
-		await unlinkStripeCustomer(stripeCustomerId, user.id);
+		await unlinkStripeCustomers(stripeCustomerIds, user.id);
 
 		const finalizationResult = await client.raw.POST('/v1/account-deletion/provider-finalization', {
 			params: {
