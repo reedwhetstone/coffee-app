@@ -159,8 +159,13 @@ async function fetchParchmentRoastProfiles(
 
 async function projectInventoryMutationWithRoasts(
 	client: ParchmentClient,
-	result: InventoryMutationResult
+	result: InventoryMutationResult,
+	includeRoastProfiles: boolean
 ): Promise<ParchmentInventoryProjection> {
+	if (!includeRoastProfiles) {
+		return projectInventoryMutation(result);
+	}
+
 	if (result.error || !result.data?.data) {
 		return projectInventoryMutation(result);
 	}
@@ -280,14 +285,15 @@ export async function getParchmentManualInventoryBatch(
 export async function createParchmentCatalogInventoryItem(
 	client: ParchmentClient,
 	body: CatalogInventoryCreateRequest,
-	idempotencyKey?: string
+	idempotencyKey?: string,
+	includeRoastProfiles = false
 ): Promise<ParchmentInventoryProjection> {
 	const result = (await client.inventory.create(
 		body,
 		idempotencyKey ? { idempotencyKey } : undefined
 	)) as InventoryMutationResult;
 
-	return projectInventoryMutationWithRoasts(client, result);
+	return projectInventoryMutationWithRoasts(client, result, includeRoastProfiles);
 }
 
 /**
@@ -298,7 +304,8 @@ export async function updateParchmentInventoryItem(
 	client: ParchmentClient,
 	id: number,
 	body: InventoryUpdateRequest,
-	ifMatch?: string
+	ifMatch?: string,
+	includeRoastProfiles = false
 ): Promise<ParchmentInventoryProjection> {
 	const result = (await client.inventory.update(
 		id,
@@ -306,7 +313,7 @@ export async function updateParchmentInventoryItem(
 		ifMatch ? { ifMatch } : undefined
 	)) as InventoryMutationResult;
 
-	return projectInventoryMutationWithRoasts(client, result);
+	return projectInventoryMutationWithRoasts(client, result, includeRoastProfiles);
 }
 
 /**

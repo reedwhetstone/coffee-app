@@ -41,6 +41,7 @@
 		score_value: 'scoreValue'
 	} as const;
 	const PENDING_MANUAL_BATCH_STORAGE_KEY = 'purveyors:pending-manual-inventory-batch';
+	const CATALOG_CREATE_IDEMPOTENCY_KEY = 'catalog_create_idempotency_key';
 
 	const {
 		bean = null,
@@ -286,6 +287,7 @@
 		batchBeans[beanIndex] = {
 			...batchBeans[beanIndex], // Keep existing user fields
 			catalog_id: catalogBean.id,
+			[CATALOG_CREATE_IDEMPOTENCY_KEY]: crypto.randomUUID(),
 			purchased_qty_lbs: qty,
 			bean_cost: subtotalFromTiers ?? subtotalFallback ?? batchBeans[beanIndex].bean_cost
 		};
@@ -455,10 +457,23 @@
 
 			for (let i = 0; i < batchBeans.length; i++) {
 				const beanData = batchBeans[i];
+				const existingIdempotencyKey = beanData[CATALOG_CREATE_IDEMPOTENCY_KEY];
+				const idempotencyKey =
+					beanData.catalog_id && typeof existingIdempotencyKey === 'string'
+						? existingIdempotencyKey
+						: beanData.catalog_id
+							? crypto.randomUUID()
+							: undefined;
+				if (beanData.catalog_id && idempotencyKey && !existingIdempotencyKey) {
+					batchBeans[i] = { ...beanData, [CATALOG_CREATE_IDEMPOTENCY_KEY]: idempotencyKey };
+				}
+				const beanPayload = Object.fromEntries(
+					Object.entries(beanData).filter(([key]) => key !== CATALOG_CREATE_IDEMPOTENCY_KEY)
+				);
 				// Prepare bean data for submission
 				const cleanedBean: CoffeeFormData = {
 					...Object.fromEntries(
-						Object.entries(beanData).map(([key, value]) => [
+						Object.entries(beanPayload).map(([key, value]) => [
 							key,
 							value === '' || value === undefined ? null : value
 						])
@@ -473,7 +488,8 @@
 				const response = await fetch('/api/beans', {
 					method: 'POST',
 					headers: {
-						'Content-Type': 'application/json'
+						'Content-Type': 'application/json',
+						...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {})
 					},
 					body: JSON.stringify(cleanedBean)
 				});

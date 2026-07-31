@@ -189,7 +189,7 @@ export const GET: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async (event) => {
 	try {
-		await requireParchmentAccess(event);
+		const { memberAccess } = await requireParchmentAccess(event);
 
 		const bean = (await event.request.json()) as Record<string, unknown>;
 		if (typeof bean !== 'object' || bean === null || Array.isArray(bean)) {
@@ -233,7 +233,8 @@ export const POST: RequestHandler = async (event) => {
 		const created = await createParchmentCatalogInventoryItem(
 			client,
 			catalogInventoryCreateRequest(bean, catalogId),
-			idempotencyKey
+			idempotencyKey,
+			memberAccess
 		);
 
 		return json(created);
@@ -255,7 +256,7 @@ export const POST: RequestHandler = async (event) => {
 
 export const PUT: RequestHandler = async (event) => {
 	try {
-		await requireParchmentAccess(event);
+		const { memberAccess } = await requireParchmentAccess(event);
 		const { url, request } = event;
 
 		const parsedId = inventoryId(url.searchParams.get('id'));
@@ -274,7 +275,8 @@ export const PUT: RequestHandler = async (event) => {
 			client,
 			parsedId,
 			inventoryUpdateRequest(updates),
-			ifMatch
+			ifMatch,
+			memberAccess
 		);
 
 		return json(updated);

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CoffeeCatalog } from '$lib/types/component.types';
 import BeanForm from './BeanForm.svelte';
 
 const UUIDS = [
@@ -38,6 +39,55 @@ describe('BeanForm atomic manual inventory batches', () => {
 		vi.restoreAllMocks();
 		vi.stubGlobal('alert', vi.fn());
 		sessionStorage.clear();
+	});
+
+	it('reuses a catalog idempotency key when a creation response is uncertain', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(UUIDS[0]);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response(503, { error: 'Response was uncertain' }))
+			.mockResolvedValueOnce(response(201, { id: 42 }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { container } = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: [
+				{
+					id: 7,
+					name: 'Catalog lot',
+					source: 'Test source',
+					stocked: true,
+					price_tiers: null,
+					price_per_lb: 5,
+					cost_lb: null
+				} as CoffeeCatalog
+			]
+		});
+
+		await fireEvent.click(screen.getByText('Select from Catalog'));
+		await fireEvent.change(screen.getByLabelText('Select Coffee Bean'), {
+			target: { value: '7' }
+		});
+		await fireEvent.input(screen.getByLabelText('Purchased Quantity (lbs)'), {
+			target: { value: '2' }
+		});
+
+		const form = container.querySelector('form')!;
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toEqual({
+			'Content-Type': 'application/json',
+			'Idempotency-Key': UUIDS[0]
+		});
+		expect((fetchMock.mock.calls[1][1] as RequestInit).headers).toEqual(
+			(fetchMock.mock.calls[0][1] as RequestInit).headers
+		);
+		expect(requestPayload(fetchMock, 0)).not.toHaveProperty('catalog_create_idempotency_key');
 	});
 
 	it('submits every manual row once with one batch UUID and a shared exact-cent total', async () => {

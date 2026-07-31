@@ -158,7 +158,8 @@ describe('fetchParchmentInventoryProjection', () => {
 		const result = await createParchmentCatalogInventoryItem(
 			{ inventory: { create }, roasts: { list: roastList } } as never,
 			{ catalogId: 101, qty: 5, rank: 3, cuppingNotes: { aroma: 8 } },
-			'catalog-create-1'
+			'catalog-create-1',
+			true
 		);
 
 		expect(create).toHaveBeenCalledWith(
@@ -211,7 +212,8 @@ describe('fetchParchmentInventoryProjection', () => {
 			{ inventory: { update }, roasts: { list: roastList } } as never,
 			7,
 			{ qty: 6 },
-			'2026-07-31T17:00:00.000Z'
+			'2026-07-31T17:00:00.000Z',
+			true
 		);
 
 		expect(update).toHaveBeenCalledWith(7, { qty: 6 }, { ifMatch: '2026-07-31T17:00:00.000Z' });
@@ -250,6 +252,29 @@ describe('fetchParchmentInventoryProjection', () => {
 				}
 			}
 		});
+	});
+
+	it('skips roast hydration for Intelligence-only catalog mutations', async () => {
+		const create = vi.fn().mockResolvedValue({
+			data: {
+				data: {
+					id: 7,
+					catalog_id: 101,
+					coffee_catalog: null
+				}
+			}
+		});
+		const roastList = vi.fn();
+
+		const result = await createParchmentCatalogInventoryItem(
+			{ inventory: { create }, roasts: { list: roastList } } as never,
+			{ catalogId: 101, qty: 5 },
+			undefined,
+			false
+		);
+
+		expect(roastList).not.toHaveBeenCalled();
+		expect(result).toEqual(expect.objectContaining({ id: 7, roast_profiles: [] }));
 	});
 
 	it('accepts the canonical inventory delete response', async () => {
