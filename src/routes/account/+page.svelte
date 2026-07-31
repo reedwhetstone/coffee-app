@@ -15,9 +15,19 @@
 		reauthenticating = true;
 		message = '';
 		try {
-			await signInWithGoogle(data.supabase, '/account?reauthenticated=1');
+			const challengeResponse = await fetch('/api/account-deletion/reauthenticate', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' }
+			});
+			if (!challengeResponse.ok) {
+				const result = await challengeResponse.json().catch(() => null);
+				throw new Error(result?.error?.message ?? 'Reauthentication could not be started.');
+			}
+
+			const { error } = await signInWithGoogle(data.supabase, '/account');
+			if (error) throw error;
 		} catch {
-			message = 'Google sign-in could not be started. Please try again.';
+			message = 'Google reauthentication could not be started. Please try again.';
 			reauthenticating = false;
 		}
 	}
@@ -46,7 +56,7 @@
 			}
 
 			await data.supabase.auth.signOut({ scope: 'local' });
-			await goto('/?accountDeleted=1', { replaceState: true });
+			await goto('/', { replaceState: true });
 		} catch {
 			message = 'Account deletion could not be completed. Please try again.';
 		} finally {

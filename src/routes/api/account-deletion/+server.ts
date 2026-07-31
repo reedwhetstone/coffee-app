@@ -9,10 +9,16 @@ import {
 	captureStripeCustomerId,
 	createAccountDeletionRetryToken,
 	getAccountDeletionProviderCredential,
-	hasRecentSignIn,
 	readAccountDeletionRetryOperation,
 	unlinkStripeCustomer
 } from '$lib/server/accountDeletion';
+import {
+	ACCOUNT_DELETION_COMPLETION_COOKIE,
+	ACCOUNT_DELETION_COMPLETION_MAX_AGE_SECONDS,
+	ACCOUNT_DELETION_REAUTH_COOKIE,
+	createAccountDeletionCompletionToken,
+	hasValidAccountDeletionReauth
+} from '$lib/server/accountDeletionReauth';
 import { isCookieSessionPrincipal } from '$lib/server/principal';
 import type { RequestHandler } from './$types';
 
@@ -63,6 +69,7 @@ export const POST: RequestHandler = async (event) => {
 		});
 	}
 	const { user } = event.locals.principal;
+	const sessionAccessToken = event.locals.principal.session.access_token;
 
 	let body: unknown;
 	try {
@@ -96,7 +103,13 @@ export const POST: RequestHandler = async (event) => {
 			user.id,
 			providerCredential
 		);
-		if (!retryOperationId && !hasRecentSignIn(user)) {
+		const hasReauthenticated = hasValidAccountDeletionReauth(
+			event.cookies.get(ACCOUNT_DELETION_REAUTH_COOKIE),
+			user.id,
+			sessionAccessToken,
+			providerCredential
+		);
+		if (!retryOperationId && !hasReauthenticated) {
 			return response(403, {
 				error: {
 					code: 'recent_sign_in_required',
@@ -166,6 +179,20 @@ export const POST: RequestHandler = async (event) => {
 			});
 		}
 
+		event.cookies.set(
+			ACCOUNT_DELETION_COMPLETION_COOKIE,
+			createAccountDeletionCompletionToken(user.id, providerCredential),
+			{
+				path: '/',
+				httpOnly: true,
+				sameSite: 'strict',
+				secure: event.url.protocol === 'https:',
+				maxAge: ACCOUNT_DELETION_COMPLETION_MAX_AGE_SECONDS
+			}
+		);
+		event.cookies.delete(ACCOUNT_DELETION_REAUTH_COOKIE, {
+			path: '/api/account-deletion'
+		});
 		event.cookies.delete(ACCOUNT_DELETION_RETRY_COOKIE, {
 			path: '/api/account-deletion'
 		});

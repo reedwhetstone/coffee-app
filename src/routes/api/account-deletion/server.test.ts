@@ -12,9 +12,10 @@ const mocks = vi.hoisted(() => {
 		captureStripeCustomerId: vi.fn(),
 		unlinkStripeCustomer: vi.fn(),
 		getProviderCredential: vi.fn(),
-		hasRecentSignIn: vi.fn(),
 		readRetryOperation: vi.fn(),
 		createRetryToken: vi.fn(),
+		hasValidReauth: vi.fn(),
+		createCompletionToken: vi.fn(),
 		deleteUser: vi.fn(),
 		AccountDeletionProviderError,
 		ParchmentConfigError
@@ -29,9 +30,16 @@ vi.mock('$lib/server/accountDeletion', () => ({
 	captureStripeCustomerId: mocks.captureStripeCustomerId,
 	unlinkStripeCustomer: mocks.unlinkStripeCustomer,
 	getAccountDeletionProviderCredential: mocks.getProviderCredential,
-	hasRecentSignIn: mocks.hasRecentSignIn,
 	readAccountDeletionRetryOperation: mocks.readRetryOperation,
 	createAccountDeletionRetryToken: mocks.createRetryToken
+}));
+
+vi.mock('$lib/server/accountDeletionReauth', () => ({
+	ACCOUNT_DELETION_COMPLETION_COOKIE: 'account_deletion_completed',
+	ACCOUNT_DELETION_COMPLETION_MAX_AGE_SECONDS: 600,
+	ACCOUNT_DELETION_REAUTH_COOKIE: 'account_deletion_reauthenticated',
+	hasValidAccountDeletionReauth: mocks.hasValidReauth,
+	createAccountDeletionCompletionToken: mocks.createCompletionToken
 }));
 
 vi.mock('$lib/server/parchmentClient', () => ({
@@ -60,6 +68,7 @@ function makeEvent(
 		body?: unknown;
 		authenticated?: boolean;
 		retryCookie?: string;
+		reauthCookie?: string;
 	} = {}
 ) {
 	const origin = options.origin === undefined ? 'https://app.test' : options.origin;
@@ -78,7 +87,9 @@ function makeEvent(
 		},
 		url: new URL('https://app.test/api/account-deletion'),
 		cookies: {
-			get: vi.fn().mockReturnValue(options.retryCookie),
+			get: vi.fn((name: string) =>
+				name === 'account_deletion_operation' ? options.retryCookie : options.reauthCookie
+			),
 			set: cookieSet,
 			delete: cookieDelete
 		},
@@ -92,8 +103,7 @@ function makeEvent(
 							session: { access_token: 'session-token' },
 							user: {
 								id: 'user-1',
-								email: 'owner@example.com',
-								last_sign_in_at: new Date().toISOString()
+								email: 'owner@example.com'
 							}
 						}
 		},
@@ -113,9 +123,10 @@ describe('POST /api/account-deletion', () => {
 			mocks.order.push('capture-stripe');
 			return 'cus_123';
 		});
-		mocks.hasRecentSignIn.mockReturnValue(true);
+		mocks.hasValidReauth.mockReturnValue(true);
 		mocks.readRetryOperation.mockReturnValue(null);
 		mocks.createRetryToken.mockReturnValue('signed-retry-token');
+		mocks.createCompletionToken.mockReturnValue('signed-completion-token');
 		mocks.requestDeletion.mockImplementation(async () => {
 			mocks.order.push('request');
 			return { data: operation, response: new Response(null, { status: 200 }) };
@@ -157,6 +168,8 @@ describe('POST /api/account-deletion', () => {
 			'unlink-stripe',
 			'finalize',
 			'delete-auth',
+			'set-cookie:account_deletion_completed',
+			'delete-cookie:account_deletion_reauthenticated',
 			'delete-cookie:account_deletion_operation'
 		]);
 		expect(mocks.createParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
@@ -177,7 +190,7 @@ describe('POST /api/account-deletion', () => {
 	});
 
 	it('allows a stale sign-in to resume with a valid owner-bound retry cookie', async () => {
-		mocks.hasRecentSignIn.mockReturnValue(false);
+		mocks.hasValidReauth.mockReturnValue(false);
 		mocks.readRetryOperation.mockReturnValue(operation.operationId);
 
 		const event = makeEvent({ retryCookie: 'valid-signed-token' }) as never;
@@ -196,7 +209,7 @@ describe('POST /api/account-deletion', () => {
 		['absent', undefined],
 		['forged', 'forged-token']
 	])('rejects a stale sign-in with an %s retry cookie before Parchment', async (_label, token) => {
-		mocks.hasRecentSignIn.mockReturnValue(false);
+		mocks.hasValidReauth.mockReturnValue(false);
 		mocks.readRetryOperation.mockReturnValue(null);
 
 		const response = await POST(makeEvent({ retryCookie: token }));
@@ -208,7 +221,7 @@ describe('POST /api/account-deletion', () => {
 	});
 
 	it('blocks a valid retry cookie for a different operation before provider cleanup', async () => {
-		mocks.hasRecentSignIn.mockReturnValue(false);
+		mocks.hasValidReauth.mockReturnValue(false);
 		mocks.readRetryOperation.mockReturnValue('different-operation-id');
 
 		const response = await POST(makeEvent({ retryCookie: 'valid-but-stale-token' }));
@@ -242,6 +255,20 @@ describe('POST /api/account-deletion', () => {
 				maxAge: 86400
 			}
 		);
+		expect(event.cookies.set).toHaveBeenCalledWith(
+			'account_deletion_completed',
+			'signed-completion-token',
+			{
+				path: '/',
+				httpOnly: true,
+				sameSite: 'strict',
+				secure: true,
+				maxAge: 600
+			}
+		);
+		expect(event.cookies.delete).toHaveBeenCalledWith('account_deletion_reauthenticated', {
+			path: '/api/account-deletion'
+		});
 		expect(event.cookies.delete).toHaveBeenCalledWith('account_deletion_operation', {
 			path: '/api/account-deletion'
 		});
@@ -278,8 +305,8 @@ describe('POST /api/account-deletion', () => {
 		expect(mocks.captureStripeCustomerId).not.toHaveBeenCalled();
 	});
 
-	it('requires a bounded recent Google sign-in', async () => {
-		mocks.hasRecentSignIn.mockReturnValue(false);
+	it('requires a current-session reauthentication capability', async () => {
+		mocks.hasValidReauth.mockReturnValue(false);
 
 		const response = await POST(makeEvent());
 
