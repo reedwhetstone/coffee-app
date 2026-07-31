@@ -6,21 +6,6 @@
  * on that table in the database schema.
  */
 
-export const GREEN_COFFEE_INV_COLUMNS = [
-	'id',
-	'rank',
-	'notes',
-	'purchase_date',
-	'purchased_qty_lbs',
-	'bean_cost',
-	'tax_ship_cost',
-	'last_updated',
-	'user',
-	'catalog_id',
-	'stocked',
-	'cupping_notes'
-] as const;
-
 export const ROAST_PROFILES_COLUMNS = [
 	'roast_id',
 	'user',

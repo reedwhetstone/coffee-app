@@ -19,6 +19,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 
 test.use({ storageState: 'tests/e2e/.auth/user.json' });
 
@@ -50,18 +51,26 @@ test.describe.serial('Critical business workflow', () => {
 	// -------------------------------------------------------------------------
 
 	test('create a bean via API', async ({ request }) => {
+		const idempotencyKey = randomUUID();
 		const resp = await request.post('/api/beans', {
+			headers: { 'Idempotency-Key': idempotencyKey },
 			data: {
-				manual_name: testBeanName,
-				purchase_date: new Date().toISOString().split('T')[0],
-				purchased_qty_lbs: 5,
-				bean_cost: 25,
-				tax_ship_cost: 0
+				purchaseDate: new Date().toISOString().split('T')[0],
+				taxShipTotal: 0,
+				items: [
+					{
+						rowId: randomUUID(),
+						manualCoffee: { name: testBeanName },
+						qty: 5,
+						cost: 25
+					}
+				]
 			}
 		});
 		expect(resp.status()).toBeLessThan(400);
 		const body = await resp.json();
-		testBeanId = body.id ?? body.data?.[0]?.id ?? null;
+		const created = Array.isArray(body) ? body[0] : (body.data?.[0] ?? body);
+		testBeanId = created?.id ?? null;
 		expect(testBeanId).toBeTruthy();
 	});
 

@@ -14,6 +14,15 @@
 		CoffeeFormData
 	} from '$lib/types/component.types';
 	import type { components } from '@purveyors/sdk';
+	import {
+		advanceCatalogCreateQueue,
+		clearCatalogCreateQueue,
+		createCatalogCreateQueue,
+		isCatalogCreateQueueExpired,
+		readCatalogCreateQueue,
+		writeCatalogCreateQueue,
+		type PendingCatalogCreateQueue
+	} from './catalogCreateAttempt';
 
 	type ManualCoffeeCreate = components['schemas']['ManualCoffeeCreate'];
 	type ManualInventoryBatchCreateRequest =
@@ -97,13 +106,23 @@
 	}
 
 	let pendingManualBatchId = $state<string | null>(null);
+	let pendingCatalogCreateQueue = $state<PendingCatalogCreateQueue | null>(null);
 	let activeOwnerId = $state<string | null>(null);
+	let pendingCatalogCreateExpired = $derived(
+		pendingCatalogCreateQueue ? isCatalogCreateQueueExpired(pendingCatalogCreateQueue) : false
+	);
+	let pendingMutationLocked = $derived(Boolean(pendingManualBatchId || pendingCatalogCreateQueue));
 
 	$effect(() => {
 		const currentOwnerId = ownerId;
 		if (currentOwnerId === activeOwnerId) return;
 		activeOwnerId = currentOwnerId;
 		pendingManualBatchId = readPendingManualBatchId(currentOwnerId);
+		pendingCatalogCreateQueue =
+			browser && currentOwnerId ? readCatalogCreateQueue(localStorage, currentOwnerId) : null;
+		if (pendingCatalogCreateQueue && !pendingManualBatchId) {
+			isManualEntry = false;
+		}
 	});
 
 	function setPendingManualBatchId(batchId: string | null) {
@@ -118,7 +137,53 @@
 		}
 	}
 
-	function isDefinitiveManualBatchFailure(response: Response, data: { code?: unknown }): boolean {
+	function setPendingCatalogCreateQueue(
+		queue: PendingCatalogCreateQueue | null,
+		clearOwnerId = pendingCatalogCreateQueue?.ownerId ?? ownerId
+	): boolean {
+		if (!browser) return false;
+		if (queue) {
+			if (!writeCatalogCreateQueue(localStorage, queue)) return false;
+			pendingCatalogCreateQueue = queue;
+			return true;
+		}
+
+		if (!clearOwnerId) return false;
+		if (!clearCatalogCreateQueue(localStorage, clearOwnerId)) return false;
+		if (pendingCatalogCreateQueue?.ownerId === clearOwnerId) {
+			pendingCatalogCreateQueue = null;
+		}
+		return true;
+	}
+
+	function renewExpiredCatalogCreateQueue(includeCurrent: boolean) {
+		if (!pendingCatalogCreateQueue || !pendingCatalogCreateExpired) return;
+		const expiredQueue = pendingCatalogCreateQueue;
+		const itemsToRenew = includeCurrent ? expiredQueue.items : expiredQueue.items.slice(1);
+		if (itemsToRenew.length === 0) {
+			if (!setPendingCatalogCreateQueue(null)) {
+				alert('Unable to clear the checked purchase from this browser. Please try again.');
+				return;
+			}
+			onSubmit([]);
+			onClose();
+			return;
+		}
+
+		const renewedQueue = createCatalogCreateQueue(
+			expiredQueue.ownerId,
+			itemsToRenew.map((item) => ({
+				idempotencyKey: crypto.randomUUID(),
+				payloadJson: item.payloadJson
+			}))
+		);
+		renewedQueue.completedCount = expiredQueue.completedCount + (includeCurrent ? 0 : 1);
+		if (!setPendingCatalogCreateQueue(renewedQueue)) {
+			alert('Unable to preserve the renewed purchase queue in this browser. Please try again.');
+		}
+	}
+
+	function isDefinitiveMutationFailure(response: Response, data: { code?: unknown }): boolean {
 		if ([401, 403, 408, 425, 429].includes(response.status) || response.status >= 500) {
 			return false;
 		}
@@ -348,7 +413,7 @@
 		}
 
 		const data = (await response.json()) as { error?: unknown; code?: unknown };
-		if (isDefinitiveManualBatchFailure(response, data)) {
+		if (isDefinitiveMutationFailure(response, data)) {
 			setPendingManualBatchId(null);
 		}
 		alert(`Failed to create beans: ${String(data.error ?? 'Unknown error')}`);
@@ -377,16 +442,103 @@
 		await finishManualBatch(response);
 	}
 
+	type CatalogQueueOutcome = 'completed' | 'uncertain' | 'definitive_failure' | 'expired';
+
+	type CatalogQueueResult = {
+		created: CoffeeFormData[];
+		outcome: CatalogQueueOutcome;
+	};
+
+	async function submitCatalogCreateQueue(
+		initialQueue: PendingCatalogCreateQueue
+	): Promise<CatalogQueueResult> {
+		let queue = initialQueue;
+		const created: CoffeeFormData[] = [];
+
+		while (queue.items.length > 0) {
+			if (isCatalogCreateQueueExpired(queue)) {
+				alert(
+					'This retry window has expired. Check your inventory for the purchase before renewing the pending queue.'
+				);
+				return { created, outcome: 'expired' };
+			}
+
+			const item = queue.items[0];
+			const response = await fetch('/api/beans', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Idempotency-Key': item.idempotencyKey
+				},
+				body: item.payloadJson
+			});
+
+			if (response.ok) {
+				created.push((await response.json()) as CoffeeFormData);
+				const nextQueue = advanceCatalogCreateQueue(queue);
+				if (nextQueue.items.length === 0) {
+					if (!setPendingCatalogCreateQueue(null, queue.ownerId)) {
+						throw new Error('Unable to clear completed catalog queue');
+					}
+					return { created, outcome: 'completed' };
+				}
+				if (!setPendingCatalogCreateQueue(nextQueue)) {
+					throw new Error('Unable to preserve catalog queue progress');
+				}
+				queue = nextQueue;
+				continue;
+			}
+
+			const data = (await response.json()) as { error?: unknown; code?: unknown };
+			if (isDefinitiveMutationFailure(response, data)) {
+				if (!setPendingCatalogCreateQueue(null, queue.ownerId)) {
+					throw new Error('Unable to clear rejected catalog queue');
+				}
+				alert(`Failed to create bean: ${String(data.error ?? 'Unknown error')}`);
+				return { created, outcome: 'definitive_failure' };
+			}
+
+			alert(`Failed to create bean: ${String(data.error ?? 'Unknown error')}`);
+			return { created, outcome: 'uncertain' };
+		}
+
+		return { created, outcome: 'completed' };
+	}
+
 	async function handleSubmit() {
 		if (isSubmitting) return;
 
-		if (isManualEntry && pendingManualBatchId) {
+		if (pendingManualBatchId) {
 			try {
 				isSubmitting = true;
 				await submitManualBatch();
 			} catch (error) {
 				console.error('Error reconciling manual inventory batch:', error);
 				alert('Failed to reconcile this batch. Please try again.');
+			} finally {
+				isSubmitting = false;
+			}
+			return;
+		}
+
+		if (pendingCatalogCreateQueue) {
+			try {
+				isSubmitting = true;
+				const queue = pendingCatalogCreateQueue;
+				const result = await submitCatalogCreateQueue(queue);
+				if (
+					result.outcome === 'completed' ||
+					(result.outcome === 'definitive_failure' &&
+						(queue.completedCount > 0 || result.created.length > 0))
+				) {
+					onSubmit(result.created);
+					onClose();
+				}
+			} catch (error) {
+				console.error('Error reconciling catalog inventory creation:', error);
+				alert(
+					'The result is still uncertain. Retry this pending purchase before creating another.'
+				);
 			} finally {
 				isSubmitting = false;
 			}
@@ -450,50 +602,54 @@
 				return;
 			}
 
-			const taxShipPerBean = sharedFormData.tax_ship_cost / batchBeans.length;
-			const createdBeans = [];
-
-			for (let i = 0; i < batchBeans.length; i++) {
-				const beanData = batchBeans[i];
-				// Prepare bean data for submission
-				const cleanedBean: CoffeeFormData = {
-					...Object.fromEntries(
-						Object.entries(beanData).map(([key, value]) => [
-							key,
-							value === '' || value === undefined ? null : value
-						])
-					),
-					// Add shared form data
-					purchase_date: sharedFormData.purchase_date,
-					tax_ship_cost: taxShipPerBean, // Divided cost
-					notes: sharedFormData.notes,
-					last_updated: new Date().toISOString()
-				};
-
-				const response = await fetch('/api/beans', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify(cleanedBean)
-				});
-
-				if (response.ok) {
-					const newBean = await response.json();
-					createdBeans.push(newBean);
-				} else {
-					const data = await response.json();
-					alert(`Failed to create bean ${i + 1}: ${data.error}`);
-					return;
-				}
+			if (!ownerId) {
+				alert('Your signed-in owner context is unavailable. Reload before creating inventory.');
+				return;
 			}
 
-			// Call onSubmit with all created beans
-			onSubmit(createdBeans);
-			onClose();
+			const taxShipPerBean = sharedFormData.tax_ship_cost / batchBeans.length;
+			const lastUpdated = new Date().toISOString();
+			const queue = createCatalogCreateQueue(
+				ownerId,
+				batchBeans.map((beanData) => {
+					const cleanedBean = {
+						...Object.fromEntries(
+							Object.entries(beanData).map(([key, value]) => [
+								key,
+								value === '' || value === undefined ? null : value
+							])
+						),
+						purchase_date: sharedFormData.purchase_date,
+						tax_ship_cost: taxShipPerBean,
+						notes: sharedFormData.notes,
+						last_updated: lastUpdated
+					} as CoffeeFormData;
+					return {
+						idempotencyKey: crypto.randomUUID(),
+						payloadJson: JSON.stringify(cleanedBean)
+					};
+				})
+			);
+			if (!setPendingCatalogCreateQueue(queue)) {
+				alert('Unable to preserve retry details in this browser. No inventory was created.');
+				return;
+			}
+
+			const result = await submitCatalogCreateQueue(queue);
+			if (
+				result.outcome === 'completed' ||
+				(result.outcome === 'definitive_failure' && result.created.length > 0)
+			) {
+				onSubmit(result.created);
+				onClose();
+			}
 		} catch (error) {
 			console.error('Error creating beans:', error);
-			alert('Failed to create beans. Please try again.');
+			alert(
+				pendingCatalogCreateQueue
+					? 'The result is still uncertain. Retry this pending purchase before creating another.'
+					: 'Failed to create beans. Please try again.'
+			);
 		} finally {
 			isSubmitting = false;
 		}
@@ -562,6 +718,40 @@
 			Select the button below to check its status before starting a new purchase.
 		</div>
 	{/if}
+	{#if pendingCatalogCreateQueue}
+		<div
+			class="mb-6 rounded-md border border-warning bg-warning-subtle p-3 text-sm text-warning-strong"
+			role="status"
+		>
+			{#if pendingCatalogCreateExpired}
+				<p>
+					A catalog purchase has an uncertain result, but Parchment's safe retry window has expired.
+					Close this form and check your inventory, then choose the matching result below. Retrying
+					without checking could create a duplicate lot.
+				</p>
+				<div class="mt-3 flex flex-wrap gap-2">
+					<button
+						type="button"
+						class="rounded-md border border-warning px-3 py-1.5 font-medium"
+						onclick={() => renewExpiredCatalogCreateQueue(false)}
+					>
+						Purchase Found, Continue Remaining
+					</button>
+					<button
+						type="button"
+						class="rounded-md border border-warning px-3 py-1.5 font-medium"
+						onclick={() => renewExpiredCatalogCreateQueue(true)}
+					>
+						Purchase Missing, Retry as New
+					</button>
+				</div>
+			{:else}
+				A previous catalog purchase queue has an uncertain result. Editing is locked so every exact
+				payload and idempotency key can be resumed safely, even after closing or reloading this
+				form.
+			{/if}
+		</div>
+	{/if}
 
 	<form
 		onsubmit={(e) => {
@@ -580,7 +770,7 @@
 						bind:group={isManualEntry}
 						value={true}
 						onchange={resetFormData}
-						disabled={!!pendingManualBatchId}
+						disabled={pendingMutationLocked}
 						class="sr-only"
 					/>
 					<div
@@ -599,7 +789,7 @@
 						type="radio"
 						bind:group={isManualEntry}
 						value={false}
-						disabled={!!pendingManualBatchId}
+						disabled={pendingMutationLocked}
 						class="sr-only"
 					/>
 					<div
@@ -628,7 +818,7 @@
 						id="purchase_date"
 						type="date"
 						bind:value={sharedFormData.purchase_date}
-						disabled={!!pendingManualBatchId}
+						disabled={pendingMutationLocked}
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 						required
 					/>
@@ -645,7 +835,7 @@
 						min="0"
 						placeholder="0.00"
 						bind:value={sharedFormData.tax_ship_cost}
-						disabled={!!pendingManualBatchId}
+						disabled={pendingMutationLocked}
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 						required
 					/>
@@ -670,7 +860,7 @@
 						id="source"
 						bind:value={sourceFilter}
 						onchange={handleSourceChange}
-						disabled={!!pendingManualBatchId}
+						disabled={pendingMutationLocked}
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 					>
 						<option value="">All Sources</option>
@@ -690,7 +880,7 @@
 					type="button"
 					class="flex items-center gap-2 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 					onclick={addBeanToBatch}
-					disabled={!!pendingManualBatchId}
+					disabled={pendingMutationLocked}
 				>
 					<span class="text-lg">+</span>
 					<span>Add Bean</span>
@@ -721,7 +911,7 @@
 								type="button"
 								class="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-xs text-white hover:bg-danger-strong"
 								onclick={() => removeBeanFromBatch(index)}
-								disabled={!!pendingManualBatchId}
+								disabled={pendingMutationLocked}
 							>
 								✕
 							</button>
@@ -739,7 +929,7 @@
 										type="text"
 										bind:value={beanData.manual_name}
 										placeholder="Enter coffee name"
-										disabled={!!pendingManualBatchId}
+										disabled={pendingMutationLocked}
 										class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 										required
 									/>
@@ -753,7 +943,7 @@
 										id="catalog-bean-{index}"
 										class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 										required
-										disabled={!!pendingManualBatchId}
+										disabled={pendingMutationLocked}
 										value={beanData.catalog_id || ''}
 										onchange={(e) => handleBeanSelect(e, index)}
 									>
@@ -822,7 +1012,7 @@
 									min="0"
 									bind:value={beanData.purchased_qty_lbs}
 									placeholder="0"
-									disabled={!!pendingManualBatchId}
+									disabled={pendingMutationLocked}
 									class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 									required
 								/>
@@ -843,7 +1033,7 @@
 									min="0"
 									placeholder="0.00"
 									bind:value={beanData.bean_cost}
-									disabled={!!pendingManualBatchId || (!isManualEntry && !!tiers)}
+									disabled={pendingMutationLocked || (!isManualEntry && !!tiers)}
 									class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 									required
 								/>
@@ -872,7 +1062,7 @@
 						<select
 							id="field-selector"
 							class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
-							disabled={!!pendingManualBatchId}
+							disabled={pendingMutationLocked}
 							onchange={(e) => {
 								const target = e.target as HTMLSelectElement;
 								const field = target.value;
@@ -917,7 +1107,7 @@
 										id={`field-${fieldName}`}
 										bind:value={optionalFields[fieldName]}
 										rows="3"
-										disabled={!!pendingManualBatchId}
+										disabled={pendingMutationLocked}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									></textarea>
 								{:else if fieldName === 'cost_lb' || fieldName === 'score_value'}
@@ -926,7 +1116,7 @@
 										type="number"
 										step="0.01"
 										bind:value={optionalFields[fieldName]}
-										disabled={!!pendingManualBatchId}
+										disabled={pendingMutationLocked}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									/>
 								{:else if fieldName === 'arrival_date'}
@@ -934,7 +1124,7 @@
 										id={`field-${fieldName}`}
 										type="date"
 										bind:value={optionalFields[fieldName]}
-										disabled={!!pendingManualBatchId}
+										disabled={pendingMutationLocked}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									/>
 								{:else}
@@ -942,7 +1132,7 @@
 										id={`field-${fieldName}`}
 										type="text"
 										bind:value={optionalFields[fieldName]}
-										disabled={!!pendingManualBatchId}
+										disabled={pendingMutationLocked}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									/>
 								{/if}
@@ -950,7 +1140,7 @@
 							<button
 								type="button"
 								class="mt-6 rounded-md bg-danger px-2 py-1 text-xs text-white hover:bg-danger-strong"
-								disabled={!!pendingManualBatchId}
+								disabled={pendingMutationLocked}
 								onclick={() => {
 									selectedOptionalFields = selectedOptionalFields.filter(
 										(f: string) => f !== fieldName
@@ -971,7 +1161,7 @@
 					<textarea
 						id="notes"
 						bind:value={sharedFormData.notes}
-						disabled={!!pendingManualBatchId}
+						disabled={pendingMutationLocked}
 						rows="3"
 						placeholder="Add any notes about this purchase..."
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
@@ -995,19 +1185,23 @@
 				loading={isSubmitting}
 				loadingText={pendingManualBatchId
 					? 'Reconciling Batch...'
-					: batchBeans.length === 1
-						? 'Saving Bean...'
-						: `Saving ${batchBeans.length} Beans...`}
+					: pendingCatalogCreateQueue
+						? 'Retrying Pending Purchase...'
+						: batchBeans.length === 1
+							? 'Saving Bean...'
+							: `Saving ${batchBeans.length} Beans...`}
 				onclick={handleSubmit}
-				disabled={catalogLoading}
+				disabled={catalogLoading || pendingCatalogCreateExpired}
 			>
 				{pendingManualBatchId
 					? 'Reconcile Pending Batch'
-					: bean
-						? 'Update Bean'
-						: batchBeans.length === 1
-							? 'Add Bean'
-							: `Add ${batchBeans.length} Beans`}
+					: pendingCatalogCreateQueue
+						? 'Retry Pending Purchase'
+						: bean
+							? 'Update Bean'
+							: batchBeans.length === 1
+								? 'Add Bean'
+								: `Add ${batchBeans.length} Beans`}
 			</LoadingButton>
 		</div>
 	</form>

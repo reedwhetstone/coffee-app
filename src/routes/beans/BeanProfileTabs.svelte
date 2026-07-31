@@ -9,6 +9,7 @@
 	import RoastingTab from './tabs/RoastingTab.svelte';
 	import AnalyticsTab from './tabs/AnalyticsTab.svelte';
 	import { INVENTORY_DELETE_CONFIRMATION } from './deleteBean';
+	import { mergeInventoryMutationProjection } from './inventoryMutationProjection';
 
 	let {
 		selectedBean,
@@ -166,27 +167,36 @@
 
 		try {
 			processingUpdate = true;
-			const dataForAPI = {
-				...selectedBean, // Start with the original bean to preserve non-editable fields
-				...Object.fromEntries(
-					Object.entries(editedBean).filter(([key]) => editableFields.includes(key))
-				), // Only include editable fields from editedBean
-				purchase_date: prepareDateForAPI(editedBean.purchase_date ?? ''),
-				last_updated: new Date().toISOString()
-			};
+			const selectedRecord = selectedBean as unknown as Record<string, unknown>;
+			const editedRecord = editedBean as unknown as Record<string, unknown>;
+			const dataForAPI = Object.fromEntries(
+				editableFields
+					.filter((key) => editedRecord[key] !== selectedRecord[key])
+					.map((key) => [key, editedRecord[key]])
+			);
+			if ('purchase_date' in dataForAPI) {
+				dataForAPI.purchase_date = prepareDateForAPI(editedBean.purchase_date ?? '');
+			}
+
+			if (Object.keys(dataForAPI).length === 0) {
+				isEditing = false;
+				processingUpdate = false;
+				return;
+			}
 
 			const response = await fetch(`/api/beans?id=${selectedBean.id}`, {
 				method: 'PUT',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					...(selectedBean.last_updated ? { 'If-Match': selectedBean.last_updated } : {})
 				},
 				body: JSON.stringify(dataForAPI)
 			});
 
 			if (response.ok) {
-				const updatedBean = await response.json();
+				const updatedBean = (await response.json()) as InventoryWithCatalog;
 				isEditing = false;
-				onUpdate(updatedBean);
+				onUpdate(mergeInventoryMutationProjection(selectedBean, updatedBean));
 				processingUpdate = false;
 			} else {
 				const data = await response.json();
@@ -220,37 +230,22 @@
 		try {
 			processingUpdate = true;
 			const dataForAPI = {
-				...selectedBean,
 				cupping_notes: JSON.stringify(notes),
-				rank: rating,
-				last_updated: new Date().toISOString()
+				rank: rating
 			};
 
 			const response = await fetch(`/api/beans?id=${selectedBean.id}`, {
 				method: 'PUT',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					...(selectedBean.last_updated ? { 'If-Match': selectedBean.last_updated } : {})
 				},
 				body: JSON.stringify(dataForAPI)
 			});
 
 			if (response.ok) {
-				// Fetch full bean with catalog join to avoid losing AI notes in the UI
-				const refreshResponse = await fetch(`/api/beans?id=${selectedBean.id}`);
-				if (refreshResponse.ok) {
-					const result = await refreshResponse.json();
-					const fullUpdatedBean = result.data?.[0];
-					if (fullUpdatedBean) {
-						onUpdate(fullUpdatedBean);
-					} else {
-						// Fallback to the PUT response if GET-by-ID fails
-						const updatedBean = await response.json();
-						onUpdate(updatedBean);
-					}
-				} else {
-					const updatedBean = await response.json();
-					onUpdate(updatedBean);
-				}
+				const updatedBean = (await response.json()) as InventoryWithCatalog;
+				onUpdate(mergeInventoryMutationProjection(selectedBean, updatedBean));
 				processingUpdate = false;
 				return true;
 			} else {

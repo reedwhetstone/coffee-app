@@ -1,6 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CoffeeCatalog } from '$lib/types/component.types';
 import BeanForm from './BeanForm.svelte';
+import {
+	CATALOG_CREATE_RETRY_WINDOW_MS,
+	catalogCreateQueueStorageKey,
+	createCatalogCreateQueue,
+	writeCatalogCreateQueue
+} from './catalogCreateAttempt';
 
 const UUIDS = [
 	'00000000-0000-4000-8000-000000000001',
@@ -38,6 +45,381 @@ describe('BeanForm atomic manual inventory batches', () => {
 		vi.restoreAllMocks();
 		vi.stubGlobal('alert', vi.fn());
 		sessionStorage.clear();
+		localStorage.clear();
+	});
+
+	it('reuses a catalog idempotency key when a creation response is uncertain', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(UUIDS[0]);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response(503, { error: 'Response was uncertain' }))
+			.mockResolvedValueOnce(response(201, { id: 42 }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { container } = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: [
+				{
+					id: 7,
+					name: 'Catalog lot',
+					source: 'Test source',
+					stocked: true,
+					price_tiers: null,
+					price_per_lb: 5,
+					cost_lb: null
+				} as CoffeeCatalog
+			],
+			ownerId: 'user-a'
+		});
+
+		await fireEvent.click(screen.getByText('Select from Catalog'));
+		await fireEvent.change(screen.getByLabelText('Select Coffee Bean'), {
+			target: { value: '7' }
+		});
+		await fireEvent.input(screen.getByLabelText('Purchased Quantity (lbs)'), {
+			target: { value: '2' }
+		});
+
+		const form = container.querySelector('form')!;
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+		await fireEvent.input(screen.getByLabelText('Purchased Quantity (lbs)'), {
+			target: { value: '3' }
+		});
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toEqual({
+			'Content-Type': 'application/json',
+			'Idempotency-Key': UUIDS[0]
+		});
+		expect((fetchMock.mock.calls[1][1] as RequestInit).headers).toEqual(
+			(fetchMock.mock.calls[0][1] as RequestInit).headers
+		);
+		expect(requestPayload(fetchMock, 1)).toEqual(requestPayload(fetchMock, 0));
+		expect(requestPayload(fetchMock, 0)).not.toHaveProperty('catalog_create_idempotency_key');
+	});
+
+	it('retries the exact owner-scoped catalog attempt after cancel and remount', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(UUIDS[0]);
+		const committed = { id: 42, catalog_id: 7 };
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response(503, { error: 'Response was uncertain' }))
+			.mockResolvedValueOnce(response(200, committed));
+		vi.stubGlobal('fetch', fetchMock);
+		const catalogBeans = [
+			{
+				id: 7,
+				name: 'Catalog lot',
+				source: 'Test source',
+				stocked: true,
+				price_tiers: null,
+				price_per_lb: 5,
+				cost_lb: null
+			} as CoffeeCatalog
+		];
+		const firstClose = vi.fn();
+		const first = render(BeanForm, {
+			bean: null,
+			onClose: firstClose,
+			onSubmit: vi.fn(),
+			catalogBeans,
+			ownerId: 'user-a'
+		});
+
+		await fireEvent.click(screen.getByText('Select from Catalog'));
+		await fireEvent.change(screen.getByLabelText('Select Coffee Bean'), {
+			target: { value: '7' }
+		});
+		await fireEvent.input(screen.getByLabelText('Purchased Quantity (lbs)'), {
+			target: { value: '2' }
+		});
+		await fireEvent.submit(first.container.querySelector('form')!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+
+		const firstPayload = String((fetchMock.mock.calls[0][1] as RequestInit).body);
+		const stored = JSON.parse(localStorage.getItem(catalogCreateQueueStorageKey('user-a'))!) as {
+			items: Array<{ idempotencyKey: string; payloadJson: string }>;
+		};
+		expect(stored.items).toMatchObject([{ idempotencyKey: UUIDS[0], payloadJson: firstPayload }]);
+		expect(screen.getByRole('status')).toHaveTextContent('every exact payload and idempotency key');
+		expect(screen.getByLabelText('Purchased Quantity (lbs)')).toBeDisabled();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+		expect(firstClose).toHaveBeenCalledOnce();
+		first.unmount();
+
+		const onSubmit = vi.fn();
+		const reopened = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit,
+			catalogBeans,
+			ownerId: 'user-a'
+		});
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Retry Pending Purchase' })).toBeInTheDocument()
+		);
+		await fireEvent.submit(reopened.container.querySelector('form')!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		expect((fetchMock.mock.calls[1][1] as RequestInit).headers).toEqual(
+			(fetchMock.mock.calls[0][1] as RequestInit).headers
+		);
+		expect((fetchMock.mock.calls[1][1] as RequestInit).body).toBe(firstPayload);
+		expect(onSubmit).toHaveBeenCalledWith([committed]);
+		expect(localStorage.getItem(catalogCreateQueueStorageKey('user-a'))).toBeNull();
+	});
+
+	it('resumes every exact catalog row after the first row returns an uncertain result', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID')
+			.mockReturnValueOnce(UUIDS[0])
+			.mockReturnValueOnce(UUIDS[1]);
+		const firstCreated = { id: 42, catalog_id: 7 };
+		const secondCreated = { id: 43, catalog_id: 8 };
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response(503, { error: 'Response was uncertain' }))
+			.mockResolvedValueOnce(response(200, firstCreated))
+			.mockResolvedValueOnce(response(201, secondCreated));
+		vi.stubGlobal('fetch', fetchMock);
+		const catalogBeans = [
+			{
+				id: 7,
+				name: 'First catalog lot',
+				source: 'Test source',
+				stocked: true,
+				price_tiers: null,
+				price_per_lb: 5,
+				cost_lb: null
+			} as CoffeeCatalog,
+			{
+				id: 8,
+				name: 'Second catalog lot',
+				source: 'Test source',
+				stocked: true,
+				price_tiers: null,
+				price_per_lb: 6,
+				cost_lb: null
+			} as CoffeeCatalog
+		];
+		const first = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans,
+			ownerId: 'user-a'
+		});
+
+		await fireEvent.click(screen.getByText('Select from Catalog'));
+		await fireEvent.click(screen.getAllByRole('button', { name: /Add Bean/ })[0]);
+		await waitFor(() => expect(screen.getAllByLabelText('Select Coffee Bean')).toHaveLength(2));
+		const selects = screen.getAllByLabelText('Select Coffee Bean');
+		const quantities = screen.getAllByLabelText('Purchased Quantity (lbs)');
+		await fireEvent.change(selects[0], { target: { value: '7' } });
+		await fireEvent.change(selects[1], { target: { value: '8' } });
+		await fireEvent.input(quantities[0], { target: { value: '2' } });
+		await fireEvent.input(quantities[1], { target: { value: '3' } });
+		await fireEvent.submit(first.container.querySelector('form')!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+
+		const stored = JSON.parse(localStorage.getItem(catalogCreateQueueStorageKey('user-a'))!) as {
+			items: Array<{ idempotencyKey: string; payloadJson: string }>;
+		};
+		expect(stored.items).toHaveLength(2);
+		expect(stored.items.map((item) => item.idempotencyKey)).toEqual([UUIDS[0], UUIDS[1]]);
+		expect(stored.items[0].payloadJson).toBe(fetchMock.mock.calls[0][1].body);
+		expect(JSON.parse(stored.items[1].payloadJson)).toMatchObject({
+			catalog_id: 8,
+			purchased_qty_lbs: 3
+		});
+
+		first.unmount();
+		const onSubmit = vi.fn();
+		const reopened = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit,
+			catalogBeans,
+			ownerId: 'user-a'
+		});
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Retry Pending Purchase' })).toBeInTheDocument()
+		);
+		await fireEvent.submit(reopened.container.querySelector('form')!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+
+		expect(fetchMock.mock.calls[1][1].headers).toEqual({
+			'Content-Type': 'application/json',
+			'Idempotency-Key': UUIDS[0]
+		});
+		expect(fetchMock.mock.calls[1][1].body).toBe(stored.items[0].payloadJson);
+		expect(fetchMock.mock.calls[2][1].headers).toEqual({
+			'Content-Type': 'application/json',
+			'Idempotency-Key': UUIDS[1]
+		});
+		expect(fetchMock.mock.calls[2][1].body).toBe(stored.items[1].payloadJson);
+		await waitFor(() => expect(onSubmit).toHaveBeenCalledWith([firstCreated, secondCreated]));
+		expect(localStorage.getItem(catalogCreateQueueStorageKey('user-a'))).toBeNull();
+	});
+
+	it('blocks an expired catalog retry until the owner checks and renews it with a new key', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(UUIDS[1]);
+		const payloadJson = JSON.stringify({ catalog_id: 7, purchased_qty_lbs: 2 });
+		const queue = createCatalogCreateQueue(
+			'user-a',
+			[
+				{
+					idempotencyKey: UUIDS[0],
+					payloadJson
+				}
+			],
+			Date.now() - CATALOG_CREATE_RETRY_WINDOW_MS - 1
+		);
+		writeCatalogCreateQueue(localStorage, queue);
+		const fetchMock = vi.fn().mockResolvedValue(response(201, { id: 42, catalog_id: 7 }));
+		vi.stubGlobal('fetch', fetchMock);
+		const onSubmit = vi.fn();
+
+		const { container } = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit,
+			catalogBeans: [],
+			ownerId: 'user-a'
+		});
+		await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('safe retry window'));
+
+		await fireEvent.submit(container.querySelector('form')!);
+		expect(fetchMock).not.toHaveBeenCalled();
+		expect(globalThis.alert).toHaveBeenCalledWith(
+			expect.stringContaining('retry window has expired')
+		);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Purchase Missing, Retry as New' }));
+		expect(screen.queryByText(/safe retry window/)).not.toBeInTheDocument();
+		await fireEvent.submit(container.querySelector('form')!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+
+		expect(fetchMock.mock.calls[0][1]).toMatchObject({
+			headers: {
+				'Content-Type': 'application/json',
+				'Idempotency-Key': UUIDS[1]
+			},
+			body: payloadJson
+		});
+		await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+		expect(localStorage.getItem(catalogCreateQueueStorageKey('user-a'))).toBeNull();
+	});
+
+	it('drops a verified expired commit and renews only later unsent catalog rows', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(UUIDS[2]);
+		const laterPayload = JSON.stringify({ catalog_id: 8, purchased_qty_lbs: 3 });
+		const queue = createCatalogCreateQueue(
+			'user-a',
+			[
+				{
+					idempotencyKey: UUIDS[0],
+					payloadJson: JSON.stringify({ catalog_id: 7, purchased_qty_lbs: 2 })
+				},
+				{ idempotencyKey: UUIDS[1], payloadJson: laterPayload }
+			],
+			Date.now() - CATALOG_CREATE_RETRY_WINDOW_MS - 1
+		);
+		writeCatalogCreateQueue(localStorage, queue);
+		const fetchMock = vi.fn().mockResolvedValue(response(201, { id: 43, catalog_id: 8 }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { container } = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: [],
+			ownerId: 'user-a'
+		});
+		await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('safe retry window'));
+
+		await fireEvent.click(
+			screen.getByRole('button', { name: 'Purchase Found, Continue Remaining' })
+		);
+		const renewed = JSON.parse(localStorage.getItem(catalogCreateQueueStorageKey('user-a'))!) as {
+			completedCount: number;
+			items: Array<{ idempotencyKey: string; payloadJson: string }>;
+		};
+		expect(renewed).toMatchObject({
+			completedCount: 1,
+			items: [{ idempotencyKey: UUIDS[2], payloadJson: laterPayload }]
+		});
+		expect(fetchMock).not.toHaveBeenCalled();
+
+		await fireEvent.submit(container.querySelector('form')!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+		expect(fetchMock.mock.calls[0][1]).toMatchObject({
+			headers: {
+				'Content-Type': 'application/json',
+				'Idempotency-Key': UUIDS[2]
+			},
+			body: laterPayload
+		});
+	});
+
+	it('starts a new catalog attempt after a definitive rejection', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID')
+			.mockReturnValueOnce(UUIDS[0])
+			.mockReturnValueOnce(UUIDS[1]);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response(400, { error: 'Invalid quantity' }))
+			.mockResolvedValueOnce(response(201, { id: 42 }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { container } = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: [
+				{
+					id: 7,
+					name: 'Catalog lot',
+					source: 'Test source',
+					stocked: true,
+					price_tiers: null,
+					price_per_lb: 5,
+					cost_lb: null
+				} as CoffeeCatalog
+			],
+			ownerId: 'user-a'
+		});
+
+		await fireEvent.click(screen.getByText('Select from Catalog'));
+		await fireEvent.change(screen.getByLabelText('Select Coffee Bean'), {
+			target: { value: '7' }
+		});
+		await fireEvent.input(screen.getByLabelText('Purchased Quantity (lbs)'), {
+			target: { value: '2' }
+		});
+
+		const form = container.querySelector('form')!;
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+		await fireEvent.input(screen.getByLabelText('Purchased Quantity (lbs)'), {
+			target: { value: '3' }
+		});
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toEqual({
+			'Content-Type': 'application/json',
+			'Idempotency-Key': UUIDS[0]
+		});
+		expect((fetchMock.mock.calls[1][1] as RequestInit).headers).toEqual({
+			'Content-Type': 'application/json',
+			'Idempotency-Key': UUIDS[1]
+		});
+		expect(requestPayload(fetchMock, 1)).toMatchObject({ purchased_qty_lbs: 3 });
 	});
 
 	it('submits every manual row once with one batch UUID and a shared exact-cent total', async () => {

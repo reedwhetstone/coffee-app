@@ -4,6 +4,8 @@ import { collectOffsetPages } from '$lib/services/tools/pagination';
 import { unwrapParchment } from '$lib/services/tools/parchment';
 
 type InventoryResource = components['schemas']['InventoryResource'];
+type CatalogInventoryCreateRequest = components['schemas']['CatalogInventoryCreateRequest'];
+type InventoryUpdateRequest = components['schemas']['InventoryUpdateRequest'];
 type ManualInventoryBatchCreateRequest = components['schemas']['ManualInventoryBatchCreateRequest'];
 type RoastResource = components['schemas']['RoastListResource'];
 
@@ -26,6 +28,14 @@ type InventoryDeleteResult = {
 			id?: unknown;
 			deleted?: unknown;
 		};
+	};
+	error?: unknown;
+	response?: Response;
+};
+
+type InventoryMutationResult = {
+	data?: {
+		data?: InventoryResource;
 	};
 	error?: unknown;
 	response?: Response;
@@ -84,15 +94,28 @@ function projectManualBatch(
 	return result.items.map(({ resource }) => projectInventoryResource(resource));
 }
 
+function projectInventoryMutation(result: InventoryMutationResult): ParchmentInventoryProjection {
+	if (result.error || !result.data?.data) {
+		throwParchmentResultError(
+			result,
+			!result.error && (result.response?.ok === true || !result.response),
+			'Parchment inventory response did not include a resource payload'
+		);
+	}
+
+	return projectInventoryResource(result.data.data);
+}
+
 function throwParchmentResultError(
 	result: { error?: unknown; response?: Response },
-	protocolError = false
+	protocolError = false,
+	protocolMessage = 'Parchment inventory response did not include a batch payload'
 ): never {
 	if (protocolError) {
 		throw new ParchmentInventoryError(502, {
 			error: {
 				code: 'invalid_response',
-				message: 'Parchment inventory response did not include a batch payload'
+				message: protocolMessage
 			}
 		});
 	}
@@ -115,6 +138,23 @@ function roastProjection(roast: RoastResource) {
 		batch_name: roast.batch_name,
 		roast_date: roast.roast_date
 	};
+}
+
+async function fetchParchmentRoastProfiles(
+	client: ParchmentClient,
+	coffeeId?: number
+): Promise<RoastResource[]> {
+	return collectOffsetPages({
+		fetchPage: async (offset) =>
+			unwrapParchment(
+				await client.roasts.list({
+					limit: PAGE_LIMIT,
+					offset,
+					coffee_id: coffeeId
+				})
+			).data,
+		key: (row) => row.roast_id
+	});
 }
 
 /**
@@ -157,17 +197,7 @@ export async function fetchParchmentInventoryProjection(
 	const roastsByInventoryId = new Map<number, RoastResource[]>();
 	if (options.includeRoastProfiles && inventory.length > 0) {
 		const inventoryIds = new Set(inventory.map((row) => row.id));
-		const roasts = await collectOffsetPages({
-			fetchPage: async (offset) =>
-				unwrapParchment(
-					await client.roasts.list({
-						limit: PAGE_LIMIT,
-						offset,
-						coffee_id: options.id
-					})
-				).data,
-			key: (row) => row.roast_id
-		});
+		const roasts = await fetchParchmentRoastProfiles(client, options.id);
 
 		for (const roast of roasts) {
 			if (roast.coffee_id === null || !inventoryIds.has(roast.coffee_id)) continue;
@@ -232,6 +262,39 @@ export async function getParchmentManualInventoryBatch(
 		);
 	}
 	return projectManualBatch(result.data.data, batchId);
+}
+
+/** Create one owner-scoped catalog-backed inventory lot through Parchment. */
+export async function createParchmentCatalogInventoryItem(
+	client: ParchmentClient,
+	body: CatalogInventoryCreateRequest,
+	idempotencyKey?: string
+): Promise<ParchmentInventoryProjection> {
+	const result = (await client.inventory.create(
+		body,
+		idempotencyKey ? { idempotencyKey } : undefined
+	)) as InventoryMutationResult;
+
+	return projectInventoryMutation(result);
+}
+
+/**
+ * Update one owner-scoped inventory lot through Parchment's canonical mutation.
+ * Quantity changes and their derived stocked projection complete atomically.
+ */
+export async function updateParchmentInventoryItem(
+	client: ParchmentClient,
+	id: number,
+	body: InventoryUpdateRequest,
+	ifMatch?: string
+): Promise<ParchmentInventoryProjection> {
+	const result = (await client.inventory.update(
+		id,
+		body,
+		ifMatch ? { ifMatch } : undefined
+	)) as InventoryMutationResult;
+
+	return projectInventoryMutation(result);
 }
 
 /**

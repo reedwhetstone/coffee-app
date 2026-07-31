@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+	createParchmentCatalogInventoryItem,
 	createParchmentManualInventoryBatch,
 	deleteParchmentInventoryItem,
 	fetchParchmentInventoryProjection,
 	getParchmentManualInventoryBatch,
-	ParchmentInventoryError
+	ParchmentInventoryError,
+	updateParchmentInventoryItem
 } from './parchmentInventory';
 
 describe('fetchParchmentInventoryProjection', () => {
@@ -135,6 +137,174 @@ describe('fetchParchmentInventoryProjection', () => {
 			})
 		).toEqual([]);
 		expect(roastList).not.toHaveBeenCalled();
+	});
+
+	it('creates a catalog-backed inventory resource and preserves the beans projection', async () => {
+		const create = vi.fn().mockResolvedValue({
+			data: {
+				data: {
+					id: 7,
+					catalog_id: 101,
+					coffee_catalog: {
+						id: 101,
+						name: 'Catalog lot',
+						ai_tasting_notes: ['Peach']
+					}
+				}
+			}
+		});
+		const roastList = vi.fn();
+		const catalogList = vi.fn();
+
+		const result = await createParchmentCatalogInventoryItem(
+			{
+				inventory: { create },
+				roasts: { list: roastList },
+				catalog: { list: catalogList }
+			} as never,
+			{ catalogId: 101, qty: 5, rank: 3, cuppingNotes: { aroma: 8 } },
+			'catalog-create-1'
+		);
+
+		expect(create).toHaveBeenCalledWith(
+			{ catalogId: 101, qty: 5, rank: 3, cuppingNotes: { aroma: 8 } },
+			{ idempotencyKey: 'catalog-create-1' }
+		);
+		expect(roastList).not.toHaveBeenCalled();
+		expect(catalogList).not.toHaveBeenCalled();
+		expect(result).toEqual(
+			expect.objectContaining({
+				id: 7,
+				ai_tasting_notes: '["Peach"]',
+				coffee_catalog: expect.objectContaining({ ai_tasting_notes: '["Peach"]' }),
+				roast_profiles: []
+			})
+		);
+	});
+
+	it('updates inventory with an If-Match precondition and returns the canonical projection', async () => {
+		const update = vi.fn().mockResolvedValue({
+			data: {
+				data: {
+					id: 7,
+					catalog_id: 101,
+					purchased_qty_lbs: 6,
+					stocked: false,
+					coffee_catalog: null
+				}
+			}
+		});
+		const roastList = vi.fn();
+		const catalogList = vi.fn();
+
+		const result = await updateParchmentInventoryItem(
+			{
+				inventory: { update },
+				roasts: { list: roastList },
+				catalog: { list: catalogList }
+			} as never,
+			7,
+			{ qty: 6 },
+			'2026-07-31T17:00:00.000Z'
+		);
+
+		expect(update).toHaveBeenCalledWith(7, { qty: 6 }, { ifMatch: '2026-07-31T17:00:00.000Z' });
+		expect(roastList).not.toHaveBeenCalled();
+		expect(catalogList).not.toHaveBeenCalled();
+		expect(result).toEqual(
+			expect.objectContaining({
+				id: 7,
+				purchased_qty_lbs: 6,
+				stocked: false,
+				roast_profiles: []
+			})
+		);
+	});
+
+	it('returns the committed mutation without a fallible post-commit projection read', async () => {
+		const update = vi.fn().mockResolvedValue({
+			data: {
+				data: {
+					id: 7,
+					catalog_id: 101,
+					purchased_qty_lbs: 6,
+					last_updated: '2026-07-31T17:00:01.000Z',
+					coffee_catalog: null
+				}
+			}
+		});
+		const roastList = vi.fn().mockRejectedValue(new Error('roast service unavailable'));
+		const catalogList = vi.fn().mockRejectedValue(new Error('catalog service unavailable'));
+
+		await expect(
+			updateParchmentInventoryItem(
+				{
+					inventory: { update },
+					roasts: { list: roastList },
+					catalog: { list: catalogList }
+				} as never,
+				7,
+				{ qty: 6 },
+				'2026-07-31T17:00:00.000Z'
+			)
+		).resolves.toEqual(
+			expect.objectContaining({
+				id: 7,
+				purchased_qty_lbs: 6,
+				last_updated: '2026-07-31T17:00:01.000Z',
+				roast_profiles: []
+			})
+		);
+		expect(roastList).not.toHaveBeenCalled();
+		expect(catalogList).not.toHaveBeenCalled();
+	});
+
+	it('rejects malformed successful inventory mutation responses', async () => {
+		const promise = updateParchmentInventoryItem(
+			{
+				inventory: {
+					update: vi.fn().mockResolvedValue({
+						data: { data: undefined },
+						response: new Response(null, { status: 200 })
+					})
+				}
+			} as never,
+			7,
+			{ notes: 'new note' }
+		);
+
+		await expect(promise).rejects.toMatchObject({
+			name: 'ParchmentInventoryError',
+			status: 502,
+			body: {
+				error: {
+					code: 'invalid_response',
+					message: 'Parchment inventory response did not include a resource payload'
+				}
+			}
+		});
+	});
+
+	it('keeps compact mutation projection deterministic for every entitled caller', async () => {
+		const create = vi.fn().mockResolvedValue({
+			data: {
+				data: {
+					id: 7,
+					catalog_id: 101,
+					coffee_catalog: null
+				}
+			}
+		});
+		const roastList = vi.fn();
+
+		const result = await createParchmentCatalogInventoryItem(
+			{ inventory: { create }, roasts: { list: roastList } } as never,
+			{ catalogId: 101, qty: 5 },
+			undefined
+		);
+
+		expect(roastList).not.toHaveBeenCalled();
+		expect(result).toEqual(expect.objectContaining({ id: 7, roast_profiles: [] }));
 	});
 
 	it('accepts the canonical inventory delete response', async () => {
