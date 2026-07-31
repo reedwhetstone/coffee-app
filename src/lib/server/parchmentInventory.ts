@@ -140,6 +140,35 @@ function roastProjection(roast: RoastResource) {
 	};
 }
 
+async function fetchParchmentRoastProfiles(
+	client: ParchmentClient,
+	coffeeId?: number
+): Promise<RoastResource[]> {
+	return collectOffsetPages({
+		fetchPage: async (offset) =>
+			unwrapParchment(
+				await client.roasts.list({
+					limit: PAGE_LIMIT,
+					offset,
+					coffee_id: coffeeId
+				})
+			).data,
+		key: (row) => row.roast_id
+	});
+}
+
+async function projectInventoryMutationWithRoasts(
+	client: ParchmentClient,
+	result: InventoryMutationResult
+): Promise<ParchmentInventoryProjection> {
+	if (result.error || !result.data?.data) {
+		return projectInventoryMutation(result);
+	}
+
+	const roastProfiles = await fetchParchmentRoastProfiles(client, result.data.data.id);
+	return projectInventoryResource(result.data.data, roastProfiles.map(roastProjection));
+}
+
 /**
  * Build the legacy beans-page projection from owner-scoped Parchment resources.
  *
@@ -180,17 +209,7 @@ export async function fetchParchmentInventoryProjection(
 	const roastsByInventoryId = new Map<number, RoastResource[]>();
 	if (options.includeRoastProfiles && inventory.length > 0) {
 		const inventoryIds = new Set(inventory.map((row) => row.id));
-		const roasts = await collectOffsetPages({
-			fetchPage: async (offset) =>
-				unwrapParchment(
-					await client.roasts.list({
-						limit: PAGE_LIMIT,
-						offset,
-						coffee_id: options.id
-					})
-				).data,
-			key: (row) => row.roast_id
-		});
+		const roasts = await fetchParchmentRoastProfiles(client, options.id);
 
 		for (const roast of roasts) {
 			if (roast.coffee_id === null || !inventoryIds.has(roast.coffee_id)) continue;
@@ -268,7 +287,7 @@ export async function createParchmentCatalogInventoryItem(
 		idempotencyKey ? { idempotencyKey } : undefined
 	)) as InventoryMutationResult;
 
-	return projectInventoryMutation(result);
+	return projectInventoryMutationWithRoasts(client, result);
 }
 
 /**
@@ -287,7 +306,7 @@ export async function updateParchmentInventoryItem(
 		ifMatch ? { ifMatch } : undefined
 	)) as InventoryMutationResult;
 
-	return projectInventoryMutation(result);
+	return projectInventoryMutationWithRoasts(client, result);
 }
 
 /**

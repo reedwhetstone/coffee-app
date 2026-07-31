@@ -153,9 +153,10 @@ describe('fetchParchmentInventoryProjection', () => {
 				}
 			}
 		});
+		const roastList = vi.fn().mockResolvedValue({ data: { data: [] } });
 
 		const result = await createParchmentCatalogInventoryItem(
-			{ inventory: { create } } as never,
+			{ inventory: { create }, roasts: { list: roastList } } as never,
 			{ catalogId: 101, qty: 5, rank: 3, cuppingNotes: { aroma: 8 } },
 			'catalog-create-1'
 		);
@@ -164,6 +165,7 @@ describe('fetchParchmentInventoryProjection', () => {
 			{ catalogId: 101, qty: 5, rank: 3, cuppingNotes: { aroma: 8 } },
 			{ idempotencyKey: 'catalog-create-1' }
 		);
+		expect(roastList).toHaveBeenCalledWith({ limit: 200, offset: 0, coffee_id: 7 });
 		expect(result).toEqual(
 			expect.objectContaining({
 				id: 7,
@@ -186,17 +188,41 @@ describe('fetchParchmentInventoryProjection', () => {
 				}
 			}
 		});
+		const roastList = vi
+			.fn()
+			.mockResolvedValueOnce({
+				data: {
+					data: [
+						{
+							roast_id: 9,
+							coffee_id: 7,
+							oz_in: 16,
+							oz_out: 13,
+							weight_loss_percent: 18.755,
+							batch_name: 'Batch 9',
+							roast_date: '2026-07-20'
+						}
+					]
+				}
+			})
+			.mockResolvedValueOnce({ data: { data: [] } });
 
 		const result = await updateParchmentInventoryItem(
-			{ inventory: { update } } as never,
+			{ inventory: { update }, roasts: { list: roastList } } as never,
 			7,
 			{ qty: 6 },
 			'2026-07-31T17:00:00.000Z'
 		);
 
 		expect(update).toHaveBeenCalledWith(7, { qty: 6 }, { ifMatch: '2026-07-31T17:00:00.000Z' });
+		expect(roastList).toHaveBeenCalledWith({ limit: 200, offset: 0, coffee_id: 7 });
 		expect(result).toEqual(
-			expect.objectContaining({ id: 7, purchased_qty_lbs: 6, stocked: false, roast_profiles: [] })
+			expect.objectContaining({
+				id: 7,
+				purchased_qty_lbs: 6,
+				stocked: false,
+				roast_profiles: [expect.objectContaining({ roast_id: 9, weight_loss_percent: 18.76 })]
+			})
 		);
 	});
 
