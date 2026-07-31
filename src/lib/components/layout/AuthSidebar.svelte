@@ -43,6 +43,11 @@
 		onClose();
 		goto('/subscription');
 	}
+
+	function navigateToAccount() {
+		onClose();
+		goto('/account');
+	}
 </script>
 
 <!-- Authentication menu panel - full height -->
@@ -107,6 +112,14 @@
 					Sign in with Google
 				</button>
 			</div>
+		{/if}
+		{#if auth.user}
+			<button
+				onclick={navigateToAccount}
+				class="mb-3 w-full rounded-md border border-line px-4 py-2 text-left text-sm text-ink transition-all duration-200 hover:bg-surface-panel"
+			>
+				Account settings
+			</button>
 		{/if}
 		<button
 			onclick={navigateToSubscription}

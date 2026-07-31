@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	buildCheckoutAdmissionMetadata,
 	checkoutAdmissionContextFromMetadata,
+	checkoutAdmissionsReadyForAccountDeletion,
 	checkoutPurchaseFingerprint,
 	normalizeCheckoutStripePriceIds,
 	resolveCheckoutAdmissionRollout,
@@ -112,6 +113,21 @@ describe('resolveCheckoutAdmissionRollout', () => {
 			admissionsEnabled: true,
 			legacyDrainEnabled: true
 		});
+	});
+
+	it('only permits account deletion after the managed Checkout cutover is clean', () => {
+		expect(
+			checkoutAdmissionsReadyForAccountDeletion({
+				PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED: 'true'
+			})
+		).toBe(true);
+		expect(
+			checkoutAdmissionsReadyForAccountDeletion({
+				PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED: 'true',
+				PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED: 'true'
+			})
+		).toBe(false);
+		expect(checkoutAdmissionsReadyForAccountDeletion({})).toBe(false);
 	});
 });
 

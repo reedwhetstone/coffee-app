@@ -1198,6 +1198,28 @@ const docsPages: DocsPage[] = [
 				}
 			},
 			{
+				title: 'Account and authentication routes',
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Stability', 'Notes'],
+					rows: [
+						[
+							'/api/account-deletion',
+							'POST',
+							'Cookie session + recent Google reauthentication or retry capability',
+							'Internal product route',
+							'Same-origin browser BFF for the signed-in user’s idempotent account-deletion flow. It retains a retry capability while provider cleanup is pending, returns 202 for nonterminal operations, and deletes Supabase Auth only after Parchment reports completed.'
+						],
+						[
+							'/api/account-deletion/reauthenticate',
+							'POST',
+							'Cookie session',
+							'Internal product route',
+							'Sets a short-lived, user-bound OAuth challenge for the account-deletion flow. The /auth/callback handoff converts a matching challenge into a session-bound capability and returns the browser to /account.'
+						]
+					]
+				}
+			},
+			{
 				title: 'Roast and analysis routes',
 				table: {
 					headers: ['Route', 'Methods', 'Auth', 'Stability', 'Notes'],
@@ -1362,7 +1384,7 @@ const docsPages: DocsPage[] = [
 							'GET',
 							'OAuth code',
 							'Auth handoff route',
-							'Exchanges a Supabase auth code for a session, sanitizes next to an internal path, and redirects to the target or /auth/auth-code-error.'
+							'Exchanges a Supabase auth code for a session, sanitizes next to an internal path, converts a matching account-deletion reauthentication challenge into a session-bound capability, and redirects to the target or /auth/auth-code-error.'
 						],
 						[
 							'/auth/cli',
@@ -1736,8 +1758,8 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/stripe/create-customer',
 							'POST',
-							'Session',
-							"Create or reuse the caller's Stripe customer record and customer mapping"
+							'None',
+							'Retired compatibility endpoint; always returns 410. Stripe customer identities are created through fenced Checkout.'
 						],
 						[
 							'/api/stripe/cancel-subscription',

@@ -167,6 +167,10 @@ function makeLoadInput(session: Session | null, role: UserRole = 'viewer') {
 		},
 		url: new URL('https://purveyors.test/'),
 		request: new Request('https://purveyors.test/'),
+		cookies: {
+			get: vi.fn().mockReturnValue(undefined),
+			delete: vi.fn()
+		},
 		fetch: vi.fn()
 	} as unknown as Parameters<typeof load>[0];
 }
