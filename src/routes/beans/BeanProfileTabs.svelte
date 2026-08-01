@@ -9,6 +9,7 @@
 	import RoastingTab from './tabs/RoastingTab.svelte';
 	import AnalyticsTab from './tabs/AnalyticsTab.svelte';
 	import { INVENTORY_DELETE_CONFIRMATION } from './deleteBean';
+	import { mergeInventoryMutationProjection } from './inventoryMutationProjection';
 
 	let {
 		selectedBean,
@@ -31,6 +32,48 @@
 	let editedBean = $state<InventoryWithCatalog>({} as InventoryWithCatalog);
 	let processingUpdate = $state(false);
 	let lastSelectedBeanId = $state<number | null>(null);
+
+	function cloneBeanForEdit(bean: InventoryWithCatalog): InventoryWithCatalog {
+		const cloned = JSON.parse(JSON.stringify(bean)) as InventoryWithCatalog;
+		if (cloned.stocked === null || cloned.stocked === undefined) {
+			cloned.stocked = false;
+		}
+		return cloned;
+	}
+
+	function isSelectedInventory(value: unknown): value is InventoryWithCatalog {
+		return (
+			typeof value === 'object' &&
+			value !== null &&
+			'id' in value &&
+			(value as { id?: unknown }).id === selectedBean.id
+		);
+	}
+
+	async function refreshSelectedBeanAfterConflict(): Promise<void> {
+		try {
+			const response = await fetch(`/api/beans?id=${selectedBean.id}`);
+			if (!response.ok) throw new Error(`Refresh failed with status ${response.status}`);
+
+			const payload = (await response.json()) as { data?: unknown };
+			const refreshedBean = Array.isArray(payload.data)
+				? payload.data.find((value) => isSelectedInventory(value))
+				: null;
+			if (!refreshedBean) throw new Error('Refresh response did not include the inventory item');
+
+			editedBean = cloneBeanForEdit(refreshedBean);
+			lastSelectedBeanId = refreshedBean.id;
+			onUpdate(refreshedBean);
+			alert(
+				'This inventory item changed elsewhere. The latest values are loaded; review them and retry your changes.'
+			);
+		} catch (error) {
+			console.error('Error refreshing inventory after a concurrency conflict:', error);
+			alert(
+				'This inventory item changed elsewhere, but its latest values could not be loaded. Please reload and try again.'
+			);
+		}
+	}
 
 	// Parse AI tasting notes
 	let aiTastingNotes = $derived((): TastingNotes | null => {
@@ -150,14 +193,7 @@
 			lastSelectedBeanId = bean.id;
 
 			// Deep clone to avoid reference issues
-			const cloned = JSON.parse(JSON.stringify(bean));
-
-			// Ensure stocked has a boolean value (default to false if null/undefined)
-			if (cloned.stocked === null || cloned.stocked === undefined) {
-				cloned.stocked = false;
-			}
-
-			editedBean = cloned;
+			editedBean = cloneBeanForEdit(bean);
 		});
 	});
 
@@ -166,31 +202,44 @@
 
 		try {
 			processingUpdate = true;
-			const dataForAPI = {
-				...selectedBean, // Start with the original bean to preserve non-editable fields
-				...Object.fromEntries(
-					Object.entries(editedBean).filter(([key]) => editableFields.includes(key))
-				), // Only include editable fields from editedBean
-				purchase_date: prepareDateForAPI(editedBean.purchase_date ?? ''),
-				last_updated: new Date().toISOString()
-			};
+			const selectedRecord = selectedBean as unknown as Record<string, unknown>;
+			const editedRecord = editedBean as unknown as Record<string, unknown>;
+			const dataForAPI = Object.fromEntries(
+				editableFields
+					.filter((key) => editedRecord[key] !== selectedRecord[key])
+					.map((key) => [key, editedRecord[key]])
+			);
+			if ('purchase_date' in dataForAPI) {
+				dataForAPI.purchase_date = prepareDateForAPI(editedBean.purchase_date ?? '');
+			}
+
+			if (Object.keys(dataForAPI).length === 0) {
+				isEditing = false;
+				processingUpdate = false;
+				return;
+			}
 
 			const response = await fetch(`/api/beans?id=${selectedBean.id}`, {
 				method: 'PUT',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					...(selectedBean.last_updated ? { 'If-Match': selectedBean.last_updated } : {})
 				},
 				body: JSON.stringify(dataForAPI)
 			});
 
 			if (response.ok) {
-				const updatedBean = await response.json();
+				const updatedBean = (await response.json()) as InventoryWithCatalog;
 				isEditing = false;
-				onUpdate(updatedBean);
+				onUpdate(mergeInventoryMutationProjection(selectedBean, updatedBean));
 				processingUpdate = false;
 			} else {
-				const data = await response.json();
-				alert(`Failed to update bean: ${data.error}`);
+				const data = (await response.json()) as { error?: unknown; code?: unknown };
+				if (response.status === 409 && data.code === 'precondition_failed') {
+					await refreshSelectedBeanAfterConflict();
+				} else {
+					alert(`Failed to update bean: ${String(data.error ?? 'Unknown error')}`);
+				}
 				processingUpdate = false;
 			}
 		} catch (error) {
@@ -220,42 +269,31 @@
 		try {
 			processingUpdate = true;
 			const dataForAPI = {
-				...selectedBean,
 				cupping_notes: JSON.stringify(notes),
-				rank: rating,
-				last_updated: new Date().toISOString()
+				rank: rating
 			};
 
 			const response = await fetch(`/api/beans?id=${selectedBean.id}`, {
 				method: 'PUT',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					...(selectedBean.last_updated ? { 'If-Match': selectedBean.last_updated } : {})
 				},
 				body: JSON.stringify(dataForAPI)
 			});
 
 			if (response.ok) {
-				// Fetch full bean with catalog join to avoid losing AI notes in the UI
-				const refreshResponse = await fetch(`/api/beans?id=${selectedBean.id}`);
-				if (refreshResponse.ok) {
-					const result = await refreshResponse.json();
-					const fullUpdatedBean = result.data?.[0];
-					if (fullUpdatedBean) {
-						onUpdate(fullUpdatedBean);
-					} else {
-						// Fallback to the PUT response if GET-by-ID fails
-						const updatedBean = await response.json();
-						onUpdate(updatedBean);
-					}
-				} else {
-					const updatedBean = await response.json();
-					onUpdate(updatedBean);
-				}
+				const updatedBean = (await response.json()) as InventoryWithCatalog;
+				onUpdate(mergeInventoryMutationProjection(selectedBean, updatedBean));
 				processingUpdate = false;
 				return true;
 			} else {
-				const data = await response.json();
-				alert(`Failed to save cupping notes: ${data.error}`);
+				const data = (await response.json()) as { error?: unknown; code?: unknown };
+				if (response.status === 409 && data.code === 'precondition_failed') {
+					await refreshSelectedBeanAfterConflict();
+				} else {
+					alert(`Failed to save cupping notes: ${String(data.error ?? 'Unknown error')}`);
+				}
 				processingUpdate = false;
 				return false;
 			}

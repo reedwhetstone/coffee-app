@@ -112,8 +112,9 @@ replacement or retirement:
 - bean-identity candidate and review operations over shared identity tables
 - sourcing brief summaries against shared catalog rows
 - legacy catalog RAG reads and `match_coffee_chunks`
-- inventory, roast, sales, and tasting data helpers that still write Supabase
-  directly even though equivalent account-linked Parchment contracts now exist
+- catalog inventory creation, roast, sales, and tasting data helpers that still
+  write Supabase directly even though equivalent account-linked Parchment
+  contracts now exist
 
 The legacy shared-bean route still reads the share owner's scalar role. That is
 an intentional cross-principal exception until Parchment exposes a share-grant
@@ -130,8 +131,9 @@ coffee-app now consumes the Parchment-owned portfolio contract through the SDK.
 Authenticated tasting reads are also no longer migration debt. The chat tool and
 legacy compatibility route consume the Parchment tasting contract through the
 SDK, and the obsolete direct-Supabase tasting helper has been removed. Owner
-cupping-note and rating writes remain part of the inventory-mutation cutover so
-the web preserves its complete notes payload and overall rating.
+cupping-note and rating writes now travel through the Parchment inventory mutation
+contract through the SDK, so the web preserves its complete notes payload and
+overall rating without a direct Supabase update.
 
 Parchment Console API-usage pages also consume the session-only
 `ParchmentClient.apiUsage.get` contract. Owner traffic totals remain aggregate,

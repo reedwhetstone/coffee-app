@@ -2,7 +2,6 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { fetchParchmentRoasts } from '$lib/server/parchmentRoasts';
-import { updateStockedStatus } from '$lib/data/inventory.js';
 import { isCookieSessionPrincipal, principalHasRole } from '$lib/server/principal';
 import {
 	createRoasts,
@@ -45,21 +44,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const requestData = (await request.json()) as RoastCreateInput;
 		const { profiles, roastIds } = await createRoasts(supabase, user.id, requestData);
 
-		// Update stocked status for all affected coffees
+		// The Parchment-owned database trigger updates stocked state in the same
+		// transaction as every roast mutation.
 		const isBatch = 'batch_beans' in requestData && Array.isArray(requestData.batch_beans);
 		if (isBatch) {
-			const batchData = requestData as { batch_beans: { coffee_id: number }[] };
-			const coffeeIds = batchData.batch_beans.map((b) => b.coffee_id);
-			await Promise.all(coffeeIds.map((id) => updateStockedStatus(supabase, id, user.id)));
 			return json({ profiles, roast_ids: roastIds });
-		} else {
-			// Single / legacy array path — profiles already inserted
-			const singleData = requestData as { coffee_id?: number };
-			const profileArray = Array.isArray(requestData) ? requestData : [singleData];
-			const coffeeIds = profileArray.map((p) => (p as { coffee_id: number }).coffee_id);
-			await Promise.all(coffeeIds.map((id) => updateStockedStatus(supabase, id, user.id)));
-			return json(profiles);
 		}
+		return json(profiles);
 	} catch (error) {
 		console.error('Error creating roast profiles:', error);
 		return json(
@@ -82,14 +73,9 @@ export const DELETE: RequestHandler = async ({ url, locals }) => {
 
 		if (id) {
 			const parsedId = Number(id);
-			// deleteRoast verifies ownership and returns coffeeId in one query
-			const { coffeeId } = await deleteRoast(supabase, parsedId, user.id);
-			await updateStockedStatus(supabase, coffeeId, user.id);
+			await deleteRoast(supabase, parsedId, user.id);
 		} else if (batchName) {
-			const { coffeeIds } = await deleteBatch(supabase, batchName, user.id);
-			for (const coffee_id of coffeeIds) {
-				await updateStockedStatus(supabase, coffee_id, user.id);
-			}
+			await deleteBatch(supabase, batchName, user.id);
 		} else {
 			return json({ error: 'No ID or batch name provided' }, { status: 400 });
 		}
@@ -118,9 +104,7 @@ export const PUT: RequestHandler = async ({ request, url, locals }) => {
 		const parsedId = Number(id);
 		const body = (await request.json()) as RoastUpdateInput;
 
-		// updateRoast verifies ownership and returns coffeeId in one query
-		const { profile, coffeeId } = await updateRoast(supabase, parsedId, user.id, body);
-		await updateStockedStatus(supabase, coffeeId, user.id);
+		const { profile } = await updateRoast(supabase, parsedId, user.id, body);
 		return json(profile);
 	} catch (error) {
 		console.error('Error updating roast profile:', error);

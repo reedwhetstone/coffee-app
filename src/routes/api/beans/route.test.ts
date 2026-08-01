@@ -24,8 +24,7 @@ const dataMocks = vi.hoisted(() => ({
 	stripRoastProfileData: vi.fn((rows: Array<Record<string, unknown>>) =>
 		rows.map((row) => ({ ...row, roast_profiles: [] }))
 	),
-	addToInventory: vi.fn(),
-	updateInventory: vi.fn()
+	addToInventory: vi.fn()
 }));
 
 const parchmentMocks = vi.hoisted(() => {
@@ -35,6 +34,7 @@ const parchmentMocks = vi.hoisted(() => {
 		ParchmentConfigError: MockParchmentConfigError,
 		createParchmentServerClient: vi.fn(),
 		fetchParchmentInventoryProjection: vi.fn(),
+		inventoryUpdate: vi.fn(),
 		inventoryDelete: vi.fn(),
 		createManualBatch: vi.fn(),
 		getManualBatch: vi.fn()
@@ -54,8 +54,7 @@ vi.mock('$lib/server/greenCoffeeUtils.js', () => ({
 }));
 
 vi.mock('$lib/data/inventory.js', () => ({
-	addToInventory: dataMocks.addToInventory,
-	updateInventory: dataMocks.updateInventory
+	addToInventory: dataMocks.addToInventory
 }));
 
 vi.mock('$lib/server/parchmentClient', () => ({
@@ -116,13 +115,32 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		});
 		authMocks.getUserRoles.mockResolvedValue(['viewer']);
 		dataMocks.addToInventory.mockResolvedValue({ id: 1 });
-		dataMocks.updateInventory.mockResolvedValue({ id: 1 });
+		parchmentMocks.inventoryUpdate.mockResolvedValue({
+			data: {
+				data: {
+					id: 1,
+					rank: null,
+					notes: 'Updated note',
+					cupping_notes: null,
+					purchase_date: '2026-07-31',
+					purchased_qty_lbs: 6,
+					bean_cost: 40,
+					tax_ship_cost: 2,
+					last_updated: '2026-07-31T18:00:00.000Z',
+					user: 'ppi-user',
+					catalog_id: 7,
+					stocked: true,
+					coffee_catalog: null
+				}
+			}
+		});
 		parchmentMocks.inventoryDelete.mockResolvedValue({
 			data: { data: { id: 1, deleted: true } }
 		});
 		parchmentMocks.createParchmentServerClient.mockResolvedValue({
 			kind: 'parchment-client',
 			inventory: {
+				update: parchmentMocks.inventoryUpdate,
 				delete: parchmentMocks.inventoryDelete,
 				createManualBatch: parchmentMocks.createManualBatch,
 				getManualBatch: parchmentMocks.getManualBatch
@@ -313,7 +331,7 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		expect(put.status).toBe(403);
 		expect(del.status).toBe(403);
 		expect(dataMocks.addToInventory).not.toHaveBeenCalled();
-		expect(dataMocks.updateInventory).not.toHaveBeenCalled();
+		expect(parchmentMocks.inventoryUpdate).not.toHaveBeenCalled();
 		expect(parchmentMocks.inventoryDelete).not.toHaveBeenCalled();
 	});
 
@@ -575,6 +593,121 @@ describe('/api/beans Portfolio entitlement gating', () => {
 			'ppi-user',
 			expect.objectContaining({ catalog_id: 7, purchased_qty_lbs: 5 })
 		);
+	});
+
+	it('updates inventory through the canonical SDK mutation with optimistic concurrency', async () => {
+		const event = makeEvent('/api/beans?id=1', {
+			method: 'PUT',
+			headers: {
+				'Content-Type': 'application/json',
+				'If-Match': '2026-07-31T17:00:00.000Z'
+			},
+			body: JSON.stringify({
+				id: 1,
+				catalog_id: 7,
+				user: 'ignored-owner',
+				last_updated: 'ignored-client-timestamp',
+				purchased_qty_lbs: 6,
+				purchase_date: '2026-07-30',
+				bean_cost: null,
+				tax_ship_cost: 3,
+				notes: null,
+				stocked: true,
+				rank: null,
+				cupping_notes: ['cocoa']
+			})
+		});
+
+		const response = await PUT(event as never);
+
+		expect(response.status).toBe(200);
+		expect(parchmentMocks.createParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session'
+		});
+		expect(parchmentMocks.inventoryUpdate).toHaveBeenCalledWith(
+			1,
+			{
+				qty: 6,
+				purchaseDate: '2026-07-30',
+				cost: null,
+				taxShip: 3,
+				notes: null,
+				stocked: true,
+				rank: null,
+				cuppingNotes: ['cocoa']
+			},
+			{ ifMatch: '2026-07-31T17:00:00.000Z' }
+		);
+		expect(event.locals.supabase.from).not.toHaveBeenCalled();
+		expect(await response.json()).toEqual(
+			expect.objectContaining({
+				id: 1,
+				purchased_qty_lbs: 6,
+				last_updated: '2026-07-31T18:00:00.000Z',
+				roast_profiles: []
+			})
+		);
+	});
+
+	it('preserves optimistic-concurrency conflicts from Parchment', async () => {
+		parchmentMocks.inventoryUpdate.mockResolvedValue({
+			error: {
+				error: {
+					code: 'precondition_failed',
+					message: 'Inventory item changed before this update'
+				}
+			},
+			response: new Response(null, { status: 409 })
+		});
+
+		const response = await PUT(
+			makeEvent('/api/beans?id=1', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ notes: 'new note' })
+			}) as never
+		);
+
+		expect(response.status).toBe(409);
+		expect(await response.json()).toEqual({
+			error: 'Inventory item changed before this update',
+			code: 'precondition_failed'
+		});
+	});
+
+	it.each([
+		['missing', '/api/beans'],
+		['non-numeric', '/api/beans?id=abc'],
+		['zero', '/api/beans?id=0'],
+		['outside PostgreSQL int4', '/api/beans?id=2147483648']
+	])('rejects a %s update inventory ID before constructing a client', async (_case, path) => {
+		const response = await PUT(
+			makeEvent(path, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ notes: 'new note' })
+			}) as never
+		);
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({ error: 'Invalid or missing inventory ID' });
+		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
+		expect(parchmentMocks.inventoryUpdate).not.toHaveBeenCalled();
+	});
+
+	it('rejects a non-object update before constructing a client', async () => {
+		const response = await PUT(
+			makeEvent('/api/beans?id=1', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify([])
+			}) as never
+		);
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({ error: 'Invalid inventory update' });
+		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
+		expect(parchmentMocks.inventoryUpdate).not.toHaveBeenCalled();
 	});
 
 	it('deletes through a session-mode Parchment client and preserves the legacy success envelope', async () => {
