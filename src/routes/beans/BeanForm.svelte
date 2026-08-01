@@ -144,12 +144,17 @@
 		const storageKey = catalogCreateQueueStorageKey(ownerId);
 		const handleStorage = (event: StorageEvent) => {
 			if (event.key !== storageKey) return;
+			const hadHydratedQueue = pendingCatalogCreateQueue !== null;
 			const queue = readCatalogCreateQueue(localStorage, ownerId);
 			pendingCatalogCreateQueue = queue;
 			catalogQueueStorageConflict = true;
 			if (queue) {
 				isManualEntry = false;
 				hydrateCatalogQueue(queue);
+			} else if (hadHydratedQueue) {
+				// Another tab completed the queue. Do not leave its payload in this
+				// form, where a fresh submit would create a duplicate purchase.
+				resetFormData();
 			}
 		};
 

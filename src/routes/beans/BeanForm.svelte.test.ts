@@ -194,6 +194,67 @@ describe('BeanForm atomic manual inventory batches', () => {
 		expect(readCatalogCreateQueue(localStorage, 'user-a')?.items[0].idempotencyKey).toBe(UUIDS[0]);
 	});
 
+	it('resets a hydrated catalog draft when another tab clears the queue', async () => {
+		const queue = createCatalogCreateQueue('user-a', [
+			{
+				idempotencyKey: UUIDS[0],
+				payloadJson: JSON.stringify({
+					catalog_id: 7,
+					purchased_qty_lbs: 2,
+					purchase_date: '2026-07-31',
+					tax_ship_cost: 4.25,
+					notes: 'hydrated from another tab'
+				})
+			}
+		]);
+		writeCatalogCreateQueue(localStorage, queue);
+		const catalogBeans = [
+			{
+				id: 7,
+				name: 'Catalog lot',
+				source: 'Test source',
+				stocked: true,
+				price_tiers: null,
+				price_per_lb: 5,
+				cost_lb: null
+			} as CoffeeCatalog
+		];
+
+		const form = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans,
+			ownerId: 'user-a'
+		});
+
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Retry Pending Purchase' })).toBeInTheDocument()
+		);
+		expect(screen.getByLabelText('Purchased Quantity (lbs)')).toHaveValue(2);
+		expect(screen.getByLabelText('Purchase Date')).toHaveValue('2026-07-31');
+
+		localStorage.removeItem(catalogCreateQueueStorageKey('user-a'));
+		window.dispatchEvent(
+			new StorageEvent('storage', {
+				key: catalogCreateQueueStorageKey('user-a'),
+				oldValue: JSON.stringify(queue),
+				newValue: null,
+				storageArea: localStorage
+			})
+		);
+
+		await waitFor(() =>
+			expect(
+				screen.queryByRole('button', { name: 'Retry Pending Purchase' })
+			).not.toBeInTheDocument()
+		);
+		expect(screen.getByLabelText('Purchased Quantity (lbs)')).toHaveValue(0);
+		expect(screen.getByLabelText('Purchase Date')).toHaveValue('');
+		expect(screen.getByLabelText('Select Coffee Bean')).toHaveValue('');
+		form.unmount();
+	});
+
 	it('retries the exact owner-scoped catalog attempt after cancel and remount', async () => {
 		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(UUIDS[0]);
 		const committed = { id: 42, catalog_id: 7 };
