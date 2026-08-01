@@ -15,11 +15,15 @@
 	} from '$lib/types/component.types';
 	import type { components } from '@purveyors/sdk';
 	import {
+		allocateCatalogShippingCents,
 		advanceCatalogCreateQueue,
+		catalogCreateQueueStorageKey,
 		clearCatalogCreateQueue,
 		createCatalogCreateQueue,
 		isCatalogCreateQueueExpired,
+		markCatalogCreateQueueRejected,
 		readCatalogCreateQueue,
+		replaceRejectedCatalogCreateItem,
 		writeCatalogCreateQueue,
 		type PendingCatalogCreateQueue
 	} from './catalogCreateAttempt';
@@ -70,6 +74,7 @@
 	let isUpdating = $state(false);
 	let isSubmitting = $state(false);
 	let catalogLoading = $state(false); // Keep for form submission loading state
+	let catalogQueueStorageConflict = $state(false);
 
 	// Optional catalog fields for manual entry
 	let optionalFields = $state<{ [key: string]: string | number | null }>({
@@ -114,7 +119,12 @@
 			? isCatalogCreateQueueExpired(pendingCatalogCreateQueue, catalogCreateClock)
 			: false
 	);
-	let pendingMutationLocked = $derived(Boolean(pendingManualBatchId || pendingCatalogCreateQueue));
+	let pendingCatalogCreateRejected = $derived(
+		pendingCatalogCreateQueue?.items[0]?.status === 'rejected'
+	);
+	let pendingMutationLocked = $derived(
+		Boolean(pendingManualBatchId || (pendingCatalogCreateQueue && !pendingCatalogCreateRejected))
+	);
 
 	$effect(() => {
 		const currentOwnerId = ownerId;
@@ -125,7 +135,26 @@
 			browser && currentOwnerId ? readCatalogCreateQueue(localStorage, currentOwnerId) : null;
 		if (pendingCatalogCreateQueue && !pendingManualBatchId) {
 			isManualEntry = false;
+			hydrateCatalogQueue(pendingCatalogCreateQueue);
 		}
+	});
+
+	$effect(() => {
+		if (!browser || !ownerId) return;
+		const storageKey = catalogCreateQueueStorageKey(ownerId);
+		const handleStorage = (event: StorageEvent) => {
+			if (event.key !== storageKey) return;
+			const queue = readCatalogCreateQueue(localStorage, ownerId);
+			pendingCatalogCreateQueue = queue;
+			catalogQueueStorageConflict = true;
+			if (queue) {
+				isManualEntry = false;
+				hydrateCatalogQueue(queue);
+			}
+		};
+
+		window.addEventListener('storage', handleStorage);
+		return () => window.removeEventListener('storage', handleStorage);
 	});
 
 	$effect(() => {
@@ -153,46 +182,72 @@
 
 	function setPendingCatalogCreateQueue(
 		queue: PendingCatalogCreateQueue | null,
-		clearOwnerId = pendingCatalogCreateQueue?.ownerId ?? ownerId
+		expectedQueueId = pendingCatalogCreateQueue?.queueId ?? null
 	): boolean {
 		if (!browser) return false;
 		if (queue) {
-			if (!writeCatalogCreateQueue(localStorage, queue)) return false;
+			if (!writeCatalogCreateQueue(localStorage, queue, expectedQueueId)) return false;
 			pendingCatalogCreateQueue = queue;
+			catalogQueueStorageConflict = false;
+			if (queue.items[0]?.status === 'rejected') hydrateCatalogQueue(queue);
 			return true;
 		}
 
-		if (!clearOwnerId) return false;
-		if (!clearCatalogCreateQueue(localStorage, clearOwnerId)) return false;
+		const clearOwnerId = pendingCatalogCreateQueue?.ownerId ?? ownerId;
+		if (
+			!clearOwnerId ||
+			!clearCatalogCreateQueue(localStorage, clearOwnerId, expectedQueueId ?? undefined)
+		) {
+			return false;
+		}
 		if (pendingCatalogCreateQueue?.ownerId === clearOwnerId) {
 			pendingCatalogCreateQueue = null;
 		}
 		return true;
 	}
 
-	function renewExpiredCatalogCreateQueue(includeCurrent: boolean) {
-		if (!pendingCatalogCreateQueue || !pendingCatalogCreateExpired) return;
-		const expiredQueue = pendingCatalogCreateQueue;
-		const itemsToRenew = includeCurrent ? expiredQueue.items : expiredQueue.items.slice(1);
-		if (itemsToRenew.length === 0) {
-			if (!setPendingCatalogCreateQueue(null)) {
-				alert('Unable to clear the checked purchase from this browser. Please try again.');
-				return;
-			}
-			onSubmit([]);
-			onClose();
-			return;
-		}
+	async function renewExpiredCatalogCreateQueue(includeCurrent: boolean) {
+		const queueAtStart = pendingCatalogCreateQueue;
+		if (!queueAtStart || !pendingCatalogCreateExpired) return;
 
-		const renewedQueue = createCatalogCreateQueue(
-			expiredQueue.ownerId,
-			itemsToRenew.map((item) => ({
-				idempotencyKey: crypto.randomUUID(),
-				payloadJson: item.payloadJson
-			}))
-		);
-		renewedQueue.completedCount = expiredQueue.completedCount + (includeCurrent ? 0 : 1);
-		if (!setPendingCatalogCreateQueue(renewedQueue)) {
+		try {
+			await withCatalogQueueLock(queueAtStart.ownerId, async () => {
+				const expiredQueue = readCatalogCreateQueue(localStorage, queueAtStart.ownerId);
+				if (
+					!expiredQueue ||
+					expiredQueue.queueId !== queueAtStart.queueId ||
+					!isCatalogCreateQueueExpired(expiredQueue)
+				) {
+					pendingCatalogCreateQueue = expiredQueue;
+					if (expiredQueue) hydrateCatalogQueue(expiredQueue);
+					catalogQueueStorageConflict = true;
+					return;
+				}
+
+				const itemsToRenew = includeCurrent ? expiredQueue.items : expiredQueue.items.slice(1);
+				if (itemsToRenew.length === 0) {
+					if (!setPendingCatalogCreateQueue(null, expiredQueue.queueId)) {
+						throw new Error('Unable to clear the checked purchase from this browser');
+					}
+					onSubmit([]);
+					onClose();
+					return;
+				}
+
+				const renewedQueue = createCatalogCreateQueue(
+					expiredQueue.ownerId,
+					itemsToRenew.map((item) => ({
+						idempotencyKey: crypto.randomUUID(),
+						payloadJson: item.payloadJson
+					}))
+				);
+				renewedQueue.completedCount = expiredQueue.completedCount + (includeCurrent ? 0 : 1);
+				if (!setPendingCatalogCreateQueue(renewedQueue, expiredQueue.queueId)) {
+					throw new Error('Unable to preserve the renewed purchase queue in this browser');
+				}
+			});
+		} catch (error) {
+			console.error('Error renewing expired catalog inventory creation:', error);
 			alert('Unable to preserve the renewed purchase queue in this browser. Please try again.');
 		}
 	}
@@ -217,9 +272,65 @@
 	// Array to store multiple beans in the batch
 	let batchBeans = $state(initBatchBeans());
 
-	let taxShipPerBean = $derived(
-		batchBeans.length > 0 ? sharedFormData.tax_ship_cost / batchBeans.length : 0
+	let taxShipAllocations = $derived(
+		allocateCatalogShippingCents(sharedFormData.tax_ship_cost, batchBeans.length)
 	);
+
+	function hydrateCatalogQueue(queue: PendingCatalogCreateQueue) {
+		const visibleItems =
+			queue.items[0]?.status === 'rejected' ? queue.items.slice(0, 1) : queue.items;
+		const payloads: Record<string, unknown>[] = visibleItems.flatMap((item) => {
+			try {
+				const payload = JSON.parse(item.payloadJson) as Record<string, unknown>;
+				return [
+					{
+						...payload,
+						manual_name: typeof payload.manual_name === 'string' ? payload.manual_name : '',
+						purchased_qty_lbs:
+							typeof payload.purchased_qty_lbs === 'number'
+								? payload.purchased_qty_lbs
+								: Number(payload.purchased_qty_lbs ?? 0),
+						bean_cost:
+							typeof payload.bean_cost === 'number'
+								? payload.bean_cost
+								: Number(payload.bean_cost ?? 0),
+						catalog_id: payload.catalog_id ?? null
+					}
+				];
+			} catch {
+				return [];
+			}
+		});
+
+		if (payloads.length === 0) return;
+		batchBeans = payloads as typeof batchBeans;
+		const firstPayload = payloads[0] as Record<string, unknown>;
+		sharedFormData = {
+			purchase_date:
+				typeof firstPayload.purchase_date === 'string' ? firstPayload.purchase_date : '',
+			tax_ship_cost: payloads.reduce(
+				(total, payload) =>
+					total +
+					(typeof payload.tax_ship_cost === 'number'
+						? payload.tax_ship_cost
+						: Number(payload.tax_ship_cost ?? 0)),
+				0
+			),
+			notes: typeof firstPayload.notes === 'string' ? firstPayload.notes : ''
+		};
+	}
+
+	async function withCatalogQueueLock<T>(ownerId: string, callback: () => Promise<T>): Promise<T> {
+		if (!browser || !('locks' in navigator) || !navigator.locks) {
+			throw new Error('This browser cannot safely coordinate catalog purchases across tabs');
+		}
+
+		return navigator.locks.request(
+			`purveyors:catalog-create:${ownerId}`,
+			{ mode: 'exclusive' },
+			callback
+		);
+	}
 
 	function initBatchBeans() {
 		if (bean) {
@@ -456,12 +567,37 @@
 		await finishManualBatch(response);
 	}
 
-	type CatalogQueueOutcome = 'completed' | 'uncertain' | 'definitive_failure' | 'expired';
+	type CatalogQueueOutcome =
+		| 'completed'
+		| 'uncertain'
+		| 'definitive_failure'
+		| 'expired'
+		| 'conflict';
 
 	type CatalogQueueResult = {
 		created: CoffeeFormData[];
 		outcome: CatalogQueueOutcome;
 	};
+
+	function catalogPayload(
+		beanData: (typeof batchBeans)[number],
+		taxShipCost: number,
+		purchaseDate = sharedFormData.purchase_date,
+		notes = sharedFormData.notes
+	): CoffeeFormData {
+		return {
+			...Object.fromEntries(
+				Object.entries(beanData).map(([key, value]) => [
+					key,
+					value === '' || value === undefined ? null : value
+				])
+			),
+			purchase_date: purchaseDate,
+			tax_ship_cost: taxShipCost,
+			notes,
+			last_updated: new Date().toISOString()
+		} as CoffeeFormData;
+	}
 
 	async function submitCatalogCreateQueue(
 		initialQueue: PendingCatalogCreateQueue
@@ -470,6 +606,9 @@
 		const created: CoffeeFormData[] = [];
 
 		while (queue.items.length > 0) {
+			if (queue.items[0].status === 'rejected') {
+				return { created, outcome: 'definitive_failure' };
+			}
 			if (isCatalogCreateQueueExpired(queue)) {
 				alert(
 					'This retry window has expired. Check your inventory for the purchase before renewing the pending queue.'
@@ -491,12 +630,12 @@
 				created.push((await response.json()) as CoffeeFormData);
 				const nextQueue = advanceCatalogCreateQueue(queue);
 				if (nextQueue.items.length === 0) {
-					if (!setPendingCatalogCreateQueue(null, queue.ownerId)) {
+					if (!setPendingCatalogCreateQueue(null, queue.queueId)) {
 						throw new Error('Unable to clear completed catalog queue');
 					}
 					return { created, outcome: 'completed' };
 				}
-				if (!setPendingCatalogCreateQueue(nextQueue)) {
+				if (!setPendingCatalogCreateQueue(nextQueue, queue.queueId)) {
 					throw new Error('Unable to preserve catalog queue progress');
 				}
 				queue = nextQueue;
@@ -505,13 +644,12 @@
 
 			const data = (await response.json()) as { error?: unknown; code?: unknown };
 			if (isDefinitiveMutationFailure(response, data)) {
-				const nextQueue = advanceCatalogCreateQueue(queue);
-				if (nextQueue.items.length === 0) {
-					if (!setPendingCatalogCreateQueue(null, queue.ownerId)) {
-						throw new Error('Unable to clear rejected catalog queue');
-					}
-				} else if (!setPendingCatalogCreateQueue(nextQueue)) {
-					throw new Error('Unable to preserve unattempted catalog queue rows');
+				const rejectedQueue = markCatalogCreateQueueRejected(
+					queue,
+					String(data.error ?? 'Unknown error')
+				);
+				if (!setPendingCatalogCreateQueue(rejectedQueue, queue.queueId)) {
+					throw new Error('Unable to preserve rejected catalog queue row');
 				}
 				alert(`Failed to create bean: ${String(data.error ?? 'Unknown error')}`);
 				return { created, outcome: 'definitive_failure' };
@@ -522,6 +660,49 @@
 		}
 
 		return { created, outcome: 'completed' };
+	}
+
+	function renewRejectedCatalogCreateQueue(
+		queue: PendingCatalogCreateQueue
+	): PendingCatalogCreateQueue | null {
+		if (queue.items[0]?.status !== 'rejected' || !batchBeans[0]) return null;
+
+		return replaceRejectedCatalogCreateItem(queue, {
+			idempotencyKey: crypto.randomUUID(),
+			payloadJson: JSON.stringify(
+				catalogPayload(
+					batchBeans[0],
+					sharedFormData.tax_ship_cost,
+					sharedFormData.purchase_date,
+					sharedFormData.notes
+				)
+			)
+		});
+	}
+
+	function validateCatalogRow(beanData: (typeof batchBeans)[number], beanIndex: number): boolean {
+		if (!beanData.catalog_id) {
+			alert(`Please select a coffee bean for item ${beanIndex + 1}`);
+			return false;
+		}
+
+		if (!beanData.purchased_qty_lbs || beanData.purchased_qty_lbs <= 0) {
+			alert(`Please enter a purchased quantity > 0 for bean ${beanIndex + 1}`);
+			return false;
+		}
+
+		const catalogBean = filteredCatalogBeans.find(
+			(candidate: CoffeeCatalog) => candidate.id === beanData.catalog_id
+		);
+		const tiers = catalogBean ? parsePriceTiers(catalogBean.price_tiers) : null;
+		if (tiers && tiers.length > 0 && beanData.purchased_qty_lbs < tiers[0].min_lbs) {
+			alert(
+				`Minimum order for this coffee is ${tiers[0].min_lbs} lb. Please increase quantity for bean ${beanIndex + 1}.`
+			);
+			return false;
+		}
+
+		return true;
 	}
 
 	async function handleSubmit() {
@@ -541,17 +722,46 @@
 		}
 
 		if (pendingCatalogCreateQueue) {
+			if (pendingCatalogCreateRejected) {
+				if (!sharedFormData.purchase_date) {
+					alert('Please select a purchase date');
+					return;
+				}
+				if (!batchBeans[0] || !validateCatalogRow(batchBeans[0], 0)) return;
+			}
+
 			try {
 				isSubmitting = true;
-				const queue = pendingCatalogCreateQueue;
-				const result = await submitCatalogCreateQueue(queue);
-				if (
-					result.outcome === 'completed' ||
-					(result.outcome === 'definitive_failure' &&
-						(queue.completedCount > 0 || result.created.length > 0))
-				) {
+				const queueAtStart = pendingCatalogCreateQueue;
+				const result = await withCatalogQueueLock(queueAtStart.ownerId, async () => {
+					const currentQueue = readCatalogCreateQueue(localStorage, queueAtStart.ownerId);
+					if (!currentQueue || currentQueue.queueId !== queueAtStart.queueId) {
+						pendingCatalogCreateQueue = currentQueue;
+						if (currentQueue) hydrateCatalogQueue(currentQueue);
+						catalogQueueStorageConflict = true;
+						return { created: [], outcome: 'conflict' as const };
+					}
+
+					let queue = currentQueue;
+					if (queue.items[0]?.status === 'rejected') {
+						const renewedQueue = renewRejectedCatalogCreateQueue(queue);
+						if (!renewedQueue || !setPendingCatalogCreateQueue(renewedQueue, queue.queueId)) {
+							throw new Error('Unable to preserve the corrected catalog queue');
+						}
+						queue = renewedQueue;
+					}
+					return submitCatalogCreateQueue(queue);
+				});
+
+				if (result.outcome === 'conflict') {
+					alert(
+						'Another browser tab owns this pending purchase. The form was refreshed; review it before retrying.'
+					);
+				} else if (result.outcome === 'completed') {
 					onSubmit(result.created);
 					onClose();
+				} else if (result.outcome === 'definitive_failure' && result.created.length > 0) {
+					onSubmit(result.created);
 				}
 			} catch (error) {
 				console.error('Error reconciling catalog inventory creation:', error);
@@ -581,9 +791,7 @@
 			for (let i = 0; i < batchBeans.length; i++) {
 				const beanData = batchBeans[i];
 
-				// Validate required fields based on mode
-				if (!isManualEntry && !beanData.catalog_id) {
-					alert(`Please select a coffee bean for item ${i + 1}`);
+				if (!isManualEntry && !validateCatalogRow(beanData, i)) {
 					return;
 				}
 
@@ -592,27 +800,9 @@
 					return;
 				}
 
-				// Purchased quantity must be > 0
-				if (!beanData.purchased_qty_lbs || beanData.purchased_qty_lbs <= 0) {
+				if (isManualEntry && (!beanData.purchased_qty_lbs || beanData.purchased_qty_lbs <= 0)) {
 					alert(`Please enter a purchased quantity > 0 for bean ${i + 1}`);
 					return;
-				}
-
-				// If this is a tiered/wholesale coffee, ensure quantity meets minimum tier
-				if (!isManualEntry && beanData.catalog_id) {
-					const catalogBean = filteredCatalogBeans.find(
-						(b: CoffeeCatalog) => b.id === beanData.catalog_id
-					);
-					const tiers = catalogBean ? parsePriceTiers(catalogBean.price_tiers) : null;
-					if (tiers && tiers.length > 0) {
-						const minOrder = tiers[0].min_lbs;
-						if (beanData.purchased_qty_lbs < minOrder) {
-							alert(
-								`Minimum order for this coffee is ${minOrder} lb. Please increase quantity for bean ${i + 1}.`
-							);
-							return;
-						}
-					}
 				}
 			}
 
@@ -626,41 +816,38 @@
 				return;
 			}
 
-			const taxShipPerBean = sharedFormData.tax_ship_cost / batchBeans.length;
-			const lastUpdated = new Date().toISOString();
-			const queue = createCatalogCreateQueue(
-				ownerId,
-				batchBeans.map((beanData) => {
-					const cleanedBean = {
-						...Object.fromEntries(
-							Object.entries(beanData).map(([key, value]) => [
-								key,
-								value === '' || value === undefined ? null : value
-							])
-						),
-						purchase_date: sharedFormData.purchase_date,
-						tax_ship_cost: taxShipPerBean,
-						notes: sharedFormData.notes,
-						last_updated: lastUpdated
-					} as CoffeeFormData;
-					return {
-						idempotencyKey: crypto.randomUUID(),
-						payloadJson: JSON.stringify(cleanedBean)
-					};
-				})
-			);
-			if (!setPendingCatalogCreateQueue(queue)) {
-				alert('Unable to preserve retry details in this browser. No inventory was created.');
-				return;
-			}
+			const result = await withCatalogQueueLock(ownerId, async () => {
+				const existingQueue = readCatalogCreateQueue(localStorage, ownerId);
+				if (existingQueue) {
+					pendingCatalogCreateQueue = existingQueue;
+					isManualEntry = false;
+					hydrateCatalogQueue(existingQueue);
+					catalogQueueStorageConflict = true;
+					return { created: [], outcome: 'conflict' as const };
+				}
 
-			const result = await submitCatalogCreateQueue(queue);
-			if (
-				result.outcome === 'completed' ||
-				(result.outcome === 'definitive_failure' && result.created.length > 0)
-			) {
+				const queue = createCatalogCreateQueue(
+					ownerId,
+					batchBeans.map((beanData, index) => ({
+						idempotencyKey: crypto.randomUUID(),
+						payloadJson: JSON.stringify(catalogPayload(beanData, taxShipAllocations[index] ?? 0))
+					}))
+				);
+				if (!setPendingCatalogCreateQueue(queue, null)) {
+					throw new Error('Unable to preserve retry details in this browser');
+				}
+				return submitCatalogCreateQueue(queue);
+			});
+
+			if (result.outcome === 'conflict') {
+				alert(
+					'Another browser tab owns this pending purchase. The form was refreshed; review it before retrying.'
+				);
+			} else if (result.outcome === 'completed') {
 				onSubmit(result.created);
 				onClose();
+			} else if (result.outcome === 'definitive_failure' && result.created.length > 0) {
+				onSubmit(result.created);
 			}
 		} catch (error) {
 			console.error('Error creating beans:', error);
@@ -742,7 +929,14 @@
 			class="mb-6 rounded-md border border-warning bg-warning-subtle p-3 text-sm text-warning-strong"
 			role="status"
 		>
-			{#if pendingCatalogCreateExpired}
+			{#if pendingCatalogCreateRejected}
+				<p>
+					A catalog row was rejected before it was created. Correct the visible row and submit it
+					again. {pendingCatalogCreateQueue.items.length - 1} later
+					{pendingCatalogCreateQueue.items.length === 2 ? 'row remains' : 'rows remain'} queued with
+					the exact original payload and retry key.
+				</p>
+			{:else if pendingCatalogCreateExpired}
 				<p>
 					A catalog purchase has an uncertain result, but Parchment's safe retry window has expired.
 					Close this form and check your inventory, then choose the matching result below. Retrying
@@ -764,6 +958,9 @@
 						Purchase Missing, Retry as New
 					</button>
 				</div>
+			{:else if catalogQueueStorageConflict}
+				Another browser tab changed this owner's pending catalog purchase. This form has loaded the
+				current queue and remains locked until that queue is reconciled.
 			{:else}
 				A previous catalog purchase queue has an uncertain result. Editing is locked so every exact
 				payload and idempotency key can be resumed safely, even after closing or reloading this
@@ -789,7 +986,7 @@
 						bind:group={isManualEntry}
 						value={true}
 						onchange={resetFormData}
-						disabled={pendingMutationLocked}
+						disabled={pendingMutationLocked || Boolean(pendingCatalogCreateQueue)}
 						class="sr-only"
 					/>
 					<div
@@ -808,7 +1005,7 @@
 						type="radio"
 						bind:group={isManualEntry}
 						value={false}
-						disabled={pendingMutationLocked}
+						disabled={pendingMutationLocked || Boolean(pendingCatalogCreateQueue)}
 						class="sr-only"
 					/>
 					<div
@@ -862,7 +1059,7 @@
 						{#if isManualEntry}
 							Parchment will allocate this total across the manual batch in exact cents
 						{:else}
-							This total will be divided evenly across catalog items
+							This total will be allocated across catalog items in exact cents
 						{/if}
 					</p>
 				</div>
@@ -899,7 +1096,7 @@
 					type="button"
 					class="flex items-center gap-2 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 					onclick={addBeanToBatch}
-					disabled={pendingMutationLocked}
+					disabled={pendingMutationLocked || Boolean(pendingCatalogCreateQueue)}
 				>
 					<span class="text-lg">+</span>
 					<span>Add Bean</span>
@@ -930,7 +1127,7 @@
 								type="button"
 								class="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-xs text-white hover:bg-danger-strong"
 								onclick={() => removeBeanFromBatch(index)}
-								disabled={pendingMutationLocked}
+								disabled={pendingMutationLocked || Boolean(pendingCatalogCreateQueue)}
 							>
 								✕
 							</button>
@@ -1005,10 +1202,12 @@
 													Subtotal: ${subtotal.toFixed(2)}
 												</div>
 												<div class="text-xs text-muted">
-													Tax/ship allocation: ${taxShipPerBean.toFixed(2)}
+													Tax/ship allocation: ${(taxShipAllocations[index] ?? 0).toFixed(2)}
 												</div>
 												<div class="text-xs font-semibold text-ink">
-													Estimated total: ${(subtotal + taxShipPerBean).toFixed(2)}
+													Estimated total: ${(subtotal + (taxShipAllocations[index] ?? 0)).toFixed(
+														2
+													)}
 												</div>
 											{:else if minOrder}
 												<div class="mt-2 text-xs text-danger">
@@ -1205,7 +1404,9 @@
 				loadingText={pendingManualBatchId
 					? 'Reconciling Batch...'
 					: pendingCatalogCreateQueue
-						? 'Retrying Pending Purchase...'
+						? pendingCatalogCreateRejected
+							? 'Submitting Corrected Purchase...'
+							: 'Retrying Pending Purchase...'
 						: batchBeans.length === 1
 							? 'Saving Bean...'
 							: `Saving ${batchBeans.length} Beans...`}
@@ -1215,7 +1416,9 @@
 				{pendingManualBatchId
 					? 'Reconcile Pending Batch'
 					: pendingCatalogCreateQueue
-						? 'Retry Pending Purchase'
+						? pendingCatalogCreateRejected
+							? 'Submit Corrected Purchase'
+							: 'Retry Pending Purchase'
 						: bean
 							? 'Update Bean'
 							: batchBeans.length === 1
