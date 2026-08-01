@@ -14,12 +14,44 @@ import {
 	deleteParchmentInventoryItem,
 	fetchParchmentInventoryProjection,
 	getParchmentManualInventoryBatch,
-	ParchmentInventoryError
+	ParchmentInventoryError,
+	updateParchmentInventoryItem
 } from '$lib/server/parchmentInventory';
-import { addToInventory, updateInventory } from '$lib/data/inventory.js';
-import { GREEN_COFFEE_INV_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
+import { addToInventory } from '$lib/data/inventory.js';
 
 type ManualInventoryBatchCreateRequest = components['schemas']['ManualInventoryBatchCreateRequest'];
+type InventoryUpdateRequest = components['schemas']['InventoryUpdateRequest'];
+
+const MAX_POSTGRES_INTEGER = 2_147_483_647;
+
+function inventoryId(value: string | null): number | null {
+	if (!value || !/^\d+$/.test(value)) return null;
+	const parsed = Number(value);
+	return Number.isSafeInteger(parsed) && parsed > 0 && parsed <= MAX_POSTGRES_INTEGER
+		? parsed
+		: null;
+}
+
+function inventoryUpdateRequest(updates: Record<string, unknown>): InventoryUpdateRequest {
+	const body: InventoryUpdateRequest = {};
+	if (updates.purchased_qty_lbs !== undefined) {
+		body.qty = updates.purchased_qty_lbs as number;
+	}
+	if (typeof updates.purchase_date === 'string') body.purchaseDate = updates.purchase_date;
+	if (typeof updates.bean_cost === 'number' || updates.bean_cost === null) {
+		body.cost = updates.bean_cost;
+	}
+	if (typeof updates.tax_ship_cost === 'number' || updates.tax_ship_cost === null) {
+		body.taxShip = updates.tax_ship_cost;
+	}
+	if (typeof updates.notes === 'string' || updates.notes === null) body.notes = updates.notes;
+	if (typeof updates.stocked === 'boolean') body.stocked = updates.stocked;
+	if (typeof updates.rank === 'number' || updates.rank === null) body.rank = updates.rank;
+	if (updates.cupping_notes !== undefined) {
+		body.cuppingNotes = updates.cupping_notes as InventoryUpdateRequest['cuppingNotes'];
+	}
+	return body;
+}
 
 function legacyParchmentError(body: unknown): { error: string; code?: string } {
 	if (
@@ -264,37 +296,41 @@ export const POST: RequestHandler = async (event) => {
 
 export const PUT: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireParchmentAccess(event);
-		const { supabase } = event.locals;
+		await requireParchmentAccess(event);
 		const { url, request } = event;
 
-		const id = url.searchParams.get('id');
-		if (!id) {
-			return json({ error: 'No ID provided' }, { status: 400 });
+		const parsedId = inventoryId(url.searchParams.get('id'));
+		if (parsedId === null) {
+			return json({ error: 'Invalid or missing inventory ID' }, { status: 400 });
 		}
 
-		const updates = await request.json();
-		const { id: _, ...rawUpdateData } = updates;
-
-		// Filter to only include actual green_coffee_inv table columns
-		const updateData = pickColumns(rawUpdateData, GREEN_COFFEE_INV_COLUMNS);
-
-		let updated;
-		try {
-			updated = await updateInventory(supabase, Number(id), user.id, updateData);
-		} catch (err) {
-			if (err instanceof Error && err.message === 'Unauthorized') {
-				return json({ error: 'Unauthorized' }, { status: 403 });
-			}
-			throw err;
+		const updates = (await request.json()) as Record<string, unknown>;
+		if (typeof updates !== 'object' || updates === null || Array.isArray(updates)) {
+			return json({ error: 'Invalid inventory update' }, { status: 400 });
 		}
 
-		// Stocked status auto-update is handled inside updateInventory()
-		// when purchased_qty_lbs changes, so the returned data is always fresh.
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const ifMatch = request.headers.get('if-match')?.trim() || undefined;
+		const updated = await updateParchmentInventoryItem(
+			client,
+			parsedId,
+			inventoryUpdateRequest(updates),
+			ifMatch
+		);
+
 		return json(updated);
 	} catch (error) {
 		if (error instanceof AuthError) {
 			return json({ success: false, error: error.message }, { status: error.status });
+		}
+		if (error instanceof ParchmentInventoryError) {
+			return json(legacyParchmentError(error.body), { status: error.status });
+		}
+		if (error instanceof ParchmentConfigError) {
+			return json(
+				{ success: false, error: 'Inventory update is temporarily unavailable' },
+				{ status: 503 }
+			);
 		}
 
 		console.error('Error updating bean:', error);

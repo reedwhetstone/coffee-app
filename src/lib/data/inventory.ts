@@ -7,10 +7,9 @@
  * Key design decisions:
  *  - buildGreenCoffeeQuery / processGreenCoffeeData from greenCoffeeUtils are
  *    re-used here to avoid query duplication.
- *  - updateStockedStatus is the retained mutation helper used after roast and
- *    inventory changes.
- *  - Shared-data reads use Parchment contracts; this module retains the
- *    compatibility mutations that have not moved upstream yet.
+ *  - Shared-data reads and updates use Parchment contracts.
+ *  - This module retains only catalog-backed creation until the atomic catalog
+ *    batch contract is deployed and its consumer cutover lands.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -37,20 +36,6 @@ export interface InventoryCreateInput {
 	tax_ship_cost?: number | null;
 	stocked?: boolean | null;
 	cupping_notes?: Database['public']['Tables']['green_coffee_inv']['Insert']['cupping_notes'];
-}
-
-export interface InventoryUpdateInput {
-	rank?: number | null;
-	notes?: string | null;
-	purchase_date?: string | null;
-	purchased_qty_lbs?: number | null;
-	bean_cost?: number | null;
-	tax_ship_cost?: number | null;
-	last_updated?: string | null;
-	user?: string | null;
-	catalog_id?: number | null;
-	stocked?: boolean | null;
-	cupping_notes?: Database['public']['Tables']['green_coffee_inv']['Update']['cupping_notes'];
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -96,122 +81,4 @@ export async function addToInventory(
 	const { data: fullRow } = await buildGreenCoffeeQuery(supabase).eq('id', newRow.id).single();
 
 	return processGreenCoffeeData([fullRow])[0];
-}
-
-/**
- * Update an inventory item, verifying user ownership.
- * Returns the updated item with full catalog + roast profile joins.
- */
-export async function updateInventory(
-	supabase: SupabaseClient,
-	id: number,
-	userId: string,
-	data: InventoryUpdateInput
-) {
-	// Verify ownership
-	const { data: existing } = await supabase
-		.from('green_coffee_inv')
-		.select('user')
-		.eq('id', id)
-		.single();
-
-	if (!existing || existing.user !== userId) {
-		throw new Error('Unauthorized');
-	}
-
-	const { error: updateError } = await supabase
-		.from('green_coffee_inv')
-		.update(data as Database['public']['Tables']['green_coffee_inv']['Update'])
-		.eq('id', id);
-
-	if (updateError) throw updateError;
-
-	// If purchased_qty_lbs changed and stocked wasn't manually set, auto-update
-	// stocked status BEFORE the final fetch so the returned data is fresh
-	if (data.purchased_qty_lbs !== undefined && data.stocked === undefined) {
-		await updateStockedStatus(supabase, id, userId).catch((err) => {
-			console.warn('Failed to auto-update stocked status after inventory update:', err);
-		});
-	}
-
-	// Fetch with full joins — reflects any stocked status change above
-	const { data: updatedRow } = await buildGreenCoffeeQuery(supabase).eq('id', id).single();
-
-	return processGreenCoffeeData([updatedRow])[0];
-}
-
-/**
- * Update stocked status for a bean based on purchased quantity vs total oz roasted.
- * Retained here as part of the inventory mutation boundary.
- */
-export async function updateStockedStatus(
-	supabase: SupabaseClient,
-	coffeeId: number,
-	userId: string
-): Promise<{
-	success: boolean;
-	stocked?: boolean;
-	coffee_id?: number;
-	remaining_oz?: number;
-	error?: string;
-}> {
-	try {
-		// Get the green coffee inventory record
-		const { data: coffee, error: coffeeError } = await supabase
-			.from('green_coffee_inv')
-			.select('id, purchased_qty_lbs')
-			.eq('id', coffeeId)
-			.eq('user', userId)
-			.single();
-
-		if (coffeeError || !coffee) {
-			console.error('Coffee not found for stocked status update:', coffeeId);
-			return { success: false, error: 'Coffee not found' };
-		}
-
-		// Calculate total roasted quantity
-		const { data: roastProfiles, error: roastError } = await supabase
-			.from('roast_profiles')
-			.select('oz_in')
-			.eq('coffee_id', coffeeId)
-			.eq('user', userId);
-
-		if (roastError) {
-			console.error('Error fetching roast profiles for stocked status update:', roastError);
-			return { success: false, error: 'Error fetching roast profiles' };
-		}
-
-		// Calculate remaining quantity
-		const totalOzIn =
-			roastProfiles?.reduce(
-				(sum: number, profile: { oz_in: number | null }) => sum + (profile.oz_in || 0),
-				0
-			) || 0;
-		const purchasedOz = (coffee.purchased_qty_lbs || 0) * 16;
-		const remainingOz = purchasedOz - totalOzIn;
-
-		// Update stocked status: stocked if remaining quantity is at least 4 oz
-		const shouldBeStocked = remainingOz >= 4;
-
-		const { error: updateError } = await supabase
-			.from('green_coffee_inv')
-			.update({ stocked: shouldBeStocked })
-			.eq('id', coffeeId)
-			.eq('user', userId);
-
-		if (updateError) {
-			console.error('Error updating stocked status:', updateError);
-			return { success: false, error: 'Error updating stocked status' };
-		}
-
-		return {
-			success: true,
-			stocked: shouldBeStocked,
-			coffee_id: coffeeId,
-			remaining_oz: remainingOz
-		};
-	} catch (error) {
-		console.error('Error in updateStockedStatus:', error);
-		return { success: false, error: 'Unexpected error' };
-	}
 }
