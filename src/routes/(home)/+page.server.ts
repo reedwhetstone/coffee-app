@@ -13,8 +13,8 @@ import {
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { getAccountDeletionProviderCredential } from '$lib/server/accountDeletionProvider';
 import {
-	ACCOUNT_DELETION_COMPLETION_COOKIE,
-	readAccountDeletionCompletionUser
+	ACCOUNT_DELETION_ACCEPTED_COOKIE,
+	readAccountDeletionAcceptedUser
 } from '$lib/server/accountDeletionReauth';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
@@ -55,17 +55,17 @@ function extractHomepageCatalogRows(
 
 export const load: PageServerLoad = async (event) => {
 	const { url } = event;
-	let accountDeleted = false;
-	const completionToken = event.cookies.get(ACCOUNT_DELETION_COMPLETION_COOKIE);
-	if (completionToken) {
+	let accountDeletionAccepted = false;
+	const acceptedToken = event.cookies.get(ACCOUNT_DELETION_ACCEPTED_COOKIE);
+	if (acceptedToken) {
 		try {
 			const credential = getAccountDeletionProviderCredential();
-			accountDeleted = Boolean(readAccountDeletionCompletionUser(completionToken, credential));
+			accountDeletionAccepted = Boolean(readAccountDeletionAcceptedUser(acceptedToken, credential));
 		} catch {
-			accountDeleted = false;
+			accountDeletionAccepted = false;
 		}
-		if (accountDeleted) {
-			event.cookies.delete(ACCOUNT_DELETION_COMPLETION_COOKIE, { path: '/' });
+		if (accountDeletionAccepted) {
+			event.cookies.delete(ACCOUNT_DELETION_ACCEPTED_COOKIE, { path: '/' });
 		}
 	}
 
@@ -94,7 +94,7 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		data: stockedData,
 		trainingData: stockedData,
-		accountDeleted,
+		accountDeletionAccepted,
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/',

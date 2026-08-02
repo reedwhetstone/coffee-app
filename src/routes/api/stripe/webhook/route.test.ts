@@ -20,7 +20,6 @@ vi.mock('$lib/services/stripe', () => ({
 
 vi.mock('$lib/server/billing/checkoutAdmissions', () => ({
 	CHECKOUT_ADMISSION_METADATA: {
-		ownerId: 'supabase_user_id',
 		admissionId: 'parchment_admission_id',
 		requestId: 'checkout_request_id',
 		purchaseFingerprint: 'checkout_purchase_fingerprint'
@@ -40,13 +39,12 @@ vi.mock('$lib/server/billing/checkoutAdmissions', () => ({
 		metadata: Record<string, string> | null,
 		stripeSessionId: string
 	) => {
-		const ownerId = metadata?.supabase_user_id;
 		const admissionId = metadata?.parchment_admission_id;
 		const requestId = metadata?.checkout_request_id;
-		if ((ownerId || admissionId || requestId) && (!ownerId || !admissionId)) {
+		if (requestId && !admissionId) {
 			throw new Error('Managed checkout session is missing Checkout admission metadata');
 		}
-		return ownerId && admissionId ? { ownerId, admissionId, requestId, stripeSessionId } : null;
+		return admissionId ? { admissionId, requestId, stripeSessionId } : null;
 	},
 	checkoutProviderIsEligible: mockCheckoutProviderIsEligible,
 	terminalizeExpiredCheckoutAdmission: mockTerminalizeExpiredCheckoutAdmission
@@ -69,7 +67,7 @@ beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
 	mockCheckoutAdmissionsEnabled.mockReturnValue(true);
-	mockCheckoutProviderIsEligible.mockResolvedValue(true);
+	mockCheckoutProviderIsEligible.mockResolvedValue({ eligible: true, ownerId: 'user-123' });
 	mockCreateAdminSupabase.mockReturnValue({});
 	({ POST } = await import('./+server'));
 });
@@ -81,18 +79,17 @@ describe('Stripe webhook Checkout admission fence', () => {
 			customers: { update: customerUpdate },
 			subscriptions: { retrieve: vi.fn() }
 		});
-		mockCheckoutProviderIsEligible.mockResolvedValue(false);
+		mockCheckoutProviderIsEligible.mockResolvedValue({ eligible: false, ownerId: 'user-123' });
 		mockConstructStripeEvent.mockResolvedValue({
 			type: 'checkout.session.completed',
 			data: {
 				object: {
 					id: 'cs_test_123',
 					mode: 'subscription',
-					client_reference_id: 'user-123',
+					client_reference_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 					customer: 'cus_123',
 					subscription: 'sub_123',
 					metadata: {
-						supabase_user_id: 'user-123',
 						parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 					}
 				}
@@ -107,20 +104,53 @@ describe('Stripe webhook Checkout admission fence', () => {
 		expect(mockReconcileStripeSubscription).not.toHaveBeenCalled();
 	});
 
-	it('keeps managed sessions fenced after the rollout flag is disabled', async () => {
-		mockCheckoutAdmissionsEnabled.mockReturnValue(false);
-		mockCheckoutProviderIsEligible.mockResolvedValue(false);
+	it('reconciles a managed subscription with the privately resolved owner', async () => {
+		const subscription = {
+			id: 'sub_managed',
+			customer: { id: 'cus_managed', email: 'owner@example.com' },
+			metadata: { parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }
+		};
+		const retrieve = vi.fn(async () => subscription);
+		mockGetStripe.mockReturnValue({ subscriptions: { retrieve } });
 		mockConstructStripeEvent.mockResolvedValue({
 			type: 'checkout.session.completed',
 			data: {
 				object: {
 					id: 'cs_managed',
 					mode: 'subscription',
-					client_reference_id: 'user-123',
+					client_reference_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+					subscription: 'sub_managed',
+					metadata: {
+						parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+					}
+				}
+			}
+		});
+
+		const response = await POST(makeEvent());
+
+		expect(response.status).toBe(200);
+		expect(retrieve).toHaveBeenCalledWith('sub_managed', { expand: ['customer'] });
+		expect(mockReconcileStripeSubscription).toHaveBeenCalledWith(
+			subscription,
+			expect.anything(),
+			'user-123'
+		);
+	});
+
+	it('keeps managed sessions fenced after the rollout flag is disabled', async () => {
+		mockCheckoutAdmissionsEnabled.mockReturnValue(false);
+		mockCheckoutProviderIsEligible.mockResolvedValue({ eligible: false, ownerId: 'user-123' });
+		mockConstructStripeEvent.mockResolvedValue({
+			type: 'checkout.session.completed',
+			data: {
+				object: {
+					id: 'cs_managed',
+					mode: 'subscription',
+					client_reference_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 					customer: 'cus_123',
 					subscription: 'sub_123',
 					metadata: {
-						supabase_user_id: 'user-123',
 						parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 					}
 				}
@@ -141,14 +171,14 @@ describe('Stripe webhook Checkout admission fence', () => {
 			data: {
 				object: {
 					id: 'cs_partial',
-					metadata: { supabase_user_id: 'user-123' }
+					metadata: { checkout_request_id: 'request-without-admission' }
 				}
 			}
 		});
 
 		const response = await POST(makeEvent());
 
-		expect(response.status).toBe(400);
+		expect(response.status).toBe(500);
 		expect(mockGetStripe).not.toHaveBeenCalled();
 		expect(mockReconcileStripeSubscription).not.toHaveBeenCalled();
 	});
@@ -161,7 +191,6 @@ describe('Stripe webhook Checkout admission fence', () => {
 				object: {
 					id: 'cs_expired',
 					metadata: {
-						supabase_user_id: 'user-123',
 						parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 					}
 				}
@@ -188,7 +217,6 @@ describe('Stripe webhook Checkout admission fence', () => {
 				object: {
 					id: 'cs_expired',
 					metadata: {
-						supabase_user_id: 'user-123',
 						parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 					}
 				}
@@ -221,18 +249,28 @@ describe('Stripe webhook Checkout admission fence', () => {
 			expect(mockCheckoutProviderIsEligible).not.toHaveBeenCalled();
 			expect(mockReconcileStripeSubscription).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'sub_legacy' }),
-				expect.anything()
+				expect.anything(),
+				undefined
 			);
 		}
 	);
 
 	it('keeps managed subscription events fenced after rollout disable', async () => {
 		mockCheckoutAdmissionsEnabled.mockReturnValue(false);
-		mockCheckoutProviderIsEligible.mockResolvedValue(false);
+		mockCheckoutProviderIsEligible.mockResolvedValue({ eligible: false, ownerId: 'user-123' });
 		mockGetStripe.mockReturnValue({
 			checkout: {
 				sessions: {
-					list: vi.fn(async () => ({ data: [{ id: 'cs_managed' }] }))
+					list: vi.fn(async () => ({
+						data: [
+							{
+								id: 'cs_managed',
+								metadata: {
+									parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+								}
+							}
+						]
+					}))
 				}
 			}
 		});
@@ -242,7 +280,6 @@ describe('Stripe webhook Checkout admission fence', () => {
 				object: {
 					id: 'sub_managed',
 					metadata: {
-						supabase_user_id: 'user-123',
 						parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 						checkout_request_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 					}
@@ -276,7 +313,7 @@ describe('Stripe webhook Checkout admission fence', () => {
 
 		const response = await POST(makeEvent());
 
-		expect(response.status).toBe(400);
+		expect(response.status).toBe(500);
 		expect(mockGetStripe).not.toHaveBeenCalled();
 		expect(mockReconcileStripeSubscription).not.toHaveBeenCalled();
 	});
@@ -295,7 +332,6 @@ describe('Stripe webhook Checkout admission fence', () => {
 				object: {
 					id: 'sub_managed',
 					metadata: {
-						supabase_user_id: 'user-123',
 						parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 					}
 				}
@@ -304,7 +340,31 @@ describe('Stripe webhook Checkout admission fence', () => {
 
 		const response = await POST(makeEvent());
 
-		expect(response.status).toBe(400);
+		expect(response.status).toBe(500);
 		expect(mockReconcileStripeSubscription).not.toHaveBeenCalled();
+	});
+
+	it('retries verified processing failures without logging account or provider identifiers', async () => {
+		const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		mockCheckoutProviderIsEligible.mockRejectedValue(new Error('user-private cus_private'));
+		mockConstructStripeEvent.mockResolvedValue({
+			type: 'checkout.session.completed',
+			data: {
+				object: {
+					id: 'cs_private',
+					metadata: {
+						parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+					}
+				}
+			}
+		});
+
+		const response = await POST(makeEvent());
+
+		expect(response.status).toBe(500);
+		expect(errorLog).toHaveBeenCalledWith('Stripe webhook processing failed');
+		expect(JSON.stringify(errorLog.mock.calls)).not.toContain('user-private');
+		expect(JSON.stringify(errorLog.mock.calls)).not.toContain('cus_private');
+		errorLog.mockRestore();
 	});
 });

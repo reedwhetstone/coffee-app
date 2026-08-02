@@ -205,11 +205,14 @@ export async function handleReconcileStripeSession(event: RequestEvent) {
 			checkoutSession.metadata,
 			checkoutSession.id
 		);
-		if (admissionContext && !(await checkoutProviderIsEligible(event, admissionContext))) {
-			return json(
-				{ error: 'Checkout session is no longer eligible for reconciliation' },
-				{ status: 409 }
-			);
+		if (admissionContext) {
+			const eligibility = await checkoutProviderIsEligible(event, admissionContext);
+			if (!eligibility.eligible || eligibility.ownerId !== user.id) {
+				return json(
+					{ error: 'Checkout session is no longer eligible for reconciliation' },
+					{ status: 409 }
+				);
+			}
 		}
 		if (checkoutAdmissionsEnabled() && !admissionContext && !legacyCheckoutDrainEnabled()) {
 			return json({ error: 'Checkout session is missing admission evidence' }, { status: 409 });
@@ -235,7 +238,8 @@ export async function handleReconcileStripeSession(event: RequestEvent) {
 			);
 		}
 
-		if (checkoutSession.client_reference_id !== user.id) {
+		const expectedClientReferenceId = admissionContext?.admissionId ?? user.id;
+		if (checkoutSession.client_reference_id !== expectedClientReferenceId) {
 			await markSessionProcessingStatus(supabase, {
 				sessionId,
 				userId: user.id,

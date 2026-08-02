@@ -40,18 +40,10 @@ async function logRoleChange(supabase: SupabaseClient<Database>, auditData: Role
 		});
 
 		if (error) {
-			console.error('❌ Failed to log role change:', error);
-		} else {
-			console.log(
-				'📝 Role change logged:',
-				auditData.user_id,
-				auditData.old_role,
-				'→',
-				auditData.new_role
-			);
+			console.error('Failed to persist Stripe role-change audit');
 		}
-	} catch (err) {
-		console.error('❌ Error logging role change:', err);
+	} catch {
+		console.error('Failed to persist Stripe role-change audit');
 	}
 }
 
@@ -73,8 +65,8 @@ export async function constructStripeEvent(
 	try {
 		const stripe = getStripe();
 		return stripe.webhooks.constructEvent(body, signature, webhookSecret);
-	} catch (err) {
-		console.error('❌ Webhook signature verification failed:', err);
+	} catch {
+		console.error('Stripe webhook signature verification failed');
 		return null;
 	}
 }
@@ -90,7 +82,7 @@ async function resolveUserIdForStripeCustomer(
 		.maybeSingle();
 
 	if (customerLookupError) {
-		console.error('❌ Error looking up stripe customer mapping:', customerLookupError);
+		throw new Error('Stripe customer mapping is unavailable');
 	}
 
 	if (customerData?.user_id) {
@@ -117,17 +109,15 @@ async function resolveUserIdForStripeCustomer(
 				{ onConflict: 'user_id' }
 			);
 
-			if (upsertError) {
-				console.error('❌ Error persisting stripe customer mapping from metadata:', upsertError);
-			}
+			if (upsertError) throw new Error('Stripe customer mapping could not be persisted');
 
 			return {
 				userId,
 				email: customer.email || null
 			};
 		}
-	} catch (err) {
-		console.error('❌ Error retrieving customer from Stripe:', err);
+	} catch {
+		throw new Error('Stripe customer ownership could not be resolved');
 	}
 
 	return { userId: null, email: null };
@@ -138,16 +128,30 @@ async function resolveUserIdForStripeCustomer(
  */
 export async function reconcileStripeSubscription(
 	subscription: Stripe.Subscription,
-	supabase: SupabaseClient<Database>
+	supabase: SupabaseClient<Database>,
+	verifiedOwnerId?: string
 ) {
 	const customerId =
 		typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
 
-	console.log('🔍 Reconciling billing subscription for Stripe customer:', customerId);
-
-	const { userId } = await resolveUserIdForStripeCustomer(customerId, supabase);
+	let userId = verifiedOwnerId ?? null;
+	if (userId) {
+		const customer = typeof subscription.customer === 'string' ? null : subscription.customer;
+		const { error } = await supabase.from('stripe_customers').upsert(
+			{
+				user_id: userId,
+				customer_id: customerId,
+				email: customer && !('deleted' in customer) ? customer.email : null,
+				updated_at: new Date().toISOString()
+			},
+			{ onConflict: 'user_id' }
+		);
+		if (error) throw new Error('Stripe customer mapping could not be persisted');
+	} else {
+		({ userId } = await resolveUserIdForStripeCustomer(customerId, supabase));
+	}
 	if (!userId) {
-		console.error('❌ Could not determine user ID for customer:', customerId);
+		console.info('Stripe subscription has no managed account owner');
 		return;
 	}
 
@@ -158,18 +162,14 @@ export async function reconcileStripeSubscription(
 	});
 
 	if (reconciliation.unknownPriceIds.length > 0) {
-		console.warn(
-			'⚠️ Ignored unknown Stripe prices during billing reconciliation:',
-			reconciliation.unknownPriceIds
-		);
+		console.warn('Stripe billing reconciliation ignored unknown price identifiers');
 	}
 
 	if (reconciliation.deletedItemIds.length > 0) {
-		console.log('🧹 Removed stale billing snapshot items:', reconciliation.deletedItemIds);
+		console.info('Stripe billing reconciliation removed stale snapshot items');
 	}
 
 	if (!reconciliation.changed) {
-		console.log('ℹ️ Billing entitlements already reconciled for user:', userId);
 		return;
 	}
 
@@ -196,10 +196,4 @@ export async function reconcileStripeSubscription(
 			unknown_price_ids: reconciliation.unknownPriceIds
 		}
 	});
-
-	console.log(
-		'✅ Reconciled billing entitlements for user:',
-		userId,
-		reconciliation.resolvedEntitlements
-	);
 }

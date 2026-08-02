@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-	createAccountDeletionCompletionToken,
+	createAccountDeletionAcceptedToken,
 	createAccountDeletionReauthChallenge,
 	createAccountDeletionReauthToken,
 	hasValidAccountDeletionReauth,
-	readAccountDeletionCompletionUser,
+	readAccountDeletionAcceptedUser,
 	readAccountDeletionReauthChallenge
 } from './accountDeletionReauth';
 
@@ -44,13 +44,13 @@ describe('account deletion reauthentication capabilities', () => {
 		).toBeNull();
 	});
 
-	it('accepts only a fresh server-issued deletion completion token', () => {
-		const token = createAccountDeletionCompletionToken('user-1', credential, issuedAt);
+	it('accepts only a fresh server-issued deletion-accepted token', () => {
+		const token = createAccountDeletionAcceptedToken('user-1', credential, issuedAt);
 
-		expect(readAccountDeletionCompletionUser(token, credential, issuedAt + 1000)).toBe('user-1');
-		expect(readAccountDeletionCompletionUser(`${token}x`, credential, issuedAt + 1000)).toBeNull();
+		expect(readAccountDeletionAcceptedUser(token, credential, issuedAt + 1000)).toBe('user-1');
+		expect(readAccountDeletionAcceptedUser(`${token}x`, credential, issuedAt + 1000)).toBeNull();
 		expect(
-			readAccountDeletionCompletionUser(token, credential, issuedAt + 10 * 60 * 1000 + 1)
+			readAccountDeletionAcceptedUser(token, credential, issuedAt + 10 * 60 * 1000 + 1)
 		).toBeNull();
 	});
 });

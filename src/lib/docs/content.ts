@@ -1205,9 +1205,9 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/account-deletion',
 							'POST',
-							'Cookie session + recent Google reauthentication or retry capability',
+							'Cookie session + recent Google reauthentication',
 							'Internal product route',
-							'Same-origin browser BFF for the signed-in user’s idempotent account-deletion flow. It retains a retry capability while provider cleanup is pending, returns 202 for nonterminal operations, and deletes Supabase Auth only after Parchment reports completed.'
+							'Same-origin browser BFF that durably starts Parchment’s service-owned provider, local-data, and Auth deletion saga. A protocol-v2 202 is terminal for the browser, which signs out while Parchment owns idempotent reconciliation and deletes Auth last.'
 						],
 						[
 							'/api/account-deletion/reauthenticate',

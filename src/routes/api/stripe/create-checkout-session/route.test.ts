@@ -25,7 +25,6 @@ vi.mock('$lib/services/stripe', () => ({
 
 vi.mock('$lib/server/billing/checkoutAdmissions', () => ({
 	CHECKOUT_ADMISSION_METADATA: {
-		ownerId: 'supabase_user_id',
 		admissionId: 'parchment_admission_id',
 		requestId: 'checkout_request_id',
 		purchaseFingerprint: 'checkout_purchase_fingerprint'
@@ -439,11 +438,10 @@ describe('/api/stripe/create-checkout-session', () => {
 			checkout: {
 				sessions: {
 					retrieve: vi.fn(async () => ({
-						client_reference_id: 'user-123',
+						client_reference_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 						client_secret: 'cs_existing_secret',
 						status: 'open',
 						metadata: {
-							supabase_user_id: 'user-123',
 							parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 							checkout_request_id: requestId,
 							checkout_purchase_fingerprint: 'purchase-fingerprint'
@@ -470,7 +468,6 @@ describe('/api/stripe/create-checkout-session', () => {
 		expect(mockVerifyPublishedCheckoutReplay).toHaveBeenCalledWith(
 			expect.objectContaining({ status: 'open' }),
 			expect.objectContaining({
-				ownerId: 'user-123',
 				admissionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 				requestId
 			})
@@ -489,11 +486,10 @@ describe('/api/stripe/create-checkout-session', () => {
 			checkout: {
 				sessions: {
 					retrieve: vi.fn(async () => ({
-						client_reference_id: 'user-123',
+						client_reference_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 						client_secret: 'cs_existing_secret',
 						status: 'open',
 						metadata: {
-							supabase_user_id: 'user-123',
 							parchment_admission_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 							checkout_request_id: '11111111-1111-4111-8111-111111111111',
 							checkout_purchase_fingerprint: 'different-purchase-fingerprint'

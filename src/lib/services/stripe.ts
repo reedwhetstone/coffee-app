@@ -185,7 +185,6 @@ export async function createCheckoutSession(
 
 	const metadata = input
 		? buildCheckoutAdmissionMetadata({
-				ownerId: clientReferenceId,
 				admissionId: input.admissionId,
 				requestId: input.requestId,
 				purchaseFingerprint: input.purchaseFingerprint
@@ -200,7 +199,7 @@ export async function createCheckoutSession(
 		mode: 'subscription',
 		ui_mode: 'embedded',
 		return_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-		client_reference_id: clientReferenceId,
+		client_reference_id: input?.admissionId ?? clientReferenceId,
 		...(metadata ? { metadata } : {}),
 		allow_promotion_codes: true,
 		subscription_data: metadata ? { trial_period_days: 14, metadata } : { trial_period_days: 14 }
@@ -231,56 +230,4 @@ export function isDefinitiveCheckoutCreationFailure(error: unknown): boolean {
 		type === 'StripeAuthenticationError' ||
 		type === 'StripePermissionError'
 	);
-}
-
-/**
- * Clean up and reset a user's Stripe customer data
- * This is useful for fixing misaligned customer IDs
- */
-export async function cleanupStripeCustomer(userId: string, email: string): Promise<boolean> {
-	const stripe = getStripe();
-	const supabase = createAdminClient();
-
-	try {
-		console.log(`Cleaning up Stripe customer data for user ${userId}`);
-
-		// 1. Delete the mapping in Supabase
-		const { error: deleteError } = await supabase
-			.from('stripe_customers')
-			.delete()
-			.eq('user_id', userId);
-
-		if (deleteError) {
-			console.error('Error deleting Stripe customer from Supabase:', deleteError);
-			return false;
-		}
-
-		// 2. Find all customers in Stripe with this email or supabaseUserId
-		const existingCustomers = await stripe.customers.list({
-			email: email,
-			limit: 10
-		});
-
-		// Find customers linked to this user ID
-		const linkedCustomers = existingCustomers.data.filter(
-			(cust) => cust.metadata?.supabaseUserId === userId
-		);
-
-		// 3. Optional: Update all these customers to clear the link
-		for (const customer of linkedCustomers) {
-			console.log(`Removing user link from Stripe customer ${customer.id}`);
-			await stripe.customers.update(customer.id, {
-				metadata: {
-					supabaseUserId: '', // Clear the link
-					cleanedAt: new Date().toISOString()
-				}
-			});
-		}
-
-		console.log('Stripe customer data cleanup completed');
-		return true;
-	} catch (error) {
-		console.error('Error cleaning up Stripe customer:', error);
-		return false;
-	}
 }
