@@ -45,29 +45,18 @@ A public blog at `purveyors.io/blog` that serves as Reed's thinking-out-loud spa
 - Hero image missing from draft PR. Must be in the same PR, always.
 - One complete PR per post. Never merge post without hero.
 
-## Weekly Wednesday Coffee Intelligence System
+## Purveyors Market Brief
 
 ### Objective
 
-Ship one high-signal Coffee Intelligence piece every Wednesday that can be published same day after review.
-
-### Weekly cadence
-
-- **Tuesday:** choose thesis + collect evidence stack
-- **Wednesday morning:** write draft (`draft: false`), generate hero image, open single complete PR
-- **Wednesday afternoon:** Reed reviews and merges to publish
-
-### Required structure per piece
-
-1. Counterintuitive thesis
-2. Immediate vs tail risk map
-3. Opportunity map (actionable plays)
-4. Product implication for purveyors (what we should build/measure)
-5. 3-4 canonical tags
+Ship one reliable weekly, source-led Market Brief alongside sporadic idea-led essays.
+Both formats use the existing `/blog` publishing and review system.
 
 ### Operating rule
 
-Wednesdays are reserved for Coffee Intelligence output first; other blog experiments happen around this anchor.
+Market Brief production takes precedence over optional essay work. The product,
+access, pipeline, and dependency contracts live only in
+`notes/market-wire/implementation-plan.md`.
 
 ## Content Pillars
 
@@ -151,7 +140,10 @@ Writing a blog post about your architecture forces you to articulate decisions t
 
 ### The coffee data is genuinely unique content
 
-Nobody else is publishing aggregated, normalized green coffee market data. A weekly or bi-weekly "market pulse" post with actual data visualizations from the scraper would be the highest-value SEO content. Roasters searching for sourcing insights land on purveyors.io and discover the platform.
+Nobody else is publishing aggregated, normalized green coffee market data. The weekly
+Market Brief turns that data and current industry conversation into a recurring
+acquisition surface. Its implementation contract lives in
+`notes/market-wire/implementation-plan.md`.
 
 ### Build-in-public as business development
 
@@ -269,15 +261,15 @@ The GenUI thesis. What "AI-first" means beyond the buzzword. The canvas architec
 
 ### Month 2: Depth (3-4 posts)
 
-- Green coffee market pulse (first data-driven market analysis post)
+- First weekly Market Brief edition
 - "Your API Docs Are Your New Landing Page: Building for Agent Customers" (the B2CC thesis applied to purveyors, referencing Caleb John's framework [[b2cc-agents-as-customers]])
 - "Scraper Feedback Loops: When Your CI Pipeline Generates Its Own Improvements"
 - API docs: Getting Started with the Purveyors API
 
 ### Ongoing: Cadence
 
-- 2 posts/month minimum
-- 1 market pulse per month (data-driven, unique content)
+- 1 Market Brief edition per week
+- 2 idea-led or technical essays per month minimum
 - 1 technical deep dive per month
 - Ad hoc: insights, opinions, interesting problems as they arise
 
@@ -299,7 +291,9 @@ The GenUI thesis. What "AI-first" means beyond the buzzword. The canvas architec
 ## Decisions
 
 - **Comments:** Yes, via Giscus (GitHub discussions). Comments are public engagement, NOT second brain inputs. The second brain remains exclusively Reed's private space.
-- **Newsletter:** No. If the blog builds traction, may pivot to Substack or similar later.
+- **Email publication:** Yes. Market Brief is the account-coupled weekly email
+  format. Its consent, access, and delivery contracts live in
+  `notes/market-wire/implementation-plan.md`.
 - **Domain:** purveyors.io/blog (keep it on the main domain for SEO value)
 - **Scraper data:** Yes, publish aggregated market data (pricing trends, availability patterns, origin analysis). No raw supplier copy, no security-sensitive implementation details. The LLM content pipeline for fair use handling is itself a topic worth writing about.
 

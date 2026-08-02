@@ -76,33 +76,19 @@
 
 ## P1: Build the distribution and revenue engine
 
-- [ ] **Build Market Wire WP-1: canonical contract.** In Parchment API, ship
-      edition facts, immutable draft/publish semantics, public latest/list reads, and
-      durable idempotent dispatch intents. Facts must cite evidence and suppress stale
-      or incomplete segments. Add the governing PADR. Plan:
-      `notes/market-wire/infrastructure.md`.
+- [ ] **Build the Market Brief MVP.** Use
+      `notes/market-wire/implementation-plan.md` as the sole authority for product
+      contracts, dependency order, and implementation status. Do not restate its PR
+      sequence in DEVLOG.
 
-- [ ] **Build Market Wire WP-2: generation pipeline.** In coffee-scraper, add the
-      weekly macro/news ingestion and editorial generation job, schema validation,
-      deterministic numeric verification, loud cadence failures, draft submission,
-      and the initial human publish gate. Reframe the repo in docs as the Purveyors
-      ingestion and generation layer without renaming it yet.
-
-- [ ] **Build Market Wire WP-3 and WP-4: web, subscriber, email, and RSS loop.** In
-      coffee-app, ship indexable `/wire` editions, archive access, passwordless double
-      opt-in, settings and signed unsubscribe flows, RSS/Atom, and the shared email
-      renderer. Add retryable post-publish email and knowledge-ingest workers against
-      the canonical edition object, including bounce/complaint handling and legal
-      hygiene. Resend is the current recommendation; make the final provider decision
-      during the implementation slice.
-
-- [ ] **Launch and measure the Wire.** Publish early editions through the human
+- [ ] **Launch and measure Market Brief.** Publish early editions through the human
       gate, recruit the first 50 qualified roasters/buyers/writers/supplier contacts,
       and measure subscriber growth, open rate, evidence clicks, repeat visits,
       replies, and paid conversions. Establish corrections, independence,
       sponsorship, attribution, futures-data, and observable-market methodology
-      policies before scaling distribution. Strategy:
-      `notes/big-ideas/2026-07-19-purveyors-market-wire.md`.
+      policies before scaling distribution. Current contracts and dependency order
+      remain solely in `notes/market-wire/implementation-plan.md`; the original
+      Market Wire proposal is retained only as historical strategic context.
 
 - [ ] **Reprice the self-serve product family.** Change Parchment Intelligence
       from $39 to about $12/month, Mallard Studio from $9 to about $5/month, and add a
@@ -117,13 +103,12 @@
       weekly cadence with one canonical queue from idea to sourced outline, draft,
       Reed-voice review, image, links, metadata, publish, email, and performance
       review. Resolve the current open PR queue before creating more drafts: refresh
-      or close stale PRs #287, #358, and #369. Keep the Wire and blog distinct but
-      connected: Wire is recurring market reporting; the blog carries deeper product,
-      market, API, and agentic arguments. Sources: `notes/blog/ideas.md`,
+      or close stale PRs #287, #358, and #369. Market Brief and essays are distinct
+      formats in one blog system. Sources: `notes/blog/ideas.md`,
       `notes/blog/source-map.md`, and `notes/BLOG_STRATEGY.md`.
 
 - [ ] **Close the full public conversion loop.** Connect catalog, analytics,
-      Market Index, Wire, blog, email, subscription, and checkout with coherent CTAs
+      Market Index, blog, Market Brief email, subscription, and checkout with coherent CTAs
       and attribution. Validate sitemap, `llms.txt`, feeds, social metadata, structured
       data, shared URLs, event naming, and post-purchase return paths. Use real funnel
       data to prioritize the next conversion fix instead of accumulating generic
@@ -131,21 +116,10 @@
 
 ## P1: Build the market knowledge and decision layer
 
-- [ ] **Capture a provenance-aware market corpus from day one.** Add
-      `knowledge_documents` and `knowledge_chunks` for published Wire editions,
-      sections, deep dives, blog posts, curated news, social threads, and macro notes.
-      Store source type, controlled topics, normalized entities, time window, URL, and
-      trust class. Drafts must never enter the corpus; published content must ingest
-      idempotently through a durable post-publish intent.
-
-- [ ] **Ship RAG serving and evaluation as Market Wire WP-5.** Add filtered,
-      citation-preserving Parchment knowledge search, coffee-app chat integration, and
-      a retrieval evaluation set. Route current numeric/filterable questions to
-      structured tools and narrative/history questions to retrieval. Enforce latest
-      public, free-subscriber archive, and Intelligence full-corpus boundaries. Retire
-      structured `origin`, `commercial`, and `processing` catalog prose chunks in a
-      separate slice while preserving sensory/profile vector search. Plan:
-      `notes/market-wire/infrastructure.md#7b-knowledge-layer-ragify-the-wire-corpus-added-2026-07-20`.
+- [ ] **Plan the market knowledge and decision layer separately.** Knowledge
+      documents, vector search, chat integration, and catalog-chunk retirement are
+      explicitly outside the Market Brief MVP. Do not make them publication or
+      delivery dependencies; see `notes/market-wire/implementation-plan.md`.
 
 - [ ] **Build Sourcing Radar after aggregate freshness is proven.** Deliver the
       four mergeable slices in order: canonical Parchment Radar read, Parchment API-owned intent

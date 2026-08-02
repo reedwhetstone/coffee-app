@@ -1,7 +1,16 @@
 # Proposal: Purveyors Market Wire
 
 _Created: 2026-07-19_
-_Status: Strategic proposal aligned to the approved build-now infrastructure direction; launch validation runs from edition #1_
+_Status: Original strategic proposal. Market Brief naming, product corrections, and
+implementation authority now live in `notes/market-wire/implementation-plan.md`._
+
+> **Historical-only record.** This proposal preserves the original 2026-07-19
+> strategy. Its Market Wire naming, `/wire` surface, WP-1 through WP-4 sequence,
+> edition-facts assumptions, and publication-object model are superseded and must
+> not be used as implementation guidance. Use
+> `notes/market-wire/implementation-plan.md` for current contracts, naming, and
+> dependency order.
+
 _Domain: Purveyors ecosystem_
 _Canonical source: this repo_
 
@@ -67,40 +76,31 @@ It solves the actual bottleneck. The platform already has more capability than m
 
 Free recurring intelligence could satisfy too much demand, train users not to pay, or create supplier tension when Purveyors highlights delistings and unfavorable price comparisons. A noisy or stale feed would also damage the trust advantage. The free edition must be useful but delayed and general; paid value must come from relevance, immediacy, history, and workflow.
 
-## Launch validation on the build-now core
+## Historical launch-validation framing
 
-Build the minimal core in the approved mergeable order: WP-1 wire contract, WP-2 generation job, WP-3 `/wire` surface, and WP-4 email dispatch. Run the first editions through the explicit human publish gate while the pipeline proves its cadence and content quality:
+The original proposal evaluated a build-now publication core with a human review
+gate, direct outreach, a founding offer, and recurring measures for list growth,
+opens, evidence clicks, replies, repeat visits, and paid conversion. It also
+assumed a shared edition-facts/publication-object pipeline and a WP-1 through WP-4
+build order. Those assumptions are retained only to explain the proposal's origin;
+they are not the current implementation contract.
 
-1. Generate each concise weekly edition from the canonical edition-facts and publication pipeline.
-2. Recruit 50 named roasters, buyers, coffee writers, and supplier-side contacts through direct outreach.
-3. Publish each edition as an indexable web page and email, with tracked links to the underlying Market Index evidence.
-4. Offer a founding plan: $12 Intelligence, $5 Studio, or $15 bundled, price-locked for the first 50 customers.
-5. Measure subscriber growth, open rate, evidence clicks, replies, repeat visits, and paid conversions.
+The original cross-product notes likewise described expected roles for
+coffee-scraper, parchment-api, purveyors-cli, and coffee-app. Current ownership,
+route boundaries, compatibility contracts, and MR sequencing are defined only in
+`notes/market-wire/implementation-plan.md` and the governing ADRs.
 
-These launch metrics inform iteration and commercial validation from edition #1; they are not a gate that delays the foundational publication infrastructure. The validation loop succeeds with at least 50 qualified free subscribers and five paid founding customers, or equivalent high-signal design-partner demand. It signals a distribution problem if outreach requires constant personal chasing and readers do not return for subsequent editions.
+## Current authority
 
-## What would need to be true
+Use `notes/market-wire/implementation-plan.md` for all Market Brief implementation
+questions. This proposal, `notes/market-wire/research.md`,
+`notes/market-wire/design.md`, and `notes/market-wire/infrastructure.md` are
+historical records and do not own active work.
 
-- Market signals and observation timestamps must be trustworthy enough to publish without manual correction.
-- Each item must cite its supplier evidence and clearly distinguish observation from inference.
-- The public edition must be general or delayed enough that personalized alerts retain paid value.
-- Email, RSS, and web editions must share one canonical publication object rather than becoming separate editorial workflows.
-- The founding offer must be paired with direct outreach and onboarding; price reduction alone will not create demand.
-- Supplier comparison must remain neutral and evidence-led to protect Purveyors' trust position.
+## Historical recommendation
 
-## Cross-product implications
-
-- coffee-scraper: preserve immutable, publication-ready observations and truthful freshness metadata.
-- parchment-api: establish the stable public wire projection in WP-1 from edition #1; add paid filtered/history contracts after the core publication loop is operating.
-- purveyors-cli: add wire reads only after a canonical API contract exists; preserve citations and observation timestamps for agents.
-- coffee-app: publish indexable editions and signal pages, collect email conversion, and route paid subscribers into Intelligence, Sourcing Radar, and Studio.
-
-## Source-of-truth routing
-
-- Canonical implementation plan: `notes/market-wire/infrastructure.md`; this proposal records the strategic context and launch-validation metrics.
-- Original source: `brain/moonshots/2026-07-19-purveyors-market-wire.md` (retained as the originating moonshot/pointer after consolidation)
-- Product repo mirror or PR: n/a
-
-## Recommendation
-
-Build the minimal publication core now, with a human publish gate and direct outreach from edition #1. Use subscriber, retention, evidence-click, and paid-founder metrics to refine the product and earn automation; do not delay syndication infrastructure until demand proof.
+The original recommendation was to build a minimal publication core with a human
+publish gate and direct outreach from edition #1, then use subscriber, retention,
+evidence-click, and paid-founder metrics to refine the product and earn automation.
+That recommendation is historical; the current implementation boundary is defined
+in `notes/market-wire/implementation-plan.md`.
