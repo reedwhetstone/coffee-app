@@ -61,7 +61,11 @@
 				return;
 			}
 
-			sessionStorage.setItem('purveyors:account-deletion-accepted', 'true');
+			try {
+				sessionStorage.setItem('purveyors:account-deletion-accepted', 'true');
+			} catch {
+				// Completion messaging is best effort; durable acceptance still requires sign-out.
+			}
 			try {
 				await data.supabase.auth.signOut({ scope: 'local' });
 			} catch {

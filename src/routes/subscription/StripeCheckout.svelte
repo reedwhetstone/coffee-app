@@ -12,7 +12,7 @@
 
 	const { purchaseKey, onSuccess = () => {} } = $props<{
 		purchaseKey: BillingPurchaseKey;
-		onSuccess?: () => void;
+		onSuccess?: () => void | Promise<void>;
 	}>();
 
 	let checkoutElement = $state<HTMLElement | null>(null);
@@ -58,13 +58,15 @@
 		}
 
 		attempt = persistCheckoutAdmission(sessionStorage, attempt, body.admissionId);
+		if (body.status === 'settled') {
+			// Keep the admission so the success page can reconcile it and clear the
+			// browser state only after the terminal flow has completed.
+			await onSuccess();
+			return null;
+		}
 		if (isTerminalCheckoutStatus(body.status)) {
 			clearCheckoutAttempt(sessionStorage);
-			throw new Error(
-				body.status === 'settled'
-					? 'This checkout is already complete.'
-					: 'This checkout is closed. Start a new checkout to continue.'
-			);
+			throw new Error('This checkout is closed. Start a new checkout to continue.');
 		}
 		if (body.status !== 'published' || !body.clientSecret) {
 			throw new Error('Checkout is still being prepared. Try again in a moment.');
@@ -86,6 +88,7 @@
 			}
 
 			const clientSecret = await prepareCheckout();
+			if (!clientSecret) return;
 			if (!stripe) {
 				// eslint-disable-next-line no-undef
 				stripe = Stripe(

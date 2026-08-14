@@ -187,6 +187,8 @@
 		}
 	];
 
+	const subscriptionMutationRetryDelaysMs = [500, 1000, 2000, 4000, 8000] as const;
+
 	let showCheckout = $state(false);
 	let selectedPurchaseKey = $state<BillingPurchaseKey | null>(null);
 	let selectedPlanName = $state('');
@@ -195,6 +197,7 @@
 	let mutationLoading = $state<string | null>(null);
 	let mutationMessages = $state<Record<string, string>>({});
 	let mutationErrors = $state<Record<string, string>>({});
+	let mutationPending = $state<Record<string, boolean>>({});
 
 	const membershipState = $derived(
 		data.accountState
@@ -253,6 +256,14 @@
 	);
 	const isSignedIn = $derived(data.auth.isSignedIn);
 
+	const isProductActive = (product: ProductCard) => {
+		if (product.family === 'membership') return membershipState?.hasAccess === true;
+		if (product.family === 'api_plan')
+			return apiState?.plan === 'member' || apiState?.plan === 'enterprise';
+		if (product.family === 'ppi_addon') return intelligenceState?.enabled === true;
+		return false;
+	};
+
 	// Purchase intent from URL params (set before sign-in to preserve selection).
 	// Auto-open is gated on the explicit `intent=checkout` marker so that
 	// bookmarks/shared links like `/subscription?plan=api-monthly` only highlight
@@ -295,9 +306,10 @@
 		});
 	};
 
-	const openCheckout = (productName: string, option: ProductCardInterval) => {
+	const openCheckout = (product: ProductCard, option: ProductCardInterval) => {
+		if (isProductActive(product)) return;
 		selectedPurchaseKey = option.purchaseKey;
-		selectedPlanName = productName;
+		selectedPlanName = product.name;
 		selectedIntervalLabel = option.label;
 		selectedPriceLabel = `${option.price}${option.interval}`;
 		showCheckout = true;
@@ -308,7 +320,7 @@
 			if (!product.intervals) continue;
 			for (const option of product.intervals) {
 				if (option.purchaseKey === purchaseKey) {
-					openCheckout(product.name, option);
+					openCheckout(product, option);
 					return;
 				}
 			}
@@ -440,6 +452,7 @@
 		mutationLoading = key;
 		mutationErrors[key] = '';
 		mutationMessages[key] = '';
+		mutationPending[key] = false;
 		const requestId = getOrCreateSubscriptionMutationRequestId(
 			sessionStorage,
 			subscription.subscriptionId,
@@ -448,31 +461,47 @@
 		);
 
 		try {
-			const response = await fetch(
-				`/api/billing/subscriptions/${encodeURIComponent(subscription.subscriptionId)}`,
-				{
-					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ requestId, cancelAtPeriodEnd })
+			let result: { status: string; reason?: string } | null = null;
+			for (let attempt = 0; ; attempt += 1) {
+				const response = await fetch(
+					`/api/billing/subscriptions/${encodeURIComponent(subscription.subscriptionId)}`,
+					{
+						method: 'PATCH',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ requestId, cancelAtPeriodEnd })
+					}
+				);
+				const body = await response.json().catch(() => null);
+				if (!response.ok) {
+					if (response.status === 409) {
+						clearSubscriptionMutationRequestId(
+							sessionStorage,
+							subscription.subscriptionId,
+							cancelAtPeriodEnd
+						);
+					}
+					throw new Error(body?.error?.message ?? 'Unable to update this subscription.');
 				}
-			);
-			const result = await response.json().catch(() => null);
-			if (!response.ok) {
-				if (response.status === 409) {
-					clearSubscriptionMutationRequestId(
-						sessionStorage,
-						subscription.subscriptionId,
-						cancelAtPeriodEnd
-					);
+				if (!body || typeof body.status !== 'string') {
+					throw new Error('Subscription update returned an invalid response.');
 				}
-				throw new Error(result?.error?.message ?? 'Unable to update this subscription.');
-			}
-			if (!result || typeof result.status !== 'string') {
-				throw new Error('Subscription update returned an invalid response.');
+
+				result = {
+					status: body.status,
+					reason: typeof body.reason === 'string' ? body.reason : undefined
+				};
+				if (!isPendingSubscriptionMutation(result.status)) break;
+				const delay = subscriptionMutationRetryDelaysMs[attempt];
+				if (delay === undefined) break;
+				await new Promise((resolve) => setTimeout(resolve, delay));
 			}
 
+			if (!result) throw new Error('Subscription update returned an invalid response.');
+
 			if (isPendingSubscriptionMutation(result.status)) {
-				mutationMessages[key] = 'Parchment accepted the change and is applying it.';
+				mutationPending[key] = true;
+				mutationMessages[key] =
+					'Parchment accepted the change, but it is still processing. Check the same request again to see the terminal result.';
 				return;
 			}
 			if (isTerminalSubscriptionMutation(result.status)) {
@@ -690,9 +719,11 @@
 										>
 											{mutationLoading === mutationKey
 												? 'Submitting...'
-												: subscription.cancelAtPeriodEnd
-													? `Keep ${subscriptionName(subscription)} active`
-													: `End ${subscriptionName(subscription)} at renewal`}
+												: mutationPending[mutationKey]
+													? 'Check subscription status'
+													: subscription.cancelAtPeriodEnd
+														? `Keep ${subscriptionName(subscription)} active`
+														: `End ${subscriptionName(subscription)} at renewal`}
 										</button>
 										{#if mutationMessages[mutationKey]}
 											<p class="mt-3 text-sm text-info-strong">{mutationMessages[mutationKey]}</p>
@@ -833,10 +864,13 @@
 												</div>
 											{:else}
 												<button
-													onclick={() => openCheckout(product.name, option)}
-													class="mt-4 w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
+													onclick={() => openCheckout(product, option)}
+													disabled={isProductActive(product)}
+													class="mt-4 w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 												>
-													{product.ctaLabel}
+													{isProductActive(product)
+														? (product.activeCtaLabel ?? 'Already active')
+														: product.ctaLabel}
 												</button>
 											{/if}
 										</div>
