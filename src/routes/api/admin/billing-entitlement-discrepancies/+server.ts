@@ -1,161 +1,80 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 
-import {
-	buildBillingEntitlementDiscrepancyReport,
-	repairBillingEntitlementDiscrepancy,
-	type BillingEntitlementAuditLogSummary
-} from '$lib/server/billing/admin-discrepancies';
-import { createAdminClient } from '$lib/supabase-admin';
 import { validateAdminAccess } from '$lib/server/auth';
-import type { Database } from '$lib/types/database.types';
+import {
+	browserBffResponse,
+	guardBrowserBffRequest,
+	invalidJsonResponse,
+	parchmentUnavailableResponse,
+	relayParchmentResult
+} from '$lib/server/browserBff';
+import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 
-export const GET: RequestHandler = async (event) => {
+async function requireAdmin(event: Parameters<RequestHandler>[0]): Promise<Response | null> {
 	try {
 		await validateAdminAccess(event);
-
-		const supabase = createAdminClient() as SupabaseClient<Database>;
-		const lastChecked = new Date().toISOString();
-
-		const { data: stripeCustomers, error: customersError } = (await supabase
-			.from('stripe_customers')
-			.select('user_id, customer_id, email')) as {
-			data: { user_id: string; customer_id: string; email: string | null }[] | null;
-			error: PostgrestError | null;
-		};
-
-		if (customersError) {
-			return json({ error: 'Database error fetching Stripe customers' }, { status: 500 });
-		}
-
-		const { data: userRoles, error: userRolesError } = (await supabase
-			.from('user_roles')
-			.select('id, email, name, role, api_plan, ppi_access, updated_at')) as {
-			data:
-				| {
-						id: string;
-						email: string | null;
-						name: string | null;
-						role: Database['public']['Tables']['user_roles']['Row']['role'];
-						api_plan: Database['public']['Tables']['user_roles']['Row']['api_plan'];
-						ppi_access: boolean;
-						updated_at: string;
-				  }[]
-				| null;
-			error: PostgrestError | null;
-		};
-
-		if (userRolesError) {
-			return json({ error: 'Database error fetching user entitlements' }, { status: 500 });
-		}
-
-		const { data: billingSubscriptions, error: billingSubscriptionsError } = await supabase
-			.from('billing_subscriptions')
-			.select('*');
-
-		if (billingSubscriptionsError) {
-			return json({ error: 'Database error fetching billing snapshots' }, { status: 500 });
-		}
-
-		const { data: recentLogs, error: recentLogsError } = (await supabase
-			.from('role_audit_logs')
-			.select('user_id, old_role, new_role, trigger_type, created_at, stripe_customer_id, metadata')
-			.order('created_at', { ascending: false })
-			.limit(50)) as {
-			data:
-				| {
-						user_id: string;
-						old_role: string | null;
-						new_role: string;
-						trigger_type: string;
-						created_at: string;
-						stripe_customer_id: string | null;
-						metadata: Database['public']['Tables']['role_audit_logs']['Row']['metadata'];
-				  }[]
-				| null;
-			error: PostgrestError | null;
-		};
-
-		if (recentLogsError) {
-			return json({ error: 'Database error fetching audit logs' }, { status: 500 });
-		}
-
-		const recentAuditLogs: BillingEntitlementAuditLogSummary[] = (recentLogs || []).map((log) => {
-			const userRole = userRoles?.find((row) => row.id === log.user_id);
-			return {
-				userId: log.user_id,
-				email: userRole?.email ?? undefined,
-				oldRole: log.old_role,
-				newRole: log.new_role,
-				triggerType: log.trigger_type,
-				createdAt: log.created_at,
-				stripeCustomerId: log.stripe_customer_id ?? undefined,
-				metadata: log.metadata
-			};
+		return null;
+	} catch (error) {
+		const authError = error as { status?: number; message?: string };
+		return browserBffResponse(authError.status === 403 ? 403 : 401, {
+			error: {
+				code: authError.status === 403 ? 'admin_required' : 'session_required',
+				message: authError.message ?? 'Administrator access is required.'
+			}
 		});
+	}
+}
 
-		return json(
-			buildBillingEntitlementDiscrepancyReport({
-				userRoles: userRoles || [],
-				stripeCustomers: stripeCustomers || [],
-				billingSubscriptions: billingSubscriptions || [],
-				recentAuditLogs,
-				lastChecked
-			})
-		);
-	} catch (error: unknown) {
-		const err = error as { status?: number; message?: string };
-		if (err.status === 403 || err.status === 401) {
-			return json({ error: err.message }, { status: err.status });
-		}
+async function adminClient(event: Parameters<RequestHandler>[0]) {
+	return createParchmentServerClient(event, {
+		mode: 'session',
+		preferHandling: 'inherit'
+	});
+}
 
-		return json({ error: err.message || 'Internal server error' }, { status: 500 });
+export const GET: RequestHandler = async (event) => {
+	const guardResponse = guardBrowserBffRequest(event);
+	if (guardResponse) return guardResponse;
+	const adminResponse = await requireAdmin(event);
+	if (adminResponse) return adminResponse;
+
+	try {
+		const client = await adminClient(event);
+		return relayParchmentResult(await client.billingAdministration.discrepancies());
+	} catch (error) {
+		console.error('Billing administration discrepancy BFF request failed');
+		return parchmentUnavailableResponse(error instanceof ParchmentConfigError ? 503 : 502);
 	}
 };
 
 export const POST: RequestHandler = async (event) => {
+	const guardResponse = guardBrowserBffRequest(event, { mutation: true, jsonBody: true });
+	if (guardResponse) return guardResponse;
+	const adminResponse = await requireAdmin(event);
+	if (adminResponse) return adminResponse;
+
+	let body: unknown;
 	try {
-		const { user: adminUser } = await validateAdminAccess(event);
-		const { userId, reason } = await event.request.json();
+		body = await event.request.json();
+	} catch {
+		return invalidJsonResponse();
+	}
 
-		if (!userId || typeof userId !== 'string') {
-			return json({ error: 'Missing or invalid userId' }, { status: 400 });
-		}
-
-		const supabase = createAdminClient() as SupabaseClient<Database>;
-		const repairResult = await repairBillingEntitlementDiscrepancy(supabase, {
-			userId,
-			adminUserId: adminUser.id,
-			reason: typeof reason === 'string' ? reason : undefined
+	const ownerId =
+		typeof body === 'object' && body !== null && 'ownerId' in body
+			? (body as { ownerId?: unknown }).ownerId
+			: undefined;
+	if (typeof ownerId !== 'string' || ownerId.trim().length === 0) {
+		return browserBffResponse(400, {
+			error: { code: 'invalid_request', message: 'Missing or invalid ownerId.' }
 		});
+	}
 
-		return json({
-			success: true,
-			message: repairResult.changed
-				? 'Billing entitlements recomputed and repaired'
-				: 'Billing entitlements were already canonical; audit log recorded the recompute',
-			userId,
-			changed: repairResult.changed,
-			previousEntitlements: repairResult.previousEntitlements,
-			resolvedEntitlements: repairResult.resolvedEntitlements,
-			billingSubscriptions: repairResult.subscriptions.map((row) => ({
-				stripeSubscriptionId: row.stripe_subscription_id,
-				stripeSubscriptionItemId: row.stripe_subscription_item_id,
-				stripePriceId: row.stripe_price_id,
-				productFamily: row.product_family,
-				productKey: row.product_key,
-				status: row.status,
-				cancelAtPeriodEnd: row.cancel_at_period_end,
-				currentPeriodEnd: row.current_period_end
-			}))
-		});
-	} catch (error: unknown) {
-		const err = error as { status?: number; message?: string };
-		if (err.status === 403 || err.status === 401) {
-			return json({ error: err.message }, { status: err.status });
-		}
-
-		return json({ error: err.message || 'Internal server error' }, { status: 500 });
+	try {
+		const client = await adminClient(event);
+		return relayParchmentResult(await client.billingAdministration.recompute(ownerId));
+	} catch (error) {
+		console.error('Billing administration recompute BFF request failed');
+		return parchmentUnavailableResponse(error instanceof ParchmentConfigError ? 503 : 502);
 	}
 };

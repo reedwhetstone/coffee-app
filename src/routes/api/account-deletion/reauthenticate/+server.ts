@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
-import { ParchmentConfigError } from '$lib/server/parchmentClient';
-import { getAccountDeletionProviderCredential } from '$lib/server/accountDeletionProvider';
 import {
 	ACCOUNT_DELETION_REAUTH_CHALLENGE_COOKIE,
+	ACCOUNT_DELETION_REAUTH_COOKIE,
 	ACCOUNT_DELETION_REAUTH_MAX_AGE_SECONDS,
+	AccountDeletionReauthConfigError,
 	createAccountDeletionReauthChallenge
 } from '$lib/server/accountDeletionReauth';
 import { isCookieSessionPrincipal } from '$lib/server/principal';
@@ -36,10 +36,12 @@ export const POST: RequestHandler = async (event) => {
 	}
 
 	try {
-		const credential = getAccountDeletionProviderCredential();
+		event.cookies.delete(ACCOUNT_DELETION_REAUTH_COOKIE, {
+			path: '/api/account-deletion'
+		});
 		event.cookies.set(
 			ACCOUNT_DELETION_REAUTH_CHALLENGE_COOKIE,
-			createAccountDeletionReauthChallenge(event.locals.principal.user.id, credential),
+			await createAccountDeletionReauthChallenge(event.locals.principal.user.id),
 			{
 				path: '/auth/callback',
 				httpOnly: true,
@@ -50,7 +52,7 @@ export const POST: RequestHandler = async (event) => {
 		);
 		return response(200, { status: 'reauthentication_required' });
 	} catch (error) {
-		if (error instanceof ParchmentConfigError) {
+		if (error instanceof AccountDeletionReauthConfigError) {
 			return response(503, {
 				error: {
 					code: 'reauthentication_unavailable',
@@ -59,7 +61,7 @@ export const POST: RequestHandler = async (event) => {
 			});
 		}
 
-		console.error('Could not start account reauthentication:', error);
+		console.error('Could not start account reauthentication');
 		return response(503, {
 			error: {
 				code: 'reauthentication_unavailable',

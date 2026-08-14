@@ -5,7 +5,13 @@ interface ProcessHandler {
 
 declare global {
 	declare const processHandler: ProcessHandler;
-	declare const Stripe: (key: string) => import('stripe').Stripe;
+	declare const Stripe: (key: string) => {
+		initEmbeddedCheckout(options: { clientSecret: string; onComplete: () => void }): Promise<{
+			mount(element: HTMLElement): void;
+			destroy(): void;
+			error?: { message: string };
+		}>;
+	};
 
 	namespace App {
 		interface Locals {

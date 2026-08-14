@@ -11,11 +11,6 @@ import {
 	HOMEPAGE_MARKETING_TWITTER_DESCRIPTION
 } from '$lib/public-contracts/homepage';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
-import { getAccountDeletionProviderCredential } from '$lib/server/accountDeletionProvider';
-import {
-	ACCOUNT_DELETION_COMPLETION_COOKIE,
-	readAccountDeletionCompletionUser
-} from '$lib/server/accountDeletionReauth';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 
@@ -55,20 +50,6 @@ function extractHomepageCatalogRows(
 
 export const load: PageServerLoad = async (event) => {
 	const { url } = event;
-	let accountDeleted = false;
-	const completionToken = event.cookies.get(ACCOUNT_DELETION_COMPLETION_COOKIE);
-	if (completionToken) {
-		try {
-			const credential = getAccountDeletionProviderCredential();
-			accountDeleted = Boolean(readAccountDeletionCompletionUser(completionToken, credential));
-		} catch {
-			accountDeleted = false;
-		}
-		if (accountDeleted) {
-			event.cookies.delete(ACCOUNT_DELETION_COMPLETION_COOKIE, { path: '/' });
-		}
-	}
-
 	let stockedData: Record<string, unknown>[] = [];
 	try {
 		const client = await createParchmentServerClient(event, { mode: 'public-demo' });
@@ -94,7 +75,6 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		data: stockedData,
 		trainingData: stockedData,
-		accountDeleted,
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/',

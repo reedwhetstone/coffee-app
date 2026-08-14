@@ -1,27 +1,21 @@
 import { json } from '@sveltejs/kit';
+import { ACCOUNT_DELETION_CONFIRMATION } from '$lib/accountDeletion';
+import { ACCOUNT_DELETION_REAUTH_COOKIE } from '$lib/server/accountDeletionReauth';
 import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
-import { createAdminClient } from '$lib/supabase-admin';
-import {
-	ACCOUNT_DELETION_CONFIRMATION,
-	ACCOUNT_DELETION_RETRY_COOKIE,
-	ACCOUNT_DELETION_RETRY_MAX_AGE_SECONDS,
-	AccountDeletionProviderError,
-	captureStripeCustomerIds,
-	createAccountDeletionRetryToken,
-	getAccountDeletionProviderCredential,
-	readAccountDeletionRetryOperation,
-	unlinkStripeCustomers
-} from '$lib/server/accountDeletion';
-import {
-	ACCOUNT_DELETION_COMPLETION_COOKIE,
-	ACCOUNT_DELETION_COMPLETION_MAX_AGE_SECONDS,
-	ACCOUNT_DELETION_REAUTH_COOKIE,
-	createAccountDeletionCompletionToken,
-	hasValidAccountDeletionReauth
-} from '$lib/server/accountDeletionReauth';
-import { checkoutAdmissionsReadyForAccountDeletion } from '$lib/server/billing/checkoutAdmissions';
 import { isCookieSessionPrincipal } from '$lib/server/principal';
 import type { RequestHandler } from './$types';
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const OPERATION_STATUSES = new Set([
+	'accepted',
+	'provider_deleting',
+	'local_cleaning',
+	'auth_deleting',
+	'post_auth_cleanup',
+	'retryable',
+	'conflict',
+	'completed'
+]);
 
 function response(status: number, body: Record<string, unknown>) {
 	return json(body, {
@@ -30,19 +24,32 @@ function response(status: number, body: Record<string, unknown>) {
 	});
 }
 
-function upstreamError(
-	result: {
-		error?: unknown;
-		response?: Response;
-	},
-	fallback: string
-) {
-	const status = result.response?.status ?? 502;
-	const body =
-		typeof result.error === 'object' && result.error !== null
-			? result.error
-			: { error: { code: 'upstream_error', message: fallback } };
-	return response(status, body as Record<string, unknown>);
+function isAcceptedOperation(value: unknown): value is Record<string, unknown> & {
+	operationId: string;
+	status: string;
+} {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'operationId' in value &&
+		typeof value.operationId === 'string' &&
+		UUID_PATTERN.test(value.operationId) &&
+		'status' in value &&
+		typeof value.status === 'string' &&
+		OPERATION_STATUSES.has(value.status)
+	);
+}
+
+function errorBody(result: { error?: unknown }, fallback: string): Record<string, unknown> {
+	return typeof result.error === 'object' && result.error !== null
+		? (result.error as Record<string, unknown>)
+		: { error: { code: 'upstream_error', message: fallback } };
+}
+
+function clearAssertion(event: Parameters<RequestHandler>[0]): void {
+	event.cookies.delete(ACCOUNT_DELETION_REAUTH_COOKIE, {
+		path: '/api/account-deletion'
+	});
 }
 
 export const POST: RequestHandler = async (event) => {
@@ -69,8 +76,6 @@ export const POST: RequestHandler = async (event) => {
 			error: { code: 'session_required', message: 'Sign in before deleting your account.' }
 		});
 	}
-	const { user } = event.locals.principal;
-	const sessionAccessToken = event.locals.principal.session.access_token;
 
 	let body: unknown;
 	try {
@@ -95,31 +100,46 @@ export const POST: RequestHandler = async (event) => {
 		});
 	}
 
+	const assertion = event.cookies.get(ACCOUNT_DELETION_REAUTH_COOKIE);
+	if (!assertion) {
+		return response(403, {
+			error: {
+				code: 'recent_sign_in_required',
+				message: 'Sign in with Google again before deleting your account.'
+			}
+		});
+	}
+
 	try {
-		if (!checkoutAdmissionsReadyForAccountDeletion()) {
-			return response(503, {
+		const client = await createParchmentServerClient(event, {
+			mode: 'session',
+			preferHandling: 'inherit'
+		});
+		const requestResult = await client.accountDeletion.request({ assertion });
+		const upstreamStatus = requestResult.response?.status;
+
+		if (
+			!requestResult.error &&
+			(upstreamStatus === 200 || upstreamStatus === 202) &&
+			isAcceptedOperation(requestResult.data)
+		) {
+			clearAssertion(event);
+			return response(upstreamStatus, requestResult.data);
+		}
+
+		if (upstreamStatus !== undefined && upstreamStatus >= 200 && upstreamStatus < 300) {
+			return response(502, {
 				error: {
-					code: 'deletion_unavailable',
-					message: 'Account deletion is temporarily unavailable.'
+					code: 'invalid_deletion_contract',
+					message: 'Parchment returned an invalid account-deletion operation.'
 				}
 			});
 		}
 
-		// The signing credential is preflighted before deciding whether a retry
-		// capability can replace recent reauthentication.
-		const providerCredential = getAccountDeletionProviderCredential();
-		const retryOperationId = readAccountDeletionRetryOperation(
-			event.cookies.get(ACCOUNT_DELETION_RETRY_COOKIE),
-			user.id,
-			providerCredential
-		);
-		const hasReauthenticated = hasValidAccountDeletionReauth(
-			event.cookies.get(ACCOUNT_DELETION_REAUTH_COOKIE),
-			user.id,
-			sessionAccessToken,
-			providerCredential
-		);
-		if (!retryOperationId && !hasReauthenticated) {
+		if (upstreamStatus === 400 || upstreamStatus === 401 || upstreamStatus === 403) {
+			clearAssertion(event);
+		}
+		if (upstreamStatus === 403) {
 			return response(403, {
 				error: {
 					code: 'recent_sign_in_required',
@@ -128,101 +148,10 @@ export const POST: RequestHandler = async (event) => {
 			});
 		}
 
-		// Retain the pre-fence identities for retry-safe union semantics. The
-		// authoritative rescan happens after Parchment has fenced Checkout.
-		const preFenceStripeCustomerIds = await captureStripeCustomerIds(user.id);
-		const client = await createParchmentServerClient(event, {
-			mode: 'session',
-			preferHandling: 'inherit'
-		});
-
-		const requestResult = await client.accountDeletion.request();
-		if (requestResult.error || !requestResult.data) {
-			return upstreamError(requestResult, 'Parchment could not start account deletion.');
-		}
-
-		if (retryOperationId !== null && retryOperationId !== requestResult.data.operationId) {
-			return response(409, {
-				error: {
-					code: 'operation_mismatch',
-					message: 'The account deletion retry does not match the active operation.'
-				}
-			});
-		}
-
-		// Parchment's request establishes and reconciles the owner fence. Rescan
-		// after it succeeds so any identity retained through the fence is covered.
-		const postFenceStripeCustomerIds = await captureStripeCustomerIds(user.id);
-		const stripeCustomerIds = [
-			...new Set([...preFenceStripeCustomerIds, ...postFenceStripeCustomerIds])
-		];
-
-		event.cookies.set(
-			ACCOUNT_DELETION_RETRY_COOKIE,
-			createAccountDeletionRetryToken(requestResult.data.operationId, user.id, providerCredential),
-			{
-				path: '/api/account-deletion',
-				httpOnly: true,
-				sameSite: 'strict',
-				secure: event.url.protocol === 'https:',
-				maxAge: ACCOUNT_DELETION_RETRY_MAX_AGE_SECONDS
-			}
+		return response(
+			upstreamStatus ?? 502,
+			errorBody(requestResult, 'Parchment could not start account deletion.')
 		);
-
-		await unlinkStripeCustomers(stripeCustomerIds, user.id);
-
-		const finalizationResult = await client.raw.POST('/v1/account-deletion/provider-finalization', {
-			params: {
-				header: {
-					'x-account-deletion-provider-credential': providerCredential
-				}
-			},
-			body: { operationId: requestResult.data.operationId }
-		});
-		if (finalizationResult.error || !finalizationResult.data) {
-			return upstreamError(finalizationResult, 'Parchment could not finalize provider cleanup.');
-		}
-		if (finalizationResult.data.status !== 'completed') {
-			return response(202, {
-				operationId: finalizationResult.data.operationId,
-				status: finalizationResult.data.status
-			});
-		}
-
-		// This is intentionally the final external action. If it fails, the
-		// browser session remains available to retry the idempotent operation.
-		const { error: deleteError } = await createAdminClient().auth.admin.deleteUser(user.id);
-		if (deleteError) {
-			return response(502, {
-				error: {
-					code: 'auth_delete_failed',
-					message: 'Provider cleanup finished, but sign-in removal failed. Please try again.'
-				},
-				operation: finalizationResult.data
-			});
-		}
-
-		event.cookies.set(
-			ACCOUNT_DELETION_COMPLETION_COOKIE,
-			createAccountDeletionCompletionToken(user.id, providerCredential),
-			{
-				path: '/',
-				httpOnly: true,
-				sameSite: 'strict',
-				secure: event.url.protocol === 'https:',
-				maxAge: ACCOUNT_DELETION_COMPLETION_MAX_AGE_SECONDS
-			}
-		);
-		event.cookies.delete(ACCOUNT_DELETION_REAUTH_COOKIE, {
-			path: '/api/account-deletion'
-		});
-		event.cookies.delete(ACCOUNT_DELETION_RETRY_COOKIE, {
-			path: '/api/account-deletion'
-		});
-		return response(200, {
-			operationId: finalizationResult.data.operationId,
-			status: finalizationResult.data.status
-		});
 	} catch (error) {
 		if (error instanceof ParchmentConfigError) {
 			return response(503, {
@@ -232,16 +161,7 @@ export const POST: RequestHandler = async (event) => {
 				}
 			});
 		}
-		if (error instanceof AccountDeletionProviderError) {
-			return response(502, {
-				error: {
-					code: 'provider_cleanup_failed',
-					message: 'Provider cleanup could not be completed. Please try again.'
-				}
-			});
-		}
-
-		console.error('Account deletion failed:', error);
+		console.error('Account deletion request failed');
 		return response(502, {
 			error: {
 				code: 'account_deletion_failed',

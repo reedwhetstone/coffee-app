@@ -1,52 +1,53 @@
-import { buildSubscriptionControlPlaneState } from '$lib/server/billing/control-plane';
-import { getStripeCustomerId, getSubscriptionDetails } from '$lib/services/stripe';
 import type { PageServerLoad } from './$types';
 import { getPageAuthState } from '$lib/server/pageAuth';
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
 
-export const load: PageServerLoad = async ({ locals }) => {
-	const { user, role } = getPageAuthState(locals.principal);
+export const load: PageServerLoad = async (event) => {
+	const { user, role } = getPageAuthState(event.locals.principal);
 
 	if (!user) {
 		return {
-			stripeCustomerId: null,
-			subscription: null,
-			billingSubscriptions: [],
-			controlPlane: null
+			subscriptions: [],
+			billingError: null,
+			accountState: null
 		};
 	}
 
-	const apiPlan = locals.principal.apiPlan ?? 'viewer';
-	const ppiAccess = locals.principal.ppiAccess;
-	const stripeCustomerId = await getStripeCustomerId(user.id);
-
-	let subscription = null;
-	if (stripeCustomerId) {
-		subscription = await getSubscriptionDetails(stripeCustomerId, {
-			productFamily: 'membership'
+	try {
+		const client = await createParchmentServerClient(event, {
+			mode: 'session',
+			preferHandling: 'inherit'
 		});
+		const result = await client.billing.subscriptions.list();
+		const subscriptions = (result.data?.subscriptions ?? []).map((subscription) => ({
+			subscriptionId: subscription.subscriptionId,
+			status: subscription.status,
+			cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+			currentPeriodEnd: subscription.currentPeriodEnd,
+			items: subscription.items.map((item) => ({
+				purchaseKey: item.purchaseKey,
+				productFamily: item.productFamily
+			}))
+		}));
+
+		return {
+			subscriptions,
+			billingError: result.error?.error?.message ?? null,
+			accountState: {
+				role,
+				apiPlan: event.locals.principal.apiPlan ?? 'viewer',
+				ppiAccess: event.locals.principal.ppiAccess
+			}
+		};
+	} catch {
+		return {
+			subscriptions: [],
+			billingError: 'Billing details are temporarily unavailable.',
+			accountState: {
+				role,
+				apiPlan: event.locals.principal.apiPlan ?? 'viewer',
+				ppiAccess: event.locals.principal.ppiAccess
+			}
+		};
 	}
-
-	const { data: billingSubscriptions, error: billingSubscriptionsError } = await locals.supabase
-		.from('billing_subscriptions')
-		.select(
-			'stripe_subscription_id, product_family, product_key, status, cancel_at_period_end, current_period_end'
-		)
-		.eq('user_id', user.id);
-
-	if (billingSubscriptionsError) {
-		console.error('Error loading billing subscription snapshots:', billingSubscriptionsError);
-	}
-
-	return {
-		stripeCustomerId,
-		subscription,
-		billingSubscriptions: billingSubscriptions ?? [],
-		controlPlane: buildSubscriptionControlPlaneState({
-			role,
-			apiPlan,
-			ppiAccess,
-			billingSubscriptions: billingSubscriptions ?? [],
-			stripeSubscription: subscription
-		})
-	};
 };

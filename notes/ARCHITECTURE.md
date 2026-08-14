@@ -1,7 +1,7 @@
 # Coffee-app architecture and migration boundary
 
 **Status:** Current implementation truth
-**Last verified:** 2026-07-30
+**Last verified:** 2026-08-14
 
 This document describes what coffee-app does today. `notes/PRODUCT_VISION.md`
 defines product direction, ADRs preserve decisions, and `notes/DEVLOG.md` owns
@@ -63,6 +63,51 @@ The canonical external API reference is
 <https://api.purveyors.io/docs>. Product and CLI guidance lives at
 <https://purveyors.io/docs>.
 
+## Account deletion boundary
+
+Parchment owns the durable account-deletion saga. Coffee-app requires a current
+cookie session, same-origin request, exact confirmation, and recent Google
+reauthentication. Its OAuth callback signs a purpose-bound, at-most-ten-minute
+Ed25519 assertion, and the deletion BFF forwards that assertion unchanged to
+Parchment. A durable `202` first acceptance or `200` replay is terminal for the
+browser: it signs out locally while Parchment cancels the entire attached
+subscription, settles provider state, deletes account-owned database records,
+and deletes Supabase Auth last. Retries, reconciliation, and operator evidence
+belong to Parchment, not to a browser capability.
+
+Coffee-app retains the private signing-key ring; Parchment receives only the
+matching public-key ring. Rotation is verifier-first. A successful acceptance
+clears the assertion and uses transient browser state for completion messaging.
+There is no account-bound accepted, retry, receipt, or completion cookie.
+
+## Billing authority boundary
+
+Parchment owns Checkout creation and recovery, the purchase catalog and Stripe
+price mapping, owner-wide trial eligibility, Stripe webhook settlement,
+canonical subscription snapshots and whole-subscription mutations, entitlement
+recomputation, and provider correlation. Coffee-app is the cookie-session BFF
+and UX consumer of those contracts. It retains stable purchase keys and product
+copy, transient request and admission IDs, Stripe.js embedded Checkout, and the
+public Stripe publishable key. It does not retain a Stripe server credential,
+webhook handler, provider destination, direct billing-table writer, local
+entitlement recomputation path, or provider reconciliation authority.
+
+Parchment's private admission IDs and its owner-bound `subscriptionId` management
+handle cross the coffee-app browser boundary. The subscription handle is the
+sole provider management identifier permitted there because the accepted PATCH
+contract requires it to select the complete canonical subscription. Stripe
+Customer, Checkout Session, subscription-item, and price identifiers do not
+enter browser page data. Provider objects must not copy the owner UUID into
+Stripe metadata or `client_reference_id`. Stripe may retain immutable historical
+transaction references under its own legal and platform retention rules; the
+Parchment evidence surface counts those legacy references instead of
+misrepresenting them as erased.
+
+No external Market Read mailing provider is live. Before one is enabled, its
+subscriber discovery, erasure or suppression, retry semantics, and aggregate
+evidence must be added to Parchment's provider phase. Deleting only the local
+subscription row is not a sufficient future integration contract.
+
 ## Public data flow
 
 Parchment's production catalog, owner, and entitled data endpoints require a
@@ -95,9 +140,8 @@ These calls are expected to remain local unless a later decision moves them:
   signed-in user resolution, sign-out, and server-side JWT forwarding
 - web-only workspace and message persistence
 - user memory and UI-specific state
-- Stripe checkout, webhook, subscription reconciliation, and local billing UI
-  state while coffee-app remains the billing front end; product-entitlement
-  resolution and mutation still belong behind Parchment
+- billing, Checkout, subscription, account-deletion, and admin presentation
+  state consumed through Parchment SDK contracts
 
 Even in these areas, shared schema changes still belong to Parchment's migration
 authority.

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import { checkRole } from '$lib/types/auth.types';
 	import { parseTastingNotes } from '$lib/utils/parseTastingNotes';
 
@@ -13,15 +14,25 @@
 
 	let isSignedIn = $derived(data.auth.isSignedIn);
 	let canAccessMemberRoutes = $derived(checkRole(data.auth.role, 'member'));
+	let accountDeletionAccepted = $state(false);
+
+	onMount(() => {
+		accountDeletionAccepted =
+			sessionStorage.getItem('purveyors:account-deletion-accepted') === 'true';
+		if (accountDeletionAccepted) {
+			sessionStorage.removeItem('purveyors:account-deletion-accepted');
+		}
+	});
 </script>
 
 <div class="min-h-screen">
-	{#if data.accountDeleted}
+	{#if accountDeletionAccepted}
 		<div
 			class="border-b border-success/30 bg-success-subtle px-4 py-3 text-center text-sm font-medium text-success-strong"
 			role="status"
 		>
-			Your Purveyors account and saved data were deleted.
+			Your account deletion request was accepted. Purveyors is securely finishing cleanup; no
+			further action is needed.
 		</div>
 	{/if}
 	<Hero auth={data.auth} />

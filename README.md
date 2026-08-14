@@ -61,7 +61,7 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
 2. **Platform app API** (`/api/*`)
    - Powers the first-party web app, Console, billing, chat, and admin workflows
    - Mixed auth model depending on route: catalog BFF adapters can allow anonymous or session access, most product routes require session auth, and chat/workspace routes require either Mallard Studio membership or Parchment Intelligence access
-   - `/api/account-deletion` and `/api/account-deletion/reauthenticate` are browser-session-only internal BFF routes; they require same-origin requests plus recent Google reauthentication or a valid owner-bound retry capability, and never form part of the external Parchment API
+   - `/api/billing/*`, `/api/account-deletion`, and `/api/account-deletion/reauthenticate` are browser-session-only internal BFF routes. Coffee-app forwards typed requests through `@purveyors/sdk`; Parchment owns Checkout, subscriptions, entitlements, and the provider-before-local-before-Auth deletion saga. They never form part of the external Parchment API
    - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
    - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are metadata or compatibility endpoints, not catalog or analytics APIs
@@ -93,7 +93,7 @@ Coffee-app's server-side chat tools adapt session-authenticated `@purveyors/sdk`
 - **Data:** Parchment API through `@purveyors/sdk`, plus remaining direct Supabase paths documented in `notes/ARCHITECTURE.md`
 - **Auth:** Supabase Auth for browser identity and session lifecycle; Parchment
   for API credential validation, principal resolution, and product authorization
-- **Payments:** Stripe
+- **Payments:** Stripe.js embedded Checkout presentation; Parchment owns all server-side Stripe authority
 - **AI:** OpenRouter via Vercel AI SDK; Qwen3 embeddings via OpenRouter
 - **Charts:** LayerCake, D3.js, and custom analytics components
 - **Terminal interface:** `@purveyors/cli`
@@ -119,46 +119,32 @@ pnpm verify:catalog-http-contract  # verify the public catalog HTTP contract
 pnpm audit:discoverability         # audit public SEO and discoverability metadata
 ```
 
-### Checkout admission rollout
+### Billing and account-deletion boundary
 
-Self-serve Stripe Checkout can participate in Parchment's account-deletion
-admission fence. The consumer is dark by default so merging or deploying the
-app before the upstream database migration cannot interrupt Checkout.
+Parchment is the sole authority for Checkout creation and recovery, product and
+Stripe price mapping, trial eligibility, Stripe webhook settlement,
+subscription reads and mutations, entitlement recomputation, and account
+deletion. Coffee-app retains only the same-origin cookie-session BFFs, embedded
+Stripe.js UI, stable purchase-key presentation, subscription and account UX,
+and the short-lived reauthentication signer.
 
-Roll out in this order:
+The account-deletion signer uses four server-only settings:
 
-1. Apply Parchment migration `20260730150000_account_deletion_checkout_admission_fence.sql`.
-2. Provision one identical 32-or-more-character secret as
-   `ACCOUNT_DELETION_PROVIDER_FINALIZATION_SECRET` in Parchment and
-   `PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL` in coffee-app.
-3. Ensure the Stripe webhook delivers `checkout.session.expired`.
-4. Choose one cutover:
-   - **Clean cutover:** pause new Checkout creation, expire or finish every open
-     pre-cutover Checkout Session, and confirm every completed session's
-     `checkout.session.completed` event was delivered and processed
-     successfully. Then set
-     `PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED=true`, deploy, and reopen Checkout.
-     Leave `PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED=false`.
-   - **Zero-downtime cutover:** inventory pre-cutover Checkout Sessions and set
-     `PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED=true` in the same
-     deployment that enables admissions.
-5. For a zero-downtime cutover, disable the legacy-drain flag only after every
-   pre-cutover session has either expired, or has had its corresponding
-   `checkout.session.completed` event delivered and processed successfully.
-   Confirm the Stripe event delivery/application handling for each completed
-   session; a session reaching `complete` in Stripe is not sufficient.
+- `ACCOUNT_DELETION_REAUTH_ISSUER`
+- `ACCOUNT_DELETION_REAUTH_AUDIENCE`
+- `ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS`
+- `ACCOUNT_DELETION_REAUTH_ACTIVE_KID`
 
-The legacy-drain flag applies only to pre-cutover `checkout.session` events.
-Historical `customer.subscription` updates and deletions remain authoritative
-for the subscription's lifetime and do not depend on the drain window. Never
-expose the provider credential through a `PUBLIC_` variable or browser code.
+`ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS` is an Ed25519 private JWK ring. Publish
+only the corresponding public-key ring to Parchment, then rotate verifier-first
+before changing the active `kid`. The OAuth callback signs a purpose-bound
+assertion with a maximum ten-minute lifetime; the deletion BFF forwards it
+unchanged to Parchment.
 
-Both flags are rollout scaffolding, not permanent application configuration.
-After the cutover has survived the agreed rollback window and all pre-cutover
-sessions are reconciled, remove both flags and the metadata-free
-`checkout.session` compatibility branch in a bounded cleanup PR. Retain the
-server-only provider credential because it authorizes the ongoing
-coffee-app-to-Parchment provider boundary.
+Account deletion immediately cancels the entire attached subscription before
+Parchment deletes local account data and Supabase Auth. A durable first
+acceptance or replay signs the browser out. Completion messaging uses transient
+browser state only, never an account-bound accepted or completion cookie.
 
 ### Worktree-friendly local validation
 
@@ -198,7 +184,7 @@ Many `/api/*` routes are important, but they are platform routes, not broad publ
 - `/api/catalog/filters` is a public-facing UI helper, not an integration endpoint
 - `/api/beans` GET supports share-token reads, while writes require session auth
 - `/api/chat` and `/api/workspaces` require a session with Mallard Studio membership or Parchment Intelligence access
-- `/api/stripe/*` and `/api/admin/*` are operational routes, not external product APIs
+- `/api/billing/*` and `/api/admin/*` are session BFF and operational routes, not external product APIs
 
 ### Prefer shared domain logic over duplicate behavior
 
@@ -233,8 +219,10 @@ For static validation (`pnpm check --fail-on-warnings`), provide these repo-loca
 - `PUBLIC_SUPABASE_URL`
 - `PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
+- `ACCOUNT_DELETION_REAUTH_ISSUER`
+- `ACCOUNT_DELETION_REAUTH_AUDIENCE`
+- `ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS`
+- `ACCOUNT_DELETION_REAUTH_ACTIVE_KID`
 
 For E2E (`pnpm test:e2e`), also provide:
 

@@ -1,74 +1,94 @@
-<!-- src/lib/components/StripeCheckout.svelte -->
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import type { BillingPurchaseKey } from '$lib/billing/purchaseKeys';
 	import {
-		clearCheckoutRequestId,
-		getOrCreateCheckoutRequestId,
+		clearCheckoutAttempt,
+		getOrCreateCheckoutAttempt,
 		isTerminalCheckoutFailure,
-		parseCheckoutFailure
+		isTerminalCheckoutStatus,
+		parseCheckoutFailure,
+		persistCheckoutAdmission
 	} from '$lib/billing/checkoutRequest';
 
 	const { purchaseKey, onSuccess = () => {} } = $props<{
 		purchaseKey: BillingPurchaseKey;
-		onSuccess?: () => void;
-		onCancel?: () => void;
+		onSuccess?: () => void | Promise<void>;
 	}>();
 
 	let checkoutElement = $state<HTMLElement | null>(null);
+	// Stripe.js is loaded from the provider's public script and intentionally stays browser-only.
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let stripe: any;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let checkout: any;
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-	function getCheckoutRequestId(): string {
-		return getOrCreateCheckoutRequestId(sessionStorage, purchaseKey, () => crypto.randomUUID());
+
+	async function prepareCheckout() {
+		let attempt = getOrCreateCheckoutAttempt(sessionStorage, purchaseKey, () =>
+			crypto.randomUUID()
+		);
+		const response = attempt.admissionId
+			? await fetch(`/api/billing/checkout-sessions/${encodeURIComponent(attempt.admissionId)}`, {
+					method: 'POST'
+				})
+			: await fetch('/api/billing/checkout-sessions', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						requestId: attempt.requestId,
+						purchaseItems: [{ purchaseKey, quantity: 1 }]
+					})
+				});
+		const body = await response.json().catch(() => null);
+
+		if (!response.ok) {
+			const failure = parseCheckoutFailure(body);
+			if (isTerminalCheckoutFailure(failure.code)) clearCheckoutAttempt(sessionStorage);
+			throw new Error(failure.message);
+		}
+
+		if (
+			!body ||
+			typeof body.admissionId !== 'string' ||
+			typeof body.status !== 'string' ||
+			(body.clientSecret !== null && typeof body.clientSecret !== 'string')
+		) {
+			throw new Error('Checkout returned an invalid response. Please try again.');
+		}
+
+		attempt = persistCheckoutAdmission(sessionStorage, attempt, body.admissionId);
+		if (body.status === 'settled') {
+			// Keep the admission so the success page can reconcile it and clear the
+			// browser state only after the terminal flow has completed.
+			await onSuccess();
+			return null;
+		}
+		if (isTerminalCheckoutStatus(body.status)) {
+			clearCheckoutAttempt(sessionStorage);
+			throw new Error('This checkout is closed. Start a new checkout to continue.');
+		}
+		if (body.status !== 'published' || !body.clientSecret) {
+			throw new Error('Checkout is still being prepared. Try again in a moment.');
+		}
+
+		return body.clientSecret as string;
 	}
 
 	const initializeCheckout = async () => {
 		try {
-			// Clean up any existing checkout instance first
-			if (checkout) {
-				checkout.destroy();
-				checkout = null;
-			}
-
+			checkout?.destroy();
+			checkout = null;
 			loading = true;
 			error = null;
 
-			// Wait for the checkout element to be available
 			if (!checkoutElement) {
-				// Adding a small delay to allow the element to be rendered
 				await new Promise((resolve) => setTimeout(resolve, 100));
-				if (!checkoutElement) {
-					throw new Error('Checkout element not available in DOM');
-				}
+				if (!checkoutElement) throw new Error('Checkout element is unavailable.');
 			}
 
-			// Create checkout session
-			const response = await fetch('/api/stripe/create-checkout-session', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					purchaseKeys: [purchaseKey],
-					requestId: getCheckoutRequestId()
-				})
-			});
-
-			if (!response.ok) {
-				const failure = parseCheckoutFailure(await response.json());
-				if (isTerminalCheckoutFailure(failure.code)) {
-					clearCheckoutRequestId(sessionStorage, purchaseKey);
-				}
-				throw new Error(failure.message);
-			}
-
-			const { clientSecret } = await response.json();
-
-			// Initialize Stripe Elements
+			const clientSecret = await prepareCheckout();
+			if (!clientSecret) return;
 			if (!stripe) {
 				// eslint-disable-next-line no-undef
 				stripe = Stripe(
@@ -76,66 +96,41 @@
 				);
 			}
 
-			// Mount checkout form
-			checkout = await stripe.initEmbeddedCheckout({
-				clientSecret,
-				onComplete: () => {
-					// Handle successful payment
-					clearCheckoutRequestId(sessionStorage, purchaseKey);
-					onSuccess();
-				}
-			});
-
-			// Only mount if element exists
-			if (checkoutElement) {
-				checkout.mount(checkoutElement);
-			} else {
-				throw new Error('Checkout element not found in the DOM');
-			}
-
-			if (checkout.error) {
-				throw new Error(checkout.error.message);
-			}
-		} catch (err: unknown) {
-			error = err instanceof Error ? err.message : 'Something went wrong';
-			console.error('Checkout error:', err);
+			checkout = await stripe.initEmbeddedCheckout({ clientSecret, onComplete: onSuccess });
+			checkout.mount(checkoutElement);
+			if (checkout.error) throw new Error(checkout.error.message);
+		} catch (cause) {
+			error = cause instanceof Error ? cause.message : 'Something went wrong';
 		} finally {
 			loading = false;
 		}
 	};
 
 	onMount(() => {
-		// Load Stripe.js
+		const existing = document.querySelector<HTMLScriptElement>('script[data-purveyors-stripe-js]');
+		if (existing) {
+			if (typeof Stripe !== 'undefined') initializeCheckout();
+			else existing.addEventListener('load', initializeCheckout, { once: true });
+			return;
+		}
+
 		const script = document.createElement('script');
 		script.src = 'https://js.stripe.com/v3/';
-		script.onload = initializeCheckout;
+		script.dataset.purveyorsStripeJs = 'true';
+		script.addEventListener('load', initializeCheckout, { once: true });
 		document.body.appendChild(script);
-
-		return () => {
-			document.body.removeChild(script);
-		};
 	});
 
-	onDestroy(() => {
-		// Clean up checkout if component is unmounted
-		if (checkout) {
-			checkout.destroy();
-		}
-	});
+	onDestroy(() => checkout?.destroy());
 </script>
 
 <div class="stripe-checkout-container">
-	<!-- Always create the checkout element but hide it when not needed -->
-	<div
-		bind:this={checkoutElement}
-		id="checkout-element"
-		class={error || loading ? 'hidden' : ''}
-	></div>
+	<div bind:this={checkoutElement} id="checkout-element" class:hidden={error || loading}></div>
 
 	{#if error}
 		<div class="error-message">
 			<p>{error}</p>
-			<button onclick={initializeCheckout} class="retry-button"> Try again </button>
+			<button onclick={initializeCheckout} class="retry-button">Try again</button>
 		</div>
 	{:else if loading}
 		<div class="loading-spinner">
@@ -146,63 +141,43 @@
 </div>
 
 <style>
-	.stripe-checkout-container {
-		width: 100%;
-		min-height: 500px;
-		position: relative;
-	}
-
+	.stripe-checkout-container,
 	#checkout-element {
 		width: 100%;
 		min-height: 500px;
 	}
-
-	.hidden {
-		display: none;
-	}
-
-	.error-message {
-		padding: 20px;
-		border-radius: 8px;
-		background-color: rgba(255, 0, 0, 0.1);
-		color: #d00;
-		text-align: center;
-	}
-
-	.retry-button {
-		margin-top: 10px;
-		padding: 8px 16px;
-		background-color: #1a73e8;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		cursor: pointer;
-	}
-
+	.error-message,
 	.loading-spinner {
 		display: flex;
+		min-height: 300px;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		height: 100%;
-		min-height: 300px;
+		text-align: center;
 	}
-
+	.error-message {
+		border-radius: 8px;
+		background: rgb(255 0 0 / 10%);
+		color: #b91c1c;
+	}
+	.retry-button {
+		margin-top: 10px;
+		border-radius: 4px;
+		background: #1a73e8;
+		padding: 8px 16px;
+		color: white;
+	}
 	.spinner {
-		border: 4px solid rgba(0, 0, 0, 0.1);
-		width: 36px;
-		height: 36px;
-		border-radius: 50%;
-		border-left-color: #1a73e8;
-		animation: spin 1s linear infinite;
 		margin-bottom: 16px;
+		height: 36px;
+		width: 36px;
+		animation: spin 1s linear infinite;
+		border: 4px solid rgb(0 0 0 / 10%);
+		border-left-color: #1a73e8;
+		border-radius: 9999px;
 	}
-
 	@keyframes spin {
-		0% {
-			transform: rotate(0deg);
-		}
-		100% {
+		to {
 			transform: rotate(360deg);
 		}
 	}

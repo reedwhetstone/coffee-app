@@ -1,5 +1,5 @@
 <script lang="ts">
-	import StripeRoleMonitor from '$lib/components/StripeRoleMonitor.svelte';
+	import BillingEntitlementMonitor from '$lib/components/BillingEntitlementMonitor.svelte';
 	import type { PageData } from './$types';
 
 	let { data } = $props<{ data: PageData }>();
@@ -98,7 +98,7 @@
 					<div class="ml-4">
 						<h3 class="text-lg font-medium text-text-primary-light">Role Management</h3>
 						<p class="text-sm text-text-secondary-light">
-							Monitor billing snapshots and entitlement drift
+							Monitor canonical billing and entitlement drift
 						</p>
 					</div>
 				</div>
@@ -139,12 +139,11 @@
 						Billing Entitlement Management
 					</h2>
 					<p class="text-sm text-text-secondary-light">
-						Monitor and repair entitlement drift between stored user access and local billing
-						snapshots
+						Review Parchment's bounded canonical report and request upstream recomputation
 					</p>
 				</div>
 				<div class="p-6">
-					<StripeRoleMonitor />
+					<BillingEntitlementMonitor />
 				</div>
 			</div>
 

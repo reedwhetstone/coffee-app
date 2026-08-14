@@ -24,7 +24,7 @@ Its server-side agent tools depend on `@purveyors/sdk`; `@purveyors/cli` is a se
 - TypeScript
 - Tailwind CSS
 - Supabase
-- Stripe
+- Stripe.js for embedded Checkout presentation
 - OpenRouter via Vercel AI SDK
 - `@purveyors/sdk`
 - LayerCake (charts and analytics components)
@@ -66,8 +66,10 @@ For static validation (`pnpm check --fail-on-warnings`), require:
 - `PUBLIC_SUPABASE_URL`
 - `PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
+- `ACCOUNT_DELETION_REAUTH_ISSUER`
+- `ACCOUNT_DELETION_REAUTH_AUDIENCE`
+- `ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS`
+- `ACCOUNT_DELETION_REAUTH_ACTIVE_KID`
 
 For E2E (`pnpm test:e2e`), also require:
 
@@ -135,17 +137,38 @@ Treat the web app and the external Parchment API as two separate HTTP surfaces:
    - The same-host coffee-app `/v1/*` routes and the `/api/catalog-api` alias have been removed; external integrations use `https://api.purveyors.io/v1/*`
 
 2. **Platform app API** (`/api/*`)
-   - `/api/catalog`, `/api/catalog/filters`, `/api/beans`, `/api/roast-profiles`, `/api/profit`, `/api/chat`, `/api/workspaces`, `/api/account-deletion`, `/api/account-deletion/reauthenticate`, `/api/stripe/*`, `/api/admin/*`, and related helpers
+   - `/api/catalog`, `/api/catalog/filters`, `/api/beans`, `/api/roast-profiles`, `/api/profit`, `/api/chat`, `/api/workspaces`, `/api/billing/*`, `/api/account-deletion`, `/api/account-deletion/reauthenticate`, `/api/admin/*`, and related helpers
    - Powers the first-party web app, Console, billing, chat, and admin workflows
    - Mixed auth model depending on route: catalog BFF adapters can allow anonymous or session access, most product routes require session auth, and chat/workspace routes require either Mallard Studio membership or Parchment Intelligence access
    - Important for contributors, but not a broad public compatibility promise
    - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
    - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are public metadata or compatibility endpoints; document them as discoverability surfaces, not product APIs
-   - `/auth/callback` is the web OAuth handoff surface and can mint the short-lived, session-bound account-deletion reauthentication capability before returning to `/account`; `/auth/cli` is the signed-in browser consent surface for CLI authorization requests. They belong in platform docs only when auth flow behavior matters
+   - `/auth/callback` is the web OAuth handoff surface and can mint a short-lived, purpose-bound Ed25519 account-deletion assertion before returning to `/account`; `/auth/cli` is the signed-in browser consent surface for CLI authorization requests. They belong in platform docs only when auth flow behavior matters
    - `/api/tools/*` routes are deprecated; prefer direct session-mode Parchment SDK integration
 
 Do not blur those layers in code comments, docs, or PR descriptions.
+
+### Billing and account-deletion authority
+
+Parchment owns Checkout creation and recovery, the purchase catalog and Stripe
+price mapping, trial eligibility, webhook settlement, subscription snapshots and
+mutations, entitlement recomputation, and the provider-before-local-before-Auth
+account-deletion saga. Coffee-app is the cookie-session BFF, embedded Checkout
+and account/subscription UX, and Ed25519 reauthentication signer. It may retain
+stable purchase keys and the public Stripe publishable key, but it must not
+retain a Stripe secret, webhook destination, provider credential, alternate
+billing writer, or local deletion coordinator.
+
+The signer configuration is server-only. `ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS`
+contains an Ed25519 private JWK ring and
+`ACCOUNT_DELETION_REAUTH_ACTIVE_KID` selects the current signing key;
+`ACCOUNT_DELETION_REAUTH_ISSUER` and
+`ACCOUNT_DELETION_REAUTH_AUDIENCE` must match Parchment's verifier. Rotate
+verifier-first. Account deletion immediately cancels the entire attached
+subscription. After a durable Parchment acceptance, use transient browser state
+for completion messaging; never create an account-bound accepted or completion
+cookie.
 
 ## Documentation rules
 

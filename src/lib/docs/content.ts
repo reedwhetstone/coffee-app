@@ -343,8 +343,8 @@ const docsPages: DocsPage[] = [
 							'Internal product routes. /api/tools/* are deprecated compatibility shims.'
 						],
 						[
-							'/api/stripe/* and /api/admin/*',
-							'Session, webhook signature, or admin session depending on route',
+							'/api/billing/* and /api/admin/*',
+							'Session or admin session depending on route',
 							'Billing, operations, and support workflows',
 							'Internal operational routes.'
 						]
@@ -1205,16 +1205,16 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/account-deletion',
 							'POST',
-							'Cookie session + recent Google reauthentication or retry capability',
+							'Cookie session + recent Google reauthentication',
 							'Internal product route',
-							'Same-origin browser BFF for the signed-in user’s idempotent account-deletion flow. It retains a retry capability while provider cleanup is pending, returns 202 for nonterminal operations, and deletes Supabase Auth only after Parchment reports completed.'
+							'Same-origin browser BFF that forwards a purpose-bound Ed25519 assertion to Parchment. A durable 202 first acceptance or 200 replay signs the browser out while Parchment immediately cancels the attached subscription, owns idempotent reconciliation, and deletes Auth last. Completion state stays transient in the browser; no accepted or completion cookie is created.'
 						],
 						[
 							'/api/account-deletion/reauthenticate',
 							'POST',
 							'Cookie session',
 							'Internal product route',
-							'Sets a short-lived, user-bound OAuth challenge for the account-deletion flow. The /auth/callback handoff converts a matching challenge into a session-bound capability and returns the browser to /account.'
+							'Sets a short-lived, user-bound OAuth challenge for the account-deletion flow. The /auth/callback handoff converts a matching challenge into an at-most-ten-minute, purpose-bound Ed25519 assertion and returns the browser to /account.'
 						]
 					]
 				}
@@ -1384,7 +1384,7 @@ const docsPages: DocsPage[] = [
 							'GET',
 							'OAuth code',
 							'Auth handoff route',
-							'Exchanges a Supabase auth code for a session, sanitizes next to an internal path, converts a matching account-deletion reauthentication challenge into a session-bound capability, and redirects to the target or /auth/auth-code-error.'
+							'Exchanges a Supabase auth code for a session, sanitizes next to an internal path, converts a matching account-deletion reauthentication challenge into a purpose-bound Ed25519 assertion, and redirects to the target or /auth/auth-code-error.'
 						],
 						[
 							'/auth/cli',
@@ -1454,7 +1454,8 @@ const docsPages: DocsPage[] = [
 			{
 				href: '/docs/api/billing-admin',
 				label: 'Billing and admin',
-				description: 'Stripe lifecycle routes, Console flows, and admin maintenance endpoints.'
+				description:
+					'Parchment-owned billing flows, Console surfaces, and bounded admin maintenance endpoints.'
 			},
 			{
 				href: '/docs/cli/agent-integration',
@@ -1731,71 +1732,41 @@ const docsPages: DocsPage[] = [
 		slug: 'billing-admin',
 		title: 'Billing and admin routes',
 		summary:
-			'Stripe lifecycle routes, Console-adjacent account flows, webhook processing, and admin-only maintenance endpoints.',
+			'Session BFFs for Parchment-owned billing contracts and admin-only maintenance endpoints.',
 		eyebrow: 'Operations',
 		intro: [
 			'The billing and admin layer sits behind the Parchment Console and subscription flows. These routes are operational, not public APIs.',
-			'Most billing routes require a user session. The Stripe webhook requires a valid Stripe signature. Admin routes should be treated as support and maintenance surfaces.'
+			'Coffee-app retains cookie-session BFFs and presentation only. Parchment owns Checkout, catalog and price mapping, trial eligibility, Stripe webhook settlement, subscription state and mutation, and entitlement recomputation. Admin routes should be treated as support and maintenance surfaces.'
 		],
 		sections: [
 			{
-				title: 'Stripe and Console-adjacent routes',
+				title: 'Billing BFF routes',
 				table: {
 					headers: ['Route', 'Methods', 'Auth', 'Purpose'],
 					rows: [
 						[
-							'/api/stripe/check-session',
-							'GET',
-							'Session',
-							'Inspect a Stripe Checkout session by session_id'
+							'/api/billing/checkout-sessions',
+							'POST',
+							'Cookie session + same origin',
+							'Forward a stable requestId and purchaseItems to Parchment and return the admission status and client secret'
 						],
 						[
-							'/api/stripe/create-checkout-session',
-							'POST',
-							'Session',
-							'Create a checkout flow from one or more purchase keys and return a client secret'
+							'/api/billing/checkout-sessions/[admissionId]',
+							'GET POST',
+							'Cookie session; POST also requires same origin',
+							'Read owner-bound admission status or ask Parchment to reconcile it; never accepts or returns a Stripe Session or Customer ID'
 						],
 						[
-							'/api/stripe/create-customer',
-							'POST',
-							'None',
-							'Retired compatibility endpoint; always returns 410. Stripe customer identities are created through fenced Checkout.'
-						],
-						[
-							'/api/stripe/cancel-subscription',
-							'POST',
-							'Session',
-							'Cancel a subscription by subscriptionId'
-						],
-						[
-							'/api/stripe/resume-subscription',
-							'POST',
-							'Session',
-							'Resume a paused or canceled subscription by subscriptionId'
-						],
-						[
-							'/api/stripe/reconcile-session',
-							'POST',
-							'Session',
-							'Verify checkout by sessionId, dedupe repeat processing, reconcile billing snapshots, and return the final entitlement state after purchase'
-						],
-						[
-							'/api/stripe/verify-and-update-role',
-							'POST',
-							'Session',
-							'Compatibility alias to the same reconcile-session handler for older success flows'
-						],
-						[
-							'/api/stripe/webhook',
-							'POST',
-							'Stripe signature',
-							'Process checkout and subscription lifecycle events'
+							'/api/billing/subscriptions/[subscriptionId]',
+							'PATCH',
+							'Cookie session + same origin',
+							'Forward a stable requestId and cancelAtPeriodEnd mutation for the complete canonical subscription'
 						]
 					]
 				},
 				body: [
-					'create-checkout-session accepts purchaseKey or purchaseKeys, rejects unknown or non-self-serve entries, and returns 409 when the request mixes same-family plans or conflicts with an existing active subscription. When Checkout admissions are enabled, the server also requires requestId as a UUID. Generate it once for an exact purchase bundle and preserve that same value across ambiguous failures, including network-uncertain retries. The server canonicalizes sorted normalized Stripe price IDs, so reordering the same bundle is safe; changing the bundle requires a new requestId. Managed success responses echo requestId at the top level. Ambiguous 503 responses echo it as error.requestId so the caller can retry safely. Terminal errors, including checkout_replay_mismatch, clear the old request identity and require a new requestId.',
-					'cancel-subscription and resume-subscription are intentionally limited to membership subscriptions and return 409 when the same Stripe subscription also bundles API or Parchment Intelligence products.'
+					'Checkout callers preserve one requestId across ambiguous retries and persist the returned admissionId before mounting embedded Stripe.js. The success flow reconciles by admissionId without exposing provider session identifiers. Parchment alone validates product families, intervals, bundles, retired catalog entries, and trial eligibility.',
+					'Subscription views render every canonical subscription once with all product-family items. Cancellation and resume mutate the complete subscription. accepted or attempting is pending; succeeded or superseded is terminal. Coffee-app does not optimistically claim provider state.'
 				]
 			},
 			{
@@ -1850,13 +1821,7 @@ const docsPages: DocsPage[] = [
 							'/api/admin/billing-entitlement-discrepancies',
 							'GET POST',
 							'Admin session',
-							'Audit billing entitlement drift versus local billing snapshots and trigger safe recompute-based repairs'
-						],
-						[
-							'/api/admin/stripe-role-discrepancies',
-							'GET POST',
-							'Admin session',
-							'Compatibility alias that currently reuses the billing-entitlement-discrepancies handler'
+							'Presentation-only proxy for Parchment discrepancy reports and bounded entitlement recomputation'
 						],
 						[
 							'/api/admin/backfill-milestones',
@@ -1876,9 +1841,9 @@ const docsPages: DocsPage[] = [
 				title: 'Operational notes',
 				bullets: [
 					'Billing docs should always cross-link to /api-dashboard because that is the user-facing surface for keys, usage, and subscription state.',
-					'Webhook routes are machine-to-machine infrastructure and should never be presented as browser-consumable product APIs.',
+					'Parchment owns the Stripe webhook destination and settlement pipeline; coffee-app exposes no webhook route.',
 					'GET /api/docs and GET /api-dashboard/docs are legacy docs handoff routes that redirect to /docs/api/overview.',
-					'When role-sync behavior changes, review subscription success flows, webhook docs, Console key-management docs, and admin discrepancy tooling together.'
+					'When billing contracts change, review Checkout success flows, subscription UX, Console key-management docs, and admin discrepancy tooling together.'
 				]
 			}
 		],

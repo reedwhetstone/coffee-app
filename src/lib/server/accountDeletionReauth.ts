@@ -1,169 +1,235 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
+import { env } from '$env/dynamic/private';
+import { SignJWT, decodeProtectedHeader, importJWK, jwtVerify, type JWK, type KeyLike } from 'jose';
 
 export const ACCOUNT_DELETION_REAUTH_CHALLENGE_COOKIE = 'account_deletion_reauth_challenge';
 export const ACCOUNT_DELETION_REAUTH_COOKIE = 'account_deletion_reauthenticated';
-export const ACCOUNT_DELETION_COMPLETION_COOKIE = 'account_deletion_completed';
 export const ACCOUNT_DELETION_REAUTH_MAX_AGE_SECONDS = 10 * 60;
-export const ACCOUNT_DELETION_COMPLETION_MAX_AGE_SECONDS = 10 * 60;
 
-type TokenPurpose = 'reauth-challenge' | 'reauth-completion' | 'deletion-completion';
+const ASSERTION_PURPOSE = 'account-deletion';
+const CHALLENGE_PURPOSE = 'account-deletion-reauth-challenge';
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function encodeUserId(userId: string): string {
-	return Buffer.from(userId, 'utf8').toString('base64url');
+interface PrivateKeyRing {
+	keys: Record<string, JWK>;
 }
 
-function decodeUserId(encodedUserId: string): string | null {
+interface SigningConfiguration {
+	issuer: string;
+	audience: string;
+	activeKid: string;
+	keys: Record<string, JWK>;
+}
+
+interface TokenCreationOptions {
+	now?: Date;
+	jti?: string;
+}
+
+interface TokenVerificationOptions {
+	now?: Date;
+}
+
+export class AccountDeletionReauthConfigError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'AccountDeletionReauthConfigError';
+	}
+}
+
+function requiredEnvironment(name: string, value: string | undefined): string {
+	const normalized = value?.trim();
+	if (!normalized) {
+		throw new AccountDeletionReauthConfigError(`${name} is not configured.`);
+	}
+	return normalized;
+}
+
+function readKeyRing(value: string): PrivateKeyRing {
+	let parsed: unknown;
 	try {
-		const userId = Buffer.from(encodedUserId, 'base64url').toString('utf8');
-		return userId.length > 0 ? userId : null;
+		parsed = JSON.parse(value);
 	} catch {
-		return null;
+		throw new AccountDeletionReauthConfigError(
+			'ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS must be valid JSON.'
+		);
 	}
-}
 
-function sessionBinding(sessionAccessToken: string): string {
-	return createHash('sha256').update(sessionAccessToken).digest('base64url');
-}
-
-function signToken(
-	purpose: TokenPurpose,
-	encodedUserId: string,
-	issuedAt: number,
-	nonce: string,
-	sessionAccessToken: string | undefined,
-	credential: string
-): string {
-	const binding = sessionAccessToken ? sessionBinding(sessionAccessToken) : '';
-	return createHmac('sha256', credential)
-		.update(`${purpose}:${encodedUserId}:${issuedAt}:${nonce}:${binding}`)
-		.digest('base64url');
-}
-
-function createUserToken(
-	purpose: TokenPurpose,
-	userId: string,
-	credential: string,
-	now: number,
-	sessionAccessToken?: string
-): string {
-	const encodedUserId = encodeUserId(userId);
-	const issuedAt = String(now);
-	const nonce = randomBytes(16).toString('base64url');
-	const signature = signToken(purpose, encodedUserId, now, nonce, sessionAccessToken, credential);
-	return `${encodedUserId}.${issuedAt}.${nonce}.${signature}`;
-}
-
-function readUserToken(
-	token: string | undefined,
-	purpose: TokenPurpose,
-	credential: string,
-	maxAgeSeconds: number,
-	now: number,
-	expectedUserId?: string,
-	sessionAccessToken?: string
-): string | null {
-	if (!token) return null;
-	const parts = token.split('.');
-	if (parts.length !== 4) return null;
-
-	const [encodedUserId, encodedIssuedAt, nonce, receivedSignature] = parts;
-	const userId = decodeUserId(encodedUserId);
-	const issuedAt = Number(encodedIssuedAt);
 	if (
-		!userId ||
-		!nonce ||
-		!Number.isSafeInteger(issuedAt) ||
-		now - issuedAt < 0 ||
-		now - issuedAt > maxAgeSeconds * 1000
+		typeof parsed !== 'object' ||
+		parsed === null ||
+		!('keys' in parsed) ||
+		typeof parsed.keys !== 'object' ||
+		parsed.keys === null ||
+		Array.isArray(parsed.keys)
 	) {
-		return null;
+		throw new AccountDeletionReauthConfigError(
+			'ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS must contain a keys object.'
+		);
 	}
-	if (expectedUserId !== undefined && userId !== expectedUserId) return null;
 
-	const expectedSignature = signToken(
-		purpose,
-		encodedUserId,
-		issuedAt,
-		nonce,
-		sessionAccessToken,
-		credential
+	return { keys: parsed.keys as Record<string, JWK> };
+}
+
+function validatePrivateKey(kid: string, key: JWK): void {
+	if (
+		typeof key !== 'object' ||
+		key === null ||
+		key.kty !== 'OKP' ||
+		key.crv !== 'Ed25519' ||
+		typeof key.x !== 'string' ||
+		key.x.length === 0 ||
+		typeof key.d !== 'string' ||
+		key.d.length === 0 ||
+		key.kid !== kid
+	) {
+		throw new AccountDeletionReauthConfigError(
+			`ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS contains an invalid Ed25519 private key for ${kid}.`
+		);
+	}
+}
+
+function loadSigningConfiguration(): SigningConfiguration {
+	const issuer = requiredEnvironment(
+		'ACCOUNT_DELETION_REAUTH_ISSUER',
+		env.ACCOUNT_DELETION_REAUTH_ISSUER
 	);
-	const received = Buffer.from(receivedSignature, 'base64url');
-	const expected = Buffer.from(expectedSignature, 'base64url');
-	if (received.length !== expected.length || !timingSafeEqual(received, expected)) return null;
+	const audience = requiredEnvironment(
+		'ACCOUNT_DELETION_REAUTH_AUDIENCE',
+		env.ACCOUNT_DELETION_REAUTH_AUDIENCE
+	);
+	const activeKid = requiredEnvironment(
+		'ACCOUNT_DELETION_REAUTH_ACTIVE_KID',
+		env.ACCOUNT_DELETION_REAUTH_ACTIVE_KID
+	);
+	const ring = readKeyRing(
+		requiredEnvironment(
+			'ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS',
+			env.ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS
+		)
+	);
+	const activeKey = ring.keys[activeKid];
+	if (!activeKey) {
+		throw new AccountDeletionReauthConfigError(
+			'ACCOUNT_DELETION_REAUTH_ACTIVE_KID is not present in ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS.'
+		);
+	}
 
-	return userId;
+	for (const [kid, key] of Object.entries(ring.keys)) {
+		validatePrivateKey(kid, key);
+	}
+
+	return { issuer, audience, activeKid, keys: ring.keys };
+}
+
+async function importPrivateKey(key: JWK): Promise<KeyLike | Uint8Array> {
+	try {
+		return await importJWK(key, 'EdDSA');
+	} catch {
+		throw new AccountDeletionReauthConfigError(
+			'ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS contains an unusable Ed25519 private key.'
+		);
+	}
+}
+
+async function importPublicKey(key: JWK): Promise<KeyLike | Uint8Array> {
+	const { d: _privateKey, ...publicKey } = key;
+	try {
+		return await importJWK(publicKey, 'EdDSA');
+	} catch {
+		throw new AccountDeletionReauthConfigError(
+			'ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS contains an unusable Ed25519 public key.'
+		);
+	}
+}
+
+async function createToken(
+	subject: string,
+	purpose: typeof ASSERTION_PURPOSE | typeof CHALLENGE_PURPOSE,
+	options: TokenCreationOptions = {}
+): Promise<string> {
+	if (!subject) {
+		throw new TypeError('An account-deletion token subject is required.');
+	}
+
+	const configuration = loadSigningConfiguration();
+	const now = options.now ?? new Date();
+	const issuedAt = Math.floor(now.getTime() / 1000);
+	const jti = options.jti ?? randomUUID();
+	if (!UUID_PATTERN.test(jti)) {
+		throw new TypeError('The account-deletion token jti must be a UUID.');
+	}
+
+	return new SignJWT({ purpose })
+		.setProtectedHeader({ alg: 'EdDSA', typ: 'JWT', kid: configuration.activeKid })
+		.setIssuer(configuration.issuer)
+		.setAudience(configuration.audience)
+		.setSubject(subject)
+		.setIssuedAt(issuedAt)
+		.setExpirationTime(issuedAt + ACCOUNT_DELETION_REAUTH_MAX_AGE_SECONDS)
+		.setJti(jti)
+		.sign(await importPrivateKey(configuration.keys[configuration.activeKid]));
 }
 
 export function createAccountDeletionReauthChallenge(
 	userId: string,
-	credential: string,
-	now = Date.now()
-): string {
-	return createUserToken('reauth-challenge', userId, credential, now);
+	options?: TokenCreationOptions
+): Promise<string> {
+	return createToken(userId, CHALLENGE_PURPOSE, options);
 }
 
-export function readAccountDeletionReauthChallenge(
-	token: string | undefined,
-	credential: string,
-	now = Date.now()
-): string | null {
-	return readUserToken(
-		token,
-		'reauth-challenge',
-		credential,
-		ACCOUNT_DELETION_REAUTH_MAX_AGE_SECONDS,
-		now
-	);
-}
-
-export function createAccountDeletionReauthToken(
+export function createAccountDeletionAssertion(
 	userId: string,
-	sessionAccessToken: string,
-	credential: string,
-	now = Date.now()
-): string {
-	return createUserToken('reauth-completion', userId, credential, now, sessionAccessToken);
+	options?: TokenCreationOptions
+): Promise<string> {
+	return createToken(userId, ASSERTION_PURPOSE, options);
 }
 
-export function hasValidAccountDeletionReauth(
+export async function readAccountDeletionReauthChallenge(
 	token: string | undefined,
-	userId: string,
-	sessionAccessToken: string,
-	credential: string,
-	now = Date.now()
-): boolean {
-	return (
-		readUserToken(
+	options: TokenVerificationOptions = {}
+): Promise<string | null> {
+	if (!token) return null;
+
+	const configuration = loadSigningConfiguration();
+	let kid: string | undefined;
+	try {
+		kid = decodeProtectedHeader(token).kid;
+	} catch {
+		return null;
+	}
+	if (!kid || !configuration.keys[kid]) return null;
+
+	try {
+		const { payload, protectedHeader } = await jwtVerify(
 			token,
-			'reauth-completion',
-			credential,
-			ACCOUNT_DELETION_REAUTH_MAX_AGE_SECONDS,
-			now,
-			userId,
-			sessionAccessToken
-		) === userId
-	);
-}
-
-export function createAccountDeletionCompletionToken(
-	userId: string,
-	credential: string,
-	now = Date.now()
-): string {
-	return createUserToken('deletion-completion', userId, credential, now);
-}
-
-export function readAccountDeletionCompletionUser(
-	token: string | undefined,
-	credential: string,
-	now = Date.now()
-): string | null {
-	return readUserToken(
-		token,
-		'deletion-completion',
-		credential,
-		ACCOUNT_DELETION_COMPLETION_MAX_AGE_SECONDS,
-		now
-	);
+			await importPublicKey(configuration.keys[kid]),
+			{
+				algorithms: ['EdDSA'],
+				issuer: configuration.issuer,
+				audience: configuration.audience,
+				clockTolerance: 60,
+				currentDate: options.now ?? new Date()
+			}
+		);
+		if (
+			protectedHeader.typ !== 'JWT' ||
+			payload.purpose !== CHALLENGE_PURPOSE ||
+			typeof payload.sub !== 'string' ||
+			payload.sub.length === 0 ||
+			typeof payload.iat !== 'number' ||
+			typeof payload.exp !== 'number' ||
+			payload.exp <= payload.iat ||
+			payload.exp - payload.iat > ACCOUNT_DELETION_REAUTH_MAX_AGE_SECONDS ||
+			payload.iat > Math.floor((options.now ?? new Date()).getTime() / 1000) + 60 ||
+			typeof payload.jti !== 'string' ||
+			!UUID_PATTERN.test(payload.jti)
+		) {
+			return null;
+		}
+		return payload.sub;
+	} catch (error) {
+		if (error instanceof AccountDeletionReauthConfigError) throw error;
+		return null;
+	}
 }
