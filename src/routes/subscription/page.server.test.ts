@@ -1,14 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Session } from '@supabase/supabase-js';
-import { cookieSessionPrincipal } from '$lib/server/principal.test-utils';
+import { cookieSessionPrincipal, anonymousPrincipal } from '$lib/server/principal.test-utils';
 
-const mockGetStripeCustomerId = vi.fn();
-const mockGetSubscriptionDetails = vi.fn();
-
-vi.mock('$lib/services/stripe', () => ({
-	getStripeCustomerId: mockGetStripeCustomerId,
-	getSubscriptionDetails: mockGetSubscriptionDetails
+const list = vi.fn();
+const createParchmentServerClient = vi.fn(async () => ({
+	billing: { subscriptions: { list } }
 }));
+
+vi.mock('$lib/server/parchmentClient', () => ({ createParchmentServerClient }));
 
 let load: typeof import('./+page.server').load;
 
@@ -16,132 +15,94 @@ beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
 	({ load } = await import('./+page.server'));
-	mockGetStripeCustomerId.mockResolvedValue('cus_123');
-	mockGetSubscriptionDetails.mockResolvedValue(null);
 });
 
-function createSupabaseMock(
-	billingSubscriptions: Array<{
-		stripe_subscription_id: string;
-		product_family: string;
-		product_key: string;
-		status: string;
-		cancel_at_period_end: boolean;
-		current_period_end: string | null;
-	}> = []
-) {
-	const eq = vi.fn(async () => ({ data: billingSubscriptions, error: null }));
-	const select = vi.fn(() => ({ eq }));
-	const from = vi.fn((table: string) => {
-		if (table !== 'billing_subscriptions') {
-			throw new Error(`Unexpected table lookup: ${table}`);
-		}
-
-		return { select };
-	});
-
-	return { from };
-}
-
-function makeLoadInput(
-	billingSubscriptions: Array<{
-		stripe_subscription_id: string;
-		product_family: string;
-		product_key: string;
-		status: string;
-		cancel_at_period_end: boolean;
-		current_period_end: string | null;
-	}> = []
-) {
+function signedInEvent() {
 	const user = { id: 'user-123', email: 'member@example.com' };
-	const session = { user } as Session | null;
-
+	const session = { access_token: 'session-token', user } as Session;
 	return {
 		locals: {
-			principal: cookieSessionPrincipal('viewer', {
+			principal: cookieSessionPrincipal('member', {
 				session,
 				user: user as never,
-				apiPlan: 'viewer',
-				ppiAccess: false
-			}),
-			supabase: createSupabaseMock(billingSubscriptions)
+				apiPlan: 'member',
+				ppiAccess: true
+			})
 		}
-	} as unknown as Parameters<typeof load>[0];
+	} as Parameters<typeof load>[0];
 }
 
 describe('/subscription page server load', () => {
-	it('requests only membership-family Stripe subscription details for management', async () => {
-		const result = (await load(
-			makeLoadInput([
-				{
-					stripe_subscription_id: 'sub_bundle_123',
-					product_family: 'api_plan',
-					product_key: 'api_plan.monthly',
-					status: 'active',
-					cancel_at_period_end: false,
-					current_period_end: '2026-05-01T00:00:00.000Z'
-				}
-			])
-		)) as {
-			subscription: null;
-			controlPlane: {
-				membership: {
-					canManageSubscription: boolean;
-				};
-			} | null;
-		};
+	it('loads canonical subscriptions only through the session SDK client', async () => {
+		const subscriptions = [
+			{
+				subscriptionId: 'sub_123',
+				customerId: 'cus_123',
+				checkoutSessionId: 'cs_123',
+				status: 'active',
+				cancelAtPeriodEnd: false,
+				currentPeriodEnd: '2026-09-01T00:00:00.000Z',
+				items: [
+					{
+						subscriptionItemId: 'si_1',
+						priceId: 'price_1',
+						purchaseKey: 'membership.monthly',
+						productFamily: 'membership'
+					},
+					{
+						subscriptionItemId: 'si_2',
+						priceId: 'price_2',
+						purchaseKey: 'ppi_addon.monthly',
+						productFamily: 'ppi_addon'
+					}
+				]
+			}
+		];
+		list.mockResolvedValue({ data: { subscriptions }, error: undefined });
 
-		expect(mockGetStripeCustomerId).toHaveBeenCalledWith('user-123');
-		expect(mockGetSubscriptionDetails).toHaveBeenCalledWith('cus_123', {
-			productFamily: 'membership'
+		const result = (await load(signedInEvent())) as Record<string, unknown>;
+
+		expect(createParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session',
+			preferHandling: 'inherit'
 		});
-		expect(result.subscription).toBeNull();
-		expect(result.controlPlane?.membership.canManageSubscription).toBe(false);
+		expect(list).toHaveBeenCalledOnce();
+		expect(result.subscriptions).toEqual([
+			{
+				subscriptionId: 'sub_123',
+				status: 'active',
+				cancelAtPeriodEnd: false,
+				currentPeriodEnd: '2026-09-01T00:00:00.000Z',
+				items: [
+					{ purchaseKey: 'membership.monthly', productFamily: 'membership' },
+					{ purchaseKey: 'ppi_addon.monthly', productFamily: 'ppi_addon' }
+				]
+			}
+		]);
+		const serializedPageData = JSON.stringify(result.subscriptions);
+		expect(serializedPageData).not.toContain('cus_123');
+		expect(serializedPageData).not.toContain('cs_123');
+		expect(serializedPageData).not.toContain('si_1');
+		expect(serializedPageData).not.toContain('price_1');
+		expect(result.accountState).toEqual({ role: 'member', apiPlan: 'member', ppiAccess: true });
 	});
 
-	it('marks bundled multi-family membership subscriptions as not manageable', async () => {
-		mockGetSubscriptionDetails.mockResolvedValue({
-			id: 'sub_bundle_123',
-			status: 'active',
-			current_period_end: 1_777_600_000,
-			cancel_at_period_end: false,
-			plan: {
-				name: 'Mallard Studio Member',
-				amount: 900,
-				interval: 'month',
-				interval_count: 1
-			}
-		});
+	it('does not call Parchment for an anonymous page load', async () => {
+		const result = (await load({
+			locals: { principal: anonymousPrincipal() }
+		} as Parameters<typeof load>[0])) as Record<string, unknown>;
 
-		const result = (await load(
-			makeLoadInput([
-				{
-					stripe_subscription_id: 'sub_bundle_123',
-					product_family: 'membership',
-					product_key: 'membership.monthly',
-					status: 'active',
-					cancel_at_period_end: false,
-					current_period_end: '2026-05-01T00:00:00.000Z'
-				},
-				{
-					stripe_subscription_id: 'sub_bundle_123',
-					product_family: 'api_plan',
-					product_key: 'api_plan.monthly',
-					status: 'active',
-					cancel_at_period_end: false,
-					current_period_end: '2026-05-01T00:00:00.000Z'
-				}
-			])
-		)) as {
-			controlPlane: {
-				membership: {
-					canManageSubscription: boolean;
-					managementBlockedReason: string | null;
-				};
-			} | null;
-		};
+		expect(createParchmentServerClient).not.toHaveBeenCalled();
+		expect(result).toEqual({ subscriptions: [], billingError: null, accountState: null });
+	});
 
-		expect(result.controlPlane?.membership.canManageSubscription).toBe(false);
-		expect(result.controlPlane?.membership.managementBlockedReason).toContain('also contains API');
+	it('keeps account presentation available when the canonical billing read is unavailable', async () => {
+		list.mockRejectedValue(new Error('network unavailable'));
+
+		const result = (await load(signedInEvent())) as Record<string, unknown>;
+
+		expect(result.subscriptions).toEqual([]);
+		expect(result.billingError).toBe('Billing details are temporarily unavailable.');
+		expect(result.accountState).toEqual({ role: 'member', apiPlan: 'member', ppiAccess: true });
 	});
 });

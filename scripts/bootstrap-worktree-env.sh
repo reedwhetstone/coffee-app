@@ -13,8 +13,10 @@ CHECK_VARS=(
   PUBLIC_SUPABASE_URL
   PUBLIC_SUPABASE_ANON_KEY
   SUPABASE_SERVICE_ROLE_KEY
-  STRIPE_SECRET_KEY
-  STRIPE_WEBHOOK_SECRET
+  ACCOUNT_DELETION_REAUTH_ISSUER
+  ACCOUNT_DELETION_REAUTH_AUDIENCE
+  ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS
+  ACCOUNT_DELETION_REAUTH_ACTIVE_KID
 )
 
 E2E_VARS=(
@@ -75,8 +77,8 @@ printf '  Use one of: VALIDATION_PASS, VALIDATION_FAIL, VALIDATION_BLOCKED_ENV, 
 
 printf '\nNotes\n'
 printf '  - Placeholder values may unblock static validation, but they do not guarantee runtime or E2E correctness.\n'
-printf '  - Checkout admissions default off. Enabling PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED=true requires PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL (32+ characters) to match Parchment.\n'
-printf '  - PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED=true is temporary and applies only to pre-cutover checkout.session events. Historical customer.subscription events remain reconcilable after the drain closes.\n'
+printf '  - Account-deletion signing keys are server-only Ed25519 private JWKs. Parchment receives only the matching public-key ring.\n'
+printf '  - Rotate keys verifier-first: publish the new public key in Parchment before changing ACCOUNT_DELETION_REAUTH_ACTIVE_KID here.\n'
 printf '  - This helper does not copy secrets from outside the repo. Fill values manually in repo-local env files.\n'
 printf '  - This does not solve detached-worktree module-resolution or stale temp-path install issues.\n'
 

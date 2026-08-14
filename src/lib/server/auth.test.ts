@@ -202,7 +202,7 @@ describe('auth integration', () => {
 		const crossOriginEvent = makeEvent({
 			method: 'POST',
 			origin: 'https://evil.test',
-			url: 'https://app.test/api/admin/stripe-role-discrepancies',
+			url: 'https://app.test/api/admin/billing-entitlement-discrepancies',
 			principal: makeAdminPrincipal()
 		});
 
@@ -214,7 +214,7 @@ describe('auth integration', () => {
 		const sameOriginEvent = makeEvent({
 			method: 'POST',
 			origin: 'https://app.test',
-			url: 'https://app.test/api/admin/stripe-role-discrepancies',
+			url: 'https://app.test/api/admin/billing-entitlement-discrepancies',
 			principal: makeAdminPrincipal()
 		});
 

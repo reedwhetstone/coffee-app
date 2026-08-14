@@ -47,15 +47,26 @@
 			const result = await response.json();
 
 			if (!response.ok) {
+				if (response.status === 401) {
+					try {
+						await data.supabase.auth.signOut({ scope: 'local' });
+					} catch {
+						// The upstream session is authoritative; continue to fresh authentication.
+					}
+					await goto('/auth?next=/account', { replaceState: true });
+					return;
+				}
 				needsReauthentication = result?.error?.code === 'recent_sign_in_required';
-				message =
-					result?.error?.code === 'active_billing'
-						? 'Resolve every open or unpaid subscription before deleting your account.'
-						: (result?.error?.message ?? 'Account deletion could not be completed.');
+				message = result?.error?.message ?? 'Account deletion could not be completed.';
 				return;
 			}
 
-			await data.supabase.auth.signOut({ scope: 'local' });
+			sessionStorage.setItem('purveyors:account-deletion-accepted', 'true');
+			try {
+				await data.supabase.auth.signOut({ scope: 'local' });
+			} catch {
+				// Parchment already durably accepted the deletion. Local sign-out is best effort.
+			}
 			await goto('/', { replaceState: true });
 		} catch {
 			message = 'Account deletion could not be completed. Please try again.';
@@ -80,9 +91,10 @@
 	<section class="mt-10 rounded-xl border border-danger/30 bg-surface-panel p-6">
 		<h2 class="text-xl font-semibold text-danger">Danger zone</h2>
 		<p class="mt-3 text-sm leading-6 text-muted">
-			Deleting your account permanently removes your saved data and Purveyors sign-in. You will also
-			lose Market Brief email delivery and access to the Market Brief archive. This cannot be
-			undone.
+			Deleting your account immediately cancels the entire subscription attached to it, including
+			any bundled products. It permanently removes your saved data and Purveyors sign-in, Market
+			Brief delivery, and archive access. Active or trialing billing is not a blocker. This cannot
+			be undone.
 		</p>
 
 		<div class="mt-6 rounded-lg border border-line bg-surface-canvas p-4">

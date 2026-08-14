@@ -11,17 +11,6 @@ import {
 } from '$lib/server/principal';
 import type { CookieSerializeOptions } from 'cookie';
 
-const handleStripeRedirects: Handle = async ({ event, resolve }) => {
-	const url = event.url;
-
-	if (url.searchParams.has('checkout_session_id') && url.pathname === '/subscription') {
-		console.log('Detected Stripe checkout success, redirecting to success page');
-		throw redirect(303, '/subscription/success');
-	}
-
-	return resolve(event);
-};
-
 const handleSupabase: Handle = async ({ event, resolve }) => {
 	event.locals.supabase = createServerClient<Database>(
 		PUBLIC_SUPABASE_URL,
@@ -139,4 +128,4 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-export const handle = sequence(handleStripeRedirects, handleSupabase, authGuard);
+export const handle = sequence(handleSupabase, authGuard);

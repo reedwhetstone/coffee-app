@@ -7,15 +7,14 @@ const STATIC_VALIDATION_VARS = [
 	'PUBLIC_SUPABASE_URL',
 	'PUBLIC_SUPABASE_ANON_KEY',
 	'SUPABASE_SERVICE_ROLE_KEY',
-	'STRIPE_SECRET_KEY',
-	'STRIPE_WEBHOOK_SECRET'
+	'ACCOUNT_DELETION_REAUTH_ISSUER',
+	'ACCOUNT_DELETION_REAUTH_AUDIENCE',
+	'ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS',
+	'ACCOUNT_DELETION_REAUTH_ACTIVE_KID'
 ];
 
 const E2E_ONLY_VARS = ['E2E_TEST_EMAIL', 'E2E_TEST_USER_ID'];
 const OPTIONAL_E2E_VARS = ['PLAYWRIGHT_BASE_URL'];
-const CHECKOUT_ADMISSION_CREDENTIAL = 'PARCHMENT_ACCOUNT_DELETION_PROVIDER_CREDENTIAL';
-const CHECKOUT_ADMISSION_FLAG = 'PARCHMENT_CHECKOUT_ADMISSIONS_ENABLED';
-const CHECKOUT_LEGACY_DRAIN_FLAG = 'PARCHMENT_CHECKOUT_ADMISSION_LEGACY_DRAIN_ENABLED';
 const EXAMPLE_KEYS = ['.env', '.env.local', '.env.test', '.env.test.example'];
 
 function parseEnvFile(filePath) {
@@ -71,16 +70,6 @@ const combinedEnv = { ...repoEnv, ...process.env };
 
 const requiredVars =
 	mode === 'e2e' ? [...STATIC_VALIDATION_VARS, ...E2E_ONLY_VARS] : STATIC_VALIDATION_VARS;
-const checkoutAdmissionsEnabled =
-	combinedEnv[CHECKOUT_ADMISSION_FLAG]?.trim().toLowerCase() === 'true';
-const checkoutLegacyDrainEnabled =
-	combinedEnv[CHECKOUT_LEGACY_DRAIN_FLAG]?.trim().toLowerCase() === 'true';
-if (checkoutLegacyDrainEnabled && !checkoutAdmissionsEnabled) {
-	console.error('VALIDATION_BLOCKED_ENV');
-	console.error(`${CHECKOUT_LEGACY_DRAIN_FLAG}=true requires ${CHECKOUT_ADMISSION_FLAG}=true.`);
-	process.exit(1);
-}
-if (checkoutAdmissionsEnabled) requiredVars.push(CHECKOUT_ADMISSION_CREDENTIAL);
 const missingVars = requiredVars.filter((key) => {
 	const value = combinedEnv[key];
 	return value === undefined || value === '';
@@ -95,12 +84,6 @@ console.log(`Env contract mode: ${mode}`);
 console.log(`Checked repo: ${repoRoot}`);
 console.log(`Env files inspected: ${discoveredFiles.length ? discoveredFiles.join(', ') : 'none'}`);
 console.log(`Required vars (${requiredVars.length}): ${requiredVars.join(', ')}`);
-console.log(
-	`Checkout admission rollout: ${CHECKOUT_ADMISSION_FLAG}=${checkoutAdmissionsEnabled ? 'true' : 'false'}`
-);
-console.log(
-	`Legacy open-session drain: ${CHECKOUT_LEGACY_DRAIN_FLAG}=${checkoutLegacyDrainEnabled ? 'true' : 'false'}`
-);
 
 if (mode === 'e2e') {
 	console.log(`Optional vars: ${OPTIONAL_E2E_VARS.join(', ')}`);
@@ -114,12 +97,6 @@ if (missingVars.length) {
 	console.error('VALIDATION_BLOCKED_ENV');
 	console.error(`Missing required env vars: ${missingVars.join(', ')}`);
 	console.error('Use scripts/bootstrap-worktree-env.sh to see the local validation env contract.');
-	process.exit(1);
-}
-
-if (checkoutAdmissionsEnabled && combinedEnv[CHECKOUT_ADMISSION_CREDENTIAL].trim().length < 32) {
-	console.error('VALIDATION_BLOCKED_ENV');
-	console.error(`${CHECKOUT_ADMISSION_CREDENTIAL} must be at least 32 characters.`);
 	process.exit(1);
 }
 

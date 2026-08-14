@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-
 import {
-	checkoutRequestStorageKey,
-	clearCheckoutRequestId,
-	getOrCreateCheckoutRequestId,
+	clearCheckoutAttempt,
+	getOrCreateCheckoutAttempt,
 	isTerminalCheckoutFailure,
-	parseCheckoutFailure
+	isTerminalCheckoutStatus,
+	parseCheckoutFailure,
+	persistCheckoutAdmission,
+	readCheckoutAttempt
 } from './checkoutRequest';
 
 function memoryStorage() {
@@ -13,43 +14,48 @@ function memoryStorage() {
 	return {
 		getItem: (key: string) => values.get(key) ?? null,
 		setItem: (key: string, value: string) => values.set(key, value),
-		removeItem: (key: string) => values.delete(key),
-		values
+		removeItem: (key: string) => values.delete(key)
 	};
 }
 
-describe('Checkout request identity', () => {
-	it('keeps one request ID through retryable client initialization failures', () => {
+describe('Checkout attempt identity', () => {
+	it('keeps one request ID and admission through ambiguous retries', () => {
 		const storage = memoryStorage();
 		const createId = vi.fn().mockReturnValueOnce('request-one').mockReturnValueOnce('request-two');
+		const first = getOrCreateCheckoutAttempt(storage, 'membership.monthly', createId);
+		const admitted = persistCheckoutAdmission(storage, first, 'admission-one');
+		const retry = getOrCreateCheckoutAttempt(storage, 'membership.monthly', createId);
 
-		const first = getOrCreateCheckoutRequestId(storage, 'membership.monthly', createId);
-		const retry = getOrCreateCheckoutRequestId(storage, 'membership.monthly', createId);
-
-		expect(first).toBe('request-one');
-		expect(retry).toBe('request-one');
-		expect(createId).toHaveBeenCalledTimes(1);
+		expect(admitted.admissionId).toBe('admission-one');
+		expect(retry).toEqual(admitted);
+		expect(createId).toHaveBeenCalledOnce();
 	});
 
-	it('rotates only after an authoritative terminal response or completion', () => {
+	it('replaces a different purchase attempt and clears only explicitly', () => {
 		const storage = memoryStorage();
-		storage.setItem(checkoutRequestStorageKey('membership.monthly'), 'request-one');
+		getOrCreateCheckoutAttempt(storage, 'membership.monthly', () => 'request-one');
+		expect(getOrCreateCheckoutAttempt(storage, 'api_plan.monthly', () => 'request-two')).toEqual({
+			purchaseKey: 'api_plan.monthly',
+			requestId: 'request-two',
+			admissionId: null
+		});
+		clearCheckoutAttempt(storage);
+		expect(readCheckoutAttempt(storage)).toBeNull();
+	});
 
+	it('recognizes authoritative terminal outcomes', () => {
+		expect(isTerminalCheckoutStatus('accepted')).toBe(false);
+		expect(isTerminalCheckoutStatus('published')).toBe(false);
+		expect(isTerminalCheckoutStatus('settled')).toBe(true);
+		expect(isTerminalCheckoutStatus('closed')).toBe(true);
+		expect(isTerminalCheckoutStatus('conflict')).toBe(true);
 		expect(isTerminalCheckoutFailure('checkout_creation_ambiguous')).toBe(false);
-		expect(isTerminalCheckoutFailure('stripe_checkout_rejected')).toBe(true);
-		expect(isTerminalCheckoutFailure('checkout_admission_closed')).toBe(true);
 		expect(isTerminalCheckoutFailure('checkout_replay_mismatch')).toBe(true);
-
-		clearCheckoutRequestId(storage, 'membership.monthly');
-		const next = getOrCreateCheckoutRequestId(storage, 'membership.monthly', () => 'request-two');
-		expect(next).toBe('request-two');
 	});
 
 	it('parses structured and legacy error envelopes', () => {
 		expect(
-			parseCheckoutFailure({
-				error: { code: 'checkout_admission_closed', message: 'Start again' }
-			})
+			parseCheckoutFailure({ error: { code: 'checkout_admission_closed', message: 'Start again' } })
 		).toEqual({ code: 'checkout_admission_closed', message: 'Start again' });
 		expect(parseCheckoutFailure({ error: 'Legacy failure' })).toEqual({
 			code: null,

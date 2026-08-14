@@ -1,26 +1,3 @@
 import type { PageServerLoad } from './$types';
-import { getPageAuthState } from '$lib/server/pageAuth';
 
-export const load: PageServerLoad = async ({ locals }) => {
-	const { user } = getPageAuthState(locals.principal);
-
-	// If user is logged in, check if they already have a Stripe customer ID
-	if (user) {
-		// Check if user already exists in stripe_customers table
-		const { data: customerData, error: customerError } = (await locals.supabase
-			.from('stripe_customers')
-			.select('customer_id')
-			.eq('user_id', user.id)
-			.maybeSingle()) as { data: { customer_id: string } | null; error: unknown };
-
-		if (customerError) {
-			console.error('Error checking for Stripe customer:', customerError);
-		}
-
-		return {
-			stripeCustomerId: customerData?.customer_id || null
-		};
-	}
-
-	return {};
-};
+export const load: PageServerLoad = async () => ({});

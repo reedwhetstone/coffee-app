@@ -40,8 +40,10 @@ jobs:
           PUBLIC_SUPABASE_URL=https://dummy.supabase.co
           PUBLIC_SUPABASE_ANON_KEY=dummy
           SUPABASE_SERVICE_ROLE_KEY=dummy
-          STRIPE_SECRET_KEY=dummy
-          STRIPE_WEBHOOK_SECRET=dummy
+          ACCOUNT_DELETION_REAUTH_ISSUER=https://www.purveyors.io
+          ACCOUNT_DELETION_REAUTH_AUDIENCE=https://api.purveyors.io/v1/account-deletion
+          ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS=dummy
+          ACCOUNT_DELETION_REAUTH_ACTIVE_KID=dummy
           OPENROUTER_API_KEY=dummy
           EOF
 

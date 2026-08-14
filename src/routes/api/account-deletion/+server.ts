@@ -1,17 +1,21 @@
 import { json } from '@sveltejs/kit';
-import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 import { ACCOUNT_DELETION_CONFIRMATION } from '$lib/accountDeletion';
-import { getAccountDeletionProviderCredential } from '$lib/server/accountDeletionProvider';
-import {
-	ACCOUNT_DELETION_ACCEPTED_COOKIE,
-	ACCOUNT_DELETION_ACCEPTED_MAX_AGE_SECONDS,
-	ACCOUNT_DELETION_REAUTH_COOKIE,
-	createAccountDeletionAcceptedToken,
-	hasValidAccountDeletionReauth
-} from '$lib/server/accountDeletionReauth';
-import { checkoutAdmissionsReadyForAccountDeletion } from '$lib/server/billing/checkoutAdmissions';
+import { ACCOUNT_DELETION_REAUTH_COOKIE } from '$lib/server/accountDeletionReauth';
+import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 import { isCookieSessionPrincipal } from '$lib/server/principal';
 import type { RequestHandler } from './$types';
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const OPERATION_STATUSES = new Set([
+	'accepted',
+	'provider_deleting',
+	'local_cleaning',
+	'auth_deleting',
+	'post_auth_cleanup',
+	'retryable',
+	'conflict',
+	'completed'
+]);
 
 function response(status: number, body: Record<string, unknown>) {
 	return json(body, {
@@ -20,19 +24,32 @@ function response(status: number, body: Record<string, unknown>) {
 	});
 }
 
-function upstreamError(
-	result: {
-		error?: unknown;
-		response?: Response;
-	},
-	fallback: string
-) {
-	const status = result.response?.status ?? 502;
-	const body =
-		typeof result.error === 'object' && result.error !== null
-			? result.error
-			: { error: { code: 'upstream_error', message: fallback } };
-	return response(status, body as Record<string, unknown>);
+function isAcceptedOperation(value: unknown): value is Record<string, unknown> & {
+	operationId: string;
+	status: string;
+} {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'operationId' in value &&
+		typeof value.operationId === 'string' &&
+		UUID_PATTERN.test(value.operationId) &&
+		'status' in value &&
+		typeof value.status === 'string' &&
+		OPERATION_STATUSES.has(value.status)
+	);
+}
+
+function errorBody(result: { error?: unknown }, fallback: string): Record<string, unknown> {
+	return typeof result.error === 'object' && result.error !== null
+		? (result.error as Record<string, unknown>)
+		: { error: { code: 'upstream_error', message: fallback } };
+}
+
+function clearAssertion(event: Parameters<RequestHandler>[0]): void {
+	event.cookies.delete(ACCOUNT_DELETION_REAUTH_COOKIE, {
+		path: '/api/account-deletion'
+	});
 }
 
 export const POST: RequestHandler = async (event) => {
@@ -59,8 +76,6 @@ export const POST: RequestHandler = async (event) => {
 			error: { code: 'session_required', message: 'Sign in before deleting your account.' }
 		});
 	}
-	const { user } = event.locals.principal;
-	const sessionAccessToken = event.locals.principal.session.access_token;
 
 	let body: unknown;
 	try {
@@ -85,24 +100,46 @@ export const POST: RequestHandler = async (event) => {
 		});
 	}
 
+	const assertion = event.cookies.get(ACCOUNT_DELETION_REAUTH_COOKIE);
+	if (!assertion) {
+		return response(403, {
+			error: {
+				code: 'recent_sign_in_required',
+				message: 'Sign in with Google again before deleting your account.'
+			}
+		});
+	}
+
 	try {
-		if (!checkoutAdmissionsReadyForAccountDeletion()) {
-			return response(503, {
+		const client = await createParchmentServerClient(event, {
+			mode: 'session',
+			preferHandling: 'inherit'
+		});
+		const requestResult = await client.accountDeletion.request({ assertion });
+		const upstreamStatus = requestResult.response?.status;
+
+		if (
+			!requestResult.error &&
+			(upstreamStatus === 200 || upstreamStatus === 202) &&
+			isAcceptedOperation(requestResult.data)
+		) {
+			clearAssertion(event);
+			return response(upstreamStatus, requestResult.data);
+		}
+
+		if (upstreamStatus !== undefined && upstreamStatus >= 200 && upstreamStatus < 300) {
+			return response(502, {
 				error: {
-					code: 'deletion_unavailable',
-					message: 'Account deletion is temporarily unavailable.'
+					code: 'invalid_deletion_contract',
+					message: 'Parchment returned an invalid account-deletion operation.'
 				}
 			});
 		}
 
-		const providerCredential = getAccountDeletionProviderCredential();
-		const hasReauthenticated = hasValidAccountDeletionReauth(
-			event.cookies.get(ACCOUNT_DELETION_REAUTH_COOKIE),
-			user.id,
-			sessionAccessToken,
-			providerCredential
-		);
-		if (!hasReauthenticated) {
+		if (upstreamStatus === 400 || upstreamStatus === 401 || upstreamStatus === 403) {
+			clearAssertion(event);
+		}
+		if (upstreamStatus === 403) {
 			return response(403, {
 				error: {
 					code: 'recent_sign_in_required',
@@ -111,47 +148,10 @@ export const POST: RequestHandler = async (event) => {
 			});
 		}
 
-		const client = await createParchmentServerClient(event, {
-			mode: 'session',
-			preferHandling: 'inherit'
-		});
-
-		const requestResult = await client.accountDeletion.requestOrchestrated({
-			'x-account-deletion-provider-credential': providerCredential
-		});
-		if (requestResult.error || !requestResult.data) {
-			return upstreamError(requestResult, 'Parchment could not start account deletion.');
-		}
-		if (
-			requestResult.data.protocolVersion !== 2 ||
-			requestResult.data.providerWorkPrepared !== true
-		) {
-			return response(502, {
-				error: {
-					code: 'invalid_deletion_contract',
-					message: 'Parchment did not accept the service-owned deletion workflow.'
-				}
-			});
-		}
-
-		event.cookies.set(
-			ACCOUNT_DELETION_ACCEPTED_COOKIE,
-			createAccountDeletionAcceptedToken(user.id, providerCredential),
-			{
-				path: '/',
-				httpOnly: true,
-				sameSite: 'strict',
-				secure: event.url.protocol === 'https:',
-				maxAge: ACCOUNT_DELETION_ACCEPTED_MAX_AGE_SECONDS
-			}
+		return response(
+			upstreamStatus ?? 502,
+			errorBody(requestResult, 'Parchment could not start account deletion.')
 		);
-		event.cookies.delete(ACCOUNT_DELETION_REAUTH_COOKIE, {
-			path: '/api/account-deletion'
-		});
-		return response(202, {
-			operationId: requestResult.data.operationId,
-			status: requestResult.data.status
-		});
 	} catch (error) {
 		if (error instanceof ParchmentConfigError) {
 			return response(503, {

@@ -2,7 +2,7 @@
 	<div class="prose prose-lg max-w-none">
 		<h1 class="mb-8 text-3xl font-bold text-ink">Privacy Policy</h1>
 
-		<p class="mb-8 text-sm text-muted">Last updated: January 15, 2025</p>
+		<p class="mb-8 text-sm text-muted">Last updated: August 14, 2026</p>
 
 		<section class="mb-8">
 			<h2 class="mb-4 text-xl font-semibold text-ink">1. Introduction</h2>
@@ -109,6 +109,11 @@
 				preferences, and analyze usage patterns. You can manage cookie preferences through your
 				browser settings or our cookie consent banner.
 			</p>
+			<p class="mb-4 text-muted">
+				For account deletion, we temporarily store a signed reauthentication assertion in a secure,
+				HTTP-only cookie. We clear it after Parchment accepts the deletion. We do not create an
+				account-bound accepted, receipt, or completion cookie.
+			</p>
 		</section>
 
 		<section class="mb-8">
@@ -124,11 +129,12 @@
 			<h2 class="mb-4 text-xl font-semibold text-ink">9. Data Retention</h2>
 			<p class="mb-4 text-muted">
 				We retain your personal information only as long as necessary to provide our services and
-				comply with legal obligations. Account deletion removes account-owned application data and
-				mutable links to payment-provider records. Stripe may retain transaction records and
-				immutable historical references where required for payment processing, fraud prevention,
-				tax, accounting, or other legal obligations. Remaining provider records are governed by
-				Stripe's retention terms.
+				comply with legal obligations. Account deletion immediately cancels the entire attached
+				subscription, removes account-owned application data, and removes mutable links to
+				payment-provider records. Stripe may retain transaction records and immutable historical
+				references where required for payment processing, fraud prevention, tax, accounting, or
+				other legal obligations. Remaining provider records are governed by Stripe's retention
+				terms.
 			</p>
 		</section>
 

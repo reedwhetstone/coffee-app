@@ -74,7 +74,7 @@
 		"@ai-sdk/svelte": "^4.0.0",
 		"@fontsource-variable/newsreader": "^5.2.10",
 		"@humanspeak/svelte-markdown": "^0.8.10",
-		"@purveyors/sdk": "^0.27.0",
+		"@purveyors/sdk": "0.28.0",
 		"@supabase/ssr": "^0.5.2",
 		"@supabase/supabase-js": "^2.99.1",
 		"@tailwindcss/container-queries": "^0.1.1",
@@ -90,7 +90,6 @@
 		"layercake": "^10.0.2",
 		"playwright": "^1.58.1",
 		"pnpm": "^10.28.1",
-		"stripe": "^17.7.0",
 		"zod": "^4.0.17"
 	}
 }

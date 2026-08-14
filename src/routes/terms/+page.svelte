@@ -2,7 +2,7 @@
 	<div class="prose prose-lg max-w-none">
 		<h1 class="mb-8 text-3xl font-bold text-ink">Terms of Service</h1>
 
-		<p class="mb-8 text-sm text-muted">Last updated: January 15, 2025</p>
+		<p class="mb-8 text-sm text-muted">Last updated: August 14, 2026</p>
 
 		<section class="mb-8">
 			<h2 class="mb-4 text-xl font-semibold text-ink">1. Acceptance of Terms</h2>
@@ -99,9 +99,11 @@
 			<h3 class="mb-3 text-lg font-medium text-ink">6.3 Data Export and Deletion</h3>
 			<p class="mb-4 text-muted">
 				You may export your data at any time. Account deletion removes account-owned application
-				data and mutable provider identity links. Payment transaction records may remain with Stripe
-				where required for payment processing, fraud prevention, tax, accounting, or other legal
-				obligations.
+				data and mutable provider identity links. Requesting account deletion immediately cancels
+				the entire attached subscription; unlike ordinary subscription cancellation, access does not
+				continue through the current billing period. Payment transaction records may remain with
+				Stripe where required for payment processing, fraud prevention, tax, accounting, or other
+				legal obligations.
 			</p>
 		</section>
 

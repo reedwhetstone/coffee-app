@@ -6,6 +6,12 @@
 	import StripeCheckout from './StripeCheckout.svelte';
 	import { signInWithGoogle } from '$lib/supabase';
 	import { BILLING_PURCHASE_KEYS, type BillingPurchaseKey } from '$lib/billing/purchaseKeys';
+	import {
+		clearSubscriptionMutationRequestId,
+		getOrCreateSubscriptionMutationRequestId,
+		isPendingSubscriptionMutation,
+		isTerminalSubscriptionMutation
+	} from '$lib/billing/subscriptionMutation';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -186,16 +192,65 @@
 	let selectedPlanName = $state('');
 	let selectedIntervalLabel = $state('');
 	let selectedPriceLabel = $state('');
-	let cancelLoading = $state(false);
-	let cancelError = $state('');
-	let cancelSuccess = $state(false);
-	let resumeLoading = $state(false);
-	let resumeError = $state('');
-	let resumeSuccess = $state(false);
+	let mutationLoading = $state<string | null>(null);
+	let mutationMessages = $state<Record<string, string>>({});
+	let mutationErrors = $state<Record<string, string>>({});
 
-	const membershipState = $derived(data.controlPlane?.membership ?? null);
-	const apiState = $derived(data.controlPlane?.api ?? null);
-	const intelligenceState = $derived(data.controlPlane?.ppi ?? null);
+	const membershipState = $derived(
+		data.accountState
+			? {
+					hasAccess: data.accountState.role === 'member' || data.accountState.role === 'admin',
+					statusLabel:
+						data.accountState.role === 'admin'
+							? 'Admin access'
+							: data.accountState.role === 'member'
+								? 'Membership active'
+								: 'Free viewer access',
+					tone:
+						data.accountState.role === 'admin'
+							? ('info' as ProductTone)
+							: data.accountState.role === 'member'
+								? ('success' as ProductTone)
+								: ('muted' as ProductTone),
+					sourceLabel:
+						'Access is resolved by Parchment from the canonical billing and entitlement lifecycle.'
+				}
+			: null
+	);
+	const apiState = $derived(
+		data.accountState
+			? {
+					plan: data.accountState.apiPlan,
+					statusLabel:
+						data.accountState.apiPlan === 'enterprise'
+							? 'Enterprise'
+							: data.accountState.apiPlan === 'member'
+								? 'Origin'
+								: 'Green',
+					tone:
+						data.accountState.apiPlan === 'viewer'
+							? ('muted' as ProductTone)
+							: ('success' as ProductTone),
+					description: `Your account currently resolves to the ${data.accountState.apiPlan === 'member' ? 'Origin' : data.accountState.apiPlan === 'enterprise' ? 'Enterprise' : 'Green'} API tier.`,
+					note: 'Parchment owns API billing and entitlement decisions.'
+				}
+			: null
+	);
+	const intelligenceState = $derived(
+		data.accountState
+			? {
+					enabled: data.accountState.ppiAccess,
+					statusLabel: data.accountState.ppiAccess
+						? 'Parchment Intelligence active'
+						: 'Parchment Intelligence not active',
+					tone: data.accountState.ppiAccess ? ('success' as ProductTone) : ('muted' as ProductTone),
+					description: data.accountState.ppiAccess
+						? 'Your account includes the full analytics and market-intelligence layer.'
+						: 'Your account keeps the baseline public analytics surface.',
+					note: 'Parchment owns Intelligence billing and entitlement decisions.'
+				}
+			: null
+	);
 	const isSignedIn = $derived(data.auth.isSignedIn);
 
 	// Purchase intent from URL params (set before sign-in to preserve selection).
@@ -230,21 +285,14 @@
 		}
 	};
 
-	const formatDate = (unixTimestamp: number) => {
-		const date = new Date(unixTimestamp * 1000);
+	const formatDate = (timestamp: string | null) => {
+		if (!timestamp) return 'Not available';
+		const date = new Date(timestamp);
 		return date.toLocaleDateString('en-US', {
 			year: 'numeric',
 			month: 'long',
 			day: 'numeric'
 		});
-	};
-
-	const normalizePlanName = (planName: string | null | undefined) => {
-		if (!planName || planName.startsWith('prod_')) {
-			return 'Mallard Studio Member';
-		}
-
-		return planName;
 	};
 
 	const openCheckout = (productName: string, option: ProductCardInterval) => {
@@ -266,27 +314,6 @@
 			}
 		}
 	};
-
-	function isAlreadyActive(purchaseKey: BillingPurchaseKey): boolean {
-		if (
-			(purchaseKey === BILLING_PURCHASE_KEYS.membershipMonthly ||
-				purchaseKey === BILLING_PURCHASE_KEYS.membershipAnnual) &&
-			membershipState?.hasAccess
-		) {
-			return true;
-		}
-		if (purchaseKey === BILLING_PURCHASE_KEYS.apiPlanMonthly && apiState?.plan !== 'viewer') {
-			return true;
-		}
-		if (
-			(purchaseKey === BILLING_PURCHASE_KEYS.ppiAddonMonthly ||
-				purchaseKey === BILLING_PURCHASE_KEYS.ppiAddonAnnual) &&
-			intelligenceState?.enabled
-		) {
-			return true;
-		}
-		return false;
-	}
 
 	function getProductState(product: ProductCard) {
 		if (!isSignedIn) {
@@ -340,7 +367,7 @@
 	}
 
 	const handleCheckoutSuccess = async () => {
-		await invalidateAll();
+		await goto('/subscription/success');
 	};
 
 	const handleCheckoutCancel = () => {
@@ -389,91 +416,98 @@
 		];
 	});
 
-	const cancelSubscription = async () => {
-		if (!data.subscription?.id) return;
-
-		cancelLoading = true;
-		cancelError = '';
-		cancelSuccess = false;
-
-		try {
-			const response = await fetch('/api/stripe/cancel-subscription', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					subscriptionId: data.subscription.id
-				})
-			});
-
-			const result = await response.json();
-
-			if (!response.ok) {
-				throw new Error(result.error || 'Failed to cancel subscription');
-			}
-
-			cancelSuccess = true;
-			data.subscription.cancel_at_period_end = true;
-			await invalidateAll();
-		} catch (error) {
-			cancelError = error instanceof Error ? error.message : 'An unknown error occurred';
-		} finally {
-			cancelLoading = false;
+	const familyLabel = (family: string) => {
+		switch (family) {
+			case 'membership':
+				return 'Mallard Studio';
+			case 'api_plan':
+				return 'Parchment API';
+			case 'ppi_addon':
+				return 'Parchment Intelligence';
+			default:
+				return family.replaceAll('_', ' ');
 		}
 	};
 
-	const resumeSubscription = async () => {
-		if (!data.subscription?.id) return;
+	const subscriptionName = (subscription: PageData['subscriptions'][number]) =>
+		[...new Set(subscription.items.map((item) => familyLabel(item.productFamily)))].join(' + ');
 
-		resumeLoading = true;
-		resumeError = '';
-		resumeSuccess = false;
+	const mutateSubscription = async (
+		subscription: PageData['subscriptions'][number],
+		cancelAtPeriodEnd: boolean
+	) => {
+		const key = `${subscription.subscriptionId}:${cancelAtPeriodEnd}`;
+		mutationLoading = key;
+		mutationErrors[key] = '';
+		mutationMessages[key] = '';
+		const requestId = getOrCreateSubscriptionMutationRequestId(
+			sessionStorage,
+			subscription.subscriptionId,
+			cancelAtPeriodEnd,
+			() => crypto.randomUUID()
+		);
 
 		try {
-			const response = await fetch('/api/stripe/resume-subscription', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					subscriptionId: data.subscription.id
-				})
-			});
-
-			const result = await response.json();
-
+			const response = await fetch(
+				`/api/billing/subscriptions/${encodeURIComponent(subscription.subscriptionId)}`,
+				{
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ requestId, cancelAtPeriodEnd })
+				}
+			);
+			const result = await response.json().catch(() => null);
 			if (!response.ok) {
-				throw new Error(result.error || 'Failed to resume subscription');
+				if (response.status === 409) {
+					clearSubscriptionMutationRequestId(
+						sessionStorage,
+						subscription.subscriptionId,
+						cancelAtPeriodEnd
+					);
+				}
+				throw new Error(result?.error?.message ?? 'Unable to update this subscription.');
+			}
+			if (!result || typeof result.status !== 'string') {
+				throw new Error('Subscription update returned an invalid response.');
 			}
 
-			resumeSuccess = true;
-			data.subscription.cancel_at_period_end = false;
-			await invalidateAll();
-		} catch (error) {
-			resumeError = error instanceof Error ? error.message : 'An unknown error occurred';
+			if (isPendingSubscriptionMutation(result.status)) {
+				mutationMessages[key] = 'Parchment accepted the change and is applying it.';
+				return;
+			}
+			if (isTerminalSubscriptionMutation(result.status)) {
+				clearSubscriptionMutationRequestId(
+					sessionStorage,
+					subscription.subscriptionId,
+					cancelAtPeriodEnd
+				);
+				if (result.status === 'conflict') {
+					throw new Error(
+						result.reason ?? 'This subscription changed before the request completed.'
+					);
+				}
+				mutationMessages[key] =
+					result.status === 'superseded'
+						? 'A newer subscription change already superseded this request.'
+						: 'The complete subscription was updated.';
+				await invalidateAll();
+				return;
+			}
+			throw new Error('Subscription update returned an unknown state.');
+		} catch (cause) {
+			mutationErrors[key] =
+				cause instanceof Error ? cause.message : 'Unable to update subscription.';
 		} finally {
-			resumeLoading = false;
+			mutationLoading = null;
 		}
 	};
 
 	onMount(() => {
 		const url = new URL(window.location.href);
-		const sessionId = url.searchParams.get('session_id');
-		if (sessionId) {
-			goto(`/subscription/success?session_id=${encodeURIComponent(sessionId)}`);
-			return;
-		}
-
 		// Auto-open checkout only when the user is returning from the OAuth flow
 		// with an explicit `intent=checkout` marker. A bare `?plan=...` URL is
 		// treated as a pricing anchor, not a checkout command.
-		if (
-			isSignedIn &&
-			hasCheckoutIntent &&
-			intendedPurchaseKey &&
-			!isAlreadyActive(intendedPurchaseKey)
-		) {
+		if (isSignedIn && hasCheckoutIntent && intendedPurchaseKey) {
 			openCheckoutByKey(intendedPurchaseKey);
 			// Strip the intent marker so a refresh of this URL doesn't
 			// re-launch the modal. Leave `plan=` intact so the card stays
@@ -520,11 +554,7 @@
 						</svg>
 					</button>
 				</div>
-				<StripeCheckout
-					purchaseKey={selectedPurchaseKey}
-					onSuccess={handleCheckoutSuccess}
-					onCancel={handleCheckoutCancel}
-				/>
+				<StripeCheckout purchaseKey={selectedPurchaseKey} onSuccess={handleCheckoutSuccess} />
 			</div>
 		</div>
 	{:else}
@@ -602,6 +632,81 @@
 
 		<section class="px-4 py-8 md:px-6 md:py-10">
 			<div class="mx-auto max-w-6xl space-y-8">
+				{#if isSignedIn}
+					<div class="rounded-3xl border border-line bg-surface-panel p-6 shadow-sm">
+						<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+							<div>
+								<p class="text-xs font-semibold text-accent">Canonical billing</p>
+								<h2 class="mt-2 text-2xl font-semibold text-ink">Your subscriptions</h2>
+								<p class="mt-2 text-sm text-muted">
+									Each subscription is shown once. Bundled products renew, cancel, or resume
+									together.
+								</p>
+							</div>
+						</div>
+
+						{#if data.billingError}
+							<p
+								class="mt-5 rounded-xl border border-warning/30 bg-warning-subtle p-4 text-sm text-warning-strong"
+							>
+								{data.billingError}
+							</p>
+						{:else if data.subscriptions.length === 0}
+							<p class="mt-5 rounded-xl border border-dashed border-line p-4 text-sm text-muted">
+								No paid subscription is attached to this account.
+							</p>
+						{:else}
+							<div class="mt-5 grid gap-4 lg:grid-cols-2">
+								{#each data.subscriptions as subscription (subscription.subscriptionId)}
+									{@const targetCancel = !subscription.cancelAtPeriodEnd}
+									{@const mutationKey = `${subscription.subscriptionId}:${targetCancel}`}
+									<div class="rounded-2xl border border-line bg-surface-canvas p-5">
+										<div class="flex items-start justify-between gap-4">
+											<div>
+												<h3 class="font-semibold text-ink">{subscriptionName(subscription)}</h3>
+												<p class="mt-1 text-sm text-muted">
+													{subscription.items.length}
+													{subscription.items.length === 1 ? 'product' : 'products'}
+												</p>
+											</div>
+											<span
+												class="rounded-full border border-line px-3 py-1 text-xs font-semibold text-ink"
+											>
+												{subscription.cancelAtPeriodEnd ? 'Ends at renewal' : subscription.status}
+											</span>
+										</div>
+										<ul class="mt-4 space-y-2 text-sm text-muted">
+											{#each subscription.items as item}
+												<li>{familyLabel(item.productFamily)} · {item.purchaseKey}</li>
+											{/each}
+										</ul>
+										<p class="mt-4 text-sm text-muted">
+											Renews or ends: {formatDate(subscription.currentPeriodEnd)}
+										</p>
+										<button
+											onclick={() => mutateSubscription(subscription, targetCancel)}
+											disabled={mutationLoading !== null}
+											class="mt-4 w-full rounded-lg border border-line bg-surface-panel px-4 py-2 text-sm font-semibold text-ink disabled:opacity-50"
+										>
+											{mutationLoading === mutationKey
+												? 'Submitting...'
+												: subscription.cancelAtPeriodEnd
+													? `Keep ${subscriptionName(subscription)} active`
+													: `End ${subscriptionName(subscription)} at renewal`}
+										</button>
+										{#if mutationMessages[mutationKey]}
+											<p class="mt-3 text-sm text-info-strong">{mutationMessages[mutationKey]}</p>
+										{/if}
+										{#if mutationErrors[mutationKey]}
+											<p class="mt-3 text-sm text-danger">{mutationErrors[mutationKey]}</p>
+										{/if}
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{/if}
+
 				<div class="grid gap-6 xl:grid-cols-2">
 					{#each productCards as product}
 						{@const state = getProductState(product)}
@@ -651,83 +756,10 @@
 
 									{#if product.family === 'membership'}
 										<p class="mt-3 text-sm text-muted">{product.managementCopy}</p>
-										{#if data.subscription}
-											<div class="mt-4 rounded-2xl border border-line bg-surface-canvas p-4">
-												<p class="text-xs font-semibold text-muted">Membership billing</p>
-												<div class="mt-3 grid grid-cols-2 gap-3 text-sm text-muted">
-													<span>Status</span>
-													<span class="text-right font-medium text-ink">
-														{data.subscription.status}
-														{#if data.subscription.cancel_at_period_end}
-															<span class="text-warning-strong"> (ends at renewal)</span>
-														{/if}
-													</span>
-
-													<span>Plan</span>
-													<span class="text-right font-medium text-ink">
-														{normalizePlanName(data.subscription.plan?.name)}
-													</span>
-
-													<span>Renews or ends</span>
-													<span class="text-right font-medium text-ink">
-														{data.subscription.current_period_end
-															? formatDate(data.subscription.current_period_end)
-															: 'N/A'}
-													</span>
-												</div>
-											</div>
-
-											<div class="mt-4 space-y-3">
-												{#if !membershipState?.canManageSubscription && membershipState?.managementBlockedReason}
-													<div
-														class="rounded-2xl border border-warning/30 bg-warning-subtle p-4 text-sm text-warning-strong"
-													>
-														{membershipState.managementBlockedReason}
-													</div>
-												{:else if data.subscription.cancel_at_period_end}
-													<button
-														onclick={() => resumeSubscription()}
-														disabled={resumeLoading}
-														class="w-full rounded-lg border border-info/30 bg-info-subtle px-4 py-2 text-sm font-medium text-info-strong transition-colors hover:bg-info/15 disabled:opacity-50"
-													>
-														{resumeLoading ? 'Processing...' : 'Keep Studio active'}
-													</button>
-													{#if resumeSuccess}
-														<p class="text-sm text-success-strong">
-															Studio will continue renewing automatically.
-														</p>
-													{/if}
-													{#if resumeError}
-														<p class="text-sm text-danger">Error: {resumeError}</p>
-													{/if}
-												{:else}
-													<button
-														onclick={() => cancelSubscription()}
-														disabled={cancelLoading}
-														class="w-full rounded-lg border border-danger/30 bg-danger-subtle px-4 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger/15 disabled:opacity-50"
-													>
-														{cancelLoading ? 'Processing...' : 'End at renewal'}
-													</button>
-													<p class="text-xs text-muted">
-														Studio access stays active through the current billing period.
-													</p>
-													{#if cancelSuccess}
-														<p class="text-sm text-success-strong">
-															Studio will end at the close of the current billing period.
-														</p>
-													{/if}
-													{#if cancelError}
-														<p class="text-sm text-danger">Error: {cancelError}</p>
-													{/if}
-												{/if}
-											</div>
-										{:else}
-											<div
-												class="mt-3 rounded-2xl border border-dashed border-line bg-surface-canvas p-4 text-sm text-muted"
-											>
-												{product.inactiveStateCopy}
-											</div>
-										{/if}
+										<p class="mt-2 text-xs text-muted">
+											Manage every canonical subscription, including bundles, in the billing section
+											above.
+										</p>
 									{:else if product.family === 'api_plan'}
 										<div
 											class="mt-3 rounded-2xl border border-dashed border-line bg-surface-canvas p-4"
@@ -798,24 +830,6 @@
 															Learn more
 														</a>
 													{/if}
-												</div>
-											{:else if product.family === 'membership' && membershipState?.hasAccess}
-												<div
-													class="mt-4 rounded-lg border border-line px-4 py-2 text-center text-sm text-muted"
-												>
-													{product.activeCtaLabel}
-												</div>
-											{:else if product.family === 'api_plan' && apiState?.plan !== 'viewer'}
-												<div
-													class="mt-4 rounded-lg border border-line px-4 py-2 text-center text-sm text-muted"
-												>
-													{product.activeCtaLabel}
-												</div>
-											{:else if product.family === 'ppi_addon' && intelligenceState?.enabled}
-												<div
-													class="mt-4 rounded-lg border border-line px-4 py-2 text-center text-sm text-muted"
-												>
-													{product.activeCtaLabel}
 												</div>
 											{:else}
 												<button
