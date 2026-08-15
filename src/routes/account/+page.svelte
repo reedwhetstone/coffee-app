@@ -71,7 +71,7 @@
 			} catch {
 				// Parchment already durably accepted the deletion. Local sign-out is best effort.
 			}
-			await goto('/', { replaceState: true });
+			await goto('/', { replaceState: true, invalidateAll: true });
 		} catch {
 			message = 'Account deletion could not be completed. Please try again.';
 		} finally {
