@@ -1,9 +1,15 @@
 # Proposal: Purveyors Market Wire
 
 _Created: 2026-07-19_
-_Status: Strategic proposal aligned to the approved build-now infrastructure direction; launch validation runs from edition #1_
+_Status: Historical strategic proposal. Not product or implementation authority._
 _Domain: Purveyors ecosystem_
 _Canonical source: this repo_
+
+> **Historical record:** This proposal established the recurring distribution
+> opportunity. Current direction uses the public name Market Brief and publishes it
+> inside `/blog`. Treat routes, access promises, and implementation mechanisms below
+> as historical. Use
+> [`notes/market-brief/implementation-plan.md`](../market-brief/implementation-plan.md).
 
 ## One-line thesis
 

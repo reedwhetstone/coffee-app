@@ -26,6 +26,8 @@ If the goal is to understand the current product direction, implementation contr
    - Recent product-language and funnel audits
 10. `implementation-plans/`
     - Active or recent execution plans
+11. `market-brief/implementation-plan.md`
+    - Current Market Brief product boundary and cross-repo implementation order
 
 ## Current directories
 
@@ -49,6 +51,11 @@ If the goal is to understand the current product direction, implementation contr
   - Historical PR-specific audits and reruns
 - `blog/`
   - Blog strategy, source map, and outlines
+- `market-brief/`
+  - Current Market Brief product and implementation planning
+- `market-wire/`
+  - Historical July 2026 research and architecture proposals; not implementation
+    authority
 - `archive/`
   - Historical material that should not be treated as current source of truth
 

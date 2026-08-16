@@ -2,7 +2,7 @@
 
 **Status:** Active (17 posts live)
 **Created:** 2026-02-19
-**Updated:** 2026-07-18
+**Updated:** 2026-08-15
 
 ---
 
@@ -70,6 +70,16 @@ Ship one high-signal Coffee Intelligence piece every Wednesday that can be publi
 Wednesdays are reserved for Coffee Intelligence output first; other blog experiments happen around this anchor.
 
 ## Content Pillars
+
+### Market Brief relationship
+
+Market Brief is the weekly, source-led market-reporting format inside `/blog`.
+Essays remain sporadic, idea-led analysis. Both use the existing authored content,
+PR review, preview, and deployment system rather than separate publication apps.
+
+The current product boundary and cross-repo sequence live only in
+`notes/market-brief/implementation-plan.md`. This strategy does not own Parchment
+delivery mechanics, scraper source contracts, or their dependency order.
 
 ### Tag taxonomy
 
