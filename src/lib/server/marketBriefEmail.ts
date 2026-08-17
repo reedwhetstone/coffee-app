@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { decodeHTML } from 'entities';
 import { marked, type Token, type Tokens } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 
@@ -14,7 +15,6 @@ const MAX_SOURCE_BYTES = 256 * 1024;
 const MAX_PROJECTION_BYTES = 512 * 1024;
 const MAX_SUBJECT_LENGTH = 200;
 const FRONTMATTER_BOUNDARY = /^---\r?\n[\s\S]*?\r?\n---\r?\n/;
-const SVELTE_EXPRESSION = /\{[^{}\r\n]+\}/;
 const PRODUCTION_COMMIT = /^[0-9a-f]{40}$/;
 
 const ALLOWED_TAGS = [
@@ -151,6 +151,23 @@ function resolveImageSrc(value: string, canonicalUrl: string): string {
 	return resolved.toString();
 }
 
+function containsSvelteConstruct(markdown: string): boolean {
+	let braceDepth = 0;
+	let foundBrace = false;
+
+	for (const character of markdown) {
+		if (character === '{') {
+			foundBrace = true;
+			braceDepth += 1;
+		} else if (character === '}') {
+			if (braceDepth === 0) return true;
+			braceDepth -= 1;
+		}
+	}
+
+	return foundBrace || braceDepth > 0;
+}
+
 function validateTokens(tokens: Token[], canonicalUrl: string): void {
 	marked.walkTokens(tokens, (token) => {
 		if (token.type === 'html') {
@@ -170,7 +187,7 @@ function validateTokens(tokens: Token[], canonicalUrl: string): void {
 
 function tokenizeMarketBrief(source: string, canonicalUrl: string): Token[] {
 	const markdown = extractMarkdownBody(source);
-	if (SVELTE_EXPRESSION.test(markdown)) {
+	if (containsSvelteConstruct(markdown)) {
 		throw new Error('Market Brief email source cannot contain Svelte expressions or directives');
 	}
 
@@ -185,11 +202,11 @@ function transformTag(canonicalUrl: string) {
 		const style = TAG_STYLES[tagName];
 		if (style) transformed.style = style;
 
-		if (tagName === 'a' && transformed.href) {
+		if (tagName === 'a' && Object.hasOwn(transformed, 'href')) {
 			transformed.href = resolveHref(transformed.href, canonicalUrl);
 			transformed.rel = 'noopener noreferrer';
 		}
-		if (tagName === 'img' && transformed.src) {
+		if (tagName === 'img' && Object.hasOwn(transformed, 'src')) {
 			transformed.src = resolveImageSrc(transformed.src, canonicalUrl);
 		}
 
@@ -231,7 +248,7 @@ function tokenText(token: Token, canonicalUrl: string): string {
 		case 'escape':
 			return token.text;
 		case 'text':
-			return token.tokens ? tokensText(token.tokens, canonicalUrl) : token.text;
+			return token.tokens ? tokensText(token.tokens, canonicalUrl) : decodeHTML(token.text);
 		case 'strong':
 		case 'em':
 		case 'del':
@@ -251,8 +268,10 @@ function tokenText(token: Token, canonicalUrl: string): string {
 			const href = resolveHref(link.href, canonicalUrl);
 			return label === href ? href : `${label} (${href})`;
 		}
-		case 'image':
-			return `[Image: ${(token as Tokens.Image).text || 'Market Brief image'}] (${resolveImageSrc((token as Tokens.Image).href, canonicalUrl)})`;
+		case 'image': {
+			const image = token as Tokens.Image;
+			return `[Image: ${decodeHTML(image.text || 'Market Brief image')}] (${resolveImageSrc(image.href, canonicalUrl)})`;
+		}
 		case 'list': {
 			const list = token as Tokens.List;
 			return `${list.items

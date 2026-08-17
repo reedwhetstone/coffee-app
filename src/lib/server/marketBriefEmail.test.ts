@@ -86,6 +86,7 @@ describe('Market Brief email projection', () => {
 	it.each([
 		['raw HTML', source.replace('## The throughline', '<aside>Injected</aside>')],
 		['Svelte expression', source.replace('## The throughline', '{dangerousValue}')],
+		['multiline Svelte expression', source.replace('## The throughline', '{#if\nvisible}\n{/if}')],
 		['Svelte directive', source.replace('## The throughline', '{#if visible}')],
 		['task-list control', source.replace('- Supply stayed constrained.', '- [x] Send now')],
 		[
@@ -104,6 +105,38 @@ describe('Market Brief email projection', () => {
 		]
 	])('rejects %s instead of silently diverging from the web edition', (_label, invalidSource) => {
 		expect(() => buildMarketBriefEmailProjection(marketBrief, invalidSource)).toThrow();
+	});
+
+	it('normalizes empty Markdown targets to the canonical reader URL', () => {
+		const projection = buildMarketBriefEmailProjection(
+			marketBrief,
+			source.replace(
+				'[external source](https://example.com/report?week=1)',
+				'[empty link]() and ![]()'
+			)
+		);
+
+		expect(projection.html).toContain('<a href="https://www.purveyors.io/blog/market-brief-001"');
+		expect(projection.html).toMatch(
+			/<img src="https:\/\/www\.purveyors\.io\/blog\/market-brief-001"[^>]*alt=""/i
+		);
+		expect(projection.html).not.toContain('href=""');
+		expect(projection.html).not.toContain('src=""');
+	});
+
+	it('decodes entities in prose while preserving code-span text', () => {
+		const projection = buildMarketBriefEmailProjection(
+			marketBrief,
+			source.replace(
+				'The market moved **carefully**, with',
+				'The market moved &amp; stayed &lt; target &mdash; and `code &amp;`, with'
+			)
+		);
+
+		expect(projection.text).toContain('The market moved & stayed < target — and code &amp;, with');
+		expect(projection.text).not.toContain('&amp; stayed');
+		expect(projection.text).not.toContain('&lt; target');
+		expect(projection.text).not.toContain('&mdash;');
 	});
 
 	it('rejects malformed source, non-Market Brief input, and oversized source', () => {

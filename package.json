@@ -85,6 +85,7 @@
 		"@vercel/speed-insights": "^1.2.0",
 		"ai": "^6.0.0",
 		"d3": "^7.9.0",
+		"entities": "7.0.1",
 		"glob": "^10.3.10",
 		"jose": "^5.9.6",
 		"jwt-decode": "^4.0.0",
