@@ -1,8 +1,9 @@
-import { getAllPosts } from '$lib/server/blog';
+import { getPublishedPosts } from '$lib/server/blog';
+import { getBlogPostPath } from '$lib/types/blog.types';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async () => {
-	const posts = await getAllPosts();
+	const posts = await getPublishedPosts();
 	const siteUrl = 'https://purveyors.io';
 
 	const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -20,9 +21,10 @@ export const GET: RequestHandler = async () => {
     <item>
       <title><![CDATA[${post.title}]]></title>
       <description><![CDATA[${post.description}]]></description>
-      <link>${siteUrl}/blog/${post.slug}</link>
-      <guid isPermaLink="true">${siteUrl}/blog/${post.slug}</guid>
+      <link>${siteUrl}${getBlogPostPath(post.slug)}</link>
+      <guid isPermaLink="true">${siteUrl}${getBlogPostPath(post.slug)}</guid>
       <pubDate>${new Date(post.date).toUTCString()}</pubDate>
+      ${post.format === 'market-brief' ? '<category>Market Brief</category>' : ''}
       ${post.tags.map((tag) => `<category>${tag}</category>`).join('\n      ')}
     </item>`
 			)

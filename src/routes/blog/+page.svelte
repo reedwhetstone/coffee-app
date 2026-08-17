@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { PILLARS } from '$lib/types/blog.types';
+	import { formatMarketBriefEdition, getBlogPostPath, PILLARS } from '$lib/types/blog.types';
 	import type { BlogPost, BlogTag } from '$lib/types/blog.types';
 
 	let { data } = $props<{ data: PageData }>();
@@ -32,6 +32,40 @@
 	</p>
 </div>
 
+<!-- Publication format navigation -->
+<nav class="mb-6 flex flex-wrap gap-2" aria-label="Blog format">
+	<a
+		href="/blog"
+		aria-current={data.selectedFormat === null ? 'page' : undefined}
+		class="rounded-full px-3 py-1 text-sm font-medium transition-colors {data.selectedFormat ===
+		null
+			? 'bg-ink text-surface-canvas'
+			: 'bg-line/50 text-muted hover:bg-line hover:text-ink'}"
+	>
+		All
+	</a>
+	<a
+		href="/blog?format=market-brief"
+		aria-current={data.selectedFormat === 'market-brief' ? 'page' : undefined}
+		class="rounded-full px-3 py-1 text-sm font-medium transition-colors {data.selectedFormat ===
+		'market-brief'
+			? 'bg-ink text-surface-canvas'
+			: 'bg-line/50 text-muted hover:bg-line hover:text-ink'}"
+	>
+		Market Brief
+	</a>
+	<a
+		href="/blog?format=essay"
+		aria-current={data.selectedFormat === 'essay' ? 'page' : undefined}
+		class="rounded-full px-3 py-1 text-sm font-medium transition-colors {data.selectedFormat ===
+		'essay'
+			? 'bg-ink text-surface-canvas'
+			: 'bg-line/50 text-muted hover:bg-line hover:text-ink'}"
+	>
+		Essays
+	</a>
+</nav>
+
 <!-- Tag filter -->
 {#if data.tags.length > 0}
 	<div class="mb-10 flex flex-wrap gap-2">
@@ -59,7 +93,11 @@
 <!-- Posts -->
 {#if filteredPosts.length === 0}
 	<div class="py-16 text-center">
-		<p class="text-muted">No posts yet. Check back soon.</p>
+		<p class="text-muted">
+			{data.selectedFormat === 'market-brief'
+				? 'No Market Brief editions yet. Check back soon.'
+				: 'No posts yet. Check back soon.'}
+		</p>
 	</div>
 {:else}
 	<div class="space-y-8">
@@ -73,13 +111,19 @@
 					<span>{post.readingTime} min read</span>
 					{#if post.pillar && PILLARS[post.pillar as keyof typeof PILLARS]}
 						<span class="text-line">·</span>
-						<span class="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
-							{PILLARS[post.pillar as keyof typeof PILLARS].label}
-						</span>
+						{#if post.format === 'market-brief'}
+							<span class="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+								Market Brief · Edition {formatMarketBriefEdition(post.edition!)}
+							</span>
+						{:else}
+							<span class="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+								{PILLARS[post.pillar as keyof typeof PILLARS].label}
+							</span>
+						{/if}
 					{/if}
 				</div>
 
-				<a href="/blog/{post.slug}" class="block">
+				<a href={getBlogPostPath(post.slug)} class="block">
 					<img
 						src={getHeroImage(post.slug)}
 						alt={post.title}

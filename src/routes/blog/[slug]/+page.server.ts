@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import { buildPublicMeta, resolveBlogPostSocialImage } from '$lib/seo/meta';
 import { getAllPosts } from '$lib/server/blog';
 import { createSchemaService } from '$lib/services/schemaService';
+import { getBlogPostPath } from '$lib/types/blog.types';
 
 export const load: PageServerLoad = async ({ params, url }) => {
 	const posts = await getAllPosts();
@@ -13,8 +14,10 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	}
 
 	const baseUrl = `${url.protocol}//${url.host}`;
-	const postUrl = `${baseUrl}/blog/${post.slug}`;
+	const postPath = getBlogPostPath(post.slug);
+	const postUrl = `${baseUrl}${postPath}`;
 	const author = post.author || 'Reed Whetstone';
+	const isMarketBrief = post.format === 'market-brief';
 	const socialImage = resolveBlogPostSocialImage({
 		baseUrl,
 		slug: post.slug,
@@ -28,7 +31,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			headline: post.title,
 			description: post.description,
 			datePublished: post.date,
-			dateModified: post.date,
+			dateModified: post.updated ?? post.date,
 			author: { '@type': 'Person', name: author },
 			publisher: { '@type': 'Organization', name: 'Purveyors', url: baseUrl },
 			image: {
@@ -38,15 +41,27 @@ export const load: PageServerLoad = async ({ params, url }) => {
 				height: socialImage.height
 			},
 			keywords: post.tags,
+			articleSection: isMarketBrief ? 'Market Brief' : post.pillar,
+			...(isMarketBrief
+				? {
+						position: post.edition,
+						isPartOf: {
+							'@type': 'CreativeWorkSeries',
+							name: 'Purveyors Market Brief',
+							url: `${baseUrl}/blog`
+						}
+					}
+				: {}),
 			mainEntityOfPage: postUrl
 		}
 	]);
 
 	return {
+		metadata: post,
 		meta: buildPublicMeta({
 			baseUrl,
-			path: `/blog/${post.slug}`,
-			title: `${post.title} | Purveyors Blog`,
+			path: postPath,
+			title: `${post.title} | ${isMarketBrief ? 'Purveyors Market Brief' : 'Purveyors Blog'}`,
 			description: post.description,
 			keywords: post.tags,
 			ogTitle: post.title,
@@ -59,9 +74,9 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			schemaData,
 			article: {
 				publishedTime: post.date,
-				modifiedTime: post.date,
+				modifiedTime: post.updated ?? post.date,
 				author,
-				section: post.pillar,
+				section: isMarketBrief ? 'Market Brief' : post.pillar,
 				tags: post.tags
 			}
 		})

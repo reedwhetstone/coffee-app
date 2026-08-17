@@ -1,6 +1,7 @@
 import type { RequestHandler } from './$types';
-import { getAllPosts } from '$lib/server/blog';
+import { getPublishedPosts } from '$lib/server/blog';
 import { DOCS_NAV } from '$lib/docs/content';
+import { getBlogPostPath } from '$lib/types/blog.types';
 
 export const GET: RequestHandler = async ({ url }) => {
 	// Use the request URL to determine the correct domain
@@ -10,15 +11,14 @@ export const GET: RequestHandler = async ({ url }) => {
 	const currentDate = new Date().toISOString().split('T')[0];
 
 	// Load published blog posts for dynamic sitemap entries
-	const posts = await getAllPosts();
+	const posts = await getPublishedPosts();
 
 	const blogPostEntries = posts
-		.filter((post) => !post.draft)
 		.map(
 			(post) => `
 	<url>
-		<loc>${baseUrl}/blog/${post.slug}</loc>
-		<lastmod>${post.date}</lastmod>
+		<loc>${baseUrl}${getBlogPostPath(post.slug)}</loc>
+		<lastmod>${post.updated ?? post.date}</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>`

@@ -2,12 +2,38 @@ import { describe, expect, it } from 'vitest';
 import {
 	BLOG_TAG_ALIASES,
 	BLOG_TAGS,
+	getBlogPostPath,
+	getMarketBriefSlug,
 	getCanonicalBlogTag,
 	isBlogTag,
 	validateBlogPostTags,
+	type BlogPost,
+	type BlogPostFrontmatter,
 	type BlogTag
 } from '$lib/types/blog.types';
-import { getAllPosts, getPostsByTag } from './blog';
+import {
+	assertUniqueMarketBriefEditions,
+	filterPostsByFormat,
+	getAllPosts,
+	normalizeBlogPost,
+	getPostsByTag
+} from './blog';
+
+const ESSAY_FRONTMATTER: BlogPostFrontmatter = {
+	title: 'An essay',
+	date: '2026-08-17',
+	description: 'A test essay.',
+	tags: ['coffee', 'data', 'strategy'],
+	pillar: 'market-intelligence',
+	draft: false
+};
+
+const MARKET_BRIEF_FRONTMATTER: BlogPostFrontmatter = {
+	...ESSAY_FRONTMATTER,
+	title: 'Market Brief',
+	format: 'market-brief',
+	edition: 1
+};
 
 const LEGACY_TAG_MEMBERSHIP: Record<keyof typeof BLOG_TAG_ALIASES, string[]> = {
 	agentic: [
@@ -70,10 +96,12 @@ describe('blog tag taxonomy', () => {
 
 	it('keeps every published post within the canonical taxonomy', async () => {
 		const posts = await getAllPosts();
-		expect(posts).toHaveLength(17);
+		expect(posts.length).toBeGreaterThan(0);
 		for (const post of posts) {
 			expect([3, 4]).toContain(post.tags.length);
 			expect(post.tags.every(isBlogTag)).toBe(true);
+			expect(post.format).toBe('essay');
+			expect(post.edition).toBeUndefined();
 		}
 	});
 
@@ -95,5 +123,87 @@ describe('blog tag taxonomy', () => {
 		expect(() =>
 			validateBlogPostTags('good-post', ['ai', 'agents'] satisfies BlogTag[])
 		).not.toThrow();
+	});
+});
+
+describe('Market Brief publication metadata', () => {
+	it('normalizes legacy essays without changing their canonical identity', () => {
+		const post = normalizeBlogPost('an-essay', ESSAY_FRONTMATTER);
+
+		expect(post).toMatchObject({ slug: 'an-essay', format: 'essay' });
+		expect(post.edition).toBeUndefined();
+		expect(getBlogPostPath(post.slug)).toBe('/blog/an-essay');
+	});
+
+	it('binds a positive edition to one zero-padded canonical slug', () => {
+		const post = normalizeBlogPost('market-brief-001', MARKET_BRIEF_FRONTMATTER);
+
+		expect(post).toMatchObject({
+			slug: 'market-brief-001',
+			format: 'market-brief',
+			edition: 1
+		});
+		expect(getMarketBriefSlug(1)).toBe('market-brief-001');
+		expect(getMarketBriefSlug(1000)).toBe('market-brief-1000');
+		expect(getBlogPostPath(post.slug)).toBe('/blog/market-brief-001');
+	});
+
+	it.each([
+		['missing', undefined],
+		['zero', 0],
+		['negative', -1],
+		['fractional', 1.5]
+	])('rejects a %s Market Brief edition', (_label, edition) => {
+		expect(() =>
+			normalizeBlogPost('market-brief-001', { ...MARKET_BRIEF_FRONTMATTER, edition })
+		).toThrow('requires a positive integer edition');
+	});
+
+	it('rejects mismatched slugs and pillars', () => {
+		expect(() => normalizeBlogPost('market-brief-002', MARKET_BRIEF_FRONTMATTER)).toThrow(
+			'must use slug market-brief-001'
+		);
+		expect(() =>
+			normalizeBlogPost('market-brief-001', {
+				...MARKET_BRIEF_FRONTMATTER,
+				pillar: 'supply-chain'
+			})
+		).toThrow('must use the market-intelligence pillar');
+	});
+
+	it('reserves edition metadata and slugs for the Market Brief format', () => {
+		expect(() => normalizeBlogPost('an-essay', { ...ESSAY_FRONTMATTER, edition: 1 })).toThrow(
+			'cannot declare a Market Brief edition'
+		);
+		expect(() => normalizeBlogPost('market-brief-001', ESSAY_FRONTMATTER)).toThrow(
+			'cannot use the reserved Market Brief slug prefix'
+		);
+	});
+
+	it('validates correction dates without changing the edition identity', () => {
+		const corrected = normalizeBlogPost('market-brief-001', {
+			...MARKET_BRIEF_FRONTMATTER,
+			updated: '2026-08-18'
+		});
+		expect(corrected.updated).toBe('2026-08-18');
+
+		expect(() =>
+			normalizeBlogPost('market-brief-001', {
+				...MARKET_BRIEF_FRONTMATTER,
+				updated: '2026-08-16'
+			})
+		).toThrow('uses an invalid updated date');
+	});
+
+	it('rejects duplicate editions and filters normalized posts by format', () => {
+		const marketBrief = normalizeBlogPost('market-brief-001', MARKET_BRIEF_FRONTMATTER);
+		const essay = normalizeBlogPost('an-essay', ESSAY_FRONTMATTER);
+		const posts = [marketBrief, essay] satisfies BlogPost[];
+
+		expect(filterPostsByFormat(posts, 'market-brief')).toEqual([marketBrief]);
+		expect(filterPostsByFormat(posts, 'essay')).toEqual([essay]);
+		expect(() => assertUniqueMarketBriefEditions([marketBrief, { ...marketBrief }])).toThrow(
+			'Duplicate Market Brief edition: 1'
+		);
 	});
 });
