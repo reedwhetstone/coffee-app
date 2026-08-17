@@ -75,6 +75,21 @@ describe('CoffeeBench v0 report', () => {
 			})
 		).toBeVisible();
 		expect(screen.getAllByText('How to read this chart')).toHaveLength(4);
+		expect(
+			screen.getAllByRole('img', { name: /Bradley-Terry quality score scale from/i })
+		).toHaveLength(4);
+		expect(
+			screen.getByRole('img', { name: /Canonical tokens.*scale from 1,284 to 1,749/i })
+		).toBeVisible();
+		expect(
+			screen.getByRole('img', { name: /Normalized USD.*scale from \$0\.0050 to \$0\.0080/i })
+		).toBeVisible();
+		expect(
+			screen.getByRole('img', {
+				name: /p50 end-to-end latency.*scale from 1,050 ms to 1,500 ms/i
+			})
+		).toBeVisible();
+		expect(screen.getByText(/a relative measure rather than percent correct/i)).toBeVisible();
 		expect(screen.getAllByText('Illustrative fixture').length).toBeGreaterThan(0);
 		expect(screen.getAllByText('Example values').length).toBeGreaterThan(0);
 	});
