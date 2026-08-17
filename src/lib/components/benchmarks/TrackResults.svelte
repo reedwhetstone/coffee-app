@@ -13,11 +13,13 @@
 	let {
 		trackResult,
 		subjects,
-		compactHeading = false
+		compactHeading = false,
+		fixture = false
 	} = $props<{
 		trackResult: CoffeeBenchTrackResult;
 		subjects: CoffeeBenchSubject[];
 		compactHeading?: boolean;
+		fixture?: boolean;
 	}>();
 
 	let subjectById: Map<string, CoffeeBenchSubject> = $derived(
@@ -46,11 +48,20 @@
 
 <div class="space-y-6" data-track={trackResult.track}>
 	<div>
-		{#if compactHeading}
-			<h4 class="text-lg font-semibold text-ink">{trackLabel}</h4>
-		{:else}
-			<h3 class="font-serif text-2xl font-medium text-ink">{trackLabel}</h3>
-		{/if}
+		<div class="flex flex-wrap items-center gap-3">
+			{#if compactHeading}
+				<h4 class="text-lg font-semibold text-ink">{trackLabel}</h4>
+			{:else}
+				<h3 class="font-serif text-2xl font-medium text-ink">{trackLabel}</h3>
+			{/if}
+			{#if fixture}
+				<span
+					class="rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-medium text-accent ring-1 ring-accent/30"
+				>
+					Example values
+				</span>
+			{/if}
+		</div>
 		<p class="mt-1 text-sm leading-6 text-muted">
 			{trackResult.track === 'model'
 				? 'Subjects compared within a model-only panel; each card declares its evaluator criteria.'
@@ -62,19 +73,36 @@
 		class="rounded-2xl border border-line bg-surface-panel p-5"
 		aria-label={`${trackLabel} rate comparison`}
 	>
-		<figcaption class="flex flex-wrap items-baseline justify-between gap-2">
-			<span class="font-semibold text-ink">Outcome-rate profile</span>
-			<p class="text-xs text-muted">Exact precomputed ratios; lower is better except calibration</p>
+		<figcaption>
+			<div class="flex flex-wrap items-baseline justify-between gap-2">
+				<span class="font-semibold text-ink">Outcome-rate profile</span>
+				<p class="text-xs text-muted">
+					Exact precomputed ratios; lower is better except calibration
+				</p>
+			</div>
+			<details class="mt-3 text-xs text-muted">
+				<summary class="cursor-pointer font-medium text-ink">What these rates mean</summary>
+				<p class="mt-2 max-w-3xl leading-5">
+					Failure means the task did not reach a valid terminal answer. Unacceptable and critical
+					error require a judge majority. Calibration pass means at least two judges found the
+					subject’s confidence appropriate. Hover a bar for the concise definition.
+				</p>
+			</details>
 		</figcaption>
 		<div class="mt-5 space-y-5">
 			{#each trackResult.subjects as result (result.subject_id)}
 				<div>
-					<div class="flex items-center justify-between gap-3 text-sm">
-						<span class="font-medium text-ink">{subjectName(result.subject_id)}</span>
-						<span class="text-muted">{qualitySummary(result)}</span>
+					<div class="flex items-start justify-between gap-3 text-sm">
+						<span class="min-w-0 break-words font-medium text-ink"
+							>{subjectName(result.subject_id)}</span
+						>
+						<span class="shrink-0 text-right text-muted">{qualitySummary(result)}</span>
 					</div>
 					<div class="mt-2 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
-						<label class="text-xs text-muted">
+						<label
+							class="text-xs text-muted"
+							title="Share of attempted tasks that did not reach a valid terminal answer. Lower is better."
+						>
 							Failure · {formatRate(result.rates.terminal_failure)}
 							<meter
 								class="mt-1 block h-2 w-full"
@@ -84,7 +112,10 @@
 								>{formatRate(result.rates.terminal_failure)}</meter
 							>
 						</label>
-						<label class="text-xs text-muted">
+						<label
+							class="text-xs text-muted"
+							title="Share of answers a majority of absolute judges marked unacceptable. Lower is better."
+						>
 							Unacceptable · {formatRate(result.rates.unacceptable_response)}
 							<meter
 								class="mt-1 block h-2 w-full"
@@ -94,7 +125,10 @@
 								>{formatRate(result.rates.unacceptable_response)}</meter
 							>
 						</label>
-						<label class="text-xs text-muted">
+						<label
+							class="text-xs text-muted"
+							title="Share of answers where a majority of absolute judges found a critical error. Lower is better."
+						>
 							Critical error · {formatRate(result.rates.critical_error)}
 							<meter
 								class="mt-1 block h-2 w-full"
@@ -103,7 +137,10 @@
 								value={result.rates.critical_error}>{formatRate(result.rates.critical_error)}</meter
 							>
 						</label>
-						<label class="text-xs text-muted">
+						<label
+							class="text-xs text-muted"
+							title="Share of answers whose confidence was judged appropriate by at least two absolute judges. Higher is better."
+						>
 							Calibration pass · {formatRate(result.rates.confidence_calibration_pass)}
 							<meter
 								class="mt-1 block h-2 w-full"

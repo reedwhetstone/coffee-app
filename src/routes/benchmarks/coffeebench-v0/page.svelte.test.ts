@@ -8,14 +8,17 @@ import CoffeeBenchPage from './+page.svelte';
 const benchmark = parseCoffeeBenchPublicExport(rawFixture);
 
 describe('CoffeeBench v0 report', () => {
-	it('keeps overview, comparison, evidence, methodology, and limitations reachable', () => {
+	it('leads with purpose and unmistakable fixture status before the example result surface', () => {
 		render(CoffeeBenchPage, { data: { benchmark } as never });
 
 		expect(
 			screen.getByRole('heading', { name: 'Can a model make a defensible coffee decision?' })
 		).toBeVisible();
+		expect(screen.getByText('Example data · full run not started')).toBeVisible();
+		expect(screen.getByText('Example data only. No benchmark result exists yet.')).toBeVisible();
 		expect(screen.getByRole('navigation', { name: 'CoffeeBench report sections' })).toBeVisible();
-		expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '#overview');
+		expect(screen.getByRole('link', { name: 'Purpose' })).toHaveAttribute('href', '#overview');
+		expect(screen.getByRole('link', { name: 'Findings' })).toHaveAttribute('href', '#findings');
 		expect(screen.getByRole('link', { name: 'Methodology' })).toHaveAttribute(
 			'href',
 			'#methodology'
@@ -24,7 +27,21 @@ describe('CoffeeBench v0 report', () => {
 			'href',
 			'#limitations'
 		);
-		expect(screen.getByText('Contract preview, not a benchmark result')).toBeVisible();
+		expect(
+			screen.getByRole('heading', {
+				name: 'The full benchmark panel has not run. There are no performance findings yet.'
+			})
+		).toBeVisible();
+		expect(screen.getByText('None yet')).toBeVisible();
+		expect(screen.getByText('Planned subject trials')).toBeVisible();
+		expect(
+			screen.getByText(/Every result value below is deterministic example data/)
+		).toBeVisible();
+		expect(
+			screen.getByRole('heading', { name: 'Does the system make the model better?' })
+		).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'Can the answer be trusted?' })).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'Is the lift worth operating?' })).toBeVisible();
 	});
 
 	it('renders the matched comparison track in mobile cards and desktop tables', () => {
@@ -53,10 +70,13 @@ describe('CoffeeBench v0 report', () => {
 		expect(screen.getByRole('heading', { name: 'Quality vs. cost' })).toBeVisible();
 		expect(screen.getByRole('heading', { name: 'Quality vs. latency' })).toBeVisible();
 		expect(
-			screen.getByRole('img', {
+			screen.getByRole('button', {
 				name: /DeepSeek V4 Raw: quality .*canonical total tokens per attempted task/i
 			})
 		).toBeVisible();
+		expect(screen.getAllByText('How to read this chart')).toHaveLength(4);
+		expect(screen.getAllByText('Illustrative fixture').length).toBeGreaterThan(0);
+		expect(screen.getAllByText('Example values').length).toBeGreaterThan(0);
 	});
 
 	it('publishes harness, provenance, and byte-identical artifact download access', () => {
@@ -72,8 +92,8 @@ describe('CoffeeBench v0 report', () => {
 		expect(screen.getByText('Unresolved majorities')).toBeVisible();
 		expect(screen.getByText('Result content SHA-256')).toBeVisible();
 		expect(screen.getByText(benchmark.identities.result_content_sha256)).toBeVisible();
-		for (const link of screen.getAllByRole('link', { name: 'Download sanitized JSON' })) {
-			expect(link).toHaveAttribute('href', COFFEEBENCH_RESULT_PATH);
-		}
+		const links = screen.getAllByRole('link', { name: 'Download sanitized JSON' });
+		expect(links).toHaveLength(1);
+		expect(links[0]).toHaveAttribute('href', COFFEEBENCH_RESULT_PATH);
 	});
 });

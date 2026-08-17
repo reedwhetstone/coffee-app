@@ -8,7 +8,7 @@
 		type CoffeeBenchPublicExport,
 		type CoffeeBenchSlice
 	} from '$lib/benchmarks/coffeebench';
-	import { formatDuration, formatRate, formatUsd } from '$lib/benchmarks/display';
+	import { formatDuration, formatMetric, formatRate, formatUsd } from '$lib/benchmarks/display';
 
 	let { data } = $props<{ data: PageData }>();
 	let benchmark: CoffeeBenchPublicExport = $derived(data.benchmark);
@@ -18,9 +18,24 @@
 	let cohortSlices = $derived(
 		benchmark.slices.filter((slice: CoffeeBenchSlice) => slice.slice_id !== 'overall')
 	);
+	let isFixture = $derived(benchmark.status === 'fixture');
 
 	function sentenceCase(value: string): string {
 		return value.replaceAll('_', ' ');
+	}
+
+	function subjectName(subjectId: string): string {
+		return (
+			benchmark.subjects.find((subject) => subject.subject_id === subjectId)?.display_name ??
+			subjectId
+		);
+	}
+
+	function trackName(track: string): string {
+		return (
+			benchmark.tracks.find((candidate) => candidate.track_id === track)?.label ??
+			sentenceCase(track)
+		);
 	}
 </script>
 
@@ -31,7 +46,7 @@
 				<a href="/benchmarks" class="text-sm font-medium text-accent hover:underline"
 					>← Benchmarks</a
 				>
-				<div class="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-end">
+				<div class="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
 					<div class="max-w-4xl">
 						<div class="flex flex-wrap items-center gap-3">
 							<p class="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
@@ -40,7 +55,7 @@
 							<span
 								class="rounded-full border border-line bg-surface-canvas px-3 py-1 text-xs text-muted"
 							>
-								{benchmark.status === 'fixture' ? 'Deterministic fixture' : 'Provisional result'}
+								{isFixture ? 'Example data · full run not started' : 'Provisional result'}
 							</span>
 						</div>
 						<h1 class="mt-3 font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl">
@@ -48,23 +63,20 @@
 						</h1>
 						<p class="mt-6 text-lg leading-8 text-muted">
 							CoffeeBench evaluates evidence use, belief updating, calibration, actionability, and
-							operational performance on a frozen coffee supply-chain analyst suite. Published
-							comparison tracks and each subject’s effective evaluator track remain explicit.
+							operational performance on a frozen coffee supply-chain analyst suite.
+							{isFixture
+								? 'The planned publication keeps comparison tracks and evaluator criteria explicit.'
+								: 'Published comparison tracks and each subject’s effective evaluator track remain explicit.'}
 						</p>
 					</div>
 					<div class="rounded-2xl bg-surface-canvas p-5 ring-1 ring-line">
-						<p class="text-xs font-semibold uppercase tracking-wide text-muted">Public artifact</p>
-						<p class="mt-2 text-sm font-medium text-ink">Result {benchmark.result_version}</p>
-						<a
-							href={COFFEEBENCH_RESULT_PATH}
-							download
-							class="mt-4 inline-flex rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-ink hover:opacity-90"
-						>
-							Download sanitized JSON
-						</a>
-						<p class="mt-3 text-xs leading-5 text-muted">
-							Immutable result-version and content-addressed path. Contains aggregate values and
-							public identities only—no cases, evidence, prompts, or evaluator guardrails.
+						<p class="text-xs font-semibold uppercase tracking-wide text-muted">Benchmark thesis</p>
+						<p class="mt-2 font-serif text-xl font-medium text-ink">
+							Measure the lift created by the system around the model.
+						</p>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							Hold the base model constant, change its harness and evidence access, then ask whether
+							better decisions survive the added cost, latency, and failure risk.
 						</p>
 					</div>
 				</div>
@@ -76,7 +88,7 @@
 			aria-label="CoffeeBench report sections"
 		>
 			<div class="mx-auto flex max-w-7xl gap-1 px-4 py-2 sm:px-6 lg:px-8">
-				{#each [['#overview', 'Overview'], ['#comparison', 'Comparison'], ['#cohorts', 'Cohorts'], ['#harnesses', 'Harnesses'], ['#methodology', 'Methodology'], ['#limitations', 'Limitations'], ['#provenance', 'Provenance']] as [href, label]}
+				{#each [['#overview', 'Purpose'], ['#findings', 'Findings'], ['#comparison', 'Comparison'], ['#cohorts', 'Cohorts'], ['#harnesses', 'Harnesses'], ['#methodology', 'Methodology'], ['#limitations', 'Limitations'], ['#provenance', 'Provenance']] as [href, label]}
 					<a
 						{href}
 						class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium text-muted hover:bg-surface-panel hover:text-ink"
@@ -87,31 +99,66 @@
 		</nav>
 
 		<div class="mx-auto max-w-7xl space-y-20 px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-			{#if benchmark.status === 'fixture'}
-				<div class="rounded-2xl border border-accent/40 bg-accent/10 p-5" role="note">
-					<p class="font-semibold text-ink">Contract preview, not a benchmark result</p>
-					<p class="mt-2 text-sm leading-6 text-muted">
-						These deterministic values prove the sanitized export, strict reader, and responsive
-						presentation together. They must not be cited as model performance or a leaderboard.
+			{#if isFixture}
+				<div
+					class="flex flex-col gap-2 rounded-2xl border border-accent/40 bg-accent/10 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+					role="note"
+				>
+					<p class="font-semibold text-ink">Example data only. No benchmark result exists yet.</p>
+					<p class="max-w-2xl text-sm leading-6 text-muted sm:text-right">
+						The reporting software is tested; the full {benchmark.methodology
+							.subject_trial_count}-trial panel, judging, and human calibration have not run.
 					</p>
 				</div>
 			{/if}
 
 			<section id="overview" class="scroll-mt-36" aria-labelledby="overview-heading">
 				<div class="max-w-3xl">
-					<p class="text-sm font-semibold text-accent">Overview</p>
+					<p class="text-sm font-semibold text-accent">Why CoffeeBench exists</p>
 					<h2 id="overview-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
-						One frozen run, a matched comparison boundary.
+						Measure the system, not just the model.
 					</h2>
 					<p class="mt-4 leading-7 text-muted">
-						This panel publishes one matched system comparison track across four treatments. The raw
-						control still uses model-track evaluator criteria and reduced capabilities; tool-using
-						harnesses use system-track criteria. No subject is judged against tools it could not
-						use.
+						Coffee analysis is an evidence task: the answer must use the right facts, respect what
+						was knowable at the time, express uncertainty, and lead to a defensible action. A
+						generic model leaderboard cannot show whether retrieval, domain tools, or orchestration
+						actually improve that work.
 					</p>
 				</div>
+				<div class="mt-8 grid gap-4 md:grid-cols-3">
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">Harness lift</p>
+						<h3 class="mt-2 text-lg font-semibold text-ink">
+							Does the system make the model better?
+						</h3>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							Matched treatments isolate the contribution of search, Purveyors data, Parchment
+							tools, and the surrounding agent harness.
+						</p>
+					</article>
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+							Evidence discipline
+						</p>
+						<h3 class="mt-2 text-lg font-semibold text-ink">Can the answer be trusted?</h3>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							Historical controls test hindsight leakage; live-web tasks test current-source use.
+							Judges score the criteria each treatment could actually satisfy.
+						</p>
+					</article>
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+							Decision utility
+						</p>
+						<h3 class="mt-2 text-lg font-semibold text-ink">Is the lift worth operating?</h3>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							Quality is read beside failure, token use, normalized cost, and latency so a stronger
+							answer is not mistaken for a better production system.
+						</p>
+					</article>
+				</div>
 				<dl class="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-5">
-					{#each [['Cases', benchmark.methodology.case_count], ['Subject trials', benchmark.methodology.subject_trial_count], ['Absolute evaluations', benchmark.methodology.absolute_evaluation_count], ['Pairwise ballots', benchmark.methodology.pairwise_ballot_count], ['Jury families', benchmark.methodology.jury_family_count]] as [label, value]}
+					{#each [[isFixture ? 'Planned cases' : 'Cases', benchmark.methodology.case_count], [isFixture ? 'Planned subject trials' : 'Subject trials', benchmark.methodology.subject_trial_count], [isFixture ? 'Planned absolute evaluations' : 'Absolute evaluations', benchmark.methodology.absolute_evaluation_count], [isFixture ? 'Planned pairwise ballots' : 'Pairwise ballots', benchmark.methodology.pairwise_ballot_count], [isFixture ? 'Planned jury families' : 'Jury families', benchmark.methodology.jury_family_count]] as [label, value]}
 						<div class="rounded-2xl border border-line bg-surface-panel p-5">
 							<dt class="text-xs text-muted">{label}</dt>
 							<dd class="mt-2 text-2xl font-semibold text-ink">{value}</dd>
@@ -128,22 +175,110 @@
 				</div>
 			</section>
 
+			<section id="findings" class="scroll-mt-36" aria-labelledby="findings-heading">
+				<p class="text-sm font-semibold text-accent">Top-line read</p>
+				{#if isFixture}
+					<div class="mt-2 rounded-3xl border border-accent/40 bg-accent/10 p-6 sm:p-8" role="note">
+						<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
+							Run status · Not started
+						</p>
+						<h2 id="findings-heading" class="mt-3 font-serif text-3xl font-medium text-ink">
+							The full benchmark panel has not run. There are no performance findings yet.
+						</h2>
+						<p class="mt-4 max-w-3xl leading-7 text-muted">
+							The software contract and page have passed their tests. The {benchmark.methodology
+								.subject_trial_count}
+							subject trials, {benchmark.methodology.absolute_evaluation_count} absolute evaluations,
+							{benchmark.methodology.pairwise_ballot_count} pairwise ballots, and blind human calibration
+							remain unexecuted. Every result value below is deterministic example data used only to
+							prove the reporting interface.
+						</p>
+						<div class="mt-6 grid gap-4 sm:grid-cols-2">
+							<div class="rounded-2xl bg-surface-panel p-5 ring-1 ring-line">
+								<p class="text-xs text-muted">Measured findings</p>
+								<p class="mt-1 text-xl font-semibold text-ink">None yet</p>
+							</div>
+							<div class="rounded-2xl bg-surface-panel p-5 ring-1 ring-line">
+								<p class="text-xs text-muted">What this preview proves</p>
+								<p class="mt-1 text-sm font-medium leading-6 text-ink">
+									Sanitized export → strict validation → responsive publication
+								</p>
+							</div>
+						</div>
+					</div>
+				{:else}
+					<div class="mt-2 max-w-3xl">
+						<h2 id="findings-heading" class="font-serif text-3xl font-medium text-ink">
+							What this run found, and what it does not prove.
+						</h2>
+						<p class="mt-4 leading-7 text-muted">
+							The leaders below are precomputed within their matched comparison tracks. They
+							estimate harness contribution for these treatments and cases; they do not establish
+							universal model superiority.
+						</p>
+					</div>
+					<div class="mt-8 grid gap-4 md:grid-cols-2">
+						{#each overall?.track_results ?? [] as trackResult (trackResult.track)}
+							{#each trackResult.subjects.filter((result) => result.rank === 1) as result (result.subject_id)}
+								<article class="rounded-2xl border border-line bg-surface-panel p-6">
+									<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+										{trackName(trackResult.track)} quality leader
+									</p>
+									<h3 class="mt-2 text-xl font-semibold text-ink">
+										{subjectName(result.subject_id)}
+									</h3>
+									<p class="mt-3 text-sm leading-6 text-muted">
+										Quality {formatMetric(result.quality_score, 3)} · 95% interval {formatMetric(
+											result.quality_interval_95.lower,
+											3
+										)}–{formatMetric(result.quality_interval_95.upper, 3)}. Read this lead beside
+										the operational trade-offs below before selecting a system.
+									</p>
+								</article>
+							{/each}
+						{/each}
+						<article class="rounded-2xl border border-line bg-surface-panel p-6">
+							<p class="text-xs font-semibold uppercase tracking-wide text-accent">Implication</p>
+							<h3 class="mt-2 text-xl font-semibold text-ink">
+								Quality alone is not the decision.
+							</h3>
+							<p class="mt-3 text-sm leading-6 text-muted">
+								The practical winner is the treatment whose quality lift remains defensible after
+								cost, latency, failures, critical errors, and confidence calibration are considered
+								together.
+							</p>
+						</article>
+					</div>
+				{/if}
+			</section>
+
 			<section id="comparison" class="scroll-mt-36" aria-labelledby="comparison-heading">
 				<div class="max-w-3xl">
-					<p class="text-sm font-semibold text-accent">Overall comparison</p>
+					<p class="text-sm font-semibold text-accent">
+						{isFixture ? 'Preview of the result structure' : 'Overall comparison'}
+					</p>
 					<h2 id="comparison-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
 						Quality beside cost, latency, and failure.
 					</h2>
 					<p class="mt-4 leading-7 text-muted">
-						Every value below is copied from Cherry’s precomputed export. This app formats and
-						renders the values; it does not derive rank, intervals, cost, rates, or Pareto status.
+						Start with quality and its uncertainty, then test whether the apparent lift survives
+						cost, latency, and failure. Every value is copied from Cherry’s precomputed export; this
+						app does not derive rank, intervals, cost, rates, or Pareto status.
 					</p>
+				</div>
+				<div class="mt-6 grid gap-3 sm:grid-cols-3" aria-label="Recommended result reading order">
+					{#each [['1', 'Quality', 'Compare scores and uncertainty before calling a leader.'], ['2', 'Trade-offs', 'Ask what extra tokens, cost, and latency buy.'], ['3', 'Reliability', 'Check failures, critical errors, and calibration before acting.']] as [step, label, explanation]}
+						<div class="rounded-xl border border-line bg-surface-panel p-4">
+							<p class="text-xs font-semibold text-accent">{step} · {label}</p>
+							<p class="mt-1 text-xs leading-5 text-muted">{explanation}</p>
+						</div>
+					{/each}
 				</div>
 				{#if overall}
 					<div class="mt-10 space-y-14">
 						{#each overall.track_results as trackResult (trackResult.track)}
-							<BenchmarkVisuals {trackResult} subjects={benchmark.subjects} />
-							<TrackResults {trackResult} subjects={benchmark.subjects} />
+							<BenchmarkVisuals {trackResult} subjects={benchmark.subjects} fixture={isFixture} />
+							<TrackResults {trackResult} subjects={benchmark.subjects} fixture={isFixture} />
 						{/each}
 					</div>
 				{/if}
@@ -166,7 +301,12 @@
 							<summary class="cursor-pointer text-lg font-semibold text-ink">{slice.label}</summary>
 							<div class="mt-8 space-y-12">
 								{#each slice.track_results as trackResult (trackResult.track)}
-									<TrackResults {trackResult} subjects={benchmark.subjects} compactHeading />
+									<TrackResults
+										{trackResult}
+										subjects={benchmark.subjects}
+										compactHeading
+										fixture={isFixture}
+									/>
 								{/each}
 							</div>
 						</details>
@@ -359,6 +499,10 @@
 						>All benchmarks</a
 					>
 				</div>
+				<p class="mt-4 max-w-3xl text-xs leading-5 text-muted">
+					Research artifact only. The immutable JSON contains aggregate public values and sanitized
+					identities, never cases, evidence, prompts, evaluator guardrails, or provider payloads.
+				</p>
 			</section>
 		</div>
 	</main>

@@ -12,8 +12,9 @@ export const load: PageServerLoad = async ({ url }) => {
 			baseUrl,
 			path: '/benchmarks/coffeebench-v0',
 			title: 'CoffeeBench v0 | Purveyors',
-			description:
-				'Track-separated evaluation of models and agent systems on coffee supply-chain intelligence tasks, with quality, cost, latency, and methodology.',
+			description: isFixture
+				? 'Contract preview for CoffeeBench, a matched evaluation of whether harnesses and evidence tools improve coffee decisions. No measured result is published yet.'
+				: 'Matched evaluation of whether model harnesses and evidence tools improve defensible coffee decisions after cost, latency, and failure are considered.',
 			keywords: ['CoffeeBench v0', 'coffee AI benchmark', 'agent benchmark', 'LLM evaluation'],
 			robots: isFixture ? 'noindex, follow' : 'index, follow',
 			schemaData: isFixture
