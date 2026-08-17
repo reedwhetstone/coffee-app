@@ -14,6 +14,9 @@ export const load: PageServerLoad = async ({ url }) => {
 		throw error(404, `Blog format not found: ${requestedFormat}`);
 	}
 	const visiblePosts = requestedFormat ? filterPostsByFormat(posts, requestedFormat) : posts;
+	const visiblePublishedPosts = requestedFormat
+		? filterPostsByFormat(publishedPosts, requestedFormat)
+		: publishedPosts;
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const pageUrl = `${baseUrl}/blog`;
 	const schemaService = createSchemaService(baseUrl);
@@ -31,7 +34,7 @@ export const load: PageServerLoad = async ({ url }) => {
 				name: 'Purveyors',
 				url: baseUrl
 			},
-			blogPost: publishedPosts.slice(0, 10).map((post) => ({
+			blogPost: visiblePublishedPosts.slice(0, 10).map((post) => ({
 				'@type': 'BlogPosting',
 				headline: post.title,
 				description: post.description,

@@ -61,6 +61,12 @@ describe('/blog format archive', () => {
 		expect(result.posts.map((post: BlogPost) => post.slug)).toEqual([expectedSlug]);
 		expect(result.selectedFormat).toBe(format);
 		expect(result.meta.canonical).toBe('https://purveyors.io/blog');
+
+		const schema = JSON.stringify(result.meta.schemaData);
+		expect(schema).toContain(`https://purveyors.io/blog/${expectedSlug}`);
+		for (const post of posts.filter((candidate) => candidate.slug !== expectedSlug)) {
+			expect(schema).not.toContain(`https://purveyors.io/blog/${post.slug}`);
+		}
 	});
 
 	it('rejects unknown publication formats', async () => {
