@@ -9,10 +9,10 @@
 Coffee-app consumes Cherry's sanitized fixture byte-for-byte at its immutable result-version and
 content-addressed path:
 
-`static/benchmarks/coffeebench-v0/results/1.0.0-dev.coffeebench-fixture-generation.fixture.a8bc2608867ba777/a8bc2608867ba7773c7262eef50049a38819c964c4ade6ce661c2616000bfd23.json`
+`static/benchmarks/coffeebench-v0/results/1.0.0-dev.coffeebench-fixture-generation.fixture.1071e9c16437645f/1071e9c16437645fcf844abfa95936e4a983f9d10b85663451ea6bed2ee37e9e.json`
 
 The current fixture is 30,831 bytes with file SHA-256
-`9f409d8cf57deda777a1033efcbbab7ad8d968ddc73342e4c3bf8834c1436844`. The compatibility alias at
+`33e91ad1a2381f5a14dd30149805ba543ad17aed580455f55458f711c4258583`. The compatibility alias at
 `static/benchmarks/coffeebench-public-export-v2.json` is byte-identical, short-cached, and explicitly
 noindex. The report links only to the immutable path.
 
@@ -61,6 +61,17 @@ Each slice subject result contains:
   confidence-calibration-pass rates;
 - Pareto classification (`frontier`, `dominated`, or `unavailable`) and same-track
   `dominated_by` subject IDs.
+
+## Inherited knowledge
+
+- Artifact authority | Jury workload, matched-panel arithmetic, and cohort reconciliation are
+  reader-enforced before rendering | Proven on the current head by the CoffeeBench reader tests.
+- Publication identity | Corrected fixture values update the content-addressed result version, both
+  byte-identical public copies, and their replayed digests | Proven by the identity and byte-equality
+  tests.
+- Status-derived presentation | The benchmark index loads its status and counts from the shared
+  validated artifact, and report-route edge indexing is not unconditionally fixture-only | Proven by
+  the index loader and discovery tests.
 
 ## Null and identity semantics
 

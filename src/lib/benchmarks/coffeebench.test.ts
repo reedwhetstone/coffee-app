@@ -170,8 +170,8 @@ describe('CoffeeBench public export reader', () => {
 			string,
 			Record<string, unknown>
 		>;
-		cachedUsage.cached_input_tokens.total = 102_501;
-		cachedUsage.cached_input_tokens.per_attempted_task = 1025.01;
+		cachedUsage.cached_input_tokens.total = 106_001;
+		cachedUsage.cached_input_tokens.per_attempted_task = 1060.01;
 		expect(() => parseCoffeeBenchPublicExport(cached)).toThrow(/cached input tokens.*subset/i);
 
 		const reasoning = fixtureCopy();
@@ -179,8 +179,8 @@ describe('CoffeeBench public export reader', () => {
 			string,
 			Record<string, unknown>
 		>;
-		reasoningUsage.reasoning_tokens.total = 21_001;
-		reasoningUsage.reasoning_tokens.per_attempted_task = 210.01;
+		reasoningUsage.reasoning_tokens.total = 22_401;
+		reasoningUsage.reasoning_tokens.per_attempted_task = 224.01;
 		expect(() => parseCoffeeBenchPublicExport(reasoning)).toThrow(/reasoning tokens.*subset/i);
 	});
 
@@ -240,6 +240,47 @@ describe('CoffeeBench public export reader', () => {
 		const jury = fixtureCopy();
 		(jury.jury as Array<Record<string, unknown>>)[0].provider_call_count = 1;
 		expect(() => parseCoffeeBenchPublicExport(jury)).toThrow(/fixture jury cannot claim provider/i);
+	});
+
+	it('reconciles every jury call count with its absolute and pairwise workload share', () => {
+		const payload = fixtureCopy();
+		(payload.jury as Array<Record<string, unknown>>)[0].call_count = 999;
+
+		expect(() => parseCoffeeBenchPublicExport(payload)).toThrow(
+			/jury call count must reconcile with the family share/i
+		);
+	});
+
+	it('requires matched same-track trials before deriving pairwise ballots', () => {
+		const payload = fixtureCopy();
+		const slices = payload.slices as Array<{
+			slice_id: string;
+			track_results: Array<{ subjects: Array<Record<string, unknown>> }>;
+		}>;
+		const overall = slices.find((slice) => slice.slice_id === 'overall');
+		if (!overall) throw new Error('fixture is missing the overall slice');
+		overall.track_results[0].subjects[1].trial_count = 99;
+
+		expect(() => parseCoffeeBenchPublicExport(payload)).toThrow(
+			/same-track trial counts must match before deriving pairwise ballots/i
+		);
+	});
+
+	it('reconciles overall operational totals and rates with cohort slices', () => {
+		const totals = fixtureCopy();
+		const totalResult = firstSubjectResult(totals);
+		const totalUsage = totalResult.token_usage as Record<string, Record<string, unknown>>;
+		totalUsage.total_tokens.total = 123_500;
+		totalUsage.total_tokens.per_attempted_task = 1235;
+		expect(() => parseCoffeeBenchPublicExport(totals)).toThrow(
+			/cohort total_tokens totals must reconcile with overall subject metrics/i
+		);
+
+		const rates = fixtureCopy();
+		(firstSubjectResult(rates).rates as Record<string, unknown>).unacceptable_response = 0.04;
+		expect(() => parseCoffeeBenchPublicExport(rates)).toThrow(
+			/cohort-weighted unacceptable_response rate must reconcile/i
+		);
 	});
 
 	it('rejects Pareto labels that contradict the exact same-track public metrics', () => {

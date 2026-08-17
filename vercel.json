@@ -1,15 +1,6 @@
 {
 	"headers": [
 		{
-			"source": "/benchmarks/coffeebench-v0",
-			"headers": [
-				{
-					"key": "X-Robots-Tag",
-					"value": "noindex"
-				}
-			]
-		},
-		{
 			"source": "/benchmarks/coffeebench-v0/results/(.*)",
 			"headers": [
 				{

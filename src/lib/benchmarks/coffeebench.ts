@@ -7,11 +7,11 @@ export const COFFEEBENCH_V0_SUITE_ID = 'deepseek-v4-initial' as const;
 export const COFFEEBENCH_V0_JURY_ID = 'openclaw-jury-2026-08-16' as const;
 export const COFFEEBENCH_V0_RELEASE_DATE = '2026-08-17' as const;
 export const COFFEEBENCH_V0_ARTIFACT_SHA256 =
-	'9f409d8cf57deda777a1033efcbbab7ad8d968ddc73342e4c3bf8834c1436844' as const;
+	'33e91ad1a2381f5a14dd30149805ba543ad17aed580455f55458f711c4258583' as const;
 export const COFFEEBENCH_V0_RESULT_CONTENT_SHA256 =
-	'a8bc2608867ba7773c7262eef50049a38819c964c4ade6ce661c2616000bfd23' as const;
+	'1071e9c16437645fcf844abfa95936e4a983f9d10b85663451ea6bed2ee37e9e' as const;
 export const COFFEEBENCH_V0_RESULT_VERSION =
-	'1.0.0-dev.coffeebench-fixture-generation.fixture.a8bc2608867ba777' as const;
+	'1.0.0-dev.coffeebench-fixture-generation.fixture.1071e9c16437645f' as const;
 export const COFFEEBENCH_RESULT_PATH = `/benchmarks/coffeebench-v0/results/${COFFEEBENCH_V0_RESULT_VERSION}/${COFFEEBENCH_V0_RESULT_CONTENT_SHA256}.json`;
 export const COFFEEBENCH_FIXTURE_ALIAS_PATH = '/benchmarks/coffeebench-public-export-v2.json';
 
@@ -527,6 +527,19 @@ const publicExportSchema = z
 			return normalizedLeft < normalizedRight ? -1 : 1;
 		}
 
+		function addDecimalStrings(values: string[]): string {
+			const scale = Math.max(...values.map((value) => value.split('.')[1]?.length ?? 0));
+			const units = values.reduce((total, value) => {
+				const [integer, fraction = ''] = value.split('.');
+				return total + BigInt(`${integer}${fraction.padEnd(scale, '0')}`);
+			}, 0n);
+			const digits = units.toString().padStart(scale + 1, '0');
+			if (scale === 0) return digits;
+			return `${digits.slice(0, -scale)}.${digits.slice(-scale)}`.replace(/\.?0+$/, (suffix) =>
+				suffix === '.' ? '' : suffix.replace(/0+$/, '')
+			);
+		}
+
 		if (artifact.identities.public_contract_sha256 !== coffeeBenchPublicDigest(PUBLIC_CONTRACT)) {
 			issue(['identities', 'public_contract_sha256'], 'public contract SHA-256 does not replay');
 		}
@@ -619,7 +632,25 @@ const publicExportSchema = z
 				'jury family count must match the published jury rows'
 			);
 		}
+		if (
+			artifact.methodology.absolute_evaluation_count % artifact.jury.length !== 0 ||
+			artifact.methodology.pairwise_ballot_count % artifact.jury.length !== 0
+		) {
+			issue(
+				['methodology'],
+				'absolute evaluations and pairwise ballots must divide evenly across jury families'
+			);
+		}
+		const expectedJuryCallCount =
+			artifact.methodology.absolute_evaluation_count / artifact.jury.length +
+			artifact.methodology.pairwise_ballot_count / artifact.jury.length;
 		artifact.jury.forEach((judge, index) => {
+			if (judge.call_count !== expectedJuryCallCount) {
+				issue(
+					['jury', index, 'call_count'],
+					'jury call count must reconcile with the family share of absolute evaluations and pairwise ballots'
+				);
+			}
 			if (judge.provider_call_count > judge.call_count) {
 				issue(['jury', index, 'provider_call_count'], 'provider calls cannot exceed judge calls');
 			}
@@ -1044,34 +1075,106 @@ const publicExportSchema = z
 					'absolute evaluation count must equal overall trials across every jury family'
 				);
 			}
-			const pairwisePerFamily = overall.track_results.reduce(
-				(total, track) =>
-					total +
-					track.subjects.reduce(
-						(trackTotal, result) =>
-							trackTotal + (result.trial_count * (track.subjects.length - 1)) / 2,
-						0
-					),
-				0
-			);
+			const pairwisePerFamily = overall.track_results.reduce((total, track, trackIndex) => {
+				const trialCounts = track.subjects.map((result) => result.trial_count);
+				if (new Set(trialCounts).size > 1) {
+					issue(
+						['slices', 0, 'track_results', trackIndex, 'subjects'],
+						'same-track trial counts must match before deriving pairwise ballots'
+					);
+					return total;
+				}
+				const matchedTrialCount = trialCounts[0] ?? 0;
+				return (
+					total + (matchedTrialCount * track.subjects.length * (track.subjects.length - 1)) / 2
+				);
+			}, 0);
 			if (artifact.methodology.pairwise_ballot_count !== pairwisePerFamily * artifact.jury.length) {
 				issue(
 					['methodology', 'pairwise_ballot_count'],
 					'pairwise ballot count must reconcile with matched same-track trials and jury families'
 				);
 			}
-			for (const result of overallRows) {
-				const cohortTrialCount = artifact.slices
+			for (const [overallIndex, result] of overallRows.entries()) {
+				const cohortRows = artifact.slices
 					.filter((slice) => slice.slice_id !== 'overall')
 					.flatMap((slice) => slice.track_results)
 					.flatMap((track) => track.subjects)
-					.filter((candidate) => candidate.subject_id === result.subject_id)
-					.reduce((total, candidate) => total + candidate.trial_count, 0);
+					.filter((candidate) => candidate.subject_id === result.subject_id);
+				const cohortTrialCount = cohortRows.reduce(
+					(total, candidate) => total + candidate.trial_count,
+					0
+				);
 				if (cohortTrialCount !== result.trial_count) {
 					issue(
 						['slices'],
 						`cohort trial counts must reconcile with overall trials for ${result.subject_id}`
 					);
+				}
+
+				for (const metricName of [
+					'input_tokens',
+					'cached_input_tokens',
+					'reasoning_tokens',
+					'output_tokens',
+					'total_tokens'
+				] as const) {
+					const overallTotal = result.token_usage[metricName].total;
+					const cohortTotals = cohortRows.map(
+						(candidate) => candidate.token_usage[metricName].total
+					);
+					const allAvailable =
+						cohortTotals.length > 0 && cohortTotals.every((value) => value !== null);
+					if (
+						(overallTotal === null && cohortTotals.some((value) => value !== null)) ||
+						(overallTotal !== null &&
+							(!allAvailable ||
+								cohortTotals.reduce((total, value) => total + (value ?? 0), 0) !== overallTotal))
+					) {
+						issue(
+							['slices', 0, 'track_results', overallIndex, 'subjects'],
+							`cohort ${metricName} totals must reconcile with overall subject metrics`
+						);
+					}
+				}
+
+				for (const metricName of ['provider_billed_usd', 'normalized_cost_usd'] as const) {
+					const overallTotal = result.cost[metricName].total;
+					const cohortTotals = cohortRows.map((candidate) => candidate.cost[metricName].total);
+					const allAvailable =
+						cohortTotals.length > 0 && cohortTotals.every((value) => value !== null);
+					if (
+						(overallTotal === null && cohortTotals.some((value) => value !== null)) ||
+						(overallTotal !== null &&
+							(!allAvailable ||
+								compareDecimal(addDecimalStrings(cohortTotals as string[]), overallTotal) !== 0))
+					) {
+						issue(
+							['slices', 0, 'track_results', overallIndex, 'subjects'],
+							`cohort ${metricName} totals must reconcile with overall subject metrics`
+						);
+					}
+				}
+
+				if (cohortTrialCount > 0) {
+					for (const rateName of [
+						'terminal_failure',
+						'unacceptable_response',
+						'critical_error',
+						'confidence_calibration_pass'
+					] as const) {
+						const weightedRate =
+							cohortRows.reduce(
+								(total, candidate) => total + candidate.rates[rateName] * candidate.trial_count,
+								0
+							) / cohortTrialCount;
+						if (!approximatelyEqual(result.rates[rateName], weightedRate)) {
+							issue(
+								['slices', 0, 'track_results', overallIndex, 'subjects'],
+								`cohort-weighted ${rateName} rate must reconcile with the overall subject metric`
+							);
+						}
+					}
 				}
 			}
 		}

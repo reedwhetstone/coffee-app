@@ -37,8 +37,8 @@
     "generation_id": "coffeebench-fixture-generation",
     "methodology_sha256": "5b33f51bdf6dade9dba7223d8f5a923a68110cb1171dc5a69b3b92716e4126c9",
     "public_contract_sha256": "a7f88c514ec2a0e8cc891785da20c85c273b0385b1bf1b89f22e2a1c580a7d3e",
-    "result_content_sha256": "a8bc2608867ba7773c7262eef50049a38819c964c4ade6ce661c2616000bfd23",
-    "result_id": "openclaw-jury-2026-08-16.coffeebench-fixture-generation.fixture.a8bc2608867ba7773c7262eef50049a38819c964c4ade6ce661c2616000bfd23",
+    "result_content_sha256": "1071e9c16437645fcf844abfa95936e4a983f9d10b85663451ea6bed2ee37e9e",
+    "result_id": "openclaw-jury-2026-08-16.coffeebench-fixture-generation.fixture.1071e9c16437645fcf844abfa95936e4a983f9d10b85663451ea6bed2ee37e9e",
     "subject_cards_sha256": "005b4f316d0a26d1e31e2b1432d5d83ab9954f2ce256551f6ecbefe91724617e"
   },
   "jury": [
@@ -96,7 +96,7 @@
     "unacceptable_response_rule": "at least two of three absolute judges",
     "uncertainty": "source-family clustered bootstrap with case fallback"
   },
-  "result_version": "1.0.0-dev.coffeebench-fixture-generation.fixture.a8bc2608867ba777",
+  "result_version": "1.0.0-dev.coffeebench-fixture-generation.fixture.1071e9c16437645f",
   "schema_version": 2,
   "slices": [
     {
@@ -138,9 +138,9 @@
               "rank": 4,
               "rates": {
                 "confidence_calibration_pass": 0.9,
-                "critical_error": 0.03,
+                "critical_error": 0.06,
                 "terminal_failure": 0.0,
-                "unacceptable_response": 0.04
+                "unacceptable_response": 0.08
               },
               "subject_id": "deepseek-v4-raw",
               "token_usage": {
@@ -149,12 +149,12 @@
                   "total": null
                 },
                 "input_tokens": {
-                  "per_attempted_task": 1025.0,
-                  "total": 102500
+                  "per_attempted_task": 1060.0,
+                  "total": 106000
                 },
                 "output_tokens": {
-                  "per_attempted_task": 210.0,
-                  "total": 21000
+                  "per_attempted_task": 224.0,
+                  "total": 22400
                 },
                 "provenance": "provider_derived",
                 "reasoning_tokens": {
@@ -162,8 +162,8 @@
                   "total": null
                 },
                 "total_tokens": {
-                  "per_attempted_task": 1235.0,
-                  "total": 123500
+                  "per_attempted_task": 1284.0,
+                  "total": 128400
                 }
               },
               "trial_count": 100
@@ -201,9 +201,9 @@
               "rank": 3,
               "rates": {
                 "confidence_calibration_pass": 0.92,
-                "critical_error": 0.02,
-                "terminal_failure": 0.01,
-                "unacceptable_response": 0.03
+                "critical_error": 0.04,
+                "terminal_failure": 0.02,
+                "unacceptable_response": 0.06
               },
               "subject_id": "deepseek-v4-pi-search",
               "token_usage": {
@@ -212,12 +212,12 @@
                   "total": null
                 },
                 "input_tokens": {
-                  "per_attempted_task": 1150.0,
-                  "total": 115000
+                  "per_attempted_task": 1185.0,
+                  "total": 118500
                 },
                 "output_tokens": {
-                  "per_attempted_task": 240.0,
-                  "total": 24000
+                  "per_attempted_task": 254.0,
+                  "total": 25400
                 },
                 "provenance": "provider_derived",
                 "reasoning_tokens": {
@@ -225,8 +225,8 @@
                   "total": null
                 },
                 "total_tokens": {
-                  "per_attempted_task": 1390.0,
-                  "total": 139000
+                  "per_attempted_task": 1439.0,
+                  "total": 143900
                 }
               },
               "trial_count": 100
@@ -264,9 +264,9 @@
               "rank": 2,
               "rates": {
                 "confidence_calibration_pass": 0.94,
-                "critical_error": 0.01,
-                "terminal_failure": 0.02,
-                "unacceptable_response": 0.02
+                "critical_error": 0.02,
+                "terminal_failure": 0.04,
+                "unacceptable_response": 0.04
               },
               "subject_id": "deepseek-v4-purveyors-search",
               "token_usage": {
@@ -275,12 +275,12 @@
                   "total": null
                 },
                 "input_tokens": {
-                  "per_attempted_task": 1275.0,
-                  "total": 127500
+                  "per_attempted_task": 1310.0,
+                  "total": 131000
                 },
                 "output_tokens": {
-                  "per_attempted_task": 270.0,
-                  "total": 27000
+                  "per_attempted_task": 284.0,
+                  "total": 28400
                 },
                 "provenance": "provider_derived",
                 "reasoning_tokens": {
@@ -288,8 +288,8 @@
                   "total": null
                 },
                 "total_tokens": {
-                  "per_attempted_task": 1545.0,
-                  "total": 154500
+                  "per_attempted_task": 1594.0,
+                  "total": 159400
                 }
               },
               "trial_count": 100
@@ -328,8 +328,8 @@
               "rates": {
                 "confidence_calibration_pass": 0.96,
                 "critical_error": 0.0,
-                "terminal_failure": 0.03,
-                "unacceptable_response": 0.01
+                "terminal_failure": 0.06,
+                "unacceptable_response": 0.02
               },
               "subject_id": "deepseek-v4-purveyors-parchment-search",
               "token_usage": {
@@ -338,12 +338,12 @@
                   "total": null
                 },
                 "input_tokens": {
-                  "per_attempted_task": 1400.0,
-                  "total": 140000
+                  "per_attempted_task": 1435.0,
+                  "total": 143500
                 },
                 "output_tokens": {
-                  "per_attempted_task": 300.0,
-                  "total": 30000
+                  "per_attempted_task": 314.0,
+                  "total": 31400
                 },
                 "provenance": "provider_derived",
                 "reasoning_tokens": {
@@ -351,8 +351,8 @@
                   "total": null
                 },
                 "total_tokens": {
-                  "per_attempted_task": 1700.0,
-                  "total": 170000
+                  "per_attempted_task": 1749.0,
+                  "total": 174900
                 }
               },
               "trial_count": 100

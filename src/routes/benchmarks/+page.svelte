@@ -1,5 +1,8 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import Footer from '$lib/components/marketing/Footer.svelte';
+
+	let { data } = $props<{ data: PageData }>();
 </script>
 
 <div class="bg-surface-canvas">
@@ -24,7 +27,7 @@
 					</h2>
 				</div>
 				<span class="rounded-full border border-line bg-surface-panel px-3 py-1 text-xs text-muted">
-					Fixture preview
+					{data.benchmark.status === 'fixture' ? 'Fixture preview' : 'Provisional result'}
 				</span>
 			</div>
 
@@ -34,15 +37,22 @@
 			>
 				<div class="grid gap-8 md:grid-cols-[minmax(0,1fr)_17rem] md:items-end">
 					<div>
-						<p class="text-sm font-semibold text-accent">20 cases · 400 subject trials</p>
+						<p class="text-sm font-semibold text-accent">
+							{data.benchmark.caseCount} cases · {data.benchmark.subjectTrialCount} subject trials
+						</p>
 						<h3 class="mt-2 font-serif text-3xl font-medium text-ink">
 							Coffee supply-chain analyst arena
 						</h3>
 						<p class="mt-4 max-w-2xl leading-7 text-muted">
 							A frozen, track-separated evaluation of raw models and tool-using systems across
-							historical-control and live-web coffee analysis. The current page exercises the
-							complete public contract with deterministic fixture values; it is not a published
-							leaderboard.
+							historical-control and live-web coffee analysis.
+							{#if data.benchmark.status === 'fixture'}
+								The current page exercises the complete public contract with deterministic fixture
+								values; it is not a published leaderboard.
+							{:else}
+								This provisional result is available for measured comparison while final publication
+								approval remains separate.
+							{/if}
 						</p>
 					</div>
 					<div class="rounded-2xl bg-surface-canvas p-5 ring-1 ring-line">

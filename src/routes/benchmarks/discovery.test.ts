@@ -46,8 +46,10 @@ describe('CoffeeBench public discovery', () => {
 		const config = JSON.parse(readFileSync('vercel.json', 'utf8')) as {
 			headers: Array<{ source: string; headers: Array<{ key: string; value: string }> }>;
 		};
+		expect(
+			config.headers.find((entry) => entry.source === '/benchmarks/coffeebench-v0')
+		).toBeUndefined();
 		for (const source of [
-			'/benchmarks/coffeebench-v0',
 			'/benchmarks/coffeebench-v0/results/(.*)',
 			'/benchmarks/coffeebench-public-export-v2.json'
 		]) {

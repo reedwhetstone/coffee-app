@@ -1,4 +1,4 @@
-import rawCoffeeBenchV2 from '../../../../static/benchmarks/coffeebench-v0/results/1.0.0-dev.coffeebench-fixture-generation.fixture.a8bc2608867ba777/a8bc2608867ba7773c7262eef50049a38819c964c4ade6ce661c2616000bfd23.json';
+import rawCoffeeBenchV2 from '../../../../static/benchmarks/coffeebench-v0/results/1.0.0-dev.coffeebench-fixture-generation.fixture.1071e9c16437645f/1071e9c16437645fcf844abfa95936e4a983f9d10b85663451ea6bed2ee37e9e.json';
 import {
 	assertCoffeeBenchV0RouteIdentity,
 	parseCoffeeBenchPublicExport
