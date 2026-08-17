@@ -1,23 +1,43 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BlogPost } from '$lib/types/blog.types';
 
-const { marketBrief } = vi.hoisted(() => ({
-	marketBrief: {
-		slug: 'market-brief-001',
-		title: 'Market Brief One',
-		date: '2026-08-17',
-		updated: '2026-08-18',
-		description: 'The first Market Brief fixture.',
-		tags: ['coffee', 'data', 'supply-chain'],
-		pillar: 'market-intelligence',
-		draft: false,
-		format: 'market-brief',
-		edition: 1
-	} as BlogPost
-}));
+const { getAllPostsMock, getRawBlogSourceMock, marketBrief, marketBriefSource } = vi.hoisted(
+	() => ({
+		getAllPostsMock: vi.fn(),
+		getRawBlogSourceMock: vi.fn(),
+		marketBrief: {
+			slug: 'market-brief-001',
+			title: 'Market Brief One',
+			date: '2026-08-17',
+			updated: '2026-08-18',
+			description: 'The first Market Brief fixture.',
+			tags: ['coffee', 'data', 'supply-chain'],
+			pillar: 'market-intelligence',
+			draft: false,
+			format: 'market-brief',
+			edition: 1
+		} as BlogPost,
+		marketBriefSource: `---
+title: "Market Brief One"
+date: "2026-08-17"
+description: "The first Market Brief fixture."
+tags: ["coffee", "data", "supply-chain"]
+pillar: "market-intelligence"
+draft: false
+format: "market-brief"
+edition: 1
+---
+
+## This week
+
+The first fixture has a [canonical reader](/blog/market-brief-001).
+`
+	})
+);
 
 vi.mock('$lib/server/blog', () => ({
-	getAllPosts: vi.fn(async () => [marketBrief])
+	getAllPosts: getAllPostsMock,
+	getRawBlogSource: getRawBlogSourceMock
 }));
 
 import { load } from './+page.server';
@@ -30,6 +50,18 @@ function loadPost(slug: string) {
 }
 
 describe('/blog/[slug] Market Brief metadata', () => {
+	beforeEach(() => {
+		getAllPostsMock.mockResolvedValue([marketBrief]);
+		getRawBlogSourceMock.mockImplementation((slug: string) =>
+			slug === marketBrief.slug ? marketBriefSource : undefined
+		);
+	});
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
+		vi.clearAllMocks();
+	});
+
 	it('uses the normalized edition as the sole reader and metadata identity', async () => {
 		const result = await loadPost('market-brief-001');
 		if (!result) throw new Error('Expected Market Brief reader data');
@@ -45,6 +77,53 @@ describe('/blog/[slug] Market Brief metadata', () => {
 		});
 		expect(JSON.stringify(result.meta.schemaData)).toContain('Purveyors Market Brief');
 		expect(JSON.stringify(result.meta.schemaData)).not.toContain('market_read');
+		expect(result.marketBriefDeployment).toBeUndefined();
+	});
+
+	it('advertises the exact projection only from a Vercel production deployment', async () => {
+		vi.stubEnv('VERCEL_ENV', 'production');
+		vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'a'.repeat(40));
+		const result = await loadPost('market-brief-001');
+		if (!result) throw new Error('Expected Market Brief reader data');
+
+		expect(result.marketBriefDeployment).toMatchObject({
+			schemaVersion: 1,
+			publication: 'market-brief',
+			edition: 1,
+			slug: 'market-brief-001',
+			canonicalUrl: 'https://www.purveyors.io/blog/market-brief-001',
+			productionCommit: 'a'.repeat(40),
+			rendererVersion: 'market-brief-email-v1',
+			projectionSha256: expect.stringMatching(/^[0-9a-f]{64}$/)
+		});
+	});
+
+	it('keeps ordinary essays outside the projection and deployed-manifest path', async () => {
+		getAllPostsMock.mockResolvedValueOnce([
+			{
+				...marketBrief,
+				slug: 'ordinary-essay',
+				format: 'essay',
+				edition: undefined
+			}
+		]);
+		vi.stubEnv('VERCEL_ENV', 'production');
+		vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'a'.repeat(40));
+
+		const result = await loadPost('ordinary-essay');
+		if (!result) throw new Error('Expected essay reader data');
+
+		expect(result.marketBriefDeployment).toBeUndefined();
+		expect(getRawBlogSourceMock).not.toHaveBeenCalled();
+	});
+
+	it('fails closed when a Market Brief loses its canonical source', async () => {
+		getRawBlogSourceMock.mockReturnValueOnce(undefined);
+
+		await expect(loadPost('market-brief-001')).rejects.toMatchObject({
+			status: 500,
+			body: { message: 'Market Brief source not found: market-brief-001' }
+		});
 	});
 
 	it('keeps unknown edition slugs closed', async () => {

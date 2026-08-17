@@ -24,6 +24,28 @@
 	}
 </script>
 
+<svelte:head>
+	{#if data.marketBriefDeployment}
+		<meta
+			name="purveyors:market-brief-edition"
+			content={String(data.marketBriefDeployment.edition)}
+		/>
+		<meta name="purveyors:market-brief-slug" content={data.marketBriefDeployment.slug} />
+		<meta
+			name="purveyors:market-brief-production-commit"
+			content={data.marketBriefDeployment.productionCommit}
+		/>
+		<meta
+			name="purveyors:market-brief-renderer"
+			content={data.marketBriefDeployment.rendererVersion}
+		/>
+		<meta
+			name="purveyors:market-brief-projection-sha256"
+			content={data.marketBriefDeployment.projectionSha256}
+		/>
+	{/if}
+</svelte:head>
+
 <!-- Back link -->
 <a
 	href={data.metadata.format === 'market-brief' ? '/blog?format=market-brief' : '/blog'}

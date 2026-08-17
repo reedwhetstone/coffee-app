@@ -3,6 +3,7 @@
 **Date:** 2026-08-15
 **Status:** Active
 **MB-1 status:** Implemented in coffee-app PR #539
+**MB-5A status:** Implemented in the email-projection successor
 **Owner:** Purveyors product ecosystem
 **Canonical backlog:** `notes/DEVLOG.md`
 
@@ -220,6 +221,18 @@ it does not become the provider-state owner.
 The slice must prove that a failed deployment creates no provider draft, a
 replayed successful deployment creates no duplicate draft, and the initial send
 still requires human approval.
+
+The accepted successor sequence preserves repository ownership and recovery:
+
+1. coffee-app MB-5A defines the deterministic email-safe projection and deployed
+   edition/version metadata;
+2. Parchment accepts immutable draft work, dedicated machine authorization,
+   provider creation, and ambiguous-create recovery; and
+3. coffee-app adds the thin production-success trigger against that generated
+   SDK contract.
+
+Subscriber and preference UI remains part of the broader MB-5 outcome, but it
+does not authorize either repo to invent the missing draft contract.
 
 ### MB-6: Launch and measure
 

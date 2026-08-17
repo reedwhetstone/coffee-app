@@ -1,7 +1,11 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { buildPublicMeta, resolveBlogPostSocialImage } from '$lib/seo/meta';
-import { getAllPosts } from '$lib/server/blog';
+import { getAllPosts, getRawBlogSource } from '$lib/server/blog';
+import {
+	buildMarketBriefDeploymentManifest,
+	buildMarketBriefEmailProjection
+} from '$lib/server/marketBriefEmail';
 import { createSchemaService } from '$lib/services/schemaService';
 import { getBlogPostPath } from '$lib/types/blog.types';
 
@@ -18,6 +22,15 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const postUrl = `${baseUrl}${postPath}`;
 	const author = post.author || 'Reed Whetstone';
 	const isMarketBrief = post.format === 'market-brief';
+	const marketBriefDeployment = (() => {
+		if (!isMarketBrief) return undefined;
+		const source = getRawBlogSource(post.slug);
+		if (source === undefined) {
+			throw error(500, `Market Brief source not found: ${post.slug}`);
+		}
+		const projection = buildMarketBriefEmailProjection(post, source);
+		return buildMarketBriefDeploymentManifest(projection, process.env);
+	})();
 	const socialImage = resolveBlogPostSocialImage({
 		baseUrl,
 		slug: post.slug,
@@ -58,6 +71,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 
 	return {
 		metadata: post,
+		marketBriefDeployment,
 		meta: buildPublicMeta({
 			baseUrl,
 			path: postPath,
