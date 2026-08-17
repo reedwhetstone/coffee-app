@@ -1,6 +1,6 @@
 # Market Brief web publication foundation
 
-**Status:** Selected for implementation
+**Status:** Implemented (MB-1)
 
 **Decision authority:** The accepted
 [Market Brief implementation plan](implementation-plan.md), its MB-1 boundary,

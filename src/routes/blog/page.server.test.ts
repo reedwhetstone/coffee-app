@@ -29,7 +29,6 @@ const { posts } = vi.hoisted(() => ({
 
 vi.mock('$lib/server/blog', () => ({
 	getAllPosts: vi.fn(async () => posts),
-	getAllTags: vi.fn(async () => ['coffee', 'data', 'strategy', 'supply-chain']),
 	filterPostsByFormat: vi.fn((input: BlogPost[], format: string) =>
 		input.filter((post) => post.format === format)
 	)
@@ -59,6 +58,11 @@ describe('/blog format archive', () => {
 		const result = await loadBlog(format);
 		if (!result) throw new Error('Expected filtered blog archive data');
 		expect(result.posts.map((post: BlogPost) => post.slug)).toEqual([expectedSlug]);
+		expect(result.tags).toEqual(
+			expectedSlug === 'market-brief-001'
+				? ['coffee', 'data', 'supply-chain']
+				: ['coffee', 'data', 'strategy']
+		);
 		expect(result.selectedFormat).toBe(format);
 		expect(result.meta.canonical).toBe('https://purveyors.io/blog');
 

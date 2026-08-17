@@ -100,8 +100,13 @@ describe('blog tag taxonomy', () => {
 		for (const post of posts) {
 			expect([3, 4]).toContain(post.tags.length);
 			expect(post.tags.every(isBlogTag)).toBe(true);
-			expect(post.format).toBe('essay');
-			expect(post.edition).toBeUndefined();
+			if (post.format === 'market-brief') {
+				expect(post.edition).toBeGreaterThan(0);
+				expect(post.slug).toBe(getMarketBriefSlug(post.edition!));
+			} else {
+				expect(post.format).toBe('essay');
+				expect(post.edition).toBeUndefined();
+			}
 		}
 	});
 

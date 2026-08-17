@@ -1,19 +1,19 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
-import { filterPostsByFormat, getAllPosts, getAllTags } from '$lib/server/blog';
+import { filterPostsByFormat, getAllPosts } from '$lib/server/blog';
 import { createSchemaService } from '$lib/services/schemaService';
-import { getBlogPostPath, isBlogFormat } from '$lib/types/blog.types';
+import { BLOG_TAGS, getBlogPostPath, isBlogFormat } from '$lib/types/blog.types';
 
 export const load: PageServerLoad = async ({ url }) => {
 	const posts = await getAllPosts();
-	const tags = await getAllTags();
 	const publishedPosts = posts.filter((post) => !post.draft);
 	const requestedFormat = url.searchParams.get('format');
 	if (requestedFormat !== null && !isBlogFormat(requestedFormat)) {
 		throw error(404, `Blog format not found: ${requestedFormat}`);
 	}
 	const visiblePosts = requestedFormat ? filterPostsByFormat(posts, requestedFormat) : posts;
+	const tags = BLOG_TAGS.filter((tag) => visiblePosts.some((post) => post.tags.includes(tag)));
 	const visiblePublishedPosts = requestedFormat
 		? filterPostsByFormat(publishedPosts, requestedFormat)
 		: publishedPosts;

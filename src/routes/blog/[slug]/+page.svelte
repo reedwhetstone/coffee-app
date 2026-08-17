@@ -1,17 +1,14 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { formatMarketBriefEdition, PILLARS } from '$lib/types/blog.types';
+	import { formatBlogDate } from '$lib/utils/dates';
 	import LinkedInDraft from '$lib/components/blog/LinkedInDraft.svelte';
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
 	function formatDate(dateStr: string): string {
-		return new Date(dateStr).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric'
-		});
+		return formatBlogDate(dateStr);
 	}
 
 	let pillarInfo = $derived(

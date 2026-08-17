@@ -2,21 +2,26 @@
 	import type { PageData } from './$types';
 	import { formatMarketBriefEdition, getBlogPostPath, PILLARS } from '$lib/types/blog.types';
 	import type { BlogPost, BlogTag } from '$lib/types/blog.types';
+	import { formatBlogDate } from '$lib/utils/dates';
 
 	let { data } = $props<{ data: PageData }>();
 
 	let selectedTag = $state<BlogTag | null>(null);
+	let previousFormat = $state<string | null>(null);
+
+	$effect(() => {
+		if (previousFormat !== data.selectedFormat) {
+			selectedTag = null;
+			previousFormat = data.selectedFormat;
+		}
+	});
 
 	let filteredPosts = $derived(
 		selectedTag ? data.posts.filter((p: BlogPost) => p.tags.includes(selectedTag!)) : data.posts
 	);
 
 	function formatDate(dateStr: string): string {
-		return new Date(dateStr).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric'
-		});
+		return formatBlogDate(dateStr);
 	}
 
 	function getHeroImage(slug: string): string {
