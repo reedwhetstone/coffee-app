@@ -1,4 +1,6 @@
 import type { RequestHandler } from './$types';
+import { COFFEEBENCH_V0_RELEASE_DATE } from '$lib/benchmarks/coffeebench';
+import { coffeeBenchV0 } from '$lib/server/benchmarks/coffeebench';
 import { getPublishedPosts } from '$lib/server/blog';
 import { DOCS_NAV } from '$lib/docs/content';
 import { getBlogPostPath } from '$lib/types/blog.types';
@@ -38,6 +40,16 @@ export const GET: RequestHandler = async ({ url }) => {
 			)
 		)
 		.join('');
+	const coffeeBenchEntry =
+		coffeeBenchV0.status === 'fixture'
+			? ''
+			: `
+	<url>
+		<loc>${baseUrl}/benchmarks/coffeebench-v0</loc>
+		<lastmod>${COFFEEBENCH_V0_RELEASE_DATE}</lastmod>
+		<changefreq>never</changefreq>
+		<priority>0.8</priority>
+	</url>`;
 
 	const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -63,6 +75,15 @@ export const GET: RequestHandler = async ({ url }) => {
 		<changefreq>daily</changefreq>
 		<priority>0.7</priority>
 	</url>
+
+	<!-- Versioned public benchmark reports -->
+	<url>
+		<loc>${baseUrl}/benchmarks</loc>
+		<lastmod>${COFFEEBENCH_V0_RELEASE_DATE}</lastmod>
+		<changefreq>monthly</changefreq>
+		<priority>0.7</priority>
+	</url>
+${coffeeBenchEntry}
 
 	<!-- Blog index -->
 	<url>

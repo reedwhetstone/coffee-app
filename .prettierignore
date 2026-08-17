@@ -3,3 +3,6 @@ package-lock.json
 pnpm-lock.yaml
 yarn.lock
 
+# Byte-identical upstream benchmark artifact; formatting would invalidate the download contract.
+static/benchmarks/coffeebench-public-export-v2.json
+static/benchmarks/coffeebench-v0/results/**/*.json

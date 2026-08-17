@@ -1,10 +1,17 @@
 import type { RequestHandler } from './$types';
 import { getPublishedPosts } from '$lib/server/blog';
+import { coffeeBenchV0 } from '$lib/server/benchmarks/coffeebench';
 import { getBlogPostPath } from '$lib/types/blog.types';
 
 export const GET: RequestHandler = async ({ url }) => {
 	const publishedPosts = await getPublishedPosts();
 	const baseUrl = `${url.protocol}//${url.host}`;
+	const benchmarkDescription =
+		coffeeBenchV0.status === 'fixture'
+			? 'Deterministic contract fixture for the matched-system reader and visualizations. It is not measured model performance, not a leaderboard, and must not be cited as a benchmark result.'
+			: 'Provisional measured comparison of model and agent-system performance on coffee-intelligence tasks. Final publication approval remains separate.';
+	const benchmarkLabel =
+		coffeeBenchV0.status === 'fixture' ? 'fixture preview' : 'provisional result';
 
 	const blogPostLines = publishedPosts
 		.map(
@@ -20,6 +27,8 @@ export const GET: RequestHandler = async ({ url }) => {
 
 - [Market Analytics](${baseUrl}/analytics): Public market-intelligence surface for origin price trends, processing mix, origin price ranges, and gated Parchment Intelligence modules.
 - [Coffee Catalog](${baseUrl}/catalog): Public catalog for normalized green coffee listings with origin, processing, pricing, and availability data.
+- [Benchmarks](${baseUrl}/benchmarks): Public index of versioned coffee-intelligence evaluations.
+- [CoffeeBench v0 ${benchmarkLabel}](${baseUrl}/benchmarks/coffeebench-v0): ${benchmarkDescription}
 - [Parchment API](${baseUrl}/api): Product overview for the API, access tiers, and Console entry points.
 - [Parchment Console](${baseUrl}/api-dashboard): Authenticated Console for API keys, usage, and billing.
 - [Developer Docs](${baseUrl}/docs): Product and CLI documentation. Generated API reference lives at https://api.purveyors.io/docs.

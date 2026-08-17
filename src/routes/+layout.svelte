@@ -94,6 +94,7 @@
 		pathname === '/' ||
 			pathname === '/api' ||
 			pathname === '/bot' ||
+			pathname.startsWith('/benchmarks') ||
 			pathname === '/subscription' ||
 			pathname.startsWith('/docs') ||
 			pathname.startsWith('/blog')

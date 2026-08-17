@@ -5,7 +5,10 @@ type RouteSpec = {
 	label: string;
 	path: string;
 	expectArticleMeta?: boolean;
+	expectNoIndex?: boolean;
+	expectStructuredData?: boolean;
 	expectInSitemap?: boolean;
+	excludeFromSitemap?: boolean;
 	expectInLlms?: boolean;
 };
 
@@ -249,7 +252,13 @@ async function auditRoute(
 			'missing twitter:image:alt',
 			issues
 		),
-		makeCheck(hasStructuredData(head), 'missing JSON-LD structured data', issues),
+		makeCheck(
+			route.expectStructuredData === false ? !hasStructuredData(head) : hasStructuredData(head),
+			route.expectStructuredData === false
+				? 'unexpected JSON-LD structured data'
+				: 'missing JSON-LD structured data',
+			issues
+		),
 		makeCheck(hasAtLeastOneH1(text), 'missing H1', issues),
 		makeCheck(Boolean(ogType), 'missing og:type', issues),
 		makeCheck(
@@ -258,6 +267,16 @@ async function auditRoute(
 			issues
 		)
 	];
+
+	if (route.expectNoIndex) {
+		checks.push(
+			makeCheck(
+				getMetaContent(metaTags, 'name', 'robots')?.includes('noindex') === true,
+				'fixture surface must declare noindex',
+				issues
+			)
+		);
+	}
 
 	if (route.expectArticleMeta) {
 		checks.push(
@@ -292,6 +311,11 @@ async function auditRoute(
 	if (route.expectInSitemap) {
 		checks.push(makeCheck(sitemapText.includes(url), 'route missing from sitemap.xml', issues));
 	}
+	if (route.excludeFromSitemap) {
+		checks.push(
+			makeCheck(!sitemapText.includes(url), 'noindex fixture route appears in sitemap.xml', issues)
+		);
+	}
 
 	if (route.expectInLlms) {
 		checks.push(makeCheck(llmsText.includes(url), 'route missing from llms.txt', issues));
@@ -322,6 +346,15 @@ async function main() {
 		{ label: 'Homepage', path: '/', expectInSitemap: true },
 		{ label: 'Catalog', path: '/catalog', expectInSitemap: true, expectInLlms: true },
 		{ label: 'Analytics', path: '/analytics', expectInSitemap: true, expectInLlms: true },
+		{ label: 'Benchmarks', path: '/benchmarks', expectInSitemap: true, expectInLlms: true },
+		{
+			label: 'CoffeeBench v0',
+			path: '/benchmarks/coffeebench-v0',
+			expectNoIndex: true,
+			expectStructuredData: false,
+			excludeFromSitemap: true,
+			expectInLlms: true
+		},
 		{ label: 'API', path: '/api', expectInSitemap: true, expectInLlms: true },
 		{ label: 'Docs', path: '/docs', expectInSitemap: true, expectInLlms: true },
 		// /docs/api/* now 307-redirects to the external generated reference
