@@ -1,13 +1,24 @@
-export interface BlogPost {
-	slug: string;
+export const BLOG_FORMATS = ['essay', 'market-brief'] as const;
+
+export type BlogFormat = (typeof BLOG_FORMATS)[number];
+
+export interface BlogPostFrontmatter {
 	title: string;
 	date: string;
+	updated?: string;
 	description: string;
 	tags: BlogTag[];
 	pillar: string;
 	draft: boolean;
 	author?: string;
 	readingTime?: number;
+	format?: BlogFormat;
+	edition?: number;
+}
+
+export interface BlogPost extends Omit<BlogPostFrontmatter, 'format'> {
+	slug: string;
+	format: BlogFormat;
 }
 
 export const BLOG_TAGS = [
@@ -51,6 +62,22 @@ export function isBlogTag(value: string): value is BlogTag {
 	return BLOG_TAGS.includes(value as BlogTag);
 }
 
+export function isBlogFormat(value: string): value is BlogFormat {
+	return BLOG_FORMATS.includes(value as BlogFormat);
+}
+
+export function formatMarketBriefEdition(edition: number): string {
+	return String(edition).padStart(3, '0');
+}
+
+export function getMarketBriefSlug(edition: number): string {
+	return `market-brief-${formatMarketBriefEdition(edition)}`;
+}
+
+export function getBlogPostPath(slug: string): string {
+	return `/blog/${slug}`;
+}
+
 export function getCanonicalBlogTag(value: string): BlogTag | undefined {
 	return (BLOG_TAG_ALIASES as Readonly<Record<string, BlogTag>>)[value];
 }
@@ -66,7 +93,7 @@ export function validateBlogPostTags(
 }
 
 export interface BlogPostModule {
-	metadata: BlogPost;
+	metadata: BlogPostFrontmatter;
 	default: typeof import('svelte').SvelteComponent;
 }
 

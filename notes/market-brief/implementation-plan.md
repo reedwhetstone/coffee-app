@@ -1,7 +1,8 @@
 # Purveyors Market Brief implementation plan
 
 **Date:** 2026-08-15
-**Status:** Proposed
+**Status:** Active
+**MB-1 status:** Implemented in coffee-app PR #539
 **Owner:** Purveyors product ecosystem
 **Canonical backlog:** `notes/DEVLOG.md`
 

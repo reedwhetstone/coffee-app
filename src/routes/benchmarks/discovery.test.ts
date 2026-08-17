@@ -6,7 +6,7 @@ import Footer from '$lib/components/marketing/Footer.svelte';
 import { publicNavItems } from '$lib/components/layout/appNavigation';
 
 vi.mock('$lib/server/blog', () => ({
-	getAllPosts: vi.fn(async () => [])
+	getPublishedPosts: vi.fn(async () => [])
 }));
 
 import { GET as getLlmsText } from '../llms.txt/+server';

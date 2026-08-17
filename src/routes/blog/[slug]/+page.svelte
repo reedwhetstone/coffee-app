@@ -1,17 +1,14 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { PILLARS } from '$lib/types/blog.types';
+	import { formatMarketBriefEdition, PILLARS } from '$lib/types/blog.types';
+	import { formatBlogDate } from '$lib/utils/dates';
 	import LinkedInDraft from '$lib/components/blog/LinkedInDraft.svelte';
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
 	function formatDate(dateStr: string): string {
-		return new Date(dateStr).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric'
-		});
+		return formatBlogDate(dateStr);
 	}
 
 	let pillarInfo = $derived(
@@ -29,10 +26,10 @@
 
 <!-- Back link -->
 <a
-	href="/blog"
+	href={data.metadata.format === 'market-brief' ? '/blog?format=market-brief' : '/blog'}
 	class="mb-8 inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-accent"
 >
-	← All posts
+	← {data.metadata.format === 'market-brief' ? 'All Market Brief editions' : 'All posts'}
 </a>
 
 <article>
@@ -43,9 +40,18 @@
 		<AccentSpine />
 		<div class="mb-3 flex flex-wrap items-center gap-3 text-sm text-muted">
 			<time datetime={data.metadata.date}>{formatDate(data.metadata.date)}</time>
+			{#if data.metadata.updated}
+				<span class="text-line">·</span>
+				<span>Updated {formatDate(data.metadata.updated)}</span>
+			{/if}
 			<span class="text-line">·</span>
 			<span>{data.metadata.readingTime ?? 5} min read</span>
-			{#if pillarInfo}
+			{#if data.metadata.format === 'market-brief'}
+				<span class="text-line">·</span>
+				<span class="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+					Market Brief · Edition {formatMarketBriefEdition(data.metadata.edition!)}
+				</span>
+			{:else if pillarInfo}
 				<span class="text-line">·</span>
 				<span class="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
 					{pillarInfo.label}
