@@ -21,15 +21,16 @@ Its server-side agent tools consume the Parchment API through `@purveyors/sdk`; 
 
 ### Public
 
-| Route        | Description                                                                           |
-| ------------ | ------------------------------------------------------------------------------------- |
-| `/`          | Marketing landing page                                                                |
-| `/catalog`   | Green coffee catalog with filters and live pricing                                    |
-| `/analytics` | Market intelligence: public overview charts plus gated Parchment Intelligence modules |
-| `/api`       | API product page: plans, pricing, and quick start                                     |
-| `/docs`      | Unified documentation for API and CLI                                                 |
-| `/blog`      | Coffee content and platform updates                                                   |
-| `/bot`       | PurveyorsBot crawler identity, request policy, and operator contact                   |
+| Route         | Description                                                                           |
+| ------------- | ------------------------------------------------------------------------------------- |
+| `/`           | Marketing landing page                                                                |
+| `/catalog`    | Green coffee catalog with filters and live pricing                                    |
+| `/analytics`  | Market intelligence: public overview charts plus gated Parchment Intelligence modules |
+| `/benchmarks` | Versioned public coffee-intelligence evaluations and sanitized result downloads       |
+| `/api`        | API product page: plans, pricing, and quick start                                     |
+| `/docs`       | Unified documentation for API and CLI                                                 |
+| `/blog`       | Coffee content and platform updates                                                   |
+| `/bot`        | PurveyorsBot crawler identity, request policy, and operator contact                   |
 
 ### Authenticated
 

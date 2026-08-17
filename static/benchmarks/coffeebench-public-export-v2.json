@@ -1,0 +1,974 @@
+{
+  "benchmark": {
+    "name": "CoffeeBench",
+    "suite_id": "deepseek-v4-initial",
+    "version": "1.0.0-dev"
+  },
+  "calibration": {
+    "agreement": {
+      "agent_majority_agreement_rate": 1.0,
+      "compared_agent_ballot_count": 120,
+      "compared_pair_count": 40,
+      "exact_agreement_rate": 1.0,
+      "per_family": [
+        {
+          "compared_ballot_count": 40,
+          "exact_agreement_rate": 1.0,
+          "family": "openai"
+        },
+        {
+          "compared_ballot_count": 40,
+          "exact_agreement_rate": 1.0,
+          "family": "google"
+        },
+        {
+          "compared_ballot_count": 40,
+          "exact_agreement_rate": 1.0,
+          "family": "anthropic"
+        }
+      ]
+    },
+    "decision_source": "deterministic_fixture",
+    "sample_pair_count": 40
+  },
+  "identities": {
+    "generation_id": "coffeebench-fixture-generation",
+    "methodology_sha256": "5b33f51bdf6dade9dba7223d8f5a923a68110cb1171dc5a69b3b92716e4126c9",
+    "public_contract_sha256": "a7f88c514ec2a0e8cc891785da20c85c273b0385b1bf1b89f22e2a1c580a7d3e",
+    "result_id": "openclaw-jury-2026-08-16.coffeebench-fixture-generation.fixture",
+    "subject_cards_sha256": "005b4f316d0a26d1e31e2b1432d5d83ab9954f2ce256551f6ecbefe91724617e"
+  },
+  "jury": [
+    {
+      "call_count": 1000,
+      "family": "openai",
+      "latency_ms": {
+        "p50": 1,
+        "p95": 1
+      },
+      "normalized_cost_usd_total": null,
+      "provider_billed_usd_total": null,
+      "provider_call_count": 0
+    },
+    {
+      "call_count": 1000,
+      "family": "google",
+      "latency_ms": {
+        "p50": 1,
+        "p95": 1
+      },
+      "normalized_cost_usd_total": null,
+      "provider_billed_usd_total": null,
+      "provider_call_count": 0
+    },
+    {
+      "call_count": 1000,
+      "family": "anthropic",
+      "latency_ms": {
+        "p50": 1,
+        "p95": 1
+      },
+      "normalized_cost_usd_total": null,
+      "provider_billed_usd_total": null,
+      "provider_call_count": 0
+    }
+  ],
+  "limitations": [
+    "This initial result compares four DeepSeek treatments on one frozen 20-case suite.",
+    "Unavailable provider, token-class, or tool costs remain null and are not zero.",
+    "Fixture results prove the contract and must not be presented as provider measurements."
+  ],
+  "methodology": {
+    "absolute_evaluation_count": 1200,
+    "case_count": 20,
+    "confidence_calibration_rule": "at least two of three absolute judges pass the confidence criterion",
+    "critical_error_rule": "at least two of three absolute judges record a critical error",
+    "jury_family_count": 3,
+    "null_semantics": "null means unavailable or unsupported and never means zero",
+    "pairwise_ballot_count": 1800,
+    "pareto_rule": "maximize quality score while minimizing normalized cost per attempted task and successful-task p50 end-to-end latency within each published track and slice",
+    "quality_model": "Bradley-Terry logistic ability",
+    "subject_trial_count": 400,
+    "tie_value": 0.5,
+    "unacceptable_response_rule": "at least two of three absolute judges",
+    "uncertainty": "source-family clustered bootstrap with case fallback"
+  },
+  "result_version": "1.0.0-dev.coffeebench-fixture-generation.fixture.v1",
+  "schema_version": 2,
+  "slices": [
+    {
+      "label": "Overall",
+      "slice_id": "overall",
+      "track_results": [
+        {
+          "subjects": [
+            {
+              "cost": {
+                "normalized_cost_usd": {
+                  "per_attempted_task": "0.005",
+                  "total": "0.500"
+                },
+                "provider_billed_usd": {
+                  "per_attempted_task": null,
+                  "total": null
+                }
+              },
+              "latency": {
+                "end_to_end_ms": {
+                  "p50": 1050,
+                  "p95": 2050
+                },
+                "tool_ms": {
+                  "p50": 0,
+                  "p95": 0
+                }
+              },
+              "pareto": {
+                "classification": "frontier",
+                "dominated_by": []
+              },
+              "quality_interval_95": {
+                "lower": 0.33,
+                "upper": 0.49
+              },
+              "quality_score": 0.41,
+              "rank": 4,
+              "rates": {
+                "confidence_calibration_pass": 0.9,
+                "critical_error": 0.03,
+                "terminal_failure": 0.0,
+                "unacceptable_response": 0.04
+              },
+              "subject_id": "deepseek-v4-raw",
+              "token_usage": {
+                "cached_input_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "input_tokens": {
+                  "per_attempted_task": 1025.0,
+                  "total": 102500
+                },
+                "output_tokens": {
+                  "per_attempted_task": 210.0,
+                  "total": 21000
+                },
+                "provenance": "provider_derived",
+                "reasoning_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "total_tokens": {
+                  "per_attempted_task": 1235.0,
+                  "total": 123500
+                }
+              },
+              "trial_count": 100
+            },
+            {
+              "cost": {
+                "normalized_cost_usd": {
+                  "per_attempted_task": "0.006",
+                  "total": "0.600"
+                },
+                "provider_billed_usd": {
+                  "per_attempted_task": null,
+                  "total": null
+                }
+              },
+              "latency": {
+                "end_to_end_ms": {
+                  "p50": 1200,
+                  "p95": 2300
+                },
+                "tool_ms": {
+                  "p50": 160,
+                  "p95": 370
+                }
+              },
+              "pareto": {
+                "classification": "frontier",
+                "dominated_by": []
+              },
+              "quality_interval_95": {
+                "lower": 0.48,
+                "upper": 0.64
+              },
+              "quality_score": 0.56,
+              "rank": 3,
+              "rates": {
+                "confidence_calibration_pass": 0.92,
+                "critical_error": 0.02,
+                "terminal_failure": 0.01,
+                "unacceptable_response": 0.03
+              },
+              "subject_id": "deepseek-v4-pi-search",
+              "token_usage": {
+                "cached_input_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "input_tokens": {
+                  "per_attempted_task": 1150.0,
+                  "total": 115000
+                },
+                "output_tokens": {
+                  "per_attempted_task": 240.0,
+                  "total": 24000
+                },
+                "provenance": "provider_derived",
+                "reasoning_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "total_tokens": {
+                  "per_attempted_task": 1390.0,
+                  "total": 139000
+                }
+              },
+              "trial_count": 100
+            },
+            {
+              "cost": {
+                "normalized_cost_usd": {
+                  "per_attempted_task": "0.007",
+                  "total": "0.700"
+                },
+                "provider_billed_usd": {
+                  "per_attempted_task": null,
+                  "total": null
+                }
+              },
+              "latency": {
+                "end_to_end_ms": {
+                  "p50": 1350,
+                  "p95": 2550
+                },
+                "tool_ms": {
+                  "p50": 180,
+                  "p95": 405
+                }
+              },
+              "pareto": {
+                "classification": "frontier",
+                "dominated_by": []
+              },
+              "quality_interval_95": {
+                "lower": 0.55,
+                "upper": 0.71
+              },
+              "quality_score": 0.63,
+              "rank": 2,
+              "rates": {
+                "confidence_calibration_pass": 0.94,
+                "critical_error": 0.01,
+                "terminal_failure": 0.02,
+                "unacceptable_response": 0.02
+              },
+              "subject_id": "deepseek-v4-purveyors-search",
+              "token_usage": {
+                "cached_input_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "input_tokens": {
+                  "per_attempted_task": 1275.0,
+                  "total": 127500
+                },
+                "output_tokens": {
+                  "per_attempted_task": 270.0,
+                  "total": 27000
+                },
+                "provenance": "provider_derived",
+                "reasoning_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "total_tokens": {
+                  "per_attempted_task": 1545.0,
+                  "total": 154500
+                }
+              },
+              "trial_count": 100
+            },
+            {
+              "cost": {
+                "normalized_cost_usd": {
+                  "per_attempted_task": "0.008",
+                  "total": "0.800"
+                },
+                "provider_billed_usd": {
+                  "per_attempted_task": null,
+                  "total": null
+                }
+              },
+              "latency": {
+                "end_to_end_ms": {
+                  "p50": 1500,
+                  "p95": 2800
+                },
+                "tool_ms": {
+                  "p50": 200,
+                  "p95": 440
+                }
+              },
+              "pareto": {
+                "classification": "frontier",
+                "dominated_by": []
+              },
+              "quality_interval_95": {
+                "lower": 0.64,
+                "upper": 0.8
+              },
+              "quality_score": 0.72,
+              "rank": 1,
+              "rates": {
+                "confidence_calibration_pass": 0.96,
+                "critical_error": 0.0,
+                "terminal_failure": 0.03,
+                "unacceptable_response": 0.01
+              },
+              "subject_id": "deepseek-v4-purveyors-parchment-search",
+              "token_usage": {
+                "cached_input_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "input_tokens": {
+                  "per_attempted_task": 1400.0,
+                  "total": 140000
+                },
+                "output_tokens": {
+                  "per_attempted_task": 300.0,
+                  "total": 30000
+                },
+                "provenance": "provider_derived",
+                "reasoning_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "total_tokens": {
+                  "per_attempted_task": 1700.0,
+                  "total": 170000
+                }
+              },
+              "trial_count": 100
+            }
+          ],
+          "track": "system"
+        }
+      ]
+    },
+    {
+      "label": "Historical control",
+      "slice_id": "historical_control",
+      "track_results": [
+        {
+          "subjects": [
+            {
+              "cost": {
+                "normalized_cost_usd": {
+                  "per_attempted_task": "0.005",
+                  "total": "0.300"
+                },
+                "provider_billed_usd": {
+                  "per_attempted_task": null,
+                  "total": null
+                }
+              },
+              "latency": {
+                "end_to_end_ms": {
+                  "p50": 1050,
+                  "p95": 2050
+                },
+                "tool_ms": {
+                  "p50": 0,
+                  "p95": 0
+                }
+              },
+              "pareto": {
+                "classification": "frontier",
+                "dominated_by": []
+              },
+              "quality_interval_95": {
+                "lower": 0.32,
+                "upper": 0.48
+              },
+              "quality_score": 0.4,
+              "rank": 4,
+              "rates": {
+                "confidence_calibration_pass": 0.9,
+                "critical_error": 0.05,
+                "terminal_failure": 0.0,
+                "unacceptable_response": 0.06666667
+              },
+              "subject_id": "deepseek-v4-raw",
+              "token_usage": {
+                "cached_input_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "input_tokens": {
+                  "per_attempted_task": 1050.0,
+                  "total": 63000
+                },
+                "output_tokens": {
+                  "per_attempted_task": 220.0,
+                  "total": 13200
+                },
+                "provenance": "provider_derived",
+                "reasoning_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "total_tokens": {
+                  "per_attempted_task": 1270.0,
+                  "total": 76200
+                }
+              },
+              "trial_count": 60
+            },
+            {
+              "cost": {
+                "normalized_cost_usd": {
+                  "per_attempted_task": "0.006",
+                  "total": "0.360"
+                },
+                "provider_billed_usd": {
+                  "per_attempted_task": null,
+                  "total": null
+                }
+              },
+              "latency": {
+                "end_to_end_ms": {
+                  "p50": 1200,
+                  "p95": 2300
+                },
+                "tool_ms": {
+                  "p50": 160,
+                  "p95": 370
+                }
+              },
+              "pareto": {
+                "classification": "frontier",
+                "dominated_by": []
+              },
+              "quality_interval_95": {
+                "lower": 0.47,
+                "upper": 0.63
+              },
+              "quality_score": 0.55,
+              "rank": 3,
+              "rates": {
+                "confidence_calibration_pass": 0.92,
+                "critical_error": 0.03333333,
+                "terminal_failure": 0.01666667,
+                "unacceptable_response": 0.05
+              },
+              "subject_id": "deepseek-v4-pi-search",
+              "token_usage": {
+                "cached_input_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "input_tokens": {
+                  "per_attempted_task": 1175.0,
+                  "total": 70500
+                },
+                "output_tokens": {
+                  "per_attempted_task": 250.0,
+                  "total": 15000
+                },
+                "provenance": "provider_derived",
+                "reasoning_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "total_tokens": {
+                  "per_attempted_task": 1425.0,
+                  "total": 85500
+                }
+              },
+              "trial_count": 60
+            },
+            {
+              "cost": {
+                "normalized_cost_usd": {
+                  "per_attempted_task": "0.007",
+                  "total": "0.420"
+                },
+                "provider_billed_usd": {
+                  "per_attempted_task": null,
+                  "total": null
+                }
+              },
+              "latency": {
+                "end_to_end_ms": {
+                  "p50": 1350,
+                  "p95": 2550
+                },
+                "tool_ms": {
+                  "p50": 180,
+                  "p95": 405
+                }
+              },
+              "pareto": {
+                "classification": "frontier",
+                "dominated_by": []
+              },
+              "quality_interval_95": {
+                "lower": 0.54,
+                "upper": 0.7
+              },
+              "quality_score": 0.62,
+              "rank": 2,
+              "rates": {
+                "confidence_calibration_pass": 0.94,
+                "critical_error": 0.01666667,
+                "terminal_failure": 0.03333333,
+                "unacceptable_response": 0.03333333
+              },
+              "subject_id": "deepseek-v4-purveyors-search",
+              "token_usage": {
+                "cached_input_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "input_tokens": {
+                  "per_attempted_task": 1300.0,
+                  "total": 78000
+                },
+                "output_tokens": {
+                  "per_attempted_task": 280.0,
+                  "total": 16800
+                },
+                "provenance": "provider_derived",
+                "reasoning_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "total_tokens": {
+                  "per_attempted_task": 1580.0,
+                  "total": 94800
+                }
+              },
+              "trial_count": 60
+            },
+            {
+              "cost": {
+                "normalized_cost_usd": {
+                  "per_attempted_task": "0.008",
+                  "total": "0.480"
+                },
+                "provider_billed_usd": {
+                  "per_attempted_task": null,
+                  "total": null
+                }
+              },
+              "latency": {
+                "end_to_end_ms": {
+                  "p50": 1500,
+                  "p95": 2800
+                },
+                "tool_ms": {
+                  "p50": 200,
+                  "p95": 440
+                }
+              },
+              "pareto": {
+                "classification": "frontier",
+                "dominated_by": []
+              },
+              "quality_interval_95": {
+                "lower": 0.63,
+                "upper": 0.79
+              },
+              "quality_score": 0.71,
+              "rank": 1,
+              "rates": {
+                "confidence_calibration_pass": 0.96,
+                "critical_error": 0.0,
+                "terminal_failure": 0.05,
+                "unacceptable_response": 0.01666667
+              },
+              "subject_id": "deepseek-v4-purveyors-parchment-search",
+              "token_usage": {
+                "cached_input_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "input_tokens": {
+                  "per_attempted_task": 1425.0,
+                  "total": 85500
+                },
+                "output_tokens": {
+                  "per_attempted_task": 310.0,
+                  "total": 18600
+                },
+                "provenance": "provider_derived",
+                "reasoning_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "total_tokens": {
+                  "per_attempted_task": 1735.0,
+                  "total": 104100
+                }
+              },
+              "trial_count": 60
+            }
+          ],
+          "track": "system"
+        }
+      ]
+    },
+    {
+      "label": "Live web",
+      "slice_id": "live_web",
+      "track_results": [
+        {
+          "subjects": [
+            {
+              "cost": {
+                "normalized_cost_usd": {
+                  "per_attempted_task": "0.005",
+                  "total": "0.200"
+                },
+                "provider_billed_usd": {
+                  "per_attempted_task": null,
+                  "total": null
+                }
+              },
+              "latency": {
+                "end_to_end_ms": {
+                  "p50": 1050,
+                  "p95": 2050
+                },
+                "tool_ms": {
+                  "p50": 0,
+                  "p95": 0
+                }
+              },
+              "pareto": {
+                "classification": "frontier",
+                "dominated_by": []
+              },
+              "quality_interval_95": {
+                "lower": 0.31,
+                "upper": 0.47
+              },
+              "quality_score": 0.39,
+              "rank": 4,
+              "rates": {
+                "confidence_calibration_pass": 0.9,
+                "critical_error": 0.075,
+                "terminal_failure": 0.0,
+                "unacceptable_response": 0.1
+              },
+              "subject_id": "deepseek-v4-raw",
+              "token_usage": {
+                "cached_input_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "input_tokens": {
+                  "per_attempted_task": 1075.0,
+                  "total": 43000
+                },
+                "output_tokens": {
+                  "per_attempted_task": 230.0,
+                  "total": 9200
+                },
+                "provenance": "provider_derived",
+                "reasoning_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "total_tokens": {
+                  "per_attempted_task": 1305.0,
+                  "total": 52200
+                }
+              },
+              "trial_count": 40
+            },
+            {
+              "cost": {
+                "normalized_cost_usd": {
+                  "per_attempted_task": "0.006",
+                  "total": "0.240"
+                },
+                "provider_billed_usd": {
+                  "per_attempted_task": null,
+                  "total": null
+                }
+              },
+              "latency": {
+                "end_to_end_ms": {
+                  "p50": 1200,
+                  "p95": 2300
+                },
+                "tool_ms": {
+                  "p50": 160,
+                  "p95": 370
+                }
+              },
+              "pareto": {
+                "classification": "frontier",
+                "dominated_by": []
+              },
+              "quality_interval_95": {
+                "lower": 0.46,
+                "upper": 0.62
+              },
+              "quality_score": 0.54,
+              "rank": 3,
+              "rates": {
+                "confidence_calibration_pass": 0.92,
+                "critical_error": 0.05,
+                "terminal_failure": 0.025,
+                "unacceptable_response": 0.075
+              },
+              "subject_id": "deepseek-v4-pi-search",
+              "token_usage": {
+                "cached_input_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "input_tokens": {
+                  "per_attempted_task": 1200.0,
+                  "total": 48000
+                },
+                "output_tokens": {
+                  "per_attempted_task": 260.0,
+                  "total": 10400
+                },
+                "provenance": "provider_derived",
+                "reasoning_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "total_tokens": {
+                  "per_attempted_task": 1460.0,
+                  "total": 58400
+                }
+              },
+              "trial_count": 40
+            },
+            {
+              "cost": {
+                "normalized_cost_usd": {
+                  "per_attempted_task": "0.007",
+                  "total": "0.280"
+                },
+                "provider_billed_usd": {
+                  "per_attempted_task": null,
+                  "total": null
+                }
+              },
+              "latency": {
+                "end_to_end_ms": {
+                  "p50": 1350,
+                  "p95": 2550
+                },
+                "tool_ms": {
+                  "p50": 180,
+                  "p95": 405
+                }
+              },
+              "pareto": {
+                "classification": "frontier",
+                "dominated_by": []
+              },
+              "quality_interval_95": {
+                "lower": 0.53,
+                "upper": 0.69
+              },
+              "quality_score": 0.61,
+              "rank": 2,
+              "rates": {
+                "confidence_calibration_pass": 0.94,
+                "critical_error": 0.025,
+                "terminal_failure": 0.05,
+                "unacceptable_response": 0.05
+              },
+              "subject_id": "deepseek-v4-purveyors-search",
+              "token_usage": {
+                "cached_input_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "input_tokens": {
+                  "per_attempted_task": 1325.0,
+                  "total": 53000
+                },
+                "output_tokens": {
+                  "per_attempted_task": 290.0,
+                  "total": 11600
+                },
+                "provenance": "provider_derived",
+                "reasoning_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "total_tokens": {
+                  "per_attempted_task": 1615.0,
+                  "total": 64600
+                }
+              },
+              "trial_count": 40
+            },
+            {
+              "cost": {
+                "normalized_cost_usd": {
+                  "per_attempted_task": "0.008",
+                  "total": "0.320"
+                },
+                "provider_billed_usd": {
+                  "per_attempted_task": null,
+                  "total": null
+                }
+              },
+              "latency": {
+                "end_to_end_ms": {
+                  "p50": 1500,
+                  "p95": 2800
+                },
+                "tool_ms": {
+                  "p50": 200,
+                  "p95": 440
+                }
+              },
+              "pareto": {
+                "classification": "frontier",
+                "dominated_by": []
+              },
+              "quality_interval_95": {
+                "lower": 0.62,
+                "upper": 0.78
+              },
+              "quality_score": 0.7,
+              "rank": 1,
+              "rates": {
+                "confidence_calibration_pass": 0.96,
+                "critical_error": 0.0,
+                "terminal_failure": 0.075,
+                "unacceptable_response": 0.025
+              },
+              "subject_id": "deepseek-v4-purveyors-parchment-search",
+              "token_usage": {
+                "cached_input_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "input_tokens": {
+                  "per_attempted_task": 1450.0,
+                  "total": 58000
+                },
+                "output_tokens": {
+                  "per_attempted_task": 320.0,
+                  "total": 12800
+                },
+                "provenance": "provider_derived",
+                "reasoning_tokens": {
+                  "per_attempted_task": null,
+                  "total": null
+                },
+                "total_tokens": {
+                  "per_attempted_task": 1770.0,
+                  "total": 70800
+                }
+              },
+              "trial_count": 40
+            }
+          ],
+          "track": "system"
+        }
+      ]
+    }
+  ],
+  "status": "fixture",
+  "subjects": [
+    {
+      "capabilities": [
+        "provided_evidence"
+      ],
+      "card_sha256": "a95515c3629d3f55c08a97c7f372f7e221ab3d8dcde5eb06848914f56f194f06",
+      "display_name": "DeepSeek V4 Raw",
+      "evaluator_track": "model",
+      "harness_family": "controlled_raw",
+      "model": {
+        "model": "deepseek/deepseek-v4-flash-0731",
+        "provider": "openrouter",
+        "quantization": "fp8",
+        "revision": "deepinfra/fp8"
+      },
+      "subject_id": "deepseek-v4-raw",
+      "track": "system"
+    },
+    {
+      "capabilities": [
+        "provided_evidence",
+        "web_search",
+        "web_fetch"
+      ],
+      "card_sha256": "c7ec560bc4188a8b7fde82e528b195dddef407124529992c94bceb119e580dcd",
+      "display_name": "DeepSeek V4 with Pi Search",
+      "evaluator_track": "system",
+      "harness_family": "pi",
+      "model": {
+        "model": "deepseek/deepseek-v4-flash-0731",
+        "provider": "openrouter",
+        "quantization": "fp8",
+        "revision": "deepinfra/fp8"
+      },
+      "subject_id": "deepseek-v4-pi-search",
+      "track": "system"
+    },
+    {
+      "capabilities": [
+        "provided_evidence",
+        "web_search",
+        "web_fetch"
+      ],
+      "card_sha256": "6535ecf00cbcd517d323b0b9bd339325348e729ed8a18f9ce57937d4d7a7c051",
+      "display_name": "DeepSeek V4 with Purveyors Search",
+      "evaluator_track": "system",
+      "harness_family": "purveyors",
+      "model": {
+        "model": "deepseek/deepseek-v4-flash-0731",
+        "provider": "openrouter",
+        "quantization": "fp8",
+        "revision": "deepinfra/fp8"
+      },
+      "subject_id": "deepseek-v4-purveyors-search",
+      "track": "system"
+    },
+    {
+      "capabilities": [
+        "provided_evidence",
+        "web_search",
+        "web_fetch",
+        "parchment_catalog"
+      ],
+      "card_sha256": "fa4a0311bcbae387c3a4327e3ea43296f7e848ac6ddc5a965b255f4652611bd6",
+      "display_name": "DeepSeek V4 with Purveyors, Parchment, and Search",
+      "evaluator_track": "system",
+      "harness_family": "purveyors",
+      "model": {
+        "model": "deepseek/deepseek-v4-flash-0731",
+        "provider": "openrouter",
+        "quantization": "fp8",
+        "revision": "deepinfra/fp8"
+      },
+      "subject_id": "deepseek-v4-purveyors-parchment-search",
+      "track": "system"
+    }
+  ],
+  "tracks": [
+    {
+      "description": "Complete declared treatments compared within one published track; candidate-specific evaluator tracks and capabilities remain explicit.",
+      "label": "System track",
+      "track_id": "system"
+    }
+  ]
+}

@@ -67,6 +67,12 @@ export const publicNavItems: NavItem[] = [
 		matches: ['/analytics']
 	},
 	{
+		label: 'Benchmarks',
+		href: '/benchmarks',
+		description: 'Inspect public coffee-intelligence evaluations',
+		matches: ['/benchmarks']
+	},
+	{
 		label: 'Pricing',
 		href: '/subscription',
 		description: 'See current plans and contact paths',

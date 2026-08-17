@@ -18,6 +18,8 @@ export const GET: RequestHandler = async ({ url }) => {
 
 - [Market Analytics](${baseUrl}/analytics): Public market-intelligence surface for origin price trends, processing mix, origin price ranges, and gated Parchment Intelligence modules.
 - [Coffee Catalog](${baseUrl}/catalog): Public catalog for normalized green coffee listings with origin, processing, pricing, and availability data.
+- [Benchmarks](${baseUrl}/benchmarks): Public index of versioned coffee-intelligence evaluations.
+- [CoffeeBench v0](${baseUrl}/benchmarks/coffeebench-v0): Matched system comparison with explicit evaluator tracks and precomputed quality, token, cost, latency, calibration, and Pareto values.
 - [Parchment API](${baseUrl}/api): Product overview for the API, access tiers, and Console entry points.
 - [Parchment Console](${baseUrl}/api-dashboard): Authenticated Console for API keys, usage, and billing.
 - [Developer Docs](${baseUrl}/docs): Product and CLI documentation. Generated API reference lives at https://api.purveyors.io/docs.

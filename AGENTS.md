@@ -106,6 +106,7 @@ Reporting guidance:
 - `/`
 - `/catalog`
 - `/analytics`
+- `/benchmarks`
 - `/api`
 - `/docs`
 - `/blog`

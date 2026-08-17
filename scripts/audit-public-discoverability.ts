@@ -322,6 +322,13 @@ async function main() {
 		{ label: 'Homepage', path: '/', expectInSitemap: true },
 		{ label: 'Catalog', path: '/catalog', expectInSitemap: true, expectInLlms: true },
 		{ label: 'Analytics', path: '/analytics', expectInSitemap: true, expectInLlms: true },
+		{ label: 'Benchmarks', path: '/benchmarks', expectInSitemap: true, expectInLlms: true },
+		{
+			label: 'CoffeeBench v0',
+			path: '/benchmarks/coffeebench-v0',
+			expectInSitemap: true,
+			expectInLlms: true
+		},
 		{ label: 'API', path: '/api', expectInSitemap: true, expectInLlms: true },
 		{ label: 'Docs', path: '/docs', expectInSitemap: true, expectInLlms: true },
 		// /docs/api/* now 307-redirects to the external generated reference

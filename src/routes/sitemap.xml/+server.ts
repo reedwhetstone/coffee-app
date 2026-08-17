@@ -64,6 +64,21 @@ export const GET: RequestHandler = async ({ url }) => {
 		<priority>0.7</priority>
 	</url>
 
+	<!-- Versioned public benchmark reports -->
+	<url>
+		<loc>${baseUrl}/benchmarks</loc>
+		<lastmod>${currentDate}</lastmod>
+		<changefreq>monthly</changefreq>
+		<priority>0.7</priority>
+	</url>
+
+	<url>
+		<loc>${baseUrl}/benchmarks/coffeebench-v0</loc>
+		<lastmod>${currentDate}</lastmod>
+		<changefreq>monthly</changefreq>
+		<priority>0.8</priority>
+	</url>
+
 	<!-- Blog index -->
 	<url>
 		<loc>${baseUrl}/blog</loc>
