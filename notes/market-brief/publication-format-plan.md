@@ -164,7 +164,9 @@ format code while leaving existing essay content valid.
 
 ## Named successor boundary
 
-After MB-1 is accepted, coffee-app MB-5 must define the deterministic email-safe
-projection and production-deployment handoff. Only then can Parchment accept one
-immutable edition version, verify the deployed identity, and safely create or
-recover a Resend draft without inventing coffee-app-owned fields.
+After MB-1 is accepted, coffee-app MB-5A defines the deterministic email-safe
+projection and deployed edition/version metadata. Parchment then owns immutable
+draft acceptance, independent deployed-identity verification, and provider
+creation or recovery. Only after that machine contract is accepted and deployed
+does coffee-app add the production-success trigger; no repo invents the other's
+authority or treats merge as deployment.
