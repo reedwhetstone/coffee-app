@@ -76,13 +76,6 @@
 
 ## P1: Build the distribution and revenue engine
 
-- [ ] **Build the Market Brief web publication foundation.** In coffee-app, add
-      Market Brief as a weekly format inside `/blog`, preserving the reviewed `.svx`
-      edition as the canonical MVP artifact and aligning the content registry, archive
-      navigation, feed, sitemap, and metadata behavior. This slice does not own shared
-      subscriber or delivery-provider state. Plan:
-      `notes/market-brief/implementation-plan.md`.
-
 - [ ] **Accept and implement the Market Brief delivery lifecycle.** In Parchment,
       extend the deployed `market_read` preference foundation with an evidence-backed
       decision and implementation for no-login unsubscribe, provider projection,

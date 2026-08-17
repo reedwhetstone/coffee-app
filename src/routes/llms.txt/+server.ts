@@ -1,13 +1,15 @@
 import type { RequestHandler } from './$types';
-import { getAllPosts } from '$lib/server/blog';
+import { getPublishedPosts } from '$lib/server/blog';
+import { getBlogPostPath } from '$lib/types/blog.types';
 
 export const GET: RequestHandler = async ({ url }) => {
-	const posts = await getAllPosts();
-	const publishedPosts = posts.filter((post) => !post.draft);
+	const publishedPosts = await getPublishedPosts();
 	const baseUrl = `${url.protocol}//${url.host}`;
 
 	const blogPostLines = publishedPosts
-		.map((post) => `- [${post.title}](${baseUrl}/blog/${post.slug}): ${post.description}`)
+		.map(
+			(post) => `- [${post.title}](${baseUrl}${getBlogPostPath(post.slug)}): ${post.description}`
+		)
 		.join('\n');
 
 	const content = `# Purveyors.io

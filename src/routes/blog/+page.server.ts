@@ -1,12 +1,22 @@
+import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
-import { getAllPosts, getAllTags } from '$lib/server/blog';
+import { filterPostsByFormat, getAllPosts } from '$lib/server/blog';
 import { createSchemaService } from '$lib/services/schemaService';
+import { BLOG_TAGS, getBlogPostPath, isBlogFormat } from '$lib/types/blog.types';
 
 export const load: PageServerLoad = async ({ url }) => {
 	const posts = await getAllPosts();
-	const tags = await getAllTags();
 	const publishedPosts = posts.filter((post) => !post.draft);
+	const requestedFormat = url.searchParams.get('format');
+	if (requestedFormat !== null && !isBlogFormat(requestedFormat)) {
+		throw error(404, `Blog format not found: ${requestedFormat}`);
+	}
+	const visiblePosts = requestedFormat ? filterPostsByFormat(posts, requestedFormat) : posts;
+	const tags = BLOG_TAGS.filter((tag) => visiblePosts.some((post) => post.tags.includes(tag)));
+	const visiblePublishedPosts = requestedFormat
+		? filterPostsByFormat(publishedPosts, requestedFormat)
+		: publishedPosts;
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const pageUrl = `${baseUrl}/blog`;
 	const schemaService = createSchemaService(baseUrl);
@@ -24,13 +34,25 @@ export const load: PageServerLoad = async ({ url }) => {
 				name: 'Purveyors',
 				url: baseUrl
 			},
-			blogPost: publishedPosts.slice(0, 10).map((post) => ({
+			blogPost: visiblePublishedPosts.slice(0, 10).map((post) => ({
 				'@type': 'BlogPosting',
 				headline: post.title,
 				description: post.description,
-				url: `${baseUrl}/blog/${post.slug}`,
+				url: `${baseUrl}${getBlogPostPath(post.slug)}`,
 				datePublished: post.date,
+				dateModified: post.updated ?? post.date,
 				keywords: post.tags,
+				...(post.format === 'market-brief'
+					? {
+							articleSection: 'Market Brief',
+							position: post.edition,
+							isPartOf: {
+								'@type': 'CreativeWorkSeries',
+								name: 'Purveyors Market Brief',
+								url: `${baseUrl}/blog`
+							}
+						}
+					: {}),
 				author: {
 					'@type': 'Person',
 					name: post.author || 'Reed Whetstone'
@@ -40,8 +62,9 @@ export const load: PageServerLoad = async ({ url }) => {
 	]);
 
 	return {
-		posts,
+		posts: visiblePosts,
 		tags,
+		selectedFormat: requestedFormat,
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/blog',

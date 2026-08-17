@@ -8,11 +8,7 @@ export const load: PageLoad = async ({ params, data: serverData }) => {
 
 		return {
 			...serverData,
-			content: post.default,
-			metadata: {
-				...post.metadata,
-				slug: params.slug
-			}
+			content: post.default
 		};
 	} catch {
 		throw error(404, `Post not found: ${params.slug}`);
