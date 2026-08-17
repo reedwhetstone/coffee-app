@@ -31,7 +31,7 @@ describe('CoffeeBench public export reader', () => {
 	it('keeps the public download byte-identical to the final Cherry fixture', () => {
 		const aliasBytes = readFileSync('static/benchmarks/coffeebench-public-export-v2.json');
 		const immutableBytes = readFileSync(`static${COFFEEBENCH_RESULT_PATH}`);
-		expect(aliasBytes.byteLength).toBe(30_831);
+		expect(aliasBytes.byteLength).toBe(30_850);
 		expect(immutableBytes).toEqual(aliasBytes);
 		expect(createHash('sha256').update(immutableBytes).digest('hex')).toBe(
 			COFFEEBENCH_V0_ARTIFACT_SHA256
@@ -105,6 +105,21 @@ describe('CoffeeBench public export reader', () => {
 		expect(() => parseCoffeeBenchPublicExport(card)).toThrow(/subject-card SHA-256.*replay/i);
 	});
 
+	it("matches Cherry's exponent spelling for public float digests", () => {
+		const digest = (value: string) => createHash('sha256').update(`${value}\n`).digest('hex');
+
+		expect(coffeeBenchPublicDigest({ quality_score: 1e-7 })).toBe(
+			digest('{"quality_score":1e-07}')
+		);
+		expect(coffeeBenchPublicDigest({ quality_score: 1e-6 })).toBe(
+			digest('{"quality_score":1e-06}')
+		);
+		expect(coffeeBenchPublicDigest({ quality_score: 1e16 })).toBe(
+			digest('{"quality_score":1e+16}')
+		);
+		expect(coffeeBenchPublicDigest({ quality_score: -0 })).toBe(digest('{"quality_score":-0.0}'));
+	});
+
 	it('binds publication status to calibration and immutable result identity', () => {
 		const calibration = fixtureCopy();
 		(calibration.calibration as Record<string, unknown>).decision_source = 'reed';
@@ -129,6 +144,12 @@ describe('CoffeeBench public export reader', () => {
 		const digest = fixtureCopy();
 		(digest.limitations as string[]).push('a'.repeat(64));
 		expect(() => parseCoffeeBenchPublicExport(digest)).toThrow(/undeclared content digest/i);
+
+		const embeddedDigest = fixtureCopy();
+		(embeddedDigest.limitations as string[]).push(`calibration record sha256: ${'b'.repeat(64)}`);
+		expect(() => parseCoffeeBenchPublicExport(embeddedDigest)).toThrow(
+			/undeclared content digest/i
+		);
 	});
 
 	it('rejects partially-null rank, score, or interval values', () => {
@@ -280,6 +301,20 @@ describe('CoffeeBench public export reader', () => {
 		(firstSubjectResult(rates).rates as Record<string, unknown>).unacceptable_response = 0.04;
 		expect(() => parseCoffeeBenchPublicExport(rates)).toThrow(
 			/cohort-weighted unacceptable_response rate must reconcile/i
+		);
+	});
+
+	it.each([
+		'terminal_failure',
+		'unacceptable_response',
+		'critical_error',
+		'confidence_calibration_pass'
+	] as const)('rejects %s rates that cannot represent whole trials', (rateName) => {
+		const payload = fixtureCopy();
+		(firstSubjectResult(payload).rates as Record<string, unknown>)[rateName] = 0.001;
+
+		expect(() => parseCoffeeBenchPublicExport(payload)).toThrow(
+			new RegExp(`${rateName} rate must represent a whole attempted-trial count`, 'i')
 		);
 	});
 

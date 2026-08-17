@@ -9,10 +9,10 @@
 Coffee-app consumes Cherry's sanitized fixture byte-for-byte at its immutable result-version and
 content-addressed path:
 
-`static/benchmarks/coffeebench-v0/results/1.0.0-dev.coffeebench-fixture-generation.fixture.1071e9c16437645f/1071e9c16437645fcf844abfa95936e4a983f9d10b85663451ea6bed2ee37e9e.json`
+`static/benchmarks/coffeebench-v0/results/1.0.0-dev.coffeebench-fixture-generation.fixture.757c6cb62911f854/757c6cb62911f85433e88a7352308355866ed848645d84b31f962a14b47df524.json`
 
-The current fixture is 30,831 bytes with file SHA-256
-`33e91ad1a2381f5a14dd30149805ba543ad17aed580455f55458f711c4258583`. The compatibility alias at
+The current fixture is 30,850 bytes with file SHA-256
+`7f64b83927ddd8fba9fb04060373898eec608c7f4d8a9d13fedb2bfe0be554cf`. The compatibility alias at
 `static/benchmarks/coffeebench-public-export-v2.json` is byte-identical, short-cached, and explicitly
 noindex. The report links only to the immutable path.
 
@@ -84,14 +84,18 @@ Each slice subject result contains:
 - Each cost total/per-attempted-task pair is jointly populated or jointly null. Decimal strings
   preserve source precision. A missing cost is `null`, never numeric or string zero.
 - Each latency p50/p95 pair is jointly populated or jointly null, and p50 cannot exceed p95.
+- Each operational rate represents a whole count over the slice's attempted trials; the reader
+  rejects fractional event counts.
 - Pareto availability, classification, and the complete ordered `dominated_by` set must agree with
   the already-published same-track quality, normalized-cost, and p50 end-to-end latency values.
 - Digests are exactly 64 lowercase hexadecimal characters and cover sanitized public structures
   only. The reader replays the public contract, methodology, subject collection, every subject
   card, and result-content digest with Cherry's sorted UTF-8 canonical JSON plus trailing newline.
-  Result-content material excludes only `result_version`, `identities.result_id`, and
+  Float spelling follows Cherry's Python canonical JSON, including exponent padding and notation
+  thresholds. Result-content material excludes only `result_version`, `identities.result_id`, and
   `identities.result_content_sha256`. Private graph, source, calibration-record, and
-  provider-payload digests are forbidden even when hidden in an otherwise allowed string field.
+  provider-payload digests are forbidden even when hidden in an otherwise allowed string field;
+  the content digest suffix in the identity-bound `result_id` is the sole embedded exception.
 - Case IDs, prompts, evidence, source locators/targets, evaluator guardrails/atoms, raw judge
   output, private provider payloads, value-level HTTP(S) URLs, and undeclared 64-hex digests are
   rejected recursively before schema parsing.

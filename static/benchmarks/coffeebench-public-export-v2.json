@@ -37,8 +37,8 @@
     "generation_id": "coffeebench-fixture-generation",
     "methodology_sha256": "5b33f51bdf6dade9dba7223d8f5a923a68110cb1171dc5a69b3b92716e4126c9",
     "public_contract_sha256": "a7f88c514ec2a0e8cc891785da20c85c273b0385b1bf1b89f22e2a1c580a7d3e",
-    "result_content_sha256": "1071e9c16437645fcf844abfa95936e4a983f9d10b85663451ea6bed2ee37e9e",
-    "result_id": "openclaw-jury-2026-08-16.coffeebench-fixture-generation.fixture.1071e9c16437645fcf844abfa95936e4a983f9d10b85663451ea6bed2ee37e9e",
+    "result_content_sha256": "757c6cb62911f85433e88a7352308355866ed848645d84b31f962a14b47df524",
+    "result_id": "openclaw-jury-2026-08-16.coffeebench-fixture-generation.fixture.757c6cb62911f85433e88a7352308355866ed848645d84b31f962a14b47df524",
     "subject_cards_sha256": "005b4f316d0a26d1e31e2b1432d5d83ab9954f2ce256551f6ecbefe91724617e"
   },
   "jury": [
@@ -96,7 +96,7 @@
     "unacceptable_response_rule": "at least two of three absolute judges",
     "uncertainty": "source-family clustered bootstrap with case fallback"
   },
-  "result_version": "1.0.0-dev.coffeebench-fixture-generation.fixture.1071e9c16437645f",
+  "result_version": "1.0.0-dev.coffeebench-fixture-generation.fixture.757c6cb62911f854",
   "schema_version": 2,
   "slices": [
     {
@@ -463,7 +463,7 @@
               "quality_score": 0.55,
               "rank": 3,
               "rates": {
-                "confidence_calibration_pass": 0.92,
+                "confidence_calibration_pass": 0.91666667,
                 "critical_error": 0.03333333,
                 "terminal_failure": 0.01666667,
                 "unacceptable_response": 0.05
@@ -526,7 +526,7 @@
               "quality_score": 0.62,
               "rank": 2,
               "rates": {
-                "confidence_calibration_pass": 0.94,
+                "confidence_calibration_pass": 0.93333333,
                 "critical_error": 0.01666667,
                 "terminal_failure": 0.03333333,
                 "unacceptable_response": 0.03333333
@@ -589,7 +589,7 @@
               "quality_score": 0.71,
               "rank": 1,
               "rates": {
-                "confidence_calibration_pass": 0.96,
+                "confidence_calibration_pass": 0.96666667,
                 "critical_error": 0.0,
                 "terminal_failure": 0.05,
                 "unacceptable_response": 0.01666667
@@ -726,7 +726,7 @@
               "quality_score": 0.54,
               "rank": 3,
               "rates": {
-                "confidence_calibration_pass": 0.92,
+                "confidence_calibration_pass": 0.925,
                 "critical_error": 0.05,
                 "terminal_failure": 0.025,
                 "unacceptable_response": 0.075
@@ -789,7 +789,7 @@
               "quality_score": 0.61,
               "rank": 2,
               "rates": {
-                "confidence_calibration_pass": 0.94,
+                "confidence_calibration_pass": 0.95,
                 "critical_error": 0.025,
                 "terminal_failure": 0.05,
                 "unacceptable_response": 0.05
@@ -852,7 +852,7 @@
               "quality_score": 0.7,
               "rank": 1,
               "rates": {
-                "confidence_calibration_pass": 0.96,
+                "confidence_calibration_pass": 0.95,
                 "critical_error": 0.0,
                 "terminal_failure": 0.075,
                 "unacceptable_response": 0.025

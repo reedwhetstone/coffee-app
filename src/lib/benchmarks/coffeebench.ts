@@ -7,11 +7,11 @@ export const COFFEEBENCH_V0_SUITE_ID = 'deepseek-v4-initial' as const;
 export const COFFEEBENCH_V0_JURY_ID = 'openclaw-jury-2026-08-16' as const;
 export const COFFEEBENCH_V0_RELEASE_DATE = '2026-08-17' as const;
 export const COFFEEBENCH_V0_ARTIFACT_SHA256 =
-	'33e91ad1a2381f5a14dd30149805ba543ad17aed580455f55458f711c4258583' as const;
+	'7f64b83927ddd8fba9fb04060373898eec608c7f4d8a9d13fedb2bfe0be554cf' as const;
 export const COFFEEBENCH_V0_RESULT_CONTENT_SHA256 =
-	'1071e9c16437645fcf844abfa95936e4a983f9d10b85663451ea6bed2ee37e9e' as const;
+	'757c6cb62911f85433e88a7352308355866ed848645d84b31f962a14b47df524' as const;
 export const COFFEEBENCH_V0_RESULT_VERSION =
-	'1.0.0-dev.coffeebench-fixture-generation.fixture.1071e9c16437645f' as const;
+	'1.0.0-dev.coffeebench-fixture-generation.fixture.757c6cb62911f854' as const;
 export const COFFEEBENCH_RESULT_PATH = `/benchmarks/coffeebench-v0/results/${COFFEEBENCH_V0_RESULT_VERSION}/${COFFEEBENCH_V0_RESULT_CONTENT_SHA256}.json`;
 export const COFFEEBENCH_FIXTURE_ALIAS_PATH = '/benchmarks/coffeebench-public-export-v2.json';
 
@@ -126,9 +126,49 @@ const pythonFloatFields = new Set([
 ]);
 
 function canonicalJson(value: unknown, key: string | null = null): string {
-	if (value === null || typeof value === 'boolean' || typeof value === 'number') {
-		if (typeof value === 'number' && Number.isInteger(value) && key && pythonFloatFields.has(key)) {
-			return `${value}.0`;
+	if (value === null || typeof value === 'boolean') return JSON.stringify(value);
+	if (typeof value === 'number') {
+		if (!Number.isFinite(value)) throw new Error('canonical JSON contains a non-finite number');
+		if (key && pythonFloatFields.has(key)) {
+			const serialized = JSON.stringify(value);
+			if (serialized === undefined) throw new Error('canonical JSON contains an unsupported value');
+			if (Object.is(value, -0)) return '-0.0';
+			const sign = serialized.startsWith('-') ? '-' : '';
+			const unsigned = sign ? serialized.slice(1) : serialized;
+
+			const exponentIndex = unsigned.search(/[eE]/);
+			const coefficient = exponentIndex === -1 ? unsigned : unsigned.slice(0, exponentIndex);
+			const exponent = exponentIndex === -1 ? 0 : Number(unsigned.slice(exponentIndex + 1));
+			const decimalIndex = coefficient.indexOf('.');
+			let digits = coefficient.replace('.', '');
+			let decimalPosition = (decimalIndex === -1 ? coefficient.length : decimalIndex) + exponent;
+			const firstSignificant = digits.search(/[1-9]/);
+			if (firstSignificant === -1) return `${sign}0.0`;
+			digits = digits.slice(firstSignificant);
+			decimalPosition -= firstSignificant;
+
+			const scientificExponent = decimalPosition - 1;
+			if (scientificExponent < -4 || scientificExponent >= 16) {
+				const significantDigits = digits.replace(/0+$/, '');
+				const mantissa =
+					significantDigits.length === 1
+						? significantDigits
+						: `${significantDigits[0]}.${significantDigits.slice(1)}`;
+				const exponentSign = scientificExponent >= 0 ? '+' : '-';
+				return `${sign}${mantissa}e${exponentSign}${Math.abs(scientificExponent)
+					.toString()
+					.padStart(2, '0')}`;
+			}
+
+			let fixed = '';
+			if (decimalPosition <= 0) {
+				fixed = `0.${'0'.repeat(-decimalPosition)}${digits}`;
+			} else if (decimalPosition >= digits.length) {
+				fixed = `${digits}${'0'.repeat(decimalPosition - digits.length)}`;
+			} else {
+				fixed = `${digits.slice(0, decimalPosition)}.${digits.slice(decimalPosition)}`;
+			}
+			return `${sign}${fixed}${Number.isInteger(value) ? '.0' : ''}`;
 		}
 		const serialized = JSON.stringify(value);
 		if (serialized === undefined) throw new Error('canonical JSON contains an unsupported value');
@@ -828,6 +868,28 @@ const publicExportSchema = z
 				].sort((left, right) => right - left);
 				const scoreRanks = new Map(rankedScores.map((score, index) => [score, index + 1]));
 				for (const [resultIndex, result] of trackResult.subjects.entries()) {
+					for (const rateName of [
+						'terminal_failure',
+						'unacceptable_response',
+						'critical_error',
+						'confidence_calibration_pass'
+					] as const) {
+						if (!rateRepresentsCount(result.rates[rateName], result.trial_count)) {
+							issue(
+								[
+									'slices',
+									sliceIndex,
+									'track_results',
+									trackIndex,
+									'subjects',
+									resultIndex,
+									'rates',
+									rateName
+								],
+								`${rateName} rate must represent a whole attempted-trial count`
+							);
+						}
+					}
 					if (
 						result.quality_score !== null &&
 						result.rank !== scoreRanks.get(result.quality_score)
@@ -1202,7 +1264,14 @@ function findPublicLeak(value: unknown, path = '$', key: string | null = null): 
 		if (normalized.includes('http://') || normalized.includes('https://')) {
 			return { kind: 'source URL', path };
 		}
-		if (/^[a-f0-9]{64}$/i.test(value) && (!key || !publicDigestKeys.has(key))) {
+		const digestTokens = value.match(/[a-f0-9]{64}/gi) ?? [];
+		const declaredDigest = !!key && publicDigestKeys.has(key) && /^[a-f0-9]{64}$/i.test(value);
+		const boundResultIdDigest =
+			key === 'result_id' &&
+			digestTokens.length === 1 &&
+			value.endsWith(digestTokens[0]) &&
+			value[value.length - digestTokens[0].length - 1] === '.';
+		if (digestTokens.length > 0 && !declaredDigest && !boundResultIdDigest) {
 			return { kind: 'undeclared content digest', path };
 		}
 		return null;
