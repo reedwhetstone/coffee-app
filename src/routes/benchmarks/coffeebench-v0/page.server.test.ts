@@ -14,7 +14,9 @@ describe('CoffeeBench v0 page loader', () => {
 				benchmark: { name: 'CoffeeBench' }
 			},
 			meta: {
-				canonical: 'https://www.purveyors.io/benchmarks/coffeebench-v0'
+				canonical: 'https://www.purveyors.io/benchmarks/coffeebench-v0',
+				robots: 'noindex, follow',
+				schemaData: undefined
 			}
 		});
 	});

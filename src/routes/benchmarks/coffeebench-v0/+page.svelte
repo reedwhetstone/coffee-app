@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import BenchmarkVisuals from '$lib/components/benchmarks/BenchmarkVisuals.svelte';
 	import TrackResults from '$lib/components/benchmarks/TrackResults.svelte';
 	import Footer from '$lib/components/marketing/Footer.svelte';
 	import {
@@ -62,8 +63,8 @@
 							Download sanitized JSON
 						</a>
 						<p class="mt-3 text-xs leading-5 text-muted">
-							Contains aggregate values and public identities only—no cases, evidence, prompts, or
-							evaluator guardrails.
+							Immutable result-version and content-addressed path. Contains aggregate values and
+							public identities only—no cases, evidence, prompts, or evaluator guardrails.
 						</p>
 					</div>
 				</div>
@@ -141,6 +142,7 @@
 				{#if overall}
 					<div class="mt-10 space-y-14">
 						{#each overall.track_results as trackResult (trackResult.track)}
+							<BenchmarkVisuals {trackResult} subjects={benchmark.subjects} />
 							<TrackResults {trackResult} subjects={benchmark.subjects} />
 						{/each}
 					</div>
@@ -263,6 +265,18 @@
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
+								<dt class="text-muted">Majority decisions</dt>
+								<dd class="font-medium text-ink">
+									{benchmark.calibration.agreement.agent_majority_decision_count}
+								</dd>
+							</div>
+							<div class="flex justify-between gap-3">
+								<dt class="text-muted">Unresolved majorities</dt>
+								<dd class="font-medium text-ink">
+									{benchmark.calibration.agreement.agent_majority_unresolved_count}
+								</dd>
+							</div>
+							<div class="flex justify-between gap-3">
 								<dt class="text-muted">Exact ballot agreement</dt>
 								<dd class="font-medium text-ink">
 									{formatRate(benchmark.calibration.agreement.exact_agreement_rate)}
@@ -323,7 +337,7 @@
 					</p>
 				</div>
 				<dl class="mt-8 grid gap-4">
-					{#each [['Result ID', benchmark.identities.result_id], ['Generation ID', benchmark.identities.generation_id], ['Public contract SHA-256', benchmark.identities.public_contract_sha256], ['Methodology SHA-256', benchmark.identities.methodology_sha256], ['Subject cards SHA-256', benchmark.identities.subject_cards_sha256]] as [label, value]}
+					{#each [['Result ID', benchmark.identities.result_id], ['Generation ID', benchmark.identities.generation_id], ['Result content SHA-256', benchmark.identities.result_content_sha256], ['Public contract SHA-256', benchmark.identities.public_contract_sha256], ['Methodology SHA-256', benchmark.identities.methodology_sha256], ['Subject cards SHA-256', benchmark.identities.subject_cards_sha256]] as [label, value]}
 						<div
 							class="rounded-xl border border-line bg-surface-panel p-4 sm:grid sm:grid-cols-[13rem_minmax(0,1fr)] sm:gap-4"
 						>

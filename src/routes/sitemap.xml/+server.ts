@@ -1,5 +1,7 @@
 import type { RequestHandler } from './$types';
+import { COFFEEBENCH_V0_RELEASE_DATE } from '$lib/benchmarks/coffeebench';
 import { getAllPosts } from '$lib/server/blog';
+import { coffeeBenchV0 } from '$lib/server/benchmarks/coffeebench';
 import { DOCS_NAV } from '$lib/docs/content';
 
 export const GET: RequestHandler = async ({ url }) => {
@@ -38,6 +40,16 @@ export const GET: RequestHandler = async ({ url }) => {
 			)
 		)
 		.join('');
+	const coffeeBenchEntry =
+		coffeeBenchV0.status === 'fixture'
+			? ''
+			: `
+	<url>
+		<loc>${baseUrl}/benchmarks/coffeebench-v0</loc>
+		<lastmod>${COFFEEBENCH_V0_RELEASE_DATE}</lastmod>
+		<changefreq>never</changefreq>
+		<priority>0.8</priority>
+	</url>`;
 
 	const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -67,17 +79,11 @@ export const GET: RequestHandler = async ({ url }) => {
 	<!-- Versioned public benchmark reports -->
 	<url>
 		<loc>${baseUrl}/benchmarks</loc>
-		<lastmod>${currentDate}</lastmod>
+		<lastmod>${COFFEEBENCH_V0_RELEASE_DATE}</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.7</priority>
 	</url>
-
-	<url>
-		<loc>${baseUrl}/benchmarks/coffeebench-v0</loc>
-		<lastmod>${currentDate}</lastmod>
-		<changefreq>monthly</changefreq>
-		<priority>0.8</priority>
-	</url>
+${coffeeBenchEntry}
 
 	<!-- Blog index -->
 	<url>

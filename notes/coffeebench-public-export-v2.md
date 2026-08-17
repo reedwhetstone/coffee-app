@@ -6,10 +6,15 @@
 
 **Consumer:** coffee-app `/benchmarks/coffeebench-v0`
 
-Coffee-app consumes Cherry's sanitized fixture byte-for-byte at
-`static/benchmarks/coffeebench-public-export-v2.json`. The current fixture is 30,568 bytes with
-SHA-256 `58d167a58e20c5fed17e6c299c6c872f19fcba39ccbf6c3893c5bc45b833416f`.
-It is also the exact public download; there is no second serialization path.
+Coffee-app consumes Cherry's sanitized fixture byte-for-byte at its immutable result-version and
+content-addressed path:
+
+`static/benchmarks/coffeebench-v0/results/1.0.0-dev.coffeebench-fixture-generation.fixture.a8bc2608867ba777/a8bc2608867ba7773c7262eef50049a38819c964c4ade6ce661c2616000bfd23.json`
+
+The current fixture is 30,831 bytes with file SHA-256
+`9f409d8cf57deda777a1033efcbbab7ad8d968ddc73342e4c3bf8834c1436844`. The compatibility alias at
+`static/benchmarks/coffeebench-public-export-v2.json` is byte-identical, short-cached, and explicitly
+noindex. The report links only to the immutable path.
 
 Cherry owns every rank, Bradley-Terry score, interval, token value, cost, latency percentile,
 rate, calibration value, and Pareto classification. Coffee-app validates the export and formats
@@ -24,8 +29,8 @@ an unsupported version fails the build/loader rather than falling back.
 - `result_version`: immutable semantic result version.
 - `benchmark`: `name`, semantic `version`, and `suite_id`.
 - `status`: `fixture` or `provisional`.
-- `identities`: `result_id`, `generation_id`, `public_contract_sha256`,
-  `methodology_sha256`, and `subject_cards_sha256`.
+- `identities`: content-addressed `result_id`, `generation_id`, `result_content_sha256`,
+  `public_contract_sha256`, `methodology_sha256`, and `subject_cards_sha256`.
 - `methodology`: positive counts for cases, trials, jury families, absolute evaluations, and
   pairwise ballots; quality, uncertainty, unacceptable-response, critical-error,
   confidence-calibration, Pareto, and null-semantics rules; plus the `[0,1]` tie value.
@@ -39,7 +44,8 @@ an unsupported version fails the build/loader rather than falling back.
 - `jury`: exactly one `openai`, `google`, and `anthropic` row with call counts, p50/p95 latency,
   and nullable provider-billed and normalized cost totals.
 - `calibration`: the 40-pair sample, decision source (`reed` or `deterministic_fixture`), total and
-  per-family agreement counts/rates, and all three jury families exactly once.
+  per-family agreement counts/rates, resolved and unresolved agent-majority counts, and all three
+  jury families exactly once. Majority agreement is nullable only when no majority decision exists.
 - `limitations`: one or more public limitation statements.
 
 Each slice subject result contains:
@@ -59,16 +65,42 @@ Each slice subject result contains:
 ## Null and identity semantics
 
 - Rank, score, and both interval bounds are jointly populated or jointly null.
+- Dense ranks must agree with the declared quality scores; this is a consistency check, not a
+  replacement aggregation path.
 - Each token class's total/per-attempted-task pair is jointly populated or jointly null.
+- Canonical total tokens equal input plus output, cached input is a subset of input, reasoning is a
+  subset of output, and every available total/per-task pair reconciles with attempted trials.
 - Each cost total/per-attempted-task pair is jointly populated or jointly null. Decimal strings
   preserve source precision. A missing cost is `null`, never numeric or string zero.
 - Each latency p50/p95 pair is jointly populated or jointly null, and p50 cannot exceed p95.
-- `frontier` and `unavailable` have no `dominated_by` IDs; `dominated` has at least one valid,
-  non-self subject from the same published comparison track.
+- Pareto availability, classification, and the complete ordered `dominated_by` set must agree with
+  the already-published same-track quality, normalized-cost, and p50 end-to-end latency values.
 - Digests are exactly 64 lowercase hexadecimal characters and cover sanitized public structures
-  only. Private graph, source, calibration-record, and provider-payload digests are forbidden.
+  only. The reader replays the public contract, methodology, subject collection, every subject
+  card, and result-content digest with Cherry's sorted UTF-8 canonical JSON plus trailing newline.
+  Result-content material excludes only `result_version`, `identities.result_id`, and
+  `identities.result_content_sha256`. Private graph, source, calibration-record, and
+  provider-payload digests are forbidden even when hidden in an otherwise allowed string field.
 - Case IDs, prompts, evidence, source locators/targets, evaluator guardrails/atoms, raw judge
-  output, and private provider payloads are rejected recursively before schema parsing.
+  output, private provider payloads, value-level HTTP(S) URLs, and undeclared 64-hex digests are
+  rejected recursively before schema parsing.
+
+Fixture status requires deterministic-fixture calibration, zero provider jury calls, no claimed
+provider-billed execution cost, and content-bound result version/ID fields. Provisional status
+requires Reed calibration and live provider-call provenance. The v0 route additionally pins the
+CoffeeBench name, benchmark version, suite, jury, result version, and content identity.
+
+## Publication and presentation
+
+The current fixture page is a contract preview, not measured performance. It emits `noindex`, has
+no Dataset JSON-LD, is excluded from the sitemap, and is labeled as non-citable fixture data in
+`llms.txt`. JSON fixture paths also receive `X-Robots-Tag: noindex`. The benchmark index keeps an
+immutable `2026-08-17` sitemap `lastmod`; it does not regenerate a false modification date on each
+request.
+
+Coffee-app renders the required quality forest and quality-versus-token, normalized-cost, and p50
+latency views directly from Cherry's values. Mobile cards and desktop tables both expose token
+provenance, token totals/per-task values, and cost totals/per-task values.
 
 The initial fixture publishes one matched `system` comparison track for all four treatments.
 The controlled raw subject retains `evaluator_track: model`; the three tool-using harnesses use

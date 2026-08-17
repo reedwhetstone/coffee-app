@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import rawFixture from '../../../../static/benchmarks/coffeebench-public-export-v2.json';
-import { parseCoffeeBenchPublicExport } from '$lib/benchmarks/coffeebench';
+import { COFFEEBENCH_RESULT_PATH, parseCoffeeBenchPublicExport } from '$lib/benchmarks/coffeebench';
 import CoffeeBenchPage from './+page.svelte';
 
 const benchmark = parseCoffeeBenchPublicExport(rawFixture);
@@ -39,6 +39,24 @@ describe('CoffeeBench v0 report', () => {
 		).toBeGreaterThan(0);
 		expect(screen.getAllByText('model track').length).toBeGreaterThan(0);
 		expect(screen.getAllByText('system track').length).toBeGreaterThan(0);
+		expect(screen.getAllByText(/Token provenance:/).length).toBeGreaterThan(0);
+		expect(screen.getAllByText(/Provenance provider_derived/).length).toBeGreaterThan(0);
+		expect(screen.getAllByText('Token totals · / task').length).toBeGreaterThan(0);
+		expect(screen.getAllByText('Cost totals · / task').length).toBeGreaterThan(0);
+	});
+
+	it('renders the required quality forest and operational tradeoff views', () => {
+		render(CoffeeBenchPage, { data: { benchmark } as never });
+
+		expect(screen.getByRole('heading', { name: 'Quality forest' })).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'Quality vs. tokens' })).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'Quality vs. cost' })).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'Quality vs. latency' })).toBeVisible();
+		expect(
+			screen.getByRole('img', {
+				name: /DeepSeek V4 Raw: quality .*canonical total tokens per attempted task/i
+			})
+		).toBeVisible();
 	});
 
 	it('publishes harness, provenance, and byte-identical artifact download access', () => {
@@ -50,8 +68,12 @@ describe('CoffeeBench v0 report', () => {
 		expect(
 			screen.getByRole('heading', { name: 'Public identities, without sealed content.' })
 		).toBeVisible();
+		expect(screen.getByText('Majority decisions')).toBeVisible();
+		expect(screen.getByText('Unresolved majorities')).toBeVisible();
+		expect(screen.getByText('Result content SHA-256')).toBeVisible();
+		expect(screen.getByText(benchmark.identities.result_content_sha256)).toBeVisible();
 		for (const link of screen.getAllByRole('link', { name: 'Download sanitized JSON' })) {
-			expect(link).toHaveAttribute('href', '/benchmarks/coffeebench-public-export-v2.json');
+			expect(link).toHaveAttribute('href', COFFEEBENCH_RESULT_PATH);
 		}
 	});
 });

@@ -14,7 +14,8 @@ export function formatPerTask(value: number | null): string {
 		: new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value);
 }
 
-export function formatRate(value: number): string {
+export function formatRate(value: number | null): string {
+	if (value === null) return 'Unavailable';
 	return new Intl.NumberFormat('en-US', {
 		style: 'percent',
 		maximumFractionDigits: 1

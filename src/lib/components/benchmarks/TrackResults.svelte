@@ -221,8 +221,8 @@
 				<tr>
 					<th class="px-4 py-3 font-medium">Subject</th>
 					<th class="px-4 py-3 font-medium">Quality (95% interval)</th>
-					<th class="px-4 py-3 font-medium">Token classes / task</th>
-					<th class="px-4 py-3 font-medium">Cost / task</th>
+					<th class="px-4 py-3 font-medium">Token totals · / task</th>
+					<th class="px-4 py-3 font-medium">Cost totals · / task</th>
 					<th class="px-4 py-3 font-medium">Latency p50 / p95</th>
 					<th class="px-4 py-3 font-medium">Outcome rates</th>
 					<th class="px-4 py-3 font-medium">Pareto</th>
@@ -239,21 +239,44 @@
 							{qualitySummary(result)}
 						</td>
 						<td class="space-y-1 px-4 py-4 text-muted">
-							<div>Input {formatPerTask(result.token_usage.input_tokens.per_attempted_task)}</div>
+							<div class="font-medium text-ink">Provenance {result.token_usage.provenance}</div>
 							<div>
-								Cached {formatPerTask(result.token_usage.cached_input_tokens.per_attempted_task)}
+								Input {formatCount(result.token_usage.input_tokens.total)} · {formatPerTask(
+									result.token_usage.input_tokens.per_attempted_task
+								)}/task
 							</div>
 							<div>
-								Reasoning {formatPerTask(result.token_usage.reasoning_tokens.per_attempted_task)}
+								Cached {formatCount(result.token_usage.cached_input_tokens.total)} · {formatPerTask(
+									result.token_usage.cached_input_tokens.per_attempted_task
+								)}/task
 							</div>
-							<div>Output {formatPerTask(result.token_usage.output_tokens.per_attempted_task)}</div>
+							<div>
+								Reasoning {formatCount(result.token_usage.reasoning_tokens.total)} · {formatPerTask(
+									result.token_usage.reasoning_tokens.per_attempted_task
+								)}/task
+							</div>
+							<div>
+								Output {formatCount(result.token_usage.output_tokens.total)} · {formatPerTask(
+									result.token_usage.output_tokens.per_attempted_task
+								)}/task
+							</div>
 							<div class="font-medium text-ink">
-								Total {formatPerTask(result.token_usage.total_tokens.per_attempted_task)}
+								Total {formatCount(result.token_usage.total_tokens.total)} · {formatPerTask(
+									result.token_usage.total_tokens.per_attempted_task
+								)}/task
 							</div>
 						</td>
 						<td class="space-y-1 px-4 py-4 text-muted">
-							<div>Normalized {formatUsd(result.cost.normalized_cost_usd.per_attempted_task)}</div>
-							<div>Billed {formatUsd(result.cost.provider_billed_usd.per_attempted_task)}</div>
+							<div>
+								Normalized {formatUsd(result.cost.normalized_cost_usd.total)} · {formatUsd(
+									result.cost.normalized_cost_usd.per_attempted_task
+								)}/task
+							</div>
+							<div>
+								Billed {formatUsd(result.cost.provider_billed_usd.total)} · {formatUsd(
+									result.cost.provider_billed_usd.per_attempted_task
+								)}/task
+							</div>
 						</td>
 						<td class="space-y-1 px-4 py-4 text-muted">
 							<div>
