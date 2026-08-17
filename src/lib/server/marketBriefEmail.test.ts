@@ -139,6 +139,20 @@ describe('Market Brief email projection', () => {
 		expect(projection.text).not.toContain('&mdash;');
 	});
 
+	it('preserves braces inside supported Markdown code', () => {
+		const projection = buildMarketBriefEmailProjection(
+			marketBrief,
+			source.replace(
+				'## The throughline',
+				'## The throughline\n\nInline `{value}` and:\n\n```js\nconst record = { value: 1 };\n```'
+			)
+		);
+
+		expect(projection.text).toContain('Inline {value} and:');
+		expect(projection.text).toContain('const record = { value: 1 };');
+		expect(projection.html).toContain('code');
+	});
+
 	it('rejects malformed source, non-Market Brief input, and oversized source', () => {
 		expect(() => buildMarketBriefEmailProjection(marketBrief, '# Missing frontmatter')).toThrow(
 			'closed YAML frontmatter'

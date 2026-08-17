@@ -151,19 +151,26 @@ function resolveImageSrc(value: string, canonicalUrl: string): string {
 	return resolved.toString();
 }
 
-function containsSvelteConstruct(markdown: string): boolean {
+function containsSvelteConstruct(tokens: Token[]): boolean {
 	let braceDepth = 0;
 	let foundBrace = false;
 
-	for (const character of markdown) {
-		if (character === '{') {
-			foundBrace = true;
-			braceDepth += 1;
-		} else if (character === '}') {
-			if (braceDepth === 0) return true;
-			braceDepth -= 1;
+	marked.walkTokens(tokens, (token) => {
+		if (token.type !== 'text') return;
+
+		for (const character of token.text) {
+			if (character === '{') {
+				foundBrace = true;
+				braceDepth += 1;
+			} else if (character === '}') {
+				if (braceDepth === 0) {
+					foundBrace = true;
+					continue;
+				}
+				braceDepth -= 1;
+			}
 		}
-	}
+	});
 
 	return foundBrace || braceDepth > 0;
 }
@@ -187,11 +194,10 @@ function validateTokens(tokens: Token[], canonicalUrl: string): void {
 
 function tokenizeMarketBrief(source: string, canonicalUrl: string): Token[] {
 	const markdown = extractMarkdownBody(source);
-	if (containsSvelteConstruct(markdown)) {
+	const tokens = marked.lexer(markdown, { gfm: true, breaks: false });
+	if (containsSvelteConstruct(tokens)) {
 		throw new Error('Market Brief email source cannot contain Svelte expressions or directives');
 	}
-
-	const tokens = marked.lexer(markdown, { gfm: true, breaks: false });
 	validateTokens(tokens, canonicalUrl);
 	return tokens;
 }
