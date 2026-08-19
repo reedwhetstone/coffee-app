@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COFFEEBENCH_SCHEMA_VERSION } from '$lib/benchmarks/coffeebench';
+import { COFFEEBENCH_RESULT_PATH, COFFEEBENCH_SCHEMA_VERSION } from '$lib/benchmarks/coffeebench';
 import { load } from './+page.server';
 
 describe('CoffeeBench v0 page loader', () => {
@@ -15,8 +15,13 @@ describe('CoffeeBench v0 page loader', () => {
 			},
 			meta: {
 				canonical: 'https://www.purveyors.io/benchmarks/coffeebench-v0',
-				robots: 'noindex, follow',
-				schemaData: undefined
+				robots: 'index, follow',
+				schemaData: {
+					'@type': 'Dataset',
+					distribution: {
+						contentUrl: `https://www.purveyors.io${COFFEEBENCH_RESULT_PATH}`
+					}
+				}
 			}
 		});
 	});

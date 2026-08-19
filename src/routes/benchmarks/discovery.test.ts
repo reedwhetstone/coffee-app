@@ -21,7 +21,7 @@ describe('CoffeeBench public discovery', () => {
 		expect(screen.getByRole('link', { name: 'Benchmarks' })).toHaveAttribute('href', '/benchmarks');
 	});
 
-	it('indexes the benchmark collection but excludes the noindex fixture report', async () => {
+	it('indexes the benchmark collection and measured preview with explicit limitations', async () => {
 		const url = new URL('https://www.purveyors.io/');
 		const sitemap = await getSitemap({ url } as never);
 		const llmsText = await getLlmsText({ url } as never);
@@ -30,16 +30,14 @@ describe('CoffeeBench public discovery', () => {
 
 		expect(sitemapText).toContain('<loc>https://www.purveyors.io/benchmarks</loc>');
 		expect(sitemapText).toContain(
-			'<loc>https://www.purveyors.io/benchmarks</loc>\n\t\t<lastmod>2026-08-17</lastmod>'
+			'<loc>https://www.purveyors.io/benchmarks</loc>\n\t\t<lastmod>2026-08-19</lastmod>'
 		);
-		expect(sitemapText).not.toContain(
-			'<loc>https://www.purveyors.io/benchmarks/coffeebench-v0</loc>'
-		);
+		expect(sitemapText).toContain('<loc>https://www.purveyors.io/benchmarks/coffeebench-v0</loc>');
 		expect(llms).toContain('[Benchmarks](https://www.purveyors.io/benchmarks)');
 		expect(llms).toContain(
-			'[CoffeeBench v0 fixture preview](https://www.purveyors.io/benchmarks/coffeebench-v0)'
+			'[CoffeeBench v0 uncalibrated preview](https://www.purveyors.io/benchmarks/coffeebench-v0)'
 		);
-		expect(llms).toContain('not measured model performance, not a leaderboard');
+		expect(llms).toContain('Bradley-Terry quality scores and ranks are unavailable');
 	});
 
 	it('marks fixture HTML and JSON machine surfaces noindex at the edge', () => {
@@ -51,7 +49,8 @@ describe('CoffeeBench public discovery', () => {
 		).toBeUndefined();
 		for (const source of [
 			'/benchmarks/coffeebench-v0/results/(.*)',
-			'/benchmarks/coffeebench-public-export-v2.json'
+			'/benchmarks/coffeebench-public-export-v2.json',
+			'/benchmarks/coffeebench-public-export-v3.json'
 		]) {
 			expect(config.headers.find((entry) => entry.source === source)?.headers).toContainEqual(
 				expect.objectContaining({ key: 'X-Robots-Tag', value: expect.stringContaining('noindex') })

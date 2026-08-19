@@ -83,9 +83,9 @@
 			<details class="mt-3 text-xs text-muted">
 				<summary class="cursor-pointer font-medium text-ink">What these rates mean</summary>
 				<p class="mt-2 max-w-3xl leading-5">
-					Failure means the task did not reach a valid terminal answer. Unacceptable and critical
-					error require a judge majority. Calibration pass means at least two judges found the
-					subject’s confidence appropriate. Hover a bar for the concise definition.
+					Failure means the task did not reach a valid terminal answer. Unacceptable, critical
+					error, and calibration pass use the published jury rule for this result. Hover a bar for
+					the concise definition.
 				</p>
 			</details>
 		</figcaption>
@@ -114,7 +114,7 @@
 						</label>
 						<label
 							class="text-xs text-muted"
-							title="Share of answers a majority of absolute judges marked unacceptable. Lower is better."
+							title="Share of answers that met the published jury's unacceptable-response rule. Lower is better."
 						>
 							Unacceptable · {formatRate(result.rates.unacceptable_response)}
 							<meter
@@ -127,7 +127,7 @@
 						</label>
 						<label
 							class="text-xs text-muted"
-							title="Share of answers where a majority of absolute judges found a critical error. Lower is better."
+							title="Share of answers that met the published jury's critical-error rule. Lower is better."
 						>
 							Critical error · {formatRate(result.rates.critical_error)}
 							<meter
@@ -139,7 +139,7 @@
 						</label>
 						<label
 							class="text-xs text-muted"
-							title="Share of answers whose confidence was judged appropriate by at least two absolute judges. Higher is better."
+							title="Share of answers that met the published jury's confidence-calibration rule. Higher is better."
 						>
 							Calibration pass · {formatRate(result.rates.confidence_calibration_pass)}
 							<meter

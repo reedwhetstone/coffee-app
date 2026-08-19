@@ -27,7 +27,11 @@
 					</h2>
 				</div>
 				<span class="rounded-full border border-line bg-surface-panel px-3 py-1 text-xs text-muted">
-					{data.benchmark.status === 'fixture' ? 'Fixture preview' : 'Provisional result'}
+					{data.benchmark.status === 'fixture'
+						? 'Fixture preview'
+						: data.benchmark.status === 'preview'
+							? 'Uncalibrated preview'
+							: 'Provisional result'}
 				</span>
 			</div>
 
@@ -49,6 +53,10 @@
 							{#if data.benchmark.status === 'fixture'}
 								The current page exercises the complete public contract with deterministic fixture
 								values; it is not a published leaderboard.
+							{:else if data.benchmark.status === 'preview'}
+								This measured, single-judge preview reports reliability and operational evidence. No
+								quality leaderboard is available because no pairwise ballot qualified for
+								Bradley–Terry fitting.
 							{:else}
 								This provisional result is available for measured comparison while final publication
 								approval remains separate.

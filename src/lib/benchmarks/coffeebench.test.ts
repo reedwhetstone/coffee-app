@@ -2,9 +2,11 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import rawFixture from '../../../static/benchmarks/coffeebench-public-export-v2.json';
+import rawPreview from '../../../static/benchmarks/coffeebench-public-export-v3.json';
 import {
 	assertCoffeeBenchV0RouteIdentity,
 	coffeeBenchPublicDigest,
+	COFFEEBENCH_PREVIEW_ALIAS_PATH,
 	COFFEEBENCH_RESULT_PATH,
 	COFFEEBENCH_SCHEMA_VERSION,
 	COFFEEBENCH_V0_ARTIFACT_SHA256,
@@ -14,6 +16,10 @@ import {
 
 function fixtureCopy(): Record<string, unknown> {
 	return structuredClone(rawFixture) as Record<string, unknown>;
+}
+
+function previewCopy(): Record<string, unknown> {
+	return structuredClone(rawPreview) as Record<string, unknown>;
 }
 
 function firstSubjectResult(payload: Record<string, unknown>): Record<string, unknown> {
@@ -28,27 +34,60 @@ function firstSubjectCard(payload: Record<string, unknown>): Record<string, unkn
 }
 
 describe('CoffeeBench public export reader', () => {
-	it('keeps the public download byte-identical to the final Cherry fixture', () => {
-		const aliasBytes = readFileSync('static/benchmarks/coffeebench-public-export-v2.json');
+	it('keeps the public download byte-identical to the final Cherry preview export', () => {
+		const aliasBytes = readFileSync(`static${COFFEEBENCH_PREVIEW_ALIAS_PATH}`);
 		const immutableBytes = readFileSync(`static${COFFEEBENCH_RESULT_PATH}`);
-		expect(aliasBytes.byteLength).toBe(30_850);
+		expect(aliasBytes.byteLength).toBe(15_715);
 		expect(immutableBytes).toEqual(aliasBytes);
 		expect(createHash('sha256').update(immutableBytes).digest('hex')).toBe(
 			COFFEEBENCH_V0_ARTIFACT_SHA256
 		);
 	});
 
-	it('accepts the complete sanitized Cherry fixture', () => {
+	it('continues to accept the complete sanitized schema-v2 Cherry fixture', () => {
 		const parsed = parseCoffeeBenchPublicExport(rawFixture);
 
-		expect(parsed.schema_version).toBe(COFFEEBENCH_SCHEMA_VERSION);
-		expect(parsed.identities.result_content_sha256).toBe(COFFEEBENCH_V0_RESULT_CONTENT_SHA256);
+		expect(parsed.schema_version).toBe(2);
+		expect(parsed.status).toBe('fixture');
+		expect(parsed.calibration.agreement).not.toBeNull();
 		expect(parsed.tracks.map((track) => track.track_id)).toEqual(['system']);
 		expect(parsed.slices.map((slice) => slice.slice_id)).toEqual([
 			'overall',
 			'historical_control',
 			'live_web'
 		]);
+	});
+
+	it('accepts the complete sanitized schema-v3 Cherry preview', () => {
+		const parsed = parseCoffeeBenchPublicExport(rawPreview);
+
+		expect(parsed.schema_version).toBe(COFFEEBENCH_SCHEMA_VERSION);
+		expect(parsed.status).toBe('preview');
+		expect(parsed.identities.result_content_sha256).toBe(COFFEEBENCH_V0_RESULT_CONTENT_SHA256);
+		expect(parsed.jury).toHaveLength(1);
+		expect(parsed.calibration).toEqual({
+			status: 'not_run',
+			sample_pair_count: 0,
+			decision_source: null,
+			agreement: null
+		});
+		expect(
+			parsed.slices.flatMap((slice) =>
+				slice.track_results.flatMap((track) => track.subjects.map((result) => result.quality_score))
+			)
+		).toEqual(Array(12).fill(null));
+	});
+
+	it('requires schema-v3 preview calibration and mandatory disclosures', () => {
+		const calibration = previewCopy();
+		(calibration.calibration as Record<string, unknown>).status = 'complete';
+		expect(() => parseCoffeeBenchPublicExport(calibration)).toThrow(/calibration/i);
+
+		const disclosures = previewCopy();
+		disclosures.limitations = (disclosures.limitations as string[]).filter(
+			(limitation) => !limitation.toLowerCase().includes('bounded salvage')
+		);
+		expect(() => parseCoffeeBenchPublicExport(disclosures)).toThrow(/bounded salvage/i);
 	});
 
 	it('rejects unknown schema versions', () => {
@@ -336,7 +375,7 @@ describe('CoffeeBench public export reader', () => {
 	});
 
 	it('rejects an artifact from a different benchmark identity on the v0 route', () => {
-		const parsed = parseCoffeeBenchPublicExport(rawFixture);
+		const parsed = parseCoffeeBenchPublicExport(rawPreview);
 		const wrongRouteArtifact = {
 			...parsed,
 			benchmark: { ...parsed.benchmark, suite_id: 'another-suite' }
