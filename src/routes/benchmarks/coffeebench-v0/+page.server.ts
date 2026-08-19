@@ -16,7 +16,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			description: isFixture
 				? 'Contract preview for CoffeeBench, a matched evaluation of whether harnesses and evidence tools improve coffee decisions. No measured result is published yet.'
 				: isPreview
-					? 'Uncalibrated single-judge CoffeeBench preview reporting measured reliability and operational evidence; Bradley-Terry quality scores are unavailable.'
+					? 'Uncalibrated single-judge CoffeeBench preview; quality scores are unavailable because all treatments exceeded the predeclared 10% terminal-failure eligibility ceiling.'
 					: 'Matched evaluation of whether model harnesses and evidence tools improve defensible coffee decisions after cost, latency, and failure are considered.',
 			keywords: ['CoffeeBench v0', 'coffee AI benchmark', 'agent benchmark', 'LLM evaluation'],
 			robots: isFixture ? 'noindex, follow' : 'index, follow',
@@ -26,8 +26,9 @@ export const load: PageServerLoad = async ({ url }) => {
 						'@context': 'https://schema.org',
 						'@type': 'Dataset',
 						name: 'CoffeeBench v0',
-						description:
-							'A versioned benchmark artifact for coffee supply-chain intelligence model and system tracks.',
+						description: isPreview
+							? 'An uncalibrated single-judge preview of reliability and operational evidence; Bradley-Terry quality scores are unavailable because every treatment exceeded the predeclared terminal-failure eligibility ceiling.'
+							: 'A versioned benchmark artifact for coffee supply-chain intelligence model and system tracks.',
 						url: `${baseUrl}/benchmarks/coffeebench-v0`,
 						distribution: {
 							'@type': 'DataDownload',

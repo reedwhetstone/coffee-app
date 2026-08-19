@@ -37,7 +37,12 @@ describe('CoffeeBench public discovery', () => {
 		expect(llms).toContain(
 			'[CoffeeBench v0 uncalibrated preview](https://www.purveyors.io/benchmarks/coffeebench-v0)'
 		);
-		expect(llms).toContain('Bradley-Terry quality scores and ranks are unavailable');
+		expect(llms).toContain(
+			'Of 600 pairwise records, 527 were resolved under unacceptable-response rules and 73 received pairwise model-judge calls.'
+		);
+		expect(llms).toContain(
+			'Bradley-Terry quality scores and ranks are unavailable because all treatments exceeded the predeclared 10% terminal-failure eligibility ceiling.'
+		);
 	});
 
 	it('marks fixture HTML and JSON machine surfaces noindex at the edge', () => {

@@ -125,10 +125,10 @@
 					<p class="font-semibold text-ink">Measured preview, not a quality leaderboard.</p>
 					<p class="mt-2 max-w-4xl text-sm leading-6 text-muted">
 						One Luna judge family completed the absolute evaluation pass, but human calibration was
-						not run. Every pairwise comparison contained at least one response marked unacceptable,
-						so none supplied a model-backed preference for Bradley–Terry fitting. Reliability,
-						critical-error, latency, and token results are measured; quality scores and ranks are
-						intentionally unavailable.
+						not run. Of 600 pairwise records, 527 were resolved deterministically under the
+						unacceptable-response rules and 73 received a pairwise model-judge call. Quality scores
+						and ranks are unavailable because every treatment exceeded the predeclared 10%
+						terminal-failure eligibility ceiling.
 					</p>
 				</div>
 			{/if}
@@ -237,9 +237,9 @@
 						</h2>
 						<p class="mt-4 max-w-3xl leading-7 text-muted">
 							The raw treatment had the lowest observed terminal-failure and critical-error rates in
-							this panel. That is operational evidence, not a quality win: all four treatments had
-							high unacceptable-response rates, and no pairwise ballot qualified for the quality
-							model.
+							this panel. That is operational evidence, not a quality win: its 15% terminal-failure
+							rate still exceeded the predeclared 10% ceiling, as did the other treatments at 34%,
+							38%, and 59%, so none was eligible for Bradley–Terry fitting.
 						</p>
 					</div>
 					<div class="mt-8 grid gap-4 md:grid-cols-3">
@@ -267,7 +267,7 @@
 							</p>
 							<p class="mt-2 text-3xl font-semibold text-ink">Unavailable</p>
 							<p class="mt-2 text-sm leading-6 text-muted">
-								0 of 600 pairwise ballots supplied an eligible model-backed preference.
+								All four treatments exceeded the 10% terminal-failure eligibility ceiling.
 							</p>
 						</article>
 					</div>
@@ -330,7 +330,7 @@
 					<p class="mt-4 leading-7 text-muted">
 						{qualityAvailable
 							? 'Start with quality and its uncertainty, then test whether the apparent lift survives cost, latency, and failure.'
-							: 'Bradley–Terry scores are unavailable because no pairwise ballot supplied an eligible model-backed preference. Compare the measured outcome rates and operational evidence without inferring a quality order.'}
+							: 'Bradley–Terry scores are unavailable because all four treatments exceeded the predeclared 10% terminal-failure eligibility ceiling. Compare the measured outcome rates and operational evidence without inferring a quality order.'}
 						Every value is copied from Cherry’s precomputed export; this app does not derive rank, intervals,
 						cost, rates, or Pareto status.
 					</p>

@@ -54,9 +54,9 @@
 								The current page exercises the complete public contract with deterministic fixture
 								values; it is not a published leaderboard.
 							{:else if data.benchmark.status === 'preview'}
-								This measured, single-judge preview reports reliability and operational evidence. No
-								quality leaderboard is available because no pairwise ballot qualified for
-								Bradley–Terry fitting.
+								This measured, single-judge preview reports reliability and operational evidence.
+								Its quality leaderboard is unavailable because all four treatments exceeded the
+								predeclared 10% terminal-failure eligibility ceiling.
 							{:else}
 								This provisional result is available for measured comparison while final publication
 								approval remains separate.
