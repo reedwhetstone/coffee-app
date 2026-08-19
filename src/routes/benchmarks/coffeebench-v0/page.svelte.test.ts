@@ -35,7 +35,13 @@ describe('CoffeeBench v0 report', () => {
 		expect(screen.getAllByText('15%').length).toBeGreaterThan(0);
 		expect(screen.getAllByText('30%').length).toBeGreaterThan(0);
 		expect(
-			screen.getByText('0 of 600 pairwise ballots supplied an eligible model-backed preference.')
+			screen.getByText(
+				'Of 600 pairwise records, 527 were resolved deterministically under the unacceptable-response rules and 73 received a pairwise model-judge call.',
+				{ exact: false }
+			)
+		).toBeVisible();
+		expect(
+			screen.getByText('All four treatments exceeded the 10% terminal-failure eligibility ceiling.')
 		).toBeVisible();
 		expect(screen.getByText('Subject trials')).toBeVisible();
 		expect(
@@ -69,6 +75,10 @@ describe('CoffeeBench v0 report', () => {
 		expect(
 			screen.getByRole('heading', { name: 'Bradley–Terry quality views unavailable' })
 		).toBeVisible();
+		expect(
+			screen.getAllByText(/predeclared 10% terminal-failure eligibility ceiling/).length
+		).toBeGreaterThan(0);
+		expect(screen.getByText(/59%, 38%, 34%, and 15%/)).toBeVisible();
 		expect(screen.queryByRole('heading', { name: 'Quality forest' })).not.toBeInTheDocument();
 		expect(screen.queryByRole('heading', { name: 'Quality vs. tokens' })).not.toBeInTheDocument();
 		expect(screen.getAllByText('No rank').length).toBeGreaterThan(0);

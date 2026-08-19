@@ -203,9 +203,10 @@
 		<div class="rounded-2xl border border-accent/40 bg-accent/10 p-5 sm:p-6" role="note">
 			<h3 class="font-semibold text-ink">Bradley–Terry quality views unavailable</h3>
 			<p class="mt-2 max-w-3xl text-sm leading-6 text-muted">
-				No pairwise ballot supplied an eligible model-backed preference, so the export contains no
-				quality score, rank, interval, or quality-versus-operations plot. The measured outcome rates
-				and operational evidence remain available below.
+				All four treatments exceeded the predeclared 10% terminal-failure eligibility ceiling, at
+				59%, 38%, 34%, and 15%. The export therefore contains no quality score, rank, interval, or
+				quality-versus-operations plot. The measured outcome rates and operational evidence remain
+				available below.
 			</p>
 		</div>
 	{:else}

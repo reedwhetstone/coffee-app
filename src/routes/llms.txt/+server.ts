@@ -10,7 +10,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		coffeeBenchV0.status === 'fixture'
 			? 'Deterministic contract fixture for the matched-system reader and visualizations. It is not measured model performance, not a leaderboard, and must not be cited as a benchmark result.'
 			: coffeeBenchV0.status === 'preview'
-				? 'Measured, uncalibrated single-judge preview of reliability and operational performance. Bradley-Terry quality scores and ranks are unavailable because no pairwise ballot supplied an eligible model-backed preference.'
+				? 'Measured, uncalibrated single-judge preview of reliability and operational performance. Of 600 pairwise records, 527 were resolved under unacceptable-response rules and 73 received pairwise model-judge calls. Bradley-Terry quality scores and ranks are unavailable because all treatments exceeded the predeclared 10% terminal-failure eligibility ceiling.'
 				: 'Provisional measured comparison of model and agent-system performance on coffee-intelligence tasks. Final publication approval remains separate.';
 	const benchmarkLabel =
 		coffeeBenchV0.status === 'fixture'

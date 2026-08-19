@@ -23,11 +23,11 @@ The export contains 400 subject trials, 400 absolute evaluations, and 600 pairwi
 from one Luna/OpenAI judge family. Human calibration was not run. The preview must disclose both its
 single-judge, uncalibrated status and the bounded generation salvage recorded by Cherry.
 
-Bradley–Terry scores are unavailable by design. Every pairwise comparison contained at least one
-response the absolute judge marked unacceptable. Cherry resolved those comparisons deterministically
-without a pairwise model call, and its quality fitter excludes deterministic or unacceptable-terminal
-ballots. The resulting preference set is empty, so rank, quality score, interval, and Pareto quality
-views remain null rather than implying comparative quality.
+Of the 600 pairwise records, Cherry resolved 527 deterministically under its unacceptable-response
+rules and sent 73 through a pairwise model-judge call. Those model-backed records did not make the
+treatments eligible for Bradley–Terry fitting: the four overall terminal-failure rates were 59%, 38%,
+34%, and 15%, all above the predeclared 10% eligibility ceiling. Rank, quality score, interval, and
+Pareto quality views therefore remain null rather than implying comparative quality.
 
 The report may describe measured terminal-failure, unacceptable-response, critical-error,
 confidence-calibration, latency, token, and available normalized-cost values. It must not turn the
