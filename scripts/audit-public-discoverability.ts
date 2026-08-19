@@ -350,9 +350,8 @@ async function main() {
 		{
 			label: 'CoffeeBench v0',
 			path: '/benchmarks/coffeebench-v0',
-			expectNoIndex: true,
-			expectStructuredData: false,
-			excludeFromSitemap: true,
+			expectStructuredData: true,
+			expectInSitemap: true,
 			expectInLlms: true
 		},
 		{ label: 'API', path: '/api', expectInSitemap: true, expectInLlms: true },

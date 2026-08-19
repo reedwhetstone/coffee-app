@@ -19,6 +19,12 @@
 		benchmark.slices.filter((slice: CoffeeBenchSlice) => slice.slice_id !== 'overall')
 	);
 	let isFixture = $derived(benchmark.status === 'fixture');
+	let isPreview = $derived(benchmark.status === 'preview');
+	let qualityAvailable = $derived(
+		(overall?.track_results ?? []).some((track) =>
+			track.subjects.some((result) => result.quality_score !== null)
+		)
+	);
 
 	function sentenceCase(value: string): string {
 		return value.replaceAll('_', ' ');
@@ -55,7 +61,11 @@
 							<span
 								class="rounded-full border border-line bg-surface-canvas px-3 py-1 text-xs text-muted"
 							>
-								{isFixture ? 'Example data · full run not started' : 'Provisional result'}
+								{isFixture
+									? 'Example data · full run not started'
+									: isPreview
+										? 'Uncalibrated single-judge preview'
+										: 'Provisional result'}
 							</span>
 						</div>
 						<h1 class="mt-3 font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl">
@@ -108,6 +118,17 @@
 					<p class="max-w-2xl text-sm leading-6 text-muted sm:text-right">
 						The reporting software is tested; the full {benchmark.methodology
 							.subject_trial_count}-trial panel, judging, and human calibration have not run.
+					</p>
+				</div>
+			{:else if isPreview}
+				<div class="rounded-2xl border border-accent/40 bg-accent/10 p-5" role="note">
+					<p class="font-semibold text-ink">Measured preview, not a quality leaderboard.</p>
+					<p class="mt-2 max-w-4xl text-sm leading-6 text-muted">
+						One Luna judge family completed the absolute evaluation pass, but human calibration was
+						not run. Every pairwise comparison contained at least one response marked unacceptable,
+						so none supplied a model-backed preference for Bradley–Terry fitting. Reliability,
+						critical-error, latency, and token results are measured; quality scores and ranks are
+						intentionally unavailable.
 					</p>
 				</div>
 			{/if}
@@ -206,6 +227,50 @@
 							</div>
 						</div>
 					</div>
+				{:else if isPreview}
+					<div class="mt-2 max-w-4xl">
+						<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
+							Run status · Measured preview
+						</p>
+						<h2 id="findings-heading" class="mt-3 font-serif text-3xl font-medium text-ink">
+							This run measured reliability and operations, but not a defensible quality ranking.
+						</h2>
+						<p class="mt-4 max-w-3xl leading-7 text-muted">
+							The raw treatment had the lowest observed terminal-failure and critical-error rates in
+							this panel. That is operational evidence, not a quality win: all four treatments had
+							high unacceptable-response rates, and no pairwise ballot qualified for the quality
+							model.
+						</p>
+					</div>
+					<div class="mt-8 grid gap-4 md:grid-cols-3">
+						<article class="rounded-2xl border border-line bg-surface-panel p-6">
+							<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+								Lowest terminal failure
+							</p>
+							<p class="mt-2 text-3xl font-semibold text-ink">15%</p>
+							<p class="mt-2 text-sm leading-6 text-muted">
+								DeepSeek V4 Raw, versus 34%–59% for the three harnessed treatments.
+							</p>
+						</article>
+						<article class="rounded-2xl border border-line bg-surface-panel p-6">
+							<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+								Lowest critical-error rate
+							</p>
+							<p class="mt-2 text-3xl font-semibold text-ink">30%</p>
+							<p class="mt-2 text-sm leading-6 text-muted">
+								DeepSeek V4 Raw, versus 47%–61% for the three harnessed treatments.
+							</p>
+						</article>
+						<article class="rounded-2xl border border-line bg-surface-panel p-6">
+							<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+								Quality ranking
+							</p>
+							<p class="mt-2 text-3xl font-semibold text-ink">Unavailable</p>
+							<p class="mt-2 text-sm leading-6 text-muted">
+								0 of 600 pairwise ballots supplied an eligible model-backed preference.
+							</p>
+						</article>
+					</div>
 				{:else}
 					<div class="mt-2 max-w-3xl">
 						<h2 id="findings-heading" class="font-serif text-3xl font-medium text-ink">
@@ -258,16 +323,20 @@
 						{isFixture ? 'Preview of the result structure' : 'Overall comparison'}
 					</p>
 					<h2 id="comparison-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
-						Quality beside cost, latency, and failure.
+						{qualityAvailable
+							? 'Quality beside cost, latency, and failure.'
+							: 'Reliability, latency, and token evidence without a quality rank.'}
 					</h2>
 					<p class="mt-4 leading-7 text-muted">
-						Start with quality and its uncertainty, then test whether the apparent lift survives
-						cost, latency, and failure. Every value is copied from Cherry’s precomputed export; this
-						app does not derive rank, intervals, cost, rates, or Pareto status.
+						{qualityAvailable
+							? 'Start with quality and its uncertainty, then test whether the apparent lift survives cost, latency, and failure.'
+							: 'Bradley–Terry scores are unavailable because no pairwise ballot supplied an eligible model-backed preference. Compare the measured outcome rates and operational evidence without inferring a quality order.'}
+						Every value is copied from Cherry’s precomputed export; this app does not derive rank, intervals,
+						cost, rates, or Pareto status.
 					</p>
 				</div>
 				<div class="mt-6 grid gap-3 sm:grid-cols-3" aria-label="Recommended result reading order">
-					{#each [['1', 'Quality', 'Compare scores and uncertainty before calling a leader.'], ['2', 'Trade-offs', 'Ask what extra tokens, cost, and latency buy.'], ['3', 'Reliability', 'Check failures, critical errors, and calibration before acting.']] as [step, label, explanation]}
+					{#each qualityAvailable ? [['1', 'Quality', 'Compare scores and uncertainty before calling a leader.'], ['2', 'Trade-offs', 'Ask what extra tokens, cost, and latency buy.'], ['3', 'Reliability', 'Check failures, critical errors, and calibration before acting.']] : [['1', 'Reliability', 'Compare failure, unacceptable-response, and critical-error rates.'], ['2', 'Operations', 'Read latency and token use without converting them into a quality claim.'], ['3', 'Limits', 'Keep the single-judge, uncalibrated, and salvage disclosures attached.']] as [step, label, explanation]}
 						<div class="rounded-xl border border-line bg-surface-panel p-4">
 							<p class="text-xs font-semibold text-accent">{step} · {label}</p>
 							<p class="mt-1 text-xs leading-5 text-muted">{explanation}</p>
@@ -371,9 +440,15 @@
 					<div>
 						<p class="text-sm font-semibold text-accent">Independent jury</p>
 						<h2 id="jury-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
-							Three judge families, one pinned calibration sample.
+							{benchmark.jury.length === 1
+								? 'One preview judge family; human calibration not run.'
+								: `${benchmark.jury.length} judge families, one pinned calibration sample.`}
 						</h2>
-						<div class="mt-6 grid gap-4 sm:grid-cols-3">
+						<div
+							class={benchmark.jury.length > 1
+								? 'mt-6 grid gap-4 sm:grid-cols-3'
+								: 'mt-6 grid gap-4'}
+						>
 							{#each benchmark.jury as judge (judge.family)}
 								<div class="rounded-2xl border border-line bg-surface-panel p-5">
 									<p class="font-semibold capitalize text-ink">{judge.family}</p>
@@ -393,42 +468,50 @@
 						<p class="text-xs font-semibold uppercase tracking-wide text-muted">
 							Human calibration
 						</p>
-						<p class="mt-3 text-3xl font-semibold text-ink">
-							{formatRate(benchmark.calibration.agreement.agent_majority_agreement_rate)}
-						</p>
-						<p class="mt-1 text-sm text-muted">agent-majority agreement</p>
-						<dl class="mt-5 space-y-3 text-sm">
-							<div class="flex justify-between gap-3">
-								<dt class="text-muted">Reviewed pairs</dt>
-								<dd class="font-medium text-ink">
-									{benchmark.calibration.agreement.compared_pair_count}
-								</dd>
-							</div>
-							<div class="flex justify-between gap-3">
-								<dt class="text-muted">Majority decisions</dt>
-								<dd class="font-medium text-ink">
-									{benchmark.calibration.agreement.agent_majority_decision_count}
-								</dd>
-							</div>
-							<div class="flex justify-between gap-3">
-								<dt class="text-muted">Unresolved majorities</dt>
-								<dd class="font-medium text-ink">
-									{benchmark.calibration.agreement.agent_majority_unresolved_count}
-								</dd>
-							</div>
-							<div class="flex justify-between gap-3">
-								<dt class="text-muted">Exact ballot agreement</dt>
-								<dd class="font-medium text-ink">
-									{formatRate(benchmark.calibration.agreement.exact_agreement_rate)}
-								</dd>
-							</div>
-							<div class="flex justify-between gap-3">
-								<dt class="text-muted">Decision source</dt>
-								<dd class="font-medium text-ink">
-									{sentenceCase(benchmark.calibration.decision_source)}
-								</dd>
-							</div>
-						</dl>
+						{#if benchmark.calibration.agreement}
+							<p class="mt-3 text-3xl font-semibold text-ink">
+								{formatRate(benchmark.calibration.agreement.agent_majority_agreement_rate)}
+							</p>
+							<p class="mt-1 text-sm text-muted">agent-majority agreement</p>
+							<dl class="mt-5 space-y-3 text-sm">
+								<div class="flex justify-between gap-3">
+									<dt class="text-muted">Reviewed pairs</dt>
+									<dd class="font-medium text-ink">
+										{benchmark.calibration.agreement.compared_pair_count}
+									</dd>
+								</div>
+								<div class="flex justify-between gap-3">
+									<dt class="text-muted">Majority decisions</dt>
+									<dd class="font-medium text-ink">
+										{benchmark.calibration.agreement.agent_majority_decision_count}
+									</dd>
+								</div>
+								<div class="flex justify-between gap-3">
+									<dt class="text-muted">Unresolved majorities</dt>
+									<dd class="font-medium text-ink">
+										{benchmark.calibration.agreement.agent_majority_unresolved_count}
+									</dd>
+								</div>
+								<div class="flex justify-between gap-3">
+									<dt class="text-muted">Exact ballot agreement</dt>
+									<dd class="font-medium text-ink">
+										{formatRate(benchmark.calibration.agreement.exact_agreement_rate)}
+									</dd>
+								</div>
+								<div class="flex justify-between gap-3">
+									<dt class="text-muted">Decision source</dt>
+									<dd class="font-medium text-ink">
+										{sentenceCase(benchmark.calibration.decision_source)}
+									</dd>
+								</div>
+							</dl>
+						{:else}
+							<p class="mt-3 text-3xl font-semibold text-ink">Not run</p>
+							<p class="mt-3 text-sm leading-6 text-muted">
+								No human calibration decision or agreement rate exists for this preview. The single
+								judge’s measurements must remain attached to that limitation.
+							</p>
+						{/if}
 					</aside>
 				</div>
 			</section>

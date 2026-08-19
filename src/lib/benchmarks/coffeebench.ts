@@ -1,25 +1,26 @@
 import { z } from 'zod';
 
-export const COFFEEBENCH_SCHEMA_VERSION = 2 as const;
+export const COFFEEBENCH_SCHEMA_VERSION = 3 as const;
 export const COFFEEBENCH_V0_BENCHMARK_NAME = 'CoffeeBench' as const;
 export const COFFEEBENCH_V0_BENCHMARK_VERSION = '1.0.0-dev' as const;
 export const COFFEEBENCH_V0_SUITE_ID = 'deepseek-v4-initial' as const;
-export const COFFEEBENCH_V0_JURY_ID = 'openclaw-jury-2026-08-16' as const;
-export const COFFEEBENCH_V0_RELEASE_DATE = '2026-08-17' as const;
+export const COFFEEBENCH_V0_JURY_ID = 'openclaw-jury-2026-08-18-luna' as const;
+export const COFFEEBENCH_V0_RELEASE_DATE = '2026-08-19' as const;
 export const COFFEEBENCH_V0_ARTIFACT_SHA256 =
-	'7f64b83927ddd8fba9fb04060373898eec608c7f4d8a9d13fedb2bfe0be554cf' as const;
+	'518f231d1f0adfb7cef9fc262a251fd264f8f427d56f166e8bafd839f42b78f1' as const;
 export const COFFEEBENCH_V0_RESULT_CONTENT_SHA256 =
-	'757c6cb62911f85433e88a7352308355866ed848645d84b31f962a14b47df524' as const;
+	'fe3927ea498ccdcf3998f08943dddf51a60ccf7e993b5744b8bf868db87565ba' as const;
 export const COFFEEBENCH_V0_RESULT_VERSION =
-	'1.0.0-dev.coffeebench-fixture-generation.fixture.757c6cb62911f854' as const;
+	'1.0.0-dev.coffeebench-v0-deepseek-v4-initial-official.preview.fe3927ea498ccdcf' as const;
 export const COFFEEBENCH_RESULT_PATH = `/benchmarks/coffeebench-v0/results/${COFFEEBENCH_V0_RESULT_VERSION}/${COFFEEBENCH_V0_RESULT_CONTENT_SHA256}.json`;
+export const COFFEEBENCH_PREVIEW_ALIAS_PATH = '/benchmarks/coffeebench-public-export-v3.json';
 export const COFFEEBENCH_FIXTURE_ALIAS_PATH = '/benchmarks/coffeebench-public-export-v2.json';
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const IDENTIFIER = /^[a-z0-9][a-z0-9._-]*$/;
 const RESULT_VERSION = /^\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?$/;
 const DECIMAL_USD = /^(?:0|[1-9]\d*)(?:\.\d+)?$/;
-const PUBLIC_CONTRACT = { schema_version: 2, contract: 'coffeebench.public-export' } as const;
+const PUBLIC_CONTRACT_NAME = 'coffeebench.public-export' as const;
 const publicDigestKeys = new Set([
 	'result_content_sha256',
 	'public_contract_sha256',
@@ -385,7 +386,7 @@ const subjectResultSchema = z
 
 const publicExportSchema = z
 	.object({
-		schema_version: z.literal(COFFEEBENCH_SCHEMA_VERSION),
+		schema_version: z.union([z.literal(2), z.literal(COFFEEBENCH_SCHEMA_VERSION)]),
 		result_version: z.string().regex(RESULT_VERSION),
 		benchmark: z
 			.object({
@@ -394,7 +395,7 @@ const publicExportSchema = z
 				suite_id: z.string().regex(IDENTIFIER)
 			})
 			.strict(),
-		status: z.enum(['fixture', 'provisional']),
+		status: z.enum(['fixture', 'provisional', 'preview']),
 		identities: z
 			.object({
 				result_id: z.string().regex(IDENTIFIER),
@@ -491,34 +492,45 @@ const publicExportSchema = z
 					})
 					.strict()
 			)
-			.length(3),
-		calibration: z
-			.object({
-				sample_pair_count: z.literal(40),
-				decision_source: z.enum(['reed', 'deterministic_fixture']),
-				agreement: z
-					.object({
-						compared_pair_count: z.number().int().nonnegative(),
-						compared_agent_ballot_count: z.number().int().nonnegative(),
-						exact_agreement_rate: z.number().finite().min(0).max(1),
-						agent_majority_decision_count: z.number().int().nonnegative(),
-						agent_majority_unresolved_count: z.number().int().nonnegative(),
-						agent_majority_agreement_rate: z.number().finite().min(0).max(1).nullable(),
-						per_family: z
-							.array(
-								z
-									.object({
-										family: juryFamilySchema,
-										compared_ballot_count: z.number().int().nonnegative(),
-										exact_agreement_rate: z.number().finite().min(0).max(1)
-									})
-									.strict()
-							)
-							.length(3)
-					})
-					.strict()
-			})
-			.strict(),
+			.min(1)
+			.max(3),
+		calibration: z.union([
+			z
+				.object({
+					sample_pair_count: z.literal(40),
+					decision_source: z.enum(['reed', 'deterministic_fixture']),
+					agreement: z
+						.object({
+							compared_pair_count: z.number().int().nonnegative(),
+							compared_agent_ballot_count: z.number().int().nonnegative(),
+							exact_agreement_rate: z.number().finite().min(0).max(1),
+							agent_majority_decision_count: z.number().int().nonnegative(),
+							agent_majority_unresolved_count: z.number().int().nonnegative(),
+							agent_majority_agreement_rate: z.number().finite().min(0).max(1).nullable(),
+							per_family: z
+								.array(
+									z
+										.object({
+											family: juryFamilySchema,
+											compared_ballot_count: z.number().int().nonnegative(),
+											exact_agreement_rate: z.number().finite().min(0).max(1)
+										})
+										.strict()
+								)
+								.length(3)
+						})
+						.strict()
+				})
+				.strict(),
+			z
+				.object({
+					status: z.literal('not_run'),
+					sample_pair_count: z.literal(0),
+					decision_source: z.null(),
+					agreement: z.null()
+				})
+				.strict()
+		]),
 		limitations: z.array(z.string().min(1)).min(1)
 	})
 	.strict()
@@ -580,7 +592,13 @@ const publicExportSchema = z
 			);
 		}
 
-		if (artifact.identities.public_contract_sha256 !== coffeeBenchPublicDigest(PUBLIC_CONTRACT)) {
+		if (
+			artifact.identities.public_contract_sha256 !==
+			coffeeBenchPublicDigest({
+				schema_version: artifact.schema_version,
+				contract: PUBLIC_CONTRACT_NAME
+			})
+		) {
 			issue(['identities', 'public_contract_sha256'], 'public contract SHA-256 does not replay');
 		}
 		if (artifact.identities.methodology_sha256 !== coffeeBenchPublicDigest(artifact.methodology)) {
@@ -620,12 +638,41 @@ const publicExportSchema = z
 		) {
 			issue(['identities', 'result_id'], 'result ID does not bind generation, status, and content');
 		}
-		const expectedDecisionSource = artifact.status === 'fixture' ? 'deterministic_fixture' : 'reed';
-		if (artifact.calibration.decision_source !== expectedDecisionSource) {
-			issue(
-				['calibration', 'decision_source'],
-				`${artifact.status} status requires ${expectedDecisionSource} calibration provenance`
+		if (artifact.schema_version === 3) {
+			if (artifact.status !== 'preview') {
+				issue(['status'], 'schema v3 is reserved for preview results');
+			}
+			if (artifact.calibration.agreement !== null) {
+				issue(['calibration'], 'schema-v3 preview calibration must be explicitly not run');
+			}
+			const normalizedLimitations = artifact.limitations.map((limitation) =>
+				limitation.toLowerCase()
 			);
+			if (
+				!normalizedLimitations.some((limitation) =>
+					limitation.includes('uncalibrated single-judge preview')
+				)
+			) {
+				issue(
+					['limitations'],
+					'schema-v3 preview must disclose that it is an uncalibrated single-judge preview'
+				);
+			}
+			if (!normalizedLimitations.some((limitation) => limitation.includes('bounded salvage'))) {
+				issue(['limitations'], 'schema-v3 preview must disclose its bounded salvage');
+			}
+		} else {
+			if (artifact.status === 'preview') {
+				issue(['status'], 'schema v2 cannot publish preview results');
+			}
+			const expectedDecisionSource =
+				artifact.status === 'fixture' ? 'deterministic_fixture' : 'reed';
+			if (artifact.calibration.decision_source !== expectedDecisionSource) {
+				issue(
+					['calibration', 'decision_source'],
+					`${artifact.status} status requires ${expectedDecisionSource} calibration provenance`
+				);
+			}
 		}
 
 		const publishedTracks = artifact.tracks.map((track) => track.track_id);
@@ -639,14 +686,16 @@ const publicExportSchema = z
 		);
 		requireExactSet(
 			artifact.jury.map((judge) => judge.family),
-			['openai', 'google', 'anthropic'],
+			artifact.schema_version === 3 ? ['openai'] : ['openai', 'google', 'anthropic'],
 			['jury']
 		);
-		requireExactSet(
-			artifact.calibration.agreement.per_family.map((family) => family.family),
-			['openai', 'google', 'anthropic'],
-			['calibration', 'agreement', 'per_family']
-		);
+		if (artifact.calibration.agreement) {
+			requireExactSet(
+				artifact.calibration.agreement.per_family.map((family) => family.family),
+				['openai', 'google', 'anthropic'],
+				['calibration', 'agreement', 'per_family']
+			);
+		}
 
 		const subjectById = new Map(artifact.subjects.map((subject) => [subject.subject_id, subject]));
 		if (subjectById.size !== artifact.subjects.length) {
@@ -685,10 +734,22 @@ const publicExportSchema = z
 			artifact.methodology.absolute_evaluation_count / artifact.jury.length +
 			artifact.methodology.pairwise_ballot_count / artifact.jury.length;
 		artifact.jury.forEach((judge, index) => {
-			if (judge.call_count !== expectedJuryCallCount) {
+			if (artifact.schema_version === 2 && judge.call_count !== expectedJuryCallCount) {
 				issue(
 					['jury', index, 'call_count'],
 					'jury call count must reconcile with the family share of absolute evaluations and pairwise ballots'
+				);
+			}
+			if (
+				artifact.schema_version === 3 &&
+				(judge.call_count === 0 ||
+					judge.call_count >
+						artifact.methodology.absolute_evaluation_count +
+							artifact.methodology.pairwise_ballot_count)
+			) {
+				issue(
+					['jury', index, 'call_count'],
+					'preview jury call count must be positive and cannot exceed the published evaluation graph'
 				);
 			}
 			if (judge.provider_call_count > judge.call_count) {
@@ -707,21 +768,22 @@ const publicExportSchema = z
 			} else if (judge.call_count === 0 || judge.provider_call_count !== judge.call_count) {
 				issue(
 					['jury', index, 'provider_call_count'],
-					'provisional jury calls must all bind live provider calls'
+					`${artifact.status} jury calls must all bind live provider calls`
 				);
 			}
 		});
 
 		const agreement = artifact.calibration.agreement;
-		if (agreement.compared_pair_count !== artifact.calibration.sample_pair_count) {
+		if (agreement && agreement.compared_pair_count !== artifact.calibration.sample_pair_count) {
 			issue(
 				['calibration', 'agreement', 'compared_pair_count'],
 				'calibration agreement must cover the complete sample'
 			);
 		}
 		if (
+			agreement &&
 			agreement.agent_majority_decision_count + agreement.agent_majority_unresolved_count !==
-			agreement.compared_pair_count
+				agreement.compared_pair_count
 		) {
 			issue(
 				['calibration', 'agreement'],
@@ -729,28 +791,28 @@ const publicExportSchema = z
 			);
 		}
 		if (
+			agreement &&
 			(agreement.agent_majority_decision_count === 0) !==
-			(agreement.agent_majority_agreement_rate === null)
+				(agreement.agent_majority_agreement_rate === null)
 		) {
 			issue(
 				['calibration', 'agreement', 'agent_majority_agreement_rate'],
 				'majority agreement rate must be null exactly when no majority decisions exist'
 			);
 		}
-		const familyBallotCount = agreement.per_family.reduce(
-			(total, family) => total + family.compared_ballot_count,
-			0
-		);
+		const familyBallotCount =
+			agreement?.per_family.reduce((total, family) => total + family.compared_ballot_count, 0) ?? 0;
 		if (
-			agreement.compared_agent_ballot_count !== familyBallotCount ||
-			familyBallotCount !== artifact.calibration.sample_pair_count * artifact.jury.length
+			agreement &&
+			(agreement.compared_agent_ballot_count !== familyBallotCount ||
+				familyBallotCount !== artifact.calibration.sample_pair_count * artifact.jury.length)
 		) {
 			issue(
 				['calibration', 'agreement', 'compared_agent_ballot_count'],
 				'calibration agent-ballot count must equal the complete sample across every jury family'
 			);
 		}
-		for (const [index, family] of agreement.per_family.entries()) {
+		for (const [index, family] of agreement?.per_family.entries() ?? []) {
 			if (family.compared_ballot_count !== artifact.calibration.sample_pair_count) {
 				issue(
 					['calibration', 'agreement', 'per_family', index, 'compared_ballot_count'],
@@ -764,14 +826,15 @@ const publicExportSchema = z
 				);
 			}
 		}
-		if (!rateRepresentsCount(agreement.exact_agreement_rate, familyBallotCount)) {
+		if (agreement && !rateRepresentsCount(agreement.exact_agreement_rate, familyBallotCount)) {
 			issue(
 				['calibration', 'agreement', 'exact_agreement_rate'],
 				'exact agreement rate must represent a whole agent-ballot count'
 			);
 		}
 		if (
-			agreement.agent_majority_agreement_rate !== null &&
+			agreement?.agent_majority_agreement_rate !== null &&
+			agreement?.agent_majority_agreement_rate !== undefined &&
 			!rateRepresentsCount(
 				agreement.agent_majority_agreement_rate,
 				agreement.agent_majority_decision_count
@@ -782,7 +845,7 @@ const publicExportSchema = z
 				'majority agreement rate must represent a whole sampled-pair count'
 			);
 		}
-		if (familyBallotCount > 0) {
+		if (agreement && familyBallotCount > 0) {
 			const weightedFamilyAgreement =
 				agreement.per_family.reduce(
 					(total, family) => total + family.exact_agreement_rate * family.compared_ballot_count,
@@ -1305,6 +1368,14 @@ export function parseCoffeeBenchPublicExport(value: unknown): CoffeeBenchPublicE
 
 export function assertCoffeeBenchV0RouteIdentity(artifact: CoffeeBenchPublicExport): void {
 	if (
+		artifact.schema_version !== COFFEEBENCH_SCHEMA_VERSION ||
+		artifact.status !== 'preview' ||
+		artifact.calibration.agreement !== null ||
+		artifact.calibration.decision_source !== null
+	) {
+		throw new Error('CoffeeBench v0 route artifact is not the declared schema-v3 preview');
+	}
+	if (
 		artifact.benchmark.name !== COFFEEBENCH_V0_BENCHMARK_NAME ||
 		artifact.benchmark.version !== COFFEEBENCH_V0_BENCHMARK_VERSION ||
 		artifact.benchmark.suite_id !== COFFEEBENCH_V0_SUITE_ID
@@ -1322,5 +1393,8 @@ export function assertCoffeeBenchV0RouteIdentity(artifact: CoffeeBenchPublicExpo
 		`${COFFEEBENCH_V0_JURY_ID}.${artifact.identities.generation_id}.${artifact.status}.${artifact.identities.result_content_sha256}`
 	) {
 		throw new Error('CoffeeBench v0 route artifact has an unexpected jury result identity');
+	}
+	if (artifact.jury.length !== 1 || artifact.jury[0]?.family !== 'openai') {
+		throw new Error('CoffeeBench v0 route artifact has an unexpected preview jury');
 	}
 }

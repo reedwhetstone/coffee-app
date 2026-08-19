@@ -9,9 +9,15 @@ export const GET: RequestHandler = async ({ url }) => {
 	const benchmarkDescription =
 		coffeeBenchV0.status === 'fixture'
 			? 'Deterministic contract fixture for the matched-system reader and visualizations. It is not measured model performance, not a leaderboard, and must not be cited as a benchmark result.'
-			: 'Provisional measured comparison of model and agent-system performance on coffee-intelligence tasks. Final publication approval remains separate.';
+			: coffeeBenchV0.status === 'preview'
+				? 'Measured, uncalibrated single-judge preview of reliability and operational performance. Bradley-Terry quality scores and ranks are unavailable because no pairwise ballot supplied an eligible model-backed preference.'
+				: 'Provisional measured comparison of model and agent-system performance on coffee-intelligence tasks. Final publication approval remains separate.';
 	const benchmarkLabel =
-		coffeeBenchV0.status === 'fixture' ? 'fixture preview' : 'provisional result';
+		coffeeBenchV0.status === 'fixture'
+			? 'fixture preview'
+			: coffeeBenchV0.status === 'preview'
+				? 'uncalibrated preview'
+				: 'provisional result';
 
 	const blogPostLines = publishedPosts
 		.map(
