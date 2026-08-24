@@ -83,27 +83,15 @@ export function assertUniqueMarketBriefEditions(posts: BlogPost[]): void {
 }
 
 /**
- * Load all blog posts from src/content/blog/*.svx
- * Returns sorted by date (newest first), excludes drafts in production
+ * Normalize and enumerate blog modules without loading any format-specific projection code.
+ * Returns sorted by date (newest first), excludes drafts in production.
  */
-export async function getAllPosts(): Promise<BlogPost[]> {
-	const modules = import.meta.glob<BlogPostModule>('/src/content/blog/*.svx', { eager: true });
-
+export function getPostsFromModules(modules: Record<string, BlogPostModule>): BlogPost[] {
 	const discoveredPosts: BlogPost[] = [];
 
 	for (const [path, module] of Object.entries(modules)) {
 		const slug = path.split('/').pop()?.replace('.svx', '') ?? '';
 		const post = normalizeBlogPost(slug, module.metadata);
-		if (post.format === 'market-brief') {
-			const { assertMarketBriefEmailSource, getRawMarketBriefSource } = await import(
-				'$lib/server/marketBriefEmail'
-			);
-			const source = getRawMarketBriefSource(slug);
-			if (source === undefined) {
-				throw new Error(`Market Brief ${slug} is missing its canonical source`);
-			}
-			assertMarketBriefEmailSource(post, source);
-		}
 		discoveredPosts.push(post);
 	}
 
@@ -128,6 +116,15 @@ export async function getAllPosts(): Promise<BlogPost[]> {
 	posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 	return posts;
+}
+
+/**
+ * Load all blog posts from src/content/blog/*.svx.
+ */
+export async function getAllPosts(): Promise<BlogPost[]> {
+	return getPostsFromModules(
+		import.meta.glob<BlogPostModule>('/src/content/blog/*.svx', { eager: true })
+	);
 }
 
 /**

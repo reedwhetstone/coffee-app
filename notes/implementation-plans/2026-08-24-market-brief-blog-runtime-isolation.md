@@ -64,15 +64,16 @@ coupling shared by every failed route.
    posts.
 2. Essays complete normalization without importing raw Market Brief source or
    the email renderer.
-3. When the registry encounters an actual Market Brief, it lazily imports the
-   projection module, resolves only the canonical Market Brief raw source, and
-   runs the existing email-source assertion before admitting that post.
+3. The registry records normalized Market Brief metadata without importing raw
+   source or the email renderer; shared discovery remains independent of the
+   projection dependency graph even after editions exist.
 4. An ordinary article route returns metadata without loading projection code.
-5. An actual Market Brief article lazily loads the same projection owner, reads
-   the canonical source, derives the unchanged email projection, and emits a
-   deployed manifest only under the existing exact production-commit gate.
-6. Missing source or invalid projection still fails closed for the affected
-   Market Brief. It cannot take the zero-edition or essay-only registry down at
+5. An actual Market Brief article lazily loads the projection owner, reads the
+   canonical source, validates and derives the unchanged email projection, and
+   emits a deployed manifest only under the existing exact production-commit
+   gate.
+6. Missing source or invalid projection fails closed for the affected Market
+   Brief reader. It cannot take the zero-edition or essay-only registry down at
    module initialization.
 
 ## Sibling and caller inventory
@@ -165,9 +166,15 @@ proof.
 
 ## Implementation evidence
 
-- The shared blog registry now imports the projection owner only after it has
-  normalized an actual `format: market-brief` post. Raw-source discovery is
-  restricted to `market-brief-*.svx` inside that projection owner.
+- The shared blog registry only normalizes and enumerates post metadata. It does
+  not import the projection owner or raw Market Brief source, so discovery
+  remains renderer-free even when an edition exists.
+- The Market Brief reader remains the projection boundary: it lazily imports the
+  owner, restricts raw-source discovery to `market-brief-*.svx`, and lets the
+  existing projection validation fail closed for a missing or unsafe edition.
+- A registry fixture containing a Market Brief proves shared enumeration does
+  not initialize the projection renderer; reader and projection tests retain
+  fail-closed source validation for the affected edition.
 - The article reader uses the same lazy boundary. Type-only manifest metadata is
   erased from the built server, so ordinary essay requests do not initialize the
   projection module.
