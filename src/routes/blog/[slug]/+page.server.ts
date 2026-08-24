@@ -1,11 +1,8 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { buildPublicMeta, resolveBlogPostSocialImage } from '$lib/seo/meta';
-import { getAllPosts, getRawBlogSource } from '$lib/server/blog';
-import {
-	buildMarketBriefDeploymentManifest,
-	buildMarketBriefEmailProjection
-} from '$lib/server/marketBriefEmail';
+import { getAllPosts } from '$lib/server/blog';
+import type { MarketBriefDeploymentManifest } from '$lib/server/marketBriefEmail';
 import { createSchemaService } from '$lib/services/schemaService';
 import { getBlogPostPath } from '$lib/types/blog.types';
 
@@ -22,15 +19,20 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const postUrl = `${baseUrl}${postPath}`;
 	const author = post.author || 'Reed Whetstone';
 	const isMarketBrief = post.format === 'market-brief';
-	const marketBriefDeployment = (() => {
-		if (!isMarketBrief) return undefined;
-		const source = getRawBlogSource(post.slug);
+	let marketBriefDeployment: MarketBriefDeploymentManifest | undefined;
+	if (isMarketBrief) {
+		const {
+			buildMarketBriefDeploymentManifest,
+			buildMarketBriefEmailProjection,
+			getRawMarketBriefSource
+		} = await import('$lib/server/marketBriefEmail');
+		const source = getRawMarketBriefSource(post.slug);
 		if (source === undefined) {
 			throw error(500, `Market Brief source not found: ${post.slug}`);
 		}
 		const projection = buildMarketBriefEmailProjection(post, source);
-		return buildMarketBriefDeploymentManifest(projection, process.env);
-	})();
+		marketBriefDeployment = buildMarketBriefDeploymentManifest(projection, process.env);
+	}
 	const socialImage = resolveBlogPostSocialImage({
 		baseUrl,
 		slug: post.slug,

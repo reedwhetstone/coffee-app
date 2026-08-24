@@ -9,16 +9,10 @@ import {
 	type BlogPostFrontmatter,
 	type BlogPostModule
 } from '$lib/types/blog.types';
-import { assertMarketBriefEmailSource } from '$lib/server/marketBriefEmail';
 
 const MARKET_BRIEF_SLUG_PREFIX = 'market-brief-';
 const MARKET_BRIEF_PILLAR = 'market-intelligence';
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const rawBlogSources = import.meta.glob<string>('/src/content/blog/*.svx', {
-	eager: true,
-	query: '?raw',
-	import: 'default'
-});
 
 function isValidIsoDate(value: string): boolean {
 	if (!ISO_DATE_PATTERN.test(value)) return false;
@@ -88,10 +82,6 @@ export function assertUniqueMarketBriefEditions(posts: BlogPost[]): void {
 	}
 }
 
-export function getRawBlogSource(slug: string): string | undefined {
-	return rawBlogSources[`/src/content/blog/${slug}.svx`];
-}
-
 /**
  * Load all blog posts from src/content/blog/*.svx
  * Returns sorted by date (newest first), excludes drafts in production
@@ -105,7 +95,10 @@ export async function getAllPosts(): Promise<BlogPost[]> {
 		const slug = path.split('/').pop()?.replace('.svx', '') ?? '';
 		const post = normalizeBlogPost(slug, module.metadata);
 		if (post.format === 'market-brief') {
-			const source = getRawBlogSource(slug);
+			const { assertMarketBriefEmailSource, getRawMarketBriefSource } = await import(
+				'$lib/server/marketBriefEmail'
+			);
+			const source = getRawMarketBriefSource(slug);
 			if (source === undefined) {
 				throw new Error(`Market Brief ${slug} is missing its canonical source`);
 			}

@@ -1,23 +1,31 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BlogPost } from '$lib/types/blog.types';
 
-const { getAllPostsMock, getRawBlogSourceMock, marketBrief, marketBriefSource } = vi.hoisted(
-	() => ({
-		getAllPostsMock: vi.fn(),
-		getRawBlogSourceMock: vi.fn(),
-		marketBrief: {
-			slug: 'market-brief-001',
-			title: 'Market Brief One',
-			date: '2026-08-17',
-			updated: '2026-08-18',
-			description: 'The first Market Brief fixture.',
-			tags: ['coffee', 'data', 'supply-chain'],
-			pillar: 'market-intelligence',
-			draft: false,
-			format: 'market-brief',
-			edition: 1
-		} as BlogPost,
-		marketBriefSource: `---
+const {
+	buildMarketBriefDeploymentManifestMock,
+	buildMarketBriefEmailProjectionMock,
+	getAllPostsMock,
+	getRawMarketBriefSourceMock,
+	marketBrief,
+	marketBriefSource
+} = vi.hoisted(() => ({
+	buildMarketBriefDeploymentManifestMock: vi.fn(),
+	buildMarketBriefEmailProjectionMock: vi.fn(),
+	getAllPostsMock: vi.fn(),
+	getRawMarketBriefSourceMock: vi.fn(),
+	marketBrief: {
+		slug: 'market-brief-001',
+		title: 'Market Brief One',
+		date: '2026-08-17',
+		updated: '2026-08-18',
+		description: 'The first Market Brief fixture.',
+		tags: ['coffee', 'data', 'supply-chain'],
+		pillar: 'market-intelligence',
+		draft: false,
+		format: 'market-brief',
+		edition: 1
+	} as BlogPost,
+	marketBriefSource: `---
 title: "Market Brief One"
 date: "2026-08-17"
 description: "The first Market Brief fixture."
@@ -32,12 +40,16 @@ edition: 1
 
 The first fixture has a [canonical reader](/blog/market-brief-001).
 `
-	})
-);
+}));
 
 vi.mock('$lib/server/blog', () => ({
-	getAllPosts: getAllPostsMock,
-	getRawBlogSource: getRawBlogSourceMock
+	getAllPosts: getAllPostsMock
+}));
+
+vi.mock('$lib/server/marketBriefEmail', () => ({
+	buildMarketBriefDeploymentManifest: buildMarketBriefDeploymentManifestMock,
+	buildMarketBriefEmailProjection: buildMarketBriefEmailProjectionMock,
+	getRawMarketBriefSource: getRawMarketBriefSourceMock
 }));
 
 import { load } from './+page.server';
@@ -52,8 +64,31 @@ function loadPost(slug: string) {
 describe('/blog/[slug] Market Brief metadata', () => {
 	beforeEach(() => {
 		getAllPostsMock.mockResolvedValue([marketBrief]);
-		getRawBlogSourceMock.mockImplementation((slug: string) =>
+		getRawMarketBriefSourceMock.mockImplementation((slug: string) =>
 			slug === marketBrief.slug ? marketBriefSource : undefined
+		);
+		buildMarketBriefEmailProjectionMock.mockReturnValue({
+			edition: 1,
+			slug: marketBrief.slug,
+			canonicalUrl: 'https://www.purveyors.io/blog/market-brief-001',
+			rendererVersion: 'market-brief-email-v1',
+			sha256: 'b'.repeat(64)
+		});
+		buildMarketBriefDeploymentManifestMock.mockImplementation(
+			(_projection: unknown, environment: Record<string, string | undefined>) =>
+				environment.VERCEL_ENV === 'production' &&
+				/^[0-9a-f]{40}$/.test(environment.VERCEL_GIT_COMMIT_SHA ?? '')
+					? {
+							schemaVersion: 1,
+							publication: 'market-brief',
+							edition: 1,
+							slug: marketBrief.slug,
+							canonicalUrl: 'https://www.purveyors.io/blog/market-brief-001',
+							productionCommit: environment.VERCEL_GIT_COMMIT_SHA,
+							rendererVersion: 'market-brief-email-v1',
+							projectionSha256: 'b'.repeat(64)
+						}
+					: undefined
 		);
 	});
 
@@ -78,6 +113,7 @@ describe('/blog/[slug] Market Brief metadata', () => {
 		expect(JSON.stringify(result.meta.schemaData)).toContain('Purveyors Market Brief');
 		expect(JSON.stringify(result.meta.schemaData)).not.toContain('market_read');
 		expect(result.marketBriefDeployment).toBeUndefined();
+		expect(getRawMarketBriefSourceMock).toHaveBeenCalledWith('market-brief-001');
 	});
 
 	it('advertises the exact projection only from a Vercel production deployment', async () => {
@@ -94,7 +130,7 @@ describe('/blog/[slug] Market Brief metadata', () => {
 			canonicalUrl: 'https://www.purveyors.io/blog/market-brief-001',
 			productionCommit: 'a'.repeat(40),
 			rendererVersion: 'market-brief-email-v1',
-			projectionSha256: expect.stringMatching(/^[0-9a-f]{64}$/)
+			projectionSha256: 'b'.repeat(64)
 		});
 	});
 
@@ -114,11 +150,13 @@ describe('/blog/[slug] Market Brief metadata', () => {
 		if (!result) throw new Error('Expected essay reader data');
 
 		expect(result.marketBriefDeployment).toBeUndefined();
-		expect(getRawBlogSourceMock).not.toHaveBeenCalled();
+		expect(getRawMarketBriefSourceMock).not.toHaveBeenCalled();
+		expect(buildMarketBriefEmailProjectionMock).not.toHaveBeenCalled();
+		expect(buildMarketBriefDeploymentManifestMock).not.toHaveBeenCalled();
 	});
 
 	it('fails closed when a Market Brief loses its canonical source', async () => {
-		getRawBlogSourceMock.mockReturnValueOnce(undefined);
+		getRawMarketBriefSourceMock.mockReturnValueOnce(undefined);
 
 		await expect(loadPost('market-brief-001')).rejects.toMatchObject({
 			status: 500,
