@@ -358,8 +358,8 @@
 							requires a complete model-plus-tool total. Brave search and Parchment tool calls did
 							not have pinned marginal prices, so tool-using trials cannot support a complete
 							end-to-end cost. Raw used no tools and is therefore the only fully priced treatment.
-							Exact model-token usage and latency remain comparable in Figure 3; future runs will
-							capture tool-inclusive cost directly.
+							Reported input/output token usage, excluding unavailable reasoning tokens, and latency
+							remain comparable in Figure 3; future runs will capture tool-inclusive cost directly.
 						</p>
 						<h3 class="mt-8 text-lg font-semibold text-ink">Interpretation limits</h3>
 						<p class="mt-3 leading-7 text-muted">
@@ -392,12 +392,13 @@
 						<a
 							href={COFFEEBENCH_RESULT_PATH}
 							class="block rounded-2xl bg-ink p-5 text-on-dark transition hover:-translate-y-0.5"
+							download
 						>
 							<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Open data</p>
 							<p class="mt-2 font-serif text-xl">Download the aggregate result JSON</p>
 							<p class="mt-2 text-sm leading-6 text-on-dark/70">
 								Includes every overall and cohort matchup, judge-family split, rubric aggregate,
-								token metric, latency, and content digest.
+								reported input/output token metric, latency, and content digest.
 							</p>
 						</a>
 					</aside>
@@ -416,7 +417,9 @@
 									<th class="px-3 py-3 font-medium" scope="col">Must-miss</th>
 									<th class="px-3 py-3 font-medium" scope="col">Critical</th>
 									<th class="px-3 py-3 font-medium" scope="col">Unacceptable</th>
-									<th class="px-3 py-3 font-medium" scope="col">Tokens / task</th>
+									<th class="px-3 py-3 font-medium" scope="col">
+										Reported input/output tokens / task
+									</th>
 									<th class="px-3 py-3 font-medium" scope="col">Median latency</th>
 									<th class="px-3 py-3 font-medium" scope="col">Complete cost / task</th>
 								</tr>

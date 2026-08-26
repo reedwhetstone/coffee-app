@@ -229,11 +229,12 @@
 			<figcaption>
 				<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Figure 3</p>
 				<h3 class="mt-2 font-serif text-2xl font-medium text-ink">
-					Raw used less time and fewer tokens, not better answers.
+					Raw used less time and fewer reported input/output tokens, not better answers.
 				</h3>
 				<p class="mt-2 text-sm leading-6 text-muted">
-					Exact model tokens, successful-task median latency, and jury-marked unacceptable answers.
-					Bar lengths are scaled within each metric.
+					Reported input/output tokens only; reasoning-token usage was unavailable for every
+					treatment. Successful-task median latency and jury-marked unacceptable answers are also
+					shown. Bar lengths are scaled within each metric.
 				</p>
 			</figcaption>
 			<div class="mt-6 space-y-6">
@@ -245,7 +246,7 @@
 						<p class="text-sm font-medium text-ink">{shortSubjectName(result.subject_id)}</p>
 						<div class="mt-2 grid gap-2 text-xs">
 							<div class="grid grid-cols-[5.5rem_minmax(0,1fr)_4rem] items-center gap-2">
-								<span class="text-muted">Tokens / task</span>
+								<span class="text-muted">Reported input/output tokens / task</span>
 								<div class="h-2.5 overflow-hidden rounded-full bg-line">
 									<div
 										class="h-full rounded-full"

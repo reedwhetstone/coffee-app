@@ -47,8 +47,13 @@ describe('CoffeeBench V1 report', () => {
 		).toBeVisible();
 		expect(
 			screen.getByRole('heading', {
-				name: 'Raw used less time and fewer tokens, not better answers.'
+				name: 'Raw used less time and fewer reported input/output tokens, not better answers.'
 			})
+		).toBeVisible();
+		expect(
+			screen.getByText(
+				'Reported input/output tokens only; reasoning-token usage was unavailable for every treatment. Successful-task median latency and jury-marked unacceptable answers are also shown. Bar lengths are scaled within each metric.'
+			)
 		).toBeVisible();
 		expect(
 			screen.getByRole('heading', { name: 'One model, four systems around it.' })
@@ -108,6 +113,10 @@ describe('CoffeeBench V1 report', () => {
 		expect(screen.getByText('Result identity and provenance')).toBeVisible();
 		const link = screen.getByRole('link', { name: /Download the aggregate result JSON/i });
 		expect(link).toHaveAttribute('href', COFFEEBENCH_RESULT_PATH);
+		expect(link).toHaveAttribute('download', '');
+		expect(
+			screen.getByRole('columnheader', { name: 'Reported input/output tokens / task' })
+		).toBeInTheDocument();
 	});
 
 	it('states the research program enabled by V1', () => {
