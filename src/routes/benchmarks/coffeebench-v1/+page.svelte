@@ -151,7 +151,7 @@
 			aria-label="CoffeeBench report sections"
 		>
 			<div class="mx-auto flex max-w-7xl gap-1 px-4 py-2 sm:px-6 lg:px-8">
-				{#each [['#overview', 'Thesis audit'], ['#harnesses', 'Treatments'], ['#findings', 'Findings'], ['#pairwise', 'Pairwise data'], ['#decisions', 'Product decisions'], ['#tracks', 'All metrics'], ['#cohorts', 'Cohorts'], ['#limitations', 'Missing data'], ['#methodology', 'Method'], ['#provenance', 'Data']] as [href, label]}
+				{#each [['#overview', 'Thesis audit'], ['#harnesses', 'Treatments'], ['#findings', 'Findings'], ['#pairwise', 'Pairwise data'], ['#decisions', 'Product decisions'], ['#tracks', 'All metrics'], ['#cohorts', 'Cohorts'], ['#methodology', 'Method'], ['#limitations', 'Missing data'], ['#provenance', 'Data']] as [href, label]}
 					<a
 						{href}
 						class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium text-muted hover:bg-surface-panel hover:text-ink"
@@ -230,79 +230,178 @@
 				</dl>
 			</section>
 
+			<section id="harnesses" class="scroll-mt-36" aria-labelledby="harnesses-heading">
+				<p class="text-sm font-semibold text-accent">Declared treatments</p>
+				<h2 id="harnesses-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
+					Exactly what changed between the four treatments.
+				</h2>
+				<p class="mt-4 max-w-5xl leading-7 text-muted">
+					Every treatment used the same DeepSeek V4 Flash 0731 FP8 model through OpenRouter's pinned
+					DeepInfra route, the same case input and supplied evidence, and the same inference
+					settings. “Purveyors Search” does not name a different search engine: Pi and Purveyors
+					used the same pinned Brave search and page-fetch contract. What changed was the system
+					around the model. The fixed settings were temperature 0.4, top-p 1, a 4,096-token output
+					cap, no seed, and no provider fallback.
+				</p>
+
+				<div class="mt-8 overflow-x-auto rounded-2xl border border-line bg-surface-panel">
+					<table class="w-full min-w-[64rem] text-left text-sm">
+						<caption class="sr-only">
+							Agent runtime, system prompt, tool access, and step budget for every CoffeeBench V1
+							treatment
+						</caption>
+						<thead class="border-b border-line bg-surface-canvas text-xs text-muted">
+							<tr>
+								<th class="px-5 py-3 font-medium" scope="col">Treatment</th>
+								<th class="px-5 py-3 font-medium" scope="col">Agent runtime</th>
+								<th class="px-5 py-3 font-medium" scope="col">System prompt</th>
+								<th class="px-5 py-3 font-medium" scope="col">Historical-control tools</th>
+								<th class="px-5 py-3 font-medium" scope="col">Live-web tools</th>
+								<th class="px-5 py-3 font-medium" scope="col">Step budget</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-line">
+							{#each treatmentDetails as treatment (treatment.label)}
+								<tr>
+									<th class="px-5 py-4 font-semibold text-ink" scope="row">
+										{treatment.label}
+									</th>
+									<td class="px-5 py-4 leading-6 text-muted">{treatment.runtime}</td>
+									<td class="px-5 py-4 leading-6 text-muted">{treatment.prompt}</td>
+									<td class="px-5 py-4 leading-6 text-muted">{treatment.historicalTools}</td>
+									<td class="px-5 py-4 leading-6 text-muted">{treatment.liveTools}</td>
+									<td class="px-5 py-4 leading-6 text-muted">{treatment.stepBudget}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+
+				<div class="mt-6 grid gap-4 lg:grid-cols-3">
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+							Pi versus Purveyors Search
+						</p>
+						<h3 class="mt-2 text-lg font-semibold text-ink">Runtime and prompt both change.</h3>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							Pi uses the Pi agent loop and a general research prompt. Purveyors uses an AI SDK
+							agent loop and a green-coffee decision prompt. Search provider, fetch policy, model,
+							and step budget are held constant, so this tests the complete orchestration package,
+							not either the prompt or runtime in isolation.
+						</p>
+					</article>
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+							Purveyors Search versus Parchment
+						</p>
+						<h3 class="mt-2 text-lg font-semibold text-ink">One additional tool changes.</h3>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							The Parchment treatment keeps the Purveyors runtime, prompt, web search, model, and
+							step budget, then adds <code>parchment.catalog</code>. This is V1's cleanest
+							incremental ablation: its tool schema enters the model context and catalog calls
+							become possible; every other declared treatment setting remains fixed.
+						</p>
+					</article>
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+							What “Parchment” means here
+						</p>
+						<h3 class="mt-2 text-lg font-semibold text-ink">
+							A frozen catalog, not live API access.
+						</h3>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							The tool queries a digest-verified benchmark snapshot using filters such as origin,
+							process, supplier, price, and stock status. Results retain the snapshot timestamp. It
+							does not replace public-web search and does not call the live production Parchment
+							API.
+						</p>
+					</article>
+				</div>
+
+				<div class="mt-6 rounded-2xl border border-accent/40 bg-accent/10 p-5" role="note">
+					<p class="font-semibold text-ink">Cohort boundary</p>
+					<p class="mt-2 max-w-5xl text-sm leading-6 text-muted">
+						On the 12 historical-control cases, public-web tools were disabled for every treatment;
+						only the Parchment arm retained its pinned catalog tool. On the eight live-web cases, Pi
+						and both Purveyors arms received the same Brave search and fetch tools, while the
+						Parchment arm also retained the catalog tool. Raw never received any tool.
+					</p>
+				</div>
+
+				<div class="mt-8 grid gap-4 md:grid-cols-2">
+					{#each benchmark.subjects as card (card.subject_id)}
+						<article class="rounded-2xl border border-line bg-surface-panel p-6">
+							<div class="flex flex-wrap items-start justify-between gap-3">
+								<h3 class="text-lg font-semibold text-ink">{card.display_name}</h3>
+								<span class="rounded-full bg-surface-canvas px-3 py-1 text-xs text-muted">
+									{titleCase(card.harness_family)}
+								</span>
+							</div>
+							<p class="mt-3 text-sm leading-6 text-muted">
+								Evaluator track: {card.evaluator_track}. Declared capabilities: {card.capabilities.join(
+									', '
+								)}.
+							</p>
+							<p class="mt-3 break-all font-mono text-xs text-muted">Card {card.card_sha256}</p>
+						</article>
+					{/each}
+				</div>
+			</section>
+
 			<section id="findings" class="scroll-mt-36" aria-labelledby="findings-heading">
 				<p class="text-sm font-semibold text-accent">What we found</p>
 				<h2 id="findings-heading" class="mt-2 max-w-4xl font-serif text-3xl font-medium text-ink">
-					One system-level win, one failed hypothesis, and one unresolved contest.
+					The failure modes matter more than the rank order.
 				</h2>
 				<p class="mt-4 max-w-4xl leading-7 text-muted">
-					The result is not “Purveyors wins,” and V1 cannot attribute the full Raw gap to retrieval
-					alone. The defensible conclusion is narrower: complete harnessed systems beat the raw
-					model baseline, especially on live-web work, while Purveyors-specific advantages were not
-					demonstrated.
+					The hypothesis audit above carries the verdicts. The deeper design signal comes from how
+					the systems failed: current-information tasks punished missing evidence, Raw looked
+					efficient by omitting required content, and an always-visible catalog tool attracted work
+					even when it was not authoritative for the question.
 				</p>
-				<div class="mt-8 grid gap-4 lg:grid-cols-2">
+				<div class="mt-8 grid gap-4 lg:grid-cols-3">
 					<article class="rounded-2xl border border-line bg-surface-panel p-6">
 						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-							Finding 1 · system-level result
+							Finding 1 · cohort signal
 						</p>
-						<h3 class="mt-2 text-xl font-semibold text-ink">Harnessed systems beat Raw.</h3>
+						<h3 class="mt-2 text-xl font-semibold text-ink">Current evidence changes the task.</h3>
 						<p class="mt-3 text-sm leading-6 text-muted">
-							Pi Search, Purveyors Search, and Purveyors + Parchment + Search were preferred to Raw
-							in 70.3%, 72.2%, and 74.5% of 300 judgments respectively. Raw’s 0.327 quality interval
-							is separated below every harnessed treatment. Because the treatment changes more than
-							retrieval, this is a system comparison, not isolated retrieval lift.
+							On live-web cases, every search-capable treatment received 88.3–90.8% against Raw. On
+							historical cases, the harnessed treatments still received 58.3–63.6% despite making no
+							search calls. Current evidence matters, but the historical gap shows that
+							orchestration and prompting also contribute.
 						</p>
 					</article>
 					<article class="rounded-2xl border border-line bg-surface-panel p-6">
 						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-							Finding 2 · thesis miss
-						</p>
-						<h3 class="mt-2 text-xl font-semibold text-ink">Parchment lift was not supported.</h3>
-						<p class="mt-3 text-sm leading-6 text-muted">
-							Adding Parchment did not improve pairwise quality. Purveyors Search beat Parchment +
-							Search overall and on historical cases; live web was essentially even. The suite may
-							be poorly targeted to Parchment, but that explains the next experiment, not the V1
-							result.
-						</p>
-					</article>
-					<article class="rounded-2xl border border-line bg-surface-panel p-6">
-						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-							Finding 3 · unresolved
-						</p>
-						<h3 class="mt-2 text-xl font-semibold text-ink">Purveyors did not separate from Pi.</h3>
-						<p class="mt-3 text-sm leading-6 text-muted">
-							Purveyors Search ranks first at 0.582 and took 55.5% directly against Pi Search. But
-							all three harnessed 95% intervals overlap, and the direct advantage is only 53.3% on
-							live web. V1 does not establish a Purveyors orchestration advantage.
-						</p>
-					</article>
-					<article class="rounded-2xl border border-line bg-surface-panel p-6">
-						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-							Finding 4 · failure mode
+							Finding 2 · trace-audited failure mode
 						</p>
 						<h3 class="mt-2 text-xl font-semibold text-ink">
-							Raw is efficient because it says less.
+							Always-on Parchment exposure created irrelevant work.
 						</h3>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							The model called the catalog in 22 of 100 Parchment trials, making 28 calls: 15
+							returned no rows and 13 returned rows. None of the 20 cases asked it to choose a
+							currently available coffee. Across those 22 matched trials, the Parchment arm used 51
+							model calls and 204,401 input tokens versus 35 calls and 125,439 tokens for Purveyors
+							Search.
+						</p>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							Four final answers carried an empty catalog result into unrelated auction or
+							production reasoning. This establishes distraction and evidence-scope errors, not that
+							those errors caused the pairwise quality result.
+						</p>
+					</article>
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+							Finding 3 · failure mode
+						</p>
+						<h3 class="mt-2 text-xl font-semibold text-ink">Raw efficiency is mostly omission.</h3>
 						<p class="mt-3 text-sm leading-6 text-muted">
 							Raw is fastest at 5.8 seconds and uses 73–76% fewer tokens. Its narrow critical-error
 							rate is also lowest at 8%. But it misses must-have facts in 41% of trials and produces
 							an unacceptable response in 41%, both worst in the field. This is omission, not
 							safety.
-						</p>
-					</article>
-					<article class="rounded-2xl border border-line bg-surface-panel p-6 lg:col-span-2">
-						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-							Finding 5 · cohort signal
-						</p>
-						<h3 class="mt-2 text-xl font-semibold text-ink">
-							Live search coincides with a much larger gap.
-						</h3>
-						<p class="mt-3 max-w-5xl text-sm leading-6 text-muted">
-							On live-web cases, every search-capable treatment was preferred to Raw in 88.3–90.8%
-							of judgments. Raw’s strict pass rate fell to 45% and its unacceptable-response rate
-							rose to 55%. This strongly motivates retrieval, but without a same-harness search-off
-							arm it still does not identify retrieval as the sole cause.
 						</p>
 					</article>
 				</div>
@@ -400,12 +499,17 @@
 			</section>
 
 			<section id="decisions" class="scroll-mt-36" aria-labelledby="decisions-heading">
-				<p class="text-sm font-semibold text-accent">What V1 changes</p>
+				<p class="text-sm font-semibold text-accent">What V1 changes next</p>
 				<h2 id="decisions-heading" class="mt-2 max-w-4xl font-serif text-3xl font-medium text-ink">
-					Product decisions this evidence supports.
+					Design implications for Parchment and Cherry.
 				</h2>
+				<p class="mt-4 max-w-4xl leading-7 text-muted">
+					These are bounded next steps, not findings smuggled in as conclusions. The trace audit
+					supports relevance-gated tool exposure; the Cherry recommendations are hypotheses that
+					require their own matched benchmark arms.
+				</p>
 				<div class="mt-8 grid gap-4 md:grid-cols-2">
-					{#each [['Keep Raw out of current-information work', 'Raw is cheaper and faster, but its omission rate makes it a poor default when the answer depends on facts outside the prompt.'], ['Stop claiming a Purveyors or Parchment lift', 'V1 did not establish either advantage. Product choices may use other evidence, but this benchmark cannot be cited as proof.'], ['Run clean ablations next', 'Compare the same Purveyors harness with search off versus on, then Parchment off versus on inside a cohort built around structured catalog decisions.'], ['Measure the missing decision variables', 'Capture harness costs and compare benchmark gains with blind expert acceptance before making a quality-cost or production-impact claim.']] as [title, description]}
+					{#each [['Gate specialized tools by intent', 'Keep general research primitives available, but expose Parchment catalog capabilities only for inventory, supplier, current-price, substitution, or purchase decisions. A zero-row result must never imply that a coffee, auction, or market condition does not exist.'], ['Isolate the Cherry model contribution', 'Compare Cherry with the current model inside the same Purveyors harness, prompt, tools, evidence packet, and output contract. This separates model lift from the orchestration and tool effects that V1 confounded.'], ['Make Cherry output progressively useful', 'Test a compact specialist contract that leads with decision, evidence, uncertainty, and the next needed evidence, while deeper structured fields remain available to the calling harness when relevant. V1 motivates this design; it does not validate it yet.'], ['Run the clean system ablations', 'Compare search off versus on in the same harness, then no Parchment versus always-on versus intent-routed Parchment across both procurement-targeted and deliberately off-domain cases. Capture complete cost and blind human acceptance.']] as [title, description]}
 						<article class="rounded-2xl border border-line bg-surface-panel p-6">
 							<h3 class="font-semibold text-ink">{title}</h3>
 							<p class="mt-2 text-sm leading-6 text-muted">{description}</p>
@@ -610,124 +714,6 @@
 				</div>
 			</section>
 
-			<section id="harnesses" class="scroll-mt-36" aria-labelledby="harnesses-heading">
-				<p class="text-sm font-semibold text-accent">Declared treatments</p>
-				<h2 id="harnesses-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
-					Exactly what changed between the four treatments.
-				</h2>
-				<p class="mt-4 max-w-5xl leading-7 text-muted">
-					Every treatment used the same DeepSeek V4 Flash 0731 FP8 model through OpenRouter's pinned
-					DeepInfra route, the same case input and supplied evidence, and the same inference
-					settings. “Purveyors Search” does not name a different search engine: Pi and Purveyors
-					used the same pinned Brave search and page-fetch contract. What changed was the system
-					around the model. The fixed settings were temperature 0.4, top-p 1, a 4,096-token output
-					cap, no seed, and no provider fallback.
-				</p>
-
-				<div class="mt-8 overflow-x-auto rounded-2xl border border-line bg-surface-panel">
-					<table class="w-full min-w-[64rem] text-left text-sm">
-						<caption class="sr-only">
-							Agent runtime, system prompt, tool access, and step budget for every CoffeeBench V1
-							treatment
-						</caption>
-						<thead class="border-b border-line bg-surface-canvas text-xs text-muted">
-							<tr>
-								<th class="px-5 py-3 font-medium" scope="col">Treatment</th>
-								<th class="px-5 py-3 font-medium" scope="col">Agent runtime</th>
-								<th class="px-5 py-3 font-medium" scope="col">System prompt</th>
-								<th class="px-5 py-3 font-medium" scope="col">Historical-control tools</th>
-								<th class="px-5 py-3 font-medium" scope="col">Live-web tools</th>
-								<th class="px-5 py-3 font-medium" scope="col">Step budget</th>
-							</tr>
-						</thead>
-						<tbody class="divide-y divide-line">
-							{#each treatmentDetails as treatment (treatment.label)}
-								<tr>
-									<th class="px-5 py-4 font-semibold text-ink" scope="row">
-										{treatment.label}
-									</th>
-									<td class="px-5 py-4 leading-6 text-muted">{treatment.runtime}</td>
-									<td class="px-5 py-4 leading-6 text-muted">{treatment.prompt}</td>
-									<td class="px-5 py-4 leading-6 text-muted">{treatment.historicalTools}</td>
-									<td class="px-5 py-4 leading-6 text-muted">{treatment.liveTools}</td>
-									<td class="px-5 py-4 leading-6 text-muted">{treatment.stepBudget}</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-
-				<div class="mt-6 grid gap-4 lg:grid-cols-3">
-					<article class="rounded-2xl border border-line bg-surface-panel p-6">
-						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-							Pi versus Purveyors Search
-						</p>
-						<h3 class="mt-2 text-lg font-semibold text-ink">Runtime and prompt both change.</h3>
-						<p class="mt-3 text-sm leading-6 text-muted">
-							Pi uses the Pi agent loop and a general research prompt. Purveyors uses an AI SDK
-							agent loop and a green-coffee decision prompt. Search provider, fetch policy, model,
-							and step budget are held constant, so this tests the complete orchestration package,
-							not either the prompt or runtime in isolation.
-						</p>
-					</article>
-					<article class="rounded-2xl border border-line bg-surface-panel p-6">
-						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-							Purveyors Search versus Parchment
-						</p>
-						<h3 class="mt-2 text-lg font-semibold text-ink">One additional tool changes.</h3>
-						<p class="mt-3 text-sm leading-6 text-muted">
-							The Parchment treatment keeps the Purveyors runtime, prompt, web search, model, and
-							step budget, then adds <code>parchment.catalog</code>. This is V1's cleanest
-							incremental ablation: its tool schema enters the model context and catalog calls
-							become possible; every other declared treatment setting remains fixed.
-						</p>
-					</article>
-					<article class="rounded-2xl border border-line bg-surface-panel p-6">
-						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-							What “Parchment” means here
-						</p>
-						<h3 class="mt-2 text-lg font-semibold text-ink">
-							A frozen catalog, not live API access.
-						</h3>
-						<p class="mt-3 text-sm leading-6 text-muted">
-							The tool queries a digest-verified benchmark snapshot using filters such as origin,
-							process, supplier, price, and stock status. Results retain the snapshot timestamp. It
-							does not replace public-web search and does not call the live production Parchment
-							API.
-						</p>
-					</article>
-				</div>
-
-				<div class="mt-6 rounded-2xl border border-accent/40 bg-accent/10 p-5" role="note">
-					<p class="font-semibold text-ink">Cohort boundary</p>
-					<p class="mt-2 max-w-5xl text-sm leading-6 text-muted">
-						On the 12 historical-control cases, public-web tools were disabled for every treatment;
-						only the Parchment arm retained its pinned catalog tool. On the eight live-web cases, Pi
-						and both Purveyors arms received the same Brave search and fetch tools, while the
-						Parchment arm also retained the catalog tool. Raw never received any tool.
-					</p>
-				</div>
-
-				<div class="mt-8 grid gap-4 md:grid-cols-2">
-					{#each benchmark.subjects as card (card.subject_id)}
-						<article class="rounded-2xl border border-line bg-surface-panel p-6">
-							<div class="flex flex-wrap items-start justify-between gap-3">
-								<h3 class="text-lg font-semibold text-ink">{card.display_name}</h3>
-								<span class="rounded-full bg-surface-canvas px-3 py-1 text-xs text-muted">
-									{titleCase(card.harness_family)}
-								</span>
-							</div>
-							<p class="mt-3 text-sm leading-6 text-muted">
-								Evaluator track: {card.evaluator_track}. Declared capabilities: {card.capabilities.join(
-									', '
-								)}.
-							</p>
-							<p class="mt-3 break-all font-mono text-xs text-muted">Card {card.card_sha256}</p>
-						</article>
-					{/each}
-				</div>
-			</section>
-
 			<section id="methodology" class="scroll-mt-36" aria-labelledby="methodology-heading">
 				<p class="text-sm font-semibold text-accent">Methodology</p>
 				<h2 id="methodology-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
@@ -752,6 +738,14 @@
 								<dt class="font-semibold text-ink">Operational reliability</dt>
 								<dd class="mt-1 leading-6 text-muted">
 									{benchmark.methodology.operational_reliability_rule}
+								</dd>
+							</div>
+							<div>
+								<dt class="font-semibold text-ink">Post-hoc trace audit</dt>
+								<dd class="mt-1 leading-6 text-muted">
+									The Parchment call, result, model-turn, and token counts were replayed from the
+									retained official trial traces. They describe observed behavior; because tool use
+									was not randomly assigned, they do not identify a causal quality effect.
 								</dd>
 							</div>
 							<div>
@@ -824,6 +818,13 @@
 					>
 						The suite has no isolated Parchment-relevant cohort. Any incremental compliance signal
 						is hypothesis-generating, not a demonstrated Parchment lift.
+					</li>
+					<li
+						class="rounded-2xl border border-line bg-surface-panel p-5 text-sm leading-6 text-muted"
+					>
+						The Parchment trace audit was post hoc. Its exact call and token counts establish wasted
+						work and observed scope errors, but they do not estimate the causal quality effect of
+						tool exposure.
 					</li>
 					<li
 						class="rounded-2xl border border-line bg-surface-panel p-5 text-sm leading-6 text-muted"

@@ -38,9 +38,31 @@ describe('CoffeeBench V1 report', () => {
 			screen.getByRole('heading', { name: 'Parchment adds incremental quality.' })
 		).toBeVisible();
 		expect(
-			screen.getByRole('heading', { name: 'Parchment lift was not supported.' })
+			screen.getByRole('heading', { name: 'The failure modes matter more than the rank order.' })
 		).toBeVisible();
 		expect(screen.getByText(/provides no Parchment lift/i)).toBeVisible();
+		expect(
+			screen.getByRole('heading', {
+				name: 'Always-on Parchment exposure created irrelevant work.'
+			})
+		).toBeVisible();
+		expect(screen.getByText(/22 of 100 Parchment trials/i)).toBeVisible();
+		expect(screen.getByText(/making 28 calls/i)).toBeVisible();
+		expect(
+			screen.getByText(/204,401 input tokens versus 35 calls and 125,439 tokens/i)
+		).toBeVisible();
+		expect(screen.getByText(/Four final answers carried an empty catalog result/i)).toBeVisible();
+		expect(screen.getByText(/post hoc/i)).toBeVisible();
+		expect(
+			screen.getByRole('heading', { name: 'Design implications for Parchment and Cherry.' })
+		).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'Gate specialized tools by intent' })).toBeVisible();
+		expect(
+			screen.getByRole('heading', { name: 'Isolate the Cherry model contribution' })
+		).toBeVisible();
+		expect(
+			screen.getByRole('heading', { name: 'Make Cherry output progressively useful' })
+		).toBeVisible();
 		expect(screen.queryByRole('heading', { name: 'Retrieval beats Raw.' })).not.toBeInTheDocument();
 		expect(screen.getByText(/no same-harness search-off arm/i)).toBeVisible();
 		expect(screen.getAllByText('1,200').length).toBeGreaterThan(0);
