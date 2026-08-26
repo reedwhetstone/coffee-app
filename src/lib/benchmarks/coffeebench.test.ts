@@ -24,6 +24,16 @@ function previewCopy(): Record<string, unknown> {
 	return structuredClone(rawPreview) as Record<string, unknown>;
 }
 
+function firstIndependentSubject(payload: Record<string, unknown>): Record<string, unknown> {
+	const slices = payload.slices as Array<{
+		slice_id: string;
+		track_results: Array<{ subjects: Array<Record<string, unknown>> }>;
+	}>;
+	const overall = slices.find((slice) => slice.slice_id === 'overall');
+	if (!overall) throw new Error('preview is missing the overall slice');
+	return overall.track_results[0].subjects[0];
+}
+
 function firstSubjectResult(payload: Record<string, unknown>): Record<string, unknown> {
 	const slices = payload.slices as Array<{
 		track_results: Array<{ subjects: Array<Record<string, unknown>> }>;
@@ -109,6 +119,90 @@ describe('CoffeeBench public export reader', () => {
 			(limitation) => !limitation.toLowerCase().includes('independent human agreement')
 		);
 		expect(() => parseCoffeeBenchPublicExport(disclosures)).toThrow(/uncalibrated judging/i);
+	});
+
+	it('enforces schema-v4 matched-design coverage, ranks, and Pareto declarations', () => {
+		const ranks = previewCopy();
+		(firstIndependentSubject(ranks).pairwise_quality as Record<string, unknown>).rank = 1;
+		expect(() => parseCoffeeBenchPublicExport(ranks)).toThrow(/pairwise quality rank must match/i);
+
+		const trials = previewCopy();
+		const trialRows = firstIndependentSubject(trials);
+		(trialRows.operational as Record<string, unknown>).trial_count = 99;
+		expect(() => parseCoffeeBenchPublicExport(trials)).toThrow(
+			/same-track trial counts must match before deriving pairwise ballots/i
+		);
+
+		const ballots = previewCopy();
+		(
+			firstIndependentSubject(ballots).pairwise_quality as Record<string, unknown>
+		).possible_ballot_count = 1;
+		expect(() => parseCoffeeBenchPublicExport(ballots)).toThrow(
+			/pairwise coverage counts and rate do not reconcile/i
+		);
+
+		const pareto = previewCopy();
+		(firstIndependentSubject(pareto).pareto as Record<string, unknown>).classification =
+			'dominated';
+		(firstIndependentSubject(pareto).pareto as Record<string, unknown>).dominated_by = [
+			'deepseek-v4-raw'
+		];
+		expect(() => parseCoffeeBenchPublicExport(pareto)).toThrow(
+			/Pareto declaration must exactly match the available same-track metrics/i
+		);
+	});
+
+	it('reconciles schema-v4 operational, rubric, token, cost, and cohort evidence', () => {
+		const rubric = previewCopy();
+		(
+			firstIndependentSubject(rubric).absolute_rubric as Record<string, unknown>
+		).unacceptable_response_rate = 0.011;
+		expect(() => parseCoffeeBenchPublicExport(rubric)).toThrow(
+			/unacceptable_response_rate must represent a whole attempted-trial count/i
+		);
+
+		const tokens = previewCopy();
+		const tokenUsage = (firstIndependentSubject(tokens).operational as Record<string, unknown>)
+			.token_usage as Record<string, Record<string, unknown>>;
+		tokenUsage.total_tokens.total = (tokenUsage.total_tokens.total as number) + 1;
+		expect(() => parseCoffeeBenchPublicExport(tokens)).toThrow(
+			/total tokens must equal input plus output/i
+		);
+
+		const cohorts = previewCopy();
+		const cohortOperational = firstIndependentSubject(cohorts).operational as Record<
+			string,
+			unknown
+		>;
+		cohortOperational.judgeable_response_count =
+			(cohortOperational.judgeable_response_count as number) - 1;
+		cohortOperational.judgeable_response_rate = 0.99;
+		expect(() => parseCoffeeBenchPublicExport(cohorts)).toThrow(
+			/cohort judgeable_response_count must reconcile with the overall operational row/i
+		);
+
+		const cohortRates = previewCopy();
+		(
+			firstIndependentSubject(cohortRates).absolute_rubric as Record<string, unknown>
+		).unacceptable_response_rate = 0.31;
+		expect(() => parseCoffeeBenchPublicExport(cohortRates)).toThrow(
+			/cohort-weighted unacceptable_response_rate must reconcile with the overall rubric/i
+		);
+	});
+
+	it('reconciles schema-v4 jury workload provenance', () => {
+		const payload = previewCopy();
+		(payload.jury as Array<Record<string, unknown>>)[0].call_count = 999;
+		expect(() => parseCoffeeBenchPublicExport(payload)).toThrow(
+			/jury call count must cover the family share/i
+		);
+
+		const providerCalls = previewCopy();
+		const judge = (providerCalls.jury as Array<Record<string, unknown>>)[0];
+		judge.provider_call_count = (judge.call_count as number) + 1;
+		expect(() => parseCoffeeBenchPublicExport(providerCalls)).toThrow(
+			/provider calls cannot exceed judge calls/i
+		);
 	});
 
 	it('rejects unknown schema versions', () => {

@@ -1575,6 +1575,41 @@ const independentPublicExportSchema = z
 			return Number.isFinite(left) && Number.isFinite(right) && Math.abs(left - right) <= tolerance;
 		}
 
+		function rateRepresentsCount(rate: number, count: number): boolean {
+			return approximatelyEqual(rate * count, Math.round(rate * count), 0.000_01);
+		}
+
+		function compareDecimal(left: string, right: string): number {
+			function parts(value: string): [string, string] {
+				const [integer, fraction = ''] = value.split('.');
+				return [integer.replace(/^0+(?=\d)/, ''), fraction.replace(/0+$/, '')];
+			}
+			const [leftInteger, leftFraction] = parts(left);
+			const [rightInteger, rightFraction] = parts(right);
+			if (leftInteger.length !== rightInteger.length) {
+				return leftInteger.length < rightInteger.length ? -1 : 1;
+			}
+			if (leftInteger !== rightInteger) return leftInteger < rightInteger ? -1 : 1;
+			const length = Math.max(leftFraction.length, rightFraction.length);
+			const normalizedLeft = leftFraction.padEnd(length, '0');
+			const normalizedRight = rightFraction.padEnd(length, '0');
+			if (normalizedLeft === normalizedRight) return 0;
+			return normalizedLeft < normalizedRight ? -1 : 1;
+		}
+
+		function addDecimalStrings(values: string[]): string {
+			const scale = Math.max(...values.map((value) => value.split('.')[1]?.length ?? 0));
+			const units = values.reduce((total, value) => {
+				const [integer, fraction = ''] = value.split('.');
+				return total + BigInt(`${integer}${fraction.padEnd(scale, '0')}`);
+			}, 0n);
+			const digits = units.toString().padStart(scale + 1, '0');
+			if (scale === 0) return digits;
+			return `${digits.slice(0, -scale)}.${digits.slice(-scale)}`.replace(/\.?0+$/, (suffix) =>
+				suffix === '.' ? '' : suffix.replace(/0+$/, '')
+			);
+		}
+
 		if (
 			artifact.identities.public_contract_sha256 !==
 			coffeeBenchPublicDigest({
@@ -1648,6 +1683,40 @@ const independentPublicExportSchema = z
 			issue(['jury'], 'schema-v4 preview must contain all three judge families');
 		}
 		if (
+			artifact.methodology.absolute_evaluation_count % artifact.jury.length !== 0 ||
+			artifact.methodology.pairwise_ballot_count % artifact.jury.length !== 0
+		) {
+			issue(
+				['methodology'],
+				'absolute evaluations and pairwise ballots must divide evenly across jury families'
+			);
+		}
+		const expectedJuryCallCount =
+			artifact.methodology.absolute_evaluation_count / artifact.jury.length +
+			artifact.methodology.pairwise_ballot_count / artifact.jury.length;
+		for (const [juryIndex, judge] of artifact.jury.entries()) {
+			if (
+				judge.call_count < expectedJuryCallCount ||
+				judge.call_count >
+					artifact.methodology.absolute_evaluation_count +
+						artifact.methodology.pairwise_ballot_count
+			) {
+				issue(
+					['jury', juryIndex, 'call_count'],
+					'jury call count must cover the family share of absolute evaluations and pairwise ballots'
+				);
+			}
+			if (judge.provider_call_count > judge.call_count) {
+				issue(
+					['jury', juryIndex, 'provider_call_count'],
+					'provider calls cannot exceed judge calls'
+				);
+			}
+			if (judge.call_count > 0 !== (judge.latency_ms.p50 !== null)) {
+				issue(['jury', juryIndex, 'latency_ms'], 'jury latency is required when calls exist');
+			}
+		}
+		if (
 			!artifact.limitations.some((limitation) =>
 				limitation.toLowerCase().includes('independent human agreement was not measured')
 			) ||
@@ -1688,6 +1757,25 @@ const independentPublicExportSchema = z
 				);
 			}
 
+			const trialCounts = track.subjects.map((row) => row.operational.trial_count);
+			const matchedTrialCount = trialCounts[0] ?? 0;
+			if (new Set(trialCounts).size > 1) {
+				issue(
+					['slices', sliceIndex, 'track_results', 0, 'subjects'],
+					'same-track trial counts must match before deriving pairwise ballots'
+				);
+			}
+			const expectedPossibleBallots =
+				matchedTrialCount * (track.subjects.length - 1) * artifact.jury.length;
+			const rankedScores = [
+				...new Set(
+					track.subjects
+						.map((row) => row.pairwise_quality.score)
+						.filter((score): score is number => score !== null)
+				)
+			].sort((left, right) => right - left);
+			const scoreRanks = new Map(rankedScores.map((score, index) => [score, index + 1]));
+
 			for (const [rowIndex, row] of track.subjects.entries()) {
 				const operational = row.operational;
 				const terminalTotal = Object.values(operational.terminal_status_counts).reduce(
@@ -1724,7 +1812,8 @@ const independentPublicExportSchema = z
 					);
 				}
 
-				for (const [transportName, transport] of Object.entries(operational.transport)) {
+				for (const transportName of ['provider', 'search'] as const) {
+					const transport = operational.transport[transportName];
 					const expectedRate = transport.attempt_count
 						? (transport.attempt_count - transport.failure_count) / transport.attempt_count
 						: null;
@@ -1769,9 +1858,168 @@ const independentPublicExportSchema = z
 						'absolute-rubric counts and rates do not reconcile'
 					);
 				}
+				for (const [rateName, rate] of Object.entries({
+					strict_all_requirements_pass_rate: rubric.strict_all_requirements_pass_rate,
+					must_not_miss_failure_rate: rubric.must_not_miss_failure_rate,
+					critical_error_rate: rubric.critical_error_rate,
+					confidence_pass_rate: rubric.confidence_pass_rate,
+					unacceptable_response_rate: rubric.unacceptable_response_rate
+				})) {
+					if (!rateRepresentsCount(rate, operational.trial_count)) {
+						issue(
+							[
+								'slices',
+								sliceIndex,
+								'track_results',
+								0,
+								'subjects',
+								rowIndex,
+								'absolute_rubric',
+								rateName
+							],
+							`${rateName} must represent a whole attempted-trial count`
+						);
+					}
+				}
+
+				const usage = operational.token_usage;
+				if (
+					usage.input_tokens.total !== null &&
+					usage.output_tokens.total !== null &&
+					usage.total_tokens.total !== usage.input_tokens.total + usage.output_tokens.total
+				) {
+					issue(
+						[
+							'slices',
+							sliceIndex,
+							'track_results',
+							0,
+							'subjects',
+							rowIndex,
+							'operational',
+							'token_usage'
+						],
+						'total tokens must equal input plus output tokens'
+					);
+				}
+				if (
+					usage.input_tokens.per_attempted_task !== null &&
+					usage.output_tokens.per_attempted_task !== null &&
+					usage.total_tokens.per_attempted_task !== null &&
+					!approximatelyEqual(
+						usage.total_tokens.per_attempted_task,
+						usage.input_tokens.per_attempted_task + usage.output_tokens.per_attempted_task
+					)
+				) {
+					issue(
+						[
+							'slices',
+							sliceIndex,
+							'track_results',
+							0,
+							'subjects',
+							rowIndex,
+							'operational',
+							'token_usage'
+						],
+						'per-task total tokens must equal input plus output tokens'
+					);
+				}
+				if (
+					usage.cached_input_tokens.total !== null &&
+					(usage.input_tokens.total === null ||
+						usage.cached_input_tokens.total > usage.input_tokens.total)
+				) {
+					issue(
+						[
+							'slices',
+							sliceIndex,
+							'track_results',
+							0,
+							'subjects',
+							rowIndex,
+							'operational',
+							'token_usage',
+							'cached_input_tokens'
+						],
+						'cached input tokens must be a subset of input tokens'
+					);
+				}
+				if (
+					usage.reasoning_tokens.total !== null &&
+					(usage.output_tokens.total === null ||
+						usage.reasoning_tokens.total > usage.output_tokens.total)
+				) {
+					issue(
+						[
+							'slices',
+							sliceIndex,
+							'track_results',
+							0,
+							'subjects',
+							rowIndex,
+							'operational',
+							'token_usage',
+							'reasoning_tokens'
+						],
+						'reasoning tokens must be a subset of output tokens'
+					);
+				}
+				for (const [metricName, metric] of Object.entries(usage)) {
+					if (metricName === 'provenance' || typeof metric === 'string') continue;
+					if (
+						metric.total !== null &&
+						metric.per_attempted_task !== null &&
+						(operational.trial_count === 0 ||
+							!approximatelyEqual(
+								metric.per_attempted_task,
+								metric.total / operational.trial_count
+							))
+					) {
+						issue(
+							[
+								'slices',
+								sliceIndex,
+								'track_results',
+								0,
+								'subjects',
+								rowIndex,
+								'operational',
+								'token_usage'
+							],
+							'token totals and per-task values must reconcile with attempted trials'
+						);
+					}
+				}
+				for (const metric of Object.values(operational.cost)) {
+					if (
+						metric.total !== null &&
+						metric.per_attempted_task !== null &&
+						(operational.trial_count === 0 ||
+							!approximatelyEqual(
+								Number(metric.per_attempted_task),
+								Number(metric.total) / operational.trial_count
+							))
+					) {
+						issue(
+							[
+								'slices',
+								sliceIndex,
+								'track_results',
+								0,
+								'subjects',
+								rowIndex,
+								'operational',
+								'cost'
+							],
+							'cost totals and per-task values must reconcile with attempted trials'
+						);
+					}
+				}
 
 				const quality = row.pairwise_quality;
 				if (
+					quality.possible_ballot_count !== expectedPossibleBallots ||
 					quality.model_backed_ballot_count > quality.possible_ballot_count ||
 					!approximatelyEqual(
 						quality.ballot_coverage_rate,
@@ -1783,6 +2031,63 @@ const independentPublicExportSchema = z
 					issue(
 						['slices', sliceIndex, 'track_results', 0, 'subjects', rowIndex, 'pairwise_quality'],
 						'pairwise coverage counts and rate do not reconcile'
+					);
+				}
+				if (quality.score !== null && quality.rank !== scoreRanks.get(quality.score)) {
+					issue(
+						[
+							'slices',
+							sliceIndex,
+							'track_results',
+							0,
+							'subjects',
+							rowIndex,
+							'pairwise_quality',
+							'rank'
+						],
+						'pairwise quality rank must match the declared scores'
+					);
+				}
+			}
+
+			const availablePareto = new Map<string, { quality: number; cost: string; latency: number }>();
+			for (const row of track.subjects) {
+				const cost = row.operational.cost.normalized_cost_usd.per_attempted_task;
+				const latency = row.operational.latency.end_to_end_ms.p50;
+				const quality = row.pairwise_quality.score;
+				if (quality !== null && cost !== null && latency !== null) {
+					availablePareto.set(row.subject_id, { quality, cost, latency });
+				}
+			}
+			for (const [rowIndex, row] of track.subjects.entries()) {
+				const point = availablePareto.get(row.subject_id);
+				const expectedDominators = point
+					? [...availablePareto.entries()]
+							.filter(
+								([otherId, other]) =>
+									otherId !== row.subject_id &&
+									other.quality >= point.quality &&
+									compareDecimal(other.cost, point.cost) <= 0 &&
+									other.latency <= point.latency &&
+									(other.quality > point.quality ||
+										compareDecimal(other.cost, point.cost) < 0 ||
+										other.latency < point.latency)
+							)
+							.map(([subjectId]) => subjectId)
+							.sort()
+					: [];
+				const expectedClassification = !point
+					? 'unavailable'
+					: expectedDominators.length
+						? 'dominated'
+						: 'frontier';
+				if (
+					row.pareto.classification !== expectedClassification ||
+					JSON.stringify(row.pareto.dominated_by) !== JSON.stringify(expectedDominators)
+				) {
+					issue(
+						['slices', sliceIndex, 'track_results', 0, 'subjects', rowIndex, 'pareto'],
+						'Pareto declaration must exactly match the available same-track metrics'
 					);
 				}
 			}
@@ -1803,15 +2108,24 @@ const independentPublicExportSchema = z
 			) {
 				issue(['methodology'], 'overall schema-v4 coverage does not reconcile with methodology');
 			}
+			if (artifact.methodology.absolute_evaluation_count !== trialCount * artifact.jury.length) {
+				issue(
+					['methodology', 'absolute_evaluation_count'],
+					'absolute evaluation count must equal overall trials across every jury family'
+				);
+			}
 
 			for (const [rowIndex, row] of rows.entries()) {
 				const cohorts = artifact.slices
 					.filter((slice) => slice.slice_id !== 'overall')
 					.flatMap((slice) => slice.track_results[0].subjects)
 					.filter((candidate) => candidate.subject_id === row.subject_id);
+				const cohortTrialCount = cohorts.reduce(
+					(total, cohort) => total + cohort.operational.trial_count,
+					0
+				);
 				if (
-					cohorts.reduce((total, cohort) => total + cohort.operational.trial_count, 0) !==
-						row.operational.trial_count ||
+					cohortTrialCount !== row.operational.trial_count ||
 					cohorts.reduce(
 						(total, cohort) => total + cohort.pairwise_quality.model_backed_ballot_count,
 						0
@@ -1825,6 +2139,199 @@ const independentPublicExportSchema = z
 						['slices', 0, 'track_results', 0, 'subjects', rowIndex],
 						'cohort coverage does not reconcile with the overall independent-track row'
 					);
+				}
+
+				const operational = row.operational;
+				for (const statusName of ['success', 'invalid_response', 'timeout', 'error'] as const) {
+					if (
+						cohorts.reduce(
+							(total, cohort) => total + cohort.operational.terminal_status_counts[statusName],
+							0
+						) !== operational.terminal_status_counts[statusName]
+					) {
+						issue(
+							['slices', 0, 'track_results', 0, 'subjects', rowIndex, 'operational'],
+							`cohort ${statusName} counts must reconcile with the overall operational row`
+						);
+					}
+				}
+				for (const countName of [
+					'terminal_failure_count',
+					'judgeable_response_count',
+					'response_contract_valid_count'
+				] as const) {
+					if (
+						cohorts.reduce((total, cohort) => total + cohort.operational[countName], 0) !==
+						operational[countName]
+					) {
+						issue(
+							['slices', 0, 'track_results', 0, 'subjects', rowIndex, 'operational'],
+							`cohort ${countName} must reconcile with the overall operational row`
+						);
+					}
+				}
+				for (const transportName of ['provider', 'search'] as const) {
+					const transport = operational.transport[transportName];
+					for (const countName of [
+						'logical_invocation_count',
+						'attempt_count',
+						'retry_count',
+						'failure_count'
+					] as const) {
+						if (
+							cohorts.reduce(
+								(total, cohort) => total + cohort.operational.transport[transportName][countName],
+								0
+							) !== transport[countName]
+						) {
+							issue(
+								[
+									'slices',
+									0,
+									'track_results',
+									0,
+									'subjects',
+									rowIndex,
+									'operational',
+									'transport',
+									transportName
+								],
+								`cohort ${transportName} ${countName} must reconcile with the overall operational row`
+							);
+						}
+					}
+				}
+
+				for (const metricName of [
+					'input_tokens',
+					'cached_input_tokens',
+					'reasoning_tokens',
+					'output_tokens',
+					'total_tokens'
+				] as const) {
+					const overallTotal = operational.token_usage[metricName].total;
+					const cohortTotals = cohorts.map(
+						(cohort) => cohort.operational.token_usage[metricName].total
+					);
+					const allAvailable =
+						cohortTotals.length > 0 && cohortTotals.every((value) => value !== null);
+					if (
+						(overallTotal === null && cohortTotals.some((value) => value !== null)) ||
+						(overallTotal !== null &&
+							(!allAvailable ||
+								cohortTotals.reduce((total, value) => total + (value ?? 0), 0) !== overallTotal))
+					) {
+						issue(
+							['slices', 0, 'track_results', 0, 'subjects', rowIndex, 'operational', 'token_usage'],
+							`cohort ${metricName} totals must reconcile with the overall subject metrics`
+						);
+					}
+				}
+				for (const metricName of ['provider_billed_usd', 'normalized_cost_usd'] as const) {
+					const overallTotal = operational.cost[metricName].total;
+					const cohortTotals = cohorts.map((cohort) => cohort.operational.cost[metricName].total);
+					const allAvailable =
+						cohortTotals.length > 0 && cohortTotals.every((value) => value !== null);
+					if (
+						(overallTotal === null && cohortTotals.some((value) => value !== null)) ||
+						(overallTotal !== null &&
+							(!allAvailable ||
+								compareDecimal(addDecimalStrings(cohortTotals as string[]), overallTotal) !== 0))
+					) {
+						issue(
+							['slices', 0, 'track_results', 0, 'subjects', rowIndex, 'operational', 'cost'],
+							`cohort ${metricName} totals must reconcile with the overall subject metrics`
+						);
+					}
+				}
+
+				for (const rateName of [
+					'terminal_failure_rate',
+					'judgeable_response_rate',
+					'response_contract_valid_rate'
+				] as const) {
+					const weightedRate =
+						cohortTrialCount > 0
+							? cohorts.reduce(
+									(total, cohort) =>
+										total + cohort.operational[rateName] * cohort.operational.trial_count,
+									0
+								) / cohortTrialCount
+							: 0;
+					if (!approximatelyEqual(operational[rateName], weightedRate)) {
+						issue(
+							['slices', 0, 'track_results', 0, 'subjects', rowIndex, 'operational', rateName],
+							`cohort-weighted ${rateName} must reconcile with the overall operational row`
+						);
+					}
+				}
+
+				const rubric = row.absolute_rubric;
+				const cohortCriteria = cohorts.map((cohort) => cohort.absolute_rubric.criterion_outcomes);
+				for (const countName of ['pass', 'fail', 'not_applicable', 'total'] as const) {
+					if (
+						cohortCriteria.reduce((total, criterion) => total + criterion[countName], 0) !==
+						rubric.criterion_outcomes[countName]
+					) {
+						issue(
+							['slices', 0, 'track_results', 0, 'subjects', rowIndex, 'absolute_rubric'],
+							`cohort criterion ${countName} must reconcile with the overall rubric`
+						);
+					}
+				}
+				const criterionTotal = rubric.criterion_outcomes.total;
+				const cohortCriterionTotal = cohortCriteria.reduce(
+					(total, criterion) => total + criterion.total,
+					0
+				);
+				if (
+					!approximatelyEqual(
+						rubric.criterion_outcomes.pass_rate,
+						criterionTotal ? rubric.criterion_outcomes.pass / criterionTotal : 0
+					) ||
+					!approximatelyEqual(
+						rubric.criterion_outcomes.pass_rate,
+						cohortCriterionTotal
+							? cohortCriteria.reduce((total, criterion) => total + criterion.pass, 0) /
+									cohortCriterionTotal
+							: 0
+					)
+				) {
+					issue(
+						[
+							'slices',
+							0,
+							'track_results',
+							0,
+							'subjects',
+							rowIndex,
+							'absolute_rubric',
+							'criterion_outcomes'
+						],
+						'cohort criterion pass rate must reconcile with the overall rubric'
+					);
+				}
+				for (const rateName of [
+					'strict_all_requirements_pass_rate',
+					'must_not_miss_failure_rate',
+					'critical_error_rate',
+					'confidence_pass_rate',
+					'unacceptable_response_rate'
+				] as const) {
+					const weightedRate =
+						cohortTrialCount > 0
+							? cohorts.reduce(
+									(total, cohort) =>
+										total + cohort.absolute_rubric[rateName] * cohort.absolute_rubric.trial_count,
+									0
+								) / cohortTrialCount
+							: 0;
+					if (!approximatelyEqual(rubric[rateName], weightedRate)) {
+						issue(
+							['slices', 0, 'track_results', 0, 'subjects', rowIndex, 'absolute_rubric', rateName],
+							`cohort-weighted ${rateName} must reconcile with the overall rubric`
+						);
+					}
 				}
 			}
 		}
