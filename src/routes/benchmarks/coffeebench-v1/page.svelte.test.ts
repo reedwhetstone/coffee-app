@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/svelte';
+import { fireEvent, render, screen } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import rawPublished from '../../../../static/benchmarks/coffeebench-public-export-v5.json';
@@ -8,140 +8,131 @@ import CoffeeBenchPage from './+page.svelte';
 const benchmark = parseCoffeeBenchPublicExport(rawPublished);
 
 describe('CoffeeBench V1 report', () => {
-	it('leads with the thesis, legitimate conclusion, and publication boundary', () => {
+	it('leads with a reader-facing abstract and the three core findings', () => {
 		render(CoffeeBenchPage, { data: { benchmark } as never });
 
 		expect(
-			screen.getByRole('heading', {
-				name: 'Harnessed systems beat Raw. Purveyors-specific lift did not emerge.'
-			})
+			screen.getByRole('heading', { name: 'The harness mattered more than the specialist tools.' })
 		).toBeVisible();
-		expect(screen.getByText('Published benchmark · complete agent jury')).toBeVisible();
-		expect(
-			screen.getByText('Published V1 evidence, with an explicit calibration gap.')
-		).toBeVisible();
+		expect(screen.getByText('CoffeeBench V1 · Research report')).toBeVisible();
 		expect(screen.getByRole('navigation', { name: 'CoffeeBench report sections' })).toBeVisible();
-		expect(screen.getByRole('link', { name: 'Thesis audit' })).toHaveAttribute('href', '#overview');
-		expect(screen.getByRole('link', { name: 'Pairwise data' })).toHaveAttribute(
-			'href',
-			'#pairwise'
-		);
-		expect(screen.getByRole('link', { name: 'Treatments' })).toHaveAttribute('href', '#harnesses');
+		expect(screen.getByRole('link', { name: 'Abstract' })).toHaveAttribute('href', '#abstract');
+		expect(screen.getByRole('link', { name: 'Results' })).toHaveAttribute('href', '#results');
+		expect(screen.getByRole('link', { name: 'Judge votes' })).toHaveAttribute('href', '#jury');
 		expect(
-			screen.getByRole('heading', {
-				name: 'What V1 tested, including where our thesis failed.'
-			})
-		).toBeVisible();
-		expect(screen.getByRole('heading', { name: 'A harnessed system beats Raw.' })).toBeVisible();
-		expect(screen.getByRole('heading', { name: 'Purveyors beats generic search.' })).toBeVisible();
-		expect(
-			screen.getByRole('heading', { name: 'Parchment adds incremental quality.' })
+			screen.getByText(/CoffeeBench V1 asked how much the system around a fixed model changes/i)
 		).toBeVisible();
 		expect(
-			screen.getByRole('heading', { name: 'The failure modes matter more than the rank order.' })
-		).toBeVisible();
-		expect(screen.getByText(/provides no Parchment lift/i)).toBeVisible();
-		expect(
-			screen.getByRole('heading', {
-				name: 'Always-on Parchment exposure created irrelevant work.'
-			})
-		).toBeVisible();
-		expect(screen.getByText(/22 of 100 Parchment trials/i)).toBeVisible();
-		expect(screen.getByText(/making 28 calls/i)).toBeVisible();
-		expect(
-			screen.getByText(/204,401 input tokens versus 35 calls and 125,439 tokens/i)
-		).toBeVisible();
-		expect(screen.getByText(/Four final answers carried an empty catalog result/i)).toBeVisible();
-		expect(screen.getByText(/post hoc/i)).toBeVisible();
-		expect(
-			screen.getByRole('heading', { name: 'Design implications for Parchment and Cherry.' })
-		).toBeVisible();
-		expect(screen.getByRole('heading', { name: 'Gate specialized tools by intent' })).toBeVisible();
-		expect(
-			screen.getByRole('heading', { name: 'Isolate the Cherry model contribution' })
+			screen.getByRole('heading', { name: 'Three findings changed what we want to test next.' })
 		).toBeVisible();
 		expect(
-			screen.getByRole('heading', { name: 'Make Cherry output progressively useful' })
+			screen.getByRole('heading', { name: 'A capable harness beat a raw request.' })
 		).toBeVisible();
-		expect(screen.queryByRole('heading', { name: 'Retrieval beats Raw.' })).not.toBeInTheDocument();
-		expect(screen.getByText(/no same-harness search-off arm/i)).toBeVisible();
-		expect(screen.getAllByText('1,200').length).toBeGreaterThan(0);
+		expect(
+			screen.getByRole('heading', { name: 'Purveyors led directionally, not decisively.' })
+		).toBeVisible();
+		expect(
+			screen.getByRole('heading', { name: 'An irrelevant tool became a distraction.' })
+		).toBeVisible();
+		expect(screen.queryByText('Missing or unresolved evidence')).not.toBeInTheDocument();
 		expect(screen.getAllByText('1,800').length).toBeGreaterThan(0);
 	});
 
-	it('publishes all matchup rows, raw counts, and jury-family splits', () => {
+	it('turns the result and treatment distinctions into visible figures', () => {
 		render(CoffeeBenchPage, { data: { benchmark } as never });
 
+		expect(screen.getByRole('heading', { name: 'No harness separated cleanly.' })).toBeVisible();
 		expect(
-			screen.getByRole('heading', { name: 'The complete pairwise evidence, not just the ranking.' })
-		).toBeVisible();
-		expect(screen.getAllByText('300 ballots per matchup')).toHaveLength(1);
-		expect(screen.getAllByText('180 ballots per matchup')).toHaveLength(1);
-		expect(screen.getAllByText('120 ballots per matchup')).toHaveLength(1);
-		expect(screen.getAllByText(/Pi Search vs Raw/)).toHaveLength(3);
-		expect(screen.getAllByText(/Purveyors Search vs Raw/).length).toBeGreaterThanOrEqual(3);
-		expect(screen.getAllByText('OpenAI').length).toBeGreaterThan(0);
-		expect(screen.getAllByText('Google').length).toBeGreaterThan(0);
-		expect(screen.getAllByText('Anthropic').length).toBeGreaterThan(0);
-	});
-
-	it('renders quality, rubric, and operations independently', () => {
-		render(CoffeeBenchPage, { data: { benchmark } as never });
-
-		expect(
-			screen.getByRole('heading', { name: 'Three independent tracks, no composite score.' })
-		).toBeVisible();
-		expect(screen.getByRole('heading', { name: 'Pairwise quality' })).toBeVisible();
-		expect(screen.getByRole('heading', { name: 'Absolute rubric' })).toBeVisible();
-		expect(screen.getByRole('heading', { name: 'Operational reliability' })).toBeVisible();
-		expect(screen.getByText('Overall independent-track CoffeeBench result')).toBeInTheDocument();
-		expect(screen.getAllByText('Purveyors Search').length).toBeGreaterThan(0);
-		expect(screen.getAllByText('#1').length).toBeGreaterThan(0);
-		expect(screen.getAllByText('0.582 · 0.547–0.619').length).toBeGreaterThan(0);
-		expect(
-			screen.getByText(/Costs are unavailable for the three harnessed treatments/i)
+			screen.getByRole('heading', { name: 'Current-information cases widened the gap.' })
 		).toBeVisible();
 		expect(
 			screen.getByRole('heading', {
-				name: 'Historical-control and live-web results stay visible.'
+				name: 'Raw used less time and fewer reported input/output tokens, not better answers.'
 			})
+		).toBeVisible();
+		expect(
+			screen.getByText(
+				'Reported input/output tokens only; reasoning-token usage was unavailable for every treatment. Successful-task median latency and jury-marked unacceptable answers are also shown. Bar lengths are scaled within each metric.'
+			)
+		).toBeVisible();
+		expect(
+			screen.getByRole('heading', { name: 'One model, four systems around it.' })
+		).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'Raw' })).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'Pi Search' })).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'Purveyors Search' })).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'Purveyors + Parchment + Search' })).toBeVisible();
+		expect(
+			screen.getByText(
+				/Purveyors versus Parchment changes only whether the catalog tool is exposed/i
+			)
 		).toBeVisible();
 	});
 
-	it('publishes jury, harness, provenance, and byte-identical artifact access', () => {
+	it('shows every judge-family breakdown and switches cohorts', async () => {
 		render(CoffeeBenchPage, { data: { benchmark } as never });
 
 		expect(
-			screen.getByRole('heading', {
-				name: 'Exactly what changed between the four treatments.'
-			})
+			screen.getByRole('heading', { name: 'Every matchup, broken down by model family.' })
 		).toBeVisible();
-		expect(screen.getByText(/does not name a different search engine/i)).toBeVisible();
-		const treatmentTable = screen.getByRole('table', {
-			name: /Agent runtime, system prompt, tool access, and step budget/i
-		});
+		expect(screen.getAllByText('OpenAI').length).toBeGreaterThanOrEqual(6);
+		expect(screen.getAllByText('Google').length).toBeGreaterThanOrEqual(6);
+		expect(screen.getAllByText('Anthropic').length).toBeGreaterThanOrEqual(6);
+		expect(screen.getAllByText(/Pi Search vs Raw/).length).toBeGreaterThan(0);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Historical control' }));
+		expect(screen.getByRole('button', { name: 'Historical control' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
+		expect(screen.getAllByText('OpenAI').length).toBeGreaterThanOrEqual(6);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Live web' }));
+		expect(screen.getByRole('button', { name: 'Live web' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
+		expect(screen.getAllByText('Anthropic').length).toBeGreaterThanOrEqual(6);
+	});
+
+	it('explains the cost boundary and preserves full data access', () => {
+		render(CoffeeBenchPage, { data: { benchmark } as never });
+
 		expect(
-			within(treatmentTable).getByRole('rowheader', { name: 'Purveyors Search' })
+			screen.getByRole('heading', { name: 'Why total cost is only available for Raw' })
+		).toBeVisible();
+		expect(screen.getByText(/Model-call cost was captured for every treatment/i)).toBeVisible();
+		expect(screen.getByText(/requires a complete model-plus-tool total/i)).toBeVisible();
+		expect(
+			screen.getByText(/Brave search and Parchment tool calls did not have pinned marginal prices/i)
 		).toBeVisible();
 		expect(
-			within(treatmentTable).getByRole('rowheader', { name: 'Purveyors + Parchment + Search' })
+			screen.getByText(/one model on 20 cases with an agent jury and no human calibration/i)
 		).toBeVisible();
-		expect(screen.getAllByText('Shared Brave search + page fetch')).toHaveLength(2);
-		expect(screen.getByRole('heading', { name: 'Runtime and prompt both change.' })).toBeVisible();
-		expect(screen.getByRole('heading', { name: 'One additional tool changes.' })).toBeVisible();
-		expect(
-			screen.getByRole('heading', { name: 'A frozen catalog, not live API access.' })
-		).toBeVisible();
-		expect(screen.getByText(/12 historical-control cases/i)).toBeVisible();
-		expect(
-			screen.getByRole('heading', { name: 'Three judge families; calibration not run.' })
-		).toBeVisible();
-		expect(
-			screen.getByRole('heading', { name: 'Public identities, without sealed content.' })
-		).toBeVisible();
-		expect(screen.getByText('Result content SHA-256')).toBeVisible();
-		expect(screen.getByText(benchmark.identities.result_content_sha256)).toBeVisible();
-		const link = screen.getByRole('link', { name: 'Download sanitized JSON' });
+		expect(screen.getByText('Full aggregate metrics')).toBeVisible();
+		expect(screen.getByText('Result identity and provenance')).toBeVisible();
+		const link = screen.getByRole('link', { name: /Download the aggregate result JSON/i });
 		expect(link).toHaveAttribute('href', COFFEEBENCH_RESULT_PATH);
+		expect(link).toHaveAttribute('download', '');
+		expect(
+			screen.getByRole('columnheader', { name: 'Reported input/output tokens / task' })
+		).toBeInTheDocument();
+	});
+
+	it('states the research program enabled by V1', () => {
+		render(CoffeeBenchPage, { data: { benchmark } as never });
+
+		expect(
+			screen.getByRole('heading', {
+				name: 'What we think this means, and what we will do with it.'
+			})
+		).toBeVisible();
+		expect(
+			screen.getByRole('heading', { name: 'Route specialized tools by intent.' })
+		).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'Isolate the Cherry model.' })).toBeVisible();
+		expect(
+			screen.getByRole('heading', { name: 'Design output for progressive disclosure.' })
+		).toBeVisible();
 	});
 });

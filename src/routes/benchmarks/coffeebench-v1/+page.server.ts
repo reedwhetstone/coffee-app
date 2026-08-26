@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			path: '/benchmarks/coffeebench-v1',
 			title: 'CoffeeBench V1 findings | Purveyors',
 			description:
-				'CoffeeBench V1 finds that harnessed DeepSeek systems beat Raw, while Purveyors-specific and Parchment lift were not demonstrated.',
+				'CoffeeBench V1 finds that agent harnesses improve coffee research, while specialist tools need relevance-aware exposure.',
 			keywords: ['CoffeeBench V1', 'coffee AI benchmark', 'agent benchmark', 'LLM evaluation'],
 			robots: 'index, follow',
 			schemaData: {
@@ -20,7 +20,7 @@ export const load: PageServerLoad = async ({ url }) => {
 				'@type': 'Dataset',
 				name: 'CoffeeBench V1',
 				description:
-					'A published system benchmark with complete pairwise findings, an explicit hypothesis audit, independent rubric and operational tracks, and unsparing data limitations.',
+					'A 20-case coffee research benchmark comparing one fixed model across raw, general-agent, domain-agent, and catalog-augmented systems.',
 				url: `${baseUrl}/benchmarks/coffeebench-v1`,
 				distribution: {
 					'@type': 'DataDownload',
