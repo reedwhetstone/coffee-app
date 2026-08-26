@@ -22,6 +22,40 @@
 		)
 	);
 	let cohortSlices = $derived(benchmark.slices.filter((slice) => slice.slice_id !== 'overall'));
+	const treatmentDetails = [
+		{
+			label: 'Raw',
+			runtime: 'No agent harness; one direct model request',
+			prompt: 'No system prompt',
+			historicalTools: 'None',
+			liveTools: 'None',
+			stepBudget: '1 model call'
+		},
+		{
+			label: 'Pi Search',
+			runtime: 'Pi agent loop',
+			prompt: 'General research-agent prompt',
+			historicalTools: 'None',
+			liveTools: 'Shared Brave search + page fetch',
+			stepBudget: 'Up to 5 agent steps'
+		},
+		{
+			label: 'Purveyors Search',
+			runtime: 'Purveyors AI SDK agent loop',
+			prompt: 'Green-coffee Parchment Intelligence prompt',
+			historicalTools: 'None',
+			liveTools: 'Shared Brave search + page fetch',
+			stepBudget: 'Up to 5 agent steps'
+		},
+		{
+			label: 'Purveyors + Parchment + Search',
+			runtime: 'Same Purveyors AI SDK agent loop',
+			prompt: 'Same Parchment Intelligence prompt',
+			historicalTools: 'Pinned Parchment catalog snapshot',
+			liveTools: 'Shared Brave search + fetch, plus Parchment snapshot',
+			stepBudget: 'Up to 5 agent steps'
+		}
+	] as const;
 
 	function subject(subjectId: string) {
 		return benchmark.subjects.find((candidate) => candidate.subject_id === subjectId);
@@ -117,7 +151,7 @@
 			aria-label="CoffeeBench report sections"
 		>
 			<div class="mx-auto flex max-w-7xl gap-1 px-4 py-2 sm:px-6 lg:px-8">
-				{#each [['#overview', 'Thesis audit'], ['#findings', 'Findings'], ['#pairwise', 'Pairwise data'], ['#decisions', 'Product decisions'], ['#tracks', 'All metrics'], ['#cohorts', 'Cohorts'], ['#limitations', 'Missing data'], ['#methodology', 'Method'], ['#provenance', 'Data']] as [href, label]}
+				{#each [['#overview', 'Thesis audit'], ['#harnesses', 'Treatments'], ['#findings', 'Findings'], ['#pairwise', 'Pairwise data'], ['#decisions', 'Product decisions'], ['#tracks', 'All metrics'], ['#cohorts', 'Cohorts'], ['#limitations', 'Missing data'], ['#methodology', 'Method'], ['#provenance', 'Data']] as [href, label]}
 					<a
 						{href}
 						class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium text-muted hover:bg-surface-panel hover:text-ink"
@@ -180,9 +214,9 @@
 						<p class="text-xs font-semibold uppercase tracking-wide text-accent">Not supported</p>
 						<h3 class="mt-2 text-lg font-semibold text-ink">Parchment adds incremental quality.</h3>
 						<p class="mt-3 text-sm leading-6 text-muted">
-							Parchment + Search lost to Purveyors Search 46.8–53.2 overall and 45.0–55.0 on the
-							historical cohort; live web was effectively tied at 49.6–50.4. V1 does not prove harm,
-							but it provides no Parchment lift.
+							Purveyors + Parchment + Search lost to Purveyors Search 46.8–53.2 overall and
+							45.0–55.0 on the historical cohort; live web was effectively tied at 49.6–50.4. V1
+							does not prove harm, but it provides no Parchment lift.
 						</p>
 					</article>
 				</div>
@@ -214,9 +248,9 @@
 						</p>
 						<h3 class="mt-2 text-xl font-semibold text-ink">Harnessed systems beat Raw.</h3>
 						<p class="mt-3 text-sm leading-6 text-muted">
-							Pi Search, Purveyors Search, and Parchment + Search were preferred to Raw in 70.3%,
-							72.2%, and 74.5% of 300 judgments respectively. Raw’s 0.327 quality interval is
-							separated below every harnessed treatment. Because the treatment changes more than
+							Pi Search, Purveyors Search, and Purveyors + Parchment + Search were preferred to Raw
+							in 70.3%, 72.2%, and 74.5% of 300 judgments respectively. Raw’s 0.327 quality interval
+							is separated below every harnessed treatment. Because the treatment changes more than
 							retrieval, this is a system comparison, not isolated retrieval lift.
 						</p>
 					</article>
@@ -579,8 +613,101 @@
 			<section id="harnesses" class="scroll-mt-36" aria-labelledby="harnesses-heading">
 				<p class="text-sm font-semibold text-accent">Declared treatments</p>
 				<h2 id="harnesses-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
-					What each subject was allowed to be.
+					Exactly what changed between the four treatments.
 				</h2>
+				<p class="mt-4 max-w-5xl leading-7 text-muted">
+					Every treatment used the same DeepSeek V4 Flash 0731 FP8 model through OpenRouter's pinned
+					DeepInfra route, the same case input and supplied evidence, and the same inference
+					settings. “Purveyors Search” does not name a different search engine: Pi and Purveyors
+					used the same pinned Brave search and page-fetch contract. What changed was the system
+					around the model. The fixed settings were temperature 0.4, top-p 1, a 4,096-token output
+					cap, no seed, and no provider fallback.
+				</p>
+
+				<div class="mt-8 overflow-x-auto rounded-2xl border border-line bg-surface-panel">
+					<table class="w-full min-w-[64rem] text-left text-sm">
+						<caption class="sr-only">
+							Agent runtime, system prompt, tool access, and step budget for every CoffeeBench V1
+							treatment
+						</caption>
+						<thead class="border-b border-line bg-surface-canvas text-xs text-muted">
+							<tr>
+								<th class="px-5 py-3 font-medium" scope="col">Treatment</th>
+								<th class="px-5 py-3 font-medium" scope="col">Agent runtime</th>
+								<th class="px-5 py-3 font-medium" scope="col">System prompt</th>
+								<th class="px-5 py-3 font-medium" scope="col">Historical-control tools</th>
+								<th class="px-5 py-3 font-medium" scope="col">Live-web tools</th>
+								<th class="px-5 py-3 font-medium" scope="col">Step budget</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-line">
+							{#each treatmentDetails as treatment (treatment.label)}
+								<tr>
+									<th class="px-5 py-4 font-semibold text-ink" scope="row">
+										{treatment.label}
+									</th>
+									<td class="px-5 py-4 leading-6 text-muted">{treatment.runtime}</td>
+									<td class="px-5 py-4 leading-6 text-muted">{treatment.prompt}</td>
+									<td class="px-5 py-4 leading-6 text-muted">{treatment.historicalTools}</td>
+									<td class="px-5 py-4 leading-6 text-muted">{treatment.liveTools}</td>
+									<td class="px-5 py-4 leading-6 text-muted">{treatment.stepBudget}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+
+				<div class="mt-6 grid gap-4 lg:grid-cols-3">
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+							Pi versus Purveyors Search
+						</p>
+						<h3 class="mt-2 text-lg font-semibold text-ink">Runtime and prompt both change.</h3>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							Pi uses the Pi agent loop and a general research prompt. Purveyors uses an AI SDK
+							agent loop and a green-coffee decision prompt. Search provider, fetch policy, model,
+							and step budget are held constant, so this tests the complete orchestration package,
+							not either the prompt or runtime in isolation.
+						</p>
+					</article>
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+							Purveyors Search versus Parchment
+						</p>
+						<h3 class="mt-2 text-lg font-semibold text-ink">One additional tool changes.</h3>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							The Parchment treatment keeps the Purveyors runtime, prompt, web search, model, and
+							step budget, then adds <code>parchment.catalog</code>. This is V1's cleanest
+							incremental ablation: its tool schema enters the model context and catalog calls
+							become possible; every other declared treatment setting remains fixed.
+						</p>
+					</article>
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+							What “Parchment” means here
+						</p>
+						<h3 class="mt-2 text-lg font-semibold text-ink">
+							A frozen catalog, not live API access.
+						</h3>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							The tool queries a digest-verified benchmark snapshot using filters such as origin,
+							process, supplier, price, and stock status. Results retain the snapshot timestamp. It
+							does not replace public-web search and does not call the live production Parchment
+							API.
+						</p>
+					</article>
+				</div>
+
+				<div class="mt-6 rounded-2xl border border-accent/40 bg-accent/10 p-5" role="note">
+					<p class="font-semibold text-ink">Cohort boundary</p>
+					<p class="mt-2 max-w-5xl text-sm leading-6 text-muted">
+						On the 12 historical-control cases, public-web tools were disabled for every treatment;
+						only the Parchment arm retained its pinned catalog tool. On the eight live-web cases, Pi
+						and both Purveyors arms received the same Brave search and fetch tools, while the
+						Parchment arm also retained the catalog tool. Raw never received any tool.
+					</p>
+				</div>
+
 				<div class="mt-8 grid gap-4 md:grid-cols-2">
 					{#each benchmark.subjects as card (card.subject_id)}
 						<article class="rounded-2xl border border-line bg-surface-panel p-6">
@@ -591,7 +718,7 @@
 								</span>
 							</div>
 							<p class="mt-3 text-sm leading-6 text-muted">
-								Evaluator track: {card.evaluator_track}. Capabilities: {card.capabilities.join(
+								Evaluator track: {card.evaluator_track}. Declared capabilities: {card.capabilities.join(
 									', '
 								)}.
 							</p>

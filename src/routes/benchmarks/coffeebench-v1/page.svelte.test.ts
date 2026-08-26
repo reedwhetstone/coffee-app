@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, within } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import rawPublished from '../../../../static/benchmarks/coffeebench-public-export-v5.json';
@@ -26,6 +26,7 @@ describe('CoffeeBench V1 report', () => {
 			'href',
 			'#pairwise'
 		);
+		expect(screen.getByRole('link', { name: 'Treatments' })).toHaveAttribute('href', '#harnesses');
 		expect(
 			screen.getByRole('heading', {
 				name: 'What V1 tested, including where our thesis failed.'
@@ -89,8 +90,27 @@ describe('CoffeeBench V1 report', () => {
 		render(CoffeeBenchPage, { data: { benchmark } as never });
 
 		expect(
-			screen.getByRole('heading', { name: 'What each subject was allowed to be.' })
+			screen.getByRole('heading', {
+				name: 'Exactly what changed between the four treatments.'
+			})
 		).toBeVisible();
+		expect(screen.getByText(/does not name a different search engine/i)).toBeVisible();
+		const treatmentTable = screen.getByRole('table', {
+			name: /Agent runtime, system prompt, tool access, and step budget/i
+		});
+		expect(
+			within(treatmentTable).getByRole('rowheader', { name: 'Purveyors Search' })
+		).toBeVisible();
+		expect(
+			within(treatmentTable).getByRole('rowheader', { name: 'Purveyors + Parchment + Search' })
+		).toBeVisible();
+		expect(screen.getAllByText('Shared Brave search + page fetch')).toHaveLength(2);
+		expect(screen.getByRole('heading', { name: 'Runtime and prompt both change.' })).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'One additional tool changes.' })).toBeVisible();
+		expect(
+			screen.getByRole('heading', { name: 'A frozen catalog, not live API access.' })
+		).toBeVisible();
+		expect(screen.getByText(/12 historical-control cases/i)).toBeVisible();
 		expect(
 			screen.getByRole('heading', { name: 'Three judge families; calibration not run.' })
 		).toBeVisible();
