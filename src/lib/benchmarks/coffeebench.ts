@@ -1,6 +1,18 @@
 import { z } from 'zod';
 
-export const COFFEEBENCH_SCHEMA_VERSION = 4 as const;
+export const COFFEEBENCH_SCHEMA_VERSION = 5 as const;
+export const COFFEEBENCH_LEGACY_INDEPENDENT_SCHEMA_VERSION = 4 as const;
+export const COFFEEBENCH_V1_BENCHMARK_NAME = 'CoffeeBench' as const;
+export const COFFEEBENCH_V1_BENCHMARK_VERSION = '1.0.0' as const;
+export const COFFEEBENCH_V1_SUITE_ID = 'deepseek-v4-reliable' as const;
+export const COFFEEBENCH_V1_JURY_ID = 'openclaw-jury-2026-08-19-independent' as const;
+export const COFFEEBENCH_V1_RELEASE_DATE = '2026-08-26' as const;
+export const COFFEEBENCH_V1_ARTIFACT_SHA256 =
+	'13caa9283d1fa071450caa4c41a20b2cd7a52d924d84dc79b43dc2fa7ea6dfe5' as const;
+export const COFFEEBENCH_V1_RESULT_CONTENT_SHA256 =
+	'50ca8fbd22a8523eacb13bc21c5eb890a2fd60f3e55db8a386a00bc8b94bb087' as const;
+export const COFFEEBENCH_V1_RESULT_VERSION =
+	'1.0.0.coffeebench-v0-deepseek-v4-reliable-official.published.50ca8fbd22a8523e' as const;
 export const COFFEEBENCH_V0_BENCHMARK_NAME = 'CoffeeBench' as const;
 export const COFFEEBENCH_V0_BENCHMARK_VERSION = '1.0.0-dev' as const;
 export const COFFEEBENCH_V0_SUITE_ID = 'deepseek-v4-reliable' as const;
@@ -12,7 +24,8 @@ export const COFFEEBENCH_V0_RESULT_CONTENT_SHA256 =
 	'c9302744f0cfd061975870978fe3036851c05f606800cd605ffa953e8e117ac4' as const;
 export const COFFEEBENCH_V0_RESULT_VERSION =
 	'1.0.0-dev.coffeebench-v0-deepseek-v4-reliable-official.preview.c9302744f0cfd061' as const;
-export const COFFEEBENCH_RESULT_PATH = `/benchmarks/coffeebench-v0/results/${COFFEEBENCH_V0_RESULT_VERSION}/${COFFEEBENCH_V0_RESULT_CONTENT_SHA256}.json`;
+export const COFFEEBENCH_RESULT_PATH = `/benchmarks/coffeebench-v1/results/${COFFEEBENCH_V1_RESULT_VERSION}/${COFFEEBENCH_V1_RESULT_CONTENT_SHA256}.json`;
+export const COFFEEBENCH_PUBLISHED_ALIAS_PATH = '/benchmarks/coffeebench-public-export-v5.json';
 export const COFFEEBENCH_PREVIEW_ALIAS_PATH = '/benchmarks/coffeebench-public-export-v4.json';
 export const COFFEEBENCH_LEGACY_PREVIEW_ALIAS_PATH =
 	'/benchmarks/coffeebench-public-export-v3.json';
@@ -20,7 +33,7 @@ export const COFFEEBENCH_FIXTURE_ALIAS_PATH = '/benchmarks/coffeebench-public-ex
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const IDENTIFIER = /^[a-z0-9][a-z0-9._-]*$/;
-const RESULT_VERSION = /^\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?$/;
+const RESULT_VERSION = /^\d+\.\d+\.\d+(?:[-.][a-z0-9.-]+)?$/;
 const DECIMAL_USD = /^(?:0|[1-9]\d*)(?:\.\d+)?$/;
 const PUBLIC_CONTRACT_NAME = 'coffeebench.public-export' as const;
 const publicDigestKeys = new Set([
@@ -130,6 +143,8 @@ const pythonFloatFields = new Set([
 	'quality_score',
 	'response_contract_valid_rate',
 	'score',
+	'subject_a_preference_share',
+	'subject_b_preference_share',
 	'strict_all_requirements_pass_rate',
 	'success_rate',
 	'terminal_failure',
@@ -1442,9 +1457,38 @@ const independentSubjectResultSchema = z
 	})
 	.strict();
 
+const pairwiseMatchupFamilySchema = z
+	.object({
+		family: juryFamilySchema,
+		ballot_count: countSchema,
+		subject_a_win_count: countSchema,
+		subject_b_win_count: countSchema,
+		tie_count: countSchema,
+		subject_a_preference_share: rateSchema,
+		subject_b_preference_share: rateSchema
+	})
+	.strict();
+
+const pairwiseMatchupSchema = z
+	.object({
+		subject_a: z.string().regex(IDENTIFIER),
+		subject_b: z.string().regex(IDENTIFIER),
+		ballot_count: countSchema,
+		subject_a_win_count: countSchema,
+		subject_b_win_count: countSchema,
+		tie_count: countSchema,
+		subject_a_preference_share: rateSchema,
+		subject_b_preference_share: rateSchema,
+		jury_families: z.array(pairwiseMatchupFamilySchema).length(3)
+	})
+	.strict();
+
 const independentPublicExportSchema = z
 	.object({
-		schema_version: z.literal(COFFEEBENCH_SCHEMA_VERSION),
+		schema_version: z.union([
+			z.literal(COFFEEBENCH_LEGACY_INDEPENDENT_SCHEMA_VERSION),
+			z.literal(COFFEEBENCH_SCHEMA_VERSION)
+		]),
 		result_version: z.string().regex(RESULT_VERSION),
 		benchmark: z
 			.object({
@@ -1453,7 +1497,7 @@ const independentPublicExportSchema = z
 				suite_id: z.string().regex(IDENTIFIER)
 			})
 			.strict(),
-		status: z.literal('preview'),
+		status: z.union([z.literal('preview'), z.literal('published')]),
 		identities: z
 			.object({
 				result_id: z.string().regex(IDENTIFIER),
@@ -1532,7 +1576,8 @@ const independentPublicExportSchema = z
 								z
 									.object({
 										track: trackIdSchema,
-										subjects: z.array(independentSubjectResultSchema).length(4)
+										subjects: z.array(independentSubjectResultSchema).length(4),
+										pairwise_matchups: z.array(pairwiseMatchupSchema).length(6).optional()
 									})
 									.strict()
 							)
@@ -1611,6 +1656,14 @@ const independentPublicExportSchema = z
 		}
 
 		if (
+			(artifact.schema_version === COFFEEBENCH_SCHEMA_VERSION && artifact.status !== 'published') ||
+			(artifact.schema_version === COFFEEBENCH_LEGACY_INDEPENDENT_SCHEMA_VERSION &&
+				artifact.status !== 'preview')
+		) {
+			issue(['status'], 'schema v4 is preview-only and schema v5 is published-only');
+		}
+
+		if (
 			artifact.identities.public_contract_sha256 !==
 			coffeeBenchPublicDigest({
 				schema_version: artifact.schema_version,
@@ -1665,14 +1718,17 @@ const independentPublicExportSchema = z
 				artifact.methodology.pairwise_possible_ballot_count ||
 			artifact.methodology.pairwise_possible_ballot_count !== 1800
 		) {
-			issue(['methodology'], 'schema-v4 methodology does not match the complete reliable jury');
+			issue(
+				['methodology'],
+				'independent-track methodology does not match the complete reliable jury'
+			);
 		}
 		if (
 			artifact.tracks[0]?.track_id !== 'system' ||
 			new Set(artifact.subjects.map((subject) => subject.subject_id)).size !== 4 ||
 			artifact.subjects.some((subject) => subject.track !== 'system')
 		) {
-			issue(['subjects'], 'schema-v4 subjects must form one complete system track');
+			issue(['subjects'], 'independent-track subjects must form one complete system track');
 		}
 		if (
 			new Set(artifact.jury.map((judge) => judge.family)).size !== 3 ||
@@ -1680,7 +1736,7 @@ const independentPublicExportSchema = z
 				artifact.jury.some((judge) => judge.family === family)
 			)
 		) {
-			issue(['jury'], 'schema-v4 preview must contain all three judge families');
+			issue(['jury'], 'the independent-track result must contain all three judge families');
 		}
 		if (
 			artifact.methodology.absolute_evaluation_count % artifact.jury.length !== 0 ||
@@ -1726,7 +1782,7 @@ const independentPublicExportSchema = z
 		) {
 			issue(
 				['limitations'],
-				'schema-v4 preview must disclose uncalibrated judging and independent tracks'
+				'the result must disclose uncalibrated judging and independent tracks'
 			);
 		}
 
@@ -1741,7 +1797,7 @@ const independentPublicExportSchema = z
 			new Set(sliceIds).size !== 3 ||
 			!requiredSliceIds.every((slice) => sliceIds.includes(slice))
 		) {
-			issue(['slices'], 'schema-v4 preview must contain the three reporting slices');
+			issue(['slices'], 'the result must contain the three reporting slices');
 		}
 
 		for (const [sliceIndex, slice] of artifact.slices.entries()) {
@@ -1753,7 +1809,21 @@ const independentPublicExportSchema = z
 			) {
 				issue(
 					['slices', sliceIndex, 'track_results'],
-					'each schema-v4 slice must contain every system subject once'
+					'each independent-track slice must contain every system subject once'
+				);
+			}
+
+			const matchups = track.pairwise_matchups;
+			if (artifact.schema_version === COFFEEBENCH_SCHEMA_VERSION && !matchups) {
+				issue(
+					['slices', sliceIndex, 'track_results', 0, 'pairwise_matchups'],
+					'schema v5 must publish the complete pairwise matchup matrix'
+				);
+			}
+			if (artifact.schema_version === COFFEEBENCH_LEGACY_INDEPENDENT_SCHEMA_VERSION && matchups) {
+				issue(
+					['slices', sliceIndex, 'track_results', 0, 'pairwise_matchups'],
+					'schema v4 does not define a pairwise matchup matrix'
 				);
 			}
 
@@ -1767,6 +1837,132 @@ const independentPublicExportSchema = z
 			}
 			const expectedPossibleBallots =
 				matchedTrialCount * (track.subjects.length - 1) * artifact.jury.length;
+			if (matchups) {
+				const subjectIds = new Set(expectedSubjectIds);
+				const matchupKeys = new Set<string>();
+				const matchupBallotsBySubject = new Map<string, number>();
+				for (const [matchupIndex, matchup] of matchups.entries()) {
+					const matchupPath = [
+						'slices',
+						sliceIndex,
+						'track_results',
+						0,
+						'pairwise_matchups',
+						matchupIndex
+					] as (string | number)[];
+					const matchupKey = `${matchup.subject_a}:${matchup.subject_b}`;
+					if (
+						!subjectIds.has(matchup.subject_a) ||
+						!subjectIds.has(matchup.subject_b) ||
+						matchup.subject_a >= matchup.subject_b ||
+						matchupKeys.has(matchupKey)
+					) {
+						issue(
+							matchupPath,
+							'matchups must uniquely cover two declared subjects in sorted order'
+						);
+					}
+					matchupKeys.add(matchupKey);
+					for (const subjectId of [matchup.subject_a, matchup.subject_b]) {
+						matchupBallotsBySubject.set(
+							subjectId,
+							(matchupBallotsBySubject.get(subjectId) ?? 0) + matchup.ballot_count
+						);
+					}
+					if (
+						matchup.ballot_count !== matchedTrialCount * artifact.jury.length ||
+						matchup.subject_a_win_count + matchup.subject_b_win_count + matchup.tie_count !==
+							matchup.ballot_count ||
+						!approximatelyEqual(
+							matchup.subject_a_preference_share,
+							(matchup.subject_a_win_count + artifact.methodology.tie_value * matchup.tie_count) /
+								matchup.ballot_count
+						) ||
+						!approximatelyEqual(
+							matchup.subject_b_preference_share,
+							(matchup.subject_b_win_count + artifact.methodology.tie_value * matchup.tie_count) /
+								matchup.ballot_count
+						)
+					) {
+						issue(matchupPath, 'matchup counts and tie-adjusted preference shares must reconcile');
+					}
+
+					const familyNames = new Set(matchup.jury_families.map((family) => family.family));
+					if (
+						familyNames.size !== artifact.jury.length ||
+						!artifact.jury.every((judge) => familyNames.has(judge.family))
+					) {
+						issue(
+							[...matchupPath, 'jury_families'],
+							'every matchup must include every jury family'
+						);
+					}
+					for (const [familyIndex, family] of matchup.jury_families.entries()) {
+						if (
+							family.ballot_count !== matchedTrialCount ||
+							family.subject_a_win_count + family.subject_b_win_count + family.tie_count !==
+								family.ballot_count ||
+							!approximatelyEqual(
+								family.subject_a_preference_share,
+								(family.subject_a_win_count + artifact.methodology.tie_value * family.tie_count) /
+									family.ballot_count
+							) ||
+							!approximatelyEqual(
+								family.subject_b_preference_share,
+								(family.subject_b_win_count + artifact.methodology.tie_value * family.tie_count) /
+									family.ballot_count
+							)
+						) {
+							issue(
+								[...matchupPath, 'jury_families', familyIndex],
+								'jury-family matchup counts and preference shares must reconcile'
+							);
+						}
+					}
+					for (const countName of [
+						'ballot_count',
+						'subject_a_win_count',
+						'subject_b_win_count',
+						'tie_count'
+					] as const) {
+						if (
+							matchup.jury_families.reduce((total, family) => total + family[countName], 0) !==
+							matchup[countName]
+						) {
+							issue(matchupPath, `jury-family ${countName} must reconcile with the matchup total`);
+						}
+					}
+				}
+				for (const [rowIndex, row] of track.subjects.entries()) {
+					if (
+						row.pairwise_quality.model_backed_ballot_count !==
+						(matchupBallotsBySubject.get(row.subject_id) ?? 0)
+					) {
+						issue(
+							[
+								'slices',
+								sliceIndex,
+								'track_results',
+								0,
+								'subjects',
+								rowIndex,
+								'pairwise_quality',
+								'model_backed_ballot_count'
+							],
+							'pairwise matchup ballots must reconcile with the subject quality summary'
+						);
+					}
+				}
+				if (
+					matchupKeys.size !==
+					(expectedSubjectIds.length * (expectedSubjectIds.length - 1)) / 2
+				) {
+					issue(
+						['slices', sliceIndex, 'track_results', 0, 'pairwise_matchups'],
+						'the matchup matrix must contain every unordered subject pair exactly once'
+					);
+				}
+			}
 			const rankedScores = [
 				...new Set(
 					track.subjects
@@ -2096,6 +2292,7 @@ const independentPublicExportSchema = z
 		const overall = artifact.slices.find((slice) => slice.slice_id === 'overall');
 		if (overall) {
 			const rows = overall.track_results[0].subjects;
+			const overallMatchups = overall.track_results[0].pairwise_matchups;
 			const trialCount = rows.reduce((total, row) => total + row.operational.trial_count, 0);
 			const ballotCount =
 				rows.reduce((total, row) => total + row.pairwise_quality.model_backed_ballot_count, 0) / 2;
@@ -2113,6 +2310,75 @@ const independentPublicExportSchema = z
 					['methodology', 'absolute_evaluation_count'],
 					'absolute evaluation count must equal overall trials across every jury family'
 				);
+			}
+
+			if (overallMatchups) {
+				const cohortMatchups = artifact.slices
+					.filter((slice) => slice.slice_id !== 'overall')
+					.flatMap((slice) => slice.track_results[0].pairwise_matchups ?? []);
+				for (const [matchupIndex, matchup] of overallMatchups.entries()) {
+					const cohorts = cohortMatchups.filter(
+						(candidate) =>
+							candidate.subject_a === matchup.subject_a && candidate.subject_b === matchup.subject_b
+					);
+					const matchupPath = [
+						'slices',
+						0,
+						'track_results',
+						0,
+						'pairwise_matchups',
+						matchupIndex
+					] as (string | number)[];
+					if (cohorts.length !== artifact.slices.length - 1) {
+						issue(matchupPath, 'every overall matchup must have one row in each cohort');
+						continue;
+					}
+					for (const countName of [
+						'ballot_count',
+						'subject_a_win_count',
+						'subject_b_win_count',
+						'tie_count'
+					] as const) {
+						if (
+							cohorts.reduce((total, cohort) => total + cohort[countName], 0) !== matchup[countName]
+						) {
+							issue(
+								matchupPath,
+								`cohort matchup ${countName} must reconcile with the overall matchup`
+							);
+						}
+					}
+					for (const [familyIndex, family] of matchup.jury_families.entries()) {
+						const cohortFamilies = cohorts.map((cohort) =>
+							cohort.jury_families.find((candidate) => candidate.family === family.family)
+						);
+						if (cohortFamilies.some((candidate) => candidate === undefined)) {
+							issue(
+								[...matchupPath, 'jury_families', familyIndex],
+								'every overall jury-family matchup must have one row in each cohort'
+							);
+							continue;
+						}
+						for (const countName of [
+							'ballot_count',
+							'subject_a_win_count',
+							'subject_b_win_count',
+							'tie_count'
+						] as const) {
+							if (
+								cohortFamilies.reduce(
+									(total, cohortFamily) => total + (cohortFamily?.[countName] ?? 0),
+									0
+								) !== family[countName]
+							) {
+								issue(
+									[...matchupPath, 'jury_families', familyIndex],
+									`cohort jury-family ${countName} must reconcile with the overall matchup`
+								);
+							}
+						}
+					}
+				}
 			}
 
 			for (const [rowIndex, row] of rows.entries()) {
@@ -2351,11 +2617,17 @@ export type CoffeeBenchTrackResult =
 export type CoffeeBenchIndependentSlice = CoffeeBenchIndependentPublicExport['slices'][number];
 export type CoffeeBenchIndependentTrackResult =
 	CoffeeBenchIndependentPublicExport['slices'][number]['track_results'][number];
+export type CoffeeBenchPairwiseMatchup = NonNullable<
+	CoffeeBenchIndependentTrackResult['pairwise_matchups']
+>[number];
 
 export function isCoffeeBenchIndependentExport(
 	artifact: CoffeeBenchPublicExport
 ): artifact is CoffeeBenchIndependentPublicExport {
-	return artifact.schema_version === COFFEEBENCH_SCHEMA_VERSION;
+	return (
+		artifact.schema_version === COFFEEBENCH_LEGACY_INDEPENDENT_SCHEMA_VERSION ||
+		artifact.schema_version === COFFEEBENCH_SCHEMA_VERSION
+	);
 }
 
 type PublicLeak = { kind: 'field' | 'source URL' | 'undeclared content digest'; path: string };
@@ -2409,11 +2681,17 @@ export function parseCoffeeBenchPublicExport(value: unknown): CoffeeBenchPublicE
 		value !== null && typeof value === 'object' && 'schema_version' in value
 			? (value as { schema_version?: unknown }).schema_version
 			: undefined;
-	if (schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== COFFEEBENCH_SCHEMA_VERSION) {
-		throw new Error('Invalid CoffeeBench public export: schema_version must be 2, 3, or 4');
+	if (
+		schemaVersion !== 2 &&
+		schemaVersion !== 3 &&
+		schemaVersion !== COFFEEBENCH_LEGACY_INDEPENDENT_SCHEMA_VERSION &&
+		schemaVersion !== COFFEEBENCH_SCHEMA_VERSION
+	) {
+		throw new Error('Invalid CoffeeBench public export: schema_version must be 2, 3, 4, or 5');
 	}
 
 	const parsed =
+		schemaVersion === COFFEEBENCH_LEGACY_INDEPENDENT_SCHEMA_VERSION ||
 		schemaVersion === COFFEEBENCH_SCHEMA_VERSION
 			? independentPublicExportSchema.safeParse(value)
 			: legacyPublicExportSchema.safeParse(value);
@@ -2428,6 +2706,7 @@ export function assertCoffeeBenchV0RouteIdentity(
 ): asserts artifact is CoffeeBenchIndependentPublicExport {
 	if (
 		!isCoffeeBenchIndependentExport(artifact) ||
+		artifact.schema_version !== COFFEEBENCH_LEGACY_INDEPENDENT_SCHEMA_VERSION ||
 		artifact.status !== 'preview' ||
 		artifact.calibration.agreement !== null ||
 		artifact.calibration.decision_source !== null
@@ -2460,5 +2739,48 @@ export function assertCoffeeBenchV0RouteIdentity(
 		)
 	) {
 		throw new Error('CoffeeBench v0 route artifact has an unexpected preview jury');
+	}
+}
+
+export function assertCoffeeBenchV1RouteIdentity(
+	artifact: CoffeeBenchPublicExport
+): asserts artifact is CoffeeBenchIndependentPublicExport {
+	if (
+		!isCoffeeBenchIndependentExport(artifact) ||
+		artifact.schema_version !== COFFEEBENCH_SCHEMA_VERSION ||
+		artifact.status !== 'published' ||
+		artifact.calibration.status !== 'not_run' ||
+		artifact.calibration.agreement !== null ||
+		artifact.calibration.decision_source !== null
+	) {
+		throw new Error('CoffeeBench V1 route artifact is not the declared schema-v5 publication');
+	}
+	if (
+		artifact.benchmark.name !== COFFEEBENCH_V1_BENCHMARK_NAME ||
+		artifact.benchmark.version !== COFFEEBENCH_V1_BENCHMARK_VERSION ||
+		artifact.benchmark.suite_id !== COFFEEBENCH_V1_SUITE_ID
+	) {
+		throw new Error('CoffeeBench V1 route artifact has an unexpected benchmark identity');
+	}
+	if (artifact.result_version !== COFFEEBENCH_V1_RESULT_VERSION) {
+		throw new Error('CoffeeBench V1 route artifact has an unexpected immutable result version');
+	}
+	if (artifact.identities.result_content_sha256 !== COFFEEBENCH_V1_RESULT_CONTENT_SHA256) {
+		throw new Error('CoffeeBench V1 route artifact has an unexpected result content identity');
+	}
+	if (
+		artifact.identities.result_id !==
+		`${COFFEEBENCH_V1_JURY_ID}.${artifact.identities.generation_id}.${artifact.status}.${artifact.identities.result_content_sha256}`
+	) {
+		throw new Error('CoffeeBench V1 route artifact has an unexpected jury result identity');
+	}
+	if (
+		artifact.jury.length !== 3 ||
+		!['openai', 'google', 'anthropic'].every((family) =>
+			artifact.jury.some((judge) => judge.family === family)
+		) ||
+		artifact.slices.some((slice) => !slice.track_results[0].pairwise_matchups)
+	) {
+		throw new Error('CoffeeBench V1 route artifact is missing its complete jury or matchup data');
 	}
 }

@@ -4,14 +4,20 @@ import { describe, expect, it } from 'vitest';
 import rawFixture from '../../../static/benchmarks/coffeebench-public-export-v2.json';
 import rawLegacyPreview from '../../../static/benchmarks/coffeebench-public-export-v3.json';
 import rawPreview from '../../../static/benchmarks/coffeebench-public-export-v4.json';
+import rawPublished from '../../../static/benchmarks/coffeebench-public-export-v5.json';
 import {
 	assertCoffeeBenchV0RouteIdentity,
+	assertCoffeeBenchV1RouteIdentity,
 	coffeeBenchPublicDigest,
+	COFFEEBENCH_LEGACY_INDEPENDENT_SCHEMA_VERSION,
+	COFFEEBENCH_PUBLISHED_ALIAS_PATH,
 	COFFEEBENCH_PREVIEW_ALIAS_PATH,
 	COFFEEBENCH_RESULT_PATH,
 	COFFEEBENCH_SCHEMA_VERSION,
 	COFFEEBENCH_V0_ARTIFACT_SHA256,
 	COFFEEBENCH_V0_RESULT_CONTENT_SHA256,
+	COFFEEBENCH_V1_ARTIFACT_SHA256,
+	COFFEEBENCH_V1_RESULT_CONTENT_SHA256,
 	isCoffeeBenchIndependentExport,
 	parseCoffeeBenchPublicExport
 } from './coffeebench';
@@ -22,6 +28,28 @@ function fixtureCopy(): Record<string, unknown> {
 
 function previewCopy(): Record<string, unknown> {
 	return structuredClone(rawPreview) as Record<string, unknown>;
+}
+
+function publishedCopy(): Record<string, unknown> {
+	return structuredClone(rawPublished) as Record<string, unknown>;
+}
+
+function rebindPublishedResult(payload: Record<string, unknown>): void {
+	const identities = payload.identities as Record<string, string>;
+	const benchmark = payload.benchmark as Record<string, string>;
+	const generationId = identities.generation_id;
+	const resultIdMarker = `.${generationId}.`;
+	const juryId = identities.result_id.slice(0, identities.result_id.indexOf(resultIdMarker));
+	const { result_version: _version, identities: rawIdentities, ...material } = payload;
+	const {
+		result_id: _resultId,
+		result_content_sha256: _resultContentSha256,
+		...identityMaterial
+	} = rawIdentities as Record<string, unknown>;
+	const digest = coffeeBenchPublicDigest({ ...material, identities: identityMaterial });
+	identities.result_content_sha256 = digest;
+	identities.result_id = `${juryId}.${generationId}.${payload.status}.${digest}`;
+	payload.result_version = `${benchmark.version}.${generationId}.${payload.status}.${digest.slice(0, 16)}`;
 }
 
 function firstIndependentSubject(payload: Record<string, unknown>): Record<string, unknown> {
@@ -46,12 +74,20 @@ function firstSubjectCard(payload: Record<string, unknown>): Record<string, unkn
 }
 
 describe('CoffeeBench public export reader', () => {
-	it('keeps the public download byte-identical to the final Cherry preview export', () => {
-		const aliasBytes = readFileSync(`static${COFFEEBENCH_PREVIEW_ALIAS_PATH}`);
+	it('keeps the public download byte-identical to the published Cherry V1 export', () => {
+		const aliasBytes = readFileSync(`static${COFFEEBENCH_PUBLISHED_ALIAS_PATH}`);
 		const immutableBytes = readFileSync(`static${COFFEEBENCH_RESULT_PATH}`);
-		expect(aliasBytes.byteLength).toBe(26_340);
+		expect(aliasBytes.byteLength).toBe(40_585);
 		expect(immutableBytes).toEqual(aliasBytes);
 		expect(createHash('sha256').update(immutableBytes).digest('hex')).toBe(
+			COFFEEBENCH_V1_ARTIFACT_SHA256
+		);
+	});
+
+	it('keeps the schema-v4 preview artifact available at its historical alias', () => {
+		const aliasBytes = readFileSync(`static${COFFEEBENCH_PREVIEW_ALIAS_PATH}`);
+		expect(aliasBytes.byteLength).toBe(26_340);
+		expect(createHash('sha256').update(aliasBytes).digest('hex')).toBe(
 			COFFEEBENCH_V0_ARTIFACT_SHA256
 		);
 	});
@@ -94,7 +130,7 @@ describe('CoffeeBench public export reader', () => {
 		const parsed = parseCoffeeBenchPublicExport(rawPreview);
 		if (!isCoffeeBenchIndependentExport(parsed)) throw new Error('expected the schema-v4 branch');
 
-		expect(parsed.schema_version).toBe(COFFEEBENCH_SCHEMA_VERSION);
+		expect(parsed.schema_version).toBe(COFFEEBENCH_LEGACY_INDEPENDENT_SCHEMA_VERSION);
 		expect(parsed.identities.result_content_sha256).toBe(COFFEEBENCH_V0_RESULT_CONTENT_SHA256);
 		expect(parsed.jury.map((judge) => judge.family).sort()).toEqual([
 			'anthropic',
@@ -107,6 +143,100 @@ describe('CoffeeBench public export reader', () => {
 		expect(
 			overall?.track_results[0].subjects.map((subject) => subject.pairwise_quality.rank)
 		).toEqual([3, 2, 1, 4]);
+	});
+
+	it('accepts the published schema-v5 result and complete pairwise matrices', () => {
+		const parsed = parseCoffeeBenchPublicExport(rawPublished);
+		if (!isCoffeeBenchIndependentExport(parsed)) throw new Error('expected the schema-v5 branch');
+
+		expect(parsed.schema_version).toBe(COFFEEBENCH_SCHEMA_VERSION);
+		expect(parsed.status).toBe('published');
+		expect(parsed.identities.result_content_sha256).toBe(COFFEEBENCH_V1_RESULT_CONTENT_SHA256);
+		expect(
+			parsed.slices.every((slice) => slice.track_results[0].pairwise_matchups?.length === 6)
+		).toBe(true);
+		expect(
+			parsed.slices
+				.find((slice) => slice.slice_id === 'overall')
+				?.track_results[0].pairwise_matchups?.reduce(
+					(total, matchup) => total + matchup.ballot_count,
+					0
+				)
+		).toBe(1800);
+		assertCoffeeBenchV1RouteIdentity(parsed);
+	});
+
+	it('rejects incomplete or internally inconsistent schema-v5 matchup data', () => {
+		const missing = publishedCopy();
+		const track = (
+			missing.slices as Array<{
+				track_results: Array<{ pairwise_matchups: Array<Record<string, unknown>> }>;
+			}>
+		)[0].track_results[0];
+		track.pairwise_matchups.pop();
+		expect(() => parseCoffeeBenchPublicExport(missing)).toThrow(
+			/pairwise_matchups|matchup matrix/i
+		);
+
+		const inconsistent = publishedCopy();
+		const matchup = (
+			inconsistent.slices as Array<{
+				track_results: Array<{ pairwise_matchups: Array<Record<string, unknown>> }>;
+			}>
+		)[0].track_results[0].pairwise_matchups[0];
+		matchup.tie_count = (matchup.tie_count as number) + 1;
+		expect(() => parseCoffeeBenchPublicExport(inconsistent)).toThrow(/counts.*reconcile/i);
+	});
+
+	it('reconciles schema-v5 overall matchup and jury-family counts with both cohorts', () => {
+		const payload = publishedCopy();
+		const overallMatchup = (
+			payload.slices as Array<{
+				track_results: Array<{ pairwise_matchups: Array<Record<string, unknown>> }>;
+			}>
+		)[0].track_results[0].pairwise_matchups[0];
+		overallMatchup.subject_a_win_count = 106;
+		overallMatchup.subject_b_win_count = 116;
+		overallMatchup.subject_a_preference_share = 0.48333333;
+		overallMatchup.subject_b_preference_share = 0.51666667;
+		const family = (overallMatchup.jury_families as Array<Record<string, unknown>>)[0];
+		family.subject_a_win_count = 38;
+		family.subject_b_win_count = 48;
+		family.subject_a_preference_share = 0.45;
+		family.subject_b_preference_share = 0.55;
+		rebindPublishedResult(payload);
+
+		expect(() => parseCoffeeBenchPublicExport(payload)).toThrow(/cohort matchup.*reconcile/i);
+	});
+
+	it('reconciles schema-v5 matchup ballots with subject quality summaries', () => {
+		const payload = publishedCopy();
+		const methodology = payload.methodology as { pairwise_ballot_count: number };
+		methodology.pairwise_ballot_count -= 3;
+		for (const sliceId of ['overall', 'historical_control'] as const) {
+			const rows = (
+				payload.slices as Array<{
+					slice_id: string;
+					track_results: Array<{
+						subjects: Array<{ pairwise_quality: Record<string, number> }>;
+					}>;
+				}>
+			).find((slice) => slice.slice_id === sliceId)?.track_results[0].subjects;
+			if (!rows) throw new Error(`missing ${sliceId} rows`);
+			for (const row of rows.slice(0, 3)) {
+				row.pairwise_quality.model_backed_ballot_count -= 2;
+				row.pairwise_quality.ballot_coverage_rate =
+					row.pairwise_quality.model_backed_ballot_count /
+					row.pairwise_quality.possible_ballot_count;
+			}
+		}
+		(payload.identities as Record<string, unknown>).methodology_sha256 =
+			coffeeBenchPublicDigest(methodology);
+		rebindPublishedResult(payload);
+
+		expect(() => parseCoffeeBenchPublicExport(payload)).toThrow(
+			/pairwise matchup ballots must reconcile with the subject quality summary/i
+		);
 	});
 
 	it('requires schema-v4 preview calibration state and mandatory disclosures', () => {

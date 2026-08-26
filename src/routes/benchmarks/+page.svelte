@@ -23,16 +23,16 @@
 				<div>
 					<p class="text-sm font-medium text-muted">Available evaluation</p>
 					<h2 id="available-benchmarks" class="mt-1 text-2xl font-semibold text-ink">
-						CoffeeBench v0
+						CoffeeBench V1
 					</h2>
 				</div>
 				<span class="rounded-full border border-line bg-surface-panel px-3 py-1 text-xs text-muted">
-					Uncalibrated agent-jury preview
+					Published findings
 				</span>
 			</div>
 
 			<a
-				href="/benchmarks/coffeebench-v0"
+				href="/benchmarks/coffeebench-v1"
 				class="group mt-5 block rounded-3xl border border-line bg-surface-panel p-6 transition hover:border-accent/60 sm:p-8"
 			>
 				<div class="grid gap-8 md:grid-cols-[minmax(0,1fr)_17rem] md:items-end">
@@ -44,17 +44,17 @@
 							Coffee supply-chain analyst arena
 						</h3>
 						<p class="mt-4 max-w-2xl leading-7 text-muted">
-							A frozen, track-separated evaluation of raw models and tool-using systems across
-							historical-control and live-web coffee analysis. This complete three-family agent-jury
-							preview reports pairwise quality, absolute-rubric, and operational evidence
-							independently. Human agreement was not measured, and no composite score is reported.
+							A matched evaluation of one model across four system treatments. Harnessed systems
+							beat Raw, but Purveyors did not clearly beat Pi and Parchment added no measured
+							pairwise lift. Read the hypothesis audit, full pairwise matrix, failure modes, and
+							missing data.
 						</p>
 					</div>
 					<div class="rounded-2xl bg-surface-canvas p-5 ring-1 ring-line">
 						<p class="text-xs font-semibold uppercase tracking-wide text-muted">Includes</p>
 						<ul class="mt-3 space-y-2 text-sm text-ink">
-							<li>Three independent judge families</li>
-							<li>Quality, rubric, reliability, cost, and latency</li>
+							<li>All 1,800 pairwise ballots</li>
+							<li>Findings and product implications</li>
 							<li>Methodology and immutable digests</li>
 						</ul>
 						<p class="mt-5 font-medium text-accent group-hover:underline">Explore CoffeeBench →</p>

@@ -348,8 +348,8 @@ async function main() {
 		{ label: 'Analytics', path: '/analytics', expectInSitemap: true, expectInLlms: true },
 		{ label: 'Benchmarks', path: '/benchmarks', expectInSitemap: true, expectInLlms: true },
 		{
-			label: 'CoffeeBench v0',
-			path: '/benchmarks/coffeebench-v0',
+			label: 'CoffeeBench V1',
+			path: '/benchmarks/coffeebench-v1',
 			expectStructuredData: true,
 			expectInSitemap: true,
 			expectInLlms: true

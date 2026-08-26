@@ -1,11 +1,45 @@
 {
 	"headers": [
 		{
+			"source": "/benchmarks/coffeebench-v1/results/(.*)",
+			"headers": [
+				{
+					"key": "Cache-Control",
+					"value": "public, max-age=31536000, immutable"
+				},
+				{
+					"key": "X-Robots-Tag",
+					"value": "noindex, nofollow"
+				},
+				{
+					"key": "X-Content-Type-Options",
+					"value": "nosniff"
+				}
+			]
+		},
+		{
 			"source": "/benchmarks/coffeebench-v0/results/(.*)",
 			"headers": [
 				{
 					"key": "Cache-Control",
 					"value": "public, max-age=31536000, immutable"
+				},
+				{
+					"key": "X-Robots-Tag",
+					"value": "noindex, nofollow"
+				},
+				{
+					"key": "X-Content-Type-Options",
+					"value": "nosniff"
+				}
+			]
+		},
+		{
+			"source": "/benchmarks/coffeebench-public-export-v5.json",
+			"headers": [
+				{
+					"key": "Cache-Control",
+					"value": "public, max-age=3600"
 				},
 				{
 					"key": "X-Robots-Tag",
