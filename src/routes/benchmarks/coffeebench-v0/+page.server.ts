@@ -5,37 +5,29 @@ import { buildPublicMeta } from '$lib/seo/meta';
 
 export const load: PageServerLoad = async ({ url }) => {
 	const baseUrl = `${url.protocol}//${url.host}`;
-	const isFixture = coffeeBenchV0.status === 'fixture';
-	const isPreview = coffeeBenchV0.status === 'preview';
 	return {
 		benchmark: coffeeBenchV0,
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/benchmarks/coffeebench-v0',
 			title: 'CoffeeBench v0 | Purveyors',
-			description: isFixture
-				? 'Contract preview for CoffeeBench, a matched evaluation of whether harnesses and evidence tools improve coffee decisions. No measured result is published yet.'
-				: isPreview
-					? 'Uncalibrated single-judge CoffeeBench preview; quality scores are unavailable because all treatments exceeded the predeclared 10% terminal-failure eligibility ceiling.'
-					: 'Matched evaluation of whether model harnesses and evidence tools improve defensible coffee decisions after cost, latency, and failure are considered.',
+			description:
+				'CoffeeBench three-family agent-jury preview: Purveyors Search ranked first in pairwise quality while operational and rubric evidence remain separate. Human agreement was not measured.',
 			keywords: ['CoffeeBench v0', 'coffee AI benchmark', 'agent benchmark', 'LLM evaluation'],
-			robots: isFixture ? 'noindex, follow' : 'index, follow',
-			schemaData: isFixture
-				? undefined
-				: {
-						'@context': 'https://schema.org',
-						'@type': 'Dataset',
-						name: 'CoffeeBench v0',
-						description: isPreview
-							? 'An uncalibrated single-judge preview of reliability and operational evidence; Bradley-Terry quality scores are unavailable because every treatment exceeded the predeclared terminal-failure eligibility ceiling.'
-							: 'A versioned benchmark artifact for coffee supply-chain intelligence model and system tracks.',
-						url: `${baseUrl}/benchmarks/coffeebench-v0`,
-						distribution: {
-							'@type': 'DataDownload',
-							encodingFormat: 'application/json',
-							contentUrl: `${baseUrl}${COFFEEBENCH_RESULT_PATH}`
-						}
-					}
+			robots: 'index, follow',
+			schemaData: {
+				'@context': 'https://schema.org',
+				'@type': 'Dataset',
+				name: 'CoffeeBench v0',
+				description:
+					'An uncalibrated three-family agent-jury preview with independent pairwise-quality, absolute-rubric, and operational-reliability tracks. Human agreement was not measured.',
+				url: `${baseUrl}/benchmarks/coffeebench-v0`,
+				distribution: {
+					'@type': 'DataDownload',
+					encodingFormat: 'application/json',
+					contentUrl: `${baseUrl}${COFFEEBENCH_RESULT_PATH}`
+				}
+			}
 		})
 	};
 };

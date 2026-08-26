@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import rawFixture from '../../../static/benchmarks/coffeebench-public-export-v2.json';
-import rawPreview from '../../../static/benchmarks/coffeebench-public-export-v3.json';
+import rawLegacyPreview from '../../../static/benchmarks/coffeebench-public-export-v3.json';
+import rawPreview from '../../../static/benchmarks/coffeebench-public-export-v4.json';
 import {
 	assertCoffeeBenchV0RouteIdentity,
 	coffeeBenchPublicDigest,
@@ -11,6 +12,7 @@ import {
 	COFFEEBENCH_SCHEMA_VERSION,
 	COFFEEBENCH_V0_ARTIFACT_SHA256,
 	COFFEEBENCH_V0_RESULT_CONTENT_SHA256,
+	isCoffeeBenchIndependentExport,
 	parseCoffeeBenchPublicExport
 } from './coffeebench';
 
@@ -37,7 +39,7 @@ describe('CoffeeBench public export reader', () => {
 	it('keeps the public download byte-identical to the final Cherry preview export', () => {
 		const aliasBytes = readFileSync(`static${COFFEEBENCH_PREVIEW_ALIAS_PATH}`);
 		const immutableBytes = readFileSync(`static${COFFEEBENCH_RESULT_PATH}`);
-		expect(aliasBytes.byteLength).toBe(15_715);
+		expect(aliasBytes.byteLength).toBe(26_340);
 		expect(immutableBytes).toEqual(aliasBytes);
 		expect(createHash('sha256').update(immutableBytes).digest('hex')).toBe(
 			COFFEEBENCH_V0_ARTIFACT_SHA256
@@ -59,11 +61,11 @@ describe('CoffeeBench public export reader', () => {
 	});
 
 	it('accepts the complete sanitized schema-v3 Cherry preview', () => {
-		const parsed = parseCoffeeBenchPublicExport(rawPreview);
+		const parsed = parseCoffeeBenchPublicExport(rawLegacyPreview);
+		if (isCoffeeBenchIndependentExport(parsed)) throw new Error('expected the schema-v3 branch');
 
-		expect(parsed.schema_version).toBe(COFFEEBENCH_SCHEMA_VERSION);
+		expect(parsed.schema_version).toBe(3);
 		expect(parsed.status).toBe('preview');
-		expect(parsed.identities.result_content_sha256).toBe(COFFEEBENCH_V0_RESULT_CONTENT_SHA256);
 		expect(parsed.jury).toHaveLength(1);
 		expect(parsed.calibration).toEqual({
 			status: 'not_run',
@@ -78,16 +80,35 @@ describe('CoffeeBench public export reader', () => {
 		).toEqual(Array(12).fill(null));
 	});
 
-	it('requires schema-v3 preview calibration and mandatory disclosures', () => {
+	it('accepts the complete schema-v4 independent-track agent-jury preview', () => {
+		const parsed = parseCoffeeBenchPublicExport(rawPreview);
+		if (!isCoffeeBenchIndependentExport(parsed)) throw new Error('expected the schema-v4 branch');
+
+		expect(parsed.schema_version).toBe(COFFEEBENCH_SCHEMA_VERSION);
+		expect(parsed.identities.result_content_sha256).toBe(COFFEEBENCH_V0_RESULT_CONTENT_SHA256);
+		expect(parsed.jury.map((judge) => judge.family).sort()).toEqual([
+			'anthropic',
+			'google',
+			'openai'
+		]);
+		expect(parsed.methodology.composite_score).toBeNull();
+		expect(parsed.methodology.pairwise_ballot_count).toBe(1800);
+		const overall = parsed.slices.find((slice) => slice.slice_id === 'overall');
+		expect(
+			overall?.track_results[0].subjects.map((subject) => subject.pairwise_quality.rank)
+		).toEqual([3, 2, 1, 4]);
+	});
+
+	it('requires schema-v4 preview calibration state and mandatory disclosures', () => {
 		const calibration = previewCopy();
 		(calibration.calibration as Record<string, unknown>).status = 'complete';
 		expect(() => parseCoffeeBenchPublicExport(calibration)).toThrow(/calibration/i);
 
 		const disclosures = previewCopy();
 		disclosures.limitations = (disclosures.limitations as string[]).filter(
-			(limitation) => !limitation.toLowerCase().includes('bounded salvage')
+			(limitation) => !limitation.toLowerCase().includes('independent human agreement')
 		);
-		expect(() => parseCoffeeBenchPublicExport(disclosures)).toThrow(/bounded salvage/i);
+		expect(() => parseCoffeeBenchPublicExport(disclosures)).toThrow(/uncalibrated judging/i);
 	});
 
 	it('rejects unknown schema versions', () => {
