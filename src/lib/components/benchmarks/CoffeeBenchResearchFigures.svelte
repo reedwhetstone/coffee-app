@@ -119,8 +119,8 @@
 			<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Figure 1</p>
 			<h3 class="mt-2 font-serif text-2xl font-medium text-ink">No harness separated cleanly.</h3>
 			<p class="mt-2 text-sm leading-6 text-muted">
-				Purveyors Search ranked first on Bradley–Terry preference, but every interval overlaps. The
-				ranking is descriptive, not a demonstrated winner.
+				Purveyors Search ranked first on Bradley–Terry preference. Every interval overlaps, so V1
+				does not establish a winner.
 			</p>
 		</figcaption>
 		<div class="mt-7 space-y-5">
@@ -220,8 +220,8 @@
 				{/each}
 			</div>
 			<p class="mt-5 border-t border-line pt-4 text-xs leading-5 text-muted">
-				A 50% share is even. Historical gains show that the Raw comparison captures more than web
-				retrieval alone.
+				A 50% share is even. The harnesses retained an advantage over Raw on historical cases, where
+				web retrieval was disabled.
 			</p>
 		</figure>
 
@@ -229,7 +229,7 @@
 			<figcaption>
 				<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Figure 3</p>
 				<h3 class="mt-2 font-serif text-2xl font-medium text-ink">
-					Raw used less time and fewer reported input/output tokens, not better answers.
+					Raw was faster, used fewer reported input/output tokens, and produced weaker answers.
 				</h3>
 				<p class="mt-2 text-sm leading-6 text-muted">
 					Reported input/output tokens only; reasoning-token usage was unavailable for every

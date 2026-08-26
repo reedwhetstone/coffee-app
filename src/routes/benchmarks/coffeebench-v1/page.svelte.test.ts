@@ -29,7 +29,7 @@ describe('CoffeeBench V1 report', () => {
 			screen.getByRole('heading', { name: 'A capable harness beat a raw request.' })
 		).toBeVisible();
 		expect(
-			screen.getByRole('heading', { name: 'Purveyors led directionally, not decisively.' })
+			screen.getByRole('heading', { name: 'Purveyors’ directional lead remained inconclusive.' })
 		).toBeVisible();
 		expect(
 			screen.getByRole('heading', { name: 'An irrelevant tool became a distraction.' })
@@ -47,7 +47,7 @@ describe('CoffeeBench V1 report', () => {
 		).toBeVisible();
 		expect(
 			screen.getByRole('heading', {
-				name: 'Raw used less time and fewer reported input/output tokens, not better answers.'
+				name: 'Raw was faster, used fewer reported input/output tokens, and produced weaker answers.'
 			})
 		).toBeVisible();
 		expect(
@@ -134,5 +134,9 @@ describe('CoffeeBench V1 report', () => {
 		expect(
 			screen.getByRole('heading', { name: 'Design output for progressive disclosure.' })
 		).toBeVisible();
+		expect(
+			screen.getByText(/Model capability, orchestration, and evidence access interacted/i)
+		).toBeVisible();
+		expect(screen.queryByText(/The most interesting signal is not/i)).not.toBeInTheDocument();
 	});
 });

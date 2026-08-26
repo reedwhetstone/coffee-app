@@ -141,8 +141,7 @@
 							88.3–90.8% on live-web cases. Purveyors Search ranked first, but its uncertainty
 							overlapped the other harnesses. Adding a frozen Parchment catalog did not improve
 							pairwise quality. Trace analysis suggests a useful design principle for the next
-							round: specialized capabilities should appear when their evidence is relevant, not
-							simply because they are available.
+							round: expose specialized capabilities only when their evidence is relevant.
 						</p>
 					</div>
 				</div>
@@ -171,7 +170,7 @@
 					<article>
 						<p class="text-sm font-semibold text-chart-teal">02</p>
 						<h3 class="mt-3 text-xl font-semibold text-ink">
-							Purveyors led directionally, not decisively.
+							Purveyors’ directional lead remained inconclusive.
 						</h3>
 						<p class="mt-3 text-sm leading-6 text-muted">
 							Purveyors Search received 55.5% against Pi Search overall, but the quality intervals
@@ -295,11 +294,11 @@
 						What we think this means, and what we will do with it.
 					</h2>
 					<p class="mt-5 leading-7 text-muted">
-						The most interesting signal is not the narrow rank order. It is that model capability,
-						orchestration, and evidence access behave as a system. The raw model answered quickly
-						but left too much important content out. The catalog tool supplied legitimate data, but
-						the harness exposed it when the data was unrelated to the decision. Better systems
-						should make relevant capability easy to reach and irrelevant capability easy to ignore.
+						Model capability, orchestration, and evidence access interacted to shape answer quality.
+						The raw model answered quickly while omitting important content. The catalog tool
+						supplied legitimate data, yet the harness exposed it when that data was unrelated to the
+						decision. The next system should make relevant capability easy to reach and irrelevant
+						capability easy to ignore.
 					</p>
 				</div>
 
