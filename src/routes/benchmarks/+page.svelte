@@ -27,11 +27,7 @@
 					</h2>
 				</div>
 				<span class="rounded-full border border-line bg-surface-panel px-3 py-1 text-xs text-muted">
-					{data.benchmark.status === 'fixture'
-						? 'Fixture preview'
-						: data.benchmark.status === 'preview'
-							? 'Uncalibrated preview'
-							: 'Provisional result'}
+					Uncalibrated agent-jury preview
 				</span>
 			</div>
 
@@ -49,25 +45,16 @@
 						</h3>
 						<p class="mt-4 max-w-2xl leading-7 text-muted">
 							A frozen, track-separated evaluation of raw models and tool-using systems across
-							historical-control and live-web coffee analysis.
-							{#if data.benchmark.status === 'fixture'}
-								The current page exercises the complete public contract with deterministic fixture
-								values; it is not a published leaderboard.
-							{:else if data.benchmark.status === 'preview'}
-								This measured, single-judge preview reports reliability and operational evidence.
-								Its quality leaderboard is unavailable because all four treatments exceeded the
-								predeclared 10% terminal-failure eligibility ceiling.
-							{:else}
-								This provisional result is available for measured comparison while final publication
-								approval remains separate.
-							{/if}
+							historical-control and live-web coffee analysis. This complete three-family agent-jury
+							preview reports pairwise quality, absolute-rubric, and operational evidence
+							independently. Human agreement was not measured, and no composite score is reported.
 						</p>
 					</div>
 					<div class="rounded-2xl bg-surface-canvas p-5 ring-1 ring-line">
 						<p class="text-xs font-semibold uppercase tracking-wide text-muted">Includes</p>
 						<ul class="mt-3 space-y-2 text-sm text-ink">
-							<li>Published and evaluator track distinction</li>
-							<li>Quality, cost, tokens, and latency</li>
+							<li>Three independent judge families</li>
+							<li>Quality, rubric, reliability, cost, and latency</li>
 							<li>Methodology and immutable digests</li>
 						</ul>
 						<p class="mt-5 font-medium text-accent group-hover:underline">Explore CoffeeBench →</p>

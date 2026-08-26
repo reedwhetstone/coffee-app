@@ -1,7 +1,11 @@
-# CoffeeBench public export v3 preview contract
+# Historical CoffeeBench public export v3 preview contract
 
-Coffee-app publishes Cherry's first measured CoffeeBench v0 result as an immutable, sanitized
-schema-v3 preview. It intentionally preserves the run's limitations instead of converting missing
+> Historical note: the CoffeeBench v0 route now publishes the schema-v4 independent-track
+> preview. This document remains the contract for the predecessor artifact at its immutable path;
+> see `notes/coffeebench-public-export-v4.md` for the current route.
+
+Coffee-app published Cherry's first measured CoffeeBench v0 result as an immutable, sanitized
+schema-v3 preview. It intentionally preserved the run's limitations instead of converting missing
 quality evidence into a leaderboard.
 
 ## Bound artifact

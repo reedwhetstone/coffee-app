@@ -1,47 +1,52 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import BenchmarkVisuals from '$lib/components/benchmarks/BenchmarkVisuals.svelte';
-	import TrackResults from '$lib/components/benchmarks/TrackResults.svelte';
 	import Footer from '$lib/components/marketing/Footer.svelte';
 	import {
 		COFFEEBENCH_RESULT_PATH,
-		type CoffeeBenchPublicExport,
-		type CoffeeBenchSlice
+		type CoffeeBenchIndependentPublicExport,
+		type CoffeeBenchIndependentSubjectResult
 	} from '$lib/benchmarks/coffeebench';
 	import { formatDuration, formatMetric, formatRate, formatUsd } from '$lib/benchmarks/display';
 
 	let { data } = $props<{ data: PageData }>();
-	let benchmark: CoffeeBenchPublicExport = $derived(data.benchmark);
+	let benchmark: CoffeeBenchIndependentPublicExport = $derived(data.benchmark);
 	let overall = $derived(
-		benchmark.slices.find((slice: CoffeeBenchSlice) => slice.slice_id === 'overall')
+		benchmark.slices.find((slice) => slice.slice_id === 'overall') ?? benchmark.slices[0]
 	);
-	let cohortSlices = $derived(
-		benchmark.slices.filter((slice: CoffeeBenchSlice) => slice.slice_id !== 'overall')
-	);
-	let isFixture = $derived(benchmark.status === 'fixture');
-	let isPreview = $derived(benchmark.status === 'preview');
-	let qualityAvailable = $derived(
-		(overall?.track_results ?? []).some((track) =>
-			track.subjects.some((result) => result.quality_score !== null)
+	let overallResults = $derived(
+		[...overall.track_results[0].subjects].sort(
+			(left, right) =>
+				(left.pairwise_quality.rank ?? Number.MAX_SAFE_INTEGER) -
+				(right.pairwise_quality.rank ?? Number.MAX_SAFE_INTEGER)
 		)
 	);
+	let cohortSlices = $derived(benchmark.slices.filter((slice) => slice.slice_id !== 'overall'));
 
-	function sentenceCase(value: string): string {
-		return value.replaceAll('_', ' ');
+	function subject(subjectId: string) {
+		return benchmark.subjects.find((candidate) => candidate.subject_id === subjectId);
 	}
 
 	function subjectName(subjectId: string): string {
-		return (
-			benchmark.subjects.find((subject) => subject.subject_id === subjectId)?.display_name ??
-			subjectId
-		);
+		return subject(subjectId)?.display_name ?? subjectId;
 	}
 
-	function trackName(track: string): string {
-		return (
-			benchmark.tracks.find((candidate) => candidate.track_id === track)?.label ??
-			sentenceCase(track)
-		);
+	function shortSubjectName(subjectId: string): string {
+		return subjectName(subjectId).replace('DeepSeek V4 with ', '').replace('DeepSeek V4 ', '');
+	}
+
+	function qualityInterval(result: CoffeeBenchIndependentSubjectResult): string {
+		return `${formatMetric(result.pairwise_quality.interval_95.lower, 3)}–${formatMetric(
+			result.pairwise_quality.interval_95.upper,
+			3
+		)}`;
+	}
+
+	function titleCase(value: string): string {
+		return value.replaceAll('_', ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+	}
+
+	function formatInteger(value: number): string {
+		return new Intl.NumberFormat('en-US').format(value);
 	}
 </script>
 
@@ -61,32 +66,29 @@
 							<span
 								class="rounded-full border border-line bg-surface-canvas px-3 py-1 text-xs text-muted"
 							>
-								{isFixture
-									? 'Example data · full run not started'
-									: isPreview
-										? 'Uncalibrated single-judge preview'
-										: 'Provisional result'}
+								Uncalibrated three-family agent-jury preview
 							</span>
 						</div>
 						<h1 class="mt-3 font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl">
 							Can a model make a defensible coffee decision?
 						</h1>
 						<p class="mt-6 text-lg leading-8 text-muted">
-							CoffeeBench evaluates evidence use, belief updating, calibration, actionability, and
-							operational performance on a frozen coffee supply-chain analyst suite.
-							{isFixture
-								? 'The planned publication keeps comparison tracks and evaluator criteria explicit.'
-								: 'Published comparison tracks and each subject’s effective evaluator track remain explicit.'}
+							CoffeeBench holds the base model constant and changes its evidence tools and agent
+							harness. This run reports agent-jury preference, rubric outcomes, and operational
+							reliability as three independent views.
 						</p>
 					</div>
 					<div class="rounded-2xl bg-surface-canvas p-5 ring-1 ring-line">
-						<p class="text-xs font-semibold uppercase tracking-wide text-muted">Benchmark thesis</p>
+						<p class="text-xs font-semibold uppercase tracking-wide text-muted">
+							Result in one line
+						</p>
 						<p class="mt-2 font-serif text-xl font-medium text-ink">
-							Measure the lift created by the system around the model.
+							Purveyors Search led agent-jury quality; Raw was fastest and the only treatment with
+							published cost.
 						</p>
 						<p class="mt-3 text-sm leading-6 text-muted">
-							Hold the base model constant, change its harness and evidence access, then ask whether
-							better decisions survive the added cost, latency, and failure risk.
+							The top three quality intervals overlap, costs are unavailable for three harnesses,
+							and no composite score is reported.
 						</p>
 					</div>
 				</div>
@@ -98,7 +100,7 @@
 			aria-label="CoffeeBench report sections"
 		>
 			<div class="mx-auto flex max-w-7xl gap-1 px-4 py-2 sm:px-6 lg:px-8">
-				{#each [['#overview', 'Purpose'], ['#findings', 'Findings'], ['#comparison', 'Comparison'], ['#cohorts', 'Cohorts'], ['#harnesses', 'Harnesses'], ['#methodology', 'Methodology'], ['#limitations', 'Limitations'], ['#provenance', 'Provenance']] as [href, label]}
+				{#each [['#overview', 'Purpose'], ['#findings', 'Findings'], ['#tracks', 'Independent tracks'], ['#cohorts', 'Cohorts'], ['#harnesses', 'Harnesses'], ['#methodology', 'Methodology'], ['#limitations', 'Limitations'], ['#provenance', 'Provenance']] as [href, label]}
 					<a
 						{href}
 						class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium text-muted hover:bg-surface-panel hover:text-ink"
@@ -109,29 +111,16 @@
 		</nav>
 
 		<div class="mx-auto max-w-7xl space-y-20 px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-			{#if isFixture}
-				<div
-					class="flex flex-col gap-2 rounded-2xl border border-accent/40 bg-accent/10 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
-					role="note"
-				>
-					<p class="font-semibold text-ink">Example data only. No benchmark result exists yet.</p>
-					<p class="max-w-2xl text-sm leading-6 text-muted sm:text-right">
-						The reporting software is tested; the full {benchmark.methodology
-							.subject_trial_count}-trial panel, judging, and human calibration have not run.
-					</p>
-				</div>
-			{:else if isPreview}
-				<div class="rounded-2xl border border-accent/40 bg-accent/10 p-5" role="note">
-					<p class="font-semibold text-ink">Measured preview, not a quality leaderboard.</p>
-					<p class="mt-2 max-w-4xl text-sm leading-6 text-muted">
-						One Luna judge family completed the absolute evaluation pass, but human calibration was
-						not run. Of 600 pairwise records, 527 were resolved deterministically under the
-						unacceptable-response rules and 73 received a pairwise model-judge call. Quality scores
-						and ranks are unavailable because every treatment exceeded the predeclared 10%
-						terminal-failure eligibility ceiling.
-					</p>
-				</div>
-			{/if}
+			<div class="rounded-2xl border border-accent/40 bg-accent/10 p-5" role="note">
+				<p class="font-semibold text-ink">Agent-jury evidence, not human ground truth.</p>
+				<p class="mt-2 max-w-5xl text-sm leading-6 text-muted">
+					Three independent model families completed all {formatInteger(
+						benchmark.methodology.absolute_evaluation_count
+					)} absolute evaluations and {formatInteger(benchmark.methodology.pairwise_ballot_count)} pairwise
+					ballots. Independent human agreement was not measured, so these ranks describe the jury’s preferences
+					on this frozen suite and do not establish broad superiority.
+				</p>
+			</div>
 
 			<section id="overview" class="scroll-mt-36" aria-labelledby="overview-heading">
 				<div class="max-w-3xl">
@@ -140,452 +129,404 @@
 						Measure the system, not just the model.
 					</h2>
 					<p class="mt-4 leading-7 text-muted">
-						Coffee analysis is an evidence task: the answer must use the right facts, respect what
-						was knowable at the time, express uncertainty, and lead to a defensible action. A
-						generic model leaderboard cannot show whether retrieval, domain tools, or orchestration
-						actually improve that work.
+						Coffee analysis is an evidence task. An answer must use the right facts, respect what
+						was knowable at the time, express uncertainty, and lead to a defensible action. This
+						matched evaluation tests whether retrieval, domain data, or orchestration improve that
+						work without hiding their operational tradeoffs.
 					</p>
 				</div>
-				<div class="mt-8 grid gap-4 md:grid-cols-3">
-					<article class="rounded-2xl border border-line bg-surface-panel p-6">
-						<p class="text-xs font-semibold uppercase tracking-wide text-accent">Harness lift</p>
-						<h3 class="mt-2 text-lg font-semibold text-ink">
-							Does the system make the model better?
-						</h3>
-						<p class="mt-3 text-sm leading-6 text-muted">
-							Matched treatments isolate the contribution of search, Purveyors data, Parchment
-							tools, and the surrounding agent harness.
-						</p>
-					</article>
-					<article class="rounded-2xl border border-line bg-surface-panel p-6">
-						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-							Evidence discipline
-						</p>
-						<h3 class="mt-2 text-lg font-semibold text-ink">Can the answer be trusted?</h3>
-						<p class="mt-3 text-sm leading-6 text-muted">
-							Historical controls test hindsight leakage; live-web tasks test current-source use.
-							Judges score the criteria each treatment could actually satisfy.
-						</p>
-					</article>
-					<article class="rounded-2xl border border-line bg-surface-panel p-6">
-						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-							Decision utility
-						</p>
-						<h3 class="mt-2 text-lg font-semibold text-ink">Is the lift worth operating?</h3>
-						<p class="mt-3 text-sm leading-6 text-muted">
-							Quality is read beside failure, token use, normalized cost, and latency so a stronger
-							answer is not mistaken for a better production system.
-						</p>
-					</article>
-				</div>
-				<dl class="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-5">
-					{#each [[isFixture ? 'Planned cases' : 'Cases', benchmark.methodology.case_count], [isFixture ? 'Planned subject trials' : 'Subject trials', benchmark.methodology.subject_trial_count], [isFixture ? 'Planned absolute evaluations' : 'Absolute evaluations', benchmark.methodology.absolute_evaluation_count], [isFixture ? 'Planned pairwise ballots' : 'Pairwise ballots', benchmark.methodology.pairwise_ballot_count], [isFixture ? 'Planned jury families' : 'Jury families', benchmark.methodology.jury_family_count]] as [label, value]}
+				<dl class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+					{#each [['Cases', formatInteger(benchmark.methodology.case_count)], ['Subject trials', formatInteger(benchmark.methodology.subject_trial_count)], ['Absolute evaluations', formatInteger(benchmark.methodology.absolute_evaluation_count)], ['Pairwise ballots', formatInteger(benchmark.methodology.pairwise_ballot_count)], ['Ballot coverage', formatRate(benchmark.methodology.pairwise_ballot_count / benchmark.methodology.pairwise_possible_ballot_count)], ['Jury families', formatInteger(benchmark.methodology.jury_family_count)]] as [label, value]}
 						<div class="rounded-2xl border border-line bg-surface-panel p-5">
 							<dt class="text-xs text-muted">{label}</dt>
 							<dd class="mt-2 text-2xl font-semibold text-ink">{value}</dd>
 						</div>
 					{/each}
 				</dl>
-				<div class="mt-6 grid gap-4 md:grid-cols-2">
-					{#each benchmark.tracks as track (track.track_id)}
-						<article class="rounded-2xl border border-line bg-surface-panel p-6">
-							<h3 class="text-lg font-semibold text-ink">{track.label}</h3>
-							<p class="mt-2 text-sm leading-6 text-muted">{track.description}</p>
-						</article>
-					{/each}
-				</div>
 			</section>
 
 			<section id="findings" class="scroll-mt-36" aria-labelledby="findings-heading">
 				<p class="text-sm font-semibold text-accent">Top-line read</p>
-				{#if isFixture}
-					<div class="mt-2 rounded-3xl border border-accent/40 bg-accent/10 p-6 sm:p-8" role="note">
-						<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
-							Run status · Not started
+				<h2 id="findings-heading" class="mt-2 max-w-4xl font-serif text-3xl font-medium text-ink">
+					Purveyors Search ranked first in agent-jury quality, with important caveats.
+				</h2>
+				<p class="mt-4 max-w-4xl leading-7 text-muted">
+					Its Bradley–Terry score was 0.582. The top three intervals overlap, so the result does not
+					support a clean separation among the three search-enabled treatments. Raw ranked fourth in
+					pairwise quality while remaining fastest and lowest on critical errors. It was the only
+					treatment with published cost and also had the highest unacceptable-response rate.
+				</p>
+				<div class="mt-8 grid gap-4 md:grid-cols-3">
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+							Agent-jury quality leader
 						</p>
-						<h2 id="findings-heading" class="mt-3 font-serif text-3xl font-medium text-ink">
-							The full benchmark panel has not run. There are no performance findings yet.
-						</h2>
-						<p class="mt-4 max-w-3xl leading-7 text-muted">
-							The software contract and page have passed their tests. The {benchmark.methodology
-								.subject_trial_count}
-							subject trials, {benchmark.methodology.absolute_evaluation_count} absolute evaluations,
-							{benchmark.methodology.pairwise_ballot_count} pairwise ballots, and blind human calibration
-							remain unexecuted. Every result value below is deterministic example data used only to
-							prove the reporting interface.
+						<p class="mt-2 text-3xl font-semibold text-ink">0.582</p>
+						<p class="mt-2 text-sm leading-6 text-muted">
+							Purveyors Search, rank #1. Its 95% interval was 0.547–0.619.
 						</p>
-						<div class="mt-6 grid gap-4 sm:grid-cols-2">
-							<div class="rounded-2xl bg-surface-panel p-5 ring-1 ring-line">
-								<p class="text-xs text-muted">Measured findings</p>
-								<p class="mt-1 text-xl font-semibold text-ink">None yet</p>
-							</div>
-							<div class="rounded-2xl bg-surface-panel p-5 ring-1 ring-line">
-								<p class="text-xs text-muted">What this preview proves</p>
-								<p class="mt-1 text-sm font-medium leading-6 text-ink">
-									Sanitized export → strict validation → responsive publication
-								</p>
-							</div>
-						</div>
-					</div>
-				{:else if isPreview}
-					<div class="mt-2 max-w-4xl">
-						<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
-							Run status · Measured preview
+					</article>
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">Fastest median</p>
+						<p class="mt-2 text-3xl font-semibold text-ink">5.8 s</p>
+						<p class="mt-2 text-sm leading-6 text-muted">
+							Raw, compared with 8.8–9.8 seconds for the three search-enabled treatments.
 						</p>
-						<h2 id="findings-heading" class="mt-3 font-serif text-3xl font-medium text-ink">
-							This run measured reliability and operations, but not a defensible quality ranking.
-						</h2>
-						<p class="mt-4 max-w-3xl leading-7 text-muted">
-							The raw treatment had the lowest observed terminal-failure and critical-error rates in
-							this panel. That is operational evidence, not a quality win: its 15% terminal-failure
-							rate still exceeded the predeclared 10% ceiling, as did the other treatments at 34%,
-							38%, and 59%, so none was eligible for Bradley–Terry fitting.
+					</article>
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">Raw tradeoff</p>
+						<p class="mt-2 text-3xl font-semibold text-ink">8% / 41%</p>
+						<p class="mt-2 text-sm leading-6 text-muted">
+							Lowest critical-error rate, but highest unacceptable-response rate.
 						</p>
-					</div>
-					<div class="mt-8 grid gap-4 md:grid-cols-3">
-						<article class="rounded-2xl border border-line bg-surface-panel p-6">
-							<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-								Lowest terminal failure
-							</p>
-							<p class="mt-2 text-3xl font-semibold text-ink">15%</p>
-							<p class="mt-2 text-sm leading-6 text-muted">
-								DeepSeek V4 Raw, versus 34%–59% for the three harnessed treatments.
-							</p>
-						</article>
-						<article class="rounded-2xl border border-line bg-surface-panel p-6">
-							<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-								Lowest critical-error rate
-							</p>
-							<p class="mt-2 text-3xl font-semibold text-ink">30%</p>
-							<p class="mt-2 text-sm leading-6 text-muted">
-								DeepSeek V4 Raw, versus 47%–61% for the three harnessed treatments.
-							</p>
-						</article>
-						<article class="rounded-2xl border border-line bg-surface-panel p-6">
-							<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-								Quality ranking
-							</p>
-							<p class="mt-2 text-3xl font-semibold text-ink">Unavailable</p>
-							<p class="mt-2 text-sm leading-6 text-muted">
-								All four treatments exceeded the 10% terminal-failure eligibility ceiling.
-							</p>
-						</article>
-					</div>
-				{:else}
-					<div class="mt-2 max-w-3xl">
-						<h2 id="findings-heading" class="font-serif text-3xl font-medium text-ink">
-							What this run found, and what it does not prove.
-						</h2>
-						<p class="mt-4 leading-7 text-muted">
-							The leaders below are precomputed within their matched comparison tracks. They
-							estimate harness contribution for these treatments and cases; they do not establish
-							universal model superiority.
-						</p>
-					</div>
-					<div class="mt-8 grid gap-4 md:grid-cols-2">
-						{#each overall?.track_results ?? [] as trackResult (trackResult.track)}
-							{#each trackResult.subjects.filter((result) => result.rank === 1) as result (result.subject_id)}
-								<article class="rounded-2xl border border-line bg-surface-panel p-6">
-									<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-										{trackName(trackResult.track)} quality leader
-									</p>
-									<h3 class="mt-2 text-xl font-semibold text-ink">
-										{subjectName(result.subject_id)}
-									</h3>
-									<p class="mt-3 text-sm leading-6 text-muted">
-										Quality {formatMetric(result.quality_score, 3)} · 95% interval {formatMetric(
-											result.quality_interval_95.lower,
-											3
-										)}–{formatMetric(result.quality_interval_95.upper, 3)}. Read this lead beside
-										the operational trade-offs below before selecting a system.
-									</p>
-								</article>
-							{/each}
-						{/each}
-						<article class="rounded-2xl border border-line bg-surface-panel p-6">
-							<p class="text-xs font-semibold uppercase tracking-wide text-accent">Implication</p>
-							<h3 class="mt-2 text-xl font-semibold text-ink">
-								Quality alone is not the decision.
-							</h3>
-							<p class="mt-3 text-sm leading-6 text-muted">
-								The practical winner is the treatment whose quality lift remains defensible after
-								cost, latency, failures, critical errors, and confidence calibration are considered
-								together.
-							</p>
-						</article>
-					</div>
-				{/if}
+					</article>
+				</div>
 			</section>
 
-			<section id="comparison" class="scroll-mt-36" aria-labelledby="comparison-heading">
-				<div class="max-w-3xl">
-					<p class="text-sm font-semibold text-accent">
-						{isFixture ? 'Preview of the result structure' : 'Overall comparison'}
-					</p>
-					<h2 id="comparison-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
-						{qualityAvailable
-							? 'Quality beside cost, latency, and failure.'
-							: 'Reliability, latency, and token evidence without a quality rank.'}
+			<section id="tracks" class="scroll-mt-36" aria-labelledby="tracks-heading">
+				<div class="max-w-4xl">
+					<p class="text-sm font-semibold text-accent">Complete result</p>
+					<h2 id="tracks-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
+						Three independent tracks, no composite score.
 					</h2>
 					<p class="mt-4 leading-7 text-muted">
-						{qualityAvailable
-							? 'Start with quality and its uncertainty, then test whether the apparent lift survives cost, latency, and failure.'
-							: 'Bradley–Terry scores are unavailable because all four treatments exceeded the predeclared 10% terminal-failure eligibility ceiling. Compare the measured outcome rates and operational evidence without inferring a quality order.'}
-						Every value is copied from Cherry’s precomputed export; this app does not derive rank, intervals,
-						cost, rates, or Pareto status.
+						Pairwise quality is an agent-jury preference estimate. Absolute rubric results count
+						declared requirements and errors. Operational results report failures, latency, tokens,
+						and cost. One view never silently overrides another.
 					</p>
 				</div>
-				<div class="mt-6 grid gap-3 sm:grid-cols-3" aria-label="Recommended result reading order">
-					{#each qualityAvailable ? [['1', 'Quality', 'Compare scores and uncertainty before calling a leader.'], ['2', 'Trade-offs', 'Ask what extra tokens, cost, and latency buy.'], ['3', 'Reliability', 'Check failures, critical errors, and calibration before acting.']] : [['1', 'Reliability', 'Compare failure, unacceptable-response, and critical-error rates.'], ['2', 'Operations', 'Read latency and token use without converting them into a quality claim.'], ['3', 'Limits', 'Keep the single-judge, uncalibrated, and salvage disclosures attached.']] as [step, label, explanation]}
-						<div class="rounded-xl border border-line bg-surface-panel p-4">
-							<p class="text-xs font-semibold text-accent">{step} · {label}</p>
-							<p class="mt-1 text-xs leading-5 text-muted">{explanation}</p>
-						</div>
+
+				<div class="mt-8 grid gap-4 md:grid-cols-3">
+					{#each [['Pairwise quality', 'Agent preference rank, score, interval, and full ballot coverage.'], ['Absolute rubric', 'Strict pass, critical error, confidence, and unacceptable-response rates.'], ['Operational reliability', 'Terminal and contract outcomes, transport, latency, token use, and cost.']] as [title, description]}
+						<article class="rounded-2xl border border-line bg-surface-panel p-5">
+							<h3 class="font-semibold text-ink">{title}</h3>
+							<p class="mt-2 text-sm leading-6 text-muted">{description}</p>
+						</article>
 					{/each}
 				</div>
-				{#if overall}
-					<div class="mt-10 space-y-14">
-						{#each overall.track_results as trackResult (trackResult.track)}
-							<BenchmarkVisuals {trackResult} subjects={benchmark.subjects} fixture={isFixture} />
-							<TrackResults {trackResult} subjects={benchmark.subjects} fixture={isFixture} />
-						{/each}
-					</div>
-				{/if}
+
+				<div class="mt-8 space-y-4 md:hidden" aria-label="Overall subject result cards">
+					{#each overallResults as result (result.subject_id)}
+						<article class="rounded-2xl border border-line bg-surface-panel p-5">
+							<div class="flex items-start justify-between gap-4">
+								<h3 class="font-semibold text-ink">{shortSubjectName(result.subject_id)}</h3>
+								<span class="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent"
+									>Quality #{result.pairwise_quality.rank}</span
+								>
+							</div>
+							<dl class="mt-5 grid grid-cols-2 gap-x-4 gap-y-5 text-sm">
+								<div>
+									<dt class="text-muted">Quality score · 95% CI</dt>
+									<dd class="mt-1 font-medium text-ink">
+										{formatMetric(result.pairwise_quality.score, 3)} · {qualityInterval(result)}
+									</dd>
+								</div>
+								<div>
+									<dt class="text-muted">Strict rubric pass</dt>
+									<dd class="mt-1 font-medium text-ink">
+										{formatRate(result.absolute_rubric.strict_all_requirements_pass_rate)}
+									</dd>
+								</div>
+								<div>
+									<dt class="text-muted">Critical / unacceptable</dt>
+									<dd class="mt-1 font-medium text-ink">
+										{formatRate(result.absolute_rubric.critical_error_rate)} / {formatRate(
+											result.absolute_rubric.unacceptable_response_rate
+										)}
+									</dd>
+								</div>
+								<div>
+									<dt class="text-muted">Terminal / contract</dt>
+									<dd class="mt-1 font-medium text-ink">
+										{formatRate(result.operational.terminal_failure_rate)} / {formatRate(
+											result.operational.response_contract_valid_rate
+										)}
+									</dd>
+								</div>
+								<div>
+									<dt class="text-muted">Median latency</dt>
+									<dd class="mt-1 font-medium text-ink">
+										{formatDuration(result.operational.latency.end_to_end_ms.p50)}
+									</dd>
+								</div>
+								<div>
+									<dt class="text-muted">Normalized cost / task</dt>
+									<dd class="mt-1 font-medium text-ink">
+										{formatUsd(result.operational.cost.normalized_cost_usd.per_attempted_task)}
+									</dd>
+								</div>
+							</dl>
+						</article>
+					{/each}
+				</div>
+
+				<div
+					class="mt-8 hidden overflow-x-auto rounded-2xl border border-line bg-surface-panel md:block"
+				>
+					<table class="w-full min-w-[76rem] text-left text-sm">
+						<caption class="sr-only">Overall independent-track CoffeeBench result</caption>
+						<thead class="border-b border-line bg-surface-canvas text-xs text-muted">
+							<tr>
+								<th class="px-5 py-4 font-medium" scope="col">Treatment</th>
+								<th class="px-4 py-4 font-medium" scope="col">Quality rank</th>
+								<th class="px-4 py-4 font-medium" scope="col">Score · 95% CI</th>
+								<th class="px-4 py-4 font-medium" scope="col">Strict pass</th>
+								<th class="px-4 py-4 font-medium" scope="col">Critical</th>
+								<th class="px-4 py-4 font-medium" scope="col">Unacceptable</th>
+								<th class="px-4 py-4 font-medium" scope="col">Terminal failure</th>
+								<th class="px-4 py-4 font-medium" scope="col">Contract valid</th>
+								<th class="px-4 py-4 font-medium" scope="col">Median latency</th>
+								<th class="px-4 py-4 font-medium" scope="col">Cost / task</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-line">
+							{#each overallResults as result (result.subject_id)}
+								<tr>
+									<th class="px-5 py-4 font-medium text-ink" scope="row">
+										{shortSubjectName(result.subject_id)}
+									</th>
+									<td class="px-4 py-4 font-semibold text-ink">#{result.pairwise_quality.rank}</td>
+									<td class="px-4 py-4 text-ink">
+										{formatMetric(result.pairwise_quality.score, 3)} · {qualityInterval(result)}
+									</td>
+									<td class="px-4 py-4 text-ink"
+										>{formatRate(result.absolute_rubric.strict_all_requirements_pass_rate)}</td
+									>
+									<td class="px-4 py-4 text-ink"
+										>{formatRate(result.absolute_rubric.critical_error_rate)}</td
+									>
+									<td class="px-4 py-4 text-ink"
+										>{formatRate(result.absolute_rubric.unacceptable_response_rate)}</td
+									>
+									<td class="px-4 py-4 text-ink"
+										>{formatRate(result.operational.terminal_failure_rate)}</td
+									>
+									<td class="px-4 py-4 text-ink"
+										>{formatRate(result.operational.response_contract_valid_rate)}</td
+									>
+									<td class="px-4 py-4 text-ink"
+										>{formatDuration(result.operational.latency.end_to_end_ms.p50)}</td
+									>
+									<td class="px-4 py-4 text-ink">
+										{formatUsd(result.operational.cost.normalized_cost_usd.per_attempted_task)}
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+				<p class="mt-4 text-sm leading-6 text-muted">
+					Costs are unavailable for the three harnessed treatments, so only Raw has a computed
+					quality-cost-latency Pareto classification. “Unavailable” never means zero.
+				</p>
 			</section>
 
 			<section id="cohorts" class="scroll-mt-36" aria-labelledby="cohorts-heading">
-				<div class="max-w-3xl">
-					<p class="text-sm font-semibold text-accent">Cohort evidence</p>
-					<h2 id="cohorts-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
-						The same run, sliced by task context.
-					</h2>
-					<p class="mt-4 leading-7 text-muted">
-						Historical-control and live-web values are evaluator-side slices. They are not hints
-						shown to subjects, and tracks remain separate within each cohort.
-					</p>
-				</div>
-				<div class="mt-8 space-y-5">
+				<p class="text-sm font-semibold text-accent">Cohort detail</p>
+				<h2 id="cohorts-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
+					Historical-control and live-web results stay visible.
+				</h2>
+				<div class="mt-8 grid gap-6 xl:grid-cols-2">
 					{#each cohortSlices as slice (slice.slice_id)}
-						<details class="rounded-2xl border border-line bg-surface-panel p-5 sm:p-6">
-							<summary class="cursor-pointer text-lg font-semibold text-ink">{slice.label}</summary>
-							<div class="mt-8 space-y-12">
-								{#each slice.track_results as trackResult (trackResult.track)}
-									<TrackResults
-										{trackResult}
-										subjects={benchmark.subjects}
-										compactHeading
-										fixture={isFixture}
-									/>
-								{/each}
+						<article class="overflow-hidden rounded-2xl border border-line bg-surface-panel">
+							<div class="border-b border-line p-5">
+								<h3 class="text-lg font-semibold text-ink">{slice.label}</h3>
+								<p class="mt-1 text-sm text-muted">
+									{slice.track_results[0].subjects[0].operational.trial_count} trials per treatment
+								</p>
 							</div>
-						</details>
+							<div class="overflow-x-auto">
+								<table class="w-full min-w-[40rem] text-left text-sm">
+									<thead class="bg-surface-canvas text-xs text-muted">
+										<tr>
+											<th class="px-5 py-3 font-medium" scope="col">Treatment</th>
+											<th class="px-3 py-3 font-medium" scope="col">Quality</th>
+											<th class="px-3 py-3 font-medium" scope="col">Strict pass</th>
+											<th class="px-3 py-3 font-medium" scope="col">Unacceptable</th>
+											<th class="px-3 py-3 font-medium" scope="col">Median</th>
+										</tr>
+									</thead>
+									<tbody class="divide-y divide-line">
+										{#each [...slice.track_results[0].subjects].sort((left, right) => (left.pairwise_quality.rank ?? Number.MAX_SAFE_INTEGER) - (right.pairwise_quality.rank ?? Number.MAX_SAFE_INTEGER)) as result (result.subject_id)}
+											<tr>
+												<th class="px-5 py-3 font-medium text-ink" scope="row">
+													{shortSubjectName(result.subject_id)}
+												</th>
+												<td class="px-3 py-3 text-ink">
+													#{result.pairwise_quality.rank} · {formatMetric(
+														result.pairwise_quality.score,
+														3
+													)}
+												</td>
+												<td class="px-3 py-3 text-ink"
+													>{formatRate(
+														result.absolute_rubric.strict_all_requirements_pass_rate
+													)}</td
+												>
+												<td class="px-3 py-3 text-ink"
+													>{formatRate(result.absolute_rubric.unacceptable_response_rate)}</td
+												>
+												<td class="px-3 py-3 text-ink"
+													>{formatDuration(result.operational.latency.end_to_end_ms.p50)}</td
+												>
+											</tr>
+										{/each}
+									</tbody>
+								</table>
+							</div>
+						</article>
 					{/each}
 				</div>
 			</section>
 
 			<section id="harnesses" class="scroll-mt-36" aria-labelledby="harnesses-heading">
-				<div class="max-w-3xl">
-					<p class="text-sm font-semibold text-accent">Harness cards</p>
-					<h2 id="harnesses-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
-						What each subject was allowed to be.
-					</h2>
-					<p class="mt-4 leading-7 text-muted">
-						Identity, model route, evaluator track, and capabilities are pinned before generation.
-						Judges evaluate only the capabilities declared here.
-					</p>
-				</div>
-				<div class="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-					{#each benchmark.subjects as subject (subject.subject_id)}
+				<p class="text-sm font-semibold text-accent">Declared treatments</p>
+				<h2 id="harnesses-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
+					What each subject was allowed to be.
+				</h2>
+				<div class="mt-8 grid gap-4 md:grid-cols-2">
+					{#each benchmark.subjects as card (card.subject_id)}
 						<article class="rounded-2xl border border-line bg-surface-panel p-6">
-							<div class="flex items-start justify-between gap-3">
-								<h3 class="font-semibold text-ink">{subject.display_name}</h3>
-								<span
-									class="rounded-full bg-surface-canvas px-2.5 py-1 text-xs text-muted ring-1 ring-line"
-								>
-									{subject.track} comparison
+							<div class="flex flex-wrap items-start justify-between gap-3">
+								<h3 class="text-lg font-semibold text-ink">{card.display_name}</h3>
+								<span class="rounded-full bg-surface-canvas px-3 py-1 text-xs text-muted">
+									{titleCase(card.harness_family)}
 								</span>
 							</div>
-							<dl class="mt-5 space-y-3 text-sm">
-								<div>
-									<dt class="text-xs text-muted">Evaluator criteria</dt>
-									<dd class="mt-1 text-ink">{subject.evaluator_track} track</dd>
-								</div>
-								<div>
-									<dt class="text-xs text-muted">Harness</dt>
-									<dd class="mt-1 text-ink">{sentenceCase(subject.harness_family)}</dd>
-								</div>
-								<div>
-									<dt class="text-xs text-muted">Model</dt>
-									<dd class="mt-1 text-ink">
-										{subject.model.provider} · {subject.model.model} · {subject.model.revision}
-										{#if subject.model.quantization}
-											· {subject.model.quantization}{/if}
-									</dd>
-								</div>
-								<div>
-									<dt class="text-xs text-muted">Capabilities</dt>
-									<dd class="mt-1 text-ink">
-										{subject.capabilities.length ? subject.capabilities.join(' · ') : 'No tools'}
-									</dd>
-								</div>
-							</dl>
-							<p class="mt-5 break-all font-mono text-[11px] text-muted">{subject.card_sha256}</p>
+							<p class="mt-3 text-sm leading-6 text-muted">
+								Evaluator track: {card.evaluator_track}. Capabilities: {card.capabilities.join(
+									', '
+								)}.
+							</p>
+							<p class="mt-3 break-all font-mono text-xs text-muted">Card {card.card_sha256}</p>
 						</article>
 					{/each}
 				</div>
 			</section>
 
-			<section class="scroll-mt-36" aria-labelledby="jury-heading">
-				<div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.65fr)]">
-					<div>
-						<p class="text-sm font-semibold text-accent">Independent jury</p>
-						<h2 id="jury-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
-							{benchmark.jury.length === 1
-								? 'One preview judge family; human calibration not run.'
-								: `${benchmark.jury.length} judge families, one pinned calibration sample.`}
-						</h2>
-						<div
-							class={benchmark.jury.length > 1
-								? 'mt-6 grid gap-4 sm:grid-cols-3'
-								: 'mt-6 grid gap-4'}
-						>
+			<section id="methodology" class="scroll-mt-36" aria-labelledby="methodology-heading">
+				<p class="text-sm font-semibold text-accent">Methodology</p>
+				<h2 id="methodology-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
+					A complete jury, reported without invented certainty.
+				</h2>
+				<div class="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
+					<div class="rounded-2xl border border-line bg-surface-panel p-6">
+						<dl class="space-y-5 text-sm">
+							<div>
+								<dt class="font-semibold text-ink">Pairwise quality</dt>
+								<dd class="mt-1 leading-6 text-muted">
+									{benchmark.methodology.pairwise_quality_rule}
+								</dd>
+							</div>
+							<div>
+								<dt class="font-semibold text-ink">Absolute rubric</dt>
+								<dd class="mt-1 leading-6 text-muted">
+									{benchmark.methodology.absolute_rubric_rule}
+								</dd>
+							</div>
+							<div>
+								<dt class="font-semibold text-ink">Operational reliability</dt>
+								<dd class="mt-1 leading-6 text-muted">
+									{benchmark.methodology.operational_reliability_rule}
+								</dd>
+							</div>
+							<div>
+								<dt class="font-semibold text-ink">Uncertainty</dt>
+								<dd class="mt-1 leading-6 text-muted">{benchmark.methodology.uncertainty}</dd>
+							</div>
+						</dl>
+					</div>
+					<div class="rounded-2xl border border-line bg-surface-panel p-6">
+						<h3 class="font-semibold text-ink">Three judge families; calibration not run.</h3>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							OpenAI, Google, and Anthropic agents supplied the complete official jury. Their votes
+							are preserved as agent judgments; no human decisions were used to rewrite them.
+						</p>
+						<dl class="mt-5 space-y-4">
 							{#each benchmark.jury as judge (judge.family)}
-								<div class="rounded-2xl border border-line bg-surface-panel p-5">
-									<p class="font-semibold capitalize text-ink">{judge.family}</p>
-									<p class="mt-2 text-xs leading-5 text-muted">
-										{judge.call_count} calls · {judge.provider_call_count} provider calls<br />
-										{formatDuration(judge.latency_ms.p50)} / {formatDuration(judge.latency_ms.p95)} p50/p95<br
-										/>
-										{formatUsd(judge.provider_billed_usd_total)} billed · {formatUsd(
-											judge.normalized_cost_usd_total
-										)} normalized
-									</p>
+								<div
+									class="flex items-start justify-between gap-4 border-t border-line pt-4 first:border-0 first:pt-0"
+								>
+									<dt class="font-medium text-ink">{titleCase(judge.family)}</dt>
+									<dd class="text-right text-sm text-muted">
+										{formatInteger(judge.call_count)} calls · p50 {formatDuration(
+											judge.latency_ms.p50
+										)}
+									</dd>
 								</div>
 							{/each}
-						</div>
+						</dl>
 					</div>
-					<aside class="rounded-2xl border border-line bg-surface-panel p-6">
-						<p class="text-xs font-semibold uppercase tracking-wide text-muted">
-							Human calibration
-						</p>
-						{#if benchmark.calibration.agreement}
-							<p class="mt-3 text-3xl font-semibold text-ink">
-								{formatRate(benchmark.calibration.agreement.agent_majority_agreement_rate)}
-							</p>
-							<p class="mt-1 text-sm text-muted">agent-majority agreement</p>
-							<dl class="mt-5 space-y-3 text-sm">
-								<div class="flex justify-between gap-3">
-									<dt class="text-muted">Reviewed pairs</dt>
-									<dd class="font-medium text-ink">
-										{benchmark.calibration.agreement.compared_pair_count}
-									</dd>
-								</div>
-								<div class="flex justify-between gap-3">
-									<dt class="text-muted">Majority decisions</dt>
-									<dd class="font-medium text-ink">
-										{benchmark.calibration.agreement.agent_majority_decision_count}
-									</dd>
-								</div>
-								<div class="flex justify-between gap-3">
-									<dt class="text-muted">Unresolved majorities</dt>
-									<dd class="font-medium text-ink">
-										{benchmark.calibration.agreement.agent_majority_unresolved_count}
-									</dd>
-								</div>
-								<div class="flex justify-between gap-3">
-									<dt class="text-muted">Exact ballot agreement</dt>
-									<dd class="font-medium text-ink">
-										{formatRate(benchmark.calibration.agreement.exact_agreement_rate)}
-									</dd>
-								</div>
-								<div class="flex justify-between gap-3">
-									<dt class="text-muted">Decision source</dt>
-									<dd class="font-medium text-ink">
-										{sentenceCase(benchmark.calibration.decision_source)}
-									</dd>
-								</div>
-							</dl>
-						{:else}
-							<p class="mt-3 text-3xl font-semibold text-ink">Not run</p>
-							<p class="mt-3 text-sm leading-6 text-muted">
-								No human calibration decision or agreement rate exists for this preview. The single
-								judge’s measurements must remain attached to that limitation.
-							</p>
-						{/if}
-					</aside>
 				</div>
-			</section>
-
-			<section id="methodology" class="scroll-mt-36" aria-labelledby="methodology-heading">
-				<div class="max-w-3xl">
-					<p class="text-sm font-semibold text-accent">Methodology</p>
-					<h2 id="methodology-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
-						How to read the result.
-					</h2>
-				</div>
-				<dl class="mt-8 grid gap-5 md:grid-cols-2">
-					{#each [['Quality model', benchmark.methodology.quality_model], ['Uncertainty', benchmark.methodology.uncertainty], ['Unacceptable response', benchmark.methodology.unacceptable_response_rule], ['Critical error', benchmark.methodology.critical_error_rule], ['Confidence calibration', benchmark.methodology.confidence_calibration_rule], ['Pareto classification', benchmark.methodology.pareto_rule], ['Missing values', benchmark.methodology.null_semantics], ['Tie value', String(benchmark.methodology.tie_value)]] as [label, explanation]}
-						<div class="rounded-2xl border border-line bg-surface-panel p-5">
-							<dt class="font-semibold text-ink">{label}</dt>
-							<dd class="mt-2 text-sm leading-6 text-muted">{explanation}</dd>
-						</div>
-					{/each}
-				</dl>
 			</section>
 
 			<section id="limitations" class="scroll-mt-36" aria-labelledby="limitations-heading">
-				<div class="max-w-3xl">
-					<p class="text-sm font-semibold text-accent">Limitations</p>
-					<h2 id="limitations-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
-						What this evaluation cannot establish.
-					</h2>
-					<ul class="mt-6 list-disc space-y-3 pl-6 leading-7 text-muted">
-						{#each benchmark.limitations as limitation}
-							<li>{limitation}</li>
-						{/each}
-					</ul>
-				</div>
+				<p class="text-sm font-semibold text-accent">Read before comparing</p>
+				<h2 id="limitations-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
+					What this preview cannot establish.
+				</h2>
+				<ul class="mt-8 grid gap-4 md:grid-cols-2">
+					{#each benchmark.limitations as limitation}
+						<li
+							class="rounded-2xl border border-line bg-surface-panel p-5 text-sm leading-6 text-muted"
+						>
+							{limitation}
+						</li>
+					{/each}
+				</ul>
 			</section>
 
 			<section id="provenance" class="scroll-mt-36" aria-labelledby="provenance-heading">
-				<div class="max-w-3xl">
-					<p class="text-sm font-semibold text-accent">Provenance</p>
-					<h2 id="provenance-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
-						Public identities, without sealed content.
-					</h2>
-					<p class="mt-4 leading-7 text-muted">
-						Cherry creates these lowercase SHA-256 digests from canonical, sanitized public
-						structures. Private generation graphs, source locations, prompts, cases, evaluator
-						fields, and provider payloads are not exported.
-					</p>
-				</div>
-				<dl class="mt-8 grid gap-4">
-					{#each [['Result ID', benchmark.identities.result_id], ['Generation ID', benchmark.identities.generation_id], ['Result content SHA-256', benchmark.identities.result_content_sha256], ['Public contract SHA-256', benchmark.identities.public_contract_sha256], ['Methodology SHA-256', benchmark.identities.methodology_sha256], ['Subject cards SHA-256', benchmark.identities.subject_cards_sha256]] as [label, value]}
-						<div
-							class="rounded-xl border border-line bg-surface-panel p-4 sm:grid sm:grid-cols-[13rem_minmax(0,1fr)] sm:gap-4"
-						>
-							<dt class="text-sm font-medium text-ink">{label}</dt>
-							<dd class="mt-1 break-all font-mono text-xs text-muted sm:mt-0">{value}</dd>
+				<p class="text-sm font-semibold text-accent">Replayable publication</p>
+				<h2 id="provenance-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
+					Public identities, without sealed content.
+				</h2>
+				<p class="mt-4 max-w-3xl leading-7 text-muted">
+					The downloadable JSON is the exact validated Cherry export. Content identities bind its
+					methodology, subject cards, contract, and result while evaluator prompts and private
+					provider payloads remain excluded.
+				</p>
+				<div class="mt-8 rounded-2xl border border-line bg-surface-panel p-6">
+					<dl class="grid gap-6 md:grid-cols-2">
+						<div>
+							<dt class="text-xs font-semibold uppercase tracking-wide text-muted">
+								Result version
+							</dt>
+							<dd class="mt-2 break-all font-mono text-xs text-ink">{benchmark.result_version}</dd>
 						</div>
-					{/each}
-				</dl>
-				<div class="mt-6 flex flex-wrap gap-3">
+						<div>
+							<dt class="text-xs font-semibold uppercase tracking-wide text-muted">
+								Result content SHA-256
+							</dt>
+							<dd class="mt-2 break-all font-mono text-xs text-ink">
+								{benchmark.identities.result_content_sha256}
+							</dd>
+						</div>
+						<div>
+							<dt class="text-xs font-semibold uppercase tracking-wide text-muted">
+								Methodology SHA-256
+							</dt>
+							<dd class="mt-2 break-all font-mono text-xs text-ink">
+								{benchmark.identities.methodology_sha256}
+							</dd>
+						</div>
+						<div>
+							<dt class="text-xs font-semibold uppercase tracking-wide text-muted">
+								Subject cards SHA-256
+							</dt>
+							<dd class="mt-2 break-all font-mono text-xs text-ink">
+								{benchmark.identities.subject_cards_sha256}
+							</dd>
+						</div>
+					</dl>
 					<a
 						href={COFFEEBENCH_RESULT_PATH}
+						class="mt-8 inline-flex rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white hover:opacity-90"
 						download
-						class="rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-ink hover:opacity-90"
-						>Download sanitized JSON</a
 					>
-					<a
-						href="/benchmarks"
-						class="rounded-lg border border-line px-4 py-2.5 text-sm font-medium text-ink hover:bg-surface-panel"
-						>All benchmarks</a
-					>
+						Download sanitized JSON
+					</a>
 				</div>
-				<p class="mt-4 max-w-3xl text-xs leading-5 text-muted">
-					Research artifact only. The immutable JSON contains aggregate public values and sanitized
-					identities, never cases, evidence, prompts, evaluator guardrails, or provider payloads.
-				</p>
 			</section>
 		</div>
 	</main>

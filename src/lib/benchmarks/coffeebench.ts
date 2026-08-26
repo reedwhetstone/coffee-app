@@ -1,19 +1,21 @@
 import { z } from 'zod';
 
-export const COFFEEBENCH_SCHEMA_VERSION = 3 as const;
+export const COFFEEBENCH_SCHEMA_VERSION = 4 as const;
 export const COFFEEBENCH_V0_BENCHMARK_NAME = 'CoffeeBench' as const;
 export const COFFEEBENCH_V0_BENCHMARK_VERSION = '1.0.0-dev' as const;
-export const COFFEEBENCH_V0_SUITE_ID = 'deepseek-v4-initial' as const;
-export const COFFEEBENCH_V0_JURY_ID = 'openclaw-jury-2026-08-18-luna' as const;
-export const COFFEEBENCH_V0_RELEASE_DATE = '2026-08-19' as const;
+export const COFFEEBENCH_V0_SUITE_ID = 'deepseek-v4-reliable' as const;
+export const COFFEEBENCH_V0_JURY_ID = 'openclaw-jury-2026-08-19-independent' as const;
+export const COFFEEBENCH_V0_RELEASE_DATE = '2026-08-25' as const;
 export const COFFEEBENCH_V0_ARTIFACT_SHA256 =
-	'518f231d1f0adfb7cef9fc262a251fd264f8f427d56f166e8bafd839f42b78f1' as const;
+	'c297b2cb9091aaf6661171a9c455bf56b917395e8cd4f45ba0de0a28eafa4ac3' as const;
 export const COFFEEBENCH_V0_RESULT_CONTENT_SHA256 =
-	'fe3927ea498ccdcf3998f08943dddf51a60ccf7e993b5744b8bf868db87565ba' as const;
+	'c9302744f0cfd061975870978fe3036851c05f606800cd605ffa953e8e117ac4' as const;
 export const COFFEEBENCH_V0_RESULT_VERSION =
-	'1.0.0-dev.coffeebench-v0-deepseek-v4-initial-official.preview.fe3927ea498ccdcf' as const;
+	'1.0.0-dev.coffeebench-v0-deepseek-v4-reliable-official.preview.c9302744f0cfd061' as const;
 export const COFFEEBENCH_RESULT_PATH = `/benchmarks/coffeebench-v0/results/${COFFEEBENCH_V0_RESULT_VERSION}/${COFFEEBENCH_V0_RESULT_CONTENT_SHA256}.json`;
-export const COFFEEBENCH_PREVIEW_ALIAS_PATH = '/benchmarks/coffeebench-public-export-v3.json';
+export const COFFEEBENCH_PREVIEW_ALIAS_PATH = '/benchmarks/coffeebench-public-export-v4.json';
+export const COFFEEBENCH_LEGACY_PREVIEW_ALIAS_PATH =
+	'/benchmarks/coffeebench-public-export-v3.json';
 export const COFFEEBENCH_FIXTURE_ALIAS_PATH = '/benchmarks/coffeebench-public-export-v2.json';
 
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -114,15 +116,27 @@ function sha256Utf8(value: string): string {
 
 const pythonFloatFields = new Set([
 	'agent_majority_agreement_rate',
+	'ballot_coverage_rate',
+	'confidence_pass_rate',
 	'confidence_calibration_pass',
 	'critical_error',
+	'critical_error_rate',
 	'exact_agreement_rate',
+	'judgeable_response_rate',
 	'lower',
+	'must_not_miss_failure_rate',
+	'pass_rate',
 	'per_attempted_task',
 	'quality_score',
+	'response_contract_valid_rate',
+	'score',
+	'strict_all_requirements_pass_rate',
+	'success_rate',
 	'terminal_failure',
+	'terminal_failure_rate',
 	'tie_value',
 	'unacceptable_response',
+	'unacceptable_response_rate',
 	'upper'
 ]);
 
@@ -384,9 +398,9 @@ const subjectResultSchema = z
 		}
 	});
 
-const publicExportSchema = z
+const legacyPublicExportSchema = z
 	.object({
-		schema_version: z.union([z.literal(2), z.literal(COFFEEBENCH_SCHEMA_VERSION)]),
+		schema_version: z.union([z.literal(2), z.literal(3)]),
 		result_version: z.string().regex(RESULT_VERSION),
 		benchmark: z
 			.object({
@@ -1305,12 +1319,1044 @@ const publicExportSchema = z
 		}
 	});
 
-export type CoffeeBenchPublicExport = z.infer<typeof publicExportSchema>;
+const countSchema = z.number().int().nonnegative();
+const rateSchema = z.number().finite().min(0).max(1);
+
+const transportMetricSchema = z
+	.object({
+		logical_invocation_count: countSchema,
+		attempt_count: countSchema,
+		retry_count: countSchema,
+		failure_count: countSchema,
+		success_rate: rateSchema.nullable()
+	})
+	.strict();
+
+const operationalResultSchema = z
+	.object({
+		trial_count: countSchema,
+		terminal_status_counts: z
+			.object({
+				success: countSchema,
+				invalid_response: countSchema,
+				timeout: countSchema,
+				error: countSchema
+			})
+			.strict(),
+		terminal_failure_count: countSchema,
+		terminal_failure_rate: rateSchema,
+		judgeable_response_count: countSchema,
+		judgeable_response_rate: rateSchema,
+		response_contract_valid_count: countSchema,
+		response_contract_valid_rate: rateSchema,
+		transport: z
+			.object({
+				provider: transportMetricSchema,
+				search: transportMetricSchema
+			})
+			.strict(),
+		token_usage: z
+			.object({
+				provenance: z.enum(['exact', 'provider_derived', 'estimated', 'mixed']),
+				input_tokens: totalAndPerTaskSchema,
+				cached_input_tokens: totalAndPerTaskSchema,
+				reasoning_tokens: totalAndPerTaskSchema,
+				output_tokens: totalAndPerTaskSchema,
+				total_tokens: totalAndPerTaskSchema
+			})
+			.strict(),
+		cost: z
+			.object({
+				provider_billed_usd: costMetricSchema,
+				normalized_cost_usd: costMetricSchema
+			})
+			.strict(),
+		latency: z
+			.object({
+				end_to_end_ms: percentileSchema,
+				tool_ms: percentileSchema
+			})
+			.strict()
+	})
+	.strict();
+
+const absoluteRubricResultSchema = z
+	.object({
+		trial_count: countSchema,
+		criterion_outcomes: z
+			.object({
+				pass: countSchema,
+				fail: countSchema,
+				not_applicable: countSchema,
+				total: countSchema,
+				pass_rate: rateSchema
+			})
+			.strict(),
+		strict_all_requirements_pass_rate: rateSchema,
+		must_not_miss_failure_rate: rateSchema,
+		critical_error_rate: rateSchema,
+		confidence_pass_rate: rateSchema,
+		unacceptable_response_rate: rateSchema
+	})
+	.strict();
+
+const pairwiseQualityResultSchema = z
+	.object({
+		model_backed_ballot_count: countSchema,
+		possible_ballot_count: countSchema,
+		ballot_coverage_rate: rateSchema,
+		rank: z.number().int().positive().nullable(),
+		score: z.number().finite().nullable(),
+		interval_95: intervalSchema
+	})
+	.strict()
+	.superRefine((quality, context) => {
+		const fields = [
+			quality.rank !== null,
+			quality.score !== null,
+			quality.interval_95.lower !== null
+		];
+		if (!fields.every(Boolean) && fields.some(Boolean)) {
+			context.addIssue({
+				code: 'custom',
+				message: 'pairwise rank, score, and interval must be jointly null or populated'
+			});
+		}
+		if (
+			quality.score !== null &&
+			quality.interval_95.lower !== null &&
+			quality.interval_95.upper !== null &&
+			(quality.score < quality.interval_95.lower || quality.score > quality.interval_95.upper)
+		) {
+			context.addIssue({ code: 'custom', message: 'pairwise score must fall within its interval' });
+		}
+	});
+
+const independentSubjectResultSchema = z
+	.object({
+		subject_id: z.string().regex(IDENTIFIER),
+		operational: operationalResultSchema,
+		absolute_rubric: absoluteRubricResultSchema,
+		pairwise_quality: pairwiseQualityResultSchema,
+		pareto: paretoSchema
+	})
+	.strict();
+
+const independentPublicExportSchema = z
+	.object({
+		schema_version: z.literal(COFFEEBENCH_SCHEMA_VERSION),
+		result_version: z.string().regex(RESULT_VERSION),
+		benchmark: z
+			.object({
+				name: z.string().min(1),
+				version: z.string().regex(RESULT_VERSION),
+				suite_id: z.string().regex(IDENTIFIER)
+			})
+			.strict(),
+		status: z.literal('preview'),
+		identities: z
+			.object({
+				result_id: z.string().regex(IDENTIFIER),
+				generation_id: z.string().regex(IDENTIFIER),
+				result_content_sha256: sha256Schema,
+				public_contract_sha256: sha256Schema,
+				methodology_sha256: sha256Schema,
+				subject_cards_sha256: sha256Schema
+			})
+			.strict(),
+		methodology: z
+			.object({
+				case_count: z.number().int().positive(),
+				subject_trial_count: z.number().int().positive(),
+				jury_family_count: z.literal(3),
+				absolute_evaluation_count: z.number().int().positive(),
+				pairwise_ballot_count: countSchema,
+				pairwise_possible_ballot_count: countSchema,
+				scoring_contract: z.literal('independent_tracks_v1'),
+				quality_model: z.string().min(1),
+				tie_value: rateSchema,
+				uncertainty: z.string().min(1),
+				operational_reliability_rule: z.string().min(1),
+				absolute_rubric_rule: z.string().min(1),
+				pairwise_quality_rule: z.string().min(1),
+				unacceptable_response_rule: z.string().min(1),
+				critical_error_rule: z.string().min(1),
+				confidence_calibration_rule: z.string().min(1),
+				pareto_rule: z.string().min(1),
+				null_semantics: z.string().min(1),
+				composite_score: z.null()
+			})
+			.strict(),
+		tracks: z
+			.array(
+				z
+					.object({
+						track_id: trackIdSchema,
+						label: z.string().min(1),
+						description: z.string().min(1)
+					})
+					.strict()
+			)
+			.length(1),
+		subjects: z
+			.array(
+				z
+					.object({
+						subject_id: z.string().regex(IDENTIFIER),
+						display_name: z.string().min(1),
+						track: trackIdSchema,
+						evaluator_track: trackIdSchema,
+						harness_family: z.enum(['controlled_raw', 'pi', 'purveyors']),
+						capabilities: z.array(z.string().min(1)).max(100),
+						model: z
+							.object({
+								provider: z.string().min(1),
+								model: z.string().min(1),
+								revision: z.string().min(1),
+								quantization: z.string().min(1).nullable()
+							})
+							.strict(),
+						card_sha256: sha256Schema
+					})
+					.strict()
+			)
+			.length(4),
+		slices: z
+			.array(
+				z
+					.object({
+						slice_id: sliceIdSchema,
+						label: z.string().min(1),
+						track_results: z
+							.array(
+								z
+									.object({
+										track: trackIdSchema,
+										subjects: z.array(independentSubjectResultSchema).length(4)
+									})
+									.strict()
+							)
+							.length(1)
+					})
+					.strict()
+			)
+			.length(3),
+		jury: z
+			.array(
+				z
+					.object({
+						family: juryFamilySchema,
+						call_count: countSchema,
+						provider_call_count: countSchema,
+						latency_ms: percentileSchema,
+						provider_billed_usd_total: decimalUsdSchema,
+						normalized_cost_usd_total: decimalUsdSchema
+					})
+					.strict()
+			)
+			.length(3),
+		calibration: z
+			.object({
+				status: z.literal('not_run'),
+				sample_pair_count: z.literal(0),
+				decision_source: z.null(),
+				agreement: z.null()
+			})
+			.strict(),
+		limitations: z.array(z.string().min(1)).min(1)
+	})
+	.strict()
+	.superRefine((artifact, context) => {
+		function issue(path: (string | number)[], message: string) {
+			context.addIssue({ code: 'custom', path, message });
+		}
+
+		function approximatelyEqual(left: number, right: number, tolerance = 1e-7): boolean {
+			return Number.isFinite(left) && Number.isFinite(right) && Math.abs(left - right) <= tolerance;
+		}
+
+		function rateRepresentsCount(rate: number, count: number): boolean {
+			return approximatelyEqual(rate * count, Math.round(rate * count), 0.000_01);
+		}
+
+		function compareDecimal(left: string, right: string): number {
+			function parts(value: string): [string, string] {
+				const [integer, fraction = ''] = value.split('.');
+				return [integer.replace(/^0+(?=\d)/, ''), fraction.replace(/0+$/, '')];
+			}
+			const [leftInteger, leftFraction] = parts(left);
+			const [rightInteger, rightFraction] = parts(right);
+			if (leftInteger.length !== rightInteger.length) {
+				return leftInteger.length < rightInteger.length ? -1 : 1;
+			}
+			if (leftInteger !== rightInteger) return leftInteger < rightInteger ? -1 : 1;
+			const length = Math.max(leftFraction.length, rightFraction.length);
+			const normalizedLeft = leftFraction.padEnd(length, '0');
+			const normalizedRight = rightFraction.padEnd(length, '0');
+			if (normalizedLeft === normalizedRight) return 0;
+			return normalizedLeft < normalizedRight ? -1 : 1;
+		}
+
+		function addDecimalStrings(values: string[]): string {
+			const scale = Math.max(...values.map((value) => value.split('.')[1]?.length ?? 0));
+			const units = values.reduce((total, value) => {
+				const [integer, fraction = ''] = value.split('.');
+				return total + BigInt(`${integer}${fraction.padEnd(scale, '0')}`);
+			}, 0n);
+			const digits = units.toString().padStart(scale + 1, '0');
+			if (scale === 0) return digits;
+			return `${digits.slice(0, -scale)}.${digits.slice(-scale)}`.replace(/\.?0+$/, (suffix) =>
+				suffix === '.' ? '' : suffix.replace(/0+$/, '')
+			);
+		}
+
+		if (
+			artifact.identities.public_contract_sha256 !==
+			coffeeBenchPublicDigest({
+				schema_version: artifact.schema_version,
+				contract: PUBLIC_CONTRACT_NAME
+			})
+		) {
+			issue(['identities', 'public_contract_sha256'], 'public contract SHA-256 does not replay');
+		}
+		if (artifact.identities.methodology_sha256 !== coffeeBenchPublicDigest(artifact.methodology)) {
+			issue(['identities', 'methodology_sha256'], 'methodology SHA-256 does not replay');
+		}
+		if (artifact.identities.subject_cards_sha256 !== coffeeBenchPublicDigest(artifact.subjects)) {
+			issue(
+				['identities', 'subject_cards_sha256'],
+				'subject-card collection SHA-256 does not replay'
+			);
+		}
+		artifact.subjects.forEach((subject, index) => {
+			const { card_sha256: _digest, ...card } = subject;
+			if (subject.card_sha256 !== coffeeBenchPublicDigest(card)) {
+				issue(['subjects', index, 'card_sha256'], 'subject-card SHA-256 does not replay');
+			}
+		});
+
+		const resultContentDigest = coffeeBenchPublicDigest(resultContentMaterial(artifact));
+		if (artifact.identities.result_content_sha256 !== resultContentDigest) {
+			issue(
+				['identities', 'result_content_sha256'],
+				'public result content SHA-256 does not replay'
+			);
+		}
+		const expectedResultVersion = `${artifact.benchmark.version}.${artifact.identities.generation_id}.${artifact.status}.${resultContentDigest.slice(0, 16)}`;
+		if (artifact.result_version !== expectedResultVersion) {
+			issue(
+				['result_version'],
+				'result version does not bind benchmark, generation, status, and content'
+			);
+		}
+		if (
+			!artifact.identities.result_id.endsWith(
+				`.${artifact.identities.generation_id}.${artifact.status}.${resultContentDigest}`
+			)
+		) {
+			issue(['identities', 'result_id'], 'result ID does not bind generation, status, and content');
+		}
+
+		if (
+			artifact.methodology.case_count !== 20 ||
+			artifact.methodology.subject_trial_count !== 400 ||
+			artifact.methodology.absolute_evaluation_count !== 1200 ||
+			artifact.methodology.pairwise_ballot_count >
+				artifact.methodology.pairwise_possible_ballot_count ||
+			artifact.methodology.pairwise_possible_ballot_count !== 1800
+		) {
+			issue(['methodology'], 'schema-v4 methodology does not match the complete reliable jury');
+		}
+		if (
+			artifact.tracks[0]?.track_id !== 'system' ||
+			new Set(artifact.subjects.map((subject) => subject.subject_id)).size !== 4 ||
+			artifact.subjects.some((subject) => subject.track !== 'system')
+		) {
+			issue(['subjects'], 'schema-v4 subjects must form one complete system track');
+		}
+		if (
+			new Set(artifact.jury.map((judge) => judge.family)).size !== 3 ||
+			!['openai', 'google', 'anthropic'].every((family) =>
+				artifact.jury.some((judge) => judge.family === family)
+			)
+		) {
+			issue(['jury'], 'schema-v4 preview must contain all three judge families');
+		}
+		if (
+			artifact.methodology.absolute_evaluation_count % artifact.jury.length !== 0 ||
+			artifact.methodology.pairwise_ballot_count % artifact.jury.length !== 0
+		) {
+			issue(
+				['methodology'],
+				'absolute evaluations and pairwise ballots must divide evenly across jury families'
+			);
+		}
+		const expectedJuryCallCount =
+			artifact.methodology.absolute_evaluation_count / artifact.jury.length +
+			artifact.methodology.pairwise_ballot_count / artifact.jury.length;
+		for (const [juryIndex, judge] of artifact.jury.entries()) {
+			if (
+				judge.call_count < expectedJuryCallCount ||
+				judge.call_count >
+					artifact.methodology.absolute_evaluation_count +
+						artifact.methodology.pairwise_ballot_count
+			) {
+				issue(
+					['jury', juryIndex, 'call_count'],
+					'jury call count must cover the family share of absolute evaluations and pairwise ballots'
+				);
+			}
+			if (judge.provider_call_count > judge.call_count) {
+				issue(
+					['jury', juryIndex, 'provider_call_count'],
+					'provider calls cannot exceed judge calls'
+				);
+			}
+			if (judge.call_count > 0 !== (judge.latency_ms.p50 !== null)) {
+				issue(['jury', juryIndex, 'latency_ms'], 'jury latency is required when calls exist');
+			}
+		}
+		if (
+			!artifact.limitations.some((limitation) =>
+				limitation.toLowerCase().includes('independent human agreement was not measured')
+			) ||
+			!artifact.limitations.some((limitation) =>
+				limitation.toLowerCase().includes('no composite score')
+			)
+		) {
+			issue(
+				['limitations'],
+				'schema-v4 preview must disclose uncalibrated judging and independent tracks'
+			);
+		}
+
+		const expectedSubjectIds = artifact.subjects.map((subject) => subject.subject_id).sort();
+		const sliceIds = artifact.slices.map((slice) => slice.slice_id);
+		const requiredSliceIds: Array<(typeof sliceIds)[number]> = [
+			'overall',
+			'historical_control',
+			'live_web'
+		];
+		if (
+			new Set(sliceIds).size !== 3 ||
+			!requiredSliceIds.every((slice) => sliceIds.includes(slice))
+		) {
+			issue(['slices'], 'schema-v4 preview must contain the three reporting slices');
+		}
+
+		for (const [sliceIndex, slice] of artifact.slices.entries()) {
+			const track = slice.track_results[0];
+			if (
+				track.track !== 'system' ||
+				JSON.stringify(track.subjects.map((row) => row.subject_id).sort()) !==
+					JSON.stringify(expectedSubjectIds)
+			) {
+				issue(
+					['slices', sliceIndex, 'track_results'],
+					'each schema-v4 slice must contain every system subject once'
+				);
+			}
+
+			const trialCounts = track.subjects.map((row) => row.operational.trial_count);
+			const matchedTrialCount = trialCounts[0] ?? 0;
+			if (new Set(trialCounts).size > 1) {
+				issue(
+					['slices', sliceIndex, 'track_results', 0, 'subjects'],
+					'same-track trial counts must match before deriving pairwise ballots'
+				);
+			}
+			const expectedPossibleBallots =
+				matchedTrialCount * (track.subjects.length - 1) * artifact.jury.length;
+			const rankedScores = [
+				...new Set(
+					track.subjects
+						.map((row) => row.pairwise_quality.score)
+						.filter((score): score is number => score !== null)
+				)
+			].sort((left, right) => right - left);
+			const scoreRanks = new Map(rankedScores.map((score, index) => [score, index + 1]));
+
+			for (const [rowIndex, row] of track.subjects.entries()) {
+				const operational = row.operational;
+				const terminalTotal = Object.values(operational.terminal_status_counts).reduce(
+					(total, count) => total + count,
+					0
+				);
+				const terminalFailures =
+					operational.terminal_status_counts.invalid_response +
+					operational.terminal_status_counts.timeout +
+					operational.terminal_status_counts.error;
+				if (
+					terminalTotal !== operational.trial_count ||
+					terminalFailures !== operational.terminal_failure_count ||
+					!approximatelyEqual(
+						operational.terminal_failure_rate,
+						operational.trial_count ? terminalFailures / operational.trial_count : 0
+					) ||
+					!approximatelyEqual(
+						operational.judgeable_response_rate,
+						operational.trial_count
+							? operational.judgeable_response_count / operational.trial_count
+							: 0
+					) ||
+					!approximatelyEqual(
+						operational.response_contract_valid_rate,
+						operational.trial_count
+							? operational.response_contract_valid_count / operational.trial_count
+							: 0
+					)
+				) {
+					issue(
+						['slices', sliceIndex, 'track_results', 0, 'subjects', rowIndex, 'operational'],
+						'operational counts and rates do not reconcile'
+					);
+				}
+
+				for (const transportName of ['provider', 'search'] as const) {
+					const transport = operational.transport[transportName];
+					const expectedRate = transport.attempt_count
+						? (transport.attempt_count - transport.failure_count) / transport.attempt_count
+						: null;
+					if (
+						transport.logical_invocation_count + transport.retry_count !==
+							transport.attempt_count ||
+						transport.failure_count > transport.attempt_count ||
+						(expectedRate === null
+							? transport.success_rate !== null
+							: transport.success_rate === null ||
+								!approximatelyEqual(transport.success_rate, expectedRate))
+					) {
+						issue(
+							[
+								'slices',
+								sliceIndex,
+								'track_results',
+								0,
+								'subjects',
+								rowIndex,
+								'operational',
+								'transport',
+								transportName
+							],
+							'transport attempts, retries, failures, and success rate do not reconcile'
+						);
+					}
+				}
+
+				const rubric = row.absolute_rubric;
+				const criterion = rubric.criterion_outcomes;
+				if (
+					rubric.trial_count !== operational.trial_count ||
+					criterion.pass + criterion.fail + criterion.not_applicable !== criterion.total ||
+					!approximatelyEqual(
+						criterion.pass_rate,
+						criterion.total ? criterion.pass / criterion.total : 0
+					)
+				) {
+					issue(
+						['slices', sliceIndex, 'track_results', 0, 'subjects', rowIndex, 'absolute_rubric'],
+						'absolute-rubric counts and rates do not reconcile'
+					);
+				}
+				for (const [rateName, rate] of Object.entries({
+					strict_all_requirements_pass_rate: rubric.strict_all_requirements_pass_rate,
+					must_not_miss_failure_rate: rubric.must_not_miss_failure_rate,
+					critical_error_rate: rubric.critical_error_rate,
+					confidence_pass_rate: rubric.confidence_pass_rate,
+					unacceptable_response_rate: rubric.unacceptable_response_rate
+				})) {
+					if (!rateRepresentsCount(rate, operational.trial_count)) {
+						issue(
+							[
+								'slices',
+								sliceIndex,
+								'track_results',
+								0,
+								'subjects',
+								rowIndex,
+								'absolute_rubric',
+								rateName
+							],
+							`${rateName} must represent a whole attempted-trial count`
+						);
+					}
+				}
+
+				const usage = operational.token_usage;
+				if (
+					usage.input_tokens.total !== null &&
+					usage.output_tokens.total !== null &&
+					usage.total_tokens.total !== usage.input_tokens.total + usage.output_tokens.total
+				) {
+					issue(
+						[
+							'slices',
+							sliceIndex,
+							'track_results',
+							0,
+							'subjects',
+							rowIndex,
+							'operational',
+							'token_usage'
+						],
+						'total tokens must equal input plus output tokens'
+					);
+				}
+				if (
+					usage.input_tokens.per_attempted_task !== null &&
+					usage.output_tokens.per_attempted_task !== null &&
+					usage.total_tokens.per_attempted_task !== null &&
+					!approximatelyEqual(
+						usage.total_tokens.per_attempted_task,
+						usage.input_tokens.per_attempted_task + usage.output_tokens.per_attempted_task
+					)
+				) {
+					issue(
+						[
+							'slices',
+							sliceIndex,
+							'track_results',
+							0,
+							'subjects',
+							rowIndex,
+							'operational',
+							'token_usage'
+						],
+						'per-task total tokens must equal input plus output tokens'
+					);
+				}
+				if (
+					usage.cached_input_tokens.total !== null &&
+					(usage.input_tokens.total === null ||
+						usage.cached_input_tokens.total > usage.input_tokens.total)
+				) {
+					issue(
+						[
+							'slices',
+							sliceIndex,
+							'track_results',
+							0,
+							'subjects',
+							rowIndex,
+							'operational',
+							'token_usage',
+							'cached_input_tokens'
+						],
+						'cached input tokens must be a subset of input tokens'
+					);
+				}
+				if (
+					usage.reasoning_tokens.total !== null &&
+					(usage.output_tokens.total === null ||
+						usage.reasoning_tokens.total > usage.output_tokens.total)
+				) {
+					issue(
+						[
+							'slices',
+							sliceIndex,
+							'track_results',
+							0,
+							'subjects',
+							rowIndex,
+							'operational',
+							'token_usage',
+							'reasoning_tokens'
+						],
+						'reasoning tokens must be a subset of output tokens'
+					);
+				}
+				for (const [metricName, metric] of Object.entries(usage)) {
+					if (metricName === 'provenance' || typeof metric === 'string') continue;
+					if (
+						metric.total !== null &&
+						metric.per_attempted_task !== null &&
+						(operational.trial_count === 0 ||
+							!approximatelyEqual(
+								metric.per_attempted_task,
+								metric.total / operational.trial_count
+							))
+					) {
+						issue(
+							[
+								'slices',
+								sliceIndex,
+								'track_results',
+								0,
+								'subjects',
+								rowIndex,
+								'operational',
+								'token_usage'
+							],
+							'token totals and per-task values must reconcile with attempted trials'
+						);
+					}
+				}
+				for (const metric of Object.values(operational.cost)) {
+					if (
+						metric.total !== null &&
+						metric.per_attempted_task !== null &&
+						(operational.trial_count === 0 ||
+							!approximatelyEqual(
+								Number(metric.per_attempted_task),
+								Number(metric.total) / operational.trial_count
+							))
+					) {
+						issue(
+							[
+								'slices',
+								sliceIndex,
+								'track_results',
+								0,
+								'subjects',
+								rowIndex,
+								'operational',
+								'cost'
+							],
+							'cost totals and per-task values must reconcile with attempted trials'
+						);
+					}
+				}
+
+				const quality = row.pairwise_quality;
+				if (
+					quality.possible_ballot_count !== expectedPossibleBallots ||
+					quality.model_backed_ballot_count > quality.possible_ballot_count ||
+					!approximatelyEqual(
+						quality.ballot_coverage_rate,
+						quality.possible_ballot_count
+							? quality.model_backed_ballot_count / quality.possible_ballot_count
+							: 0
+					)
+				) {
+					issue(
+						['slices', sliceIndex, 'track_results', 0, 'subjects', rowIndex, 'pairwise_quality'],
+						'pairwise coverage counts and rate do not reconcile'
+					);
+				}
+				if (quality.score !== null && quality.rank !== scoreRanks.get(quality.score)) {
+					issue(
+						[
+							'slices',
+							sliceIndex,
+							'track_results',
+							0,
+							'subjects',
+							rowIndex,
+							'pairwise_quality',
+							'rank'
+						],
+						'pairwise quality rank must match the declared scores'
+					);
+				}
+			}
+
+			const availablePareto = new Map<string, { quality: number; cost: string; latency: number }>();
+			for (const row of track.subjects) {
+				const cost = row.operational.cost.normalized_cost_usd.per_attempted_task;
+				const latency = row.operational.latency.end_to_end_ms.p50;
+				const quality = row.pairwise_quality.score;
+				if (quality !== null && cost !== null && latency !== null) {
+					availablePareto.set(row.subject_id, { quality, cost, latency });
+				}
+			}
+			for (const [rowIndex, row] of track.subjects.entries()) {
+				const point = availablePareto.get(row.subject_id);
+				const expectedDominators = point
+					? [...availablePareto.entries()]
+							.filter(
+								([otherId, other]) =>
+									otherId !== row.subject_id &&
+									other.quality >= point.quality &&
+									compareDecimal(other.cost, point.cost) <= 0 &&
+									other.latency <= point.latency &&
+									(other.quality > point.quality ||
+										compareDecimal(other.cost, point.cost) < 0 ||
+										other.latency < point.latency)
+							)
+							.map(([subjectId]) => subjectId)
+							.sort()
+					: [];
+				const expectedClassification = !point
+					? 'unavailable'
+					: expectedDominators.length
+						? 'dominated'
+						: 'frontier';
+				if (
+					row.pareto.classification !== expectedClassification ||
+					JSON.stringify(row.pareto.dominated_by) !== JSON.stringify(expectedDominators)
+				) {
+					issue(
+						['slices', sliceIndex, 'track_results', 0, 'subjects', rowIndex, 'pareto'],
+						'Pareto declaration must exactly match the available same-track metrics'
+					);
+				}
+			}
+		}
+
+		const overall = artifact.slices.find((slice) => slice.slice_id === 'overall');
+		if (overall) {
+			const rows = overall.track_results[0].subjects;
+			const trialCount = rows.reduce((total, row) => total + row.operational.trial_count, 0);
+			const ballotCount =
+				rows.reduce((total, row) => total + row.pairwise_quality.model_backed_ballot_count, 0) / 2;
+			const possibleBallotCount =
+				rows.reduce((total, row) => total + row.pairwise_quality.possible_ballot_count, 0) / 2;
+			if (
+				trialCount !== artifact.methodology.subject_trial_count ||
+				ballotCount !== artifact.methodology.pairwise_ballot_count ||
+				possibleBallotCount !== artifact.methodology.pairwise_possible_ballot_count
+			) {
+				issue(['methodology'], 'overall schema-v4 coverage does not reconcile with methodology');
+			}
+			if (artifact.methodology.absolute_evaluation_count !== trialCount * artifact.jury.length) {
+				issue(
+					['methodology', 'absolute_evaluation_count'],
+					'absolute evaluation count must equal overall trials across every jury family'
+				);
+			}
+
+			for (const [rowIndex, row] of rows.entries()) {
+				const cohorts = artifact.slices
+					.filter((slice) => slice.slice_id !== 'overall')
+					.flatMap((slice) => slice.track_results[0].subjects)
+					.filter((candidate) => candidate.subject_id === row.subject_id);
+				const cohortTrialCount = cohorts.reduce(
+					(total, cohort) => total + cohort.operational.trial_count,
+					0
+				);
+				if (
+					cohortTrialCount !== row.operational.trial_count ||
+					cohorts.reduce(
+						(total, cohort) => total + cohort.pairwise_quality.model_backed_ballot_count,
+						0
+					) !== row.pairwise_quality.model_backed_ballot_count ||
+					cohorts.reduce(
+						(total, cohort) => total + cohort.pairwise_quality.possible_ballot_count,
+						0
+					) !== row.pairwise_quality.possible_ballot_count
+				) {
+					issue(
+						['slices', 0, 'track_results', 0, 'subjects', rowIndex],
+						'cohort coverage does not reconcile with the overall independent-track row'
+					);
+				}
+
+				const operational = row.operational;
+				for (const statusName of ['success', 'invalid_response', 'timeout', 'error'] as const) {
+					if (
+						cohorts.reduce(
+							(total, cohort) => total + cohort.operational.terminal_status_counts[statusName],
+							0
+						) !== operational.terminal_status_counts[statusName]
+					) {
+						issue(
+							['slices', 0, 'track_results', 0, 'subjects', rowIndex, 'operational'],
+							`cohort ${statusName} counts must reconcile with the overall operational row`
+						);
+					}
+				}
+				for (const countName of [
+					'terminal_failure_count',
+					'judgeable_response_count',
+					'response_contract_valid_count'
+				] as const) {
+					if (
+						cohorts.reduce((total, cohort) => total + cohort.operational[countName], 0) !==
+						operational[countName]
+					) {
+						issue(
+							['slices', 0, 'track_results', 0, 'subjects', rowIndex, 'operational'],
+							`cohort ${countName} must reconcile with the overall operational row`
+						);
+					}
+				}
+				for (const transportName of ['provider', 'search'] as const) {
+					const transport = operational.transport[transportName];
+					for (const countName of [
+						'logical_invocation_count',
+						'attempt_count',
+						'retry_count',
+						'failure_count'
+					] as const) {
+						if (
+							cohorts.reduce(
+								(total, cohort) => total + cohort.operational.transport[transportName][countName],
+								0
+							) !== transport[countName]
+						) {
+							issue(
+								[
+									'slices',
+									0,
+									'track_results',
+									0,
+									'subjects',
+									rowIndex,
+									'operational',
+									'transport',
+									transportName
+								],
+								`cohort ${transportName} ${countName} must reconcile with the overall operational row`
+							);
+						}
+					}
+				}
+
+				for (const metricName of [
+					'input_tokens',
+					'cached_input_tokens',
+					'reasoning_tokens',
+					'output_tokens',
+					'total_tokens'
+				] as const) {
+					const overallTotal = operational.token_usage[metricName].total;
+					const cohortTotals = cohorts.map(
+						(cohort) => cohort.operational.token_usage[metricName].total
+					);
+					const allAvailable =
+						cohortTotals.length > 0 && cohortTotals.every((value) => value !== null);
+					if (
+						(overallTotal === null && cohortTotals.some((value) => value !== null)) ||
+						(overallTotal !== null &&
+							(!allAvailable ||
+								cohortTotals.reduce((total, value) => total + (value ?? 0), 0) !== overallTotal))
+					) {
+						issue(
+							['slices', 0, 'track_results', 0, 'subjects', rowIndex, 'operational', 'token_usage'],
+							`cohort ${metricName} totals must reconcile with the overall subject metrics`
+						);
+					}
+				}
+				for (const metricName of ['provider_billed_usd', 'normalized_cost_usd'] as const) {
+					const overallTotal = operational.cost[metricName].total;
+					const cohortTotals = cohorts.map((cohort) => cohort.operational.cost[metricName].total);
+					const allAvailable =
+						cohortTotals.length > 0 && cohortTotals.every((value) => value !== null);
+					if (
+						(overallTotal === null && cohortTotals.some((value) => value !== null)) ||
+						(overallTotal !== null &&
+							(!allAvailable ||
+								compareDecimal(addDecimalStrings(cohortTotals as string[]), overallTotal) !== 0))
+					) {
+						issue(
+							['slices', 0, 'track_results', 0, 'subjects', rowIndex, 'operational', 'cost'],
+							`cohort ${metricName} totals must reconcile with the overall subject metrics`
+						);
+					}
+				}
+
+				for (const rateName of [
+					'terminal_failure_rate',
+					'judgeable_response_rate',
+					'response_contract_valid_rate'
+				] as const) {
+					const weightedRate =
+						cohortTrialCount > 0
+							? cohorts.reduce(
+									(total, cohort) =>
+										total + cohort.operational[rateName] * cohort.operational.trial_count,
+									0
+								) / cohortTrialCount
+							: 0;
+					if (!approximatelyEqual(operational[rateName], weightedRate)) {
+						issue(
+							['slices', 0, 'track_results', 0, 'subjects', rowIndex, 'operational', rateName],
+							`cohort-weighted ${rateName} must reconcile with the overall operational row`
+						);
+					}
+				}
+
+				const rubric = row.absolute_rubric;
+				const cohortCriteria = cohorts.map((cohort) => cohort.absolute_rubric.criterion_outcomes);
+				for (const countName of ['pass', 'fail', 'not_applicable', 'total'] as const) {
+					if (
+						cohortCriteria.reduce((total, criterion) => total + criterion[countName], 0) !==
+						rubric.criterion_outcomes[countName]
+					) {
+						issue(
+							['slices', 0, 'track_results', 0, 'subjects', rowIndex, 'absolute_rubric'],
+							`cohort criterion ${countName} must reconcile with the overall rubric`
+						);
+					}
+				}
+				const criterionTotal = rubric.criterion_outcomes.total;
+				const cohortCriterionTotal = cohortCriteria.reduce(
+					(total, criterion) => total + criterion.total,
+					0
+				);
+				if (
+					!approximatelyEqual(
+						rubric.criterion_outcomes.pass_rate,
+						criterionTotal ? rubric.criterion_outcomes.pass / criterionTotal : 0
+					) ||
+					!approximatelyEqual(
+						rubric.criterion_outcomes.pass_rate,
+						cohortCriterionTotal
+							? cohortCriteria.reduce((total, criterion) => total + criterion.pass, 0) /
+									cohortCriterionTotal
+							: 0
+					)
+				) {
+					issue(
+						[
+							'slices',
+							0,
+							'track_results',
+							0,
+							'subjects',
+							rowIndex,
+							'absolute_rubric',
+							'criterion_outcomes'
+						],
+						'cohort criterion pass rate must reconcile with the overall rubric'
+					);
+				}
+				for (const rateName of [
+					'strict_all_requirements_pass_rate',
+					'must_not_miss_failure_rate',
+					'critical_error_rate',
+					'confidence_pass_rate',
+					'unacceptable_response_rate'
+				] as const) {
+					const weightedRate =
+						cohortTrialCount > 0
+							? cohorts.reduce(
+									(total, cohort) =>
+										total + cohort.absolute_rubric[rateName] * cohort.absolute_rubric.trial_count,
+									0
+								) / cohortTrialCount
+							: 0;
+					if (!approximatelyEqual(rubric[rateName], weightedRate)) {
+						issue(
+							['slices', 0, 'track_results', 0, 'subjects', rowIndex, 'absolute_rubric', rateName],
+							`cohort-weighted ${rateName} must reconcile with the overall rubric`
+						);
+					}
+				}
+			}
+		}
+	});
+
+export type CoffeeBenchLegacyPublicExport = z.infer<typeof legacyPublicExportSchema>;
+export type CoffeeBenchIndependentPublicExport = z.infer<typeof independentPublicExportSchema>;
+export type CoffeeBenchPublicExport =
+	| CoffeeBenchLegacyPublicExport
+	| CoffeeBenchIndependentPublicExport;
 export type CoffeeBenchSubjectResult = z.infer<typeof subjectResultSchema>;
+export type CoffeeBenchIndependentSubjectResult = z.infer<typeof independentSubjectResultSchema>;
 export type CoffeeBenchSubject = CoffeeBenchPublicExport['subjects'][number];
-export type CoffeeBenchSlice = CoffeeBenchPublicExport['slices'][number];
+export type CoffeeBenchSlice = CoffeeBenchLegacyPublicExport['slices'][number];
 export type CoffeeBenchTrackResult =
-	CoffeeBenchPublicExport['slices'][number]['track_results'][number];
+	CoffeeBenchLegacyPublicExport['slices'][number]['track_results'][number];
+export type CoffeeBenchIndependentSlice = CoffeeBenchIndependentPublicExport['slices'][number];
+export type CoffeeBenchIndependentTrackResult =
+	CoffeeBenchIndependentPublicExport['slices'][number]['track_results'][number];
+
+export function isCoffeeBenchIndependentExport(
+	artifact: CoffeeBenchPublicExport
+): artifact is CoffeeBenchIndependentPublicExport {
+	return artifact.schema_version === COFFEEBENCH_SCHEMA_VERSION;
+}
 
 type PublicLeak = { kind: 'field' | 'source URL' | 'undeclared content digest'; path: string };
 
@@ -1359,21 +2405,34 @@ export function parseCoffeeBenchPublicExport(value: unknown): CoffeeBenchPublicE
 		);
 	}
 
-	const parsed = publicExportSchema.safeParse(value);
+	const schemaVersion =
+		value !== null && typeof value === 'object' && 'schema_version' in value
+			? (value as { schema_version?: unknown }).schema_version
+			: undefined;
+	if (schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== COFFEEBENCH_SCHEMA_VERSION) {
+		throw new Error('Invalid CoffeeBench public export: schema_version must be 2, 3, or 4');
+	}
+
+	const parsed =
+		schemaVersion === COFFEEBENCH_SCHEMA_VERSION
+			? independentPublicExportSchema.safeParse(value)
+			: legacyPublicExportSchema.safeParse(value);
 	if (!parsed.success) {
 		throw new Error(`Invalid CoffeeBench public export: ${z.prettifyError(parsed.error)}`);
 	}
 	return parsed.data;
 }
 
-export function assertCoffeeBenchV0RouteIdentity(artifact: CoffeeBenchPublicExport): void {
+export function assertCoffeeBenchV0RouteIdentity(
+	artifact: CoffeeBenchPublicExport
+): asserts artifact is CoffeeBenchIndependentPublicExport {
 	if (
-		artifact.schema_version !== COFFEEBENCH_SCHEMA_VERSION ||
+		!isCoffeeBenchIndependentExport(artifact) ||
 		artifact.status !== 'preview' ||
 		artifact.calibration.agreement !== null ||
 		artifact.calibration.decision_source !== null
 	) {
-		throw new Error('CoffeeBench v0 route artifact is not the declared schema-v3 preview');
+		throw new Error('CoffeeBench v0 route artifact is not the declared schema-v4 agent preview');
 	}
 	if (
 		artifact.benchmark.name !== COFFEEBENCH_V0_BENCHMARK_NAME ||
@@ -1394,7 +2453,12 @@ export function assertCoffeeBenchV0RouteIdentity(artifact: CoffeeBenchPublicExpo
 	) {
 		throw new Error('CoffeeBench v0 route artifact has an unexpected jury result identity');
 	}
-	if (artifact.jury.length !== 1 || artifact.jury[0]?.family !== 'openai') {
+	if (
+		artifact.jury.length !== 3 ||
+		!['openai', 'google', 'anthropic'].every((family) =>
+			artifact.jury.some((judge) => judge.family === family)
+		)
+	) {
 		throw new Error('CoffeeBench v0 route artifact has an unexpected preview jury');
 	}
 }

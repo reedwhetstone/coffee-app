@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import rawFixture from '../../../static/benchmarks/coffeebench-public-export-v2.json';
-import rawPreview from '../../../static/benchmarks/coffeebench-public-export-v3.json';
+import rawLegacyPreview from '../../../static/benchmarks/coffeebench-public-export-v3.json';
+import rawPreview from '../../../static/benchmarks/coffeebench-public-export-v4.json';
 import {
 	assertCoffeeBenchV0RouteIdentity,
 	coffeeBenchPublicDigest,
@@ -11,6 +12,7 @@ import {
 	COFFEEBENCH_SCHEMA_VERSION,
 	COFFEEBENCH_V0_ARTIFACT_SHA256,
 	COFFEEBENCH_V0_RESULT_CONTENT_SHA256,
+	isCoffeeBenchIndependentExport,
 	parseCoffeeBenchPublicExport
 } from './coffeebench';
 
@@ -20,6 +22,16 @@ function fixtureCopy(): Record<string, unknown> {
 
 function previewCopy(): Record<string, unknown> {
 	return structuredClone(rawPreview) as Record<string, unknown>;
+}
+
+function firstIndependentSubject(payload: Record<string, unknown>): Record<string, unknown> {
+	const slices = payload.slices as Array<{
+		slice_id: string;
+		track_results: Array<{ subjects: Array<Record<string, unknown>> }>;
+	}>;
+	const overall = slices.find((slice) => slice.slice_id === 'overall');
+	if (!overall) throw new Error('preview is missing the overall slice');
+	return overall.track_results[0].subjects[0];
 }
 
 function firstSubjectResult(payload: Record<string, unknown>): Record<string, unknown> {
@@ -37,7 +49,7 @@ describe('CoffeeBench public export reader', () => {
 	it('keeps the public download byte-identical to the final Cherry preview export', () => {
 		const aliasBytes = readFileSync(`static${COFFEEBENCH_PREVIEW_ALIAS_PATH}`);
 		const immutableBytes = readFileSync(`static${COFFEEBENCH_RESULT_PATH}`);
-		expect(aliasBytes.byteLength).toBe(15_715);
+		expect(aliasBytes.byteLength).toBe(26_340);
 		expect(immutableBytes).toEqual(aliasBytes);
 		expect(createHash('sha256').update(immutableBytes).digest('hex')).toBe(
 			COFFEEBENCH_V0_ARTIFACT_SHA256
@@ -59,11 +71,11 @@ describe('CoffeeBench public export reader', () => {
 	});
 
 	it('accepts the complete sanitized schema-v3 Cherry preview', () => {
-		const parsed = parseCoffeeBenchPublicExport(rawPreview);
+		const parsed = parseCoffeeBenchPublicExport(rawLegacyPreview);
+		if (isCoffeeBenchIndependentExport(parsed)) throw new Error('expected the schema-v3 branch');
 
-		expect(parsed.schema_version).toBe(COFFEEBENCH_SCHEMA_VERSION);
+		expect(parsed.schema_version).toBe(3);
 		expect(parsed.status).toBe('preview');
-		expect(parsed.identities.result_content_sha256).toBe(COFFEEBENCH_V0_RESULT_CONTENT_SHA256);
 		expect(parsed.jury).toHaveLength(1);
 		expect(parsed.calibration).toEqual({
 			status: 'not_run',
@@ -78,16 +90,119 @@ describe('CoffeeBench public export reader', () => {
 		).toEqual(Array(12).fill(null));
 	});
 
-	it('requires schema-v3 preview calibration and mandatory disclosures', () => {
+	it('accepts the complete schema-v4 independent-track agent-jury preview', () => {
+		const parsed = parseCoffeeBenchPublicExport(rawPreview);
+		if (!isCoffeeBenchIndependentExport(parsed)) throw new Error('expected the schema-v4 branch');
+
+		expect(parsed.schema_version).toBe(COFFEEBENCH_SCHEMA_VERSION);
+		expect(parsed.identities.result_content_sha256).toBe(COFFEEBENCH_V0_RESULT_CONTENT_SHA256);
+		expect(parsed.jury.map((judge) => judge.family).sort()).toEqual([
+			'anthropic',
+			'google',
+			'openai'
+		]);
+		expect(parsed.methodology.composite_score).toBeNull();
+		expect(parsed.methodology.pairwise_ballot_count).toBe(1800);
+		const overall = parsed.slices.find((slice) => slice.slice_id === 'overall');
+		expect(
+			overall?.track_results[0].subjects.map((subject) => subject.pairwise_quality.rank)
+		).toEqual([3, 2, 1, 4]);
+	});
+
+	it('requires schema-v4 preview calibration state and mandatory disclosures', () => {
 		const calibration = previewCopy();
 		(calibration.calibration as Record<string, unknown>).status = 'complete';
 		expect(() => parseCoffeeBenchPublicExport(calibration)).toThrow(/calibration/i);
 
 		const disclosures = previewCopy();
 		disclosures.limitations = (disclosures.limitations as string[]).filter(
-			(limitation) => !limitation.toLowerCase().includes('bounded salvage')
+			(limitation) => !limitation.toLowerCase().includes('independent human agreement')
 		);
-		expect(() => parseCoffeeBenchPublicExport(disclosures)).toThrow(/bounded salvage/i);
+		expect(() => parseCoffeeBenchPublicExport(disclosures)).toThrow(/uncalibrated judging/i);
+	});
+
+	it('enforces schema-v4 matched-design coverage, ranks, and Pareto declarations', () => {
+		const ranks = previewCopy();
+		(firstIndependentSubject(ranks).pairwise_quality as Record<string, unknown>).rank = 1;
+		expect(() => parseCoffeeBenchPublicExport(ranks)).toThrow(/pairwise quality rank must match/i);
+
+		const trials = previewCopy();
+		const trialRows = firstIndependentSubject(trials);
+		(trialRows.operational as Record<string, unknown>).trial_count = 99;
+		expect(() => parseCoffeeBenchPublicExport(trials)).toThrow(
+			/same-track trial counts must match before deriving pairwise ballots/i
+		);
+
+		const ballots = previewCopy();
+		(
+			firstIndependentSubject(ballots).pairwise_quality as Record<string, unknown>
+		).possible_ballot_count = 1;
+		expect(() => parseCoffeeBenchPublicExport(ballots)).toThrow(
+			/pairwise coverage counts and rate do not reconcile/i
+		);
+
+		const pareto = previewCopy();
+		(firstIndependentSubject(pareto).pareto as Record<string, unknown>).classification =
+			'dominated';
+		(firstIndependentSubject(pareto).pareto as Record<string, unknown>).dominated_by = [
+			'deepseek-v4-raw'
+		];
+		expect(() => parseCoffeeBenchPublicExport(pareto)).toThrow(
+			/Pareto declaration must exactly match the available same-track metrics/i
+		);
+	});
+
+	it('reconciles schema-v4 operational, rubric, token, cost, and cohort evidence', () => {
+		const rubric = previewCopy();
+		(
+			firstIndependentSubject(rubric).absolute_rubric as Record<string, unknown>
+		).unacceptable_response_rate = 0.011;
+		expect(() => parseCoffeeBenchPublicExport(rubric)).toThrow(
+			/unacceptable_response_rate must represent a whole attempted-trial count/i
+		);
+
+		const tokens = previewCopy();
+		const tokenUsage = (firstIndependentSubject(tokens).operational as Record<string, unknown>)
+			.token_usage as Record<string, Record<string, unknown>>;
+		tokenUsage.total_tokens.total = (tokenUsage.total_tokens.total as number) + 1;
+		expect(() => parseCoffeeBenchPublicExport(tokens)).toThrow(
+			/total tokens must equal input plus output/i
+		);
+
+		const cohorts = previewCopy();
+		const cohortOperational = firstIndependentSubject(cohorts).operational as Record<
+			string,
+			unknown
+		>;
+		cohortOperational.judgeable_response_count =
+			(cohortOperational.judgeable_response_count as number) - 1;
+		cohortOperational.judgeable_response_rate = 0.99;
+		expect(() => parseCoffeeBenchPublicExport(cohorts)).toThrow(
+			/cohort judgeable_response_count must reconcile with the overall operational row/i
+		);
+
+		const cohortRates = previewCopy();
+		(
+			firstIndependentSubject(cohortRates).absolute_rubric as Record<string, unknown>
+		).unacceptable_response_rate = 0.31;
+		expect(() => parseCoffeeBenchPublicExport(cohortRates)).toThrow(
+			/cohort-weighted unacceptable_response_rate must reconcile with the overall rubric/i
+		);
+	});
+
+	it('reconciles schema-v4 jury workload provenance', () => {
+		const payload = previewCopy();
+		(payload.jury as Array<Record<string, unknown>>)[0].call_count = 999;
+		expect(() => parseCoffeeBenchPublicExport(payload)).toThrow(
+			/jury call count must cover the family share/i
+		);
+
+		const providerCalls = previewCopy();
+		const judge = (providerCalls.jury as Array<Record<string, unknown>>)[0];
+		judge.provider_call_count = (judge.call_count as number) + 1;
+		expect(() => parseCoffeeBenchPublicExport(providerCalls)).toThrow(
+			/provider calls cannot exceed judge calls/i
+		);
 	});
 
 	it('rejects unknown schema versions', () => {

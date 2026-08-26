@@ -30,18 +30,18 @@ describe('CoffeeBench public discovery', () => {
 
 		expect(sitemapText).toContain('<loc>https://www.purveyors.io/benchmarks</loc>');
 		expect(sitemapText).toContain(
-			'<loc>https://www.purveyors.io/benchmarks</loc>\n\t\t<lastmod>2026-08-19</lastmod>'
+			'<loc>https://www.purveyors.io/benchmarks</loc>\n\t\t<lastmod>2026-08-25</lastmod>'
 		);
 		expect(sitemapText).toContain('<loc>https://www.purveyors.io/benchmarks/coffeebench-v0</loc>');
 		expect(llms).toContain('[Benchmarks](https://www.purveyors.io/benchmarks)');
 		expect(llms).toContain(
-			'[CoffeeBench v0 uncalibrated preview](https://www.purveyors.io/benchmarks/coffeebench-v0)'
+			'[CoffeeBench v0 three-family agent-jury preview](https://www.purveyors.io/benchmarks/coffeebench-v0)'
 		);
 		expect(llms).toContain(
-			'Of 600 pairwise records, 527 were resolved under unacceptable-response rules and 73 received pairwise model-judge calls.'
+			'Measured, uncalibrated three-family agent-jury preview with 1,200 absolute evaluations and all 1,800 pairwise ballots.'
 		);
 		expect(llms).toContain(
-			'Bradley-Terry quality scores and ranks are unavailable because all treatments exceeded the predeclared 10% terminal-failure eligibility ceiling.'
+			'Pairwise quality, absolute-rubric outcomes, and operational reliability remain independent; human agreement was not measured and no composite score is reported.'
 		);
 	});
 
@@ -55,7 +55,8 @@ describe('CoffeeBench public discovery', () => {
 		for (const source of [
 			'/benchmarks/coffeebench-v0/results/(.*)',
 			'/benchmarks/coffeebench-public-export-v2.json',
-			'/benchmarks/coffeebench-public-export-v3.json'
+			'/benchmarks/coffeebench-public-export-v3.json',
+			'/benchmarks/coffeebench-public-export-v4.json'
 		]) {
 			expect(config.headers.find((entry) => entry.source === source)?.headers).toContainEqual(
 				expect.objectContaining({ key: 'X-Robots-Tag', value: expect.stringContaining('noindex') })
