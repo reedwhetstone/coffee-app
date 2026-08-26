@@ -8,7 +8,7 @@ describe('Benchmark index loader', () => {
 		} as never)) as { benchmark: { status: string; caseCount: number; subjectTrialCount: number } };
 
 		expect(result.benchmark).toEqual({
-			status: 'preview',
+			status: 'published',
 			caseCount: 20,
 			subjectTrialCount: 400
 		});

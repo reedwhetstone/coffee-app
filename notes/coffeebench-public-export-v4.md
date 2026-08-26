@@ -1,5 +1,8 @@
 # CoffeeBench public export v4 preview contract
 
+> Historical note: CoffeeBench V1 now publishes the schema-v5 findings artifact and complete
+> pairwise matchup matrix. See `notes/coffeebench-public-export-v5.md` for the canonical report.
+
 Coffee-app publishes Cherry's complete CoffeeBench v0 agent-jury preview as an immutable,
 sanitized schema-v4 export. The current route is pinned to this identity:
 

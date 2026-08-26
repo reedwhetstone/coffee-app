@@ -1,35 +1,56 @@
 import { render, screen } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import '@testing-library/jest-dom/vitest';
-import rawPreview from '../../../../static/benchmarks/coffeebench-public-export-v4.json';
+import rawPublished from '../../../../static/benchmarks/coffeebench-public-export-v5.json';
 import { COFFEEBENCH_RESULT_PATH, parseCoffeeBenchPublicExport } from '$lib/benchmarks/coffeebench';
 import CoffeeBenchPage from './+page.svelte';
 
-const benchmark = parseCoffeeBenchPublicExport(rawPreview);
+const benchmark = parseCoffeeBenchPublicExport(rawPublished);
 
-describe('CoffeeBench v0 report', () => {
-	it('leads with the uncalibrated three-family agent-jury status and limits', () => {
+describe('CoffeeBench V1 report', () => {
+	it('leads with the thesis, legitimate conclusion, and publication boundary', () => {
 		render(CoffeeBenchPage, { data: { benchmark } as never });
 
 		expect(
-			screen.getByRole('heading', { name: 'Can a model make a defensible coffee decision?' })
+			screen.getByRole('heading', {
+				name: 'Retrieval changes the answer more than the search harness.'
+			})
 		).toBeVisible();
-		expect(screen.getByText('Uncalibrated three-family agent-jury preview')).toBeVisible();
-		expect(screen.getByText('Agent-jury evidence, not human ground truth.')).toBeVisible();
+		expect(screen.getByText('Published benchmark · complete agent jury')).toBeVisible();
+		expect(
+			screen.getByText('Published V1 evidence, with an explicit calibration gap.')
+		).toBeVisible();
 		expect(screen.getByRole('navigation', { name: 'CoffeeBench report sections' })).toBeVisible();
-		expect(screen.getByRole('link', { name: 'Purpose' })).toHaveAttribute('href', '#overview');
-		expect(screen.getByRole('link', { name: 'Independent tracks' })).toHaveAttribute(
+		expect(screen.getByRole('link', { name: 'Thesis' })).toHaveAttribute('href', '#overview');
+		expect(screen.getByRole('link', { name: 'Pairwise data' })).toHaveAttribute(
 			'href',
-			'#tracks'
+			'#pairwise'
 		);
 		expect(
 			screen.getByRole('heading', {
-				name: 'Purveyors Search ranked first in agent-jury quality, with important caveats.'
+				name: 'One decisive result, two useful signals, and one unresolved contest.'
 			})
 		).toBeVisible();
-		expect(screen.getByText(/top three intervals overlap/i)).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'Retrieval beats Raw.' })).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'No search harness wins clearly.' })).toBeVisible();
 		expect(screen.getAllByText('1,200').length).toBeGreaterThan(0);
 		expect(screen.getAllByText('1,800').length).toBeGreaterThan(0);
+	});
+
+	it('publishes all matchup rows, raw counts, and jury-family splits', () => {
+		render(CoffeeBenchPage, { data: { benchmark } as never });
+
+		expect(
+			screen.getByRole('heading', { name: 'The complete pairwise evidence, not just the ranking.' })
+		).toBeVisible();
+		expect(screen.getAllByText('300 ballots per matchup')).toHaveLength(1);
+		expect(screen.getAllByText('180 ballots per matchup')).toHaveLength(1);
+		expect(screen.getAllByText('120 ballots per matchup')).toHaveLength(1);
+		expect(screen.getAllByText(/Pi Search vs Raw/)).toHaveLength(3);
+		expect(screen.getAllByText(/Purveyors Search vs Raw/).length).toBeGreaterThanOrEqual(3);
+		expect(screen.getAllByText('OpenAI').length).toBeGreaterThan(0);
+		expect(screen.getAllByText('Google').length).toBeGreaterThan(0);
+		expect(screen.getAllByText('Anthropic').length).toBeGreaterThan(0);
 	});
 
 	it('renders quality, rubric, and operations independently', () => {
@@ -64,9 +85,6 @@ describe('CoffeeBench v0 report', () => {
 		expect(
 			screen.getByRole('heading', { name: 'Three judge families; calibration not run.' })
 		).toBeVisible();
-		expect(screen.getAllByText('Openai').length).toBeGreaterThan(0);
-		expect(screen.getAllByText('Google').length).toBeGreaterThan(0);
-		expect(screen.getAllByText('Anthropic').length).toBeGreaterThan(0);
 		expect(
 			screen.getByRole('heading', { name: 'Public identities, without sealed content.' })
 		).toBeVisible();

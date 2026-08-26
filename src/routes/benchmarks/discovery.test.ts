@@ -21,7 +21,7 @@ describe('CoffeeBench public discovery', () => {
 		expect(screen.getByRole('link', { name: 'Benchmarks' })).toHaveAttribute('href', '/benchmarks');
 	});
 
-	it('indexes the benchmark collection and measured preview with explicit limitations', async () => {
+	it('indexes the benchmark collection and published V1 findings', async () => {
 		const url = new URL('https://www.purveyors.io/');
 		const sitemap = await getSitemap({ url } as never);
 		const llmsText = await getLlmsText({ url } as never);
@@ -30,18 +30,18 @@ describe('CoffeeBench public discovery', () => {
 
 		expect(sitemapText).toContain('<loc>https://www.purveyors.io/benchmarks</loc>');
 		expect(sitemapText).toContain(
-			'<loc>https://www.purveyors.io/benchmarks</loc>\n\t\t<lastmod>2026-08-25</lastmod>'
+			'<loc>https://www.purveyors.io/benchmarks</loc>\n\t\t<lastmod>2026-08-26</lastmod>'
 		);
-		expect(sitemapText).toContain('<loc>https://www.purveyors.io/benchmarks/coffeebench-v0</loc>');
+		expect(sitemapText).toContain('<loc>https://www.purveyors.io/benchmarks/coffeebench-v1</loc>');
 		expect(llms).toContain('[Benchmarks](https://www.purveyors.io/benchmarks)');
 		expect(llms).toContain(
-			'[CoffeeBench v0 three-family agent-jury preview](https://www.purveyors.io/benchmarks/coffeebench-v0)'
+			'[CoffeeBench V1 published V1 findings](https://www.purveyors.io/benchmarks/coffeebench-v1)'
 		);
 		expect(llms).toContain(
-			'Measured, uncalibrated three-family agent-jury preview with 1,200 absolute evaluations and all 1,800 pairwise ballots.'
+			'Published system benchmark with 1,200 absolute evaluations and all 1,800 pairwise ballots.'
 		);
 		expect(llms).toContain(
-			'Pairwise quality, absolute-rubric outcomes, and operational reliability remain independent; human agreement was not measured and no composite score is reported.'
+			'Every search-equipped treatment beat Raw decisively; the three search treatments remain statistically unresolved.'
 		);
 	});
 
@@ -53,10 +53,12 @@ describe('CoffeeBench public discovery', () => {
 			config.headers.find((entry) => entry.source === '/benchmarks/coffeebench-v0')
 		).toBeUndefined();
 		for (const source of [
+			'/benchmarks/coffeebench-v1/results/(.*)',
 			'/benchmarks/coffeebench-v0/results/(.*)',
 			'/benchmarks/coffeebench-public-export-v2.json',
 			'/benchmarks/coffeebench-public-export-v3.json',
-			'/benchmarks/coffeebench-public-export-v4.json'
+			'/benchmarks/coffeebench-public-export-v4.json',
+			'/benchmarks/coffeebench-public-export-v5.json'
 		]) {
 			expect(config.headers.find((entry) => entry.source === source)?.headers).toContainEqual(
 				expect.objectContaining({ key: 'X-Robots-Tag', value: expect.stringContaining('noindex') })

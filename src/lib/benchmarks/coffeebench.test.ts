@@ -4,14 +4,20 @@ import { describe, expect, it } from 'vitest';
 import rawFixture from '../../../static/benchmarks/coffeebench-public-export-v2.json';
 import rawLegacyPreview from '../../../static/benchmarks/coffeebench-public-export-v3.json';
 import rawPreview from '../../../static/benchmarks/coffeebench-public-export-v4.json';
+import rawPublished from '../../../static/benchmarks/coffeebench-public-export-v5.json';
 import {
 	assertCoffeeBenchV0RouteIdentity,
+	assertCoffeeBenchV1RouteIdentity,
 	coffeeBenchPublicDigest,
+	COFFEEBENCH_LEGACY_INDEPENDENT_SCHEMA_VERSION,
+	COFFEEBENCH_PUBLISHED_ALIAS_PATH,
 	COFFEEBENCH_PREVIEW_ALIAS_PATH,
 	COFFEEBENCH_RESULT_PATH,
 	COFFEEBENCH_SCHEMA_VERSION,
 	COFFEEBENCH_V0_ARTIFACT_SHA256,
 	COFFEEBENCH_V0_RESULT_CONTENT_SHA256,
+	COFFEEBENCH_V1_ARTIFACT_SHA256,
+	COFFEEBENCH_V1_RESULT_CONTENT_SHA256,
 	isCoffeeBenchIndependentExport,
 	parseCoffeeBenchPublicExport
 } from './coffeebench';
@@ -22,6 +28,10 @@ function fixtureCopy(): Record<string, unknown> {
 
 function previewCopy(): Record<string, unknown> {
 	return structuredClone(rawPreview) as Record<string, unknown>;
+}
+
+function publishedCopy(): Record<string, unknown> {
+	return structuredClone(rawPublished) as Record<string, unknown>;
 }
 
 function firstIndependentSubject(payload: Record<string, unknown>): Record<string, unknown> {
@@ -46,12 +56,20 @@ function firstSubjectCard(payload: Record<string, unknown>): Record<string, unkn
 }
 
 describe('CoffeeBench public export reader', () => {
-	it('keeps the public download byte-identical to the final Cherry preview export', () => {
-		const aliasBytes = readFileSync(`static${COFFEEBENCH_PREVIEW_ALIAS_PATH}`);
+	it('keeps the public download byte-identical to the published Cherry V1 export', () => {
+		const aliasBytes = readFileSync(`static${COFFEEBENCH_PUBLISHED_ALIAS_PATH}`);
 		const immutableBytes = readFileSync(`static${COFFEEBENCH_RESULT_PATH}`);
-		expect(aliasBytes.byteLength).toBe(26_340);
+		expect(aliasBytes.byteLength).toBe(40_585);
 		expect(immutableBytes).toEqual(aliasBytes);
 		expect(createHash('sha256').update(immutableBytes).digest('hex')).toBe(
+			COFFEEBENCH_V1_ARTIFACT_SHA256
+		);
+	});
+
+	it('keeps the schema-v4 preview artifact available at its historical alias', () => {
+		const aliasBytes = readFileSync(`static${COFFEEBENCH_PREVIEW_ALIAS_PATH}`);
+		expect(aliasBytes.byteLength).toBe(26_340);
+		expect(createHash('sha256').update(aliasBytes).digest('hex')).toBe(
 			COFFEEBENCH_V0_ARTIFACT_SHA256
 		);
 	});
@@ -94,7 +112,7 @@ describe('CoffeeBench public export reader', () => {
 		const parsed = parseCoffeeBenchPublicExport(rawPreview);
 		if (!isCoffeeBenchIndependentExport(parsed)) throw new Error('expected the schema-v4 branch');
 
-		expect(parsed.schema_version).toBe(COFFEEBENCH_SCHEMA_VERSION);
+		expect(parsed.schema_version).toBe(COFFEEBENCH_LEGACY_INDEPENDENT_SCHEMA_VERSION);
 		expect(parsed.identities.result_content_sha256).toBe(COFFEEBENCH_V0_RESULT_CONTENT_SHA256);
 		expect(parsed.jury.map((judge) => judge.family).sort()).toEqual([
 			'anthropic',
@@ -107,6 +125,49 @@ describe('CoffeeBench public export reader', () => {
 		expect(
 			overall?.track_results[0].subjects.map((subject) => subject.pairwise_quality.rank)
 		).toEqual([3, 2, 1, 4]);
+	});
+
+	it('accepts the published schema-v5 result and complete pairwise matrices', () => {
+		const parsed = parseCoffeeBenchPublicExport(rawPublished);
+		if (!isCoffeeBenchIndependentExport(parsed)) throw new Error('expected the schema-v5 branch');
+
+		expect(parsed.schema_version).toBe(COFFEEBENCH_SCHEMA_VERSION);
+		expect(parsed.status).toBe('published');
+		expect(parsed.identities.result_content_sha256).toBe(COFFEEBENCH_V1_RESULT_CONTENT_SHA256);
+		expect(
+			parsed.slices.every((slice) => slice.track_results[0].pairwise_matchups?.length === 6)
+		).toBe(true);
+		expect(
+			parsed.slices
+				.find((slice) => slice.slice_id === 'overall')
+				?.track_results[0].pairwise_matchups?.reduce(
+					(total, matchup) => total + matchup.ballot_count,
+					0
+				)
+		).toBe(1800);
+		assertCoffeeBenchV1RouteIdentity(parsed);
+	});
+
+	it('rejects incomplete or internally inconsistent schema-v5 matchup data', () => {
+		const missing = publishedCopy();
+		const track = (
+			missing.slices as Array<{
+				track_results: Array<{ pairwise_matchups: Array<Record<string, unknown>> }>;
+			}>
+		)[0].track_results[0];
+		track.pairwise_matchups.pop();
+		expect(() => parseCoffeeBenchPublicExport(missing)).toThrow(
+			/pairwise_matchups|matchup matrix/i
+		);
+
+		const inconsistent = publishedCopy();
+		const matchup = (
+			inconsistent.slices as Array<{
+				track_results: Array<{ pairwise_matchups: Array<Record<string, unknown>> }>;
+			}>
+		)[0].track_results[0].pairwise_matchups[0];
+		matchup.tie_count = (matchup.tie_count as number) + 1;
+		expect(() => parseCoffeeBenchPublicExport(inconsistent)).toThrow(/counts.*reconcile/i);
 	});
 
 	it('requires schema-v4 preview calibration state and mandatory disclosures', () => {

@@ -6,8 +6,8 @@ export const GET: RequestHandler = async ({ url }) => {
 	const publishedPosts = await getPublishedPosts();
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const benchmarkDescription =
-		'Measured, uncalibrated three-family agent-jury preview with 1,200 absolute evaluations and all 1,800 pairwise ballots. Purveyors Search ranked first in agent-jury quality, but the top three intervals overlap. Pairwise quality, absolute-rubric outcomes, and operational reliability remain independent; human agreement was not measured and no composite score is reported.';
-	const benchmarkLabel = 'three-family agent-jury preview';
+		'Published system benchmark with 1,200 absolute evaluations and all 1,800 pairwise ballots. Every search-equipped treatment beat Raw decisively; the three search treatments remain statistically unresolved. Includes conclusions, head-to-head counts, operational tradeoffs, and explicit missing data.';
+	const benchmarkLabel = 'published V1 findings';
 
 	const blogPostLines = publishedPosts
 		.map(
@@ -24,7 +24,7 @@ export const GET: RequestHandler = async ({ url }) => {
 - [Market Analytics](${baseUrl}/analytics): Public market-intelligence surface for origin price trends, processing mix, origin price ranges, and gated Parchment Intelligence modules.
 - [Coffee Catalog](${baseUrl}/catalog): Public catalog for normalized green coffee listings with origin, processing, pricing, and availability data.
 - [Benchmarks](${baseUrl}/benchmarks): Public index of versioned coffee-intelligence evaluations.
-- [CoffeeBench v0 ${benchmarkLabel}](${baseUrl}/benchmarks/coffeebench-v0): ${benchmarkDescription}
+- [CoffeeBench V1 ${benchmarkLabel}](${baseUrl}/benchmarks/coffeebench-v1): ${benchmarkDescription}
 - [Parchment API](${baseUrl}/api): Product overview for the API, access tiers, and Console entry points.
 - [Parchment Console](${baseUrl}/api-dashboard): Authenticated Console for API keys, usage, and billing.
 - [Developer Docs](${baseUrl}/docs): Product and CLI documentation. Generated API reference lives at https://api.purveyors.io/docs.
