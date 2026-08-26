@@ -151,7 +151,7 @@
 			aria-label="CoffeeBench report sections"
 		>
 			<div class="mx-auto flex max-w-7xl gap-1 px-4 py-2 sm:px-6 lg:px-8">
-				{#each [['#overview', 'Thesis audit'], ['#harnesses', 'Treatments'], ['#findings', 'Findings'], ['#pairwise', 'Pairwise data'], ['#decisions', 'Product decisions'], ['#tracks', 'All metrics'], ['#cohorts', 'Cohorts'], ['#methodology', 'Method'], ['#limitations', 'Missing data'], ['#provenance', 'Data']] as [href, label]}
+				{#each [['#overview', 'Thesis audit'], ['#harnesses', 'Treatments'], ['#findings', 'Findings'], ['#pairwise', 'Pairwise data'], ['#decisions', 'Next tests'], ['#tracks', 'All metrics'], ['#cohorts', 'Cohorts'], ['#methodology', 'Method'], ['#limitations', 'Missing data'], ['#provenance', 'Data']] as [href, label]}
 					<a
 						{href}
 						class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium text-muted hover:bg-surface-panel hover:text-ink"
@@ -326,25 +326,6 @@
 						and both Purveyors arms received the same Brave search and fetch tools, while the
 						Parchment arm also retained the catalog tool. Raw never received any tool.
 					</p>
-				</div>
-
-				<div class="mt-8 grid gap-4 md:grid-cols-2">
-					{#each benchmark.subjects as card (card.subject_id)}
-						<article class="rounded-2xl border border-line bg-surface-panel p-6">
-							<div class="flex flex-wrap items-start justify-between gap-3">
-								<h3 class="text-lg font-semibold text-ink">{card.display_name}</h3>
-								<span class="rounded-full bg-surface-canvas px-3 py-1 text-xs text-muted">
-									{titleCase(card.harness_family)}
-								</span>
-							</div>
-							<p class="mt-3 text-sm leading-6 text-muted">
-								Evaluator track: {card.evaluator_track}. Declared capabilities: {card.capabilities.join(
-									', '
-								)}.
-							</p>
-							<p class="mt-3 break-all font-mono text-xs text-muted">Card {card.card_sha256}</p>
-						</article>
-					{/each}
 				</div>
 			</section>
 
