@@ -2265,6 +2265,7 @@ const independentPublicExportSchema = z
 		const overall = artifact.slices.find((slice) => slice.slice_id === 'overall');
 		if (overall) {
 			const rows = overall.track_results[0].subjects;
+			const overallMatchups = overall.track_results[0].pairwise_matchups;
 			const trialCount = rows.reduce((total, row) => total + row.operational.trial_count, 0);
 			const ballotCount =
 				rows.reduce((total, row) => total + row.pairwise_quality.model_backed_ballot_count, 0) / 2;
@@ -2282,6 +2283,75 @@ const independentPublicExportSchema = z
 					['methodology', 'absolute_evaluation_count'],
 					'absolute evaluation count must equal overall trials across every jury family'
 				);
+			}
+
+			if (overallMatchups) {
+				const cohortMatchups = artifact.slices
+					.filter((slice) => slice.slice_id !== 'overall')
+					.flatMap((slice) => slice.track_results[0].pairwise_matchups ?? []);
+				for (const [matchupIndex, matchup] of overallMatchups.entries()) {
+					const cohorts = cohortMatchups.filter(
+						(candidate) =>
+							candidate.subject_a === matchup.subject_a && candidate.subject_b === matchup.subject_b
+					);
+					const matchupPath = [
+						'slices',
+						0,
+						'track_results',
+						0,
+						'pairwise_matchups',
+						matchupIndex
+					] as (string | number)[];
+					if (cohorts.length !== artifact.slices.length - 1) {
+						issue(matchupPath, 'every overall matchup must have one row in each cohort');
+						continue;
+					}
+					for (const countName of [
+						'ballot_count',
+						'subject_a_win_count',
+						'subject_b_win_count',
+						'tie_count'
+					] as const) {
+						if (
+							cohorts.reduce((total, cohort) => total + cohort[countName], 0) !== matchup[countName]
+						) {
+							issue(
+								matchupPath,
+								`cohort matchup ${countName} must reconcile with the overall matchup`
+							);
+						}
+					}
+					for (const [familyIndex, family] of matchup.jury_families.entries()) {
+						const cohortFamilies = cohorts.map((cohort) =>
+							cohort.jury_families.find((candidate) => candidate.family === family.family)
+						);
+						if (cohortFamilies.some((candidate) => candidate === undefined)) {
+							issue(
+								[...matchupPath, 'jury_families', familyIndex],
+								'every overall jury-family matchup must have one row in each cohort'
+							);
+							continue;
+						}
+						for (const countName of [
+							'ballot_count',
+							'subject_a_win_count',
+							'subject_b_win_count',
+							'tie_count'
+						] as const) {
+							if (
+								cohortFamilies.reduce(
+									(total, cohortFamily) => total + (cohortFamily?.[countName] ?? 0),
+									0
+								) !== family[countName]
+							) {
+								issue(
+									[...matchupPath, 'jury_families', familyIndex],
+									`cohort jury-family ${countName} must reconcile with the overall matchup`
+								);
+							}
+						}
+					}
+				}
 			}
 
 			for (const [rowIndex, row] of rows.entries()) {
