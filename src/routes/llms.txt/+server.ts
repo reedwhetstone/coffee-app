@@ -6,7 +6,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const publishedPosts = await getPublishedPosts();
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const benchmarkDescription =
-		'Published system benchmark with 1,200 absolute evaluations and all 1,800 pairwise ballots. Every search-equipped treatment beat Raw decisively; the three search treatments remain statistically unresolved. Includes conclusions, head-to-head counts, operational tradeoffs, and explicit missing data.';
+		'Published system benchmark with 1,200 absolute evaluations and all 1,800 pairwise ballots. Harnessed systems beat Raw, but Purveyors did not clearly beat Pi and Parchment added no measured pairwise lift. The report also explains why V1 cannot attribute the full Raw gap to retrieval alone.';
 	const benchmarkLabel = 'published V1 findings';
 
 	const blogPostLines = publishedPosts

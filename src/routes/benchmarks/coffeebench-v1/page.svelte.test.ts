@@ -13,7 +13,7 @@ describe('CoffeeBench V1 report', () => {
 
 		expect(
 			screen.getByRole('heading', {
-				name: 'Retrieval changes the answer more than the search harness.'
+				name: 'Harnessed systems beat Raw. Purveyors-specific lift did not emerge.'
 			})
 		).toBeVisible();
 		expect(screen.getByText('Published benchmark · complete agent jury')).toBeVisible();
@@ -21,18 +21,27 @@ describe('CoffeeBench V1 report', () => {
 			screen.getByText('Published V1 evidence, with an explicit calibration gap.')
 		).toBeVisible();
 		expect(screen.getByRole('navigation', { name: 'CoffeeBench report sections' })).toBeVisible();
-		expect(screen.getByRole('link', { name: 'Thesis' })).toHaveAttribute('href', '#overview');
+		expect(screen.getByRole('link', { name: 'Thesis audit' })).toHaveAttribute('href', '#overview');
 		expect(screen.getByRole('link', { name: 'Pairwise data' })).toHaveAttribute(
 			'href',
 			'#pairwise'
 		);
 		expect(
 			screen.getByRole('heading', {
-				name: 'One decisive result, two useful signals, and one unresolved contest.'
+				name: 'What V1 tested, including where our thesis failed.'
 			})
 		).toBeVisible();
-		expect(screen.getByRole('heading', { name: 'Retrieval beats Raw.' })).toBeVisible();
-		expect(screen.getByRole('heading', { name: 'No search harness wins clearly.' })).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'A harnessed system beats Raw.' })).toBeVisible();
+		expect(screen.getByRole('heading', { name: 'Purveyors beats generic search.' })).toBeVisible();
+		expect(
+			screen.getByRole('heading', { name: 'Parchment adds incremental quality.' })
+		).toBeVisible();
+		expect(
+			screen.getByRole('heading', { name: 'Parchment lift was not supported.' })
+		).toBeVisible();
+		expect(screen.getByText(/provides no Parchment lift/i)).toBeVisible();
+		expect(screen.queryByRole('heading', { name: 'Retrieval beats Raw.' })).not.toBeInTheDocument();
+		expect(screen.getByText(/no same-harness search-off arm/i)).toBeVisible();
 		expect(screen.getAllByText('1,200').length).toBeGreaterThan(0);
 		expect(screen.getAllByText('1,800').length).toBeGreaterThan(0);
 	});

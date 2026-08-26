@@ -16,12 +16,12 @@ describe('CoffeeBench V1 page loader', () => {
 			meta: {
 				canonical: 'https://www.purveyors.io/benchmarks/coffeebench-v1',
 				description:
-					'CoffeeBench V1 finds that search-equipped DeepSeek systems beat Raw in 70–75% of pairwise judgments, while no search harness separates clearly from the others.',
+					'CoffeeBench V1 finds that harnessed DeepSeek systems beat Raw, while Purveyors-specific and Parchment lift were not demonstrated.',
 				robots: 'index, follow',
 				schemaData: {
 					'@type': 'Dataset',
 					description:
-						'A published system benchmark with complete pairwise findings across four DeepSeek treatments, independent rubric and operational tracks, and explicit data limitations.',
+						'A published system benchmark with complete pairwise findings, an explicit hypothesis audit, independent rubric and operational tracks, and unsparing data limitations.',
 					distribution: {
 						contentUrl: `https://www.purveyors.io${COFFEEBENCH_RESULT_PATH}`
 					}

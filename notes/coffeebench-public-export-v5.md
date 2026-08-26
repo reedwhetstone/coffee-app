@@ -16,6 +16,17 @@ The canonical report is `/benchmarks/coffeebench-v1`. The former
 `/benchmarks/coffeebench-v0` route redirects to V1. Historical schema-v2 through schema-v4
 artifacts remain available at their immutable paths and aliases.
 
+The report dispositions the original product hypotheses directly:
+
+- the harnessed treatments beat Raw, but the comparison does not isolate retrieval because Raw
+  also removes orchestration, extra turns, tools, and added context;
+- Purveyors Search did not separate clearly from Pi Search; and
+- Parchment + Search did not improve pairwise quality over Purveyors Search in V1.
+
+The immutable export supplies the complete aggregate evidence for those conclusions. A future
+benchmark may explain why a hypothesis missed, but that explanation must not replace the observed
+V1 disposition.
+
 The public artifact contains aggregate evaluation results and declared identities only. It does
 not contain sealed case content, evaluator prompts, source URLs, provider payloads, or private
 archives. Null measurements remain null and never imply zero.

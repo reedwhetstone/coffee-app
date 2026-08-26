@@ -87,12 +87,12 @@
 							</span>
 						</div>
 						<h1 class="mt-3 font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl">
-							Retrieval changes the answer more than the search harness.
+							Harnessed systems beat Raw. Purveyors-specific lift did not emerge.
 						</h1>
 						<p class="mt-6 text-lg leading-8 text-muted">
 							CoffeeBench holds DeepSeek V4 Flash constant and changes the system around it. Across
-							20 matched cases, every search-equipped treatment beat Raw decisively; the three
-							search harnesses did not separate clearly from one another.
+							20 matched cases, every harnessed treatment beat Raw. Purveyors Search did not clearly
+							beat Pi, and adding Parchment did not improve pairwise quality.
 						</p>
 					</div>
 					<div class="rounded-2xl bg-surface-canvas p-5 ring-1 ring-line">
@@ -100,12 +100,12 @@
 							Result in one line
 						</p>
 						<p class="mt-2 font-serif text-xl font-medium text-ink">
-							Search-equipped systems were preferred over Raw in 70.3–74.5% of all pairwise
-							judgments.
+							The system-level baseline improved. The product-differentiation hypotheses did not.
 						</p>
 						<p class="mt-3 text-sm leading-6 text-muted">
-							Purveyors Search ranked first, but its interval overlaps both alternatives. The
-							defensible finding is retrieval over no retrieval, not a universal harness winner.
+							Harnessed treatments were preferred over Raw in 70.3–74.5% of judgments. But V1 does
+							not isolate retrieval from orchestration, and it found no measurable incremental lift
+							from Parchment.
 						</p>
 					</div>
 				</div>
@@ -117,7 +117,7 @@
 			aria-label="CoffeeBench report sections"
 		>
 			<div class="mx-auto flex max-w-7xl gap-1 px-4 py-2 sm:px-6 lg:px-8">
-				{#each [['#overview', 'Thesis'], ['#findings', 'Findings'], ['#pairwise', 'Pairwise data'], ['#decisions', 'Product decisions'], ['#tracks', 'All metrics'], ['#cohorts', 'Cohorts'], ['#limitations', 'Missing data'], ['#methodology', 'Method'], ['#provenance', 'Data']] as [href, label]}
+				{#each [['#overview', 'Thesis audit'], ['#findings', 'Findings'], ['#pairwise', 'Pairwise data'], ['#decisions', 'Product decisions'], ['#tracks', 'All metrics'], ['#cohorts', 'Cohorts'], ['#limitations', 'Missing data'], ['#methodology', 'Method'], ['#provenance', 'Data']] as [href, label]}
 					<a
 						{href}
 						class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium text-muted hover:bg-surface-panel hover:text-ink"
@@ -143,17 +143,48 @@
 			</div>
 
 			<section id="overview" class="scroll-mt-36" aria-labelledby="overview-heading">
-				<div class="max-w-3xl">
-					<p class="text-sm font-semibold text-accent">Why CoffeeBench exists</p>
+				<div class="max-w-4xl">
+					<p class="text-sm font-semibold text-accent">Hypothesis audit</p>
 					<h2 id="overview-heading" class="mt-2 font-serif text-3xl font-medium text-ink">
-						Does external evidence improve a fixed model’s decisions?
+						What V1 tested, including where our thesis failed.
 					</h2>
 					<p class="mt-4 leading-7 text-muted">
-						The experiment uses the same DeepSeek V4 Flash model across four treatments: Raw, Pi
-						Search, Purveyors Search, and Purveyors with Parchment plus Search. That isolates the
-						practical question: what changes when a model can retrieve current evidence, and does
-						domain tooling add another measurable advantage?
+						The same DeepSeek V4 Flash model ran as Raw, Pi Search, Purveyors Search, and Purveyors
+						with Parchment plus Search. V1 began with three product hypotheses. One received
+						system-level support, one remained unresolved, and one was not supported.
 					</p>
+				</div>
+				<div class="mt-8 grid gap-4 lg:grid-cols-3">
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+							Supported at the system level
+						</p>
+						<h3 class="mt-2 text-lg font-semibold text-ink">A harnessed system beats Raw.</h3>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							All three harnessed treatments beat Raw overall. This is not a clean retrieval
+							ablation: Raw also removes the agent loop, extra turns, tools, and added context. On
+							the historical cohort, the harnessed treatments made zero search calls and still beat
+							Raw 58.3–63.6%.
+						</p>
+					</article>
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">Not established</p>
+						<h3 class="mt-2 text-lg font-semibold text-ink">Purveyors beats generic search.</h3>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							Purveyors Search took 55.5% against Pi Search overall, but the quality intervals
+							overlap and the direct live-web split narrows to 53.3–46.7. That is a directional
+							result, not a demonstrated harness advantage.
+						</p>
+					</article>
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">Not supported</p>
+						<h3 class="mt-2 text-lg font-semibold text-ink">Parchment adds incremental quality.</h3>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							Parchment + Search lost to Purveyors Search 46.8–53.2 overall and 45.0–55.0 on the
+							historical cohort; live web was effectively tied at 49.6–50.4. V1 does not prove harm,
+							but it provides no Parchment lift.
+						</p>
+					</article>
 				</div>
 				<dl class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
 					{#each [['Cases', formatInteger(benchmark.methodology.case_count)], ['Subject trials', formatInteger(benchmark.methodology.subject_trial_count)], ['Absolute evaluations', formatInteger(benchmark.methodology.absolute_evaluation_count)], ['Pairwise ballots', formatInteger(benchmark.methodology.pairwise_ballot_count)], ['Ballot coverage', formatRate(benchmark.methodology.pairwise_ballot_count / benchmark.methodology.pairwise_possible_ballot_count)], ['Jury families', formatInteger(benchmark.methodology.jury_family_count)]] as [label, value]}
@@ -168,40 +199,53 @@
 			<section id="findings" class="scroll-mt-36" aria-labelledby="findings-heading">
 				<p class="text-sm font-semibold text-accent">What we found</p>
 				<h2 id="findings-heading" class="mt-2 max-w-4xl font-serif text-3xl font-medium text-ink">
-					One decisive result, two useful signals, and one unresolved contest.
+					One system-level win, one failed hypothesis, and one unresolved contest.
 				</h2>
 				<p class="mt-4 max-w-4xl leading-7 text-muted">
-					The result is not “Purveyors wins.” It is that giving this model external evidence
-					produces materially better decisions, especially on live-web work. Within the
-					search-equipped group, this suite is not yet large or targeted enough to name a durable
-					winner.
+					The result is not “Purveyors wins,” and V1 cannot attribute the full Raw gap to retrieval
+					alone. The defensible conclusion is narrower: complete harnessed systems beat the raw
+					model baseline, especially on live-web work, while Purveyors-specific advantages were not
+					demonstrated.
 				</p>
 				<div class="mt-8 grid gap-4 lg:grid-cols-2">
 					<article class="rounded-2xl border border-line bg-surface-panel p-6">
 						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-							Finding 1 · decisive
+							Finding 1 · system-level result
 						</p>
-						<h3 class="mt-2 text-xl font-semibold text-ink">Retrieval beats Raw.</h3>
+						<h3 class="mt-2 text-xl font-semibold text-ink">Harnessed systems beat Raw.</h3>
 						<p class="mt-3 text-sm leading-6 text-muted">
 							Pi Search, Purveyors Search, and Parchment + Search were preferred to Raw in 70.3%,
 							72.2%, and 74.5% of 300 judgments respectively. Raw’s 0.327 quality interval is
-							separated below every search treatment.
+							separated below every harnessed treatment. Because the treatment changes more than
+							retrieval, this is a system comparison, not isolated retrieval lift.
 						</p>
 					</article>
 					<article class="rounded-2xl border border-line bg-surface-panel p-6">
 						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-							Finding 2 · unresolved
+							Finding 2 · thesis miss
 						</p>
-						<h3 class="mt-2 text-xl font-semibold text-ink">No search harness wins clearly.</h3>
+						<h3 class="mt-2 text-xl font-semibold text-ink">Parchment lift was not supported.</h3>
 						<p class="mt-3 text-sm leading-6 text-muted">
-							Purveyors Search ranks first at 0.582, ahead of Parchment + Search at 0.561 and Pi
-							Search at 0.537. All three 95% intervals overlap, and their direct matchups range only
-							from 51.3% to 55.5%.
+							Adding Parchment did not improve pairwise quality. Purveyors Search beat Parchment +
+							Search overall and on historical cases; live web was essentially even. The suite may
+							be poorly targeted to Parchment, but that explains the next experiment, not the V1
+							result.
 						</p>
 					</article>
 					<article class="rounded-2xl border border-line bg-surface-panel p-6">
 						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-							Finding 3 · failure mode
+							Finding 3 · unresolved
+						</p>
+						<h3 class="mt-2 text-xl font-semibold text-ink">Purveyors did not separate from Pi.</h3>
+						<p class="mt-3 text-sm leading-6 text-muted">
+							Purveyors Search ranks first at 0.582 and took 55.5% directly against Pi Search. But
+							all three harnessed 95% intervals overlap, and the direct advantage is only 53.3% on
+							live web. V1 does not establish a Purveyors orchestration advantage.
+						</p>
+					</article>
+					<article class="rounded-2xl border border-line bg-surface-panel p-6">
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+							Finding 4 · failure mode
 						</p>
 						<h3 class="mt-2 text-xl font-semibold text-ink">
 							Raw is efficient because it says less.
@@ -213,29 +257,18 @@
 							safety.
 						</p>
 					</article>
-					<article class="rounded-2xl border border-line bg-surface-panel p-6">
-						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-							Finding 4 · cohort effect
-						</p>
-						<h3 class="mt-2 text-xl font-semibold text-ink">Current information drives the gap.</h3>
-						<p class="mt-3 text-sm leading-6 text-muted">
-							On live-web cases, every search treatment was preferred to Raw in 88.3–90.8% of
-							judgments. Raw’s live-web strict pass rate falls to 45% and its unacceptable-response
-							rate rises to 55%.
-						</p>
-					</article>
 					<article class="rounded-2xl border border-line bg-surface-panel p-6 lg:col-span-2">
 						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-							Finding 5 · hypothesis
+							Finding 5 · cohort signal
 						</p>
 						<h3 class="mt-2 text-xl font-semibold text-ink">
-							Parchment needs a benchmark designed to test Parchment.
+							Live search coincides with a much larger gap.
 						</h3>
 						<p class="mt-3 max-w-5xl text-sm leading-6 text-muted">
-							Adding Parchment did not raise overall pairwise quality over Purveyors Search. It
-							showed a possible compliance signal on live-web tasks, but this suite does not isolate
-							cases where structured catalog data should matter. That is a candidate finding for the
-							next benchmark, not a V1 product claim.
+							On live-web cases, every search-capable treatment was preferred to Raw in 88.3–90.8%
+							of judgments. Raw’s strict pass rate fell to 45% and its unacceptable-response rate
+							rose to 55%. This strongly motivates retrieval, but without a same-harness search-off
+							arm it still does not identify retrieval as the sole cause.
 						</p>
 					</article>
 				</div>
@@ -338,7 +371,7 @@
 					Product decisions this evidence supports.
 				</h2>
 				<div class="mt-8 grid gap-4 md:grid-cols-2">
-					{#each [['Default to retrieval', 'Use Purveyors Search as the general research path. The evidence supports search by default, while its #1 rank remains provisional relative to other search harnesses.'], ['Treat Raw as a narrow efficiency mode', 'Raw fits self-contained, omission-tolerant tasks. It should not be the default for research or current-information work.'], ['Route Parchment selectively', 'Use structured catalog retrieval when the task calls for it, then build a targeted suite that can test its incremental value directly.'], ['Add evidence validation', 'Longer, better-supported answers can still be confidently wrong. Retrieval needs citation and claim-validation safeguards, not just more context.']] as [title, description]}
+					{#each [['Keep Raw out of current-information work', 'Raw is cheaper and faster, but its omission rate makes it a poor default when the answer depends on facts outside the prompt.'], ['Stop claiming a Purveyors or Parchment lift', 'V1 did not establish either advantage. Product choices may use other evidence, but this benchmark cannot be cited as proof.'], ['Run clean ablations next', 'Compare the same Purveyors harness with search off versus on, then Parchment off versus on inside a cohort built around structured catalog decisions.'], ['Measure the missing decision variables', 'Capture harness costs and compare benchmark gains with blind expert acceptance before making a quality-cost or production-impact claim.']] as [title, description]}
 						<article class="rounded-2xl border border-line bg-surface-panel p-6">
 							<h3 class="font-semibold text-ink">{title}</h3>
 							<p class="mt-2 text-sm leading-6 text-muted">{description}</p>
@@ -641,6 +674,12 @@
 							{limitation}
 						</li>
 					{/each}
+					<li
+						class="rounded-2xl border border-line bg-surface-panel p-5 text-sm leading-6 text-muted"
+					>
+						V1 has no same-harness search-off arm. Raw changes the harness, tool loop, context, and
+						number of model turns together, so the Raw gap cannot be attributed to retrieval alone.
+					</li>
 					<li
 						class="rounded-2xl border border-line bg-surface-panel p-5 text-sm leading-6 text-muted"
 					>

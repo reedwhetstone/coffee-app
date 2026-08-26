@@ -41,7 +41,10 @@ describe('CoffeeBench public discovery', () => {
 			'Published system benchmark with 1,200 absolute evaluations and all 1,800 pairwise ballots.'
 		);
 		expect(llms).toContain(
-			'Every search-equipped treatment beat Raw decisively; the three search treatments remain statistically unresolved.'
+			'Harnessed systems beat Raw, but Purveyors did not clearly beat Pi and Parchment added no measured pairwise lift.'
+		);
+		expect(llms).toContain(
+			'The report also explains why V1 cannot attribute the full Raw gap to retrieval alone.'
 		);
 	});
 

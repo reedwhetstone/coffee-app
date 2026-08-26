@@ -44,9 +44,10 @@
 							Coffee supply-chain analyst arena
 						</h3>
 						<p class="mt-4 max-w-2xl leading-7 text-muted">
-							A matched evaluation of one model across four evidence systems. V1 finds that every
-							search treatment decisively beats Raw, while the search harnesses remain too close to
-							separate. Read the conclusions, full pairwise matrix, failure modes, and missing data.
+							A matched evaluation of one model across four system treatments. Harnessed systems
+							beat Raw, but Purveyors did not clearly beat Pi and Parchment added no measured
+							pairwise lift. Read the hypothesis audit, full pairwise matrix, failure modes, and
+							missing data.
 						</p>
 					</div>
 					<div class="rounded-2xl bg-surface-canvas p-5 ring-1 ring-line">
