@@ -1840,6 +1840,7 @@ const independentPublicExportSchema = z
 			if (matchups) {
 				const subjectIds = new Set(expectedSubjectIds);
 				const matchupKeys = new Set<string>();
+				const matchupBallotsBySubject = new Map<string, number>();
 				for (const [matchupIndex, matchup] of matchups.entries()) {
 					const matchupPath = [
 						'slices',
@@ -1862,6 +1863,12 @@ const independentPublicExportSchema = z
 						);
 					}
 					matchupKeys.add(matchupKey);
+					for (const subjectId of [matchup.subject_a, matchup.subject_b]) {
+						matchupBallotsBySubject.set(
+							subjectId,
+							(matchupBallotsBySubject.get(subjectId) ?? 0) + matchup.ballot_count
+						);
+					}
 					if (
 						matchup.ballot_count !== matchedTrialCount * artifact.jury.length ||
 						matchup.subject_a_win_count + matchup.subject_b_win_count + matchup.tie_count !==
@@ -1924,6 +1931,26 @@ const independentPublicExportSchema = z
 						) {
 							issue(matchupPath, `jury-family ${countName} must reconcile with the matchup total`);
 						}
+					}
+				}
+				for (const [rowIndex, row] of track.subjects.entries()) {
+					if (
+						row.pairwise_quality.model_backed_ballot_count !==
+						(matchupBallotsBySubject.get(row.subject_id) ?? 0)
+					) {
+						issue(
+							[
+								'slices',
+								sliceIndex,
+								'track_results',
+								0,
+								'subjects',
+								rowIndex,
+								'pairwise_quality',
+								'model_backed_ballot_count'
+							],
+							'pairwise matchup ballots must reconcile with the subject quality summary'
+						);
 					}
 				}
 				if (

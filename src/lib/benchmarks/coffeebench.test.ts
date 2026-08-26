@@ -209,6 +209,36 @@ describe('CoffeeBench public export reader', () => {
 		expect(() => parseCoffeeBenchPublicExport(payload)).toThrow(/cohort matchup.*reconcile/i);
 	});
 
+	it('reconciles schema-v5 matchup ballots with subject quality summaries', () => {
+		const payload = publishedCopy();
+		const methodology = payload.methodology as { pairwise_ballot_count: number };
+		methodology.pairwise_ballot_count -= 3;
+		for (const sliceId of ['overall', 'historical_control'] as const) {
+			const rows = (
+				payload.slices as Array<{
+					slice_id: string;
+					track_results: Array<{
+						subjects: Array<{ pairwise_quality: Record<string, number> }>;
+					}>;
+				}>
+			).find((slice) => slice.slice_id === sliceId)?.track_results[0].subjects;
+			if (!rows) throw new Error(`missing ${sliceId} rows`);
+			for (const row of rows.slice(0, 3)) {
+				row.pairwise_quality.model_backed_ballot_count -= 2;
+				row.pairwise_quality.ballot_coverage_rate =
+					row.pairwise_quality.model_backed_ballot_count /
+					row.pairwise_quality.possible_ballot_count;
+			}
+		}
+		(payload.identities as Record<string, unknown>).methodology_sha256 =
+			coffeeBenchPublicDigest(methodology);
+		rebindPublishedResult(payload);
+
+		expect(() => parseCoffeeBenchPublicExport(payload)).toThrow(
+			/pairwise matchup ballots must reconcile with the subject quality summary/i
+		);
+	});
+
 	it('requires schema-v4 preview calibration state and mandatory disclosures', () => {
 		const calibration = previewCopy();
 		(calibration.calibration as Record<string, unknown>).status = 'complete';
