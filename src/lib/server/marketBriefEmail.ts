@@ -11,6 +11,12 @@ export const MARKET_BRIEF_CANONICAL_ORIGIN = 'https://www.purveyors.io';
 export const MARKET_BRIEF_EMAIL_RENDERER_VERSION = 'market-brief-email-v1';
 export const RESEND_UNSUBSCRIBE_PLACEHOLDER = '{{{RESEND_UNSUBSCRIBE_URL}}}';
 
+const rawMarketBriefSources = import.meta.glob<string>('/src/content/blog/market-brief-*.svx', {
+	eager: true,
+	query: '?raw',
+	import: 'default'
+});
+
 const MAX_SOURCE_BYTES = 256 * 1024;
 const MAX_PROJECTION_BYTES = 512 * 1024;
 const MAX_SUBJECT_LENGTH = 200;
@@ -97,6 +103,10 @@ interface DeploymentEnvironment {
 	[key: string]: string | undefined;
 	VERCEL_ENV?: string;
 	VERCEL_GIT_COMMIT_SHA?: string;
+}
+
+export function getRawMarketBriefSource(slug: string): string | undefined {
+	return rawMarketBriefSources[`/src/content/blog/${slug}.svx`];
 }
 
 function escapeHtml(value: string): string {

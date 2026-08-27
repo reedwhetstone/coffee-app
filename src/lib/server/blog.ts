@@ -9,16 +9,10 @@ import {
 	type BlogPostFrontmatter,
 	type BlogPostModule
 } from '$lib/types/blog.types';
-import { assertMarketBriefEmailSource } from '$lib/server/marketBriefEmail';
 
 const MARKET_BRIEF_SLUG_PREFIX = 'market-brief-';
 const MARKET_BRIEF_PILLAR = 'market-intelligence';
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const rawBlogSources = import.meta.glob<string>('/src/content/blog/*.svx', {
-	eager: true,
-	query: '?raw',
-	import: 'default'
-});
 
 function isValidIsoDate(value: string): boolean {
 	if (!ISO_DATE_PATTERN.test(value)) return false;
@@ -88,29 +82,16 @@ export function assertUniqueMarketBriefEditions(posts: BlogPost[]): void {
 	}
 }
 
-export function getRawBlogSource(slug: string): string | undefined {
-	return rawBlogSources[`/src/content/blog/${slug}.svx`];
-}
-
 /**
- * Load all blog posts from src/content/blog/*.svx
- * Returns sorted by date (newest first), excludes drafts in production
+ * Normalize and enumerate blog modules without loading any format-specific projection code.
+ * Returns sorted by date (newest first), excludes drafts in production.
  */
-export async function getAllPosts(): Promise<BlogPost[]> {
-	const modules = import.meta.glob<BlogPostModule>('/src/content/blog/*.svx', { eager: true });
-
+export function getPostsFromModules(modules: Record<string, BlogPostModule>): BlogPost[] {
 	const discoveredPosts: BlogPost[] = [];
 
 	for (const [path, module] of Object.entries(modules)) {
 		const slug = path.split('/').pop()?.replace('.svx', '') ?? '';
 		const post = normalizeBlogPost(slug, module.metadata);
-		if (post.format === 'market-brief') {
-			const source = getRawBlogSource(slug);
-			if (source === undefined) {
-				throw new Error(`Market Brief ${slug} is missing its canonical source`);
-			}
-			assertMarketBriefEmailSource(post, source);
-		}
 		discoveredPosts.push(post);
 	}
 
@@ -135,6 +116,15 @@ export async function getAllPosts(): Promise<BlogPost[]> {
 	posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 	return posts;
+}
+
+/**
+ * Load all blog posts from src/content/blog/*.svx.
+ */
+export async function getAllPosts(): Promise<BlogPost[]> {
+	return getPostsFromModules(
+		import.meta.glob<BlogPostModule>('/src/content/blog/*.svx', { eager: true })
+	);
 }
 
 /**
