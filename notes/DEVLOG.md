@@ -96,14 +96,16 @@
       sends. Launch through the human review gate and measure only events the accepted
       contracts truthfully observe.
 
-- [ ] **Reprice the self-serve product family.** Change Parchment Intelligence
-      from $39 to about $12/month, Mallard Studio from $9 to about $5/month, and add a
-      combined founding bundle at $15/month. Preserve Parchment API as a separate
-      Green / Origin / Enterprise product. Audit actual OpenRouter, email, storage,
-      and support cost exposure first; then align Stripe products/prices, purchase
-      keys, entitlements, checkout, annual pricing, upgrades/downgrades, existing
-      customer treatment, public copy, tests, and analytics. The current working offer
-      is $12 Intelligence, $5 Studio, and $15 bundle for the first 50 customers.
+- [ ] **Launch the approved self-serve repricing.** Offer Mallard Studio at $3/month,
+      Parchment Intelligence at $5/month, and both products in one subscription at
+      $6/month. Give each new self-serve subscription a five-day free trial, close
+      annual plans to new sales, and keep Parchment API pricing and entitlements
+      unchanged. Parchment owns immutable Stripe prices, catalog composition,
+      subscription settlement, and prorated Studio / Intelligence / Both transitions;
+      coffee-app owns offer presentation, complete checkout intent, account actions,
+      conversion telemetry, and truthful bundle lifecycle copy. Preserve historical
+      catalog revisions for webhook replay and ship through coordinated backend then
+      storefront release gates.
 
 - [ ] **Make the blog a recurring publication system.** Establish a minimum
       weekly cadence with one canonical queue from idea to sourced outline, draft,

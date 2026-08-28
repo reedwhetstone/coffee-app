@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { BILLING_OFFERS } from '$lib/billing/offers';
 	import type { PageAuthView } from '$lib/types/auth.types';
 
 	let { auth } = $props<{
@@ -8,7 +9,7 @@
 
 	let isSignedIn = $derived(auth.isSignedIn);
 
-	function handleSelectPlan(plan: 'studio' | 'api' | 'intelligence' | 'enterprise') {
+	function handleSelectPlan(plan: 'studio' | 'api' | 'intelligence' | 'both' | 'enterprise') {
 		if (plan === 'enterprise') {
 			goto('/contact');
 			return;
@@ -19,12 +20,13 @@
 			return;
 		}
 
-		if (plan === 'intelligence') {
-			goto('/analytics');
-			return;
-		}
-
-		goto('/subscription');
+		const offerId =
+			plan === 'intelligence'
+				? BILLING_OFFERS.intelligenceMonthly.offerId
+				: plan === 'both'
+					? BILLING_OFFERS.bothMonthly.offerId
+					: BILLING_OFFERS.studioMonthly.offerId;
+		goto(`/subscription?plan=${offerId}&intent=checkout`);
 	}
 </script>
 
@@ -41,9 +43,12 @@
 			Enterprise integrations for platforms. All built on the same daily-normalized green coffee
 			data.
 		</p>
+		<p class="mx-auto mt-3 max-w-2xl text-center text-sm font-medium text-success-strong">
+			Eligible accounts receive one five-day free trial on their first self-serve paid plan.
+		</p>
 
 		<div
-			class="isolate mx-auto mt-16 grid max-w-md grid-cols-1 gap-6 sm:mt-20 sm:gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-4 lg:gap-8"
+			class="isolate mx-auto mt-16 grid max-w-md grid-cols-1 gap-6 sm:mt-20 sm:gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-3 lg:gap-8 xl:grid-cols-5"
 		>
 			<!-- Parchment Intelligence: flagship, highlighted -->
 			<div
@@ -67,6 +72,15 @@
 						Cross-supplier price intelligence, arrivals, delistings, and origin benchmarks delivered
 						daily. Make procurement calls on complete market data.
 					</p>
+					<p class="mt-6 flex items-baseline gap-x-1">
+						<span class="text-4xl font-bold tracking-tight text-ink"
+							>{BILLING_OFFERS.intelligenceMonthly.price}</span
+						>
+						<span class="text-sm font-semibold leading-6 text-muted"
+							>{BILLING_OFFERS.intelligenceMonthly.interval}</span
+						>
+					</p>
+					<p class="mt-2 text-sm text-muted">Five-day free trial if eligible.</p>
 					<p class="mt-6 text-sm font-semibold text-muted">What you get</p>
 					<ul role="list" class="mt-4 space-y-3 text-sm leading-6 text-muted">
 						<li class="flex gap-x-3">Weekly procurement brief</li>
@@ -82,7 +96,7 @@
 					}}
 					class="mt-8 block w-full rounded-md bg-accent px-3 py-2 text-center text-sm font-semibold text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
 				>
-					{isSignedIn ? 'Add Intelligence' : 'See the Market Index'}
+					{isSignedIn ? 'Start Intelligence' : 'Choose Intelligence'}
 				</button>
 			</div>
 
@@ -149,10 +163,14 @@
 						sourcing, roasting, and tasting in one place.
 					</p>
 					<p class="mt-6 flex items-baseline gap-x-1">
-						<span class="text-4xl font-bold tracking-tight text-ink">$9</span>
-						<span class="text-sm font-semibold leading-6 text-muted">/month</span>
+						<span class="text-4xl font-bold tracking-tight text-ink"
+							>{BILLING_OFFERS.studioMonthly.price}</span
+						>
+						<span class="text-sm font-semibold leading-6 text-muted"
+							>{BILLING_OFFERS.studioMonthly.interval}</span
+						>
 					</p>
-					<p class="mt-2 text-sm text-muted">Or $80/year.</p>
+					<p class="mt-2 text-sm text-muted">Five-day free trial if eligible.</p>
 					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-muted">
 						<li class="flex gap-x-3">Green coffee inventory and lot tracking</li>
 						<li class="flex gap-x-3">Roast profile logs with D3 charting</li>
@@ -166,7 +184,54 @@
 					}}
 					class="mt-8 block w-full rounded-md bg-accent px-3 py-2 text-center text-sm font-semibold text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
 				>
-					{isSignedIn ? 'Manage Studio' : 'See Studio plans'}
+					{isSignedIn ? 'Start Studio' : 'Choose Studio'}
+				</button>
+			</div>
+
+			<!-- Combined plan -->
+			<div
+				class="flex cursor-pointer flex-col justify-between rounded-3xl bg-surface-canvas p-8 ring-2 ring-success transition-all duration-200 hover:scale-105 hover:shadow-lg xl:p-10"
+				onclick={() => handleSelectPlan('both')}
+				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('both')}
+				tabindex="0"
+				role="button"
+				aria-label="Select Studio and Intelligence"
+			>
+				<div>
+					<div class="flex items-center justify-between gap-x-4">
+						<h3 class="text-lg font-semibold leading-8 text-ink">Studio + Intelligence</h3>
+						<p
+							class="rounded-full bg-success-subtle px-2.5 py-1 text-xs font-semibold leading-5 text-success-strong"
+						>
+							Best value
+						</p>
+					</div>
+					<p class="mt-4 text-sm leading-6 text-muted">
+						The complete market view plus inventory, roast, and margin tools in one subscription.
+					</p>
+					<p class="mt-6 flex items-baseline gap-x-1">
+						<span class="text-4xl font-bold tracking-tight text-ink"
+							>{BILLING_OFFERS.bothMonthly.price}</span
+						>
+						<span class="text-sm font-semibold leading-6 text-muted"
+							>{BILLING_OFFERS.bothMonthly.interval}</span
+						>
+					</p>
+					<p class="mt-2 text-sm text-muted">Five-day free trial if eligible. Save $2/month.</p>
+					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-muted">
+						<li class="flex gap-x-3">Everything in Studio and Intelligence</li>
+						<li class="flex gap-x-3">One subscription and renewal date</li>
+						<li class="flex gap-x-3">Both products cancel, resume, or renew together</li>
+					</ul>
+				</div>
+				<button
+					onclick={(e) => {
+						e.stopPropagation();
+						handleSelectPlan('both');
+					}}
+					class="mt-8 block w-full rounded-md bg-success px-3 py-2 text-center text-sm font-semibold text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-success"
+				>
+					Choose both
 				</button>
 			</div>
 

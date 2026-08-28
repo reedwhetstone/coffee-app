@@ -1,3 +1,11 @@
+import {
+	copyPurchaseItems,
+	getBillingOffer,
+	purchaseItemsMatchOffer,
+	type BillingOfferId,
+	type BillingPurchaseItem
+} from './offers';
+
 const CHECKOUT_ATTEMPT_KEY = 'purveyors:pending-checkout';
 
 const TERMINAL_CHECKOUT_CODES = new Set([
@@ -8,7 +16,8 @@ const TERMINAL_CHECKOUT_CODES = new Set([
 ]);
 
 export interface CheckoutAttempt {
-	purchaseKey: string;
+	offerId: BillingOfferId;
+	purchaseItems: BillingPurchaseItem[];
 	requestId: string;
 	admissionId: string | null;
 }
@@ -27,15 +36,26 @@ export function readCheckoutAttempt(storage: ReadStorage): CheckoutAttempt | nul
 
 	try {
 		const candidate = JSON.parse(raw) as Partial<CheckoutAttempt>;
+		const offer = typeof candidate.offerId === 'string' ? getBillingOffer(candidate.offerId) : null;
 		if (
-			typeof candidate.purchaseKey !== 'string' ||
+			!offer ||
+			!Array.isArray(candidate.purchaseItems) ||
+			!candidate.purchaseItems.every(
+				(item) =>
+					typeof item === 'object' &&
+					item !== null &&
+					typeof item.purchaseKey === 'string' &&
+					item.quantity === 1
+			) ||
+			!purchaseItemsMatchOffer(candidate.purchaseItems, offer) ||
 			typeof candidate.requestId !== 'string' ||
 			(candidate.admissionId !== null && typeof candidate.admissionId !== 'string')
 		) {
 			return null;
 		}
 		return {
-			purchaseKey: candidate.purchaseKey,
+			offerId: offer.offerId as BillingOfferId,
+			purchaseItems: copyPurchaseItems(offer),
 			requestId: candidate.requestId,
 			admissionId: candidate.admissionId ?? null
 		};
@@ -46,13 +66,23 @@ export function readCheckoutAttempt(storage: ReadStorage): CheckoutAttempt | nul
 
 export function getOrCreateCheckoutAttempt(
 	storage: WriteStorage,
-	purchaseKey: string,
+	offerId: BillingOfferId,
 	createId: () => string
 ): CheckoutAttempt {
-	const existing = readCheckoutAttempt(storage);
-	if (existing?.purchaseKey === purchaseKey) return existing;
+	const offer = getBillingOffer(offerId);
+	if (!offer) throw new Error('Unknown billing offer');
 
-	const created = { purchaseKey, requestId: createId(), admissionId: null };
+	const existing = readCheckoutAttempt(storage);
+	if (existing?.offerId === offerId && purchaseItemsMatchOffer(existing.purchaseItems, offer)) {
+		return existing;
+	}
+
+	const created: CheckoutAttempt = {
+		offerId,
+		purchaseItems: copyPurchaseItems(offer),
+		requestId: createId(),
+		admissionId: null
+	};
 	storage.setItem(CHECKOUT_ATTEMPT_KEY, JSON.stringify(created));
 	return created;
 }

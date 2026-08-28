@@ -5,7 +5,14 @@
 	import { page } from '$app/state';
 	import StripeCheckout from './StripeCheckout.svelte';
 	import { signInWithGoogle } from '$lib/supabase';
-	import { BILLING_PURCHASE_KEYS, type BillingPurchaseKey } from '$lib/billing/purchaseKeys';
+	import {
+		BILLING_OFFERS,
+		getBillingOffer,
+		hasInteractiveBillingSubscription,
+		type BillingOffer,
+		type BillingOfferId
+	} from '$lib/billing/offers';
+	import { trackBillingOfferEvent } from '$lib/billing/offerAnalytics';
 	import {
 		clearSubscriptionMutationRequestId,
 		getOrCreateSubscriptionMutationRequestId,
@@ -16,13 +23,14 @@
 	let { data } = $props<{ data: PageData }>();
 
 	type ProductTone = 'success' | 'info' | 'warning' | 'muted';
-	type ProductFamily = 'membership' | 'api_plan' | 'ppi_addon' | 'enterprise';
+	type ProductFamily = 'membership' | 'api_plan' | 'ppi_addon' | 'bundle' | 'enterprise';
 
 	interface ProductCardInterval {
-		purchaseKey: BillingPurchaseKey;
+		offerId: BillingOfferId;
 		label: string;
 		price: string;
 		interval: string;
+		trialDays: number | null;
 		badge?: string;
 		planSlug: string;
 	}
@@ -45,14 +53,21 @@
 		learnMoreHref?: string;
 	}
 
-	// Plan slug to purchase key mapping for intent preservation
-	const planSlugMap: Record<string, BillingPurchaseKey> = {
-		'intelligence-monthly': BILLING_PURCHASE_KEYS.ppiAddonMonthly,
-		'intelligence-annual': BILLING_PURCHASE_KEYS.ppiAddonAnnual,
-		'studio-monthly': BILLING_PURCHASE_KEYS.membershipMonthly,
-		'studio-annual': BILLING_PURCHASE_KEYS.membershipAnnual,
-		'api-monthly': BILLING_PURCHASE_KEYS.apiPlanMonthly
-	};
+	const monthlyInterval = (offer: BillingOffer, badge?: string): ProductCardInterval => ({
+		offerId: offer.offerId as BillingOfferId,
+		label: 'Monthly',
+		price: offer.price,
+		interval: offer.interval,
+		trialDays: offer.trialDays,
+		badge,
+		planSlug: offer.offerId
+	});
+
+	// Plan slug to stable offer mapping for intent preservation. Historical annual
+	// subscriptions still render below, but annual offers are closed to new sales.
+	const planSlugMap: Record<string, BillingOfferId> = Object.fromEntries(
+		Object.values(BILLING_OFFERS).map((offer) => [offer.offerId, offer.offerId])
+	) as Record<string, BillingOfferId>;
 
 	const productCards: ProductCard[] = [
 		{
@@ -76,23 +91,7 @@
 			inactiveStateCopy: 'Parchment Intelligence is not active on this account yet.',
 			ctaLabel: 'Start Intelligence',
 			activeCtaLabel: 'Intelligence active',
-			intervals: [
-				{
-					purchaseKey: BILLING_PURCHASE_KEYS.ppiAddonMonthly,
-					label: 'Monthly',
-					price: '$39',
-					interval: '/month',
-					planSlug: 'intelligence-monthly'
-				},
-				{
-					purchaseKey: BILLING_PURCHASE_KEYS.ppiAddonAnnual,
-					label: 'Annual',
-					price: '$350',
-					interval: '/year',
-					badge: 'Save $118/year',
-					planSlug: 'intelligence-annual'
-				}
-			],
+			intervals: [monthlyInterval(BILLING_OFFERS.intelligenceMonthly)],
 			learnMoreHref: '/analytics'
 		},
 		{
@@ -117,11 +116,8 @@
 			activeCtaLabel: 'API plan active',
 			intervals: [
 				{
-					purchaseKey: BILLING_PURCHASE_KEYS.apiPlanMonthly,
-					label: 'Origin',
-					price: '$99',
-					interval: '/month',
-					planSlug: 'api-monthly'
+					...monthlyInterval(BILLING_OFFERS.apiMonthly),
+					label: 'Origin'
 				}
 			],
 			learnMoreHref: '/api'
@@ -145,24 +141,31 @@
 			inactiveStateCopy: 'No Studio membership is attached to this account yet.',
 			ctaLabel: 'Start Studio',
 			activeCtaLabel: 'Studio active',
-			intervals: [
-				{
-					purchaseKey: BILLING_PURCHASE_KEYS.membershipMonthly,
-					label: 'Monthly',
-					price: '$9',
-					interval: '/month',
-					planSlug: 'studio-monthly'
-				},
-				{
-					purchaseKey: BILLING_PURCHASE_KEYS.membershipAnnual,
-					label: 'Annual',
-					price: '$80',
-					interval: '/year',
-					badge: 'Save $28/year',
-					planSlug: 'studio-annual'
-				}
-			],
+			intervals: [monthlyInterval(BILLING_OFFERS.studioMonthly)],
 			learnMoreHref: '/catalog'
+		},
+		{
+			family: 'bundle',
+			name: 'Studio + Intelligence',
+			eyebrow: 'Best value',
+			headline: 'Roaster operations and the full market view in one subscription.',
+			description:
+				'Use Mallard Studio for inventory, roasting, and margins, plus Parchment Intelligence for supplier comparisons, arrivals, delistings, and market benchmarks.',
+			features: [
+				'Everything in Mallard Studio',
+				'Everything in Parchment Intelligence',
+				'One subscription and one renewal date',
+				'The complete bundle cancels or renews together'
+			],
+			managementCopy:
+				'Studio and Intelligence are one subscription in this offer. Canceling, resuming, or renewing applies to both products together.',
+			anonymousStateCopy: 'Sign in to see what is on this account.',
+			activeStateCopy: 'Studio and Intelligence are active on this account.',
+			inactiveStateCopy: 'The combined plan is not active on this account yet.',
+			ctaLabel: 'Start both',
+			activeCtaLabel: 'Manage current plan',
+			intervals: [monthlyInterval(BILLING_OFFERS.bothMonthly, 'Save $2/month')],
+			learnMoreHref: '/analytics'
 		},
 		{
 			family: 'enterprise',
@@ -190,7 +193,7 @@
 	const subscriptionMutationRetryDelaysMs = [500, 1000, 2000, 4000, 8000] as const;
 
 	let showCheckout = $state(false);
-	let selectedPurchaseKey = $state<BillingPurchaseKey | null>(null);
+	let selectedOfferId = $state<BillingOfferId | null>(null);
 	let selectedPlanName = $state('');
 	let selectedIntervalLabel = $state('');
 	let selectedPriceLabel = $state('');
@@ -198,6 +201,7 @@
 	let mutationMessages = $state<Record<string, string>>({});
 	let mutationErrors = $state<Record<string, string>>({});
 	let mutationPending = $state<Record<string, boolean>>({});
+	const selectedOffer = $derived(selectedOfferId ? getBillingOffer(selectedOfferId) : null);
 
 	const membershipState = $derived(
 		data.accountState
@@ -255,13 +259,41 @@
 			: null
 	);
 	const isSignedIn = $derived(data.auth.isSignedIn);
+	const hasInteractiveSubscription = $derived(
+		hasInteractiveBillingSubscription(data.subscriptions)
+	);
+	const hasInteractiveAccess = $derived(
+		membershipState?.hasAccess === true || intelligenceState?.enabled === true
+	);
 
 	const isProductActive = (product: ProductCard) => {
 		if (product.family === 'membership') return membershipState?.hasAccess === true;
 		if (product.family === 'api_plan')
 			return apiState?.plan === 'member' || apiState?.plan === 'enterprise';
 		if (product.family === 'ppi_addon') return intelligenceState?.enabled === true;
+		if (product.family === 'bundle') {
+			return membershipState?.hasAccess === true && intelligenceState?.enabled === true;
+		}
 		return false;
+	};
+	const isProductCheckoutBlocked = (product: ProductCard) => {
+		if (
+			product.family === 'membership' ||
+			product.family === 'ppi_addon' ||
+			product.family === 'bundle'
+		) {
+			// Until plan transitions ship, every interactive purchase must begin from
+			// zero canonical interactive subscriptions. Otherwise the opposite
+			// standalone card could create a second subscription instead of Both.
+			return data.billingError !== null || hasInteractiveSubscription || hasInteractiveAccess;
+		}
+		return isProductActive(product);
+	};
+	const productCheckoutLabel = (product: ProductCard) => {
+		if (!isProductCheckoutBlocked(product)) return product.ctaLabel;
+		if (data.billingError !== null) return 'Checkout unavailable';
+		if (isProductActive(product)) return product.activeCtaLabel ?? 'Already active';
+		return 'Plan change unavailable';
 	};
 
 	// Purchase intent from URL params (set before sign-in to preserve selection).
@@ -270,7 +302,7 @@
 	// the card; they don't force the Stripe modal open.
 	const intendedPlanSlug = $derived(page.url.searchParams.get('plan'));
 	const hasCheckoutIntent = $derived(page.url.searchParams.get('intent') === 'checkout');
-	const intendedPurchaseKey = $derived(
+	const intendedOfferId = $derived(
 		intendedPlanSlug ? (planSlugMap[intendedPlanSlug] ?? null) : null
 	);
 
@@ -307,19 +339,20 @@
 	};
 
 	const openCheckout = (product: ProductCard, option: ProductCardInterval) => {
-		if (isProductActive(product)) return;
-		selectedPurchaseKey = option.purchaseKey;
+		if (isProductCheckoutBlocked(product)) return;
+		trackBillingOfferEvent('billing_checkout_started', option.offerId);
+		selectedOfferId = option.offerId;
 		selectedPlanName = product.name;
 		selectedIntervalLabel = option.label;
 		selectedPriceLabel = `${option.price}${option.interval}`;
 		showCheckout = true;
 	};
 
-	const openCheckoutByKey = (purchaseKey: BillingPurchaseKey) => {
+	const openCheckoutByOfferId = (offerId: BillingOfferId) => {
 		for (const product of productCards) {
 			if (!product.intervals) continue;
 			for (const option of product.intervals) {
-				if (option.purchaseKey === purchaseKey) {
+				if (option.offerId === offerId) {
 					openCheckout(product, option);
 					return;
 				}
@@ -362,6 +395,31 @@
 					? product.activeStateCopy
 					: product.inactiveStateCopy,
 				tone: intelligenceState.tone
+			};
+		}
+
+		if (product.family === 'bundle' && membershipState && intelligenceState) {
+			const hasStudio = membershipState.hasAccess;
+			const hasIntelligence = intelligenceState.enabled;
+			if (hasStudio && hasIntelligence) {
+				return {
+					label: 'Both products active',
+					description: product.activeStateCopy,
+					tone: 'success' as ProductTone
+				};
+			}
+			if (hasStudio || hasIntelligence) {
+				return {
+					label: 'One product already active',
+					description:
+						'Manage the current subscription above. Switching an existing plan into the bundle is not available yet.',
+					tone: 'warning' as ProductTone
+				};
+			}
+			return {
+				label: 'Bundle not active',
+				description: product.inactiveStateCopy,
+				tone: 'muted' as ProductTone
 			};
 		}
 
@@ -532,12 +590,20 @@
 	};
 
 	onMount(() => {
+		for (const offer of [
+			BILLING_OFFERS.studioMonthly,
+			BILLING_OFFERS.intelligenceMonthly,
+			BILLING_OFFERS.bothMonthly
+		]) {
+			trackBillingOfferEvent('billing_offer_impression', offer.offerId);
+		}
+
 		const url = new URL(window.location.href);
 		// Auto-open checkout only when the user is returning from the OAuth flow
 		// with an explicit `intent=checkout` marker. A bare `?plan=...` URL is
 		// treated as a pricing anchor, not a checkout command.
-		if (isSignedIn && hasCheckoutIntent && intendedPurchaseKey) {
-			openCheckoutByKey(intendedPurchaseKey);
+		if (isSignedIn && hasCheckoutIntent && intendedOfferId) {
+			openCheckoutByOfferId(intendedOfferId);
 			// Strip the intent marker so a refresh of this URL doesn't
 			// re-launch the modal. Leave `plan=` intact so the card stays
 			// highlighted for context. Preserve the existing history.state
@@ -550,7 +616,7 @@
 </script>
 
 <div class="min-h-[calc(100vh-80px)] bg-surface-canvas">
-	{#if data.auth.isSignedIn && showCheckout && selectedPurchaseKey}
+	{#if data.auth.isSignedIn && showCheckout && selectedOfferId}
 		<div class="px-4 py-10 md:px-6">
 			<div class="mx-auto max-w-3xl">
 				<div class="mb-4 flex items-center justify-between gap-4">
@@ -583,7 +649,16 @@
 						</svg>
 					</button>
 				</div>
-				<StripeCheckout purchaseKey={selectedPurchaseKey} onSuccess={handleCheckoutSuccess} />
+				{#if selectedOffer?.trialDays}
+					<p class="mb-4 rounded-xl border border-line bg-surface-panel p-4 text-sm text-muted">
+						If eligible, your {selectedOffer.trialDays}-day free trial starts today. Otherwise,
+						billing starts today.
+						{#if selectedOffer.offerId === BILLING_OFFERS.bothMonthly.offerId}
+							Studio and Intelligence are one subscription and cancel, resume, or renew together.
+						{/if}
+					</p>
+				{/if}
+				<StripeCheckout offerId={selectedOfferId} onSuccess={handleCheckoutSuccess} />
 			</div>
 		</div>
 	{:else}
@@ -835,6 +910,11 @@
 															>{option.interval}</span
 														>
 													</p>
+													{#if option.trialDays}
+														<p class="mt-2 text-xs font-medium text-success-strong">
+															{option.trialDays}-day free trial if eligible
+														</p>
+													{/if}
 												</div>
 												{#if option.badge}
 													<span
@@ -865,12 +945,10 @@
 											{:else}
 												<button
 													onclick={() => openCheckout(product, option)}
-													disabled={isProductActive(product)}
+													disabled={isProductCheckoutBlocked(product)}
 													class="mt-4 w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 												>
-													{isProductActive(product)
-														? (product.activeCtaLabel ?? 'Already active')
-														: product.ctaLabel}
+													{productCheckoutLabel(product)}
 												</button>
 											{/if}
 										</div>
