@@ -15,11 +15,14 @@ describe('CoffeeBench V1 page loader', () => {
 			},
 			meta: {
 				canonical: 'https://www.purveyors.io/benchmarks/coffeebench-v1',
+				title: 'PV-Microlot V1 findings | Purveyors',
 				description:
-					'CoffeeBench V1 finds that agent harnesses improve coffee research, while specialist tools need relevance-aware exposure.',
+					'PV-Microlot V1, Purveyors’ agentic coffee specialist benchmark, finds that agent harnesses improve coffee research while specialist tools need relevance-aware exposure.',
+				keywords: 'PV-Microlot, coffee AI benchmark, agent benchmark, LLM evaluation',
 				robots: 'index, follow',
 				schemaData: {
 					'@type': 'Dataset',
+					name: 'PV-Microlot: Agentic Coffee Specialist Benchmark V1',
 					description:
 						'A 20-case coffee research benchmark comparing one fixed model across raw, general-agent, domain-agent, and catalog-augmented systems.',
 					distribution: {

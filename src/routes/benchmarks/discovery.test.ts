@@ -35,7 +35,7 @@ describe('CoffeeBench public discovery', () => {
 		expect(sitemapText).toContain('<loc>https://www.purveyors.io/benchmarks/coffeebench-v1</loc>');
 		expect(llms).toContain('[Benchmarks](https://www.purveyors.io/benchmarks)');
 		expect(llms).toContain(
-			'[CoffeeBench V1 published V1 findings](https://www.purveyors.io/benchmarks/coffeebench-v1)'
+			'[PV-Microlot: Agentic Coffee Specialist Benchmark V1 findings](https://www.purveyors.io/benchmarks/coffeebench-v1)'
 		);
 		expect(llms).toContain(
 			'Published system benchmark with 1,200 absolute evaluations and all 1,800 pairwise ballots.'

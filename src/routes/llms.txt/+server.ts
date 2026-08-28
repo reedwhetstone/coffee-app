@@ -1,4 +1,5 @@
 import type { RequestHandler } from './$types';
+import { PV_MICROLOT_FULL_NAME } from '$lib/benchmarks/marketing';
 import { getPublishedPosts } from '$lib/server/blog';
 import { getBlogPostPath } from '$lib/types/blog.types';
 
@@ -7,7 +8,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const benchmarkDescription =
 		'Published system benchmark with 1,200 absolute evaluations and all 1,800 pairwise ballots. Harnessed systems beat Raw, but Purveyors did not clearly beat Pi and Parchment added no measured pairwise lift. The report also explains why V1 cannot attribute the full Raw gap to retrieval alone.';
-	const benchmarkLabel = 'published V1 findings';
+	const benchmarkLabel = `${PV_MICROLOT_FULL_NAME} V1 findings`;
 
 	const blogPostLines = publishedPosts
 		.map(
@@ -24,7 +25,7 @@ export const GET: RequestHandler = async ({ url }) => {
 - [Market Analytics](${baseUrl}/analytics): Public market-intelligence surface for origin price trends, processing mix, origin price ranges, and gated Parchment Intelligence modules.
 - [Coffee Catalog](${baseUrl}/catalog): Public catalog for normalized green coffee listings with origin, processing, pricing, and availability data.
 - [Benchmarks](${baseUrl}/benchmarks): Public index of versioned coffee-intelligence evaluations.
-- [CoffeeBench V1 ${benchmarkLabel}](${baseUrl}/benchmarks/coffeebench-v1): ${benchmarkDescription}
+- [${benchmarkLabel}](${baseUrl}/benchmarks/coffeebench-v1): ${benchmarkDescription}
 - [Parchment API](${baseUrl}/api): Product overview for the API, access tiers, and Console entry points.
 - [Parchment Console](${baseUrl}/api-dashboard): Authenticated Console for API keys, usage, and billing.
 - [Developer Docs](${baseUrl}/docs): Product and CLI documentation. Generated API reference lives at https://api.purveyors.io/docs.
