@@ -14,14 +14,17 @@ describe('CoffeeBench V1 report', () => {
 		expect(
 			screen.getByRole('heading', { name: 'The harness mattered more than the specialist tools.' })
 		).toBeVisible();
-		expect(screen.getByText('CoffeeBench V1 · Research report')).toBeVisible();
-		expect(screen.getByRole('navigation', { name: 'CoffeeBench report sections' })).toBeVisible();
+		expect(
+			screen.getByText('PV-Microlot: Agentic Coffee Specialist Benchmark · V1 research report')
+		).toBeVisible();
+		expect(screen.getByRole('navigation', { name: 'PV-Microlot report sections' })).toBeVisible();
 		expect(screen.getByRole('link', { name: 'Abstract' })).toHaveAttribute('href', '#abstract');
 		expect(screen.getByRole('link', { name: 'Results' })).toHaveAttribute('href', '#results');
 		expect(screen.getByRole('link', { name: 'Judge votes' })).toHaveAttribute('href', '#jury');
 		expect(
-			screen.getByText(/CoffeeBench V1 asked how much the system around a fixed model changes/i)
+			screen.getByText(/PV-Microlot V1 asked how much the system around a fixed model changes/i)
 		).toBeVisible();
+		expect(screen.queryByText(/CoffeeBench V1/i)).not.toBeInTheDocument();
 		expect(
 			screen.getByRole('heading', { name: 'Three findings changed what we want to test next.' })
 		).toBeVisible();

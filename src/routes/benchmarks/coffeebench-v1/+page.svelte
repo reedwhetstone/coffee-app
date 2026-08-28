@@ -8,6 +8,11 @@
 		type CoffeeBenchIndependentPublicExport,
 		type CoffeeBenchIndependentSubjectResult
 	} from '$lib/benchmarks/coffeebench';
+	import {
+		PV_MICROLOT_FULL_NAME,
+		PV_MICROLOT_NAME,
+		PV_MICROLOT_V1_NAME
+	} from '$lib/benchmarks/marketing';
 	import { formatDuration, formatMetric, formatRate, formatUsd } from '$lib/benchmarks/display';
 
 	let { data } = $props<{ data: PageData }>();
@@ -87,7 +92,7 @@
 				<div class="mt-7 grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
 					<div class="max-w-4xl">
 						<p class="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
-							CoffeeBench V1 · Research report
+							{PV_MICROLOT_FULL_NAME} · V1 research report
 						</p>
 						<h1 class="mt-4 font-serif text-4xl font-medium tracking-tight text-ink sm:text-6xl">
 							The harness mattered more than the specialist tools.
@@ -112,7 +117,7 @@
 
 		<nav
 			class="sticky top-[73px] z-30 overflow-x-auto border-b border-line bg-surface-canvas/95 backdrop-blur"
-			aria-label="CoffeeBench report sections"
+			aria-label={`${PV_MICROLOT_NAME} report sections`}
 		>
 			<div class="mx-auto flex max-w-7xl gap-1 px-4 py-2 sm:px-6 lg:px-8">
 				{#each [['#abstract', 'Abstract'], ['#results', 'Results'], ['#experiment', 'Experiment'], ['#jury', 'Judge votes'], ['#discussion', 'Discussion'], ['#methods', 'Methods & data']] as [href, label]}
@@ -132,8 +137,8 @@
 					<div class="max-w-4xl">
 						<h2 id="abstract-heading" class="sr-only">Abstract</h2>
 						<p class="font-serif text-2xl leading-9 text-ink sm:text-3xl sm:leading-10">
-							CoffeeBench V1 asked how much the system around a fixed model changes its ability to
-							answer real coffee-industry research questions.
+							{PV_MICROLOT_V1_NAME} asked how much the system around a fixed model changes its ability
+							to answer real coffee-industry research questions.
 						</p>
 						<p class="mt-5 leading-7 text-muted">
 							We ran DeepSeek V4 Flash as a raw request and inside three agent harnesses. Harnessed
@@ -341,7 +346,7 @@
 							A frozen suite with three independent views of quality.
 						</h2>
 						<p class="mt-5 leading-7 text-muted">
-							CoffeeBench used 12 historical-control cases and eight live-web cases, with five
+							{PV_MICROLOT_V1_NAME} used 12 historical-control cases and eight live-web cases, with five
 							trials per treatment and case. Three judge-model families produced {formatInteger(
 								benchmark.methodology.absolute_evaluation_count
 							)} absolute rubric evaluations and {formatInteger(
@@ -407,7 +412,8 @@
 					<summary class="cursor-pointer font-semibold text-ink">Full aggregate metrics</summary>
 					<div class="mt-5 overflow-x-auto">
 						<table class="w-full min-w-[68rem] text-left text-sm">
-							<caption class="sr-only">CoffeeBench V1 full overall aggregate metrics</caption>
+							<caption class="sr-only">{PV_MICROLOT_V1_NAME} full overall aggregate metrics</caption
+							>
 							<thead class="border-b border-line text-xs text-muted">
 								<tr>
 									<th class="px-3 py-3 font-medium" scope="col">Treatment</th>

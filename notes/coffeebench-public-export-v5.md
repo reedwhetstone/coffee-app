@@ -1,8 +1,11 @@
-# CoffeeBench V1 public export
+# PV-Microlot V1 (CoffeeBench V1) public export
 
-Coffee-app publishes Cherry's CoffeeBench V1 findings as a validated, immutable schema-v5
-artifact. The schema adds the complete aggregate pairwise matchup matrix for the overall,
-historical-control, and live-web slices, including counts and jury-family splits.
+Coffee-app publishes Cherry's CoffeeBench V1 findings under the reader-facing **PV-Microlot V1**
+name as a validated, immutable schema-v5 artifact. **CoffeeBench V1 remains the immutable
+artifact identity** used by the result version, content digest, public-file digest, immutable
+path, and convenience alias below. The schema adds the complete aggregate pairwise matchup
+matrix for the overall, historical-control, and live-web slices, including counts and jury-family
+splits.
 
 - Status: `published`
 - Benchmark version: `1.0.0`

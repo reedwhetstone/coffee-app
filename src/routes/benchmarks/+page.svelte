@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { PV_MICROLOT_FULL_NAME, PV_MICROLOT_NAME } from '$lib/benchmarks/marketing';
 	import Footer from '$lib/components/marketing/Footer.svelte';
 
 	let { data } = $props<{ data: PageData }>();
@@ -23,11 +24,11 @@
 				<div>
 					<p class="text-sm font-medium text-muted">Available evaluation</p>
 					<h2 id="available-benchmarks" class="mt-1 text-2xl font-semibold text-ink">
-						CoffeeBench V1
+						{PV_MICROLOT_FULL_NAME}
 					</h2>
 				</div>
 				<span class="rounded-full border border-line bg-surface-panel px-3 py-1 text-xs text-muted">
-					Published findings
+					Published V1 findings
 				</span>
 			</div>
 
@@ -57,7 +58,9 @@
 							<li>Findings and product implications</li>
 							<li>Methodology and immutable digests</li>
 						</ul>
-						<p class="mt-5 font-medium text-accent group-hover:underline">Explore CoffeeBench →</p>
+						<p class="mt-5 font-medium text-accent group-hover:underline">
+							Explore {PV_MICROLOT_NAME} →
+						</p>
 					</div>
 				</div>
 			</a>
