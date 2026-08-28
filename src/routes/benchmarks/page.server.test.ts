@@ -3,9 +3,15 @@ import { load } from './+page.server';
 
 describe('Benchmark index loader', () => {
 	it('derives public copy inputs from the shared CoffeeBench artifact', async () => {
-		const result = await load({
+		const result = (await load({
 			url: new URL('https://www.purveyors.io/benchmarks')
-		} as never);
+		} as never)) as {
+			benchmark: { status: string; caseCount: number; subjectTrialCount: number };
+			meta: {
+				keywords: string;
+				schemaData: { '@type': string; description: string };
+			};
+		};
 
 		expect(result.benchmark).toEqual({
 			status: 'published',
