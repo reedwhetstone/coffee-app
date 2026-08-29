@@ -9,18 +9,20 @@ import {
 } from '$lib/server/greenCoffeeUtils.js';
 import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 import {
+	commitParchmentManualInventoryBatch,
 	commitParchmentCatalogInventoryBatch,
-	createParchmentManualInventoryBatch,
 	deleteParchmentInventoryItem,
 	fetchParchmentInventoryProjection,
 	getParchmentCatalogInventoryBatchStatus,
-	getParchmentManualInventoryBatch,
+	getParchmentManualInventoryBatchStatus,
 	ParchmentInventoryError,
 	reserveParchmentCatalogInventoryBatch,
+	reserveParchmentManualInventoryBatch,
 	updateParchmentInventoryItem
 } from '$lib/server/parchmentInventory';
 
-type ManualInventoryBatchCreateRequest = components['schemas']['ManualInventoryBatchCreateRequest'];
+type ManualInventoryBatchReserveRequest =
+	components['schemas']['ManualInventoryBatchReserveRequest'];
 type InventoryUpdateRequest = components['schemas']['InventoryUpdateRequest'];
 
 const MAX_POSTGRES_INTEGER = 2_147_483_647;
@@ -75,6 +77,16 @@ function legacyParchmentError(body: unknown): { error: string; code?: string } {
 	};
 }
 
+function hasManualBatchItems(value: unknown): value is { batchId?: unknown; items: unknown[] } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'items' in value &&
+		Array.isArray(value.items) &&
+		value.items.some((item) => typeof item === 'object' && item !== null && 'manualCoffee' in item)
+	);
+}
+
 export const GET: RequestHandler = async (event) => {
 	const { url, locals } = event;
 	const manualBatchId = url.searchParams.get('manualBatchId');
@@ -86,7 +98,7 @@ export const GET: RequestHandler = async (event) => {
 		if (manualBatchId) {
 			await requireParchmentAccess(event);
 			const client = await createParchmentServerClient(event, { mode: 'session' });
-			return json(await getParchmentManualInventoryBatch(client, manualBatchId));
+			return json(await getParchmentManualInventoryBatchStatus(client, manualBatchId));
 		}
 
 		if (catalogBatchId) {
@@ -173,7 +185,13 @@ export const GET: RequestHandler = async (event) => {
 export const POST: RequestHandler = async (event) => {
 	try {
 		await requireParchmentAccess(event);
+		const manualBatchId = event.url.searchParams.get('manualBatchId');
 		const catalogBatchId = event.url.searchParams.get('catalogBatchId');
+
+		if (manualBatchId) {
+			const client = await createParchmentServerClient(event, { mode: 'session' });
+			return json(await commitParchmentManualInventoryBatch(client, manualBatchId));
+		}
 
 		if (catalogBatchId) {
 			const client = await createParchmentServerClient(event, { mode: 'session' });
@@ -181,6 +199,19 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		const bean = await event.request.json();
+		if (hasManualBatchItems(bean)) {
+			if (typeof bean.batchId !== 'string' || !bean.batchId.trim()) {
+				return json({ error: 'batchId is required for manual inventory batches' }, { status: 400 });
+			}
+
+			const client = await createParchmentServerClient(event, { mode: 'session' });
+			const lifecycle = await reserveParchmentManualInventoryBatch(
+				client,
+				bean as ManualInventoryBatchReserveRequest
+			);
+			return json(lifecycle, { status: 201 });
+		}
+
 		if (typeof bean?.batchId === 'string' && Array.isArray(bean.items)) {
 			const client = await createParchmentServerClient(event, { mode: 'session' });
 			const lifecycle = await reserveParchmentCatalogInventoryBatch(
@@ -188,24 +219,6 @@ export const POST: RequestHandler = async (event) => {
 				bean as CatalogInventoryBatchReserveRequest
 			);
 			return json(lifecycle, { status: 201 });
-		}
-
-		if (Array.isArray(bean.items)) {
-			const batchId = event.request.headers.get('idempotency-key')?.trim();
-			if (!batchId) {
-				return json(
-					{ error: 'Idempotency-Key is required for manual inventory batches' },
-					{ status: 400 }
-				);
-			}
-
-			const client = await createParchmentServerClient(event, { mode: 'session' });
-			const created = await createParchmentManualInventoryBatch(
-				client,
-				bean as ManualInventoryBatchCreateRequest,
-				batchId
-			);
-			return json(created, { status: 201 });
 		}
 
 		return json({ error: 'A catalog or manual inventory batch is required' }, { status: 400 });

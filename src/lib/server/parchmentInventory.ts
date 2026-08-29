@@ -10,7 +10,9 @@ import { unwrapParchment } from '$lib/services/tools/parchment';
 
 type InventoryResource = components['schemas']['InventoryResource'];
 type InventoryUpdateRequest = components['schemas']['InventoryUpdateRequest'];
-type ManualInventoryBatchCreateRequest = components['schemas']['ManualInventoryBatchCreateRequest'];
+type ManualInventoryBatchLifecycle = components['schemas']['ManualInventoryBatchLifecycle'];
+type ManualInventoryBatchReserveRequest =
+	components['schemas']['ManualInventoryBatchReserveRequest'];
 type RoastResource = components['schemas']['RoastListResource'];
 
 export type ParchmentInventoryProjection = Omit<InventoryResource, 'coffee_catalog'> & {
@@ -48,6 +50,14 @@ type InventoryMutationResult = {
 type CatalogBatchLifecycleResult = {
 	data?: {
 		data?: CatalogInventoryBatchLifecycle;
+	};
+	error?: unknown;
+	response?: Response;
+};
+
+type ManualBatchLifecycleResult = {
+	data?: {
+		data?: ManualInventoryBatchLifecycle;
 	};
 	error?: unknown;
 	response?: Response;
@@ -95,15 +105,64 @@ function projectInventoryResource(
 	};
 }
 
-function projectManualBatch(
-	result: components['schemas']['ManualInventoryBatchResult'],
+function projectManualBatchLifecycle(
+	result: ManualBatchLifecycleResult,
 	expectedBatchId: string
-): ParchmentInventoryProjection[] {
-	if (result.batchId !== expectedBatchId) {
-		throw new Error('Parchment returned the wrong manual inventory batch');
+): ManualInventoryBatchLifecycle {
+	if (result.error || !result.data?.data) {
+		throwParchmentResultError(
+			result,
+			!result.error && (result.response?.ok === true || !result.response),
+			'Parchment inventory response did not include a manual batch lifecycle'
+		);
 	}
 
-	return result.items.map(({ resource }) => projectInventoryResource(resource));
+	const lifecycle = result.data.data;
+	const completedResultIsValid =
+		typeof lifecycle.result === 'object' &&
+		lifecycle.result !== null &&
+		lifecycle.result.batchId === expectedBatchId &&
+		Array.isArray(lifecycle.result.items) &&
+		lifecycle.result.items.every(
+			(item) =>
+				typeof item === 'object' &&
+				item !== null &&
+				typeof item.rowId === 'string' &&
+				typeof item.resource === 'object' &&
+				item.resource !== null &&
+				Number.isSafeInteger(item.resource.id) &&
+				item.resource.id > 0
+		);
+	const terminalErrorIsValid =
+		typeof lifecycle.error === 'object' &&
+		lifecycle.error !== null &&
+		typeof lifecycle.error.code === 'string' &&
+		typeof lifecycle.error.message === 'string';
+	const lifecycleShapeIsValid =
+		(lifecycle.status === 'completed' && completedResultIsValid && lifecycle.error === null) ||
+		(lifecycle.status === 'terminal_rejected' &&
+			lifecycle.result === null &&
+			terminalErrorIsValid) ||
+		((lifecycle.status === 'unknown' ||
+			lifecycle.status === 'accepted' ||
+			lifecycle.status === 'in_progress') &&
+			lifecycle.result === null &&
+			lifecycle.error === null);
+
+	if (
+		lifecycle.batchId !== expectedBatchId ||
+		!lifecycleShapeIsValid ||
+		(lifecycle.updatedAt !== null && typeof lifecycle.updatedAt !== 'string')
+	) {
+		throw new ParchmentInventoryError(502, {
+			error: {
+				code: 'invalid_response',
+				message: 'Parchment returned an invalid manual inventory batch lifecycle'
+			}
+		});
+	}
+
+	return lifecycle;
 }
 
 function projectCatalogBatchLifecycle(
@@ -296,35 +355,33 @@ export async function fetchParchmentInventoryProjection(
 	});
 }
 
-/** Create one atomic owner-private manual inventory batch through Parchment. */
-export async function createParchmentManualInventoryBatch(
+/** Durably reserve complete manual inventory intent through Parchment. */
+export async function reserveParchmentManualInventoryBatch(
 	client: ParchmentClient,
-	body: ManualInventoryBatchCreateRequest,
-	batchId: string
-): Promise<ParchmentInventoryProjection[]> {
-	const result = await client.inventory.createManualBatch(body, { idempotencyKey: batchId });
-	if (!result.data?.data) {
-		throwParchmentResultError(
-			result,
-			result.response?.ok === true || (!result.error && !result.response)
-		);
-	}
-	return projectManualBatch(result.data.data, batchId);
+	body: ManualInventoryBatchReserveRequest
+): Promise<ManualInventoryBatchLifecycle> {
+	const result = (await client.inventory.reserveManualBatch(body)) as ManualBatchLifecycleResult;
+	return projectManualBatchLifecycle(result, body.batchId);
 }
 
-/** Reconcile an uncertain atomic manual inventory batch by its stable batch UUID. */
-export async function getParchmentManualInventoryBatch(
+/** Safely retry the atomic commit for a reserved manual inventory batch. */
+export async function commitParchmentManualInventoryBatch(
 	client: ParchmentClient,
 	batchId: string
-): Promise<ParchmentInventoryProjection[]> {
-	const result = await client.inventory.getManualBatch(batchId);
-	if (!result.data?.data) {
-		throwParchmentResultError(
-			result,
-			result.response?.ok === true || (!result.error && !result.response)
-		);
-	}
-	return projectManualBatch(result.data.data, batchId);
+): Promise<ManualInventoryBatchLifecycle> {
+	const result = (await client.inventory.commitManualBatch(batchId)) as ManualBatchLifecycleResult;
+	return projectManualBatchLifecycle(result, batchId);
+}
+
+/** Reconcile the durable owner-scoped manual lifecycle by its stable batch UUID. */
+export async function getParchmentManualInventoryBatchStatus(
+	client: ParchmentClient,
+	batchId: string
+): Promise<ManualInventoryBatchLifecycle> {
+	const result = (await client.inventory.getManualBatchStatus(
+		batchId
+	)) as ManualBatchLifecycleResult;
+	return projectManualBatchLifecycle(result, batchId);
 }
 
 /** Durably reserve complete catalog-backed inventory intent through Parchment. */

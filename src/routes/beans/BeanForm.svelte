@@ -20,8 +20,17 @@
 	} from '@purveyors/sdk';
 
 	type ManualCoffeeCreate = components['schemas']['ManualCoffeeCreate'];
-	type ManualInventoryBatchCreateRequest =
-		components['schemas']['ManualInventoryBatchCreateRequest'];
+	type ManualInventoryBatchLifecycle = components['schemas']['ManualInventoryBatchLifecycle'];
+	type ManualInventoryBatchReserveRequest =
+		components['schemas']['ManualInventoryBatchReserveRequest'];
+	type PendingReservation<T> = {
+		batchId: string;
+		request: T | null;
+	};
+	type PersistedReservation<T> = {
+		version: 1;
+		request: T;
+	};
 
 	const MANUAL_COFFEE_FIELD_MAP = {
 		region: 'region',
@@ -46,6 +55,8 @@
 	} as const;
 	const PENDING_MANUAL_BATCH_STORAGE_KEY = 'purveyors:pending-manual-inventory-batch';
 	const PENDING_CATALOG_BATCH_STORAGE_KEY = 'purveyors:pending-catalog-inventory-batch';
+	const RESERVATION_ENVELOPE_VERSION = 1;
+	const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 	const {
 		bean = null,
@@ -96,60 +107,140 @@
 		return ownerId ? `${PENDING_MANUAL_BATCH_STORAGE_KEY}:${ownerId}` : null;
 	}
 
-	function readPendingManualBatchId(ownerId: string | null): string | null {
-		const storageKey = pendingManualBatchStorageKey(ownerId);
-		return browser && storageKey ? sessionStorage.getItem(storageKey) : null;
-	}
-
 	function pendingCatalogBatchStorageKey(ownerId: string | null): string | null {
 		return ownerId ? `${PENDING_CATALOG_BATCH_STORAGE_KEY}:${ownerId}` : null;
 	}
 
-	function readPendingCatalogBatchId(ownerId: string | null): string | null {
-		const storageKey = pendingCatalogBatchStorageKey(ownerId);
-		return browser && storageKey ? sessionStorage.getItem(storageKey) : null;
+	function isReservationRequest(value: unknown): value is { batchId: string; items: unknown[] } {
+		return (
+			typeof value === 'object' &&
+			value !== null &&
+			'batchId' in value &&
+			typeof value.batchId === 'string' &&
+			UUID_PATTERN.test(value.batchId) &&
+			'items' in value &&
+			Array.isArray(value.items) &&
+			value.items.length > 0
+		);
+	}
+
+	function isManualReservationRequest(value: unknown): value is ManualInventoryBatchReserveRequest {
+		return (
+			isReservationRequest(value) &&
+			value.items.every(
+				(item) => typeof item === 'object' && item !== null && 'manualCoffee' in item
+			)
+		);
+	}
+
+	function isCatalogReservationRequest(
+		value: unknown
+	): value is CatalogInventoryBatchReserveRequest {
+		return (
+			isReservationRequest(value) &&
+			value.items.every(
+				(item) =>
+					typeof item === 'object' &&
+					item !== null &&
+					'catalogId' in item &&
+					typeof item.catalogId === 'number'
+			)
+		);
+	}
+
+	function readPendingReservation<T extends { batchId: string }>(
+		storageKey: string | null,
+		isRequest: (value: unknown) => value is T
+	): PendingReservation<T> | null {
+		if (!browser || !storageKey) return null;
+		const stored = sessionStorage.getItem(storageKey);
+		if (!stored) return null;
+
+		try {
+			const envelope = JSON.parse(stored) as Partial<PersistedReservation<unknown>>;
+			if (envelope.version === RESERVATION_ENVELOPE_VERSION && isRequest(envelope.request)) {
+				return { batchId: envelope.request.batchId, request: envelope.request };
+			}
+		} catch {
+			// The shipped UUID-only format remains readable for in-flight legacy batches.
+		}
+
+		if (UUID_PATTERN.test(stored)) return { batchId: stored, request: null };
+		sessionStorage.removeItem(storageKey);
+		return null;
+	}
+
+	function writePendingReservation<T>(storageKey: string | null, request: T) {
+		if (!browser || !storageKey) return;
+		const envelope: PersistedReservation<T> = {
+			version: RESERVATION_ENVELOPE_VERSION,
+			request
+		};
+		sessionStorage.setItem(storageKey, JSON.stringify(envelope));
 	}
 
 	let pendingManualBatchId = $state<string | null>(null);
+	let pendingManualReservation = $state<ManualInventoryBatchReserveRequest | null>(null);
 	let pendingCatalogBatchId = $state<string | null>(null);
 	let pendingCatalogReservation = $state<CatalogInventoryBatchReserveRequest | null>(null);
 	let activeOwnerId = $state<string | null>(null);
 	let draftLocked = $derived(
-		Boolean(pendingManualBatchId || pendingCatalogBatchId || pendingCatalogReservation)
+		Boolean(
+			pendingManualBatchId ||
+				pendingManualReservation ||
+				pendingCatalogBatchId ||
+				pendingCatalogReservation
+		)
 	);
 
 	$effect(() => {
 		const currentOwnerId = ownerId;
 		if (currentOwnerId === activeOwnerId) return;
 		activeOwnerId = currentOwnerId;
-		pendingManualBatchId = readPendingManualBatchId(currentOwnerId);
-		pendingCatalogBatchId = readPendingCatalogBatchId(currentOwnerId);
-		pendingCatalogReservation = null;
-		if (pendingCatalogBatchId) isManualEntry = false;
+		const manual = readPendingReservation(
+			pendingManualBatchStorageKey(currentOwnerId),
+			isManualReservationRequest
+		);
+		const catalog = readPendingReservation(
+			pendingCatalogBatchStorageKey(currentOwnerId),
+			isCatalogReservationRequest
+		);
+		pendingManualBatchId = manual?.batchId ?? null;
+		pendingManualReservation = manual?.request ?? null;
+		pendingCatalogBatchId = catalog?.batchId ?? null;
+		pendingCatalogReservation = catalog?.request ?? null;
+		if (pendingManualBatchId) isManualEntry = true;
+		else if (pendingCatalogBatchId) isManualEntry = false;
 	});
 
-	function setPendingManualBatchId(batchId: string | null) {
-		pendingManualBatchId = batchId;
+	function persistManualReservation(request: ManualInventoryBatchReserveRequest) {
+		pendingManualBatchId = request.batchId;
+		pendingManualReservation = request;
+		writePendingReservation(pendingManualBatchStorageKey(ownerId), request);
+	}
+
+	function clearPendingManualReservation() {
+		pendingManualBatchId = null;
+		pendingManualReservation = null;
 		if (!browser) return;
 		const storageKey = pendingManualBatchStorageKey(ownerId);
 		if (!storageKey) return;
-		if (batchId) {
-			sessionStorage.setItem(storageKey, batchId);
-		} else {
-			sessionStorage.removeItem(storageKey);
-		}
+		sessionStorage.removeItem(storageKey);
 	}
 
-	function setPendingCatalogBatchId(batchId: string | null) {
-		pendingCatalogBatchId = batchId;
+	function persistCatalogReservation(request: CatalogInventoryBatchReserveRequest) {
+		pendingCatalogBatchId = request.batchId;
+		pendingCatalogReservation = request;
+		writePendingReservation(pendingCatalogBatchStorageKey(ownerId), request);
+	}
+
+	function clearPendingCatalogReservation() {
+		pendingCatalogBatchId = null;
+		pendingCatalogReservation = null;
 		if (!browser) return;
 		const storageKey = pendingCatalogBatchStorageKey(ownerId);
 		if (!storageKey) return;
-		if (batchId) {
-			sessionStorage.setItem(storageKey, batchId);
-		} else {
-			sessionStorage.removeItem(storageKey);
-		}
+		sessionStorage.removeItem(storageKey);
 	}
 
 	function isDefinitiveBatchFailure(response: Response, data: { code?: unknown }): boolean {
@@ -348,8 +439,9 @@
 		return coffee as ManualCoffeeCreate;
 	}
 
-	function manualBatchRequest(): ManualInventoryBatchCreateRequest {
+	function manualBatchRequest(batchId: string): ManualInventoryBatchReserveRequest {
 		return {
+			batchId,
 			purchaseDate: sharedFormData.purchase_date,
 			taxShipTotal: sharedFormData.tax_ship_cost,
 			...(sharedFormData.notes ? { notes: sharedFormData.notes } : {}),
@@ -362,43 +454,88 @@
 		};
 	}
 
-	async function finishManualBatch(response: Response): Promise<boolean> {
-		if (response.ok) {
-			const createdBeans = (await response.json()) as CoffeeFormData[];
-			setPendingManualBatchId(null);
-			onSubmit(createdBeans);
+	function manualBatchMessage(lifecycle: ManualInventoryBatchLifecycle): string {
+		if (lifecycle.status === 'unknown') {
+			return 'Parchment has not resolved this manual batch yet. Its exact reservation was retained for a safe retry.';
+		}
+		return 'Parchment is still processing this manual batch. Its exact reservation was retained for a safe retry.';
+	}
+
+	function finishManualBatch(lifecycle: ManualInventoryBatchLifecycle): boolean {
+		if (lifecycle.status === 'completed') {
+			clearPendingManualReservation();
+			onSubmit([]);
 			onClose();
 			return true;
 		}
 
-		const data = (await response.json()) as { error?: unknown; code?: unknown };
-		if (isDefinitiveBatchFailure(response, data)) {
-			setPendingManualBatchId(null);
+		if (lifecycle.status === 'terminal_rejected') {
+			clearPendingManualReservation();
+			alert(
+				`Parchment rejected this manual batch: ${lifecycle.error?.message ?? 'Unknown error'}. Correct the draft and submit it as a new batch.`
+			);
+			return false;
 		}
-		alert(`Failed to create beans: ${String(data.error ?? 'Unknown error')}`);
+
+		alert(manualBatchMessage(lifecycle));
 		return false;
 	}
 
-	async function submitManualBatch(): Promise<void> {
-		if (pendingManualBatchId) {
-			const response = await fetch(
-				`/api/beans?manualBatchId=${encodeURIComponent(pendingManualBatchId)}`
-			);
-			await finishManualBatch(response);
+	async function commitManualBatch(batchId: string): Promise<void> {
+		const response = await fetch(`/api/beans?manualBatchId=${encodeURIComponent(batchId)}`, {
+			method: 'POST'
+		});
+		if (!response.ok) {
+			const data = (await response.json()) as { error?: unknown };
+			alert(`Failed to commit manual batch: ${String(data.error ?? 'Unknown error')}`);
+			return;
+		}
+		finishManualBatch((await response.json()) as ManualInventoryBatchLifecycle);
+	}
+
+	async function reconcileManualBatch(): Promise<void> {
+		if (!pendingManualBatchId) return;
+		const response = await fetch(
+			`/api/beans?manualBatchId=${encodeURIComponent(pendingManualBatchId)}`
+		);
+		if (!response.ok) {
+			const data = (await response.json()) as { error?: unknown };
+			alert(`Failed to reconcile manual batch: ${String(data.error ?? 'Unknown error')}`);
 			return;
 		}
 
-		const batchId = crypto.randomUUID();
-		setPendingManualBatchId(batchId);
+		const lifecycle = (await response.json()) as ManualInventoryBatchLifecycle;
+		if (lifecycle.status === 'accepted' || lifecycle.status === 'in_progress') {
+			await commitManualBatch(lifecycle.batchId);
+			return;
+		}
+		finishManualBatch(lifecycle);
+	}
+
+	async function submitManualBatch(): Promise<void> {
+		const request = pendingManualReservation ?? manualBatchRequest(crypto.randomUUID());
+		persistManualReservation(request);
 		const response = await fetch('/api/beans', {
 			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'Idempotency-Key': batchId
-			},
-			body: JSON.stringify(manualBatchRequest())
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(request)
 		});
-		await finishManualBatch(response);
+
+		if (!response.ok) {
+			const data = (await response.json()) as { error?: unknown; code?: unknown };
+			if (isDefinitiveBatchFailure(response, data)) {
+				clearPendingManualReservation();
+			}
+			alert(`Failed to reserve manual batch: ${String(data.error ?? 'Unknown error')}`);
+			return;
+		}
+
+		const lifecycle = (await response.json()) as ManualInventoryBatchLifecycle;
+		if (lifecycle.status === 'accepted' || lifecycle.status === 'in_progress') {
+			await commitManualBatch(lifecycle.batchId);
+			return;
+		}
+		finishManualBatch(lifecycle);
 	}
 
 	function catalogBatchRequest(batchId: string): CatalogInventoryBatchReserveRequest {
@@ -421,23 +558,21 @@
 
 	function catalogBatchMessage(lifecycle: CatalogInventoryBatchLifecycle): string {
 		if (lifecycle.status === 'unknown') {
-			return 'Parchment has not resolved this batch yet. Its UUID was retained for another status check.';
+			return 'Parchment has not resolved this batch yet. Its exact reservation was retained for a safe retry.';
 		}
-		return 'Parchment is still processing this batch. Its UUID was retained for a safe retry.';
+		return 'Parchment is still processing this batch. Its exact reservation was retained for a safe retry.';
 	}
 
 	function finishCatalogBatch(lifecycle: CatalogInventoryBatchLifecycle): boolean {
 		if (lifecycle.status === 'completed') {
-			setPendingCatalogBatchId(null);
-			pendingCatalogReservation = null;
+			clearPendingCatalogReservation();
 			onSubmit([]);
 			onClose();
 			return true;
 		}
 
 		if (lifecycle.status === 'terminal_rejected') {
-			setPendingCatalogBatchId(null);
-			pendingCatalogReservation = null;
+			clearPendingCatalogReservation();
 			alert(
 				`Parchment rejected this catalog batch: ${lifecycle.error?.message ?? 'Unknown error'}. Correct the draft and submit it as a new batch.`
 			);
@@ -481,8 +616,7 @@
 
 	async function submitCatalogBatch(): Promise<void> {
 		const request = pendingCatalogReservation ?? catalogBatchRequest(crypto.randomUUID());
-		pendingCatalogReservation = request;
-		setPendingCatalogBatchId(request.batchId);
+		persistCatalogReservation(request);
 
 		const response = await fetch('/api/beans', {
 			method: 'POST',
@@ -493,16 +627,14 @@
 		if (!response.ok) {
 			const data = (await response.json()) as { error?: unknown; code?: unknown };
 			if (isDefinitiveBatchFailure(response, data)) {
-				pendingCatalogReservation = null;
-				setPendingCatalogBatchId(null);
+				clearPendingCatalogReservation();
 			}
 			alert(`Failed to reserve catalog batch: ${String(data.error ?? 'Unknown error')}`);
 			return;
 		}
 
 		const lifecycle = (await response.json()) as CatalogInventoryBatchLifecycle;
-		pendingCatalogReservation = null;
-		if (lifecycle.status === 'accepted') {
+		if (lifecycle.status === 'accepted' || lifecycle.status === 'in_progress') {
 			await commitCatalogBatch(lifecycle.batchId);
 			return;
 		}
@@ -512,11 +644,18 @@
 	async function handleSubmit() {
 		if (isSubmitting) return;
 
-		if (pendingManualBatchId || pendingCatalogBatchId || pendingCatalogReservation) {
+		if (
+			pendingManualBatchId ||
+			pendingManualReservation ||
+			pendingCatalogBatchId ||
+			pendingCatalogReservation
+		) {
 			try {
 				isSubmitting = true;
-				if (pendingManualBatchId) {
+				if (pendingManualReservation) {
 					await submitManualBatch();
+				} else if (pendingManualBatchId) {
+					await reconcileManualBatch();
 				} else if (pendingCatalogReservation) {
 					await submitCatalogBatch();
 				} else {
@@ -651,21 +790,29 @@
 		</p>
 	</div>
 
-	{#if pendingManualBatchId}
+	{#if pendingManualReservation}
 		<div
 			class="mb-6 rounded-md border border-warning bg-warning-subtle p-3 text-sm text-warning-strong"
 			role="status"
 		>
-			A previous manual batch has an uncertain result. Editing is locked until it is reconciled.
-			Select the button below to check its status before starting a new purchase.
+			This manual batch is unresolved. Editing is locked so the exact reservation can be retried
+			with the same batch UUID.
+		</div>
+	{:else if pendingManualBatchId}
+		<div
+			class="mb-6 rounded-md border border-warning bg-warning-subtle p-3 text-sm text-warning-strong"
+			role="status"
+		>
+			A manual batch is reserved in Parchment. Editing is locked until it is reconciled. Select the
+			button below to check its status before starting a new purchase.
 		</div>
 	{:else if pendingCatalogReservation}
 		<div
 			class="mb-6 rounded-md border border-warning bg-warning-subtle p-3 text-sm text-warning-strong"
 			role="status"
 		>
-			The catalog reservation response was uncertain. Editing is locked so the exact request can be
-			retried with the same batch UUID.
+			This catalog batch is unresolved. Editing is locked so the exact reservation can be retried
+			with the same batch UUID.
 		</div>
 	{:else if pendingCatalogBatchId}
 		<div

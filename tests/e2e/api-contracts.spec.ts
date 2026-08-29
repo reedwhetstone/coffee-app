@@ -146,9 +146,9 @@ test.describe('POST /api/beans — create inventory', () => {
 
 	test('creates a bean through one atomic manual batch', async ({ request }) => {
 		const batchId = crypto.randomUUID();
-		const resp = await request.post('/api/beans', {
-			headers: { 'Idempotency-Key': batchId },
+		const reserve = await request.post('/api/beans', {
 			data: {
+				batchId,
 				purchaseDate: new Date().toISOString().split('T')[0],
 				taxShipTotal: 0,
 				items: [
@@ -161,11 +161,14 @@ test.describe('POST /api/beans — create inventory', () => {
 				]
 			}
 		});
+		expect(reserve.status()).toBeLessThan(400);
+		const resp = await request.post(`/api/beans?manualBatchId=${batchId}`);
 		expect(resp.status()).toBeLessThan(400);
 		const body = await resp.json();
 		expect(body).toBeTruthy();
 		expect(typeof body).toBe('object');
-		testBeanId = body[0]?.id ?? null;
+		expect(body.status).toBe('completed');
+		testBeanId = body.result?.items?.[0]?.resource?.id ?? null;
 		expect(testBeanId).toBeTruthy();
 	});
 });
