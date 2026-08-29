@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import StripeCheckout from './StripeCheckout.svelte';
+	import SubscriptionPlanDetails from '$lib/components/marketing/SubscriptionPlanDetails.svelte';
 	import { signInWithGoogle } from '$lib/supabase';
 	import {
 		BILLING_OFFERS,
@@ -81,6 +82,7 @@
 			description:
 				'Parchment Intelligence gives sourcing pros the full market view: supplier health, arriving and departing lots, origin benchmarks, and price history depth across 40+ US importers.',
 			features: [
+				'Ask Parchment AI chat for sourcing, catalog, portfolio, and market questions',
 				'Weekly procurement brief with market movements and notable arrivals',
 				'Supplier comparisons and supplier health scoring',
 				'Arrivals feed and delisting alerts by origin and supplier',
@@ -94,7 +96,7 @@
 			ctaLabel: 'Start Intelligence',
 			activeCtaLabel: 'Intelligence active',
 			intervals: [monthlyInterval(BILLING_OFFERS.intelligenceMonthly)],
-			learnMoreHref: '/analytics'
+			learnMoreHref: '#intelligence-details'
 		},
 		{
 			family: 'api_plan',
@@ -135,6 +137,7 @@
 				'Green coffee inventory and lot tracking',
 				'Roast logs with profile charting and cupping notes',
 				'Profit and margin tracking across production',
+				'Ask Parchment AI chat with inventory, roast, tasting, and margin context',
 				'Workspace tools for team handoff and day-to-day operations'
 			],
 			managementCopy: 'Review your Studio membership, renewal timing, and billing here.',
@@ -144,7 +147,7 @@
 			ctaLabel: 'Start Studio',
 			activeCtaLabel: 'Studio active',
 			intervals: [monthlyInterval(BILLING_OFFERS.studioMonthly)],
-			learnMoreHref: '/catalog'
+			learnMoreHref: '#studio-details'
 		},
 		{
 			family: 'bundle',
@@ -156,6 +159,7 @@
 			features: [
 				'Everything in Mallard Studio',
 				'Everything in Parchment Intelligence',
+				'Ask Parchment across market and roaster workflows',
 				'One subscription and one renewal date',
 				'The complete bundle cancels or renews together'
 			],
@@ -167,7 +171,7 @@
 			ctaLabel: 'Start both',
 			activeCtaLabel: 'Manage current plan',
 			intervals: [monthlyInterval(BILLING_OFFERS.bothMonthly, 'Save $2/month')],
-			learnMoreHref: '/analytics'
+			learnMoreHref: '#both-details'
 		},
 		{
 			family: 'enterprise',
@@ -910,6 +914,8 @@
 						{/each}
 					</div>
 				</div>
+
+				<SubscriptionPlanDetails />
 
 				<div id="api-plans" class="scroll-mt-24 border-t border-line pt-8">
 					<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">

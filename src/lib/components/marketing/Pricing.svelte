@@ -64,8 +64,8 @@
 					</span>
 				</div>
 				<p class="mt-4 text-sm leading-6 text-muted">
-					Compare suppliers, follow arrivals and delistings, and understand origin-level price
-					movement before you buy.
+					Ask Parchment about the market, compare suppliers, follow arrivals and delistings, and
+					understand origin-level price movement before you buy.
 				</p>
 				<p class="mt-6 flex items-baseline gap-1">
 					<span class="text-4xl font-bold tracking-tight text-ink"
@@ -77,7 +77,7 @@
 				</p>
 				<p class="mt-2 text-sm text-muted">Five-day free trial if eligible.</p>
 				<ul class="mt-6 space-y-3 text-sm leading-6 text-muted">
-					<li>Weekly procurement brief</li>
+					<li>Ask Parchment AI chat for sourcing and market questions</li>
 					<li>Supplier comparisons and health signals</li>
 					<li>Arrivals, delistings, and price history</li>
 				</ul>
@@ -88,6 +88,12 @@
 					>
 						{isSignedIn ? 'Start Intelligence' : 'Choose Intelligence'}
 					</button>
+					<a
+						href="/subscription#intelligence-details"
+						class="mt-3 block text-center text-sm font-medium text-muted underline underline-offset-4 transition-colors hover:text-ink"
+					>
+						Learn more
+					</a>
 				</div>
 			</div>
 
@@ -108,8 +114,8 @@
 					</span>
 				</div>
 				<p class="mt-4 text-sm leading-6 text-muted">
-					See the whole market, then bring those decisions into inventory, roast, tasting, and
-					margin workflows.
+					See the whole market, bring those decisions into inventory, roast, tasting, and margin
+					workflows, and ask Parchment across both.
 				</p>
 				<p class="mt-6 flex items-baseline gap-1">
 					<span class="text-4xl font-bold tracking-tight text-ink"
@@ -122,7 +128,7 @@
 				<ul class="mt-6 space-y-3 text-sm leading-6 text-muted">
 					<li>Everything in Intelligence</li>
 					<li>Everything in Mallard Studio</li>
-					<li>One subscription and renewal date</li>
+					<li>Ask Parchment across market and roaster workflows</li>
 				</ul>
 				<div class="mt-auto pt-8">
 					<button
@@ -131,6 +137,12 @@
 					>
 						Choose both
 					</button>
+					<a
+						href="/subscription#both-details"
+						class="mt-3 block text-center text-sm font-medium text-muted underline underline-offset-4 transition-colors hover:text-ink"
+					>
+						Learn more
+					</a>
 				</div>
 			</div>
 
@@ -173,6 +185,12 @@
 					>
 						{isSignedIn ? 'Start Studio' : 'Choose Studio'}
 					</button>
+					<a
+						href="/subscription#studio-details"
+						class="mt-3 block text-center text-sm font-medium text-muted underline underline-offset-4 transition-colors hover:text-ink"
+					>
+						Learn more
+					</a>
 				</div>
 			</div>
 		</div>
