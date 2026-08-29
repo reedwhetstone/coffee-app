@@ -39,7 +39,7 @@
 		aria-hidden="true"
 	></div>
 
-	<div class="flex items-start justify-between gap-4">
+	<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
 		<div class="flex items-center gap-3">
 			<span
 				class={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ${isBundle ? 'bg-success-subtle text-success-strong ring-success/25' : plan.id === 'intelligence' ? 'bg-intelligence/10 text-intelligence ring-intelligence/20' : 'bg-accent/10 text-ink ring-accent/25'}`}
@@ -63,7 +63,7 @@
 			</div>
 		</div>
 		<span
-			class={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${isBundle ? 'bg-success-subtle text-success-strong' : 'border border-line bg-surface-panel text-muted'}`}
+			class={`self-start rounded-full px-3 py-1 text-xs font-semibold sm:shrink-0 ${isBundle ? 'bg-success-subtle text-success-strong' : 'border border-line bg-surface-panel text-muted'}`}
 		>
 			{plan.badge}
 		</span>

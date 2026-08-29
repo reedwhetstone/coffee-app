@@ -53,164 +53,129 @@
 	] as const;
 </script>
 
-<section aria-labelledby="plan-details-heading" class="space-y-8 border-t border-line pt-10">
-	<div class="max-w-3xl">
-		<p class="text-xs font-semibold text-accent">What you get</p>
+<section aria-labelledby="plan-details-heading" class="space-y-16 border-t border-line pt-12">
+	<div class="max-w-4xl">
+		<p class="text-sm font-semibold uppercase tracking-[0.16em] text-accent">What you get</p>
 		<h2
 			id="plan-details-heading"
-			class="mt-2 font-serif text-3xl font-medium tracking-tight text-ink"
+			class="mt-3 font-serif text-3xl font-medium tracking-tight text-ink sm:text-4xl"
 		>
 			See the value before you choose a plan.
 		</h2>
-		<p class="mt-3 text-base leading-7 text-muted">
+		<p class="mt-4 max-w-3xl text-base leading-7 text-muted">
 			Every self-serve subscription includes Ask Parchment. The plan determines which coffee data
 			and workflows it can bring into the conversation.
 		</p>
 	</div>
 
-	<article
-		id="ask-parchment-details"
-		class="overflow-hidden rounded-3xl border border-intelligence/30 bg-surface-canvas shadow-sm"
-	>
-		<div class="grid lg:grid-cols-[0.9fr_1.1fr]">
-			<div class="relative overflow-hidden bg-ink p-6 text-on-dark sm:p-8 lg:p-10">
-				<div
-					class="absolute -right-14 -top-14 h-44 w-44 rounded-full border border-intelligence/40"
-					aria-hidden="true"
-				></div>
-				<div
-					class="absolute -right-4 top-10 h-28 w-28 rounded-full border border-accent/40"
-					aria-hidden="true"
-				></div>
-				<div class="relative">
-					<div class="flex flex-wrap items-center gap-3">
-						<span class="rounded-full bg-intelligence px-3 py-1 text-xs font-semibold text-white">
-							AI workbench included
-						</span>
-						<span class="text-xs font-semibold text-on-dark/65">Ask Parchment</span>
-					</div>
-					<h3 class="mt-5 font-serif text-3xl font-medium tracking-tight sm:text-4xl">
-						One place to ask. Different context for the work.
-					</h3>
-					<p class="mt-4 text-base leading-7 text-on-dark/75">
-						Ask Parchment does more than answer generic coffee questions. It works from Purveyors
-						data, the page you are viewing, and the records your plan unlocks.
-					</p>
-					<a
-						href="/chat"
-						class="mt-7 inline-flex rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
-					>
-						Open Ask Parchment
-					</a>
-				</div>
-			</div>
-
-			<div class="grid gap-4 bg-surface-panel p-6 sm:p-8">
-				{#each planContexts as context}
-					<div class="rounded-2xl border border-line bg-surface-canvas p-5 shadow-sm">
-						<div class="flex flex-wrap items-center justify-between gap-3">
-							<p
-								class={`text-xs font-semibold ${context.tone === 'intelligence' ? 'text-intelligence-strong' : 'text-accent'}`}
-							>
-								{context.name}
-							</p>
-							<span class="text-xs text-muted">Ask Parchment context</span>
-						</div>
-						<p class="mt-3 font-serif text-xl font-medium leading-7 text-ink">
-							“{context.question}”
-						</p>
-						<div class="mt-4 flex flex-wrap gap-2">
-							{#each context.inputs as input}
-								<span
-									class="rounded-full border border-line bg-surface-panel px-3 py-1 text-xs text-muted"
-								>
-									{input}
-								</span>
-							{/each}
-						</div>
-						<div class="mt-4 flex gap-3 border-t border-line pt-4">
-							<span
-								class={`mt-1 h-2 w-2 shrink-0 rounded-full ${context.tone === 'intelligence' ? 'bg-intelligence' : 'bg-accent'}`}
-							></span>
-							<p class="text-sm leading-6 text-muted">{context.outcome}</p>
-						</div>
-					</div>
-				{/each}
-				<p class="px-1 text-xs leading-5 text-muted">
-					Studio + Intelligence brings both context families into the same workspace.
+	<section id="ask-parchment-details" class="scroll-mt-24" aria-labelledby="ask-parchment-heading">
+		<div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-end">
+			<div class="max-w-3xl">
+				<p class="text-sm font-semibold text-accent">Ask Parchment</p>
+				<h3
+					id="ask-parchment-heading"
+					class="mt-2 font-serif text-3xl font-medium tracking-tight text-ink"
+				>
+					One place to ask. Different context for the work.
+				</h3>
+				<p class="mt-4 text-base leading-7 text-muted">
+					Ask Parchment works from Purveyors data, the page you are viewing, and the records your
+					plan unlocks. It is included with Intelligence, Studio, and the combined plan.
 				</p>
 			</div>
+			<div class="border-l-2 border-chart-teal pl-5">
+				<p class="text-sm font-semibold text-ink">Coffee-native AI, included</p>
+				<p class="mt-2 text-sm leading-6 text-muted">
+					Research the outside market or work from your own roastery records without losing the
+					coffee context.
+				</p>
+				<a href="/chat" class="mt-3 inline-block text-sm font-semibold text-link hover:text-accent">
+					Open Ask Parchment <span aria-hidden="true">→</span>
+				</a>
+			</div>
 		</div>
-	</article>
 
-	<article
-		id="intelligence-details"
-		class="scroll-mt-24 overflow-hidden rounded-3xl border border-intelligence/30 bg-surface-canvas shadow-sm"
-	>
-		<div class="grid lg:grid-cols-[1.05fr_0.95fr]">
-			<div class="p-6 sm:p-8 lg:p-10">
-				<div class="flex flex-wrap items-center gap-3">
-					<p class="text-xs font-semibold text-intelligence-strong">Parchment Intelligence</p>
-					<span
-						class="rounded-full bg-intelligence-subtle px-3 py-1 text-xs font-semibold text-intelligence-strong"
+		<div
+			class="mt-8 grid gap-px overflow-hidden rounded-2xl bg-line ring-1 ring-line md:grid-cols-2"
+		>
+			{#each planContexts as context}
+				<article class="bg-surface-panel p-6">
+					<p
+						class={`text-sm font-semibold ${context.tone === 'intelligence' ? 'text-chart-teal' : 'text-chart-rust'}`}
 					>
+						{context.name}
+					</p>
+					<p class="mt-3 font-serif text-xl font-medium leading-7 text-ink">{context.question}</p>
+					<p class="mt-4 text-xs font-medium uppercase tracking-wide text-muted">
+						{context.inputs.join(' · ')}
+					</p>
+					<p class="mt-4 border-t border-line pt-4 text-sm leading-6 text-muted">
+						{context.outcome}
+					</p>
+				</article>
+			{/each}
+		</div>
+		<p class="mt-3 text-xs leading-5 text-muted">
+			Studio + Intelligence brings both context families into the same workspace.
+		</p>
+	</section>
+
+	<section
+		id="intelligence-details"
+		class="scroll-mt-24 border-t border-line pt-12"
+		aria-labelledby="intelligence-heading"
+	>
+		<div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem]">
+			<div>
+				<div class="flex flex-wrap items-center gap-3">
+					<p class="text-sm font-semibold text-accent">Parchment Intelligence</p>
+					<span class="text-sm font-semibold text-ink">
 						{BILLING_OFFERS.intelligenceMonthly.price}{BILLING_OFFERS.intelligenceMonthly.interval}
 					</span>
 				</div>
-				<h3 class="mt-4 font-serif text-3xl font-medium tracking-tight text-ink sm:text-4xl">
+				<h3
+					id="intelligence-heading"
+					class="mt-3 font-serif text-3xl font-medium tracking-tight text-ink sm:text-4xl"
+				>
 					Know what changed, why it matters, and where to look next.
 				</h3>
-				<p class="mt-4 text-base leading-7 text-muted">
+				<p class="mt-4 max-w-3xl text-base leading-7 text-muted">
 					Parchment Intelligence turns daily-normalized offer data into a working market view.
-					Instead of checking dozens of supplier lists, you can compare current offers, investigate
-					movement, and keep the evidence in one sourcing conversation.
+					Compare current offers, investigate movement, and keep the evidence in one sourcing
+					conversation with Ask Parchment.
 				</p>
-				<ul class="mt-6 grid gap-3 text-sm leading-6 text-muted sm:grid-cols-2">
-					<li class="rounded-2xl border border-line bg-surface-panel p-4">
+				<ul
+					class="mt-8 grid gap-px overflow-hidden rounded-2xl bg-line ring-1 ring-line sm:grid-cols-2"
+				>
+					<li class="bg-surface-panel p-4 text-sm leading-6 text-muted">
 						Supplier comparisons and supplier health signals
 					</li>
-					<li class="rounded-2xl border border-line bg-surface-panel p-4">
+					<li class="bg-surface-panel p-4 text-sm leading-6 text-muted">
 						Arrivals, delistings, and origin benchmarks
 					</li>
-					<li class="rounded-2xl border border-line bg-surface-panel p-4">
+					<li class="bg-surface-panel p-4 text-sm leading-6 text-muted">
 						Market signals and extended price-history depth
 					</li>
-					<li class="rounded-2xl border border-line bg-surface-panel p-4">
+					<li class="bg-surface-panel p-4 text-sm leading-6 text-muted">
 						Weekly procurement brief and portfolio context
 					</li>
 				</ul>
-				<div class="mt-6 flex flex-wrap gap-3 text-sm font-semibold">
-					<a
-						href="/analytics"
-						class="rounded-xl bg-intelligence px-4 py-2.5 text-white transition-opacity hover:opacity-90"
-					>
-						Explore the Market Index
+				<div class="mt-6 flex flex-wrap gap-5 text-sm font-semibold">
+					<a href="/analytics" class="text-link hover:text-accent">
+						Explore the Market Index <span aria-hidden="true">→</span>
 					</a>
-					<a
-						href="/chat"
-						class="rounded-xl border border-line bg-surface-canvas px-4 py-2.5 text-ink transition-colors hover:border-intelligence/40 hover:text-intelligence-strong"
-					>
-						Ask Parchment
+					<a href="/chat" class="text-link hover:text-accent">
+						Ask Parchment <span aria-hidden="true">→</span>
 					</a>
 				</div>
 			</div>
 
-			<div
-				class="border-t border-line bg-intelligence-subtle/50 p-6 sm:p-8 lg:border-l lg:border-t-0"
-			>
-				<p class="text-xs font-semibold text-intelligence-strong">
-					From market movement to decision
-				</p>
-				<ol class="mt-5 space-y-4">
+			<div class="border-l-2 border-chart-teal pl-5">
+				<p class="text-sm font-semibold text-ink">From market movement to decision</p>
+				<ol class="mt-5 space-y-5">
 					{#each intelligenceFlow as step, index}
-						<li
-							class="relative flex gap-4 rounded-2xl border border-intelligence/15 bg-surface-canvas p-4"
-						>
-							<span
-								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-intelligence text-sm font-bold text-white"
-							>
-								{index + 1}
-							</span>
+						<li class="flex gap-4">
+							<span class="text-sm font-semibold text-chart-teal">0{index + 1}</span>
 							<div>
 								<h4 class="font-semibold text-ink">{step.label}</h4>
 								<p class="mt-1 text-sm leading-6 text-muted">{step.description}</p>
@@ -220,70 +185,34 @@
 				</ol>
 			</div>
 		</div>
-	</article>
+	</section>
 
-	<article
+	<section
 		id="studio-details"
-		class="scroll-mt-24 overflow-hidden rounded-3xl border border-accent/35 bg-surface-canvas shadow-sm"
+		class="scroll-mt-24 border-t border-line pt-12"
+		aria-labelledby="studio-heading"
 	>
-		<div class="grid lg:grid-cols-[0.95fr_1.05fr]">
-			<div class="bg-surface-panel p-6 sm:p-8 lg:p-10">
-				<p class="text-xs font-semibold text-accent">One coffee record through production</p>
-				<div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-					{#each studioWorkflow as step, index}
-						<div class="flex gap-4 rounded-2xl border border-line bg-surface-canvas p-4">
-							<span
-								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-bold text-ink"
-							>
-								{index + 1}
-							</span>
-							<div>
-								<h4 class="font-semibold text-ink">{step.title}</h4>
-								<p class="mt-1 text-sm leading-6 text-muted">{step.description}</p>
-							</div>
-						</div>
-					{/each}
-				</div>
-			</div>
-
-			<div class="p-6 sm:p-8 lg:p-10">
+		<div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem]">
+			<div>
 				<div class="flex flex-wrap items-center gap-3">
-					<p class="text-xs font-semibold text-accent">Mallard Studio</p>
-					<span class="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-ink">
+					<p class="text-sm font-semibold text-accent">Mallard Studio</p>
+					<span class="text-sm font-semibold text-ink">
 						{BILLING_OFFERS.studioMonthly.price}{BILLING_OFFERS.studioMonthly.interval}
 					</span>
 				</div>
-				<h3 class="mt-4 font-serif text-3xl font-medium tracking-tight text-ink sm:text-4xl">
+				<h3
+					id="studio-heading"
+					class="mt-3 font-serif text-3xl font-medium tracking-tight text-ink sm:text-4xl"
+				>
 					Keep the coffee, the roast, and the result connected.
 				</h3>
-				<p class="mt-4 text-base leading-7 text-muted">
+				<p class="mt-4 max-w-3xl text-base leading-7 text-muted">
 					Mallard Studio replaces disconnected inventory sheets, roast notes, and margin math with
-					one operating record. Your team can trace what happened from the green lot through the
-					finished roast.
+					one operating record. Trace what happened from the green lot through the finished roast.
 				</p>
-				<div class="mt-6 rounded-2xl border border-intelligence/25 bg-intelligence-subtle p-5">
-					<div class="flex items-center gap-3">
-						<span
-							class="flex h-9 w-9 items-center justify-center rounded-xl bg-intelligence text-white"
-							aria-hidden="true"
-						>
-							<svg
-								class="h-5 w-5"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="1.5"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.847-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.847a4.5 4.5 0 003.09 3.09L15.75 12l-2.847.813a4.5 4.5 0 00-3.09 3.09z"
-								/>
-							</svg>
-						</span>
-						<p class="font-semibold text-ink">Ask Parchment is a core Studio feature.</p>
-					</div>
-					<p class="mt-3 text-sm leading-6 text-muted">
+				<div class="mt-7 border-l-2 border-chart-teal pl-5">
+					<p class="font-semibold text-ink">Ask Parchment is a core Studio feature.</p>
+					<p class="mt-2 text-sm leading-6 text-muted">
 						Ask about inventory, compare roast history and tasting notes, and prepare inventory,
 						roast, or sales changes for your confirmation.
 					</p>
@@ -293,52 +222,70 @@
 					market signals, supplier comparisons, price history, and the broader market view.
 				</p>
 			</div>
-		</div>
-	</article>
 
-	<article
+			<div>
+				<p class="text-sm font-semibold text-accent">One coffee record through production</p>
+				<ol class="mt-5 overflow-hidden rounded-2xl bg-line ring-1 ring-line">
+					{#each studioWorkflow as step, index}
+						<li class="flex gap-4 border-b border-line bg-surface-panel p-4 last:border-b-0">
+							<span class="text-sm font-semibold text-chart-rust">0{index + 1}</span>
+							<div>
+								<h4 class="font-semibold text-ink">{step.title}</h4>
+								<p class="mt-1 text-sm leading-6 text-muted">{step.description}</p>
+							</div>
+						</li>
+					{/each}
+				</ol>
+			</div>
+		</div>
+	</section>
+
+	<section
 		id="both-details"
-		class="scroll-mt-24 overflow-hidden rounded-3xl border-2 border-success bg-success-subtle shadow-sm"
+		class="scroll-mt-24 border-t-2 border-accent pt-10"
+		aria-labelledby="both-heading"
 	>
-		<div class="grid lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-			<div class="p-6 sm:p-8 lg:p-10">
+		<div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+			<div>
 				<div class="flex flex-wrap items-center gap-3">
-					<p class="text-xs font-semibold text-success-strong">Studio + Intelligence</p>
+					<p class="text-sm font-semibold text-accent">Studio + Intelligence</p>
 					<span
-						class="rounded-full bg-surface-canvas px-3 py-1 text-xs font-semibold text-success-strong"
+						class="rounded-full border border-accent/30 px-3 py-1 text-xs font-semibold text-ink"
 					>
 						Best value · {BILLING_OFFERS.bothMonthly.price}{BILLING_OFFERS.bothMonthly.interval}
 					</span>
 				</div>
-				<h3 class="mt-4 font-serif text-3xl font-medium tracking-tight text-ink sm:text-4xl">
+				<h3
+					id="both-heading"
+					class="mt-3 font-serif text-3xl font-medium tracking-tight text-ink sm:text-4xl"
+				>
 					Connect what the market is doing to what your roastery should do next.
 				</h3>
-				<p class="mt-4 text-base leading-7 text-muted">
+				<p class="mt-4 max-w-3xl text-base leading-7 text-muted">
 					Use Intelligence to understand outside supply and pricing, Studio to manage the coffee
 					after it arrives, and Ask Parchment to investigate across both. The products share one
 					subscription and renewal date.
 				</p>
 			</div>
-			<div class="border-t border-success/25 p-6 sm:p-8 lg:border-l lg:border-t-0">
-				<div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-center text-sm">
-					<div class="rounded-2xl border border-success/30 bg-surface-canvas p-4">
-						<p class="font-semibold text-ink">Outside market</p>
-						<p class="mt-1 text-xs leading-5 text-muted">Suppliers, lots, signals, benchmarks</p>
-					</div>
-					<span class="text-xl font-bold text-success-strong">→</span>
-					<div class="rounded-2xl border border-success/30 bg-surface-canvas p-4">
-						<p class="font-semibold text-ink">Your operation</p>
-						<p class="mt-1 text-xs leading-5 text-muted">Inventory, roast, taste, margin</p>
-					</div>
+
+			<dl class="overflow-hidden rounded-2xl bg-line ring-1 ring-line">
+				<div class="bg-surface-panel p-4">
+					<dt class="font-semibold text-ink">Outside market</dt>
+					<dd class="mt-1 text-sm leading-6 text-muted">
+						Suppliers, lots, signals, and benchmarks
+					</dd>
 				</div>
-				<div class="mt-4 rounded-2xl bg-ink p-5 text-on-dark">
-					<p class="text-xs font-semibold text-accent">Ask Parchment across both</p>
-					<p class="mt-2 text-sm leading-6 text-on-dark/75">
-						Research a coffee in the market, carry it into your portfolio, then keep its sourcing
-						and production context together.
-					</p>
+				<div class="border-t border-line bg-surface-panel p-4">
+					<dt class="font-semibold text-ink">Your operation</dt>
+					<dd class="mt-1 text-sm leading-6 text-muted">Inventory, roast, tasting, and margin</dd>
 				</div>
-			</div>
+				<div class="border-t border-line bg-surface-canvas p-4">
+					<dt class="font-semibold text-ink">Ask Parchment across both</dt>
+					<dd class="mt-1 text-sm leading-6 text-muted">
+						One conversation with both context families
+					</dd>
+				</div>
+			</dl>
 		</div>
-	</article>
+	</section>
 </section>
