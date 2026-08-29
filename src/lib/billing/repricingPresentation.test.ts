@@ -35,4 +35,15 @@ describe('repricing presentation contract', () => {
 		expect(subscription).toContain('disabled={isProductCheckoutBlocked(product)}');
 		expect(subscription).toContain("return 'Plan change unavailable';");
 	});
+
+	it('distinguishes checkout-blocking bundle states from entitled bundle access', () => {
+		const subscription = readSource('src/routes/subscription/+page.svelte');
+
+		expect(subscription).toContain('hasBundledBillingSubscription(data.subscriptions)');
+		expect(subscription).toContain('hasNonterminalBundledBillingSubscription(data.subscriptions)');
+		expect(subscription).toContain('Bundle subscription needs attention');
+		expect(subscription).toContain(
+			'This bundle is not currently granting Studio or Intelligence access.'
+		);
+	});
 });

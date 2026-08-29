@@ -10,6 +10,7 @@
 		hasBundledBillingSubscription,
 		getBillingOffer,
 		hasInteractiveBillingSubscription,
+		hasNonterminalBundledBillingSubscription,
 		type BillingOffer,
 		type BillingOfferId
 	} from '$lib/billing/offers';
@@ -403,11 +404,21 @@
 			const hasStudio = membershipState.hasAccess;
 			const hasIntelligence = intelligenceState.enabled;
 			const hasBundle = hasBundledBillingSubscription(data.subscriptions);
+			const hasBundleNeedingAttention =
+				hasNonterminalBundledBillingSubscription(data.subscriptions) && !hasBundle;
 			if (hasBundle) {
 				return {
 					label: 'Both products active',
 					description: product.activeStateCopy,
 					tone: 'success' as ProductTone
+				};
+			}
+			if (hasBundleNeedingAttention) {
+				return {
+					label: 'Bundle subscription needs attention',
+					description:
+						'This bundle is not currently granting Studio or Intelligence access. Review its billing status before starting another plan.',
+					tone: 'warning' as ProductTone
 				};
 			}
 			if (hasStudio && hasIntelligence) {

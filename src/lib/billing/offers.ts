@@ -27,6 +27,13 @@ const NONTERMINAL_BILLING_SUBSCRIPTION_STATUSES = new Set([
 	'unpaid'
 ]);
 
+const ENTITLED_BILLING_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing']);
+
+function subscriptionContainsBundle(subscription: BillingSubscriptionSummary): boolean {
+	const productFamilies = new Set(subscription.items.map((item) => item.productFamily));
+	return productFamilies.has('membership') && productFamilies.has('ppi_addon');
+}
+
 /**
  * Canonical new-sale checkout offers. Keep each item list ordered and complete:
  * the offer ID owns checkout identity while Parchment owns price resolution.
@@ -111,9 +118,19 @@ export function hasInteractiveBillingSubscription(
 export function hasBundledBillingSubscription(
 	subscriptions: readonly BillingSubscriptionSummary[]
 ): boolean {
-	return subscriptions.some((subscription) => {
-		if (!NONTERMINAL_BILLING_SUBSCRIPTION_STATUSES.has(subscription.status)) return false;
-		const productFamilies = new Set(subscription.items.map((item) => item.productFamily));
-		return productFamilies.has('membership') && productFamilies.has('ppi_addon');
-	});
+	return subscriptions.some(
+		(subscription) =>
+			ENTITLED_BILLING_SUBSCRIPTION_STATUSES.has(subscription.status) &&
+			subscriptionContainsBundle(subscription)
+	);
+}
+
+export function hasNonterminalBundledBillingSubscription(
+	subscriptions: readonly BillingSubscriptionSummary[]
+): boolean {
+	return subscriptions.some(
+		(subscription) =>
+			NONTERMINAL_BILLING_SUBSCRIPTION_STATUSES.has(subscription.status) &&
+			subscriptionContainsBundle(subscription)
+	);
 }

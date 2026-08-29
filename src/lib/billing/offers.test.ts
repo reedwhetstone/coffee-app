@@ -4,6 +4,7 @@ import {
 	getBillingOffer,
 	hasBundledBillingSubscription,
 	hasInteractiveBillingSubscription,
+	hasNonterminalBundledBillingSubscription,
 	purchaseItemsMatchOffer
 } from './offers';
 import { BILLING_PURCHASE_KEYS } from './purchaseKeys';
@@ -76,7 +77,7 @@ describe('billing offers', () => {
 				hasInteractiveBillingSubscription([{ status, items: [{ productFamily: 'membership' }] }])
 			).toBe(true);
 			expect(
-				hasBundledBillingSubscription([
+				hasNonterminalBundledBillingSubscription([
 					{
 						status,
 						items: [{ productFamily: 'membership' }, { productFamily: 'ppi_addon' }]
@@ -90,6 +91,14 @@ describe('billing offers', () => {
 		expect(
 			hasInteractiveBillingSubscription([
 				{ status: 'canceled', items: [{ productFamily: 'membership' }] }
+			])
+		).toBe(false);
+		expect(
+			hasNonterminalBundledBillingSubscription([
+				{
+					status: 'canceled',
+					items: [{ productFamily: 'membership' }, { productFamily: 'ppi_addon' }]
+				}
 			])
 		).toBe(false);
 		expect(
@@ -118,4 +127,34 @@ describe('billing offers', () => {
 			])
 		).toBe(true);
 	});
+
+	it.each(['active', 'trialing'])(
+		'treats a %s bundled subscription as active and entitled',
+		(status) => {
+			const subscriptions = [
+				{
+					status,
+					items: [{ productFamily: 'membership' }, { productFamily: 'ppi_addon' }]
+				}
+			];
+
+			expect(hasBundledBillingSubscription(subscriptions)).toBe(true);
+			expect(hasNonterminalBundledBillingSubscription(subscriptions)).toBe(true);
+		}
+	);
+
+	it.each(['past_due', 'incomplete', 'unpaid'])(
+		'holds checkout without presenting a %s bundled subscription as active',
+		(status) => {
+			const subscriptions = [
+				{
+					status,
+					items: [{ productFamily: 'membership' }, { productFamily: 'ppi_addon' }]
+				}
+			];
+
+			expect(hasBundledBillingSubscription(subscriptions)).toBe(false);
+			expect(hasNonterminalBundledBillingSubscription(subscriptions)).toBe(true);
+		}
+	);
 });
