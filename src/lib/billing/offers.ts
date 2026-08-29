@@ -19,7 +19,13 @@ interface BillingSubscriptionSummary {
 	items: readonly { productFamily: string }[];
 }
 
-const ACTIVE_BILLING_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing']);
+const NONTERMINAL_BILLING_SUBSCRIPTION_STATUSES = new Set([
+	'active',
+	'trialing',
+	'past_due',
+	'incomplete',
+	'unpaid'
+]);
 
 /**
  * Canonical new-sale checkout offers. Keep each item list ordered and complete:
@@ -95,7 +101,7 @@ export function hasInteractiveBillingSubscription(
 ): boolean {
 	return subscriptions.some(
 		(subscription) =>
-			ACTIVE_BILLING_SUBSCRIPTION_STATUSES.has(subscription.status) &&
+			NONTERMINAL_BILLING_SUBSCRIPTION_STATUSES.has(subscription.status) &&
 			subscription.items.some(
 				(item) => item.productFamily === 'membership' || item.productFamily === 'ppi_addon'
 			)
@@ -106,7 +112,7 @@ export function hasBundledBillingSubscription(
 	subscriptions: readonly BillingSubscriptionSummary[]
 ): boolean {
 	return subscriptions.some((subscription) => {
-		if (!ACTIVE_BILLING_SUBSCRIPTION_STATUSES.has(subscription.status)) return false;
+		if (!NONTERMINAL_BILLING_SUBSCRIPTION_STATUSES.has(subscription.status)) return false;
 		const productFamilies = new Set(subscription.items.map((item) => item.productFamily));
 		return productFamilies.has('membership') && productFamilies.has('ppi_addon');
 	});

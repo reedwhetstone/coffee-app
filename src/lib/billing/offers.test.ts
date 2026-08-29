@@ -60,24 +60,31 @@ describe('billing offers', () => {
 		).toBe(false);
 	});
 
-	it('holds every new interactive checkout when an interactive subscription already exists', () => {
+	it('does not block interactive checkout for an unrelated API subscription', () => {
 		expect(hasInteractiveBillingSubscription([])).toBe(false);
 		expect(
 			hasInteractiveBillingSubscription([
 				{ status: 'active', items: [{ productFamily: 'api_plan' }] }
 			])
 		).toBe(false);
-		expect(
-			hasInteractiveBillingSubscription([
-				{ status: 'active', items: [{ productFamily: 'membership' }] }
-			])
-		).toBe(true);
-		expect(
-			hasInteractiveBillingSubscription([
-				{ status: 'trialing', items: [{ productFamily: 'ppi_addon' }] }
-			])
-		).toBe(true);
 	});
+
+	it.each(['active', 'trialing', 'past_due', 'incomplete', 'unpaid'])(
+		'holds every new interactive checkout for a %s interactive subscription',
+		(status) => {
+			expect(
+				hasInteractiveBillingSubscription([{ status, items: [{ productFamily: 'membership' }] }])
+			).toBe(true);
+			expect(
+				hasBundledBillingSubscription([
+					{
+						status,
+						items: [{ productFamily: 'membership' }, { productFamily: 'ppi_addon' }]
+					}
+				])
+			).toBe(true);
+		}
+	);
 
 	it('does not treat canceled historical interactive snapshots as active', () => {
 		expect(
