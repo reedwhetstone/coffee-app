@@ -2,7 +2,7 @@
 
 **Status:** Canonical product direction
 **Owner:** Reed Whetstone
-**Last updated:** 2026-07-22
+**Last updated:** 2026-08-29
 
 ## What Purveyors is
 
@@ -52,6 +52,15 @@ This is not just a marketplace and not a roasting tool. The core value is struct
 
 9. **Mallard Studio is context, not the umbrella product.**
    Mallard Studio should help roasters apply Purveyors intelligence to their own inventory, roast, tasting, and margin context. It should not pull the platform back into the saturated generic roasting-tool category.
+
+10. **AI should be visible, useful, and grounded in real product context.**
+    Purveyors is an AI-forward system, not a conventional coffee application with a chat box added later. Ask Parchment should be a clear product surface across paid self-serve plans, with capabilities determined honestly by the context each entitlement unlocks: sourcing and market tools for Parchment Intelligence; inventory, roast, tasting, and production tools for Mallard Studio; and both tool families for the combined plan. Public positioning should show the questions and decisions this enables without drifting into generic AI claims or implying access to unavailable tools.
+
+## Emerging GTM thesis under discussion
+
+An August 2026 strategy exploration proposes framing Purveyors as managed coffee data and operations infrastructure with two adoption modes: customers can work directly in first-party applications or build on supported APIs, SDKs, CLI tools, and agent interfaces. The strongest accepted throughline is that Purveyors should present one connected coffee system rather than a collection of unrelated products.
+
+This is not yet a complete product promise. The draft contains unresolved questions about the initial buyer, customer configuration, headless parity, platform naming, OEM boundaries, tenant-data governance, and how far operational infrastructure should extend. See [`notes/big-ideas/2026-08-29-managed-coffee-platform-gtm-thesis.md`](big-ideas/2026-08-29-managed-coffee-platform-gtm-thesis.md) for the bounded discussion record. Current implementation and public naming remain governed by this file, `notes/BRAND.md`, and `notes/ARCHITECTURE.md`.
 
 ## What we are building toward
 

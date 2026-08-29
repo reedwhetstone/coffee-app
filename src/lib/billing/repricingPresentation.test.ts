@@ -7,23 +7,26 @@ const readSource = (path: string) => readFileSync(resolve(path), 'utf8');
 describe('repricing presentation contract', () => {
 	it('qualifies every trial promise because eligibility remains upstream-owned', () => {
 		const pricing = readSource('src/lib/components/marketing/Pricing.svelte');
+		const planCard = readSource('src/lib/components/marketing/SelfServePlanCard.svelte');
+		const plans = readSource('src/lib/billing/selfServePlans.ts');
 		const personas = readSource('src/lib/components/marketing/PersonaRouter.svelte');
 		const subscription = readSource('src/routes/subscription/+page.svelte');
 
 		expect(pricing).toContain(
 			'Eligible accounts receive one five-day free trial on their first self-serve paid plan.'
 		);
-		expect(pricing.match(/if eligible/g)).toHaveLength(3);
+		expect(planCard).toContain('{plan.offer.trialDays}-day free trial if eligible');
 		expect(pricing).not.toMatch(/Try (?:Intelligence|Studio|both) free/);
-		expect(pricing).toContain('Choose Intelligence');
-		expect(pricing).toContain('Choose Studio');
-		expect(pricing).toContain('Choose both');
-		expect(personas.match(/if eligible/g)).toHaveLength(3);
+		expect(pricing).toContain("return 'Choose both';");
+		expect(pricing).toContain("plan.id === 'studio' ? 'Studio' : 'Intelligence'");
+		expect(plans).toContain('offer: BILLING_OFFERS.intelligenceMonthly');
+		expect(plans).toContain('offer: BILLING_OFFERS.studioMonthly');
+		expect(plans).toContain('offer: BILLING_OFFERS.bothMonthly');
+		expect(personas).not.toMatch(/free trial/i);
 		expect(subscription).toContain(
 			'If eligible, your {selectedOffer.trialDays}-day free trial starts today.'
 		);
 		expect(subscription).toMatch(/Otherwise,\s+billing starts today\./);
-		expect(subscription).toContain('{option.trialDays}-day free trial if eligible');
 	});
 
 	it('guards both direct and intent-restored interactive checkout entry points', () => {
@@ -32,7 +35,7 @@ describe('repricing presentation contract', () => {
 		expect(subscription).toContain('hasInteractiveBillingSubscription(data.subscriptions)');
 		expect(subscription).toContain('const hasInteractiveAccess = $derived(');
 		expect(subscription).toContain('if (isProductCheckoutBlocked(product)) return;');
-		expect(subscription).toContain('disabled={isProductCheckoutBlocked(product)}');
+		expect(subscription).toContain('disabled={isSignedIn && isProductCheckoutBlocked(product)}');
 		expect(subscription).toContain("return 'Plan change unavailable';");
 	});
 
@@ -49,18 +52,25 @@ describe('repricing presentation contract', () => {
 
 	it('presents self-serve, API, and Enterprise options in customer language', () => {
 		const pricing = readSource('src/lib/components/marketing/Pricing.svelte');
+		const planCard = readSource('src/lib/components/marketing/SelfServePlanCard.svelte');
+		const plans = readSource('src/lib/billing/selfServePlans.ts');
 		const details = readSource('src/lib/components/marketing/SubscriptionPlanDetails.svelte');
 		const subscription = readSource('src/routes/subscription/+page.svelte');
 		const api = readSource('src/routes/api/+page.svelte');
 
 		expect(pricing).toContain('Simple self-serve plans');
+		expect(pricing).toContain('<SelfServePlanCard');
+		expect(subscription).toContain('<SelfServePlanCard');
+		expect(pricing).toContain('SELF_SERVE_PLANS');
+		expect(subscription).toContain('SELF_SERVE_PLANS');
+		expect(planCard).toContain('plan.features');
 		expect(pricing).toContain('See API plans');
 		expect(pricing).not.toContain("handleSelectPlan('api')");
 		expect(pricing).not.toContain("handleSelectPlan('enterprise')");
-		expect(pricing).toContain('/subscription#intelligence-details');
-		expect(pricing).toContain('/subscription#studio-details');
-		expect(pricing).toContain('/subscription#both-details');
-		expect(subscription).toContain('selfServeProductCards');
+		expect(plans).toContain("learnMoreHref: '/subscription#intelligence-details'");
+		expect(plans).toContain("learnMoreHref: '/subscription#studio-details'");
+		expect(plans).toContain("learnMoreHref: '/subscription#both-details'");
+		expect(subscription).toContain('selfServeProductCardsById');
 		expect(subscription).toContain('<SubscriptionPlanDetails />');
 		expect(subscription).toContain('id="api-plans"');
 		expect(subscription).toContain('Build with Purveyors or tailor it to your business');
@@ -70,8 +80,10 @@ describe('repricing presentation contract', () => {
 		expect(details).toContain('id="intelligence-details"');
 		expect(details).toContain('id="studio-details"');
 		expect(details).toContain('id="both-details"');
-		expect(details).toContain('Ask Parchment');
-		expect(details).toContain('AI chat included');
+		expect(details).toContain('Every self-serve subscription includes Ask Parchment');
+		expect(details).toContain('Ask Parchment is a core Studio feature.');
+		expect(details).toContain('One place to ask. Different context for the work.');
+		expect(plans.match(/Ask Parchment/g)?.length).toBeGreaterThanOrEqual(3);
 		expect(api).toContain('id="plans"');
 		expect(api).toContain('$99/month');
 	});
@@ -80,11 +92,24 @@ describe('repricing presentation contract', () => {
 		const pricing = readSource('src/lib/components/marketing/Pricing.svelte');
 		const subscription = readSource('src/routes/subscription/+page.svelte');
 
-		expect(pricing).toContain('goto(`/subscription?plan=${offerId}&intent=checkout`)');
+		expect(pricing).toContain('goto(`/subscription?plan=${plan.offer.offerId}&intent=checkout`)');
 		expect(subscription).toContain(
 			"const hasCheckoutIntent = $derived(page.url.searchParams.get('intent') === 'checkout');"
 		);
 		expect(subscription).toContain('if (isSignedIn && hasCheckoutIntent && intendedOfferId) {');
 		expect(subscription).toContain('openCheckoutByOfferId(intendedOfferId);');
+	});
+
+	it('frames the homepage as a concrete AI-forward coffee system', () => {
+		const hero = readSource('src/lib/components/marketing/Hero.svelte');
+		const features = readSource('src/lib/components/marketing/Features.svelte');
+		const personas = readSource('src/lib/components/marketing/PersonaRouter.svelte');
+
+		expect(hero).toContain('Coffee intelligence you can ask, act on, and build with.');
+		expect(hero).toContain('Ask Parchment');
+		expect(hero).toContain('Grounded tools, not generic chat');
+		expect(features).toContain('Ask Parchment turns context into a decision.');
+		expect(features).toContain('Work in Purveyors or build with it.');
+		expect(personas).toContain('One coffee data layer, built for decisions and systems.');
 	});
 });

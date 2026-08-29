@@ -5,6 +5,12 @@
 	import { page } from '$app/state';
 	import StripeCheckout from './StripeCheckout.svelte';
 	import SubscriptionPlanDetails from '$lib/components/marketing/SubscriptionPlanDetails.svelte';
+	import SelfServePlanCard from '$lib/components/marketing/SelfServePlanCard.svelte';
+	import {
+		SELF_SERVE_PLANS,
+		type SelfServePlan,
+		type SelfServePlanId
+	} from '$lib/billing/selfServePlans';
 	import { signInWithGoogle } from '$lib/supabase';
 	import {
 		BILLING_OFFERS,
@@ -72,32 +78,58 @@
 		Object.values(BILLING_OFFERS).map((offer) => [offer.offerId, offer.offerId])
 	) as Record<string, BillingOfferId>;
 
-	const productCards: ProductCard[] = [
-		{
-			family: 'ppi_addon',
-			name: 'Parchment Intelligence',
-			eyebrow: 'Analytics flagship',
-			headline:
-				'Supplier comparisons, arrivals and delistings, origin benchmarks, and the weekly procurement brief.',
-			description:
-				'Parchment Intelligence gives sourcing pros the full market view: supplier health, arriving and departing lots, origin benchmarks, and price history depth across 40+ US importers.',
-			features: [
-				'Ask Parchment AI chat for sourcing, catalog, portfolio, and market questions',
-				'Weekly procurement brief with market movements and notable arrivals',
-				'Supplier comparisons and supplier health scoring',
-				'Arrivals feed and delisting alerts by origin and supplier',
-				'Origin benchmarks and price history depth',
-				'Extended price-trend depth across every Market Index view'
-			],
+	const selfServeCopy: Record<
+		SelfServePlanId,
+		Pick<
+			ProductCard,
+			| 'managementCopy'
+			| 'anonymousStateCopy'
+			| 'activeStateCopy'
+			| 'inactiveStateCopy'
+			| 'ctaLabel'
+			| 'activeCtaLabel'
+		>
+	> = {
+		intelligence: {
 			managementCopy: 'Manage Parchment Intelligence billing and access here.',
 			anonymousStateCopy: 'Sign in to see what is on this account.',
 			activeStateCopy: 'Parchment Intelligence is active on this account.',
 			inactiveStateCopy: 'Parchment Intelligence is not active on this account yet.',
 			ctaLabel: 'Start Intelligence',
-			activeCtaLabel: 'Intelligence active',
-			intervals: [monthlyInterval(BILLING_OFFERS.intelligenceMonthly)],
-			learnMoreHref: '#intelligence-details'
+			activeCtaLabel: 'Intelligence active'
 		},
+		studio: {
+			managementCopy: 'Review your Studio membership, renewal timing, and billing here.',
+			anonymousStateCopy: 'Sign in to see what is on this account.',
+			activeStateCopy: 'Studio is active on this account.',
+			inactiveStateCopy: 'No Studio membership is attached to this account yet.',
+			ctaLabel: 'Start Studio',
+			activeCtaLabel: 'Studio active'
+		},
+		both: {
+			managementCopy:
+				'Studio and Intelligence are one subscription in this offer. Canceling, resuming, or renewing applies to both products together.',
+			anonymousStateCopy: 'Sign in to see what is on this account.',
+			activeStateCopy: 'Studio and Intelligence are active on this account.',
+			inactiveStateCopy: 'The combined plan is not active on this account yet.',
+			ctaLabel: 'Start both',
+			activeCtaLabel: 'Manage current plan'
+		}
+	};
+
+	const selfServeProductCards: ProductCard[] = SELF_SERVE_PLANS.map((plan) => ({
+		family: plan.family,
+		name: plan.name,
+		eyebrow: plan.eyebrow,
+		headline: plan.description,
+		description: plan.description,
+		features: [...plan.features],
+		...selfServeCopy[plan.id],
+		intervals: [monthlyInterval(plan.offer, plan.id === 'both' ? 'Save $2/month' : undefined)],
+		learnMoreHref: plan.learnMoreHref
+	}));
+
+	const supportingProductCards: ProductCard[] = [
 		{
 			family: 'api_plan',
 			name: 'Parchment API',
@@ -127,53 +159,6 @@
 			learnMoreHref: '/api'
 		},
 		{
-			family: 'membership',
-			name: 'Mallard Studio',
-			eyebrow: 'Roaster operations',
-			headline: 'Inventory, roast logs, and profit tracking for roasters running production.',
-			description:
-				'Mallard Studio is the operating workspace for coffee teams that need cleaner production workflows, better record-keeping, and fewer spreadsheets.',
-			features: [
-				'Green coffee inventory and lot tracking',
-				'Roast logs with profile charting and cupping notes',
-				'Profit and margin tracking across production',
-				'Ask Parchment AI chat with inventory, roast, tasting, and margin context',
-				'Workspace tools for team handoff and day-to-day operations'
-			],
-			managementCopy: 'Review your Studio membership, renewal timing, and billing here.',
-			anonymousStateCopy: 'Sign in to see what is on this account.',
-			activeStateCopy: 'Studio is active on this account.',
-			inactiveStateCopy: 'No Studio membership is attached to this account yet.',
-			ctaLabel: 'Start Studio',
-			activeCtaLabel: 'Studio active',
-			intervals: [monthlyInterval(BILLING_OFFERS.studioMonthly)],
-			learnMoreHref: '#studio-details'
-		},
-		{
-			family: 'bundle',
-			name: 'Studio + Intelligence',
-			eyebrow: 'Best value',
-			headline: 'Roaster operations and the full market view in one subscription.',
-			description:
-				'Use Mallard Studio for inventory, roasting, and margins, plus Parchment Intelligence for supplier comparisons, arrivals, delistings, and market benchmarks.',
-			features: [
-				'Everything in Mallard Studio',
-				'Everything in Parchment Intelligence',
-				'Ask Parchment across market and roaster workflows',
-				'One subscription and one renewal date',
-				'The complete bundle cancels or renews together'
-			],
-			managementCopy:
-				'Studio and Intelligence are one subscription in this offer. Canceling, resuming, or renewing applies to both products together.',
-			anonymousStateCopy: 'Sign in to see what is on this account.',
-			activeStateCopy: 'Studio and Intelligence are active on this account.',
-			inactiveStateCopy: 'The combined plan is not active on this account yet.',
-			ctaLabel: 'Start both',
-			activeCtaLabel: 'Manage current plan',
-			intervals: [monthlyInterval(BILLING_OFFERS.bothMonthly, 'Save $2/month')],
-			learnMoreHref: '#both-details'
-		},
-		{
 			family: 'enterprise',
 			name: 'Enterprise',
 			eyebrow: 'Custom commercial needs',
@@ -196,13 +181,14 @@
 		}
 	];
 
-	const selfServeProductCards = [
-		productCards.find((product) => product.family === 'ppi_addon')!,
-		productCards.find((product) => product.family === 'bundle')!,
-		productCards.find((product) => product.family === 'membership')!
-	];
-	const apiProduct = productCards.find((product) => product.family === 'api_plan')!;
-	const enterpriseProduct = productCards.find((product) => product.family === 'enterprise')!;
+	const productCards = [...selfServeProductCards, ...supportingProductCards];
+	const selfServeProductCardsById = new Map(
+		SELF_SERVE_PLANS.map((plan, index) => [plan.id, selfServeProductCards[index]])
+	);
+	const apiProduct = supportingProductCards.find((product) => product.family === 'api_plan')!;
+	const enterpriseProduct = supportingProductCards.find(
+		(product) => product.family === 'enterprise'
+	)!;
 
 	const subscriptionMutationRetryDelaysMs = [500, 1000, 2000, 4000, 8000] as const;
 
@@ -308,6 +294,16 @@
 		if (data.billingError !== null) return 'Checkout unavailable';
 		if (isProductActive(product)) return product.activeCtaLabel ?? 'Already active';
 		return 'Plan change unavailable';
+	};
+	const chooseSelfServePlan = (plan: SelfServePlan) => {
+		const product = selfServeProductCardsById.get(plan.id);
+		const option = product?.intervals?.[0];
+		if (!product || !option) return;
+		if (!isSignedIn) {
+			signInForPlan(option.planSlug);
+			return;
+		}
+		openCheckout(product, option);
 	};
 
 	// Purchase intent from URL params (set before sign-in to preserve selection).
@@ -706,7 +702,7 @@
 						</h1>
 						<p class="mt-4 text-lg leading-8 text-muted">
 							Choose market intelligence, roastery operations, or both in one discounted
-							subscription.
+							subscription. Ask Parchment is included with every self-serve plan.
 						</p>
 					</div>
 					{#if !isSignedIn}
@@ -823,94 +819,17 @@
 					</div>
 
 					<div class="mt-5 grid gap-5 lg:grid-cols-3 lg:items-stretch">
-						{#each selfServeProductCards as product}
+						{#each SELF_SERVE_PLANS as plan (plan.id)}
+							{@const product = selfServeProductCardsById.get(plan.id)!}
 							{@const state = getProductState(product)}
-							{@const option = product.intervals?.[0]}
-							<div
-								class={`flex h-full flex-col rounded-3xl border bg-surface-canvas p-6 shadow-sm ${product.family === 'bundle' ? 'order-first border-success ring-1 ring-success/20 lg:order-none' : product.family === 'ppi_addon' ? 'border-accent/40' : 'border-line'}`}
-							>
-								<div class="flex items-start justify-between gap-3">
-									<div>
-										<p
-											class={`text-xs font-semibold uppercase tracking-wide ${product.family === 'bundle' ? 'text-success-strong' : 'text-accent'}`}
-										>
-											{product.eyebrow}
-										</p>
-										<h3 class="mt-2 text-2xl font-semibold text-ink">{product.name}</h3>
-									</div>
-									{#if product.family === 'bundle'}
-										<span
-											class="rounded-full bg-success-subtle px-3 py-1 text-xs font-semibold text-success-strong"
-										>
-											Best value
-										</span>
-									{/if}
-								</div>
-
-								<p class="mt-4 text-sm font-medium leading-6 text-ink">{product.headline}</p>
-
-								{#if option}
-									<div class="mt-5 flex items-end justify-between gap-3">
-										<div>
-											<p class="text-3xl font-bold text-ink">
-												{option.price}<span class="ml-1 text-sm font-normal text-muted"
-													>{option.interval}</span
-												>
-											</p>
-											{#if option.trialDays}
-												<p class="mt-1 text-xs font-medium text-success-strong">
-													{option.trialDays}-day free trial if eligible
-												</p>
-											{/if}
-										</div>
-										{#if isSignedIn}
-											<span
-												class={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(state.tone)}`}
-											>
-												{state.label}
-											</span>
-										{/if}
-									</div>
-
-									<ul class="mt-6 space-y-3 text-sm leading-6 text-muted">
-										{#each product.features.slice(0, 3) as feature}
-											<li class="flex gap-3">
-												<span
-													class={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${product.family === 'bundle' ? 'bg-success' : 'bg-accent'}`}
-												></span>
-												<span>{feature}</span>
-											</li>
-										{/each}
-									</ul>
-
-									<div class="mt-auto pt-7">
-										{#if !isSignedIn}
-											<button
-												onclick={() => signInForPlan(option.planSlug)}
-												class={`w-full rounded-xl px-4 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90 ${product.family === 'bundle' ? 'bg-success' : 'bg-accent'}`}
-											>
-												Start {product.name}
-											</button>
-										{:else}
-											<button
-												onclick={() => openCheckout(product, option)}
-												disabled={isProductCheckoutBlocked(product)}
-												class={`w-full rounded-xl px-4 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${product.family === 'bundle' ? 'bg-success' : 'bg-accent'}`}
-											>
-												{productCheckoutLabel(product)}
-											</button>
-										{/if}
-										{#if product.learnMoreHref}
-											<a
-												href={product.learnMoreHref}
-												class="mt-3 block text-center text-sm font-medium text-muted underline underline-offset-4 transition-colors hover:text-ink"
-											>
-												Learn more
-											</a>
-										{/if}
-									</div>
-								{/if}
-							</div>
+							<SelfServePlanCard
+								{plan}
+								ctaLabel={isSignedIn ? productCheckoutLabel(product) : `Start ${plan.name}`}
+								disabled={isSignedIn && isProductCheckoutBlocked(product)}
+								statusLabel={isSignedIn ? state.label : null}
+								statusTone={state.tone}
+								onChoose={chooseSelfServePlan}
+							/>
 						{/each}
 					</div>
 				</div>
