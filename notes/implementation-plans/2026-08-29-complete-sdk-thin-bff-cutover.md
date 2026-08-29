@@ -1,9 +1,9 @@
 # Complete coffee-app SDK/thin-BFF cutover
 
 **Status:** Accepted<br>
-**Date:** 2026-08-29  
-**Owners:** Parchment API and coffee-app maintainers  
-**Governing direction:** [ADR-007: Headless API extraction, web as reference client](../decisions/007-headless-api-extraction-web-as-reference-client.md)  
+**Date:** 2026-08-29<br>
+**Owners:** Parchment API and coffee-app maintainers<br>
+**Governing direction:** [ADR-007: Headless API extraction, web as reference client](../decisions/007-headless-api-extraction-web-as-reference-client.md)<br>
 **Supersedes:** [2026-07-22 Supabase data-boundary retirement](./2026-07-22-coffee-app-supabase-data-boundary-retirement.md) as the terminal migration plan; that document remains useful as a historical capability map.
 
 ## Goal and terminal boundary
