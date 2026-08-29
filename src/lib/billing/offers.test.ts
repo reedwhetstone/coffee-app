@@ -62,27 +62,52 @@ describe('billing offers', () => {
 
 	it('holds every new interactive checkout when an interactive subscription already exists', () => {
 		expect(hasInteractiveBillingSubscription([])).toBe(false);
-		expect(hasInteractiveBillingSubscription([{ items: [{ productFamily: 'api_plan' }] }])).toBe(
-			false
-		);
-		expect(hasInteractiveBillingSubscription([{ items: [{ productFamily: 'membership' }] }])).toBe(
-			true
-		);
-		expect(hasInteractiveBillingSubscription([{ items: [{ productFamily: 'ppi_addon' }] }])).toBe(
-			true
-		);
+		expect(
+			hasInteractiveBillingSubscription([
+				{ status: 'active', items: [{ productFamily: 'api_plan' }] }
+			])
+		).toBe(false);
+		expect(
+			hasInteractiveBillingSubscription([
+				{ status: 'active', items: [{ productFamily: 'membership' }] }
+			])
+		).toBe(true);
+		expect(
+			hasInteractiveBillingSubscription([
+				{ status: 'trialing', items: [{ productFamily: 'ppi_addon' }] }
+			])
+		).toBe(true);
+	});
+
+	it('does not treat canceled historical interactive snapshots as active', () => {
+		expect(
+			hasInteractiveBillingSubscription([
+				{ status: 'canceled', items: [{ productFamily: 'membership' }] }
+			])
+		).toBe(false);
+		expect(
+			hasBundledBillingSubscription([
+				{
+					status: 'canceled',
+					items: [{ productFamily: 'membership' }, { productFamily: 'ppi_addon' }]
+				}
+			])
+		).toBe(false);
 	});
 
 	it('recognizes a bundle only when both product families share one subscription', () => {
 		expect(
 			hasBundledBillingSubscription([
-				{ items: [{ productFamily: 'membership' }] },
-				{ items: [{ productFamily: 'ppi_addon' }] }
+				{ status: 'active', items: [{ productFamily: 'membership' }] },
+				{ status: 'active', items: [{ productFamily: 'ppi_addon' }] }
 			])
 		).toBe(false);
 		expect(
 			hasBundledBillingSubscription([
-				{ items: [{ productFamily: 'membership' }, { productFamily: 'ppi_addon' }] }
+				{
+					status: 'active',
+					items: [{ productFamily: 'membership' }, { productFamily: 'ppi_addon' }]
+				}
 			])
 		).toBe(true);
 	});

@@ -15,8 +15,11 @@ export interface BillingOffer {
 }
 
 interface BillingSubscriptionSummary {
+	status: string;
 	items: readonly { productFamily: string }[];
 }
+
+const ACTIVE_BILLING_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing']);
 
 /**
  * Canonical new-sale checkout offers. Keep each item list ordered and complete:
@@ -90,10 +93,12 @@ export function purchaseItemsMatchOffer(
 export function hasInteractiveBillingSubscription(
 	subscriptions: readonly BillingSubscriptionSummary[]
 ): boolean {
-	return subscriptions.some((subscription) =>
-		subscription.items.some(
-			(item) => item.productFamily === 'membership' || item.productFamily === 'ppi_addon'
-		)
+	return subscriptions.some(
+		(subscription) =>
+			ACTIVE_BILLING_SUBSCRIPTION_STATUSES.has(subscription.status) &&
+			subscription.items.some(
+				(item) => item.productFamily === 'membership' || item.productFamily === 'ppi_addon'
+			)
 	);
 }
 
@@ -101,6 +106,7 @@ export function hasBundledBillingSubscription(
 	subscriptions: readonly BillingSubscriptionSummary[]
 ): boolean {
 	return subscriptions.some((subscription) => {
+		if (!ACTIVE_BILLING_SUBSCRIPTION_STATUSES.has(subscription.status)) return false;
 		const productFamilies = new Set(subscription.items.map((item) => item.productFamily));
 		return productFamilies.has('membership') && productFamilies.has('ppi_addon');
 	});
