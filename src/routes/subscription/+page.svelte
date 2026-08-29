@@ -7,6 +7,7 @@
 	import { signInWithGoogle } from '$lib/supabase';
 	import {
 		BILLING_OFFERS,
+		hasBundledBillingSubscription,
 		getBillingOffer,
 		hasInteractiveBillingSubscription,
 		type BillingOffer,
@@ -272,7 +273,7 @@
 			return apiState?.plan === 'member' || apiState?.plan === 'enterprise';
 		if (product.family === 'ppi_addon') return intelligenceState?.enabled === true;
 		if (product.family === 'bundle') {
-			return membershipState?.hasAccess === true && intelligenceState?.enabled === true;
+			return hasBundledBillingSubscription(data.subscriptions);
 		}
 		return false;
 	};
@@ -401,11 +402,20 @@
 		if (product.family === 'bundle' && membershipState && intelligenceState) {
 			const hasStudio = membershipState.hasAccess;
 			const hasIntelligence = intelligenceState.enabled;
-			if (hasStudio && hasIntelligence) {
+			const hasBundle = hasBundledBillingSubscription(data.subscriptions);
+			if (hasBundle) {
 				return {
 					label: 'Both products active',
 					description: product.activeStateCopy,
 					tone: 'success' as ProductTone
+				};
+			}
+			if (hasStudio && hasIntelligence) {
+				return {
+					label: 'Products active separately',
+					description:
+						'Studio and Intelligence are active in separate subscriptions. Manage each subscription above. Switching them into the combined plan is not available yet.',
+					tone: 'warning' as ProductTone
 				};
 			}
 			if (hasStudio || hasIntelligence) {
@@ -590,15 +600,16 @@
 	};
 
 	onMount(() => {
-		for (const offer of [
-			BILLING_OFFERS.studioMonthly,
-			BILLING_OFFERS.intelligenceMonthly,
-			BILLING_OFFERS.bothMonthly
-		]) {
-			trackBillingOfferEvent('billing_offer_impression', offer.offerId);
-		}
-
 		const url = new URL(window.location.href);
+		if (!isSignedIn || !hasCheckoutIntent) {
+			for (const offer of [
+				BILLING_OFFERS.studioMonthly,
+				BILLING_OFFERS.intelligenceMonthly,
+				BILLING_OFFERS.bothMonthly
+			]) {
+				trackBillingOfferEvent('billing_offer_impression', offer.offerId);
+			}
+		}
 		// Auto-open checkout only when the user is returning from the OAuth flow
 		// with an explicit `intent=checkout` marker. A bare `?plan=...` URL is
 		// treated as a pricing anchor, not a checkout command.

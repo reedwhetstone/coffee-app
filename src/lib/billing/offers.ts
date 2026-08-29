@@ -96,3 +96,12 @@ export function hasInteractiveBillingSubscription(
 		)
 	);
 }
+
+export function hasBundledBillingSubscription(
+	subscriptions: readonly BillingSubscriptionSummary[]
+): boolean {
+	return subscriptions.some((subscription) => {
+		const productFamilies = new Set(subscription.items.map((item) => item.productFamily));
+		return productFamilies.has('membership') && productFamilies.has('ppi_addon');
+	});
+}

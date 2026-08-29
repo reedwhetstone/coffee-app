@@ -98,8 +98,9 @@
 
 - [ ] **Launch the approved self-serve repricing.** Offer Mallard Studio at $3/month,
       Parchment Intelligence at $5/month, and both products in one subscription at
-      $6/month. Give each new self-serve subscription a five-day free trial, close
-      annual plans to new sales, and keep Parchment API pricing and entitlements
+      $6/month. Give an eligible owner one five-day free trial on their first
+      self-serve paid plan, charge ineligible owners immediately, close annual plans
+      to new sales, and keep Parchment API pricing and entitlements
       unchanged. Parchment owns immutable Stripe prices, catalog composition,
       subscription settlement, and prorated Studio / Intelligence / Both transitions;
       coffee-app owns offer presentation, complete checkout intent, account actions,

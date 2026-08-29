@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import { BILLING_OFFERS } from '$lib/billing/offers';
+	import { trackBillingOfferEvent } from '$lib/billing/offerAnalytics';
 	import type { PageAuthView } from '$lib/types/auth.types';
 
 	let { auth } = $props<{
@@ -8,6 +10,16 @@
 	}>();
 
 	let isSignedIn = $derived(auth.isSignedIn);
+
+	onMount(() => {
+		for (const offer of [
+			BILLING_OFFERS.studioMonthly,
+			BILLING_OFFERS.intelligenceMonthly,
+			BILLING_OFFERS.bothMonthly
+		]) {
+			trackBillingOfferEvent('billing_offer_impression', offer.offerId);
+		}
+	});
 
 	function handleSelectPlan(plan: 'studio' | 'api' | 'intelligence' | 'both' | 'enterprise') {
 		if (plan === 'enterprise') {

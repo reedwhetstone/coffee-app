@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	BILLING_OFFERS,
 	getBillingOffer,
+	hasBundledBillingSubscription,
 	hasInteractiveBillingSubscription,
 	purchaseItemsMatchOffer
 } from './offers';
@@ -70,5 +71,19 @@ describe('billing offers', () => {
 		expect(hasInteractiveBillingSubscription([{ items: [{ productFamily: 'ppi_addon' }] }])).toBe(
 			true
 		);
+	});
+
+	it('recognizes a bundle only when both product families share one subscription', () => {
+		expect(
+			hasBundledBillingSubscription([
+				{ items: [{ productFamily: 'membership' }] },
+				{ items: [{ productFamily: 'ppi_addon' }] }
+			])
+		).toBe(false);
+		expect(
+			hasBundledBillingSubscription([
+				{ items: [{ productFamily: 'membership' }, { productFamily: 'ppi_addon' }] }
+			])
+		).toBe(true);
 	});
 });
