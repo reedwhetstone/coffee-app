@@ -23,8 +23,7 @@ const dataMocks = vi.hoisted(() => ({
 	processGreenCoffeeData: vi.fn((rows: unknown[]) => rows),
 	stripRoastProfileData: vi.fn((rows: Array<Record<string, unknown>>) =>
 		rows.map((row) => ({ ...row, roast_profiles: [] }))
-	),
-	addToInventory: vi.fn()
+	)
 }));
 
 const parchmentMocks = vi.hoisted(() => {
@@ -37,7 +36,10 @@ const parchmentMocks = vi.hoisted(() => {
 		inventoryUpdate: vi.fn(),
 		inventoryDelete: vi.fn(),
 		createManualBatch: vi.fn(),
-		getManualBatch: vi.fn()
+		getManualBatch: vi.fn(),
+		reserveCatalogBatch: vi.fn(),
+		commitCatalogBatch: vi.fn(),
+		getCatalogBatchStatus: vi.fn()
 	};
 });
 
@@ -51,10 +53,6 @@ vi.mock('$lib/server/greenCoffeeUtils.js', () => ({
 	buildGreenCoffeeQuery: dataMocks.buildGreenCoffeeQuery,
 	processGreenCoffeeData: dataMocks.processGreenCoffeeData,
 	stripRoastProfileData: dataMocks.stripRoastProfileData
-}));
-
-vi.mock('$lib/data/inventory.js', () => ({
-	addToInventory: dataMocks.addToInventory
 }));
 
 vi.mock('$lib/server/parchmentClient', () => ({
@@ -114,7 +112,6 @@ describe('/api/beans Portfolio entitlement gating', () => {
 			memberAccess: false
 		});
 		authMocks.getUserRoles.mockResolvedValue(['viewer']);
-		dataMocks.addToInventory.mockResolvedValue({ id: 1 });
 		parchmentMocks.inventoryUpdate.mockResolvedValue({
 			data: {
 				data: {
@@ -143,7 +140,10 @@ describe('/api/beans Portfolio entitlement gating', () => {
 				update: parchmentMocks.inventoryUpdate,
 				delete: parchmentMocks.inventoryDelete,
 				createManualBatch: parchmentMocks.createManualBatch,
-				getManualBatch: parchmentMocks.getManualBatch
+				getManualBatch: parchmentMocks.getManualBatch,
+				reserveCatalogBatch: parchmentMocks.reserveCatalogBatch,
+				commitCatalogBatch: parchmentMocks.commitCatalogBatch,
+				getCatalogBatchStatus: parchmentMocks.getCatalogBatchStatus
 			}
 		});
 		parchmentMocks.fetchParchmentInventoryProjection.mockResolvedValue([]);
@@ -176,6 +176,42 @@ describe('/api/beans Portfolio entitlement gating', () => {
 			...batchResult,
 			response: new Response(null, { status: 200 })
 		});
+		const catalogBatchId = '00000000-0000-4000-8000-000000000010';
+		const acceptedCatalogBatch = {
+			data: {
+				data: {
+					batchId: catalogBatchId,
+					status: 'accepted',
+					result: null,
+					error: null,
+					updatedAt: '2026-08-29T16:00:00.000Z'
+				}
+			},
+			response: new Response(null, { status: 201 })
+		};
+		const completedCatalogBatch = {
+			data: {
+				data: {
+					batchId: catalogBatchId,
+					status: 'completed',
+					result: {
+						batchId: catalogBatchId,
+						items: [
+							{
+								rowId: '00000000-0000-4000-8000-000000000011',
+								inventoryId: 42
+							}
+						]
+					},
+					error: null,
+					updatedAt: '2026-08-29T16:00:01.000Z'
+				}
+			},
+			response: new Response(null, { status: 200 })
+		};
+		parchmentMocks.reserveCatalogBatch.mockResolvedValue(acceptedCatalogBatch);
+		parchmentMocks.commitCatalogBatch.mockResolvedValue(completedCatalogBatch);
+		parchmentMocks.getCatalogBatchStatus.mockResolvedValue(completedCatalogBatch);
 	});
 
 	it('requires Parchment Intelligence or Mallard Studio access for user-owned reads', async () => {
@@ -330,7 +366,7 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		expect(post.status).toBe(403);
 		expect(put.status).toBe(403);
 		expect(del.status).toBe(403);
-		expect(dataMocks.addToInventory).not.toHaveBeenCalled();
+		expect(parchmentMocks.reserveCatalogBatch).not.toHaveBeenCalled();
 		expect(parchmentMocks.inventoryUpdate).not.toHaveBeenCalled();
 		expect(parchmentMocks.inventoryDelete).not.toHaveBeenCalled();
 	});
@@ -369,7 +405,6 @@ describe('/api/beans Portfolio entitlement gating', () => {
 			idempotencyKey: batchId
 		});
 		expect(event.locals.supabase.from).not.toHaveBeenCalled();
-		expect(dataMocks.addToInventory).not.toHaveBeenCalled();
 		expect(await response.json()).toEqual([
 			expect.objectContaining({
 				id: 42,
@@ -402,63 +437,24 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		expect(parchmentMocks.createManualBatch).not.toHaveBeenCalled();
 	});
 
-	it('preserves the full legacy scalar manual compatibility contract', async () => {
-		const catalogInsertQuery = {
-			insert: vi.fn(() => catalogInsertQuery),
-			select: vi.fn(() => catalogInsertQuery),
-			eq: vi.fn(() => catalogInsertQuery),
-			single: vi.fn(async () => ({ data: { id: 99 }, error: null }))
-		};
+	it('rejects the retired scalar create contract without writing Supabase', async () => {
 		const event = makeEvent('/api/beans', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				manual_name: 'Legacy private lot',
-				purchase_date: '2026-07-28',
-				purchased_qty_lbs: 2,
-				bean_cost: 18,
-				tax_ship_cost: 1.25,
-				region: 'Huila',
-				rank: 4,
-				stocked: false,
-				cupping_notes: { aroma: 8 },
-				price_per_lb: 9.5,
-				price_tiers: [{ min_lbs: 1, price: 9.5 }],
-				ai_description: 'Floral and sweet',
-				ai_tasting_notes: ['Peach', 'Jasmine']
+				purchased_qty_lbs: 2
 			})
 		});
-		event.locals.supabase.from = vi.fn(() => catalogInsertQuery);
-		dataMocks.addToInventory.mockResolvedValueOnce({ id: 42, catalog_id: 99 });
 		const response = await POST(event as never);
 
-		expect(response.status).toBe(200);
-		expect(catalogInsertQuery.insert).toHaveBeenCalledWith(
-			expect.objectContaining({
-				name: 'Legacy private lot',
-				coffee_user: 'ppi-user',
-				public_coffee: false,
-				region: 'Huila',
-				cupping_notes: { aroma: 8 },
-				price_per_lb: 9.5,
-				price_tiers: [{ min_lbs: 1, price: 9.5 }],
-				ai_description: 'Floral and sweet',
-				ai_tasting_notes: ['Peach', 'Jasmine']
-			})
-		);
-		expect(dataMocks.addToInventory).toHaveBeenCalledWith(event.locals.supabase, 'ppi-user', {
-			catalog_id: 99,
-			rank: 4,
-			notes: undefined,
-			purchase_date: '2026-07-28',
-			purchased_qty_lbs: 2,
-			bean_cost: 18,
-			tax_ship_cost: 1.25,
-			stocked: false,
-			cupping_notes: { aroma: 8 }
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({
+			error: 'A catalog or manual inventory batch is required'
 		});
+		expect(event.locals.supabase.from).not.toHaveBeenCalled();
 		expect(parchmentMocks.createManualBatch).not.toHaveBeenCalled();
-		expect(await response.json()).toEqual(expect.objectContaining({ id: 42, catalog_id: 99 }));
+		expect(parchmentMocks.reserveCatalogBatch).not.toHaveBeenCalled();
 	});
 
 	it('reconciles an uncertain manual batch through its durable batch UUID', async () => {
@@ -511,7 +507,7 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		expect(response.status).toBe(500);
 		expect(await response.json()).toEqual({
 			data: [],
-			error: 'Failed to reconcile manual inventory batch'
+			error: 'Failed to reconcile inventory batch'
 		});
 	});
 
@@ -571,28 +567,50 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		});
 	});
 
-	it('keeps catalog-backed creation on the existing path', async () => {
-		const catalogQuery = {
-			select: vi.fn(() => catalogQuery),
-			eq: vi.fn(() => catalogQuery),
-			single: vi.fn(async () => ({ data: { id: 7 }, error: null }))
+	it('reserves one catalog batch through the session SDK without reading Supabase', async () => {
+		const batchId = '00000000-0000-4000-8000-000000000010';
+		const body = {
+			batchId,
+			purchaseDate: '2026-08-29',
+			taxShipTotal: 5.01,
+			items: [
+				{
+					rowId: '00000000-0000-4000-8000-000000000011',
+					catalogId: 7,
+					qty: 5,
+					cost: 40
+				}
+			]
 		};
 		const event = makeEvent('/api/beans', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ catalog_id: 7, purchased_qty_lbs: 5 })
+			body: JSON.stringify(body)
 		});
-		event.locals.supabase.from = vi.fn(() => catalogQuery);
 
 		const response = await POST(event as never);
 
-		expect(response.status).toBe(200);
+		expect(response.status).toBe(201);
+		expect(parchmentMocks.reserveCatalogBatch).toHaveBeenCalledWith(body);
 		expect(parchmentMocks.createManualBatch).not.toHaveBeenCalled();
-		expect(dataMocks.addToInventory).toHaveBeenCalledWith(
-			event.locals.supabase,
-			'ppi-user',
-			expect.objectContaining({ catalog_id: 7, purchased_qty_lbs: 5 })
+		expect(event.locals.supabase.from).not.toHaveBeenCalled();
+		expect(await response.json()).toMatchObject({ batchId, status: 'accepted' });
+	});
+
+	it('commits and reconciles a catalog batch through its durable UUID', async () => {
+		const batchId = '00000000-0000-4000-8000-000000000010';
+
+		const commit = await POST(
+			makeEvent(`/api/beans?catalogBatchId=${batchId}`, { method: 'POST' }) as never
 		);
+		const status = await GET(makeEvent(`/api/beans?catalogBatchId=${batchId}`) as never);
+
+		expect(commit.status).toBe(200);
+		expect(status.status).toBe(200);
+		expect(parchmentMocks.commitCatalogBatch).toHaveBeenCalledWith(batchId);
+		expect(parchmentMocks.getCatalogBatchStatus).toHaveBeenCalledWith(batchId);
+		expect(await commit.json()).toMatchObject({ batchId, status: 'completed' });
+		expect(await status.json()).toMatchObject({ batchId, status: 'completed' });
 	});
 
 	it('updates inventory through the canonical SDK mutation with optimistic concurrency', async () => {

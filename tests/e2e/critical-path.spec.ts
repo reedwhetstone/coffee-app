@@ -50,18 +50,25 @@ test.describe.serial('Critical business workflow', () => {
 	// -------------------------------------------------------------------------
 
 	test('create a bean via API', async ({ request }) => {
+		const batchId = crypto.randomUUID();
 		const resp = await request.post('/api/beans', {
+			headers: { 'Idempotency-Key': batchId },
 			data: {
-				manual_name: testBeanName,
-				purchase_date: new Date().toISOString().split('T')[0],
-				purchased_qty_lbs: 5,
-				bean_cost: 25,
-				tax_ship_cost: 0
+				purchaseDate: new Date().toISOString().split('T')[0],
+				taxShipTotal: 0,
+				items: [
+					{
+						rowId: crypto.randomUUID(),
+						manualCoffee: { name: testBeanName },
+						qty: 5,
+						cost: 25
+					}
+				]
 			}
 		});
 		expect(resp.status()).toBeLessThan(400);
 		const body = await resp.json();
-		testBeanId = body.id ?? body.data?.[0]?.id ?? null;
+		testBeanId = body[0]?.id ?? null;
 		expect(testBeanId).toBeTruthy();
 	});
 

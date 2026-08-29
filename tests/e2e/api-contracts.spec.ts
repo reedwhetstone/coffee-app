@@ -144,23 +144,28 @@ test.describe('GET endpoints return expected shapes', () => {
 test.describe('POST /api/beans — create inventory', () => {
 	test.use({ storageState: 'tests/e2e/.auth/user.json' });
 
-	test('creates a bean with manual_name and returns the new inventory item', async ({
-		request
-	}) => {
+	test('creates a bean through one atomic manual batch', async ({ request }) => {
+		const batchId = crypto.randomUUID();
 		const resp = await request.post('/api/beans', {
+			headers: { 'Idempotency-Key': batchId },
 			data: {
-				manual_name: `API_TEST_BEAN_${Date.now()}`,
-				purchase_date: new Date().toISOString().split('T')[0],
-				purchased_qty_lbs: 2,
-				bean_cost: 18,
-				tax_ship_cost: 0
+				purchaseDate: new Date().toISOString().split('T')[0],
+				taxShipTotal: 0,
+				items: [
+					{
+						rowId: crypto.randomUUID(),
+						manualCoffee: { name: `API_TEST_BEAN_${Date.now()}` },
+						qty: 2,
+						cost: 18
+					}
+				]
 			}
 		});
 		expect(resp.status()).toBeLessThan(400);
 		const body = await resp.json();
 		expect(body).toBeTruthy();
 		expect(typeof body).toBe('object');
-		testBeanId = body.id ?? body.data?.[0]?.id ?? null;
+		testBeanId = body[0]?.id ?? null;
 		expect(testBeanId).toBeTruthy();
 	});
 });

@@ -1509,7 +1509,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Mutation behavior',
 				bullets: [
-					'POST /api/beans keeps catalog-backed creation and the legacy scalar manual payload on their compatibility paths, while the coffee-app form sends manual multi-row purchases through one atomic Parchment batch. Batch creation and GET /api/beans?manualBatchId=<uuid> both require a Parchment Intelligence or Mallard Studio session; after an uncertain response, that GET reconciles the durable batch result.',
+					'POST /api/beans sends both manual and catalog-backed purchases through atomic Parchment batches. Manual batches use an Idempotency-Key header and GET /api/beans?manualBatchId=<uuid> reconciliation; catalog batches reserve complete intent once, then use POST and GET /api/beans?catalogBatchId=<uuid> for safe commit and durable status reconciliation. Shared tax and shipping is allocated in exact cents by Parchment.',
 					'PUT /api/beans adapts the web form into the owner-scoped Parchment inventory contract and accepts an If-Match precondition for conflict-safe updates.',
 					'DELETE /api/beans requires an id query parameter and enforces ownership. Deletion is blocked while roast profiles or sales depend on the inventory item.'
 				],
