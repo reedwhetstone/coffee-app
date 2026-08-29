@@ -47,7 +47,7 @@ describe('repricing presentation contract', () => {
 		);
 	});
 
-	it('keeps the everyday plan comparison separate from API and Enterprise access', () => {
+	it('presents self-serve, API, and Enterprise options in customer language', () => {
 		const pricing = readSource('src/lib/components/marketing/Pricing.svelte');
 		const subscription = readSource('src/routes/subscription/+page.svelte');
 		const api = readSource('src/routes/api/+page.svelte');
@@ -58,7 +58,10 @@ describe('repricing presentation contract', () => {
 		expect(pricing).not.toContain("handleSelectPlan('enterprise')");
 		expect(subscription).toContain('selfServeProductCards');
 		expect(subscription).toContain('id="api-plans"');
-		expect(subscription).toContain('A separate path for different users');
+		expect(subscription).toContain('Build with Purveyors or tailor it to your business');
+		expect(subscription).not.toMatch(
+			/stay separate below|stay out of the everyday product comparison/
+		);
 		expect(api).toContain('id="plans"');
 		expect(api).toContain('$99/month');
 	});

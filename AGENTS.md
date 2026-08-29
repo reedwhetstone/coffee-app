@@ -235,6 +235,11 @@ Deprecated `/api/tools/*` routes still exist for compatibility. Prefer direct se
 - Favor maintainable shared components over one-off static pages when multiple docs pages need the same layout
 - Keep changes tightly scoped to the problem at hand; avoid unrelated product edits in docs or contributor PRs
 
+### Customer-facing copy
+
+- Never expose agent or user dialogue, prompt instructions, implementation rationale, layout narration, or internal decision notes in production copy. Phrases such as “keep this separate below” describe our process, not customer value. Rewrite the underlying idea as a direct customer benefit or omit it.
+- Before submitting public UI or marketing changes, read the rendered copy by itself and remove any sentence that sounds like a command to the implementer, a note about page structure, or an explanation of why the team arranged the interface a certain way.
+
 ## Auth and data safety
 
 - Preserve role checks and ownership checks on member data routes

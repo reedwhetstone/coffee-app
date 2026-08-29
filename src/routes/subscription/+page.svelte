@@ -701,8 +701,8 @@
 							Choose the plan that fits your work.
 						</h1>
 						<p class="mt-4 text-lg leading-8 text-muted">
-							Compare Intelligence, Studio, and the combined plan at a glance. Developer and custom
-							access stay separate below.
+							Choose market intelligence, roastery operations, or both in one discounted
+							subscription.
 						</p>
 					</div>
 					{#if !isSignedIn}
@@ -915,14 +915,15 @@
 					<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
 						<div>
 							<p class="text-xs font-semibold uppercase tracking-wide text-accent">
-								Developer & custom access
+								For developers and larger teams
 							</p>
 							<h2 class="mt-2 text-2xl font-semibold text-ink">
-								A separate path for different users
+								Build with Purveyors or tailor it to your business
 							</h2>
 						</div>
 						<p class="max-w-xl text-sm leading-6 text-muted sm:text-right">
-							API access and tailored commercial work stay out of the everyday product comparison.
+							Use the API in your applications and workflows, or talk with us about custom data
+							delivery and support.
 						</p>
 					</div>
 
