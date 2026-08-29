@@ -17,7 +17,11 @@ describe('/api/beans inventory mutation boundary', () => {
 
 		expect(createHandler).toContain('reserveParchmentCatalogInventoryBatch');
 		expect(createHandler).toContain('commitParchmentCatalogInventoryBatch');
-		expect(createHandler).toContain('createParchmentManualInventoryBatch');
+		expect(createHandler).toContain('reserveParchmentManualInventoryBatch');
+		expect(createHandler).toContain('commitParchmentManualInventoryBatch');
+		expect(routeSource).toContain('getParchmentManualInventoryBatchStatus');
+		expect(routeSource).not.toContain('createParchmentManualInventoryBatch');
+		expect(routeSource).not.toContain('getParchmentManualInventoryBatch(');
 		expect(createHandler).not.toContain('supabase');
 		expect(createHandler).not.toContain('addToInventory');
 		expect(routeSource).not.toContain('$lib/data/inventory');

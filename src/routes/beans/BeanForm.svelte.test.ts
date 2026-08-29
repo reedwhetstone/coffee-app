@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CatalogInventoryBatchLifecycle } from '@purveyors/sdk';
+import type { CatalogInventoryBatchLifecycle, components } from '@purveyors/sdk';
 import type { CoffeeCatalog } from '$lib/types/component.types';
 import BeanForm from './BeanForm.svelte';
 
@@ -44,6 +44,16 @@ function requestPayload(fetchMock: ReturnType<typeof vi.fn>, call: number) {
 	return JSON.parse(String(options.body)) as Record<string, unknown>;
 }
 
+function storedReservation(storageKey: string): Record<string, unknown> {
+	const stored = sessionStorage.getItem(storageKey);
+	expect(stored).not.toBeNull();
+	return (JSON.parse(String(stored)) as { request: Record<string, unknown> }).request;
+}
+
+function storeReservation(storageKey: string, request: Record<string, unknown>) {
+	sessionStorage.setItem(storageKey, JSON.stringify({ version: 1, request }));
+}
+
 async function fillManualRows(names: string[]) {
 	const nameInputs = screen.getAllByLabelText('Coffee Name');
 	const quantityInputs = screen.getAllByLabelText('Purchased Quantity (lbs)');
@@ -68,6 +78,30 @@ function lifecycle(
 		error:
 			status === 'terminal_rejected'
 				? { code: 'catalog_unavailable', message: 'Catalog lot is no longer available' }
+				: null,
+		updatedAt: '2026-08-29T15:00:00.000Z'
+	};
+}
+
+type ManualInventoryBatchLifecycle = components['schemas']['ManualInventoryBatchLifecycle'];
+
+function manualLifecycle(
+	batchId: string,
+	status: ManualInventoryBatchLifecycle['status']
+): ManualInventoryBatchLifecycle {
+	return {
+		batchId,
+		status,
+		result:
+			status === 'completed'
+				? {
+						batchId,
+						items: [{ rowId: UUIDS[1], resource: { id: 41 } as never }]
+					}
+				: null,
+		error:
+			status === 'terminal_rejected'
+				? { code: 'invalid_manual_batch', message: 'Manual batch is no longer valid' }
 				: null,
 		updatedAt: '2026-08-29T15:00:00.000Z'
 	};
@@ -98,19 +132,22 @@ describe('BeanForm atomic manual inventory batches', () => {
 		sessionStorage.clear();
 	});
 
-	it('submits every manual row once with one batch UUID and a shared exact-cent total', async () => {
+	it('reserves complete intent, commits once, and refreshes only after completion', async () => {
 		vi.spyOn(globalThis.crypto, 'randomUUID')
 			.mockReturnValueOnce(UUIDS[0])
 			.mockReturnValueOnce(UUIDS[1])
 			.mockReturnValueOnce(UUIDS[2]);
-		const created = [{ id: 41 }, { id: 42 }];
-		const fetchMock = vi.fn().mockResolvedValue(response(201, created));
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response(201, manualLifecycle(UUIDS[0], 'accepted')))
+			.mockResolvedValueOnce(response(200, manualLifecycle(UUIDS[0], 'completed')));
 		vi.stubGlobal('fetch', fetchMock);
 		const onSubmit = vi.fn();
+		const onClose = vi.fn();
 
 		const { container } = render(BeanForm, {
 			bean: null,
-			onClose: vi.fn(),
+			onClose,
 			onSubmit,
 			catalogBeans: [],
 			ownerId: 'user-a'
@@ -123,16 +160,14 @@ describe('BeanForm atomic manual inventory batches', () => {
 
 		expect(screen.getByRole('button', { name: 'Add 2 Beans' })).toHaveAttribute('type', 'button');
 		await fireEvent.submit(container.querySelector('form')!);
-		await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 
 		const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
 		expect(url).toBe('/api/beans');
 		expect(options.method).toBe('POST');
-		expect(options.headers).toEqual({
-			'Content-Type': 'application/json',
-			'Idempotency-Key': UUIDS[0]
-		});
+		expect(options.headers).toEqual({ 'Content-Type': 'application/json' });
 		expect(requestPayload(fetchMock, 0)).toMatchObject({
+			batchId: UUIDS[0],
 			taxShipTotal: 5.01,
 			items: [
 				{
@@ -149,7 +184,13 @@ describe('BeanForm atomic manual inventory batches', () => {
 				}
 			]
 		});
-		expect(onSubmit).toHaveBeenCalledWith(created);
+		expect(fetchMock.mock.calls[1]).toEqual([
+			`/api/beans?manualBatchId=${UUIDS[0]}`,
+			{ method: 'POST' }
+		]);
+		expect(onSubmit).toHaveBeenCalledWith([]);
+		expect(onClose).toHaveBeenCalledOnce();
+		expect(sessionStorage.getItem('purveyors:pending-manual-inventory-batch:user-a')).toBeNull();
 	});
 
 	it('shows exact-cent Parchment allocation copy for both batch types', async () => {
@@ -177,19 +218,62 @@ describe('BeanForm atomic manual inventory batches', () => {
 		).toBeInTheDocument();
 	});
 
-	it('locks the draft after an uncertain batch instead of allowing edits before reconciliation', async () => {
+	it('retries an uncertain reservation with the exact in-memory request and durable UUID', async () => {
 		vi.spyOn(globalThis.crypto, 'randomUUID')
 			.mockReturnValueOnce(UUIDS[0])
-			.mockReturnValueOnce(UUIDS[1])
-			.mockReturnValueOnce(UUIDS[2]);
-		const committed = [{ id: 41 }, { id: 42 }];
+			.mockReturnValueOnce(UUIDS[1]);
 		const fetchMock = vi
 			.fn()
-			.mockResolvedValueOnce(response(503, { error: 'Response was uncertain' }))
-			.mockResolvedValueOnce(response(200, committed));
+			.mockRejectedValueOnce(new TypeError('Network response was lost'))
+			.mockResolvedValueOnce(response(201, manualLifecycle(UUIDS[0], 'accepted')))
+			.mockResolvedValueOnce(response(200, manualLifecycle(UUIDS[0], 'completed')));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { container } = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: [],
+			ownerId: 'user-a'
+		});
+		await fillManualRows(['Uncertain lot']);
+
+		const form = container.querySelector('form')!;
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+		expect(screen.getByRole('status')).toHaveTextContent('manual batch is unresolved');
+		expect(storedReservation('purveyors:pending-manual-inventory-batch:user-a')).toEqual(
+			requestPayload(fetchMock, 0)
+		);
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+
+		expect(fetchMock.mock.calls[0][0]).toBe('/api/beans');
+		expect(fetchMock.mock.calls[1][0]).toBe('/api/beans');
+		expect(requestPayload(fetchMock, 1)).toEqual(requestPayload(fetchMock, 0));
+	});
+
+	it('retries the persisted manual reservation envelope after remount', async () => {
+		const request = {
+			batchId: UUIDS[0],
+			purchaseDate: '2026-08-29',
+			taxShipTotal: 5.01,
+			items: [
+				{
+					rowId: UUIDS[1],
+					manualCoffee: { name: 'Persisted manual lot' },
+					qty: 2,
+					cost: 20
+				}
+			]
+		};
+		storeReservation('purveyors:pending-manual-inventory-batch:user-a', request);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response(201, manualLifecycle(UUIDS[0], 'accepted')))
+			.mockResolvedValueOnce(response(200, manualLifecycle(UUIDS[0], 'completed')));
 		vi.stubGlobal('fetch', fetchMock);
 		const onSubmit = vi.fn();
-
 		const { container } = render(BeanForm, {
 			bean: null,
 			onClose: vi.fn(),
@@ -197,109 +281,102 @@ describe('BeanForm atomic manual inventory batches', () => {
 			catalogBeans: [],
 			ownerId: 'user-a'
 		});
-		await fireEvent.click(screen.getAllByRole('button', { name: /Add Bean/ })[0]);
-		await fillManualRows(['Committed first lot', 'Committed second lot']);
 
-		const form = container.querySelector('form')!;
-		await fireEvent.submit(form);
-		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-		expect(screen.getByRole('status')).toHaveTextContent(
-			'Editing is locked until it is reconciled'
+		await waitFor(() =>
+			expect(screen.getByRole('status')).toHaveTextContent('exact reservation can be retried')
 		);
-		expect(screen.getAllByLabelText('Coffee Name')[0]).toBeDisabled();
-		await fireEvent.submit(form);
+		await fireEvent.submit(container.querySelector('form')!);
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 
-		expect(fetchMock.mock.calls[1][0]).toBe(`/api/beans?manualBatchId=${UUIDS[0]}`);
-		expect(fetchMock.mock.calls[1][1]).toBeUndefined();
-		expect(
-			fetchMock.mock.calls.filter(
-				([, options]) => (options as RequestInit | undefined)?.method === 'POST'
-			)
-		).toHaveLength(1);
-		expect(onSubmit).toHaveBeenCalledWith(committed);
+		expect(fetchMock.mock.calls[0][0]).toBe('/api/beans');
+		expect(requestPayload(fetchMock, 0)).toEqual(request);
+		expect(fetchMock.mock.calls[1]).toEqual([
+			`/api/beans?manualBatchId=${UUIDS[0]}`,
+			{ method: 'POST' }
+		]);
+		expect(onSubmit).toHaveBeenCalledWith([]);
+		expect(sessionStorage.getItem('purveyors:pending-manual-inventory-batch:user-a')).toBeNull();
 	});
 
-	it('reconciles the same uncertain batch after the form is canceled and reopened', async () => {
-		vi.spyOn(globalThis.crypto, 'randomUUID')
-			.mockReturnValueOnce(UUIDS[0])
-			.mockReturnValueOnce(UUIDS[1]);
-		const committed = [{ id: 41 }];
+	it('reconciles a persisted UUID after reload and keeps unknown nonterminal', async () => {
+		sessionStorage.setItem('purveyors:pending-manual-inventory-batch:user-a', UUIDS[0]);
 		const fetchMock = vi
 			.fn()
-			.mockResolvedValueOnce(response(503, { error: 'Response was uncertain' }))
-			.mockResolvedValueOnce(response(200, committed));
+			.mockResolvedValue(response(200, manualLifecycle(UUIDS[0], 'unknown')));
 		vi.stubGlobal('fetch', fetchMock);
-		const firstClose = vi.fn();
-
-		const first = render(BeanForm, {
+		const onSubmit = vi.fn();
+		const onClose = vi.fn();
+		const { container } = render(BeanForm, {
 			bean: null,
-			onClose: firstClose,
-			onSubmit: vi.fn(),
+			onClose,
+			onSubmit,
 			catalogBeans: [],
 			ownerId: 'user-a'
 		});
-		await fillManualRows(['Committed lot']);
-		await fireEvent.submit(first.container.querySelector('form')!);
-		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-		await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-		expect(firstClose).toHaveBeenCalledOnce();
-		first.unmount();
+		await waitFor(() =>
+			expect(screen.getByRole('status')).toHaveTextContent('reserved in Parchment')
+		);
+		expect(screen.getByLabelText('Coffee Name')).toBeDisabled();
+		await fireEvent.submit(container.querySelector('form')!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
 
+		expect(fetchMock.mock.calls[0]).toEqual([`/api/beans?manualBatchId=${UUIDS[0]}`]);
+		expect(sessionStorage.getItem('purveyors:pending-manual-inventory-batch:user-a')).toBe(
+			UUIDS[0]
+		);
+		expect(onSubmit).not.toHaveBeenCalled();
+		expect(onClose).not.toHaveBeenCalled();
+	});
+
+	it('commits an accepted persisted batch after reload', async () => {
+		sessionStorage.setItem('purveyors:pending-manual-inventory-batch:user-a', UUIDS[0]);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response(200, manualLifecycle(UUIDS[0], 'accepted')))
+			.mockResolvedValueOnce(response(200, manualLifecycle(UUIDS[0], 'completed')));
+		vi.stubGlobal('fetch', fetchMock);
 		const onSubmit = vi.fn();
-		const reopened = render(BeanForm, {
+		const { container } = render(BeanForm, {
 			bean: null,
 			onClose: vi.fn(),
 			onSubmit,
 			catalogBeans: [],
 			ownerId: 'user-a'
 		});
-		expect(screen.getByRole('status')).toHaveTextContent(
-			'Editing is locked until it is reconciled'
-		);
-		expect(screen.getByLabelText('Coffee Name')).toBeDisabled();
-		await fireEvent.submit(reopened.container.querySelector('form')!);
-		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 
-		expect(fetchMock.mock.calls[1][0]).toBe(`/api/beans?manualBatchId=${UUIDS[0]}`);
-		expect(
-			fetchMock.mock.calls.filter(
-				([, options]) => (options as RequestInit | undefined)?.method === 'POST'
-			)
-		).toHaveLength(1);
-		expect(onSubmit).toHaveBeenCalledWith(committed);
+		await fireEvent.submit(container.querySelector('form')!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+		expect(fetchMock.mock.calls[0]).toEqual([`/api/beans?manualBatchId=${UUIDS[0]}`]);
+		expect(fetchMock.mock.calls[1]).toEqual([
+			`/api/beans?manualBatchId=${UUIDS[0]}`,
+			{ method: 'POST' }
+		]);
+		expect(onSubmit).toHaveBeenCalledWith([]);
+		expect(sessionStorage.getItem('purveyors:pending-manual-inventory-batch:user-a')).toBeNull();
 	});
 
-	it('isolates pending batches between owners in the same tab', async () => {
+	it('isolates persisted batches between owners in the same tab', async () => {
+		const ownerARequest = {
+			batchId: UUIDS[0],
+			items: [
+				{
+					rowId: UUIDS[3],
+					manualCoffee: { name: 'Owner A lot' },
+					qty: 1
+				}
+			]
+		};
+		storeReservation('purveyors:pending-manual-inventory-batch:user-a', ownerARequest);
 		vi.spyOn(globalThis.crypto, 'randomUUID')
-			.mockReturnValueOnce(UUIDS[0])
 			.mockReturnValueOnce(UUIDS[1])
-			.mockReturnValueOnce(UUIDS[2])
-			.mockReturnValueOnce(UUIDS[3]);
+			.mockReturnValueOnce(UUIDS[2]);
 		const fetchMock = vi
 			.fn()
-			.mockResolvedValueOnce(response(503, { error: 'Response was uncertain' }))
-			.mockResolvedValueOnce(response(201, [{ id: 42 }]))
-			.mockResolvedValueOnce(response(200, [{ id: 41 }]));
+			.mockResolvedValueOnce(response(201, manualLifecycle(UUIDS[1], 'accepted')))
+			.mockResolvedValueOnce(response(200, manualLifecycle(UUIDS[1], 'completed')));
 		vi.stubGlobal('fetch', fetchMock);
-
-		const ownerA = render(BeanForm, {
-			bean: null,
-			onClose: vi.fn(),
-			onSubmit: vi.fn(),
-			catalogBeans: [],
-			ownerId: 'user-a'
-		});
-		await fillManualRows(['Owner A lot']);
-		await fireEvent.submit(ownerA.container.querySelector('form')!);
-		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-		expect(sessionStorage.getItem('purveyors:pending-manual-inventory-batch:user-a')).toBe(
-			UUIDS[0]
-		);
-		ownerA.unmount();
-
 		const ownerBSubmit = vi.fn();
-		const ownerB = render(BeanForm, {
+		render(BeanForm, {
 			bean: null,
 			onClose: vi.fn(),
 			onSubmit: ownerBSubmit,
@@ -308,36 +385,18 @@ describe('BeanForm atomic manual inventory batches', () => {
 		});
 		expect(screen.queryByRole('status')).not.toBeInTheDocument();
 		await fillManualRows(['Owner B lot']);
-		await fireEvent.submit(ownerB.container.querySelector('form')!);
+		await fireEvent.submit(document.querySelector('form')!);
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-		expect(fetchMock.mock.calls[1][0]).toBe('/api/beans');
-		expect((fetchMock.mock.calls[1][1] as RequestInit).method).toBe('POST');
-		expect(sessionStorage.getItem('purveyors:pending-manual-inventory-batch:user-a')).toBe(
-			UUIDS[0]
+		expect(fetchMock.mock.calls[0][0]).toBe('/api/beans');
+		expect(requestPayload(fetchMock, 0).batchId).toBe(UUIDS[1]);
+		expect(storedReservation('purveyors:pending-manual-inventory-batch:user-a')).toEqual(
+			ownerARequest
 		);
 		expect(sessionStorage.getItem('purveyors:pending-manual-inventory-batch:user-b')).toBeNull();
-		expect(ownerBSubmit).toHaveBeenCalledWith([{ id: 42 }]);
-		ownerB.unmount();
-
-		const ownerASubmit = vi.fn();
-		const reopenedOwnerA = render(BeanForm, {
-			bean: null,
-			onClose: vi.fn(),
-			onSubmit: ownerASubmit,
-			catalogBeans: [],
-			ownerId: 'user-a'
-		});
-		expect(screen.getByRole('status')).toHaveTextContent(
-			'Editing is locked until it is reconciled'
-		);
-		await fireEvent.submit(reopenedOwnerA.container.querySelector('form')!);
-		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-		expect(fetchMock.mock.calls[2][0]).toBe(`/api/beans?manualBatchId=${UUIDS[0]}`);
-		expect(ownerASubmit).toHaveBeenCalledWith([{ id: 41 }]);
-		expect(sessionStorage.getItem('purveyors:pending-manual-inventory-batch:user-a')).toBeNull();
+		expect(ownerBSubmit).toHaveBeenCalledWith([]);
 	});
 
-	it('uses a fresh batch UUID after a definitive validation rejection', async () => {
+	it('keeps a terminally rejected draft editable and submits corrected intent under a fresh UUID', async () => {
 		vi.spyOn(globalThis.crypto, 'randomUUID')
 			.mockReturnValueOnce(UUIDS[0])
 			.mockReturnValueOnce(UUIDS[1])
@@ -345,8 +404,9 @@ describe('BeanForm atomic manual inventory batches', () => {
 			.mockReturnValueOnce(UUIDS[3]);
 		const fetchMock = vi
 			.fn()
-			.mockResolvedValueOnce(response(400, { error: 'Invalid manual batch' }))
-			.mockResolvedValueOnce(response(201, [{ id: 42 }]));
+			.mockResolvedValueOnce(response(201, manualLifecycle(UUIDS[0], 'terminal_rejected')))
+			.mockResolvedValueOnce(response(201, manualLifecycle(UUIDS[2], 'accepted')))
+			.mockResolvedValueOnce(response(200, manualLifecycle(UUIDS[2], 'completed')));
 		vi.stubGlobal('fetch', fetchMock);
 
 		const { container } = render(BeanForm, {
@@ -365,29 +425,68 @@ describe('BeanForm atomic manual inventory batches', () => {
 			target: { value: 'Corrected lot' }
 		});
 		await fireEvent.submit(form);
-		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
 
-		const firstHeaders = fetchMock.mock.calls[0][1].headers as Record<string, string>;
-		const secondHeaders = fetchMock.mock.calls[1][1].headers as Record<string, string>;
-		expect(firstHeaders['Idempotency-Key']).toBe(UUIDS[0]);
-		expect(secondHeaders['Idempotency-Key']).toBe(UUIDS[2]);
+		expect(requestPayload(fetchMock, 0).batchId).toBe(UUIDS[0]);
+		expect(requestPayload(fetchMock, 1).batchId).toBe(UUIDS[2]);
 		expect(requestPayload(fetchMock, 1)).toMatchObject({
 			items: [{ rowId: UUIDS[3], manualCoffee: { name: 'Corrected lot' } }]
 		});
+	});
+
+	it('rotates the UUID after a changed-payload conflict', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID')
+			.mockReturnValueOnce(UUIDS[0])
+			.mockReturnValueOnce(UUIDS[1])
+			.mockReturnValueOnce(UUIDS[2])
+			.mockReturnValueOnce(UUIDS[3]);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				response(409, {
+					error: 'Batch UUID belongs to another request',
+					code: 'idempotency_conflict'
+				})
+			)
+			.mockResolvedValueOnce(response(201, manualLifecycle(UUIDS[2], 'accepted')))
+			.mockResolvedValueOnce(response(200, manualLifecycle(UUIDS[2], 'completed')));
+		vi.stubGlobal('fetch', fetchMock);
+		const { container } = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: [],
+			ownerId: 'user-a'
+		});
+		await fillManualRows(['Conflicting lot']);
+		const form = container.querySelector('form')!;
+
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+		expect(screen.getByLabelText('Coffee Name')).not.toBeDisabled();
+		await fireEvent.input(screen.getByLabelText('Coffee Name'), {
+			target: { value: 'Corrected lot' }
+		});
+		await fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+
+		expect(requestPayload(fetchMock, 0).batchId).toBe(UUIDS[0]);
+		expect(requestPayload(fetchMock, 1).batchId).toBe(UUIDS[2]);
 	});
 
 	it.each([
 		[401, { error: 'Session expired' }],
 		[403, { error: 'Access check unavailable' }],
 		[409, { error: 'Batch is still running', code: 'idempotency_in_progress' }]
-	])('retains the batch UUID after retryable reconciliation status %i', async (status, error) => {
+	])('retries the exact reservation after retryable status %i', async (status, error) => {
 		vi.spyOn(globalThis.crypto, 'randomUUID')
 			.mockReturnValueOnce(UUIDS[0])
 			.mockReturnValueOnce(UUIDS[1]);
 		const fetchMock = vi
 			.fn()
 			.mockResolvedValueOnce(response(status, error))
-			.mockResolvedValueOnce(response(200, [{ id: 42 }]));
+			.mockResolvedValueOnce(response(201, manualLifecycle(UUIDS[0], 'accepted')))
+			.mockResolvedValueOnce(response(200, manualLifecycle(UUIDS[0], 'completed')));
 		vi.stubGlobal('fetch', fetchMock);
 
 		const { container } = render(BeanForm, {
@@ -402,14 +501,41 @@ describe('BeanForm atomic manual inventory batches', () => {
 		await fireEvent.submit(form);
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 		await fireEvent.submit(form);
-		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
 
-		expect(fetchMock.mock.calls[1][0]).toBe(`/api/beans?manualBatchId=${UUIDS[0]}`);
-		expect(
-			fetchMock.mock.calls.filter(
-				([, options]) => (options as RequestInit | undefined)?.method === 'POST'
-			)
-		).toHaveLength(1);
+		expect(fetchMock.mock.calls[0][0]).toBe('/api/beans');
+		expect(fetchMock.mock.calls[1][0]).toBe('/api/beans');
+		expect(requestPayload(fetchMock, 1)).toEqual(requestPayload(fetchMock, 0));
+	});
+
+	it('does not overlap reservation requests while one submission is pending', async () => {
+		vi.spyOn(globalThis.crypto, 'randomUUID')
+			.mockReturnValueOnce(UUIDS[0])
+			.mockReturnValueOnce(UUIDS[1]);
+		let resolveReservation!: (value: Response) => void;
+		const reservation = new Promise<Response>((resolve) => {
+			resolveReservation = resolve;
+		});
+		const fetchMock = vi
+			.fn()
+			.mockReturnValueOnce(reservation)
+			.mockResolvedValueOnce(response(200, manualLifecycle(UUIDS[0], 'completed')));
+		vi.stubGlobal('fetch', fetchMock);
+		const { container } = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: [],
+			ownerId: 'user-a'
+		});
+		await fillManualRows(['Overlapping lot']);
+		const form = container.querySelector('form')!;
+
+		void fireEvent.submit(form);
+		void fireEvent.submit(form);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+		resolveReservation(response(201, manualLifecycle(UUIDS[0], 'accepted')));
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 	});
 });
 
@@ -489,9 +615,9 @@ describe('BeanForm atomic catalog inventory batches', () => {
 		const form = container.querySelector('form')!;
 		await fireEvent.submit(form);
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-		expect(screen.getByRole('status')).toHaveTextContent('reservation response was uncertain');
-		expect(sessionStorage.getItem('purveyors:pending-catalog-inventory-batch:user-a')).toBe(
-			UUIDS[0]
+		expect(screen.getByRole('status')).toHaveTextContent('catalog batch is unresolved');
+		expect(storedReservation('purveyors:pending-catalog-inventory-batch:user-a')).toEqual(
+			requestPayload(fetchMock, 0)
 		);
 
 		await fireEvent.submit(form);
@@ -499,6 +625,44 @@ describe('BeanForm atomic catalog inventory batches', () => {
 		expect(fetchMock.mock.calls[0][0]).toBe('/api/beans');
 		expect(fetchMock.mock.calls[1][0]).toBe('/api/beans');
 		expect(requestPayload(fetchMock, 1)).toEqual(requestPayload(fetchMock, 0));
+	});
+
+	it('retries the persisted catalog reservation envelope after remount', async () => {
+		const request = {
+			batchId: UUIDS[0],
+			purchaseDate: '2026-08-29',
+			taxShipTotal: 5.01,
+			items: [{ rowId: UUIDS[1], catalogId: 101, qty: 2, cost: 10 }]
+		};
+		storeReservation('purveyors:pending-catalog-inventory-batch:user-a', request);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response(201, lifecycle(UUIDS[0], 'in_progress')))
+			.mockResolvedValueOnce(response(200, lifecycle(UUIDS[0], 'completed')));
+		vi.stubGlobal('fetch', fetchMock);
+		const onSubmit = vi.fn();
+		const { container } = render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit,
+			catalogBeans: CATALOG_BEANS,
+			ownerId: 'user-a'
+		});
+
+		await waitFor(() =>
+			expect(screen.getByRole('status')).toHaveTextContent('exact reservation can be retried')
+		);
+		await fireEvent.submit(container.querySelector('form')!);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+		expect(fetchMock.mock.calls[0][0]).toBe('/api/beans');
+		expect(requestPayload(fetchMock, 0)).toEqual(request);
+		expect(fetchMock.mock.calls[1]).toEqual([
+			`/api/beans?catalogBatchId=${UUIDS[0]}`,
+			{ method: 'POST' }
+		]);
+		expect(onSubmit).toHaveBeenCalledWith([]);
+		expect(sessionStorage.getItem('purveyors:pending-catalog-inventory-batch:user-a')).toBeNull();
 	});
 
 	it('reconciles a persisted UUID after reload and keeps unknown nonterminal', async () => {

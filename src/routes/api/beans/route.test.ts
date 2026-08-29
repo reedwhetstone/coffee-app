@@ -35,8 +35,9 @@ const parchmentMocks = vi.hoisted(() => {
 		fetchParchmentInventoryProjection: vi.fn(),
 		inventoryUpdate: vi.fn(),
 		inventoryDelete: vi.fn(),
-		createManualBatch: vi.fn(),
-		getManualBatch: vi.fn(),
+		reserveManualBatch: vi.fn(),
+		commitManualBatch: vi.fn(),
+		getManualBatchStatus: vi.fn(),
 		reserveCatalogBatch: vi.fn(),
 		commitCatalogBatch: vi.fn(),
 		getCatalogBatchStatus: vi.fn()
@@ -139,43 +140,51 @@ describe('/api/beans Portfolio entitlement gating', () => {
 			inventory: {
 				update: parchmentMocks.inventoryUpdate,
 				delete: parchmentMocks.inventoryDelete,
-				createManualBatch: parchmentMocks.createManualBatch,
-				getManualBatch: parchmentMocks.getManualBatch,
+				reserveManualBatch: parchmentMocks.reserveManualBatch,
+				commitManualBatch: parchmentMocks.commitManualBatch,
+				getManualBatchStatus: parchmentMocks.getManualBatchStatus,
 				reserveCatalogBatch: parchmentMocks.reserveCatalogBatch,
 				commitCatalogBatch: parchmentMocks.commitCatalogBatch,
 				getCatalogBatchStatus: parchmentMocks.getCatalogBatchStatus
 			}
 		});
 		parchmentMocks.fetchParchmentInventoryProjection.mockResolvedValue([]);
-		const batchResult = {
+		const manualBatchId = '00000000-0000-4000-8000-000000000001';
+		const acceptedManualBatch = {
 			data: {
 				data: {
-					batchId: '00000000-0000-4000-8000-000000000001',
-					items: [
-						{
-							rowId: '00000000-0000-4000-8000-000000000002',
-							resource: {
-								id: 42,
-								catalog_id: 99,
-								coffee_catalog: {
-									id: 99,
-									name: 'Private lot',
-									public_coffee: false,
-									ai_tasting_notes: ['Peach', 'Floral']
-								}
-							}
-						}
-					]
+					batchId: manualBatchId,
+					status: 'accepted',
+					result: null,
+					error: null,
+					updatedAt: '2026-08-29T16:00:00.000Z'
 				}
 			},
-			error: undefined,
 			response: new Response(null, { status: 201 })
 		};
-		parchmentMocks.createManualBatch.mockResolvedValue(batchResult);
-		parchmentMocks.getManualBatch.mockResolvedValue({
-			...batchResult,
+		const completedManualBatch = {
+			data: {
+				data: {
+					batchId: manualBatchId,
+					status: 'completed',
+					result: {
+						batchId: manualBatchId,
+						items: [
+							{
+								rowId: '00000000-0000-4000-8000-000000000002',
+								resource: { id: 42 }
+							}
+						]
+					},
+					error: null,
+					updatedAt: '2026-08-29T16:00:01.000Z'
+				}
+			},
 			response: new Response(null, { status: 200 })
-		});
+		};
+		parchmentMocks.reserveManualBatch.mockResolvedValue(acceptedManualBatch);
+		parchmentMocks.commitManualBatch.mockResolvedValue(completedManualBatch);
+		parchmentMocks.getManualBatchStatus.mockResolvedValue(completedManualBatch);
 		const catalogBatchId = '00000000-0000-4000-8000-000000000010';
 		const acceptedCatalogBatch = {
 			data: {
@@ -371,9 +380,10 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		expect(parchmentMocks.inventoryDelete).not.toHaveBeenCalled();
 	});
 
-	it('creates one manual batch through the session SDK and preserves the beans projection', async () => {
+	it('reserves one manual batch through the session SDK without reading Supabase', async () => {
 		const batchId = '00000000-0000-4000-8000-000000000001';
 		const body = {
+			batchId,
 			purchaseDate: '2026-07-28',
 			taxShipTotal: 3.25,
 			notes: 'Direct trade samples',
@@ -388,10 +398,7 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		};
 		const event = makeEvent('/api/beans', {
 			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'Idempotency-Key': batchId
-			},
+			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body)
 		});
 
@@ -401,23 +408,9 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		expect(parchmentMocks.createParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
 			mode: 'session'
 		});
-		expect(parchmentMocks.createManualBatch).toHaveBeenCalledWith(body, {
-			idempotencyKey: batchId
-		});
+		expect(parchmentMocks.reserveManualBatch).toHaveBeenCalledWith(body);
 		expect(event.locals.supabase.from).not.toHaveBeenCalled();
-		expect(await response.json()).toEqual([
-			expect.objectContaining({
-				id: 42,
-				catalog_id: 99,
-				ai_tasting_notes: '["Peach","Floral"]',
-				coffee_catalog: expect.objectContaining({
-					id: 99,
-					name: 'Private lot',
-					ai_tasting_notes: '["Peach","Floral"]'
-				}),
-				roast_profiles: []
-			})
-		]);
+		expect(await response.json()).toMatchObject({ batchId, status: 'accepted' });
 	});
 
 	it('requires a browser-stable batch UUID before calling Parchment', async () => {
@@ -425,16 +418,24 @@ describe('/api/beans Portfolio entitlement gating', () => {
 			makeEvent('/api/beans', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ items: [] })
+				body: JSON.stringify({
+					items: [
+						{
+							rowId: '00000000-0000-4000-8000-000000000002',
+							manualCoffee: { name: 'Private lot' },
+							qty: 5
+						}
+					]
+				})
 			}) as never
 		);
 
 		expect(response.status).toBe(400);
 		expect(await response.json()).toEqual({
-			error: 'Idempotency-Key is required for manual inventory batches'
+			error: 'batchId is required for manual inventory batches'
 		});
 		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
-		expect(parchmentMocks.createManualBatch).not.toHaveBeenCalled();
+		expect(parchmentMocks.reserveManualBatch).not.toHaveBeenCalled();
 	});
 
 	it('rejects the retired scalar create contract without writing Supabase', async () => {
@@ -453,7 +454,7 @@ describe('/api/beans Portfolio entitlement gating', () => {
 			error: 'A catalog or manual inventory batch is required'
 		});
 		expect(event.locals.supabase.from).not.toHaveBeenCalled();
-		expect(parchmentMocks.createManualBatch).not.toHaveBeenCalled();
+		expect(parchmentMocks.reserveManualBatch).not.toHaveBeenCalled();
 		expect(parchmentMocks.reserveCatalogBatch).not.toHaveBeenCalled();
 	});
 
@@ -463,42 +464,42 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		const response = await GET(makeEvent(`/api/beans?manualBatchId=${batchId}`) as never);
 
 		expect(response.status).toBe(200);
-		expect(parchmentMocks.getManualBatch).toHaveBeenCalledWith(batchId);
+		expect(parchmentMocks.getManualBatchStatus).toHaveBeenCalledWith(batchId);
 		expect(parchmentMocks.fetchParchmentInventoryProjection).not.toHaveBeenCalled();
-		expect(await response.json()).toEqual([
-			expect.objectContaining({
-				id: 42,
-				catalog_id: 99,
-				roast_profiles: []
-			})
-		]);
+		expect(await response.json()).toMatchObject({ batchId, status: 'completed' });
 	});
 
-	it('preserves Parchment reconciliation status and error details', async () => {
-		parchmentMocks.getManualBatch.mockResolvedValue({
-			data: undefined,
-			error: {
-				error: {
-					code: 'not_found',
-					message: 'Manual inventory batch not found'
+	it('returns unknown as a nonterminal manual lifecycle', async () => {
+		const batchId = '00000000-0000-4000-8000-000000000009';
+		parchmentMocks.getManualBatchStatus.mockResolvedValue({
+			data: {
+				data: {
+					batchId,
+					status: 'unknown',
+					result: null,
+					error: null,
+					updatedAt: null
 				}
 			},
-			response: new Response(null, { status: 404 })
+			response: new Response(null, { status: 200 })
 		});
 
-		const response = await GET(
-			makeEvent('/api/beans?manualBatchId=00000000-0000-4000-8000-000000000009') as never
-		);
+		const response = await GET(makeEvent(`/api/beans?manualBatchId=${batchId}`) as never);
 
-		expect(response.status).toBe(404);
+		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({
-			error: 'Manual inventory batch not found',
-			code: 'not_found'
+			batchId,
+			status: 'unknown',
+			result: null,
+			error: null,
+			updatedAt: null
 		});
 	});
 
 	it('returns a failure for unexpected reconciliation errors', async () => {
-		parchmentMocks.getManualBatch.mockRejectedValue(new TypeError('Response decoding failed'));
+		parchmentMocks.getManualBatchStatus.mockRejectedValue(
+			new TypeError('Response decoding failed')
+		);
 
 		const response = await GET(
 			makeEvent('/api/beans?manualBatchId=00000000-0000-4000-8000-000000000009') as never
@@ -512,7 +513,7 @@ describe('/api/beans Portfolio entitlement gating', () => {
 	});
 
 	it('returns a non-2xx response for a malformed successful reconciliation payload', async () => {
-		parchmentMocks.getManualBatch.mockResolvedValue({
+		parchmentMocks.getManualBatchStatus.mockResolvedValue({
 			data: { data: undefined },
 			error: undefined,
 			response: new Response(null, { status: 200 })
@@ -524,13 +525,13 @@ describe('/api/beans Portfolio entitlement gating', () => {
 
 		expect(response.status).toBe(502);
 		expect(await response.json()).toEqual({
-			error: 'Parchment inventory response did not include a batch payload',
+			error: 'Parchment inventory response did not include a manual batch lifecycle',
 			code: 'invalid_response'
 		});
 	});
 
 	it('preserves Parchment batch rejection status and error details', async () => {
-		parchmentMocks.createManualBatch.mockResolvedValue({
+		parchmentMocks.reserveManualBatch.mockResolvedValue({
 			data: undefined,
 			error: {
 				error: {
@@ -544,11 +545,9 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		const response = await POST(
 			makeEvent('/api/beans', {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'Idempotency-Key': '00000000-0000-4000-8000-000000000001'
-				},
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
+					batchId: '00000000-0000-4000-8000-000000000001',
 					items: [
 						{
 							rowId: '00000000-0000-4000-8000-000000000002',
@@ -565,6 +564,18 @@ describe('/api/beans Portfolio entitlement gating', () => {
 			error: 'Batch UUID belongs to another request',
 			code: 'idempotency_conflict'
 		});
+	});
+
+	it('commits a reserved manual batch through its durable UUID', async () => {
+		const batchId = '00000000-0000-4000-8000-000000000001';
+
+		const response = await POST(
+			makeEvent(`/api/beans?manualBatchId=${batchId}`, { method: 'POST' }) as never
+		);
+
+		expect(response.status).toBe(200);
+		expect(parchmentMocks.commitManualBatch).toHaveBeenCalledWith(batchId);
+		expect(await response.json()).toMatchObject({ batchId, status: 'completed' });
 	});
 
 	it('reserves one catalog batch through the session SDK without reading Supabase', async () => {
@@ -592,7 +603,7 @@ describe('/api/beans Portfolio entitlement gating', () => {
 
 		expect(response.status).toBe(201);
 		expect(parchmentMocks.reserveCatalogBatch).toHaveBeenCalledWith(body);
-		expect(parchmentMocks.createManualBatch).not.toHaveBeenCalled();
+		expect(parchmentMocks.reserveManualBatch).not.toHaveBeenCalled();
 		expect(event.locals.supabase.from).not.toHaveBeenCalled();
 		expect(await response.json()).toMatchObject({ batchId, status: 'accepted' });
 	});

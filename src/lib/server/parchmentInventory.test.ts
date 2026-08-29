@@ -1,13 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	commitParchmentCatalogInventoryBatch,
-	createParchmentManualInventoryBatch,
+	commitParchmentManualInventoryBatch,
 	deleteParchmentInventoryItem,
 	fetchParchmentInventoryProjection,
 	getParchmentCatalogInventoryBatchStatus,
-	getParchmentManualInventoryBatch,
+	getParchmentManualInventoryBatchStatus,
 	ParchmentInventoryError,
 	reserveParchmentCatalogInventoryBatch,
+	reserveParchmentManualInventoryBatch,
 	updateParchmentInventoryItem
 } from './parchmentInventory';
 
@@ -282,28 +283,26 @@ describe('fetchParchmentInventoryProjection', () => {
 		).rejects.toThrow('Parchment returned an invalid inventory delete response');
 	});
 
-	it.each([
-		['create', createParchmentManualInventoryBatch, 'createManualBatch'],
-		['reconcile', getParchmentManualInventoryBatch, 'getManualBatch']
-	])(
-		'rejects a malformed 2xx %s batch response as a gateway error',
-		async (_name, helper, method) => {
+	it.each(['reserveManualBatch', 'commitManualBatch', 'getManualBatchStatus'] as const)(
+		'rejects a malformed 2xx %s response as a gateway error',
+		async (method) => {
 			const batchId = '00000000-0000-4000-8000-000000000001';
 			const batchMethod = vi.fn().mockResolvedValue({
 				data: { data: undefined },
 				error: undefined,
-				response: new Response(null, { status: method === 'createManualBatch' ? 201 : 200 })
+				response: new Response(null, { status: method === 'reserveManualBatch' ? 201 : 200 })
 			});
 			const client = { inventory: { [method]: batchMethod } };
 
 			const promise =
-				method === 'createManualBatch'
-					? (helper as typeof createParchmentManualInventoryBatch)(
-							client as never,
-							{ items: [{ rowId: batchId, manualCoffee: { name: 'Test lot' }, qty: 1 }] },
-							batchId
-						)
-					: (helper as typeof getParchmentManualInventoryBatch)(client as never, batchId);
+				method === 'reserveManualBatch'
+					? reserveParchmentManualInventoryBatch(client as never, {
+							batchId,
+							items: [{ rowId: batchId, manualCoffee: { name: 'Test lot' }, qty: 1 }]
+						})
+					: method === 'commitManualBatch'
+						? commitParchmentManualInventoryBatch(client as never, batchId)
+						: getParchmentManualInventoryBatchStatus(client as never, batchId);
 
 			await expect(promise).rejects.toMatchObject({
 				name: 'ParchmentInventoryError',
@@ -316,6 +315,64 @@ describe('fetchParchmentInventoryProjection', () => {
 			});
 		}
 	);
+
+	it('reserves, commits, and reconciles manual batches through the typed SDK lifecycle', async () => {
+		const batchId = '00000000-0000-4000-8000-000000000001';
+		const accepted = {
+			batchId,
+			status: 'accepted' as const,
+			result: null,
+			error: null,
+			updatedAt: '2026-08-29T16:00:00.000Z'
+		};
+		const completed = {
+			batchId,
+			status: 'completed' as const,
+			result: {
+				batchId,
+				items: [
+					{
+						rowId: '00000000-0000-4000-8000-000000000002',
+						resource: { id: 41 }
+					}
+				]
+			},
+			error: null,
+			updatedAt: '2026-08-29T16:00:01.000Z'
+		};
+		const reserveManualBatch = vi.fn().mockResolvedValue({ data: { data: accepted } });
+		const commitManualBatch = vi.fn().mockResolvedValue({ data: { data: completed } });
+		const getManualBatchStatus = vi.fn().mockResolvedValue({ data: { data: completed } });
+		const client = {
+			inventory: { reserveManualBatch, commitManualBatch, getManualBatchStatus }
+		};
+		const body = {
+			batchId,
+			purchaseDate: '2026-08-29',
+			taxShipTotal: 5.01,
+			items: [
+				{
+					rowId: '00000000-0000-4000-8000-000000000002',
+					manualCoffee: { name: 'Test lot' },
+					qty: 5
+				}
+			]
+		};
+
+		await expect(reserveParchmentManualInventoryBatch(client as never, body)).resolves.toEqual(
+			accepted
+		);
+		await expect(commitParchmentManualInventoryBatch(client as never, batchId)).resolves.toEqual(
+			completed
+		);
+		await expect(getParchmentManualInventoryBatchStatus(client as never, batchId)).resolves.toEqual(
+			completed
+		);
+
+		expect(reserveManualBatch).toHaveBeenCalledWith(body);
+		expect(commitManualBatch).toHaveBeenCalledWith(batchId);
+		expect(getManualBatchStatus).toHaveBeenCalledWith(batchId);
+	});
 
 	it('reserves, commits, and reconciles catalog batches through the typed SDK lifecycle', async () => {
 		const batchId = '00000000-0000-4000-8000-000000000001';

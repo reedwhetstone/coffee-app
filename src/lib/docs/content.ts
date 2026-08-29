@@ -1509,7 +1509,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Mutation behavior',
 				bullets: [
-					'POST /api/beans sends both manual and catalog-backed purchases through atomic Parchment batches. Manual batches use an Idempotency-Key header and GET /api/beans?manualBatchId=<uuid> reconciliation; catalog batches reserve complete intent once, then use POST and GET /api/beans?catalogBatchId=<uuid> for safe commit and durable status reconciliation. Shared tax and shipping is allocated in exact cents by Parchment.',
+					'POST /api/beans reserves complete manual or catalog-backed purchase intent under a stable batch UUID. The browser keeps an owner-scoped session envelope for the exact unresolved reservation so a lost response can be retried without changing intent. POST /api/beans?manualBatchId=<uuid> and POST /api/beans?catalogBatchId=<uuid> safely commit their respective batches; GET on the same query reconciles unknown, accepted, in-progress, completed, or terminal-rejected state. Shared tax and shipping is allocated in exact cents by Parchment.',
 					'PUT /api/beans adapts the web form into the owner-scoped Parchment inventory contract and accepts an If-Match precondition for conflict-safe updates.',
 					'DELETE /api/beans requires an id query parameter and enforces ownership. Deletion is blocked while roast profiles or sales depend on the inventory item.'
 				],
