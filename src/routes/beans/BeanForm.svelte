@@ -13,7 +13,11 @@
 		CoffeeCatalog,
 		CoffeeFormData
 	} from '$lib/types/component.types';
-	import type { components } from '@purveyors/sdk';
+	import type {
+		CatalogInventoryBatchLifecycle,
+		CatalogInventoryBatchReserveRequest,
+		components
+	} from '@purveyors/sdk';
 
 	type ManualCoffeeCreate = components['schemas']['ManualCoffeeCreate'];
 	type ManualInventoryBatchCreateRequest =
@@ -41,6 +45,7 @@
 		score_value: 'scoreValue'
 	} as const;
 	const PENDING_MANUAL_BATCH_STORAGE_KEY = 'purveyors:pending-manual-inventory-batch';
+	const PENDING_CATALOG_BATCH_STORAGE_KEY = 'purveyors:pending-catalog-inventory-batch';
 
 	const {
 		bean = null,
@@ -96,14 +101,31 @@
 		return browser && storageKey ? sessionStorage.getItem(storageKey) : null;
 	}
 
+	function pendingCatalogBatchStorageKey(ownerId: string | null): string | null {
+		return ownerId ? `${PENDING_CATALOG_BATCH_STORAGE_KEY}:${ownerId}` : null;
+	}
+
+	function readPendingCatalogBatchId(ownerId: string | null): string | null {
+		const storageKey = pendingCatalogBatchStorageKey(ownerId);
+		return browser && storageKey ? sessionStorage.getItem(storageKey) : null;
+	}
+
 	let pendingManualBatchId = $state<string | null>(null);
+	let pendingCatalogBatchId = $state<string | null>(null);
+	let pendingCatalogReservation = $state<CatalogInventoryBatchReserveRequest | null>(null);
 	let activeOwnerId = $state<string | null>(null);
+	let draftLocked = $derived(
+		Boolean(pendingManualBatchId || pendingCatalogBatchId || pendingCatalogReservation)
+	);
 
 	$effect(() => {
 		const currentOwnerId = ownerId;
 		if (currentOwnerId === activeOwnerId) return;
 		activeOwnerId = currentOwnerId;
 		pendingManualBatchId = readPendingManualBatchId(currentOwnerId);
+		pendingCatalogBatchId = readPendingCatalogBatchId(currentOwnerId);
+		pendingCatalogReservation = null;
+		if (pendingCatalogBatchId) isManualEntry = false;
 	});
 
 	function setPendingManualBatchId(batchId: string | null) {
@@ -118,7 +140,19 @@
 		}
 	}
 
-	function isDefinitiveManualBatchFailure(response: Response, data: { code?: unknown }): boolean {
+	function setPendingCatalogBatchId(batchId: string | null) {
+		pendingCatalogBatchId = batchId;
+		if (!browser) return;
+		const storageKey = pendingCatalogBatchStorageKey(ownerId);
+		if (!storageKey) return;
+		if (batchId) {
+			sessionStorage.setItem(storageKey, batchId);
+		} else {
+			sessionStorage.removeItem(storageKey);
+		}
+	}
+
+	function isDefinitiveBatchFailure(response: Response, data: { code?: unknown }): boolean {
 		if ([401, 403, 408, 425, 429].includes(response.status) || response.status >= 500) {
 			return false;
 		}
@@ -137,10 +171,6 @@
 
 	// Array to store multiple beans in the batch
 	let batchBeans = $state(initBatchBeans());
-
-	let taxShipPerBean = $derived(
-		batchBeans.length > 0 ? sharedFormData.tax_ship_cost / batchBeans.length : 0
-	);
 
 	function initBatchBeans() {
 		if (bean) {
@@ -290,12 +320,6 @@
 			bean_cost: subtotalFromTiers ?? subtotalFallback ?? batchBeans[beanIndex].bean_cost
 		};
 		batchBeans = [...batchBeans]; // Trigger reactivity
-
-		console.log('Set catalog reference:', {
-			catalogId: catalogBean.id,
-			catalogBean,
-			beanData: batchBeans[beanIndex]
-		});
 	}
 
 	function manualCoffee(
@@ -348,7 +372,7 @@
 		}
 
 		const data = (await response.json()) as { error?: unknown; code?: unknown };
-		if (isDefinitiveManualBatchFailure(response, data)) {
+		if (isDefinitiveBatchFailure(response, data)) {
 			setPendingManualBatchId(null);
 		}
 		alert(`Failed to create beans: ${String(data.error ?? 'Unknown error')}`);
@@ -377,15 +401,129 @@
 		await finishManualBatch(response);
 	}
 
+	function catalogBatchRequest(batchId: string): CatalogInventoryBatchReserveRequest {
+		return {
+			batchId,
+			purchaseDate: sharedFormData.purchase_date,
+			taxShipTotal: sharedFormData.tax_ship_cost,
+			...(sharedFormData.notes ? { notes: sharedFormData.notes } : {}),
+			items: batchBeans.map((beanData) => ({
+				rowId: crypto.randomUUID(),
+				catalogId: Number(beanData.catalog_id),
+				qty: Number(beanData.purchased_qty_lbs),
+				...(typeof beanData.bean_cost === 'number' ? { cost: beanData.bean_cost } : {}),
+				...(beanData.rank !== undefined ? { rank: beanData.rank } : {}),
+				...(typeof beanData.stocked === 'boolean' ? { stocked: beanData.stocked } : {}),
+				...(beanData.cupping_notes !== undefined ? { cuppingNotes: beanData.cupping_notes } : {})
+			}))
+		};
+	}
+
+	function catalogBatchMessage(lifecycle: CatalogInventoryBatchLifecycle): string {
+		if (lifecycle.status === 'unknown') {
+			return 'Parchment has not resolved this batch yet. Its UUID was retained for another status check.';
+		}
+		return 'Parchment is still processing this batch. Its UUID was retained for a safe retry.';
+	}
+
+	function finishCatalogBatch(lifecycle: CatalogInventoryBatchLifecycle): boolean {
+		if (lifecycle.status === 'completed') {
+			setPendingCatalogBatchId(null);
+			pendingCatalogReservation = null;
+			onSubmit([]);
+			onClose();
+			return true;
+		}
+
+		if (lifecycle.status === 'terminal_rejected') {
+			setPendingCatalogBatchId(null);
+			pendingCatalogReservation = null;
+			alert(
+				`Parchment rejected this catalog batch: ${lifecycle.error?.message ?? 'Unknown error'}. Correct the draft and submit it as a new batch.`
+			);
+			return false;
+		}
+
+		alert(catalogBatchMessage(lifecycle));
+		return false;
+	}
+
+	async function commitCatalogBatch(batchId: string): Promise<void> {
+		const response = await fetch(`/api/beans?catalogBatchId=${encodeURIComponent(batchId)}`, {
+			method: 'POST'
+		});
+		if (!response.ok) {
+			const data = (await response.json()) as { error?: unknown };
+			alert(`Failed to commit catalog batch: ${String(data.error ?? 'Unknown error')}`);
+			return;
+		}
+		finishCatalogBatch((await response.json()) as CatalogInventoryBatchLifecycle);
+	}
+
+	async function reconcileCatalogBatch(): Promise<void> {
+		if (!pendingCatalogBatchId) return;
+		const response = await fetch(
+			`/api/beans?catalogBatchId=${encodeURIComponent(pendingCatalogBatchId)}`
+		);
+		if (!response.ok) {
+			const data = (await response.json()) as { error?: unknown };
+			alert(`Failed to reconcile catalog batch: ${String(data.error ?? 'Unknown error')}`);
+			return;
+		}
+
+		const lifecycle = (await response.json()) as CatalogInventoryBatchLifecycle;
+		if (lifecycle.status === 'accepted' || lifecycle.status === 'in_progress') {
+			await commitCatalogBatch(lifecycle.batchId);
+			return;
+		}
+		finishCatalogBatch(lifecycle);
+	}
+
+	async function submitCatalogBatch(): Promise<void> {
+		const request = pendingCatalogReservation ?? catalogBatchRequest(crypto.randomUUID());
+		pendingCatalogReservation = request;
+		setPendingCatalogBatchId(request.batchId);
+
+		const response = await fetch('/api/beans', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(request)
+		});
+
+		if (!response.ok) {
+			const data = (await response.json()) as { error?: unknown; code?: unknown };
+			if (isDefinitiveBatchFailure(response, data)) {
+				pendingCatalogReservation = null;
+				setPendingCatalogBatchId(null);
+			}
+			alert(`Failed to reserve catalog batch: ${String(data.error ?? 'Unknown error')}`);
+			return;
+		}
+
+		const lifecycle = (await response.json()) as CatalogInventoryBatchLifecycle;
+		pendingCatalogReservation = null;
+		if (lifecycle.status === 'accepted') {
+			await commitCatalogBatch(lifecycle.batchId);
+			return;
+		}
+		finishCatalogBatch(lifecycle);
+	}
+
 	async function handleSubmit() {
 		if (isSubmitting) return;
 
-		if (isManualEntry && pendingManualBatchId) {
+		if (pendingManualBatchId || pendingCatalogBatchId || pendingCatalogReservation) {
 			try {
 				isSubmitting = true;
-				await submitManualBatch();
+				if (pendingManualBatchId) {
+					await submitManualBatch();
+				} else if (pendingCatalogReservation) {
+					await submitCatalogBatch();
+				} else {
+					await reconcileCatalogBatch();
+				}
 			} catch (error) {
-				console.error('Error reconciling manual inventory batch:', error);
+				console.error('Error reconciling inventory batch:', error);
 				alert('Failed to reconcile this batch. Please try again.');
 			} finally {
 				isSubmitting = false;
@@ -450,47 +588,7 @@
 				return;
 			}
 
-			const taxShipPerBean = sharedFormData.tax_ship_cost / batchBeans.length;
-			const createdBeans = [];
-
-			for (let i = 0; i < batchBeans.length; i++) {
-				const beanData = batchBeans[i];
-				// Prepare bean data for submission
-				const cleanedBean: CoffeeFormData = {
-					...Object.fromEntries(
-						Object.entries(beanData).map(([key, value]) => [
-							key,
-							value === '' || value === undefined ? null : value
-						])
-					),
-					// Add shared form data
-					purchase_date: sharedFormData.purchase_date,
-					tax_ship_cost: taxShipPerBean, // Divided cost
-					notes: sharedFormData.notes,
-					last_updated: new Date().toISOString()
-				};
-
-				const response = await fetch('/api/beans', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify(cleanedBean)
-				});
-
-				if (response.ok) {
-					const newBean = await response.json();
-					createdBeans.push(newBean);
-				} else {
-					const data = await response.json();
-					alert(`Failed to create bean ${i + 1}: ${data.error}`);
-					return;
-				}
-			}
-
-			// Call onSubmit with all created beans
-			onSubmit(createdBeans);
-			onClose();
+			await submitCatalogBatch();
 		} catch (error) {
 			console.error('Error creating beans:', error);
 			alert('Failed to create beans. Please try again.');
@@ -561,6 +659,22 @@
 			A previous manual batch has an uncertain result. Editing is locked until it is reconciled.
 			Select the button below to check its status before starting a new purchase.
 		</div>
+	{:else if pendingCatalogReservation}
+		<div
+			class="mb-6 rounded-md border border-warning bg-warning-subtle p-3 text-sm text-warning-strong"
+			role="status"
+		>
+			The catalog reservation response was uncertain. Editing is locked so the exact request can be
+			retried with the same batch UUID.
+		</div>
+	{:else if pendingCatalogBatchId}
+		<div
+			class="mb-6 rounded-md border border-warning bg-warning-subtle p-3 text-sm text-warning-strong"
+			role="status"
+		>
+			A catalog batch is reserved in Parchment. Editing is locked until its durable status is
+			reconciled. Select the button below to continue the same batch safely.
+		</div>
 	{/if}
 
 	<form
@@ -580,7 +694,7 @@
 						bind:group={isManualEntry}
 						value={true}
 						onchange={resetFormData}
-						disabled={!!pendingManualBatchId}
+						disabled={draftLocked}
 						class="sr-only"
 					/>
 					<div
@@ -599,7 +713,7 @@
 						type="radio"
 						bind:group={isManualEntry}
 						value={false}
-						disabled={!!pendingManualBatchId}
+						disabled={draftLocked}
 						class="sr-only"
 					/>
 					<div
@@ -628,7 +742,7 @@
 						id="purchase_date"
 						type="date"
 						bind:value={sharedFormData.purchase_date}
-						disabled={!!pendingManualBatchId}
+						disabled={draftLocked}
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 						required
 					/>
@@ -645,7 +759,7 @@
 						min="0"
 						placeholder="0.00"
 						bind:value={sharedFormData.tax_ship_cost}
-						disabled={!!pendingManualBatchId}
+						disabled={draftLocked}
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 						required
 					/>
@@ -653,7 +767,7 @@
 						{#if isManualEntry}
 							Parchment will allocate this total across the manual batch in exact cents
 						{:else}
-							This total will be divided evenly across catalog items
+							Parchment will allocate this total across the catalog batch in exact cents
 						{/if}
 					</p>
 				</div>
@@ -670,7 +784,7 @@
 						id="source"
 						bind:value={sourceFilter}
 						onchange={handleSourceChange}
-						disabled={!!pendingManualBatchId}
+						disabled={draftLocked}
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 					>
 						<option value="">All Sources</option>
@@ -690,7 +804,7 @@
 					type="button"
 					class="flex items-center gap-2 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 					onclick={addBeanToBatch}
-					disabled={!!pendingManualBatchId}
+					disabled={draftLocked}
 				>
 					<span class="text-lg">+</span>
 					<span>Add Bean</span>
@@ -721,7 +835,7 @@
 								type="button"
 								class="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-xs text-white hover:bg-danger-strong"
 								onclick={() => removeBeanFromBatch(index)}
-								disabled={!!pendingManualBatchId}
+								disabled={draftLocked}
 							>
 								✕
 							</button>
@@ -739,7 +853,7 @@
 										type="text"
 										bind:value={beanData.manual_name}
 										placeholder="Enter coffee name"
-										disabled={!!pendingManualBatchId}
+										disabled={draftLocked}
 										class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 										required
 									/>
@@ -753,7 +867,7 @@
 										id="catalog-bean-{index}"
 										class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 										required
-										disabled={!!pendingManualBatchId}
+										disabled={draftLocked}
 										value={beanData.catalog_id || ''}
 										onchange={(e) => handleBeanSelect(e, index)}
 									>
@@ -796,10 +910,7 @@
 													Subtotal: ${subtotal.toFixed(2)}
 												</div>
 												<div class="text-xs text-muted">
-													Tax/ship allocation: ${taxShipPerBean.toFixed(2)}
-												</div>
-												<div class="text-xs font-semibold text-ink">
-													Estimated total: ${(subtotal + taxShipPerBean).toFixed(2)}
+													Batch tax and shipping is allocated in exact cents by Parchment.
 												</div>
 											{:else if minOrder}
 												<div class="mt-2 text-xs text-danger">
@@ -822,7 +933,7 @@
 									min="0"
 									bind:value={beanData.purchased_qty_lbs}
 									placeholder="0"
-									disabled={!!pendingManualBatchId}
+									disabled={draftLocked}
 									class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 									required
 								/>
@@ -843,7 +954,7 @@
 									min="0"
 									placeholder="0.00"
 									bind:value={beanData.bean_cost}
-									disabled={!!pendingManualBatchId || (!isManualEntry && !!tiers)}
+									disabled={draftLocked || (!isManualEntry && !!tiers)}
 									class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 									required
 								/>
@@ -872,7 +983,7 @@
 						<select
 							id="field-selector"
 							class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
-							disabled={!!pendingManualBatchId}
+							disabled={draftLocked}
 							onchange={(e) => {
 								const target = e.target as HTMLSelectElement;
 								const field = target.value;
@@ -917,7 +1028,7 @@
 										id={`field-${fieldName}`}
 										bind:value={optionalFields[fieldName]}
 										rows="3"
-										disabled={!!pendingManualBatchId}
+										disabled={draftLocked}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									></textarea>
 								{:else if fieldName === 'cost_lb' || fieldName === 'score_value'}
@@ -926,7 +1037,7 @@
 										type="number"
 										step="0.01"
 										bind:value={optionalFields[fieldName]}
-										disabled={!!pendingManualBatchId}
+										disabled={draftLocked}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									/>
 								{:else if fieldName === 'arrival_date'}
@@ -934,7 +1045,7 @@
 										id={`field-${fieldName}`}
 										type="date"
 										bind:value={optionalFields[fieldName]}
-										disabled={!!pendingManualBatchId}
+										disabled={draftLocked}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									/>
 								{:else}
@@ -942,7 +1053,7 @@
 										id={`field-${fieldName}`}
 										type="text"
 										bind:value={optionalFields[fieldName]}
-										disabled={!!pendingManualBatchId}
+										disabled={draftLocked}
 										class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 									/>
 								{/if}
@@ -950,7 +1061,7 @@
 							<button
 								type="button"
 								class="mt-6 rounded-md bg-danger px-2 py-1 text-xs text-white hover:bg-danger-strong"
-								disabled={!!pendingManualBatchId}
+								disabled={draftLocked}
 								onclick={() => {
 									selectedOptionalFields = selectedOptionalFields.filter(
 										(f: string) => f !== fieldName
@@ -971,7 +1082,7 @@
 					<textarea
 						id="notes"
 						bind:value={sharedFormData.notes}
-						disabled={!!pendingManualBatchId}
+						disabled={draftLocked}
 						rows="3"
 						placeholder="Add any notes about this purchase..."
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
@@ -993,7 +1104,7 @@
 				variant="primary"
 				type="button"
 				loading={isSubmitting}
-				loadingText={pendingManualBatchId
+				loadingText={draftLocked
 					? 'Reconciling Batch...'
 					: batchBeans.length === 1
 						? 'Saving Bean...'
@@ -1001,7 +1112,7 @@
 				onclick={handleSubmit}
 				disabled={catalogLoading}
 			>
-				{pendingManualBatchId
+				{draftLocked
 					? 'Reconcile Pending Batch'
 					: bean
 						? 'Update Bean'

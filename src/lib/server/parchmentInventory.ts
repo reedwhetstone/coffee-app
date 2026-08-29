@@ -1,4 +1,9 @@
-import type { ParchmentClient, components } from '@purveyors/sdk';
+import type {
+	CatalogInventoryBatchLifecycle,
+	CatalogInventoryBatchReserveRequest,
+	ParchmentClient,
+	components
+} from '@purveyors/sdk';
 import { fetchParchmentCatalogItemsByIds } from './parchmentCatalog';
 import { collectOffsetPages } from '$lib/services/tools/pagination';
 import { unwrapParchment } from '$lib/services/tools/parchment';
@@ -35,6 +40,14 @@ type InventoryDeleteResult = {
 type InventoryMutationResult = {
 	data?: {
 		data?: InventoryResource;
+	};
+	error?: unknown;
+	response?: Response;
+};
+
+type CatalogBatchLifecycleResult = {
+	data?: {
+		data?: CatalogInventoryBatchLifecycle;
 	};
 	error?: unknown;
 	response?: Response;
@@ -91,6 +104,64 @@ function projectManualBatch(
 	}
 
 	return result.items.map(({ resource }) => projectInventoryResource(resource));
+}
+
+function projectCatalogBatchLifecycle(
+	result: CatalogBatchLifecycleResult,
+	expectedBatchId: string
+): CatalogInventoryBatchLifecycle {
+	if (result.error || !result.data?.data) {
+		throwParchmentResultError(
+			result,
+			!result.error && (result.response?.ok === true || !result.response),
+			'Parchment inventory response did not include a catalog batch lifecycle'
+		);
+	}
+
+	const lifecycle = result.data.data;
+	const completedResultIsValid =
+		typeof lifecycle.result === 'object' &&
+		lifecycle.result !== null &&
+		lifecycle.result.batchId === expectedBatchId &&
+		Array.isArray(lifecycle.result.items) &&
+		lifecycle.result.items.every(
+			(item) =>
+				typeof item === 'object' &&
+				item !== null &&
+				typeof item.rowId === 'string' &&
+				Number.isSafeInteger(item.inventoryId) &&
+				item.inventoryId > 0
+		);
+	const terminalErrorIsValid =
+		typeof lifecycle.error === 'object' &&
+		lifecycle.error !== null &&
+		typeof lifecycle.error.code === 'string' &&
+		typeof lifecycle.error.message === 'string';
+	const terminalShapeIsValid =
+		(lifecycle.status === 'completed' && completedResultIsValid && lifecycle.error === null) ||
+		(lifecycle.status === 'terminal_rejected' &&
+			lifecycle.result === null &&
+			terminalErrorIsValid) ||
+		((lifecycle.status === 'unknown' ||
+			lifecycle.status === 'accepted' ||
+			lifecycle.status === 'in_progress') &&
+			lifecycle.result === null &&
+			lifecycle.error === null);
+
+	if (
+		lifecycle.batchId !== expectedBatchId ||
+		!terminalShapeIsValid ||
+		(lifecycle.updatedAt !== null && typeof lifecycle.updatedAt !== 'string')
+	) {
+		throw new ParchmentInventoryError(502, {
+			error: {
+				code: 'invalid_response',
+				message: 'Parchment returned an invalid catalog inventory batch lifecycle'
+			}
+		});
+	}
+
+	return lifecycle;
 }
 
 function projectInventoryMutation(result: InventoryMutationResult): ParchmentInventoryProjection {
@@ -254,6 +325,37 @@ export async function getParchmentManualInventoryBatch(
 		);
 	}
 	return projectManualBatch(result.data.data, batchId);
+}
+
+/** Durably reserve complete catalog-backed inventory intent through Parchment. */
+export async function reserveParchmentCatalogInventoryBatch(
+	client: ParchmentClient,
+	body: CatalogInventoryBatchReserveRequest
+): Promise<CatalogInventoryBatchLifecycle> {
+	const result = (await client.inventory.reserveCatalogBatch(body)) as CatalogBatchLifecycleResult;
+	return projectCatalogBatchLifecycle(result, body.batchId);
+}
+
+/** Safely retry the atomic commit for a reserved catalog inventory batch. */
+export async function commitParchmentCatalogInventoryBatch(
+	client: ParchmentClient,
+	batchId: string
+): Promise<CatalogInventoryBatchLifecycle> {
+	const result = (await client.inventory.commitCatalogBatch(
+		batchId
+	)) as CatalogBatchLifecycleResult;
+	return projectCatalogBatchLifecycle(result, batchId);
+}
+
+/** Reconcile the durable owner-scoped lifecycle by its stable batch UUID. */
+export async function getParchmentCatalogInventoryBatchStatus(
+	client: ParchmentClient,
+	batchId: string
+): Promise<CatalogInventoryBatchLifecycle> {
+	const result = (await client.inventory.getCatalogBatchStatus(
+		batchId
+	)) as CatalogBatchLifecycleResult;
+	return projectCatalogBatchLifecycle(result, batchId);
 }
 
 /**

@@ -1,10 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+	commitParchmentCatalogInventoryBatch,
 	createParchmentManualInventoryBatch,
 	deleteParchmentInventoryItem,
 	fetchParchmentInventoryProjection,
+	getParchmentCatalogInventoryBatchStatus,
 	getParchmentManualInventoryBatch,
 	ParchmentInventoryError,
+	reserveParchmentCatalogInventoryBatch,
 	updateParchmentInventoryItem
 } from './parchmentInventory';
 
@@ -313,4 +316,129 @@ describe('fetchParchmentInventoryProjection', () => {
 			});
 		}
 	);
+
+	it('reserves, commits, and reconciles catalog batches through the typed SDK lifecycle', async () => {
+		const batchId = '00000000-0000-4000-8000-000000000001';
+		const accepted = {
+			batchId,
+			status: 'accepted' as const,
+			result: null,
+			error: null,
+			updatedAt: '2026-08-29T16:00:00.000Z'
+		};
+		const completed = {
+			batchId,
+			status: 'completed' as const,
+			result: {
+				batchId,
+				items: [{ rowId: '00000000-0000-4000-8000-000000000002', inventoryId: 41 }]
+			},
+			error: null,
+			updatedAt: '2026-08-29T16:00:01.000Z'
+		};
+		const reserveCatalogBatch = vi.fn().mockResolvedValue({ data: { data: accepted } });
+		const commitCatalogBatch = vi.fn().mockResolvedValue({ data: { data: completed } });
+		const getCatalogBatchStatus = vi.fn().mockResolvedValue({ data: { data: completed } });
+		const client = {
+			inventory: { reserveCatalogBatch, commitCatalogBatch, getCatalogBatchStatus }
+		};
+		const body = {
+			batchId,
+			purchaseDate: '2026-08-29',
+			taxShipTotal: 5.01,
+			items: [
+				{
+					rowId: '00000000-0000-4000-8000-000000000002',
+					catalogId: 99,
+					qty: 5
+				}
+			]
+		};
+
+		await expect(reserveParchmentCatalogInventoryBatch(client as never, body)).resolves.toEqual(
+			accepted
+		);
+		await expect(commitParchmentCatalogInventoryBatch(client as never, batchId)).resolves.toEqual(
+			completed
+		);
+		await expect(
+			getParchmentCatalogInventoryBatchStatus(client as never, batchId)
+		).resolves.toEqual(completed);
+
+		expect(reserveCatalogBatch).toHaveBeenCalledWith(body);
+		expect(commitCatalogBatch).toHaveBeenCalledWith(batchId);
+		expect(getCatalogBatchStatus).toHaveBeenCalledWith(batchId);
+	});
+
+	it.each([
+		['wrong batch UUID', { batchId: '00000000-0000-4000-8000-000000000009' }],
+		['malformed terminal state', { status: 'completed', result: null }],
+		['missing result field', { result: undefined }],
+		[
+			'completed result for another batch',
+			{
+				status: 'completed',
+				result: {
+					batchId: '00000000-0000-4000-8000-000000000009',
+					items: [{ rowId: '00000000-0000-4000-8000-000000000002', inventoryId: 41 }]
+				}
+			}
+		],
+		[
+			'nonterminal result payload',
+			{
+				result: {
+					batchId: '00000000-0000-4000-8000-000000000001',
+					items: []
+				}
+			}
+		]
+	])('rejects a catalog lifecycle with a %s', async (_case, override) => {
+		const batchId = '00000000-0000-4000-8000-000000000001';
+		const lifecycle = {
+			batchId,
+			status: 'accepted',
+			result: null,
+			error: null,
+			updatedAt: '2026-08-29T16:00:00.000Z',
+			...override
+		};
+		const promise = getParchmentCatalogInventoryBatchStatus(
+			{
+				inventory: {
+					getCatalogBatchStatus: vi.fn().mockResolvedValue({ data: { data: lifecycle } })
+				}
+			} as never,
+			batchId
+		);
+
+		await expect(promise).rejects.toMatchObject({
+			name: 'ParchmentInventoryError',
+			status: 502,
+			body: { error: { code: 'invalid_response' } }
+		});
+	});
+
+	it('preserves catalog batch SDK status and structured error bodies', async () => {
+		const body = {
+			error: { code: 'catalog_batch_unavailable', message: 'Try again later' }
+		};
+		const promise = commitParchmentCatalogInventoryBatch(
+			{
+				inventory: {
+					commitCatalogBatch: vi.fn().mockResolvedValue({
+						error: body,
+						response: new Response(null, { status: 503 })
+					})
+				}
+			} as never,
+			'00000000-0000-4000-8000-000000000001'
+		);
+
+		await expect(promise).rejects.toMatchObject({
+			name: 'ParchmentInventoryError',
+			status: 503,
+			body
+		});
+	});
 });
