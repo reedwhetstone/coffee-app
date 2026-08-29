@@ -240,6 +240,11 @@ Deprecated `/api/tools/*` routes still exist for compatibility. Prefer direct se
 - Never expose agent or user dialogue, prompt instructions, implementation rationale, layout narration, or internal decision notes in production copy. Phrases such as “keep this separate below” describe our process, not customer value. Rewrite the underlying idea as a direct customer benefit or omit it.
 - Before submitting public UI or marketing changes, read the rendered copy by itself and remove any sentence that sounds like a command to the implementer, a note about page structure, or an explanation of why the team arranged the interface a certain way.
 
+### Customer-facing design
+
+- Keep marketing and public UI revisions within the established Purveyors brand language. Reuse canonical components and treat CoffeeBench (`/benchmarks/coffeebench-v1`) as a strong reference for clean accents: warm neutral surfaces, editorial typography, thin borders, and restrained existing colors.
+- Interpret requests for more design flair first as clearer hierarchy, spacing, typography, and information structure. Do not introduce a new decorative motif, visual system, or radical design language without explicit direction.
+
 ## Auth and data safety
 
 - Preserve role checks and ownership checks on member data routes
