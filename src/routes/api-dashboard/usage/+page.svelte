@@ -278,7 +278,9 @@
 								</p>
 								<div class="mt-3 flex space-x-4">
 									<a
-										href={data.currentStats?.userTier === 'viewer' ? '/subscription' : '/contact'}
+										href={data.currentStats?.userTier === 'viewer'
+											? '/subscription#api-plans'
+											: '/contact'}
 										class="font-medium text-warning-strong underline hover:text-warning"
 									>
 										{data.currentStats?.userTier === 'viewer'

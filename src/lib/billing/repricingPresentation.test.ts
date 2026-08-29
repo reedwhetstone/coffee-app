@@ -46,4 +46,20 @@ describe('repricing presentation contract', () => {
 			'This bundle is not currently granting Studio or Intelligence access.'
 		);
 	});
+
+	it('keeps the everyday plan comparison separate from API and Enterprise access', () => {
+		const pricing = readSource('src/lib/components/marketing/Pricing.svelte');
+		const subscription = readSource('src/routes/subscription/+page.svelte');
+		const api = readSource('src/routes/api/+page.svelte');
+
+		expect(pricing).toContain('Simple self-serve plans');
+		expect(pricing).toContain('See API plans');
+		expect(pricing).not.toContain("handleSelectPlan('api')");
+		expect(pricing).not.toContain("handleSelectPlan('enterprise')");
+		expect(subscription).toContain('selfServeProductCards');
+		expect(subscription).toContain('id="api-plans"');
+		expect(subscription).toContain('A separate path for different users');
+		expect(api).toContain('id="plans"');
+		expect(api).toContain('$99/month');
+	});
 });

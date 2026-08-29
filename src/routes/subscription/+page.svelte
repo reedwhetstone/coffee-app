@@ -192,6 +192,14 @@
 		}
 	];
 
+	const selfServeProductCards = [
+		productCards.find((product) => product.family === 'ppi_addon')!,
+		productCards.find((product) => product.family === 'bundle')!,
+		productCards.find((product) => product.family === 'membership')!
+	];
+	const apiProduct = productCards.find((product) => product.family === 'api_plan')!;
+	const enterpriseProduct = productCards.find((product) => product.family === 'enterprise')!;
+
 	const subscriptionMutationRetryDelaysMs = [500, 1000, 2000, 4000, 8000] as const;
 
 	let showCheckout = $state(false);
@@ -684,81 +692,45 @@
 			</div>
 		</div>
 	{:else}
-		<section class="border-b border-line bg-surface-panel px-4 py-14 md:px-6 md:py-20">
-			<div
-				class="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(20rem,0.9fr)] lg:items-end"
-			>
-				<div class="max-w-3xl space-y-5">
-					<p class="text-sm font-semibold text-accent">
-						{isSignedIn ? 'Your account' : 'Plans'}
-					</p>
-					<h1 class="font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl">
-						{isSignedIn ? 'Your Purveyors account.' : 'Source greens with the full market in view.'}
-					</h1>
-					<p class="text-lg leading-8 text-muted">
-						{isSignedIn
-							? 'Review access and billing in one place.'
-							: 'Daily-normalized data from 40+ US importers. Pricing movement, arrivals, delistings, and origin benchmarks for sourcing pros.'}
-					</p>
-					<div class="flex flex-wrap items-center gap-3">
-						<button
-							onclick={() => goto('/analytics')}
-							class="rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
-						>
-							See the Market Index
-						</button>
-						<a
-							href="/catalog"
-							class="rounded-xl border border-line bg-surface-canvas px-4 py-3 text-sm font-medium text-ink transition-colors hover:border-accent/40 hover:text-accent"
-						>
-							Browse catalog
-						</a>
-						{#if !isSignedIn}
-							<a
-								href={signInHref}
-								class="text-sm text-muted underline underline-offset-2 transition-colors hover:text-ink"
-							>
-								Already have an account? Sign in
-							</a>
-						{/if}
+		<section class="border-b border-line bg-surface-panel px-4 py-10 md:px-6 md:py-12">
+			<div class="mx-auto max-w-6xl">
+				<div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+					<div class="max-w-3xl">
+						<p class="text-sm font-semibold text-accent">Plans & billing</p>
+						<h1 class="mt-3 font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl">
+							Choose the plan that fits your work.
+						</h1>
+						<p class="mt-4 text-lg leading-8 text-muted">
+							Compare Intelligence, Studio, and the combined plan at a glance. Developer and custom
+							access stay separate below.
+						</p>
 					</div>
+					{#if !isSignedIn}
+						<a
+							href={signInHref}
+							class="shrink-0 rounded-xl border border-line bg-surface-canvas px-4 py-3 text-sm font-semibold text-ink transition-colors hover:border-accent/40 hover:text-accent"
+						>
+							Sign in to subscribe
+						</a>
+					{/if}
 				</div>
 
-				<div class="rounded-3xl border border-line bg-surface-canvas p-6 shadow-sm">
-					<p class="text-xs font-semibold text-muted">
-						{isSignedIn ? 'Account overview' : 'Product line'}
-					</p>
-					<h2 class="mt-3 text-2xl font-semibold text-ink">
-						{isSignedIn ? 'Current access on this account' : 'One platform, four products'}
-					</h2>
-					<p class="mt-2 text-sm leading-7 text-muted">
-						{isSignedIn
-							? 'Confirm what is active before starting a checkout or changing your billing.'
-							: 'Start with the product that matches the job. Sign in when you are ready to subscribe.'}
-					</p>
-
-					<div class="mt-5 space-y-4">
+				{#if isSignedIn}
+					<div class="mt-7 grid gap-3 sm:grid-cols-3">
 						{#each accountOverviewItems as item}
-							<div class="rounded-2xl border border-line bg-surface-panel p-4">
-								<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-									<div>
-										<p class="text-xs font-semibold text-muted">
-											{item.label}
-										</p>
-										<p class="mt-1 text-base font-semibold text-ink">{item.value}</p>
-									</div>
-								</div>
-								<p class="mt-2 text-sm leading-6 text-muted">{item.description}</p>
+							<div class="rounded-2xl border border-line bg-surface-canvas px-4 py-3 shadow-sm">
+								<p class="text-xs font-semibold text-muted">{item.label}</p>
+								<p class="mt-1 text-sm font-semibold text-ink">{item.value}</p>
 							</div>
 						{/each}
 					</div>
-				</div>
+				{/if}
 			</div>
 		</section>
 
 		<section class="px-4 py-8 md:px-6 md:py-10">
 			<div class="mx-auto max-w-6xl space-y-8">
-				{#if isSignedIn}
+				{#if isSignedIn && (data.billingError || data.subscriptions.length > 0)}
 					<div class="rounded-3xl border border-line bg-surface-panel p-6 shadow-sm">
 						<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
 							<div>
@@ -835,157 +807,201 @@
 					</div>
 				{/if}
 
-				<div class="grid gap-6 xl:grid-cols-2">
-					{#each productCards as product}
-						{@const state = getProductState(product)}
-						<div
-							class={`rounded-3xl border bg-surface-canvas p-6 shadow-sm ${product.family === 'ppi_addon' ? 'border-accent/40 ring-1 ring-accent/20' : 'border-line'}`}
-						>
-							<div class="flex items-start justify-between gap-4">
-								<div class="space-y-2">
-									<p class="text-xs font-semibold text-accent">
-										{product.eyebrow}
-									</p>
-									<h2 class="text-2xl font-semibold text-ink">{product.name}</h2>
-									<p class="text-sm font-medium text-ink">{product.headline}</p>
+				<div id="self-serve-plans" class="scroll-mt-24">
+					<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-wide text-accent">Self-serve</p>
+							<h2 class="mt-2 text-2xl font-semibold text-ink">Three plans, one clear choice</h2>
+						</div>
+						<p class="max-w-xl text-sm leading-6 text-muted sm:text-right">
+							Pick one product or save $2/month by keeping Studio and Intelligence together.
+						</p>
+					</div>
+
+					<div class="mt-5 grid gap-5 lg:grid-cols-3 lg:items-stretch">
+						{#each selfServeProductCards as product}
+							{@const state = getProductState(product)}
+							{@const option = product.intervals?.[0]}
+							<div
+								class={`flex h-full flex-col rounded-3xl border bg-surface-canvas p-6 shadow-sm ${product.family === 'bundle' ? 'order-first border-success ring-1 ring-success/20 lg:order-none' : product.family === 'ppi_addon' ? 'border-accent/40' : 'border-line'}`}
+							>
+								<div class="flex items-start justify-between gap-3">
+									<div>
+										<p
+											class={`text-xs font-semibold uppercase tracking-wide ${product.family === 'bundle' ? 'text-success-strong' : 'text-accent'}`}
+										>
+											{product.eyebrow}
+										</p>
+										<h3 class="mt-2 text-2xl font-semibold text-ink">{product.name}</h3>
+									</div>
+									{#if product.family === 'bundle'}
+										<span
+											class="rounded-full bg-success-subtle px-3 py-1 text-xs font-semibold text-success-strong"
+										>
+											Best value
+										</span>
+									{/if}
 								</div>
-								<span
-									class={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(state.tone)}`}
-								>
-									{product.family === 'enterprise' ? 'Contact sales' : state.label}
-								</span>
-							</div>
 
-							<p class="mt-4 text-sm leading-7 text-muted">{product.description}</p>
+								<p class="mt-4 text-sm font-medium leading-6 text-ink">{product.headline}</p>
 
-							<ul class="mt-5 space-y-3 text-sm text-muted">
-								{#each product.features as feature}
-									<li class="flex gap-3">
-										<span class="mt-1 h-2 w-2 rounded-full bg-accent"></span>
-										<span>{feature}</span>
-									</li>
-								{/each}
-							</ul>
-
-							{#if isSignedIn}
-								<div class="mt-5 rounded-2xl border border-line bg-surface-panel p-4">
-									<div class="flex items-start justify-between gap-3">
+								{#if option}
+									<div class="mt-5 flex items-end justify-between gap-3">
 										<div>
-											<p class="text-xs font-semibold text-muted">Account state</p>
-											<p class="mt-2 text-base font-semibold text-ink">
-												{state.label}
+											<p class="text-3xl font-bold text-ink">
+												{option.price}<span class="ml-1 text-sm font-normal text-muted"
+													>{option.interval}</span
+												>
 											</p>
+											{#if option.trialDays}
+												<p class="mt-1 text-xs font-medium text-success-strong">
+													{option.trialDays}-day free trial if eligible
+												</p>
+											{/if}
 										</div>
+										{#if isSignedIn}
+											<span
+												class={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(state.tone)}`}
+											>
+												{state.label}
+											</span>
+										{/if}
 									</div>
 
-									<p class="mt-3 text-sm leading-7 text-muted">
-										{state.description}
-									</p>
+									<ul class="mt-6 space-y-3 text-sm leading-6 text-muted">
+										{#each product.features.slice(0, 3) as feature}
+											<li class="flex gap-3">
+												<span
+													class={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${product.family === 'bundle' ? 'bg-success' : 'bg-accent'}`}
+												></span>
+												<span>{feature}</span>
+											</li>
+										{/each}
+									</ul>
 
-									{#if product.family === 'membership'}
-										<p class="mt-3 text-sm text-muted">{product.managementCopy}</p>
-										<p class="mt-2 text-xs text-muted">
-											Manage every canonical subscription, including bundles, in the billing section
-											above.
+									<div class="mt-auto pt-7">
+										{#if !isSignedIn}
+											<button
+												onclick={() => signInForPlan(option.planSlug)}
+												class={`w-full rounded-xl px-4 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90 ${product.family === 'bundle' ? 'bg-success' : 'bg-accent'}`}
+											>
+												Start {product.name}
+											</button>
+										{:else}
+											<button
+												onclick={() => openCheckout(product, option)}
+												disabled={isProductCheckoutBlocked(product)}
+												class={`w-full rounded-xl px-4 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${product.family === 'bundle' ? 'bg-success' : 'bg-accent'}`}
+											>
+												{productCheckoutLabel(product)}
+											</button>
+										{/if}
+										{#if product.learnMoreHref}
+											<a
+												href={product.learnMoreHref}
+												class="mt-3 block text-center text-sm font-medium text-muted underline underline-offset-4 transition-colors hover:text-ink"
+											>
+												Learn more
+											</a>
+										{/if}
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</div>
+
+				<div id="api-plans" class="scroll-mt-24 border-t border-line pt-8">
+					<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+								Developer & custom access
+							</p>
+							<h2 class="mt-2 text-2xl font-semibold text-ink">
+								A separate path for different users
+							</h2>
+						</div>
+						<p class="max-w-xl text-sm leading-6 text-muted sm:text-right">
+							API access and tailored commercial work stay out of the everyday product comparison.
+						</p>
+					</div>
+
+					<div class="mt-5 grid gap-5 lg:grid-cols-[1.35fr_1fr]">
+						{#if apiProduct}
+							{@const apiProductState = getProductState(apiProduct)}
+							{@const apiOption = apiProduct.intervals?.[0]}
+							<div class="rounded-3xl border border-line bg-surface-canvas p-6 shadow-sm">
+								<div class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+									<div class="max-w-2xl">
+										<div class="flex flex-wrap items-center gap-3">
+											<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+												Data access
+											</p>
+											{#if isSignedIn}
+												<span
+													class={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(apiProductState.tone)}`}
+												>
+													{apiProductState.label}
+												</span>
+											{/if}
+										</div>
+										<h3 class="mt-2 text-xl font-semibold text-ink">Parchment API Origin</h3>
+										<p class="mt-2 text-sm leading-6 text-muted">
+											Normalized green coffee data for applications, sync jobs, and agents. Start on
+											Green, then use Origin for production access.
 										</p>
-									{:else if product.family === 'api_plan'}
-										<div
-											class="mt-3 rounded-2xl border border-dashed border-line bg-surface-canvas p-4"
-										>
-											<p class="text-sm leading-7 text-muted">
-												{apiState?.description}
+									</div>
+									{#if apiOption}
+										<div class="min-w-44 shrink-0">
+											<p class="text-2xl font-bold text-ink">
+												{apiOption.price}<span class="ml-1 text-sm font-normal text-muted"
+													>{apiOption.interval}</span
+												>
 											</p>
-											<p class="mt-2 text-sm text-muted">{apiState?.note}</p>
-										</div>
-									{:else if product.family === 'ppi_addon'}
-										<div
-											class="mt-3 rounded-2xl border border-dashed border-line bg-surface-canvas p-4"
-										>
-											<p class="text-sm leading-7 text-muted">
-												{intelligenceState?.description}
-											</p>
-											<p class="mt-2 text-sm text-muted">
-												{intelligenceState?.note}
-											</p>
-										</div>
-									{:else}
-										<div
-											class="mt-3 rounded-2xl border border-dashed border-line bg-surface-canvas p-4 text-sm text-muted"
-										>
-											{product.managementCopy}
+											{#if !isSignedIn}
+												<button
+													onclick={() => signInForPlan(apiOption.planSlug)}
+													class="mt-3 w-full rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ink"
+												>
+													Start Origin
+												</button>
+											{:else}
+												<button
+													onclick={() => openCheckout(apiProduct, apiOption)}
+													disabled={isProductCheckoutBlocked(apiProduct)}
+													class="mt-3 w-full rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-50"
+												>
+													{productCheckoutLabel(apiProduct)}
+												</button>
+											{/if}
+											<a
+												href="/api#plans"
+												class="mt-3 block text-center text-sm font-medium text-muted underline underline-offset-4 hover:text-ink"
+											>
+												Compare API tiers
+											</a>
 										</div>
 									{/if}
 								</div>
-							{/if}
+							</div>
+						{/if}
 
-							{#if product.intervals?.length}
-								<div class="mt-5 grid gap-3 sm:grid-cols-2">
-									{#each product.intervals as option}
-										<div class="rounded-2xl border border-line bg-surface-panel p-4">
-											<div class="flex items-start justify-between gap-3">
-												<div>
-													<p class="text-sm font-semibold text-ink">
-														{option.label}
-													</p>
-													<p class="mt-1 text-2xl font-bold text-ink">
-														{option.price}<span class="ml-1 text-sm font-normal text-muted"
-															>{option.interval}</span
-														>
-													</p>
-													{#if option.trialDays}
-														<p class="mt-2 text-xs font-medium text-success-strong">
-															{option.trialDays}-day free trial if eligible
-														</p>
-													{/if}
-												</div>
-												{#if option.badge}
-													<span
-														class="rounded-full bg-success-subtle px-3 py-1 text-xs font-semibold text-success-strong"
-													>
-														{option.badge}
-													</span>
-												{/if}
-											</div>
-
-											{#if !isSignedIn}
-												<div class="mt-4 space-y-2">
-													<button
-														onclick={() => signInForPlan(option.planSlug)}
-														class="w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
-													>
-														Start {product.name}
-													</button>
-													{#if product.learnMoreHref}
-														<a
-															href={product.learnMoreHref}
-															class="inline-flex w-full items-center justify-center rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-accent/40 hover:text-accent"
-														>
-															Learn more
-														</a>
-													{/if}
-												</div>
-											{:else}
-												<button
-													onclick={() => openCheckout(product, option)}
-													disabled={isProductCheckoutBlocked(product)}
-													class="mt-4 w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-												>
-													{productCheckoutLabel(product)}
-												</button>
-											{/if}
-										</div>
-									{/each}
-								</div>
-							{:else}
-								<a
-									href={product.contactHref}
-									class="mt-5 inline-flex w-full items-center justify-center rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-surface-canvas transition-opacity hover:opacity-90"
-								>
-									{product.ctaLabel}
-								</a>
-							{/if}
+						<div class="rounded-3xl border border-line bg-surface-canvas p-6 shadow-sm">
+							<p class="text-xs font-semibold uppercase tracking-wide text-muted">
+								{enterpriseProduct.eyebrow}
+							</p>
+							<h3 class="mt-2 text-xl font-semibold text-ink">Enterprise</h3>
+							<p class="mt-2 text-sm leading-6 text-muted">
+								Custom data delivery, embedded intelligence, and support for larger teams.
+							</p>
+							<a
+								href={enterpriseProduct.contactHref ?? '/contact'}
+								class="mt-5 inline-flex rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-surface-canvas transition-opacity hover:opacity-90"
+							>
+								Contact sales
+							</a>
 						</div>
-					{/each}
+					</div>
 				</div>
 			</div>
 		</section>

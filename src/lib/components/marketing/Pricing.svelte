@@ -21,17 +21,7 @@
 		}
 	});
 
-	function handleSelectPlan(plan: 'studio' | 'api' | 'intelligence' | 'both' | 'enterprise') {
-		if (plan === 'enterprise') {
-			goto('/contact');
-			return;
-		}
-
-		if (plan === 'api') {
-			goto('/api');
-			return;
-		}
-
+	function handleSelectPlan(plan: 'studio' | 'intelligence' | 'both') {
 		const offerId =
 			plan === 'intelligence'
 				? BILLING_OFFERS.intelligenceMonthly.offerId
@@ -42,246 +32,184 @@
 	}
 </script>
 
-<section id="pricing" class="bg-surface-panel py-24 sm:py-32">
+<section id="pricing" class="scroll-mt-24 bg-surface-panel py-16 sm:py-20">
 	<div class="mx-auto max-w-7xl px-6 lg:px-8">
-		<div class="mx-auto max-w-4xl text-center">
-			<h2 class="text-base font-semibold leading-7 text-accent">Products</h2>
+		<div class="mx-auto max-w-3xl text-center">
+			<h2 class="text-base font-semibold leading-7 text-accent">Simple self-serve plans</h2>
 			<p class="mt-2 font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl">
-				Pick the product that matches your work.
+				Choose the tools that match your work.
+			</p>
+			<p class="mt-5 text-lg leading-8 text-muted">
+				Intelligence for sourcing decisions. Studio for roaster operations. Both when you want the
+				market view and your production workflow together.
+			</p>
+			<p class="mt-3 text-sm font-medium text-success-strong">
+				Eligible accounts receive one five-day free trial on their first self-serve paid plan.
 			</p>
 		</div>
-		<p class="mx-auto mt-6 max-w-2xl text-center text-lg leading-8 text-muted">
-			Market intelligence for buyers. Workflow tools for roasters. Structured data for developers.
-			Enterprise integrations for platforms. All built on the same daily-normalized green coffee
-			data.
-		</p>
-		<p class="mx-auto mt-3 max-w-2xl text-center text-sm font-medium text-success-strong">
-			Eligible accounts receive one five-day free trial on their first self-serve paid plan.
-		</p>
 
-		<div
-			class="isolate mx-auto mt-16 grid max-w-md grid-cols-1 gap-6 sm:mt-20 sm:gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-3 lg:gap-8 xl:grid-cols-5"
-		>
-			<!-- Parchment Intelligence: flagship, highlighted -->
+		<div class="mx-auto mt-10 grid max-w-6xl gap-5 lg:grid-cols-3 lg:items-stretch">
 			<div
-				class="flex cursor-pointer flex-col justify-between rounded-3xl bg-surface-canvas p-8 ring-2 ring-accent transition-all duration-200 hover:scale-105 hover:shadow-lg xl:p-10"
-				onclick={() => handleSelectPlan('intelligence')}
-				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('intelligence')}
-				tabindex="0"
-				role="button"
-				aria-label="Select Parchment Intelligence"
+				class="order-2 flex h-full flex-col rounded-3xl border border-accent/40 bg-surface-canvas p-6 shadow-sm transition-colors hover:border-accent sm:p-8 lg:order-1"
 			>
-				<div>
-					<div class="flex items-center justify-between gap-x-4">
-						<h3 class="text-lg font-semibold leading-8 text-accent">Parchment Intelligence</h3>
-						<p
-							class="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-semibold leading-5 text-accent"
-						>
-							For buyers
+				<div class="flex items-start justify-between gap-4">
+					<div>
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+							For coffee buyers
 						</p>
+						<h3 class="mt-2 text-2xl font-semibold text-ink">Parchment Intelligence</h3>
 					</div>
-					<p class="mt-4 text-sm leading-6 text-muted">
-						Cross-supplier price intelligence, arrivals, delistings, and origin benchmarks delivered
-						daily. Make procurement calls on complete market data.
-					</p>
-					<p class="mt-6 flex items-baseline gap-x-1">
-						<span class="text-4xl font-bold tracking-tight text-ink"
-							>{BILLING_OFFERS.intelligenceMonthly.price}</span
-						>
-						<span class="text-sm font-semibold leading-6 text-muted"
-							>{BILLING_OFFERS.intelligenceMonthly.interval}</span
-						>
-					</p>
-					<p class="mt-2 text-sm text-muted">Five-day free trial if eligible.</p>
-					<p class="mt-6 text-sm font-semibold text-muted">What you get</p>
-					<ul role="list" class="mt-4 space-y-3 text-sm leading-6 text-muted">
-						<li class="flex gap-x-3">Weekly procurement brief</li>
-						<li class="flex gap-x-3">Supplier comparison matrix</li>
-						<li class="flex gap-x-3">Origin price trend detail</li>
-						<li class="flex gap-x-3">Arrivals and delistings feed</li>
-					</ul>
+					<span class="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+						Market view
+					</span>
 				</div>
-				<button
-					onclick={(e) => {
-						e.stopPropagation();
-						handleSelectPlan('intelligence');
-					}}
-					class="mt-8 block w-full rounded-md bg-accent px-3 py-2 text-center text-sm font-semibold text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-				>
-					{isSignedIn ? 'Start Intelligence' : 'Choose Intelligence'}
-				</button>
+				<p class="mt-4 text-sm leading-6 text-muted">
+					Compare suppliers, follow arrivals and delistings, and understand origin-level price
+					movement before you buy.
+				</p>
+				<p class="mt-6 flex items-baseline gap-1">
+					<span class="text-4xl font-bold tracking-tight text-ink"
+						>{BILLING_OFFERS.intelligenceMonthly.price}</span
+					>
+					<span class="text-sm font-semibold text-muted"
+						>{BILLING_OFFERS.intelligenceMonthly.interval}</span
+					>
+				</p>
+				<p class="mt-2 text-sm text-muted">Five-day free trial if eligible.</p>
+				<ul class="mt-6 space-y-3 text-sm leading-6 text-muted">
+					<li>Weekly procurement brief</li>
+					<li>Supplier comparisons and health signals</li>
+					<li>Arrivals, delistings, and price history</li>
+				</ul>
+				<div class="mt-auto pt-8">
+					<button
+						onclick={() => handleSelectPlan('intelligence')}
+						class="w-full rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
+					>
+						{isSignedIn ? 'Start Intelligence' : 'Choose Intelligence'}
+					</button>
+				</div>
 			</div>
 
-			<!-- Parchment API -->
 			<div
-				class="flex cursor-pointer flex-col justify-between rounded-3xl bg-surface-canvas p-8 ring-1 ring-line transition-all duration-200 hover:scale-105 hover:ring-2 hover:ring-accent xl:p-10"
-				onclick={() => handleSelectPlan('api')}
-				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('api')}
-				tabindex="0"
-				role="button"
-				aria-label="Select Parchment API"
+				class="order-1 flex h-full flex-col rounded-3xl border-2 border-success bg-surface-canvas p-6 shadow-md sm:p-8 lg:order-2"
 			>
-				<div>
-					<div class="flex items-center justify-between gap-x-4">
-						<h3 class="text-lg font-semibold leading-8 text-ink">Parchment API</h3>
-					</div>
-					<p class="mt-4 text-sm leading-6 text-muted">
-						Normalized green coffee data from 40+ suppliers through one REST API. Daily updates,
-						consistent schema. Connect it to your tools without rebuilding what we already track.
-					</p>
-					<p class="mt-6 flex items-baseline gap-x-2">
-						<span class="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent"
-							>Green</span
-						>
-						<span class="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent"
-							>Origin</span
-						>
-						<span class="rounded-full bg-line px-3 py-1 text-xs font-semibold text-muted"
-							>Enterprise</span
-						>
-					</p>
-					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-muted">
-						<li class="flex gap-x-3">Structured lot data with origin, process, score, price</li>
-						<li class="flex gap-x-3">Arrivals and availability updated daily</li>
-						<li class="flex gap-x-3">Enterprise support for production deployments</li>
-					</ul>
-				</div>
-				<button
-					onclick={(e) => {
-						e.stopPropagation();
-						handleSelectPlan('api');
-					}}
-					class="mt-8 block w-full rounded-md bg-accent px-3 py-2 text-center text-sm font-semibold text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-				>
-					Get API access
-				</button>
-			</div>
-
-			<!-- Mallard Studio -->
-			<div
-				class="flex cursor-pointer flex-col justify-between rounded-3xl bg-surface-canvas p-8 ring-1 ring-line transition-all duration-200 hover:scale-105 hover:ring-2 hover:ring-accent xl:p-10"
-				onclick={() => handleSelectPlan('studio')}
-				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('studio')}
-				tabindex="0"
-				role="button"
-				aria-label="Select Mallard Studio"
-			>
-				<div>
-					<div class="flex items-center justify-between gap-x-4">
-						<h3 class="text-lg font-semibold leading-8 text-ink">Mallard Studio</h3>
-					</div>
-					<p class="mt-4 text-sm leading-6 text-muted">
-						Inventory, roast logs, and profit tracking for roasters running production. Keep
-						sourcing, roasting, and tasting in one place.
-					</p>
-					<p class="mt-6 flex items-baseline gap-x-1">
-						<span class="text-4xl font-bold tracking-tight text-ink"
-							>{BILLING_OFFERS.studioMonthly.price}</span
-						>
-						<span class="text-sm font-semibold leading-6 text-muted"
-							>{BILLING_OFFERS.studioMonthly.interval}</span
-						>
-					</p>
-					<p class="mt-2 text-sm text-muted">Five-day free trial if eligible.</p>
-					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-muted">
-						<li class="flex gap-x-3">Green coffee inventory and lot tracking</li>
-						<li class="flex gap-x-3">Roast profile logs with D3 charting</li>
-						<li class="flex gap-x-3">Profit and production reporting</li>
-					</ul>
-				</div>
-				<button
-					onclick={(e) => {
-						e.stopPropagation();
-						handleSelectPlan('studio');
-					}}
-					class="mt-8 block w-full rounded-md bg-accent px-3 py-2 text-center text-sm font-semibold text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-				>
-					{isSignedIn ? 'Start Studio' : 'Choose Studio'}
-				</button>
-			</div>
-
-			<!-- Combined plan -->
-			<div
-				class="flex cursor-pointer flex-col justify-between rounded-3xl bg-surface-canvas p-8 ring-2 ring-success transition-all duration-200 hover:scale-105 hover:shadow-lg xl:p-10"
-				onclick={() => handleSelectPlan('both')}
-				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('both')}
-				tabindex="0"
-				role="button"
-				aria-label="Select Studio and Intelligence"
-			>
-				<div>
-					<div class="flex items-center justify-between gap-x-4">
-						<h3 class="text-lg font-semibold leading-8 text-ink">Studio + Intelligence</h3>
-						<p
-							class="rounded-full bg-success-subtle px-2.5 py-1 text-xs font-semibold leading-5 text-success-strong"
-						>
-							Best value
+				<div class="flex items-start justify-between gap-4">
+					<div>
+						<p class="text-xs font-semibold uppercase tracking-wide text-success-strong">
+							For teams that buy and roast
 						</p>
+						<h3 class="mt-2 text-2xl font-semibold text-ink">Studio + Intelligence</h3>
 					</div>
-					<p class="mt-4 text-sm leading-6 text-muted">
-						The complete market view plus inventory, roast, and margin tools in one subscription.
-					</p>
-					<p class="mt-6 flex items-baseline gap-x-1">
-						<span class="text-4xl font-bold tracking-tight text-ink"
-							>{BILLING_OFFERS.bothMonthly.price}</span
-						>
-						<span class="text-sm font-semibold leading-6 text-muted"
-							>{BILLING_OFFERS.bothMonthly.interval}</span
-						>
-					</p>
-					<p class="mt-2 text-sm text-muted">Five-day free trial if eligible. Save $2/month.</p>
-					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-muted">
-						<li class="flex gap-x-3">Everything in Studio and Intelligence</li>
-						<li class="flex gap-x-3">One subscription and renewal date</li>
-						<li class="flex gap-x-3">Both products cancel, resume, or renew together</li>
-					</ul>
+					<span
+						class="rounded-full bg-success-subtle px-3 py-1 text-xs font-semibold text-success-strong"
+					>
+						Best value
+					</span>
 				</div>
-				<button
-					onclick={(e) => {
-						e.stopPropagation();
-						handleSelectPlan('both');
-					}}
-					class="mt-8 block w-full rounded-md bg-success px-3 py-2 text-center text-sm font-semibold text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-success"
-				>
-					Choose both
-				</button>
+				<p class="mt-4 text-sm leading-6 text-muted">
+					See the whole market, then bring those decisions into inventory, roast, tasting, and
+					margin workflows.
+				</p>
+				<p class="mt-6 flex items-baseline gap-1">
+					<span class="text-4xl font-bold tracking-tight text-ink"
+						>{BILLING_OFFERS.bothMonthly.price}</span
+					>
+					<span class="text-sm font-semibold text-muted">{BILLING_OFFERS.bothMonthly.interval}</span
+					>
+				</p>
+				<p class="mt-2 text-sm text-muted">Five-day free trial if eligible. Save $2/month.</p>
+				<ul class="mt-6 space-y-3 text-sm leading-6 text-muted">
+					<li>Everything in Intelligence</li>
+					<li>Everything in Mallard Studio</li>
+					<li>One subscription and renewal date</li>
+				</ul>
+				<div class="mt-auto pt-8">
+					<button
+						onclick={() => handleSelectPlan('both')}
+						class="w-full rounded-xl bg-success px-4 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
+					>
+						Choose both
+					</button>
+				</div>
 			</div>
 
-			<!-- Enterprise -->
 			<div
-				class="flex cursor-pointer flex-col justify-between rounded-3xl bg-surface-canvas p-8 ring-1 ring-line transition-all duration-200 hover:scale-105 hover:ring-2 hover:ring-accent xl:p-10"
-				onclick={() => handleSelectPlan('enterprise')}
-				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('enterprise')}
-				tabindex="0"
-				role="button"
-				aria-label="Contact sales for Enterprise"
+				class="order-3 flex h-full flex-col rounded-3xl border border-line bg-surface-canvas p-6 shadow-sm transition-colors hover:border-accent/50 sm:p-8"
+			>
+				<div class="flex items-start justify-between gap-4">
+					<div>
+						<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+							For coffee roasters
+						</p>
+						<h3 class="mt-2 text-2xl font-semibold text-ink">Mallard Studio</h3>
+					</div>
+					<span class="rounded-full border border-line px-3 py-1 text-xs font-semibold text-muted">
+						Operations
+					</span>
+				</div>
+				<p class="mt-4 text-sm leading-6 text-muted">
+					Track green inventory, roast profiles, tasting notes, and production margins without
+					another spreadsheet.
+				</p>
+				<p class="mt-6 flex items-baseline gap-1">
+					<span class="text-4xl font-bold tracking-tight text-ink"
+						>{BILLING_OFFERS.studioMonthly.price}</span
+					>
+					<span class="text-sm font-semibold text-muted"
+						>{BILLING_OFFERS.studioMonthly.interval}</span
+					>
+				</p>
+				<p class="mt-2 text-sm text-muted">Five-day free trial if eligible.</p>
+				<ul class="mt-6 space-y-3 text-sm leading-6 text-muted">
+					<li>Green coffee inventory and lot tracking</li>
+					<li>Roast profiles and cupping notes</li>
+					<li>Profit and production reporting</li>
+				</ul>
+				<div class="mt-auto pt-8">
+					<button
+						onclick={() => handleSelectPlan('studio')}
+						class="w-full rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
+					>
+						{isSignedIn ? 'Start Studio' : 'Choose Studio'}
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<div class="mx-auto mt-6 grid max-w-6xl gap-4 lg:grid-cols-[1.35fr_1fr]">
+			<div
+				class="flex flex-col justify-between gap-5 rounded-2xl border border-line bg-surface-canvas p-6 sm:flex-row sm:items-center"
 			>
 				<div>
-					<div class="flex items-center justify-between gap-x-4">
-						<h3 class="text-lg font-semibold leading-8 text-ink">Enterprise</h3>
-					</div>
-					<p class="mt-4 text-sm leading-6 text-muted">
-						Custom data delivery, embedded intelligence, and support commitments for larger
-						procurement teams and commercial buyers.
+					<p class="text-xs font-semibold uppercase tracking-wide text-accent">Developer access</p>
+					<h3 class="mt-2 text-lg font-semibold text-ink">Building with green coffee data?</h3>
+					<p class="mt-1 text-sm leading-6 text-muted">
+						Parchment API has separate Green, Origin, and Enterprise tiers for applications, sync
+						jobs, and agents.
 					</p>
-					<p class="mt-6 flex items-baseline gap-x-1">
-						<span class="text-2xl font-bold tracking-tight text-ink">Talk to us</span>
-					</p>
-					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-muted">
-						<li class="flex gap-x-3">Custom integrations and delivery patterns</li>
-						<li class="flex gap-x-3">Embedded data for internal reporting</li>
-						<li class="flex gap-x-3">Dedicated support and SLA</li>
-					</ul>
 				</div>
-				<button
-					onclick={(e) => {
-						e.stopPropagation();
-						goto('/contact');
-					}}
-					class="mt-8 block w-full rounded-md bg-ink px-3 py-2 text-center text-sm font-semibold text-surface-canvas shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+				<a
+					href="/api#plans"
+					class="shrink-0 rounded-xl border border-line px-4 py-3 text-center text-sm font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
+				>
+					See API plans
+				</a>
+			</div>
+
+			<div
+				class="flex flex-col justify-between gap-5 rounded-2xl border border-line bg-surface-canvas p-6 sm:flex-row sm:items-center"
+			>
+				<div>
+					<p class="text-xs font-semibold uppercase tracking-wide text-muted">Custom needs</p>
+					<h3 class="mt-2 text-lg font-semibold text-ink">Need tailored delivery or support?</h3>
+				</div>
+				<a
+					href="/contact"
+					class="shrink-0 rounded-xl bg-ink px-4 py-3 text-center text-sm font-semibold text-surface-canvas transition-opacity hover:opacity-90"
 				>
 					Contact sales
-				</button>
+				</a>
 			</div>
 		</div>
 	</div>

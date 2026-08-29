@@ -298,7 +298,9 @@
 								</p>
 								<div class="mt-3 flex space-x-4">
 									<a
-										href={data.usageStats.userTier === 'viewer' ? '/subscription' : '/contact'}
+										href={data.usageStats.userTier === 'viewer'
+											? '/subscription#api-plans'
+											: '/contact'}
 										class="font-medium text-danger-strong underline hover:text-danger"
 									>
 										{data.usageStats.userTier === 'viewer'
@@ -343,7 +345,9 @@
 								</p>
 								<div class="mt-3 flex space-x-4">
 									<a
-										href={data.usageStats.userTier === 'viewer' ? '/subscription' : '/contact'}
+										href={data.usageStats.userTier === 'viewer'
+											? '/subscription#api-plans'
+											: '/contact'}
 										class="font-medium text-warning-strong underline hover:text-warning"
 									>
 										{data.usageStats.userTier === 'viewer' ? 'Upgrade to Origin' : 'Contact sales'}
@@ -393,7 +397,9 @@
 								</p>
 								<div class="mt-3">
 									<a
-										href={data.usageStats.userTier === 'viewer' ? '/subscription' : '/contact'}
+										href={data.usageStats.userTier === 'viewer'
+											? '/subscription#api-plans'
+											: '/contact'}
 										class="font-medium text-info-strong underline hover:text-info"
 									>
 										{data.usageStats.userTier === 'viewer'

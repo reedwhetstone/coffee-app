@@ -160,13 +160,17 @@
 		</div>
 	</section>
 
-	<section class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm sm:p-8">
+	<section
+		id="plans"
+		class="scroll-mt-24 rounded-lg border border-line bg-surface-canvas p-6 shadow-sm sm:p-8"
+	>
 		<h2 class="text-2xl font-semibold text-ink">Plans</h2>
 		<div class="mt-5 overflow-x-auto rounded-2xl border border-line">
 			<table class="min-w-full divide-y divide-line text-sm">
 				<thead class="bg-surface-panel text-left text-ink">
 					<tr>
 						<th class="px-4 py-3 font-semibold">Plan</th>
+						<th class="px-4 py-3 font-semibold">Price</th>
 						<th class="px-4 py-3 font-semibold">Monthly requests</th>
 						<th class="px-4 py-3 font-semibold">Rows per call</th>
 						<th class="px-4 py-3 font-semibold">Best for</th>
@@ -175,6 +179,7 @@
 				<tbody class="divide-y divide-line bg-surface-canvas text-muted">
 					<tr>
 						<td class="px-4 py-3 align-top font-medium text-ink">Green</td>
+						<td class="px-4 py-3 align-top">Free</td>
 						<td class="px-4 py-3 align-top">200</td>
 						<td class="px-4 py-3 align-top">25</td>
 						<td class="px-4 py-3 align-top"
@@ -183,6 +188,7 @@
 					</tr>
 					<tr>
 						<td class="px-4 py-3 align-top font-medium text-ink">Origin</td>
+						<td class="px-4 py-3 align-top font-medium text-ink">$99/month</td>
 						<td class="px-4 py-3 align-top">10,000</td>
 						<td class="px-4 py-3 align-top">{maxCatalogRowsPerRequest}</td>
 						<td class="px-4 py-3 align-top"
@@ -191,6 +197,7 @@
 					</tr>
 					<tr>
 						<td class="px-4 py-3 align-top font-medium text-ink">Enterprise</td>
+						<td class="px-4 py-3 align-top">Custom</td>
 						<td class="px-4 py-3 align-top">Unlimited</td>
 						<td class="px-4 py-3 align-top">{maxCatalogRowsPerRequest}</td>
 						<td class="px-4 py-3 align-top"
@@ -201,10 +208,10 @@
 			</table>
 		</div>
 		<p class="mt-4 text-sm leading-relaxed text-muted">
-			Green gets you into the feed immediately at no cost. Origin is the self-serve tier for
-			production integrations with up to {MAX_CATALOG_PAGE_LIMIT_DISPLAY} rows per request and 10,000
-			monthly requests. Enterprise keeps the same per-request ceiling while covering unlimited request
-			volume, custom data terms, and dedicated support. Manage keys and monitor usage in the
+			Green gets you into the feed immediately at no cost. Origin is $99/month for production
+			integrations with up to {MAX_CATALOG_PAGE_LIMIT_DISPLAY} rows per request and 10,000 monthly requests.
+			Enterprise keeps the same per-request ceiling while covering unlimited request volume, custom data
+			terms, and dedicated support. Manage keys and monitor usage in the
 			<a href="/api-dashboard" class="text-accent hover:underline">Parchment Console</a>.
 		</p>
 	</section>
