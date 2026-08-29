@@ -59,7 +59,7 @@ Parchment `origin/main` at `73e02549e55d0aa3167d6ca7491cc6221a7c9882` exposes 69
 
 The manual inventory batch lifecycle is not complete even though the earlier slice merged. Coffee-app still calls `createManualBatch` and terminal `getManualBatch`, and the beans form can treat a racing `404` as definitive and discard its UUID. SDK 0.29.0 already exposes `reserveManualBatch`, `commitManualBatch`, and `getManualBatchStatus`; status `unknown` is deliberately nonterminal.
 
-The first implementation slice must consume that typed lifecycle. The browser may persist only an owner-scoped operation UUID. It must retain the UUID across `unknown`, `accepted`, `in_progress`, transport failures, and ambiguous outcomes, and rotate it only after `completed` or explicit `terminal_rejected`. It must not own a transaction queue or synthesize a completed resource from an identity-only mutation response.
+The first implementation slice must consume that typed lifecycle and close the same recovery invariant for the already-shipped catalog reservation flow. The browser may persist an owner-scoped reservation envelope containing the operation UUID and the normalized request fields required to retry that exact operation. It must retain that UUID and normalized payload across `unknown`, `accepted`, `in_progress`, transport failures, and ambiguous outcomes, and rotate both only after `completed` or explicit `terminal_rejected`. A status lookup alone is not recovery when the reserve request may have been lost before reaching Parchment. It must not own a transaction queue or synthesize a completed resource from an identity-only mutation response. The catalog flow must receive the same treatment; it cannot be considered proven while `pendingCatalogReservation` remains memory-only and only the UUID reaches `sessionStorage`.
 
 ## Ownership and lifetime model
 
@@ -90,7 +90,7 @@ Every slice inherits these obligations unless its contract demonstrably cannot e
 1. The Parchment implementation, OpenAPI contract, generated SDK types/helpers, production deployment, SDK publication, and a production capability canary are terminal before a coffee-app consumer PR removes its predecessor.
 2. Header credentials take precedence over cookies where supported; browser BFF routes use the cookie session, `/v1/me` remains the sole product-principal authority, null plans resolve to viewer, and upstream failures fail closed.
 3. Parchment rechecks ownership and entitlement at execution time. No raw API key, provider credential, bearer token, provider object, or private owner projection reaches browser page data.
-4. Stable operation IDs are bound to normalized payloads. Same-ID/same-payload replay converges; same-ID/different-payload conflicts; ambiguous outcomes retain identity; definitive outcomes rotate it.
+4. Stable operation IDs and browser recovery envelopes are bound to normalized payloads. Same-ID/same-payload replay converges; same-ID/different-payload conflicts; ambiguous outcomes retain the owner-scoped identity and payload; definitive outcomes rotate them.
 5. `unknown` means unresolved, never empty, absent, rejected, or terminal.
 6. Collection consumers exhaust bounded stable pagination, deduplicate stable identities, validate upstream response shapes strictly, and preserve existing browser/page response envelopes.
 7. Identity-only mutations are followed by canonical reads when the UI needs rich catalog, inventory, roast, or entitlement state.
@@ -103,7 +103,7 @@ Every slice inherits these obligations unless its contract demonstrably cannot e
 
 Each numbered consumer slice starts only after its named upstream gate is deployed, published, and canaried. A slice may split further if review or rollout evidence shows a distinct authority, migration, rollback, or proof boundary, but it may not combine unrelated resources merely to reduce PR count.
 
-### Phase 0: Rebaseline and correct the inherited inventory lifecycle
+### Phase 0: Rebaseline and correct the inherited inventory reservation lifecycle
 
 #### 0A. Governing-plan rebaseline
 
@@ -111,11 +111,11 @@ Update current architecture and development-status documentation to record shipp
 
 **Proof:** every claimed shipped resource maps to merged current code; every remaining direct caller maps to a later slice; no workspace/memory or billing carve-out is presented as the ADR-007 destination.
 
-#### 0B. Coffee-app manual-batch lifecycle correction
+#### 0B. Coffee-app manual-batch and catalog reservation lifecycle correction
 
-Replace legacy manual batch create/status consumption with SDK 0.29.0 reserve/commit/status. Persist only the owner-scoped UUID and reconcile on reload/remount before creating another operation.
+Replace legacy manual batch create/status consumption with SDK 0.29.0 reserve/commit/status, then close the same recovery invariant in the shipped catalog reservation flow. Persist an owner-scoped normalized reservation envelope, including the UUID and the request fields needed to retry that exact operation, and reconcile that envelope on reload/remount before creating another operation. Do not treat a status lookup as sufficient recovery when the reserve request may have been lost before reaching Parchment.
 
-**Proof:** overlapping reserve/status requests, reload, component remount, cross-account isolation, rejection/edit/retry, exact-cent allocation, same-payload replay, changed-payload conflict, and clearing only on `completed` or `terminal_rejected`.
+**Proof:** overlapping reserve/status requests, reload, component remount, cross-account isolation, rejection/edit/retry, exact-cent allocation, same-payload replay, changed-payload conflict, owner-scoped normalized-payload persistence for both manual and catalog reservations, and clearing only on `completed` or `terminal_rejected`.
 
 ### Phase 1: Finish shared market and procurement truth
 
@@ -199,7 +199,9 @@ Replace `/api/chat/execute-action` with one SDK call while retaining proposal ca
 
 Start observation early for `/api/tools/coffee-chunks`, `/api/tools/roast-profiles`, `/api/tools/green-coffee-inv`, `/api/tools/bean-tasting`, and any sibling compatibility routes. Delete zero-supported-caller routes and their helpers. If a supported narrative-search consumer is proven, stop on a separately accepted provenance-aware Parchment knowledge-search contract; never port `match_coffee_chunks` as a table-shaped proxy.
 
-**Proof:** repository caller graph plus production access evidence or an explicit observation window, structured catalog-chat regression, removal of model-provider/RAG credentials and direct RPC use when the route is deleted, and updated public/deprecation documentation.
+Deleting the legacy RAG route does not authorize deleting the shared provider credential while `/api/chat`, `/api/workspaces/[id]/summarize`, or `/api/memory/dream` still call it. Phase 3 removes the RAG route's credential consumption and direct RPC use; `OPENROUTER_API_KEY` remains until Phase 5C retires every remaining provider caller and production evidence verifies that none remain.
+
+**Proof:** repository caller graph plus production access evidence or an explicit observation window, structured catalog-chat regression, proof that the RAG route no longer consumes the provider credential, retention of `OPENROUTER_API_KEY` while the named provider callers remain active, removal of the shared credential only after Phase 5C retires all provider callers, direct RPC use when the route is deleted, and updated public/deprecation documentation.
 
 ### Phase 4: Move durable application state behind Parchment
 

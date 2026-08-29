@@ -10,7 +10,7 @@
 **Canonical repo:** `coffee-app`
 
 **Canonical path:** `notes/DEVLOG.md`
-**Last reconciled:** 2026-08-15
+**Last reconciled:** 2026-08-29
 
 ## How to use this backlog
 
@@ -58,7 +58,14 @@
       Manual inventory PR #507 was closed after repeated review showed batch
       transaction semantics belonged upstream; Parchment PR #133 is the replacement
       prerequisite. Continue with independently mergeable consumers while that
-      upstream contract is reviewed.
+      upstream contract is reviewed. The accepted [coffee-app PR #552](https://github.com/reedwhetstone/coffee-app/pull/552)
+      is now the active ordered plan for the remaining cutover. Its first
+      implementation slice is Phase 0, the manual-batch and catalog reservation
+      lifecycle correction, including owner-scoped normalized-payload recovery and
+      the typed reserve/commit/status contract. Do not advance to later consumer
+      slices until that proof and the named upstream gates are satisfied. PR #552
+      supersedes the July terminal-boundary plan while preserving that document as
+      historical capability evidence.
 
 - [ ] **Finish the scalar entitlement cutover safely.** The Parchment and
       coffee-app consumer changes have landed; complete the production observation,
