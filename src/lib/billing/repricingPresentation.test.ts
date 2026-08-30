@@ -17,8 +17,8 @@ describe('repricing presentation contract', () => {
 		);
 		expect(planCard).toContain('{plan.offer.trialDays}-day free trial if eligible');
 		expect(pricing).not.toMatch(/Try (?:Intelligence|Studio|both) free/);
-		expect(pricing).toContain("return 'Choose both';");
-		expect(pricing).toContain("plan.id === 'studio' ? 'Studio' : 'Intelligence'");
+		expect(pricing).toContain("return 'Choose both products';");
+		expect(pricing).toContain("return `${isSignedIn ? 'Start' : 'Choose'} ${plan.name}`;");
 		expect(plans).toContain('offer: BILLING_OFFERS.intelligenceMonthly');
 		expect(plans).toContain('offer: BILLING_OFFERS.studioMonthly');
 		expect(plans).toContain('offer: BILLING_OFFERS.bothMonthly');
@@ -46,7 +46,7 @@ describe('repricing presentation contract', () => {
 		expect(subscription).toContain('hasNonterminalBundledBillingSubscription(data.subscriptions)');
 		expect(subscription).toContain('Bundle subscription needs attention');
 		expect(subscription).toContain(
-			'This bundle is not currently granting Studio or Intelligence access.'
+			'This bundle is not currently granting Mallard Studio or Parchment Intelligence access.'
 		);
 	});
 
@@ -88,9 +88,9 @@ describe('repricing presentation contract', () => {
 		expect(details).toContain('anchorId="studio-details"');
 		expect(details).toContain('id="both-details"');
 		expect(productDetail).toContain('id={anchorId}');
-		expect(details).toContain('Every self-serve subscription includes Cherry');
-		expect(details).toContain('The Cherry Roast Agent is included with Studio.');
-		expect(details).toContain('The Cherry Green Agent is included with Intelligence.');
+		expect(details).toContain('Every self-serve subscription includes Cherry AI');
+		expect(details).toContain('The Cherry Roaster Agent is included with Mallard Studio.');
+		expect(details).toContain('The Cherry Green Agent is included with Parchment Intelligence.');
 		expect(details.match(/<SubscriptionProductDetail/g)?.length).toBe(2);
 		expect(details).toContain('One AI system. The right context for the work.');
 		expect(plans.match(/Cherry/g)?.length).toBeGreaterThanOrEqual(3);
@@ -131,7 +131,7 @@ describe('repricing presentation contract', () => {
 		expect(personas).toContain('One connected coffee system');
 		expect(personas).toContain('From market signal to real work.');
 		expect(personas).toContain('Cherry Green Agent');
-		expect(personas).toContain('Cherry Roast Agent');
+		expect(personas).toContain('Cherry Roaster Agent');
 		expect(personas).toContain('product-grid mt-10 grid');
 		expect(personas).toContain('product-path group flex flex-col');
 		expect(personas).toContain('grid-template-rows: repeat(5, auto);');

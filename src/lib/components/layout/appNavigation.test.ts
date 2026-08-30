@@ -10,13 +10,13 @@ function sectionById(role: 'viewer' | 'member' | 'admin', id: string, ppiAccess 
 }
 
 describe('authenticated app navigation taxonomy', () => {
-	it('uses the Parchment, Portfolio, Mallard Studio, and Developer product groups', () => {
+	it('uses the Parchment Intelligence, Portfolio, Mallard Studio, and Developer product groups', () => {
 		const ids = getAuthenticatedNavSections('member').map((section) => section.id);
 
 		expect(ids).toEqual(['parchment', 'portfolio', 'maillard', 'developer']);
 	});
 
-	it('places Cherry in the shared intelligence group instead of Mallard Studio', () => {
+	it('places Cherry AI in the shared intelligence group instead of Mallard Studio', () => {
 		const parchmentItems = sectionById('member', 'parchment')?.items.map((item) => item.href);
 		const maillardItems = sectionById('member', 'maillard')?.items.map((item) => item.href);
 
@@ -24,7 +24,7 @@ describe('authenticated app navigation taxonomy', () => {
 		expect(maillardItems).not.toContain('/chat');
 	});
 
-	it('labels analytics as Market Index in the Parchment group', () => {
+	it('labels analytics as Market Index in the Parchment Intelligence group', () => {
 		const analyticsItem = sectionById('member', 'parchment')?.items.find(
 			(item) => item.href === '/analytics'
 		);
@@ -46,7 +46,7 @@ describe('authenticated app navigation taxonomy', () => {
 		expect(roastItem).toMatchObject({ label: 'Roast', locked: true });
 	});
 
-	it('unlocks Cherry and Portfolio for Parchment Intelligence users without showing roasting tools as unlocked', () => {
+	it('unlocks the Cherry Green Agent and Portfolio for Parchment Intelligence users without showing roasting tools as unlocked', () => {
 		const parchmentItems = sectionById('viewer', 'parchment', true)?.items;
 		const chatItem = parchmentItems?.find((item) => item.href === '/chat');
 		const portfolioItem = sectionById('viewer', 'portfolio', true)?.items.find(
@@ -56,9 +56,18 @@ describe('authenticated app navigation taxonomy', () => {
 			(item) => item.href === '/roast'
 		);
 
-		expect(chatItem).toMatchObject({ label: 'Cherry', locked: false });
+		expect(chatItem).toMatchObject({ label: 'Cherry Green Agent', locked: false });
 		expect(portfolioItem).toMatchObject({ label: 'Portfolio', locked: false });
 		expect(roastItem).toMatchObject({ label: 'Roast', locked: true });
+	});
+
+	it('uses the subscription-specific Cherry AI agent throughout navigation', () => {
+		expect(
+			sectionById('member', 'parchment')?.items.find((item) => item.href === '/chat')?.label
+		).toBe('Cherry Roaster Agent');
+		expect(
+			sectionById('member', 'parchment', true)?.items.find((item) => item.href === '/chat')?.label
+		).toBe('Cherry Synthesis Agent');
 	});
 
 	it('hides admin navigation from non-admin users', () => {

@@ -2,6 +2,7 @@
 	import SuggestionChips from '$lib/components/genui/SuggestionChips.svelte';
 	import type { Suggestion } from '$lib/services/suggestionEngine';
 	import type { SlashCommand } from '$lib/services/slashCommands';
+	import type { CherryAgentName } from '$lib/cherry/identity';
 
 	interface ContextChip {
 		id: 'memory' | 'canvas' | 'page' | 'usermemory';
@@ -11,6 +12,7 @@
 	}
 
 	let {
+		agentName,
 		inputMessage = $bindable(''),
 		isActive,
 		canUseMallardWorkspaces,
@@ -29,6 +31,7 @@
 		onRetryWorkspace,
 		onDismissError
 	} = $props<{
+		agentName: CherryAgentName;
 		inputMessage?: string;
 		isActive: boolean;
 		canUseMallardWorkspaces: boolean;
@@ -235,7 +238,7 @@
 			</button>
 		</div>
 		<div class="mt-1.5 px-1 text-xs text-muted">
-			Cherry · Enter to send, Shift+Enter for new line
+			{agentName} · Enter to send, Shift+Enter for new line
 		</div>
 	</form>
 </div>

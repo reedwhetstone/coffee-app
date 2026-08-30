@@ -15,10 +15,10 @@
 			step: '02',
 			label: 'Mallard Studio',
 			headline: 'Keep the coffee record connected.',
-			body: `Move from green inventory through roasts, tasting, and margins in one workspace. The Cherry Roast Agent works with your roastery context for ${BILLING_OFFERS.studioMonthly.price}/month.`,
+			body: `Move from green inventory through roasts, tasting, and margins in one workspace. The Cherry Roaster Agent works with your roastery context for ${BILLING_OFFERS.studioMonthly.price}/month.`,
 			href: '/subscription#studio-details',
 			linkLabel: 'See the roaster workspace',
-			proof: 'Inventory · Roasts · Tasting · Cherry Roast Agent'
+			proof: 'Inventory · Roasts · Tasting · Cherry Roaster Agent'
 		},
 		{
 			step: '03',
@@ -26,7 +26,7 @@
 			headline: 'Build on a coffee-native foundation.',
 			body: 'Bring normalized catalog data and stable coffee contracts into software, hardware, automations, and agents without rebuilding the domain layer.',
 			href: '/api',
-			linkLabel: 'Build with Parchment',
+			linkLabel: 'Build with the Parchment API',
 			proof: 'REST API · SDK · CLI · Agent-ready contracts'
 		}
 	] as const;

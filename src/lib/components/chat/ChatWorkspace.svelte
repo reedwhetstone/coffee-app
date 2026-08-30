@@ -31,22 +31,25 @@
 	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 	import {
 		applyAnalyticsSeedToInput,
-		readAnalyticsSeedFromSearchParams
+		readChatSeedFromSearchParams
 	} from '$lib/analytics/actionContext';
 	import { classifyChatFailure, rollbackFailedTurn } from './chatRecovery';
 	import {
 		buildCherryConversationExport,
 		cherryConversationExportFilename
 	} from './cherryConversationExport';
+	import type { CherryAgentName } from '$lib/cherry/identity';
 
 	let {
 		canUseChat,
 		canUseMallardWorkspaces,
+		agentName,
 		variant = 'page',
 		initialWorkspaceData = null
 	} = $props<{
 		canUseChat: boolean;
 		canUseMallardWorkspaces: boolean;
+		agentName: CherryAgentName;
 		/**
 		 * page: full /chat workbench with the resizable canvas split.
 		 * drawer: chat-only pane (canvas reachable via overlay) for the
@@ -152,7 +155,7 @@
 			chips.push({
 				id: 'canvas',
 				label: `Evidence (${canvasStore.blockCount})`,
-				detail: 'Cherry Runtime can use what is in your evidence workspace',
+				detail: `${agentName} can use what is in your evidence workspace`,
 				active: includeCanvasContext
 			});
 		}
@@ -322,7 +325,7 @@
 	let lastAnalyticsSeed = $state<string | null>(null);
 
 	$effect(() => {
-		const analyticsSeed = readAnalyticsSeedFromSearchParams(page.url.searchParams);
+		const analyticsSeed = readChatSeedFromSearchParams(page.url.searchParams);
 		const seedState = applyAnalyticsSeedToInput({
 			canUseChat,
 			incomingSeed: analyticsSeed,
@@ -910,7 +913,7 @@
 	) {
 		if (!executionId)
 			throw new Error(
-				'This action predates durable execution IDs. Run it through Cherry again to create a current proposal.'
+				`This action predates durable execution IDs. Run it through ${agentName} again to create a current proposal.`
 			);
 		if (blockId) {
 			const card = canvasStore.blocks.find((b) => b.id === blockId)?.block;
@@ -1103,7 +1106,7 @@
 	// ─── Export / Clear ────────────────────────────────────────────────────────
 	function exportConversation() {
 		const exportedAt = new Date();
-		const markdown = buildCherryConversationExport(chat.messages, exportedAt);
+		const markdown = buildCherryConversationExport(chat.messages, exportedAt, agentName);
 
 		const blob = new Blob([markdown], { type: 'text/markdown' });
 		const url = URL.createObjectURL(blob);
@@ -1151,6 +1154,7 @@
 			style="--chat-width: {variant === 'page' && canvasOpen ? chatWidthPercent : 100}%;"
 		>
 			<ChatToolbar
+				{agentName}
 				{variant}
 				{canvasOpen}
 				hasMessages={chat.messages.length > 0}
@@ -1166,6 +1170,7 @@
 
 			<div class="relative flex min-h-0 flex-1 flex-col">
 				<ChatMessageList
+					{agentName}
 					{chat}
 					{isActive}
 					{canUseMallardWorkspaces}
@@ -1199,6 +1204,7 @@
 			</div>
 
 			<ChatComposer
+				{agentName}
 				bind:inputMessage
 				isActive={isActive || isClearing}
 				{canUseMallardWorkspaces}

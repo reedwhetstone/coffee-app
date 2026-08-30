@@ -41,8 +41,8 @@
 	}
 
 	function ctaLabel(plan: SelfServePlan) {
-		if (plan.id === 'both') return 'Choose both';
-		return `${isSignedIn ? 'Start' : 'Choose'} ${plan.id === 'studio' ? 'Studio' : 'Intelligence'}`;
+		if (plan.id === 'both') return 'Choose both products';
+		return `${isSignedIn ? 'Start' : 'Choose'} ${plan.name}`;
 	}
 </script>
 
@@ -58,8 +58,9 @@
 				Deploy Cherry AI across your coffee operation.
 			</p>
 			<p class="mt-5 text-lg leading-8 text-muted">
-				Intelligence understands the outside market. Studio understands your own roastery. Both
-				connect the sourcing decision to what happens after the coffee arrives.
+				Parchment Intelligence understands the outside market. Mallard Studio understands your own
+				roastery. Together, they connect the sourcing decision to what happens after the coffee
+				arrives.
 			</p>
 			<p class="mt-3 text-sm font-medium text-success-strong">
 				Eligible accounts receive one five-day free trial on their first self-serve paid plan.

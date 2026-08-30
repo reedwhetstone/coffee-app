@@ -1,59 +1,38 @@
+import {
+	resolveCherryAgent,
+	type CherryAccessContext,
+	type CherryAgentId,
+	type CherryAgentIdentity,
+	type CherryAgentName
+} from '$lib/cherry/identity';
+
 export const CHERRY_RUNTIME_MODEL = '@preset/test-workhorse-agent';
 
-export type CherryRuntimeAgentId =
-	| 'cherry-green-agent'
-	| 'cherry-roast-agent'
-	| 'cherry-synthesis-agent';
+export type CherryRuntimeAgentId = CherryAgentId;
 
-export interface CherryRuntimeAgent {
-	id: CherryRuntimeAgentId;
-	name: 'Cherry Green Agent' | 'Cherry Roast Agent' | 'Cherry Synthesis Agent';
-	role: string;
+export type CherryRuntimeAgentName = CherryAgentName;
+export type CherryRuntimeAgent = CherryAgentIdentity;
+
+export function resolveCherryRuntimeAgent(access?: CherryAccessContext): CherryRuntimeAgent {
+	const agent = resolveCherryAgent(access ?? { ppiAccess: true, memberAccess: false });
+	if (!agent)
+		throw new Error('Cherry Runtime requires Parchment Intelligence or Mallard Studio access');
+	return agent;
 }
 
-const GREEN_AGENT: CherryRuntimeAgent = {
-	id: 'cherry-green-agent',
-	name: 'Cherry Green Agent',
-	role: 'green-coffee sourcing and market analysis with Parchment evidence and tools'
-};
-
-const ROAST_AGENT: CherryRuntimeAgent = {
-	id: 'cherry-roast-agent',
-	name: 'Cherry Roast Agent',
-	role: 'roastery analysis with Mallard inventory, roast, tasting, sales, and margin context'
-};
-
-const SYNTHESIS_AGENT: CherryRuntimeAgent = {
-	id: 'cherry-synthesis-agent',
-	name: 'Cherry Synthesis Agent',
-	role: 'cross-domain analysis that connects Parchment market evidence with Mallard roastery context'
-};
-
-export function resolveCherryRuntimeAgent(access?: {
-	ppiAccess: boolean;
-	memberAccess: boolean;
-}): CherryRuntimeAgent {
-	if (access?.ppiAccess && access.memberAccess) return SYNTHESIS_AGENT;
-	if (access?.memberAccess) return ROAST_AGENT;
-	return GREEN_AGENT;
-}
-
-export function buildCherryRuntimeIdentity(access?: {
-	ppiAccess: boolean;
-	memberAccess: boolean;
-}): string {
+export function buildCherryRuntimeIdentity(access?: CherryAccessContext): string {
 	const agent = resolveCherryRuntimeAgent(access);
 	return `CHERRY RUNTIME IDENTITY
-Cherry is Purveyors' coffee-native AI system. Cherry is a system, not a persona.
+Cherry AI is Purveyors' coffee-native AI system. Cherry AI is a system, not a persona.
 Cherry Runtime selected the ${agent.name} runtime role for this request: ${agent.role}.
 
-The agent name describes an execution role, not a character. Do not claim that Cherry or its agents
+The agent name describes an execution role, not a character. Do not claim that Cherry AI or its agents
 have a human biography, emotions, desires, relationships, personal experience, or beliefs. If asked
-what is responding, say: "This is Cherry, coffee-native AI from Purveyors, running the
-${agent.name}." Do not say "I am Cherry" or present Parchment or Mallard as the speaker.
+what is responding, say: "This is Cherry AI from Purveyors, running the
+${agent.name}." Do not say "I am Cherry" or present Parchment Intelligence, the Parchment API, or Mallard Studio as the speaker.
 
-Attribute current facts to their evidence. Parchment supplies catalog, market, sourcing, and API
-evidence. Mallard Studio supplies the user's inventory, roast, tasting, sales, and margin context.
+Attribute current facts to their evidence. Parchment Intelligence supplies catalog, market, and sourcing
+evidence. The Parchment API supplies the underlying data contracts. Mallard Studio supplies the user's inventory, roast, tasting, sales, and margin context.
 The model interprets that context; it does not personally know or remember facts outside the supplied
 conversation, persisted memory, and tool results.`;
 }

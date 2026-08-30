@@ -102,7 +102,7 @@ export const DOCS_NAV: DocsNavSection[] = [
 		key: 'cli',
 		title: 'CLI docs',
 		description:
-			'Install, authenticate, and use the Parchment CLI for catalog queries, inventory, roasting, scripting, and agent automation.',
+			'Install, authenticate, and use the Purveyors CLI for catalog queries, inventory, roasting, scripting, and agent automation.',
 		basePath: '/docs/cli',
 		items: [
 			{
@@ -285,10 +285,10 @@ const docsPages: DocsPage[] = [
 		slug: 'overview',
 		title: 'API overview',
 		summary:
-			'Parchment ships stable public catalog and price-index APIs plus the internal route layer that powers the web app.',
-		eyebrow: 'Parchment',
+			'The Parchment API ships stable catalog and price-index contracts plus the internal route layer that powers the web app.',
+		eyebrow: 'Parchment API',
 		intro: [
-			'Parchment is the API and Console layer inside Purveyors. It exposes normalized green coffee catalog data, beta catalog similarity matching, and aggregate market intelligence through small public HTTP contracts plus a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
+			'The Parchment API and Parchment Console form the API layer inside Purveyors. They expose normalized green coffee catalog data, beta catalog similarity matching, and aggregate market intelligence through small public HTTP contracts plus a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
 			'The stable public catalog contract is GET https://api.purveyors.io/v1/catalog. Production catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages remain browsable without a user login because the coffee-app BFF presents a server-held public/demo key upstream. Deliberately designated Market Index teaser slices remain anonymous as a narrow route contract. GET /v1/catalog/{id}/similar is a beta member and paid API route for candidate matching, not a canonical identity claim. GET /v1/price-index is an authenticated Parchment Intelligence contract for aggregate price_index_snapshots data only; it accepts entitled first-party sessions and customer API keys. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most coffee-app /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, Cherry Runtime, workspaces, billing, and admin tooling.'
 		],
 		sections: [
@@ -1272,14 +1272,14 @@ const docsPages: DocsPage[] = [
 							'POST',
 							'Chat access session',
 							'Internal product route',
-							'Streams Cherry responses with workspace context and tool execution.'
+							'Streams Cherry AI responses with workspace context and tool execution.'
 						],
 						[
 							'/api/chat/execute-action',
 							'POST',
 							'Chat access session',
 							'Internal product route',
-							'Executes a constrained set of proposal-card actions. Parchment users can add/update beans; Mallard-only roast, tasting, and sales actions require Mallard Studio membership.'
+							'Executes a constrained set of proposal-card actions. Parchment Intelligence users can add or update portfolio coffees; Mallard Studio-only roast, tasting, and sales actions require Mallard Studio membership.'
 						],
 						[
 							'/api/workspaces',
@@ -2014,10 +2014,10 @@ const docsPages: DocsPage[] = [
 		slug: 'overview',
 		title: 'CLI overview',
 		summary:
-			'The Parchment CLI is a terminal interface for catalog queries, inventory management, roasting workflows, scripting, and agent automation.',
+			'The Purveyors CLI is a terminal interface for catalog queries, inventory management, roasting workflows, scripting, and agent automation.',
 		eyebrow: '@purveyors/cli',
 		intro: [
-			'The Parchment CLI (purvey) provides terminal access to the same coffee domain model as the web app. purvey auth login uses browser OAuth once to create and persist a scoped Parchment API key; the CLI does not retain an ongoing viewer session. Basic catalog commands require catalog:read; structured process filters and catalog similar additionally require member-level access, with similar also available to explicit API Origin/Enterprise keys. Inventory, roast, sales, and tasting commands require the matching member role and key scopes.',
+			'The Purveyors CLI (purvey) provides terminal access to the same coffee domain model as the web app. purvey auth login uses browser OAuth once to create and persist a scoped Parchment API key; the CLI does not retain an ongoing viewer session. Basic catalog commands require catalog:read; structured process filters and catalog similar additionally require member-level access, with similar also available to explicit API Origin/Enterprise keys. Inventory, roast, sales, and tasting commands require the matching member role and key scopes.',
 			'Not every command requires auth. auth, config, context, and manifest are onboarding or local utility surfaces. purvey context is the dense human-readable reference, while purvey manifest is the preferred machine-readable contract.'
 		],
 		sections: [
@@ -2135,7 +2135,7 @@ const docsPages: DocsPage[] = [
 		slug: 'auth-output',
 		title: 'CLI auth, config, and output',
 		summary:
-			'Authentication roles, local config, output modes, stderr/stdout rules, and scripting expectations for the Parchment CLI.',
+			'Authentication roles, local config, output modes, stderr/stdout rules, and scripting expectations for the Purveyors CLI.',
 		eyebrow: 'Operational contract',
 		intro: [
 			'This page is the practical contract for running purvey in scripts, CI, agent harnesses, and local terminals. It covers which commands require auth, what config exists today, and how output behaves across interactive and non-interactive modes.',
@@ -2506,7 +2506,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Tasting',
 		intro: [
 			'Tasting commands combine supplier-provided notes from the catalog with your personal cupping data stored on inventory rows.',
-			'Both read and write flows are available, so tasting data works across terminal, browser, and Cherry contexts.'
+			'Both read and write flows are available, so tasting data works across terminal, browser, and Cherry AI contexts.'
 		],
 		sections: [
 			{
@@ -2539,7 +2539,7 @@ const docsPages: DocsPage[] = [
 			},
 			{
 				href: '/chat',
-				label: 'Cherry',
+				label: 'Cherry AI',
 				description: 'The chat workspace includes tasting-note tools.'
 			}
 		]
@@ -2643,7 +2643,7 @@ const docsPages: DocsPage[] = [
 		slug: 'agent-integration',
 		title: 'Agent integration',
 		summary:
-			'Use the Parchment CLI as a stable interface for AI agents, coding assistants, and external automation.',
+			'Use the Purveyors CLI as a stable interface for AI agents, coding assistants, and external automation.',
 		eyebrow: 'Agent workflows',
 		intro: [
 			'The CLI is the preferred documented automation surface for most non-visual workflows. It gives agents stable command names, explicit auth requirements, predictable output modes, and a machine-readable manifest when needed.',
@@ -2689,8 +2689,8 @@ const docsPages: DocsPage[] = [
 			},
 			{
 				href: '/chat',
-				label: 'Cherry workspace',
-				description: 'The web UI that consumes session-mode Parchment SDK clients.'
+				label: 'Cherry AI workspace',
+				description: 'The web UI that consumes session-mode Parchment API SDK clients.'
 			}
 		]
 	}

@@ -9,6 +9,7 @@ vi.mock('$lib/components/genui/InlineStatusLine.svelte', () => ({ default: vi.fn
 
 function props(messages: Array<Record<string, unknown>> = []) {
 	return {
+		agentName: 'Cherry Green Agent' as const,
 		chat: { messages, status: 'ready' } as never,
 		isActive: false,
 		canUseMallardWorkspaces: false,
@@ -32,7 +33,7 @@ describe('ChatMessageList conversation controls', () => {
 
 	it('shows four compact starter prompts', () => {
 		render(ChatMessageList, props());
-		expect(screen.getByText('Cherry')).toBeInTheDocument();
+		expect(screen.getByText('Cherry Green Agent')).toBeInTheDocument();
 		expect(screen.queryByText('Parchment Intelligence')).not.toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Compare stocked Ethiopian coffees' })).toBeTruthy();
 		expect(screen.getByRole('button', { name: 'Find gaps in my current portfolio' })).toBeTruthy();

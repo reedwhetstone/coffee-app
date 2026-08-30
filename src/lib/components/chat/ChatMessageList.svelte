@@ -13,8 +13,10 @@
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
+	import type { CherryAgentName } from '$lib/cherry/identity';
 
 	let {
+		agentName,
 		chat,
 		isActive,
 		canUseMallardWorkspaces,
@@ -26,6 +28,7 @@
 		onAskAgainMessage,
 		messageActionsDisabled = false
 	} = $props<{
+		agentName: CherryAgentName;
 		chat: Chat;
 		isActive: boolean;
 		canUseMallardWorkspaces: boolean;
@@ -194,13 +197,13 @@
 	class="flex-1 overflow-y-auto px-4 py-6"
 	onscroll={onScroll}
 	role="log"
-	aria-label="Cherry conversation"
+	aria-label={`${agentName} conversation`}
 	aria-live={isActive ? 'off' : 'polite'}
 	aria-relevant="additions text"
 >
 	{#if chat.messages.length === 0}
 		<div class="mx-auto flex min-h-full max-w-2xl flex-col justify-center py-10 text-center">
-			<p class="mb-2 text-sm font-medium text-accent">Cherry</p>
+			<p class="mb-2 text-sm font-medium text-accent">{agentName}</p>
 			<h2 class="font-serif text-2xl font-medium tracking-tight text-ink">
 				What do you need to know about green coffee?
 			</h2>

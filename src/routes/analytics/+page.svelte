@@ -926,9 +926,9 @@
 		return '/subscription?plan=intelligence-monthly&intent=checkout';
 	});
 	let askActionLabel = $derived.by(() => {
-		if (canAskWithAnalyticsContext) return 'Analyze with Cherry';
-		if (!isSignedIn) return 'Sign in to use Cherry';
-		return 'Upgrade to use Cherry';
+		if (canAskWithAnalyticsContext) return 'Analyze with Cherry AI';
+		if (!isSignedIn) return 'Sign in to use Cherry AI';
+		return 'Upgrade to use Cherry AI';
 	});
 
 	// ── Deferred module loading ───────────────────────────────────────────────

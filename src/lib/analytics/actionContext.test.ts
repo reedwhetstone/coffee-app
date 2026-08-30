@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	applyAnalyticsSeedToInput,
 	buildAnalyticsChatPrompt,
+	readChatSeedFromSearchParams,
 	readAnalyticsSeedFromSearchParams,
 	type AnalyticsChatContext
 } from './actionContext';
@@ -54,6 +55,14 @@ describe('analytics action context', () => {
 		expect(
 			readAnalyticsSeedFromSearchParams(new URLSearchParams('source=analytics&prompt=%20'))
 		).toBeNull();
+	});
+
+	it('accepts a dashboard question as a seeded Cherry AI investigation', () => {
+		expect(
+			readChatSeedFromSearchParams(
+				new URLSearchParams('source=dashboard&prompt=Review%20my%20tracked%20coffees')
+			)
+		).toBe('Review my tracked coffees');
 	});
 
 	it('seeds chat input on analytics navigation without replaying the same seed', () => {

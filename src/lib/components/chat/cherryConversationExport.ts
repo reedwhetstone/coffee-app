@@ -10,13 +10,14 @@ interface ConversationExportMessage {
 
 export function buildCherryConversationExport(
 	messages: ConversationExportMessage[],
-	exportedAt: Date
+	exportedAt: Date,
+	agentName: CherryAgentName
 ): string {
-	let markdown = '# Cherry conversation export\n\n';
+	let markdown = `# ${agentName} conversation export\n\n`;
 	markdown += `**Exported:** ${exportedAt.toLocaleString()}\n\n---\n\n`;
 
 	for (const message of messages) {
-		const role = message.role === 'user' ? 'User' : 'Cherry';
+		const role = message.role === 'user' ? 'User' : agentName;
 		markdown += `## ${role}\n\n`;
 
 		for (const part of message.parts) {
@@ -31,3 +32,4 @@ export function buildCherryConversationExport(
 export function cherryConversationExportFilename(exportedAt: Date): string {
 	return `cherry-conversation-${exportedAt.toISOString().split('T')[0]}.md`;
 }
+import type { CherryAgentName } from '$lib/cherry/identity';

@@ -42,12 +42,11 @@ Use these names consistently:
 | Name                        | Use                                                                                                                             |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | Purveyors                   | Parent company and platform brand                                                                                               |
-| Cherry                      | Umbrella for Purveyors' coffee-native AI. Default customer-facing name; tagline: "Coffee-native AI from Purveyors."             |
-| Cherry AI                   | Descriptive product-family phrase when disambiguation is necessary; use `Cherry` in normal UI labels                            |
-| Cherry Runtime              | Agent execution and orchestration layer. It selects a runtime role and connects models to Parchment and Mallard context         |
-| Cherry Green Agent          | Green-coffee runtime role using Parchment sourcing, catalog, portfolio, and market tools                                        |
-| Cherry Roast Agent          | Roasting runtime role using Mallard inventory, roast, tasting, sales, and margin tools                                          |
-| Cherry Synthesis Agent      | Cross-domain runtime role using both Parchment evidence and Mallard roastery context                                            |
+| Cherry AI                   | Purveyors' coffee-native AI product family and the required generic customer-facing name                                        |
+| Cherry Runtime              | Internal execution and orchestration layer that selects an agent role and connects models to product context                    |
+| Cherry Green Agent          | Parchment Intelligence role using sourcing, catalog, portfolio, and market tools                                                |
+| Cherry Roaster Agent        | Mallard Studio role using inventory, roast, tasting, sales, and margin tools                                                    |
+| Cherry Synthesis Agent      | Cross-domain role using both Parchment Intelligence evidence and Mallard Studio context                                         |
 | Cherry Evals                | Public family for domain benchmarks covering green coffee, sensory analysis, sourcing, and roasting; canonical route `/evals`   |
 | Parchment                   | API infrastructure layer inside Purveyors; use as the shared infrastructure name, not a public platform                         |
 | Mallard Studio              | Authenticated roaster workspace for inventory, roast, profit, tasting, chat, and subscriptions                                  |
@@ -72,38 +71,39 @@ Avoid these in current public-facing copy unless quoting historical material:
 - Ask Parchment
 - Ask Cherry
 - Parchment Intelligence Chat
-- generic "AI assistant" or "AI workbench" labels when the owned product is Cherry
+- standalone `Cherry` when the product family is intended; use `Cherry AI`
+- generic "AI assistant" or "AI workbench" labels when the owned product is Cherry AI
 
 ### Cherry identity and anti-anthropomorphism
 
-The fundamental rule is: **Cherry is a system, not a persona.**
+The fundamental rule is: **Cherry AI is a system, not a persona.**
 
-- `Cherry`, `Cherry Runtime`, and the named Cherry agents describe product and execution boundaries,
+- `Cherry AI`, `Cherry Runtime`, and the named Cherry agents describe product and execution boundaries,
   not characters.
 - Agent names may identify the active runtime role. Do not give them separate personalities, human
   biographies, avatars, emotions, preferences, relationships, or personal experience.
-- Do not write "I am Cherry," "Cherry thinks," "Cherry feels," "Cherry wants," or "Cherry knows"
+- Do not write "I am Cherry AI," "Cherry AI thinks," "Cherry AI feels," "Cherry AI wants," or "Cherry AI knows"
   when the accurate statement is that a model inferred something from supplied context.
 - Ordinary first-person grammar may keep a generated response natural, but explicit self-description
-  must use system language: "This is Cherry, coffee-native AI from Purveyors, running the Cherry
+  must use system language: "This is Cherry AI from Purveyors, running the Cherry
   Green Agent."
-- Attribute evidence to its owner. Parchment supplies catalog, market, sourcing, and API evidence.
+- Attribute evidence to its owner. Parchment Intelligence supplies catalog, market, and sourcing evidence; the Parchment API supplies the underlying contracts.
   Mallard Studio supplies inventory, roast, tasting, sales, and margin context. Cherry Runtime
   orchestrates the work and models interpret the supplied context.
 - Never turn an empty tool result into a personal-knowledge claim or general proof that something does
   not exist.
-- Use action language such as "Open Cherry," "Analyze with Cherry," or "Run through Cherry." Do not
+- Use action language such as "Open Cherry AI," "Analyze with the Cherry Green Agent," or "Run through Cherry AI." Do not
   recreate the retired persona framing as "Ask Cherry."
 
 Good:
 
 - "Cherry Runtime selected the Cherry Synthesis Agent because both context families are available."
-- "Parchment returned 12 stocked offers; Cherry compared five against the stated constraints."
-- "Cherry does not have evidence for that claim yet."
+- "Parchment Intelligence returned 12 stocked offers; the Cherry Green Agent compared five against the stated constraints."
+- "Cherry AI does not have evidence for that claim yet."
 
 Avoid:
 
-- "Cherry remembers your favorite coffee."
+- "Cherry AI remembers your favorite coffee."
 - "The Green Agent believes this supplier is best."
 - "Ask Cherry what she thinks."
 

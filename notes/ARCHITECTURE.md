@@ -198,7 +198,7 @@ output, and UI artifacts. Parchment owns shared data access and reusable busines
 behavior behind HTTP endpoints.
 
 Entitlements select the runtime role: Parchment Intelligence-only access uses the
-Cherry Green Agent, Mallard Studio-only access uses the Cherry Roast Agent, and
+Cherry Green Agent, Mallard Studio-only access uses the Cherry Roaster Agent, and
 combined access uses the Cherry Synthesis Agent. These are execution roles, not
 personas or model identities. The current parent-model preset remains an internal
 runtime dependency until a deployed Cherry model alias is available.

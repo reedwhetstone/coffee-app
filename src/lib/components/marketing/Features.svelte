@@ -19,20 +19,20 @@
 		},
 		{
 			step: '02',
-			title: 'Cherry connects context to a decision.',
-			body: 'Investigate supplier movement, compare current offers, or bring in inventory and roast history. Cherry Runtime uses the context your plan unlocks.',
+			title: 'Cherry AI connects context to a decision.',
+			body: 'Investigate supplier movement, compare current offers, or bring in inventory and roast history. Cherry AI uses the context your plan unlocks.',
 			icon: 'M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z'
 		},
 		{
 			step: '03',
 			title: 'Work in Purveyors or build with it.',
-			body: 'Use the Market Index and Mallard Studio directly, or connect coffee-native data to your own applications and agents through the Parchment API and CLI.',
+			body: 'Use the Market Index and Mallard Studio directly, or connect coffee-native data to your own applications and agents through the Parchment API and Purveyors CLI.',
 			icon: 'M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z'
 		}
 	];
 
 	const capabilities = [
-		'Cherry',
+		'Cherry AI',
 		'Price index history',
 		'Arrivals & delistings',
 		'Origin benchmarks',
@@ -50,7 +50,7 @@
 			</p>
 			<p class="mt-6 text-lg leading-8 text-muted">
 				Green coffee pricing lives in supplier spreadsheets, PDFs, and inbox offer lists. Purveyors
-				gathers and normalizes it, then connects that shared market context to Cherry, roaster
+				gathers and normalizes it, then connects that shared market context to Cherry AI, roaster
 				workflows, and developer tools.
 			</p>
 		</div>

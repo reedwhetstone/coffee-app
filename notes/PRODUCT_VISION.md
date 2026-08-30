@@ -53,8 +53,8 @@ This is not just a marketplace and not a roasting tool. The core value is struct
 9. **Mallard Studio is context, not the umbrella product.**
    Mallard Studio should help roasters apply Purveyors intelligence to their own inventory, roast, tasting, and margin context. It should not pull the platform back into the saturated generic roasting-tool category.
 
-10. **Cherry should be visible, useful, and grounded in real product context.**
-    Cherry is Purveyors' umbrella for coffee-native AI, not a persona or a generic chat box added to the application. Cherry Runtime selects the Cherry Green Agent for Parchment sourcing and market context, the Cherry Roast Agent for Mallard roastery context, and the Cherry Synthesis Agent when both are available. Public positioning should show the questions, evidence, and decisions each context enables without implying access to unavailable tools or presenting a model as a person. Parchment and Mallard continue to own their data and workflow contracts; Cherry owns AI execution and interpretation.
+10. **Cherry AI should be visible, useful, and grounded in real product context.**
+    Cherry AI is Purveyors' coffee-native AI product family, not a persona or a generic chat box added to the application. Cherry Runtime selects the Cherry Green Agent for Parchment Intelligence sourcing and market context, the Cherry Roaster Agent for Mallard Studio roastery context, and the Cherry Synthesis Agent when both are available. Public positioning should show the questions, evidence, and decisions each context enables without implying access to unavailable tools or presenting a model as a person. Parchment Intelligence, the Parchment API, and Mallard Studio continue to own their data and workflow contracts; Cherry AI owns AI execution and interpretation.
 
 ## Emerging GTM thesis under discussion
 

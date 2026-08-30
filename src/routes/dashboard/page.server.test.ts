@@ -100,19 +100,10 @@ describe('/dashboard sourcing workspace load', () => {
 		expect(result.recentArrivals).toEqual([]);
 	});
 
-	it('loads tracked lot summaries and their catalog cards for ppiAccess users', async () => {
+	it('loads compact tracked-lot summaries for Parchment Intelligence users', async () => {
 		mockGetTrackedLotSummaries.mockResolvedValue([
 			{ catalogId: 7, name: 'Tracked Lot', stocked: true }
 		]);
-		// Tracked hydration goes through Parchment catalog.list with a coffeeIds
-		// filter; arrivals uses the stocked query. Return the tracked row only for
-		// the coffeeIds call.
-		mockCatalogList.mockImplementation((query: { coffeeIds?: string }) =>
-			Promise.resolve({
-				data: { data: query?.coffeeIds ? [{ id: 7, name: 'Tracked Lot' }] : [] }
-			})
-		);
-
 		const result = (await load(
 			makeLoadInput({
 				role: 'viewer',
@@ -120,7 +111,6 @@ describe('/dashboard sourcing workspace load', () => {
 			})
 		)) as {
 			trackedLots: Array<{ catalogId: number }>;
-			trackedCatalog: Array<{ id: number }>;
 			activeBriefs: unknown[];
 		};
 
@@ -128,15 +118,28 @@ describe('/dashboard sourcing workspace load', () => {
 			expect.objectContaining({ catalog: expect.anything() }),
 			12
 		);
-		expect(mockCatalogList).toHaveBeenCalledWith({
-			coffeeIds: '7',
-			stocked: 'all',
-			showWholesale: 'true',
-			limit: 1
-		});
 		expect(result.trackedLots).toHaveLength(1);
-		expect(result.trackedCatalog).toHaveLength(1);
+		expect(mockCatalogList).toHaveBeenCalledTimes(1);
 		expect(result.activeBriefs).toEqual([]);
+	});
+
+	it('loads active sourcing briefs for Parchment Intelligence users', async () => {
+		const result = (await load(
+			makeLoadInput({
+				role: 'viewer',
+				principal: { isAuthenticated: true, userId: 'ppi-1', ppiAccess: true },
+				briefRows: [
+					{
+						id: 'brief-ppi',
+						name: 'Ethiopia brief',
+						criteria: { version: 1, country: 'Ethiopia' }
+					}
+				]
+			})
+		)) as { activeBriefs: Array<{ name: string }> };
+
+		expect(mockBriefsList).toHaveBeenCalledOnce();
+		expect(result.activeBriefs).toEqual([expect.objectContaining({ name: 'Ethiopia brief' })]);
 	});
 
 	it('loads tracked lots and active briefs with catalog deep links for members', async () => {

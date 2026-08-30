@@ -76,6 +76,11 @@ Do not use archive material as the source of truth for current product naming, p
 
 Use these names consistently in current docs and product copy:
 
+- `Cherry AI`
+- `Cherry Green Agent`
+- `Cherry Roaster Agent`
+- `Cherry Synthesis Agent`
+- `Cherry Runtime` (internal execution and orchestration only)
 - `Mallard Studio`
 - `Parchment API`
 - `Parchment Intelligence`

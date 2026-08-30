@@ -31,18 +31,21 @@ import {
 } from './+server';
 
 describe('chat system prompt entitlement context', () => {
-	it('identifies Cherry as a system and selects the synthesis role for combined access', () => {
+	it('identifies Cherry AI as a system and selects the synthesis role for combined access', () => {
 		const prompt = _buildSystemPrompt({ type: 'general' }, 'Member User', {
 			ppiAccess: true,
 			memberAccess: true
 		});
 
-		expect(prompt).toContain("Cherry is Purveyors' coffee-native AI system");
-		expect(prompt).toContain('Cherry is a system, not a persona');
+		expect(prompt).toContain("Cherry AI is Purveyors' coffee-native AI system");
+		expect(prompt).toContain('Cherry AI is a system, not a persona');
 		expect(prompt).toContain('Cherry Synthesis Agent');
 		expect(prompt).toContain('agent name describes an execution role, not a character');
 		expect(prompt).toContain('Do not say "I am Cherry"');
-		expect(prompt).toMatch(/Parchment supplies catalog, market, sourcing, and API\s+evidence/);
+		expect(prompt).toMatch(
+			/Parchment Intelligence supplies catalog, market, and sourcing\s+evidence/
+		);
+		expect(prompt).toContain('The Parchment API supplies the underlying data contracts');
 		expect(prompt).toMatch(
 			/Mallard Studio supplies the user's inventory, roast, tasting, sales, and margin context/
 		);
@@ -65,7 +68,7 @@ describe('chat system prompt entitlement context', () => {
 		});
 
 		expect(prompt).toContain('Cherry Green Agent');
-		expect(prompt).not.toContain('Cherry Roast Agent');
+		expect(prompt).not.toContain('Cherry Roaster Agent');
 		expect(prompt).not.toContain('Cherry Synthesis Agent');
 		expect(prompt).toContain('You have access to Parchment Intelligence tools');
 		expect(prompt).toContain('coffee_catalog_search');
@@ -85,7 +88,7 @@ describe('chat system prompt entitlement context', () => {
 		expect(prompt).toContain('After calling coffee_catalog_search, catalog_rank, market_signals');
 		expect(prompt).toContain('For market_signals, use the returned catalogId');
 		expect(prompt).toContain('add_bean_to_inventory');
-		expect(prompt).toContain('Mallard-only roast, tasting, and sales tools are unavailable');
+		expect(prompt).toContain('Mallard Studio-only roast, tasting, and sales tools are unavailable');
 		expect(prompt).not.toContain('You have access to these tools');
 		expect(prompt).not.toContain('roast_profiles');
 		expect(prompt).not.toContain('record_sale');
@@ -98,7 +101,7 @@ describe('chat system prompt entitlement context', () => {
 			memberAccess: true
 		});
 
-		expect(prompt).toContain('Cherry Roast Agent');
+		expect(prompt).toContain('Cherry Roaster Agent');
 		expect(prompt).not.toContain('Cherry Green Agent');
 		expect(prompt).not.toContain('Cherry Synthesis Agent');
 		expect(prompt).toContain('You have access to these tools');

@@ -14,7 +14,7 @@ describe('billing offer analytics', () => {
 
 		expect(track).toHaveBeenCalledWith('billing_checkout_started', {
 			offerId: 'both-monthly',
-			offerName: 'Studio + Intelligence',
+			offerName: 'Mallard Studio + Parchment Intelligence',
 			price: '$6',
 			interval: '/month',
 			trialDays: 5

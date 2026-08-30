@@ -5,8 +5,8 @@
 **Captured:** 2026-08-29  
 **Source:** Product-owner GTM exploration shared during coffee-app PR #550 review
 
-> **Product naming addendum, 2026-08-29:** Cherry is now the customer-facing umbrella for
-> Purveyors' coffee-native AI. The runtime roles are Cherry Green Agent, Cherry Roast Agent, and
+> **Product naming addendum, 2026-08-30:** Cherry AI is the customer-facing product family for
+> Purveyors' coffee-native AI. The runtime roles are Cherry Green Agent, Cherry Roaster Agent, and
 > Cherry Synthesis Agent. This resolves the naming question below without accepting the broader,
 > still-unresolved platform claims in this discussion draft.
 
@@ -16,7 +16,7 @@ Purveyors should increasingly present one connected coffee system, not a shelf o
 
 The clearest proposed adoption model is:
 
-- **Work in Purveyors:** buyers and roasters use the public market, Parchment Intelligence, Cherry, and Mallard Studio directly.
+- **Work in Purveyors:** buyers and roasters use the public market, Parchment Intelligence, Cherry AI, and Mallard Studio directly.
 - **Build with Purveyors:** developers, software platforms, hardware teams, and agents use the Parchment API, generated SDK, CLI, and future supported interfaces.
 
 This is compatible with the current product vision when it strengthens the normalized green-coffee data moat and keeps Mallard as a first-party operating surface rather than redefining Purveyors as generic roast-management software.
@@ -28,9 +28,9 @@ This is compatible with the current product vision when it strengthens the norma
 - Parchment API provides a stable external `/v1/*` contract; the generated SDK and Purveyors CLI are separate supported consumers.
 - Mallard Studio provides first-party inventory, roast, tasting, sales, and margin workflows.
 - Cherry Runtime already selects entitlement-specific execution roles:
-  - Intelligence unlocks the Cherry Green Agent with sourcing, catalog, portfolio, price-index, and market-signal context.
-  - Studio unlocks the Cherry Roast Agent with catalog, inventory, roast, tasting, and sales context.
-  - Studio + Intelligence unlocks the Cherry Synthesis Agent with both context families.
+  - Parchment Intelligence unlocks the Cherry Green Agent with sourcing, catalog, portfolio, price-index, and market-signal context.
+  - Mallard Studio unlocks the Cherry Roaster Agent with catalog, inventory, roast, tasting, and sales context.
+  - Mallard Studio + Parchment Intelligence unlocks the Cherry Synthesis Agent with both context families.
 - Billing and entitlement authority already sits upstream in Parchment rather than in the presentation client.
 
 These are enough to frame Purveyors as AI-forward and connected today. They are not enough to claim that Parchment already provides a complete operational control plane or that every Mallard capability has a supported public contract.
@@ -43,14 +43,14 @@ The source exploration proposes a longer-term hierarchy:
 - **Parchment:** shared data, contract, identity, entitlement, and eventually operational infrastructure.
 - **Mallard Studio:** first-party operator application using that infrastructure.
 - **Parchment Intelligence:** reusable market and decision capability rather than an isolated application.
-- **Cherry:** the coffee-native AI umbrella spanning runtime roles, specialist models, and evals.
+- **Cherry AI:** the coffee-native AI product family spanning runtime roles, specialist models, and evals.
 
 This hierarchy is useful internally, but current brand guidance deliberately avoids “Parchment Platform” in public copy. Any naming change needs an explicit product and brand decision rather than implementation by repetition.
 
 ## High-value GTM implications
 
 1. **Lead with removed complexity.** Explain the supplier normalization, coffee context, and decision work customers no longer need to recreate.
-2. **Make Cherry concrete.** Show the questions Cherry can analyze and the evidence or roaster records Cherry Runtime can use. Do not market generic chat.
+2. **Make Cherry AI concrete.** Show the questions Cherry AI can analyze and the evidence or roaster records Cherry Runtime can use. Do not market generic chat.
 3. **Connect the product story.** Market data, Intelligence, Studio, API, CLI, and agent interfaces should look like ways to use one coffee system.
 4. **Keep the entry wedge specific.** The normalized market graph is the strongest proven differentiator. Broader operations claims should expand from real customer demand.
 5. **Protect ontology and trust.** Customer extensions must not fork canonical coffee meaning, and private operational data needs explicit governance before any network-effect claim.

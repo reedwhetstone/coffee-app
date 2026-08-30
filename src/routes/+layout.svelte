@@ -20,6 +20,7 @@
 
 	import type { PageMeta } from '$lib/types/meta.types';
 	import { checkRole, type PageAuthView } from '$lib/types/auth.types';
+	import { resolveCherryAgent } from '$lib/cherry/identity';
 
 	interface LayoutData {
 		auth: PageAuthView;
@@ -111,6 +112,12 @@
 	let hasChatAccess = $derived(
 		data.auth.isSignedIn && (data.auth.ppiAccess === true || checkRole(data.auth.role, 'member'))
 	);
+	let activeChatAgent = $derived(
+		resolveCherryAgent({
+			ppiAccess: data.auth.ppiAccess,
+			memberAccess: checkRole(data.auth.role, 'member')
+		})
+	);
 	let isChatWorkspace = $derived(isChatRoute && hasChatAccess);
 	let canUseChatDrawer = $derived(
 		hasChatAccess && !isStandaloneShell && !usesPublicShell && !isChatRoute
@@ -171,13 +178,13 @@
 			</div>
 		</main>
 
-		{#if canUseChatDrawer}
+		{#if canUseChatDrawer && activeChatAgent}
 			{#if !chatDrawerOpen}
 				<button
 					type="button"
 					onclick={() => (chatDrawerOpen = true)}
 					class="fixed bottom-6 right-4 z-30 flex items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-ink shadow-lg transition-transform hover:scale-105"
-					title="Open Cherry (Ctrl+K)"
+					title={`Open ${activeChatAgent.name} (Ctrl+K)`}
 				>
 					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
@@ -187,7 +194,7 @@
 							d="M8 10h8m-8 4h5m-9.5 5.5L4 16.06A8.96 8.96 0 013 12a9 9 0 119 9 8.96 8.96 0 01-4.06-1z"
 						/>
 					</svg>
-					Cherry
+					{activeChatAgent.name}
 				</button>
 			{/if}
 			<ChatDrawer
