@@ -172,7 +172,7 @@
 	<dl class="mx-auto grid max-w-7xl border-t border-line px-6 sm:grid-cols-3 lg:px-8">
 		<div class="min-w-0 py-5 sm:border-r sm:border-line sm:pr-8">
 			<dt class="text-xs font-medium text-muted">Live market coverage</dt>
-			<dd class="mt-1 font-serif text-2xl font-medium text-ink">{CATALOG_SIZE_LABEL} offers</dd>
+			<dd class="mt-1 font-serif text-2xl font-medium text-ink">{CATALOG_SIZE_LABEL} coffees</dd>
 			{#if coffeeExamples.length > 0}
 				<div class="mt-3 flex min-w-0 items-center gap-2" aria-hidden="true">
 					<span class="relative flex size-2 shrink-0">
