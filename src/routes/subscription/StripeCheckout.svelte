@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import type { BillingPurchaseKey } from '$lib/billing/purchaseKeys';
+	import type { BillingOfferId } from '$lib/billing/offers';
 	import {
 		clearCheckoutAttempt,
 		getOrCreateCheckoutAttempt,
@@ -10,8 +10,8 @@
 		persistCheckoutAdmission
 	} from '$lib/billing/checkoutRequest';
 
-	const { purchaseKey, onSuccess = () => {} } = $props<{
-		purchaseKey: BillingPurchaseKey;
+	const { offerId, onSuccess = () => {} } = $props<{
+		offerId: BillingOfferId;
 		onSuccess?: () => void | Promise<void>;
 	}>();
 
@@ -25,9 +25,7 @@
 	let error = $state<string | null>(null);
 
 	async function prepareCheckout() {
-		let attempt = getOrCreateCheckoutAttempt(sessionStorage, purchaseKey, () =>
-			crypto.randomUUID()
-		);
+		let attempt = getOrCreateCheckoutAttempt(sessionStorage, offerId, () => crypto.randomUUID());
 		const response = attempt.admissionId
 			? await fetch(`/api/billing/checkout-sessions/${encodeURIComponent(attempt.admissionId)}`, {
 					method: 'POST'
@@ -37,7 +35,7 @@
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						requestId: attempt.requestId,
-						purchaseItems: [{ purchaseKey, quantity: 1 }]
+						purchaseItems: attempt.purchaseItems
 					})
 				});
 		const body = await response.json().catch(() => null);

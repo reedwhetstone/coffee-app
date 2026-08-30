@@ -1,131 +1,141 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { checkRole, type PageAuthView } from '$lib/types/auth.types';
-	import OrganicBand from '$lib/components/marketing/OrganicBand.svelte';
-	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 
-	let { auth } = $props<{
-		auth: PageAuthView;
-	}>();
+	let { auth } = $props<{ auth: PageAuthView }>();
 
 	let isSignedIn = $derived(auth.isSignedIn);
 	let canAccessMemberRoutes = $derived(checkRole(auth.role, 'member'));
 	let userLabel = $derived(auth.user?.email?.split('@')[0] ?? 'there');
 
-	function handlePrimaryAction() {
-		goto('/analytics');
-	}
-
-	function handleSecondaryAction() {
-		goto('/catalog');
-	}
-
-	function handleLearnMore() {
-		document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
-	}
+	const groundedSteps = [
+		{
+			label: 'Read the market',
+			body: 'Find arrivals, delistings, supplier changes, and price movement.'
+		},
+		{
+			label: 'Check the evidence',
+			body: 'Compare live offers with origin benchmarks and price history.'
+		},
+		{
+			label: 'Move the work forward',
+			body: 'Build a shortlist, update your portfolio, or open the underlying records.'
+		}
+	] as const;
 </script>
 
-<section
-	class="texture-grain relative overflow-hidden bg-gradient-to-br from-surface-canvas to-surface-panel"
->
-	<div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
-		<div class="flex flex-col items-center justify-center">
+<section class="border-b border-line bg-surface-panel">
+	<div
+		class="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-end lg:gap-14 lg:px-8 lg:py-20"
+	>
+		<div>
 			{#if isSignedIn}
-				<div
-					class="mb-6 inline-flex items-center rounded-full border border-accent/20 bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent"
-				>
-					Welcome back, {userLabel}. The market moved while you were out.
-				</div>
+				<p class="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+					Welcome back, {userLabel}. Your coffee context is ready.
+				</p>
+			{:else}
+				<p class="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+					AI-native coffee intelligence
+				</p>
 			{/if}
-			<h1 class="text-center font-serif text-4xl font-medium tracking-tight text-ink sm:text-6xl">
-				{#if isSignedIn}
-					Back to the full market view.
-				{:else}
-					Source green coffee <br /> with the whole market in view.
-				{/if}
+
+			<h1
+				class="mt-4 max-w-4xl font-serif text-4xl font-medium tracking-tight text-ink sm:text-6xl"
+			>
+				Coffee intelligence you can ask, act on, and build with.
 			</h1>
-		</div>
-		<div class="mx-auto max-w-3xl text-center">
-			<p class="mt-6 text-lg leading-8 text-muted">
-				Daily normalized data from 40+ US suppliers. Price movement, arrivals, delistings, and
-				origin benchmarks in one place, so you make procurement calls with real time intelligence.
+			<p class="mt-6 max-w-3xl text-lg leading-8 text-muted">
+				Purveyors connects daily-normalized market data, your roastery records, and Ask Parchment in
+				one coffee-native system. See the market, investigate the evidence, and carry the decision
+				into real work.
 			</p>
-			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
+
+			<div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
 				<button
-					onclick={handlePrimaryAction}
-					class="w-full rounded-md bg-accent px-6 py-3 text-sm font-semibold text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
+					onclick={() => goto('/analytics')}
+					class="rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
 				>
 					Explore the Market Index
 				</button>
-				<button
-					onclick={handleSecondaryAction}
-					class="w-full rounded-md border border-accent px-6 py-3 text-sm font-semibold text-accent transition-all duration-200 hover:bg-accent hover:text-ink sm:w-auto"
+				<a
+					href="/subscription#ask-parchment-details"
+					class="rounded-lg border border-line bg-surface-canvas px-6 py-3 text-center text-sm font-semibold text-ink transition-colors hover:border-accent hover:text-accent"
 				>
-					Browse the catalog
-				</button>
+					See Ask Parchment
+				</a>
 				<button
-					onclick={handleLearnMore}
-					class="text-sm font-semibold leading-6 text-ink transition-colors duration-200 hover:text-accent"
+					onclick={() => goto('/catalog')}
+					class="px-3 py-3 text-sm font-semibold text-ink transition-colors hover:text-accent"
 				>
-					How it works <span aria-hidden="true">→</span>
+					Browse the catalog <span aria-hidden="true">→</span>
 				</button>
-				{#if !isSignedIn}
-					<a
-						href="/auth"
-						class="text-sm font-semibold leading-6 text-muted transition-colors duration-200 hover:text-accent"
-					>
-						Sign in
-					</a>
-				{/if}
 			</div>
+
 			{#if isSignedIn && canAccessMemberRoutes}
-				<div class="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm">
+				<div class="mt-5 flex flex-wrap items-center gap-4 text-sm">
 					<button
 						onclick={() => goto('/beans')}
-						class="font-medium text-muted transition-colors duration-200 hover:text-accent"
+						class="font-medium text-muted transition-colors hover:text-accent"
 					>
-						Inventory
+						Open inventory
 					</button>
 					<button
 						onclick={() => goto('/roast')}
-						class="font-medium text-muted transition-colors duration-200 hover:text-accent"
+						class="font-medium text-muted transition-colors hover:text-accent"
 					>
-						Roast
+						Open roast workspace
 					</button>
 				</div>
+			{:else if !isSignedIn}
+				<p class="mt-5 text-sm text-muted">
+					The catalog and core Market Index are free to explore. <a
+						href="/auth"
+						class="font-semibold text-link hover:text-accent">Sign in</a
+					>
+					to keep your work together.
+				</p>
 			{/if}
 		</div>
-	</div>
 
-	<!-- Sample daily market brief with an organic accent spine -->
-	<div class="mx-auto max-w-7xl px-4 pb-20 sm:px-6 sm:pb-24 lg:px-8">
 		<div
-			class="relative mx-auto max-w-2xl overflow-hidden rounded-lg border border-line bg-surface-raised p-5 shadow-md sm:p-6"
+			id="ai-workbench"
+			class="scroll-mt-24 overflow-hidden rounded-2xl bg-line ring-1 ring-line"
 		>
-			<AccentSpine />
-			<div class="pl-3">
-				<div class="flex items-center justify-between gap-2">
-					<div class="flex items-center gap-2">
-						<div class="h-2 w-2 rounded-full bg-accent"></div>
-						<span class="text-xs font-semibold text-ink">Market brief · updated every morning</span>
-					</div>
-					<span class="rounded-full bg-surface-panel px-2.5 py-0.5 text-xs text-muted">Sample</span>
-				</div>
-				<p class="mt-3 font-serif text-base leading-7 text-ink sm:text-lg">
-					Ethiopia washed lots down 4.9% median week-over-week. 3 new arrivals from importers this
-					week, 2 lots delisted. Origin IQR $6.90–$8.40; wholesale holds $0.55 below retail.
+			<div class="bg-surface-canvas p-5 sm:p-6">
+				<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Ask Parchment</p>
+				<p class="mt-3 font-serif text-2xl font-medium leading-8 text-ink">
+					Which coffees merit a closer look this week?
 				</p>
-				<div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-muted">
-					<span>40+ importers tracked</span>
-					<span>90+ days of price history</span>
-					<span>Arrivals and delistings daily</span>
-				</div>
+				<p class="mt-3 text-sm leading-6 text-muted">
+					Grounded tools, not generic chat. Ask Parchment works from the coffee data and records
+					your plan unlocks.
+				</p>
 			</div>
+			<ol class="grid gap-px bg-line">
+				{#each groundedSteps as step, index}
+					<li class="flex gap-4 bg-surface-panel p-5">
+						<span class="text-sm font-semibold text-accent">0{index + 1}</span>
+						<div>
+							<p class="text-sm font-semibold text-ink">{step.label}</p>
+							<p class="mt-1 text-sm leading-6 text-muted">{step.body}</p>
+						</div>
+					</li>
+				{/each}
+			</ol>
+			<dl class="grid grid-cols-3 gap-px bg-line text-center">
+				<div class="bg-surface-canvas p-3">
+					<dt class="text-xs text-muted">Catalogs</dt>
+					<dd class="mt-1 text-sm font-semibold text-ink">40+</dd>
+				</div>
+				<div class="bg-surface-canvas p-3">
+					<dt class="text-xs text-muted">Market</dt>
+					<dd class="mt-1 text-sm font-semibold text-ink">Daily</dd>
+				</div>
+				<div class="bg-surface-canvas p-3">
+					<dt class="text-xs text-muted">Context</dt>
+					<dd class="mt-1 text-sm font-semibold text-ink">Plan-aware</dd>
+				</div>
+			</dl>
 		</div>
-	</div>
-
-	<!-- Slim organic accent ribbon closing the hero -->
-	<div class="h-3 w-full overflow-hidden sm:h-4" aria-hidden="true">
-		<OrganicBand />
 	</div>
 </section>

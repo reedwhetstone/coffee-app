@@ -4,8 +4,24 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import StripeCheckout from './StripeCheckout.svelte';
+	import SubscriptionPlanDetails from '$lib/components/marketing/SubscriptionPlanDetails.svelte';
+	import SelfServePlanCard from '$lib/components/marketing/SelfServePlanCard.svelte';
+	import {
+		SELF_SERVE_PLANS,
+		type SelfServePlan,
+		type SelfServePlanId
+	} from '$lib/billing/selfServePlans';
 	import { signInWithGoogle } from '$lib/supabase';
-	import { BILLING_PURCHASE_KEYS, type BillingPurchaseKey } from '$lib/billing/purchaseKeys';
+	import {
+		BILLING_OFFERS,
+		hasBundledBillingSubscription,
+		getBillingOffer,
+		hasInteractiveBillingSubscription,
+		hasNonterminalBundledBillingSubscription,
+		type BillingOffer,
+		type BillingOfferId
+	} from '$lib/billing/offers';
+	import { trackBillingOfferEvent } from '$lib/billing/offerAnalytics';
 	import {
 		clearSubscriptionMutationRequestId,
 		getOrCreateSubscriptionMutationRequestId,
@@ -16,13 +32,14 @@
 	let { data } = $props<{ data: PageData }>();
 
 	type ProductTone = 'success' | 'info' | 'warning' | 'muted';
-	type ProductFamily = 'membership' | 'api_plan' | 'ppi_addon' | 'enterprise';
+	type ProductFamily = 'membership' | 'api_plan' | 'ppi_addon' | 'bundle' | 'enterprise';
 
 	interface ProductCardInterval {
-		purchaseKey: BillingPurchaseKey;
+		offerId: BillingOfferId;
 		label: string;
 		price: string;
 		interval: string;
+		trialDays: number | null;
 		badge?: string;
 		planSlug: string;
 	}
@@ -45,56 +62,74 @@
 		learnMoreHref?: string;
 	}
 
-	// Plan slug to purchase key mapping for intent preservation
-	const planSlugMap: Record<string, BillingPurchaseKey> = {
-		'intelligence-monthly': BILLING_PURCHASE_KEYS.ppiAddonMonthly,
-		'intelligence-annual': BILLING_PURCHASE_KEYS.ppiAddonAnnual,
-		'studio-monthly': BILLING_PURCHASE_KEYS.membershipMonthly,
-		'studio-annual': BILLING_PURCHASE_KEYS.membershipAnnual,
-		'api-monthly': BILLING_PURCHASE_KEYS.apiPlanMonthly
-	};
+	const monthlyInterval = (offer: BillingOffer, badge?: string): ProductCardInterval => ({
+		offerId: offer.offerId as BillingOfferId,
+		label: 'Monthly',
+		price: offer.price,
+		interval: offer.interval,
+		trialDays: offer.trialDays,
+		badge,
+		planSlug: offer.offerId
+	});
 
-	const productCards: ProductCard[] = [
-		{
-			family: 'ppi_addon',
-			name: 'Parchment Intelligence',
-			eyebrow: 'Analytics flagship',
-			headline:
-				'Supplier comparisons, arrivals and delistings, origin benchmarks, and the weekly procurement brief.',
-			description:
-				'Parchment Intelligence gives sourcing pros the full market view: supplier health, arriving and departing lots, origin benchmarks, and price history depth across 40+ US importers.',
-			features: [
-				'Weekly procurement brief with market movements and notable arrivals',
-				'Supplier comparisons and supplier health scoring',
-				'Arrivals feed and delisting alerts by origin and supplier',
-				'Origin benchmarks and price history depth',
-				'Extended price-trend depth across every Market Index view'
-			],
+	// Plan slug to stable offer mapping for intent preservation. Historical annual
+	// subscriptions still render below, but annual offers are closed to new sales.
+	const planSlugMap: Record<string, BillingOfferId> = Object.fromEntries(
+		Object.values(BILLING_OFFERS).map((offer) => [offer.offerId, offer.offerId])
+	) as Record<string, BillingOfferId>;
+
+	const selfServeCopy: Record<
+		SelfServePlanId,
+		Pick<
+			ProductCard,
+			| 'managementCopy'
+			| 'anonymousStateCopy'
+			| 'activeStateCopy'
+			| 'inactiveStateCopy'
+			| 'ctaLabel'
+			| 'activeCtaLabel'
+		>
+	> = {
+		intelligence: {
 			managementCopy: 'Manage Parchment Intelligence billing and access here.',
 			anonymousStateCopy: 'Sign in to see what is on this account.',
 			activeStateCopy: 'Parchment Intelligence is active on this account.',
 			inactiveStateCopy: 'Parchment Intelligence is not active on this account yet.',
 			ctaLabel: 'Start Intelligence',
-			activeCtaLabel: 'Intelligence active',
-			intervals: [
-				{
-					purchaseKey: BILLING_PURCHASE_KEYS.ppiAddonMonthly,
-					label: 'Monthly',
-					price: '$39',
-					interval: '/month',
-					planSlug: 'intelligence-monthly'
-				},
-				{
-					purchaseKey: BILLING_PURCHASE_KEYS.ppiAddonAnnual,
-					label: 'Annual',
-					price: '$350',
-					interval: '/year',
-					badge: 'Save $118/year',
-					planSlug: 'intelligence-annual'
-				}
-			],
-			learnMoreHref: '/analytics'
+			activeCtaLabel: 'Intelligence active'
 		},
+		studio: {
+			managementCopy: 'Review your Studio membership, renewal timing, and billing here.',
+			anonymousStateCopy: 'Sign in to see what is on this account.',
+			activeStateCopy: 'Studio is active on this account.',
+			inactiveStateCopy: 'No Studio membership is attached to this account yet.',
+			ctaLabel: 'Start Studio',
+			activeCtaLabel: 'Studio active'
+		},
+		both: {
+			managementCopy:
+				'Studio and Intelligence are one subscription in this offer. Canceling, resuming, or renewing applies to both products together.',
+			anonymousStateCopy: 'Sign in to see what is on this account.',
+			activeStateCopy: 'Studio and Intelligence are active on this account.',
+			inactiveStateCopy: 'The combined plan is not active on this account yet.',
+			ctaLabel: 'Start both',
+			activeCtaLabel: 'Manage current plan'
+		}
+	};
+
+	const selfServeProductCards: ProductCard[] = SELF_SERVE_PLANS.map((plan) => ({
+		family: plan.family,
+		name: plan.name,
+		eyebrow: plan.eyebrow,
+		headline: plan.description,
+		description: plan.description,
+		features: [...plan.features],
+		...selfServeCopy[plan.id],
+		intervals: [monthlyInterval(plan.offer, plan.id === 'both' ? 'Save $2/month' : undefined)],
+		learnMoreHref: plan.learnMoreHref
+	}));
+
+	const supportingProductCards: ProductCard[] = [
 		{
 			family: 'api_plan',
 			name: 'Parchment API',
@@ -117,52 +152,11 @@
 			activeCtaLabel: 'API plan active',
 			intervals: [
 				{
-					purchaseKey: BILLING_PURCHASE_KEYS.apiPlanMonthly,
-					label: 'Origin',
-					price: '$99',
-					interval: '/month',
-					planSlug: 'api-monthly'
+					...monthlyInterval(BILLING_OFFERS.apiMonthly),
+					label: 'Origin'
 				}
 			],
 			learnMoreHref: '/api'
-		},
-		{
-			family: 'membership',
-			name: 'Mallard Studio',
-			eyebrow: 'Roaster operations',
-			headline: 'Inventory, roast logs, and profit tracking for roasters running production.',
-			description:
-				'Mallard Studio is the operating workspace for coffee teams that need cleaner production workflows, better record-keeping, and fewer spreadsheets.',
-			features: [
-				'Green coffee inventory and lot tracking',
-				'Roast logs with profile charting and cupping notes',
-				'Profit and margin tracking across production',
-				'Workspace tools for team handoff and day-to-day operations'
-			],
-			managementCopy: 'Review your Studio membership, renewal timing, and billing here.',
-			anonymousStateCopy: 'Sign in to see what is on this account.',
-			activeStateCopy: 'Studio is active on this account.',
-			inactiveStateCopy: 'No Studio membership is attached to this account yet.',
-			ctaLabel: 'Start Studio',
-			activeCtaLabel: 'Studio active',
-			intervals: [
-				{
-					purchaseKey: BILLING_PURCHASE_KEYS.membershipMonthly,
-					label: 'Monthly',
-					price: '$9',
-					interval: '/month',
-					planSlug: 'studio-monthly'
-				},
-				{
-					purchaseKey: BILLING_PURCHASE_KEYS.membershipAnnual,
-					label: 'Annual',
-					price: '$80',
-					interval: '/year',
-					badge: 'Save $28/year',
-					planSlug: 'studio-annual'
-				}
-			],
-			learnMoreHref: '/catalog'
 		},
 		{
 			family: 'enterprise',
@@ -187,10 +181,19 @@
 		}
 	];
 
+	const productCards = [...selfServeProductCards, ...supportingProductCards];
+	const selfServeProductCardsById = new Map(
+		SELF_SERVE_PLANS.map((plan, index) => [plan.id, selfServeProductCards[index]])
+	);
+	const apiProduct = supportingProductCards.find((product) => product.family === 'api_plan')!;
+	const enterpriseProduct = supportingProductCards.find(
+		(product) => product.family === 'enterprise'
+	)!;
+
 	const subscriptionMutationRetryDelaysMs = [500, 1000, 2000, 4000, 8000] as const;
 
 	let showCheckout = $state(false);
-	let selectedPurchaseKey = $state<BillingPurchaseKey | null>(null);
+	let selectedOfferId = $state<BillingOfferId | null>(null);
 	let selectedPlanName = $state('');
 	let selectedIntervalLabel = $state('');
 	let selectedPriceLabel = $state('');
@@ -198,6 +201,7 @@
 	let mutationMessages = $state<Record<string, string>>({});
 	let mutationErrors = $state<Record<string, string>>({});
 	let mutationPending = $state<Record<string, boolean>>({});
+	const selectedOffer = $derived(selectedOfferId ? getBillingOffer(selectedOfferId) : null);
 
 	const membershipState = $derived(
 		data.accountState
@@ -255,13 +259,51 @@
 			: null
 	);
 	const isSignedIn = $derived(data.auth.isSignedIn);
+	const hasInteractiveSubscription = $derived(
+		hasInteractiveBillingSubscription(data.subscriptions)
+	);
+	const hasInteractiveAccess = $derived(
+		membershipState?.hasAccess === true || intelligenceState?.enabled === true
+	);
 
 	const isProductActive = (product: ProductCard) => {
 		if (product.family === 'membership') return membershipState?.hasAccess === true;
 		if (product.family === 'api_plan')
 			return apiState?.plan === 'member' || apiState?.plan === 'enterprise';
 		if (product.family === 'ppi_addon') return intelligenceState?.enabled === true;
+		if (product.family === 'bundle') {
+			return hasBundledBillingSubscription(data.subscriptions);
+		}
 		return false;
+	};
+	const isProductCheckoutBlocked = (product: ProductCard) => {
+		if (
+			product.family === 'membership' ||
+			product.family === 'ppi_addon' ||
+			product.family === 'bundle'
+		) {
+			// Until plan transitions ship, every interactive purchase must begin from
+			// zero canonical interactive subscriptions. Otherwise the opposite
+			// standalone card could create a second subscription instead of Both.
+			return data.billingError !== null || hasInteractiveSubscription || hasInteractiveAccess;
+		}
+		return isProductActive(product);
+	};
+	const productCheckoutLabel = (product: ProductCard) => {
+		if (!isProductCheckoutBlocked(product)) return product.ctaLabel;
+		if (data.billingError !== null) return 'Checkout unavailable';
+		if (isProductActive(product)) return product.activeCtaLabel ?? 'Already active';
+		return 'Plan change unavailable';
+	};
+	const chooseSelfServePlan = (plan: SelfServePlan) => {
+		const product = selfServeProductCardsById.get(plan.id);
+		const option = product?.intervals?.[0];
+		if (!product || !option) return;
+		if (!isSignedIn) {
+			signInForPlan(option.planSlug);
+			return;
+		}
+		openCheckout(product, option);
 	};
 
 	// Purchase intent from URL params (set before sign-in to preserve selection).
@@ -270,7 +312,7 @@
 	// the card; they don't force the Stripe modal open.
 	const intendedPlanSlug = $derived(page.url.searchParams.get('plan'));
 	const hasCheckoutIntent = $derived(page.url.searchParams.get('intent') === 'checkout');
-	const intendedPurchaseKey = $derived(
+	const intendedOfferId = $derived(
 		intendedPlanSlug ? (planSlugMap[intendedPlanSlug] ?? null) : null
 	);
 
@@ -307,19 +349,20 @@
 	};
 
 	const openCheckout = (product: ProductCard, option: ProductCardInterval) => {
-		if (isProductActive(product)) return;
-		selectedPurchaseKey = option.purchaseKey;
+		if (isProductCheckoutBlocked(product)) return;
+		trackBillingOfferEvent('billing_checkout_started', option.offerId);
+		selectedOfferId = option.offerId;
 		selectedPlanName = product.name;
 		selectedIntervalLabel = option.label;
 		selectedPriceLabel = `${option.price}${option.interval}`;
 		showCheckout = true;
 	};
 
-	const openCheckoutByKey = (purchaseKey: BillingPurchaseKey) => {
+	const openCheckoutByOfferId = (offerId: BillingOfferId) => {
 		for (const product of productCards) {
 			if (!product.intervals) continue;
 			for (const option of product.intervals) {
-				if (option.purchaseKey === purchaseKey) {
+				if (option.offerId === offerId) {
 					openCheckout(product, option);
 					return;
 				}
@@ -362,6 +405,50 @@
 					? product.activeStateCopy
 					: product.inactiveStateCopy,
 				tone: intelligenceState.tone
+			};
+		}
+
+		if (product.family === 'bundle' && membershipState && intelligenceState) {
+			const hasStudio = membershipState.hasAccess;
+			const hasIntelligence = intelligenceState.enabled;
+			const hasBundle = hasBundledBillingSubscription(data.subscriptions);
+			const hasBundleNeedingAttention =
+				hasNonterminalBundledBillingSubscription(data.subscriptions) && !hasBundle;
+			if (hasBundle) {
+				return {
+					label: 'Both products active',
+					description: product.activeStateCopy,
+					tone: 'success' as ProductTone
+				};
+			}
+			if (hasBundleNeedingAttention) {
+				return {
+					label: 'Bundle subscription needs attention',
+					description:
+						'This bundle is not currently granting Studio or Intelligence access. Review its billing status before starting another plan.',
+					tone: 'warning' as ProductTone
+				};
+			}
+			if (hasStudio && hasIntelligence) {
+				return {
+					label: 'Products active separately',
+					description:
+						'Studio and Intelligence are active in separate subscriptions. Manage each subscription above. Switching them into the combined plan is not available yet.',
+					tone: 'warning' as ProductTone
+				};
+			}
+			if (hasStudio || hasIntelligence) {
+				return {
+					label: 'One product already active',
+					description:
+						'Manage the current subscription above. Switching an existing plan into the bundle is not available yet.',
+					tone: 'warning' as ProductTone
+				};
+			}
+			return {
+				label: 'Bundle not active',
+				description: product.inactiveStateCopy,
+				tone: 'muted' as ProductTone
 			};
 		}
 
@@ -533,11 +620,20 @@
 
 	onMount(() => {
 		const url = new URL(window.location.href);
+		if (!isSignedIn || !hasCheckoutIntent) {
+			for (const offer of [
+				BILLING_OFFERS.studioMonthly,
+				BILLING_OFFERS.intelligenceMonthly,
+				BILLING_OFFERS.bothMonthly
+			]) {
+				trackBillingOfferEvent('billing_offer_impression', offer.offerId);
+			}
+		}
 		// Auto-open checkout only when the user is returning from the OAuth flow
 		// with an explicit `intent=checkout` marker. A bare `?plan=...` URL is
 		// treated as a pricing anchor, not a checkout command.
-		if (isSignedIn && hasCheckoutIntent && intendedPurchaseKey) {
-			openCheckoutByKey(intendedPurchaseKey);
+		if (isSignedIn && hasCheckoutIntent && intendedOfferId) {
+			openCheckoutByOfferId(intendedOfferId);
 			// Strip the intent marker so a refresh of this URL doesn't
 			// re-launch the modal. Leave `plan=` intact so the card stays
 			// highlighted for context. Preserve the existing history.state
@@ -550,7 +646,7 @@
 </script>
 
 <div class="min-h-[calc(100vh-80px)] bg-surface-canvas">
-	{#if data.auth.isSignedIn && showCheckout && selectedPurchaseKey}
+	{#if data.auth.isSignedIn && showCheckout && selectedOfferId}
 		<div class="px-4 py-10 md:px-6">
 			<div class="mx-auto max-w-3xl">
 				<div class="mb-4 flex items-center justify-between gap-4">
@@ -583,85 +679,58 @@
 						</svg>
 					</button>
 				</div>
-				<StripeCheckout purchaseKey={selectedPurchaseKey} onSuccess={handleCheckoutSuccess} />
+				{#if selectedOffer?.trialDays}
+					<p class="mb-4 rounded-xl border border-line bg-surface-panel p-4 text-sm text-muted">
+						If eligible, your {selectedOffer.trialDays}-day free trial starts today. Otherwise,
+						billing starts today.
+						{#if selectedOffer.offerId === BILLING_OFFERS.bothMonthly.offerId}
+							Studio and Intelligence are one subscription and cancel, resume, or renew together.
+						{/if}
+					</p>
+				{/if}
+				<StripeCheckout offerId={selectedOfferId} onSuccess={handleCheckoutSuccess} />
 			</div>
 		</div>
 	{:else}
-		<section class="border-b border-line bg-surface-panel px-4 py-14 md:px-6 md:py-20">
-			<div
-				class="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(20rem,0.9fr)] lg:items-end"
-			>
-				<div class="max-w-3xl space-y-5">
-					<p class="text-sm font-semibold text-accent">
-						{isSignedIn ? 'Your account' : 'Plans'}
-					</p>
-					<h1 class="font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl">
-						{isSignedIn ? 'Your Purveyors account.' : 'Source greens with the full market in view.'}
-					</h1>
-					<p class="text-lg leading-8 text-muted">
-						{isSignedIn
-							? 'Review access and billing in one place.'
-							: 'Daily-normalized data from 40+ US importers. Pricing movement, arrivals, delistings, and origin benchmarks for sourcing pros.'}
-					</p>
-					<div class="flex flex-wrap items-center gap-3">
-						<button
-							onclick={() => goto('/analytics')}
-							class="rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
-						>
-							See the Market Index
-						</button>
-						<a
-							href="/catalog"
-							class="rounded-xl border border-line bg-surface-canvas px-4 py-3 text-sm font-medium text-ink transition-colors hover:border-accent/40 hover:text-accent"
-						>
-							Browse catalog
-						</a>
-						{#if !isSignedIn}
-							<a
-								href={signInHref}
-								class="text-sm text-muted underline underline-offset-2 transition-colors hover:text-ink"
-							>
-								Already have an account? Sign in
-							</a>
-						{/if}
+		<section class="border-b border-line bg-surface-panel px-4 py-10 md:px-6 md:py-12">
+			<div class="mx-auto max-w-6xl">
+				<div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+					<div class="max-w-3xl">
+						<p class="text-sm font-semibold text-accent">Plans & billing</p>
+						<h1 class="mt-3 font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl">
+							Choose the plan that fits your work.
+						</h1>
+						<p class="mt-4 text-lg leading-8 text-muted">
+							Choose market intelligence, roastery operations, or both in one discounted
+							subscription. Ask Parchment is included with every self-serve plan.
+						</p>
 					</div>
+					{#if !isSignedIn}
+						<a
+							href={signInHref}
+							class="shrink-0 rounded-xl border border-line bg-surface-canvas px-4 py-3 text-sm font-semibold text-ink transition-colors hover:border-accent/40 hover:text-accent"
+						>
+							Sign in to subscribe
+						</a>
+					{/if}
 				</div>
 
-				<div class="rounded-3xl border border-line bg-surface-canvas p-6 shadow-sm">
-					<p class="text-xs font-semibold text-muted">
-						{isSignedIn ? 'Account overview' : 'Product line'}
-					</p>
-					<h2 class="mt-3 text-2xl font-semibold text-ink">
-						{isSignedIn ? 'Current access on this account' : 'One platform, four products'}
-					</h2>
-					<p class="mt-2 text-sm leading-7 text-muted">
-						{isSignedIn
-							? 'Confirm what is active before starting a checkout or changing your billing.'
-							: 'Start with the product that matches the job. Sign in when you are ready to subscribe.'}
-					</p>
-
-					<div class="mt-5 space-y-4">
+				{#if isSignedIn}
+					<div class="mt-7 grid gap-3 sm:grid-cols-3">
 						{#each accountOverviewItems as item}
-							<div class="rounded-2xl border border-line bg-surface-panel p-4">
-								<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-									<div>
-										<p class="text-xs font-semibold text-muted">
-											{item.label}
-										</p>
-										<p class="mt-1 text-base font-semibold text-ink">{item.value}</p>
-									</div>
-								</div>
-								<p class="mt-2 text-sm leading-6 text-muted">{item.description}</p>
+							<div class="rounded-2xl border border-line bg-surface-canvas px-4 py-3 shadow-sm">
+								<p class="text-xs font-semibold text-muted">{item.label}</p>
+								<p class="mt-1 text-sm font-semibold text-ink">{item.value}</p>
 							</div>
 						{/each}
 					</div>
-				</div>
+				{/if}
 			</div>
 		</section>
 
 		<section class="px-4 py-8 md:px-6 md:py-10">
 			<div class="mx-auto max-w-6xl space-y-8">
-				{#if isSignedIn}
+				{#if isSignedIn && (data.billingError || data.subscriptions.length > 0)}
 					<div class="rounded-3xl border border-line bg-surface-panel p-6 shadow-sm">
 						<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
 							<div>
@@ -738,154 +807,127 @@
 					</div>
 				{/if}
 
-				<div class="grid gap-6 xl:grid-cols-2">
-					{#each productCards as product}
-						{@const state = getProductState(product)}
-						<div
-							class={`rounded-3xl border bg-surface-canvas p-6 shadow-sm ${product.family === 'ppi_addon' ? 'border-accent/40 ring-1 ring-accent/20' : 'border-line'}`}
-						>
-							<div class="flex items-start justify-between gap-4">
-								<div class="space-y-2">
-									<p class="text-xs font-semibold text-accent">
-										{product.eyebrow}
-									</p>
-									<h2 class="text-2xl font-semibold text-ink">{product.name}</h2>
-									<p class="text-sm font-medium text-ink">{product.headline}</p>
-								</div>
-								<span
-									class={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(state.tone)}`}
-								>
-									{product.family === 'enterprise' ? 'Contact sales' : state.label}
-								</span>
-							</div>
+				<div id="self-serve-plans" class="scroll-mt-24">
+					<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-wide text-accent">Self-serve</p>
+							<h2 class="mt-2 text-2xl font-semibold text-ink">Three plans, one clear choice</h2>
+						</div>
+						<p class="max-w-xl text-sm leading-6 text-muted sm:text-right">
+							Pick one product or save $2/month by keeping Studio and Intelligence together.
+						</p>
+					</div>
 
-							<p class="mt-4 text-sm leading-7 text-muted">{product.description}</p>
+					<div class="mt-5 grid gap-5 lg:grid-cols-3 lg:items-stretch">
+						{#each SELF_SERVE_PLANS as plan (plan.id)}
+							{@const product = selfServeProductCardsById.get(plan.id)!}
+							{@const state = getProductState(product)}
+							<SelfServePlanCard
+								{plan}
+								ctaLabel={isSignedIn ? productCheckoutLabel(product) : `Start ${plan.name}`}
+								disabled={isSignedIn && isProductCheckoutBlocked(product)}
+								statusLabel={isSignedIn ? state.label : null}
+								statusTone={state.tone}
+								onChoose={chooseSelfServePlan}
+							/>
+						{/each}
+					</div>
+				</div>
 
-							<ul class="mt-5 space-y-3 text-sm text-muted">
-								{#each product.features as feature}
-									<li class="flex gap-3">
-										<span class="mt-1 h-2 w-2 rounded-full bg-accent"></span>
-										<span>{feature}</span>
-									</li>
-								{/each}
-							</ul>
+				<SubscriptionPlanDetails />
 
-							{#if isSignedIn}
-								<div class="mt-5 rounded-2xl border border-line bg-surface-panel p-4">
-									<div class="flex items-start justify-between gap-3">
-										<div>
-											<p class="text-xs font-semibold text-muted">Account state</p>
-											<p class="mt-2 text-base font-semibold text-ink">
-												{state.label}
+				<div id="api-plans" class="scroll-mt-24 border-t border-line pt-8">
+					<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+								For developers and larger teams
+							</p>
+							<h2 class="mt-2 text-2xl font-semibold text-ink">
+								Build with Purveyors or tailor it to your business
+							</h2>
+						</div>
+						<p class="max-w-xl text-sm leading-6 text-muted sm:text-right">
+							Use the API in your applications and workflows, or talk with us about custom data
+							delivery and support.
+						</p>
+					</div>
+
+					<div class="mt-5 grid gap-5 lg:grid-cols-[1.35fr_1fr]">
+						{#if apiProduct}
+							{@const apiProductState = getProductState(apiProduct)}
+							{@const apiOption = apiProduct.intervals?.[0]}
+							<div class="rounded-3xl border border-line bg-surface-canvas p-6 shadow-sm">
+								<div class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+									<div class="max-w-2xl">
+										<div class="flex flex-wrap items-center gap-3">
+											<p class="text-xs font-semibold uppercase tracking-wide text-accent">
+												Data access
 											</p>
+											{#if isSignedIn}
+												<span
+													class={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(apiProductState.tone)}`}
+												>
+													{apiProductState.label}
+												</span>
+											{/if}
 										</div>
-									</div>
-
-									<p class="mt-3 text-sm leading-7 text-muted">
-										{state.description}
-									</p>
-
-									{#if product.family === 'membership'}
-										<p class="mt-3 text-sm text-muted">{product.managementCopy}</p>
-										<p class="mt-2 text-xs text-muted">
-											Manage every canonical subscription, including bundles, in the billing section
-											above.
+										<h3 class="mt-2 text-xl font-semibold text-ink">Parchment API Origin</h3>
+										<p class="mt-2 text-sm leading-6 text-muted">
+											Normalized green coffee data for applications, sync jobs, and agents. Start on
+											Green, then use Origin for production access.
 										</p>
-									{:else if product.family === 'api_plan'}
-										<div
-											class="mt-3 rounded-2xl border border-dashed border-line bg-surface-canvas p-4"
-										>
-											<p class="text-sm leading-7 text-muted">
-												{apiState?.description}
+									</div>
+									{#if apiOption}
+										<div class="min-w-44 shrink-0">
+											<p class="text-2xl font-bold text-ink">
+												{apiOption.price}<span class="ml-1 text-sm font-normal text-muted"
+													>{apiOption.interval}</span
+												>
 											</p>
-											<p class="mt-2 text-sm text-muted">{apiState?.note}</p>
-										</div>
-									{:else if product.family === 'ppi_addon'}
-										<div
-											class="mt-3 rounded-2xl border border-dashed border-line bg-surface-canvas p-4"
-										>
-											<p class="text-sm leading-7 text-muted">
-												{intelligenceState?.description}
-											</p>
-											<p class="mt-2 text-sm text-muted">
-												{intelligenceState?.note}
-											</p>
-										</div>
-									{:else}
-										<div
-											class="mt-3 rounded-2xl border border-dashed border-line bg-surface-canvas p-4 text-sm text-muted"
-										>
-											{product.managementCopy}
+											{#if !isSignedIn}
+												<button
+													onclick={() => signInForPlan(apiOption.planSlug)}
+													class="mt-3 w-full rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ink"
+												>
+													Start Origin
+												</button>
+											{:else}
+												<button
+													onclick={() => openCheckout(apiProduct, apiOption)}
+													disabled={isProductCheckoutBlocked(apiProduct)}
+													class="mt-3 w-full rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-50"
+												>
+													{productCheckoutLabel(apiProduct)}
+												</button>
+											{/if}
+											<a
+												href="/api#plans"
+												class="mt-3 block text-center text-sm font-medium text-muted underline underline-offset-4 hover:text-ink"
+											>
+												Compare API tiers
+											</a>
 										</div>
 									{/if}
 								</div>
-							{/if}
+							</div>
+						{/if}
 
-							{#if product.intervals?.length}
-								<div class="mt-5 grid gap-3 sm:grid-cols-2">
-									{#each product.intervals as option}
-										<div class="rounded-2xl border border-line bg-surface-panel p-4">
-											<div class="flex items-start justify-between gap-3">
-												<div>
-													<p class="text-sm font-semibold text-ink">
-														{option.label}
-													</p>
-													<p class="mt-1 text-2xl font-bold text-ink">
-														{option.price}<span class="ml-1 text-sm font-normal text-muted"
-															>{option.interval}</span
-														>
-													</p>
-												</div>
-												{#if option.badge}
-													<span
-														class="rounded-full bg-success-subtle px-3 py-1 text-xs font-semibold text-success-strong"
-													>
-														{option.badge}
-													</span>
-												{/if}
-											</div>
-
-											{#if !isSignedIn}
-												<div class="mt-4 space-y-2">
-													<button
-														onclick={() => signInForPlan(option.planSlug)}
-														class="w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
-													>
-														Start {product.name}
-													</button>
-													{#if product.learnMoreHref}
-														<a
-															href={product.learnMoreHref}
-															class="inline-flex w-full items-center justify-center rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-accent/40 hover:text-accent"
-														>
-															Learn more
-														</a>
-													{/if}
-												</div>
-											{:else}
-												<button
-													onclick={() => openCheckout(product, option)}
-													disabled={isProductActive(product)}
-													class="mt-4 w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-												>
-													{isProductActive(product)
-														? (product.activeCtaLabel ?? 'Already active')
-														: product.ctaLabel}
-												</button>
-											{/if}
-										</div>
-									{/each}
-								</div>
-							{:else}
-								<a
-									href={product.contactHref}
-									class="mt-5 inline-flex w-full items-center justify-center rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-surface-canvas transition-opacity hover:opacity-90"
-								>
-									{product.ctaLabel}
-								</a>
-							{/if}
+						<div class="rounded-3xl border border-line bg-surface-canvas p-6 shadow-sm">
+							<p class="text-xs font-semibold uppercase tracking-wide text-muted">
+								{enterpriseProduct.eyebrow}
+							</p>
+							<h3 class="mt-2 text-xl font-semibold text-ink">Enterprise</h3>
+							<p class="mt-2 text-sm leading-6 text-muted">
+								Custom data delivery, embedded intelligence, and support for larger teams.
+							</p>
+							<a
+								href={enterpriseProduct.contactHref ?? '/contact'}
+								class="mt-5 inline-flex rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-surface-canvas transition-opacity hover:opacity-90"
+							>
+								Contact sales
+							</a>
 						</div>
-					{/each}
+					</div>
 				</div>
 			</div>
 		</section>

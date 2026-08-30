@@ -1,210 +1,85 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { SELF_SERVE_PLANS, type SelfServePlan } from '$lib/billing/selfServePlans';
+	import { trackBillingOfferEvent } from '$lib/billing/offerAnalytics';
+	import SelfServePlanCard from './SelfServePlanCard.svelte';
 	import type { PageAuthView } from '$lib/types/auth.types';
 
-	let { auth } = $props<{
-		auth: PageAuthView;
-	}>();
-
+	let { auth } = $props<{ auth: PageAuthView }>();
 	let isSignedIn = $derived(auth.isSignedIn);
 
-	function handleSelectPlan(plan: 'studio' | 'api' | 'intelligence' | 'enterprise') {
-		if (plan === 'enterprise') {
-			goto('/contact');
-			return;
+	onMount(() => {
+		for (const plan of SELF_SERVE_PLANS) {
+			trackBillingOfferEvent('billing_offer_impression', plan.offer.offerId);
 		}
+	});
 
-		if (plan === 'api') {
-			goto('/api');
-			return;
-		}
+	function handleSelectPlan(plan: SelfServePlan) {
+		goto(`/subscription?plan=${plan.offer.offerId}&intent=checkout`);
+	}
 
-		if (plan === 'intelligence') {
-			goto('/analytics');
-			return;
-		}
-
-		goto('/subscription');
+	function ctaLabel(plan: SelfServePlan) {
+		if (plan.id === 'both') return 'Choose both';
+		return `${isSignedIn ? 'Start' : 'Choose'} ${plan.id === 'studio' ? 'Studio' : 'Intelligence'}`;
 	}
 </script>
 
-<section id="pricing" class="bg-surface-panel py-24 sm:py-32">
+<section id="pricing" class="scroll-mt-24 bg-surface-panel py-16 sm:py-20">
 	<div class="mx-auto max-w-7xl px-6 lg:px-8">
-		<div class="mx-auto max-w-4xl text-center">
-			<h2 class="text-base font-semibold leading-7 text-accent">Products</h2>
+		<div class="mx-auto max-w-3xl text-center">
+			<h2 class="text-base font-semibold leading-7 text-accent">Simple self-serve plans</h2>
 			<p class="mt-2 font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl">
-				Pick the product that matches your work.
+				Choose the context Ask Parchment brings to the work.
+			</p>
+			<p class="mt-5 text-lg leading-8 text-muted">
+				Intelligence understands the outside market. Studio understands your own roastery. Both
+				connect the sourcing decision to what happens after the coffee arrives.
+			</p>
+			<p class="mt-3 text-sm font-medium text-success-strong">
+				Eligible accounts receive one five-day free trial on their first self-serve paid plan.
 			</p>
 		</div>
-		<p class="mx-auto mt-6 max-w-2xl text-center text-lg leading-8 text-muted">
-			Market intelligence for buyers. Workflow tools for roasters. Structured data for developers.
-			Enterprise integrations for platforms. All built on the same daily-normalized green coffee
-			data.
-		</p>
 
-		<div
-			class="isolate mx-auto mt-16 grid max-w-md grid-cols-1 gap-6 sm:mt-20 sm:gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-4 lg:gap-8"
-		>
-			<!-- Parchment Intelligence: flagship, highlighted -->
+		<div class="mx-auto mt-10 grid max-w-6xl gap-5 lg:grid-cols-3 lg:items-stretch">
+			{#each SELF_SERVE_PLANS as plan (plan.id)}
+				<SelfServePlanCard {plan} ctaLabel={ctaLabel(plan)} onChoose={handleSelectPlan} />
+			{/each}
+		</div>
+
+		<div class="mx-auto mt-6 grid max-w-6xl gap-4 lg:grid-cols-[1.35fr_1fr]">
 			<div
-				class="flex cursor-pointer flex-col justify-between rounded-3xl bg-surface-canvas p-8 ring-2 ring-accent transition-all duration-200 hover:scale-105 hover:shadow-lg xl:p-10"
-				onclick={() => handleSelectPlan('intelligence')}
-				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('intelligence')}
-				tabindex="0"
-				role="button"
-				aria-label="Select Parchment Intelligence"
+				class="flex flex-col justify-between gap-5 rounded-2xl border border-line bg-surface-canvas p-6 sm:flex-row sm:items-center"
 			>
 				<div>
-					<div class="flex items-center justify-between gap-x-4">
-						<h3 class="text-lg font-semibold leading-8 text-accent">Parchment Intelligence</h3>
-						<p
-							class="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-semibold leading-5 text-accent"
-						>
-							For buyers
-						</p>
-					</div>
-					<p class="mt-4 text-sm leading-6 text-muted">
-						Cross-supplier price intelligence, arrivals, delistings, and origin benchmarks delivered
-						daily. Make procurement calls on complete market data.
+					<p class="text-xs font-semibold text-accent">Developer access</p>
+					<h3 class="mt-2 text-lg font-semibold text-ink">Building with green coffee data?</h3>
+					<p class="mt-1 text-sm leading-6 text-muted">
+						Parchment API has separate Green, Origin, and Enterprise tiers for applications, sync
+						jobs, and agents.
 					</p>
-					<p class="mt-6 text-sm font-semibold text-muted">What you get</p>
-					<ul role="list" class="mt-4 space-y-3 text-sm leading-6 text-muted">
-						<li class="flex gap-x-3">Weekly procurement brief</li>
-						<li class="flex gap-x-3">Supplier comparison matrix</li>
-						<li class="flex gap-x-3">Origin price trend detail</li>
-						<li class="flex gap-x-3">Arrivals and delistings feed</li>
-					</ul>
 				</div>
-				<button
-					onclick={(e) => {
-						e.stopPropagation();
-						handleSelectPlan('intelligence');
-					}}
-					class="mt-8 block w-full rounded-md bg-accent px-3 py-2 text-center text-sm font-semibold text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+				<a
+					href="/api#plans"
+					class="shrink-0 rounded-xl border border-line px-4 py-3 text-center text-sm font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
 				>
-					{isSignedIn ? 'Add Intelligence' : 'See the Market Index'}
-				</button>
+					See API plans
+				</a>
 			</div>
 
-			<!-- Parchment API -->
 			<div
-				class="flex cursor-pointer flex-col justify-between rounded-3xl bg-surface-canvas p-8 ring-1 ring-line transition-all duration-200 hover:scale-105 hover:ring-2 hover:ring-accent xl:p-10"
-				onclick={() => handleSelectPlan('api')}
-				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('api')}
-				tabindex="0"
-				role="button"
-				aria-label="Select Parchment API"
+				class="flex flex-col justify-between gap-5 rounded-2xl border border-line bg-surface-canvas p-6 sm:flex-row sm:items-center"
 			>
 				<div>
-					<div class="flex items-center justify-between gap-x-4">
-						<h3 class="text-lg font-semibold leading-8 text-ink">Parchment API</h3>
-					</div>
-					<p class="mt-4 text-sm leading-6 text-muted">
-						Normalized green coffee data from 40+ suppliers through one REST API. Daily updates,
-						consistent schema. Connect it to your tools without rebuilding what we already track.
-					</p>
-					<p class="mt-6 flex items-baseline gap-x-2">
-						<span class="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent"
-							>Green</span
-						>
-						<span class="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent"
-							>Origin</span
-						>
-						<span class="rounded-full bg-line px-3 py-1 text-xs font-semibold text-muted"
-							>Enterprise</span
-						>
-					</p>
-					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-muted">
-						<li class="flex gap-x-3">Structured lot data with origin, process, score, price</li>
-						<li class="flex gap-x-3">Arrivals and availability updated daily</li>
-						<li class="flex gap-x-3">Enterprise support for production deployments</li>
-					</ul>
+					<p class="text-xs font-semibold text-muted">Custom needs</p>
+					<h3 class="mt-2 text-lg font-semibold text-ink">Need tailored delivery or support?</h3>
 				</div>
-				<button
-					onclick={(e) => {
-						e.stopPropagation();
-						handleSelectPlan('api');
-					}}
-					class="mt-8 block w-full rounded-md bg-accent px-3 py-2 text-center text-sm font-semibold text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-				>
-					Get API access
-				</button>
-			</div>
-
-			<!-- Mallard Studio -->
-			<div
-				class="flex cursor-pointer flex-col justify-between rounded-3xl bg-surface-canvas p-8 ring-1 ring-line transition-all duration-200 hover:scale-105 hover:ring-2 hover:ring-accent xl:p-10"
-				onclick={() => handleSelectPlan('studio')}
-				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('studio')}
-				tabindex="0"
-				role="button"
-				aria-label="Select Mallard Studio"
-			>
-				<div>
-					<div class="flex items-center justify-between gap-x-4">
-						<h3 class="text-lg font-semibold leading-8 text-ink">Mallard Studio</h3>
-					</div>
-					<p class="mt-4 text-sm leading-6 text-muted">
-						Inventory, roast logs, and profit tracking for roasters running production. Keep
-						sourcing, roasting, and tasting in one place.
-					</p>
-					<p class="mt-6 flex items-baseline gap-x-1">
-						<span class="text-4xl font-bold tracking-tight text-ink">$9</span>
-						<span class="text-sm font-semibold leading-6 text-muted">/month</span>
-					</p>
-					<p class="mt-2 text-sm text-muted">Or $80/year.</p>
-					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-muted">
-						<li class="flex gap-x-3">Green coffee inventory and lot tracking</li>
-						<li class="flex gap-x-3">Roast profile logs with D3 charting</li>
-						<li class="flex gap-x-3">Profit and production reporting</li>
-					</ul>
-				</div>
-				<button
-					onclick={(e) => {
-						e.stopPropagation();
-						handleSelectPlan('studio');
-					}}
-					class="mt-8 block w-full rounded-md bg-accent px-3 py-2 text-center text-sm font-semibold text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-				>
-					{isSignedIn ? 'Manage Studio' : 'See Studio plans'}
-				</button>
-			</div>
-
-			<!-- Enterprise -->
-			<div
-				class="flex cursor-pointer flex-col justify-between rounded-3xl bg-surface-canvas p-8 ring-1 ring-line transition-all duration-200 hover:scale-105 hover:ring-2 hover:ring-accent xl:p-10"
-				onclick={() => handleSelectPlan('enterprise')}
-				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('enterprise')}
-				tabindex="0"
-				role="button"
-				aria-label="Contact sales for Enterprise"
-			>
-				<div>
-					<div class="flex items-center justify-between gap-x-4">
-						<h3 class="text-lg font-semibold leading-8 text-ink">Enterprise</h3>
-					</div>
-					<p class="mt-4 text-sm leading-6 text-muted">
-						Custom data delivery, embedded intelligence, and support commitments for larger
-						procurement teams and commercial buyers.
-					</p>
-					<p class="mt-6 flex items-baseline gap-x-1">
-						<span class="text-2xl font-bold tracking-tight text-ink">Talk to us</span>
-					</p>
-					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-muted">
-						<li class="flex gap-x-3">Custom integrations and delivery patterns</li>
-						<li class="flex gap-x-3">Embedded data for internal reporting</li>
-						<li class="flex gap-x-3">Dedicated support and SLA</li>
-					</ul>
-				</div>
-				<button
-					onclick={(e) => {
-						e.stopPropagation();
-						goto('/contact');
-					}}
-					class="mt-8 block w-full rounded-md bg-ink px-3 py-2 text-center text-sm font-semibold text-surface-canvas shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+				<a
+					href="/contact"
+					class="shrink-0 rounded-xl bg-ink px-4 py-3 text-center text-sm font-semibold text-surface-canvas transition-opacity hover:opacity-90"
 				>
 					Contact sales
-				</button>
+				</a>
 			</div>
 		</div>
 	</div>

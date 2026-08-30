@@ -8,6 +8,7 @@
 		parseCheckoutFailure,
 		readCheckoutAttempt
 	} from '$lib/billing/checkoutRequest';
+	import { trackBillingOfferEvent } from '$lib/billing/offerAnalytics';
 
 	let { data } = $props<{ data: PageData }>();
 	let loading = $state(true);
@@ -39,8 +40,11 @@
 			}
 
 			status = body.status;
-			if (isTerminalCheckoutStatus(body.status)) clearCheckoutAttempt(sessionStorage);
-			if (body.status === 'settled') await invalidateAll();
+			if (body.status === 'settled') {
+				trackBillingOfferEvent('billing_checkout_settled', attempt.offerId);
+				clearCheckoutAttempt(sessionStorage);
+				await invalidateAll();
+			} else if (isTerminalCheckoutStatus(body.status)) clearCheckoutAttempt(sessionStorage);
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : 'Unable to reconcile checkout.';
 		} finally {
