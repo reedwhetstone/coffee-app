@@ -1,9 +1,22 @@
 <script lang="ts">
+	import { checkRole } from '$lib/types/auth.types';
 	import type { PageAuthView } from '$lib/types/auth.types';
 
 	let { auth } = $props<{ auth: PageAuthView }>();
 
 	let isSignedIn = $derived(auth.isSignedIn);
+	let hasStudioAccess = $derived(checkRole(auth.role, 'member'));
+	let hasIntelligenceAccess = $derived(auth.ppiAccess);
+	let hasProductAccess = $derived(hasStudioAccess || hasIntelligenceAccess);
+	let accessMessage = $derived(
+		hasStudioAccess && hasIntelligenceAccess
+			? 'Your saved market and roastery context is ready.'
+			: hasStudioAccess
+				? 'Your roastery context is ready.'
+				: hasIntelligenceAccess
+					? 'Your saved market context is ready.'
+					: 'The catalog and core Market Index are free to explore. Add deeper intelligence when the work calls for it.'
+	);
 </script>
 
 <section class="texture-grain bg-ink" aria-labelledby="final-cta-heading">
@@ -19,9 +32,7 @@
 				See the whole market. Move with confidence.
 			</h2>
 			<p class="mt-4 max-w-2xl text-base leading-7 text-on-dark/70">
-				{isSignedIn
-					? 'Your saved market and roastery context is ready.'
-					: 'The catalog and core Market Index are free to explore. Add deeper intelligence when the work calls for it.'}
+				{accessMessage}
 			</p>
 		</div>
 		<div class="flex flex-col gap-3 sm:flex-row lg:flex-col">
@@ -35,7 +46,7 @@
 				href="/subscription"
 				class="rounded-md border border-on-dark/30 px-6 py-3 text-center text-sm font-semibold text-on-dark transition-colors hover:border-on-dark hover:bg-on-dark hover:text-ink"
 			>
-				{isSignedIn ? 'Manage your plan' : 'See plans'}
+				{hasProductAccess ? 'Manage your plan' : 'See plans'}
 			</a>
 		</div>
 	</div>

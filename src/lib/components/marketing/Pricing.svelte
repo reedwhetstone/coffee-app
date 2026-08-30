@@ -8,11 +8,32 @@
 
 	let { auth } = $props<{ auth: PageAuthView }>();
 	let isSignedIn = $derived(auth.isSignedIn);
+	let pricingSection: HTMLElement | null = null;
+	let impressionsTracked = false;
 
-	onMount(() => {
+	function trackPricingImpressions() {
+		if (impressionsTracked) return;
+		impressionsTracked = true;
 		for (const plan of SELF_SERVE_PLANS) {
 			trackBillingOfferEvent('billing_offer_impression', plan.offer.offerId);
 		}
+	}
+
+	onMount(() => {
+		if (!pricingSection || typeof IntersectionObserver === 'undefined') return;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) {
+					trackPricingImpressions();
+					observer.disconnect();
+				}
+			},
+			{ threshold: 0.1 }
+		);
+
+		observer.observe(pricingSection);
+		return () => observer.disconnect();
 	});
 
 	function handleSelectPlan(plan: SelfServePlan) {
@@ -25,7 +46,11 @@
 	}
 </script>
 
-<section id="pricing" class="scroll-mt-24 border-y border-line bg-surface-panel py-16 sm:py-20">
+<section
+	bind:this={pricingSection}
+	id="pricing"
+	class="scroll-mt-24 border-y border-line bg-surface-panel py-16 sm:py-20"
+>
 	<div class="mx-auto max-w-7xl px-6 lg:px-8">
 		<div class="mx-auto max-w-3xl text-center">
 			<h2 class="text-sm font-semibold leading-7 text-organic-rust">Simple self-serve plans</h2>
