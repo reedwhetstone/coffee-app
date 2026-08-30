@@ -16,21 +16,21 @@
 		{
 			step: '01',
 			label: 'Source and analyze',
-			headline: 'See the market, then ask what it means.',
+			headline: 'See the market, then analyze what it means.',
 			body: `Buyers and analysts use the public catalog, Market Index, and Parchment Intelligence to compare current offers and investigate movement. Intelligence is ${BILLING_OFFERS.intelligenceMonthly.price}/month.`,
 			href: '/analytics',
 			linkLabel: 'Explore market intelligence',
-			proof: ['40+ importer catalogs', 'Supplier and origin signals', 'Ask Parchment'],
+			proof: ['40+ importer catalogs', 'Supplier and origin signals', 'Cherry Green Agent'],
 			accentClass: 'text-chart-rust'
 		},
 		{
 			step: '02',
 			label: 'Roast and operate',
 			headline: 'Keep the coffee record connected after it arrives.',
-			body: `Roasters use Mallard Studio to track inventory, roast profiles, tasting notes, margins, and the Ask Parchment workspace for ${BILLING_OFFERS.studioMonthly.price}/month.`,
+			body: `Roasters use Mallard Studio to track inventory, roast profiles, tasting notes, and margins with the Cherry Roast Agent for ${BILLING_OFFERS.studioMonthly.price}/month.`,
 			href: '/subscription#studio-details',
 			linkLabel: 'See the roaster workspace',
-			proof: ['Green inventory', 'Roast and tasting history', 'AI with roaster context'],
+			proof: ['Green inventory', 'Roast and tasting history', 'Cherry with roaster context'],
 			accentClass: 'text-chart-teal'
 		},
 		{

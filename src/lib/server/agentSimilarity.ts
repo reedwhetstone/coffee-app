@@ -1,7 +1,7 @@
 import type { ParchmentClient, components } from '@purveyors/sdk';
 
 /**
- * Similarity reader for the chat agent's find_similar_beans tool.
+ * Similarity reader for Cherry Runtime's find_similar_beans tool.
  *
  * Parchment owns retrieval, classification, row projection, and entitlement.
  * The chat route supplies its request-bound session client so member access is

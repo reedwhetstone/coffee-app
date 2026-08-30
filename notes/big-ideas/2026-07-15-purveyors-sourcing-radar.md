@@ -48,7 +48,7 @@ Each run produces an immutable, explainable brief containing:
 3. Tracked lots that were delisted, restocked, or became stale.
 4. Evidence quality and publication freshness for every recommendation.
 5. Explicit reasons, limitations, and what changed since the prior brief.
-6. An Ask Parchment handoff that opens the recommendation with its evidence already in context.
+6. An Analyze with Cherry handoff that opens the recommendation with its evidence already in context.
 7. Confirmed next actions such as adding a lot to the watchlist or inventory. RFQs and purchasing remain out of scope until real demand proves them necessary.
 
 The first version is an in-app manual or weekly brief. External email, Discord, webhook, and autonomous purchasing are later delivery channels, not the core product.
@@ -98,7 +98,7 @@ The experiment succeeds if at least two partners identify multiple recommendatio
 - coffee-scraper: finish cohort/policy configuration, transactional publication building, atomic activation, and truthful fresh/carried/unavailable metadata; later derive a catalog change feed from immutable observations.
 - parchment-api: make active publication manifests the source for market reads; add immutable recommendation runs that join sourcing briefs, tracked lots, proof, and market signals; expose run/read contracts through the SDK.
 - purveyors-cli: add create/run/read sourcing workflow commands only when they serve the end-to-end mandate workflow; preserve publication and evidence metadata verbatim for agents.
-- coffee-app: render the recurring brief as the paid decision surface, connect each finding to its lot evidence and Ask Parchment, and use confirmed actions for watchlist or inventory changes.
+- coffee-app: render the recurring brief as the paid decision surface, connect each finding to its lot evidence and Cherry, and use confirmed actions for watchlist or inventory changes.
 
 ## Source-of-truth routing
 
@@ -133,7 +133,7 @@ Proceed with the smallest coherent personalized MVP in coffee-app #482 after the
 
 The MVP must be a minimum complete value loop, not a qualification surface that makes customers responsible for proving whether Purveyors helped them. Falsifiability belongs in the product analytics and internal checkpoints; it should not become the primary customer experience.
 
-The initial product should fulfill the core promise on day one: a customer supplies a real sourcing intent, Purveyors continuously applies trustworthy market evidence to it, and the personalized dashboard and agent surface present a short, current, explainable set of lots worth inspecting. Natural product actions such as opening evidence, asking Parchment a follow-up, viewing the supplier, watching or shortlisting a lot, and returning to the workflow provide the behavioral evidence. Optional dismissal or freshness feedback can improve the system, but the customer should not encounter a research questionnaire as the product.
+The initial product should fulfill the core promise on day one: a customer supplies a real sourcing intent, Purveyors continuously applies trustworthy market evidence to it, and the personalized dashboard and Cherry surface present a short, current, explainable set of lots worth inspecting. Natural product actions such as opening evidence, analyzing a follow-up with Cherry, viewing the supplier, watching or shortlisting a lot, and returning to the workflow provide the behavioral evidence. Optional dismissal or freshness feedback can improve the system, but the customer should not encounter a research questionnaire as the product.
 
 This changes the MVP boundary from “manual test route plus disposition collection” to “smallest coherent personalized sourcing product with passive measurement.” Self-service intent capture or an equivalent conversational setup, personalized dashboard discovery, agent access to the canonical Radar result, trustworthy evidence, and useful next actions are core. Schedulers, external delivery, autonomous purchasing, RFQs, generalized procurement operations, and new opaque scoring remain excluded.
 

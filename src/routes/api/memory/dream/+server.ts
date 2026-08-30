@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { CHERRY_RUNTIME_MODEL } from '$lib/server/cherryRuntime';
 import { z } from 'zod';
 import { OPENROUTER_API_KEY } from '$env/static/private';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
@@ -22,7 +23,7 @@ const dreamSchema = z.object({
 		.max(30)
 });
 
-// POST /api/memory/dream — agent compaction pass over recent conversation.
+// POST /api/memory/dream — Cherry Runtime compaction pass over recent conversation.
 // Fired by the client every ~16 messages; one model call per pass, with a
 // cooldown so rapid triggers can't stack inference cost.
 export const POST: RequestHandler = async (event) => {
@@ -65,7 +66,7 @@ export const POST: RequestHandler = async (event) => {
 				Authorization: `Bearer ${OPENROUTER_API_KEY}`
 			},
 			body: JSON.stringify({
-				model: '@preset/test-workhorse-agent',
+				model: CHERRY_RUNTIME_MODEL,
 				messages: [
 					{
 						role: 'user',

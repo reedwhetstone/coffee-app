@@ -42,8 +42,8 @@
 								</a>
 							</li>
 							<li>
-								<a href="/benchmarks" class="text-sm text-on-dark/70 hover:text-on-dark">
-									Benchmarks
+								<a href="/evals" class="text-sm text-on-dark/70 hover:text-on-dark">
+									Cherry Evals
 								</a>
 							</li>
 							<li>

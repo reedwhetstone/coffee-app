@@ -34,7 +34,7 @@
 		},
 		{
 			title: 'Sourcing decision',
-			description: 'Use Ask Parchment and the weekly brief to narrow the next move.'
+			description: 'Use the Cherry Green Agent and the weekly brief to narrow the next move.'
 		}
 	] as const;
 
@@ -68,24 +68,25 @@
 			See the value before you choose a plan.
 		</h2>
 		<p class="mt-4 max-w-3xl text-base leading-7 text-muted">
-			Every self-serve subscription includes Ask Parchment. The plan determines which coffee data
-			and workflows it can bring into the conversation.
+			Every self-serve subscription includes Cherry. The plan determines which coffee data, tools,
+			and workflows Cherry Runtime can use.
 		</p>
 	</div>
 
-	<section id="ask-parchment-details" class="scroll-mt-24" aria-labelledby="ask-parchment-heading">
+	<section id="cherry-details" class="scroll-mt-24" aria-labelledby="cherry-heading">
+		<span id="ask-parchment-details" class="sr-only" aria-hidden="true"></span>
 		<div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-end">
 			<div class="max-w-3xl">
-				<p class="text-sm font-semibold text-accent">Ask Parchment</p>
+				<p class="text-sm font-semibold text-accent">Cherry</p>
 				<h3
-					id="ask-parchment-heading"
+					id="cherry-heading"
 					class="mt-2 font-serif text-3xl font-medium tracking-tight text-ink"
 				>
-					One place to ask. Different context for the work.
+					One AI system. The right context for the work.
 				</h3>
 				<p class="mt-4 text-base leading-7 text-muted">
-					Ask Parchment works from Purveyors data, the page you are viewing, and the records your
-					plan unlocks. It is included with Intelligence, Studio, and the combined plan.
+					Cherry Runtime uses Purveyors data, the page you are viewing, and the records your plan
+					unlocks. Cherry is included with Intelligence, Studio, and the combined plan.
 				</p>
 			</div>
 			<div class="border-l-2 border-chart-teal pl-5">
@@ -95,7 +96,7 @@
 					coffee context.
 				</p>
 				<a href="/chat" class="mt-3 inline-block text-sm font-semibold text-link hover:text-accent">
-					Open Ask Parchment <span aria-hidden="true">→</span>
+					Open Cherry <span aria-hidden="true">→</span>
 				</a>
 			</div>
 		</div>
@@ -131,15 +132,15 @@
 		name="Parchment Intelligence"
 		price={`${BILLING_OFFERS.intelligenceMonthly.price}${BILLING_OFFERS.intelligenceMonthly.interval}`}
 		headline="Know what changed, why it matters, and where to look next."
-		description="Parchment Intelligence turns daily-normalized offer data into a working market view. Compare current offers, investigate movement, and keep the evidence in one sourcing conversation with Ask Parchment."
-		askTitle="Ask Parchment is a core Intelligence feature."
+		description="Parchment Intelligence turns daily-normalized offer data into a working market view. Compare current offers, investigate movement, and keep the evidence in one Cherry workspace."
+		askTitle="The Cherry Green Agent is included with Intelligence."
 		askDescription="Ask about current offers, compare suppliers and price history, investigate market movement, and build a sourcing shortlist from the evidence."
 		supportingText="Intelligence includes portfolio and catalog context too. Add Studio when you also need inventory, roast, tasting, sales, and margin workflows for your own roastery."
 		workflowTitle="From market movement to decision"
 		workflow={intelligenceFlow}
 		links={[
 			{ href: '/analytics', label: 'Explore the Market Index' },
-			{ href: '/chat', label: 'Ask Parchment' }
+			{ href: '/chat', label: 'Open Cherry' }
 		]}
 	/>
 
@@ -150,7 +151,7 @@
 		price={`${BILLING_OFFERS.studioMonthly.price}${BILLING_OFFERS.studioMonthly.interval}`}
 		headline="Keep the coffee, the roast, and the result connected."
 		description="Mallard Studio replaces disconnected inventory sheets, roast notes, and margin math with one operating record. Trace what happened from the green lot through the finished roast."
-		askTitle="Ask Parchment is a core Studio feature."
+		askTitle="The Cherry Roast Agent is included with Studio."
 		askDescription="Ask about inventory, compare roast history and tasting notes, and prepare inventory, roast, or sales changes for your confirmation."
 		supportingText="Studio includes catalog and sourcing context too. Add Intelligence when you also need market signals, supplier comparisons, price history, and the broader market view."
 		workflowTitle="One coffee record through production"
@@ -180,8 +181,8 @@
 				</h3>
 				<p class="mt-4 max-w-3xl text-base leading-7 text-muted">
 					Use Intelligence to understand outside supply and pricing, Studio to manage the coffee
-					after it arrives, and Ask Parchment to investigate across both. The products share one
-					subscription and renewal date.
+					after it arrives, and the Cherry Synthesis Agent to investigate across both. The products
+					share one subscription and renewal date.
 				</p>
 			</div>
 
@@ -197,7 +198,7 @@
 					<dd class="mt-1 text-sm leading-6 text-muted">Inventory, roast, tasting, and margin</dd>
 				</div>
 				<div class="border-t border-line bg-surface-canvas p-4">
-					<dt class="font-semibold text-ink">Ask Parchment across both</dt>
+					<dt class="font-semibold text-ink">Cherry Synthesis Agent across both</dt>
 					<dd class="mt-1 text-sm leading-6 text-muted">
 						One conversation with both context families
 					</dd>

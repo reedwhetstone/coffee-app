@@ -28,9 +28,9 @@ export const SELF_SERVE_PLANS: readonly SelfServePlan[] = [
 		eyebrow: 'For sourcing decisions',
 		badge: 'Market intelligence',
 		description:
-			'See what changed across the market, compare live supplier offers, and ask Parchment to turn the evidence into a sharper sourcing decision.',
+			'See what changed across the market, compare live supplier offers, and use Cherry to turn the evidence into a sharper sourcing decision.',
 		features: [
-			'Ask Parchment with catalog, supplier, portfolio, and market context',
+			'Cherry Green Agent with catalog, supplier, portfolio, and market context',
 			'Supplier comparisons, arrivals, delistings, and market signals',
 			'Origin benchmarks, price history, and a weekly procurement brief'
 		],
@@ -44,11 +44,11 @@ export const SELF_SERVE_PLANS: readonly SelfServePlan[] = [
 		eyebrow: 'For teams that buy and roast',
 		badge: 'Best value',
 		description:
-			'Connect the outside market to your own inventory and production workflow, then ask Parchment across the complete decision.',
+			'Connect the outside market to your own inventory and production workflow, then use Cherry across the complete decision.',
 		features: [
 			'Every Intelligence market and sourcing capability',
 			'Every Studio inventory, roast, tasting, and margin capability',
-			'Ask Parchment with both market evidence and roaster context'
+			'Cherry Synthesis Agent with market evidence and roaster context'
 		],
 		learnMoreHref: '/subscription#both-details',
 		offer: BILLING_OFFERS.bothMonthly
@@ -60,9 +60,9 @@ export const SELF_SERVE_PLANS: readonly SelfServePlan[] = [
 		eyebrow: 'For roaster operations',
 		badge: 'Roaster workspace',
 		description:
-			'Carry each coffee from green inventory through roasting, tasting, and margin review, with Ask Parchment available inside the workflow.',
+			'Carry each coffee from green inventory through roasting, tasting, and margin review, with Cherry available inside the workflow.',
 		features: [
-			'Ask Parchment with inventory, roast, tasting, and sales context',
+			'Cherry Roast Agent with inventory, roast, tasting, and sales context',
 			'Green coffee inventory, lot tracking, and roast profiles',
 			'Cupping notes, production records, and margin reporting'
 		],

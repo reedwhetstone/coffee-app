@@ -1,6 +1,6 @@
 /**
  * User memory: a persistent context document injected into every chat
- * request and maintained by the agent via periodic "dream" compaction.
+ * request and maintained by Cherry Runtime via periodic "dream" compaction.
  *
  * The table is newer than the generated Database types in some
  * environments, so this module uses a narrow runtime row contract
@@ -8,7 +8,7 @@
  */
 
 export const USER_MEMORY_MAX_CHARS = 8000;
-/** Skip agent compaction if the doc was updated more recently than this. */
+/** Skip Cherry Runtime compaction if the doc was updated more recently than this. */
 export const USER_MEMORY_DREAM_COOLDOWN_MS = 10 * 60 * 1000;
 
 export interface UserMemoryRow {
@@ -79,7 +79,8 @@ export function buildDreamPrompt(
 	conversationText: string,
 	userName?: string
 ): string {
-	return `You maintain a persistent memory document for ${userName || 'a user'} of a coffee intelligence platform (sourcing, green coffee catalog, roasting, market analysis). The document is injected into every future conversation, so it must stay compact and durable.
+	return `CHERRY RUNTIME MEMORY COMPACTION
+Maintain the persistent memory document for ${userName || 'a user'} of a coffee intelligence platform (sourcing, green coffee catalog, roasting, market analysis). The document is injected into every future conversation, so it must stay compact and durable.
 
 CURRENT MEMORY DOCUMENT:
 ${existingMemory || '(empty)'}

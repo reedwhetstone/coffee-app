@@ -11,7 +11,7 @@
 
 Build a four-PR, index-first Sourcing Radar MVP after the active Market Index publication is fresh and provenance-aware.
 
-The MVP fulfills one complete customer promise: **Tell Purveyors what you need, and your dashboard and Parchment agent will surface the few current coffees across the market worth your attention.** It joins self-service sourcing intent to the existing deterministic brief-match and Parchment Market Index signal contracts, presents the result in a personalized dashboard, and lets the customer investigate it with Parchment or continue to the supplier.
+The MVP fulfills one complete customer promise: **Tell Purveyors what you need, and your dashboard and Cherry will surface the few current coffees across the market worth your attention.** It joins self-service sourcing intent to the existing deterministic brief-match and Parchment Market Index signal contracts, presents the result in a personalized dashboard, and lets the customer investigate it with Cherry or continue to the supplier.
 
 Minimum describes the number of capabilities, not the completeness of the value proposition. This is a real paid product, not a qualification or interaction-tracking surface that asks customers to prove whether Purveyors helped them. It does not create another score, recommendation model, scheduler, external alert system, run-history product, CLI command, analytics pipeline, or procurement suite.
 
@@ -22,7 +22,7 @@ The July 15 proposal correctly identified a recurring brief as the strategic pro
 - Saved sourcing intent, deterministic matches, watchlists, dashboard context, market signals, Market Index reads, SDK methods, and CLI reads already exist. Rebuilding them would be duplicate work.
 - Legacy aggregate publication is intentionally frozen. Current Parchment readers select the latest available snapshot and disclose `asOf`/`computedAt`, but do not reject stale evidence. A new buyer-facing surface cannot silently turn the latest stale row into a recommendation.
 - The accepted publication recovery program already owns provenance deployment, cohort policy, transactional publication, shadow comparison, reader cutover, and rollback. Radar should depend on that trust bridge rather than absorb it.
-- The smallest credible product is one canonical read, self-service PPI sourcing intent, a personalized dashboard module, and an Ask Parchment handoff. Recurrence and external delivery only become rational after customers report that the workflow repeatedly improves sourcing decisions.
+- The smallest credible product is one canonical read, self-service PPI sourcing intent, a personalized dashboard module, and a Cherry handoff. Recurrence and external delivery only become rational after customers report that the workflow repeatedly improves sourcing decisions.
 
 ## External evidence and product implication
 
@@ -96,7 +96,7 @@ Prototype code may be exercised against stale/unavailable fixtures, but the buye
 - One read-only Parchment API/SDK contract for an owned brief.
 - Self-service creation and refinement of one or more owner-scoped sourcing briefs for authenticated PPI customers, using the existing constrained criteria contract and cursor-paginated lifecycle list.
 - A personalized Sourcing Radar module on the authenticated dashboard, bounded to five Radar reads per visit with on-demand detail for additional active briefs.
-- An Ask Parchment action that opens the current brief and canonical Radar evidence in the existing chat workspace so the customer can compare lots, refine the need, and ask follow-up questions without reconstructing context.
+- An Analyze with Cherry action that opens the current brief and canonical Radar evidence in the existing Cherry workspace so the customer can compare lots, refine the need, and ask follow-up questions without reconstructing context.
 - Existing watchlist/tracked-lot and supplier-source actions as the useful continuation from a Radar result. No new shortlist storage is required.
 - Fresh, stale, unavailable, empty, and denied states.
 - The existing Parchment Intelligence entitlement (`ppi_access`, the $39/month add-on). Radar is not a member-tier or public surface.
@@ -155,7 +155,7 @@ PR 1 is read-only and may be developed in parallel after the publication gate. P
 - Existing market-publication recovery program: owns the active provenance-aware publication and its serving quality. Existing prerequisite, not respecified by these four PRs.
 - `parchment-api`: owns the physical database migration ledger after the separate ownership transfer, brief-to-index composition, owner-scoped PPI intent contracts, authorization, ordering, freshness policy, entitlement, and SDK types.
 - `purveyors-cli`: no MVP change. Existing procurement and market reads remain available.
-- `coffee-app`: owns self-service intent UX, personalized dashboard presentation, Ask Parchment handoff, and existing tracked-lot/source actions.
+- `coffee-app`: owns self-service intent UX, personalized dashboard presentation, Cherry handoff, and existing tracked-lot/source actions.
 
 ## Ordered implementation
 
@@ -185,9 +185,9 @@ Consume PR 2 through the published SDK and add the lightweight authenticated set
 
 Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-03-coffee-app-intent.md`.
 
-### PR 4: Personalized Radar dashboard and Parchment agent
+### PR 4: Personalized Radar dashboard and Cherry investigation
 
-Add the personalized dashboard module and focused Radar detail route, preserve the canonical evidence and honest stale/unavailable states, and provide source, tracked-lot, and Ask Parchment actions. Parchment receives the current brief and Radar evidence as structured context so it can explain and compare without inventing ranking or facts. This is the complete buyer-facing MVP and adds no user-interaction tracking layer.
+Add the personalized dashboard module and focused Radar detail route, preserve the canonical evidence and honest stale/unavailable states, and provide source, tracked-lot, and Analyze with Cherry actions. Cherry Runtime receives the current brief and Parchment Radar evidence as structured context so it can explain and compare without inventing ranking or facts. This is the complete buyer-facing MVP and adds no user-interaction tracking layer.
 
 Plan: `2026-07-18-purveyors-sourcing-radar-index-first-mvp-pr-04-personalized-product.md`.
 
@@ -235,7 +235,7 @@ The initial product direction is supported when multiple customers report that R
 - A PPI customer can create, view, refine, and deactivate their own constrained sourcing brief without operator intervention; identity and entitlement remain server-enforced.
 - Deactivated briefs remain discoverable through an explicit status filter and can be reactivated after reload without a remembered object ID.
 - A PPI-only session cannot promote itself through `user_roles`, mutate another user's brief, bypass criteria validation, or write through an unreviewed direct REST path; negative coverage proves the denial while preserving intended member/admin behavior.
-- The authenticated dashboard presents a personalized Radar summary and full result, and Ask Parchment receives the same canonical brief and evidence context.
+- The authenticated dashboard presents a personalized Radar summary and full result, and Cherry Runtime receives the same canonical brief and evidence context.
 - The user reaches the supplier/source record in one action.
 - Useful customer actions rely on existing tracked-lot/watchlist and chat workflows rather than new procurement storage.
 - No new user-interaction analytics, event tokens, click/exposure tracking, watchlist attribution, or event persistence is added.
@@ -244,7 +244,7 @@ The initial product direction is supported when multiple customers report that R
 ## Validation expectations
 
 - Parchment API: focused unit/route tests for pre-pagination composition, freshness states, deterministic ordering, owner-scoped intent lifecycle including inactive discovery/reactivation, authorization, RLS/direct-REST denial, and response shape; migration-path validation; package typecheck/build; OpenAPI and SDK fixture validation.
-- Coffee-app: thin BFF and self-service intent UX tests with no direct database mutation; dashboard and route tests for fresh, stale, unavailable, empty, and denied states; structured Ask Parchment context tests; source/tracked-lot action tests; `pnpm check --fail-on-warnings` and lint.
+- Coffee-app: thin BFF and self-service intent UX tests with no direct database mutation; dashboard and route tests for fresh, stale, unavailable, empty, and denied states; structured Cherry context tests; source/tracked-lot action tests; `pnpm check --fail-on-warnings` and lint.
 - Live gate: one owned test brief against the deployed accepted publication, with evidence manually reconciled to its source lot and Market Index row.
 
 ## Risks and rollback

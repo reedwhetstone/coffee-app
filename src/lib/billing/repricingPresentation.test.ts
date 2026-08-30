@@ -88,12 +88,12 @@ describe('repricing presentation contract', () => {
 		expect(details).toContain('anchorId="studio-details"');
 		expect(details).toContain('id="both-details"');
 		expect(productDetail).toContain('id={anchorId}');
-		expect(details).toContain('Every self-serve subscription includes Ask Parchment');
-		expect(details).toContain('Ask Parchment is a core Studio feature.');
-		expect(details).toContain('Ask Parchment is a core Intelligence feature.');
+		expect(details).toContain('Every self-serve subscription includes Cherry');
+		expect(details).toContain('The Cherry Roast Agent is included with Studio.');
+		expect(details).toContain('The Cherry Green Agent is included with Intelligence.');
 		expect(details.match(/<SubscriptionProductDetail/g)?.length).toBe(2);
-		expect(details).toContain('One place to ask. Different context for the work.');
-		expect(plans.match(/Ask Parchment/g)?.length).toBeGreaterThanOrEqual(3);
+		expect(details).toContain('One AI system. The right context for the work.');
+		expect(plans.match(/Cherry/g)?.length).toBeGreaterThanOrEqual(3);
 		expect(api).toContain('id="plans"');
 		expect(api).toContain('$99/month');
 	});
@@ -116,9 +116,9 @@ describe('repricing presentation contract', () => {
 		const personas = readSource('src/lib/components/marketing/PersonaRouter.svelte');
 
 		expect(hero).toContain('Coffee intelligence you can ask, act on, and build with.');
-		expect(hero).toContain('Ask Parchment');
-		expect(hero).toContain('Grounded tools, not generic chat');
-		expect(features).toContain('Ask Parchment turns context into a decision.');
+		expect(hero).toContain('Cherry');
+		expect(hero).toContain('Cherry Runtime works from the coffee data, tools, and records');
+		expect(features).toContain('Cherry connects context to a decision.');
 		expect(features).toContain('Work in Purveyors or build with it.');
 		expect(personas).toContain('One coffee data layer, built for decisions and systems.');
 	});

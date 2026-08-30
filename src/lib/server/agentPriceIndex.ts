@@ -1,7 +1,7 @@
 import type { ParchmentClient, PriceIndexQuery, components } from '@purveyors/sdk';
 
 /**
- * Aggregate price-index reader for the chat agent's price_index_read tool.
+ * Aggregate price-index reader for Cherry Runtime's price_index_read tool.
  *
  * Parchment owns the aggregate query and entitlement check. The chat route
  * supplies its request-bound session client so the caller's credential reaches

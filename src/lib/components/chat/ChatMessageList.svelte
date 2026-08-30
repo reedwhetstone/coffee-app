@@ -194,13 +194,13 @@
 	class="flex-1 overflow-y-auto px-4 py-6"
 	onscroll={onScroll}
 	role="log"
-	aria-label="Parchment conversation"
+	aria-label="Cherry conversation"
 	aria-live={isActive ? 'off' : 'polite'}
 	aria-relevant="additions text"
 >
 	{#if chat.messages.length === 0}
 		<div class="mx-auto flex min-h-full max-w-2xl flex-col justify-center py-10 text-center">
-			<p class="mb-2 text-sm font-medium text-accent">Parchment Intelligence</p>
+			<p class="mb-2 text-sm font-medium text-accent">Cherry</p>
 			<h2 class="font-serif text-2xl font-medium tracking-tight text-ink">
 				What do you need to know about green coffee?
 			</h2>

@@ -94,6 +94,7 @@
 		pathname === '/' ||
 			pathname === '/api' ||
 			pathname === '/bot' ||
+			pathname.startsWith('/evals') ||
 			pathname.startsWith('/benchmarks') ||
 			pathname === '/subscription' ||
 			pathname.startsWith('/docs') ||
@@ -104,7 +105,7 @@
 			(!data.auth.isSignedIn && (pathname === '/catalog' || pathname.startsWith('/analytics')))
 	);
 
-	// Ask Parchment drawer: available on every authenticated app page except
+	// Cherry drawer: available on every authenticated app page except
 	// /chat itself (which is the full workspace).
 	let isChatRoute = $derived(pathname === '/chat' || pathname.startsWith('/chat/'));
 	let hasChatAccess = $derived(
@@ -176,7 +177,7 @@
 					type="button"
 					onclick={() => (chatDrawerOpen = true)}
 					class="fixed bottom-6 right-4 z-30 flex items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-ink shadow-lg transition-transform hover:scale-105"
-					title="Ask Parchment (Ctrl+K)"
+					title="Open Cherry (Ctrl+K)"
 				>
 					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
@@ -186,7 +187,7 @@
 							d="M8 10h8m-8 4h5m-9.5 5.5L4 16.06A8.96 8.96 0 013 12a9 9 0 119 9 8.96 8.96 0 01-4.06-1z"
 						/>
 					</svg>
-					Ask
+					Cherry
 				</button>
 			{/if}
 			<ChatDrawer

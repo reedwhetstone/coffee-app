@@ -68,11 +68,11 @@
 				<div>
 					<h2 class="text-base font-semibold text-ink">Memory</h2>
 					<p class="text-xs text-muted">
-						A persistent document the assistant sees in every conversation. It updates this
-						automatically as you chat; edit it directly any time.
+						A persistent document Cherry Runtime can use in every conversation. The runtime updates
+						it as you work; edit it directly any time.
 						{#if updatedAt}
 							Last updated {new Date(updatedAt).toLocaleString()}
-							({updatedBy === 'agent' ? 'by the assistant' : 'by you'}).
+							({updatedBy === 'agent' ? 'by Cherry Runtime' : 'by you'}).
 						{/if}
 					</p>
 				</div>
@@ -100,7 +100,7 @@
 					<textarea
 						bind:value={content}
 						rows="14"
-						placeholder="Nothing here yet. The assistant will start filling this in as you chat — or write your own notes: preferences, equipment, suppliers you work with, goals."
+						placeholder="Nothing here yet. Cherry Runtime will add useful context as you work, or you can write your own notes: preferences, equipment, suppliers, and goals."
 						class="min-h-[16rem] flex-1 resize-y rounded-lg border border-line bg-surface-canvas px-3 py-2 font-mono text-sm text-ink placeholder-muted focus:border-accent focus:outline-none"
 					></textarea>
 				{/if}

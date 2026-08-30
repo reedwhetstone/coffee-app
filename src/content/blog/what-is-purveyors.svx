@@ -38,7 +38,7 @@ In practice, that means a few things:
 
 **A unified data pipeline.** Scrapers pull green coffee listings from 35 suppliers, normalize them into a single schema, and make them searchable in one place. Different grading systems, inconsistent origin naming, varying levels of detail per supplier: all of that gets flattened into a consistent, comparable format.
 
-**An AI layer.** Semantic search across the entire catalog. Ask for "a washed Ethiopian under $8/lb with bright acidity" and get results ranked by relevance, not keyword matching. Tasting note generation, recommendations based on your roasting history, and a conversational interface for exploring the market.
+**Cherry.** Cherry is coffee-native AI from Purveyors. Cherry Runtime connects semantic catalog search, recommendations, market evidence, and roastery context through dedicated green-coffee, roasting, and cross-domain execution roles.
 
 **Roast profiling and inventory tracking.** Log your roasts, track your green coffee inventory, analyze profit margins on what you sell. The platform connects the full loop from sourcing to roasting to selling.
 
@@ -48,7 +48,7 @@ The key insight, and the reason this isn't just another coffee tool, is that the
 
 ## Where It's Going
 
-**An AI-first interface.** I'm moving from traditional page-based navigation to a conversational workspace. The AI doesn't just answer questions; it orchestrates the entire experience. Search, compare, log roasts, track inventory, all through a unified interface that adapts to what you're trying to do. More on this in a future post about our GenUI architecture.
+**A Cherry workspace.** I'm moving from traditional page-based navigation to a conversational workspace. Cherry Runtime coordinates search, comparison, roast logging, and inventory workflows through the context each plan unlocks. More on this in a future post about our GenUI architecture.
 
 **API-first architecture.** Everything the web app does goes through the same API available externally. This is how the hobbyist tools and the commercial integrations live on the same platform without compromise. A home roaster uses the web app to find interesting coffees. A roastery management tool integrates via API to pull inventory data. Same data, same infrastructure, different interfaces. I'll write more about this B2C-to-B2B convergence soon.
 

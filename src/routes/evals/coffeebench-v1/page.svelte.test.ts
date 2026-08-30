@@ -17,6 +17,7 @@ describe('CoffeeBench V1 report', () => {
 		expect(
 			screen.getByText('PV-Microlot: Agentic Coffee Specialist Benchmark · V1 research report')
 		).toBeVisible();
+		expect(screen.getByRole('link', { name: '← Cherry Evals' })).toHaveAttribute('href', '/evals');
 		expect(screen.getByRole('navigation', { name: 'PV-Microlot report sections' })).toBeVisible();
 		expect(screen.getByRole('link', { name: 'Abstract' })).toHaveAttribute('href', '#abstract');
 		expect(screen.getByRole('link', { name: 'Results' })).toHaveAttribute('href', '#results');

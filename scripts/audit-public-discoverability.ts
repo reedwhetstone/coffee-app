@@ -346,10 +346,10 @@ async function main() {
 		{ label: 'Homepage', path: '/', expectInSitemap: true },
 		{ label: 'Catalog', path: '/catalog', expectInSitemap: true, expectInLlms: true },
 		{ label: 'Analytics', path: '/analytics', expectInSitemap: true, expectInLlms: true },
-		{ label: 'Benchmarks', path: '/benchmarks', expectInSitemap: true, expectInLlms: true },
+		{ label: 'Cherry Evals', path: '/evals', expectInSitemap: true, expectInLlms: true },
 		{
-			label: 'CoffeeBench V1',
-			path: '/benchmarks/coffeebench-v1',
+			label: 'Cherry Evals: CoffeeBench V1',
+			path: '/evals/coffeebench-v1',
 			expectStructuredData: true,
 			expectInSitemap: true,
 			expectInLlms: true

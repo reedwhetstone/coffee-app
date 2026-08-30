@@ -32,8 +32,8 @@
 
 <div class="flex items-center justify-between border-b border-line px-3 py-2">
 	<div class="min-w-0">
-		<p class="truncate text-sm font-semibold text-ink">Ask Parchment</p>
-		<p class="hidden truncate text-xs text-muted sm:block">Green coffee research and decisions</p>
+		<p class="truncate text-sm font-semibold text-ink">Cherry</p>
+		<p class="hidden truncate text-xs text-muted sm:block">Coffee-native AI from Purveyors</p>
 	</div>
 	<div class="flex items-center gap-2">
 		{#if !canvasStore.isEmpty}

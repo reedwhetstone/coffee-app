@@ -67,10 +67,10 @@ export const publicNavItems: NavItem[] = [
 		matches: ['/analytics']
 	},
 	{
-		label: 'Benchmarks',
-		href: '/benchmarks',
-		description: 'Inspect public coffee-intelligence evaluations',
-		matches: ['/benchmarks']
+		label: 'Cherry Evals',
+		href: '/evals',
+		description: 'Domain benchmarks for green coffee, sensory analysis, sourcing, and roasting',
+		matches: ['/evals']
 	},
 	{
 		label: 'Pricing',
@@ -112,9 +112,9 @@ const authenticatedSections: NavSection[] = [
 			},
 			{ label: 'Catalog', href: '/catalog', description: 'Browse green coffee supply data' },
 			{
-				label: 'Chat',
+				label: 'Cherry',
 				href: '/chat',
-				description: 'Ask Parchment Intelligence about sourcing and market decisions',
+				description: 'Coffee-native AI for sourcing, market, and roastery decisions',
 				requiresChatAccess: true,
 				lockedReason: 'Requires Parchment Intelligence or Mallard Studio access.'
 			}

@@ -195,8 +195,8 @@
 				bind:this={textareaEl}
 				bind:value={inputMessage}
 				placeholder={canUseMallardWorkspaces
-					? 'Ask me about sourcing, portfolio, roasting, or coffee market decisions...'
-					: 'Ask me about sourcing, portfolio, catalog, or coffee market decisions...'}
+					? 'Analyze sourcing, portfolio, roasting, or coffee market decisions...'
+					: 'Analyze sourcing, portfolio, catalog, or coffee market decisions...'}
 				class="min-h-11 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-ink placeholder-muted focus:outline-none focus:ring-0"
 				rows="1"
 				disabled={isActive || !workspaceReady}
@@ -235,7 +235,7 @@
 			</button>
 		</div>
 		<div class="mt-1.5 px-1 text-xs text-muted">
-			Ask Parchment · Enter to send, Shift+Enter for new line
+			Cherry · Enter to send, Shift+Enter for new line
 		</div>
 	</form>
 </div>

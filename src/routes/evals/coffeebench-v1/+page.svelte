@@ -86,9 +86,7 @@
 	<main>
 		<header class="border-b border-line bg-surface-panel">
 			<div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-				<a href="/benchmarks" class="text-sm font-medium text-accent hover:underline"
-					>← Benchmarks</a
-				>
+				<a href="/evals" class="text-sm font-medium text-accent hover:underline">← Cherry Evals</a>
 				<div class="mt-7 grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
 					<div class="max-w-4xl">
 						<p class="text-sm font-semibold uppercase tracking-[0.18em] text-accent">

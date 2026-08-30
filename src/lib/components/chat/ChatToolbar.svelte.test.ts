@@ -27,6 +27,7 @@ describe('ChatToolbar progressive disclosure', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Clear conversation' }));
 		expect(onExport).toHaveBeenCalledOnce();
 		expect(onClear).toHaveBeenCalledOnce();
-		expect(screen.getByText('Ask Parchment')).toBeInTheDocument();
+		expect(screen.getByText('Cherry')).toBeInTheDocument();
+		expect(screen.getByText('Coffee-native AI from Purveyors')).toBeInTheDocument();
 	});
 });

@@ -926,9 +926,9 @@
 		return '/subscription?plan=intelligence-monthly&intent=checkout';
 	});
 	let askActionLabel = $derived.by(() => {
-		if (canAskWithAnalyticsContext) return 'Ask with this context';
-		if (!isSignedIn) return 'Sign in to ask';
-		return 'Upgrade to ask';
+		if (canAskWithAnalyticsContext) return 'Analyze with Cherry';
+		if (!isSignedIn) return 'Sign in to use Cherry';
+		return 'Upgrade to use Cherry';
 	});
 
 	// ── Deferred module loading ───────────────────────────────────────────────

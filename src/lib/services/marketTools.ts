@@ -1,5 +1,5 @@
 /**
- * Market intelligence data functions for the chat agent.
+ * Market intelligence data functions for Cherry Runtime.
  *
  * These back the catalog_facets, supplier_list, and catalog_rank chat tools.
  * Results are scoped by the Parchment API to the caller's catalog visibility

@@ -31,13 +31,21 @@ import {
 } from './+server';
 
 describe('chat system prompt entitlement context', () => {
-	it('positions Parchment as evidence-led supply-chain intelligence with Mallard as context', () => {
+	it('identifies Cherry as a system and selects the synthesis role for combined access', () => {
 		const prompt = _buildSystemPrompt({ type: 'general' }, 'Member User', {
 			ppiAccess: true,
 			memberAccess: true
 		});
 
-		expect(prompt).toContain('green coffee supply-chain intelligence assistant');
+		expect(prompt).toContain("Cherry is Purveyors' coffee-native AI system");
+		expect(prompt).toContain('Cherry is a system, not a persona');
+		expect(prompt).toContain('Cherry Synthesis Agent');
+		expect(prompt).toContain('agent name describes an execution role, not a character');
+		expect(prompt).toContain('Do not say "I am Cherry"');
+		expect(prompt).toMatch(/Parchment supplies catalog, market, sourcing, and API\s+evidence/);
+		expect(prompt).toMatch(
+			/Mallard Studio supplies the user's inventory, roast, tasting, sales, and margin context/
+		);
 		expect(prompt).toContain('the Ethiopian in your evidence workspace');
 		expect(prompt).not.toMatch(
 			/action card on the canvas|clear canvas|existing canvas|updates the canvas|render on the canvas|the canvas currently shows|older canvas results/i
@@ -56,6 +64,9 @@ describe('chat system prompt entitlement context', () => {
 			memberAccess: false
 		});
 
+		expect(prompt).toContain('Cherry Green Agent');
+		expect(prompt).not.toContain('Cherry Roast Agent');
+		expect(prompt).not.toContain('Cherry Synthesis Agent');
 		expect(prompt).toContain('You have access to Parchment Intelligence tools');
 		expect(prompt).toContain('coffee_catalog_search');
 		expect(prompt).toContain('green_coffee_inventory');
@@ -87,6 +98,9 @@ describe('chat system prompt entitlement context', () => {
 			memberAccess: true
 		});
 
+		expect(prompt).toContain('Cherry Roast Agent');
+		expect(prompt).not.toContain('Cherry Green Agent');
+		expect(prompt).not.toContain('Cherry Synthesis Agent');
 		expect(prompt).toContain('You have access to these tools');
 		expect(prompt).toContain('roast_profiles');
 		expect(prompt).toContain('record_sale');

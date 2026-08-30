@@ -53,8 +53,8 @@ This is not just a marketplace and not a roasting tool. The core value is struct
 9. **Mallard Studio is context, not the umbrella product.**
    Mallard Studio should help roasters apply Purveyors intelligence to their own inventory, roast, tasting, and margin context. It should not pull the platform back into the saturated generic roasting-tool category.
 
-10. **AI should be visible, useful, and grounded in real product context.**
-    Purveyors is an AI-forward system, not a conventional coffee application with a chat box added later. Ask Parchment should be a clear product surface across paid self-serve plans, with capabilities determined honestly by the context each entitlement unlocks: sourcing and market tools for Parchment Intelligence; inventory, roast, tasting, and production tools for Mallard Studio; and both tool families for the combined plan. Public positioning should show the questions and decisions this enables without drifting into generic AI claims or implying access to unavailable tools.
+10. **Cherry should be visible, useful, and grounded in real product context.**
+    Cherry is Purveyors' umbrella for coffee-native AI, not a persona or a generic chat box added to the application. Cherry Runtime selects the Cherry Green Agent for Parchment sourcing and market context, the Cherry Roast Agent for Mallard roastery context, and the Cherry Synthesis Agent when both are available. Public positioning should show the questions, evidence, and decisions each context enables without implying access to unavailable tools or presenting a model as a person. Parchment and Mallard continue to own their data and workflow contracts; Cherry owns AI execution and interpretation.
 
 ## Emerging GTM thesis under discussion
 
@@ -71,7 +71,7 @@ This is not yet a complete product promise. The draft contains unresolved questi
 - A stable v1 API that external developers and agents can build against
 - A first-class CLI that is designed agent-first, consumes the same Parchment API contracts as the web app, and remains easy to call directly from real agent workflows
 - Scraper quality systems that improve data coverage, provenance, and resilience over time
-- A conversational / agentic interface layer that helps users act on the data, not just browse it
+- Cherry Runtime as the coffee-native analysis layer that helps users act on the data, not just browse it
 - Mallard Studio workflows that enrich intelligence with owned-stock and roaster-side context without becoming the core product category
 
 ### Long-term direction

@@ -79,11 +79,11 @@ const cardCatalog: Record<DashboardSectionId, Omit<DashboardCard, 'status' | 'lo
 		},
 		{
 			href: '/chat',
-			label: 'Ask',
-			title: 'Ask Parchment',
+			label: 'Cherry',
+			title: 'Cherry',
 			description:
-				'Ask catalog research and sourcing questions grounded in current supply, market, and portfolio context.',
-			cta: 'Ask a sourcing question',
+				'Analyze catalog research and sourcing questions grounded in current supply, market, and portfolio context.',
+			cta: 'Open Cherry',
 			requirement: 'parchment'
 		},
 		{
@@ -190,7 +190,7 @@ export function getDashboardUpgradePrompt(
 	if (!hasParchmentIntelligence && !hasMallard) {
 		return {
 			headline: 'Unlock the Intelligence layer',
-			body: 'Go beyond public browsing with Ask Parchment, Portfolio tracking, sourcing workflows, and deeper market intelligence built around live green coffee supply.',
+			body: 'Go beyond public browsing with Cherry, Portfolio tracking, sourcing workflows, and deeper market intelligence built around live green coffee supply.',
 			cta: 'Compare plans',
 			href: '/subscription',
 			variant: 'strong'

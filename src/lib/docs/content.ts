@@ -289,7 +289,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Parchment',
 		intro: [
 			'Parchment is the API and Console layer inside Purveyors. It exposes normalized green coffee catalog data, beta catalog similarity matching, and aggregate market intelligence through small public HTTP contracts plus a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
-			'The stable public catalog contract is GET https://api.purveyors.io/v1/catalog. Production catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages remain browsable without a user login because the coffee-app BFF presents a server-held public/demo key upstream. Deliberately designated Market Index teaser slices remain anonymous as a narrow route contract. GET /v1/catalog/{id}/similar is a beta member and paid API route for candidate matching, not a canonical identity claim. GET /v1/price-index is an authenticated Parchment Intelligence contract for aggregate price_index_snapshots data only; it accepts entitled first-party sessions and customer API keys. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most coffee-app /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
+			'The stable public catalog contract is GET https://api.purveyors.io/v1/catalog. Production catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages remain browsable without a user login because the coffee-app BFF presents a server-held public/demo key upstream. Deliberately designated Market Index teaser slices remain anonymous as a narrow route contract. GET /v1/catalog/{id}/similar is a beta member and paid API route for candidate matching, not a canonical identity claim. GET /v1/price-index is an authenticated Parchment Intelligence contract for aggregate price_index_snapshots data only; it accepts entitled first-party sessions and customer API keys. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most coffee-app /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, Cherry Runtime, workspaces, billing, and admin tooling.'
 		],
 		sections: [
 			{
@@ -1272,7 +1272,7 @@ const docsPages: DocsPage[] = [
 							'POST',
 							'Chat access session',
 							'Internal product route',
-							'Streams AI chat responses with workspace context and tool execution.'
+							'Streams Cherry responses with workspace context and tool execution.'
 						],
 						[
 							'/api/chat/execute-action',
@@ -1754,7 +1754,7 @@ const docsPages: DocsPage[] = [
 							'/api/billing/checkout-sessions/[admissionId]',
 							'GET POST',
 							'Cookie session; POST also requires same origin',
-							'Read owner-bound admission status or ask Parchment to reconcile it; never accepts or returns a Stripe Session or Customer ID'
+							'Read owner-bound admission status or request reconciliation from Parchment; never accepts or returns a Stripe Session or Customer ID'
 						],
 						[
 							'/api/billing/subscriptions/[subscriptionId]',
@@ -2506,7 +2506,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Tasting',
 		intro: [
 			'Tasting commands combine supplier-provided notes from the catalog with your personal cupping data stored on inventory rows.',
-			'Both read and write flows are available, so tasting data works across terminal, browser, and AI chat contexts.'
+			'Both read and write flows are available, so tasting data works across terminal, browser, and Cherry contexts.'
 		],
 		sections: [
 			{
@@ -2539,7 +2539,7 @@ const docsPages: DocsPage[] = [
 			},
 			{
 				href: '/chat',
-				label: 'AI chat',
+				label: 'Cherry',
 				description: 'The chat workspace includes tasting-note tools.'
 			}
 		]
@@ -2689,7 +2689,7 @@ const docsPages: DocsPage[] = [
 			},
 			{
 				href: '/chat',
-				label: 'AI chat workspace',
+				label: 'Cherry workspace',
 				description: 'The web UI that consumes session-mode Parchment SDK clients.'
 			}
 		]

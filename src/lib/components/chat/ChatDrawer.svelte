@@ -29,15 +29,15 @@
 		{open}
 		variant="drawer"
 		onClose={() => (open = false)}
-		label="Ask Parchment"
+		label="Cherry"
 		hideOnDesktop={false}
 		keepMounted={true}
 	>
 		<div class="flex h-full min-h-0 flex-col border-l border-line bg-surface-canvas">
 			<div class="flex items-center justify-between border-b border-line px-4 py-2.5">
 				<div class="min-w-0">
-					<p class="text-sm font-semibold text-ink">Ask Parchment</p>
-					<p class="truncate text-xs text-muted">Knows what you're looking at on this page</p>
+					<p class="text-sm font-semibold text-ink">Cherry</p>
+					<p class="truncate text-xs text-muted">Coffee-native AI from Purveyors</p>
 				</div>
 				<div class="flex shrink-0 items-center gap-2">
 					<a
@@ -50,7 +50,7 @@
 						type="button"
 						onclick={() => (open = false)}
 						class="rounded-md p-1.5 text-muted transition-colors hover:bg-surface-panel hover:text-ink"
-						aria-label="Close Ask Parchment"
+						aria-label="Close Cherry"
 					>
 						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path

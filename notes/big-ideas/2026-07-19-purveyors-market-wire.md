@@ -52,7 +52,7 @@ The paid product applies leverage rather than hiding proof:
 
 - custom origins, processes, suppliers, price ceilings, and sourcing mandates
 - immediate alerts instead of the delayed public digest
-- full history, comparisons, exports, and Ask Parchment analysis
+- full history, comparisons, exports, and Cherry Green Agent analysis
 - Sourcing Radar matches and actions tied to the buyer's own intent
 - Mallard Studio context for owned inventory, roasting, and margin decisions
 

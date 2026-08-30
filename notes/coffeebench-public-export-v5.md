@@ -15,8 +15,9 @@ splits.
 - Immutable path: `/benchmarks/coffeebench-v1/results/1.0.0.coffeebench-v0-deepseek-v4-reliable-official.published.50ca8fbd22a8523e/50ca8fbd22a8523eacb13bc21c5eb890a2fd60f3e55db8a386a00bc8b94bb087.json`
 - Convenience alias: `/benchmarks/coffeebench-public-export-v5.json`
 
-The canonical report is `/benchmarks/coffeebench-v1`. The former
-`/benchmarks/coffeebench-v0` route redirects to V1. Historical schema-v2 through schema-v4
+The canonical Cherry Evals report is `/evals/coffeebench-v1`. The former
+`/benchmarks`, `/benchmarks/coffeebench-v1`, and `/benchmarks/coffeebench-v0` routes redirect to
+their canonical Cherry Evals destinations. Historical schema-v2 through schema-v4
 artifacts remain available at their immutable paths and aliases.
 
 The report dispositions the original product hypotheses directly:

@@ -2,7 +2,7 @@
 
 **Status:** Active brand direction (visual identity system adopted July 2026)
 **Owner:** Reed Whetstone
-**Last updated:** 2026-07-05
+**Last updated:** 2026-08-29
 
 > **July 2026 rework:** the brand direction is now "the field journal of the green coffee market" — research-institution rigor presented with the warmth of a botanical field journal. The full rationale and rollout live in `notes/marketing-audits/2026-07-05-ui-brand-gtm-rework-proposal.md`. The sections below are the durable rules that came out of it.
 
@@ -42,6 +42,13 @@ Use these names consistently:
 | Name                        | Use                                                                                                                             |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | Purveyors                   | Parent company and platform brand                                                                                               |
+| Cherry                      | Umbrella for Purveyors' coffee-native AI. Default customer-facing name; tagline: "Coffee-native AI from Purveyors."             |
+| Cherry AI                   | Descriptive product-family phrase when disambiguation is necessary; use `Cherry` in normal UI labels                            |
+| Cherry Runtime              | Agent execution and orchestration layer. It selects a runtime role and connects models to Parchment and Mallard context         |
+| Cherry Green Agent          | Green-coffee runtime role using Parchment sourcing, catalog, portfolio, and market tools                                        |
+| Cherry Roast Agent          | Roasting runtime role using Mallard inventory, roast, tasting, sales, and margin tools                                          |
+| Cherry Synthesis Agent      | Cross-domain runtime role using both Parchment evidence and Mallard roastery context                                            |
+| Cherry Evals                | Public family for domain benchmarks covering green coffee, sensory analysis, sourcing, and roasting; canonical route `/evals`   |
 | Parchment                   | API infrastructure layer inside Purveyors; use as the shared infrastructure name, not a public platform                         |
 | Mallard Studio              | Authenticated roaster workspace for inventory, roast, profit, tasting, chat, and subscriptions                                  |
 | Parchment API               | External API product and stable `/v1/*` public contract                                                                         |
@@ -50,6 +57,11 @@ Use these names consistently:
 | Green / Origin / Enterprise | Parchment API tier names                                                                                                        |
 | Market Index                | Canonical short label for `/analytics` in nav, footers, cards, and CTAs; "Parchment Market Index" is the formal on-page H1 only |
 
+Cherry model names use the `purveyors/cherry-*` namespace. `purveyors/cherry-specialist-3b` is the
+planned family alias for the shared specialist model. Frozen evals and model cards must identify an
+immutable revision or artifact digest, not only a movable family alias. Runtime role IDs such as
+`cherry-green-agent` name orchestration profiles, not model weights.
+
 Avoid these in current public-facing copy unless quoting historical material:
 
 - Maillard Studio
@@ -57,6 +69,43 @@ Avoid these in current public-facing copy unless quoting historical material:
 - Explorer / Roaster+ / Integrate
 - PPI member when the intended surface is Parchment Intelligence
 - Coffee App as a product or framework name
+- Ask Parchment
+- Ask Cherry
+- Parchment Intelligence Chat
+- generic "AI assistant" or "AI workbench" labels when the owned product is Cherry
+
+### Cherry identity and anti-anthropomorphism
+
+The fundamental rule is: **Cherry is a system, not a persona.**
+
+- `Cherry`, `Cherry Runtime`, and the named Cherry agents describe product and execution boundaries,
+  not characters.
+- Agent names may identify the active runtime role. Do not give them separate personalities, human
+  biographies, avatars, emotions, preferences, relationships, or personal experience.
+- Do not write "I am Cherry," "Cherry thinks," "Cherry feels," "Cherry wants," or "Cherry knows"
+  when the accurate statement is that a model inferred something from supplied context.
+- Ordinary first-person grammar may keep a generated response natural, but explicit self-description
+  must use system language: "This is Cherry, coffee-native AI from Purveyors, running the Cherry
+  Green Agent."
+- Attribute evidence to its owner. Parchment supplies catalog, market, sourcing, and API evidence.
+  Mallard Studio supplies inventory, roast, tasting, sales, and margin context. Cherry Runtime
+  orchestrates the work and models interpret the supplied context.
+- Never turn an empty tool result into a personal-knowledge claim or general proof that something does
+  not exist.
+- Use action language such as "Open Cherry," "Analyze with Cherry," or "Run through Cherry." Do not
+  recreate the retired persona framing as "Ask Cherry."
+
+Good:
+
+- "Cherry Runtime selected the Cherry Synthesis Agent because both context families are available."
+- "Parchment returned 12 stocked offers; Cherry compared five against the stated constraints."
+- "Cherry does not have evidence for that claim yet."
+
+Avoid:
+
+- "Cherry remembers your favorite coffee."
+- "The Green Agent believes this supplier is best."
+- "Ask Cherry what she thinks."
 
 ## Voice
 

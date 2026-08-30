@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, stepCountIs } from 'ai';
+import { buildCherryRuntimeIdentity, CHERRY_RUNTIME_MODEL } from '$lib/server/cherryRuntime';
 import { createChatTools } from './tools';
 
 /**
- * Tool-selection eval harness (B-PR2 of the AI integration plan).
+ * Cherry Runtime tool-selection eval harness (B-PR2 of the AI integration plan).
  *
  * Sends fixture questions to the production chat model with the real tool
  * schemas and asserts which tool the model reaches for first. This catches
@@ -103,10 +104,10 @@ describe.skipIf(!RUN_EVAL)('chat tool selection eval (manual, costs inference)',
 			{ timeout: 60_000 },
 			async () => {
 				const result = await generateText({
-					model: openrouter.chat('@preset/test-workhorse-agent'),
-					system:
-						'You are a coffee intelligence assistant. Use the most appropriate tool for the question. Today is ' +
-						new Date().toISOString().slice(0, 10),
+					model: openrouter.chat(CHERRY_RUNTIME_MODEL),
+					system: `${buildCherryRuntimeIdentity({ ppiAccess: true, memberAccess: true })}
+
+Use the most appropriate tool for the question. Today is ${new Date().toISOString().slice(0, 10)}.`,
 					prompt: evalCase.prompt,
 					tools,
 					temperature: 0.4,

@@ -41,7 +41,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		.join('');
 	const coffeeBenchEntry = `
 	<url>
-		<loc>${baseUrl}/benchmarks/coffeebench-v1</loc>
+		<loc>${baseUrl}/evals/coffeebench-v1</loc>
 		<lastmod>${COFFEEBENCH_V1_RELEASE_DATE}</lastmod>
 		<changefreq>never</changefreq>
 		<priority>0.8</priority>
@@ -72,9 +72,9 @@ export const GET: RequestHandler = async ({ url }) => {
 		<priority>0.7</priority>
 	</url>
 
-	<!-- Versioned public benchmark reports -->
+	<!-- Cherry Evals and versioned public reports -->
 	<url>
-		<loc>${baseUrl}/benchmarks</loc>
+		<loc>${baseUrl}/evals</loc>
 		<lastmod>${COFFEEBENCH_V1_RELEASE_DATE}</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.7</priority>
