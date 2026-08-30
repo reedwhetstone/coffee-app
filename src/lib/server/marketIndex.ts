@@ -1,8 +1,6 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import type { components } from '@purveyors/sdk';
-import { createAdminClient } from '$lib/supabase-admin';
 import { createParchmentServerClient, ParchmentConfigError } from './parchmentClient';
-import type { CoffeeCatalog } from '$lib/types/component.types';
 
 /**
  * BFF loader for the Market Index decision-surface modules (ADR-015 / WP-3).
@@ -58,47 +56,6 @@ const DISPLAY_SIGNAL_TYPES: Array<'price_drop' | 'below_market'> = ['price_drop'
 const PRICE_DROP_SIGNAL_TYPES: Array<'price_drop'> = ['price_drop'];
 /** Movement windows the MarketReadSection window toggle can select. */
 const MOVE_WINDOWS = ['7d', '30d'] as const;
-const SIGNAL_COFFEE_SELECT = [
-	'id',
-	'name',
-	'source',
-	'region',
-	'country',
-	'continent',
-	'processing',
-	'processing_base_method',
-	'fermentation_type',
-	'process_additives',
-	'process_additive_detail',
-	'fermentation_duration_hours',
-	'drying_method',
-	'processing_notes',
-	'processing_disclosure_level',
-	'processing_confidence',
-	'processing_evidence_available',
-	'stocked',
-	'arrival_date',
-	'stocked_date',
-	'last_updated',
-	'farm_notes',
-	'wholesale',
-	'type',
-	'cultivar_detail',
-	'grade',
-	'appearance',
-	'cost_lb',
-	'price_per_lb',
-	'price_tiers',
-	'ai_tasting_notes',
-	'ai_description',
-	'link',
-	'purveyor_score',
-	'purveyor_score_confidence',
-	'purveyor_score_tier',
-	'purveyor_score_factors',
-	'purveyor_score_version',
-	'purveyor_score_updated_at'
-].join(', ');
 
 type SignalBody = components['schemas']['MarketSignalsResponse'];
 type StatsBody = components['schemas']['PriceIndexStatsResponse'];
@@ -107,58 +64,6 @@ type MetadataBody = components['schemas']['MetadataIndexResponse'];
 /** Unwrap a settled SDK fetch result to its JSON body, or null on any failure. */
 function settledBody<T>(result: PromiseSettledResult<{ data?: T } | null | undefined>): T | null {
 	return result.status === 'fulfilled' ? (result.value?.data ?? null) : null;
-}
-
-/** Minimal supabase surface needed for name enrichment. */
-interface NameLookupClient {
-	from(table: 'coffee_catalog'): {
-		select(columns: string): {
-			in(column: string, values: number[]): PromiseLike<{ data: CoffeeCatalog[] | null }>;
-		};
-	};
-}
-
-async function enrichSignalNames(
-	items: components['schemas']['MarketSignalItem'][]
-): Promise<MarketSignalItem[]> {
-	const ids = [...new Set(items.map((item) => item.catalogId))];
-	const names = new Map<number, string | null>();
-	const catalogRows = new Map<number, CoffeeCatalog>();
-
-	for (const item of items) {
-		const responseName = extractSignalName(item);
-		if (responseName) names.set(item.catalogId, responseName);
-	}
-
-	if (ids.length > 0) {
-		try {
-			const adminSupabase = createAdminClient() as unknown as NameLookupClient;
-			const { data } = await adminSupabase
-				.from('coffee_catalog')
-				.select(SIGNAL_COFFEE_SELECT)
-				.in('id', ids);
-			for (const row of data ?? []) {
-				if (!names.has(row.id)) names.set(row.id, row.name);
-				catalogRows.set(row.id, row);
-			}
-		} catch {
-			// Catalog rows are presentation sugar; signals render from API evidence without them.
-		}
-	}
-	return items.map((item) => ({
-		...item,
-		name: names.get(item.catalogId) ?? null,
-		coffee: catalogRows.get(item.catalogId) ?? null
-	}));
-}
-
-function extractSignalName(item: components['schemas']['MarketSignalItem']): string | null {
-	const record = item as unknown as Record<string, unknown>;
-	for (const key of ['name', 'coffeeName', 'coffee_name', 'catalogName', 'catalog_name']) {
-		const value = record[key];
-		if (typeof value === 'string' && value.trim()) return value;
-	}
-	return null;
 }
 
 function signalRank(item: components['schemas']['MarketSignalItem']): number | null {
@@ -275,7 +180,9 @@ export async function loadMarketIndexInsights(
 		);
 		insights.signalsAsOf = firstBody?.meta?.asOf ?? null;
 		if (firstBody) {
-			insights.valueSignals = await enrichSignalNames(merged);
+			// Parchment 0.31 returns display-ready names and public catalog projections.
+			// Coffee-app performs only the type-level presentation adaptation.
+			insights.valueSignals = merged as unknown as MarketSignalItem[];
 		}
 		// No signalsSummary for entitled viewers: ValueSignalsSection always
 		// renders the signal cards (or the honest empty state) when valueSignals
