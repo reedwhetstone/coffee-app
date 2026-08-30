@@ -32,6 +32,8 @@ describe('ChatMessageList conversation controls', () => {
 
 	it('shows four compact starter prompts', () => {
 		render(ChatMessageList, props());
+		expect(screen.getByText('Cherry')).toBeInTheDocument();
+		expect(screen.queryByText('Parchment Intelligence')).not.toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Compare stocked Ethiopian coffees' })).toBeTruthy();
 		expect(screen.getByRole('button', { name: 'Find gaps in my current portfolio' })).toBeTruthy();
 		expect(screen.getByRole('button', { name: 'Review this week’s market movement' })).toBeTruthy();

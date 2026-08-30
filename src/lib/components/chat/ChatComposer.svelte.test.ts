@@ -36,6 +36,8 @@ describe('ChatComposer recovery controls', () => {
 		);
 		expect(screen.getByText(/Using 1 of 1 context source/)).toBeInTheDocument();
 		expect(screen.getByText(/Cherry/)).toBeInTheDocument();
+		expect(screen.getByPlaceholderText(/Analyze sourcing, portfolio, catalog/)).toBeInTheDocument();
+		expect(screen.queryByPlaceholderText(/Ask me/)).not.toBeInTheDocument();
 	});
 
 	it('keeps context toggles behind a labeled disclosure', async () => {

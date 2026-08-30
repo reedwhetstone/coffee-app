@@ -241,7 +241,7 @@ function presentationCacheMissBlock(sourceTool: string): ErrorBlock {
 		type: 'error',
 		version: 1,
 		data: {
-			message: `Couldn't render this presentation — the referenced ${sourceTool.replace(/_/g, ' ')} results weren't found in this conversation. Ask me to re-run the search.`,
+			message: `Couldn't render this presentation — the referenced ${sourceTool.replace(/_/g, ' ')} results weren't found in this conversation. Run the search again to recreate it.`,
 			retryable: false
 		}
 	};

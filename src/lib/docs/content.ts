@@ -1754,7 +1754,7 @@ const docsPages: DocsPage[] = [
 							'/api/billing/checkout-sessions/[admissionId]',
 							'GET POST',
 							'Cookie session; POST also requires same origin',
-							'Read owner-bound admission status or use Cherry to reconcile it; never accepts or returns a Stripe Session or Customer ID'
+							'Read owner-bound admission status or request reconciliation from Parchment; never accepts or returns a Stripe Session or Customer ID'
 						],
 						[
 							'/api/billing/subscriptions/[subscriptionId]',

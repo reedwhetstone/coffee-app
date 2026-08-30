@@ -34,6 +34,10 @@
 		readAnalyticsSeedFromSearchParams
 	} from '$lib/analytics/actionContext';
 	import { classifyChatFailure, rollbackFailedTurn } from './chatRecovery';
+	import {
+		buildCherryConversationExport,
+		cherryConversationExportFilename
+	} from './cherryConversationExport';
 
 	let {
 		canUseChat,
@@ -46,7 +50,7 @@
 		/**
 		 * page: full /chat workbench with the resizable canvas split.
 		 * drawer: chat-only pane (canvas reachable via overlay) for the
-		 * app-wide Ask drawer.
+		 * app-wide Cherry drawer.
 		 */
 		variant?: 'page' | 'drawer';
 		/**
@@ -1098,27 +1102,14 @@
 
 	// ─── Export / Clear ────────────────────────────────────────────────────────
 	function exportConversation() {
-		const timestamp = new Date().toLocaleString();
-		let markdown = `# Parchment Intelligence conversation export\n\n`;
-		markdown += `**Exported:** ${timestamp}\n\n---\n\n`;
-
-		for (const message of chat.messages) {
-			const role = message.role === 'user' ? 'User' : 'Assistant';
-			markdown += `## ${role}\n\n`;
-
-			for (const part of message.parts) {
-				if (part.type === 'text') {
-					markdown += `${part.text}\n\n`;
-				}
-			}
-			markdown += `---\n\n`;
-		}
+		const exportedAt = new Date();
+		const markdown = buildCherryConversationExport(chat.messages, exportedAt);
 
 		const blob = new Blob([markdown], { type: 'text/markdown' });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
-		a.download = `parchment-intelligence-conversation-${new Date().toISOString().split('T')[0]}.md`;
+		a.download = cherryConversationExportFilename(exportedAt);
 		document.body.appendChild(a);
 		a.click();
 		document.body.removeChild(a);

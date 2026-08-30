@@ -82,7 +82,7 @@ const cardCatalog: Record<DashboardSectionId, Omit<DashboardCard, 'status' | 'lo
 			label: 'Cherry',
 			title: 'Cherry',
 			description:
-				'Ask catalog research and sourcing questions grounded in current supply, market, and portfolio context.',
+				'Analyze catalog research and sourcing questions grounded in current supply, market, and portfolio context.',
 			cta: 'Open Cherry',
 			requirement: 'parchment'
 		},
