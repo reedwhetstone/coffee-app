@@ -31,6 +31,10 @@ describe('/dashboard sourcing brief entitlement copy', () => {
 
 		expect(screen.getByLabelText('Your sourcing workspace')).toBeInTheDocument();
 		expect(screen.getByText(/No active sourcing briefs/)).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Parchment API docs' })).toHaveAttribute(
+			'href',
+			'https://api.purveyors.io/docs'
+		);
 		expect(
 			screen.queryByText(/Sourcing briefs are a Mallard Studio workflow/)
 		).not.toBeInTheDocument();

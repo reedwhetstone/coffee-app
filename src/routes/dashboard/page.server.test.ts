@@ -180,7 +180,12 @@ describe('/dashboard sourcing workspace load', () => {
 					{
 						id: 'brief-1',
 						name: 'Colombia brief',
-						criteria: { version: 1, country: 'Colombia', max_price_per_lb: 6 },
+						criteria: {
+							version: 1,
+							country: 'Colombia',
+							max_price_per_lb: 6,
+							stocked_days: 30
+						},
 						cadence: 'manual',
 						isActive: true,
 						lastRunAt: null,
@@ -195,7 +200,9 @@ describe('/dashboard sourcing workspace load', () => {
 
 		expect(result.activeBriefs).toHaveLength(1);
 		expect(mockBriefsList).toHaveBeenCalledOnce();
-		expect(result.activeBriefs[0].catalogHref).toBe('/catalog?country=Colombia');
+		expect(result.activeBriefs[0].catalogHref).toBe(
+			'/catalog?country=Colombia&price_per_lb_max=6&stocked_days=30'
+		);
 		expect(result.activeBriefs[0].criteriaDescription).toContain('Colombia');
 	});
 

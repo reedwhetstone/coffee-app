@@ -234,8 +234,11 @@
 					</h3>
 					{#if activeBriefs.length === 0}
 						<p class="mt-3 text-sm leading-relaxed text-muted">
-							No active sourcing briefs. Save brief criteria in chat or the catalog and matches
-							surface here and in the catalog banner.
+							No active sourcing briefs. Create one through the
+							<a
+								href="https://api.purveyors.io/docs"
+								class="font-semibold text-accent hover:text-ink">Parchment API docs</a
+							>.
 						</p>
 					{:else}
 						<ul class="mt-3 space-y-3">

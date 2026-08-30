@@ -243,7 +243,6 @@ export async function getSourcingBriefMatches(
 	brief: SourcingBriefResource
 ): Promise<SourcingBriefMatchSummary> {
 	const matchingIds = new Set<number>();
-	const pageFingerprints = new Set<string>();
 	let page = 1;
 	let total: number | null = null;
 	let briefFingerprint: string | null = null;
@@ -256,17 +255,24 @@ export async function getSourcingBriefMatches(
 		if (result.error) throw result.error;
 
 		const parsed = parseMatchPage(result.data, page, brief, total, briefFingerprint);
-		const pageFingerprint = canonicalJson([...parsed.ids].sort((left, right) => left - right));
-		if (pageFingerprints.has(pageFingerprint) && parsed.ids.length > 0) {
-			fail(`match page ${page} duplicates an earlier page`);
+		if (new Set(parsed.ids).size !== parsed.ids.length) {
+			fail(`match page ${page} contains duplicate ids`);
 		}
-		pageFingerprints.add(pageFingerprint);
+		for (const id of parsed.ids) {
+			if (matchingIds.has(id)) {
+				fail(`match page ${page} duplicates id ${id} from an earlier page`);
+			}
+		}
 		for (const id of parsed.ids) matchingIds.add(id);
 		total = parsed.total;
 		briefFingerprint = parsed.briefFingerprint;
 
 		if (!parsed.hasNext) break;
 		page += 1;
+	}
+
+	if (matchingIds.size !== (total ?? 0)) {
+		fail(`match pages returned ${matchingIds.size} unique ids; expected ${total ?? 0}`);
 	}
 
 	return {

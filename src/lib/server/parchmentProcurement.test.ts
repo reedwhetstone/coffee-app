@@ -161,7 +161,7 @@ describe('getSourcingBriefMatches', () => {
 		const client = makeClient({
 			matches: [
 				{ data: matchBody({ page: 1, total: 101, ids: firstPageIds }) },
-				{ data: matchBody({ page: 2, total: 101, ids: [100] }) }
+				{ data: matchBody({ page: 2, total: 101, ids: [101] }) }
 			]
 		});
 
@@ -170,7 +170,7 @@ describe('getSourcingBriefMatches', () => {
 			briefName: brief.name,
 			criteria: brief.criteria,
 			totalMatchCount: 101,
-			matchingIds: firstPageIds
+			matchingIds: [...firstPageIds, 101]
 		});
 		expect(client.procurement.briefs.matches).toHaveBeenNthCalledWith(1, brief.id, {
 			page: 1,
@@ -182,7 +182,7 @@ describe('getSourcingBriefMatches', () => {
 		});
 	});
 
-	it('rejects a duplicate advancing page', async () => {
+	it('rejects a page that overlaps an earlier page', async () => {
 		const ids = Array.from({ length: 100 }, (_, index) => index + 1);
 		const client = makeClient({
 			matches: [
@@ -192,7 +192,18 @@ describe('getSourcingBriefMatches', () => {
 		});
 
 		await expect(getSourcingBriefMatches(client as never, brief)).rejects.toThrow(
-			'duplicates an earlier page'
+			'duplicates id 1 from an earlier page'
+		);
+	});
+
+	it('rejects duplicate ids within one page', async () => {
+		const ids = Array.from({ length: 99 }, (_, index) => index + 1);
+		const client = makeClient({
+			matches: [{ data: matchBody({ page: 1, total: 100, ids: [...ids, 99] }) }]
+		});
+
+		await expect(getSourcingBriefMatches(client as never, brief)).rejects.toThrow(
+			'match page 1 contains duplicate ids'
 		);
 	});
 

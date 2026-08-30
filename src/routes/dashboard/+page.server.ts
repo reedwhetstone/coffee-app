@@ -37,6 +37,12 @@ function briefCatalogHref(criteria: SourcingBriefCriteria): string {
 	if (criteria.processing_base_method) {
 		params.set('processing_base_method', criteria.processing_base_method);
 	}
+	if (criteria.max_price_per_lb !== undefined) {
+		params.set('price_per_lb_max', String(criteria.max_price_per_lb));
+	}
+	if (criteria.stocked_days !== undefined) {
+		params.set('stocked_days', String(criteria.stocked_days));
+	}
 	if (criteria.wholesale_only) params.set('wholesaleOnly', 'true');
 	const query = params.toString();
 	return query ? `/catalog?${query}` : '/catalog';
