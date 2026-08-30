@@ -7,6 +7,7 @@ import type {
 	AnalyticsCharts,
 	AnalyticsCoverage,
 	AnalyticsMemberData,
+	AnalyticsWatchlistData,
 	AnalyticsPreview
 } from './+page.server';
 import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
@@ -255,6 +256,7 @@ function createData(overrides: Record<string, unknown> = {}): PageData {
 		analyticsPreview,
 		analyticsCoverage,
 		analyticsCharts,
+		analyticsWatchlist,
 		analyticsMember,
 		...flatOverrides
 	} = overrides as {
@@ -264,6 +266,7 @@ function createData(overrides: Record<string, unknown> = {}): PageData {
 		analyticsPreview?: AnalyticsPreview;
 		analyticsCoverage?: Promise<AnalyticsCoverage>;
 		analyticsCharts?: Promise<AnalyticsCharts>;
+		analyticsWatchlist?: Promise<AnalyticsWatchlistData>;
 		analyticsMember?: Promise<AnalyticsMemberData>;
 	} & Record<string, unknown>;
 
@@ -302,6 +305,11 @@ function createData(overrides: Record<string, unknown> = {}): PageData {
 				originRangeData: base.originRangeData,
 				marketInsights: base.marketInsights
 			} as AnalyticsCharts),
+		analyticsWatchlist:
+			analyticsWatchlist ??
+			Promise.resolve({
+				trackedLots: base.trackedLots
+			}),
 		analyticsMember:
 			analyticsMember ??
 			Promise.resolve({
@@ -536,7 +544,26 @@ describe('analytics page loading experience', () => {
 			data: createData({
 				session: createSession(),
 				isParchmentIntelligence: true,
-				analyticsMember: Promise.reject(new Error('member stream failed'))
+				analyticsMember: Promise.reject(new Error('member stream failed')),
+				analyticsWatchlist: Promise.resolve({
+					trackedLots: [
+						{
+							catalogId: 1,
+							trackedAt: '2026-04-01T00:00:00Z',
+							priceAtTracking: 4,
+							name: 'Tracked despite evidence failure',
+							source: 'Cafe Imports',
+							country: 'Colombia',
+							region: null,
+							processing: 'Washed',
+							stocked: true,
+							wholesale: false,
+							unstockedDate: null,
+							currentPrice: 4.25,
+							priceDelta: 0.25
+						}
+					]
+				})
 			})
 		});
 
@@ -547,6 +574,7 @@ describe('analytics page loading experience', () => {
 		// permanent loading panel.
 		expect(screen.queryByLabelText('Loading member market evidence')).toBeNull();
 		expect(screen.queryByText('Fresh Ethiopia')).toBeNull();
+		expect(screen.getByText('Tracked despite evidence failure')).toBeTruthy();
 		expect(screen.getByText('Some market data did not load.')).toBeTruthy();
 		consoleError.mockRestore();
 	});
@@ -937,38 +965,40 @@ describe('analytics command center hierarchy', () => {
 		render(AnalyticsPage, {
 			data: createData({
 				session: createSession(),
-				trackedLots: [
-					{
-						catalogId: 1,
-						trackedAt: '2026-04-01T00:00:00Z',
-						priceAtTracking: 4.0,
-						name: 'Tracked Retail Lot',
-						source: 'Cafe Imports',
-						country: 'Colombia',
-						region: null,
-						processing: 'Washed',
-						stocked: false,
-						wholesale: false,
-						unstockedDate: '2026-04-05',
-						currentPrice: 4.5,
-						priceDelta: 0.5
-					},
-					{
-						catalogId: 2,
-						trackedAt: '2026-04-02T00:00:00Z',
-						priceAtTracking: null,
-						name: 'Tracked Wholesale Lot',
-						source: 'Crown Jewels',
-						country: 'Ethiopia',
-						region: null,
-						processing: 'Natural',
-						stocked: true,
-						wholesale: true,
-						unstockedDate: null,
-						currentPrice: 3.9,
-						priceDelta: null
-					}
-				]
+				analyticsWatchlist: Promise.resolve({
+					trackedLots: [
+						{
+							catalogId: 1,
+							trackedAt: '2026-04-01T00:00:00Z',
+							priceAtTracking: 4.0,
+							name: 'Tracked Retail Lot',
+							source: 'Cafe Imports',
+							country: 'Colombia',
+							region: null,
+							processing: 'Washed',
+							stocked: false,
+							wholesale: false,
+							unstockedDate: '2026-04-05',
+							currentPrice: 4.5,
+							priceDelta: 0.5
+						},
+						{
+							catalogId: 2,
+							trackedAt: '2026-04-02T00:00:00Z',
+							priceAtTracking: null,
+							name: 'Tracked Wholesale Lot',
+							source: 'Crown Jewels',
+							country: 'Ethiopia',
+							region: null,
+							processing: 'Natural',
+							stocked: true,
+							wholesale: true,
+							unstockedDate: null,
+							currentPrice: 3.9,
+							priceDelta: null
+						}
+					]
+				})
 			})
 		});
 

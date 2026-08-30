@@ -8,7 +8,8 @@
 		AnalyticsPreview,
 		AnalyticsCoverage,
 		AnalyticsCharts,
-		AnalyticsMemberData
+		AnalyticsMemberData,
+		AnalyticsWatchlistData
 	} from './+page.server';
 	import {
 		buildAnalyticsChatHref,
@@ -76,6 +77,8 @@
 	let chartsData = $state<AnalyticsCharts | null>(null);
 	let memberState = $state<StreamState>('pending');
 	let memberData = $state<AnalyticsMemberData | null>(null);
+	let watchlistState = $state<StreamState>('pending');
+	let watchlistData = $state<AnalyticsWatchlistData | null>(null);
 
 	$effect(() => {
 		const promise = data.analyticsCoverage as Promise<AnalyticsCoverage>;
@@ -140,6 +143,27 @@
 		};
 	});
 
+	$effect(() => {
+		const promise = data.analyticsWatchlist as Promise<AnalyticsWatchlistData>;
+		let cancelled = false;
+		watchlistState = 'pending';
+		watchlistData = null;
+		void Promise.resolve(promise)
+			.then((value) => {
+				if (cancelled) return;
+				watchlistData = value;
+				watchlistState = 'ready';
+			})
+			.catch((error: unknown) => {
+				if (cancelled) return;
+				console.error('Failed to load analytics watchlist:', error);
+				watchlistState = 'error';
+			});
+		return () => {
+			cancelled = true;
+		};
+	});
+
 	let coverageSettled = $derived(coverageState !== 'pending');
 	let chartsSettled = $derived(chartsState !== 'pending');
 	let memberSettled = $derived(memberState !== 'pending');
@@ -149,13 +173,17 @@
 	let signalsReady = $derived(coverageSettled && chartsSettled);
 	let bodyReady = $derived(chartsSettled);
 	let allResolved = $derived(
-		coverageState === 'ready' && chartsState === 'ready' && memberState === 'ready'
+		coverageState === 'ready' &&
+			chartsState === 'ready' &&
+			memberState === 'ready' &&
+			watchlistState === 'ready'
 	);
 	let streamedSectionErrors = $derived.by(() => {
 		const failed: string[] = [];
 		if (coverageState === 'error') failed.push('coverage and movement counts');
 		if (chartsState === 'error') failed.push('price history and chart evidence');
 		if (memberState === 'error') failed.push('member market evidence');
+		if (watchlistState === 'error') failed.push('watchlist');
 		return failed;
 	});
 
@@ -198,7 +226,7 @@
 	let comparisonBeans = $derived(memberData?.comparisonBeans ?? []);
 	let supplierPriceRanges = $derived(memberData?.supplierPriceRanges ?? []);
 	let supplierHealth = $derived(memberData?.supplierHealth ?? []);
-	let trackedLots = $derived(memberData?.trackedLots ?? []);
+	let trackedLots = $derived(watchlistData?.trackedLots ?? []);
 	let isAnonymous = $derived(!isSignedIn);
 	// ── Snapshot filtering (scope lens) ──────────────────────────────────────
 

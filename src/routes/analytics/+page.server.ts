@@ -5,10 +5,7 @@ import { getPageAuthState } from '$lib/server/pageAuth';
 import { loadMarketIndexInsights } from '$lib/server/marketIndex';
 import { createSchemaService } from '$lib/services/schemaService';
 import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
-import {
-	createParchmentServerClient,
-	resolveCatalogCredentialMode
-} from '$lib/server/parchmentClient';
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import type { MarketIndexInsights } from '$lib/types/marketIndex.types';
 import type { ParchmentClient, components } from '@purveyors/sdk';
 
@@ -174,6 +171,11 @@ export interface AnalyticsMemberData {
 	trackedLots: TrackedLotSummary[];
 }
 
+/** Streamed independently so a member-evidence outage cannot hide a healthy watchlist. */
+export interface AnalyticsWatchlistData {
+	trackedLots: TrackedLotSummary[];
+}
+
 type AnalyticsLoadEvent = Parameters<PageServerLoad>[0];
 
 const SNAPSHOT_PAGE_SIZE = 1000;
@@ -262,7 +264,10 @@ interface MarketOverviewResult {
 async function loadMarketOverview(event: AnalyticsLoadEvent): Promise<MarketOverviewResult> {
 	try {
 		const client = await createParchmentServerClient(event, {
-			mode: resolveCatalogCredentialMode(event.locals)
+			// The public market overview is intentionally anonymous. The shared
+			// catalog demo key is for demo-backed catalog reads, not this public
+			// analytics proof surface, and must not become its availability boundary.
+			mode: event.locals.principal.isAuthenticated ? 'session' : 'anonymous'
 		});
 		const response = await client.market.overview();
 
@@ -422,33 +427,42 @@ async function loadAnalyticsCharts(
 	};
 }
 
-async function loadAnalyticsMemberData(
-	event: AnalyticsLoadEvent,
-	{
-		principal,
-		isParchmentIntelligence
-	}: {
-		principal: RequestPrincipal;
-		isParchmentIntelligence: boolean;
-	}
-): Promise<AnalyticsMemberData> {
+async function loadAnalyticsWatchlistData({
+	principal,
+	isParchmentIntelligence,
+	sessionClientPromise
+}: {
+	principal: RequestPrincipal;
+	isParchmentIntelligence: boolean;
+	sessionClientPromise: Promise<ParchmentClient> | null;
+}): Promise<AnalyticsWatchlistData> {
 	// Watchlist context: members and Parchment Intelligence users see their tracked
 	// lots read against the live index scope.
 	const isSourcingMember =
 		principal.primaryAppRole === 'member' || principal.primaryAppRole === 'admin';
-	const sessionClientPromise = principal.isAuthenticated
-		? createParchmentServerClient(event, { mode: 'session' })
-		: null;
-	let trackedLotsPromise: Promise<TrackedLotSummary[]> = Promise.resolve([]);
-	if (sessionClientPromise && (isParchmentIntelligence || isSourcingMember)) {
-		trackedLotsPromise = sessionClientPromise
-			.then((client) => getTrackedLotSummaries(client, 25))
-			.catch((error) => {
-				console.error('Error loading analytics watchlist context:', error);
-				return [] as TrackedLotSummary[];
-			});
+	if (!sessionClientPromise || (!isParchmentIntelligence && !isSourcingMember)) {
+		return { trackedLots: [] };
 	}
 
+	try {
+		return {
+			trackedLots: await sessionClientPromise.then((client) => getTrackedLotSummaries(client, 25))
+		};
+	} catch (error) {
+		console.error('Error loading analytics watchlist context:', error);
+		return { trackedLots: [] };
+	}
+}
+
+async function loadAnalyticsMemberData({
+	isParchmentIntelligence,
+	sessionClientPromise,
+	watchlistPromise
+}: {
+	isParchmentIntelligence: boolean;
+	sessionClientPromise: Promise<ParchmentClient> | null;
+	watchlistPromise: Promise<AnalyticsWatchlistData>;
+}): Promise<AnalyticsMemberData> {
 	if (!isParchmentIntelligence) {
 		// Anonymous and non-Intelligence viewers never call the entitled evidence resource.
 		return {
@@ -457,19 +471,29 @@ async function loadAnalyticsMemberData(
 			comparisonBeans: [],
 			supplierPriceRanges: [],
 			supplierHealth: [],
-			trackedLots: await trackedLotsPromise
+			trackedLots: (await watchlistPromise).trackedLots
 		};
 	}
 
-	const [client, trackedLots] = await Promise.all([
+	// Start the independent evidence request as soon as the session client is
+	// available. It must not wait for the watchlist round trip to settle.
+	const evidencePromise =
+		sessionClientPromise?.then((client) => client.market.evidence()) ?? Promise.resolve(null);
+	const [client, { trackedLots }, response] = await Promise.all([
 		sessionClientPromise ?? Promise.resolve(null),
-		trackedLotsPromise
+		watchlistPromise,
+		evidencePromise
 	]);
 	if (!client) {
 		throw new Error('Failed to load analytics market evidence: authenticated session required');
 	}
 
-	const response = await client.market.evidence();
+	// The watchlist promise is deliberately separate from this rejection. The
+	// page can still render tracked lots while its evidence section reports the
+	// upstream failure.
+	if (!response) {
+		throw new Error('Failed to load analytics market evidence: upstream returned no response');
+	}
 	if (response.error) {
 		throw new Error(
 			`Failed to load analytics market evidence: ${formatParchmentError(response.error)}`,
@@ -559,9 +583,21 @@ export const load: PageServerLoad = async (event) => {
 		isAnonymous,
 		marketOverviewPromise
 	});
-	const analyticsMember = loadAnalyticsMemberData(event, {
+	const isSourcingMember =
+		principal.primaryAppRole === 'member' || principal.primaryAppRole === 'admin';
+	const sessionClientPromise =
+		principal.isAuthenticated && (isParchmentIntelligence || isSourcingMember)
+			? createParchmentServerClient(event, { mode: 'session' })
+			: null;
+	const analyticsWatchlist = loadAnalyticsWatchlistData({
 		principal,
-		isParchmentIntelligence
+		isParchmentIntelligence,
+		sessionClientPromise
+	});
+	const analyticsMember = loadAnalyticsMemberData({
+		isParchmentIntelligence,
+		sessionClientPromise,
+		watchlistPromise: analyticsWatchlist
 	});
 
 	// The only awaited product-data read before the first byte is the canonical
@@ -580,6 +616,7 @@ export const load: PageServerLoad = async (event) => {
 	// client, which renders a section-level error state for it.
 	analyticsCoverage.catch(() => {});
 	analyticsCharts.catch(() => {});
+	analyticsWatchlist.catch(() => {});
 	analyticsMember.catch(() => {});
 
 	const baseUrl = `${event.url.protocol}//${event.url.host}`;
@@ -615,6 +652,7 @@ export const load: PageServerLoad = async (event) => {
 		analyticsPreview,
 		analyticsCoverage,
 		analyticsCharts,
+		analyticsWatchlist,
 		analyticsMember,
 		meta: buildPublicMeta({
 			baseUrl,

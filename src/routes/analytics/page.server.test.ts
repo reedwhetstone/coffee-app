@@ -6,6 +6,7 @@ import type {
 	AnalyticsCharts,
 	AnalyticsCoverage,
 	AnalyticsMemberData,
+	AnalyticsWatchlistData,
 	AnalyticsPreview,
 	PriceSnapshot
 } from './+page.server';
@@ -21,9 +22,7 @@ vi.mock('$lib/seo/meta', () => ({
 }));
 
 vi.mock('$lib/server/parchmentClient', () => ({
-	createParchmentServerClient: mockCreateParchmentServerClient,
-	resolveCatalogCredentialMode: (locals: App.Locals) =>
-		locals.principal.isAuthenticated ? 'session' : 'public-demo'
+	createParchmentServerClient: mockCreateParchmentServerClient
 }));
 
 vi.mock('$lib/server/trackedLots', () => ({
@@ -55,6 +54,7 @@ interface StreamedLoadResult {
 	analyticsPreview: AnalyticsPreview;
 	analyticsCoverage: Promise<AnalyticsCoverage>;
 	analyticsCharts: Promise<AnalyticsCharts>;
+	analyticsWatchlist: Promise<AnalyticsWatchlistData>;
 	analyticsMember: Promise<AnalyticsMemberData>;
 	meta: Record<string, unknown>;
 }
@@ -423,7 +423,7 @@ describe('analytics load', () => {
 		await expect(result.analyticsMember).resolves.toBeTruthy();
 	});
 
-	it('maps the public-demo overview into preview and streamed coverage without direct data clients', async () => {
+	it('maps the anonymous overview into preview and streamed coverage without a demo credential', async () => {
 		const setup = createAnalyticsClient();
 		mockCreateParchmentServerClient.mockResolvedValue(setup.client);
 
@@ -434,7 +434,7 @@ describe('analytics load', () => {
 
 		expect(setup.overview).toHaveBeenCalledOnce();
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
-			mode: 'public-demo'
+			mode: 'anonymous'
 		});
 		expect(result.analyticsPreview).toEqual({
 			stats: {
@@ -668,6 +668,23 @@ describe('analytics load', () => {
 		expect(setup.historyCalls).toEqual([{ windowDays: 365, page: 1, limit: 1000, order: 'asc' }]);
 	});
 
+	it('starts market evidence without awaiting the independent watchlist read', async () => {
+		const setup = createAnalyticsClient();
+		let releaseWatchlist!: (lots: []) => void;
+		mockGetTrackedLotSummaries.mockImplementationOnce(
+			() => new Promise((resolve) => (releaseWatchlist = resolve))
+		);
+		mockCreateParchmentServerClient.mockResolvedValue(setup.client);
+
+		const result = await runLoad(cookieSessionPrincipal('member', { ppiAccess: true }));
+
+		await vi.waitFor(() => {
+			expect(setup.evidence).toHaveBeenCalledOnce();
+		});
+		releaseWatchlist([]);
+		await expect(result.analyticsMember).resolves.toBeTruthy();
+	});
+
 	it('keeps overview failure section-scoped while preserving history and member envelopes', async () => {
 		const setup = createAnalyticsClient({
 			overviewError: { error: { message: 'overview unavailable' } }
@@ -697,5 +714,21 @@ describe('analytics load', () => {
 		await expect(result.analyticsCoverage).resolves.toBeTruthy();
 		await expect(result.analyticsCharts).resolves.toBeTruthy();
 		await expect(result.analyticsMember).rejects.toThrow('evidence unavailable');
+		await expect(result.analyticsWatchlist).resolves.toEqual({ trackedLots: [] });
+	});
+
+	it('keeps a healthy watchlist deliverable when market evidence fails', async () => {
+		const setup = createAnalyticsClient({
+			evidenceError: { error: { message: 'evidence unavailable' } }
+		});
+		mockCreateParchmentServerClient.mockResolvedValue(setup.client);
+		mockGetTrackedLotSummaries.mockResolvedValue([{ id: 'tracked-1' }]);
+
+		const result = await runLoad(cookieSessionPrincipal('member', { ppiAccess: true }));
+
+		await expect(result.analyticsMember).rejects.toThrow('evidence unavailable');
+		await expect(result.analyticsWatchlist).resolves.toEqual({
+			trackedLots: [{ id: 'tracked-1' }]
+		});
 	});
 });
