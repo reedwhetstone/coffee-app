@@ -12,31 +12,35 @@ vi.mock('$lib/server/blog', () => ({
 import { GET as getLlmsText } from '../llms.txt/+server';
 import { GET as getSitemap } from '../sitemap.xml/+server';
 
-describe('CoffeeBench public discovery', () => {
-	it('links the benchmark index from public navigation and footer', () => {
+describe('Cherry Evals public discovery', () => {
+	it('links Cherry Evals from public navigation and footer', () => {
 		expect(publicNavItems).toContainEqual(
-			expect.objectContaining({ label: 'Benchmarks', href: '/benchmarks' })
+			expect.objectContaining({ label: 'Cherry Evals', href: '/evals' })
 		);
 		render(Footer);
-		expect(screen.getByRole('link', { name: 'Benchmarks' })).toHaveAttribute('href', '/benchmarks');
+		expect(screen.getByRole('link', { name: 'Cherry Evals' })).toHaveAttribute('href', '/evals');
 	});
 
-	it('indexes the benchmark collection and published V1 findings', async () => {
+	it('indexes the Cherry Evals collection and published V1 findings', async () => {
 		const url = new URL('https://www.purveyors.io/');
 		const sitemap = await getSitemap({ url } as never);
 		const llmsText = await getLlmsText({ url } as never);
 		const sitemapText = await sitemap.text();
 		const llms = await llmsText.text();
 
-		expect(sitemapText).toContain('<loc>https://www.purveyors.io/benchmarks</loc>');
+		expect(sitemapText).toContain('<loc>https://www.purveyors.io/evals</loc>');
 		expect(sitemapText).toContain(
-			'<loc>https://www.purveyors.io/benchmarks</loc>\n\t\t<lastmod>2026-08-26</lastmod>'
+			'<loc>https://www.purveyors.io/evals</loc>\n\t\t<lastmod>2026-08-26</lastmod>'
 		);
-		expect(sitemapText).toContain('<loc>https://www.purveyors.io/benchmarks/coffeebench-v1</loc>');
-		expect(llms).toContain('[Benchmarks](https://www.purveyors.io/benchmarks)');
+		expect(sitemapText).toContain('<loc>https://www.purveyors.io/evals/coffeebench-v1</loc>');
+		expect(sitemapText).not.toContain('<loc>https://www.purveyors.io/benchmarks</loc>');
 		expect(llms).toContain(
-			'[PV-Microlot: Agentic Coffee Specialist Benchmark V1 findings](https://www.purveyors.io/benchmarks/coffeebench-v1)'
+			'[Cherry Evals](https://www.purveyors.io/evals): Domain benchmarks for green coffee, sensory analysis, sourcing, and roasting.'
 		);
+		expect(llms).toContain(
+			'[PV-Microlot: Agentic Coffee Specialist Benchmark V1 findings](https://www.purveyors.io/evals/coffeebench-v1)'
+		);
+		expect(llms).not.toContain('](https://www.purveyors.io/benchmarks)');
 		expect(llms).toContain(
 			'Published system benchmark with 1,200 absolute evaluations and all 1,800 pairwise ballots.'
 		);

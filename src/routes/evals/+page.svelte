@@ -9,13 +9,12 @@
 <div class="bg-surface-canvas">
 	<main class="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
 		<header class="max-w-3xl">
-			<p class="text-sm font-semibold uppercase tracking-[0.18em] text-accent">Benchmarks</p>
+			<p class="text-sm font-semibold uppercase tracking-[0.18em] text-accent">Cherry Evals</p>
 			<h1 class="mt-3 font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl">
 				Measure the whole intelligence system.
 			</h1>
 			<p class="mt-6 text-lg leading-8 text-muted">
-				Purveyors benchmarks compare controlled models and complete agent systems on the evidence,
-				judgment, calibration, and operational constraints that shape real coffee decisions.
+				Domain benchmarks for green coffee, sensory analysis, sourcing, and roasting.
 			</p>
 		</header>
 
@@ -33,7 +32,7 @@
 			</div>
 
 			<a
-				href="/benchmarks/coffeebench-v1"
+				href="/evals/coffeebench-v1"
 				class="group mt-5 block rounded-3xl border border-line bg-surface-panel p-6 transition hover:border-accent/60 sm:p-8"
 			>
 				<div class="grid gap-8 md:grid-cols-[minmax(0,1fr)_17rem] md:items-end">

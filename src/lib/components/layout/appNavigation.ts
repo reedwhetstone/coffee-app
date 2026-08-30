@@ -67,10 +67,10 @@ export const publicNavItems: NavItem[] = [
 		matches: ['/analytics']
 	},
 	{
-		label: 'Benchmarks',
-		href: '/benchmarks',
-		description: 'Inspect public coffee-intelligence evaluations',
-		matches: ['/benchmarks']
+		label: 'Cherry Evals',
+		href: '/evals',
+		description: 'Domain benchmarks for green coffee, sensory analysis, sourcing, and roasting',
+		matches: ['/evals']
 	},
 	{
 		label: 'Pricing',

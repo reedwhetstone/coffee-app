@@ -7,7 +7,7 @@ describe('CoffeeBench v0 page loader', () => {
 		try {
 			load({} as never);
 		} catch (error) {
-			expect(error).toMatchObject({ status: 308, location: '/benchmarks/coffeebench-v1' });
+			expect(error).toMatchObject({ status: 308, location: '/evals/coffeebench-v1' });
 		}
 	});
 });

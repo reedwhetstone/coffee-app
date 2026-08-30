@@ -106,7 +106,7 @@ Reporting guidance:
 - `/`
 - `/catalog`
 - `/analytics`
-- `/benchmarks`
+- `/evals`
 - `/api`
 - `/docs`
 - `/blog`
@@ -242,7 +242,7 @@ Deprecated `/api/tools/*` routes still exist for compatibility. Prefer direct se
 
 ### Customer-facing design
 
-- Keep marketing and public UI revisions within the established Purveyors brand language. Reuse canonical components and treat CoffeeBench (`/benchmarks/coffeebench-v1`) as a strong reference for clean accents: warm neutral surfaces, editorial typography, thin borders, and restrained existing colors.
+- Keep marketing and public UI revisions within the established Purveyors brand language. Reuse canonical components and treat CoffeeBench (`/evals/coffeebench-v1`) as a strong reference for clean accents: warm neutral surfaces, editorial typography, thin borders, and restrained existing colors.
 - Interpret requests for more design flair first as clearer hierarchy, spacing, typography, and information structure. Do not introduce a new decorative motif, visual system, or radical design language without explicit direction.
 
 ## Auth and data safety
