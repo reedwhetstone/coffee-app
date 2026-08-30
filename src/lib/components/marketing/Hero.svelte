@@ -52,19 +52,14 @@
 		'Villa Coffee'
 	] as const;
 
-	const FALLBACK_COFFEE_NAMES = [
-		'Ethiopia Guji Natural',
-		'Colombia Pink Bourbon',
-		'Kenya Nyeri AA',
-		'Brazil Cerrado Natural'
-	] as const;
-
 	let { auth, coffeeNames = [] } = $props<{ auth: PageAuthView; coffeeNames?: string[] }>();
 
 	let isSignedIn = $derived(auth.isSignedIn);
-	let coffeeExamples = $derived(coffeeNames.length > 0 ? coffeeNames : [...FALLBACK_COFFEE_NAMES]);
+	let coffeeExamples = $derived(coffeeNames);
 	let coffeeIndex = $state(0);
-	let activeCoffeeName = $derived(coffeeExamples[coffeeIndex % coffeeExamples.length]);
+	let activeCoffeeName = $derived(
+		coffeeExamples.length > 0 ? coffeeExamples[coffeeIndex % coffeeExamples.length] : ''
+	);
 
 	onMount(() => {
 		if (
@@ -178,20 +173,22 @@
 		<div class="min-w-0 py-5 sm:border-r sm:border-line sm:pr-8">
 			<dt class="text-xs font-medium text-muted">Live market coverage</dt>
 			<dd class="mt-1 font-serif text-2xl font-medium text-ink">{CATALOG_SIZE_LABEL} offers</dd>
-			<div class="mt-3 flex min-w-0 items-center gap-2" aria-hidden="true">
-				<span class="relative flex size-2 shrink-0">
-					<span
-						class="absolute inline-flex size-full rounded-full bg-accent opacity-40 motion-safe:animate-ping"
-					></span>
-					<span class="relative inline-flex size-2 rounded-full bg-accent"></span>
-				</span>
-				<div class="min-w-0 overflow-hidden text-xs font-medium text-muted">
-					{#key activeCoffeeName}
-						<span class="coffee-swap block truncate">{activeCoffeeName}</span>
-					{/key}
+			{#if coffeeExamples.length > 0}
+				<div class="mt-3 flex min-w-0 items-center gap-2" aria-hidden="true">
+					<span class="relative flex size-2 shrink-0">
+						<span
+							class="absolute inline-flex size-full rounded-full bg-accent opacity-40 motion-safe:animate-ping"
+						></span>
+						<span class="relative inline-flex size-2 rounded-full bg-accent"></span>
+					</span>
+					<div class="min-w-0 overflow-hidden text-xs font-medium text-muted">
+						{#key activeCoffeeName}
+							<span class="coffee-swap block truncate">{activeCoffeeName}</span>
+						{/key}
+					</div>
 				</div>
-			</div>
-			<span class="sr-only">Recent coffee examples include {coffeeExamples.join(', ')}.</span>
+				<span class="sr-only">Recent coffee examples include {coffeeExamples.join(', ')}.</span>
+			{/if}
 		</div>
 		<div class="min-w-0 border-t border-line py-5 sm:border-l-0 sm:border-r sm:border-t-0 sm:px-8">
 			<dt class="text-xs font-medium text-muted">Normalized sources</dt>
