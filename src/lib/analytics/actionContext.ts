@@ -1,4 +1,5 @@
 import { checkRole, type UserRole } from '$lib/types/auth.types';
+import { formatSourceName } from '$lib/utils/formatters';
 
 export type AnalyticsEntitlement = 'anonymous' | 'viewer' | 'intelligence' | 'roasting' | 'both';
 export type AnalyticsViewMode = 'retail' | 'wholesale' | 'all';
@@ -85,7 +86,7 @@ export function buildAnalyticsChatPrompt(
 		`Movement window: ${context.timeWindow}`,
 		`Origin: ${formatNullableFilter(context.origin)}`,
 		`Process: ${formatNullableFilter(context.process)}`,
-		`Supplier: ${formatNullableFilter(context.supplier)}`,
+		`Supplier: ${formatNullableFilter(formatSourceName(context.supplier) || null)}`,
 		`Latest index date: ${filters.latestIndexDate ?? 'not available'}`,
 		`Stocked listings: ${filters.stockedListings}`,
 		`Suppliers in scope: ${filters.suppliers}`,

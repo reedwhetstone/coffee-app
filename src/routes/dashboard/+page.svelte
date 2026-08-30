@@ -11,6 +11,7 @@
 	import { parseTastingNotes } from '$lib/utils/parseTastingNotes';
 	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 	import { createTrackedLotStateController } from '$lib/client/trackedLots';
+	import { formatSourceName } from '$lib/utils/formatters';
 
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 
@@ -51,7 +52,9 @@
 			entities: arrivals.slice(0, 5).map((coffee) => ({
 				type: 'coffee',
 				id: coffee.id,
-				label: [coffee.name, coffee.source].filter(Boolean).join(' — ') || `Coffee #${coffee.id}`
+				label:
+					[coffee.name, formatSourceName(coffee.source)].filter(Boolean).join(' — ') ||
+					`Coffee #${coffee.id}`
 			}))
 		});
 		return () => pageChatContext.clear();

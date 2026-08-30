@@ -19,6 +19,7 @@
 	import type { OriginPriceStats, LotPriceContext } from '$lib/catalog/priceContext';
 	import { getDisplayPrice } from '$lib/utils/pricing';
 	import { createTrackedLotStateController } from '$lib/client/trackedLots';
+	import { formatSourceName } from '$lib/utils/formatters';
 
 	import PageHeaderSection from '$lib/components/catalog/sections/PageHeaderSection.svelte';
 	import FilterBarSection from '$lib/components/catalog/sections/FilterBarSection.svelte';
@@ -256,7 +257,9 @@
 			entities: items.slice(0, 5).map((coffee) => ({
 				type: 'coffee',
 				id: coffee.id,
-				label: [coffee.name, coffee.source].filter(Boolean).join(' — ') || `Coffee #${coffee.id}`
+				label:
+					[coffee.name, formatSourceName(coffee.source)].filter(Boolean).join(' — ') ||
+					`Coffee #${coffee.id}`
 			}))
 		});
 		return () => pageChatContext.clear();

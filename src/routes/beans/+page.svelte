@@ -12,6 +12,7 @@
 	import { deletePortfolioBean } from './deleteBean';
 	import { createTrackedLotStateController } from '$lib/client/trackedLots';
 	import type { PageAuthView } from '$lib/types/auth.types';
+	import { formatSourceName } from '$lib/utils/formatters';
 
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 
@@ -605,7 +606,9 @@
 								{ count: number; weight: number; value: number }
 							]}
 							<div class="rounded-lg border border-line bg-surface-canvas p-3">
-								<h4 class="text-base font-semibold text-ink">{source}</h4>
+								<h4 class="text-base font-semibold text-ink">
+									{formatSourceName(source) || 'Unknown'}
+								</h4>
 								<div class="mt-2 space-y-1 text-sm text-muted">
 									<div>{stats.count} coffee{stats.count !== 1 ? 's' : ''}</div>
 									<div>{stats.weight.toFixed(1)} lbs</div>

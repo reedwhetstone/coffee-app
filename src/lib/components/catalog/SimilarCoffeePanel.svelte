@@ -8,6 +8,7 @@
 	import { getCatalogProofBadges, type CatalogProofSummary } from '$lib/catalog/proofSummary';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
 	import type { Json } from '$lib/types/database.types';
+	import { formatSourceName } from '$lib/utils/formatters';
 
 	type BaselineSource = 'price_per_lb' | 'price_tiers' | 'cost_lb' | null;
 
@@ -290,7 +291,7 @@
 					<p class="text-xs font-semibold text-muted">Target coffee</p>
 					<h5 class="mt-1 font-semibold text-ink">{response.data.target.name}</h5>
 					<p class="mt-1 text-sm text-muted">
-						{response.data.target.source ?? 'Unknown supplier'} · {stockLabel(
+						{formatSourceName(response.data.target.source) || 'Unknown supplier'} · {stockLabel(
 							response.data.target.stocked
 						)}
 					</p>
@@ -375,7 +376,9 @@
 								</div>
 								<h5 class="mt-2 font-semibold text-ink">{match.coffee.name}</h5>
 								<p class="mt-1 text-sm text-muted">
-									{match.coffee.source ?? 'Unknown supplier'} · {stockLabel(match.coffee.stocked)}
+									{formatSourceName(match.coffee.source) || 'Unknown supplier'} · {stockLabel(
+										match.coffee.stocked
+									)}
 								</p>
 								<p class="mt-1 text-sm text-muted">
 									{[match.coffee.country, match.coffee.origin].filter(Boolean).join(', ') ||

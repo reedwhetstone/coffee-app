@@ -4,6 +4,7 @@
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 	import type { MarketSignalItem, MarketSignalsSummary } from '$lib/types/marketIndex.types';
 	import { parseTastingNotes } from '$lib/utils/parseTastingNotes';
+	import { formatSourceName } from '$lib/utils/formatters';
 
 	type ViewMode = 'retail' | 'wholesale' | 'all';
 
@@ -143,7 +144,7 @@
 								{signalTitle(signal)}
 							</h3>
 							<p class="mt-0.5 text-xs text-muted">
-								{signal.source ?? 'Supplier undisclosed'} · {signal.market}
+								{formatSourceName(signal.source) || 'Supplier undisclosed'} · {signal.market}
 							</p>
 							<p class="mt-2 flex-1 text-sm leading-6 text-muted">{evidenceSentence(signal)}</p>
 							<a

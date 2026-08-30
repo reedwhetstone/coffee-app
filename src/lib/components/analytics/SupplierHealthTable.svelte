@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { formatSourceName } from '$lib/utils/formatters';
+
 	export interface SupplierRow {
 		source: string;
 		stockedCount: number;
@@ -15,13 +17,6 @@
 	type SortKey = 'source' | 'stockedCount' | 'origins' | 'avgCostLb' | 'priceRange' | 'split';
 	let sortKey = $state<SortKey>('stockedCount');
 	let sortAsc = $state(false);
-
-	function formatSourceName(source: string): string {
-		return source
-			.split(/[_-]+/)
-			.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-			.join(' ');
-	}
 
 	let sorted = $derived.by(() => {
 		const copy = [...rows];

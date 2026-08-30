@@ -5,6 +5,19 @@
 import { parsePriceTiers } from '$lib/utils/pricing';
 export type { PriceTier } from '$lib/utils/pricing';
 
+const SOURCE_DISPLAY_LABELS: Readonly<Record<string, string>> = {
+	bc_green_coffee: 'BC Green Coffee',
+	e2e_test: 'E2E Test',
+	ml_trading: 'ML Trading',
+	red_fox: 'Red Fox Coffee Merchants',
+	rhoadsroast: 'RhoadsRoast',
+	st_helena: 'St. Helena Coffee',
+	stonex_specialty: 'StoneX Specialty',
+	sweet_maria: "Sweet Maria's",
+	sweet_marias: "Sweet Maria's",
+	tm_ward_coffee: 'T.M. Ward Coffee'
+};
+
 /**
  * Format price tiers into a readable string.
  * Example: "1 lb: $8.50 | 10 lb: $7.20 | 50 lb: $6.00"
@@ -40,11 +53,19 @@ export function formatDisplayDate(dateStr: string | null | undefined): string {
 
 /**
  * Format a supplier source name for display.
- * "sweet_marias" -> "Sweet Marias"
+ * "smokin_beans" -> "Smokin Beans"
  */
 export function formatSourceName(source: string | null | undefined): string {
-	if (!source) return '';
-	return source
+	if (!source?.trim()) return '';
+
+	const normalizedKey = source
+		.trim()
+		.toLowerCase()
+		.replace(/[_\s-]+/g, '_');
+
+	if (SOURCE_DISPLAY_LABELS[normalizedKey]) return SOURCE_DISPLAY_LABELS[normalizedKey];
+
+	return normalizedKey
 		.split('_')
 		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 		.join(' ');

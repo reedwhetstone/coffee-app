@@ -10,6 +10,7 @@
 	import { afterNavigate } from '$app/navigation';
 	import { checkRole, type PageAuthView } from '$lib/types/auth.types';
 	import { PREMIUM_DISCOVERY_FILTER_KEYS } from '$lib/catalog/accessPolicy';
+	import { formatSourceName } from '$lib/utils/formatters';
 
 	const premiumDiscoveryFilterColumns = new Set<string>(PREMIUM_DISCOVERY_FILTER_KEYS);
 
@@ -261,7 +262,7 @@
 													}}
 													class="rounded border border-line bg-surface-canvas text-accent focus:ring-2 focus:ring-accent"
 												/>
-												<span class="text-sm text-ink">{source}</span>
+												<span class="text-sm text-ink">{formatSourceName(source as string)}</span>
 											</label>
 										{/each}
 									</div>
