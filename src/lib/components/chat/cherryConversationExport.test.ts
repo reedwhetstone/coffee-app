@@ -7,20 +7,20 @@ import {
 describe('Cherry conversation export', () => {
 	const exportedAt = new Date('2026-08-29T12:00:00.000Z');
 
-	it('uses the active Cherry AI agent identity for generated responses', () => {
+	it('uses a stable Cherry AI identity for historical generated responses', () => {
 		const markdown = buildCherryConversationExport(
 			[
 				{ role: 'user', parts: [{ type: 'text', text: 'Compare these coffees.' }] },
 				{ role: 'assistant', parts: [{ type: 'text', text: 'Here is the evidence.' }] }
 			],
-			exportedAt,
-			'Cherry Synthesis Agent'
+			exportedAt
 		);
 
-		expect(markdown).toContain('# Cherry Synthesis Agent conversation export');
+		expect(markdown).toContain('# Cherry AI conversation export');
 		expect(markdown).toContain('## User');
-		expect(markdown).toContain('## Cherry Synthesis Agent');
+		expect(markdown).toContain('## Cherry AI');
 		expect(markdown).not.toContain('Parchment Intelligence');
+		expect(markdown).not.toContain('Cherry Synthesis Agent');
 		expect(markdown).not.toContain('## Assistant');
 	});
 

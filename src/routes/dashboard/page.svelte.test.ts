@@ -33,7 +33,7 @@ function createData(role: 'viewer' | 'member' | 'admin', ppiAccess: boolean): Pa
 				stocked: false,
 				unstockedDate: '2026-08-29',
 				currentPrice: null,
-				priceDelta: null
+				priceDelta: -0.5
 			}
 		],
 		activeBriefs: [
@@ -90,7 +90,7 @@ describe('adaptive dashboard', () => {
 		expect(screen.getByRole('link', { name: 'View Parchment Intelligence' })).toBeInTheDocument();
 	});
 
-	it('connects both subscriptions through the Cherry Synthesis Agent', () => {
+	it('connects both subscriptions and counts overlapping watchlist signals once', () => {
 		render(DashboardPage, { data: createData('member', true) });
 
 		expect(screen.getByRole('heading', { name: 'Cherry Synthesis Agent' })).toBeInTheDocument();

@@ -1106,7 +1106,7 @@
 	// ─── Export / Clear ────────────────────────────────────────────────────────
 	function exportConversation() {
 		const exportedAt = new Date();
-		const markdown = buildCherryConversationExport(chat.messages, exportedAt, agentName);
+		const markdown = buildCherryConversationExport(chat.messages, exportedAt);
 
 		const blob = new Blob([markdown], { type: 'text/markdown' });
 		const url = URL.createObjectURL(blob);

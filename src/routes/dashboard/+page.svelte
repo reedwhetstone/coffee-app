@@ -24,10 +24,10 @@
 	let delistedTrackedCount = $derived(
 		trackedLots.filter((lot: { stocked: boolean | null }) => lot.stocked === false).length
 	);
-	let changedPriceCount = $derived(
+	let attentionTrackedCount = $derived(
 		trackedLots.filter(
-			(lot: { priceDelta: number | null }) =>
-				lot.priceDelta !== null && Math.abs(lot.priceDelta) >= 0.005
+			(lot: { stocked: boolean | null; priceDelta: number | null }) =>
+				lot.stocked === false || (lot.priceDelta !== null && Math.abs(lot.priceDelta) >= 0.005)
 		).length
 	);
 
@@ -121,7 +121,7 @@
 					<div class="border-l border-line px-4 py-4">
 						<dt class="text-xs text-muted">Need attention</dt>
 						<dd class="mt-1 font-serif text-2xl font-medium text-ink">
-							{changedPriceCount + delistedTrackedCount}
+							{attentionTrackedCount}
 						</dd>
 					</div>
 					<div class="border-l border-line py-4 pl-4">
