@@ -17,6 +17,24 @@ type SourcingBriefMatchesResult = {
 };
 
 const MATCH_PAGE_LIMIT = 100;
+const CRITERIA_FIELDS = new Set([
+	'version',
+	'country',
+	'region',
+	'processing',
+	'processing_base_method',
+	'max_price_per_lb',
+	'stocked_only',
+	'wholesale_only',
+	'stocked_days'
+]);
+const CRITERIA_STRING_FIELDS = [
+	'country',
+	'region',
+	'processing',
+	'processing_base_method'
+] as const;
+const CRITERIA_BOOLEAN_FIELDS = ['stocked_only', 'wholesale_only'] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -54,11 +72,45 @@ function canonicalJson(value: unknown): string {
 	return JSON.stringify(value);
 }
 
+function parseSourcingBriefCriteria(value: unknown, path: string): SourcingBriefCriteria {
+	if (!isRecord(value)) fail(`${path} must be an object`);
+	if (value.version !== 1) fail(`${path}.version must be 1`);
+
+	for (const key of Object.keys(value)) {
+		if (!CRITERIA_FIELDS.has(key)) fail(`${path}.${key} is not supported`);
+	}
+	for (const field of CRITERIA_STRING_FIELDS) {
+		if (value[field] !== undefined && typeof value[field] !== 'string') {
+			fail(`${path}.${field} must be a string`);
+		}
+	}
+	for (const field of CRITERIA_BOOLEAN_FIELDS) {
+		if (value[field] !== undefined && typeof value[field] !== 'boolean') {
+			fail(`${path}.${field} must be a boolean`);
+		}
+	}
+	if (
+		value.max_price_per_lb !== undefined &&
+		(typeof value.max_price_per_lb !== 'number' || !Number.isFinite(value.max_price_per_lb))
+	) {
+		fail(`${path}.max_price_per_lb must be a finite number`);
+	}
+	if (
+		value.stocked_days !== undefined &&
+		(typeof value.stocked_days !== 'number' ||
+			!Number.isFinite(value.stocked_days) ||
+			!Number.isInteger(value.stocked_days))
+	) {
+		fail(`${path}.stocked_days must be an integer`);
+	}
+
+	return value as SourcingBriefCriteria;
+}
+
 function parseSourcingBrief(value: unknown, path: string): SourcingBriefResource {
 	if (!isRecord(value)) fail(`${path} must be an object`);
 
-	const criteria = value.criteria;
-	if (!isRecord(criteria)) fail(`${path}.criteria must be an object`);
+	const criteria = parseSourcingBriefCriteria(value.criteria, `${path}.criteria`);
 	if (value.cadence !== 'manual') fail(`${path}.cadence must be manual`);
 	if (value.isActive !== true) fail(`${path}.isActive must be true`);
 	if (value.lastRunAt !== null && typeof value.lastRunAt !== 'string') {
@@ -157,12 +209,12 @@ function parseMatchPage(
 	requireString(value.meta.generatedAt, 'meta.generatedAt');
 
 	const brief = parseSourcingBrief(value.meta.brief, 'meta.brief');
-	if (!isRecord(value.meta.criteria)) fail('meta.criteria must be an object');
+	const criteria = parseSourcingBriefCriteria(value.meta.criteria, 'meta.criteria');
 	const briefFingerprint = canonicalJson(brief);
 	if (brief.id !== expectedBrief.id || briefFingerprint !== canonicalJson(expectedBrief)) {
 		fail(`match page ${page} brief metadata is mismatched`);
 	}
-	if (canonicalJson(value.meta.criteria) !== canonicalJson(brief.criteria)) {
+	if (canonicalJson(criteria) !== canonicalJson(brief.criteria)) {
 		fail(`match page ${page} criteria does not match brief metadata`);
 	}
 	if (expectedBriefFingerprint !== null && briefFingerprint !== expectedBriefFingerprint) {

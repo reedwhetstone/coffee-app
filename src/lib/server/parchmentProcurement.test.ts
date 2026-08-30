@@ -107,6 +107,39 @@ describe('listActiveSourcingBriefs', () => {
 				data: listBody([{ ...brief, isActive: false } as SourcingBriefResource])
 			}
 		],
+		[
+			'missing criteria version',
+			{
+				data: listBody([
+					{
+						...brief,
+						criteria: { country: 'Ethiopia' }
+					} as unknown as SourcingBriefResource
+				])
+			}
+		],
+		[
+			'unsupported criteria field',
+			{
+				data: listBody([
+					{
+						...brief,
+						criteria: { version: 1, varietal: 'Gesha' }
+					} as unknown as SourcingBriefResource
+				])
+			}
+		],
+		[
+			'malformed criteria field type',
+			{
+				data: listBody([
+					{
+						...brief,
+						criteria: { version: 1, country: 42, stocked_days: 2.5 }
+					} as unknown as SourcingBriefResource
+				])
+			}
+		],
 		['duplicate brief ids', { data: listBody([brief, brief]) }]
 	])('rejects a malformed list envelope: %s', async (_label, result) => {
 		await expect(listActiveSourcingBriefs(makeClient({ list: result }) as never)).rejects.toThrow(
@@ -203,6 +236,32 @@ describe('getSourcingBriefMatches', () => {
 		await expect(getSourcingBriefMatches(client as never, brief)).rejects.toThrow(
 			'brief metadata is mismatched'
 		);
+	});
+
+	it('rejects unsupported criteria in match metadata', async () => {
+		const body = matchBody({
+			page: 1,
+			total: 1,
+			ids: [1],
+			criteria: { ...brief.criteria, supplier: 'Example Importer' }
+		});
+
+		await expect(
+			getSourcingBriefMatches(makeClient({ matches: [{ data: body }] }) as never, brief)
+		).rejects.toThrow('meta.criteria.supplier is not supported');
+	});
+
+	it('rejects malformed criteria in match metadata', async () => {
+		const body = matchBody({
+			page: 1,
+			total: 1,
+			ids: [1],
+			criteria: { ...brief.criteria, wholesale_only: 'yes' }
+		});
+
+		await expect(
+			getSourcingBriefMatches(makeClient({ matches: [{ data: body }] }) as never, brief)
+		).rejects.toThrow('meta.criteria.wholesale_only must be a boolean');
 	});
 
 	it('rejects malformed match rows', async () => {

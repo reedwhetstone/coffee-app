@@ -885,10 +885,19 @@ describe('/catalog tracked lots and brief matches', () => {
 		expect(mockGetActiveSourcingBriefMatches).not.toHaveBeenCalled();
 	});
 
-	it('fetches tracked lot IDs for a ppiAccess user', async () => {
+	it('fetches tracked lot IDs and canonical brief matches for a ppiAccess viewer', async () => {
 		const session = { access_token: 'ppi-token' } as Session | null;
 		const principal = { isAuthenticated: true as const, userId: 'ppi-user-1', ppiAccess: true };
 		mockGetTrackedLotIds.mockResolvedValue([10, 42]);
+		mockGetActiveSourcingBriefMatches.mockResolvedValue([
+			{
+				briefId: 'ppi-brief',
+				briefName: 'PPI brief',
+				criteria: { version: 1, country: 'Kenya' },
+				totalMatchCount: 1,
+				matchingIds: [1]
+			}
+		]);
 
 		const result = (await load(makeLoadInputWithPrincipal('viewer', session, principal))) as {
 			trackedLotIds: Promise<number[]>;
@@ -899,9 +908,32 @@ describe('/catalog tracked lots and brief matches', () => {
 			expect.objectContaining({ catalog: expect.anything() })
 		);
 		expect(await result.trackedLotIds).toEqual([10, 42]);
-		// ppiAccess non-member: briefs not fetched
+		expect(mockGetActiveSourcingBriefMatches).toHaveBeenCalledWith(
+			expect.objectContaining({ catalog: expect.anything() }),
+			10
+		);
+		await expect(result.briefMatchSummaries).resolves.toEqual([
+			expect.objectContaining({ briefId: 'ppi-brief', matchingIds: [1] })
+		]);
+	});
+
+	it('does not fetch sourcing enrichment for an authenticated viewer without entitlement', async () => {
+		const session = { access_token: 'viewer-token' } as Session | null;
+		const principal = {
+			isAuthenticated: true as const,
+			userId: 'viewer-user-1',
+			ppiAccess: false
+		};
+
+		const result = (await load(makeLoadInputWithPrincipal('viewer', session, principal))) as {
+			trackedLotIds: Promise<number[]>;
+			briefMatchSummaries: Promise<unknown[]>;
+		};
+
+		expect(mockGetTrackedLotIds).not.toHaveBeenCalled();
 		expect(mockGetActiveSourcingBriefMatches).not.toHaveBeenCalled();
-		expect(await result.briefMatchSummaries).toEqual([]);
+		await expect(result.trackedLotIds).resolves.toEqual([]);
+		await expect(result.briefMatchSummaries).resolves.toEqual([]);
 	});
 
 	it('fetches tracked lot IDs and brief match summaries for a member', async () => {

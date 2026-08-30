@@ -85,7 +85,7 @@ export const load: PageServerLoad = async (event) => {
 			: Promise.resolve({ summaries: [] as TrackedLotSummary[], catalog: [] });
 
 	const briefsPromise =
-		userId && isMember
+		userId && hasSourcingAccess
 			? parchmentClientPromise
 					.then((client) => listActiveSourcingBriefs(client, 5))
 					.catch((error) => {

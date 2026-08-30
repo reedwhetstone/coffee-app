@@ -234,9 +234,8 @@
 					</h3>
 					{#if activeBriefs.length === 0}
 						<p class="mt-3 text-sm leading-relaxed text-muted">
-							{canAccessMallard
-								? 'No active sourcing briefs. Save brief criteria in chat or the catalog and matches surface here and in the catalog banner.'
-								: 'Sourcing briefs are a Mallard Studio workflow. Your watchlist still tracks price and availability changes.'}
+							No active sourcing briefs. Save brief criteria in chat or the catalog and matches
+							surface here and in the catalog banner.
 						</p>
 					{:else}
 						<ul class="mt-3 space-y-3">

@@ -99,6 +99,7 @@ describe('/dashboard sourcing workspace load', () => {
 		expect(result.trackedLots).toEqual([]);
 		expect(result.activeBriefs).toEqual([]);
 		expect(mockGetTrackedLotSummaries).not.toHaveBeenCalled();
+		expect(mockBriefsList).not.toHaveBeenCalled();
 	});
 
 	it('keeps the dashboard rendering when Parchment arrivals fail', async () => {
@@ -114,7 +115,7 @@ describe('/dashboard sourcing workspace load', () => {
 		expect(result.recentArrivals).toEqual([]);
 	});
 
-	it('loads tracked lot summaries and their catalog cards for ppiAccess users', async () => {
+	it('loads tracked lots and canonical briefs for ppiAccess viewers', async () => {
 		mockGetTrackedLotSummaries.mockResolvedValue([
 			{ catalogId: 7, name: 'Tracked Lot', stocked: true }
 		]);
@@ -130,7 +131,19 @@ describe('/dashboard sourcing workspace load', () => {
 		const result = (await load(
 			makeLoadInput({
 				role: 'viewer',
-				principal: { isAuthenticated: true, userId: 'ppi-1', ppiAccess: true }
+				principal: { isAuthenticated: true, userId: 'ppi-1', ppiAccess: true },
+				briefRows: [
+					{
+						id: 'ppi-brief',
+						name: 'Kenya brief',
+						criteria: { version: 1, country: 'Kenya' },
+						cadence: 'manual',
+						isActive: true,
+						lastRunAt: null,
+						createdAt: '2026-07-01T00:00:00Z',
+						updatedAt: '2026-07-01T00:00:00Z'
+					}
+				]
 			})
 		)) as {
 			trackedLots: Array<{ catalogId: number }>;
@@ -150,7 +163,10 @@ describe('/dashboard sourcing workspace load', () => {
 		});
 		expect(result.trackedLots).toHaveLength(1);
 		expect(result.trackedCatalog).toHaveLength(1);
-		expect(result.activeBriefs).toEqual([]);
+		expect(mockBriefsList).toHaveBeenCalledOnce();
+		expect(result.activeBriefs).toEqual([
+			expect.objectContaining({ id: 'ppi-brief', catalogHref: '/catalog?country=Kenya' })
+		]);
 	});
 
 	it('loads tracked lots and active briefs with catalog deep links for members', async () => {

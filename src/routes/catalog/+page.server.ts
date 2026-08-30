@@ -538,7 +538,7 @@ export const load: PageServerLoad = async (event) => {
 			: Promise.resolve([]);
 
 	const briefMatchSummaries: Promise<SourcingBriefMatchSummary[]> =
-		userId && hasParchmentAccess && isMember
+		userId && hasParchmentAccess
 			? getSessionParchmentClient()
 					.then((client) => getActiveSourcingBriefMatches(client, 10))
 					.catch((error) => {
