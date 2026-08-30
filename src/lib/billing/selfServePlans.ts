@@ -62,7 +62,7 @@ export const SELF_SERVE_PLANS: readonly SelfServePlan[] = [
 		description:
 			'Carry each coffee from green inventory through roasting, tasting, and margin review, with Cherry AI available inside the workflow.',
 		features: [
-			'Cherry Roaster Agent with inventory, roast, tasting, and sales context',
+			'Cherry Roast Agent with inventory, roast, tasting, and sales context',
 			'Green coffee inventory, lot tracking, and roast profiles',
 			'Cupping notes, production records, and margin reporting'
 		],

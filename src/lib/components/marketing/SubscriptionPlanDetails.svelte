@@ -152,7 +152,7 @@
 		price={`${BILLING_OFFERS.studioMonthly.price}${BILLING_OFFERS.studioMonthly.interval}`}
 		headline="Keep the coffee, the roast, and the result connected."
 		description="Mallard Studio replaces disconnected inventory sheets, roast notes, and margin math with one operating record. Trace what happened from the green lot through the finished roast."
-		askTitle="The Cherry Roaster Agent is included with Mallard Studio."
+		askTitle="The Cherry Roast Agent is included with Mallard Studio."
 		askDescription="Ask about inventory, compare roast history and tasting notes, and prepare inventory, roast, or sales changes for your confirmation."
 		supportingText="Mallard Studio includes catalog and sourcing context too. Add Parchment Intelligence when you also need market signals, supplier comparisons, price history, and the broader market view."
 		workflowTitle="One coffee record through production"

@@ -78,7 +78,7 @@ Use these names consistently in current docs and product copy:
 
 - `Cherry AI`
 - `Cherry Green Agent`
-- `Cherry Roaster Agent`
+- `Cherry Roast Agent`
 - `Cherry Synthesis Agent`
 - `Cherry Runtime` (internal execution and orchestration only)
 - `Mallard Studio`

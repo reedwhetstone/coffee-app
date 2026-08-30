@@ -45,7 +45,7 @@ Use these names consistently:
 | Cherry AI                   | Purveyors' coffee-native AI product family and the required generic customer-facing name                                        |
 | Cherry Runtime              | Internal execution and orchestration layer that selects an agent role and connects models to product context                    |
 | Cherry Green Agent          | Parchment Intelligence role using sourcing, catalog, portfolio, and market tools                                                |
-| Cherry Roaster Agent        | Mallard Studio role using inventory, roast, tasting, sales, and margin tools                                                    |
+| Cherry Roast Agent          | Mallard Studio role using inventory, roast, tasting, sales, and margin tools                                                    |
 | Cherry Synthesis Agent      | Cross-domain role using both Parchment Intelligence evidence and Mallard Studio context                                         |
 | Cherry Evals                | Public family for domain benchmarks covering green coffee, sensory analysis, sourcing, and roasting; canonical route `/evals`   |
 | Parchment                   | API infrastructure layer inside Purveyors; use as the shared infrastructure name, not a public platform                         |

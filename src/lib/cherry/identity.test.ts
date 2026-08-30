@@ -8,7 +8,7 @@ describe('Cherry AI product identity', () => {
 
 	it.each([
 		[false, false, null],
-		[false, true, 'Cherry Roaster Agent'],
+		[false, true, 'Cherry Roast Agent'],
 		[true, false, 'Cherry Green Agent'],
 		[true, true, 'Cherry Synthesis Agent']
 	] as const)(

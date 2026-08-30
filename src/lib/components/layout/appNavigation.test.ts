@@ -64,7 +64,7 @@ describe('authenticated app navigation taxonomy', () => {
 	it('uses the subscription-specific Cherry AI agent throughout navigation', () => {
 		expect(
 			sectionById('member', 'parchment')?.items.find((item) => item.href === '/chat')?.label
-		).toBe('Cherry Roaster Agent');
+		).toBe('Cherry Roast Agent');
 		expect(
 			sectionById('member', 'parchment', true)?.items.find((item) => item.href === '/chat')?.label
 		).toBe('Cherry Synthesis Agent');

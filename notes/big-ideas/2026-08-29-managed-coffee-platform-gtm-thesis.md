@@ -6,7 +6,7 @@
 **Source:** Product-owner GTM exploration shared during coffee-app PR #550 review
 
 > **Product naming addendum, 2026-08-30:** Cherry AI is the customer-facing product family for
-> Purveyors' coffee-native AI. The runtime roles are Cherry Green Agent, Cherry Roaster Agent, and
+> Purveyors' coffee-native AI. The runtime roles are Cherry Green Agent, Cherry Roast Agent, and
 > Cherry Synthesis Agent. This resolves the naming question below without accepting the broader,
 > still-unresolved platform claims in this discussion draft.
 
@@ -29,7 +29,7 @@ This is compatible with the current product vision when it strengthens the norma
 - Mallard Studio provides first-party inventory, roast, tasting, sales, and margin workflows.
 - Cherry Runtime already selects entitlement-specific execution roles:
   - Parchment Intelligence unlocks the Cherry Green Agent with sourcing, catalog, portfolio, price-index, and market-signal context.
-  - Mallard Studio unlocks the Cherry Roaster Agent with catalog, inventory, roast, tasting, and sales context.
+  - Mallard Studio unlocks the Cherry Roast Agent with catalog, inventory, roast, tasting, and sales context.
   - Mallard Studio + Parchment Intelligence unlocks the Cherry Synthesis Agent with both context families.
 - Billing and entitlement authority already sits upstream in Parchment rather than in the presentation client.
 

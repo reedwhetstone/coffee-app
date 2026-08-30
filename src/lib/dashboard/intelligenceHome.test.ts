@@ -5,7 +5,7 @@ describe('adaptive dashboard experience', () => {
 	it.each([
 		['viewer', false, null, 'Purveyors account'],
 		['viewer', true, 'Cherry Green Agent', 'Parchment Intelligence'],
-		['member', false, 'Cherry Roaster Agent', 'Mallard Studio'],
+		['member', false, 'Cherry Roast Agent', 'Mallard Studio'],
 		['member', true, 'Cherry Synthesis Agent', 'Parchment Intelligence + Mallard Studio']
 	] as const)(
 		'adapts role=%s and ppiAccess=%s to %s',

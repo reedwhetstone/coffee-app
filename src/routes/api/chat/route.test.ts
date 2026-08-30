@@ -68,7 +68,7 @@ describe('chat system prompt entitlement context', () => {
 		});
 
 		expect(prompt).toContain('Cherry Green Agent');
-		expect(prompt).not.toContain('Cherry Roaster Agent');
+		expect(prompt).not.toContain('Cherry Roast Agent');
 		expect(prompt).not.toContain('Cherry Synthesis Agent');
 		expect(prompt).toContain('You have access to Parchment Intelligence tools');
 		expect(prompt).toContain('coffee_catalog_search');
@@ -101,7 +101,7 @@ describe('chat system prompt entitlement context', () => {
 			memberAccess: true
 		});
 
-		expect(prompt).toContain('Cherry Roaster Agent');
+		expect(prompt).toContain('Cherry Roast Agent');
 		expect(prompt).not.toContain('Cherry Green Agent');
 		expect(prompt).not.toContain('Cherry Synthesis Agent');
 		expect(prompt).toContain('You have access to these tools');

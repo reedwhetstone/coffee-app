@@ -4,7 +4,7 @@ export type CherryAgentId = 'cherry-green-agent' | 'cherry-roast-agent' | 'cherr
 
 export type CherryAgentName =
 	| 'Cherry Green Agent'
-	| 'Cherry Roaster Agent'
+	| 'Cherry Roast Agent'
 	| 'Cherry Synthesis Agent';
 
 export interface CherryAccessContext {
@@ -28,7 +28,7 @@ const GREEN_AGENT: CherryAgentIdentity = {
 
 const ROASTER_AGENT: CherryAgentIdentity = {
 	id: 'cherry-roast-agent',
-	name: 'Cherry Roaster Agent',
+	name: 'Cherry Roast Agent',
 	role: 'roastery analysis with Mallard Studio inventory, roast, tasting, sales, and margin context',
 	shortDescription: 'Inventory, roasts, tasting, sales, and margin context from Mallard Studio.'
 };

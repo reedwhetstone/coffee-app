@@ -152,7 +152,7 @@ export function getDashboardUpgradePrompt(
 	if (!hasParchmentIntelligence && !hasMallard) {
 		return {
 			headline: 'Add coffee-native intelligence to your work',
-			body: 'Parchment Intelligence adds market evidence and the Cherry Green Agent. Mallard Studio adds roastery workflows and the Cherry Roaster Agent.',
+			body: 'Parchment Intelligence adds market evidence and the Cherry Green Agent. Mallard Studio adds roastery workflows and the Cherry Roast Agent.',
 			cta: 'Compare plans',
 			href: '/subscription'
 		};

@@ -81,10 +81,10 @@ describe('adaptive dashboard', () => {
 		expect(screen.queryByRole('heading', { name: 'Plan or log a roast' })).toBeNull();
 	});
 
-	it('presents Mallard Studio users with the Cherry Roaster Agent and roastery actions', () => {
+	it('presents Mallard Studio users with the Cherry Roast Agent and roastery actions', () => {
 		render(DashboardPage, { data: createData('member', false) });
 
-		expect(screen.getByRole('heading', { name: 'Cherry Roaster Agent' })).toBeInTheDocument();
+		expect(screen.getByRole('heading', { name: 'Cherry Roast Agent' })).toBeInTheDocument();
 		expect(screen.getByRole('heading', { name: 'Plan or log a roast' })).toBeInTheDocument();
 		expect(screen.getByRole('heading', { name: 'Review sales and margin' })).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: 'View Parchment Intelligence' })).toBeInTheDocument();
