@@ -16,7 +16,7 @@ describe('authenticated app navigation taxonomy', () => {
 		expect(ids).toEqual(['parchment', 'portfolio', 'maillard', 'developer']);
 	});
 
-	it('places chat in Parchment instead of Mallard Studio', () => {
+	it('places Cherry in the shared intelligence group instead of Mallard Studio', () => {
 		const parchmentItems = sectionById('member', 'parchment')?.items.map((item) => item.href);
 		const maillardItems = sectionById('member', 'maillard')?.items.map((item) => item.href);
 
@@ -46,7 +46,7 @@ describe('authenticated app navigation taxonomy', () => {
 		expect(roastItem).toMatchObject({ label: 'Roast', locked: true });
 	});
 
-	it('unlocks chat and Portfolio for Parchment Intelligence users without showing roasting tools as unlocked', () => {
+	it('unlocks Cherry and Portfolio for Parchment Intelligence users without showing roasting tools as unlocked', () => {
 		const parchmentItems = sectionById('viewer', 'parchment', true)?.items;
 		const chatItem = parchmentItems?.find((item) => item.href === '/chat');
 		const portfolioItem = sectionById('viewer', 'portfolio', true)?.items.find(
@@ -56,7 +56,7 @@ describe('authenticated app navigation taxonomy', () => {
 			(item) => item.href === '/roast'
 		);
 
-		expect(chatItem).toMatchObject({ label: 'Chat', locked: false });
+		expect(chatItem).toMatchObject({ label: 'Cherry', locked: false });
 		expect(portfolioItem).toMatchObject({ label: 'Portfolio', locked: false });
 		expect(roastItem).toMatchObject({ label: 'Roast', locked: true });
 	});
