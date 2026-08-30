@@ -51,8 +51,9 @@ function createData(role: 'viewer' | 'member' | 'admin', ppiAccess: boolean): Pa
 				source: 'Importer Three',
 				country: 'Kenya',
 				processing: 'Washed',
-				cost_lb: 7.4,
-				price_per_lb: null
+				cost_lb: null,
+				price_per_lb: null,
+				price_tiers: [{ min_lbs: 1, price: 7.4 }]
 			}
 		]
 	} as unknown as PageData;
@@ -70,6 +71,7 @@ describe('adaptive dashboard', () => {
 		expect(screen.getByRole('heading', { name: 'Tracked coffees' })).toBeInTheDocument();
 		expect(screen.getByText('Washed Ethiopia brief')).toBeInTheDocument();
 		expect(screen.getByText('Fresh Kenya')).toBeInTheDocument();
+		expect(screen.getByText('$7.40/lb')).toBeInTheDocument();
 		expect(
 			screen.getByRole('link', { name: /Review tracked changes with Cherry Green Agent/ })
 		).toHaveAttribute('href', expect.stringContaining('source=dashboard'));

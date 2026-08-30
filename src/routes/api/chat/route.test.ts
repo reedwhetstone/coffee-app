@@ -115,6 +115,19 @@ describe('chat system prompt entitlement context', () => {
 		expect(prompt).toContain('WORKSPACE FOCUS: Roasting');
 	});
 
+	it('attributes Mallard-only catalog evidence to the Parchment API', () => {
+		const prompt = _buildSystemPrompt({ type: 'general' }, 'Member User', {
+			ppiAccess: false,
+			memberAccess: true
+		});
+
+		expect(prompt).toContain('The Parchment API supplies catalog data');
+		expect(prompt).toContain('The Parchment API supplies the underlying data contracts');
+		expect(prompt).not.toContain(
+			'Parchment Intelligence supplies catalog, market, and sourcing evidence'
+		);
+	});
+
 	it('adds PPI market guidance for users with both products', () => {
 		const prompt = _buildSystemPrompt({ type: 'roasting' }, 'Bundle User', {
 			ppiAccess: true,

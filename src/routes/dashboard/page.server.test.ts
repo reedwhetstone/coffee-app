@@ -123,7 +123,7 @@ describe('/dashboard sourcing workspace load', () => {
 		expect(result.activeBriefs).toEqual([]);
 	});
 
-	it('loads active sourcing briefs for Parchment Intelligence users', async () => {
+	it('does not request member-only sourcing briefs for Parchment Intelligence users', async () => {
 		const result = (await load(
 			makeLoadInput({
 				role: 'viewer',
@@ -138,8 +138,8 @@ describe('/dashboard sourcing workspace load', () => {
 			})
 		)) as { activeBriefs: Array<{ name: string }> };
 
-		expect(mockBriefsList).toHaveBeenCalledOnce();
-		expect(result.activeBriefs).toEqual([expect.objectContaining({ name: 'Ethiopia brief' })]);
+		expect(mockBriefsList).not.toHaveBeenCalled();
+		expect(result.activeBriefs).toEqual([]);
 	});
 
 	it('loads tracked lots and active briefs with catalog deep links for members', async () => {

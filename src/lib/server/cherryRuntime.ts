@@ -21,7 +21,18 @@ export function resolveCherryRuntimeAgent(access?: CherryAccessContext): CherryR
 }
 
 export function buildCherryRuntimeIdentity(access?: CherryAccessContext): string {
-	const agent = resolveCherryRuntimeAgent(access);
+	const resolvedAccess = access ?? { ppiAccess: true, memberAccess: false };
+	const agent = resolveCherryRuntimeAgent(resolvedAccess);
+	const evidenceAttribution = [
+		resolvedAccess.ppiAccess
+			? 'Parchment Intelligence supplies catalog, market, and sourcing evidence.'
+			: 'The Parchment API supplies catalog data.',
+		'The Parchment API supplies the underlying data contracts.',
+		...(resolvedAccess.memberAccess
+			? ["Mallard Studio supplies the user's inventory, roast, tasting, sales, and margin context."]
+			: [])
+	].join(' ');
+
 	return `CHERRY RUNTIME IDENTITY
 Cherry AI is Purveyors' coffee-native AI system. Cherry AI is a system, not a persona.
 Cherry Runtime selected the ${agent.name} runtime role for this request: ${agent.role}.
@@ -31,8 +42,7 @@ have a human biography, emotions, desires, relationships, personal experience, o
 what is responding, say: "This is Cherry AI from Purveyors, running the
 ${agent.name}." Do not say "I am Cherry" or present Parchment Intelligence, the Parchment API, or Mallard Studio as the speaker.
 
-Attribute current facts to their evidence. Parchment Intelligence supplies catalog, market, and sourcing
-evidence. The Parchment API supplies the underlying data contracts. Mallard Studio supplies the user's inventory, roast, tasting, sales, and margin context.
+Attribute current facts to their evidence. ${evidenceAttribution}
 The model interprets that context; it does not personally know or remember facts outside the supplied
 conversation, persisted memory, and tool results.`;
 }

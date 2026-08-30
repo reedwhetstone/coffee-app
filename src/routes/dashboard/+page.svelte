@@ -7,7 +7,7 @@
 		getDashboardUpgradePrompt,
 		hasParchmentWorkflowAccess
 	} from '$lib/dashboard/intelligenceHome';
-	import { formatPricePerLb } from '$lib/utils/pricing';
+	import { formatPricePerLb, getDisplayPrice } from '$lib/utils/pricing';
 	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 
 	let { data } = $props<{ data: PageData }>();
@@ -66,7 +66,7 @@
 	}
 
 	function arrivalPrice(coffee: CoffeeCatalog): string {
-		const price = coffee.cost_lb ?? coffee.price_per_lb;
+		const price = getDisplayPrice(coffee);
 		return price === null ? 'Price unavailable' : formatPricePerLb(price);
 	}
 
