@@ -702,7 +702,7 @@
 						</h1>
 						<p class="mt-4 text-lg leading-8 text-muted">
 							Choose market intelligence, roastery operations, or both in one discounted
-							subscription. Ask Parchment is included with every self-serve plan.
+							subscription. Cherry is included with every self-serve plan.
 						</p>
 					</div>
 					{#if !isSignedIn}

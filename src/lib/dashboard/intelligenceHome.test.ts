@@ -22,10 +22,10 @@ describe('dashboard intelligence home model', () => {
 		expect(parchmentCards?.map((item) => item.title)).toEqual([
 			'Parchment Market Index',
 			'Catalog and supply research',
-			'Ask Parchment',
+			'Cherry',
 			'Intelligence reports'
 		]);
-		expect(parchmentCards?.find((item) => item.title === 'Ask Parchment')?.description).toContain(
+		expect(parchmentCards?.find((item) => item.title === 'Cherry')?.description).toContain(
 			'sourcing questions'
 		);
 		expect(parchmentCards?.find((item) => item.title === 'Intelligence reports')?.status).toBe(
@@ -39,12 +39,12 @@ describe('dashboard intelligence home model', () => {
 			href: '/catalog',
 			status: 'ready'
 		});
-		expect(card('Ask Parchment')).toMatchObject({ href: '/chat', status: 'locked' });
+		expect(card('Cherry')).toMatchObject({ href: '/chat', status: 'locked' });
 		expect(card('Tracked coffee panel')).toMatchObject({ href: '/beans', status: 'locked' });
 	});
 
 	it('unlocks Ask and Portfolio for Parchment Intelligence users but keeps Mallard Studio locked', () => {
-		expect(card('Ask Parchment', 'viewer', true)).toMatchObject({ status: 'ready' });
+		expect(card('Cherry', 'viewer', true)).toMatchObject({ status: 'ready' });
 		expect(card('Tracked coffee panel', 'viewer', true)).toMatchObject({ status: 'ready' });
 		expect(card('Roast context', 'viewer', true)).toMatchObject({ status: 'locked' });
 	});

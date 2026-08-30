@@ -1,6 +1,6 @@
 /**
  * @deprecated This endpoint is kept for backward compatibility only.
- * The chat agent and this compatibility route use the session-mode Parchment SDK.
+ * Cherry Runtime and this compatibility route use the session-mode Parchment SDK.
  */
 import { json } from '@sveltejs/kit';
 import { requireMemberRole } from '$lib/server/auth';

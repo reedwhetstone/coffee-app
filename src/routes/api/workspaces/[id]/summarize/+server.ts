@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { CHERRY_RUNTIME_MODEL } from '$lib/server/cherryRuntime';
 import { requireChatAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 import { OPENROUTER_API_KEY } from '$env/static/private';
@@ -108,7 +109,8 @@ export const POST: RequestHandler = async (event) => {
 
 		const existingSummary = workspace.context_summary || '';
 
-		const prompt = `You are a memory compactor for a coffee business AI workspace (type: ${workspace.type}).
+		const prompt = `CHERRY RUNTIME WORKSPACE COMPACTION
+Compact a coffee business workspace (type: ${workspace.type}) for future Cherry Runtime context.
 ${existingSummary ? `Previous summary:\n${existingSummary}\n` : ''}
 Recent conversation:
 ${conversationText}
@@ -128,7 +130,7 @@ Keep only what's relevant for continuing the conversation. Drop pleasantries and
 				Authorization: `Bearer ${OPENROUTER_API_KEY}`
 			},
 			body: JSON.stringify({
-				model: '@preset/test-workhorse-agent',
+				model: CHERRY_RUNTIME_MODEL,
 				messages: [{ role: 'user', content: prompt }],
 				max_tokens: 800,
 				temperature: 0.3

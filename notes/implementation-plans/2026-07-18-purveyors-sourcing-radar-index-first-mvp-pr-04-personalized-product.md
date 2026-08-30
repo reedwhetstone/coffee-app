@@ -1,12 +1,12 @@
-# Sourcing Radar MVP PR 4: Personalized Dashboard and Parchment Agent
+# Sourcing Radar MVP PR 4: Personalized Dashboard and Cherry Investigation
 
 **Program:** Purveyors Sourcing Radar, index-first MVP
 **Repository:** `coffee-app`
-**PR goal:** Deliver the complete customer promise through a personalized dashboard, canonical Radar evidence, useful next actions, and an Ask Parchment investigation loop.
+**PR goal:** Deliver the complete customer promise through a personalized dashboard, canonical Radar evidence, useful next actions, and a Cherry investigation loop.
 
 ## Product promise
 
-> Tell Purveyors what you need, and your dashboard and Parchment agent will surface the few current coffees across the market worth your attention.
+> Tell Purveyors what you need, and your dashboard and Cherry will surface the few current coffees across the market worth your attention.
 
 This is the buyer-facing MVP. It delivers the sourcing workflow directly and does not add a user-interaction tracking system or ask customers to validate the product through their clicks.
 
@@ -22,8 +22,8 @@ PR 1 makes the evidence contract canonical. PR 2 makes the intent lifecycle cano
 - Fresh result rows with lot identity, current price, brief-match reasons, eligible market-scoped signal evidence, lot-age context, source, publication freshness/quality, and limitations.
 - Honest stale, unavailable, empty, denied, and upstream-error states.
 - Existing tracked-lot/watchlist and supplier-source actions as useful next steps. Do not create a parallel shortlist store.
-- An Ask Parchment action that opens the existing chat workspace with structured context containing the owned brief, canonical Radar rows, publication metadata, evidence, and limitations.
-- Parchment may explain, compare, and help refine the sourcing need. It cannot invent evidence, change canonical ordering, or label an anomaly a deal.
+- An Analyze with Cherry action that opens the existing Cherry workspace with structured context containing the owned brief, canonical Radar rows, publication metadata, evidence, and limitations.
+- Cherry may explain, compare, and help refine the sourcing need from Parchment evidence. It cannot invent evidence, change canonical ordering, or label an anomaly a deal.
 - Focused tests and existing docs/copy alignment.
 
 ## Out of scope
@@ -41,7 +41,7 @@ PR 1 makes the evidence contract canonical. PR 2 makes the intent lifecycle cano
 
 1. The customer opens Purveyors and immediately sees one personalized Radar summary for up to five active sourcing needs in deterministic order, with no implicit or arbitrary current-brief selection. If more active briefs exist, a continuation opens the cursor-paginated brief-management surface and Radar detail loads on demand for the selected brief.
 2. They inspect each short list of current matching coffees with clear reasons, price evidence, crop-age context, provenance, and limitations.
-3. They ask Parchment to compare candidates, explain the evidence, or help refine the brief without reconstructing context.
+3. They use Cherry to compare candidates, explain the evidence, or help refine the brief without reconstructing context.
 4. They continue through an existing useful action: track the lot or open the supplier record.
 5. On later visits, Radar evaluates the latest accepted publication against the current brief. No scheduler or external alert is required for the MVP.
 
@@ -54,8 +54,8 @@ The customer receives value from every step. The MVP does not instrument those s
 - Freshness, publication date, source, evidence, lot-age context, and limitations are visible without opening a secondary panel.
 - `stale` and `unavailable` states never render recommendation-style cards. They explain why indexed evidence is withheld and may link to plain catalog matches.
 - A row with `ageContext: unknown` says so where the buyer will see it.
-- One action reaches the canonical supplier/source record; one action opens Ask Parchment with structured context.
-- Each active brief keeps its own summary, detail route, Radar request, and Ask Parchment context; multiple active briefs cannot be collapsed or cross-wired.
+- One action reaches the canonical supplier/source record; one action opens Cherry with structured context.
+- Each active brief keeps its own summary, detail route, Radar request, and Cherry context; multiple active briefs cannot be collapsed or cross-wired.
 - Each dashboard visit performs at most five Radar reads; additional briefs are paginated and loaded on demand rather than fanning out without a bound.
 - No UI or chat code recalculates score, rank, age, freshness, or entitlement.
 
@@ -78,14 +78,14 @@ The customer receives value from every step. The MVP does not instrument those s
 
 - A PPI-only owner with zero active briefs sees a truthful empty/setup state and no Radar summary.
 - A PPI-only owner with one active brief sees exactly one summary and its matching detail route; Mallard membership is not required.
-- A PPI-only owner with two to five active briefs sees exactly one summary per active brief, with each SDK request, detail route, and Ask Parchment handoff carrying the correct `briefId`.
+- A PPI-only owner with two to five active briefs sees exactly one summary per active brief, with each SDK request, detail route, and Cherry handoff carrying the correct `briefId`.
 - A PPI-only owner with more than five active briefs sees exactly five dashboard summaries in deterministic order plus a continuation to the paginated brief-management surface; additional Radar results load only when selected, and no brief is silently or arbitrarily substituted for another.
 - A member/admin without `ppiAccess` retains existing brief/catalog behavior but does not receive Radar.
 - Another user, anonymous user, and insufficiently entitled user receive the correct server-enforced state.
 - Fresh rows render canonical evidence and the correct supplier/tracked-lot actions.
 - Stale, unavailable, empty, denied, and upstream-error fixtures have distinct, truthful UI.
 - No recommendation-style card renders unless the API status is `fresh`.
-- Ask Parchment receives the correct owned brief, canonical rows, publication metadata, and limitations, and its tool path cannot mutate ordering or evidence.
+- Cherry Runtime receives the correct owned brief, canonical rows, publication metadata, and limitations, and its tool path cannot mutate ordering or evidence.
 - No new interaction analytics, event token, click tracking, watchlist attribution, event sink, or analytics persistence is introduced.
 - Existing dashboard, catalog brief matches, Market Index, tracked lots, and unrelated chat behavior remain unchanged.
 - Keyboard, screen-reader, mobile, loading, and reduced-motion behavior meet existing route standards.
@@ -94,7 +94,7 @@ The customer receives value from every step. The MVP does not instrument those s
 
 - Dashboard and server-load tests for zero, one, two-to-five, and more-than-five active briefs, including the five-call fan-out cap, cursor continuation, per-brief identity, no cross-wiring, and no silent omission, plus PPI personalization, ownership, entitlement, fresh, stale, unavailable, empty, and upstream failure.
 - Component tests for evidence, source/tracked-lot actions, limitations, keyboard use, and mobile layout.
-- Structured Ask Parchment context tests, including stale/unavailable suppression and evidence fidelity.
+- Structured Cherry context tests, including stale/unavailable suppression and evidence fidelity.
 - Regression coverage for existing dashboard, Market Index, tracked-lot, and chat workflows.
 - `pnpm check --fail-on-warnings`, focused tests, lint, and production build using the repository's documented environment path.
 - One post-deploy smoke with an owned test brief and manual source reconciliation performed internally before customer exposure.

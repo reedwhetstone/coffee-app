@@ -30,7 +30,7 @@
 		<div class="mx-auto max-w-3xl text-center">
 			<h2 class="text-base font-semibold leading-7 text-accent">Simple self-serve plans</h2>
 			<p class="mt-2 font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl">
-				Choose the context Ask Parchment brings to the work.
+				Choose the context available to Cherry.
 			</p>
 			<p class="mt-5 text-lg leading-8 text-muted">
 				Intelligence understands the outside market. Studio understands your own roastery. Both

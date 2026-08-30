@@ -20,8 +20,8 @@
 		<div>
 			<h2 class="font-serif text-lg font-medium text-ink">Ask about this market read.</h2>
 			<p class="mt-1 text-sm text-muted">
-				The chat agent opens with your current scope and movement window already in context — go
-				straight from “prices moved” to “what should I do about it.”
+				Cherry opens with your current scope and movement window already in context. Go straight
+				from “prices moved” to “what should I do about it.”
 			</p>
 		</div>
 		<AnalyticsActionCta

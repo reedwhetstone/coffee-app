@@ -10,12 +10,12 @@ This repo is the Purveyors web platform. It includes:
 
 - the public marketing site
 - the public catalog and analytics surfaces
-- the authenticated app for inventory, roast, profit, chat, and subscription workflows
+- the authenticated app for inventory, roast, profit, Cherry, and subscription workflows
 - the Parchment Console for keys and usage
 - the internal route layer that powers the first-party product
 - the `/docs` tree for product and CLI guidance; the generated API reference lives at `api.purveyors.io/docs`
 
-Its server-side agent tools depend on `@purveyors/sdk`; `@purveyors/cli` is a separate first-class Parchment API client.
+Cherry Runtime's server-side tools depend on `@purveyors/sdk`; `@purveyors/cli` is a separate first-class Parchment API client.
 
 ## Stack
 
@@ -139,7 +139,7 @@ Treat the web app and the external Parchment API as two separate HTTP surfaces:
 
 2. **Platform app API** (`/api/*`)
    - `/api/catalog`, `/api/catalog/filters`, `/api/beans`, `/api/roast-profiles`, `/api/profit`, `/api/chat`, `/api/workspaces`, `/api/billing/*`, `/api/account-deletion`, `/api/account-deletion/reauthenticate`, `/api/admin/*`, and related helpers
-   - Powers the first-party web app, Console, billing, chat, and admin workflows
+   - Powers the first-party web app, Console, billing, Cherry Runtime, and admin workflows
    - Mixed auth model depending on route: catalog BFF adapters can allow anonymous or session access, most product routes require session auth, and chat/workspace routes require either Mallard Studio membership or Parchment Intelligence access
    - Important for contributors, but not a broad public compatibility promise
    - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
@@ -208,7 +208,7 @@ When changing docs, keep these sources aligned:
 
 ## CLI relationship
 
-The web app uses session-mode `@purveyors/sdk` clients in its server-side chat tool adapters. It does not import `@purveyors/cli`.
+The web app uses session-mode `@purveyors/sdk` clients in Cherry Runtime's server-side tool adapters. It does not import `@purveyors/cli`.
 
 CLI auth and output rules matter here too:
 
@@ -223,7 +223,7 @@ CLI auth and output rules matter here too:
 That means:
 
 - CLI docs matter to this repo
-- chat-tool behavior should stay aligned with CLI behavior
+- Cherry tool behavior should stay aligned with CLI behavior
 - shared business logic should move toward reusable modules, not duplicated route code
 
 Deprecated `/api/tools/*` routes still exist for compatibility. Prefer direct session-mode SDK integration for new work.

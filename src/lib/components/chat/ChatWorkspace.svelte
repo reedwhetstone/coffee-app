@@ -148,7 +148,7 @@
 			chips.push({
 				id: 'canvas',
 				label: `Evidence (${canvasStore.blockCount})`,
-				detail: 'The assistant can see what is in your evidence workspace',
+				detail: 'Cherry Runtime can use what is in your evidence workspace',
 				active: includeCanvasContext
 			});
 		}
@@ -906,7 +906,7 @@
 	) {
 		if (!executionId)
 			throw new Error(
-				'This action predates durable execution IDs. Ask Parchment to propose it again.'
+				'This action predates durable execution IDs. Run it through Cherry again to create a current proposal.'
 			);
 		if (blockId) {
 			const card = canvasStore.blocks.find((b) => b.id === blockId)?.block;

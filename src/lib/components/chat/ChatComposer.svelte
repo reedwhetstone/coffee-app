@@ -235,7 +235,7 @@
 			</button>
 		</div>
 		<div class="mt-1.5 px-1 text-xs text-muted">
-			Ask Parchment · Enter to send, Shift+Enter for new line
+			Cherry · Enter to send, Shift+Enter for new line
 		</div>
 	</form>
 </div>

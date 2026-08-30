@@ -194,7 +194,7 @@
 	class="flex-1 overflow-y-auto px-4 py-6"
 	onscroll={onScroll}
 	role="log"
-	aria-label="Parchment conversation"
+	aria-label="Cherry conversation"
 	aria-live={isActive ? 'off' : 'polite'}
 	aria-relevant="additions text"
 >

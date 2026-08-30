@@ -19,8 +19,8 @@
 		},
 		{
 			step: '02',
-			title: 'Ask Parchment turns context into a decision.',
-			body: 'Investigate supplier movement, compare current offers, or bring in inventory and roast history. The AI workbench uses the context your plan unlocks.',
+			title: 'Cherry connects context to a decision.',
+			body: 'Investigate supplier movement, compare current offers, or bring in inventory and roast history. Cherry Runtime uses the context your plan unlocks.',
 			icon: 'M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z'
 		},
 		{
@@ -32,7 +32,7 @@
 	];
 
 	const capabilities = [
-		'Ask Parchment',
+		'Cherry',
 		'Price index history',
 		'Arrivals & delistings',
 		'Origin benchmarks',
@@ -50,7 +50,7 @@
 			</p>
 			<p class="mt-6 text-lg leading-8 text-muted">
 				Green coffee pricing lives in supplier spreadsheets, PDFs, and inbox offer lists. Purveyors
-				gathers and normalizes it, then connects that shared market context to AI, roaster
+				gathers and normalizes it, then connects that shared market context to Cherry, roaster
 				workflows, and developer tools.
 			</p>
 		</div>

@@ -11,6 +11,7 @@ import { getUserMemory } from '$lib/server/userMemory';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
 import { getTrackedLotIds } from '$lib/server/trackedLots';
 import { fetchParchmentCatalogItemsByIds } from '$lib/server/parchmentCatalog';
+import { buildCherryRuntimeIdentity, CHERRY_RUNTIME_MODEL } from '$lib/server/cherryRuntime';
 import {
 	listActiveSourcingBriefs,
 	type SourcingBriefResource
@@ -22,7 +23,8 @@ import {
 import type { RequestHandler } from './$types';
 import type { CatalogListQuery, components } from '@purveyors/sdk';
 
-const BASE_SYSTEM_PROMPT = `You are Parchment Intelligence, a green coffee supply-chain intelligence assistant.
+const BASE_SYSTEM_PROMPT = `{{CHERRY_RUNTIME_IDENTITY}}
+
 Help roasters and green buyers source, compare, track, benchmark, and decide using live stocked supply,
 supplier breadth, provenance, pricing, portfolio context, and Market Index evidence.
 
@@ -481,10 +483,12 @@ export function _buildSystemPrompt(
 ): string {
 	// Inject today's date so the model has temporal awareness
 	const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-	let prompt = BASE_SYSTEM_PROMPT.replace('{{TODAY_DATE}}', today).replace(
-		'{{TOOL_ACCESS_CONTEXT}}',
-		toolAccessPrompt(access)
-	);
+	let prompt = BASE_SYSTEM_PROMPT.replace(
+		'{{CHERRY_RUNTIME_IDENTITY}}',
+		buildCherryRuntimeIdentity(access)
+	)
+		.replace('{{TODAY_DATE}}', today)
+		.replace('{{TOOL_ACCESS_CONTEXT}}', toolAccessPrompt(access));
 	prompt = prompt
 		.replace(
 			'{{MARKET_INTELLIGENCE_GUIDANCE}}',
@@ -517,7 +521,7 @@ export function _buildSystemPrompt(
 
 	if (userMemory?.trim()) {
 		prompt += `\n\nPERSISTENT USER MEMORY:
-This document is maintained across all of this user's conversations — partly by you, partly edited by the user directly. Treat it as trusted background about who they are and what they care about. Reference it naturally; never recite it back.
+This document is maintained across all of this user's conversations, partly by Cherry Runtime and partly by the user directly. Treat it as trusted background about who they are and what they care about. Reference it naturally; never recite it back.
 ---
 ${userMemory.trim().slice(0, 4000)}
 ---`;
@@ -636,7 +640,7 @@ export const POST: RequestHandler = async (event) => {
 		const MAX_REQUEST_MESSAGES = 30;
 		const windowedMessages = messages.slice(-MAX_REQUEST_MESSAGES);
 
-		const agentParchmentClient = await createParchmentServerClient(event, { mode: 'session' });
+		const cherryParchmentClient = await createParchmentServerClient(event, { mode: 'session' });
 		const { supabase } = event.locals;
 
 		// Create OpenRouter provider (OpenAI-compatible) with site headers
@@ -645,11 +649,11 @@ export const POST: RequestHandler = async (event) => {
 			baseURL: 'https://openrouter.ai/api/v1',
 			headers: {
 				'HTTP-Referer': 'https://purveyors.io',
-				'X-Title': 'Purveyors Coffee Chat'
+				'X-Title': 'Purveyors Cherry Runtime'
 			}
 		});
 		const tools = createChatTools(
-			agentParchmentClient,
+			cherryParchmentClient,
 			user.id,
 			{ ppiAccess, memberAccess },
 			{
@@ -661,8 +665,8 @@ export const POST: RequestHandler = async (event) => {
 					);
 					return rows as unknown as Record<string, unknown>[];
 				},
-				readPriceIndex: (input) => readPriceIndexForAgent(input, agentParchmentClient),
-				findSimilarBeans: (input) => findSimilarBeansForAgent(input, agentParchmentClient),
+				readPriceIndex: (input) => readPriceIndexForAgent(input, cherryParchmentClient),
+				findSimilarBeans: (input) => findSimilarBeansForAgent(input, cherryParchmentClient),
 				marketSignals: async (input) => {
 					const client = await _createMarketToolParchmentClient(event);
 					const { data, error } = await client.market.signals({
@@ -701,13 +705,13 @@ export const POST: RequestHandler = async (event) => {
 		let sourcingContext: SourcingIntelligenceContext | undefined;
 		try {
 			const { trackedIds, briefRows } = await _loadSourcingIntelligenceSeeds(
-				() => getTrackedLotIds(agentParchmentClient),
-				() => listActiveSourcingBriefs(agentParchmentClient, 5)
+				() => getTrackedLotIds(cherryParchmentClient),
+				() => listActiveSourcingBriefs(cherryParchmentClient, 5)
 			);
 
 			const trackedLots = trackedIds.length
 				? (
-						await fetchParchmentCatalogItemsByIds(agentParchmentClient, trackedIds.slice(0, 10))
+						await fetchParchmentCatalogItemsByIds(cherryParchmentClient, trackedIds.slice(0, 10))
 					).map((lot) => ({
 						id: lot.id,
 						name: lot.name ?? `Lot #${lot.id}`,
@@ -807,7 +811,7 @@ export const POST: RequestHandler = async (event) => {
 
 		// Stream the response using Vercel AI SDK via OpenRouter preset
 		const result = streamText({
-			model: openrouter.chat('@preset/test-workhorse-agent'),
+			model: openrouter.chat(CHERRY_RUNTIME_MODEL),
 			system: systemPrompt,
 			messages: modelMessages,
 			tools,

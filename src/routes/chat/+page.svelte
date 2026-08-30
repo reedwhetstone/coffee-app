@@ -15,10 +15,10 @@
 </script>
 
 <svelte:head>
-	<title>Parchment Intelligence Chat | Purveyors</title>
+	<title>Cherry | Coffee-native AI from Purveyors</title>
 	<meta
 		name="description"
-		content="Chat with Parchment Intelligence for sourcing, catalog, portfolio, and coffee market guidance."
+		content="Use Cherry for coffee-native sourcing, catalog, portfolio, market, roasting, and sensory analysis."
 	/>
 </svelte:head>
 
@@ -26,10 +26,10 @@
 	<!-- Unauthenticated state -->
 	<div class="flex min-h-screen items-center justify-center bg-surface-canvas">
 		<div class="mx-auto max-w-md rounded-lg bg-surface-panel p-8 text-center shadow-lg">
-			<h1 class="mb-4 text-2xl font-bold text-ink">Parchment Intelligence Chat</h1>
+			<h1 class="mb-4 text-2xl font-bold text-ink">Cherry</h1>
 			<p class="mb-6 text-muted">
-				Sign in to access Parchment Intelligence for sourcing, catalog, portfolio, and coffee market
-				guidance.
+				Sign in to use Purveyors' coffee-native AI for sourcing, catalog, portfolio, market,
+				roasting, and sensory analysis.
 			</p>
 			<a
 				href="/auth"
@@ -43,10 +43,10 @@
 	<!-- Parchment Intelligence or Mallard Studio access required -->
 	<div class="flex min-h-screen items-center justify-center bg-surface-canvas">
 		<div class="mx-auto max-w-md rounded-lg bg-surface-panel p-8 text-center shadow-lg">
-			<h1 class="mb-4 text-2xl font-bold text-ink">Parchment Intelligence Chat</h1>
+			<h1 class="mb-4 text-2xl font-bold text-ink">Cherry</h1>
 			<p class="mb-6 text-muted">
-				Chat is available with Parchment Intelligence or Mallard Studio. Upgrade to ask market,
-				catalog, portfolio, and roasting questions with the right tool depth.
+				Cherry is available with Parchment Intelligence or Mallard Studio. Upgrade to analyze
+				market, catalog, portfolio, and roasting questions with the right tool depth.
 			</p>
 			<div class="space-y-3">
 				<a

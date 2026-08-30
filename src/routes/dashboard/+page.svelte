@@ -127,7 +127,7 @@
 						onclick={() => goto('/chat')}
 						class="rounded-md border border-accent px-5 py-2.5 text-sm font-medium text-accent transition-all duration-200 hover:bg-accent hover:text-ink"
 					>
-						Ask Parchment
+						Open Cherry
 					</button>
 				{:else}
 					<button

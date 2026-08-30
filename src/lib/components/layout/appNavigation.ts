@@ -112,9 +112,9 @@ const authenticatedSections: NavSection[] = [
 			},
 			{ label: 'Catalog', href: '/catalog', description: 'Browse green coffee supply data' },
 			{
-				label: 'Chat',
+				label: 'Cherry',
 				href: '/chat',
-				description: 'Ask Parchment Intelligence about sourcing and market decisions',
+				description: 'Coffee-native AI for sourcing, market, and roastery decisions',
 				requiresChatAccess: true,
 				lockedReason: 'Requires Parchment Intelligence or Mallard Studio access.'
 			}

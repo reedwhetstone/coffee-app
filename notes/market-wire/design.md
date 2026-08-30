@@ -24,7 +24,7 @@ Positioning: the wire is the recurring habit and distribution engine; Market Ind
 
 - **Anonymous web:** latest edition fully readable and indexable (SEO/citation surface). Archive list visible, older editions gated.
 - **Free email subscriber:** weekly edition in inbox + full archive access on site while logged in. Email capture is the conversion asset.
-- **Intelligence ($12/mo):** immediate (not weekly-delayed) alerts, personalized wire filtered to their origins/suppliers/price ceilings, full history + comparisons + exports, evidence deep-links into gated Market Index views, Ask Parchment analysis on any wire item.
+- **Intelligence ($12/mo):** immediate (not weekly-delayed) alerts, personalized wire filtered to their origins/suppliers/price ceilings, full history + comparisons + exports, evidence deep-links into gated Market Index views, Cherry Green Agent analysis on any wire item.
 - Principle from the moonshot: free is _general and delayed_, paid is _personal, immediate, historical, actionable_. Proof is never hidden; leverage is.
 
 ## Pipeline architecture (5 layers)
@@ -88,7 +88,7 @@ Infrastructure is built now as the permanent minimal, flexible core; only the Ph
 
 - Freemium free→paid conversion typically lands at 2-5%; ~4% is the commonly cited B2B threshold for the free tier to be a pipeline rather than a cost center. Traditional funnels see ~13% visitor→free and ~2.6% free→paid. Early KPI should therefore be qualified list growth and retention (opens, evidence clicks, return visits), not paid conversion.
 - Paid newsletters earn a median $83-$230 per subscriber per year by vertical, with investing/market verticals at the top. A $12/mo ($144/yr) Intelligence price sits squarely in the market-intelligence band; $15 bundle is defensible. Offer an annual at ~$120/yr (two months free) — standard churn-reduction practice.
-- Newsletter playbook consensus: the paid tier must feel like _a different product_, not the same newsletter with bonus paragraphs. That validates the design: paid is a decision surface (personalization, alerts, history queries, Ask Parchment), not "more wire."
+- Newsletter playbook consensus: the paid tier must feel like _a different product_, not the same newsletter with bonus paragraphs. That validates the design: paid is a decision surface (personalization, alerts, history queries, Cherry), not "more wire."
 
 ### How data-intelligence products conventionally draw the line
 

@@ -189,20 +189,26 @@ while monthly quota state is derived only from exact per-key counts because plan
 limits apply independently to each API key. Coffee-app retains only the
 presentation mapping for these analytics.
 
-## Chat and agent flow
+## Cherry Runtime and tool flow
 
-Coffee-app's chat route builds a session-mode `ParchmentClient` from
+Coffee-app owns Cherry Runtime's user-facing orchestration. Its chat route builds a session-mode `ParchmentClient` from
 `@purveyors/sdk` and passes it into app-owned tool adapters. The adapters own LLM
 schemas, permission checks, proposal and confirmation flows, compact model
 output, and UI artifacts. Parchment owns shared data access and reusable business
 behavior behind HTTP endpoints.
+
+Entitlements select the runtime role: Parchment Intelligence-only access uses the
+Cherry Green Agent, Mallard Studio-only access uses the Cherry Roast Agent, and
+combined access uses the Cherry Synthesis Agent. These are execution roles, not
+personas or model identities. The current parent-model preset remains an internal
+runtime dependency until a deployed Cherry model alias is available.
 
 The CLI reaches those same endpoint families as a peer consumer. The shared
 layer is the API contract and generated SDK, not CLI source code. Historical
 plans in which coffee-app imported `@purveyors/cli/*` describe a former
 architecture and are not current guidance.
 
-The chat agent's `price_index_read` adapter consumes `ParchmentClient.priceIndex.list`
+Cherry Runtime's `price_index_read` adapter consumes `ParchmentClient.priceIndex.list`
 through the request's session-mode client and maps the API response into its
 app-owned tool result. It no longer queries shared price-index storage directly.
 
@@ -213,7 +219,7 @@ Parchment Intelligence sessions receive the entitled 365-day window. Coffee-app
 paginates the typed response and retains only presentation mapping into its
 existing chart shape; it no longer reads `price_index_snapshots` directly.
 
-The chat agent's `find_similar_beans` adapter likewise consumes
+Cherry Runtime's `find_similar_beans` adapter likewise consumes
 `ParchmentClient.catalog.similar`. Bean matching remains available only where
 Parchment grants `canUseBeanMatching`; PPI access by itself does not widen that
 capability or the catalog row projection. The former service-role Supabase RPC

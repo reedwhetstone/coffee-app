@@ -48,7 +48,7 @@ Each run produces an immutable, explainable brief containing:
 3. Tracked lots that were delisted, restocked, or became stale.
 4. Evidence quality and publication freshness for every recommendation.
 5. Explicit reasons, limitations, and what changed since the prior brief.
-6. An Ask Parchment handoff that opens the recommendation with its evidence already in context.
+6. An Analyze with Cherry handoff that opens the recommendation with its evidence already in context.
 7. Confirmed next actions such as adding a lot to the watchlist or inventory. RFQs and purchasing remain out of scope until real demand proves them necessary.
 
 The first version is an in-app manual or weekly brief. External email, Discord, webhook, and autonomous purchasing are later delivery channels, not the core product.
@@ -98,7 +98,7 @@ The experiment succeeds if at least two partners identify multiple recommendatio
 - coffee-scraper: finish cohort/policy configuration, transactional publication building, atomic activation, and truthful fresh/carried/unavailable metadata; later derive a catalog change feed from immutable observations.
 - parchment-api: make active publication manifests the source for market reads; add immutable recommendation runs that join sourcing briefs, tracked lots, proof, and market signals; expose run/read contracts through the SDK.
 - purveyors-cli: add create/run/read sourcing workflow commands only when they serve the end-to-end mandate workflow; preserve publication and evidence metadata verbatim for agents.
-- coffee-app: render the recurring brief as the paid decision surface, connect each finding to its lot evidence and Ask Parchment, and use confirmed actions for watchlist or inventory changes.
+- coffee-app: render the recurring brief as the paid decision surface, connect each finding to its lot evidence and Cherry, and use confirmed actions for watchlist or inventory changes.
 
 ## Source-of-truth routing
 

@@ -97,7 +97,7 @@ Weekly edition, web (indexable, latest edition public) + email (double opt-in). 
 
 ### Paid: Parchment Intelligence ($12/mo, ~$120/yr annual)
 
-Personalized "your market" section from saved sourcing intent; immediate alerts between editions; full data history, comparisons, exports via Market Index; Ask Parchment on any wire item; evidence deep links. Studio $5/mo, founding bundle $15/mo, price-locked for first 50 (per moonshot). Positioning: a different product (decision surface), not a longer newsletter.
+Personalized "your market" section from saved sourcing intent; immediate alerts between editions; full data history, comparisons, exports via Market Index; Cherry Green Agent analysis on any wire item; evidence deep links. Studio $5/mo, founding bundle $15/mo, price-locked for first 50 (per moonshot). Positioning: a different product (decision surface), not a longer newsletter.
 
 ### Later, sequenced (Litquidity lesson: not simultaneously)
 

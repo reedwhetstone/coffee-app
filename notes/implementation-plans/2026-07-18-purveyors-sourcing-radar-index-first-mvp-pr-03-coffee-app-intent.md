@@ -25,7 +25,7 @@ This slice is independently useful even if personalized Radar presentation ships
 
 - Database migrations, direct Supabase writes, RLS logic, role mutation, or entitlement enforcement.
 - A coffee-app-only sourcing-brief resource or response shape.
-- Radar evidence, ranking, dashboard results, or Ask Parchment context.
+- Radar evidence, ranking, dashboard results, or Cherry context.
 - Natural-language criteria invention by an LLM. Parchment may open the structured setup flow, but the saved contract remains deterministic.
 - New criteria, cadence, notifications, recommendation runs, team ownership, RFQs, purchasing, or supplier messaging.
 - Pricing, checkout, public access, or CLI additions.

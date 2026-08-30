@@ -35,7 +35,7 @@
 				</p>
 			{:else}
 				<p class="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
-					AI-native coffee intelligence
+					Coffee-native AI from Purveyors
 				</p>
 			{/if}
 
@@ -45,9 +45,9 @@
 				Coffee intelligence you can ask, act on, and build with.
 			</h1>
 			<p class="mt-6 max-w-3xl text-lg leading-8 text-muted">
-				Purveyors connects daily-normalized market data, your roastery records, and Ask Parchment in
-				one coffee-native system. See the market, investigate the evidence, and carry the decision
-				into real work.
+				Purveyors connects daily-normalized market data, your roastery records, and Cherry in one
+				coffee-native system. See the market, investigate the evidence, and carry the decision into
+				real work.
 			</p>
 
 			<div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -58,10 +58,10 @@
 					Explore the Market Index
 				</button>
 				<a
-					href="/subscription#ask-parchment-details"
+					href="/subscription#cherry-details"
 					class="rounded-lg border border-line bg-surface-canvas px-6 py-3 text-center text-sm font-semibold text-ink transition-colors hover:border-accent hover:text-accent"
 				>
-					See Ask Parchment
+					See Cherry
 				</a>
 				<button
 					onclick={() => goto('/catalog')}
@@ -97,18 +97,14 @@
 			{/if}
 		</div>
 
-		<div
-			id="ai-workbench"
-			class="scroll-mt-24 overflow-hidden rounded-2xl bg-line ring-1 ring-line"
-		>
+		<div id="cherry" class="scroll-mt-24 overflow-hidden rounded-2xl bg-line ring-1 ring-line">
 			<div class="bg-surface-canvas p-5 sm:p-6">
-				<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Ask Parchment</p>
+				<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Cherry</p>
 				<p class="mt-3 font-serif text-2xl font-medium leading-8 text-ink">
 					Which coffees merit a closer look this week?
 				</p>
 				<p class="mt-3 text-sm leading-6 text-muted">
-					Grounded tools, not generic chat. Ask Parchment works from the coffee data and records
-					your plan unlocks.
+					Cherry Runtime works from the coffee data, tools, and records your plan unlocks.
 				</p>
 			</div>
 			<ol class="grid gap-px bg-line">
