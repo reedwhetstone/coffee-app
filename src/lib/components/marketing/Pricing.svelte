@@ -25,10 +25,10 @@
 	}
 </script>
 
-<section id="pricing" class="scroll-mt-24 bg-surface-panel py-16 sm:py-20">
+<section id="pricing" class="scroll-mt-24 border-y border-line bg-surface-panel py-16 sm:py-20">
 	<div class="mx-auto max-w-7xl px-6 lg:px-8">
 		<div class="mx-auto max-w-3xl text-center">
-			<h2 class="text-base font-semibold leading-7 text-accent">Simple self-serve plans</h2>
+			<h2 class="text-sm font-semibold leading-7 text-organic-rust">Simple self-serve plans</h2>
 			<p class="mt-2 font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl">
 				Choose the context available to Cherry.
 			</p>
@@ -45,42 +45,6 @@
 			{#each SELF_SERVE_PLANS as plan (plan.id)}
 				<SelfServePlanCard {plan} ctaLabel={ctaLabel(plan)} onChoose={handleSelectPlan} />
 			{/each}
-		</div>
-
-		<div class="mx-auto mt-6 grid max-w-6xl gap-4 lg:grid-cols-[1.35fr_1fr]">
-			<div
-				class="flex flex-col justify-between gap-5 rounded-2xl border border-line bg-surface-canvas p-6 sm:flex-row sm:items-center"
-			>
-				<div>
-					<p class="text-xs font-semibold text-accent">Developer access</p>
-					<h3 class="mt-2 text-lg font-semibold text-ink">Building with green coffee data?</h3>
-					<p class="mt-1 text-sm leading-6 text-muted">
-						Parchment API has separate Green, Origin, and Enterprise tiers for applications, sync
-						jobs, and agents.
-					</p>
-				</div>
-				<a
-					href="/api#plans"
-					class="shrink-0 rounded-xl border border-line px-4 py-3 text-center text-sm font-semibold text-ink transition-colors hover:border-accent/50 hover:text-accent"
-				>
-					See API plans
-				</a>
-			</div>
-
-			<div
-				class="flex flex-col justify-between gap-5 rounded-2xl border border-line bg-surface-canvas p-6 sm:flex-row sm:items-center"
-			>
-				<div>
-					<p class="text-xs font-semibold text-muted">Custom needs</p>
-					<h3 class="mt-2 text-lg font-semibold text-ink">Need tailored delivery or support?</h3>
-				</div>
-				<a
-					href="/contact"
-					class="shrink-0 rounded-xl bg-ink px-4 py-3 text-center text-sm font-semibold text-surface-canvas transition-opacity hover:opacity-90"
-				>
-					Contact sales
-				</a>
-			</div>
 		</div>
 	</div>
 </section>

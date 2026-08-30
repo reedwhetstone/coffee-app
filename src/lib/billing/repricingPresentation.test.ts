@@ -71,7 +71,7 @@ describe('repricing presentation contract', () => {
 		expect(planCard).not.toContain('absolute inset-x-0 top-0 h-1');
 		expect(planCard).not.toContain('bg-intelligence');
 		expect(plans).not.toContain('iconPath:');
-		expect(pricing).toContain('See API plans');
+		expect(pricing).not.toContain('See API plans');
 		expect(pricing).not.toContain("handleSelectPlan('api')");
 		expect(pricing).not.toContain("handleSelectPlan('enterprise')");
 		expect(plans).toContain("learnMoreHref: '/subscription#intelligence-details'");
@@ -112,14 +112,22 @@ describe('repricing presentation contract', () => {
 
 	it('frames the homepage as a concrete AI-forward coffee system', () => {
 		const hero = readSource('src/lib/components/marketing/Hero.svelte');
-		const features = readSource('src/lib/components/marketing/Features.svelte');
 		const personas = readSource('src/lib/components/marketing/PersonaRouter.svelte');
+		const homepage = readSource('src/routes/(home)/+page.svelte');
 
-		expect(hero).toContain('Coffee intelligence you can ask, act on, and build with.');
+		expect(hero).toContain('The intelligence layer for coffee.');
 		expect(hero).toContain('Cherry');
-		expect(hero).toContain('Cherry Runtime works from the coffee data, tools, and records');
-		expect(features).toContain('Cherry connects context to a decision.');
-		expect(features).toContain('Work in Purveyors or build with it.');
-		expect(personas).toContain('One coffee data layer, built for decisions and systems.');
+		expect(hero).toContain('Parchment supplies current offers and price history');
+		expect(hero).toContain('Mallard Studio supplies your inventory, roasts, and sales');
+		expect(hero).not.toContain('Ask Parchment');
+		expect(hero).toContain('prefers-reduced-motion: reduce');
+		expect(personas).toContain('One connected coffee system');
+		expect(personas).toContain('From market signal to real work.');
+		expect(personas).toContain('Cherry Green Agent');
+		expect(personas).toContain('Cherry Roast Agent');
+		expect(homepage).toContain('data.data.slice(0, 3)');
+		expect(homepage).toContain('<CoffeeCard {coffee} {parseTastingNotes} compact />');
+		expect(homepage).not.toContain('Features');
+		expect(homepage).not.toContain('LazyLoad');
 	});
 });

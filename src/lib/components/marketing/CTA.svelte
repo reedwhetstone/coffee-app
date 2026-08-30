@@ -1,85 +1,42 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import type { PageAuthView } from '$lib/types/auth.types';
 
-	let { auth } = $props<{
-		auth: PageAuthView;
-	}>();
+	let { auth } = $props<{ auth: PageAuthView }>();
 
 	let isSignedIn = $derived(auth.isSignedIn);
-
-	function handlePrimaryAction() {
-		goto('/analytics');
-	}
-
-	function handleSecondaryAction() {
-		goto(isSignedIn ? '/subscription' : '/subscription');
-	}
 </script>
 
-<div class="texture-grain bg-background-primary-dark">
-	<div class="px-6 py-24 sm:px-6 sm:py-32 lg:px-8">
-		<div class="mx-auto max-w-2xl text-center">
-			<h2 class="font-serif text-3xl font-medium tracking-tight text-on-dark sm:text-4xl">
-				Stop guessing on price. Source with the full market in view.
-			</h2>
-			<p class="mx-auto mt-6 max-w-xl text-lg leading-8 text-on-dark/70">
-				{#if isSignedIn}
-					40+ importers. Daily pricing. Arrivals and delistings tracked. Your next procurement call
-					starts here.
-				{:else}
-					Daily-normalized data from 40+ US specialty importers. Price movement, origin benchmarks,
-					and supplier coverage in one place, built for green coffee buyers.
-				{/if}
-			</p>
-			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
-				<button
-					onclick={handlePrimaryAction}
-					class="w-full rounded-md bg-accent px-6 py-3 text-sm font-semibold text-ink shadow-sm transition-all duration-200 hover:bg-accent/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
-				>
-					{isSignedIn ? 'Open the Market Index' : 'Explore the Market Index'}
-				</button>
-				<button
-					onclick={handleSecondaryAction}
-					class="w-full rounded-md border border-on-dark/40 px-6 py-3 text-sm font-semibold text-on-dark transition-all duration-200 hover:bg-on-dark hover:text-ink sm:w-auto"
-				>
-					{isSignedIn ? 'Add Intelligence' : 'See plans'}
-				</button>
-			</div>
-			<div
-				class="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-on-dark/70"
+<section class="texture-grain bg-ink" aria-labelledby="final-cta-heading">
+	<div
+		class="mx-auto grid max-w-7xl gap-8 px-6 py-16 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:px-8"
+	>
+		<div class="max-w-3xl">
+			<p class="text-sm font-semibold text-accent">The market is already moving.</p>
+			<h2
+				id="final-cta-heading"
+				class="mt-2 font-serif text-4xl font-medium tracking-tight text-on-dark sm:text-5xl"
 			>
-				<div class="flex items-center gap-x-2">
-					<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-						<path
-							fill-rule="evenodd"
-							d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-							clip-rule="evenodd"
-						/>
-					</svg>
-					40+ importers tracked daily
-				</div>
-				<div class="flex items-center gap-x-2">
-					<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-						<path
-							fill-rule="evenodd"
-							d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-							clip-rule="evenodd"
-						/>
-					</svg>
-					90+ days price history
-				</div>
-				<div class="flex items-center gap-x-2">
-					<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-						<path
-							fill-rule="evenodd"
-							d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-							clip-rule="evenodd"
-						/>
-					</svg>
-					Arrivals and delistings feed
-				</div>
-			</div>
+				See the whole market. Move with confidence.
+			</h2>
+			<p class="mt-4 max-w-2xl text-base leading-7 text-on-dark/70">
+				{isSignedIn
+					? 'Your saved market and roastery context is ready.'
+					: 'The catalog and core Market Index are free to explore. Add deeper intelligence when the work calls for it.'}
+			</p>
+		</div>
+		<div class="flex flex-col gap-3 sm:flex-row lg:flex-col">
+			<a
+				href="/analytics"
+				class="rounded-md bg-accent px-6 py-3 text-center text-sm font-semibold text-ink transition-opacity hover:opacity-90"
+			>
+				{isSignedIn ? 'Open the Market Index' : 'Explore the Market Index'}
+			</a>
+			<a
+				href="/subscription"
+				class="rounded-md border border-on-dark/30 px-6 py-3 text-center text-sm font-semibold text-on-dark transition-colors hover:border-on-dark hover:bg-on-dark hover:text-ink"
+			>
+				{isSignedIn ? 'Manage your plan' : 'See plans'}
+			</a>
 		</div>
 	</div>
-</div>
+</section>

@@ -65,4 +65,12 @@ describe('UnifiedHeader', () => {
 
 		expect(screen.queryByRole('navigation', { name: 'Market Index report sections' })).toBeNull();
 	});
+
+	it('does not repeat the homepage primary action in the global header', () => {
+		pageState.url = new URL('http://localhost/');
+
+		render(UnifiedHeader, { auth: anonymousAuth });
+
+		expect(screen.queryByRole('button', { name: 'Explore Market Index' })).toBeNull();
+	});
 });
