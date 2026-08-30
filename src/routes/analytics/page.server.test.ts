@@ -22,7 +22,9 @@ vi.mock('$lib/seo/meta', () => ({
 }));
 
 vi.mock('$lib/server/parchmentClient', () => ({
-	createParchmentServerClient: mockCreateParchmentServerClient
+	createParchmentServerClient: mockCreateParchmentServerClient,
+	resolveCatalogCredentialMode: (locals: { principal?: RequestPrincipal }) =>
+		locals.principal?.isAuthenticated ? 'session' : 'public-demo'
 }));
 
 vi.mock('$lib/server/trackedLots', () => ({
@@ -423,7 +425,7 @@ describe('analytics load', () => {
 		await expect(result.analyticsMember).resolves.toBeTruthy();
 	});
 
-	it('maps the anonymous overview into preview and streamed coverage without a demo credential', async () => {
+	it('maps the anonymous overview into preview and streamed coverage through the public-demo credential', async () => {
 		const setup = createAnalyticsClient();
 		mockCreateParchmentServerClient.mockResolvedValue(setup.client);
 
@@ -434,7 +436,7 @@ describe('analytics load', () => {
 
 		expect(setup.overview).toHaveBeenCalledOnce();
 		expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
-			mode: 'anonymous'
+			mode: 'public-demo'
 		});
 		expect(result.analyticsPreview).toEqual({
 			stats: {

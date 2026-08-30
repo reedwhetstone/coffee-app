@@ -5,7 +5,10 @@ import { getPageAuthState } from '$lib/server/pageAuth';
 import { loadMarketIndexInsights } from '$lib/server/marketIndex';
 import { createSchemaService } from '$lib/services/schemaService';
 import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
-import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import {
+	createParchmentServerClient,
+	resolveCatalogCredentialMode
+} from '$lib/server/parchmentClient';
 import type { MarketIndexInsights } from '$lib/types/marketIndex.types';
 import type { ParchmentClient, components } from '@purveyors/sdk';
 
@@ -264,10 +267,11 @@ interface MarketOverviewResult {
 async function loadMarketOverview(event: AnalyticsLoadEvent): Promise<MarketOverviewResult> {
 	try {
 		const client = await createParchmentServerClient(event, {
-			// The public market overview is intentionally anonymous. The shared
-			// catalog demo key is for demo-backed catalog reads, not this public
-			// analytics proof surface, and must not become its availability boundary.
-			mode: event.locals.principal.isAuthenticated ? 'session' : 'anonymous'
+			// The aggregate overview is a public-only slice, but its Parchment
+			// contract still requires a bearer credential. Logged-out page loads use
+			// the server-held public-demo key; authenticated callers forward their
+			// canonical session/API-key credential.
+			mode: resolveCatalogCredentialMode(event.locals)
 		});
 		const response = await client.market.overview();
 
