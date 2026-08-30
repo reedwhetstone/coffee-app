@@ -16,6 +16,7 @@
 	let currentPath = $derived(page.url.pathname);
 	let isSignedIn = $derived(auth.isSignedIn);
 	let canAccessMemberRoutes = $derived(checkRole(auth.role, 'member'));
+	let isHomePage = $derived(currentPath === '/');
 	let isDashboardPage = $derived(currentPath === '/dashboard');
 	let isMarketIndexPage = $derived(currentPath.startsWith('/analytics'));
 	let marketIndexSectionLinks = $derived(
@@ -115,12 +116,14 @@
 					>
 						Sign in
 					</button>
-					<button
-						onclick={() => navigateTo(primaryCtaHref)}
-						class="inline-flex items-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-					>
-						{primaryCtaLabel}
-					</button>
+					{#if !isHomePage}
+						<button
+							onclick={() => navigateTo(primaryCtaHref)}
+							class="inline-flex items-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-ink shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+						>
+							{primaryCtaLabel}
+						</button>
+					{/if}
 				{/if}
 
 				<div class="md:hidden">
@@ -226,12 +229,14 @@
 						>
 							Sign in
 						</button>
-						<button
-							onclick={() => navigateTo(primaryCtaHref)}
-							class="mt-2 block w-full rounded-xl bg-accent px-3 py-3 text-left text-sm font-medium text-ink"
-						>
-							{primaryCtaLabel}
-						</button>
+						{#if !isHomePage}
+							<button
+								onclick={() => navigateTo(primaryCtaHref)}
+								class="mt-2 block w-full rounded-xl bg-accent px-3 py-3 text-left text-sm font-medium text-ink"
+							>
+								{primaryCtaLabel}
+							</button>
+						{/if}
 					{/if}
 				</div>
 			</div>
