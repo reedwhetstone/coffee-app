@@ -54,10 +54,10 @@
 			</p>
 		</div>
 
-		<div class="mt-10 grid border-y border-line lg:grid-cols-3">
+		<div class="product-grid mt-10 grid border-y border-line lg:grid-cols-3">
 			{#each productPaths as path, index}
 				<article
-					class="group flex flex-col py-8 {index > 0
+					class="product-path group flex flex-col py-8 {index > 0
 						? 'border-t border-line lg:border-l lg:border-t-0 lg:pl-8'
 						: ''} {index < productPaths.length - 1 ? 'lg:pr-8' : ''}"
 				>
@@ -83,3 +83,17 @@
 		</div>
 	</div>
 </section>
+
+<style>
+	@media (min-width: 64rem) {
+		.product-grid {
+			grid-template-rows: repeat(5, auto);
+		}
+
+		.product-path {
+			display: grid;
+			grid-row: span 5;
+			grid-template-rows: subgrid;
+		}
+	}
+</style>

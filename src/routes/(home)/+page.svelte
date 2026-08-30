@@ -50,11 +50,11 @@
 							id="live-market-heading"
 							class="mt-2 font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl"
 						>
-							Today’s catalog, already normalized.
+							Today’s coffee catalog, already normalized.
 						</h2>
 						<p class="mt-4 max-w-2xl text-lg leading-8 text-muted">
-							Source-linked offers from specialty importers, ready to compare by origin, process,
-							price, and evidence.
+							Source-linked offers from specialty importers across retail and wholesale quantities,
+							ready to compare by origin, process, price, and evidence.
 						</p>
 					</div>
 					<div class="flex flex-wrap gap-4 text-sm font-semibold">

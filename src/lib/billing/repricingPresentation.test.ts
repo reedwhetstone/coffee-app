@@ -120,9 +120,11 @@ describe('repricing presentation contract', () => {
 			/Purveyors connects live green coffee data, coffee-native intelligence, and roastery\s+operations in one trusted system\. See the market, understand the evidence, and turn insight\s+into action\./
 		);
 		expect(hero).toContain('Cherry AI');
-		expect(hero).toContain('Parchment Intelligence supplies current offers and price history');
-		expect(hero).toMatch(/Mallard Studio supplies\s+your inventory, roasts, and sales/);
-		expect(hero).toContain('Cherry AI connects that context before it responds.');
+		expect(hero).toContain('Parchment Intelligence provides live offers and pricing insight');
+		expect(hero).toMatch(/Mallard Studio structures\s+inventory, roasts, and sales/);
+		expect(hero).toMatch(
+			/Cherry AI works across both - reasoning, acting, and moving\s+work forward\./
+		);
 		expect(hero).not.toContain('Parchment supplies current offers');
 		expect(hero).not.toContain('Ask Parchment');
 		expect(hero).toContain('prefers-reduced-motion: reduce');
@@ -130,6 +132,15 @@ describe('repricing presentation contract', () => {
 		expect(personas).toContain('From market signal to real work.');
 		expect(personas).toContain('Cherry Green Agent');
 		expect(personas).toContain('Cherry Roast Agent');
+		expect(personas).toContain('product-grid mt-10 grid');
+		expect(personas).toContain('product-path group flex flex-col');
+		expect(personas).toContain('grid-template-rows: repeat(5, auto);');
+		expect(personas).toContain('grid-row: span 5;');
+		expect(personas).toContain('grid-template-rows: subgrid;');
+		expect(homepage).toContain('Today’s coffee catalog, already normalized.');
+		expect(homepage).toMatch(
+			/Source-linked offers from specialty importers across retail and wholesale quantities,\s+ready to compare by origin, process, price, and evidence\./
+		);
 		expect(homepage).toContain('data.data.slice(0, 3)');
 		expect(homepage).toContain('<CoffeeCard {coffee} {parseTastingNotes} compact />');
 		expect(homepage).not.toContain('Features');
