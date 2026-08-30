@@ -10,9 +10,8 @@ import {
 } from '$lib/server/parchmentCatalog';
 import {
 	describeSourcingBriefCriteria,
-	validateSourcingBriefCriteria,
 	type SourcingBriefCriteria
-} from '$lib/procurement/sourcingBriefCriteria';
+} from '$lib/procurement/sourcingBriefPresentation';
 
 export type DashboardBriefSummary = {
 	id: string;
@@ -102,21 +101,12 @@ export const load: PageServerLoad = async (event) => {
 	]);
 
 	const recentArrivals = arrivalsResult as unknown as Record<string, unknown>[];
-	const activeBriefs: DashboardBriefSummary[] = briefRows.flatMap((brief) => {
-		try {
-			const criteria = validateSourcingBriefCriteria(brief.criteria);
-			return [
-				{
-					id: brief.id,
-					name: brief.name,
-					criteriaDescription: describeSourcingBriefCriteria(criteria),
-					catalogHref: briefCatalogHref(criteria)
-				}
-			];
-		} catch {
-			return [];
-		}
-	});
+	const activeBriefs: DashboardBriefSummary[] = briefRows.map((brief) => ({
+		id: brief.id,
+		name: brief.name,
+		criteriaDescription: describeSourcingBriefCriteria(brief.criteria),
+		catalogHref: briefCatalogHref(brief.criteria)
+	}));
 
 	return {
 		recentArrivals,

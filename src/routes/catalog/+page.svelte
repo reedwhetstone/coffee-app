@@ -6,11 +6,10 @@
 	import { checkRole } from '$lib/types/auth.types';
 
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
-	import {
-		summarizeSourcingBriefMatches,
-		type MatchableSourcingLot,
-		type SourcingBriefMatchSummary
-	} from '$lib/procurement/sourcingBriefMatching';
+	import type {
+		PageSourcingBriefMatchSummary,
+		SourcingBriefMatchSummary
+	} from '$lib/procurement/sourcingBriefPresentation';
 
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
@@ -294,12 +293,20 @@
 			toInitialArray<SourcingBriefMatchSummary>(data.briefMatchSummaries)
 	);
 
-	let briefMatchSummaries = $derived(
-		summarizeSourcingBriefMatches(
-			serverBriefMatchSummaries,
-			displayData() as unknown as MatchableSourcingLot[]
-		)
-	);
+	let briefMatchSummaries = $derived.by((): PageSourcingBriefMatchSummary[] => {
+		const displayedIds = new Set(
+			displayData()
+				.map((coffee) => catalogCoffeeId(coffee))
+				.filter((id): id is number => id !== null)
+		);
+
+		return serverBriefMatchSummaries.flatMap((summary) => {
+			const matchingIds = summary.matchingIds.filter((id) => displayedIds.has(id));
+			return matchingIds.length > 0
+				? [{ ...summary, matchingIds, matchCount: matchingIds.length }]
+				: [];
+		});
+	});
 	let hasBriefMatches = $derived(briefMatchSummaries.length > 0);
 	let trackedCountOnPage = $derived(
 		displayData().filter((c) => trackedIds.has((c as unknown as { id: number }).id)).length

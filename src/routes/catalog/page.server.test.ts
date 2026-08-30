@@ -13,7 +13,7 @@ const mockGenerateCoffeeCollectionSchema = vi.fn();
 const mockGenerateSchemaGraph = vi.fn();
 const mockCreateSchemaService = vi.fn();
 const mockGetTrackedLotIds = vi.fn();
-const mockGetBriefMatchSummaries = vi.fn();
+const mockGetActiveSourcingBriefMatches = vi.fn();
 
 class MockCatalogSchemaUnavailableError extends Error {
 	constructor(message: string) {
@@ -58,8 +58,8 @@ vi.mock('$lib/server/trackedLots', () => ({
 	getTrackedLotIds: mockGetTrackedLotIds
 }));
 
-vi.mock('$lib/server/briefMatchSummary', () => ({
-	getBriefMatchSummaries: mockGetBriefMatchSummaries
+vi.mock('$lib/server/parchmentProcurement', () => ({
+	getActiveSourcingBriefMatches: mockGetActiveSourcingBriefMatches
 }));
 
 let load: typeof import('./+page.server').load;
@@ -119,7 +119,7 @@ beforeEach(async () => {
 		generateSchemaGraph: mockGenerateSchemaGraph
 	});
 	mockGetTrackedLotIds.mockResolvedValue([]);
-	mockGetBriefMatchSummaries.mockResolvedValue([]);
+	mockGetActiveSourcingBriefMatches.mockResolvedValue([]);
 
 	({ load } = await import('./+page.server'));
 });
@@ -882,7 +882,7 @@ describe('/catalog tracked lots and brief matches', () => {
 		// Member enrichment is never invoked for an anonymous load, so no user-specific
 		// data can enter the public (streamed) render.
 		expect(mockGetTrackedLotIds).not.toHaveBeenCalled();
-		expect(mockGetBriefMatchSummaries).not.toHaveBeenCalled();
+		expect(mockGetActiveSourcingBriefMatches).not.toHaveBeenCalled();
 	});
 
 	it('fetches tracked lot IDs for a ppiAccess user', async () => {
@@ -900,7 +900,7 @@ describe('/catalog tracked lots and brief matches', () => {
 		);
 		expect(await result.trackedLotIds).toEqual([10, 42]);
 		// ppiAccess non-member: briefs not fetched
-		expect(mockGetBriefMatchSummaries).not.toHaveBeenCalled();
+		expect(mockGetActiveSourcingBriefMatches).not.toHaveBeenCalled();
 		expect(await result.briefMatchSummaries).toEqual([]);
 	});
 
@@ -912,8 +912,14 @@ describe('/catalog tracked lots and brief matches', () => {
 			ppiAccess: false
 		};
 		mockGetTrackedLotIds.mockResolvedValue([7]);
-		mockGetBriefMatchSummaries.mockResolvedValue([
-			{ briefId: 'b1', briefName: 'Ethiopia brief', matchCount: 1, matchingIds: [1] }
+		mockGetActiveSourcingBriefMatches.mockResolvedValue([
+			{
+				briefId: 'b1',
+				briefName: 'Ethiopia brief',
+				criteria: { version: 1, country: 'Ethiopia' },
+				totalMatchCount: 1,
+				matchingIds: [1]
+			}
 		]);
 
 		const result = (await load(makeLoadInputWithPrincipal('member', session, principal))) as {
@@ -926,12 +932,15 @@ describe('/catalog tracked lots and brief matches', () => {
 		);
 		expect(await result.trackedLotIds).toEqual([7]);
 		const briefMatchSummaries = await result.briefMatchSummaries;
-		expect(mockGetBriefMatchSummaries).toHaveBeenCalled();
+		expect(mockGetActiveSourcingBriefMatches).toHaveBeenCalledWith(
+			expect.objectContaining({ catalog: expect.anything() }),
+			10
+		);
 		expect(briefMatchSummaries).toHaveLength(1);
 		expect(briefMatchSummaries[0].briefName).toBe('Ethiopia brief');
 	});
 
-	it('includes a streamed deep-link coffee in member brief match summaries', async () => {
+	it('streams canonical brief IDs independently of a deep-link catalog read', async () => {
 		const session = { access_token: 'member-token' } as Session | null;
 		const principal = {
 			isAuthenticated: true as const,
@@ -960,8 +969,14 @@ describe('/catalog tracked lots and brief matches', () => {
 					pagination: { total: 1 }
 				}
 			});
-		mockGetBriefMatchSummaries.mockResolvedValue([
-			{ briefId: 'b1', briefName: 'Colombia brief', matchCount: 1, matchingIds: [99] }
+		mockGetActiveSourcingBriefMatches.mockResolvedValue([
+			{
+				briefId: 'b1',
+				briefName: 'Colombia brief',
+				criteria: { version: 1, country: 'Colombia' },
+				totalMatchCount: 1,
+				matchingIds: [99]
+			}
 		]);
 
 		const result = (await load(
@@ -978,12 +993,9 @@ describe('/catalog tracked lots and brief matches', () => {
 		await expect(result.briefMatchSummaries).resolves.toEqual([
 			expect.objectContaining({ briefId: 'b1', matchingIds: [99] })
 		]);
-		expect(mockGetBriefMatchSummaries).toHaveBeenCalledWith(
+		expect(mockGetActiveSourcingBriefMatches).toHaveBeenCalledWith(
 			expect.objectContaining({ catalog: expect.anything() }),
-			expect.arrayContaining([
-				expect.objectContaining({ id: 1 }),
-				expect.objectContaining({ id: 99 })
-			])
+			10
 		);
 	});
 
@@ -997,7 +1009,7 @@ describe('/catalog tracked lots and brief matches', () => {
 		// Both member enrichment sources fail; the critical rows must still return and
 		// the streamed enrichment must degrade to empty rather than blanking the page.
 		mockGetTrackedLotIds.mockRejectedValue(new Error('tracked lots unavailable'));
-		mockGetBriefMatchSummaries.mockRejectedValue(new Error('briefs unavailable'));
+		mockGetActiveSourcingBriefMatches.mockRejectedValue(new Error('briefs unavailable'));
 		mockCatalogOriginPriceStats.mockRejectedValue(new Error('origin stats unavailable'));
 
 		const result = (await load(makeLoadInputWithPrincipal('member', session, principal))) as {

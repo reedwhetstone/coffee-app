@@ -17,10 +17,24 @@ vi.mock('$lib/server/trackedLots', () => ({
 
 let load: typeof import('./+page.server').load;
 
+function briefListResponse(rows: Array<Record<string, unknown>>) {
+	return {
+		data: {
+			data: rows,
+			meta: {
+				resource: 'procurement-briefs',
+				namespace: '/v1/procurement/briefs',
+				version: 'v1',
+				auth: { kind: 'session', role: 'member', apiPlan: null }
+			}
+		}
+	};
+}
+
 beforeEach(async () => {
 	vi.clearAllMocks();
 	mockCatalogList.mockResolvedValue({ data: { data: [] } });
-	mockBriefsList.mockResolvedValue({ data: { data: [] } });
+	mockBriefsList.mockResolvedValue(briefListResponse([]));
 	mockCreateParchmentServerClient.mockResolvedValue({
 		catalog: { list: mockCatalogList },
 		procurement: { briefs: { list: mockBriefsList } }
@@ -35,7 +49,7 @@ function makeLoadInput(input: {
 	briefRows?: Array<Record<string, unknown>>;
 }) {
 	if (input.briefRows) {
-		mockBriefsList.mockResolvedValue({ data: { data: input.briefRows } });
+		mockBriefsList.mockResolvedValue(briefListResponse(input.briefRows));
 	}
 
 	return {
@@ -150,7 +164,12 @@ describe('/dashboard sourcing workspace load', () => {
 					{
 						id: 'brief-1',
 						name: 'Colombia brief',
-						criteria: { version: 1, country: 'Colombia', max_price_per_lb: 6 }
+						criteria: { version: 1, country: 'Colombia', max_price_per_lb: 6 },
+						cadence: 'manual',
+						isActive: true,
+						lastRunAt: null,
+						createdAt: '2026-07-01T00:00:00Z',
+						updatedAt: '2026-07-01T00:00:00Z'
 					}
 				]
 			})
