@@ -116,9 +116,14 @@ describe('repricing presentation contract', () => {
 		const homepage = readSource('src/routes/(home)/+page.svelte');
 
 		expect(hero).toContain('The intelligence layer for coffee.');
-		expect(hero).toContain('Cherry');
-		expect(hero).toContain('Parchment supplies current offers and price history');
-		expect(hero).toMatch(/Mallard Studio supplies your\s+inventory, roasts, and sales/);
+		expect(hero).toMatch(
+			/Purveyors connects live green coffee data, coffee-native intelligence, and roastery\s+operations in one trusted system\. See the market, understand the evidence, and turn insight\s+into action\./
+		);
+		expect(hero).toContain('Cherry AI');
+		expect(hero).toContain('Parchment Intelligence supplies current offers and price history');
+		expect(hero).toMatch(/Mallard Studio supplies\s+your inventory, roasts, and sales/);
+		expect(hero).toContain('Cherry AI connects that context before it responds.');
+		expect(hero).not.toContain('Parchment supplies current offers');
 		expect(hero).not.toContain('Ask Parchment');
 		expect(hero).toContain('prefers-reduced-motion: reduce');
 		expect(personas).toContain('One connected coffee system');

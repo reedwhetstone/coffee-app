@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/svelte';
+import { render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Pricing from './Pricing.svelte';
 import { SELF_SERVE_PLANS } from '$lib/billing/selfServePlans';
@@ -63,5 +63,14 @@ describe('homepage pricing impressions', () => {
 
 		observers[0].trigger(true);
 		expect(mocks.trackBillingOfferEvent).toHaveBeenCalledTimes(SELF_SERVE_PLANS.length);
+	});
+
+	it('positions Cherry AI as an operational product', () => {
+		render(Pricing, {
+			auth: { isSignedIn: false, user: null, role: 'viewer', ppiAccess: false }
+		});
+
+		expect(screen.getByText('Deploy Cherry AI across your coffee operation.')).toBeVisible();
+		expect(screen.queryByText('Choose the context available to Cherry.')).not.toBeInTheDocument();
 	});
 });

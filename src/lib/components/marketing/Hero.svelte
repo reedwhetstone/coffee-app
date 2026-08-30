@@ -19,8 +19,9 @@
 				The intelligence layer for coffee.
 			</h1>
 			<p class="mt-6 max-w-2xl text-lg leading-8 text-muted sm:text-xl sm:leading-9">
-				Purveyors connects live green coffee data, Cherry, and roastery operations in one trusted
-				system. See the market, understand the evidence, and move.
+				Purveyors connects live green coffee data, coffee-native intelligence, and roastery
+				operations in one trusted system. See the market, understand the evidence, and turn insight
+				into action.
 			</p>
 
 			<div class="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
@@ -61,7 +62,7 @@
 			/>
 			<div class="bg-ink p-6 text-on-dark sm:p-7">
 				<div class="flex items-center justify-between gap-4">
-					<p class="text-xs font-semibold text-accent">Cherry</p>
+					<p class="text-xs font-semibold text-accent">Cherry AI</p>
 					<span
 						class="rounded-full border border-on-dark/20 px-2.5 py-1 text-[11px] text-on-dark/70"
 					>
@@ -72,8 +73,8 @@
 					What changed in the market this week?
 				</p>
 				<p class="hero-answer mt-4 max-w-lg text-sm leading-6 text-on-dark/75">
-					Parchment supplies current offers and price history. Mallard Studio supplies your
-					inventory, roasts, and sales. Cherry connects that context before it responds.
+					Parchment Intelligence supplies current offers and price history. Mallard Studio supplies
+					your inventory, roasts, and sales. Cherry AI connects that context before it responds.
 				</p>
 
 				<div class="mt-6 h-px overflow-hidden bg-on-dark/15" aria-hidden="true">

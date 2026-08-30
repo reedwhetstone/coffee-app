@@ -55,7 +55,7 @@
 		<div class="mx-auto max-w-3xl text-center">
 			<h2 class="text-sm font-semibold leading-7 text-organic-rust">Simple self-serve plans</h2>
 			<p class="mt-2 font-serif text-4xl font-medium tracking-tight text-ink sm:text-5xl">
-				Choose the context available to Cherry.
+				Deploy Cherry AI across your coffee operation.
 			</p>
 			<p class="mt-5 text-lg leading-8 text-muted">
 				Intelligence understands the outside market. Studio understands your own roastery. Both
