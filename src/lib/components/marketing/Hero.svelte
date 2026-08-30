@@ -1,10 +1,85 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { CATALOG_SIZE_LABEL, IMPORTER_COUNT_LABEL } from '$lib/public-contracts/brand';
 	import type { PageAuthView } from '$lib/types/auth.types';
 
-	let { auth } = $props<{ auth: PageAuthView }>();
+	const SUPPLIER_NAMES = [
+		'Cafe Imports',
+		'Covoya',
+		'Royal Coffee',
+		'Ally Coffee',
+		'RhoadsRoast',
+		'Coffee Bean Corral',
+		'Genuine Origin',
+		'Burman',
+		'Smokin Beans',
+		'Home Roast Coffee',
+		"Sweet Maria's",
+		'Hacea Coffee',
+		'Copan Trade',
+		"Captain's Coffee",
+		'Coffee Shrub',
+		'Bodhi Leaf',
+		'Showroom Coffee',
+		'Roastmasters',
+		'Coffee Bean Direct',
+		'Happy Mug',
+		'Fresh Roasted Coffee',
+		'BC Green Coffee',
+		'Theta Ridge',
+		'Coffee Crafters Green',
+		'Yellow Rooster',
+		'Sea Island',
+		'T.M. Ward Coffee',
+		'Forest Coffee',
+		'Lavanta Coffee',
+		'Sonofresco',
+		'Good Brothers',
+		'Cafe Kreyol',
+		'Prime Green Coffee',
+		'The Coffee Project',
+		"Dean's Beans",
+		'Java Bean Plus',
+		'Atlas Coffee',
+		'Ally Open',
+		'Mill City',
+		'Two Cups of Joe',
+		'StoneX Specialty',
+		'Klatch',
+		'Cafe Juan Ana',
+		'Primos Coffee',
+		'Sleepy Mango',
+		'Villa Coffee'
+	] as const;
+
+	const FALLBACK_COFFEE_NAMES = [
+		'Ethiopia Guji Natural',
+		'Colombia Pink Bourbon',
+		'Kenya Nyeri AA',
+		'Brazil Cerrado Natural'
+	] as const;
+
+	let { auth, coffeeNames = [] } = $props<{ auth: PageAuthView; coffeeNames?: string[] }>();
 
 	let isSignedIn = $derived(auth.isSignedIn);
+	let coffeeExamples = $derived(coffeeNames.length > 0 ? coffeeNames : [...FALLBACK_COFFEE_NAMES]);
+	let coffeeIndex = $state(0);
+	let activeCoffeeName = $derived(coffeeExamples[coffeeIndex % coffeeExamples.length]);
+
+	onMount(() => {
+		if (
+			window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+			coffeeExamples.length < 2
+		) {
+			return;
+		}
+
+		const interval = window.setInterval(() => {
+			coffeeIndex = (coffeeIndex + 1) % coffeeExamples.length;
+		}, 1250);
+
+		return () => window.clearInterval(interval);
+	});
 </script>
 
 <section class="texture-grain overflow-hidden border-b border-line bg-surface-canvas">
@@ -100,19 +175,58 @@
 	</div>
 
 	<dl class="mx-auto grid max-w-7xl border-t border-line px-6 sm:grid-cols-3 lg:px-8">
-		<div class="py-5 sm:border-r sm:border-line sm:pr-8">
+		<div class="min-w-0 py-5 sm:border-r sm:border-line sm:pr-8">
 			<dt class="text-xs font-medium text-muted">Live market coverage</dt>
 			<dd class="mt-1 font-serif text-2xl font-medium text-ink">{CATALOG_SIZE_LABEL} offers</dd>
+			<div class="mt-3 flex min-w-0 items-center gap-2" aria-hidden="true">
+				<span class="relative flex size-2 shrink-0">
+					<span
+						class="absolute inline-flex size-full rounded-full bg-accent opacity-40 motion-safe:animate-ping"
+					></span>
+					<span class="relative inline-flex size-2 rounded-full bg-accent"></span>
+				</span>
+				<div class="min-w-0 overflow-hidden text-xs font-medium text-muted">
+					{#key activeCoffeeName}
+						<span class="coffee-swap block truncate">{activeCoffeeName}</span>
+					{/key}
+				</div>
+			</div>
+			<span class="sr-only">Recent coffee examples include {coffeeExamples.join(', ')}.</span>
 		</div>
-		<div class="border-t border-line py-5 sm:border-l-0 sm:border-r sm:border-t-0 sm:px-8">
+		<div class="min-w-0 border-t border-line py-5 sm:border-l-0 sm:border-r sm:border-t-0 sm:px-8">
 			<dt class="text-xs font-medium text-muted">Normalized sources</dt>
 			<dd class="mt-1 font-serif text-2xl font-medium text-ink">
 				{IMPORTER_COUNT_LABEL} importers
 			</dd>
+			<div class="supplier-marquee mt-3 overflow-hidden" aria-hidden="true">
+				<div class="supplier-marquee-track flex w-max">
+					{#each [0, 1] as _copy}
+						<div class="supplier-marquee-group flex shrink-0 gap-2 pr-2">
+							{#each SUPPLIER_NAMES as supplier}
+								<span
+									class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface-panel px-2.5 py-1 text-[11px] font-medium text-muted"
+								>
+									<span class="size-1 rounded-full bg-organic-rust"></span>
+									{supplier}
+								</span>
+							{/each}
+						</div>
+					{/each}
+				</div>
+			</div>
+			<span class="sr-only">Live sources include {SUPPLIER_NAMES.join(', ')}.</span>
 		</div>
-		<div class="border-t border-line py-5 sm:border-t-0 sm:pl-8">
+		<div class="min-w-0 border-t border-line py-5 sm:border-t-0 sm:pl-8">
 			<dt class="text-xs font-medium text-muted">Coffee context</dt>
 			<dd class="mt-1 font-serif text-2xl font-medium text-ink">Updated daily</dd>
+			<div class="mt-3 flex items-center gap-2 text-xs font-medium text-muted">
+				<span
+					class="inline-flex h-5 items-center rounded-full bg-success-subtle px-2 text-success-strong"
+				>
+					Fresh
+				</span>
+				Prices, stock, and arrivals
+			</div>
 		</div>
 	</dl>
 </section>
@@ -130,6 +244,18 @@
 
 	.hero-answer {
 		animation-delay: 0.18s;
+	}
+
+	.coffee-swap {
+		animation: coffee-swap 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+	}
+
+	.supplier-marquee {
+		mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+	}
+
+	.supplier-marquee-track {
+		animation: supplier-scroll 72s linear infinite;
 	}
 
 	.hero-signal:nth-child(1) {
@@ -164,10 +290,29 @@
 		}
 	}
 
+	@keyframes coffee-swap {
+		from {
+			opacity: 0;
+			transform: translateY(0.5rem);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@keyframes supplier-scroll {
+		to {
+			transform: translateX(-50%);
+		}
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.hero-path,
 		.hero-answer,
-		.hero-signal {
+		.hero-signal,
+		.coffee-swap,
+		.supplier-marquee-track {
 			animation: none;
 		}
 	}
