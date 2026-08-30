@@ -118,7 +118,7 @@ describe('repricing presentation contract', () => {
 		expect(hero).toContain('The intelligence layer for coffee.');
 		expect(hero).toContain('Cherry');
 		expect(hero).toContain('Parchment supplies current offers and price history');
-		expect(hero).toContain('Mallard Studio supplies your inventory, roasts, and sales');
+		expect(hero).toMatch(/Mallard Studio supplies your\s+inventory, roasts, and sales/);
 		expect(hero).not.toContain('Ask Parchment');
 		expect(hero).toContain('prefers-reduced-motion: reduce');
 		expect(personas).toContain('One connected coffee system');

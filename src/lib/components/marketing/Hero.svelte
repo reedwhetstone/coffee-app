@@ -72,8 +72,8 @@
 					What changed in the market this week?
 				</p>
 				<p class="hero-answer mt-4 max-w-lg text-sm leading-6 text-on-dark/75">
-					Parchment supplies current offers and price history. Mallard Studio supplies your inventory,
-					roasts, and sales. Cherry connects that context before it responds.
+					Parchment supplies current offers and price history. Mallard Studio supplies your
+					inventory, roasts, and sales. Cherry connects that context before it responds.
 				</p>
 
 				<div class="mt-6 h-px overflow-hidden bg-on-dark/15" aria-hidden="true">
