@@ -32,35 +32,14 @@
 </script>
 
 <article
-	class={`group relative flex h-full flex-col overflow-hidden rounded-3xl border bg-surface-canvas p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-7 ${isBundle ? 'order-first border-success ring-1 ring-success/20 lg:order-none' : plan.id === 'intelligence' ? 'border-accent/45 hover:border-accent' : 'border-line hover:border-accent/60'}`}
+	class={`group relative flex h-full flex-col rounded-2xl border bg-surface-canvas p-6 shadow-sm transition-shadow duration-200 hover:shadow-md sm:p-7 ${isBundle ? 'order-first border-success ring-1 ring-success/20 lg:order-none' : 'border-line hover:border-accent/60'}`}
 >
-	<div
-		class={`absolute inset-x-0 top-0 h-1 ${isBundle ? 'bg-success' : plan.id === 'intelligence' ? 'bg-intelligence' : 'bg-accent'}`}
-		aria-hidden="true"
-	></div>
-
 	<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-		<div class="flex items-center gap-3">
-			<span
-				class={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ${isBundle ? 'bg-success-subtle text-success-strong ring-success/25' : plan.id === 'intelligence' ? 'bg-intelligence/10 text-intelligence ring-intelligence/20' : 'bg-accent/10 text-ink ring-accent/25'}`}
-			>
-				<svg
-					class="h-6 w-6"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke-width="1.5"
-					stroke="currentColor"
-					aria-hidden="true"
-				>
-					<path stroke-linecap="round" stroke-linejoin="round" d={plan.iconPath} />
-				</svg>
-			</span>
-			<div>
-				<p class={`text-xs font-semibold ${isBundle ? 'text-success-strong' : 'text-accent'}`}>
-					{plan.eyebrow}
-				</p>
-				<h3 class="mt-1 text-xl font-semibold text-ink">{plan.name}</h3>
-			</div>
+		<div class="min-w-0">
+			<p class={`text-xs font-semibold ${isBundle ? 'text-success-strong' : 'text-accent'}`}>
+				{plan.eyebrow}
+			</p>
+			<h3 class="mt-1 text-xl font-semibold text-ink">{plan.name}</h3>
 		</div>
 		<span
 			class={`self-start rounded-full px-3 py-1 text-xs font-semibold sm:shrink-0 ${isBundle ? 'bg-success-subtle text-success-strong' : 'border border-line bg-surface-panel text-muted'}`}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { BILLING_OFFERS } from '$lib/billing/offers';
+	import SubscriptionProductDetail from './SubscriptionProductDetail.svelte';
 
 	const planContexts = [
 		{
@@ -20,16 +21,20 @@
 
 	const intelligenceFlow = [
 		{
-			label: 'See the movement',
+			title: 'Market movement',
 			description: 'Arrivals, delistings, supplier changes, and origin-level price movement.'
 		},
 		{
-			label: 'Compare the evidence',
-			description: 'Live offers, market benchmarks, supplier health, and price history in context.'
+			title: 'Supplier evidence',
+			description: 'Compare live offers, supplier coverage, and supplier health in context.'
 		},
 		{
-			label: 'Narrow the decision',
-			description: 'Ask Parchment to investigate, explain, and build a sourcing shortlist.'
+			title: 'Price context',
+			description: 'Review origin benchmarks, market signals, and extended price history.'
+		},
+		{
+			title: 'Sourcing decision',
+			description: 'Use Ask Parchment and the weekly brief to narrow the next move.'
 		}
 	] as const;
 
@@ -120,129 +125,41 @@
 		</p>
 	</section>
 
-	<section
-		id="intelligence-details"
-		class="scroll-mt-24 border-t border-line pt-12"
-		aria-labelledby="intelligence-heading"
-	>
-		<div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem]">
-			<div>
-				<div class="flex flex-wrap items-center gap-3">
-					<p class="text-sm font-semibold text-accent">Parchment Intelligence</p>
-					<span class="text-sm font-semibold text-ink">
-						{BILLING_OFFERS.intelligenceMonthly.price}{BILLING_OFFERS.intelligenceMonthly.interval}
-					</span>
-				</div>
-				<h3
-					id="intelligence-heading"
-					class="mt-3 font-serif text-3xl font-medium tracking-tight text-ink sm:text-4xl"
-				>
-					Know what changed, why it matters, and where to look next.
-				</h3>
-				<p class="mt-4 max-w-3xl text-base leading-7 text-muted">
-					Parchment Intelligence turns daily-normalized offer data into a working market view.
-					Compare current offers, investigate movement, and keep the evidence in one sourcing
-					conversation with Ask Parchment.
-				</p>
-				<ul
-					class="mt-8 grid gap-px overflow-hidden rounded-2xl bg-line ring-1 ring-line sm:grid-cols-2"
-				>
-					<li class="bg-surface-panel p-4 text-sm leading-6 text-muted">
-						Supplier comparisons and supplier health signals
-					</li>
-					<li class="bg-surface-panel p-4 text-sm leading-6 text-muted">
-						Arrivals, delistings, and origin benchmarks
-					</li>
-					<li class="bg-surface-panel p-4 text-sm leading-6 text-muted">
-						Market signals and extended price-history depth
-					</li>
-					<li class="bg-surface-panel p-4 text-sm leading-6 text-muted">
-						Weekly procurement brief and portfolio context
-					</li>
-				</ul>
-				<div class="mt-6 flex flex-wrap gap-5 text-sm font-semibold">
-					<a href="/analytics" class="text-link hover:text-accent">
-						Explore the Market Index <span aria-hidden="true">→</span>
-					</a>
-					<a href="/chat" class="text-link hover:text-accent">
-						Ask Parchment <span aria-hidden="true">→</span>
-					</a>
-				</div>
-			</div>
+	<SubscriptionProductDetail
+		anchorId="intelligence-details"
+		headingId="intelligence-heading"
+		name="Parchment Intelligence"
+		price={`${BILLING_OFFERS.intelligenceMonthly.price}${BILLING_OFFERS.intelligenceMonthly.interval}`}
+		headline="Know what changed, why it matters, and where to look next."
+		description="Parchment Intelligence turns daily-normalized offer data into a working market view. Compare current offers, investigate movement, and keep the evidence in one sourcing conversation with Ask Parchment."
+		askTitle="Ask Parchment is a core Intelligence feature."
+		askDescription="Ask about current offers, compare suppliers and price history, investigate market movement, and build a sourcing shortlist from the evidence."
+		supportingText="Intelligence includes portfolio and catalog context too. Add Studio when you also need inventory, roast, tasting, sales, and margin workflows for your own roastery."
+		workflowTitle="From market movement to decision"
+		workflow={intelligenceFlow}
+		links={[
+			{ href: '/analytics', label: 'Explore the Market Index' },
+			{ href: '/chat', label: 'Ask Parchment' }
+		]}
+	/>
 
-			<div class="border-l-2 border-chart-teal pl-5">
-				<p class="text-sm font-semibold text-ink">From market movement to decision</p>
-				<ol class="mt-5 space-y-5">
-					{#each intelligenceFlow as step, index}
-						<li class="flex gap-4">
-							<span class="text-sm font-semibold text-chart-teal">0{index + 1}</span>
-							<div>
-								<h4 class="font-semibold text-ink">{step.label}</h4>
-								<p class="mt-1 text-sm leading-6 text-muted">{step.description}</p>
-							</div>
-						</li>
-					{/each}
-				</ol>
-			</div>
-		</div>
-	</section>
-
-	<section
-		id="studio-details"
-		class="scroll-mt-24 border-t border-line pt-12"
-		aria-labelledby="studio-heading"
-	>
-		<div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem]">
-			<div>
-				<div class="flex flex-wrap items-center gap-3">
-					<p class="text-sm font-semibold text-accent">Mallard Studio</p>
-					<span class="text-sm font-semibold text-ink">
-						{BILLING_OFFERS.studioMonthly.price}{BILLING_OFFERS.studioMonthly.interval}
-					</span>
-				</div>
-				<h3
-					id="studio-heading"
-					class="mt-3 font-serif text-3xl font-medium tracking-tight text-ink sm:text-4xl"
-				>
-					Keep the coffee, the roast, and the result connected.
-				</h3>
-				<p class="mt-4 max-w-3xl text-base leading-7 text-muted">
-					Mallard Studio replaces disconnected inventory sheets, roast notes, and margin math with
-					one operating record. Trace what happened from the green lot through the finished roast.
-				</p>
-				<div class="mt-7 border-l-2 border-chart-teal pl-5">
-					<p class="font-semibold text-ink">Ask Parchment is a core Studio feature.</p>
-					<p class="mt-2 text-sm leading-6 text-muted">
-						Ask about inventory, compare roast history and tasting notes, and prepare inventory,
-						roast, or sales changes for your confirmation.
-					</p>
-				</div>
-				<p class="mt-6 text-sm leading-6 text-muted">
-					Studio includes catalog and sourcing context too. Add Intelligence when you also need
-					market signals, supplier comparisons, price history, and the broader market view.
-				</p>
-			</div>
-
-			<div>
-				<p class="text-sm font-semibold text-accent">One coffee record through production</p>
-				<ol class="mt-5 overflow-hidden rounded-2xl bg-line ring-1 ring-line">
-					{#each studioWorkflow as step, index}
-						<li class="flex gap-4 border-b border-line bg-surface-panel p-4 last:border-b-0">
-							<span class="text-sm font-semibold text-chart-rust">0{index + 1}</span>
-							<div>
-								<h4 class="font-semibold text-ink">{step.title}</h4>
-								<p class="mt-1 text-sm leading-6 text-muted">{step.description}</p>
-							</div>
-						</li>
-					{/each}
-				</ol>
-			</div>
-		</div>
-	</section>
+	<SubscriptionProductDetail
+		anchorId="studio-details"
+		headingId="studio-heading"
+		name="Mallard Studio"
+		price={`${BILLING_OFFERS.studioMonthly.price}${BILLING_OFFERS.studioMonthly.interval}`}
+		headline="Keep the coffee, the roast, and the result connected."
+		description="Mallard Studio replaces disconnected inventory sheets, roast notes, and margin math with one operating record. Trace what happened from the green lot through the finished roast."
+		askTitle="Ask Parchment is a core Studio feature."
+		askDescription="Ask about inventory, compare roast history and tasting notes, and prepare inventory, roast, or sales changes for your confirmation."
+		supportingText="Studio includes catalog and sourcing context too. Add Intelligence when you also need market signals, supplier comparisons, price history, and the broader market view."
+		workflowTitle="One coffee record through production"
+		workflow={studioWorkflow}
+	/>
 
 	<section
 		id="both-details"
-		class="scroll-mt-24 border-t-2 border-accent pt-10"
+		class="scroll-mt-24 border-t border-line pt-12"
 		aria-labelledby="both-heading"
 	>
 		<div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">

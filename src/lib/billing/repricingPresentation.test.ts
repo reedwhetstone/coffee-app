@@ -55,6 +55,9 @@ describe('repricing presentation contract', () => {
 		const planCard = readSource('src/lib/components/marketing/SelfServePlanCard.svelte');
 		const plans = readSource('src/lib/billing/selfServePlans.ts');
 		const details = readSource('src/lib/components/marketing/SubscriptionPlanDetails.svelte');
+		const productDetail = readSource(
+			'src/lib/components/marketing/SubscriptionProductDetail.svelte'
+		);
 		const subscription = readSource('src/routes/subscription/+page.svelte');
 		const api = readSource('src/routes/api/+page.svelte');
 
@@ -64,6 +67,10 @@ describe('repricing presentation contract', () => {
 		expect(pricing).toContain('SELF_SERVE_PLANS');
 		expect(subscription).toContain('SELF_SERVE_PLANS');
 		expect(planCard).toContain('plan.features');
+		expect(planCard).not.toContain('plan.iconPath');
+		expect(planCard).not.toContain('absolute inset-x-0 top-0 h-1');
+		expect(planCard).not.toContain('bg-intelligence');
+		expect(plans).not.toContain('iconPath:');
 		expect(pricing).toContain('See API plans');
 		expect(pricing).not.toContain("handleSelectPlan('api')");
 		expect(pricing).not.toContain("handleSelectPlan('enterprise')");
@@ -77,11 +84,14 @@ describe('repricing presentation contract', () => {
 		expect(subscription).not.toMatch(
 			/stay separate below|stay out of the everyday product comparison/
 		);
-		expect(details).toContain('id="intelligence-details"');
-		expect(details).toContain('id="studio-details"');
+		expect(details).toContain('anchorId="intelligence-details"');
+		expect(details).toContain('anchorId="studio-details"');
 		expect(details).toContain('id="both-details"');
+		expect(productDetail).toContain('id={anchorId}');
 		expect(details).toContain('Every self-serve subscription includes Ask Parchment');
 		expect(details).toContain('Ask Parchment is a core Studio feature.');
+		expect(details).toContain('Ask Parchment is a core Intelligence feature.');
+		expect(details.match(/<SubscriptionProductDetail/g)?.length).toBe(2);
 		expect(details).toContain('One place to ask. Different context for the work.');
 		expect(plans.match(/Ask Parchment/g)?.length).toBeGreaterThanOrEqual(3);
 		expect(api).toContain('id="plans"');
