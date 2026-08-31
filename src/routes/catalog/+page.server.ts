@@ -26,7 +26,10 @@ import {
 	resolveCatalogCredentialMode
 } from '$lib/server/parchmentClient';
 import { getTrackedLotIds } from '$lib/server/trackedLots';
-import { getBriefMatchSummaries, type BriefMatchSummary } from '$lib/server/briefMatchSummary';
+import {
+	getActiveSourcingBriefMatches,
+	type SourcingBriefMatchSummary
+} from '$lib/server/parchmentProcurement';
 
 // Watchlist-only view is served as a single page; tracked lists are small.
 const TRACKED_VIEW_LIMIT = 200;
@@ -367,16 +370,6 @@ async function streamDeepLinkCoffee(options: {
 	}
 }
 
-async function resolveBriefMatchCatalogLots(
-	catalogData: SdkCatalogItem[],
-	deepLinkCoffee: Promise<CatalogResourceItem | null>
-): Promise<Parameters<typeof getBriefMatchSummaries>[1]> {
-	const streamedCoffee = await deepLinkCoffee;
-	if (!streamedCoffee) return catalogData as Parameters<typeof getBriefMatchSummaries>[1];
-
-	return [...catalogData, streamedCoffee] as Parameters<typeof getBriefMatchSummaries>[1];
-}
-
 export const load: PageServerLoad = async (event) => {
 	const { locals, url } = event;
 	const requestedCatalogState = parseCatalogUrlState(url, '/catalog');
@@ -544,18 +537,10 @@ export const load: PageServerLoad = async (event) => {
 					})
 			: Promise.resolve([]);
 
-	const briefMatchSummaries: Promise<BriefMatchSummary[]> =
-		userId && hasParchmentAccess && isMember
-			? resolveBriefMatchCatalogLots(catalogData, deepLinkCoffee)
-					.then(async (lots) =>
-						getBriefMatchSummaries(
-							catalogClient ??
-								(await createParchmentServerClient(event, {
-									mode: 'session'
-								})),
-							lots
-						)
-					)
+	const briefMatchSummaries: Promise<SourcingBriefMatchSummary[]> =
+		userId && hasParchmentAccess
+			? getSessionParchmentClient()
+					.then((client) => getActiveSourcingBriefMatches(client, 10))
 					.catch((error) => {
 						console.error('Error loading brief match summaries:', error);
 						return [];

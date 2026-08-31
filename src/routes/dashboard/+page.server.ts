@@ -10,9 +10,8 @@ import {
 } from '$lib/server/parchmentCatalog';
 import {
 	describeSourcingBriefCriteria,
-	validateSourcingBriefCriteria,
 	type SourcingBriefCriteria
-} from '$lib/procurement/sourcingBriefCriteria';
+} from '$lib/procurement/sourcingBriefPresentation';
 
 export type DashboardBriefSummary = {
 	id: string;
@@ -37,6 +36,12 @@ function briefCatalogHref(criteria: SourcingBriefCriteria): string {
 	if (criteria.processing) params.set('processing', criteria.processing);
 	if (criteria.processing_base_method) {
 		params.set('processing_base_method', criteria.processing_base_method);
+	}
+	if (criteria.max_price_per_lb !== undefined) {
+		params.set('price_per_lb_max', String(criteria.max_price_per_lb));
+	}
+	if (criteria.stocked_days !== undefined) {
+		params.set('stocked_days', String(criteria.stocked_days));
 	}
 	if (criteria.wholesale_only) params.set('wholesaleOnly', 'true');
 	const query = params.toString();
@@ -86,7 +91,7 @@ export const load: PageServerLoad = async (event) => {
 			: Promise.resolve({ summaries: [] as TrackedLotSummary[], catalog: [] });
 
 	const briefsPromise =
-		userId && isMember
+		userId && hasSourcingAccess
 			? parchmentClientPromise
 					.then((client) => listActiveSourcingBriefs(client, 5))
 					.catch((error) => {
@@ -102,21 +107,12 @@ export const load: PageServerLoad = async (event) => {
 	]);
 
 	const recentArrivals = arrivalsResult as unknown as Record<string, unknown>[];
-	const activeBriefs: DashboardBriefSummary[] = briefRows.flatMap((brief) => {
-		try {
-			const criteria = validateSourcingBriefCriteria(brief.criteria);
-			return [
-				{
-					id: brief.id,
-					name: brief.name,
-					criteriaDescription: describeSourcingBriefCriteria(criteria),
-					catalogHref: briefCatalogHref(criteria)
-				}
-			];
-		} catch {
-			return [];
-		}
-	});
+	const activeBriefs: DashboardBriefSummary[] = briefRows.map((brief) => ({
+		id: brief.id,
+		name: brief.name,
+		criteriaDescription: describeSourcingBriefCriteria(brief.criteria),
+		catalogHref: briefCatalogHref(brief.criteria)
+	}));
 
 	return {
 		recentArrivals,

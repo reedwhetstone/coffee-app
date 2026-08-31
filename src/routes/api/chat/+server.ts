@@ -16,10 +16,7 @@ import {
 	listActiveSourcingBriefs,
 	type SourcingBriefResource
 } from '$lib/server/parchmentProcurement';
-import {
-	describeSourcingBriefCriteria,
-	validateSourcingBriefCriteria
-} from '$lib/procurement/sourcingBriefCriteria';
+import { describeSourcingBriefCriteria } from '$lib/procurement/sourcingBriefPresentation';
 import type { RequestHandler } from './$types';
 import type { CatalogListQuery, components } from '@purveyors/sdk';
 import { formatSourceName } from '$lib/utils/formatters';
@@ -721,14 +718,10 @@ export const POST: RequestHandler = async (event) => {
 					}))
 				: [];
 
-			const activeBriefs = briefRows.flatMap((b) => {
-				try {
-					const criteria = validateSourcingBriefCriteria(b.criteria);
-					return [{ name: b.name, criteriaDescription: describeSourcingBriefCriteria(criteria) }];
-				} catch {
-					return [];
-				}
-			});
+			const activeBriefs = briefRows.map((brief) => ({
+				name: brief.name,
+				criteriaDescription: describeSourcingBriefCriteria(brief.criteria)
+			}));
 
 			if (trackedLots.length || activeBriefs.length) {
 				sourcingContext = { trackedLots, activeBriefs };
