@@ -7,14 +7,29 @@ describe('blog runtime isolation', () => {
 		vi.resetModules();
 	});
 
-	it('does not initialize the Market Brief projection for an essay-only corpus', async () => {
+	it('does not initialize the Market Brief projection for an essay corpus', async () => {
 		const projectionFactory = vi.fn(() => {
 			throw new Error('Market Brief projection initialized');
 		});
 		vi.doMock('$lib/server/marketBriefEmail', projectionFactory);
 
-		const { getAllPosts } = await import('./blog');
-		const posts = await getAllPosts();
+		const { getPostsFromModules } = await import('./blog');
+		const metadata = {
+			title: 'An essay',
+			date: '2026-08-17',
+			description: 'A test essay.',
+			tags: ['coffee', 'data', 'strategy'],
+			pillar: 'market-intelligence',
+			draft: false,
+			format: 'essay'
+		} satisfies BlogPostFrontmatter;
+		const modules = {
+			'/src/content/blog/an-essay.svx': {
+				metadata,
+				default: {} as BlogPostModule['default']
+			}
+		} satisfies Record<string, BlogPostModule>;
+		const posts = getPostsFromModules(modules);
 
 		expect(posts.length).toBeGreaterThan(0);
 		expect(posts.every((post) => post.format === 'essay')).toBe(true);
