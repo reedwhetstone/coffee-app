@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { signInWithGoogle } from '$lib/supabase';
 	import { ACCOUNT_DELETION_CONFIRMATION } from '$lib/accountDeletion';
 	import type { MarketReadPreference } from '$lib/marketWire';
@@ -13,8 +13,23 @@
 	let needsReauthentication = $state(false);
 	let marketReadPreference = $derived<MarketReadPreference | null>(data.marketReadPreference);
 	let marketReadUpdating = $state(false);
+	let marketReadStatusRefreshing = $state(false);
 	let marketReadMessage = $state('');
 	let marketReadUpdateError = $state('');
+
+	async function refreshMarketReadStatus() {
+		if (marketReadStatusRefreshing) return;
+
+		marketReadStatusRefreshing = true;
+		marketReadMessage = '';
+		marketReadUpdateError = '';
+
+		try {
+			await invalidateAll();
+		} finally {
+			marketReadStatusRefreshing = false;
+		}
+	}
 
 	async function updateMarketRead(method: 'PUT' | 'DELETE') {
 		if (marketReadUpdating) return;
@@ -160,12 +175,22 @@
 		</p>
 
 		{#if data.marketReadError || marketReadUpdateError}
-			<p
+			<div
 				class="mt-4 rounded-md border border-danger/20 bg-danger-subtle p-3 text-sm text-danger"
 				role="alert"
 			>
-				{marketReadUpdateError || data.marketReadError}
-			</p>
+				<p>{marketReadUpdateError || data.marketReadError}</p>
+				{#if data.marketReadError}
+					<button
+						type="button"
+						onclick={refreshMarketReadStatus}
+						disabled={marketReadStatusRefreshing}
+						class="mt-2 font-semibold underline disabled:cursor-not-allowed disabled:opacity-50"
+					>
+						{marketReadStatusRefreshing ? 'Checking status…' : 'Retry status'}
+					</button>
+				{/if}
+			</div>
 		{:else if marketReadMessage}
 			<p
 				class="mt-4 rounded-md border border-success/20 bg-success-subtle p-3 text-sm text-success-strong"

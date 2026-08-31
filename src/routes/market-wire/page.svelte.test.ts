@@ -2,6 +2,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 
+const { invalidateAll } = vi.hoisted(() => ({ invalidateAll: vi.fn() }));
+
+vi.mock('$app/navigation', () => ({ invalidateAll }));
+
 import MarketWirePage from './+page.svelte';
 
 const unsubscribedPreference = {
@@ -15,12 +19,12 @@ const unsubscribedPreference = {
 	updatedAt: null
 };
 
-function createData(signedIn: boolean) {
+function createData(signedIn: boolean, marketReadError: string | null = null) {
 	return {
 		isSignedIn: signedIn,
 		email: signedIn ? 'reader@example.com' : '',
-		marketReadPreference: signedIn ? unsubscribedPreference : null,
-		marketReadError: null,
+		marketReadPreference: signedIn && !marketReadError ? unsubscribedPreference : null,
+		marketReadError,
 		latestEditions: [],
 		meta: {}
 	} as never;
@@ -67,5 +71,20 @@ describe('/market-wire subscription journey', () => {
 			'href',
 			'/account'
 		);
+	});
+
+	it('lets signed-in readers retry a transient preference read failure', async () => {
+		invalidateAll.mockResolvedValue(undefined);
+		const { rerender } = render(MarketWirePage, {
+			data: createData(true, 'Your Market Wire preference is temporarily unavailable.')
+		});
+
+		expect(screen.getByRole('button', { name: 'Subscribe to Market Wire' })).toBeDisabled();
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry status' }));
+		expect(invalidateAll).toHaveBeenCalledOnce();
+
+		await rerender({ data: createData(true) });
+		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Subscribe to Market Wire' })).toBeEnabled();
 	});
 });

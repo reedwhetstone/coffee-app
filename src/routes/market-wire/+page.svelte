@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
 	import Footer from '$lib/components/marketing/Footer.svelte';
 	import type { MarketReadPreference } from '$lib/marketWire';
 	import { formatMarketBriefEdition, getBlogPostPath } from '$lib/types/blog.types';
@@ -8,8 +9,23 @@
 	let { data } = $props<{ data: PageData }>();
 	let preference = $derived<MarketReadPreference | null>(data.marketReadPreference);
 	let updating = $state(false);
+	let refreshingStatus = $state(false);
 	let message = $state('');
 	let updateError = $state('');
+
+	async function refreshStatus() {
+		if (refreshingStatus) return;
+
+		refreshingStatus = true;
+		message = '';
+		updateError = '';
+
+		try {
+			await invalidateAll();
+		} finally {
+			refreshingStatus = false;
+		}
+	}
 
 	async function subscribe() {
 		if (updating || preference?.subscribed) return;
@@ -39,7 +55,7 @@
 </script>
 
 <div class="bg-surface-canvas">
-	<main>
+	<div>
 		<header class="border-b border-line bg-surface-panel">
 			<div
 				class="mx-auto grid max-w-7xl gap-12 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-center lg:px-8"
@@ -120,12 +136,22 @@
 					{/if}
 
 					{#if data.marketReadError || updateError}
-						<p
+						<div
 							class="mt-4 rounded-md border border-danger/20 bg-danger-subtle p-3 text-sm text-danger"
 							role="alert"
 						>
-							{updateError || data.marketReadError}
-						</p>
+							<p>{updateError || data.marketReadError}</p>
+							{#if data.marketReadError}
+								<button
+									type="button"
+									onclick={refreshStatus}
+									disabled={refreshingStatus}
+									class="mt-2 font-semibold underline disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									{refreshingStatus ? 'Checking status…' : 'Retry status'}
+								</button>
+							{/if}
+						</div>
 					{:else if message}
 						<p
 							class="mt-4 rounded-md border border-success/20 bg-success-subtle p-3 text-sm text-success"
@@ -212,7 +238,7 @@
 				</section>
 			{/if}
 		</div>
-	</main>
+	</div>
 
 	<Footer />
 </div>

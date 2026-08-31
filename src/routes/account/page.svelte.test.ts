@@ -3,15 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import AccountPage from './+page.svelte';
 
-const { goto, signInWithGoogle } = vi.hoisted(() => ({
+const { goto, invalidateAll, signInWithGoogle } = vi.hoisted(() => ({
 	goto: vi.fn(),
+	invalidateAll: vi.fn(),
 	signInWithGoogle: vi.fn()
 }));
 
-vi.mock('$app/navigation', () => ({ goto }));
+vi.mock('$app/navigation', () => ({ goto, invalidateAll }));
 vi.mock('$lib/supabase', () => ({ signInWithGoogle }));
 
-function createData(signOut: ReturnType<typeof vi.fn>) {
+function createData(signOut: ReturnType<typeof vi.fn>, marketReadError: string | null = null) {
 	return {
 		auth: {
 			isSignedIn: true,
@@ -20,17 +21,19 @@ function createData(signOut: ReturnType<typeof vi.fn>) {
 			ppiAccess: false
 		},
 		email: 'owner@example.com',
-		marketReadPreference: {
-			publication: 'market_read',
-			status: 'unsubscribed',
-			subscribed: false,
-			consentSource: null,
-			consentedAt: null,
-			unsubscribedAt: null,
-			createdAt: null,
-			updatedAt: null
-		},
-		marketReadError: null,
+		marketReadPreference: marketReadError
+			? null
+			: {
+					publication: 'market_read',
+					status: 'unsubscribed',
+					subscribed: false,
+					consentSource: null,
+					consentedAt: null,
+					unsubscribedAt: null,
+					createdAt: null,
+					updatedAt: null
+				},
+		marketReadError,
 		supabase: { auth: { signOut } }
 	} as never;
 }
@@ -100,5 +103,20 @@ describe('account deletion completion', () => {
 			method: 'PUT'
 		});
 		expect(screen.getByRole('button', { name: 'Stop weekly emails' })).toBeVisible();
+	});
+
+	it('lets account owners retry a transient preference read failure', async () => {
+		invalidateAll.mockResolvedValue(undefined);
+		const { rerender } = render(AccountPage, {
+			data: createData(vi.fn(), 'Your Market Wire preference is temporarily unavailable.')
+		});
+
+		expect(screen.getByRole('button', { name: 'Subscribe to Market Wire' })).toBeDisabled();
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry status' }));
+		expect(invalidateAll).toHaveBeenCalledOnce();
+
+		await rerender({ data: createData(vi.fn()) });
+		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Subscribe to Market Wire' })).toBeEnabled();
 	});
 });
