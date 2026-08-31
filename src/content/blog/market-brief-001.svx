@@ -1,0 +1,40 @@
+---
+title: 'Green Coffee Sourcing Signals From Origin Disruption to Market Growth'
+date: '2026-08-31'
+description: 'This brief connects storm and earthquake pressure, quality auction windows, sustainability programs, and retail expansion for green coffee buyers.'
+tags: ['coffee', 'data', 'supply-chain']
+pillar: 'market-intelligence'
+draft: true
+format: 'market-brief'
+edition: 1
+---
+
+## Origin Supply Pressure and Auction Access
+
+The clearest throughline for green coffee buyers is the tension between origin stress and quality windows. A Congo auction offers traceable microlots, while Colombian origin support efforts respond to earthquake relief. [[2]](https://dailycoffeenews.com/2026/08/26/high-scoring-microlots-head-to-best-of-congo-cooperatives-auction/) [[8]](https://sprudge.com/ny-based-colombian-coffee-roaster-devocion-partners-with-colombias-fnc-to-support-coffee-growers-after-the-august-earthquake-1291723.html)
+
+Hawaiian farms are assessing damage after Hurricane Lala, while Florida researchers are evaluating coffee as a potential specialty crop. Together they show buyers watching short term supply and longer term risk. [[6]](https://dailycoffeenews.com/2026/08/28/hawaii-coffee-farms-face-long-recovery-after-hurricane-lala/) [[7]](https://dailycoffeenews.com/2026/08/26/florida-grown-coffee-gets-its-first-serious-field-test/)
+
+## Sustainability and Origin Engagement
+
+Social forestry in Indonesia seeks to balance coffee production with conservation, while an importer education program encourages origin learning. For buyers, this points to continued interest in traceable sourcing and producer relationships. [[4]](https://dailycoffeenews.com/2026/08/25/social-forestry-in-indonesia-seeks-room-for-coffee-and-conservation/) [[10]](https://sprudge.com/learn-your-way-to-origin-with-cafe-imports-field-trip-costa-rica-1284702.html)
+
+## Retail Growth and Demand Signals
+
+A large equity raise for Blank Street and a franchise development agreement for Mokas point to growing retail capacity in New York and Kansas City. For buyers, expansion can translate into broader demand for roasted and green supply. [[1]](https://dailycoffeenews.com/2026/08/27/mokas-continues-kansas-city-area-expansion-with-9-unit-deal/) [[5]](https://dailycoffeenews.com/2026/08/25/blank-street-raises-105-million-expands-to-la/)
+
+Independent cafe support programs and buildout coverage indicate that emerging operators are preparing new spaces. This can shape future roaster purchasing and menu development. [[3]](https://dailycoffeenews.com/2026/08/26/coffee-futures-fund-seeks-independent-cafe-owners-for-second-cohort/) [[9]](https://sprudge.com/summer-of-build-outs-continues-on-the-coffee-sprudgecast-1282886.html) [[11]](https://sprudge.com/coffee-futures-fund-is-now-accepting-applications-for-the-2027-cohort-1288293.html)
+
+## Sources
+
+1. [Daily Coffee News by Roast Magazine](https://dailycoffeenews.com/2026/08/27/mokas-continues-kansas-city-area-expansion-with-9-unit-deal/)
+2. [Daily Coffee News by Roast Magazine](https://dailycoffeenews.com/2026/08/26/high-scoring-microlots-head-to-best-of-congo-cooperatives-auction/)
+3. [Daily Coffee News by Roast Magazine](https://dailycoffeenews.com/2026/08/26/coffee-futures-fund-seeks-independent-cafe-owners-for-second-cohort/)
+4. [Daily Coffee News by Roast Magazine](https://dailycoffeenews.com/2026/08/25/social-forestry-in-indonesia-seeks-room-for-coffee-and-conservation/)
+5. [Daily Coffee News by Roast Magazine](https://dailycoffeenews.com/2026/08/25/blank-street-raises-105-million-expands-to-la/)
+6. [Daily Coffee News by Roast Magazine](https://dailycoffeenews.com/2026/08/28/hawaii-coffee-farms-face-long-recovery-after-hurricane-lala/)
+7. [Daily Coffee News by Roast Magazine](https://dailycoffeenews.com/2026/08/26/florida-grown-coffee-gets-its-first-serious-field-test/)
+8. [Sprudge Coffee](https://sprudge.com/ny-based-colombian-coffee-roaster-devocion-partners-with-colombias-fnc-to-support-coffee-growers-after-the-august-earthquake-1291723.html)
+9. [Sprudge Coffee](https://sprudge.com/summer-of-build-outs-continues-on-the-coffee-sprudgecast-1282886.html)
+10. [Sprudge Coffee](https://sprudge.com/learn-your-way-to-origin-with-cafe-imports-field-trip-costa-rica-1284702.html)
+11. [Sprudge Coffee](https://sprudge.com/coffee-futures-fund-is-now-accepting-applications-for-the-2027-cohort-1288293.html)
