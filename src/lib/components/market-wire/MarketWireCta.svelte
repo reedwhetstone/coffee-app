@@ -15,15 +15,15 @@
 		<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Market Wire</p>
 		<h2 class="mt-2 font-serif text-2xl font-medium text-ink">{heading}</h2>
 		<p class="mt-2 max-w-2xl text-sm leading-6 text-muted">
-			A concise, cited read on green coffee pricing, availability, and movement, delivered once a
-			week.
+			A concise, cited read on green coffee pricing, availability, and movement, planned as a weekly
+			publication.
 		</p>
 	</div>
 	<a
 		href="/market-wire"
 		class="mt-5 inline-flex shrink-0 items-center rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-ink transition-opacity hover:opacity-90 sm:mt-0"
 	>
-		Get Market Wire
+		Join the waitlist
 		<span class="ml-2" aria-hidden="true">→</span>
 	</a>
 </aside>

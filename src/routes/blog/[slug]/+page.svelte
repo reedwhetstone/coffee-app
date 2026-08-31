@@ -131,7 +131,7 @@
 <!-- Post footer -->
 <div class="mt-16 space-y-8">
 	{#if data.metadata.format === 'market-brief'}
-		<MarketWireCta heading="Get the next Market Brief in your inbox." />
+		<MarketWireCta heading="Join the Market Brief waitlist." />
 	{/if}
 
 	<!-- Share / LinkedIn section -->

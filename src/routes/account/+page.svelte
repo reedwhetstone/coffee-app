@@ -16,6 +16,10 @@
 	let marketReadStatusRefreshing = $state(false);
 	let marketReadMessage = $state('');
 	let marketReadUpdateError = $state('');
+	let marketReadStatusResolved = $state(false);
+	let marketReadStatusUnavailable = $derived(
+		Boolean(data.marketReadError) && !marketReadStatusResolved
+	);
 
 	async function refreshMarketReadStatus() {
 		if (marketReadStatusRefreshing) return;
@@ -46,9 +50,10 @@
 			}
 
 			marketReadPreference = result.data as MarketReadPreference;
+			marketReadStatusResolved = true;
 			marketReadMessage = marketReadPreference.subscribed
-				? 'Market Wire delivery is on.'
-				: 'Market Wire delivery is off.';
+				? 'Market Wire waitlist is on.'
+				: 'Market Wire waitlist is off.';
 		} catch (error) {
 			marketReadUpdateError =
 				error instanceof Error
@@ -155,32 +160,32 @@
 				</h2>
 			</div>
 			<span
-				class="rounded-full px-3 py-1 text-xs font-semibold {data.marketReadError
+				class="rounded-full px-3 py-1 text-xs font-semibold {marketReadStatusUnavailable
 					? 'bg-surface-canvas text-muted ring-1 ring-line'
 					: marketReadPreference?.subscribed
 						? 'bg-success-subtle text-success-strong ring-1 ring-success/20'
 						: 'bg-surface-canvas text-muted ring-1 ring-line'}"
 			>
-				{data.marketReadError
+				{marketReadStatusUnavailable
 					? 'Status unavailable'
 					: marketReadPreference?.subscribed
-						? 'Subscribed'
-						: 'Not subscribed'}
+						? 'On waitlist'
+						: 'Not on waitlist'}
 			</span>
 		</div>
 
 		<p class="mt-3 max-w-2xl text-sm leading-6 text-muted">
-			A concise weekly read on green coffee pricing, availability, and market movement. Delivery
-			uses {data.email}.
+			A concise weekly read on green coffee pricing, availability, and movement. Weekly delivery is
+			not live yet; your preference is saved for launch using {data.email}.
 		</p>
 
-		{#if data.marketReadError || marketReadUpdateError}
+		{#if marketReadStatusUnavailable || marketReadUpdateError}
 			<div
 				class="mt-4 rounded-md border border-danger/20 bg-danger-subtle p-3 text-sm text-danger"
 				role="alert"
 			>
 				<p>{marketReadUpdateError || data.marketReadError}</p>
-				{#if data.marketReadError}
+				{#if marketReadStatusUnavailable}
 					<button
 						type="button"
 						onclick={refreshMarketReadStatus}
@@ -203,15 +208,18 @@
 		<div class="mt-5 flex flex-wrap items-center gap-4">
 			<button
 				type="button"
-				onclick={() => updateMarketRead(marketReadPreference?.subscribed ? 'DELETE' : 'PUT')}
-				disabled={marketReadUpdating || Boolean(data.marketReadError)}
+				onclick={() =>
+					updateMarketRead(
+						marketReadStatusUnavailable || marketReadPreference?.subscribed ? 'DELETE' : 'PUT'
+					)}
+				disabled={marketReadUpdating}
 				class="rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{marketReadUpdating
 					? 'Saving…'
-					: marketReadPreference?.subscribed
-						? 'Stop weekly emails'
-						: 'Subscribe to Market Wire'}
+					: marketReadStatusUnavailable || marketReadPreference?.subscribed
+						? 'Leave Market Wire waitlist'
+						: 'Join Market Wire waitlist'}
 			</button>
 			<a href="/market-wire" class="text-sm font-medium text-accent hover:underline">
 				About Market Wire
@@ -224,7 +232,7 @@
 		<p class="mt-3 text-sm leading-6 text-muted">
 			Deleting your account immediately cancels the entire subscription attached to it, including
 			any bundled products. It permanently removes your saved data and Purveyors sign-in, Market
-			Wire delivery, and archive access. Active or trialing billing is not a blocker. This cannot be
+			Wire waitlist, and archive access. Active or trialing billing is not a blocker. This cannot be
 			undone.
 		</p>
 

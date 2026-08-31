@@ -42,7 +42,7 @@
 			}
 
 			preference = result.data as MarketReadPreference;
-			message = 'You’re subscribed. The next Market Wire will go to your account email.';
+			message = 'You’re on the Market Wire waitlist. Weekly delivery is not live yet.';
 		} catch (error) {
 			updateError =
 				error instanceof Error
@@ -74,9 +74,9 @@
 					<div class="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
 						<span>Free</span>
 						<span aria-hidden="true">·</span>
-						<span>One email a week</span>
+						<span>Weekly when live</span>
 						<span aria-hidden="true">·</span>
-						<span>Unsubscribe anytime</span>
+						<span>Leave the waitlist anytime</span>
 					</div>
 				</div>
 
@@ -85,13 +85,15 @@
 					aria-labelledby="signup-heading"
 				>
 					{#if preference?.subscribed}
-						<p class="text-xs font-semibold uppercase tracking-[0.16em] text-success">Subscribed</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.16em] text-success">
+							On the waitlist
+						</p>
 						<h2 id="signup-heading" class="mt-2 font-serif text-2xl font-medium text-ink">
-							You’re on the wire.
+							You’re on the waitlist.
 						</h2>
 						<p class="mt-3 text-sm leading-6 text-muted">
-							Market Wire will be sent to {data.email}. You can change this anytime in Account
-							settings.
+							Weekly delivery is not live yet. Your Market Wire preference is saved for launch, and
+							you can change it anytime in Account settings.
 						</p>
 						<a
 							href="/account"
@@ -101,13 +103,13 @@
 						</a>
 					{:else if data.isSignedIn}
 						<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
-							Weekly delivery
+							Market Wire waitlist
 						</p>
 						<h2 id="signup-heading" class="mt-2 font-serif text-2xl font-medium text-ink">
-							Send it to {data.email}
+							Join with your Purveyors account
 						</h2>
 						<p class="mt-3 text-sm leading-6 text-muted">
-							Your Purveyors account keeps your preference and delivery address together.
+							Save your place on the waitlist with the email on your Purveyors account.
 						</p>
 						<button
 							type="button"
@@ -115,23 +117,23 @@
 							disabled={updating || Boolean(data.marketReadError)}
 							class="mt-5 inline-flex w-full items-center justify-center rounded-md bg-accent px-4 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 						>
-							{updating ? 'Subscribing…' : 'Subscribe to Market Wire'}
+							{updating ? 'Joining…' : 'Join the waitlist'}
 						</button>
 					{:else}
 						<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
-							Weekly delivery
+							Market Wire waitlist
 						</p>
 						<h2 id="signup-heading" class="mt-2 font-serif text-2xl font-medium text-ink">
-							Subscribe with your Purveyors account
+							Join with your Purveyors account
 						</h2>
 						<p class="mt-3 text-sm leading-6 text-muted">
-							Sign in, then confirm delivery to the email on your account.
+							Sign in, then save your place on the waitlist for the email on your account.
 						</p>
 						<a
 							href="/auth?next=%2Fmarket-wire"
 							class="mt-5 inline-flex w-full items-center justify-center rounded-md bg-accent px-4 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
 						>
-							Sign in to subscribe
+							Sign in to join the waitlist
 						</a>
 					{/if}
 
@@ -205,7 +207,7 @@
 						<div>
 							<p class="text-sm font-semibold text-accent">Recent editions</p>
 							<h2 id="latest-heading" class="mt-2 font-serif text-4xl font-medium text-ink">
-								Read before you subscribe.
+								Read while you wait.
 							</h2>
 						</div>
 						<a

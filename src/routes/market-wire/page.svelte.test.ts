@@ -36,13 +36,13 @@ describe('/market-wire subscription journey', () => {
 	it('returns anonymous readers to Market Wire after sign-in without subscribing on a GET', () => {
 		render(MarketWirePage, { data: createData(false) });
 
-		expect(screen.getByRole('link', { name: 'Sign in to subscribe' })).toHaveAttribute(
+		expect(screen.getByRole('link', { name: 'Sign in to join the waitlist' })).toHaveAttribute(
 			'href',
 			'/auth?next=%2Fmarket-wire'
 		);
 	});
 
-	it('subscribes the signed-in account through the marketing provenance method', async () => {
+	it('joins the waitlist through the marketing provenance method', async () => {
 		const subscribedPreference = {
 			...unsubscribedPreference,
 			status: 'subscribed',
@@ -61,9 +61,9 @@ describe('/market-wire subscription journey', () => {
 		vi.stubGlobal('fetch', fetchMock);
 		render(MarketWirePage, { data: createData(true) });
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Subscribe to Market Wire' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Join the waitlist' }));
 
-		await waitFor(() => expect(screen.getByText('You’re on the wire.')).toBeVisible());
+		await waitFor(() => expect(screen.getByText('You’re on the waitlist.')).toBeVisible());
 		expect(fetchMock).toHaveBeenCalledWith('/api/email-subscriptions/market-read', {
 			method: 'POST'
 		});
@@ -79,12 +79,12 @@ describe('/market-wire subscription journey', () => {
 			data: createData(true, 'Your Market Wire preference is temporarily unavailable.')
 		});
 
-		expect(screen.getByRole('button', { name: 'Subscribe to Market Wire' })).toBeDisabled();
+		expect(screen.getByRole('button', { name: 'Join the waitlist' })).toBeDisabled();
 		await fireEvent.click(screen.getByRole('button', { name: 'Retry status' }));
 		expect(invalidateAll).toHaveBeenCalledOnce();
 
 		await rerender({ data: createData(true) });
 		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Subscribe to Market Wire' })).toBeEnabled();
+		expect(screen.getByRole('button', { name: 'Join the waitlist' })).toBeEnabled();
 	});
 });

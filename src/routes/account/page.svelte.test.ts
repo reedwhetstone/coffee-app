@@ -12,7 +12,7 @@ const { goto, invalidateAll, signInWithGoogle } = vi.hoisted(() => ({
 vi.mock('$app/navigation', () => ({ goto, invalidateAll }));
 vi.mock('$lib/supabase', () => ({ signInWithGoogle }));
 
-function createData(signOut: ReturnType<typeof vi.fn>, marketReadError: string | null = null) {
+function createData(signOut: ReturnType<typeof vi.fn>, overrides: Record<string, unknown> = {}) {
 	return {
 		auth: {
 			isSignedIn: true,
@@ -21,20 +21,19 @@ function createData(signOut: ReturnType<typeof vi.fn>, marketReadError: string |
 			ppiAccess: false
 		},
 		email: 'owner@example.com',
-		marketReadPreference: marketReadError
-			? null
-			: {
-					publication: 'market_read',
-					status: 'unsubscribed',
-					subscribed: false,
-					consentSource: null,
-					consentedAt: null,
-					unsubscribedAt: null,
-					createdAt: null,
-					updatedAt: null
-				},
-		marketReadError,
-		supabase: { auth: { signOut } }
+		marketReadPreference: {
+			publication: 'market_read',
+			status: 'unsubscribed',
+			subscribed: false,
+			consentSource: null,
+			consentedAt: null,
+			unsubscribedAt: null,
+			createdAt: null,
+			updatedAt: null
+		},
+		marketReadError: null,
+		supabase: { auth: { signOut } },
+		...overrides
 	} as never;
 }
 
@@ -76,7 +75,7 @@ describe('account deletion completion', () => {
 		expect(sessionStorage.getItem('purveyors:account-deletion-accepted')).toBe('true');
 	});
 
-	it('subscribes from account settings through the server-owned preference route', async () => {
+	it('joins the waitlist from account settings through the server-owned preference route', async () => {
 		const subscribedPreference = {
 			publication: 'market_read',
 			status: 'subscribed',
@@ -96,27 +95,68 @@ describe('account deletion completion', () => {
 		vi.stubGlobal('fetch', fetchMock);
 
 		render(AccountPage, { data: createData(vi.fn()) });
-		await fireEvent.click(screen.getByRole('button', { name: 'Subscribe to Market Wire' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Join Market Wire waitlist' }));
 
-		await waitFor(() => expect(screen.getByText('Market Wire delivery is on.')).toBeVisible());
+		await waitFor(() => expect(screen.getByText('Market Wire waitlist is on.')).toBeVisible());
 		expect(fetchMock).toHaveBeenCalledWith('/api/email-subscriptions/market-read', {
 			method: 'PUT'
 		});
-		expect(screen.getByRole('button', { name: 'Stop weekly emails' })).toBeVisible();
+		expect(screen.getByRole('button', { name: 'Leave Market Wire waitlist' })).toBeVisible();
+	});
+
+	it('keeps a safe waitlist opt-out available when preference status is unavailable', async () => {
+		const unsubscribedPreference = {
+			publication: 'market_read',
+			status: 'unsubscribed',
+			subscribed: false,
+			consentSource: null,
+			consentedAt: null,
+			unsubscribedAt: '2026-08-31T01:00:00.000Z',
+			createdAt: '2026-08-31T01:00:00.000Z',
+			updatedAt: '2026-08-31T01:00:00.000Z'
+		};
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(JSON.stringify({ data: unsubscribedPreference }), {
+				status: 200,
+				headers: { 'content-type': 'application/json' }
+			})
+		);
+		vi.stubGlobal('fetch', fetchMock);
+
+		render(AccountPage, {
+			data: createData(vi.fn(), {
+				marketReadPreference: null,
+				marketReadError: 'Your Market Wire preference is temporarily unavailable.'
+			})
+		});
+
+		const button = screen.getByRole('button', { name: 'Leave Market Wire waitlist' });
+		expect(button).toBeEnabled();
+		await fireEvent.click(button);
+
+		await waitFor(() => expect(screen.getByText('Market Wire waitlist is off.')).toBeVisible());
+		expect(fetchMock).toHaveBeenCalledWith('/api/email-subscriptions/market-read', {
+			method: 'DELETE'
+		});
+		expect(screen.getByRole('button', { name: 'Join Market Wire waitlist' })).toBeVisible();
+		expect(screen.queryByText('temporarily unavailable')).not.toBeInTheDocument();
 	});
 
 	it('lets account owners retry a transient preference read failure', async () => {
 		invalidateAll.mockResolvedValue(undefined);
 		const { rerender } = render(AccountPage, {
-			data: createData(vi.fn(), 'Your Market Wire preference is temporarily unavailable.')
+			data: createData(vi.fn(), {
+				marketReadPreference: null,
+				marketReadError: 'Your Market Wire preference is temporarily unavailable.'
+			})
 		});
 
-		expect(screen.getByRole('button', { name: 'Subscribe to Market Wire' })).toBeDisabled();
+		expect(screen.getByRole('button', { name: 'Leave Market Wire waitlist' })).toBeEnabled();
 		await fireEvent.click(screen.getByRole('button', { name: 'Retry status' }));
 		expect(invalidateAll).toHaveBeenCalledOnce();
 
 		await rerender({ data: createData(vi.fn()) });
 		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Subscribe to Market Wire' })).toBeEnabled();
+		expect(screen.getByRole('button', { name: 'Join Market Wire waitlist' })).toBeEnabled();
 	});
 });
