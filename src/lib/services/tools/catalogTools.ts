@@ -27,7 +27,10 @@ export function createCatalogTools(client: ParchmentClient, deps: ChatToolDeps) 
 				price_range: z.array(z.number()).length(2).optional().describe('Price range [min, max]'),
 				flavor_keywords: z.array(z.string()).optional().describe('Flavor descriptors'),
 
-				limit: z.number().optional().default(10).describe('Number of results to return (max 15)'),
+				limit: z
+					.number()
+					.optional()
+					.describe('Number of results to return (default 10, or all explicit IDs up to 15)'),
 				stocked_only: z
 					.boolean()
 					.optional()
@@ -42,7 +45,12 @@ export function createCatalogTools(client: ParchmentClient, deps: ChatToolDeps) 
 					.optional()
 					.describe('Drying method (sun-dried, patio-dried, etc.)'),
 				supplier: z.string().optional().describe('Coffee supplier or source'),
-				coffee_ids: z.array(z.number()).optional().describe('Specific coffee IDs to retrieve')
+				coffee_ids: z
+					.array(z.number().int().positive())
+					.min(1)
+					.max(15)
+					.optional()
+					.describe('Specific positive integer coffee IDs to retrieve (max 15)')
 			}),
 			execute: async (input) => {
 				if (deps.searchCatalog) {

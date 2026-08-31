@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 const inventoryMocks = vi.hoisted(() => ({
 	listInventory: vi.fn(),
@@ -180,7 +181,7 @@ describe('createChatTools entitlement allowlist', () => {
 			stocked_days: 30,
 			drying_method: 'raised bed',
 			supplier: 'Osito',
-			coffee_ids: [42, 0]
+			coffee_ids: [42]
 		});
 
 		expect(searchCatalog).toHaveBeenCalledWith({
@@ -194,7 +195,7 @@ describe('createChatTools entitlement allowlist', () => {
 			stocked_days: 30,
 			drying_method: 'raised bed',
 			supplier: 'Osito',
-			coffee_ids: [42, 0]
+			coffee_ids: [42]
 		});
 		expect(result).toEqual({
 			coffees: [{ id: 42, name: 'Parchment Lot' }],
@@ -210,9 +211,36 @@ describe('createChatTools entitlement allowlist', () => {
 				stocked_days: 30,
 				drying_method: 'raised bed',
 				supplier: 'Osito',
-				coffee_ids: [42, 0]
+				coffee_ids: [42]
 			},
 			search_strategy: 'structured'
+		});
+	});
+
+	it('does not apply the generic limit default to an explicit ID list', async () => {
+		const searchCatalog = vi.fn().mockResolvedValue([]);
+		const tools = createChatTools(
+			supabase,
+			'user-123',
+			{ memberAccess: true, ppiAccess: false },
+			{ searchCatalog }
+		);
+		const inputSchema = tools.coffee_catalog_search.inputSchema as z.ZodType;
+		const coffeeIds = Array.from({ length: 12 }, (_, index) => index + 1);
+		const parsedInput = inputSchema.parse({ coffee_ids: coffeeIds });
+		expect(parsedInput).toMatchObject({ coffee_ids: coffeeIds, stocked_only: true });
+		expect(parsedInput).not.toHaveProperty('limit');
+
+		const executeSearch = tools.coffee_catalog_search.execute as unknown as (
+			input: typeof parsedInput
+		) => Promise<unknown>;
+
+		await executeSearch(parsedInput);
+
+		expect(searchCatalog).toHaveBeenCalledWith({
+			coffee_ids: coffeeIds,
+			stocked_only: true,
+			price_range: undefined
 		});
 	});
 
