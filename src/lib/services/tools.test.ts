@@ -180,7 +180,7 @@ describe('createChatTools entitlement allowlist', () => {
 			stocked_days: 30,
 			drying_method: 'raised bed',
 			supplier: 'Osito',
-			coffee_ids: [42, 0]
+			coffee_ids: [42]
 		});
 
 		expect(searchCatalog).toHaveBeenCalledWith({
@@ -194,7 +194,7 @@ describe('createChatTools entitlement allowlist', () => {
 			stocked_days: 30,
 			drying_method: 'raised bed',
 			supplier: 'Osito',
-			coffee_ids: [42, 0]
+			coffee_ids: [42]
 		});
 		expect(result).toEqual({
 			coffees: [{ id: 42, name: 'Parchment Lot' }],
@@ -210,7 +210,7 @@ describe('createChatTools entitlement allowlist', () => {
 				stocked_days: 30,
 				drying_method: 'raised bed',
 				supplier: 'Osito',
-				coffee_ids: [42, 0]
+				coffee_ids: [42]
 			},
 			search_strategy: 'structured'
 		});

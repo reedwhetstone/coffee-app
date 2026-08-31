@@ -10,7 +10,6 @@ import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { getUserMemory } from '$lib/server/userMemory';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
 import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
-import { fetchParchmentCatalogItemsByIds } from '$lib/server/parchmentCatalog';
 import { buildCherryRuntimeIdentity, CHERRY_RUNTIME_MODEL } from '$lib/server/cherryRuntime';
 import {
 	listActiveSourcingBriefs,
@@ -454,6 +453,10 @@ export async function _fetchAgentCatalogRowsForSearch(
 	listCatalog: CatalogListFn,
 	input: AgentCatalogSearchInput
 ): Promise<SdkCatalogItem[]> {
+	if (input.coffee_ids !== undefined && !positiveIds(input.coffee_ids)) {
+		return [];
+	}
+
 	const requestedLimit = resolveAgentCatalogRequestedLimit(input);
 	const query = _buildAgentCatalogListQuery(input);
 
@@ -598,7 +601,7 @@ You can reference these items naturally (e.g., "that first one", "the Ethiopian"
 
 		if (lines.length > 0) {
 			prompt += `\n\nSOURCING INTELLIGENCE CONTEXT:\n${lines.join('\n')}
-The trackedAt, priceAtTracking, currentPrice, priceDelta, stocked, and unstockedDate fields above are trusted owner-scoped Parchment tracked-lot summaries. For price or availability change questions, use these fields first. Do not infer historical changes from catalog searches; catalog searches provide current catalog evidence only. Catalog hydration supplies label, country, and source metadata only.
+The trackedAt, priceAtTracking, currentPrice, priceDelta, stocked, and unstockedDate fields above are trusted owner-scoped Parchment tracked-lot summaries. For price or availability change questions, use these fields first. Do not infer historical changes from catalog searches; catalog searches provide current catalog evidence only.
 Use this context to make responses more specific — reference tracked lots by name when relevant, and connect brief criteria to search results. Do not fabricate match scores or availability details not returned by tools.`;
 		}
 	}
@@ -622,27 +625,15 @@ export async function _loadSourcingIntelligenceSeeds(
 	return { trackedSummaries, briefRows };
 }
 
-export async function _hydrateTrackedLotSummaries(
-	summaries: TrackedLotSummary[],
-	loadCatalog: (ids: number[]) => Promise<SdkCatalogItem[]>
-): Promise<SourcingIntelligenceContext['trackedLots']> {
-	let catalogRows: SdkCatalogItem[] = [];
-	if (summaries.length > 0) {
-		try {
-			catalogRows = await loadCatalog(summaries.map((summary) => summary.catalogId));
-		} catch {
-			// Change history remains usable when optional catalog label hydration fails.
-		}
-	}
-
-	const catalogById = new Map(catalogRows.map((row) => [row.id, row]));
+export function _buildTrackedLotContext(
+	summaries: TrackedLotSummary[]
+): SourcingIntelligenceContext['trackedLots'] {
 	return summaries.map((summary) => {
-		const catalog = catalogById.get(summary.catalogId);
 		return {
 			id: summary.catalogId,
-			name: catalog?.name || `Lot #${summary.catalogId}`,
-			country: catalog?.country ?? null,
-			source: catalog?.source ?? null,
+			name: summary.name || `Lot #${summary.catalogId}`,
+			country: summary.country ?? null,
+			source: summary.source ?? null,
 			trackedAt: summary.trackedAt,
 			priceAtTracking: summary.priceAtTracking,
 			currentPrice: summary.currentPrice,
@@ -754,9 +745,7 @@ export const POST: RequestHandler = async (event) => {
 			() => getTrackedLotSummaries(cherryParchmentClient, 10),
 			() => listActiveSourcingBriefs(cherryParchmentClient, 5)
 		);
-		const trackedLots = await _hydrateTrackedLotSummaries(trackedSummaries, (ids) =>
-			fetchParchmentCatalogItemsByIds(cherryParchmentClient, ids)
-		);
+		const trackedLots = _buildTrackedLotContext(trackedSummaries);
 		const activeBriefs = briefRows.map((brief) => ({
 			name: brief.name,
 			criteriaDescription: describeSourcingBriefCriteria(brief.criteria)

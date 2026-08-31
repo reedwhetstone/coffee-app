@@ -24,11 +24,11 @@ vi.mock('ai', () => ({
 
 import {
 	_buildAgentCatalogListQuery,
+	_buildTrackedLotContext,
 	_createMarketToolParchmentClient,
 	_buildSystemPrompt,
 	_fetchAgentCatalogRowsForSearch,
 	_filterAgentCatalogRowsForUnsupportedFilters,
-	_hydrateTrackedLotSummaries,
 	_loadSourcingIntelligenceSeeds
 } from './+server';
 
@@ -191,18 +191,16 @@ describe('chat sourcing intelligence enrichment', () => {
 		expect(result).toEqual({ trackedSummaries: [], briefRows: [brief] });
 	});
 
-	it('retains canonical tracked changes when catalog label hydration fails', async () => {
+	it('uses the canonical tracked-lot summary without a second catalog lookup', () => {
 		const summary = trackedLotSummary();
-		const trackedLots = await _hydrateTrackedLotSummaries([summary], () =>
-			Promise.reject(new Error('catalog unavailable'))
-		);
+		const trackedLots = _buildTrackedLotContext([summary]);
 
 		expect(trackedLots).toEqual([
 			{
 				id: 7,
-				name: 'Lot #7',
-				country: null,
-				source: null,
+				name: 'Contract label',
+				country: 'Contract country',
+				source: 'Contract source',
 				trackedAt: '2026-08-01T12:00:00Z',
 				priceAtTracking: 6.5,
 				currentPrice: 7.25,
@@ -213,28 +211,18 @@ describe('chat sourcing intelligence enrichment', () => {
 		]);
 	});
 
-	it('uses catalog hydration only for tracked-lot label metadata', async () => {
-		const summary = trackedLotSummary();
-		const loadCatalog = vi
-			.fn()
-			.mockResolvedValue([
-				{ id: 7, name: 'Hydrated lot', country: 'Ethiopia', source: 'Hydrated Supplier' }
-			]);
-
-		const trackedLots = await _hydrateTrackedLotSummaries([summary], loadCatalog);
-
-		expect(loadCatalog).toHaveBeenCalledWith([7]);
-		expect(trackedLots[0]).toEqual({
+	it('falls back to the tracked catalog ID when the canonical summary has no label', () => {
+		expect(_buildTrackedLotContext([trackedLotSummary({ name: '' })])[0]).toEqual({
 			id: 7,
-			name: 'Hydrated lot',
-			country: 'Ethiopia',
-			source: 'Hydrated Supplier',
-			trackedAt: summary.trackedAt,
-			priceAtTracking: summary.priceAtTracking,
-			currentPrice: summary.currentPrice,
-			priceDelta: summary.priceDelta,
-			stocked: summary.stocked,
-			unstockedDate: summary.unstockedDate
+			name: 'Lot #7',
+			country: 'Contract country',
+			source: 'Contract source',
+			trackedAt: '2026-08-01T12:00:00Z',
+			priceAtTracking: 6.5,
+			currentPrice: 7.25,
+			priceDelta: 0.75,
+			stocked: false,
+			unstockedDate: '2026-08-20'
 		});
 	});
 
@@ -287,7 +275,7 @@ describe('chat catalog Parchment query mapping', () => {
 			stocked_days: 30,
 			drying_method: 'raised bed',
 			supplier: 'Osito',
-			coffee_ids: [42, 0]
+			coffee_ids: [42]
 		});
 
 		expect(query).toMatchObject({
@@ -337,6 +325,18 @@ describe('chat catalog Parchment query mapping', () => {
 		});
 		expect(rows.map((row) => row.id)).toEqual(requestedIds);
 	});
+
+	it.each<[number[]]>([[[]], [[0, -1, 1.5]]])(
+		'returns no rows without querying the catalog for an invalid explicit ID filter: %j',
+		async (coffeeIds) => {
+			const listCatalog = vi.fn();
+
+			await expect(
+				_fetchAgentCatalogRowsForSearch(listCatalog, { coffee_ids: coffeeIds })
+			).resolves.toEqual([]);
+			expect(listCatalog).not.toHaveBeenCalled();
+		}
+	);
 
 	it('sizes ID re-fetches to the requested ID count when no limit is supplied', () => {
 		const query = _buildAgentCatalogListQuery({

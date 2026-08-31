@@ -42,7 +42,12 @@ export function createCatalogTools(client: ParchmentClient, deps: ChatToolDeps) 
 					.optional()
 					.describe('Drying method (sun-dried, patio-dried, etc.)'),
 				supplier: z.string().optional().describe('Coffee supplier or source'),
-				coffee_ids: z.array(z.number()).optional().describe('Specific coffee IDs to retrieve')
+				coffee_ids: z
+					.array(z.number().int().positive())
+					.min(1)
+					.max(15)
+					.optional()
+					.describe('Specific positive integer coffee IDs to retrieve (max 15)')
 			}),
 			execute: async (input) => {
 				if (deps.searchCatalog) {
