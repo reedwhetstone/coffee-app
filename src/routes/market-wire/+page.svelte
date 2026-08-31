@@ -38,16 +38,16 @@
 			const response = await fetch('/api/email-subscriptions/market-read', { method: 'POST' });
 			const result = await response.json().catch(() => null);
 			if (!response.ok || !result?.data) {
-				throw new Error(result?.error?.message ?? 'Market Wire signup could not be completed.');
+				throw new Error(result?.error?.message ?? 'Market Brief signup could not be completed.');
 			}
 
 			preference = result.data as MarketReadPreference;
-			message = 'You’re on the Market Wire waitlist. Weekly delivery is not live yet.';
+			message = 'You’re on the Market Brief waitlist. Weekly delivery is not live yet.';
 		} catch (error) {
 			updateError =
 				error instanceof Error
 					? error.message
-					: 'Market Wire signup could not be completed. Please try again.';
+					: 'Market Brief signup could not be completed. Please try again.';
 		} finally {
 			updating = false;
 		}
@@ -62,7 +62,7 @@
 			>
 				<div class="max-w-3xl">
 					<p class="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
-						Purveyors Market Wire
+						Purveyors Market Brief
 					</p>
 					<h1 class="mt-4 font-serif text-4xl font-medium tracking-tight text-ink sm:text-6xl">
 						The market moved. Here’s what matters.
@@ -92,7 +92,7 @@
 							You’re on the waitlist.
 						</h2>
 						<p class="mt-3 text-sm leading-6 text-muted">
-							Weekly delivery is not live yet. Your Market Wire preference is saved for launch, and
+							Weekly delivery is not live yet. Your Market Brief preference is saved for launch, and
 							you can change it anytime in Account settings.
 						</p>
 						<a
@@ -103,7 +103,7 @@
 						</a>
 					{:else if data.isSignedIn}
 						<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
-							Market Wire waitlist
+							Market Brief waitlist
 						</p>
 						<h2 id="signup-heading" class="mt-2 font-serif text-2xl font-medium text-ink">
 							Join with your Purveyors account
@@ -121,7 +121,7 @@
 						</button>
 					{:else}
 						<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
-							Market Wire waitlist
+							Market Brief waitlist
 						</p>
 						<h2 id="signup-heading" class="mt-2 font-serif text-2xl font-medium text-ink">
 							Join with your Purveyors account

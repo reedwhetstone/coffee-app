@@ -39,7 +39,7 @@ export const load: PageServerLoad = async (event) => {
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/market-wire',
-			title: 'Purveyors Market Wire — Weekly Green Coffee Intelligence',
+			title: 'Purveyors Market Brief — Weekly Green Coffee Intelligence',
 			description:
 				'A concise weekly read on green coffee pricing, availability, and market movement, with source-linked evidence from Purveyors.',
 			keywords: [
@@ -50,12 +50,12 @@ export const load: PageServerLoad = async (event) => {
 			],
 			image: resolvePublicPageSocialImage({
 				baseUrl,
-				alt: 'Purveyors Market Wire weekly green coffee intelligence'
+				alt: 'Purveyors Market Brief weekly green coffee intelligence'
 			}),
 			schemaData: {
 				'@context': 'https://schema.org',
 				'@type': 'WebPage',
-				name: 'Purveyors Market Wire',
+				name: 'Purveyors Market Brief',
 				description:
 					'A weekly, evidence-linked read on green coffee pricing, availability, and market movement.',
 				url: `${baseUrl}/market-wire`,

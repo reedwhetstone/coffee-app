@@ -95,13 +95,13 @@ describe('account deletion completion', () => {
 		vi.stubGlobal('fetch', fetchMock);
 
 		render(AccountPage, { data: createData(vi.fn()) });
-		await fireEvent.click(screen.getByRole('button', { name: 'Join Market Wire waitlist' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Join Market Brief waitlist' }));
 
-		await waitFor(() => expect(screen.getByText('Market Wire waitlist is on.')).toBeVisible());
+		await waitFor(() => expect(screen.getByText('Market Brief waitlist is on.')).toBeVisible());
 		expect(fetchMock).toHaveBeenCalledWith('/api/email-subscriptions/market-read', {
 			method: 'PUT'
 		});
-		expect(screen.getByRole('button', { name: 'Leave Market Wire waitlist' })).toBeVisible();
+		expect(screen.getByRole('button', { name: 'Leave Market Brief waitlist' })).toBeVisible();
 	});
 
 	it('keeps a safe waitlist opt-out available when preference status is unavailable', async () => {
@@ -126,19 +126,19 @@ describe('account deletion completion', () => {
 		render(AccountPage, {
 			data: createData(vi.fn(), {
 				marketReadPreference: null,
-				marketReadError: 'Your Market Wire preference is temporarily unavailable.'
+				marketReadError: 'Your Market Brief preference is temporarily unavailable.'
 			})
 		});
 
-		const button = screen.getByRole('button', { name: 'Leave Market Wire waitlist' });
+		const button = screen.getByRole('button', { name: 'Leave Market Brief waitlist' });
 		expect(button).toBeEnabled();
 		await fireEvent.click(button);
 
-		await waitFor(() => expect(screen.getByText('Market Wire waitlist is off.')).toBeVisible());
+		await waitFor(() => expect(screen.getByText('Market Brief waitlist is off.')).toBeVisible());
 		expect(fetchMock).toHaveBeenCalledWith('/api/email-subscriptions/market-read', {
 			method: 'DELETE'
 		});
-		expect(screen.getByRole('button', { name: 'Join Market Wire waitlist' })).toBeVisible();
+		expect(screen.getByRole('button', { name: 'Join Market Brief waitlist' })).toBeVisible();
 		expect(screen.queryByText('temporarily unavailable')).not.toBeInTheDocument();
 	});
 
@@ -147,16 +147,16 @@ describe('account deletion completion', () => {
 		const { rerender } = render(AccountPage, {
 			data: createData(vi.fn(), {
 				marketReadPreference: null,
-				marketReadError: 'Your Market Wire preference is temporarily unavailable.'
+				marketReadError: 'Your Market Brief preference is temporarily unavailable.'
 			})
 		});
 
-		expect(screen.getByRole('button', { name: 'Leave Market Wire waitlist' })).toBeEnabled();
+		expect(screen.getByRole('button', { name: 'Leave Market Brief waitlist' })).toBeEnabled();
 		await fireEvent.click(screen.getByRole('button', { name: 'Retry status' }));
 		expect(invalidateAll).toHaveBeenCalledOnce();
 
 		await rerender({ data: createData(vi.fn()) });
 		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Join Market Wire waitlist' })).toBeEnabled();
+		expect(screen.getByRole('button', { name: 'Join Market Brief waitlist' })).toBeEnabled();
 	});
 });

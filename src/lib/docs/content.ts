@@ -1207,7 +1207,7 @@ const docsPages: DocsPage[] = [
 							'POST PUT DELETE',
 							'Cookie session + same origin',
 							'Internal product route',
-							'Account-owned Market Wire preference BFF. POST fixes signup provenance, PUT fixes account-settings provenance, and DELETE unsubscribes. The browser never supplies an email, user ID, or free-form consent source.'
+							'Account-owned Market Brief preference BFF. POST fixes signup provenance, PUT fixes account-settings provenance, and DELETE unsubscribes. The browser never supplies an email, user ID, or free-form consent source.'
 						],
 						[
 							'/api/account-deletion',

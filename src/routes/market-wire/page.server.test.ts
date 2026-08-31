@@ -44,7 +44,7 @@ describe('/market-wire page load', () => {
 		getAllPosts.mockResolvedValue([]);
 
 		const result = await load(makeEvent(false));
-		if (!result) throw new Error('Expected Market Wire page data');
+		if (!result) throw new Error('Expected Market Brief page data');
 
 		expect(result.isSignedIn).toBe(false);
 		expect(result.marketReadPreference).toBeNull();
@@ -81,7 +81,7 @@ describe('/market-wire page load', () => {
 		const event = makeEvent(true);
 
 		const result = await load(event);
-		if (!result) throw new Error('Expected Market Wire page data');
+		if (!result) throw new Error('Expected Market Brief page data');
 
 		expect(loadMarketReadPreference).toHaveBeenCalledWith(event);
 		expect(result.email).toBe('reader@example.com');

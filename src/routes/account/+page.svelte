@@ -52,8 +52,8 @@
 			marketReadPreference = result.data as MarketReadPreference;
 			marketReadStatusResolved = true;
 			marketReadMessage = marketReadPreference.subscribed
-				? 'Market Wire waitlist is on.'
-				: 'Market Wire waitlist is off.';
+				? 'Market Brief waitlist is on.'
+				: 'Market Brief waitlist is off.';
 		} catch (error) {
 			marketReadUpdateError =
 				error instanceof Error
@@ -156,7 +156,7 @@
 					id="market-wire-preference-heading"
 					class="mt-2 font-serif text-2xl font-medium text-ink"
 				>
-					Purveyors Market Wire
+					Purveyors Market Brief
 				</h2>
 			</div>
 			<span
@@ -218,11 +218,11 @@
 				{marketReadUpdating
 					? 'Saving…'
 					: marketReadStatusUnavailable || marketReadPreference?.subscribed
-						? 'Leave Market Wire waitlist'
-						: 'Join Market Wire waitlist'}
+						? 'Leave Market Brief waitlist'
+						: 'Join Market Brief waitlist'}
 			</button>
 			<a href="/market-wire" class="text-sm font-medium text-accent hover:underline">
-				About Market Wire
+				About Market Brief
 			</a>
 		</div>
 	</section>

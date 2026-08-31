@@ -89,7 +89,7 @@ ${coffeeBenchEntry}
 		<priority>0.8</priority>
 	</url>
 ${blogPostEntries}
-	<!-- Market Wire subscription landing -->
+	<!-- Market Brief subscription landing -->
 	<url>
 		<loc>${baseUrl}/market-wire</loc>
 		<lastmod>${currentDate}</lastmod>

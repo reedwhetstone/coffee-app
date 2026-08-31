@@ -21,12 +21,12 @@ export async function loadMarketReadPreference(
 		return {
 			preference: null,
 			error:
-				result.error?.error?.message ?? 'Your Market Wire preference is temporarily unavailable.'
+				result.error?.error?.message ?? 'Your Market Brief preference is temporarily unavailable.'
 		};
 	} catch {
 		return {
 			preference: null,
-			error: 'Your Market Wire preference is temporarily unavailable.'
+			error: 'Your Market Brief preference is temporarily unavailable.'
 		};
 	}
 }

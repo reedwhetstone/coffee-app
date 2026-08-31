@@ -31,7 +31,7 @@ async function updatePreference(
 
 		return relayParchmentResult(await client.emailSubscriptions.setMarketRead(body));
 	} catch (error) {
-		console.error('Market Wire preference BFF request failed');
+		console.error('Market Brief preference BFF request failed');
 		return parchmentUnavailableResponse(error instanceof ParchmentConfigError ? 503 : 502);
 	}
 }

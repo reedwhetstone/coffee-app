@@ -110,7 +110,7 @@ Reporting guidance:
 - `/api`
 - `/docs`
 - `/blog`
-- `/market-wire`
+- `/market-wire` (Market Brief)
 - `/bot`
 
 ### Authenticated product routes

@@ -33,7 +33,7 @@ function createData(signedIn: boolean, marketReadError: string | null = null) {
 describe('/market-wire subscription journey', () => {
 	beforeEach(() => vi.clearAllMocks());
 
-	it('returns anonymous readers to Market Wire after sign-in without subscribing on a GET', () => {
+	it('returns anonymous readers to Market Brief after sign-in without subscribing on a GET', () => {
 		render(MarketWirePage, { data: createData(false) });
 
 		expect(screen.getByRole('link', { name: 'Sign in to join the waitlist' })).toHaveAttribute(
@@ -76,7 +76,7 @@ describe('/market-wire subscription journey', () => {
 	it('lets signed-in readers retry a transient preference read failure', async () => {
 		invalidateAll.mockResolvedValue(undefined);
 		const { rerender } = render(MarketWirePage, {
-			data: createData(true, 'Your Market Wire preference is temporarily unavailable.')
+			data: createData(true, 'Your Market Brief preference is temporarily unavailable.')
 		});
 
 		expect(screen.getByRole('button', { name: 'Join the waitlist' })).toBeDisabled();
