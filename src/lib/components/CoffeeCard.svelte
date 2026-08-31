@@ -22,6 +22,7 @@
 	} from '$lib/catalog/proofSummary';
 	import { getPurveyorScoreSummary } from '$lib/catalog/purveyorScore';
 	import type { LotPriceContext, LotPriceTier } from '$lib/catalog/priceContext';
+	import { formatSourceName } from '$lib/utils/formatters';
 
 	let {
 		coffee,
@@ -168,6 +169,7 @@
 		if (coffee.stocked === false) return 'Out of stock';
 		return 'Availability unknown';
 	});
+	let supplierName = $derived(formatSourceName(coffee.source) || 'Unknown supplier');
 	let processAnalysis = $derived.by(() =>
 		buildProcessAnalysis(coffee as CoffeeWithStructuredProcess)
 	);
@@ -344,9 +346,7 @@
 					{coffee.name}
 				</h3>
 				<div class="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-sm">
-					<span class="break-words font-medium text-organic-rust"
-						>{coffee.source ?? 'Unknown supplier'}</span
-					>
+					<span class="break-words font-medium text-organic-rust">{supplierName}</span>
 					{#if coffee.wholesale}
 						<span
 							class="rounded-full bg-intelligence-subtle px-2 py-0.5 text-[10px] font-semibold text-intelligence"
@@ -539,7 +539,7 @@
 				<div class="flex items-start justify-between gap-4">
 					<div>
 						<p class="text-xs font-semibold text-organic-rust">
-							{coffee.source ?? 'Unknown supplier'}
+							{supplierName}
 						</p>
 						<h2
 							id="coffee-detail-title-{coffee.id}"
@@ -557,7 +557,7 @@
 										rel="noopener noreferrer"
 										class="inline-flex items-center gap-1 font-semibold text-accent transition-colors hover:underline"
 									>
-										Buy from {coffee.source ?? 'supplier'}
+										Buy from {supplierName}
 										<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path
 												stroke-linecap="round"

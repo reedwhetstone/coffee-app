@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { formatSourceName } from '$lib/utils/formatters';
+
 	export interface ComparisonBean {
 		name: string;
 		country: string;
@@ -43,24 +45,6 @@
 
 	// Cheapest price_per_lb (already sorted ascending, so index 0)
 	let cheapestCostLb = $derived(filteredBeans.length > 0 ? filteredBeans[0].price_per_lb : null);
-
-	function formatSourceName(source: string): string {
-		// Special-case known sources for better display names
-		const overrides: Record<string, string> = {
-			sweet_maria: "Sweet Maria's",
-			royal_coffee: 'Royal Coffee',
-			cafe_imports: 'Cafe Imports',
-			red_fox: 'Red Fox Coffee Merchants',
-			ml_trading: 'ML Trading',
-			genuine_origin: 'Genuine Origin',
-			st_helena: 'St. Helena Coffee'
-		};
-		if (overrides[source]) return overrides[source];
-		return source
-			.split('_')
-			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-			.join(' ');
-	}
 
 	function formatProcessing(processing: string | null): string {
 		if (!processing) return '—';

@@ -96,6 +96,21 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 		expect(screen.queryByText('Provenance identified')).toBeNull();
 	});
 
+	it('formats supplier slugs anywhere the card exposes the supplier name', async () => {
+		render(CoffeeCard, {
+			coffee: createCoffee({ source: 'smokin_beans' }),
+			parseTastingNotes
+		});
+
+		expect(screen.getByText('Smokin Beans')).toBeTruthy();
+		expect(screen.queryByText('smokin_beans')).toBeNull();
+
+		await fireEvent.click(screen.getByRole('button', { name: /view details for process lot/i }));
+
+		expect(screen.getAllByText('Smokin Beans').length).toBeGreaterThan(1);
+		expect(screen.getByRole('link', { name: /buy from smokin beans/i })).toBeTruthy();
+	});
+
 	it('opens a tabbed slide-out with proof and process details', async () => {
 		render(CoffeeCard, {
 			coffee: createCoffee(),

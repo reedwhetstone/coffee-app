@@ -22,6 +22,7 @@ import {
 } from '$lib/procurement/sourcingBriefCriteria';
 import type { RequestHandler } from './$types';
 import type { CatalogListQuery, components } from '@purveyors/sdk';
+import { formatSourceName } from '$lib/utils/formatters';
 
 const BASE_SYSTEM_PROMPT = `{{CHERRY_RUNTIME_IDENTITY}}
 
@@ -564,7 +565,7 @@ You can reference these items naturally (e.g., "that first one", "the Ethiopian"
 			lines.push(`TRACKED LOTS (${sourcingContext.trackedLots.length} watchlisted by this user):`);
 			for (const lot of sourcingContext.trackedLots.slice(0, 10)) {
 				const origin = lot.country ? ` · ${lot.country}` : '';
-				const supplier = lot.source ? ` from ${lot.source}` : '';
+				const supplier = lot.source ? ` from ${formatSourceName(lot.source)}` : '';
 				lines.push(`  - ${lot.name}${origin}${supplier} (catalog ID ${lot.id})`);
 			}
 			if (sourcingContext.trackedLots.length > 10) {

@@ -13,6 +13,7 @@
 		SupplierPriceRange
 	} from '../../../../routes/analytics/+page.server';
 	import type { DeferredAnalyticsComponent } from '../../../../routes/analytics/deferredModules';
+	import { formatSourceName } from '$lib/utils/formatters';
 
 	type WindowMode = '7d' | '30d';
 
@@ -261,7 +262,7 @@
 														? '$' + bean.price_per_lb.toFixed(2)
 														: '—'}</td
 												>
-												<td class="py-2 text-muted">{bean.source ?? '—'}</td>
+												<td class="py-2 text-muted">{formatSourceName(bean.source) || '—'}</td>
 											</tr>
 										{/each}
 									</tbody>
@@ -294,7 +295,7 @@
 														? '$' + bean.price_per_lb.toFixed(2)
 														: '—'}</td
 												>
-												<td class="py-2 text-muted">{bean.source ?? '—'}</td>
+												<td class="py-2 text-muted">{formatSourceName(bean.source) || '—'}</td>
 											</tr>
 										{/each}
 									</tbody>
