@@ -27,7 +27,10 @@ export function createCatalogTools(client: ParchmentClient, deps: ChatToolDeps) 
 				price_range: z.array(z.number()).length(2).optional().describe('Price range [min, max]'),
 				flavor_keywords: z.array(z.string()).optional().describe('Flavor descriptors'),
 
-				limit: z.number().optional().default(10).describe('Number of results to return (max 15)'),
+				limit: z
+					.number()
+					.optional()
+					.describe('Number of results to return (default 10, or all explicit IDs up to 15)'),
 				stocked_only: z
 					.boolean()
 					.optional()
