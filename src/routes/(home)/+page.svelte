@@ -13,6 +13,11 @@
 	let { data } = $props<{ data: PageData }>();
 
 	let accountDeletionAccepted = $state(false);
+	let heroCoffeeNames = $derived(
+		((data?.data ?? []) as Array<{ name?: unknown }>)
+			.map((coffee) => coffee.name)
+			.filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+	);
 
 	onMount(() => {
 		accountDeletionAccepted =
@@ -33,7 +38,7 @@
 			further action is needed.
 		</div>
 	{/if}
-	<Hero auth={data.auth} />
+	<Hero auth={data.auth} coffeeNames={heroCoffeeNames} />
 
 	<PersonaRouter />
 

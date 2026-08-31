@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { InventoryTableBlock, BlockAction } from '$lib/types/genui';
+	import { formatSourceName } from '$lib/utils/formatters';
 
 	let { block, onAction: _onAction } = $props<{
 		block: InventoryTableBlock;
@@ -13,7 +14,7 @@
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	function getSource(item: any): string {
-		return item.coffee_catalog?.source || item.source || '-';
+		return formatSourceName(item.coffee_catalog?.source || item.source) || '-';
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any

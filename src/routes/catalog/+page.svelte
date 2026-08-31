@@ -6,11 +6,10 @@
 	import { checkRole } from '$lib/types/auth.types';
 
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
-	import {
-		summarizeSourcingBriefMatches,
-		type MatchableSourcingLot,
-		type SourcingBriefMatchSummary
-	} from '$lib/procurement/sourcingBriefMatching';
+	import type {
+		PageSourcingBriefMatchSummary,
+		SourcingBriefMatchSummary
+	} from '$lib/procurement/sourcingBriefPresentation';
 
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
@@ -19,6 +18,7 @@
 	import type { OriginPriceStats, LotPriceContext } from '$lib/catalog/priceContext';
 	import { getDisplayPrice } from '$lib/utils/pricing';
 	import { createTrackedLotStateController } from '$lib/client/trackedLots';
+	import { formatSourceName } from '$lib/utils/formatters';
 
 	import PageHeaderSection from '$lib/components/catalog/sections/PageHeaderSection.svelte';
 	import FilterBarSection from '$lib/components/catalog/sections/FilterBarSection.svelte';
@@ -256,7 +256,9 @@
 			entities: items.slice(0, 5).map((coffee) => ({
 				type: 'coffee',
 				id: coffee.id,
-				label: [coffee.name, coffee.source].filter(Boolean).join(' — ') || `Coffee #${coffee.id}`
+				label:
+					[coffee.name, formatSourceName(coffee.source)].filter(Boolean).join(' — ') ||
+					`Coffee #${coffee.id}`
 			}))
 		});
 		return () => pageChatContext.clear();
@@ -294,12 +296,20 @@
 			toInitialArray<SourcingBriefMatchSummary>(data.briefMatchSummaries)
 	);
 
-	let briefMatchSummaries = $derived(
-		summarizeSourcingBriefMatches(
-			serverBriefMatchSummaries,
-			displayData() as unknown as MatchableSourcingLot[]
-		)
-	);
+	let briefMatchSummaries = $derived.by((): PageSourcingBriefMatchSummary[] => {
+		const displayedIds = new Set(
+			displayData()
+				.map((coffee) => catalogCoffeeId(coffee))
+				.filter((id): id is number => id !== null)
+		);
+
+		return serverBriefMatchSummaries.flatMap((summary) => {
+			const matchingIds = summary.matchingIds.filter((id) => displayedIds.has(id));
+			return matchingIds.length > 0
+				? [{ ...summary, matchingIds, matchCount: matchingIds.length }]
+				: [];
+		});
+	});
 	let hasBriefMatches = $derived(briefMatchSummaries.length > 0);
 	let trackedCountOnPage = $derived(
 		displayData().filter((c) => trackedIds.has((c as unknown as { id: number }).id)).length

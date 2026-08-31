@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { SourcingBriefMatchSummary } from '$lib/procurement/sourcingBriefMatching';
+	import type { PageSourcingBriefMatchSummary } from '$lib/procurement/sourcingBriefPresentation';
 
 	interface Props {
-		briefMatchSummaries: SourcingBriefMatchSummary[];
+		briefMatchSummaries: PageSourcingBriefMatchSummary[];
 	}
 
 	let { briefMatchSummaries }: Props = $props();

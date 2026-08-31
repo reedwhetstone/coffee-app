@@ -7,11 +7,9 @@ import type { CoffeeCatalog } from '$lib/types/component.types';
  * from components; the server loader lives in $lib/server/marketIndex.
  */
 
-export type MarketSignalItem = components['schemas']['MarketSignalItem'] & {
-	/** Coffee name from the entitled Parchment response or authorized server enrichment. */
-	name: string | null;
-	/** Catalog row for rendering the canonical CoffeeCard detail drawer on non-catalog surfaces. */
-	coffee?: CoffeeCatalog | null;
+export type MarketSignalItem = Omit<components['schemas']['MarketSignalItem'], 'coffee'> & {
+	/** Parchment's public catalog projection adapted to the existing CoffeeCard presentation type. */
+	coffee: CoffeeCatalog | null;
 };
 
 export interface MarketSignalsSummary {

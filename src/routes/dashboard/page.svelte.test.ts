@@ -4,7 +4,11 @@ import { describe, expect, it } from 'vitest';
 import DashboardPage from './+page.svelte';
 import type { PageData } from './$types';
 
-function createData(role: 'viewer' | 'member' | 'admin', ppiAccess: boolean): PageData {
+function createData(
+	role: 'viewer' | 'member' | 'admin',
+	ppiAccess: boolean,
+	options: { emptyWorkspace?: boolean } = {}
+): PageData {
 	return {
 		auth: {
 			isSignedIn: true,
@@ -12,50 +16,56 @@ function createData(role: 'viewer' | 'member' | 'admin', ppiAccess: boolean): Pa
 			role,
 			ppiAccess
 		},
-		trackedLots: [
-			{
-				catalogId: 7,
-				name: 'Tracked Ethiopia',
-				source: 'Importer One',
-				country: 'Ethiopia',
-				processing: 'Washed',
-				stocked: true,
-				unstockedDate: null,
-				currentPrice: 6.25,
-				priceDelta: -0.5
-			},
-			{
-				catalogId: 8,
-				name: 'Delisted Colombia',
-				source: 'Importer Two',
-				country: 'Colombia',
-				processing: 'Natural',
-				stocked: false,
-				unstockedDate: '2026-08-29',
-				currentPrice: null,
-				priceDelta: -0.5
-			}
-		],
-		activeBriefs: [
-			{
-				id: 'brief-1',
-				name: 'Washed Ethiopia brief',
-				criteriaDescription: 'Ethiopia · Washed · up to $7/lb',
-				catalogHref: '/catalog?country=Ethiopia&processing=Washed'
-			}
-		],
-		recentArrivals: [
-			{
-				id: 21,
-				name: 'Fresh Kenya',
-				source: 'Importer Three',
-				country: 'Kenya',
-				processing: 'Washed',
-				cost_lb: null,
-				price_per_lb: null,
-				price_tiers: [{ min_lbs: 1, price: 7.4 }]
-			}
-		]
+		trackedLots: options.emptyWorkspace
+			? []
+			: [
+					{
+						catalogId: 7,
+						name: 'Tracked Ethiopia',
+						source: 'Importer One',
+						country: 'Ethiopia',
+						processing: 'Washed',
+						stocked: true,
+						unstockedDate: null,
+						currentPrice: 6.25,
+						priceDelta: -0.5
+					},
+					{
+						catalogId: 8,
+						name: 'Delisted Colombia',
+						source: 'Importer Two',
+						country: 'Colombia',
+						processing: 'Natural',
+						stocked: false,
+						unstockedDate: '2026-08-29',
+						currentPrice: null,
+						priceDelta: -0.5
+					}
+				],
+		activeBriefs: options.emptyWorkspace
+			? []
+			: [
+					{
+						id: 'brief-1',
+						name: 'Washed Ethiopia brief',
+						criteriaDescription: 'Ethiopia · Washed · up to $7/lb',
+						catalogHref: '/catalog?country=Ethiopia&processing=Washed'
+					}
+				],
+		recentArrivals: options.emptyWorkspace
+			? []
+			: [
+					{
+						id: 21,
+						name: 'Fresh Kenya',
+						source: 'Importer Three',
+						country: 'Kenya',
+						processing: 'Washed',
+						cost_lb: null,
+						price_per_lb: null,
+						price_tiers: [{ min_lbs: 1, price: 7.4 }]
+					}
+				]
 	} as unknown as PageData;
 }
 
@@ -110,5 +120,25 @@ describe('adaptive dashboard', () => {
 			'/subscription'
 		);
 		expect(screen.queryByRole('heading', { name: 'Continue your work' })).toBeNull();
+	});
+
+	it('shows the canonical empty brief workflow to a PPI-only viewer', () => {
+		render(DashboardPage, { data: createData('viewer', true, { emptyWorkspace: true }) });
+
+		expect(screen.getByLabelText('Your sourcing workspace')).toBeInTheDocument();
+		expect(screen.getByText(/No active sourcing briefs/)).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Parchment API docs' })).toHaveAttribute(
+			'href',
+			'https://api.purveyors.io/docs'
+		);
+		expect(
+			screen.queryByText(/Sourcing briefs are a Mallard Studio workflow/)
+		).not.toBeInTheDocument();
+	});
+
+	it('does not expose the sourcing workspace to a non-entitled viewer', () => {
+		render(DashboardPage, { data: createData('viewer', false, { emptyWorkspace: true }) });
+
+		expect(screen.queryByLabelText('Your sourcing workspace')).not.toBeInTheDocument();
 	});
 });

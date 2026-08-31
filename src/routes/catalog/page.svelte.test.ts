@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { get } from 'svelte/store';
@@ -686,7 +686,7 @@ describe('/catalog watchlist and sourcing briefs', () => {
 		});
 	});
 
-	it('recomputes active brief counts when catalog pagination changes client-side', async () => {
+	it('recomputes page-local counts from canonical matching IDs when pagination changes', async () => {
 		vi.mocked(fetch).mockImplementation(async (input: URL | RequestInfo) => {
 			const url =
 				typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
@@ -696,7 +696,7 @@ describe('/catalog watchlist and sourcing briefs', () => {
 					headers: { 'Content-Type': 'application/json' }
 				});
 			}
-			if (url.startsWith('/v1/catalog')) {
+			if (url.startsWith('/api/catalog?')) {
 				return new Response(
 					JSON.stringify({
 						data: [
@@ -742,8 +742,8 @@ describe('/catalog watchlist and sourcing briefs', () => {
 						briefId: 'brief-1',
 						briefName: 'Colombia brief',
 						criteria: { version: 1, country: 'Colombia' },
-						matchCount: 1,
-						matchingIds: [1]
+						totalMatchCount: 2,
+						matchingIds: [1, 2]
 					}
 				]
 			} as unknown as Partial<PageData>)
@@ -754,9 +754,59 @@ describe('/catalog watchlist and sourcing briefs', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
-		await waitFor(() => {
-			expect(screen.queryByLabelText('Sourcing brief matches')).not.toBeInTheDocument();
-		});
+		await waitFor(() => expect(screen.getByText('Ethiopia Page Two Lot')).toBeInTheDocument());
+		const section = screen.getByLabelText('Sourcing brief matches');
+		expect(screen.getByText('Colombia brief')).toBeInTheDocument();
+		expect(within(section).getByText('1')).toBeInTheDocument();
+	});
+
+	it('omits briefs with no canonical IDs on the displayed page', () => {
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' },
+				role: 'member',
+				briefMatchSummaries: [
+					{
+						briefId: 'brief-1',
+						briefName: 'Elsewhere brief',
+						criteria: { version: 1, country: 'Ethiopia' },
+						totalMatchCount: 1,
+						matchingIds: [99]
+					}
+				]
+			} as unknown as Partial<PageData>)
+		);
+
+		expect(screen.queryByLabelText('Sourcing brief matches')).not.toBeInTheDocument();
+	});
+
+	it('includes a streamed deep-link row by canonical ID', async () => {
+		const initial = createData();
+		pageState.url = new URL('https://app.test/catalog?coffee=99');
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' },
+				role: 'member',
+				deepLinkCoffee: Promise.resolve({
+					...initial.data[0],
+					id: 99,
+					name: 'Canonical Deep Link Match'
+				}),
+				briefMatchSummaries: [
+					{
+						briefId: 'brief-1',
+						briefName: 'Deep-link brief',
+						criteria: { version: 1, country: 'Kenya' },
+						totalMatchCount: 1,
+						matchingIds: [99]
+					}
+				]
+			} as unknown as Partial<PageData>)
+		);
+
+		await waitFor(() => expect(screen.getByText('Deep-link brief')).toBeInTheDocument());
+		const section = screen.getByLabelText('Sourcing brief matches');
+		expect(within(section).getByText('1')).toBeInTheDocument();
 	});
 });
 

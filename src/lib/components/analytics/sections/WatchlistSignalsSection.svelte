@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { TrackedLotSummary } from '$lib/server/trackedLots';
+	import { formatSourceName } from '$lib/utils/formatters';
 
 	type ViewMode = 'retail' | 'wholesale' | 'all';
 
@@ -46,7 +47,8 @@
 				<div class="min-w-0 rounded-lg border border-line bg-surface-panel p-3">
 					<p class="truncate text-sm font-semibold text-ink">{lot.name}</p>
 					<p class="mt-0.5 truncate text-xs text-muted">
-						{[lot.source, lot.country].filter(Boolean).join(' · ') || 'Supplier unknown'}
+						{[formatSourceName(lot.source), lot.country].filter(Boolean).join(' · ') ||
+							'Supplier unknown'}
 					</p>
 					<div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
 						{#if lot.stocked === false}

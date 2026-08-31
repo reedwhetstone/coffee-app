@@ -9,6 +9,7 @@
 	} from '$lib/dashboard/intelligenceHome';
 	import { formatPricePerLb, getDisplayPrice } from '$lib/utils/pricing';
 	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
+	import { formatSourceName } from '$lib/utils/formatters';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -58,11 +59,13 @@
 		country: string | null;
 		processing: string | null;
 	}): string {
-		return [lot.source, lot.country, lot.processing].filter(Boolean).join(' · ');
+		return [formatSourceName(lot.source), lot.country, lot.processing].filter(Boolean).join(' · ');
 	}
 
 	function arrivalContext(coffee: CoffeeCatalog): string {
-		return [coffee.source, coffee.country, coffee.processing].filter(Boolean).join(' · ');
+		return [formatSourceName(coffee.source), coffee.country, coffee.processing]
+			.filter(Boolean)
+			.join(' · ');
 	}
 
 	function arrivalPrice(coffee: CoffeeCatalog): string {
@@ -79,7 +82,9 @@
 			entities: recentArrivals.slice(0, 5).map((coffee) => ({
 				type: 'coffee',
 				id: coffee.id,
-				label: [coffee.name, coffee.source].filter(Boolean).join(' — ') || `Coffee #${coffee.id}`
+				label:
+					[coffee.name, formatSourceName(coffee.source)].filter(Boolean).join(' — ') ||
+					`Coffee #${coffee.id}`
 			}))
 		});
 		return () => pageChatContext.clear();
@@ -167,7 +172,11 @@
 	</section>
 
 	{#if hasWorkspaceAccess}
-		<section class="space-y-5" aria-labelledby="continue-heading">
+		<section
+			class="space-y-5"
+			aria-labelledby="continue-heading"
+			aria-label="Your sourcing workspace"
+		>
 			<div class="max-w-3xl">
 				<p class="text-sm font-semibold text-organic-rust">Live workspace</p>
 				<h2 id="continue-heading" class="mt-1 font-serif text-3xl font-medium text-ink">
@@ -263,15 +272,12 @@
 					{#if activeBriefs.length === 0}
 						<div class="px-5 py-8">
 							<p class="text-sm leading-6 text-muted">
-								No active briefs. Start with a current catalog question or turn a need into a
-								focused search with {experience.agent?.name ?? 'Cherry AI'}.
+								No active sourcing briefs. Create one through the
+								<a
+									href="https://api.purveyors.io/docs"
+									class="font-semibold text-link hover:text-ink">Parchment API docs</a
+								>.
 							</p>
-							<a
-								href={chatHref}
-								class="mt-4 inline-block text-sm font-semibold text-link hover:text-ink"
-							>
-								Start a sourcing investigation <span aria-hidden="true">→</span>
-							</a>
 						</div>
 					{:else}
 						<ul class="divide-y divide-line">

@@ -18,6 +18,7 @@
 		CatalogInventoryBatchReserveRequest,
 		components
 	} from '@purveyors/sdk';
+	import { formatSourceName } from '$lib/utils/formatters';
 
 	type ManualCoffeeCreate = components['schemas']['ManualCoffeeCreate'];
 	type ManualInventoryBatchLifecycle = components['schemas']['ManualInventoryBatchLifecycle'];
@@ -332,6 +333,13 @@
 
 	// Filter catalog beans based on stocked status
 	let filteredCatalogBeans = $derived(catalogBeans.filter((bean: CoffeeCatalog) => bean.stocked));
+	let catalogSourceOptions = $derived.by((): string[] => {
+		const sources = (filteredCatalogBeans as CoffeeCatalog[]).reduce<string[]>((labels, bean) => {
+			if (typeof bean.source === 'string') labels.push(bean.source);
+			return labels;
+		}, []);
+		return [...new Set(sources)];
+	});
 
 	// When selecting from catalog, auto-calculate bean_cost from price_tiers when available.
 	// This keeps the form aligned with the tiered pricing model (bean_cost is total $ for this line item).
@@ -935,8 +943,8 @@
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 					>
 						<option value="">All Sources</option>
-						{#each [...new Set(filteredCatalogBeans.map((b: CoffeeCatalog) => b.source))] as source}
-							<option value={source}>{source}</option>
+						{#each catalogSourceOptions as source}
+							<option value={source}>{formatSourceName(source)}</option>
 						{/each}
 					</select>
 				</div>
