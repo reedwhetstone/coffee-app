@@ -13,18 +13,9 @@ const authMocks = vi.hoisted(() => {
 
 	return {
 		AuthError: MockAuthError,
-		getUserRoles: vi.fn(),
 		requireParchmentAccess: vi.fn()
 	};
 });
-
-const dataMocks = vi.hoisted(() => ({
-	buildGreenCoffeeQuery: vi.fn(),
-	processGreenCoffeeData: vi.fn((rows: unknown[]) => rows),
-	stripRoastProfileData: vi.fn((rows: Array<Record<string, unknown>>) =>
-		rows.map((row) => ({ ...row, roast_profiles: [] }))
-	)
-}));
 
 const parchmentMocks = vi.hoisted(() => {
 	class MockParchmentConfigError extends Error {}
@@ -33,6 +24,7 @@ const parchmentMocks = vi.hoisted(() => {
 		ParchmentConfigError: MockParchmentConfigError,
 		createParchmentServerClient: vi.fn(),
 		fetchParchmentInventoryProjection: vi.fn(),
+		redeemParchmentInventoryShareGrant: vi.fn(),
 		inventoryUpdate: vi.fn(),
 		inventoryDelete: vi.fn(),
 		reserveManualBatch: vi.fn(),
@@ -46,14 +38,7 @@ const parchmentMocks = vi.hoisted(() => {
 
 vi.mock('$lib/server/auth', () => ({
 	AuthError: authMocks.AuthError,
-	getUserRoles: authMocks.getUserRoles,
 	requireParchmentAccess: authMocks.requireParchmentAccess
-}));
-
-vi.mock('$lib/server/greenCoffeeUtils.js', () => ({
-	buildGreenCoffeeQuery: dataMocks.buildGreenCoffeeQuery,
-	processGreenCoffeeData: dataMocks.processGreenCoffeeData,
-	stripRoastProfileData: dataMocks.stripRoastProfileData
 }));
 
 vi.mock('$lib/server/parchmentClient', () => ({
@@ -69,27 +54,11 @@ vi.mock('$lib/server/parchmentInventory', async (importOriginal) => {
 	};
 });
 
+vi.mock('$lib/server/parchmentShares', () => ({
+	redeemParchmentInventoryShareGrant: parchmentMocks.redeemParchmentInventoryShareGrant
+}));
+
 import { DELETE, GET, POST, PUT } from './+server';
-
-function makeQuery(data: unknown[] = []) {
-	const query = {
-		eq: vi.fn(() => query),
-		then: vi.fn((resolve: (value: { data: unknown[]; error: null }) => unknown) =>
-			resolve({ data, error: null })
-		)
-	};
-	return query;
-}
-
-function makeSharedLinksQuery(data: unknown) {
-	const query = {
-		select: vi.fn(() => query),
-		eq: vi.fn(() => query),
-		gte: vi.fn(() => query),
-		single: vi.fn(async () => ({ data }))
-	};
-	return query;
-}
 
 function makeEvent(path = '/api/beans', init: Partial<RequestInit> = {}) {
 	return {
@@ -106,13 +75,12 @@ function makeEvent(path = '/api/beans', init: Partial<RequestInit> = {}) {
 describe('/api/beans Portfolio entitlement gating', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		dataMocks.buildGreenCoffeeQuery.mockReturnValue(makeQuery([]));
 		authMocks.requireParchmentAccess.mockResolvedValue({
 			user: { id: 'ppi-user' },
 			ppiAccess: true,
 			memberAccess: false
 		});
-		authMocks.getUserRoles.mockResolvedValue(['viewer']);
+		parchmentMocks.redeemParchmentInventoryShareGrant.mockResolvedValue([]);
 		parchmentMocks.inventoryUpdate.mockResolvedValue({
 			data: {
 				data: {
@@ -237,56 +205,50 @@ describe('/api/beans Portfolio entitlement gating', () => {
 	});
 
 	it('preserves share-token reads without requiring Portfolio entitlement', async () => {
-		const sharedLinksQuery = makeSharedLinksQuery(null);
 		const event = makeEvent('/api/beans?share=token') as ReturnType<typeof makeEvent>;
-		event.locals.supabase.from = vi.fn(() => sharedLinksQuery);
 
 		const response = await GET(event as never);
 
 		expect(response.status).toBe(200);
-		expect(await response.json()).toEqual({ data: [] });
+		expect(response.headers.get('cache-control')).toBe('no-store');
+		expect(await response.json()).toEqual({ data: [], searchState: { share: 'token' } });
 		expect(authMocks.requireParchmentAccess).not.toHaveBeenCalled();
-		expect(authMocks.getUserRoles).not.toHaveBeenCalled();
+		expect(parchmentMocks.createParchmentServerClient).toHaveBeenCalledWith(event, {
+			mode: 'anonymous'
+		});
+		expect(parchmentMocks.redeemParchmentInventoryShareGrant).toHaveBeenCalledWith(
+			expect.objectContaining({ kind: 'parchment-client' }),
+			'token'
+		);
+		expect(event.locals.supabase.from).not.toHaveBeenCalled();
 	});
 
-	it('strips roast history from share reads when the owner is not a Mallard Studio member', async () => {
-		const query = makeQuery([{ id: 1, roast_profiles: [{ roast_id: 10 }] }]);
-		const sharedLinksQuery = makeSharedLinksQuery({ user_id: 'ppi-owner', resource_id: 'all' });
-		dataMocks.buildGreenCoffeeQuery.mockReturnValue(query);
-		authMocks.getUserRoles.mockResolvedValue(['viewer']);
+	it('relays the canonical share projection without local owner-role logic', async () => {
+		const sharedRows = [{ id: 1, roast_profiles: [{ roast_id: 10 }] }];
+		parchmentMocks.redeemParchmentInventoryShareGrant.mockResolvedValue(sharedRows);
 
 		const event = makeEvent('/api/beans?share=token') as ReturnType<typeof makeEvent>;
-		event.locals.supabase.from = vi.fn(() => sharedLinksQuery);
 
 		const response = await GET(event as never);
 
 		expect(response.status).toBe(200);
 		expect(authMocks.requireParchmentAccess).not.toHaveBeenCalled();
-		expect(authMocks.getUserRoles).toHaveBeenCalledWith(event.locals.supabase, 'ppi-owner');
-		expect(query.eq).toHaveBeenCalledWith('user', 'ppi-owner');
-		expect(dataMocks.stripRoastProfileData).toHaveBeenCalledWith([
-			{ id: 1, roast_profiles: [{ roast_id: 10 }] }
-		]);
-		expect(await response.json()).toMatchObject({ data: [{ id: 1, roast_profiles: [] }] });
+		expect(await response.json()).toEqual({ data: sharedRows, searchState: { share: 'token' } });
 	});
 
-	it('keeps roast history in share reads when the owner is a Mallard Studio member', async () => {
-		const roastProfiles = [{ roast_id: 10 }];
-		const query = makeQuery([{ id: 1, roast_profiles: roastProfiles }]);
-		const sharedLinksQuery = makeSharedLinksQuery({ user_id: 'member-owner', resource_id: 1 });
-		dataMocks.buildGreenCoffeeQuery.mockReturnValue(query);
-		authMocks.getUserRoles.mockResolvedValue(['member']);
-
+	it('fails closed without caching when Parchment share redemption fails', async () => {
+		parchmentMocks.redeemParchmentInventoryShareGrant.mockRejectedValue(
+			new Error('Parchment unavailable')
+		);
 		const event = makeEvent('/api/beans?share=token') as ReturnType<typeof makeEvent>;
-		event.locals.supabase.from = vi.fn(() => sharedLinksQuery);
 
 		const response = await GET(event as never);
 
 		expect(response.status).toBe(200);
-		expect(query.eq).toHaveBeenCalledWith('id', 1);
-		expect(dataMocks.stripRoastProfileData).not.toHaveBeenCalled();
-		expect(await response.json()).toMatchObject({
-			data: [{ id: 1, roast_profiles: roastProfiles }]
+		expect(response.headers.get('cache-control')).toBe('no-store');
+		expect(await response.json()).toEqual({
+			data: [],
+			error: 'Failed to fetch beans'
 		});
 	});
 
@@ -310,7 +272,6 @@ describe('/api/beans Portfolio entitlement gating', () => {
 			expect.objectContaining({ kind: 'parchment-client' }),
 			{ id: undefined, includeRoastProfiles: false }
 		);
-		expect(dataMocks.buildGreenCoffeeQuery).not.toHaveBeenCalled();
 		expect(await response.json()).toMatchObject({ data: [{ id: 1, roast_profiles: [] }] });
 	});
 
@@ -332,7 +293,6 @@ describe('/api/beans Portfolio entitlement gating', () => {
 			expect.objectContaining({ kind: 'parchment-client' }),
 			{ id: 1, includeRoastProfiles: true }
 		);
-		expect(dataMocks.buildGreenCoffeeQuery).not.toHaveBeenCalled();
 		expect(await response.json()).toMatchObject({
 			data: [{ id: 1, roast_profiles: roastProfiles }]
 		});
@@ -350,7 +310,6 @@ describe('/api/beans Portfolio entitlement gating', () => {
 			data: [],
 			error: 'Failed to fetch beans'
 		});
-		expect(dataMocks.buildGreenCoffeeQuery).not.toHaveBeenCalled();
 	});
 
 	it('requires Portfolio entitlement for create, update, and delete writes', async () => {

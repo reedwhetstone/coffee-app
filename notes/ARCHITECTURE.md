@@ -159,9 +159,10 @@ replacement or retirement:
 - roast, sales, and tasting data helpers that still write Supabase directly even
   though equivalent account-linked Parchment contracts now exist
 
-The legacy shared-bean route still reads the share owner's scalar role. That is
-an intentional cross-principal exception until Parchment exposes a share-grant
-projection; it is not used to authorize the current request principal.
+Inventory share creation and cross-principal redemption now use Parchment's
+share-grant contract through thin BFF adapters. Coffee-app no longer reads
+`shared_links`, the share owner's `user_roles`, or cross-owner inventory,
+catalog, and roast rows directly.
 
 The existence of a Parchment endpoint does not prove coffee-app has migrated to
 it. The canonical backlog tracks this as the headless-cutover debt audit. Each

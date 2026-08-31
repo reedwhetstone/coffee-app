@@ -1,12 +1,7 @@
 import { json } from '@sveltejs/kit';
-import { AuthError, getUserRoles, requireParchmentAccess } from '$lib/server/auth';
+import { AuthError, requireParchmentAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 import type { CatalogInventoryBatchReserveRequest, components } from '@purveyors/sdk';
-import {
-	buildGreenCoffeeQuery,
-	processGreenCoffeeData,
-	stripRoastProfileData
-} from '$lib/server/greenCoffeeUtils.js';
 import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 import {
 	commitParchmentManualInventoryBatch,
@@ -20,6 +15,7 @@ import {
 	reserveParchmentManualInventoryBatch,
 	updateParchmentInventoryItem
 } from '$lib/server/parchmentInventory';
+import { redeemParchmentInventoryShareGrant } from '$lib/server/parchmentShares';
 
 type ManualInventoryBatchReserveRequest =
 	components['schemas']['ManualInventoryBatchReserveRequest'];
@@ -88,12 +84,12 @@ function hasManualBatchItems(value: unknown): value is { batchId?: unknown; item
 }
 
 export const GET: RequestHandler = async (event) => {
-	const { url, locals } = event;
+	const { url } = event;
 	const manualBatchId = url.searchParams.get('manualBatchId');
 	const catalogBatchId = url.searchParams.get('catalogBatchId');
+	const shareToken = url.searchParams.get('share');
 	try {
 		const id = url.searchParams.get('id');
-		const shareToken = url.searchParams.get('share');
 
 		if (manualBatchId) {
 			await requireParchmentAccess(event);
@@ -109,42 +105,16 @@ export const GET: RequestHandler = async (event) => {
 
 		// If share token is provided, verify it and show shared data
 		if (shareToken) {
-			let query = buildGreenCoffeeQuery(locals.supabase);
-			let includeRoastProfiles = false;
-			const { data: shareData } = await locals.supabase
-				.from('shared_links')
-				.select('user_id, resource_id')
-				.eq('share_token', shareToken)
-				.eq('is_active', true)
-				.gte('expires_at', new Date().toISOString())
-				.single();
+			const client = await createParchmentServerClient(event, { mode: 'anonymous' });
+			const responseData = await redeemParchmentInventoryShareGrant(client, shareToken);
 
-			if (shareData?.user_id) {
-				const ownerRoles = await getUserRoles(locals.supabase, shareData.user_id);
-				includeRoastProfiles = ownerRoles.includes('member');
-
-				// Show only the shared bean or all beans from the user
-				if (shareData.resource_id === 'all') {
-					query = query.eq('user', shareData.user_id);
-				} else {
-					query = query.eq('id', shareData.resource_id);
-				}
-			} else {
-				return json({ data: [] });
-			}
-
-			const { data: rows, error } = await query;
-			if (error) throw error;
-
-			const processedData = processGreenCoffeeData(rows || []);
-			const responseData = includeRoastProfiles
-				? processedData
-				: stripRoastProfileData(processedData);
-
-			return json({
-				data: responseData,
-				searchState: Object.fromEntries(url.searchParams.entries())
-			});
+			return json(
+				{
+					data: responseData,
+					searchState: Object.fromEntries(url.searchParams.entries())
+				},
+				{ headers: { 'Cache-Control': 'no-store' } }
+			);
 		}
 
 		// Standard Portfolio access: Parchment Intelligence or Mallard Studio users see
@@ -178,7 +148,10 @@ export const GET: RequestHandler = async (event) => {
 		if (manualBatchId || catalogBatchId) {
 			return json({ data: [], error: 'Failed to reconcile inventory batch' }, { status: 500 });
 		}
-		return json({ data: [], error: 'Failed to fetch beans' });
+		return json(
+			{ data: [], error: 'Failed to fetch beans' },
+			shareToken ? { headers: { 'Cache-Control': 'no-store' } } : undefined
+		);
 	}
 };
 
