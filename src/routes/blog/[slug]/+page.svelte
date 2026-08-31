@@ -4,6 +4,7 @@
 	import { formatBlogDate } from '$lib/utils/dates';
 	import LinkedInDraft from '$lib/components/blog/LinkedInDraft.svelte';
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
+	import MarketWireCta from '$lib/components/market-wire/MarketWireCta.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -129,6 +130,10 @@
 
 <!-- Post footer -->
 <div class="mt-16 space-y-8">
+	{#if data.metadata.format === 'market-brief'}
+		<MarketWireCta heading="Get the next Market Brief in your inbox." />
+	{/if}
+
 	<!-- Share / LinkedIn section -->
 	<div class="border-t border-line pt-8">
 		{#if showLinkedIn}

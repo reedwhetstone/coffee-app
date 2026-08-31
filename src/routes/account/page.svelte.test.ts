@@ -20,6 +20,17 @@ function createData(signOut: ReturnType<typeof vi.fn>) {
 			ppiAccess: false
 		},
 		email: 'owner@example.com',
+		marketReadPreference: {
+			publication: 'market_read',
+			status: 'unsubscribed',
+			subscribed: false,
+			consentSource: null,
+			consentedAt: null,
+			unsubscribedAt: null,
+			createdAt: null,
+			updatedAt: null
+		},
+		marketReadError: null,
 		supabase: { auth: { signOut } }
 	} as never;
 }
@@ -60,5 +71,34 @@ describe('account deletion completion', () => {
 		expect(signOut).toHaveBeenCalledWith({ scope: 'local' });
 		expect(signOut.mock.invocationCallOrder[0]).toBeLessThan(goto.mock.invocationCallOrder[0]);
 		expect(sessionStorage.getItem('purveyors:account-deletion-accepted')).toBe('true');
+	});
+
+	it('subscribes from account settings through the server-owned preference route', async () => {
+		const subscribedPreference = {
+			publication: 'market_read',
+			status: 'subscribed',
+			subscribed: true,
+			consentSource: 'account_settings',
+			consentedAt: '2026-08-31T01:00:00.000Z',
+			unsubscribedAt: null,
+			createdAt: '2026-08-31T01:00:00.000Z',
+			updatedAt: '2026-08-31T01:00:00.000Z'
+		};
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(JSON.stringify({ data: subscribedPreference }), {
+				status: 200,
+				headers: { 'content-type': 'application/json' }
+			})
+		);
+		vi.stubGlobal('fetch', fetchMock);
+
+		render(AccountPage, { data: createData(vi.fn()) });
+		await fireEvent.click(screen.getByRole('button', { name: 'Subscribe to Market Wire' }));
+
+		await waitFor(() => expect(screen.getByText('Market Wire delivery is on.')).toBeVisible());
+		expect(fetchMock).toHaveBeenCalledWith('/api/email-subscriptions/market-read', {
+			method: 'PUT'
+		});
+		expect(screen.getByRole('button', { name: 'Stop weekly emails' })).toBeVisible();
 	});
 });

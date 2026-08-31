@@ -21,16 +21,17 @@ Cherry Runtime's server-side tools consume the Parchment API through `@purveyors
 
 ### Public
 
-| Route        | Description                                                                                |
-| ------------ | ------------------------------------------------------------------------------------------ |
-| `/`          | Marketing landing page                                                                     |
-| `/catalog`   | Green coffee catalog with filters and live pricing                                         |
-| `/analytics` | Market intelligence: public overview charts plus gated Parchment Intelligence modules      |
-| `/evals`     | Cherry Evals: domain benchmarks for green coffee, sensory analysis, sourcing, and roasting |
-| `/api`       | API product page: plans, pricing, and quick start                                          |
-| `/docs`      | Unified documentation for API and CLI                                                      |
-| `/blog`      | Coffee content and platform updates                                                        |
-| `/bot`       | PurveyorsBot crawler identity, request policy, and operator contact                        |
+| Route          | Description                                                                                |
+| -------------- | ------------------------------------------------------------------------------------------ |
+| `/`            | Marketing landing page                                                                     |
+| `/catalog`     | Green coffee catalog with filters and live pricing                                         |
+| `/analytics`   | Market intelligence: public overview charts plus gated Parchment Intelligence modules      |
+| `/evals`       | Cherry Evals: domain benchmarks for green coffee, sensory analysis, sourcing, and roasting |
+| `/api`         | API product page: plans, pricing, and quick start                                          |
+| `/docs`        | Unified documentation for API and CLI                                                      |
+| `/blog`        | Coffee content and platform updates                                                        |
+| `/market-wire` | Weekly green coffee intelligence and account-backed email signup                           |
+| `/bot`         | PurveyorsBot crawler identity, request policy, and operator contact                        |
 
 ### Authenticated
 
@@ -62,7 +63,7 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
 2. **Platform app API** (`/api/*`)
    - Powers the first-party web app, Console, billing, chat, and admin workflows
    - Mixed auth model depending on route: catalog BFF adapters can allow anonymous or session access, most product routes require session auth, and chat/workspace routes require either Mallard Studio membership or Parchment Intelligence access
-   - `/api/billing/*`, `/api/account-deletion`, and `/api/account-deletion/reauthenticate` are browser-session-only internal BFF routes. Coffee-app forwards typed requests through `@purveyors/sdk`; Parchment owns Checkout, subscriptions, entitlements, and the provider-before-local-before-Auth deletion saga. They never form part of the external Parchment API
+   - `/api/billing/*`, `/api/email-subscriptions/*`, `/api/account-deletion`, and `/api/account-deletion/reauthenticate` are browser-session-only internal BFF routes. Coffee-app forwards typed requests through `@purveyors/sdk`; Parchment owns billing, email preferences, provider projection, entitlements, and the provider-before-local-before-Auth deletion saga. They never form part of the external Parchment API
    - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
    - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are metadata or compatibility endpoints, not catalog or analytics APIs

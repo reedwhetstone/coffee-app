@@ -89,6 +89,14 @@ ${coffeeBenchEntry}
 		<priority>0.8</priority>
 	</url>
 ${blogPostEntries}
+	<!-- Market Wire subscription landing -->
+	<url>
+		<loc>${baseUrl}/market-wire</loc>
+		<lastmod>${currentDate}</lastmod>
+		<changefreq>weekly</changefreq>
+		<priority>0.8</priority>
+	</url>
+
 	<!-- Developer docs tree -->
 	<url>
 		<loc>${baseUrl}/docs</loc>
