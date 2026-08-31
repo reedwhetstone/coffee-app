@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SourcingBriefResource } from '$lib/server/parchmentProcurement';
+import type { TrackedLotSummary } from '$lib/server/trackedLots';
 
 const { mockCreateParchmentServerClient } = vi.hoisted(() => ({
 	mockCreateParchmentServerClient: vi.fn()
@@ -27,8 +28,28 @@ import {
 	_buildSystemPrompt,
 	_fetchAgentCatalogRowsForSearch,
 	_filterAgentCatalogRowsForUnsupportedFilters,
+	_hydrateTrackedLotSummaries,
 	_loadSourcingIntelligenceSeeds
 } from './+server';
+
+function trackedLotSummary(overrides: Partial<TrackedLotSummary> = {}): TrackedLotSummary {
+	return {
+		catalogId: 7,
+		trackedAt: '2026-08-01T12:00:00Z',
+		priceAtTracking: 6.5,
+		name: 'Contract label',
+		source: 'Contract source',
+		country: 'Contract country',
+		region: 'Guji',
+		processing: 'Natural',
+		stocked: false,
+		wholesale: false,
+		unstockedDate: '2026-08-20',
+		currentPrice: 7.25,
+		priceDelta: 0.75,
+		...overrides
+	};
+}
 
 describe('chat system prompt entitlement context', () => {
 	it('identifies Cherry as a system and selects the synthesis role for combined access', () => {
@@ -142,12 +163,13 @@ describe('chat market tool Parchment client', () => {
 
 describe('chat sourcing intelligence enrichment', () => {
 	it('preserves tracked lots when the sourcing-brief API fails', async () => {
+		const summary = trackedLotSummary();
 		const result = await _loadSourcingIntelligenceSeeds(
-			() => Promise.resolve([7, 9]),
+			() => Promise.resolve([summary]),
 			() => Promise.reject(new Error('briefs unavailable'))
 		);
 
-		expect(result).toEqual({ trackedIds: [7, 9], briefRows: [] });
+		expect(result).toEqual({ trackedSummaries: [summary], briefRows: [] });
 	});
 
 	it('preserves sourcing briefs when tracked-lot loading fails', async () => {
@@ -166,7 +188,88 @@ describe('chat sourcing intelligence enrichment', () => {
 			() => Promise.resolve([brief])
 		);
 
-		expect(result).toEqual({ trackedIds: [], briefRows: [brief] });
+		expect(result).toEqual({ trackedSummaries: [], briefRows: [brief] });
+	});
+
+	it('retains canonical tracked changes when catalog label hydration fails', async () => {
+		const summary = trackedLotSummary();
+		const trackedLots = await _hydrateTrackedLotSummaries([summary], () =>
+			Promise.reject(new Error('catalog unavailable'))
+		);
+
+		expect(trackedLots).toEqual([
+			{
+				id: 7,
+				name: 'Lot #7',
+				country: null,
+				source: null,
+				trackedAt: '2026-08-01T12:00:00Z',
+				priceAtTracking: 6.5,
+				currentPrice: 7.25,
+				priceDelta: 0.75,
+				stocked: false,
+				unstockedDate: '2026-08-20'
+			}
+		]);
+	});
+
+	it('uses catalog hydration only for tracked-lot label metadata', async () => {
+		const summary = trackedLotSummary();
+		const loadCatalog = vi
+			.fn()
+			.mockResolvedValue([
+				{ id: 7, name: 'Hydrated lot', country: 'Ethiopia', source: 'Hydrated Supplier' }
+			]);
+
+		const trackedLots = await _hydrateTrackedLotSummaries([summary], loadCatalog);
+
+		expect(loadCatalog).toHaveBeenCalledWith([7]);
+		expect(trackedLots[0]).toEqual({
+			id: 7,
+			name: 'Hydrated lot',
+			country: 'Ethiopia',
+			source: 'Hydrated Supplier',
+			trackedAt: summary.trackedAt,
+			priceAtTracking: summary.priceAtTracking,
+			currentPrice: summary.currentPrice,
+			priceDelta: summary.priceDelta,
+			stocked: summary.stocked,
+			unstockedDate: summary.unstockedDate
+		});
+	});
+
+	it('injects canonical tracked change fields and prioritization guidance into the prompt', () => {
+		const prompt = _buildSystemPrompt(
+			undefined,
+			'PPI User',
+			{ ppiAccess: true, memberAccess: false },
+			{
+				trackedLots: [
+					{
+						id: 7,
+						name: 'Hydrated lot',
+						country: 'Ethiopia',
+						source: 'Supplier',
+						trackedAt: '2026-08-01T12:00:00Z',
+						priceAtTracking: 6.5,
+						currentPrice: 7.25,
+						priceDelta: 0.75,
+						stocked: false,
+						unstockedDate: '2026-08-20'
+					}
+				],
+				activeBriefs: []
+			}
+		);
+
+		expect(prompt).toContain('trackedAt=2026-08-01T12:00:00Z');
+		expect(prompt).toContain('priceAtTracking=6.5');
+		expect(prompt).toContain('currentPrice=7.25');
+		expect(prompt).toContain('priceDelta=0.75');
+		expect(prompt).toContain('stocked=false');
+		expect(prompt).toContain('unstockedDate=2026-08-20');
+		expect(prompt).toContain('For price or availability change questions, use these fields first');
+		expect(prompt).toContain('Do not infer historical changes from catalog searches');
 	});
 });
 
@@ -190,25 +293,49 @@ describe('chat catalog Parchment query mapping', () => {
 		expect(query).toMatchObject({
 			origin: 'Ethiopia',
 			processing: 'natural',
-			cultivar_detail: 'Gesha',
-			price_per_lb_min: 5,
-			price_per_lb_max: 9,
+			variety: 'Gesha',
+			pricePerLbMin: 5,
+			pricePerLbMax: 9,
 			limit: 12,
 			stocked: 'all',
 			name: 'Hambela',
-			stocked_days: 30,
-			source: 'Osito',
-			ids: [42]
+			stockedDays: 30,
+			supplier: 'Osito',
+			coffeeIds: '42'
 		});
-		expect(query).not.toHaveProperty('supplier');
-		expect(query).not.toHaveProperty('stockedDays');
+		expect(query).not.toHaveProperty('source');
+		expect(query).not.toHaveProperty('ids');
+		expect(query).not.toHaveProperty('cultivar_detail');
+		expect(query).not.toHaveProperty('stocked_days');
+		expect(query).not.toHaveProperty('price_per_lb_min');
+		expect(query).not.toHaveProperty('price_per_lb_max');
 		expect(query).not.toHaveProperty('dryingMethod');
 		expect(query).not.toHaveProperty('flavorKeywords');
-		expect(query).not.toHaveProperty('coffeeIds');
-		expect(query).not.toHaveProperty('pricePerLbMin');
-		expect(query).not.toHaveProperty('pricePerLbMax');
 		expect(query).not.toHaveProperty('drying_method');
 		expect(query).not.toHaveProperty('flavor_keywords');
+	});
+
+	it('uses an exact comma-delimited five-ID query with unstocked visibility', async () => {
+		const requestedIds = [101, 102, 103, 104, 105];
+		const listCatalog = vi.fn().mockImplementation((query: { coffeeIds?: string }) => {
+			if (query.coffeeIds !== requestedIds.join(',')) {
+				return Promise.resolve({ data: { data: [{ id: 999 }] } });
+			}
+			return Promise.resolve({
+				data: { data: [...requestedIds.map((id) => ({ id })), { id: 999 }] }
+			});
+		});
+
+		const rows = await _fetchAgentCatalogRowsForSearch(listCatalog, {
+			coffee_ids: requestedIds
+		});
+
+		expect(listCatalog).toHaveBeenCalledWith({
+			coffeeIds: '101,102,103,104,105',
+			stocked: 'all',
+			limit: 5
+		});
+		expect(rows.map((row) => row.id)).toEqual(requestedIds);
 	});
 
 	it('sizes ID re-fetches to the requested ID count when no limit is supplied', () => {
@@ -217,7 +344,8 @@ describe('chat catalog Parchment query mapping', () => {
 		});
 
 		expect(query).toMatchObject({
-			ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+			coffeeIds: '1,2,3,4,5,6,7,8,9,10,11,12',
+			stocked: 'all',
 			limit: 12
 		});
 	});
