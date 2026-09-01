@@ -1,5 +1,19 @@
 import type { OwnerApiUsage } from '@purveyors/sdk';
 
+type CompatibleOwnerApiUsage = Omit<OwnerApiUsage, 'plan' | 'summary'> & {
+	plan: Omit<OwnerApiUsage['plan'], 'limitScope'> & {
+		/** Canonical account-scoped limit from the newer Parchment contract. */
+		monthlyRequestLimit?: number;
+		/** Deprecated responses report api_key; the Console treats the numeric field as a migration fallback. */
+		limitScope?: 'account' | 'api_key';
+		collectionItemLimit?: number | null;
+	};
+	summary: OwnerApiUsage['summary'] & {
+		monthlyRequestsRemaining?: number;
+		monthlyResetAt?: string;
+	};
+};
+
 export interface ApiKeyView {
 	id: string;
 	name: string;
@@ -36,12 +50,14 @@ export interface DailySummaryView {
 	avg_response_time: number;
 }
 
-export interface KeyQuotaStatus {
-	keyId: string;
-	keyName: string;
+export interface AccountQuotaStatus {
 	monthlyRequests: number;
-	monthlyLimitPerKey: number;
-	monthlyPercent: number;
+	monthlyLimit: number;
+	monthlyRequestsRemaining: number | null;
+	monthlyPercent: number | null;
+	monthlyResetAt: string;
+	collectionItemLimit: number | null;
+	limitScope: 'account';
 	nearLimit: boolean;
 	atLimit: boolean;
 }
@@ -49,13 +65,11 @@ export interface KeyQuotaStatus {
 export interface UsageStatsView {
 	monthlyUsage: number;
 	hourlyUsage: number;
-	monthlyLimitPerKey: number;
 	userTier: OwnerApiUsage['plan']['id'];
 	unlimited: boolean;
 	totalKeys: number;
 	activeKeys: number;
-	quotaCoverage: 'complete' | 'keys_truncated';
-	highestKeyQuota: KeyQuotaStatus | null;
+	accountQuota: AccountQuotaStatus;
 }
 
 export interface ApiUsageBoundsView {
@@ -72,54 +86,62 @@ export interface ApiUsagePageData {
 	usageData: ApiKeyUsageView[];
 	dailySummary: DailySummaryView[];
 	usageStats: UsageStatsView;
-	currentStats: {
-		monthlyUsage: number;
-		hourlyUsage: number;
-		monthlyLimitPerKey: number;
-		userTier: OwnerApiUsage['plan']['id'];
-		unlimited: boolean;
-		totalKeys: number;
-		activeKeys: number;
-		quotaCoverage: 'complete' | 'keys_truncated';
-		highestKeyQuota: KeyQuotaStatus | null;
-	};
+	currentStats: UsageStatsView;
 	bounds: ApiUsageBoundsView;
 }
 
-function keyQuotaStatus(
-	usage: OwnerApiUsage,
-	key: OwnerApiUsage['keys'][number] | undefined
-): KeyQuotaStatus | null {
-	if (!key || usage.plan.unlimited || usage.plan.monthlyRequestLimitPerKey === -1) return null;
+function nextUtcMonth(isoTimestamp: string): string {
+	const generatedAt = new Date(isoTimestamp);
+	if (Number.isNaN(generatedAt.getTime())) {
+		throw new Error('Parchment usage response has an invalid generatedAt timestamp');
+	}
 
-	const ratio = key.monthlyRequests / usage.plan.monthlyRequestLimitPerKey;
+	return new Date(
+		Date.UTC(generatedAt.getUTCFullYear(), generatedAt.getUTCMonth() + 1, 1)
+	).toISOString();
+}
+
+function accountQuotaStatus(usage: CompatibleOwnerApiUsage): AccountQuotaStatus {
+	const monthlyLimit = usage.plan.monthlyRequestLimit ?? usage.plan.monthlyRequestLimitPerKey;
+	const unlimited = usage.plan.unlimited || monthlyLimit === -1;
+	const monthlyRequestsRemaining = unlimited
+		? null
+		: (usage.summary.monthlyRequestsRemaining ??
+			Math.max(0, monthlyLimit - usage.summary.monthlyRequests));
+	const monthlyPercent = unlimited
+		? null
+		: Math.min((usage.summary.monthlyRequests / monthlyLimit) * 100, 100);
+
 	return {
-		keyId: key.id,
-		keyName: key.name,
-		monthlyRequests: key.monthlyRequests,
-		monthlyLimitPerKey: usage.plan.monthlyRequestLimitPerKey,
-		monthlyPercent: Math.min(ratio * 100, 100),
-		nearLimit: ratio >= 0.8,
-		atLimit: ratio >= 1
+		monthlyRequests: usage.summary.monthlyRequests,
+		monthlyLimit,
+		monthlyRequestsRemaining,
+		monthlyPercent,
+		monthlyResetAt: usage.summary.monthlyResetAt ?? nextUtcMonth(usage.generatedAt),
+		collectionItemLimit: usage.plan.collectionItemLimit ?? (usage.plan.id === 'viewer' ? 25 : null),
+		limitScope: 'account',
+		nearLimit: monthlyPercent !== null && monthlyPercent >= 80,
+		atLimit: monthlyPercent !== null && monthlyPercent >= 100
 	};
 }
 
 /**
- * Adapt the capability-shaped Parchment response to the existing Console page
- * shapes. Aggregate owner traffic and per-key quota state remain deliberately
- * separate because the plan limit applies independently to each API key.
+ * Adapt Parchment's owner traffic response for Console presentation. The new
+ * contract exposes canonical account fields. Deprecated per-key limit naming is
+ * accepted only as a deployment-order fallback; per-key rows are attribution.
  */
 export function mapOwnerApiUsage(usage: OwnerApiUsage): ApiUsagePageData {
-	const quotaCoverage = usage.bounds.keysTruncated ? 'keys_truncated' : 'complete';
-	const highestUsageKey =
-		quotaCoverage === 'complete'
-			? usage.keys
-					.filter((key) => key.isActive)
-					.reduce<
-						OwnerApiUsage['keys'][number] | undefined
-					>((highest, key) => (!highest || key.monthlyRequests > highest.monthlyRequests ? key : highest), undefined)
-			: undefined;
-	const highestKeyQuota = keyQuotaStatus(usage, highestUsageKey);
+	const compatibleUsage = usage as CompatibleOwnerApiUsage;
+	const accountQuota = accountQuotaStatus(compatibleUsage);
+	const usageStats: UsageStatsView = {
+		monthlyUsage: usage.summary.monthlyRequests,
+		hourlyUsage: usage.summary.hourlyRequests,
+		userTier: usage.plan.id,
+		unlimited: usage.plan.unlimited,
+		totalKeys: usage.summary.totalKeys,
+		activeKeys: usage.summary.activeKeys,
+		accountQuota
+	};
 
 	return {
 		apiKeys: usage.keys.map((key) => ({
@@ -157,28 +179,8 @@ export function mapOwnerApiUsage(usage: OwnerApiUsage): ApiUsagePageData {
 			pending_requests: day.pendingRequests,
 			avg_response_time: day.averageResponseTimeMs
 		})),
-		usageStats: {
-			monthlyUsage: usage.summary.monthlyRequests,
-			hourlyUsage: usage.summary.hourlyRequests,
-			monthlyLimitPerKey: usage.plan.monthlyRequestLimitPerKey,
-			userTier: usage.plan.id,
-			unlimited: usage.plan.unlimited,
-			totalKeys: usage.summary.totalKeys,
-			activeKeys: usage.summary.activeKeys,
-			quotaCoverage,
-			highestKeyQuota
-		},
-		currentStats: {
-			monthlyUsage: usage.summary.monthlyRequests,
-			hourlyUsage: usage.summary.hourlyRequests,
-			monthlyLimitPerKey: usage.plan.monthlyRequestLimitPerKey,
-			userTier: usage.plan.id,
-			unlimited: usage.plan.unlimited,
-			totalKeys: usage.summary.totalKeys,
-			activeKeys: usage.summary.activeKeys,
-			quotaCoverage,
-			highestKeyQuota
-		},
+		usageStats,
+		currentStats: usageStats,
 		bounds: {
 			windowDays: usage.window.days,
 			recordLimit: usage.window.recordLimit,

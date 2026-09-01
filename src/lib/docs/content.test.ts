@@ -5,15 +5,15 @@ import { getDocsPage } from '$lib/docs/content';
 describe('api docs contract', () => {
 	const page = getDocsPage('api', 'catalog');
 
-	it('documents the basic public catalog query surface and paid discovery boundary', () => {
+	it('documents API-plan public capability parity without changing the website boundary', () => {
 		expect(page).toBeDefined();
 
 		const serializedPage = JSON.stringify(page);
 		expect(serializedPage).toContain(
-			'Viewer-session, public/demo-key, and API Green requests share the basic public query surface.'
+			'Website Viewer sessions and the public demo stay on the basic query surface.'
 		);
 		expect(serializedPage).toContain(
-			'Importer, elevation, appearance, and structured process filters are gated to member/admin sessions and paid API tiers.'
+			'Customer API keys across Green, Origin, and Enterprise may use the full public-data query surface'
 		);
 		expect(serializedPage).toContain(
 			'canonical listing path uses the 100-row default listing contract.'
@@ -25,8 +25,29 @@ describe('api docs contract', () => {
 			'Its /api/catalog BFF injects a 1000-row default when page and limit are omitted for legacy unpaged consumers; the /catalog UI explicitly requests a 15-row page.'
 		);
 		expect(serializedPage).toContain(
-			'Canonical integration path for developers, sync jobs, and agents. API Green is for evaluation; API Origin and Enterprise unlock premium search leverage.'
+			'Green evaluates the same public-data capabilities at lower request and collection volume.'
 		);
+		expect(serializedPage).toContain('200 requests per account per UTC calendar month');
+		expect(serializedPage).toContain('up to 25 items per collection response');
+		expect(serializedPage).toContain(
+			'Aggregates such as facets and statistics are not item collections'
+		);
+	});
+
+	it('documents account quota headers, UTC resets, and the 429 envelope', () => {
+		const errors = getDocsPage('api', 'errors');
+		const serializedErrors = JSON.stringify(errors);
+
+		expect(serializedErrors).toContain(
+			'Every customer-managed key on the account draws from that one allowance'
+		);
+		expect(serializedErrors).toContain(
+			'X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset'
+		);
+		expect(serializedErrors).toContain('00:00 UTC on the first day of the next month');
+		expect(serializedErrors).toContain('X-RateLimit-Blocked-By');
+		expect(serializedErrors).toContain('rate_limit_exceeded');
+		expect(serializedErrors).not.toContain('"error":"Rate limit exceeded"');
 	});
 
 	it('documents /v1/price-index without overclaiming unsupported premium surfaces', () => {

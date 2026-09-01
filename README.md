@@ -52,11 +52,12 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
 
    - `GET https://api.purveyors.io/` advertises the service, docs, health, and OpenAPI resources
    - `GET https://api.purveyors.io/v1/catalog` is the stable public contract for external integrations
-   - `GET https://api.purveyors.io/v1/catalog/{id}/similar` is a beta catalog matching endpoint for member sessions or API keys with API Origin or Enterprise plus `catalog:read`
+   - `GET https://api.purveyors.io/v1/catalog/{id}/similar` is a beta catalog matching endpoint for member sessions or API keys on any API plan with `catalog:read`
    - `GET https://api.purveyors.io/v1/price-index` exposes aggregate `price_index_snapshots` for entitled first-party sessions and customer API keys with Parchment Intelligence access
    - Parchment catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages use a server-held demo key through the coffee-app BFF; deliberately designated Market Index teaser slices remain anonymous
    - Full catalog responses include structured process transparency fields and `process.evidence_available`, but not raw evidence quotes
-   - API-key routes emit rate-limit headers according to the resolved plan
+   - Green, Origin, and Enterprise API keys share public-data capabilities. Green includes 200 requests per account per UTC calendar month and up to 25 items per collection response; scopes, owner binding, and Parchment Intelligence entitlements remain independent
+   - API-key routes emit account quota and burst headers according to the resolved plan
    - [See API docs](https://api.purveyors.io/docs)
 
 2. **Platform app API** (`/api/*`)
@@ -78,7 +79,7 @@ This repo does not depend on the CLI package. Coffee-app and the CLI independent
 CLI auth and output rules are part of the platform contract:
 
 - `purvey auth login` uses browser OAuth once to mint and store a scoped Parchment API key; it does not retain session access or refresh tokens
-- `purvey catalog search`, `get`, and `stats` require a Parchment API key with `catalog:read`; structured process filters require member access, and `purvey catalog similar <id>` additionally requires a member-owned key or an API Origin/Enterprise key
+- `purvey catalog search`, `get`, `stats`, structured public-data filters, and `purvey catalog similar <id>` require a Parchment API key with `catalog:read` and are available across API plans
 - `purvey inventory`, `roast`, `sales`, and `tasting` require a member-owned API key with the matching scopes
 - `purvey config`, `purvey context`, and `purvey manifest` do not require auth
 - `purvey manifest` is the preferred stable machine-readable contract for shells and agents

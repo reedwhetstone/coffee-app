@@ -11,6 +11,15 @@
 > key. ADR-014 separately supersedes the wholesale-visibility portion of this
 > decision.
 
+> **API-tier amendment (2026-08-31):** API plans now control volume, not
+> public-data search capability. Green, Origin, and Enterprise keys may use the
+> same public catalog filters, sorts, rankings, supplier tools, and similarity
+> capabilities. Green remains evaluation-scale through a shared account allowance
+> of 200 requests per UTC calendar month and up to 25 items per collection response.
+> Scopes and owner binding still control access to private account resources, and
+> Parchment Intelligence remains a separate entitlement. This amendment does not
+> change the Anonymous, Viewer, or Member boundaries for the Purveyors website.
+
 ## Context
 
 PR #302 exposed advanced process-transparency filters on the public catalog. That made a local implementation question visible as a product strategy question: what should anonymous visitors, free signed-in viewers, subscribed members, API customers, and admins each be able to see and do?
@@ -59,7 +68,7 @@ Purveyors will distinguish **catalog data visibility** from **catalog search lev
 - Anonymous visitors may see enough data to understand the product and trust the dataset, but anonymous access is a CTA surface, not a place to keep adding filter power or charts.
 - Free signed-in viewers may inspect the core catalog deeply enough to evaluate Purveyors and understand the data asset, but their search capabilities remain deliberately limited.
 - Subscribed members are the primary audience for tooling. They receive the best search, filtering, charting, monitoring, and workflow methods.
-- API tiers remain a separate commercial surface with their own limits, but should map conceptually to the same capability families so the web, CLI, API, and agent layers do not drift.
+- API tiers remain a separate commercial surface. Green, Origin, and Enterprise share public-data capability families while request volume, collection size, support, and commercial terms distinguish their plans.
 - Admin access is operational and should not be used as product positioning.
 
 ## Access-level positioning
@@ -69,8 +78,8 @@ Purveyors will distinguish **catalog data visibility** from **catalog search lev
 | Anonymous               | Prove Purveyors exists and is worth joining | Limited public catalog preview, selected public analytics from ADR-003, docs, blog, SEO-safe snippets                                                                              | Freeze the anonymous feature set. Keep only minimal broad discovery already needed for the funnel, such as origin, legacy process, and basic text search. Do not add new filter categories, advanced process filters, semantic search, saved search, alerts, exports, or new charts. | Breadth of catalog, freshness, supplier coverage, visible structure, and a clear reason to sign up.                                       |
 | Viewer                  | Let a serious evaluator inspect the catalog | Broad read access to public catalog rows and rich CoffeeCard facts, including normalized process, drying method, price tiers, supplier links, arrival/stock status where available | Limited search: simple keyword, origin/country, legacy process, pagination, sorting, and possibly one or two obvious broad filters. No advanced multi-facet query builder, no semantic search, no saved searches, no alerts, no deep charts.                                         | Trust that the data is real and rich enough to support sourcing decisions. The account should feel useful but not like the finished tool. |
 | Member                  | Give buyers and roasters leverage           | Full catalog visibility appropriate for the product, including wholesale-aware views and richer structured metadata where licensed and safe                                        | Full search scope: structured process facets, drying method once normalized, price ranges, score ranges, freshness, supplier, wholesale, advanced sorting, semantic/natural-language search, saved searches, alerts, comparisons, and premium charts.                                | Decision speed. Members should feel they can answer sourcing questions faster than by checking supplier sites manually.                   |
-| API Green               | Let developers evaluate integration fit     | Limited row and rate access to canonical API data                                                                                                                                  | Basic query contract, evaluation-scale usage, clear upgrade prompts before quota pain                                                                                                                                                                                                | Confidence that the API is real and stable.                                                                                               |
-| API Origin / Enterprise | Power production integrations and agents    | Contract-scoped catalog data at higher scale                                                                                                                                       | Higher rate limits, row limits, field selection, integrations, exports, support, and eventually enterprise entitlements                                                                                                                                                              | Reliable machine access to normalized coffee data.                                                                                        |
+| API Green               | Let developers evaluate integration fit     | The same public-data fields and capabilities as paid API plans, bounded to 200 requests per account per UTC month and up to 25 items per collection response                       | Public catalog filters, sorts, rankings, supplier tools, and similarity at evaluation scale; owner-private resources still require owner binding and exact scopes                                                                                                                    | Confidence that the full public API is useful and stable before paying for production volume.                                             |
+| API Origin / Enterprise | Power production integrations and agents    | The same public-data capability family at production or contract scale; separately entitled data remains separately gated                                                          | Higher request and collection limits, production integrations, support, and commercial terms; API plan alone never grants another account's private data or Parchment Intelligence                                                                                                   | Reliable machine access to normalized coffee data at production scale.                                                                    |
 | Admin                   | Operate and debug the platform              | Operationally necessary access                                                                                                                                                     | Internal tools, audit, QA, backfills                                                                                                                                                                                                                                                 | Correctness and safety, not monetization.                                                                                                 |
 
 ## Feature entitlement policy
@@ -82,7 +91,7 @@ Default placement:
 - **Anonymous:** only proof, crawlability, CTA, and already-accepted public slices. New anonymous filters and charts are rejected by default.
 - **Viewer:** read expansion and evaluation UX, not leverage tooling. If a feature helps users inspect a single coffee or understand a field, viewer can be appropriate. If it helps users search, monitor, compare, or optimize across the dataset, it probably belongs to member.
 - **Member:** advanced filtering, semantic search, saved searches, alerts, charts beyond the public proof layer, exports, comparison workflows, procurement workflows, and GenUI search agents.
-- **API:** mirror the same product intent through rate, row, field, endpoint, and scope limits rather than copying every web role one-to-one.
+- **API:** give every API plan the same public-data capability family. Differentiate plans through account request quotas, collection item limits, support, and commercial terms. Continue to use scopes and owner binding for private resources, and independent entitlements for Parchment Intelligence.
 
 The review question for every new catalog feature is:
 
@@ -150,7 +159,8 @@ Positive consequences:
 - Future catalog work has a stable access model instead of re-litigating every filter.
 - Anonymous pages stay focused on acquisition and crawlability instead of becoming a free power tool.
 - Viewers can still evaluate the data asset, which supports product-led activation.
-- Members get a clearer reason to subscribe: better sourcing decisions through search leverage.
+- Website members get a clearer reason to subscribe: better sourcing decisions through search leverage in the first-party product.
+- API Green provides an honest integration evaluation because developers can exercise the same public-data operations they would use at production scale.
 - Server-side enforcement reduces accidental premium-data leakage and forced-browsing bypasses.
 - API and web product strategy stay conceptually aligned without forcing identical tier names.
 
@@ -159,7 +169,7 @@ Tradeoffs:
 - Some public demos will feel less powerful than the underlying data can support.
 - Viewer/member boundaries require careful copy so free users do not feel arbitrarily blocked.
 - Feature teams must do entitlement design before UI implementation, which adds up-front work.
-- Existing public endpoints may need compatibility handling if clients already rely on advanced query params.
+- API usage communication must clearly distinguish the shared account allowance from per-key attribution and collection responses from aggregates.
 
 ## Implementation guidance
 

@@ -25,11 +25,20 @@ const usage = {
 	},
 	plan: {
 		id: 'viewer',
+		monthlyRequestLimit: 200,
 		monthlyRequestLimitPerKey: 200,
-		limitScope: 'api_key',
+		limitScope: 'account',
+		collectionItemLimit: 25,
 		unlimited: false
 	},
-	summary: { monthlyRequests: 0, hourlyRequests: 0, totalKeys: 0, activeKeys: 0 },
+	summary: {
+		monthlyRequests: 0,
+		monthlyRequestsRemaining: 200,
+		monthlyResetAt: '2026-08-01T00:00:00.000Z',
+		hourlyRequests: 0,
+		totalKeys: 0,
+		activeKeys: 0
+	},
 	daily: [],
 	keys: [],
 	bounds: { keyLimit: 100, keysTruncated: false, recentPerKey: 25 }
@@ -74,7 +83,15 @@ describe('API usage dashboard loaders', () => {
 		expect(result).toEqual(
 			expect.objectContaining({
 				apiKeys: [],
-				usageStats: expect.objectContaining({ monthlyUsage: 0, monthlyLimitPerKey: 200 })
+				usageStats: expect.objectContaining({
+					monthlyUsage: 0,
+					accountQuota: expect.objectContaining({
+						monthlyLimit: 200,
+						monthlyRequestsRemaining: 200,
+						limitScope: 'account',
+						collectionItemLimit: 25
+					})
+				})
 			})
 		);
 	});
@@ -107,7 +124,7 @@ describe('API usage dashboard loaders', () => {
 			expect.objectContaining({
 				currentStats: expect.objectContaining({
 					monthlyUsage: 0,
-					monthlyLimitPerKey: 200
+					accountQuota: expect.objectContaining({ monthlyLimit: 200 })
 				})
 			})
 		);
@@ -131,8 +148,7 @@ describe('API usage dashboard loaders', () => {
 				usageStats: expect.objectContaining({
 					totalKeys: 125,
 					activeKeys: 110,
-					quotaCoverage: 'keys_truncated',
-					highestKeyQuota: null
+					accountQuota: expect.objectContaining({ monthlyLimit: 200 })
 				})
 			})
 		);

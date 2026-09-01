@@ -130,11 +130,13 @@ Treat the web app and the external Parchment API as two separate HTTP surfaces:
 
    - `GET https://api.purveyors.io/` advertises the service, docs, health, and OpenAPI resources; `GET /v1` is not a route
    - `GET https://api.purveyors.io/v1/catalog` is the stable public catalog contract
-   - `GET https://api.purveyors.io/v1/catalog/{id}/similar` is a beta catalog matching contract for member sessions or API keys with API Origin or Enterprise plus `catalog:read`
+   - `GET https://api.purveyors.io/v1/catalog/{id}/similar` is a beta catalog matching contract for member sessions or API keys on any API plan with `catalog:read`
    - `GET https://api.purveyors.io/v1/price-index` is an aggregate `price_index_snapshots` contract for entitled first-party sessions and customer API keys with Parchment Intelligence access
    - Parchment catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages use a server-held demo key through the BFF; deliberately designated Market Index teaser slices remain anonymous upstream
    - Full catalog responses include structured process transparency fields and `process.evidence_available`, but not raw evidence quotes
-   - Rate-limit headers (`X-RateLimit-*`) are only included in API-key responses
+   - Green, Origin, and Enterprise API keys share the public-data capability family. Green is limited to 200 requests per account per UTC calendar month and up to 25 items per collection response; aggregates use documented endpoint-specific bounds
+   - Scopes and owner binding control private resources independently of API plan, and Parchment Intelligence remains a separate entitlement
+   - Rate-limit headers (`X-RateLimit-*`) are only included in API-key responses and describe the allowance shared by every key on the account
    - The same-host coffee-app `/v1/*` routes and the `/api/catalog-api` alias have been removed; external integrations use `https://api.purveyors.io/v1/*`
 
 2. **Platform app API** (`/api/*`)
@@ -200,7 +202,7 @@ When changing docs, keep these sources aligned:
 - Do not claim an endpoint is public unless it truly is
 - Do not describe the platform `/api/catalog` tree as the canonical catalog contract; that is `https://api.purveyors.io/v1/catalog`
 - Document `https://api.purveyors.io/v1/catalog/{id}/similar` as beta candidate matching, not canonical identity resolution. Preserve auth requirements, query bounds, 401/403/404/429 behavior, and cautious confidence copy.
-- Do not flatten CLI auth into one rule: catalog search, get, and stats require a Parchment API key with `catalog:read`; structured process filters require member access, and catalog similar additionally requires a member-owned key or an API Origin/Enterprise key; inventory, roast, sales, and tasting require the member role and matching scopes; config, context, and manifest are local or onboarding surfaces that do not require auth; `purvey manifest` is the preferred machine-readable contract; `purvey context --json` and `--pretty` are compatibility-parity aliases for callers already using the context entrypoint; and `--csv` is invalid for context or manifest
+- Do not flatten CLI auth into one rule: catalog search, get, stats, structured public-data filters, and catalog similar require a Parchment API key with `catalog:read` and are available across API plans; inventory, roast, sales, and tasting require owner-bound access and matching scopes; config, context, and manifest are local or onboarding surfaces that do not require auth; `purvey manifest` is the preferred machine-readable contract; `purvey context --json` and `--pretty` are compatibility-parity aliases for callers already using the context entrypoint; and `--csv` is invalid for context or manifest
 - Do not invent filter/query behavior that the route does not implement
 - Be explicit about auth model, tier limits, row-limit headers, share-token behavior, and session requirements
 - If analytics are a product surface but not a public REST surface, say that clearly
@@ -213,7 +215,7 @@ The web app uses session-mode `@purveyors/sdk` clients in Cherry Runtime's serve
 CLI auth and output rules matter here too:
 
 - `purvey auth login` uses browser OAuth once to mint and store a scoped Parchment API key; it does not retain session access or refresh tokens
-- `purvey catalog search`, `get`, and `stats` require a Parchment API key with `catalog:read`; structured process filters require member access, and `purvey catalog similar` additionally requires a member-owned key or an API Origin/Enterprise key
+- `purvey catalog search`, `get`, `stats`, structured public-data filters, and `similar` require a Parchment API key with `catalog:read` and are available across API plans
 - `purvey inventory`, `roast`, `sales`, and `tasting` require a member-owned API key with the matching scopes
 - `purvey config`, `purvey context`, and `purvey manifest` do not require auth
 - `purvey context` is the shipped dense agent reference and prints text output by default
