@@ -82,9 +82,9 @@ before the later Parchment draft can become send-ready.
 ## Transition and failure model
 
 1. The blog registry validates canonical Market Brief identity as in MB-1.
-2. The projection loader reads the raw source for that same slug and rejects a
+2. The reader loader reads the raw source for that same slug and rejects a
    missing source, non-Market Brief post, malformed frontmatter boundary, or
-   unsupported source construct.
+   unsupported source construct before the public edition renders.
 3. Markdown links and images are normalized against the canonical production
    URL. Unsafe schemes and non-HTTPS images fail instead of being silently
    rewritten into a different meaning.
@@ -95,7 +95,11 @@ before the later Parchment draft can become send-ready.
    may be combined with edition identity and digest into deployed metadata.
    Preview, missing, or malformed deployment identity omits that metadata while
    leaving the public web edition readable.
-7. A preview, local build, replay, or branch deployment cannot claim a production
+7. If the production-only projection runtime cannot initialize after canonical
+   source validation, the public edition remains readable and emits no deployed
+   metadata. The error is logged, and any later delivery handoff must fail closed
+   on the missing proof instead of treating the page response as deployment proof.
+8. A preview, local build, replay, or branch deployment cannot claim a production
    version merely by possessing the source commit. The future outbound handoff
    remains separately gated on a successful production deployment event.
 
@@ -149,7 +153,11 @@ layer.
   URL; a production-commit change changes the edition version without changing
   the content digest.
 - Raw HTML, Svelte constructs, unsafe links, non-HTTPS images, malformed source,
-  non-Market Brief posts, missing raw source, and oversized content fail closed.
+  non-Market Brief posts, missing raw source, and oversized content fail closed
+  at canonical reader validation and in the projection test corpus.
+- A production-only projection runtime failure omits deployment metadata without
+  taking the public reader down; the absent manifest remains a hard stop for any
+  later delivery handoff.
 - The HTML allowlist removes no supported Markdown semantics, contains no script,
   event attribute, remote credential, recipient identifier, or provider ID, and
   includes the exact Resend unsubscribe placeholder once.

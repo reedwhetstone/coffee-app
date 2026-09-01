@@ -31,11 +31,17 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		}
 		marketBriefReader = buildMarketBriefReaderExport(post, source);
 		if (process.env.VERCEL_ENV === 'production') {
-			const { buildMarketBriefDeploymentManifest, buildMarketBriefEmailProjection } = await import(
-				'$lib/server/marketBriefEmail'
-			);
-			const projection = buildMarketBriefEmailProjection(post, source);
-			marketBriefDeployment = buildMarketBriefDeploymentManifest(projection, process.env);
+			try {
+				const { buildMarketBriefDeploymentManifest, buildMarketBriefEmailProjection } =
+					await import('$lib/server/marketBriefEmail');
+				const projection = buildMarketBriefEmailProjection(post, source);
+				marketBriefDeployment = buildMarketBriefDeploymentManifest(projection, process.env);
+			} catch (cause) {
+				// The reader export above already validates the canonical source. Deployment metadata is
+				// optional public evidence: omitting it keeps the article readable while forcing any future
+				// email handoff to fail closed instead of claiming an unverified production projection.
+				console.error(`Market Brief deployment manifest unavailable: ${post.slug}`, cause);
+			}
 		}
 	}
 	const socialImage = resolveBlogPostSocialImage({

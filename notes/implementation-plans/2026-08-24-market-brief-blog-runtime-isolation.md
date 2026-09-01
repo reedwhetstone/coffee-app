@@ -19,6 +19,25 @@ and sanitization dependency graph.
 
 ## Evidence and scope boundary
 
+### 2026-09-01 production recurrence
+
+After Market Brief edition 002 merged at coffee-app production commit
+`bba1926ee14f08f1b7c70dba3758741f12393e3b`, its canonical reader returned HTTP
+500 while `/blog`, an ordinary essay, the Markdown export, the feed, and the
+sitemap returned HTTP 200. Preview and an isolated Node 22 Vercel-function build
+both rendered the same edition successfully. The only production-only reader
+transition is email projection and deployed-manifest construction. Authenticated
+runtime logs remain unavailable, so the exact exception is not claimed; the
+proven repair boundary is that optional deployment-proof generation must not
+take a source-validated public edition down.
+
+The successor keeps source validation strict, logs projection-runtime failure,
+and omits the manifest. This restores public availability without weakening the
+delivery gate because absent deployment proof remains ineligible for downstream
+handoff.
+
+### 2026-08-24 original incident
+
 Production at coffee-app commit `133f4fc5` returns HTTP 500 for `/blog`, both
 format archives, tag archives, ordinary article pages, `/blog/feed.xml`,
 `/sitemap.xml`, and `/llms.txt`. The homepage, catalog, analytics, benchmarks,
@@ -55,8 +74,9 @@ coupling shared by every failed route.
 - Ordinary essays and shared discovery surfaces have no reason to initialize an
   email-only renderer. This isolation is permanent even after editions exist.
 - An actual Market Brief still fails closed if its raw source is missing or its
-  projection contract is invalid. Lazy loading changes initialization timing,
-  not validation semantics.
+  canonical reader contract is invalid. A production-only email projection
+  runtime failure cannot take the validated public reader down; it omits the
+  deployed manifest so downstream delivery remains fail closed.
 
 ## Transition and failure model
 
@@ -68,12 +88,14 @@ coupling shared by every failed route.
    source or the email renderer; shared discovery remains independent of the
    projection dependency graph even after editions exist.
 4. An ordinary article route returns metadata without loading projection code.
-5. An actual Market Brief article lazily loads the projection owner, reads the
-   canonical source, validates and derives the unchanged email projection, and
-   emits a deployed manifest only under the existing exact production-commit
-   gate.
-6. Missing source or invalid projection fails closed for the affected Market
-   Brief reader. It cannot take the zero-edition or essay-only registry down at
+5. An actual Market Brief article reads and validates its canonical source through
+   the lightweight reader owner before any production-only projection work.
+6. Production lazily derives the unchanged email projection and emits a deployed
+   manifest only under the existing exact production-commit gate. If that optional
+   runtime cannot initialize, the page logs the failure, stays readable, and emits
+   no manifest, which blocks any downstream delivery handoff.
+7. Missing source or an invalid canonical reader contract still fails closed for
+   the affected Market Brief. Neither failure can take the shared registry down at
    module initialization.
 
 ## Sibling and caller inventory
@@ -94,7 +116,8 @@ One coffee-app hotfix PR owns:
 
 1. moving raw Market Brief source lookup out of the shared blog registry;
 2. replacing static renderer imports with Market-Brief-only lazy imports;
-3. preserving fail-closed source/projection validation for real editions;
+3. preserving fail-closed canonical source validation and fail-closed delivery
+   when production projection proof is unavailable;
 4. regression coverage proving an essay-only blog loads without initializing the
    projection module; and
 5. focused and built-server checks for the shared publication surfaces.
@@ -114,6 +137,9 @@ proof.
 - A Market Brief fixture still validates the same raw source, produces the same
   projection and manifest, rejects missing or unsafe source, and omits deployment
   metadata without an exact production commit.
+- Every published Market Brief projects successfully in the test corpus, while a
+  simulated production projection-runtime failure leaves its validated reader
+  available and omits deployment metadata.
 - Focused tests, full unit tests, `pnpm check --fail-on-warnings`, build,
   changed-file Prettier and ESLint, and `git diff --check` pass. Any repository
   baseline failure is reported separately.
@@ -138,10 +164,10 @@ proof.
   `MB-PRIVACY` | projection cannot gain delivery authority or recipient state |
   renderer inputs/outputs and provider-neutral placeholder remain unchanged |
   proven | PRs #221-#228 and #541
-- `MB-BLOG-ISOLATION` | optional Market Brief projection must not take ordinary
-  blog and discovery routes down when no edition exists | lazy module/source
-  boundary plus production-build route canary | proven | 2026-08-24 production
-  incident
+- `MB-BLOG-ISOLATION` | optional Market Brief projection must not take public
+  readers or shared discovery routes down | lazy module/source boundary,
+  degraded production-reader test, and production-build route canary | proven |
+  2026-08-24 and 2026-09-01 production incidents
 - `MB-NAMING` | Market Brief is public and `market_read` remains internal |
   unchanged renderer and reader copy | proven | PRs #538-#541
 - `MB-SOURCE-IDENTITY` | source-packet identity remains distinct from content
@@ -159,8 +185,9 @@ proof.
 - Without authenticated Vercel logs, this repair proves and removes the eager
   coupling but does not claim the precise package exception. A real-edition
   production canary remains required before MB-5A activation.
-- Dynamic isolation prevents an optional projection stack from breaking essays;
-  it does not authorize silently skipping validation for an actual Market Brief.
+- Dynamic isolation prevents an optional projection stack from breaking public
+  readers. Canonical source validation remains mandatory; projection-runtime
+  failure is logged and suppresses deployment proof rather than delivery safety.
 - Production recovery requires merge and deployment outside this PR handoff. The
   workflow stops after review submission unless Reed separately authorizes more.
 
@@ -169,9 +196,9 @@ proof.
 - The shared blog registry only normalizes and enumerates post metadata. It does
   not import the projection owner or raw Market Brief source, so discovery
   remains renderer-free even when an edition exists.
-- The Market Brief reader remains the projection boundary: it lazily imports the
-  owner, restricts raw-source discovery to `market-brief-*.svx`, and lets the
-  existing projection validation fail closed for a missing or unsafe edition.
+- The Market Brief reader remains the source-validation boundary: it restricts
+  raw-source discovery to `market-brief-*.svx` and fails closed for a missing or
+  unsafe edition before the optional production projection runs.
 - A registry fixture containing a Market Brief proves shared enumeration does
   not initialize the projection renderer; reader and projection tests retain
   fail-closed source validation for the affected edition.
