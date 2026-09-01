@@ -8,7 +8,7 @@ const { buildReaderMock, getAllPostsMock, getSourceMock } = vi.hoisted(() => ({
 }));
 
 vi.mock('$lib/server/blog', () => ({ getAllPosts: getAllPostsMock }));
-vi.mock('$lib/server/marketBriefEmail', () => ({
+vi.mock('$lib/server/marketBriefReader', () => ({
 	buildMarketBriefReaderExport: buildReaderMock,
 	getRawMarketBriefSource: getSourceMock
 }));
@@ -38,7 +38,14 @@ describe('/blog/[slug]/markdown', () => {
 		buildReaderMock.mockReturnValue({
 			canonicalUrl: 'https://www.purveyors.io/blog/market-brief-007',
 			markdown: '## Supply tightens\n\nOffers narrowed.\n',
-			sections: [{ id: 'supply-tightens', title: 'Supply tightens' }]
+			sections: [
+				{
+					id: 'supply-tightens',
+					title: 'Supply tightens',
+					kind: 'take',
+					html: '<p>Offers narrowed.</p>'
+				}
+			]
 		});
 	});
 

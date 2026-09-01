@@ -3,6 +3,8 @@
 	import { formatMarketBriefEdition, PILLARS } from '$lib/types/blog.types';
 	import { formatBlogDate } from '$lib/utils/dates';
 	import LinkedInDraft from '$lib/components/blog/LinkedInDraft.svelte';
+	import MarketBriefArticle from '$lib/components/blog/MarketBriefArticle.svelte';
+	import MarketBriefHeroFallback from '$lib/components/blog/MarketBriefHeroFallback.svelte';
 	import MarketBriefShareTools from '$lib/components/blog/MarketBriefShareTools.svelte';
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 	import MarketWireCta from '$lib/components/market-wire/MarketWireCta.svelte';
@@ -20,6 +22,7 @@
 	);
 
 	let showLinkedIn = $state(false);
+	let isMarketBrief = $derived(data.metadata.format === 'market-brief');
 
 	function getHeroImage(slug: string): string {
 		return `/blog/images/${slug}/hero.webp`;
@@ -59,20 +62,26 @@
 <article>
 	<!-- Post header with accent background -->
 	<header
-		class="relative mb-10 overflow-hidden rounded-lg border border-line bg-gradient-to-r from-accent/5 to-transparent p-6 pl-8 sm:p-8 sm:pl-10"
+		class="relative mb-10 overflow-hidden rounded-lg border p-6 pl-8 shadow-sm sm:p-8 sm:pl-10 {isMarketBrief
+			? 'border-ink bg-ink'
+			: 'border-line bg-gradient-to-r from-accent/5 to-transparent'}"
 	>
 		<AccentSpine />
-		<div class="mb-3 flex flex-wrap items-center gap-3 text-sm text-muted">
+		<div
+			class="mb-3 flex flex-wrap items-center gap-3 text-sm {isMarketBrief
+				? 'text-on-dark/65'
+				: 'text-muted'}"
+		>
 			<time datetime={data.metadata.date}>{formatDate(data.metadata.date)}</time>
 			{#if data.metadata.updated}
-				<span class="text-line">·</span>
+				<span class={isMarketBrief ? 'text-on-dark/20' : 'text-line'}>·</span>
 				<span>Updated {formatDate(data.metadata.updated)}</span>
 			{/if}
-			<span class="text-line">·</span>
+			<span class={isMarketBrief ? 'text-on-dark/20' : 'text-line'}>·</span>
 			<span>{data.metadata.readingTime ?? 5} min read</span>
 			{#if data.metadata.format === 'market-brief'}
-				<span class="text-line">·</span>
-				<span class="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+				<span class="text-on-dark/20">·</span>
+				<span class="rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent">
 					Market Brief · Edition {formatMarketBriefEdition(data.metadata.edition!)}
 				</span>
 			{:else if pillarInfo}
@@ -83,25 +92,45 @@
 			{/if}
 		</div>
 
-		<h1 class="mb-4 font-serif text-4xl font-medium leading-tight tracking-tight text-ink">
+		<h1
+			class="mb-4 font-serif text-4xl font-medium leading-tight tracking-tight {isMarketBrief
+				? 'text-on-dark'
+				: 'text-ink'}"
+		>
 			{data.metadata.title}
 		</h1>
 
-		<p class="text-lg leading-relaxed text-muted">{data.metadata.description}</p>
+		<p class="text-lg leading-relaxed {isMarketBrief ? 'text-on-dark/75' : 'text-muted'}">
+			{data.metadata.description}
+		</p>
 
-		<img
-			src={getHeroImage(data.metadata.slug)}
-			alt={data.metadata.title}
-			class="mt-6 aspect-[3/2] w-full rounded-md border border-line object-cover"
-			onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
-		/>
+		{#if isMarketBrief}
+			<div class="relative mt-6 aspect-[3/2] overflow-hidden rounded-md border border-on-dark/15">
+				<MarketBriefHeroFallback title={data.metadata.title} edition={data.metadata.edition!} />
+				<img
+					src={getHeroImage(data.metadata.slug)}
+					alt={data.metadata.title}
+					class="absolute inset-0 h-full w-full object-cover"
+					onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+				/>
+			</div>
+		{:else}
+			<img
+				src={getHeroImage(data.metadata.slug)}
+				alt={data.metadata.title}
+				class="mt-6 aspect-[3/2] w-full rounded-md border border-line object-cover"
+				onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+			/>
+		{/if}
 
 		{#if data.metadata.tags.length > 0}
 			<div class="mt-5 flex flex-wrap gap-1.5">
 				{#each data.metadata.tags as tag}
 					<a
 						href="/blog/tag/{tag}"
-						class="bg-accent/8 rounded-full border border-accent/20 px-2.5 py-0.5 text-xs text-muted transition-colors hover:border-accent/40 hover:text-accent"
+						class="bg-accent/8 rounded-full border border-accent/20 px-2.5 py-0.5 text-xs transition-colors hover:border-accent/40 hover:text-accent {isMarketBrief
+							? 'text-on-dark/65'
+							: 'text-muted'}"
 					>
 						{tag}
 					</a>
@@ -111,8 +140,16 @@
 	</header>
 
 	<!-- Post content -->
-	<div
-		class="prose-code:bg-accent/8 prose prose-lg
+	{#if data.marketBriefReader && data.metadata.coffeeHighlights}
+		<MarketBriefArticle
+			title={data.metadata.title}
+			reader={data.marketBriefReader}
+			snapshot={data.metadata.marketSnapshot}
+			coffeeHighlights={data.metadata.coffeeHighlights}
+		/>
+	{:else}
+		<div
+			class="prose-code:bg-accent/8 prose prose-lg
 		max-w-none font-serif prose-headings:font-serif prose-headings:font-semibold
 		prose-headings:text-ink prose-h2:mt-12 prose-h2:border-b prose-h2:border-line
 		prose-h2:pb-3 prose-p:leading-relaxed
@@ -124,17 +161,14 @@
 		prose-li:text-muted
 		prose-img:rounded-lg prose-img:shadow-sm
 		prose-hr:border-line"
-	>
-		<data.content />
-	</div>
+		>
+			<data.content />
+		</div>
+	{/if}
 </article>
 
 {#if data.marketBriefReader}
-	<MarketBriefShareTools
-		editionTitle={data.metadata.title}
-		slug={data.metadata.slug}
-		reader={data.marketBriefReader}
-	/>
+	<MarketBriefShareTools slug={data.metadata.slug} reader={data.marketBriefReader} />
 {/if}
 
 <!-- Post footer -->

@@ -61,7 +61,7 @@ describe('Market Brief email projection', () => {
 			subject: 'Market Brief 001 · Coffee finds a firmer floor',
 			previewText: 'A bounded weekly view of green-coffee supply and pricing.'
 		});
-		expect(first.sha256).toBe('30f0c20ba74dc7209e34655add97b7006409bbfd613b0734917be4c505e9871f');
+		expect(first.sha256).toBe('4cbe2ae7622630e01e30f077779f7d4ed1b58c79af54c97bda18175e6e20e5d8');
 		expect(first.html).toContain('href="https://www.purveyors.io/analytics"');
 		expect(first.html).toContain('src="https://images.example.com/warehouse.jpg"');
 		expect(first.html).toContain('style="color:#9a4d00;text-decoration:underline;"');
@@ -193,8 +193,18 @@ A second section with the same title.
 		expect(reader.markdown).not.toContain('title: "Coffee finds a firmer floor"');
 		expect(reader.markdown.endsWith('\n')).toBe(true);
 		expect(reader.sections).toEqual([
-			{ id: 'the-throughline', title: 'The throughline' },
-			{ id: 'the-throughline-1', title: 'The throughline' }
+			{
+				id: 'the-throughline',
+				title: 'The throughline',
+				kind: 'take',
+				html: expect.stringContaining('Purveyors context')
+			},
+			{
+				id: 'the-throughline-1',
+				title: 'The throughline',
+				kind: 'take',
+				html: expect.stringContaining('second section')
+			}
 		]);
 	});
 

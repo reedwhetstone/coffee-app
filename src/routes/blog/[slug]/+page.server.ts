@@ -22,19 +22,21 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	let marketBriefDeployment: MarketBriefDeploymentManifest | undefined;
 	let marketBriefReader: MarketBriefReaderExport | undefined;
 	if (isMarketBrief) {
-		const {
-			buildMarketBriefReaderExport,
-			buildMarketBriefDeploymentManifest,
-			buildMarketBriefEmailProjection,
-			getRawMarketBriefSource
-		} = await import('$lib/server/marketBriefEmail');
+		const { buildMarketBriefReaderExport, getRawMarketBriefSource } = await import(
+			'$lib/server/marketBriefReader'
+		);
 		const source = getRawMarketBriefSource(post.slug);
 		if (source === undefined) {
 			throw error(500, `Market Brief source not found: ${post.slug}`);
 		}
-		const projection = buildMarketBriefEmailProjection(post, source);
 		marketBriefReader = buildMarketBriefReaderExport(post, source);
-		marketBriefDeployment = buildMarketBriefDeploymentManifest(projection, process.env);
+		if (process.env.VERCEL_ENV === 'production') {
+			const { buildMarketBriefDeploymentManifest, buildMarketBriefEmailProjection } = await import(
+				'$lib/server/marketBriefEmail'
+			);
+			const projection = buildMarketBriefEmailProjection(post, source);
+			marketBriefDeployment = buildMarketBriefDeploymentManifest(projection, process.env);
+		}
 	}
 	const socialImage = resolveBlogPostSocialImage({
 		baseUrl,

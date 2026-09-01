@@ -5,6 +5,7 @@ const {
 	buildMarketBriefDeploymentManifestMock,
 	buildMarketBriefEmailProjectionMock,
 	buildMarketBriefReaderExportMock,
+	emailModuleInitializedMock,
 	getAllPostsMock,
 	getRawMarketBriefSourceMock,
 	marketBrief,
@@ -13,6 +14,7 @@ const {
 	buildMarketBriefDeploymentManifestMock: vi.fn(),
 	buildMarketBriefEmailProjectionMock: vi.fn(),
 	buildMarketBriefReaderExportMock: vi.fn(),
+	emailModuleInitializedMock: vi.fn(),
 	getAllPostsMock: vi.fn(),
 	getRawMarketBriefSourceMock: vi.fn(),
 	marketBrief: {
@@ -48,12 +50,18 @@ vi.mock('$lib/server/blog', () => ({
 	getAllPosts: getAllPostsMock
 }));
 
-vi.mock('$lib/server/marketBriefEmail', () => ({
-	buildMarketBriefDeploymentManifest: buildMarketBriefDeploymentManifestMock,
-	buildMarketBriefEmailProjection: buildMarketBriefEmailProjectionMock,
+vi.mock('$lib/server/marketBriefReader', () => ({
 	buildMarketBriefReaderExport: buildMarketBriefReaderExportMock,
 	getRawMarketBriefSource: getRawMarketBriefSourceMock
 }));
+
+vi.mock('$lib/server/marketBriefEmail', () => {
+	emailModuleInitializedMock();
+	return {
+		buildMarketBriefDeploymentManifest: buildMarketBriefDeploymentManifestMock,
+		buildMarketBriefEmailProjection: buildMarketBriefEmailProjectionMock
+	};
+});
 
 import { load } from './+page.server';
 
@@ -80,7 +88,9 @@ describe('/blog/[slug] Market Brief metadata', () => {
 		buildMarketBriefReaderExportMock.mockReturnValue({
 			canonicalUrl: 'https://www.purveyors.io/blog/market-brief-001',
 			markdown: '## This week\n\nThe first fixture.\n',
-			sections: [{ id: 'this-week', title: 'This week' }]
+			sections: [
+				{ id: 'this-week', title: 'This week', kind: 'take', html: '<p>The first fixture.</p>' }
+			]
 		});
 		buildMarketBriefDeploymentManifestMock.mockImplementation(
 			(_projection: unknown, environment: Record<string, string | undefined>) =>
@@ -124,10 +134,29 @@ describe('/blog/[slug] Market Brief metadata', () => {
 		expect(result.marketBriefReader).toEqual({
 			canonicalUrl: 'https://www.purveyors.io/blog/market-brief-001',
 			markdown: '## This week\n\nThe first fixture.\n',
-			sections: [{ id: 'this-week', title: 'This week' }]
+			sections: [
+				{ id: 'this-week', title: 'This week', kind: 'take', html: '<p>The first fixture.</p>' }
+			]
 		});
 		expect(getRawMarketBriefSourceMock).toHaveBeenCalledWith('market-brief-001');
 		expect(buildMarketBriefReaderExportMock).toHaveBeenCalledWith(marketBrief, marketBriefSource);
+		expect(emailModuleInitializedMock).not.toHaveBeenCalled();
+		expect(buildMarketBriefEmailProjectionMock).not.toHaveBeenCalled();
+		expect(buildMarketBriefDeploymentManifestMock).not.toHaveBeenCalled();
+	});
+
+	it('keeps Vercel preview readers outside the production email projection path', async () => {
+		vi.stubEnv('VERCEL_ENV', 'preview');
+
+		const result = await loadPost('market-brief-001');
+		if (!result) throw new Error('Expected Market Brief preview reader data');
+
+		expect(result.marketBriefReader).toBeDefined();
+		expect(result.marketBriefDeployment).toBeUndefined();
+		expect(buildMarketBriefReaderExportMock).toHaveBeenCalledWith(marketBrief, marketBriefSource);
+		expect(emailModuleInitializedMock).not.toHaveBeenCalled();
+		expect(buildMarketBriefEmailProjectionMock).not.toHaveBeenCalled();
+		expect(buildMarketBriefDeploymentManifestMock).not.toHaveBeenCalled();
 	});
 
 	it('advertises the exact projection only from a Vercel production deployment', async () => {
@@ -146,6 +175,12 @@ describe('/blog/[slug] Market Brief metadata', () => {
 			rendererVersion: 'market-brief-email-v1',
 			projectionSha256: 'b'.repeat(64)
 		});
+		expect(buildMarketBriefEmailProjectionMock).toHaveBeenCalledWith(
+			marketBrief,
+			marketBriefSource
+		);
+		expect(buildMarketBriefDeploymentManifestMock).toHaveBeenCalled();
+		expect(emailModuleInitializedMock).toHaveBeenCalledOnce();
 	});
 
 	it('keeps ordinary essays outside the projection and deployed-manifest path', async () => {

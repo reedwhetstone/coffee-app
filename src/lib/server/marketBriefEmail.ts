@@ -1,27 +1,28 @@
 import { createHash } from 'node:crypto';
 
 import { decodeHTML } from 'entities';
-import GithubSlugger from 'github-slugger';
 import { marked, type Token, type Tokens } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 
-import type { BlogPost, MarketBriefReaderExport } from '$lib/types/blog.types';
+import type { BlogPost } from '$lib/types/blog.types';
 import { formatMarketBriefEdition, getBlogPostPath } from '$lib/types/blog.types';
+import {
+	MARKET_BRIEF_CANONICAL_ORIGIN,
+	resolveMarketBriefHref,
+	resolveMarketBriefImageSrc,
+	tokenizeMarketBrief
+} from '$lib/server/marketBriefReader';
 
-export const MARKET_BRIEF_CANONICAL_ORIGIN = 'https://www.purveyors.io';
+export {
+	buildMarketBriefReaderExport,
+	getRawMarketBriefSource,
+	MARKET_BRIEF_CANONICAL_ORIGIN
+} from '$lib/server/marketBriefReader';
+
 export const MARKET_BRIEF_EMAIL_RENDERER_VERSION = 'market-brief-email-v1';
 export const RESEND_UNSUBSCRIBE_PLACEHOLDER = '{{{RESEND_UNSUBSCRIBE_URL}}}';
-
-const rawMarketBriefSources = import.meta.glob<string>('/src/content/blog/market-brief-*.svx', {
-	eager: true,
-	query: '?raw',
-	import: 'default'
-});
-
-const MAX_SOURCE_BYTES = 256 * 1024;
 const MAX_PROJECTION_BYTES = 512 * 1024;
 const MAX_SUBJECT_LENGTH = 200;
-const FRONTMATTER_BOUNDARY = /^---\r?\n[\s\S]*?\r?\n---\r?\n/;
 const PRODUCTION_COMMIT = /^[0-9a-f]{40}$/;
 
 const ALLOWED_TAGS = [
@@ -106,10 +107,6 @@ interface DeploymentEnvironment {
 	VERCEL_GIT_COMMIT_SHA?: string;
 }
 
-export function getRawMarketBriefSource(slug: string): string | undefined {
-	return rawMarketBriefSources[`/src/content/blog/${slug}.svx`];
-}
-
 function escapeHtml(value: string): string {
 	return value
 		.replaceAll('&', '&amp;')
@@ -119,100 +116,6 @@ function escapeHtml(value: string): string {
 		.replaceAll("'", '&#39;');
 }
 
-function extractMarkdownBody(source: string): string {
-	if (Buffer.byteLength(source, 'utf8') > MAX_SOURCE_BYTES) {
-		throw new Error(`Market Brief source exceeds ${MAX_SOURCE_BYTES} bytes`);
-	}
-
-	const boundary = source.match(FRONTMATTER_BOUNDARY);
-	if (!boundary) {
-		throw new Error('Market Brief source requires a closed YAML frontmatter block');
-	}
-
-	return source.slice(boundary[0].length).trim();
-}
-
-function resolveHref(value: string, canonicalUrl: string): string {
-	let resolved: URL;
-	try {
-		resolved = new URL(value, canonicalUrl);
-	} catch {
-		throw new Error(`Market Brief email link is invalid: ${value}`);
-	}
-
-	if (!['http:', 'https:', 'mailto:'].includes(resolved.protocol)) {
-		throw new Error(`Market Brief email link uses an unsupported protocol: ${resolved.protocol}`);
-	}
-
-	return resolved.toString();
-}
-
-function resolveImageSrc(value: string, canonicalUrl: string): string {
-	let resolved: URL;
-	try {
-		resolved = new URL(value, canonicalUrl);
-	} catch {
-		throw new Error(`Market Brief email image is invalid: ${value}`);
-	}
-
-	if (resolved.protocol !== 'https:') {
-		throw new Error('Market Brief email images must use HTTPS');
-	}
-
-	return resolved.toString();
-}
-
-function containsSvelteConstruct(tokens: Token[]): boolean {
-	let braceDepth = 0;
-	let foundBrace = false;
-
-	marked.walkTokens(tokens, (token) => {
-		if (token.type !== 'text') return;
-
-		for (const character of token.text) {
-			if (character === '{') {
-				foundBrace = true;
-				braceDepth += 1;
-			} else if (character === '}') {
-				if (braceDepth === 0) {
-					foundBrace = true;
-					continue;
-				}
-				braceDepth -= 1;
-			}
-		}
-	});
-
-	return foundBrace || braceDepth > 0;
-}
-
-function validateTokens(tokens: Token[], canonicalUrl: string): void {
-	marked.walkTokens(tokens, (token) => {
-		if (token.type === 'html') {
-			throw new Error('Market Brief email source cannot contain raw HTML or Svelte markup');
-		}
-		if (token.type === 'checkbox' || (token.type === 'list_item' && token.task)) {
-			throw new Error('Market Brief email source cannot contain task-list controls');
-		}
-		if (token.type === 'link') {
-			resolveHref(token.href, canonicalUrl);
-		}
-		if (token.type === 'image') {
-			resolveImageSrc(token.href, canonicalUrl);
-		}
-	});
-}
-
-function tokenizeMarketBrief(source: string, canonicalUrl: string): Token[] {
-	const markdown = extractMarkdownBody(source);
-	const tokens = marked.lexer(markdown, { gfm: true, breaks: false });
-	if (containsSvelteConstruct(tokens)) {
-		throw new Error('Market Brief email source cannot contain Svelte expressions or directives');
-	}
-	validateTokens(tokens, canonicalUrl);
-	return tokens;
-}
-
 function transformTag(canonicalUrl: string) {
 	return (tagName: string, attribs: sanitizeHtml.Attributes): sanitizeHtml.Tag => {
 		const transformed: sanitizeHtml.Attributes = { ...attribs };
@@ -220,11 +123,11 @@ function transformTag(canonicalUrl: string) {
 		if (style) transformed.style = style;
 
 		if (tagName === 'a' && Object.hasOwn(transformed, 'href')) {
-			transformed.href = resolveHref(transformed.href, canonicalUrl);
+			transformed.href = resolveMarketBriefHref(transformed.href, canonicalUrl);
 			transformed.rel = 'noopener noreferrer';
 		}
 		if (tagName === 'img' && Object.hasOwn(transformed, 'src')) {
-			transformed.src = resolveImageSrc(transformed.src, canonicalUrl);
+			transformed.src = resolveMarketBriefImageSrc(transformed.src, canonicalUrl);
 		}
 
 		return { tagName, attribs: transformed };
@@ -282,12 +185,12 @@ function tokenText(token: Token, canonicalUrl: string): string {
 		case 'link': {
 			const link = token as Tokens.Link;
 			const label = tokensText(link.tokens, canonicalUrl).trim();
-			const href = resolveHref(link.href, canonicalUrl);
+			const href = resolveMarketBriefHref(link.href, canonicalUrl);
 			return label === href ? href : `${label} (${href})`;
 		}
 		case 'image': {
 			const image = token as Tokens.Image;
-			return `[Image: ${decodeHTML(image.text || 'Market Brief image')}] (${resolveImageSrc(image.href, canonicalUrl)})`;
+			return `[Image: ${decodeHTML(image.text || 'Market Brief image')}] (${resolveMarketBriefImageSrc(image.href, canonicalUrl)})`;
 		}
 		case 'list': {
 			const list = token as Tokens.List;
@@ -322,155 +225,6 @@ function tokensText(tokens: Token[], canonicalUrl: string): string {
 	return tokens.map((token) => tokenText(token, canonicalUrl)).join('');
 }
 
-function isRelativeMarkdownTarget(value: string): boolean {
-	return !/^[a-z][a-z\d+.-]*:/i.test(value) && !value.startsWith('//');
-}
-
-function formatMarkdownTitle(title: string | null | undefined): string {
-	return title === null || title === undefined
-		? ''
-		: ` "${title.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
-}
-
-function normalizeMarkdownTarget(
-	raw: string,
-	href: string,
-	title: string | null | undefined,
-	canonicalUrl: string,
-	resolveTarget: (value: string, baseUrl: string) => string
-): string {
-	if (!isRelativeMarkdownTarget(href)) return raw;
-
-	const resolved = resolveTarget(href, canonicalUrl);
-	const destinationStart = raw.indexOf('](');
-	if (destinationStart < 0) return raw;
-
-	return `${raw.slice(0, destinationStart + 2)}<${resolved}>${formatMarkdownTitle(title)})`;
-}
-
-function normalizeMarkdownDefinition(
-	raw: string,
-	href: string,
-	title: string | null | undefined,
-	canonicalUrl: string
-): string {
-	if (!isRelativeMarkdownTarget(href)) return raw;
-
-	const resolved = resolveHref(href, canonicalUrl);
-	const destinationStart = raw.indexOf(']:');
-	if (destinationStart < 0) return raw;
-
-	const lineBreakStart = raw.search(/\r?\n/);
-	const trailing = lineBreakStart < 0 ? '' : raw.slice(lineBreakStart);
-	return `${raw.slice(0, destinationStart + 2)} <${resolved}>${formatMarkdownTitle(title)}${trailing}`;
-}
-
-function normalizeMarkdownTargets(markdown: string, tokens: Token[], canonicalUrl: string): string {
-	const replacements = new Map<string, string>();
-
-	marked.walkTokens(tokens, (token) => {
-		if (token.type === 'link') {
-			const link = token as Tokens.Link;
-			const normalized = normalizeMarkdownTarget(
-				link.raw,
-				link.href,
-				link.title,
-				canonicalUrl,
-				resolveHref
-			);
-			if (normalized !== link.raw) replacements.set(link.raw, normalized);
-		}
-		if (token.type === 'image') {
-			const image = token as Tokens.Image;
-			const normalized = normalizeMarkdownTarget(
-				image.raw,
-				image.href,
-				image.title,
-				canonicalUrl,
-				resolveImageSrc
-			);
-			if (normalized !== image.raw) replacements.set(image.raw, normalized);
-		}
-		if (token.type === 'def') {
-			const definition = token as Tokens.Def;
-			const normalized = normalizeMarkdownDefinition(
-				definition.raw,
-				definition.href,
-				definition.title,
-				canonicalUrl
-			);
-			if (normalized !== definition.raw) replacements.set(definition.raw, normalized);
-		}
-	});
-
-	let normalized = markdown;
-	for (const [raw, replacement] of replacements) {
-		normalized = normalized.replaceAll(raw, replacement);
-	}
-	return normalized;
-}
-
-function inlineTokensText(tokens: Token[]): string {
-	return tokens
-		.map((token) => {
-			switch (token.type) {
-				case 'text': {
-					const text = token as Tokens.Text;
-					return text.tokens ? inlineTokensText(text.tokens) : decodeHTML(text.text);
-				}
-				case 'escape':
-					return decodeHTML(token.text);
-				case 'codespan':
-					return token.text;
-				case 'strong':
-				case 'em':
-				case 'del':
-				case 'link':
-					return inlineTokensText(token.tokens ?? []);
-				case 'image':
-					return decodeHTML(token.text);
-				default:
-					return 'tokens' in token && Array.isArray(token.tokens)
-						? inlineTokensText(token.tokens)
-						: '';
-			}
-		})
-		.join('');
-}
-
-export function buildMarketBriefReaderExport(
-	post: BlogPost,
-	source: string
-): MarketBriefReaderExport {
-	if (post.format !== 'market-brief' || post.edition === undefined) {
-		throw new Error(`Blog post ${post.slug} is not a Market Brief edition`);
-	}
-
-	const canonicalUrl = `${MARKET_BRIEF_CANONICAL_ORIGIN}${getBlogPostPath(post.slug)}`;
-	const markdown = extractMarkdownBody(source);
-	const tokens = tokenizeMarketBrief(source, canonicalUrl);
-	const slugger = new GithubSlugger();
-	const sections: MarketBriefReaderExport['sections'] = [];
-
-	marked.walkTokens(tokens, (token) => {
-		if (token.type !== 'heading') return;
-		const heading = token as Tokens.Heading;
-		const title = inlineTokensText(heading.tokens ?? [])
-			.replace(/\s+/g, ' ')
-			.trim();
-		const id = slugger.slug(title);
-		if (heading.depth === 2 && title.toLowerCase() !== 'sources') {
-			sections.push({ id, title });
-		}
-	});
-
-	return {
-		canonicalUrl,
-		markdown: `${normalizeMarkdownTargets(markdown, tokens, canonicalUrl)}\n`,
-		sections
-	};
-}
-
 function renderText(tokens: Token[], canonicalUrl: string): string {
 	const body = tokensText(tokens, canonicalUrl)
 		.replace(/[ \t]+\n/g, '\n')
@@ -501,7 +255,7 @@ function renderHtml(
 <tr><td align="center" style="padding:28px 12px;">
 <table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:640px;border-collapse:collapse;background-color:#ffffff;">
 <tr><td style="padding:36px 34px 14px;border-top:5px solid #d97706;">
-<p style="margin:0 0 10px;color:#9a4d00;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Purveyors Market Brief · Edition ${edition}</p>
+<p style="margin:0 0 10px;color:#9a4d00;font-family:Arial,sans-serif;font-size:13px;font-weight:700;">Purveyors Market Brief · Edition ${edition}</p>
 <h1 style="margin:0 0 14px;color:#1f1b17;font-family:Georgia,serif;font-size:34px;line-height:1.18;">${escapeHtml(post.title)}</h1>
 <p style="margin:0;color:#625a52;font-family:Georgia,serif;font-size:18px;line-height:1.55;">${escapeHtml(post.description)}</p>
 </td></tr>

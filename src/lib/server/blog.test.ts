@@ -35,6 +35,46 @@ const MARKET_BRIEF_FRONTMATTER: BlogPostFrontmatter = {
 	edition: 1
 };
 
+const MARKET_BRIEF_PRESENTATION = {
+	marketSnapshot: {
+		asOf: '2026-09-01',
+		scope: 'US green coffee · retail pricing + all-market signals',
+		movementPercent: -0.2,
+		movementLabel: 'Quiet',
+		listings: 593,
+		matchedListings: 524,
+		suppliers: 24,
+		totalSignals: 124,
+		belowBenchmark: 117,
+		scoreOutliers: 7,
+		priceDrops: 0,
+		priceStatsUrl: 'https://api.purveyors.io/v1/price-index/stats',
+		signalsUrl: 'https://api.purveyors.io/v1/market/signals?summary=true'
+	},
+	coffeeHighlights: [
+		{
+			catalogId: 9762,
+			name: 'Kahondo Station Natural',
+			supplier: 'Burman Coffee Traders',
+			supplierUrl: 'https://burmancoffee.com/coffee/kahondo',
+			catalogUrl: '/catalog?coffee=9762',
+			origin: 'Congo',
+			region: 'North Kivu',
+			process: 'Natural',
+			pricePerLb: 8.69,
+			stockedDate: '2026-08-08',
+			tastingNotes: {
+				body: { tag: 'syrupy', color: '#b06a3b', score: 4 },
+				flavor: { tag: 'dark berry', color: '#9d2f5e', score: 5 },
+				acidity: { tag: 'soft citric', color: '#f4d03f', score: 4 },
+				sweetness: { tag: 'milk chocolate', color: '#7a4a2b', score: 5 },
+				fragrance_aroma: { tag: 'blackberry jam', color: '#7b2d8b', score: 5 }
+			},
+			rationale: 'A current coffee tied to the week’s origin-access story.'
+		}
+	]
+} satisfies Pick<BlogPostFrontmatter, 'marketSnapshot' | 'coffeeHighlights'>;
+
 const LEGACY_TAG_MEMBERSHIP: Record<keyof typeof BLOG_TAG_ALIASES, string[]> = {
 	agentic: [
 		'benchmark-leaders-agentic-laggards',
@@ -151,6 +191,46 @@ describe('Market Brief publication metadata', () => {
 		expect(getMarketBriefSlug(1)).toBe('market-brief-001');
 		expect(getMarketBriefSlug(1000)).toBe('market-brief-1000');
 		expect(getBlogPostPath(post.slug)).toBe('/blog/market-brief-001');
+	});
+
+	it('admits an internally consistent market snapshot and one to three catalog highlights', () => {
+		const post = normalizeBlogPost('market-brief-001', {
+			...MARKET_BRIEF_FRONTMATTER,
+			...MARKET_BRIEF_PRESENTATION
+		});
+
+		expect(post.marketSnapshot?.matchedListings).toBe(524);
+		expect(post.coffeeHighlights).toHaveLength(1);
+	});
+
+	it('keeps catalog highlights renderable when stale market evidence is deliberately omitted', () => {
+		const post = normalizeBlogPost('market-brief-001', {
+			...MARKET_BRIEF_FRONTMATTER,
+			coffeeHighlights: MARKET_BRIEF_PRESENTATION.coffeeHighlights
+		});
+
+		expect(post.marketSnapshot).toBeUndefined();
+		expect(post.coffeeHighlights).toHaveLength(1);
+	});
+
+	it('rejects incomplete or inconsistent Market Brief presentation evidence', () => {
+		expect(() =>
+			normalizeBlogPost('market-brief-001', {
+				...MARKET_BRIEF_FRONTMATTER,
+				marketSnapshot: MARKET_BRIEF_PRESENTATION.marketSnapshot
+			})
+		).toThrow('cannot declare marketSnapshot without coffeeHighlights');
+
+		expect(() =>
+			normalizeBlogPost('market-brief-001', {
+				...MARKET_BRIEF_FRONTMATTER,
+				...MARKET_BRIEF_PRESENTATION,
+				marketSnapshot: {
+					...MARKET_BRIEF_PRESENTATION.marketSnapshot,
+					totalSignals: 125
+				}
+			})
+		).toThrow('marketSnapshot is internally inconsistent');
 	});
 
 	it.each([
