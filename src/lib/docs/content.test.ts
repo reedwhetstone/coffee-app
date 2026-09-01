@@ -28,9 +28,10 @@ describe('api docs contract', () => {
 			'Green evaluates the same public-data capabilities at lower request and collection volume.'
 		);
 		expect(serializedPage).toContain('200 requests per account per UTC calendar month');
-		expect(serializedPage).toContain('up to 25 items per collection response');
+		expect(serializedPage).toContain('up to 25 items per read collection response');
+		expect(serializedPage).toContain('Atomic inventory batch receipts');
 		expect(serializedPage).toContain(
-			'Aggregates such as facets and statistics are not item collections'
+			'Aggregate responses such as facets and statistics use their own documented bounds'
 		);
 	});
 

@@ -32,7 +32,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		]
 	};
 
-	const maxCatalogPageLimitFeature = `Up to ${MAX_CATALOG_PAGE_LIMIT_DISPLAY} items per collection response`;
+	const maxCatalogPageLimitFeature = `Up to ${MAX_CATALOG_PAGE_LIMIT_DISPLAY} items per read collection response`;
 
 	const pricingTiers = [
 		{
@@ -43,7 +43,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			description: 'Free plan for evaluation and lightweight data pulls',
 			features: [
 				'200 requests per account per UTC month',
-				'Up to 25 items per collection response',
+				'Up to 25 items per read collection response',
 				'Parchment Console access'
 			],
 			popular: false

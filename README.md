@@ -56,7 +56,7 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
    - `GET https://api.purveyors.io/v1/price-index` exposes aggregate `price_index_snapshots` for entitled first-party sessions and customer API keys with Parchment Intelligence access
    - Parchment catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages use a server-held demo key through the coffee-app BFF; deliberately designated Market Index teaser slices remain anonymous
    - Full catalog responses include structured process transparency fields and `process.evidence_available`, but not raw evidence quotes
-   - Green, Origin, and Enterprise API keys share public-data capabilities. Green includes 200 requests per account per UTC calendar month and up to 25 items per collection response; scopes, owner binding, and Parchment Intelligence entitlements remain independent
+   - Green, Origin, and Enterprise API keys share public-data capabilities. Green includes 200 requests per account per UTC calendar month and up to 25 items per read collection response; aggregates and atomic batch receipts keep their documented endpoint bounds, while scopes, owner binding, and Parchment Intelligence entitlements remain independent
    - API-key routes emit account quota and burst headers according to the resolved plan
    - [See API docs](https://api.purveyors.io/docs)
 

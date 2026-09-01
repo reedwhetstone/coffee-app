@@ -487,7 +487,7 @@ const docsPages: DocsPage[] = [
 					'The canonical response includes data, pagination, and meta blocks. The meta block reports auth kind, role, plan, access scope, row-limit state, and cache metadata.',
 					'Full catalog rows include legacy structured processing fields, Purveyor Score fields, plus a nested process object. Null values stay null when the supplier has not disclosed structured metadata. process.evidence_available reports whether internal provenance exists without exposing raw evidence quotes in the public response.',
 					'The example below shows an API-key response. Bearer-session responses keep the same top-level shape. API-key requests additionally emit X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset for the shared account allowance.',
-					`Green keys can use the same public-data query capabilities as Origin and Enterprise. Green is capped at up to 25 items per collection response and 200 requests per account per UTC calendar month. Aggregate responses such as facets and statistics do not represent item collections and use their own documented bounds. Every API plan remains public-catalog scoped unless a separate owner-bound scope or data entitlement applies.`,
+					`Green keys can use the same public-data query capabilities as Origin and Enterprise. Green is capped at up to 25 items per read collection response and 200 requests per account per UTC calendar month. Aggregate responses such as facets and statistics use their own documented bounds. Atomic inventory batch receipts remain complete, up to their documented 50-item transaction bound, so reconciliation is never truncated. Every API plan remains public-catalog scoped unless a separate owner-bound scope or data entitlement applies.`,
 					'Cookies are not part of the public API contract. Coffee-app can forward a resolved first-party session as a Bearer token.'
 				],
 				codeBlocks: [
@@ -738,7 +738,7 @@ const docsPages: DocsPage[] = [
 						[
 							'API-key /v1/catalog',
 							'Production integrations and accounted usage',
-							`Full public-data query surface on every API plan. Green collection responses are capped at 25 items. Defaults are still bounded by the caller's plan.`,
+							`Full public-data query surface on every API plan. Green read collection responses are capped at 25 items. Defaults are still bounded by the caller's plan.`,
 							'Content-Type plus X-RateLimit-*',
 							'Canonical integration path for developers, sync jobs, and agents. Green evaluates the same public-data capabilities at lower request and collection volume.'
 						],
@@ -819,7 +819,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'The public docs use marketed tier names Green, Origin, and Enterprise, while API responses and server code use apiPlan keys viewer, member, and enterprise.',
 					'Green, Origin, and Enterprise API keys share public-data capabilities. Request quota and collection item limits distinguish the plans.',
-					`Green collection responses contain up to 25 items. Aggregates such as facets and statistics are not item collections and use their own documented bounds. Origin and Enterprise collection responses remain within the ${MAX_CATALOG_PAGE_LIMIT}-item endpoint ceiling.`,
+					`Green read collection responses contain up to 25 items. Aggregates such as facets and statistics use their own documented bounds. Atomic inventory batch receipts remain complete up to their documented 50-item transaction bound. Origin and Enterprise read collection responses remain within the ${MAX_CATALOG_PAGE_LIMIT}-item endpoint ceiling.`,
 					'X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset are only emitted for API-key responses. They describe the account allowance shared by every key.',
 					'X-RateLimit-Reset is a Unix timestamp for 00:00 UTC on the first day of the next month. A 429 also includes Retry-After.',
 					'Bearer-session requests are not counted against an API-key quota and therefore do not receive those headers.'

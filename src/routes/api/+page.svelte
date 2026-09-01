@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { MAX_CATALOG_PAGE_LIMIT_DISPLAY } from '$lib/constants/catalog';
 
-	const maxCatalogRowsPerRequest = `Up to ${MAX_CATALOG_PAGE_LIMIT_DISPLAY} per collection response`;
+	const maxCatalogRowsPerRequest = `Up to ${MAX_CATALOG_PAGE_LIMIT_DISPLAY} per read collection response`;
 
 	function openDocs() {
 		window.location.href = 'https://api.purveyors.io/docs';
@@ -209,16 +209,17 @@
 		</div>
 		<p class="mt-4 text-sm leading-relaxed text-muted">
 			Green gets you into the full public-data capability family immediately at no cost, with 200
-			requests shared by every key on the account per UTC calendar month and up to 25 items per
+			requests shared by every key on the account per UTC calendar month and up to 25 items per read
 			collection response. Origin is $99/month for production integrations with up to
-			{MAX_CATALOG_PAGE_LIMIT_DISPLAY} items per collection response and 10,000 monthly account requests.
-			Enterprise keeps the same per-request ceiling while covering unlimited request volume, custom data
-			terms, and dedicated support. Manage keys and monitor usage in the
+			{MAX_CATALOG_PAGE_LIMIT_DISPLAY} items per read collection response and 10,000 monthly account
+			requests. Enterprise keeps the same per-request ceiling while covering unlimited request volume,
+			custom data terms, and dedicated support. Manage keys and monitor usage in the
 			<a href="/api-dashboard" class="text-accent hover:underline">Parchment Console</a>.
 		</p>
 		<p class="mt-3 text-sm leading-relaxed text-muted">
-			Collection limits apply to endpoints that return item lists. Aggregates such as facets and
-			statistics return summaries instead and follow their documented endpoint-specific bounds.
+			Read collection limits apply to endpoints that return item lists. Aggregates such as facets
+			and statistics follow their documented endpoint-specific bounds. Atomic inventory batch
+			receipts remain complete up to their documented 50-item transaction bound.
 		</p>
 	</section>
 

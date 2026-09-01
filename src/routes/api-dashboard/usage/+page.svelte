@@ -142,12 +142,12 @@
 
 				<!-- Collection cap -->
 				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-					<h3 class="text-sm font-medium text-muted">Collection Responses</h3>
+					<h3 class="text-sm font-medium text-muted">Read Collection Responses</h3>
 					<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
 						{formatCollectionLimit(data.currentStats?.accountQuota.collectionItemLimit)}
 					</p>
 					<p class="mt-2 text-xs text-muted">
-						Aggregates use their documented endpoint-specific bounds
+						Aggregates and complete atomic batch receipts use documented endpoint-specific bounds
 					</p>
 				</div>
 			</div>

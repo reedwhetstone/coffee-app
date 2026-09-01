@@ -73,7 +73,11 @@ describe('Parchment usage analytics', () => {
 		expect(screen.getByText(/75 \/\s*200/)).toBeInTheDocument();
 		expect(screen.getByText('125')).toBeInTheDocument();
 		expect(screen.getByText(/Sep 1, 2026, 12:00 AM UTC/)).toBeInTheDocument();
+		expect(screen.getByText('Read Collection Responses')).toBeInTheDocument();
 		expect(screen.getByText('Up to 25 items')).toBeInTheDocument();
+		expect(
+			screen.getByText(/complete atomic batch receipts use documented endpoint-specific bounds/)
+		).toBeInTheDocument();
 		expect(
 			screen.getByText(
 				/They are not separate allowances, and creating another key does not increase/
