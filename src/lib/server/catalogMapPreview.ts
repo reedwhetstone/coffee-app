@@ -1,7 +1,4 @@
-type CatalogMapPreviewEnvironment = {
-	CATALOG_MAP_PREVIEW_ENABLED?: string;
-	VERCEL_ENV?: string;
-};
+type CatalogMapPreviewEnvironment = Record<string, string | undefined>;
 
 /**
  * Keep production rollout explicit while making review deployments useful by

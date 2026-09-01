@@ -252,7 +252,7 @@
 			if (!coffee) return false;
 
 			mapSelectedCoffee = coffee;
-			const nextUrl = new URL(page.url);
+			const nextUrl = new URL(window.location.href);
 			nextUrl.searchParams.set('coffee', String(catalogId));
 			replaceState(nextUrl, page.state);
 			return true;
