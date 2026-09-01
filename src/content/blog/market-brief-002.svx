@@ -7,6 +7,58 @@ pillar: 'market-intelligence'
 draft: false
 format: 'market-brief'
 edition: 2
+marketSnapshot:
+  asOf: '2026-09-01'
+  scope: 'US retail green coffee'
+  movementPercent: -0.2
+  movementLabel: 'Quiet'
+  listings: 593
+  matchedListings: 524
+  suppliers: 24
+  totalSignals: 124
+  belowBenchmark: 117
+  scoreOutliers: 7
+  priceDrops: 0
+  priceStatsUrl: 'https://api.purveyors.io/v1/price-index/stats'
+  signalsUrl: 'https://api.purveyors.io/v1/market/signals?summary=true'
+coffeeHighlights:
+  - catalogId: 9762
+    name: 'Congo Organic Kivu — Kahondo Station Natural'
+    supplier: 'Burman Coffee Traders'
+    supplierUrl: 'https://burmancoffee.com/product/green-coffee-beans/congo-org-kahondo-natural/'
+    catalogUrl: '/catalog?coffee=9762'
+    origin: 'Congo'
+    region: 'Isale, North Kivu'
+    process: 'Natural'
+    variety: 'Bourbon'
+    pricePerLb: 8.69
+    priceContext: '$7.49/lb at 60 lb'
+    stockedDate: '2026-08-08'
+    tastingNotes:
+      body: { tag: 'syrupy, medium-full', color: '#b06a3b', score: 4 }
+      flavor: { tag: 'dark berry, chocolate', color: '#9d2f5e', score: 5 }
+      acidity: { tag: 'soft citric', color: '#f4d03f', score: 4 }
+      sweetness: { tag: 'milk chocolate', color: '#7a4a2b', score: 5 }
+      fragrance_aroma: { tag: 'blackberry jam', color: '#7b2d8b', score: 5 }
+    rationale: 'A current North Kivu lot that turns the week’s Congo access story into a concrete buying opportunity, with a high-impact natural profile and meaningful volume pricing.'
+  - catalogId: 9966
+    name: 'Hawaii Kona Peaberry — Mauka Honaunau District'
+    supplier: 'Coffee Bean Corral'
+    supplierUrl: 'https://coffeebeancorral.com/products/kona-peaberry'
+    catalogUrl: '/catalog?coffee=9966'
+    origin: 'United States'
+    region: 'Kona, Hawaii'
+    process: 'Washed'
+    variety: 'Peaberry'
+    pricePerLb: 46.15
+    stockedDate: '2026-08-16'
+    tastingNotes:
+      body: { tag: 'creamy, smooth', color: '#f5e6d3', score: 4 }
+      flavor: { tag: 'milk chocolate, citrus', color: '#7b3f00', score: 4 }
+      acidity: { tag: 'mild, gentle citrus', color: '#f4d35e', score: 3 }
+      sweetness: { tag: 'caramel, vanilla', color: '#c68e4e', score: 4 }
+      fragrance_aroma: { tag: 'vanilla, nut, chocolate', color: '#d4a017', score: 4 }
+    rationale: 'A rare, premium Kona format that makes the resilience story legible through current availability, pricing, and a distinctly softer flavor profile.'
 ---
 
 ## Market read: quiet pricing, concentrated value signals

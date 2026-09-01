@@ -88,7 +88,9 @@ describe('/blog/[slug] Market Brief metadata', () => {
 		buildMarketBriefReaderExportMock.mockReturnValue({
 			canonicalUrl: 'https://www.purveyors.io/blog/market-brief-001',
 			markdown: '## This week\n\nThe first fixture.\n',
-			sections: [{ id: 'this-week', title: 'This week' }]
+			sections: [
+				{ id: 'this-week', title: 'This week', kind: 'take', html: '<p>The first fixture.</p>' }
+			]
 		});
 		buildMarketBriefDeploymentManifestMock.mockImplementation(
 			(_projection: unknown, environment: Record<string, string | undefined>) =>
@@ -132,7 +134,9 @@ describe('/blog/[slug] Market Brief metadata', () => {
 		expect(result.marketBriefReader).toEqual({
 			canonicalUrl: 'https://www.purveyors.io/blog/market-brief-001',
 			markdown: '## This week\n\nThe first fixture.\n',
-			sections: [{ id: 'this-week', title: 'This week' }]
+			sections: [
+				{ id: 'this-week', title: 'This week', kind: 'take', html: '<p>The first fixture.</p>' }
+			]
 		});
 		expect(getRawMarketBriefSourceMock).toHaveBeenCalledWith('market-brief-001');
 		expect(buildMarketBriefReaderExportMock).toHaveBeenCalledWith(marketBrief, marketBriefSource);

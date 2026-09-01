@@ -193,8 +193,18 @@ A second section with the same title.
 		expect(reader.markdown).not.toContain('title: "Coffee finds a firmer floor"');
 		expect(reader.markdown.endsWith('\n')).toBe(true);
 		expect(reader.sections).toEqual([
-			{ id: 'the-throughline', title: 'The throughline' },
-			{ id: 'the-throughline-1', title: 'The throughline' }
+			{
+				id: 'the-throughline',
+				title: 'The throughline',
+				kind: 'take',
+				html: expect.stringContaining('Purveyors context')
+			},
+			{
+				id: 'the-throughline-1',
+				title: 'The throughline',
+				kind: 'take',
+				html: expect.stringContaining('second section')
+			}
 		]);
 	});
 

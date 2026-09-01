@@ -2,6 +2,41 @@ export const BLOG_FORMATS = ['essay', 'market-brief'] as const;
 
 export type BlogFormat = (typeof BLOG_FORMATS)[number];
 
+import type { TastingNotes } from './coffee.types';
+
+export interface MarketBriefSnapshot {
+	asOf: string;
+	scope: string;
+	movementPercent: number;
+	movementLabel: string;
+	listings: number;
+	matchedListings: number;
+	suppliers: number;
+	totalSignals: number;
+	belowBenchmark: number;
+	scoreOutliers: number;
+	priceDrops: number;
+	priceStatsUrl: string;
+	signalsUrl: string;
+}
+
+export interface MarketBriefCoffeeHighlight {
+	catalogId: number;
+	name: string;
+	supplier: string;
+	supplierUrl: string;
+	catalogUrl: string;
+	origin: string;
+	region: string;
+	process?: string;
+	variety?: string;
+	pricePerLb: number;
+	priceContext?: string;
+	stockedDate: string;
+	tastingNotes: TastingNotes;
+	rationale: string;
+}
+
 export interface BlogPostFrontmatter {
 	title: string;
 	date: string;
@@ -14,6 +49,8 @@ export interface BlogPostFrontmatter {
 	readingTime?: number;
 	format?: BlogFormat;
 	edition?: number;
+	marketSnapshot?: MarketBriefSnapshot;
+	coffeeHighlights?: MarketBriefCoffeeHighlight[];
 }
 
 export interface BlogPost extends Omit<BlogPostFrontmatter, 'format'> {
@@ -24,6 +61,8 @@ export interface BlogPost extends Omit<BlogPostFrontmatter, 'format'> {
 export interface MarketBriefReaderSection {
 	id: string;
 	title: string;
+	kind: 'market-read' | 'take' | 'coffee-highlights';
+	html: string;
 }
 
 export interface MarketBriefReaderExport {

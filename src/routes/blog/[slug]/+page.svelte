@@ -3,6 +3,7 @@
 	import { formatMarketBriefEdition, PILLARS } from '$lib/types/blog.types';
 	import { formatBlogDate } from '$lib/utils/dates';
 	import LinkedInDraft from '$lib/components/blog/LinkedInDraft.svelte';
+	import MarketBriefArticle from '$lib/components/blog/MarketBriefArticle.svelte';
 	import MarketBriefShareTools from '$lib/components/blog/MarketBriefShareTools.svelte';
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 
@@ -127,8 +128,16 @@
 	</header>
 
 	<!-- Post content -->
-	<div
-		class="prose-code:bg-accent/8 prose prose-lg
+	{#if data.marketBriefReader && data.metadata.marketSnapshot && data.metadata.coffeeHighlights}
+		<MarketBriefArticle
+			title={data.metadata.title}
+			reader={data.marketBriefReader}
+			snapshot={data.metadata.marketSnapshot}
+			coffeeHighlights={data.metadata.coffeeHighlights}
+		/>
+	{:else}
+		<div
+			class="prose-code:bg-accent/8 prose prose-lg
 		max-w-none font-serif prose-headings:font-serif prose-headings:font-semibold
 		prose-headings:text-ink prose-h2:mt-12 prose-h2:border-b prose-h2:border-line
 		prose-h2:pb-3 prose-p:leading-relaxed
@@ -140,17 +149,14 @@
 		prose-li:text-muted
 		prose-img:rounded-lg prose-img:shadow-sm
 		prose-hr:border-line"
-	>
-		<data.content />
-	</div>
+		>
+			<data.content />
+		</div>
+	{/if}
 </article>
 
 {#if data.marketBriefReader}
-	<MarketBriefShareTools
-		editionTitle={data.metadata.title}
-		slug={data.metadata.slug}
-		reader={data.marketBriefReader}
-	/>
+	<MarketBriefShareTools slug={data.metadata.slug} reader={data.marketBriefReader} />
 {/if}
 
 <!-- Post footer -->

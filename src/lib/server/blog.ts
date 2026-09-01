@@ -13,11 +13,72 @@ import {
 const MARKET_BRIEF_SLUG_PREFIX = 'market-brief-';
 const MARKET_BRIEF_PILLAR = 'market-intelligence';
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const HTTPS_URL_PATTERN = /^https:\/\//;
 
 function isValidIsoDate(value: string): boolean {
 	if (!ISO_DATE_PATTERN.test(value)) return false;
 	const parsed = new Date(`${value}T00:00:00.000Z`);
 	return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function validateMarketBriefPresentation(slug: string, metadata: BlogPostFrontmatter): void {
+	const snapshot = metadata.marketSnapshot;
+	const highlights = metadata.coffeeHighlights;
+
+	if ((snapshot === undefined) !== (highlights === undefined)) {
+		throw new Error(
+			`Market Brief ${slug} must declare marketSnapshot and coffeeHighlights together`
+		);
+	}
+	if (!snapshot || !highlights) return;
+
+	if (!isValidIsoDate(snapshot.asOf)) {
+		throw new Error(`Market Brief ${slug} marketSnapshot requires an ISO asOf date`);
+	}
+	for (const [label, value] of Object.entries({
+		listings: snapshot.listings,
+		matchedListings: snapshot.matchedListings,
+		suppliers: snapshot.suppliers,
+		totalSignals: snapshot.totalSignals,
+		belowBenchmark: snapshot.belowBenchmark,
+		scoreOutliers: snapshot.scoreOutliers,
+		priceDrops: snapshot.priceDrops
+	})) {
+		if (!Number.isInteger(value) || value < 0) {
+			throw new Error(`Market Brief ${slug} marketSnapshot ${label} must be non-negative`);
+		}
+	}
+	if (
+		!HTTPS_URL_PATTERN.test(snapshot.priceStatsUrl) ||
+		!HTTPS_URL_PATTERN.test(snapshot.signalsUrl)
+	) {
+		throw new Error(`Market Brief ${slug} marketSnapshot source URLs must use HTTPS`);
+	}
+	if (
+		!snapshot.scope.trim() ||
+		!snapshot.movementLabel.trim() ||
+		snapshot.matchedListings > snapshot.listings ||
+		snapshot.belowBenchmark + snapshot.scoreOutliers + snapshot.priceDrops !== snapshot.totalSignals
+	) {
+		throw new Error(`Market Brief ${slug} marketSnapshot is internally inconsistent`);
+	}
+	if (highlights.length < 1 || highlights.length > 3) {
+		throw new Error(`Market Brief ${slug} requires one to three coffeeHighlights`);
+	}
+	for (const coffee of highlights) {
+		if (
+			!Number.isInteger(coffee.catalogId) ||
+			coffee.catalogId <= 0 ||
+			coffee.pricePerLb <= 0 ||
+			!isValidIsoDate(coffee.stockedDate) ||
+			!coffee.rationale.trim()
+		) {
+			throw new Error(`Market Brief ${slug} has an invalid coffeeHighlight`);
+		}
+		if (!coffee.catalogUrl.startsWith('/catalog') || !HTTPS_URL_PATTERN.test(coffee.supplierUrl)) {
+			throw new Error(`Market Brief ${slug} coffeeHighlight links are invalid`);
+		}
+	}
 }
 
 export function normalizeBlogPost(slug: string, metadata: BlogPostFrontmatter): BlogPost {
@@ -51,12 +112,16 @@ export function normalizeBlogPost(slug: string, metadata: BlogPostFrontmatter): 
 		if (metadata.pillar !== MARKET_BRIEF_PILLAR) {
 			throw new Error(`Market Brief ${slug} must use the ${MARKET_BRIEF_PILLAR} pillar`);
 		}
+		validateMarketBriefPresentation(slug, metadata);
 	} else {
 		if (metadata.edition !== undefined) {
 			throw new Error(`Essay ${slug} cannot declare a Market Brief edition`);
 		}
 		if (slug.startsWith(MARKET_BRIEF_SLUG_PREFIX)) {
 			throw new Error(`Essay ${slug} cannot use the reserved Market Brief slug prefix`);
+		}
+		if (metadata.marketSnapshot !== undefined || metadata.coffeeHighlights !== undefined) {
+			throw new Error(`Essay ${slug} cannot declare Market Brief presentation data`);
 		}
 	}
 

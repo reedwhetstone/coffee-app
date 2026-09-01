@@ -244,17 +244,36 @@ export function buildMarketBriefReaderExport(
 	const slugger = new GithubSlugger();
 	const sections: MarketBriefReaderExport['sections'] = [];
 
-	marked.walkTokens(tokens, (token) => {
-		if (token.type !== 'heading') return;
+	for (let index = 0; index < tokens.length; index += 1) {
+		const token = tokens[index];
+		if (token.type !== 'heading' || (token as Tokens.Heading).depth !== 2) continue;
+
 		const heading = token as Tokens.Heading;
 		const title = inlineTokensText(heading.tokens ?? [])
 			.replace(/\s+/g, ' ')
 			.trim();
 		const id = slugger.slug(title);
-		if (heading.depth === 2 && title.toLowerCase() !== 'sources') {
-			sections.push({ id, title });
+		if (title.toLowerCase() === 'sources') continue;
+
+		const bodyTokens: Token[] = [];
+		for (let bodyIndex = index + 1; bodyIndex < tokens.length; bodyIndex += 1) {
+			const bodyToken = tokens[bodyIndex];
+			if (bodyToken.type === 'heading' && (bodyToken as Tokens.Heading).depth === 2) break;
+			bodyTokens.push(bodyToken);
 		}
-	});
+
+		const normalizedTitle = title.toLowerCase();
+		sections.push({
+			id,
+			title,
+			kind: normalizedTitle.startsWith('market read')
+				? 'market-read'
+				: normalizedTitle === 'coffee highlights'
+					? 'coffee-highlights'
+					: 'take',
+			html: marked.parser(bodyTokens)
+		});
+	}
 
 	return {
 		canonicalUrl,
