@@ -1040,7 +1040,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'Anonymous callers receive 401 Authentication required.',
 					'Signed-in viewers and API Green keys receive a structured 403 entitlement error before brief data is read or written.',
-					'API-key requests use the same X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, and Retry-After conventions as other paid API routes.',
+					'API-key requests use the same X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, and Retry-After conventions as other metered API routes.',
 					'Brief records are user-owned; one caller cannot fetch or run another account’s brief.'
 				]
 			},

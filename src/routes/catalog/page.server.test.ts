@@ -530,7 +530,7 @@ describe('/catalog page load', () => {
 		expect(result.catalogAccessNotice).toMatchObject({
 			status: 403,
 			message:
-				'Some requested catalog filters or sorts are available to members and paid API tiers.',
+				'Some requested catalog filters or sorts are available to members and customer API keys.',
 			deniedParams: ['type', 'grade', 'appearance', 'sort']
 		});
 	});

@@ -266,7 +266,7 @@ describe('SimilarCoffeePanel', () => {
 				async () =>
 					new Response(
 						JSON.stringify({
-							message: 'Similar coffee matching is available to members and paid API tiers.',
+							message: 'Similar coffee matching is available to members and customer API keys.',
 							teaser: { locked: true, similar_match_count: 4, beta: true }
 						}),
 						{ status: 403, headers: { 'Content-Type': 'application/json' } }

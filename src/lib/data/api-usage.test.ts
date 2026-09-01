@@ -206,7 +206,7 @@ describe('mapOwnerApiUsage', () => {
 		);
 	});
 
-	it('uses deprecated numeric fields only as an account-scoped deployment fallback', () => {
+	it('fails closed instead of relabeling a legacy per-key quota as account-scoped', () => {
 		const fixture = usageFixture({
 			generatedAt: '2026-07-26T12:00:00Z',
 			plan: {
@@ -223,17 +223,9 @@ describe('mapOwnerApiUsage', () => {
 			}
 		});
 
-		expect(mapOwnerApiUsage(fixture).usageStats.accountQuota).toEqual({
-			monthlyRequests: 75,
-			monthlyLimit: 200,
-			monthlyRequestsRemaining: 125,
-			monthlyPercent: 37.5,
-			monthlyResetAt: '2026-08-01T00:00:00.000Z',
-			collectionItemLimit: 25,
-			limitScope: 'account',
-			nearLimit: false,
-			atLimit: false
-		});
+		expect(() => mapOwnerApiUsage(fixture)).toThrow(
+			'Parchment usage response does not include the account quota contract'
+		);
 	});
 
 	it('accepts the quota branch monthlyRequestsRemaining field during SDK rollout', () => {

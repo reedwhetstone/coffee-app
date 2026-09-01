@@ -114,6 +114,32 @@ describe('API usage dashboard loaders', () => {
 		});
 	});
 
+	it('fails closed when Parchment still returns a legacy per-key quota contract', async () => {
+		mockApiUsageGet.mockResolvedValue({
+			data: {
+				...usage,
+				plan: {
+					id: 'viewer',
+					monthlyRequestLimitPerKey: 200,
+					limitScope: 'api_key',
+					unlimited: false
+				}
+			},
+			response: new Response(null, { status: 200 })
+		});
+
+		const result = await analytics.load(makeEvent());
+
+		expect(result).toEqual({
+			error: 'Failed to load usage analytics',
+			apiKeys: [],
+			usageData: [],
+			dailySummary: [],
+			currentStats: null,
+			bounds: null
+		});
+	});
+
 	it('requests a bounded recent series for the analytics page', async () => {
 		const event = makeEvent();
 		const result = await analytics.load(event);

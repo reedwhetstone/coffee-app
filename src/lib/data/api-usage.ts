@@ -4,7 +4,7 @@ type CompatibleOwnerApiUsage = Omit<OwnerApiUsage, 'plan' | 'summary'> & {
 	plan: Omit<OwnerApiUsage['plan'], 'limitScope'> & {
 		/** Canonical account-scoped limit from the newer Parchment contract. */
 		monthlyRequestLimit?: number;
-		/** Deprecated responses report api_key; the Console treats the numeric field as a migration fallback. */
+		/** Used to reject legacy per-key quota responses during deployment. */
 		limitScope?: 'account' | 'api_key';
 		collectionItemLimit?: number | null;
 	};
@@ -90,24 +90,20 @@ export interface ApiUsagePageData {
 	bounds: ApiUsageBoundsView;
 }
 
-function nextUtcMonth(isoTimestamp: string): string {
-	const generatedAt = new Date(isoTimestamp);
-	if (Number.isNaN(generatedAt.getTime())) {
-		throw new Error('Parchment usage response has an invalid generatedAt timestamp');
-	}
-
-	return new Date(
-		Date.UTC(generatedAt.getUTCFullYear(), generatedAt.getUTCMonth() + 1, 1)
-	).toISOString();
-}
-
 function accountQuotaStatus(usage: CompatibleOwnerApiUsage): AccountQuotaStatus {
-	const monthlyLimit = usage.plan.monthlyRequestLimit ?? usage.plan.monthlyRequestLimitPerKey;
+	const monthlyLimit = usage.plan.monthlyRequestLimit;
+	if (
+		usage.plan.limitScope !== 'account' ||
+		typeof monthlyLimit !== 'number' ||
+		(monthlyLimit !== -1 && monthlyLimit <= 0) ||
+		typeof usage.plan.collectionItemLimit !== 'number' ||
+		typeof usage.summary.monthlyRequestsRemaining !== 'number' ||
+		typeof usage.summary.monthlyResetAt !== 'string'
+	) {
+		throw new Error('Parchment usage response does not include the account quota contract');
+	}
 	const unlimited = usage.plan.unlimited || monthlyLimit === -1;
-	const monthlyRequestsRemaining = unlimited
-		? null
-		: (usage.summary.monthlyRequestsRemaining ??
-			Math.max(0, monthlyLimit - usage.summary.monthlyRequests));
+	const monthlyRequestsRemaining = unlimited ? null : usage.summary.monthlyRequestsRemaining;
 	const monthlyPercent = unlimited
 		? null
 		: Math.min((usage.summary.monthlyRequests / monthlyLimit) * 100, 100);
@@ -117,8 +113,8 @@ function accountQuotaStatus(usage: CompatibleOwnerApiUsage): AccountQuotaStatus 
 		monthlyLimit,
 		monthlyRequestsRemaining,
 		monthlyPercent,
-		monthlyResetAt: usage.summary.monthlyResetAt ?? nextUtcMonth(usage.generatedAt),
-		collectionItemLimit: usage.plan.collectionItemLimit ?? (usage.plan.id === 'viewer' ? 25 : null),
+		monthlyResetAt: usage.summary.monthlyResetAt,
+		collectionItemLimit: usage.plan.collectionItemLimit,
 		limitScope: 'account',
 		nearLimit: monthlyPercent !== null && monthlyPercent >= 80,
 		atLimit: monthlyPercent !== null && monthlyPercent >= 100
@@ -127,8 +123,8 @@ function accountQuotaStatus(usage: CompatibleOwnerApiUsage): AccountQuotaStatus 
 
 /**
  * Adapt Parchment's owner traffic response for Console presentation. The new
- * contract exposes canonical account fields. Deprecated per-key limit naming is
- * accepted only as a deployment-order fallback; per-key rows are attribution.
+ * contract exposes canonical account fields. Legacy per-key contracts fail
+ * closed so the Console never relabels a per-key allowance as account-scoped.
  */
 export function mapOwnerApiUsage(usage: OwnerApiUsage): ApiUsagePageData {
 	const compatibleUsage = usage as CompatibleOwnerApiUsage;

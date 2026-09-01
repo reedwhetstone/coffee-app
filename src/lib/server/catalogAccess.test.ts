@@ -58,15 +58,17 @@ describe('resolveCatalogAccessCapabilities', () => {
 		}
 	});
 
-	it('keeps API Green basic while allowing paid API plans to use premium query facets', () => {
+	it('gives every API plan public query parity without widening account workflows', () => {
 		const green = resolveCatalogAccessCapabilities({ principal: apiPrincipal('viewer') });
 		const origin = resolveCatalogAccessCapabilities({ principal: apiPrincipal('member') });
 		const enterprise = resolveCatalogAccessCapabilities({ principal: apiPrincipal('enterprise') });
 
 		expect(green.canUseBasicFilters).toBe(true);
-		expect(green.canUseProcessFacets).toBe(false);
-		expect(green.canUseBeanMatching).toBe(false);
-		expect(green.canViewPremiumFilterMetadata).toBe(false);
+		expect(green.canUseProcessFacets).toBe(true);
+		expect(green.canUseBeanMatching).toBe(true);
+		expect(green.canViewPremiumFilterMetadata).toBe(true);
+		expect(green.canUseSavedSearches).toBe(false);
+		expect(green.canExport).toBe(false);
 		expect(origin.canUseProcessFacets).toBe(true);
 		expect(origin.canUseBeanMatching).toBe(true);
 		expect(origin.canViewPremiumFilterMetadata).toBe(true);
