@@ -4,6 +4,7 @@ import type { BlogPost } from '$lib/types/blog.types';
 const {
 	buildMarketBriefDeploymentManifestMock,
 	buildMarketBriefEmailProjectionMock,
+	buildMarketBriefReaderExportMock,
 	getAllPostsMock,
 	getRawMarketBriefSourceMock,
 	marketBrief,
@@ -11,6 +12,7 @@ const {
 } = vi.hoisted(() => ({
 	buildMarketBriefDeploymentManifestMock: vi.fn(),
 	buildMarketBriefEmailProjectionMock: vi.fn(),
+	buildMarketBriefReaderExportMock: vi.fn(),
 	getAllPostsMock: vi.fn(),
 	getRawMarketBriefSourceMock: vi.fn(),
 	marketBrief: {
@@ -49,6 +51,7 @@ vi.mock('$lib/server/blog', () => ({
 vi.mock('$lib/server/marketBriefEmail', () => ({
 	buildMarketBriefDeploymentManifest: buildMarketBriefDeploymentManifestMock,
 	buildMarketBriefEmailProjection: buildMarketBriefEmailProjectionMock,
+	buildMarketBriefReaderExport: buildMarketBriefReaderExportMock,
 	getRawMarketBriefSource: getRawMarketBriefSourceMock
 }));
 
@@ -73,6 +76,11 @@ describe('/blog/[slug] Market Brief metadata', () => {
 			canonicalUrl: 'https://www.purveyors.io/blog/market-brief-001',
 			rendererVersion: 'market-brief-email-v1',
 			sha256: 'b'.repeat(64)
+		});
+		buildMarketBriefReaderExportMock.mockReturnValue({
+			canonicalUrl: 'https://www.purveyors.io/blog/market-brief-001',
+			markdown: '## This week\n\nThe first fixture.\n',
+			sections: [{ id: 'this-week', title: 'This week' }]
 		});
 		buildMarketBriefDeploymentManifestMock.mockImplementation(
 			(_projection: unknown, environment: Record<string, string | undefined>) =>
@@ -113,7 +121,13 @@ describe('/blog/[slug] Market Brief metadata', () => {
 		expect(JSON.stringify(result.meta.schemaData)).toContain('Purveyors Market Brief');
 		expect(JSON.stringify(result.meta.schemaData)).not.toContain('market_read');
 		expect(result.marketBriefDeployment).toBeUndefined();
+		expect(result.marketBriefReader).toEqual({
+			canonicalUrl: 'https://www.purveyors.io/blog/market-brief-001',
+			markdown: '## This week\n\nThe first fixture.\n',
+			sections: [{ id: 'this-week', title: 'This week' }]
+		});
 		expect(getRawMarketBriefSourceMock).toHaveBeenCalledWith('market-brief-001');
+		expect(buildMarketBriefReaderExportMock).toHaveBeenCalledWith(marketBrief, marketBriefSource);
 	});
 
 	it('advertises the exact projection only from a Vercel production deployment', async () => {
@@ -150,8 +164,10 @@ describe('/blog/[slug] Market Brief metadata', () => {
 		if (!result) throw new Error('Expected essay reader data');
 
 		expect(result.marketBriefDeployment).toBeUndefined();
+		expect(result.marketBriefReader).toBeUndefined();
 		expect(getRawMarketBriefSourceMock).not.toHaveBeenCalled();
 		expect(buildMarketBriefEmailProjectionMock).not.toHaveBeenCalled();
+		expect(buildMarketBriefReaderExportMock).not.toHaveBeenCalled();
 		expect(buildMarketBriefDeploymentManifestMock).not.toHaveBeenCalled();
 	});
 

@@ -3,6 +3,7 @@
 	import { formatMarketBriefEdition, PILLARS } from '$lib/types/blog.types';
 	import { formatBlogDate } from '$lib/utils/dates';
 	import LinkedInDraft from '$lib/components/blog/LinkedInDraft.svelte';
+	import MarketBriefShareTools from '$lib/components/blog/MarketBriefShareTools.svelte';
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 
 	let { data } = $props<{ data: PageData }>();
@@ -126,6 +127,14 @@
 		<data.content />
 	</div>
 </article>
+
+{#if data.marketBriefReader}
+	<MarketBriefShareTools
+		editionTitle={data.metadata.title}
+		slug={data.metadata.slug}
+		reader={data.marketBriefReader}
+	/>
+{/if}
 
 <!-- Post footer -->
 <div class="mt-16 space-y-8">
