@@ -138,7 +138,8 @@
 		roastId: number,
 		file: File,
 		operationId: string,
-		beanIndex: number
+		beanIndex: number,
+		lastUpdated?: string
 	) {
 		console.log(`Uploading Artisan file ${file.name} for roast ID ${roastId}`);
 
@@ -150,6 +151,7 @@
 
 		const response = await fetch('/api/artisan-import', {
 			method: 'POST',
+			headers: lastUpdated ? { 'If-Match': lastUpdated } : undefined,
 			body: formData
 		});
 
@@ -193,29 +195,39 @@
 
 			// Submit the roast profile data using parent callback
 			loadingStore.update(operationId, 'Saving roast profiles to database...');
-			const roastProfilesResponse = await onSubmit(dataForAPI);
+			const roastProfilesResponse = (await onSubmit(dataForAPI)) as
+				| {
+						roast_ids?: number[];
+						profiles?: { last_updated?: string }[];
+				  }
+				| undefined;
 			console.log('Roast profiles response:', roastProfilesResponse);
 
 			// If there are Artisan files to upload, handle them after profile creation
-			if (roastProfilesResponse?.roast_ids && Array.isArray(roastProfilesResponse.roast_ids)) {
+			const roastIds = roastProfilesResponse?.roast_ids;
+			if (roastIds && Array.isArray(roastIds)) {
 				console.log(`Processing ${batchBeans.length} beans for Artisan file uploads`);
 
-				const filesToUpload = batchBeans.filter(
-					(bean, i) => bean.artisan_file && roastProfilesResponse.roast_ids[i]
-				);
+				const filesToUpload = batchBeans.filter((bean, i) => bean.artisan_file && roastIds[i]);
 
 				if (filesToUpload.length > 0) {
 					loadingStore.update(operationId, 'Uploading Artisan files...');
 
 					for (let i = 0; i < batchBeans.length; i++) {
 						const bean = batchBeans[i];
-						const roastId = roastProfilesResponse.roast_ids[i];
+						const roastId = roastIds[i];
 
 						console.log(`Bean ${i}: has file = ${!!bean.artisan_file}, roastId = ${roastId}`);
 
 						if (bean.artisan_file && roastId) {
 							try {
-								await uploadArtisanFile(roastId, bean.artisan_file, operationId, i);
+								await uploadArtisanFile(
+									roastId,
+									bean.artisan_file,
+									operationId,
+									i,
+									roastProfilesResponse.profiles?.[i]?.last_updated
+								);
 								console.log(`Successfully uploaded Artisan file for roast ${roastId}`);
 							} catch (fileError) {
 								console.error(`Failed to upload Artisan file for roast ${roastId}:`, fileError);

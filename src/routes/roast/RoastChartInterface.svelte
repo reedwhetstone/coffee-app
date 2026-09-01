@@ -605,6 +605,7 @@
 	<ArtisanImportDialog
 		bind:this={artisanImportDialog}
 		roastId={currentRoastProfile.roast_id}
+		lastUpdated={currentRoastProfile.last_updated}
 		hasExistingData={$roastData.length > 0}
 		onImportComplete={handleArtisanImportComplete}
 	/>

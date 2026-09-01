@@ -43,6 +43,7 @@
 
 	async function saveChanges() {
 		try {
+			const expectedLastUpdated = profile.last_updated;
 			const nulled = Object.fromEntries(
 				Object.entries(editedProfile).map(([key, value]) => [
 					key,
@@ -50,15 +51,14 @@
 				])
 			);
 
-			nulled.last_updated = new Date().toISOString();
-
 			// Use allowlist to strip computed/joined fields — forward-safe vs. denylist
 			const cleanedProfile = pickColumns(nulled, ROAST_PROFILES_COLUMNS);
 
 			const response = await fetch(`/api/roast-profiles?id=${profile.roast_id}`, {
 				method: 'PUT',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					...(expectedLastUpdated ? { 'If-Match': expectedLastUpdated } : {})
 				},
 				body: JSON.stringify(cleanedProfile)
 			});

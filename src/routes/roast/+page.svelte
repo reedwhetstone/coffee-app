@@ -13,6 +13,12 @@
 	import { goto } from '$app/navigation';
 	import { roastData, roastEvents, temperatureEntries, eventEntries, msToSeconds } from './stores';
 	import { createRoastTimer } from '$lib/roast';
+	import {
+		clearRoastCreateOperation,
+		readRoastCreateOperation,
+		reserveRoastCreateOperation,
+		shouldRetainRoastCreateOperation
+	} from '$lib/roast/create-operation';
 
 	import RoastProfileTabs from './RoastProfileTabs.svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
@@ -347,18 +353,30 @@
 	async function handleFormSubmit(profileData: RoastFormData) {
 		setOperation('Creating roast profile...');
 		clearProfileError();
+		const ownerId = data.auth?.user?.id ?? null;
+		const payload = JSON.stringify(profileData);
 
 		try {
+			const idempotencyKey = reserveRoastCreateOperation(
+				sessionStorage,
+				ownerId,
+				'profile-form',
+				payload
+			);
 			// The form now sends data with batch_beans format, use it directly
 			const response = await fetch('/api/roast-profiles', {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					'Idempotency-Key': idempotencyKey
 				},
-				body: JSON.stringify(profileData)
+				body: payload
 			});
 
 			if (!response.ok) {
+				if (!shouldRetainRoastCreateOperation(response.status)) {
+					clearRoastCreateOperation(sessionStorage, ownerId, 'profile-form');
+				}
 				const error = await response.json();
 				throw new Error(error.error || 'Failed to create roast profiles');
 			}
@@ -370,6 +388,7 @@
 			hideRoastForm();
 
 			if (profiles && profiles.length > 0) {
+				clearRoastCreateOperation(sessionStorage, ownerId, 'profile-form');
 				// Update the selected bean and current profile
 				selectedBean = {
 					id: profiles[0].coffee_id,
@@ -622,27 +641,59 @@
 				roastId = currentRoastProfile.roast_id;
 			} else {
 				// Create new profile first
+				const ownerId = data.auth?.user?.id ?? null;
+				const candidatePayload = JSON.stringify({
+					batch_name: `${selectedBean.name} - ${new Date().toLocaleDateString()}`,
+					coffee_id: selectedBean.id,
+					coffee_name: selectedBean.name,
+					roast_date: new Date(),
+					last_updated: new Date()
+				});
+				const pendingCreate = readRoastCreateOperation(sessionStorage, ownerId, 'live-roast');
+				if (pendingCreate) {
+					let pendingCoffeeId: unknown;
+					try {
+						pendingCoffeeId = (JSON.parse(pendingCreate.payload) as Record<string, unknown>)
+							.coffee_id;
+					} catch {
+						// A malformed pending payload is not safe to replace with a new operation key.
+					}
+					if (pendingCoffeeId !== selectedBean.id) {
+						throw new Error(
+							'A previous live roast creation has an unresolved result. Retry that coffee before saving a different one.'
+						);
+					}
+				}
+				const createPayload = pendingCreate?.payload ?? candidatePayload;
+				const idempotencyKey = reserveRoastCreateOperation(
+					sessionStorage,
+					ownerId,
+					'live-roast',
+					createPayload
+				);
 				const profileResponse = await fetch('/api/roast-profiles', {
 					method: 'POST',
 					headers: {
-						'Content-Type': 'application/json'
+						'Content-Type': 'application/json',
+						'Idempotency-Key': idempotencyKey
 					},
-					body: JSON.stringify({
-						batch_name: `${selectedBean.name} - ${new Date().toLocaleDateString()}`,
-						coffee_id: selectedBean.id,
-						coffee_name: selectedBean.name,
-						roast_date: new Date(),
-						last_updated: new Date()
-					})
+					body: createPayload
 				});
 
 				if (!profileResponse.ok) {
+					if (!shouldRetainRoastCreateOperation(profileResponse.status)) {
+						clearRoastCreateOperation(sessionStorage, ownerId, 'live-roast');
+					}
 					const errorData = await profileResponse.json();
 					throw new Error(errorData.error || 'Failed to save roast profile');
 				}
 
 				const profile = await profileResponse.json();
 				const actualProfile = Array.isArray(profile) ? profile[0] : profile;
+				if (!actualProfile?.roast_id) {
+					throw new Error('Roast creation returned an invalid profile');
+				}
+				clearRoastCreateOperation(sessionStorage, ownerId, 'live-roast');
 				roastId = actualProfile.roast_id;
 				currentRoastProfile = actualProfile;
 			}
@@ -658,11 +709,15 @@
 
 				const putResponse = await fetch(`/api/roast-profiles?id=${roastId}`, {
 					method: 'PUT',
-					headers: { 'Content-Type': 'application/json' },
+					headers: {
+						'Content-Type': 'application/json',
+						...(currentRoastProfile?.last_updated
+							? { 'If-Match': currentRoastProfile.last_updated }
+							: {})
+					},
 					body: JSON.stringify({
 						temperatureEntries: mappedTemps,
-						eventEntries: mappedEvents,
-						last_updated: new Date().toISOString().slice(0, 19).replace('T', ' ')
+						eventEntries: mappedEvents
 					})
 				});
 

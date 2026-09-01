@@ -156,13 +156,21 @@ replacement or retirement:
 - bean-identity candidate and review operations over shared identity tables
 - sourcing brief summaries against shared catalog rows
 - legacy catalog RAG reads and `match_coffee_chunks`
-- roast, sales, and tasting data helpers that still write Supabase directly even
-  though equivalent account-linked Parchment contracts now exist
+- deprecated roast compatibility reads that still query Supabase directly and
+  require the separately planned telemetry-backed retirement decision
 
 Inventory share creation and cross-principal redemption now use Parchment's
 share-grant contract through thin BFF adapters. Coffee-app no longer reads
 `shared_links`, the share owner's `user_roles`, or cross-owner inventory,
 catalog, and roast rows directly.
+
+Roast profile create, update, single delete, named-batch create/delete, Artisan
+replacement/clear, and live-curve replacement now use Parchment through
+session-only thin BFF adapters. Coffee-app no longer writes `roast_profiles`,
+`roast_temperatures`, `roast_events`, or `artisan_import_log` directly, and the
+member-callable milestone backfill route has been retired. The deprecated
+read-only roast tool compatibility surface remains isolated for Phase 3's
+telemetry-backed caller decision.
 
 The existence of a Parchment endpoint does not prove coffee-app has migrated to
 it. The canonical backlog tracks this as the headless-cutover debt audit. Each

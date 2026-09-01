@@ -1,16 +1,63 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { createParchmentServerClient } from '$lib/server/parchmentClient';
-import { fetchParchmentRoasts } from '$lib/server/parchmentRoasts';
-import { isCookieSessionPrincipal, principalHasRole } from '$lib/server/principal';
+import type { RequestEvent, RequestHandler } from './$types';
+import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 import {
-	createRoasts,
-	updateRoast,
-	deleteRoast,
-	deleteBatch,
-	type RoastCreateInput,
-	type RoastUpdateInput
-} from '$lib/data/roast.js';
+	createParchmentRoasts,
+	deleteParchmentRoast,
+	deleteParchmentRoastBatch,
+	ParchmentRoastMutationError,
+	updateParchmentRoast,
+	type LegacyRoastCreateInput
+} from '$lib/server/parchmentRoastMutations';
+import { fetchParchmentRoasts } from '$lib/server/parchmentRoasts';
+import { isCookieSessionPrincipal, isTrustedMutationRequest } from '$lib/server/principal';
+
+function mutationAuthFailure(event: RequestEvent) {
+	if (!isCookieSessionPrincipal(event.locals.principal)) {
+		return json({ error: 'Unauthorized' }, { status: 401 });
+	}
+	if (!isTrustedMutationRequest(event, event.locals.principal)) {
+		return json({ error: 'Cross-site session mutation blocked' }, { status: 403 });
+	}
+	return null;
+}
+
+function parsePositiveInteger(value: string | null): number | null {
+	if (value === null || !/^\d+$/.test(value)) return null;
+	const parsed = Number(value);
+	return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function legacyParchmentError(body: unknown): { error: string; code?: string } {
+	if (typeof body !== 'object' || body === null) {
+		return { error: 'Parchment roast request failed' };
+	}
+
+	const nested = 'error' in body && typeof body.error === 'object' ? body.error : null;
+	if (nested !== null) {
+		const message =
+			'message' in nested && typeof nested.message === 'string'
+				? nested.message
+				: 'Parchment roast request failed';
+		const code = 'code' in nested && typeof nested.code === 'string' ? nested.code : undefined;
+		return code ? { error: message, code } : { error: message };
+	}
+
+	return {
+		error:
+			'message' in body && typeof body.message === 'string'
+				? body.message
+				: 'Parchment roast request failed'
+	};
+}
+
+function mutationFailure(error: ParchmentRoastMutationError) {
+	return json(legacyParchmentError(error.body), { status: error.status });
+}
+
+function configFailure() {
+	return json({ error: 'Roast mutations are temporarily unavailable' }, { status: 503 });
+}
 
 export const GET: RequestHandler = async (event) => {
 	try {
@@ -27,86 +74,91 @@ export const GET: RequestHandler = async (event) => {
 	}
 };
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async (event) => {
 	try {
-		const { supabase } = locals;
-		if (!isCookieSessionPrincipal(locals.principal)) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
-		}
-		const { user } = locals.principal;
-		if (!principalHasRole(locals.principal, 'member')) {
-			return json(
-				{ error: 'Mallard Studio membership is required to create roast profiles' },
-				{ status: 403 }
-			);
+		const authFailure = mutationAuthFailure(event);
+		if (authFailure) return authFailure;
+
+		const body = (await event.request.json()) as LegacyRoastCreateInput;
+		if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+			return json({ error: 'Invalid roast profile request' }, { status: 400 });
 		}
 
-		const requestData = (await request.json()) as RoastCreateInput;
-		const { profiles, roastIds } = await createRoasts(supabase, user.id, requestData);
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const idempotencyKey = event.request.headers.get('idempotency-key')?.trim() || undefined;
+		const result = await createParchmentRoasts(client, body, idempotencyKey);
 
-		// The Parchment-owned database trigger updates stocked state in the same
-		// transaction as every roast mutation.
-		const isBatch = 'batch_beans' in requestData && Array.isArray(requestData.batch_beans);
-		if (isBatch) {
-			return json({ profiles, roast_ids: roastIds });
+		if (result.isBatch) {
+			return json({
+				profiles: result.profiles,
+				roast_ids: result.profiles.map((profile) => profile.roast_id)
+			});
 		}
-		return json(profiles);
+		return json(result.profiles);
 	} catch (error) {
+		if (error instanceof SyntaxError) {
+			return json({ error: 'Invalid roast profile request' }, { status: 400 });
+		}
+		if (error instanceof ParchmentRoastMutationError) return mutationFailure(error);
+		if (error instanceof ParchmentConfigError) return configFailure();
 		console.error('Error creating roast profiles:', error);
-		return json(
-			{ error: error instanceof Error ? error.message : 'Failed to create roast profiles' },
-			{ status: 500 }
-		);
+		return json({ error: 'Failed to create roast profiles' }, { status: 500 });
 	}
 };
 
-export const DELETE: RequestHandler = async ({ url, locals }) => {
+export const DELETE: RequestHandler = async (event) => {
 	try {
-		if (!isCookieSessionPrincipal(locals.principal)) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
-		}
-		const { supabase } = locals;
-		const { user } = locals.principal;
+		const authFailure = mutationAuthFailure(event);
+		if (authFailure) return authFailure;
 
-		const id = url.searchParams.get('id');
-		const batchName = url.searchParams.get('name');
+		const rawId = event.url.searchParams.get('id');
+		const batchName = event.url.searchParams.get('name');
+		const client = await createParchmentServerClient(event, { mode: 'session' });
 
-		if (id) {
-			const parsedId = Number(id);
-			await deleteRoast(supabase, parsedId, user.id);
-		} else if (batchName) {
-			await deleteBatch(supabase, batchName, user.id);
+		if (rawId !== null) {
+			const id = parsePositiveInteger(rawId);
+			if (id === null) return json({ error: 'A positive roast ID is required' }, { status: 400 });
+			await deleteParchmentRoast(client, id);
+		} else if (batchName !== null) {
+			await deleteParchmentRoastBatch(client, batchName);
 		} else {
 			return json({ error: 'No ID or batch name provided' }, { status: 400 });
 		}
 
 		return json({ success: true });
 	} catch (error) {
+		if (error instanceof ParchmentRoastMutationError) return mutationFailure(error);
+		if (error instanceof ParchmentConfigError) return configFailure();
 		console.error('Error deleting roast profile(s):', error);
-		const message = error instanceof Error ? error.message : 'Failed to delete roast profile(s)';
-		return json({ error: message }, { status: 500 });
+		return json({ error: 'Failed to delete roast profile(s)' }, { status: 500 });
 	}
 };
 
-export const PUT: RequestHandler = async ({ request, url, locals }) => {
+export const PUT: RequestHandler = async (event) => {
 	try {
-		if (!isCookieSessionPrincipal(locals.principal)) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
-		}
-		const { supabase } = locals;
-		const { user } = locals.principal;
+		const authFailure = mutationAuthFailure(event);
+		if (authFailure) return authFailure;
 
-		const id = url.searchParams.get('id');
-		if (!id) {
-			return json({ error: 'No ID provided' }, { status: 400 });
+		const id = parsePositiveInteger(event.url.searchParams.get('id'));
+		if (id === null) {
+			return json({ error: 'A positive roast ID is required' }, { status: 400 });
 		}
 
-		const parsedId = Number(id);
-		const body = (await request.json()) as RoastUpdateInput;
+		const body = (await event.request.json()) as Record<string, unknown>;
+		if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+			return json({ error: 'Invalid roast profile request' }, { status: 400 });
+		}
 
-		const { profile } = await updateRoast(supabase, parsedId, user.id, body);
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const ifMatch = event.request.headers.get('if-match')?.trim() || undefined;
+		const profile = await updateParchmentRoast(client, id, body, ifMatch);
 		return json(profile);
 	} catch (error) {
+		if (error instanceof SyntaxError) {
+			return json({ error: 'Invalid roast profile request' }, { status: 400 });
+		}
+		if (error instanceof ParchmentRoastMutationError) return mutationFailure(error);
+		if (error instanceof ParchmentConfigError) return configFailure();
 		console.error('Error updating roast profile:', error);
 		return json({ error: 'Failed to update roast profile' }, { status: 500 });
 	}
