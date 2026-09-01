@@ -3,6 +3,7 @@
 	import { onMount, untrack } from 'svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 	import { page } from '$app/state';
+	import { replaceState } from '$app/navigation';
 	import { checkRole } from '$lib/types/auth.types';
 
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
@@ -27,6 +28,13 @@
 	import WatchlistBannerSection from '$lib/components/catalog/sections/WatchlistBannerSection.svelte';
 	import BriefMatchSection from '$lib/components/catalog/sections/BriefMatchSection.svelte';
 	import ResultsGridSection from '$lib/components/catalog/sections/ResultsGridSection.svelte';
+	import CatalogMapExperience from '$lib/components/catalog/CatalogMapExperience.svelte';
+	import {
+		parseCatalogMapUrlState,
+		writeCatalogMapUrlState,
+		type CatalogMapUrlState
+	} from '$lib/catalog/mapState';
+	import type { CatalogUrlState } from '$lib/catalog/urlState';
 
 	import type { UserRole } from '$lib/types/auth.types';
 
@@ -75,6 +83,7 @@
 	// Deep-linked coffee streams in when it is off the current page; prepend it to
 	// the visible rows once it resolves so the main grid never waits on it.
 	let streamedDeepLinkCoffee = $state<CoffeeCatalog | null>(null);
+	let mapSelectedCoffee = $state<CoffeeCatalog | null>(null);
 
 	$effect(() => {
 		let cancelled = false;
@@ -89,7 +98,8 @@
 	});
 
 	let deepLinkCoffee = $derived(
-		streamedDeepLinkCoffee ??
+		mapSelectedCoffee ??
+			streamedDeepLinkCoffee ??
 			(data.deepLinkCoffee && !(data.deepLinkCoffee instanceof Promise)
 				? (data.deepLinkCoffee as unknown as CoffeeCatalog)
 				: null)
@@ -187,6 +197,67 @@
 	let isRefetching = $derived($filterStore.isRefetching);
 
 	let activePagination = $derived(hydratedCatalogState ? $filterStore.pagination : data.pagination);
+	let catalogMapState = $derived(parseCatalogMapUrlState(page.url.searchParams));
+	let catalogMapActive = $derived(
+		data.catalogMapEnabled === true && !trackedOnlyView && catalogMapState.view === 'map'
+	);
+	let activeCatalogUrlState = $derived.by((): CatalogUrlState => {
+		if (!hydratedCatalogState) return data.initialCatalogState;
+		return {
+			filters: $filterStore.filters,
+			sortField: $filterStore.sortField,
+			sortDirection: $filterStore.sortDirection,
+			showWholesale: $filterStore.showWholesale,
+			wholesaleOnly: $filterStore.wholesaleOnly,
+			pagination: {
+				page: $filterStore.pagination.page,
+				limit: $filterStore.pagination.limit
+			}
+		};
+	});
+	let activeElevationRange = $derived.by(() => {
+		const value = activeCatalogUrlState.filters.elevation_masl;
+		return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+	});
+
+	function updateCatalogMapState(next: CatalogMapUrlState) {
+		const nextUrl = new URL(page.url);
+		writeCatalogMapUrlState(nextUrl.searchParams, next);
+		replaceState(nextUrl, page.state);
+	}
+
+	function switchCatalogView(view: 'list' | 'map') {
+		updateCatalogMapState({ ...catalogMapState, view });
+	}
+
+	function setElevationRange(range: { min: string | number; max: string | number } | null) {
+		filterStore.setFilter('elevation_masl', range);
+	}
+
+	async function selectMapCoffee(catalogId: number): Promise<boolean> {
+		try {
+			const params = new URLSearchParams({
+				ids: String(catalogId),
+				stocked: 'all',
+				showWholesale: activeCatalogUrlState.showWholesale ? 'true' : 'false',
+				limit: '1'
+			});
+			if (activeCatalogUrlState.wholesaleOnly) params.set('wholesaleOnly', 'true');
+			const response = await fetch(`/api/catalog?${params.toString()}`);
+			if (!response.ok) return false;
+			const body = (await response.json()) as { data?: CoffeeCatalog[] };
+			const coffee = body.data?.find((item) => catalogCoffeeId(item) === catalogId) ?? null;
+			if (!coffee) return false;
+
+			mapSelectedCoffee = coffee;
+			const nextUrl = new URL(page.url);
+			nextUrl.searchParams.set('coffee', String(catalogId));
+			replaceState(nextUrl, page.state);
+			return true;
+		} catch {
+			return false;
+		}
+	}
 
 	function withDeepLinkCoffee(rows: CoffeeCatalog[]): CoffeeCatalog[] {
 		const coffee = deepLinkCoffee;
@@ -553,6 +624,31 @@
 	}
 </script>
 
+{#snippet catalogResults(layout: 'grid' | 'rail')}
+	<ResultsGridSection
+		{layout}
+		{isSignedIn}
+		displayData={displayData()}
+		{isLoadingMore}
+		{isRefetching}
+		{activePagination}
+		activeOriginStats={activeOriginStats()}
+		{trackedIds}
+		{canUseBeanMatching}
+		canUseSourcingIntelligence={canUseSourcingIntelligence && trackedIdsReady}
+		{trackedOnlyView}
+		trackedLotsKnown={trackedIdsReady}
+		{deepLinkCoffeeId}
+		filteredDataLength={$filteredData.length}
+		{displayLimit}
+		{parseTastingNotes}
+		{getCardPriceContext}
+		{catalogCoffeeId}
+		{catalogCoffeeCardKey}
+		onToggleTrack={handleToggleTrack}
+	/>
+{/snippet}
+
 {#if showInitialSkeleton}
 	<CatalogPageSkeleton />
 {:else}
@@ -615,26 +711,54 @@
 			<BriefMatchSection {briefMatchSummaries} />
 		{/if}
 
-		<ResultsGridSection
-			{isSignedIn}
-			displayData={displayData()}
-			{isLoadingMore}
-			{isRefetching}
-			{activePagination}
-			activeOriginStats={activeOriginStats()}
-			{trackedIds}
-			{canUseBeanMatching}
-			canUseSourcingIntelligence={canUseSourcingIntelligence && trackedIdsReady}
-			{trackedOnlyView}
-			trackedLotsKnown={trackedIdsReady}
-			{deepLinkCoffeeId}
-			filteredDataLength={$filteredData.length}
-			{displayLimit}
-			{parseTastingNotes}
-			{getCardPriceContext}
-			{catalogCoffeeId}
-			{catalogCoffeeCardKey}
-			onToggleTrack={handleToggleTrack}
-		/>
+		{#if data.catalogMapEnabled && !trackedOnlyView}
+			<div
+				class="inline-flex rounded-lg border border-line bg-surface-panel p-1"
+				role="tablist"
+				aria-label="Catalog view"
+			>
+				<button
+					type="button"
+					role="tab"
+					aria-selected={!catalogMapActive}
+					class="rounded-md px-3 py-2 text-sm font-medium transition-colors {catalogMapActive
+						? 'text-muted hover:text-ink'
+						: 'bg-surface-raised text-ink shadow-sm'}"
+					onclick={() => switchCatalogView('list')}
+				>
+					List
+				</button>
+				<button
+					type="button"
+					role="tab"
+					aria-selected={catalogMapActive}
+					class="rounded-md px-3 py-2 text-sm font-medium transition-colors {catalogMapActive
+						? 'bg-surface-raised text-ink shadow-sm'
+						: 'text-muted hover:text-ink'}"
+					onclick={() => switchCatalogView('map')}
+				>
+					Map
+				</button>
+			</div>
+		{/if}
+
+		{#if catalogMapActive}
+			<CatalogMapExperience
+				initialState={catalogMapState}
+				catalogState={activeCatalogUrlState}
+				elevationRange={activeElevationRange}
+				canUseAdvancedMaps={canUseSourcingIntelligence}
+				onStateChange={updateCatalogMapState}
+				onElevationRangeChange={setElevationRange}
+				onSelectCoffee={selectMapCoffee}
+				onSwitchToList={() => switchCatalogView('list')}
+			>
+				{#snippet resultsRail()}
+					{@render catalogResults('rail')}
+				{/snippet}
+			</CatalogMapExperience>
+		{:else}
+			{@render catalogResults('grid')}
+		{/if}
 	</div>
 {/if}

@@ -1,7 +1,7 @@
 # Coffee-app architecture and migration boundary
 
 **Status:** Current implementation truth
-**Last verified:** 2026-08-14
+**Last verified:** 2026-09-01
 
 This document describes what coffee-app does today. `notes/PRODUCT_VISION.md`
 defines product direction, ADRs preserve decisions, and `notes/DEVLOG.md` owns
@@ -126,6 +126,15 @@ The old same-host `https://purveyors.io/v1/*` routes and
 `/api/catalog-api` are retired. External integrations call
 `https://api.purveyors.io/v1/*` directly. Coffee-app's `/api/catalog` family is a
 first-party BFF compatibility layer, not a public integration contract.
+
+The preview-gated catalog map follows the same boundary. Browser requests use
+the first-party `/api/catalog/map` BFF, which attaches the public/demo or
+session credential server-side and relays the typed Parchment
+`GET /v1/catalog/map` response without local entitlement, clustering, or
+statistics logic. Authenticated responses are private/no-store; the configured
+public/demo projection alone is share-cacheable and varies on browser
+credential context. The ordinary catalog list remains the default and failure
+recovery path until production map QA removes the gate.
 
 ## Direct Supabase reality
 

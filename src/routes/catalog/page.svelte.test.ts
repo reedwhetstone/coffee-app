@@ -8,12 +8,13 @@ import { createCatalogProofSummary } from '$lib/catalog/proofSummary';
 import { filterStore } from '$lib/stores/filterStore';
 import type { UserRole } from '$lib/types/auth.types';
 
-const { goto, pageState } = vi.hoisted(() => ({
+const { goto, replaceState, pageState } = vi.hoisted(() => ({
 	goto: vi.fn(),
-	pageState: { url: new URL('https://app.test/catalog') }
+	replaceState: vi.fn(),
+	pageState: { url: new URL('https://app.test/catalog'), state: {} }
 }));
 
-vi.mock('$app/navigation', () => ({ goto }));
+vi.mock('$app/navigation', () => ({ goto, replaceState }));
 vi.mock('$app/state', () => ({ page: pageState }));
 
 function createData(
@@ -1010,5 +1011,27 @@ describe('/catalog process controls', () => {
 		expect(screen.getByText('Watchlist temporarily unavailable')).toBeInTheDocument();
 		expect(screen.queryByText('No tracked lots to show')).not.toBeInTheDocument();
 		expect(screen.queryByLabelText('Tracked lots filter')).not.toBeInTheDocument();
+	});
+});
+
+describe('/catalog map preview gate', () => {
+	it('keeps the existing catalog list as the only view while the server gate is off', () => {
+		renderCatalog(createData({ catalogMapEnabled: false } as unknown as Partial<PageData>));
+
+		expect(screen.queryByRole('tab', { name: 'Map' })).not.toBeInTheDocument();
+		expect(screen.getByText('Process Lot')).toBeInTheDocument();
+	});
+
+	it('writes a restorable map URL without navigating away when the preview is enabled', async () => {
+		renderCatalog(createData({ catalogMapEnabled: true } as unknown as Partial<PageData>));
+
+		await fireEvent.click(screen.getByRole('tab', { name: 'Map' }));
+
+		expect(replaceState).toHaveBeenCalledTimes(1);
+		const [nextUrl] = replaceState.mock.calls[0] as [URL, unknown];
+		expect(nextUrl.pathname).toBe('/catalog');
+		expect(nextUrl.searchParams.get('view')).toBe('map');
+		expect(nextUrl.searchParams.get('map_center')).toBe('0,18');
+		expect(nextUrl.searchParams.get('map_zoom')).toBe('1.75');
 	});
 });

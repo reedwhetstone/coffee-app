@@ -6,6 +6,7 @@ import {
 	type CatalogFilterValue,
 	type CatalogUrlState
 } from '$lib/catalog/urlState';
+import { preserveCatalogExperienceParams } from '$lib/catalog/mapState';
 import {
 	isCatalogRoute,
 	getDefaultSortSettings,
@@ -185,7 +186,10 @@ function createFilterStore() {
 			return;
 		}
 
-		const params = buildShareQueryParams(state);
+		const params = preserveCatalogExperienceParams(
+			new URLSearchParams(window.location.search),
+			buildShareQueryParams(state)
+		);
 		const search = params.toString();
 		const nextUrl = `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`;
 		const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;

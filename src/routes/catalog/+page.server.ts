@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { env } from '$env/dynamic/private';
 import type { CatalogListQuery, ParchmentClient, components } from '@purveyors/sdk';
 import { toCatalogResourceItem } from '$lib/catalog/catalogResourceItem';
 import { CatalogSchemaUnavailableError } from '$lib/data/catalog';
@@ -67,6 +68,8 @@ type ParchmentCatalogListQuery = CatalogListQuery & {
 	score_value_max?: number;
 	price_per_lb_min?: number;
 	price_per_lb_max?: number;
+	elevation_min_masl?: number;
+	elevation_max_masl?: number;
 	arrival_date?: string;
 	stocked_date?: string;
 	stocked_days?: number;
@@ -183,6 +186,8 @@ function buildParchmentCatalogQuery(
 	appendNumberParam(query, 'score_value_max', searchState.scoreValueMax);
 	appendNumberParam(query, 'price_per_lb_min', searchState.pricePerLbMin);
 	appendNumberParam(query, 'price_per_lb_max', searchState.pricePerLbMax);
+	appendNumberParam(query, 'elevation_min_masl', searchState.elevationMinMasl);
+	appendNumberParam(query, 'elevation_max_masl', searchState.elevationMaxMasl);
 	appendStringParam(query, 'arrival_date', searchState.arrivalDate);
 	appendStringParam(query, 'stocked_date', searchState.stockedDate);
 	appendNumberParam(query, 'stocked_days', searchState.stockedDays);
@@ -569,6 +574,9 @@ export const load: PageServerLoad = async (event) => {
 		catalogAccess,
 		catalogAccessNotice,
 		catalogSchemaUnavailable,
+		// PR 5 ships behind a server-only release gate. The client receives only
+		// the resolved boolean, never the environment or a credential.
+		catalogMapEnabled: env.CATALOG_MAP_PREVIEW_ENABLED === 'true',
 		pagination: trackedOnly
 			? buildPagination(effectiveCatalogState, count ?? catalogResources.length)
 			: buildPagination(initialCatalogState, count ?? catalogResources.length),

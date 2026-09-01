@@ -40,6 +40,8 @@ export interface CatalogSearchState {
 	scoreValueMax?: number;
 	pricePerLbMin?: number;
 	pricePerLbMax?: number;
+	elevationMinMasl?: number;
+	elevationMaxMasl?: number;
 	arrivalDate?: string;
 	stockedDate?: string;
 	stockedDays?: number;
@@ -56,7 +58,12 @@ const DEFAULT_CATALOG_SORT = {
 	direction: null
 } as const;
 
-const RANGE_FILTER_KEYS = new Set(['score_value', 'cost_lb']);
+const RANGE_FILTER_PARAM_NAMES: Readonly<Record<string, { min: string; max: string }>> = {
+	score_value: { min: 'score_value_min', max: 'score_value_max' },
+	cost_lb: { min: 'price_per_lb_min', max: 'price_per_lb_max' },
+	elevation_masl: { min: 'elevation_min_masl', max: 'elevation_max_masl' }
+};
+const RANGE_FILTER_KEYS = new Set(Object.keys(RANGE_FILTER_PARAM_NAMES));
 const MULTI_VALUE_FILTER_KEYS = new Set(['country', 'source']);
 const STRING_FILTER_KEYS = [
 	'origin',
@@ -95,6 +102,7 @@ const FILTER_SERIALIZATION_ORDER = [
 	'region',
 	'score_value',
 	'cost_lb',
+	'elevation_masl',
 	'arrival_date',
 	'stocked_date',
 	'stocked_days'
@@ -210,6 +218,15 @@ export function parseCatalogUrlState(url: URL, routeId = '/catalog'): CatalogUrl
 		};
 	}
 
+	const elevationMinMasl = parseOptionalNumber(url.searchParams.get('elevation_min_masl'));
+	const elevationMaxMasl = parseOptionalNumber(url.searchParams.get('elevation_max_masl'));
+	if (elevationMinMasl !== undefined || elevationMaxMasl !== undefined) {
+		filters.elevation_masl = {
+			min: elevationMinMasl?.toString() ?? '',
+			max: elevationMaxMasl?.toString() ?? ''
+		};
+	}
+
 	const processingConfidenceMin = parseProcessingConfidenceMin(
 		url.searchParams.get('processing_confidence_min')
 	);
@@ -277,11 +294,12 @@ function appendFilterParam(
 		'max' in value &&
 		RANGE_FILTER_KEYS.has(filterKey)
 	) {
+		const rangeParamNames = RANGE_FILTER_PARAM_NAMES[filterKey];
 		if (value.min !== '') {
-			params.append(`${paramKey}_min`, value.min.toString());
+			params.append(rangeParamNames.min, value.min.toString());
 		}
 		if (value.max !== '') {
-			params.append(`${paramKey}_max`, value.max.toString());
+			params.append(rangeParamNames.max, value.max.toString());
 		}
 		return;
 	}
@@ -439,6 +457,7 @@ function readBooleanValue(value: CatalogFilterValue | undefined): boolean | unde
 export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSearchState {
 	const scoreRange = readRangeValue(state.filters.score_value);
 	const priceRange = readRangeValue(state.filters.cost_lb);
+	const elevationRange = readRangeValue(state.filters.elevation_masl);
 	const countries = readArrayValue(state.filters.country);
 
 	return {
@@ -465,6 +484,8 @@ export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSea
 		scoreValueMax: scoreRange?.max,
 		pricePerLbMin: priceRange?.min,
 		pricePerLbMax: priceRange?.max,
+		elevationMinMasl: elevationRange?.min,
+		elevationMaxMasl: elevationRange?.max,
 		arrivalDate: readStringValue(state.filters.arrival_date),
 		stockedDate: readStringValue(state.filters.stocked_date),
 		stockedDays:

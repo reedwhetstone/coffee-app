@@ -240,4 +240,4 @@ Verify the final Parchment fields, filters, map-related schemas, and entitlement
 - **Multi-origin:** schema support is required before plotting; full supplier extraction may continue after initial release.
 - **Elevation interpretation:** fixed bands aid scanning but vary by species and origin. Copy and legends must remain contextual, not evaluative.
 - **Terrain:** 3D terrain or topographic relief is deferred. It adds visual weight without improving catalog-location truth in the first release.
-- **Offline/self-hosted tiles:** MapLibre avoids SDK lock-in, but tile hosting/provider selection is a deployment decision for the UI slice.
+- **Offline/self-hosted tiles:** MapLibre avoids SDK lock-in. PR 5 uses OpenFreeMap's public Positron style for the gated preview; provider continuity, production traffic acceptance, and any self-hosted fallback remain PR 6 release checks.
