@@ -22,6 +22,7 @@
 
 	import RoastProfileTabs from './RoastProfileTabs.svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
+	import { prepareDateForAPI } from '$lib/utils/dates';
 
 	// Cast filtered data to the correct type for this page
 	let typedFilteredData = $derived($filteredData as unknown as RoastProfile[]);
@@ -673,7 +674,7 @@
 					batch_name: `${selectedBean.name} - ${new Date().toLocaleDateString()}`,
 					coffee_id: selectedBean.id,
 					coffee_name: selectedBean.name,
-					roast_date: new Date(),
+					roast_date: prepareDateForAPI(new Date().toISOString()),
 					last_updated: new Date()
 				});
 				const pendingCreate = readRoastCreateOperation(sessionStorage, ownerId, 'live-roast');
