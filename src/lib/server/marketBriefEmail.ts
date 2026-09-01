@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
 
 import { decodeHTML } from 'entities';
+import GithubSlugger from 'github-slugger';
 import { marked, type Token, type Tokens } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 
-import type { BlogPost } from '$lib/types/blog.types';
+import type { BlogPost, MarketBriefReaderExport } from '$lib/types/blog.types';
 import { formatMarketBriefEdition, getBlogPostPath } from '$lib/types/blog.types';
 
 export const MARKET_BRIEF_CANONICAL_ORIGIN = 'https://www.purveyors.io';
@@ -319,6 +320,67 @@ function tokenText(token: Token, canonicalUrl: string): string {
 
 function tokensText(tokens: Token[], canonicalUrl: string): string {
 	return tokens.map((token) => tokenText(token, canonicalUrl)).join('');
+}
+
+function inlineTokensText(tokens: Token[]): string {
+	return tokens
+		.map((token) => {
+			switch (token.type) {
+				case 'text': {
+					const text = token as Tokens.Text;
+					return text.tokens ? inlineTokensText(text.tokens) : decodeHTML(text.text);
+				}
+				case 'escape':
+					return decodeHTML(token.text);
+				case 'codespan':
+					return token.text;
+				case 'strong':
+				case 'em':
+				case 'del':
+				case 'link':
+					return inlineTokensText(token.tokens ?? []);
+				case 'image':
+					return decodeHTML(token.text);
+				default:
+					return 'tokens' in token && Array.isArray(token.tokens)
+						? inlineTokensText(token.tokens)
+						: '';
+			}
+		})
+		.join('');
+}
+
+export function buildMarketBriefReaderExport(
+	post: BlogPost,
+	source: string
+): MarketBriefReaderExport {
+	if (post.format !== 'market-brief' || post.edition === undefined) {
+		throw new Error(`Blog post ${post.slug} is not a Market Brief edition`);
+	}
+
+	const canonicalUrl = `${MARKET_BRIEF_CANONICAL_ORIGIN}${getBlogPostPath(post.slug)}`;
+	const markdown = extractMarkdownBody(source);
+	const tokens = tokenizeMarketBrief(source, canonicalUrl);
+	const slugger = new GithubSlugger();
+	const sections: MarketBriefReaderExport['sections'] = [];
+
+	marked.walkTokens(tokens, (token) => {
+		if (token.type !== 'heading') return;
+		const heading = token as Tokens.Heading;
+		const title = inlineTokensText(heading.tokens ?? [])
+			.replace(/\s+/g, ' ')
+			.trim();
+		const id = slugger.slug(title);
+		if (heading.depth === 2 && title.toLowerCase() !== 'sources') {
+			sections.push({ id, title });
+		}
+	});
+
+	return {
+		canonicalUrl,
+		markdown: `${markdown}\n`,
+		sections
+	};
 }
 
 function renderText(tokens: Token[], canonicalUrl: string): string {
