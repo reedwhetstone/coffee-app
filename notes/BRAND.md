@@ -240,6 +240,12 @@ Hard rules:
 - Organic artwork is punctuation, not wallpaper. If removing the accent changes the layout, it was doing too much.
 - No organic art behind text or data.
 - The canonical spine triple is rust/gold/olive top-to-bottom; do not invent per-page variants.
+- Market Brief heroes are siblings of the essay artwork: use the same matte torn-paper texture and
+  established ink, rust, cream, muted teal, and olive palette. Distinguish the weekly format with a
+  dominant ink field and one restrained signal trace or seam, never generic coffee photography,
+  literal charts, or a separate illustration language. Market Brief archive cards and reader headers
+  use the canonical dark editorial surface; the artwork remains in its own image frame rather than
+  sitting behind copy.
 
 ## Iconography
 

@@ -32,9 +32,11 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		if (source === undefined) {
 			throw error(500, `Market Brief source not found: ${post.slug}`);
 		}
-		const projection = buildMarketBriefEmailProjection(post, source);
 		marketBriefReader = buildMarketBriefReaderExport(post, source);
-		marketBriefDeployment = buildMarketBriefDeploymentManifest(projection, process.env);
+		if (process.env.VERCEL_ENV === 'production') {
+			const projection = buildMarketBriefEmailProjection(post, source);
+			marketBriefDeployment = buildMarketBriefDeploymentManifest(projection, process.env);
+		}
 	}
 	const socialImage = resolveBlogPostSocialImage({
 		baseUrl,
