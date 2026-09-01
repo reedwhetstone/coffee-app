@@ -38,7 +38,7 @@
 	<div
 		class="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-ink via-ink/90 to-transparent p-5 sm:p-7"
 	>
-		<p class="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-accent">
+		<p class="text-xs font-semibold text-accent">
 			Market Brief · Edition {formatMarketBriefEdition(edition)}
 		</p>
 		<p

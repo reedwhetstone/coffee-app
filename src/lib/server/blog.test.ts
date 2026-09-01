@@ -38,7 +38,7 @@ const MARKET_BRIEF_FRONTMATTER: BlogPostFrontmatter = {
 const MARKET_BRIEF_PRESENTATION = {
 	marketSnapshot: {
 		asOf: '2026-09-01',
-		scope: 'US retail green coffee',
+		scope: 'US green coffee · retail pricing + all-market signals',
 		movementPercent: -0.2,
 		movementLabel: 'Quiet',
 		listings: 593,

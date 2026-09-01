@@ -101,7 +101,7 @@
 		<section aria-labelledby="week-in-numbers-heading">
 			<div class="mb-3 flex items-end justify-between gap-4">
 				<div>
-					<p class="text-xs font-semibold uppercase tracking-[0.14em] text-accent">At a glance</p>
+					<p class="text-xs font-semibold text-accent">At a glance</p>
 					<h2 id="week-in-numbers-heading" class="mt-1 font-serif text-3xl font-semibold text-ink">
 						This week in numbers
 					</h2>
@@ -153,7 +153,7 @@
 			<div class="grid {snapshot ? 'lg:grid-cols-[minmax(0,1.25fr)_minmax(17rem,0.75fr)]' : ''}">
 				<div class="relative p-5 pl-8 sm:p-7 sm:pl-10">
 					<AccentSpine />
-					<p class="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Market read</p>
+					<p class="text-xs font-semibold text-accent">Market read</p>
 					<h2
 						id={`${marketRead.id}-heading`}
 						class="mt-2 font-serif text-2xl font-semibold leading-tight text-ink sm:text-3xl"
@@ -240,9 +240,7 @@
 	{#if takes.length > 0}
 		<section aria-labelledby="weekly-takes-heading">
 			<div class="mb-4">
-				<p class="text-xs font-semibold uppercase tracking-[0.14em] text-accent">
-					Reported this week
-				</p>
+				<p class="text-xs font-semibold text-accent">Reported this week</p>
 				<h2 id="weekly-takes-heading" class="mt-1 font-serif text-3xl font-semibold text-ink">
 					The week’s takes
 				</h2>
@@ -311,7 +309,7 @@
 
 	<section id="coffee-highlights" class="scroll-mt-28" aria-labelledby="coffee-highlights-heading">
 		<div class="mb-4 max-w-2xl">
-			<p class="text-xs font-semibold uppercase tracking-[0.14em] text-accent">From the catalog</p>
+			<p class="text-xs font-semibold text-accent">From the catalog</p>
 			<h2 id="coffee-highlights-heading" class="mt-1 font-serif text-3xl font-semibold text-ink">
 				Coffee highlights
 			</h2>
@@ -329,7 +327,7 @@
 					>
 						<div class="p-5 sm:p-6">
 							<div class="flex items-start justify-between gap-3">
-								<p class="text-xs font-semibold uppercase tracking-[0.12em] text-accent">
+								<p class="text-xs font-semibold text-accent">
 									Highlight {String(index + 1).padStart(2, '0')}
 								</p>
 								<p class="text-right text-xs text-muted">

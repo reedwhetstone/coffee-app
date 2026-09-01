@@ -40,9 +40,7 @@
 >
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 		<div class="max-w-2xl">
-			<p class="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-accent">
-				Portable edition
-			</p>
+			<p class="mb-1 text-xs font-semibold text-accent">Portable edition</p>
 			<h2 id={markdownHeadingId} class="font-serif text-2xl font-semibold text-ink">
 				Markdown export
 			</h2>

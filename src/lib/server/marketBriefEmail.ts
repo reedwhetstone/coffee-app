@@ -255,7 +255,7 @@ function renderHtml(
 <tr><td align="center" style="padding:28px 12px;">
 <table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:640px;border-collapse:collapse;background-color:#ffffff;">
 <tr><td style="padding:36px 34px 14px;border-top:5px solid #d97706;">
-<p style="margin:0 0 10px;color:#9a4d00;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Purveyors Market Brief · Edition ${edition}</p>
+<p style="margin:0 0 10px;color:#9a4d00;font-family:Arial,sans-serif;font-size:13px;font-weight:700;">Purveyors Market Brief · Edition ${edition}</p>
 <h1 style="margin:0 0 14px;color:#1f1b17;font-family:Georgia,serif;font-size:34px;line-height:1.18;">${escapeHtml(post.title)}</h1>
 <p style="margin:0;color:#625a52;font-family:Georgia,serif;font-size:18px;line-height:1.55;">${escapeHtml(post.description)}</p>
 </td></tr>

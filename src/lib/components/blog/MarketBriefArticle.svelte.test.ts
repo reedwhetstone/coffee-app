@@ -36,7 +36,7 @@ const reader: MarketBriefReaderExport = {
 
 const snapshot: MarketBriefSnapshot = {
 	asOf: '2026-09-01',
-	scope: 'US retail green coffee',
+	scope: 'US green coffee · retail pricing + all-market signals',
 	movementPercent: -0.2,
 	movementLabel: 'Quiet',
 	listings: 593,

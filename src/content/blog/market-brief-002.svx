@@ -9,7 +9,7 @@ format: 'market-brief'
 edition: 2
 marketSnapshot:
   asOf: '2026-09-01'
-  scope: 'US retail green coffee'
+  scope: 'US green coffee · retail pricing + all-market signals'
   movementPercent: -0.2
   movementLabel: 'Quiet'
   listings: 593
@@ -65,7 +65,7 @@ coffeeHighlights:
 
 The first fresh Parchment read after this edition’s reporting window showed little broad pricing pressure. The [seven-day retail price-movement read](https://api.purveyors.io/v1/price-index/stats) was down 0.2% as of September 1 and classified as quiet, based on 593 listings from 24 suppliers. The 524 listings matched across periods were flat in aggregate.
 
-The [public retail signal summary](https://api.purveyors.io/v1/market/signals?summary=true) found 124 value signals: 117 listings below their segment benchmark, seven supplier-score-based value outliers, and no qualifying price drops. Those are aggregate counts rather than named recommendations, but they shift this week’s buyer question from “Is the whole market moving?” to “Which specific offers deserve a closer look?”
+The [public all-market signal summary](https://api.purveyors.io/v1/market/signals?summary=true) found 124 value signals across its retail and wholesale slice: 117 listings below their segment benchmark, seven supplier-score-based value outliers, and no qualifying price drops. Those are aggregate counts rather than named recommendations, but they shift this week’s buyer question from “Is the whole market moving?” to “Which specific offers deserve a closer look?”
 
 ## Origin access is becoming more deliberate
 
