@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { BlogPost } from '$lib/types/blog.types';
+import { getAllPosts } from './blog';
 import {
 	buildMarketBriefDeploymentManifest,
 	buildMarketBriefEmailProjection,
@@ -8,6 +9,7 @@ import {
 	MARKET_BRIEF_EMAIL_RENDERER_VERSION,
 	RESEND_UNSUBSCRIBE_PLACEHOLDER
 } from './marketBriefEmail';
+import { getRawMarketBriefSource } from './marketBriefReader';
 
 const marketBrief: BlogPost = {
 	slug: 'market-brief-001',
@@ -48,6 +50,19 @@ The market moved **carefully**, with [Purveyors context](/analytics) and an
 `;
 
 describe('Market Brief email projection', () => {
+	it('projects every published Market Brief from its canonical source', async () => {
+		const publishedBriefs = (await getAllPosts()).filter(
+			(post) => post.format === 'market-brief' && !post.draft
+		);
+
+		expect(publishedBriefs.length).toBeGreaterThan(0);
+		for (const post of publishedBriefs) {
+			const canonicalSource = getRawMarketBriefSource(post.slug);
+			expect(canonicalSource, `Missing canonical source for ${post.slug}`).toBeDefined();
+			expect(() => buildMarketBriefEmailProjection(post, canonicalSource!)).not.toThrow();
+		}
+	});
+
 	it('renders one deterministic sanitized HTML and text projection from the canonical source', () => {
 		const first = buildMarketBriefEmailProjection(marketBrief, source);
 		const second = buildMarketBriefEmailProjection(marketBrief, source);

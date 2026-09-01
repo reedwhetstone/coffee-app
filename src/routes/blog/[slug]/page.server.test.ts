@@ -183,6 +183,27 @@ describe('/blog/[slug] Market Brief metadata', () => {
 		expect(emailModuleInitializedMock).toHaveBeenCalledOnce();
 	});
 
+	it('keeps the production reader available when deployment metadata cannot be projected', async () => {
+		vi.stubEnv('VERCEL_ENV', 'production');
+		vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'a'.repeat(40));
+		buildMarketBriefEmailProjectionMock.mockImplementationOnce(() => {
+			throw new Error('projection runtime unavailable');
+		});
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		const result = await loadPost('market-brief-001');
+		if (!result) throw new Error('Expected Market Brief reader data');
+
+		expect(result.marketBriefReader).toBeDefined();
+		expect(result.marketBriefDeployment).toBeUndefined();
+		expect(buildMarketBriefReaderExportMock).toHaveBeenCalledWith(marketBrief, marketBriefSource);
+		expect(buildMarketBriefDeploymentManifestMock).not.toHaveBeenCalled();
+		expect(consoleError).toHaveBeenCalledWith(
+			'Market Brief deployment manifest unavailable: market-brief-001',
+			expect.any(Error)
+		);
+	});
+
 	it('keeps ordinary essays outside the projection and deployed-manifest path', async () => {
 		getAllPostsMock.mockResolvedValueOnce([
 			{
