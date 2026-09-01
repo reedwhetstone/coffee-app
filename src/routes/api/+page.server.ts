@@ -20,6 +20,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		features: [
 			'Daily-updated catalog data from 40+ suppliers',
 			'One consistent feed for pricing, origin, process, and availability',
+			'Authorized origin-map clusters and elevation profiles',
 			'Parchment Console for API keys and usage tracking',
 			'Market analytics for price and supplier monitoring',
 			'Implementation docs and onboarding guidance'
@@ -73,7 +74,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		{
 			question: 'What can I access with Parchment API today?',
 			answer:
-				'You can access the green coffee catalog feed, including pricing, origin, processing, availability, and supplier coverage through one documented API.'
+				'You can access the green coffee catalog feed, including pricing, origin, processing, availability, supplier coverage, and an authorized map projection with placed, unplaced, viewport, and elevation context.'
 		},
 		{
 			question: 'Who is this best for?',

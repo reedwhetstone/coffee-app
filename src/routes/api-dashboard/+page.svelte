@@ -239,7 +239,9 @@
 						</div>
 						<div class="ml-3">
 							<p class="text-sm font-medium text-ink">Make Your First Request</p>
-							<p class="text-sm text-muted">Use the Parchment API catalog to fetch coffee data</p>
+							<p class="text-sm text-muted">
+								Use the catalog for coffee rows or the catalog map for lightweight origin clusters
+							</p>
 						</div>
 					</div>
 
