@@ -110,6 +110,7 @@ Reporting guidance:
 - `/api`
 - `/docs`
 - `/blog`
+- `/market-wire` (Market Brief)
 - `/bot`
 
 ### Authenticated product routes
@@ -141,7 +142,7 @@ Treat the web app and the external Parchment API as two separate HTTP surfaces:
    - The same-host coffee-app `/v1/*` routes and the `/api/catalog-api` alias have been removed; external integrations use `https://api.purveyors.io/v1/*`
 
 2. **Platform app API** (`/api/*`)
-   - `/api/catalog`, `/api/catalog/filters`, `/api/beans`, `/api/roast-profiles`, `/api/profit`, `/api/chat`, `/api/workspaces`, `/api/billing/*`, `/api/account-deletion`, `/api/account-deletion/reauthenticate`, `/api/admin/*`, and related helpers
+   - `/api/catalog`, `/api/catalog/filters`, `/api/beans`, `/api/roast-profiles`, `/api/profit`, `/api/chat`, `/api/workspaces`, `/api/billing/*`, `/api/email-subscriptions/*`, `/api/account-deletion`, `/api/account-deletion/reauthenticate`, `/api/admin/*`, and related helpers
    - Powers the first-party web app, Console, billing, Cherry Runtime, and admin workflows
    - Mixed auth model depending on route: catalog BFF adapters can allow anonymous or session access, most product routes require session auth, and chat/workspace routes require either Mallard Studio membership or Parchment Intelligence access
    - Important for contributors, but not a broad public compatibility promise
