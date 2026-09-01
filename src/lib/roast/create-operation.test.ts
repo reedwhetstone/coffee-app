@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
 	clearRoastCreateOperation,
+	parseRoastCreatePayload,
 	readRoastCreateOperation,
 	reserveRoastCreateOperation,
 	shouldRetainRoastCreateOperation
@@ -113,5 +114,21 @@ describe('roast create operation envelope', () => {
 		expect(shouldRetainRoastCreateOperation(429)).toBe(true);
 		expect(shouldRetainRoastCreateOperation(400)).toBe(false);
 		expect(shouldRetainRoastCreateOperation(403)).toBe(false);
+	});
+
+	it('parses a recoverable profile payload without changing its serialized form', () => {
+		const payload = JSON.stringify({
+			batch_name: 'Morning batch',
+			batch_beans: [
+				{ coffee_id: 7, coffee_name: 'Ethiopia', oz_in: 12, oz_out: null },
+				{ coffee_id: 8, coffee_name: 'Colombia', oz_in: null, oz_out: 9 }
+			],
+			roast_date: '2026-09-01',
+			roast_notes: 'Keep an eye on first crack',
+			roast_targets: 'Development time'
+		});
+
+		expect(parseRoastCreatePayload(payload)).toEqual(JSON.parse(payload));
+		expect(parseRoastCreatePayload('{"batch_beans":[]}')).toBeNull();
 	});
 });

@@ -1,6 +1,19 @@
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 export type RoastCreateScope = 'profile-form' | 'live-roast';
 
+export type RoastCreatePayload = {
+	batch_name: string;
+	batch_beans: {
+		coffee_id: number;
+		coffee_name: string;
+		oz_in: number | null;
+		oz_out: number | null;
+	}[];
+	roast_date: string;
+	roast_notes: string;
+	roast_targets: string;
+};
+
 type PendingRoastCreateEnvelope = {
 	version: 1;
 	idempotencyKey: string;
@@ -10,6 +23,46 @@ type PendingRoastCreateEnvelope = {
 export type PendingRoastCreateOperation = Readonly<
 	Pick<PendingRoastCreateEnvelope, 'idempotencyKey' | 'payload'>
 >;
+
+function isNullableNumber(value: unknown): value is number | null {
+	return value === null || (typeof value === 'number' && Number.isFinite(value));
+}
+
+/** Parse the exact form payload persisted for a recoverable profile creation. */
+export function parseRoastCreatePayload(payload: string): RoastCreatePayload | null {
+	try {
+		const parsed = JSON.parse(payload) as Partial<RoastCreatePayload>;
+		if (
+			typeof parsed.batch_name !== 'string' ||
+			typeof parsed.roast_date !== 'string' ||
+			typeof parsed.roast_notes !== 'string' ||
+			typeof parsed.roast_targets !== 'string' ||
+			!Array.isArray(parsed.batch_beans) ||
+			parsed.batch_beans.length === 0
+		) {
+			return null;
+		}
+
+		if (
+			!parsed.batch_beans.every(
+				(bean) =>
+					typeof bean === 'object' &&
+					bean !== null &&
+					typeof bean.coffee_id === 'number' &&
+					Number.isFinite(bean.coffee_id) &&
+					typeof bean.coffee_name === 'string' &&
+					isNullableNumber(bean.oz_in) &&
+					isNullableNumber(bean.oz_out)
+			)
+		) {
+			return null;
+		}
+
+		return parsed as RoastCreatePayload;
+	} catch {
+		return null;
+	}
+}
 
 function storageKey(ownerId: string | null, scope: RoastCreateScope): string | null {
 	return ownerId ? `purveyors:pending-roast-create:${ownerId}:${scope}` : null;

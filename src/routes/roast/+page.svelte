@@ -43,7 +43,8 @@
 		}
 	}
 	import type { PageData } from './$types';
-	import type { RoastProfile, CoffeeCatalog, RoastFormData } from '$lib/types/component.types';
+	import type { RoastProfile, CoffeeCatalog } from '$lib/types/component.types';
+	import type { RoastCreatePayload } from '$lib/roast/create-operation';
 
 	// Roast profile state management
 	let currentRoastProfile = $state<RoastProfile | null>(null);
@@ -91,6 +92,7 @@
 		selectionInProgress: false
 	});
 	let initialLoadComplete = $state(false);
+	let pendingProfileCreatePayload = $state<string | null>(null);
 
 	// Available coffees for form
 	let availableCoffees = $state<CoffeeCatalog[]>([]);
@@ -101,6 +103,19 @@
 		if (isFormVisible) {
 			ensureFormCoffees();
 		}
+	});
+
+	// Restore the exact payload for a create that may have committed before its
+	// response was lost. The form owns the visible retry and discard controls.
+	$effect(() => {
+		const ownerId = data.auth?.user?.id ?? null;
+		if (!isFormVisible || !ownerId) {
+			pendingProfileCreatePayload = null;
+			return;
+		}
+
+		pendingProfileCreatePayload =
+			readRoastCreateOperation(sessionStorage, ownerId, 'profile-form')?.payload ?? null;
 	});
 
 	// // Debug data in the component
@@ -172,6 +187,16 @@
 		selectionState.lastSelectedId = null;
 		await selectProfile(profile);
 		return profile;
+	}
+
+	async function refreshProfileAfterArtisanImport(roastId: number): Promise<void> {
+		await reloadProfile(roastId);
+	}
+
+	function discardPendingProfileCreate() {
+		const ownerId = data.auth?.user?.id ?? null;
+		clearRoastCreateOperation(sessionStorage, ownerId, 'profile-form');
+		pendingProfileCreatePayload = null;
 	}
 
 	// Derived values for grouped profiles - directly computed from typedFilteredData
@@ -350,11 +375,11 @@
 	});
 
 	// Form submission handler for new roast profiles
-	async function handleFormSubmit(profileData: RoastFormData) {
+	async function handleFormSubmit(profileData: RoastCreatePayload, exactPayload?: string) {
 		setOperation('Creating roast profile...');
 		clearProfileError();
 		const ownerId = data.auth?.user?.id ?? null;
-		const payload = JSON.stringify(profileData);
+		const payload = exactPayload ?? JSON.stringify(profileData);
 
 		try {
 			const idempotencyKey = reserveRoastCreateOperation(
@@ -376,6 +401,7 @@
 			if (!response.ok) {
 				if (!shouldRetainRoastCreateOperation(response.status)) {
 					clearRoastCreateOperation(sessionStorage, ownerId, 'profile-form');
+					pendingProfileCreatePayload = null;
 				}
 				const error = await response.json();
 				throw new Error(error.error || 'Failed to create roast profiles');
@@ -389,6 +415,7 @@
 
 			if (profiles && profiles.length > 0) {
 				clearRoastCreateOperation(sessionStorage, ownerId, 'profile-form');
+				pendingProfileCreatePayload = null;
 				// Update the selected bean and current profile
 				selectedBean = {
 					id: profiles[0].coffee_id,
@@ -836,6 +863,9 @@
 	<RoastProfileForm
 		{selectedBean}
 		{availableCoffees}
+		initialPayload={pendingProfileCreatePayload}
+		onDiscardPending={discardPendingProfileCreate}
+		onArtisanImportComplete={refreshProfileAfterArtisanImport}
 		onClose={hideRoastForm}
 		onSubmit={handleFormSubmit}
 	/>
@@ -980,6 +1010,7 @@
 		onProfileDelete={handleProfileDelete}
 		onBatchDelete={handleBatchDelete}
 		onClearProfile={handleClearProfile}
+		onProfileRefresh={refreshProfileAfterArtisanImport}
 		{selectedBean}
 		{timer}
 		bind:fanValue

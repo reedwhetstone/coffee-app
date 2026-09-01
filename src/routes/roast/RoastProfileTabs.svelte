@@ -22,6 +22,7 @@
 		onProfileDelete,
 		onBatchDelete,
 		onClearProfile,
+		onProfileRefresh,
 		selectedBean,
 		timer,
 		fanValue = $bindable(),
@@ -45,6 +46,7 @@
 		onProfileDelete: () => void;
 		onBatchDelete: () => void;
 		onClearProfile: () => void;
+		onProfileRefresh: (roastId: number) => Promise<void>;
 		selectedBean: { id?: number; name: string };
 		timer: RoastTimer;
 		fanValue: number;
@@ -267,6 +269,7 @@
 								{updateHeat}
 								{saveRoastProfile}
 								{selectedBean}
+								{onProfileRefresh}
 								{clearRoastData}
 							/>
 						{/if}
