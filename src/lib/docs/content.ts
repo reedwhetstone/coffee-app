@@ -2071,7 +2071,7 @@ const docsPages: DocsPage[] = [
 							'search, get, stats',
 							'API key with catalog:read; public-data filters are available across API plans'
 						],
-						['catalog', 'similar', 'API Origin/Enterprise key with catalog:read'],
+						['catalog', 'similar', 'API key with catalog:read; available across API plans'],
 						[
 							'inventory / roast / sales / tasting',
 							'Personal data and write workflows',
@@ -2256,7 +2256,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'purvey catalog search: search by origin, processing method, price, flavor, variety, drying method, and more. Requires catalog:read.',
 					'purvey catalog get <id>: fetch a single coffee by catalog ID.',
-					'purvey catalog similar <id>: find coffees similar to a given catalog entry. Requires catalog:read plus a member-owned key or API Origin/Enterprise key.',
+					'purvey catalog similar <id>: find coffees similar to a given catalog entry. Requires a Parchment API key with catalog:read and is available across API plans.',
 					'purvey catalog stats: aggregate catalog statistics.'
 				],
 				codeBlocks: [

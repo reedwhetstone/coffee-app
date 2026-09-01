@@ -51,6 +51,19 @@ describe('api docs contract', () => {
 		expect(serializedErrors).not.toContain('"error":"Rate limit exceeded"');
 	});
 
+	it('keeps CLI catalog similarity auth copy aligned with API-plan parity', () => {
+		const overview = getDocsPage('cli', 'overview');
+		const catalog = getDocsPage('cli', 'catalog');
+		const serializedDocs = `${JSON.stringify(overview)} ${JSON.stringify(catalog)}`;
+
+		expect(serializedDocs).toContain('API key with catalog:read; available across API plans');
+		expect(serializedDocs).toContain(
+			'Requires a Parchment API key with catalog:read and is available across API plans.'
+		);
+		expect(serializedDocs).not.toContain('API Origin/Enterprise key with catalog:read');
+		expect(serializedDocs).not.toContain('member-owned key or API Origin/Enterprise key');
+	});
+
 	it('documents /v1/price-index without overclaiming unsupported premium surfaces', () => {
 		const overview = getDocsPage('api', 'overview');
 		const analytics = getDocsPage('api', 'analytics');
