@@ -144,7 +144,7 @@ describe('Market Brief article presentation', () => {
 		});
 
 		expect(screen.queryByRole('heading', { name: 'This week in numbers' })).not.toBeInTheDocument();
-		expect(screen.getByText('Current listing')).toBeInTheDocument();
+		expect(screen.getByText('Available when selected')).toBeInTheDocument();
 		expect(
 			screen.getByText('Structured tasting notes are not yet published for this listing.')
 		).toBeInTheDocument();

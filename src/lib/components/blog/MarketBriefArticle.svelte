@@ -316,7 +316,7 @@
 				Coffee highlights
 			</h2>
 			<p class="mt-2 text-sm leading-6 text-muted">
-				Current coffees selected after this week’s takes were finalized, chosen for the market or
+				Catalog coffees selected after this week’s takes were finalized, chosen for the market or
 				origin story they make tangible.
 			</p>
 		</div>
@@ -335,7 +335,7 @@
 								<p class="text-right text-xs text-muted">
 									{coffee.stockedDate
 										? `Stocked ${formatDate(coffee.stockedDate)}`
-										: 'Current listing'}
+										: 'Available when selected'}
 								</p>
 							</div>
 							<h3 class="mt-3 font-serif text-xl font-semibold leading-snug text-ink">
@@ -365,7 +365,7 @@
 								class="mt-5 flex flex-wrap items-end justify-between gap-4 border-t border-line pt-4"
 							>
 								<div>
-									<p class="text-xs text-muted">Current listed price</p>
+									<p class="text-xs text-muted">Listed price for this edition</p>
 									<p class="mt-1 text-2xl font-semibold tabular-nums text-ink">
 										${coffee.pricePerLb.toFixed(2)}<span class="text-sm font-normal text-muted"
 											>/lb</span

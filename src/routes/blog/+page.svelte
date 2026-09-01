@@ -3,6 +3,7 @@
 	import { formatMarketBriefEdition, getBlogPostPath, PILLARS } from '$lib/types/blog.types';
 	import type { BlogPost, BlogTag } from '$lib/types/blog.types';
 	import { formatBlogDate } from '$lib/utils/dates';
+	import MarketBriefHeroFallback from '$lib/components/blog/MarketBriefHeroFallback.svelte';
 	import MarketWireCta from '$lib/components/market-wire/MarketWireCta.svelte';
 
 	let { data } = $props<{ data: PageData }>();
@@ -141,15 +142,26 @@
 				</div>
 
 				<a href={getBlogPostPath(post.slug)} class="block">
-					<img
-						src={getHeroImage(post.slug)}
-						alt={post.title}
-						class="mb-4 aspect-[3/2] w-full rounded-md border object-cover {post.format ===
-						'market-brief'
-							? 'border-on-dark/15'
-							: 'border-line'}"
-						onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
-					/>
+					{#if post.format === 'market-brief'}
+						<div
+							class="relative mb-4 aspect-[3/2] overflow-hidden rounded-md border border-on-dark/15"
+						>
+							<MarketBriefHeroFallback title={post.title} edition={post.edition!} compact />
+							<img
+								src={getHeroImage(post.slug)}
+								alt={post.title}
+								class="absolute inset-0 h-full w-full object-cover"
+								onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+							/>
+						</div>
+					{:else}
+						<img
+							src={getHeroImage(post.slug)}
+							alt={post.title}
+							class="mb-4 aspect-[3/2] w-full rounded-md border border-line object-cover"
+							onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+						/>
+					{/if}
 					<h2
 						class="mb-2 font-serif text-2xl font-medium tracking-tight transition-colors group-hover:text-accent {post.format ===
 						'market-brief'

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import MarketBriefHeroFallback from '$lib/components/blog/MarketBriefHeroFallback.svelte';
+	import { formatMarketBriefEdition } from '$lib/types/blog.types';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -38,26 +40,62 @@
 	<div class="space-y-8">
 		{#each data.posts as post}
 			<article
-				class="group rounded-lg border border-line bg-surface-canvas p-6 shadow-sm transition-all hover:border-accent/40 hover:shadow-md"
+				class="group rounded-lg border p-6 shadow-sm transition-all hover:border-accent/40 hover:shadow-md {post.format ===
+				'market-brief'
+					? 'border-ink bg-ink'
+					: 'border-line bg-surface-canvas'}"
 			>
-				<div class="mb-3 flex items-center gap-3 text-sm text-muted">
+				<div
+					class="mb-3 flex flex-wrap items-center gap-3 text-sm {post.format === 'market-brief'
+						? 'text-on-dark/65'
+						: 'text-muted'}"
+				>
 					<time datetime={post.date}>{formatDate(post.date)}</time>
-					<span class="text-line">·</span>
+					<span class={post.format === 'market-brief' ? 'text-on-dark/20' : 'text-line'}>·</span>
 					<span>{post.readingTime} min read</span>
+					{#if post.format === 'market-brief'}
+						<span class="text-on-dark/20">·</span>
+						<span class="rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent">
+							Market Brief · Edition {formatMarketBriefEdition(post.edition!)}
+						</span>
+					{/if}
 				</div>
 				<a href="/blog/{post.slug}" class="block">
-					<img
-						src={getHeroImage(post.slug)}
-						alt={post.title}
-						class="mb-4 aspect-[3/2] w-full rounded-md border border-line object-cover"
-						onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
-					/>
+					{#if post.format === 'market-brief'}
+						<div
+							class="relative mb-4 aspect-[3/2] overflow-hidden rounded-md border border-on-dark/15"
+						>
+							<MarketBriefHeroFallback title={post.title} edition={post.edition!} compact />
+							<img
+								src={getHeroImage(post.slug)}
+								alt={post.title}
+								class="absolute inset-0 h-full w-full object-cover"
+								onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+							/>
+						</div>
+					{:else}
+						<img
+							src={getHeroImage(post.slug)}
+							alt={post.title}
+							class="mb-4 aspect-[3/2] w-full rounded-md border border-line object-cover"
+							onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+						/>
+					{/if}
 					<h2
-						class="mb-2 font-serif text-2xl font-medium tracking-tight text-ink transition-colors group-hover:text-accent"
+						class="mb-2 font-serif text-2xl font-medium tracking-tight transition-colors group-hover:text-accent {post.format ===
+						'market-brief'
+							? 'text-on-dark'
+							: 'text-ink'}"
 					>
 						{post.title}
 					</h2>
-					<p class="leading-relaxed text-muted">{post.description}</p>
+					<p
+						class="leading-relaxed {post.format === 'market-brief'
+							? 'text-on-dark/75'
+							: 'text-muted'}"
+					>
+						{post.description}
+					</p>
 				</a>
 			</article>
 		{/each}

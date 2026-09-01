@@ -4,6 +4,7 @@
 	import { formatBlogDate } from '$lib/utils/dates';
 	import LinkedInDraft from '$lib/components/blog/LinkedInDraft.svelte';
 	import MarketBriefArticle from '$lib/components/blog/MarketBriefArticle.svelte';
+	import MarketBriefHeroFallback from '$lib/components/blog/MarketBriefHeroFallback.svelte';
 	import MarketBriefShareTools from '$lib/components/blog/MarketBriefShareTools.svelte';
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 	import MarketWireCta from '$lib/components/market-wire/MarketWireCta.svelte';
@@ -103,14 +104,24 @@
 			{data.metadata.description}
 		</p>
 
-		<img
-			src={getHeroImage(data.metadata.slug)}
-			alt={data.metadata.title}
-			class="mt-6 aspect-[3/2] w-full rounded-md border object-cover {isMarketBrief
-				? 'border-on-dark/15'
-				: 'border-line'}"
-			onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
-		/>
+		{#if isMarketBrief}
+			<div class="relative mt-6 aspect-[3/2] overflow-hidden rounded-md border border-on-dark/15">
+				<MarketBriefHeroFallback title={data.metadata.title} edition={data.metadata.edition!} />
+				<img
+					src={getHeroImage(data.metadata.slug)}
+					alt={data.metadata.title}
+					class="absolute inset-0 h-full w-full object-cover"
+					onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+				/>
+			</div>
+		{:else}
+			<img
+				src={getHeroImage(data.metadata.slug)}
+				alt={data.metadata.title}
+				class="mt-6 aspect-[3/2] w-full rounded-md border border-line object-cover"
+				onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+			/>
+		{/if}
 
 		{#if data.metadata.tags.length > 0}
 			<div class="mt-5 flex flex-wrap gap-1.5">
