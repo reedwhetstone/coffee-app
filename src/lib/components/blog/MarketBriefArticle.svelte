@@ -134,7 +134,7 @@
 					<p class="mt-1 text-xs text-muted">US green-coffee sources</p>
 				</div>
 				<div class="p-4 sm:p-5">
-					<p class="text-xs font-medium text-muted">Value signals</p>
+					<p class="text-xs font-medium text-muted">All-market value signals</p>
 					<p class="mt-2 text-3xl font-semibold tabular-nums text-ink">
 						{snapshot.totalSignals}
 					</p>
@@ -172,7 +172,9 @@
 						<div class="flex items-start justify-between gap-4">
 							<div>
 								<p class="text-xs font-semibold text-muted">Signal composition</p>
-								<p class="mt-1 text-sm text-ink">{snapshot.totalSignals} public signals</p>
+								<p class="mt-1 text-sm text-ink">
+									{snapshot.totalSignals} public all-market signals
+								</p>
 							</div>
 							<span class="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
 								{snapshot.movementLabel}

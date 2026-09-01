@@ -95,6 +95,9 @@ describe('Market Brief article presentation', () => {
 
 		expect(screen.getByRole('heading', { name: 'This week in numbers' })).toBeInTheDocument();
 		expect(screen.getByText('524')).toBeInTheDocument();
+		expect(screen.getByText('All-market value signals')).toBeInTheDocument();
+		expect(screen.getByText('124 public all-market signals')).toBeInTheDocument();
+		expect(screen.getByText('At a glance')).not.toHaveClass('uppercase');
 		expect(screen.getByRole('heading', { name: 'quiet pricing' })).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: 'market source' })).toHaveAttribute(
 			'href',
