@@ -74,10 +74,14 @@ describe('api docs contract', () => {
 	});
 
 	it('keeps the example anchored on canonical price_per_lb naming', () => {
-		const example = page?.sections.find((section) => section.title === 'Request and response')
-			?.codeBlocks?.[0]?.code;
+		const examples = page?.sections.find(
+			(section) => section.title === 'Request and response'
+		)?.codeBlocks;
+		const example = examples?.[0]?.code;
 
 		expect(example).toContain('"price_per_lb": 7.5');
+		expect(examples?.[1]?.code).toContain('"rowLimit": 25');
+		expect(examples?.[1]?.code).toContain('"limited": true');
 	});
 
 	it('documents wholesale-inclusive discovery and the privileged wholesale-only scope', () => {
