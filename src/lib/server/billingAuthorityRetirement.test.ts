@@ -16,7 +16,7 @@ describe('coffee-app billing and deletion authority retirement', () => {
 	it('keeps the exact Parchment consumer artifact and no server Stripe dependency', () => {
 		const packageJson = JSON.parse(readFileSync(resolve('package.json'), 'utf8'));
 
-		expect(packageJson.dependencies['@purveyors/sdk']).toBe('0.31.0');
+		expect(packageJson.dependencies['@purveyors/sdk']).toBe('0.32.0');
 		expect(packageJson.dependencies[['stri', 'pe'].join('')]).toBeUndefined();
 	});
 

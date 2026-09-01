@@ -1,5 +1,4 @@
 import {
-	getPrimaryUserRole,
 	isApiKeyPrincipal,
 	isSessionPrincipal,
 	isTrustedMutationRequest,
@@ -14,8 +13,7 @@ import {
 import type { UserRole } from '$lib/types/auth.types';
 import { checkRole } from '$lib/types/auth.types';
 import type { RequestEvent } from '@sveltejs/kit';
-import type { SupabaseClient, User } from '@supabase/supabase-js';
-import type { Database } from '$lib/types/database.types';
+import type { User } from '@supabase/supabase-js';
 
 export class AuthError extends Error {
 	constructor(
@@ -56,46 +54,6 @@ export async function requireAuthMiddleware(event: RequestEvent) {
 			headers: { 'Content-Type': 'application/json' }
 		});
 	}
-}
-
-export async function getUserRole(
-	supabase: SupabaseClient<Database>,
-	userId: string
-): Promise<UserRole> {
-	const roles = await getUserRoles(supabase, userId);
-	return getPrimaryUserRole(roles);
-}
-
-/**
- * Legacy shared-link owner lookup.
- *
- * Request-principal entitlements resolve through Parchment `/v1/me`. This
- * separate lookup remains only for the legacy shared-bean route, which evaluates
- * the owner of a share token rather than the current request principal.
- */
-export async function getUserRoles(
-	supabase: SupabaseClient<Database>,
-	userId: string
-): Promise<UserRole[]> {
-	const { data, error } = await supabase
-		.from('user_roles')
-		.select('role')
-		.eq('id', userId)
-		.single();
-
-	if (error) {
-		console.error(
-			JSON.stringify({
-				event: 'shared_link_owner_role_read_failed',
-				errorCode: error.code
-			})
-		);
-		return ['viewer'];
-	}
-
-	return data?.role === 'member' || data?.role === 'admin' || data?.role === 'viewer'
-		? [data.role]
-		: ['viewer'];
 }
 
 export { checkRole as requireRole };

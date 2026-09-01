@@ -1021,39 +1021,6 @@ export type Database = {
 					}
 				];
 			};
-			shared_links: {
-				Row: {
-					created_at: string | null;
-					expires_at: string | null;
-					id: string;
-					is_active: boolean | null;
-					resource_id: string;
-					resource_type: string;
-					share_token: string;
-					user_id: string | null;
-				};
-				Insert: {
-					created_at?: string | null;
-					expires_at?: string | null;
-					id?: string;
-					is_active?: boolean | null;
-					resource_id: string;
-					resource_type: string;
-					share_token: string;
-					user_id?: string | null;
-				};
-				Update: {
-					created_at?: string | null;
-					expires_at?: string | null;
-					id?: string;
-					is_active?: boolean | null;
-					resource_id?: string;
-					resource_type?: string;
-					share_token?: string;
-					user_id?: string | null;
-				};
-				Relationships: [];
-			};
 			stripe_customers: {
 				Row: {
 					created_at: string | null;
