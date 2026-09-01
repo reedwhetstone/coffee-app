@@ -1,4 +1,5 @@
 import { checkRole, type UserRole } from '$lib/types/auth.types';
+import { resolveCherryAgent } from '$lib/cherry/identity';
 
 export interface NavItem {
 	label: string;
@@ -79,7 +80,7 @@ export const publicNavItems: NavItem[] = [
 		matches: ['/subscription']
 	},
 	{
-		label: 'API',
+		label: 'Parchment API',
 		href: '/api',
 		description: 'Parchment API overview',
 		matches: ['/api']
@@ -101,9 +102,9 @@ export const publicNavItems: NavItem[] = [
 const authenticatedSections: NavSection[] = [
 	{
 		id: 'parchment',
-		label: 'Parchment',
+		label: 'Parchment Intelligence',
 		items: [
-			{ label: 'Dashboard', href: '/dashboard', description: 'Parchment Intelligence home' },
+			{ label: 'Dashboard', href: '/dashboard', description: 'Your Purveyors work surface' },
 			{
 				label: 'Market Index',
 				href: '/analytics',
@@ -112,7 +113,7 @@ const authenticatedSections: NavSection[] = [
 			},
 			{ label: 'Catalog', href: '/catalog', description: 'Browse green coffee supply data' },
 			{
-				label: 'Cherry',
+				label: 'Cherry AI',
 				href: '/chat',
 				description: 'Coffee-native AI for sourcing, market, and roastery decisions',
 				requiresChatAccess: true,
@@ -217,11 +218,22 @@ export function getAuthenticatedNavSections(
 	role: UserRole,
 	context: NavAccessContext = {}
 ): NavSection[] {
+	const agent = resolveCherryAgent({
+		ppiAccess: context.ppiAccess === true,
+		memberAccess: checkRole(role, 'member')
+	});
+
 	return authenticatedSections
 		.map((section) => ({
 			...section,
 			items: section.items
-				.map((item) => resolveNavItemAccess(item, role, context))
+				.map((item) =>
+					resolveNavItemAccess(
+						item.href === '/chat' && agent ? { ...item, label: agent.name } : item,
+						role,
+						context
+					)
+				)
 				.filter((item): item is NavItem => item !== null)
 		}))
 		.filter((section) => section.items.length > 0);

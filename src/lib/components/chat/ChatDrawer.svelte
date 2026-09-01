@@ -2,6 +2,7 @@
 	import ChatWorkspace from '$lib/components/chat/ChatWorkspace.svelte';
 	import MobileOverlayShell from '$lib/components/layout/MobileOverlayShell.svelte';
 	import { checkRole, type UserRole } from '$lib/types/auth.types';
+	import { resolveCherryAgent } from '$lib/cherry/identity';
 
 	let {
 		open = $bindable(false),
@@ -15,6 +16,7 @@
 
 	let canUseMallardWorkspaces = $derived(checkRole(role, 'member'));
 	let canUseChat = $derived(ppiAccess || canUseMallardWorkspaces);
+	let agent = $derived(resolveCherryAgent({ ppiAccess, memberAccess: canUseMallardWorkspaces }));
 
 	// Mount the chat on first open and keep it mounted (hidden) afterwards so
 	// the conversation survives closing and reopening the drawer.
@@ -24,19 +26,19 @@
 	});
 </script>
 
-{#if hasOpened && canUseChat}
+{#if hasOpened && canUseChat && agent}
 	<MobileOverlayShell
 		{open}
 		variant="drawer"
 		onClose={() => (open = false)}
-		label="Cherry"
+		label={agent.name}
 		hideOnDesktop={false}
 		keepMounted={true}
 	>
 		<div class="flex h-full min-h-0 flex-col border-l border-line bg-surface-canvas">
 			<div class="flex items-center justify-between border-b border-line px-4 py-2.5">
 				<div class="min-w-0">
-					<p class="text-sm font-semibold text-ink">Cherry</p>
+					<p class="text-sm font-semibold text-ink">{agent.name}</p>
 					<p class="truncate text-xs text-muted">Coffee-native AI from Purveyors</p>
 				</div>
 				<div class="flex shrink-0 items-center gap-2">
@@ -50,7 +52,7 @@
 						type="button"
 						onclick={() => (open = false)}
 						class="rounded-md p-1.5 text-muted transition-colors hover:bg-surface-panel hover:text-ink"
-						aria-label="Close Cherry"
+						aria-label={`Close ${agent.name}`}
 					>
 						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
@@ -64,7 +66,12 @@
 				</div>
 			</div>
 			<div class="min-h-0 flex-1">
-				<ChatWorkspace variant="drawer" {canUseChat} {canUseMallardWorkspaces} />
+				<ChatWorkspace
+					variant="drawer"
+					{canUseChat}
+					{canUseMallardWorkspaces}
+					agentName={agent.name}
+				/>
 			</div>
 		</div>
 	</MobileOverlayShell>

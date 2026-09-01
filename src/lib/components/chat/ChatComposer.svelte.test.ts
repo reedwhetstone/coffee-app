@@ -5,6 +5,7 @@ import ChatComposer from './ChatComposer.svelte';
 
 function props(overrides: Record<string, unknown> = {}) {
 	return {
+		agentName: 'Cherry Green Agent' as const,
 		inputMessage: 'Find stocked Ethiopias',
 		isActive: false,
 		canUseMallardWorkspaces: false,
@@ -35,7 +36,7 @@ describe('ChatComposer recovery controls', () => {
 			})
 		);
 		expect(screen.getByText(/Using 1 of 1 context source/)).toBeInTheDocument();
-		expect(screen.getByText(/Cherry/)).toBeInTheDocument();
+		expect(screen.getByText(/Cherry Green Agent/)).toBeInTheDocument();
 		expect(screen.getByPlaceholderText(/Analyze sourcing, portfolio, catalog/)).toBeInTheDocument();
 		expect(screen.queryByPlaceholderText(/Ask me/)).not.toBeInTheDocument();
 	});

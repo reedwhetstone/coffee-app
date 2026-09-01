@@ -1,6 +1,6 @@
 # Purveyors web platform
 
-Purveyors is the SvelteKit application powering [purveyors.io](https://purveyors.io): green coffee discovery, market analytics, inventory tracking, roast logging, sales tracking, and Cherry-powered workflows.
+Purveyors is the SvelteKit application powering [purveyors.io](https://purveyors.io): green coffee discovery, market analytics, inventory tracking, roast logging, sales tracking, and Cherry AI workflows.
 
 **Live docs:** [purveyors.io/docs](https://purveyors.io/docs) | **API reference:** [api.purveyors.io/docs](https://api.purveyors.io/docs) | **CLI reference:** [purveyors.io/docs/cli/overview](https://purveyors.io/docs/cli/overview)
 
@@ -10,7 +10,7 @@ This repo contains:
 
 - the public marketing site and blog
 - the public catalog and analytics surfaces (browsable without login)
-- the authenticated app: account, inventory, roast, profit, Cherry, and subscription workflows
+- the authenticated app: account, inventory, roast, profit, Cherry AI, and subscription workflows
 - the Parchment Console for API keys, usage analytics, and billing
 - the internal route layer that powers the first-party product
 - the `/docs` tree for product and CLI guidance; the generated API reference lives at `api.purveyors.io/docs`
@@ -39,7 +39,7 @@ Cherry Runtime's server-side tools consume the Parchment API through `@purveyors
 | `/beans`         | Green coffee inventory management                   |
 | `/roast`         | Roast profiles, Artisan imports, and chart analysis |
 | `/profit`        | Sales and margin tracking                           |
-| `/chat`          | Cherry workspace with evidence and action cards     |
+| `/chat`          | Cherry AI workspace with evidence and action cards  |
 | `/api-dashboard` | Parchment Console: API keys, usage, and billing     |
 | `/account`       | Account settings and self-service deletion          |
 | `/subscription`  | Paid plan management                                |

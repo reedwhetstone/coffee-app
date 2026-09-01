@@ -1,77 +1,51 @@
 import { describe, expect, it } from 'vitest';
-import { getDashboardSections, getDashboardUpgradePrompt } from './intelligenceHome';
+import { getDashboardExperience, getDashboardUpgradePrompt } from './intelligenceHome';
 
-function card(title: string, role: 'viewer' | 'member' | 'admin' = 'viewer', ppiAccess = false) {
-	return getDashboardSections({ role, ppiAccess })
-		.flatMap((section) => section.cards)
-		.find((item) => item.title === title);
-}
+describe('adaptive dashboard experience', () => {
+	it.each([
+		['viewer', false, null, 'Purveyors account'],
+		['viewer', true, 'Cherry Green Agent', 'Parchment Intelligence'],
+		['member', false, 'Cherry Roast Agent', 'Mallard Studio'],
+		['member', true, 'Cherry Synthesis Agent', 'Parchment Intelligence + Mallard Studio']
+	] as const)(
+		'adapts role=%s and ppiAccess=%s to %s',
+		(role, ppiAccess, expectedAgent, expectedAccessLabel) => {
+			const experience = getDashboardExperience({ role, ppiAccess });
+			expect(experience.agent?.name ?? null).toBe(expectedAgent);
+			expect(experience.accessLabel).toBe(expectedAccessLabel);
+		}
+	);
 
-describe('dashboard intelligence home model', () => {
-	it('centers the dashboard on Parchment Intelligence before Portfolio, Mallard Studio, and Developer', () => {
+	it('keeps each experience focused on a bounded set of real next actions', () => {
+		for (const context of [
+			{ role: 'viewer' as const, ppiAccess: false },
+			{ role: 'viewer' as const, ppiAccess: true },
+			{ role: 'member' as const, ppiAccess: false },
+			{ role: 'member' as const, ppiAccess: true }
+		]) {
+			const tasks = getDashboardExperience(context).tasks;
+			expect(tasks.length).toBeGreaterThanOrEqual(3);
+			expect(tasks.length).toBeLessThanOrEqual(4);
+			expect(new Set(tasks.map((task) => task.href)).size).toBe(tasks.length);
+		}
+	});
+
+	it('connects only the capabilities the account can actually use', () => {
 		expect(
-			getDashboardSections({ role: 'viewer', ppiAccess: false }).map((section) => section.id)
-		).toEqual(['parchment', 'portfolio', 'mallard', 'developer']);
+			getDashboardExperience({ role: 'viewer', ppiAccess: true }).tasks.map((task) => task.id)
+		).toEqual(['market', 'catalog', 'portfolio']);
+		expect(
+			getDashboardExperience({ role: 'member', ppiAccess: false }).tasks.map((task) => task.id)
+		).toEqual(['portfolio', 'roast', 'profit', 'catalog']);
 	});
 
-	it('keeps the primary Parchment paths focused on market index, catalog research, Cherry, and reports', () => {
-		const parchmentCards = getDashboardSections({ role: 'member', ppiAccess: false }).find(
-			(section) => section.id === 'parchment'
-		)?.cards;
-
-		expect(parchmentCards?.map((item) => item.title)).toEqual([
-			'Parchment Market Index',
-			'Catalog and supply research',
-			'Cherry',
-			'Intelligence reports'
-		]);
-		expect(parchmentCards?.find((item) => item.title === 'Cherry')?.description).toContain(
-			'sourcing questions'
+	it('offers the missing context without interrupting combined subscribers', () => {
+		expect(getDashboardUpgradePrompt({ role: 'viewer', ppiAccess: true })?.body).toContain(
+			'Cherry Synthesis Agent'
 		);
-		expect(parchmentCards?.find((item) => item.title === 'Intelligence reports')?.status).toBe(
-			'coming-soon'
+		expect(getDashboardUpgradePrompt({ role: 'member', ppiAccess: false })?.body).toContain(
+			'Parchment Intelligence'
 		);
-	});
-
-	it('locks Cherry and Portfolio for viewers while leaving public research paths available', () => {
-		expect(card('Parchment Market Index')).toMatchObject({ href: '/analytics', status: 'ready' });
-		expect(card('Catalog and supply research')).toMatchObject({
-			href: '/catalog',
-			status: 'ready'
-		});
-		expect(card('Cherry')).toMatchObject({ href: '/chat', status: 'locked' });
-		expect(card('Tracked coffee panel')).toMatchObject({ href: '/beans', status: 'locked' });
-	});
-
-	it('unlocks Cherry and Portfolio for Parchment Intelligence users but keeps Mallard Studio locked', () => {
-		expect(card('Cherry', 'viewer', true)).toMatchObject({ status: 'ready' });
-		expect(card('Tracked coffee panel', 'viewer', true)).toMatchObject({ status: 'ready' });
-		expect(card('Roast context', 'viewer', true)).toMatchObject({ status: 'locked' });
-	});
-
-	it('frames Mallard Studio as a roasting add-on for members, not the umbrella product', () => {
-		const mallardCards = getDashboardSections({ role: 'member', ppiAccess: false }).find(
-			(section) => section.id === 'mallard'
-		)?.cards;
-
-		expect(mallardCards?.map((item) => item.title)).toEqual(['Roast context', 'Profit context']);
-		expect(mallardCards?.[0].description).toContain('not the umbrella product');
-		expect(mallardCards?.every((item) => item.status === 'ready')).toBe(true);
-	});
-
-	it('returns tier-specific upgrade prompts for viewer, Parchment Intelligence, and Mallard Studio states', () => {
-		expect(getDashboardUpgradePrompt({ role: 'viewer', ppiAccess: false })).toMatchObject({
-			headline: 'Unlock the Intelligence layer',
-			variant: 'strong'
-		});
-		expect(getDashboardUpgradePrompt({ role: 'viewer', ppiAccess: true })).toMatchObject({
-			headline: 'Add roasting context when your own coffees matter',
-			variant: 'contextual'
-		});
-		expect(getDashboardUpgradePrompt({ role: 'member', ppiAccess: false })).toMatchObject({
-			headline: 'Add Parchment Intelligence for deeper market reads',
-			variant: 'contextual'
-		});
 		expect(getDashboardUpgradePrompt({ role: 'member', ppiAccess: true })).toBeNull();
 	});
 });

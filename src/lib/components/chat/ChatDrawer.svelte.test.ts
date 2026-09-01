@@ -31,7 +31,10 @@ describe('ChatDrawer', () => {
 	it('renders the drawer chat for entitled users when open', () => {
 		render(ChatDrawer, { open: true, role: 'viewer', ppiAccess: true });
 
-		expect(screen.getByRole('dialog', { name: 'Cherry' })).toHaveAttribute('aria-modal', 'true');
+		expect(screen.getByRole('dialog', { name: 'Cherry Green Agent' })).toHaveAttribute(
+			'aria-modal',
+			'true'
+		);
 		expect(screen.getByRole('textbox')).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: 'Open full workspace' })).toHaveAttribute(
 			'href',
@@ -42,13 +45,13 @@ describe('ChatDrawer', () => {
 	it('renders nothing when closed', () => {
 		render(ChatDrawer, { open: false, role: 'member', ppiAccess: true });
 
-		expect(screen.queryByRole('dialog', { name: 'Cherry' })).toBeNull();
+		expect(screen.queryByRole('dialog', { name: 'Cherry Synthesis Agent' })).toBeNull();
 	});
 
 	it('renders nothing for users without chat access even when open', () => {
 		render(ChatDrawer, { open: true, role: 'viewer', ppiAccess: false });
 
-		expect(screen.queryByRole('dialog', { name: 'Cherry' })).toBeNull();
+		expect(screen.queryByRole('dialog')).toBeNull();
 	});
 });
 

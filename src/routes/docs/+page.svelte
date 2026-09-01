@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-	<title>Purveyors docs | Parchment API and CLI</title>
+	<title>Purveyors docs | Parchment API and Purveyors CLI</title>
 	<meta
 		name="description"
 		content="Purveyors documentation for product context and CLI workflows. Generated Parchment API docs live at api.purveyors.io/docs."
@@ -18,7 +18,7 @@
 		</h1>
 		<p class="mt-4 max-w-3xl text-base leading-relaxed text-muted sm:text-lg">
 			Product context, catalog methodology, and CLI workflows live here. The API contract is now
-			generated from Parchment OpenAPI and served from
+			generated from the Parchment API OpenAPI contract and served from
 			<a href="https://api.purveyors.io/docs" class="text-accent hover:underline"
 				>api.purveyors.io/docs</a
 			>, so the reference stays tied to the deployed API.
@@ -90,7 +90,7 @@
 		>
 			<div class="text-sm font-semibold text-ink">Generated API docs</div>
 			<p class="mt-2 text-sm leading-relaxed text-muted">
-				Live OpenAPI reference served by Parchment.
+				Live OpenAPI reference served by the Parchment API.
 			</p>
 		</a>
 		<a

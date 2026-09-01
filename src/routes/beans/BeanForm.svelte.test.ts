@@ -203,18 +203,16 @@ describe('BeanForm atomic manual inventory batches', () => {
 		});
 
 		expect(
-			screen.getByText('Parchment will allocate this total across the manual batch in exact cents')
+			screen.getByText('This total will be allocated across the manual batch in exact cents')
 		).toBeInTheDocument();
 
 		await fireEvent.click(screen.getByText('Select from Catalog'));
 
 		expect(
-			screen.queryByText(
-				'Parchment will allocate this total across the manual batch in exact cents'
-			)
+			screen.queryByText('This total will be allocated across the manual batch in exact cents')
 		).not.toBeInTheDocument();
 		expect(
-			screen.getByText('Parchment will allocate this total across the catalog batch in exact cents')
+			screen.getByText('This total will be allocated across the catalog batch in exact cents')
 		).toBeInTheDocument();
 	});
 
@@ -314,7 +312,7 @@ describe('BeanForm atomic manual inventory batches', () => {
 			ownerId: 'user-a'
 		});
 		await waitFor(() =>
-			expect(screen.getByRole('status')).toHaveTextContent('reserved in Parchment')
+			expect(screen.getByRole('status')).toHaveTextContent('A manual batch is reserved')
 		);
 		expect(screen.getByLabelText('Coffee Name')).toBeDisabled();
 		await fireEvent.submit(container.querySelector('form')!);
@@ -680,7 +678,7 @@ describe('BeanForm atomic catalog inventory batches', () => {
 			ownerId: 'user-a'
 		});
 		await waitFor(() =>
-			expect(screen.getByRole('status')).toHaveTextContent('reserved in Parchment')
+			expect(screen.getByRole('status')).toHaveTextContent('A catalog batch is reserved')
 		);
 		await fireEvent.submit(container.querySelector('form')!);
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());

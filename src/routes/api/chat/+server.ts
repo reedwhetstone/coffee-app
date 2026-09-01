@@ -233,7 +233,7 @@ WRITE TOOLS (propose changes — user must confirm before execution):
 11. add_bean_to_inventory - Propose adding a bean to the user's Portfolio
 12. update_bean - Propose updating an existing Portfolio bean
 
-Advanced bean matching plus Mallard-only roast, tasting, and sales tools are unavailable in this access tier.`;
+Advanced bean matching plus Mallard Studio-only roast, tasting, and sales tools are unavailable in this access tier.`;
 
 const MALLARD_TOOL_ACCESS_PROMPT = `You have access to these tools in two categories:
 

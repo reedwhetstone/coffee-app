@@ -1028,7 +1028,7 @@ describe('analytics section navigator', () => {
 		});
 
 		expect(screen.queryByRole('navigation', { name: 'Market Index sections' })).toBeNull();
-		expect(screen.queryByRole('link', { name: 'Sign in to use Cherry' })).toBeNull();
+		expect(screen.queryByRole('link', { name: 'Sign in to use Cherry AI' })).toBeNull();
 		expect(screen.queryByText(/opens with your current scope and movement window/i)).toBeNull();
 		expect(screen.queryByText('Open catalog evidence')).toBeNull();
 		expect(screen.queryByText('Compare supplier evidence')).toBeNull();
@@ -1075,7 +1075,7 @@ describe('analytics section navigator', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 
-		const chatLink = screen.getByRole('link', { name: 'Analyze with Cherry' });
+		const chatLink = screen.getByRole('link', { name: 'Analyze with Cherry AI' });
 		const url = new URL(chatLink.getAttribute('href') ?? '', 'https://example.com');
 		const prompt = url.searchParams.get('prompt');
 
@@ -1109,7 +1109,7 @@ describe('analytics section navigator', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
 
-		const chatLink = screen.getByRole('link', { name: 'Analyze with Cherry' });
+		const chatLink = screen.getByRole('link', { name: 'Analyze with Cherry AI' });
 		const url = new URL(chatLink.getAttribute('href') ?? '', 'https://example.com');
 		const prompt = url.searchParams.get('prompt');
 
@@ -1128,7 +1128,7 @@ describe('analytics section navigator', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 
-		const chatLink = screen.getByRole('link', { name: 'Analyze with Cherry' });
+		const chatLink = screen.getByRole('link', { name: 'Analyze with Cherry AI' });
 		const url = new URL(chatLink.getAttribute('href') ?? '', 'https://example.com');
 		const prompt = url.searchParams.get('prompt');
 
@@ -1143,13 +1143,13 @@ describe('analytics section navigator', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
 
-		expect(screen.queryByRole('link', { name: 'Upgrade to use Cherry' })).toBeNull();
+		expect(screen.queryByRole('link', { name: 'Upgrade to use Cherry AI' })).toBeNull();
 		expect(
-			screen.queryByRole('link', { name: 'Upgrade to use Cherry from Market Index summary' })
+			screen.queryByRole('link', { name: 'Upgrade to use Cherry AI from Market Index summary' })
 		).toBeNull();
 		expect(screen.getAllByRole('link', { name: 'Start Intelligence' })).toHaveLength(1);
 		expect(screen.getAllByText(/Parchment Intelligence/).length).toBeGreaterThanOrEqual(1);
-		expect(screen.queryByRole('link', { name: 'Analyze with Cherry' })).toBeNull();
+		expect(screen.queryByRole('link', { name: 'Analyze with Cherry AI' })).toBeNull();
 	});
 });
 

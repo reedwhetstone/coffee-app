@@ -4,10 +4,7 @@ import type { CatalogListQuery, components } from '@purveyors/sdk';
 import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { listActiveSourcingBriefs } from '$lib/server/parchmentProcurement';
-import {
-	extractParchmentCatalogRows,
-	fetchParchmentCatalogItemsByIds
-} from '$lib/server/parchmentCatalog';
+import { extractParchmentCatalogRows } from '$lib/server/parchmentCatalog';
 import {
 	describeSourcingBriefCriteria,
 	type SourcingBriefCriteria
@@ -55,8 +52,8 @@ export const load: PageServerLoad = async (event) => {
 	const hasSourcingAccess =
 		isMember || (locals.principal.isAuthenticated && locals.principal.ppiAccess === true);
 
-	// One request-bound Parchment client feeds both the public arrivals preview
-	// and the gated tracked-lot catalog hydration below.
+	// One request-bound Parchment API client feeds the public arrivals preview
+	// and the gated tracked-lot summaries below.
 	const parchmentClientPromise = createParchmentServerClient(event);
 
 	const arrivalsPromise = parchmentClientPromise
@@ -68,27 +65,17 @@ export const load: PageServerLoad = async (event) => {
 			return [] as SdkCatalogItem[];
 		});
 
-	// Summaries carry tracking context (status/delta); the full catalog rows let the
-	// dashboard render CoffeeCards whose detail panels open in place.
-	const trackedPromise: Promise<{
-		summaries: TrackedLotSummary[];
-		catalog: Record<string, unknown>[];
-	}> =
+	// Compact summaries carry the price and availability changes the dashboard
+	// needs. Full catalog detail remains on the canonical catalog route.
+	const trackedPromise: Promise<TrackedLotSummary[]> =
 		userId && hasSourcingAccess
 			? parchmentClientPromise
 					.then((client) => getTrackedLotSummaries(client, 12))
-					.then(async (summaries) => ({
-						summaries,
-						catalog: (await fetchParchmentCatalogItemsByIds(
-							await parchmentClientPromise,
-							summaries.map((lot) => lot.catalogId)
-						)) as unknown as Record<string, unknown>[]
-					}))
 					.catch((error) => {
 						console.error('Error loading dashboard watchlist:', error);
-						return { summaries: [] as TrackedLotSummary[], catalog: [] };
+						return [] as TrackedLotSummary[];
 					})
-			: Promise.resolve({ summaries: [] as TrackedLotSummary[], catalog: [] });
+			: Promise.resolve([] as TrackedLotSummary[]);
 
 	const briefsPromise =
 		userId && hasSourcingAccess
@@ -100,7 +87,7 @@ export const load: PageServerLoad = async (event) => {
 					})
 			: Promise.resolve([]);
 
-	const [arrivalsResult, trackedResult, briefRows] = await Promise.all([
+	const [arrivalsResult, trackedLots, briefRows] = await Promise.all([
 		arrivalsPromise,
 		trackedPromise,
 		briefsPromise
@@ -116,8 +103,7 @@ export const load: PageServerLoad = async (event) => {
 
 	return {
 		recentArrivals,
-		trackedLots: trackedResult.summaries,
-		trackedCatalog: trackedResult.catalog,
+		trackedLots,
 		activeBriefs
 	};
 };

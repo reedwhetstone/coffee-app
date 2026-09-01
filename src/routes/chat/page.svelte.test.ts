@@ -119,7 +119,7 @@ describe('chat analytics seed', () => {
 
 		expect(screen.queryByRole('textbox')).toBeNull();
 		expect(
-			screen.getByText(/Cherry is available with Parchment Intelligence or Mallard Studio/i)
+			screen.getByText(/Cherry AI is available with Parchment Intelligence or Mallard Studio/i)
 		).toBeTruthy();
 	});
 

@@ -10,7 +10,7 @@ This repo is the Purveyors web platform. It includes:
 
 - the public marketing site
 - the public catalog and analytics surfaces
-- the authenticated app for inventory, roast, profit, Cherry, and subscription workflows
+- the authenticated app for inventory, roast, profit, Cherry AI, and subscription workflows
 - the Parchment Console for keys and usage
 - the internal route layer that powers the first-party product
 - the `/docs` tree for product and CLI guidance; the generated API reference lives at `api.purveyors.io/docs`

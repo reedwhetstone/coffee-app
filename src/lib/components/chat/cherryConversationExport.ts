@@ -12,11 +12,11 @@ export function buildCherryConversationExport(
 	messages: ConversationExportMessage[],
 	exportedAt: Date
 ): string {
-	let markdown = '# Cherry conversation export\n\n';
+	let markdown = '# Cherry AI conversation export\n\n';
 	markdown += `**Exported:** ${exportedAt.toLocaleString()}\n\n---\n\n`;
 
 	for (const message of messages) {
-		const role = message.role === 'user' ? 'User' : 'Cherry';
+		const role = message.role === 'user' ? 'User' : 'Cherry AI';
 		markdown += `## ${role}\n\n`;
 
 		for (const part of message.parts) {

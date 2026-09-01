@@ -26,7 +26,7 @@
 			headline: 'Build on a coffee-native foundation.',
 			body: 'Bring normalized catalog data and stable coffee contracts into software, hardware, automations, and agents without rebuilding the domain layer.',
 			href: '/api',
-			linkLabel: 'Build with Parchment',
+			linkLabel: 'Build with the Parchment API',
 			proof: 'REST API · SDK · CLI · Agent-ready contracts'
 		}
 	] as const;

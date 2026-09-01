@@ -111,8 +111,8 @@
 			</p>
 			<p class="mb-4 text-muted">
 				For account deletion, we temporarily store a signed reauthentication assertion in a secure,
-				HTTP-only cookie. We clear it after Parchment accepts the deletion. We do not create an
-				account-bound accepted, receipt, or completion cookie.
+				HTTP-only cookie. We clear it after the account-deletion request is accepted. We do not
+				create an account-bound accepted, receipt, or completion cookie.
 			</p>
 		</section>
 

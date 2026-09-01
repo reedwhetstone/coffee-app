@@ -127,14 +127,12 @@ test.describe('Protected pages load with auth', () => {
 		await expect(page.locator('[aria-label="Toggle authentication menu"]')).toHaveCount(0);
 	});
 
-	test('/dashboard renders as the signed-in intelligence home', async ({ page }) => {
+	test('/dashboard renders as the signed-in work surface', async ({ page }) => {
 		await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
 		await expect(page).toHaveURL(/dashboard/);
-		await expect(page.getByText('Intelligence Home', { exact: true })).toBeVisible();
-		await expect(page.getByRole('heading', { name: 'Parchment Intelligence' })).toBeVisible();
-		await expect(page.getByRole('heading', { name: 'Parchment Market Index' })).toBeVisible();
-		await expect(page.getByRole('heading', { name: 'Cherry' })).toBeVisible();
-		await expect(page.getByRole('heading', { name: 'Mallard Studio' })).toBeVisible();
+		await expect(page.locator('#dashboard-heading')).toBeVisible();
+		await expect(page.locator('main').getByText('Cherry AI', { exact: true })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Recent arrivals' })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Open account' })).toHaveCount(1);
 	});
 

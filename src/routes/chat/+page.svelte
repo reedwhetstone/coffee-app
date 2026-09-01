@@ -3,6 +3,7 @@
 	import { checkRole } from '$lib/types/auth.types';
 	import type { UserRole } from '$lib/types/auth.types';
 	import ChatWorkspace from '$lib/components/chat/ChatWorkspace.svelte';
+	import { CHERRY_AI_NAME, resolveCherryAgent } from '$lib/cherry/identity';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -12,13 +13,16 @@
 	let userRole: UserRole = $derived(auth.role as UserRole);
 	let canUseChat = $derived(auth.ppiAccess || checkRole(userRole, 'member'));
 	let canUseMallardWorkspaces = $derived(checkRole(userRole, 'member'));
+	let agent = $derived(
+		resolveCherryAgent({ ppiAccess: auth.ppiAccess, memberAccess: canUseMallardWorkspaces })
+	);
 </script>
 
 <svelte:head>
-	<title>Cherry | Coffee-native AI from Purveyors</title>
+	<title>{agent?.name ?? CHERRY_AI_NAME} | Coffee-native AI from Purveyors</title>
 	<meta
 		name="description"
-		content="Use Cherry for coffee-native sourcing, catalog, portfolio, market, roasting, and sensory analysis."
+		content="Use Cherry AI for coffee-native sourcing, catalog, portfolio, market, roasting, and sensory analysis."
 	/>
 </svelte:head>
 
@@ -26,7 +30,7 @@
 	<!-- Unauthenticated state -->
 	<div class="flex min-h-screen items-center justify-center bg-surface-canvas">
 		<div class="mx-auto max-w-md rounded-lg bg-surface-panel p-8 text-center shadow-lg">
-			<h1 class="mb-4 text-2xl font-bold text-ink">Cherry</h1>
+			<h1 class="mb-4 text-2xl font-bold text-ink">Cherry AI</h1>
 			<p class="mb-6 text-muted">
 				Sign in to use Purveyors' coffee-native AI for sourcing, catalog, portfolio, market,
 				roasting, and sensory analysis.
@@ -43,9 +47,9 @@
 	<!-- Parchment Intelligence or Mallard Studio access required -->
 	<div class="flex min-h-screen items-center justify-center bg-surface-canvas">
 		<div class="mx-auto max-w-md rounded-lg bg-surface-panel p-8 text-center shadow-lg">
-			<h1 class="mb-4 text-2xl font-bold text-ink">Cherry</h1>
+			<h1 class="mb-4 text-2xl font-bold text-ink">Cherry AI</h1>
 			<p class="mb-6 text-muted">
-				Cherry is available with Parchment Intelligence or Mallard Studio. Upgrade to analyze
+				Cherry AI is available with Parchment Intelligence or Mallard Studio. Upgrade to analyze
 				market, catalog, portfolio, and roasting questions with the right tool depth.
 			</p>
 			<div class="space-y-3">
@@ -64,9 +68,10 @@
 			</div>
 		</div>
 	</div>
-{:else}
+{:else if agent}
 	<div class="h-full min-h-0">
 		<ChatWorkspace
+			agentName={agent.name}
 			{canUseChat}
 			{canUseMallardWorkspaces}
 			initialWorkspaceData={data.initialWorkspaceData ?? null}

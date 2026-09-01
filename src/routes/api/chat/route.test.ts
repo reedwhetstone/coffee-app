@@ -52,18 +52,21 @@ function trackedLotSummary(overrides: Partial<TrackedLotSummary> = {}): TrackedL
 }
 
 describe('chat system prompt entitlement context', () => {
-	it('identifies Cherry as a system and selects the synthesis role for combined access', () => {
+	it('identifies Cherry AI as a system and selects the synthesis role for combined access', () => {
 		const prompt = _buildSystemPrompt({ type: 'general' }, 'Member User', {
 			ppiAccess: true,
 			memberAccess: true
 		});
 
-		expect(prompt).toContain("Cherry is Purveyors' coffee-native AI system");
-		expect(prompt).toContain('Cherry is a system, not a persona');
+		expect(prompt).toContain("Cherry AI is Purveyors' coffee-native AI system");
+		expect(prompt).toContain('Cherry AI is a system, not a persona');
 		expect(prompt).toContain('Cherry Synthesis Agent');
 		expect(prompt).toContain('agent name describes an execution role, not a character');
 		expect(prompt).toContain('Do not say "I am Cherry"');
-		expect(prompt).toMatch(/Parchment supplies catalog, market, sourcing, and API\s+evidence/);
+		expect(prompt).toMatch(
+			/Parchment Intelligence supplies catalog, market, and sourcing\s+evidence/
+		);
+		expect(prompt).toContain('The Parchment API supplies the underlying data contracts');
 		expect(prompt).toMatch(
 			/Mallard Studio supplies the user's inventory, roast, tasting, sales, and margin context/
 		);
@@ -106,7 +109,7 @@ describe('chat system prompt entitlement context', () => {
 		expect(prompt).toContain('After calling coffee_catalog_search, catalog_rank, market_signals');
 		expect(prompt).toContain('For market_signals, use the returned catalogId');
 		expect(prompt).toContain('add_bean_to_inventory');
-		expect(prompt).toContain('Mallard-only roast, tasting, and sales tools are unavailable');
+		expect(prompt).toContain('Mallard Studio-only roast, tasting, and sales tools are unavailable');
 		expect(prompt).not.toContain('You have access to these tools');
 		expect(prompt).not.toContain('roast_profiles');
 		expect(prompt).not.toContain('record_sale');
@@ -131,6 +134,19 @@ describe('chat system prompt entitlement context', () => {
 		expect(prompt).not.toContain('market_stats');
 		expect(prompt).not.toContain('market_metadata');
 		expect(prompt).toContain('WORKSPACE FOCUS: Roasting');
+	});
+
+	it('attributes Mallard-only catalog evidence to the Parchment API', () => {
+		const prompt = _buildSystemPrompt({ type: 'general' }, 'Member User', {
+			ppiAccess: false,
+			memberAccess: true
+		});
+
+		expect(prompt).toContain('The Parchment API supplies catalog data');
+		expect(prompt).toContain('The Parchment API supplies the underlying data contracts');
+		expect(prompt).not.toContain(
+			'Parchment Intelligence supplies catalog, market, and sourcing evidence'
+		);
 	});
 
 	it('adds PPI market guidance for users with both products', () => {
