@@ -138,11 +138,17 @@ export interface AnalyticsSeedInputRequest extends AnalyticsSeedInputState {
 	incomingSeed: string | null;
 }
 
-export function readAnalyticsSeedFromSearchParams(searchParams: URLSearchParams): string | null {
-	if (searchParams.get('source') !== 'analytics') return null;
+export function readChatSeedFromSearchParams(searchParams: URLSearchParams): string | null {
+	const source = searchParams.get('source');
+	if (source !== 'analytics' && source !== 'dashboard') return null;
 	const prompt = searchParams.get('prompt');
 	if (!prompt?.trim()) return null;
 	return prompt;
+}
+
+export function readAnalyticsSeedFromSearchParams(searchParams: URLSearchParams): string | null {
+	if (searchParams.get('source') !== 'analytics') return null;
+	return readChatSeedFromSearchParams(searchParams);
 }
 
 export function applyAnalyticsSeedToInput({

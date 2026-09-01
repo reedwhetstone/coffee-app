@@ -23,7 +23,7 @@
 	role="status"
 	aria-live="polite"
 	aria-atomic="true"
-	aria-label={isActive ? 'Parchment is working' : 'Parchment activity'}
+	aria-label={isActive ? 'Cherry AI is working' : 'Cherry AI activity'}
 >
 	<summary class="flex cursor-pointer list-none items-center gap-2 py-1 hover:text-ink">
 		<span

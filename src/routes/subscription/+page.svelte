@@ -95,22 +95,22 @@
 			anonymousStateCopy: 'Sign in to see what is on this account.',
 			activeStateCopy: 'Parchment Intelligence is active on this account.',
 			inactiveStateCopy: 'Parchment Intelligence is not active on this account yet.',
-			ctaLabel: 'Start Intelligence',
-			activeCtaLabel: 'Intelligence active'
+			ctaLabel: 'Start Parchment Intelligence',
+			activeCtaLabel: 'Parchment Intelligence active'
 		},
 		studio: {
-			managementCopy: 'Review your Studio membership, renewal timing, and billing here.',
+			managementCopy: 'Review your Mallard Studio membership, renewal timing, and billing here.',
 			anonymousStateCopy: 'Sign in to see what is on this account.',
-			activeStateCopy: 'Studio is active on this account.',
-			inactiveStateCopy: 'No Studio membership is attached to this account yet.',
-			ctaLabel: 'Start Studio',
-			activeCtaLabel: 'Studio active'
+			activeStateCopy: 'Mallard Studio is active on this account.',
+			inactiveStateCopy: 'No Mallard Studio membership is attached to this account yet.',
+			ctaLabel: 'Start Mallard Studio',
+			activeCtaLabel: 'Mallard Studio active'
 		},
 		both: {
 			managementCopy:
-				'Studio and Intelligence are one subscription in this offer. Canceling, resuming, or renewing applies to both products together.',
+				'Mallard Studio and Parchment Intelligence are one subscription in this offer. Canceling, resuming, or renewing applies to both products together.',
 			anonymousStateCopy: 'Sign in to see what is on this account.',
-			activeStateCopy: 'Studio and Intelligence are active on this account.',
+			activeStateCopy: 'Mallard Studio and Parchment Intelligence are active on this account.',
 			inactiveStateCopy: 'The combined plan is not active on this account yet.',
 			ctaLabel: 'Start both',
 			activeCtaLabel: 'Manage current plan'
@@ -144,7 +144,7 @@
 				'Parchment Console for API keys, docs, and usage visibility'
 			],
 			managementCopy:
-				'Your current API tier is shown here so billing stays clear and separate from Studio.',
+				'Your current Parchment API tier is shown here so billing stays clear and separate from Mallard Studio.',
 			anonymousStateCopy: 'Sign in to see what is on this account.',
 			activeStateCopy: 'This account has paid API access.',
 			inactiveStateCopy: 'This account is on the free Green tier.',
@@ -220,7 +220,7 @@
 								? ('success' as ProductTone)
 								: ('muted' as ProductTone),
 					sourceLabel:
-						'Access is resolved by Parchment from the canonical billing and entitlement lifecycle.'
+						'Purveyors keeps product access synchronized with the canonical billing lifecycle.'
 				}
 			: null
 	);
@@ -239,7 +239,7 @@
 							? ('muted' as ProductTone)
 							: ('success' as ProductTone),
 					description: `Your account currently resolves to the ${data.accountState.apiPlan === 'member' ? 'Origin' : data.accountState.apiPlan === 'enterprise' ? 'Enterprise' : 'Green'} API tier.`,
-					note: 'Parchment owns API billing and entitlement decisions.'
+					note: 'Purveyors keeps Parchment API billing and access synchronized.'
 				}
 			: null
 	);
@@ -254,7 +254,7 @@
 					description: data.accountState.ppiAccess
 						? 'Your account includes the full analytics and market-intelligence layer.'
 						: 'Your account keeps the baseline public analytics surface.',
-					note: 'Parchment owns Intelligence billing and entitlement decisions.'
+					note: 'Purveyors keeps Parchment Intelligence billing and access synchronized.'
 				}
 			: null
 	);
@@ -425,7 +425,7 @@
 				return {
 					label: 'Bundle subscription needs attention',
 					description:
-						'This bundle is not currently granting Studio or Intelligence access. Review its billing status before starting another plan.',
+						'This bundle is not currently granting Mallard Studio or Parchment Intelligence access. Review its billing status before starting another plan.',
 					tone: 'warning' as ProductTone
 				};
 			}
@@ -433,7 +433,7 @@
 				return {
 					label: 'Products active separately',
 					description:
-						'Studio and Intelligence are active in separate subscriptions. Manage each subscription above. Switching them into the combined plan is not available yet.',
+						'Mallard Studio and Parchment Intelligence are active in separate subscriptions. Manage each subscription above. Switching them into the combined plan is not available yet.',
 					tone: 'warning' as ProductTone
 				};
 			}
@@ -500,7 +500,8 @@
 				label: 'Parchment Intelligence',
 				value: intelligenceState?.statusLabel ?? 'Unknown',
 				description:
-					intelligenceState?.description ?? 'Intelligence details are unavailable right now.'
+					intelligenceState?.description ??
+					'Parchment Intelligence details are unavailable right now.'
 			},
 			{
 				label: 'Parchment API',
@@ -588,7 +589,7 @@
 			if (isPendingSubscriptionMutation(result.status)) {
 				mutationPending[key] = true;
 				mutationMessages[key] =
-					'Parchment accepted the change, but it is still processing. Check the same request again to see the terminal result.';
+					'Your change was accepted, but it is still processing. Check the same request again to see the terminal result.';
 				return;
 			}
 			if (isTerminalSubscriptionMutation(result.status)) {
@@ -684,7 +685,8 @@
 						If eligible, your {selectedOffer.trialDays}-day free trial starts today. Otherwise,
 						billing starts today.
 						{#if selectedOffer.offerId === BILLING_OFFERS.bothMonthly.offerId}
-							Studio and Intelligence are one subscription and cancel, resume, or renew together.
+							Mallard Studio and Parchment Intelligence are one subscription and cancel, resume, or
+							renew together.
 						{/if}
 					</p>
 				{/if}
@@ -702,7 +704,7 @@
 						</h1>
 						<p class="mt-4 text-lg leading-8 text-muted">
 							Choose market intelligence, roastery operations, or both in one discounted
-							subscription. Cherry is included with every self-serve plan.
+							subscription. Cherry AI is included with every self-serve plan.
 						</p>
 					</div>
 					{#if !isSignedIn}
@@ -814,7 +816,8 @@
 							<h2 class="mt-2 text-2xl font-semibold text-ink">Three plans, one clear choice</h2>
 						</div>
 						<p class="max-w-xl text-sm leading-6 text-muted sm:text-right">
-							Pick one product or save $2/month by keeping Studio and Intelligence together.
+							Pick one product or save $2/month by keeping Mallard Studio and Parchment Intelligence
+							together.
 						</p>
 					</div>
 

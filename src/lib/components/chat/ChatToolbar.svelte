@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
+	import type { CherryAgentName } from '$lib/cherry/identity';
 
 	let {
+		agentName,
 		variant,
 		canvasOpen,
 		hasMessages,
@@ -12,6 +14,7 @@
 		onClear,
 		clearDisabled = false
 	} = $props<{
+		agentName: CherryAgentName;
 		/** 'page' = full /chat workbench; 'drawer' = slide-in panel */
 		variant: 'page' | 'drawer';
 		/** Whether the desktop canvas split-pane is currently open */
@@ -32,7 +35,7 @@
 
 <div class="flex items-center justify-between border-b border-line px-3 py-2">
 	<div class="min-w-0">
-		<p class="truncate text-sm font-semibold text-ink">Cherry</p>
+		<p class="truncate text-sm font-semibold text-ink">{agentName}</p>
 		<p class="hidden truncate text-xs text-muted sm:block">Coffee-native AI from Purveyors</p>
 	</div>
 	<div class="flex items-center gap-2">

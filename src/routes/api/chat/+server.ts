@@ -9,8 +9,7 @@ import { findSimilarBeansForAgent } from '$lib/server/agentSimilarity';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { getUserMemory } from '$lib/server/userMemory';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
-import { getTrackedLotIds } from '$lib/server/trackedLots';
-import { fetchParchmentCatalogItemsByIds } from '$lib/server/parchmentCatalog';
+import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
 import { buildCherryRuntimeIdentity, CHERRY_RUNTIME_MODEL } from '$lib/server/cherryRuntime';
 import {
 	listActiveSourcingBriefs,
@@ -234,7 +233,7 @@ WRITE TOOLS (propose changes — user must confirm before execution):
 11. add_bean_to_inventory - Propose adding a bean to the user's Portfolio
 12. update_bean - Propose updating an existing Portfolio bean
 
-Advanced bean matching plus Mallard-only roast, tasting, and sales tools are unavailable in this access tier.`;
+Advanced bean matching plus Mallard Studio-only roast, tasting, and sales tools are unavailable in this access tier.`;
 
 const MALLARD_TOOL_ACCESS_PROMPT = `You have access to these tools in two categories:
 
@@ -305,7 +304,18 @@ function resolveWorkspaceType(
 }
 
 export interface SourcingIntelligenceContext {
-	trackedLots: Array<{ id: number; name: string; country?: string | null; source?: string | null }>;
+	trackedLots: Array<{
+		id: number;
+		name: string;
+		country: string | null;
+		source: string | null;
+		trackedAt: string;
+		priceAtTracking: number | null;
+		currentPrice: number | null;
+		priceDelta: number | null;
+		stocked: boolean | null;
+		unstockedDate: string | null;
+	}>;
 	activeBriefs: Array<{ name: string; criteriaDescription: string }>;
 }
 
@@ -313,15 +323,6 @@ type AgentCatalogSearchInput = NonNullable<
 	Parameters<NonNullable<ChatToolDeps['searchCatalog']>>[0]
 >;
 type SdkCatalogItem = components['schemas']['CatalogItem'];
-type AgentCatalogListQuery = CatalogListQuery & {
-	source?: string | string[];
-	cultivar_detail?: string;
-	stocked_days?: number;
-	ids?: number[];
-	price_per_lb_min?: number;
-	price_per_lb_max?: number;
-	[key: string]: string | number | string[] | number[] | null | undefined;
-};
 type CatalogListResult = {
 	data?: { data?: unknown } | unknown[];
 	error?: unknown;
@@ -330,7 +331,7 @@ type CatalogListBody = {
 	data?: unknown;
 	pagination?: { hasNext?: boolean; page?: number; totalPages?: number };
 };
-type CatalogListFn = (query: AgentCatalogListQuery) => Promise<CatalogListResult>;
+type CatalogListFn = (query: CatalogListQuery) => Promise<CatalogListResult>;
 
 const AGENT_CATALOG_MAX_RESULTS = 15;
 const AGENT_CATALOG_DEFAULT_LIMIT = 10;
@@ -365,6 +366,16 @@ function needsAgentCatalogPostFilter(input: AgentCatalogSearchInput): boolean {
 	return Boolean(input.drying_method || input.flavor_keywords?.length);
 }
 
+function restrictAgentCatalogRowsToRequestedIds(
+	rows: SdkCatalogItem[],
+	input: AgentCatalogSearchInput
+): SdkCatalogItem[] {
+	const ids = positiveIds(input.coffee_ids);
+	if (!ids) return rows;
+	const requestedIds = new Set(ids);
+	return rows.filter((row) => requestedIds.has(row.id));
+}
+
 export function _filterAgentCatalogRowsForUnsupportedFilters(
 	rows: SdkCatalogItem[],
 	input: AgentCatalogSearchInput
@@ -394,25 +405,25 @@ export function _filterAgentCatalogRowsForUnsupportedFilters(
 	return filtered;
 }
 
-export function _buildAgentCatalogListQuery(input: AgentCatalogSearchInput): AgentCatalogListQuery {
-	const query: AgentCatalogListQuery = {
+export function _buildAgentCatalogListQuery(input: AgentCatalogSearchInput): CatalogListQuery {
+	const ids = positiveIds(input.coffee_ids);
+	const query: CatalogListQuery = {
 		limit: resolveAgentCatalogRequestedLimit(input),
-		stocked: input.stocked_only === false ? 'all' : 'true'
+		stocked: input.stocked_only === false || ids ? 'all' : 'true'
 	};
 	if (input.origin) query.origin = input.origin;
 	if (input.process) query.processing = input.process;
-	if (input.variety) query.cultivar_detail = input.variety;
+	if (input.variety) query.variety = input.variety;
 	if (input.name) query.name = input.name;
-	if (input.supplier) query.source = input.supplier;
-	if (input.stocked_days) query.stocked_days = input.stocked_days;
+	if (input.supplier) query.supplier = input.supplier;
+	if (input.stocked_days !== undefined) query.stockedDays = input.stocked_days;
 
-	const ids = positiveIds(input.coffee_ids);
-	if (ids) query.ids = ids;
+	if (ids) query.coffeeIds = ids.join(',');
 
 	if (input.price_range) {
 		const [min, max] = input.price_range;
-		if (min != null) query.price_per_lb_min = min;
-		if (max != null) query.price_per_lb_max = max;
+		if (min != null) query.pricePerLbMin = min;
+		if (max != null) query.pricePerLbMax = max;
 	}
 
 	return query;
@@ -442,12 +453,19 @@ export async function _fetchAgentCatalogRowsForSearch(
 	listCatalog: CatalogListFn,
 	input: AgentCatalogSearchInput
 ): Promise<SdkCatalogItem[]> {
+	if (input.coffee_ids !== undefined && !positiveIds(input.coffee_ids)) {
+		return [];
+	}
+
 	const requestedLimit = resolveAgentCatalogRequestedLimit(input);
 	const query = _buildAgentCatalogListQuery(input);
 
 	if (!needsAgentCatalogPostFilter(input)) {
 		const body = extractAgentCatalogBody(await listCatalog(query));
-		return extractAgentCatalogRows(body).slice(0, requestedLimit);
+		return restrictAgentCatalogRowsToRequestedIds(extractAgentCatalogRows(body), input).slice(
+			0,
+			requestedLimit
+		);
 	}
 
 	const filteredRows: SdkCatalogItem[] = [];
@@ -468,7 +486,7 @@ export async function _fetchAgentCatalogRowsForSearch(
 		}
 	}
 
-	return filteredRows.slice(0, requestedLimit);
+	return restrictAgentCatalogRowsToRequestedIds(filteredRows, input).slice(0, requestedLimit);
 }
 
 export function _buildSystemPrompt(
@@ -563,7 +581,9 @@ You can reference these items naturally (e.g., "that first one", "the Ethiopian"
 			for (const lot of sourcingContext.trackedLots.slice(0, 10)) {
 				const origin = lot.country ? ` · ${lot.country}` : '';
 				const supplier = lot.source ? ` from ${formatSourceName(lot.source)}` : '';
-				lines.push(`  - ${lot.name}${origin}${supplier} (catalog ID ${lot.id})`);
+				lines.push(
+					`  - ${lot.name}${origin}${supplier} (catalog ID ${lot.id}; trackedAt=${lot.trackedAt}; priceAtTracking=${String(lot.priceAtTracking)}; currentPrice=${String(lot.currentPrice)}; priceDelta=${String(lot.priceDelta)}; stocked=${String(lot.stocked)}; unstockedDate=${String(lot.unstockedDate)})`
+				);
 			}
 			if (sourcingContext.trackedLots.length > 10) {
 				lines.push(`  ... and ${sourcingContext.trackedLots.length - 10} more tracked lots`);
@@ -581,7 +601,8 @@ You can reference these items naturally (e.g., "that first one", "the Ethiopian"
 
 		if (lines.length > 0) {
 			prompt += `\n\nSOURCING INTELLIGENCE CONTEXT:\n${lines.join('\n')}
-Use this to make responses more specific — reference tracked lots by name when relevant, and connect brief criteria to search results. Do not fabricate match scores or availability details not returned by tools.`;
+The trackedAt, priceAtTracking, currentPrice, priceDelta, stocked, and unstockedDate fields above are trusted owner-scoped Parchment tracked-lot summaries. For price or availability change questions, use these fields first. Do not infer historical changes from catalog searches; catalog searches provide current catalog evidence only.
+Use this context to make responses more specific — reference tracked lots by name when relevant, and connect brief criteria to search results. Do not fabricate match scores or availability details not returned by tools.`;
 		}
 	}
 
@@ -593,15 +614,34 @@ export function _createMarketToolParchmentClient(event: RequestEvent) {
 }
 
 export async function _loadSourcingIntelligenceSeeds(
-	loadTrackedIds: () => Promise<number[]>,
+	loadTrackedSummaries: () => Promise<TrackedLotSummary[]>,
 	loadBriefs: () => Promise<SourcingBriefResource[]>
-): Promise<{ trackedIds: number[]; briefRows: SourcingBriefResource[] }> {
-	const [trackedIds, briefRows] = await Promise.all([
-		loadTrackedIds().catch(() => []),
+): Promise<{ trackedSummaries: TrackedLotSummary[]; briefRows: SourcingBriefResource[] }> {
+	const [trackedSummaries, briefRows] = await Promise.all([
+		loadTrackedSummaries().catch(() => []),
 		loadBriefs().catch(() => [])
 	]);
 
-	return { trackedIds, briefRows };
+	return { trackedSummaries, briefRows };
+}
+
+export function _buildTrackedLotContext(
+	summaries: TrackedLotSummary[]
+): SourcingIntelligenceContext['trackedLots'] {
+	return summaries.map((summary) => {
+		return {
+			id: summary.catalogId,
+			name: summary.name || `Lot #${summary.catalogId}`,
+			country: summary.country ?? null,
+			source: summary.source ?? null,
+			trackedAt: summary.trackedAt,
+			priceAtTracking: summary.priceAtTracking,
+			currentPrice: summary.currentPrice,
+			priceDelta: summary.priceDelta,
+			stocked: summary.stocked,
+			unstockedDate: summary.unstockedDate
+		};
+	});
 }
 
 export const POST: RequestHandler = async (event) => {
@@ -658,7 +698,7 @@ export const POST: RequestHandler = async (event) => {
 				searchCatalog: async (input) => {
 					const client = await createParchmentServerClient(event);
 					const rows = await _fetchAgentCatalogRowsForSearch(
-						(query) => client.catalog.list(query as CatalogListQuery) as Promise<CatalogListResult>,
+						(query) => client.catalog.list(query) as unknown as Promise<CatalogListResult>,
 						input
 					);
 					return rows as unknown as Record<string, unknown>[];
@@ -701,33 +741,18 @@ export const POST: RequestHandler = async (event) => {
 
 		// Build sourcing intelligence context from the request-bound Parchment client.
 		let sourcingContext: SourcingIntelligenceContext | undefined;
-		try {
-			const { trackedIds, briefRows } = await _loadSourcingIntelligenceSeeds(
-				() => getTrackedLotIds(cherryParchmentClient),
-				() => listActiveSourcingBriefs(cherryParchmentClient, 5)
-			);
+		const { trackedSummaries, briefRows } = await _loadSourcingIntelligenceSeeds(
+			() => getTrackedLotSummaries(cherryParchmentClient, 10),
+			() => listActiveSourcingBriefs(cherryParchmentClient, 5)
+		);
+		const trackedLots = _buildTrackedLotContext(trackedSummaries);
+		const activeBriefs = briefRows.map((brief) => ({
+			name: brief.name,
+			criteriaDescription: describeSourcingBriefCriteria(brief.criteria)
+		}));
 
-			const trackedLots = trackedIds.length
-				? (
-						await fetchParchmentCatalogItemsByIds(cherryParchmentClient, trackedIds.slice(0, 10))
-					).map((lot) => ({
-						id: lot.id,
-						name: lot.name ?? `Lot #${lot.id}`,
-						country: lot.country,
-						source: lot.source
-					}))
-				: [];
-
-			const activeBriefs = briefRows.map((brief) => ({
-				name: brief.name,
-				criteriaDescription: describeSourcingBriefCriteria(brief.criteria)
-			}));
-
-			if (trackedLots.length || activeBriefs.length) {
-				sourcingContext = { trackedLots, activeBriefs };
-			}
-		} catch {
-			// Non-fatal: sourcing context is enrichment, not required
+		if (trackedLots.length || activeBriefs.length) {
+			sourcingContext = { trackedLots, activeBriefs };
 		}
 
 		let workspaceContext: WorkspaceContext | undefined = clientWorkspaceContext

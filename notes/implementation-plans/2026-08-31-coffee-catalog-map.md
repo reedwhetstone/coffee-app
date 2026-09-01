@@ -1,6 +1,6 @@
 # Coffee Catalog Map and Elevation Explorer
 
-**Status:** Proposed implementation plan
+**Status:** In implementation; canonical Parchment map contract and authored API guide complete, coffee-app experience next
 **Date:** 2026-08-31
 **Owner:** Purveyors catalog experience
 **Governing direction:** `notes/PRODUCT_VISION.md`, `notes/decisions/005-catalog-access-level-positioning.md`, Parchment `PADR-0012`, `PADR-0013`, `PADR-0015`, and coffee-scraper `ADR-005`

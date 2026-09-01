@@ -28,7 +28,7 @@ export const SELF_SERVE_PLANS: readonly SelfServePlan[] = [
 		eyebrow: 'For sourcing decisions',
 		badge: 'Market intelligence',
 		description:
-			'See what changed across the market, compare live supplier offers, and use Cherry to turn the evidence into a sharper sourcing decision.',
+			'See what changed across the market, compare live supplier offers, and use Cherry AI to turn the evidence into a sharper sourcing decision.',
 		features: [
 			'Cherry Green Agent with catalog, supplier, portfolio, and market context',
 			'Supplier comparisons, arrivals, delistings, and market signals',
@@ -40,14 +40,14 @@ export const SELF_SERVE_PLANS: readonly SelfServePlan[] = [
 	{
 		id: 'both',
 		family: 'bundle',
-		name: 'Studio + Intelligence',
+		name: 'Mallard Studio + Parchment Intelligence',
 		eyebrow: 'For teams that buy and roast',
 		badge: 'Best value',
 		description:
-			'Connect the outside market to your own inventory and production workflow, then use Cherry across the complete decision.',
+			'Connect the outside market to your own inventory and production workflow, then use Cherry AI across the complete decision.',
 		features: [
-			'Every Intelligence market and sourcing capability',
-			'Every Studio inventory, roast, tasting, and margin capability',
+			'Every Parchment Intelligence market and sourcing capability',
+			'Every Mallard Studio inventory, roast, tasting, and margin capability',
 			'Cherry Synthesis Agent with market evidence and roaster context'
 		],
 		learnMoreHref: '/subscription#both-details',
@@ -60,7 +60,7 @@ export const SELF_SERVE_PLANS: readonly SelfServePlan[] = [
 		eyebrow: 'For roaster operations',
 		badge: 'Roaster workspace',
 		description:
-			'Carry each coffee from green inventory through roasting, tasting, and margin review, with Cherry available inside the workflow.',
+			'Carry each coffee from green inventory through roasting, tasting, and margin review, with Cherry AI available inside the workflow.',
 		features: [
 			'Cherry Roast Agent with inventory, roast, tasting, and sales context',
 			'Green coffee inventory, lot tracking, and roast profiles',

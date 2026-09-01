@@ -57,7 +57,7 @@ export const BILLING_OFFERS = {
 	},
 	bothMonthly: {
 		offerId: 'both-monthly',
-		name: 'Studio + Intelligence',
+		name: 'Mallard Studio + Parchment Intelligence',
 		price: '$6',
 		interval: '/month',
 		trialDays: 5,

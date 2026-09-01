@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SourcingBriefResource } from '$lib/server/parchmentProcurement';
+import type { TrackedLotSummary } from '$lib/server/trackedLots';
 
 const { mockCreateParchmentServerClient } = vi.hoisted(() => ({
 	mockCreateParchmentServerClient: vi.fn()
@@ -23,6 +24,7 @@ vi.mock('ai', () => ({
 
 import {
 	_buildAgentCatalogListQuery,
+	_buildTrackedLotContext,
 	_createMarketToolParchmentClient,
 	_buildSystemPrompt,
 	_fetchAgentCatalogRowsForSearch,
@@ -30,19 +32,41 @@ import {
 	_loadSourcingIntelligenceSeeds
 } from './+server';
 
+function trackedLotSummary(overrides: Partial<TrackedLotSummary> = {}): TrackedLotSummary {
+	return {
+		catalogId: 7,
+		trackedAt: '2026-08-01T12:00:00Z',
+		priceAtTracking: 6.5,
+		name: 'Contract label',
+		source: 'Contract source',
+		country: 'Contract country',
+		region: 'Guji',
+		processing: 'Natural',
+		stocked: false,
+		wholesale: false,
+		unstockedDate: '2026-08-20',
+		currentPrice: 7.25,
+		priceDelta: 0.75,
+		...overrides
+	};
+}
+
 describe('chat system prompt entitlement context', () => {
-	it('identifies Cherry as a system and selects the synthesis role for combined access', () => {
+	it('identifies Cherry AI as a system and selects the synthesis role for combined access', () => {
 		const prompt = _buildSystemPrompt({ type: 'general' }, 'Member User', {
 			ppiAccess: true,
 			memberAccess: true
 		});
 
-		expect(prompt).toContain("Cherry is Purveyors' coffee-native AI system");
-		expect(prompt).toContain('Cherry is a system, not a persona');
+		expect(prompt).toContain("Cherry AI is Purveyors' coffee-native AI system");
+		expect(prompt).toContain('Cherry AI is a system, not a persona');
 		expect(prompt).toContain('Cherry Synthesis Agent');
 		expect(prompt).toContain('agent name describes an execution role, not a character');
 		expect(prompt).toContain('Do not say "I am Cherry"');
-		expect(prompt).toMatch(/Parchment supplies catalog, market, sourcing, and API\s+evidence/);
+		expect(prompt).toMatch(
+			/Parchment Intelligence supplies catalog, market, and sourcing\s+evidence/
+		);
+		expect(prompt).toContain('The Parchment API supplies the underlying data contracts');
 		expect(prompt).toMatch(
 			/Mallard Studio supplies the user's inventory, roast, tasting, sales, and margin context/
 		);
@@ -85,7 +109,7 @@ describe('chat system prompt entitlement context', () => {
 		expect(prompt).toContain('After calling coffee_catalog_search, catalog_rank, market_signals');
 		expect(prompt).toContain('For market_signals, use the returned catalogId');
 		expect(prompt).toContain('add_bean_to_inventory');
-		expect(prompt).toContain('Mallard-only roast, tasting, and sales tools are unavailable');
+		expect(prompt).toContain('Mallard Studio-only roast, tasting, and sales tools are unavailable');
 		expect(prompt).not.toContain('You have access to these tools');
 		expect(prompt).not.toContain('roast_profiles');
 		expect(prompt).not.toContain('record_sale');
@@ -110,6 +134,19 @@ describe('chat system prompt entitlement context', () => {
 		expect(prompt).not.toContain('market_stats');
 		expect(prompt).not.toContain('market_metadata');
 		expect(prompt).toContain('WORKSPACE FOCUS: Roasting');
+	});
+
+	it('attributes Mallard-only catalog evidence to the Parchment API', () => {
+		const prompt = _buildSystemPrompt({ type: 'general' }, 'Member User', {
+			ppiAccess: false,
+			memberAccess: true
+		});
+
+		expect(prompt).toContain('The Parchment API supplies catalog data');
+		expect(prompt).toContain('The Parchment API supplies the underlying data contracts');
+		expect(prompt).not.toContain(
+			'Parchment Intelligence supplies catalog, market, and sourcing evidence'
+		);
 	});
 
 	it('adds PPI market guidance for users with both products', () => {
@@ -142,12 +179,13 @@ describe('chat market tool Parchment client', () => {
 
 describe('chat sourcing intelligence enrichment', () => {
 	it('preserves tracked lots when the sourcing-brief API fails', async () => {
+		const summary = trackedLotSummary();
 		const result = await _loadSourcingIntelligenceSeeds(
-			() => Promise.resolve([7, 9]),
+			() => Promise.resolve([summary]),
 			() => Promise.reject(new Error('briefs unavailable'))
 		);
 
-		expect(result).toEqual({ trackedIds: [7, 9], briefRows: [] });
+		expect(result).toEqual({ trackedSummaries: [summary], briefRows: [] });
 	});
 
 	it('preserves sourcing briefs when tracked-lot loading fails', async () => {
@@ -166,7 +204,76 @@ describe('chat sourcing intelligence enrichment', () => {
 			() => Promise.resolve([brief])
 		);
 
-		expect(result).toEqual({ trackedIds: [], briefRows: [brief] });
+		expect(result).toEqual({ trackedSummaries: [], briefRows: [brief] });
+	});
+
+	it('uses the canonical tracked-lot summary without a second catalog lookup', () => {
+		const summary = trackedLotSummary();
+		const trackedLots = _buildTrackedLotContext([summary]);
+
+		expect(trackedLots).toEqual([
+			{
+				id: 7,
+				name: 'Contract label',
+				country: 'Contract country',
+				source: 'Contract source',
+				trackedAt: '2026-08-01T12:00:00Z',
+				priceAtTracking: 6.5,
+				currentPrice: 7.25,
+				priceDelta: 0.75,
+				stocked: false,
+				unstockedDate: '2026-08-20'
+			}
+		]);
+	});
+
+	it('falls back to the tracked catalog ID when the canonical summary has no label', () => {
+		expect(_buildTrackedLotContext([trackedLotSummary({ name: '' })])[0]).toEqual({
+			id: 7,
+			name: 'Lot #7',
+			country: 'Contract country',
+			source: 'Contract source',
+			trackedAt: '2026-08-01T12:00:00Z',
+			priceAtTracking: 6.5,
+			currentPrice: 7.25,
+			priceDelta: 0.75,
+			stocked: false,
+			unstockedDate: '2026-08-20'
+		});
+	});
+
+	it('injects canonical tracked change fields and prioritization guidance into the prompt', () => {
+		const prompt = _buildSystemPrompt(
+			undefined,
+			'PPI User',
+			{ ppiAccess: true, memberAccess: false },
+			{
+				trackedLots: [
+					{
+						id: 7,
+						name: 'Hydrated lot',
+						country: 'Ethiopia',
+						source: 'Supplier',
+						trackedAt: '2026-08-01T12:00:00Z',
+						priceAtTracking: 6.5,
+						currentPrice: 7.25,
+						priceDelta: 0.75,
+						stocked: false,
+						unstockedDate: '2026-08-20'
+					}
+				],
+				activeBriefs: []
+			}
+		);
+
+		expect(prompt).toContain('trackedAt=2026-08-01T12:00:00Z');
+		expect(prompt).toContain('priceAtTracking=6.5');
+		expect(prompt).toContain('currentPrice=7.25');
+		expect(prompt).toContain('priceDelta=0.75');
+		expect(prompt).toContain('stocked=false');
+		expect(prompt).toContain('unstockedDate=2026-08-20');
+		expect(prompt).toContain('For price or availability change questions, use these fields first');
+		expect(prompt).toContain('Do not infer historical changes from catalog searches');
 	});
 });
 
@@ -184,32 +291,68 @@ describe('chat catalog Parchment query mapping', () => {
 			stocked_days: 30,
 			drying_method: 'raised bed',
 			supplier: 'Osito',
-			coffee_ids: [42, 0]
+			coffee_ids: [42]
 		});
 
 		expect(query).toMatchObject({
 			origin: 'Ethiopia',
 			processing: 'natural',
-			cultivar_detail: 'Gesha',
-			price_per_lb_min: 5,
-			price_per_lb_max: 9,
+			variety: 'Gesha',
+			pricePerLbMin: 5,
+			pricePerLbMax: 9,
 			limit: 12,
 			stocked: 'all',
 			name: 'Hambela',
-			stocked_days: 30,
-			source: 'Osito',
-			ids: [42]
+			stockedDays: 30,
+			supplier: 'Osito',
+			coffeeIds: '42'
 		});
-		expect(query).not.toHaveProperty('supplier');
-		expect(query).not.toHaveProperty('stockedDays');
+		expect(query).not.toHaveProperty('source');
+		expect(query).not.toHaveProperty('ids');
+		expect(query).not.toHaveProperty('cultivar_detail');
+		expect(query).not.toHaveProperty('stocked_days');
+		expect(query).not.toHaveProperty('price_per_lb_min');
+		expect(query).not.toHaveProperty('price_per_lb_max');
 		expect(query).not.toHaveProperty('dryingMethod');
 		expect(query).not.toHaveProperty('flavorKeywords');
-		expect(query).not.toHaveProperty('coffeeIds');
-		expect(query).not.toHaveProperty('pricePerLbMin');
-		expect(query).not.toHaveProperty('pricePerLbMax');
 		expect(query).not.toHaveProperty('drying_method');
 		expect(query).not.toHaveProperty('flavor_keywords');
 	});
+
+	it('uses an exact comma-delimited five-ID query with unstocked visibility', async () => {
+		const requestedIds = [101, 102, 103, 104, 105];
+		const listCatalog = vi.fn().mockImplementation((query: { coffeeIds?: string }) => {
+			if (query.coffeeIds !== requestedIds.join(',')) {
+				return Promise.resolve({ data: { data: [{ id: 999 }] } });
+			}
+			return Promise.resolve({
+				data: { data: [...requestedIds.map((id) => ({ id })), { id: 999 }] }
+			});
+		});
+
+		const rows = await _fetchAgentCatalogRowsForSearch(listCatalog, {
+			coffee_ids: requestedIds
+		});
+
+		expect(listCatalog).toHaveBeenCalledWith({
+			coffeeIds: '101,102,103,104,105',
+			stocked: 'all',
+			limit: 5
+		});
+		expect(rows.map((row) => row.id)).toEqual(requestedIds);
+	});
+
+	it.each<[number[]]>([[[]], [[0, -1, 1.5]]])(
+		'returns no rows without querying the catalog for an invalid explicit ID filter: %j',
+		async (coffeeIds) => {
+			const listCatalog = vi.fn();
+
+			await expect(
+				_fetchAgentCatalogRowsForSearch(listCatalog, { coffee_ids: coffeeIds })
+			).resolves.toEqual([]);
+			expect(listCatalog).not.toHaveBeenCalled();
+		}
+	);
 
 	it('sizes ID re-fetches to the requested ID count when no limit is supplied', () => {
 		const query = _buildAgentCatalogListQuery({
@@ -217,7 +360,8 @@ describe('chat catalog Parchment query mapping', () => {
 		});
 
 		expect(query).toMatchObject({
-			ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+			coffeeIds: '1,2,3,4,5,6,7,8,9,10,11,12',
+			stocked: 'all',
 			limit: 12
 		});
 	});

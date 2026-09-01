@@ -69,7 +69,7 @@
 			<p class="mt-3 text-muted">
 				{error ??
 					(status === 'conflict'
-						? 'Parchment found a conflicting checkout. Start a new checkout or contact support.'
+						? 'We found a conflicting checkout. Start a new checkout or contact support.'
 						: 'This checkout is closed.')}
 			</p>
 			<button
@@ -92,8 +92,7 @@
 		{:else}
 			<h1 class="text-2xl font-semibold text-ink">Payment is processing</h1>
 			<p class="mt-3 text-muted">
-				Parchment is still settling this checkout. Keep this browser state and try again in a
-				moment.
+				Your checkout is still settling. Keep this browser state and try again in a moment.
 			</p>
 			<div class="mt-6 flex justify-center gap-3">
 				<button onclick={reconcile} class="rounded-lg bg-accent px-4 py-2 font-semibold text-ink"

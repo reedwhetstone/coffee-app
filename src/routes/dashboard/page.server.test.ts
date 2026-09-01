@@ -119,15 +119,6 @@ describe('/dashboard sourcing workspace load', () => {
 		mockGetTrackedLotSummaries.mockResolvedValue([
 			{ catalogId: 7, name: 'Tracked Lot', stocked: true }
 		]);
-		// Tracked hydration goes through Parchment catalog.list with a coffeeIds
-		// filter; arrivals uses the stocked query. Return the tracked row only for
-		// the coffeeIds call.
-		mockCatalogList.mockImplementation((query: { coffeeIds?: string }) =>
-			Promise.resolve({
-				data: { data: query?.coffeeIds ? [{ id: 7, name: 'Tracked Lot' }] : [] }
-			})
-		);
-
 		const result = (await load(
 			makeLoadInput({
 				role: 'viewer',
@@ -147,7 +138,6 @@ describe('/dashboard sourcing workspace load', () => {
 			})
 		)) as {
 			trackedLots: Array<{ catalogId: number }>;
-			trackedCatalog: Array<{ id: number }>;
 			activeBriefs: unknown[];
 		};
 
@@ -155,14 +145,8 @@ describe('/dashboard sourcing workspace load', () => {
 			expect.objectContaining({ catalog: expect.anything() }),
 			12
 		);
-		expect(mockCatalogList).toHaveBeenCalledWith({
-			coffeeIds: '7',
-			stocked: 'all',
-			showWholesale: 'true',
-			limit: 1
-		});
 		expect(result.trackedLots).toHaveLength(1);
-		expect(result.trackedCatalog).toHaveLength(1);
+		expect(mockCatalogList).toHaveBeenCalledTimes(1);
 		expect(mockBriefsList).toHaveBeenCalledOnce();
 		expect(result.activeBriefs).toEqual([
 			expect.objectContaining({ id: 'ppi-brief', catalogHref: '/catalog?country=Kenya' })

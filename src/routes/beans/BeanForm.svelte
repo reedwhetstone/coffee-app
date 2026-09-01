@@ -464,9 +464,9 @@
 
 	function manualBatchMessage(lifecycle: ManualInventoryBatchLifecycle): string {
 		if (lifecycle.status === 'unknown') {
-			return 'Parchment has not resolved this manual batch yet. Its exact reservation was retained for a safe retry.';
+			return 'This manual batch has not resolved yet. Its exact reservation was retained for a safe retry.';
 		}
-		return 'Parchment is still processing this manual batch. Its exact reservation was retained for a safe retry.';
+		return 'This manual batch is still processing. Its exact reservation was retained for a safe retry.';
 	}
 
 	function finishManualBatch(lifecycle: ManualInventoryBatchLifecycle): boolean {
@@ -480,7 +480,7 @@
 		if (lifecycle.status === 'terminal_rejected') {
 			clearPendingManualReservation();
 			alert(
-				`Parchment rejected this manual batch: ${lifecycle.error?.message ?? 'Unknown error'}. Correct the draft and submit it as a new batch.`
+				`This manual batch was rejected: ${lifecycle.error?.message ?? 'Unknown error'}. Correct the draft and submit it as a new batch.`
 			);
 			return false;
 		}
@@ -566,9 +566,9 @@
 
 	function catalogBatchMessage(lifecycle: CatalogInventoryBatchLifecycle): string {
 		if (lifecycle.status === 'unknown') {
-			return 'Parchment has not resolved this batch yet. Its exact reservation was retained for a safe retry.';
+			return 'This batch has not resolved yet. Its exact reservation was retained for a safe retry.';
 		}
-		return 'Parchment is still processing this batch. Its exact reservation was retained for a safe retry.';
+		return 'This batch is still processing. Its exact reservation was retained for a safe retry.';
 	}
 
 	function finishCatalogBatch(lifecycle: CatalogInventoryBatchLifecycle): boolean {
@@ -582,7 +582,7 @@
 		if (lifecycle.status === 'terminal_rejected') {
 			clearPendingCatalogReservation();
 			alert(
-				`Parchment rejected this catalog batch: ${lifecycle.error?.message ?? 'Unknown error'}. Correct the draft and submit it as a new batch.`
+				`This catalog batch was rejected: ${lifecycle.error?.message ?? 'Unknown error'}. Correct the draft and submit it as a new batch.`
 			);
 			return false;
 		}
@@ -811,8 +811,8 @@
 			class="mb-6 rounded-md border border-warning bg-warning-subtle p-3 text-sm text-warning-strong"
 			role="status"
 		>
-			A manual batch is reserved in Parchment. Editing is locked until it is reconciled. Select the
-			button below to check its status before starting a new purchase.
+			A manual batch is reserved. Editing is locked until it is reconciled. Select the button below
+			to check its status before starting a new purchase.
 		</div>
 	{:else if pendingCatalogReservation}
 		<div
@@ -827,8 +827,8 @@
 			class="mb-6 rounded-md border border-warning bg-warning-subtle p-3 text-sm text-warning-strong"
 			role="status"
 		>
-			A catalog batch is reserved in Parchment. Editing is locked until its durable status is
-			reconciled. Select the button below to continue the same batch safely.
+			A catalog batch is reserved. Editing is locked until its durable status is reconciled. Select
+			the button below to continue the same batch safely.
 		</div>
 	{/if}
 
@@ -920,9 +920,9 @@
 					/>
 					<p class="text-xs text-muted">
 						{#if isManualEntry}
-							Parchment will allocate this total across the manual batch in exact cents
+							This total will be allocated across the manual batch in exact cents
 						{:else}
-							Parchment will allocate this total across the catalog batch in exact cents
+							This total will be allocated across the catalog batch in exact cents
 						{/if}
 					</p>
 				</div>
@@ -1065,7 +1065,7 @@
 													Subtotal: ${subtotal.toFixed(2)}
 												</div>
 												<div class="text-xs text-muted">
-													Batch tax and shipping is allocated in exact cents by Parchment.
+													Batch tax and shipping is allocated in exact cents.
 												</div>
 											{:else if minOrder}
 												<div class="mt-2 text-xs text-danger">

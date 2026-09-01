@@ -4,6 +4,7 @@ import type { BlogPost } from '$lib/types/blog.types';
 import {
 	buildMarketBriefDeploymentManifest,
 	buildMarketBriefEmailProjection,
+	buildMarketBriefReaderExport,
 	MARKET_BRIEF_EMAIL_RENDERER_VERSION,
 	RESEND_UNSUBSCRIBE_PLACEHOLDER
 } from './marketBriefEmail';
@@ -166,6 +167,74 @@ describe('Market Brief email projection', () => {
 		expect(() =>
 			buildMarketBriefEmailProjection(marketBrief, `${source}${'x'.repeat(256 * 1024)}`)
 		).toThrow('source exceeds');
+	});
+});
+
+describe('Market Wire reader export', () => {
+	it('keeps a clean Markdown body and stable shareable section identities', () => {
+		const reader = buildMarketBriefReaderExport(
+			marketBrief,
+			source.replace(
+				'![A coffee warehouse](https://images.example.com/warehouse.jpg)',
+				`![A coffee warehouse](https://images.example.com/warehouse.jpg)
+
+## The throughline
+
+A second section with the same title.
+
+## Sources
+
+1. [Example](https://example.com/report?week=1)`
+			)
+		);
+
+		expect(reader.canonicalUrl).toBe('https://www.purveyors.io/blog/market-brief-001');
+		expect(reader.markdown.startsWith('## The throughline')).toBe(true);
+		expect(reader.markdown).not.toContain('title: "Coffee finds a firmer floor"');
+		expect(reader.markdown.endsWith('\n')).toBe(true);
+		expect(reader.sections).toEqual([
+			{ id: 'the-throughline', title: 'The throughline' },
+			{ id: 'the-throughline-1', title: 'The throughline' }
+		]);
+	});
+
+	it('resolves relative Markdown links, images, and definitions for portable readers', () => {
+		const reader = buildMarketBriefReaderExport(
+			marketBrief,
+			source
+				.replace('[Purveyors context](/analytics)', '[Purveyors context](/analytics "Market data")')
+				.replace(
+					'![A coffee warehouse](https://images.example.com/warehouse.jpg)',
+					'![A coffee warehouse](/images/warehouse.jpg)'
+				)
+				.replace(
+					'[external source](https://example.com/report?week=1)',
+					'[external source][report]'
+				)
+				.concat('\n[report]: /research/market-report "Research report"\n')
+		);
+
+		expect(reader.markdown).toContain(
+			'[Purveyors context](<https://www.purveyors.io/analytics> "Market data")'
+		);
+		expect(reader.markdown).toContain(
+			'![A coffee warehouse](<https://www.purveyors.io/images/warehouse.jpg>)'
+		);
+		expect(reader.markdown).toContain(
+			'[report]: <https://www.purveyors.io/research/market-report> "Research report"'
+		);
+		expect(reader.markdown).not.toContain('](/analytics');
+		expect(reader.markdown).not.toContain('](/images/warehouse.jpg)');
+		expect(reader.markdown).not.toContain('[report]: /research/market-report');
+	});
+
+	it('shares the strict Market Brief source boundary with the email projection', () => {
+		expect(() => buildMarketBriefReaderExport(marketBrief, '# Missing frontmatter')).toThrow(
+			'closed YAML frontmatter'
+		);
+		expect(() =>
+			buildMarketBriefReaderExport({ ...marketBrief, format: 'essay', edition: undefined }, source)
+		).toThrow('is not a Market Brief edition');
 	});
 });
 

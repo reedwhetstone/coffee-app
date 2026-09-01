@@ -272,10 +272,9 @@ function roastProjection(roast: RoastResource) {
 /**
  * Build the legacy beans-page projection from owner-scoped Parchment resources.
  *
- * Shared-link reads remain in coffee-app because those links intentionally read
- * another principal's shared rows. Authenticated Portfolio reads use this
- * helper so ownership, catalog visibility, and roast access come from
- * Parchment rather than direct database joins.
+ * Authenticated Portfolio reads use this helper so ownership, catalog
+ * visibility, and roast access come from Parchment rather than direct database
+ * joins. Cross-principal shares use Parchment's separate capability contract.
  */
 export async function fetchParchmentInventoryProjection(
 	client: ParchmentClient,
