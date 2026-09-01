@@ -82,6 +82,21 @@ function trimCoordinate(value: number): string {
 	return Number(value.toFixed(5)).toString();
 }
 
+function normalizeLongitude(longitude: number): number {
+	const wrapped = ((((longitude + 180) % 360) + 360) % 360) - 180;
+	return wrapped === -180 && longitude > 0 ? 180 : wrapped;
+}
+
+/** Normalize map-library bounds into the API's canonical longitude domain. */
+export function normalizeCatalogMapBounds(bounds: CatalogMapBounds): CatalogMapBounds {
+	return {
+		west: normalizeLongitude(bounds.west),
+		south: bounds.south,
+		east: normalizeLongitude(bounds.east),
+		north: bounds.north
+	};
+}
+
 export function formatCatalogMapBounds(bounds: CatalogMapBounds): string {
 	return [bounds.west, bounds.south, bounds.east, bounds.north].map(trimCoordinate).join(',');
 }

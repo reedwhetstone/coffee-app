@@ -221,7 +221,9 @@
 	});
 
 	function updateCatalogMapState(next: CatalogMapUrlState) {
-		const nextUrl = new URL(page.url);
+		// Filter changes use the native History API, which does not refresh SvelteKit's
+		// reactive page.url. Read the browser URL so map updates cannot erase them.
+		const nextUrl = new URL(window.location.href);
 		writeCatalogMapUrlState(nextUrl.searchParams, next);
 		replaceState(nextUrl, page.state);
 	}

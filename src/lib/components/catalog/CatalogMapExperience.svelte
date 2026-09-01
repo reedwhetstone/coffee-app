@@ -77,6 +77,7 @@
 	let selectionError = $state<string | null>(null);
 	let sheetOpen = $state(false);
 	let sheetPointerStart: number | null = null;
+	let suppressSheetClick = false;
 	let elevationMinInput = $state('');
 	let elevationMaxInput = $state('');
 	let elevationInputError = $state<string | null>(null);
@@ -248,12 +249,14 @@
 
 	function beginSheetDrag(event: PointerEvent) {
 		sheetPointerStart = event.clientY;
-		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		suppressSheetClick = false;
+		(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
 	}
 
 	function finishSheetDrag(event: PointerEvent) {
 		if (sheetPointerStart === null) return;
 		const delta = event.clientY - sheetPointerStart;
+		suppressSheetClick = Math.abs(delta) > 36;
 		if (delta < -36) sheetOpen = true;
 		if (delta > 36) sheetOpen = false;
 		sheetPointerStart = null;
@@ -503,6 +506,7 @@
 					lens={currentState.lens}
 					center={currentState.center}
 					zoom={currentState.zoom}
+					{canSearchViewport}
 					onViewportChange={handleViewportChange}
 					onPlaceSelect={(catalogId) => {
 						const place = places.find((item) => item.catalog_id === catalogId);
@@ -562,9 +566,9 @@
 		</div>
 
 		<aside
-			class="absolute inset-x-0 bottom-0 z-20 flex max-h-[72%] flex-col rounded-t-2xl border-t border-line bg-surface-canvas shadow-2xl transition-transform duration-200 lg:static lg:z-auto lg:max-h-none lg:w-[27rem] lg:translate-y-0 lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none {sheetOpen
-				? 'translate-y-0'
-				: 'translate-y-[calc(100%-4.5rem)]'}"
+			class="absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-2xl border-t border-line bg-surface-canvas shadow-2xl transition-[max-height] duration-200 lg:static lg:z-auto lg:max-h-none lg:w-[27rem] lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none {sheetOpen
+				? 'max-h-[72%]'
+				: 'max-h-[4.5rem]'}"
 			aria-label="Catalog results rail"
 		>
 			<button
@@ -573,8 +577,17 @@
 				aria-expanded={sheetOpen}
 				onpointerdown={beginSheetDrag}
 				onpointerup={finishSheetDrag}
-				onpointercancel={() => (sheetPointerStart = null)}
-				onclick={() => (sheetOpen = !sheetOpen)}
+				onpointercancel={() => {
+					sheetPointerStart = null;
+					suppressSheetClick = false;
+				}}
+				onclick={() => {
+					if (suppressSheetClick) {
+						suppressSheetClick = false;
+						return;
+					}
+					sheetOpen = !sheetOpen;
+				}}
 			>
 				<span class="mx-auto mb-2 block h-1 w-10 rounded-full bg-line lg:hidden"></span>
 				<span class="flex items-center justify-between gap-3">
@@ -603,7 +616,7 @@
 			coffee detail; canonical navigation is available only when Parchment grants it.
 		</p>
 		<div class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-			{#each clusters.slice(0, 12) as cluster}
+			{#each clusters as cluster}
 				<button
 					type="button"
 					class="rounded-md border border-line bg-surface-raised p-3 text-left hover:border-accent"
@@ -620,9 +633,9 @@
 								...currentState,
 								center: [cluster.longitude, cluster.latitude],
 								zoom: Math.min(11, currentState.zoom + 2),
-								bbox: bounds
+								bbox: canSearchViewport ? bounds : currentState.bbox
 							},
-							true
+							canSearchViewport
 						);
 					}}
 				>
@@ -634,7 +647,7 @@
 					>
 				</button>
 			{/each}
-			{#each places.slice(0, 18) as place}
+			{#each places as place}
 				<div class="rounded-md border border-line bg-surface-raised p-3">
 					<button type="button" class="w-full text-left" onclick={() => void selectCoffee(place)}>
 						<span class="block text-sm font-semibold text-ink">{place.canonical_name}</span>

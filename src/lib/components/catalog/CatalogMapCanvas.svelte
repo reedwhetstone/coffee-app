@@ -8,7 +8,11 @@
 		type CatalogMapItem,
 		type CatalogMapPointProperties
 	} from '$lib/catalog/mapPresentation';
-	import type { CatalogMapBounds, CatalogMapLens } from '$lib/catalog/mapState';
+	import {
+		normalizeCatalogMapBounds,
+		type CatalogMapBounds,
+		type CatalogMapLens
+	} from '$lib/catalog/mapState';
 
 	export interface CatalogMapViewportChange {
 		center: [number, number];
@@ -23,6 +27,7 @@
 		center: [number, number];
 		zoom: number;
 		styleUrl?: string;
+		canSearchViewport?: boolean;
 		onViewportChange: (viewport: CatalogMapViewportChange) => void;
 		onPlaceSelect: (catalogId: number, placeId: string | null) => void;
 		onMapReady?: () => void;
@@ -35,6 +40,7 @@
 		center,
 		zoom,
 		styleUrl = 'https://tiles.openfreemap.org/styles/positron',
+		canSearchViewport = true,
 		onViewportChange,
 		onPlaceSelect,
 		onMapReady = () => {},
@@ -61,12 +67,12 @@
 		return {
 			center: [currentCenter.lng, currentCenter.lat],
 			zoom: currentMap.getZoom(),
-			bounds: {
+			bounds: normalizeCatalogMapBounds({
 				west: currentBounds.getWest(),
 				south: currentBounds.getSouth(),
 				east: currentBounds.getEast(),
 				north: currentBounds.getNorth()
-			}
+			})
 		};
 	}
 
@@ -86,7 +92,7 @@
 		// MapLibre accepts longitudes beyond 180 when fitting an antimeridian box.
 		// Preserve Parchment's west>east meaning by unwrapping the east edge.
 		const east = properties.west > properties.east ? properties.east + 360 : properties.east;
-		commitNextMove = true;
+		commitNextMove = canSearchViewport;
 		map.fitBounds(
 			[
 				[properties.west, properties.south],

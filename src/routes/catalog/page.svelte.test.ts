@@ -127,6 +127,7 @@ function proof(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
 	vi.clearAllMocks();
 	pageState.url = new URL('https://app.test/catalog');
+	window.history.replaceState({}, '', '/catalog');
 	filterStore.initializeForRoute('__test-reset__', []);
 	vi.stubGlobal(
 		'fetch',
@@ -1033,5 +1034,16 @@ describe('/catalog map preview gate', () => {
 		expect(nextUrl.searchParams.get('view')).toBe('map');
 		expect(nextUrl.searchParams.get('map_center')).toBe('0,18');
 		expect(nextUrl.searchParams.get('map_zoom')).toBe('1.75');
+	});
+
+	it('preserves a filter URL changed through native history before a map update', async () => {
+		window.history.replaceState({}, '', '/catalog?country=Ethiopia');
+		renderCatalog(createData({ catalogMapEnabled: true } as unknown as Partial<PageData>));
+
+		await fireEvent.click(screen.getByRole('tab', { name: 'Map' }));
+
+		const [nextUrl] = replaceState.mock.calls[0] as [URL, unknown];
+		expect(nextUrl.searchParams.get('country')).toBe('Ethiopia');
+		expect(nextUrl.searchParams.get('view')).toBe('map');
 	});
 });

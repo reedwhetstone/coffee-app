@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	buildCatalogMapRequestParams,
 	formatCatalogMapBounds,
+	normalizeCatalogMapBounds,
 	parseCatalogMapUrlState,
 	preserveCatalogExperienceParams,
 	writeCatalogMapUrlState,
@@ -64,6 +65,15 @@ describe('catalog map URL state', () => {
 		expect(
 			formatCatalogMapBounds({ west: 170.1234567, south: -20, east: -170.7654321, north: 5 })
 		).toBe('170.12346,-20,-170.76543,5');
+	});
+
+	it('normalizes fitted longitudes while preserving antimeridian crossing', () => {
+		expect(normalizeCatalogMapBounds({ west: 170, south: -20, east: 190, north: 5 })).toEqual({
+			west: 170,
+			south: -20,
+			east: -170,
+			north: 5
+		});
 	});
 });
 

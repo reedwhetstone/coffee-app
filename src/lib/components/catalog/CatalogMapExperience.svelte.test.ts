@@ -181,4 +181,89 @@ describe('CatalogMapExperience', () => {
 		await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
 		expect(fetchSpy.mock.calls[1][0].toString()).toContain('bbox=-20%2C-10%2C40%2C50');
 	});
+
+	it('does not toggle the mobile sheet again after a drag settles it', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(
+				async () =>
+					new Response(JSON.stringify(mapResponse()), {
+						status: 200,
+						headers: { 'Content-Type': 'application/json' }
+					})
+			)
+		);
+		renderExperience(true);
+
+		await screen.findByText('9');
+		const sheetToggle = screen.getByRole('button', { name: /Catalog results/ });
+		await fireEvent.pointerDown(sheetToggle, { clientY: 200, pointerId: 1 });
+		await fireEvent.pointerUp(sheetToggle, { clientY: 100, pointerId: 1 });
+		await fireEvent.click(sheetToggle);
+
+		expect(sheetToggle).toHaveAttribute('aria-expanded', 'true');
+	});
+
+	it('keeps every returned feature keyboard-reachable in the accessible list', async () => {
+		const clusters = Array.from({ length: 13 }, (_, index) => ({
+			type: 'cluster',
+			id: `cluster-${index}`,
+			longitude: index,
+			latitude: index,
+			bounds: { west: index, south: index, east: index + 1, north: index + 1 },
+			placement_count: index + 1,
+			unique_coffee_count: index + 1
+		}));
+		const fetchSpy = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify(mapResponse({ data: clusters as CatalogMapResponse['data'] })),
+					{
+						status: 200,
+						headers: { 'Content-Type': 'application/json' }
+					}
+				)
+		);
+		vi.stubGlobal('fetch', fetchSpy);
+		renderExperience(false);
+
+		await waitFor(() => {
+			const buttons = screen.getAllByRole('button', { name: /placements.*zoom to cluster/ });
+			expect(buttons).toHaveLength(13);
+		});
+	});
+
+	it('does not commit an accessible cluster bbox without viewport access', async () => {
+		const cluster = {
+			type: 'cluster',
+			id: 'cluster-1',
+			longitude: 10,
+			latitude: 20,
+			bounds: { west: 5, south: 15, east: 15, north: 25 },
+			placement_count: 4,
+			unique_coffee_count: 3
+		};
+		const fetchSpy = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify(mapResponse({ data: [cluster] as CatalogMapResponse['data'] })),
+					{
+						status: 200,
+						headers: { 'Content-Type': 'application/json' }
+					}
+				)
+		);
+		vi.stubGlobal('fetch', fetchSpy);
+		const { onStateChange } = renderExperience(false);
+
+		const clusterButton = await screen.findByRole('button', {
+			name: /4 placements.*zoom to cluster/
+		});
+		await fireEvent.click(clusterButton);
+
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		expect(onStateChange).toHaveBeenLastCalledWith(
+			expect.objectContaining({ center: [10, 20], bbox: null })
+		);
+	});
 });
