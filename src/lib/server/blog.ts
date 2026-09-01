@@ -25,42 +25,43 @@ function validateMarketBriefPresentation(slug: string, metadata: BlogPostFrontma
 	const snapshot = metadata.marketSnapshot;
 	const highlights = metadata.coffeeHighlights;
 
-	if ((snapshot === undefined) !== (highlights === undefined)) {
-		throw new Error(
-			`Market Brief ${slug} must declare marketSnapshot and coffeeHighlights together`
-		);
+	if (snapshot !== undefined && highlights === undefined) {
+		throw new Error(`Market Brief ${slug} cannot declare marketSnapshot without coffeeHighlights`);
 	}
-	if (!snapshot || !highlights) return;
+	if (!highlights) return;
 
-	if (!isValidIsoDate(snapshot.asOf)) {
-		throw new Error(`Market Brief ${slug} marketSnapshot requires an ISO asOf date`);
-	}
-	for (const [label, value] of Object.entries({
-		listings: snapshot.listings,
-		matchedListings: snapshot.matchedListings,
-		suppliers: snapshot.suppliers,
-		totalSignals: snapshot.totalSignals,
-		belowBenchmark: snapshot.belowBenchmark,
-		scoreOutliers: snapshot.scoreOutliers,
-		priceDrops: snapshot.priceDrops
-	})) {
-		if (!Number.isInteger(value) || value < 0) {
-			throw new Error(`Market Brief ${slug} marketSnapshot ${label} must be non-negative`);
+	if (snapshot) {
+		if (!isValidIsoDate(snapshot.asOf)) {
+			throw new Error(`Market Brief ${slug} marketSnapshot requires an ISO asOf date`);
 		}
-	}
-	if (
-		!HTTPS_URL_PATTERN.test(snapshot.priceStatsUrl) ||
-		!HTTPS_URL_PATTERN.test(snapshot.signalsUrl)
-	) {
-		throw new Error(`Market Brief ${slug} marketSnapshot source URLs must use HTTPS`);
-	}
-	if (
-		!snapshot.scope.trim() ||
-		!snapshot.movementLabel.trim() ||
-		snapshot.matchedListings > snapshot.listings ||
-		snapshot.belowBenchmark + snapshot.scoreOutliers + snapshot.priceDrops !== snapshot.totalSignals
-	) {
-		throw new Error(`Market Brief ${slug} marketSnapshot is internally inconsistent`);
+		for (const [label, value] of Object.entries({
+			listings: snapshot.listings,
+			matchedListings: snapshot.matchedListings,
+			suppliers: snapshot.suppliers,
+			totalSignals: snapshot.totalSignals,
+			belowBenchmark: snapshot.belowBenchmark,
+			scoreOutliers: snapshot.scoreOutliers,
+			priceDrops: snapshot.priceDrops
+		})) {
+			if (!Number.isInteger(value) || value < 0) {
+				throw new Error(`Market Brief ${slug} marketSnapshot ${label} must be non-negative`);
+			}
+		}
+		if (
+			!HTTPS_URL_PATTERN.test(snapshot.priceStatsUrl) ||
+			!HTTPS_URL_PATTERN.test(snapshot.signalsUrl)
+		) {
+			throw new Error(`Market Brief ${slug} marketSnapshot source URLs must use HTTPS`);
+		}
+		if (
+			!snapshot.scope.trim() ||
+			!snapshot.movementLabel.trim() ||
+			snapshot.matchedListings > snapshot.listings ||
+			snapshot.belowBenchmark + snapshot.scoreOutliers + snapshot.priceDrops !==
+				snapshot.totalSignals
+		) {
+			throw new Error(`Market Brief ${slug} marketSnapshot is internally inconsistent`);
+		}
 	}
 	if (highlights.length < 1 || highlights.length > 3) {
 		throw new Error(`Market Brief ${slug} requires one to three coffeeHighlights`);
@@ -70,7 +71,7 @@ function validateMarketBriefPresentation(slug: string, metadata: BlogPostFrontma
 			!Number.isInteger(coffee.catalogId) ||
 			coffee.catalogId <= 0 ||
 			coffee.pricePerLb <= 0 ||
-			!isValidIsoDate(coffee.stockedDate) ||
+			(coffee.stockedDate !== undefined && !isValidIsoDate(coffee.stockedDate)) ||
 			!coffee.rationale.trim()
 		) {
 			throw new Error(`Market Brief ${slug} has an invalid coffeeHighlight`);

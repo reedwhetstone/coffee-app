@@ -203,13 +203,23 @@ describe('Market Brief publication metadata', () => {
 		expect(post.coffeeHighlights).toHaveLength(1);
 	});
 
+	it('keeps catalog highlights renderable when stale market evidence is deliberately omitted', () => {
+		const post = normalizeBlogPost('market-brief-001', {
+			...MARKET_BRIEF_FRONTMATTER,
+			coffeeHighlights: MARKET_BRIEF_PRESENTATION.coffeeHighlights
+		});
+
+		expect(post.marketSnapshot).toBeUndefined();
+		expect(post.coffeeHighlights).toHaveLength(1);
+	});
+
 	it('rejects incomplete or inconsistent Market Brief presentation evidence', () => {
 		expect(() =>
 			normalizeBlogPost('market-brief-001', {
 				...MARKET_BRIEF_FRONTMATTER,
 				marketSnapshot: MARKET_BRIEF_PRESENTATION.marketSnapshot
 			})
-		).toThrow('must declare marketSnapshot and coffeeHighlights together');
+		).toThrow('cannot declare marketSnapshot without coffeeHighlights');
 
 		expect(() =>
 			normalizeBlogPost('market-brief-001', {

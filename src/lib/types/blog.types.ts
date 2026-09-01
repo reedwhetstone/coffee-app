@@ -32,8 +32,8 @@ export interface MarketBriefCoffeeHighlight {
 	variety?: string;
 	pricePerLb: number;
 	priceContext?: string;
-	stockedDate: string;
-	tastingNotes: TastingNotes;
+	stockedDate?: string;
+	tastingNotes?: TastingNotes;
 	rationale: string;
 }
 

@@ -129,7 +129,7 @@
 	</header>
 
 	<!-- Post content -->
-	{#if data.marketBriefReader && data.metadata.marketSnapshot && data.metadata.coffeeHighlights}
+	{#if data.marketBriefReader && data.metadata.coffeeHighlights}
 		<MarketBriefArticle
 			title={data.metadata.title}
 			reader={data.marketBriefReader}

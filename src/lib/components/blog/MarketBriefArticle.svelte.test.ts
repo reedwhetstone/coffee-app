@@ -127,4 +127,26 @@ describe('Market Brief article presentation', () => {
 			expect.stringContaining('supply-tightens')
 		);
 	});
+
+	it('keeps coffee cards visual when aggregate or tasting evidence is unavailable', () => {
+		const sparseCoffee = {
+			...coffeeHighlights[0]!,
+			stockedDate: undefined,
+			tastingNotes: undefined
+		};
+		render(MarketBriefArticle, {
+			title: 'Coffee finds a floor',
+			reader: {
+				...reader,
+				sections: reader.sections.filter((section) => section.kind !== 'market-read')
+			},
+			coffeeHighlights: [sparseCoffee]
+		});
+
+		expect(screen.queryByRole('heading', { name: 'This week in numbers' })).not.toBeInTheDocument();
+		expect(screen.getByText('Current listing')).toBeInTheDocument();
+		expect(
+			screen.getByText('Structured tasting notes are not yet published for this listing.')
+		).toBeInTheDocument();
+	});
 });
