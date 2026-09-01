@@ -130,6 +130,7 @@ Treat the web app and the external Parchment API as two separate HTTP surfaces:
 
    - `GET https://api.purveyors.io/` advertises the service, docs, health, and OpenAPI resources; `GET /v1` is not a route
    - `GET https://api.purveyors.io/v1/catalog` is the stable public catalog contract
+   - `GET https://api.purveyors.io/v1/catalog/map` is the authorized lightweight map projection over the same catalog visibility and filter scope. It keeps unique-coffee totals separate from placements and viewport counts, and gates canonical place navigation, bounding boxes, and elevation profiles to member or paid access
    - `GET https://api.purveyors.io/v1/catalog/{id}/similar` is a beta catalog matching contract for member sessions or API keys with API Origin or Enterprise plus `catalog:read`
    - `GET https://api.purveyors.io/v1/price-index` is an aggregate `price_index_snapshots` contract for entitled first-party sessions and customer API keys with Parchment Intelligence access
    - Parchment catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages use a server-held demo key through the BFF; deliberately designated Market Index teaser slices remain anonymous upstream
@@ -199,6 +200,7 @@ When changing docs, keep these sources aligned:
 - Use `notes/ARCHITECTURE.md` as the current implementation-state map. Product direction lives in `notes/PRODUCT_VISION.md`, decisions in `notes/decisions/`, and priority in `notes/DEVLOG.md`.
 - Do not claim an endpoint is public unless it truly is
 - Do not describe the platform `/api/catalog` tree as the canonical catalog contract; that is `https://api.purveyors.io/v1/catalog`
+- Document `https://api.purveyors.io/v1/catalog/map` as a Parchment route, not a shipped coffee-app BFF. Preserve the legacy `grade` text-filter boundary, numeric MASL overlap semantics, canonical `place_id` identity, non-additive placement counts, explicit unplaced remainder, safe provenance, and principal-specific cache policy. Do not advertise a coffee-app `/api/catalog/map`, CLI map command, or Cherry map tool until its owning slice ships.
 - Document `https://api.purveyors.io/v1/catalog/{id}/similar` as beta candidate matching, not canonical identity resolution. Preserve auth requirements, query bounds, 401/403/404/429 behavior, and cautious confidence copy.
 - Do not flatten CLI auth into one rule: catalog search, get, and stats require a Parchment API key with `catalog:read`; structured process filters require member access, and catalog similar additionally requires a member-owned key or an API Origin/Enterprise key; inventory, roast, sales, and tasting require the member role and matching scopes; config, context, and manifest are local or onboarding surfaces that do not require auth; `purvey manifest` is the preferred machine-readable contract; `purvey context --json` and `--pretty` are compatibility-parity aliases for callers already using the context entrypoint; and `--csv` is invalid for context or manifest
 - Do not invent filter/query behavior that the route does not implement
