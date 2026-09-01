@@ -111,11 +111,16 @@ describe('CatalogMapExperience', () => {
 
 		await waitFor(() => expect(screen.getByText('9')).toBeInTheDocument());
 		expect(
-			screen.getByText('Map counts are placements. Multi-origin coffees can appear more than once.')
+			screen.getByText(
+				'Browse coffees by origin. Coffees with more than one origin may appear in multiple places.'
+			)
 		).toBeInTheDocument();
 		expect(screen.getByText('2')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Elevation' })).toBeDisabled();
 		expect(screen.getByText('Existing catalog results remain available')).toBeInTheDocument();
+		expect(document.body).not.toHaveTextContent(
+			/\b(placements|canonical|entitled|viewport|evidence)\b/i
+		);
 		expect(fetchSpy).toHaveBeenCalledTimes(1);
 		expect(fetchSpy.mock.calls[0][0].toString()).toContain('/api/catalog/map?');
 		expect(fetchSpy.mock.calls[0][0].toString()).toContain('lens=catalog');
@@ -153,8 +158,13 @@ describe('CatalogMapExperience', () => {
 		);
 		renderExperience(true);
 
-		await waitFor(() => expect(screen.getByText('Map data unavailable.')).toBeInTheDocument());
-		expect(screen.getByRole('alert')).toHaveTextContent('Projection unavailable');
+		await waitFor(() =>
+			expect(screen.getByText("We couldn't refresh the map.")).toBeInTheDocument()
+		);
+		expect(screen.getByRole('alert')).not.toHaveTextContent('Projection unavailable');
+		expect(screen.getByRole('alert')).toHaveTextContent(
+			'Your catalog results are still available.'
+		);
 		expect(screen.getByText('Existing catalog results remain available')).toBeInTheDocument();
 	});
 
@@ -228,7 +238,7 @@ describe('CatalogMapExperience', () => {
 		renderExperience(false);
 
 		await waitFor(() => {
-			const buttons = screen.getAllByRole('button', { name: /placements.*zoom to cluster/ });
+			const buttons = screen.getAllByRole('button', { name: /coffee.*zoom in to explore/i });
 			expect(buttons).toHaveLength(13);
 		});
 	});
@@ -257,7 +267,7 @@ describe('CatalogMapExperience', () => {
 		const { onStateChange } = renderExperience(false);
 
 		const clusterButton = await screen.findByRole('button', {
-			name: /4 placements.*zoom to cluster/
+			name: /3 coffees.*zoom in to explore/i
 		});
 		await fireEvent.click(clusterButton);
 

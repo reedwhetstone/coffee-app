@@ -1036,6 +1036,23 @@ describe('/catalog map preview gate', () => {
 		expect(nextUrl.searchParams.get('map_zoom')).toBe('1.75');
 	});
 
+	it('switches between map and list immediately while preserving URL state', async () => {
+		renderCatalog(createData({ catalogMapEnabled: true } as unknown as Partial<PageData>));
+
+		const mapTab = screen.getByRole('tab', { name: 'Map' });
+		const listTab = screen.getByRole('tab', { name: 'List' });
+		await fireEvent.click(mapTab);
+
+		expect(mapTab).toHaveAttribute('aria-selected', 'true');
+		expect(screen.getByLabelText('Coffee origin map')).toBeInTheDocument();
+
+		await fireEvent.click(listTab);
+
+		expect(listTab).toHaveAttribute('aria-selected', 'true');
+		expect(screen.queryByLabelText('Coffee origin map')).not.toBeInTheDocument();
+		expect(replaceState).toHaveBeenCalledTimes(2);
+	});
+
 	it('preserves a filter URL changed through native history before a map update', async () => {
 		window.history.replaceState({}, '', '/catalog?country=Ethiopia');
 		renderCatalog(createData({ catalogMapEnabled: true } as unknown as Partial<PageData>));

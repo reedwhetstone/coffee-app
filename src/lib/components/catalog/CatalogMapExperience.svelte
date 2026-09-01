@@ -15,7 +15,6 @@
 		formatElevationRange,
 		formatElevationValue,
 		formatGeographicPrecision,
-		formatSafeProvenance,
 		isCatalogMapCluster,
 		isCatalogMapPlace,
 		type CatalogMapItem,
@@ -222,8 +221,12 @@
 	async function selectCoffee(place: CatalogMapPlace) {
 		selectionError = null;
 		if (!(await onSelectCoffee(place.catalog_id))) {
-			selectionError = 'This coffee could not be opened with your current catalog access.';
+			selectionError = "We couldn't open that coffee. Try finding it in the list.";
 		}
+	}
+
+	function coffeeCountLabel(count: number): string {
+		return `${count} coffee${count === 1 ? '' : 's'}`;
 	}
 
 	function applyElevationRange() {
@@ -279,16 +282,16 @@
 	}
 </script>
 
-<section class="space-y-3" aria-label="Catalog map explorer">
+<section class="space-y-3" aria-label="Coffee origin map">
 	<div
 		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-surface-panel px-4 py-3"
 	>
 		<div>
 			<p class="text-xs font-semibold uppercase tracking-[0.16em] text-organic-rust">
-				Origin explorer
+				Explore coffee origins
 			</p>
 			<p class="mt-1 text-sm text-muted">
-				Map counts are placements. Multi-origin coffees can appear more than once.
+				Browse coffees by origin. Coffees with more than one origin may appear in multiple places.
 			</p>
 		</div>
 		<div class="flex flex-wrap items-center gap-2" aria-label="Map lens controls">
@@ -340,8 +343,8 @@
 
 	{#if !canUseElevation}
 		<p id="elevation-access-note" class="text-xs text-muted">
-			Elevation profiles and numeric range search are available with Parchment Intelligence.
-			<a class="font-medium text-link underline" href="/subscription">Compare access</a>.
+			Unlock elevation profiles and elevation range filters with Parchment Intelligence.
+			<a class="font-medium text-link underline" href="/subscription">Compare plans</a>.
 		</p>
 	{/if}
 
@@ -357,21 +360,21 @@
 
 	<div class="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Map coverage summary">
 		<div class="rounded-lg border border-line bg-surface-raised p-3">
-			<p class="text-xs text-muted">Unique coffees</p>
+			<p class="text-xs text-muted">Catalog coffees</p>
 			<p class="mt-1 text-lg font-semibold text-ink">{totals?.unique_coffee_count ?? '—'}</p>
 		</div>
 		<div class="rounded-lg border border-line bg-surface-raised p-3">
-			<p class="text-xs text-muted">Placed coffees</p>
+			<p class="text-xs text-muted">Coffees on map</p>
 			<p class="mt-1 text-lg font-semibold text-ink">{totals?.placed_unique_coffee_count ?? '—'}</p>
 		</div>
 		<div class="rounded-lg border border-line bg-surface-raised p-3">
-			<p class="text-xs text-muted">Unplaced remainder</p>
+			<p class="text-xs text-muted">Origin not mapped</p>
 			<p class="mt-1 text-lg font-semibold text-ink">
 				{totals?.unplaced_unique_coffee_count ?? '—'}
 			</p>
 		</div>
 		<div class="rounded-lg border border-line bg-surface-raised p-3">
-			<p class="text-xs text-muted">Viewport placements</p>
+			<p class="text-xs text-muted">Map points in view</p>
 			<p class="mt-1 text-lg font-semibold text-ink">{totals?.viewport_placement_count ?? '—'}</p>
 		</div>
 	</div>
@@ -385,8 +388,9 @@
 					<h2 class="text-sm font-semibold text-ink">Elevation profile</h2>
 					{#if profile}
 						<p class="text-xs text-muted">
-							{profile.evidence_count} with evidence · {profile.unknown_count} unknown · {profile.partial_bound_count}
-							partial
+							{profile.evidence_count} with reported elevation · {profile.unknown_count} unavailable
+							· {profile.partial_bound_count}
+							with a partial range
 						</p>
 					{/if}
 				</div>
@@ -398,7 +402,7 @@
 							></span
 						>
 						<span class="text-muted"
-							>Known range <strong class="text-ink"
+							>Reported range <strong class="text-ink"
 								>{formatElevationRange(
 									profile.min_known_masl,
 									profile.max_known_masl,
@@ -407,7 +411,7 @@
 							></span
 						>
 						<span class="text-muted"
-							>Scalar sample <strong class="text-ink">{profile.statistic_sample_count}</strong
+							>Complete ranges <strong class="text-ink">{profile.statistic_sample_count}</strong
 							></span
 						>
 					</div>
@@ -423,12 +427,13 @@
 						{/each}
 						<li class="flex items-center gap-2 text-xs text-muted">
 							<span class="h-3 w-3 shrink-0 rounded-full bg-muted"></span>
-							<span>Partial or unknown ({profile.partial_bound_count + profile.unknown_count})</span
+							<span
+								>Elevation unavailable ({profile.partial_bound_count + profile.unknown_count})</span
 							>
 						</li>
 					</ul>
 				{:else if mapLoading}
-					<p class="mt-2 text-sm text-muted">Loading the interval-aware profile…</p>
+					<p class="mt-2 text-sm text-muted">Loading elevation profile…</p>
 				{:else}
 					<p class="mt-2 text-sm text-muted">No elevation profile is available for this scope.</p>
 				{/if}
@@ -492,8 +497,10 @@
 					<div
 						class="max-w-md rounded-lg border border-warning/30 bg-warning-subtle p-5 text-center"
 					>
-						<h2 class="font-semibold text-warning-strong">Map rendering is unavailable</h2>
-						<p class="mt-2 text-sm text-warning-strong">{rendererError}</p>
+						<h2 class="font-semibold text-warning-strong">Map temporarily unavailable</h2>
+						<p class="mt-2 text-sm text-warning-strong">
+							We couldn't load the map. You can continue browsing the catalog list.
+						</p>
 						<button
 							class="mt-4 rounded-md bg-ink px-4 py-2 text-sm font-medium text-surface-canvas"
 							onclick={onSwitchToList}>Use catalog list</button
@@ -524,7 +531,7 @@
 						class="rounded-md bg-ink px-3 py-2 text-xs font-semibold text-surface-canvas shadow disabled:cursor-not-allowed disabled:opacity-50"
 						onclick={searchPendingViewport}
 					>
-						{canSearchViewport ? 'Search this area' : 'Viewport search requires Intelligence'}
+						{canSearchViewport ? 'Search this area' : 'Upgrade to search this area'}
 					</button>
 				{/if}
 				{#if currentState.bbox}
@@ -538,7 +545,7 @@
 					<button
 						type="button"
 						class="rounded-md bg-surface-raised px-3 py-2 text-xs font-semibold text-ink shadow ring-1 ring-line"
-						onclick={clearPlaceNavigation}>Back to all places</button
+						onclick={clearPlaceNavigation}>Back to all origins</button
 					>
 				{/if}
 			</div>
@@ -550,7 +557,7 @@
 				>
 					<span
 						class="rounded-full bg-surface-raised/95 px-3 py-1.5 text-xs font-medium text-muted shadow"
-						>Updating map data…</span
+						>Updating map…</span
 					>
 				</div>
 			{/if}
@@ -559,8 +566,8 @@
 					class="absolute inset-x-3 top-16 z-10 rounded-lg border border-danger/30 bg-danger-subtle p-3 text-sm text-danger-strong"
 					role="alert"
 				>
-					<strong>Map data unavailable.</strong>
-					{mapRequestError} The catalog list remains usable.
+					<strong>We couldn't refresh the map.</strong>
+					Your catalog results are still available.
 				</div>
 			{/if}
 		</div>
@@ -593,7 +600,7 @@
 				<span class="flex items-center justify-between gap-3">
 					<span
 						><strong class="text-sm text-ink">Catalog results</strong><span
-							class="ml-2 text-xs text-muted">{totals?.unique_coffee_count ?? '—'} unique</span
+							class="ml-2 text-xs text-muted">{totals?.unique_coffee_count ?? '—'} coffees</span
 						></span
 					>
 					<span class="text-xs font-medium text-link lg:hidden"
@@ -609,11 +616,10 @@
 
 	<details class="rounded-lg border border-line bg-surface-panel px-4 py-3">
 		<summary class="cursor-pointer text-sm font-semibold text-ink"
-			>Accessible map features ({items.length})</summary
+			>Browse map locations ({items.length})</summary
 		>
 		<p class="mt-2 text-xs text-muted">
-			Clusters report placements and unique coffees separately. Place buttons open the entitled
-			coffee detail; canonical navigation is available only when Parchment grants it.
+			Zoom into grouped locations or choose an origin to open its coffee details.
 		</p>
 		<div class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
 			{#each clusters as cluster}
@@ -640,11 +646,9 @@
 					}}
 				>
 					<span class="block text-sm font-semibold text-ink"
-						>{cluster.placement_count} placements</span
+						>{coffeeCountLabel(cluster.unique_coffee_count)}</span
 					>
-					<span class="mt-1 block text-xs text-muted"
-						>{cluster.unique_coffee_count} unique coffees · zoom to cluster</span
-					>
+					<span class="mt-1 block text-xs text-muted">Zoom in to explore this area</span>
 				</button>
 			{/each}
 			{#each places as place}
@@ -652,19 +656,19 @@
 					<button type="button" class="w-full text-left" onclick={() => void selectCoffee(place)}>
 						<span class="block text-sm font-semibold text-ink">{place.canonical_name}</span>
 						<span class="mt-1 block text-xs text-muted">{formatGeographicPrecision(place)}</span>
-						<span class="mt-1 block text-xs text-muted"
-							>{formatElevationRange(
+						<span class="mt-1 block text-xs text-muted">
+							{formatElevationRange(
 								place.elevation_min_masl,
 								place.elevation_max_masl,
 								currentState.units
-							)} · {formatSafeProvenance(place)}</span
-						>
+							)}
+						</span>
 					</button>
 					{#if place.place_id && canExplorePlaces}
 						<button
 							type="button"
 							class="mt-2 text-xs font-semibold text-link underline"
-							onclick={() => explorePlace(place)}>Explore this canonical place</button
+							onclick={() => explorePlace(place)}>Explore this origin</button
 						>
 					{/if}
 				</div>
@@ -674,7 +678,6 @@
 	</details>
 
 	<p class="text-xs text-muted">
-		Unplaced coffees remain in the catalog rail and list. Viewport counts apply only to mappable
-		placements and do not replace the global unique total.
+		Coffees without a mapped origin still appear in the results list.
 	</p>
 </section>

@@ -141,7 +141,7 @@
 							'circle-radius': [
 								'interpolate',
 								['linear'],
-								['get', 'placementCount'],
+								['get', 'uniqueCoffeeCount'],
 								1,
 								18,
 								25,
@@ -160,7 +160,7 @@
 						source: 'catalog-map',
 						filter: ['==', ['get', 'type'], 'cluster'],
 						layout: {
-							'text-field': ['to-string', ['get', 'placementCount']],
+							'text-field': ['to-string', ['get', 'uniqueCoffeeCount']],
 							'text-size': 12,
 							'text-font': ['Noto Sans Regular']
 						},

@@ -40,7 +40,7 @@ const cluster: CatalogMapCluster = {
 
 describe('catalog map presentation semantics', () => {
 	it('keeps broad centroids explicitly distinct from exact farms', () => {
-		expect(formatGeographicPrecision(place)).toBe('Region centroid, not an exact farm');
+		expect(formatGeographicPrecision(place)).toBe('Region-level area');
 	});
 
 	it('uses complete interval midpoints for bands and leaves partial bounds neutral', () => {
@@ -62,12 +62,12 @@ describe('catalog map presentation semantics', () => {
 			type: 'cluster',
 			placementCount: 5,
 			uniqueCoffeeCount: 4,
-			label: '5 placements'
+			label: '4 coffees'
 		});
 		expect(geojson.features[1].properties).toMatchObject({
 			type: 'place',
 			catalogId: 1,
-			precisionLabel: 'Region centroid, not an exact farm',
+			precisionLabel: 'Region-level area',
 			elevationBand: '1400_to_1799'
 		});
 	});

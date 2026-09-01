@@ -37,7 +37,7 @@ export const ELEVATION_BANDS = [
 	{ key: '1400_to_1799', label: '1,400–1,799 MASL', color: '#C05B2E' },
 	{ key: '1800_to_2199', label: '1,800–2,199 MASL', color: '#9C4356' },
 	{ key: '2200_and_above', label: '2,200+ MASL', color: '#6D5BD0' },
-	{ key: 'partial_or_unknown', label: 'Partial or unknown elevation', color: '#695C4D' }
+	{ key: 'partial_or_unknown', label: 'Elevation unavailable', color: '#695C4D' }
 ] as const;
 
 const CATALOG_POINT_COLOR = '#C05B2E';
@@ -67,17 +67,12 @@ export function elevationBandForPlace(place: CatalogMapPlace): (typeof ELEVATION
 
 export function formatGeographicPrecision(place: CatalogMapPlace): string {
 	if (place.coordinate_kind === 'exact_point' && place.geographic_precision === 'exact_site') {
-		return 'Evidence-backed exact site';
+		return 'Exact site location';
 	}
 	const label = place.geographic_precision.replaceAll('_', ' ');
 	return place.coordinate_kind === 'centroid'
-		? `${label[0].toUpperCase()}${label.slice(1)} centroid, not an exact farm`
-		: `${label[0].toUpperCase()}${label.slice(1)} location`;
-}
-
-export function formatSafeProvenance(place: CatalogMapPlace): string {
-	const source = place.assignment_provenance.replaceAll('_', ' ');
-	return `${source[0].toUpperCase()}${source.slice(1)} assignment`;
+		? `${label[0].toUpperCase()}${label.slice(1)}-level area`
+		: `${label[0].toUpperCase()}${label.slice(1)}-level location`;
 }
 
 export function maslToFeet(masl: number): number {
@@ -125,7 +120,7 @@ export function toCatalogMapGeoJson(
 					properties: {
 						type: 'cluster' as const,
 						id: item.id,
-						label: `${item.placement_count} placements`,
+						label: `${item.unique_coffee_count} coffee${item.unique_coffee_count === 1 ? '' : 's'}`,
 						placementCount: item.placement_count,
 						uniqueCoffeeCount: item.unique_coffee_count,
 						catalogId: null,

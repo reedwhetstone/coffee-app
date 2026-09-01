@@ -197,7 +197,14 @@
 	let isRefetching = $derived($filterStore.isRefetching);
 
 	let activePagination = $derived(hydratedCatalogState ? $filterStore.pagination : data.pagination);
-	let catalogMapState = $derived(parseCatalogMapUrlState(page.url.searchParams));
+	let catalogMapState = $state(parseCatalogMapUrlState(page.url.searchParams));
+
+	// Keep back/forward and external URL navigation authoritative, while allowing
+	// view controls to update the rendered surface immediately. Shallow history
+	// updates are not guaranteed to replace page.url before the next paint.
+	$effect(() => {
+		catalogMapState = parseCatalogMapUrlState(page.url.searchParams);
+	});
 	let catalogMapActive = $derived(
 		data.catalogMapEnabled === true && !trackedOnlyView && catalogMapState.view === 'map'
 	);
@@ -221,6 +228,7 @@
 	});
 
 	function updateCatalogMapState(next: CatalogMapUrlState) {
+		catalogMapState = next;
 		// Filter changes use the native History API, which does not refresh SvelteKit's
 		// reactive page.url. Read the browser URL so map updates cannot erase them.
 		const nextUrl = new URL(window.location.href);
