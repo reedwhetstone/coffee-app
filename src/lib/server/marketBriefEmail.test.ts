@@ -198,6 +198,36 @@ A second section with the same title.
 		]);
 	});
 
+	it('resolves relative Markdown links, images, and definitions for portable readers', () => {
+		const reader = buildMarketBriefReaderExport(
+			marketBrief,
+			source
+				.replace('[Purveyors context](/analytics)', '[Purveyors context](/analytics "Market data")')
+				.replace(
+					'![A coffee warehouse](https://images.example.com/warehouse.jpg)',
+					'![A coffee warehouse](/images/warehouse.jpg)'
+				)
+				.replace(
+					'[external source](https://example.com/report?week=1)',
+					'[external source][report]'
+				)
+				.concat('\n[report]: /research/market-report "Research report"\n')
+		);
+
+		expect(reader.markdown).toContain(
+			'[Purveyors context](<https://www.purveyors.io/analytics> "Market data")'
+		);
+		expect(reader.markdown).toContain(
+			'![A coffee warehouse](<https://www.purveyors.io/images/warehouse.jpg>)'
+		);
+		expect(reader.markdown).toContain(
+			'[report]: <https://www.purveyors.io/research/market-report> "Research report"'
+		);
+		expect(reader.markdown).not.toContain('](/analytics');
+		expect(reader.markdown).not.toContain('](/images/warehouse.jpg)');
+		expect(reader.markdown).not.toContain('[report]: /research/market-report');
+	});
+
 	it('shares the strict Market Brief source boundary with the email projection', () => {
 		expect(() => buildMarketBriefReaderExport(marketBrief, '# Missing frontmatter')).toThrow(
 			'closed YAML frontmatter'
