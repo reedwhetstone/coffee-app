@@ -8,7 +8,7 @@ const { buildReaderMock, getAllPostsMock, getSourceMock } = vi.hoisted(() => ({
 }));
 
 vi.mock('$lib/server/blog', () => ({ getAllPosts: getAllPostsMock }));
-vi.mock('$lib/server/marketBriefEmail', () => ({
+vi.mock('$lib/server/marketBriefReader', () => ({
 	buildMarketBriefReaderExport: buildReaderMock,
 	getRawMarketBriefSource: getSourceMock
 }));

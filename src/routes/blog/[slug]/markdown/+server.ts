@@ -4,7 +4,7 @@ import { getAllPosts } from '$lib/server/blog';
 import {
 	buildMarketBriefReaderExport,
 	getRawMarketBriefSource
-} from '$lib/server/marketBriefEmail';
+} from '$lib/server/marketBriefReader';
 
 export const GET: RequestHandler = async ({ params }) => {
 	const post = (await getAllPosts()).find((candidate) => candidate.slug === params.slug);

@@ -22,18 +22,18 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	let marketBriefDeployment: MarketBriefDeploymentManifest | undefined;
 	let marketBriefReader: MarketBriefReaderExport | undefined;
 	if (isMarketBrief) {
-		const {
-			buildMarketBriefReaderExport,
-			buildMarketBriefDeploymentManifest,
-			buildMarketBriefEmailProjection,
-			getRawMarketBriefSource
-		} = await import('$lib/server/marketBriefEmail');
+		const { buildMarketBriefReaderExport, getRawMarketBriefSource } = await import(
+			'$lib/server/marketBriefReader'
+		);
 		const source = getRawMarketBriefSource(post.slug);
 		if (source === undefined) {
 			throw error(500, `Market Brief source not found: ${post.slug}`);
 		}
 		marketBriefReader = buildMarketBriefReaderExport(post, source);
 		if (process.env.VERCEL_ENV === 'production') {
+			const { buildMarketBriefDeploymentManifest, buildMarketBriefEmailProjection } = await import(
+				'$lib/server/marketBriefEmail'
+			);
 			const projection = buildMarketBriefEmailProjection(post, source);
 			marketBriefDeployment = buildMarketBriefDeploymentManifest(projection, process.env);
 		}

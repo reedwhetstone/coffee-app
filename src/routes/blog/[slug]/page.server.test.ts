@@ -5,6 +5,7 @@ const {
 	buildMarketBriefDeploymentManifestMock,
 	buildMarketBriefEmailProjectionMock,
 	buildMarketBriefReaderExportMock,
+	emailModuleInitializedMock,
 	getAllPostsMock,
 	getRawMarketBriefSourceMock,
 	marketBrief,
@@ -13,6 +14,7 @@ const {
 	buildMarketBriefDeploymentManifestMock: vi.fn(),
 	buildMarketBriefEmailProjectionMock: vi.fn(),
 	buildMarketBriefReaderExportMock: vi.fn(),
+	emailModuleInitializedMock: vi.fn(),
 	getAllPostsMock: vi.fn(),
 	getRawMarketBriefSourceMock: vi.fn(),
 	marketBrief: {
@@ -48,12 +50,18 @@ vi.mock('$lib/server/blog', () => ({
 	getAllPosts: getAllPostsMock
 }));
 
-vi.mock('$lib/server/marketBriefEmail', () => ({
-	buildMarketBriefDeploymentManifest: buildMarketBriefDeploymentManifestMock,
-	buildMarketBriefEmailProjection: buildMarketBriefEmailProjectionMock,
+vi.mock('$lib/server/marketBriefReader', () => ({
 	buildMarketBriefReaderExport: buildMarketBriefReaderExportMock,
 	getRawMarketBriefSource: getRawMarketBriefSourceMock
 }));
+
+vi.mock('$lib/server/marketBriefEmail', () => {
+	emailModuleInitializedMock();
+	return {
+		buildMarketBriefDeploymentManifest: buildMarketBriefDeploymentManifestMock,
+		buildMarketBriefEmailProjection: buildMarketBriefEmailProjectionMock
+	};
+});
 
 import { load } from './+page.server';
 
@@ -128,6 +136,7 @@ describe('/blog/[slug] Market Brief metadata', () => {
 		});
 		expect(getRawMarketBriefSourceMock).toHaveBeenCalledWith('market-brief-001');
 		expect(buildMarketBriefReaderExportMock).toHaveBeenCalledWith(marketBrief, marketBriefSource);
+		expect(emailModuleInitializedMock).not.toHaveBeenCalled();
 		expect(buildMarketBriefEmailProjectionMock).not.toHaveBeenCalled();
 		expect(buildMarketBriefDeploymentManifestMock).not.toHaveBeenCalled();
 	});
@@ -141,6 +150,7 @@ describe('/blog/[slug] Market Brief metadata', () => {
 		expect(result.marketBriefReader).toBeDefined();
 		expect(result.marketBriefDeployment).toBeUndefined();
 		expect(buildMarketBriefReaderExportMock).toHaveBeenCalledWith(marketBrief, marketBriefSource);
+		expect(emailModuleInitializedMock).not.toHaveBeenCalled();
 		expect(buildMarketBriefEmailProjectionMock).not.toHaveBeenCalled();
 		expect(buildMarketBriefDeploymentManifestMock).not.toHaveBeenCalled();
 	});
@@ -166,6 +176,7 @@ describe('/blog/[slug] Market Brief metadata', () => {
 			marketBriefSource
 		);
 		expect(buildMarketBriefDeploymentManifestMock).toHaveBeenCalled();
+		expect(emailModuleInitializedMock).toHaveBeenCalledOnce();
 	});
 
 	it('keeps ordinary essays outside the projection and deployed-manifest path', async () => {
