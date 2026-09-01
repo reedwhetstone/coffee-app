@@ -606,9 +606,24 @@ const docsPages: DocsPage[] = [
 						],
 						['region', 'string', 'none', 'Partial match on region.'],
 						['cultivar_detail', 'string', 'none', 'Partial match on cultivar or variety detail.'],
-						['type', 'string', 'none', 'Paid importer/type filter.'],
-						['grade', 'string', 'none', 'Paid elevation/grade filter.'],
-						['appearance', 'string', 'none', 'Paid appearance filter.'],
+						[
+							'type',
+							'string',
+							'none',
+							'Advanced importer/type filter. Available to member/admin sessions and customer API keys across every API plan.'
+						],
+						[
+							'grade',
+							'string',
+							'none',
+							'Advanced elevation/grade filter. Available to member/admin sessions and customer API keys across every API plan.'
+						],
+						[
+							'appearance',
+							'string',
+							'none',
+							'Advanced appearance filter. Available to member/admin sessions and customer API keys across every API plan.'
+						],
 						['price_per_lb_min / price_per_lb_max', 'number', 'none', 'Canonical price filters.'],
 						[
 							'cost_lb_min / cost_lb_max',
@@ -698,7 +713,7 @@ const docsPages: DocsPage[] = [
 				],
 				codeBlocks: [
 					{
-						label: 'Paid process facet request',
+						label: 'Advanced process facet request',
 						language: 'bash',
 						code: 'curl "https://api.purveyors.io/v1/catalog?fermentation_type=Co-Fermented&has_additives=true&limit=25" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"\n\ncurl "https://api.purveyors.io/v1/catalog?has_additives=false&processing_disclosure_level=structured&limit=25" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"'
 					}

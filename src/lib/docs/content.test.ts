@@ -31,6 +31,12 @@ describe('api docs contract', () => {
 		expect(serializedPage).toContain('up to 25 items per read collection response');
 		expect(serializedPage).toContain('Atomic inventory batch receipts');
 		expect(serializedPage).toContain(
+			'Advanced importer/type filter. Available to member/admin sessions and customer API keys across every API plan.'
+		);
+		expect(serializedPage).not.toContain('Paid importer/type filter.');
+		expect(serializedPage).not.toContain('Paid elevation/grade filter.');
+		expect(serializedPage).not.toContain('Paid appearance filter.');
+		expect(serializedPage).toContain(
 			'Aggregate responses such as facets and statistics use their own documented bounds'
 		);
 	});
