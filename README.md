@@ -21,16 +21,17 @@ Cherry Runtime's server-side tools consume the Parchment API through `@purveyors
 
 ### Public
 
-| Route        | Description                                                                                |
-| ------------ | ------------------------------------------------------------------------------------------ |
-| `/`          | Marketing landing page                                                                     |
-| `/catalog`   | Green coffee catalog with filters and live pricing                                         |
-| `/analytics` | Market intelligence: public overview charts plus gated Parchment Intelligence modules      |
-| `/evals`     | Cherry Evals: domain benchmarks for green coffee, sensory analysis, sourcing, and roasting |
-| `/api`       | API product page: plans, pricing, and quick start                                          |
-| `/docs`      | Unified documentation for API and CLI                                                      |
-| `/blog`      | Coffee content and platform updates                                                        |
-| `/bot`       | PurveyorsBot crawler identity, request policy, and operator contact                        |
+| Route          | Description                                                                                |
+| -------------- | ------------------------------------------------------------------------------------------ |
+| `/`            | Marketing landing page                                                                     |
+| `/catalog`     | Green coffee catalog with filters and live pricing                                         |
+| `/analytics`   | Market intelligence: public overview charts plus gated Parchment Intelligence modules      |
+| `/evals`       | Cherry Evals: domain benchmarks for green coffee, sensory analysis, sourcing, and roasting |
+| `/api`         | API product page: plans, pricing, and quick start                                          |
+| `/docs`        | Unified documentation for API and CLI                                                      |
+| `/blog`        | Coffee content and platform updates                                                        |
+| `/market-wire` | Market Brief weekly green coffee intelligence and account-backed email signup              |
+| `/bot`         | PurveyorsBot crawler identity, request policy, and operator contact                        |
 
 ### Authenticated
 
@@ -53,17 +54,18 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
    - `GET https://api.purveyors.io/` advertises the service, docs, health, and OpenAPI resources
    - `GET https://api.purveyors.io/v1/catalog` is the stable public contract for external integrations
    - `GET https://api.purveyors.io/v1/catalog/map` returns authorized clusters, canonical place features, explicit placed/unplaced totals, and elevation profiles over the same caller-visible catalog scope
-   - `GET https://api.purveyors.io/v1/catalog/{id}/similar` is a beta catalog matching endpoint for member sessions or API keys with API Origin or Enterprise plus `catalog:read`
+   - `GET https://api.purveyors.io/v1/catalog/{id}/similar` is a beta catalog matching endpoint for member sessions or API keys on any API plan with `catalog:read`
    - `GET https://api.purveyors.io/v1/price-index` exposes aggregate `price_index_snapshots` for entitled first-party sessions and customer API keys with Parchment Intelligence access
    - Parchment catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages use a server-held demo key through the coffee-app BFF; deliberately designated Market Index teaser slices remain anonymous
    - Full catalog responses include structured process transparency fields and `process.evidence_available`, but not raw evidence quotes
-   - API-key routes emit rate-limit headers according to the resolved plan
+   - Green, Origin, and Enterprise API keys share public-data capabilities. Green includes 200 requests per account per UTC calendar month and up to 25 items per read collection response; aggregates and atomic batch receipts keep their documented endpoint bounds, while scopes, owner binding, and Parchment Intelligence entitlements remain independent
+   - API-key routes emit account quota and burst headers according to the resolved plan
    - [See API docs](https://api.purveyors.io/docs)
 
 2. **Platform app API** (`/api/*`)
    - Powers the first-party web app, Console, billing, chat, and admin workflows
    - Mixed auth model depending on route: catalog BFF adapters can allow anonymous or session access, most product routes require session auth, and chat/workspace routes require either Mallard Studio membership or Parchment Intelligence access
-   - `/api/billing/*`, `/api/account-deletion`, and `/api/account-deletion/reauthenticate` are browser-session-only internal BFF routes. Coffee-app forwards typed requests through `@purveyors/sdk`; Parchment owns Checkout, subscriptions, entitlements, and the provider-before-local-before-Auth deletion saga. They never form part of the external Parchment API
+   - `/api/billing/*`, `/api/email-subscriptions/*`, `/api/account-deletion`, and `/api/account-deletion/reauthenticate` are browser-session-only internal BFF routes. Coffee-app forwards typed requests through `@purveyors/sdk`; Parchment owns billing, email preferences, provider projection, entitlements, and the provider-before-local-before-Auth deletion saga. They never form part of the external Parchment API
    - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
    - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are metadata or compatibility endpoints, not catalog or analytics APIs
@@ -79,7 +81,7 @@ This repo does not depend on the CLI package. Coffee-app and the CLI independent
 CLI auth and output rules are part of the platform contract:
 
 - `purvey auth login` uses browser OAuth once to mint and store a scoped Parchment API key; it does not retain session access or refresh tokens
-- `purvey catalog search`, `get`, and `stats` require a Parchment API key with `catalog:read`; structured process filters require member access, and `purvey catalog similar <id>` additionally requires a member-owned key or an API Origin/Enterprise key
+- `purvey catalog search`, `get`, `stats`, structured public-data filters, and `purvey catalog similar <id>` require a Parchment API key with `catalog:read` and are available across API plans
 - `purvey inventory`, `roast`, `sales`, and `tasting` require a member-owned API key with the matching scopes
 - `purvey config`, `purvey context`, and `purvey manifest` do not require auth
 - `purvey manifest` is the preferred stable machine-readable contract for shells and agents

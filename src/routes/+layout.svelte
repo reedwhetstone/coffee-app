@@ -98,6 +98,7 @@
 			pathname.startsWith('/evals') ||
 			pathname.startsWith('/benchmarks') ||
 			pathname === '/subscription' ||
+			pathname === '/market-wire' ||
 			pathname.startsWith('/docs') ||
 			pathname.startsWith('/blog')
 	);

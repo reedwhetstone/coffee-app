@@ -3,6 +3,7 @@
 	import { formatMarketBriefEdition, getBlogPostPath, PILLARS } from '$lib/types/blog.types';
 	import type { BlogPost, BlogTag } from '$lib/types/blog.types';
 	import { formatBlogDate } from '$lib/utils/dates';
+	import MarketWireCta from '$lib/components/market-wire/MarketWireCta.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -35,6 +36,10 @@
 	<p class="text-lg text-muted">
 		Coffee intelligence, AI-first development, and the systems behind purveyors.io
 	</p>
+</div>
+
+<div class="mb-10">
+	<MarketWireCta compact />
 </div>
 
 <!-- Publication format navigation -->

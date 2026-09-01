@@ -6,6 +6,7 @@
 	import MarketBriefArticle from '$lib/components/blog/MarketBriefArticle.svelte';
 	import MarketBriefShareTools from '$lib/components/blog/MarketBriefShareTools.svelte';
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
+	import MarketWireCta from '$lib/components/market-wire/MarketWireCta.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -161,6 +162,10 @@
 
 <!-- Post footer -->
 <div class="mt-16 space-y-8">
+	{#if data.metadata.format === 'market-brief'}
+		<MarketWireCta heading="Join the Market Brief waitlist." />
+	{/if}
+
 	<!-- Share / LinkedIn section -->
 	<div class="border-t border-line pt-8">
 		{#if showLinkedIn}

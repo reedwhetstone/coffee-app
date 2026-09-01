@@ -42,6 +42,11 @@
 								</a>
 							</li>
 							<li>
+								<a href="/market-wire" class="text-sm text-on-dark/70 hover:text-on-dark">
+									Market Brief
+								</a>
+							</li>
+							<li>
 								<a href="/evals" class="text-sm text-on-dark/70 hover:text-on-dark">
 									Cherry Evals
 								</a>

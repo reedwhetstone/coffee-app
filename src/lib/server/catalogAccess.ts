@@ -79,22 +79,23 @@ export function resolveCatalogAccessCapabilities(
 	const hasMemberSessionRole =
 		!subject.isApiKey && subject.isAuthenticated && isMemberRole(subject.role);
 	const hasPaidApiPlan = subject.isApiKey && apiPlanAtLeast(subject.apiPlan, 'member');
-	const canUseMemberSearchLeverage = hasMemberSessionRole || hasPaidApiPlan;
+	const canUsePublicSearchLeverage = hasMemberSessionRole || subject.isApiKey;
+	const canUseAccountWorkflow = hasMemberSessionRole || hasPaidApiPlan;
 
 	return {
 		canViewPublicCatalog: true,
 		canViewFullCatalog: hasMemberSessionRole,
 		canViewWholesale: true,
 		canUseBasicFilters: true,
-		canUseAdvancedFilters: canUseMemberSearchLeverage,
-		canUseProcessFacets: canUseMemberSearchLeverage,
-		canUsePriceScoreRanges: canUseMemberSearchLeverage,
-		canUseAdvancedSorts: canUseMemberSearchLeverage,
-		canViewPremiumFilterMetadata: canUseMemberSearchLeverage,
-		canUseSemanticSearch: canUseMemberSearchLeverage,
-		canUseBeanMatching: canUseMemberSearchLeverage,
-		canUseSavedSearches: canUseMemberSearchLeverage,
-		canExport: canUseMemberSearchLeverage
+		canUseAdvancedFilters: canUsePublicSearchLeverage,
+		canUseProcessFacets: canUsePublicSearchLeverage,
+		canUsePriceScoreRanges: canUsePublicSearchLeverage,
+		canUseAdvancedSorts: canUsePublicSearchLeverage,
+		canViewPremiumFilterMetadata: canUsePublicSearchLeverage,
+		canUseSemanticSearch: canUsePublicSearchLeverage,
+		canUseBeanMatching: canUsePublicSearchLeverage,
+		canUseSavedSearches: canUseAccountWorkflow,
+		canExport: canUseAccountWorkflow
 	};
 }
 
@@ -131,11 +132,12 @@ export function createCatalogAccessDeniedNotice(input: {
 
 	let authMessage = 'Some requested catalog filters or sorts require a member account.';
 	let entitlementMessage =
-		'Some requested catalog filters or sorts are available to members and paid API tiers.';
+		'Some requested catalog filters or sorts are available to members and customer API keys.';
 
 	if (processParams.length > 0 && premiumDiscoveryParams.length === 0 && !advancedSortRequested) {
 		authMessage = 'Structured process filters require a member account.';
-		entitlementMessage = 'Structured process filters are available to members and paid API tiers.';
+		entitlementMessage =
+			'Structured process filters are available to members and customer API keys.';
 	} else if (
 		premiumDiscoveryParams.length > 0 &&
 		processParams.length === 0 &&
@@ -143,14 +145,14 @@ export function createCatalogAccessDeniedNotice(input: {
 	) {
 		authMessage = 'Importer, elevation, and appearance filters require a member account.';
 		entitlementMessage =
-			'Importer, elevation, and appearance filters are available to members and paid API tiers.';
+			'Importer, elevation, and appearance filters are available to members and customer API keys.';
 	} else if (
 		advancedSortRequested &&
 		processParams.length === 0 &&
 		premiumDiscoveryParams.length === 0
 	) {
 		authMessage = 'This sort field requires a member account.';
-		entitlementMessage = 'Advanced sort fields are available to members and paid API tiers.';
+		entitlementMessage = 'Advanced sort fields are available to members and customer API keys.';
 	}
 
 	return {
@@ -179,7 +181,7 @@ export function createProcessFacetDeniedNotice(input: {
 	return {
 		status: 403,
 		code: 'entitlement_required',
-		message: 'Structured process filters are available to members and paid API tiers.',
+		message: 'Structured process filters are available to members and customer API keys.',
 		deniedParams: input.deniedParams
 	};
 }
