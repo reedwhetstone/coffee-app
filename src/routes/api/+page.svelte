@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { MAX_CATALOG_PAGE_LIMIT_DISPLAY } from '$lib/constants/catalog';
 
-	const maxCatalogRowsPerRequest = `Up to ${MAX_CATALOG_PAGE_LIMIT_DISPLAY} per request`;
+	const maxCatalogRowsPerRequest = `Up to ${MAX_CATALOG_PAGE_LIMIT_DISPLAY} per read collection response`;
 
 	function openDocs() {
 		window.location.href = 'https://api.purveyors.io/docs';
@@ -172,8 +172,8 @@
 					<tr>
 						<th class="px-4 py-3 font-semibold">Plan</th>
 						<th class="px-4 py-3 font-semibold">Price</th>
-						<th class="px-4 py-3 font-semibold">Monthly requests</th>
-						<th class="px-4 py-3 font-semibold">Rows per call</th>
+						<th class="px-4 py-3 font-semibold">Monthly account requests</th>
+						<th class="px-4 py-3 font-semibold">Collection items</th>
 						<th class="px-4 py-3 font-semibold">Best for</th>
 					</tr>
 				</thead>
@@ -181,8 +181,8 @@
 					<tr>
 						<td class="px-4 py-3 align-top font-medium text-ink">Green</td>
 						<td class="px-4 py-3 align-top">Free</td>
-						<td class="px-4 py-3 align-top">200</td>
-						<td class="px-4 py-3 align-top">25</td>
+						<td class="px-4 py-3 align-top">200 per UTC calendar month</td>
+						<td class="px-4 py-3 align-top">Up to 25 per response</td>
 						<td class="px-4 py-3 align-top"
 							>Evaluate the feed, prototype integrations, validate schema fit</td
 						>
@@ -209,11 +209,18 @@
 			</table>
 		</div>
 		<p class="mt-4 text-sm leading-relaxed text-muted">
-			Green gets you into the feed immediately at no cost. Origin is $99/month for production
-			integrations with up to {MAX_CATALOG_PAGE_LIMIT_DISPLAY} rows per request and 10,000 monthly requests.
-			Enterprise keeps the same per-request ceiling while covering unlimited request volume, custom data
-			terms, and dedicated support. Manage keys and monitor usage in the
+			Green gets you into the full public-data capability family immediately at no cost, with 200
+			requests shared by every key on the account per UTC calendar month and up to 25 items per read
+			collection response. Origin is $99/month for production integrations with up to
+			{MAX_CATALOG_PAGE_LIMIT_DISPLAY} items per read collection response and 10,000 monthly account
+			requests. Enterprise keeps the same per-request ceiling while covering unlimited request volume,
+			custom data terms, and dedicated support. Manage keys and monitor usage in the
 			<a href="/api-dashboard" class="text-accent hover:underline">Parchment Console</a>.
+		</p>
+		<p class="mt-3 text-sm leading-relaxed text-muted">
+			Read collection limits apply to endpoints that return item lists. Aggregates such as facets
+			and statistics follow their documented endpoint-specific bounds. Atomic inventory batch
+			receipts remain complete up to their documented 50-item transaction bound.
 		</p>
 	</section>
 

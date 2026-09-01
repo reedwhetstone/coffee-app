@@ -5,15 +5,15 @@ import { getDocsPage } from '$lib/docs/content';
 describe('api docs contract', () => {
 	const page = getDocsPage('api', 'catalog');
 
-	it('documents the basic public catalog query surface and paid discovery boundary', () => {
+	it('documents API-plan public capability parity without changing the website boundary', () => {
 		expect(page).toBeDefined();
 
 		const serializedPage = JSON.stringify(page);
 		expect(serializedPage).toContain(
-			'Viewer-session, public/demo-key, and API Green requests share the basic public query surface.'
+			'Website Viewer sessions and the public demo stay on the basic query surface.'
 		);
 		expect(serializedPage).toContain(
-			'Importer, elevation, appearance, and structured process filters are gated to member/admin sessions and paid API tiers.'
+			'Customer API keys across Green, Origin, and Enterprise may use the full public-data query surface'
 		);
 		expect(serializedPage).toContain(
 			'canonical listing path uses the 100-row default listing contract.'
@@ -25,8 +25,49 @@ describe('api docs contract', () => {
 			'Its /api/catalog BFF injects a 1000-row default when page and limit are omitted for legacy unpaged consumers; the /catalog UI explicitly requests a 15-row page.'
 		);
 		expect(serializedPage).toContain(
-			'Canonical integration path for developers, sync jobs, and agents. API Green is for evaluation; API Origin and Enterprise unlock premium search leverage.'
+			'Green evaluates the same public-data capabilities at lower request and collection volume.'
 		);
+		expect(serializedPage).toContain('200 requests per account per UTC calendar month');
+		expect(serializedPage).toContain('up to 25 items per read collection response');
+		expect(serializedPage).toContain('Atomic inventory batch receipts');
+		expect(serializedPage).toContain(
+			'Advanced importer/type filter. Available to member/admin sessions and customer API keys across every API plan.'
+		);
+		expect(serializedPage).not.toContain('Paid importer/type filter.');
+		expect(serializedPage).not.toContain('Paid elevation/grade filter.');
+		expect(serializedPage).not.toContain('Paid appearance filter.');
+		expect(serializedPage).toContain(
+			'Aggregate responses such as facets and statistics use their own documented bounds'
+		);
+	});
+
+	it('documents account quota headers, UTC resets, and the 429 envelope', () => {
+		const errors = getDocsPage('api', 'errors');
+		const serializedErrors = JSON.stringify(errors);
+
+		expect(serializedErrors).toContain(
+			'Every customer-managed key on the account draws from that one allowance'
+		);
+		expect(serializedErrors).toContain(
+			'X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset'
+		);
+		expect(serializedErrors).toContain('00:00 UTC on the first day of the next month');
+		expect(serializedErrors).toContain('X-RateLimit-Blocked-By');
+		expect(serializedErrors).toContain('rate_limit_exceeded');
+		expect(serializedErrors).not.toContain('"error":"Rate limit exceeded"');
+	});
+
+	it('keeps CLI catalog similarity auth copy aligned with API-plan parity', () => {
+		const overview = getDocsPage('cli', 'overview');
+		const catalog = getDocsPage('cli', 'catalog');
+		const serializedDocs = `${JSON.stringify(overview)} ${JSON.stringify(catalog)}`;
+
+		expect(serializedDocs).toContain('API key with catalog:read; available across API plans');
+		expect(serializedDocs).toContain(
+			'Requires a Parchment API key with catalog:read and is available across API plans.'
+		);
+		expect(serializedDocs).not.toContain('API Origin/Enterprise key with catalog:read');
+		expect(serializedDocs).not.toContain('member-owned key or API Origin/Enterprise key');
 	});
 
 	it('documents /v1/price-index without overclaiming unsupported premium surfaces', () => {
@@ -52,10 +93,14 @@ describe('api docs contract', () => {
 	});
 
 	it('keeps the example anchored on canonical price_per_lb naming', () => {
-		const example = page?.sections.find((section) => section.title === 'Request and response')
-			?.codeBlocks?.[0]?.code;
+		const examples = page?.sections.find(
+			(section) => section.title === 'Request and response'
+		)?.codeBlocks;
+		const example = examples?.[0]?.code;
 
 		expect(example).toContain('"price_per_lb": 7.5');
+		expect(examples?.[1]?.code).toContain('"rowLimit": 25');
+		expect(examples?.[1]?.code).toContain('"limited": true');
 	});
 
 	it('documents wholesale-inclusive discovery and the privileged wholesale-only scope', () => {
@@ -94,6 +139,12 @@ describe('api docs contract', () => {
 		expect(serializedMap).toContain(
 			'The server-held public-demo key used by first-party public catalog pages is the only shared-cacheable map principal.'
 		);
+		expect(serializedMap).toContain(
+			'Canonical places, viewport search, advanced catalog filters, and elevation lens/profile within the 25-row evaluation cap.'
+		);
+		expect(serializedMap).toContain('Member/admin session or customer API key on any API plan');
+		expect(serializedMap).not.toContain('Premium map parameters return 403.');
+		expect(serializedMap).not.toContain('Member/admin or paid API tier');
 		expect(serializedMap).toContain(
 			'does not yet expose a public /api/catalog/map BFF or MapLibre interface.'
 		);

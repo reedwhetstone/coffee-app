@@ -33,7 +33,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		]
 	};
 
-	const maxCatalogPageLimitFeature = `Up to ${MAX_CATALOG_PAGE_LIMIT_DISPLAY} rows per request`;
+	const maxCatalogPageLimitFeature = `Up to ${MAX_CATALOG_PAGE_LIMIT_DISPLAY} items per read collection response`;
 
 	const pricingTiers = [
 		{
@@ -42,7 +42,11 @@ export const load: PageServerLoad = async ({ url }) => {
 			currency: 'USD',
 			billingDuration: 'P1M',
 			description: 'Free plan for evaluation and lightweight data pulls',
-			features: ['200 requests per month', '25 rows per call', 'Parchment Console access'],
+			features: [
+				'200 requests per account per UTC month',
+				'Up to 25 items per read collection response',
+				'Parchment Console access'
+			],
 			popular: false
 		},
 		{
@@ -84,7 +88,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		{
 			question: 'How do I get keys and review usage?',
 			answer:
-				'Use Parchment Console at /api-dashboard to create keys, review monthly usage, and confirm your current plan and limits.'
+				'Use Parchment Console at /api-dashboard to create keys and see account requests used, the monthly limit, remaining requests, the exact UTC reset, and collection limits.'
 		},
 		{
 			question: 'Can I explore the product before committing to a paid plan?',

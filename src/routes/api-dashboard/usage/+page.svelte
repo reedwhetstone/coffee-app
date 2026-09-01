@@ -4,9 +4,8 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	// Quotas apply per key. Aggregate owner traffic must not be divided by this limit.
-	let highestKeyUsagePercent = $derived(() => {
-		return data.currentStats?.highestKeyQuota?.monthlyPercent ?? 0;
+	let accountUsagePercent = $derived(() => {
+		return data.currentStats?.accountQuota.monthlyPercent ?? 0;
 	});
 
 	let tierDisplayName = $derived(() => {
@@ -34,6 +33,24 @@
 			month: 'short',
 			day: 'numeric'
 		});
+	}
+
+	function formatUtcReset(dateStr: string): string {
+		return new Intl.DateTimeFormat('en-US', {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit',
+			timeZone: 'UTC',
+			timeZoneName: 'short'
+		}).format(new Date(dateStr));
+	}
+
+	function formatCollectionLimit(limit: number | null | undefined): string {
+		return limit !== null && limit !== undefined && limit > 0
+			? `Up to ${formatNumber(limit)} items`
+			: 'Endpoint limit';
 	}
 
 	onMount(() => {
@@ -72,66 +89,66 @@
 			{#if data.bounds?.seriesTruncated}
 				<div class="mb-8 rounded-md bg-warning-subtle p-4 text-sm text-warning-strong">
 					Daily and recent activity are partial because the analytics window reached its safety
-					limit. Monthly totals and per-key monthly counts remain exact.
+					limit. The account quota total and monthly per-key attribution counts remain exact.
 				</div>
 			{/if}
 			{#if data.bounds?.keysTruncated}
 				<div class="mb-8 rounded-md bg-warning-subtle p-4 text-sm text-warning-strong">
-					At most {data.bounds.keyLimit.toLocaleString()} API keys are shown. Some keys were omitted,
-					so highest-key quota status is unavailable. Exact owner totals still include every key.
+					At most {data.bounds.keyLimit.toLocaleString()} API keys are shown. Some attribution rows were
+					omitted, but the exact account quota still includes every key.
 				</div>
 			{/if}
 
 			<!-- Usage Overview Cards -->
 			<div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				<!-- Monthly Usage -->
+				<!-- Monthly account quota -->
 				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-					<h3 class="text-sm font-medium text-muted">Owner Traffic This Month</h3>
+					<h3 class="text-sm font-medium text-muted">Monthly Account Quota</h3>
 					<p class="mt-1 text-2xl font-bold text-ink">
-						{formatNumber(data.currentStats?.monthlyUsage || 0)}
+						{formatNumber(data.currentStats?.accountQuota.monthlyRequests ?? 0)} /
+						{data.currentStats?.unlimited
+							? 'Unlimited'
+							: formatNumber(data.currentStats?.accountQuota.monthlyLimit ?? 0)}
 					</p>
-					<p class="mt-2 text-xs text-muted">Aggregate traffic across all API keys</p>
-				</div>
-
-				<!-- Current Plan -->
-				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-					<h3 class="text-sm font-medium text-muted">Current Tier</h3>
-					<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
-						{tierDisplayName()}
-					</p>
-					<div class="mt-2">
-						<div class="text-xs text-muted">
-							{#if data.currentStats?.userTier === 'enterprise'}
-								Unlimited API calls
-							{:else if data.currentStats?.userTier === 'member'}
-								Paid Origin tier
-							{:else}
-								Free Green tier
-							{/if}
-						</div>
-					</div>
-				</div>
-
-				<!-- Active Keys -->
-				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-					<h3 class="text-sm font-medium text-muted">Active Keys</h3>
-					<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
-						{data.currentStats?.activeKeys || 0}
-					</p>
-					<p class="mt-1 text-xs text-muted">
-						of {data.currentStats?.totalKeys || 0} total
+					<p class="mt-2 text-xs text-muted">
+						{#if data.currentStats?.accountQuota.monthlyPercent !== null}
+							{Math.round(data.currentStats?.accountQuota.monthlyPercent ?? 0)}% used.
+						{/if}
+						One allowance is shared across every API key.
 					</p>
 				</div>
 
-				<!-- Average Response Time -->
+				<!-- Remaining -->
 				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-					<h3 class="text-sm font-medium text-muted">Avg Response</h3>
+					<h3 class="text-sm font-medium text-muted">Requests Remaining</h3>
 					<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
-						{data.dailySummary && data.dailySummary.length > 0
-							? Math.round(data.dailySummary[0]?.avg_response_time || 0)
-							: 0}ms
+						{data.currentStats?.unlimited
+							? 'Unlimited'
+							: formatNumber(data.currentStats?.accountQuota.monthlyRequestsRemaining ?? 0)}
 					</p>
-					<p class="mt-1 text-xs text-muted">Latest UTC day</p>
+					<p class="mt-2 text-xs text-muted">{tierDisplayName()} plan, account scoped</p>
+				</div>
+
+				<!-- Reset -->
+				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+					<h3 class="text-sm font-medium text-muted">Quota Resets</h3>
+					<p class="mt-1 text-lg font-bold tabular-nums text-ink">
+						{data.currentStats
+							? formatUtcReset(data.currentStats.accountQuota.monthlyResetAt)
+							: 'Unavailable'}
+					</p>
+					<p class="mt-2 text-xs text-muted">00:00 UTC on the first day of each month</p>
+				</div>
+
+				<!-- Collection cap -->
+				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
+					<h3 class="text-sm font-medium text-muted">Read Collection Responses</h3>
+					<p class="mt-1 text-2xl font-bold tabular-nums text-ink">
+						{formatCollectionLimit(data.currentStats?.accountQuota.collectionItemLimit)}
+					</p>
+					<p class="mt-2 text-xs text-muted">
+						Aggregates and complete atomic batch receipts use documented endpoint-specific bounds
+					</p>
 				</div>
 			</div>
 
@@ -182,6 +199,9 @@
 				<div class="rounded-lg bg-surface-panel p-6 ring-1 ring-line">
 					<h2 class="mb-4 text-lg font-semibold text-ink">Usage by API Key</h2>
 					<p class="mb-4 text-xs text-muted">
+						These counts attribute account traffic to individual credentials. They are not separate
+						allowances, and creating another key does not increase the account quota.
+						<br /><br />
 						Recent activity is a sample of up to {data.bounds?.recentPerKey ?? 25} records per returned
 						key. Monthly request counts are exact.
 					</p>
@@ -243,8 +263,8 @@
 				</div>
 			</div>
 
-			<!-- Rate Limit Status with Upgrade CTAs -->
-			{#if data.currentStats?.highestKeyQuota && highestKeyUsagePercent() >= 75}
+			<!-- Account quota status with upgrade CTAs -->
+			{#if data.currentStats && accountUsagePercent() >= 75}
 				<div class="mt-8 rounded-md bg-warning-subtle p-4 ring-1 ring-warning/30">
 					<div class="flex">
 						<div class="flex-shrink-0">
@@ -258,7 +278,7 @@
 						</div>
 						<div class="ml-3">
 							<h3 class="text-sm font-medium text-warning-strong">
-								{#if highestKeyUsagePercent() >= 100}
+								{#if accountUsagePercent() >= 100}
 									Rate Limit Reached
 								{:else}
 									Approaching Rate Limit
@@ -266,12 +286,16 @@
 							</h3>
 							<div class="mt-2 text-sm text-warning-strong">
 								<p>
-									{data.currentStats.highestKeyQuota.keyName} has used
-									{Math.round(highestKeyUsagePercent())}% of its
-									{formatNumber(data.currentStats.highestKeyQuota.monthlyLimitPerKey)} monthly API calls.
-									Limits apply separately to each key.
+									This account has used {formatNumber(
+										data.currentStats.accountQuota.monthlyRequests
+									)}
+									of {formatNumber(data.currentStats.accountQuota.monthlyLimit)} requests.
+									{formatNumber(data.currentStats.accountQuota.monthlyRequestsRemaining ?? 0)} remain
+									until
+									{formatUtcReset(data.currentStats.accountQuota.monthlyResetAt)}. All API keys
+									share this monthly allowance.
 									{#if data.currentStats?.userTier === 'viewer'}
-										Upgrade to Origin for 10,000 calls/month and advanced features.
+										Upgrade to Origin for 10,000 requests per account per month.
 									{:else}
 										Contact sales about Enterprise for unlimited calls and premium support.
 									{/if}

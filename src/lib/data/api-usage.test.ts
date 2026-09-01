@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { OwnerApiUsage } from '@purveyors/sdk';
 import { mapOwnerApiUsage } from './api-usage';
 
-function usageFixture(overrides: Partial<OwnerApiUsage> = {}): OwnerApiUsage {
+function usageFixture(overrides: Record<string, unknown> = {}): OwnerApiUsage {
 	return {
 		kind: 'owner_api_key_traffic',
 		generatedAt: '2026-07-26T12:00:00Z',
@@ -17,12 +17,16 @@ function usageFixture(overrides: Partial<OwnerApiUsage> = {}): OwnerApiUsage {
 		},
 		plan: {
 			id: 'member',
+			monthlyRequestLimit: 10000,
 			monthlyRequestLimitPerKey: 10000,
-			limitScope: 'api_key',
+			limitScope: 'account',
+			collectionItemLimit: 100,
 			unlimited: false
 		},
 		summary: {
 			monthlyRequests: 15000,
+			monthlyRequestsRemaining: 0,
+			monthlyResetAt: '2026-08-01T00:00:00.000Z',
 			hourlyRequests: 12,
 			totalKeys: 2,
 			activeKeys: 1
@@ -86,23 +90,26 @@ function usageFixture(overrides: Partial<OwnerApiUsage> = {}): OwnerApiUsage {
 		],
 		bounds: { keyLimit: 100, keysTruncated: false, recentPerKey: 25 },
 		...overrides
-	};
+	} as unknown as OwnerApiUsage;
 }
 
 describe('mapOwnerApiUsage', () => {
-	it('keeps aggregate traffic separate from the highest per-key quota', () => {
+	it('maps the canonical account quota independently from per-key attribution', () => {
 		const mapped = mapOwnerApiUsage(usageFixture());
 
 		expect(mapped.usageStats.monthlyUsage).toBe(15000);
-		expect(mapped.usageStats.highestKeyQuota).toEqual({
-			keyId: 'key-1',
-			keyName: 'Production',
-			monthlyRequests: 9000,
-			monthlyLimitPerKey: 10000,
-			monthlyPercent: 90,
+		expect(mapped.usageStats.accountQuota).toEqual({
+			monthlyRequests: 15000,
+			monthlyLimit: 10000,
+			monthlyRequestsRemaining: 0,
+			monthlyPercent: 100,
+			monthlyResetAt: '2026-08-01T00:00:00.000Z',
+			collectionItemLimit: 100,
+			limitScope: 'account',
 			nearLimit: true,
-			atLimit: false
+			atLimit: true
 		});
+		expect(mapped.usageData.map((key) => key.monthlyRequests)).toEqual([9000, 6000]);
 	});
 
 	it('maps API records and daily series without exposing key secrets', () => {
@@ -142,49 +149,35 @@ describe('mapOwnerApiUsage', () => {
 		expect(JSON.stringify(mapped)).not.toContain('pk_live_');
 	});
 
-	it('does not create quota warnings for an unlimited plan', () => {
+	it('represents unlimited plans without inventing a remaining allowance', () => {
 		const fixture = usageFixture({
 			plan: {
 				id: 'enterprise',
+				monthlyRequestLimit: -1,
 				monthlyRequestLimitPerKey: -1,
-				limitScope: 'api_key',
+				limitScope: 'account',
+				collectionItemLimit: 100,
 				unlimited: true
 			}
 		});
 
-		expect(mapOwnerApiUsage(fixture).usageStats.highestKeyQuota).toBeNull();
-	});
-
-	it('does not warn on an inactive key that can no longer consume quota', () => {
-		const fixture = usageFixture({
-			keys: [
-				{
-					...usageFixture().keys[0],
-					isActive: false,
-					monthlyRequests: 10000
-				},
-				{
-					...usageFixture().keys[1],
-					isActive: true,
-					monthlyRequests: 100
-				}
-			]
-		});
-
-		expect(mapOwnerApiUsage(fixture).usageStats.highestKeyQuota).toEqual(
+		expect(mapOwnerApiUsage(fixture).usageStats.accountQuota).toEqual(
 			expect.objectContaining({
-				keyId: 'key-2',
-				monthlyRequests: 100,
+				monthlyLimit: -1,
+				monthlyRequestsRemaining: null,
+				monthlyPercent: null,
 				nearLimit: false,
 				atLimit: false
 			})
 		);
 	});
 
-	it('suppresses highest-key quota when the returned key set is incomplete', () => {
+	it('keeps exact account quota visible when the attribution key list is incomplete', () => {
 		const fixture = usageFixture({
 			summary: {
 				monthlyRequests: 50000,
+				monthlyRequestsRemaining: 0,
+				monthlyResetAt: '2026-08-01T00:00:00.000Z',
 				hourlyRequests: 50,
 				totalKeys: 125,
 				activeKeys: 110
@@ -198,8 +191,11 @@ describe('mapOwnerApiUsage', () => {
 			expect.objectContaining({
 				totalKeys: 125,
 				activeKeys: 110,
-				quotaCoverage: 'keys_truncated',
-				highestKeyQuota: null
+				accountQuota: expect.objectContaining({
+					monthlyRequests: 50000,
+					monthlyLimit: 10000,
+					atLimit: true
+				})
 			})
 		);
 		expect(mapped.bounds).toEqual(
@@ -210,19 +206,48 @@ describe('mapOwnerApiUsage', () => {
 		);
 	});
 
-	it('represents a complete account with no active keys without inventing quota status', () => {
-		const base = usageFixture();
+	it('fails closed instead of relabeling a legacy per-key quota as account-scoped', () => {
 		const fixture = usageFixture({
-			summary: { ...base.summary, activeKeys: 0 },
-			keys: base.keys.map((key) => ({ ...key, isActive: false }))
+			generatedAt: '2026-07-26T12:00:00Z',
+			plan: {
+				id: 'viewer',
+				monthlyRequestLimitPerKey: 200,
+				limitScope: 'api_key',
+				unlimited: false
+			},
+			summary: {
+				monthlyRequests: 75,
+				hourlyRequests: 3,
+				totalKeys: 2,
+				activeKeys: 2
+			}
 		});
 
-		expect(mapOwnerApiUsage(fixture).usageStats).toEqual(
-			expect.objectContaining({
-				activeKeys: 0,
-				quotaCoverage: 'complete',
-				highestKeyQuota: null
-			})
+		expect(() => mapOwnerApiUsage(fixture)).toThrow(
+			'Parchment usage response does not include the account quota contract'
 		);
+	});
+
+	it('accepts the quota branch monthlyRequestsRemaining field during SDK rollout', () => {
+		const fixture = usageFixture({
+			plan: {
+				id: 'viewer',
+				monthlyRequestLimit: 200,
+				monthlyRequestLimitPerKey: 200,
+				limitScope: 'account',
+				collectionItemLimit: 25,
+				unlimited: false
+			},
+			summary: {
+				monthlyRequests: 75,
+				monthlyRequestsRemaining: 125,
+				monthlyResetAt: '2026-08-01T00:00:00.000Z',
+				hourlyRequests: 3,
+				totalKeys: 2,
+				activeKeys: 2
+			}
+		});
+
+		expect(mapOwnerApiUsage(fixture).usageStats.accountQuota.monthlyRequestsRemaining).toBe(125);
 	});
 });

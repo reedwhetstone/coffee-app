@@ -5,6 +5,18 @@
 
 	let { data } = $props<{ data: PageData }>();
 
+	function formatUtcReset(dateStr: string): string {
+		return new Intl.DateTimeFormat('en-US', {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit',
+			timeZone: 'UTC',
+			timeZoneName: 'short'
+		}).format(new Date(dateStr));
+	}
+
 	// Set page title
 	onMount(() => {
 		document.title = 'Parchment Console - Purveyors';
@@ -52,11 +64,19 @@
 				</div>
 
 				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-					<h3 class="text-sm font-medium text-muted">Owner Traffic This Month</h3>
+					<h3 class="text-sm font-medium text-muted">Monthly Account Quota</h3>
 					<p class="mt-1 text-2xl font-bold text-ink">
-						{data.usageStats.monthlyUsage.toLocaleString()}
+						{data.usageStats.accountQuota.monthlyRequests.toLocaleString()} /
+						{data.usageStats.unlimited
+							? 'Unlimited'
+							: data.usageStats.accountQuota.monthlyLimit.toLocaleString()}
 					</p>
-					<p class="mt-1 text-xs text-muted">Aggregate traffic across all API keys</p>
+					<p class="mt-1 text-xs text-muted">
+						{#if data.usageStats.accountQuota.monthlyPercent !== null}
+							{Math.round(data.usageStats.accountQuota.monthlyPercent)}% used.
+						{/if}
+						Shared across every API key on this account.
+					</p>
 				</div>
 
 				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
@@ -82,39 +102,22 @@
 				</div>
 
 				<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-					<h3 class="text-sm font-medium text-muted">Highest Active-Key Quota</h3>
+					<h3 class="text-sm font-medium text-muted">Requests Remaining</h3>
 					<p
-						class="mt-1 text-2xl font-bold {data.usageStats.highestKeyQuota?.atLimit
+						class="mt-1 text-2xl font-bold {data.usageStats.accountQuota.atLimit
 							? 'text-red-500'
-							: data.usageStats.highestKeyQuota?.nearLimit
+							: data.usageStats.accountQuota.nearLimit
 								? 'text-warning'
 								: 'text-ink'}"
 					>
 						{#if data.usageStats.unlimited}
 							Unlimited
-						{:else if data.usageStats.quotaCoverage === 'keys_truncated'}
-							Unavailable
-						{:else if data.usageStats.activeKeys === 0}
-							No active keys
-						{:else if data.usageStats.highestKeyQuota?.atLimit}
-							At Limit
-						{:else if data.usageStats.highestKeyQuota?.nearLimit}
-							Near Limit
-						{:else if data.usageStats.highestKeyQuota}
-							Active
 						{:else}
-							Unavailable
+							{data.usageStats.accountQuota.monthlyRequestsRemaining?.toLocaleString() ?? 0}
 						{/if}
 					</p>
 					<p class="mt-1 text-xs text-muted">
-						{#if data.usageStats.quotaCoverage === 'keys_truncated'}
-							Some keys were omitted; quota comparison is suppressed
-						{:else if data.usageStats.highestKeyQuota}
-							{data.usageStats.highestKeyQuota.keyName}:
-							{Math.round(data.usageStats.highestKeyQuota.monthlyPercent)}%
-						{:else}
-							Per-key monthly limit
-						{/if}
+						Resets {formatUtcReset(data.usageStats.accountQuota.monthlyResetAt)}
 					</p>
 				</div>
 			</div>
@@ -271,29 +274,54 @@
 			</div>
 		</div>
 
-		<!-- Usage Accountability Alerts with Upgrade CTAs -->
-		{#if data.usageStats?.highestKeyQuota}
-			{#if data.usageStats.highestKeyQuota.atLimit}
-				<div class="mt-8 rounded-md bg-danger-subtle p-4 ring-1 ring-danger/30">
+		<!-- Account quota alerts with upgrade CTAs -->
+		{#if data.usageStats && !data.usageStats.unlimited}
+			{#if (data.usageStats.accountQuota.monthlyPercent ?? 0) >= 75}
+				<div
+					class="mt-8 rounded-md {data.usageStats.accountQuota.atLimit
+						? 'bg-danger-subtle ring-danger/30'
+						: 'bg-warning-subtle ring-warning/30'} p-4 ring-1"
+				>
 					<div class="flex">
 						<div class="flex-shrink-0">
-							<svg class="h-5 w-5 text-danger" viewBox="0 0 20 20" fill="currentColor">
+							<svg
+								class="h-5 w-5 {data.usageStats.accountQuota.atLimit
+									? 'text-danger'
+									: 'text-warning'}"
+								viewBox="0 0 20 20"
+								fill="currentColor"
+							>
 								<path
 									fill-rule="evenodd"
-									d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+									d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
 									clip-rule="evenodd"
 								/>
 							</svg>
 						</div>
 						<div class="ml-3">
-							<h3 class="text-sm font-medium text-danger-strong">Rate limit reached</h3>
-							<div class="mt-2 text-sm text-danger">
+							<h3
+								class="text-sm font-medium {data.usageStats.accountQuota.atLimit
+									? 'text-danger-strong'
+									: 'text-warning-strong'}"
+							>
+								{data.usageStats.accountQuota.atLimit
+									? 'Monthly account quota reached'
+									: 'Approaching monthly account quota'}
+							</h3>
+							<div
+								class="mt-2 text-sm {data.usageStats.accountQuota.atLimit
+									? 'text-danger'
+									: 'text-warning-strong'}"
+							>
 								<p>
-									{data.usageStats.highestKeyQuota.keyName} has reached
-									{data.usageStats.highestKeyQuota.monthlyRequests.toLocaleString()} of its
-									{data.usageStats.highestKeyQuota.monthlyLimitPerKey.toLocaleString()} monthly API calls.
+									This account has used {data.usageStats.accountQuota.monthlyRequests.toLocaleString()}
+									of {data.usageStats.accountQuota.monthlyLimit.toLocaleString()} requests.
+									{data.usageStats.accountQuota.monthlyRequestsRemaining?.toLocaleString() ?? 0} remain
+									until
+									{formatUtcReset(data.usageStats.accountQuota.monthlyResetAt)}. All keys share this
+									allowance.
 									{#if data.usageStats.userTier === 'viewer'}
-										Upgrade to Origin for 10,000 calls/month.
+										Upgrade to Origin for 10,000 requests per account per month.
 									{:else}
 										Upgrade to Enterprise via sales if you need unlimited calls.
 									{/if}
@@ -303,7 +331,7 @@
 										href={data.usageStats.userTier === 'viewer'
 											? '/subscription#api-plans'
 											: '/contact'}
-										class="font-medium text-danger-strong underline hover:text-danger"
+										class="font-medium underline"
 									>
 										{data.usageStats.userTier === 'viewer'
 											? 'Upgrade to Origin →'
@@ -314,99 +342,6 @@
 										class="font-medium text-danger-strong underline hover:text-danger"
 									>
 										View usage analytics
-									</a>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			{:else if data.usageStats.highestKeyQuota.nearLimit}
-				<div class="mt-8 rounded-md bg-warning-subtle p-4 ring-1 ring-warning/30">
-					<div class="flex">
-						<div class="flex-shrink-0">
-							<svg class="h-5 w-5 text-warning" viewBox="0 0 20 20" fill="currentColor">
-								<path
-									fill-rule="evenodd"
-									d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-									clip-rule="evenodd"
-								/>
-							</svg>
-						</div>
-						<div class="ml-3">
-							<h3 class="text-sm font-medium text-warning-strong">Approaching rate limit</h3>
-							<div class="mt-2 text-sm text-warning-strong">
-								<p>
-									{data.usageStats.highestKeyQuota.keyName} is using
-									{Math.round(data.usageStats.highestKeyQuota.monthlyPercent)}% of its
-									{data.usageStats.highestKeyQuota.monthlyLimitPerKey.toLocaleString()} monthly API calls.
-									{#if data.usageStats.userTier === 'viewer'}
-										Consider upgrading to Origin for 10,000 calls/month.
-									{:else}
-										Contact sales to move from Origin to Enterprise for unlimited calls.
-									{/if}
-								</p>
-								<div class="mt-3 flex space-x-4">
-									<a
-										href={data.usageStats.userTier === 'viewer'
-											? '/subscription#api-plans'
-											: '/contact'}
-										class="font-medium text-warning-strong underline hover:text-warning"
-									>
-										{data.usageStats.userTier === 'viewer' ? 'Upgrade to Origin' : 'Contact sales'}
-									</a>
-									<a
-										href="/api-dashboard/usage"
-										class="font-medium text-warning-strong underline hover:text-warning"
-									>
-										View usage analytics
-									</a>
-									<a
-										href="https://api.purveyors.io/docs"
-										class="font-medium text-warning-strong underline hover:text-warning"
-									>
-										API documentation
-									</a>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			{:else if data.usageStats.highestKeyQuota.monthlyPercent >= 75}
-				<!-- Upgrade CTA at 75% usage as specified in APITIER.md -->
-				<div class="mt-8 rounded-md bg-info-subtle p-4 ring-1 ring-info/30">
-					<div class="flex">
-						<div class="flex-shrink-0">
-							<svg class="h-5 w-5 text-info" viewBox="0 0 20 20" fill="currentColor">
-								<path
-									fill-rule="evenodd"
-									d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-									clip-rule="evenodd"
-								/>
-							</svg>
-						</div>
-						<div class="ml-3">
-							<h3 class="text-sm font-medium text-info-strong">Consider upgrading</h3>
-							<div class="mt-2 text-sm text-info-strong">
-								<p>
-									{data.usageStats.highestKeyQuota.keyName} has used
-									{Math.round(data.usageStats.highestKeyQuota.monthlyPercent)}% of its monthly API
-									calls. Limits apply separately to each key.
-									{#if data.usageStats.userTier === 'viewer'}
-										Upgrade to Origin for 50x more calls and advanced features.
-									{:else}
-										Contact sales about Enterprise for unlimited calls and premium support.
-									{/if}
-								</p>
-								<div class="mt-3">
-									<a
-										href={data.usageStats.userTier === 'viewer'
-											? '/subscription#api-plans'
-											: '/contact'}
-										class="font-medium text-info-strong underline hover:text-info"
-									>
-										{data.usageStats.userTier === 'viewer'
-											? 'View Origin plan options →'
-											: 'Contact sales about Enterprise →'}
 									</a>
 								</div>
 							</div>

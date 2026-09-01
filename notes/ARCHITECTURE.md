@@ -186,9 +186,10 @@ chat-action RPC remains migration debt and is not part of the beans-form cutover
 
 Parchment Console API-usage pages also consume the session-only
 `ParchmentClient.apiUsage.get` contract. Owner traffic totals remain aggregate,
-while monthly quota state is derived only from exact per-key counts because plan
-limits apply independently to each API key. Coffee-app retains only the
-presentation mapping for these analytics.
+and monthly quota state comes from the canonical account-scoped response.
+Per-key counts remain attribution for activity detail and may be incomplete
+relative to account totals. Coffee-app retains only the presentation mapping
+for these analytics.
 
 ## Cherry Runtime and tool flow
 

@@ -909,7 +909,7 @@ describe('/catalog process controls', () => {
 					status: 403,
 					code: 'entitlement_required',
 					message:
-						'Some requested catalog filters or sorts are available to members and paid API tiers.',
+						'Some requested catalog filters or sorts are available to members and customer API keys.',
 					deniedParams: ['type', 'grade', 'appearance', 'sort']
 				}
 			} as unknown as Partial<PageData>)
@@ -918,7 +918,7 @@ describe('/catalog process controls', () => {
 		expect(screen.getByText('Some requested filters were not applied')).toBeInTheDocument();
 		expect(
 			screen.getByText(
-				'Some requested catalog filters or sorts are available to members and paid API tiers.'
+				'Some requested catalog filters or sorts are available to members and customer API keys.'
 			)
 		).toBeInTheDocument();
 	});
