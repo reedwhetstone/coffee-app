@@ -127,7 +127,9 @@ The old same-host `https://purveyors.io/v1/*` routes and
 `https://api.purveyors.io/v1/*` directly. Coffee-app's `/api/catalog` family is a
 first-party BFF compatibility layer, not a public integration contract.
 
-The preview-gated catalog map follows the same boundary. Browser requests use
+The preview-gated catalog map follows the same boundary. Vercel Preview
+deployments enable the review surface automatically unless explicitly disabled;
+production remains off until the release flag is enabled. Browser requests use
 the first-party `/api/catalog/map` BFF, which attaches the public/demo or
 session credential server-side and relays the typed Parchment
 `GET /v1/catalog/map` response without local entitlement, clustering, or

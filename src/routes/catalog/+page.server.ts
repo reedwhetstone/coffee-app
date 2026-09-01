@@ -31,6 +31,7 @@ import {
 	getActiveSourcingBriefMatches,
 	type SourcingBriefMatchSummary
 } from '$lib/server/parchmentProcurement';
+import { resolveCatalogMapPreviewEnabled } from '$lib/server/catalogMapPreview';
 
 // Watchlist-only view is served as a single page; tracked lists are small.
 const TRACKED_VIEW_LIMIT = 200;
@@ -574,9 +575,10 @@ export const load: PageServerLoad = async (event) => {
 		catalogAccess,
 		catalogAccessNotice,
 		catalogSchemaUnavailable,
-		// PR 5 ships behind a server-only release gate. The client receives only
-		// the resolved boolean, never the environment or a credential.
-		catalogMapEnabled: env.CATALOG_MAP_PREVIEW_ENABLED === 'true',
+		// Vercel review deployments expose the feature without project-level env
+		// setup. Production remains explicitly gated. The client receives only the
+		// resolved boolean, never the environment or a credential.
+		catalogMapEnabled: resolveCatalogMapPreviewEnabled(env),
 		pagination: trackedOnly
 			? buildPagination(effectiveCatalogState, count ?? catalogResources.length)
 			: buildPagination(initialCatalogState, count ?? catalogResources.length),
