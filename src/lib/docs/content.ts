@@ -80,6 +80,16 @@ export const DOCS_NAV: DocsNavSection[] = [
 				slug: 'overview',
 				title: 'Generated API reference',
 				summary: 'Live Parchment API docs generated from the deployed OpenAPI contract.'
+			},
+			{
+				slug: 'catalog',
+				title: 'Catalog API',
+				summary: 'Normalized catalog rows, filters, access, and compatibility behavior.'
+			},
+			{
+				slug: 'catalog-map',
+				title: 'Catalog map API',
+				summary: 'Authorized clusters, canonical places, counts, and elevation profiles.'
 			}
 		]
 	},
@@ -285,11 +295,11 @@ const docsPages: DocsPage[] = [
 		slug: 'overview',
 		title: 'API overview',
 		summary:
-			'The Parchment API ships stable catalog and price-index contracts plus the internal route layer that powers the web app.',
+			'The Parchment API ships stable catalog, map, and price-index contracts plus the internal route layer that powers the web app.',
 		eyebrow: 'Parchment API',
 		intro: [
-			'The Parchment API and Parchment Console form the API layer inside Purveyors. They expose normalized green coffee catalog data, beta catalog similarity matching, and aggregate market intelligence through small public HTTP contracts plus a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
-			'The stable public catalog contract is GET https://api.purveyors.io/v1/catalog. Production catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages remain browsable without a user login because the coffee-app BFF presents a server-held public/demo key upstream. Deliberately designated Market Index teaser slices remain anonymous as a narrow route contract. GET /v1/catalog/{id}/similar is a beta member-session and scoped API-key route for candidate matching, not a canonical identity claim. GET /v1/price-index is an authenticated Parchment Intelligence contract for aggregate price_index_snapshots data only; it accepts entitled first-party sessions and customer API keys. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most coffee-app /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, Cherry Runtime, workspaces, billing, and admin tooling.'
+			'The Parchment API and Parchment Console form the API layer inside Purveyors. They expose normalized green coffee catalog data, authorized origin-map projections, beta catalog similarity matching, and aggregate market intelligence through small public HTTP contracts plus a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
+			'The stable public catalog family includes GET https://api.purveyors.io/v1/catalog and GET /v1/catalog/map. Production catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages remain browsable without a user login because the coffee-app BFF presents a server-held public/demo key upstream. The map route uses the same caller-visible catalog scope, but the public coffee-app map BFF and map interface are not released yet. Deliberately designated Market Index teaser slices remain anonymous as a narrow route contract. GET /v1/catalog/{id}/similar is a beta member-session and scoped API-key route for candidate matching, not a canonical identity claim. GET /v1/price-index is an authenticated Parchment Intelligence contract for aggregate price_index_snapshots data only; it accepts entitled first-party sessions and customer API keys. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most coffee-app /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, Cherry Runtime, workspaces, billing, and admin tooling.'
 		],
 		sections: [
 			{
@@ -311,6 +321,12 @@ const docsPages: DocsPage[] = [
 							'Bearer session token or API key',
 							'External integrations, CLI complements, first-party app',
 							'Stable public contract.'
+						],
+						[
+							'GET /v1/catalog/map',
+							'Bearer session token or API key',
+							'Origin-map integrations and first-party product clients',
+							'Stable authorized projection over the canonical catalog scope. Fine places, viewport search, and elevation profiles require a member session or customer API key; Green inspects at most 25 catalog rows.'
 						],
 						[
 							'GET /v1/catalog/{id}/similar',
@@ -357,6 +373,7 @@ const docsPages: DocsPage[] = [
 					'Parchment catalog, owner, and entitled data endpoints require Authorization: Bearer <credential>. GET /v1/catalog returns 401 when no credential is supplied. Deliberately designated Market Index teaser slices remain anonymous.',
 					'GET /v1/catalog accepts first-party session Bearer tokens. Viewer sessions share the publishable row scope; member and admin sessions may additionally access non-public rows, richer fields, and more search leverage.',
 					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. Green, Origin, and Enterprise keys share the same public-data query capabilities. Plans control account request quotas and collection sizes; key scopes and owner binding control authority.',
+					'GET /v1/catalog/map uses the same Bearer modes and catalog scope. Viewer sessions receive a public-safe country or region projection. Member/admin sessions and customer API keys on every API plan can use canonical place navigation, bounding boxes, and elevation profiles; Green map queries inspect at most 25 catalog rows.',
 					'Public website catalog pages use a server-only PARCHMENT_PUBLIC_DEMO_API_KEY through the coffee-app BFF. The browser receives public catalog data without receiving that credential. Anonymous Market Index teaser slices stay in session mode and call their deliberately anonymous upstream routes without the demo key.',
 					"GET /v1/catalog/{id}/similar requires a member session token or an API key with catalog:read. It returns beta similarity candidates within the caller's allowed row projection; missing credentials get 401 and signed-in viewer sessions get 403.",
 					'GET /v1/price-index accepts an entitled first-party session token or a customer API key whose owner has Parchment Intelligence access. It returns aggregate price-index snapshots, not raw supplier-level rows.',
@@ -436,6 +453,11 @@ const docsPages: DocsPage[] = [
 				description: 'Canonical /v1/catalog request and response reference.'
 			},
 			{
+				href: '/docs/api/catalog-map',
+				label: 'Catalog map contract',
+				description: 'Authorized origin clusters, place features, totals, and elevation profiles.'
+			},
+			{
 				href: '/docs/api/platform',
 				label: 'Platform route matrix',
 				description: 'Internal and authenticated /api/* route inventory.'
@@ -470,6 +492,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'GET https://api.purveyors.io/ returns the service descriptor and links callers to docs, OpenAPI, health, and llms.txt. GET /v1 does not exist.',
 					'GET /v1/catalog is the source-of-truth public contract for integrations.',
+					'GET /v1/catalog/map is the lightweight authorized spatial projection over the same visibility, filters, entitlement, and notice policy. It is not a second catalog search implementation.',
 					'GET /v1/catalog/proof-coverage returns aggregate proof-summary coverage for the visible catalog scope without raw evidence, supplier quotes, certification language, or row-level proof search leverage.',
 					'GET /v1/catalog/{id}/similar is the beta matching endpoint in the catalog family. It is not anonymous, and it should be presented as candidate discovery rather than accepted identity resolution.',
 					'The coffee-app same-host /v1/* and /api/catalog-api routes are retired. Do not use them as compatibility paths.',
@@ -616,7 +639,13 @@ const docsPages: DocsPage[] = [
 							'grade',
 							'string',
 							'none',
-							'Advanced elevation/grade filter. Available to member/admin sessions and customer API keys across every API plan.'
+							'Legacy text match on the stored grade label. It is not a numeric elevation filter. Available to member/admin sessions and customer API keys across every API plan.'
+						],
+						[
+							'elevationMinMasl / elevationMaxMasl',
+							'number',
+							'none',
+							'Numeric MASL bounds available to member/admin sessions and customer API keys across every API plan. A row matches when its reported elevation interval overlaps the requested closed interval; a missing request side is unbounded.'
 						],
 						[
 							'appearance',
@@ -715,7 +744,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Advanced process facet request',
 						language: 'bash',
-						code: 'curl "https://api.purveyors.io/v1/catalog?fermentation_type=Co-Fermented&has_additives=true&limit=25" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"\n\ncurl "https://api.purveyors.io/v1/catalog?has_additives=false&processing_disclosure_level=structured&limit=25" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"'
+						code: 'curl "https://api.purveyors.io/v1/catalog?fermentation_type=Co-Fermented&has_additives=true&limit=25" \\\n  -H "Authorization: Bearer pk_live_your_key_here"\n\ncurl "https://api.purveyors.io/v1/catalog?has_additives=false&processing_disclosure_level=structured&limit=25" \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
 					}
 				]
 			},
@@ -859,6 +888,12 @@ const docsPages: DocsPage[] = [
 					'Find candidate matches for a catalog coffee with member-session or scoped API-key access.'
 			},
 			{
+				href: '/docs/api/catalog-map',
+				label: 'Catalog map API',
+				description:
+					'Render lightweight authorized clusters and place features over this catalog scope.'
+			},
+			{
 				href: '/docs/api/platform',
 				label: 'Platform route matrix',
 				description: 'Internal /api/* companions to the public contract.'
@@ -867,6 +902,195 @@ const docsPages: DocsPage[] = [
 				href: '/docs/cli/catalog',
 				label: 'CLI catalog docs',
 				description: 'Terminal access to the same catalog domain.'
+			}
+		]
+	},
+
+	{
+		section: 'api',
+		slug: 'catalog-map',
+		title: 'Catalog map API',
+		summary:
+			'GET /v1/catalog/map returns lightweight authorized clusters, canonical place features, explicit catalog totals, and elevation profiles.',
+		eyebrow: 'Public endpoint',
+		intro: [
+			'GET https://api.purveyors.io/v1/catalog/map is the spatial projection of the canonical catalog. Parchment resolves catalog visibility, wholesale scope, filters, entitlement, notices, and plan limits before it creates clusters or place features.',
+			'The route is intentionally smaller than GET /v1/catalog. It returns map-ready clusters and places, global and viewport counts, access metadata, and an optional elevation profile. Hydrate full coffee details through the catalog endpoint after a user selects a single catalog ID.',
+			'Country and region centroids remain labeled at their real geographic precision. Canonical place IDs and bounded provenance describe what is known without exposing raw supplier text, aliases, resolver evidence, source URLs, or observation identities.'
+		],
+		sections: [
+			{
+				title: 'Endpoint and access',
+				table: {
+					headers: ['Surface', 'Credential', 'Capabilities', 'Cache policy'],
+					rows: [
+						[
+							'Configured public-demo key',
+							'Server-held Bearer API key',
+							'Public-safe country or region projection and catalog lens for first-party proof surfaces. The credential never reaches the browser.',
+							'Short-lived shared public cache keyed by the normalized request'
+						],
+						[
+							'Viewer session',
+							'Bearer session token',
+							'Public-safe country or region projection and catalog lens. Fine place navigation, viewport search, and elevation profile are unavailable.',
+							'Private, no-store'
+						],
+						[
+							'API Green',
+							'Bearer API key',
+							'Canonical places, viewport search, advanced catalog filters, and elevation lens/profile within the 25-row evaluation cap.',
+							'Private, no-store'
+						],
+						[
+							'Member or admin session',
+							'Bearer session token',
+							'Canonical descendant navigation, viewport search, premium catalog filters, and elevation lens/profile.',
+							'Private, no-store'
+						],
+						[
+							'API Origin or Enterprise',
+							'Bearer API key',
+							'Canonical places, viewport search, advanced catalog filters, and elevation lens/profile within the plan limit.',
+							'Private, no-store'
+						]
+					]
+				},
+				bullets: [
+					'Every direct Parchment request requires Authorization: Bearer <credential>. Missing or invalid credentials return 401.',
+					'The server-held public-demo key used by first-party public catalog pages is the only shared-cacheable map principal. Authenticated sessions and non-demo API keys never share its cache entry.',
+					'Strict callers receive 401 or 403 for entitlement-gated parameters. Lenient first-party callers may receive a successful response with stripped parameters and a meta.notices entry; Prefer: handling=lenient cannot weaken a strict caller.'
+				],
+				codeBlocks: [
+					{
+						label: 'Basic catalog map',
+						language: 'bash',
+						code: 'curl "https://api.purveyors.io/v1/catalog/map?country=Ethiopia&zoom=4" \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
+					},
+					{
+						label: 'Elevation viewport',
+						language: 'bash',
+						code: 'curl "https://api.purveyors.io/v1/catalog/map?bbox=32,-5,48,15&zoom=7&lens=elevation&elevationMinMasl=1400" \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
+					}
+				]
+			},
+			{
+				title: 'Query and navigation semantics',
+				body: [
+					'The route accepts the canonical catalog filters described in the catalog guide, then applies map-specific navigation and rendering parameters. The effective response records the normalized zoom, lens, place_id, and bounding box that Parchment actually honored.'
+				],
+				table: {
+					headers: ['Parameter', 'Access', 'Semantics'],
+					rows: [
+						[
+							'grade',
+							'Member/admin session or customer API key on any API plan',
+							'Legacy case-insensitive text match on the stored grade label. It is not a numeric MASL range.'
+						],
+						[
+							'elevationMinMasl / elevationMaxMasl',
+							'Member/admin session or customer API key on any API plan',
+							'Closed interval-overlap filter in meters above sea level. An omitted request side is unbounded; unknown elevation never becomes zero.'
+						],
+						[
+							'place_id',
+							'Member/admin session or customer API key on any API plan',
+							'Canonical place UUID. Matches assignments at that place or any canonical descendant; raw labels and aliases are not place identity.'
+						],
+						[
+							'bbox',
+							'Member/admin session or customer API key on any API plan',
+							'west,south,east,north. west > east crosses the antimeridian; west == east is a zero-width box. Omit bbox for the whole world.'
+						],
+						['zoom', 'All callers', 'Integer Web Mercator clustering zoom from 0 through 22.'],
+						[
+							'lens',
+							'catalog for all; elevation for member/admin sessions or customer API keys on any API plan',
+							'catalog returns the geographic projection. elevation additionally returns numeric bounds on place features and the aggregate elevation_profile.'
+						]
+					]
+				}
+			},
+			{
+				title: 'Counts and the unplaced remainder',
+				bullets: [
+					'meta.totals.unique_coffee_count counts catalog rows in the effective non-spatial query. placed_unique_coffee_count plus unplaced_unique_coffee_count reconciles to that total.',
+					'placement_count counts active catalog-to-place assignments. One multi-origin coffee can contribute several placements, so placement and cluster counts are intentionally non-additive against unique coffee totals.',
+					'viewport_placed_unique_coffee_count and viewport_placement_count describe only positioned rows inside the effective bounding box. They do not include the global unplaced remainder.',
+					'Unresolved rows remain explicit in unplaced_unique_coffee_count. They are not plotted at an invented location and remain available through the normal catalog listing.'
+				],
+				codeBlocks: [
+					{
+						label: 'Count envelope excerpt',
+						language: 'json',
+						code: '{\n  "meta": {\n    "totals": {\n      "unique_coffee_count": 820,\n      "placed_unique_coffee_count": 790,\n      "unplaced_unique_coffee_count": 30,\n      "placement_count": 812,\n      "mappable_placement_count": 805,\n      "viewport_placed_unique_coffee_count": 114,\n      "viewport_placement_count": 119\n    }\n  }\n}'
+					}
+				]
+			},
+			{
+				title: 'Elevation profile',
+				bullets: [
+					'evidence_count includes rows with at least one reported elevation bound. complete_bound_count, partial_bound_count, and unknown_count keep incomplete evidence visible.',
+					'Only rows with both finite bounds contribute one unweighted midpoint to bands, statistic_sample_count, and median_masl. Partial bounds contribute honest known extrema but no fabricated midpoint.',
+					'A coffee contributes at most once to the elevation profile even when it has multiple active place assignments.',
+					'min_known_masl and max_known_masl are the minimum known lower bound and maximum known upper bound. Elevation is production context, not a quality score or ranking signal.',
+					'elevation_profile.scope is query without bbox and viewport when a bounding box is effective.'
+				]
+			},
+			{
+				title: 'Feature precision and safe provenance',
+				bullets: [
+					'Cluster features carry bounds, placement_count, unique_coffee_count, and catalog_ids for contained-result interaction. Selecting a cluster should zoom or open that set, not choose an arbitrary coffee.',
+					'Place features carry catalog_id, canonical_name, place_type, geographic_precision, coordinate_kind, assignment role, bounded provenance enums, confidence, and optional elevation bounds.',
+					'Public-safe features may be coarsened to positioned country or region ancestors. A country or region centroid remains labeled as centroid precision and is never presented as an exact farm.',
+					'Raw supplier text, raw aliases, canonical keys, resolver evidence, source references, evidence quotes, and observation identities are not response fields.'
+				]
+			},
+			{
+				title: 'Freshness, errors, and capacity',
+				bullets: [
+					'meta.freshness.generatedAt is the authoritative body-generation time. cacheStatus and ttlSeconds describe the resolved policy; ttlSeconds is zero for private/no-store responses.',
+					'400 covers malformed geometry, zoom, place UUIDs, or elevation ranges. 401 covers missing or invalid authentication. 403 covers insufficient plan or role entitlement.',
+					'503 is a fail-closed response when the canonical map read model is not deployed or the bounded map capacity is exceeded. It is never converted into an empty-world success.',
+					'API-key responses retain the normal plan quota and X-RateLimit-* header contract.'
+				]
+			},
+			{
+				title: 'Current client availability',
+				bullets: [
+					'Trusted server applications can call GET /v1/catalog/map directly. Never expose a Parchment API key in browser JavaScript.',
+					'The canonical generated API reference remains https://api.purveyors.io/docs. It owns the exhaustive schema and is the source of truth when this guide is abbreviated.',
+					'The Purveyors web catalog is currently list-first and does not yet expose a public /api/catalog/map BFF or MapLibre interface.',
+					'The purvey CLI manifest and Cherry tool schemas do not currently advertise map commands, place_id navigation, bounding boxes, or the elevation lens. Use the HTTP contract instead of assuming local filter support.'
+				],
+				callout: {
+					tone: 'warning',
+					title: 'No browser credential handoff',
+					body: 'Browser experiences must call a same-origin server route that owns credential attachment. Do not call api.purveyors.io from browser code with a server API key.'
+				}
+			}
+		],
+		related: [
+			{
+				href: '/docs/api/catalog',
+				label: 'Catalog API',
+				description: 'Canonical row projection, filters, entitlement, and pagination.'
+			},
+			{
+				href: 'https://api.purveyors.io/docs',
+				label: 'Generated API reference',
+				description: 'Deployed OpenAPI schemas, parameters, and response envelopes.'
+			},
+			{
+				href: '/api-dashboard',
+				label: 'Parchment Console',
+				description: 'Create keys, inspect usage, and manage API access.'
+			},
+			{
+				href: '/catalog',
+				label: 'Catalog',
+				description:
+					'Browse full coffee rows and the explicit unplaced remainder through the list experience.'
 			}
 		]
 	},
@@ -960,7 +1184,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Member or API-key request',
 						language: 'bash',
-						code: 'curl "https://api.purveyors.io/v1/catalog/1182/similar?threshold=0.8&limit=5&mode=likely_same" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"'
+						code: 'curl "https://api.purveyors.io/v1/catalog/1182/similar?threshold=0.8&limit=5&mode=likely_same" \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
 					},
 					{
 						label: 'Successful response fragment',

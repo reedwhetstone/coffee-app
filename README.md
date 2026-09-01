@@ -52,6 +52,7 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
 
    - `GET https://api.purveyors.io/` advertises the service, docs, health, and OpenAPI resources
    - `GET https://api.purveyors.io/v1/catalog` is the stable public contract for external integrations
+   - `GET https://api.purveyors.io/v1/catalog/map` returns authorized clusters, canonical place features, explicit placed/unplaced totals, and elevation profiles over the same caller-visible catalog scope
    - `GET https://api.purveyors.io/v1/catalog/{id}/similar` is a beta catalog matching endpoint for member sessions or API keys on any API plan with `catalog:read`
    - `GET https://api.purveyors.io/v1/price-index` exposes aggregate `price_index_snapshots` for entitled first-party sessions and customer API keys with Parchment Intelligence access
    - Parchment catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages use a server-held demo key through the coffee-app BFF; deliberately designated Market Index teaser slices remain anonymous
@@ -70,7 +71,7 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
    - `/auth/callback` is the web OAuth handoff surface; `/auth/cli` is the signed-in browser consent surface for CLI authorization requests. Neither is a REST resource
    - `/api/tools/*` routes are deprecated compatibility shims; prefer session-mode Parchment SDK integration for new work
 
-Do not document the whole coffee-app `/api/*` tree as a stable public contract. The stable public catalog feed is `https://api.purveyors.io/v1/catalog`; `https://api.purveyors.io/v1/catalog/{id}/similar` is beta and access-gated; `https://api.purveyors.io/v1/price-index` is aggregate-only and entitlement-gated. The broader coffee-app `/api/*` tree should be described as platform/internal routes with explicit auth and stability labels.
+Do not document the whole coffee-app `/api/*` tree as a stable public contract. The stable public catalog family is `https://api.purveyors.io/v1/catalog` and its authorized `/map` projection; `https://api.purveyors.io/v1/catalog/{id}/similar` is beta and access-gated; `https://api.purveyors.io/v1/price-index` is aggregate-only and entitlement-gated. The broader coffee-app `/api/*` tree should be described as platform/internal routes with explicit auth and stability labels. There is no public coffee-app `/api/catalog/map` route yet; direct integrations use Parchment and keep Bearer credentials server-side.
 
 ## CLI relationship
 

@@ -30,8 +30,9 @@
 			</h1>
 			<p class="mt-5 text-lg leading-relaxed text-muted">
 				The generated Parchment API contract covers normalized pricing, availability, supplier
-				coverage, roasting workflows, and account-linked resources. Browse the app to evaluate the
-				feed, then move to API keys in the Parchment Console for production usage.
+				coverage, authorized origin-map projections, roasting workflows, and account-linked
+				resources. Browse the app to evaluate the feed, then move to API keys in the Parchment
+				Console for production usage.
 			</p>
 		</div>
 
@@ -121,7 +122,7 @@
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-accent"></span>
 					<span
-						>Surface supplier coverage gaps and new arrivals in customer-facing sourcing tools</span
+						>Render origin clusters and elevation profiles without downloading full catalog rows</span
 					>
 				</li>
 			</ul>

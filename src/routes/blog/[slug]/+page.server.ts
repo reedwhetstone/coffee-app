@@ -4,7 +4,7 @@ import { buildPublicMeta, resolveBlogPostSocialImage } from '$lib/seo/meta';
 import { getAllPosts } from '$lib/server/blog';
 import type { MarketBriefDeploymentManifest } from '$lib/server/marketBriefEmail';
 import { createSchemaService } from '$lib/services/schemaService';
-import { getBlogPostPath } from '$lib/types/blog.types';
+import { getBlogPostPath, type MarketBriefReaderExport } from '$lib/types/blog.types';
 
 export const load: PageServerLoad = async ({ params, url }) => {
 	const posts = await getAllPosts();
@@ -20,8 +20,10 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const author = post.author || 'Reed Whetstone';
 	const isMarketBrief = post.format === 'market-brief';
 	let marketBriefDeployment: MarketBriefDeploymentManifest | undefined;
+	let marketBriefReader: MarketBriefReaderExport | undefined;
 	if (isMarketBrief) {
 		const {
+			buildMarketBriefReaderExport,
 			buildMarketBriefDeploymentManifest,
 			buildMarketBriefEmailProjection,
 			getRawMarketBriefSource
@@ -31,6 +33,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			throw error(500, `Market Brief source not found: ${post.slug}`);
 		}
 		const projection = buildMarketBriefEmailProjection(post, source);
+		marketBriefReader = buildMarketBriefReaderExport(post, source);
 		marketBriefDeployment = buildMarketBriefDeploymentManifest(projection, process.env);
 	}
 	const socialImage = resolveBlogPostSocialImage({
@@ -74,6 +77,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	return {
 		metadata: post,
 		marketBriefDeployment,
+		marketBriefReader,
 		meta: buildPublicMeta({
 			baseUrl,
 			path: postPath,

@@ -21,6 +21,17 @@ export interface BlogPost extends Omit<BlogPostFrontmatter, 'format'> {
 	format: BlogFormat;
 }
 
+export interface MarketBriefReaderSection {
+	id: string;
+	title: string;
+}
+
+export interface MarketBriefReaderExport {
+	canonicalUrl: string;
+	markdown: string;
+	sections: MarketBriefReaderSection[];
+}
+
 export const BLOG_TAGS = [
 	'ai',
 	'agents',

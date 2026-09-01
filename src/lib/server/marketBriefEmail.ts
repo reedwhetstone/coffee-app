@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
 
 import { decodeHTML } from 'entities';
+import GithubSlugger from 'github-slugger';
 import { marked, type Token, type Tokens } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 
-import type { BlogPost } from '$lib/types/blog.types';
+import type { BlogPost, MarketBriefReaderExport } from '$lib/types/blog.types';
 import { formatMarketBriefEdition, getBlogPostPath } from '$lib/types/blog.types';
 
 export const MARKET_BRIEF_CANONICAL_ORIGIN = 'https://www.purveyors.io';
@@ -319,6 +320,155 @@ function tokenText(token: Token, canonicalUrl: string): string {
 
 function tokensText(tokens: Token[], canonicalUrl: string): string {
 	return tokens.map((token) => tokenText(token, canonicalUrl)).join('');
+}
+
+function isRelativeMarkdownTarget(value: string): boolean {
+	return !/^[a-z][a-z\d+.-]*:/i.test(value) && !value.startsWith('//');
+}
+
+function formatMarkdownTitle(title: string | null | undefined): string {
+	return title === null || title === undefined
+		? ''
+		: ` "${title.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
+}
+
+function normalizeMarkdownTarget(
+	raw: string,
+	href: string,
+	title: string | null | undefined,
+	canonicalUrl: string,
+	resolveTarget: (value: string, baseUrl: string) => string
+): string {
+	if (!isRelativeMarkdownTarget(href)) return raw;
+
+	const resolved = resolveTarget(href, canonicalUrl);
+	const destinationStart = raw.indexOf('](');
+	if (destinationStart < 0) return raw;
+
+	return `${raw.slice(0, destinationStart + 2)}<${resolved}>${formatMarkdownTitle(title)})`;
+}
+
+function normalizeMarkdownDefinition(
+	raw: string,
+	href: string,
+	title: string | null | undefined,
+	canonicalUrl: string
+): string {
+	if (!isRelativeMarkdownTarget(href)) return raw;
+
+	const resolved = resolveHref(href, canonicalUrl);
+	const destinationStart = raw.indexOf(']:');
+	if (destinationStart < 0) return raw;
+
+	const lineBreakStart = raw.search(/\r?\n/);
+	const trailing = lineBreakStart < 0 ? '' : raw.slice(lineBreakStart);
+	return `${raw.slice(0, destinationStart + 2)} <${resolved}>${formatMarkdownTitle(title)}${trailing}`;
+}
+
+function normalizeMarkdownTargets(markdown: string, tokens: Token[], canonicalUrl: string): string {
+	const replacements = new Map<string, string>();
+
+	marked.walkTokens(tokens, (token) => {
+		if (token.type === 'link') {
+			const link = token as Tokens.Link;
+			const normalized = normalizeMarkdownTarget(
+				link.raw,
+				link.href,
+				link.title,
+				canonicalUrl,
+				resolveHref
+			);
+			if (normalized !== link.raw) replacements.set(link.raw, normalized);
+		}
+		if (token.type === 'image') {
+			const image = token as Tokens.Image;
+			const normalized = normalizeMarkdownTarget(
+				image.raw,
+				image.href,
+				image.title,
+				canonicalUrl,
+				resolveImageSrc
+			);
+			if (normalized !== image.raw) replacements.set(image.raw, normalized);
+		}
+		if (token.type === 'def') {
+			const definition = token as Tokens.Def;
+			const normalized = normalizeMarkdownDefinition(
+				definition.raw,
+				definition.href,
+				definition.title,
+				canonicalUrl
+			);
+			if (normalized !== definition.raw) replacements.set(definition.raw, normalized);
+		}
+	});
+
+	let normalized = markdown;
+	for (const [raw, replacement] of replacements) {
+		normalized = normalized.replaceAll(raw, replacement);
+	}
+	return normalized;
+}
+
+function inlineTokensText(tokens: Token[]): string {
+	return tokens
+		.map((token) => {
+			switch (token.type) {
+				case 'text': {
+					const text = token as Tokens.Text;
+					return text.tokens ? inlineTokensText(text.tokens) : decodeHTML(text.text);
+				}
+				case 'escape':
+					return decodeHTML(token.text);
+				case 'codespan':
+					return token.text;
+				case 'strong':
+				case 'em':
+				case 'del':
+				case 'link':
+					return inlineTokensText(token.tokens ?? []);
+				case 'image':
+					return decodeHTML(token.text);
+				default:
+					return 'tokens' in token && Array.isArray(token.tokens)
+						? inlineTokensText(token.tokens)
+						: '';
+			}
+		})
+		.join('');
+}
+
+export function buildMarketBriefReaderExport(
+	post: BlogPost,
+	source: string
+): MarketBriefReaderExport {
+	if (post.format !== 'market-brief' || post.edition === undefined) {
+		throw new Error(`Blog post ${post.slug} is not a Market Brief edition`);
+	}
+
+	const canonicalUrl = `${MARKET_BRIEF_CANONICAL_ORIGIN}${getBlogPostPath(post.slug)}`;
+	const markdown = extractMarkdownBody(source);
+	const tokens = tokenizeMarketBrief(source, canonicalUrl);
+	const slugger = new GithubSlugger();
+	const sections: MarketBriefReaderExport['sections'] = [];
+
+	marked.walkTokens(tokens, (token) => {
+		if (token.type !== 'heading') return;
+		const heading = token as Tokens.Heading;
+		const title = inlineTokensText(heading.tokens ?? [])
+			.replace(/\s+/g, ' ')
+			.trim();
+		const id = slugger.slug(title);
+		if (heading.depth === 2 && title.toLowerCase() !== 'sources') {
+			sections.push({ id, title });
+		}
+	});
+
+	return {
+		canonicalUrl,
+		markdown: `${normalizeMarkdownTargets(markdown, tokens, canonicalUrl)}\n`,
+		sections
+	};
 }
 
 function renderText(tokens: Token[], canonicalUrl: string): string {

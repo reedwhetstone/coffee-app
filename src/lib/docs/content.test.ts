@@ -117,6 +117,43 @@ describe('api docs contract', () => {
 		);
 	});
 
+	it('documents the catalog map contract without claiming unfinished clients', () => {
+		const mapPage = getDocsPage('api', 'catalog-map');
+		expect(mapPage).toBeDefined();
+
+		const serializedMap = JSON.stringify(mapPage);
+		expect(serializedMap).toContain('GET https://api.purveyors.io/v1/catalog/map');
+		expect(serializedMap).toContain(
+			'Legacy case-insensitive text match on the stored grade label. It is not a numeric MASL range.'
+		);
+		expect(serializedMap).toContain('elevationMinMasl / elevationMaxMasl');
+		expect(serializedMap).toContain(
+			'Canonical place UUID. Matches assignments at that place or any canonical descendant'
+		);
+		expect(serializedMap).toContain(
+			'placed_unique_coffee_count plus unplaced_unique_coffee_count reconciles to that total.'
+		);
+		expect(serializedMap).toContain(
+			'Only rows with both finite bounds contribute one unweighted midpoint'
+		);
+		expect(serializedMap).toContain(
+			'The server-held public-demo key used by first-party public catalog pages is the only shared-cacheable map principal.'
+		);
+		expect(serializedMap).toContain(
+			'Canonical places, viewport search, advanced catalog filters, and elevation lens/profile within the 25-row evaluation cap.'
+		);
+		expect(serializedMap).toContain('Member/admin session or customer API key on any API plan');
+		expect(serializedMap).not.toContain('Premium map parameters return 403.');
+		expect(serializedMap).not.toContain('Member/admin or paid API tier');
+		expect(serializedMap).toContain(
+			'does not yet expose a public /api/catalog/map BFF or MapLibre interface.'
+		);
+		expect(serializedMap).toContain(
+			'The purvey CLI manifest and Cherry tool schemas do not currently advertise map commands'
+		);
+		expect(serializedMap).not.toContain('purvey catalog map');
+	});
+
 	it('does not advertise the retired coffee-app roast classifier adapter', () => {
 		const overview = getDocsPage('api', 'overview');
 		const roastProfiles = getDocsPage('api', 'roast-profiles');
