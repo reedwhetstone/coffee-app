@@ -31,6 +31,14 @@ export const DEFAULT_CATALOG_MAP_STATE: CatalogMapUrlState = {
 	placeId: null
 };
 
+/**
+ * Ask Parchment for its lightest point-level projection, then let MapLibre's
+ * worker cluster those points for the current screen. This keeps marker
+ * coordinates close to the canonical place instead of drawing server tile
+ * centers over oceans, and avoids a network round trip for every zoom.
+ */
+export const CATALOG_MAP_POINT_PROJECTION_ZOOM = 22;
+
 const MAP_UI_KEYS = [
 	'view',
 	'map_lens',
@@ -174,7 +182,7 @@ export function buildCatalogMapRequestParams(
 	params.set('stocked', 'true');
 	params.set('showWholesale', catalogState.showWholesale ? 'true' : 'false');
 	params.set('wholesaleOnly', catalogState.wholesaleOnly ? 'true' : 'false');
-	params.set('zoom', Math.round(mapState.zoom).toString());
+	params.set('zoom', CATALOG_MAP_POINT_PROJECTION_ZOOM.toString());
 	params.set('lens', mapState.lens);
 	if (mapState.bbox) params.set('bbox', formatCatalogMapBounds(mapState.bbox));
 	if (mapState.placeId) params.set('place_id', mapState.placeId);

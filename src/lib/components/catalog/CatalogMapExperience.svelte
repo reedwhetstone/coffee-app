@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import type { CatalogMapResponse } from '@purveyors/sdk';
 	import CatalogMapCanvas, {
+		type CatalogMapClusterSelection,
 		type CatalogMapViewportChange
 	} from '$lib/components/catalog/CatalogMapCanvas.svelte';
 	import {
@@ -80,6 +81,9 @@
 	let elevationMinInput = $state('');
 	let elevationMaxInput = $state('');
 	let elevationInputError = $state<string | null>(null);
+	let clusterSelection = $state<CatalogMapClusterSelection | null>(null);
+	let locationListOpen = $state(false);
+	let locationListLimit = $state(48);
 	let lastIncomingStateKey = '';
 	let lastPublishedStateKey = '';
 
@@ -89,6 +93,10 @@
 	let items = $derived((mapResponse?.data ?? []) as CatalogMapItem[]);
 	let clusters = $derived(items.filter(isCatalogMapCluster));
 	let places = $derived(items.filter(isCatalogMapPlace));
+	let visibleClusters = $derived(clusters.slice(0, locationListLimit));
+	let visiblePlaces = $derived(
+		places.slice(0, Math.max(0, locationListLimit - visibleClusters.length))
+	);
 	let totals = $derived(mapResponse?.meta.totals ?? null);
 	let access = $derived(mapResponse?.meta.access ?? null);
 	let profile = $derived(mapResponse?.elevation_profile ?? null);
@@ -291,7 +299,8 @@
 				Explore coffee origins
 			</p>
 			<p class="mt-1 text-sm text-muted">
-				Browse coffees by origin. Coffees with more than one origin may appear in multiple places.
+				Browse coffees by origin. Bubble numbers count mapped origins; multi-origin coffees may
+				appear in more than one place.
 			</p>
 		</div>
 		<div class="flex flex-wrap items-center gap-2" aria-label="Map lens controls">
@@ -489,11 +498,11 @@
 	{/if}
 
 	<div
-		class="relative h-[72dvh] min-h-[36rem] overflow-hidden rounded-xl border border-line bg-surface-panel lg:flex lg:h-[46rem]"
+		class="relative h-[clamp(26rem,72dvh,46rem)] overflow-hidden rounded-xl border border-line bg-surface-panel lg:flex lg:h-[46rem]"
 	>
 		<div class="relative min-w-0 flex-1">
 			{#if rendererError}
-				<div class="flex h-full min-h-[28rem] items-center justify-center p-6">
+				<div class="flex h-full min-h-0 items-center justify-center p-6">
 					<div
 						class="max-w-md rounded-lg border border-warning/30 bg-warning-subtle p-5 text-center"
 					>
@@ -513,12 +522,13 @@
 					lens={currentState.lens}
 					center={currentState.center}
 					zoom={currentState.zoom}
-					{canSearchViewport}
 					onViewportChange={handleViewportChange}
 					onPlaceSelect={(catalogId) => {
+						clusterSelection = null;
 						const place = places.find((item) => item.catalog_id === catalogId);
 						if (place) void selectCoffee(place);
 					}}
+					onClusterSelect={(selection) => (clusterSelection = selection)}
 					onMapError={(message) => (rendererError = message)}
 				/>
 			{/if}
@@ -549,6 +559,38 @@
 					>
 				{/if}
 			</div>
+
+			{#if clusterSelection}
+				<div
+					class="absolute bottom-[5.5rem] left-3 z-10 max-w-[calc(100%-1.5rem)] rounded-lg border border-line bg-surface-raised/95 p-3 shadow-lg backdrop-blur-sm lg:bottom-3 lg:max-w-sm"
+					role="status"
+				>
+					<div class="flex items-start gap-3">
+						<div class="min-w-0 flex-1">
+							<p class="text-sm font-semibold text-ink">
+								{clusterSelection.mappedOriginCount.toLocaleString()} mapped
+								{clusterSelection.mappedOriginCount === 1 ? 'origin' : 'origins'}
+							</p>
+							<p class="mt-1 text-xs text-muted">
+								{#if clusterSelection.kind === 'area'}
+									Zooming in to separate nearby origins. Select a single point to open its coffee
+									details.
+								{:else}
+									{clusterSelection.coffeeMatchCount.toLocaleString()} coffee
+									{clusterSelection.coffeeMatchCount === 1 ? 'match shares' : 'matches share'}
+									this broad origin location. Refine the filters or use the results to choose one.
+								{/if}
+							</p>
+						</div>
+						<button
+							type="button"
+							class="shrink-0 rounded p-1 text-muted hover:bg-surface-panel hover:text-ink"
+							aria-label="Dismiss map selection"
+							onclick={() => (clusterSelection = null)}>×</button
+						>
+					</div>
+				</div>
+			{/if}
 
 			{#if mapLoading}
 				<div
@@ -614,66 +656,78 @@
 		</aside>
 	</div>
 
-	<details class="rounded-lg border border-line bg-surface-panel px-4 py-3">
+	<details
+		bind:open={locationListOpen}
+		class="rounded-lg border border-line bg-surface-panel px-4 py-3"
+	>
 		<summary class="cursor-pointer text-sm font-semibold text-ink"
 			>Browse map locations ({items.length})</summary
 		>
 		<p class="mt-2 text-xs text-muted">
 			Zoom into grouped locations or choose an origin to open its coffee details.
 		</p>
-		<div class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-			{#each clusters as cluster}
+		{#if locationListOpen}
+			<div class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+				{#each visibleClusters as cluster}
+					<button
+						type="button"
+						class="rounded-md border border-line bg-surface-raised p-3 text-left hover:border-accent"
+						onclick={() => {
+							const bounds = {
+								west: cluster.bounds.west,
+								south: cluster.bounds.south,
+								east: cluster.bounds.east,
+								north: cluster.bounds.north
+							};
+							pendingBounds = null;
+							publishState(
+								{
+									...currentState,
+									center: [cluster.longitude, cluster.latitude],
+									zoom: Math.min(11, currentState.zoom + 2),
+									bbox: canSearchViewport ? bounds : currentState.bbox
+								},
+								canSearchViewport
+							);
+						}}
+					>
+						<span class="block text-sm font-semibold text-ink"
+							>{coffeeCountLabel(cluster.unique_coffee_count)}</span
+						>
+						<span class="mt-1 block text-xs text-muted">Zoom in to explore this area</span>
+					</button>
+				{/each}
+				{#each visiblePlaces as place}
+					<div class="rounded-md border border-line bg-surface-raised p-3">
+						<button type="button" class="w-full text-left" onclick={() => void selectCoffee(place)}>
+							<span class="block text-sm font-semibold text-ink">{place.canonical_name}</span>
+							<span class="mt-1 block text-xs text-muted">{formatGeographicPrecision(place)}</span>
+							<span class="mt-1 block text-xs text-muted">
+								{formatElevationRange(
+									place.elevation_min_masl,
+									place.elevation_max_masl,
+									currentState.units
+								)}
+							</span>
+						</button>
+						{#if place.place_id && canExplorePlaces}
+							<button
+								type="button"
+								class="mt-2 text-xs font-semibold text-link underline"
+								onclick={() => explorePlace(place)}>Explore this origin</button
+							>
+						{/if}
+					</div>
+				{/each}
+			</div>
+			{#if items.length > locationListLimit}
 				<button
 					type="button"
-					class="rounded-md border border-line bg-surface-raised p-3 text-left hover:border-accent"
-					onclick={() => {
-						const bounds = {
-							west: cluster.bounds.west,
-							south: cluster.bounds.south,
-							east: cluster.bounds.east,
-							north: cluster.bounds.north
-						};
-						pendingBounds = null;
-						publishState(
-							{
-								...currentState,
-								center: [cluster.longitude, cluster.latitude],
-								zoom: Math.min(11, currentState.zoom + 2),
-								bbox: canSearchViewport ? bounds : currentState.bbox
-							},
-							canSearchViewport
-						);
-					}}
+					class="mt-3 rounded-md border border-line bg-surface-raised px-3 py-2 text-sm font-medium text-ink hover:border-accent"
+					onclick={() => (locationListLimit += 48)}>Show more locations</button
 				>
-					<span class="block text-sm font-semibold text-ink"
-						>{coffeeCountLabel(cluster.unique_coffee_count)}</span
-					>
-					<span class="mt-1 block text-xs text-muted">Zoom in to explore this area</span>
-				</button>
-			{/each}
-			{#each places as place}
-				<div class="rounded-md border border-line bg-surface-raised p-3">
-					<button type="button" class="w-full text-left" onclick={() => void selectCoffee(place)}>
-						<span class="block text-sm font-semibold text-ink">{place.canonical_name}</span>
-						<span class="mt-1 block text-xs text-muted">{formatGeographicPrecision(place)}</span>
-						<span class="mt-1 block text-xs text-muted">
-							{formatElevationRange(
-								place.elevation_min_masl,
-								place.elevation_max_masl,
-								currentState.units
-							)}
-						</span>
-					</button>
-					{#if place.place_id && canExplorePlaces}
-						<button
-							type="button"
-							class="mt-2 text-xs font-semibold text-link underline"
-							onclick={() => explorePlace(place)}>Explore this origin</button
-						>
-					{/if}
-				</div>
-			{/each}
-		</div>
+			{/if}
+		{/if}
 		{#if selectionError}<p class="mt-3 text-sm text-danger" role="alert">{selectionError}</p>{/if}
 	</details>
 

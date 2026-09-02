@@ -111,9 +111,7 @@ describe('CatalogMapExperience', () => {
 
 		await waitFor(() => expect(screen.getByText('9')).toBeInTheDocument());
 		expect(
-			screen.getByText(
-				'Browse coffees by origin. Coffees with more than one origin may appear in multiple places.'
-			)
+			screen.getByText(/Browse coffees by origin\. Bubble numbers count mapped origins/)
 		).toBeInTheDocument();
 		expect(screen.getByText('2')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Elevation' })).toBeDisabled();
@@ -124,6 +122,7 @@ describe('CatalogMapExperience', () => {
 		expect(fetchSpy).toHaveBeenCalledTimes(1);
 		expect(fetchSpy.mock.calls[0][0].toString()).toContain('/api/catalog/map?');
 		expect(fetchSpy.mock.calls[0][0].toString()).toContain('lens=catalog');
+		expect(fetchSpy.mock.calls[0][0].toString()).toContain('zoom=22');
 	});
 
 	it('hydrates a single entitled row instead of opening raw map data', async () => {
@@ -139,10 +138,31 @@ describe('CatalogMapExperience', () => {
 		);
 		const { onSelectCoffee } = renderExperience(true);
 
-		const placeButton = await screen.findByRole('button', { name: /Huila/ });
-		await fireEvent.click(placeButton);
+		await screen.findByText('9');
+		await fireEvent.click(screen.getByRole('button', { name: 'Simulate single origin selection' }));
 
 		expect(onSelectCoffee).toHaveBeenCalledWith(42);
+	});
+
+	it('shows immediate context when a visual cluster is selected', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(
+				async () =>
+					new Response(JSON.stringify(mapResponse()), {
+						status: 200,
+						headers: { 'Content-Type': 'application/json' }
+					})
+			)
+		);
+		renderExperience(true);
+
+		await screen.findByText('9');
+		await fireEvent.click(screen.getByRole('button', { name: 'Simulate cluster selection' }));
+
+		expect(screen.getByText(/12 mapped origins/)).toBeInTheDocument();
+		expect(screen.getByText(/Zooming in to separate nearby origins/)).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Dismiss map selection' })).toBeInTheDocument();
 	});
 
 	it('keeps the list rail and a clear recovery path when map data fails', async () => {
@@ -214,7 +234,7 @@ describe('CatalogMapExperience', () => {
 		expect(sheetToggle).toHaveAttribute('aria-expanded', 'true');
 	});
 
-	it('keeps every returned feature keyboard-reachable in the accessible list', async () => {
+	it('keeps returned features keyboard-reachable when the accessible list is opened', async () => {
 		const clusters = Array.from({ length: 13 }, (_, index) => ({
 			type: 'cluster',
 			id: `cluster-${index}`,
@@ -237,6 +257,7 @@ describe('CatalogMapExperience', () => {
 		vi.stubGlobal('fetch', fetchSpy);
 		renderExperience(false);
 
+		await fireEvent.click(await screen.findByText(/Browse map locations/));
 		await waitFor(() => {
 			const buttons = screen.getAllByRole('button', { name: /coffee.*zoom in to explore/i });
 			expect(buttons).toHaveLength(13);
@@ -266,6 +287,7 @@ describe('CatalogMapExperience', () => {
 		vi.stubGlobal('fetch', fetchSpy);
 		const { onStateChange } = renderExperience(false);
 
+		await fireEvent.click(await screen.findByText(/Browse map locations/));
 		const clusterButton = await screen.findByRole('button', {
 			name: /3 coffees.*zoom in to explore/i
 		});

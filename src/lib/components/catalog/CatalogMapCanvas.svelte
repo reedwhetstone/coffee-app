@@ -21,15 +21,21 @@
 		commitSearch: boolean;
 	}
 
+	export interface CatalogMapClusterSelection {
+		kind: 'area' | 'shared-location';
+		mappedOriginCount: number;
+		coffeeMatchCount: number;
+	}
+
 	interface Props {
 		items: CatalogMapItem[];
 		lens: CatalogMapLens;
 		center: [number, number];
 		zoom: number;
 		styleUrl?: string;
-		canSearchViewport?: boolean;
 		onViewportChange: (viewport: CatalogMapViewportChange) => void;
 		onPlaceSelect: (catalogId: number, placeId: string | null) => void;
+		onClusterSelect?: (selection: CatalogMapClusterSelection) => void;
 		onMapReady?: () => void;
 		onMapError?: (message: string) => void;
 	}
@@ -40,9 +46,9 @@
 		center,
 		zoom,
 		styleUrl = 'https://tiles.openfreemap.org/styles/positron',
-		canSearchViewport = true,
 		onViewportChange,
 		onPlaceSelect,
+		onClusterSelect = () => {},
 		onMapReady = () => {},
 		onMapError = () => {}
 	}: Props = $props();
@@ -50,13 +56,33 @@
 	let container: HTMLDivElement;
 	let map: MapLibreMap | null = null;
 	let sourceReady = $state(false);
-	let commitNextMove = false;
 	let destroyed = false;
+	let resizeObserver: ResizeObserver | null = null;
+	let resizeFrame: number | null = null;
+
+	function readProperties(event: MapLayerMouseEvent): Record<string, unknown> | null {
+		const properties = event.features?.[0]?.properties;
+		return properties ? (properties as Record<string, unknown>) : null;
+	}
 
 	function readPointProperties(event: MapLayerMouseEvent): CatalogMapPointProperties | null {
-		const properties = event.features?.[0]?.properties;
+		const properties = readProperties(event);
 		if (!properties || typeof properties.type !== 'string') return null;
-		return properties as CatalogMapPointProperties;
+		return properties as unknown as CatalogMapPointProperties;
+	}
+
+	function readCount(properties: Record<string, unknown>, key: string): number {
+		const value = Number(properties[key]);
+		return Number.isFinite(value) && value > 0 ? value : 1;
+	}
+
+	function featureCoordinates(event: MapLayerMouseEvent): [number, number] | null {
+		const geometry = event.features?.[0]?.geometry;
+		if (geometry?.type !== 'Point' || !Array.isArray(geometry.coordinates)) return null;
+		const [longitude, latitude] = geometry.coordinates;
+		return typeof longitude === 'number' && typeof latitude === 'number'
+			? [longitude, latitude]
+			: null;
 	}
 
 	function currentViewport(
@@ -76,36 +102,53 @@
 		};
 	}
 
-	function handleClusterClick(event: MapLayerMouseEvent) {
-		if (!map) return;
-		const properties = readPointProperties(event);
-		if (!properties || properties.type !== 'cluster') return;
-		if (
-			properties.west === null ||
-			properties.south === null ||
-			properties.east === null ||
-			properties.north === null
-		) {
+	async function handleVisualClusterClick(event: MapLayerMouseEvent) {
+		const currentMap = map;
+		const properties = readProperties(event);
+		const clusterId = Number(properties?.cluster_id);
+		if (!currentMap || !properties || !Number.isFinite(clusterId)) return;
+
+		onClusterSelect({
+			kind: 'area',
+			mappedOriginCount: readCount(properties, 'placementCount'),
+			coffeeMatchCount: readCount(properties, 'uniqueCoffeeCount')
+		});
+
+		const source = currentMap.getSource('catalog-map') as GeoJSONSource | undefined;
+		const coordinates = featureCoordinates(event);
+		if (!source || !coordinates) return;
+		let expansionZoom: number;
+		try {
+			expansionZoom = await source.getClusterExpansionZoom(clusterId);
+		} catch {
 			return;
 		}
+		if (destroyed || map !== currentMap) return;
+		currentMap.easeTo({ center: coordinates, zoom: Math.min(expansionZoom, 16), duration: 350 });
+	}
 
-		// MapLibre accepts longitudes beyond 180 when fitting an antimeridian box.
-		// Preserve Parchment's west>east meaning by unwrapping the east edge.
-		const east = properties.west > properties.east ? properties.east + 360 : properties.east;
-		commitNextMove = canSearchViewport;
-		map.fitBounds(
-			[
-				[properties.west, properties.south],
-				[east, properties.north]
-			],
-			{ padding: 56, maxZoom: 11, duration: 500 }
-		);
+	function handleSharedLocationClick(event: MapLayerMouseEvent) {
+		const properties = readPointProperties(event);
+		if (!properties || properties.type !== 'cluster') return;
+		onClusterSelect({
+			kind: 'shared-location',
+			mappedOriginCount: properties.placementCount,
+			coffeeMatchCount: properties.uniqueCoffeeCount
+		});
 	}
 
 	function handlePlaceClick(event: MapLayerMouseEvent) {
 		const properties = readPointProperties(event);
 		if (!properties || properties.type !== 'place' || properties.catalogId === null) return;
 		onPlaceSelect(properties.catalogId, properties.placeId);
+	}
+
+	function scheduleResize() {
+		if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
+		resizeFrame = requestAnimationFrame(() => {
+			resizeFrame = null;
+			map?.resize();
+		});
 	}
 
 	onMount(() => {
@@ -121,33 +164,44 @@
 					zoom,
 					minZoom: 1,
 					maxZoom: 16,
-					cooperativeGestures: true
+					cooperativeGestures: false
 				});
 				map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
+				if (typeof ResizeObserver !== 'undefined') {
+					resizeObserver = new ResizeObserver(scheduleResize);
+					resizeObserver.observe(container);
+				}
 
 				map.on('load', () => {
 					if (!map) return;
 					map.addSource('catalog-map', {
 						type: 'geojson',
-						data: toCatalogMapGeoJson(items, lens)
+						data: toCatalogMapGeoJson(items, lens),
+						cluster: true,
+						clusterMaxZoom: 14,
+						clusterRadius: 52,
+						clusterProperties: {
+							placementCount: ['+', ['get', 'placementCount']],
+							uniqueCoffeeCount: ['+', ['get', 'uniqueCoffeeCount']]
+						}
 					});
 					map.addLayer({
 						id: 'catalog-map-clusters',
 						type: 'circle',
 						source: 'catalog-map',
-						filter: ['==', ['get', 'type'], 'cluster'],
+						filter: ['has', 'point_count'],
 						paint: {
-							'circle-color': ['get', 'color'],
+							'circle-color': '#302F2A',
 							'circle-radius': [
 								'interpolate',
 								['linear'],
-								['get', 'uniqueCoffeeCount'],
+								['get', 'placementCount'],
 								1,
-								18,
+								17,
 								25,
-								28,
+								23,
 								100,
-								38
+								31
 							],
 							'circle-stroke-color': '#FCFAF8',
 							'circle-stroke-width': 2,
@@ -158,10 +212,34 @@
 						id: 'catalog-map-cluster-labels',
 						type: 'symbol',
 						source: 'catalog-map',
-						filter: ['==', ['get', 'type'], 'cluster'],
+						filter: ['has', 'point_count'],
 						layout: {
-							'text-field': ['to-string', ['get', 'uniqueCoffeeCount']],
+							'text-field': ['to-string', ['get', 'placementCount']],
 							'text-size': 12,
+							'text-font': ['Noto Sans Regular']
+						},
+						paint: { 'text-color': '#FCFAF8' }
+					});
+					map.addLayer({
+						id: 'catalog-map-shared-locations',
+						type: 'circle',
+						source: 'catalog-map',
+						filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'type'], 'cluster']],
+						paint: {
+							'circle-color': ['get', 'color'],
+							'circle-radius': 14,
+							'circle-stroke-color': '#FCFAF8',
+							'circle-stroke-width': 2
+						}
+					});
+					map.addLayer({
+						id: 'catalog-map-shared-location-labels',
+						type: 'symbol',
+						source: 'catalog-map',
+						filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'type'], 'cluster']],
+						layout: {
+							'text-field': ['to-string', ['get', 'placementCount']],
+							'text-size': 11,
 							'text-font': ['Noto Sans Regular']
 						},
 						paint: { 'text-color': '#FCFAF8' }
@@ -170,7 +248,7 @@
 						id: 'catalog-map-places',
 						type: 'circle',
 						source: 'catalog-map',
-						filter: ['==', ['get', 'type'], 'place'],
+						filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'type'], 'place']],
 						paint: {
 							'circle-color': ['get', 'color'],
 							'circle-radius': 8,
@@ -182,7 +260,7 @@
 						id: 'catalog-map-place-labels',
 						type: 'symbol',
 						source: 'catalog-map',
-						filter: ['==', ['get', 'type'], 'place'],
+						filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'type'], 'place']],
 						minzoom: 4,
 						layout: {
 							'text-field': ['get', 'label'],
@@ -197,9 +275,16 @@
 						}
 					});
 
-					map.on('click', 'catalog-map-clusters', handleClusterClick);
+					map.on('click', 'catalog-map-clusters', (event) => {
+						void handleVisualClusterClick(event);
+					});
+					map.on('click', 'catalog-map-shared-locations', handleSharedLocationClick);
 					map.on('click', 'catalog-map-places', handlePlaceClick);
-					for (const layer of ['catalog-map-clusters', 'catalog-map-places']) {
+					for (const layer of [
+						'catalog-map-clusters',
+						'catalog-map-shared-locations',
+						'catalog-map-places'
+					]) {
 						map.on('mouseenter', layer, () => {
 							if (map) map.getCanvas().style.cursor = 'pointer';
 						});
@@ -208,13 +293,13 @@
 						});
 					}
 					sourceReady = true;
+					scheduleResize();
 					onMapReady();
 				});
 
 				map.on('moveend', () => {
 					if (!map) return;
-					onViewportChange({ ...currentViewport(map), commitSearch: commitNextMove });
-					commitNextMove = false;
+					onViewportChange({ ...currentViewport(map), commitSearch: false });
 				});
 				map.on('error', (event) => {
 					if (!sourceReady) {
@@ -228,6 +313,9 @@
 
 		return () => {
 			destroyed = true;
+			resizeObserver?.disconnect();
+			resizeObserver = null;
+			if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
 			map?.remove();
 			map = null;
 		};
@@ -255,6 +343,6 @@
 
 <div
 	bind:this={container}
-	class="h-full min-h-[28rem] w-full bg-surface-panel"
+	class="h-full min-h-0 w-full bg-surface-panel"
 	aria-label="Interactive catalog origin map. Use the adjacent feature list for an accessible alternative."
 ></div>

@@ -5,13 +5,19 @@ import CatalogMapCanvas from './CatalogMapCanvas.svelte';
 const maplibre = vi.hoisted(() => {
 	const setWorkerUrl = vi.fn();
 	const constructMap = vi.fn();
+	const fakeSource = {
+		setData: vi.fn(),
+		getClusterExpansionZoom: vi.fn(async () => 7)
+	};
 	const fakeMap = {
 		addControl: vi.fn(),
 		addSource: vi.fn(),
 		addLayer: vi.fn(),
 		on: vi.fn(),
 		remove: vi.fn(),
-		getSource: vi.fn(),
+		resize: vi.fn(),
+		getCanvas: vi.fn(() => ({ style: { cursor: '' } })),
+		getSource: vi.fn(() => fakeSource),
 		getCenter: vi.fn(() => ({ lng: 0, lat: 18 })),
 		getZoom: vi.fn(() => 1.75),
 		getBounds: vi.fn(() => ({
@@ -20,11 +26,11 @@ const maplibre = vi.hoisted(() => {
 			getEast: () => 190,
 			getNorth: () => 10
 		})),
-		fitBounds: vi.fn(),
+		easeTo: vi.fn(),
 		jumpTo: vi.fn()
 	};
 
-	return { setWorkerUrl, constructMap, fakeMap };
+	return { setWorkerUrl, constructMap, fakeSource, fakeMap };
 });
 
 vi.mock('maplibre-gl', () => ({
@@ -36,9 +42,15 @@ vi.mock('maplibre-gl', () => ({
 	setWorkerUrl: maplibre.setWorkerUrl
 }));
 
+function loadMap() {
+	const load = maplibre.fakeMap.on.mock.calls.find((call) => call[0] === 'load')?.[1] as () => void;
+	load();
+}
+
 describe('CatalogMapCanvas worker integration', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		maplibre.fakeSource.getClusterExpansionZoom.mockResolvedValue(7);
 	});
 
 	it('binds the packaged MapLibre worker before constructing the map', async () => {
@@ -60,42 +72,116 @@ describe('CatalogMapCanvas worker integration', () => {
 		);
 	});
 
-	it('normalizes antimeridian bounds and does not commit cluster search without access', async () => {
+	it('clusters lightweight points in the worker and expands a selected cluster immediately', async () => {
+		const onClusterSelect = vi.fn();
+		render(CatalogMapCanvas, {
+			items: [],
+			lens: 'catalog',
+			center: [0, 18],
+			zoom: 1.75,
+			onViewportChange: vi.fn(),
+			onPlaceSelect: vi.fn(),
+			onClusterSelect
+		});
+
+		await waitFor(() => expect(maplibre.constructMap).toHaveBeenCalledOnce());
+		loadMap();
+
+		expect(maplibre.fakeMap.addSource).toHaveBeenCalledWith(
+			'catalog-map',
+			expect.objectContaining({
+				cluster: true,
+				clusterMaxZoom: 14,
+				clusterRadius: 52,
+				clusterProperties: {
+					placementCount: ['+', ['get', 'placementCount']],
+					uniqueCoffeeCount: ['+', ['get', 'uniqueCoffeeCount']]
+				}
+			})
+		);
+
+		const clusterClick = maplibre.fakeMap.on.mock.calls.find(
+			(call) => call[0] === 'click' && call[1] === 'catalog-map-clusters'
+		)?.[2] as (event: unknown) => void;
+		clusterClick({
+			features: [
+				{
+					properties: { cluster_id: 7, placementCount: 12, uniqueCoffeeCount: 10 },
+					geometry: { type: 'Point', coordinates: [-75, 5] }
+				}
+			]
+		});
+
+		expect(onClusterSelect).toHaveBeenCalledWith({
+			kind: 'area',
+			mappedOriginCount: 12,
+			coffeeMatchCount: 10
+		});
+		await waitFor(() =>
+			expect(maplibre.fakeSource.getClusterExpansionZoom).toHaveBeenCalledWith(7)
+		);
+		expect(maplibre.fakeMap.easeTo).toHaveBeenCalledWith({
+			center: [-75, 5],
+			zoom: 7,
+			duration: 350
+		});
+	});
+
+	it('shows shared-location context and keeps single-origin selection wired to details', async () => {
+		const onClusterSelect = vi.fn();
+		const onPlaceSelect = vi.fn();
+		render(CatalogMapCanvas, {
+			items: [],
+			lens: 'catalog',
+			center: [0, 18],
+			zoom: 1.75,
+			onViewportChange: vi.fn(),
+			onPlaceSelect,
+			onClusterSelect
+		});
+
+		await waitFor(() => expect(maplibre.constructMap).toHaveBeenCalledOnce());
+		loadMap();
+		const sharedClick = maplibre.fakeMap.on.mock.calls.find(
+			(call) => call[0] === 'click' && call[1] === 'catalog-map-shared-locations'
+		)?.[2] as (event: unknown) => void;
+		const placeClick = maplibre.fakeMap.on.mock.calls.find(
+			(call) => call[0] === 'click' && call[1] === 'catalog-map-places'
+		)?.[2] as (event: unknown) => void;
+
+		sharedClick({
+			features: [{ properties: { type: 'cluster', placementCount: 8, uniqueCoffeeCount: 6 } }]
+		});
+		placeClick({
+			features: [{ properties: { type: 'place', catalogId: 42, placeId: 'place-id' } }]
+		});
+
+		expect(onClusterSelect).toHaveBeenCalledWith({
+			kind: 'shared-location',
+			mappedOriginCount: 8,
+			coffeeMatchCount: 6
+		});
+		expect(onPlaceSelect).toHaveBeenCalledWith(42, 'place-id');
+	});
+
+	it('normalizes antimeridian bounds without committing a network search on pan or zoom', async () => {
 		const onViewportChange = vi.fn();
 		render(CatalogMapCanvas, {
 			items: [],
 			lens: 'catalog',
 			center: [0, 18],
 			zoom: 1.75,
-			canSearchViewport: false,
 			onViewportChange,
 			onPlaceSelect: vi.fn()
 		});
 
 		await waitFor(() => expect(maplibre.constructMap).toHaveBeenCalledOnce());
-		const load = maplibre.fakeMap.on.mock.calls.find(
-			(call) => call[0] === 'load'
-		)?.[1] as () => void;
-		load();
-		const clusterClick = maplibre.fakeMap.on.mock.calls.find(
-			(call) => call[0] === 'click' && call[1] === 'catalog-map-clusters'
-		)?.[2] as (event: unknown) => void;
+		loadMap();
 		const moveend = maplibre.fakeMap.on.mock.calls.find(
 			(call) => call[0] === 'moveend'
 		)?.[1] as () => void;
-
-		clusterClick({
-			features: [{ properties: { type: 'cluster', west: 170, south: -10, east: -170, north: 10 } }]
-		});
 		moveend();
 
-		expect(maplibre.fakeMap.fitBounds).toHaveBeenCalledWith(
-			[
-				[170, -10],
-				[190, 10]
-			],
-			expect.any(Object)
-		);
 		expect(onViewportChange).toHaveBeenCalledWith({
 			center: [0, 18],
 			zoom: 1.75,

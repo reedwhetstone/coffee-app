@@ -132,11 +132,13 @@ deployments enable the review surface automatically unless explicitly disabled;
 production remains off until the release flag is enabled. Browser requests use
 the first-party `/api/catalog/map` BFF, which attaches the public/demo or
 session credential server-side and relays the typed Parchment
-`GET /v1/catalog/map` response without local entitlement, clustering, or
-statistics logic. Authenticated responses are private/no-store; the configured
-public/demo projection alone is share-cacheable and varies on browser
-credential context. The ordinary catalog list remains the default and failure
-recovery path until production map QA removes the gate.
+`GET /v1/catalog/map` point projection without local entitlement or statistics
+logic. MapLibre clusters the lightweight authorized points in its web worker so
+screen-size changes and zooms do not require a new API projection. Authenticated
+responses are private/no-store; the configured public/demo projection alone is
+share-cacheable and varies on browser credential context. The ordinary catalog
+list remains the default and failure recovery path until production map QA
+removes the gate.
 
 ## Direct Supabase reality
 
