@@ -52,8 +52,9 @@
 	{onClearCoffee}
 	{onSwitchToList}
 >
-	{#snippet coffeeDetail(coffee: CoffeeCatalog)}
+	{#snippet coffeeDetail(coffee: CoffeeCatalog, onClose: () => void)}
 		<p>Selected coffee detail: {coffee.name}</p>
+		<button type="button" onclick={onClose}>Close coffee detail to map</button>
 	{/snippet}
 	{#snippet resultsRail()}
 		<p>Existing catalog results remain available</p>

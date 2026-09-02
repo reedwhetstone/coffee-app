@@ -42,7 +42,7 @@
 		elevationRange?: ElevationRangeInput | null;
 		canUseAdvancedMaps: boolean;
 		resultsRail: Snippet;
-		coffeeDetail: Snippet<[CoffeeCatalog]>;
+		coffeeDetail: Snippet<[CoffeeCatalog, () => void]>;
 		onStateChange: (state: CatalogMapUrlState) => void;
 		onElevationRangeChange: (range: ElevationRangeInput | null) => void;
 		onSelectCoffee: (catalogId: number) => Promise<CoffeeCatalog | null>;
@@ -286,6 +286,11 @@
 		coffeeOpenRequestVersion += 1;
 		focusedCoffee = null;
 		onClearCoffee();
+	}
+
+	function closeFocusedCoffeeToMap() {
+		clearFocusedCoffee();
+		sheetOpen = false;
 	}
 
 	function clearMapSelection() {
@@ -812,7 +817,7 @@
 						</button>
 					</div>
 					{#key focusedCoffee.id}
-						{@render coffeeDetail(focusedCoffee)}
+						{@render coffeeDetail(focusedCoffee, closeFocusedCoffeeToMap)}
 					{/key}
 				{:else if clusterSelection}
 					{@const selectedOriginSummary = originSummary(clusterSelection.originLabels)}

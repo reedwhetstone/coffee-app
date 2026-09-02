@@ -169,7 +169,7 @@ describe('CatalogMapExperience', () => {
 					})
 			)
 		);
-		const { onSelectCoffee } = renderExperience(true);
+		const { onSelectCoffee, onClearCoffee } = renderExperience(true);
 
 		await screen.findByText('9');
 		await fireEvent.click(screen.getByRole('button', { name: 'Simulate single origin selection' }));
@@ -177,6 +177,14 @@ describe('CatalogMapExperience', () => {
 		expect(onSelectCoffee).toHaveBeenCalledWith(42);
 		expect(await screen.findByText('Selected coffee detail: Sidama Natural')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Back to map results' })).toBeInTheDocument();
+
+		const clearCountBeforeClose = onClearCoffee.mock.calls.length;
+		await fireEvent.click(screen.getByRole('button', { name: 'Close coffee detail to map' }));
+		expect(onClearCoffee).toHaveBeenCalledTimes(clearCountBeforeClose + 1);
+		expect(screen.getByRole('button', { name: /Catalog results/ })).toHaveAttribute(
+			'aria-expanded',
+			'false'
+		);
 	});
 
 	it('opens a selected-area rail with readable coffees when a visual cluster is selected', async () => {
@@ -346,6 +354,51 @@ describe('CatalogMapExperience', () => {
 		expect(screen.queryByText('Existing catalog results remain available')).not.toBeInTheDocument();
 		const backButton = screen.getByRole('button', { name: 'Back to Selected map area' });
 		await fireEvent.click(backButton);
+		expect(screen.getByRole('button', { name: /Sidama Natural/ })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'All results' })).toBeInTheDocument();
+	});
+
+	it('closes grouped coffee detail to the map without discarding the selected area', async () => {
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const body = input.toString().startsWith('/api/catalog/map?')
+				? mapResponse()
+				: {
+						data: [
+							{
+								id: 42,
+								name: 'Sidama Natural',
+								source: 'Royal Coffee',
+								country: 'Ethiopia',
+								region: 'Sidama',
+								processing: 'Natural',
+								cost_lb: 7.25,
+								price_per_lb: 7.25,
+								price_tiers: null
+							}
+						]
+					};
+			return new Response(JSON.stringify(body), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' }
+			});
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+		renderExperience(true);
+
+		await screen.findByText('9');
+		await fireEvent.click(screen.getByRole('button', { name: 'Simulate cluster selection' }));
+		await screen.findByText('Sidama Natural');
+		await fireEvent.click(screen.getByRole('button', { name: /Sidama Natural/ }));
+		await screen.findByText('Selected coffee detail: Sidama Natural');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Close coffee detail to map' }));
+
+		const sheetToggle = screen.getByRole('button', { name: /Selected map area/ });
+		expect(sheetToggle).toHaveAttribute('aria-expanded', 'false');
+		expect(screen.queryByText('Selected coffee detail: Sidama Natural')).not.toBeInTheDocument();
+
+		await fireEvent.click(sheetToggle);
+		expect(sheetToggle).toHaveAttribute('aria-expanded', 'true');
 		expect(screen.getByRole('button', { name: /Sidama Natural/ })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'All results' })).toBeInTheDocument();
 	});

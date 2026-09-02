@@ -773,7 +773,7 @@
 				onClearCoffee={clearMapCoffee}
 				onSwitchToList={() => switchCatalogView('list')}
 			>
-				{#snippet coffeeDetail(coffee: CoffeeCatalog)}
+				{#snippet coffeeDetail(coffee: CoffeeCatalog, onClose: () => void)}
 					<CoffeeCard
 						{coffee}
 						{parseTastingNotes}
@@ -783,6 +783,8 @@
 						tracked={trackedIds.has(coffee.id)}
 						onToggleTrack={canUseSourcingIntelligence ? handleToggleTrack : undefined}
 						initialDetailsOpen={true}
+						detailCloseLabel="Back to map"
+						onDetailClose={onClose}
 					/>
 				{/snippet}
 				{#snippet resultsRail()}
