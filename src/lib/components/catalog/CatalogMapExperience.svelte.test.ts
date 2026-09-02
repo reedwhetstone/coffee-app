@@ -187,7 +187,7 @@ describe('CatalogMapExperience', () => {
 		});
 		expect(
 			screen.getByText(
-				'Map shading shows approximate terrain elevation; markers show reported coffee elevation.'
+				'When available, map shading shows approximate terrain elevation; markers show reported coffee elevation.'
 			)
 		).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Apply range' })).toHaveClass(
