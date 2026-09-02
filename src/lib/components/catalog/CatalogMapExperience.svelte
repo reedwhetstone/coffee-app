@@ -325,7 +325,7 @@
 		clusterSelection = {
 			...selection,
 			catalogIds,
-			coffeeMatchCount: catalogIds.length || selection.coffeeMatchCount
+			coffeeMatchCount: catalogIds.length > 0 ? catalogIds.length : selection.coffeeMatchCount
 		};
 		selectionQuery = requestQuery;
 		selectedCoffees = [];
@@ -372,7 +372,8 @@
 		await openSelectedCoffee(place.catalog_id);
 	}
 
-	function coffeeCountLabel(count: number): string {
+	function coffeeCountLabel(count: number | null): string {
+		if (count === null) return 'Coffee count unavailable';
 		return `${count} coffee${count === 1 ? '' : 's'}`;
 	}
 
@@ -558,7 +559,11 @@
 							<span class="ml-2 text-xs text-muted">Selected coffee</span>
 						{:else}
 							<span class="ml-2 text-xs text-muted"
-								>{clusterSelection?.coffeeMatchCount ?? totals?.unique_coffee_count ?? '—'} coffees</span
+								>{clusterSelection
+									? coffeeCountLabel(clusterSelection.coffeeMatchCount)
+									: typeof totals?.unique_coffee_count === 'number'
+										? `${totals.unique_coffee_count} coffees`
+										: '—'}</span
 							>
 						{/if}
 					</span>

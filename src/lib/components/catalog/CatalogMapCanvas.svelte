@@ -32,7 +32,7 @@
 		label: string;
 		precisionLabel: string;
 		mappedOriginCount: number;
-		coffeeMatchCount: number;
+		coffeeMatchCount: number | null;
 		catalogIds: number[];
 		originLabels: string[];
 	}
@@ -313,7 +313,7 @@
 			showHoverPopup(
 				event,
 				'Grouped map area',
-				`${coffeeCountLabel(readCount(properties, 'uniqueCoffeeCount'))} · zoom in for regions`
+				`${readCount(properties, 'placementCount').toLocaleString()} mapped placements · zoom in for regions`
 			);
 		}
 	}
@@ -373,8 +373,7 @@
 				label: 'Selected map area',
 				precisionLabel: 'Nearby mapped origins',
 				mappedOriginCount: readCount(properties, 'placementCount'),
-				coffeeMatchCount:
-					catalogIds.length > 0 ? catalogIds.length : readCount(properties, 'uniqueCoffeeCount'),
+				coffeeMatchCount: catalogIds.length > 0 ? catalogIds.length : null,
 				catalogIds,
 				originLabels
 			});
@@ -384,7 +383,7 @@
 				label: 'Selected map area',
 				precisionLabel: 'Nearby mapped origins',
 				mappedOriginCount: readCount(properties, 'placementCount'),
-				coffeeMatchCount: readCount(properties, 'uniqueCoffeeCount'),
+				coffeeMatchCount: null,
 				catalogIds: [],
 				originLabels: []
 			});
@@ -413,7 +412,7 @@
 			precisionLabel:
 				properties.precisionLabel === 'Cluster' ? 'Broad mapped area' : properties.precisionLabel,
 			mappedOriginCount: properties.placementCount,
-			coffeeMatchCount: catalogIds.length || properties.uniqueCoffeeCount,
+			coffeeMatchCount: catalogIds.length > 0 ? catalogIds.length : null,
 			catalogIds,
 			originLabels: properties.label === 'Mapped area' ? [] : [properties.label]
 		});
@@ -470,8 +469,7 @@
 						clusterMaxZoom: 14,
 						clusterRadius: 52,
 						clusterProperties: {
-							placementCount: ['+', ['get', 'placementCount']],
-							uniqueCoffeeCount: ['+', ['get', 'uniqueCoffeeCount']]
+							placementCount: ['+', ['get', 'placementCount']]
 						}
 					});
 					map.addLayer({

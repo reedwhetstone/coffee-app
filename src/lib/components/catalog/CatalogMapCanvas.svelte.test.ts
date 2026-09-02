@@ -157,8 +157,7 @@ describe('CatalogMapCanvas worker integration', () => {
 				clusterMaxZoom: 14,
 				clusterRadius: 52,
 				clusterProperties: {
-					placementCount: ['+', ['get', 'placementCount']],
-					uniqueCoffeeCount: ['+', ['get', 'uniqueCoffeeCount']]
+					placementCount: ['+', ['get', 'placementCount']]
 				}
 			})
 		);
@@ -240,6 +239,42 @@ describe('CatalogMapCanvas worker integration', () => {
 			expect(content).not.toHaveTextContent('coffees');
 		});
 		expect(maplibre.fakeSource.getClusterLeaves).toHaveBeenCalledWith(7, 25, 0);
+	});
+
+	it('keeps hover fallback placement-only when cluster leaves are unavailable', async () => {
+		render(CatalogMapCanvas, {
+			items: [],
+			center: [0, 18],
+			zoom: 1.75,
+			onViewportChange: vi.fn(),
+			onPlaceSelect: vi.fn()
+		});
+
+		await waitFor(() => expect(maplibre.constructMap).toHaveBeenCalledOnce());
+		loadMap();
+		maplibre.fakeSource.getClusterLeaves.mockRejectedValueOnce(new Error('worker unavailable'));
+		const hover = maplibre.fakeMap.on.mock.calls.find(
+			(call) => call[0] === 'mouseenter' && call[1] === 'catalog-map-clusters'
+		)?.[2] as (event: unknown) => void;
+		hover({
+			lngLat: { lng: 38.7, lat: 9.1 },
+			features: [
+				{
+					properties: {
+						cluster_id: 7,
+						point_count: 100,
+						placementCount: 132,
+						uniqueCoffeeCount: 200
+					}
+				}
+			]
+		});
+
+		await waitFor(() => {
+			const content = maplibre.fakePopup.setDOMContent.mock.calls.at(-1)?.[0] as HTMLElement;
+			expect(content).toHaveTextContent('132 mapped placements · zoom in for regions');
+			expect(content).not.toHaveTextContent('coffees');
+		});
 	});
 
 	it('warms the default basemap with the Purveyors field-journal palette', async () => {
