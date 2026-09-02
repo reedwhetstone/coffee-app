@@ -7,6 +7,7 @@
 	import { checkRole } from '$lib/types/auth.types';
 
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
+	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 	import type {
 		PageSourcingBriefMatchSummary,
 		SourcingBriefMatchSummary
@@ -244,7 +245,7 @@
 		filterStore.setFilter('elevation_masl', range);
 	}
 
-	async function selectMapCoffee(catalogId: number): Promise<boolean> {
+	async function selectMapCoffee(catalogId: number): Promise<CoffeeCatalog | null> {
 		try {
 			const params = new URLSearchParams({
 				ids: String(catalogId),
@@ -254,19 +255,27 @@
 			});
 			if (activeCatalogUrlState.wholesaleOnly) params.set('wholesaleOnly', 'true');
 			const response = await fetch(`/api/catalog?${params.toString()}`);
-			if (!response.ok) return false;
+			if (!response.ok) return null;
 			const body = (await response.json()) as { data?: CoffeeCatalog[] };
 			const coffee = body.data?.find((item) => catalogCoffeeId(item) === catalogId) ?? null;
-			if (!coffee) return false;
+			if (!coffee) return null;
 
 			mapSelectedCoffee = coffee;
 			const nextUrl = new URL(window.location.href);
 			nextUrl.searchParams.set('coffee', String(catalogId));
 			replaceState(nextUrl, page.state);
-			return true;
+			return coffee;
 		} catch {
-			return false;
+			return null;
 		}
+	}
+
+	function clearMapCoffee() {
+		const nextUrl = new URL(window.location.href);
+		if (mapSelectedCoffee === null && !nextUrl.searchParams.has('coffee')) return;
+		mapSelectedCoffee = null;
+		nextUrl.searchParams.delete('coffee');
+		replaceState(nextUrl, page.state);
 	}
 
 	function withDeepLinkCoffee(rows: CoffeeCatalog[]): CoffeeCatalog[] {
@@ -761,8 +770,21 @@
 				onStateChange={updateCatalogMapState}
 				onElevationRangeChange={setElevationRange}
 				onSelectCoffee={selectMapCoffee}
+				onClearCoffee={clearMapCoffee}
 				onSwitchToList={() => switchCatalogView('list')}
 			>
+				{#snippet coffeeDetail(coffee: CoffeeCatalog)}
+					<CoffeeCard
+						{coffee}
+						{parseTastingNotes}
+						showSimilarComparisonAction={true}
+						{canUseBeanMatching}
+						priceContext={getCardPriceContext(coffee)}
+						tracked={trackedIds.has(coffee.id)}
+						onToggleTrack={canUseSourcingIntelligence ? handleToggleTrack : undefined}
+						initialDetailsOpen={true}
+					/>
+				{/snippet}
 				{#snippet resultsRail()}
 					{@render catalogResults('rail')}
 				{/snippet}

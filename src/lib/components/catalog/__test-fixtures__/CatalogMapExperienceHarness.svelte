@@ -2,6 +2,7 @@
 	import CatalogMapExperience from '../CatalogMapExperience.svelte';
 	import type { CatalogMapUrlState } from '$lib/catalog/mapState';
 	import type { CatalogUrlState } from '$lib/catalog/urlState';
+	import type { CoffeeCatalog } from '$lib/types/component.types';
 
 	interface ElevationRangeInput {
 		min: string | number;
@@ -15,7 +16,8 @@
 		canUseAdvancedMaps: boolean;
 		onStateChange: (state: CatalogMapUrlState) => void;
 		onElevationRangeChange: (range: ElevationRangeInput | null) => void;
-		onSelectCoffee: (catalogId: number) => Promise<boolean>;
+		onSelectCoffee: (catalogId: number) => Promise<CoffeeCatalog | null>;
+		onClearCoffee: () => void;
 		onSwitchToList: () => void;
 	}
 
@@ -27,6 +29,7 @@
 		onStateChange,
 		onElevationRangeChange,
 		onSelectCoffee,
+		onClearCoffee,
 		onSwitchToList
 	}: Props = $props();
 
@@ -46,8 +49,12 @@
 	onStateChange={handleStateChange}
 	{onElevationRangeChange}
 	{onSelectCoffee}
+	{onClearCoffee}
 	{onSwitchToList}
 >
+	{#snippet coffeeDetail(coffee: CoffeeCatalog)}
+		<p>Selected coffee detail: {coffee.name}</p>
+	{/snippet}
 	{#snippet resultsRail()}
 		<p>Existing catalog results remain available</p>
 	{/snippet}

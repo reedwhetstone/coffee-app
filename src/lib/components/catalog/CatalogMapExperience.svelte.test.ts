@@ -4,6 +4,7 @@ import type { CatalogMapResponse } from '@purveyors/sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultCatalogUrlState } from '$lib/catalog/urlState';
 import { DEFAULT_CATALOG_MAP_STATE, type CatalogMapUrlState } from '$lib/catalog/mapState';
+import type { CoffeeCatalog } from '$lib/types/component.types';
 import CatalogMapExperienceHarness from './__test-fixtures__/CatalogMapExperienceHarness.svelte';
 
 vi.mock('$lib/components/catalog/CatalogMapCanvas.svelte', async () => ({
@@ -78,7 +79,14 @@ function renderExperience(
 ) {
 	const onStateChange = vi.fn();
 	const onElevationRangeChange = vi.fn();
-	const onSelectCoffee = vi.fn(async () => true);
+	const onSelectCoffee = vi.fn(
+		async (catalogId: number) =>
+			({
+				id: catalogId,
+				name: catalogId === 42 ? 'Sidama Natural' : `Coffee ${catalogId}`
+			}) as CoffeeCatalog
+	);
+	const onClearCoffee = vi.fn();
 	const onSwitchToList = vi.fn();
 
 	render(CatalogMapExperienceHarness, {
@@ -88,10 +96,11 @@ function renderExperience(
 		onStateChange,
 		onElevationRangeChange,
 		onSelectCoffee,
+		onClearCoffee,
 		onSwitchToList
 	});
 
-	return { onStateChange, onElevationRangeChange, onSelectCoffee, onSwitchToList };
+	return { onStateChange, onElevationRangeChange, onSelectCoffee, onClearCoffee, onSwitchToList };
 }
 
 describe('CatalogMapExperience', () => {
@@ -166,6 +175,8 @@ describe('CatalogMapExperience', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Simulate single origin selection' }));
 
 		expect(onSelectCoffee).toHaveBeenCalledWith(42);
+		expect(await screen.findByText('Selected coffee detail: Sidama Natural')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Back to map results' })).toBeInTheDocument();
 	});
 
 	it('opens a selected-area rail with readable coffees when a visual cluster is selected', async () => {
@@ -299,7 +310,7 @@ describe('CatalogMapExperience', () => {
 		expect(fetchSpy.mock.calls[2][0].toString()).toContain('limit=5');
 	});
 
-	it('clears grouped results before mounting the selected coffee detail rail', async () => {
+	it('opens grouped coffee detail without losing the selected area', async () => {
 		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
 			const body = input.toString().startsWith('/api/catalog/map?')
 				? mapResponse()
@@ -331,10 +342,12 @@ describe('CatalogMapExperience', () => {
 		await screen.findByText('Sidama Natural');
 		await fireEvent.click(screen.getByRole('button', { name: /Sidama Natural/ }));
 
-		expect(
-			await screen.findByText('Existing catalog results remain available')
-		).toBeInTheDocument();
-		expect(screen.queryByRole('button', { name: 'All results' })).not.toBeInTheDocument();
+		expect(await screen.findByText('Selected coffee detail: Sidama Natural')).toBeInTheDocument();
+		expect(screen.queryByText('Existing catalog results remain available')).not.toBeInTheDocument();
+		const backButton = screen.getByRole('button', { name: 'Back to Selected map area' });
+		await fireEvent.click(backButton);
+		expect(screen.getByRole('button', { name: /Sidama Natural/ })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'All results' })).toBeInTheDocument();
 	});
 
 	it('keeps the list rail and a clear recovery path when map data fails', async () => {

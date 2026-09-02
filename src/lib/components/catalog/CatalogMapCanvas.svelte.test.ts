@@ -169,11 +169,23 @@ describe('CatalogMapCanvas worker integration', () => {
 		await waitFor(() => expect(maplibre.constructMap).toHaveBeenCalledOnce());
 		loadMap();
 		const sharedClick = maplibre.fakeMap.on.mock.calls.find(
-			(call) => call[0] === 'click' && call[1] === 'catalog-map-shared-locations'
+			(call) => call[0] === 'click' && call[1] === 'catalog-map-shared-location-hit-targets'
 		)?.[2] as (event: unknown) => void;
 		const placeClick = maplibre.fakeMap.on.mock.calls.find(
-			(call) => call[0] === 'click' && call[1] === 'catalog-map-places'
+			(call) => call[0] === 'click' && call[1] === 'catalog-map-place-hit-targets'
 		)?.[2] as (event: unknown) => void;
+		expect(maplibre.fakeMap.addLayer).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'catalog-map-shared-location-hit-targets',
+				paint: expect.objectContaining({ 'circle-radius': 22 })
+			})
+		);
+		expect(maplibre.fakeMap.addLayer).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'catalog-map-place-hit-targets',
+				paint: expect.objectContaining({ 'circle-radius': 22 })
+			})
+		);
 
 		sharedClick({
 			features: [
@@ -192,6 +204,21 @@ describe('CatalogMapCanvas worker integration', () => {
 		placeClick({
 			features: [{ properties: { type: 'place', catalogId: 42, placeId: 'place-id' } }]
 		});
+		sharedClick({
+			features: [
+				{
+					properties: {
+						type: 'location',
+						label: 'Huila',
+						precisionLabel: 'Region-level area',
+						placementCount: 1,
+						uniqueCoffeeCount: 1,
+						catalogIds: '[99]',
+						placeId: 'semantic-place-id'
+					}
+				}
+			]
+		});
 
 		expect(onClusterSelect).toHaveBeenCalledWith({
 			kind: 'location',
@@ -202,7 +229,8 @@ describe('CatalogMapCanvas worker integration', () => {
 			catalogIds: [1, 2, 3, 4, 5, 6],
 			originLabels: ['Ethiopia']
 		});
-		expect(onPlaceSelect).toHaveBeenCalledWith(42, 'place-id');
+		expect(onPlaceSelect).toHaveBeenNthCalledWith(1, 42, 'place-id');
+		expect(onPlaceSelect).toHaveBeenNthCalledWith(2, 99, 'semantic-place-id');
 	});
 
 	it('normalizes antimeridian bounds and wrapped centers without committing a network search on pan or zoom', async () => {

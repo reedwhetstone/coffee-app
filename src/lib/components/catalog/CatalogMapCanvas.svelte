@@ -201,6 +201,10 @@
 		const properties = readPointProperties(event);
 		if (!properties || (properties.type !== 'cluster' && properties.type !== 'location')) return;
 		const catalogIds = catalogIdsFromProperties(properties as unknown as Record<string, unknown>);
+		if (catalogIds.length === 1 && properties.uniqueCoffeeCount === 1) {
+			onPlaceSelect(catalogIds[0], properties.placeId);
+			return;
+		}
 		onClusterSelect({
 			kind: 'location',
 			label: properties.label,
@@ -329,6 +333,21 @@
 						paint: { 'text-color': '#FCFAF8' }
 					});
 					map.addLayer({
+						id: 'catalog-map-shared-location-hit-targets',
+						type: 'circle',
+						source: 'catalog-map',
+						filter: [
+							'all',
+							['!', ['has', 'point_count']],
+							['any', ['==', ['get', 'type'], 'cluster'], ['==', ['get', 'type'], 'location']]
+						],
+						paint: {
+							'circle-color': '#302F2A',
+							'circle-radius': 22,
+							'circle-opacity': 0.01
+						}
+					});
+					map.addLayer({
 						id: 'catalog-map-places',
 						type: 'circle',
 						source: 'catalog-map',
@@ -338,6 +357,17 @@
 							'circle-radius': 8,
 							'circle-stroke-color': '#FCFAF8',
 							'circle-stroke-width': 2
+						}
+					});
+					map.addLayer({
+						id: 'catalog-map-place-hit-targets',
+						type: 'circle',
+						source: 'catalog-map',
+						filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'type'], 'place']],
+						paint: {
+							'circle-color': '#302F2A',
+							'circle-radius': 22,
+							'circle-opacity': 0.01
 						}
 					});
 					map.addLayer({
@@ -362,12 +392,12 @@
 					map.on('click', 'catalog-map-clusters', (event) => {
 						void handleVisualClusterClick(event);
 					});
-					map.on('click', 'catalog-map-shared-locations', handleSharedLocationClick);
-					map.on('click', 'catalog-map-places', handlePlaceClick);
+					map.on('click', 'catalog-map-shared-location-hit-targets', handleSharedLocationClick);
+					map.on('click', 'catalog-map-place-hit-targets', handlePlaceClick);
 					for (const layer of [
 						'catalog-map-clusters',
-						'catalog-map-shared-locations',
-						'catalog-map-places'
+						'catalog-map-shared-location-hit-targets',
+						'catalog-map-place-hit-targets'
 					]) {
 						map.on('mouseenter', layer, () => {
 							if (map) map.getCanvas().style.cursor = 'pointer';

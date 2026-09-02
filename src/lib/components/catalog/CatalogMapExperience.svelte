@@ -42,9 +42,11 @@
 		elevationRange?: ElevationRangeInput | null;
 		canUseAdvancedMaps: boolean;
 		resultsRail: Snippet;
+		coffeeDetail: Snippet<[CoffeeCatalog]>;
 		onStateChange: (state: CatalogMapUrlState) => void;
 		onElevationRangeChange: (range: ElevationRangeInput | null) => void;
-		onSelectCoffee: (catalogId: number) => Promise<boolean>;
+		onSelectCoffee: (catalogId: number) => Promise<CoffeeCatalog | null>;
+		onClearCoffee: () => void;
 		onSwitchToList: () => void;
 	}
 
@@ -54,9 +56,11 @@
 		elevationRange = null,
 		canUseAdvancedMaps,
 		resultsRail,
+		coffeeDetail,
 		onStateChange,
 		onElevationRangeChange,
 		onSelectCoffee,
+		onClearCoffee,
 		onSwitchToList
 	}: Props = $props();
 
@@ -93,10 +97,12 @@
 	let clusterSelection = $state<CatalogMapClusterSelection | null>(null);
 	let selectionQuery = $state('');
 	let selectedCoffees = $state<CoffeeCatalog[]>([]);
+	let focusedCoffee = $state<CoffeeCatalog | null>(null);
 	let selectedCoffeeOffset = $state(0);
 	let selectedCoffeeLoading = $state(false);
 	let selectedCoffeeError = $state<string | null>(null);
 	let selectionRequestVersion = 0;
+	let coffeeOpenRequestVersion = 0;
 	let locationListOpen = $state(false);
 	let locationListLimit = $state(48);
 	let lastIncomingStateKey = '';
@@ -272,15 +278,14 @@
 		publishState({ ...currentState, placeId: null }, true);
 	}
 
-	async function selectCoffee(place: CatalogMapPlace) {
-		selectionError = null;
-		if (!(await onSelectCoffee(place.catalog_id))) {
-			selectionError = "We couldn't open that coffee. Try finding it in the list.";
-		}
-	}
-
 	function catalogCoffeeId(coffee: CoffeeCatalog): number {
 		return coffee.id;
+	}
+
+	function clearFocusedCoffee() {
+		coffeeOpenRequestVersion += 1;
+		focusedCoffee = null;
+		onClearCoffee();
 	}
 
 	function clearMapSelection() {
@@ -291,6 +296,7 @@
 		selectedCoffeeOffset = 0;
 		selectedCoffeeLoading = false;
 		selectedCoffeeError = null;
+		clearFocusedCoffee();
 	}
 
 	async function loadSelectedCoffees(reset = false) {
@@ -343,6 +349,7 @@
 	}
 
 	function selectMapArea(selection: CatalogMapClusterSelection) {
+		clearFocusedCoffee();
 		const catalogIds = [...new Set(selection.catalogIds)].sort((left, right) => left - right);
 		clusterSelection = {
 			...selection,
@@ -374,12 +381,24 @@
 	}
 
 	async function openSelectedCoffee(catalogId: number) {
+		const requestVersion = ++coffeeOpenRequestVersion;
+		selectionError = null;
 		selectedCoffeeError = null;
-		if (await onSelectCoffee(catalogId)) {
-			clearMapSelection();
-		} else {
-			selectedCoffeeError = "We couldn't open that coffee. Try again.";
+		const coffee = await onSelectCoffee(catalogId);
+		if (requestVersion !== coffeeOpenRequestVersion) return;
+		if (coffee) {
+			focusedCoffee = coffee;
+			sheetOpen = true;
+			return;
 		}
+		const message = "We couldn't open that coffee. Try again.";
+		if (clusterSelection) selectedCoffeeError = message;
+		else selectionError = message;
+	}
+
+	async function selectCoffee(place: CatalogMapPlace) {
+		clearMapSelection();
+		await openSelectedCoffee(place.catalog_id);
 	}
 
 	function coffeeCountLabel(count: number): string {
@@ -674,8 +693,7 @@
 					onViewportChange={handleViewportChange}
 					onPlaceSelect={(catalogId) => {
 						clearMapSelection();
-						const place = places.find((item) => item.catalog_id === catalogId);
-						if (place) void selectCoffee(place);
+						void openSelectedCoffee(catalogId);
 					}}
 					onClusterSelect={selectMapArea}
 					onMapError={(message) => (rendererError = message)}
@@ -758,10 +776,16 @@
 				<span class="mx-auto mb-2 block h-1 w-10 rounded-full bg-line lg:hidden"></span>
 				<span class="flex items-center justify-between gap-3">
 					<span>
-						<strong class="text-sm text-ink">{clusterSelection?.label ?? 'Catalog results'}</strong>
-						<span class="ml-2 text-xs text-muted"
-							>{clusterSelection?.coffeeMatchCount ?? totals?.unique_coffee_count ?? '—'} coffees</span
+						<strong class="text-sm text-ink"
+							>{focusedCoffee?.name ?? clusterSelection?.label ?? 'Catalog results'}</strong
 						>
+						{#if focusedCoffee}
+							<span class="ml-2 text-xs text-muted">Selected coffee</span>
+						{:else}
+							<span class="ml-2 text-xs text-muted"
+								>{clusterSelection?.coffeeMatchCount ?? totals?.unique_coffee_count ?? '—'} coffees</span
+							>
+						{/if}
 					</span>
 					<span class="text-xs font-medium text-link lg:hidden"
 						>{sheetOpen ? 'Collapse' : 'Open'}</span
@@ -769,7 +793,28 @@
 				</span>
 			</button>
 			<div class="min-h-0 flex-1 overflow-y-auto border-t border-line p-3">
-				{#if clusterSelection}
+				{#if focusedCoffee}
+					<div class="mb-3 flex items-start justify-between gap-3 border-b border-line pb-3">
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-[0.14em] text-organic-rust">
+								Selected coffee
+							</p>
+							<h2 class="mt-1 font-display text-xl font-semibold text-ink">
+								{focusedCoffee.name}
+							</h2>
+						</div>
+						<button
+							type="button"
+							class="rounded-md border border-line px-2 py-1 text-xs font-medium text-muted hover:text-ink"
+							onclick={clearFocusedCoffee}
+						>
+							{clusterSelection ? `Back to ${clusterSelection.label}` : 'Back to map results'}
+						</button>
+					</div>
+					{#key focusedCoffee.id}
+						{@render coffeeDetail(focusedCoffee)}
+					{/key}
+				{:else if clusterSelection}
 					{@const selectedOriginSummary = originSummary(clusterSelection.originLabels)}
 					<div class="mb-3 border-b border-line pb-3">
 						<div class="flex items-start justify-between gap-3">
