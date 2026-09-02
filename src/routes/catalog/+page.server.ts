@@ -1,5 +1,4 @@
 import type { PageServerLoad } from './$types';
-import { env } from '$env/dynamic/private';
 import type { CatalogListQuery, ParchmentClient, components } from '@purveyors/sdk';
 import { toCatalogResourceItem } from '$lib/catalog/catalogResourceItem';
 import { CatalogSchemaUnavailableError } from '$lib/data/catalog';
@@ -31,7 +30,6 @@ import {
 	getActiveSourcingBriefMatches,
 	type SourcingBriefMatchSummary
 } from '$lib/server/parchmentProcurement';
-import { resolveCatalogMapPreviewEnabled } from '$lib/server/catalogMapPreview';
 
 // Watchlist-only view is served as a single page; tracked lists are small.
 const TRACKED_VIEW_LIMIT = 200;
@@ -577,10 +575,6 @@ export const load: PageServerLoad = async (event) => {
 		catalogAccess,
 		catalogAccessNotice,
 		catalogSchemaUnavailable,
-		// Vercel review deployments expose the feature without project-level env
-		// setup. Production remains explicitly gated. The client receives only the
-		// resolved boolean, never the environment or a credential.
-		catalogMapEnabled: resolveCatalogMapPreviewEnabled(env),
 		pagination: trackedOnly
 			? buildPagination(effectiveCatalogState, count ?? catalogResources.length)
 			: buildPagination(initialCatalogState, count ?? catalogResources.length),

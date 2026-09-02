@@ -1,5 +1,4 @@
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
 import { jsonResponse } from '$lib/server/http';
 import {
 	catalogProxyErrorResponse,
@@ -9,7 +8,6 @@ import {
 import { resolvePrincipal } from '$lib/server/principal';
 import { resolveCatalogCredentialMode } from '$lib/server/parchmentClient';
 import { applyBffCatalogCacheHeaders, applyBffCatalogNoStore } from '$lib/server/cacheHeaders';
-import { resolveCatalogMapPreviewEnabled } from '$lib/server/catalogMapPreview';
 
 /**
  * First-party catalog map BFF.
@@ -21,19 +19,6 @@ import { resolveCatalogMapPreviewEnabled } from '$lib/server/catalogMapPreview';
  */
 export const GET: RequestHandler = async (event) => {
 	const headers = new Headers({ 'X-Purveyors-Canonical-Resource': '/v1/catalog/map' });
-
-	if (!resolveCatalogMapPreviewEnabled(env)) {
-		applyBffCatalogNoStore(headers);
-		return jsonResponse(
-			{
-				error: {
-					code: 'catalog_map_preview_disabled',
-					message: 'Catalog map preview is unavailable.'
-				}
-			},
-			{ status: 404, headers }
-		);
-	}
 
 	// This is a browser BFF, not a second public API surface. Reject bearer input
 	// even when valid so browser credential custody remains cookie/demo-key only.

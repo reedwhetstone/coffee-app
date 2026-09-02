@@ -197,7 +197,6 @@ describe('/catalog page load', () => {
 				sortField: string | null;
 				sortDirection: 'asc' | 'desc' | null;
 			};
-			catalogMapEnabled: boolean;
 		};
 		await load(makeLoadInput('viewer', viewerSession));
 
@@ -243,7 +242,6 @@ describe('/catalog page load', () => {
 			hasNext: true,
 			hasPrev: false
 		});
-		expect(result.catalogMapEnabled).toBe(false);
 	});
 
 	it('hydrates filtered catalog URLs from query params on first load', async () => {

@@ -206,9 +206,7 @@
 	$effect(() => {
 		catalogMapState = parseCatalogMapUrlState(page.url.searchParams);
 	});
-	let catalogMapActive = $derived(
-		data.catalogMapEnabled === true && !trackedOnlyView && catalogMapState.view === 'map'
-	);
+	let catalogMapActive = $derived(!trackedOnlyView && catalogMapState.view === 'map');
 	let activeCatalogUrlState = $derived.by((): CatalogUrlState => {
 		if (!hydratedCatalogState) return data.initialCatalogState;
 		return {
@@ -721,7 +719,7 @@
 			<BriefMatchSection {briefMatchSummaries} />
 		{/if}
 
-		{#if data.catalogMapEnabled && !trackedOnlyView}
+		{#if !trackedOnlyView}
 			<div class="group relative inline-block">
 				<div
 					id="catalog-map-explainer"
