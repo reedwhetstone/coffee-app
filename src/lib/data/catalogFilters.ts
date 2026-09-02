@@ -86,6 +86,7 @@ export function getFilterableColumns(routeId: string): string[] {
 			'cultivar_detail',
 			'type',
 			'grade',
+			'elevation_masl',
 			'appearance',
 			'score_value',
 			'cost_lb',

@@ -1,8 +1,6 @@
 import { buildCatalogShareParams, type CatalogUrlState } from '$lib/catalog/urlState';
 
 export type CatalogViewMode = 'list' | 'map';
-export type CatalogMapLens = 'catalog' | 'elevation';
-export type ElevationDisplayUnit = 'masl' | 'ft';
 
 export interface CatalogMapBounds {
 	west: number;
@@ -13,8 +11,6 @@ export interface CatalogMapBounds {
 
 export interface CatalogMapUrlState {
 	view: CatalogViewMode;
-	lens: CatalogMapLens;
-	units: ElevationDisplayUnit;
 	center: [longitude: number, latitude: number];
 	zoom: number;
 	bbox: CatalogMapBounds | null;
@@ -23,8 +19,6 @@ export interface CatalogMapUrlState {
 
 export const DEFAULT_CATALOG_MAP_STATE: CatalogMapUrlState = {
 	view: 'list',
-	lens: 'catalog',
-	units: 'masl',
 	center: [0, 18],
 	zoom: 1.75,
 	bbox: null,
@@ -111,8 +105,6 @@ export function formatCatalogMapBounds(bounds: CatalogMapBounds): string {
 
 export function parseCatalogMapUrlState(searchParams: URLSearchParams): CatalogMapUrlState {
 	const view = searchParams.get('view') === 'map' ? 'map' : 'list';
-	const lens = searchParams.get('map_lens') === 'elevation' ? 'elevation' : 'catalog';
-	const units = searchParams.get('map_units') === 'ft' ? 'ft' : 'masl';
 	const center =
 		parseCoordinatePair(searchParams.get('map_center')) ?? DEFAULT_CATALOG_MAP_STATE.center;
 	const requestedZoom = parseFinite(searchParams.get('map_zoom'));
@@ -124,8 +116,6 @@ export function parseCatalogMapUrlState(searchParams: URLSearchParams): CatalogM
 
 	return {
 		view,
-		lens,
-		units,
 		center,
 		zoom,
 		bbox: parseCatalogMapBounds(searchParams.get('map_bbox')),
@@ -147,8 +137,6 @@ export function writeCatalogMapUrlState(
 		[normalizeCatalogMapLongitude(state.center[0]), state.center[1]].map(trimCoordinate).join(',')
 	);
 	searchParams.set('map_zoom', trimCoordinate(state.zoom));
-	if (state.lens === 'elevation') searchParams.set('map_lens', 'elevation');
-	if (state.units === 'ft') searchParams.set('map_units', 'ft');
 	if (state.bbox) searchParams.set('map_bbox', formatCatalogMapBounds(state.bbox));
 	if (state.placeId) searchParams.set('map_place', state.placeId);
 	return searchParams;
@@ -187,7 +175,10 @@ export function buildCatalogMapRequestParams(
 	params.set('wholesaleOnly', catalogState.wholesaleOnly ? 'true' : 'false');
 	params.set('zoom', CATALOG_MAP_POINT_PROJECTION_ZOOM.toString());
 	params.set('projection', 'locations');
-	params.set('lens', mapState.lens);
+	// Terrain is now a presentation layer on every catalog map. Keep the API on
+	// its lightweight catalog projection; numeric elevation filtering remains a
+	// canonical catalog query capability rather than a map lens.
+	params.set('lens', 'catalog');
 	if (mapState.bbox) params.set('bbox', formatCatalogMapBounds(mapState.bbox));
 	if (mapState.placeId) params.set('place_id', mapState.placeId);
 	return params;

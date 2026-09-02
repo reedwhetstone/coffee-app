@@ -4,18 +4,11 @@
 	import type { CatalogUrlState } from '$lib/catalog/urlState';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
 
-	interface ElevationRangeInput {
-		min: string | number;
-		max: string | number;
-	}
-
 	interface Props {
 		initialState: CatalogMapUrlState;
 		catalogState: CatalogUrlState;
-		elevationRange?: ElevationRangeInput | null;
 		canUseAdvancedMaps: boolean;
 		onStateChange: (state: CatalogMapUrlState) => void;
-		onElevationRangeChange: (range: ElevationRangeInput | null) => void;
 		onSelectCoffee: (catalogId: number) => Promise<CoffeeCatalog | null>;
 		onClearCoffee: () => void;
 		onSwitchToList: () => void;
@@ -24,10 +17,8 @@
 	let {
 		initialState,
 		catalogState,
-		elevationRange = null,
 		canUseAdvancedMaps,
 		onStateChange,
-		onElevationRangeChange,
 		onSelectCoffee,
 		onClearCoffee,
 		onSwitchToList
@@ -44,10 +35,8 @@
 <CatalogMapExperience
 	initialState={state}
 	{catalogState}
-	{elevationRange}
 	{canUseAdvancedMaps}
 	onStateChange={handleStateChange}
-	{onElevationRangeChange}
 	{onSelectCoffee}
 	{onClearCoffee}
 	{onSwitchToList}

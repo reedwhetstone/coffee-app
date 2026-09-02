@@ -223,11 +223,6 @@
 			}
 		};
 	});
-	let activeElevationRange = $derived.by(() => {
-		const value = activeCatalogUrlState.filters.elevation_masl;
-		return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
-	});
-
 	function updateCatalogMapState(next: CatalogMapUrlState) {
 		catalogMapState = next;
 		// Filter changes use the native History API, which does not refresh SvelteKit's
@@ -239,10 +234,6 @@
 
 	function switchCatalogView(view: 'list' | 'map') {
 		updateCatalogMapState({ ...catalogMapState, view });
-	}
-
-	function setElevationRange(range: { min: string | number; max: string | number } | null) {
-		filterStore.setFilter('elevation_masl', range);
 	}
 
 	async function selectMapCoffee(catalogId: number): Promise<CoffeeCatalog | null> {
@@ -765,10 +756,8 @@
 			<CatalogMapExperience
 				initialState={catalogMapState}
 				catalogState={activeCatalogUrlState}
-				elevationRange={activeElevationRange}
 				canUseAdvancedMaps={canUseSourcingIntelligence}
 				onStateChange={updateCatalogMapState}
-				onElevationRangeChange={setElevationRange}
 				onSelectCoffee={selectMapCoffee}
 				onClearCoffee={clearMapCoffee}
 				onSwitchToList={() => switchCatalogView('list')}

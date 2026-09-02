@@ -77,7 +77,7 @@ describe('catalog map presentation semantics', () => {
 	});
 
 	it('keeps cluster placement and unique-coffee counts separate in map features', () => {
-		const geojson = toCatalogMapGeoJson([cluster, place], 'elevation');
+		const geojson = toCatalogMapGeoJson([cluster, place]);
 		expect(geojson.features[0].properties).toMatchObject({
 			type: 'cluster',
 			placementCount: 5,
@@ -89,12 +89,13 @@ describe('catalog map presentation semantics', () => {
 			type: 'place',
 			catalogId: 1,
 			precisionLabel: 'Region-level area',
-			elevationBand: '1400_to_1799'
+			elevationBand: '1400_to_1799',
+			color: '#C05B2E'
 		});
 	});
 
 	it('keeps semantic location groups named and selectable', () => {
-		const feature = toCatalogMapGeoJson([location], 'catalog').features[0];
+		const feature = toCatalogMapGeoJson([location]).features[0];
 		expect(feature.properties).toMatchObject({
 			type: 'location',
 			label: 'Ethiopia',

@@ -4,16 +4,15 @@
 	import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 	import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl';
 	import {
-		ELEVATION_BANDS,
 		toCatalogMapGeoJson,
 		type CatalogMapDisplayItem,
 		type CatalogMapPointProperties
 	} from '$lib/catalog/mapPresentation';
+	import { MAP_SURFACE_COLORS, TERRAIN_ELEVATION_BANDS } from '$lib/styles/mapColors';
 	import {
 		normalizeCatalogMapLongitude,
 		normalizeCatalogMapBounds,
-		type CatalogMapBounds,
-		type CatalogMapLens
+		type CatalogMapBounds
 	} from '$lib/catalog/mapState';
 
 	export interface CatalogMapViewportChange {
@@ -35,7 +34,6 @@
 
 	interface Props {
 		items: CatalogMapDisplayItem[];
-		lens: CatalogMapLens;
 		center: [number, number];
 		zoom: number;
 		styleUrl?: string;
@@ -48,7 +46,6 @@
 
 	let {
 		items,
-		lens,
 		center,
 		zoom,
 		styleUrl = 'https://tiles.openfreemap.org/styles/positron',
@@ -74,12 +71,12 @@
 		'<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain: Mapzen and contributors</a>';
 
 	const BASEMAP_PAINT_OVERRIDES = [
-		['background', 'background-color', '#F7F3ED'],
-		['park', 'fill-color', '#E6EADF'],
-		['water', 'fill-color', '#DCE6E4'],
+		['background', 'background-color', MAP_SURFACE_COLORS.canvas],
+		['park', 'fill-color', MAP_SURFACE_COLORS.park],
+		['water', 'fill-color', MAP_SURFACE_COLORS.water],
 		['landuse_residential', 'fill-color', '#F1ECE6'],
-		['landcover_wood', 'fill-color', '#E2E8DC'],
-		['waterway', 'line-color', '#B8C9C6'],
+		['landcover_wood', 'fill-color', '#E3E1D4'],
+		['waterway', 'line-color', MAP_SURFACE_COLORS.waterway],
 		['building', 'fill-color', '#ECE5DC'],
 		['building', 'fill-outline-color', '#D8CEC2'],
 		['highway_path', 'line-color', '#E7E0D8'],
@@ -90,9 +87,9 @@
 		['boundary_3', 'line-color', '#BAAFA3'],
 		['boundary_2', 'line-color', '#BAAFA3'],
 		['boundary_disputed', 'line-color', '#BAAFA3'],
-		['water_name_point_label', 'text-color', '#4E8098'],
+		['water_name_point_label', 'text-color', MAP_SURFACE_COLORS.waterLabel],
 		['water_name_point_label', 'text-halo-color', '#FCFAF8'],
-		['water_name_line_label', 'text-color', '#4E8098'],
+		['water_name_line_label', 'text-color', MAP_SURFACE_COLORS.waterLabel],
 		['water_name_line_label', 'text-halo-color', '#FCFAF8'],
 		['label_other', 'text-color', '#695C4D'],
 		['label_other', 'text-halo-color', '#FCFAF8'],
@@ -129,12 +126,7 @@
 		}
 	}
 
-	function syncTerrainReliefLayer(currentMap: MapLibreMap, activeLens: CatalogMapLens) {
-		if (activeLens !== 'elevation') {
-			removeTerrainReliefLayer(currentMap);
-			return;
-		}
-
+	function addTerrainReliefLayer(currentMap: MapLibreMap) {
 		try {
 			if (!currentMap.getSource(TERRAIN_RELIEF_SOURCE_ID)) {
 				currentMap.addSource(TERRAIN_RELIEF_SOURCE_ID, {
@@ -159,33 +151,33 @@
 							['linear'],
 							['elevation'],
 							-1000,
-							ELEVATION_BANDS[0].color,
+							TERRAIN_ELEVATION_BANDS[0].color,
 							999.9,
-							ELEVATION_BANDS[0].color,
+							TERRAIN_ELEVATION_BANDS[0].color,
 							1000,
-							ELEVATION_BANDS[1].color,
+							TERRAIN_ELEVATION_BANDS[1].color,
 							1399.9,
-							ELEVATION_BANDS[1].color,
+							TERRAIN_ELEVATION_BANDS[1].color,
 							1400,
-							ELEVATION_BANDS[2].color,
+							TERRAIN_ELEVATION_BANDS[2].color,
 							1799.9,
-							ELEVATION_BANDS[2].color,
+							TERRAIN_ELEVATION_BANDS[2].color,
 							1800,
-							ELEVATION_BANDS[3].color,
+							TERRAIN_ELEVATION_BANDS[3].color,
 							2199.9,
-							ELEVATION_BANDS[3].color,
+							TERRAIN_ELEVATION_BANDS[3].color,
 							2200,
-							ELEVATION_BANDS[4].color,
+							TERRAIN_ELEVATION_BANDS[4].color,
 							9000,
-							ELEVATION_BANDS[4].color
+							TERRAIN_ELEVATION_BANDS[4].color
 						],
-						'color-relief-opacity': 0.32
+						'color-relief-opacity': 0.48
 					}
 				},
 				currentMap.getLayer('water') ? 'water' : 'catalog-map-clusters'
 			);
 		} catch {
-			// The preview DEM is supplemental. Preserve the catalog map if it is unavailable.
+			// Terrain is supplemental context. Preserve the catalog map if it is unavailable.
 			removeTerrainReliefLayer(currentMap);
 		}
 	}
@@ -382,7 +374,7 @@
 					applyPurveyorsBasemapTheme(map);
 					map.addSource('catalog-map', {
 						type: 'geojson',
-						data: toCatalogMapGeoJson(items, lens),
+						data: toCatalogMapGeoJson(items),
 						cluster: true,
 						clusterMaxZoom: 14,
 						clusterRadius: 52,
@@ -533,7 +525,7 @@
 						});
 					}
 					sourceReady = true;
-					syncTerrainReliefLayer(map, lens);
+					addTerrainReliefLayer(map);
 					scheduleResize();
 					onMapReady();
 				});
@@ -565,8 +557,7 @@
 	$effect(() => {
 		if (!sourceReady || !map) return;
 		const source = map.getSource('catalog-map') as GeoJSONSource | undefined;
-		source?.setData(toCatalogMapGeoJson(items, lens));
-		syncTerrainReliefLayer(map, lens);
+		source?.setData(toCatalogMapGeoJson(items));
 	});
 
 	$effect(() => {

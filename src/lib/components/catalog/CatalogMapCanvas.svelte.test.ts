@@ -109,7 +109,6 @@ describe('CatalogMapCanvas worker integration', () => {
 	it('binds the packaged MapLibre worker before constructing the map', async () => {
 		render(CatalogMapCanvas, {
 			items: [],
-			lens: 'catalog',
 			center: [0, 18],
 			zoom: 1.75,
 			onViewportChange: vi.fn(),
@@ -129,7 +128,6 @@ describe('CatalogMapCanvas worker integration', () => {
 		const onClusterSelect = vi.fn();
 		render(CatalogMapCanvas, {
 			items: [],
-			lens: 'catalog',
 			center: [0, 18],
 			zoom: 1.75,
 			onViewportChange: vi.fn(),
@@ -152,11 +150,6 @@ describe('CatalogMapCanvas worker integration', () => {
 				}
 			})
 		);
-		expect(maplibre.fakeMap.addSource).not.toHaveBeenCalledWith(
-			'catalog-terrain-dem',
-			expect.anything()
-		);
-
 		const clusterClick = maplibre.fakeMap.on.mock.calls.find(
 			(call) => call[0] === 'click' && call[1] === 'catalog-map-clusters'
 		)?.[2] as (event: unknown) => void;
@@ -193,7 +186,6 @@ describe('CatalogMapCanvas worker integration', () => {
 	it('warms the default basemap with the Purveyors field-journal palette', async () => {
 		render(CatalogMapCanvas, {
 			items: [],
-			lens: 'catalog',
 			center: [0, 18],
 			zoom: 1.75,
 			onViewportChange: vi.fn(),
@@ -206,14 +198,14 @@ describe('CatalogMapCanvas worker integration', () => {
 		expect(maplibre.fakeMap.setPaintProperty).toHaveBeenCalledWith(
 			'background',
 			'background-color',
-			'#F7F3ED'
+			'#F7F2EA'
 		);
 		expect(maplibre.fakeMap.setPaintProperty).toHaveBeenCalledWith(
 			'water',
 			'fill-color',
-			'#DCE6E4'
+			'#E5E0D7'
 		);
-		expect(maplibre.fakeMap.setPaintProperty).toHaveBeenCalledWith('park', 'fill-color', '#E6EADF');
+		expect(maplibre.fakeMap.setPaintProperty).toHaveBeenCalledWith('park', 'fill-color', '#E7E5D8');
 		expect(maplibre.fakeMap.setPaintProperty).toHaveBeenCalledWith(
 			'label_country_1',
 			'text-color',
@@ -221,16 +213,15 @@ describe('CatalogMapCanvas worker integration', () => {
 		);
 	});
 
-	it('renders the established terrain bands beneath map context only for the elevation lens', async () => {
+	it('renders the standard branded terrain bands beneath map context', async () => {
 		const props = {
 			items: [],
-			lens: 'elevation' as const,
 			center: [0, 18] as [number, number],
 			zoom: 1.75,
 			onViewportChange: vi.fn(),
 			onPlaceSelect: vi.fn()
 		};
-		const view = render(CatalogMapCanvas, props);
+		render(CatalogMapCanvas, props);
 
 		await waitFor(() => expect(maplibre.constructMap).toHaveBeenCalledOnce());
 		loadMap();
@@ -255,40 +246,34 @@ describe('CatalogMapCanvas worker integration', () => {
 						['linear'],
 						['elevation'],
 						-1000,
-						'#8FA382',
+						'#E9DDC8',
 						999.9,
-						'#8FA382',
+						'#E9DDC8',
 						1000,
-						'#D9A05B',
+						'#DDBE83',
 						1399.9,
-						'#D9A05B',
+						'#DDBE83',
 						1400,
-						'#C05B2E',
+						'#C9855D',
 						1799.9,
-						'#C05B2E',
+						'#C9855D',
 						1800,
-						'#9C4356',
+						'#A95E46',
 						2199.9,
-						'#9C4356',
+						'#A95E46',
 						2200,
-						'#4E8098',
+						'#704C3D',
 						9000,
-						'#4E8098'
+						'#704C3D'
 					],
-					'color-relief-opacity': 0.32
+					'color-relief-opacity': 0.48
 				}
 			}),
 			'water'
 		);
-
-		await view.rerender({ ...props, lens: 'catalog' });
-		await waitFor(() => {
-			expect(maplibre.fakeMap.removeLayer).toHaveBeenCalledWith('catalog-terrain-relief');
-			expect(maplibre.fakeMap.removeSource).toHaveBeenCalledWith('catalog-terrain-dem');
-		});
 	});
 
-	it('keeps the catalog map usable when preview terrain cannot initialize', async () => {
+	it('keeps the catalog map usable when terrain cannot initialize', async () => {
 		const onMapReady = vi.fn();
 		const onMapError = vi.fn();
 		maplibre.fakeMap.addSource.mockImplementation((id: string) => {
@@ -296,7 +281,6 @@ describe('CatalogMapCanvas worker integration', () => {
 		});
 		render(CatalogMapCanvas, {
 			items: [],
-			lens: 'elevation',
 			center: [0, 18],
 			zoom: 1.75,
 			onViewportChange: vi.fn(),
@@ -321,7 +305,6 @@ describe('CatalogMapCanvas worker integration', () => {
 		const onPlaceSelect = vi.fn();
 		render(CatalogMapCanvas, {
 			items: [],
-			lens: 'catalog',
 			center: [0, 18],
 			zoom: 1.75,
 			onViewportChange: vi.fn(),
@@ -400,7 +383,6 @@ describe('CatalogMapCanvas worker integration', () => {
 		const onViewportChange = vi.fn();
 		render(CatalogMapCanvas, {
 			items: [],
-			lens: 'catalog',
 			center: [0, 18],
 			zoom: 1.75,
 			onViewportChange,

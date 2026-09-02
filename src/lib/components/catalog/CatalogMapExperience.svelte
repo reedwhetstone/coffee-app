@@ -14,9 +14,7 @@
 	} from '$lib/catalog/mapState';
 	import type { CatalogUrlState } from '$lib/catalog/urlState';
 	import {
-		ELEVATION_BANDS,
 		formatElevationRange,
-		formatElevationValue,
 		formatGeographicPrecision,
 		isCatalogMapCluster,
 		isCatalogMapLocation,
@@ -24,6 +22,7 @@
 		type CatalogMapDisplayItem,
 		type CatalogMapPlace
 	} from '$lib/catalog/mapPresentation';
+	import { TERRAIN_ELEVATION_BANDS } from '$lib/styles/mapColors';
 
 	type CatalogMapUiResponse = Omit<CatalogMapResponse, 'data'> & {
 		data: CatalogMapDisplayItem[];
@@ -31,20 +30,13 @@
 
 	const SELECTED_COFFEE_PAGE_SIZE = 25;
 
-	interface ElevationRangeInput {
-		min: string | number;
-		max: string | number;
-	}
-
 	interface Props {
 		initialState: CatalogMapUrlState;
 		catalogState: CatalogUrlState;
-		elevationRange?: ElevationRangeInput | null;
 		canUseAdvancedMaps: boolean;
 		resultsRail: Snippet;
 		coffeeDetail: Snippet<[CoffeeCatalog, () => void]>;
 		onStateChange: (state: CatalogMapUrlState) => void;
-		onElevationRangeChange: (range: ElevationRangeInput | null) => void;
 		onSelectCoffee: (catalogId: number) => Promise<CoffeeCatalog | null>;
 		onClearCoffee: () => void;
 		onSwitchToList: () => void;
@@ -53,12 +45,10 @@
 	let {
 		initialState,
 		catalogState,
-		elevationRange = null,
 		canUseAdvancedMaps,
 		resultsRail,
 		coffeeDetail,
 		onStateChange,
-		onElevationRangeChange,
 		onSelectCoffee,
 		onClearCoffee,
 		onSwitchToList
@@ -66,8 +56,6 @@
 
 	let currentState = $state<CatalogMapUrlState>({
 		view: 'map',
-		lens: 'catalog',
-		units: 'masl',
 		center: [0, 18],
 		zoom: 1.75,
 		bbox: null,
@@ -75,8 +63,6 @@
 	});
 	let committedState = $state<CatalogMapUrlState>({
 		view: 'map',
-		lens: 'catalog',
-		units: 'masl',
 		center: [0, 18],
 		zoom: 1.75,
 		bbox: null,
@@ -91,9 +77,6 @@
 	let sheetOpen = $state(false);
 	let sheetPointerStart: number | null = null;
 	let suppressSheetClick = false;
-	let elevationMinInput = $state('');
-	let elevationMaxInput = $state('');
-	let elevationInputError = $state<string | null>(null);
 	let clusterSelection = $state<CatalogMapClusterSelection | null>(null);
 	let selectionQuery = $state('');
 	let selectedCoffees = $state<CoffeeCatalog[]>([]);
@@ -127,9 +110,7 @@
 	);
 	let totals = $derived(mapResponse?.meta.totals ?? null);
 	let access = $derived(mapResponse?.meta.access ?? null);
-	let profile = $derived(mapResponse?.elevation_profile ?? null);
 	let canSearchViewport = $derived(access?.viewportSearch ?? canUseAdvancedMaps);
-	let canUseElevation = $derived(access?.elevationProfile ?? canUseAdvancedMaps);
 	let canExplorePlaces = $derived(access?.fineGrainedPlaces ?? canUseAdvancedMaps);
 	let hasMoreSelectedCoffees = $derived(
 		clusterSelection !== null && selectedCoffeeOffset < clusterSelection.catalogIds.length
@@ -162,11 +143,6 @@
 		currentState = { ...initialState };
 		committedState = { ...initialState };
 		pendingBounds = null;
-	});
-
-	$effect(() => {
-		elevationMinInput = String(elevationRange?.min ?? '');
-		elevationMaxInput = String(elevationRange?.max ?? '');
 	});
 
 	$effect(() => {
@@ -203,7 +179,6 @@
 					const effective = body.meta.effective;
 					const nextState: CatalogMapUrlState = {
 						...currentState,
-						lens: effective.lens,
 						bbox: effective.bbox
 							? {
 									west: effective.bbox.west,
@@ -257,15 +232,6 @@
 	function clearViewportSearch() {
 		pendingBounds = null;
 		publishState({ ...currentState, bbox: null }, true);
-	}
-
-	function setLens(lens: 'catalog' | 'elevation') {
-		if (lens === 'elevation' && !canUseElevation) return;
-		publishState({ ...currentState, lens }, true);
-	}
-
-	function setUnits(units: 'masl' | 'ft') {
-		publishState({ ...currentState, units });
 	}
 
 	function explorePlace(place: CatalogMapPlace) {
@@ -410,27 +376,6 @@
 		return `${count} coffee${count === 1 ? '' : 's'}`;
 	}
 
-	function applyElevationRange() {
-		if (!canUseElevation) return;
-		const min = elevationMinInput.trim();
-		const max = elevationMaxInput.trim();
-		const parsedMin = min === '' ? null : Number(min);
-		const parsedMax = max === '' ? null : Number(max);
-		if (
-			(parsedMin !== null && !Number.isFinite(parsedMin)) ||
-			(parsedMax !== null && !Number.isFinite(parsedMax))
-		) {
-			elevationInputError = 'Enter numeric elevation bounds.';
-			return;
-		}
-		if (parsedMin !== null && parsedMax !== null && parsedMin > parsedMax) {
-			elevationInputError = 'Minimum elevation cannot exceed maximum elevation.';
-			return;
-		}
-		elevationInputError = null;
-		onElevationRangeChange(min === '' && max === '' ? null : { min, max });
-	}
-
 	function beginSheetDrag(event: PointerEvent) {
 		sheetPointerStart = event.clientY;
 		suppressSheetClick = false;
@@ -445,92 +390,16 @@
 		if (delta > 36) sheetOpen = false;
 		sheetPointerStart = null;
 	}
-
-	function bandLabel(minimum: number | null, maximumExclusive: number | null): string {
-		if (minimum === null && maximumExclusive !== null) {
-			return `Below ${formatElevationValue(maximumExclusive, currentState.units)}`;
-		}
-		if (minimum !== null && maximumExclusive === null) {
-			return `${formatElevationValue(minimum, currentState.units)}+`;
-		}
-		if (minimum !== null && maximumExclusive !== null) {
-			return `${formatElevationValue(minimum, currentState.units)}–${formatElevationValue(
-				maximumExclusive - 1,
-				currentState.units
-			)}`;
-		}
-		return 'Unknown elevation';
-	}
 </script>
 
 <section class="space-y-3" aria-label="Coffee origin map">
-	<div
-		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-surface-panel px-4 py-3"
-	>
-		<div>
-			<h2 class="text-sm font-semibold text-ink">Explore coffee origins</h2>
-			<p class="mt-1 text-sm text-muted">
-				Browse coffees by origin. Bubble numbers count mapped placements; multi-origin coffees may
-				appear in more than one place.
-			</p>
-		</div>
-		<div
-			class="inline-flex rounded-lg border border-line bg-surface-raised p-1"
-			aria-label="Map lens controls"
-		>
-			<button
-				type="button"
-				aria-pressed={currentState.lens === 'catalog'}
-				class="rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent {currentState.lens ===
-				'catalog'
-					? 'bg-accent text-ink shadow-sm'
-					: 'text-muted hover:bg-surface-panel hover:text-ink'}"
-				onclick={() => setLens('catalog')}
-			>
-				Catalog
-			</button>
-			<button
-				type="button"
-				disabled={!canUseElevation}
-				aria-pressed={currentState.lens === 'elevation'}
-				aria-describedby={!canUseElevation ? 'elevation-access-note' : undefined}
-				class="rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-45 {currentState.lens ===
-				'elevation'
-					? 'bg-accent text-ink shadow-sm'
-					: 'text-muted hover:bg-surface-panel hover:text-ink'}"
-				onclick={() => setLens('elevation')}
-			>
-				Elevation
-			</button>
-			{#if currentState.lens === 'elevation'}
-				<div class="ml-2 flex border-l border-line pl-2" aria-label="Elevation units">
-					<button
-						type="button"
-						class="rounded px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent {currentState.units ===
-						'masl'
-							? 'bg-accent-subtle/40 text-ink'
-							: 'text-muted hover:bg-surface-panel hover:text-ink'}"
-						onclick={() => setUnits('masl')}>MASL</button
-					>
-					<button
-						type="button"
-						class="rounded px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent {currentState.units ===
-						'ft'
-							? 'bg-accent-subtle/40 text-ink'
-							: 'text-muted hover:bg-surface-panel hover:text-ink'}"
-						onclick={() => setUnits('ft')}>Feet</button
-					>
-				</div>
-			{/if}
-		</div>
-	</div>
-
-	{#if !canUseElevation}
-		<p id="elevation-access-note" class="text-xs text-muted">
-			Unlock elevation profiles and elevation range filters with Parchment Intelligence.
-			<a class="font-medium text-link underline" href="/subscription">Compare plans</a>.
+	<div class="rounded-lg border border-line bg-surface-panel px-4 py-3">
+		<h2 class="text-sm font-semibold text-ink">Explore coffee origins</h2>
+		<p class="mt-1 text-sm text-muted">
+			Browse coffees by origin. Terrain color shows approximate elevation; bubble numbers count
+			mapped placements, so multi-origin coffees may appear in more than one place.
 		</p>
-	{/if}
+	</div>
 
 	{#if mapResponse?.meta.notices?.length}
 		<div
@@ -563,119 +432,6 @@
 		</div>
 	</div>
 
-	{#if currentState.lens === 'elevation'}
-		<div
-			class="grid gap-3 rounded-lg border border-line bg-surface-panel p-4 lg:grid-cols-[minmax(0,1fr)_auto]"
-		>
-			<div>
-				<div class="flex flex-wrap items-center justify-between gap-2">
-					<h2 class="text-sm font-semibold text-ink">Elevation profile</h2>
-					{#if profile}
-						<p class="text-xs text-muted">
-							{profile.evidence_count} with reported elevation · {profile.unknown_count} unavailable
-							· {profile.partial_bound_count}
-							with a partial range
-						</p>
-					{/if}
-				</div>
-				<p class="mt-1 text-xs text-muted">
-					When available, map shading shows approximate terrain elevation; markers show reported
-					coffee elevation.
-				</p>
-				{#if profile}
-					<div class="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
-						<span class="text-muted"
-							>Median <strong class="text-ink"
-								>{formatElevationValue(profile.median_masl, currentState.units)}</strong
-							></span
-						>
-						<span class="text-muted"
-							>Reported range <strong class="text-ink"
-								>{formatElevationRange(
-									profile.min_known_masl,
-									profile.max_known_masl,
-									currentState.units
-								)}</strong
-							></span
-						>
-						<span class="text-muted"
-							>Complete ranges <strong class="text-ink">{profile.statistic_sample_count}</strong
-							></span
-						>
-					</div>
-					<ul class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3" aria-label="Elevation key">
-						{#each profile.bands as band, index}
-							<li class="flex items-center gap-2 text-xs text-muted">
-								<span
-									class="h-3 w-3 shrink-0 rounded-full"
-									style={`background:${ELEVATION_BANDS[index]?.color ?? '#695C4D'}`}
-								></span>
-								<span>{bandLabel(band.min_masl, band.max_masl_exclusive)} ({band.count})</span>
-							</li>
-						{/each}
-						<li class="flex items-center gap-2 text-xs text-muted">
-							<span class="h-3 w-3 shrink-0 rounded-full bg-muted"></span>
-							<span
-								>Elevation unavailable ({profile.partial_bound_count + profile.unknown_count})</span
-							>
-						</li>
-					</ul>
-				{:else if mapLoading}
-					<p class="mt-2 text-sm text-muted">Loading elevation profile…</p>
-				{:else}
-					<p class="mt-2 text-sm text-muted">No elevation profile is available for this scope.</p>
-				{/if}
-			</div>
-			<form
-				class="flex flex-wrap items-end gap-2"
-				onsubmit={(event) => {
-					event.preventDefault();
-					applyElevationRange();
-				}}
-			>
-				<label class="text-xs font-medium text-muted">
-					Min MASL
-					<input
-						class="mt-1 w-28 rounded-md border-line bg-surface-raised text-sm"
-						type="number"
-						bind:value={elevationMinInput}
-						disabled={!canUseElevation}
-					/>
-				</label>
-				<label class="text-xs font-medium text-muted">
-					Max MASL
-					<input
-						class="mt-1 w-28 rounded-md border-line bg-surface-raised text-sm"
-						type="number"
-						bind:value={elevationMaxInput}
-						disabled={!canUseElevation}
-					/>
-				</label>
-				<button
-					type="submit"
-					disabled={!canUseElevation}
-					class="rounded-md bg-accent px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-accent/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-45"
-					>Apply range</button
-				>
-				{#if elevationRange}
-					<button
-						type="button"
-						class="rounded-md border border-line px-3 py-2 text-sm text-ink"
-						onclick={() => {
-							elevationMinInput = '';
-							elevationMaxInput = '';
-							elevationInputError = null;
-							onElevationRangeChange(null);
-						}}>Clear</button
-					>
-				{/if}
-				{#if elevationInputError}<p class="w-full text-xs text-danger" role="alert">
-						{elevationInputError}
-					</p>{/if}
-			</form>
-		</div>
-	{/if}
-
 	<div
 		class="relative h-[clamp(26rem,72dvh,46rem)] overflow-hidden rounded-lg border border-line bg-surface-panel lg:flex lg:h-[46rem]"
 	>
@@ -698,7 +454,6 @@
 			{:else}
 				<CatalogMapCanvas
 					{items}
-					lens={currentState.lens}
 					center={currentState.center}
 					zoom={currentState.zoom}
 					onViewportChange={handleViewportChange}
@@ -710,6 +465,23 @@
 					onMapError={(message) => (rendererError = message)}
 				/>
 			{/if}
+
+			<div
+				class="pointer-events-none absolute bottom-[5.25rem] left-3 z-10 w-[min(20rem,calc(100%-6rem))] rounded-md border border-line bg-surface-canvas/95 px-3 py-2 shadow-sm backdrop-blur-sm lg:bottom-9"
+				aria-label="Terrain elevation key"
+			>
+				<p class="text-[0.68rem] font-semibold text-ink">Approx. terrain elevation · MASL</p>
+				<ul class="mt-1.5 grid grid-cols-5 overflow-hidden rounded-sm" aria-label="Elevation bands">
+					{#each TERRAIN_ELEVATION_BANDS as band}
+						<li class="min-w-0" aria-label={band.label}>
+							<span class="block h-2" style={`background:${band.color}`}></span>
+							<span class="mt-1 block text-center text-[0.58rem] leading-none text-muted"
+								>{band.shortLabel}</span
+							>
+						</li>
+					{/each}
+				</ul>
+			</div>
 
 			<div class="absolute left-3 top-3 z-10 flex max-w-[calc(100%-5rem)] flex-wrap gap-2">
 				{#if pendingBounds}
@@ -982,11 +754,7 @@
 							<span class="block text-sm font-semibold text-ink">{place.canonical_name}</span>
 							<span class="mt-1 block text-xs text-muted">{formatGeographicPrecision(place)}</span>
 							<span class="mt-1 block text-xs text-muted">
-								{formatElevationRange(
-									place.elevation_min_masl,
-									place.elevation_max_masl,
-									currentState.units
-								)}
+								{formatElevationRange(place.elevation_min_masl, place.elevation_max_masl, 'masl')}
 							</span>
 						</button>
 						{#if place.place_id && canExplorePlaces}

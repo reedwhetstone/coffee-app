@@ -33,9 +33,10 @@
 	);
 	let filterableColumns = $derived(filterStore.getFilterableColumns(routeId));
 	let visibleSortColumns = $derived(
-		(routeId === '/' || routeId === '/catalog') && !canUseMemberCatalogControls
+		((routeId === '/' || routeId === '/catalog') && !canUseMemberCatalogControls
 			? filterableColumns.filter((column) => !premiumDiscoveryFilterColumns.has(column))
 			: filterableColumns
+		).filter((column) => column !== 'elevation_masl')
 	);
 	let visibleFilterColumns = $derived(
 		(routeId === '/' || routeId === '/catalog') && !canUseMemberCatalogControls
@@ -64,7 +65,8 @@
 	function formatColumnName(column: string): string {
 		// Custom field labels
 		const customLabels: Record<string, string> = {
-			grade: 'Elevation (MASL)',
+			grade: 'Grade',
+			elevation_masl: 'Elevation (MASL)',
 			appearance: 'Appearance',
 			type: 'Importer',
 			roast_id: 'Roast ID'
@@ -385,6 +387,60 @@
 										max="100"
 										step="0.1"
 									/>
+								</div>
+							{:else if column === 'elevation_masl'}
+								<div class="space-y-2">
+									<div class="flex gap-2">
+										<input
+											id={column}
+											type="number"
+											value={(
+												$filterStore.filters.elevation_masl as
+													| { min: string | number; max: string | number }
+													| undefined
+											)?.min ?? ''}
+											oninput={(e) => {
+												const min = e.currentTarget.value;
+												const max =
+													(
+														$filterStore.filters.elevation_masl as
+															| { min: string | number; max: string | number }
+															| undefined
+													)?.max ?? '';
+												filterStore.setFilter('elevation_masl', { min, max });
+											}}
+											class="w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
+											placeholder="Min"
+											min="0"
+											step="50"
+										/>
+										<input
+											aria-label="Maximum Elevation (MASL)"
+											type="number"
+											value={(
+												$filterStore.filters.elevation_masl as
+													| { min: string | number; max: string | number }
+													| undefined
+											)?.max ?? ''}
+											oninput={(e) => {
+												const max = e.currentTarget.value;
+												const min =
+													(
+														$filterStore.filters.elevation_masl as
+															| { min: string | number; max: string | number }
+															| undefined
+													)?.min ?? '';
+												filterStore.setFilter('elevation_masl', { min, max });
+											}}
+											class="w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
+											placeholder="Max"
+											min="0"
+											step="50"
+										/>
+									</div>
+									<p class="text-[11px] text-muted">
+										Match coffees whose reported elevation range overlaps these bounds.
+									</p>
 								</div>
 							{:else if column === 'cost_lb'}
 								<div class="flex gap-2">
