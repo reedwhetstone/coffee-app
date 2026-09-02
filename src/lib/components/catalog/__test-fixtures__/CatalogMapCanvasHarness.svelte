@@ -29,9 +29,41 @@
 	onclick={() =>
 		onClusterSelect({
 			kind: 'area',
+			label: 'Selected map area',
+			precisionLabel: 'Nearby mapped origins',
 			mappedOriginCount: 12,
-			coffeeMatchCount: 10
+			coffeeMatchCount: 10,
+			catalogIds: [42, 43],
+			originLabels: ['Ethiopia', 'Kenya']
 		})}>Simulate cluster selection</button
+>
+
+<button
+	type="button"
+	onclick={() =>
+		onClusterSelect({
+			kind: 'location',
+			label: 'Ethiopia',
+			precisionLabel: 'Country-level area',
+			mappedOriginCount: 223,
+			coffeeMatchCount: 223,
+			catalogIds: [42, 43],
+			originLabels: ['Ethiopia']
+		})}>Simulate location selection</button
+>
+
+<button
+	type="button"
+	onclick={() =>
+		onClusterSelect({
+			kind: 'location',
+			label: 'Ethiopia',
+			precisionLabel: 'Country-level area',
+			mappedOriginCount: 30,
+			coffeeMatchCount: 30,
+			catalogIds: Array.from({ length: 30 }, (_, index) => index + 1),
+			originLabels: ['Ethiopia']
+		})}>Simulate large location selection</button
 >
 
 <button type="button" onclick={() => onPlaceSelect(42, 'place-id')}

@@ -123,6 +123,7 @@ describe('CatalogMapExperience', () => {
 		expect(fetchSpy.mock.calls[0][0].toString()).toContain('/api/catalog/map?');
 		expect(fetchSpy.mock.calls[0][0].toString()).toContain('lens=catalog');
 		expect(fetchSpy.mock.calls[0][0].toString()).toContain('zoom=22');
+		expect(fetchSpy.mock.calls[0][0].toString()).toContain('projection=locations');
 	});
 
 	it('gives the mobile map column the full responsive viewport height', async () => {
@@ -163,25 +164,135 @@ describe('CatalogMapExperience', () => {
 		expect(onSelectCoffee).toHaveBeenCalledWith(42);
 	});
 
-	it('shows immediate context when a visual cluster is selected', async () => {
-		vi.stubGlobal(
-			'fetch',
-			vi.fn(
-				async () =>
-					new Response(JSON.stringify(mapResponse()), {
-						status: 200,
-						headers: { 'Content-Type': 'application/json' }
-					})
-			)
-		);
+	it('opens a selected-area rail with readable coffees when a visual cluster is selected', async () => {
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+			const body = url.startsWith('/api/catalog/map?')
+				? mapResponse()
+				: {
+						data: [
+							{
+								id: 42,
+								name: 'Sidama Natural',
+								source: 'Royal Coffee',
+								country: 'Ethiopia',
+								region: 'Sidama',
+								processing: 'Natural',
+								cost_lb: 7.25,
+								price_per_lb: 7.25,
+								price_tiers: null
+							},
+							{
+								id: 43,
+								name: 'Kenya AA',
+								source: 'Genuine Origin',
+								country: 'Kenya',
+								region: 'Nyeri',
+								processing: 'Washed',
+								cost_lb: 8.5,
+								price_per_lb: 8.5,
+								price_tiers: null
+							}
+						]
+					};
+			return new Response(JSON.stringify(body), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' }
+			});
+		});
+		vi.stubGlobal('fetch', fetchSpy);
 		renderExperience(true);
 
 		await screen.findByText('9');
 		await fireEvent.click(screen.getByRole('button', { name: 'Simulate cluster selection' }));
 
-		expect(screen.getByText(/12 mapped origins/)).toBeInTheDocument();
-		expect(screen.getByText(/Zooming in to separate nearby origins/)).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Dismiss map selection' })).toBeInTheDocument();
+		expect(await screen.findByText('Sidama Natural')).toBeInTheDocument();
+		expect(screen.getByText('Kenya AA')).toBeInTheDocument();
+		expect(screen.getByText('Ethiopia and Kenya')).toBeInTheDocument();
+		expect(screen.getByText(/2 coffees across 12 mapped origins/)).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'All results' })).toBeInTheDocument();
+		expect(fetchSpy.mock.calls[1][0].toString()).toContain('ids=42%2C43');
+	});
+
+	it('describes broad semantic locations honestly and opens their coffees', async () => {
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const body = input.toString().startsWith('/api/catalog/map?')
+				? mapResponse()
+				: {
+						data: [
+							{
+								id: 42,
+								name: 'Ethiopia Guji',
+								source: 'Ally Coffee',
+								country: 'Ethiopia',
+								region: 'Guji',
+								processing: 'Natural',
+								cost_lb: 6.8,
+								price_per_lb: 6.8,
+								price_tiers: null
+							}
+						]
+					};
+			return new Response(JSON.stringify(body), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' }
+			});
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+		renderExperience(true);
+
+		await screen.findByText('9');
+		await fireEvent.click(screen.getByRole('button', { name: 'Simulate location selection' }));
+
+		expect(await screen.findByText('Ethiopia Guji')).toBeInTheDocument();
+		expect(screen.getByText('Country-level area')).toBeInTheDocument();
+		expect(
+			screen.getByText(/broad geographic center, not an exact farm location/i)
+		).toBeInTheDocument();
+	});
+
+	it('hydrates large location groups in bounded pages', async () => {
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+			if (url.startsWith('/api/catalog/map?')) {
+				return new Response(JSON.stringify(mapResponse()), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+			const params = new URL(url, 'https://app.test').searchParams;
+			const ids = (params.get('ids') ?? '').split(',').map(Number);
+			return new Response(
+				JSON.stringify({
+					data: ids.map((id) => ({
+						id,
+						name: `Coffee ${id}`,
+						source: 'Test supplier',
+						country: 'Ethiopia',
+						region: null,
+						processing: null,
+						cost_lb: null,
+						price_per_lb: null,
+						price_tiers: null
+					}))
+				}),
+				{ status: 200, headers: { 'Content-Type': 'application/json' } }
+			);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+		renderExperience(true);
+
+		await screen.findByText('9');
+		await fireEvent.click(
+			screen.getByRole('button', { name: 'Simulate large location selection' })
+		);
+		expect(await screen.findByText('Coffee 25')).toBeInTheDocument();
+		expect(screen.queryByText('Coffee 26')).not.toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Show more coffees' }));
+		expect(await screen.findByText('Coffee 30')).toBeInTheDocument();
+		expect(fetchSpy.mock.calls[1][0].toString()).toContain('limit=25');
+		expect(fetchSpy.mock.calls[2][0].toString()).toContain('limit=5');
 	});
 
 	it('keeps the list rail and a clear recovery path when map data fails', async () => {
@@ -261,7 +372,8 @@ describe('CatalogMapExperience', () => {
 			latitude: index,
 			bounds: { west: index, south: index, east: index + 1, north: index + 1 },
 			placement_count: index + 1,
-			unique_coffee_count: index + 1
+			unique_coffee_count: index + 1,
+			catalog_ids: [index + 1]
 		}));
 		const fetchSpy = vi.fn(
 			async () =>
@@ -291,10 +403,11 @@ describe('CatalogMapExperience', () => {
 			latitude: 20,
 			bounds: { west: 5, south: 15, east: 15, north: 25 },
 			placement_count: 4,
-			unique_coffee_count: 3
+			unique_coffee_count: 3,
+			catalog_ids: [1, 2, 3]
 		};
 		const fetchSpy = vi.fn(
-			async () =>
+			async (_input: RequestInfo | URL) =>
 				new Response(
 					JSON.stringify(mapResponse({ data: [cluster] as CatalogMapResponse['data'] })),
 					{
@@ -312,7 +425,8 @@ describe('CatalogMapExperience', () => {
 		});
 		await fireEvent.click(clusterButton);
 
-		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		expect(fetchSpy).toHaveBeenCalledTimes(2);
+		expect(fetchSpy.mock.calls[1][0].toString()).toContain('ids=1%2C2%2C3');
 		expect(onStateChange).toHaveBeenLastCalledWith(
 			expect.objectContaining({ center: [10, 20], bbox: null })
 		);

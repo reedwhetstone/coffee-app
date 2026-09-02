@@ -53,7 +53,7 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
 
    - `GET https://api.purveyors.io/` advertises the service, docs, health, and OpenAPI resources
    - `GET https://api.purveyors.io/v1/catalog` is the stable public contract for external integrations
-   - `GET https://api.purveyors.io/v1/catalog/map` returns authorized clusters, canonical place features, explicit placed/unplaced totals, and elevation profiles over the same caller-visible catalog scope
+   - `GET https://api.purveyors.io/v1/catalog/map` returns authorized clusters, semantic location groups, canonical place features, explicit placed/unplaced totals, and elevation profiles over the same caller-visible catalog scope
    - `GET https://api.purveyors.io/v1/catalog/{id}/similar` is a beta catalog matching endpoint for member sessions or API keys on any API plan with `catalog:read`
    - `GET https://api.purveyors.io/v1/price-index` exposes aggregate `price_index_snapshots` for entitled first-party sessions and customer API keys with Parchment Intelligence access
    - Parchment catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages use a server-held demo key through the coffee-app BFF; deliberately designated Market Index teaser slices remain anonymous

@@ -1,6 +1,6 @@
 # Coffee Catalog Map and Elevation Explorer
 
-**Status:** In implementation; canonical Parchment map contract and authored API guide complete, coffee-app experience next
+**Status:** In implementation; semantic location-group contract and selectable coffee rail in review
 **Date:** 2026-08-31
 **Owner:** Purveyors catalog experience
 **Governing direction:** `notes/PRODUCT_VISION.md`, `notes/decisions/005-catalog-access-level-positioning.md`, Parchment `PADR-0012`, `PADR-0013`, `PADR-0015`, and coffee-scraper `ADR-005`
@@ -17,7 +17,7 @@ The map must represent every caller-visible catalog row honestly. Rows with unre
 
 - Desktop uses a map-first split view with a collapsible results rail. Mobile uses a full-screen map with a draggable results sheet.
 - World and continental views show clusters. Zooming resolves clusters into the best supported geographic tier and, only where evidence exists, cultivation-site points.
-- Cluster labels emphasize coffee count; selecting a cluster zooms to its bounds or opens its contained results. Single-lot or narrow-place markers may show display price per pound, and selecting a single feature opens the existing coffee detail experience after entitled hydration.
+- Cluster labels emphasize coffee count; selecting a visual cluster zooms and opens a contained-results rail. Coffees that share one honest canonical coordinate remain a named location group with its precision and selectable coffees instead of being artificially scattered. Selecting a single feature opens the existing coffee detail experience after entitled hydration.
 - A map/list toggle preserves one catalog result set, URL state, and entitlement state rather than creating a second search product.
 - Basic catalog proof remains available through the existing public-demo website path. Advanced geographic, elevation, price, process, supplier, freshness, and wholesale search leverage follows the API-resolved catalog entitlement.
 - The elevation lens uses explicit bands, a neutral unknown state, and a MASL/feet display toggle. Elevation is production context, never a quality score.
@@ -109,7 +109,7 @@ The many-to-many assignment survives page reloads, scraper updates, supplier cha
 - **MAP-BFF-TOKEN-CUSTODY** | The browser calls a same-origin thin BFF; the BFF attaches the server-held demo credential or server-side session bearer and contains no map aggregation or authorization policy. | Anonymous/session BFF, credential non-exposure, forwarding, error, and fallback tests. | Active | Parchment PADR-0015.
 - **MAP-DOWNSTREAM-CONTRACTS** | CLI, Cherry, authored coffee-app docs, and generated API artifacts either adopt the canonical vocabulary in a dependent slice or omit it from their advertised contract. | Manifest, tool-schema, authored-doc, generated-SDK, and compatibility tests. | Active | Product vision API-first principle and coffee-app documentation rules.
 - **MAP-RESILIENCE** | Basemap or map-render failure cannot make the catalog unusable. | Client error/fallback and SSR tests. | Active | Existing catalog availability.
-- **MAP-PERFORMANCE** | The browser receives lightweight authorized map features, never thousands of full CoffeeCard payloads. The first-party map requests a point-level projection per committed filter or area state, then MapLibre deterministically clusters it in a web worker for the live viewport so pan, zoom, and container resizing stay local and responsive. | Contract payload, source-cluster behavior, request-count, resize, cache, and performance-budget tests. | Active | Parchment API authority for projection and catalog performance direction; MapLibre worker clustering follows the renderer's supported fast path.
+- **MAP-PERFORMANCE** | The browser receives lightweight authorized place/location features, never thousands of full CoffeeCard payloads. The first-party map requests a semantic location projection per committed filter or area state, MapLibre clusters those features in a web worker, and the client hydrates contained coffees in bounded pages only after selection. | Contract payload, source-cluster behavior, selected-page hydration, request-count, resize, cache, and performance-budget tests. | Active | Parchment API authority for projection and catalog performance direction; MapLibre worker clustering follows the renderer's supported fast path.
 
 ## Cross-surface semantic contract
 
@@ -139,7 +139,7 @@ These rules are part of the plan's implementation contract. They keep the API, S
 
 - Shared caching is allowed only for the public/demo projection and must key every public query dimension, including normalized geometry, zoom, filters, and lens. Authenticated session and API-key map responses use `private, no-store` by default, or an equivalently partitioned account/principal cache that can never collide with public/demo data. Credential variation tests must prove that member-only clusters, totals, and profiles cannot be served to another principal.
 - The browser never calls `api.purveyors.io` directly. The coffee-app `GET /api/catalog/map` BFF attaches the server-held public-demo key for anonymous website proof or exchanges the httpOnly session for a server-side bearer credential for signed-in users, forwards the canonical request, relays the response/error shape and relevant headers, and performs no map aggregation or entitlement decision.
-- Selecting a cluster zooms to its bounds or opens a contained-results list; it never chooses an arbitrary coffee for detail. Selecting a single feature requests an entitled single-ID hydration through the existing catalog ID query/BFF before opening the CoffeeCard panel. The hydration path preserves URL/deep-link state and handles an unauthorized or missing row without exposing data.
+- Selecting a visual cluster reads its renderer-owned leaves, deduplicates their contained catalog IDs, zooms, and opens a contained-results list. Selecting a semantic location group opens the same list under the canonical place name and honest precision label. Neither path chooses an arbitrary coffee. Full rows hydrate through the existing catalog ID query/BFF in bounded pages; selecting one result preserves the existing single-coffee detail behavior.
 
 ## Delivery sequence
 
@@ -196,7 +196,7 @@ When PR 1 or PR 4 changes a deployed public contract, land the dependent coffee-
 
 ### PR 5, coffee-app: map-first catalog, BFF, and elevation lens
 
-Add MapLibre-based rendering within the established Purveyors visual language, a same-origin `GET /api/catalog/map` thin BFF, a map/list toggle, results rail, mobile result sheet, URL-backed viewport/lens state, canonical place navigation, cluster/list interaction, marker/detail integration, elevation key and profile, entitlement-aware controls, and resilient list fallback. The BFF uses the server-held public-demo credential for anonymous website proof or the server-side session bearer for signed-in users, forwards the canonical request/response, and contains no map aggregation or authorization policy. A single marker hydrates its entitled catalog row through the existing `/api/catalog?ids=<id>` path before opening CoffeeCard; a cluster zooms or opens its contained results and never chooses an arbitrary row. Reuse the current CoffeeCard/detail, catalog filters, notices, watchlist, sourcing brief, and page context.
+Add MapLibre-based rendering within the established Purveyors visual language, a same-origin `GET /api/catalog/map` thin BFF, a map/list toggle, linked results rail, mobile result sheet, URL-backed viewport/lens state, canonical place navigation, cluster/list interaction, marker/detail integration, elevation key and profile, entitlement-aware controls, and resilient list fallback. The BFF uses the server-held public-demo credential for anonymous website proof or the server-side session bearer for signed-in users, forwards the canonical request/response, and contains no map aggregation or authorization policy. Visual clusters zoom and open their deduplicated contained coffees; semantic location groups open under their canonical name and precision; a single marker hydrates its entitled row before opening CoffeeCard. Reuse the current CoffeeCard/detail, catalog filters, notices, watchlist, sourcing brief, and page context.
 
 **After merge:** the catalog map is deployable behind a narrow release flag or route gate, with the existing list as fallback.
 **Next gate:** production visual/data QA and release.

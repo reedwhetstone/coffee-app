@@ -911,11 +911,11 @@ const docsPages: DocsPage[] = [
 		slug: 'catalog-map',
 		title: 'Catalog map API',
 		summary:
-			'GET /v1/catalog/map returns lightweight authorized clusters, canonical place features, explicit catalog totals, and elevation profiles.',
+			'GET /v1/catalog/map returns lightweight authorized clusters, named location groups, canonical place features, explicit catalog totals, and elevation profiles.',
 		eyebrow: 'Public endpoint',
 		intro: [
-			'GET https://api.purveyors.io/v1/catalog/map is the spatial projection of the canonical catalog. Parchment resolves catalog visibility, wholesale scope, filters, entitlement, notices, and plan limits before it creates clusters or place features.',
-			'The route is intentionally smaller than GET /v1/catalog. It returns map-ready clusters and places, global and viewport counts, access metadata, and an optional elevation profile. Hydrate full coffee details through the catalog endpoint after a user selects a single catalog ID.',
+			'GET https://api.purveyors.io/v1/catalog/map is the spatial projection of the canonical catalog. Parchment resolves catalog visibility, wholesale scope, filters, entitlement, notices, and plan limits before it creates clusters, semantic location groups, or place features.',
+			'The route is intentionally smaller than GET /v1/catalog. It returns map-ready features, contained catalog IDs, global and viewport counts, access metadata, and an optional elevation profile. Hydrate full coffee details through the catalog endpoint only after a user selects a location or single catalog ID.',
 			'Country and region centroids remain labeled at their real geographic precision. Canonical place IDs and bounded provenance describe what is known without exposing raw supplier text, aliases, resolver evidence, source URLs, or observation identities.'
 		],
 		sections: [
@@ -1004,6 +1004,11 @@ const docsPages: DocsPage[] = [
 						],
 						['zoom', 'All callers', 'Integer Web Mercator clustering zoom from 0 through 22.'],
 						[
+							'projection',
+							'All callers',
+							'clusters (default) groups features into Web Mercator tiles. locations groups placements by canonical place and returns stable named location features with catalog_ids for contained-result interaction.'
+						],
+						[
 							'lens',
 							'catalog for all; elevation for member/admin sessions or customer API keys on any API plan',
 							'catalog returns the geographic projection. elevation additionally returns numeric bounds on place features and the aggregate elevation_profile.'
@@ -1041,6 +1046,7 @@ const docsPages: DocsPage[] = [
 				title: 'Feature precision and safe provenance',
 				bullets: [
 					'Cluster features carry bounds, placement_count, unique_coffee_count, and catalog_ids for contained-result interaction. Selecting a cluster should zoom or open that set, not choose an arbitrary coffee.',
+					'Location features carry a stable canonical_name, place_type, geographic_precision, coordinate_kind, placement and unique-coffee counts, and catalog_ids. They group coffees that honestly share one canonical coordinate instead of scattering them into invented points.',
 					'Place features carry catalog_id, canonical_name, place_type, geographic_precision, coordinate_kind, assignment role, bounded provenance enums, confidence, and optional elevation bounds.',
 					'Public-safe features may be coarsened to positioned country or region ancestors. A country or region centroid remains labeled as centroid precision and is never presented as an exact farm.',
 					'Raw supplier text, raw aliases, canonical keys, resolver evidence, source references, evidence quotes, and observation identities are not response fields.'

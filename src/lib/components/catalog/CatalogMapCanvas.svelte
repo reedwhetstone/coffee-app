@@ -5,7 +5,7 @@
 	import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl';
 	import {
 		toCatalogMapGeoJson,
-		type CatalogMapItem,
+		type CatalogMapDisplayItem,
 		type CatalogMapPointProperties
 	} from '$lib/catalog/mapPresentation';
 	import {
@@ -22,13 +22,17 @@
 	}
 
 	export interface CatalogMapClusterSelection {
-		kind: 'area' | 'shared-location';
+		kind: 'area' | 'location';
+		label: string;
+		precisionLabel: string;
 		mappedOriginCount: number;
 		coffeeMatchCount: number;
+		catalogIds: number[];
+		originLabels: string[];
 	}
 
 	interface Props {
-		items: CatalogMapItem[];
+		items: CatalogMapDisplayItem[];
 		lens: CatalogMapLens;
 		center: [number, number];
 		zoom: number;
@@ -76,6 +80,41 @@
 		return Number.isFinite(value) && value > 0 ? value : 1;
 	}
 
+	function readCatalogIds(value: unknown): number[] {
+		let candidates: unknown[] = [];
+		if (Array.isArray(value)) {
+			candidates = value;
+		} else if (typeof value === 'string') {
+			try {
+				const parsed = JSON.parse(value) as unknown;
+				candidates = Array.isArray(parsed) ? parsed : value.split(',');
+			} catch {
+				candidates = value.split(',');
+			}
+		}
+		return [
+			...new Set(
+				candidates
+					.map((candidate) => Number(candidate))
+					.filter((candidate) => Number.isSafeInteger(candidate) && candidate > 0)
+			)
+		].sort((left, right) => left - right);
+	}
+
+	function catalogIdsFromProperties(properties: Record<string, unknown>): number[] {
+		const ids = readCatalogIds(properties.catalogIds);
+		const catalogId = Number(properties.catalogId);
+		if (Number.isSafeInteger(catalogId) && catalogId > 0) ids.push(catalogId);
+		return [...new Set(ids)].sort((left, right) => left - right);
+	}
+
+	function labelFromProperties(properties: Record<string, unknown>): string | null {
+		const label = properties.label;
+		return typeof label === 'string' && label.trim() !== '' && label !== 'Mapped area'
+			? label.trim()
+			: null;
+	}
+
 	function featureCoordinates(event: MapLayerMouseEvent): [number, number] | null {
 		const geometry = event.features?.[0]?.geometry;
 		if (geometry?.type !== 'Point' || !Array.isArray(geometry.coordinates)) return null;
@@ -108,18 +147,48 @@
 		const clusterId = Number(properties?.cluster_id);
 		if (!currentMap || !properties || !Number.isFinite(clusterId)) return;
 
-		onClusterSelect({
-			kind: 'area',
-			mappedOriginCount: readCount(properties, 'placementCount'),
-			coffeeMatchCount: readCount(properties, 'uniqueCoffeeCount')
-		});
-
 		const source = currentMap.getSource('catalog-map') as GeoJSONSource | undefined;
 		const coordinates = featureCoordinates(event);
 		if (!source || !coordinates) return;
+		const leafLimit = readCount(properties, 'point_count');
+		const expansionZoomPromise = source.getClusterExpansionZoom(clusterId);
+		try {
+			const leaves = await source.getClusterLeaves(clusterId, leafLimit, 0);
+			const leafProperties = leaves
+				.map((leaf) => leaf.properties as Record<string, unknown> | null)
+				.filter((leaf): leaf is Record<string, unknown> => leaf !== null);
+			const catalogIds = [...new Set(leafProperties.flatMap(catalogIdsFromProperties))].sort(
+				(left, right) => left - right
+			);
+			const originLabels = [
+				...new Set(
+					leafProperties.map(labelFromProperties).filter((label): label is string => label !== null)
+				)
+			];
+			onClusterSelect({
+				kind: 'area',
+				label: 'Selected map area',
+				precisionLabel: 'Nearby mapped origins',
+				mappedOriginCount: readCount(properties, 'placementCount'),
+				coffeeMatchCount:
+					catalogIds.length > 0 ? catalogIds.length : readCount(properties, 'uniqueCoffeeCount'),
+				catalogIds,
+				originLabels
+			});
+		} catch {
+			onClusterSelect({
+				kind: 'area',
+				label: 'Selected map area',
+				precisionLabel: 'Nearby mapped origins',
+				mappedOriginCount: readCount(properties, 'placementCount'),
+				coffeeMatchCount: readCount(properties, 'uniqueCoffeeCount'),
+				catalogIds: [],
+				originLabels: []
+			});
+		}
 		let expansionZoom: number;
 		try {
-			expansionZoom = await source.getClusterExpansionZoom(clusterId);
+			expansionZoom = await expansionZoomPromise;
 		} catch {
 			return;
 		}
@@ -129,11 +198,17 @@
 
 	function handleSharedLocationClick(event: MapLayerMouseEvent) {
 		const properties = readPointProperties(event);
-		if (!properties || properties.type !== 'cluster') return;
+		if (!properties || (properties.type !== 'cluster' && properties.type !== 'location')) return;
+		const catalogIds = catalogIdsFromProperties(properties as unknown as Record<string, unknown>);
 		onClusterSelect({
-			kind: 'shared-location',
+			kind: 'location',
+			label: properties.label,
+			precisionLabel:
+				properties.precisionLabel === 'Cluster' ? 'Broad mapped area' : properties.precisionLabel,
 			mappedOriginCount: properties.placementCount,
-			coffeeMatchCount: properties.uniqueCoffeeCount
+			coffeeMatchCount: catalogIds.length || properties.uniqueCoffeeCount,
+			catalogIds,
+			originLabels: properties.label === 'Mapped area' ? [] : [properties.label]
 		});
 	}
 
@@ -224,7 +299,11 @@
 						id: 'catalog-map-shared-locations',
 						type: 'circle',
 						source: 'catalog-map',
-						filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'type'], 'cluster']],
+						filter: [
+							'all',
+							['!', ['has', 'point_count']],
+							['any', ['==', ['get', 'type'], 'cluster'], ['==', ['get', 'type'], 'location']]
+						],
 						paint: {
 							'circle-color': ['get', 'color'],
 							'circle-radius': 14,
@@ -236,7 +315,11 @@
 						id: 'catalog-map-shared-location-labels',
 						type: 'symbol',
 						source: 'catalog-map',
-						filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'type'], 'cluster']],
+						filter: [
+							'all',
+							['!', ['has', 'point_count']],
+							['any', ['==', ['get', 'type'], 'cluster'], ['==', ['get', 'type'], 'location']]
+						],
 						layout: {
 							'text-field': ['to-string', ['get', 'placementCount']],
 							'text-size': 11,

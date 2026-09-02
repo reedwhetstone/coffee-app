@@ -5,6 +5,7 @@ import {
 	formatGeographicPrecision,
 	toCatalogMapGeoJson,
 	type CatalogMapCluster,
+	type CatalogMapLocation,
 	type CatalogMapPlace
 } from './mapPresentation';
 
@@ -38,6 +39,22 @@ const cluster: CatalogMapCluster = {
 	catalog_ids: [1, 2, 3, 4]
 };
 
+const location: CatalogMapLocation = {
+	type: 'location',
+	id: 'location:ethiopia',
+	place_id: null,
+	canonical_name: 'Ethiopia',
+	place_type: 'country',
+	longitude: 40.5,
+	latitude: 9.1,
+	geographic_precision: 'country',
+	coordinate_kind: 'centroid',
+	place_provenance: 'reference_dataset',
+	placement_count: 8,
+	unique_coffee_count: 6,
+	catalog_ids: [1, 2, 3, 4, 5, 6]
+};
+
 describe('catalog map presentation semantics', () => {
 	it('keeps broad centroids explicitly distinct from exact farms', () => {
 		expect(formatGeographicPrecision(place)).toBe('Region-level area');
@@ -62,13 +79,24 @@ describe('catalog map presentation semantics', () => {
 			type: 'cluster',
 			placementCount: 5,
 			uniqueCoffeeCount: 4,
-			label: '4 coffees'
+			label: 'Mapped area',
+			catalogIds: [1, 2, 3, 4]
 		});
 		expect(geojson.features[1].properties).toMatchObject({
 			type: 'place',
 			catalogId: 1,
 			precisionLabel: 'Region-level area',
 			elevationBand: '1400_to_1799'
+		});
+	});
+
+	it('keeps semantic location groups named and selectable', () => {
+		const feature = toCatalogMapGeoJson([location], 'catalog').features[0];
+		expect(feature.properties).toMatchObject({
+			type: 'location',
+			label: 'Ethiopia',
+			precisionLabel: 'Country-level area',
+			catalogIds: [1, 2, 3, 4, 5, 6]
 		});
 	});
 });

@@ -122,7 +122,7 @@
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-accent"></span>
 					<span
-						>Render origin clusters and elevation profiles without downloading full catalog rows</span
+						>Render named origin groups and elevation profiles without downloading full catalog rows</span
 					>
 				</li>
 			</ul>

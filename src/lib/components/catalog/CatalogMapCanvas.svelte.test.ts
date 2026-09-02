@@ -7,7 +7,17 @@ const maplibre = vi.hoisted(() => {
 	const constructMap = vi.fn();
 	const fakeSource = {
 		setData: vi.fn(),
-		getClusterExpansionZoom: vi.fn(async () => 7)
+		getClusterExpansionZoom: vi.fn(async () => 7),
+		getClusterLeaves: vi.fn(async () => [
+			{
+				properties: {
+					label: 'Ethiopia',
+					catalogIds: [42, 43],
+					placementCount: 2,
+					uniqueCoffeeCount: 2
+				}
+			}
+		])
 	};
 	const fakeMap = {
 		addControl: vi.fn(),
@@ -51,6 +61,16 @@ describe('CatalogMapCanvas worker integration', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		maplibre.fakeSource.getClusterExpansionZoom.mockResolvedValue(7);
+		maplibre.fakeSource.getClusterLeaves.mockResolvedValue([
+			{
+				properties: {
+					label: 'Ethiopia',
+					catalogIds: [42, 43],
+					placementCount: 2,
+					uniqueCoffeeCount: 2
+				}
+			}
+		]);
 	});
 
 	it('binds the packaged MapLibre worker before constructing the map', async () => {
@@ -112,11 +132,17 @@ describe('CatalogMapCanvas worker integration', () => {
 			]
 		});
 
-		expect(onClusterSelect).toHaveBeenCalledWith({
-			kind: 'area',
-			mappedOriginCount: 12,
-			coffeeMatchCount: 10
-		});
+		await waitFor(() =>
+			expect(onClusterSelect).toHaveBeenCalledWith({
+				kind: 'area',
+				label: 'Selected map area',
+				precisionLabel: 'Nearby mapped origins',
+				mappedOriginCount: 12,
+				coffeeMatchCount: 2,
+				catalogIds: [42, 43],
+				originLabels: ['Ethiopia']
+			})
+		);
 		await waitFor(() =>
 			expect(maplibre.fakeSource.getClusterExpansionZoom).toHaveBeenCalledWith(7)
 		);
@@ -150,16 +176,31 @@ describe('CatalogMapCanvas worker integration', () => {
 		)?.[2] as (event: unknown) => void;
 
 		sharedClick({
-			features: [{ properties: { type: 'cluster', placementCount: 8, uniqueCoffeeCount: 6 } }]
+			features: [
+				{
+					properties: {
+						type: 'location',
+						label: 'Ethiopia',
+						precisionLabel: 'Country-level area',
+						placementCount: 8,
+						uniqueCoffeeCount: 6,
+						catalogIds: '[1,2,3,4,5,6]'
+					}
+				}
+			]
 		});
 		placeClick({
 			features: [{ properties: { type: 'place', catalogId: 42, placeId: 'place-id' } }]
 		});
 
 		expect(onClusterSelect).toHaveBeenCalledWith({
-			kind: 'shared-location',
+			kind: 'location',
+			label: 'Ethiopia',
+			precisionLabel: 'Country-level area',
 			mappedOriginCount: 8,
-			coffeeMatchCount: 6
+			coffeeMatchCount: 6,
+			catalogIds: [1, 2, 3, 4, 5, 6],
+			originLabels: ['Ethiopia']
 		});
 		expect(onPlaceSelect).toHaveBeenCalledWith(42, 'place-id');
 	});

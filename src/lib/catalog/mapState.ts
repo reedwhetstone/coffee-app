@@ -183,6 +183,7 @@ export function buildCatalogMapRequestParams(
 	params.set('showWholesale', catalogState.showWholesale ? 'true' : 'false');
 	params.set('wholesaleOnly', catalogState.wholesaleOnly ? 'true' : 'false');
 	params.set('zoom', CATALOG_MAP_POINT_PROJECTION_ZOOM.toString());
+	params.set('projection', 'locations');
 	params.set('lens', mapState.lens);
 	if (mapState.bbox) params.set('bbox', formatCatalogMapBounds(mapState.bbox));
 	if (mapState.placeId) params.set('place_id', mapState.placeId);

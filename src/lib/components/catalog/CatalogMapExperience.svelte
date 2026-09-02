@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { CatalogMapResponse } from '@purveyors/sdk';
+	import type { CoffeeCatalog } from '$lib/types/component.types';
+	import { getDisplayPrice } from '$lib/utils/pricing';
 	import CatalogMapCanvas, {
 		type CatalogMapClusterSelection,
 		type CatalogMapViewportChange
@@ -17,10 +19,17 @@
 		formatElevationValue,
 		formatGeographicPrecision,
 		isCatalogMapCluster,
+		isCatalogMapLocation,
 		isCatalogMapPlace,
-		type CatalogMapItem,
+		type CatalogMapDisplayItem,
 		type CatalogMapPlace
 	} from '$lib/catalog/mapPresentation';
+
+	type CatalogMapUiResponse = Omit<CatalogMapResponse, 'data'> & {
+		data: CatalogMapDisplayItem[];
+	};
+
+	const SELECTED_COFFEE_PAGE_SIZE = 25;
 
 	interface ElevationRangeInput {
 		min: string | number;
@@ -70,7 +79,7 @@
 		placeId: null
 	});
 	let pendingBounds = $state<CatalogMapBounds | null>(null);
-	let mapResponse = $state<CatalogMapResponse | null>(null);
+	let mapResponse = $state<CatalogMapUiResponse | null>(null);
 	let mapLoading = $state(true);
 	let mapRequestError = $state<string | null>(null);
 	let rendererError = $state<string | null>(null);
@@ -82,6 +91,12 @@
 	let elevationMaxInput = $state('');
 	let elevationInputError = $state<string | null>(null);
 	let clusterSelection = $state<CatalogMapClusterSelection | null>(null);
+	let selectionQuery = $state('');
+	let selectedCoffees = $state<CoffeeCatalog[]>([]);
+	let selectedCoffeeOffset = $state(0);
+	let selectedCoffeeLoading = $state(false);
+	let selectedCoffeeError = $state<string | null>(null);
+	let selectionRequestVersion = 0;
 	let locationListOpen = $state(false);
 	let locationListLimit = $state(48);
 	let lastIncomingStateKey = '';
@@ -90,12 +105,19 @@
 	let requestQuery = $derived(
 		buildCatalogMapRequestParams(catalogState, committedState).toString()
 	);
-	let items = $derived((mapResponse?.data ?? []) as CatalogMapItem[]);
+	let items = $derived((mapResponse?.data ?? []) as CatalogMapDisplayItem[]);
 	let clusters = $derived(items.filter(isCatalogMapCluster));
+	let locations = $derived(items.filter(isCatalogMapLocation));
 	let places = $derived(items.filter(isCatalogMapPlace));
 	let visibleClusters = $derived(clusters.slice(0, locationListLimit));
+	let visibleLocations = $derived(
+		locations.slice(0, Math.max(0, locationListLimit - visibleClusters.length))
+	);
 	let visiblePlaces = $derived(
-		places.slice(0, Math.max(0, locationListLimit - visibleClusters.length))
+		places.slice(
+			0,
+			Math.max(0, locationListLimit - visibleClusters.length - visibleLocations.length)
+		)
 	);
 	let totals = $derived(mapResponse?.meta.totals ?? null);
 	let access = $derived(mapResponse?.meta.access ?? null);
@@ -103,6 +125,9 @@
 	let canSearchViewport = $derived(access?.viewportSearch ?? canUseAdvancedMaps);
 	let canUseElevation = $derived(access?.elevationProfile ?? canUseAdvancedMaps);
 	let canExplorePlaces = $derived(access?.fineGrainedPlaces ?? canUseAdvancedMaps);
+	let hasMoreSelectedCoffees = $derived(
+		clusterSelection !== null && selectedCoffeeOffset < clusterSelection.catalogIds.length
+	);
 
 	function stateKey(state: CatalogMapUrlState): string {
 		return JSON.stringify(state);
@@ -140,13 +165,16 @@
 
 	$effect(() => {
 		const query = requestQuery;
+		if (clusterSelection && selectionQuery && selectionQuery !== query) {
+			clearMapSelection();
+		}
 		const controller = new AbortController();
 		const timeout = setTimeout(() => {
 			mapLoading = true;
 			mapRequestError = null;
 			void fetch(`/api/catalog/map?${query}`, { signal: controller.signal })
 				.then(async (response) => {
-					const body = (await response.json()) as CatalogMapResponse & {
+					const body = (await response.json()) as CatalogMapUiResponse & {
 						error?: { message?: string } | string;
 						message?: string;
 					};
@@ -230,6 +258,107 @@
 		selectionError = null;
 		if (!(await onSelectCoffee(place.catalog_id))) {
 			selectionError = "We couldn't open that coffee. Try finding it in the list.";
+		}
+	}
+
+	function catalogCoffeeId(coffee: CoffeeCatalog): number {
+		return coffee.id;
+	}
+
+	function clearMapSelection() {
+		selectionRequestVersion += 1;
+		clusterSelection = null;
+		selectionQuery = '';
+		selectedCoffees = [];
+		selectedCoffeeOffset = 0;
+		selectedCoffeeLoading = false;
+		selectedCoffeeError = null;
+	}
+
+	async function loadSelectedCoffees(reset = false) {
+		const selection = clusterSelection;
+		if (!selection) return;
+		const start = reset ? 0 : selectedCoffeeOffset;
+		const ids = selection.catalogIds.slice(start, start + SELECTED_COFFEE_PAGE_SIZE);
+		if (ids.length === 0) {
+			if (reset) {
+				selectedCoffeeError = 'This map group did not include selectable coffee records.';
+			}
+			return;
+		}
+
+		const requestVersion = reset ? ++selectionRequestVersion : selectionRequestVersion;
+		selectedCoffeeLoading = true;
+		selectedCoffeeError = null;
+		try {
+			const params = new URLSearchParams({
+				ids: ids.join(','),
+				stocked: 'all',
+				showWholesale: catalogState.showWholesale ? 'true' : 'false',
+				limit: String(ids.length)
+			});
+			if (catalogState.wholesaleOnly) params.set('wholesaleOnly', 'true');
+			const response = await fetch(`/api/catalog?${params.toString()}`);
+			if (!response.ok) throw new Error(`Catalog selection failed (${response.status}).`);
+			const body = (await response.json()) as { data?: CoffeeCatalog[] };
+			if (selectionRequestVersion !== requestVersion || clusterSelection !== selection) return;
+			const rowsById = new Map(
+				(body.data ?? []).map((coffee) => [catalogCoffeeId(coffee), coffee])
+			);
+			const orderedRows = ids.flatMap((id) => {
+				const coffee = rowsById.get(id);
+				return coffee ? [coffee] : [];
+			});
+			selectedCoffees = reset ? orderedRows : [...selectedCoffees, ...orderedRows];
+			selectedCoffeeOffset = start + ids.length;
+			if (reset && orderedRows.length === 0) {
+				selectedCoffeeError = 'No coffees in this area are available in the current catalog view.';
+			}
+		} catch {
+			if (selectionRequestVersion !== requestVersion || clusterSelection !== selection) return;
+			selectedCoffeeError = "We couldn't load the coffees in this area. Try again.";
+		} finally {
+			if (selectionRequestVersion === requestVersion && clusterSelection === selection) {
+				selectedCoffeeLoading = false;
+			}
+		}
+	}
+
+	function selectMapArea(selection: CatalogMapClusterSelection) {
+		const catalogIds = [...new Set(selection.catalogIds)].sort((left, right) => left - right);
+		clusterSelection = {
+			...selection,
+			catalogIds,
+			coffeeMatchCount: catalogIds.length || selection.coffeeMatchCount
+		};
+		selectionQuery = requestQuery;
+		selectedCoffees = [];
+		selectedCoffeeOffset = 0;
+		selectedCoffeeError = null;
+		sheetOpen = true;
+		void loadSelectedCoffees(true);
+	}
+
+	function originSummary(labels: string[]): string | null {
+		if (labels.length === 0) return null;
+		if (labels.length === 1) return labels[0] ?? null;
+		if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+		return `${labels[0]}, ${labels[1]}, and ${labels.length - 2} more`;
+	}
+
+	function selectedCoffeeLocation(coffee: CoffeeCatalog): string {
+		return [coffee.country, coffee.region].filter(Boolean).join(' · ') || 'Origin not listed';
+	}
+
+	function selectedCoffeePrice(coffee: CoffeeCatalog): string {
+		const price = getDisplayPrice(coffee);
+		return price === null ? 'Price unavailable' : `$${price.toFixed(2)}/lb`;
+	}
+
+	async function openSelectedCoffee(catalogId: number) {
+		selectedCoffeeError = null;
+		if (!(await onSelectCoffee(catalogId))) {
+			selectedCoffeeError = "We couldn't open that coffee. Try again.";
 		}
 	}
 
@@ -524,11 +653,11 @@
 					zoom={currentState.zoom}
 					onViewportChange={handleViewportChange}
 					onPlaceSelect={(catalogId) => {
-						clusterSelection = null;
+						clearMapSelection();
 						const place = places.find((item) => item.catalog_id === catalogId);
 						if (place) void selectCoffee(place);
 					}}
-					onClusterSelect={(selection) => (clusterSelection = selection)}
+					onClusterSelect={selectMapArea}
 					onMapError={(message) => (rendererError = message)}
 				/>
 			{/if}
@@ -559,38 +688,6 @@
 					>
 				{/if}
 			</div>
-
-			{#if clusterSelection}
-				<div
-					class="absolute bottom-[5.5rem] left-3 z-10 max-w-[calc(100%-1.5rem)] rounded-lg border border-line bg-surface-raised/95 p-3 shadow-lg backdrop-blur-sm lg:bottom-3 lg:max-w-sm"
-					role="status"
-				>
-					<div class="flex items-start gap-3">
-						<div class="min-w-0 flex-1">
-							<p class="text-sm font-semibold text-ink">
-								{clusterSelection.mappedOriginCount.toLocaleString()} mapped
-								{clusterSelection.mappedOriginCount === 1 ? 'origin' : 'origins'}
-							</p>
-							<p class="mt-1 text-xs text-muted">
-								{#if clusterSelection.kind === 'area'}
-									Zooming in to separate nearby origins. Select a single point to open its coffee
-									details.
-								{:else}
-									{clusterSelection.coffeeMatchCount.toLocaleString()} coffee
-									{clusterSelection.coffeeMatchCount === 1 ? 'match shares' : 'matches share'}
-									this broad origin location. Refine the filters or use the results to choose one.
-								{/if}
-							</p>
-						</div>
-						<button
-							type="button"
-							class="shrink-0 rounded p-1 text-muted hover:bg-surface-panel hover:text-ink"
-							aria-label="Dismiss map selection"
-							onclick={() => (clusterSelection = null)}>×</button
-						>
-					</div>
-				</div>
-			{/if}
 
 			{#if mapLoading}
 				<div
@@ -640,18 +737,105 @@
 			>
 				<span class="mx-auto mb-2 block h-1 w-10 rounded-full bg-line lg:hidden"></span>
 				<span class="flex items-center justify-between gap-3">
-					<span
-						><strong class="text-sm text-ink">Catalog results</strong><span
-							class="ml-2 text-xs text-muted">{totals?.unique_coffee_count ?? '—'} coffees</span
-						></span
-					>
+					<span>
+						<strong class="text-sm text-ink">{clusterSelection?.label ?? 'Catalog results'}</strong>
+						<span class="ml-2 text-xs text-muted"
+							>{clusterSelection?.coffeeMatchCount ?? totals?.unique_coffee_count ?? '—'} coffees</span
+						>
+					</span>
 					<span class="text-xs font-medium text-link lg:hidden"
 						>{sheetOpen ? 'Collapse' : 'Open'}</span
 					>
 				</span>
 			</button>
 			<div class="min-h-0 flex-1 overflow-y-auto border-t border-line p-3">
-				{@render resultsRail()}
+				{#if clusterSelection}
+					{@const selectedOriginSummary = originSummary(clusterSelection.originLabels)}
+					<div class="mb-3 border-b border-line pb-3">
+						<div class="flex items-start justify-between gap-3">
+							<div>
+								<p class="text-xs font-semibold uppercase tracking-[0.14em] text-organic-rust">
+									{clusterSelection.precisionLabel}
+								</p>
+								<h2 class="mt-1 font-display text-xl font-semibold text-ink">
+									{clusterSelection.label}
+								</h2>
+							</div>
+							<button
+								type="button"
+								class="rounded-md border border-line px-2 py-1 text-xs font-medium text-muted hover:text-ink"
+								onclick={clearMapSelection}>All results</button
+							>
+						</div>
+						{#if selectedOriginSummary}
+							<p class="mt-2 text-sm text-ink">{selectedOriginSummary}</p>
+						{/if}
+						<p class="mt-2 text-sm text-muted">
+							{coffeeCountLabel(clusterSelection.coffeeMatchCount)} across
+							{clusterSelection.mappedOriginCount.toLocaleString()} mapped
+							{clusterSelection.mappedOriginCount === 1 ? 'origin' : 'origins'}.
+						</p>
+						{#if clusterSelection.kind === 'location' && /area/i.test(clusterSelection.precisionLabel)}
+							<p
+								class="mt-2 rounded-md bg-surface-panel px-3 py-2 text-xs leading-relaxed text-muted"
+							>
+								This marker represents a broad geographic center, not an exact farm location.
+							</p>
+						{/if}
+					</div>
+
+					{#if selectedCoffeeLoading && selectedCoffees.length === 0}
+						<p class="py-4 text-sm text-muted" aria-live="polite">Loading coffees in this area…</p>
+					{/if}
+					{#if selectedCoffeeError}
+						<div class="rounded-md border border-danger/30 bg-danger-subtle p-3" role="alert">
+							<p class="text-sm text-danger-strong">{selectedCoffeeError}</p>
+							<button
+								type="button"
+								class="mt-2 text-xs font-semibold text-link underline"
+								onclick={() => void loadSelectedCoffees(selectedCoffees.length === 0)}
+								>Try again</button
+							>
+						</div>
+					{/if}
+					<div class="space-y-2">
+						{#each selectedCoffees as coffee (coffee.id)}
+							<button
+								type="button"
+								class="w-full rounded-lg border border-line bg-surface-raised p-3 text-left transition-colors hover:border-accent hover:bg-surface-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+								onclick={() => void openSelectedCoffee(coffee.id)}
+							>
+								<span class="block text-sm font-semibold leading-snug text-ink">{coffee.name}</span>
+								<span class="mt-1 block text-xs font-medium text-muted"
+									>{coffee.source ?? 'Supplier not listed'}</span
+								>
+								<span class="mt-2 block text-xs text-muted">{selectedCoffeeLocation(coffee)}</span>
+								<span class="mt-2 flex flex-wrap gap-1.5">
+									{#if coffee.processing}
+										<span class="rounded-full bg-surface-panel px-2 py-1 text-[0.7rem] text-ink"
+											>{coffee.processing}</span
+										>
+									{/if}
+									<span
+										class="rounded-full bg-accent/25 px-2 py-1 text-[0.7rem] font-semibold text-ink"
+										>{selectedCoffeePrice(coffee)}</span
+									>
+								</span>
+							</button>
+						{/each}
+					</div>
+					{#if hasMoreSelectedCoffees}
+						<button
+							type="button"
+							disabled={selectedCoffeeLoading}
+							class="mt-3 w-full rounded-md border border-line px-3 py-2 text-sm font-medium text-ink hover:border-accent disabled:opacity-50"
+							onclick={() => void loadSelectedCoffees()}
+							>{selectedCoffeeLoading ? 'Loading…' : 'Show more coffees'}</button
+						>
+					{/if}
+				{:else}
+					{@render resultsRail()}
+				{/if}
 			</div>
 		</aside>
 	</div>
@@ -673,28 +857,50 @@
 						type="button"
 						class="rounded-md border border-line bg-surface-raised p-3 text-left hover:border-accent"
 						onclick={() => {
-							const bounds = {
-								west: cluster.bounds.west,
-								south: cluster.bounds.south,
-								east: cluster.bounds.east,
-								north: cluster.bounds.north
-							};
+							selectMapArea({
+								kind: 'area',
+								label: 'Selected map area',
+								precisionLabel: 'Grouped map area',
+								mappedOriginCount: cluster.placement_count,
+								coffeeMatchCount: cluster.unique_coffee_count,
+								catalogIds: cluster.catalog_ids,
+								originLabels: []
+							});
 							pendingBounds = null;
-							publishState(
-								{
-									...currentState,
-									center: [cluster.longitude, cluster.latitude],
-									zoom: Math.min(11, currentState.zoom + 2),
-									bbox: canSearchViewport ? bounds : currentState.bbox
-								},
-								canSearchViewport
-							);
+							publishState({
+								...currentState,
+								center: [cluster.longitude, cluster.latitude],
+								zoom: Math.min(11, currentState.zoom + 2)
+							});
 						}}
 					>
 						<span class="block text-sm font-semibold text-ink"
 							>{coffeeCountLabel(cluster.unique_coffee_count)}</span
 						>
 						<span class="mt-1 block text-xs text-muted">Zoom in to explore this area</span>
+					</button>
+				{/each}
+				{#each visibleLocations as location}
+					<button
+						type="button"
+						class="rounded-md border border-line bg-surface-raised p-3 text-left hover:border-accent"
+						onclick={() =>
+							selectMapArea({
+								kind: 'location',
+								label: location.canonical_name,
+								precisionLabel: formatGeographicPrecision(location),
+								mappedOriginCount: location.placement_count,
+								coffeeMatchCount: location.unique_coffee_count,
+								catalogIds: location.catalog_ids,
+								originLabels: [location.canonical_name]
+							})}
+					>
+						<span class="block text-sm font-semibold text-ink">{location.canonical_name}</span>
+						<span class="mt-1 block text-xs text-muted">
+							{formatGeographicPrecision(location)} · {coffeeCountLabel(
+								location.unique_coffee_count
+							)}
+						</span>
 					</button>
 				{/each}
 				{#each visiblePlaces as place}

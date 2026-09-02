@@ -5,13 +5,32 @@ export type CatalogMapItem = CatalogMapResponse['data'][number];
 export type CatalogMapPlace = Extract<CatalogMapItem, { type: 'place' }>;
 export type CatalogMapCluster = Extract<CatalogMapItem, { type: 'cluster' }>;
 
+export interface CatalogMapLocation {
+	type: 'location';
+	id: string;
+	place_id: string | null;
+	canonical_name: string;
+	place_type: CatalogMapPlace['place_type'];
+	longitude: number;
+	latitude: number;
+	geographic_precision: CatalogMapPlace['geographic_precision'];
+	coordinate_kind: CatalogMapPlace['coordinate_kind'];
+	place_provenance: CatalogMapPlace['place_provenance'];
+	placement_count: number;
+	unique_coffee_count: number;
+	catalog_ids: number[];
+}
+
+export type CatalogMapDisplayItem = CatalogMapItem | CatalogMapLocation;
+
 export interface CatalogMapPointProperties {
-	type: 'cluster' | 'place';
+	type: 'cluster' | 'location' | 'place';
 	id: string;
 	label: string;
 	placementCount: number;
 	uniqueCoffeeCount: number;
 	catalogId: number | null;
+	catalogIds: number[];
 	placeId: string | null;
 	precisionLabel: string;
 	elevationBand: string;
@@ -43,12 +62,16 @@ export const ELEVATION_BANDS = [
 const CATALOG_POINT_COLOR = '#C05B2E';
 const CLUSTER_COLOR = '#302F2A';
 
-export function isCatalogMapCluster(item: CatalogMapItem): item is CatalogMapCluster {
+export function isCatalogMapCluster(item: CatalogMapDisplayItem): item is CatalogMapCluster {
 	return item.type === 'cluster';
 }
 
-export function isCatalogMapPlace(item: CatalogMapItem): item is CatalogMapPlace {
+export function isCatalogMapPlace(item: CatalogMapDisplayItem): item is CatalogMapPlace {
 	return item.type === 'place';
+}
+
+export function isCatalogMapLocation(item: CatalogMapDisplayItem): item is CatalogMapLocation {
+	return item.type === 'location';
 }
 
 export function elevationBandForPlace(place: CatalogMapPlace): (typeof ELEVATION_BANDS)[number] {
@@ -65,7 +88,9 @@ export function elevationBandForPlace(place: CatalogMapPlace): (typeof ELEVATION
 	return ELEVATION_BANDS[4];
 }
 
-export function formatGeographicPrecision(place: CatalogMapPlace): string {
+export function formatGeographicPrecision(
+	place: Pick<CatalogMapPlace, 'coordinate_kind' | 'geographic_precision'>
+): string {
 	if (place.coordinate_kind === 'exact_point' && place.geographic_precision === 'exact_site') {
 		return 'Exact site location';
 	}
@@ -99,12 +124,12 @@ export function formatElevationRange(
 	return `${formatElevationValue(maximum, units)} or lower`;
 }
 
-export function catalogMapItemBounds(item: CatalogMapItem): CatalogMapBounds | null {
+export function catalogMapItemBounds(item: CatalogMapDisplayItem): CatalogMapBounds | null {
 	return item.type === 'cluster' ? item.bounds : null;
 }
 
 export function toCatalogMapGeoJson(
-	items: CatalogMapItem[],
+	items: CatalogMapDisplayItem[],
 	lens: 'catalog' | 'elevation'
 ): CatalogMapGeoJson {
 	return {
@@ -120,10 +145,11 @@ export function toCatalogMapGeoJson(
 					properties: {
 						type: 'cluster' as const,
 						id: item.id,
-						label: `${item.unique_coffee_count} coffee${item.unique_coffee_count === 1 ? '' : 's'}`,
+						label: 'Mapped area',
 						placementCount: item.placement_count,
 						uniqueCoffeeCount: item.unique_coffee_count,
 						catalogId: null,
+						catalogIds: item.catalog_ids,
 						placeId: null,
 						precisionLabel: 'Cluster',
 						elevationBand: 'cluster',
@@ -132,6 +158,34 @@ export function toCatalogMapGeoJson(
 						south: item.bounds.south,
 						east: item.bounds.east,
 						north: item.bounds.north
+					}
+				};
+			}
+
+			if (isCatalogMapLocation(item)) {
+				const precisionLabel = formatGeographicPrecision(item);
+				return {
+					type: 'Feature' as const,
+					geometry: {
+						type: 'Point' as const,
+						coordinates: [item.longitude, item.latitude] as [number, number]
+					},
+					properties: {
+						type: 'location' as const,
+						id: item.id,
+						label: item.canonical_name,
+						placementCount: item.placement_count,
+						uniqueCoffeeCount: item.unique_coffee_count,
+						catalogId: null,
+						catalogIds: item.catalog_ids,
+						placeId: item.place_id,
+						precisionLabel,
+						elevationBand: 'location',
+						color: CLUSTER_COLOR,
+						west: null,
+						south: null,
+						east: null,
+						north: null
 					}
 				};
 			}
@@ -150,6 +204,7 @@ export function toCatalogMapGeoJson(
 					placementCount: 1,
 					uniqueCoffeeCount: 1,
 					catalogId: item.catalog_id,
+					catalogIds: [item.catalog_id],
 					placeId: item.place_id,
 					precisionLabel: formatGeographicPrecision(item),
 					elevationBand: band.key,

@@ -106,6 +106,7 @@ describe('catalog map BFF request state', () => {
 		expect(params.get('showWholesale')).toBe('false');
 		expect(params.get('bbox')).toBe('170,-20,-170,20');
 		expect(params.get('zoom')).toBe('22');
+		expect(params.get('projection')).toBe('locations');
 		expect(params.get('lens')).toBe('elevation');
 		expect(params.get('place_id')).toBe(placeId);
 		expect(params.has('sortField')).toBe(false);
