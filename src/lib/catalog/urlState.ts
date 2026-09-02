@@ -2,7 +2,7 @@ export type CatalogFilterValue =
 	| string
 	| number
 	| boolean
-	| { min: string | number; max: string | number }
+	| { min: string | number; max: string | number; includeUnknown?: boolean }
 	| string[]
 	| null;
 
@@ -42,6 +42,7 @@ export interface CatalogSearchState {
 	pricePerLbMax?: number;
 	elevationMinMasl?: number;
 	elevationMaxMasl?: number;
+	includeUnknownElevation?: boolean;
 	arrivalDate?: string;
 	stockedDate?: string;
 	stockedDays?: number;
@@ -223,7 +224,10 @@ export function parseCatalogUrlState(url: URL, routeId = '/catalog'): CatalogUrl
 	if (elevationMinMasl !== undefined || elevationMaxMasl !== undefined) {
 		filters.elevation_masl = {
 			min: elevationMinMasl?.toString() ?? '',
-			max: elevationMaxMasl?.toString() ?? ''
+			max: elevationMaxMasl?.toString() ?? '',
+			...(url.searchParams.get('include_unknown_elevation') === 'true'
+				? { includeUnknown: true }
+				: {})
 		};
 	}
 
@@ -300,6 +304,9 @@ function appendFilterParam(
 		}
 		if (value.max !== '') {
 			params.append(rangeParamNames.max, value.max.toString());
+		}
+		if (filterKey === 'elevation_masl' && value.includeUnknown === true) {
+			params.append('include_unknown_elevation', 'true');
 		}
 		return;
 	}
@@ -454,6 +461,11 @@ function readBooleanValue(value: CatalogFilterValue | undefined): boolean | unde
 	return typeof value === 'boolean' ? value : undefined;
 }
 
+function readIncludeUnknownElevation(value: CatalogFilterValue | undefined): boolean | undefined {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+	return value.includeUnknown === true ? true : undefined;
+}
+
 export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSearchState {
 	const scoreRange = readRangeValue(state.filters.score_value);
 	const priceRange = readRangeValue(state.filters.cost_lb);
@@ -486,6 +498,9 @@ export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSea
 		pricePerLbMax: priceRange?.max,
 		elevationMinMasl: elevationRange?.min,
 		elevationMaxMasl: elevationRange?.max,
+		includeUnknownElevation: elevationRange
+			? readIncludeUnknownElevation(state.filters.elevation_masl)
+			: undefined,
 		arrivalDate: readStringValue(state.filters.arrival_date),
 		stockedDate: readStringValue(state.filters.stocked_date),
 		stockedDays:

@@ -1,8 +1,9 @@
 import type { CatalogMapResponse } from '@purveyors/sdk';
-import type { CatalogMapBounds, ElevationDisplayUnit } from './mapState';
+import type { CatalogMapBounds } from './mapState';
 import { ELEVATION_BAND_COLORS } from '$lib/styles/chartColors';
 
 export type CatalogMapItem = CatalogMapResponse['data'][number];
+export type ElevationDisplayUnit = 'masl' | 'ft';
 export type CatalogMapPlace = Extract<CatalogMapItem, { type: 'place' }>;
 export type CatalogMapCluster = Extract<CatalogMapItem, { type: 'cluster' }>;
 
@@ -145,10 +146,7 @@ export function catalogMapItemBounds(item: CatalogMapDisplayItem): CatalogMapBou
 	return item.type === 'cluster' ? item.bounds : null;
 }
 
-export function toCatalogMapGeoJson(
-	items: CatalogMapDisplayItem[],
-	lens: 'catalog' | 'elevation'
-): CatalogMapGeoJson {
+export function toCatalogMapGeoJson(items: CatalogMapDisplayItem[]): CatalogMapGeoJson {
 	return {
 		type: 'FeatureCollection',
 		features: items.map((item) => {
@@ -225,7 +223,7 @@ export function toCatalogMapGeoJson(
 					placeId: item.place_id,
 					precisionLabel: formatGeographicPrecision(item),
 					elevationBand: band.key,
-					color: lens === 'elevation' ? band.color : CATALOG_POINT_COLOR,
+					color: CATALOG_POINT_COLOR,
 					west: null,
 					south: null,
 					east: null,

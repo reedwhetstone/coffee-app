@@ -26,6 +26,7 @@ const APP_TO_PARCHMENT_QUERY_KEY: Readonly<Record<string, string>> = {
 	cost_lb_max: 'pricePerLbMax',
 	elevation_min_masl: 'elevationMinMasl',
 	elevation_max_masl: 'elevationMaxMasl',
+	include_unknown_elevation: 'includeUnknownElevation',
 	arrival_date: 'arrivalDate',
 	stocked_date: 'stockedDate',
 	stocked_days: 'stockedDays',

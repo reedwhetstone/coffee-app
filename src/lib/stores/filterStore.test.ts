@@ -41,6 +41,12 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		vi.unstubAllGlobals();
 	});
 
+	it('exposes numeric elevation in the catalog filter set', async () => {
+		const { filterStore } = await loadFilterStore();
+
+		expect(filterStore.getFilterableColumns('/catalog')).toContain('elevation_masl');
+	});
+
 	it('preserves sort state when clearing filters on catalog routes', async () => {
 		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
 			const url = input.toString();

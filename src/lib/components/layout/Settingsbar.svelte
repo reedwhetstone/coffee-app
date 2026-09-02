@@ -28,17 +28,20 @@
 
 	// Track current route for dynamic filter options
 	let routeId = $state(page.url.pathname);
-	let canUseMemberCatalogControls = $derived(
-		checkRole((data as { auth: PageAuthView }).auth.role, 'member')
+	let pageAuth = $derived((data as { auth: PageAuthView }).auth);
+	let canUseMemberCatalogControls = $derived(checkRole(pageAuth.role, 'member'));
+	let canUsePremiumCatalogControls = $derived(
+		canUseMemberCatalogControls || pageAuth.ppiAccess === true
 	);
 	let filterableColumns = $derived(filterStore.getFilterableColumns(routeId));
 	let visibleSortColumns = $derived(
-		(routeId === '/' || routeId === '/catalog') && !canUseMemberCatalogControls
+		((routeId === '/' || routeId === '/catalog') && !canUsePremiumCatalogControls
 			? filterableColumns.filter((column) => !premiumDiscoveryFilterColumns.has(column))
 			: filterableColumns
+		).filter((column) => column !== 'elevation_masl')
 	);
 	let visibleFilterColumns = $derived(
-		(routeId === '/' || routeId === '/catalog') && !canUseMemberCatalogControls
+		(routeId === '/' || routeId === '/catalog') && !canUsePremiumCatalogControls
 			? filterableColumns.filter(
 					(column) =>
 						column !== 'score_value' &&
@@ -64,7 +67,8 @@
 	function formatColumnName(column: string): string {
 		// Custom field labels
 		const customLabels: Record<string, string> = {
-			grade: 'Elevation (MASL)',
+			grade: 'Grade',
+			elevation_masl: 'Elevation (MASL)',
 			appearance: 'Appearance',
 			type: 'Importer',
 			roast_id: 'Roast ID'
@@ -76,6 +80,71 @@
 		}
 
 		return column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+	}
+
+	type ElevationRangeFilter = {
+		min: string | number;
+		max: string | number;
+		includeUnknown?: boolean;
+	};
+
+	function elevationRange(): ElevationRangeFilter {
+		const value = $filterStore.filters.elevation_masl;
+		return value && typeof value === 'object' && !Array.isArray(value)
+			? (value as ElevationRangeFilter)
+			: { min: '', max: '' };
+	}
+
+	let elevationDraft = $state<{
+		min: string | number | null;
+		max: string | number | null;
+	}>({ min: null, max: null });
+	let elevationRangeError = $state<string | null>(null);
+
+	function displayedElevationRange(): ElevationRangeFilter {
+		const current = elevationRange();
+		return {
+			min: elevationDraft.min ?? current.min,
+			max: elevationDraft.max ?? current.max,
+			...(current.includeUnknown === true ? { includeUnknown: true } : {})
+		};
+	}
+
+	function hasInvertedElevationBounds(min: string | number, max: string | number): boolean {
+		if (min === '' || max === '') return false;
+		const numericMin = Number(min);
+		const numericMax = Number(max);
+		return Number.isFinite(numericMin) && Number.isFinite(numericMax) && numericMin > numericMax;
+	}
+
+	function setElevationRange(min: string | number, max: string | number) {
+		elevationDraft = { min, max };
+		if (hasInvertedElevationBounds(min, max)) {
+			elevationRangeError = 'Minimum elevation cannot exceed maximum elevation.';
+			return;
+		}
+		elevationRangeError = null;
+		const active = min !== '' || max !== '';
+		filterStore.setFilter('elevation_masl', {
+			min,
+			max,
+			...(active && elevationRange().includeUnknown ? { includeUnknown: true } : {})
+		});
+		elevationDraft = { min: null, max: null };
+	}
+
+	function setIncludeUnknownElevation(includeUnknown: boolean) {
+		const current = displayedElevationRange();
+		if (hasInvertedElevationBounds(current.min, current.max)) {
+			elevationRangeError = 'Minimum elevation cannot exceed maximum elevation.';
+			return;
+		}
+		elevationRangeError = null;
+		filterStore.setFilter('elevation_masl', {
+			min: current.min,
+			max: current.max,
+			...(includeUnknown ? { includeUnknown: true } : {})
+		});
 	}
 </script>
 
@@ -385,6 +454,59 @@
 										max="100"
 										step="0.1"
 									/>
+								</div>
+							{:else if column === 'elevation_masl'}
+								<div class="space-y-2">
+									<div class="flex gap-2">
+										<input
+											id={column}
+											type="number"
+											value={displayedElevationRange().min}
+											oninput={(e) => {
+												const min = e.currentTarget.value;
+												setElevationRange(min, displayedElevationRange().max);
+											}}
+											class="w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
+											placeholder="Min"
+											min="0"
+											step="50"
+										/>
+										<input
+											aria-label="Maximum Elevation (MASL)"
+											type="number"
+											value={displayedElevationRange().max}
+											oninput={(e) => {
+												const max = e.currentTarget.value;
+												setElevationRange(displayedElevationRange().min, max);
+											}}
+											class="w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
+											placeholder="Max"
+											min="0"
+											step="50"
+										/>
+									</div>
+									<p class="text-[11px] text-muted">
+										Match coffees whose reported elevation range overlaps these bounds.
+									</p>
+									{#if elevationRangeError}
+										<p class="text-[11px] text-danger" role="alert">{elevationRangeError}</p>
+									{/if}
+									<label class="flex items-start gap-2 pt-1 text-xs text-ink">
+										<input
+											type="checkbox"
+											checked={elevationRange().includeUnknown === true}
+											disabled={displayedElevationRange().min === '' &&
+												displayedElevationRange().max === ''}
+											onchange={(e) => setIncludeUnknownElevation(e.currentTarget.checked)}
+											class="mt-0.5 h-4 w-4 rounded border border-line bg-surface-canvas text-accent focus:ring-2 focus:ring-accent disabled:opacity-40"
+										/>
+										<span>
+											Include coffees with unknown elevation
+											<span class="mt-0.5 block text-[11px] text-muted"
+												>Off by default when an elevation range is active.</span
+											>
+										</span>
+									</label>
 								</div>
 							{:else if column === 'cost_lb'}
 								<div class="flex gap-2">

@@ -252,7 +252,7 @@ describe('/catalog page load', () => {
 			makeLoadInput(
 				'member',
 				memberSession,
-				'https://app.test/catalog?country=Ethiopia&processing=Washed&cultivar_detail=Gesha&name=guji&score_value_min=86&score_value_max=90&price_per_lb_min=7.25&price_per_lb_max=8.5&elevation_min_masl=1200&elevation_max_masl=1900&arrival_date=2026-03-01&stocked_date=2026-04-01&stocked_days=30&page=2&sortField=score_value&sortDirection=asc'
+				'https://app.test/catalog?country=Ethiopia&processing=Washed&cultivar_detail=Gesha&name=guji&score_value_min=86&score_value_max=90&price_per_lb_min=7.25&price_per_lb_max=8.5&elevation_min_masl=1200&elevation_max_masl=1900&include_unknown_elevation=true&arrival_date=2026-03-01&stocked_date=2026-04-01&stocked_days=30&page=2&sortField=score_value&sortDirection=asc'
 			)
 		);
 
@@ -268,6 +268,7 @@ describe('/catalog page load', () => {
 				pricePerLbMax: 8.5,
 				elevationMinMasl: 1200,
 				elevationMaxMasl: 1900,
+				includeUnknownElevation: 'true',
 				arrivalDate: '2026-03-01',
 				stockedDate: '2026-04-01',
 				stockedDays: 30,

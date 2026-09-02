@@ -1025,8 +1025,13 @@ describe('/catalog map preview gate', () => {
 
 	it('writes a restorable map URL without navigating away when the preview is enabled', async () => {
 		renderCatalog(createData({ catalogMapEnabled: true } as unknown as Partial<PageData>));
+		const mapTab = screen.getByRole('tab', { name: 'Map' });
 
-		await fireEvent.click(screen.getByRole('tab', { name: 'Map' }));
+		expect(mapTab).toHaveAttribute('aria-describedby', 'catalog-map-explainer');
+		expect(screen.getByRole('tooltip')).toHaveTextContent(
+			/Terrain color shows approximate elevation\. Bubble numbers count mapped placements/
+		);
+		await fireEvent.click(mapTab);
 
 		expect(replaceState).toHaveBeenCalledTimes(1);
 		const [nextUrl] = replaceState.mock.calls[0] as [URL, unknown];

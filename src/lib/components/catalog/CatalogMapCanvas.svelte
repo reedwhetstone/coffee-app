@@ -2,17 +2,22 @@
 	import { onMount } from 'svelte';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
-	import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl';
+	import type {
+		GeoJSONSource,
+		Map as MapLibreMap,
+		MapLayerMouseEvent,
+		Popup as MapLibrePopup
+	} from 'maplibre-gl';
 	import {
 		toCatalogMapGeoJson,
 		type CatalogMapDisplayItem,
 		type CatalogMapPointProperties
 	} from '$lib/catalog/mapPresentation';
+	import { MAP_SURFACE_COLORS, TERRAIN_ELEVATION_BANDS } from '$lib/styles/mapColors';
 	import {
 		normalizeCatalogMapLongitude,
 		normalizeCatalogMapBounds,
-		type CatalogMapBounds,
-		type CatalogMapLens
+		type CatalogMapBounds
 	} from '$lib/catalog/mapState';
 
 	export interface CatalogMapViewportChange {
@@ -34,7 +39,6 @@
 
 	interface Props {
 		items: CatalogMapDisplayItem[];
-		lens: CatalogMapLens;
 		center: [number, number];
 		zoom: number;
 		styleUrl?: string;
@@ -47,7 +51,6 @@
 
 	let {
 		items,
-		lens,
 		center,
 		zoom,
 		styleUrl = 'https://tiles.openfreemap.org/styles/positron',
@@ -60,18 +63,27 @@
 
 	let container: HTMLDivElement;
 	let map: MapLibreMap | null = null;
+	let hoverPopup: MapLibrePopup | null = null;
+	let hoverRequestVersion = 0;
 	let sourceReady = $state(false);
 	let destroyed = false;
 	let resizeObserver: ResizeObserver | null = null;
 	let resizeFrame: number | null = null;
 
+	const TERRAIN_RELIEF_SOURCE_ID = 'catalog-terrain-dem';
+	const TERRAIN_RELIEF_LAYER_ID = 'catalog-terrain-relief';
+	const TERRAIN_RELIEF_TILES =
+		'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+	const TERRAIN_RELIEF_ATTRIBUTION =
+		'<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain: Mapzen and contributors</a>';
+
 	const BASEMAP_PAINT_OVERRIDES = [
-		['background', 'background-color', '#F7F3ED'],
-		['park', 'fill-color', '#E6EADF'],
-		['water', 'fill-color', '#DCE6E4'],
+		['background', 'background-color', MAP_SURFACE_COLORS.canvas],
+		['park', 'fill-color', MAP_SURFACE_COLORS.park],
+		['water', 'fill-color', MAP_SURFACE_COLORS.water],
 		['landuse_residential', 'fill-color', '#F1ECE6'],
-		['landcover_wood', 'fill-color', '#E2E8DC'],
-		['waterway', 'line-color', '#B8C9C6'],
+		['landcover_wood', 'fill-color', '#E3E1D4'],
+		['waterway', 'line-color', MAP_SURFACE_COLORS.waterway],
 		['building', 'fill-color', '#ECE5DC'],
 		['building', 'fill-outline-color', '#D8CEC2'],
 		['highway_path', 'line-color', '#E7E0D8'],
@@ -82,9 +94,9 @@
 		['boundary_3', 'line-color', '#BAAFA3'],
 		['boundary_2', 'line-color', '#BAAFA3'],
 		['boundary_disputed', 'line-color', '#BAAFA3'],
-		['water_name_point_label', 'text-color', '#4E8098'],
+		['water_name_point_label', 'text-color', MAP_SURFACE_COLORS.waterLabel],
 		['water_name_point_label', 'text-halo-color', '#FCFAF8'],
-		['water_name_line_label', 'text-color', '#4E8098'],
+		['water_name_line_label', 'text-color', MAP_SURFACE_COLORS.waterLabel],
 		['water_name_line_label', 'text-halo-color', '#FCFAF8'],
 		['label_other', 'text-color', '#695C4D'],
 		['label_other', 'text-halo-color', '#FCFAF8'],
@@ -109,6 +121,71 @@
 	function applyPurveyorsBasemapTheme(currentMap: MapLibreMap) {
 		for (const [layerId, property, color] of BASEMAP_PAINT_OVERRIDES) {
 			if (currentMap.getLayer(layerId)) currentMap.setPaintProperty(layerId, property, color);
+		}
+	}
+
+	function removeTerrainReliefLayer(currentMap: MapLibreMap) {
+		if (currentMap.getLayer(TERRAIN_RELIEF_LAYER_ID)) {
+			currentMap.removeLayer(TERRAIN_RELIEF_LAYER_ID);
+		}
+		if (currentMap.getSource(TERRAIN_RELIEF_SOURCE_ID)) {
+			currentMap.removeSource(TERRAIN_RELIEF_SOURCE_ID);
+		}
+	}
+
+	function addTerrainReliefLayer(currentMap: MapLibreMap) {
+		try {
+			if (!currentMap.getSource(TERRAIN_RELIEF_SOURCE_ID)) {
+				currentMap.addSource(TERRAIN_RELIEF_SOURCE_ID, {
+					type: 'raster-dem',
+					tiles: [TERRAIN_RELIEF_TILES],
+					tileSize: 256,
+					maxzoom: 15,
+					encoding: 'terrarium',
+					attribution: TERRAIN_RELIEF_ATTRIBUTION
+				});
+			}
+			if (currentMap.getLayer(TERRAIN_RELIEF_LAYER_ID)) return;
+
+			currentMap.addLayer(
+				{
+					id: TERRAIN_RELIEF_LAYER_ID,
+					type: 'color-relief',
+					source: TERRAIN_RELIEF_SOURCE_ID,
+					paint: {
+						'color-relief-color': [
+							'interpolate',
+							['linear'],
+							['elevation'],
+							-1000,
+							TERRAIN_ELEVATION_BANDS[0].color,
+							999.9,
+							TERRAIN_ELEVATION_BANDS[0].color,
+							1000,
+							TERRAIN_ELEVATION_BANDS[1].color,
+							1399.9,
+							TERRAIN_ELEVATION_BANDS[1].color,
+							1400,
+							TERRAIN_ELEVATION_BANDS[2].color,
+							1799.9,
+							TERRAIN_ELEVATION_BANDS[2].color,
+							1800,
+							TERRAIN_ELEVATION_BANDS[3].color,
+							2199.9,
+							TERRAIN_ELEVATION_BANDS[3].color,
+							2200,
+							TERRAIN_ELEVATION_BANDS[4].color,
+							9000,
+							TERRAIN_ELEVATION_BANDS[4].color
+						],
+						'color-relief-opacity': 0.48
+					}
+				},
+				currentMap.getLayer('water') ? 'water' : 'catalog-map-clusters'
+			);
+		} catch {
+			// Terrain is supplemental context. Preserve the catalog map if it is unavailable.
+			removeTerrainReliefLayer(currentMap);
 		}
 	}
 
@@ -161,6 +238,84 @@
 		return typeof label === 'string' && label.trim() !== '' && label !== 'Mapped area'
 			? label.trim()
 			: null;
+	}
+
+	function coffeeCountLabel(count: number): string {
+		return `${count.toLocaleString()} ${count === 1 ? 'coffee' : 'coffees'}`;
+	}
+
+	function createHoverContent(title: string, detail: string): HTMLDivElement {
+		const content = document.createElement('div');
+		content.className = 'catalog-map-hover-content';
+		const heading = document.createElement('strong');
+		heading.textContent = title;
+		const description = document.createElement('span');
+		description.textContent = detail;
+		content.append(heading, description);
+		return content;
+	}
+
+	function showHoverPopup(event: MapLayerMouseEvent, title: string, detail: string) {
+		if (!map || !hoverPopup) return;
+		hoverPopup.setLngLat(event.lngLat).setDOMContent(createHoverContent(title, detail)).addTo(map);
+	}
+
+	function hideHoverPopup() {
+		hoverRequestVersion += 1;
+		hoverPopup?.remove();
+	}
+
+	function handlePointHover(event: MapLayerMouseEvent) {
+		const properties = readPointProperties(event);
+		if (!properties) return;
+		const title = labelFromProperties(properties as unknown as Record<string, unknown>);
+		if (!title) return;
+		showHoverPopup(
+			event,
+			title,
+			`${properties.precisionLabel} · ${coffeeCountLabel(properties.uniqueCoffeeCount)}`
+		);
+	}
+
+	async function handleVisualClusterHover(event: MapLayerMouseEvent) {
+		const currentMap = map;
+		const properties = readProperties(event);
+		const clusterId = Number(properties?.cluster_id);
+		if (!currentMap || !properties || !Number.isFinite(clusterId)) return;
+		const source = currentMap.getSource('catalog-map') as GeoJSONSource | undefined;
+		if (!source) return;
+		const requestVersion = ++hoverRequestVersion;
+		const leafLimit = Math.min(readCount(properties, 'point_count'), 25);
+		try {
+			const leaves = await source.getClusterLeaves(clusterId, leafLimit, 0);
+			if (requestVersion !== hoverRequestVersion || map !== currentMap) return;
+			const labels = [
+				...new Set(
+					leaves
+						.map((leaf) => labelFromProperties(leaf.properties as Record<string, unknown>))
+						.filter((label): label is string => label !== null)
+				)
+			];
+			const pointCount = readCount(properties, 'point_count');
+			const title =
+				labels.length === 0
+					? 'Grouped map area'
+					: pointCount <= 1
+						? labels[0]
+						: `${labels[0]} + ${pointCount - 1} more`;
+			showHoverPopup(
+				event,
+				title,
+				`${readCount(properties, 'placementCount').toLocaleString()} mapped placements`
+			);
+		} catch {
+			if (requestVersion !== hoverRequestVersion) return;
+			showHoverPopup(
+				event,
+				'Grouped map area',
+				`${coffeeCountLabel(readCount(properties, 'uniqueCoffeeCount'))} · zoom in for regions`
+			);
+		}
 	}
 
 	function featureCoordinates(event: MapLayerMouseEvent): [number, number] | null {
@@ -281,7 +436,7 @@
 	onMount(() => {
 		void (async () => {
 			try {
-				const { Map, NavigationControl, setWorkerUrl } = await import('maplibre-gl');
+				const { Map, NavigationControl, Popup, setWorkerUrl } = await import('maplibre-gl');
 				if (destroyed) return;
 				setWorkerUrl(maplibreWorkerUrl);
 				map = new Map({
@@ -292,6 +447,12 @@
 					minZoom: 1,
 					maxZoom: 16,
 					cooperativeGestures: false
+				});
+				hoverPopup = new Popup({
+					closeButton: false,
+					closeOnClick: false,
+					offset: 18,
+					className: 'catalog-map-hover-popup'
 				});
 				map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
 				if (typeof ResizeObserver !== 'undefined') {
@@ -304,7 +465,7 @@
 					applyPurveyorsBasemapTheme(map);
 					map.addSource('catalog-map', {
 						type: 'geojson',
-						data: toCatalogMapGeoJson(items, lens),
+						data: toCatalogMapGeoJson(items),
 						cluster: true,
 						clusterMaxZoom: 14,
 						clusterRadius: 52,
@@ -442,19 +603,31 @@
 					});
 					map.on('click', 'catalog-map-shared-location-hit-targets', handleSharedLocationClick);
 					map.on('click', 'catalog-map-place-hit-targets', handlePlaceClick);
+					map.on('mouseenter', 'catalog-map-clusters', (event) => {
+						if (map) map.getCanvas().style.cursor = 'pointer';
+						void handleVisualClusterHover(event);
+					});
+					for (const layer of [
+						'catalog-map-shared-location-hit-targets',
+						'catalog-map-place-hit-targets'
+					]) {
+						map.on('mouseenter', layer, (event) => {
+							if (map) map.getCanvas().style.cursor = 'pointer';
+							handlePointHover(event);
+						});
+					}
 					for (const layer of [
 						'catalog-map-clusters',
 						'catalog-map-shared-location-hit-targets',
 						'catalog-map-place-hit-targets'
 					]) {
-						map.on('mouseenter', layer, () => {
-							if (map) map.getCanvas().style.cursor = 'pointer';
-						});
 						map.on('mouseleave', layer, () => {
 							if (map) map.getCanvas().style.cursor = '';
+							hideHoverPopup();
 						});
 					}
 					sourceReady = true;
+					addTerrainReliefLayer(map);
 					scheduleResize();
 					onMapReady();
 				});
@@ -478,6 +651,8 @@
 			resizeObserver?.disconnect();
 			resizeObserver = null;
 			if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
+			hoverPopup?.remove();
+			hoverPopup = null;
 			map?.remove();
 			map = null;
 		};
@@ -486,7 +661,7 @@
 	$effect(() => {
 		if (!sourceReady || !map) return;
 		const source = map.getSource('catalog-map') as GeoJSONSource | undefined;
-		source?.setData(toCatalogMapGeoJson(items, lens));
+		source?.setData(toCatalogMapGeoJson(items));
 	});
 
 	$effect(() => {
@@ -538,6 +713,32 @@
 
 	:global(.catalog-map-canvas .maplibregl-ctrl-attrib) {
 		background: rgb(252 250 248 / 0.9);
+		color: #695c4d;
+	}
+
+	:global(.catalog-map-hover-popup .maplibregl-popup-content) {
+		padding: 0.55rem 0.7rem;
+		border: 1px solid #e4e4e2;
+		border-radius: 0.375rem;
+		background: rgb(252 250 248 / 0.97);
+		box-shadow: 0 4px 12px rgb(48 47 42 / 0.18);
+	}
+
+	:global(.catalog-map-hover-popup .maplibregl-popup-tip) {
+		border-top-color: rgb(252 250 248 / 0.97);
+	}
+
+	:global(.catalog-map-hover-content) {
+		display: grid;
+		gap: 0.15rem;
+		max-width: 15rem;
+		font-size: 0.75rem;
+		line-height: 1.25;
+		color: #302f2a;
+	}
+
+	:global(.catalog-map-hover-content span) {
+		font-size: 0.68rem;
 		color: #695c4d;
 	}
 

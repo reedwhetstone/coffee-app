@@ -180,21 +180,24 @@ describe('catalog URL state helpers', () => {
 
 	it('round-trips numeric MASL bounds separately from the legacy grade text filter', () => {
 		const state = parseCatalogUrlState(
-			new URL('https://app.test/catalog?grade=SHB&elevation_min_masl=1200&elevation_max_masl=1900'),
+			new URL(
+				'https://app.test/catalog?grade=SHB&elevation_min_masl=1200&elevation_max_masl=1900&include_unknown_elevation=true'
+			),
 			'/catalog'
 		);
 
 		expect(state.filters).toMatchObject({
 			grade: 'SHB',
-			elevation_masl: { min: '1200', max: '1900' }
+			elevation_masl: { min: '1200', max: '1900', includeUnknown: true }
 		});
 		expect(buildCatalogShareParams(state, '/catalog').toString()).toBe(
-			'grade=SHB&elevation_min_masl=1200&elevation_max_masl=1900'
+			'grade=SHB&elevation_min_masl=1200&elevation_max_masl=1900&include_unknown_elevation=true'
 		);
 		expect(catalogUrlStateToSearchState(state)).toMatchObject({
 			grade: 'SHB',
 			elevationMinMasl: 1200,
-			elevationMaxMasl: 1900
+			elevationMaxMasl: 1900,
+			includeUnknownElevation: true
 		});
 
 		const unsupportedScalar = parseCatalogUrlState(

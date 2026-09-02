@@ -78,7 +78,6 @@ function renderExperience(
 	}
 ) {
 	const onStateChange = vi.fn();
-	const onElevationRangeChange = vi.fn();
 	const onSelectCoffee = vi.fn(
 		async (catalogId: number) =>
 			({
@@ -94,13 +93,12 @@ function renderExperience(
 		catalogState: createDefaultCatalogUrlState(),
 		canUseAdvancedMaps,
 		onStateChange,
-		onElevationRangeChange,
 		onSelectCoffee,
 		onClearCoffee,
 		onSwitchToList
 	});
 
-	return { onStateChange, onElevationRangeChange, onSelectCoffee, onClearCoffee, onSwitchToList };
+	return { onStateChange, onSelectCoffee, onClearCoffee, onSwitchToList };
 }
 
 describe('CatalogMapExperience', () => {
@@ -125,11 +123,10 @@ describe('CatalogMapExperience', () => {
 		renderExperience(false);
 
 		await waitFor(() => expect(screen.getByText('9')).toBeInTheDocument());
-		expect(
-			screen.getByText(/Browse coffees by origin\. Bubble numbers count mapped placements/)
-		).toBeInTheDocument();
+		expect(screen.queryByText('Explore coffee origins')).not.toBeInTheDocument();
 		expect(screen.getByText('2')).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Elevation' })).toBeDisabled();
+		expect(screen.getByLabelText('Terrain elevation key')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Elevation' })).not.toBeInTheDocument();
 		expect(screen.getByText('Existing catalog results remain available')).toBeInTheDocument();
 		expect(document.body).not.toHaveTextContent(/\b(canonical|entitled|viewport|evidence)\b/i);
 		expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -158,38 +155,24 @@ describe('CatalogMapExperience', () => {
 		);
 	});
 
-	it('uses the brand accent for elevation controls instead of intelligence purple', async () => {
-		const response = mapResponse();
-		response.meta.access.elevationProfile = true;
-		response.meta.effective.lens = 'elevation';
-		vi.stubGlobal(
-			'fetch',
-			vi.fn(
-				async () =>
-					new Response(JSON.stringify(response), {
-						status: 200,
-						headers: { 'Content-Type': 'application/json' }
-					})
-			)
+	it('keeps terrain standard while requesting entitled place elevations', async () => {
+		const fetchSpy = vi.fn(
+			async (_input: RequestInfo | URL) =>
+				new Response(JSON.stringify(mapResponse()), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				})
 		);
-		renderExperience(true, {
-			...DEFAULT_CATALOG_MAP_STATE,
-			view: 'map',
-			lens: 'elevation'
-		});
+		vi.stubGlobal('fetch', fetchSpy);
+		renderExperience(true);
 
 		await screen.findByText('9');
-		const elevationButton = screen.getByRole('button', { name: 'Elevation' });
-
-		await waitFor(() => {
-			expect(elevationButton).toHaveClass('bg-accent', 'text-ink');
-			expect(elevationButton).toHaveAttribute('aria-pressed', 'true');
-		});
-		expect(screen.getByRole('button', { name: 'Apply range' })).toHaveClass(
-			'bg-accent',
-			'text-ink'
-		);
-		expect(document.body.innerHTML).not.toContain('bg-intelligence');
+		expect(screen.queryByRole('button', { name: 'Catalog' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Elevation' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Apply range' })).not.toBeInTheDocument();
+		expect(screen.getByText('Approx. terrain elevation · MASL')).toBeInTheDocument();
+		expect(screen.getByLabelText('Below 1,000 MASL')).toBeInTheDocument();
+		expect(fetchSpy.mock.calls[0][0].toString()).toContain('lens=elevation');
 	});
 
 	it('hydrates a single entitled row instead of opening raw map data', async () => {

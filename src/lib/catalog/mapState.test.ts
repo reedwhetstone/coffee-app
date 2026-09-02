@@ -15,11 +15,9 @@ import { createDefaultCatalogUrlState } from './urlState';
 const placeId = '6ba7b810-9dad-41d1-80b4-00c04fd430c8';
 
 describe('catalog map URL state', () => {
-	it('round-trips map, antimeridian viewport, lens, units, and canonical place navigation', () => {
+	it('round-trips map, antimeridian viewport, and canonical place navigation', () => {
 		const state: CatalogMapUrlState = {
 			view: 'map',
-			lens: 'elevation',
-			units: 'ft',
 			center: [179.123456, -12.987654],
 			zoom: 6.25,
 			bbox: { west: 170, south: -20, east: -170, north: 5 },
@@ -61,6 +59,7 @@ describe('catalog map URL state', () => {
 		expect(next.get('map_place')).toBe(placeId);
 		expect(next.get('coffee')).toBe('42');
 		expect(next.get('tracked')).toBe('only');
+		expect(next.has('map_units')).toBe(false);
 	});
 
 	it('formats bounds deterministically without changing antimeridian meaning', () => {
@@ -104,8 +103,6 @@ describe('catalog map BFF request state', () => {
 
 		const params = buildCatalogMapRequestParams(catalogState, {
 			view: 'map',
-			lens: 'elevation',
-			units: 'masl',
 			center: [0, 0],
 			zoom: 5.7,
 			bbox: { west: 170, south: -20, east: -170, north: 20 },
@@ -120,9 +117,16 @@ describe('catalog map BFF request state', () => {
 		expect(params.get('bbox')).toBe('170,-20,-170,20');
 		expect(params.get('zoom')).toBe('22');
 		expect(params.get('projection')).toBe('locations');
-		expect(params.get('lens')).toBe('elevation');
+		expect(params.get('lens')).toBe('catalog');
 		expect(params.get('place_id')).toBe(placeId);
 		expect(params.has('sortField')).toBe(false);
 		expect(params.has('page')).toBe(false);
+
+		const entitledParams = buildCatalogMapRequestParams(
+			catalogState,
+			{ view: 'map', center: [0, 0], zoom: 5.7, bbox: null, placeId: null },
+			true
+		);
+		expect(entitledParams.get('lens')).toBe('elevation');
 	});
 });

@@ -121,7 +121,7 @@ describe('/api/catalog/map route', () => {
 	it('uses the public-demo credential lane and forwards canonical map/filter params', async () => {
 		await GET(
 			makeEvent(
-				'https://app.test/api/catalog/map?country=Ethiopia&country=Kenya&elevation_min_masl=1200&elevation_max_masl=1900&bbox=170,-20,-170,20&zoom=4&lens=elevation&projection=locations&view=map&map_units=ft&page=3'
+				'https://app.test/api/catalog/map?country=Ethiopia&country=Kenya&elevation_min_masl=1200&elevation_max_masl=1900&include_unknown_elevation=true&bbox=170,-20,-170,20&zoom=4&lens=elevation&projection=locations&view=map&map_units=ft&page=3'
 			)
 		);
 
@@ -133,6 +133,7 @@ describe('/api/catalog/map route', () => {
 			country: ['Ethiopia', 'Kenya'],
 			elevationMinMasl: '1200',
 			elevationMaxMasl: '1900',
+			includeUnknownElevation: 'true',
 			bbox: '170,-20,-170,20',
 			zoom: '4',
 			lens: 'elevation',

@@ -9,6 +9,7 @@ type SettingsbarStoreValue = {
 	filters: {
 		stocked_date: string;
 		stocked_days: string;
+		elevation_masl?: { min: string; max: string; includeUnknown?: boolean };
 	};
 	uniqueValues: Record<string, unknown>;
 };
@@ -46,6 +47,7 @@ const { afterNavigate, pageState, storeState, filterStore } = vi.hoisted(() => {
 				'name',
 				'type',
 				'grade',
+				'elevation_masl',
 				'appearance',
 				'score_value',
 				'cost_lb',
@@ -72,8 +74,8 @@ vi.mock('$lib/stores/filterStore', () => ({
 	filterStore
 }));
 
-function auth(role: 'viewer' | 'member') {
-	return { isSignedIn: true, user: null, role, ppiAccess: false };
+function auth(role: 'viewer' | 'member', ppiAccess = false) {
+	return { isSignedIn: true, user: null, role, ppiAccess };
 }
 
 describe('Settingsbar stocked filters', () => {
@@ -154,14 +156,94 @@ describe('Settingsbar stocked filters', () => {
 	});
 
 	it('shows the home-roaster scope and paid range filters to member sessions', () => {
+		storeState.set({
+			...storeState.value,
+			filters: {
+				...storeState.value.filters,
+				elevation_masl: { min: '1200', max: '1900' }
+			}
+		});
 		render(Settingsbar, { data: { auth: auth('member') }, onClose: vi.fn() });
 
 		expect(screen.getByText('Home Roaster Suppliers Only')).toBeInTheDocument();
 		expect(screen.getByLabelText('Score Value')).toBeInTheDocument();
 		expect(screen.getByLabelText('Cost Lb')).toBeInTheDocument();
 		expect(screen.getByLabelText('Importer')).toBeInTheDocument();
+		expect(screen.getByLabelText('Grade')).toBeInTheDocument();
+		expect(screen.getByLabelText('Elevation (MASL)')).toHaveValue(1200);
+		expect(screen.getByLabelText('Maximum Elevation (MASL)')).toHaveValue(1900);
+		expect(screen.queryByRole('option', { name: 'Elevation (MASL)' })).not.toBeInTheDocument();
+		expect(screen.getByLabelText('Appearance')).toBeInTheDocument();
+	});
+
+	it('shows premium catalog filters to intelligence-entitled viewer sessions', () => {
+		render(Settingsbar, { data: { auth: auth('viewer', true) }, onClose: vi.fn() });
+
+		expect(screen.getByLabelText('Importer')).toBeInTheDocument();
+		expect(screen.getByLabelText('Grade')).toBeInTheDocument();
 		expect(screen.getByLabelText('Elevation (MASL)')).toBeInTheDocument();
 		expect(screen.getByLabelText('Appearance')).toBeInTheDocument();
+		expect(screen.queryByLabelText('Stocked window')).not.toBeInTheDocument();
+	});
+
+	it('writes the paid elevation range through the canonical catalog filter', async () => {
+		storeState.set({
+			...storeState.value,
+			filters: {
+				...storeState.value.filters,
+				elevation_masl: { min: '1200', max: '1900' }
+			}
+		});
+		render(Settingsbar, { data: { auth: auth('member') }, onClose: vi.fn() });
+
+		await fireEvent.input(screen.getByLabelText('Elevation (MASL)'), {
+			target: { value: '1400' }
+		});
+
+		expect(filterStore.setFilter).toHaveBeenCalledWith('elevation_masl', {
+			min: '1400',
+			max: '1900'
+		});
+
+		const includeUnknown = screen.getByRole('checkbox', {
+			name: /Include coffees with unknown elevation/i
+		});
+		expect(includeUnknown).not.toBeChecked();
+		await fireEvent.click(includeUnknown);
+		expect(filterStore.setFilter).toHaveBeenLastCalledWith('elevation_masl', {
+			min: '1200',
+			max: '1900',
+			includeUnknown: true
+		});
+	});
+
+	it('rejects inverted elevation bounds before updating the canonical filter', async () => {
+		storeState.set({
+			...storeState.value,
+			filters: {
+				...storeState.value.filters,
+				elevation_masl: { min: '1200', max: '1900' }
+			}
+		});
+		render(Settingsbar, { data: { auth: auth('member') }, onClose: vi.fn() });
+
+		await fireEvent.input(screen.getByLabelText('Elevation (MASL)'), {
+			target: { value: '2000' }
+		});
+
+		expect(filterStore.setFilter).not.toHaveBeenCalled();
+		expect(screen.getByRole('alert')).toHaveTextContent(
+			'Minimum elevation cannot exceed maximum elevation.'
+		);
+
+		await fireEvent.input(screen.getByLabelText('Maximum Elevation (MASL)'), {
+			target: { value: '2200' }
+		});
+
+		expect(filterStore.setFilter).toHaveBeenCalledWith('elevation_masl', {
+			min: '2000',
+			max: '2200'
+		});
 	});
 
 	it('turns off wholesale visibility when home-roaster suppliers only is selected', async () => {

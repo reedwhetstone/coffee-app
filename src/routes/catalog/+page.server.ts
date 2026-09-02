@@ -71,6 +71,7 @@ type ParchmentCatalogListQuery = CatalogListQuery & {
 	price_per_lb_max?: number;
 	elevation_min_masl?: number;
 	elevation_max_masl?: number;
+	include_unknown_elevation?: 'true';
 	arrival_date?: string;
 	stocked_date?: string;
 	stocked_days?: number;
@@ -189,6 +190,7 @@ function buildParchmentCatalogQuery(
 	appendNumberParam(query, 'price_per_lb_max', searchState.pricePerLbMax);
 	appendNumberParam(query, 'elevation_min_masl', searchState.elevationMinMasl);
 	appendNumberParam(query, 'elevation_max_masl', searchState.elevationMaxMasl);
+	if (searchState.includeUnknownElevation) query.include_unknown_elevation = 'true';
 	appendStringParam(query, 'arrival_date', searchState.arrivalDate);
 	appendStringParam(query, 'stocked_date', searchState.stockedDate);
 	appendNumberParam(query, 'stocked_days', searchState.stockedDays);
