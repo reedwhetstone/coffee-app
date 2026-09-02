@@ -1820,7 +1820,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Roasting',
 		intro: [
 			'Roast routes cover CRUD for roast profiles, Artisan import, chart telemetry, chart display settings, and data clearing.',
-			'Roast routes require an authenticated session.'
+			'Roast routes require an authenticated session. Mutations are same-origin thin BFF calls to Parchment, which owns authorization and persistence.'
 		],
 		sections: [
 			{
@@ -1859,8 +1859,8 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Key behaviors',
 				bullets: [
-					'POST /api/roast-profiles supports both single and batch creation. The Parchment-owned database trigger recalculates stocked state in the same transaction as each roast change.',
-					'PUT /api/roast-profiles requires an id query parameter. DELETE accepts either id or batch name query parameters.',
+					'POST /api/roast-profiles supports both single and batch creation. Batch callers retain one Idempotency-Key for the same payload until the result is definitive. The Parchment-owned database trigger recalculates stocked state in the same transaction as each roast change.',
+					'PUT /api/roast-profiles requires an id query parameter and forwards optional If-Match concurrency checks. Live curve writes replace only live temperatures plus the current event set. DELETE accepts either id or an exact batch name query parameter.',
 					'POST /api/artisan-import expects multipart form-data with file and roastId. Supported file extensions are .alog, .alog.json, and .json.',
 					'GET /api/roast-chart-data requires roastId and returns sampled telemetry tuned for charting, including performance metadata and derived ranges.',
 					'DELETE /api/clear-roast requires roast_id and forwards to Parchment, which enforces ownership plus roast:write before deleting imported telemetry, events, and log rows.'
@@ -2075,20 +2075,12 @@ const docsPages: DocsPage[] = [
 							'GET POST',
 							'Admin session',
 							'Presentation-only proxy for Parchment discrepancy reports and bounded entitlement recomputation'
-						],
-						[
-							'/api/admin/backfill-milestones',
-							'POST',
-							'Session plus member-role check',
-							'Run milestone backfill logic for roast-related calculations'
 						]
 					]
 				},
-				callout: {
-					tone: 'warning',
-					title: 'Admin namespace does not mean uniform admin enforcement',
-					body: 'Today, /api/admin/billing-entitlement-discrepancies uses centralized admin validation, but /api/admin/backfill-milestones currently checks for a member role rather than admin. Keep docs truthful about the current behavior and treat that mismatch as implementation debt, not documentation ambiguity.'
-				}
+				body: [
+					'Roast milestone and phase values are derived by Parchment during canonical Artisan and live-curve writes. Coffee-app exposes no member-callable milestone backfill route.'
+				]
 			},
 			{
 				title: 'Operational notes',

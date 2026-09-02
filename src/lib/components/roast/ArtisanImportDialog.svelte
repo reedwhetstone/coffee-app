@@ -1,10 +1,12 @@
 <script lang="ts">
 	let {
 		roastId,
+		lastUpdated,
 		hasExistingData = false,
 		onImportComplete
 	}: {
 		roastId: number;
+		lastUpdated?: string | null;
 		hasExistingData?: boolean;
 		onImportComplete: () => Promise<void>;
 	} = $props();
@@ -64,6 +66,7 @@
 
 			const response = await fetch('/api/artisan-import', {
 				method: 'POST',
+				headers: lastUpdated ? { 'If-Match': lastUpdated } : undefined,
 				body: formData
 			});
 

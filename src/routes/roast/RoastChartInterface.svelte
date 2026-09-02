@@ -39,6 +39,7 @@
 		updateHeat,
 		saveRoastProfile,
 		selectedBean,
+		onProfileRefresh,
 		clearRoastData
 	}: {
 		timer: RoastTimer;
@@ -50,6 +51,7 @@
 		updateHeat: (value: number) => void;
 		saveRoastProfile: () => Promise<void>;
 		selectedBean: { id?: number; name: string };
+		onProfileRefresh?: (roastId: number) => Promise<void>;
 		clearRoastData: () => void;
 	} = $props();
 
@@ -385,10 +387,16 @@
 	// by the LayerCake RoastChart component via preparedChartData
 
 	async function handleArtisanImportComplete() {
-		if (currentRoastProfile?.roast_id) {
-			await loadSavedRoastData(currentRoastProfile.roast_id);
-			await loadChartSettings(currentRoastProfile.roast_id);
+		const roastId = currentRoastProfile?.roast_id;
+		if (!roastId) return;
+
+		if (onProfileRefresh) {
+			await onProfileRefresh(roastId);
+			return;
 		}
+
+		await loadSavedRoastData(roastId);
+		await loadChartSettings(roastId);
 	}
 </script>
 
@@ -605,6 +613,7 @@
 	<ArtisanImportDialog
 		bind:this={artisanImportDialog}
 		roastId={currentRoastProfile.roast_id}
+		lastUpdated={currentRoastProfile.last_updated}
 		hasExistingData={$roastData.length > 0}
 		onImportComplete={handleArtisanImportComplete}
 	/>

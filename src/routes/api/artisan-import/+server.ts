@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
-import { isCookieSessionPrincipal } from '$lib/server/principal';
+import { isCookieSessionPrincipal, isTrustedMutationRequest } from '$lib/server/principal';
 
 /**
  * Replace an existing roast's curve/events from an Artisan export.
@@ -26,6 +26,9 @@ export const POST: RequestHandler = async (event) => {
 		if (!isCookieSessionPrincipal(locals.principal)) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
+		if (!isTrustedMutationRequest(event, locals.principal)) {
+			return json({ error: 'Cross-site session mutation blocked' }, { status: 403 });
+		}
 
 		const formData = await request.formData();
 		const file = formData.get('file') as File;
@@ -38,8 +41,8 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'No roast ID provided' }, { status: 400 });
 		}
 
-		const roastIdNum = parseInt(roastId, 10);
-		if (!Number.isFinite(roastIdNum)) {
+		const roastIdNum = Number(roastId);
+		if (!/^\d+$/.test(roastId) || !Number.isSafeInteger(roastIdNum) || roastIdNum <= 0) {
 			return json({ error: 'Invalid roast ID' }, { status: 400 });
 		}
 
@@ -64,12 +67,17 @@ export const POST: RequestHandler = async (event) => {
 		// Session mode forwards the logged-in user's Supabase token as Bearer; the
 		// token never reaches the browser. Parchment enforces roast:write.
 		const client = await createParchmentServerClient(event, { mode: 'session' });
-		const { data, error, response } = await client.roasts.replaceArtisanImport(roastIdNum, {
-			fileName: file.name,
-			fileContent,
-			// pass original byte size for accurate import-log metadata
-			fileSize: file.size
-		});
+		const ifMatch = request.headers.get('if-match')?.trim() || undefined;
+		const { data, error, response } = await client.roasts.replaceArtisanImport(
+			roastIdNum,
+			{
+				fileName: file.name,
+				fileContent,
+				// pass original byte size for accurate import-log metadata
+				fileSize: file.size
+			},
+			ifMatch ? { ifMatch } : undefined
+		);
 
 		if (error || !data) {
 			// Relay Parchment's status (401/403 entitlement, 400 invalid file,

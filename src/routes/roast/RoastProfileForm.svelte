@@ -3,7 +3,7 @@
 	import { prepareDateForAPI } from '$lib/utils/dates';
 	import { loadingStore } from '$lib/stores/loadingStore';
 	import LoadingButton from '$lib/components/LoadingButton.svelte';
-	import type { RoastFormData } from '$lib/types/component.types';
+	import { parseRoastCreatePayload, type RoastCreatePayload } from '$lib/roast/create-operation';
 
 	// Flexible type for available coffees which might be catalog or inventory items
 	interface CoffeeItem {
@@ -18,12 +18,18 @@
 		onClose,
 		onSubmit,
 		selectedBean,
-		availableCoffees = []
+		availableCoffees = [],
+		initialPayload = null,
+		onDiscardPending,
+		onArtisanImportComplete
 	} = $props<{
 		onClose: () => void;
-		onSubmit: (data: RoastFormData) => Promise<unknown> | void;
+		onSubmit: (data: RoastCreatePayload, exactPayload?: string) => Promise<unknown> | void;
 		selectedBean: { id?: number; name: string } | null;
 		availableCoffees?: CoffeeItem[];
+		initialPayload?: string | null;
+		onDiscardPending?: () => void | Promise<void>;
+		onArtisanImportComplete?: (roastId: number) => Promise<void>;
 	}>();
 
 	// Process available coffees to ensure proper name property
@@ -41,33 +47,98 @@
 
 	let coffeesLoading = $state(false); // No longer loading since data is passed via props
 
-	let formData = $state({
-		batch_name: '',
-		coffee_id: '' as number | string,
-		coffee_name: '',
-		roast_date: prepareDateForAPI(new Date().toISOString()),
-		oz_in: '',
-		oz_out: '',
-		roast_notes: '',
-		roast_targets: '',
-		last_updated: new Date().toISOString()
-	});
+	type RoastDraft = {
+		batch_name: string;
+		coffee_id: number | string;
+		coffee_name: string;
+		roast_date: string;
+		oz_in: number | string | null;
+		oz_out: number | string | null;
+		roast_notes: string;
+		roast_targets: string;
+		last_updated: string;
+	};
 
-	// Array to store multiple beans in the batch
-	let batchBeans = $state([
-		{
-			coffee_id: '' as number | string,
+	function createInitialFormData(): RoastDraft {
+		return {
+			batch_name: '',
+			coffee_id: '',
 			coffee_name: '',
+			roast_date: prepareDateForAPI(new Date().toISOString()),
 			oz_in: '',
 			oz_out: '',
-			artisan_file: null as File | null
+			roast_notes: '',
+			roast_targets: '',
+			last_updated: new Date().toISOString()
+		};
+	}
+
+	let formData = $state<RoastDraft>(createInitialFormData());
+
+	// Array to store multiple beans in the batch
+	type BatchBean = {
+		coffee_id: number | string;
+		coffee_name: string;
+		oz_in: number | string | null;
+		oz_out: number | string | null;
+		artisan_file: File | null;
+	};
+
+	function createInitialBatchBeans(): BatchBean[] {
+		return [
+			{
+				coffee_id: '',
+				coffee_name: '',
+				oz_in: '',
+				oz_out: '',
+				artisan_file: null
+			}
+		];
+	}
+
+	let batchBeans = $state<BatchBean[]>(createInitialBatchBeans());
+	let pendingPayload = $state<string | null>(null);
+	let recoveryError = $state<string | null>(null);
+	let appliedInitialPayload = $state<string | null>(null);
+	let draftLocked = $derived(Boolean(pendingPayload || recoveryError));
+
+	function applyRecoveredPayload(payload: string) {
+		const recovered = parseRoastCreatePayload(payload);
+		pendingPayload = payload;
+		if (!recovered) {
+			recoveryError =
+				'The saved roast request could not be restored safely. Discard it before starting a new batch.';
+			return;
 		}
-	]);
+
+		recoveryError = null;
+		formData = {
+			...formData,
+			batch_name: recovered.batch_name,
+			coffee_id: recovered.batch_beans[0]?.coffee_id ?? '',
+			coffee_name: recovered.batch_beans[0]?.coffee_name ?? '',
+			roast_date: recovered.roast_date,
+			roast_notes: recovered.roast_notes,
+			roast_targets: recovered.roast_targets
+		};
+		batchBeans = recovered.batch_beans.map((bean) => ({ ...bean, artisan_file: null }));
+	}
+
+	$effect(() => {
+		if (initialPayload === appliedInitialPayload) return;
+		appliedInitialPayload = initialPayload;
+		if (initialPayload) {
+			applyRecoveredPayload(initialPayload);
+		} else {
+			pendingPayload = null;
+			recoveryError = null;
+		}
+	});
 
 	// Sync form data with selectedBean prop when it changes
 	// Only sync when a specific bean is pre-selected (has an id)
 	$effect(() => {
-		if (selectedBean?.id) {
+		if (selectedBean?.id && !initialPayload && !pendingPayload && !recoveryError) {
 			formData.batch_name = selectedBean.name || '';
 			formData.coffee_id = Number(selectedBean.id);
 			formData.coffee_name = selectedBean.name || '';
@@ -138,7 +209,8 @@
 		roastId: number,
 		file: File,
 		operationId: string,
-		beanIndex: number
+		beanIndex: number,
+		lastUpdated?: string
 	) {
 		console.log(`Uploading Artisan file ${file.name} for roast ID ${roastId}`);
 
@@ -150,6 +222,7 @@
 
 		const response = await fetch('/api/artisan-import', {
 			method: 'POST',
+			headers: lastUpdated ? { 'If-Match': lastUpdated } : undefined,
 			body: formData
 		});
 
@@ -178,7 +251,12 @@
 			isSubmitting = true;
 			loadingStore.start(operationId, 'Creating roast profiles...');
 
-			const dataForAPI = {
+			const recoveredPayload = pendingPayload ? parseRoastCreatePayload(pendingPayload) : null;
+			if (pendingPayload && !recoveredPayload) {
+				throw new Error(recoveryError ?? 'The saved roast request cannot be retried safely.');
+			}
+
+			const dataForAPI: RoastCreatePayload = recoveredPayload ?? {
 				batch_name: formData.batch_name,
 				batch_beans: batchBeans.map((bean) => ({
 					coffee_id: Number(bean.coffee_id),
@@ -190,32 +268,44 @@
 				roast_notes: formData.roast_notes,
 				roast_targets: formData.roast_targets
 			};
+			const exactPayload = pendingPayload ?? JSON.stringify(dataForAPI);
 
 			// Submit the roast profile data using parent callback
 			loadingStore.update(operationId, 'Saving roast profiles to database...');
-			const roastProfilesResponse = await onSubmit(dataForAPI);
+			const roastProfilesResponse = (await onSubmit(dataForAPI, exactPayload)) as
+				| {
+						roast_ids?: number[];
+						profiles?: { last_updated?: string }[];
+				  }
+				| undefined;
 			console.log('Roast profiles response:', roastProfilesResponse);
 
 			// If there are Artisan files to upload, handle them after profile creation
-			if (roastProfilesResponse?.roast_ids && Array.isArray(roastProfilesResponse.roast_ids)) {
+			const roastIds = roastProfilesResponse?.roast_ids;
+			if (roastIds && Array.isArray(roastIds)) {
 				console.log(`Processing ${batchBeans.length} beans for Artisan file uploads`);
 
-				const filesToUpload = batchBeans.filter(
-					(bean, i) => bean.artisan_file && roastProfilesResponse.roast_ids[i]
-				);
+				const filesToUpload = batchBeans.filter((bean, i) => bean.artisan_file && roastIds[i]);
 
 				if (filesToUpload.length > 0) {
 					loadingStore.update(operationId, 'Uploading Artisan files...');
 
 					for (let i = 0; i < batchBeans.length; i++) {
 						const bean = batchBeans[i];
-						const roastId = roastProfilesResponse.roast_ids[i];
+						const roastId = roastIds[i];
 
 						console.log(`Bean ${i}: has file = ${!!bean.artisan_file}, roastId = ${roastId}`);
 
 						if (bean.artisan_file && roastId) {
 							try {
-								await uploadArtisanFile(roastId, bean.artisan_file, operationId, i);
+								await uploadArtisanFile(
+									roastId,
+									bean.artisan_file,
+									operationId,
+									i,
+									roastProfilesResponse.profiles?.[i]?.last_updated
+								);
+								await onArtisanImportComplete?.(roastId);
 								console.log(`Successfully uploaded Artisan file for roast ${roastId}`);
 							} catch (fileError) {
 								console.error(`Failed to upload Artisan file for roast ${roastId}:`, fileError);
@@ -242,7 +332,47 @@
 			isSubmitting = false;
 		}
 	}
+
+	async function discardPendingOperation() {
+		if (
+			!confirm(
+				'This will discard the saved roast request. If it already reached the server, retrying later may create a duplicate. Continue?'
+			)
+		) {
+			return;
+		}
+
+		await onDiscardPending?.();
+		pendingPayload = null;
+		recoveryError = null;
+		formData = createInitialFormData();
+		batchBeans = createInitialBatchBeans();
+	}
 </script>
+
+{#if pendingPayload || recoveryError}
+	<div
+		class="mb-6 rounded-md border border-warning bg-warning-subtle p-3 text-sm text-warning-strong"
+		role="status"
+	>
+		{#if recoveryError}
+			<p>{recoveryError}</p>
+		{:else}
+			<p>
+				A previous roast batch is unresolved. The form is locked to the saved request so you can
+				retry it exactly. Artisan files are not retained after a reload, but can be uploaded after
+				recovery.
+			</p>
+		{/if}
+		<button
+			type="button"
+			class="mt-3 rounded border border-warning-strong px-3 py-1 font-medium text-warning-strong hover:bg-warning/15"
+			onclick={discardPendingOperation}
+		>
+			Discard saved batch
+		</button>
+	</div>
+{/if}
 
 <!-- Header -->
 <div class="shrink-0 border-b border-accent/20 p-4 sm:p-6">
@@ -270,6 +400,7 @@
 					id="batch_name"
 					type="text"
 					bind:value={formData.batch_name}
+					disabled={draftLocked}
 					placeholder="Enter batch name"
 					class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink placeholder-muted shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 					required
@@ -282,6 +413,7 @@
 					id="roast_date"
 					type="date"
 					bind:value={formData.roast_date}
+					disabled={draftLocked}
 					class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 					required
 				/>
@@ -296,6 +428,7 @@
 				type="button"
 				class="flex items-center gap-2 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 				onclick={addBeanToBatch}
+				disabled={draftLocked}
 			>
 				<span class="text-lg">+</span>
 				<span>Add Bean</span>
@@ -311,6 +444,7 @@
 							type="button"
 							class="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-xs text-white hover:bg-danger-strong"
 							onclick={() => removeBeanFromBatch(index)}
+							disabled={draftLocked}
 						>
 							✕
 						</button>
@@ -326,6 +460,7 @@
 								class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 								value={bean.coffee_id}
 								onchange={(e) => handleCoffeeChange(e, index)}
+								disabled={draftLocked}
 								required
 							>
 								{#if coffeesLoading}
@@ -351,6 +486,7 @@
 								step="1"
 								min="0"
 								bind:value={bean.oz_in}
+								disabled={draftLocked}
 								placeholder="0"
 								class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink placeholder-muted shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 								required
@@ -367,6 +503,7 @@
 								step="1"
 								min="0"
 								bind:value={bean.oz_out}
+								disabled={draftLocked}
 								placeholder="0"
 								class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink placeholder-muted shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 							/>
@@ -413,6 +550,7 @@
 				<textarea
 					id="roast_targets"
 					bind:value={formData.roast_targets}
+					disabled={draftLocked}
 					rows="3"
 					placeholder="Enter your roast targets and goals..."
 					class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink placeholder-muted shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
@@ -424,6 +562,7 @@
 				<textarea
 					id="roast_notes"
 					bind:value={formData.roast_notes}
+					disabled={draftLocked}
 					rows="3"
 					placeholder="Add notes about this roast session..."
 					class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink placeholder-muted shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
@@ -449,9 +588,9 @@
 			loading={isSubmitting}
 			loadingText="Creating Profiles..."
 			onclick={handleSubmit}
-			disabled={coffeesLoading}
+			disabled={coffeesLoading || Boolean(recoveryError)}
 		>
-			Create Roast Profile
+			{pendingPayload && !recoveryError ? 'Retry Saved Batch' : 'Create Roast Profile'}
 		</LoadingButton>
 	</div>
 </div>
