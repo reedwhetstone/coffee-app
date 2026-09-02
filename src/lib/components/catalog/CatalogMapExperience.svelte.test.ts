@@ -125,6 +125,25 @@ describe('CatalogMapExperience', () => {
 		expect(fetchSpy.mock.calls[0][0].toString()).toContain('zoom=22');
 	});
 
+	it('gives the mobile map column the full responsive viewport height', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(
+				async () =>
+					new Response(JSON.stringify(mapResponse()), {
+						status: 200,
+						headers: { 'Content-Type': 'application/json' }
+					})
+			)
+		);
+		renderExperience(true);
+
+		await screen.findByText('9');
+		expect(screen.getByRole('button', { name: 'Simulate map pan' }).parentElement).toHaveClass(
+			'h-full'
+		);
+	});
+
 	it('hydrates a single entitled row instead of opening raw map data', async () => {
 		vi.stubGlobal(
 			'fetch',

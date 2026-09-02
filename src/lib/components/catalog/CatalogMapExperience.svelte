@@ -500,7 +500,7 @@
 	<div
 		class="relative h-[clamp(26rem,72dvh,46rem)] overflow-hidden rounded-xl border border-line bg-surface-panel lg:flex lg:h-[46rem]"
 	>
-		<div class="relative min-w-0 flex-1">
+		<div class="relative h-full min-w-0 flex-1">
 			{#if rendererError}
 				<div class="flex h-full min-h-0 items-center justify-center p-6">
 					<div
