@@ -72,7 +72,7 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
    - `/auth/callback` is the web OAuth handoff surface; `/auth/cli` is the signed-in browser consent surface for CLI authorization requests. Neither is a REST resource
    - `/api/tools/*` routes are deprecated compatibility shims; prefer session-mode Parchment SDK integration for new work
 
-Do not document the whole coffee-app `/api/*` tree as a stable public contract. The stable public catalog family is `https://api.purveyors.io/v1/catalog` and its authorized `/map` projection; `https://api.purveyors.io/v1/catalog/{id}/similar` is beta and access-gated; `https://api.purveyors.io/v1/price-index` is aggregate-only and entitlement-gated. The broader coffee-app `/api/*` tree should be described as platform/internal routes with explicit auth and stability labels. Coffee-app's `/api/catalog/map` is a preview-gated first-party BFF and is not a public integration contract; direct integrations use Parchment and keep Bearer credentials server-side.
+Do not document the whole coffee-app `/api/*` tree as a stable public contract. The stable public catalog family is `https://api.purveyors.io/v1/catalog` and its authorized `/map` projection; `https://api.purveyors.io/v1/catalog/{id}/similar` is beta and access-gated; `https://api.purveyors.io/v1/price-index` is aggregate-only and entitlement-gated. The broader coffee-app `/api/*` tree should be described as platform/internal routes with explicit auth and stability labels. Coffee-app's `/api/catalog/map` is the first-party BFF behind the production MapLibre catalog experience and is not a public integration contract; direct integrations use Parchment and keep Bearer credentials server-side.
 
 ## CLI relationship
 
