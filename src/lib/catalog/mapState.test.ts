@@ -121,5 +121,12 @@ describe('catalog map BFF request state', () => {
 		expect(params.get('place_id')).toBe(placeId);
 		expect(params.has('sortField')).toBe(false);
 		expect(params.has('page')).toBe(false);
+
+		const entitledParams = buildCatalogMapRequestParams(
+			catalogState,
+			{ view: 'map', center: [0, 0], zoom: 5.7, bbox: null, placeId: null },
+			true
+		);
+		expect(entitledParams.get('lens')).toBe('elevation');
 	});
 });

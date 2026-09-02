@@ -155,7 +155,7 @@ describe('CatalogMapExperience', () => {
 		);
 	});
 
-	it('keeps terrain standard without a separate map lens or range form', async () => {
+	it('keeps terrain standard while requesting entitled place elevations', async () => {
 		const fetchSpy = vi.fn(
 			async (_input: RequestInfo | URL) =>
 				new Response(JSON.stringify(mapResponse()), {
@@ -172,7 +172,7 @@ describe('CatalogMapExperience', () => {
 		expect(screen.queryByRole('button', { name: 'Apply range' })).not.toBeInTheDocument();
 		expect(screen.getByText('Approx. terrain elevation · MASL')).toBeInTheDocument();
 		expect(screen.getByLabelText('Below 1,000 MASL')).toBeInTheDocument();
-		expect(fetchSpy.mock.calls[0][0].toString()).toContain('lens=catalog');
+		expect(fetchSpy.mock.calls[0][0].toString()).toContain('lens=elevation');
 	});
 
 	it('hydrates a single entitled row instead of opening raw map data', async () => {

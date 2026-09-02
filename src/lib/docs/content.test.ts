@@ -127,6 +127,10 @@ describe('api docs contract', () => {
 			'Legacy case-insensitive text match on the stored grade label. It is not a numeric MASL range.'
 		);
 		expect(serializedMap).toContain('elevationMinMasl / elevationMaxMasl');
+		expect(serializedMap).toContain('includeUnknownElevation');
+		expect(serializedMap).toContain(
+			'includes fully unknown-elevation rows alongside interval matches'
+		);
 		expect(serializedMap).toContain(
 			'Canonical place UUID. Matches assignments at that place or any canonical descendant'
 		);

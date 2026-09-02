@@ -9,7 +9,7 @@ type SettingsbarStoreValue = {
 	filters: {
 		stocked_date: string;
 		stocked_days: string;
-		elevation_masl?: { min: string; max: string };
+		elevation_masl?: { min: string; max: string; includeUnknown?: boolean };
 	};
 	uniqueValues: Record<string, unknown>;
 };
@@ -74,8 +74,8 @@ vi.mock('$lib/stores/filterStore', () => ({
 	filterStore
 }));
 
-function auth(role: 'viewer' | 'member') {
-	return { isSignedIn: true, user: null, role, ppiAccess: false };
+function auth(role: 'viewer' | 'member', ppiAccess = false) {
+	return { isSignedIn: true, user: null, role, ppiAccess };
 }
 
 describe('Settingsbar stocked filters', () => {
@@ -176,6 +176,16 @@ describe('Settingsbar stocked filters', () => {
 		expect(screen.getByLabelText('Appearance')).toBeInTheDocument();
 	});
 
+	it('shows premium catalog filters to intelligence-entitled viewer sessions', () => {
+		render(Settingsbar, { data: { auth: auth('viewer', true) }, onClose: vi.fn() });
+
+		expect(screen.getByLabelText('Importer')).toBeInTheDocument();
+		expect(screen.getByLabelText('Grade')).toBeInTheDocument();
+		expect(screen.getByLabelText('Elevation (MASL)')).toBeInTheDocument();
+		expect(screen.getByLabelText('Appearance')).toBeInTheDocument();
+		expect(screen.queryByLabelText('Stocked window')).not.toBeInTheDocument();
+	});
+
 	it('writes the paid elevation range through the canonical catalog filter', async () => {
 		storeState.set({
 			...storeState.value,
@@ -204,6 +214,35 @@ describe('Settingsbar stocked filters', () => {
 			min: '1200',
 			max: '1900',
 			includeUnknown: true
+		});
+	});
+
+	it('rejects inverted elevation bounds before updating the canonical filter', async () => {
+		storeState.set({
+			...storeState.value,
+			filters: {
+				...storeState.value.filters,
+				elevation_masl: { min: '1200', max: '1900' }
+			}
+		});
+		render(Settingsbar, { data: { auth: auth('member') }, onClose: vi.fn() });
+
+		await fireEvent.input(screen.getByLabelText('Elevation (MASL)'), {
+			target: { value: '2000' }
+		});
+
+		expect(filterStore.setFilter).not.toHaveBeenCalled();
+		expect(screen.getByRole('alert')).toHaveTextContent(
+			'Minimum elevation cannot exceed maximum elevation.'
+		);
+
+		await fireEvent.input(screen.getByLabelText('Maximum Elevation (MASL)'), {
+			target: { value: '2200' }
+		});
+
+		expect(filterStore.setFilter).toHaveBeenCalledWith('elevation_masl', {
+			min: '2000',
+			max: '2200'
 		});
 	});
 

@@ -648,6 +648,12 @@ const docsPages: DocsPage[] = [
 							'Numeric MASL bounds available to member/admin sessions and customer API keys across every API plan. A row matches when its reported elevation interval overlaps the requested closed interval; a missing request side is unbounded.'
 						],
 						[
+							'includeUnknownElevation',
+							'boolean',
+							'false',
+							'Pass true with at least one elevation bound to include rows with no reported elevation alongside interval-overlapping rows. Available to member/admin sessions and customer API keys across every API plan.'
+						],
+						[
 							'appearance',
 							'string',
 							'none',
@@ -991,6 +997,11 @@ const docsPages: DocsPage[] = [
 							'elevationMinMasl / elevationMaxMasl',
 							'Member/admin session or customer API key on any API plan',
 							'Closed interval-overlap filter in meters above sea level. An omitted request side is unbounded; unknown elevation never becomes zero.'
+						],
+						[
+							'includeUnknownElevation',
+							'Member/admin session or customer API key on any API plan',
+							'Boolean query option, accepted as true and defaulting to false. It requires elevationMinMasl or elevationMaxMasl and includes fully unknown-elevation rows alongside interval matches.'
 						],
 						[
 							'place_id',

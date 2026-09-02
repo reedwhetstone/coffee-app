@@ -92,7 +92,7 @@
 	let lastPublishedStateKey = '';
 
 	let requestQuery = $derived(
-		buildCatalogMapRequestParams(catalogState, committedState).toString()
+		buildCatalogMapRequestParams(catalogState, committedState, canUseAdvancedMaps).toString()
 	);
 	let items = $derived((mapResponse?.data ?? []) as CatalogMapDisplayItem[]);
 	let clusters = $derived(items.filter(isCatalogMapCluster));

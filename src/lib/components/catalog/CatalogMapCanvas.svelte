@@ -296,16 +296,17 @@
 						.filter((label): label is string => label !== null)
 				)
 			];
+			const pointCount = readCount(properties, 'point_count');
 			const title =
 				labels.length === 0
 					? 'Grouped map area'
-					: labels.length === 1
+					: pointCount <= 1
 						? labels[0]
-						: `${labels[0]} + ${labels.length - 1} more`;
+						: `${labels[0]} + ${pointCount - 1} more`;
 			showHoverPopup(
 				event,
 				title,
-				`${coffeeCountLabel(readCount(properties, 'uniqueCoffeeCount'))} · ${readCount(properties, 'placementCount').toLocaleString()} mapped placements`
+				`${readCount(properties, 'placementCount').toLocaleString()} mapped placements`
 			);
 		} catch {
 			if (requestVersion !== hoverRequestVersion) return;

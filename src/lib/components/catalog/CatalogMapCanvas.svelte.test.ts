@@ -195,6 +195,53 @@ describe('CatalogMapCanvas worker integration', () => {
 		});
 	});
 
+	it('uses the full cluster size and placement-only totals in hover previews', async () => {
+		render(CatalogMapCanvas, {
+			items: [],
+			center: [0, 18],
+			zoom: 1.75,
+			onViewportChange: vi.fn(),
+			onPlaceSelect: vi.fn()
+		});
+
+		await waitFor(() => expect(maplibre.constructMap).toHaveBeenCalledOnce());
+		loadMap();
+		maplibre.fakeSource.getClusterLeaves.mockResolvedValue(
+			Array.from({ length: 25 }, (_, index) => ({
+				properties: {
+					label: index === 0 ? 'Ethiopia' : `Origin ${index}`,
+					catalogIds: [index + 1],
+					placementCount: 1,
+					uniqueCoffeeCount: 1
+				}
+			}))
+		);
+		const hover = maplibre.fakeMap.on.mock.calls.find(
+			(call) => call[0] === 'mouseenter' && call[1] === 'catalog-map-clusters'
+		)?.[2] as (event: unknown) => void;
+		hover({
+			lngLat: { lng: 38.7, lat: 9.1 },
+			features: [
+				{
+					properties: {
+						cluster_id: 7,
+						point_count: 100,
+						placementCount: 132,
+						uniqueCoffeeCount: 200
+					}
+				}
+			]
+		});
+
+		await waitFor(() => {
+			const content = maplibre.fakePopup.setDOMContent.mock.calls.at(-1)?.[0] as HTMLElement;
+			expect(content).toHaveTextContent('Ethiopia + 99 more');
+			expect(content).toHaveTextContent('132 mapped placements');
+			expect(content).not.toHaveTextContent('coffees');
+		});
+		expect(maplibre.fakeSource.getClusterLeaves).toHaveBeenCalledWith(7, 25, 0);
+	});
+
 	it('warms the default basemap with the Purveyors field-journal palette', async () => {
 		render(CatalogMapCanvas, {
 			items: [],

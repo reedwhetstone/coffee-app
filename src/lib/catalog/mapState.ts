@@ -163,7 +163,8 @@ export function preserveCatalogExperienceParams(
 /** Build the thin-BFF request from one canonical catalog state plus map state. */
 export function buildCatalogMapRequestParams(
 	catalogState: CatalogUrlState,
-	mapState: CatalogMapUrlState
+	mapState: CatalogMapUrlState,
+	canUseAdvancedMaps = false
 ): URLSearchParams {
 	const params = buildCatalogShareParams(catalogState, '/catalog');
 	params.delete('page');
@@ -175,10 +176,9 @@ export function buildCatalogMapRequestParams(
 	params.set('wholesaleOnly', catalogState.wholesaleOnly ? 'true' : 'false');
 	params.set('zoom', CATALOG_MAP_POINT_PROJECTION_ZOOM.toString());
 	params.set('projection', 'locations');
-	// Terrain is now a presentation layer on every catalog map. Keep the API on
-	// its lightweight catalog projection; numeric elevation filtering remains a
-	// canonical catalog query capability rather than a map lens.
-	params.set('lens', 'catalog');
+	// Terrain is a presentation layer on every catalog map. Entitled callers also
+	// receive numeric place bounds and the elevation profile.
+	params.set('lens', canUseAdvancedMaps ? 'elevation' : 'catalog');
 	if (mapState.bbox) params.set('bbox', formatCatalogMapBounds(mapState.bbox));
 	if (mapState.placeId) params.set('place_id', mapState.placeId);
 	return params;
