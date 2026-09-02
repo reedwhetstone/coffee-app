@@ -188,7 +188,7 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 		);
 	});
 
-	it('keeps a long mobile detail header inside the viewport with a persistent close action', async () => {
+	it('keeps the mobile detail sheet below app chrome with a persistent close action', async () => {
 		const onDetailClose = vi.fn();
 		const longName =
 			'Exceptional Limited Release Anaerobic Natural Coffee With An Intentionally Long Catalog Name';
@@ -202,12 +202,20 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 		});
 
 		const panel = screen.getByRole('complementary', { name: longName });
+		const detailLayer = panel.closest('[data-coffee-detail-layer]');
 		const title = screen.getByRole('heading', { name: longName, level: 2 });
 		const closeButton = screen.getByRole('button', { name: 'Back to map' });
 		const scrollRegion = panel.querySelector('[data-coffee-detail-scroll-region]');
 
-		expect(panel.classList.contains('h-[100dvh]')).toBe(true);
-		expect(panel.classList.contains('max-h-[100dvh]')).toBe(true);
+		expect(detailLayer).toHaveClass('fixed', 'inset-0', 'z-[70]', 'items-end');
+		expect(panel).toHaveClass(
+			'h-[calc(100dvh-4.5rem)]',
+			'max-h-[calc(100dvh-4.5rem)]',
+			'rounded-t-2xl',
+			'md:h-[100dvh]',
+			'md:max-h-[100dvh]',
+			'md:rounded-none'
+		);
 		expect(panel.classList.contains('max-w-full')).toBe(true);
 		expect(title.classList.contains('break-words')).toBe(true);
 		expect(title.parentElement?.classList.contains('min-w-0')).toBe(true);

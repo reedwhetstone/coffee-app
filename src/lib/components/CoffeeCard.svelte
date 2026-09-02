@@ -537,9 +537,12 @@
 </article>
 
 {#if detailsOpen}
-	<div class="pointer-events-none fixed inset-0 z-50 flex w-full justify-end overflow-hidden">
+	<div
+		class="pointer-events-none fixed inset-0 z-[70] flex w-full items-end justify-end overflow-hidden md:items-stretch"
+		data-coffee-detail-layer
+	>
 		<aside
-			class="pointer-events-auto flex h-[100dvh] max-h-[100dvh] min-h-0 w-full max-w-full flex-col overflow-hidden border-l border-line bg-surface-canvas shadow-2xl sm:max-w-xl xl:max-w-2xl"
+			class="pointer-events-auto flex h-[calc(100dvh-4.5rem)] max-h-[calc(100dvh-4.5rem)] min-h-0 w-full max-w-full flex-col overflow-hidden rounded-t-2xl border-l border-line bg-surface-canvas shadow-2xl sm:max-w-xl md:h-[100dvh] md:max-h-[100dvh] md:rounded-none xl:max-w-2xl"
 			aria-labelledby="coffee-detail-title-{coffee.id}"
 		>
 			<header
