@@ -2,7 +2,12 @@
 	import { onMount } from 'svelte';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
-	import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl';
+	import type {
+		GeoJSONSource,
+		Map as MapLibreMap,
+		MapLayerMouseEvent,
+		Popup as MapLibrePopup
+	} from 'maplibre-gl';
 	import {
 		toCatalogMapGeoJson,
 		type CatalogMapDisplayItem,
@@ -58,6 +63,8 @@
 
 	let container: HTMLDivElement;
 	let map: MapLibreMap | null = null;
+	let hoverPopup: MapLibrePopup | null = null;
+	let hoverRequestVersion = 0;
 	let sourceReady = $state(false);
 	let destroyed = false;
 	let resizeObserver: ResizeObserver | null = null;
@@ -233,6 +240,83 @@
 			: null;
 	}
 
+	function coffeeCountLabel(count: number): string {
+		return `${count.toLocaleString()} ${count === 1 ? 'coffee' : 'coffees'}`;
+	}
+
+	function createHoverContent(title: string, detail: string): HTMLDivElement {
+		const content = document.createElement('div');
+		content.className = 'catalog-map-hover-content';
+		const heading = document.createElement('strong');
+		heading.textContent = title;
+		const description = document.createElement('span');
+		description.textContent = detail;
+		content.append(heading, description);
+		return content;
+	}
+
+	function showHoverPopup(event: MapLayerMouseEvent, title: string, detail: string) {
+		if (!map || !hoverPopup) return;
+		hoverPopup.setLngLat(event.lngLat).setDOMContent(createHoverContent(title, detail)).addTo(map);
+	}
+
+	function hideHoverPopup() {
+		hoverRequestVersion += 1;
+		hoverPopup?.remove();
+	}
+
+	function handlePointHover(event: MapLayerMouseEvent) {
+		const properties = readPointProperties(event);
+		if (!properties) return;
+		const title = labelFromProperties(properties as unknown as Record<string, unknown>);
+		if (!title) return;
+		showHoverPopup(
+			event,
+			title,
+			`${properties.precisionLabel} · ${coffeeCountLabel(properties.uniqueCoffeeCount)}`
+		);
+	}
+
+	async function handleVisualClusterHover(event: MapLayerMouseEvent) {
+		const currentMap = map;
+		const properties = readProperties(event);
+		const clusterId = Number(properties?.cluster_id);
+		if (!currentMap || !properties || !Number.isFinite(clusterId)) return;
+		const source = currentMap.getSource('catalog-map') as GeoJSONSource | undefined;
+		if (!source) return;
+		const requestVersion = ++hoverRequestVersion;
+		const leafLimit = Math.min(readCount(properties, 'point_count'), 25);
+		try {
+			const leaves = await source.getClusterLeaves(clusterId, leafLimit, 0);
+			if (requestVersion !== hoverRequestVersion || map !== currentMap) return;
+			const labels = [
+				...new Set(
+					leaves
+						.map((leaf) => labelFromProperties(leaf.properties as Record<string, unknown>))
+						.filter((label): label is string => label !== null)
+				)
+			];
+			const title =
+				labels.length === 0
+					? 'Grouped map area'
+					: labels.length === 1
+						? labels[0]
+						: `${labels[0]} + ${labels.length - 1} more`;
+			showHoverPopup(
+				event,
+				title,
+				`${coffeeCountLabel(readCount(properties, 'uniqueCoffeeCount'))} · ${readCount(properties, 'placementCount').toLocaleString()} mapped placements`
+			);
+		} catch {
+			if (requestVersion !== hoverRequestVersion) return;
+			showHoverPopup(
+				event,
+				'Grouped map area',
+				`${coffeeCountLabel(readCount(properties, 'uniqueCoffeeCount'))} · zoom in for regions`
+			);
+		}
+	}
+
 	function featureCoordinates(event: MapLayerMouseEvent): [number, number] | null {
 		const geometry = event.features?.[0]?.geometry;
 		if (geometry?.type !== 'Point' || !Array.isArray(geometry.coordinates)) return null;
@@ -351,7 +435,7 @@
 	onMount(() => {
 		void (async () => {
 			try {
-				const { Map, NavigationControl, setWorkerUrl } = await import('maplibre-gl');
+				const { Map, NavigationControl, Popup, setWorkerUrl } = await import('maplibre-gl');
 				if (destroyed) return;
 				setWorkerUrl(maplibreWorkerUrl);
 				map = new Map({
@@ -362,6 +446,12 @@
 					minZoom: 1,
 					maxZoom: 16,
 					cooperativeGestures: false
+				});
+				hoverPopup = new Popup({
+					closeButton: false,
+					closeOnClick: false,
+					offset: 18,
+					className: 'catalog-map-hover-popup'
 				});
 				map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
 				if (typeof ResizeObserver !== 'undefined') {
@@ -512,16 +602,27 @@
 					});
 					map.on('click', 'catalog-map-shared-location-hit-targets', handleSharedLocationClick);
 					map.on('click', 'catalog-map-place-hit-targets', handlePlaceClick);
+					map.on('mouseenter', 'catalog-map-clusters', (event) => {
+						if (map) map.getCanvas().style.cursor = 'pointer';
+						void handleVisualClusterHover(event);
+					});
+					for (const layer of [
+						'catalog-map-shared-location-hit-targets',
+						'catalog-map-place-hit-targets'
+					]) {
+						map.on('mouseenter', layer, (event) => {
+							if (map) map.getCanvas().style.cursor = 'pointer';
+							handlePointHover(event);
+						});
+					}
 					for (const layer of [
 						'catalog-map-clusters',
 						'catalog-map-shared-location-hit-targets',
 						'catalog-map-place-hit-targets'
 					]) {
-						map.on('mouseenter', layer, () => {
-							if (map) map.getCanvas().style.cursor = 'pointer';
-						});
 						map.on('mouseleave', layer, () => {
 							if (map) map.getCanvas().style.cursor = '';
+							hideHoverPopup();
 						});
 					}
 					sourceReady = true;
@@ -549,6 +650,8 @@
 			resizeObserver?.disconnect();
 			resizeObserver = null;
 			if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
+			hoverPopup?.remove();
+			hoverPopup = null;
 			map?.remove();
 			map = null;
 		};
@@ -609,6 +712,32 @@
 
 	:global(.catalog-map-canvas .maplibregl-ctrl-attrib) {
 		background: rgb(252 250 248 / 0.9);
+		color: #695c4d;
+	}
+
+	:global(.catalog-map-hover-popup .maplibregl-popup-content) {
+		padding: 0.55rem 0.7rem;
+		border: 1px solid #e4e4e2;
+		border-radius: 0.375rem;
+		background: rgb(252 250 248 / 0.97);
+		box-shadow: 0 4px 12px rgb(48 47 42 / 0.18);
+	}
+
+	:global(.catalog-map-hover-popup .maplibregl-popup-tip) {
+		border-top-color: rgb(252 250 248 / 0.97);
+	}
+
+	:global(.catalog-map-hover-content) {
+		display: grid;
+		gap: 0.15rem;
+		max-width: 15rem;
+		font-size: 0.75rem;
+		line-height: 1.25;
+		color: #302f2a;
+	}
+
+	:global(.catalog-map-hover-content span) {
+		font-size: 0.68rem;
 		color: #695c4d;
 	}
 

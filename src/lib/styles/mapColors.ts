@@ -18,7 +18,7 @@ export const TERRAIN_ELEVATION_BANDS = [
 export const MAP_SURFACE_COLORS = {
 	canvas: '#F7F2EA',
 	park: '#E7E5D8',
-	water: '#E5E0D7',
-	waterway: '#C8BEB2',
+	water: '#F8F6F2',
+	waterway: '#E3DDD6',
 	waterLabel: '#75695E'
 } as const;

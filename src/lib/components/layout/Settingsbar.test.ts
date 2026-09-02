@@ -194,6 +194,17 @@ describe('Settingsbar stocked filters', () => {
 			min: '1400',
 			max: '1900'
 		});
+
+		const includeUnknown = screen.getByRole('checkbox', {
+			name: /Include coffees with unknown elevation/i
+		});
+		expect(includeUnknown).not.toBeChecked();
+		await fireEvent.click(includeUnknown);
+		expect(filterStore.setFilter).toHaveBeenLastCalledWith('elevation_masl', {
+			min: '1200',
+			max: '1900',
+			includeUnknown: true
+		});
 	});
 
 	it('turns off wholesale visibility when home-roaster suppliers only is selected', async () => {

@@ -12,5 +12,6 @@ export const PREMIUM_DISCOVERY_QUERY_KEYS = [
 	'grade',
 	'elevation_min_masl',
 	'elevation_max_masl',
+	'include_unknown_elevation',
 	'appearance'
 ] as const;

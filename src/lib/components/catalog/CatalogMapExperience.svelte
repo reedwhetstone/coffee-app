@@ -393,14 +393,6 @@
 </script>
 
 <section class="space-y-3" aria-label="Coffee origin map">
-	<div class="rounded-lg border border-line bg-surface-panel px-4 py-3">
-		<h2 class="text-sm font-semibold text-ink">Explore coffee origins</h2>
-		<p class="mt-1 text-sm text-muted">
-			Browse coffees by origin. Terrain color shows approximate elevation; bubble numbers count
-			mapped placements, so multi-origin coffees may appear in more than one place.
-		</p>
-	</div>
-
 	{#if mapResponse?.meta.notices?.length}
 		<div
 			class="space-y-1 rounded-lg border border-warning/30 bg-warning-subtle px-4 py-3 text-sm text-warning-strong"

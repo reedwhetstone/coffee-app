@@ -123,11 +123,7 @@ describe('CatalogMapExperience', () => {
 		renderExperience(false);
 
 		await waitFor(() => expect(screen.getByText('9')).toBeInTheDocument());
-		expect(
-			screen.getByText(
-				/Browse coffees by origin\. Terrain color shows approximate elevation; bubble numbers count mapped placements/
-			)
-		).toBeInTheDocument();
+		expect(screen.queryByText('Explore coffee origins')).not.toBeInTheDocument();
 		expect(screen.getByText('2')).toBeInTheDocument();
 		expect(screen.getByLabelText('Terrain elevation key')).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: 'Elevation' })).not.toBeInTheDocument();

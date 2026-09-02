@@ -5,6 +5,15 @@ import CatalogMapCanvas from './CatalogMapCanvas.svelte';
 const maplibre = vi.hoisted(() => {
 	const setWorkerUrl = vi.fn();
 	const constructMap = vi.fn();
+	const fakePopup = {
+		setLngLat: vi.fn(),
+		setDOMContent: vi.fn(),
+		addTo: vi.fn(),
+		remove: vi.fn()
+	};
+	fakePopup.setLngLat.mockReturnValue(fakePopup);
+	fakePopup.setDOMContent.mockReturnValue(fakePopup);
+	fakePopup.addTo.mockReturnValue(fakePopup);
 	const fakeSource = {
 		setData: vi.fn(),
 		getClusterExpansionZoom: vi.fn(async () => 7),
@@ -65,7 +74,7 @@ const maplibre = vi.hoisted(() => {
 		jumpTo: vi.fn()
 	};
 
-	return { setWorkerUrl, constructMap, fakeSource, fakeMap, styleState };
+	return { setWorkerUrl, constructMap, fakeSource, fakeMap, fakePopup, styleState };
 });
 
 vi.mock('maplibre-gl', () => ({
@@ -74,6 +83,9 @@ vi.mock('maplibre-gl', () => ({
 		return maplibre.fakeMap;
 	}),
 	NavigationControl: vi.fn(function NavigationControlMock() {}),
+	Popup: vi.fn(function PopupMock() {
+		return maplibre.fakePopup;
+	}),
 	setWorkerUrl: maplibre.setWorkerUrl
 }));
 
@@ -203,7 +215,7 @@ describe('CatalogMapCanvas worker integration', () => {
 		expect(maplibre.fakeMap.setPaintProperty).toHaveBeenCalledWith(
 			'water',
 			'fill-color',
-			'#E5E0D7'
+			'#F8F6F2'
 		);
 		expect(maplibre.fakeMap.setPaintProperty).toHaveBeenCalledWith('park', 'fill-color', '#E7E5D8');
 		expect(maplibre.fakeMap.setPaintProperty).toHaveBeenCalledWith(
@@ -377,6 +389,41 @@ describe('CatalogMapCanvas worker integration', () => {
 		});
 		expect(onPlaceSelect).toHaveBeenNthCalledWith(1, 42, 'place-id');
 		expect(onPlaceSelect).toHaveBeenNthCalledWith(2, 99, 'semantic-place-id');
+	});
+
+	it('labels the region bubble under the pointer without exposing raw map data', async () => {
+		render(CatalogMapCanvas, {
+			items: [],
+			center: [0, 18],
+			zoom: 1.75,
+			onViewportChange: vi.fn(),
+			onPlaceSelect: vi.fn()
+		});
+
+		await waitFor(() => expect(maplibre.constructMap).toHaveBeenCalledOnce());
+		loadMap();
+		const hover = maplibre.fakeMap.on.mock.calls.find(
+			(call) => call[0] === 'mouseenter' && call[1] === 'catalog-map-shared-location-hit-targets'
+		)?.[2] as (event: unknown) => void;
+		hover({
+			lngLat: { lng: 38.7, lat: 9.1 },
+			features: [
+				{
+					properties: {
+						type: 'location',
+						label: 'Sidama',
+						precisionLabel: 'Region-level area',
+						placementCount: 8,
+						uniqueCoffeeCount: 6
+					}
+				}
+			]
+		});
+
+		expect(maplibre.fakePopup.setLngLat).toHaveBeenCalledWith({ lng: 38.7, lat: 9.1 });
+		const content = maplibre.fakePopup.setDOMContent.mock.calls.at(-1)?.[0] as HTMLElement;
+		expect(content).toHaveTextContent('Sidama');
+		expect(content).toHaveTextContent('Region-level area · 6 coffees');
 	});
 
 	it('normalizes antimeridian bounds and wrapped centers without committing a network search on pan or zoom', async () => {

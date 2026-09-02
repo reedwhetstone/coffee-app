@@ -79,6 +79,37 @@
 
 		return column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 	}
+
+	type ElevationRangeFilter = {
+		min: string | number;
+		max: string | number;
+		includeUnknown?: boolean;
+	};
+
+	function elevationRange(): ElevationRangeFilter {
+		const value = $filterStore.filters.elevation_masl;
+		return value && typeof value === 'object' && !Array.isArray(value)
+			? (value as ElevationRangeFilter)
+			: { min: '', max: '' };
+	}
+
+	function setElevationRange(min: string | number, max: string | number) {
+		const active = min !== '' || max !== '';
+		filterStore.setFilter('elevation_masl', {
+			min,
+			max,
+			...(active && elevationRange().includeUnknown ? { includeUnknown: true } : {})
+		});
+	}
+
+	function setIncludeUnknownElevation(includeUnknown: boolean) {
+		const current = elevationRange();
+		filterStore.setFilter('elevation_masl', {
+			min: current.min,
+			max: current.max,
+			...(includeUnknown ? { includeUnknown: true } : {})
+		});
+	}
 </script>
 
 <!-- Settings panel - full height -->
@@ -394,20 +425,10 @@
 										<input
 											id={column}
 											type="number"
-											value={(
-												$filterStore.filters.elevation_masl as
-													| { min: string | number; max: string | number }
-													| undefined
-											)?.min ?? ''}
+											value={elevationRange().min}
 											oninput={(e) => {
 												const min = e.currentTarget.value;
-												const max =
-													(
-														$filterStore.filters.elevation_masl as
-															| { min: string | number; max: string | number }
-															| undefined
-													)?.max ?? '';
-												filterStore.setFilter('elevation_masl', { min, max });
+												setElevationRange(min, elevationRange().max);
 											}}
 											class="w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
 											placeholder="Min"
@@ -417,20 +438,10 @@
 										<input
 											aria-label="Maximum Elevation (MASL)"
 											type="number"
-											value={(
-												$filterStore.filters.elevation_masl as
-													| { min: string | number; max: string | number }
-													| undefined
-											)?.max ?? ''}
+											value={elevationRange().max}
 											oninput={(e) => {
 												const max = e.currentTarget.value;
-												const min =
-													(
-														$filterStore.filters.elevation_masl as
-															| { min: string | number; max: string | number }
-															| undefined
-													)?.min ?? '';
-												filterStore.setFilter('elevation_masl', { min, max });
+												setElevationRange(elevationRange().min, max);
 											}}
 											class="w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
 											placeholder="Max"
@@ -441,6 +452,21 @@
 									<p class="text-[11px] text-muted">
 										Match coffees whose reported elevation range overlaps these bounds.
 									</p>
+									<label class="flex items-start gap-2 pt-1 text-xs text-ink">
+										<input
+											type="checkbox"
+											checked={elevationRange().includeUnknown === true}
+											disabled={elevationRange().min === '' && elevationRange().max === ''}
+											onchange={(e) => setIncludeUnknownElevation(e.currentTarget.checked)}
+											class="mt-0.5 h-4 w-4 rounded border border-line bg-surface-canvas text-accent focus:ring-2 focus:ring-accent disabled:opacity-40"
+										/>
+										<span>
+											Include coffees with unknown elevation
+											<span class="mt-0.5 block text-[11px] text-muted"
+												>Off by default when an elevation range is active.</span
+											>
+										</span>
+									</label>
 								</div>
 							{:else if column === 'cost_lb'}
 								<div class="flex gap-2">

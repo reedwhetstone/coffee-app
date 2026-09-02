@@ -722,33 +722,48 @@
 		{/if}
 
 		{#if data.catalogMapEnabled && !trackedOnlyView}
-			<div
-				class="inline-flex rounded-lg border border-line bg-surface-panel p-1"
-				role="tablist"
-				aria-label="Catalog view"
-			>
-				<button
-					type="button"
-					role="tab"
-					aria-selected={!catalogMapActive}
-					class="rounded-md px-3 py-2 text-sm font-medium transition-colors {catalogMapActive
-						? 'text-muted hover:text-ink'
-						: 'bg-surface-raised text-ink shadow-sm'}"
-					onclick={() => switchCatalogView('list')}
+			<div class="group relative inline-block">
+				<div
+					id="catalog-map-explainer"
+					role="tooltip"
+					class="pointer-events-none invisible absolute bottom-full left-0 z-30 mb-2 w-[min(20rem,calc(100vw-2rem))] translate-y-1 rounded-md border border-line bg-surface-canvas px-3 py-2 text-left opacity-0 shadow-lg transition-[opacity,transform,visibility] group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100"
 				>
-					List
-				</button>
-				<button
-					type="button"
-					role="tab"
-					aria-selected={catalogMapActive}
-					class="rounded-md px-3 py-2 text-sm font-medium transition-colors {catalogMapActive
-						? 'bg-surface-raised text-ink shadow-sm'
-						: 'text-muted hover:text-ink'}"
-					onclick={() => switchCatalogView('map')}
+					<p class="text-xs font-semibold text-ink">Explore coffee origins</p>
+					<p class="mt-1 text-xs leading-relaxed text-muted">
+						Terrain color shows approximate elevation. Bubble numbers count mapped placements, so
+						multi-origin coffees may appear in more than one place.
+					</p>
+				</div>
+				<div
+					class="inline-flex rounded-lg border border-line bg-surface-panel p-1"
+					role="tablist"
+					aria-label="Catalog view"
 				>
-					Map
-				</button>
+					<button
+						type="button"
+						role="tab"
+						aria-selected={!catalogMapActive}
+						aria-describedby="catalog-map-explainer"
+						class="rounded-md px-3 py-2 text-sm font-medium transition-colors {catalogMapActive
+							? 'text-muted hover:text-ink'
+							: 'bg-surface-raised text-ink shadow-sm'}"
+						onclick={() => switchCatalogView('list')}
+					>
+						List
+					</button>
+					<button
+						type="button"
+						role="tab"
+						aria-selected={catalogMapActive}
+						aria-describedby="catalog-map-explainer"
+						class="rounded-md px-3 py-2 text-sm font-medium transition-colors {catalogMapActive
+							? 'bg-surface-raised text-ink shadow-sm'
+							: 'text-muted hover:text-ink'}"
+						onclick={() => switchCatalogView('map')}
+					>
+						Map
+					</button>
+				</div>
 			</div>
 		{/if}
 
