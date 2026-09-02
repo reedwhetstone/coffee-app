@@ -195,8 +195,24 @@
 					mapResponse = body;
 					mapLoading = false;
 					const effective = body.meta.effective;
-					if (effective.lens !== currentState.lens) {
-						publishState({ ...currentState, lens: effective.lens }, true);
+					const nextState: CatalogMapUrlState = {
+						...currentState,
+						lens: effective.lens,
+						bbox: effective.bbox
+							? {
+									west: effective.bbox.west,
+									south: effective.bbox.south,
+									east: effective.bbox.east,
+									north: effective.bbox.north
+								}
+							: null,
+						placeId: effective.place_id
+					};
+					if (stateKey(nextState) !== stateKey(currentState)) {
+						// Parchment may strip gated spatial or place scope in lenient mode.
+						// Reflect that effective scope in the URL so the UI never claims a
+						// narrower map than the data actually represents.
+						publishState(nextState, true);
 					}
 				})
 				.catch((error) => {

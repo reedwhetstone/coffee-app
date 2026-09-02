@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import type { CatalogMapResponse } from '@purveyors/sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultCatalogUrlState } from '$lib/catalog/urlState';
-import { DEFAULT_CATALOG_MAP_STATE } from '$lib/catalog/mapState';
+import { DEFAULT_CATALOG_MAP_STATE, type CatalogMapUrlState } from '$lib/catalog/mapState';
 import CatalogMapExperienceHarness from './__test-fixtures__/CatalogMapExperienceHarness.svelte';
 
 vi.mock('$lib/components/catalog/CatalogMapCanvas.svelte', async () => ({
@@ -69,14 +69,20 @@ function mapResponse(overrides: Partial<CatalogMapResponse> = {}): CatalogMapRes
 	};
 }
 
-function renderExperience(canUseAdvancedMaps = false) {
+function renderExperience(
+	canUseAdvancedMaps = false,
+	initialState: CatalogMapUrlState = {
+		...DEFAULT_CATALOG_MAP_STATE,
+		view: 'map' as const
+	}
+) {
 	const onStateChange = vi.fn();
 	const onElevationRangeChange = vi.fn();
 	const onSelectCoffee = vi.fn(async () => true);
 	const onSwitchToList = vi.fn();
 
 	render(CatalogMapExperienceHarness, {
-		initialState: { ...DEFAULT_CATALOG_MAP_STATE, view: 'map' },
+		initialState,
 		catalogState: createDefaultCatalogUrlState(),
 		canUseAdvancedMaps,
 		onStateChange,
@@ -498,5 +504,29 @@ describe('CatalogMapExperience', () => {
 		expect(onStateChange).toHaveBeenLastCalledWith(
 			expect.objectContaining({ center: [10, 20], bbox: null })
 		);
+	});
+
+	it('reconciles spatial scope stripped by lenient access handling', async () => {
+		const fetchSpy = vi.fn(
+			async () =>
+				new Response(JSON.stringify(mapResponse()), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				})
+		);
+		vi.stubGlobal('fetch', fetchSpy);
+		const { onStateChange } = renderExperience(false, {
+			...DEFAULT_CATALOG_MAP_STATE,
+			view: 'map',
+			bbox: { west: -80, south: -10, east: -60, north: 20 },
+			placeId: '6ba7b810-9dad-41d1-80b4-00c04fd430c8'
+		});
+
+		await waitFor(() =>
+			expect(onStateChange).toHaveBeenCalledWith(
+				expect.objectContaining({ bbox: null, placeId: null })
+			)
+		);
+		await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
 	});
 });
