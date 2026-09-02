@@ -117,7 +117,7 @@ describe('api docs contract', () => {
 		);
 	});
 
-	it('documents the preview-gated web client without claiming rollout or machine-client support', () => {
+	it('documents the production web client without claiming machine-client support', () => {
 		const mapPage = getDocsPage('api', 'catalog-map');
 		expect(mapPage).toBeDefined();
 
@@ -150,7 +150,7 @@ describe('api docs contract', () => {
 		expect(serializedMap).not.toContain('Premium map parameters return 403.');
 		expect(serializedMap).not.toContain('Member/admin or paid API tier');
 		expect(serializedMap).toContain(
-			'includes a preview-gated MapLibre experience through the first-party /api/catalog/map BFF.'
+			'includes a production MapLibre experience through the first-party /api/catalog/map BFF.'
 		);
 		expect(serializedMap).toContain('It is not a public API contract');
 		expect(serializedMap).toContain(

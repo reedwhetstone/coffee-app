@@ -1015,16 +1015,9 @@ describe('/catalog process controls', () => {
 	});
 });
 
-describe('/catalog map preview gate', () => {
-	it('keeps the existing catalog list as the only view while the server gate is off', () => {
-		renderCatalog(createData({ catalogMapEnabled: false } as unknown as Partial<PageData>));
-
-		expect(screen.queryByRole('tab', { name: 'Map' })).not.toBeInTheDocument();
-		expect(screen.getByText('Process Lot')).toBeInTheDocument();
-	});
-
-	it('writes a restorable map URL without navigating away when the preview is enabled', async () => {
-		renderCatalog(createData({ catalogMapEnabled: true } as unknown as Partial<PageData>));
+describe('/catalog map navigation', () => {
+	it('writes a restorable map URL without navigating away', async () => {
+		renderCatalog(createData());
 		const mapTab = screen.getByRole('tab', { name: 'Map' });
 
 		expect(mapTab).toHaveAttribute('aria-describedby', 'catalog-map-explainer');
@@ -1042,7 +1035,7 @@ describe('/catalog map preview gate', () => {
 	});
 
 	it('switches between map and list immediately while preserving URL state', async () => {
-		renderCatalog(createData({ catalogMapEnabled: true } as unknown as Partial<PageData>));
+		renderCatalog(createData());
 
 		const mapTab = screen.getByRole('tab', { name: 'Map' });
 		const listTab = screen.getByRole('tab', { name: 'List' });
@@ -1060,7 +1053,7 @@ describe('/catalog map preview gate', () => {
 
 	it('preserves a filter URL changed through native history before a map update', async () => {
 		window.history.replaceState({}, '', '/catalog?country=Ethiopia');
-		renderCatalog(createData({ catalogMapEnabled: true } as unknown as Partial<PageData>));
+		renderCatalog(createData());
 
 		await fireEvent.click(screen.getByRole('tab', { name: 'Map' }));
 
