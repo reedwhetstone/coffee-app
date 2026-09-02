@@ -185,6 +185,11 @@ describe('CatalogMapExperience', () => {
 			expect(elevationButton).toHaveClass('bg-accent', 'text-ink');
 			expect(elevationButton).toHaveAttribute('aria-pressed', 'true');
 		});
+		expect(
+			screen.getByText(
+				'Map shading shows approximate terrain elevation; markers show reported coffee elevation.'
+			)
+		).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Apply range' })).toHaveClass(
 			'bg-accent',
 			'text-ink'

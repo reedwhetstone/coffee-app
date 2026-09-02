@@ -4,6 +4,7 @@
 	import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 	import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl';
 	import {
+		ELEVATION_BANDS,
 		toCatalogMapGeoJson,
 		type CatalogMapDisplayItem,
 		type CatalogMapPointProperties
@@ -65,6 +66,13 @@
 	let resizeObserver: ResizeObserver | null = null;
 	let resizeFrame: number | null = null;
 
+	const TERRAIN_RELIEF_SOURCE_ID = 'catalog-terrain-dem';
+	const TERRAIN_RELIEF_LAYER_ID = 'catalog-terrain-relief';
+	const TERRAIN_RELIEF_TILES =
+		'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+	const TERRAIN_RELIEF_ATTRIBUTION =
+		'<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain: Mapzen and contributors</a>';
+
 	const BASEMAP_PAINT_OVERRIDES = [
 		['background', 'background-color', '#F7F3ED'],
 		['park', 'fill-color', '#E6EADF'],
@@ -109,6 +117,76 @@
 	function applyPurveyorsBasemapTheme(currentMap: MapLibreMap) {
 		for (const [layerId, property, color] of BASEMAP_PAINT_OVERRIDES) {
 			if (currentMap.getLayer(layerId)) currentMap.setPaintProperty(layerId, property, color);
+		}
+	}
+
+	function removeTerrainReliefLayer(currentMap: MapLibreMap) {
+		if (currentMap.getLayer(TERRAIN_RELIEF_LAYER_ID)) {
+			currentMap.removeLayer(TERRAIN_RELIEF_LAYER_ID);
+		}
+		if (currentMap.getSource(TERRAIN_RELIEF_SOURCE_ID)) {
+			currentMap.removeSource(TERRAIN_RELIEF_SOURCE_ID);
+		}
+	}
+
+	function syncTerrainReliefLayer(currentMap: MapLibreMap, activeLens: CatalogMapLens) {
+		if (activeLens !== 'elevation') {
+			removeTerrainReliefLayer(currentMap);
+			return;
+		}
+
+		try {
+			if (!currentMap.getSource(TERRAIN_RELIEF_SOURCE_ID)) {
+				currentMap.addSource(TERRAIN_RELIEF_SOURCE_ID, {
+					type: 'raster-dem',
+					tiles: [TERRAIN_RELIEF_TILES],
+					tileSize: 256,
+					maxzoom: 15,
+					encoding: 'terrarium',
+					attribution: TERRAIN_RELIEF_ATTRIBUTION
+				});
+			}
+			if (currentMap.getLayer(TERRAIN_RELIEF_LAYER_ID)) return;
+
+			currentMap.addLayer(
+				{
+					id: TERRAIN_RELIEF_LAYER_ID,
+					type: 'color-relief',
+					source: TERRAIN_RELIEF_SOURCE_ID,
+					paint: {
+						'color-relief-color': [
+							'interpolate',
+							['linear'],
+							['elevation'],
+							-1000,
+							ELEVATION_BANDS[0].color,
+							999.9,
+							ELEVATION_BANDS[0].color,
+							1000,
+							ELEVATION_BANDS[1].color,
+							1399.9,
+							ELEVATION_BANDS[1].color,
+							1400,
+							ELEVATION_BANDS[2].color,
+							1799.9,
+							ELEVATION_BANDS[2].color,
+							1800,
+							ELEVATION_BANDS[3].color,
+							2199.9,
+							ELEVATION_BANDS[3].color,
+							2200,
+							ELEVATION_BANDS[4].color,
+							9000,
+							ELEVATION_BANDS[4].color
+						],
+						'color-relief-opacity': 0.32
+					}
+				},
+				currentMap.getLayer('water') ? 'water' : 'catalog-map-clusters'
+			);
+		} catch {
+			// The preview DEM is supplemental. Preserve the catalog map if it is unavailable.
+			removeTerrainReliefLayer(currentMap);
 		}
 	}
 
@@ -455,6 +533,7 @@
 						});
 					}
 					sourceReady = true;
+					syncTerrainReliefLayer(map, lens);
 					scheduleResize();
 					onMapReady();
 				});
@@ -487,6 +566,7 @@
 		if (!sourceReady || !map) return;
 		const source = map.getSource('catalog-map') as GeoJSONSource | undefined;
 		source?.setData(toCatalogMapGeoJson(items, lens));
+		syncTerrainReliefLayer(map, lens);
 	});
 
 	$effect(() => {

@@ -19,15 +19,33 @@ const maplibre = vi.hoisted(() => {
 			}
 		])
 	};
+	const styleState = {
+		terrainSourceAdded: false,
+		terrainLayerAdded: false
+	};
 	const fakeMap = {
 		addControl: vi.fn(),
-		addSource: vi.fn(),
-		addLayer: vi.fn(),
+		addSource: vi.fn((id: string) => {
+			if (id === 'catalog-terrain-dem') styleState.terrainSourceAdded = true;
+		}),
+		addLayer: vi.fn((layer: { id?: string }) => {
+			if (layer.id === 'catalog-terrain-relief') styleState.terrainLayerAdded = true;
+		}),
+		removeLayer: vi.fn((id: string) => {
+			if (id === 'catalog-terrain-relief') styleState.terrainLayerAdded = false;
+		}),
+		removeSource: vi.fn((id: string) => {
+			if (id === 'catalog-terrain-dem') styleState.terrainSourceAdded = false;
+		}),
 		on: vi.fn(),
 		remove: vi.fn(),
 		resize: vi.fn(),
 		getCanvas: vi.fn(() => ({ style: { cursor: '' } })),
-		getSource: vi.fn(() => fakeSource),
+		getSource: vi.fn((id: string) => {
+			if (id === 'catalog-map') return fakeSource;
+			if (id === 'catalog-terrain-dem' && styleState.terrainSourceAdded) return {};
+			return undefined;
+		}),
 		getCenter: vi.fn(() => ({ lng: 0, lat: 18 })),
 		getZoom: vi.fn(() => 1.75),
 		getBounds: vi.fn(() => ({
@@ -36,13 +54,18 @@ const maplibre = vi.hoisted(() => {
 			getEast: () => 190,
 			getNorth: () => 10
 		})),
-		getLayer: vi.fn(() => ({})),
+		getLayer: vi.fn((id: string) => {
+			if (id === 'catalog-terrain-relief') {
+				return styleState.terrainLayerAdded ? {} : undefined;
+			}
+			return {};
+		}),
 		setPaintProperty: vi.fn(),
 		easeTo: vi.fn(),
 		jumpTo: vi.fn()
 	};
 
-	return { setWorkerUrl, constructMap, fakeSource, fakeMap };
+	return { setWorkerUrl, constructMap, fakeSource, fakeMap, styleState };
 });
 
 vi.mock('maplibre-gl', () => ({
@@ -62,6 +85,14 @@ function loadMap() {
 describe('CatalogMapCanvas worker integration', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		maplibre.styleState.terrainSourceAdded = false;
+		maplibre.styleState.terrainLayerAdded = false;
+		maplibre.fakeMap.addSource.mockImplementation((id: string) => {
+			if (id === 'catalog-terrain-dem') maplibre.styleState.terrainSourceAdded = true;
+		});
+		maplibre.fakeMap.addLayer.mockImplementation((layer: { id?: string }) => {
+			if (layer.id === 'catalog-terrain-relief') maplibre.styleState.terrainLayerAdded = true;
+		});
 		maplibre.fakeSource.getClusterExpansionZoom.mockResolvedValue(7);
 		maplibre.fakeSource.getClusterLeaves.mockResolvedValue([
 			{
@@ -120,6 +151,10 @@ describe('CatalogMapCanvas worker integration', () => {
 					uniqueCoffeeCount: ['+', ['get', 'uniqueCoffeeCount']]
 				}
 			})
+		);
+		expect(maplibre.fakeMap.addSource).not.toHaveBeenCalledWith(
+			'catalog-terrain-dem',
+			expect.anything()
 		);
 
 		const clusterClick = maplibre.fakeMap.on.mock.calls.find(
@@ -183,6 +218,101 @@ describe('CatalogMapCanvas worker integration', () => {
 			'label_country_1',
 			'text-color',
 			'#302F2A'
+		);
+	});
+
+	it('renders the established terrain bands beneath map context only for the elevation lens', async () => {
+		const props = {
+			items: [],
+			lens: 'elevation' as const,
+			center: [0, 18] as [number, number],
+			zoom: 1.75,
+			onViewportChange: vi.fn(),
+			onPlaceSelect: vi.fn()
+		};
+		const view = render(CatalogMapCanvas, props);
+
+		await waitFor(() => expect(maplibre.constructMap).toHaveBeenCalledOnce());
+		loadMap();
+
+		expect(maplibre.fakeMap.addSource).toHaveBeenCalledWith('catalog-terrain-dem', {
+			type: 'raster-dem',
+			tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+			tileSize: 256,
+			maxzoom: 15,
+			encoding: 'terrarium',
+			attribution:
+				'<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain: Mapzen and contributors</a>'
+		});
+		expect(maplibre.fakeMap.addLayer).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'catalog-terrain-relief',
+				type: 'color-relief',
+				source: 'catalog-terrain-dem',
+				paint: {
+					'color-relief-color': [
+						'interpolate',
+						['linear'],
+						['elevation'],
+						-1000,
+						'#8FA382',
+						999.9,
+						'#8FA382',
+						1000,
+						'#D9A05B',
+						1399.9,
+						'#D9A05B',
+						1400,
+						'#C05B2E',
+						1799.9,
+						'#C05B2E',
+						1800,
+						'#9C4356',
+						2199.9,
+						'#9C4356',
+						2200,
+						'#4E8098',
+						9000,
+						'#4E8098'
+					],
+					'color-relief-opacity': 0.32
+				}
+			}),
+			'water'
+		);
+
+		await view.rerender({ ...props, lens: 'catalog' });
+		await waitFor(() => {
+			expect(maplibre.fakeMap.removeLayer).toHaveBeenCalledWith('catalog-terrain-relief');
+			expect(maplibre.fakeMap.removeSource).toHaveBeenCalledWith('catalog-terrain-dem');
+		});
+	});
+
+	it('keeps the catalog map usable when preview terrain cannot initialize', async () => {
+		const onMapReady = vi.fn();
+		const onMapError = vi.fn();
+		maplibre.fakeMap.addSource.mockImplementation((id: string) => {
+			if (id === 'catalog-terrain-dem') throw new Error('terrain unavailable');
+		});
+		render(CatalogMapCanvas, {
+			items: [],
+			lens: 'elevation',
+			center: [0, 18],
+			zoom: 1.75,
+			onViewportChange: vi.fn(),
+			onPlaceSelect: vi.fn(),
+			onMapReady,
+			onMapError
+		});
+
+		await waitFor(() => expect(maplibre.constructMap).toHaveBeenCalledOnce());
+		loadMap();
+
+		expect(onMapReady).toHaveBeenCalledOnce();
+		expect(onMapError).not.toHaveBeenCalled();
+		expect(maplibre.fakeMap.addLayer).not.toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'catalog-terrain-relief' }),
+			expect.anything()
 		);
 	});
 

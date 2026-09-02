@@ -578,6 +578,9 @@
 						</p>
 					{/if}
 				</div>
+				<p class="mt-1 text-xs text-muted">
+					Map shading shows approximate terrain elevation; markers show reported coffee elevation.
+				</p>
 				{#if profile}
 					<div class="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
 						<span class="text-muted"
