@@ -1,5 +1,5 @@
 import type { RequestEvent } from '@sveltejs/kit';
-import type { CatalogListQuery, CatalogSimilarQuery } from '@purveyors/sdk';
+import type { CatalogListQuery, CatalogMapQuery, CatalogSimilarQuery } from '@purveyors/sdk';
 import {
 	createParchmentServerClient,
 	type ParchmentCredentialMode,
@@ -45,6 +45,42 @@ export function toCatalogListQuery(url: URL): CatalogListQuery {
 	// parses server-side. openapi-fetch serializes the whole object regardless of
 	// the compile-time type, so the cast keeps the passthrough faithful.
 	return toParchmentCatalogQuery(appQuery) as CatalogListQuery;
+}
+
+const CATALOG_MAP_UI_QUERY_KEYS = new Set([
+	'page',
+	'limit',
+	'sortField',
+	'sortDirection',
+	'view',
+	'map_lens',
+	'map_units',
+	'map_center',
+	'map_zoom',
+	'map_bbox',
+	'map_place',
+	'coffee',
+	'tracked'
+]);
+
+/**
+ * Convert the stable coffee-app catalog query into the generated map query.
+ *
+ * Presentation-only URL state is deliberately removed before forwarding. All
+ * catalog filters and map contract parameters otherwise pass through the same
+ * alias adapter used by list/facets, so coffee-app never implements filtering,
+ * entitlement, clustering, or elevation statistics locally.
+ */
+export function toCatalogMapQuery(url: URL): CatalogMapQuery {
+	const appQuery: Record<string, CatalogQueryValue> = {};
+
+	for (const key of new Set(url.searchParams.keys())) {
+		if (CATALOG_MAP_UI_QUERY_KEYS.has(key)) continue;
+		const values = url.searchParams.getAll(key);
+		appQuery[key] = values.length > 1 ? values : values[0];
+	}
+
+	return toParchmentCatalogQuery(appQuery) as CatalogMapQuery;
 }
 
 const CATALOG_SIMILAR_QUERY_KEYS = ['threshold', 'limit', 'stocked_only', 'mode'] as const;
@@ -121,6 +157,7 @@ export interface CatalogListProxyResult {
 }
 
 export type CatalogSimilarProxyResult = CatalogListProxyResult;
+export type CatalogMapProxyResult = CatalogListProxyResult;
 
 export interface CatalogProxyErrorResponse {
 	status: number;
@@ -224,6 +261,29 @@ export async function proxyCatalogList(
 		preferHandling: options.preferHandling ?? 'inherit'
 	});
 	const { data, error, response } = await client.catalog.list(query as CatalogListQuery);
+
+	return {
+		status: response.status,
+		body: error ?? data,
+		upstream: response
+	};
+}
+
+/**
+ * Proxy the lightweight map projection without reshaping it.
+ *
+ * Parchment owns every query semantic, access decision, aggregate, and notice.
+ * This helper owns only typed SDK invocation and credential presentation.
+ */
+export async function proxyCatalogMap(
+	event: RequestEvent,
+	options: Pick<ProxyCatalogListOptions, 'mode' | 'preferHandling'> = {}
+): Promise<CatalogMapProxyResult> {
+	const client = await createParchmentServerClient(event, {
+		mode: options.mode ?? 'session',
+		preferHandling: options.preferHandling ?? 'inherit'
+	});
+	const { data, error, response } = await client.catalog.map(toCatalogMapQuery(event.url));
 
 	return {
 		status: response.status,

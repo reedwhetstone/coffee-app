@@ -117,7 +117,7 @@ describe('api docs contract', () => {
 		);
 	});
 
-	it('documents the catalog map contract without claiming unfinished clients', () => {
+	it('documents the preview-gated web client without claiming rollout or machine-client support', () => {
 		const mapPage = getDocsPage('api', 'catalog-map');
 		expect(mapPage).toBeDefined();
 
@@ -146,8 +146,9 @@ describe('api docs contract', () => {
 		expect(serializedMap).not.toContain('Premium map parameters return 403.');
 		expect(serializedMap).not.toContain('Member/admin or paid API tier');
 		expect(serializedMap).toContain(
-			'does not yet expose a public /api/catalog/map BFF or MapLibre interface.'
+			'includes a preview-gated MapLibre experience through the first-party /api/catalog/map BFF.'
 		);
+		expect(serializedMap).toContain('It is not a public API contract');
 		expect(serializedMap).toContain(
 			'The purvey CLI manifest and Cherry tool schemas do not currently advertise map commands'
 		);

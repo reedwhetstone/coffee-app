@@ -38,6 +38,8 @@
 		onToggleTrack = undefined,
 		showCatalogLink = false,
 		initialDetailsOpen = false,
+		detailCloseLabel = 'Close',
+		onDetailClose = undefined,
 		detailContent
 	} = $props<{
 		coffee: CoffeeCatalog;
@@ -57,6 +59,10 @@
 		showCatalogLink?: boolean;
 		/** Open the detail panel on mount (used by /catalog?coffee=<id> deep links). */
 		initialDetailsOpen?: boolean;
+		/** Optional context-specific label for leaving the detail panel. */
+		detailCloseLabel?: string;
+		/** Optional context owner notified after the detail panel closes. */
+		onDetailClose?: () => void;
 		/** Optional page-specific body rendered inside the canonical detail pop-out shell. */
 		detailContent?: Snippet;
 	}>();
@@ -301,6 +307,7 @@
 	function closeDetails() {
 		detailsOpen = false;
 		activeTab = 'overview';
+		onDetailClose?.();
 	}
 
 	function handleDialogKeydown(event: KeyboardEvent) {
@@ -530,24 +537,29 @@
 </article>
 
 {#if detailsOpen}
-	<div class="pointer-events-none fixed inset-y-0 right-0 z-50 flex w-full justify-end">
+	<div
+		class="pointer-events-none fixed inset-0 z-[70] flex w-full items-end justify-end overflow-hidden md:items-stretch"
+		data-coffee-detail-layer
+	>
 		<aside
-			class="pointer-events-auto flex h-dvh w-full flex-col overflow-hidden border-l border-line bg-surface-canvas shadow-2xl sm:max-w-xl xl:max-w-2xl"
+			class="pointer-events-auto flex h-[calc(100dvh-4.5rem)] max-h-[calc(100dvh-4.5rem)] min-h-0 w-full max-w-full flex-col overflow-hidden rounded-t-2xl border-l border-line bg-surface-canvas shadow-2xl sm:max-w-xl md:h-[100dvh] md:max-h-[100dvh] md:rounded-none xl:max-w-2xl"
 			aria-labelledby="coffee-detail-title-{coffee.id}"
 		>
-			<header class="border-b border-line bg-surface-canvas px-4 py-4 md:px-6">
-				<div class="flex items-start justify-between gap-4">
-					<div>
+			<header
+				class="max-w-full shrink-0 overflow-hidden border-b border-line bg-surface-canvas px-4 py-4 md:px-6"
+			>
+				<div class="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:gap-4">
+					<div class="min-w-0">
 						<p class="text-xs font-semibold text-organic-rust">
 							{supplierName}
 						</p>
 						<h2
 							id="coffee-detail-title-{coffee.id}"
-							class="mt-1 text-2xl font-semibold leading-tight tracking-tight text-ink"
+							class="mt-1 break-words text-xl font-semibold leading-tight tracking-tight text-ink sm:text-2xl"
 						>
 							{coffee.name}
 						</h2>
-						<p class="mt-1 text-sm text-muted">{longLocationSummary}</p>
+						<p class="mt-1 break-words text-sm text-muted">{longLocationSummary}</p>
 						{#if coffee.link || showCatalogLink}
 							<div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
 								{#if coffee.link}
@@ -581,10 +593,10 @@
 					</div>
 					<button
 						type="button"
-						class="rounded-md border border-line px-3 py-2 text-sm font-semibold text-muted transition-colors hover:border-accent hover:text-accent"
+						class="min-h-11 shrink-0 whitespace-nowrap rounded-md border border-line px-3 py-2 text-sm font-semibold text-muted transition-colors hover:border-accent hover:text-accent"
 						onclick={closeDetails}
 					>
-						Close
+						{detailCloseLabel}
 					</button>
 				</div>
 				{#if !detailContent}
@@ -612,7 +624,7 @@
 			</header>
 
 			<div
-				class="overflow-y-auto bg-surface-panel/45 px-4 py-5 md:px-6"
+				class="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-surface-panel/45 px-4 py-5 md:px-6"
 				data-coffee-detail-scroll-region
 			>
 				{#if detailContent}

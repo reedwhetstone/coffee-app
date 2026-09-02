@@ -299,7 +299,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Parchment API',
 		intro: [
 			'The Parchment API and Parchment Console form the API layer inside Purveyors. They expose normalized green coffee catalog data, authorized origin-map projections, beta catalog similarity matching, and aggregate market intelligence through small public HTTP contracts plus a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
-			'The stable public catalog family includes GET https://api.purveyors.io/v1/catalog and GET /v1/catalog/map. Production catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages remain browsable without a user login because the coffee-app BFF presents a server-held public/demo key upstream. The map route uses the same caller-visible catalog scope, but the public coffee-app map BFF and map interface are not released yet. Deliberately designated Market Index teaser slices remain anonymous as a narrow route contract. GET /v1/catalog/{id}/similar is a beta member-session and scoped API-key route for candidate matching, not a canonical identity claim. GET /v1/price-index is an authenticated Parchment Intelligence contract for aggregate price_index_snapshots data only; it accepts entitled first-party sessions and customer API keys. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most coffee-app /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, Cherry Runtime, workspaces, billing, and admin tooling.'
+			'The stable public catalog family includes GET https://api.purveyors.io/v1/catalog and GET /v1/catalog/map. Production catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages remain browsable without a user login because the coffee-app BFF presents a server-held public/demo key upstream. Coffee-app now has a preview-gated first-party map BFF and MapLibre catalog experience, but that browser route is not a public integration contract and the list remains the default until rollout QA is complete. Deliberately designated Market Index teaser slices remain anonymous as a narrow route contract. GET /v1/catalog/{id}/similar is a beta member-session and scoped API-key route for candidate matching, not a canonical identity claim. GET /v1/price-index is an authenticated Parchment Intelligence contract for aggregate price_index_snapshots data only; it accepts entitled first-party sessions and customer API keys. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most coffee-app /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, Cherry Runtime, workspaces, billing, and admin tooling.'
 		],
 		sections: [
 			{
@@ -911,11 +911,11 @@ const docsPages: DocsPage[] = [
 		slug: 'catalog-map',
 		title: 'Catalog map API',
 		summary:
-			'GET /v1/catalog/map returns lightweight authorized clusters, canonical place features, explicit catalog totals, and elevation profiles.',
+			'GET /v1/catalog/map returns lightweight authorized clusters, named location groups, canonical place features, explicit catalog totals, and elevation profiles.',
 		eyebrow: 'Public endpoint',
 		intro: [
-			'GET https://api.purveyors.io/v1/catalog/map is the spatial projection of the canonical catalog. Parchment resolves catalog visibility, wholesale scope, filters, entitlement, notices, and plan limits before it creates clusters or place features.',
-			'The route is intentionally smaller than GET /v1/catalog. It returns map-ready clusters and places, global and viewport counts, access metadata, and an optional elevation profile. Hydrate full coffee details through the catalog endpoint after a user selects a single catalog ID.',
+			'GET https://api.purveyors.io/v1/catalog/map is the spatial projection of the canonical catalog. Parchment resolves catalog visibility, wholesale scope, filters, entitlement, notices, and plan limits before it creates clusters, semantic location groups, or place features.',
+			'The route is intentionally smaller than GET /v1/catalog. It returns map-ready features, contained catalog IDs, global and viewport counts, access metadata, and an optional elevation profile. Hydrate full coffee details through the catalog endpoint only after a user selects a location or single catalog ID.',
 			'Country and region centroids remain labeled at their real geographic precision. Canonical place IDs and bounded provenance describe what is known without exposing raw supplier text, aliases, resolver evidence, source URLs, or observation identities.'
 		],
 		sections: [
@@ -1004,6 +1004,11 @@ const docsPages: DocsPage[] = [
 						],
 						['zoom', 'All callers', 'Integer Web Mercator clustering zoom from 0 through 22.'],
 						[
+							'projection',
+							'All callers',
+							'clusters (default) groups features into Web Mercator tiles. locations groups placements by canonical place and returns stable named location features with catalog_ids for contained-result interaction.'
+						],
+						[
 							'lens',
 							'catalog for all; elevation for member/admin sessions or customer API keys on any API plan',
 							'catalog returns the geographic projection. elevation additionally returns numeric bounds on place features and the aggregate elevation_profile.'
@@ -1041,6 +1046,7 @@ const docsPages: DocsPage[] = [
 				title: 'Feature precision and safe provenance',
 				bullets: [
 					'Cluster features carry bounds, placement_count, unique_coffee_count, and catalog_ids for contained-result interaction. Selecting a cluster should zoom or open that set, not choose an arbitrary coffee.',
+					'Location features carry a stable canonical_name, place_type, geographic_precision, coordinate_kind, placement and unique-coffee counts, and catalog_ids. They group coffees that honestly share one canonical coordinate instead of scattering them into invented points.',
 					'Place features carry catalog_id, canonical_name, place_type, geographic_precision, coordinate_kind, assignment role, bounded provenance enums, confidence, and optional elevation bounds.',
 					'Public-safe features may be coarsened to positioned country or region ancestors. A country or region centroid remains labeled as centroid precision and is never presented as an exact farm.',
 					'Raw supplier text, raw aliases, canonical keys, resolver evidence, source references, evidence quotes, and observation identities are not response fields.'
@@ -1060,7 +1066,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'Trusted server applications can call GET /v1/catalog/map directly. Never expose a Parchment API key in browser JavaScript.',
 					'The canonical generated API reference remains https://api.purveyors.io/docs. It owns the exhaustive schema and is the source of truth when this guide is abbreviated.',
-					'The Purveyors web catalog is currently list-first and does not yet expose a public /api/catalog/map BFF or MapLibre interface.',
+					'The Purveyors web catalog includes a preview-gated MapLibre experience through the first-party /api/catalog/map BFF. It is not a public API contract; the list remains the default and recovery path until rollout QA is complete.',
 					'The purvey CLI manifest and Cherry tool schemas do not currently advertise map commands, place_id navigation, bounding boxes, or the elevation lens. Use the HTTP contract instead of assuming local filter support.'
 				],
 				callout: {

@@ -16,6 +16,7 @@
 	}
 
 	interface Props {
+		layout?: 'grid' | 'rail';
 		isSignedIn: boolean;
 		displayData: CoffeeCatalog[];
 		isLoadingMore: boolean;
@@ -38,6 +39,7 @@
 	}
 
 	let {
+		layout = 'grid',
 		isSignedIn,
 		displayData,
 		isLoadingMore,
@@ -153,7 +155,11 @@
 						</div>
 					</div>
 				{/if}
-				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+				<div
+					class="grid grid-cols-1 gap-4 {layout === 'rail'
+						? ''
+						: 'sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'}"
+				>
 					{#each isSignedIn ? displayData : displayData.slice(0, 15) as coffee (catalogCoffeeCardKey(coffee))}
 						<CoffeeCard
 							{coffee}

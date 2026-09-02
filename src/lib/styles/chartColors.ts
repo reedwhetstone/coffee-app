@@ -62,6 +62,16 @@ export const WHOLESALE_COLOR = '#4E8098';
 export const MARKER_PRIMARY = '#C05B2E';
 export const MARKER_SECONDARY = '#7FB069';
 
+/** Elevation bands, ordered low to high, with a neutral fallback for incomplete evidence. */
+export const ELEVATION_BAND_COLORS = {
+	below1000: '#8FA382',
+	from1000To1399: '#D9A05B',
+	from1400To1799: '#C05B2E',
+	from1800To2199: '#9C4356',
+	from2200: '#4E8098',
+	unknown: '#695C4D'
+} as const;
+
 /** Catalog movement series (arrivals in, delistings out). */
 export const ARRIVAL_COLOR = '#7FB069';
 export const DELISTING_COLOR = '#9C4356';

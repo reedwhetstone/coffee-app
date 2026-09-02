@@ -92,6 +92,7 @@
 		"jose": "^5.9.6",
 		"jwt-decode": "^4.0.0",
 		"layercake": "^10.0.2",
+		"maplibre-gl": "6.6.0",
 		"marked": "17.0.1",
 		"playwright": "^1.58.1",
 		"pnpm": "^10.28.1",

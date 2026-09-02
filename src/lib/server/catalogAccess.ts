@@ -1,6 +1,9 @@
 import type { ApiPlan, RequestPrincipal } from '$lib/server/principal';
 import { checkRole, type UserRole } from '$lib/types/auth.types';
-import { PREMIUM_DISCOVERY_FILTER_KEYS } from '$lib/catalog/accessPolicy';
+import {
+	PREMIUM_DISCOVERY_FILTER_KEYS,
+	PREMIUM_DISCOVERY_QUERY_KEYS
+} from '$lib/catalog/accessPolicy';
 
 export interface CatalogAccessCapabilities {
 	canViewPublicCatalog: boolean;
@@ -108,7 +111,7 @@ export function getRequestedProcessFacetParams(searchParams: URLSearchParams): s
 }
 
 export function getRequestedPremiumDiscoveryParams(searchParams: URLSearchParams): string[] {
-	return PREMIUM_DISCOVERY_FILTER_KEYS.filter((key) => hasNonEmptyParamValue(searchParams, key));
+	return PREMIUM_DISCOVERY_QUERY_KEYS.filter((key) => hasNonEmptyParamValue(searchParams, key));
 }
 
 export function createCatalogAccessDeniedNotice(input: {
