@@ -36,6 +36,8 @@ const maplibre = vi.hoisted(() => {
 			getEast: () => 190,
 			getNorth: () => 10
 		})),
+		getLayer: vi.fn(() => ({})),
+		setPaintProperty: vi.fn(),
 		easeTo: vi.fn(),
 		jumpTo: vi.fn()
 	};
@@ -151,6 +153,37 @@ describe('CatalogMapCanvas worker integration', () => {
 			zoom: 7,
 			duration: 350
 		});
+	});
+
+	it('warms the default basemap with the Purveyors field-journal palette', async () => {
+		render(CatalogMapCanvas, {
+			items: [],
+			lens: 'catalog',
+			center: [0, 18],
+			zoom: 1.75,
+			onViewportChange: vi.fn(),
+			onPlaceSelect: vi.fn()
+		});
+
+		await waitFor(() => expect(maplibre.constructMap).toHaveBeenCalledOnce());
+		loadMap();
+
+		expect(maplibre.fakeMap.setPaintProperty).toHaveBeenCalledWith(
+			'background',
+			'background-color',
+			'#F7F3ED'
+		);
+		expect(maplibre.fakeMap.setPaintProperty).toHaveBeenCalledWith(
+			'water',
+			'fill-color',
+			'#DCE6E4'
+		);
+		expect(maplibre.fakeMap.setPaintProperty).toHaveBeenCalledWith('park', 'fill-color', '#E6EADF');
+		expect(maplibre.fakeMap.setPaintProperty).toHaveBeenCalledWith(
+			'label_country_1',
+			'text-color',
+			'#302F2A'
+		);
 	});
 
 	it('shows shared-location context and keeps single-origin selection wired to details', async () => {

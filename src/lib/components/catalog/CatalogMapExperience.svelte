@@ -468,21 +468,23 @@
 		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-surface-panel px-4 py-3"
 	>
 		<div>
-			<p class="text-xs font-semibold uppercase tracking-[0.16em] text-organic-rust">
-				Explore coffee origins
-			</p>
+			<h2 class="text-sm font-semibold text-ink">Explore coffee origins</h2>
 			<p class="mt-1 text-sm text-muted">
 				Browse coffees by origin. Bubble numbers count mapped placements; multi-origin coffees may
 				appear in more than one place.
 			</p>
 		</div>
-		<div class="flex flex-wrap items-center gap-2" aria-label="Map lens controls">
+		<div
+			class="inline-flex rounded-lg border border-line bg-surface-raised p-1"
+			aria-label="Map lens controls"
+		>
 			<button
 				type="button"
-				class="rounded-md px-3 py-2 text-sm font-medium ring-1 transition-colors {currentState.lens ===
+				aria-pressed={currentState.lens === 'catalog'}
+				class="rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent {currentState.lens ===
 				'catalog'
-					? 'bg-ink text-surface-canvas ring-ink'
-					: 'bg-surface-raised text-ink ring-line hover:ring-accent'}"
+					? 'bg-accent text-ink shadow-sm'
+					: 'text-muted hover:bg-surface-panel hover:text-ink'}"
 				onclick={() => setLens('catalog')}
 			>
 				Catalog
@@ -490,32 +492,32 @@
 			<button
 				type="button"
 				disabled={!canUseElevation}
+				aria-pressed={currentState.lens === 'elevation'}
 				aria-describedby={!canUseElevation ? 'elevation-access-note' : undefined}
-				class="rounded-md px-3 py-2 text-sm font-medium ring-1 transition-colors disabled:cursor-not-allowed disabled:opacity-45 {currentState.lens ===
+				class="rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-45 {currentState.lens ===
 				'elevation'
-					? 'bg-intelligence text-white ring-intelligence'
-					: 'bg-surface-raised text-ink ring-line hover:ring-intelligence'}"
+					? 'bg-accent text-ink shadow-sm'
+					: 'text-muted hover:bg-surface-panel hover:text-ink'}"
 				onclick={() => setLens('elevation')}
 			>
 				Elevation
 			</button>
 			{#if currentState.lens === 'elevation'}
-				<div
-					class="ml-1 flex rounded-md bg-surface-raised p-1 ring-1 ring-line"
-					aria-label="Elevation units"
-				>
+				<div class="ml-2 flex border-l border-line pl-2" aria-label="Elevation units">
 					<button
 						type="button"
-						class="rounded px-2 py-1 text-xs font-semibold {currentState.units === 'masl'
-							? 'bg-accent text-ink'
-							: 'text-muted'}"
+						class="rounded px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent {currentState.units ===
+						'masl'
+							? 'bg-accent-subtle/40 text-ink'
+							: 'text-muted hover:bg-surface-panel hover:text-ink'}"
 						onclick={() => setUnits('masl')}>MASL</button
 					>
 					<button
 						type="button"
-						class="rounded px-2 py-1 text-xs font-semibold {currentState.units === 'ft'
-							? 'bg-accent text-ink'
-							: 'text-muted'}"
+						class="rounded px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent {currentState.units ===
+						'ft'
+							? 'bg-accent-subtle/40 text-ink'
+							: 'text-muted hover:bg-surface-panel hover:text-ink'}"
 						onclick={() => setUnits('ft')}>Feet</button
 					>
 				</div>
@@ -597,7 +599,7 @@
 							></span
 						>
 					</div>
-					<ul class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5" aria-label="Elevation key">
+					<ul class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3" aria-label="Elevation key">
 						{#each profile.bands as band, index}
 							<li class="flex items-center gap-2 text-xs text-muted">
 								<span
@@ -648,7 +650,7 @@
 				<button
 					type="submit"
 					disabled={!canUseElevation}
-					class="rounded-md bg-intelligence px-3 py-2 text-sm font-medium text-white disabled:opacity-45"
+					class="rounded-md bg-accent px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-accent/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-45"
 					>Apply range</button
 				>
 				{#if elevationRange}
@@ -671,7 +673,7 @@
 	{/if}
 
 	<div
-		class="relative h-[clamp(26rem,72dvh,46rem)] overflow-hidden rounded-xl border border-line bg-surface-panel lg:flex lg:h-[46rem]"
+		class="relative h-[clamp(26rem,72dvh,46rem)] overflow-hidden rounded-lg border border-line bg-surface-panel lg:flex lg:h-[46rem]"
 	>
 		<div class="relative h-full min-w-0 flex-1">
 			{#if rendererError}
@@ -710,7 +712,7 @@
 					<button
 						type="button"
 						disabled={!canSearchViewport}
-						class="rounded-md bg-ink px-3 py-2 text-xs font-semibold text-surface-canvas shadow disabled:cursor-not-allowed disabled:opacity-50"
+						class="rounded-md bg-accent px-3 py-2 text-xs font-semibold text-ink shadow-sm transition-colors hover:bg-accent/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 						onclick={searchPendingViewport}
 					>
 						{canSearchViewport ? 'Search this area' : 'Upgrade to search this area'}
@@ -801,10 +803,8 @@
 				{#if focusedCoffee}
 					<div class="mb-3 flex items-start justify-between gap-3 border-b border-line pb-3">
 						<div>
-							<p class="text-xs font-semibold uppercase tracking-[0.14em] text-organic-rust">
-								Selected coffee
-							</p>
-							<h2 class="mt-1 font-display text-xl font-semibold text-ink">
+							<p class="text-xs font-semibold text-muted">Selected coffee</p>
+							<h2 class="mt-1 text-lg font-semibold text-ink">
 								{focusedCoffee.name}
 							</h2>
 						</div>
@@ -824,10 +824,10 @@
 					<div class="mb-3 border-b border-line pb-3">
 						<div class="flex items-start justify-between gap-3">
 							<div>
-								<p class="text-xs font-semibold uppercase tracking-[0.14em] text-organic-rust">
+								<p class="text-xs font-semibold text-muted">
 									{clusterSelection.precisionLabel}
 								</p>
-								<h2 class="mt-1 font-display text-xl font-semibold text-ink">
+								<h2 class="mt-1 text-lg font-semibold text-ink">
 									{clusterSelection.label}
 								</h2>
 							</div>

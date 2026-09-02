@@ -1,5 +1,6 @@
 import type { CatalogMapResponse } from '@purveyors/sdk';
 import type { CatalogMapBounds, ElevationDisplayUnit } from './mapState';
+import { ELEVATION_BAND_COLORS } from '$lib/styles/chartColors';
 
 export type CatalogMapItem = CatalogMapResponse['data'][number];
 export type CatalogMapPlace = Extract<CatalogMapItem, { type: 'place' }>;
@@ -51,12 +52,28 @@ export interface CatalogMapGeoJson {
 }
 
 export const ELEVATION_BANDS = [
-	{ key: 'below_1000', label: 'Below 1,000 MASL', color: '#8FA382' },
-	{ key: '1000_to_1399', label: '1,000–1,399 MASL', color: '#D9A05B' },
-	{ key: '1400_to_1799', label: '1,400–1,799 MASL', color: '#C05B2E' },
-	{ key: '1800_to_2199', label: '1,800–2,199 MASL', color: '#9C4356' },
-	{ key: '2200_and_above', label: '2,200+ MASL', color: '#6D5BD0' },
-	{ key: 'partial_or_unknown', label: 'Elevation unavailable', color: '#695C4D' }
+	{ key: 'below_1000', label: 'Below 1,000 MASL', color: ELEVATION_BAND_COLORS.below1000 },
+	{
+		key: '1000_to_1399',
+		label: '1,000–1,399 MASL',
+		color: ELEVATION_BAND_COLORS.from1000To1399
+	},
+	{
+		key: '1400_to_1799',
+		label: '1,400–1,799 MASL',
+		color: ELEVATION_BAND_COLORS.from1400To1799
+	},
+	{
+		key: '1800_to_2199',
+		label: '1,800–2,199 MASL',
+		color: ELEVATION_BAND_COLORS.from1800To2199
+	},
+	{ key: '2200_and_above', label: '2,200+ MASL', color: ELEVATION_BAND_COLORS.from2200 },
+	{
+		key: 'partial_or_unknown',
+		label: 'Elevation unavailable',
+		color: ELEVATION_BAND_COLORS.unknown
+	}
 ] as const;
 
 const CATALOG_POINT_COLOR = '#C05B2E';

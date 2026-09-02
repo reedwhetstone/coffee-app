@@ -65,6 +65,53 @@
 	let resizeObserver: ResizeObserver | null = null;
 	let resizeFrame: number | null = null;
 
+	const BASEMAP_PAINT_OVERRIDES = [
+		['background', 'background-color', '#F7F3ED'],
+		['park', 'fill-color', '#E6EADF'],
+		['water', 'fill-color', '#DCE6E4'],
+		['landuse_residential', 'fill-color', '#F1ECE6'],
+		['landcover_wood', 'fill-color', '#E2E8DC'],
+		['waterway', 'line-color', '#B8C9C6'],
+		['building', 'fill-color', '#ECE5DC'],
+		['building', 'fill-outline-color', '#D8CEC2'],
+		['highway_path', 'line-color', '#E7E0D8'],
+		['highway_minor', 'line-color', '#DED6CD'],
+		['highway_major_casing', 'line-color', '#D7CDC1'],
+		['highway_major_inner', 'line-color', '#FFFDFB'],
+		['highway_motorway_casing', 'line-color', '#D7CDC1'],
+		['boundary_3', 'line-color', '#BAAFA3'],
+		['boundary_2', 'line-color', '#BAAFA3'],
+		['boundary_disputed', 'line-color', '#BAAFA3'],
+		['water_name_point_label', 'text-color', '#4E8098'],
+		['water_name_point_label', 'text-halo-color', '#FCFAF8'],
+		['water_name_line_label', 'text-color', '#4E8098'],
+		['water_name_line_label', 'text-halo-color', '#FCFAF8'],
+		['label_other', 'text-color', '#695C4D'],
+		['label_other', 'text-halo-color', '#FCFAF8'],
+		['label_village', 'text-color', '#695C4D'],
+		['label_village', 'text-halo-color', '#FCFAF8'],
+		['label_town', 'text-color', '#302F2A'],
+		['label_town', 'text-halo-color', '#FCFAF8'],
+		['label_state', 'text-color', '#695C4D'],
+		['label_state', 'text-halo-color', '#FCFAF8'],
+		['label_city', 'text-color', '#302F2A'],
+		['label_city', 'text-halo-color', '#FCFAF8'],
+		['label_city_capital', 'text-color', '#302F2A'],
+		['label_city_capital', 'text-halo-color', '#FCFAF8'],
+		['label_country_3', 'text-color', '#302F2A'],
+		['label_country_3', 'text-halo-color', '#FCFAF8'],
+		['label_country_2', 'text-color', '#302F2A'],
+		['label_country_2', 'text-halo-color', '#FCFAF8'],
+		['label_country_1', 'text-color', '#302F2A'],
+		['label_country_1', 'text-halo-color', '#FCFAF8']
+	] as const;
+
+	function applyPurveyorsBasemapTheme(currentMap: MapLibreMap) {
+		for (const [layerId, property, color] of BASEMAP_PAINT_OVERRIDES) {
+			if (currentMap.getLayer(layerId)) currentMap.setPaintProperty(layerId, property, color);
+		}
+	}
+
 	function readProperties(event: MapLayerMouseEvent): Record<string, unknown> | null {
 		const properties = event.features?.[0]?.properties;
 		return properties ? (properties as Record<string, unknown>) : null;
@@ -254,6 +301,7 @@
 
 				map.on('load', () => {
 					if (!map) return;
+					applyPurveyorsBasemapTheme(map);
 					map.addSource('catalog-map', {
 						type: 'geojson',
 						data: toCatalogMapGeoJson(items, lens),
@@ -457,6 +505,46 @@
 
 <div
 	bind:this={container}
-	class="h-full min-h-0 w-full bg-surface-panel"
+	class="catalog-map-canvas h-full min-h-0 w-full bg-surface-panel"
 	aria-label="Interactive catalog origin map. Use the adjacent feature list for an accessible alternative."
 ></div>
+
+<style>
+	:global(.catalog-map-canvas .maplibregl-ctrl-group) {
+		overflow: hidden;
+		border: 1px solid #e4e4e2;
+		border-radius: 0.375rem;
+		background: #fcfaf8;
+		box-shadow: 0 1px 3px rgb(48 47 42 / 0.14);
+	}
+
+	:global(.catalog-map-canvas .maplibregl-ctrl-group button) {
+		width: 2.75rem;
+		height: 2.75rem;
+	}
+
+	:global(.catalog-map-canvas .maplibregl-ctrl-group button + button) {
+		border-top-color: #e4e4e2;
+	}
+
+	:global(.catalog-map-canvas .maplibregl-ctrl-group button:not(:disabled):hover) {
+		background-color: rgb(249 165 123 / 0.2);
+	}
+
+	:global(.catalog-map-canvas .maplibregl-ctrl-group button:focus-visible) {
+		outline: 2px solid #f9a57b;
+		outline-offset: -2px;
+	}
+
+	:global(.catalog-map-canvas .maplibregl-ctrl-attrib) {
+		background: rgb(252 250 248 / 0.9);
+		color: #695c4d;
+	}
+
+	@media (min-width: 640px) {
+		:global(.catalog-map-canvas .maplibregl-ctrl-group button) {
+			width: 2.25rem;
+			height: 2.25rem;
+		}
+	}
+</style>

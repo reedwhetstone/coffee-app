@@ -63,6 +63,9 @@ describe('catalog map presentation semantics', () => {
 	it('uses complete interval midpoints for bands and leaves partial bounds neutral', () => {
 		expect(elevationBandForPlace(place).key).toBe('1400_to_1799');
 		expect(
+			elevationBandForPlace({ ...place, elevation_min_masl: 2200, elevation_max_masl: 2600 })
+		).toMatchObject({ key: '2200_and_above', color: '#4E8098' });
+		expect(
 			elevationBandForPlace({ ...place, elevation_min_masl: 1800, elevation_max_masl: null }).key
 		).toBe('partial_or_unknown');
 	});

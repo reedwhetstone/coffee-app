@@ -158,6 +158,40 @@ describe('CatalogMapExperience', () => {
 		);
 	});
 
+	it('uses the brand accent for elevation controls instead of intelligence purple', async () => {
+		const response = mapResponse();
+		response.meta.access.elevationProfile = true;
+		response.meta.effective.lens = 'elevation';
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(
+				async () =>
+					new Response(JSON.stringify(response), {
+						status: 200,
+						headers: { 'Content-Type': 'application/json' }
+					})
+			)
+		);
+		renderExperience(true, {
+			...DEFAULT_CATALOG_MAP_STATE,
+			view: 'map',
+			lens: 'elevation'
+		});
+
+		await screen.findByText('9');
+		const elevationButton = screen.getByRole('button', { name: 'Elevation' });
+
+		await waitFor(() => {
+			expect(elevationButton).toHaveClass('bg-accent', 'text-ink');
+			expect(elevationButton).toHaveAttribute('aria-pressed', 'true');
+		});
+		expect(screen.getByRole('button', { name: 'Apply range' })).toHaveClass(
+			'bg-accent',
+			'text-ink'
+		);
+		expect(document.body.innerHTML).not.toContain('bg-intelligence');
+	});
+
 	it('hydrates a single entitled row instead of opening raw map data', async () => {
 		vi.stubGlobal(
 			'fetch',
