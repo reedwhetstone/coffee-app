@@ -172,6 +172,7 @@
 		const timeout = setTimeout(() => {
 			mapLoading = true;
 			mapRequestError = null;
+			mapResponse = null;
 			void fetch(`/api/catalog/map?${query}`, { signal: controller.signal })
 				.then(async (response) => {
 					const body = (await response.json()) as CatalogMapUiResponse & {
@@ -200,6 +201,7 @@
 				})
 				.catch((error) => {
 					if (controller.signal.aborted) return;
+					mapResponse = null;
 					mapLoading = false;
 					mapRequestError = error instanceof Error ? error.message : 'Map data is unavailable.';
 				});
@@ -357,7 +359,9 @@
 
 	async function openSelectedCoffee(catalogId: number) {
 		selectedCoffeeError = null;
-		if (!(await onSelectCoffee(catalogId))) {
+		if (await onSelectCoffee(catalogId)) {
+			clearMapSelection();
+		} else {
 			selectedCoffeeError = "We couldn't open that coffee. Try again.";
 		}
 	}
@@ -428,7 +432,7 @@
 				Explore coffee origins
 			</p>
 			<p class="mt-1 text-sm text-muted">
-				Browse coffees by origin. Bubble numbers count mapped origins; multi-origin coffees may
+				Browse coffees by origin. Bubble numbers count mapped placements; multi-origin coffees may
 				appear in more than one place.
 			</p>
 		</div>
@@ -772,8 +776,7 @@
 						{/if}
 						<p class="mt-2 text-sm text-muted">
 							{coffeeCountLabel(clusterSelection.coffeeMatchCount)} across
-							{clusterSelection.mappedOriginCount.toLocaleString()} mapped
-							{clusterSelection.mappedOriginCount === 1 ? 'origin' : 'origins'}.
+							{clusterSelection.mappedOriginCount.toLocaleString()} mapped placements.
 						</p>
 						{#if clusterSelection.kind === 'location' && /area/i.test(clusterSelection.precisionLabel)}
 							<p

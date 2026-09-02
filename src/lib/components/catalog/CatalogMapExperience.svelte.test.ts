@@ -111,14 +111,12 @@ describe('CatalogMapExperience', () => {
 
 		await waitFor(() => expect(screen.getByText('9')).toBeInTheDocument());
 		expect(
-			screen.getByText(/Browse coffees by origin\. Bubble numbers count mapped origins/)
+			screen.getByText(/Browse coffees by origin\. Bubble numbers count mapped placements/)
 		).toBeInTheDocument();
 		expect(screen.getByText('2')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Elevation' })).toBeDisabled();
 		expect(screen.getByText('Existing catalog results remain available')).toBeInTheDocument();
-		expect(document.body).not.toHaveTextContent(
-			/\b(placements|canonical|entitled|viewport|evidence)\b/i
-		);
+		expect(document.body).not.toHaveTextContent(/\b(canonical|entitled|viewport|evidence)\b/i);
 		expect(fetchSpy).toHaveBeenCalledTimes(1);
 		expect(fetchSpy.mock.calls[0][0].toString()).toContain('/api/catalog/map?');
 		expect(fetchSpy.mock.calls[0][0].toString()).toContain('lens=catalog');
@@ -209,7 +207,7 @@ describe('CatalogMapExperience', () => {
 		expect(await screen.findByText('Sidama Natural')).toBeInTheDocument();
 		expect(screen.getByText('Kenya AA')).toBeInTheDocument();
 		expect(screen.getByText('Ethiopia and Kenya')).toBeInTheDocument();
-		expect(screen.getByText(/2 coffees across 12 mapped origins/)).toBeInTheDocument();
+		expect(screen.getByText(/2 coffees across 12 mapped placements/)).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'All results' })).toBeInTheDocument();
 		expect(fetchSpy.mock.calls[1][0].toString()).toContain('ids=42%2C43');
 	});
@@ -295,6 +293,44 @@ describe('CatalogMapExperience', () => {
 		expect(fetchSpy.mock.calls[2][0].toString()).toContain('limit=5');
 	});
 
+	it('clears grouped results before mounting the selected coffee detail rail', async () => {
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const body = input.toString().startsWith('/api/catalog/map?')
+				? mapResponse()
+				: {
+						data: [
+							{
+								id: 42,
+								name: 'Sidama Natural',
+								source: 'Royal Coffee',
+								country: 'Ethiopia',
+								region: 'Sidama',
+								processing: 'Natural',
+								cost_lb: 7.25,
+								price_per_lb: 7.25,
+								price_tiers: null
+							}
+						]
+					};
+			return new Response(JSON.stringify(body), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' }
+			});
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+		renderExperience(true);
+
+		await screen.findByText('9');
+		await fireEvent.click(screen.getByRole('button', { name: 'Simulate cluster selection' }));
+		await screen.findByText('Sidama Natural');
+		await fireEvent.click(screen.getByRole('button', { name: /Sidama Natural/ }));
+
+		expect(
+			await screen.findByText('Existing catalog results remain available')
+		).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'All results' })).not.toBeInTheDocument();
+	});
+
 	it('keeps the list rail and a clear recovery path when map data fails', async () => {
 		vi.stubGlobal(
 			'fetch',
@@ -365,7 +401,7 @@ describe('CatalogMapExperience', () => {
 	});
 
 	it('keeps returned features keyboard-reachable when the accessible list is opened', async () => {
-		const clusters = Array.from({ length: 13 }, (_, index) => ({
+		const clusters = Array.from({ length: 49 }, (_, index) => ({
 			type: 'cluster',
 			id: `cluster-${index}`,
 			longitude: index,
@@ -391,8 +427,40 @@ describe('CatalogMapExperience', () => {
 		await fireEvent.click(await screen.findByText(/Browse map locations/));
 		await waitFor(() => {
 			const buttons = screen.getAllByRole('button', { name: /coffee.*zoom in to explore/i });
-			expect(buttons).toHaveLength(13);
+			expect(buttons).toHaveLength(48);
 		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Show more locations' }));
+		expect(
+			await screen.findByRole('button', { name: /49 coffees.*zoom in to explore/i })
+		).toBeInTheDocument();
+	});
+
+	it('clears stale map features when a refreshed request fails', async () => {
+		const responseBody = mapResponse();
+		responseBody.meta.access.viewportSearch = true;
+		const fetchSpy = vi
+			.fn()
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify(responseBody), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			)
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ error: { message: 'Projection unavailable' } }), {
+					status: 503,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			);
+		vi.stubGlobal('fetch', fetchSpy);
+		renderExperience(true);
+
+		await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+		await fireEvent.click(screen.getByRole('button', { name: 'Simulate map pan' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Search this area' }));
+		await screen.findByText("We couldn't refresh the map.");
+
+		expect(await screen.findByText('Browse map locations (0)')).toBeInTheDocument();
 	});
 
 	it('does not commit an accessible cluster bbox without viewport access', async () => {

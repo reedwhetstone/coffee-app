@@ -9,6 +9,7 @@
 		type CatalogMapPointProperties
 	} from '$lib/catalog/mapPresentation';
 	import {
+		normalizeCatalogMapLongitude,
 		normalizeCatalogMapBounds,
 		type CatalogMapBounds,
 		type CatalogMapLens
@@ -130,7 +131,7 @@
 		const currentCenter = currentMap.getCenter();
 		const currentBounds = currentMap.getBounds();
 		return {
-			center: [currentCenter.lng, currentCenter.lat],
+			center: [normalizeCatalogMapLongitude(currentCenter.lng), currentCenter.lat],
 			zoom: currentMap.getZoom(),
 			bounds: normalizeCatalogMapBounds({
 				west: currentBounds.getWest(),

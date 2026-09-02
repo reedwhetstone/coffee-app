@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
 	buildCatalogMapRequestParams,
+	DEFAULT_CATALOG_MAP_STATE,
 	formatCatalogMapBounds,
+	normalizeCatalogMapLongitude,
 	normalizeCatalogMapBounds,
 	parseCatalogMapUrlState,
 	preserveCatalogExperienceParams,
@@ -74,6 +76,17 @@ describe('catalog map URL state', () => {
 			east: -170,
 			north: 5
 		});
+	});
+
+	it('normalizes wrapped center longitudes before URL serialization', () => {
+		expect(normalizeCatalogMapLongitude(190)).toBe(-170);
+		const params = writeCatalogMapUrlState(new URLSearchParams(), {
+			...DEFAULT_CATALOG_MAP_STATE,
+			view: 'map',
+			center: [190, 18]
+		});
+
+		expect(params.get('map_center')).toBe('-170,18');
 	});
 });
 

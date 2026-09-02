@@ -4,6 +4,12 @@ const mockCreateParchmentServerClient = vi.fn();
 const mockCatalogMap = vi.fn();
 const mockResolvePrincipal = vi.fn();
 const mockResolveCatalogCredentialMode = vi.fn();
+const mockPrivateEnv = vi.hoisted(() => ({
+	CATALOG_MAP_PREVIEW_ENABLED: 'true',
+	VERCEL_ENV: 'preview'
+}));
+
+vi.mock('$env/dynamic/private', () => ({ env: mockPrivateEnv }));
 
 vi.mock('$lib/server/parchmentClient', () => ({
 	createParchmentServerClient: mockCreateParchmentServerClient,
@@ -76,6 +82,8 @@ function makeEvent(url: string, init?: RequestInit) {
 beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
+	mockPrivateEnv.CATALOG_MAP_PREVIEW_ENABLED = 'true';
+	mockPrivateEnv.VERCEL_ENV = 'preview';
 
 	mockResolvePrincipal.mockResolvedValue({ isAuthenticated: false });
 	mockResolveCatalogCredentialMode.mockReturnValue('public-demo');
@@ -92,6 +100,24 @@ beforeEach(async () => {
 });
 
 describe('/api/catalog/map route', () => {
+	it('blocks the browser BFF before credential or upstream work when preview is disabled', async () => {
+		mockPrivateEnv.CATALOG_MAP_PREVIEW_ENABLED = 'false';
+
+		const response = await GET(makeEvent('https://app.test/api/catalog/map?zoom=2'));
+
+		expect(response.status).toBe(404);
+		expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+		expect(await response.json()).toEqual({
+			error: {
+				code: 'catalog_map_preview_disabled',
+				message: 'Catalog map preview is unavailable.'
+			}
+		});
+		expect(mockResolvePrincipal).not.toHaveBeenCalled();
+		expect(mockCreateParchmentServerClient).not.toHaveBeenCalled();
+		expect(mockCatalogMap).not.toHaveBeenCalled();
+	});
+
 	it('uses the public-demo credential lane and forwards canonical map/filter params', async () => {
 		await GET(
 			makeEvent(

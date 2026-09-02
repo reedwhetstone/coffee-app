@@ -205,7 +205,7 @@ describe('CatalogMapCanvas worker integration', () => {
 		expect(onPlaceSelect).toHaveBeenCalledWith(42, 'place-id');
 	});
 
-	it('normalizes antimeridian bounds without committing a network search on pan or zoom', async () => {
+	it('normalizes antimeridian bounds and wrapped centers without committing a network search on pan or zoom', async () => {
 		const onViewportChange = vi.fn();
 		render(CatalogMapCanvas, {
 			items: [],
@@ -218,13 +218,14 @@ describe('CatalogMapCanvas worker integration', () => {
 
 		await waitFor(() => expect(maplibre.constructMap).toHaveBeenCalledOnce());
 		loadMap();
+		maplibre.fakeMap.getCenter.mockReturnValue({ lng: 190, lat: 18 });
 		const moveend = maplibre.fakeMap.on.mock.calls.find(
 			(call) => call[0] === 'moveend'
 		)?.[1] as () => void;
 		moveend();
 
 		expect(onViewportChange).toHaveBeenCalledWith({
-			center: [0, 18],
+			center: [-170, 18],
 			zoom: 1.75,
 			bounds: { west: 170, south: -10, east: -170, north: 10 },
 			commitSearch: false
