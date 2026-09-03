@@ -9,9 +9,11 @@ remains open
 **MB-4 status:** Weekly source and review-PR workflow enabled through
 coffee-scraper PRs #478-#489
 **MB-5 status:** Email projection and subscription journey shipped in
-coffee-app PRs #541 and #561; production-success draft trigger remains open
+coffee-app PRs #541 and #561; production-success draft trigger and delivered-path
+unsubscribe/suppression verification remain open
 **MB-6 status:** Web launch active through edition 002 in coffee-app PR #564;
-provider draft, send, and delivery measurement remain open
+no-login unsubscribe and provider-suppression verification, provider draft, send,
+and delivery measurement remain open
 **Owner:** Purveyors product ecosystem
 **Canonical backlog:** `notes/DEVLOG.md`
 
@@ -66,8 +68,8 @@ requirements for the weekly publication.
   existing reviewed `.svx` publication system.
 - Canonical edition 002 is live at `/blog/market-brief-002`, and `/market-wire`
   is the public reader and archive entry point.
-- The account-backed subscription journey is live. Identity, consent, and paid
-  entitlement remain separate.
+- The account-backed subscription journey and signed-in preference removal are live.
+  Identity, consent, and paid entitlement remain separate.
 - The deterministic email projection exists, but no production-success trigger
   currently submits a deployed edition to Parchment for provider-draft
   creation.
@@ -249,9 +251,11 @@ projection of the canonical edition, and production-deployment handoff required
 by the accepted Parchment contract. Coffee-app remains a consumer and renderer;
 it does not become the provider-state owner.
 
-The slice must prove that a failed deployment creates no provider draft, a
-replayed successful deployment creates no duplicate draft, and the initial send
-still requires human approval.
+The slice must verify that the deployed Parchment contract's no-login unsubscribe
+and provider-suppression behavior exclude recipients on the delivered path. It
+must also prove that a failed deployment creates no provider draft, a replayed
+successful deployment creates no duplicate draft, and the initial send still
+requires human approval.
 
 The accepted successor sequence preserves repository ownership and recovery:
 
@@ -273,11 +277,12 @@ open
 
 Continue publishing editions through the normal PR and production deployment
 path. The web launch has proved citations, coverage language, correction
-behavior, consent, unsubscribe, feed output, and weekly review visibility.
-Provider suppression, first-draft creation, send, and delivery evidence remain
-gated on the email handoff. Set growth and learning metrics only for events that
-the accepted contracts actually observe. Unimplemented signals are absent, not
-reported as zero.
+behavior, account-backed consent and signed-in preference removal, feed output,
+and weekly review visibility. No-login unsubscribe and provider suppression on
+the delivered-email path, first-draft creation, send, and delivery evidence
+remain gated on the email handoff. Set growth and learning metrics only for
+events that the accepted contracts actually observe. Unimplemented signals are
+absent, not reported as zero.
 
 ## Rollout and rollback
 
@@ -314,7 +319,8 @@ reported as zero.
 - `MB-NAMING` | Market Brief is public; `market_read` remains an internal
   compatibility key | stated in Goal | proven in this plan | PR #502 naming review
 - `MB-CONSENT` | identity, consent, entitlement, and suppression stay distinct;
-  unsubscribe works without login | mapped to MB-2, MB-3, and MB-5 | proven |
+  unsubscribe works without login | mapped to MB-2, MB-3, and MB-5 | active;
+  Parchment capability proven, coffee-app delivered-email verification open |
   Parchment PR #245 and coffee-app PR #561
 - `MB-DELIVERY` | deployment precedes draft creation; provider-confirmed events
   anchor provider metrics | mapped to MB-2, MB-3, and MB-5 | provider lifecycle
@@ -328,7 +334,9 @@ reported as zero.
   implementation instructions | proven by the historical banners and this sole
   current plan | PR #502 supersession decision
 
-The public publication, consent, projection, provider lifecycle, source, and
-cadence proofs now sit on their owning repositories' current implementation
-heads. The remaining provider-draft handoff must earn its own production canary;
-this plan does not infer that proof from the already completed predecessors.
+The public publication, account-backed consent, projection, provider lifecycle,
+source, and cadence proofs now sit on their owning repositories' current
+implementation heads. The delivered-email no-login unsubscribe and suppression
+verification, plus the remaining provider-draft handoff, must earn production-
+path proof; this plan does not infer that proof from the already completed
+predecessors.

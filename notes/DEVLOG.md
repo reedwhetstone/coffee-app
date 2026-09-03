@@ -88,8 +88,9 @@
       delivery lifecycle, and weekly review-PR workflow are live. Add the remaining
       coffee-app production-success trigger so one deployed immutable edition creates
       or replays one unsent Parchment-owned provider draft. Prove the first production
-      canary, keep human approval as the only send gate, and measure only
-      provider-confirmed delivery events.
+      canary, including delivered-path verification that no-login unsubscribe and
+      provider suppression exclude recipients, keep human approval as the only send
+      gate, and measure only provider-confirmed delivery events.
 
 - [ ] **Launch the approved self-serve repricing.** Offer Mallard Studio at $3/month,
       Parchment Intelligence at $5/month, and both products in one subscription at
