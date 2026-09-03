@@ -50,7 +50,13 @@ function mapResponse(overrides: Partial<CatalogMapResponse> = {}): CatalogMapRes
 				viewportSearch: false,
 				elevationProfile: false
 			},
-			effective: { zoom: 2, lens: 'catalog', place_id: null, bbox: null },
+			effective: {
+				zoom: 2,
+				lens: 'catalog',
+				projection: 'locations',
+				place_id: null,
+				bbox: null
+			},
 			totals: {
 				unique_coffee_count: 9,
 				placed_unique_coffee_count: 7,
