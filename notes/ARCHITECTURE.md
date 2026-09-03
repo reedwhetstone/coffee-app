@@ -164,7 +164,6 @@ replacement or retirement:
 
 - catalog and market reads from `coffee_catalog`, `market_daily_summary`, and
   `supplier_daily_stats`
-- bean-identity candidate and review operations over shared identity tables
 - sourcing brief summaries against shared catalog rows
 - legacy catalog RAG reads and `match_coffee_chunks`
 - deprecated roast compatibility reads that still query Supabase directly and
@@ -182,6 +181,12 @@ session-only thin BFF adapters. Coffee-app no longer writes `roast_profiles`,
 member-callable milestone backfill route has been retired. The deprecated
 read-only roast tool compatibility surface remains isolated for Phase 3's
 telemetry-backed caller decision.
+
+The orphaned coffee-app bean-identity candidate/review helper has also been
+retired. It had no runtime importer, route, or documented HTTP surface. The
+shared identity schema remains under Parchment migration authority; a future
+identity-review product must use a separately accepted Parchment contract rather
+than reintroducing direct identity-table or review-RPC access here.
 
 The existence of a Parchment endpoint does not prove coffee-app has migrated to
 it. The canonical backlog tracks this as the headless-cutover debt audit. Each
