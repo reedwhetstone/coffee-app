@@ -46,7 +46,13 @@ const mapBody = {
 			viewportSearch: false,
 			elevationProfile: false
 		},
-		effective: { zoom: 2, lens: 'catalog', place_id: null, bbox: null },
+		effective: {
+			zoom: 2,
+			lens: 'catalog',
+			projection: 'clusters',
+			place_id: null,
+			bbox: null
+		},
 		totals: {
 			unique_coffee_count: 15,
 			placed_unique_coffee_count: 14,
