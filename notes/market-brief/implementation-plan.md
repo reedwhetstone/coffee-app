@@ -1,9 +1,17 @@
 # Purveyors Market Brief implementation plan
 
 **Date:** 2026-08-15
-**Status:** Active
+**Updated:** 2026-09-03
+**Status:** Public publication MVP operating; production email-draft handoff
+remains open
 **MB-1 status:** Implemented in coffee-app PR #539
-**MB-5A status:** Implemented in the email-projection successor
+**MB-3 status:** Parchment lifecycle deployed and activated through PR #245
+**MB-4 status:** Weekly source and review-PR workflow enabled through
+coffee-scraper PRs #478-#489
+**MB-5 status:** Email projection and subscription journey shipped in
+coffee-app PRs #541 and #561; production-success draft trigger remains open
+**MB-6 status:** Web launch active through edition 002 in coffee-app PR #564;
+provider draft, send, and delivery measurement remain open
 **Owner:** Purveyors product ecosystem
 **Canonical backlog:** `notes/DEVLOG.md`
 
@@ -53,11 +61,16 @@ requirements for the weekly publication.
 
 ### Coffee-app
 
-- The blog already publishes reviewed `.svx` content through GitHub and Vercel.
-- `/blog`, `/blog/feed.xml`, sitemap metadata, social metadata, and the existing
-  blog content registry are the current publication surface.
-- No Market Brief format, edition navigation, archive filter, or recurring
-  generation handoff exists on `main`.
+- The Market Brief format, archive, edition navigation, canonical metadata,
+  feed, sitemap, Markdown route, and sharing surfaces are live inside the
+  existing reviewed `.svx` publication system.
+- Canonical edition 002 is live at `/blog/market-brief-002`, and `/market-wire`
+  is the public reader and archive entry point.
+- The account-backed subscription journey is live. Identity, consent, and paid
+  entitlement remain separate.
+- The deterministic email projection exists, but no production-success trigger
+  currently submits a deployed edition to Parchment for provider-draft
+  creation.
 - Account deletion is live and production-verified. It is no longer a Market
   Brief launch dependency.
 
@@ -67,18 +80,25 @@ requirements for the weekly publication.
   from identity and paid entitlement.
 - Session-authenticated read and preference mutation routes are deployed.
 - The account-deletion lifecycle removes the account-owned preference.
-- No accepted Market Brief provider-projection, no-login unsubscribe, broadcast,
-  or delivery-observation contract exists yet.
-- PADR-0021, PADR-0022, and the approved canonical market-publication plan own
-  current market facts. Their production evidence and product-authority gates are
-  active in Parchment PRs #219 and #207 as of this plan.
+- The accepted PADR-0028 lifecycle is deployed and its production capability
+  migration is applied. Parchment owns provider audience projection, no-login
+  unsubscribe, account-deletion cleanup, verified webhook settlement, and
+  immutable draft admission.
+- PADR-0021, PADR-0022, and the merged market contracts in Parchment PRs #239
+  and #242 own current market facts. The obsolete evidence and duplicate-authority
+  PRs #219 and #207 are closed and must not be revived.
+- Parchment PR #245 owns the activation boundary. The remaining integration gap
+  is coffee-app's deployed-edition handoff and first unsent provider-draft
+  canary; automatic sending remains forbidden.
 
 ### Coffee-scraper
 
-- The repo already owns supplier collection, provenance, LLM-assisted
-  enrichment, standalone jobs, and production cadence on the scraper host.
-- It does not have an accepted Market Brief source-observation contract, bounded
-  weekly source packet, edition generator, or missed-edition alert.
+- The repo owns supplier collection, provenance, bounded Market Brief source
+  packets, social evidence, deterministic validation, refinement, and edition
+  generation.
+- The weekly source and review-PR workflow is enabled under coffee-scraper
+  ownership, and its latest scheduled proof succeeded. Human merge remains the
+  publication gate.
 
 ### Historical notes
 
@@ -137,25 +157,30 @@ MVP contracts.
 ## Dependency order
 
 ```text
-MB-1 coffee-app publication format
-  + active Parchment market-publication gates
-  + MB-2 Parchment delivery decision
-      -> MB-3 Parchment delivery implementation and SDK
-  + MB-4 coffee-scraper capture and generation
-      -> MB-5 coffee-app subscriber, feed, and delivery handoff
-      -> MB-6 launch and measurement
+MB-1 coffee-app publication format [complete]
+  + Parchment market-publication gates [complete]
+  + MB-2 Parchment delivery decision [complete]
+      -> MB-3 Parchment delivery implementation and activation [complete]
+  + MB-4 coffee-scraper capture and weekly review PR [operating]
+      -> MB-5 coffee-app subscriber and projection surfaces [complete]
+      -> MB-5 production-success draft handoff [open]
+      -> MB-6 web launch [operating]
+      -> MB-6 provider send and delivery measurement [open]
 ```
 
-MB-1, the active market-publication program, and MB-2 can advance independently.
-MB-4 may build source-led editions before every numeric market product is ready,
-but it must omit unsupported Purveyors fact callouts. MB-5 cannot invent shared
-provider behavior while MB-2 or MB-3 remains incomplete.
+The original dependency gates are satisfied through Parchment activation,
+coffee-scraper's weekly workflow, and coffee-app's public launch. The remaining
+sequence is intentionally narrow: a successful production deployment hands one
+immutable edition/version to Parchment, Parchment creates or replays one unsent
+provider draft, and a human approves any send. Coffee-app must not invent shared
+provider behavior or treat merge alone as proof of deployment.
 
 ## Atomic delivery slices
 
 ### MB-1: Add the Market Brief publication format
 
 **Repository:** coffee-app
+**Status:** Complete in PR #539
 
 Add the smallest durable reader foundation inside `/blog`: Market Brief
 frontmatter, edition identity, archive filtering or navigation, canonical URLs,
@@ -172,6 +197,7 @@ sitemap assertions, formatting, lint, and Svelte checks.
 ### MB-2: Accept the Market Brief delivery lifecycle
 
 **Repository:** parchment-api
+**Status:** Complete in PADR-0028
 
 Inventory the deployed email-preference contract and the intended delivery
 provider, then accept one focused Parchment decision for the missing shared
@@ -187,6 +213,7 @@ Do not copy them into this plan.
 
 **Repository:** parchment-api
 **Dependency:** accepted MB-2 decision
+**Status:** Deployed and activated through Parchment PR #245
 
 Implement the accepted consent and provider lifecycle behind Parchment HTTP and
 generated SDK contracts. Preserve account deletion, session preference behavior,
@@ -196,6 +223,8 @@ before coffee-app consumes it.
 ### MB-4: Build source capture and weekly generation
 
 **Repository:** coffee-scraper
+**Status:** Operating through coffee-scraper PRs #478-#489 and the enabled weekly
+review-PR workflow
 
 Create the repo-owned implementation plan immediately before code. Inventory
 allowed sources and provider constraints first. Then add bounded capture, source
@@ -212,6 +241,8 @@ to recreate market authority.
 
 **Repository:** coffee-app
 **Dependencies:** MB-1 and deployed MB-3
+**Status:** Subscriber, feed, and projection surfaces complete; production-success
+draft trigger open
 
 Add the user-facing consent and unsubscribe flows, feed behavior, email-safe
 projection of the canonical edition, and production-deployment handoff required
@@ -231,26 +262,33 @@ The accepted successor sequence preserves repository ownership and recovery:
 3. coffee-app adds the thin production-success trigger against that generated
    SDK contract.
 
-Subscriber and preference UI remains part of the broader MB-5 outcome, but it
-does not authorize either repo to invent the missing draft contract.
+Subscriber and preference UI shipped in PR #561, but that completion does not
+authorize either repo to invent the remaining draft handoff or bypass
+Parchment's provider lifecycle.
 
 ### MB-6: Launch and measure
 
-Publish the first editions through the normal PR and production deployment path.
-Verify citations, coverage language, correction behavior, consent, unsubscribe,
-provider suppression, feed output, delivery evidence, and weekly failure alerts.
-Set growth and learning metrics only for events that the accepted contracts
-actually observe. Unimplemented signals are absent, not reported as zero.
+**Status:** Public web launch operating; provider send and delivery measurement
+open
+
+Continue publishing editions through the normal PR and production deployment
+path. The web launch has proved citations, coverage language, correction
+behavior, consent, unsubscribe, feed output, and weekly review visibility.
+Provider suppression, first-draft creation, send, and delivery evidence remain
+gated on the email handoff. Set growth and learning metrics only for events that
+the accepted contracts actually observe. Unimplemented signals are absent, not
+reported as zero.
 
 ## Rollout and rollback
 
-- MB-1 rolls back by reverting a coffee-app content-format change; existing essays
-  remain valid.
-- MB-3 ships behind the accepted Parchment activation boundary and preserves the
-  current session preference route until dependent consumers are proven.
-- MB-4 scheduling remains disabled until capture and generation canaries pass.
-- MB-5 enables email only after the upstream lifecycle is deployed and provider
-  configuration is verified.
+- MB-1 remains independently reversible without affecting existing essays.
+- MB-3 is deployed behind the accepted Parchment activation boundary and keeps
+  the session preference route compatible with current consumers.
+- MB-4 scheduling is enabled after capture and generation canaries passed; a
+  failed run must remain visible and must not publish without review.
+- MB-5 must not enable provider delivery until the remaining production-success
+  handoff and first unsent-draft canary pass against the deployed upstream
+  lifecycle.
 - A failed edition or provider projection never blocks the existing blog or
   Market Index. It creates visible retry or missed-edition work owned by the
   responsible repo.
@@ -269,26 +307,28 @@ actually observe. Unimplemented signals are absent, not reported as zero.
 ## Inherited knowledge from PR #502
 
 - `MB-AUTHORITY` | shared consent and provider behavior have one Parchment owner |
-  mapped to MB-2 and MB-3 | active | PR #502 recurring sender/provider findings
+  mapped to MB-2 and MB-3 | proven | PADR-0028 and Parchment PR #245
 - `MB-CANONICAL-EDITION` | one merged edition feeds web, feed, and email | mapped
-  to MB-1 and MB-5 | active | PR #502 product boundary
+  to MB-1 and MB-5 | proven for web/feed/projection; provider handoff open |
+  coffee-app PRs #539/#541/#564
 - `MB-NAMING` | Market Brief is public; `market_read` remains an internal
   compatibility key | stated in Goal | proven in this plan | PR #502 naming review
 - `MB-CONSENT` | identity, consent, entitlement, and suppression stay distinct;
-  unsubscribe works without login | mapped to MB-2 and MB-3 | active | PR #502
-  consent reviews
+  unsubscribe works without login | mapped to MB-2, MB-3, and MB-5 | proven |
+  Parchment PR #245 and coffee-app PR #561
 - `MB-DELIVERY` | deployment precedes draft creation; provider-confirmed events
-  anchor provider metrics | mapped to MB-2, MB-3, and MB-5 | active | PR #502
-  delivery reviews
+  anchor provider metrics | mapped to MB-2, MB-3, and MB-5 | provider lifecycle
+  proven; coffee-app handoff open | PADR-0028 and Parchment PR #245
 - `MB-SOURCE-IDENTITY` | stable source identity is not a content hash | mapped to
-  MB-4 | active | PR #502 source-capture review
+  MB-4 | proven | coffee-scraper PRs #478-#489
 - `MB-CADENCE` | daily capture and weekly generation have explicit cutoffs,
-  credentials, retries, and failure visibility | mapped to MB-4 | active | PR
-  #502 scheduling reviews
+  credentials, retries, and failure visibility | mapped to MB-4 | proven and
+  enabled | coffee-scraper PRs #478-#489
 - `MB-DOC-AUTHORITY` | historical concept records cannot masquerade as current
   implementation instructions | proven by the historical banners and this sole
   current plan | PR #502 supersession decision
 
-The exact downstream proofs replace `active` with `proven` on each owning repo's
-current implementation head. This plan does not claim predecessor review results
-as implementation proof.
+The public publication, consent, projection, provider lifecycle, source, and
+cadence proofs now sit on their owning repositories' current implementation
+heads. The remaining provider-draft handoff must earn its own production canary;
+this plan does not infer that proof from the already completed predecessors.

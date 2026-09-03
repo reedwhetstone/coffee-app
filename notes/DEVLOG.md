@@ -83,25 +83,13 @@
 
 ## P1: Build the distribution and revenue engine
 
-- [ ] **Accept and implement the Market Brief delivery lifecycle.** In Parchment,
-      extend the deployed `market_read` preference foundation with an evidence-backed
-      decision and implementation for no-login unsubscribe, provider projection,
-      suppression, draft/send lifecycle, retries, authorization, and truthful delivery
-      observation. Keep exact events, scopes, and mechanisms in the owning Parchment
-      artifacts.
-
-- [ ] **Build Market Brief source capture and weekly generation.** In
-      coffee-scraper, inventory permitted sources and provider constraints, then add
-      bounded capture, source packets, deterministic fact validation, human-reviewed
-      edition PR generation, explicit cutoffs, retries, and missed-edition visibility.
-      Numeric Purveyors claims must consume canonical Parchment reads or be omitted.
-
-- [ ] **Complete and launch the Market Brief distribution loop.** In coffee-app,
-      consume the deployed Parchment delivery contract for consent, unsubscribe,
-      feed, email rendering, and production-deployment handoff. Require production
-      deployment before provider draft creation and manual approval before initial
-      sends. Launch through the human review gate and measure only events the accepted
-      contracts truthfully observe.
+- [ ] **Complete the Market Brief email delivery handoff.** The public reader,
+      edition 002, subscription journey, deterministic email projection, Parchment
+      delivery lifecycle, and weekly review-PR workflow are live. Add the remaining
+      coffee-app production-success trigger so one deployed immutable edition creates
+      or replays one unsent Parchment-owned provider draft. Prove the first production
+      canary, keep human approval as the only send gate, and measure only
+      provider-confirmed delivery events.
 
 - [ ] **Launch the approved self-serve repricing.** Offer Mallard Studio at $3/month,
       Parchment Intelligence at $5/month, and both products in one subscription at
