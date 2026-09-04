@@ -135,14 +135,8 @@ export function createRoastTools(client: AgentParchmentClient) {
 					.describe('Brief explanation of why this roast session is proposed')
 			}),
 			execute: async (input) => {
-				// When user confirms the action_card, execute-action should call:
-				//   createRoast(supabase, userId, {
-				//     coffeeId: params.coffee_id,
-				//     batchName: params.batch_name,
-				//     ozIn: params.oz_in,
-				//     roastDate: params.roast_date,
-				//     notes: params.roast_notes,
-				//   })
+				// The exact proposal payload is executed only after confirmation through
+				// Parchment's owner-scoped action transaction.
 				if (!input.coffee_id || input.coffee_id <= 0) {
 					return {
 						error:
@@ -235,9 +229,7 @@ export function createRoastTools(client: AgentParchmentClient) {
 					.describe('Brief explanation of why these notes are proposed')
 			}),
 			execute: async (input) => {
-				// No direct CLI equivalent yet — execute-action uses Supabase directly:
-				//   supabase.from('roast_profiles').update({ roast_notes, roast_targets })
-				//     .eq('roast_id', params.roast_id).eq('user', userId)
+				// Parchment owns the confirmed owner-scoped roast update and replay.
 				if (!input.roast_id || input.roast_id <= 0) {
 					return {
 						error:
