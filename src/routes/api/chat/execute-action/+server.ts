@@ -15,7 +15,11 @@ function legacyErrorMessage(body: unknown): string {
 }
 
 export const POST: RequestHandler = async (event) => {
-	const guardResponse = guardBrowserBffRequest(event, { mutation: true, jsonBody: true });
+	const guardResponse = guardBrowserBffRequest(event, {
+		mutation: true,
+		jsonBody: true,
+		legacyErrorShape: true
+	});
 	if (guardResponse) return guardResponse;
 
 	try {

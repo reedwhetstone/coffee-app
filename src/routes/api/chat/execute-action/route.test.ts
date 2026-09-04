@@ -218,6 +218,22 @@ describe('POST /api/chat/execute-action', () => {
 		expect(mocks.createParchmentServerClient).not.toHaveBeenCalled();
 	});
 
+	it.each([
+		['anonymous', { principal: anonymousPrincipal() }, 'A browser session is required.'],
+		['API key', { principal: apiKeyPrincipal() }, 'A browser session is required.'],
+		[
+			'Authorization header',
+			{ authorization: 'Bearer external-token' },
+			'Authorization headers are not accepted for browser requests.'
+		],
+		['cross-site origin', { origin: 'https://evil.test' }, 'Cross-site mutations are blocked.'],
+		['non-JSON body', { contentType: 'text/plain' }, 'A JSON request is required.']
+	] as const)('preserves the legacy flat error shape for %s', async (_label, options, error) => {
+		const response = await POST(makeEvent(undefined, options));
+
+		expect(await response.json()).toEqual({ error });
+	});
+
 	it.each(['{', 'null', '[]'])(
 		'rejects malformed transport input before Parchment: %s',
 		async (body) => {

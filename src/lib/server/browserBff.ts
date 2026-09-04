@@ -17,27 +17,28 @@ export function browserBffResponse(status: number, body: unknown): Response {
 
 export function guardBrowserBffRequest(
 	event: RequestEvent,
-	options: { mutation?: boolean; jsonBody?: boolean } = {}
+	options: { mutation?: boolean; jsonBody?: boolean; legacyErrorShape?: boolean } = {}
 ): Response | null {
+	const guardError = (status: number, code: string, message: string) =>
+		browserBffResponse(
+			status,
+			options.legacyErrorShape ? { error: message } : { error: { code, message } }
+		);
+
 	if (event.request.headers.has('authorization')) {
-		return browserBffResponse(401, {
-			error: {
-				code: 'session_required',
-				message: 'Authorization headers are not accepted for browser requests.'
-			}
-		});
+		return guardError(
+			401,
+			'session_required',
+			'Authorization headers are not accepted for browser requests.'
+		);
 	}
 
 	if (!isCookieSessionPrincipal(event.locals.principal)) {
-		return browserBffResponse(401, {
-			error: { code: 'session_required', message: 'A browser session is required.' }
-		});
+		return guardError(401, 'session_required', 'A browser session is required.');
 	}
 
 	if (options.mutation && event.request.headers.get('origin') !== event.url.origin) {
-		return browserBffResponse(403, {
-			error: { code: 'untrusted_origin', message: 'Cross-site mutations are blocked.' }
-		});
+		return guardError(403, 'untrusted_origin', 'Cross-site mutations are blocked.');
 	}
 
 	if (
@@ -45,9 +46,7 @@ export function guardBrowserBffRequest(
 		event.request.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase() !==
 			'application/json'
 	) {
-		return browserBffResponse(415, {
-			error: { code: 'invalid_content_type', message: 'A JSON request is required.' }
-		});
+		return guardError(415, 'invalid_content_type', 'A JSON request is required.');
 	}
 
 	return null;
