@@ -1,58 +1,57 @@
-import { json } from '@sveltejs/kit';
-import { z } from 'zod';
-import { requireChatAccess } from '$lib/server/auth';
+import type { ConfirmedActionExecuteRequest } from '@purveyors/sdk';
 import type { RequestHandler } from './$types';
-import type { Json } from '$lib/types/database.types';
+import { browserBffResponse, guardBrowserBffRequest } from '$lib/server/browserBff';
+import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 
-const PARCHMENT_ACTIONS = new Set(['add_bean_to_inventory', 'update_bean']);
-const MALLARD_ACTIONS = new Set(['create_roast_session', 'update_roast_notes', 'record_sale']);
-const ALLOWED_ACTIONS = new Set([...PARCHMENT_ACTIONS, ...MALLARD_ACTIONS]);
+function legacyErrorMessage(body: unknown): string {
+	if (typeof body !== 'object' || body === null) return 'Action execution failed';
 
-const bodySchema = z.object({
-	executionId: z.string().min(1).max(200),
-	actionType: z.string(),
-	fields: z.record(z.string(), z.unknown())
-});
+	const nested = 'error' in body && typeof body.error === 'object' ? body.error : null;
+	if (nested && 'message' in nested && typeof nested.message === 'string') {
+		return nested.message;
+	}
+	if ('message' in body && typeof body.message === 'string') return body.message;
+	return 'Action execution failed';
+}
 
 export const POST: RequestHandler = async (event) => {
+	const guardResponse = guardBrowserBffRequest(event, {
+		mutation: true,
+		jsonBody: true,
+		legacyErrorShape: true
+	});
+	if (guardResponse) return guardResponse;
+
 	try {
-		const { memberAccess } = await requireChatAccess(event);
-		const parsed = bodySchema.safeParse(await event.request.json());
-		if (!parsed.success) return json({ error: 'Invalid action request' }, { status: 400 });
-		const { executionId, actionType, fields } = parsed.data;
-
-		if (!ALLOWED_ACTIONS.has(actionType)) {
-			return json({ error: `Unknown action type: ${actionType}` }, { status: 400 });
-		}
-		if (!memberAccess && !PARCHMENT_ACTIONS.has(actionType)) {
-			return json({ error: 'Mallard Studio access required for this action' }, { status: 403 });
+		const body = (await event.request.json()) as unknown;
+		if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+			return browserBffResponse(400, { error: 'Invalid action request' });
 		}
 
-		const { data, error } = await event.locals.supabase.rpc('execute_chat_action', {
-			p_execution_id: executionId,
-			p_action_type: actionType,
-			p_fields: fields as Json
+		const client = await createParchmentServerClient(event, {
+			mode: 'session',
+			preferHandling: 'inherit'
 		});
-		if (error) {
-			const conflict = error.code === '23505';
-			return json(
-				{ error: error.message },
-				{ status: conflict ? 409 : error.code === '42501' ? 403 : 400 }
-			);
+		const result = await client.confirmedActions.execute(body as ConfirmedActionExecuteRequest);
+
+		if (result.error !== undefined) {
+			return browserBffResponse(result.response?.status ?? 502, {
+				error: legacyErrorMessage(result.error)
+			});
+		}
+		if (!result.data?.data) {
+			return browserBffResponse(502, { error: 'Action execution failed' });
 		}
 
-		const envelope = data as {
-			status: string;
-			result?: unknown;
-			error?: string;
-			replayed?: boolean;
-		};
-		if (envelope.status !== 'success') {
-			return json({ error: envelope.error || 'Action execution failed' }, { status: 400 });
+		return browserBffResponse(result.response?.status ?? 200, result.data.data);
+	} catch (error) {
+		if (error instanceof SyntaxError) {
+			return browserBffResponse(400, { error: 'Invalid action request' });
 		}
-		return json({ ...(envelope.result as object), replayed: !!envelope.replayed });
-	} catch (err) {
-		const status = (err as { status?: number }).status || 500;
-		return json({ error: (err as Error).message }, { status });
+		if (error instanceof ParchmentConfigError) {
+			return browserBffResponse(503, { error: 'Action execution is temporarily unavailable' });
+		}
+		console.error('Confirmed-action BFF request failed');
+		return browserBffResponse(502, { error: 'Action execution failed' });
 	}
 };

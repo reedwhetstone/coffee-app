@@ -20,6 +20,7 @@ describe('ActionCardBlock execution status', () => {
 		} satisfies ActionCardBlockType;
 
 		render(ActionCardBlock, { block, onExecute });
+		expect(onExecute).not.toHaveBeenCalled();
 		await fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
 
 		expect(onExecute).toHaveBeenCalledWith(

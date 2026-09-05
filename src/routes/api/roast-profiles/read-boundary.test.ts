@@ -49,10 +49,7 @@ describe('/api/roast-profiles Parchment read boundary', () => {
 			expect(source).not.toContain(".from('roast_events')");
 			expect(source).not.toContain(".from('artisan_import_log')");
 		}
-		expect(directAccessFiles).toEqual([
-			'src/lib/services/tools/roastTools.ts',
-			'src/routes/api/tools/roast-profiles/+server.ts'
-		]);
+		expect(directAccessFiles).toEqual(['src/routes/api/tools/roast-profiles/+server.ts']);
 		expect(existsSync(resolve('src/lib/services/milestoneCalculationService.ts'))).toBe(false);
 		expect(existsSync(resolve('src/routes/api/admin/backfill-milestones/+server.ts'))).toBe(false);
 	});

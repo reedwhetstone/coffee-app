@@ -50,11 +50,9 @@ export type { ChatToolAccess, ChatToolDeps, InventoryRoastSummary } from './shar
  *   price_index_read       → deps.readPriceIndex (aggregate market index via Parchment)
  *
  * WRITE TOOLS — proposal pattern, return action_card for user confirmation:
- *   add_bean_to_inventory  → execute-action calls addInventory()
- *   update_bean            → execute-action calls updateInventory()
- *   create_roast_session   → execute-action calls createRoast()
- *   update_roast_notes     → no CLI equivalent yet; execute-action uses Supabase directly
- *   record_sale            → execute-action calls recordSale()
+ *   The action card retains the exact proposal payload and stable execution ID.
+ *   After explicit user confirmation, `/api/chat/execute-action` forwards that
+ *   command to Parchment's durable, payload-bound execution ledger.
  */
 export function createChatTools(
 	client: ParchmentClient,

@@ -1547,9 +1547,9 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/chat/execute-action',
 							'POST',
-							'Chat access session',
+							'Browser session',
 							'Internal product route',
-							'Executes a constrained set of proposal-card actions. Parchment Intelligence users can add or update portfolio coffees; Mallard Studio-only roast, tasting, and sales actions require Mallard Studio membership.'
+							'Forwards one explicitly confirmed proposal-card action to Parchment. Parchment owns validation, entitlement and ownership checks, atomic execution, and payload-bound replay.'
 						],
 						[
 							'/api/workspaces',

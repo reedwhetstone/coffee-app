@@ -97,15 +97,8 @@ export function createInventoryTools(client: AgentParchmentClient, access: ChatT
 				// Sanitize catalog_id early — LLM may pass 0 meaning "no specific bean"
 				const catalogId = positiveOrUndef(input.catalog_id);
 
-				// When user confirms the action_card, execute-action should call:
-				//   addInventory(supabase, userId, {
-				//     catalogId: params.catalog_id,
-				//     qty: params.purchased_qty_lbs,
-				//     cost: params.cost_per_lb * params.purchased_qty_lbs,
-				//     taxShip: params.tax_ship_cost,
-				//     notes: params.notes,
-				//     purchaseDate: params.purchase_date,
-				//   })
+				// Execution remains isolated behind explicit confirmation. The BFF
+				// forwards this exact action payload and execution ID to Parchment.
 
 				// Fetch the complete stocked catalog for the coupled supplier/coffee dropdowns.
 				let allBeans: Array<{ id: number; name: string | null; source?: string | null }> = [];
@@ -313,12 +306,7 @@ export function createInventoryTools(client: AgentParchmentClient, access: ChatT
 					.describe('Brief explanation of why this update is proposed')
 			}),
 			execute: async (input) => {
-				// When user confirms the action_card, execute-action should call:
-				//   updateInventory(supabase, userId, params.bean_id, {
-				//     qty: params.purchased_qty_lbs,
-				//     notes: params.notes,
-				//     stocked: params.stocked,
-				//   })
+				// The confirmed action is executed and replayed by Parchment.
 				if (!input.bean_id || input.bean_id <= 0) {
 					return {
 						error:
@@ -405,17 +393,8 @@ export function createInventoryTools(client: AgentParchmentClient, access: ChatT
 					.describe('Brief explanation of why this sale is being recorded')
 			}),
 			execute: async (input) => {
-				// When user confirms the action_card, execute-action should call:
-				//   recordSale(supabase, userId, {
-				//     roastId: <resolved from batch_name lookup>,
-				//     oz: params.oz_sold,
-				//     price: params.price,
-				//     buyer: params.buyer,
-				//     sellDate: params.sell_date,
-				//   })
-				// Note: CLI recordSale takes roastId, not green_coffee_inv_id. The
-				// execute-action handler currently uses a different schema (inv_id + batch_name).
-				// Align schemas in a follow-up PR when execute-action is migrated to CLI.
+				// Parchment resolves the exact owner-scoped batch inside the confirmed
+				// action transaction; the proposal keeps the established browser fields.
 				if (!input.green_coffee_inv_id || input.green_coffee_inv_id <= 0) {
 					return {
 						error:
