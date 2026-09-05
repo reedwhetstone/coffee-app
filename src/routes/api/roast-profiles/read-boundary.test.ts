@@ -23,7 +23,7 @@ describe('/api/roast-profiles Parchment read boundary', () => {
 		expect(existsSync(resolve('src/lib/data/roast.ts'))).toBe(false);
 	});
 
-	it('keeps roast mutations behind Parchment with only the Phase 3 read carve-out', () => {
+	it('keeps roast mutations behind Parchment with no direct-table compatibility carve-out', () => {
 		const routeSource = readFileSync(resolve('src/routes/api/roast-profiles/+server.ts'), 'utf8');
 		const artisanSource = readFileSync(resolve('src/routes/api/artisan-import/+server.ts'), 'utf8');
 		const clearSource = readFileSync(resolve('src/routes/api/clear-roast/+server.ts'), 'utf8');
@@ -49,7 +49,7 @@ describe('/api/roast-profiles Parchment read boundary', () => {
 			expect(source).not.toContain(".from('roast_events')");
 			expect(source).not.toContain(".from('artisan_import_log')");
 		}
-		expect(directAccessFiles).toEqual(['src/routes/api/tools/roast-profiles/+server.ts']);
+		expect(directAccessFiles).toEqual([]);
 		expect(existsSync(resolve('src/lib/services/milestoneCalculationService.ts'))).toBe(false);
 		expect(existsSync(resolve('src/routes/api/admin/backfill-milestones/+server.ts'))).toBe(false);
 	});

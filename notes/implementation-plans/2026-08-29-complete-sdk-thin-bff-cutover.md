@@ -95,7 +95,7 @@ Every slice inherits these obligations unless its contract demonstrably cannot e
 6. Collection consumers exhaust bounded stable pagination, deduplicate stable identities, validate upstream response shapes strictly, and preserve existing browser/page response envelopes.
 7. Identity-only mutations are followed by canonical reads when the UI needs rich catalog, inventory, roast, or entitlement state.
 8. There is no dual-write or direct-database fallback. Rollback is a coffee-app consumer revert while additive Parchment contracts remain deployed.
-9. Externally reachable compatibility routes require production telemetry or an explicit observation window before deletion. Lack of an in-repo caller alone is insufficient.
+9. Externally reachable compatibility routes normally require production telemetry or an explicit observation window before deletion. For Phase 3D, Reed explicitly authorized a hard cutover on 2026-09-05 after the first-party caller graph closed and replacement canaries passed, accepting breakage for any unknown authenticated external caller.
 10. Each cutover adds a narrow reintroduction guard for its retired resource. The terminal boundary check composes those guards; it is not a speculative provenance analyzer.
 11. Parchment remains the only shared-schema migration authority. Database objects are not dropped until all supported consumers and operator paths are proven absent.
 
@@ -197,11 +197,11 @@ Replace `/api/chat/execute-action` with one SDK call while retaining proposal ca
 
 #### 3D. Telemetry-backed legacy route retirement
 
-Start observation early for `/api/tools/coffee-chunks`, `/api/tools/roast-profiles`, `/api/tools/green-coffee-inv`, `/api/tools/bean-tasting`, and any sibling compatibility routes. Delete zero-supported-caller routes and their helpers. If a supported narrative-search consumer is proven, stop on a separately accepted provenance-aware Parchment knowledge-search contract; never port `match_coffee_chunks` as a table-shaped proxy.
+Delete `/api/tools/coffee-chunks`, `/api/tools/roast-profiles`, `/api/tools/green-coffee-inv`, and `/api/tools/bean-tasting` after the first-party caller graph is closed and their canonical Parchment replacements are live. Reed explicitly accepted the immediate breaking-change risk for any unknown authenticated external caller on 2026-09-05; no time-based observation window is required. If a supported narrative-search consumer is later proven, plan a separately accepted provenance-aware Parchment knowledge-search contract; never restore `match_coffee_chunks` as a table-shaped proxy.
 
 Deleting the legacy RAG route does not authorize deleting the shared provider credential while `/api/chat`, `/api/workspaces/[id]/summarize`, or `/api/memory/dream` still call it. Phase 3 removes the RAG route's credential consumption and direct RPC use; `OPENROUTER_API_KEY` remains until Phase 5C retires every remaining provider caller and production evidence verifies that none remain.
 
-**Proof:** repository caller graph plus production access evidence or an explicit observation window, structured catalog-chat regression, proof that the RAG route no longer consumes the provider credential, retention of `OPENROUTER_API_KEY` while the named provider callers remain active, removal of the shared credential only after Phase 5C retires all provider callers, direct RPC use when the route is deleted, and updated public/deprecation documentation.
+**Proof:** repository caller graph, explicit product-owner authorization for the hard cutover, production canaries for canonical replacements, structured catalog-chat regression, route-absence and direct-RPC guards, proof that the RAG route no longer consumes the provider credential, retention of `OPENROUTER_API_KEY` while the named provider callers remain active, removal of the shared credential only after Phase 5C retires all provider callers, and updated public documentation.
 
 ### Phase 4: Move durable application state behind Parchment
 

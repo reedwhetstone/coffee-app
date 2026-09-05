@@ -353,10 +353,10 @@ const docsPages: DocsPage[] = [
 							'Internal application routes.'
 						],
 						[
-							'/api/chat, /api/workspaces, /api/tools/*',
+							'/api/chat and /api/workspaces',
 							'Member session',
 							'Paid workspace and AI workflows',
-							'Internal product routes. /api/tools/* are deprecated compatibility shims.'
+							'Internal product routes. The former /api/tools/* compatibility surface is retired.'
 						],
 						[
 							'/api/billing/* and /api/admin/*',
@@ -1672,42 +1672,6 @@ const docsPages: DocsPage[] = [
 						]
 					]
 				}
-			},
-			{
-				title: 'Deprecated tool routes',
-				table: {
-					headers: ['Route', 'Methods', 'Auth', 'Status', 'Replacement direction'],
-					rows: [
-						[
-							'/api/tools/green-coffee-inv',
-							'POST',
-							'Member session',
-							'Deprecated',
-							'Prefer shared inventory modules and CLI flows.'
-						],
-						[
-							'/api/tools/roast-profiles',
-							'POST',
-							'Member session',
-							'Deprecated',
-							'Prefer shared roast modules and CLI flows.'
-						],
-						[
-							'/api/tools/bean-tasting',
-							'POST',
-							'Member session',
-							'Deprecated',
-							'Prefer shared tasting logic and CLI flows.'
-						],
-						[
-							'/api/tools/coffee-chunks',
-							'POST',
-							'Member session',
-							'Deprecated',
-							'Prefer current retrieval modules instead of tool-route coupling.'
-						]
-					]
-				}
 			}
 		],
 		related: [
@@ -2888,7 +2852,7 @@ const docsPages: DocsPage[] = [
 				callout: {
 					tone: 'success',
 					title: 'Prefer the documented contract over internal route coupling',
-					body: 'If an agent can solve the task with purvey or the public Parchment API through @purveyors/sdk, prefer that path over binding to internal /api/tools/* or chat workspace payloads.'
+					body: 'Use purvey or the public Parchment API through @purveyors/sdk instead of coupling to private chat workspace payloads. The former /api/tools/* compatibility surface is retired.'
 				}
 			}
 		],
@@ -2928,7 +2892,7 @@ const docsPages: DocsPage[] = [
 					'For shell-based automation, authenticate once, then call purvey commands with JSON or CSV output that suits the surrounding workflow.',
 					'For code-side integrations, use @purveyors/sdk against the stable Parchment API contracts instead of importing CLI runtime internals or screen-scraping help text.',
 					'Use purvey context first when a model needs dense onboarding text. Use purvey manifest for the preferred machine-readable contract, or purvey context --json when an existing caller needs compatibility-parity output.',
-					'Prefer purvey CLI commands for shell automation or @purveyors/sdk and the public Parchment API for code integrations; avoid deprecated /api/tools/* endpoints and private workspace route payloads.'
+					'Prefer purvey CLI commands for shell automation or @purveyors/sdk and the public Parchment API for code integrations; the former /api/tools/* endpoints are retired, and private workspace route payloads are not integration contracts.'
 				]
 			},
 			{
