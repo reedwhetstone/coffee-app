@@ -165,9 +165,12 @@ replacement or retirement:
 - catalog and market reads from `coffee_catalog`, `market_daily_summary`, and
   `supplier_daily_stats`
 - sourcing brief summaries against shared catalog rows
-- legacy catalog RAG reads and `match_coffee_chunks`
-- deprecated roast compatibility reads that still query Supabase directly and
-  require the separately planned telemetry-backed retirement decision
+
+The four legacy `/api/tools/*` compatibility routes and their route-only catalog
+RAG implementation were retired in Phase 3D after their first-party callers
+moved to Parchment and Reed explicitly accepted an immediate hard cutover for
+any unknown authenticated external caller. `OPENROUTER_API_KEY` remains because
+active chat, workspace summary, and memory-dream callers still require it.
 
 Inventory share creation and cross-principal redemption now use Parchment's
 share-grant contract through thin BFF adapters. Coffee-app no longer reads

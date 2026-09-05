@@ -150,7 +150,7 @@ Treat the web app and the external Parchment API as two separate HTTP surfaces:
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
    - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are public metadata or compatibility endpoints; document them as discoverability surfaces, not product APIs
    - `/auth/callback` is the web OAuth handoff surface and can mint a short-lived, purpose-bound Ed25519 account-deletion assertion before returning to `/account`; `/auth/cli` is the signed-in browser consent surface for CLI authorization requests. They belong in platform docs only when auth flow behavior matters
-   - `/api/tools/*` routes are deprecated; prefer direct session-mode Parchment SDK integration
+   - Former `/api/tools/*` compatibility routes are retired; use direct session-mode Parchment SDK integration
 
 Do not blur those layers in code comments, docs, or PR descriptions.
 
@@ -231,7 +231,7 @@ That means:
 - Cherry tool behavior should stay aligned with CLI behavior
 - shared business logic should move toward reusable modules, not duplicated route code
 
-Deprecated `/api/tools/*` routes still exist for compatibility. Prefer direct session-mode SDK integration for new work.
+The former `/api/tools/*` compatibility routes are retired. Use direct session-mode SDK integration.
 
 ## Svelte and UI guidance
 
