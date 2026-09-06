@@ -316,8 +316,8 @@
 				Coffee highlights
 			</h2>
 			<p class="mt-2 text-sm leading-6 text-muted">
-				Catalog coffees selected after this week’s takes were finalized, chosen for the market or
-				origin story they make tangible.
+				Explore the listed coffees, compare purchasing terms, and check current availability with
+				the supplier.
 			</p>
 		</div>
 

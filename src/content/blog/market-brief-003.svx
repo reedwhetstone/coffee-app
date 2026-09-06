@@ -1,7 +1,7 @@
 ---
-title: 'Coffee''s operating system is becoming more visible'
+title: 'Flat matched-lot prices, two full-sack coffees to sample'
 date: '2026-09-06'
-description: 'Across coffee''s supply chains, businesses, and communities, visibility is becoming part of how growth and connection are organized.'
+description: 'What the September 6 price snapshot does—and does not—show, plus two wholesale lots, traceability questions, and a pending drive-through expansion.'
 tags: ['coffee', 'data', 'supply-chain']
 pillar: 'market-intelligence'
 draft: false
@@ -29,17 +29,12 @@ coffeeHighlights:
     catalogUrl: '/catalog?coffee=10688'
     origin: 'Colombia'
     region: 'Colombia'
-    process: 'Honey'
+    process: 'Honey / co-ferment'
     variety: 'Castillo'
     stockedDate: '2026-09-05'
     pricePerLb: 10.9
-    tastingNotes:
-      body: { tag: 'silky medium', color: '#ff6e40', score: 3 }
-      flavor: { tag: 'star fruit nectarine', color: '#ffab00', score: 5 }
-      acidity: { tag: 'bright tropical', color: '#00e5ff', score: 4 }
-      sweetness: { tag: 'nectarine honey', color: '#ffd54f', score: 4 }
-      fragrance_aroma: { tag: 'rose hibiscus floral', color: '#e91e63', score: 5 }
-    rationale: 'Juan Puerta / Spumm makes the process theme concrete: this Colombian Castillo lot uses honey co-fermentation and carries a profile of rose, hibiscus, star fruit, and nectarine. Its producer and process details give the brief''s visibility theme a specific catalog counterpart.'
+    priceContext: '89.52-lb sacks · Tampa · listed September 6; confirm freight and sample terms'
+    rationale: 'For a process-focused sample flight: this Colombian Castillo is listed as honey/co-ferment, with supplier notes of rose, hibiscus, star fruit, and nectarine. Ask what was used in the co-ferment before labeling or comparing it with coffees without co-fermentation. Full-sack format; small-bag purchasing is not established.'
   - catalogId: 10522
     name: 'Ethiopia Guji 1 Supernatural Hambela Buku Sayasa - 39070-2 – GrainPro Bags – SPOT SEAFORTH'
     supplier: 'royal_coffee'
@@ -51,34 +46,39 @@ coffeeHighlights:
     variety: 'Local arabica landraces and heirloom cultivars'
     stockedDate: '2026-09-02'
     pricePerLb: 6.65
-    tastingNotes:
-      body: { tag: 'juicy medium', color: '#ff9a76', score: 3 }
-      flavor: { tag: 'raspberry cherimoya watermelon', color: '#e04f8b', score: 5 }
-      acidity: { tag: 'sparkling tropical', color: '#7fe07f', score: 4 }
-      sweetness: { tag: 'sweet cream candy', color: '#ffd1dc', score: 4 }
-      fragrance_aroma: { tag: 'floral blueberry burst', color: '#6a3fa0', score: 5 }
-    rationale: 'The Ethiopia Guji lot connects the community theme to sourcing structure. It comes from smallholder farms, is centrally processed as a natural coffee, and is described as part of a cooperative model that supports local producers while preserving traditional practices.'
+    priceContext: '132.45-lb bags · Vancouver (Seaforth) · listed September 6; confirm freight and import costs'
+    rationale: 'For a natural-process sample comparison: smallholder-grown coffee processed by independent EDN Ethiopian Coffee, not a cooperative. Royal lists blueberry, raspberry, cherimoya, watermelon, floral, and sweet cream notes. This is a full-bag offer in Canada, not a verified small-bag or landed-US price.'
 ---
 
-## Market read: a quiet surface, concentrated signals
+## Market read: matched coffees were flat
 
-The latest retail move was 0.2% and the matched-lot move was 0%, a quiet classification across the captured price view; the summary also recorded 178 total signals. That combination suggests a stable surface with activity concentrated in the value layer, rather than a broad repricing. Market evidence: [seven-day retail price movement](https://api.purveyors.io/v1/price-index/stats), [public all-market signal summary](https://api.purveyors.io/v1/market/signals?summary=true).
+As of **September 6**, the [seven-day retail price snapshot](https://api.purveyors.io/v1/price-index/stats) showed a **0.2% aggregate rise**, classified as quiet, across 835 listings and 31 suppliers. The **549 listings matched across periods were flat in aggregate**. The small headline rise is not evidence that the same coffees broadly became more expensive: changes in the mix of listings can move the aggregate while matched-lot pricing stays flat.
 
-## Visibility is becoming a buying signal
+The separate [all-market signal summary](https://api.purveyors.io/v1/market/signals?summary=true), spanning retail and wholesale, counted 178 signals: 167 below-benchmark listings, 10 supplier-score-based outliers, and one qualifying price drop. These are screening counts, not 178 newly discounted coffees. A below-benchmark listing is not necessarily a bargain; bag size, crop age, quality, freight, and the comparison group still matter.
 
-Two reports point to traceability as an operating question, not a branding afterthought: an Ecuadorian model combines traceability, geospatial monitoring, and certification, while a separate case study examines how supply-chain structure shapes worker poverty. For green-coffee buyers, the useful shift is seeing environmental and labor visibility in the same diligence frame. Supporting reporting: [Global Supply Chains Keep Workers Poor. Three Case Studies Show How the Cycle Can Be Broken (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/01/global-supply-chains-keep-workers-poor-three-case-studies-show-how-the-cycle-can-be-broken/), [Ecuador’s Deforestation-Free Coffee Model Moves Beyond the Pilot Stage (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/03/ecuadors-deforestation-free-coffee-model-moves-beyond-the-pilot-stage/).
+Coverage also changed: [edition 002](/blog/market-brief-002) captured 593 listings and 24 suppliers on September 1. More coverage can produce more signals without an improvement in buying conditions. This snapshot does not identify the price-drop lot or establish a like-for-like change in the number of opportunities. **Use it to guide a shortlist, not to time a bulk purchase.** The linked data endpoints are live; the figures above are the captured edition snapshot.
 
-## Scale now comes with a release strategy
+## Buying shortlist: full-sack terms
 
-Expansion is arriving in distinct formats: Pittsburgh's La Prima is adding space while refining seasonal and limited-release coffees, while 7 Brew is expanding through former restaurant locations bought in an auction. Together, the reports make footprint and release design part of the same buyer landscape, even when the operating models differ. Supporting reporting: [Pittsburgh’s La Prima Espresso Gets Second Wind in Expanded Roastery (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/04/pittsburghs-la-prima-espresso-gets-second-wind-in-expanded-roastery/), [7 Brew Wins $143 Million Auction for Former Salad and Go Locations (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/02/7-brew-wins-143-million-auction-for-former-salad-and-go-locations/).
+Two coffees worth investigating for different sample questions—not verified bargains. Supplier pages were checked September 6; availability and terms can change. Prices below are green-coffee list prices, not landed costs. Flavor notes are the suppliers’ descriptions, not our tasting results.
 
-## Connection is infrastructure, not decoration
+- **[Juan Puerta / Spumm](/catalog?coffee=10688), Yellow Rooster:** Colombian Castillo, listed as **honey / co-ferment**, at **$10.90/lb in 89.52-lb sacks**, held in Tampa. The [supplier page](https://yellowroostercoffee.com/coffees/juan-puerta-spumm) lists rose, hibiscus, star fruit, and nectarine and offers a sample request. A useful candidate for a process-focused sample flight, provided you first establish the co-ferment ingredients and method. Sample size, sample cost, freight, and small-bag availability are not established here.
+- **[Hambela Buku Sayasa natural, lot 39070-2](/catalog?coffee=10522), Royal Coffee:** **$6.65/lb in 132.45-lb bags**, spot at Vancouver’s Seaforth warehouse. The [supplier page](https://royalcoffee.com/product/3427097000057688260/) identifies smallholder growers and **EDN Ethiopian Coffee, an independent processor and exporter**. Royal describes a 24-hour cold-water fermentation of cherry followed by three to four weeks of raised-bed drying, with blueberry, raspberry, cherimoya, watermelon, floral, and sweet cream notes. Consider it for a natural-process comparison; ask for a sample and harvest-year confirmation. For a US buyer, confirm cross-border logistics and delivered cost before comparing the sticker price with domestic offers.
 
-Relief fundraising in Colombia, an independent journal returning to print, and a collaboration between Cartel and Little Bear all show coffee organizations using their reach to gather participation around the cup. That makes community activity operational: it can direct attention, support, and collaboration without being separate from the business. Supporting reporting: [Coffee People Zine Back in Print, Plans Minneapolis Party (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/04/coffee-people-zine-back-in-print-plans-minneapolis-party/), [Weekly Coffee News: Colombia Earthquake Support + Brewing for Equity (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/04/weekly-coffee-news-colombia-earthquake-support-brewing-for-equity/), [Cartel Roasting Co. Partners With Little Bear Coffee For “Blends With Friends” Initiative (Sprudge Coffee)](https://sprudge.com/cartel-roasting-co-partners-with-little-bear-coffee-for-blends-with-friends-initiative-1306732.html).
+**Home roasters:** both listings are full-sack/full-bag formats. Neither source establishes retail-size purchasing. A sample request is an inquiry, not a promise of a home-roasting quantity. The price difference between these two coffees does not establish relative value across different origins, processes, bag sizes, and warehouses.
 
-## Coffee highlights
+## Traceability: ask for the evidence behind the label
 
-These lots make the week's throughline tangible: one foregrounds producer-level process detail, while the other shows how cooperative structures carry origin and local participation into a buyer's catalog view.
+A [Mongabay report republished by Daily Coffee News](https://dailycoffeenews.com/2026/09/03/ecuadors-deforestation-free-coffee-model-moves-beyond-the-pilot-stage/) describes Ecuador’s Deforestation-Free Coffee Initiative: 373 participating producers, farm-boundary mapping, forest-cover checks, and independent verification. It reports cumulative exports of 172.5 metric tons between 2022 and 2025—not that amount in 2025 alone.
 
-- **[Juan Puerta / Spumm](/catalog?coffee=10688):** Juan Puerta / Spumm makes the process theme concrete: this Colombian Castillo lot uses honey co-fermentation and carries a profile of rose, hibiscus, star fruit, and nectarine. Its producer and process details give the brief's visibility theme a specific catalog counterpart.
-- **[Ethiopia Guji 1 Supernatural Hambela Buku Sayasa - 39070-2 – GrainPro Bags – SPOT SEAFORTH](/catalog?coffee=10522):** The Ethiopia Guji lot connects the community theme to sourcing structure. It comes from smallholder farms, is centrally processed as a natural coffee, and is described as part of a cooperative model that supports local producers while preserving traditional practices.
+For buyers evaluating a deforestation-free claim, the useful questions are specific: **Can the supplier connect this lot to mapped farms? What verification is available, and who maintains it?** The report also identifies technical assistance and scaling as unresolved challenges. A successful project is not proof that every Ecuadorian lot has equivalent documentation, nor a compliance determination for a particular shipment.
+
+## Cafe operators: watch the leases, not an opening count
+
+[7 Brew won an approximately $143.2 million bankruptcy auction](https://dailycoffeenews.com/2026/09/02/7-brew-wins-143-million-auction-for-former-salad-and-go-locations/) for assets including 73 former Salad and Go leases: 41 in Arizona, 20 in Texas, and six each in Nevada and Oklahoma. **The reported transaction remains subject to bankruptcy court approval.** These are potential sites, not 73 newly opened coffee shops.
+
+For operators in those markets, court approval and actual site conversion are the next useful developments to watch. The auction alone does not establish an opening timetable, local sales impact, or increased demand for specialty green coffee.
+
+## Off the cupping table
+
+[Coffee People Zine is returning with Issue 26](https://dailycoffeenews.com/2026/09/04/coffee-people-zine-back-in-print-plans-minneapolis-party/): more than 150 pages from more than 80 contributors around the theme “enough.” DCN reports a public launch party on **September 20, 6:30–9:30 p.m., at FRGMNT Coffee inside Open Book in Minneapolis**. For readers interested in coffee people beyond purchasing, the new issue offers an offline look at the creative work of the coffee community.
