@@ -1,9 +1,5 @@
 <script lang="ts">
-	import {
-		reconstructTrend,
-		RECONSTRUCTION_VERSION,
-		type ReconstructedPoint
-	} from './reconstructedTrend';
+	import { reconstructTrend, type ReconstructedPoint } from './reconstructedTrend';
 	import { CHART_SERIES } from '$lib/styles/chartColors';
 	import { line as d3Line } from 'd3-shape';
 	import {
@@ -60,14 +56,12 @@
 
 	const MIN_DISTINCT_DATES = 7;
 
-	let includeEstimates = $state(false);
 	let priceView = $state<'trend' | 'recorded'>('trend');
 	let isReconstructed = $derived(mode === 'price' && (!expanded || priceView === 'trend'));
 	let chartRoot: HTMLDivElement | undefined = $state();
 	let pinned = $state(false);
 	let keyboardInspection = $state(false);
-	let hasEstimates = $derived(snapshots.some((row) => row.synthetic));
-	let observedSnapshots = $derived(snapshots.filter((row) => includeEstimates || !row.synthetic));
+	let observedSnapshots = $derived(snapshots.filter((row) => row.synthetic === false));
 	let activeData = $derived(
 		mode === 'spread' ? spreadData : observedSnapshots.filter((s) => s.snapshot_date >= startDate)
 	);
@@ -218,8 +212,20 @@
 	// Origin selector dropdown state (expanded mode only)
 	let selectorOpen = $state(false);
 
+	// Stable across range and view changes; do not recolor a country when its rank changes.
+	let colorOrigins = $derived.by(() => {
+		const totals = new Map<string, number>();
+		for (const row of snapshots) {
+			const label = cohortSeriesLabel(row.origin, row.wholesale_only, mixedCohorts);
+			totals.set(label, (totals.get(label) ?? 0) + (row.sample_size || 0));
+		}
+		for (const row of spreadData) totals.set(row.origin, (totals.get(row.origin) ?? 0) + 1);
+		return [...totals]
+			.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+			.map(([origin]) => origin);
+	});
 	function originColor(origin: string): string {
-		const idx = allRankedOrigins.indexOf(origin);
+		const idx = colorOrigins.indexOf(origin);
 		return COLORS[idx % COLORS.length];
 	}
 
@@ -383,7 +389,7 @@
 	function leaveChart() {
 		if (!pinned && !keyboardInspection) selectedDate = null;
 	}
-	let tooltipWidth = $derived(Math.min(expanded ? 310 : 260, Math.max(0, containerW - 16)));
+	let tooltipWidth = $derived(Math.min(260, Math.max(0, containerW - 16)));
 	let tooltipLeft = $derived(
 		Math.max(8, Math.min(containerW - tooltipWidth - 8, (inspectionX ?? 0) + padding.left + 12))
 	);
@@ -404,44 +410,6 @@
 	}}
 />
 <div class="flex h-full min-h-0 w-full flex-col" bind:this={chartRoot}>
-	{#if mode === 'price' && expanded}
-		<div class="mb-2 flex gap-1" aria-label="Price history view">
-			{#each [{ value: 'trend', label: 'Reconstructed trend' }, { value: 'recorded', label: 'Recorded prices' }] as option}
-				<button
-					type="button"
-					class="min-h-11 rounded-md border border-line px-3 text-xs font-medium {priceView ===
-					option.value
-						? 'bg-surface-panel text-ink'
-						: 'text-muted'}"
-					aria-pressed={priceView === option.value}
-					onclick={() => {
-						priceView = option.value as 'trend' | 'recorded';
-					}}>{option.label}</button
-				>
-			{/each}
-		</div>
-		{#if isReconstructed}
-			<details class="mb-2 text-xs text-muted">
-				<summary class="cursor-pointer py-2">Includes estimated periods · Methodology</summary>
-				<p class="py-2">
-					Published medians anchor the trend when sample and supplier counts each reach 60% of their
-					local 28-day baseline. Other dates are estimated between those anchors. This reduces
-					coverage-dropout jumps; it does not measure price changes during missing periods or fully
-					correct supplier mix. No estimates extend beyond supported history. Method: {RECONSTRUCTION_VERSION}.
-				</p>
-			</details>
-		{/if}
-	{/if}
-	{#if mode === 'price' && expanded && !isReconstructed && hasEstimates}
-		<label class="mb-2 flex min-h-11 items-center gap-2 text-xs text-muted">
-			<input
-				type="checkbox"
-				bind:checked={includeEstimates}
-				class="rounded border-line accent-accent"
-			/>
-			Include historical estimates (not observed prices)
-		</label>
-	{/if}
 	{#if !hasEnoughData}
 		<div
 			class="flex h-full w-full flex-col items-center justify-center rounded-lg bg-surface-panel px-6 text-center"
@@ -526,7 +494,6 @@
 							{#each allRankedOrigins as origin}
 								{@const active = enabledOrigins.has(origin)}
 								{@const color = originColor(origin)}
-								{@const vol = originVolume.get(origin) ?? 0}
 								<button
 									type="button"
 									onclick={() => toggleOrigin(origin)}
@@ -540,7 +507,6 @@
 											: 'background:transparent; border-color:#d1d5db;'}
 									></div>
 									<span class={active ? 'text-ink' : 'text-muted'}>{origin}</span>
-									<span class="ml-auto text-xs text-muted/60">({vol})</span>
 								</button>
 							{/each}
 						</div>
@@ -624,7 +590,7 @@
 					style="left:{tooltipLeft}px;width:{tooltipWidth}px;"
 				>
 					<div class="mb-2 flex items-center justify-between gap-2 border-b border-line pb-2">
-						<p class="text-xs font-medium text-ink">{formatDate(inspection)} · UTC</p>
+						<p class="text-xs font-medium text-ink">{formatDate(inspection)}</p>
 						{#if pinned || keyboardInspection}<button
 								type="button"
 								aria-label="Close price inspection"
@@ -640,37 +606,13 @@
 								></span>
 								<div class="min-w-0 flex-1">
 									<span class="text-ink">{row.origin}</span>
-									{#if expanded && row.point}<span class="block text-muted"
-											>{!inspection ? formatDate(row.point.date) + ' · ' : ''}{row.point
-												.statistic ?? 'Spread'}{row.point.synthetic
-												? ' · Historical estimate'
-												: ''}</span
-										>{/if}
-									{#if expanded && row.point?.reconstruction && row.point.reconstruction.kind !== 'recorded_anchor'}
-										<span class="block text-muted"
-											>Between {row.point.reconstruction.anchorDates.join(' and ')} · {row.point
-												.reconstruction.intervalDays}-day interval</span
-										>
-										{#if row.point.reconstruction.original}<span class="block text-muted"
-												>Recorded median: {formatValue(
-													row.point.reconstruction.original.price_median!
-												)}
-												· reduced coverage</span
-											>{/if}
-									{/if}
-									{#if expanded && row.point?.sampleSize != null}
-										<span class="block text-muted"
-											>{row.point.sampleSize.toLocaleString()} prices{row.point.supplierCount !=
-											null
-												? ` · ${row.point.supplierCount} suppliers`
-												: ''}</span
-										>
-									{/if}
 								</div>
 								<span class="shrink-0 font-medium tabular-nums text-ink"
 									>{row.point
 										? formatValue(row.point.value)
-										: 'No published index'}{#if !expanded && row.point?.reconstruction && row.point.reconstruction.kind !== 'recorded_anchor'}<span
+										: 'No data'}{#if row.point?.statistic === 'Average'}<span
+											class="ml-1 text-[10px] font-normal text-muted">avg.</span
+										>{/if}{#if row.point?.reconstruction && row.point.reconstruction.kind !== 'recorded_anchor'}<span
 											class="ml-1 text-[10px] font-normal text-muted">est.</span
 										>{/if}</span
 								>
@@ -689,10 +631,38 @@
 				>
 			{/each}
 		</div>
+		{#if mode === 'price' && expanded}
+			<details class="mt-2 shrink-0 text-xs text-muted">
+				<summary class="cursor-pointer py-2">About this data · Includes estimates</summary>
+				<div class="max-h-48 space-y-3 overflow-y-auto pb-2">
+					<p>
+						Trends connect reliable recorded prices across gaps. Earlier history is modeled from
+						legacy catalog estimates, joined to the first reliable recorded price—not historical
+						quotes. Estimated periods do not show actual day-to-day market movement.
+					</p>
+					<div class="flex gap-1" aria-label="Price history view">
+						{#each [{ value: 'trend', label: 'Trend' }, { value: 'recorded', label: 'Recorded prices' }] as option}
+							<button
+								type="button"
+								class="min-h-11 rounded-md border border-line px-3 text-xs font-medium {priceView ===
+								option.value
+									? 'bg-surface-panel text-ink'
+									: 'text-muted'}"
+								aria-pressed={priceView === option.value}
+								onclick={() => {
+									priceView = option.value as 'trend' | 'recorded';
+								}}>{option.label}</button
+							>
+						{/each}
+					</div>
+					<p>Recorded prices show published values and their gaps, without modeled history.</p>
+				</div>
+			</details>
+		{/if}
 		{#if mode === 'price' && !expanded}<p class="mt-2 text-xs text-muted">
-				Includes estimated periods · Hover or tap to inspect
+				Includes estimates
 			</p>{/if}
-		<div class={expanded ? 'mt-3 shrink-0' : 'sr-only focus-within:not-sr-only focus-within:mt-2'}>
+		<div class="sr-only focus-within:not-sr-only focus-within:mt-2">
 			<label for="trend-date-{componentId}" class="text-xs text-muted"
 				>{inspection ? formatDate(inspection) + ' · UTC' : 'Inspect a date'}</label
 			>

@@ -61,7 +61,7 @@
 <section class="mb-8 space-y-6" aria-label="Evidence charts">
 	<ExpandablePanel
 		title="Origin price trends"
-		subtitle="Price trends by origin · $/lb"
+		subtitle={`$/lb · ${viewMode === 'all' ? 'retail and wholesale' : viewMode}`}
 		collapsedMaxHeight="none"
 		showGradient={false}
 		onExpandChange={(v) => (lineChartExpanded = v)}
@@ -77,11 +77,10 @@
 			<div class="rounded-lg border border-line bg-surface-canvas p-3 shadow-sm sm:p-6">
 				{#if !lineChartExpanded}
 					<h2 class="mb-1 text-base font-semibold text-ink">Origin price trends</h2>
+					<p class="mb-3 text-sm text-muted">
+						$/lb · {viewMode === 'all' ? 'retail and wholesale' : viewMode}
+					</p>
 				{/if}
-				<p class="mb-3 text-sm text-muted">
-					Price trends by origin · $/lb
-					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
-				</p>
 				<div class="mb-4 flex items-center gap-2">
 					<span class="text-xs font-medium text-muted">Range:</span>
 					<div class="flex rounded-full border border-line bg-surface-panel p-0.5 shadow-sm">

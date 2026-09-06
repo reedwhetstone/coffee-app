@@ -32,7 +32,7 @@ describe('supported median reconstruction', () => {
 		expect(result[12].anchorDates).toEqual(['2026-07-07', '2026-07-18']);
 		expect(result[12].original).toBeUndefined();
 	});
-	it('rejects unknown or synthetic provenance and does not extrapolate', () => {
+	it('rejects unknown provenance and isolated synthetic points; does not extend the trailing edge', () => {
 		const data = rows();
 		data[0].synthetic = true;
 		data[1].synthetic = undefined;
@@ -60,5 +60,49 @@ describe('supported median reconstruction', () => {
 		data[1].price_median = NaN;
 		data[2].price_median = -1;
 		expect(reconstructTrend(data)[0].date.toISOString()).toContain('2026-07-04');
+	});
+});
+
+const legacyRows = (): TrendObservation[] =>
+	Array.from({ length: 6 }, (_, i) => ({
+		snapshot_date: new Date(Date.UTC(2026, 0, 1 + i * 7)).toISOString().slice(0, 10),
+		origin: 'Indonesia',
+		wholesale_only: false,
+		price_median: i === 2 ? 90 : 9,
+		sample_size: 30,
+		supplier_count: 4,
+		synthetic: true
+	}));
+describe('earlier modeled history', () => {
+	it('bridges a robust legacy opening level without importing its spike or changing recorded history', () => {
+		const legacy = legacyRows();
+		const recorded = rows();
+		const input = [...legacy, ...recorded];
+		const before = JSON.stringify(input);
+		const result = reconstructTrend(input);
+		const historical = result.filter((p) => p.kind === 'historical_estimate');
+		expect(historical[0].date.toISOString().slice(0, 10)).toBe('2026-01-01');
+		expect(historical[0].value).toBe(9);
+		expect(historical.every((p) => p.value >= 9 && p.value < 10)).toBe(true);
+		expect(historical.every((p) => !p.original)).toBe(true);
+		expect(historical[0].legacyBaseline?.dates).toHaveLength(6);
+		expect(result.filter((p) => p.kind !== 'historical_estimate')).toEqual(
+			reconstructTrend(recorded)
+		);
+		expect(JSON.stringify(input)).toBe(before);
+		expect(new Set(result.map((p) => +p.date)).size).toBe(result.length);
+	});
+	it('requires explicit legacy evidence and a supported recorded endpoint, never invents history alone', () => {
+		expect(reconstructTrend(legacyRows())).toEqual([]);
+		expect(reconstructTrend([...legacyRows().slice(0, 4), ...rows()])).toEqual(
+			reconstructTrend(rows())
+		);
+		expect(
+			reconstructTrend([...legacyRows().map((r) => ({ ...r, synthetic: undefined })), ...rows()])
+		).toEqual(reconstructTrend(rows()));
+		const legacy = legacyRows().slice(0, 5);
+		expect(reconstructTrend([...legacy, { ...legacy[0], price_median: 100 }, ...rows()])).toEqual(
+			reconstructTrend(rows())
+		);
 	});
 });

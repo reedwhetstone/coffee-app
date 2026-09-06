@@ -1,72 +1,71 @@
-# Reconstructed origin price history
+# Origin price history — reconstructed trend
 
-Status: implemented for review in [PR #582](https://github.com/reedwhetstone/coffee-app/pull/582). No production writes or deployment performed.
+[PR #582](https://github.com/reedwhetstone/coffee-app/pull/582), non-draft for preview review. Derived chart presentation only; no production observations, publication thresholds, pricing calculations or database storage change.
 
-## Product outcome
+## Forest-through-trees assessment
 
-The main chart is now a continuous **reconstructed price trend** over supported observed history. The **Recorded prices** view retains exact original dates, medians (average fallback explicitly named), supplier/listing counts, and optional legacy synthetic history. In the expanded view, switching between reconstructed and recorded prices retains date inspection. Retail and wholesale remain separate series.
+One outcome: make origin prices understandable over the available year without letting collection failures dominate the chart. The earlier revision made the expanded chart a compulsory diagnostics screen and stopped at March, missing that outcome.
 
-This supersedes the earlier gap-only default and the experimental end-anchored matched-supplier formula. It is a reconstruction of published medians, **not a supplier-mix-normalized market index**. Counts can detect coverage collapse; they cannot identify which suppliers disappeared or recover market movement during an outage.
+The revised hierarchy:
 
-## Versioned method: supported-median-v1
+- Dashboard: price chart, range, legend, compact floating date/value card, “Includes estimates.”
+- Expanded: more plot area and origin selection, the same compact card.
+- Collapsed **About this data**: explanation and optional **Recorded prices** comparison.
+- This artifact: algorithm parameters, provenance limitations, replay and review receipts.
 
-Owner/lifetime: coffee-app owns this deterministic, derived **chart presentation**, computed from the existing entitled Parchment history response. No database table, observation, publication threshold, upstream API contract, or sibling pricing calculation changes. Method version and bracketing evidence accompany each derived point in memory; the recorded response remains the input of record. A future persisted/shared index belongs upstream and requires a separate contract.
+Removed repeated per-origin evidence in tooltips, prominent reconstruction controls, synthetic-checkbox-inside-recorded mode, duplicated expanded subtitle, cumulative sample counts in the selector, and always-visible date slider. Keyboard inspection still reveals the slider on focus. Origin colors use full-input ranking, independent of the chosen display range. Average fallback remains explicitly marked `avg.`; estimates use `est.`. Recorded mode is explicit non-synthetic published prices, with original gaps.
 
-For each origin and purchase cohort:
+## Versioned method: supported-median-legacy-bridge-v2
 
-1. Accept only valid UTC dates, positive finite medians, and explicit `synthetic=false`. Never silently treat unknown provenance or an average as a median anchor. Conflicting duplicate daily records cannot anchor the series.
-2. Require at least two listings, one supplier, and five usable observations within ±28 calendar days. Compute median listing and supplier counts over that local window. Each count must reach 60% of its local baseline. These are reconstruction-support heuristics, **not guarantees of representativeness**.
-3. Preserve every accepted median exactly, even a sharp price change. There is no price-based clipping or rescaling.
-4. Linearly interpolate elapsed UTC days between accepted anchors. Classify estimates as reduced-support or missing-date estimates, preserving original values/counts when present and both bounding dates plus interval length. No spline overshoot, invented sample counts, extrapolation, or carry-forward.
-5. Compute on the full history available to the current entitlement before cropping the selected chart range. Changing range on that input cannot change the underlying reconstruction. Different entitlement history windows can change edge support.
+Owner/lifetime: coffee-app owns deterministic presentation derived from the current entitled Parchment history response. No new shared upstream index or persisted reconstructed series. Runtime uses actual upstream provenance restored by this PR, never a date-based provenance guess.
 
-A long straight interval is an estimate, not recovered movement. The methodology disclosure and dated inspection state this directly. Supported history currently starts March 22, 2026 for the five replayed retail origins. Earlier synthetic history remains accessible in Recorded prices, but is not used to manufacture earlier market movement. Thin histories can have no reconstructed series; Recorded prices remains the recovery view.
+For each origin and purchase cohort, on the full entitled history before cropping:
 
-## Evidence and empirical validation
+1. Recorded anchors require a valid UTC date, positive finite median, explicit `synthetic=false`, at least two listings, one supplier, and five usable observations within ±28 days. Listing and supplier counts must each reach 60% of that local median baseline. Conflicting duplicates cannot anchor.
+2. Preserve every accepted median exactly, including supported sharp price changes. Interpolate elapsed UTC days between anchors. Preserve original rejected records and bracketing metadata in the derived model, not in compulsory hover copy. Never extend past the last supported anchor.
+3. Earlier **explicit synthetic legacy** rows do not describe historical market movements: the old backfill priced historical catalog memberships using later catalog prices. Do not reuse their weekly trajectory.
+4. If at least five distinct usable legacy dates exist in the first 35-day window, use their median price as an opening **modeled level**. A linear bridge joins the earliest usable legacy date/level to the first supported recorded date/price. Every earlier point, including the starting level, is `historical_estimate`; its metadata identifies baseline dates/value and joining interval. It has no invented sample count or recorded original.
+5. No legacy evidence, insufficient opening evidence, or no supported recorded endpoint means no earlier bridge. Unknown provenance cannot supply either endpoint. Retail and wholesale never mix. Dates before the first available usable legacy record remain outside the chart; the five-origin replay begins September 20, not September 6.
 
-[Original read-only investigation](evidence.md) distinguishes observed database facts from hypotheses. The original matched-supplier image is retained as a rejected experiment, not current methodology.
+The early bridge is a conservative model choice, **not a validated estimate of true historical prices**. Its slope is imposed by its endpoints; it does not recover repricing, shocks, or seasonal movement. The legacy level itself may have retrospective cohort bias. This choice trades unavailable temporal detail for a continuous, explicitly modeled overview. It must not feed return calculations, alerts, forecasting, or other pricing products as observed history. A future evidence-rich early history could use genuine dated historical quotes or an explicitly calibrated external index; that is not claimed here.
 
-Reproduce the current offline validation:
+Likewise, later count support is a coverage-collapse heuristic, not full supplier-mix normalization. Persistent composition changes can escape it. No confidence intervals or recoverable daily movement are asserted.
+
+## Evidence and reproducible replay
+
+[Original read-only audit](evidence.md) distinguishes observed facts from hypotheses. The matched-supplier image remains a rejected experiment, not the current method.
 
 ```sh
 pnpm exec tsx notes/analytics/2026-09-06-price-history/validate-reconstruction.ts
+pnpm exec tsx notes/analytics/2026-09-06-price-history/validate-earlier-history.ts
 ```
 
-Inputs: [published aggregate fixture](fixtures/published-medians.json), five retail origins, March 22–September 5, exported from the authorized production analytics browser on September 6 UTC. No account data, tokens, or supplier-private records. The deployed BFF omits the synthetic flag, so this fixture is deliberately restricted to the actual-daily era established in the earlier read-only audit and annotated `synthetic=false` on that basis. This is **not** a fresh row-by-row provenance audit. Production reconstruction uses upstream flags preserved by this PR, not a hard-coded date cutoff. The fixture is an offline test artifact, never bundled into the production chart.
+- [Published fixture](fixtures/published-medians.json): five retail origins, March 22–September 5. Authorized browser aggregate export; `synthetic=false` annotated from the prior read-only era audit because the deployed BFF omits provenance. Not a new row-level provenance audit.
+- [Legacy fixture](fixtures/legacy-medians.json): September 20–March 14 aggregate-only rows for the same origins, freshly exported from the authorized analytics browser September 6 UTC. `synthetic=true` annotated from that same era audit. No account data or credentials. Neither fixture is bundled into production.
+- [Earlier replay](earlier-history-results.jsonl): all five series add 183 modeled days, remain daily-continuous, and preserve the entire March-onward reconstruction exactly. Brazil opening 9.48 → first observed 9.45; Colombia 9.675 → 10.53; Ethiopia 10.09 → 9.98; Guatemala 10.10 → 10.92; Indonesia 9.885 → 10.00. These are model endpoint receipts, not accuracy scores.
+- [Observed-era holdouts](validation-results.jsonl): July dropout spike removed at 50/60/70% support sensitivity without moving accepted medians. Individual-date median errors 0–0.42% (worst 5.16%); one contiguous 41-observation-block median errors 0–1.31% (worst 3.47%). These compare with withheld published medians, not actual August or pre-March movement. The v2 earlier-history replay proves later output is unchanged.
 
-[Machine-readable results](validation-results.jsonl) include 50/60/70% support sensitivity, July 10/11/15/16 values, deterministic individual-date holdouts (every seventh accepted observation), and a contiguous 41-observation holdout block with dates and worst errors. This is retrospective reconstruction testing against published medians, not forecasting or validation of true August prices, source-cohort withholding, or a confidence interval.
+Behavior tests cover dropout replacement, preservation of supported changes, UTC interpolation, cohort isolation, missing/invalid provenance, ambiguous duplicates, earlier robust median under an outlier, insufficient legacy support, no synthetic-only reconstruction, no invented historical counts, no input mutation, and unchanged recorded-era output.
 
-- The July 11–15 coverage-collapse points are excluded at all three support ratios for all five origins. Supported endpoints retain their exact values. Indonesia's $16 points become $10.405–$10.465 between July 10 ($10.39) and July 16 ($10.48).
-- Individual-date holdout median relative error is 0–0.42% across five origins (17 dates each).
-- Contiguous-block holdout median relative error is 0–1.31% (41 observations each). See results for worst errors; these medians do not bound individual-point errors.
-- Full supplier identity correction, raw-observation recovery for unpublished August days, and reconstructed history before March 22 are **not implemented or claimed**.
+## Visual review
 
-Behavior tests cover dropout replacement, preservation of a count-supported price step, UTC gap interpolation, no extrapolation, missing provenance, sparse history, invalid records, cohort isolation, ambiguous duplicates, and view-switch date inspection.
+Local fixture replay uses the actual EvidenceChartsSection/ExpandablePanel and OriginLineChart, not an authenticated deployment. Temporary fixture route removed before checks/push.
 
-## Visual review and progressive disclosure
+- [One-year dashboard](mobile-year-simplified.png)
+- [Earlier date tooltip](mobile-year-tooltip.png)
+- [Expanded mobile](mobile-expanded-simplified.png)
+- [Optional data controls](mobile-data-options.png)
+- [Desktop expanded hover](desktop-year-simplified.png)
 
-The main dashboard stays compact: a 320px chart area, origin legend, and a short estimate label. Hover or tap opens a floating date/value card; estimates have a compact `est.` marker. There is no permanent bottom detail panel. Mouse leave dismisses hover inspection; touch pins the card until close, outside tap, or Escape. Keyboard inspection remains available through a focus-revealed date control.
+390×844 mobile: one-year selection starts September 20, November 29 inspection returns five estimated prices, both floating cards are 185px tall with no internal scroll and fit inside the viewport. No horizontal overflow or page errors. Recorded/trend comparison and dismissal work. Desktop: colors unchanged across 90-day/one-year ranges; hover clears on leave. Older images are superseded iterations.
 
-The existing expanded panel adds the recorded/reconstructed switch, origin selection, methodology, visible date slider, and full sample/reconstruction evidence within the floating card. The dashboard is a summary, not the expanded inspector squeezed into the page.
+## Handoff
 
-Local fixture harnesses use the actual EvidenceChartsSection/ExpandablePanel and live chart component with the aggregate fixture above; not authenticated deployment proof:
+No merge or deployment. This remains one bounded, reviewable PR: full available-history presentation plus useful inspection. It is not a price-data backfill or a normalized market index. Current-head CI/Codex review is handed off separately.
 
-- [Compact mobile dashboard](mobile-dashboard-compact.png)
-- [Mobile floating inspection](mobile-floating-inspection.png)
-- [Expanded mobile evidence](mobile-expanded-floating.png)
-- [Desktop hover inspection](desktop-floating-inspection.png)
+## Final local validation
 
-390px mobile and desktop replay: no horizontal overflow or browser errors. Dashboard tooltip fits all five values without scrolling. Verified tap pinning, close/outside dismissal, desktop hover/leave, expanded evidence, and keyboard/Escape behavior. Temporary fixture route removed before submission. Older screenshots show superseded iterations.
-
-## Merge boundary
-
-This PR is non-draft and intended for preview review as a complete, bounded interpolation-based chart improvement. It does not depend on accepting the rejected matched-supplier formula. Merge remains a separate user decision after CI/Codex review; no production historical data repair is performed by this change.
-
-## Local validation receipt
-
-- `pnpm test`: 201 files passed, 2 skipped; 1,447 tests passed, 14 skipped.
-- `PUBLIC_SUPABASE_URL=https://example.supabase.co PUBLIC_SUPABASE_ANON_KEY=static-placeholder OPENROUTER_API_KEY=static-placeholder pnpm check --fail-on-warnings`: zero errors/warnings. Non-secret placeholders validate types only, not authenticated runtime.
-- `pnpm lint`: blocked by 17 pre-existing unrelated Prettier files. Changed-file ESLint and Prettier checks pass.
-- `git diff --check`: passes.
-- Worst relative errors in the replay: 5.16% for individual-date holdouts, 3.47% for the held-out block. No statistical confidence bounds are asserted.
-- Independent read-only implementation review found no substantive blocker. Current-head CI/Codex review remains the remote handoff gate.
+- `pnpm test`: 1,449 passed, 14 skipped; 201 files passed, 2 skipped.
+- `PUBLIC_SUPABASE_URL=https://example.supabase.co PUBLIC_SUPABASE_ANON_KEY=static-placeholder OPENROUTER_API_KEY=static-placeholder pnpm check --fail-on-warnings`: zero errors/warnings. Non-secret placeholders prove static typing, not authenticated runtime.
+- `pnpm lint`: blocked by the same 17 unrelated baseline formatting files. Changed-file ESLint/Prettier pass; `git diff --check` passes.
+- Initial regression run exposed four obsolete UI assertions; updated tests now verify compact inspection, recorded gaps, modeled-history exclusion, and optional disclosure. Final suite passes.
