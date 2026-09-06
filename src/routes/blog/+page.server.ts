@@ -1,4 +1,4 @@
-import { newsletterName } from '$lib/newsletter';
+import { NEWSLETTER, newsletterName } from '$lib/newsletter';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
@@ -50,7 +50,7 @@ export const load: PageServerLoad = async ({ url }) => {
 							isPartOf: {
 								'@type': 'CreativeWorkSeries',
 								name: newsletterName(post, true),
-								url: `${baseUrl}/blog`
+								url: `${baseUrl}${post.newsletter === 'fieldnotes' ? NEWSLETTER.path : '/blog'}`
 							}
 						}
 					: {}),

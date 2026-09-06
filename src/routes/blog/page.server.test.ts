@@ -15,6 +15,18 @@ const { posts } = vi.hoisted(() => ({
 			edition: 1
 		},
 		{
+			slug: 'market-brief-003',
+			title: 'Fieldnotes Three',
+			date: '2026-09-06',
+			description: 'A Fieldnotes fixture.',
+			tags: ['coffee', 'technology', 'ideas'],
+			pillar: 'market-intelligence',
+			draft: false,
+			format: 'market-brief',
+			newsletter: 'fieldnotes',
+			edition: 3
+		},
+		{
 			slug: 'an-essay',
 			title: 'An Essay',
 			date: '2026-08-16',
@@ -51,24 +63,37 @@ describe('/blog format archive', () => {
 		expect(result.meta.canonical).toBe('https://purveyors.io/blog');
 	});
 
+	it('keeps each newsletter series metadata on its own canonical landing', async () => {
+		const result = await loadBlog();
+		if (!result) throw new Error('Expected blog archive data');
+
+		const schema = JSON.stringify(result.meta.schemaData);
+		expect(schema).toContain('"name":"Purveyors Market Brief"');
+		expect(schema).toContain('"url":"https://purveyors.io/blog"');
+		expect(schema).toContain('"name":"Purveyors Fieldnotes"');
+		expect(schema).toContain('"url":"https://purveyors.io/fieldnotes"');
+	});
+
 	it.each([
-		['market-brief', 'market-brief-001'],
-		['essay', 'an-essay']
-	])('filters the existing archive by %s', async (format, expectedSlug) => {
+		['market-brief', ['market-brief-001', 'market-brief-003']],
+		['essay', ['an-essay']]
+	])('filters the existing archive by %s', async (format, expectedSlugs) => {
 		const result = await loadBlog(format);
 		if (!result) throw new Error('Expected filtered blog archive data');
-		expect(result.posts.map((post: BlogPost) => post.slug)).toEqual([expectedSlug]);
+		expect(result.posts.map((post: BlogPost) => post.slug)).toEqual(expectedSlugs);
 		expect(result.tags).toEqual(
-			expectedSlug === 'market-brief-001'
-				? ['coffee', 'data', 'supply-chain']
+			format === 'market-brief'
+				? ['coffee', 'data', 'ideas', 'supply-chain', 'technology']
 				: ['coffee', 'data', 'strategy']
 		);
 		expect(result.selectedFormat).toBe(format);
 		expect(result.meta.canonical).toBe('https://purveyors.io/blog');
 
 		const schema = JSON.stringify(result.meta.schemaData);
-		expect(schema).toContain(`https://purveyors.io/blog/${expectedSlug}`);
-		for (const post of posts.filter((candidate) => candidate.slug !== expectedSlug)) {
+		for (const expectedSlug of expectedSlugs) {
+			expect(schema).toContain(`https://purveyors.io/blog/${expectedSlug}`);
+		}
+		for (const post of posts.filter((candidate) => !expectedSlugs.includes(candidate.slug))) {
 			expect(schema).not.toContain(`https://purveyors.io/blog/${post.slug}`);
 		}
 	});
