@@ -15,7 +15,7 @@ This repo contains:
 - the internal route layer that powers the first-party product
 - the `/docs` tree for product and CLI guidance; the generated API reference lives at `api.purveyors.io/docs`
 
-Cherry Runtime's server-side tools consume the Parchment API through `@purveyors/sdk`; the CLI is a separate first-class client of the same contracts.
+Coffee-app consumes Parchment-owned Cherry Runtime through an unbuffered, session-bound `@purveyors/sdk` stream; the CLI is a separate first-class client of Parchment's public contracts.
 
 ## Product surfaces
 
@@ -88,7 +88,7 @@ CLI auth and output rules are part of the platform contract:
 - `purvey context` is the shipped dense agent reference; `purvey context --json` and `--pretty` emit manifest-parity output for compatibility
 - stdout stays structured for automation, while operational and fatal messaging is designed to stay on stderr
 
-Cherry Runtime's server-side tools adapt session-authenticated `@purveyors/sdk` clients to its tool schemas. Shared behavior belongs behind Parchment endpoints so browser, CLI, and agent consumers stay aligned without importing one another's runtime.
+Cherry Runtime's model loop and tools execute inside Parchment. Coffee-app keeps the same-origin Svelte AI SDK transport and structured presentation layer, forwarding its session-bound stream through `@purveyors/sdk` without buffering.
 
 ## Tech stack
 
@@ -98,7 +98,7 @@ Cherry Runtime's server-side tools adapt session-authenticated `@purveyors/sdk` 
 - **Auth:** Supabase Auth for browser identity and session lifecycle; Parchment
   for API credential validation, principal resolution, and product authorization
 - **Payments:** Stripe.js embedded Checkout presentation; Parchment owns all server-side Stripe authority
-- **AI:** OpenRouter via Vercel AI SDK; Qwen3 embeddings via OpenRouter
+- **AI:** Svelte AI SDK presentation over Parchment-owned OpenRouter orchestration; Qwen3 embeddings via OpenRouter
 - **Charts:** LayerCake, D3.js, and custom analytics components
 - **Terminal interface:** `@purveyors/cli`
 

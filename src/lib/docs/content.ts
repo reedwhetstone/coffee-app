@@ -1542,7 +1542,7 @@ const docsPages: DocsPage[] = [
 							'POST',
 							'Chat access session',
 							'Internal product route',
-							'Streams Cherry AI responses with workspace context and tool execution.'
+							'Forwards an unbuffered Parchment-owned Cherry Runtime stream with workspace and page context. Coffee-app retains session admission and structured presentation.'
 						],
 						[
 							'/api/chat/execute-action',
@@ -2898,9 +2898,9 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'How the web app and CLI stay aligned',
 				bullets: [
-					'The app uses session-authenticated @purveyors/sdk clients for migrated chat operations. The CLI remains a separate Parchment API client and terminal surface; neither runtime imports the other.',
+					'The app uses a session-authenticated @purveyors/sdk client to forward Parchment-owned Cherry Runtime streams without buffering. The CLI remains a separate Parchment API client and terminal surface; neither runtime imports the other.',
 					'Coffee-app still has direct Supabase paths, including some inventory, roast, sales, tasting, catalog, market, and agent helpers. Those are tracked migration debt, not evidence that the CLI is the app integration layer.',
-					'Read tools execute Parchment API operations directly. Write tools stay user-confirmed through proposal cards and constrained execution routes.',
+					'Cherry read and proposal tools execute inside Parchment. Writes stay user-confirmed through proposal cards and constrained execution routes.',
 					'This API-first architecture keeps terminal, browser, and agent workflows aligned on the same contracts without runtime package coupling.'
 				],
 				codeBlocks: [
