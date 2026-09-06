@@ -15,9 +15,11 @@ Checked September 6, 2026. This corrects the existing edition PR, not the captur
 
 Removed the forced weekly theme and four news links that added no useful supported buyer conclusion. The retained news reporting still comes through DCN; additional configured sources belong to the separate generator improvement, not a fabricated retroactive source-diversity claim. Direct supplier pages provide primary commercial evidence, not independent validation of quality or social benefit.
 
-Removed generated sensory scores/radar data rather than presenting enrichment as measured tasting. The shortlist is not a bargain ranking. Full-bag terms and unconfirmed small-bag availability distinguish wholesale and home-roaster usefulness.
+The reader correction removes the duplicate Buying shortlist and reduces the flat-price Market read to one sentence. Numbers and signal composition do the quantitative work. Genuine takes keep actionable specifics and material qualifications without repeated non-claims.
 
-The buying shortlist uses a normal reader section because `coffee-highlights` body text is omitted by the current web renderer in favor of frontmatter cards. Thus purchasing caveats remain visible on web as well as reader/email projections. Cards summarize the same offers. The shared card caption now speaks to readers rather than describing generation order.
+Original catalog-enriched structured tasting profiles are restored from the pre-correction edition (`df4351cc`) as rewritten marketing copy. These are not supplier measurements or evidence for producer, process, or cooperative claims. Verified factual corrections remain. Coffee cards own flavor profiles, concise sample interest, sack size, warehouse, and price basis. Card anchors support references without duplicate product prose. At desktop widths cards keep full-width copy rather than squeezing it alongside the radar.
+
+The old edition had no custom hero asset and showed the generic fallback. The new `static/blog/images/market-brief-003/hero.webp` uses the built-in imagegen tool with edition 002 and the co-fermentation article heroes as visual references. Prompt: “Wide 3:2 editorial hero; flat angular cut-paper / midcentury screenprint, subtle paper grain, rust, cream, charcoal, muted teal and ochre; abstract terraced origin landscape, parcel boundaries and a thin thread linking fields to a geometric destination; no text, logos, cups, UI or rounded blobs.” Generated PNG is converted to WebP without compositional edits. This is artwork, not an evidentiary map.
 
 Merge publishes the web edition; this correction neither creates nor sends an email. Generated packet/draft recovery state was not mutated. Review the current PR head, not the original article hash, before publication.
 
@@ -25,6 +27,6 @@ Merge publishes the web edition; this correction neither creates nor sends an em
 
 - `pnpm check --fail-on-warnings`: passed with repo-local placeholder static env (including `OPENROUTER_API_KEY`); zero errors/warnings. No credential copying.
 - `pnpm lint`: blocked by formatting failures in 17 untouched Markdown files; ESLint stage did not run in that combined command.
-- `pnpm test src/lib/server/marketBriefEmail.test.ts src/lib/server/marketBriefDeployment.test.ts src/lib/components/blog/MarketBriefArticle.svelte.test.ts`: 33 passed, including every published edition through email projection.
-- Actual local route inspected in headless installed Chrome: reader copy read independently at 1280px; 390px mobile document width equals viewport (no horizontal overflow). Full purchasing caveats, corrected sourcing and pending auction status are visible. Local development rendering is not Vercel production verification.
+- `pnpm test src/lib/server/marketBriefEmail.test.ts src/lib/server/marketBriefDeployment.test.ts src/lib/components/blog/MarketBriefArticle.svelte.test.ts`: 34 passed, including every published edition through email projection.
+- Actual local route inspected in headless installed Chrome: reader copy read independently at 1280px; 390px mobile document width equals viewport (no horizontal overflow). Single-line market read, unduplicated coffee cards, restored tasting profiles, custom hero, corrected sourcing and pending auction status are visible. Local development rendering is not Vercel production verification.
 - No full E2E or production build was needed for this editorial/caption correction. Node 24.19.0 differs from the repo's declared Node 22; checks above passed on the available runtime.

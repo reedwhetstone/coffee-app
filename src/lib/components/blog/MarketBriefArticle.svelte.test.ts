@@ -113,6 +113,22 @@ describe('Market Brief article presentation', () => {
 		expect(screen.getByText('blackberry jam')).toBeInTheDocument();
 	});
 
+	it('retains signal composition without requiring market commentary', () => {
+		render(MarketBriefArticle, {
+			title: 'A quiet week',
+			reader: {
+				...reader,
+				sections: reader.sections.filter((section) => section.kind !== 'market-read')
+			},
+			snapshot,
+			coffeeHighlights
+		});
+		expect(screen.getByRole('region', { name: 'Market signals' })).toBeInTheDocument();
+		expect(screen.getByText('124 public all-market signals')).toBeInTheDocument();
+		expect(screen.queryByText('Market read')).not.toBeInTheDocument();
+		expect(document.getElementById(`coffee-${coffeeHighlights[0]!.catalogId}`)).toBeInTheDocument();
+	});
+
 	it('keeps each take share link inside its own card', async () => {
 		render(MarketBriefArticle, {
 			title: 'Coffee finds a floor',
