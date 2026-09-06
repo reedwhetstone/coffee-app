@@ -85,7 +85,11 @@
 
 - [ ] **Complete the Market Brief email delivery handoff.** The public reader,
       edition 002, subscription journey, deterministic email projection, Parchment
-      delivery lifecycle, and weekly review-PR workflow are live. Add the remaining
+      delivery lifecycle, and weekly review-PR workflow are live. First bind email
+      deployment identity to the immutable build and verify the packaged artifact
+      ([production identity slice](market-brief/production-identity-plan.md)); live
+      metadata is currently absent and private deployment diagnosis remains open.
+      Then add the remaining
       coffee-app production-success trigger so one deployed immutable edition creates
       or replays one unsent Parchment-owned provider draft. Prove the first production
       canary, including delivered-path verification that no-login unsubscribe and

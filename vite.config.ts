@@ -1,9 +1,13 @@
 import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { svelteTesting } from '@testing-library/svelte/vite';
+import { marketBriefBuildIdentity } from './scripts/market-brief-build-identity';
 
 export default defineConfig({
 	plugins: [sveltekit(), svelteTesting()],
+	define: {
+		__MARKET_BRIEF_BUILD_IDENTITY__: JSON.stringify(marketBriefBuildIdentity(process.env))
+	},
 
 	test: {
 		include: ['src/**/*.{test,spec}.{js,ts}'],
