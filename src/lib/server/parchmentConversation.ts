@@ -19,6 +19,8 @@ export type ConversationWorkspace = components['schemas']['ConversationWorkspace
 export type ConversationMessage = components['schemas']['ConversationWorkspaceMessage'];
 export type ConversationCompactionInputs =
 	components['schemas']['ConversationCompactionInputsResponse']['data'];
+export type ConversationSummaryCompaction =
+	components['schemas']['ConversationSummaryCompactionResponse']['data'];
 export type ConversationMemory = components['schemas']['ConversationMemory'];
 
 export class ParchmentConversationError extends Error {
@@ -162,6 +164,14 @@ export async function updateConversationSummary(
 	body: ConversationSummaryUpdateRequest
 ) {
 	const result = await client.conversation.workspaces.updateSummary(workspaceId, body);
+	return unwrap(result).data;
+}
+
+export async function compactConversationSummary(
+	client: ParchmentClient,
+	workspaceId: string
+): Promise<ConversationSummaryCompaction> {
+	const result = await client.conversation.workspaces.compactSummary(workspaceId);
 	return unwrap(result).data;
 }
 
