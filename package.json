@@ -9,7 +9,8 @@
 	"scripts": {
 		"sync": "svelte-kit sync",
 		"dev": "vite dev",
-		"build": "pnpm run sync && vite build",
+		"build": "pnpm run sync && vite build && pnpm verify:market-brief-artifact",
+		"verify:market-brief-artifact": "node scripts/verify-market-brief-artifact.mjs",
 		"build:analyze": "pnpm run build && vite-bundle-analyzer dist/",
 		"preview": "vite preview",
 		"audit:discoverability": "tsx scripts/audit-public-discoverability.ts",

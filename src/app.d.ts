@@ -8,6 +8,11 @@ import type { PageAuthView } from '$lib/types/auth.types';
 import type { RequestPrincipal } from '$lib/server/principal';
 
 declare global {
+	const __MARKET_BRIEF_BUILD_IDENTITY__: Readonly<{
+		VERCEL_ENV: string;
+		VERCEL_GIT_COMMIT_SHA?: string;
+	}>;
+
 	namespace App {
 		// interface Error {}
 		interface Locals {

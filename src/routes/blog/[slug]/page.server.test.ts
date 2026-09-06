@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BlogPost } from '$lib/types/blog.types';
 
 const {
+	buildEnvironment,
 	buildMarketBriefDeploymentManifestMock,
 	buildMarketBriefEmailProjectionMock,
 	buildMarketBriefReaderExportMock,
@@ -11,6 +12,10 @@ const {
 	marketBrief,
 	marketBriefSource
 } = vi.hoisted(() => ({
+	buildEnvironment: { VERCEL_ENV: 'development', VERCEL_GIT_COMMIT_SHA: undefined } as Record<
+		string,
+		string | undefined
+	>,
 	buildMarketBriefDeploymentManifestMock: vi.fn(),
 	buildMarketBriefEmailProjectionMock: vi.fn(),
 	buildMarketBriefReaderExportMock: vi.fn(),
@@ -46,6 +51,10 @@ The first fixture has a [canonical reader](/blog/market-brief-001).
 `
 }));
 
+vi.mock('$lib/server/marketBriefDeployment', () => ({
+	marketBriefBuildEnvironment: buildEnvironment
+}));
+
 vi.mock('$lib/server/blog', () => ({
 	getAllPosts: getAllPostsMock
 }));
@@ -74,6 +83,10 @@ function loadPost(slug: string) {
 
 describe('/blog/[slug] Market Brief metadata', () => {
 	beforeEach(() => {
+		Object.assign(buildEnvironment, {
+			VERCEL_ENV: 'development',
+			VERCEL_GIT_COMMIT_SHA: undefined
+		});
 		getAllPostsMock.mockResolvedValue([marketBrief]);
 		getRawMarketBriefSourceMock.mockImplementation((slug: string) =>
 			slug === marketBrief.slug ? marketBriefSource : undefined
@@ -146,7 +159,8 @@ describe('/blog/[slug] Market Brief metadata', () => {
 	});
 
 	it('keeps Vercel preview readers outside the production email projection path', async () => {
-		vi.stubEnv('VERCEL_ENV', 'preview');
+		Object.assign(buildEnvironment, { VERCEL_ENV: 'preview' });
+		vi.stubEnv('VERCEL_ENV', 'production');
 
 		const result = await loadPost('market-brief-001');
 		if (!result) throw new Error('Expected Market Brief preview reader data');
@@ -160,8 +174,12 @@ describe('/blog/[slug] Market Brief metadata', () => {
 	});
 
 	it('advertises the exact projection only from a Vercel production deployment', async () => {
-		vi.stubEnv('VERCEL_ENV', 'production');
-		vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'a'.repeat(40));
+		Object.assign(buildEnvironment, {
+			VERCEL_ENV: 'production',
+			VERCEL_GIT_COMMIT_SHA: 'a'.repeat(40)
+		});
+		vi.stubEnv('VERCEL_ENV', 'preview');
+		vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'b'.repeat(40));
 		const result = await loadPost('market-brief-001');
 		if (!result) throw new Error('Expected Market Brief reader data');
 
@@ -184,8 +202,12 @@ describe('/blog/[slug] Market Brief metadata', () => {
 	});
 
 	it('keeps the production reader available when deployment metadata cannot be projected', async () => {
-		vi.stubEnv('VERCEL_ENV', 'production');
-		vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'a'.repeat(40));
+		Object.assign(buildEnvironment, {
+			VERCEL_ENV: 'production',
+			VERCEL_GIT_COMMIT_SHA: 'a'.repeat(40)
+		});
+		vi.stubEnv('VERCEL_ENV', 'preview');
+		vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'b'.repeat(40));
 		buildMarketBriefEmailProjectionMock.mockImplementationOnce(() => {
 			throw new Error('projection runtime unavailable');
 		});
@@ -213,8 +235,12 @@ describe('/blog/[slug] Market Brief metadata', () => {
 				edition: undefined
 			}
 		]);
-		vi.stubEnv('VERCEL_ENV', 'production');
-		vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'a'.repeat(40));
+		Object.assign(buildEnvironment, {
+			VERCEL_ENV: 'production',
+			VERCEL_GIT_COMMIT_SHA: 'a'.repeat(40)
+		});
+		vi.stubEnv('VERCEL_ENV', 'preview');
+		vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'b'.repeat(40));
 
 		const result = await loadPost('ordinary-essay');
 		if (!result) throw new Error('Expected essay reader data');
