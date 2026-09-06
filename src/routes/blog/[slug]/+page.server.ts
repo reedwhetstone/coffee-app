@@ -1,3 +1,4 @@
+import { newsletterName } from '$lib/newsletter';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { buildPublicMeta, resolveBlogPostSocialImage } from '$lib/seo/meta';
@@ -71,13 +72,13 @@ export const load: PageServerLoad = async ({ params, url }) => {
 				height: socialImage.height
 			},
 			keywords: post.tags,
-			articleSection: isMarketBrief ? 'Market Brief' : post.pillar,
+			articleSection: isMarketBrief ? newsletterName(post) : post.pillar,
 			...(isMarketBrief
 				? {
 						position: post.edition,
 						isPartOf: {
 							'@type': 'CreativeWorkSeries',
-							name: 'Purveyors Market Brief',
+							name: newsletterName(post, true),
 							url: `${baseUrl}/blog`
 						}
 					}
@@ -93,7 +94,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		meta: buildPublicMeta({
 			baseUrl,
 			path: postPath,
-			title: `${post.title} | ${isMarketBrief ? 'Purveyors Market Brief' : 'Purveyors Blog'}`,
+			title: `${post.title} | ${isMarketBrief ? newsletterName(post, true) : 'Purveyors Blog'}`,
 			description: post.description,
 			keywords: post.tags,
 			ogTitle: post.title,
@@ -108,7 +109,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 				publishedTime: post.date,
 				modifiedTime: post.updated ?? post.date,
 				author,
-				section: isMarketBrief ? 'Market Brief' : post.pillar,
+				section: isMarketBrief ? newsletterName(post) : post.pillar,
 				tags: post.tags
 			}
 		})

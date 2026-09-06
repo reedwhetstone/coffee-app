@@ -48,6 +48,8 @@ export interface BlogPostFrontmatter {
 	author?: string;
 	readingTime?: number;
 	format?: BlogFormat;
+	/** Opt-in identity for new editions; absence preserves historical branding. */
+	newsletter?: 'fieldnotes';
 	edition?: number;
 	marketSnapshot?: MarketBriefSnapshot;
 	coffeeHighlights?: MarketBriefCoffeeHighlight[];

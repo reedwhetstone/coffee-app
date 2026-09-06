@@ -51,6 +51,22 @@ The market moved **carefully**, with [Purveyors context](/analytics) and an
 `;
 
 describe('Market Brief email projection', () => {
+	it('brands an explicitly opted-in edition without requiring a market read or completed experiment', () => {
+		const fieldnotes = { ...marketBrief, newsletter: 'fieldnotes' as const };
+		const ideaSource =
+			source.slice(0, source.indexOf('---', 3) + 3) +
+			'\n\n## A new coffee possibility\n\nCould small models help us explore catalog availability? [Start here](https://example.com/model).\n';
+		const projection = buildMarketBriefEmailProjection(fieldnotes, ideaSource);
+		expect(projection.subject).toBe('Fieldnotes 001 · Coffee finds a firmer floor');
+		expect(projection.html).toContain('Purveyors Fieldnotes · Edition 001');
+		expect(projection.text).toContain('Unsubscribe from Fieldnotes:');
+		expect(projection.html).not.toContain('Research Spotlight');
+		expect(projection.html).not.toContain('Market snapshot');
+		expect(buildMarketBriefReaderExport(fieldnotes, ideaSource).sections).toEqual([
+			expect.objectContaining({ title: 'A new coffee possibility', kind: 'take' })
+		]);
+	});
+
 	it('projects every published Market Brief from its canonical source', async () => {
 		const publishedBriefs = (await getAllPosts()).filter(
 			(post) => post.format === 'market-brief' && !post.draft

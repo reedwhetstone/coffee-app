@@ -1,3 +1,4 @@
+import { newsletterName } from '$lib/newsletter';
 import { getPublishedPosts } from '$lib/server/blog';
 import { getBlogPostPath } from '$lib/types/blog.types';
 import type { RequestHandler } from './$types';
@@ -24,7 +25,7 @@ export const GET: RequestHandler = async () => {
       <link>${siteUrl}${getBlogPostPath(post.slug)}</link>
       <guid isPermaLink="true">${siteUrl}${getBlogPostPath(post.slug)}</guid>
       <pubDate>${new Date(post.date).toUTCString()}</pubDate>
-      ${post.format === 'market-brief' ? '<category>Market Brief</category>' : ''}
+      ${post.format === 'market-brief' ? `<category>${newsletterName(post)}</category>` : ''}
       ${post.tags.map((tag) => `<category>${tag}</category>`).join('\n      ')}
     </item>`
 			)

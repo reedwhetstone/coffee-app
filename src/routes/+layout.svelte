@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NEWSLETTER } from '$lib/newsletter';
 	import '../app.css';
 	import CookieBanner from '$lib/components/CookieBanner.svelte';
 	import SeoHead from '$lib/components/SeoHead.svelte';
@@ -99,6 +100,7 @@
 			pathname.startsWith('/benchmarks') ||
 			pathname === '/subscription' ||
 			pathname === '/market-wire' ||
+			pathname === NEWSLETTER.path ||
 			pathname.startsWith('/docs') ||
 			pathname.startsWith('/blog')
 	);

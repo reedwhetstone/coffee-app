@@ -1,3 +1,4 @@
+import { NEWSLETTER } from '$lib/newsletter';
 import type { RequestEvent } from '@sveltejs/kit';
 
 import type { MarketReadPreferenceState } from '$lib/marketWire';
@@ -21,12 +22,13 @@ export async function loadMarketReadPreference(
 		return {
 			preference: null,
 			error:
-				result.error?.error?.message ?? 'Your Market Brief preference is temporarily unavailable.'
+				result.error?.error?.message ??
+				`Your ${NEWSLETTER.shortName} preference is temporarily unavailable.`
 		};
 	} catch {
 		return {
 			preference: null,
-			error: 'Your Market Brief preference is temporarily unavailable.'
+			error: `Your ${NEWSLETTER.shortName} preference is temporarily unavailable.`
 		};
 	}
 }

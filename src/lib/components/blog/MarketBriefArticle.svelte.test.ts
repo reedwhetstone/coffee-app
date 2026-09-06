@@ -76,6 +76,17 @@ const coffeeHighlights: MarketBriefCoffeeHighlight[] = [
 ];
 
 describe('Market Brief article presentation', () => {
+	it('renders short takes without mandatory market, research, or coffee sections', () => {
+		render(MarketBriefArticle, {
+			title: 'Ideas worth trying',
+			reader: { ...reader, sections: reader.sections.filter((section) => section.kind === 'take') },
+			coffeeHighlights: []
+		});
+		expect(screen.getByRole('heading', { name: 'Supply tightens' })).toBeVisible();
+		expect(screen.queryByRole('heading', { name: 'Coffee highlights' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('heading', { name: 'Research Spotlight' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('heading', { name: 'Market snapshot' })).not.toBeInTheDocument();
+	});
 	beforeEach(() => {
 		writeText.mockReset();
 		writeText.mockResolvedValue(undefined);

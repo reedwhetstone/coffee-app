@@ -172,6 +172,23 @@ describe('blog tag taxonomy', () => {
 });
 
 describe('Market Brief publication metadata', () => {
+	it('opts new editions into Fieldnotes while preserving their storage identity', () => {
+		const post = normalizeBlogPost('market-brief-001', {
+			...MARKET_BRIEF_FRONTMATTER,
+			newsletter: 'fieldnotes'
+		});
+		expect(post).toMatchObject({
+			newsletter: 'fieldnotes',
+			format: 'market-brief',
+			slug: 'market-brief-001'
+		});
+		expect(
+			normalizeBlogPost('market-brief-001', MARKET_BRIEF_FRONTMATTER).newsletter
+		).toBeUndefined();
+		expect(() =>
+			normalizeBlogPost('an-essay', { ...ESSAY_FRONTMATTER, newsletter: 'fieldnotes' })
+		).toThrow('invalid newsletter identity');
+	});
 	it('normalizes legacy essays without changing their canonical identity', () => {
 		const post = normalizeBlogPost('an-essay', ESSAY_FRONTMATTER);
 

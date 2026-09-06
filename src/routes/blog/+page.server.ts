@@ -1,3 +1,4 @@
+import { newsletterName } from '$lib/newsletter';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
@@ -44,11 +45,11 @@ export const load: PageServerLoad = async ({ url }) => {
 				keywords: post.tags,
 				...(post.format === 'market-brief'
 					? {
-							articleSection: 'Market Brief',
+							articleSection: newsletterName(post),
 							position: post.edition,
 							isPartOf: {
 								'@type': 'CreativeWorkSeries',
-								name: 'Purveyors Market Brief',
+								name: newsletterName(post, true),
 								url: `${baseUrl}/blog`
 							}
 						}

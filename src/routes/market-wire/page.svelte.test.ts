@@ -38,7 +38,7 @@ describe('/market-wire subscription journey', () => {
 
 		expect(screen.getByRole('link', { name: 'Sign in to join the waitlist' })).toHaveAttribute(
 			'href',
-			'/auth?next=%2Fmarket-wire'
+			'/auth?next=%2Ffieldnotes'
 		);
 	});
 

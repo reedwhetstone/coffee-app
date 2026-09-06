@@ -1,14 +1,17 @@
 <script lang="ts">
+	import { newsletterName } from '$lib/newsletter';
 	import { formatMarketBriefEdition } from '$lib/types/blog.types';
 
 	let {
 		title,
 		edition,
-		compact = false
+		compact = false,
+		newsletter
 	} = $props<{
 		title: string;
 		edition: number;
 		compact?: boolean;
+		newsletter?: 'fieldnotes';
 	}>();
 </script>
 
@@ -39,7 +42,7 @@
 		class="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-ink via-ink/90 to-transparent p-5 sm:p-7"
 	>
 		<p class="text-xs font-semibold text-accent">
-			Market Brief · Edition {formatMarketBriefEdition(edition)}
+			{newsletterName({ newsletter })} · Edition {formatMarketBriefEdition(edition)}
 		</p>
 		<p
 			class="mt-2 max-w-3xl font-serif font-medium leading-tight {compact

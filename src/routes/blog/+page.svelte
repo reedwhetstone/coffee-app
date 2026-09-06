@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NEWSLETTER, newsletterName } from '$lib/newsletter';
 	import type { PageData } from './$types';
 	import { formatMarketBriefEdition, getBlogPostPath, PILLARS } from '$lib/types/blog.types';
 	import type { BlogPost, BlogTag } from '$lib/types/blog.types';
@@ -63,7 +64,7 @@
 			? 'bg-ink text-surface-canvas'
 			: 'bg-line/50 text-muted hover:bg-line hover:text-ink'}"
 	>
-		Market Brief
+		{NEWSLETTER.shortName}
 	</a>
 	<a
 		href="/blog?format=essay"
@@ -106,7 +107,7 @@
 	<div class="py-16 text-center">
 		<p class="text-muted">
 			{data.selectedFormat === 'market-brief'
-				? 'No Market Brief editions yet. Check back soon.'
+				? 'No newsletter editions yet. Check back soon.'
 				: 'No posts yet. Check back soon.'}
 		</p>
 	</div>
@@ -131,7 +132,7 @@
 						<span class={post.format === 'market-brief' ? 'text-on-dark/20' : 'text-line'}>·</span>
 						{#if post.format === 'market-brief'}
 							<span class="rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent">
-								Market Brief · Edition {formatMarketBriefEdition(post.edition!)}
+								{newsletterName(post)} · Edition {formatMarketBriefEdition(post.edition!)}
 							</span>
 						{:else}
 							<span class="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
@@ -146,7 +147,12 @@
 						<div
 							class="relative mb-4 aspect-[3/2] overflow-hidden rounded-md border border-on-dark/15"
 						>
-							<MarketBriefHeroFallback title={post.title} edition={post.edition!} compact />
+							<MarketBriefHeroFallback
+								title={post.title}
+								edition={post.edition!}
+								newsletter={post.newsletter}
+								compact
+							/>
 							<img
 								src={getHeroImage(post.slug)}
 								alt={post.title}
