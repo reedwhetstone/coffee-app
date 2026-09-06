@@ -170,7 +170,9 @@ The four legacy `/api/tools/*` compatibility routes and their route-only catalog
 RAG implementation were retired in Phase 3D after their first-party callers
 moved to Parchment and Reed explicitly accepted an immediate hard cutover for
 any unknown authenticated external caller. `OPENROUTER_API_KEY` remains because
-active chat, workspace summary, and memory-dream callers still require it.
+active chat and memory-dream callers still require it. Workspace summary
+compaction is now a thin session-bound Parchment SDK call; Parchment owns its
+prompt, model, provider credential, cooldown, and CAS commit.
 
 Inventory share creation and cross-principal redemption now use Parchment's
 share-grant contract through thin BFF adapters. Coffee-app no longer reads

@@ -37,13 +37,23 @@ describe('legacy tool route retirement', () => {
 		expect(offenders).toEqual([]);
 	});
 
-	it('retains the shared provider credential while active callers still need it', () => {
+	it('keeps provider credentials only in the remaining local AI callers', () => {
 		for (const path of [
 			'src/routes/api/chat/+server.ts',
-			'src/routes/api/workspaces/[id]/summarize/+server.ts',
 			'src/routes/api/memory/dream/+server.ts'
 		]) {
 			expect(readFileSync(resolve(path), 'utf8')).toContain('OPENROUTER_API_KEY');
+		}
+		const summaryRoute = readFileSync(
+			resolve('src/routes/api/workspaces/[id]/summarize/+server.ts'),
+			'utf8'
+		);
+		for (const retiredSummaryDependency of [
+			'OPENROUTER_API_KEY',
+			'openrouter.ai',
+			'CHERRY_RUNTIME_MODEL'
+		]) {
+			expect(summaryRoute).not.toContain(retiredSummaryDependency);
 		}
 	});
 });

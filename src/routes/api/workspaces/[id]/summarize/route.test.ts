@@ -1,50 +1,132 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('$env/static/private', () => ({ OPENROUTER_API_KEY: 'test-key' }));
-vi.mock('$lib/server/auth', () => ({ requireChatAccess: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+	requireChatAccess: vi.fn(),
+	createClient: vi.fn(),
+	compactSummary: vi.fn()
+}));
 
-import {
-	_clampWorkspaceContextSummary,
-	_workspaceSummaryCooldownRemainingMs,
-	_workspaceSummaryMessageText
-} from './+server';
+vi.mock('$lib/server/auth', () => ({ requireChatAccess: mocks.requireChatAccess }));
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentServerClient: mocks.createClient,
+	ParchmentConfigError: class extends Error {}
+}));
 
-describe('workspace summary message text', () => {
-	it('prefers full text parts over truncated duplicate content', () => {
-		const longText = 'x'.repeat(13_000);
+import { POST } from './+server';
 
-		expect(
-			_workspaceSummaryMessageText({
-				content: 'x'.repeat(12_000),
-				parts: [{ type: 'text', text: longText }]
-			})
-		).toBe(longText);
+function event() {
+	return {
+		params: { id: 'workspace-123' },
+		request: new Request('https://app.test/api/workspaces/workspace-123/summarize', {
+			method: 'POST'
+		}),
+		locals: {}
+	} as Parameters<NonNullable<typeof POST>>[0];
+}
+
+beforeEach(() => {
+	vi.clearAllMocks();
+	mocks.requireChatAccess.mockResolvedValue({ user: { id: 'user-123' } });
+	mocks.createClient.mockResolvedValue({
+		conversation: { workspaces: { compactSummary: mocks.compactSummary } }
 	});
-
-	it('falls back to content when parts do not contain text', () => {
-		expect(
-			_workspaceSummaryMessageText({
-				content: 'fallback content',
-				parts: [{ type: 'tool-call', text: 'ignore me' }]
-			})
-		).toBe('fallback content');
+	mocks.compactSummary.mockResolvedValue({
+		data: {
+			data: {
+				contextSummary: 'Current compact summary',
+				summaryVersion: 4,
+				resetEpoch: 2,
+				messageHighWater: 8,
+				skipped: false
+			}
+		},
+		response: new Response(null, { status: 200 })
 	});
 });
 
-describe('workspace context summary clamping', () => {
-	it('caps provider output at the database context_summary limit', () => {
-		expect(_clampWorkspaceContextSummary('x'.repeat(2_001))).toHaveLength(2_000);
+describe('/api/workspaces/[id]/summarize', () => {
+	it('uses the session-bound Parchment compaction contract', async () => {
+		const response = await POST(event());
+
+		expect(response.status).toBe(200);
+		expect(mocks.requireChatAccess).toHaveBeenCalledOnce();
+		expect(mocks.createClient).toHaveBeenCalledWith(expect.anything(), { mode: 'session' });
+		expect(mocks.compactSummary).toHaveBeenCalledWith('workspace-123');
+		await expect(response.json()).resolves.toEqual({
+			summary: 'Current compact summary'
+		});
 	});
 
-	it('leaves summaries within the limit unchanged', () => {
-		const summary = 'short summary';
+	it('preserves the legacy cooldown response shape', async () => {
+		mocks.compactSummary.mockResolvedValue({
+			data: {
+				data: {
+					contextSummary: 'Existing summary',
+					summaryVersion: 3,
+					resetEpoch: 2,
+					messageHighWater: 8,
+					skipped: true,
+					retryAfterMs: 12_000
+				}
+			},
+			response: new Response(null, { status: 200 })
+		});
 
-		expect(_clampWorkspaceContextSummary(summary)).toBe(summary);
+		const response = await POST(event());
+
+		await expect(response.json()).resolves.toEqual({
+			summary: 'Existing summary',
+			skipped: true,
+			retry_after_ms: 12_000
+		});
 	});
-});
 
-describe('workspace summary cooldown', () => {
-	it('reports no remaining cooldown for an unreserved workspace', () => {
-		expect(_workspaceSummaryCooldownRemainingMs('workspace-without-attempt', 1_000)).toBe(0);
+	it('relays sanitized Parchment conflicts without retrying locally', async () => {
+		mocks.compactSummary.mockResolvedValue({
+			error: { error: { code: 'conversation_conflict', message: 'Conversation state changed' } },
+			response: new Response(null, { status: 409 })
+		});
+
+		const response = await POST(event());
+
+		expect(response.status).toBe(409);
+		expect(mocks.compactSummary).toHaveBeenCalledOnce();
+		await expect(response.json()).resolves.toEqual({
+			error: 'Conversation state changed',
+			code: 'conversation_conflict'
+		});
+	});
+
+	it("relays only Parchment's sanitized provider failure", async () => {
+		mocks.compactSummary.mockResolvedValue({
+			error: {
+				error: {
+					code: 'ai_provider_unavailable',
+					message: 'Summary generation is temporarily unavailable'
+				}
+			},
+			response: new Response(null, { status: 502 })
+		});
+
+		const response = await POST(event());
+
+		expect(response.status).toBe(502);
+		expect(mocks.compactSummary).toHaveBeenCalledOnce();
+		await expect(response.json()).resolves.toEqual({
+			error: 'Summary generation is temporarily unavailable',
+			code: 'ai_provider_unavailable'
+		});
+	});
+
+	it('stops before creating a provider client when chat access is denied', async () => {
+		mocks.requireChatAccess.mockRejectedValue(
+			Object.assign(new Error('Parchment Intelligence subscription required'), { status: 403 })
+		);
+
+		const response = await POST(event());
+
+		expect(response.status).toBe(403);
+		expect(mocks.createClient).not.toHaveBeenCalled();
+		expect(mocks.compactSummary).not.toHaveBeenCalled();
 	});
 });
