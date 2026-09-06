@@ -40,6 +40,7 @@ describe('automatic 30-day comparisons', () => {
 		await screen.findByText('+10.00%');
 		expect(screen.getByText('30-day change · 2026-08-07 to 2026-09-06')).toBeInTheDocument();
 		expect(screen.getByText('5 coffees · 3 suppliers')).toBeInTheDocument();
+		expect(screen.getByText('5 of 10 starting coffees matched (50%)')).toBeInTheDocument();
 		expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
 		expect(document.querySelector('input[type="date"]')).toBeNull();
 		expect(fetchMock).toHaveBeenCalledWith(

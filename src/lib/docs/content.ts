@@ -1900,7 +1900,7 @@ const docsPages: DocsPage[] = [
 				title: 'What is public today',
 				bullets: [
 					'/analytics is a web product surface, while /v1/price-index is the authenticated Parchment Intelligence contract for the aggregate price-index subset backed by price_index_snapshots.',
-					'Parchment Intelligence users see available 30-day price changes automatically, with only supported origins and separate retail and wholesale results. The internal session-backed /api/analytics/price-comparisons BFF forwards the upstream /v1/price-index/comparisons response; it is not a new public coffee-app API contract.',
+					'Parchment Intelligence users see available 30-day price changes automatically, with only supported origins and separate retail and wholesale results. Coverage is the share of starting coffees matched on both dates: at least 50%, five coffees, and three suppliers. New listings become eligible as the 30-day window advances; unmatched starting coffees reduce coverage. The internal session-backed /api/analytics/price-comparisons BFF forwards the upstream /v1/price-index/comparisons response; it is not a new public coffee-app API contract.',
 					'/v1/price-index intentionally starts with JSON pagination only. Do not document CSV, alerts, watchlists, webhooks, or supplier-level raw rows as supported.',
 					'Logged-out visitors and logged-in viewers share the same core analytics view. The server resolves Parchment Intelligence access separately and uses it to decide whether to load the gated modules.',
 					'Public chart data includes 90 days of price-index snapshots, current stocked processing distribution, current origin price ranges, recent-arrival/delisting counts for the upgrade preview, and the latest market summary counts.',

@@ -134,6 +134,10 @@
 					<p class="text-sm text-muted">
 						{comparison.sample.matchedListings} coffees · {comparison.sample.matchedSuppliers} suppliers
 					</p>
+					<p class="text-sm text-muted">
+						{comparison.sample.matchedListings} of {comparison.sample.fromListings} starting coffees
+						matched ({(comparison.sample.matchedCoverage * 100).toFixed(0)}%)
+					</p>
 				</div>
 			{/each}
 		</div>
