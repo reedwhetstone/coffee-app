@@ -8,6 +8,7 @@ import { readPriceIndexForAgent } from '$lib/server/agentPriceIndex';
 import { findSimilarBeansForAgent } from '$lib/server/agentSimilarity';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { getUserMemory } from '$lib/server/userMemory';
+import { getConversationWorkspace } from '$lib/server/parchmentConversation';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
 import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
 import { buildCherryRuntimeIdentity, CHERRY_RUNTIME_MODEL } from '$lib/server/cherryRuntime';
@@ -679,7 +680,6 @@ export const POST: RequestHandler = async (event) => {
 		const windowedMessages = messages.slice(-MAX_REQUEST_MESSAGES);
 
 		const cherryParchmentClient = await createParchmentServerClient(event, { mode: 'session' });
-		const { supabase } = event.locals;
 
 		// Create OpenRouter provider (OpenAI-compatible) with site headers
 		const openrouter = createOpenAI({
@@ -736,7 +736,7 @@ export const POST: RequestHandler = async (event) => {
 
 		// Persistent user memory document (non-fatal if unavailable)
 		const userMemoryPromise = includeUserMemory
-			? getUserMemory(supabase, user.id).catch(() => null)
+			? getUserMemory(cherryParchmentClient).catch(() => null)
 			: Promise.resolve(null);
 
 		// Build sourcing intelligence context from the request-bound Parchment client.
@@ -764,14 +764,13 @@ export const POST: RequestHandler = async (event) => {
 			: undefined;
 
 		if (clientWorkspaceContext?.id) {
-			const { data: workspaceRow } = await supabase
-				.from('workspaces')
-				.select('id, type, context_summary')
-				.eq('id', clientWorkspaceContext.id)
-				.eq('user_id', user.id)
-				.maybeSingle();
-
-			if (workspaceRow) {
+			const workspaceState = await getConversationWorkspace(
+				cherryParchmentClient,
+				clientWorkspaceContext.id,
+				1
+			).catch(() => null);
+			if (workspaceState) {
+				const workspaceRow = workspaceState.workspace;
 				workspaceContext = {
 					id: workspaceRow.id,
 					type: workspaceRow.type ?? clientWorkspaceContext.type,

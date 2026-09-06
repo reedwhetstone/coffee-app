@@ -4,6 +4,7 @@
 	let content = $state('');
 	let updatedAt = $state<string | null>(null);
 	let updatedBy = $state<string | null>(null);
+	let version = $state(0);
 	let loading = $state(false);
 	let saving = $state(false);
 	let error = $state<string | null>(null);
@@ -26,6 +27,7 @@
 			content = data.content ?? '';
 			updatedAt = data.updated_at;
 			updatedBy = data.updated_by;
+			version = data.version ?? 0;
 		} catch {
 			error = 'Could not load your memory document.';
 		} finally {
@@ -40,14 +42,16 @@
 			const res = await fetch('/api/memory', {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ content })
+				body: JSON.stringify({ content, expected_version: version })
 			});
 			if (!res.ok) {
 				const data = await res.json().catch(() => ({}));
 				throw new Error(data.error || 'Save failed');
 			}
-			updatedAt = new Date().toISOString();
-			updatedBy = 'user';
+			const data = await res.json();
+			updatedAt = data.updated_at;
+			updatedBy = data.updated_by;
+			version = data.version;
 			open = false;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Could not save your memory document.';

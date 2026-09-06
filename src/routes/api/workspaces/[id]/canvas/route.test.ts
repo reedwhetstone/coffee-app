@@ -1,32 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockRequireChatAccess } = vi.hoisted(() => ({
-	mockRequireChatAccess: vi.fn()
+const mocks = vi.hoisted(() => ({
+	requireChatAccess: vi.fn(),
+	createClient: vi.fn(),
+	updateCanvas: vi.fn()
+}));
+vi.mock('$lib/server/auth', () => ({ requireChatAccess: mocks.requireChatAccess }));
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentServerClient: mocks.createClient,
+	ParchmentConfigError: class extends Error {}
+}));
+vi.mock('$lib/server/parchmentConversation', () => ({
+	updateConversationCanvas: mocks.updateCanvas,
+	ParchmentConversationError: class extends Error {}
 }));
 
-vi.mock('$lib/server/auth', () => ({
-	requireChatAccess: mockRequireChatAccess
-}));
+import { PUT } from './+server';
 
-let PUT: typeof import('./+server').PUT;
-
-beforeEach(async () => {
-	vi.resetModules();
-	vi.clearAllMocks();
-	({ PUT } = await import('./+server'));
-	mockRequireChatAccess.mockResolvedValue({ user: { id: 'user-123' } });
-});
-
-function createSupabaseMock() {
-	const updateEqUser = vi.fn(async () => ({ error: null }));
-	const updateEqWorkspace = vi.fn(() => ({ eq: updateEqUser }));
-	const update = vi.fn(() => ({ eq: updateEqWorkspace }));
-	const from = vi.fn(() => ({ update }));
-
-	return { from, update };
-}
-
-function makeEvent(body: string, supabase = createSupabaseMock()) {
+function event(body: string) {
 	return {
 		params: { id: 'workspace-123' },
 		request: new Request('https://app.test/api/workspaces/workspace-123/canvas', {
@@ -34,24 +25,61 @@ function makeEvent(body: string, supabase = createSupabaseMock()) {
 			headers: { 'Content-Type': 'application/json' },
 			body
 		}),
-		locals: { supabase }
-	} as unknown as Parameters<NonNullable<typeof PUT>>[0];
+		locals: {}
+	} as Parameters<NonNullable<typeof PUT>>[0];
 }
 
-describe('/api/workspaces/[id]/canvas persistence payloads', () => {
-	it('rejects malformed JSON as a 400', async () => {
-		const response = await PUT(makeEvent('{bad'));
+beforeEach(() => {
+	vi.clearAllMocks();
+	mocks.requireChatAccess.mockResolvedValue({ user: { id: 'user-123' } });
+	mocks.createClient.mockResolvedValue({});
+	mocks.updateCanvas.mockResolvedValue({
+		canvasState: { blocks: [] },
+		canvasVersion: 4,
+		resetEpoch: 2
+	});
+});
 
-		expect(response.status).toBe(400);
+describe('/api/workspaces/[id]/canvas', () => {
+	it('rejects malformed or unfenced writes', async () => {
+		expect((await PUT(event('{bad'))).status).toBe(400);
+		expect((await PUT(event(JSON.stringify({ canvas_state: {} })))).status).toBe(400);
+		expect(mocks.updateCanvas).not.toHaveBeenCalled();
 	});
 
-	it('rejects oversized canvas state before writing', async () => {
-		const supabase = createSupabaseMock();
+	it('rejects oversized state before the SDK call', async () => {
 		const response = await PUT(
-			makeEvent(JSON.stringify({ canvas_state: { text: 'x'.repeat(200_001) } }), supabase)
+			event(
+				JSON.stringify({
+					canvas_state: { text: 'x'.repeat(200_001) },
+					expected_reset_epoch: 2,
+					expected_canvas_version: 3
+				})
+			)
 		);
-
 		expect(response.status).toBe(413);
-		expect(supabase.update).not.toHaveBeenCalled();
+		expect(mocks.updateCanvas).not.toHaveBeenCalled();
+	});
+
+	it('carries reset and canvas versions through the session SDK', async () => {
+		const response = await PUT(
+			event(
+				JSON.stringify({
+					canvas_state: { blocks: [] },
+					expected_reset_epoch: 2,
+					expected_canvas_version: 3
+				})
+			)
+		);
+		expect(response.status).toBe(200);
+		expect(mocks.updateCanvas).toHaveBeenCalledWith(expect.anything(), 'workspace-123', {
+			expectedResetEpoch: 2,
+			expectedCanvasVersion: 3,
+			canvasState: { blocks: [] }
+		});
+		await expect(response.json()).resolves.toMatchObject({
+			canvas_version: 4,
+			reset_epoch: 2
+		});
 	});
 });

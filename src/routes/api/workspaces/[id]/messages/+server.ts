@@ -1,283 +1,124 @@
+import { createHash } from 'node:crypto';
 import { json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { requireChatAccess } from '$lib/server/auth';
+import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
+import {
+	appendConversationMessages,
+	clearConversationMessages,
+	legacyConversationError,
+	ParchmentConversationError
+} from '$lib/server/parchmentConversation';
 import type { RequestHandler } from './$types';
-import type { Json } from '$lib/types/database.types';
+import type { ConversationMessageAppendRequest } from '@purveyors/sdk';
 
 const MAX_BATCH_MESSAGES = 50;
 const MAX_DUPLICATE_CONTENT_CHARS = 12000;
 const MAX_MESSAGE_TEXT_CHARS = 200000;
 const MAX_PARTS_JSON_CHARS = 200000;
-
 const boundedJsonArraySchema = z.array(z.unknown()).max(100);
 
-const persistedMessageSchema = z.object({
-	role: z.enum(['user', 'assistant']),
-	content: z.string().max(MAX_MESSAGE_TEXT_CHARS),
-	parts: boundedJsonArraySchema.optional(),
-	canvas_mutations: boundedJsonArraySchema.optional(),
-	client_message_id: z.string().min(1).max(200).optional(),
-	client_created_at: z.string().datetime().optional()
-});
+const persistedMessageSchema = z
+	.object({
+		role: z.enum(['user', 'assistant']),
+		content: z.string().max(MAX_MESSAGE_TEXT_CHARS),
+		parts: boundedJsonArraySchema.optional(),
+		canvas_mutations: boundedJsonArraySchema.optional(),
+		client_message_id: z.string().min(1).max(200).optional(),
+		client_created_at: z.string().datetime().optional()
+	})
+	.strict();
 
-const messageBodySchema = z.union([
-	z.object({ messages: z.array(persistedMessageSchema).min(1).max(MAX_BATCH_MESSAGES) }),
-	persistedMessageSchema
-]);
+const appendBodySchema = z
+	.object({
+		expected_reset_epoch: z.number().int().min(0),
+		messages: z.array(persistedMessageSchema).min(1).max(MAX_BATCH_MESSAGES)
+	})
+	.strict();
 
-function jsonSize(value: unknown): number {
-	return JSON.stringify(value ?? null).length;
-}
+const clearBodySchema = z.object({ expected_reset_epoch: z.number().int().min(0) }).strict();
 
-function validateJsonSize(label: string, value: unknown) {
-	if (jsonSize(value) > MAX_PARTS_JSON_CHARS) {
-		throw new Error(`${label} exceeds ${MAX_PARTS_JSON_CHARS} serialized characters`);
+function failure(error: unknown) {
+	if (error instanceof ParchmentConversationError) {
+		return json(legacyConversationError(error.body), { status: error.status });
 	}
-}
-
-function truncateDuplicatedContent(content: string): string {
-	return content.length > MAX_DUPLICATE_CONTENT_CHARS
-		? content.slice(0, MAX_DUPLICATE_CONTENT_CHARS)
-		: content;
-}
-
-function persistedPartsFor(msg: z.infer<typeof persistedMessageSchema>): unknown[] {
-	if (msg.parts && msg.parts.length > 0) return msg.parts;
-
-	// If an older caller posts an oversized text-only message, keep the full
-	// text in structured parts and truncate only the duplicate content column.
-	if (msg.content.length > MAX_DUPLICATE_CONTENT_CHARS) {
-		return [{ type: 'text', text: msg.content }];
+	if (error instanceof ParchmentConfigError) {
+		return json({ error: 'Conversation state is temporarily unavailable' }, { status: 503 });
 	}
-
-	return msg.parts ?? [];
+	const status = (error as { status?: number }).status || 500;
+	return json({ error: (error as Error).message }, { status });
 }
 
-function canonicalJson(value: unknown): unknown {
-	if (Array.isArray(value)) {
-		return value.map(canonicalJson);
-	}
-
-	if (value && typeof value === 'object') {
-		return Object.fromEntries(
-			Object.entries(value as Record<string, unknown>)
-				.sort(([left], [right]) => left.localeCompare(right))
-				.map(([key, child]) => [key, canonicalJson(child)])
-		);
-	}
-
-	return value;
+function derivedClientMessageId(workspaceId: string, message: unknown, index: number): string {
+	return `legacy-${createHash('sha256')
+		.update(JSON.stringify({ workspaceId, message, index }))
+		.digest('hex')}`;
 }
 
-function messageSignature(message: {
-	role: string;
-	content: string;
-	parts?: unknown;
-	client_message_id?: string | null;
-}): string {
-	if (message.client_message_id) {
-		return JSON.stringify({ client_message_id: message.client_message_id });
-	}
-
-	return JSON.stringify({
-		role: message.role,
-		content: message.content,
-		parts: canonicalJson(message.parts ?? [])
-	});
-}
-
-function countPersistedClientIdPrefix(
-	existingMessages: Array<{ client_message_id?: string | null }>,
-	incomingMessages: Array<{ client_message_id?: string | null }>
-): number {
-	const existingClientIds = new Set(
-		existingMessages
-			.map((message) => message.client_message_id)
-			.filter((clientMessageId): clientMessageId is string => Boolean(clientMessageId))
-	);
-	let overlap = 0;
-
-	for (const message of incomingMessages) {
-		if (!message.client_message_id || !existingClientIds.has(message.client_message_id)) {
-			break;
-		}
-		overlap++;
-	}
-
-	return overlap;
-}
-
-function findPersistedPrefixOverlap(
-	existingMessages: Array<{
-		role: string;
-		content: string;
-		parts?: unknown;
-		client_message_id?: string | null;
-	}>,
-	incomingMessages: Array<{
-		role: string;
-		content: string;
-		parts?: unknown;
-		client_message_id?: string | null;
-	}>
-): number {
-	const existingSignatures = existingMessages.map(messageSignature);
-	const incomingSignatures = incomingMessages.map(messageSignature);
-	const maxOverlap = Math.min(existingSignatures.length, incomingSignatures.length);
-
-	// Rows inserted in the same Supabase batch can share created_at, and UUID ids
-	// are not a conversation sequence. When retries/sendBeacon return those recent
-	// rows in an arbitrary tie order, client_message_id is the stable ordering key
-	// for deciding how much of the incoming prefix is already persisted. Check it
-	// before suffix matching so a partial content suffix does not mask a full ID
-	// overlap in arbitrarily ordered recent rows.
-	const clientIdPrefixOverlap = countPersistedClientIdPrefix(existingMessages, incomingMessages);
-	if (clientIdPrefixOverlap > 0) return Math.min(maxOverlap, clientIdPrefixOverlap);
-
-	for (let overlap = maxOverlap; overlap > 0; overlap--) {
-		const existingSuffix = existingSignatures.slice(existingSignatures.length - overlap);
-		const incomingPrefix = incomingSignatures.slice(0, overlap);
-		if (existingSuffix.every((signature, index) => signature === incomingPrefix[index])) {
-			return overlap;
-		}
-	}
-
-	return 0;
-}
-
-// POST /api/workspaces/[id]/messages - Save messages for a workspace
 export const POST: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireChatAccess(event);
-		const workspaceId = event.params.id;
-		const body = await event.request.json().catch(() => null);
-
-		if (!body) {
-			return json({ error: 'Invalid JSON payload' }, { status: 400 });
-		}
-
-		const parsed = messageBodySchema.safeParse(body);
-
-		if (!parsed.success) {
-			return json({ error: 'Invalid message payload' }, { status: 400 });
-		}
-
-		// Verify workspace ownership
-		const { data: workspace } = await event.locals.supabase
-			.from('workspaces')
-			.select('id')
-			.eq('id', workspaceId)
-			.eq('user_id', user.id)
-			.single();
-
-		if (!workspace) {
-			return json({ error: 'Workspace not found' }, { status: 404 });
-		}
-
-		const messages = 'messages' in parsed.data ? parsed.data.messages : [parsed.data];
-
-		try {
-			for (const msg of messages) {
-				validateJsonSize('parts', persistedPartsFor(msg));
-				validateJsonSize('canvas_mutations', msg.canvas_mutations ?? []);
+		await requireChatAccess(event);
+		const parsed = appendBodySchema.safeParse(await event.request.json().catch(() => null));
+		if (!parsed.success) return json({ error: 'Invalid message payload' }, { status: 400 });
+		for (const message of parsed.data.messages) {
+			if (
+				JSON.stringify(message.parts ?? []).length > MAX_PARTS_JSON_CHARS ||
+				JSON.stringify(message.canvas_mutations ?? []).length > MAX_PARTS_JSON_CHARS
+			) {
+				return json({ error: 'Message structured data is too large' }, { status: 413 });
 			}
-		} catch (err) {
-			return json({ error: (err as Error).message }, { status: 413 });
 		}
-
-		const { data: recentMessages } = await event.locals.supabase
-			.from('workspace_messages')
-			.select('id, role, content, parts, client_message_id')
-			.eq('workspace_id', workspaceId)
-			.order('created_at', { ascending: false })
-			.order('id', { ascending: false })
-			.limit(messages.length);
-
-		const persistedIncoming = messages.map((msg) => ({
-			role: msg.role,
-			content: truncateDuplicatedContent(msg.content),
-			parts: persistedPartsFor(msg),
-			client_message_id: msg.client_message_id ?? null
-		}));
-		const overlap = findPersistedPrefixOverlap(
-			[
-				...((recentMessages ?? []) as Array<{
-					role: string;
-					content: string;
-					parts?: unknown;
-					client_message_id?: string | null;
-				}>)
-			].reverse(),
-			persistedIncoming
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const data = await appendConversationMessages(client, event.params.id, {
+			expectedResetEpoch: parsed.data.expected_reset_epoch,
+			messages: parsed.data.messages.map((message, index) => ({
+				clientMessageId:
+					message.client_message_id ?? derivedClientMessageId(event.params.id, message, index),
+				role: message.role,
+				content: message.content.slice(0, MAX_DUPLICATE_CONTENT_CHARS),
+				parts:
+					message.parts ??
+					(message.content.length > MAX_DUPLICATE_CONTENT_CHARS
+						? [{ type: 'text', text: message.content }]
+						: undefined),
+				canvasMutations: message.canvas_mutations,
+				clientCreatedAt: message.client_created_at
+			})) as ConversationMessageAppendRequest['messages']
+		});
+		return json(
+			{
+				messages: [],
+				inserted: data.inserted,
+				replayed: data.replayed,
+				reset_epoch: data.resetEpoch,
+				next_message_sequence: data.nextMessageSequence
+			},
+			{ status: 201 }
 		);
-		const messagesToInsert = messages.slice(overlap);
-
-		if (messagesToInsert.length === 0) {
-			return json({ messages: [] }, { status: 201 });
-		}
-
-		const rows = messagesToInsert.map((msg, index) => ({
-			workspace_id: workspaceId,
-			role: msg.role,
-			content: truncateDuplicatedContent(msg.content),
-			parts: persistedPartsFor(msg) as Json,
-			canvas_mutations: (msg.canvas_mutations ?? []) as Json,
-			client_message_id: msg.client_message_id ?? null,
-			created_at: msg.client_created_at ?? new Date(Date.now() + index).toISOString()
-		}));
-
-		const { data, error } = await event.locals.supabase
-			.from('workspace_messages')
-			.upsert(rows, { onConflict: 'workspace_id,client_message_id', ignoreDuplicates: true })
-			.select();
-
-		if (error) {
-			return json({ error: error.message }, { status: 500 });
-		}
-
-		// Update last_accessed_at
-		await event.locals.supabase
-			.from('workspaces')
-			.update({ last_accessed_at: new Date().toISOString() })
-			.eq('id', workspaceId);
-
-		return json({ messages: data }, { status: 201 });
-	} catch (err) {
-		const status = (err as { status?: number }).status || 500;
-		return json({ error: (err as Error).message }, { status });
+	} catch (error) {
+		return failure(error);
 	}
 };
 
-// DELETE /api/workspaces/[id]/messages - Clear all messages in workspace
 export const DELETE: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireChatAccess(event);
-		const workspaceId = event.params.id;
-
-		// Verify workspace ownership
-		const { data: workspace } = await event.locals.supabase
-			.from('workspaces')
-			.select('id')
-			.eq('id', workspaceId)
-			.eq('user_id', user.id)
-			.single();
-
-		if (!workspace) {
-			return json({ error: 'Workspace not found' }, { status: 404 });
-		}
-
-		const { error } = await event.locals.supabase
-			.from('workspace_messages')
-			.delete()
-			.eq('workspace_id', workspaceId);
-
-		if (error) {
-			return json({ error: error.message }, { status: 500 });
-		}
-
-		return json({ success: true });
-	} catch (err) {
-		const status = (err as { status?: number }).status || 500;
-		return json({ error: (err as Error).message }, { status });
+		await requireChatAccess(event);
+		const parsed = clearBodySchema.safeParse(await event.request.json().catch(() => null));
+		if (!parsed.success) return json({ error: 'Invalid clear payload' }, { status: 400 });
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const data = await clearConversationMessages(
+			client,
+			event.params.id,
+			parsed.data.expected_reset_epoch
+		);
+		return json({
+			success: true,
+			deleted: data.deleted,
+			reset_epoch: data.resetEpoch,
+			summary_version: data.summaryVersion,
+			canvas_version: data.canvasVersion
+		});
+	} catch (error) {
+		return failure(error);
 	}
 };

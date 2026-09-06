@@ -355,6 +355,7 @@
 		const handleBeforeUnload = () => {
 			const wsId = activeWorkspaceId;
 			if (!wsId) return;
+			const workspace = workspaceStore.currentWorkspace;
 			// Save unsaved messages
 			const savedCount = workspaceStore.getSavedMessageCount(wsId);
 			const newMessages = chat.messages.slice(savedCount);
@@ -362,7 +363,15 @@
 				const toSave = buildPersistedChatMessages(newMessages);
 				navigator.sendBeacon(
 					`/api/workspaces/${wsId}/messages`,
-					new Blob([JSON.stringify({ messages: toSave })], { type: 'application/json' })
+					new Blob(
+						[
+							JSON.stringify({
+								expected_reset_epoch: workspace?.reset_epoch ?? 0,
+								messages: toSave
+							})
+						],
+						{ type: 'application/json' }
+					)
 				);
 			}
 			// Save canvas state (including pinned, minimized, focusBlockId)
@@ -374,6 +383,8 @@
 				new Blob(
 					[
 						JSON.stringify({
+							expected_reset_epoch: workspace?.reset_epoch ?? 0,
+							expected_canvas_version: workspace?.canvas_version ?? 0,
 							canvas_state: {
 								blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
 									block: b.block,
@@ -1127,8 +1138,15 @@
 		isClearing = true;
 		try {
 			await enqueuePersistence(async () => {
-				const response = await fetch(`/api/workspaces/${wsId}/messages`, { method: 'DELETE' });
+				const response = await fetch(`/api/workspaces/${wsId}/messages`, {
+					method: 'DELETE',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						expected_reset_epoch: workspaceStore.currentWorkspace?.reset_epoch ?? 0
+					})
+				});
 				if (!response.ok) throw new Error('Failed to clear the saved conversation');
+				workspaceStore.applyClearResult(wsId, await response.json());
 				workspaceStore.resetSavedMessageCount(wsId);
 			});
 			chat.messages = [];

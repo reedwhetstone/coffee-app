@@ -1,37 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockRequireChatAccess } = vi.hoisted(() => ({
-	mockRequireChatAccess: vi.fn()
+const mocks = vi.hoisted(() => ({
+	requireChatAccess: vi.fn(),
+	createClient: vi.fn(),
+	updateWorkspace: vi.fn()
 }));
 
-vi.mock('$lib/server/auth', () => ({
-	requireChatAccess: mockRequireChatAccess
+vi.mock('$lib/server/auth', () => ({ requireChatAccess: mocks.requireChatAccess }));
+vi.mock('$lib/server/parchmentClient', () => ({
+	createParchmentServerClient: mocks.createClient,
+	ParchmentConfigError: class extends Error {}
+}));
+vi.mock('$lib/server/parchmentConversation', () => ({
+	updateConversationWorkspace: mocks.updateWorkspace,
+	getConversationWorkspace: vi.fn(),
+	ParchmentConversationError: class extends Error {}
 }));
 
-let PUT: typeof import('./+server').PUT;
+import { PUT } from './+server';
 
-beforeEach(async () => {
-	vi.resetModules();
-	vi.clearAllMocks();
-	({ PUT } = await import('./+server'));
-	mockRequireChatAccess.mockResolvedValue({ user: { id: 'user-123' } });
-});
-
-function createSupabaseMock() {
-	const single = vi.fn(async () => ({
-		data: { id: 'workspace-123', title: 'New title' },
-		error: null
-	}));
-	const select = vi.fn(() => ({ single }));
-	const eqUser = vi.fn(() => ({ select }));
-	const eqWorkspace = vi.fn(() => ({ eq: eqUser }));
-	const update = vi.fn(() => ({ eq: eqWorkspace }));
-	const from = vi.fn(() => ({ update }));
-
-	return { from, update };
-}
-
-function makeEvent(body: string, supabase = createSupabaseMock()) {
+function event(body: string) {
 	return {
 		params: { id: 'workspace-123' },
 		request: new Request('https://app.test/api/workspaces/workspace-123', {
@@ -39,44 +27,33 @@ function makeEvent(body: string, supabase = createSupabaseMock()) {
 			headers: { 'Content-Type': 'application/json' },
 			body
 		}),
-		locals: { supabase }
-	} as unknown as Parameters<NonNullable<typeof PUT>>[0];
+		locals: {}
+	} as Parameters<NonNullable<typeof PUT>>[0];
 }
 
+beforeEach(() => {
+	vi.clearAllMocks();
+	mocks.requireChatAccess.mockResolvedValue({ user: { id: 'user-123' } });
+	mocks.createClient.mockResolvedValue({ conversation: {} });
+	mocks.updateWorkspace.mockResolvedValue({ id: 'workspace-123', title: 'Updated' });
+});
+
 describe('/api/workspaces/[id] metadata updates', () => {
-	it('rejects malformed JSON as a 400', async () => {
-		const supabase = createSupabaseMock();
-		const response = await PUT(makeEvent('{bad', supabase));
+	it.each(['{bad', '{}', JSON.stringify({ title: 'x'.repeat(121), type: 'system' })])(
+		'rejects invalid input before the SDK call',
+		async (body) => {
+			expect((await PUT(event(body))).status).toBe(400);
+			expect(mocks.updateWorkspace).not.toHaveBeenCalled();
+		}
+	);
 
-		expect(response.status).toBe(400);
-		expect(supabase.update).not.toHaveBeenCalled();
-	});
-
-	it('rejects empty update bodies before writing', async () => {
-		const supabase = createSupabaseMock();
-		const response = await PUT(makeEvent('{}', supabase));
-
-		expect(response.status).toBe(400);
-		expect(supabase.update).not.toHaveBeenCalled();
-	});
-
-	it('rejects invalid title and type values before writing', async () => {
-		const supabase = createSupabaseMock();
-		const response = await PUT(
-			makeEvent(JSON.stringify({ title: 'x'.repeat(121), type: 'system' }), supabase)
-		);
-
-		expect(response.status).toBe(400);
-		expect(supabase.update).not.toHaveBeenCalled();
-	});
-
-	it('updates valid title and type values', async () => {
-		const supabase = createSupabaseMock();
-		const response = await PUT(
-			makeEvent(JSON.stringify({ title: 'Updated', type: 'sourcing' }), supabase)
-		);
-
+	it('forwards validated metadata through the session client', async () => {
+		const response = await PUT(event(JSON.stringify({ title: 'Updated', type: 'sourcing' })));
 		expect(response.status).toBe(200);
-		expect(supabase.update).toHaveBeenCalledWith({ title: 'Updated', type: 'sourcing' });
+		expect(mocks.createClient).toHaveBeenCalledWith(expect.anything(), { mode: 'session' });
+		expect(mocks.updateWorkspace).toHaveBeenCalledWith(expect.anything(), 'workspace-123', {
+			title: 'Updated',
+			type: 'sourcing'
+		});
 	});
 });
