@@ -1,77 +1,43 @@
-/**
- * User memory: a persistent context document injected into every chat
- * request and maintained by Cherry Runtime via periodic "dream" compaction.
- *
- * The table is newer than the generated Database types in some
- * environments, so this module uses a narrow runtime row contract
- * (same pattern as priceIndexResource).
- */
+import type { ParchmentClient } from '@purveyors/sdk';
+import { getConversationMemory, updateConversationMemory } from '$lib/server/parchmentConversation';
 
 export const USER_MEMORY_MAX_CHARS = 8000;
-/** Skip Cherry Runtime compaction if the doc was updated more recently than this. */
 export const USER_MEMORY_DREAM_COOLDOWN_MS = 10 * 60 * 1000;
 
 export interface UserMemoryRow {
 	content: string;
+	version: number;
 	updated_at: string;
-	updated_by: 'user' | 'agent';
+	updated_by: 'user' | 'agent' | null;
 }
 
-interface MemoryQueryResult {
-	data: Partial<UserMemoryRow> | null;
-	error: { message: string; code?: string } | null;
-}
-
-interface MemoryClient {
-	from(table: 'user_memory'): {
-		select(columns: string): {
-			eq(
-				column: 'user_id',
-				value: string
-			): {
-				maybeSingle(): Promise<MemoryQueryResult>;
-			};
-		};
-		upsert(row: {
-			user_id: string;
-			content: string;
-			updated_at: string;
-			updated_by: 'user' | 'agent';
-		}): PromiseLike<{ error: { message: string } | null }>;
-	};
-}
-
-export async function getUserMemory(
-	client: unknown,
-	userId: string
-): Promise<UserMemoryRow | null> {
-	const { data, error } = await (client as MemoryClient)
-		.from('user_memory')
-		.select('content, updated_at, updated_by')
-		.eq('user_id', userId)
-		.maybeSingle();
-
-	if (error || !data || typeof data.content !== 'string') return null;
+export async function getUserMemory(client: ParchmentClient): Promise<UserMemoryRow> {
+	const memory = await getConversationMemory(client);
 	return {
-		content: data.content,
-		updated_at: String(data.updated_at ?? ''),
-		updated_by: data.updated_by === 'agent' ? 'agent' : 'user'
+		content: memory.content,
+		version: memory.version,
+		updated_at: memory.updatedAt ?? '',
+		updated_by: memory.updatedBy
 	};
 }
 
 export async function saveUserMemory(
-	client: unknown,
-	userId: string,
+	client: ParchmentClient,
 	content: string,
-	updatedBy: 'user' | 'agent'
-): Promise<{ error: string | null }> {
-	const { error } = await (client as MemoryClient).from('user_memory').upsert({
-		user_id: userId,
+	updatedBy: 'user' | 'agent',
+	expectedVersion: number
+): Promise<UserMemoryRow> {
+	const memory = await updateConversationMemory(client, {
 		content: content.slice(0, USER_MEMORY_MAX_CHARS),
-		updated_at: new Date().toISOString(),
-		updated_by: updatedBy
+		updatedBy,
+		expectedVersion
 	});
-	return { error: error?.message ?? null };
+	return {
+		content: memory.content,
+		version: memory.version,
+		updated_at: memory.updatedAt ?? '',
+		updated_by: memory.updatedBy
+	};
 }
 
 export function buildDreamPrompt(

@@ -3,6 +3,11 @@ import { CHERRY_RUNTIME_MODEL } from '$lib/server/cherryRuntime';
 import { z } from 'zod';
 import { OPENROUTER_API_KEY } from '$env/static/private';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
+import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
+import {
+	legacyConversationError,
+	ParchmentConversationError
+} from '$lib/server/parchmentConversation';
 import {
 	buildDreamPrompt,
 	getUserMemory,
@@ -29,6 +34,7 @@ const dreamSchema = z.object({
 export const POST: RequestHandler = async (event) => {
 	try {
 		const { user } = await requireChatAccess(event);
+		const client = await createParchmentServerClient(event, { mode: 'session' });
 
 		if (!OPENROUTER_API_KEY) {
 			return json({ error: 'OpenRouter API key not configured' }, { status: 500 });
@@ -39,7 +45,7 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'Invalid messages payload' }, { status: 400 });
 		}
 
-		const existing = await getUserMemory(event.locals.supabase, user.id);
+		const existing = await getUserMemory(client);
 
 		// Cost guard: skip if the document was updated very recently.
 		if (existing?.updated_at) {
@@ -89,12 +95,17 @@ export const POST: RequestHandler = async (event) => {
 			return json({ skipped: true, reason: 'empty-response' });
 		}
 
-		const { error } = await saveUserMemory(event.locals.supabase, user.id, updated, 'agent');
-		if (error) return json({ error }, { status: 500 });
+		const memory = await saveUserMemory(client, updated, 'agent', existing.version);
 
-		return json({ ok: true });
+		return json({ ok: true, ...memory });
 	} catch (error) {
 		if (error instanceof AuthError) return json({ error: error.message }, { status: error.status });
+		if (error instanceof ParchmentConversationError) {
+			return json(legacyConversationError(error.body), { status: error.status });
+		}
+		if (error instanceof ParchmentConfigError) {
+			return json({ error: 'Conversation memory is temporarily unavailable' }, { status: 503 });
+		}
 		console.error('Memory dream error:', error);
 		return json({ error: 'Failed to update memory' }, { status: 500 });
 	}

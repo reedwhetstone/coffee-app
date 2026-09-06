@@ -1570,14 +1570,14 @@ const docsPages: DocsPage[] = [
 							'POST DELETE',
 							'Chat access session + ownership',
 							'Internal product route',
-							'POST accepts one message or an array and persists parts plus canvas mutations.'
+							'POST accepts a bounded message array and persists parts plus canvas mutations with payload-bound replay and reset-epoch fencing. DELETE clears messages with the same epoch fence.'
 						],
 						[
 							'/api/workspaces/[id]/canvas',
 							'POST PUT',
 							'Chat access session + ownership',
 							'Internal product route',
-							'Persists canvas_state; POST exists for sendBeacon compatibility.'
+							'Persists canvas_state with reset-epoch and canvas-version fencing; POST exists for sendBeacon compatibility.'
 						],
 						[
 							'/api/workspaces/[id]/summarize',
