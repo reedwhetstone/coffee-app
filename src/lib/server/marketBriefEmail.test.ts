@@ -186,6 +186,45 @@ describe('Market Brief email projection', () => {
 });
 
 describe('Market Wire reader export', () => {
+	it('rejects duplicate spotlights consistently instead of silently omitting research on the web', () => {
+		const duplicate = `${source}\n## Research Spotlight\n\n### Storage\n\nFirst topic.\n\n## research spotlight\n\n### Fermentation\n\nSecond topic.`;
+		for (const project of [buildMarketBriefReaderExport, buildMarketBriefEmailProjection]) {
+			expect(() => project(marketBrief, duplicate)).toThrow('at most one Research Spotlight');
+		}
+	});
+
+	it('preserves a standalone research topic and citations across web, email and Markdown', () => {
+		const researchSource = `${source}
+## Research Spotlight
+
+### How storage affects aroma
+
+A [storage study](https://example.com/study) compares two conditions.
+
+The comparison does not establish the same result for every origin. See [this section](#research-spotlight).
+
+## Coffee highlights
+
+A separate coffee selection.
+`;
+		const reader = buildMarketBriefReaderExport(marketBrief, researchSource);
+		const spotlight = reader.sections.find((section) => section.kind === 'research-spotlight');
+		expect(spotlight).toMatchObject({ id: 'research-spotlight', title: 'Research Spotlight' });
+		expect(spotlight?.html).toContain('<h3>How storage affects aroma</h3>');
+		expect(spotlight?.html).toContain('https://example.com/study');
+		expect(spotlight?.html).not.toContain('A separate coffee selection');
+		expect(reader.sections.filter((section) => section.kind === 'take')).toHaveLength(1);
+		expect(reader.markdown).toContain('## Research Spotlight\n\n### How storage affects aroma');
+		expect(reader.markdown).toContain(`${reader.canonicalUrl}#research-spotlight`);
+		const email = buildMarketBriefEmailProjection(marketBrief, researchSource);
+		expect(email.html).toContain('>Research Spotlight</h2>');
+		expect(email.html).toContain('>How storage affects aroma</h3>');
+		expect(email.html).toContain('href="https://example.com/study"');
+		expect(email.html).toContain(`href="${reader.canonicalUrl}#research-spotlight"`);
+		expect(email.text).toContain('Research Spotlight\n\nHow storage affects aroma');
+		expect(email.text).toContain('storage study (https://example.com/study)');
+	});
+
 	it('keeps a clean Markdown body and stable shareable section identities', () => {
 		const reader = buildMarketBriefReaderExport(
 			marketBrief,

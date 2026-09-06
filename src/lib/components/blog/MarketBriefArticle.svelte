@@ -31,6 +31,11 @@
 	let takes = $derived(
 		reader.sections.filter((section: MarketBriefReaderSection) => section.kind === 'take')
 	);
+	let researchSpotlight = $derived(
+		reader.sections.find(
+			(section: MarketBriefReaderSection) => section.kind === 'research-spotlight'
+		)
+	);
 	let signalTotal = $derived(Math.max(snapshot?.totalSignals ?? 0, 1));
 
 	function sectionUrl(section: MarketBriefReaderSection): string {
@@ -95,6 +100,38 @@
 		if (resetTimer) clearTimeout(resetTimer);
 	});
 </script>
+
+{#snippet sectionSharing(section: MarketBriefReaderSection, label: string)}
+	<div
+		class="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-4 text-xs font-semibold"
+	>
+		<button
+			type="button"
+			class="rounded-full border border-line px-3 py-1.5 text-ink transition-colors hover:border-accent hover:text-accent"
+			onclick={() => copySectionLink(section)}
+		>
+			{copiedId === section.id
+				? 'Link copied'
+				: copyFailedId === section.id
+					? 'Copy failed'
+					: label}
+		</button>
+		<a
+			href={shareUrl('reddit', section)}
+			target="_blank"
+			rel="noopener noreferrer"
+			class="rounded-full border border-line px-3 py-1.5 text-ink transition-colors hover:border-accent hover:text-accent"
+			>Reddit</a
+		>
+		<a
+			href={shareUrl('x', section)}
+			target="_blank"
+			rel="noopener noreferrer"
+			class="rounded-full border border-line px-3 py-1.5 text-ink transition-colors hover:border-accent hover:text-accent"
+			>X</a
+		>
+	</div>
+{/snippet}
 
 <div class="space-y-8">
 	{#if snapshot}
@@ -278,40 +315,30 @@
 									{@html section.html}
 								</div>
 
-								<div
-									class="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-4 text-xs font-semibold"
-								>
-									<button
-										type="button"
-										class="rounded-full border border-line px-3 py-1.5 text-ink transition-colors hover:border-accent hover:text-accent"
-										onclick={() => copySectionLink(section)}
-									>
-										{copiedId === section.id
-											? 'Link copied'
-											: copyFailedId === section.id
-												? 'Copy failed'
-												: 'Copy take link'}
-									</button>
-									<a
-										href={shareUrl('reddit', section)}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="rounded-full border border-line px-3 py-1.5 text-ink transition-colors hover:border-accent hover:text-accent"
-										>Reddit</a
-									>
-									<a
-										href={shareUrl('x', section)}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="rounded-full border border-line px-3 py-1.5 text-ink transition-colors hover:border-accent hover:text-accent"
-										>X</a
-									>
-								</div>
+								{@render sectionSharing(section, 'Copy take link')}
 							</div>
 						</div>
 					</article>
 				{/each}
 			</div>
+		</section>
+	{/if}
+
+	{#if researchSpotlight}
+		<section
+			id={researchSpotlight.id}
+			class="scroll-mt-28 rounded-xl border border-line bg-surface-panel p-5 shadow-sm sm:p-7"
+			aria-labelledby={`${researchSpotlight.id}-heading`}
+		>
+			<h2 id={`${researchSpotlight.id}-heading`} class="font-serif text-3xl font-semibold text-ink">
+				{researchSpotlight.title}
+			</h2>
+			<div class="market-brief-copy mt-4 text-base leading-7 text-muted">
+				<!-- Markdown tokens reject raw HTML and unsafe link protocols before this render. -->
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+				{@html researchSpotlight.html}
+			</div>
+			{@render sectionSharing(researchSpotlight, 'Copy research link')}
 		</section>
 	{/if}
 
@@ -430,6 +457,14 @@
 </div>
 
 <style>
+	.market-brief-copy :global(h3) {
+		font-family: 'Newsreader Variable', Newsreader, Georgia, Cambria, serif;
+		font-size: 1.5rem;
+		font-weight: 600;
+		line-height: 1.25;
+		color: #302f2a;
+	}
+
 	.market-brief-copy :global(p) {
 		margin-top: 0.8rem;
 	}

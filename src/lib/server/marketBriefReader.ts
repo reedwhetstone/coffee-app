@@ -110,6 +110,17 @@ export function tokenizeMarketBrief(source: string, canonicalUrl: string): Token
 	if (containsSvelteConstruct(tokens)) {
 		throw new Error('Market Brief email source cannot contain Svelte expressions or directives');
 	}
+	const spotlights = tokens.filter(
+		(token) =>
+			token.type === 'heading' &&
+			token.depth === 2 &&
+			inlineTokensText(token.tokens ?? [])
+				.trim()
+				.toLowerCase() === 'research spotlight'
+	);
+	if (spotlights.length > 1) {
+		throw new Error('Market Brief supports at most one Research Spotlight per edition');
+	}
 	validateTokens(tokens, canonicalUrl);
 	return tokens;
 }
@@ -268,9 +279,11 @@ export function buildMarketBriefReaderExport(
 			title,
 			kind: normalizedTitle.startsWith('market read')
 				? 'market-read'
-				: normalizedTitle === 'coffee highlights'
-					? 'coffee-highlights'
-					: 'take',
+				: normalizedTitle === 'research spotlight'
+					? 'research-spotlight'
+					: normalizedTitle === 'coffee highlights'
+						? 'coffee-highlights'
+						: 'take',
 			html: marked.parser(bodyTokens)
 		});
 	}
