@@ -73,9 +73,12 @@ Wednesdays are reserved for Coffee Intelligence output first; other blog experim
 
 ### Market Brief relationship
 
-Market Brief is the weekly, source-led market-reporting format inside `/blog`.
-Essays remain sporadic, idea-led analysis. Both use the existing authored content,
-PR review, preview, and deployment system rather than separate publication apps.
+Purveyors Fieldnotes is the public newsletter identity for new `newsletter:
+fieldnotes` editions. The existing Market Brief format and unmarked historical
+editions remain inside `/blog`; `/fieldnotes` is the canonical landing and
+`/market-wire` remains a compatibility route. Essays remain sporadic, idea-led
+analysis. All three use the existing authored content, PR review, preview, and
+deployment system rather than separate publication apps.
 
 The current product boundary and cross-repo sequence live only in
 `notes/market-brief/implementation-plan.md`. This strategy does not own Parchment

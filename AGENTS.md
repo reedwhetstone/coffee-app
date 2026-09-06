@@ -110,7 +110,8 @@ Reporting guidance:
 - `/api`
 - `/docs`
 - `/blog`
-- `/market-wire` (Market Brief)
+- `/fieldnotes` (Purveyors Fieldnotes)
+- `/market-wire` (compatibility route for Fieldnotes and historical Market Brief links)
 - `/bot`
 
 ### Authenticated product routes
