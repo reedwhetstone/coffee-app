@@ -31,6 +31,11 @@
 	let takes = $derived(
 		reader.sections.filter((section: MarketBriefReaderSection) => section.kind === 'take')
 	);
+	let researchSpotlight = $derived(
+		reader.sections.find(
+			(section: MarketBriefReaderSection) => section.kind === 'research-spotlight'
+		)
+	);
 	let signalTotal = $derived(Math.max(snapshot?.totalSignals ?? 0, 1));
 
 	function sectionUrl(section: MarketBriefReaderSection): string {
@@ -96,6 +101,38 @@
 	});
 </script>
 
+{#snippet sectionSharing(section: MarketBriefReaderSection, label: string)}
+	<div
+		class="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-4 text-xs font-semibold"
+	>
+		<button
+			type="button"
+			class="rounded-full border border-line px-3 py-1.5 text-ink transition-colors hover:border-accent hover:text-accent"
+			onclick={() => copySectionLink(section)}
+		>
+			{copiedId === section.id
+				? 'Link copied'
+				: copyFailedId === section.id
+					? 'Copy failed'
+					: label}
+		</button>
+		<a
+			href={shareUrl('reddit', section)}
+			target="_blank"
+			rel="noopener noreferrer"
+			class="rounded-full border border-line px-3 py-1.5 text-ink transition-colors hover:border-accent hover:text-accent"
+			>Reddit</a
+		>
+		<a
+			href={shareUrl('x', section)}
+			target="_blank"
+			rel="noopener noreferrer"
+			class="rounded-full border border-line px-3 py-1.5 text-ink transition-colors hover:border-accent hover:text-accent"
+			>X</a
+		>
+	</div>
+{/snippet}
+
 <div class="space-y-8">
 	{#if snapshot}
 		<section aria-labelledby="week-in-numbers-heading">
@@ -144,29 +181,35 @@
 		</section>
 	{/if}
 
-	{#if marketRead}
+	{#if marketRead || snapshot}
 		<section
-			id={marketRead.id}
+			id={marketRead?.id ?? 'market-signals'}
 			class="scroll-mt-28 overflow-hidden rounded-2xl border border-accent/20 bg-gradient-to-br from-surface-canvas via-surface-canvas to-surface-panel shadow-sm"
-			aria-labelledby={`${marketRead.id}-heading`}
+			aria-label={marketRead ? undefined : 'Market signals'}
+			aria-labelledby={marketRead ? `${marketRead.id}-heading` : undefined}
 		>
-			<div class="grid {snapshot ? 'lg:grid-cols-[minmax(0,1.25fr)_minmax(17rem,0.75fr)]' : ''}">
-				<div class="relative p-5 pl-8 sm:p-7 sm:pl-10">
-					<AccentSpine />
-					<p class="text-xs font-semibold text-accent">Market read</p>
-					<h2
-						id={`${marketRead.id}-heading`}
-						class="mt-2 font-serif text-2xl font-semibold leading-tight text-ink sm:text-3xl"
-					>
-						{marketRead.title.replace(/^Market read:\s*/i, '')}
-					</h2>
-					<div class="market-brief-copy mt-4 text-sm leading-7 text-muted sm:text-base">
-						<!-- Markdown tokens reject raw HTML and unsafe link protocols before this render. -->
-						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-						{@html marketRead.html}
+			<div
+				class="grid {snapshot && marketRead
+					? 'lg:grid-cols-[minmax(0,1.25fr)_minmax(17rem,0.75fr)]'
+					: ''}"
+			>
+				{#if marketRead}
+					<div class="relative p-5 pl-8 sm:p-7 sm:pl-10">
+						<AccentSpine />
+						<p class="text-xs font-semibold text-accent">Market read</p>
+						<h2
+							id={`${marketRead.id}-heading`}
+							class="mt-2 font-serif text-2xl font-semibold leading-tight text-ink sm:text-3xl"
+						>
+							{marketRead.title.replace(/^Market read:\s*/i, '')}
+						</h2>
+						<div class="market-brief-copy mt-4 text-sm leading-7 text-muted sm:text-base">
+							<!-- Markdown tokens reject raw HTML and unsafe link protocols before this render. -->
+							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+							{@html marketRead.html}
+						</div>
 					</div>
-				</div>
-
+				{/if}
 				{#if snapshot}
 					<div class="border-t border-line bg-surface-panel p-5 sm:p-6 lg:border-l lg:border-t-0">
 						<div class="flex items-start justify-between gap-4">
@@ -272,40 +315,30 @@
 									{@html section.html}
 								</div>
 
-								<div
-									class="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-4 text-xs font-semibold"
-								>
-									<button
-										type="button"
-										class="rounded-full border border-line px-3 py-1.5 text-ink transition-colors hover:border-accent hover:text-accent"
-										onclick={() => copySectionLink(section)}
-									>
-										{copiedId === section.id
-											? 'Link copied'
-											: copyFailedId === section.id
-												? 'Copy failed'
-												: 'Copy take link'}
-									</button>
-									<a
-										href={shareUrl('reddit', section)}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="rounded-full border border-line px-3 py-1.5 text-ink transition-colors hover:border-accent hover:text-accent"
-										>Reddit</a
-									>
-									<a
-										href={shareUrl('x', section)}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="rounded-full border border-line px-3 py-1.5 text-ink transition-colors hover:border-accent hover:text-accent"
-										>X</a
-									>
-								</div>
+								{@render sectionSharing(section, 'Copy take link')}
 							</div>
 						</div>
 					</article>
 				{/each}
 			</div>
+		</section>
+	{/if}
+
+	{#if researchSpotlight}
+		<section
+			id={researchSpotlight.id}
+			class="scroll-mt-28 rounded-xl border border-line bg-surface-panel p-5 shadow-sm sm:p-7"
+			aria-labelledby={`${researchSpotlight.id}-heading`}
+		>
+			<h2 id={`${researchSpotlight.id}-heading`} class="font-serif text-3xl font-semibold text-ink">
+				{researchSpotlight.title}
+			</h2>
+			<div class="market-brief-copy mt-4 text-base leading-7 text-muted">
+				<!-- Markdown tokens reject raw HTML and unsafe link protocols before this render. -->
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+				{@html researchSpotlight.html}
+			</div>
+			{@render sectionSharing(researchSpotlight, 'Copy research link')}
 		</section>
 	{/if}
 
@@ -315,18 +348,15 @@
 			<h2 id="coffee-highlights-heading" class="mt-1 font-serif text-3xl font-semibold text-ink">
 				Coffee highlights
 			</h2>
-			<p class="mt-2 text-sm leading-6 text-muted">
-				Catalog coffees selected after this week’s takes were finalized, chosen for the market or
-				origin story they make tangible.
-			</p>
 		</div>
 
 		<div class="grid gap-5 {coffeeHighlights.length > 1 ? 'lg:grid-cols-2' : ''}">
 			{#each coffeeHighlights as coffee, index}
-				<article class="overflow-hidden rounded-xl border border-line bg-surface-panel shadow-sm">
-					<div
-						class="grid min-h-full sm:grid-cols-[minmax(0,1fr)_11rem] lg:grid-cols-1 xl:grid-cols-[minmax(0,1fr)_11rem]"
-					>
+				<article
+					id={`coffee-${coffee.catalogId}`}
+					class="scroll-mt-28 overflow-hidden rounded-xl border border-line bg-surface-panel shadow-sm"
+				>
+					<div class="grid min-h-full sm:grid-cols-[minmax(0,1fr)_11rem] lg:grid-cols-1">
 						<div class="p-5 sm:p-6">
 							<div class="flex items-start justify-between gap-3">
 								<p class="text-xs font-semibold text-accent">
@@ -385,7 +415,7 @@
 						</div>
 
 						<div
-							class="border-t border-line bg-ink/[0.035] p-4 sm:border-l sm:border-t-0 lg:border-l-0 lg:border-t xl:border-l xl:border-t-0"
+							class="border-t border-line bg-ink/[0.035] p-4 sm:border-l sm:border-t-0 lg:border-l-0 lg:border-t"
 						>
 							<p class="mb-2 text-center text-xs font-semibold text-muted">Tasting profile</p>
 							{#if coffee.tastingNotes}
@@ -427,6 +457,14 @@
 </div>
 
 <style>
+	.market-brief-copy :global(h3) {
+		font-family: 'Newsreader Variable', Newsreader, Georgia, Cambria, serif;
+		font-size: 1.5rem;
+		font-weight: 600;
+		line-height: 1.25;
+		color: #302f2a;
+	}
+
 	.market-brief-copy :global(p) {
 		margin-top: 0.8rem;
 	}

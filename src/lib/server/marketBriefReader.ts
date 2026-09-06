@@ -110,6 +110,15 @@ export function tokenizeMarketBrief(source: string, canonicalUrl: string): Token
 	if (containsSvelteConstruct(tokens)) {
 		throw new Error('Market Brief email source cannot contain Svelte expressions or directives');
 	}
+	const spotlights = tokens.filter(
+		(token) =>
+			token.type === 'heading' &&
+			token.depth === 2 &&
+			normalizeMarketBriefSectionTitle(token.tokens ?? []).toLowerCase() === 'research spotlight'
+	);
+	if (spotlights.length > 1) {
+		throw new Error('Market Brief supports at most one Research Spotlight per edition');
+	}
 	validateTokens(tokens, canonicalUrl);
 	return tokens;
 }
@@ -230,6 +239,10 @@ function inlineTokensText(tokens: Token[]): string {
 		.join('');
 }
 
+function normalizeMarketBriefSectionTitle(tokens: Token[]): string {
+	return inlineTokensText(tokens).replace(/\s+/gu, ' ').trim();
+}
+
 export function buildMarketBriefReaderExport(
 	post: BlogPost,
 	source: string
@@ -249,9 +262,7 @@ export function buildMarketBriefReaderExport(
 		if (token.type !== 'heading' || (token as Tokens.Heading).depth !== 2) continue;
 
 		const heading = token as Tokens.Heading;
-		const title = inlineTokensText(heading.tokens ?? [])
-			.replace(/\s+/g, ' ')
-			.trim();
+		const title = normalizeMarketBriefSectionTitle(heading.tokens ?? []);
 		const id = slugger.slug(title);
 		if (title.toLowerCase() === 'sources') continue;
 
@@ -268,9 +279,11 @@ export function buildMarketBriefReaderExport(
 			title,
 			kind: normalizedTitle.startsWith('market read')
 				? 'market-read'
-				: normalizedTitle === 'coffee highlights'
-					? 'coffee-highlights'
-					: 'take',
+				: normalizedTitle === 'research spotlight'
+					? 'research-spotlight'
+					: normalizedTitle === 'coffee highlights'
+						? 'coffee-highlights'
+						: 'take',
 			html: marked.parser(bodyTokens)
 		});
 	}
