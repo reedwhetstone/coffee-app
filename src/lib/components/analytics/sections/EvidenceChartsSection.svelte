@@ -61,7 +61,7 @@
 <section class="mb-8 space-y-6" aria-label="Evidence charts">
 	<ExpandablePanel
 		title="Origin price trends"
-		subtitle="Reconstructed $/lb history with recorded-price inspection"
+		subtitle="Price trends by origin · $/lb"
 		collapsedMaxHeight="none"
 		showGradient={false}
 		onExpandChange={(v) => (lineChartExpanded = v)}
@@ -79,7 +79,7 @@
 					<h2 class="mb-1 text-base font-semibold text-ink">Origin price trends</h2>
 				{/if}
 				<p class="mb-3 text-sm text-muted">
-					Reconstructed $/lb history with recorded-price inspection
+					Price trends by origin · $/lb
 					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 				</p>
 				<div class="mb-4 flex items-center gap-2">
@@ -106,7 +106,7 @@
 						{/each}
 					</div>
 				</div>
-				<div class={lineChartExpanded ? 'h-[70vh] min-h-[34rem] w-full' : 'h-[34rem] w-full'}>
+				<div class={lineChartExpanded ? 'h-[70vh] min-h-[34rem] w-full' : 'h-80 w-full'}>
 					{#if OriginLineChartComponent}
 						{#key viewMode}
 							<OriginLineChartComponent

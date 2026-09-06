@@ -4,7 +4,7 @@ Status: implemented for review in [PR #582](https://github.com/reedwhetstone/cof
 
 ## Product outcome
 
-The main chart is now a continuous **reconstructed price trend** over supported observed history. The **Recorded prices** view retains exact original dates, medians (average fallback explicitly named), supplier/listing counts, and optional legacy synthetic history. Switching views retains date inspection. Retail and wholesale remain separate series.
+The main chart is now a continuous **reconstructed price trend** over supported observed history. The **Recorded prices** view retains exact original dates, medians (average fallback explicitly named), supplier/listing counts, and optional legacy synthetic history. In the expanded view, switching between reconstructed and recorded prices retains date inspection. Retail and wholesale remain separate series.
 
 This supersedes the earlier gap-only default and the experimental end-anchored matched-supplier formula. It is a reconstruction of published medians, **not a supplier-mix-normalized market index**. Counts can detect coverage collapse; they cannot identify which suppliers disappeared or recover market movement during an outage.
 
@@ -43,15 +43,20 @@ Inputs: [published aggregate fixture](fixtures/published-medians.json), five ret
 
 Behavior tests cover dropout replacement, preservation of a count-supported price step, UTC gap interpolation, no extrapolation, missing provenance, sparse history, invalid records, cohort isolation, ambiguous duplicates, and view-switch date inspection.
 
-## Visual review
+## Visual review and progressive disclosure
 
-Local fixture harnesses use the real chart component and the aggregate fixture above. They are not authenticated deployment proof:
+The main dashboard stays compact: a 320px chart area, origin legend, and a short estimate label. Hover or tap opens a floating date/value card; estimates have a compact `est.` marker. There is no permanent bottom detail panel. Mouse leave dismisses hover inspection; touch pins the card until close, outside tap, or Escape. Keyboard inspection remains available through a focus-revealed date control.
 
-- [Mobile reconstructed view](mobile-reconstructed-preview.png)
-- [Mobile estimated-date inspection](mobile-estimate-inspection.png)
-- [Desktop reconstruction](desktop-reconstructed-preview.png)
+The existing expanded panel adds the recorded/reconstructed switch, origin selection, methodology, visible date slider, and full sample/reconstruction evidence within the floating card. The dashboard is a summary, not the expanded inspector squeezed into the page.
 
-390×844 replay: no horizontal overflow or browser errors. The temporary fixture route was removed before submission. Original recorded-view screenshots remain for comparison.
+Local fixture harnesses use the actual EvidenceChartsSection/ExpandablePanel and live chart component with the aggregate fixture above; not authenticated deployment proof:
+
+- [Compact mobile dashboard](mobile-dashboard-compact.png)
+- [Mobile floating inspection](mobile-floating-inspection.png)
+- [Expanded mobile evidence](mobile-expanded-floating.png)
+- [Desktop hover inspection](desktop-floating-inspection.png)
+
+390px mobile and desktop replay: no horizontal overflow or browser errors. Dashboard tooltip fits all five values without scrolling. Verified tap pinning, close/outside dismissal, desktop hover/leave, expanded evidence, and keyboard/Escape behavior. Temporary fixture route removed before submission. Older screenshots show superseded iterations.
 
 ## Merge boundary
 
@@ -59,7 +64,7 @@ This PR is non-draft and intended for preview review as a complete, bounded inte
 
 ## Local validation receipt
 
-- `pnpm test`: 201 files passed, 2 skipped; 1,446 tests passed, 14 skipped.
+- `pnpm test`: 201 files passed, 2 skipped; 1,447 tests passed, 14 skipped.
 - `PUBLIC_SUPABASE_URL=https://example.supabase.co PUBLIC_SUPABASE_ANON_KEY=static-placeholder OPENROUTER_API_KEY=static-placeholder pnpm check --fail-on-warnings`: zero errors/warnings. Non-secret placeholders validate types only, not authenticated runtime.
 - `pnpm lint`: blocked by 17 pre-existing unrelated Prettier files. Changed-file ESLint and Prettier checks pass.
 - `git diff --check`: passes.

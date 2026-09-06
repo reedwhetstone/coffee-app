@@ -62,7 +62,10 @@
 
 	let includeEstimates = $state(false);
 	let priceView = $state<'trend' | 'recorded'>('trend');
-	let isReconstructed = $derived(mode === 'price' && priceView === 'trend');
+	let isReconstructed = $derived(mode === 'price' && (!expanded || priceView === 'trend'));
+	let chartRoot: HTMLDivElement | undefined = $state();
+	let pinned = $state(false);
+	let keyboardInspection = $state(false);
 	let hasEstimates = $derived(snapshots.some((row) => row.synthetic));
 	let observedSnapshots = $derived(snapshots.filter((row) => includeEstimates || !row.synthetic));
 	let activeData = $derived(
@@ -369,7 +372,24 @@
 			: `$${value.toFixed(2)}`;
 	}
 
+	function dismissInspection() {
+		selectedDate = null;
+		pinned = false;
+		keyboardInspection = false;
+	}
+	function outsidePointer(e: PointerEvent) {
+		if (chartRoot && e.target instanceof Node && !chartRoot.contains(e.target)) dismissInspection();
+	}
+	function leaveChart() {
+		if (!pinned && !keyboardInspection) selectedDate = null;
+	}
+	let tooltipWidth = $derived(Math.min(expanded ? 310 : 260, Math.max(0, containerW - 16)));
+	let tooltipLeft = $derived(
+		Math.max(8, Math.min(containerW - tooltipWidth - 8, (inspectionX ?? 0) + padding.left + 12))
+	);
 	function handlePointer(e: PointerEvent) {
+		keyboardInspection = false;
+		if (e.type === 'pointerdown') pinned = e.pointerType !== 'mouse';
 		const rect = (e.currentTarget as SVGRectElement).getBoundingClientRect();
 		selectedDate = inspectionDate(
 			xScale.invert(Math.max(0, Math.min(innerW, e.clientX - rect.left)))
@@ -377,8 +397,14 @@
 	}
 </script>
 
-<div class="flex h-full min-h-0 w-full flex-col">
-	{#if mode === 'price'}
+<svelte:window
+	onpointerdown={outsidePointer}
+	onkeydown={(e) => {
+		if (e.key === 'Escape') dismissInspection();
+	}}
+/>
+<div class="flex h-full min-h-0 w-full flex-col" bind:this={chartRoot}>
+	{#if mode === 'price' && expanded}
 		<div class="mb-2 flex gap-1" aria-label="Price history view">
 			{#each [{ value: 'trend', label: 'Reconstructed trend' }, { value: 'recorded', label: 'Recorded prices' }] as option}
 				<button
@@ -406,7 +432,7 @@
 			</details>
 		{/if}
 	{/if}
-	{#if mode === 'price' && !isReconstructed && hasEstimates}
+	{#if mode === 'price' && expanded && !isReconstructed && hasEstimates}
 		<label class="mb-2 flex min-h-11 items-center gap-2 text-xs text-muted">
 			<input
 				type="checkbox"
@@ -428,7 +454,9 @@
 			</p>
 			<p class="mt-1 text-xs text-muted">
 				{isReconstructed
-					? 'Try Recorded prices to inspect the available observations.'
+					? expanded
+						? 'Try Recorded prices to inspect the available observations.'
+						: 'Expand the chart to inspect the available recorded prices.'
 					: 'Charts will populate once 7+ days of data are available.'}
 				{#if distinctDateCount > 0}
 					<span class="mt-0.5 block text-muted/60"
@@ -522,15 +550,20 @@
 		{/if}
 
 		<!-- Chart area: flexible height -->
-		<div class="min-h-56 flex-1" bind:clientHeight={containerH} bind:clientWidth={containerW}>
+		<div
+			class="relative min-h-56 flex-1"
+			bind:clientHeight={containerH}
+			bind:clientWidth={containerW}
+			onpointerleave={leaveChart}
+		>
 			{#if containerW > 0 && containerH > 0}
 				<svg
 					width={containerW}
 					height={containerH}
 					role="img"
 					aria-label={isReconstructed
-						? 'Reconstructed origin price trend. Includes estimates; inspect dates below.'
-						: 'Published origin trend chart. Inspect dates using the slider below.'}
+						? 'Reconstructed origin price trend. Includes estimates. Hover, tap or use the date control to inspect.'
+						: 'Published origin trend chart. Hover, tap or use the date control to inspect.'}
 				>
 					<g transform="translate({padding.left},{padding.top})">
 						<g bind:this={xAxisEl} transform="translate(0,{innerH})"></g>
@@ -584,76 +617,104 @@
 					</g>
 				</svg>
 			{/if}
+			{#if inspection}
+				<aside
+					aria-label="Price inspection"
+					class="absolute top-2 z-10 max-h-[85%] overflow-y-auto rounded-lg border border-line bg-surface-canvas p-3 shadow-lg"
+					style="left:{tooltipLeft}px;width:{tooltipWidth}px;"
+				>
+					<div class="mb-2 flex items-center justify-between gap-2 border-b border-line pb-2">
+						<p class="text-xs font-medium text-ink">{formatDate(inspection)} · UTC</p>
+						{#if pinned || keyboardInspection}<button
+								type="button"
+								aria-label="Close price inspection"
+								class="flex h-8 w-8 items-center justify-center rounded text-muted hover:bg-surface-panel"
+								onclick={dismissInspection}>×</button
+							>{/if}
+					</div>
+
+					<div class="grid gap-2" aria-live="polite">
+						{#each inspectedRows as row}
+							<div class="flex min-w-0 items-start gap-2 text-xs">
+								<span class="mt-1 h-2 w-2 shrink-0 rounded-full" style="background:{row.color}"
+								></span>
+								<div class="min-w-0 flex-1">
+									<span class="text-ink">{row.origin}</span>
+									{#if expanded && row.point}<span class="block text-muted"
+											>{!inspection ? formatDate(row.point.date) + ' · ' : ''}{row.point
+												.statistic ?? 'Spread'}{row.point.synthetic
+												? ' · Historical estimate'
+												: ''}</span
+										>{/if}
+									{#if expanded && row.point?.reconstruction && row.point.reconstruction.kind !== 'recorded_anchor'}
+										<span class="block text-muted"
+											>Between {row.point.reconstruction.anchorDates.join(' and ')} · {row.point
+												.reconstruction.intervalDays}-day interval</span
+										>
+										{#if row.point.reconstruction.original}<span class="block text-muted"
+												>Recorded median: {formatValue(
+													row.point.reconstruction.original.price_median!
+												)}
+												· reduced coverage</span
+											>{/if}
+									{/if}
+									{#if expanded && row.point?.sampleSize != null}
+										<span class="block text-muted"
+											>{row.point.sampleSize.toLocaleString()} prices{row.point.supplierCount !=
+											null
+												? ` · ${row.point.supplierCount} suppliers`
+												: ''}</span
+										>
+									{/if}
+								</div>
+								<span class="shrink-0 font-medium tabular-nums text-ink"
+									>{row.point
+										? formatValue(row.point.value)
+										: 'No published index'}{#if !expanded && row.point?.reconstruction && row.point.reconstruction.kind !== 'recorded_anchor'}<span
+											class="ml-1 text-[10px] font-normal text-muted">est.</span
+										>{/if}</span
+								>
+							</div>
+						{/each}
+					</div>
+				</aside>
+			{/if}
 		</div>
 
-		<div class="mt-2 shrink-0 border-t border-line pt-3">
-			<p class="mb-2 text-xs text-muted">
-				{#if isReconstructed}Estimated $/lb between supported medians. Select a date for its
-					evidence.{:else}Gaps mean no published index. Dashed lines are historical estimates.{/if}
-			</p>
-			<div class="flex items-center justify-between gap-2 text-xs">
-				<label for="trend-date-{componentId}"
-					>{inspection
-						? formatDate(inspection) + ' · UTC'
-						: isReconstructed
-							? 'Latest supported values'
-							: 'Latest published values'}</label
+		<div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted" aria-label="Chart legend">
+			{#each seriesData as series}
+				<span class="flex items-center gap-1.5"
+					><span class="h-2 w-2 rounded-full" style="background:{series.color}"
+					></span>{series.origin}</span
 				>
-				{#if inspection}<button
-						type="button"
-						class="min-h-11 px-2 text-accent"
-						onclick={() => (selectedDate = null)}>Latest</button
-					>{/if}
-			</div>
+			{/each}
+		</div>
+		{#if mode === 'price' && !expanded}<p class="mt-2 text-xs text-muted">
+				Includes estimated periods · Hover or tap to inspect
+			</p>{/if}
+		<div class={expanded ? 'mt-3 shrink-0' : 'sr-only focus-within:not-sr-only focus-within:mt-2'}>
+			<label for="trend-date-{componentId}" class="text-xs text-muted"
+				>{inspection ? formatDate(inspection) + ' · UTC' : 'Inspect a date'}</label
+			>
 			<input
 				id="trend-date-{componentId}"
 				aria-label="Inspect observation date"
 				aria-valuetext={formatDate(inspection ?? xDomain[1]) + ' · UTC'}
 				type="range"
-				class="my-1 h-8 w-full accent-accent"
+				class="h-8 w-full accent-accent"
 				min={+xDomain[0]}
 				max={+xDomain[1]}
 				step={UTC_DAY_MS}
 				value={+(inspection ?? xDomain[1])}
-				oninput={(e) => (selectedDate = new Date(Number(e.currentTarget.value)))}
+				onfocus={() => {
+					keyboardInspection = true;
+					selectedDate ??= inspectionDate(xDomain[1]);
+				}}
+				oninput={(e) => {
+					keyboardInspection = true;
+					selectedDate = new Date(Number(e.currentTarget.value));
+				}}
 			/>
-			<div
-				class="grid max-h-48 grid-cols-1 gap-x-5 gap-y-2 overflow-y-auto sm:grid-cols-2"
-				aria-live="polite"
-			>
-				{#each inspectedRows as row}
-					<div class="flex min-w-0 items-start gap-2 text-xs">
-						<span class="mt-1 h-2 w-2 shrink-0 rounded-full" style="background:{row.color}"></span>
-						<div class="min-w-0 flex-1">
-							<span class="text-ink">{row.origin}</span>
-							{#if row.point}<span class="block text-muted"
-									>{!inspection ? formatDate(row.point.date) + ' · ' : ''}{row.point.statistic ??
-										'Spread'}{row.point.synthetic ? ' · Historical estimate' : ''}</span
-								>{/if}
-							{#if row.point?.reconstruction && row.point.reconstruction.kind !== 'recorded_anchor'}
-								<span class="block text-muted"
-									>Between {row.point.reconstruction.anchorDates.join(' and ')} · {row.point
-										.reconstruction.intervalDays}-day interval</span
-								>
-								{#if row.point.reconstruction.original}<span class="block text-muted"
-										>Recorded median: {formatValue(row.point.reconstruction.original.price_median!)}
-										· reduced coverage</span
-									>{/if}
-							{/if}
-							{#if row.point?.sampleSize != null}
-								<span class="block text-muted"
-									>{row.point.sampleSize.toLocaleString()} prices{row.point.supplierCount != null
-										? ` · ${row.point.supplierCount} suppliers`
-										: ''}</span
-								>
-							{/if}
-						</div>
-						<span class="shrink-0 font-medium tabular-nums text-ink"
-							>{row.point ? formatValue(row.point.value) : 'No published index'}</span
-						>
-					</div>
-				{/each}
-			</div>
 		</div>
 	{/if}
 </div>

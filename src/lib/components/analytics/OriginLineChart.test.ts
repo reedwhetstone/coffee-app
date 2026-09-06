@@ -25,25 +25,26 @@ const snapshots = [
 
 describe('origin trend inspection', () => {
 	it('shows real dates, median labels and cohort sizes without inventing a gap price', async () => {
-		render(OriginLineChart, { snapshots });
+		render(OriginLineChart, { snapshots, expanded: true });
 		await fireEvent.click(screen.getByRole('button', { name: 'Recorded prices' }));
+		await fireEvent.focus(screen.getByRole('slider'));
 		expect(screen.getByText('$11.62')).toBeInTheDocument();
-		expect(screen.getByText('Sep 7, 2026 · Median')).toBeInTheDocument();
+		expect(screen.getByText('Median')).toBeInTheDocument();
 		expect(screen.getByText('120 prices · 4 suppliers')).toBeInTheDocument();
 		const slider = screen.getByRole('slider', { name: 'Inspect observation date' });
 		expect(slider).toHaveAttribute('min', String(+new Date('2026-07-15')));
 		expect(slider).toHaveAttribute('aria-valuetext', 'Sep 7, 2026 · UTC');
 		await fireEvent.input(slider, { target: { value: +new Date('2026-08-15') } });
 		expect(slider).toHaveAttribute('aria-valuetext', 'Aug 15, 2026 · UTC');
-		expect(screen.getByText('Aug 15, 2026 · UTC')).toBeInTheDocument();
+		expect(screen.getAllByText('Aug 15, 2026 · UTC')[0]).toBeInTheDocument();
 		expect(screen.getByText('No published index')).toBeInTheDocument();
 		expect(screen.queryByText('$11.62')).not.toBeInTheDocument();
-		await fireEvent.click(screen.getByRole('button', { name: 'Latest' }));
-		expect(screen.getByText('$11.62')).toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'Close price inspection' }));
+		expect(screen.queryByLabelText('Price inspection')).not.toBeInTheDocument();
 	});
 
 	it('excludes synthetic history by default and identifies it when explicitly included', async () => {
-		render(OriginLineChart, { snapshots });
+		render(OriginLineChart, { snapshots, expanded: true });
 		await fireEvent.click(screen.getByRole('button', { name: 'Recorded prices' }));
 		await fireEvent.click(screen.getByRole('checkbox', { name: /Include historical estimates/ }));
 		const slider = screen.getByRole('slider', { name: 'Inspect observation date' });
@@ -54,7 +55,7 @@ describe('origin trend inspection', () => {
 });
 
 it('defaults to continuous estimates and retains inspection when switching to recorded prices', async () => {
-	render(OriginLineChart, { snapshots });
+	render(OriginLineChart, { snapshots, expanded: true });
 	expect(screen.getByRole('button', { name: 'Reconstructed trend' })).toHaveAttribute(
 		'aria-pressed',
 		'true'
@@ -66,4 +67,19 @@ it('defaults to continuous estimates and retains inspection when switching to re
 	expect(screen.queryByText('120 prices · 4 suppliers')).not.toBeInTheDocument();
 	await fireEvent.click(screen.getByRole('button', { name: 'Recorded prices' }));
 	expect(screen.getByText('No published index')).toBeInTheDocument();
+});
+
+it('keeps dashboard evidence on demand and reserves detailed controls for expansion', async () => {
+	const view = render(OriginLineChart, { snapshots });
+	expect(screen.queryByRole('button', { name: 'Recorded prices' })).not.toBeInTheDocument();
+	expect(screen.queryByLabelText('Price inspection')).not.toBeInTheDocument();
+	await fireEvent.input(screen.getByRole('slider'), { target: { value: +new Date('2026-08-15') } });
+	expect(screen.getByLabelText('Price inspection')).toBeInTheDocument();
+	expect(screen.getByText('est.')).toBeInTheDocument();
+	expect(screen.queryByText(/42-day interval/)).not.toBeInTheDocument();
+	await view.rerender({ snapshots, expanded: true });
+	expect(screen.getByText(/42-day interval/)).toBeInTheDocument();
+	expect(screen.getByRole('button', { name: 'Recorded prices' })).toBeInTheDocument();
+	await fireEvent.keyDown(window, { key: 'Escape' });
+	expect(screen.queryByLabelText('Price inspection')).not.toBeInTheDocument();
 });
