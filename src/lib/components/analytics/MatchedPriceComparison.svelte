@@ -64,8 +64,8 @@
 				typeof sample?.matchedListings === 'number' &&
 				typeof sample.matchedSuppliers === 'number' &&
 				typeof sample.matchedCoverage === 'number'
-					? `${result.changePercent > 0 ? '+' : ''}${result.changePercent.toFixed(2)}% across ${sample.matchedListings} matched listings from ${sample.matchedSuppliers} suppliers (${(sample.matchedCoverage * 100).toFixed(0)}% matched coverage).`
-					: 'Insufficient fresh matched coverage for these dates. No price movement estimate is available.');
+					? `${result.changePercent > 0 ? '+' : ''}${result.changePercent.toFixed(2)}% across ${sample.matchedListings} coffees from ${sample.matchedSuppliers} suppliers (${(sample.matchedCoverage * 100).toFixed(0)}% matched coverage).`
+					: 'We’re collecting fresh price observations. A comparison will appear once enough coffees have been checked on both dates.');
 		} catch {
 			if (requestId !== requestSequence) return;
 			message =
@@ -81,54 +81,55 @@
 
 <section
 	class="mb-6 rounded-lg border border-line bg-surface-canvas p-6"
-	aria-label="Matched price movement"
+	aria-label="Price changes"
 >
-	<h2 class="mb-1 text-base font-semibold text-ink">Matched price movement</h2>
+	<h2 class="mb-1 text-base font-semibold text-ink">Price changes</h2>
 	<p class="mb-4 text-sm text-muted">
-		Compare the same fresh-priced listings, with equal weight per supplier. New listings and
-		supplier mix changes are not repricing. This is an observed comparison, not a continuous market
-		index.
+		See whether the same coffees are getting more or less expensive.
 	</p>
 	{#if viewMode === 'all'}
-		<p class="text-sm text-muted">Select retail or wholesale to compare a consistent market.</p>
+		<p class="text-sm text-muted">Select retail or wholesale to see price changes.</p>
 	{:else}
-		<form
-			class="flex flex-wrap items-end gap-3"
-			onsubmit={(event) => {
-				event.preventDefault();
-				compare();
-			}}
-		>
-			<label class="text-sm"
-				>Origin<select
-					class="block rounded border border-line bg-surface-panel p-2"
-					bind:value={origin}
-					required
-					><option value="" disabled>Select origin</option>{#each origins as item}<option
-							value={item}>{item}</option
-						>{/each}</select
-				></label
+		<details>
+			<summary class="mb-3 cursor-pointer text-sm text-muted">Choose dates and origin</summary>
+			<form
+				class="flex flex-wrap items-end gap-3"
+				onsubmit={(event) => {
+					event.preventDefault();
+					compare();
+				}}
 			>
-			<label class="text-sm"
-				>From<input
-					class="block rounded border border-line bg-surface-panel p-2"
-					type="date"
-					bind:value={from}
-					required
-				/></label
-			>
-			<label class="text-sm"
-				>To<input
-					class="block rounded border border-line bg-surface-panel p-2"
-					type="date"
-					bind:value={to}
-					required
-				/></label
-			>
-			<button class="rounded bg-accent px-4 py-2 text-sm text-ink" disabled={loading}
-				>{loading ? 'Comparing…' : 'Compare prices'}</button
-			>
-		</form>
+				<label class="text-sm"
+					>Origin<select
+						class="block rounded border border-line bg-surface-panel p-2"
+						bind:value={origin}
+						required
+						><option value="" disabled>Select origin</option>{#each origins as item}<option
+								value={item}>{item}</option
+							>{/each}</select
+					></label
+				>
+				<label class="text-sm"
+					>From<input
+						class="block rounded border border-line bg-surface-panel p-2"
+						type="date"
+						bind:value={from}
+						required
+					/></label
+				>
+				<label class="text-sm"
+					>To<input
+						class="block rounded border border-line bg-surface-panel p-2"
+						type="date"
+						bind:value={to}
+						required
+					/></label
+				>
+				<button class="rounded bg-accent px-4 py-2 text-sm text-ink" disabled={loading}
+					>{loading ? 'Comparing…' : 'Compare prices'}</button
+				>
+			</form>
+		</details>
 	{/if}
 	<p class="mt-3 text-sm text-muted" role="status">{message}</p>
 </section>

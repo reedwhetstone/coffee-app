@@ -45,6 +45,7 @@ describe('MatchedPriceComparison', () => {
 		vi.stubGlobal('fetch', fetchMock);
 
 		render(MatchedPriceComparison, { origins: ['Ethiopia'], viewMode: 'retail' });
+		await fireEvent.click(screen.getByText('Choose dates and origin'));
 		await fireEvent.change(screen.getByLabelText('Origin'), {
 			target: { value: 'Ethiopia' }
 		});
@@ -52,7 +53,7 @@ describe('MatchedPriceComparison', () => {
 
 		await waitFor(() =>
 			expect(screen.getByRole('status')).toHaveTextContent(
-				'Ethiopia retail, 2025-12-04 to 2026-01-02: +10.00% across 5 matched listings from 3 suppliers (50% matched coverage).'
+				'Ethiopia retail, 2025-12-04 to 2026-01-02: +10.00% across 5 coffees from 3 suppliers (50% matched coverage).'
 			)
 		);
 		expect(fetchMock).toHaveBeenCalledWith(
@@ -61,12 +62,38 @@ describe('MatchedPriceComparison', () => {
 		);
 	});
 
+	it('explains missing observations without presenting a zero price change', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue(
+				new Response(
+					JSON.stringify({
+						data: { status: 'insufficient_fresh_coverage', changePercent: null }
+					}),
+					{ status: 200 }
+				)
+			)
+		);
+		render(MatchedPriceComparison, { origins: ['Ethiopia'], viewMode: 'retail' });
+		expect(screen.getByRole('heading', { name: 'Price changes' })).toBeInTheDocument();
+		await fireEvent.click(screen.getByText('Choose dates and origin'));
+		await fireEvent.change(screen.getByLabelText('Origin'), { target: { value: 'Ethiopia' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Compare prices' }));
+		await waitFor(() =>
+			expect(screen.getByRole('status')).toHaveTextContent(
+				'We’re collecting fresh price observations.'
+			)
+		);
+		expect(screen.getByRole('status')).not.toHaveTextContent('0.00%');
+	});
+
 	it('clears old evidence and ignores a late response after the market scope changes', async () => {
 		const pending = deferred<Response>();
 		const fetchMock = vi.fn().mockReturnValue(pending.promise);
 		vi.stubGlobal('fetch', fetchMock);
 
 		const view = render(MatchedPriceComparison, { origins: ['Ethiopia'], viewMode: 'retail' });
+		await fireEvent.click(screen.getByText('Choose dates and origin'));
 		await fireEvent.change(screen.getByLabelText('Origin'), {
 			target: { value: 'Ethiopia' }
 		});
