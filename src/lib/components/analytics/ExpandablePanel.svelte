@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { tick } from 'svelte';
 	import { fade } from 'svelte/transition';
 
 	let {
@@ -27,15 +28,24 @@
 	} = $props();
 
 	let expanded = $state(false);
+	let expandTrigger: HTMLButtonElement | undefined = $state();
+	let dialogEl: HTMLDivElement | undefined = $state();
 
-	function open() {
+	async function open() {
 		expanded = true;
 		onExpandChange?.(true);
+		await tick();
+		if (dialogEl) {
+			dialogEl.tabIndex = -1;
+			dialogEl.focus();
+		}
 	}
 
-	function close() {
+	async function close() {
 		expanded = false;
 		onExpandChange?.(false);
+		await tick();
+		expandTrigger?.focus();
 	}
 
 	// Lock body scroll while modal is open
@@ -88,6 +98,7 @@
 		role={expanded ? 'dialog' : undefined}
 		aria-modal={expanded ? 'true' : undefined}
 		aria-label={expanded ? title : undefined}
+		bind:this={dialogEl}
 		class={expanded
 			? 'relative z-10 my-4 w-full max-w-5xl rounded-xl bg-surface-canvas shadow-2xl sm:my-0'
 			: 'relative overflow-hidden'}
@@ -134,6 +145,7 @@
 	{#if !expanded && canExpand}
 		<div class="mt-2.5 flex justify-center">
 			<button
+				bind:this={expandTrigger}
 				onclick={open}
 				class="rounded-full border border-line bg-surface-panel px-4 py-1.5 text-sm font-medium text-muted shadow-sm transition-colors duration-150 hover:border-accent hover:text-accent"
 			>

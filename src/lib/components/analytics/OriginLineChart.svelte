@@ -631,34 +631,6 @@
 				>
 			{/each}
 		</div>
-		{#if mode === 'price' && expanded}
-			<details class="mt-2 shrink-0 text-xs text-muted">
-				<summary class="cursor-pointer py-2">About this data · Includes estimates</summary>
-				<div class="max-h-48 space-y-3 overflow-y-auto pb-2">
-					<p>
-						Trends connect reliable recorded prices across gaps. Earlier history is modeled from
-						legacy catalog estimates, joined to the first reliable recorded price—not historical
-						quotes. Estimated periods do not show actual day-to-day market movement.
-					</p>
-					<div class="flex gap-1" aria-label="Price history view">
-						{#each [{ value: 'trend', label: 'Trend' }, { value: 'recorded', label: 'Recorded prices' }] as option}
-							<button
-								type="button"
-								class="min-h-11 rounded-md border border-line px-3 text-xs font-medium {priceView ===
-								option.value
-									? 'bg-surface-panel text-ink'
-									: 'text-muted'}"
-								aria-pressed={priceView === option.value}
-								onclick={() => {
-									priceView = option.value as 'trend' | 'recorded';
-								}}>{option.label}</button
-							>
-						{/each}
-					</div>
-					<p>Recorded prices show published values and their gaps, without modeled history.</p>
-				</div>
-			</details>
-		{/if}
 		{#if mode === 'price' && !expanded}<p class="mt-2 text-xs text-muted">
 				Includes estimates
 			</p>{/if}
@@ -686,5 +658,33 @@
 				}}
 			/>
 		</div>
+	{/if}
+	{#if mode === 'price' && expanded}
+		<details class="mt-2 shrink-0 text-xs text-muted">
+			<summary class="cursor-pointer py-2">About this data · Includes estimates</summary>
+			<div class="max-h-48 space-y-3 overflow-y-auto pb-2">
+				<p>
+					Trends connect reliable recorded prices across gaps. Earlier history is modeled from
+					legacy catalog estimates, joined to the first reliable recorded price—not historical
+					quotes. Estimated periods do not show actual day-to-day market movement.
+				</p>
+				<div class="flex gap-1" aria-label="Price history view">
+					{#each [{ value: 'trend', label: 'Trend' }, { value: 'recorded', label: 'Recorded prices' }] as option}
+						<button
+							type="button"
+							class="min-h-11 rounded-md border border-line px-3 text-xs font-medium {priceView ===
+							option.value
+								? 'bg-surface-panel text-ink'
+								: 'text-muted'}"
+							aria-pressed={priceView === option.value}
+							onclick={() => {
+								priceView = option.value as 'trend' | 'recorded';
+							}}>{option.label}</button
+						>
+					{/each}
+				</div>
+				<p>Recorded prices show published values and their gaps, without modeled history.</p>
+			</div>
+		</details>
 	{/if}
 </div>

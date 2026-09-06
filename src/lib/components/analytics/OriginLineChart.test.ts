@@ -23,6 +23,11 @@ const snapshots = [
 	row('2026-03-01', true)
 ];
 
+const sparseRecordedSnapshots = [
+	...Array.from({ length: 5 }, (_, i) => row(`2026-07-${15 + i * 2}`)),
+	row('2026-03-01', true)
+];
+
 describe('origin trend inspection', () => {
 	it('shows exact prices and dates without inventing a recorded gap price', async () => {
 		render(OriginLineChart, { snapshots, expanded: true });
@@ -60,10 +65,7 @@ describe('origin trend inspection', () => {
 
 it('defaults to continuous estimates and retains inspection when switching to recorded prices', async () => {
 	render(OriginLineChart, { snapshots, expanded: true });
-	expect(screen.getByRole('button', { name: 'Trend', exact: true })).toHaveAttribute(
-		'aria-pressed',
-		'true'
-	);
+	expect(screen.getByRole('button', { name: /^Trend$/ })).toHaveAttribute('aria-pressed', 'true');
 	const slider = screen.getByRole('slider', { name: 'Inspect observation date' });
 	await fireEvent.input(slider, { target: { value: +new Date('2026-08-15') } });
 	expect(screen.getByText('est.')).toBeInTheDocument();
@@ -71,6 +73,15 @@ it('defaults to continuous estimates and retains inspection when switching to re
 	expect(screen.queryByText('120 prices · 4 suppliers')).not.toBeInTheDocument();
 	await fireEvent.click(screen.getByRole('button', { name: 'Recorded prices' }));
 	expect(screen.getByText('No data')).toBeInTheDocument();
+});
+
+it('keeps the recorded view switch available when published history is sparse', async () => {
+	render(OriginLineChart, { snapshots: sparseRecordedSnapshots, expanded: true });
+	await fireEvent.click(screen.getByRole('button', { name: 'Recorded prices' }));
+
+	expect(screen.getByText('Not enough published history in this range.')).toBeInTheDocument();
+	expect(screen.getByRole('button', { name: /^Trend$/ })).toBeInTheDocument();
+	expect(screen.getByRole('button', { name: 'Recorded prices' })).toBeInTheDocument();
 });
 
 it('keeps dashboard evidence on demand and reserves detailed controls for expansion', async () => {

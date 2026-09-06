@@ -22,5 +22,9 @@ describe('ExpandablePanel', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Expand' }));
 		expect(screen.getByRole('dialog')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Count 1' })).toBeInTheDocument();
+		expect(document.activeElement).toBe(screen.getByRole('dialog'));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Close panel' }));
+		expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Expand' }));
 	});
 });
