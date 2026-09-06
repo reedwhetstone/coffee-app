@@ -64,14 +64,16 @@
 		return filteredSnapshots.filter((s) => s.snapshot_date >= cutoffStr);
 	});
 
-	let lineSnapshots = $derived(trendSnapshots.filter((s) => s.price_avg != null));
+	let lineSnapshots = $derived(
+		trendSnapshots.filter((s) => s.price_median != null || s.price_avg != null)
+	);
 </script>
 
 <section class="mb-8 space-y-6" aria-label="Evidence charts">
 	<ExpandablePanel
 		title="Origin price trends"
-		subtitle="Average $/lb by top origins, ranked by market activity"
-		collapsedMaxHeight="420px"
+		subtitle="Median $/lb by origin; average where median is unavailable"
+		collapsedMaxHeight="none"
 		showGradient={false}
 		onExpandChange={(v) => (lineChartExpanded = v)}
 	>
@@ -83,10 +85,12 @@
 			errorMessage={publicChartsError}
 			{onRetry}
 		>
-			<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
-				<h2 class="mb-1 text-base font-semibold text-ink">Origin price trends</h2>
+			<div class="rounded-lg border border-line bg-surface-canvas p-3 shadow-sm sm:p-6">
+				{#if !lineChartExpanded}
+					<h2 class="mb-1 text-base font-semibold text-ink">Origin price trends</h2>
+				{/if}
 				<p class="mb-3 text-sm text-muted">
-					Average $/lb by top origins, ranked by market activity
+					Median $/lb by origin; average where median is unavailable
 					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 				</p>
 				<div class="mb-4 flex items-center gap-2">
@@ -100,7 +104,8 @@
 								}}
 								disabled={locked}
 								title={locked ? 'Longer horizons require Parchment Intelligence' : undefined}
-								class="rounded-full px-3 py-1 text-xs font-medium transition-all duration-150
+								aria-pressed={trendRange === opt.value}
+								class="min-h-11 rounded-full px-3 py-1 text-xs font-medium transition-all duration-150
 									{trendRange === opt.value
 									? 'bg-accent text-ink shadow-sm'
 									: locked
@@ -112,13 +117,15 @@
 						{/each}
 					</div>
 				</div>
-				<div class={lineChartExpanded ? 'h-[60vh] w-full' : 'h-64 w-full'}>
+				<div class={lineChartExpanded ? 'h-[70vh] min-h-[34rem] w-full' : 'h-[34rem] w-full'}>
 					{#if OriginLineChartComponent}
-						<OriginLineChartComponent
-							snapshots={lineSnapshots}
-							expanded={lineChartExpanded}
-							mode="price"
-						/>
+						{#key viewMode}
+							<OriginLineChartComponent
+								snapshots={lineSnapshots}
+								expanded={lineChartExpanded}
+								mode="price"
+							/>
+						{/key}
 					{/if}
 				</div>
 			</div>

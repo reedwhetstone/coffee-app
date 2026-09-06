@@ -96,7 +96,7 @@
 	<!-- Backdrop -->
 	<div
 		transition:fade={{ duration: 150 }}
-		class="fixed inset-0 z-50 flex min-h-full items-start justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:items-center sm:p-8"
+		class="fixed inset-0 z-50 flex min-h-full items-start justify-center overflow-y-auto bg-black/40 p-1 backdrop-blur-sm sm:items-center sm:p-8"
 	>
 		<!-- Click-outside-to-close backdrop (aria-hidden so screen readers skip it) -->
 		<div class="absolute inset-0" aria-hidden="true" onclick={close}></div>
@@ -111,7 +111,7 @@
 		>
 			<!-- Modal header -->
 			<div
-				class="flex items-start gap-3 rounded-t-xl border-b border-line bg-surface-canvas px-6 py-4"
+				class="flex items-start gap-3 rounded-t-xl border-b border-line bg-surface-canvas px-3 py-4 sm:px-6"
 			>
 				<div class="flex-1">
 					<h2 class="text-lg font-semibold text-ink">{title}</h2>
@@ -134,7 +134,7 @@
 			</div>
 
 			<!-- Scrollable modal body -->
-			<div class="overflow-y-auto p-6" style="max-height: calc(90vh - 68px)">
+			<div class="overflow-y-auto p-1 sm:p-6" style="max-height: calc(90vh - 68px)">
 				{@render children()}
 			</div>
 		</div>

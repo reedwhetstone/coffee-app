@@ -1,8 +1,16 @@
 <script lang="ts">
 	import { CHART_SERIES } from '$lib/styles/chartColors';
-	import { line as d3Line, curveMonotoneX } from 'd3-shape';
-	import { scaleTime, scaleLinear } from 'd3-scale';
-	import { extent, min } from 'd3-array';
+	import { line as d3Line } from 'd3-shape';
+	import {
+		dailySegments,
+		trendDomain,
+		inspectionDate,
+		observationOnDate,
+		UTC_DAY_MS,
+		cohortSeriesLabel
+	} from './originTrend';
+	import { scaleUtc, scaleLinear } from 'd3-scale';
+	import { extent } from 'd3-array';
 	import { select } from 'd3-selection';
 
 	interface SnapshotRow {
@@ -15,7 +23,9 @@
 		price_p25: number | null;
 		price_p75: number | null;
 		sample_size: number;
+		supplier_count?: number;
 		wholesale_only: boolean;
+		synthetic?: boolean;
 	}
 
 	interface SpreadRow {
@@ -39,10 +49,14 @@
 	} = $props();
 
 	const COLORS = CHART_SERIES;
+	const componentId = $props.id();
 
 	const MIN_DISTINCT_DATES = 7;
 
-	let activeData = $derived(mode === 'spread' ? spreadData : snapshots);
+	let includeEstimates = $state(false);
+	let hasEstimates = $derived(snapshots.some((row) => row.synthetic));
+	let observedSnapshots = $derived(snapshots.filter((row) => includeEstimates || !row.synthetic));
+	let activeData = $derived(mode === 'spread' ? spreadData : observedSnapshots);
 	let distinctDateCount = $derived(new Set(activeData.map((s) => s.snapshot_date)).size);
 	let hasEnoughData = $derived(distinctDateCount >= MIN_DISTINCT_DATES);
 
@@ -51,14 +65,27 @@
 		value: number;
 		p25: number | null;
 		p75: number | null;
+		statistic?: 'Median' | 'Average';
+		sampleSize?: number;
+		supplierCount?: number;
+		synthetic?: boolean;
 		retailPrice?: number;
 		wholesalePrice?: number;
 	}
+
+	let mixedCohorts = $derived(new Set(snapshots.map((s) => s.wholesale_only)).size > 1);
+	let priceRows = $derived(
+		observedSnapshots.map((s) => ({
+			...s,
+			origin: cohortSeriesLabel(s.origin, s.wholesale_only, mixedCohorts)
+		}))
+	);
 
 	let originMap = $derived.by(() => {
 		const map = new Map<string, DataPoint[]>();
 		if (mode === 'spread') {
 			for (const row of spreadData) {
+				if (!Number.isFinite(row.spread_pct)) continue;
 				if (!map.has(row.origin)) map.set(row.origin, []);
 				map.get(row.origin)!.push({
 					date: new Date(row.snapshot_date),
@@ -70,15 +97,19 @@
 				});
 			}
 		} else {
-			for (const row of snapshots) {
+			for (const row of priceRows) {
 				const price = row.price_median ?? row.price_avg;
-				if (price == null) continue;
+				if (price == null || !Number.isFinite(price)) continue;
 				if (!map.has(row.origin)) map.set(row.origin, []);
 				map.get(row.origin)!.push({
 					date: new Date(row.snapshot_date),
 					value: price,
 					p25: row.price_p25 ?? null,
-					p75: row.price_p75 ?? null
+					p75: row.price_p75 ?? null,
+					statistic: row.price_median != null ? 'Median' : 'Average',
+					synthetic: row.synthetic ?? false,
+					sampleSize: row.sample_size,
+					supplierCount: row.supplier_count
 				});
 			}
 		}
@@ -93,9 +124,9 @@
 				vol.set(row.origin, (vol.get(row.origin) ?? 0) + 1);
 			}
 		} else {
-			for (const row of snapshots) {
+			for (const row of priceRows) {
 				const price = row.price_median ?? row.price_avg;
-				if (price == null) continue;
+				if (price == null || !Number.isFinite(price)) continue;
 				vol.set(row.origin, (vol.get(row.origin) ?? 0) + (row.sample_size ?? 0));
 			}
 		}
@@ -113,12 +144,14 @@
 
 	// In dashboard mode: always top 5. In expanded mode: user-selectable.
 	let enabledOrigins = $state<Set<string>>(new Set());
-	let enabledOriginsInitialized = $state(false);
+	let originSelectionKey = $state('');
 
 	$effect(() => {
-		if (!enabledOriginsInitialized && allRankedOrigins.length > 0) {
-			enabledOrigins = new Set(allRankedOrigins.slice(0, 5));
-			enabledOriginsInitialized = true;
+		const key = [...allRankedOrigins].sort().join('|');
+		if (key !== originSelectionKey) {
+			const retained = [...enabledOrigins].filter((origin) => allRankedOrigins.includes(origin));
+			enabledOrigins = new Set(retained.length ? retained : allRankedOrigins.slice(0, 5));
+			originSelectionKey = key;
 		}
 	});
 
@@ -157,32 +190,9 @@
 	let xDomain = $derived(
 		allDates.length >= 2 ? (extent(allDates) as [Date, Date]) : [new Date(), new Date()]
 	);
-	let yDomain = $derived(
-		allValues.length >= 2
-			? mode === 'spread'
-				? [
-						// Spread mode: allow negative values, pad both sides
-						Math.min(0, min(allValues) ?? 0) * 1.1 - 2,
-						(() => {
-							const sorted = [...allValues].sort((a, b) => a - b);
-							const p95 = sorted[Math.floor(sorted.length * 0.95)] ?? 10;
-							return Math.max(p95 * 1.15, 5);
-						})()
-					]
-				: [
-						Math.max(0, (min(allValues) ?? 0) * 0.9),
-						(() => {
-							const sorted = [...allValues].sort((a, b) => a - b);
-							const p95 = sorted[Math.floor(sorted.length * 0.95)] ?? 10;
-							return p95 * 1.15;
-						})()
-					]
-			: mode === 'spread'
-				? [-5, 50]
-				: [0, 10]
-	);
+	let yDomain = $derived(trendDomain(allValues, mode === 'spread'));
 
-	const padding = { top: 20, right: 70, bottom: 40, left: 60 };
+	const padding = { top: 12, right: 16, bottom: 32, left: 54 };
 
 	let containerH = $state(0);
 	let containerW = $state(0);
@@ -190,7 +200,7 @@
 	let innerW = $derived(Math.max(0, containerW - padding.left - padding.right));
 	let innerH = $derived(Math.max(0, containerH - padding.top - padding.bottom));
 
-	let xScale = $derived(scaleTime().domain(xDomain).range([0, innerW]));
+	let xScale = $derived(scaleUtc().domain(xDomain).range([0, innerW]));
 	let yScale = $derived(scaleLinear().domain(yDomain).range([innerH, 0]));
 
 	let xAxisEl: SVGGElement | undefined = $state();
@@ -229,7 +239,7 @@
 				.attr('text-anchor', 'middle')
 				.attr('fill', '#a39a8c')
 				.attr('font-size', '11')
-				.text(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+				.text(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }));
 		});
 	});
 
@@ -286,82 +296,60 @@
 		}
 	});
 
-	// Hover tooltip state
-	let mouseX = $state<number | null>(null);
+	let selectedDate = $state<Date | null>(null);
+	let inspection = $derived(
+		selectedDate && +selectedDate >= +xDomain[0] && +selectedDate <= +xDomain[1]
+			? inspectionDate(selectedDate)
+			: null
+	);
+	let inspectionX = $derived(inspection ? xScale(inspection) : null);
+	let inspectedRows = $derived(
+		seriesData.map((series) => ({
+			...series,
+			point: inspection ? observationOnDate(series.points, inspection) : series.points.at(-1)
+		}))
+	);
 
-	interface TooltipRow {
-		origin: string;
-		color: string;
-		price: number;
-		p25: number | null;
-		p75: number | null;
-		retailPrice?: number;
-		wholesalePrice?: number;
+	function formatDate(date: Date): string {
+		return date.toLocaleDateString('en-US', {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric',
+			timeZone: 'UTC'
+		});
 	}
 
-	interface TooltipData {
-		x: number;
-		date: Date;
-		rows: TooltipRow[];
+	function formatValue(value: number): string {
+		return mode === 'spread'
+			? `${value > 0 ? '+' : ''}${value.toFixed(1)}%`
+			: `$${value.toFixed(2)}`;
 	}
 
-	let tooltipData = $derived.by((): TooltipData | null => {
-		if (mouseX === null || innerW <= 0) return null;
-		const hoveredDate = xScale.invert(mouseX);
-		const rows: TooltipRow[] = [];
-		for (const s of seriesData) {
-			if (s.points.length === 0) continue;
-			let closest = s.points[0];
-			let closestDist = Math.abs(closest.date.getTime() - hoveredDate.getTime());
-			for (const p of s.points) {
-				const dist = Math.abs(p.date.getTime() - hoveredDate.getTime());
-				if (dist < closestDist) {
-					closest = p;
-					closestDist = dist;
-				}
-			}
-			rows.push({
-				origin: s.origin,
-				color: s.color,
-				price: closest.value,
-				p25: closest.p25,
-				p75: closest.p75,
-				retailPrice: closest.retailPrice,
-				wholesalePrice: closest.wholesalePrice
-			});
-		}
-		return rows.length > 0 ? { x: mouseX, date: hoveredDate, rows } : null;
-	});
-
-	let tooltipWidth = $derived(mode === 'spread' ? 230 : 180);
-	let tooltipLeft = $derived.by(() => {
-		if (!tooltipData) return 0;
-		return tooltipData.x > innerW - tooltipWidth
-			? tooltipData.x - (tooltipWidth - 10)
-			: tooltipData.x + 12;
-	});
-
-	let tooltipTop = $derived(10);
-
-	function handleMouseMove(e: MouseEvent) {
+	function handlePointer(e: PointerEvent) {
 		const rect = (e.currentTarget as SVGRectElement).getBoundingClientRect();
-		mouseX = e.clientX - rect.left;
-	}
-
-	function handleMouseLeave() {
-		mouseX = null;
+		selectedDate = inspectionDate(
+			xScale.invert(Math.max(0, Math.min(innerW, e.clientX - rect.left)))
+		);
 	}
 </script>
 
-<div class="flex h-full w-full flex-col">
+<div class="flex h-full min-h-0 w-full flex-col">
+	{#if mode === 'price' && hasEstimates}
+		<label class="mb-2 flex min-h-11 items-center gap-2 text-xs text-muted">
+			<input
+				type="checkbox"
+				bind:checked={includeEstimates}
+				class="rounded border-line accent-accent"
+			/>
+			Include historical estimates (not observed prices)
+		</label>
+	{/if}
 	{#if !hasEnoughData}
 		<div
 			class="flex h-full w-full flex-col items-center justify-center rounded-lg bg-surface-panel px-6 text-center"
 		>
 			<div class="mb-2 text-2xl">📈</div>
-			<p class="text-sm font-medium text-muted">
-				Price trend data collection started March 21, 2026.
-			</p>
+			<p class="text-sm font-medium text-muted">Not enough published history in this range.</p>
 			<p class="mt-1 text-xs text-muted">
 				Charts will populate once 7+ days of data are available.
 				{#if distinctDateCount > 0}
@@ -375,12 +363,13 @@
 		<!-- Origin selector: only in expanded mode -->
 		{#if expanded}
 			<div class="mb-3 flex flex-wrap items-center gap-2">
-				<span class="text-sm font-medium text-muted">Origins:</span>
+				<span class="text-sm font-medium text-muted">{mixedCohorts ? 'Series:' : 'Origins:'}</span>
 				<div class="relative">
 					<button
 						type="button"
 						onclick={() => (selectorOpen = !selectorOpen)}
-						class="flex items-center gap-1.5 rounded-md border border-line bg-surface-panel px-3 py-1.5 text-sm text-ink transition-colors hover:border-accent"
+						aria-expanded={selectorOpen}
+						class="flex min-h-11 items-center gap-1.5 rounded-md border border-line bg-surface-panel px-3 py-1.5 text-sm text-ink transition-colors hover:border-accent"
 					>
 						{enabledOrigins.size} of {allRankedOrigins.length} selected
 						<svg class="h-4 w-4 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -435,7 +424,8 @@
 								<button
 									type="button"
 									onclick={() => toggleOrigin(origin)}
-									class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-panel"
+									aria-pressed={active}
+									class="flex min-h-11 w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-panel"
 								>
 									<div
 										class="h-3 w-3 flex-shrink-0 rounded-sm border"
@@ -450,144 +440,122 @@
 						</div>
 					{/if}
 				</div>
-				<!-- Active origin chips (compact) -->
-				{#each visibleOrigins.slice(0, 8) as origin}
-					<span
-						class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
-						style="background:{originColor(origin)}15; color:{originColor(origin)};"
-					>
-						<div class="h-1.5 w-1.5 rounded-full" style="background:{originColor(origin)};"></div>
-						{origin}
-					</span>
-				{/each}
-				{#if visibleOrigins.length > 8}
-					<span class="text-xs text-muted">+{visibleOrigins.length - 8} more</span>
-				{/if}
 			</div>
 		{/if}
 
 		<!-- Chart area: flexible height -->
-		<div class="min-h-0 flex-1" bind:clientHeight={containerH} bind:clientWidth={containerW}>
+		<div class="min-h-56 flex-1" bind:clientHeight={containerH} bind:clientWidth={containerW}>
 			{#if containerW > 0 && containerH > 0}
-				<svg width={containerW} height={containerH}>
+				<svg
+					width={containerW}
+					height={containerH}
+					role="img"
+					aria-label="Published origin trend chart. Inspect dates using the slider below."
+				>
 					<g transform="translate({padding.left},{padding.top})">
 						<g bind:this={xAxisEl} transform="translate(0,{innerH})"></g>
 						<g bind:this={yAxisEl}></g>
 
-						<!-- Lines -->
 						{#each seriesData as series}
 							{@const lineGen = d3Line<DataPoint>()
 								.x((d) => xScale(d.date))
-								.y((d) => yScale(d.value))
-								.curve(curveMonotoneX)}
-							{@const pathD = lineGen(series.points)}
-							{#if pathD}
-								<path d={pathD} fill="none" stroke={series.color} stroke-width="2.5" />
-							{/if}
-							{#if series.points.length > 0}
-								{@const last = series.points[series.points.length - 1]}
-								<circle cx={xScale(last.date)} cy={yScale(last.value)} r="4" fill={series.color} />
-								<text
-									x={xScale(last.date) + 6}
-									y={yScale(last.value)}
-									dominant-baseline="middle"
-									font-size="10"
-									fill={series.color}
-								>
-									{mode === 'spread'
-										? `${last.value > 0 ? '+' : ''}${last.value.toFixed(1)}%`
-										: `$${last.value.toFixed(2)}`}
-								</text>
-							{/if}
+								.y((d) => yScale(d.value))}
+							{#each dailySegments(series.points) as segment}
+								<path
+									d={lineGen(segment) ?? ''}
+									fill="none"
+									stroke={series.color}
+									stroke-width="2"
+									stroke-dasharray={segment[0].synthetic ? '5 4' : undefined}
+								/>
+								{#each segment.length === 1 ? segment : [segment[0], segment[segment.length - 1]] as point}
+									<circle
+										cx={xScale(point.date)}
+										cy={yScale(point.value)}
+										r="2.5"
+										fill={series.color}
+									/>
+								{/each}
+							{/each}
 						{/each}
-
-						{#if tooltipData !== null}
+						{#if inspectionX !== null}
 							<line
-								x1={tooltipData.x}
-								x2={tooltipData.x}
+								x1={inspectionX}
+								x2={inspectionX}
 								y1={0}
 								y2={innerH}
 								stroke="#a39a8c"
-								stroke-width="1"
 								stroke-dasharray="4 4"
-								pointer-events="none"
 							/>
 						{/if}
-
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<!-- The date slider below provides the equivalent keyboard interaction. -->
 						<rect
 							x={0}
 							y={0}
 							width={innerW}
 							height={innerH}
 							fill="transparent"
-							onmousemove={handleMouseMove}
-							onmouseleave={handleMouseLeave}
+							style="touch-action: pan-y;"
+							onpointerdown={handlePointer}
+							onpointermove={handlePointer}
 						/>
-
-						{#if tooltipData !== null}
-							<foreignObject
-								x={tooltipLeft}
-								y={tooltipTop}
-								width={mode === 'spread' ? 220 : 164}
-								height={tooltipData.rows.length * (mode === 'spread' ? 44 : 36) + 38}
-								pointer-events="none"
-							>
-								<div
-									style="background:#FCFAF8; border:1px solid #E4E4E2; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.12); padding:8px 10px; font-size:11px; line-height:1.4;"
-								>
-									<div style="color:#695c4d; font-weight:600; margin-bottom:4px;">
-										{tooltipData.date.toLocaleDateString('en-US', {
-											month: 'short',
-											day: 'numeric',
-											year: 'numeric'
-										})}
-									</div>
-									{#each tooltipData.rows as row}
-										<div style="display:flex; align-items:center; gap:5px; margin-top:2px;">
-											<div
-												style="width:8px; height:8px; border-radius:50%; background:{row.color}; flex-shrink:0;"
-											></div>
-											<span
-												style="color:#695c4d; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
-												>{row.origin}</span
-											>
-											<span style="color:#302f2a; font-weight:600; flex-shrink:0;"
-												>{mode === 'spread'
-													? `${row.price > 0 ? '+' : ''}${row.price.toFixed(1)}%`
-													: `$${row.price.toFixed(2)}`}</span
-											>
-										</div>
-										{#if mode === 'spread' && row.retailPrice != null && row.wholesalePrice != null}
-											<div style="margin-left:13px; font-size:10px; color:#a39a8c;">
-												Retail: ${row.retailPrice.toFixed(2)} · Wholesale: ${row.wholesalePrice.toFixed(
-													2
-												)}
-											</div>
-										{:else if row.p25 != null && row.p75 != null}
-											<div style="margin-left:13px; font-size:10px; color:#a39a8c;">
-												IQR: ${row.p25.toFixed(2)} – ${row.p75.toFixed(2)}
-											</div>
-										{/if}
-									{/each}
-								</div>
-							</foreignObject>
-						{/if}
 					</g>
 				</svg>
 			{/if}
 		</div>
 
-		<!-- Dashboard legend: simple color dots + names (no toggles) -->
-		{#if !expanded && seriesData.length > 0}
-			<div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-line px-4 pt-2">
-				{#each seriesData as series}
-					<div class="flex items-center gap-1.5 text-xs text-muted">
-						<div class="h-2.5 w-2.5 rounded-full" style="background:{series.color}"></div>
-						{series.origin}
+		<div class="mt-2 shrink-0 border-t border-line pt-3">
+			<p class="mb-2 text-xs text-muted">
+				Gaps mean no published index. Dashed lines are historical estimates.
+			</p>
+			<div class="flex items-center justify-between gap-2 text-xs">
+				<label for="trend-date-{componentId}"
+					>{inspection ? formatDate(inspection) + ' · UTC' : 'Latest published values'}</label
+				>
+				{#if inspection}<button
+						type="button"
+						class="min-h-11 px-2 text-accent"
+						onclick={() => (selectedDate = null)}>Latest</button
+					>{/if}
+			</div>
+			<input
+				id="trend-date-{componentId}"
+				aria-label="Inspect observation date"
+				type="range"
+				class="my-1 h-8 w-full accent-accent"
+				min={+xDomain[0]}
+				max={+xDomain[1]}
+				step={UTC_DAY_MS}
+				value={+(inspection ?? xDomain[1])}
+				oninput={(e) => (selectedDate = new Date(Number(e.currentTarget.value)))}
+			/>
+			<div
+				class="grid max-h-48 grid-cols-1 gap-x-5 gap-y-2 overflow-y-auto sm:grid-cols-2"
+				aria-live="polite"
+			>
+				{#each inspectedRows as row}
+					<div class="flex min-w-0 items-start gap-2 text-xs">
+						<span class="mt-1 h-2 w-2 shrink-0 rounded-full" style="background:{row.color}"></span>
+						<div class="min-w-0 flex-1">
+							<span class="text-ink">{row.origin}</span>
+							{#if row.point}<span class="block text-muted"
+									>{!inspection ? formatDate(row.point.date) + ' · ' : ''}{row.point.statistic ??
+										'Spread'}{row.point.synthetic ? ' · Historical estimate' : ''}</span
+								>{/if}
+							{#if row.point?.sampleSize != null}
+								<span class="block text-muted"
+									>{row.point.sampleSize.toLocaleString()} prices{row.point.supplierCount != null
+										? ` · ${row.point.supplierCount} suppliers`
+										: ''}</span
+								>
+							{/if}
+						</div>
+						<span class="shrink-0 font-medium tabular-nums text-ink"
+							>{row.point ? formatValue(row.point.value) : 'No published index'}</span
+						>
 					</div>
 				{/each}
 			</div>
-		{/if}
+		</div>
 	{/if}
 </div>

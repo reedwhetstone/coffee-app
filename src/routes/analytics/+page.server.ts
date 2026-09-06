@@ -79,6 +79,8 @@ export interface PriceSnapshot {
 	sample_size: number;
 	wholesale_only: boolean;
 	aggregation_tier: number;
+	/** Preserves the upstream distinction between observed and reconstructed history. */
+	synthetic?: boolean;
 }
 
 export interface ProcessBucket {
@@ -217,7 +219,8 @@ function mapPriceIndexHistoryItem(row: PriceIndexHistoryItem): PriceSnapshot {
 		supplier_count: row.sample.suppliers,
 		sample_size: row.sample.listings,
 		wholesale_only: row.wholesale,
-		aggregation_tier: row.sample.aggregationTier
+		aggregation_tier: row.sample.aggregationTier,
+		synthetic: row.provenance.synthetic
 	};
 }
 
