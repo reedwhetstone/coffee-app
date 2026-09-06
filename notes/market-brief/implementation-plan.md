@@ -1,19 +1,23 @@
 # Purveyors Market Brief implementation plan
 
 **Date:** 2026-08-15
-**Updated:** 2026-09-03
-**Status:** Public publication MVP operating; production email-draft handoff
-remains open
+**Updated:** 2026-09-05
+**Status:** Public publication MVP operating; provider activation evidence,
+production email-draft handoff, send-readiness, and delivery evidence remain open
 **MB-1 status:** Implemented in coffee-app PR #539
-**MB-3 status:** Parchment lifecycle deployed and activated through PR #245
+**MB-3 status:** Parchment lifecycle implementation deployed and capability
+migration applied through PR #245; current provider-facing activation evidence
+remains to be reverified
 **MB-4 status:** Weekly source and review-PR workflow enabled through
 coffee-scraper PRs #478-#489
 **MB-5 status:** Email projection and subscription journey shipped in
 coffee-app PRs #541 and #561; production-success draft trigger and delivered-path
-unsubscribe/suppression verification remain open
+unsubscribe/suppression verification, plus provider activation evidence, remain
+open
 **MB-6 status:** Web launch active through edition 002 in coffee-app PR #564;
-no-login unsubscribe and provider-suppression verification, provider draft, send,
-and delivery measurement remain open
+provider activation evidence, no-login unsubscribe and provider-suppression
+verification, provider draft, send-readiness, send, and delivery measurement
+remain open
 **Owner:** Purveyors product ecosystem
 **Canonical backlog:** `notes/DEVLOG.md`
 
@@ -82,16 +86,21 @@ requirements for the weekly publication.
   from identity and paid entitlement.
 - Session-authenticated read and preference mutation routes are deployed.
 - The account-deletion lifecycle removes the account-owned preference.
-- The accepted PADR-0028 lifecycle is deployed and its production capability
-  migration is applied. Parchment owns provider audience projection, no-login
-  unsubscribe, account-deletion cleanup, verified webhook settlement, and
-  immutable draft admission.
+- The accepted PADR-0028 lifecycle implementation is deployed and its production
+  capability migration is applied. Parchment owns provider audience projection,
+  no-login unsubscribe, account-deletion cleanup, verified webhook settlement,
+  and immutable draft admission.
+- Current provider-facing activation is not established by the capability
+  deployment alone. Sender, Segment, Topic, webhook, worker/runtime, provider
+  inventory, and activation receipts require a fresh preflight before launch.
 - PADR-0021, PADR-0022, and the merged market contracts in Parchment PRs #239
   and #242 own current market facts. The obsolete evidence and duplicate-authority
   PRs #219 and #207 are closed and must not be revived.
-- Parchment PR #245 owns the activation boundary. The remaining integration gap
-  is coffee-app's deployed-edition handoff and first unsent provider-draft
-  canary; automatic sending remains forbidden.
+- Parchment PR #245 owns the activation boundary. Current provider-facing
+  activation evidence and runtime/configuration checks remain open, as do
+  coffee-app's deployed-edition handoff and first unsent provider-draft canary.
+  Send-readiness and delivery observation remain open lifecycle work; automatic
+  sending remains forbidden.
 
 ### Coffee-scraper
 
@@ -162,7 +171,7 @@ MVP contracts.
 MB-1 coffee-app publication format [complete]
   + Parchment market-publication gates [complete]
   + MB-2 Parchment delivery decision [complete]
-      -> MB-3 Parchment delivery implementation and activation [complete]
+      -> MB-3 Parchment delivery implementation [deployed; activation evidence open]
   + MB-4 coffee-scraper capture and weekly review PR [operating]
       -> MB-5 coffee-app subscriber and projection surfaces [complete]
       -> MB-5 production-success draft handoff [open]
@@ -170,12 +179,14 @@ MB-1 coffee-app publication format [complete]
       -> MB-6 provider send and delivery measurement [open]
 ```
 
-The original dependency gates are satisfied through Parchment activation,
-coffee-scraper's weekly workflow, and coffee-app's public launch. The remaining
-sequence is intentionally narrow: a successful production deployment hands one
-immutable edition/version to Parchment, Parchment creates or replays one unsent
-provider draft, and a human approves any send. Coffee-app must not invent shared
-provider behavior or treat merge alone as proof of deployment.
+The original implementation gates are satisfied through the deployed Parchment
+capability, coffee-scraper's weekly workflow, and coffee-app's public launch.
+Current provider-facing activation evidence still gates the email path. The
+remaining sequence is intentionally narrow: a successful production deployment
+hands one immutable edition/version to Parchment, Parchment creates or replays
+one unsent provider draft, and a human approves any send after send-readiness
+and delivered-path proof. Coffee-app must not invent shared provider behavior or
+treat merge alone as proof of deployment.
 
 ## Atomic delivery slices
 
@@ -215,7 +226,9 @@ Do not copy them into this plan.
 
 **Repository:** parchment-api
 **Dependency:** accepted MB-2 decision
-**Status:** Deployed and activated through Parchment PR #245
+**Status:** Implementation deployed and capability migration applied through
+Parchment PR #245; current provider-facing activation, send-readiness, and
+delivery-observation proof remain open
 
 Implement the accepted consent and provider lifecycle behind Parchment HTTP and
 generated SDK contracts. Preserve account deletion, session preference behavior,
@@ -243,8 +256,9 @@ to recreate market authority.
 
 **Repository:** coffee-app
 **Dependencies:** MB-1 and deployed MB-3
-**Status:** Subscriber, feed, and projection surfaces complete; production-success
-draft trigger open
+**Status:** Subscriber, feed, and projection surfaces complete; provider
+activation evidence, production-success draft trigger, and delivered-path
+unsubscribe/suppression verification remain open
 
 Add the user-facing consent and unsubscribe flows, feed behavior, email-safe
 projection of the canonical edition, and production-deployment handoff required
@@ -272,8 +286,8 @@ Parchment's provider lifecycle.
 
 ### MB-6: Launch and measure
 
-**Status:** Public web launch operating; provider send and delivery measurement
-open
+**Status:** Public web launch operating; provider activation evidence,
+send-readiness, provider send, and delivery measurement open
 
 Continue publishing editions through the normal PR and production deployment
 path. The web launch has proved citations, coverage language, correction
@@ -288,12 +302,13 @@ absent, not reported as zero.
 
 - MB-1 remains independently reversible without affecting existing essays.
 - MB-3 is deployed behind the accepted Parchment activation boundary and keeps
-  the session preference route compatible with current consumers.
+  the session preference route compatible with current consumers. Its deployed
+  capability is not, by itself, current provider-activation proof.
 - MB-4 scheduling is enabled after capture and generation canaries passed; a
   failed run must remain visible and must not publish without review.
-- MB-5 must not enable provider delivery until the remaining production-success
-  handoff and first unsent-draft canary pass against the deployed upstream
-  lifecycle.
+- MB-5 must not enable provider delivery until current activation evidence,
+  production-success handoff, first unsent-draft canary, send-readiness, and
+  delivered-path proof pass against the deployed upstream lifecycle.
 - A failed edition or provider projection never blocks the existing blog or
   Market Index. It creates visible retry or missed-edition work owned by the
   responsible repo.
@@ -320,11 +335,13 @@ absent, not reported as zero.
   compatibility key | stated in Goal | proven in this plan | PR #502 naming review
 - `MB-CONSENT` | identity, consent, entitlement, and suppression stay distinct;
   unsubscribe works without login | mapped to MB-2, MB-3, and MB-5 | active;
-  Parchment capability proven, coffee-app delivered-email verification open |
-  Parchment PR #245 and coffee-app PR #561
+  Parchment capability proven, provider activation evidence and coffee-app
+  delivered-email verification open | Parchment PR #245 and coffee-app PR #561
 - `MB-DELIVERY` | deployment precedes draft creation; provider-confirmed events
   anchor provider metrics | mapped to MB-2, MB-3, and MB-5 | provider lifecycle
-  proven; coffee-app handoff open | PADR-0028 and Parchment PR #245
+  capability proven; provider activation evidence, coffee-app handoff,
+  send-readiness, and delivered-path observation open | PADR-0028 and Parchment
+  PR #245
 - `MB-SOURCE-IDENTITY` | stable source identity is not a content hash | mapped to
   MB-4 | proven | coffee-scraper PRs #478-#489
 - `MB-CADENCE` | daily capture and weekly generation have explicit cutoffs,
@@ -334,9 +351,10 @@ absent, not reported as zero.
   implementation instructions | proven by the historical banners and this sole
   current plan | PR #502 supersession decision
 
-The public publication, account-backed consent, projection, provider lifecycle,
-source, and cadence proofs now sit on their owning repositories' current
-implementation heads. The delivered-email no-login unsubscribe and suppression
-verification, plus the remaining provider-draft handoff, must earn production-
-path proof; this plan does not infer that proof from the already completed
-predecessors.
+The public publication, account-backed consent, projection, provider-lifecycle
+implementation, source, and cadence proofs now sit on their owning repositories'
+current implementation heads. Current provider-facing activation evidence,
+delivered-email no-login unsubscribe and suppression verification,
+send-readiness, delivery observation, and the remaining provider-draft handoff
+must earn production-path proof; this plan does not infer that proof from the
+already completed predecessors.
