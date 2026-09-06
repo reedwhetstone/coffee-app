@@ -1211,10 +1211,7 @@
 		/>
 
 		{#if isParchmentIntelligence}
-			<MatchedPriceComparison
-				origins={[...new Set(snapshots.map((row) => row.origin))].sort()}
-				{viewMode}
-			/>
+			<MatchedPriceComparison {viewMode} />
 		{/if}
 		<EvidenceChartsSection
 			{OriginLineChartComponent}
