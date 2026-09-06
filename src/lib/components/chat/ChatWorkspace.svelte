@@ -77,6 +77,7 @@
 	let memoryPanelOpen = $state(false);
 	let memoryDocExists = $state(false);
 	let lastDreamedCount = 0;
+	let lastSummarizedMessageCount = 0;
 
 	onMount(() => {
 		fetch('/api/memory')
@@ -432,6 +433,7 @@
 		canvasStore.resetAll();
 		dispatchedParts = new Set();
 		lastPersistedMessageCount = 0;
+		lastSummarizedMessageCount = 0;
 
 		// Restore messages from persisted workspace
 		if (result.messages.length > 0) {
@@ -613,7 +615,11 @@
 		const savedCount = workspaceStore.getSavedMessageCount(wsId);
 		const newMessages = chat.messages.slice(savedCount);
 		if (newMessages.length > 0) {
-			await workspaceStore.saveMessages(wsId, buildPersistedChatMessages(newMessages));
+			const messagesSaved = await workspaceStore.saveMessages(
+				wsId,
+				buildPersistedChatMessages(newMessages)
+			);
+			if (!messagesSaved) throw new Error('Failed to persist messages');
 		}
 
 		// Save canvas state (layout, order, pinned, minimized, focus, titles)
@@ -716,9 +722,16 @@
 		const wsId = workspaceStore.currentWorkspaceId;
 		if (!wsId || isActive) return;
 		const msgCount = chat.messages.length;
-		if (msgCount > 0 && msgCount % 20 === 0) {
-			workspaceStore.triggerSummarize(wsId);
-		}
+		const savedCount = workspaceStore.getSavedMessageCount(wsId);
+		if (
+			msgCount === 0 ||
+			msgCount % 20 !== 0 ||
+			msgCount === lastSummarizedMessageCount ||
+			savedCount < msgCount
+		)
+			return;
+		lastSummarizedMessageCount = msgCount;
+		void workspaceStore.triggerSummarize(wsId);
 	});
 
 	// Scroll management

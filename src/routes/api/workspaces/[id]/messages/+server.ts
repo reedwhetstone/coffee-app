@@ -49,9 +49,9 @@ function failure(error: unknown) {
 	return json({ error: (error as Error).message }, { status });
 }
 
-function derivedClientMessageId(workspaceId: string, message: unknown, index: number): string {
+function derivedClientMessageId(workspaceId: string, message: unknown): string {
 	return `legacy-${createHash('sha256')
-		.update(JSON.stringify({ workspaceId, message, index }))
+		.update(JSON.stringify({ workspaceId, message }))
 		.digest('hex')}`;
 }
 
@@ -71,13 +71,13 @@ export const POST: RequestHandler = async (event) => {
 		const client = await createParchmentServerClient(event, { mode: 'session' });
 		const data = await appendConversationMessages(client, event.params.id, {
 			expectedResetEpoch: parsed.data.expected_reset_epoch,
-			messages: parsed.data.messages.map((message, index) => ({
+			messages: parsed.data.messages.map((message) => ({
 				clientMessageId:
-					message.client_message_id ?? derivedClientMessageId(event.params.id, message, index),
+					message.client_message_id ?? derivedClientMessageId(event.params.id, message),
 				role: message.role,
 				content: message.content.slice(0, MAX_DUPLICATE_CONTENT_CHARS),
 				parts:
-					message.parts ??
+					(message.parts && message.parts.length > 0 ? message.parts : undefined) ??
 					(message.content.length > MAX_DUPLICATE_CONTENT_CHARS
 						? [{ type: 'text', text: message.content }]
 						: undefined),

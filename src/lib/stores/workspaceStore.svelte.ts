@@ -154,6 +154,20 @@ async function switchWorkspace(
 	}
 }
 
+async function refreshWorkspace(workspaceId: string): Promise<Workspace | null> {
+	try {
+		const res = await fetch(`/api/workspaces/${workspaceId}`);
+		if (!res.ok) throw new Error('Failed to refresh workspace');
+		const data = await res.json();
+		const workspace = data.workspace as Workspace;
+		workspaces = workspaces.map((item: Workspace) => (item.id === workspace.id ? workspace : item));
+		return workspace;
+	} catch (err) {
+		error = (err as Error).message;
+		return null;
+	}
+}
+
 async function saveMessages(
 	workspaceId: string,
 	messages: Array<{
@@ -199,7 +213,11 @@ async function saveMessages(
 	}
 }
 
-async function saveCanvasState(workspaceId: string, canvasState: unknown): Promise<boolean> {
+async function saveCanvasState(
+	workspaceId: string,
+	canvasState: unknown,
+	retryOnConflict = true
+): Promise<boolean> {
 	try {
 		const workspace = workspaces.find((item) => item.id === workspaceId);
 		const res = await fetch(`/api/workspaces/${workspaceId}/canvas`, {
@@ -211,7 +229,14 @@ async function saveCanvasState(workspaceId: string, canvasState: unknown): Promi
 				expected_canvas_version: workspace?.canvas_version ?? 0
 			})
 		});
-		if (!res.ok) throw new Error('Failed to save canvas state');
+		if (!res.ok) {
+			if (res.status === 409 && retryOnConflict) {
+				const refreshed = await refreshWorkspace(workspaceId);
+				if (!refreshed) throw new Error('Failed to refresh canvas state after a conflict');
+				return saveCanvasState(workspaceId, canvasState, false);
+			}
+			throw new Error('Failed to save canvas state');
+		}
 		const data = await res.json();
 		workspaces = workspaces.map((item) =>
 			item.id === workspaceId
@@ -232,18 +257,24 @@ async function saveCanvasState(workspaceId: string, canvasState: unknown): Promi
 
 async function triggerSummarize(workspaceId: string): Promise<string | null> {
 	try {
-		const res = await fetch(`/api/workspaces/${workspaceId}/summarize`, {
-			method: 'POST'
-		});
-		if (!res.ok) throw new Error('Failed to summarize workspace');
-		const data = await res.json();
-		if (data.summary) {
-			// Update local workspace
-			workspaces = workspaces.map((w: Workspace) =>
-				w.id === workspaceId ? { ...w, context_summary: data.summary } : w
-			);
+		for (let attempt = 0; attempt < 2; attempt++) {
+			const res = await fetch(`/api/workspaces/${workspaceId}/summarize`, {
+				method: 'POST'
+			});
+			if (!res.ok) {
+				if (res.status === 409 && attempt === 0) continue;
+				throw new Error('Failed to summarize workspace');
+			}
+			const data = await res.json();
+			if (data.summary) {
+				// Update local workspace
+				workspaces = workspaces.map((w: Workspace) =>
+					w.id === workspaceId ? { ...w, context_summary: data.summary } : w
+				);
+			}
+			return data.summary || null;
 		}
-		return data.summary || null;
+		return null;
 	} catch (err) {
 		error = (err as Error).message;
 		return null;
@@ -391,6 +422,7 @@ export const workspaceStore = {
 	createAndActivateWorkspace,
 	saveMessages,
 	saveCanvasState,
+	refreshWorkspace,
 	triggerSummarize,
 	deleteWorkspace,
 	updateTitle,

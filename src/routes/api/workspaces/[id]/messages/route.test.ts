@@ -102,6 +102,45 @@ describe('/api/workspaces/[id]/messages', () => {
 		expect(second).toBe(first);
 	});
 
+	it('keeps fallback replay IDs stable when a partial retry changes batch position', async () => {
+		await POST(
+			event('POST', {
+				expected_reset_epoch: 0,
+				messages: [
+					{ role: 'user', content: 'first' },
+					{ role: 'assistant', content: 'second' }
+				]
+			})
+		);
+		await POST(
+			event('POST', {
+				expected_reset_epoch: 0,
+				messages: [{ role: 'assistant', content: 'second' }]
+			})
+		);
+
+		const firstBatchIds = mocks.append.mock.calls[0][2].messages.map(
+			(message: { clientMessageId: string }) => message.clientMessageId
+		);
+		const partialRetryId = mocks.append.mock.calls[1][2].messages[0].clientMessageId;
+		expect(partialRetryId).toBe(firstBatchIds[1]);
+	});
+
+	it('restores the full legacy content when parts is an empty array', async () => {
+		const content = 'x'.repeat(12_001);
+		await POST(
+			event('POST', {
+				expected_reset_epoch: 0,
+				messages: [{ role: 'user', content, parts: [] }]
+			})
+		);
+
+		expect(mocks.append.mock.calls[0][2].messages[0]).toMatchObject({
+			content: content.slice(0, 12_000),
+			parts: [{ type: 'text', text: content }]
+		});
+	});
+
 	it('clear carries the reset epoch and returns the next epoch', async () => {
 		const response = await DELETE(event('DELETE', { expected_reset_epoch: 2 }));
 		expect(mocks.clear).toHaveBeenCalledWith(expect.anything(), 'workspace-123', 2);

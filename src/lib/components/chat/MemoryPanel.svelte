@@ -8,13 +8,9 @@
 	let loading = $state(false);
 	let saving = $state(false);
 	let error = $state<string | null>(null);
-	let loadedOnce = $state(false);
 
 	$effect(() => {
-		if (open && !loadedOnce) {
-			loadedOnce = true;
-			loadMemory();
-		}
+		if (open) void loadMemory();
 	});
 
 	async function loadMemory() {
@@ -46,6 +42,12 @@
 			});
 			if (!res.ok) {
 				const data = await res.json().catch(() => ({}));
+				if (res.status === 409) {
+					await loadMemory();
+					throw new Error(
+						'Memory changed elsewhere. The latest version was reloaded; review and save again.'
+					);
+				}
 				throw new Error(data.error || 'Save failed');
 			}
 			const data = await res.json();
