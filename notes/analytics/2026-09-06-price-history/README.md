@@ -1,55 +1,67 @@
-# Price history: evidence, reconstruction direction, and recorded-data UI
+# Reconstructed origin price history
 
-Status: **draft for discussion**, September 5 Mountain / September 6 UTC, 2026.
+Status: implemented for review in [PR #582](https://github.com/reedwhetstone/coffee-app/pull/582). No production writes or deployment performed.
 
 ## Product outcome
 
-The primary analytics chart should provide a useful, continuous reconstructed price trend, not a graph dominated by collection outages and changing supplier participation. Recorded observations remain inspectable and immutable. A publication quality threshold should prevent poor evidence from becoming a misleading trend; it need not prohibit a separately identified estimate.
+The main chart is now a continuous **reconstructed price trend** over supported observed history. The **Recorded prices** view retains exact original dates, medians (average fallback explicitly named), supplier/listing counts, and optional legacy synthetic history. Switching views retains date inspection. Retail and wholesale remain separate series.
 
-This supersedes an initial proposed observed-only/gaps default for the final product. The implementation in this draft is the **recorded-data inspection foundation**, not the final main-chart behavior. Do not merge this draft as completion of the reconstructed-history request.
+This supersedes the earlier gap-only default and the experimental end-anchored matched-supplier formula. It is a reconstruction of published medians, **not a supplier-mix-normalized market index**. Counts can detect coverage collapse; they cannot identify which suppliers disappeared or recover market movement during an outage.
 
-## What is happening now
+## Versioned method: supported-median-v1
 
-See [live evidence](evidence.md) for queries, dates, counts, and distinctions between measured and inferred state.
+Owner/lifetime: coffee-app owns this deterministic, derived **chart presentation**, computed from the existing entitled Parchment history response. No database table, observation, publication threshold, upstream API contract, or sibling pricing calculation changes. Method version and bracketing evidence accompany each derived point in memory; the recorded response remains the input of record. A future persisted/shared index belongs upstream and requires a separate contract.
 
-- Publication resumed September 1–5. Latest run: 43 complete sources, Showroom partial, Atlas/Aida failed. Exact runtime price-coverage denominator is not persisted in the inspected tables.
-- July 11–15: source/sample collapse shifted the reported median, rather than establishing a market-wide jump. Indonesia's sample fell from 67 to 16 while its median rose from $10.39 to $16.
-- July 22–August 31: 41 days without published price-index aggregates. Some raw prices exist on 39 days, but those days are not automatically representative.
-- Pre-March 22: available prices are synthetic reconstruction from catalog prices and availability dates, not recorded historical prices.
-- The current web chart discards synthetic provenance, labels medians as averages, joins missing days with smooth curves, clips extremes at a percentile-based axis limit, and misdates nearest-point tooltips.
+For each origin and purchase cohort:
 
-## Recommended final experience
+1. Accept only valid UTC dates, positive finite medians, and explicit `synthetic=false`. Never silently treat unknown provenance or an average as a median anchor. Conflicting duplicate daily records cannot anchor the series.
+2. Require at least two listings, one supplier, and five usable observations within ±28 calendar days. Compute median listing and supplier counts over that local window. Each count must reach 60% of its local baseline. These are reconstruction-support heuristics, **not guarantees of representativeness**.
+3. Preserve every accepted median exactly, even a sharp price change. There is no price-based clipping or rescaling.
+4. Linearly interpolate elapsed UTC days between accepted anchors. Classify estimates as reduced-support or missing-date estimates, preserving original values/counts when present and both bounding dates plus interval length. No spline overshoot, invented sample counts, extrapolation, or carry-forward.
+5. Compute on the full history available to the current entitlement before cropping the selected chart range. Changing range on that input cannot change the underlying reconstruction. Different entitlement history windows can change edge support.
 
-- Main view: **Reconstructed price trend**, in estimated $/lb, with concise methodology access.
-- Secondary view: **Recorded prices**, showing exact dates, sample/supplier counts, historical-estimate provenance, and genuine missing published-index days.
-- Hover/tap identifies recorded, adjusted, or interpolated points. Do not flood the main chart with warnings; disclose the evidence where users inspect it.
-- A light optional observation overlay supports checking the reconstruction.
-- Mobile: usable plot width, compact controls, readable legend, accessible date inspection, and no overlapping endpoint labels or nested duplicated headings.
+A long straight interval is an estimate, not recovered movement. The methodology disclosure and dated inspection state this directly. Supported history currently starts March 22, 2026 for the five replayed retail origins. Earlier synthetic history remains accessible in Recorded prices, but is not used to manufacture earlier market movement. Thin histories can have no reconstructed series; Recorded prices remains the recovery view.
 
-## Methodology must precede replacing the main series
+## Evidence and empirical validation
 
-1. Select a canonical run/source observation per day. Distinguish successful partial collection from complete supplier evidence and avoid counting multiple runs as additional coverage.
-2. Validate purchase-unit conversion and historical origin identity. The existing `compute_price_index(date)` joins today's catalog attributes, so it is not a historically immutable replay mechanism.
-3. Reduce composition effects using matched lots where available and normalized supplier contributions. Do not reinterpret a disappearing low-price supplier as price inflation.
-4. Treat unsupported periods as estimates and bridge reliable anchors without spline overshoot. Separate historical corrections from real price changes. Earlier-than-March history requires an explicit additional model/source, not a claim of recovered observations.
-5. Backtest: hide known-good dates and entire supplier cohorts, reconstruct them, and compare against held-out outcomes. Evaluate level error, spurious jumps, preserved genuine moves, sensitivity to weights, and uncertainty over longer holes.
-6. Store a versioned derived series, input provenance, and reconstruction method. Keep raw prices and observed aggregates unchanged. The quality gates continue to govern observed publication; the reconstruction has its own support/quality contract.
+[Original read-only investigation](evidence.md) distinguishes observed database facts from hypotheses. The original matched-supplier image is retained as a rejected experiment, not current methodology.
 
-## Exploratory comparison — not a proposed production formula
+Reproduce the current offline validation:
 
-[Matched-supplier comparison](reconstruction-comparison.png) uses daily retail per-source/origin medians from March 22–September 5, requiring at least two common suppliers with two lots each. It chains the equal-weight mean log price-relative of suppliers present at both endpoints, anchors each origin to its September 5 published median, and linearly joins dates lacking support.
+```sh
+pnpm exec tsx notes/analytics/2026-09-06-price-history/validate-reconstruction.ts
+```
 
-This removes the obvious July cohort spike, but **does not yet produce a validated reconstruction**. Within-supplier lot churn remains. September extraction or unit corrections can be misread as market changes; anchoring at the end rescales the entire earlier series. Several origins show long modeled ramps and substantially shifted historical levels. A trial using median rather than mean daily relatives was overly flat because most suppliers did not change on most days. Neither variant should ship just because it looks smoother.
+Inputs: [published aggregate fixture](fixtures/published-medians.json), five retail origins, March 22–September 5, exported from the authorized production analytics browser on September 6 UTC. No account data, tokens, or supplier-private records. The deployed BFF omits the synthetic flag, so this fixture is deliberately restricted to the actual-daily era established in the earlier read-only audit and annotated `synthetic=false` on that basis. This is **not** a fresh row-by-row provenance audit. Production reconstruction uses upstream flags preserved by this PR, not a hard-coded date cutoff. The fixture is an offline test artifact, never bundled into the production chart.
 
-These results support the desired product distinction, not acceptance of this formula. Next implementation needs matched-product and price-unit validation plus the holdout tests above. Raw historical identity also uses today's catalog join in this exploration; its classification caveat applies.
+[Machine-readable results](validation-results.jsonl) include 50/60/70% support sensitivity, July 10/11/15/16 values, deterministic individual-date holdouts (every seventh accepted observation), and a contiguous 41-observation holdout block with dates and worst errors. This is retrospective reconstruction testing against published medians, not forecasting or validation of true August prices, source-cohort withholding, or a confidence interval.
 
-## Draft implementation and validation
+- The July 11–15 coverage-collapse points are excluded at all three support ratios for all five origins. Supported endpoints retain their exact values. Indonesia's $16 points become $10.405–$10.465 between July 10 ($10.39) and July 16 ($10.48).
+- Individual-date holdout median relative error is 0–0.42% across five origins (17 dates each).
+- Contiguous-block holdout median relative error is 0–1.31% (41 observations each). See results for worst errors; these medians do not bound individual-point errors.
+- Full supplier identity correction, raw-observation recovery for unpublished August days, and reconstructed history before March 22 are **not implemented or claimed**.
 
-The recorded-data UI preserves upstream synthetic provenance, excludes backward-projected estimates unless explicitly selected, uses exact UTC-date inspection, separates retail and wholesale cohorts rather than averaging medians, exposes samples, includes full value extents, and improves mobile layout. It introduces no new estimates and changes no database rows or publication thresholds.
+Behavior tests cover dropout replacement, preservation of a count-supported price step, UTC gap interpolation, no extrapolation, missing provenance, sparse history, invalid records, cohort isolation, ambiguous duplicates, and view-switch date inspection.
 
-Local screenshots use a temporary fixture harness with production aggregate-only data, not a deployed page:
+## Visual review
 
-- [Mobile recorded view](mobile-recorded-preview.png)
-- [Desktop recorded view](desktop-recorded-preview.png)
+Local fixture harnesses use the real chart component and the aggregate fixture above. They are not authenticated deployment proof:
 
-This is a partial foundation pending reconstructed-series implementation and agreement on its methodology. PR merge/deploy and historical data writes are not part of this draft handoff.
+- [Mobile reconstructed view](mobile-reconstructed-preview.png)
+- [Mobile estimated-date inspection](mobile-estimate-inspection.png)
+- [Desktop reconstruction](desktop-reconstructed-preview.png)
+
+390×844 replay: no horizontal overflow or browser errors. The temporary fixture route was removed before submission. Original recorded-view screenshots remain for comparison.
+
+## Merge boundary
+
+This PR is non-draft and intended for preview review as a complete, bounded interpolation-based chart improvement. It does not depend on accepting the rejected matched-supplier formula. Merge remains a separate user decision after CI/Codex review; no production historical data repair is performed by this change.
+
+## Local validation receipt
+
+- `pnpm test`: 201 files passed, 2 skipped; 1,446 tests passed, 14 skipped.
+- `PUBLIC_SUPABASE_URL=https://example.supabase.co PUBLIC_SUPABASE_ANON_KEY=static-placeholder OPENROUTER_API_KEY=static-placeholder pnpm check --fail-on-warnings`: zero errors/warnings. Non-secret placeholders validate types only, not authenticated runtime.
+- `pnpm lint`: blocked by 17 pre-existing unrelated Prettier files. Changed-file ESLint and Prettier checks pass.
+- `git diff --check`: passes.
+- Worst relative errors in the replay: 5.16% for individual-date holdouts, 3.47% for the held-out block. No statistical confidence bounds are asserted.
+- Independent read-only implementation review found no substantive blocker. Current-head CI/Codex review remains the remote handoff gate.

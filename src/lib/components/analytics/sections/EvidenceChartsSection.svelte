@@ -52,27 +52,16 @@
 	let originChartExpanded = $state(false);
 	let trendRange = $state<TrendRange>('90d');
 
-	let trendSnapshots = $derived.by((): PriceSnapshot[] => {
-		const now = new Date();
-		let daysBack: number;
-		if (trendRange === '6m') daysBack = 183;
-		else if (trendRange === '1y') daysBack = 365;
-		else daysBack = 90;
-		const cutoff = new Date(now);
-		cutoff.setDate(cutoff.getDate() - daysBack);
-		const cutoffStr = cutoff.toISOString().split('T')[0];
-		return filteredSnapshots.filter((s) => s.snapshot_date >= cutoffStr);
+	let trendStartDate = $derived.by(() => {
+		const daysBack = trendRange === '6m' ? 183 : trendRange === '1y' ? 365 : 90;
+		return new Date(Date.now() - daysBack * 86_400_000).toISOString().slice(0, 10);
 	});
-
-	let lineSnapshots = $derived(
-		trendSnapshots.filter((s) => s.price_median != null || s.price_avg != null)
-	);
 </script>
 
 <section class="mb-8 space-y-6" aria-label="Evidence charts">
 	<ExpandablePanel
 		title="Origin price trends"
-		subtitle="Median $/lb by origin; average where median is unavailable"
+		subtitle="Reconstructed $/lb history with recorded-price inspection"
 		collapsedMaxHeight="none"
 		showGradient={false}
 		onExpandChange={(v) => (lineChartExpanded = v)}
@@ -90,7 +79,7 @@
 					<h2 class="mb-1 text-base font-semibold text-ink">Origin price trends</h2>
 				{/if}
 				<p class="mb-3 text-sm text-muted">
-					Median $/lb by origin; average where median is unavailable
+					Reconstructed $/lb history with recorded-price inspection
 					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 				</p>
 				<div class="mb-4 flex items-center gap-2">
@@ -121,7 +110,8 @@
 					{#if OriginLineChartComponent}
 						{#key viewMode}
 							<OriginLineChartComponent
-								snapshots={lineSnapshots}
+								snapshots={filteredSnapshots}
+								startDate={trendStartDate}
 								expanded={lineChartExpanded}
 								mode="price"
 							/>

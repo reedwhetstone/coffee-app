@@ -1,4 +1,9 @@
 <script lang="ts">
+	import {
+		reconstructTrend,
+		RECONSTRUCTION_VERSION,
+		type ReconstructedPoint
+	} from './reconstructedTrend';
 	import { CHART_SERIES } from '$lib/styles/chartColors';
 	import { line as d3Line } from 'd3-shape';
 	import {
@@ -40,12 +45,14 @@
 		snapshots = [],
 		expanded = false,
 		mode = 'price',
-		spreadData = []
+		spreadData = [],
+		startDate = ''
 	}: {
 		snapshots: SnapshotRow[];
 		expanded?: boolean;
 		mode?: 'price' | 'spread';
 		spreadData?: SpreadRow[];
+		startDate?: string;
 	} = $props();
 
 	const COLORS = CHART_SERIES;
@@ -54,18 +61,22 @@
 	const MIN_DISTINCT_DATES = 7;
 
 	let includeEstimates = $state(false);
+	let priceView = $state<'trend' | 'recorded'>('trend');
+	let isReconstructed = $derived(mode === 'price' && priceView === 'trend');
 	let hasEstimates = $derived(snapshots.some((row) => row.synthetic));
 	let observedSnapshots = $derived(snapshots.filter((row) => includeEstimates || !row.synthetic));
-	let activeData = $derived(mode === 'spread' ? spreadData : observedSnapshots);
+	let activeData = $derived(
+		mode === 'spread' ? spreadData : observedSnapshots.filter((s) => s.snapshot_date >= startDate)
+	);
 	let distinctDateCount = $derived(new Set(activeData.map((s) => s.snapshot_date)).size);
-	let hasEnoughData = $derived(distinctDateCount >= MIN_DISTINCT_DATES);
 
 	interface DataPoint {
 		date: Date;
 		value: number;
 		p25: number | null;
 		p75: number | null;
-		statistic?: 'Median' | 'Average';
+		statistic?: 'Median' | 'Average' | 'Trend estimate';
+		reconstruction?: ReconstructedPoint;
 		sampleSize?: number;
 		supplierCount?: number;
 		synthetic?: boolean;
@@ -75,10 +86,12 @@
 
 	let mixedCohorts = $derived(new Set(snapshots.map((s) => s.wholesale_only)).size > 1);
 	let priceRows = $derived(
-		observedSnapshots.map((s) => ({
-			...s,
-			origin: cohortSeriesLabel(s.origin, s.wholesale_only, mixedCohorts)
-		}))
+		observedSnapshots
+			.filter((s) => s.snapshot_date >= startDate)
+			.map((s) => ({
+				...s,
+				origin: cohortSeriesLabel(s.origin, s.wholesale_only, mixedCohorts)
+			}))
 	);
 
 	let originMap = $derived.by(() => {
@@ -95,6 +108,31 @@
 					retailPrice: row.retail_price,
 					wholesalePrice: row.wholesale_price
 				});
+			}
+		} else if (isReconstructed) {
+			const groups = new Map<string, SnapshotRow[]>();
+			for (const row of snapshots) {
+				const label = cohortSeriesLabel(row.origin, row.wholesale_only, mixedCohorts);
+				groups.set(label, [...(groups.get(label) ?? []), row]);
+			}
+			for (const [label, rows] of groups) {
+				const points = reconstructTrend(rows).filter(
+					(p) => p.date.toISOString().slice(0, 10) >= startDate
+				);
+				if (!points.length) continue;
+				map.set(
+					label,
+					points.map((p) => ({
+						date: p.date,
+						value: p.value,
+						p25: null,
+						p75: null,
+						statistic: p.kind === 'recorded_anchor' ? 'Median' : 'Trend estimate',
+						reconstruction: p,
+						sampleSize: p.original?.sample_size,
+						supplierCount: p.original?.supplier_count
+					}))
+				);
 			}
 		} else {
 			for (const row of priceRows) {
@@ -115,6 +153,12 @@
 		}
 		return map;
 	});
+
+	let hasEnoughData = $derived(
+		isReconstructed
+			? [...originMap.values()].some((points) => points.length >= MIN_DISTINCT_DATES)
+			: distinctDateCount >= MIN_DISTINCT_DATES
+	);
 
 	let originVolume = $derived.by(() => {
 		const vol = new Map<string, number>();
@@ -334,7 +378,35 @@
 </script>
 
 <div class="flex h-full min-h-0 w-full flex-col">
-	{#if mode === 'price' && hasEstimates}
+	{#if mode === 'price'}
+		<div class="mb-2 flex gap-1" aria-label="Price history view">
+			{#each [{ value: 'trend', label: 'Reconstructed trend' }, { value: 'recorded', label: 'Recorded prices' }] as option}
+				<button
+					type="button"
+					class="min-h-11 rounded-md border border-line px-3 text-xs font-medium {priceView ===
+					option.value
+						? 'bg-surface-panel text-ink'
+						: 'text-muted'}"
+					aria-pressed={priceView === option.value}
+					onclick={() => {
+						priceView = option.value as 'trend' | 'recorded';
+					}}>{option.label}</button
+				>
+			{/each}
+		</div>
+		{#if isReconstructed}
+			<details class="mb-2 text-xs text-muted">
+				<summary class="cursor-pointer py-2">Includes estimated periods · Methodology</summary>
+				<p class="py-2">
+					Published medians anchor the trend when sample and supplier counts each reach 60% of their
+					local 28-day baseline. Other dates are estimated between those anchors. This reduces
+					coverage-dropout jumps; it does not measure price changes during missing periods or fully
+					correct supplier mix. No estimates extend beyond supported history. Method: {RECONSTRUCTION_VERSION}.
+				</p>
+			</details>
+		{/if}
+	{/if}
+	{#if mode === 'price' && !isReconstructed && hasEstimates}
 		<label class="mb-2 flex min-h-11 items-center gap-2 text-xs text-muted">
 			<input
 				type="checkbox"
@@ -349,9 +421,15 @@
 			class="flex h-full w-full flex-col items-center justify-center rounded-lg bg-surface-panel px-6 text-center"
 		>
 			<div class="mb-2 text-2xl">📈</div>
-			<p class="text-sm font-medium text-muted">Not enough published history in this range.</p>
+			<p class="text-sm font-medium text-muted">
+				{isReconstructed
+					? 'Not enough supported history in this range.'
+					: 'Not enough published history in this range.'}
+			</p>
 			<p class="mt-1 text-xs text-muted">
-				Charts will populate once 7+ days of data are available.
+				{isReconstructed
+					? 'Try Recorded prices to inspect the available observations.'
+					: 'Charts will populate once 7+ days of data are available.'}
 				{#if distinctDateCount > 0}
 					<span class="mt-0.5 block text-muted/60"
 						>({distinctDateCount} of {MIN_DISTINCT_DATES} days collected)</span
@@ -450,7 +528,9 @@
 					width={containerW}
 					height={containerH}
 					role="img"
-					aria-label="Published origin trend chart. Inspect dates using the slider below."
+					aria-label={isReconstructed
+						? 'Reconstructed origin price trend. Includes estimates; inspect dates below.'
+						: 'Published origin trend chart. Inspect dates using the slider below.'}
 				>
 					<g transform="translate({padding.left},{padding.top})">
 						<g bind:this={xAxisEl} transform="translate(0,{innerH})"></g>
@@ -460,7 +540,7 @@
 							{@const lineGen = d3Line<DataPoint>()
 								.x((d) => xScale(d.date))
 								.y((d) => yScale(d.value))}
-							{#each dailySegments(series.points) as segment}
+							{#each isReconstructed ? [series.points] : dailySegments(series.points) as segment}
 								<path
 									d={lineGen(segment) ?? ''}
 									fill="none"
@@ -508,11 +588,16 @@
 
 		<div class="mt-2 shrink-0 border-t border-line pt-3">
 			<p class="mb-2 text-xs text-muted">
-				Gaps mean no published index. Dashed lines are historical estimates.
+				{#if isReconstructed}Estimated $/lb between supported medians. Select a date for its
+					evidence.{:else}Gaps mean no published index. Dashed lines are historical estimates.{/if}
 			</p>
 			<div class="flex items-center justify-between gap-2 text-xs">
 				<label for="trend-date-{componentId}"
-					>{inspection ? formatDate(inspection) + ' · UTC' : 'Latest published values'}</label
+					>{inspection
+						? formatDate(inspection) + ' · UTC'
+						: isReconstructed
+							? 'Latest supported values'
+							: 'Latest published values'}</label
 				>
 				{#if inspection}<button
 						type="button"
@@ -545,6 +630,16 @@
 									>{!inspection ? formatDate(row.point.date) + ' · ' : ''}{row.point.statistic ??
 										'Spread'}{row.point.synthetic ? ' · Historical estimate' : ''}</span
 								>{/if}
+							{#if row.point?.reconstruction && row.point.reconstruction.kind !== 'recorded_anchor'}
+								<span class="block text-muted"
+									>Between {row.point.reconstruction.anchorDates.join(' and ')} · {row.point
+										.reconstruction.intervalDays}-day interval</span
+								>
+								{#if row.point.reconstruction.original}<span class="block text-muted"
+										>Recorded median: {formatValue(row.point.reconstruction.original.price_median!)}
+										· reduced coverage</span
+									>{/if}
+							{/if}
 							{#if row.point?.sampleSize != null}
 								<span class="block text-muted"
 									>{row.point.sampleSize.toLocaleString()} prices{row.point.supplierCount != null

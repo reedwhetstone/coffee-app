@@ -20,6 +20,8 @@ Deployed revision gate is>=95% source execution success and>=80% applied authori
 
 ## Recovery evidence and boundaries
 
+The gap-only recommendations below describe the initial observed-publication assessment, not the subsequently accepted reconstructed-chart default. See [current implementation and method](README.md). Raw publication remains unchanged; explicitly labeled interpolation is now a separate presentation.
+
 - July22–Aug31 legacy raw snapshots present on39/41 days. July29/30 lack priced snapshots entirely; ledger has only no-price observations those days.
 - Raw counts:July22 504,July26 1335,July31 99,Aug1–3 96,Aug16 656,Aug29 1060,Aug31 1066. Ledger exists sinceJuly18; no sealed price evidence for July11–15.
 - July26 ledger1841 priced rows comes from multiple observations/runs; cannot simply count rows as unique daily catalog coverage. Select canonical production run and source/version before any replay.
