@@ -70,7 +70,7 @@
 <section class="mb-8 space-y-6" aria-label="Evidence charts">
 	<ExpandablePanel
 		title="Origin price trends"
-		subtitle="Average $/lb by top origins, ranked by market activity"
+		subtitle="Catalog average $/lb by origin; listing and supplier mix can change the average"
 		collapsedMaxHeight="420px"
 		showGradient={false}
 		onExpandChange={(v) => (lineChartExpanded = v)}
@@ -86,7 +86,7 @@
 			<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
 				<h2 class="mb-1 text-base font-semibold text-ink">Origin price trends</h2>
 				<p class="mb-3 text-sm text-muted">
-					Average $/lb by top origins, ranked by market activity
+					Catalog average $/lb by origin; listing and supplier mix can change the average
 					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 				</p>
 				<div class="mb-4 flex items-center gap-2">

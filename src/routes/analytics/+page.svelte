@@ -29,6 +29,7 @@
 	import MarketReadSection from '$lib/components/analytics/sections/MarketReadSection.svelte';
 	import KpiStripSection from '$lib/components/analytics/sections/KpiStripSection.svelte';
 	import WatchlistSignalsSection from '$lib/components/analytics/sections/WatchlistSignalsSection.svelte';
+	import MatchedPriceComparison from '$lib/components/analytics/MatchedPriceComparison.svelte';
 	import EvidenceChartsSection from '$lib/components/analytics/sections/EvidenceChartsSection.svelte';
 	import ParchmentIntelligenceSection from '$lib/components/analytics/sections/ParchmentIntelligenceSection.svelte';
 	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
@@ -1209,6 +1210,12 @@
 				: 'Pricing, supplier coverage, arrivals, delistings, and the movement behind the current market read.'}
 		/>
 
+		{#if isParchmentIntelligence}
+			<MatchedPriceComparison
+				origins={[...new Set(snapshots.map((row) => row.origin))].sort()}
+				{viewMode}
+			/>
+		{/if}
 		<EvidenceChartsSection
 			{OriginLineChartComponent}
 			{OriginBarChartComponent}
