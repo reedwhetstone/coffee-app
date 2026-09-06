@@ -18,7 +18,7 @@ describe('conversation state ownership boundary', () => {
 
 	it('pins the published conversation SDK contract', () => {
 		const manifest = JSON.parse(readFileSync('package.json', 'utf8'));
-		expect(manifest.dependencies['@purveyors/sdk']).toBe('0.38.0');
+		expect(manifest.dependencies['@purveyors/sdk']).toBe('0.39.0');
 	});
 
 	it('carries every optimistic-concurrency token through the browser store', () => {

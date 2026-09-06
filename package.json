@@ -35,6 +35,7 @@
 		"backfill:supply-index": "npx tsx scripts/backfill-supply-index.ts"
 	},
 	"devDependencies": {
+		"@ai-sdk/openai": "^3.0.0",
 		"@eslint/compat": "^1.2.3",
 		"@playwright/test": "^1.58.1",
 		"@rollup/rollup-darwin-arm64": "^4.56.0",
@@ -73,11 +74,10 @@
 		"vitest": "^2.0.4"
 	},
 	"dependencies": {
-		"@ai-sdk/openai": "^3.0.0",
 		"@ai-sdk/svelte": "^4.0.0",
 		"@fontsource-variable/newsreader": "^5.2.10",
 		"@humanspeak/svelte-markdown": "^0.8.10",
-		"@purveyors/sdk": "0.38.0",
+		"@purveyors/sdk": "0.39.0",
 		"@supabase/ssr": "^0.5.2",
 		"@supabase/supabase-js": "^2.99.1",
 		"@tailwindcss/container-queries": "^0.1.1",
