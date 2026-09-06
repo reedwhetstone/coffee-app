@@ -120,17 +120,19 @@ const LEGACY_TAG_MEMBERSHIP: Record<keyof typeof BLOG_TAG_ALIASES, string[]> = {
 };
 
 describe('blog tag taxonomy', () => {
-	it('uses the canonical nine-tag set', () => {
+	it('uses the canonical editorial tag set', () => {
 		expect(BLOG_TAGS).toEqual([
 			'ai',
 			'agents',
 			'coffee',
 			'data',
 			'engineering',
+			'ideas',
 			'enterprise',
 			'product',
 			'strategy',
-			'supply-chain'
+			'supply-chain',
+			'technology'
 		]);
 	});
 

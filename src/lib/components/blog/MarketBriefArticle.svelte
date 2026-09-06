@@ -285,7 +285,7 @@
 	{#if takes.length > 0}
 		<section aria-labelledby="weekly-takes-heading">
 			<div class="mb-4">
-				<p class="text-xs font-semibold text-accent">Reported this week</p>
+				<p class="text-xs font-semibold text-accent">Ideas worth exploring</p>
 				<h2 id="weekly-takes-heading" class="mt-1 font-serif text-3xl font-semibold text-ink">
 					The week’s takes
 				</h2>

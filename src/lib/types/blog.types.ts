@@ -79,10 +79,12 @@ export const BLOG_TAGS = [
 	'coffee',
 	'data',
 	'engineering',
+	'ideas',
 	'enterprise',
 	'product',
 	'strategy',
-	'supply-chain'
+	'supply-chain',
+	'technology'
 ] as const;
 
 export type BlogTag = (typeof BLOG_TAGS)[number];

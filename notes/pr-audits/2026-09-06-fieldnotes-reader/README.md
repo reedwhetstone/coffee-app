@@ -25,3 +25,12 @@ The email screenshot uses an explicitly labeled synthetic preview (099), not pub
 - [Desktop signup](fieldnotes-desktop.png)
 - [Mobile signup](fieldnotes-mobile.png)
 - [Mobile email fixture](fieldnotes-email-mobile.png)
+
+## Generated-sample integration canary
+
+The exact final scraper sample is retained as `src/lib/server/fixtures/fieldnotes-generated.txt`, outside the blog content tree. The integration test compiles its actual frontmatter through mdsvex, admits the new `technology` and `ideas` tags, and projects all three short takes into the web reader, email, and portable Markdown. It also verifies edition 003 is absent from the discoverable blog corpus.
+
+- [Exact-sample mobile reader](fieldnotes-sample-reader-mobile.png)
+- [Exact-sample mobile email](fieldnotes-sample-email-mobile.png)
+
+Both are 390px local previews with no horizontal overflow. This is the initial editorial sample with no coffee cards or snapshot, not a fresh enrichment run. The separate synthetic email fixture above verifies card parity. Temporary routes were removed after screenshots. Visual review also replaced the stale “Reported this week” reader label with “Ideas worth exploring” so older references are not presented as fresh news.
