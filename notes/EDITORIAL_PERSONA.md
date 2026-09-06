@@ -12,6 +12,18 @@ Purveyors is the curious, resourceful coffee builder: technically fluent, approa
 
 This is the company's editorial perspective, not a fictional human or a Cherry character. [BRAND.md](BRAND.md) governs brand expression and [PRODUCT_VISION.md](PRODUCT_VISION.md) still governs the full product and its enterprise audiences. The newsletter deliberately has a narrower reader.
 
+## Writing voice and ownership
+
+[Reed's writing voice](https://github.com/reedwhetstone/second-brain/blob/main/VOICE.md) in the second-brain repository is the canonical authority for how writing attributed to Reed sounds. Read it alongside this persona before drafting or editing Fieldnotes. In the OpenClaw workspace, the same source is the root `VOICE.md`; use that checkout or authorized GitHub access, not a fragile relative path between repositories.
+
+- **VOICE.md:** phrasing, rhythm, authorial perspective, and style.
+- **This persona:** reader, interests, story selection, and newsletter format.
+- **BRAND.md / PRODUCT_VISION.md:** company expression and product direction.
+
+Apply voice guidance at the scale of each short take. Essay guidance about a central thesis does not require one unifying argument across an edition; the newsletter keeps its independent takes and shorter length. For a Reed-authored issue, use “I” when personal perspective adds value, or state the idea directly. The company perspective described above does not imply a collective “we” byline.
+
+Keep the cross-repository link pointed at `main` so writers find the current authority; record the consulted commit or content hash in a saved drafting artifact when preserving a reproducible run. Do not maintain a copied voice guide here. This is an authoring reference, not a browser/runtime fetch dependency, and the link alone does not load the voice file into the generator's existing curated context. Do not require public readers to access the second-brain repository.
+
 ## What earns a take
 
 Ask: **Does this give our reader an interesting new way to see or try something?**
@@ -23,7 +35,7 @@ Ask: **Does this give our reader an interesting new way to see or try something?
 
 A hook, our angle, and an opening are useful writing ingredients, not visible section labels or a rigid form. Coffee-only discoveries are welcome. Reject a generic technology claim if replacing coffee with any industry leaves the argument unchanged. Do not force a shared thesis or AI into every take.
 
-Grounded hypotheses, tested results, and useful failures all belong. An experiment need not be completed before an idea is worth sharing. Factual premises still need accurate sourcing. Natural language such as “could” or “we would try” distinguishes an opportunity from a demonstrated outcome without research-paper ceremony. Do not invent firsthand experience, production readiness, measurements, or model license permissions.
+Grounded hypotheses, tested results, and useful failures all belong. An experiment need not be completed before an idea is worth sharing. Factual premises still need accurate sourcing. Natural language such as “could” or “I would try” distinguishes an opportunity from a demonstrated outcome without research-paper ceremony. Do not invent firsthand experience, production readiness, measurements, or model license permissions.
 
 ## Shape of an issue
 
