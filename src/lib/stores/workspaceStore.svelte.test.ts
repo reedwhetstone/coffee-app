@@ -68,6 +68,59 @@ describe('workspaceStore lifecycle helpers', () => {
 		expect(localStorage.getItem('coffee-chat-workspace-id')).toBe('ws-2');
 	});
 
+	it('refreshes the canvas version once before retrying after a conflict', async () => {
+		const initialWorkspace = { ...workspaceFixture, reset_epoch: 2, canvas_version: 3 };
+		const refreshedWorkspace = { ...initialWorkspace, canvas_version: 8 };
+		const fetchSpy = vi
+			.fn()
+			.mockResolvedValueOnce(new Response(null, { status: 409 }))
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ workspace: refreshedWorkspace, messages: [] }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			)
+			.mockResolvedValueOnce(
+				new Response(
+					JSON.stringify({
+						canvas_state: { blocks: [] },
+						canvas_version: 9,
+						reset_epoch: 2
+					}),
+					{ status: 200, headers: { 'Content-Type': 'application/json' } }
+				)
+			);
+		vi.stubGlobal('fetch', fetchSpy);
+		const { workspaceStore } = await loadWorkspaceStore();
+		workspaceStore.hydrate([initialWorkspace], { workspace: initialWorkspace, messages: [] });
+
+		await expect(workspaceStore.saveCanvasState('ws-2', { blocks: [] })).resolves.toBe(true);
+		expect(fetchSpy).toHaveBeenCalledTimes(3);
+		expect(JSON.parse(fetchSpy.mock.calls[2][1].body as string)).toMatchObject({
+			expected_canvas_version: 8,
+			expected_reset_epoch: 2
+		});
+	});
+
+	it('retries summary compaction once after a message high-water conflict', async () => {
+		const fetchSpy = vi
+			.fn()
+			.mockResolvedValueOnce(new Response(null, { status: 409 }))
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ summary: 'Fresh summary' }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			);
+		vi.stubGlobal('fetch', fetchSpy);
+		const { workspaceStore } = await loadWorkspaceStore();
+		workspaceStore.hydrate([workspaceFixture], { workspace: workspaceFixture, messages: [] });
+
+		await expect(workspaceStore.triggerSummarize('ws-2')).resolves.toBe('Fresh summary');
+		expect(fetchSpy).toHaveBeenCalledTimes(2);
+		expect(workspaceStore.currentWorkspace?.context_summary).toBe('Fresh summary');
+	});
+
 	it('uses registered UI callbacks for workspace creation before activation', async () => {
 		const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
 			const url = input.toString();

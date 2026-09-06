@@ -77,6 +77,7 @@
 	let memoryPanelOpen = $state(false);
 	let memoryDocExists = $state(false);
 	let lastDreamedCount = 0;
+	let lastSummarizedMessageCount = 0;
 
 	onMount(() => {
 		fetch('/api/memory')
@@ -355,6 +356,7 @@
 		const handleBeforeUnload = () => {
 			const wsId = activeWorkspaceId;
 			if (!wsId) return;
+			const workspace = workspaceStore.currentWorkspace;
 			// Save unsaved messages
 			const savedCount = workspaceStore.getSavedMessageCount(wsId);
 			const newMessages = chat.messages.slice(savedCount);
@@ -362,7 +364,15 @@
 				const toSave = buildPersistedChatMessages(newMessages);
 				navigator.sendBeacon(
 					`/api/workspaces/${wsId}/messages`,
-					new Blob([JSON.stringify({ messages: toSave })], { type: 'application/json' })
+					new Blob(
+						[
+							JSON.stringify({
+								expected_reset_epoch: workspace?.reset_epoch ?? 0,
+								messages: toSave
+							})
+						],
+						{ type: 'application/json' }
+					)
 				);
 			}
 			// Save canvas state (including pinned, minimized, focusBlockId)
@@ -374,6 +384,8 @@
 				new Blob(
 					[
 						JSON.stringify({
+							expected_reset_epoch: workspace?.reset_epoch ?? 0,
+							expected_canvas_version: workspace?.canvas_version ?? 0,
 							canvas_state: {
 								blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
 									block: b.block,
@@ -421,6 +433,7 @@
 		canvasStore.resetAll();
 		dispatchedParts = new Set();
 		lastPersistedMessageCount = 0;
+		lastSummarizedMessageCount = 0;
 
 		// Restore messages from persisted workspace
 		if (result.messages.length > 0) {
@@ -602,7 +615,11 @@
 		const savedCount = workspaceStore.getSavedMessageCount(wsId);
 		const newMessages = chat.messages.slice(savedCount);
 		if (newMessages.length > 0) {
-			await workspaceStore.saveMessages(wsId, buildPersistedChatMessages(newMessages));
+			const messagesSaved = await workspaceStore.saveMessages(
+				wsId,
+				buildPersistedChatMessages(newMessages)
+			);
+			if (!messagesSaved) throw new Error('Failed to persist messages');
 		}
 
 		// Save canvas state (layout, order, pinned, minimized, focus, titles)
@@ -705,9 +722,16 @@
 		const wsId = workspaceStore.currentWorkspaceId;
 		if (!wsId || isActive) return;
 		const msgCount = chat.messages.length;
-		if (msgCount > 0 && msgCount % 20 === 0) {
-			workspaceStore.triggerSummarize(wsId);
-		}
+		const savedCount = workspaceStore.getSavedMessageCount(wsId);
+		if (
+			msgCount === 0 ||
+			msgCount % 20 !== 0 ||
+			msgCount === lastSummarizedMessageCount ||
+			savedCount < msgCount
+		)
+			return;
+		lastSummarizedMessageCount = msgCount;
+		void workspaceStore.triggerSummarize(wsId);
 	});
 
 	// Scroll management
@@ -1127,8 +1151,15 @@
 		isClearing = true;
 		try {
 			await enqueuePersistence(async () => {
-				const response = await fetch(`/api/workspaces/${wsId}/messages`, { method: 'DELETE' });
+				const response = await fetch(`/api/workspaces/${wsId}/messages`, {
+					method: 'DELETE',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						expected_reset_epoch: workspaceStore.currentWorkspace?.reset_epoch ?? 0
+					})
+				});
 				if (!response.ok) throw new Error('Failed to clear the saved conversation');
+				workspaceStore.applyClearResult(wsId, await response.json());
 				workspaceStore.resetSavedMessageCount(wsId);
 			});
 			chat.messages = [];

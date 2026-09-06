@@ -1,9 +1,12 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { selectCanonicalWorkspace } from '$lib/server/workspaces/canonicalWorkspace';
 import { checkRole, type UserRole } from '$lib/types/auth.types';
 import type { Workspace, WorkspaceMessage } from '$lib/stores/workspaceStore.svelte';
-import type { PageServerLoad } from './$types';
 import { getPageAuthState } from '$lib/server/pageAuth';
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import {
+	getConversationWorkspace,
+	getOrCreateConversationWorkspace
+} from '$lib/server/parchmentConversation';
+import type { PageServerLoad } from './$types';
 
 export interface InitialWorkspaceData {
 	workspaces: Workspace[];
@@ -11,73 +14,33 @@ export interface InitialWorkspaceData {
 	messages: WorkspaceMessage[];
 }
 
-/**
- * Prefetch the workspace list and the active conversation server-side so the
- * chat shell hydrates with history immediately, instead of running the
- * list-then-load fetch waterfall after mount.
- */
 async function loadInitialWorkspaceData(
-	supabase: SupabaseClient,
-	userId: string
+	event: Parameters<PageServerLoad>[0]
 ): Promise<InitialWorkspaceData | null> {
 	try {
-		const {
-			workspace: canonicalWorkspace,
-			workspaces,
-			error
-		} = await selectCanonicalWorkspace<Workspace>(
-			supabase,
-			userId,
-			'id, title, type, context_summary, last_accessed_at, created_at'
-		);
-
-		if (error) return null;
-		const list = workspaces;
-		if (!canonicalWorkspace) return { workspaces: [], workspace: null, messages: [] };
-
-		const activeId = canonicalWorkspace.id;
-		const [workspaceResult, messagesResult] = await Promise.all([
-			supabase.from('workspaces').select('*').eq('id', activeId).eq('user_id', userId).single(),
-			supabase
-				.from('workspace_messages')
-				.select('*')
-				.eq('workspace_id', activeId)
-				.order('created_at', { ascending: false })
-				.limit(50)
-		]);
-
-		if (workspaceResult.error || !workspaceResult.data) {
-			return { workspaces: list, workspace: null, messages: [] };
-		}
-
-		// Mirror GET /api/workspaces/[id]: touch last_accessed_at on open.
-		await supabase
-			.from('workspaces')
-			.update({ last_accessed_at: new Date().toISOString() })
-			.eq('id', activeId);
-
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const canonical = (await getOrCreateConversationWorkspace(client, {
+			title: 'Coffee',
+			type: 'general'
+		})) as Workspace;
+		const state = await getConversationWorkspace(client, canonical.id, 50);
 		return {
-			workspaces: list,
-			workspace: workspaceResult.data as Workspace,
-			messages: [...(messagesResult.data ?? [])].reverse() as WorkspaceMessage[]
+			workspaces: [state.workspace as Workspace],
+			workspace: state.workspace as Workspace,
+			messages: state.messages as WorkspaceMessage[]
 		};
 	} catch {
-		// Prefetch is an optimization — the client fetch path still works.
 		return null;
 	}
 }
 
-export const load: PageServerLoad = async ({ locals }) => {
-	// Get session and user data using the existing pattern from other routes
-	const { session, user, role } = getPageAuthState(locals.principal);
-	const ppiAccess = locals.principal.isAuthenticated ? locals.principal.ppiAccess === true : false;
-
+export const load: PageServerLoad = async (event) => {
+	const { session, user, role } = getPageAuthState(event.locals.principal);
+	const ppiAccess = event.locals.principal.isAuthenticated
+		? event.locals.principal.ppiAccess === true
+		: false;
 	const canUseChat = session && user && (ppiAccess || checkRole(role as UserRole, 'member'));
-	const initialWorkspaceData = canUseChat
-		? await loadInitialWorkspaceData(locals.supabase, user.id)
-		: null;
-
 	return {
-		initialWorkspaceData
+		initialWorkspaceData: canUseChat ? await loadInitialWorkspaceData(event) : null
 	};
 };
