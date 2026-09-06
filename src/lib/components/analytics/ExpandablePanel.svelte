@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { fade, scale } from 'svelte/transition';
+	import { fade } from 'svelte/transition';
 
 	let {
 		title,
@@ -68,48 +68,31 @@
 	}}
 />
 
-<!-- Collapsed view: clips content with CSS, shows gradient fade + expand button -->
-<div class="relative">
-	<div class="relative overflow-hidden" style="max-height: {collapsedMaxHeight}">
-		{@render children()}
-		{#if showGradient}
-			<div
-				class="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#FCFAF8] to-transparent"
-			></div>
-		{/if}
-	</div>
-
-	{#if canExpand}
-		<div class="mt-2.5 flex justify-center">
-			<button
-				onclick={open}
-				class="rounded-full border border-line bg-surface-panel px-4 py-1.5 text-sm font-medium text-muted shadow-sm transition-colors duration-150 hover:border-accent hover:text-accent"
-			>
-				{computedExpandLabel}
-			</button>
-		</div>
-	{/if}
-</div>
-
-<!-- Expanded modal overlay -->
-{#if expanded}
-	<!-- Backdrop -->
-	<div
-		transition:fade={{ duration: 150 }}
-		class="fixed inset-0 z-50 flex min-h-full items-start justify-center overflow-y-auto bg-black/40 p-1 backdrop-blur-sm sm:items-center sm:p-8"
-	>
+<!-- Keep one child instance alive while switching between the clipped and modal layouts. -->
+<div
+	class={expanded
+		? 'fixed inset-0 z-50 flex min-h-full items-start justify-center overflow-y-auto bg-black/40 p-1 backdrop-blur-sm sm:items-center sm:p-8'
+		: 'relative'}
+>
+	{#if expanded}
 		<!-- Click-outside-to-close backdrop (aria-hidden so screen readers skip it) -->
-		<div class="absolute inset-0" aria-hidden="true" onclick={close}></div>
-
-		<!-- Modal panel -->
 		<div
-			role="dialog"
-			aria-modal="true"
-			aria-label={title}
-			transition:scale={{ duration: 150, start: 0.95 }}
-			class="relative z-10 my-4 w-full max-w-5xl rounded-xl bg-surface-canvas shadow-2xl sm:my-0"
-		>
-			<!-- Modal header -->
+			transition:fade={{ duration: 150 }}
+			class="absolute inset-0"
+			aria-hidden="true"
+			onclick={close}
+		></div>
+	{/if}
+
+	<div
+		role={expanded ? 'dialog' : undefined}
+		aria-modal={expanded ? 'true' : undefined}
+		aria-label={expanded ? title : undefined}
+		class={expanded
+			? 'relative z-10 my-4 w-full max-w-5xl rounded-xl bg-surface-canvas shadow-2xl sm:my-0'
+			: 'relative overflow-hidden'}
+	>
+		{#if expanded}
 			<div
 				class="flex items-start gap-3 rounded-t-xl border-b border-line bg-surface-canvas px-3 py-4 sm:px-6"
 			>
@@ -132,11 +115,30 @@
 					✕
 				</button>
 			</div>
+		{/if}
 
-			<!-- Scrollable modal body -->
-			<div class="overflow-y-auto p-1 sm:p-6" style="max-height: calc(90vh - 68px)">
-				{@render children()}
-			</div>
+		<div
+			class={expanded ? 'overflow-y-auto p-1 sm:p-6' : ''}
+			style={expanded ? 'max-height: calc(90vh - 68px)' : `max-height: ${collapsedMaxHeight}`}
+		>
+			{@render children()}
 		</div>
+
+		{#if !expanded && showGradient}
+			<div
+				class="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#FCFAF8] to-transparent"
+			></div>
+		{/if}
 	</div>
-{/if}
+
+	{#if !expanded && canExpand}
+		<div class="mt-2.5 flex justify-center">
+			<button
+				onclick={open}
+				class="rounded-full border border-line bg-surface-panel px-4 py-1.5 text-sm font-medium text-muted shadow-sm transition-colors duration-150 hover:border-accent hover:text-accent"
+			>
+				{computedExpandLabel}
+			</button>
+		</div>
+	{/if}
+</div>

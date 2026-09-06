@@ -31,7 +31,9 @@ describe('origin trend inspection', () => {
 		expect(screen.getByText('120 prices · 4 suppliers')).toBeInTheDocument();
 		const slider = screen.getByRole('slider', { name: 'Inspect observation date' });
 		expect(slider).toHaveAttribute('min', String(+new Date('2026-07-15')));
+		expect(slider).toHaveAttribute('aria-valuetext', 'Sep 1, 2026 · UTC');
 		await fireEvent.input(slider, { target: { value: +new Date('2026-08-15') } });
+		expect(slider).toHaveAttribute('aria-valuetext', 'Aug 15, 2026 · UTC');
 		expect(screen.getByText('Aug 15, 2026 · UTC')).toBeInTheDocument();
 		expect(screen.getByText('No published index')).toBeInTheDocument();
 		expect(screen.queryByText('$11.62')).not.toBeInTheDocument();

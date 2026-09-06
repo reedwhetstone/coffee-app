@@ -472,8 +472,10 @@
 									<circle
 										cx={xScale(point.date)}
 										cy={yScale(point.value)}
-										r="2.5"
-										fill={series.color}
+										r={point.synthetic ? 4 : 2.5}
+										fill={point.synthetic ? 'none' : series.color}
+										stroke={point.synthetic ? series.color : 'none'}
+										stroke-width={point.synthetic ? 2 : undefined}
 									/>
 								{/each}
 							{/each}
@@ -521,6 +523,7 @@
 			<input
 				id="trend-date-{componentId}"
 				aria-label="Inspect observation date"
+				aria-valuetext={formatDate(inspection ?? xDomain[1]) + ' · UTC'}
 				type="range"
 				class="my-1 h-8 w-full accent-accent"
 				min={+xDomain[0]}
