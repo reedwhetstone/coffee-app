@@ -1,22 +1,84 @@
 ---
-title: 'Visibility and connection are reshaping coffee growth'
+title: 'Coffee''s operating system is becoming more visible'
 date: '2026-09-06'
-description: 'Across coffee''s supply chains, businesses, and communities, growth is being measured by how clearly the system can be seen and how intentionally people connect within it.'
+description: 'Across coffee''s supply chains, businesses, and communities, visibility is becoming part of how growth and connection are organized.'
 tags: ['coffee', 'data', 'supply-chain']
 pillar: 'market-intelligence'
 draft: false
 format: 'market-brief'
 edition: 3
+marketSnapshot:
+  asOf: '2026-09-06'
+  scope: 'US green coffee · retail pricing + all-market signals'
+  movementPercent: 0.2
+  movementLabel: 'Quiet'
+  listings: 835
+  matchedListings: 549
+  suppliers: 31
+  totalSignals: 178
+  belowBenchmark: 167
+  scoreOutliers: 10
+  priceDrops: 1
+  priceStatsUrl: 'https://api.purveyors.io/v1/price-index/stats'
+  signalsUrl: 'https://api.purveyors.io/v1/market/signals?summary=true'
+coffeeHighlights:
+  - catalogId: 10688
+    name: 'Juan Puerta / Spumm'
+    supplier: 'yellow_rooster'
+    supplierUrl: 'https://yellowroostercoffee.com/coffees/juan-puerta-spumm'
+    catalogUrl: '/catalog?coffee=10688'
+    origin: 'Colombia'
+    region: 'Colombia'
+    process: 'Honey'
+    variety: 'Castillo'
+    stockedDate: '2026-09-05'
+    pricePerLb: 10.9
+    tastingNotes:
+      body: { tag: 'silky medium', color: '#ff6e40', score: 3 }
+      flavor: { tag: 'star fruit nectarine', color: '#ffab00', score: 5 }
+      acidity: { tag: 'bright tropical', color: '#00e5ff', score: 4 }
+      sweetness: { tag: 'nectarine honey', color: '#ffd54f', score: 4 }
+      fragrance_aroma: { tag: 'rose hibiscus floral', color: '#e91e63', score: 5 }
+    rationale: 'Juan Puerta / Spumm makes the process theme concrete: this Colombian Castillo lot uses honey co-fermentation and carries a profile of rose, hibiscus, star fruit, and nectarine. Its producer and process details give the brief''s visibility theme a specific catalog counterpart.'
+  - catalogId: 10522
+    name: 'Ethiopia Guji 1 Supernatural Hambela Buku Sayasa - 39070-2 – GrainPro Bags – SPOT SEAFORTH'
+    supplier: 'royal_coffee'
+    supplierUrl: 'https://royalcoffee.com/product/3427097000057688260/'
+    catalogUrl: '/catalog?coffee=10522'
+    origin: 'Ethiopia'
+    region: 'Buku Sayasa community, Hambela District, Guji Zone, Oromia Region'
+    process: 'Natural'
+    variety: 'Local arabica landraces and heirloom cultivars'
+    stockedDate: '2026-09-02'
+    pricePerLb: 6.65
+    tastingNotes:
+      body: { tag: 'juicy medium', color: '#ff9a76', score: 3 }
+      flavor: { tag: 'raspberry cherimoya watermelon', color: '#e04f8b', score: 5 }
+      acidity: { tag: 'sparkling tropical', color: '#7fe07f', score: 4 }
+      sweetness: { tag: 'sweet cream candy', color: '#ffd1dc', score: 4 }
+      fragrance_aroma: { tag: 'floral blueberry burst', color: '#6a3fa0', score: 5 }
+    rationale: 'The Ethiopia Guji lot connects the community theme to sourcing structure. It comes from smallholder farms, is centrally processed as a natural coffee, and is described as part of a cooperative model that supports local producers while preserving traditional practices.'
 ---
 
-## Traceability is moving into the operating model
+## Market read: a quiet surface, concentrated signals
 
-A deforestation-free coffee model in Ecuador has moved beyond a pilot by combining traceability, geospatial monitoring, and certification. Alongside a case study on how global supply chains keep workers poor, the signal is that visibility and worker outcomes are being treated as connected operating questions, not separate talking points. Supporting reporting: [Global Supply Chains Keep Workers Poor. Three Case Studies Show How the Cycle Can Be Broken (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/01/global-supply-chains-keep-workers-poor-three-case-studies-show-how-the-cycle-can-be-broken/), [Ecuador’s Deforestation-Free Coffee Model Moves Beyond the Pilot Stage (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/03/ecuadors-deforestation-free-coffee-model-moves-beyond-the-pilot-stage/).
+The latest retail move was 0.2% and the matched-lot move was 0%, a quiet classification across the captured price view; the summary also recorded 178 total signals. That combination suggests a stable surface with activity concentrated in the value layer, rather than a broad repricing. Market evidence: [seven-day retail price movement](https://api.purveyors.io/v1/price-index/stats), [public all-market signal summary](https://api.purveyors.io/v1/market/signals?summary=true).
 
-## Growth keeps changing the shape of the buyer landscape
+## Visibility is becoming a buying signal
 
-A Pittsburgh roaster is expanding its facility while refining seasonal and limited-release offerings, and a fast-growing chain is taking over former restaurant locations through a major auction. Specialty coffee is showing up through larger footprints and more deliberate release structures, making format and scale part of the market story. Supporting reporting: [Pittsburgh’s La Prima Espresso Gets Second Wind in Expanded Roastery (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/04/pittsburghs-la-prima-espresso-gets-second-wind-in-expanded-roastery/), [7 Brew Wins $143 Million Auction for Former Salad and Go Locations (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/02/7-brew-wins-143-million-auction-for-former-salad-and-go-locations/).
+Two reports point to traceability as an operating question, not a branding afterthought: an Ecuadorian model combines traceability, geospatial monitoring, and certification, while a separate case study examines how supply-chain structure shapes worker poverty. For green-coffee buyers, the useful shift is seeing environmental and labor visibility in the same diligence frame. Supporting reporting: [Global Supply Chains Keep Workers Poor. Three Case Studies Show How the Cycle Can Be Broken (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/01/global-supply-chains-keep-workers-poor-three-case-studies-show-how-the-cycle-can-be-broken/), [Ecuador’s Deforestation-Free Coffee Model Moves Beyond the Pilot Stage (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/03/ecuadors-deforestation-free-coffee-model-moves-beyond-the-pilot-stage/).
 
-## Community remains part of coffee's infrastructure
+## Scale now comes with a release strategy
 
-This week's reporting pairs earthquake relief fundraising in Colombia with the return of an independent coffee journal and a roaster collaboration built around shared blends. The common thread is practical connection: coffee businesses and media are using their reach to organize attention, support, and participation around the cup. Supporting reporting: [Coffee People Zine Back in Print, Plans Minneapolis Party (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/04/coffee-people-zine-back-in-print-plans-minneapolis-party/), [Weekly Coffee News: Colombia Earthquake Support + Brewing for Equity (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/04/weekly-coffee-news-colombia-earthquake-support-brewing-for-equity/), [Cartel Roasting Co. Partners With Little Bear Coffee For “Blends With Friends” Initiative (Sprudge Coffee)](https://sprudge.com/cartel-roasting-co-partners-with-little-bear-coffee-for-blends-with-friends-initiative-1306732.html).
+Expansion is arriving in distinct formats: Pittsburgh's La Prima is adding space while refining seasonal and limited-release coffees, while 7 Brew is expanding through former restaurant locations bought in an auction. Together, the reports make footprint and release design part of the same buyer landscape, even when the operating models differ. Supporting reporting: [Pittsburgh’s La Prima Espresso Gets Second Wind in Expanded Roastery (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/04/pittsburghs-la-prima-espresso-gets-second-wind-in-expanded-roastery/), [7 Brew Wins $143 Million Auction for Former Salad and Go Locations (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/02/7-brew-wins-143-million-auction-for-former-salad-and-go-locations/).
+
+## Connection is infrastructure, not decoration
+
+Relief fundraising in Colombia, an independent journal returning to print, and a collaboration between Cartel and Little Bear all show coffee organizations using their reach to gather participation around the cup. That makes community activity operational: it can direct attention, support, and collaboration without being separate from the business. Supporting reporting: [Coffee People Zine Back in Print, Plans Minneapolis Party (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/04/coffee-people-zine-back-in-print-plans-minneapolis-party/), [Weekly Coffee News: Colombia Earthquake Support + Brewing for Equity (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/04/weekly-coffee-news-colombia-earthquake-support-brewing-for-equity/), [Cartel Roasting Co. Partners With Little Bear Coffee For “Blends With Friends” Initiative (Sprudge Coffee)](https://sprudge.com/cartel-roasting-co-partners-with-little-bear-coffee-for-blends-with-friends-initiative-1306732.html).
+
+## Coffee highlights
+
+These lots make the week's throughline tangible: one foregrounds producer-level process detail, while the other shows how cooperative structures carry origin and local participation into a buyer's catalog view.
+
+- **[Juan Puerta / Spumm](/catalog?coffee=10688):** Juan Puerta / Spumm makes the process theme concrete: this Colombian Castillo lot uses honey co-fermentation and carries a profile of rose, hibiscus, star fruit, and nectarine. Its producer and process details give the brief's visibility theme a specific catalog counterpart.
+- **[Ethiopia Guji 1 Supernatural Hambela Buku Sayasa - 39070-2 – GrainPro Bags – SPOT SEAFORTH](/catalog?coffee=10522):** The Ethiopia Guji lot connects the community theme to sourcing structure. It comes from smallholder farms, is centrally processed as a natural coffee, and is described as part of a cooperative model that supports local producers while preserving traditional practices.
