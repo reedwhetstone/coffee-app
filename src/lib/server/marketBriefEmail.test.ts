@@ -187,7 +187,7 @@ describe('Market Brief email projection', () => {
 
 describe('Market Wire reader export', () => {
 	it('rejects duplicate spotlights consistently instead of silently omitting research on the web', () => {
-		const duplicate = `${source}\n## Research Spotlight\n\n### Storage\n\nFirst topic.\n\n## research spotlight\n\n### Fermentation\n\nSecond topic.`;
+		const duplicate = `${source}\n## Research  Spotlight\n\n### Storage\n\nFirst topic.\n\n## research\u00a0spotlight\n\n### Fermentation\n\nSecond topic.`;
 		for (const project of [buildMarketBriefReaderExport, buildMarketBriefEmailProjection]) {
 			expect(() => project(marketBrief, duplicate)).toThrow('at most one Research Spotlight');
 		}

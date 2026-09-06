@@ -114,9 +114,7 @@ export function tokenizeMarketBrief(source: string, canonicalUrl: string): Token
 		(token) =>
 			token.type === 'heading' &&
 			token.depth === 2 &&
-			inlineTokensText(token.tokens ?? [])
-				.trim()
-				.toLowerCase() === 'research spotlight'
+			normalizeMarketBriefSectionTitle(token.tokens ?? []).toLowerCase() === 'research spotlight'
 	);
 	if (spotlights.length > 1) {
 		throw new Error('Market Brief supports at most one Research Spotlight per edition');
@@ -241,6 +239,10 @@ function inlineTokensText(tokens: Token[]): string {
 		.join('');
 }
 
+function normalizeMarketBriefSectionTitle(tokens: Token[]): string {
+	return inlineTokensText(tokens).replace(/\s+/gu, ' ').trim();
+}
+
 export function buildMarketBriefReaderExport(
 	post: BlogPost,
 	source: string
@@ -260,9 +262,7 @@ export function buildMarketBriefReaderExport(
 		if (token.type !== 'heading' || (token as Tokens.Heading).depth !== 2) continue;
 
 		const heading = token as Tokens.Heading;
-		const title = inlineTokensText(heading.tokens ?? [])
-			.replace(/\s+/g, ' ')
-			.trim();
+		const title = normalizeMarketBriefSectionTitle(heading.tokens ?? []);
 		const id = slugger.slug(title);
 		if (title.toLowerCase() === 'sources') continue;
 
