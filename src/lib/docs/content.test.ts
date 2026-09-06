@@ -84,6 +84,12 @@ describe('api docs contract', () => {
 		expect(serializedDocs).toContain(
 			'Anonymous Market Index teaser slices stay in session mode and call their deliberately anonymous upstream routes without the demo key.'
 		);
+		expect(serializedDocs).toContain(
+			'Parchment Intelligence users can compare the same fresh-priced listings across two explicit dates by origin and market scope.'
+		);
+		expect(serializedDocs).toContain(
+			'The internal session-backed /api/analytics/price-comparison BFF forwards the upstream /v1/price-index/comparison response; it is not a new public coffee-app API contract.'
+		);
 		expect(serializedDocs).not.toContain(
 			'Public website catalog and analytics pages use a server-only PARCHMENT_PUBLIC_DEMO_API_KEY'
 		);

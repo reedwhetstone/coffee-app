@@ -1,4 +1,15 @@
 <script lang="ts">
+	type ComparisonResult = {
+		status?: string;
+		changePercent?: number | null;
+		sample?: {
+			matchedListings?: number;
+			matchedSuppliers?: number;
+			matchedCoverage?: number;
+		};
+	};
+	type ComparisonResponse = { data?: ComparisonResult };
+
 	let { origins, viewMode }: { origins: string[]; viewMode: 'retail' | 'wholesale' | 'all' } =
 		$props();
 	let origin = $state('');
@@ -6,7 +17,28 @@
 	let to = $state(new Date(Date.now() - 86400000).toISOString().slice(0, 10));
 	let loading = $state(false);
 	let message = $state('');
+	let activeAbortController: AbortController | null = null;
+	let requestSequence = 0;
+
+	$effect(() => {
+		// The page-wide scope is part of the comparison's identity. Invalidate
+		// both visible evidence and any response that was started for the old
+		// scope before it can repopulate this component.
+		const currentViewMode = viewMode;
+		void currentViewMode;
+		requestSequence += 1;
+		activeAbortController?.abort();
+		activeAbortController = null;
+		loading = false;
+		message = '';
+	});
+
 	async function compare() {
+		const comparisonViewMode = viewMode;
+		const requestId = ++requestSequence;
+		activeAbortController?.abort();
+		const controller = new AbortController();
+		activeAbortController = controller;
 		loading = true;
 		message = '';
 		try {
@@ -14,22 +46,35 @@
 				from,
 				to,
 				origin: origin || origins[0] || '',
-				wholesale: String(viewMode === 'wholesale')
+				wholesale: String(comparisonViewMode === 'wholesale')
 			});
 			const comparisonLabel = `${query.get('origin')} ${query.get('wholesale') === 'true' ? 'wholesale' : 'retail'}, ${from} to ${to}: `;
-			const response = await fetch(`/api/analytics/price-comparison?${query}`);
+			const response = await fetch(`/api/analytics/price-comparison?${query}`, {
+				signal: controller.signal
+			});
 			if (!response.ok) throw new Error('unavailable');
-			const result = await response.json();
+			const payload = (await response.json()) as ComparisonResponse;
+			if (requestId !== requestSequence) return;
+			const result = payload.data;
+			const sample = result?.sample;
 			message =
 				comparisonLabel +
-				(result.status === 'available' && typeof result.changePercent === 'number'
-					? `${result.changePercent > 0 ? '+' : ''}${result.changePercent.toFixed(2)}% across ${result.sample.matchedListings} matched listings from ${result.sample.matchedSuppliers} suppliers (${(result.sample.matchedCoverage * 100).toFixed(0)}% matched coverage).`
+				(result?.status === 'available' &&
+				typeof result.changePercent === 'number' &&
+				typeof sample?.matchedListings === 'number' &&
+				typeof sample.matchedSuppliers === 'number' &&
+				typeof sample.matchedCoverage === 'number'
+					? `${result.changePercent > 0 ? '+' : ''}${result.changePercent.toFixed(2)}% across ${sample.matchedListings} matched listings from ${sample.matchedSuppliers} suppliers (${(sample.matchedCoverage * 100).toFixed(0)}% matched coverage).`
 					: 'Insufficient fresh matched coverage for these dates. No price movement estimate is available.');
 		} catch {
+			if (requestId !== requestSequence) return;
 			message =
 				'Price comparison is currently unavailable. Catalog price history remains available.';
 		} finally {
-			loading = false;
+			if (requestId === requestSequence) {
+				loading = false;
+				if (activeAbortController === controller) activeAbortController = null;
+			}
 		}
 	}
 </script>
