@@ -10,6 +10,7 @@ import {
 	MARKET_BRIEF_CANONICAL_ORIGIN,
 	resolveMarketBriefHref,
 	resolveMarketBriefImageSrc,
+	withStructuredMarketBriefTokens,
 	tokenizeMarketBrief
 } from '$lib/server/marketBriefReader';
 
@@ -289,7 +290,11 @@ export function buildMarketBriefEmailProjection(
 	}
 
 	const canonicalUrl = `${MARKET_BRIEF_CANONICAL_ORIGIN}${getBlogPostPath(post.slug)}`;
-	const tokens = tokenizeMarketBrief(source, canonicalUrl);
+	const tokens = withStructuredMarketBriefTokens(
+		post,
+		tokenizeMarketBrief(source, canonicalUrl),
+		canonicalUrl
+	);
 	const subject = `Market Brief ${formatMarketBriefEdition(post.edition)} · ${post.title}`;
 	if (subject.length > MAX_SUBJECT_LENGTH) {
 		throw new Error(`Market Brief email subject exceeds ${MAX_SUBJECT_LENGTH} characters`);

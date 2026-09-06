@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { marked } from 'marked';
 
 import type { BlogPost } from '$lib/types/blog.types';
 import { getAllPosts } from './blog';
@@ -85,6 +86,132 @@ describe('Market Brief email projection', () => {
 		expect(first.text).toContain('The throughline');
 		expect(first.text).toContain('https://www.purveyors.io/blog/market-brief-001');
 		expect(first.text).toContain(RESEND_UNSUBSCRIBE_PLACEHOLDER);
+	});
+
+	it('includes frozen snapshot and coffee facts in both email formats without Markdown duplicates', () => {
+		const post: BlogPost = {
+			...marketBrief,
+			marketSnapshot: {
+				asOf: '2026-09-06',
+				scope: 'Green catalog',
+				movementPercent: -0.25,
+				movementLabel: 'Weekly matched movement',
+				listings: 120,
+				matchedListings: 90,
+				suppliers: 6,
+				totalSignals: 12,
+				belowBenchmark: 7,
+				scoreOutliers: 3,
+				priceDrops: 2,
+				priceStatsUrl: '/analytics',
+				signalsUrl: '/catalog?signals=true'
+			},
+			coffeeHighlights: [
+				{
+					catalogId: 42,
+					name: 'Kenya selection',
+					supplier: 'Example supplier',
+					supplierUrl: 'https://example.com/coffee',
+					catalogUrl: '/catalog/42',
+					origin: 'Kenya',
+					region: 'Nyeri',
+					process: 'Washed',
+					variety: 'SL28',
+					pricePerLb: 8.5,
+					priceContext: 'One-pound tier',
+					stockedDate: '2026-09-01',
+					rationale: 'A useful comparison for the weekly basket.'
+				}
+			]
+		};
+		const projection = buildMarketBriefEmailProjection(
+			post,
+			source + '\n## Sources\n\nEvidence list.'
+		);
+		for (const value of [
+			'Market snapshot',
+			'Green catalog',
+			'-0.25%',
+			'120 listings',
+			'90 matched listings',
+			'6 suppliers',
+			'12 signals',
+			'7 below benchmark',
+			'3 score outliers',
+			'2 price drops',
+			'Coffee highlights',
+			'Kenya selection',
+			'Example supplier',
+			'Nyeri',
+			'Washed',
+			'SL28',
+			'$8.50/lb',
+			'One-pound tier',
+			'Stocked 2026-09-01',
+			'A useful comparison for the weekly basket.',
+			'https://www.purveyors.io/catalog/42',
+			'https://example.com/coffee'
+		]) {
+			expect(projection.html).toContain(value);
+			expect(projection.text).toContain(value);
+		}
+		expect(projection.text.indexOf('Kenya selection')).toBeLessThan(
+			projection.text.indexOf('Sources')
+		);
+		expect(projection.sha256).not.toBe(buildMarketBriefEmailProjection(marketBrief, source).sha256);
+		expect(
+			buildMarketBriefEmailProjection(post, source + '\n## Sources\n\nEvidence list.')
+		).toEqual(projection);
+		const legacy = buildMarketBriefEmailProjection(
+			post,
+			source + '\n## Coffee highlights\n\nSelection context.\n## Sources\n\nEvidence list.'
+		);
+		expect(legacy.text.match(/Coffee highlights/g)).toHaveLength(1);
+		expect(legacy.text).toContain('Selection context.');
+	});
+
+	it('escapes structured prose as literal text and rejects unsafe structured links', () => {
+		const coffee = {
+			catalogId: 42,
+			name: '<img src=x onerror=alert(1)> & **coffee**',
+			supplier: 'A & B',
+			supplierUrl: 'https://example.com/?a=1&b=2',
+			catalogUrl: '/catalog/42',
+			origin: 'Kenya',
+			region: 'Nyeri',
+			pricePerLb: 8.5,
+			rationale: '[click](javascript:alert(1)) {value}'
+		};
+		const projection = buildMarketBriefEmailProjection(
+			{ ...marketBrief, coffeeHighlights: [coffee] },
+			source
+		);
+		expect(projection.html).toContain('&lt;img src=x onerror=alert(1)&gt; &amp; **coffee**');
+		expect(projection.html).not.toContain('<img src=x');
+		expect(projection.html).not.toContain('href="javascript:');
+		expect(projection.html).toContain('href="https://example.com/?a=1&amp;b=2"');
+		expect(projection.text).toContain(coffee.name);
+		expect(projection.text).toContain(coffee.rationale);
+		expect(projection.text).toContain('Available when selected');
+		const reader = buildMarketBriefReaderExport(
+			{ ...marketBrief, coffeeHighlights: [coffee] },
+			source
+		);
+		const portableHtml = marked.parse(reader.markdown) as string;
+		expect(portableHtml).toContain('&lt;img src=x onerror=alert(1)&gt; &amp; **coffee**');
+		expect(portableHtml).not.toContain('<img src=x');
+		expect(portableHtml).not.toContain('href="javascript:');
+		expect(portableHtml).toContain('[click](javascript:alert(1)) {value}');
+		expect(portableHtml).toContain('<h2>Coffee highlights</h2>');
+
+		for (const field of ['catalogUrl', 'supplierUrl']) {
+			expect(() =>
+				buildMarketBriefEmailProjection(
+					{ ...marketBrief, coffeeHighlights: [{ ...coffee, [field]: 'javascript:alert(1)' }] },
+					source
+				)
+			).toThrow('unsupported protocol');
+		}
 	});
 
 	it('changes the projection digest for content corrections without changing edition identity', () => {
