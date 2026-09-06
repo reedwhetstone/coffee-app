@@ -120,17 +120,19 @@ const LEGACY_TAG_MEMBERSHIP: Record<keyof typeof BLOG_TAG_ALIASES, string[]> = {
 };
 
 describe('blog tag taxonomy', () => {
-	it('uses the canonical nine-tag set', () => {
+	it('uses the canonical editorial tag set', () => {
 		expect(BLOG_TAGS).toEqual([
 			'ai',
 			'agents',
 			'coffee',
 			'data',
 			'engineering',
+			'ideas',
 			'enterprise',
 			'product',
 			'strategy',
-			'supply-chain'
+			'supply-chain',
+			'technology'
 		]);
 	});
 
@@ -172,6 +174,23 @@ describe('blog tag taxonomy', () => {
 });
 
 describe('Market Brief publication metadata', () => {
+	it('opts new editions into Fieldnotes while preserving their storage identity', () => {
+		const post = normalizeBlogPost('market-brief-001', {
+			...MARKET_BRIEF_FRONTMATTER,
+			newsletter: 'fieldnotes'
+		});
+		expect(post).toMatchObject({
+			newsletter: 'fieldnotes',
+			format: 'market-brief',
+			slug: 'market-brief-001'
+		});
+		expect(
+			normalizeBlogPost('market-brief-001', MARKET_BRIEF_FRONTMATTER).newsletter
+		).toBeUndefined();
+		expect(() =>
+			normalizeBlogPost('an-essay', { ...ESSAY_FRONTMATTER, newsletter: 'fieldnotes' })
+		).toThrow('invalid newsletter identity');
+	});
 	it('normalizes legacy essays without changing their canonical identity', () => {
 		const post = normalizeBlogPost('an-essay', ESSAY_FRONTMATTER);
 

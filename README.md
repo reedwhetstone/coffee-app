@@ -30,7 +30,8 @@ Cherry Runtime's server-side tools consume the Parchment API through `@purveyors
 | `/api`         | API product page: plans, pricing, and quick start                                          |
 | `/docs`        | Unified documentation for API and CLI                                                      |
 | `/blog`        | Coffee content and platform updates                                                        |
-| `/market-wire` | Market Brief weekly green coffee intelligence and account-backed email signup              |
+| `/fieldnotes`  | Purveyors Fieldnotes newsletter and account-backed email signup                            |
+| `/market-wire` | Compatibility route for Fieldnotes and historical Market Brief links                       |
 | `/bot`         | PurveyorsBot crawler identity, request policy, and operator contact                        |
 
 ### Authenticated

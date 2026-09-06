@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NEWSLETTER } from '$lib/newsletter';
 	import { invalidateAll } from '$app/navigation';
 	import Footer from '$lib/components/marketing/Footer.svelte';
 	import type { MarketReadPreference } from '$lib/marketWire';
@@ -38,16 +39,18 @@
 			const response = await fetch('/api/email-subscriptions/market-read', { method: 'POST' });
 			const result = await response.json().catch(() => null);
 			if (!response.ok || !result?.data) {
-				throw new Error(result?.error?.message ?? 'Market Brief signup could not be completed.');
+				throw new Error(
+					result?.error?.message ?? `${NEWSLETTER.shortName} signup could not be completed.`
+				);
 			}
 
 			preference = result.data as MarketReadPreference;
-			message = 'You’re on the Market Brief waitlist. Weekly delivery is not live yet.';
+			message = `You’re on the ${NEWSLETTER.shortName} waitlist. Weekly delivery is not live yet.`;
 		} catch (error) {
 			updateError =
 				error instanceof Error
 					? error.message
-					: 'Market Brief signup could not be completed. Please try again.';
+					: `${NEWSLETTER.shortName} signup could not be completed. Please try again.`;
 		} finally {
 			updating = false;
 		}
@@ -62,14 +65,13 @@
 			>
 				<div class="max-w-3xl">
 					<p class="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
-						Purveyors Market Brief
+						{NEWSLETTER.name}
 					</p>
 					<h1 class="mt-4 font-serif text-4xl font-medium tracking-tight text-ink sm:text-6xl">
-						The market moved. Here’s what matters.
+						{NEWSLETTER.descriptor}
 					</h1>
 					<p class="mt-6 max-w-2xl text-lg leading-8 text-muted">
-						A concise weekly read on green coffee pricing, availability, and movement, grounded in
-						source-linked market evidence.
+						{NEWSLETTER.description}
 					</p>
 					<div class="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
 						<span>Free</span>
@@ -92,8 +94,8 @@
 							You’re on the waitlist.
 						</h2>
 						<p class="mt-3 text-sm leading-6 text-muted">
-							Weekly delivery is not live yet. Your Market Brief preference is saved for launch, and
-							you can change it anytime in Account settings.
+							Weekly delivery is not live yet. Your {NEWSLETTER.shortName} preference is saved for launch,
+							and you can change it anytime in Account settings.
 						</p>
 						<a
 							href="/account"
@@ -103,7 +105,7 @@
 						</a>
 					{:else if data.isSignedIn}
 						<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
-							Market Brief waitlist
+							{NEWSLETTER.shortName} waitlist
 						</p>
 						<h2 id="signup-heading" class="mt-2 font-serif text-2xl font-medium text-ink">
 							Join with your Purveyors account
@@ -121,7 +123,7 @@
 						</button>
 					{:else}
 						<p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
-							Market Brief waitlist
+							{NEWSLETTER.shortName} waitlist
 						</p>
 						<h2 id="signup-heading" class="mt-2 font-serif text-2xl font-medium text-ink">
 							Join with your Purveyors account
@@ -130,7 +132,7 @@
 							Sign in, then save your place on the waitlist for the email on your account.
 						</p>
 						<a
-							href="/auth?next=%2Fmarket-wire"
+							href="/auth?next=%2Ffieldnotes"
 							class="mt-5 inline-flex w-full items-center justify-center rounded-md bg-accent px-4 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
 						>
 							Sign in to join the waitlist
@@ -171,31 +173,31 @@
 				<div class="max-w-3xl">
 					<p class="text-sm font-semibold text-accent">Inside each edition</p>
 					<h2 id="inside-heading" class="mt-2 font-serif text-4xl font-medium text-ink">
-						A decision-ready read, not another data dump.
+						A little curiosity goes a long way.
 					</h2>
 				</div>
 				<div class="mt-10 grid gap-8 border-y border-line py-8 md:grid-cols-3">
 					<article>
 						<p class="text-sm font-semibold text-chart-rust">01</p>
-						<h3 class="mt-3 text-xl font-semibold text-ink">What changed</h3>
+						<h3 class="mt-3 text-xl font-semibold text-ink">Fresh connections</h3>
 						<p class="mt-3 text-sm leading-6 text-muted">
-							The week’s meaningful shifts in pricing, availability, arrivals, and supplier
-							coverage.
+							Punchy perspectives on what new tools, better data, and a little ingenuity could make
+							possible in coffee.
 						</p>
 					</article>
 					<article>
 						<p class="text-sm font-semibold text-chart-teal">02</p>
-						<h3 class="mt-3 text-xl font-semibold text-ink">Why it matters</h3>
+						<h3 class="mt-3 text-xl font-semibold text-ink">Coffee worth exploring</h3>
 						<p class="mt-3 text-sm leading-6 text-muted">
-							A procurement lens that separates durable market movement from ordinary catalog noise.
+							Interesting coffees and the details that caught our attention, from process to flavor.
 						</p>
 					</article>
 					<article>
 						<p class="text-sm font-semibold text-chart-plum">03</p>
-						<h3 class="mt-3 text-xl font-semibold text-ink">Where it came from</h3>
+						<h3 class="mt-3 text-xl font-semibold text-ink">A place to start</h3>
 						<p class="mt-3 text-sm leading-6 text-muted">
-							Source-linked observations make the read inspectable when a signal deserves a closer
-							look.
+							Links to tools, ideas, and deeper reading so you can follow a promising thought in
+							your own direction.
 						</p>
 					</article>
 				</div>
@@ -205,7 +207,7 @@
 				<section aria-labelledby="latest-heading">
 					<div class="flex flex-wrap items-end justify-between gap-4">
 						<div>
-							<p class="text-sm font-semibold text-accent">Recent editions</p>
+							<p class="text-sm font-semibold text-accent">From the archive</p>
 							<h2 id="latest-heading" class="mt-2 font-serif text-4xl font-medium text-ink">
 								Read while you wait.
 							</h2>
@@ -214,7 +216,7 @@
 							href="/blog?format=market-brief"
 							class="text-sm font-semibold text-accent hover:underline"
 						>
-							All Market Brief editions →
+							All newsletter editions →
 						</a>
 					</div>
 					<div class="mt-8 grid gap-5 lg:grid-cols-3">

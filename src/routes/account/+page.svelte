@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NEWSLETTER } from '$lib/newsletter';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { signInWithGoogle } from '$lib/supabase';
 	import { ACCOUNT_DELETION_CONFIRMATION } from '$lib/accountDeletion';
@@ -52,8 +53,8 @@
 			marketReadPreference = result.data as MarketReadPreference;
 			marketReadStatusResolved = true;
 			marketReadMessage = marketReadPreference.subscribed
-				? 'Market Brief waitlist is on.'
-				: 'Market Brief waitlist is off.';
+				? `${NEWSLETTER.shortName} waitlist is on.`
+				: `${NEWSLETTER.shortName} waitlist is off.`;
 		} catch (error) {
 			marketReadUpdateError =
 				error instanceof Error
@@ -156,7 +157,7 @@
 					id="market-wire-preference-heading"
 					class="mt-2 font-serif text-2xl font-medium text-ink"
 				>
-					Purveyors Market Brief
+					{NEWSLETTER.name}
 				</h2>
 			</div>
 			<span
@@ -175,8 +176,8 @@
 		</div>
 
 		<p class="mt-3 max-w-2xl text-sm leading-6 text-muted">
-			A concise weekly read on green coffee pricing, availability, and movement. Weekly delivery is
-			not live yet; your preference is saved for launch using {data.email}.
+			{NEWSLETTER.descriptor} Weekly delivery is not live yet; your preference is saved for launch using
+			{data.email}.
 		</p>
 
 		{#if marketReadStatusUnavailable || marketReadUpdateError}
@@ -218,11 +219,11 @@
 				{marketReadUpdating
 					? 'Saving…'
 					: marketReadStatusUnavailable || marketReadPreference?.subscribed
-						? 'Leave Market Brief waitlist'
-						: 'Join Market Brief waitlist'}
+						? `Leave ${NEWSLETTER.shortName} waitlist`
+						: `Join ${NEWSLETTER.shortName} waitlist`}
 			</button>
-			<a href="/market-wire" class="text-sm font-medium text-accent hover:underline">
-				About Market Brief
+			<a href={NEWSLETTER.path} class="text-sm font-medium text-accent hover:underline">
+				About {NEWSLETTER.shortName}
 			</a>
 		</div>
 	</section>

@@ -1,3 +1,4 @@
+import { NEWSLETTER } from '$lib/newsletter';
 import type { PageServerLoad } from './$types';
 
 import type { MarketWireArchiveItem } from '$lib/marketWire';
@@ -38,27 +39,25 @@ export const load: PageServerLoad = async (event) => {
 		latestEditions,
 		meta: buildPublicMeta({
 			baseUrl,
-			path: '/market-wire',
-			title: 'Purveyors Market Brief — Weekly Green Coffee Intelligence',
-			description:
-				'A concise weekly read on green coffee pricing, availability, and market movement, with source-linked evidence from Purveyors.',
+			path: NEWSLETTER.path,
+			title: `${NEWSLETTER.name} — Coffee & Technology`,
+			description: NEWSLETTER.description,
 			keywords: [
 				'green coffee market newsletter',
-				'coffee pricing intelligence',
-				'green coffee availability',
-				'coffee procurement'
+				'coffee and AI',
+				'home roasting',
+				'coffee technology'
 			],
 			image: resolvePublicPageSocialImage({
 				baseUrl,
-				alt: 'Purveyors Market Brief weekly green coffee intelligence'
+				alt: NEWSLETTER.descriptor
 			}),
 			schemaData: {
 				'@context': 'https://schema.org',
 				'@type': 'WebPage',
-				name: 'Purveyors Market Brief',
-				description:
-					'A weekly, evidence-linked read on green coffee pricing, availability, and market movement.',
-				url: `${baseUrl}/market-wire`,
+				name: NEWSLETTER.name,
+				description: NEWSLETTER.description,
+				url: `${baseUrl}${NEWSLETTER.path}`,
 				isPartOf: { '@type': 'WebSite', name: 'Purveyors', url: baseUrl }
 			}
 		})

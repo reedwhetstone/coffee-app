@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NEWSLETTER, newsletterName } from '$lib/newsletter';
 	import type { PageData } from './$types';
 	import { formatMarketBriefEdition, PILLARS } from '$lib/types/blog.types';
 	import { formatBlogDate } from '$lib/utils/dates';
@@ -56,7 +57,7 @@
 	href={data.metadata.format === 'market-brief' ? '/blog?format=market-brief' : '/blog'}
 	class="mb-8 inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-accent"
 >
-	← {data.metadata.format === 'market-brief' ? 'All Market Brief editions' : 'All posts'}
+	← {data.metadata.format === 'market-brief' ? 'All newsletter editions' : 'All posts'}
 </a>
 
 <article>
@@ -82,7 +83,9 @@
 			{#if data.metadata.format === 'market-brief'}
 				<span class="text-on-dark/20">·</span>
 				<span class="rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent">
-					Market Brief · Edition {formatMarketBriefEdition(data.metadata.edition!)}
+					{newsletterName(data.metadata)} · Edition {formatMarketBriefEdition(
+						data.metadata.edition!
+					)}
 				</span>
 			{:else if pillarInfo}
 				<span class="text-line">·</span>
@@ -106,7 +109,11 @@
 
 		{#if isMarketBrief}
 			<div class="relative mt-6 aspect-[3/2] overflow-hidden rounded-md border border-on-dark/15">
-				<MarketBriefHeroFallback title={data.metadata.title} edition={data.metadata.edition!} />
+				<MarketBriefHeroFallback
+					title={data.metadata.title}
+					edition={data.metadata.edition!}
+					newsletter={data.metadata.newsletter}
+				/>
 				<img
 					src={getHeroImage(data.metadata.slug)}
 					alt={data.metadata.title}
@@ -140,12 +147,12 @@
 	</header>
 
 	<!-- Post content -->
-	{#if data.marketBriefReader && data.metadata.coffeeHighlights}
+	{#if data.marketBriefReader && (data.metadata.coffeeHighlights || data.metadata.newsletter)}
 		<MarketBriefArticle
 			title={data.metadata.title}
 			reader={data.marketBriefReader}
 			snapshot={data.metadata.marketSnapshot}
-			coffeeHighlights={data.metadata.coffeeHighlights}
+			coffeeHighlights={data.metadata.coffeeHighlights ?? []}
 		/>
 	{:else}
 		<div
@@ -174,7 +181,7 @@
 <!-- Post footer -->
 <div class="mt-16 space-y-8">
 	{#if data.metadata.format === 'market-brief'}
-		<MarketWireCta heading="Join the Market Brief waitlist." />
+		<MarketWireCta heading={`Join the ${NEWSLETTER.shortName} waitlist.`} />
 	{/if}
 
 	<!-- Share / LinkedIn section -->

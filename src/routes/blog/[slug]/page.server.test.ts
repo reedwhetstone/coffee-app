@@ -158,6 +158,24 @@ describe('/blog/[slug] Market Brief metadata', () => {
 		expect(buildMarketBriefDeploymentManifestMock).not.toHaveBeenCalled();
 	});
 
+	it('points Fieldnotes series metadata at its canonical landing', async () => {
+		const fieldnotes = {
+			...marketBrief,
+			slug: 'market-brief-003',
+			title: 'Fieldnotes Three',
+			newsletter: 'fieldnotes' as const,
+			edition: 3
+		};
+		getAllPostsMock.mockResolvedValueOnce([fieldnotes]);
+		getRawMarketBriefSourceMock.mockReturnValueOnce(marketBriefSource);
+
+		const result = await loadPost('market-brief-003');
+		if (!result) throw new Error('Expected Fieldnotes reader data');
+
+		expect(result.meta).toMatchObject({ title: 'Fieldnotes Three | Purveyors Fieldnotes' });
+		expect(JSON.stringify(result.meta.schemaData)).toContain('https://purveyors.io/fieldnotes');
+	});
+
 	it('keeps Vercel preview readers outside the production email projection path', async () => {
 		Object.assign(buildEnvironment, { VERCEL_ENV: 'preview' });
 		vi.stubEnv('VERCEL_ENV', 'production');

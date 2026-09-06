@@ -1,3 +1,4 @@
+import { newsletterName } from '$lib/newsletter';
 import { createHash } from 'node:crypto';
 
 import { decodeHTML } from 'entities';
@@ -10,6 +11,7 @@ import {
 	MARKET_BRIEF_CANONICAL_ORIGIN,
 	resolveMarketBriefHref,
 	resolveMarketBriefImageSrc,
+	withStructuredMarketBriefTokens,
 	tokenizeMarketBrief
 } from '$lib/server/marketBriefReader';
 
@@ -225,13 +227,13 @@ function tokensText(tokens: Token[], canonicalUrl: string): string {
 	return tokens.map((token) => tokenText(token, canonicalUrl)).join('');
 }
 
-function renderText(tokens: Token[], canonicalUrl: string): string {
+function renderText(tokens: Token[], canonicalUrl: string, post: BlogPost): string {
 	const body = tokensText(tokens, canonicalUrl)
 		.replace(/[ \t]+\n/g, '\n')
 		.replace(/\n{3,}/g, '\n\n')
 		.trim();
 
-	return `${body}\n\nRead this edition on Purveyors: ${canonicalUrl}\n\nUnsubscribe from Market Brief: ${RESEND_UNSUBSCRIBE_PLACEHOLDER}`;
+	return `${body}\n\nRead this edition on Purveyors: ${canonicalUrl}\n\nUnsubscribe from ${newsletterName(post)}: ${RESEND_UNSUBSCRIBE_PLACEHOLDER}`;
 }
 
 function renderHtml(
@@ -255,15 +257,15 @@ function renderHtml(
 <tr><td align="center" style="padding:28px 12px;">
 <table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:640px;border-collapse:collapse;background-color:#ffffff;">
 <tr><td style="padding:36px 34px 14px;border-top:5px solid #d97706;">
-<p style="margin:0 0 10px;color:#9a4d00;font-family:Arial,sans-serif;font-size:13px;font-weight:700;">Purveyors Market Brief · Edition ${edition}</p>
+<p style="margin:0 0 10px;color:#9a4d00;font-family:Arial,sans-serif;font-size:13px;font-weight:700;">${escapeHtml(newsletterName(post, true))} · Edition ${edition}</p>
 <h1 style="margin:0 0 14px;color:#1f1b17;font-family:Georgia,serif;font-size:34px;line-height:1.18;">${escapeHtml(post.title)}</h1>
 <p style="margin:0;color:#625a52;font-family:Georgia,serif;font-size:18px;line-height:1.55;">${escapeHtml(post.description)}</p>
 </td></tr>
 <tr><td style="padding:18px 34px 30px;">${fragment}</td></tr>
 <tr><td style="padding:24px 34px;border-top:1px solid #ddd4c8;background-color:#fffaf3;">
 <p style="margin:0 0 12px;font-family:Arial,sans-serif;font-size:14px;line-height:1.5;"><a href="${escapeHtml(canonicalUrl)}" style="color:#9a4d00;text-decoration:underline;">Read this edition on Purveyors</a></p>
-<p style="margin:0 0 8px;color:#625a52;font-family:Arial,sans-serif;font-size:12px;line-height:1.5;">You are receiving this because you subscribed to Purveyors Market Brief.</p>
-<p style="margin:0;color:#625a52;font-family:Arial,sans-serif;font-size:12px;line-height:1.5;"><a href="${RESEND_UNSUBSCRIBE_PLACEHOLDER}" style="color:#625a52;text-decoration:underline;">Unsubscribe from Market Brief</a></p>
+<p style="margin:0 0 8px;color:#625a52;font-family:Arial,sans-serif;font-size:12px;line-height:1.5;">You are receiving this because you subscribed to ${escapeHtml(newsletterName(post, true))}.</p>
+<p style="margin:0;color:#625a52;font-family:Arial,sans-serif;font-size:12px;line-height:1.5;"><a href="${RESEND_UNSUBSCRIBE_PLACEHOLDER}" style="color:#625a52;text-decoration:underline;">Unsubscribe from ${escapeHtml(newsletterName(post))}</a></p>
 </td></tr>
 </table>
 </td></tr>
@@ -289,14 +291,18 @@ export function buildMarketBriefEmailProjection(
 	}
 
 	const canonicalUrl = `${MARKET_BRIEF_CANONICAL_ORIGIN}${getBlogPostPath(post.slug)}`;
-	const tokens = tokenizeMarketBrief(source, canonicalUrl);
-	const subject = `Market Brief ${formatMarketBriefEdition(post.edition)} · ${post.title}`;
+	const tokens = withStructuredMarketBriefTokens(
+		post,
+		tokenizeMarketBrief(source, canonicalUrl),
+		canonicalUrl
+	);
+	const subject = `${newsletterName(post)} ${formatMarketBriefEdition(post.edition)} · ${post.title}`;
 	if (subject.length > MAX_SUBJECT_LENGTH) {
 		throw new Error(`Market Brief email subject exceeds ${MAX_SUBJECT_LENGTH} characters`);
 	}
 
 	const fragment = renderSanitizedFragment(tokens, canonicalUrl);
-	const text = renderText(tokens, canonicalUrl);
+	const text = renderText(tokens, canonicalUrl, post);
 	const html = renderHtml(post, canonicalUrl, subject, fragment);
 	if (Buffer.byteLength(html, 'utf8') > MAX_PROJECTION_BYTES) {
 		throw new Error(`Market Brief email HTML exceeds ${MAX_PROJECTION_BYTES} bytes`);

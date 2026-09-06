@@ -1,3 +1,4 @@
+import { NEWSLETTER } from '$lib/newsletter';
 import type { RequestHandler } from './$types';
 import { PV_MICROLOT_FULL_NAME } from '$lib/benchmarks/marketing';
 import { getPublishedPosts } from '$lib/server/blog';
@@ -30,7 +31,7 @@ export const GET: RequestHandler = async ({ url }) => {
 - [Parchment Console](${baseUrl}/api-dashboard): Authenticated Console for API keys, usage, and billing.
 - [Developer Docs](${baseUrl}/docs): Product and CLI documentation. Generated API reference lives at https://api.purveyors.io/docs.
 - [Blog](${baseUrl}/blog): Coffee intelligence, product direction, and platform updates.
-- [Market Brief](${baseUrl}/market-wire): Weekly, evidence-linked green coffee market intelligence with account-backed email signup.
+- [${NEWSLETTER.name}](${baseUrl}${NEWSLETTER.path}): ${NEWSLETTER.description} Account-backed waitlist; weekly delivery is not live yet.
 - [PurveyorsBot](${baseUrl}/bot): Public crawler identity, request policy, data use, and opt-out instructions for website operators.
 
 ## API and Platform

@@ -49,7 +49,8 @@ describe('/market-wire page load', () => {
 		expect(result.isSignedIn).toBe(false);
 		expect(result.marketReadPreference).toBeNull();
 		expect(loadMarketReadPreference).not.toHaveBeenCalled();
-		expect(result.meta.canonical).toBe('https://purveyors.io/market-wire');
+		expect(result.meta.canonical).toBe('https://purveyors.io/fieldnotes');
+		expect(result.meta.title).toContain('Purveyors Fieldnotes');
 	});
 
 	it('loads the account preference and latest published editions for signed-in readers', async () => {

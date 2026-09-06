@@ -285,7 +285,7 @@
 	{#if takes.length > 0}
 		<section aria-labelledby="weekly-takes-heading">
 			<div class="mb-4">
-				<p class="text-xs font-semibold text-accent">Reported this week</p>
+				<p class="text-xs font-semibold text-accent">Ideas worth exploring</p>
 				<h2 id="weekly-takes-heading" class="mt-1 font-serif text-3xl font-semibold text-ink">
 					The week’s takes
 				</h2>
@@ -342,114 +342,120 @@
 		</section>
 	{/if}
 
-	<section id="coffee-highlights" class="scroll-mt-28" aria-labelledby="coffee-highlights-heading">
-		<div class="mb-4 max-w-2xl">
-			<p class="text-xs font-semibold text-accent">From the catalog</p>
-			<h2 id="coffee-highlights-heading" class="mt-1 font-serif text-3xl font-semibold text-ink">
-				Coffee highlights
-			</h2>
-		</div>
+	{#if coffeeHighlights.length > 0}
+		<section
+			id="coffee-highlights"
+			class="scroll-mt-28"
+			aria-labelledby="coffee-highlights-heading"
+		>
+			<div class="mb-4 max-w-2xl">
+				<p class="text-xs font-semibold text-accent">From the catalog</p>
+				<h2 id="coffee-highlights-heading" class="mt-1 font-serif text-3xl font-semibold text-ink">
+					Coffee highlights
+				</h2>
+			</div>
 
-		<div class="grid gap-5 {coffeeHighlights.length > 1 ? 'lg:grid-cols-2' : ''}">
-			{#each coffeeHighlights as coffee, index}
-				<article
-					id={`coffee-${coffee.catalogId}`}
-					class="scroll-mt-28 overflow-hidden rounded-xl border border-line bg-surface-panel shadow-sm"
-				>
-					<div class="grid min-h-full sm:grid-cols-[minmax(0,1fr)_11rem] lg:grid-cols-1">
-						<div class="p-5 sm:p-6">
-							<div class="flex items-start justify-between gap-3">
-								<p class="text-xs font-semibold text-accent">
-									Highlight {String(index + 1).padStart(2, '0')}
-								</p>
-								<p class="text-right text-xs text-muted">
-									{coffee.stockedDate
-										? `Stocked ${formatDate(coffee.stockedDate)}`
-										: 'Available when selected'}
-								</p>
-							</div>
-							<h3 class="mt-3 font-serif text-xl font-semibold leading-snug text-ink">
-								{coffee.name}
-							</h3>
-							<p class="mt-1 text-sm text-muted">{supplierLabel(coffee.supplier)}</p>
+			<div class="grid gap-5 {coffeeHighlights.length > 1 ? 'lg:grid-cols-2' : ''}">
+				{#each coffeeHighlights as coffee, index}
+					<article
+						id={`coffee-${coffee.catalogId}`}
+						class="scroll-mt-28 overflow-hidden rounded-xl border border-line bg-surface-panel shadow-sm"
+					>
+						<div class="grid min-h-full sm:grid-cols-[minmax(0,1fr)_11rem] lg:grid-cols-1">
+							<div class="p-5 sm:p-6">
+								<div class="flex items-start justify-between gap-3">
+									<p class="text-xs font-semibold text-accent">
+										Highlight {String(index + 1).padStart(2, '0')}
+									</p>
+									<p class="text-right text-xs text-muted">
+										{coffee.stockedDate
+											? `Stocked ${formatDate(coffee.stockedDate)}`
+											: 'Available when selected'}
+									</p>
+								</div>
+								<h3 class="mt-3 font-serif text-xl font-semibold leading-snug text-ink">
+									{coffee.name}
+								</h3>
+								<p class="mt-1 text-sm text-muted">{supplierLabel(coffee.supplier)}</p>
 
-							<div class="mt-4 flex flex-wrap gap-2 text-xs">
-								<span class="rounded-full bg-surface-canvas px-2.5 py-1 text-ink"
-									>{coffee.region}</span
+								<div class="mt-4 flex flex-wrap gap-2 text-xs">
+									<span class="rounded-full bg-surface-canvas px-2.5 py-1 text-ink"
+										>{coffee.region}</span
+									>
+									{#if coffee.process}
+										<span class="rounded-full bg-surface-canvas px-2.5 py-1 text-ink"
+											>{coffee.process}</span
+										>
+									{/if}
+									{#if coffee.variety}
+										<span class="rounded-full bg-surface-canvas px-2.5 py-1 text-ink"
+											>{coffee.variety}</span
+										>
+									{/if}
+								</div>
+
+								<p class="mt-4 text-sm leading-6 text-muted">{coffee.rationale}</p>
+
+								<div
+									class="mt-5 flex flex-wrap items-end justify-between gap-4 border-t border-line pt-4"
 								>
-								{#if coffee.process}
-									<span class="rounded-full bg-surface-canvas px-2.5 py-1 text-ink"
-										>{coffee.process}</span
+									<div>
+										<p class="text-xs text-muted">Listed price for this edition</p>
+										<p class="mt-1 text-2xl font-semibold tabular-nums text-ink">
+											${coffee.pricePerLb.toFixed(2)}<span class="text-sm font-normal text-muted"
+												>/lb</span
+											>
+										</p>
+										{#if coffee.priceContext}<p class="mt-1 text-xs text-muted">
+												{coffee.priceContext}
+											</p>{/if}
+									</div>
+									<a
+										href={coffee.catalogUrl}
+										class="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
 									>
-								{/if}
-								{#if coffee.variety}
-									<span class="rounded-full bg-surface-canvas px-2.5 py-1 text-ink"
-										>{coffee.variety}</span
-									>
-								{/if}
+										View catalog coffee
+									</a>
+								</div>
 							</div>
-
-							<p class="mt-4 text-sm leading-6 text-muted">{coffee.rationale}</p>
 
 							<div
-								class="mt-5 flex flex-wrap items-end justify-between gap-4 border-t border-line pt-4"
+								class="border-t border-line bg-ink/[0.035] p-4 sm:border-l sm:border-t-0 lg:border-l-0 lg:border-t"
 							>
-								<div>
-									<p class="text-xs text-muted">Listed price for this edition</p>
-									<p class="mt-1 text-2xl font-semibold tabular-nums text-ink">
-										${coffee.pricePerLb.toFixed(2)}<span class="text-sm font-normal text-muted"
-											>/lb</span
-										>
+								<p class="mb-2 text-center text-xs font-semibold text-muted">Tasting profile</p>
+								{#if coffee.tastingNotes}
+									<div class="mx-auto flex justify-center">
+										<TastingNotesRadar tastingNotes={coffee.tastingNotes} size={150} lazy={true} />
+									</div>
+								{:else}
+									<p class="py-8 text-center text-xs leading-5 text-muted">
+										Structured tasting notes are not yet published for this listing.
 									</p>
-									{#if coffee.priceContext}<p class="mt-1 text-xs text-muted">
-											{coffee.priceContext}
-										</p>{/if}
+								{/if}
+								<div class="mt-3 flex flex-wrap justify-center gap-1.5">
+									{#each noteTags(coffee) as note}
+										<span
+											class="rounded-full border border-line bg-surface-panel px-2 py-0.5 text-[0.7rem] text-muted"
+										>
+											{note}
+										</span>
+									{/each}
 								</div>
 								<a
-									href={coffee.catalogUrl}
-									class="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+									href={coffee.supplierUrl}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="mt-4 block text-center text-xs font-semibold text-link underline decoration-accent/40 underline-offset-4 hover:text-accent"
 								>
-									View catalog coffee
+									Supplier listing ↗
 								</a>
 							</div>
 						</div>
-
-						<div
-							class="border-t border-line bg-ink/[0.035] p-4 sm:border-l sm:border-t-0 lg:border-l-0 lg:border-t"
-						>
-							<p class="mb-2 text-center text-xs font-semibold text-muted">Tasting profile</p>
-							{#if coffee.tastingNotes}
-								<div class="mx-auto flex justify-center">
-									<TastingNotesRadar tastingNotes={coffee.tastingNotes} size={150} lazy={true} />
-								</div>
-							{:else}
-								<p class="py-8 text-center text-xs leading-5 text-muted">
-									Structured tasting notes are not yet published for this listing.
-								</p>
-							{/if}
-							<div class="mt-3 flex flex-wrap justify-center gap-1.5">
-								{#each noteTags(coffee) as note}
-									<span
-										class="rounded-full border border-line bg-surface-panel px-2 py-0.5 text-[0.7rem] text-muted"
-									>
-										{note}
-									</span>
-								{/each}
-							</div>
-							<a
-								href={coffee.supplierUrl}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="mt-4 block text-center text-xs font-semibold text-link underline decoration-accent/40 underline-offset-4 hover:text-accent"
-							>
-								Supplier listing ↗
-							</a>
-						</div>
-					</div>
-				</article>
-			{/each}
-		</div>
-	</section>
+					</article>
+				{/each}
+			</div>
+		</section>
+	{/if}
 
 	<p class="sr-only" aria-live="polite">
 		{copiedId ? 'Section link copied.' : copyFailedId ? 'Clipboard copy failed.' : ''}
