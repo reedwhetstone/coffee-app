@@ -170,7 +170,9 @@ The four legacy `/api/tools/*` compatibility routes and their route-only catalog
 RAG implementation were retired in Phase 3D after their first-party callers
 moved to Parchment and Reed explicitly accepted an immediate hard cutover for
 any unknown authenticated external caller. `OPENROUTER_API_KEY` remains because
-active chat, workspace summary, and memory-dream callers still require it.
+active chat and memory-dream callers still require it. Workspace summary
+compaction is now a thin session-bound Parchment SDK call; Parchment owns its
+prompt, model, provider credential, cooldown, and CAS commit.
 
 Inventory share creation and cross-principal redemption now use Parchment's
 share-grant contract through thin BFF adapters. Coffee-app no longer reads
@@ -220,11 +222,19 @@ for these analytics.
 
 ## Cherry Runtime and tool flow
 
-Coffee-app owns Cherry Runtime's user-facing orchestration. Its chat route builds a session-mode `ParchmentClient` from
-`@purveyors/sdk` and passes it into app-owned tool adapters. The adapters own LLM
-schemas, permission checks, proposal and confirmation flows, compact model
-output, and UI artifacts. Parchment owns shared data access and reusable business
-behavior behind HTTP endpoints.
+Parchment owns Cherry Runtime's model-facing orchestration: agent-role selection,
+prompts, model/provider selection, tool schemas and execution, request budgets,
+and the incremental AI SDK stream. Tool execution uses owner-bound Parchment
+capabilities in-process, without routing back through coffee-app or Parchment's
+public HTTP API.
+
+Coffee-app remains the browser session and presentation boundary. Its `/api/chat`
+route admits a trusted entitled session, forwards the request through
+`ParchmentClient.conversation.chat.stream`, and returns the upstream response
+without buffering. The Svelte AI SDK client continues to consume the same-origin
+UI-message stream and render structured tool parts, evidence blocks, proposal
+cards, cancellation, retry, and confirmation UX. Browser credentials never call
+Parchment or the provider directly.
 
 Entitlements select the runtime role: Parchment Intelligence-only access uses the
 Cherry Green Agent, Mallard Studio-only access uses the Cherry Roast Agent, and
@@ -237,9 +247,9 @@ layer is the API contract and generated SDK, not CLI source code. Historical
 plans in which coffee-app imported `@purveyors/cli/*` describe a former
 architecture and are not current guidance.
 
-Cherry Runtime's `price_index_read` adapter consumes `ParchmentClient.priceIndex.list`
-through the request's session-mode client and maps the API response into its
-app-owned tool result. It no longer queries shared price-index storage directly.
+Cherry Runtime's `price_index_read` tool consumes the canonical price-index
+capability inside Parchment. It no longer queries shared price-index storage from
+coffee-app or makes a self-HTTP request during the tool loop.
 
 The analytics page's historical price chart consumes
 `ParchmentClient.priceIndex.history` through the request's session-mode client.
@@ -248,11 +258,11 @@ Parchment Intelligence sessions receive the entitled 365-day window. Coffee-app
 paginates the typed response and retains only presentation mapping into its
 existing chart shape; it no longer reads `price_index_snapshots` directly.
 
-Cherry Runtime's `find_similar_beans` adapter likewise consumes
-`ParchmentClient.catalog.similar`. Bean matching remains available only where
+Cherry Runtime's `find_similar_beans` tool likewise uses Parchment's canonical
+similarity capability in-process. Bean matching remains available only where
 Parchment grants `canUseBeanMatching`; PPI access by itself does not widen that
 capability or the catalog row projection. The former service-role Supabase RPC
-implementation and duplicated similarity classifier have been removed from
+implementation and duplicated similarity classifier remain retired from
 coffee-app.
 
 ## Near-term protocol direction

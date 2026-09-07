@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { newsletterName } from '$lib/newsletter';
 	import type { PageData } from './$types';
 	import MarketBriefHeroFallback from '$lib/components/blog/MarketBriefHeroFallback.svelte';
 	import { formatMarketBriefEdition } from '$lib/types/blog.types';
@@ -56,7 +57,7 @@
 					{#if post.format === 'market-brief'}
 						<span class="text-on-dark/20">·</span>
 						<span class="rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent">
-							Market Brief · Edition {formatMarketBriefEdition(post.edition!)}
+							{newsletterName(post)} · Edition {formatMarketBriefEdition(post.edition!)}
 						</span>
 					{/if}
 				</div>
@@ -65,7 +66,12 @@
 						<div
 							class="relative mb-4 aspect-[3/2] overflow-hidden rounded-md border border-on-dark/15"
 						>
-							<MarketBriefHeroFallback title={post.title} edition={post.edition!} compact />
+							<MarketBriefHeroFallback
+								title={post.title}
+								edition={post.edition!}
+								newsletter={post.newsletter}
+								compact
+							/>
 							<img
 								src={getHeroImage(post.slug)}
 								alt={post.title}

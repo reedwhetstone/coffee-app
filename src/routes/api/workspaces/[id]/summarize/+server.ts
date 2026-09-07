@@ -1,165 +1,36 @@
 import { json } from '@sveltejs/kit';
-import { CHERRY_RUNTIME_MODEL } from '$lib/server/cherryRuntime';
 import { requireChatAccess } from '$lib/server/auth';
+import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
+import {
+	compactConversationSummary,
+	legacyConversationError,
+	ParchmentConversationError
+} from '$lib/server/parchmentConversation';
 import type { RequestHandler } from './$types';
-import { OPENROUTER_API_KEY } from '$env/static/private';
 
-const WORKSPACE_SUMMARY_MAX_LENGTH = 2000;
-const WORKSPACE_SUMMARY_COOLDOWN_MS = 5 * 60 * 1000;
-const workspaceSummaryAttempts = new Map<string, number>();
-
-type MessagePart = {
-	type?: unknown;
-	text?: unknown;
-};
-
-function textFromParts(parts: unknown): string {
-	if (!Array.isArray(parts)) return '';
-
-	return parts
-		.map((part) => {
-			const messagePart = part as MessagePart;
-			return messagePart.type === 'text' && typeof messagePart.text === 'string'
-				? messagePart.text
-				: '';
-		})
-		.filter(Boolean)
-		.join('\n');
+function failure(error: unknown) {
+	if (error instanceof ParchmentConversationError) {
+		return json(legacyConversationError(error.body), { status: error.status });
+	}
+	if (error instanceof ParchmentConfigError) {
+		return json({ error: 'Conversation state is temporarily unavailable' }, { status: 503 });
+	}
+	const status = (error as { status?: number }).status || 500;
+	return json({ error: (error as Error).message }, { status });
 }
 
-export function _workspaceSummaryMessageText(message: {
-	content: string | null;
-	parts?: unknown;
-}): string {
-	return textFromParts(message.parts) || message.content || '';
-}
-
-export function _clampWorkspaceContextSummary(summary: string): string {
-	return summary.length > WORKSPACE_SUMMARY_MAX_LENGTH
-		? summary.slice(0, WORKSPACE_SUMMARY_MAX_LENGTH)
-		: summary;
-}
-
-export function _workspaceSummaryCooldownRemainingMs(
-	workspaceId: string,
-	now = Date.now()
-): number {
-	const lastAttemptAt = workspaceSummaryAttempts.get(workspaceId);
-	if (!lastAttemptAt) return 0;
-	return Math.max(0, WORKSPACE_SUMMARY_COOLDOWN_MS - (now - lastAttemptAt));
-}
-
-function reserveWorkspaceSummaryAttempt(workspaceId: string, now = Date.now()): number {
-	const remainingMs = _workspaceSummaryCooldownRemainingMs(workspaceId, now);
-	if (remainingMs > 0) return remainingMs;
-	workspaceSummaryAttempts.set(workspaceId, now);
-	return 0;
-}
-
-// POST /api/workspaces/[id]/summarize - Trigger context compaction
 export const POST: RequestHandler = async (event) => {
+	const workspaceId = event.params.id;
 	try {
-		const { user } = await requireChatAccess(event);
-		const workspaceId = event.params.id;
-
-		// Verify workspace ownership and get current summary
-		const { data: workspace, error: wsError } = await event.locals.supabase
-			.from('workspaces')
-			.select('id, context_summary, type')
-			.eq('id', workspaceId)
-			.eq('user_id', user.id)
-			.single();
-
-		if (wsError || !workspace) {
-			return json({ error: 'Workspace not found' }, { status: 404 });
-		}
-
-		const cooldownRemainingMs = reserveWorkspaceSummaryAttempt(workspaceId);
-		if (cooldownRemainingMs > 0) {
-			return json({
-				summary: workspace.context_summary,
-				skipped: true,
-				retry_after_ms: cooldownRemainingMs
-			});
-		}
-
-		// Fetch the most recent messages, then summarize them chronologically.
-		const { data: messages, error: msgError } = await event.locals.supabase
-			.from('workspace_messages')
-			.select('role, content, parts, created_at')
-			.eq('workspace_id', workspaceId)
-			.order('created_at', { ascending: false })
-			.limit(30);
-
-		if (msgError) {
-			workspaceSummaryAttempts.delete(workspaceId);
-			return json({ error: msgError.message }, { status: 500 });
-		}
-
-		if (!messages || messages.length < 4) {
-			workspaceSummaryAttempts.delete(workspaceId);
-			return json({ summary: workspace.context_summary, skipped: true });
-		}
-
-		// Build conversation text for summarization
-		const recentMessages = [...messages].reverse();
-		const conversationText = recentMessages
-			.map((m) => `${m.role}: ${_workspaceSummaryMessageText(m)}`)
-			.join('\n');
-
-		const existingSummary = workspace.context_summary || '';
-
-		const prompt = `CHERRY RUNTIME WORKSPACE COMPACTION
-Compact a coffee business workspace (type: ${workspace.type}) for future Cherry Runtime context.
-${existingSummary ? `Previous summary:\n${existingSummary}\n` : ''}
-Recent conversation:
-${conversationText}
-
-Produce a concise summary (max 500 words) that captures:
-1. Key facts discussed (specific coffees, roast profiles, inventory items)
-2. User preferences and decisions made
-3. Ongoing tasks or questions
-4. Any important context for future conversations
-
-Keep only what's relevant for continuing the conversation. Drop pleasantries and resolved questions.`;
-
-		const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${OPENROUTER_API_KEY}`
-			},
-			body: JSON.stringify({
-				model: CHERRY_RUNTIME_MODEL,
-				messages: [{ role: 'user', content: prompt }],
-				max_tokens: 800,
-				temperature: 0.3
-			})
+		await requireChatAccess(event);
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const result = await compactConversationSummary(client, workspaceId);
+		return json({
+			summary: result.contextSummary,
+			...(result.skipped ? { skipped: true } : {}),
+			...(result.retryAfterMs === undefined ? {} : { retry_after_ms: result.retryAfterMs })
 		});
-
-		if (!response.ok) {
-			workspaceSummaryAttempts.delete(workspaceId);
-			const err = await response.text();
-			return json({ error: `OpenRouter error: ${err}` }, { status: 502 });
-		}
-
-		const result = await response.json();
-		const summary = _clampWorkspaceContextSummary(result.choices?.[0]?.message?.content || '');
-
-		// Save summary to workspace
-		const { error: updateError } = await event.locals.supabase
-			.from('workspaces')
-			.update({ context_summary: summary })
-			.eq('id', workspaceId);
-
-		if (updateError) {
-			workspaceSummaryAttempts.delete(workspaceId);
-			return json({ error: updateError.message }, { status: 500 });
-		}
-
-		return json({ summary });
-	} catch (err) {
-		const status = (err as { status?: number }).status || 500;
-		return json({ error: (err as Error).message }, { status });
+	} catch (error) {
+		return failure(error);
 	}
 };

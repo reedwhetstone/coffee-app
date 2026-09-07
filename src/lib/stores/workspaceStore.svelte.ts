@@ -8,6 +8,10 @@ export interface Workspace {
 	canvas_state: CanvasState | Record<string, never>;
 	last_accessed_at: string;
 	created_at: string;
+	reset_epoch?: number;
+	canvas_version?: number;
+	summary_version?: number;
+	next_message_sequence?: number;
 }
 
 export interface WorkspaceMessage {
@@ -150,6 +154,20 @@ async function switchWorkspace(
 	}
 }
 
+async function refreshWorkspace(workspaceId: string): Promise<Workspace | null> {
+	try {
+		const res = await fetch(`/api/workspaces/${workspaceId}`);
+		if (!res.ok) throw new Error('Failed to refresh workspace');
+		const data = await res.json();
+		const workspace = data.workspace as Workspace;
+		workspaces = workspaces.map((item: Workspace) => (item.id === workspace.id ? workspace : item));
+		return workspace;
+	} catch (err) {
+		error = (err as Error).message;
+		return null;
+	}
+}
+
 async function saveMessages(
 	workspaceId: string,
 	messages: Array<{
@@ -162,12 +180,26 @@ async function saveMessages(
 	}>
 ): Promise<boolean> {
 	try {
+		const workspace = workspaces.find((item) => item.id === workspaceId);
 		const res = await fetch(`/api/workspaces/${workspaceId}/messages`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ messages })
+			body: JSON.stringify({
+				expected_reset_epoch: workspace?.reset_epoch ?? 0,
+				messages
+			})
 		});
 		if (!res.ok) throw new Error('Failed to save messages');
+		const data = await res.json();
+		workspaces = workspaces.map((item) =>
+			item.id === workspaceId
+				? {
+						...item,
+						reset_epoch: data.reset_epoch,
+						next_message_sequence: data.next_message_sequence
+					}
+				: item
+		);
 
 		// Update saved count
 		const prev = savedMessageCounts.get(workspaceId) || 0;
@@ -181,14 +213,41 @@ async function saveMessages(
 	}
 }
 
-async function saveCanvasState(workspaceId: string, canvasState: unknown): Promise<boolean> {
+async function saveCanvasState(
+	workspaceId: string,
+	canvasState: unknown,
+	retryOnConflict = true
+): Promise<boolean> {
 	try {
+		const workspace = workspaces.find((item) => item.id === workspaceId);
 		const res = await fetch(`/api/workspaces/${workspaceId}/canvas`, {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ canvas_state: canvasState })
+			body: JSON.stringify({
+				canvas_state: canvasState,
+				expected_reset_epoch: workspace?.reset_epoch ?? 0,
+				expected_canvas_version: workspace?.canvas_version ?? 0
+			})
 		});
-		if (!res.ok) throw new Error('Failed to save canvas state');
+		if (!res.ok) {
+			if (res.status === 409 && retryOnConflict) {
+				const refreshed = await refreshWorkspace(workspaceId);
+				if (!refreshed) throw new Error('Failed to refresh canvas state after a conflict');
+				return saveCanvasState(workspaceId, canvasState, false);
+			}
+			throw new Error('Failed to save canvas state');
+		}
+		const data = await res.json();
+		workspaces = workspaces.map((item) =>
+			item.id === workspaceId
+				? {
+						...item,
+						canvas_state: data.canvas_state,
+						canvas_version: data.canvas_version,
+						reset_epoch: data.reset_epoch
+					}
+				: item
+		);
 		return true;
 	} catch (err) {
 		error = (err as Error).message;
@@ -198,18 +257,24 @@ async function saveCanvasState(workspaceId: string, canvasState: unknown): Promi
 
 async function triggerSummarize(workspaceId: string): Promise<string | null> {
 	try {
-		const res = await fetch(`/api/workspaces/${workspaceId}/summarize`, {
-			method: 'POST'
-		});
-		if (!res.ok) throw new Error('Failed to summarize workspace');
-		const data = await res.json();
-		if (data.summary) {
-			// Update local workspace
-			workspaces = workspaces.map((w: Workspace) =>
-				w.id === workspaceId ? { ...w, context_summary: data.summary } : w
-			);
+		for (let attempt = 0; attempt < 2; attempt++) {
+			const res = await fetch(`/api/workspaces/${workspaceId}/summarize`, {
+				method: 'POST'
+			});
+			if (!res.ok) {
+				if (res.status === 409 && attempt === 0) continue;
+				throw new Error('Failed to summarize workspace');
+			}
+			const data = await res.json();
+			if (data.summary) {
+				// Update local workspace
+				workspaces = workspaces.map((w: Workspace) =>
+					w.id === workspaceId ? { ...w, context_summary: data.summary } : w
+				);
+			}
+			return data.summary || null;
 		}
-		return data.summary || null;
+		return null;
 	} catch (err) {
 		error = (err as Error).message;
 		return null;
@@ -258,6 +323,24 @@ function getSavedMessageCount(workspaceId: string): number {
 function resetSavedMessageCount(workspaceId: string): void {
 	savedMessageCounts = new Map(savedMessageCounts);
 	savedMessageCounts.set(workspaceId, 0);
+}
+
+function applyClearResult(
+	workspaceId: string,
+	result: { reset_epoch: number; summary_version: number; canvas_version: number }
+): void {
+	workspaces = workspaces.map((workspace) =>
+		workspace.id === workspaceId
+			? {
+					...workspace,
+					context_summary: '',
+					reset_epoch: result.reset_epoch,
+					summary_version: result.summary_version,
+					canvas_version: result.canvas_version,
+					next_message_sequence: 1
+				}
+			: workspace
+	);
 }
 
 // ─── UI Callbacks (registered by chat page, called by LeftSidebar) ──────────
@@ -339,11 +422,13 @@ export const workspaceStore = {
 	createAndActivateWorkspace,
 	saveMessages,
 	saveCanvasState,
+	refreshWorkspace,
 	triggerSummarize,
 	deleteWorkspace,
 	updateTitle,
 	getSavedMessageCount,
 	resetSavedMessageCount,
+	applyClearResult,
 	getPersistedWorkspaceId,
 	registerUICallbacks,
 	unregisterUICallbacks

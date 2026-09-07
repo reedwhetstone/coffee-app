@@ -1,3 +1,7 @@
+<script lang="ts">
+	import { NEWSLETTER } from '$lib/newsletter';
+</script>
+
 <div class="bg-background-primary-dark">
 	<div class="mx-auto max-w-7xl px-6 py-16 sm:py-24 lg:px-8">
 		<div class="xl:grid xl:grid-cols-3 xl:gap-8">
@@ -42,8 +46,8 @@
 								</a>
 							</li>
 							<li>
-								<a href="/market-wire" class="text-sm text-on-dark/70 hover:text-on-dark">
-									Market Brief
+								<a href={NEWSLETTER.path} class="text-sm text-on-dark/70 hover:text-on-dark">
+									{NEWSLETTER.shortName}
 								</a>
 							</li>
 							<li>

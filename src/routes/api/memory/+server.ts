@@ -1,50 +1,62 @@
 import { json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
+import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
+import {
+	legacyConversationError,
+	ParchmentConversationError
+} from '$lib/server/parchmentConversation';
 import { getUserMemory, saveUserMemory, USER_MEMORY_MAX_CHARS } from '$lib/server/userMemory';
 import type { RequestHandler } from './$types';
 
-// GET /api/memory — the user's persistent memory document
+function failure(error: unknown) {
+	if (error instanceof AuthError) return json({ error: error.message }, { status: error.status });
+	if (error instanceof ParchmentConversationError) {
+		return json(legacyConversationError(error.body), { status: error.status });
+	}
+	if (error instanceof ParchmentConfigError) {
+		return json({ error: 'Conversation memory is temporarily unavailable' }, { status: 503 });
+	}
+	return json({ error: 'Failed to access memory' }, { status: 500 });
+}
+
 export const GET: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireChatAccess(event);
-		const memory = await getUserMemory(event.locals.supabase, user.id);
-		return json({
-			content: memory?.content ?? '',
-			updated_at: memory?.updated_at ?? null,
-			updated_by: memory?.updated_by ?? null
-		});
+		await requireChatAccess(event);
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const memory = await getUserMemory(client);
+		return json(memory);
 	} catch (error) {
-		if (error instanceof AuthError) return json({ error: error.message }, { status: error.status });
-		return json({ error: 'Failed to load memory' }, { status: 500 });
+		return failure(error);
 	}
 };
 
-const putSchema = z.object({ content: z.string().max(USER_MEMORY_MAX_CHARS) });
+const putSchema = z
+	.object({
+		content: z.string().max(USER_MEMORY_MAX_CHARS),
+		expected_version: z.number().int().min(0)
+	})
+	.strict();
 
-// PUT /api/memory — manual edit of the memory document
 export const PUT: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireChatAccess(event);
-		const parsed = putSchema.safeParse(await event.request.json());
+		await requireChatAccess(event);
+		const parsed = putSchema.safeParse(await event.request.json().catch(() => null));
 		if (!parsed.success) {
 			return json(
 				{ error: `Memory document must be at most ${USER_MEMORY_MAX_CHARS} characters` },
 				{ status: 400 }
 			);
 		}
-
-		const { error } = await saveUserMemory(
-			event.locals.supabase,
-			user.id,
+		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const memory = await saveUserMemory(
+			client,
 			parsed.data.content,
-			'user'
+			'user',
+			parsed.data.expected_version
 		);
-		if (error) return json({ error }, { status: 500 });
-
-		return json({ ok: true });
+		return json({ ok: true, ...memory });
 	} catch (error) {
-		if (error instanceof AuthError) return json({ error: error.message }, { status: error.status });
-		return json({ error: 'Failed to save memory' }, { status: 500 });
+		return failure(error);
 	}
 };

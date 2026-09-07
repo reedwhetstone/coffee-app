@@ -1,3 +1,4 @@
+import { NEWSLETTER } from '$lib/newsletter';
 import type { RequestHandler } from './$types';
 import { COFFEEBENCH_V1_RELEASE_DATE } from '$lib/benchmarks/coffeebench';
 import { getPublishedPosts } from '$lib/server/blog';
@@ -89,9 +90,9 @@ ${coffeeBenchEntry}
 		<priority>0.8</priority>
 	</url>
 ${blogPostEntries}
-	<!-- Market Brief subscription landing -->
+	<!-- Newsletter subscription landing -->
 	<url>
-		<loc>${baseUrl}/market-wire</loc>
+		<loc>${baseUrl}${NEWSLETTER.path}</loc>
 		<lastmod>${currentDate}</lastmod>
 		<changefreq>weekly</changefreq>
 		<priority>0.8</priority>

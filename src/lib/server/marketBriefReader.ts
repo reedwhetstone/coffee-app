@@ -110,8 +110,135 @@ export function tokenizeMarketBrief(source: string, canonicalUrl: string): Token
 	if (containsSvelteConstruct(tokens)) {
 		throw new Error('Market Brief email source cannot contain Svelte expressions or directives');
 	}
+	const spotlights = tokens.filter(
+		(token) =>
+			token.type === 'heading' &&
+			token.depth === 2 &&
+			normalizeMarketBriefSectionTitle(token.tokens ?? []).toLowerCase() === 'research spotlight'
+	);
+	if (spotlights.length > 1) {
+		throw new Error('Market Brief supports at most one Research Spotlight per edition');
+	}
 	validateTokens(tokens, canonicalUrl);
 	return tokens;
+}
+
+function escapeStructuredHtml(value: string): string {
+	return value
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&#39;');
+}
+
+function escapeStructuredMarkdown(value: string): string {
+	return escapeStructuredHtml(value)
+		.replace(/([\\`*_[\]{}()#+.!|>-])/g, '\\$1')
+		.replace(/\r?\n/g, ' ');
+}
+
+// Structured frontmatter is plain text, not Markdown: construct tokens directly so
+// punctuation, HTML, and Svelte-like strings cannot become executable markup.
+export function withStructuredMarketBriefTokens(
+	post: BlogPost,
+	body: Token[],
+	canonicalUrl: string
+): Token[] {
+	const text = (value: string): Tokens.Text => ({
+		type: 'text',
+		raw: value,
+		text: escapeStructuredHtml(value)
+	});
+	const paragraph = (value: string): Tokens.Paragraph => ({
+		type: 'paragraph',
+		raw: `${escapeStructuredMarkdown(value)}\n\n`,
+		text: value,
+		tokens: [text(value)]
+	});
+	const heading = (value: string, depth: number): Tokens.Heading => ({
+		type: 'heading',
+		raw: `\n\n${'#'.repeat(depth)} ${escapeStructuredMarkdown(value)}\n\n`,
+		depth,
+		text: value,
+		tokens: [text(value)]
+	});
+	const links = (entries: [string, string][]): Tokens.Paragraph => ({
+		type: 'paragraph',
+		raw: `${entries.map(([label, url]) => `[${escapeStructuredMarkdown(label)}](<${resolveMarketBriefHref(url, canonicalUrl).replaceAll('<', '%3C').replaceAll('>', '%3E')}>)`).join(' · ')}\n\n`,
+		text: '',
+		tokens: entries.flatMap(([label, url], index): Token[] => [
+			...(index ? [text(' · ')] : []),
+			{
+				type: 'link',
+				raw: '',
+				text: label,
+				href: resolveMarketBriefHref(url, canonicalUrl),
+				tokens: [text(label)]
+			}
+		])
+	});
+	const result = [...body];
+	const snapshot = post.marketSnapshot;
+	if (snapshot) {
+		result.unshift(
+			heading('Market snapshot', 2),
+			paragraph(`As of ${snapshot.asOf} · ${snapshot.scope}`),
+			paragraph(
+				`${snapshot.movementLabel}: ${snapshot.movementPercent > 0 ? '+' : ''}${snapshot.movementPercent}% · ${snapshot.listings} listings · ${snapshot.matchedListings} matched listings · ${snapshot.suppliers} suppliers`
+			),
+			paragraph(
+				`${snapshot.totalSignals} signals: ${snapshot.belowBenchmark} below benchmark · ${snapshot.scoreOutliers} score outliers · ${snapshot.priceDrops} price drops`
+			),
+			links([
+				['Price statistics', snapshot.priceStatsUrl],
+				['Market signals', snapshot.signalsUrl]
+			])
+		);
+	}
+	if (post.coffeeHighlights?.length) {
+		const coffees = post.coffeeHighlights.flatMap((coffee): Token[] => [
+			heading(coffee.name, 3),
+			paragraph(
+				[coffee.supplier, coffee.origin, coffee.region, coffee.process, coffee.variety]
+					.filter(Boolean)
+					.join(' · ')
+			),
+			paragraph(coffee.rationale),
+			paragraph(
+				`Listed price for this edition: $${coffee.pricePerLb.toFixed(2)}/lb${coffee.priceContext ? ` · ${coffee.priceContext}` : ''}`
+			),
+			paragraph(coffee.stockedDate ? `Stocked ${coffee.stockedDate}` : 'Available when selected'),
+			links([
+				['View catalog coffee', coffee.catalogUrl],
+				['Supplier listing', coffee.supplierUrl]
+			])
+		]);
+		// Preserve legacy authored highlights; add the structured cards within that
+		// section, or before sources when the web cards own all highlight content.
+		const highlightIndex = result.findIndex(
+			(token) =>
+				token.type === 'heading' &&
+				token.depth === 2 &&
+				/^coffee highlights$/i.test(token.text.trim())
+		);
+		const nextSection =
+			highlightIndex >= 0
+				? result.findIndex(
+						(token, index) => index > highlightIndex && token.type === 'heading' && token.depth <= 2
+					)
+				: result.findIndex(
+						(token) =>
+							token.type === 'heading' && token.depth === 2 && /^sources$/i.test(token.text.trim())
+					);
+		result.splice(
+			nextSection < 0 ? result.length : nextSection,
+			0,
+			...(highlightIndex < 0 ? [heading('Coffee highlights', 2)] : []),
+			...coffees
+		);
+	}
+	return result;
 }
 
 function isRelativeMarkdownTarget(value: string): boolean {
@@ -230,6 +357,10 @@ function inlineTokensText(tokens: Token[]): string {
 		.join('');
 }
 
+function normalizeMarketBriefSectionTitle(tokens: Token[]): string {
+	return inlineTokensText(tokens).replace(/\s+/gu, ' ').trim();
+}
+
 export function buildMarketBriefReaderExport(
 	post: BlogPost,
 	source: string
@@ -249,9 +380,7 @@ export function buildMarketBriefReaderExport(
 		if (token.type !== 'heading' || (token as Tokens.Heading).depth !== 2) continue;
 
 		const heading = token as Tokens.Heading;
-		const title = inlineTokensText(heading.tokens ?? [])
-			.replace(/\s+/g, ' ')
-			.trim();
+		const title = normalizeMarketBriefSectionTitle(heading.tokens ?? []);
 		const id = slugger.slug(title);
 		if (title.toLowerCase() === 'sources') continue;
 
@@ -268,16 +397,26 @@ export function buildMarketBriefReaderExport(
 			title,
 			kind: normalizedTitle.startsWith('market read')
 				? 'market-read'
-				: normalizedTitle === 'coffee highlights'
-					? 'coffee-highlights'
-					: 'take',
+				: normalizedTitle === 'research spotlight'
+					? 'research-spotlight'
+					: normalizedTitle === 'coffee highlights'
+						? 'coffee-highlights'
+						: 'take',
 			html: marked.parser(bodyTokens)
 		});
 	}
 
+	const portableTokens = withStructuredMarketBriefTokens(post, tokens, canonicalUrl);
+	const portableMarkdown =
+		post.marketSnapshot || post.coffeeHighlights?.length
+			? portableTokens
+					.map((token) => token.raw)
+					.join('')
+					.trim()
+			: markdown;
 	return {
 		canonicalUrl,
-		markdown: `${normalizeMarkdownTargets(markdown, tokens, canonicalUrl)}\n`,
+		markdown: `${normalizeMarkdownTargets(portableMarkdown, portableTokens, canonicalUrl)}\n`,
 		sections
 	};
 }

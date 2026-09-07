@@ -1,8 +1,10 @@
+import { NEWSLETTER, newsletterName } from '$lib/newsletter';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { buildPublicMeta, resolveBlogPostSocialImage } from '$lib/seo/meta';
 import { getAllPosts } from '$lib/server/blog';
 import type { MarketBriefDeploymentManifest } from '$lib/server/marketBriefEmail';
+import { marketBriefBuildEnvironment } from '$lib/server/marketBriefDeployment';
 import { createSchemaService } from '$lib/services/schemaService';
 import { getBlogPostPath, type MarketBriefReaderExport } from '$lib/types/blog.types';
 
@@ -30,12 +32,15 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			throw error(500, `Market Brief source not found: ${post.slug}`);
 		}
 		marketBriefReader = buildMarketBriefReaderExport(post, source);
-		if (process.env.VERCEL_ENV === 'production') {
+		if (marketBriefBuildEnvironment.VERCEL_ENV === 'production') {
 			try {
 				const { buildMarketBriefDeploymentManifest, buildMarketBriefEmailProjection } =
 					await import('$lib/server/marketBriefEmail');
 				const projection = buildMarketBriefEmailProjection(post, source);
-				marketBriefDeployment = buildMarketBriefDeploymentManifest(projection, process.env);
+				marketBriefDeployment = buildMarketBriefDeploymentManifest(
+					projection,
+					marketBriefBuildEnvironment
+				);
 			} catch (cause) {
 				// The reader export above already validates the canonical source. Deployment metadata is
 				// optional public evidence: omitting it keeps the article readable while forcing any future
@@ -67,14 +72,14 @@ export const load: PageServerLoad = async ({ params, url }) => {
 				height: socialImage.height
 			},
 			keywords: post.tags,
-			articleSection: isMarketBrief ? 'Market Brief' : post.pillar,
+			articleSection: isMarketBrief ? newsletterName(post) : post.pillar,
 			...(isMarketBrief
 				? {
 						position: post.edition,
 						isPartOf: {
 							'@type': 'CreativeWorkSeries',
-							name: 'Purveyors Market Brief',
-							url: `${baseUrl}/blog`
+							name: newsletterName(post, true),
+							url: `${baseUrl}${post.newsletter === 'fieldnotes' ? NEWSLETTER.path : '/blog'}`
 						}
 					}
 				: {}),
@@ -89,7 +94,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		meta: buildPublicMeta({
 			baseUrl,
 			path: postPath,
-			title: `${post.title} | ${isMarketBrief ? 'Purveyors Market Brief' : 'Purveyors Blog'}`,
+			title: `${post.title} | ${isMarketBrief ? newsletterName(post, true) : 'Purveyors Blog'}`,
 			description: post.description,
 			keywords: post.tags,
 			ogTitle: post.title,
@@ -104,7 +109,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 				publishedTime: post.date,
 				modifiedTime: post.updated ?? post.date,
 				author,
-				section: isMarketBrief ? 'Market Brief' : post.pillar,
+				section: isMarketBrief ? newsletterName(post) : post.pillar,
 				tags: post.tags
 			}
 		})

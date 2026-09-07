@@ -48,6 +48,8 @@ export interface BlogPostFrontmatter {
 	author?: string;
 	readingTime?: number;
 	format?: BlogFormat;
+	/** Opt-in identity for new editions; absence preserves historical branding. */
+	newsletter?: 'fieldnotes';
 	edition?: number;
 	marketSnapshot?: MarketBriefSnapshot;
 	coffeeHighlights?: MarketBriefCoffeeHighlight[];
@@ -61,7 +63,7 @@ export interface BlogPost extends Omit<BlogPostFrontmatter, 'format'> {
 export interface MarketBriefReaderSection {
 	id: string;
 	title: string;
-	kind: 'market-read' | 'take' | 'coffee-highlights';
+	kind: 'market-read' | 'take' | 'research-spotlight' | 'coffee-highlights';
 	html: string;
 }
 
@@ -77,10 +79,12 @@ export const BLOG_TAGS = [
 	'coffee',
 	'data',
 	'engineering',
+	'ideas',
 	'enterprise',
 	'product',
 	'strategy',
-	'supply-chain'
+	'supply-chain',
+	'technology'
 ] as const;
 
 export type BlogTag = (typeof BLOG_TAGS)[number];

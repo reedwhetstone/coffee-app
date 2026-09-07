@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/svelte';
+import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
 	MarketBriefCoffeeHighlight,
@@ -76,6 +76,17 @@ const coffeeHighlights: MarketBriefCoffeeHighlight[] = [
 ];
 
 describe('Market Brief article presentation', () => {
+	it('renders short takes without mandatory market, research, or coffee sections', () => {
+		render(MarketBriefArticle, {
+			title: 'Ideas worth trying',
+			reader: { ...reader, sections: reader.sections.filter((section) => section.kind === 'take') },
+			coffeeHighlights: []
+		});
+		expect(screen.getByRole('heading', { name: 'Supply tightens' })).toBeVisible();
+		expect(screen.queryByRole('heading', { name: 'Coffee highlights' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('heading', { name: 'Research Spotlight' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('heading', { name: 'Market snapshot' })).not.toBeInTheDocument();
+	});
 	beforeEach(() => {
 		writeText.mockReset();
 		writeText.mockResolvedValue(undefined);
@@ -94,6 +105,7 @@ describe('Market Brief article presentation', () => {
 		});
 
 		expect(screen.getByRole('heading', { name: 'This week in numbers' })).toBeInTheDocument();
+		expect(screen.queryByRole('region', { name: 'Research Spotlight' })).not.toBeInTheDocument();
 		expect(screen.getByText('524')).toBeInTheDocument();
 		expect(screen.getByText('All-market value signals')).toBeInTheDocument();
 		expect(screen.getByText('124 public all-market signals')).toBeInTheDocument();
@@ -111,6 +123,55 @@ describe('Market Brief article presentation', () => {
 		expect(screen.getByRole('heading', { name: 'Kahondo Station Natural' })).toBeInTheDocument();
 		expect(screen.getByText('$8.69')).toBeInTheDocument();
 		expect(screen.getByText('blackberry jam')).toBeInTheDocument();
+	});
+
+	it('renders and shares research separately without incrementing the numbered takes', async () => {
+		const research = {
+			id: 'research-spotlight',
+			title: 'Research Spotlight',
+			kind: 'research-spotlight' as const,
+			html: '<h3>How storage affects aroma</h3><p>A <a href="https://example.com/study">storage study</a> compares two conditions.</p>'
+		};
+		render(MarketBriefArticle, {
+			title: 'Coffee finds a floor',
+			reader: { ...reader, sections: [...reader.sections, research] },
+			snapshot,
+			coffeeHighlights
+		});
+		const spotlight = screen.getByRole('region', { name: 'Research Spotlight' });
+		expect(spotlight).toHaveAttribute('id', 'research-spotlight');
+		expect(
+			within(spotlight).getByRole('heading', { name: 'How storage affects aroma', level: 3 })
+		).toBeInTheDocument();
+		expect(within(spotlight).getByRole('link', { name: 'storage study' })).toHaveAttribute(
+			'href',
+			'https://example.com/study'
+		);
+		expect(screen.getAllByRole('button', { name: 'Copy take link' })).toHaveLength(1);
+		expect(within(spotlight).queryByText('02')).not.toBeInTheDocument();
+		await fireEvent.click(within(spotlight).getByRole('button', { name: 'Copy research link' }));
+		expect(writeText).toHaveBeenCalledWith(`${reader.canonicalUrl}#research-spotlight`);
+		expect(within(spotlight).getByRole('link', { name: 'Reddit' })).toHaveAttribute(
+			'href',
+			expect.stringContaining('research-spotlight')
+		);
+		expect(screen.getByText('blackberry jam')).toBeInTheDocument();
+	});
+
+	it('retains signal composition without requiring market commentary', () => {
+		render(MarketBriefArticle, {
+			title: 'A quiet week',
+			reader: {
+				...reader,
+				sections: reader.sections.filter((section) => section.kind !== 'market-read')
+			},
+			snapshot,
+			coffeeHighlights
+		});
+		expect(screen.getByRole('region', { name: 'Market signals' })).toBeInTheDocument();
+		expect(screen.getByText('124 public all-market signals')).toBeInTheDocument();
+		expect(screen.queryByText('Market read')).not.toBeInTheDocument();
+		expect(document.getElementById(`coffee-${coffeeHighlights[0]!.catalogId}`)).toBeInTheDocument();
 	});
 
 	it('keeps each take share link inside its own card', async () => {

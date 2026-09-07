@@ -29,6 +29,7 @@
 	import MarketReadSection from '$lib/components/analytics/sections/MarketReadSection.svelte';
 	import KpiStripSection from '$lib/components/analytics/sections/KpiStripSection.svelte';
 	import WatchlistSignalsSection from '$lib/components/analytics/sections/WatchlistSignalsSection.svelte';
+	import MatchedPriceComparison from '$lib/components/analytics/MatchedPriceComparison.svelte';
 	import EvidenceChartsSection from '$lib/components/analytics/sections/EvidenceChartsSection.svelte';
 	import ParchmentIntelligenceSection from '$lib/components/analytics/sections/ParchmentIntelligenceSection.svelte';
 	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
@@ -1160,6 +1161,10 @@
 		</section>
 	{/if}
 </section>
+
+{#if isParchmentIntelligence}
+	<MatchedPriceComparison {viewMode} />
+{/if}
 
 {#if !bodyReady}
 	<!-- Same skeleton contract the root-layout route skeleton renders, minus the

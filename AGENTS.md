@@ -15,7 +15,7 @@ This repo is the Purveyors web platform. It includes:
 - the internal route layer that powers the first-party product
 - the `/docs` tree for product and CLI guidance; the generated API reference lives at `api.purveyors.io/docs`
 
-Cherry Runtime's server-side tools depend on `@purveyors/sdk`; `@purveyors/cli` is a separate first-class Parchment API client.
+Coffee-app's Cherry Runtime transport depends on `@purveyors/sdk`; model-facing orchestration and tools execute in Parchment, while `@purveyors/cli` remains a separate first-class API client.
 
 ## Stack
 
@@ -25,7 +25,7 @@ Cherry Runtime's server-side tools depend on `@purveyors/sdk`; `@purveyors/cli` 
 - Tailwind CSS
 - Supabase
 - Stripe.js for embedded Checkout presentation
-- OpenRouter via Vercel AI SDK
+- Svelte AI SDK presentation over Parchment-owned OpenRouter orchestration
 - `@purveyors/sdk`
 - LayerCake (charts and analytics components)
 
@@ -110,7 +110,8 @@ Reporting guidance:
 - `/api`
 - `/docs`
 - `/blog`
-- `/market-wire` (Market Brief)
+- `/fieldnotes` (Purveyors Fieldnotes)
+- `/market-wire` (compatibility route for Fieldnotes and historical Market Brief links)
 - `/bot`
 
 ### Authenticated product routes
@@ -213,7 +214,7 @@ When changing docs, keep these sources aligned:
 
 ## CLI relationship
 
-The web app uses session-mode `@purveyors/sdk` clients in Cherry Runtime's server-side tool adapters. It does not import `@purveyors/cli`.
+The web app uses a session-mode `@purveyors/sdk` client as an unbuffered Cherry Runtime BFF. Model-facing tools execute inside Parchment. Coffee-app does not import `@purveyors/cli`.
 
 CLI auth and output rules matter here too:
 

@@ -1,0 +1,23 @@
+---
+title: 'What your coffee tools leave out'
+date: '2026-09-06'
+description: 'A forecasting model, a brewing variable, and a roasting critique point to a useful question: what context should our coffee tools pay attention to?'
+tags: ['coffee', 'technology', 'ideas']
+pillar: 'market-intelligence'
+draft: false
+format: 'market-brief'
+newsletter: 'fieldnotes'
+edition: 3
+---
+
+## A forecast that knows what you have planned
+
+Google's latest TimesFM release can combine related histories with known future inputs. The interesting coffee question is whether a planned subscription shipment or market day could tell a tiny roastery more than a longer sales history alone. We'd start with one coffee and a simple question: does adding the calendar improve the forecast over assuming next week resembles this one? The useful starting point might be a better record of what you plan to do, rather than a more elaborate model. Explore: [TimesFM-3: A zero-shot foundation model for multivariate forecasting (Google Research)](https://research.google/blog/timesfm-3-a-zero-shot-foundation-model-for-multivariate-forecasting/).
+
+## Your recipe might be missing its shape
+
+Jonathan Gagné's piece on bed depth is worth revisiting: changing dripper size involves more than adjusting the coffee dose, and his idealized comparison holds several other brewing conditions fixed. That suggests an intriguing design question for a brewing assistant. What if it asked about bed geometry before proposing another grind adjustment? We would try recording the brewer and bed depth alongside a familiar recipe, then compare what changes when scaling the brew. An apparently complete recipe can still leave out an important part of the setup. Explore: [The Importance of Bed Depth (Coffee ad Astra)](https://coffeeadastra.com/2025/11/28/the-pulsar-mini-and-the-importance-of-bed-depth/).
+
+## Automation needs a window, not just a button
+
+In his account of changing roasters, Christopher Feran describes frustration with automated processes he could neither inspect nor meaningfully adjust. There is a useful software question hiding inside that hardware critique: what should a roasting assistant make visible? We'd want to see the observation that prompted a change, the control it affected, and a way to question the decision. Feran's longer piece is a good jumping-off point for thinking about which parts of a workflow you actually want to hand over. Explore: [Batch to the future: the Roest P3000 (Christopher Feran)](https://christopherferan.com/2026/03/10/batch-to-the-future-the-roest-p3000/).

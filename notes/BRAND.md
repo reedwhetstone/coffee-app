@@ -107,6 +107,10 @@ Avoid:
 - "The Green Agent believes this supplier is best."
 - "Ask Cherry what she thinks."
 
+## Newsletter identity
+
+**Purveyors Fieldnotes** is the weekly newsletter: “Coffee, technology, and ideas worth trying.” Its [editorial persona](EDITORIAL_PERSONA.md) narrows the reader to technically curious coffee people and guides short, source-grounded inspiration. This does not rename the company, change enterprise positioning, or create a Cherry character. Published Market Brief titles and links remain historical records.
+
 ## Voice
 
 The voice is direct, useful, and clear-eyed.

@@ -84,6 +84,12 @@ function validateMarketBriefPresentation(slug: string, metadata: BlogPostFrontma
 
 export function normalizeBlogPost(slug: string, metadata: BlogPostFrontmatter): BlogPost {
 	validateBlogPostTags(slug, metadata.tags);
+	if (
+		metadata.newsletter !== undefined &&
+		(metadata.newsletter !== 'fieldnotes' || metadata.format !== 'market-brief')
+	) {
+		throw new Error(`Blog post ${slug} uses an invalid newsletter identity`);
+	}
 
 	const rawFormat: unknown = metadata.format ?? 'essay';
 	if (typeof rawFormat !== 'string' || !isBlogFormat(rawFormat)) {

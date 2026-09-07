@@ -1542,7 +1542,7 @@ const docsPages: DocsPage[] = [
 							'POST',
 							'Chat access session',
 							'Internal product route',
-							'Streams Cherry AI responses with workspace context and tool execution.'
+							'Forwards an unbuffered Parchment-owned Cherry Runtime stream with workspace and page context. Coffee-app retains session admission and structured presentation.'
 						],
 						[
 							'/api/chat/execute-action',
@@ -1570,14 +1570,14 @@ const docsPages: DocsPage[] = [
 							'POST DELETE',
 							'Chat access session + ownership',
 							'Internal product route',
-							'POST accepts one message or an array and persists parts plus canvas mutations.'
+							'POST accepts a bounded message array and persists parts plus canvas mutations with payload-bound replay and reset-epoch fencing. DELETE clears messages with the same epoch fence.'
 						],
 						[
 							'/api/workspaces/[id]/canvas',
 							'POST PUT',
 							'Chat access session + ownership',
 							'Internal product route',
-							'Persists canvas_state; POST exists for sendBeacon compatibility.'
+							'Persists canvas_state with reset-epoch and canvas-version fencing; POST exists for sendBeacon compatibility.'
 						],
 						[
 							'/api/workspaces/[id]/summarize',
@@ -1892,14 +1892,15 @@ const docsPages: DocsPage[] = [
 			'Analytics is a product surface on Purveyors, not a standalone public API family, with session-auth roast analysis helpers behind the scenes.',
 		eyebrow: 'Market intelligence',
 		intro: [
-			'The /analytics page delivers market intelligence derived from the same normalized catalog that powers the public API. Public visitors can browse the core market overview: origin price trends, processing mix, origin price ranges, and the supplier/listing/origin stat bar. Parchment Intelligence users get the deeper supplier comparison, supplier health, arrivals, delistings, and extended trend modules.',
-			'Analytics is important to the product story, but only the aggregate /v1/price-index subset is exposed as a stable authenticated contract for entitled first-party sessions and customer API keys. Keep the distinction between product UI, internal helpers, and public REST contract explicit.'
+			'The /analytics page delivers market intelligence derived from the same normalized catalog that powers the public API. Public visitors can browse the core market overview: origin price trends, processing mix, origin price ranges, and the supplier/listing/origin stat bar. Parchment Intelligence users get the deeper supplier comparison, supplier health, arrivals, delistings, extended trend modules, and an observed comparison of the same fresh-priced listings across two dates.',
+			"Analytics is important to the product story, but only the aggregate /v1/price-index subset is exposed as a stable authenticated contract for entitled first-party sessions and customer API keys. The matched comparison is an entitled web workflow: coffee-app's internal session-backed /api/analytics/price-comparisons BFF relays Parchment's upstream /v1/price-index/comparisons contract. Keep that distinction between product UI, internal helpers, upstream contracts, and the stable public REST surface explicit."
 		],
 		sections: [
 			{
 				title: 'What is public today',
 				bullets: [
 					'/analytics is a web product surface, while /v1/price-index is the authenticated Parchment Intelligence contract for the aggregate price-index subset backed by price_index_snapshots.',
+					'Parchment Intelligence users see available 30-day price changes automatically, with only supported origins and separate retail and wholesale results. Coverage is the share of starting coffees matched on both dates: at least 50%, five coffees, and three suppliers. New listings become eligible as the 30-day window advances; unmatched starting coffees reduce coverage. The internal session-backed /api/analytics/price-comparisons BFF forwards the upstream /v1/price-index/comparisons response; it is not a new public coffee-app API contract.',
 					'/v1/price-index intentionally starts with JSON pagination only. Do not document CSV, alerts, watchlists, webhooks, or supplier-level raw rows as supported.',
 					'Logged-out visitors and logged-in viewers share the same core analytics view. The server resolves Parchment Intelligence access separately and uses it to decide whether to load the gated modules.',
 					'Public chart data includes 90 days of price-index snapshots, current stocked processing distribution, current origin price ranges, recent-arrival/delisting counts for the upgrade preview, and the latest market summary counts.',
@@ -2898,9 +2899,9 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'How the web app and CLI stay aligned',
 				bullets: [
-					'The app uses session-authenticated @purveyors/sdk clients for migrated chat operations. The CLI remains a separate Parchment API client and terminal surface; neither runtime imports the other.',
+					'The app uses a session-authenticated @purveyors/sdk client to forward Parchment-owned Cherry Runtime streams without buffering. The CLI remains a separate Parchment API client and terminal surface; neither runtime imports the other.',
 					'Coffee-app still has direct Supabase paths, including some inventory, roast, sales, tasting, catalog, market, and agent helpers. Those are tracked migration debt, not evidence that the CLI is the app integration layer.',
-					'Read tools execute Parchment API operations directly. Write tools stay user-confirmed through proposal cards and constrained execution routes.',
+					'Cherry read and proposal tools execute inside Parchment. Writes stay user-confirmed through proposal cards and constrained execution routes.',
 					'This API-first architecture keeps terminal, browser, and agent workflows aligned on the same contracts without runtime package coupling.'
 				],
 				codeBlocks: [

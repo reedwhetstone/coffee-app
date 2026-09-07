@@ -3,6 +3,18 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const retiredRoutes = ['bean-tasting', 'coffee-chunks', 'green-coffee-inv', 'roast-profiles'];
+const retiredChatRuntimePaths = [
+	'src/lib/services/tools.ts',
+	'src/lib/services/tools/index.ts',
+	'src/lib/services/tools/catalogTools.ts',
+	'src/lib/services/tools/inventoryTools.ts',
+	'src/lib/services/tools/marketTools.ts',
+	'src/lib/services/tools/presentationTools.ts',
+	'src/lib/services/tools/roastTools.ts',
+	'src/lib/services/tools/tastingTools.ts',
+	'src/lib/server/agentPriceIndex.ts',
+	'src/lib/server/agentSimilarity.ts'
+];
 const sourceRoot = resolve('src');
 
 function runtimeSourceFiles(directory: string): string[] {
@@ -22,6 +34,9 @@ describe('legacy tool route retirement', () => {
 			expect(existsSync(resolve(`src/routes/api/tools/${route}/+server.ts`))).toBe(false);
 		}
 		expect(existsSync(resolve('src/lib/services/ragService.ts'))).toBe(false);
+		for (const path of retiredChatRuntimePaths) {
+			expect(existsSync(resolve(path))).toBe(false);
+		}
 	});
 
 	it('prevents the retired RAG RPC and route paths from returning to runtime source', () => {
@@ -37,13 +52,32 @@ describe('legacy tool route retirement', () => {
 		expect(offenders).toEqual([]);
 	});
 
-	it('retains the shared provider credential while active callers still need it', () => {
-		for (const path of [
-			'src/routes/api/chat/+server.ts',
-			'src/routes/api/workspaces/[id]/summarize/+server.ts',
-			'src/routes/api/memory/dream/+server.ts'
+	it('keeps provider credentials only in the remaining local memory caller', () => {
+		expect(readFileSync(resolve('src/routes/api/memory/dream/+server.ts'), 'utf8')).toContain(
+			'OPENROUTER_API_KEY'
+		);
+		const chatRoute = readFileSync(resolve('src/routes/api/chat/+server.ts'), 'utf8');
+		for (const retiredChatDependency of [
+			'OPENROUTER_API_KEY',
+			'openrouter.ai',
+			'CHERRY_RUNTIME_MODEL',
+			'createOpenAI',
+			'streamText',
+			'createChatTools'
 		]) {
-			expect(readFileSync(resolve(path), 'utf8')).toContain('OPENROUTER_API_KEY');
+			expect(chatRoute).not.toContain(retiredChatDependency);
+		}
+		expect(chatRoute).toContain('client.conversation.chat.stream');
+		const summaryRoute = readFileSync(
+			resolve('src/routes/api/workspaces/[id]/summarize/+server.ts'),
+			'utf8'
+		);
+		for (const retiredSummaryDependency of [
+			'OPENROUTER_API_KEY',
+			'openrouter.ai',
+			'CHERRY_RUNTIME_MODEL'
+		]) {
+			expect(summaryRoute).not.toContain(retiredSummaryDependency);
 		}
 	});
 });
