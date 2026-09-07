@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import legacy from '../../../../notes/analytics/2026-09-06-price-history/fixtures/legacy-medians.json';
-import published from '../../../../notes/analytics/2026-09-06-price-history/fixtures/published-medians.json';
+import { rows } from './correctPriceSpikes.fixture';
 import { correctPriceSpikes } from './correctPriceSpikes';
-const rows = [...legacy, ...published].map((r) => ({
-	...r,
-	price_avg: r.price_median,
-	price_p25: null,
-	price_p75: null
-}));
 describe('bounded incident correction', () => {
 	it('preserves every point outside the two incidents, including early history and current endpoints', () => {
 		const result = correctPriceSpikes(rows);
