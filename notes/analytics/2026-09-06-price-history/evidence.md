@@ -1,3 +1,5 @@
+> Historical audit. The reconstruction proposals below were rejected by the September 6 visual review. Current scope and behavior: [README](README.md).
+
 # Origin price evidence audit — 2026-09-06 UTC
 
 All production reads used `BEGIN TRANSACTION READ ONLY`; verified `current_user=openclaw_readonly` and `transaction_read_only=on`. No production data or schema was modified. Evidence below is live, not inherited June incident assumptions.

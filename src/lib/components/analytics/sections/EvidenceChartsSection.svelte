@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { correctPriceSpikes } from '../correctPriceSpikes';
 	import ExpandablePanel from '$lib/components/analytics/ExpandablePanel.svelte';
 	import AnalyticsLoadingPanel from '$lib/components/analytics/AnalyticsLoadingPanel.svelte';
 	import type {
@@ -52,17 +53,28 @@
 	let originChartExpanded = $state(false);
 	let trendRange = $state<TrendRange>('90d');
 
-	let trendStartDate = $derived.by(() => {
-		const daysBack = trendRange === '6m' ? 183 : trendRange === '1y' ? 365 : 90;
-		return new Date(Date.now() - daysBack * 86_400_000).toISOString().slice(0, 10);
+	let correctedSnapshots = $derived(correctPriceSpikes(filteredSnapshots));
+
+	let trendSnapshots = $derived.by(() => {
+		const now = new Date();
+		let daysBack: number;
+		if (trendRange === '6m') daysBack = 183;
+		else if (trendRange === '1y') daysBack = 365;
+		else daysBack = 90;
+		const cutoff = new Date(now);
+		cutoff.setDate(cutoff.getDate() - daysBack);
+		const cutoffStr = cutoff.toISOString().split('T')[0];
+		return correctedSnapshots.filter((s) => s.snapshot_date >= cutoffStr);
 	});
+
+	let lineSnapshots = $derived(trendSnapshots.filter((s) => s.price_avg != null));
 </script>
 
 <section class="mb-8 space-y-6" aria-label="Evidence charts">
 	<ExpandablePanel
 		title="Origin price trends"
-		subtitle={`$/lb · ${viewMode === 'all' ? 'retail and wholesale' : viewMode}`}
-		collapsedMaxHeight="none"
+		subtitle="Catalog median $/lb by origin; listing and supplier mix can change the median"
+		collapsedMaxHeight="420px"
 		showGradient={false}
 		onExpandChange={(v) => (lineChartExpanded = v)}
 	>
@@ -74,13 +86,12 @@
 			errorMessage={publicChartsError}
 			{onRetry}
 		>
-			<div class="rounded-lg border border-line bg-surface-canvas p-3 shadow-sm sm:p-6">
-				{#if !lineChartExpanded}
-					<h2 class="mb-1 text-base font-semibold text-ink">Origin price trends</h2>
-					<p class="mb-3 text-sm text-muted">
-						$/lb · {viewMode === 'all' ? 'retail and wholesale' : viewMode}
-					</p>
-				{/if}
+			<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
+				<h2 class="mb-1 text-base font-semibold text-ink">Origin price trends</h2>
+				<p class="mb-3 text-sm text-muted">
+					Catalog median $/lb by origin; listing and supplier mix can change the median
+					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
+				</p>
 				<div class="mb-4 flex items-center gap-2">
 					<span class="text-xs font-medium text-muted">Range:</span>
 					<div class="flex rounded-full border border-line bg-surface-panel p-0.5 shadow-sm">
@@ -92,8 +103,7 @@
 								}}
 								disabled={locked}
 								title={locked ? 'Longer horizons require Parchment Intelligence' : undefined}
-								aria-pressed={trendRange === opt.value}
-								class="min-h-11 rounded-full px-3 py-1 text-xs font-medium transition-all duration-150
+								class="rounded-full px-3 py-1 text-xs font-medium transition-all duration-150
 									{trendRange === opt.value
 									? 'bg-accent text-ink shadow-sm'
 									: locked
@@ -105,16 +115,13 @@
 						{/each}
 					</div>
 				</div>
-				<div class={lineChartExpanded ? 'h-[70vh] min-h-[34rem] w-full' : 'h-80 w-full'}>
+				<div class={lineChartExpanded ? 'h-[60vh] w-full' : 'h-64 w-full'}>
 					{#if OriginLineChartComponent}
-						{#key viewMode}
-							<OriginLineChartComponent
-								snapshots={filteredSnapshots}
-								startDate={trendStartDate}
-								expanded={lineChartExpanded}
-								mode="price"
-							/>
-						{/key}
+						<OriginLineChartComponent
+							snapshots={lineSnapshots}
+							expanded={lineChartExpanded}
+							mode="price"
+						/>
 					{/if}
 				</div>
 			</div>

@@ -1214,7 +1214,7 @@
 			{OriginBarChartComponent}
 			{ProcessDonutChartComponent}
 			{publicChartsError}
-			filteredSnapshots={viewMode === 'all' ? snapshots : filteredSnapshots}
+			{filteredSnapshots}
 			{filteredProcessDist}
 			{scopedOriginRangeData}
 			{displayStockedCount}
