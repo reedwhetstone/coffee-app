@@ -8,7 +8,7 @@ Preserve the live chart and history. Correct only the two highlighted incidents.
 - Synthetic February 21–March 14 points interpolate between February 14 and March 22.
 - Recorded July 11–15 points interpolate between July 10 and July 16.
 - Only existing affected points change; missing dates are not filled. Every other point, including earlier weekly history and current endpoints, remains identical.
-- Require exactly one valid point at both boundaries. Missing/ambiguous boundaries, absent provenance, other origins, and wholesale remain untouched.
+- Require exactly one valid point at both boundaries. Missing/ambiguous boundaries, absent provenance, other origins, wholesale, and the combined all view remain untouched.
 - Apply before range cropping, so all ranges share the same correction.
 - Corrections are presentation estimates, marked `est.` in the existing hover card. Original API data is not mutated. No historical prices have been recovered.
 - Restore the live monotone curves, 2.5px lines, endpoint dots/values, axis padding, range control, card and legend. Correct the existing average subtitle to median to match the displayed statistic.
@@ -23,7 +23,7 @@ Fixture regression: 45 points corrected, all inside the two incidents. All other
 
 ## Validation
 
-- `pnpm test`: VALIDATION_PASS, 1,436 passed, 14 skipped.
+- `pnpm test`: VALIDATION_PASS, 1,427 passed, 3 skipped after syncing current main.
 - `pnpm lint`: blocked by 17 pre-existing unrelated formatting failures.
-- Static and changed-file checks recorded in the PR handoff.
+- `pnpm check --fail-on-warnings`: VALIDATION_PASS with non-secret static placeholders, zero errors/warnings. Changed-file ESLint/Prettier and `git diff --check` pass.
 - Production data, API contracts, publication thresholds, and missing-date behavior are unchanged. No merge or deployment authorized.

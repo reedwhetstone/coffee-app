@@ -53,7 +53,9 @@
 	let originChartExpanded = $state(false);
 	let trendRange = $state<TrendRange>('90d');
 
-	let correctedSnapshots = $derived(correctPriceSpikes(filteredSnapshots));
+	let correctedSnapshots = $derived(
+		viewMode === 'retail' ? correctPriceSpikes(filteredSnapshots) : filteredSnapshots
+	);
 
 	let trendSnapshots = $derived.by(() => {
 		const now = new Date();
