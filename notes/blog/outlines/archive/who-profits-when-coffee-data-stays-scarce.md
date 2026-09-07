@@ -7,7 +7,7 @@
 
 ## Thesis
 
-The specialty coffee industry has rallied around price transparency; initiatives like the SCA/Emory Transaction Guide and Azahar's Sustainable Coffee Buyer's Guide address what buyers pay. But the larger, mostly invisible problem is *product metadata* transparency: across 26 green coffee suppliers, the number of structured data fields per product ranges from 1 to 13. Worse, the gap is inversely correlated with decision relevance; the attributes that matter most to informed purchasing (cup scores, arrival freshness, farm provenance) are the ones least consistently disclosed. This is Akerlof's lemons problem hiding inside a market that thinks it already solved transparency.
+The specialty coffee industry has rallied around price transparency; initiatives like the SCA/Emory Transaction Guide and Azahar's Sustainable Coffee Buyer's Guide address what buyers pay. But the larger, mostly invisible problem is _product metadata_ transparency: across 26 green coffee suppliers, the number of structured data fields per product ranges from 1 to 13. Worse, the gap is inversely correlated with decision relevance; the attributes that matter most to informed purchasing (cup scores, arrival freshness, farm provenance) are the ones least consistently disclosed. This is Akerlof's lemons problem hiding inside a market that thinks it already solved transparency.
 
 ## Voice Constraints
 
@@ -31,12 +31,14 @@ The specialty coffee industry has rallied around price transparency; initiatives
 ## External References
 
 1. **Akerlof, G.A. (1970). "The Market for 'Lemons': Quality Uncertainty and the Market Mechanism." Quarterly Journal of Economics, 84(3), 488–500.**
+
    - Foundation: when sellers control information disclosure and buyers can't observe quality pre-purchase, markets degrade. Green coffee metadata is the same dynamic; buyers can't compare what they can't see.
    - URL: https://academic.oup.com/qje/article-abstract/84/3/488/1896241
 
 2. **Perfect Daily Grind (2018). "Green Coffee Pricing Transparency Is Critical (And Complicated)."**
+
    - Key quote: Jon Allen (Onyx Coffee Lab): "No one really shares anything about buying green coffee... many people have really no idea what something is worth."
-   - Useful for establishing that the coffee industry recognizes its own information problem but has framed it entirely as a *price* problem.
+   - Useful for establishing that the coffee industry recognizes its own information problem but has framed it entirely as a _price_ problem.
    - URL: https://perfectdailygrind.com/2018/04/green-coffee-pricing-transparency-is-critical-and-complicated/
 
 3. **SCA/Emory Sustainable Coffee Buyer's Guide (coffeebuyers.org)**
@@ -49,25 +51,25 @@ The specialty coffee industry has rallied around price transparency; initiatives
 
 Open with the state of price transparency in specialty coffee. SCA/Emory Transaction Guide, Azahar's Buyer's Guide, Counter Culture's cost-per-pound disclosures. The industry is justifiably proud of this progress.
 
-Then the pivot: price transparency tells you what the seller paid. It doesn't tell you what you're buying. When I set out to build a comparison tool across 26 green coffee suppliers, the problem wasn't finding prices. It was finding *anything else*.
+Then the pivot: price transparency tells you what the seller paid. It doesn't tell you what you're buying. When I set out to build a comparison tool across 26 green coffee suppliers, the problem wasn't finding prices. It was finding _anything else_.
 
-Key data point: 17 unique product attributes exist across the market. No single supplier discloses all of them. The range is 1 to 13 fields per supplier. The median is 7. That means the average product listing is missing 60% of the attributes that *exist somewhere* in the market.
+Key data point: 17 unique product attributes exist across the market. No single supplier discloses all of them. The range is 1 to 13 fields per supplier. The median is 7. That means the average product listing is missing 60% of the attributes that _exist somewhere_ in the market.
 
 ### 2. The data that matters most is the data that's least available (~400 words)
 
 Field coverage breakdown (from scraping 26 live suppliers):
 
-| Attribute | Coverage | Decision Relevance |
-|-----------|----------|-------------------|
-| Country of origin | 92% | Low (too broad to differentiate) |
-| Processing method | 88% | Medium |
-| Region | 73% | Medium-high |
-| Cultivar/variety | 73% | High |
-| Grade | 62% | High |
-| Cupping notes | 65% | High |
-| Cup score | 19% | Very high |
-| Arrival date | 31% | Very high |
-| Farm provenance | 27% | Very high |
+| Attribute         | Coverage | Decision Relevance               |
+| ----------------- | -------- | -------------------------------- |
+| Country of origin | 92%      | Low (too broad to differentiate) |
+| Processing method | 88%      | Medium                           |
+| Region            | 73%      | Medium-high                      |
+| Cultivar/variety  | 73%      | High                             |
+| Grade             | 62%      | High                             |
+| Cupping notes     | 65%      | High                             |
+| Cup score         | 19%      | Very high                        |
+| Arrival date      | 31%      | Very high                        |
+| Farm provenance   | 27%      | Very high                        |
 
 The three fields with the highest decision relevance for an informed buyer (cup score, arrival date, farm provenance) are disclosed by fewer than a third of suppliers. Meanwhile, origin country, the broadest and least differentiating attribute, is near-universal.
 
@@ -77,13 +79,14 @@ This isn't random. Broad attributes are cheap to provide (they're on the bag). D
 
 Akerlof's 1970 insight: when sellers know more than buyers about product quality and disclosure is voluntary, the market selects against quality. Buyers can't distinguish good from bad, so they pay average-quality prices, and high-quality sellers exit.
 
-Green coffee has a variant: it's not that bad coffee drives out good coffee. It's that *low-information listings drive out high-information comparisons.* A buyer shopping across suppliers literally cannot compare an Ethiopian Yirgacheffe listed with 3 fields against one listed with 11 fields. They default to price and vibes. The supplier who invested in cupping, tracking arrival dates, and documenting farm relationships gets no market reward for that disclosure because the buyer has no frame of reference.
+Green coffee has a variant: it's not that bad coffee drives out good coffee. It's that _low-information listings drive out high-information comparisons._ A buyer shopping across suppliers literally cannot compare an Ethiopian Yirgacheffe listed with 3 fields against one listed with 11 fields. They default to price and vibes. The supplier who invested in cupping, tracking arrival dates, and documenting farm relationships gets no market reward for that disclosure because the buyer has no frame of reference.
 
 The fix isn't blockchain or certification. It's aggregation and normalization. When you pull 26 suppliers into one data layer and align their schemas, the metadata gap becomes visible for the first time. Suddenly you can see that one $7/lb Ethiopian has a cup score, a 2024 arrival date, and a named washing station, while another $7/lb Ethiopian has... "Ethiopian."
 
 ### 4. This pattern shows up everywhere sellers control disclosure (~300 words)
 
 Green coffee is a particularly clean example, but the pattern is universal in markets where:
+
 - Products are semi-commoditized (similar underlying good, differentiated by attributes)
 - Quality is hard to assess pre-purchase (you can't cup the coffee before buying it)
 - Sellers control which attributes they disclose (no mandatory reporting standard)
