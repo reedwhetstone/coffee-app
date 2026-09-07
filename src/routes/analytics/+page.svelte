@@ -1162,6 +1162,10 @@
 	{/if}
 </section>
 
+{#if isParchmentIntelligence}
+	<MatchedPriceComparison {viewMode} />
+{/if}
+
 {#if !bodyReady}
 	<!-- Same skeleton contract the root-layout route skeleton renders, minus the
 	     hero, which is already resolved above. -->
@@ -1210,9 +1214,6 @@
 				: 'Pricing, supplier coverage, arrivals, delistings, and the movement behind the current market read.'}
 		/>
 
-		{#if isParchmentIntelligence}
-			<MatchedPriceComparison {viewMode} />
-		{/if}
 		<EvidenceChartsSection
 			{OriginLineChartComponent}
 			{OriginBarChartComponent}

@@ -39,12 +39,9 @@
 	type ComparisonResponse = z.infer<typeof responseSchema>;
 	let { viewMode }: { viewMode: 'retail' | 'wholesale' | 'all' } = $props();
 	let result = $state<ComparisonResponse | null>(null);
-	let origin = $state('');
 	let loading = $state(true);
 	let failed = $state(false);
 	let retry = $state(0);
-	const origins = $derived([...new Set(result?.comparisons.map((row) => row.origin) ?? [])]);
-	const selected = $derived(result?.comparisons.filter((row) => row.origin === origin) ?? []);
 
 	$effect(() => {
 		const market = viewMode;
@@ -52,7 +49,6 @@
 		const controller = new AbortController();
 		let active = true;
 		result = null;
-		origin = '';
 		loading = true;
 		failed = false;
 		async function load() {
@@ -71,7 +67,6 @@
 				}
 				if (!active) return;
 				result = payload;
-				origin = payload.comparisons[0]?.origin ?? '';
 			} catch {
 				if (active) failed = true;
 			} finally {
@@ -87,59 +82,62 @@
 </script>
 
 <section
-	class="mb-6 rounded-lg border border-line bg-surface-canvas p-6"
+	class="mb-6 rounded-lg border border-line bg-surface-canvas px-4 py-3"
 	aria-label="Price changes"
 	aria-busy={loading}
 >
-	<h2 class="mb-1 text-base font-semibold text-ink">Price changes</h2>
-	<p class="mb-4 text-sm text-muted">
-		See whether the same coffees are getting more or less expensive.
-	</p>
-	{#if loading}
-		<p class="text-sm text-muted" role="status">Loading 30-day price changes…</p>
-	{:else if failed}
-		<p class="text-sm text-muted" role="alert">We couldn’t load price changes. Please try again.</p>
-		<button
-			class="mt-3 rounded border border-line px-4 py-2 text-sm text-ink"
-			onclick={() => (retry += 1)}>Try again</button
-		>
-	{:else if !result?.comparisons.length}
-		<p class="text-sm text-muted" role="status">
-			No 30-day price comparisons are available for this market. There aren’t enough matching price
-			observations to show a change.
-		</p>
-	{:else}
-		<p class="mb-4 text-sm text-muted">30-day change · {result.from} to {result.to}</p>
-		{#if origins.length > 1}
-			<label class="mb-4 block text-sm text-ink"
-				>Origin
-				<select
-					class="mt-1 block rounded border border-line bg-surface-panel p-2"
-					value={origin}
-					onchange={(event) => (origin = event.currentTarget.value)}
-				>
-					{#each origins as item}<option value={item}>{item}</option>{/each}
-				</select>
-			</label>
+	<div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+		<h2 class="shrink-0 font-semibold text-ink">
+			Same-coffee prices <span class="font-normal text-muted">· 30 days</span>
+		</h2>
+		{#if loading}
+			<p class="text-muted" role="status">Loading price changes…</p>
+		{:else if failed}
+			<p class="text-muted" role="alert">We couldn’t load price changes.</p>
+			<button class="rounded border border-line px-2 py-1 text-ink" onclick={() => (retry += 1)}
+				>Try again</button
+			>
+		{:else if !result?.comparisons.length}
+			<p class="text-muted" role="status">
+				No 30-day price comparisons available for this market yet.
+			</p>
 		{:else}
-			<h3 class="mb-3 text-sm font-semibold text-ink">{origin}</h3>
+			<ul class="flex flex-wrap items-center gap-x-5 gap-y-2" aria-label="30-day price signals">
+				{#each result.comparisons as comparison (comparison.origin + comparison.wholesale)}
+					<li class="flex items-baseline gap-2">
+						<span class="text-muted"
+							>{comparison.origin}{#if viewMode === 'all'}
+								<span class="text-xs">({comparison.wholesale ? 'Wholesale' : 'Retail'})</span
+								>{/if}</span
+						>
+						<span class="font-semibold tabular-nums text-ink"
+							>{comparison.changePercent > 0 ? '+' : ''}{comparison.changePercent.toFixed(2)}%</span
+						>
+					</li>
+				{/each}
+			</ul>
 		{/if}
-		<div class="grid gap-4 sm:grid-cols-2" role="status">
-			{#each selected as comparison}
-				<div class="rounded border border-line p-4">
-					<p class="text-sm text-muted">{comparison.wholesale ? 'Wholesale' : 'Retail'}</p>
-					<p class="my-1 text-2xl font-semibold text-ink">
-						{comparison.changePercent > 0 ? '+' : ''}{comparison.changePercent.toFixed(2)}%
-					</p>
-					<p class="text-sm text-muted">
-						{comparison.sample.matchedListings} coffees · {comparison.sample.matchedSuppliers} suppliers
-					</p>
-					<p class="text-sm text-muted">
+	</div>
+	{#if !loading && !failed && result?.comparisons.length}
+		<details class="mt-2 text-xs text-muted">
+			<summary
+				class="w-fit cursor-pointer rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+				>Dates &amp; coverage</summary
+			>
+			<p class="mt-2">30-day change · {result.from} to {result.to}</p>
+			<p class="mt-1">Price changes in the same coffees, with equal weight per supplier.</p>
+			<ul class="mt-2 space-y-1">
+				{#each result.comparisons as comparison (comparison.origin + comparison.wholesale)}
+					<li>
+						<span class="font-medium text-ink"
+							>{comparison.origin} · {comparison.wholesale ? 'Wholesale' : 'Retail'}:</span
+						>
 						{comparison.sample.matchedListings} of {comparison.sample.fromListings} starting coffees
-						matched ({(comparison.sample.matchedCoverage * 100).toFixed(0)}%)
-					</p>
-				</div>
-			{/each}
-		</div>
+						matched ({(comparison.sample.matchedCoverage * 100).toFixed(0)}%) · {comparison.sample
+							.matchedSuppliers} suppliers
+					</li>
+				{/each}
+			</ul>
+		</details>
 	{/if}
 </section>

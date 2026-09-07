@@ -39,8 +39,9 @@ describe('automatic 30-day comparisons', () => {
 		render(MatchedPriceComparison, { viewMode: 'retail' });
 		await screen.findByText('+10.00%');
 		expect(screen.getByText('30-day change · 2026-08-07 to 2026-09-06')).toBeInTheDocument();
-		expect(screen.getByText('5 coffees · 3 suppliers')).toBeInTheDocument();
-		expect(screen.getByText('5 of 10 starting coffees matched (50%)')).toBeInTheDocument();
+		expect(
+			screen.getByText(/5 of 10 starting coffees matched \(50%\) · 3 suppliers/)
+		).toBeInTheDocument();
 		expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
 		expect(document.querySelector('input[type="date"]')).toBeNull();
 		expect(fetchMock).toHaveBeenCalledWith(
@@ -54,14 +55,12 @@ describe('automatic 30-day comparisons', () => {
 			vi.fn().mockResolvedValue(response(payload([row(), row('Ethiopia', true), row('Brazil')])))
 		);
 		render(MatchedPriceComparison, { viewMode: 'all' });
-		await screen.findByRole('combobox');
-		expect(screen.getAllByRole('option').map((x) => x.textContent)).toEqual(['Ethiopia', 'Brazil']);
-		expect(screen.getByText('Retail')).toBeInTheDocument();
-		expect(screen.getByText('Wholesale')).toBeInTheDocument();
-		const select = screen.getByRole('combobox') as HTMLSelectElement;
-		select.selectedIndex = 1;
-		await fireEvent.change(select);
-		expect(screen.queryByText('Wholesale')).not.toBeInTheDocument();
+		await screen.findByRole('list', { name: '30-day price signals' });
+		expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+		expect(screen.getAllByText('Brazil').length).toBeGreaterThan(0);
+		expect(screen.getAllByText('(Retail)')[0]).toBeInTheDocument();
+		expect(screen.getByText('(Wholesale)')).toBeInTheDocument();
+		expect(screen.getAllByText('+10.00%')).toHaveLength(3);
 	});
 	it('shows one honest empty state without controls or a zero estimate', async () => {
 		vi.stubGlobal(
