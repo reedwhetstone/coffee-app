@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { correctPriceSpikes } from '../correctPriceSpikes';
 	import ExpandablePanel from '$lib/components/analytics/ExpandablePanel.svelte';
 	import AnalyticsLoadingPanel from '$lib/components/analytics/AnalyticsLoadingPanel.svelte';
 	import type {
@@ -52,7 +53,11 @@
 	let originChartExpanded = $state(false);
 	let trendRange = $state<TrendRange>('90d');
 
-	let trendSnapshots = $derived.by((): PriceSnapshot[] => {
+	let correctedSnapshots = $derived(
+		viewMode === 'retail' ? correctPriceSpikes(filteredSnapshots) : filteredSnapshots
+	);
+
+	let trendSnapshots = $derived.by(() => {
 		const now = new Date();
 		let daysBack: number;
 		if (trendRange === '6m') daysBack = 183;
@@ -61,7 +66,7 @@
 		const cutoff = new Date(now);
 		cutoff.setDate(cutoff.getDate() - daysBack);
 		const cutoffStr = cutoff.toISOString().split('T')[0];
-		return filteredSnapshots.filter((s) => s.snapshot_date >= cutoffStr);
+		return correctedSnapshots.filter((s) => s.snapshot_date >= cutoffStr);
 	});
 
 	let lineSnapshots = $derived(trendSnapshots.filter((s) => s.price_avg != null));
@@ -70,7 +75,7 @@
 <section class="mb-8 space-y-6" aria-label="Evidence charts">
 	<ExpandablePanel
 		title="Origin price trends"
-		subtitle="Catalog average $/lb by origin; listing and supplier mix can change the average"
+		subtitle="Catalog median $/lb by origin; listing and supplier mix can change the median"
 		collapsedMaxHeight="420px"
 		showGradient={false}
 		onExpandChange={(v) => (lineChartExpanded = v)}
@@ -86,7 +91,7 @@
 			<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
 				<h2 class="mb-1 text-base font-semibold text-ink">Origin price trends</h2>
 				<p class="mb-3 text-sm text-muted">
-					Catalog average $/lb by origin; listing and supplier mix can change the average
+					Catalog median $/lb by origin; listing and supplier mix can change the median
 					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 				</p>
 				<div class="mb-4 flex items-center gap-2">

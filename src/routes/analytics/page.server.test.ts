@@ -287,7 +287,8 @@ function mapExpectedSnapshot(row: HistoryRow): PriceSnapshot {
 		supplier_count: row.sample.suppliers,
 		sample_size: row.sample.listings,
 		wholesale_only: row.wholesale,
-		aggregation_tier: row.sample.aggregationTier
+		aggregation_tier: row.sample.aggregationTier,
+		synthetic: row.provenance.synthetic
 	};
 }
 
@@ -378,6 +379,8 @@ describe('loadPriceSnapshotsPaginated', () => {
 		const snapshots = await _loadPriceSnapshotsPaginated({ client: setup.client, windowDays: 365 });
 
 		expect(snapshots).toHaveLength(1025);
+		expect(snapshots[0].synthetic).toBe(true);
+		expect(snapshots[1].synthetic).toBe(false);
 		expect(snapshots[0]).toEqual(mapExpectedSnapshot(makeHistoryRow(0)));
 		expect(snapshots.at(-1)).toEqual(mapExpectedSnapshot(makeHistoryRow(1024)));
 		expect(setup.historyCalls).toEqual([
