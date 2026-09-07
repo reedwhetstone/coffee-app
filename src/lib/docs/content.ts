@@ -1892,14 +1892,15 @@ const docsPages: DocsPage[] = [
 			'Analytics is a product surface on Purveyors, not a standalone public API family, with session-auth roast analysis helpers behind the scenes.',
 		eyebrow: 'Market intelligence',
 		intro: [
-			'The /analytics page delivers market intelligence derived from the same normalized catalog that powers the public API. Public visitors can browse the core market overview: origin price trends, processing mix, origin price ranges, and the supplier/listing/origin stat bar. Parchment Intelligence users get the deeper supplier comparison, supplier health, arrivals, delistings, and extended trend modules.',
-			'Analytics is important to the product story, but only the aggregate /v1/price-index subset is exposed as a stable authenticated contract for entitled first-party sessions and customer API keys. Keep the distinction between product UI, internal helpers, and public REST contract explicit.'
+			'The /analytics page delivers market intelligence derived from the same normalized catalog that powers the public API. Public visitors can browse the core market overview: origin price trends, processing mix, origin price ranges, and the supplier/listing/origin stat bar. Parchment Intelligence users get the deeper supplier comparison, supplier health, arrivals, delistings, extended trend modules, and an observed comparison of the same fresh-priced listings across two dates.',
+			"Analytics is important to the product story, but only the aggregate /v1/price-index subset is exposed as a stable authenticated contract for entitled first-party sessions and customer API keys. The matched comparison is an entitled web workflow: coffee-app's internal session-backed /api/analytics/price-comparisons BFF relays Parchment's upstream /v1/price-index/comparisons contract. Keep that distinction between product UI, internal helpers, upstream contracts, and the stable public REST surface explicit."
 		],
 		sections: [
 			{
 				title: 'What is public today',
 				bullets: [
 					'/analytics is a web product surface, while /v1/price-index is the authenticated Parchment Intelligence contract for the aggregate price-index subset backed by price_index_snapshots.',
+					'Parchment Intelligence users see available 30-day price changes automatically, with only supported origins and separate retail and wholesale results. Coverage is the share of starting coffees matched on both dates: at least 50%, five coffees, and three suppliers. New listings become eligible as the 30-day window advances; unmatched starting coffees reduce coverage. The internal session-backed /api/analytics/price-comparisons BFF forwards the upstream /v1/price-index/comparisons response; it is not a new public coffee-app API contract.',
 					'/v1/price-index intentionally starts with JSON pagination only. Do not document CSV, alerts, watchlists, webhooks, or supplier-level raw rows as supported.',
 					'Logged-out visitors and logged-in viewers share the same core analytics view. The server resolves Parchment Intelligence access separately and uses it to decide whether to load the gated modules.',
 					'Public chart data includes 90 days of price-index snapshots, current stocked processing distribution, current origin price ranges, recent-arrival/delisting counts for the upgrade preview, and the latest market summary counts.',
