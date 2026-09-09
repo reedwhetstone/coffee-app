@@ -94,6 +94,12 @@ export interface CreateParchmentServerClientOptions {
 	 * strict default) is preserved. See {@link ParchmentPreferHandling}.
 	 */
 	preferHandling?: ParchmentPreferHandling;
+	/**
+	 * Abort signal to apply to SDK requests when the individual SDK helper does
+	 * not expose request-init options. BFF routes should pass the incoming request
+	 * signal so a disconnected browser cancels upstream work.
+	 */
+	signal?: AbortSignal;
 }
 
 /**
@@ -241,7 +247,8 @@ async function resolveTokenForMode(
 function withPreferHandling(
 	baseFetch: typeof fetch,
 	preferHandling: ParchmentPreferHandling,
-	inheritedPrefer: string | undefined
+	inheritedPrefer: string | undefined,
+	defaultSignal?: AbortSignal
 ): typeof fetch {
 	return (input, init) => {
 		// openapi-fetch builds a `Request` carrying credential/content-type headers
@@ -262,7 +269,20 @@ function withPreferHandling(
 				headers.set('Prefer', inheritedPrefer);
 			}
 		}
-		return baseFetch(input, { ...init, headers });
+		// Fetch uses the Request's signal when no init signal is supplied. Preserve
+		// that per-call cancellation while also honoring the route-level signal;
+		// an explicit init signal retains standard fetch precedence.
+		const requestSignal = input instanceof Request ? input.signal : undefined;
+		const signal =
+			init?.signal ??
+			(requestSignal && defaultSignal
+				? AbortSignal.any([requestSignal, defaultSignal])
+				: (requestSignal ?? defaultSignal));
+		return baseFetch(input, {
+			...init,
+			headers,
+			...(signal ? { signal } : {})
+		});
 	};
 }
 
@@ -283,7 +303,7 @@ export async function createParchmentServerClient(
 	return createParchmentClient({
 		baseUrl,
 		token,
-		fetch: withPreferHandling(event.fetch, preferHandling, inheritedPrefer)
+		fetch: withPreferHandling(event.fetch, preferHandling, inheritedPrefer, options?.signal)
 	});
 }
 

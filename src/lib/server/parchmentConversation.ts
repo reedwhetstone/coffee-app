@@ -1,5 +1,6 @@
 import type {
 	ConversationCanvasUpdateRequest,
+	ConversationMemoryDreamRequest,
 	ConversationMemoryUpdateRequest,
 	ConversationMessageAppendRequest,
 	ConversationSummaryUpdateRequest,
@@ -22,6 +23,8 @@ export type ConversationCompactionInputs =
 export type ConversationSummaryCompaction =
 	components['schemas']['ConversationSummaryCompactionResponse']['data'];
 export type ConversationMemory = components['schemas']['ConversationMemory'];
+export type ConversationMemoryReflection =
+	components['schemas']['ConversationMemoryDreamResponse']['data'];
 
 export class ParchmentConversationError extends Error {
 	constructor(
@@ -185,5 +188,13 @@ export async function updateConversationMemory(
 	body: ConversationMemoryUpdateRequest
 ) {
 	const result = await client.conversation.memory.update(body);
+	return unwrap(result).data;
+}
+
+export async function dreamConversationMemory(
+	client: ParchmentClient,
+	body: ConversationMemoryDreamRequest
+): Promise<ConversationMemoryReflection> {
+	const result = await client.conversation.memory.dream(body);
 	return unwrap(result).data;
 }
