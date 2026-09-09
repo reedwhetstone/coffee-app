@@ -57,25 +57,18 @@ jobs:
       - name: Run Playwright tests
         run: |
           set -o pipefail
-          pnpm run test:e2e 2>&1 | tee playwright-test-output.log
+          pnpm exec playwright test \
+            tests/e2e/memory-reflection-production-canary.spec.ts \
+            --project=chromium --trace=off --reporter=github
         env:
           CI: true
+          PLAYWRIGHT_BASE_URL: https://www.purveyors.io
           E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
           E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
           E2E_TEST_USER_ID: ${{ secrets.E2E_TEST_USER_ID }}
           PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
           PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-
-      - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: playwright-artifacts
-          path: |
-            playwright-report/
-            test-results/
-            playwright-test-output.log
-          retention-days: 30
 
       - name: Warn if Discord webhook secret is missing
         if: ${{ failure() && env.DISCORD_CODEBASE_WEBHOOK_URL == '' }}
@@ -95,8 +88,6 @@ jobs:
           WORKFLOW_NAME: ${{ github.workflow }}
         run: |
           node <<'NODE'
-          const fs = require('fs');
-
           const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
           const runUrl = process.env.RUN_URL;
           const repo = process.env.REPO;
@@ -106,17 +97,6 @@ jobs:
           const eventName = process.env.EVENT_NAME;
           const workflowName = process.env.WORKFLOW_NAME;
 
-          let logTail = 'No playwright-test-output.log found.';
-          if (fs.existsSync('playwright-test-output.log')) {
-            const lines = fs.readFileSync('playwright-test-output.log', 'utf8').split('\n');
-            logTail = lines.slice(-80).join('\n').trim() || logTail;
-          }
-
-          const maxLogChars = 1200;
-          if (logTail.length > maxLogChars) {
-            logTail = `...\n${logTail.slice(-maxLogChars)}`;
-          }
-
           const content = [
             '🚨 **Playwright CI Failed**',
             `• Repo: \`${repo}\``,
@@ -125,13 +105,7 @@ jobs:
             `• Trigger: \`${eventName}\` by \`${actor}\``,
             `• Workflow: \`${workflowName}\``,
             `• Run: <${runUrl}>`,
-            '',
-            '**Last log lines**',
-            '```',
-            logTail,
-            '```',
-            '',
-            '_Full traces/reports are attached as workflow artifacts._'
+            '_The credential-safe canary retains no traces, response bodies, or browser artifacts._'
           ].join('\n');
 
           fetch(webhookUrl, {

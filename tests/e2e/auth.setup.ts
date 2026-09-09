@@ -42,10 +42,7 @@ setup('authenticate', async ({ page, request }) => {
 		}
 	});
 	if (!linkResponse.ok()) {
-		const body = await linkResponse.json();
-		throw new Error(
-			`Admin generate_link failed (${linkResponse.status()}): ${JSON.stringify(body)}`
-		);
+		throw new Error(`Authentication setup failed (${linkResponse.status()})`);
 	}
 	const linkData = await linkResponse.json();
 
@@ -62,8 +59,7 @@ setup('authenticate', async ({ page, request }) => {
 		}
 	});
 	if (!verifyResponse.ok()) {
-		const body = await verifyResponse.json();
-		throw new Error(`Token verify failed (${verifyResponse.status()}): ${JSON.stringify(body)}`);
+		throw new Error(`Authentication verification failed (${verifyResponse.status()})`);
 	}
 	const session = await verifyResponse.json();
 
