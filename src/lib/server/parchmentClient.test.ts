@@ -147,6 +147,39 @@ describe('createParchmentServerClient', () => {
 		expect(forwarded.get('prefer')).toBe('handling=lenient');
 	});
 
+	it('applies a route-level abort signal when an SDK helper exposes no request init', async () => {
+		const event = makeEvent({});
+		const controller = new AbortController();
+		await createParchmentServerClient(event, { signal: controller.signal });
+
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		await wrappedFetch(new Request('https://api.test.purveyors.io/v1/conversation/memory/dream'));
+
+		const init = baseFetch.mock.calls[0][1] as RequestInit;
+		expect(init.signal).toBe(controller.signal);
+	});
+
+	it('preserves an explicit per-call abort signal over the route-level default', async () => {
+		const event = makeEvent({});
+		const routeController = new AbortController();
+		const callController = new AbortController();
+		await createParchmentServerClient(event, { signal: routeController.signal });
+
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		await wrappedFetch('https://api.test.purveyors.io/v1/catalog', {
+			signal: callController.signal
+		});
+
+		const init = baseFetch.mock.calls[0][1] as RequestInit;
+		expect(init.signal).toBe(callController.signal);
+	});
+
 	it('does not inject a lenient default in preferHandling=inherit mode (public API proxy)', async () => {
 		const event = makeEvent({});
 		await createParchmentServerClient(event, { preferHandling: 'inherit' });

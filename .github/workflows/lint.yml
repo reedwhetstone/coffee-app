@@ -44,7 +44,6 @@ jobs:
           ACCOUNT_DELETION_REAUTH_AUDIENCE=https://api.purveyors.io/v1/account-deletion
           ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS=dummy
           ACCOUNT_DELETION_REAUTH_ACTIVE_KID=dummy
-          OPENROUTER_API_KEY=dummy
           EOF
 
       - name: Check formatting

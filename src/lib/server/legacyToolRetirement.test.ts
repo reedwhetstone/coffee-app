@@ -52,12 +52,10 @@ describe('legacy tool route retirement', () => {
 		expect(offenders).toEqual([]);
 	});
 
-	it('keeps provider credentials only in the remaining local memory caller', () => {
-		expect(readFileSync(resolve('src/routes/api/memory/dream/+server.ts'), 'utf8')).toContain(
-			'OPENROUTER_API_KEY'
-		);
+	it('keeps provider credentials and orchestration out of production BFF routes', () => {
+		const dreamRoute = readFileSync(resolve('src/routes/api/memory/dream/+server.ts'), 'utf8');
 		const chatRoute = readFileSync(resolve('src/routes/api/chat/+server.ts'), 'utf8');
-		for (const retiredChatDependency of [
+		for (const retiredProviderDependency of [
 			'OPENROUTER_API_KEY',
 			'openrouter.ai',
 			'CHERRY_RUNTIME_MODEL',
@@ -65,9 +63,16 @@ describe('legacy tool route retirement', () => {
 			'streamText',
 			'createChatTools'
 		]) {
-			expect(chatRoute).not.toContain(retiredChatDependency);
+			expect(chatRoute).not.toContain(retiredProviderDependency);
+			expect(dreamRoute).not.toContain(retiredProviderDependency);
 		}
 		expect(chatRoute).toContain('client.conversation.chat.stream');
+		expect(dreamRoute).toContain('dreamConversationMemory');
+		const providerOffenders = runtimeSourceFiles(sourceRoot).filter((file) => {
+			const source = readFileSync(file, 'utf8');
+			return source.includes('OPENROUTER_API_KEY') || source.includes('openrouter.ai');
+		});
+		expect(providerOffenders).toEqual([]);
 		const summaryRoute = readFileSync(
 			resolve('src/routes/api/workspaces/[id]/summarize/+server.ts'),
 			'utf8'
