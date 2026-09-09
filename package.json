@@ -34,7 +34,6 @@
 		"vercel-dev": "vercel dev"
 	},
 	"devDependencies": {
-		"@ai-sdk/openai": "^3.0.0",
 		"@eslint/compat": "^1.2.3",
 		"@playwright/test": "^1.58.1",
 		"@rollup/rollup-darwin-arm64": "^4.56.0",

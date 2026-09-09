@@ -297,15 +297,18 @@
 	$effect(() => {
 		// Only update if we have a profile and we're not in the middle of profile selection
 		if (currentRoastProfile && !selectionState.selectionInProgress) {
+			const normalizedCoffeeId = currentRoastProfile.coffee_id ?? undefined;
+			const normalizedCoffeeName = currentRoastProfile.coffee_name ?? 'Unknown Coffee';
+
 			// Update selectedBean if it's different
 			if (
 				!selectedBean ||
-				selectedBean.id !== currentRoastProfile.coffee_id ||
-				selectedBean.name !== currentRoastProfile.coffee_name
+				selectedBean.id !== normalizedCoffeeId ||
+				selectedBean.name !== normalizedCoffeeName
 			) {
 				selectedBean = {
-					id: currentRoastProfile.coffee_id ?? undefined,
-					name: currentRoastProfile.coffee_name ?? 'Unknown Coffee'
+					id: normalizedCoffeeId,
+					name: normalizedCoffeeName
 				};
 			}
 		}

@@ -70,10 +70,15 @@ describe('terminal Coffee App source boundary', () => {
 			'src/lib/types/api.types.ts',
 			'src/lib/services/ragService.ts',
 			'src/lib/services/tools.ts',
+			'src/lib/server/cherryRuntime.ts',
+			'src/lib/services/cherryIdentity.eval.test.ts',
 			'scripts/backfill-supply-index.ts',
 			'.github/workflows/typegen.yml'
 		]) {
 			expect(existsSync(resolve(path)), path).toBe(false);
 		}
+
+		const packageJson = JSON.parse(readFileSync(resolve('package.json'), 'utf8'));
+		expect(packageJson.devDependencies?.['@ai-sdk/openai']).toBeUndefined();
 	});
 });

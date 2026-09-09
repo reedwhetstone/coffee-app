@@ -95,7 +95,7 @@ Cherry Runtime's model loop and tools execute inside Parchment. Coffee-app keeps
 
 - **Framework:** SvelteKit 2 + Svelte 5 + TypeScript
 - **Styling:** Tailwind CSS
-- **Data:** Parchment API through `@purveyors/sdk`, plus remaining direct Supabase paths documented in `notes/ARCHITECTURE.md`
+- **Data:** Parchment API through `@purveyors/sdk`; Supabase is limited to browser identity and session plumbing
 - **Auth:** Supabase Auth for browser identity and session lifecycle; Parchment
   for API credential validation, principal resolution, and product authorization
 - **Payments:** Stripe.js embedded Checkout presentation; Parchment owns all server-side Stripe authority
@@ -197,7 +197,7 @@ The catalog, inventory, roast, sales, and tasting workflows span web app, CLI, a
 
 ### The SDK is the shared client boundary
 
-Coffee-app does not import CLI functions. The SDK is generated from Parchment's OpenAPI contract and provides typed HTTP clients for both coffee-app and the CLI. It does not depend on the CLI. See [`notes/ARCHITECTURE.md`](notes/ARCHITECTURE.md) for the verified current boundary and the remaining direct-Supabase migration debt.
+Coffee-app does not import CLI functions. The SDK is generated from Parchment's OpenAPI contract and provides typed HTTP clients for both coffee-app and the CLI. It does not depend on the CLI. See [`notes/ARCHITECTURE.md`](notes/ARCHITECTURE.md) for the verified current boundary and terminal source guard.
 
 ## Validation
 

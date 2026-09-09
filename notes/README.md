@@ -15,7 +15,7 @@ If the goal is to understand the current product direction, implementation contr
 4. `UI-FRAMEWORK.md`
    - Tactical Svelte/Tailwind component implementation companion for applying `BRAND.md`
 5. `ARCHITECTURE.md`
-   - Verified current runtime boundaries, SDK/CLI relationship, and direct-Supabase migration debt
+   - Verified current runtime boundaries, SDK/CLI relationship, and terminal Supabase/Auth boundary
 6. `decisions/`
    - Accepted ADRs for real shipped behavior
 7. `API_notes/APITIER.md`
