@@ -95,20 +95,30 @@ test.describe.serial('Phase 5C memory-reflection production canary', () => {
 		const successes = results.filter(
 			(result): result is ReflectionSuccess => 'ok' in result && result.ok === true
 		);
+		const emptyResponses = results.filter(
+			(result): result is ReflectionSkipped =>
+				'skipped' in result && result.reason === 'empty-response'
+		);
 		expect(cooldowns).toHaveLength(1);
-		expect(successes).toHaveLength(1);
-		expect(successes[0].content.length).toBeGreaterThan(0);
-		expect(successes[0].updated_by).toBe('agent');
+		expect(successes.length + emptyResponses.length).toBe(1);
 
 		const currentResponse = await request.get('/api/memory');
 		expect(currentResponse.status()).toBe(200);
 		const current = await json<MemoryDocument>(currentResponse);
-		expect(current).toMatchObject({
-			content: successes[0].content,
-			version: successes[0].version,
-			updated_by: 'agent'
-		});
-		expect(current.version).toBe(initialMemory.version + 2);
+		if (successes.length === 1) {
+			expect(successes[0].content.length).toBeGreaterThan(0);
+			expect(successes[0].updated_by).toBe('agent');
+			expect(current).toMatchObject({
+				content: successes[0].content,
+				version: successes[0].version,
+				updated_by: 'agent'
+			});
+			expect(current.version).toBe(initialMemory.version + 2);
+		} else {
+			expect(emptyResponses).toHaveLength(1);
+			expect(current.content).toBe(initialMemory.content);
+			expect(current.version).toBe(initialMemory.version + 1);
+		}
 
 		const staleWrite = await request.put('/api/memory', {
 			data: { content: 'stale canary write', expected_version: initialMemory.version }

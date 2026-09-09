@@ -59,7 +59,7 @@ jobs:
           set -o pipefail
           pnpm exec playwright test \
             tests/e2e/memory-reflection-production-canary.spec.ts \
-            --project=chromium --trace=off --reporter=github
+            --project=chromium --trace=off --reporter=github --retries=0
         env:
           CI: true
           PLAYWRIGHT_BASE_URL: https://www.purveyors.io
