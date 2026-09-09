@@ -3,7 +3,7 @@ import { globSync } from 'glob';
 import { describe, expect, it } from 'vitest';
 
 const runtimeFiles = globSync('src/**/*.{ts,svelte}', {
-	ignore: ['src/**/*.test.ts', 'src/lib/types/database.types.ts']
+	ignore: ['src/**/*.test.ts']
 });
 
 describe('conversation state ownership boundary', () => {

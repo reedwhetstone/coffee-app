@@ -224,8 +224,8 @@
 		// Sort profiles within each batch by date (newest first)
 		Object.keys(newGroupedProfiles).forEach((batchName) => {
 			newGroupedProfiles[batchName].sort((a, b) => {
-				const dateA = new Date(a.roast_date);
-				const dateB = new Date(b.roast_date);
+				const dateA = new Date(a.roast_date ?? 0);
+				const dateB = new Date(b.roast_date ?? 0);
 				return dateB.getTime() - dateA.getTime();
 			});
 		});
@@ -304,8 +304,8 @@
 				selectedBean.name !== currentRoastProfile.coffee_name
 			) {
 				selectedBean = {
-					id: currentRoastProfile.coffee_id,
-					name: currentRoastProfile.coffee_name
+					id: currentRoastProfile.coffee_id ?? undefined,
+					name: currentRoastProfile.coffee_name ?? 'Unknown Coffee'
 				};
 			}
 		}
@@ -603,8 +603,8 @@
 
 			// Update selected bean
 			selectedBean = {
-				id: profile.coffee_id,
-				name: profile.coffee_name
+				id: profile.coffee_id ?? undefined,
+				name: profile.coffee_name ?? 'Unknown Coffee'
 			};
 
 			// Ensure the batch is expanded

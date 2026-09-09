@@ -23,7 +23,6 @@ function runtimeSourceFiles(directory: string): string[] {
 		if (entry.isDirectory()) return runtimeSourceFiles(path);
 		if (!entry.isFile() || !/\.(?:ts|svelte)$/.test(entry.name)) return [];
 		if (/\.(?:test|spec)\.ts$/.test(entry.name)) return [];
-		if (path.endsWith('/src/lib/types/database.types.ts')) return [];
 		return [path];
 	});
 }

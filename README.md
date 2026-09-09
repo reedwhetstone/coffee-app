@@ -223,7 +223,6 @@ For static validation (`pnpm check --fail-on-warnings`), provide these repo-loca
 
 - `PUBLIC_SUPABASE_URL`
 - `PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
 - `ACCOUNT_DELETION_REAUTH_ISSUER`
 - `ACCOUNT_DELETION_REAUTH_AUDIENCE`
 - `ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS`
@@ -231,6 +230,7 @@ For static validation (`pnpm check --fail-on-warnings`), provide these repo-loca
 
 For E2E (`pnpm test:e2e`), also provide:
 
+- `SUPABASE_SERVICE_ROLE_KEY`
 - `E2E_TEST_EMAIL`
 - `E2E_TEST_USER_ID`
 - `PLAYWRIGHT_BASE_URL` (optional, defaults to localhost)

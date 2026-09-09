@@ -7,7 +7,7 @@ function productionSources(directory: string): string[] {
 		const path = join(directory, entry.name);
 
 		if (entry.isDirectory()) return productionSources(path);
-		if (entry.name.endsWith('.test.ts') || entry.name === 'database.types.ts') return [];
+		if (entry.name.endsWith('.test.ts')) return [];
 		return ['.ts', '.svelte'].includes(extname(entry.name)) ? [path] : [];
 	});
 }
