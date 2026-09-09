@@ -159,7 +159,43 @@ describe('createParchmentServerClient', () => {
 		await wrappedFetch(new Request('https://api.test.purveyors.io/v1/conversation/memory/dream'));
 
 		const init = baseFetch.mock.calls[0][1] as RequestInit;
-		expect(init.signal).toBe(controller.signal);
+		expect(init.signal).toBeInstanceOf(AbortSignal);
+		controller.abort();
+		expect((init.signal as AbortSignal).aborted).toBe(true);
+	});
+
+	it('combines a Request input signal with the route-level default', async () => {
+		const event = makeEvent({});
+		const routeController = new AbortController();
+		const requestController = new AbortController();
+		await createParchmentServerClient(event, { signal: routeController.signal });
+
+		const wrappedFetch = (createParchmentClient.mock.calls[0][0] as { fetch: typeof fetch }).fetch;
+		const baseFetch = event.fetch as unknown as ReturnType<typeof vi.fn>;
+		baseFetch.mockResolvedValue(new Response(null));
+
+		await wrappedFetch(
+			new Request('https://api.test.purveyors.io/v1/conversation/memory/dream', {
+				signal: requestController.signal
+			})
+		);
+
+		const forwardedSignal = baseFetch.mock.calls[0][1].signal as AbortSignal;
+		expect(forwardedSignal).not.toBe(requestController.signal);
+		expect(forwardedSignal).not.toBe(routeController.signal);
+
+		requestController.abort();
+		expect(forwardedSignal.aborted).toBe(true);
+
+		const secondRequestController = new AbortController();
+		await wrappedFetch(
+			new Request('https://api.test.purveyors.io/v1/conversation/memory/dream', {
+				signal: secondRequestController.signal
+			})
+		);
+		const secondForwardedSignal = baseFetch.mock.calls[1][1].signal as AbortSignal;
+		routeController.abort();
+		expect(secondForwardedSignal.aborted).toBe(true);
 	});
 
 	it('preserves an explicit per-call abort signal over the route-level default', async () => {

@@ -269,10 +269,19 @@ function withPreferHandling(
 				headers.set('Prefer', inheritedPrefer);
 			}
 		}
+		// Fetch uses the Request's signal when no init signal is supplied. Preserve
+		// that per-call cancellation while also honoring the route-level signal;
+		// an explicit init signal retains standard fetch precedence.
+		const requestSignal = input instanceof Request ? input.signal : undefined;
+		const signal =
+			init?.signal ??
+			(requestSignal && defaultSignal
+				? AbortSignal.any([requestSignal, defaultSignal])
+				: (requestSignal ?? defaultSignal));
 		return baseFetch(input, {
 			...init,
 			headers,
-			...(init?.signal || defaultSignal ? { signal: init?.signal ?? defaultSignal } : {})
+			...(signal ? { signal } : {})
 		});
 	};
 }
