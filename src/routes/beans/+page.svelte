@@ -22,7 +22,6 @@
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type {
 		InventoryWithCatalog,
-		RoastProfile,
 		CoffeeCatalog,
 		CoffeeFormData
 	} from '$lib/types/component.types';
@@ -310,10 +309,7 @@
 	function getRemainingLbs(bean: InventoryWithCatalog): number {
 		const purchasedOz = (Number(bean.purchased_qty_lbs) || 0) * 16;
 		const roastedOz =
-			bean.roast_profiles?.reduce(
-				(ozSum: number, profile: RoastProfile) => ozSum + (Number(profile.oz_in) || 0),
-				0
-			) || 0;
+			bean.roast_profiles?.reduce((ozSum, profile) => ozSum + (Number(profile.oz_in) || 0), 0) || 0;
 		return (purchasedOz - roastedOz) / 16;
 	}
 

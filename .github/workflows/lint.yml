@@ -39,7 +39,6 @@ jobs:
           cat <<EOF > .env
           PUBLIC_SUPABASE_URL=https://dummy.supabase.co
           PUBLIC_SUPABASE_ANON_KEY=dummy
-          SUPABASE_SERVICE_ROLE_KEY=dummy
           ACCOUNT_DELETION_REAUTH_ISSUER=https://www.purveyors.io
           ACCOUNT_DELETION_REAUTH_AUDIENCE=https://api.purveyors.io/v1/account-deletion
           ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS=dummy

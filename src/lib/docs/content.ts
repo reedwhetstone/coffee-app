@@ -2900,7 +2900,7 @@ const docsPages: DocsPage[] = [
 				title: 'How the web app and CLI stay aligned',
 				bullets: [
 					'The app uses a session-authenticated @purveyors/sdk client to forward Parchment-owned Cherry Runtime streams without buffering. The CLI remains a separate Parchment API client and terminal surface; neither runtime imports the other.',
-					'Coffee-app still has direct Supabase paths, including some inventory, roast, sales, tasting, catalog, market, and agent helpers. Those are tracked migration debt, not evidence that the CLI is the app integration layer.',
+					'All Coffee-app product data and AI orchestration now cross Parchment contracts; Supabase is limited to browser identity and session plumbing.',
 					'Cherry read and proposal tools execute inside Parchment. Writes stay user-confirmed through proposal cards and constrained execution routes.',
 					'This API-first architecture keeps terminal, browser, and agent workflows aligned on the same contracts without runtime package coupling.'
 				],

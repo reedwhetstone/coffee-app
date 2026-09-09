@@ -81,9 +81,7 @@ function roundConfidence(value: number): number {
 function hasProcessingEvidenceSignal(coffee: CoffeeCatalog): boolean {
 	const projected = coffee as CoffeeWithProcessProjection;
 	return (
-		coffee.processing_evidence_available === true ||
-		coffee.processing_evidence != null ||
-		projected.process?.evidence_available === true
+		coffee.processing_evidence_available === true || projected.process?.evidence_available === true
 	);
 }
 

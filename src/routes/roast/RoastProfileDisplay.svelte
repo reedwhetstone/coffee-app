@@ -178,7 +178,12 @@
 												class="relative z-0 min-h-[80px] w-full rounded bg-surface-canvas px-2 py-1 text-ink"
 												rows="4"
 												bind:value={
-													(editedProfile as Record<string, string | number | null | undefined>)[key]
+													(
+														editedProfile as unknown as Record<
+															string,
+															string | number | null | undefined
+														>
+													)[key]
 												}
 											></textarea>
 										{:else if ['oz_in', 'oz_out'].includes(key)}
@@ -188,7 +193,12 @@
 												min="0"
 												class="relative z-0 h-[36px] w-full rounded bg-surface-canvas px-2 py-1 text-ink"
 												bind:value={
-													(editedProfile as Record<string, string | number | null | undefined>)[key]
+													(
+														editedProfile as unknown as Record<
+															string,
+															string | number | null | undefined
+														>
+													)[key]
 												}
 											/>
 										{:else}
@@ -196,7 +206,12 @@
 												type="text"
 												class="relative z-0 h-[36px] w-full rounded bg-surface-canvas px-2 py-1 text-ink"
 												bind:value={
-													(editedProfile as Record<string, string | number | null | undefined>)[key]
+													(
+														editedProfile as unknown as Record<
+															string,
+															string | number | null | undefined
+														>
+													)[key]
 												}
 											/>
 										{/if}
