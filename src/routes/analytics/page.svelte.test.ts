@@ -297,13 +297,13 @@ function createData(overrides: Record<string, unknown> = {}): PageData {
 				stats: base.stats,
 				movementCounts: base.movementCounts
 			} as AnalyticsCoverage),
+		analyticsInsights: Promise.resolve(base.marketInsights),
 		analyticsCharts:
 			analyticsCharts ??
 			Promise.resolve({
 				snapshots: base.snapshots,
 				processDistribution: base.processDistribution,
-				originRangeData: base.originRangeData,
-				marketInsights: base.marketInsights
+				originRangeData: base.originRangeData
 			} as AnalyticsCharts),
 		analyticsWatchlist:
 			analyticsWatchlist ??
@@ -379,8 +379,7 @@ describe('analytics page loading experience', () => {
 		charts.resolve({
 			snapshots: baseline.snapshots,
 			processDistribution: baseline.processDistribution,
-			originRangeData: baseline.originRangeData,
-			marketInsights: baseline.marketInsights
+			originRangeData: baseline.originRangeData
 		} as AnalyticsCharts);
 		member.resolve({
 			recentArrivals: [],
@@ -416,8 +415,7 @@ describe('analytics page loading experience', () => {
 		charts.resolve({
 			snapshots: baseline.snapshots,
 			processDistribution: baseline.processDistribution,
-			originRangeData: baseline.originRangeData,
-			marketInsights: baseline.marketInsights
+			originRangeData: baseline.originRangeData
 		} as AnalyticsCharts);
 
 		await waitFor(() => {
@@ -847,9 +845,30 @@ describe('analytics command center hierarchy', () => {
 			'/catalog?coffee=11'
 		);
 
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockImplementation(
+				() =>
+					new Response(
+						JSON.stringify({
+							valueSignals: [],
+							moveStats: [],
+							signalsSummary: null,
+							signalsAsOf: null
+						})
+					)
+			)
+		);
 		await screen.getByRole('button', { name: 'Wholesale' }).click();
 
-		expect(screen.getByText(/No strong wholesale buy signals this morning/i)).toBeTruthy();
+		await waitFor(() =>
+			expect(screen.getByText(/No strong wholesale buy signals this morning/i)).toBeTruthy()
+		);
+		expect(fetch).toHaveBeenCalledWith(
+			'/api/analytics/insights?market=wholesale&window=7d',
+			expect.objectContaining({ signal: expect.any(AbortSignal) })
+		);
+		vi.unstubAllGlobals();
 		expect(screen.queryByText('View the selected coffee in the catalog.')).toBeNull();
 	});
 

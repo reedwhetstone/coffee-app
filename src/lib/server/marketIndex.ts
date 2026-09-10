@@ -13,15 +13,9 @@ import { createParchmentServerClient, ParchmentConfigError } from './parchmentCl
  *   Supplier score_value trends are deliberately not fetched: supplier scores
  *   are inconsistent/subjective and are not surfaced on the front end.
  *
- * The analytics page navigates a market (retail/wholesale/all) scope toggle and
- * a movement-window (7d/30d) toggle entirely client-side, with no re-fetch, and
- * the sections match the loaded data by exact `segment.market === viewMode` and
- * `window === windowMode`. So this loader must fetch every scope+window cell the
- * viewer can select, not just the default (retail, 7d) point — otherwise the
- * value-signal cards, and the movement-significance note, silently disappear
- * when the user switches scope or window. Non-retail stat slices and the full
- * signal feed are Parchment Intelligence leverage (ADR-005), so they are only
- * requested for entitled viewers; everyone else keeps the public retail reads.
+ * Page loads request only the selected market/window. Additional scopes are
+ * requested on demand; metadata is loaded once independently of scope changes.
+ * Omitting scope retains the complete multi-scope contract for other callers.
  *
  * Every fetch degrades to `null` on error so a Parchment outage never breaks
  * the analytics page — the sections simply don't render.
@@ -74,7 +68,11 @@ function signalRank(item: components['schemas']['MarketSignalItem']): number | n
 
 export async function loadMarketIndexInsights(
 	event: RequestEvent,
-	options: { isParchmentIntelligence: boolean }
+	options: {
+		isParchmentIntelligence: boolean;
+		scope?: { market: 'retail' | 'wholesale' | 'all'; window: '7d' | '30d' };
+		includeMetadata?: boolean;
+	}
 ): Promise<MarketIndexInsights> {
 	let client: Awaited<ReturnType<typeof createParchmentServerClient>>;
 	try {
@@ -95,7 +93,10 @@ export async function loadMarketIndexInsights(
 	// fetched: any signal in the combined top-N by rank is by definition in its
 	// own market's top-N, so the per-market pages fully cover the 'all' scope
 	// after the rank re-sort below.
-	const SIGNAL_MARKETS = ['retail', 'wholesale'] as const;
+	const SIGNAL_MARKETS =
+		options.scope && options.scope.market !== 'all'
+			? [options.scope.market]
+			: (['retail', 'wholesale'] as const);
 	const SIGNAL_PAGES = [
 		{ type: DISPLAY_SIGNAL_TYPES, window: '30d' as const },
 		{ type: PRICE_DROP_SIGNAL_TYPES, window: '7d' as const }
@@ -119,26 +120,32 @@ export async function loadMarketIndexInsights(
 	// the wholesale/all Intelligence slices, across both windows, so the note is
 	// populated for any scope+window the user selects.
 	const statMarkets: ReadonlyArray<'retail' | 'wholesale' | 'all'> = isParchmentIntelligence
-		? ['retail', 'wholesale', 'all']
+		? options.scope
+			? [options.scope.market]
+			: ['retail', 'wholesale', 'all']
 		: ['retail'];
 	const statsPromise = Promise.allSettled(
 		statMarkets.flatMap((market) =>
-			MOVE_WINDOWS.map((window) => client.priceIndex.stats({ market, window }))
+			(options.scope ? [options.scope.window] : MOVE_WINDOWS).map((window) =>
+				client.priceIndex.stats({ market, window })
+			)
 		)
 	);
 
 	const metadataPromise = Promise.allSettled([
-		client.market.metadataIndex({ dimension: 'process', grain: 'month' }),
-		isParchmentIntelligence
+		options.includeMetadata === false
+			? Promise.resolve(null)
+			: client.market.metadataIndex({ dimension: 'process', grain: 'month' }),
+		isParchmentIntelligence && options.includeMetadata !== false
 			? client.market.metadataIndex({ dimension: 'disclosure', grain: 'month' })
 			: Promise.resolve(null),
-		isParchmentIntelligence
+		isParchmentIntelligence && options.includeMetadata !== false
 			? client.market.metadataIndex({ dimension: 'purveyor_score', grain: 'month' })
 			: Promise.resolve(null),
-		isParchmentIntelligence
+		isParchmentIntelligence && options.includeMetadata !== false
 			? client.market.metadataIndex({ dimension: 'purveyor_score_confidence', grain: 'month' })
 			: Promise.resolve(null),
-		isParchmentIntelligence
+		isParchmentIntelligence && options.includeMetadata !== false
 			? client.market.metadataIndex({ dimension: 'purveyor_score_tier', grain: 'month' })
 			: Promise.resolve(null)
 	]);

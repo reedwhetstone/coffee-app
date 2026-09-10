@@ -72,6 +72,46 @@
 		metadataPurveyorScoreTierSeries: null
 	};
 
+	let insightsState = $state<StreamState>('pending');
+	let insightsData = $state<MarketIndexInsights | null>(null);
+
+	$effect(() => {
+		const initial = data.analyticsInsights as Promise<MarketIndexInsights>;
+		const market = isParchmentIntelligence ? viewMode : 'retail';
+		const window = windowMode;
+		const controller = new AbortController();
+		insightsState = 'pending';
+		insightsData = null;
+		void Promise.resolve(initial)
+			.then(async (base) => {
+				if (controller.signal.aborted) return;
+				if (market === 'retail' && window === '7d') return base;
+				const response = await fetch(`/api/analytics/insights?market=${market}&window=${window}`, {
+					signal: controller.signal
+				});
+				if (!response.ok) throw new Error('Market insights unavailable');
+				const scope: MarketIndexInsights = await response.json();
+				return {
+					...base,
+					valueSignals: scope.valueSignals,
+					signalsSummary: scope.signalsSummary,
+					signalsAsOf: scope.signalsAsOf,
+					moveStats: scope.moveStats
+				};
+			})
+			.then((value) => {
+				if (controller.signal.aborted) return;
+				insightsData = value ?? null;
+				insightsState = 'ready';
+			})
+			.catch((error: unknown) => {
+				if (controller.signal.aborted) return;
+				console.error('Failed to load market insights:', error);
+				insightsState = 'error';
+			});
+		return () => controller.abort();
+	});
+
 	let coverageState = $state<StreamState>('pending');
 	let coverageData = $state<AnalyticsCoverage | null>(null);
 	let chartsState = $state<StreamState>('pending');
@@ -174,13 +214,15 @@
 	let signalsReady = $derived(coverageSettled && chartsSettled);
 	let bodyReady = $derived(chartsSettled);
 	let allResolved = $derived(
-		coverageState === 'ready' &&
+		insightsState === 'ready' &&
+			coverageState === 'ready' &&
 			chartsState === 'ready' &&
 			memberState === 'ready' &&
 			watchlistState === 'ready'
 	);
 	let streamedSectionErrors = $derived.by(() => {
 		const failed: string[] = [];
+		if (insightsState === 'error') failed.push('market insights');
 		if (coverageState === 'error') failed.push('coverage and movement counts');
 		if (chartsState === 'error') failed.push('price history and chart evidence');
 		if (memberState === 'error') failed.push('member market evidence');
@@ -221,7 +263,7 @@
 	let snapshots = $derived(chartsData?.snapshots ?? []);
 	let processDistribution = $derived(chartsData?.processDistribution ?? []);
 	let originRangeData = $derived(chartsData?.originRangeData ?? []);
-	let marketInsights = $derived(chartsData?.marketInsights ?? EMPTY_MARKET_INSIGHTS);
+	let marketInsights = $derived(insightsData ?? EMPTY_MARKET_INSIGHTS);
 	let recentArrivals = $derived(memberData?.recentArrivals ?? []);
 	let recentDelistings = $derived(memberData?.recentDelistings ?? []);
 	let comparisonBeans = $derived(memberData?.comparisonBeans ?? []);
@@ -1171,6 +1213,9 @@
 	     hero, which is already resolved above. -->
 	<AnalyticsPageSkeleton showHero={false} {isSignedIn} {isParchmentIntelligence} />
 {:else}
+	{#if insightsState === 'pending'}<p role="status" class="text-ink-muted mb-4 text-sm">
+			Loading market insights…
+		</p>{/if}
 	<ValueSignalsSection
 		valueSignals={marketInsights?.valueSignals ?? null}
 		signalsSummary={marketInsights?.signalsSummary ?? null}

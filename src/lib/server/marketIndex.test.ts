@@ -193,3 +193,17 @@ describe('loadMarketIndexInsights', () => {
 		});
 	});
 });
+
+it('bounds selected-scope reads and skips metadata on demand', async () => {
+	const market = configureClient([signalPage([]), signalPage([])]);
+	await loadMarketIndexInsights(makeEvent(), {
+		isParchmentIntelligence: true,
+		scope: { market: 'wholesale', window: '30d' },
+		includeMetadata: false
+	});
+	expect(market.signals).toHaveBeenCalledTimes(2);
+	for (const [query] of market.signals.mock.calls) expect(query.market).toBe('wholesale');
+	expect(market.metadataIndex).not.toHaveBeenCalled();
+	const client = await mockCreateParchmentServerClient.mock.results.at(-1)?.value;
+	expect(client.priceIndex.stats).toHaveBeenCalledWith({ market: 'wholesale', window: '30d' });
+});
