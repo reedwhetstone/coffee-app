@@ -9,7 +9,9 @@
 	"scripts": {
 		"sync": "svelte-kit sync",
 		"dev": "vite dev",
-		"build": "pnpm run sync && vite build && pnpm verify:market-brief-artifact",
+		"build": "pnpm verify:image-artifacts && pnpm run sync && vite build && pnpm verify:market-brief-artifact",
+		"verify:image-artifacts": "node scripts/verify-image-artifacts.mjs",
+		"vercel:ignore-build": "node scripts/vercel-ignore-build-step.mjs",
 		"verify:market-brief-artifact": "node scripts/verify-market-brief-artifact.mjs",
 		"build:analyze": "pnpm run build && vite-bundle-analyzer dist/",
 		"preview": "vite preview",
