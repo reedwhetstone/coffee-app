@@ -1,8 +1,9 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const BLOG_IMAGE_ROOT = new URL('../static/blog/images/', import.meta.url);
-const FOUNDER_IMAGE = new URL('../static/founder.webp', import.meta.url);
+const BLOG_IMAGE_ROOT = fileURLToPath(new URL('../static/blog/images/', import.meta.url));
+const FOUNDER_IMAGE = fileURLToPath(new URL('../static/founder.webp', import.meta.url));
 const MAX_HERO_BYTES = 350_000;
 const MAX_CARD_BYTES = 125_000;
 const MAX_FOUNDER_BYTES = 250_000;
@@ -19,7 +20,7 @@ async function assertWebp(path, maxBytes) {
 
 const imageDirectories = await readdir(BLOG_IMAGE_ROOT, { withFileTypes: true });
 for (const directory of imageDirectories.filter((entry) => entry.isDirectory())) {
-	const base = join(BLOG_IMAGE_ROOT.pathname, directory.name);
+	const base = join(BLOG_IMAGE_ROOT, directory.name);
 	await assertWebp(join(base, 'hero.webp'), MAX_HERO_BYTES);
 	await assertWebp(join(base, 'hero-card.webp'), MAX_CARD_BYTES);
 }

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { resolveComparisonRange, shouldBuild } from '../../../scripts/vercel-ignore-build-step.mjs';
+import {
+	diffNameOnlyArgs,
+	resolveComparisonRange,
+	shouldBuild
+} from '../../../scripts/vercel-ignore-build-step.mjs';
 
 describe('Vercel ignored build step', () => {
 	it('skips documentation, tests, and repository-only metadata', () => {
@@ -17,6 +21,19 @@ describe('Vercel ignored build step', () => {
 		expect(shouldBuild(['README.md', 'src/routes/+page.svelte'])).toBe(true);
 		expect(shouldBuild(['static/blog/images/example/hero.webp'])).toBe(true);
 		expect(shouldBuild(['package.json'])).toBe(true);
+	});
+
+	it('keeps both endpoints visible when a runtime file moves into an ignored path', () => {
+		expect(diffNameOnlyArgs(['previous', 'current'])).toEqual([
+			'diff',
+			'--name-only',
+			'--no-renames',
+			'previous',
+			'current'
+		]);
+		expect(shouldBuild(['src/routes/obsolete/+page.svelte', 'tests/archive/+page.svelte'])).toBe(
+			true
+		);
 	});
 
 	it('uses Vercel commit variables when available', () => {

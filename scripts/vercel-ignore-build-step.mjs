@@ -24,11 +24,16 @@ export function resolveComparisonRange(environment = process.env) {
 	return [previous, current];
 }
 
+/** @param {string[]} range */
+export function diffNameOnlyArgs(range) {
+	return ['diff', '--name-only', '--no-renames', ...range];
+}
+
 function main() {
 	const range = resolveComparisonRange();
 	let changedPaths;
 	try {
-		changedPaths = execFileSync('git', ['diff', '--name-only', ...range], {
+		changedPaths = execFileSync('git', diffNameOnlyArgs(range), {
 			encoding: 'utf8',
 			stdio: ['ignore', 'pipe', 'pipe']
 		})
