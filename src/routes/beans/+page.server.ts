@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { requireParchmentAccess } from '$lib/server/auth';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
-import { fetchParchmentInventoryProjection } from '$lib/server/parchmentInventory';
+import { fetchPortfolioPage, parsePortfolioQuery } from '$lib/server/portfolioPage';
 import { redeemParchmentInventoryShareGrant } from '$lib/server/parchmentShares';
 
 export const load: PageServerLoad = async (event) => {
@@ -18,9 +18,11 @@ export const load: PageServerLoad = async (event) => {
 			const { memberAccess } = await requireParchmentAccess(event);
 			const client = await createParchmentServerClient(event, { mode: 'session' });
 			return {
-				data: await fetchParchmentInventoryProjection(client, {
-					includeRoastProfiles: memberAccess
-				}),
+				...(await fetchPortfolioPage(
+					client,
+					parsePortfolioQuery(new URLSearchParams()),
+					memberAccess
+				)),
 				error: null
 			};
 		} catch (error) {

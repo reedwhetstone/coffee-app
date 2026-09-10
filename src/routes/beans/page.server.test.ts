@@ -7,8 +7,9 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('$lib/server/auth', () => ({ requireParchmentAccess: mocks.access }));
 vi.mock('$lib/server/parchmentClient', () => ({ createParchmentServerClient: mocks.client }));
-vi.mock('$lib/server/parchmentInventory', () => ({
-	fetchParchmentInventoryProjection: mocks.inventory
+vi.mock('$lib/server/portfolioPage', () => ({
+	fetchPortfolioPage: mocks.inventory,
+	parsePortfolioQuery: () => ({ offset: 0, limit: 50 })
 }));
 vi.mock('$lib/server/parchmentShares', () => ({ redeemParchmentInventoryShareGrant: mocks.share }));
 import { load } from './+page.server';
@@ -21,7 +22,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	mocks.access.mockResolvedValue({ memberAccess: true });
 	mocks.client.mockResolvedValue({ id: 'client' });
-	mocks.inventory.mockResolvedValue([{ id: 7 }]);
+	mocks.inventory.mockResolvedValue({ data: [{ id: 7 }] });
 	mocks.share.mockResolvedValue([{ id: 8 }]);
 });
 describe('purchased portfolio server stream', () => {
@@ -37,15 +38,15 @@ describe('purchased portfolio server stream', () => {
 		};
 		expect(result.purchases).toBeInstanceOf(Promise);
 		await vi.waitFor(() => expect(mocks.inventory).toHaveBeenCalled());
-		resolve([{ id: 7 }]);
+		resolve({ data: [{ id: 7 }] });
 		expect(await result.purchases).toEqual({ data: [{ id: 7 }], error: null });
-		expect(mocks.inventory).toHaveBeenCalledWith({ id: 'client' }, { includeRoastProfiles: true });
+		expect(mocks.inventory).toHaveBeenCalledWith({ id: 'client' }, { offset: 0, limit: 50 }, true);
 	});
 	it('keeps Intelligence-only roast restrictions', async () => {
 		mocks.access.mockResolvedValue({ memberAccess: false });
 		const result = (await load(event())) as { purchases: Promise<unknown> };
 		await result.purchases;
-		expect(mocks.inventory).toHaveBeenCalledWith({ id: 'client' }, { includeRoastProfiles: false });
+		expect(mocks.inventory).toHaveBeenCalledWith({ id: 'client' }, { offset: 0, limit: 50 }, false);
 	});
 	it('redeems shares anonymously without reading owner inventory', async () => {
 		const request = event('?share=grant');

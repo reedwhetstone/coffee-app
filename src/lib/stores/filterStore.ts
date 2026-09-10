@@ -86,6 +86,7 @@ type CatalogPaginationState = {
 };
 
 type FilterState = {
+	portfolioServerSide: boolean;
 	routeId: string;
 	sortField: string | null;
 	sortDirection: 'asc' | 'desc' | null;
@@ -112,6 +113,7 @@ type FilterState = {
 };
 
 type InitializeRouteOptions = {
+	portfolioServerSide?: boolean;
 	catalogUrlState?: CatalogUrlState;
 	pagination?: CatalogPaginationState;
 	serverData?: DataItem[];
@@ -131,6 +133,7 @@ function createInitialCatalogPagination(): CatalogPaginationState {
 
 // Initialize default state
 const initialState: FilterState = {
+	portfolioServerSide: false,
 	routeId: '',
 	sortField: null,
 	sortDirection: null,
@@ -392,6 +395,7 @@ function createFilterStore() {
 		update((state) => {
 			state.initializingRoute = routeId;
 			state.routeId = routeId;
+			state.portfolioServerSide = options.portfolioServerSide === true;
 			state.originalData = data;
 			state.processing = false;
 			state.lastProcessedCacheKey = null;
@@ -700,6 +704,7 @@ function createFilterStore() {
 	function updateUniqueFilterValues() {
 		try {
 			update((state) => {
+				if (state.portfolioServerSide) return state;
 				// If already processing, don't start another update
 				if (state.processing) {
 					return state;
@@ -797,6 +802,7 @@ function createFilterStore() {
 
 	// Process and update filtered data, with optimized debounce
 	function processAndUpdateFilteredData() {
+		if (get({ subscribe }).portfolioServerSide) return;
 		// If a debounce timer exists, clear it
 		const currentState = get({ subscribe });
 		if (currentState.lastDebounceId) {
@@ -872,8 +878,21 @@ function createFilterStore() {
 	// Create a filtered data derived store
 	const filteredData = derived({ subscribe }, ($state) => $state.filteredData);
 
+	function setPortfolioPage(data: DataItem[], uniqueValues: Record<string, string[]>) {
+		update((state) => ({
+			...state,
+			portfolioServerSide: true,
+			originalData: data,
+			serverData: data,
+			filteredData: data,
+			uniqueValues,
+			processing: false,
+			isLoading: false
+		}));
+	}
 	return {
 		subscribe,
+		setPortfolioPage,
 		initializeForRoute,
 		setDefaultSort,
 		setSortField,

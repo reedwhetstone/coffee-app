@@ -18,6 +18,7 @@ describe('fetchParchmentInventoryProjection', () => {
 			.fn()
 			.mockResolvedValueOnce({
 				data: {
+					pagination: { offset: 0, limit: 1, hasNext: false },
 					data: [
 						{
 							id: 7,
@@ -88,7 +89,11 @@ describe('fetchParchmentInventoryProjection', () => {
 			includeRoastProfiles: true
 		});
 
-		expect(inventoryList).toHaveBeenNthCalledWith(1, { limit: 200, offset: 0 });
+		expect(inventoryList).toHaveBeenNthCalledWith(1, {
+			id: 7,
+			limit: 1,
+			include_pagination: 'true'
+		});
 		expect(inventoryList).toHaveBeenCalledOnce();
 		expect(catalogList).toHaveBeenCalledWith({
 			coffeeIds: '101',
@@ -497,5 +502,38 @@ describe('fetchParchmentInventoryProjection', () => {
 			status: 503,
 			body
 		});
+	});
+});
+
+describe('bounded inventory detail compatibility', () => {
+	it('does not enumerate owner inventory for a supported ID lookup', async () => {
+		const list = vi.fn().mockResolvedValue({
+			data: { data: [], pagination: { offset: 0, limit: 1, hasNext: false } }
+		});
+		const catalog = vi.fn();
+		const roasts = vi.fn();
+		expect(
+			await fetchParchmentInventoryProjection(
+				{ inventory: { list }, catalog: { list: catalog }, roasts: { list: roasts } } as never,
+				{ id: 42, includeRoastProfiles: true }
+			)
+		).toEqual([]);
+		expect(list).toHaveBeenCalledWith({ id: 42, limit: 1, include_pagination: 'true' });
+		expect(list).toHaveBeenCalledTimes(1);
+		expect(catalog).not.toHaveBeenCalled();
+		expect(roasts).not.toHaveBeenCalled();
+	});
+	it('does not accept an unrelated first row from an older API that ignores the id parameter', async () => {
+		const row = { id: 42, catalog_id: null, coffee_catalog: null };
+		const list = vi
+			.fn()
+			.mockResolvedValueOnce({ data: { data: [{ ...row, id: 1 }] } })
+			.mockResolvedValueOnce({ data: { data: [{ ...row, id: 1 }, row] } });
+		const result = await fetchParchmentInventoryProjection({ inventory: { list } } as never, {
+			id: 42,
+			includeRoastProfiles: false
+		});
+		expect(result.map((item) => item.id)).toEqual([42]);
+		expect(list).toHaveBeenCalledTimes(2);
 	});
 });
