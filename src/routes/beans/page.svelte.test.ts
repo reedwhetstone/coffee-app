@@ -1,3 +1,4 @@
+import { get } from 'svelte/store';
 import { filterStore } from '$lib/stores/filterStore';
 import { legacyPortfolioPage } from '$lib/server/portfolioPage';
 import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
@@ -127,5 +128,26 @@ describe('bounded Portfolio navigation', () => {
 			country: 'Kenya'
 		});
 		expect(screen.queryByText('No Coffee Beans Yet')).toBeNull();
+	});
+	it('does not overwrite another route with a late portfolio page response', async () => {
+		const first = legacyPortfolioPage(inventory, query);
+		let resolvePage!: (response: Response) => void;
+		vi.mocked(fetch).mockReturnValueOnce(
+			new Promise<Response>((resolve) => {
+				resolvePage = resolve;
+			})
+		);
+		const mounted = render(BeansPage, {
+			data: { auth, purchases: Promise.resolve({ ...first, error: null }) }
+		});
+		await screen.findByText('Page 1 of 3');
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		mounted.unmount();
+		filterStore.initializeForRoute('/catalog', [{ id: 999 }], { serverData: [{ id: 999 }] });
+		resolvePage(
+			new Response(JSON.stringify(legacyPortfolioPage(inventory, { ...query, offset: 50 })))
+		);
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(get(filterStore).filteredData).toEqual([{ id: 999 }]);
 	});
 });

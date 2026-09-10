@@ -879,16 +879,20 @@ function createFilterStore() {
 	const filteredData = derived({ subscribe }, ($state) => $state.filteredData);
 
 	function setPortfolioPage(data: DataItem[], uniqueValues: Record<string, string[]>) {
-		update((state) => ({
-			...state,
-			portfolioServerSide: true,
-			originalData: data,
-			serverData: data,
-			filteredData: data,
-			uniqueValues,
-			processing: false,
-			isLoading: false
-		}));
+		update((state) =>
+			state.routeId !== '/beans'
+				? state
+				: {
+						...state,
+						portfolioServerSide: true,
+						originalData: data,
+						serverData: data,
+						filteredData: data,
+						uniqueValues,
+						processing: false,
+						isLoading: false
+					}
+		);
 	}
 	return {
 		subscribe,

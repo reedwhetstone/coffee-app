@@ -264,9 +264,14 @@
 		}
 	}
 
+	$effect(() => () => {
+		portfolioRequest += 1;
+	});
+
 	// The server begins this read before hydration; refreshes remain explicit.
 	$effect(() => {
 		const purchases = data.purchases;
+		portfolioRequest += 1;
 		let cancelled = false;
 		isLoading = true;
 		error = null;
