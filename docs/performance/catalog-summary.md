@@ -29,7 +29,15 @@ proof and metadata-presence calculation still needs those inputs.
 Focused tests cover actual summary requests from SSR and interactive refresh,
 no detail request for collapsed cards, initial deep-link hydration, successful
 open/reopen, retry after failure, cancellation on close, exact-ID/full-detail
-response validation, and score parity. `pnpm check` and `pnpm build` pass using
-placeholder public environment values for local validation (no live Supabase
-access). Live authenticated browser behavior and production performance remain
+response validation, and score parity. Required repository validation also
+passes: `pnpm lint` (Prettier and ESLint) and
+`PUBLIC_SUPABASE_URL=https://example.invalid PUBLIC_SUPABASE_ANON_KEY=placeholder
+ACCOUNT_DELETION_REAUTH_ISSUER=https://example.invalid
+ACCOUNT_DELETION_REAUTH_AUDIENCE=https://example.invalid/account-deletion
+ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS=placeholder
+ACCOUNT_DELETION_REAUTH_ACTIVE_KID=placeholder pnpm check --fail-on-warnings`
+(0 errors and 0 warnings). Static validation uses placeholder public/server
+environment values (no live Supabase access). The host is running Node 24 while
+the package declares Node 22; the commands pass with the package-manager engine
+warning. Live authenticated browser behavior and production performance remain
 post-deployment checks, not claimed here.
