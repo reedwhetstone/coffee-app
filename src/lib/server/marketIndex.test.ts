@@ -43,8 +43,8 @@ function makeSignal(signalWindow: '7d' | '30d', overrides: Record<string, unknow
 	};
 }
 
-function makeEvent(): RequestEvent {
-	return { locals: {} } as unknown as RequestEvent;
+function makeEvent(signal?: AbortSignal): RequestEvent {
+	return { locals: {}, request: { signal } } as unknown as RequestEvent;
 }
 
 function configureClient(signalResults: unknown[]) {
@@ -206,4 +206,20 @@ it('bounds selected-scope reads and skips metadata on demand', async () => {
 	expect(market.metadataIndex).not.toHaveBeenCalled();
 	const client = await mockCreateParchmentServerClient.mock.results.at(-1)?.value;
 	expect(client.priceIndex.stats).toHaveBeenCalledWith({ market: 'wholesale', window: '30d' });
+});
+
+it('passes the route abort signal to the shared Parchment client', async () => {
+	configureClient([signalPage([]), signalPage([])]);
+	const controller = new AbortController();
+
+	await loadMarketIndexInsights(makeEvent(controller.signal), {
+		isParchmentIntelligence: true,
+		scope: { market: 'wholesale', window: '30d' },
+		includeMetadata: false,
+		signal: controller.signal
+	});
+
+	expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+		signal: controller.signal
+	});
 });

@@ -80,35 +80,69 @@
 		const market = isParchmentIntelligence ? viewMode : 'retail';
 		const window = windowMode;
 		const controller = new AbortController();
+		const needsScopeRequest = !(market === 'retail' && window === '7d');
+		let base: MarketIndexInsights | null = null;
+		let scope: MarketIndexInsights | null = null;
 		insightsState = 'pending';
 		insightsData = null;
+
+		const publishScope = () => {
+			if (controller.signal.aborted || !scope) return;
+			// The scoped response deliberately omits metadata. Keep it as soon as
+			// the independent base stream settles, but never let base signals or
+			// movement stats overwrite the selected scope.
+			insightsData = {
+				...scope,
+				...(base
+					? {
+							metadataProcessSeries: base.metadataProcessSeries,
+							metadataDisclosureSeries: base.metadataDisclosureSeries,
+							metadataPurveyorScoreSeries: base.metadataPurveyorScoreSeries,
+							metadataPurveyorScoreConfidenceSeries: base.metadataPurveyorScoreConfidenceSeries,
+							metadataPurveyorScoreTierSeries: base.metadataPurveyorScoreTierSeries
+						}
+					: {})
+			};
+			insightsState = 'ready';
+		};
+
+		const publishBase = () => {
+			if (controller.signal.aborted || !base) return;
+			insightsData = base;
+			insightsState = 'ready';
+		};
+
 		void Promise.resolve(initial)
-			.then(async (base) => {
-				if (controller.signal.aborted) return;
-				if (market === 'retail' && window === '7d') return base;
-				const response = await fetch(`/api/analytics/insights?market=${market}&window=${window}`, {
-					signal: controller.signal
-				});
-				if (!response.ok) throw new Error('Market insights unavailable');
-				const scope: MarketIndexInsights = await response.json();
-				return {
-					...base,
-					valueSignals: scope.valueSignals,
-					signalsSummary: scope.signalsSummary,
-					signalsAsOf: scope.signalsAsOf,
-					moveStats: scope.moveStats
-				};
-			})
 			.then((value) => {
-				if (controller.signal.aborted) return;
-				insightsData = value ?? null;
-				insightsState = 'ready';
+				base = value;
+				if (needsScopeRequest) publishScope();
+				else publishBase();
 			})
 			.catch((error: unknown) => {
 				if (controller.signal.aborted) return;
 				console.error('Failed to load market insights:', error);
-				insightsState = 'error';
+				if (!needsScopeRequest) insightsState = 'error';
 			});
+
+		if (needsScopeRequest) {
+			void (async () => {
+				const response = await fetch(`/api/analytics/insights?market=${market}&window=${window}`, {
+					signal: controller.signal
+				});
+				if (!response.ok) throw new Error('Market insights unavailable');
+				return (await response.json()) as MarketIndexInsights;
+			})()
+				.then((value) => {
+					scope = value;
+					publishScope();
+				})
+				.catch((error: unknown) => {
+					if (controller.signal.aborted) return;
+					console.error('Failed to load market insights:', error);
+					insightsState = 'error';
+				});
+		}
+
 		return () => controller.abort();
 	});
 

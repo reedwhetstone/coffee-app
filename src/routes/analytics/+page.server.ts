@@ -582,7 +582,8 @@ export const load: PageServerLoad = async (event) => {
 	const marketOverviewPromise = loadMarketOverview(event);
 	const analyticsInsights = loadMarketIndexInsights(event, {
 		isParchmentIntelligence,
-		scope: { market: 'retail', window: '7d' }
+		scope: { market: 'retail', window: '7d' },
+		signal: event.request.signal
 	});
 	analyticsInsights.catch(() => {});
 	const analyticsCharts = loadAnalyticsCharts(event, {

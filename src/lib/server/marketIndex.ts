@@ -72,11 +72,12 @@ export async function loadMarketIndexInsights(
 		isParchmentIntelligence: boolean;
 		scope?: { market: 'retail' | 'wholesale' | 'all'; window: '7d' | '30d' };
 		includeMetadata?: boolean;
+		signal?: AbortSignal;
 	}
 ): Promise<MarketIndexInsights> {
 	let client: Awaited<ReturnType<typeof createParchmentServerClient>>;
 	try {
-		client = await createParchmentServerClient(event);
+		client = await createParchmentServerClient(event, { signal: options.signal });
 	} catch (error) {
 		if (error instanceof ParchmentConfigError) {
 			console.warn('Market Index insights skipped:', error.message);

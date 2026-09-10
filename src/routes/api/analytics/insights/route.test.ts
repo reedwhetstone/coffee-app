@@ -4,10 +4,15 @@ const { loadInsights } = vi.hoisted(() => ({ loadInsights: vi.fn() }));
 vi.mock('$lib/server/marketIndex', () => ({ loadMarketIndexInsights: loadInsights }));
 import type { RequestPrincipal } from '$lib/server/principal';
 import { GET } from './+server';
-function event(query: string, principal: RequestPrincipal = anonymousPrincipal()) {
+function event(
+	query: string,
+	principal: RequestPrincipal = anonymousPrincipal(),
+	signal?: AbortSignal
+) {
 	return {
 		url: new URL(`https://example.com/api/analytics/insights?${query}`),
-		locals: { principal }
+		locals: { principal },
+		request: new Request(`https://example.com/api/analytics/insights?${query}`, { signal })
 	} as never;
 }
 beforeEach(() => {
@@ -23,15 +28,18 @@ it('does not grant anonymous callers wholesale insights', async () => {
 	expect(loadInsights).not.toHaveBeenCalled();
 });
 it('loads the selected entitled scope without repeating metadata and forbids shared caching', async () => {
+	const controller = new AbortController();
 	const request = event(
 		'market=wholesale&window=30d',
-		cookieSessionPrincipal('member', { ppiAccess: true })
+		cookieSessionPrincipal('member', { ppiAccess: true }),
+		controller.signal
 	);
 	const response = await GET(request);
 	expect(response.headers.get('cache-control')).toBe('private, no-store');
 	expect(loadInsights).toHaveBeenCalledWith(request, {
 		isParchmentIntelligence: true,
 		scope: { market: 'wholesale', window: '30d' },
-		includeMetadata: false
+		includeMetadata: false,
+		signal: controller.signal
 	});
 });
