@@ -1,10 +1,14 @@
-import type { Session, User } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 import type { UserRole } from '$lib/types/auth.types';
-import { isCookieSessionPrincipal, type RequestPrincipal } from '$lib/server/principal';
+import {
+	isCookieSessionPrincipal,
+	type RequestPrincipal,
+	type PrincipalUser
+} from '$lib/server/principal';
 
 export function getPageAuthState(principal: RequestPrincipal): {
 	session: Session | null;
-	user: User | null;
+	user: PrincipalUser | null;
 	role: UserRole;
 } {
 	if (!isCookieSessionPrincipal(principal)) {
