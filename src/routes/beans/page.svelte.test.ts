@@ -42,6 +42,21 @@ describe('portfolio streamed purchases and lazy bookmarks', () => {
 		await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/beans/watchlist'));
 		await screen.findByText('No Bookmarked Lots Yet');
 	});
+	it('does not show an empty state before the watchlist request settles', async () => {
+		let resolveWatchlist!: (response: Response) => void;
+		vi.mocked(fetch).mockReturnValueOnce(
+			new Promise<Response>((resolve) => {
+				resolveWatchlist = resolve;
+			})
+		);
+		page.url = new URL('https://purveyors.io/beans?tab=bookmarked');
+		render(BeansPage, { data: { auth, purchases: Promise.resolve({ data: [], error: null }) } });
+
+		await screen.findByText('Loading bookmarked lots…');
+		expect(screen.queryByText('No Bookmarked Lots Yet')).toBeNull();
+		resolveWatchlist(new Response(JSON.stringify({ trackedLots: [], trackedCatalog: [] })));
+		await screen.findByText('No Bookmarked Lots Yet');
+	});
 	it('shows a recoverable watchlist failure instead of an empty state', async () => {
 		vi.mocked(fetch).mockResolvedValueOnce(new Response('{}', { status: 502 }));
 		page.url = new URL('https://purveyors.io/beans?tab=bookmarked');

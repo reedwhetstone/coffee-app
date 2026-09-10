@@ -647,7 +647,7 @@
 
 		{#if canUseWatchlist && portfolioTab === 'bookmarked'}
 			<!-- Bookmarked (watchlist) lots -->
-			{#if watchlistLoading}
+			{#if !watchlistLoaded && !watchlistError}
 				<p role="status" class="text-sm text-muted">Loading bookmarked lots…</p>
 			{:else if watchlistError}
 				<p role="alert" class="text-sm text-danger">{watchlistError}</p>
