@@ -44,9 +44,11 @@
 	let chatDrawerOpen = $state(false);
 	let LoadedChatDrawer = $state<ChatDrawerComponent | null>(null);
 	let chatDrawerLoading = $state(false);
+	let chatDrawerOpenRequest = 0;
 
 	async function openChatDrawer() {
 		if (chatDrawerLoading) return;
+		const requestId = ++chatDrawerOpenRequest;
 		if (LoadedChatDrawer) {
 			chatDrawerOpen = true;
 			return;
@@ -55,7 +57,9 @@
 		chatDrawerLoading = true;
 		try {
 			LoadedChatDrawer = (await import('$lib/components/chat/ChatDrawer.svelte')).default;
-			chatDrawerOpen = true;
+			if (requestId === chatDrawerOpenRequest && canUseChatDrawer) {
+				chatDrawerOpen = true;
+			}
 		} catch (error) {
 			console.error('Unable to load the chat drawer:', error);
 		} finally {
@@ -147,7 +151,10 @@
 	);
 
 	$effect(() => {
-		if (!canUseChatDrawer && chatDrawerOpen) chatDrawerOpen = false;
+		if (!canUseChatDrawer) {
+			chatDrawerOpenRequest += 1;
+			if (chatDrawerOpen) chatDrawerOpen = false;
+		}
 	});
 
 	function handleGlobalKeydown(event: KeyboardEvent) {
