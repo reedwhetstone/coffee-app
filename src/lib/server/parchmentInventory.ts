@@ -284,6 +284,8 @@ export async function fetchParchmentInventoryProjection(
 	}
 ): Promise<ParchmentInventoryProjection[]> {
 	let inventory = await collectOffsetPages({
+		// These BFF projections are called only after session authorization (no API-key cap).
+		pageSize: PAGE_LIMIT,
 		fetchPage: async (offset) =>
 			unwrapParchment(await client.inventory.list({ limit: PAGE_LIMIT, offset })).data,
 		key: (row) => row.id
@@ -300,15 +302,17 @@ export async function fetchParchmentInventoryProjection(
 				.filter((catalogId): catalogId is number => catalogId !== null)
 		)
 	];
-	const catalogRows = await fetchParchmentCatalogItemsByIds(client, catalogIds);
-	const catalogById = new Map<number, Record<string, unknown>>(
-		catalogRows.map((row) => [row.id, row as Record<string, unknown>])
-	);
+	// Neither enrichment depends on the other's result.
+	const catalogRowsPromise = fetchParchmentCatalogItemsByIds(client, catalogIds);
+	// Attach a handler immediately while the independent roast read is pending.
+	catalogRowsPromise.catch(() => {});
 
 	const roastsByInventoryId = new Map<number, RoastResource[]>();
 	if (options.includeRoastProfiles && inventory.length > 0) {
 		const inventoryIds = new Set(inventory.map((row) => row.id));
 		const roasts = await collectOffsetPages({
+			// These BFF projections are called only after session authorization (no API-key cap).
+			pageSize: PAGE_LIMIT,
 			fetchPage: async (offset) =>
 				unwrapParchment(
 					await client.roasts.list({
@@ -327,6 +331,10 @@ export async function fetchParchmentInventoryProjection(
 			roastsByInventoryId.set(roast.coffee_id, existing);
 		}
 	}
+
+	const catalogById = new Map<number, Record<string, unknown>>(
+		(await catalogRowsPromise).map((row) => [row.id, row as Record<string, unknown>])
+	);
 
 	return inventory.map((row) => {
 		const fullCatalog = row.catalog_id === null ? undefined : catalogById.get(row.catalog_id);

@@ -89,7 +89,7 @@ describe('fetchParchmentInventoryProjection', () => {
 		});
 
 		expect(inventoryList).toHaveBeenNthCalledWith(1, { limit: 200, offset: 0 });
-		expect(inventoryList).toHaveBeenNthCalledWith(2, { limit: 200, offset: 1 });
+		expect(inventoryList).toHaveBeenCalledOnce();
 		expect(catalogList).toHaveBeenCalledWith({
 			coffeeIds: '101',
 			stocked: 'all',
