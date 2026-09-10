@@ -47,14 +47,16 @@
 
 	async function openChatDrawer() {
 		if (chatDrawerLoading) return;
-		chatDrawerOpen = true;
-		if (LoadedChatDrawer) return;
+		if (LoadedChatDrawer) {
+			chatDrawerOpen = true;
+			return;
+		}
 
 		chatDrawerLoading = true;
 		try {
 			LoadedChatDrawer = (await import('$lib/components/chat/ChatDrawer.svelte')).default;
+			chatDrawerOpen = true;
 		} catch (error) {
-			chatDrawerOpen = false;
 			console.error('Unable to load the chat drawer:', error);
 		} finally {
 			chatDrawerLoading = false;
