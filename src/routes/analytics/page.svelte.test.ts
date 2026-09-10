@@ -914,6 +914,47 @@ describe('analytics command center hierarchy', () => {
 		vi.unstubAllGlobals();
 	});
 
+	it('preserves base metadata when the selected-scope request fails', async () => {
+		const initial = deferred<MarketIndexInsights>();
+		const fetchMock = vi.fn().mockResolvedValue({ ok: false });
+		vi.stubGlobal('fetch', fetchMock);
+		const baseMetadata = {
+			period: '2026-07',
+			lotCount: 10,
+			supplierCount: 2,
+			buckets: [
+				{ key: 'washed', share: 0.7, count: 7, supplierCount: 2 },
+				{ key: 'undisclosed', share: 0.3, count: 3, supplierCount: 1 }
+			]
+		};
+
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				analyticsInsights: initial.promise
+			})
+		});
+
+		await screen.getByRole('button', { name: 'Wholesale' }).click();
+		await waitFor(() =>
+			expect(fetchMock).toHaveBeenCalledWith(
+				'/api/analytics/insights?market=wholesale&window=7d',
+				expect.objectContaining({ signal: expect.any(AbortSignal) })
+			)
+		);
+
+		initial.resolve({
+			...createBaseline().marketInsights,
+			metadataProcessSeries: [baseMetadata]
+		} as MarketIndexInsights);
+
+		await waitFor(() => expect(screen.getByText('How is processing changing?')).toBeTruthy());
+		expect(screen.getByText(/Failed to load: selected market insights/i)).toBeTruthy();
+		expect(screen.queryByText('Loading market insights…')).toBeNull();
+		vi.unstubAllGlobals();
+	});
+
 	it('opens value-signal lot details in the local CoffeeCard drawer when catalog data is attached', async () => {
 		render(AnalyticsPage, {
 			data: createData({
