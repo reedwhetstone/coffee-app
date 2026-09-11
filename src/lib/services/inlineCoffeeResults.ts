@@ -77,7 +77,35 @@ export function inlineCoffeeResults(
 			return true;
 		});
 		if (data.length === 0) continue;
-		views.set(source, { key: source, partIndex, block: { ...block, data } });
+		const previous = views.get(source);
+		const nextBlock = { ...block, data };
+		if (toolName === 'present_results' && previous) {
+			// Equivalent sources share a view. Curation replaces that whole view,
+			// so an alias cannot resurrect a raw list that was already deduplicated.
+			const replacement = { ...previous, partIndex, block: nextBlock };
+			for (const [alias, view] of views) {
+				if (view === previous) views.set(alias, replacement);
+			}
+		} else {
+			const equivalent = [...views.entries()].find(
+				([alias, view]) =>
+					alias !== source && blockIdentityKey(view.block) === blockIdentityKey(nextBlock)
+			)?.[1];
+			const shared =
+				previous &&
+				[...views.entries()].some(([alias, view]) => alias !== source && view === previous);
+			const replacement = {
+				key: equivalent?.key ?? (shared ? `${source}:${partIndex}` : (previous?.key ?? source)),
+				partIndex,
+				block: nextBlock
+			};
+			if (equivalent) {
+				for (const [alias, view] of views) {
+					if (view === equivalent) views.set(alias, replacement);
+				}
+			}
+			views.set(source, replacement);
+		}
 	}
 	// Ranking and search can return the same list. Keep its most recent view,
 	// including the latest annotations, rather than repeat an identical shortlist.

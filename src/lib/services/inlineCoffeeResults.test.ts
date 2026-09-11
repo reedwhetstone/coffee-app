@@ -58,6 +58,22 @@ describe('progressive inline coffee selection', () => {
 		expect(results[0].block.data.map((c) => c.id)).toEqual([1, 2]);
 	});
 
+	it('curates equivalent search and ranking views without resurrecting raw results', () => {
+		const raw = select(search(), search([1, 2], 'catalog_rank'));
+		const curated = select(search(), search([1, 2], 'catalog_rank'), present([2]));
+		expect(curated).toHaveLength(1);
+		expect(curated[0].key).toBe(raw[0].key);
+		expect(curated[0].block.data.map((c) => c.id)).toEqual([2]);
+		const refreshed = select(
+			search(),
+			search([1, 2], 'catalog_rank'),
+			present([2]),
+			search([3], 'catalog_rank')
+		);
+		expect(refreshed.map((view) => view.block.data.map((c) => c.id))).toEqual([[2], [3]]);
+		expect(new Set(refreshed.map((view) => view.key)).size).toBe(2);
+	});
+
 	it('does not treat unfinished, malformed, failed, or action-shaped output as coffee evidence', () => {
 		for (const output of [
 			{ coffees: [null] },

@@ -40,7 +40,7 @@ describe('GenUIBlockRenderer chat evidence', () => {
 		expect(screen.getAllByText('Catalog lookup failed')).toHaveLength(1);
 	});
 
-	it('renders a compact coffee link on mobile and focuses its canvas block', async () => {
+	it('renders useful inline coffee details on mobile with optional canvas focus', async () => {
 		setMobileViewport(true);
 		const onAction = vi.fn();
 		const block: CoffeeCardsBlock = {
@@ -56,12 +56,11 @@ describe('GenUIBlockRenderer chat evidence', () => {
 			onAction
 		});
 
-		expect(container.querySelector('.genui-preview')).toBeInTheDocument();
-		expect(container.querySelector('.genui-inline-evidence')).not.toBeInTheDocument();
-		expect(container.querySelector('.genui-block')).not.toBeInTheDocument();
-		expect(screen.queryByText('View in catalog')).not.toBeInTheDocument();
+		expect(container.querySelector('.genui-preview')).not.toBeInTheDocument();
+		expect(screen.getByRole('region', { name: 'Coffee results' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'View details for Test Coffee' })).toBeEnabled();
 
-		await fireEvent.click(screen.getByRole('button', { name: /Test Coffee Ethiopia/ }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Open evidence' }));
 
 		expect(onAction).toHaveBeenCalledWith({
 			type: 'focus-canvas-block',

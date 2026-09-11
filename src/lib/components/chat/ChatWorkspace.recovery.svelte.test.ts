@@ -241,7 +241,7 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 		expect(screen.getByRole('textbox')).toHaveValue('Find a washed coffee');
 		await waitFor(() => expect(endpoints.saved).toHaveLength(1), { timeout: 2000 });
 		const firstSave = JSON.stringify(endpoints.saved[0]);
-		await fireEvent.click(screen.getByRole('button', { name: 'Retry', exact: true }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
 		await waitFor(() => expect(endpoints.requests).toHaveLength(2));
 		expect(endpoints.requests[1].messages).toHaveLength(3);
 		expect(endpoints.requests[1].messages[2].id).not.toBe(endpoints.saved[0][0].client_message_id);

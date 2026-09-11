@@ -1,7 +1,7 @@
 # Cherry AI: connected conversation and evidence workspace
 
 **Date:** 2026-09-11
-**Status:** Accepted scope via [PR #605](https://github.com/reedwhetstone/coffee-app/pull/605); slice 1 implementation in review
+**Status:** Accepted scope via [PR #605](https://github.com/reedwhetstone/coffee-app/pull/605); slice 1 merged; slice 2 implemented for review
 **Owner:** coffee-app for human experience; Parchment for shared runtime and durable contracts
 
 ## Goal and accepted direction
@@ -22,17 +22,21 @@ The July [conversation-first redesign](2026-07-13-chat-conversation-first-redesi
 
 ## Delivery status
 
-Slice 1 implements continuous client activity through the pending, empty-assistant, tool-input, and answer-text phases, including `present_results` preparation. It removes unused reconstructed activity timestamps and uses neutral progress copy rather than implying a private research plan. Stop and both protocol/transport errors clear the live indicator.
+Slice 1 merged in [coffee-app #606](https://github.com/reedwhetstone/coffee-app/pull/606) and [parchment-api #300](https://github.com/reedwhetstone/parchment-api/pull/300). It implements continuous client activity through the pending, empty-assistant, tool-input, and answer-text phases, including `present_results` preparation. It removes unused reconstructed activity timestamps and uses neutral progress copy rather than implying a private research plan. Stop and both protocol/transport errors clear the live indicator.
 
 Controlled tests exercise the real Svelte Chat transport and status component, BFF stream relay, and Parchment runtime/HTTP/SDK delivery. They withhold terminal frames until the consumer observes early output; runtime coverage includes a real multi-step tool round-trip. The implementation does not change model orchestration, credentials, persistence, action execution, or whole-turn evidence-preview gates.
 
 A local Chrome harness passed empty-assistant activity, tool preparation before completion, and Stop at desktop and 390px mobile widths. [Desktop fixture](../pr-audits/assets/cherry-live-activity/desktop.png) and [mobile fixture](../pr-audits/assets/cherry-live-activity/mobile.png) show the actual message/status components; Send/Stop/status text above them is test-only harness chrome, not a product redesign. The temporary preview route is not shipped.
 
-Authenticated deployed-network timing remains unverified. This slice proves and repairs local activity behavior, not the reported production regression's root cause. Slices 2 through 5 are not implemented by it; the next slice is useful inline coffee answers with deliberate partial-result recovery.
+Authenticated deployed-network timing remains unverified. This slice proves and repairs local activity behavior, not the reported production regression's root cause. Slice 2 now implements bounded inline coffee results using the canonical card and detail sheet. Completed reads appear before final prose, completed curation replaces equivalent raw views, and inspection remains stable while that view changes. Historical coffee evidence stays usable without a shelf target.
 
-## Evidence and limits
+Stopped and failed coffee answers retain validated completed reads and a persisted interruption label. Incomplete tools and proposals are removed; retained interrupted answers do not replay canvas mutations. Finalized messages keep their original IDs, while retry appends a new attempt. The existing Parchment opaque message-parts contract carries the label; no shared schema, SDK release, or new store is needed. Active navigation/unload saves only finalized earlier messages, not the mutable attempt; this slice does not promise crash recovery for an unfinished turn.
 
-Source inspected at coffee-app `0805a495b886174cdd02f54cdbd46aaf2be5988f` and Parchment `2f9f6457c472f5055a97b10f369e50758ae1c5e3` on September 11. These are repository observations, not proof of deployed revisions.
+[Slice 2 validation and screenshots](../pr-audits/2026-09-11-cherry-inline-coffees.md) cover actual ChatWorkspace stop/error/retry/reload behavior, progressive streaming, shared cards, and inherited canvas/action safeguards. Slices 3 through 5 remain unimplemented. The next slice is grounded references and cross-platform continuity, with missing shared contracts owned by Parchment.
+
+## Planning baseline and limits
+
+Source inspected at coffee-app `0805a495b886174cdd02f54cdbd46aaf2be5988f` and Parchment `2f9f6457c472f5055a97b10f369e50758ae1c5e3` on September 11. These are historical planning-baseline observations, not proof of deployed revisions. Delivery status above records which limitations the implementation slices change.
 
 1. [ChatMessageList](../../src/lib/components/chat/ChatMessageList.svelte) renders assistant text separately from tool-derived results. All inline result previews are behind `!isStreaming`, so a completed search remains invisible while the rest of the turn runs.
 2. [GenUIBlockRenderer](../../src/lib/components/genui/GenUIBlockRenderer.svelte) explicitly restricts chat to compact canvas links. It disables non-error previews without a canvas target. [CoffeeCardPreview](../../src/lib/components/genui/previews/CoffeeCardPreview.svelte) shows one name/origin or a count, not a useful comparison.
