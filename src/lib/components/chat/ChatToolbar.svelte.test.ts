@@ -13,8 +13,7 @@ describe('ChatToolbar progressive disclosure', () => {
 			canvasOpen: false,
 			hasMessages: true,
 			onOpenMemory: vi.fn(),
-			onToggleMobileCanvas: vi.fn(),
-			onToggleDesktopCanvas: vi.fn(),
+			onToggleCanvas: vi.fn(),
 			onExport,
 			onClear
 		});

@@ -1,7 +1,7 @@
 # Cherry AI: connected conversation and evidence workspace
 
 **Date:** 2026-09-11
-**Status:** Accepted scope via [PR #605](https://github.com/reedwhetstone/coffee-app/pull/605); slices 1–2 merged; coffee-reference slice 3a implemented for review
+**Status:** Accepted scope via [PR #605](https://github.com/reedwhetstone/coffee-app/pull/605); slices 1–2 and coffee-reference slice 3a merged; integrated-shell slice 4a implemented for review
 **Owner:** coffee-app for human experience; Parchment for shared runtime and durable contracts
 
 ## Goal and accepted direction
@@ -35,6 +35,14 @@ Stopped and failed coffee answers retain validated completed reads and a persist
 [Slice 2 validation and screenshots](../pr-audits/2026-09-11-cherry-inline-coffees.md) cover actual ChatWorkspace stop/error/retry/reload behavior, settled-answer rendering, shared cards, and inherited canvas/action safeguards. Slice 2 merged in [#608](https://github.com/reedwhetstone/coffee-app/pull/608). Slice 3a implements grounded coffee-name references using the existing Markdown catalog URL and retained completed search/rank output; [Parchment #301](https://github.com/reedwhetstone/parchment-api/pull/301) teaches the model the same existing link convention. No new shared schema or SDK version is required. Missing IDs remain readable and explicitly unavailable, exact details are historical snapshots, and normal catalog navigation remains an explicit action. The same renderer is used in drawer and full-page conversations.
 
 [Coffee-reference validation](../pr-audits/2026-09-11-cherry-references.md) records scope and proof. This is the coffee portion of slice 3, not a claim that every object family has typed references. Page context remains opt-in and is not itself evidence authority. Inventory, roast, tasting, analytical scopes and similarity-shaped rows retain existing behavior; their reference contracts remain deferred to their owning family slices. The next product slice is the integrated workspace, using this coffee interaction as the first concrete reference shape.
+
+### Integrated shell delivery (slice 4a)
+
+Grounded references merged in [coffee-app #609](https://github.com/reedwhetstone/coffee-app/pull/609) and [Parchment #301](https://github.com/reedwhetstone/parchment-api/pull/301). Slice 4a now gives the page and drawer one identity/header and one retained evidence surface. Desktop uses a keyboard-resizable split or focused expansion; mobile and drawer use the same mounted surface as a full-height sheet. Coffee comparisons use responsive columns instead of a one-card carousel. Composer context exposes individual entities in the current page view with independent inclusion controls; these are not necessarily user-selected objects and never grant evidence authority.
+
+Incoming agent presentations preserve the active scene and action proposals. Explicit clear/remove/replace also preserve executing proposals until their result arrives. Nested coffee and generic detail panels own keyboard focus and Escape, returning to their trigger without closing the workspace. Existing canonical action execution, pins and saved evidence remain intact.
+
+[Slice 4a validation and screenshots](../pr-audits/2026-09-11-cherry-workspace.md) record deterministic desktop/mobile and drawer evidence. This is a coherent shell delivery, **not completion of every slice 4 acceptance journey**. Local proposal edits and transcript/evidence position survive close/reopen and viewport changes within the mounted workspace. Saved selected evidence, pins, transcript and canonical execution outcomes use existing persistence. Unsubmitted proposal edits, composer drafts, and pixel scroll positions are not newly persisted across full reload/navigation. Complete those continuity contracts alongside the remaining market/roastery journeys before declaring the entire overhaul complete; do not silently extend the shared persistence schema in this UI slice. Authenticated deployed/model behavior remains a separate unverified gate.
 
 ## Planning baseline and limits
 

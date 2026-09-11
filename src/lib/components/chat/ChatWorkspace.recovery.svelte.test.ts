@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UIMessageChunk } from 'ai';
 import ChatWorkspace from './ChatWorkspace.svelte';
+import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 import { canvasStore } from '$lib/stores/canvasStore.svelte';
 import type { Workspace, WorkspaceMessage } from '$lib/stores/workspaceStore.svelte';
 import type { PersistedChatMessagePayload } from '$lib/services/chatPersistence';
@@ -164,11 +165,77 @@ beforeEach(() => {
 });
 afterEach(() => {
 	cleanup();
+	pageChatContext.clear();
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 });
 
 describe('ChatWorkspace interrupted-turn transport and persistence', () => {
+	it('omits deselected page entity IDs and honors whole-page context opt-out in actual requests', async () => {
+		const first = gatedResponse();
+		const second = gatedResponse();
+		const endpoints = installEndpoints([first, second]);
+		pageChatContext.set({
+			surface: 'catalog',
+			summary: 'Filtered catalog',
+			entities: [
+				{ type: 'coffee', id: 42, label: 'Selected Colombia' },
+				{ type: 'coffee', id: 43, label: 'Selected Ethiopia' }
+			]
+		});
+		mountWorkspace();
+		await fireEvent.click(screen.getByRole('button', { name: 'Selected Colombia' }));
+		await send(first, 'context-one');
+		first.finish();
+		await waitFor(() => expect(screen.queryByRole('button', { name: 'Stop response' })).toBeNull());
+		expect(endpoints.requests[0]).toMatchObject({ pageContext: { entities: [{ id: 43 }] } });
+		expect(
+			(endpoints.requests[0] as unknown as { pageContext: { entities: unknown[] } }).pageContext
+				.entities
+		).toHaveLength(1);
+		await fireEvent.click(screen.getByRole('button', { name: 'Viewing: catalog' }));
+		await send(second, 'context-two');
+		second.finish();
+		expect(endpoints.requests[1]).not.toHaveProperty('pageContext');
+	});
+
+	it('preserves entity opt-outs when a live page context refresh keeps the entity visible', async () => {
+		const stream = gatedResponse();
+		const endpoints = installEndpoints([stream]);
+		pageChatContext.set({
+			surface: 'catalog',
+			summary: 'Filtered catalog',
+			entities: [
+				{ type: 'coffee', id: 42, label: 'Selected Colombia' },
+				{ type: 'coffee', id: 43, label: 'Selected Ethiopia' }
+			]
+		});
+		mountWorkspace();
+		await fireEvent.click(screen.getByRole('button', { name: 'Selected Colombia' }));
+
+		pageChatContext.set({
+			surface: 'catalog',
+			summary: 'Catalog refreshed in the background',
+			entities: [
+				{ type: 'coffee', id: 42, label: 'Selected Colombia' },
+				{ type: 'coffee', id: 43, label: 'Selected Ethiopia' },
+				{ type: 'coffee', id: 44, label: 'Selected Kenya' }
+			]
+		});
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Selected Colombia' })).toHaveAttribute(
+				'aria-pressed',
+				'false'
+			)
+		);
+
+		await send(stream, 'context-refresh');
+		stream.finish();
+		expect(endpoints.requests[0]).toMatchObject({
+			pageContext: { entities: [{ id: 43 }, { id: 44 }] }
+		});
+	});
+
 	it('retains grounded prose references from the drawer through saved full-page restoration', async () => {
 		const stream = gatedResponse();
 		const endpoints = installEndpoints([stream]);

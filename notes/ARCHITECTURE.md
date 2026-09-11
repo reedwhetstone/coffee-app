@@ -176,6 +176,15 @@ UI-message stream and render structured tool parts, evidence blocks, proposal
 cards, cancellation, retry, and confirmation UX. Browser credentials never call
 Parchment or the provider directly.
 
+The conversation page and drawer share one header/composer and one retained
+`EvidenceWorkspace`. It switches presentation between a desktop split, expanded
+view, and mobile/drawer sheet without remounting proposal forms. Agent-driven
+shelf refreshes preserve the active scene and action proposals; clear/remove
+cannot discard an executing proposal. Coffee evidence uses responsive shared
+cards and nested detail keyboard ownership. Local form drafts are not a new
+durable store; saved transcript, canvas, and action outcomes retain the existing
+Parchment contracts. See the [overhaul delivery plan](implementation-plans/2026-09-11-cherry-agent-overhaul.md).
+
 Entitlements select the runtime role: Parchment Intelligence-only access uses the
 Cherry Green Agent, Mallard Studio-only access uses the Cherry Roast Agent, and
 combined access uses the Cherry Synthesis Agent. These are execution roles, not

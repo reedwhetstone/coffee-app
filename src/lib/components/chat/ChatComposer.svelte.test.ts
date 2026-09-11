@@ -41,7 +41,7 @@ describe('ChatComposer recovery controls', () => {
 		expect(screen.queryByPlaceholderText(/Ask me/)).not.toBeInTheDocument();
 	});
 
-	it('keeps context toggles behind a labeled disclosure', async () => {
+	it('keeps context toggles visible and details in a labeled disclosure', async () => {
 		const onToggleChip = vi.fn();
 		render(
 			ChatComposer,
@@ -55,6 +55,7 @@ describe('ChatComposer recovery controls', () => {
 		const summary = screen.getByText(/Using 1 of 1 context source/);
 		const disclosure = summary.closest('details');
 		expect(disclosure).not.toHaveAttribute('open');
+		expect(screen.getByRole('button', { name: 'Current view' })).toBeVisible();
 		await fireEvent.click(summary);
 		await fireEvent.click(screen.getByRole('button', { name: 'Current view' }));
 		expect(onToggleChip).toHaveBeenCalledWith('page');

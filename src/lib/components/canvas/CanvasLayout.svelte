@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
 	import GenUIBlockRenderer from '$lib/components/genui/GenUIBlockRenderer.svelte';
 
@@ -13,6 +14,19 @@
 			blockId?: string
 		) => Promise<unknown>;
 	}>();
+	const scrollPositions = new Map<string, number>();
+	function retainScroll(node: HTMLElement, id: string) {
+		void tick().then(() => {
+			node.scrollTop = scrollPositions.get(id) ?? 0;
+		});
+		const remember = () => scrollPositions.set(id, node.scrollTop);
+		node.addEventListener('scroll', remember);
+		return {
+			destroy() {
+				node.removeEventListener('scroll', remember);
+			}
+		};
+	}
 </script>
 
 <!-- Show one scene and keep only inactive action cards mounted. Shelf switches
@@ -22,6 +36,7 @@
 	{#each blocks as canvasBlock (canvasBlock.id)}
 		{#if canvasBlock.id === focusBlockId || canvasBlock.block.type === 'action-card'}
 			<section
+				use:retainScroll={canvasBlock.id}
 				hidden={canvasBlock.id !== focusBlockId}
 				aria-label={canvasBlock.title ?? 'Active evidence'}
 				class="h-full overflow-auto px-3 py-4 sm:px-4"

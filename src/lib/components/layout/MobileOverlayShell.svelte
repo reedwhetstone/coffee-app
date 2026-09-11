@@ -33,7 +33,12 @@
 			dialogElement.querySelectorAll<HTMLElement>(
 				'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 			)
-		).filter((element) => !element.hasAttribute('disabled') && element.tabIndex !== -1);
+		).filter(
+			(element) =>
+				!element.hasAttribute('disabled') &&
+				element.tabIndex !== -1 &&
+				!element.closest('[hidden], [inert]')
+		);
 	}
 
 	async function focusDialog() {
@@ -60,7 +65,9 @@
 	});
 
 	function handleKeydown(event: KeyboardEvent) {
-		if (!open) return;
+		if (!open || event.defaultPrevented) return;
+		const owner = (event.target as HTMLElement)?.closest('[role="dialog"]');
+		if (owner && owner !== dialogElement) return;
 
 		if (event.key === 'Escape') {
 			event.preventDefault();

@@ -35,7 +35,7 @@ describe('grounded Markdown coffee references', () => {
 		await waitFor(() =>
 			expect(screen.getByRole('button', { name: 'Back to answer' })).toHaveFocus()
 		);
-		await fireEvent.keyDown(window, { key: 'Escape' });
+		await fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
 		await waitFor(() => expect(reference).toHaveFocus());
 		expect(screen.queryByRole('heading', { name: 'Washed Guji' })).not.toBeInTheDocument();
 		expect(fetchSpy).not.toHaveBeenCalled();

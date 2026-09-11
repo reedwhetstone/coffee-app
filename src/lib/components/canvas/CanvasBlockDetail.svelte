@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { detailDialog } from '$lib/utils/detailDialog';
 	import { defaultBlockTitle, type BlockAction, type CanvasBlock } from '$lib/types/genui';
 	import GenUIBlockRenderer from '$lib/components/genui/GenUIBlockRenderer.svelte';
 	import { getDetailCompanionBlocks, detailCompanionLabel } from '$lib/services/blockDetail';
@@ -27,16 +28,7 @@
 
 	// Richer companion content (e.g. full roast charts) for the detail view.
 	let companions = $derived(canvasBlock ? getDetailCompanionBlocks(canvasBlock.block) : []);
-
-	function handleKeydown(event: KeyboardEvent) {
-		if (canvasBlock && event.key === 'Escape') {
-			event.stopPropagation();
-			onClose();
-		}
-	}
 </script>
-
-<svelte:window onkeydown={handleKeydown} />
 
 {#if canvasBlock}
 	<!-- Backdrop -->
@@ -49,6 +41,7 @@
 		<!-- Panel -->
 		<div
 			class="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-surface-canvas shadow-2xl ring-1 ring-line"
+			use:detailDialog={onClose}
 			role="dialog"
 			tabindex="-1"
 			aria-modal="true"

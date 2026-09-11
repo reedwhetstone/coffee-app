@@ -5,7 +5,19 @@
 	import { defaultBlockTitle, type BlockAction, type CanvasBlock } from '$lib/types/genui';
 	import { blockSupportsDetail } from '$lib/services/blockDetail';
 
-	let { onAction, onScrollToMessage, onExecuteAction } = $props<{
+	let {
+		onAction,
+		onScrollToMessage,
+		onExecuteAction,
+		onClose,
+		canExpand = false,
+		expanded = false,
+		onToggleExpand
+	} = $props<{
+		onClose?: () => void;
+		canExpand?: boolean;
+		expanded?: boolean;
+		onToggleExpand?: () => void;
 		onAction?: (action: BlockAction) => void;
 		onScrollToMessage?: (messageId: string) => void;
 		onExecuteAction?: (
@@ -52,6 +64,27 @@
 </script>
 
 <div class="flex h-full min-h-0 flex-col bg-surface-canvas">
+	{#if onClose}
+		<div
+			class="flex shrink-0 items-center justify-between gap-2 border-b border-line bg-surface-panel/50 px-4 py-2"
+		>
+			<button
+				type="button"
+				onclick={onClose}
+				class="rounded-md px-2 py-2 text-sm font-medium text-ink hover:bg-surface-panel focus-visible:ring-2 focus-visible:ring-accent"
+				>← Back to answer</button
+			>
+			{#if canExpand}
+				<button
+					type="button"
+					onclick={onToggleExpand}
+					aria-pressed={expanded}
+					class="rounded-md border border-line px-3 py-2 text-xs text-muted hover:text-ink"
+					>{expanded ? 'Exit expanded view' : 'Expand evidence'}</button
+				>
+			{/if}
+		</div>
+	{/if}
 	{#if active}
 		<header class="flex shrink-0 items-center justify-between gap-3 border-b border-line px-3 py-2">
 			<div class="min-w-0">
@@ -147,6 +180,8 @@
 					class="rounded-md p-1.5 text-muted transition-colors hover:bg-danger-subtle hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
 					title="Remove evidence"
 					aria-label="Remove active evidence"
+					disabled={active.pinned ||
+						(active.block.type === 'action-card' && active.block.data.status === 'executing')}
 				>
 					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
@@ -178,6 +213,9 @@
 				<button
 					type="button"
 					onclick={() => canvasStore.clearAll()}
+					disabled={canvasStore.blocks.some(
+						(block) => block.block.type === 'action-card' && block.block.data.status === 'executing'
+					)}
 					class="rounded-md px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:bg-surface-raised hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
 					title="Remove all unpinned evidence"
 				>

@@ -35,44 +35,12 @@
 		hideOnDesktop={false}
 		keepMounted={true}
 	>
-		<div class="flex h-full min-h-0 flex-col border-l border-line bg-surface-canvas">
-			<div class="flex items-center justify-between border-b border-line px-4 py-2.5">
-				<div class="min-w-0">
-					<p class="text-sm font-semibold text-ink">{agent.name}</p>
-					<p class="truncate text-xs text-muted">Coffee-native AI from Purveyors</p>
-				</div>
-				<div class="flex shrink-0 items-center gap-2">
-					<a
-						href="/chat"
-						class="rounded-md border border-line px-2 py-1 text-xs text-muted transition-colors hover:text-ink"
-					>
-						Open full workspace
-					</a>
-					<button
-						type="button"
-						onclick={() => (open = false)}
-						class="rounded-md p-1.5 text-muted transition-colors hover:bg-surface-panel hover:text-ink"
-						aria-label={`Close ${agent.name}`}
-					>
-						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="1.5"
-								d="M6 18L18 6M6 6l12 12"
-							/>
-						</svg>
-					</button>
-				</div>
-			</div>
-			<div class="min-h-0 flex-1">
-				<ChatWorkspace
-					variant="drawer"
-					{canUseChat}
-					{canUseMallardWorkspaces}
-					agentName={agent.name}
-				/>
-			</div>
-		</div>
+		<ChatWorkspace
+			variant="drawer"
+			{canUseChat}
+			{canUseMallardWorkspaces}
+			agentName={agent.name}
+			onCloseDrawer={() => (open = false)}
+		/>
 	</MobileOverlayShell>
 {/if}
