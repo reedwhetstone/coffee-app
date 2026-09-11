@@ -109,6 +109,12 @@ it('returns from nested coffee and block details without closing the workspace',
 	await waitFor(() => expect(trigger).toHaveFocus());
 	expect(screen.queryByRole('dialog', { name: 'Colombia' })).toBeNull();
 	expect(data.onClose).not.toHaveBeenCalled();
+	await fireEvent.click(trigger);
+	await screen.findByRole('dialog', { name: 'Colombia' });
+	const backgroundControl = screen.getByRole('button', { name: 'Open active evidence details' });
+	await fireEvent.keyDown(backgroundControl, { key: 'Escape' });
+	await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Colombia' })).toBeNull());
+	expect(data.onClose).not.toHaveBeenCalled();
 	const details = screen.getByRole('button', { name: 'Open active evidence details' });
 	details.focus();
 	await fireEvent.click(details);

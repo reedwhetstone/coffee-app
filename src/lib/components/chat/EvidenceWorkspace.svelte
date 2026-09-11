@@ -55,6 +55,9 @@
 		const nested = (event.target as HTMLElement).closest('[role="dialog"]');
 		if (nested && nested !== surface) return;
 		if (event.key === 'Escape') {
+			// A visible nested detail panel remains the topmost owner even when a
+			// background control inside this workspace has focus.
+			if (surface.querySelector('[data-detail-dialog]')) return;
 			event.preventDefault();
 			event.stopPropagation();
 			onClose();
