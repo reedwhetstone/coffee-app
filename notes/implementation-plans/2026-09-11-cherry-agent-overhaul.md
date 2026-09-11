@@ -1,7 +1,7 @@
 # Cherry AI: connected conversation and evidence workspace
 
 **Date:** 2026-09-11
-**Status:** Proposed implementation scope; no runtime changes shipped by this document
+**Status:** Accepted scope via [PR #605](https://github.com/reedwhetstone/coffee-app/pull/605); slice 1 implementation in review
 **Owner:** coffee-app for human experience; Parchment for shared runtime and durable contracts
 
 ## Goal and accepted direction
@@ -19,6 +19,16 @@ Governing direction:
 - [Thin-BFF cutover](2026-08-29-complete-sdk-thin-bff-cutover.md) and [current architecture](../ARCHITECTURE.md): Parchment owns orchestration, authorization, and durable application state; coffee-app owns presentation and session brokerage.
 
 The July [conversation-first redesign](2026-07-13-chat-conversation-first-redesign.md) and [scene implementation](2026-07-14-active-scene-evidence-shelf.md) remain historical delivery records. This plan extends their useful focus and continuity guarantees, but deliberately replaces the implemented rule that chat only shows compact links to full canvas evidence. It does not restore multiple floating windows or automatically resize the conversation whenever a tool finishes.
+
+## Delivery status
+
+Slice 1 implements continuous client activity through the pending, empty-assistant, tool-input, and answer-text phases, including `present_results` preparation. It removes unused reconstructed activity timestamps and uses neutral progress copy rather than implying a private research plan. Stop and both protocol/transport errors clear the live indicator.
+
+Controlled tests exercise the real Svelte Chat transport and status component, BFF stream relay, and Parchment runtime/HTTP/SDK delivery. They withhold terminal frames until the consumer observes early output; runtime coverage includes a real multi-step tool round-trip. The implementation does not change model orchestration, credentials, persistence, action execution, or whole-turn evidence-preview gates.
+
+A local Chrome harness passed empty-assistant activity, tool preparation before completion, and Stop at desktop and 390px mobile widths. [Desktop fixture](../pr-audits/assets/cherry-live-activity/desktop.png) and [mobile fixture](../pr-audits/assets/cherry-live-activity/mobile.png) show the actual message/status components; Send/Stop/status text above them is test-only harness chrome, not a product redesign. The temporary preview route is not shipped.
+
+Authenticated deployed-network timing remains unverified. This slice proves and repairs local activity behavior, not the reported production regression's root cause. Slices 2 through 5 are not implemented by it; the next slice is useful inline coffee answers with deliberate partial-result recovery.
 
 ## Evidence and limits
 

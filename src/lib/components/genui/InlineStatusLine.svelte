@@ -1,11 +1,10 @@
 <script lang="ts">
-	interface ThinkingStep {
+	interface ActivityStep {
 		message: string;
-		timestamp: Date;
 	}
 
 	let { steps = [], isActive = false } = $props<{
-		steps: ThinkingStep[];
+		steps: ActivityStep[];
 		isActive?: boolean;
 	}>();
 
@@ -33,7 +32,7 @@
 		></span>
 		<span
 			>{isActive
-				? 'Researching…'
+				? 'Working…'
 				: `Research activity · ${steps.length} ${steps.length === 1 ? 'step' : 'steps'}`}</span
 		>
 		<svg
@@ -69,7 +68,7 @@
 				<span
 					class="status-dot-active inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-accent"
 				></span>
-				<span class="text-xs text-muted">Preparing the research plan…</span>
+				<span class="text-xs text-muted">Response in progress…</span>
 			</div>
 		{/if}
 	</div>
