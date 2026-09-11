@@ -196,12 +196,12 @@
 {:else if data.auth.isSignedIn && !usesPublicShell}
 	<div class="flex {isChatWorkspace ? 'h-dvh overflow-hidden' : 'min-h-screen'}">
 		<LeftSidebar {data} />
-		<MobileAppShell {data} />
+		<MobileAppShell {data} compactChat={isChatWorkspace} />
 
 		<main class="{contentMargin} min-h-0 min-w-0 flex-1 transition-all duration-300 ease-out">
 			<div
 				class="h-full overflow-x-clip {isChatWorkspace
-					? 'px-4 pt-20 sm:px-6 md:pl-6 md:pr-12 md:pt-4'
+					? 'pt-[calc(3.5rem+env(safe-area-inset-top))] md:pt-0'
 					: 'px-4 pb-6 pt-20 sm:px-6 md:pb-0 md:pl-6 md:pr-12 md:pt-4'}"
 			>
 				{#if showClientRouteSkeleton}

@@ -8,7 +8,6 @@ function props(overrides: Record<string, unknown> = {}) {
 		agentName: 'Cherry Green Agent' as const,
 		inputMessage: 'Find stocked Ethiopias',
 		isActive: false,
-		canUseMallardWorkspaces: false,
 		suggestions: [],
 		slashCompletions: [],
 		chatError: null,
@@ -26,39 +25,61 @@ function props(overrides: Record<string, unknown> = {}) {
 }
 
 describe('ChatComposer recovery controls', () => {
-	it('frames the action and context controls with the product naming hierarchy', () => {
-		render(
-			ChatComposer,
-			props({
-				contextChips: [
-					{ id: 'page', label: 'Current view', detail: 'Catalog filters', active: true }
-				]
-			})
+	it('uses a short placeholder without a repeated identity footer', () => {
+		render(ChatComposer, props());
+		expect(screen.getByRole('textbox', { name: 'Message Cherry Green Agent' })).toHaveAttribute(
+			'placeholder',
+			'Ask about coffee…'
 		);
-		expect(screen.getByText(/Using 1 of 1 context source/)).toBeInTheDocument();
-		expect(screen.getByText(/Cherry Green Agent/)).toBeInTheDocument();
-		expect(screen.getByPlaceholderText(/Analyze sourcing, portfolio, catalog/)).toBeInTheDocument();
-		expect(screen.queryByPlaceholderText(/Ask me/)).not.toBeInTheDocument();
+		expect(screen.queryByText('Cherry Green Agent')).not.toBeInTheDocument();
 	});
 
-	it('keeps context toggles visible and details in a labeled disclosure', async () => {
+	it('keeps context in a disclosure and returns focus on Escape without sending', async () => {
 		const onToggleChip = vi.fn();
+		const onSend = vi.fn();
 		render(
 			ChatComposer,
 			props({
 				contextChips: [
 					{ id: 'page', label: 'Current view', detail: 'Catalog filters', active: true }
 				],
-				onToggleChip
+				onToggleChip,
+				onSend
 			})
 		);
-		const summary = screen.getByText(/Using 1 of 1 context source/);
+		const summary = screen.getByLabelText('Context: using 1 of 1 sources');
 		const disclosure = summary.closest('details');
 		expect(disclosure).not.toHaveAttribute('open');
-		expect(screen.getByRole('button', { name: 'Current view' })).toBeVisible();
 		await fireEvent.click(summary);
-		await fireEvent.click(screen.getByRole('button', { name: 'Current view' }));
+		expect(disclosure).toHaveAttribute('open');
+		const toggle = screen.getByRole('button', { name: 'Current view' });
+		toggle.focus();
+		await fireEvent.click(toggle);
 		expect(onToggleChip).toHaveBeenCalledWith('page');
+		expect(disclosure).toHaveAttribute('open');
+		await fireEvent.keyDown(toggle, { key: 'Escape' });
+		expect(disclosure).not.toHaveAttribute('open');
+		expect(summary).toHaveFocus();
+		expect(onSend).not.toHaveBeenCalled();
+	});
+
+	it('puts suggested prompts into the draft without sending, and closes on outside focus', async () => {
+		const onSend = vi.fn();
+		render(
+			ChatComposer,
+			props({ onSend, suggestions: [{ label: 'Compare lots', text: 'Compare these lots' }] })
+		);
+		const summary = screen.getByLabelText('Suggested prompts');
+		await fireEvent.click(summary);
+		await fireEvent.click(screen.getByRole('button', { name: 'Compare lots' }));
+		expect(screen.getByRole('textbox')).toHaveValue('Compare these lots');
+		expect(screen.getByRole('textbox')).toHaveFocus();
+		expect(summary.closest('details')).not.toHaveAttribute('open');
+		expect(onSend).not.toHaveBeenCalled();
+		summary.focus();
+		await fireEvent.click(summary);
+		screen.getByRole('textbox').focus();
+		expect(summary.closest('details')).not.toHaveAttribute('open');
 	});
 
 	it('replaces send with an accessible stop control during a turn', async () => {

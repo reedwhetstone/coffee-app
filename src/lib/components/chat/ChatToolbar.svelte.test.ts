@@ -18,16 +18,19 @@ describe('ChatToolbar progressive disclosure', () => {
 			onClear
 		});
 
-		const summary = screen.getByText('Workspace actions');
+		const summary = screen.getByLabelText('Workspace actions');
 		const disclosure = summary.closest('details');
 		expect(disclosure).not.toHaveAttribute('open');
 		await fireEvent.click(summary);
 		expect(disclosure).toHaveAttribute('open');
 		await fireEvent.click(screen.getByRole('button', { name: 'Export conversation' }));
+		expect(disclosure).not.toHaveAttribute('open');
+		expect(summary).toHaveFocus();
+		await fireEvent.click(summary);
 		await fireEvent.click(screen.getByRole('button', { name: 'Clear conversation' }));
 		expect(onExport).toHaveBeenCalledOnce();
 		expect(onClear).toHaveBeenCalledOnce();
-		expect(screen.getByText('Cherry Synthesis Agent')).toBeInTheDocument();
-		expect(screen.getByText('Coffee-native AI from Purveyors')).toBeInTheDocument();
+		expect(screen.queryByText('Cherry Synthesis Agent')).not.toBeInTheDocument();
+		expect(screen.queryByText('Coffee-native AI from Purveyors')).not.toBeInTheDocument();
 	});
 });
