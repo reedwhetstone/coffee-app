@@ -245,3 +245,63 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 		expect(screen.queryByRole('tab', { name: /overview/i })).toBeNull();
 	});
 });
+
+describe('catalog summary detail hydration', () => {
+	it('does not fetch collapsed cards, then hydrates a full detail once on demand', async () => {
+		const summary = {
+			...createCoffee(),
+			summarySignals: {
+				farmNotes: true,
+				roastRecommendations: true,
+				descriptions: true,
+				cuppingNotes: true
+			}
+		};
+		const loadDetails = vi
+			.fn()
+			.mockResolvedValue(createCoffee({ ai_description: 'Full demand-loaded detail' }));
+		render(CoffeeCard, { coffee: summary, parseTastingNotes, loadDetails });
+		expect(loadDetails).not.toHaveBeenCalled();
+		await fireEvent.click(screen.getByRole('button', { name: /view details for process lot/i }));
+		expect(await screen.findAllByText('Full demand-loaded detail')).not.toHaveLength(0);
+		expect(loadDetails).toHaveBeenCalledTimes(1);
+		await fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		await fireEvent.click(screen.getByRole('button', { name: /view details for process lot/i }));
+		expect(loadDetails).toHaveBeenCalledTimes(1);
+	});
+	it('loads initial deep links, exposes retry on failure, and leaves the card usable', async () => {
+		const summary = { ...createCoffee(), summarySignals: {} };
+		const loadDetails = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('offline'))
+			.mockResolvedValue(createCoffee({ ai_description: 'Recovered details' }));
+		render(CoffeeCard, {
+			coffee: summary,
+			parseTastingNotes,
+			loadDetails,
+			initialDetailsOpen: true
+		});
+		expect(await screen.findByRole('alert')).toHaveTextContent(
+			'Coffee details could not be loaded.'
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+		expect(await screen.findAllByText('Recovered details')).not.toHaveLength(0);
+		expect(loadDetails).toHaveBeenCalledTimes(2);
+	});
+	it('cancels an unfinished request on close instead of applying late details', async () => {
+		let signal: AbortSignal | undefined;
+		const loadDetails = vi.fn((value: AbortSignal) => {
+			signal = value;
+			return new Promise<CoffeeCatalog>(() => {});
+		});
+		render(CoffeeCard, {
+			coffee: { ...createCoffee(), summarySignals: {} } as CoffeeCatalog,
+			parseTastingNotes,
+			loadDetails,
+			initialDetailsOpen: true
+		});
+		expect(await screen.findByRole('status')).toHaveTextContent('Loading coffee details');
+		await fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		expect(signal?.aborted).toBe(true);
+	});
+});

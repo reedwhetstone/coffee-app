@@ -25,7 +25,7 @@
 	import { formatSourceName } from '$lib/utils/formatters';
 
 	let {
-		coffee,
+		coffee: initialCoffee,
 		parseTastingNotes,
 		compact = false,
 		highlighted = false,
@@ -40,7 +40,8 @@
 		initialDetailsOpen = false,
 		detailCloseLabel = 'Close',
 		onDetailClose = undefined,
-		detailContent
+		detailContent,
+		loadDetails
 	} = $props<{
 		coffee: CoffeeCatalog;
 		parseTastingNotes: (tastingNotesJson: string | null | object) => TastingNotes | null;
@@ -65,6 +66,7 @@
 		onDetailClose?: () => void;
 		/** Optional page-specific body rendered inside the canonical detail pop-out shell. */
 		detailContent?: Snippet;
+		loadDetails?: (signal: AbortSignal) => Promise<CoffeeCatalog>;
 	}>();
 
 	function priceContextColorClass(tier: LotPriceTier): string {
@@ -123,6 +125,39 @@
 	// svelte-ignore state_referenced_locally
 	let detailsOpen = $state(initialDetailsOpen);
 	let activeTab = $state<DetailTab>('overview');
+	let hydratedCoffee = $state.raw<CoffeeCatalog | null>(null);
+	let hydratedSource = $state.raw<CoffeeCatalog | null>(null);
+	let detailsLoading = $state(false);
+	let detailsError = $state(false);
+	let detailsRetry = $state(0);
+	let coffee = $derived(
+		hydratedSource === initialCoffee && hydratedCoffee ? hydratedCoffee : initialCoffee
+	);
+
+	$effect(() => {
+		// Only catalog summary rows opt in. Other CoffeeCard consumers stay unchanged.
+		const summary = initialCoffee as CoffeeCatalog & { summarySignals?: unknown };
+		void detailsRetry;
+		if (!detailsOpen || !loadDetails || !summary.summarySignals || hydratedSource === initialCoffee)
+			return;
+		const source = initialCoffee;
+		const controller = new AbortController();
+		detailsLoading = true;
+		detailsError = false;
+		loadDetails(controller.signal)
+			.then((detail: CoffeeCatalog) => {
+				if (controller.signal.aborted) return;
+				detailsLoading = false;
+				hydratedCoffee = detail;
+				hydratedSource = source;
+			})
+			.catch(() => {
+				if (controller.signal.aborted) return;
+				detailsLoading = false;
+				detailsError = true;
+			});
+		return () => controller.abort();
+	});
 
 	$effect(() => {
 		setTimeout(async () => {
@@ -627,7 +662,16 @@
 				class="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-surface-panel/45 px-4 py-5 md:px-6"
 				data-coffee-detail-scroll-region
 			>
-				{#if detailContent}
+				{#if detailsLoading}
+					<p role="status" class="text-sm text-muted">Loading coffee details…</p>
+				{:else if detailsError}
+					<p role="alert" class="text-sm text-muted">Coffee details could not be loaded.</p>
+					<button
+						type="button"
+						class="mt-3 rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink"
+						onclick={() => (detailsRetry += 1)}>Try again</button
+					>
+				{:else if detailContent}
 					{@render detailContent()}
 				{:else if activeTab === 'overview'}
 					<div class="grid gap-4 lg:grid-cols-[1fr_20rem]">

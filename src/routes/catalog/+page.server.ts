@@ -143,6 +143,7 @@ function buildParchmentCatalogQuery(
 	state: CatalogUrlState,
 	options: {
 		stocked: 'true' | 'false' | 'all';
+		projection?: 'summary';
 		page?: number;
 		limit?: number;
 		coffeeIds?: number[];
@@ -153,6 +154,7 @@ function buildParchmentCatalogQuery(
 		page: options.page ?? state.pagination.page,
 		limit: options.limit ?? state.pagination.limit,
 		stocked: options.stocked,
+		...(options.projection ? { projection: options.projection } : {}),
 		showWholesale: state.showWholesale ? 'true' : 'false',
 		wholesaleOnly: state.wholesaleOnly ? 'true' : 'false'
 	};
@@ -488,6 +490,7 @@ export const load: PageServerLoad = async (event) => {
 			const catalogResult = (await client.catalog.list(
 				buildParchmentCatalogQuery(effectiveCatalogState, {
 					stocked: trackedOnly ? 'all' : 'true',
+					projection: 'summary',
 					...(trackedOnly ? { coffeeIds: trackedQueryIds, limit: TRACKED_VIEW_LIMIT, page: 1 } : {})
 				}) as CatalogListQuery
 			)) as CatalogListResult;

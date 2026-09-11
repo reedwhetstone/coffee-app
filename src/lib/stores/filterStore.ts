@@ -257,6 +257,7 @@ function createFilterStore() {
 			try {
 				const currentState = get({ subscribe });
 				const params = buildQueryParams(currentState);
+				params.set('projection', 'summary');
 				const queryString = params.toString();
 				const response = await fetch(`/api/catalog${queryString ? `?${queryString}` : ''}`, {
 					signal: controller.signal
