@@ -1,7 +1,6 @@
 import type { PageServerLoad } from './$types';
-import { redirect } from '@sveltejs/kit';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
-import { getPageAuthState } from '$lib/server/pageAuth';
+import { requirePageSession } from '$lib/server/pageAuth';
 
 /**
  * Load the signed-in user's API keys for the dashboard.
@@ -14,13 +13,7 @@ import { getPageAuthState } from '$lib/server/pageAuth';
  */
 export const load: PageServerLoad = async (event) => {
 	const { locals } = event;
-	// Get authenticated session
-	const { session, user } = getPageAuthState(locals.principal);
-
-	// Allow authenticated users (free tier defaults to the viewer API plan)
-	if (!session || !user) {
-		throw redirect(303, '/');
-	}
+	requirePageSession(locals.principal);
 
 	// List the caller's keys via Parchment. Wrap the client path in try/catch so a
 	// thrown failure (Parchment misconfigured, e.g. PARCHMENT_API_BASE_URL unset,

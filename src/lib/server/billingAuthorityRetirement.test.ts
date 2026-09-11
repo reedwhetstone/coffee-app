@@ -7,7 +7,7 @@ function productionSources(directory: string): string[] {
 		const path = join(directory, entry.name);
 
 		if (entry.isDirectory()) return productionSources(path);
-		if (entry.name.endsWith('.test.ts') || entry.name === 'database.types.ts') return [];
+		if (entry.name.endsWith('.test.ts')) return [];
 		return ['.ts', '.svelte'].includes(extname(entry.name)) ? [path] : [];
 	});
 }
@@ -16,7 +16,7 @@ describe('coffee-app billing and deletion authority retirement', () => {
 	it('keeps the exact Parchment consumer artifact and no server Stripe dependency', () => {
 		const packageJson = JSON.parse(readFileSync(resolve('package.json'), 'utf8'));
 
-		expect(packageJson.dependencies['@purveyors/sdk']).toBe('0.39.0');
+		expect(packageJson.dependencies['@purveyors/sdk']).toBe('0.40.0');
 		expect(packageJson.dependencies[['stri', 'pe'].join('')]).toBeUndefined();
 	});
 

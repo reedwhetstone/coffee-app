@@ -11,10 +11,11 @@ P2: 0
 P3: 0
 NEXT_ACTION: merge
 TOP_FIXES:
+
 - None; no legitimate pre-submission fixes identified.
-CONFIDENCE: high
-SCOPE_ASSESSMENT: mergeable
-VALIDATION_STATUS:
+  CONFIDENCE: high
+  SCOPE_ASSESSMENT: mergeable
+  VALIDATION_STATUS:
 - `git diff --check origin/main..HEAD`: VALIDATION_PASS
 - `pnpm env:check`: VALIDATION_PASS
 - `pnpm exec vitest run src/hooks.server.test.ts src/lib/server/principal.test.ts src/lib/server/parchmentClient.test.ts src/lib/server/pageAuth.test.ts src/lib/server/catalogAccess.test.ts src/lib/server/catalogVisibility.test.ts src/lib/server/auth.test.ts src/lib/server/billing/reconcile-session.test.ts`: VALIDATION_PASS (73 tests)

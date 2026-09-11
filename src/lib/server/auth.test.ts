@@ -72,7 +72,10 @@ function makeEvent(options: EventOptions = {}) {
 			principal: options.principal,
 			supabase: {
 				auth: {
-					getUser: mockBearerGetUser
+					getUser: mockBearerGetUser,
+					getSession: vi
+						.fn()
+						.mockResolvedValue({ data: { session: sessionContext.session }, error: null })
 				}
 			},
 			safeGetIdentity: vi.fn().mockResolvedValue({

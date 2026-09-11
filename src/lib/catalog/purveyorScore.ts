@@ -81,9 +81,7 @@ function roundConfidence(value: number): number {
 function hasProcessingEvidenceSignal(coffee: CoffeeCatalog): boolean {
 	const projected = coffee as CoffeeWithProcessProjection;
 	return (
-		coffee.processing_evidence_available === true ||
-		coffee.processing_evidence != null ||
-		projected.process?.evidence_available === true
+		coffee.processing_evidence_available === true || projected.process?.evidence_available === true
 	);
 }
 
@@ -128,6 +126,16 @@ function coerceFactors(value: unknown): PurveyorScoreFactors | null {
 }
 
 export function calculatePurveyorScore(coffee: CoffeeCatalog): PurveyorScoreSummary {
+	const signals = (
+		coffee as CoffeeCatalog & {
+			summarySignals?: {
+				farmNotes: boolean;
+				roastRecommendations: boolean;
+				descriptions: boolean;
+				cuppingNotes: boolean;
+			};
+		}
+	).summarySignals;
 	let provenance = 0;
 	let process = 0;
 	let freshness = 0;
@@ -148,7 +156,7 @@ export function calculatePurveyorScore(coffee: CoffeeCatalog): PurveyorScoreSumm
 		provenance += 5;
 		addStructured();
 	}
-	if (hasText(coffee.farm_notes)) {
+	if (signals?.farmNotes ?? hasText(coffee.farm_notes)) {
 		provenance += 7;
 		addStructured();
 	}
@@ -217,12 +225,20 @@ export function calculatePurveyorScore(coffee: CoffeeCatalog): PurveyorScoreSumm
 	if (coffee.wholesale !== null && coffee.wholesale !== undefined) pricing += 3;
 	pricing = Math.min(pricing, 15);
 
-	if (coffee.ai_tasting_notes || hasText(coffee.cupping_notes) || hasText(coffee.ai_description)) {
+	if (
+		coffee.ai_tasting_notes ||
+		(signals?.cuppingNotes ?? hasText(coffee.cupping_notes)) ||
+		hasText(coffee.ai_description)
+	) {
 		sensory += 6;
 	}
 	if (hasPositiveNumber(coffee.score_value)) sensory += 4;
-	if (hasText(coffee.roast_recs)) sensory += 3;
-	if (hasText(coffee.description_short) || hasText(coffee.description_long)) sensory += 2;
+	if (signals?.roastRecommendations ?? hasText(coffee.roast_recs)) sensory += 3;
+	if (
+		signals?.descriptions ??
+		(hasText(coffee.description_short) || hasText(coffee.description_long))
+	)
+		sensory += 2;
 	sensory = Math.min(sensory, 15);
 
 	const score = Math.min(100, provenance + process + freshness + pricing + sensory);

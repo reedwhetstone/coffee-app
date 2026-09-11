@@ -13,6 +13,8 @@
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
+	import { inlineCoffeeResults } from '$lib/services/inlineCoffeeResults';
+	import { getInterruptedTurnStatus } from './chatRecovery';
 	import type { CherryAgentName } from '$lib/cherry/identity';
 
 	let {
@@ -133,8 +135,8 @@
 	function getMessageToolSteps(
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		parts: any[]
-	): Array<{ message: string; timestamp: Date }> {
-		const steps: Array<{ message: string; timestamp: Date }> = [];
+	): Array<{ message: string }> {
+		const steps: Array<{ message: string }> = [];
 
 		for (const part of parts) {
 			if (!part?.type?.startsWith('tool-')) continue;
@@ -143,17 +145,17 @@
 
 			// present_results gets its own step so canvas pushes are never invisible
 			if (rawName === 'present_results') {
-				if (part.state === 'output-available') {
+				if (part.state === 'input-streaming' || part.state === 'input-available') {
+					steps.push({ message: 'Preparing results…' });
+				} else if (part.state === 'output-available') {
 					const items = part.output?.presentation?.items;
 					const count = Array.isArray(items) ? items.length : 0;
 					steps.push({
-						message: `presenting ${count} item${count === 1 ? '' : 's'} to the evidence workspace`,
-						timestamp: new Date()
+						message: `presenting ${count} item${count === 1 ? '' : 's'} to the evidence workspace`
 					});
 				} else if (part.state === 'output-error') {
 					steps.push({
-						message: `Error presenting results: ${part.errorText || 'unknown error'}`,
-						timestamp: new Date()
+						message: `Error presenting results: ${part.errorText || 'unknown error'}`
 					});
 				}
 				continue;
@@ -162,7 +164,7 @@
 			const toolName = rawName.replace(/_/g, ' ');
 
 			if (part.state === 'input-streaming' || part.state === 'input-available') {
-				steps.push({ message: `Querying ${toolName}...`, timestamp: new Date() });
+				steps.push({ message: `Querying ${toolName}...` });
 			} else if (part.state === 'output-available') {
 				const output = part.output;
 				let detail = '';
@@ -179,11 +181,10 @@
 						detail = ` — ${output.total_count} result${output.total_count === 1 ? '' : 's'}`;
 					}
 				}
-				steps.push({ message: `${toolName}${detail}`, timestamp: new Date() });
+				steps.push({ message: `${toolName}${detail}` });
 			} else if (part.state === 'output-error') {
 				steps.push({
-					message: `Error: ${part.errorText || 'unknown error'}`,
-					timestamp: new Date()
+					message: `Error: ${part.errorText || 'unknown error'}`
 				});
 			}
 		}
@@ -277,13 +278,21 @@
 					<!-- Assistant message -->
 					{@const hasPR = messageHasPresentResults(message.parts)}
 					{@const toolSteps = getMessageToolSteps(message.parts)}
-					{@const hasToolParts = message.parts.some((p: { type: string }) =>
-						p.type.startsWith('tool-')
-					)}
+					{@const interruption = getInterruptedTurnStatus(message.parts)}
 					<div id="msg-{message.id}" class="message-fade-in w-full space-y-3">
 						<!-- Persistent accumulated status line for all tool calls -->
-						{#if hasToolParts && toolSteps.length > 0}
+						{#if isStreaming || toolSteps.length > 0}
 							<InlineStatusLine steps={toolSteps} isActive={isStreaming} />
+						{/if}
+
+						{#if interruption}
+							<p
+								class="rounded-md border border-line bg-surface-panel px-3 py-2 text-xs text-muted"
+								role="status"
+							>
+								{interruption === 'stopped' ? 'Response stopped.' : 'Response interrupted.'}
+								This answer is incomplete; any coffee results below were retrieved before it ended.
+							</p>
 						{/if}
 
 						<!-- Text parts stream in live -->
@@ -297,7 +306,24 @@
 							{/if}
 						{/each}
 
-						<!-- Inline previews render after streaming completes -->
+						<!-- Settled answer cards remain readable without a canvas target. -->
+						{#if !isStreaming && (!isOldMessage(msgIndex, chat.messages.length) || expandedMessages.has(message.id))}
+							{#each inlineCoffeeResults(chat.messages, msgIndex, !!interruption) as result (result.key)}
+								{@const target = canvasStore.blocks.find(
+									(entry) =>
+										entry.messageId === message.id &&
+										blockIdentityKey(entry.block) === blockIdentityKey(result.block)
+								)}
+								<GenUIBlockRenderer
+									block={result.block}
+									renderMode="chat"
+									onAction={onBlockAction}
+									canvasBlockId={target?.id}
+								/>
+							{/each}
+						{/if}
+
+						<!-- Other previews render after streaming completes -->
 						{#if !isStreaming}
 							{@const isOld = isOldMessage(msgIndex, chat.messages.length)}
 							{@const isExpanded = expandedMessages.has(message.id)}
@@ -360,7 +386,7 @@
 											hasPR
 										)}
 										{@const block = extractBlockFromPart(toolPart, extractorOptions)}
-										{#if block}
+										{#if block && block.type !== 'coffee-cards'}
 											{@const canvasIds = _partCanvasMap.get(partIndex) ?? []}
 											<div class="preview-fade-in my-1">
 												<GenUIBlockRenderer
@@ -442,8 +468,8 @@
 				{/if}
 			{/each}
 
-			<!-- Initial loading state before any assistant message parts exist -->
-			{#if chat.status === 'submitted' && (chat.messages.length === 0 || chat.messages[chat.messages.length - 1]?.role === 'user')}
+			<!-- Keep activity visible until the assistant message owns the indicator. -->
+			{#if isActive && chat.messages[chat.messages.length - 1]?.role !== 'assistant'}
 				<div class="message-fade-in">
 					<InlineStatusLine steps={[]} isActive={true} />
 				</div>

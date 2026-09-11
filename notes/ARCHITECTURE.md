@@ -1,7 +1,7 @@
 # Coffee-app architecture and migration boundary
 
 **Status:** Current implementation truth
-**Last verified:** 2026-09-01
+**Last verified:** 2026-09-09
 
 This document describes what coffee-app does today. `notes/PRODUCT_VISION.md`
 defines product direction, ADRs preserve decisions, and `notes/DEVLOG.md` owns
@@ -25,8 +25,9 @@ complete, this document is the implementation-state correction.
   depends on the SDK and Parchment contracts. Coffee-app does not depend on or
   import CLI functions.
 - **Coffee-app owns the web experience.** That includes SvelteKit pages, browser
-  session handling, BFF credential brokering, chat tool schemas and rendering,
-  billing UI, and app-specific presentation behavior. Supabase Auth creates and
+  session handling, BFF credential brokering, AI SDK client transport and
+  structured rendering, billing UI, and app-specific presentation behavior.
+  Supabase Auth creates and
   refreshes the browser session; it does not make coffee-app the authority for
   product roles, plans, scopes, or entitlements.
 
@@ -138,87 +139,26 @@ share-cacheable and varies on browser credential context. The ordinary catalog
 list remains the default view and failure recovery path. No environment flag
 controls the map rollout.
 
-## Direct Supabase reality
+## Supabase and product-data boundary
 
-Coffee-app has not completed the direct-Supabase extraction described by
-ADR-007. Direct calls still exist in several categories.
+The direct-Supabase extraction described by ADR-007 is complete. Coffee-app has
+no production table or RPC caller, generated shared-database type, service-role
+runtime, or schema-generation workflow. All catalog, market, inventory, roast,
+sales, tasting, sharing, billing, account, conversation, memory, and AI
+orchestration behavior crosses a Parchment contract through `@purveyors/sdk`.
 
-### App-local and integration concerns
+Supabase remains only the browser identity and session provider: OAuth
+initiation, cookie-backed session creation and refresh, signed-in identity
+resolution, sign-out, and forwarding the session JWT from a same-origin BFF.
+The service-role credential is test-only for the dedicated Playwright account;
+it is not a Coffee-app runtime dependency. Shared schema and migrations remain
+exclusively Parchment-owned.
 
-These calls are expected to remain local unless a later decision moves them:
-
-- Supabase Auth OAuth initiation, browser session creation and refresh,
-  signed-in user resolution, sign-out, and server-side JWT forwarding
-- web-only workspace and message persistence
-- user memory and UI-specific state
-- billing, Checkout, subscription, account-deletion, and admin presentation
-  state consumed through Parchment SDK contracts
-
-Even in these areas, shared schema changes still belong to Parchment's migration
-authority.
-
-### Shared platform behavior that remains migration debt
-
-These direct paths cross the intended Parchment API boundary and need explicit
-replacement or retirement:
-
-- catalog and market reads from `coffee_catalog`, `market_daily_summary`, and
-  `supplier_daily_stats`
-- sourcing brief summaries against shared catalog rows
-
-The four legacy `/api/tools/*` compatibility routes and their route-only catalog
-RAG implementation were retired in Phase 3D after their first-party callers
-moved to Parchment and Reed explicitly accepted an immediate hard cutover for
-any unknown authenticated external caller. `OPENROUTER_API_KEY` remains because
-active chat and memory-dream callers still require it. Workspace summary
-compaction is now a thin session-bound Parchment SDK call; Parchment owns its
-prompt, model, provider credential, cooldown, and CAS commit.
-
-Inventory share creation and cross-principal redemption now use Parchment's
-share-grant contract through thin BFF adapters. Coffee-app no longer reads
-`shared_links`, the share owner's `user_roles`, or cross-owner inventory,
-catalog, and roast rows directly.
-
-Roast profile create, update, single delete, named-batch create/delete, Artisan
-replacement/clear, and live-curve replacement now use Parchment through
-session-only thin BFF adapters. Coffee-app no longer writes `roast_profiles`,
-`roast_temperatures`, `roast_events`, or `artisan_import_log` directly, and the
-member-callable milestone backfill route has been retired. The deprecated
-read-only roast tool compatibility surface remains isolated for Phase 3's
-telemetry-backed caller decision.
-
-The orphaned coffee-app bean-identity candidate/review helper has also been
-retired. It had no runtime importer, route, or documented HTTP surface. The
-shared identity schema remains under Parchment migration authority; a future
-identity-review product must use a separately accepted Parchment contract rather
-than reintroducing direct identity-table or review-RPC access here.
-
-The existence of a Parchment endpoint does not prove coffee-app has migrated to
-it. The canonical backlog tracks this as the headless-cutover debt audit. Each
-path needs a source-level caller inventory, a replacement contract, and a
-mergeable deletion or migration slice before it can be called complete.
-
-Tracked-lot portfolio reads and writes are no longer included in this debt list;
-coffee-app now consumes the Parchment-owned portfolio contract through the SDK.
-
-Authenticated tasting reads are also no longer migration debt. The chat tool and
-legacy compatibility route consume the Parchment tasting contract through the
-SDK, and the obsolete direct-Supabase tasting helper has been removed. Owner
-cupping-note and rating writes now travel through the Parchment inventory mutation
-contract through the SDK, so the web preserves its complete notes payload and
-overall rating without a direct Supabase update.
-
-Catalog-backed and manual inventory creation from the beans form now use atomic
-Parchment batch contracts through the SDK. The legacy scalar inventory writer and
-its direct-Supabase helper have been removed. The separately planned confirmed
-chat-action RPC remains migration debt and is not part of the beans-form cutover.
-
-Parchment Console API-usage pages also consume the session-only
-`ParchmentClient.apiUsage.get` contract. Owner traffic totals remain aggregate,
-and monthly quota state comes from the canonical account-scoped response.
-Per-key counts remain attribution for activity detail and may be incomplete
-relative to account totals. Coffee-app retains only the presentation mapping
-for these analytics.
+Terminal source guards reject product `.from()` and `.rpc()` calls,
+database-derived shared types, provider credentials and SDKs, local model/tool
+orchestration, and retired backend surfaces. New product behavior must enter
+through an accepted Parchment contract rather than rebuilding a web-local
+backend.
 
 ## Cherry Runtime and tool flow
 

@@ -100,6 +100,8 @@ function unwrapMutation<T extends object>(
  */
 export function fetchParchmentSales(client: ParchmentClient): Promise<ParchmentSaleProjection[]> {
 	return collectOffsetPages({
+		// These BFF projections are called only after session authorization (no API-key cap).
+		pageSize: PAGE_LIMIT,
 		fetchPage: async (offset) =>
 			unwrapParchment(await client.sales.list({ limit: PAGE_LIMIT, offset })).data,
 		key: (row) => row.id

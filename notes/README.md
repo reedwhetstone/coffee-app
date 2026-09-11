@@ -15,7 +15,7 @@ If the goal is to understand the current product direction, implementation contr
 4. `UI-FRAMEWORK.md`
    - Tactical Svelte/Tailwind component implementation companion for applying `BRAND.md`
 5. `ARCHITECTURE.md`
-   - Verified current runtime boundaries, SDK/CLI relationship, and direct-Supabase migration debt
+   - Verified current runtime boundaries, SDK/CLI relationship, and terminal Supabase/Auth boundary
 6. `decisions/`
    - Accepted ADRs for real shipped behavior
 7. `API_notes/APITIER.md`
@@ -28,6 +28,8 @@ If the goal is to understand the current product direction, implementation contr
     - Active or recent execution plans
 11. `market-brief/implementation-plan.md`
     - Current Market Brief product boundary and cross-repo implementation order
+12. `implementation-plans/2026-09-11-cherry-agent-overhaul.md`
+    - Proposed Cherry AI overhaul: live activity, useful inline evidence, grounded references, and a connected workspace
 
 ## Current directories
 

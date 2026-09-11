@@ -95,7 +95,7 @@ Cherry Runtime's model loop and tools execute inside Parchment. Coffee-app keeps
 
 - **Framework:** SvelteKit 2 + Svelte 5 + TypeScript
 - **Styling:** Tailwind CSS
-- **Data:** Parchment API through `@purveyors/sdk`, plus remaining direct Supabase paths documented in `notes/ARCHITECTURE.md`
+- **Data:** Parchment API through `@purveyors/sdk`; Supabase is limited to browser identity and session plumbing
 - **Auth:** Supabase Auth for browser identity and session lifecycle; Parchment
   for API credential validation, principal resolution, and product authorization
 - **Payments:** Stripe.js embedded Checkout presentation; Parchment owns all server-side Stripe authority
@@ -190,6 +190,7 @@ Many `/api/*` routes are important, but they are platform routes, not broad publ
 - `/api/beans` GET supports share-token reads, while writes require session auth
 - `/api/chat` and `/api/workspaces` require a session with Mallard Studio membership or Parchment Intelligence access
 - `/api/billing/*` and `/api/admin/*` are session BFF and operational routes, not external product APIs
+- `/api/analytics/insights` is an internal, same-origin Market Index BFF route for the web UI, not a supported public Parchment API
 
 ### Prefer shared domain logic over duplicate behavior
 
@@ -197,7 +198,7 @@ The catalog, inventory, roast, sales, and tasting workflows span web app, CLI, a
 
 ### The SDK is the shared client boundary
 
-Coffee-app does not import CLI functions. The SDK is generated from Parchment's OpenAPI contract and provides typed HTTP clients for both coffee-app and the CLI. It does not depend on the CLI. See [`notes/ARCHITECTURE.md`](notes/ARCHITECTURE.md) for the verified current boundary and the remaining direct-Supabase migration debt.
+Coffee-app does not import CLI functions. The SDK is generated from Parchment's OpenAPI contract and provides typed HTTP clients for both coffee-app and the CLI. It does not depend on the CLI. See [`notes/ARCHITECTURE.md`](notes/ARCHITECTURE.md) for the verified current boundary and terminal source guard.
 
 ## Validation
 
@@ -223,7 +224,6 @@ For static validation (`pnpm check --fail-on-warnings`), provide these repo-loca
 
 - `PUBLIC_SUPABASE_URL`
 - `PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
 - `ACCOUNT_DELETION_REAUTH_ISSUER`
 - `ACCOUNT_DELETION_REAUTH_AUDIENCE`
 - `ACCOUNT_DELETION_REAUTH_PRIVATE_KEYS`
@@ -231,6 +231,7 @@ For static validation (`pnpm check --fail-on-warnings`), provide these repo-loca
 
 For E2E (`pnpm test:e2e`), also provide:
 
+- `SUPABASE_SERVICE_ROLE_KEY`
 - `E2E_TEST_EMAIL`
 - `E2E_TEST_USER_ID`
 - `PLAYWRIGHT_BASE_URL` (optional, defaults to localhost)

@@ -16,6 +16,7 @@
 		price_p75: number | null;
 		sample_size: number;
 		wholesale_only: boolean;
+		price_estimated?: boolean;
 	}
 
 	interface SpreadRow {
@@ -51,6 +52,7 @@
 		value: number;
 		p25: number | null;
 		p75: number | null;
+		estimated?: boolean;
 		retailPrice?: number;
 		wholesalePrice?: number;
 	}
@@ -78,7 +80,8 @@
 					date: new Date(row.snapshot_date),
 					value: price,
 					p25: row.price_p25 ?? null,
-					p75: row.price_p75 ?? null
+					p75: row.price_p75 ?? null,
+					estimated: row.price_estimated
 				});
 			}
 		}
@@ -295,6 +298,7 @@
 		price: number;
 		p25: number | null;
 		p75: number | null;
+		estimated?: boolean;
 		retailPrice?: number;
 		wholesalePrice?: number;
 	}
@@ -326,6 +330,7 @@
 				price: closest.value,
 				p25: closest.p25,
 				p75: closest.p75,
+				estimated: closest.estimated,
 				retailPrice: closest.retailPrice,
 				wholesalePrice: closest.wholesalePrice
 			});
@@ -555,7 +560,7 @@
 											<span style="color:#302f2a; font-weight:600; flex-shrink:0;"
 												>{mode === 'spread'
 													? `${row.price > 0 ? '+' : ''}${row.price.toFixed(1)}%`
-													: `$${row.price.toFixed(2)}`}</span
+													: `$${row.price.toFixed(2)}${row.estimated ? ' est.' : ''}`}</span
 											>
 										</div>
 										{#if mode === 'spread' && row.retailPrice != null && row.wholesalePrice != null}

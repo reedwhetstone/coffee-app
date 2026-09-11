@@ -1,35 +1,34 @@
 import type { PageServerLoad } from './$types';
-import { getPageAuthState } from '$lib/server/pageAuth';
-import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
+import { requireParchmentAccess } from '$lib/server/auth';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
-import { fetchParchmentCatalogItemsByIds } from '$lib/server/parchmentCatalog';
+import { fetchPortfolioPage, parsePortfolioQuery } from '$lib/server/portfolioPage';
+import { redeemParchmentInventoryShareGrant } from '$lib/server/parchmentShares';
 
 export const load: PageServerLoad = async (event) => {
-	const { locals } = event;
-	const { user, role } = getPageAuthState(locals.principal);
-	const ppiAccess =
-		locals.principal?.isAuthenticated === true ? locals.principal.ppiAccess === true : false;
-	const isMember = role === 'member' || role === 'admin';
-	const hasSourcingAccess = isMember || ppiAccess;
-
-	// Bookmarked (watchlist) lots get their own portfolio tab, distinct from purchases.
-	let trackedLots: TrackedLotSummary[] = [];
-	let trackedCatalog: Record<string, unknown>[] = [];
-	if (user && hasSourcingAccess) {
+	// Start the purchased portfolio before hydration. Watchlist reads are owned
+	// by its tab and cannot hold up the default view or the first response.
+	const purchases = (async () => {
 		try {
-			const parchment = await createParchmentServerClient(event, { mode: 'session' });
-			trackedLots = await getTrackedLotSummaries(parchment, 100);
-			trackedCatalog = (await fetchParchmentCatalogItemsByIds(
-				parchment,
-				trackedLots.map((lot) => lot.catalogId)
-			)) as unknown as Record<string, unknown>[];
+			const share = event.url.searchParams.get('share');
+			if (share) {
+				event.setHeaders({ 'cache-control': 'no-store' });
+				const client = await createParchmentServerClient(event, { mode: 'anonymous' });
+				return { data: await redeemParchmentInventoryShareGrant(client, share), error: null };
+			}
+			const { memberAccess } = await requireParchmentAccess(event);
+			const client = await createParchmentServerClient(event, { mode: 'session' });
+			return {
+				...(await fetchPortfolioPage(
+					client,
+					parsePortfolioQuery(new URLSearchParams()),
+					memberAccess
+				)),
+				error: null
+			};
 		} catch (error) {
-			console.error('Error loading portfolio watchlist:', error);
+			console.error('Error loading purchased portfolio:', error);
+			return { data: [], error: 'Unable to load your coffee portfolio. Please try again.' };
 		}
-	}
-
-	return {
-		trackedLots,
-		trackedCatalog
-	};
+	})();
+	return { purchases };
 };

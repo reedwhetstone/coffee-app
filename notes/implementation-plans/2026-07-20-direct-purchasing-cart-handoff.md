@@ -33,13 +33,16 @@ The canonical catalog resource must not blindly relay that storage field. A dedi
 ### Phase 1: attribution + handoff (no merchant cooperation required)
 
 **PR 1 (coffee-scraper): persist purchase identity.**
+
 - Extend purchase-option extraction so each option carries `min_lbs`, `variant_id` for Shopify where available, `product_id` for WooCommerce where available, and `variation_id` plus any required variation attributes for WooCommerce variable products, alongside `platform: shopify|woocommerce|custom` and the appropriate `cart_mode` in the additive `purchase_options` field. Leave `price_tiers` unchanged.
 - Ship compile-safe defaults first per the schema rollout rule. Backfill occurs naturally on the next scrape cycle.
 
 **PR 2 (coffee-app): UTM everything.**
+
 - Append `utm_source=purveyors&utm_medium=marketplace&utm_campaign=catalog` to every outbound supplier link (catalog cards, detail pages, chat/GenUI links). Immediate evidence accrual, independent of cart work.
 
 **PR 3 (coffee-app): cart + supplier handoff.**
+
 - Client-side cart grouping items by supplier (carts are per-store; a mixed cart becomes one handoff per supplier).
 - "Checkout at {supplier}" consumes the dedicated purchase-options projection and builds the cart permalink from persisted Shopify variant IDs + quantities + UTMs for Shopify suppliers. For WooCommerce, capability detection must come from an explicit supplier/option `cart_mode` or a validated plugin/API integration; the presence of a `product_id` or `variation_id` alone does not prove that a multi-item cart is supported. A confirmed variable-product handoff uses the persisted parent `product_id`, `variation_id`, and required variation attributes; a simple-product handoff uses `product_id` alone. If a supplier group contains multiple WooCommerce items without confirmed multi-item support, use a non-partial fallback: present a separate deep link for every selected item, or the supplier landing page when an item has no usable identifier, while keeping the full selection visible. Never open a single-item URL as though it represents the full cart or silently drop items. The flow must not depend on raw catalog storage or overload `price_tiers`.
 - Log every handoff event (supplier, items, estimated value) so we hold our own side of the attribution ledger.

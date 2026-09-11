@@ -29,6 +29,7 @@
 	import MarketReadSection from '$lib/components/analytics/sections/MarketReadSection.svelte';
 	import KpiStripSection from '$lib/components/analytics/sections/KpiStripSection.svelte';
 	import WatchlistSignalsSection from '$lib/components/analytics/sections/WatchlistSignalsSection.svelte';
+	import MatchedPriceComparison from '$lib/components/analytics/MatchedPriceComparison.svelte';
 	import EvidenceChartsSection from '$lib/components/analytics/sections/EvidenceChartsSection.svelte';
 	import ParchmentIntelligenceSection from '$lib/components/analytics/sections/ParchmentIntelligenceSection.svelte';
 	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
@@ -70,6 +71,103 @@
 		metadataPurveyorScoreConfidenceSeries: null,
 		metadataPurveyorScoreTierSeries: null
 	};
+
+	let insightsState = $state<StreamState>('pending');
+	let scopedInsightsState = $state<StreamState>('ready');
+	let insightsData = $state<MarketIndexInsights | null>(null);
+
+	$effect(() => {
+		const initial = data.analyticsInsights as Promise<MarketIndexInsights>;
+		const market = isParchmentIntelligence ? viewMode : 'retail';
+		const window = windowMode;
+		const controller = new AbortController();
+		const needsScopeRequest = !(market === 'retail' && window === '7d');
+		let base: MarketIndexInsights | null = null;
+		let scope: MarketIndexInsights | null = null;
+		insightsState = 'pending';
+		scopedInsightsState = needsScopeRequest ? 'pending' : 'ready';
+		insightsData = null;
+
+		const publishBaseMetadata = () => {
+			if (controller.signal.aborted || !base) return;
+			// A failed scoped request must not erase metadata that loaded from the
+			// independent base stream. Keep scope-specific signals and movement
+			// stats empty so the selected view never presents the default scope as a
+			// successful fallback.
+			insightsData = {
+				...EMPTY_MARKET_INSIGHTS,
+				metadataProcessSeries: base.metadataProcessSeries,
+				metadataDisclosureSeries: base.metadataDisclosureSeries,
+				metadataPurveyorScoreSeries: base.metadataPurveyorScoreSeries,
+				metadataPurveyorScoreConfidenceSeries: base.metadataPurveyorScoreConfidenceSeries,
+				metadataPurveyorScoreTierSeries: base.metadataPurveyorScoreTierSeries
+			};
+			insightsState = 'ready';
+		};
+
+		const publishScope = () => {
+			if (controller.signal.aborted || !scope) return;
+			// The scoped response deliberately omits metadata. Keep it as soon as
+			// the independent base stream settles, but never let base signals or
+			// movement stats overwrite the selected scope.
+			insightsData = {
+				...scope,
+				...(base
+					? {
+							metadataProcessSeries: base.metadataProcessSeries,
+							metadataDisclosureSeries: base.metadataDisclosureSeries,
+							metadataPurveyorScoreSeries: base.metadataPurveyorScoreSeries,
+							metadataPurveyorScoreConfidenceSeries: base.metadataPurveyorScoreConfidenceSeries,
+							metadataPurveyorScoreTierSeries: base.metadataPurveyorScoreTierSeries
+						}
+					: {})
+			};
+			insightsState = 'ready';
+		};
+
+		const publishBase = () => {
+			if (controller.signal.aborted || !base) return;
+			insightsData = base;
+			insightsState = 'ready';
+		};
+
+		void Promise.resolve(initial)
+			.then((value) => {
+				base = value;
+				if (needsScopeRequest) {
+					if (scope) publishScope();
+					else if (scopedInsightsState === 'error') publishBaseMetadata();
+				} else publishBase();
+			})
+			.catch((error: unknown) => {
+				if (controller.signal.aborted) return;
+				console.error('Failed to load market insights:', error);
+				if (!needsScopeRequest) insightsState = 'error';
+			});
+
+		if (needsScopeRequest) {
+			void (async () => {
+				const response = await fetch(`/api/analytics/insights?market=${market}&window=${window}`, {
+					signal: controller.signal
+				});
+				if (!response.ok) throw new Error('Market insights unavailable');
+				return (await response.json()) as MarketIndexInsights;
+			})()
+				.then((value) => {
+					scope = value;
+					scopedInsightsState = 'ready';
+					publishScope();
+				})
+				.catch((error: unknown) => {
+					if (controller.signal.aborted) return;
+					console.error('Failed to load market insights:', error);
+					scopedInsightsState = 'error';
+					publishBaseMetadata();
+				});
+		}
+
+		return () => controller.abort();
+	});
 
 	let coverageState = $state<StreamState>('pending');
 	let coverageData = $state<AnalyticsCoverage | null>(null);
@@ -173,13 +271,17 @@
 	let signalsReady = $derived(coverageSettled && chartsSettled);
 	let bodyReady = $derived(chartsSettled);
 	let allResolved = $derived(
-		coverageState === 'ready' &&
+		insightsState === 'ready' &&
+			scopedInsightsState === 'ready' &&
+			coverageState === 'ready' &&
 			chartsState === 'ready' &&
 			memberState === 'ready' &&
 			watchlistState === 'ready'
 	);
 	let streamedSectionErrors = $derived.by(() => {
 		const failed: string[] = [];
+		if (insightsState === 'error') failed.push('market insights');
+		if (scopedInsightsState === 'error') failed.push('selected market insights');
 		if (coverageState === 'error') failed.push('coverage and movement counts');
 		if (chartsState === 'error') failed.push('price history and chart evidence');
 		if (memberState === 'error') failed.push('member market evidence');
@@ -220,7 +322,7 @@
 	let snapshots = $derived(chartsData?.snapshots ?? []);
 	let processDistribution = $derived(chartsData?.processDistribution ?? []);
 	let originRangeData = $derived(chartsData?.originRangeData ?? []);
-	let marketInsights = $derived(chartsData?.marketInsights ?? EMPTY_MARKET_INSIGHTS);
+	let marketInsights = $derived(insightsData ?? EMPTY_MARKET_INSIGHTS);
 	let recentArrivals = $derived(memberData?.recentArrivals ?? []);
 	let recentDelistings = $derived(memberData?.recentDelistings ?? []);
 	let comparisonBeans = $derived(memberData?.comparisonBeans ?? []);
@@ -1161,11 +1263,18 @@
 	{/if}
 </section>
 
+{#if isParchmentIntelligence}
+	<MatchedPriceComparison {viewMode} />
+{/if}
+
 {#if !bodyReady}
 	<!-- Same skeleton contract the root-layout route skeleton renders, minus the
 	     hero, which is already resolved above. -->
 	<AnalyticsPageSkeleton showHero={false} {isSignedIn} {isParchmentIntelligence} />
 {:else}
+	{#if insightsState === 'pending'}<p role="status" class="text-ink-muted mb-4 text-sm">
+			Loading market insights…
+		</p>{/if}
 	<ValueSignalsSection
 		valueSignals={marketInsights?.valueSignals ?? null}
 		signalsSummary={marketInsights?.signalsSummary ?? null}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 	import AnalyticsSectionHeader from '$lib/components/analytics/sections/AnalyticsSectionHeader.svelte';
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
@@ -26,6 +27,34 @@
 	};
 
 	const MAX_CARDS = 6;
+	let track = $state<HTMLDivElement>();
+	let canPrevious = $state(false);
+	let canNext = $state(false);
+	function updateNavigation() {
+		if (!track) return;
+		canPrevious = track.scrollLeft > 1;
+		canNext = track.scrollLeft + track.clientWidth < track.scrollWidth - 1;
+	}
+	function scrollCards(direction: number) {
+		if (!track) return;
+		const card = track.firstElementChild as HTMLElement | null;
+		track.scrollBy({
+			left: direction * ((card?.offsetWidth ?? track.clientWidth) + 16),
+			behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
+		});
+	}
+	$effect(() => {
+		if (!track) return;
+		const observer = new ResizeObserver(updateNavigation);
+		observer.observe(track);
+		updateNavigation();
+		return () => observer.disconnect();
+	});
+	$effect(() => {
+		void scopedSignals;
+		if (track) track.scrollLeft = 0;
+		void tick().then(updateNavigation);
+	});
 
 	// Teaser total excludes value_quality (not displayed; see scopedSignals note).
 	let displayedSummaryTotal = $derived(
@@ -109,53 +138,83 @@
 {#if valueSignals !== null || signalsSummary !== null}
 	<AnalyticsSectionHeader
 		title="What should I consider buying?"
-		description="Evidence-backed value signals from this morning's market pass: price drops against a lot's own history, and lots priced below their origin and process segment."
+		description="Price drops and coffees priced below similar lots."
 	/>
 
 	{#if isParchmentIntelligence && valueSignals !== null}
 		{#if scopedSignals.length > 0}
-			<section class="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Value signals">
-				{#each scopedSignals as signal (signal.signalType + signal.signalWindow + signal.catalogId + signal.market)}
-					{#if signal.coffee}
-						<CoffeeCard
-							coffee={signal.coffee}
-							{parseTastingNotes}
-							compact={true}
-							highlighted={true}
-							showCatalogLink={true}
-							annotation={`${SIGNAL_LABELS[signal.signalType]}: ${evidenceSentence(signal)}`}
-						/>
-					{:else}
-						<article
-							class="relative flex flex-col overflow-hidden rounded-lg border border-line bg-surface-raised p-5 pl-7 shadow-sm"
+			<section class="mb-6 min-w-0" aria-label="Value signals" aria-roledescription="carousel">
+				<div class="mb-2 flex items-center justify-end gap-2">
+					<span class="mr-1 text-xs text-muted">{scopedSignals.length} buy signals</span>
+					<button
+						type="button"
+						class="rounded border border-line px-3 py-1 text-ink disabled:opacity-40"
+						aria-label="Previous buy signals"
+						aria-controls="buy-signals-track"
+						disabled={!canPrevious}
+						onclick={() => scrollCards(-1)}>←</button
+					>
+					<button
+						type="button"
+						class="rounded border border-line px-3 py-1 text-ink disabled:opacity-40"
+						aria-label="Next buy signals"
+						aria-controls="buy-signals-track"
+						disabled={!canNext}
+						onclick={() => scrollCards(1)}>→</button
+					>
+				</div>
+				<div
+					id="buy-signals-track"
+					bind:this={track}
+					onscroll={updateNavigation}
+					class="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3"
+				>
+					{#each scopedSignals as signal (signal.signalType + signal.signalWindow + signal.catalogId + signal.market)}
+						<div
+							class="w-[85%] shrink-0 snap-start sm:w-[calc((100%-1rem)/2)] xl:w-[calc((100%-2rem)/3)]"
 						>
-							<AccentSpine />
-							<div class="flex items-center justify-between gap-2">
-								<span
-									class="rounded-full bg-accent-subtle/15 px-2.5 py-0.5 text-xs font-semibold text-ink ring-1 ring-accent/25"
+							{#if signal.coffee}
+								<CoffeeCard
+									coffee={signal.coffee}
+									{parseTastingNotes}
+									compact={true}
+									highlighted={true}
+									showCatalogLink={true}
+									annotation={`${SIGNAL_LABELS[signal.signalType]}: ${evidenceSentence(signal)}`}
+								/>
+							{:else}
+								<article
+									class="relative flex flex-col overflow-hidden rounded-lg border border-line bg-surface-raised p-5 pl-7 shadow-sm"
 								>
-									{SIGNAL_LABELS[signal.signalType]}
-								</span>
-								<span class="text-sm font-semibold tabular-nums text-ink"
-									>{formatMoney(signal.currentPriceLb)}</span
-								>
-							</div>
-							<h3 class="mt-3 font-serif text-lg font-medium leading-6 text-ink">
-								{signalTitle(signal)}
-							</h3>
-							<p class="mt-0.5 text-xs text-muted">
-								{formatSourceName(signal.source) || 'Supplier undisclosed'} · {signal.market}
-							</p>
-							<p class="mt-2 flex-1 text-sm leading-6 text-muted">{evidenceSentence(signal)}</p>
-							<a
-								href={catalogHref(signal)}
-								class="mt-3 text-sm font-semibold text-link hover:text-accent"
-							>
-								View in the catalog <span aria-hidden="true">→</span>
-							</a>
-						</article>
-					{/if}
-				{/each}
+									<AccentSpine />
+									<div class="flex items-center justify-between gap-2">
+										<span
+											class="rounded-full bg-accent-subtle/15 px-2.5 py-0.5 text-xs font-semibold text-ink ring-1 ring-accent/25"
+										>
+											{SIGNAL_LABELS[signal.signalType]}
+										</span>
+										<span class="text-sm font-semibold tabular-nums text-ink"
+											>{formatMoney(signal.currentPriceLb)}</span
+										>
+									</div>
+									<h3 class="mt-3 font-serif text-lg font-medium leading-6 text-ink">
+										{signalTitle(signal)}
+									</h3>
+									<p class="mt-0.5 text-xs text-muted">
+										{formatSourceName(signal.source) || 'Supplier undisclosed'} · {signal.market}
+									</p>
+									<p class="mt-2 flex-1 text-sm leading-6 text-muted">{evidenceSentence(signal)}</p>
+									<a
+										href={catalogHref(signal)}
+										class="mt-3 text-sm font-semibold text-link hover:text-accent"
+									>
+										View in the catalog <span aria-hidden="true">→</span>
+									</a>
+								</article>
+							{/if}
+						</div>
+					{/each}
+				</div>
 			</section>
 		{:else}
 			<section
