@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import { newsletterSupplierName } from '$lib/newsletter';
 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 	import {
@@ -87,13 +88,6 @@
 			day: 'numeric',
 			year: 'numeric'
 		});
-	}
-
-	function supplierLabel(value: string): string {
-		return value
-			.split(/[_-]+/u)
-			.map((part) => `${part.charAt(0).toLocaleUpperCase('en-US')}${part.slice(1)}`)
-			.join(' ');
 	}
 
 	onDestroy(() => {
@@ -376,7 +370,7 @@
 								<h3 class="mt-3 font-serif text-xl font-semibold leading-snug text-ink">
 									{coffee.name}
 								</h3>
-								<p class="mt-1 text-sm text-muted">{supplierLabel(coffee.supplier)}</p>
+								<p class="mt-1 text-sm text-muted">{newsletterSupplierName(coffee.supplier)}</p>
 
 								<div class="mt-4 flex flex-wrap gap-2 text-xs">
 									<span class="rounded-full bg-surface-canvas px-2.5 py-1 text-ink"
@@ -422,8 +416,13 @@
 							<div
 								class="border-t border-line bg-ink/[0.035] p-4 sm:border-l sm:border-t-0 lg:border-l-0 lg:border-t"
 							>
-								<p class="mb-2 text-center text-xs font-semibold text-muted">Tasting profile</p>
+								<p class="mb-2 text-center text-xs font-semibold text-muted">
+									{coffee.tastingNotes ? 'AI-estimated tasting profile' : 'Tasting profile'}
+								</p>
 								{#if coffee.tastingNotes}
+									<p class="mb-3 text-center text-xs leading-5 text-muted">
+										From supplier descriptions, not measured cupping scores.
+									</p>
 									<div class="mx-auto flex justify-center">
 										<TastingNotesRadar tastingNotes={coffee.tastingNotes} size={150} lazy={true} />
 									</div>
