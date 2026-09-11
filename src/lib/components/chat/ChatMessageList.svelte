@@ -13,6 +13,8 @@
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
+	import { inlineCoffeeResults } from '$lib/services/inlineCoffeeResults';
+	import { getInterruptedTurnStatus } from './chatRecovery';
 	import type { CherryAgentName } from '$lib/cherry/identity';
 
 	let {
@@ -276,10 +278,21 @@
 					<!-- Assistant message -->
 					{@const hasPR = messageHasPresentResults(message.parts)}
 					{@const toolSteps = getMessageToolSteps(message.parts)}
+					{@const interruption = getInterruptedTurnStatus(message.parts)}
 					<div id="msg-{message.id}" class="message-fade-in w-full space-y-3">
 						<!-- Persistent accumulated status line for all tool calls -->
 						{#if isStreaming || toolSteps.length > 0}
 							<InlineStatusLine steps={toolSteps} isActive={isStreaming} />
+						{/if}
+
+						{#if interruption}
+							<p
+								class="rounded-md border border-line bg-surface-panel px-3 py-2 text-xs text-muted"
+								role="status"
+							>
+								{interruption === 'stopped' ? 'Response stopped.' : 'Response interrupted.'}
+								This answer is incomplete; any coffee results below were retrieved before it ended.
+							</p>
 						{/if}
 
 						<!-- Text parts stream in live -->
@@ -293,7 +306,25 @@
 							{/if}
 						{/each}
 
-						<!-- Inline previews render after streaming completes -->
+						<!-- Completed coffee reads are useful before the whole turn ends and do
+						     not depend on a retained canvas target. Other blocks keep their gate. -->
+						{#if !isOldMessage(msgIndex, chat.messages.length) || expandedMessages.has(message.id)}
+							{#each inlineCoffeeResults(chat.messages, msgIndex) as result (result.key)}
+								{@const target = canvasStore.blocks.find(
+									(entry) =>
+										entry.messageId === message.id &&
+										blockIdentityKey(entry.block) === blockIdentityKey(result.block)
+								)}
+								<GenUIBlockRenderer
+									block={result.block}
+									renderMode="chat"
+									onAction={onBlockAction}
+									canvasBlockId={target?.id}
+								/>
+							{/each}
+						{/if}
+
+						<!-- Other previews render after streaming completes -->
 						{#if !isStreaming}
 							{@const isOld = isOldMessage(msgIndex, chat.messages.length)}
 							{@const isExpanded = expandedMessages.has(message.id)}
@@ -356,7 +387,7 @@
 											hasPR
 										)}
 										{@const block = extractBlockFromPart(toolPart, extractorOptions)}
-										{#if block}
+										{#if block && block.type !== 'coffee-cards'}
 											{@const canvasIds = _partCanvasMap.get(partIndex) ?? []}
 											<div class="preview-fade-in my-1">
 												<GenUIBlockRenderer

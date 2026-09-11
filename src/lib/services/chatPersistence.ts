@@ -6,6 +6,7 @@ import {
 	messageHasPresentResults
 } from '$lib/services/blockExtractor';
 import type { CanvasMutation } from '$lib/types/genui';
+import { getInterruptedTurnStatus } from '$lib/components/chat/chatRecovery';
 
 type ChatPersistencePart = {
 	type: string;
@@ -32,7 +33,7 @@ export function buildMessageCanvasMutations(
 	messages: ChatPersistenceMessage[],
 	message: ChatPersistenceMessage
 ): CanvasMutation[] {
-	if (message.role !== 'assistant') return [];
+	if (message.role !== 'assistant' || getInterruptedTurnStatus(message.parts)) return [];
 
 	const mutations: CanvasMutation[] = [];
 	const hasPR = messageHasPresentResults(message.parts);

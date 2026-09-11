@@ -141,7 +141,7 @@ describe('ChatMessageList conversation controls', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: /Batch 42/ }));
 		await fireEvent.click(screen.getByRole('button', { name: /Roast #42 chart/ }));
-		await fireEvent.click(screen.getByRole('button', { name: /Later coffee Ethiopia/ }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Open evidence' }));
 
 		expect(componentProps.onBlockAction.mock.calls).toEqual([
 			[{ type: 'focus-canvas-block', blockId: roastId }],
@@ -150,7 +150,7 @@ describe('ChatMessageList conversation controls', () => {
 		]);
 	});
 
-	it('disables compact evidence links after their canvas targets are cleared', () => {
+	it('keeps coffee details usable after their canvas targets are cleared', () => {
 		const messages = [
 			{
 				id: 'assistant-tools',
@@ -169,7 +169,8 @@ describe('ChatMessageList conversation controls', () => {
 
 		render(ChatMessageList, props(messages));
 
-		expect(screen.getByRole('button', { name: /Older coffee Ethiopia/ })).toBeDisabled();
+		expect(screen.getByRole('button', { name: 'View details for Older coffee' })).toBeEnabled();
+		expect(screen.queryByRole('button', { name: 'Open evidence' })).not.toBeInTheDocument();
 	});
 
 	it('matches later compact evidence links by block identity after an earlier tab is removed', async () => {

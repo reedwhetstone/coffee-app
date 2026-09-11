@@ -106,6 +106,66 @@ describe('Cherry AI incremental activity', () => {
 		expect(screen.getAllByRole('status', { name: 'Cherry AI activity' })).toHaveLength(1);
 	});
 
+	it('shows completed coffees before final text and replaces them only once curation completes', async () => {
+		const stream = controlledResponse();
+		await submit(stream);
+		stream.emit({
+			type: 'tool-input-available',
+			toolCallId: 'search',
+			toolName: 'coffee_catalog_search',
+			input: {}
+		});
+		stream.emit({
+			type: 'tool-output-available',
+			toolCallId: 'search',
+			output: {
+				coffees: [
+					{ id: 1, name: 'Washed Guji', country: 'Ethiopia' },
+					{ id: 2, name: 'Natural Sidama', country: 'Ethiopia' }
+				]
+			}
+		});
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'View details for Washed Guji' })).toBeVisible()
+		);
+		expect(screen.getByTestId('chat-status')).toHaveTextContent('streaming');
+		expect(screen.getByRole('button', { name: 'View details for Natural Sidama' })).toBeEnabled();
+		expect(screen.queryByRole('button', { name: 'Open evidence' })).not.toBeInTheDocument();
+		stream.emit({ type: 'tool-input-start', toolCallId: 'present', toolName: 'present_results' });
+		await waitFor(() => expect(screen.getByText('Preparing results…')).toBeVisible());
+		expect(screen.getByRole('button', { name: 'View details for Washed Guji' })).toBeVisible();
+		stream.emit({
+			type: 'tool-input-available',
+			toolCallId: 'present',
+			toolName: 'present_results',
+			input: {}
+		});
+		stream.emit({
+			type: 'tool-output-available',
+			toolCallId: 'present',
+			output: {
+				presentation: {
+					source_tool: 'coffee_catalog_search',
+					items: [{ id: 2, annotation: 'Best fit for the request' }]
+				}
+			}
+		});
+		await waitFor(() =>
+			expect(
+				screen.queryByRole('button', { name: 'View details for Washed Guji' })
+			).not.toBeInTheDocument()
+		);
+		expect(screen.getByText('Best fit for the request')).toBeVisible();
+		expect(screen.getAllByRole('button', { name: 'View details for Natural Sidama' })).toHaveLength(
+			1
+		);
+		stream.finish();
+		await waitFor(() => expect(screen.getByTestId('chat-status')).toHaveTextContent('ready'));
+		expect(screen.getAllByRole('button', { name: 'View details for Natural Sidama' })).toHaveLength(
+			1
+		);
+	});
+
 	it('shows result preparation during input streaming and while the tool is running', async () => {
 		const stream = controlledResponse();
 		await submit(stream);
