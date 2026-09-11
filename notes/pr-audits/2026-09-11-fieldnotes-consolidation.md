@@ -29,3 +29,22 @@ No `src/content/blog` or `static` files change. No edition, article, demo prose,
 ## Next gate
 
 Review newsletter output and the two canonical integration PRs. The app PR is no longer documentation-only; its visible presentation effects must be part of the eventual merge decision. Newsletter publication and sending remain separate, unperformed actions.
+
+## Merge preparation and failed-preview investigation
+
+Reed approved the developed-writing sample and authorized moving the integration PRs toward merge on September 11. The sequence is app #591 before scraper #514, subject to current-head review and deployment checks. This supersedes the editorial hold recorded above; publication of a new edition and subscriber delivery remain separate.
+
+The Vercel deployment for head `d66447c639007ba55ee2885291800def09d066eb` failed. GitHub exposes only a generic failure, not its underlying cause. The shared browser had no Vercel session; GitHub sign-in as `whetstone-machine-user` returned `account_not_found`. Detailed provider logs remain unavailable pending an authorized Vercel session. No project settings, credentials, or deployment checks were changed to bypass that boundary.
+
+The exact failed head passes a local Vercel-adapter preview build and its packaged newsletter-artifact verifier with inert environment placeholders (host Node 24). This does not reproduce Vercel's environment or establish why the remote deployment failed.
+
+The branch was 66 commits behind current main. Integrated main `eaf071c39197ce3ce50717a3ccafff4e935a358b` without conflicts as normal merge preparation, preserving all six persona/reader files byte-for-byte. The PR-relative scope remains the same seven files. This includes already-shipped build/deployment changes without speculatively editing newsletter code.
+
+Fresh validation on the integrated branch:
+
+- `VALIDATION_PASS`: Node 22.23.2 `pnpm build`, with `VERCEL=1`, `VERCEL_ENV=preview`, and inert Supabase/OpenRouter placeholders; adapter output and packaged newsletter verification pass.
+- `VALIDATION_PASS`: all 33 focused reader/email/integration tests.
+- `VALIDATION_PASS`: full `pnpm lint`; the earlier inherited formatting debt is resolved on main.
+- Remote preview success and current-head Codex approval must still be established. A local build is not a successful Vercel deployment, and syncing main is not a confirmed root-cause fix.
+
+Raw local logs: `artifacts/fieldnotes-vercel-591-{build,build-main,install,install-main,lint,tests,check}.log` in the shared workspace. These logs use inert placeholders, not production credentials.
