@@ -8,12 +8,12 @@ import {
 	resolvePrincipal,
 	type ApiPlan,
 	type ApiKeyPrincipal,
+	type PrincipalUser,
 	type SessionPrincipal
 } from '$lib/server/principal';
 import type { UserRole } from '$lib/types/auth.types';
 import { checkRole } from '$lib/types/auth.types';
 import type { RequestEvent } from '@sveltejs/kit';
-import type { User } from '@supabase/supabase-js';
 
 export class AuthError extends Error {
 	constructor(
@@ -40,7 +40,7 @@ async function requireSessionPrincipal(event: RequestEvent): Promise<SessionPrin
 	return principal;
 }
 
-export async function requireAuth(event: RequestEvent): Promise<User> {
+export async function requireAuth(event: RequestEvent): Promise<PrincipalUser> {
 	const principal = await requireSessionPrincipal(event);
 	return principal.user;
 }
@@ -66,7 +66,7 @@ function assertSessionMutationIsTrusted(event: RequestEvent, principal: SessionP
 
 export async function requireUserAuth(
 	event: RequestEvent
-): Promise<{ user: User; role: UserRole; principal: SessionPrincipal }> {
+): Promise<{ user: PrincipalUser; role: UserRole; principal: SessionPrincipal }> {
 	const principal = await requireSessionPrincipal(event);
 
 	return {
@@ -78,7 +78,7 @@ export async function requireUserAuth(
 
 export async function requireMemberRole(
 	event: RequestEvent
-): Promise<{ user: User; role: UserRole; principal: SessionPrincipal }> {
+): Promise<{ user: PrincipalUser; role: UserRole; principal: SessionPrincipal }> {
 	const { user, role, principal } = await requireUserAuth(event);
 
 	if (!principalHasRole(principal, 'member')) {
@@ -89,7 +89,7 @@ export async function requireMemberRole(
 }
 
 export async function requireParchmentAccess(event: RequestEvent): Promise<{
-	user: User;
+	user: PrincipalUser;
 	role: UserRole;
 	principal: SessionPrincipal;
 	ppiAccess: boolean;
@@ -110,7 +110,7 @@ export const requireChatAccess = requireParchmentAccess;
 
 export async function requireAdminRole(
 	event: RequestEvent
-): Promise<{ user: User; role: UserRole; principal: SessionPrincipal }> {
+): Promise<{ user: PrincipalUser; role: UserRole; principal: SessionPrincipal }> {
 	const { user, role, principal } = await requireUserAuth(event);
 
 	if (!principalHasRole(principal, 'admin')) {
@@ -166,7 +166,7 @@ export function createRoleMiddleware(requiredRole: UserRole) {
 // Enhanced admin check for admin endpoints
 export async function validateAdminAccess(
 	event: RequestEvent
-): Promise<{ user: User; role: UserRole; principal: SessionPrincipal }> {
+): Promise<{ user: PrincipalUser; role: UserRole; principal: SessionPrincipal }> {
 	const { user, role, principal } = await requireUserAuth(event);
 
 	if (!principalHasRole(principal, 'admin')) {
