@@ -90,6 +90,7 @@
 	}
 
 	function supplierLabel(value: string): string {
+		if (/^sweet[_ -]marias?$/iu.test(value)) return 'Sweet Maria’s';
 		return value
 			.split(/[_-]+/u)
 			.map((part) => `${part.charAt(0).toLocaleUpperCase('en-US')}${part.slice(1)}`)
@@ -422,8 +423,13 @@
 							<div
 								class="border-t border-line bg-ink/[0.035] p-4 sm:border-l sm:border-t-0 lg:border-l-0 lg:border-t"
 							>
-								<p class="mb-2 text-center text-xs font-semibold text-muted">Tasting profile</p>
+								<p class="mb-2 text-center text-xs font-semibold text-muted">
+									{coffee.tastingNotes ? 'AI-estimated tasting profile' : 'Tasting profile'}
+								</p>
 								{#if coffee.tastingNotes}
+									<p class="mb-3 text-center text-xs leading-5 text-muted">
+										From supplier descriptions, not measured cupping scores.
+									</p>
 									<div class="mx-auto flex justify-center">
 										<TastingNotesRadar tastingNotes={coffee.tastingNotes} size={150} lazy={true} />
 									</div>
