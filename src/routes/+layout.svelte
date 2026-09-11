@@ -6,7 +6,6 @@
 	import UnifiedHeader from '$lib/components/layout/UnifiedHeader.svelte';
 	import LeftSidebar from '$lib/components/layout/LeftSidebar.svelte';
 	import MobileAppShell from '$lib/components/layout/MobileAppShell.svelte';
-	import ChatDrawer from '$lib/components/chat/ChatDrawer.svelte';
 	import NavigationProgress from '$lib/components/layout/NavigationProgress.svelte';
 	import RouteSkeleton from '$lib/components/layout/RouteSkeleton.svelte';
 	import { usesStandaloneShell } from '$lib/components/layout/routeShells';
@@ -22,6 +21,7 @@
 	import type { PageMeta } from '$lib/types/meta.types';
 	import { checkRole, type PageAuthView } from '$lib/types/auth.types';
 	import { resolveCherryAgent } from '$lib/cherry/identity';
+	type ChatDrawerComponent = typeof import('$lib/components/chat/ChatDrawer.svelte').default;
 
 	interface LayoutData {
 		auth: PageAuthView;
@@ -42,6 +42,30 @@
 	});
 
 	let chatDrawerOpen = $state(false);
+	let LoadedChatDrawer = $state<ChatDrawerComponent | null>(null);
+	let chatDrawerLoading = $state(false);
+	let chatDrawerOpenRequest = 0;
+
+	async function openChatDrawer() {
+		if (chatDrawerLoading) return;
+		const requestId = ++chatDrawerOpenRequest;
+		if (LoadedChatDrawer) {
+			chatDrawerOpen = true;
+			return;
+		}
+
+		chatDrawerLoading = true;
+		try {
+			LoadedChatDrawer = (await import('$lib/components/chat/ChatDrawer.svelte')).default;
+			if (requestId === chatDrawerOpenRequest && canUseChatDrawer) {
+				chatDrawerOpen = true;
+			}
+		} catch (error) {
+			console.error('Unable to load the chat drawer:', error);
+		} finally {
+			chatDrawerLoading = false;
+		}
+	}
 
 	let rightMargin = $derived(rightSidebarOpen || chatDrawerOpen ? 'md:mr-[32rem]' : 'md:mr-0');
 	let contentMargin = $derived(`${DESKTOP_SHELL_CONTENT_MARGIN} ${rightMargin}`);
@@ -127,14 +151,21 @@
 	);
 
 	$effect(() => {
-		if (!canUseChatDrawer && chatDrawerOpen) chatDrawerOpen = false;
+		if (!canUseChatDrawer) {
+			chatDrawerOpenRequest += 1;
+			if (chatDrawerOpen) chatDrawerOpen = false;
+		}
 	});
 
 	function handleGlobalKeydown(event: KeyboardEvent) {
 		if (!canUseChatDrawer) return;
 		if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
 			event.preventDefault();
-			chatDrawerOpen = !chatDrawerOpen;
+			if (chatDrawerOpen) {
+				chatDrawerOpen = false;
+			} else {
+				void openChatDrawer();
+			}
 		}
 	}
 </script>
@@ -185,7 +216,7 @@
 			{#if !chatDrawerOpen}
 				<button
 					type="button"
-					onclick={() => (chatDrawerOpen = true)}
+					onclick={openChatDrawer}
 					class="fixed bottom-6 right-4 z-30 flex items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-ink shadow-lg transition-transform hover:scale-105"
 					title={`Open ${activeChatAgent.name} (Ctrl+K)`}
 				>
@@ -200,11 +231,13 @@
 					{activeChatAgent.name}
 				</button>
 			{/if}
-			<ChatDrawer
-				bind:open={chatDrawerOpen}
-				role={data.auth.role}
-				ppiAccess={data.auth.ppiAccess}
-			/>
+			{#if LoadedChatDrawer}
+				<LoadedChatDrawer
+					bind:open={chatDrawerOpen}
+					role={data.auth.role}
+					ppiAccess={data.auth.ppiAccess}
+				/>
+			{/if}
 		{/if}
 	</div>
 {:else}
