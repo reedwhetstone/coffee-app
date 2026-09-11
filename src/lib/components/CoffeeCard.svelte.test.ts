@@ -120,7 +120,7 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: /view details for process lot/i }));
 
-		expect(screen.getByRole('complementary', { name: /process lot/i })).toBeTruthy();
+		expect(screen.getByRole('dialog', { name: /process lot/i })).toBeTruthy();
 		expect(screen.getByRole('tab', { name: /overview/i })).toBeTruthy();
 		expect(screen.getByRole('tab', { name: /taste & process/i })).toBeTruthy();
 		expect(screen.getByText('Provenance identified')).toBeTruthy();
@@ -201,7 +201,7 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 			onDetailClose
 		});
 
-		const panel = screen.getByRole('complementary', { name: longName });
+		const panel = screen.getByRole('dialog', { name: longName });
 		const detailLayer = panel.closest('[data-coffee-detail-layer]');
 		const title = screen.getByRole('heading', { name: longName, level: 2 });
 		const closeButton = screen.getByRole('button', { name: 'Back to map' });
@@ -239,7 +239,7 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: /view details for process lot/i }));
 
-		expect(screen.getByRole('complementary', { name: /process lot/i })).toBeTruthy();
+		expect(screen.getByRole('dialog', { name: /process lot/i })).toBeTruthy();
 		expect(screen.getByRole('region', { name: /portfolio detail/i })).toBeTruthy();
 		expect(screen.getByText('Portfolio roast history')).toBeTruthy();
 		expect(screen.queryByRole('tab', { name: /overview/i })).toBeNull();

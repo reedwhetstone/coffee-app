@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Component, Snippet } from 'svelte';
+	import { detailDialog } from '$lib/utils/detailDialog';
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import SimilarCoffeePanel from '$lib/components/catalog/SimilarCoffeePanel.svelte';
 	import {
@@ -355,10 +356,6 @@
 		onDetailClose?.();
 	}
 
-	function handleDialogKeydown(event: KeyboardEvent) {
-		if (detailsOpen && event.key === 'Escape') closeDetails();
-	}
-
 	function handleCardKeydown(event: KeyboardEvent) {
 		if (!enableDetails) return;
 		if (event.key === 'Enter' || event.key === ' ') {
@@ -367,8 +364,6 @@
 		}
 	}
 </script>
-
-<svelte:window onkeydown={handleDialogKeydown} />
 
 {#if !detailOnly}
 	<article
@@ -592,7 +587,10 @@
 		class="pointer-events-none fixed inset-0 z-[70] flex w-full items-end justify-end overflow-hidden md:items-stretch"
 		data-coffee-detail-layer
 	>
-		<aside
+		<div
+			use:detailDialog={closeDetails}
+			role="dialog"
+			tabindex="-1"
 			class="pointer-events-auto flex h-[calc(100dvh-4.5rem)] max-h-[calc(100dvh-4.5rem)] min-h-0 w-full max-w-full flex-col overflow-hidden rounded-t-2xl border-l border-line bg-surface-canvas shadow-2xl sm:max-w-xl md:h-[100dvh] md:max-h-[100dvh] md:rounded-none xl:max-w-2xl"
 			aria-labelledby="coffee-detail-title-{coffee.id}"
 		>
@@ -932,6 +930,6 @@
 					{/if}
 				{/if}
 			</div>
-		</aside>
+		</div>
 	</div>
 {/if}

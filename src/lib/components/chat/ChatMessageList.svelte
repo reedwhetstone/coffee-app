@@ -256,14 +256,14 @@
 		</div>
 	{:else}
 		<!-- Chat messages - interleaved rendering -->
-		<div class="mx-auto max-w-3xl space-y-6">
+		<div class="mx-auto max-w-4xl space-y-8">
 			{#each chat.messages as message, msgIndex (message.id)}
 				{@const isLastMessage = msgIndex === chat.messages.length - 1}
 				{@const isStreaming = isLastMessage && isActive && message.role === 'assistant'}
 
 				{#if message.role === 'user'}
 					<!-- User message bubble -->
-					<div id="msg-{message.id}" class="message-fade-in flex justify-end">
+					<div id="msg-{message.id}" tabindex="-1" class="message-fade-in flex justify-end">
 						<div
 							class="max-w-[85%] rounded-lg border border-accent/25 bg-accent/10 px-4 py-2.5 text-ink sm:max-w-[75%]"
 						>
@@ -279,7 +279,11 @@
 					{@const hasPR = messageHasPresentResults(message.parts)}
 					{@const toolSteps = getMessageToolSteps(message.parts)}
 					{@const interruption = getInterruptedTurnStatus(message.parts)}
-					<div id="msg-{message.id}" class="message-fade-in w-full space-y-3">
+					<div
+						id="msg-{message.id}"
+						tabindex="-1"
+						class="message-fade-in w-full space-y-3 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-accent"
+					>
 						<!-- Persistent accumulated status line for all tool calls -->
 						{#if isStreaming || toolSteps.length > 0}
 							<InlineStatusLine steps={toolSteps} isActive={isStreaming} />

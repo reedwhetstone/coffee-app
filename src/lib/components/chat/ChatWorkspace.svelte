@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { Chat } from '@ai-sdk/svelte';
 	import { DefaultChatTransport } from 'ai';
-	import Canvas from '$lib/components/canvas/Canvas.svelte';
+	import EvidenceWorkspace from './EvidenceWorkspace.svelte';
 	import ChatMessageList from '$lib/components/chat/ChatMessageList.svelte';
 	import ChatComposer from '$lib/components/chat/ChatComposer.svelte';
 	import ChatToolbar from '$lib/components/chat/ChatToolbar.svelte';
-	import CanvasMobileOverlay from '$lib/components/chat/CanvasMobileOverlay.svelte';
 	import MemoryPanel from '$lib/components/chat/MemoryPanel.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 	import {
@@ -21,7 +20,7 @@
 	import { matchSlashCommand, getSlashCompletions } from '$lib/services/slashCommands';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import {
 		workspaceStore,
 		type Workspace,
@@ -51,6 +50,7 @@
 		canUseMallardWorkspaces,
 		agentName,
 		variant = 'page',
+		onCloseDrawer,
 		initialWorkspaceData = null
 	} = $props<{
 		canUseChat: boolean;
@@ -62,6 +62,7 @@
 		 * app-wide Cherry drawer.
 		 */
 		variant?: 'page' | 'drawer';
+		onCloseDrawer?: () => void;
 		/**
 		 * Server-prefetched workspace list + active conversation (chat page
 		 * load). When present, mount skips the client fetch waterfall.
@@ -78,6 +79,13 @@
 	let includeCanvasContext = $state(true);
 	let includePageContext = $state(true);
 	let includeUserMemoryDoc = $state(true);
+	let excludedEntities = $state<string[]>([]);
+	$effect(() => {
+		void pageChatContext.current;
+		excludedEntities = [];
+	});
+	const entityKey = (entity: { type: string; id: number | string }) =>
+		`entity:${entity.type}:${entity.id}`;
 
 	// ─── Persistent user memory document ───────────────────────────────────────
 	let memoryPanelOpen = $state(false);
@@ -133,7 +141,7 @@
 	});
 
 	interface ContextChip {
-		id: 'memory' | 'canvas' | 'page' | 'usermemory';
+		id: string;
 		label: string;
 		detail: string;
 		active: boolean;
@@ -175,11 +183,25 @@
 				active: includePageContext
 			});
 		}
+		if (pageContext && includePageContext) {
+			for (const entity of pageContext.entities ?? []) {
+				chips.push({
+					id: entityKey(entity),
+					label: entity.label,
+					detail: `${entity.type.replaceAll('_', ' ')} in view on ${pageContext.surface}.`,
+					active: !excludedEntities.includes(entityKey(entity))
+				});
+			}
+		}
 		return chips;
 	});
 
 	function toggleContextChip(id: ContextChip['id']) {
-		if (id === 'memory') includeWorkspaceMemory = !includeWorkspaceMemory;
+		if (id.startsWith('entity:'))
+			excludedEntities = excludedEntities.includes(id)
+				? excludedEntities.filter((key) => key !== id)
+				: [...excludedEntities, id];
+		else if (id === 'memory') includeWorkspaceMemory = !includeWorkspaceMemory;
 		else if (id === 'canvas') includeCanvasContext = !includeCanvasContext;
 		else if (id === 'usermemory') includeUserMemoryDoc = !includeUserMemoryDoc;
 		else includePageContext = !includePageContext;
@@ -824,7 +846,43 @@
 	let canvasOpen = $state(false);
 	let dividerDragging = $state(false);
 	let chatWidthPercent = $state(60); // Chat takes 60% by default
-	let mobileCanvasOpen = $state(false);
+	let evidenceExpanded = $state(false);
+	let wideViewport = $state(false);
+	let evidenceOverlay = $derived(variant === 'drawer' || !wideViewport || evidenceExpanded);
+	let evidenceTrigger: HTMLElement | null = null;
+
+	onMount(() => {
+		const media = window.matchMedia('(min-width: 1024px)');
+		const update = () => {
+			wideViewport = media.matches;
+		};
+		update();
+		media.addEventListener('change', update);
+		return () => media.removeEventListener('change', update);
+	});
+
+	function openEvidence() {
+		if (!canvasOpen)
+			evidenceTrigger =
+				document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		canvasOpen = true;
+	}
+
+	async function closeEvidence() {
+		canvasOpen = false;
+		evidenceExpanded = false;
+		await tick();
+		if (evidenceTrigger?.isConnected) evidenceTrigger.focus({ preventScroll: true });
+	}
+
+	async function returnToMessage(messageId: string) {
+		await closeEvidence();
+		scrollToMessage(messageId);
+		const message = chatContainer?.querySelector<HTMLElement>(
+			`[id="msg-${CSS.escape(messageId)}"]`
+		);
+		message?.focus({ preventScroll: true });
+	}
 
 	// Track which message IDs have been dispatched to canvas (to avoid duplicates)
 	let dispatchedParts = $state(new Set<string>());
@@ -872,7 +930,7 @@
 
 				const dispatchPlan = buildToolCanvasDispatchPlan(p, block, message.id);
 				if (dispatchPlan.mutations) {
-					for (const mutation of dispatchPlan.mutations) canvasStore.dispatch(mutation);
+					for (const mutation of dispatchPlan.mutations) canvasStore.dispatch(mutation, 'agent');
 					dispatchedParts.add(partKey);
 				} else if (dispatchPlan.handledWithoutCanvas) {
 					// Cache-miss/error presentations intentionally render inline only. Mark them
@@ -880,21 +938,27 @@
 					dispatchedParts.add(partKey);
 				} else if (dispatchPlan.canvasBlocks.length > 0) {
 					// Non-present_results tools: auto-add the primary block, then companions.
-					canvasStore.dispatch({
-						type: 'add',
-						block: dispatchPlan.canvasBlocks[0],
-						messageId: message.id
-					});
+					canvasStore.dispatch(
+						{
+							type: 'add',
+							block: dispatchPlan.canvasBlocks[0],
+							messageId: message.id
+						},
+						'agent'
+					);
 					dispatchedParts.add(partKey);
 
 					for (let ci = 1; ci < dispatchPlan.canvasBlocks.length; ci++) {
 						const companionKey = `${partKey}-companion-${ci - 1}`;
 						if (!dispatchedParts.has(companionKey)) {
-							canvasStore.dispatch({
-								type: 'add',
-								block: dispatchPlan.canvasBlocks[ci],
-								messageId: message.id
-							});
+							canvasStore.dispatch(
+								{
+									type: 'add',
+									block: dispatchPlan.canvasBlocks[ci],
+									messageId: message.id
+								},
+								'agent'
+							);
 							dispatchedParts.add(companionKey);
 						}
 					}
@@ -913,7 +977,7 @@
 			if (!container) return;
 			const rect = container.getBoundingClientRect();
 			const percent = ((ev.clientX - rect.left) / rect.width) * 100;
-			chatWidthPercent = Math.max(30, Math.min(80, percent));
+			chatWidthPercent = Math.max(35, Math.min(70, percent));
 		};
 
 		const onUp = () => {
@@ -932,24 +996,14 @@
 			goto(action.url);
 		} else if (action.type === 'focus-canvas-block') {
 			canvasStore.dispatch({ type: 'focus', blockId: action.blockId });
-			// Re-open the canvas if the user had closed/hidden it. A canvas link in
-			// the conversation should always surface its block, not silently no-op
-			// against a collapsed pane.
-			if (variant === 'page') {
-				canvasOpen = true;
-			}
-			// On mobile (and the drawer variant, which has no inline pane) open the
-			// canvas overlay so the focused block is actually visible.
-			if (variant === 'drawer' || window.innerWidth < 768) {
-				mobileCanvasOpen = true;
-			}
+			openEvidence();
 		} else if (action.type === 'scroll-to-message') {
 			scrollToMessage(action.messageId);
 		}
 	}
 
 	function scrollToMessage(messageId: string) {
-		const el = document.getElementById(`msg-${messageId}`);
+		const el = chatContainer?.querySelector<HTMLElement>(`[id="msg-${CSS.escape(messageId)}"]`);
 		if (el && chatContainer) {
 			el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 			el.classList.add('message-highlight');
@@ -1052,7 +1106,13 @@
 		const body: Record<string, unknown> = { workspaceContext: getWorkspaceContext() };
 		if (!includeUserMemoryDoc) body.includeUserMemory = false;
 		const context = includePageContext ? pageChatContext.current : null;
-		if (context) body.pageContext = context;
+		if (context)
+			body.pageContext = {
+				...context,
+				entities: context.entities?.filter(
+					(entity) => !excludedEntities.includes(entityKey(entity))
+				)
+			};
 		return body;
 	}
 
@@ -1201,31 +1261,28 @@
 	}
 </script>
 
-<!-- Main chat + canvas interface -->
-<div class="flex h-full min-h-0 flex-col bg-surface-canvas">
-	<!-- Chat + Canvas split container -->
-	<div class="chat-canvas-container flex flex-1 overflow-hidden">
-		<!-- Chat pane: full width on mobile (the inline canvas pane is md+ only,
-		     so a narrower chat would just leave dead space); split width on md+. -->
+<!-- One header and one retained evidence surface across all viewport sizes. -->
+<div class="flex h-full min-h-0 min-w-0 flex-col bg-surface-canvas">
+	<div inert={canvasOpen && evidenceOverlay}>
+		<ChatToolbar
+			{agentName}
+			{variant}
+			{canvasOpen}
+			{onCloseDrawer}
+			hasMessages={chat.messages.length > 0}
+			onOpenMemory={() => (memoryPanelOpen = true)}
+			onToggleCanvas={() => (canvasOpen ? closeEvidence() : openEvidence())}
+			onExport={exportConversation}
+			onClear={clearConversation}
+			clearDisabled={isActive || isClearing}
+		/>
+	</div>
+	<div class="chat-canvas-container flex min-h-0 flex-1 overflow-hidden">
 		<div
-			class="chat-pane flex flex-col overflow-hidden"
-			style="--chat-width: {variant === 'page' && canvasOpen ? chatWidthPercent : 100}%;"
+			class="chat-pane flex min-w-0 flex-col overflow-hidden"
+			inert={canvasOpen && evidenceOverlay}
+			style="--chat-width: {canvasOpen && !evidenceOverlay ? chatWidthPercent : 100}%;"
 		>
-			<ChatToolbar
-				{agentName}
-				{variant}
-				{canvasOpen}
-				hasMessages={chat.messages.length > 0}
-				onOpenMemory={() => (memoryPanelOpen = true)}
-				onToggleMobileCanvas={() => (mobileCanvasOpen = !mobileCanvasOpen)}
-				onToggleDesktopCanvas={() => {
-					canvasOpen = !canvasOpen;
-				}}
-				onExport={exportConversation}
-				onClear={clearConversation}
-				clearDisabled={isActive || isClearing}
-			/>
-
 			<div class="relative flex min-h-0 flex-1 flex-col">
 				<ChatMessageList
 					{agentName}
@@ -1240,27 +1297,7 @@
 					onAskAgainMessage={askAgainFromAssistantMessage}
 					messageActionsDisabled={isActive || isClearing || !workspaceReady}
 				/>
-
-				<!-- Mobile floating canvas indicator: anchored inside the message
-				     area (above the composer) so it can't overlap the send button. -->
-				{#if variant === 'page' && !canvasStore.isEmpty && !mobileCanvasOpen}
-					<button
-						onclick={() => (mobileCanvasOpen = true)}
-						class="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-accent px-3 py-2 text-sm text-ink shadow-lg transition-transform hover:scale-105 md:hidden"
-					>
-						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="1.5"
-								d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-							/>
-						</svg>
-						{canvasStore.blockCount}
-					</button>
-				{/if}
 			</div>
-
 			<ChatComposer
 				{agentName}
 				bind:inputMessage
@@ -1282,50 +1319,58 @@
 				onDismissError={dismissDisplayedError}
 			/>
 		</div>
-
-		<!-- Resizable divider (desktop only) -->
-		{#if variant === 'page' && canvasOpen}
+		{#if canvasOpen && !evidenceOverlay}
 			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<div
-				class="hidden w-1 cursor-col-resize bg-line transition-colors hover:bg-accent/40 md:block"
+				class="w-1.5 shrink-0 cursor-col-resize bg-line/60 hover:bg-accent/40 focus:bg-accent/40 focus:outline-none"
 				class:bg-accent={dividerDragging}
 				role="separator"
 				tabindex="0"
+				aria-label="Conversation width"
+				aria-orientation="vertical"
+				aria-valuemin="35"
+				aria-valuemax="70"
+				aria-valuenow={Math.round(chatWidthPercent)}
 				onmousedown={startDividerDrag}
+				onkeydown={(e) => {
+					if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+						e.preventDefault();
+						chatWidthPercent =
+							e.key === 'Home'
+								? 35
+								: e.key === 'End'
+									? 70
+									: Math.max(
+											35,
+											Math.min(70, chatWidthPercent + (e.key === 'ArrowRight' ? 5 : -5))
+										);
+					}
+				}}
 			></div>
-
-			<!-- Canvas pane (desktop) -->
-			<div class="hidden overflow-hidden md:block" style="width: {100 - chatWidthPercent}%;">
-				<Canvas
-					onAction={handleBlockAction}
-					onScrollToMessage={scrollToMessage}
-					onExecuteAction={executeAction}
-				/>
-			</div>
 		{/if}
+		<EvidenceWorkspace
+			open={canvasOpen}
+			overlay={evidenceOverlay}
+			expanded={evidenceExpanded}
+			canExpand={variant === 'page' && wideViewport}
+			onClose={closeEvidence}
+			onToggleExpand={() => (evidenceExpanded = !evidenceExpanded)}
+			onAction={handleBlockAction}
+			onScrollToMessage={returnToMessage}
+			onExecuteAction={executeAction}
+		/>
 	</div>
 </div>
 
 <MemoryPanel bind:open={memoryPanelOpen} />
-
-<!-- Canvas overlay (mobile always; desktop too in drawer variant) -->
-{#if mobileCanvasOpen}
-	<CanvasMobileOverlay
-		{variant}
-		onClose={() => (mobileCanvasOpen = false)}
-		onAction={handleBlockAction}
-		onScrollToMessage={scrollToMessage}
-		onExecuteAction={executeAction}
-	/>
-{/if}
 
 <style>
 	.chat-pane {
 		width: 100%;
 		transition: width 0.2s ease;
 	}
-	@media (min-width: 768px) {
+	@media (min-width: 1024px) {
 		.chat-pane {
 			width: var(--chat-width, 100%);
 		}

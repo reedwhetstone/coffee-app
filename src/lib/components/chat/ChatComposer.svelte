@@ -5,7 +5,7 @@
 	import type { CherryAgentName } from '$lib/cherry/identity';
 
 	interface ContextChip {
-		id: 'memory' | 'canvas' | 'page' | 'usermemory';
+		id: string;
 		label: string;
 		detail: string;
 		active: boolean;
@@ -128,9 +128,9 @@
 {/if}
 
 <!-- Input area: keep the composer visually distinct without turning the full viewport edge into a form. -->
-<div class="bg-surface-canvas px-4 pb-4 pt-2">
+<div class="shrink-0 bg-surface-canvas px-4 pb-4 pt-3">
 	{#if slashCompletions.length > 0 && inputMessage.startsWith('/')}
-		<div class="mx-auto mb-2 max-w-3xl rounded-lg border border-line bg-surface-raised shadow-sm">
+		<div class="mx-auto mb-2 max-w-4xl rounded-lg border border-line bg-surface-raised shadow-sm">
 			{#each slashCompletions as cmd (cmd.name)}
 				<button
 					onclick={() => {
@@ -148,7 +148,7 @@
 			{/each}
 		</div>
 	{:else if !isActive && suggestions.length > 0}
-		<div class="mx-auto max-w-3xl">
+		<div class="mx-auto max-w-4xl">
 			<SuggestionChips
 				{suggestions}
 				onSelect={(text) => {
@@ -158,53 +158,58 @@
 		</div>
 	{/if}
 	{#if contextChips.length > 0}
-		<details class="mx-auto mb-2 max-w-3xl text-xs text-muted">
-			<summary class="cursor-pointer list-none rounded-md px-1 py-1 hover:text-ink">
-				Using {activeContextCount} of {contextChips.length} context
-				{contextChips.length === 1 ? 'source' : 'sources'}
-			</summary>
-			<div class="mt-1 flex flex-wrap items-center gap-1.5" aria-label="Context sources">
+		<div class="mx-auto mb-2 max-w-4xl">
+			<div class="mb-1 flex flex-wrap gap-1.5" aria-label="Context sources">
 				{#each contextChips as chip (chip.id)}
 					<button
 						type="button"
 						onclick={() => onToggleChip?.(chip.id)}
-						title={chip.active ? chip.detail : `${chip.label} — excluded from your next message`}
+						title={chip.detail}
 						aria-pressed={chip.active}
-						class="flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors {chip.active
-							? 'border-accent bg-accent/10 text-ink'
-							: 'border-line text-muted line-through opacity-60'}"
+						class="max-w-full truncate rounded-md border px-2 py-1 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-accent {chip.active
+							? 'border-line bg-surface-panel text-ink'
+							: 'border-dashed border-line text-muted'}"
 					>
-						{#if chip.active}
-							<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="1.5"
-									d="M5 13l4 4L19 7"
-								/>
-							</svg>
-						{/if}
+						<span aria-hidden="true">{chip.active ? '✓' : '+'}</span>
 						{chip.label}
 					</button>
 				{/each}
 			</div>
-		</details>
+			<details class="text-xs text-muted">
+				<summary class="cursor-pointer rounded-md py-1 hover:text-ink"
+					>Using {activeContextCount} of {contextChips.length} context {contextChips.length === 1
+						? 'source'
+						: 'sources'}</summary
+				>
+				<dl
+					class="mt-1 max-h-36 space-y-2 overflow-y-auto rounded-md border border-line bg-surface-panel p-3"
+				>
+					{#each contextChips as chip (chip.id)}
+						<div>
+							<dt class="font-medium text-ink">{chip.label}{chip.active ? '' : ' · Excluded'}</dt>
+							<dd class="mt-0.5 whitespace-pre-wrap break-words leading-5">{chip.detail}</dd>
+						</div>
+					{/each}
+				</dl>
+			</details>
+		</div>
 	{/if}
-	<form onsubmit={handleSubmit} class="mx-auto max-w-3xl">
+	<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
 		<div
-			class="flex items-end gap-2 rounded-lg border border-line bg-surface-raised p-2 shadow-lg shadow-ink/5 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
+			class="flex items-end gap-2 rounded-lg border border-line bg-surface-raised p-2 shadow-sm focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
 		>
 			<textarea
 				bind:this={textareaEl}
 				bind:value={inputMessage}
+				aria-label={`Message ${agentName}`}
 				placeholder={canUseMallardWorkspaces
 					? 'Analyze sourcing, portfolio, roasting, or coffee market decisions...'
 					: 'Analyze sourcing, portfolio, catalog, or coffee market decisions...'}
-				class="min-h-11 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-ink placeholder-muted focus:outline-none focus:ring-0"
+				class="min-h-11 min-w-0 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-ink placeholder-muted focus:outline-none focus:ring-0"
 				rows="1"
 				disabled={isActive || !workspaceReady}
 				onkeydown={(e) => {
-					if (e.key === 'Enter' && !e.shiftKey) {
+					if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
 						e.preventDefault();
 						onSend();
 					}

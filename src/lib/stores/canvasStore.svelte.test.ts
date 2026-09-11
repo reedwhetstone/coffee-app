@@ -231,3 +231,82 @@ describe('canvasStore agent layout suggestions (lock)', () => {
 		expect(canvasStore.layout).toBe(before);
 	});
 });
+
+describe('incoming evidence selection', () => {
+	it('retains the active scene and all proposals on agent replace/clear, while explicit user clear still works', async () => {
+		const { canvasStore } = await loadCanvasStore();
+		canvasStore.resetAll();
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'proposal',
+			block: {
+				type: 'action-card',
+				version: 1,
+				data: {
+					executionId: 'proposal:key',
+					actionType: 'record_sale',
+					summary: 'Sale',
+					fields: [],
+					status: 'proposed'
+				}
+			}
+		});
+		const proposal = canvasStore.blocks[0];
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'selected',
+			block: { type: 'coffee-cards', version: 1, data: [] }
+		});
+		const selected = canvasStore.focusBlockId;
+		canvasStore.dispatch(
+			{
+				type: 'replace',
+				blocks: [{ messageId: 'new', block: { type: 'coffee-cards', version: 1, data: [] } }]
+			},
+			'agent'
+		);
+		expect(canvasStore.blocks).toHaveLength(3);
+		expect(canvasStore.focusBlockId).toBe(selected);
+		canvasStore.dispatch({ type: 'clear' }, 'agent');
+		expect(canvasStore.blocks).toHaveLength(2);
+		expect(canvasStore.blocks.some((block) => block.id === proposal.id)).toBe(true);
+		expect(canvasStore.focusBlockId).toBe(selected);
+		canvasStore.clearAll();
+		expect(canvasStore.isEmpty).toBe(true);
+	});
+});
+
+it('retains an executing proposal through slash clear, remove, and replace until its outcome arrives', async () => {
+	const { canvasStore } = await loadCanvasStore();
+	canvasStore.dispatch({
+		type: 'add',
+		messageId: 'action',
+		block: {
+			type: 'action-card',
+			version: 1,
+			data: {
+				executionId: 'action:key',
+				actionType: 'record_sale',
+				summary: 'Sale',
+				fields: [],
+				status: 'executing'
+			}
+		}
+	});
+	const id = canvasStore.focusBlockId!;
+	canvasStore.dispatch({ type: 'add', messageId: 'other', block: cards(1) });
+	canvasStore.clearAll();
+	canvasStore.dispatch({ type: 'remove', blockId: id });
+	canvasStore.dispatch({ type: 'replace', blocks: [] });
+	expect(canvasStore.blocks.map((block) => block.id)).toEqual([id]);
+	canvasStore.dispatch({
+		type: 'update-action',
+		blockId: id,
+		data: { status: 'success', result: { id: 9 } }
+	});
+	expect(canvasStore.blocks[0].block).toMatchObject({
+		data: { status: 'success', result: { id: 9 } }
+	});
+	canvasStore.clearAll();
+	expect(canvasStore.isEmpty).toBe(true);
+});

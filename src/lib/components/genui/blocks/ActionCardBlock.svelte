@@ -218,20 +218,22 @@
 		{#each localFields as field (field.key)}
 			{#if field.type !== 'hidden' && field.key !== '_bean_sources'}
 				<div class="flex items-center gap-2 text-sm">
-					<span class="w-32 shrink-0 text-muted">{field.label}</span>
+					<span class="w-24 shrink-0 text-muted sm:w-32">{field.label}</span>
 					{#if editing && field.editable && status === 'proposed'}
 						{#if field.type === 'textarea'}
 							<textarea
 								value={String(field.value || '')}
 								oninput={(e) => setFieldValue(field.key, (e.target as HTMLTextAreaElement).value)}
-								class="flex-1 rounded border border-line bg-white px-2 py-1 text-sm focus:border-accent focus:outline-none"
+								aria-label={field.label}
+								class="min-w-0 flex-1 rounded border border-line bg-white px-2 py-1 text-sm focus:border-accent focus:outline-none"
 								rows="2"
 							></textarea>
 						{:else if field.type === 'select' && (field.selectOptions || field.options)}
 							<select
 								value={String(field.value)}
 								onchange={(e) => setFieldValue(field.key, (e.target as HTMLSelectElement).value)}
-								class="flex-1 rounded border border-line bg-white px-2 py-1 text-sm focus:border-accent focus:outline-none"
+								aria-label={field.label}
+								class="min-w-0 flex-1 rounded border border-line bg-white px-2 py-1 text-sm focus:border-accent focus:outline-none"
 							>
 								{#if field.selectOptions}
 									{#each field.selectOptions as opt}
@@ -251,7 +253,8 @@
 									const val = (e.target as HTMLInputElement).value;
 									setFieldValue(field.key, field.type === 'number' ? Number(val) : val);
 								}}
-								class="flex-1 rounded border border-line bg-white px-2 py-1 text-sm focus:border-accent focus:outline-none"
+								aria-label={field.label}
+								class="min-w-0 flex-1 rounded border border-line bg-white px-2 py-1 text-sm focus:border-accent focus:outline-none"
 							/>
 						{/if}
 					{:else}

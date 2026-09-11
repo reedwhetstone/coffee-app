@@ -8,8 +8,8 @@
 		canvasOpen,
 		hasMessages,
 		onOpenMemory,
-		onToggleMobileCanvas,
-		onToggleDesktopCanvas,
+		onToggleCanvas,
+		onCloseDrawer,
 		onExport,
 		onClear,
 		clearDisabled = false
@@ -22,8 +22,8 @@
 		/** Whether any chat messages exist (controls Export/Clear visibility) */
 		hasMessages: boolean;
 		onOpenMemory: () => void;
-		onToggleMobileCanvas: () => void;
-		onToggleDesktopCanvas: () => void;
+		onToggleCanvas: () => void;
+		onCloseDrawer?: () => void;
 		onExport: () => void;
 		onClear: () => void;
 		clearDisabled?: boolean;
@@ -33,7 +33,9 @@
 <!-- Keep the active evidence workspace visible. Less-frequent workspace actions live in a
      labeled menu so the sourcing workflow remains primary. -->
 
-<div class="flex items-center justify-between border-b border-line px-3 py-2">
+<div
+	class="flex shrink-0 items-center justify-between gap-2 border-b border-line bg-surface-panel/40 px-4 py-3"
+>
 	<div class="min-w-0">
 		<p class="truncate text-sm font-semibold text-ink">{agentName}</p>
 		<p class="hidden truncate text-xs text-muted sm:block">Coffee-native AI from Purveyors</p>
@@ -41,32 +43,33 @@
 	<div class="flex items-center gap-2">
 		{#if !canvasStore.isEmpty}
 			<button
-				onclick={onToggleMobileCanvas}
-				class="rounded-md border border-line px-2 py-0.5 text-xs text-muted transition-all hover:text-ink {variant ===
-				'page'
-					? 'md:hidden'
-					: ''}"
+				type="button"
+				onclick={onToggleCanvas}
+				aria-expanded={canvasOpen}
+				class="whitespace-nowrap rounded-md border border-line bg-surface-canvas px-3 py-2 text-xs font-medium text-ink transition-colors hover:border-accent focus-visible:ring-2 focus-visible:ring-accent"
 			>
-				Evidence ({canvasStore.blockCount})
+				Evidence <span class="ml-1 text-muted">{canvasStore.blockCount}</span>
 			</button>
-			{#if variant === 'page'}
-				<button
-					onclick={onToggleDesktopCanvas}
-					class="hidden rounded-md border border-line px-2 py-0.5 text-xs text-muted transition-all hover:text-ink md:block"
-				>
-					{canvasOpen ? 'Hide' : 'Open'} evidence ({canvasStore.blockCount})
-				</button>
-			{/if}
 		{/if}
 		<details class="relative">
 			<summary
-				class="cursor-pointer list-none rounded-md border border-line px-2 py-0.5 text-xs text-muted transition-all hover:text-ink"
+				class="cursor-pointer list-none rounded-md border border-line px-2 py-2 text-xs text-muted transition-all hover:text-ink"
 			>
-				Workspace actions
+				<span class="sr-only sm:not-sr-only">Workspace actions</span><span
+					class="sm:hidden"
+					aria-hidden="true">•••</span
+				>
 			</summary>
 			<div
 				class="absolute right-0 z-20 mt-1 flex min-w-44 flex-col gap-1 rounded-md border border-line bg-surface-panel p-1.5 shadow-lg"
 			>
+				{#if variant === 'drawer'}
+					<a
+						href="/chat"
+						class="rounded px-2 py-2 text-left text-xs text-ink hover:bg-surface-canvas"
+						>Open full workspace</a
+					>
+				{/if}
 				<button
 					onclick={onOpenMemory}
 					class="rounded px-2 py-1.5 text-left text-xs text-muted hover:bg-surface-canvas hover:text-ink"
@@ -91,5 +94,13 @@
 				{/if}
 			</div>
 		</details>
+		{#if onCloseDrawer}
+			<button
+				type="button"
+				onclick={onCloseDrawer}
+				aria-label={`Close ${agentName}`}
+				class="rounded-md px-2 py-2 text-muted hover:text-ink">✕</button
+			>
+		{/if}
 	</div>
 </div>

@@ -70,7 +70,7 @@ describe('InlineCoffeeResults', () => {
 		expect(screen.getByText('$8.50/lb')).toBeInTheDocument();
 		expect(screen.getByText(/Prices and availability may have changed/)).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: 'Open evidence' })).not.toBeInTheDocument();
-		expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 		expect(fetchSpy).not.toHaveBeenCalled();
 		expect(onAction).not.toHaveBeenCalled();
 	});
@@ -80,14 +80,14 @@ describe('InlineCoffeeResults', () => {
 		render(InlineCoffeeResults, { block: block([coffee(17), coffee(21)]) });
 		const trigger = screen.getByRole('button', { name: 'View details for Lot 21' });
 		await fireEvent.click(trigger);
-		const detail = screen.getByRole('complementary', { name: 'Lot 21' });
+		const detail = screen.getByRole('dialog', { name: 'Lot 21' });
 		expect(within(detail).getByRole('link', { name: 'View in catalog' })).toHaveAttribute(
 			'href',
 			'/catalog?coffee=21'
 		);
 		expect(fetchSpy).not.toHaveBeenCalled();
 		await fireEvent.click(within(detail).getByRole('button', { name: 'Back to answer' }));
-		expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 		expect(trigger).toHaveFocus();
 	});
 
@@ -114,7 +114,7 @@ describe('InlineCoffeeResults', () => {
 		const { rerender } = render(InlineCoffeeResults, { block: block([coffee(17)]) });
 		await fireEvent.click(screen.getByRole('button', { name: 'View details for Lot 17' }));
 		await rerender({ block: block([coffee(21)]) });
-		const detail = screen.getByRole('complementary', { name: 'Lot 17' });
+		const detail = screen.getByRole('dialog', { name: 'Lot 17' });
 		expect(within(detail).getByRole('link', { name: 'View in catalog' })).toHaveAttribute(
 			'href',
 			'/catalog?coffee=17'
@@ -124,7 +124,7 @@ describe('InlineCoffeeResults', () => {
 		).not.toBeInTheDocument();
 		await fireEvent.click(within(detail).getByRole('button', { name: 'Back to answer' }));
 		expect(screen.getByRole('button', { name: 'View details for Lot 21' })).toBeInTheDocument();
-		expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 		expect(screen.getByRole('region', { name: 'Coffee results' })).toHaveFocus();
 	});
 
