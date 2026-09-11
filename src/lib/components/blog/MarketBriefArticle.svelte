@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import { newsletterSupplierName } from '$lib/newsletter';
 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 	import {
@@ -87,14 +88,6 @@
 			day: 'numeric',
 			year: 'numeric'
 		});
-	}
-
-	function supplierLabel(value: string): string {
-		if (/^sweet[_ -]marias?$/iu.test(value)) return 'Sweet Maria’s';
-		return value
-			.split(/[_-]+/u)
-			.map((part) => `${part.charAt(0).toLocaleUpperCase('en-US')}${part.slice(1)}`)
-			.join(' ');
 	}
 
 	onDestroy(() => {
@@ -377,7 +370,7 @@
 								<h3 class="mt-3 font-serif text-xl font-semibold leading-snug text-ink">
 									{coffee.name}
 								</h3>
-								<p class="mt-1 text-sm text-muted">{supplierLabel(coffee.supplier)}</p>
+								<p class="mt-1 text-sm text-muted">{newsletterSupplierName(coffee.supplier)}</p>
 
 								<div class="mt-4 flex flex-wrap gap-2 text-xs">
 									<span class="rounded-full bg-surface-canvas px-2.5 py-1 text-ink"
