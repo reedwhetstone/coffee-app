@@ -737,3 +737,11 @@ describe('analytics load', () => {
 		});
 	});
 });
+
+it('streams history without waiting for insight metadata', async () => {
+	const setup = createAnalyticsClient({});
+	vi.mocked(setup.client.market.metadataIndex).mockReturnValue(new Promise(() => {}));
+	mockCreateParchmentServerClient.mockResolvedValue(setup.client);
+	const result = await runLoad();
+	await expect(result.analyticsCharts).resolves.toHaveProperty('snapshots');
+});

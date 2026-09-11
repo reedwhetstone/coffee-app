@@ -10,6 +10,7 @@ import type {
 	AnalyticsWatchlistData,
 	AnalyticsPreview
 } from './+page.server';
+import type { MarketIndexInsights } from '$lib/types/marketIndex.types';
 import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 import { getAnalyticsSectionLinks } from '$lib/components/layout/appNavigation';
 
@@ -254,6 +255,7 @@ function createData(overrides: Record<string, unknown> = {}): PageData {
 		isParchmentIntelligence = false,
 		role = 'viewer',
 		analyticsPreview,
+		analyticsInsights,
 		analyticsCoverage,
 		analyticsCharts,
 		analyticsWatchlist,
@@ -264,6 +266,7 @@ function createData(overrides: Record<string, unknown> = {}): PageData {
 		isParchmentIntelligence?: boolean;
 		role?: string;
 		analyticsPreview?: AnalyticsPreview;
+		analyticsInsights?: Promise<MarketIndexInsights>;
 		analyticsCoverage?: Promise<AnalyticsCoverage>;
 		analyticsCharts?: Promise<AnalyticsCharts>;
 		analyticsWatchlist?: Promise<AnalyticsWatchlistData>;
@@ -297,13 +300,13 @@ function createData(overrides: Record<string, unknown> = {}): PageData {
 				stats: base.stats,
 				movementCounts: base.movementCounts
 			} as AnalyticsCoverage),
+		analyticsInsights: analyticsInsights ?? Promise.resolve(base.marketInsights),
 		analyticsCharts:
 			analyticsCharts ??
 			Promise.resolve({
 				snapshots: base.snapshots,
 				processDistribution: base.processDistribution,
-				originRangeData: base.originRangeData,
-				marketInsights: base.marketInsights
+				originRangeData: base.originRangeData
 			} as AnalyticsCharts),
 		analyticsWatchlist:
 			analyticsWatchlist ??
@@ -379,8 +382,7 @@ describe('analytics page loading experience', () => {
 		charts.resolve({
 			snapshots: baseline.snapshots,
 			processDistribution: baseline.processDistribution,
-			originRangeData: baseline.originRangeData,
-			marketInsights: baseline.marketInsights
+			originRangeData: baseline.originRangeData
 		} as AnalyticsCharts);
 		member.resolve({
 			recentArrivals: [],
@@ -416,8 +418,7 @@ describe('analytics page loading experience', () => {
 		charts.resolve({
 			snapshots: baseline.snapshots,
 			processDistribution: baseline.processDistribution,
-			originRangeData: baseline.originRangeData,
-			marketInsights: baseline.marketInsights
+			originRangeData: baseline.originRangeData
 		} as AnalyticsCharts);
 
 		await waitFor(() => {
@@ -847,10 +848,111 @@ describe('analytics command center hierarchy', () => {
 			'/catalog?coffee=11'
 		);
 
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockImplementation(
+				() =>
+					new Response(
+						JSON.stringify({
+							valueSignals: [],
+							moveStats: [],
+							signalsSummary: null,
+							signalsAsOf: null
+						})
+					)
+			)
+		);
 		await screen.getByRole('button', { name: 'Wholesale' }).click();
 
-		expect(screen.getByText(/No strong wholesale buy signals this morning/i)).toBeTruthy();
+		await waitFor(() =>
+			expect(screen.getByText(/No strong wholesale buy signals this morning/i)).toBeTruthy()
+		);
+		expect(fetch).toHaveBeenCalledWith(
+			'/api/analytics/insights?market=wholesale&window=7d',
+			expect.objectContaining({ signal: expect.any(AbortSignal) })
+		);
+		vi.unstubAllGlobals();
 		expect(screen.queryByText('View the selected coffee in the catalog.')).toBeNull();
+	});
+
+	it('starts a selected-scope request before the initial insight stream settles', async () => {
+		const initial = deferred<MarketIndexInsights>();
+		const scoped = deferred<MarketIndexInsights>();
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: () => scoped.promise
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				analyticsInsights: initial.promise
+			})
+		});
+
+		await screen.getByRole('button', { name: 'Wholesale' }).click();
+		await waitFor(() =>
+			expect(fetchMock).toHaveBeenCalledWith(
+				'/api/analytics/insights?market=wholesale&window=7d',
+				expect.objectContaining({ signal: expect.any(AbortSignal) })
+			)
+		);
+
+		scoped.resolve({
+			...createBaseline().marketInsights,
+			valueSignals: [],
+			moveStats: [],
+			signalsAsOf: '2026-07-06'
+		});
+		await waitFor(() =>
+			expect(screen.getByText(/No strong wholesale buy signals this morning/i)).toBeTruthy()
+		);
+
+		initial.resolve(createBaseline().marketInsights);
+		vi.unstubAllGlobals();
+	});
+
+	it('preserves base metadata when the selected-scope request fails', async () => {
+		const initial = deferred<MarketIndexInsights>();
+		const fetchMock = vi.fn().mockResolvedValue({ ok: false });
+		vi.stubGlobal('fetch', fetchMock);
+		const baseMetadata = {
+			period: '2026-07',
+			lotCount: 10,
+			supplierCount: 2,
+			buckets: [
+				{ key: 'washed', share: 0.7, count: 7, supplierCount: 2 },
+				{ key: 'undisclosed', share: 0.3, count: 3, supplierCount: 1 }
+			]
+		};
+
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				analyticsInsights: initial.promise
+			})
+		});
+
+		await screen.getByRole('button', { name: 'Wholesale' }).click();
+		await waitFor(() =>
+			expect(fetchMock).toHaveBeenCalledWith(
+				'/api/analytics/insights?market=wholesale&window=7d',
+				expect.objectContaining({ signal: expect.any(AbortSignal) })
+			)
+		);
+
+		initial.resolve({
+			...createBaseline().marketInsights,
+			metadataProcessSeries: [baseMetadata]
+		} as MarketIndexInsights);
+
+		await waitFor(() => expect(screen.getByText('How is processing changing?')).toBeTruthy());
+		expect(screen.getByText(/Failed to load: selected market insights/i)).toBeTruthy();
+		expect(screen.queryByText('Loading market insights…')).toBeNull();
+		vi.unstubAllGlobals();
 	});
 
 	it('opens value-signal lot details in the local CoffeeCard drawer when catalog data is attached', async () => {
