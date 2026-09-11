@@ -310,3 +310,32 @@ it('retains an executing proposal through slash clear, remove, and replace until
 	canvasStore.clearAll();
 	expect(canvasStore.isEmpty).toBe(true);
 });
+
+it.each(['success', 'failed'] as const)(
+	'does not retain a completed %s action during an agent refresh',
+	async (status) => {
+		const { canvasStore } = await loadCanvasStore();
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'action',
+			block: {
+				type: 'action-card',
+				version: 1,
+				data: {
+					executionId: `action:${status}`,
+					actionType: 'record_sale',
+					summary: 'Sale',
+					fields: [],
+					status: 'proposed'
+				}
+			}
+		});
+		const actionId = canvasStore.blocks[0].id;
+		canvasStore.dispatch({ type: 'update-action', blockId: actionId, data: { status } });
+		canvasStore.dispatch({ type: 'add', messageId: 'focused', block: cards(1) });
+
+		canvasStore.dispatch({ type: 'replace', blocks: [] }, 'agent');
+
+		expect(canvasStore.blocks.map((block) => block.messageId)).toEqual(['focused']);
+	}
+);

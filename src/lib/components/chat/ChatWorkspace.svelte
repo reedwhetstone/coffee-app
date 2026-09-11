@@ -80,12 +80,16 @@
 	let includePageContext = $state(true);
 	let includeUserMemoryDoc = $state(true);
 	let excludedEntities = $state<string[]>([]);
-	$effect(() => {
-		void pageChatContext.current;
-		excludedEntities = [];
-	});
 	const entityKey = (entity: { type: string; id: number | string }) =>
 		`entity:${entity.type}:${entity.id}`;
+	$effect(() => {
+		const currentEntityKeys = new Set(
+			(pageChatContext.current?.entities ?? []).map((entity) => entityKey(entity))
+		);
+		const retainedExclusions = excludedEntities.filter((key) => currentEntityKeys.has(key));
+		if (retainedExclusions.length !== excludedEntities.length)
+			excludedEntities = retainedExclusions;
+	});
 
 	// ─── Persistent user memory document ───────────────────────────────────────
 	let memoryPanelOpen = $state(false);

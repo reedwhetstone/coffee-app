@@ -231,6 +231,20 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 		expect(screen.queryByRole('complementary', { name: longName })).toBeNull();
 	});
 
+	it('closes the detail sheet when Escape is pressed after focus leaves the panel', async () => {
+		const name = 'Focus-leaving coffee';
+		render(CoffeeCard, {
+			coffee: createCoffee({ name }),
+			parseTastingNotes,
+			initialDetailsOpen: true
+		});
+
+		const panel = screen.getByRole('dialog', { name });
+		await fireEvent.keyDown(window, { key: 'Escape' });
+
+		expect(panel).not.toBeInTheDocument();
+	});
+
 	it('renders page-specific detail content inside the canonical pop-out shell', async () => {
 		render(CoffeeCardDetailContentHarness, {
 			coffee: createCoffee(),

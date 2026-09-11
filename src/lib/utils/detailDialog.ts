@@ -14,13 +14,16 @@ export function detailDialog(node: HTMLElement, close: () => void) {
 		if (mounted) (node.querySelector<HTMLElement>('button') ?? node).focus();
 	});
 	function keydown(event: KeyboardEvent) {
-		if (event.defaultPrevented || (event.target as HTMLElement).closest('[role="dialog"]') !== node)
-			return;
+		if (event.defaultPrevented) return;
+		const target = event.target instanceof Element ? event.target : null;
+		const owner = target?.closest('[role="dialog"]');
+		if (owner && owner !== node) return;
 		if (event.key === 'Escape') {
 			event.preventDefault();
 			event.stopPropagation();
 			close();
 		} else if (event.key === 'Tab') {
+			if (!target || !node.contains(target)) return;
 			const items = controls();
 			const first = items[0];
 			const last = items.at(-1);
@@ -40,6 +43,7 @@ export function detailDialog(node: HTMLElement, close: () => void) {
 		}
 	}
 	node.addEventListener('keydown', keydown);
+	window.addEventListener('keydown', keydown);
 	return {
 		update(nextClose: () => void) {
 			close = nextClose;
@@ -47,6 +51,7 @@ export function detailDialog(node: HTMLElement, close: () => void) {
 		destroy() {
 			mounted = false;
 			node.removeEventListener('keydown', keydown);
+			window.removeEventListener('keydown', keydown);
 			void tick().then(() => {
 				if (trigger?.isConnected && !trigger.closest('[hidden], [inert]'))
 					trigger.focus({ preventScroll: true });

@@ -61,9 +61,12 @@ function dispatch(mutation: CanvasMutation, source: 'user' | 'agent' = 'user') {
 	// active scene or any proposal. Explicit user removal/clear remains separate.
 	const isExecuting = (block: CanvasBlock) =>
 		block.block.type === 'action-card' && block.block.data.status === 'executing';
+	const isUnfinishedAction = (block: CanvasBlock) =>
+		block.block.type === 'action-card' &&
+		(block.block.data.status === 'proposed' || block.block.data.status === 'executing');
 	const retainForAgent = (block: CanvasBlock) =>
 		isExecuting(block) ||
-		(source === 'agent' && (block.id === focusBlockId || block.block.type === 'action-card'));
+		(source === 'agent' && (block.id === focusBlockId || isUnfinishedAction(block)));
 	switch (mutation.type) {
 		case 'add': {
 			const id = generateBlockId();

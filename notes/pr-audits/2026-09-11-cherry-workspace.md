@@ -8,8 +8,8 @@ This follows merged [web #609](https://github.com/reedwhetstone/coffee-app/pull/
 - A single retained evidence component switches between keyboard-resizable desktop split, expanded comparison, and full-height mobile/drawer presentation.
 - Coffee shortlists use responsive shared cards instead of a one-card carousel; canonical coffee details remain available.
 - Individual page-context entities can be excluded from subsequent requests. Labels describe entities in view, not invented explicit selections or evidence authorization.
-- Incoming agent presentations preserve the active scene and proposals. Pins retain existing protection. Store clear/remove/replace retain executing proposals, including the `/clear` command, until the outcome arrives.
-- Nested coffee and generic details own keyboard focus, Tab and Escape, returning to their trigger. Returning to a source message closes evidence and focuses that exact answer.
+- Incoming agent presentations preserve the active scene and unfinished proposals. Pins retain existing protection. Agent-driven clear/replace retain proposed or executing proposals, including the `/clear` command, until the outcome arrives; completed outcomes can age out when the user focuses other evidence.
+- Nested coffee, memory and generic details own keyboard focus, Tab and Escape, returning to their trigger. Returning to a source message closes evidence and focuses that exact answer.
 
 ## Ownership, lifetime, and boundaries
 
@@ -23,11 +23,11 @@ Coffee details now expose their actual dialog role and use the same nested keybo
 
 - `VALIDATION_PASS`: `pnpm lint`; `git diff --check`; changed-document relative links.
 - `VALIDATION_PASS`: `pnpm check --fail-on-warnings` (zero errors/warnings).
-- `VALIDATION_PASS`: `pnpm exec vitest run src/lib/components/chat src/lib/components/canvas src/lib/components/genui src/lib/components/CoffeeCard.svelte.test.ts src/lib/components/layout/MobileOverlayShell.test.ts src/lib/services/coffeeReferences.test.ts src/lib/services/inlineCoffeeResults.test.ts src/lib/services/chatPersistence.test.ts src/lib/services/blockExtractor.test.ts src/lib/stores/canvasStore.svelte.test.ts src/routes/api/chat` (182 tests, 28 files).
+- `VALIDATION_PASS`: `pnpm exec vitest run src/lib/components/chat src/lib/components/canvas src/lib/components/genui src/lib/components/CoffeeCard.svelte.test.ts src/lib/components/layout/MobileOverlayShell.test.ts src/lib/services/coffeeReferences.test.ts src/lib/services/inlineCoffeeResults.test.ts src/lib/services/chatPersistence.test.ts src/lib/services/blockExtractor.test.ts src/lib/stores/canvasStore.svelte.test.ts src/routes/api/chat` (187 tests, 29 files).
 - Browser: isolated system Chrome at 1440×1000 and 390×844 with actual ChatWorkspace/Canvas/card components, synthetic initial workspace data and mocked network responses. No model calls or real mutations.
 - Twelve deterministic journey groups passed with zero browser page errors: closed initial evidence; keyboard split resizing; expanded comparison columns; retained composer/proposal edits; mobile resize continuity; nested coffee Escape; chart rendering; exact source-message focus return; selected evidence/pins through save/reload; error presentation; long history without horizontal overflow; drawer header, nested Escape, draft retention and full-workspace link.
-- Nested coffee and generic detail Escape/focus return have component regressions. Store tests prove clear/remove/replace retain an executing proposal until its outcome is available. Existing transport/recovery, historical references, pin/action-state and retired confirmed-action route tests also pass.
-- Read-only review found nested-detail focus/Escape, a slash-clear execution-retention bypass, and inaccurate selected-entity copy. All three were corrected; closure review found no additional concrete regression.
+- Nested coffee, memory and generic detail Escape/focus return have component regressions. Store tests prove agent-driven clear/replace retain unfinished proposals while completed outcomes age out after focus moves. Existing transport/recovery, historical references, pin/action-state and retired confirmed-action route tests also pass.
+- Review found nested-detail focus/Escape, a slash-clear execution-retention bypass, inaccurate selected-entity copy, completed action-card accumulation, live-context opt-out resets, and nested memory keyboard ownership gaps. The four current Codex findings were corrected; focused closure validation found no additional concrete regression.
 
 The original interrupted browser check queried a dialog role that the coffee sheet did not expose. Inspection also established a real nested Escape bug; the sheet semantics and event ownership were fixed rather than simply weakening the assertion. Temporary harness files are not shipped.
 
