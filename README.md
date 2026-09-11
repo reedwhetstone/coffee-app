@@ -190,6 +190,7 @@ Many `/api/*` routes are important, but they are platform routes, not broad publ
 - `/api/beans` GET supports share-token reads, while writes require session auth
 - `/api/chat` and `/api/workspaces` require a session with Mallard Studio membership or Parchment Intelligence access
 - `/api/billing/*` and `/api/admin/*` are session BFF and operational routes, not external product APIs
+- `/api/analytics/insights` is an internal, same-origin Market Index BFF route for the web UI, not a supported public Parchment API
 
 ### Prefer shared domain logic over duplicate behavior
 

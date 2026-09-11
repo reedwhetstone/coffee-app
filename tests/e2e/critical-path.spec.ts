@@ -82,13 +82,9 @@ test.describe.serial('Critical business workflow', () => {
 	test('bean appears in inventory UI', async ({ page }) => {
 		expect(testBeanId).toBeTruthy();
 
-		// Set up response listener BEFORE navigation
-		const beansResponse = page.waitForResponse(
-			(resp) => resp.url().includes('/api/beans') && resp.status() === 200,
-			{ timeout: 20000 }
-		);
+		// Portfolio purchases are server-streamed; wait for the rendered result
+		// instead of a browser request that no longer occurs on this route.
 		await page.goto('/beans', { waitUntil: 'domcontentloaded' });
-		await beansResponse;
 
 		// Either a bean card or the empty state renders
 		const beanCard = page.getByRole('button', { name: /view details for/i }).first();
