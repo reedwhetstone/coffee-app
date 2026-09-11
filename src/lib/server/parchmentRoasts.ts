@@ -18,6 +18,8 @@ export async function fetchParchmentRoasts(
 	client: ParchmentClient
 ): Promise<ParchmentRoastProfile[]> {
 	return collectOffsetPages({
+		// These BFF projections are called only after session authorization (no API-key cap).
+		pageSize: PAGE_LIMIT,
 		fetchPage: async (offset) =>
 			unwrapParchment(await client.roasts.list({ limit: PAGE_LIMIT, offset })).data,
 		key: (row) => row.roast_id

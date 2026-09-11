@@ -1,7 +1,10 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import BeanForm from './BeanForm.svelte';
 	import FormShell from '$lib/components/FormShell.svelte';
 	import BeanProfileTabs from './BeanProfileTabs.svelte';
+	import PortfolioBeanDetail from './PortfolioBeanDetail.svelte';
+	import type { PortfolioContext, PortfolioPage } from '$lib/server/portfolioPage';
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 	import MetricTile from '$lib/components/ui/MetricTile.svelte';
 	import OperationsHero from '$lib/components/ui/OperationsHero.svelte';
@@ -32,6 +35,12 @@
 			searchType?: 'green';
 			searchId?: number;
 		};
+		purchases?: Promise<{
+			data: unknown[];
+			error: string | null;
+			portfolio?: PortfolioContext;
+			pagination?: PortfolioPage['pagination'];
+		}>;
 		data: Array<{
 			id: number;
 			rank: number | null;
@@ -86,10 +95,27 @@
 	let canUseWatchlist = $derived(
 		data.auth?.role === 'member' || data.auth?.role === 'admin' || data.auth?.ppiAccess === true
 	);
-	let trackedLotsList = $derived((data?.trackedLots ?? []) as TrackedLotContext[]);
+	let trackedLotsList = $state<TrackedLotContext[]>([]);
+	let trackedCatalog = $state<CoffeeCatalog[]>([]);
+	let watchlistLoaded = $state(false);
+	let watchlistLoading = $state(false);
+	let watchlistError = $state<string | null>(null);
+	let watchlistEpoch = 0;
+	$effect(() => {
+		const owner = data.auth?.user?.id;
+		void owner;
+		untrack(() => {
+			watchlistEpoch += 1;
+			trackedLotsList = [];
+			trackedCatalog = [];
+			watchlistLoaded = false;
+			watchlistLoading = false;
+			watchlistError = null;
+		});
+	});
 	let trackedCatalogById = $derived(
 		new Map(
-			((data?.trackedCatalog ?? []) as Array<{ id: number }>).map((coffee) => [
+			(trackedCatalog as Array<{ id: number }>).map((coffee) => [
 				coffee.id,
 				coffee as unknown as CoffeeCatalog
 			])
@@ -136,6 +162,77 @@
 	// Track loading state for client-side data fetching
 	let isLoading = $state(true);
 	let clientData = $state<PageData['data']>([]);
+	let portfolioContext = $state<PortfolioContext | null>(null);
+	let portfolioPagination = $state<PortfolioPage['pagination'] | null>(null);
+	let portfolioRefetching = $state(false);
+	let portfolioPageError = $state<string | null>(null);
+	let lastPortfolioQuery = '';
+	let portfolioRequest = 0;
+	function currentPortfolioQuery() {
+		return JSON.stringify({
+			filters: $filterStore.filters,
+			sort_field: $filterStore.sortField ?? '',
+			sort_direction: $filterStore.sortDirection ?? 'desc'
+		});
+	}
+	function applyPortfolioPage(result: PortfolioPage) {
+		error = null;
+		isLoading = false;
+		clientData = result.data as PageData['data'];
+		portfolioContext = result.portfolio;
+		portfolioPagination = result.pagination;
+		filterStore.setPortfolioPage(result.data, result.portfolio.uniqueValues);
+	}
+	async function loadPortfolioPage(offset = 0) {
+		error = null;
+		if (!portfolioContext) isLoading = true;
+		const request = ++portfolioRequest;
+		portfolioRefetching = true;
+		portfolioPageError = null;
+		const params = new URLSearchParams({
+			portfolio: 'true',
+			filters: JSON.stringify($filterStore.filters),
+			sort_field: $filterStore.sortField ?? '',
+			sort_direction: $filterStore.sortDirection ?? 'desc',
+			offset: String(offset),
+			limit: '50'
+		});
+		try {
+			const response = await fetch(`/api/beans?${params}`);
+			if (!response.ok) throw new Error('Unable to load portfolio page');
+			const result = (await response.json()) as PortfolioPage;
+			if (request !== portfolioRequest) return;
+			if (!result.portfolio || !result.pagination) throw new Error('Invalid portfolio page');
+			// A deletion can empty the last page. Return to a valid page while keeping filters.
+			if (offset > 0 && result.pagination.total <= offset) {
+				await loadPortfolioPage(Math.max(0, Math.floor((result.pagination.total - 1) / 50) * 50));
+				return;
+			}
+			applyPortfolioPage(result);
+		} catch {
+			if (request === portfolioRequest) {
+				portfolioPageError = 'Unable to refresh your portfolio. Please try again.';
+				if (!portfolioContext) error = portfolioPageError;
+			}
+		} finally {
+			if (request === portfolioRequest) {
+				portfolioRefetching = false;
+				isLoading = false;
+			}
+		}
+	}
+	$effect(() => {
+		if (!portfolioContext || !$filterStore.portfolioServerSide || $filterStore.routeId !== '/beans')
+			return;
+		const key = currentPortfolioQuery();
+		if (key === lastPortfolioQuery) return;
+		portfolioRequest += 1;
+		const timer = setTimeout(() => {
+			lastPortfolioQuery = key;
+			void untrack(() => loadPortfolioPage(0));
+		}, 200);
+		return () => clearTimeout(timer);
+	});
 	let catalogData = $state<CoffeeCatalog[]>([]);
 	let canManagePortfolioRows = $derived(
 		canManagePortfolio(data.auth?.role || 'viewer', data.auth?.ppiAccess === true)
@@ -167,37 +264,79 @@
 		}
 	}
 
-	// Client-side data fetching
+	$effect(() => () => {
+		portfolioRequest += 1;
+	});
+
+	// The server begins this read before hydration; refreshes remain explicit.
 	$effect(() => {
-		const shareToken = page.url.searchParams.get('share');
-		const fetchData = async () => {
-			isLoading = true;
-			error = null;
-			try {
-				// Build query params
-				const params = new URLSearchParams();
-				if (shareToken) params.append('share', shareToken);
-
-				// Fetch beans data
-				const response = await fetch(`/api/beans?${params}`);
-				if (!response.ok) {
-					throw new Error('Failed to fetch beans data');
+		const purchases = data.purchases;
+		portfolioRequest += 1;
+		let cancelled = false;
+		isLoading = true;
+		error = null;
+		void Promise.resolve(purchases)
+			.then((result) => {
+				if (cancelled) return;
+				if (!result) return refreshData();
+				clientData = result.data as PageData['data'];
+				error = result.error;
+				filterStore.initializeForRoute('/beans', clientData, {
+					portfolioServerSide: Boolean(result.portfolio)
+				});
+				lastPortfolioQuery = untrack(currentPortfolioQuery);
+				if (result.portfolio && result.pagination)
+					applyPortfolioPage({
+						data: result.data as Record<string, unknown>[],
+						portfolio: result.portfolio,
+						pagination: result.pagination
+					});
+				else {
+					portfolioContext = null;
+					portfolioPagination = null;
 				}
-				const result = await response.json();
-				clientData = result.data || [];
-
-				// Initialize FilterStore with client data
-				const currentRoute = page.url.pathname;
-				filterStore.initializeForRoute(currentRoute, clientData);
-			} catch (err) {
-				console.error('Error fetching beans data:', err);
-				error = err instanceof Error ? err.message : 'Failed to load data';
-			} finally {
 				isLoading = false;
-			}
+			})
+			.catch(() => {
+				if (cancelled) return;
+				error = 'Unable to load your coffee portfolio. Please try again.';
+				isLoading = false;
+			});
+		return () => {
+			cancelled = true;
 		};
+	});
 
-		fetchData();
+	async function loadWatchlist() {
+		if (watchlistLoading || watchlistLoaded) return;
+		const epoch = watchlistEpoch;
+		watchlistLoading = true;
+		watchlistError = null;
+		try {
+			const response = await fetch('/api/beans/watchlist');
+			if (!response.ok) throw new Error('Unable to load bookmarked lots.');
+			const result = await response.json();
+			if (epoch !== watchlistEpoch) return;
+			trackedLotsList = result.trackedLots;
+			trackedCatalog = result.trackedCatalog;
+			watchlistLoaded = true;
+		} catch {
+			if (epoch !== watchlistEpoch) return;
+			watchlistError = 'Unable to load bookmarked lots. Please try again.';
+		} finally {
+			if (epoch === watchlistEpoch) watchlistLoading = false;
+		}
+	}
+
+	$effect(() => {
+		const owner = data.auth?.user?.id;
+		void owner;
+		if (portfolioTab === 'bookmarked' && canUseWatchlist) {
+			// Do not subscribe to the loader's state writes.
+			untrack(() => {
+				void loadWatchlist();
+			});
+		}
 	});
 
 	// State for form and bean selection
@@ -216,6 +355,10 @@
 
 	// Function to refresh data using client-side API call
 	async function refreshData() {
+		if (!isSharedPortfolioView) {
+			await loadPortfolioPage(portfolioPagination?.offset ?? 0);
+			return;
+		}
 		isLoading = true;
 		try {
 			const shareToken = page.url.searchParams.get('share');
@@ -270,7 +413,7 @@
 
 	// Handle search state and navigation after data loads
 	$effect(() => {
-		if (!isLoading && clientData.length > 0) {
+		if (!isLoading && (portfolioContext?.ownerTotal ?? clientData.length) > 0) {
 			const searchState = page.state as Record<string, unknown>;
 
 			// Check if we should show a bean based on the search state
@@ -309,7 +452,9 @@
 	function getRemainingLbs(bean: InventoryWithCatalog): number {
 		const purchasedOz = (Number(bean.purchased_qty_lbs) || 0) * 16;
 		const roastedOz =
-			bean.roast_profiles?.reduce((ozSum, profile) => ozSum + (Number(profile.oz_in) || 0), 0) || 0;
+			(bean as InventoryWithCatalog & { roasted_oz_in?: number }).roasted_oz_in ??
+			bean.roast_profiles?.reduce((ozSum, profile) => ozSum + (Number(profile.oz_in) || 0), 0) ??
+			0;
 		return (purchasedOz - roastedOz) / 16;
 	}
 
@@ -362,6 +507,7 @@
 	}
 
 	let portfolioSummary = $derived.by(() => {
+		if (portfolioContext) return portfolioContext.summary;
 		const rows = typedFilteredData ?? [];
 		const value = rows.reduce(
 			(sum, bean) => sum + (Number(bean.bean_cost) || 0) + (Number(bean.tax_ship_cost) || 0),
@@ -433,9 +579,9 @@
 	</div>
 {/if}
 
-{#if isLoading}
+{#if isLoading && portfolioTab === 'purchased'}
 	<BeansPageSkeleton />
-{:else if error}
+{:else if error && portfolioTab === 'purchased'}
 	<!-- Error state -->
 	<div class="rounded-lg bg-danger-subtle p-6 text-center ring-1 ring-danger/30">
 		<div class="mb-4 text-6xl opacity-50">⚠️</div>
@@ -499,14 +645,19 @@
 						? 'bg-accent text-ink shadow-sm'
 						: 'text-muted hover:text-ink'}"
 				>
-					Bookmarked ({trackedLotsList.length})
+					Bookmarked{watchlistLoaded ? ` (${trackedLotsList.length})` : ''}
 				</button>
 			</div>
 		{/if}
 
 		{#if canUseWatchlist && portfolioTab === 'bookmarked'}
 			<!-- Bookmarked (watchlist) lots -->
-			{#if trackedLotsList.length === 0}
+			{#if !watchlistLoaded && !watchlistError}
+				<p role="status" class="text-sm text-muted">Loading bookmarked lots…</p>
+			{:else if watchlistError}
+				<p role="alert" class="text-sm text-danger">{watchlistError}</p>
+				<button class="text-sm font-medium text-accent" onclick={loadWatchlist}>Try again</button>
+			{:else if trackedLotsList.length === 0}
 				<div class="rounded-lg bg-surface-panel p-8 text-center ring-1 ring-line">
 					<div class="mb-4 text-6xl opacity-50">🔖</div>
 					<h3 class="mb-2 text-lg font-semibold text-ink">No Bookmarked Lots Yet</h3>
@@ -587,16 +738,16 @@
 				<div class="rounded-lg border border-line bg-surface-panel p-5 shadow-sm">
 					<h3 class="text-xl font-semibold tracking-tight text-ink">Portfolio by source</h3>
 					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-						{#each Object.entries(typedFilteredData.reduce((acc, bean) => {
-									const source = bean.coffee_catalog?.source || 'Unknown';
-									if (!acc[source]) {
-										acc[source] = { count: 0, weight: 0, value: 0 };
-									}
-									acc[source].count += 1;
-									acc[source].weight += bean.purchased_qty_lbs || 0;
-									acc[source].value += (bean.bean_cost || 0) + (bean.tax_ship_cost || 0);
-									return acc;
-								}, {} as Record<string, { count: number; weight: number; value: number }>)) as entry}
+						{#each Object.entries(portfolioContext?.sources ?? typedFilteredData.reduce((acc, bean) => {
+										const source = bean.coffee_catalog?.source || 'Unknown';
+										if (!acc[source]) {
+											acc[source] = { count: 0, weight: 0, value: 0 };
+										}
+										acc[source].count += 1;
+										acc[source].weight += bean.purchased_qty_lbs || 0;
+										acc[source].value += (bean.bean_cost || 0) + (bean.tax_ship_cost || 0);
+										return acc;
+									}, {} as Record<string, { count: number; weight: number; value: number }>)) as entry}
 							{@const [source, stats] = entry as [
 								string,
 								{ count: number; weight: number; value: number }
@@ -642,21 +793,52 @@
 			{#if typedFilteredData && typedFilteredData.length > 0}
 				<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
 					<div class="text-sm text-muted">
-						Showing {typedFilteredData.length} of {clientData.length || 0} coffees
+						Showing {typedFilteredData.length} of {portfolioPagination?.total ?? clientData.length} selected
+						coffees
 					</div>
 				</div>
 			{/if}
 
+			{#if portfolioPagination}
+				<div class="flex items-center gap-4" aria-label="Portfolio pagination">
+					<button
+						class="text-sm font-medium text-accent disabled:opacity-40"
+						disabled={portfolioRefetching || portfolioPagination.offset === 0}
+						onclick={() => loadPortfolioPage(Math.max(0, portfolioPagination!.offset - 50))}
+						>Previous</button
+					>
+					<span class="text-sm text-muted"
+						>Page {Math.floor(portfolioPagination.offset / 50) + 1} of {Math.max(
+							1,
+							Math.ceil(portfolioPagination.total / 50)
+						)}</span
+					>
+					<button
+						class="text-sm font-medium text-accent disabled:opacity-40"
+						disabled={portfolioRefetching || !portfolioPagination.hasNext}
+						onclick={() => loadPortfolioPage(portfolioPagination!.offset + 50)}>Next</button
+					>
+					{#if portfolioRefetching}<span role="status" class="text-sm text-muted">Updating…</span
+						>{/if}
+				</div>
+			{/if}
+			{#if portfolioPageError}<p role="alert" class="text-sm text-danger">{portfolioPageError}</p>
+				<button
+					class="text-sm text-accent"
+					onclick={() => loadPortfolioPage(portfolioPagination?.offset ?? 0)}>Try again</button
+				>{/if}
 			<!-- Coffee Cards; the loading branch above owns the skeleton state. -->
 			<div class="flex-1">
 				{#if !typedFilteredData || typedFilteredData.length === 0}
 					<div class="rounded-lg bg-surface-panel p-8 text-center ring-1 ring-line">
 						<div class="mb-4 text-6xl opacity-50">☕</div>
 						<h3 class="mb-2 text-lg font-semibold text-ink">
-							{clientData.length > 0 ? 'No Coffees Match Your Filters' : 'No Coffee Beans Yet'}
+							{(portfolioContext?.ownerTotal ?? clientData.length) > 0
+								? 'No Coffees Match Your Filters'
+								: 'No Coffee Beans Yet'}
 						</h3>
 						<p class="mb-4 text-muted">
-							{clientData.length > 0
+							{(portfolioContext?.ownerTotal ?? clientData.length) > 0
 								? 'Try adjusting your filters to see more coffees, or add a new coffee to your inventory.'
 								: 'Start building your coffee inventory by adding your first green coffee bean.'}
 						</p>
@@ -665,9 +847,11 @@
 								onclick={() => handleAddNewBean()}
 								class="rounded-md bg-accent px-4 py-2 font-medium text-ink transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
 							>
-								{clientData.length > 0 ? 'Add New Coffee' : 'Add Your First Bean'}
+								{(portfolioContext?.ownerTotal ?? clientData.length) > 0
+									? 'Add New Coffee'
+									: 'Add Your First Bean'}
 							</button>
-							{#if clientData.length > 0}
+							{#if (portfolioContext?.ownerTotal ?? clientData.length) > 0}
 								<button
 									onclick={() => filterStore.clearFilters()}
 									class="rounded-md border border-accent px-4 py-2 font-medium text-accent transition-all duration-200 hover:bg-accent hover:text-ink focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
@@ -689,12 +873,19 @@
 									showCatalogLink={bean.coffee_catalog?.public_coffee === true}
 								>
 									{#snippet detailContent()}
-										<BeanProfileTabs
+										{@const DetailComponent = portfolioContext
+											? PortfolioBeanDetail
+											: BeanProfileTabs}
+										<DetailComponent
 											selectedBean={bean}
 											role={data.auth?.role || 'viewer'}
 											canManagePortfolio={canManagePortfolioRows}
 											embedded={true}
-											onUpdate={(updatedBean) => {
+											onUpdate={(updatedBean: InventoryWithCatalog) => {
+												if (portfolioContext) {
+													void refreshData();
+													return;
+												}
 												clientData = clientData.map((portfolioBean) =>
 													portfolioBean.id === updatedBean.id
 														? (updatedBean as (typeof clientData)[0])

@@ -2,6 +2,8 @@ export async function collectOffsetPages<T, K>(options: {
 	fetchPage: (offset: number) => Promise<T[]>;
 	key: (row: T) => K;
 	maxPages?: number;
+	/** Only supply the effective upstream limit, never an unclamped API-key request limit. */
+	pageSize?: number;
 }): Promise<T[]> {
 	const rows = new Map<K, T>();
 	let offset = 0;
@@ -16,6 +18,7 @@ export async function collectOffsetPages<T, K>(options: {
 		if (rows.size === before) {
 			throw new Error('Parchment pagination made no progress');
 		}
+		if (options.pageSize !== undefined && page.length < options.pageSize) return [...rows.values()];
 		offset += page.length;
 	}
 

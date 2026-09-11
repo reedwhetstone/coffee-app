@@ -210,6 +210,7 @@ describe('/catalog page load', () => {
 			1,
 			expect.objectContaining({
 				stocked: 'true',
+				projection: 'summary',
 				showWholesale: 'true',
 				wholesaleOnly: 'false',
 				page: 1,
