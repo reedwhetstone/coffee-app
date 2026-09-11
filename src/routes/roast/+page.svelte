@@ -53,7 +53,6 @@
 	// Page data
 	let {
 		data = {
-			data: [],
 			auth: { isSignedIn: false, user: null, role: 'viewer', ppiAccess: false }
 		}
 	} = $props<{ data?: Partial<PageData> }>();
@@ -150,16 +149,22 @@
 	}
 
 	// Unified function to sync data from API and update filter store
-	async function syncData() {
+	async function syncData(initial?: PageData['initialRoasts']) {
 		isLoading = true;
 		error = null;
 
 		try {
-			const response = await fetch('/api/roast-profiles');
-			if (!response.ok) {
-				throw new Error('Failed to fetch roast profiles');
+			let result: { data: RoastProfile[] };
+			if (initial) {
+				const loaded = await initial;
+				if (loaded.error || !loaded.data)
+					throw new Error(loaded.error ?? 'Failed to load roast profiles');
+				result = loaded.data;
+			} else {
+				const response = await fetch('/api/roast-profiles');
+				if (!response.ok) throw new Error('Failed to fetch roast profiles');
+				result = await response.json();
 			}
-			const result = await response.json();
 
 			if (result.data && Array.isArray(result.data)) {
 				clientData = result.data;
@@ -360,7 +365,7 @@
 		}
 
 		// Load roast profiles and handle URL-based profile selection
-		syncData().then(() => {
+		syncData(data.initialRoasts).then(() => {
 			setTimeout(() => {
 				const profileIdParam = page.url.searchParams.get('profileId');
 				if (profileIdParam && !currentRoastProfile) {
