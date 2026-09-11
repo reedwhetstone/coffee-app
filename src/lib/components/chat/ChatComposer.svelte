@@ -1,5 +1,6 @@
 <script lang="ts">
-	import SuggestionChips from '$lib/components/genui/SuggestionChips.svelte';
+	import type { Snippet } from 'svelte';
+	import ChatDisclosure from './ChatDisclosure.svelte';
 	import type { Suggestion } from '$lib/services/suggestionEngine';
 	import type { SlashCommand } from '$lib/services/slashCommands';
 	import type { CherryAgentName } from '$lib/cherry/identity';
@@ -15,7 +16,7 @@
 		agentName,
 		inputMessage = $bindable(''),
 		isActive,
-		canUseMallardWorkspaces,
+		actions,
 		suggestions,
 		slashCompletions,
 		chatError,
@@ -34,7 +35,7 @@
 		agentName: CherryAgentName;
 		inputMessage?: string;
 		isActive: boolean;
-		canUseMallardWorkspaces: boolean;
+		actions?: Snippet;
 		suggestions: Suggestion[];
 		slashCompletions: SlashCommand[];
 		chatError: string | null;
@@ -62,6 +63,7 @@
 	// after send, suggestion chips — also resize it back down.
 	const MAX_TEXTAREA_HEIGHT = 192; // ~8 lines
 
+	const hintId = $props.id();
 	let textareaEl = $state<HTMLTextAreaElement | null>(null);
 	let activeContextCount = $derived(contextChips.filter((chip: ContextChip) => chip.active).length);
 
@@ -128,7 +130,9 @@
 {/if}
 
 <!-- Input area: keep the composer visually distinct without turning the full viewport edge into a form. -->
-<div class="shrink-0 bg-surface-canvas px-4 pb-4 pt-3">
+<div
+	class="shrink-0 bg-surface-canvas px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 sm:px-4"
+>
 	{#if slashCompletions.length > 0 && inputMessage.startsWith('/')}
 		<div class="mx-auto mb-2 max-w-4xl rounded-lg border border-line bg-surface-raised shadow-sm">
 			{#each slashCompletions as cmd (cmd.name)}
@@ -147,52 +151,6 @@
 				</button>
 			{/each}
 		</div>
-	{:else if !isActive && suggestions.length > 0}
-		<div class="mx-auto max-w-4xl">
-			<SuggestionChips
-				{suggestions}
-				onSelect={(text) => {
-					inputMessage = text;
-				}}
-			/>
-		</div>
-	{/if}
-	{#if contextChips.length > 0}
-		<div class="mx-auto mb-2 max-w-4xl">
-			<div class="mb-1 flex flex-wrap gap-1.5" aria-label="Context sources">
-				{#each contextChips as chip (chip.id)}
-					<button
-						type="button"
-						onclick={() => onToggleChip?.(chip.id)}
-						title={chip.detail}
-						aria-pressed={chip.active}
-						class="max-w-full truncate rounded-md border px-2 py-1 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-accent {chip.active
-							? 'border-line bg-surface-panel text-ink'
-							: 'border-dashed border-line text-muted'}"
-					>
-						<span aria-hidden="true">{chip.active ? '✓' : '+'}</span>
-						{chip.label}
-					</button>
-				{/each}
-			</div>
-			<details class="text-xs text-muted">
-				<summary class="cursor-pointer rounded-md py-1 hover:text-ink"
-					>Using {activeContextCount} of {contextChips.length} context {contextChips.length === 1
-						? 'source'
-						: 'sources'}</summary
-				>
-				<dl
-					class="mt-1 max-h-36 space-y-2 overflow-y-auto rounded-md border border-line bg-surface-panel p-3"
-				>
-					{#each contextChips as chip (chip.id)}
-						<div>
-							<dt class="font-medium text-ink">{chip.label}{chip.active ? '' : ' · Excluded'}</dt>
-							<dd class="mt-0.5 whitespace-pre-wrap break-words leading-5">{chip.detail}</dd>
-						</div>
-					{/each}
-				</dl>
-			</details>
-		</div>
 	{/if}
 	<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
 		<div
@@ -202,9 +160,8 @@
 				bind:this={textareaEl}
 				bind:value={inputMessage}
 				aria-label={`Message ${agentName}`}
-				placeholder={canUseMallardWorkspaces
-					? 'Analyze sourcing, portfolio, roasting, or coffee market decisions...'
-					: 'Analyze sourcing, portfolio, catalog, or coffee market decisions...'}
+				placeholder="Ask about coffee…"
+				aria-describedby={hintId}
 				class="min-h-11 min-w-0 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-ink placeholder-muted focus:outline-none focus:ring-0"
 				rows="1"
 				disabled={isActive || !workspaceReady}
@@ -220,7 +177,7 @@
 				onclick={isActive ? onStop : undefined}
 				disabled={!isActive && (!workspaceReady || !inputMessage.trim())}
 				aria-label={isActive ? 'Stop response' : 'Send message'}
-				class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent text-ink transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+				class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent text-ink transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if isActive}
 					<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
@@ -242,8 +199,56 @@
 				{/if}
 			</button>
 		</div>
-		<div class="mt-1.5 px-1 text-xs text-muted">
-			{agentName} · Enter to send, Shift+Enter for new line
-		</div>
+		<p id={hintId} class="sr-only">Enter to send, Shift+Enter for new line</p>
 	</form>
+	<div
+		class="relative mx-auto flex max-w-4xl items-center gap-1"
+		aria-label="Conversation controls"
+	>
+		{#if contextChips.length > 0}
+			<ChatDisclosure
+				label={`Context: using ${activeContextCount} of ${contextChips.length} sources`}
+			>
+				{#snippet trigger()}Context <span class="tabular-nums"
+						>{activeContextCount}/{contextChips.length}</span
+					>{/snippet}
+				<p class="px-2 py-1 text-xs font-semibold text-ink">Context for your next message</p>
+				{#each contextChips as chip (chip.id)}
+					<button
+						type="button"
+						onclick={() => onToggleChip?.(chip.id)}
+						aria-pressed={chip.active}
+						aria-label={chip.label}
+						class="flex min-h-11 w-full gap-2 rounded-md p-2 text-left text-xs hover:bg-surface-canvas focus-visible:ring-2 focus-visible:ring-accent"
+					>
+						<span aria-hidden="true" class="text-ink">{chip.active ? '✓' : '+'}</span>
+						<span class="min-w-0"
+							><span class="font-medium text-ink"
+								>{chip.label}{chip.active ? '' : ' · Excluded'}</span
+							><span class="mt-1 block whitespace-pre-wrap break-words leading-5 text-muted"
+								>{chip.detail}</span
+							></span
+						>
+					</button>
+				{/each}
+			</ChatDisclosure>
+		{/if}
+		{#if !isActive && suggestions.length > 0}
+			<ChatDisclosure label="Suggested prompts" closeOnSelect>
+				{#snippet trigger()}<span aria-hidden="true" class="text-base">✦</span>{/snippet}
+				{#each suggestions as suggestion (suggestion.label)}
+					<button
+						type="button"
+						onclick={() => {
+							inputMessage = suggestion.text;
+							textareaEl?.focus();
+						}}
+						class="min-h-11 w-full rounded-md px-2 py-2 text-left text-xs text-ink hover:bg-surface-canvas"
+						>{suggestion.label}</button
+					>
+				{/each}
+			</ChatDisclosure>
+		{/if}
+		<div class="ml-auto">{@render actions?.()}</div>
+	</div>
 </div>

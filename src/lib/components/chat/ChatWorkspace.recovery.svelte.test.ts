@@ -184,6 +184,7 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 			]
 		});
 		mountWorkspace();
+		await fireEvent.click(screen.getByLabelText(/^Context: using/));
 		await fireEvent.click(screen.getByRole('button', { name: 'Selected Colombia' }));
 		await send(first, 'context-one');
 		first.finish();
@@ -193,6 +194,7 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 			(endpoints.requests[0] as unknown as { pageContext: { entities: unknown[] } }).pageContext
 				.entities
 		).toHaveLength(1);
+		await fireEvent.click(screen.getByLabelText(/^Context: using/));
 		await fireEvent.click(screen.getByRole('button', { name: 'Viewing: catalog' }));
 		await send(second, 'context-two');
 		second.finish();
@@ -211,6 +213,7 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 			]
 		});
 		mountWorkspace();
+		await fireEvent.click(screen.getByLabelText(/^Context: using/));
 		await fireEvent.click(screen.getByRole('button', { name: 'Selected Colombia' }));
 
 		pageChatContext.set({

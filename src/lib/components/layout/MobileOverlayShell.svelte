@@ -31,13 +31,16 @@
 
 		return Array.from(
 			dialogElement.querySelectorAll<HTMLElement>(
-				'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+				'summary, a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 			)
 		).filter(
 			(element) =>
 				!element.hasAttribute('disabled') &&
-				element.tabIndex !== -1 &&
-				!element.closest('[hidden], [inert]')
+				(element.tabIndex !== -1 ||
+					(element.matches('summary') && !element.hasAttribute('tabindex'))) &&
+				!element.closest('[hidden], [inert]') &&
+				(!element.closest('details:not([open])') ||
+					element === element.closest('details:not([open])')?.querySelector(':scope > summary'))
 		);
 	}
 

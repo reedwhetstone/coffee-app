@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ChatDisclosure from './ChatDisclosure.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 	import type { CherryAgentName } from '$lib/cherry/identity';
 
@@ -30,76 +31,70 @@
 	}>();
 </script>
 
-<!-- Keep the active evidence workspace visible. Less-frequent workspace actions live in a
-     labeled menu so the sourcing workflow remains primary. -->
-
 <div
-	class="flex shrink-0 items-center justify-between gap-2 border-b border-line bg-surface-panel/40 px-4 py-3"
+	class={variant === 'drawer'
+		? 'relative flex min-h-14 shrink-0 items-center justify-between gap-2 border-b border-line bg-surface-panel/40 px-3'
+		: 'flex shrink-0 items-center gap-1'}
 >
-	<div class="min-w-0">
-		<p class="truncate text-sm font-semibold text-ink">{agentName}</p>
-		<p class="hidden truncate text-xs text-muted sm:block">Coffee-native AI from Purveyors</p>
-	</div>
-	<div class="flex items-center gap-2">
+	{#if variant === 'drawer'}
+		<p class="min-w-0 truncate text-sm font-semibold text-ink">{agentName}</p>
+	{/if}
+	<div class="flex shrink-0 items-center gap-1">
 		{#if !canvasStore.isEmpty}
 			<button
 				type="button"
 				onclick={onToggleCanvas}
 				aria-expanded={canvasOpen}
-				class="whitespace-nowrap rounded-md border border-line bg-surface-canvas px-3 py-2 text-xs font-medium text-ink transition-colors hover:border-accent focus-visible:ring-2 focus-visible:ring-accent"
+				class="min-h-11 whitespace-nowrap rounded-md px-2 text-xs font-medium text-ink hover:bg-surface-panel focus-visible:ring-2 focus-visible:ring-accent"
 			>
 				Evidence <span class="ml-1 text-muted">{canvasStore.blockCount}</span>
 			</button>
 		{/if}
-		<details class="relative">
-			<summary
-				class="cursor-pointer list-none rounded-md border border-line px-2 py-2 text-xs text-muted transition-all hover:text-ink"
-			>
-				<span class="sr-only sm:not-sr-only">Workspace actions</span><span
-					class="sm:hidden"
-					aria-hidden="true">•••</span
-				>
-			</summary>
-			<div
-				class="absolute right-0 z-20 mt-1 flex min-w-44 flex-col gap-1 rounded-md border border-line bg-surface-panel p-1.5 shadow-lg"
-			>
+		<ChatDisclosure
+			label="Workspace actions"
+			align="right"
+			anchorToTrigger={variant === 'page'}
+			upward={variant === 'page'}
+			closeOnSelect
+		>
+			{#snippet trigger()}<span aria-hidden="true">•••</span>{/snippet}
+			<div class="flex flex-col gap-1">
 				{#if variant === 'drawer'}
 					<a
 						href="/chat"
-						class="rounded px-2 py-2 text-left text-xs text-ink hover:bg-surface-canvas"
+						class="flex min-h-11 items-center rounded px-2 text-left text-xs text-ink hover:bg-surface-canvas"
 						>Open full workspace</a
 					>
 				{/if}
 				<button
+					type="button"
 					onclick={onOpenMemory}
-					class="rounded px-2 py-1.5 text-left text-xs text-muted hover:bg-surface-canvas hover:text-ink"
-					title="View and edit the persistent memory document"
+					class="min-h-11 rounded px-2 text-left text-xs text-ink hover:bg-surface-canvas"
+					>Conversation memory</button
 				>
-					Conversation memory
-				</button>
 				{#if hasMessages}
 					<button
+						type="button"
 						onclick={onExport}
-						class="rounded px-2 py-1.5 text-left text-xs text-muted hover:bg-surface-canvas hover:text-ink"
+						class="min-h-11 rounded px-2 text-left text-xs text-ink hover:bg-surface-canvas"
+						>Export conversation</button
 					>
-						Export conversation
-					</button>
 					<button
+						type="button"
 						onclick={onClear}
 						disabled={clearDisabled}
-						class="rounded px-2 py-1.5 text-left text-xs text-danger hover:bg-danger-subtle disabled:opacity-50"
+						class="min-h-11 rounded px-2 text-left text-xs text-danger hover:bg-danger-subtle disabled:opacity-50"
+						>Clear conversation</button
 					>
-						Clear conversation
-					</button>
 				{/if}
 			</div>
-		</details>
+		</ChatDisclosure>
 		{#if onCloseDrawer}
 			<button
 				type="button"
 				onclick={onCloseDrawer}
 				aria-label={`Close ${agentName}`}
-				class="rounded-md px-2 py-2 text-muted hover:text-ink">✕</button
+				class="min-h-11 min-w-11 rounded-md text-muted hover:text-ink">✕</button
 			>
 		{/if}
 	</div>
