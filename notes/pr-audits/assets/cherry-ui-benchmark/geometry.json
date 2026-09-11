@@ -1,0 +1,158 @@
+[
+	{
+		"name": "desktop",
+		"version": "main",
+		"width": 1440,
+		"height": 900,
+		"toolbar": {
+			"x": 88,
+			"y": 16,
+			"width": 1304,
+			"height": 53
+		},
+		"transcript": {
+			"x": 88,
+			"y": 69,
+			"width": 1304,
+			"height": 657
+		},
+		"composer": {
+			"x": 88,
+			"y": 726,
+			"width": 1304,
+			"height": 174
+		},
+		"overflow": false,
+		"errors": []
+	},
+	{
+		"name": "desktop",
+		"version": "pr610",
+		"width": 1440,
+		"height": 900,
+		"toolbar": {
+			"x": 88,
+			"y": 16,
+			"width": 1304,
+			"height": 61
+		},
+		"transcript": {
+			"x": 88,
+			"y": 77,
+			"width": 1304,
+			"height": 615
+		},
+		"composer": {
+			"x": 88,
+			"y": 692,
+			"width": 1304,
+			"height": 208
+		},
+		"overflow": false,
+		"errors": []
+	},
+	{
+		"name": "laptop",
+		"version": "main",
+		"width": 1366,
+		"height": 768,
+		"toolbar": {
+			"x": 88,
+			"y": 16,
+			"width": 1230,
+			"height": 53
+		},
+		"transcript": {
+			"x": 88,
+			"y": 69,
+			"width": 1230,
+			"height": 525
+		},
+		"composer": {
+			"x": 88,
+			"y": 594,
+			"width": 1230,
+			"height": 174
+		},
+		"overflow": false,
+		"errors": []
+	},
+	{
+		"name": "laptop",
+		"version": "pr610",
+		"width": 1366,
+		"height": 768,
+		"toolbar": {
+			"x": 88,
+			"y": 16,
+			"width": 1230,
+			"height": 61
+		},
+		"transcript": {
+			"x": 88,
+			"y": 77,
+			"width": 1230,
+			"height": 483
+		},
+		"composer": {
+			"x": 88,
+			"y": 560,
+			"width": 1230,
+			"height": 208
+		},
+		"overflow": false,
+		"errors": []
+	},
+	{
+		"name": "mobile",
+		"version": "main",
+		"width": 390,
+		"height": 844,
+		"toolbar": {
+			"x": 16,
+			"y": 80,
+			"width": 358,
+			"height": 55
+		},
+		"transcript": {
+			"x": 16,
+			"y": 135,
+			"width": 358,
+			"height": 443
+		},
+		"composer": {
+			"x": 16,
+			"y": 578,
+			"width": 358,
+			"height": 266
+		},
+		"overflow": false,
+		"errors": []
+	},
+	{
+		"name": "mobile",
+		"version": "pr610",
+		"width": 390,
+		"height": 844,
+		"toolbar": {
+			"x": 16,
+			"y": 80,
+			"width": 358,
+			"height": 59
+		},
+		"transcript": {
+			"x": 16,
+			"y": 139,
+			"width": 358,
+			"height": 341
+		},
+		"composer": {
+			"x": 16,
+			"y": 480,
+			"width": 358,
+			"height": 364
+		},
+		"overflow": false,
+		"errors": []
+	}
+]

@@ -143,6 +143,8 @@ Deliver the header, transcript hierarchy, composer context, focused expansion, s
 
 **Acceptance:** all representative navigation paths pass; no unintended auto-open/scene replacement; pins, edited proposals, in-flight execution, scroll restoration, and focus return survive switching and reload. Attach desktop/mobile screenshots and interaction evidence to the implementation PR. No runtime ownership moves into the BFF.
 
+**September 11 benchmark follow-up (recommendation, not implemented):** the [66-criterion chat UI/UX audit](../pr-audits/2026-09-11-cherry-chat-ux-benchmark.md) compares the main baseline and open PR #610. Controlled full-shell geometry exposes reduced reading space despite improved evidence continuity. Refine slice 4 by removing the dedicated desktop identity strip, compacting composer defaults and consolidating mobile navigation; preserve the state/focus safeguards. The audit defines proposed space budgets and full-shell verification gates, followed by conversation retrieval, drafting and save/recovery priorities. It does not establish reload persistence for unsent drafts or completion of slice 5.
+
 ### Slice 5: Extend the verified pattern to analytical and operational answers
 
 **Repos:** coffee-app plus only the Parchment contracts found missing in the family inventory.
