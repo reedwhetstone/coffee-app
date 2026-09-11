@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import BeanForm from './BeanForm.svelte';
 	import FormShell from '$lib/components/FormShell.svelte';
 	import BeanProfileTabs from './BeanProfileTabs.svelte';
@@ -32,6 +33,7 @@
 			searchType?: 'green';
 			searchId?: number;
 		};
+		purchases?: Promise<{ data: unknown[]; error: string | null }>;
 		data: Array<{
 			id: number;
 			rank: number | null;
@@ -86,10 +88,27 @@
 	let canUseWatchlist = $derived(
 		data.auth?.role === 'member' || data.auth?.role === 'admin' || data.auth?.ppiAccess === true
 	);
-	let trackedLotsList = $derived((data?.trackedLots ?? []) as TrackedLotContext[]);
+	let trackedLotsList = $state<TrackedLotContext[]>([]);
+	let trackedCatalog = $state<CoffeeCatalog[]>([]);
+	let watchlistLoaded = $state(false);
+	let watchlistLoading = $state(false);
+	let watchlistError = $state<string | null>(null);
+	let watchlistEpoch = 0;
+	$effect(() => {
+		const owner = data.auth?.user?.id;
+		void owner;
+		untrack(() => {
+			watchlistEpoch += 1;
+			trackedLotsList = [];
+			trackedCatalog = [];
+			watchlistLoaded = false;
+			watchlistLoading = false;
+			watchlistError = null;
+		});
+	});
 	let trackedCatalogById = $derived(
 		new Map(
-			((data?.trackedCatalog ?? []) as Array<{ id: number }>).map((coffee) => [
+			(trackedCatalog as Array<{ id: number }>).map((coffee) => [
 				coffee.id,
 				coffee as unknown as CoffeeCatalog
 			])
@@ -167,37 +186,61 @@
 		}
 	}
 
-	// Client-side data fetching
+	// The server begins this read before hydration; refreshes remain explicit.
 	$effect(() => {
-		const shareToken = page.url.searchParams.get('share');
-		const fetchData = async () => {
-			isLoading = true;
-			error = null;
-			try {
-				// Build query params
-				const params = new URLSearchParams();
-				if (shareToken) params.append('share', shareToken);
-
-				// Fetch beans data
-				const response = await fetch(`/api/beans?${params}`);
-				if (!response.ok) {
-					throw new Error('Failed to fetch beans data');
-				}
-				const result = await response.json();
-				clientData = result.data || [];
-
-				// Initialize FilterStore with client data
-				const currentRoute = page.url.pathname;
-				filterStore.initializeForRoute(currentRoute, clientData);
-			} catch (err) {
-				console.error('Error fetching beans data:', err);
-				error = err instanceof Error ? err.message : 'Failed to load data';
-			} finally {
+		const purchases = data.purchases;
+		let cancelled = false;
+		isLoading = true;
+		error = null;
+		void Promise.resolve(purchases)
+			.then((result) => {
+				if (cancelled) return;
+				if (!result) return refreshData();
+				clientData = result.data as PageData['data'];
+				error = result.error;
+				filterStore.initializeForRoute('/beans', clientData);
 				isLoading = false;
-			}
+			})
+			.catch(() => {
+				if (cancelled) return;
+				error = 'Unable to load your coffee portfolio. Please try again.';
+				isLoading = false;
+			});
+		return () => {
+			cancelled = true;
 		};
+	});
 
-		fetchData();
+	async function loadWatchlist() {
+		if (watchlistLoading || watchlistLoaded) return;
+		const epoch = watchlistEpoch;
+		watchlistLoading = true;
+		watchlistError = null;
+		try {
+			const response = await fetch('/api/beans/watchlist');
+			if (!response.ok) throw new Error('Unable to load bookmarked lots.');
+			const result = await response.json();
+			if (epoch !== watchlistEpoch) return;
+			trackedLotsList = result.trackedLots;
+			trackedCatalog = result.trackedCatalog;
+			watchlistLoaded = true;
+		} catch {
+			if (epoch !== watchlistEpoch) return;
+			watchlistError = 'Unable to load bookmarked lots. Please try again.';
+		} finally {
+			if (epoch === watchlistEpoch) watchlistLoading = false;
+		}
+	}
+
+	$effect(() => {
+		const owner = data.auth?.user?.id;
+		void owner;
+		if (portfolioTab === 'bookmarked' && canUseWatchlist) {
+			// Do not subscribe to the loader's state writes.
+			untrack(() => {
+				void loadWatchlist();
+			});
+		}
 	});
 
 	// State for form and bean selection
@@ -433,9 +476,9 @@
 	</div>
 {/if}
 
-{#if isLoading}
+{#if isLoading && portfolioTab === 'purchased'}
 	<BeansPageSkeleton />
-{:else if error}
+{:else if error && portfolioTab === 'purchased'}
 	<!-- Error state -->
 	<div class="rounded-lg bg-danger-subtle p-6 text-center ring-1 ring-danger/30">
 		<div class="mb-4 text-6xl opacity-50">⚠️</div>
@@ -499,14 +542,19 @@
 						? 'bg-accent text-ink shadow-sm'
 						: 'text-muted hover:text-ink'}"
 				>
-					Bookmarked ({trackedLotsList.length})
+					Bookmarked{watchlistLoaded ? ` (${trackedLotsList.length})` : ''}
 				</button>
 			</div>
 		{/if}
 
 		{#if canUseWatchlist && portfolioTab === 'bookmarked'}
 			<!-- Bookmarked (watchlist) lots -->
-			{#if trackedLotsList.length === 0}
+			{#if !watchlistLoaded && !watchlistError}
+				<p role="status" class="text-sm text-muted">Loading bookmarked lots…</p>
+			{:else if watchlistError}
+				<p role="alert" class="text-sm text-danger">{watchlistError}</p>
+				<button class="text-sm font-medium text-accent" onclick={loadWatchlist}>Try again</button>
+			{:else if trackedLotsList.length === 0}
 				<div class="rounded-lg bg-surface-panel p-8 text-center ring-1 ring-line">
 					<div class="mb-4 text-6xl opacity-50">🔖</div>
 					<h3 class="mb-2 text-lg font-semibold text-ink">No Bookmarked Lots Yet</h3>
