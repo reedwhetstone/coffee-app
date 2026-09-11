@@ -125,6 +125,21 @@ describe('Market Brief article presentation', () => {
 		expect(screen.getByText('blackberry jam')).toBeInTheDocument();
 	});
 
+	it('labels estimated profiles visibly and preserves the supplier’s display name', () => {
+		render(MarketBriefArticle, {
+			title: 'Coffee highlights',
+			reader,
+			coffeeHighlights: [{ ...coffeeHighlights[0]!, supplier: 'sweet_maria' }]
+		});
+		const card = within(document.getElementById('coffee-9762')!);
+		expect(card.getByText('AI-estimated tasting profile')).toBeVisible();
+		expect(
+			card.getByText('From supplier descriptions, not measured cupping scores.')
+		).toBeVisible();
+		expect(card.getByText('Sweet Maria’s')).toBeVisible();
+		expect(card.getByText('blackberry jam')).toBeVisible();
+	});
+
 	it('renders and shares research separately without incrementing the numbered takes', async () => {
 		const research = {
 			id: 'research-spotlight',
@@ -209,6 +224,7 @@ describe('Market Brief article presentation', () => {
 
 		expect(screen.queryByRole('heading', { name: 'This week in numbers' })).not.toBeInTheDocument();
 		expect(screen.getByText('Available when selected')).toBeInTheDocument();
+		expect(screen.queryByText('AI-estimated tasting profile')).not.toBeInTheDocument();
 		expect(
 			screen.getByText('Structured tasting notes are not yet published for this listing.')
 		).toBeInTheDocument();
