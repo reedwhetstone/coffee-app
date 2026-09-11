@@ -1,4 +1,5 @@
 import { decodeHTML } from 'entities';
+import { newsletterSupplierName } from '$lib/newsletter';
 import GithubSlugger from 'github-slugger';
 import { marked, type Token, type Tokens } from 'marked';
 
@@ -200,7 +201,13 @@ export function withStructuredMarketBriefTokens(
 		const coffees = post.coffeeHighlights.flatMap((coffee): Token[] => [
 			heading(coffee.name, 3),
 			paragraph(
-				[coffee.supplier, coffee.origin, coffee.region, coffee.process, coffee.variety]
+				[
+					newsletterSupplierName(coffee.supplier),
+					coffee.origin,
+					coffee.region,
+					coffee.process,
+					coffee.variety
+				]
 					.filter(Boolean)
 					.join(' · ')
 			),

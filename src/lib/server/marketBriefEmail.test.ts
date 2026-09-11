@@ -186,6 +186,31 @@ describe('Market Brief email projection', () => {
 		expect(legacy.text).toContain('Selection context.');
 	});
 
+	it('uses supplier display names across reader Markdown and both email formats', () => {
+		const post: BlogPost = {
+			...marketBrief,
+			coffeeHighlights: ['sweet_maria', 'coffee_bean_corral'].map((supplier, index) => ({
+				catalogId: index + 1,
+				name: `Coffee ${index + 1}`,
+				supplier,
+				supplierUrl: 'https://example.com/coffee',
+				catalogUrl: '/catalog',
+				origin: 'Ethiopia',
+				region: 'Guji',
+				pricePerLb: 10.3,
+				rationale: 'Supplier tasting notes.'
+			}))
+		};
+		const email = buildMarketBriefEmailProjection(post, source);
+		const reader = buildMarketBriefReaderExport(post, source);
+		for (const output of [reader.markdown, email.html, email.text]) {
+			expect(output).toContain('Sweet Maria’s');
+			expect(output).toContain('Coffee Bean Corral');
+			expect(output).not.toContain('sweet_maria');
+			expect(output).not.toContain('coffee_bean_corral');
+		}
+	});
+
 	it('escapes structured prose as literal text and rejects unsafe structured links', () => {
 		const coffee = {
 			catalogId: 42,

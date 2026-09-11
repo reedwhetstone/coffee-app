@@ -17,3 +17,13 @@ export function newsletterName(post: { newsletter?: 'fieldnotes' }, full = false
 			? 'Purveyors Market Brief'
 			: 'Market Brief';
 }
+
+/** Display catalog supplier identifiers consistently across newsletter formats. */
+export function newsletterSupplierName(value: string): string {
+	if (/^sweet[_ -]marias?$/iu.test(value)) return 'Sweet Maria’s';
+	if (!/[_-]/u.test(value)) return value;
+	return value
+		.split(/[_-]+/u)
+		.map((part) => `${part.charAt(0).toLocaleUpperCase('en-US')}${part.slice(1)}`)
+		.join(' ');
+}
