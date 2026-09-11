@@ -40,6 +40,7 @@
 		initialDetailsOpen = false,
 		detailCloseLabel = 'Close',
 		onDetailClose = undefined,
+		onDetailOpen = undefined,
 		detailContent,
 		loadDetails
 	} = $props<{
@@ -64,6 +65,8 @@
 		detailCloseLabel?: string;
 		/** Optional context owner notified after the detail panel closes. */
 		onDetailClose?: () => void;
+		/** Notify an embedding surface before opening this exact coffee snapshot. */
+		onDetailOpen?: () => void;
 		/** Optional page-specific body rendered inside the canonical detail pop-out shell. */
 		detailContent?: Snippet;
 		loadDetails?: (signal: AbortSignal) => Promise<CoffeeCatalog>;
@@ -335,6 +338,7 @@
 	}
 
 	function openDetails(tab: DetailTab = 'overview') {
+		onDetailOpen?.();
 		activeTab = tab;
 		detailsOpen = true;
 	}

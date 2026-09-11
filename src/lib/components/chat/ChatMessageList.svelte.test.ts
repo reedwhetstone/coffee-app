@@ -100,6 +100,11 @@ describe('ChatMessageList conversation controls', () => {
 			state: 'output-available',
 			output: { coffees: [{ id: 7, name: 'Later coffee', country: 'Ethiopia' }] }
 		};
+		const curatedPart = {
+			type: 'tool-present_results',
+			state: 'output-available',
+			output: { presentation: { source_tool: 'coffee_catalog_search', items: [{ id: 7 }] } }
+		};
 		const messages = [
 			{
 				id: messageId,
@@ -109,7 +114,8 @@ describe('ChatMessageList conversation controls', () => {
 					roastPart,
 					laterPart
 				]
-			}
+			},
+			{ id: 'assistant-curated', role: 'assistant', parts: [curatedPart] }
 		];
 
 		canvasStore.dispatch({
@@ -128,7 +134,7 @@ describe('ChatMessageList conversation controls', () => {
 		});
 		canvasStore.dispatch({
 			type: 'add',
-			messageId,
+			messageId: 'assistant-curated',
 			block: {
 				type: 'coffee-cards',
 				version: 1,
@@ -141,7 +147,7 @@ describe('ChatMessageList conversation controls', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: /Batch 42/ }));
 		await fireEvent.click(screen.getByRole('button', { name: /Roast #42 chart/ }));
-		await fireEvent.click(screen.getByRole('button', { name: /Later coffee Ethiopia/ }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Open evidence' }));
 
 		expect(componentProps.onBlockAction.mock.calls).toEqual([
 			[{ type: 'focus-canvas-block', blockId: roastId }],
@@ -150,7 +156,7 @@ describe('ChatMessageList conversation controls', () => {
 		]);
 	});
 
-	it('disables compact evidence links after their canvas targets are cleared', () => {
+	it('keeps coffee details usable after their canvas targets are cleared', () => {
 		const messages = [
 			{
 				id: 'assistant-tools',
@@ -162,6 +168,11 @@ describe('ChatMessageList conversation controls', () => {
 						toolCallId: 'coffee-call',
 						state: 'output-available',
 						output: { coffees: [{ id: 7, name: 'Older coffee', country: 'Ethiopia' }] }
+					},
+					{
+						type: 'tool-present_results',
+						state: 'output-available',
+						output: { presentation: { source_tool: 'coffee_catalog_search', items: [{ id: 7 }] } }
 					}
 				]
 			}
@@ -169,7 +180,8 @@ describe('ChatMessageList conversation controls', () => {
 
 		render(ChatMessageList, props(messages));
 
-		expect(screen.getByRole('button', { name: /Older coffee Ethiopia/ })).toBeDisabled();
+		expect(screen.getByRole('button', { name: 'View details for Older coffee' })).toBeEnabled();
+		expect(screen.queryByRole('button', { name: 'Open evidence' })).not.toBeInTheDocument();
 	});
 
 	it('matches later compact evidence links by block identity after an earlier tab is removed', async () => {

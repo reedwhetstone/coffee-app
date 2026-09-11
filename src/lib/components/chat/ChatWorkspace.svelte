@@ -33,7 +33,13 @@
 		applyAnalyticsSeedToInput,
 		readChatSeedFromSearchParams
 	} from '$lib/analytics/actionContext';
-	import { classifyChatFailure, rollbackFailedTurn } from './chatRecovery';
+	import {
+		classifyChatFailure,
+		recoverInterruptedTurn,
+		getInterruptedTurnStatus,
+		prepareChatRequestMessages,
+		finalizedMessagesForUnload
+	} from './chatRecovery';
 	import {
 		buildCherryConversationExport,
 		cherryConversationExportFilename
@@ -247,6 +253,7 @@
 	let lastSubmittedBody: Record<string, unknown> | null = null;
 	let retryPreservesComposerDraft = false;
 	let messageCountBeforeSubmission: number | null = null;
+	let allowInterruptedRetention = true;
 	let canvasPersistError = $state<string | null>(null);
 	let displayedError = $derived(canvasPersistError ?? chatError);
 
@@ -265,19 +272,35 @@
 		transport: new DefaultChatTransport({
 			api: '/api/chat',
 			prepareSendMessagesRequest: ({ messages, body }) => ({
-				body: { ...(body ?? {}), messages: messages.slice(-CONTEXT_WINDOW_MESSAGES) }
+				body: {
+					...(body ?? {}),
+					messages: prepareChatRequestMessages(messages.slice(-CONTEXT_WINDOW_MESSAGES))
+				}
 			})
 		}),
 		onError: (error) => {
 			console.error('Chat error:', error);
 			const failure = classifyChatFailure(error);
-			chat.messages = rollbackFailedTurn(chat.messages, messageCountBeforeSubmission);
-			messageCountBeforeSubmission = null;
+			allowInterruptedRetention = failure.kind !== 'access';
 			chatError = failure.message;
 			chatCanRetry = failure.retryable;
 			if (!retryPreservesComposerDraft && !inputMessage && lastSubmittedPrompt) {
 				inputMessage = lastSubmittedPrompt;
 			}
+		},
+		onFinish: ({ isAbort, isError }) => {
+			// Stop only aborts the transport. Finalize after the SDK has settled so
+			// late parser writes cannot overwrite the retained, append-only snapshot.
+			if (isAbort || isError) {
+				chat.messages = recoverInterruptedTurn(
+					chat.messages,
+					messageCountBeforeSubmission,
+					isAbort ? 'stopped' : 'error',
+					{ allowRetention: allowInterruptedRetention }
+				);
+			}
+			messageCountBeforeSubmission = null;
+			allowInterruptedRetention = true;
 		}
 	});
 
@@ -359,7 +382,12 @@
 			const workspace = workspaceStore.currentWorkspace;
 			// Save unsaved messages
 			const savedCount = workspaceStore.getSavedMessageCount(wsId);
-			const newMessages = chat.messages.slice(savedCount);
+			const finalized = finalizedMessagesForUnload(
+				chat.messages,
+				messageCountBeforeSubmission,
+				isActive
+			);
+			const newMessages = finalized.slice(savedCount);
 			if (newMessages.length > 0) {
 				const toSave = buildPersistedChatMessages(newMessages);
 				navigator.sendBeacon(
@@ -413,7 +441,8 @@
 
 		return () => {
 			window.removeEventListener('beforeunload', handleBeforeUnload);
-			handleBeforeUnload(); // Also fires on SvelteKit client-side navigation
+			handleBeforeUnload(); // Save finalized turns only, never a mutable streamed row.
+			void chat.stop(); // A detached workspace must not keep generating in the background.
 			unsubscribeWorkspace(); // Clean up the workspace ID tracker
 		};
 	});
@@ -805,7 +834,7 @@
 		if (isActive) return; // Wait until streaming stops
 
 		for (const [messageIndex, message] of chat.messages.entries()) {
-			if (message.role !== 'assistant') continue;
+			if (message.role !== 'assistant' || getInterruptedTurnStatus(message.parts)) continue;
 
 			const hasPR = messageHasPresentResults(message.parts);
 
@@ -1075,10 +1104,8 @@
 	}
 
 	function stopResponse() {
-		chat.stop();
-		// Stopping is not a failed turn: preserve the submitted prompt and any
-		// assistant text that has already streamed into the conversation.
-		messageCountBeforeSubmission = null;
+		void chat.stop();
+		// Keep the submission boundary until onFinish finalizes partial evidence.
 	}
 
 	async function retryLastResponse() {
