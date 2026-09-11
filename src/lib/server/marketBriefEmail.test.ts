@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { marked } from 'marked';
 
+import { newsletterSupplierName } from '$lib/newsletter';
 import type { BlogPost } from '$lib/types/blog.types';
 import { getAllPosts } from './blog';
 import {
@@ -184,6 +185,19 @@ describe('Market Brief email projection', () => {
 		);
 		expect(legacy.text.match(/Coffee highlights/g)).toHaveLength(1);
 		expect(legacy.text).toContain('Selection context.');
+	});
+
+	it('uses the canonical supplier display labels with newsletter typography', () => {
+		const suppliers = [
+			['sweet_maria', 'Sweet Maria’s'],
+			['coffee_bean_corral', 'Coffee Bean Corral'],
+			['bc_green_coffee', 'BC Green Coffee'],
+			['tm_ward_coffee', 'T.M. Ward Coffee'],
+			['rhoadsroast', 'RhoadsRoast']
+		] as const;
+		for (const [supplier, displayName] of suppliers) {
+			expect(newsletterSupplierName(supplier)).toBe(displayName);
+		}
 	});
 
 	it('uses supplier display names across reader Markdown and both email formats', () => {

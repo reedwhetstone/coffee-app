@@ -1,3 +1,5 @@
+import { formatSourceName } from '$lib/utils/formatters';
+
 /** Public editorial identity; storage format and subscription APIs remain compatible. */
 export const NEWSLETTER = {
 	name: 'Purveyors Fieldnotes',
@@ -20,10 +22,11 @@ export function newsletterName(post: { newsletter?: 'fieldnotes' }, full = false
 
 /** Display catalog supplier identifiers consistently across newsletter formats. */
 export function newsletterSupplierName(value: string): string {
-	if (/^sweet[_ -]marias?$/iu.test(value)) return 'Sweet Maria’s';
-	if (!/[_-]/u.test(value)) return value;
-	return value
-		.split(/[_-]+/u)
-		.map((part) => `${part.charAt(0).toLocaleUpperCase('en-US')}${part.slice(1)}`)
-		.join(' ');
+	const formatted = formatSourceName(value);
+	const trimmed = value.trim();
+	const preserveReadableLabel =
+		/\s/u.test(trimmed) &&
+		!/[_-]/u.test(trimmed) &&
+		formatted.toLocaleLowerCase('en-US') === trimmed.toLocaleLowerCase('en-US');
+	return (preserveReadableLabel ? value : formatted).replaceAll("'", '’');
 }
