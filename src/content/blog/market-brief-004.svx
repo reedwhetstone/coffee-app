@@ -1,0 +1,80 @@
+---
+title: 'Purveyors Fieldnotes: Making room for automation'
+date: '2026-09-11'
+description: 'Apps that people and agents can both use, judging automation by the work a crew can delegate, and coffees from Thailand and Yemen.'
+tags: ['coffee', 'technology', 'ideas']
+pillar: 'market-intelligence'
+draft: false
+format: 'market-brief'
+newsletter: 'fieldnotes'
+edition: 4
+marketSnapshot:
+  asOf: '2026-09-11'
+  scope: 'US green coffee · retail pricing + all-market signals'
+  movementPercent: 0
+  movementLabel: 'Quiet'
+  listings: 831
+  matchedListings: 630
+  suppliers: 31
+  totalSignals: 186
+  belowBenchmark: 171
+  scoreOutliers: 10
+  priceDrops: 5
+  priceStatsUrl: 'https://api.purveyors.io/v1/price-index/stats'
+  signalsUrl: 'https://api.purveyors.io/v1/market/signals?summary=true'
+coffeeHighlights:
+  - catalogId: 10673
+    name: 'Thailand Lanna Coffee – Huay Ma Liem – Washed Processed'
+    supplier: 'burman'
+    supplierUrl: 'https://burmancoffee.com/product/green-coffee-beans/thailand-huay-ma-liem/'
+    catalogUrl: '/catalog?coffee=10673'
+    origin: 'Thailand'
+    region: 'Chom Thong, Chiang Mai'
+    process: 'Washed'
+    variety: 'Catimor'
+    priceContext: 'Listed per lb'
+    stockedDate: '2026-09-05'
+    pricePerLb: 7.99
+    tastingNotes:
+      body: { tag: 'full bodied', color: '#b85d19', score: 4 }
+      flavor: { tag: 'spicy chocolate', color: '#6b3a2a', score: 4 }
+      acidity: { tag: 'citrus bright', color: '#f0c330', score: 4 }
+      sweetness: { tag: 'citric sweetness', color: '#f6c445', score: 3 }
+      fragrance_aroma: { tag: 'lemon floral', color: '#f2d23d', score: 4 }
+    rationale: 'Burman favors a medium roast for this washed lot from northern Thailand, where a little citrus sweetness balances chocolate and spice. Going darker brings a smokier, lower-acidity cup. This looks like a good option for exploring a less familiar origin without seeking an intensely fruity profile. Expect somewhat more chaff than usual; the supplier recommends a little extra rest for a smoother cup.'
+  - catalogId: 10620
+    name: 'Yemen Mocca – Ansi – Natural Processed'
+    supplier: 'burman'
+    supplierUrl: 'https://burmancoffee.com/product/green-coffee-beans/yemen-mocca-ansi-natural/'
+    catalogUrl: '/catalog?coffee=10620'
+    origin: 'Yemen'
+    region: 'Anis, Dhamar Governorate'
+    process: 'Natural'
+    variety: 'Yemeni heirloom'
+    priceContext: 'Listed per lb'
+    stockedDate: '2026-09-04'
+    pricePerLb: 12.99
+    tastingNotes:
+      body: { tag: 'creamy syrupy', color: '#f0b787', score: 4 }
+      flavor: { tag: 'caramel cocoa date', color: '#d2691e', score: 4 }
+      acidity: { tag: 'citrus peel', color: '#f4d35e', score: 2 }
+      sweetness: { tag: 'honey caramel', color: '#e6a817', score: 5 }
+      fragrance_aroma: { tag: 'soft blossom florals', color: '#f2a6b5', score: 4 }
+    rationale: 'Burman describes honey and caramel sweetness with a creamy body, while the fruit stays in the background. Its preferred medium roast brings out cocoa beneath the florals. The extra work is in the roast and the wait: expect heavy chaff and uneven-looking greens, then allow several days of rest. A natural to consider for sweetness and body rather than a fruit-led cup.'
+---
+
+## An agent interface can extend the app you already have
+
+For a small software business, agent support can be an extension of a useful feature rather than a commitment to rebuild the product around chat. Gradio’s new image-workflow example shows how: someone can edit an image in a browser, while an assistant can call the same operation as part of a larger assignment. [Rebuilding AUTOMATIC1111 with Gradio Workflow (Hugging Face)](https://huggingface.co/blog/gradio-workflow-1111).
+
+The workflow supplies both the visual interface and callable outputs, including tools exposed through MCP, the protocol many assistants use to access software. That leaves a common operation to maintain even when the callers differ. Authentication still needs custom integration in this example; generating interfaces does not finish the engineering. [Rebuilding AUTOMATIC1111 with Gradio Workflow (Hugging Face)](https://huggingface.co/blog/gradio-workflow-1111), [Workflow1111 app.py at pinned public commit (Hugging Face)](https://huggingface.co/spaces/ysharma/Workflow1111/raw/5ff721fbf5e19bb32ace470bea6fa5be438210aa/app.py).
+
+A customer could learn a feature by using it directly, then delegate the repeated work once satisfied with its results. That is a plausible route to adoption for existing products: preserve the controls people understand, while letting their agents incorporate the underlying capability into a wider workflow. The agent becomes another customer of the software. [Rebuilding AUTOMATIC1111 with Gradio Workflow (Hugging Face)](https://huggingface.co/blog/gradio-workflow-1111).
+
+## What can the crew do while the robot works?
+
+An automation product becomes more valuable when a crew can hand over a stretch of work and get on with something else. A machine that produces faster while keeping the same people occupied offers a narrower benefit. That distinction matters when judging what better AI perception actually buys. [Where Has Construction Automation Been Successful? (Construction Physics)](https://www.construction-physics.com/p/where-has-construction-automation).
+
+Construction Physics’s survey describes a bricklaying robot that needed a fresh setup at each wall. Masons also followed it to finish mortar joints and straighten bricks. The author argues that adaptable AI could overcome historical constraints like these. But learning to navigate a corner and eliminating the finishing work are separate achievements; improving the first does not establish the second. [Where Has Construction Automation Been Successful? (Construction Physics)](https://www.construction-physics.com/p/where-has-construction-automation).
+
+For a contractor, the useful test would be whether the improved machine lets a mason take another assignment, or changes what that mason watches and fixes. That gives developers a commercial target: extend the stretch of work a crew can safely delegate. More adaptable behavior could help, provided it reduces the crew’s obligations around the machine as well as its interruptions. [Where Has Construction Automation Been Successful? (Construction Physics)](https://www.construction-physics.com/p/where-has-construction-automation).
