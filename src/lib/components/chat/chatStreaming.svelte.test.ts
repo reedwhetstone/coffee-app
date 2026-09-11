@@ -106,7 +106,7 @@ describe('Cherry AI incremental activity', () => {
 		expect(screen.getAllByRole('status', { name: 'Cherry AI activity' })).toHaveLength(1);
 	});
 
-	it('shows completed coffees before final text and replaces them only once curation completes', async () => {
+	it('shows progress without intermediary cards, then only curated cards at completion', async () => {
 		const stream = controlledResponse();
 		await submit(stream);
 		stream.emit({
@@ -125,15 +125,12 @@ describe('Cherry AI incremental activity', () => {
 				]
 			}
 		});
-		await waitFor(() =>
-			expect(screen.getByRole('button', { name: 'View details for Washed Guji' })).toBeVisible()
-		);
+		await waitFor(() => expect(screen.getByText(/coffee catalog search.*2 coffees/)).toBeVisible());
 		expect(screen.getByTestId('chat-status')).toHaveTextContent('streaming');
-		expect(screen.getByRole('button', { name: 'View details for Natural Sidama' })).toBeEnabled();
-		expect(screen.queryByRole('button', { name: 'Open evidence' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /View details for/ })).not.toBeInTheDocument();
 		stream.emit({ type: 'tool-input-start', toolCallId: 'present', toolName: 'present_results' });
 		await waitFor(() => expect(screen.getByText('Preparing results…')).toBeVisible());
-		expect(screen.getByRole('button', { name: 'View details for Washed Guji' })).toBeVisible();
+		expect(screen.queryByRole('button', { name: /View details for/ })).not.toBeInTheDocument();
 		stream.emit({
 			type: 'tool-input-available',
 			toolCallId: 'present',
@@ -151,16 +148,15 @@ describe('Cherry AI incremental activity', () => {
 			}
 		});
 		await waitFor(() =>
-			expect(
-				screen.queryByRole('button', { name: 'View details for Washed Guji' })
-			).not.toBeInTheDocument()
+			expect(screen.getByText('presenting 1 item to the evidence workspace')).toBeVisible()
 		);
-		expect(screen.getByText('Best fit for the request')).toBeVisible();
-		expect(screen.getAllByRole('button', { name: 'View details for Natural Sidama' })).toHaveLength(
-			1
-		);
+		expect(screen.queryByRole('button', { name: /View details for/ })).not.toBeInTheDocument();
 		stream.finish();
 		await waitFor(() => expect(screen.getByTestId('chat-status')).toHaveTextContent('ready'));
+		expect(
+			screen.queryByRole('button', { name: 'View details for Washed Guji' })
+		).not.toBeInTheDocument();
+		expect(screen.getByText('Best fit for the request')).toBeVisible();
 		expect(screen.getAllByRole('button', { name: 'View details for Natural Sidama' })).toHaveLength(
 			1
 		);

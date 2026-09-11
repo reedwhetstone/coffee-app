@@ -100,6 +100,11 @@ describe('ChatMessageList conversation controls', () => {
 			state: 'output-available',
 			output: { coffees: [{ id: 7, name: 'Later coffee', country: 'Ethiopia' }] }
 		};
+		const curatedPart = {
+			type: 'tool-present_results',
+			state: 'output-available',
+			output: { presentation: { source_tool: 'coffee_catalog_search', items: [{ id: 7 }] } }
+		};
 		const messages = [
 			{
 				id: messageId,
@@ -109,7 +114,8 @@ describe('ChatMessageList conversation controls', () => {
 					roastPart,
 					laterPart
 				]
-			}
+			},
+			{ id: 'assistant-curated', role: 'assistant', parts: [curatedPart] }
 		];
 
 		canvasStore.dispatch({
@@ -128,7 +134,7 @@ describe('ChatMessageList conversation controls', () => {
 		});
 		canvasStore.dispatch({
 			type: 'add',
-			messageId,
+			messageId: 'assistant-curated',
 			block: {
 				type: 'coffee-cards',
 				version: 1,
@@ -162,6 +168,11 @@ describe('ChatMessageList conversation controls', () => {
 						toolCallId: 'coffee-call',
 						state: 'output-available',
 						output: { coffees: [{ id: 7, name: 'Older coffee', country: 'Ethiopia' }] }
+					},
+					{
+						type: 'tool-present_results',
+						state: 'output-available',
+						output: { presentation: { source_tool: 'coffee_catalog_search', items: [{ id: 7 }] } }
 					}
 				]
 			}

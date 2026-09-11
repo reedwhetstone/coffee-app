@@ -306,10 +306,9 @@
 							{/if}
 						{/each}
 
-						<!-- Completed coffee reads are useful before the whole turn ends and do
-						     not depend on a retained canvas target. Other blocks keep their gate. -->
-						{#if !isOldMessage(msgIndex, chat.messages.length) || expandedMessages.has(message.id)}
-							{#each inlineCoffeeResults(chat.messages, msgIndex) as result (result.key)}
+						<!-- Settled answer cards remain readable without a canvas target. -->
+						{#if !isStreaming && (!isOldMessage(msgIndex, chat.messages.length) || expandedMessages.has(message.id))}
+							{#each inlineCoffeeResults(chat.messages, msgIndex, !!interruption) as result (result.key)}
 								{@const target = canvasStore.blocks.find(
 									(entry) =>
 										entry.messageId === message.id &&

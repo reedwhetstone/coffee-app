@@ -169,7 +169,51 @@ afterEach(() => {
 });
 
 describe('ChatWorkspace interrupted-turn transport and persistence', () => {
-	it('shows completed coffee before finish, then stop saves a safe snapshot that reloads', async () => {
+	it('persists curated final cards independently of the canvas and restores them on reload', async () => {
+		const stream = gatedResponse();
+		const endpoints = installEndpoints([stream]);
+		const mounted = mountWorkspace();
+		await send(stream, 'curated-assistant');
+		emitCoffee(stream);
+		stream.emit({
+			type: 'tool-input-available',
+			toolCallId: 'present',
+			toolName: 'present_results',
+			input: {}
+		});
+		stream.emit({
+			type: 'tool-output-available',
+			toolCallId: 'present',
+			output: {
+				presentation: {
+					source_tool: 'coffee_catalog_search',
+					items: [{ id: 42, annotation: 'Selected for your request' }]
+				}
+			}
+		});
+		await waitFor(() =>
+			expect(screen.getByText('presenting 1 item to the evidence workspace')).toBeInTheDocument()
+		);
+		expect(screen.queryByRole('heading', { name: 'Retained Colombia' })).not.toBeInTheDocument();
+		stream.finish();
+		await waitFor(() =>
+			expect(screen.getByRole('heading', { name: 'Retained Colombia' })).toBeVisible()
+		);
+		await waitFor(() => expect(endpoints.saved).toHaveLength(1), { timeout: 2000 });
+		const saved = endpoints.saved[0];
+		mounted.unmount();
+		canvasStore.resetAll();
+		mountWorkspace(restoreRows(saved));
+		await waitFor(() =>
+			expect(screen.getByRole('heading', { name: 'Retained Colombia' })).toBeVisible()
+		);
+		expect(screen.getByText('Selected for your request')).toBeVisible();
+		expect(
+			screen.getByRole('button', { name: 'View details for Retained Colombia' })
+		).toBeEnabled();
+	});
+
+	it('hides intermediary coffee, then stop saves a safe snapshot that reloads', async () => {
 		const stream = gatedResponse();
 		const endpoints = installEndpoints([stream]);
 		const mounted = mountWorkspace();
@@ -192,8 +236,9 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 			toolName: 'propose_inventory'
 		});
 		await waitFor(() =>
-			expect(screen.getByRole('heading', { name: 'Retained Colombia' })).toBeVisible()
+			expect(screen.getByText(/coffee catalog search.*1 coffee/)).toBeInTheDocument()
 		);
+		expect(screen.queryByRole('heading', { name: 'Retained Colombia' })).not.toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Stop response' })).toBeInTheDocument();
 		await new Promise((resolve) => setTimeout(resolve, 600));
 		expect(endpoints.saved).toHaveLength(0);
@@ -234,8 +279,9 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 		await send(first, 'failed-assistant');
 		emitCoffee(first);
 		await waitFor(() =>
-			expect(screen.getByRole('heading', { name: 'Retained Colombia' })).toBeVisible()
+			expect(screen.getByText(/coffee catalog search.*1 coffee/)).toBeInTheDocument()
 		);
+		expect(screen.queryByRole('heading', { name: 'Retained Colombia' })).not.toBeInTheDocument();
 		first.fail();
 		await waitFor(() => expect(screen.getByText(/Response interrupted\./)).toBeInTheDocument());
 		expect(screen.getByRole('textbox')).toHaveValue('Find a washed coffee');
@@ -277,8 +323,9 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 		await send(active, 'mutable-assistant');
 		emitCoffee(active);
 		await waitFor(() =>
-			expect(screen.getByRole('heading', { name: 'Retained Colombia' })).toBeVisible()
+			expect(screen.getByText(/coffee catalog search.*1 coffee/)).toBeInTheDocument()
 		);
+		expect(screen.queryByRole('heading', { name: 'Retained Colombia' })).not.toBeInTheDocument();
 		window.dispatchEvent(new Event('beforeunload'));
 		const messageBeacons = sendBeacon.mock.calls.filter(([url]) =>
 			String(url).endsWith('/messages')

@@ -1,39 +1,39 @@
 # Cherry inline coffee answers: slice 2 validation
 
-## Outcome and boundary
+## Revised outcome and boundary
 
-Completed coffee search/rank results are usable directly in an answer before final completion. Canonical cards show three results initially, expand explicitly, and open the exact returned coffee in the shared detail sheet. Pending curation cannot hide results; completed curation replaces its source and any already-equivalent shortlist. An open detail snapshot survives curation and returns focus to the answer.
+Scope revised with Reed on September 11: active turns show compact progress without intermediary coffee cards. A normally completed answer shows only grounded `present_results` selections, using canonical cards and exact detail inspection independently of the canvas. Raw search/rank output does not become automatic answer cards. No new search-exploration disclosure is included.
 
-Stop and transport errors retain completed validated coffee evidence with an incomplete-answer label. Unfinished tools and proposals are omitted from the retained attempt. Request-only projection removes local status parts and unfinished calls without rewriting persisted history. Interrupted messages persist no canvas mutations. Access failures retain the prior rollback behavior. Unload/navigation saves only the finalized prefix; active-attempt crash recovery is not implemented.
+Stop and transport errors retain completed validated coffee evidence under an incomplete-answer label, including raw reads when no selection completed. The recovery implementation is unchanged by this revision: unfinished tools and proposals are omitted, request projection does not rewrite persisted history, interrupted messages persist no canvas mutations, and retry appends fresh IDs. Access failures retain the previous rollback. Navigation/unload saves only the finalized prefix, not the active attempt.
 
-This extends [the accepted overhaul plan](../implementation-plans/2026-09-11-cherry-agent-overhaul.md), after merged [coffee-app #606](https://github.com/reedwhetstone/coffee-app/pull/606) and [parchment-api #300](https://github.com/reedwhetstone/parchment-api/pull/300). Grounded prose references, other result families, and the shell redesign remain later slices.
+This revises slice 2 of [the overhaul plan](../implementation-plans/2026-09-11-cherry-agent-overhaul.md), after merged [coffee-app #606](https://github.com/reedwhetstone/coffee-app/pull/606) and [parchment-api #300](https://github.com/reedwhetstone/parchment-api/pull/300). Grounded references are next; the integrated shell and other result families remain later slices.
 
-## Validation
+## Current-head validation
 
-- `VALIDATION_PASS`: `pnpm check --fail-on-warnings` (zero errors/warnings).
 - `VALIDATION_PASS`: `pnpm lint`.
-- `VALIDATION_PASS`: `pnpm exec vitest run src/lib/components/chat src/lib/components/genui src/lib/components/CoffeeCard.svelte.test.ts src/lib/services/inlineCoffeeResults.test.ts src/lib/services/chatPersistence.test.ts src/lib/services/blockExtractor.test.ts src/lib/stores/canvasStore.svelte.test.ts src/routes/api/chat` (155 tests in 22 files).
-- `VALIDATION_PASS`: local system-Chrome browser interaction at 1440×1000 and 390×844, mounting the actual ChatWorkspace with a controlled UI-message stream and synthetic catalog fixtures. Completed results precede final output; bounded results and exact detail work; curation leaves the inspected coffee open; closing reveals the curated result; stopping retains it and clears active status.
-- `VALIDATION_PASS`: focused independent verify-pr review of the committed implementation. One P2 found cross-source curation could resurrect a deduplicated raw list. Fixed in the selector with regression coverage for equivalent lists, curation, and a subsequent distinct read. No P0/P1 findings.
-- `VALIDATION_PASS`: `git diff --check` and changed-document relative links.
+- `VALIDATION_PASS`: `pnpm check --fail-on-warnings` (zero errors/warnings).
+- `VALIDATION_PASS`: `pnpm exec vitest run src/lib/components/chat src/lib/components/genui src/lib/components/CoffeeCard.svelte.test.ts src/lib/services/inlineCoffeeResults.test.ts src/lib/services/chatPersistence.test.ts src/lib/services/blockExtractor.test.ts src/lib/stores/canvasStore.svelte.test.ts src/routes/api/chat` (158 tests, 22 files).
+- `VALIDATION_PASS`: installed Chat transport with controlled completion barrier: raw and curated tool output produces progress but no cards while active; only the curated selection appears after completion.
+- `VALIDATION_PASS`: actual ChatWorkspace save/reload for curated final cards; stop/error recovery, retry identity, unchanged saved history, and active-unload exclusion. Missing, future, failed, and malformed references cannot produce curated cards. Later raw reads do not replace a selection.
+- `VALIDATION_PASS`: isolated local system-Chrome checks at 1440×1000 and 390×844 using actual ChatMessageList and canonical detail components with synthetic props. Verified active card suppression, curated final cards, exact detail opening/return, and labeled interrupted results. The mounted browser fixture does not claim transport or persistence proof; those are covered by the tests above.
+- `VALIDATION_PASS`: `git diff --check` and relative document links.
 
-Checks ran under the available Node 24.19.0/pnpm 10.33.0; the repository requests Node 22.x. Static environment values were synthetic placeholders. No production model call, private catalog capture, credential, or authenticated deployment measurement was used. Production timing and the real authenticated drawer-to-page navigation remain unverified; local mounted-workspace, identity, drawer, and persistence tests are not claimed as deployed end-to-end proof.
+The original implementation received independent verify-pr review; its cross-source deduplication fix and regression coverage remain. This focused revision changes only card selection/display and supporting tests/docs; recovery and persistence code are unchanged. No fresh independent reviewer verdict is claimed.
+
+Checks used Node 24.19.0/pnpm 10.33.0 (repo requests Node 22.x), synthetic static environment placeholders, and no production model calls or private fixtures. Authenticated production timing and real drawer-to-page navigation remain unverified.
 
 ## Inherited invariants
 
-- **Live activity / thin BFF:** installed Chat transport, empty phases, early frames, stop/error and BFF relay tests pass. No runtime/model/authorization ownership change.
-- **Evidence and action shelf:** pin preservation, action-state persistence, existing canvas dispatch/extractor and execution-route suites pass. Interrupted results cannot replay clear/replace or expose retained unfinished proposals for execution.
-- **Append-only persistence:** actual ChatWorkspace tests cover stop save/reload, failure and retry with new IDs, unchanged earlier payloads, and active-unload exclusion of mutable IDs. Marker remains inside the existing opaque `parts` contract; no database migration.
-- **Causal evidence:** missing, malformed, failed and future references cannot become usable coffee results; same-source and equivalent cross-source curation do not duplicate cards.
-- **Mobile/keyboard:** canonical detail and catalog destination remain available without a shelf target; component tests check exact selected record, focus return and stable inspection. Browser checks confirm small-screen interaction and readable controls.
+- Continuous activity and thin-BFF streaming proof remain intact.
+- Shelf pinning, action state, companion-block mapping, and interrupted canvas-mutation suppression remain covered.
+- Earlier messages retain their IDs; retry appends rather than rewriting saved answers.
+- Final curated cards and interrupted evidence remain usable without a canvas target. Legacy raw-only completed messages retain prose/activity and existing canvas behavior, not automatic inline raw cards.
 
-## Screenshots
+## Revised screenshots
 
-These show synthetic coffee records in the actual workspace, not a new shell design. The temporary local preview route and browser driver are not shipped.
+Synthetic records in the actual message renderer; the small control strip is test-only, not product UI. Temporary harness and driver are not shipped.
 
-- [Desktop progressive shortlist](assets/cherry-inline-coffees/desktop.png)
-- [Mobile progressive shortlist](assets/cherry-inline-coffees/mobile.png)
-- [Desktop inspection during curation](assets/cherry-inline-coffees/desktop-detail.png)
-- [Mobile inspection during curation](assets/cherry-inline-coffees/mobile-detail.png)
-- [Desktop stopped answer](assets/cherry-inline-coffees/desktop-stopped.png)
-- [Mobile stopped answer](assets/cherry-inline-coffees/mobile-stopped.png)
+- [Desktop working](assets/cherry-inline-coffees/desktop-working.png) / [mobile working](assets/cherry-inline-coffees/mobile-working.png)
+- [Desktop curated answer](assets/cherry-inline-coffees/desktop.png) / [mobile curated answer](assets/cherry-inline-coffees/mobile.png)
+- [Desktop detail](assets/cherry-inline-coffees/desktop-detail.png) / [mobile detail](assets/cherry-inline-coffees/mobile-detail.png)
+- [Desktop stopped answer](assets/cherry-inline-coffees/desktop-stopped.png) / [mobile stopped answer](assets/cherry-inline-coffees/mobile-stopped.png)

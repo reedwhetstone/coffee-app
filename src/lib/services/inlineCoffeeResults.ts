@@ -13,14 +13,15 @@ export interface InlineCoffeeResult {
 }
 
 /**
- * One latest completed view per coffee source in this answer. A pending or
- * failed presentation cannot hide a completed search. Completed presentations
- * replace their source's raw view atomically using only causally available data.
+ * One selected view per coffee source in a settled answer. Raw reads are only
+ * eligible for interrupted-turn recovery. Presentations resolve against causally
+ * available evidence; subsequent raw reads cannot replace a curated answer.
  * This is transcript selection, not an instruction to mutate the evidence shelf.
  */
 export function inlineCoffeeResults(
 	messages: MessagePartsLike[],
-	messageIndex: number
+	messageIndex: number,
+	includeUncurated = false
 ): InlineCoffeeResult[] {
 	const views = new Map<string, InlineCoffeeResult>();
 	for (const [partIndex, raw] of (messages[messageIndex]?.parts ?? []).entries()) {
@@ -29,6 +30,7 @@ export function inlineCoffeeResults(
 		if (typeof part.type !== 'string' || !part.type.startsWith('tool-')) continue;
 		if (part.state !== 'output-available') continue;
 		const toolName = part.toolName ?? part.type.slice(5);
+		if (!includeUncurated && toolName !== 'present_results') continue;
 		let source: unknown = toolName;
 		const cache = coffeeEvidenceCacheThroughPart(messages, messageIndex, partIndex);
 		if (toolName === 'present_results') {

@@ -28,11 +28,11 @@ Controlled tests exercise the real Svelte Chat transport and status component, B
 
 A local Chrome harness passed empty-assistant activity, tool preparation before completion, and Stop at desktop and 390px mobile widths. [Desktop fixture](../pr-audits/assets/cherry-live-activity/desktop.png) and [mobile fixture](../pr-audits/assets/cherry-live-activity/mobile.png) show the actual message/status components; Send/Stop/status text above them is test-only harness chrome, not a product redesign. The temporary preview route is not shipped.
 
-Authenticated deployed-network timing remains unverified. This slice proves and repairs local activity behavior, not the reported production regression's root cause. Slice 2 now implements bounded inline coffee results using the canonical card and detail sheet. Completed reads appear before final prose, completed curation replaces equivalent raw views, and inspection remains stable while that view changes. Historical coffee evidence stays usable without a shelf target.
+Authenticated deployed-network timing remains unverified. This slice proves and repairs local activity behavior, not the reported production regression's root cause. Slice 2 now implements bounded inline coffee results using the canonical card and detail sheet. Revised scope agreed September 11: active turns show compact progress, not intermediary coffee cards. Settled answers show grounded curated selections; raw search/rank reads do not automatically become answer cards. Interrupted answers retain completed results under an incomplete-answer label. No additional search-exploration disclosure is planned. Historical coffee evidence stays usable without a shelf target.
 
 Stopped and failed coffee answers retain validated completed reads and a persisted interruption label. Incomplete tools and proposals are removed; retained interrupted answers do not replay canvas mutations. Finalized messages keep their original IDs, while retry appends a new attempt. The existing Parchment opaque message-parts contract carries the label; no shared schema, SDK release, or new store is needed. Active navigation/unload saves only finalized earlier messages, not the mutable attempt; this slice does not promise crash recovery for an unfinished turn.
 
-[Slice 2 validation and screenshots](../pr-audits/2026-09-11-cherry-inline-coffees.md) cover actual ChatWorkspace stop/error/retry/reload behavior, progressive streaming, shared cards, and inherited canvas/action safeguards. Slices 3 through 5 remain unimplemented. The next slice is grounded references and cross-platform continuity, with missing shared contracts owned by Parchment.
+[Slice 2 validation and screenshots](../pr-audits/2026-09-11-cherry-inline-coffees.md) cover actual ChatWorkspace stop/error/retry/reload behavior, settled-answer rendering, shared cards, and inherited canvas/action safeguards. Slices 3 through 5 remain unimplemented. The next slice is grounded references and cross-platform continuity, with missing shared contracts owned by Parchment.
 
 ## Planning baseline and limits
 
@@ -85,7 +85,7 @@ Keep one active scene and retained evidence. Improve selection, context, and spa
 
 ### 4. Live activity is truthful and continuous
 
-Show an immediate pending state, actual tool progress as received, completed useful evidence before the whole turn ends, and a distinct final/error/stopped state. Keep activity compact with optional detail. Expose supported user-facing reasoning summaries only when actually provided; do not fabricate private reasoning or theatrical progress messages.
+Show an immediate pending state, actual tool progress as received, curated coffee cards once the turn settles, and a distinct final/error/stopped state. Keep activity compact with optional detail. Expose supported user-facing reasoning summaries only when actually provided; do not fabricate private reasoning or theatrical progress messages.
 
 Do not just delete the current completion guards. Incremental rendering must respect causal tool order, `present_results` selection, stable result identity, deduplication, cancellation, and persistence. A partially streamed argument is not a completed result or executable proposal.
 
@@ -121,9 +121,9 @@ Fix the continuous activity indicator locally and any reproduced upstream transp
 
 **Repo:** coffee-app; depends on slice 1's incremental harness, not a new model.
 
-Replace coffee count links with a bounded, shared-component shortlist/comparison and exact coffee inspection. Render completed read evidence progressively in causal order, retaining explicit expansion into the active scene. Keep old messages readable when their shelf target is absent. Use existing authorized tool output first; do not create a parallel durable store.
+Replace coffee count links with a bounded, shared-component shortlist/comparison and exact coffee inspection. Show curated coffee cards after the turn settles, resolving selections against causally prior completed reads and retaining explicit expansion into the active scene. Do not automatically preview raw searches while working or in a normally completed answer. Keep old messages readable when their shelf target is absent. Use existing authorized tool output first; do not create a parallel durable store.
 
-**Acceptance:** sourcing journey passes; no whole-turn wait for completed evidence; `present_results` does not cause duplicate or contradictory cards; removed shelf entries do not disable the answer's retained read evidence; reload and stop/retry preserve identity. Test partial completion followed by both abort and transport failure against the current whole-attempt rollback, including persistence and explicit stopped/error labeling. If current persisted output cannot support this, the missing upstream contract becomes an explicit dependency before consumer implementation.
+**Acceptance:** sourcing journey passes; no intermediary coffee previews; curated cards appear at completion; `present_results` does not cause duplicate or contradictory cards; removed shelf entries do not disable the answer's retained read evidence; reload and stop/retry preserve identity. Test partial completion followed by both abort and transport failure against the current whole-attempt rollback, including persistence and explicit stopped/error labeling. If current persisted output cannot support this, the missing upstream contract becomes an explicit dependency before consumer implementation.
 
 ### Slice 3: Add grounded references and cross-platform continuity
 
@@ -155,6 +155,6 @@ Apply the same reference/inline/expanded representations to supported market, in
 - Measure time to first useful evidence separately from final answer latency. Deterministic tests must observe early events before the final-frame barrier is released; production targets are set from the authenticated baseline, not invented here.
 - Roll out compatible upstream contracts before consumers. Each UI slice must remain usable if later slices never ship. Do not combine this overhaul with a destructive schema migration or remove legacy replay support on first release.
 - Roll back presentation independently while retaining readable persisted messages and canonical action outcomes. New contract writers require a compatible old-reader path or an explicitly reviewed migration before activation.
-- Retire compact-link-only rendering and whole-turn read-result gates only after progressive rendering, legacy restoration, and accessibility checks pass. Preserve the shelf, pin safeguards, canonical action ledger, and thin-BFF boundary. Remove any temporary fallback only after supported historical messages and deployed consumers are inventoried.
+- Retire compact-link-only coffee rendering after settled-answer rendering, legacy restoration, and accessibility checks pass. Retain the active-turn coffee-card gate. Preserve the shelf, pin safeguards, canonical action ledger, and thin-BFF boundary. Remove any temporary fallback only after supported historical messages and deployed consumers are inventoried.
 
 Priority remains in [DEVLOG](../DEVLOG.md). This sequence orders work inside the overhaul, not unrelated Purveyors programs.

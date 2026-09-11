@@ -19,9 +19,9 @@ const present = (ids: number[], state = 'output-available') => ({
 		}
 	}
 });
-const select = (...parts: unknown[]) => inlineCoffeeResults([{ parts }], 0);
+const select = (...parts: unknown[]) => inlineCoffeeResults([{ parts }], 0, true);
 
-describe('progressive inline coffee selection', () => {
+describe('interrupted coffee selection', () => {
 	it('keeps a completed search visible through pending and failed presentation', () => {
 		for (const state of ['input-streaming', 'input-available', 'output-error']) {
 			expect(select(search(), present([2], state))[0].block.data.map((c) => c.id)).toEqual([1, 2]);
@@ -43,7 +43,7 @@ describe('progressive inline coffee selection', () => {
 		expect(select(present([1]), search())[0].partIndex).toBe(1);
 		const history = [{ parts: [search()] }, { parts: [present([2])] }];
 		expect(inlineCoffeeResults(history, 1)[0].block.data.map((c) => c.id)).toEqual([2]);
-		expect(inlineCoffeeResults(history, 0)[0].block.data.map((c) => c.id)).toEqual([1, 2]);
+		expect(inlineCoffeeResults(history, 0, true)[0].block.data.map((c) => c.id)).toEqual([1, 2]);
 	});
 
 	it('does not hide reads for missing presentation references or canvas-only clear', () => {
@@ -84,5 +84,26 @@ describe('progressive inline coffee selection', () => {
 			expect(select({ ...search(), output }, present([1]))).toEqual([]);
 		}
 		expect(select({ ...search(), state: 'input-available' })).toEqual([]);
+	});
+});
+
+describe('completed answer selection', () => {
+	it('never surfaces raw reads, including when curation is pending, failed or unresolved', () => {
+		for (const parts of [
+			[search()],
+			[search(), present([2], 'input-available')],
+			[search(), present([2], 'output-error')],
+			[search(), present([99])],
+			[present([1]), search()]
+		]) {
+			expect(inlineCoffeeResults([{ parts }], 0)).toEqual([]);
+		}
+	});
+	it('retains only grounded curated cards despite later raw searches and round-trip persistence', () => {
+		const messages = [{ parts: [search(), present([2]), search([3])] }];
+		const restored = JSON.parse(JSON.stringify(messages));
+		expect(
+			inlineCoffeeResults(restored, 0).map((result) => result.block.data.map((c) => c.id))
+		).toEqual([[2]]);
 	});
 });
