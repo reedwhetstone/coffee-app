@@ -1,7 +1,7 @@
 # Cherry AI: connected conversation and evidence workspace
 
 **Date:** 2026-09-11
-**Status:** Accepted scope via [PR #605](https://github.com/reedwhetstone/coffee-app/pull/605); slice 1 merged; slice 2 implemented for review
+**Status:** Accepted scope via [PR #605](https://github.com/reedwhetstone/coffee-app/pull/605); slices 1–2 merged; coffee-reference slice 3a implemented for review
 **Owner:** coffee-app for human experience; Parchment for shared runtime and durable contracts
 
 ## Goal and accepted direction
@@ -32,7 +32,9 @@ Authenticated deployed-network timing remains unverified. This slice proves and 
 
 Stopped and failed coffee answers retain validated completed reads and a persisted interruption label. Incomplete tools and proposals are removed; retained interrupted answers do not replay canvas mutations. Finalized messages keep their original IDs, while retry appends a new attempt. The existing Parchment opaque message-parts contract carries the label; no shared schema, SDK release, or new store is needed. Active navigation/unload saves only finalized earlier messages, not the mutable attempt; this slice does not promise crash recovery for an unfinished turn.
 
-[Slice 2 validation and screenshots](../pr-audits/2026-09-11-cherry-inline-coffees.md) cover actual ChatWorkspace stop/error/retry/reload behavior, settled-answer rendering, shared cards, and inherited canvas/action safeguards. Slices 3 through 5 remain unimplemented. The next slice is grounded references and cross-platform continuity, with missing shared contracts owned by Parchment.
+[Slice 2 validation and screenshots](../pr-audits/2026-09-11-cherry-inline-coffees.md) cover actual ChatWorkspace stop/error/retry/reload behavior, settled-answer rendering, shared cards, and inherited canvas/action safeguards. Slice 2 merged in [#608](https://github.com/reedwhetstone/coffee-app/pull/608). Slice 3a implements grounded coffee-name references using the existing Markdown catalog URL and retained completed search/rank output; [Parchment #301](https://github.com/reedwhetstone/parchment-api/pull/301) teaches the model the same existing link convention. No new shared schema or SDK version is required. Missing IDs remain readable and explicitly unavailable, exact details are historical snapshots, and normal catalog navigation remains an explicit action. The same renderer is used in drawer and full-page conversations.
+
+[Coffee-reference validation](../pr-audits/2026-09-11-cherry-references.md) records scope and proof. This is the coffee portion of slice 3, not a claim that every object family has typed references. Page context remains opt-in and is not itself evidence authority. Inventory, roast, tasting, analytical scopes and similarity-shaped rows retain existing behavior; their reference contracts remain deferred to their owning family slices. The next product slice is the integrated workspace, using this coffee interaction as the first concrete reference shape.
 
 ## Planning baseline and limits
 

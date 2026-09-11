@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Chat } from '@ai-sdk/svelte';
-	import SvelteMarkdown from '@humanspeak/svelte-markdown';
+	import ChatAnswerMarkdown from './ChatAnswerMarkdown.svelte';
 	import GenUIBlockRenderer from '$lib/components/genui/GenUIBlockRenderer.svelte';
 	import InlineStatusLine from '$lib/components/genui/InlineStatusLine.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
@@ -296,13 +296,14 @@
 						{/if}
 
 						<!-- Text parts stream in live -->
-						{#each message.parts as part}
+						{#each message.parts as part, partIndex}
 							{#if part.type === 'text' && part.text.trim()}
-								<div
-									class="prose prose-sm max-w-2xl text-ink prose-headings:text-ink prose-p:leading-7 prose-p:text-ink prose-strong:text-ink prose-ol:text-ink prose-ul:text-ink prose-li:text-ink"
-								>
-									<SvelteMarkdown source={part.text} />
-								</div>
+								<ChatAnswerMarkdown
+									source={part.text}
+									messages={chat.messages}
+									messageIndex={msgIndex}
+									{partIndex}
+								/>
 							{/if}
 						{/each}
 

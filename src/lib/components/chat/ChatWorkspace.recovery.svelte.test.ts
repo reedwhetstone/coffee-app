@@ -60,12 +60,12 @@ const workspace: Workspace = {
 	canvas_version: 0
 };
 
-function mountWorkspace(messages: WorkspaceMessage[] = []) {
+function mountWorkspace(messages: WorkspaceMessage[] = [], variant: 'page' | 'drawer' = 'drawer') {
 	return render(ChatWorkspace, {
 		canUseChat: true,
 		canUseMallardWorkspaces: false,
 		agentName: 'Cherry Green Agent',
-		variant: 'drawer',
+		variant,
 		initialWorkspaceData: { workspaces: [{ ...workspace }], workspace: { ...workspace }, messages }
 	});
 }
@@ -169,6 +169,45 @@ afterEach(() => {
 });
 
 describe('ChatWorkspace interrupted-turn transport and persistence', () => {
+	it('retains grounded prose references from the drawer through saved full-page restoration', async () => {
+		const stream = gatedResponse();
+		const endpoints = installEndpoints([stream]);
+		const mounted = mountWorkspace();
+		await send(stream, 'reference-assistant');
+		emitCoffee(stream);
+		stream.emit({ type: 'text-start', id: 'answer' });
+		stream.emit({
+			type: 'text-delta',
+			id: 'answer',
+			delta: 'Try [Retained Colombia](/catalog?coffee=42).'
+		});
+		stream.emit({ type: 'text-end', id: 'answer' });
+		stream.finish();
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Retained Colombia' })).toBeVisible()
+		);
+		expect(
+			screen.queryByRole('button', { name: 'View details for Retained Colombia' })
+		).not.toBeInTheDocument();
+		await waitFor(() => expect(endpoints.saved).toHaveLength(1), { timeout: 2000 });
+		mounted.unmount();
+		canvasStore.resetAll();
+		mountWorkspace(restoreRows(endpoints.saved[0]), 'page');
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Retained Colombia' })).toBeVisible()
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Retained Colombia' }));
+		expect(screen.getByRole('heading', { name: 'Retained Colombia' })).toBeVisible();
+		expect(screen.getByRole('link', { name: 'View in catalog' })).toHaveAttribute(
+			'href',
+			'/catalog?coffee=42'
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Back to answer' }));
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Retained Colombia' })).toHaveFocus()
+		);
+	});
+
 	it('persists curated final cards independently of the canvas and restores them on reload', async () => {
 		const stream = gatedResponse();
 		const endpoints = installEndpoints([stream]);
