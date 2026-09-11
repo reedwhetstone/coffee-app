@@ -85,7 +85,7 @@ export class ParchmentInventoryError extends Error {
 
 const PAGE_LIMIT = 200;
 
-function projectInventoryResource(
+export function projectInventoryResource(
 	row: InventoryResource,
 	roastProfiles: ParchmentInventoryProjection['roast_profiles'] = []
 ): ParchmentInventoryProjection {
@@ -283,16 +283,33 @@ export async function fetchParchmentInventoryProjection(
 		includeRoastProfiles: boolean;
 	}
 ): Promise<ParchmentInventoryProjection[]> {
-	let inventory = await collectOffsetPages({
-		// These BFF projections are called only after session authorization (no API-key cap).
-		pageSize: PAGE_LIMIT,
-		fetchPage: async (offset) =>
-			unwrapParchment(await client.inventory.list({ limit: PAGE_LIMIT, offset })).data,
-		key: (row) => row.id
-	});
-
+	let inventory: InventoryResource[];
 	if (options.id !== undefined) {
-		inventory = inventory.filter((row) => row.id === options.id);
+		const query = { id: options.id, limit: 1, include_pagination: 'true' };
+		const body = unwrapParchment(
+			await client.inventory.list(query as Parameters<typeof client.inventory.list>[0])
+		);
+		if ('pagination' in body) {
+			inventory = body.data.filter((row) => row.id === options.id);
+		} else {
+			// Older APIs ignore id and pagination. Fall back only for that contract,
+			// never use the first unrelated inventory row as the requested detail.
+			inventory = (
+				await collectOffsetPages({
+					pageSize: PAGE_LIMIT,
+					fetchPage: async (offset) =>
+						unwrapParchment(await client.inventory.list({ limit: PAGE_LIMIT, offset })).data,
+					key: (row) => row.id
+				})
+			).filter((row) => row.id === options.id);
+		}
+	} else {
+		inventory = await collectOffsetPages({
+			pageSize: PAGE_LIMIT,
+			fetchPage: async (offset) =>
+				unwrapParchment(await client.inventory.list({ limit: PAGE_LIMIT, offset })).data,
+			key: (row) => row.id
+		});
 	}
 
 	const catalogIds = [
