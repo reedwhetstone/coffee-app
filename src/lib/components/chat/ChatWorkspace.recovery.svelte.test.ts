@@ -172,6 +172,70 @@ afterEach(() => {
 });
 
 describe('ChatWorkspace interrupted-turn transport and persistence', () => {
+	it.each(['complete', 'stop', 'disconnect', 'erased'] as const)(
+		'keeps an in-flight draft through %s without queueing or sending it',
+		async (ending) => {
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			const first = gatedResponse();
+			const retry = gatedResponse();
+			const endpoints = installEndpoints([first, retry]);
+			mountWorkspace();
+			await send(first, 'drafting-answer', 'Original request');
+			const input = screen.getByRole('textbox');
+			expect(input).toBeEnabled();
+			await fireEvent.input(input, { target: { value: 'My unsent follow-up' } });
+			if (ending === 'erased') await fireEvent.input(input, { target: { value: '' } });
+			await fireEvent.keyDown(input, { key: 'Enter' });
+			await fireEvent.submit(input.closest('form')!);
+			expect(endpoints.requests).toHaveLength(1);
+			first.emit({ type: 'text-start', id: 'text' });
+			first.emit({ type: 'text-delta', id: 'text', delta: 'A partial answer.' });
+			if (ending === 'complete') {
+				first.emit({ type: 'text-end', id: 'text' });
+				first.finish();
+			} else if (ending === 'stop') {
+				await fireEvent.click(screen.getByRole('button', { name: 'Stop response' }));
+			} else first.fail();
+			await waitFor(() =>
+				expect(screen.queryByRole('button', { name: 'Stop response' })).not.toBeInTheDocument()
+			);
+			expect(input).toHaveValue(ending === 'erased' ? '' : 'My unsent follow-up');
+			expect(endpoints.requests).toHaveLength(1);
+			if (ending === 'disconnect' || ending === 'erased') {
+				await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+				await waitFor(() => expect(endpoints.requests).toHaveLength(2));
+				expect(endpoints.requests[1].messages.at(-1)?.parts).toEqual([
+					{ type: 'text', text: 'Original request' }
+				]);
+				expect(input).toHaveValue(ending === 'erased' ? '' : 'My unsent follow-up');
+				retry.finish();
+				await waitFor(() =>
+					expect(screen.queryByRole('button', { name: 'Stop response' })).not.toBeInTheDocument()
+				);
+				expect(input).toHaveValue(ending === 'erased' ? '' : 'My unsent follow-up');
+			}
+		}
+	);
+
+	it('retries the expanded slash-command request while preserving the new draft', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const first = gatedResponse();
+		const retry = gatedResponse();
+		const endpoints = installEndpoints([first, retry]);
+		mountWorkspace();
+		await send(first, 'slash-answer', '/beans');
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'New question' } });
+		first.fail();
+		await waitFor(() => expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible());
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(2));
+		expect(endpoints.requests[1].messages.at(-1)?.parts).toEqual(
+			endpoints.requests[0].messages.at(-1)?.parts
+		);
+		expect(screen.getByRole('textbox')).toHaveValue('New question');
+		retry.finish();
+	});
+
 	it('omits deselected page entity IDs and honors whole-page context opt-out in actual requests', async () => {
 		const first = gatedResponse();
 		const second = gatedResponse();

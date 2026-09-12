@@ -284,6 +284,13 @@
 	let lastSubmittedPrompt = $state('');
 	let lastSubmittedBody: Record<string, unknown> | null = null;
 	let retryPreservesComposerDraft = false;
+	let draftEditedSinceSubmission = false;
+	let restoredFailedPrompt = false;
+
+	function noteDraftInput() {
+		draftEditedSinceSubmission = true;
+		restoredFailedPrompt = false;
+	}
 	let messageCountBeforeSubmission: number | null = null;
 	let allowInterruptedRetention = true;
 	let canvasPersistError = $state<string | null>(null);
@@ -316,8 +323,14 @@
 			allowInterruptedRetention = failure.kind !== 'access';
 			chatError = failure.message;
 			chatCanRetry = failure.retryable;
-			if (!retryPreservesComposerDraft && !inputMessage && lastSubmittedPrompt) {
+			if (
+				!retryPreservesComposerDraft &&
+				!draftEditedSinceSubmission &&
+				!inputMessage &&
+				lastSubmittedPrompt
+			) {
 				inputMessage = lastSubmittedPrompt;
+				restoredFailedPrompt = true;
 			}
 		},
 		onFinish: ({ isAbort, isError }) => {
@@ -807,46 +820,108 @@
 
 	// Scroll management
 	let chatContainer = $state<HTMLDivElement>();
+	let chatContent: HTMLDivElement | undefined = $state();
 	let shouldScrollToBottom = $state(true);
+	let awayFromBottom = $state(false);
+	let lastObservedScrollTop = 0;
+	let scrollFrame: number | undefined;
+	let lastSeenOutput = $state('');
+	// Track visible text and tool progress, not bulky canvas payloads. Draft edits
+	// never change this marker or count as new assistant output.
+	let latestOutput = $derived.by(() => {
+		const message = chat.messages.findLast((entry) => entry.role === 'assistant');
+		if (!message) return '';
+		return JSON.stringify([
+			message.id,
+			message.parts.map((part) => [
+				part.type,
+				'text' in part ? part.text : '',
+				'state' in part ? part.state : '',
+				'toolCallId' in part ? part.toolCallId : ''
+			])
+		]);
+	});
+	let hasNewOutput = $derived(latestOutput !== lastSeenOutput);
 
-	// Scroll when new messages arrive
+	function measureReadingPosition() {
+		if (!chatContainer || !chatContainer.clientHeight) return;
+		awayFromBottom =
+			chatContainer.scrollHeight - chatContainer.clientHeight - chatContainer.scrollTop > 50;
+	}
+
+	function followLatestFrame() {
+		if (scrollFrame !== undefined) return;
+		scrollFrame = requestAnimationFrame(() => {
+			scrollFrame = undefined;
+			// Recheck at execution time: a user may have scrolled up or followed an
+			// evidence link after the frame was scheduled.
+			if (!shouldScrollToBottom || !chatContainer?.clientHeight) return;
+			chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'instant' });
+			lastObservedScrollTop = chatContainer.scrollTop;
+			measureReadingPosition();
+		});
+	}
+
+	function pauseFollowing() {
+		if (shouldScrollToBottom) lastSeenOutput = latestOutput;
+		shouldScrollToBottom = false;
+		if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);
+		scrollFrame = undefined;
+	}
+
 	$effect(() => {
-		if (chatContainer && shouldScrollToBottom && chat.messages.length > 0) {
-			chatContainer.scrollTo({
-				top: chatContainer.scrollHeight,
-				behavior: 'smooth'
-			});
+		void latestOutput;
+		void chat.messages.length;
+		if (shouldScrollToBottom) {
+			lastSeenOutput = latestOutput;
+			followLatestFrame();
 		}
 	});
 
-	// Scroll during streaming — throttled to avoid scroll thrashing
-	let lastScrollTime = 0;
 	$effect(() => {
-		if (!isActive || !shouldScrollToBottom || !chatContainer) return;
-		// Access the last message's parts to create a reactive dependency on streaming content
-		const lastMsg = chat.messages[chat.messages.length - 1];
-		if (lastMsg) {
-			const _partsLen = lastMsg.parts.length;
-			const lastTextPart = lastMsg.parts.findLast((p) => p.type === 'text');
-			if (lastTextPart) {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const _textLen = (lastTextPart as any).text?.length;
-			}
-		}
-		// Throttle scrolls to at most once per 100ms during streaming
-		const now = Date.now();
-		if (now - lastScrollTime < 100) return;
-		lastScrollTime = now;
-		requestAnimationFrame(() => {
-			chatContainer?.scrollTo({ top: chatContainer.scrollHeight });
+		const container = chatContainer;
+		const content = chatContent;
+		if (!container || !content) return;
+		// Covers late markdown/chart layout, composer growth, evidence resizing,
+		// and reopening the retained drawer, not just incoming text chunks.
+		const observer = new ResizeObserver(() => {
+			measureReadingPosition();
+			if (shouldScrollToBottom) followLatestFrame();
 		});
+		observer.observe(container);
+		observer.observe(content);
+		return () => {
+			observer.disconnect();
+			if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);
+			scrollFrame = undefined;
+		};
 	});
 
 	function handleScroll() {
-		if (!chatContainer) return;
-		const { scrollTop, scrollHeight, clientHeight } = chatContainer;
-		const isNearBottom = scrollTop + clientHeight >= scrollHeight - 50;
-		shouldScrollToBottom = isNearBottom;
+		if (!chatContainer?.clientHeight) return;
+		measureReadingPosition();
+		if (!awayFromBottom) {
+			shouldScrollToBottom = true;
+			lastSeenOutput = latestOutput;
+		} else if (chatContainer.scrollTop < lastObservedScrollTop) {
+			pauseFollowing();
+		}
+		lastObservedScrollTop = chatContainer.scrollTop;
+	}
+
+	async function jumpToLatest() {
+		const restoreKeyboardFocus = document.activeElement?.closest('[data-jump-to-latest]');
+		shouldScrollToBottom = true;
+		lastSeenOutput = latestOutput;
+		await tick();
+		followLatestFrame();
+		if (restoreKeyboardFocus) {
+			const id = chat.messages.at(-1)?.id;
+			if (id)
+				chatContainer
+					?.querySelector<HTMLElement>(`[id="msg-${CSS.escape(id)}"]`)
+					?.focus({ preventScroll: true });
+		}
 	}
 
 	let isActive = $derived(chat.status === 'streaming' || chat.status === 'submitted');
@@ -1025,7 +1100,8 @@
 	function scrollToMessage(messageId: string) {
 		const el = chatContainer?.querySelector<HTMLElement>(`[id="msg-${CSS.escape(messageId)}"]`);
 		if (el && chatContainer) {
-			el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			pauseFollowing();
+			el.scrollIntoView({ behavior: 'instant', block: 'start' });
 			el.classList.add('message-highlight');
 			setTimeout(() => el.classList.remove('message-highlight'), 2000);
 		}
@@ -1144,6 +1220,8 @@
 		lastSubmittedPrompt = text;
 		lastSubmittedBody = buildSendBody();
 		retryPreservesComposerDraft = false;
+		draftEditedSinceSubmission = false;
+		restoredFailedPrompt = false;
 		chatError = null;
 		chatCanRetry = false;
 
@@ -1166,6 +1244,7 @@
 				return;
 			}
 			if (cmd.chatText) {
+				lastSubmittedPrompt = cmd.chatText;
 				inputMessage = '';
 				shouldScrollToBottom = true;
 				messageCountBeforeSubmission = chat.messages.length;
@@ -1189,19 +1268,20 @@
 	}
 
 	async function retryLastResponse() {
+		if (isActive || isClearing || !workspaceReady || !lastSubmittedPrompt) return;
+		// Retry belongs to the failed request, never to a follow-up being drafted.
+		if (restoredFailedPrompt && inputMessage === lastSubmittedPrompt) inputMessage = '';
+		restoredFailedPrompt = false;
+		retryPreservesComposerDraft = true;
 		chatError = null;
 		chatCanRetry = false;
-		if (retryPreservesComposerDraft && lastSubmittedPrompt) {
-			shouldScrollToBottom = true;
-			messageCountBeforeSubmission = chat.messages.length;
-			await chat.sendMessage(
-				{ text: lastSubmittedPrompt },
-				{ body: lastSubmittedBody ?? buildSendBody() }
-			);
-			messageCountBeforeSubmission = null;
-			return;
-		}
-		await sendMessage();
+		shouldScrollToBottom = true;
+		messageCountBeforeSubmission = chat.messages.length;
+		await chat.sendMessage(
+			{ text: lastSubmittedPrompt },
+			{ body: lastSubmittedBody ?? buildSendBody() }
+		);
+		messageCountBeforeSubmission = null;
 	}
 
 	async function askAgainFromAssistantMessage(messageId: string) {
@@ -1225,6 +1305,7 @@
 		// originating request directly so an unsent composer draft remains intact.
 		lastSubmittedPrompt = prompt;
 		lastSubmittedBody = buildSendBody();
+		restoredFailedPrompt = false;
 		retryPreservesComposerDraft = true;
 		chatError = null;
 		chatCanRetry = false;
@@ -1313,6 +1394,7 @@
 					{isActive}
 					{canUseMallardWorkspaces}
 					bind:containerEl={chatContainer}
+					bind:contentEl={chatContent}
 					onScroll={handleScroll}
 					onBlockAction={handleBlockAction}
 					onExecuteAction={executeAction}
@@ -1320,11 +1402,31 @@
 					onAskAgainMessage={askAgainFromAssistantMessage}
 					messageActionsDisabled={isActive || isClearing || !workspaceReady}
 				/>
+				{#if !shouldScrollToBottom && awayFromBottom}
+					<div class="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-3">
+						<button
+							type="button"
+							data-jump-to-latest
+							onclick={jumpToLatest}
+							class="pointer-events-auto flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface-raised px-4 text-sm text-ink shadow-md hover:border-accent focus-visible:ring-2 focus-visible:ring-accent"
+						>
+							<span aria-hidden="true">↓</span>
+							<span>{hasNewOutput ? 'New output · Jump to latest' : 'Jump to latest'}</span>
+						</button>
+					</div>
+				{/if}
+				<span class="sr-only" role="status"
+					>{!shouldScrollToBottom && awayFromBottom && hasNewOutput
+						? 'New output below.'
+						: ''}</span
+				>
 			</div>
 			<ChatComposer
 				{agentName}
 				bind:inputMessage
-				isActive={isActive || isClearing}
+				{isActive}
+				{isClearing}
+				onDraftInput={noteDraftInput}
 				actions={variant === 'page' ? workspaceActions : undefined}
 				{suggestions}
 				{slashCompletions}
