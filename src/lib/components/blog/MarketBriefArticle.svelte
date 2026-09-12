@@ -38,6 +38,9 @@
 		)
 	);
 	let signalTotal = $derived(Math.max(snapshot?.totalSignals ?? 0, 1));
+	let sources = $derived(
+		reader.sections.find((section: MarketBriefReaderSection) => section.kind === 'sources')
+	);
 
 	function sectionUrl(section: MarketBriefReaderSection): string {
 		return `${reader.canonicalUrl}#${encodeURIComponent(section.id)}`;
@@ -452,6 +455,23 @@
 						</div>
 					</article>
 				{/each}
+			</div>
+		</section>
+	{/if}
+
+	{#if sources}
+		<section
+			id={sources.id}
+			class="scroll-mt-28 border-t border-line pt-6"
+			aria-labelledby="fieldnotes-sources-heading"
+		>
+			<h2 id="fieldnotes-sources-heading" class="text-sm font-semibold text-ink">Sources</h2>
+			<div
+				class="market-brief-copy mt-3 break-words text-sm leading-relaxed text-muted [&_li]:mt-2 [&_ol]:list-decimal [&_ol]:pl-5"
+			>
+				<!-- Markdown tokens reject raw HTML and unsafe link protocols before this render. -->
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+				{@html sources.html}
 			</div>
 		</section>
 	{/if}

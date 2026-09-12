@@ -76,6 +76,34 @@ const coffeeHighlights: MarketBriefCoffeeHighlight[] = [
 ];
 
 describe('Market Brief article presentation', () => {
+	it('renders a compact Sources footer without treating it as another take', () => {
+		render(MarketBriefArticle, {
+			title: 'Ideas worth trying',
+			reader: {
+				...reader,
+				sections: [
+					...reader.sections,
+					{
+						id: 'sources',
+						title: 'Sources',
+						kind: 'sources',
+						html: '<ol><li><a href="https://example.com/report">Research report</a></li></ol>'
+					}
+				]
+			},
+			coffeeHighlights
+		});
+		const sources = screen.getByRole('region', { name: 'Sources' });
+		expect(within(sources).getByRole('link', { name: 'Research report' })).toHaveAttribute(
+			'href',
+			'https://example.com/report'
+		);
+		expect(within(sources).queryByRole('button')).not.toBeInTheDocument();
+		expect(
+			sources.compareDocumentPosition(screen.getByRole('region', { name: 'Coffee highlights' })) &
+				Node.DOCUMENT_POSITION_PRECEDING
+		).toBeTruthy();
+	});
 	it('renders short takes without mandatory market, research, or coffee sections', () => {
 		render(MarketBriefArticle, {
 			title: 'Ideas worth trying',

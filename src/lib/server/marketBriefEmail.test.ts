@@ -440,8 +440,34 @@ A second section with the same title.
 				title: 'The throughline',
 				kind: 'take',
 				html: expect.stringContaining('second section')
+			},
+			{
+				id: 'sources',
+				title: 'Sources',
+				kind: 'sources',
+				html: expect.stringContaining('https://example.com/report?week=1')
 			}
 		]);
+	});
+
+	it('preserves compact citations and the bibliography across reader, email, and Markdown', () => {
+		const citedSource =
+			source.split('## The throughline')[0] +
+			'## A useful take\n\nA supported claim. [1](https://example.com/report)\n\n' +
+			'Another supported claim. [1](https://example.com/report)\n\n' +
+			'## Sources\n\n1. [Research report](https://example.com/report)\n';
+		const reader = buildMarketBriefReaderExport(marketBrief, citedSource);
+		const email = buildMarketBriefEmailProjection(marketBrief, citedSource);
+		expect(reader.sections.filter((section) => section.kind === 'take')).toHaveLength(1);
+		expect(reader.sections.find((section) => section.kind === 'sources')?.html).toContain(
+			'Research report'
+		);
+		expect(reader.sections[0].html).not.toContain('Research report');
+		expect(reader.markdown).toContain('## Sources');
+		expect(reader.markdown).toContain('[1](https://example.com/report)');
+		expect(email.html).toContain('Research report');
+		expect(email.text).toContain('Research report');
+		expect(email.html.match(/>Research report</g)).toHaveLength(1);
 	});
 
 	it('resolves relative Markdown links, images, and definitions for portable readers', () => {
