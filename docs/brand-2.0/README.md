@@ -15,7 +15,7 @@ The most important recommendation is product-level, not decorative: prototype a 
 - `Purveyors-Brand-2.0-Exploration.pdf` — 20-page presentation package
 - `brand-2.0-exploration.html` — editable 16:9 slide source
 - `assets/current/` — live September 12, 2026 baseline captures
-- `assets/concepts/` — AI-generated homepage, Market Index, Catalog, Cherry mobile, and hero-art concepts
+- `assets/concepts/` — AI-generated homepage, Market Index, Catalog, Cherry AI mobile, and hero-art concepts
 - `PROMPTS.md` — the exact prompt set and generation method
 
 ## Current sources audited
@@ -34,7 +34,7 @@ The most important recommendation is product-level, not decorative: prototype a 
 - Generated UI screens are composition and interaction explorations. Their copy, metrics, photography, and field availability are not production claims.
 - Source-linked photography should remain optional until rights, coverage, and provenance are reliable.
 - The “living ledger” phrase is recommended as an internal design north star. Public positioning should be validated against current product strategy before use.
-- Existing naming, data authority, Cherry anti-anthropomorphism, and Parchment/Mallard ownership rules remain in force.
+- Existing naming, data authority, Cherry AI anti-anthropomorphism, and Parchment/Mallard ownership rules remain in force.
 
 ## Regenerating the PDF
 

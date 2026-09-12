@@ -15,7 +15,7 @@ Use case: ui-mockup
 Asset type: desktop homepage concept for a premium coffee intelligence platform
 Primary request: envision Purveyors Brand 2.0 as a shippable, realistic desktop web homepage that evolves an existing “field journal of the green coffee market” design into a distinctive living market ledger. It should feel like a trusted research instrument made warm and coffee-native, not a generic SaaS landing page.
 Scene/backdrop: full browser-page composition on warm paper-white canvas
-Subject: Purveyors homepage with compact wordmark header; editorial hero; a large proof-first market read; live catalog evidence; product pathways for Market Intelligence, Mallard Studio, and Parchment API; restrained footer preview
+Subject: Purveyors homepage with compact wordmark header; editorial hero; a large proof-first market read; live catalog evidence; product pathways for Parchment Intelligence, Mallard Studio, and Parchment API; restrained footer preview
 Style/medium: high-fidelity web product UI mockup, clean responsive design, editorial research journal meets modern market terminal
 Composition/framing: 16:9 desktop, straight-on, full-width page, spacious 12-column grid, hero and first two sections visible
 Lighting/mood: calm, authoritative, tactile, contemporary
@@ -62,28 +62,28 @@ Lighting/mood: precise, tactile, trustworthy, efficient
 Color palette: parchment #F7F3ED, raised white, ink #292522, peach-orange #F79B72, evergreen #3F5E4A, muted teal #3F6F73, rust #B95E38, ochre #C49A52
 Materials/textures: hairline rules, small tasting-note dots, thin orange lot-identity rail, subtle topographic contour watermark in empty areas
 Text (verbatim): "Purveyors", "Green Coffee Catalog", "2,154 live offers", "Origin", "Process", "Supplier", "Freshness", "Price", "Purveyor Score", "Evidence", "Add to comparison", "Compare 3 coffees", "Open supplier listing"
-Constraints: practical layout; exact text only where specified; editorial serif page title; humanist sans UI; monospaced prices and dates; progressive disclosure; clear active filters; accessible contrast; no modal dimming; no watermark
+Constraints: practical layout; exact text only where specified; editorial serif page title; humanist sans UI; monospaced prices and dates; progressive disclosure; clear active filters; Purveyor Score means listing metadata completeness, structure, confidence, and buyer usefulness, never cup quality or verification; sentence-case eyebrows with normal tracking; accessible contrast; no modal dimming; no watermark
 Avoid: ecommerce storefront styling, giant product photography, shopping-cart tropes, generic SaaS cards, glassmorphism, neon, oversized pill controls, cartoon coffee beans, illegible small text
 ```
 
-## 4. Cherry mobile decision workflow
+## 4. Cherry AI mobile decision workflow
 
 **Output:** `assets/concepts/mobile-cherry-workflow.png`
 
 ```text
 Use case: ui-mockup
 Asset type: mobile coffee intelligence app concept
-Primary request: design a high-fidelity Purveyors Brand 2.0 mobile experience for Cherry, coffee-native AI grounded in Parchment market evidence and Mallard roastery context. Show a useful morning workflow, not a generic chat app and not an anthropomorphic assistant.
+Primary request: design a high-fidelity Purveyors Brand 2.0 mobile experience for Cherry AI, coffee-native AI grounded in Parchment Intelligence market evidence and Mallard Studio roastery context. Show a useful morning workflow, not a generic chat app and not an anthropomorphic assistant.
 Scene/backdrop: four adjacent mobile screens without device bezels on a warm neutral presentation canvas
-Subject: screen 1 Today dashboard with a market brief and inventory risk; screen 2 Cherry analysis with the prompt “What should I buy this week?” and structured evidence-backed answer; screen 3 compare three green coffee lots; screen 4 saved sourcing brief with recommended next actions and evidence count
+Subject: screen 1 Today dashboard with a market brief and inventory risk; screen 2 Cherry AI analysis with the prompt “What should I buy this week?” and structured evidence-backed answer; screen 3 compare three green coffee lots; screen 4 saved sourcing brief with recommended next actions and evidence count
 Style/medium: shippable mobile product UI, editorial field-journal system adapted to compact operational workflows
 Composition/framing: four portrait screens aligned in one 16:9 landscape image, each clearly distinct and readable
 Lighting/mood: calm, rigorous, tactile, professional
 Color palette: parchment #F7F3ED, raised white, ink #292522, peach-orange #F79B72, evergreen #3F5E4A, muted teal #3F6F73, rust #B95E38, ochre #C49A52
 Materials/textures: subtle paper grain, hairline dividers, slim evidence rails, tiny tasting dots and ledger ticks
-Text (verbatim): "Today", "Cherry", "What should I buy this week?", "Market evidence", "Roastery context", "Compare lots", "Sourcing brief", "3 sources", "Save brief", "Open evidence"
-Constraints: mobile-first and buildable; exact text only where specified; no chat bubbles unless necessary; structured cards and decision blocks; clear source attribution; Cherry presented as a system, never as a person; accessible contrast; no device bezels; no watermark
-Avoid: generic chatbot interface, friendly mascot, face/avatar for Cherry, glassmorphism, neon, huge rounded cards, cartoon coffee beans, lifestyle photography, illegible paragraphs, extra brand names
+Text (verbatim): "Today", "Cherry AI", "What should I buy this week?", "Market evidence", "Roastery context", "Compare lots", "Sourcing brief", "3 sources", "Save brief", "Open evidence"
+Constraints: mobile-first and buildable; exact text only where specified; no chat bubbles unless necessary; structured cards and decision blocks; clear source attribution; Cherry AI presented as a system, never as a person; sentence-case eyebrows with normal tracking; accessible contrast; no device bezels; no watermark
+Avoid: generic chatbot interface, friendly mascot, face/avatar for Cherry AI, glassmorphism, neon, huge rounded cards, cartoon coffee beans, lifestyle photography, illegible paragraphs, extra brand names
 ```
 
 ## 5. Terrain becomes data hero artwork
