@@ -608,6 +608,13 @@ export const load: PageServerLoad = async (event) => {
 		watchlistPromise: analyticsWatchlist
 	});
 
+	// Observe streamed failures before awaiting the overview: these independent
+	// requests can reject while SSR is still waiting for its synchronous shell.
+	// Keep the original promises so the client still receives section-level errors.
+	analyticsCharts.catch(() => {});
+	analyticsWatchlist.catch(() => {});
+	analyticsMember.catch(() => {});
+
 	// The only awaited product-data read before the first byte is the canonical
 	// aggregate overview. Every durable market projection remains Parchment-owned.
 	const marketOverview = await marketOverviewPromise;
@@ -623,9 +630,6 @@ export const load: PageServerLoad = async (event) => {
 	// Mark server-side rejections as handled; the rejection still streams to the
 	// client, which renders a section-level error state for it.
 	analyticsCoverage.catch(() => {});
-	analyticsCharts.catch(() => {});
-	analyticsWatchlist.catch(() => {});
-	analyticsMember.catch(() => {});
 
 	const baseUrl = `${event.url.protocol}//${event.url.host}`;
 	const schemaService = createSchemaService(baseUrl);

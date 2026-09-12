@@ -404,6 +404,43 @@ describe('loadPriceSnapshotsPaginated', () => {
 });
 
 describe('analytics load', () => {
+	it.each(['history', 'evidence'] as const)(
+		'handles an early %s connection reset while overview is still pending',
+		async (resource) => {
+			const setup = createAnalyticsClient();
+			let releaseOverview!: () => void;
+			setup.overview.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						releaseOverview = () => resolve({ data: { data: overviewFixture } });
+					})
+			);
+			const failure = new TypeError('fetch failed', {
+				cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' })
+			});
+			const upstream = resource === 'history' ? setup.client.priceIndex.history : setup.evidence;
+			vi.mocked(upstream).mockRejectedValueOnce(failure);
+			mockCreateParchmentServerClient.mockResolvedValue(setup.client);
+
+			const loadPromise = runLoad(cookieSessionPrincipal('member', { ppiAccess: true }));
+			// Let the rejection cross an event-loop turn before SSR can attach its
+			// streamed response handlers. Vitest fails on any unhandled rejection.
+			await vi.waitFor(() => expect(upstream).toHaveBeenCalledOnce());
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			releaseOverview();
+
+			const result = await loadPromise;
+			await expect(
+				resource === 'history' ? result.analyticsCharts : result.analyticsMember
+			).rejects.toBe(failure);
+			await expect(
+				resource === 'history' ? result.analyticsMember : result.analyticsCharts
+			).resolves.toBeTruthy();
+			await expect(result.analyticsCoverage).resolves.toBeTruthy();
+			await expect(result.analyticsWatchlist).resolves.toEqual({ trackedLots: [] });
+		}
+	);
+
 	it('starts independent streamed reads before the overview response settles', async () => {
 		const setup = createAnalyticsClient();
 		let releaseOverview!: () => void;

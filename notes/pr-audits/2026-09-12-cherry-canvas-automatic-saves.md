@@ -32,3 +32,13 @@ Successor to [coffee-app #614](https://github.com/reedwhetstone/coffee-app/pull/
 - `VALIDATION_PASS`: `pnpm lint` and `git diff --check`.
 - `VALIDATION_PASS`: the current correction closes the live P2 unload-quota finding with focused rejection, replay, stale-record, and normal-save cleanup coverage. Final review remains separate; merge remains Reed's decision.
 - Tests and static validation use repository example environment values and local Node 24.19.0 (repo declares Node 22). No production user data is changed by validation. Authenticated production behavior is unverified; unload tests prove the constructed body, not the browser's delivery after closure.
+
+## Playwright failure correction
+
+The [failed Playwright run](https://github.com/reedwhetstone/coffee-app/actions/runs/34704627287) passed 47 tests, then the dev server exited with an unhandled `fetch failed` / `ECONNRESET` during `/analytics`. The remaining protected-page failures were connection refusals after that exit.
+
+Analytics started independent chart and member requests but attached their rejection handlers only after awaiting the market overview. An early upstream rejection therefore escaped while that overview was pending. The correction attaches handlers before that wait and returns the original promises, preserving section-level failures and independent successful sections. Canvas behavior is unchanged.
+
+- Regression proof: both early-history and early-evidence connection-reset fixtures produced unhandled rejections on the unchanged PR head (test command exit 1).
+- `VALIDATION_PASS`: `pnpm test src/routes/analytics/page.server.test.ts src/routes/analytics/page.svelte.test.ts src/lib/server/marketIndex.test.ts`, 54 tests, no unhandled rejections after the correction.
+- Remote Playwright must verify the authenticated browser suite on the corrected head; local regression tests use synthetic SDK responses, not production credentials.
