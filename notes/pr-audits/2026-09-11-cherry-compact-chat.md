@@ -2,7 +2,7 @@
 
 ## Outcome and sequence
 
-Implements the first recommended pass from the [66-point audit, PR #611](https://github.com/reedwhetstone/coffee-app/pull/611), stacked on the integrated workspace in [PR #610](https://github.com/reedwhetstone/coffee-app/pull/610). The [overhaul plan](../implementation-plans/2026-09-11-cherry-agent-overhaul.md) retains the larger connected-conversation/evidence outcome.
+Implements the first recommended pass from the [66-point audit, PR #611](https://github.com/reedwhetstone/coffee-app/pull/611), originally stacked on the integrated workspace in [PR #610](https://github.com/reedwhetstone/coffee-app/pull/610). The [overhaul plan](../implementation-plans/2026-09-11-cherry-agent-overhaul.md) retains the larger connected-conversation/evidence outcome.
 
 - Desktop `/chat` has no dedicated identity strip or decorative outer gutters. The existing app rail and bounded transcript/composer widths remain.
 - Page evidence and conversation actions sit beside the composer. Context inclusion and suggestions are available through compact, bounded upward disclosures; context opt-outs retain their actual request semantics.
@@ -48,3 +48,14 @@ The browser harness mounts the actual root layout, `/chat` page and child compon
 - [Laptop conversation](assets/cherry-compact/laptop-settled.png), [desktop conversation](assets/cherry-compact/desktop-settled.png), [mobile conversation](assets/cherry-compact/mobile-settled.png)
 - [Laptop context](assets/cherry-compact/laptop-context.png), [mobile context](assets/cherry-compact/mobile-context.png), [mobile evidence](assets/cherry-compact/mobile-evidence.png)
 - [Working](assets/cherry-compact/laptop-working.png), [mobile error](assets/cherry-compact/mobile-error.png), [mobile drawer](assets/cherry-compact/mobile-drawer.png), [narrow drawer](assets/cherry-compact/narrow-drawer.png)
+
+## September 12 main-branch delivery correction
+
+[PR #613](https://github.com/reedwhetstone/coffee-app/pull/613) merged into the old `openclaw/cherry-integrated-workspace` branch at `67f0a39b`, not into `main`. #610 had already merged before that branch received the compact-layout commit. Production commit `b44cb16e` therefore contained #610, #614 and #615, but not #613. This was a PR-target/sequence error, not stale browser cache or a release flag.
+
+The correction cherry-picks the original compact-layout commit `0a23edba` onto current `origin/main` at `b44cb16e`. The commit applies without conflicts. The main-relative ChatWorkspace diff contains only control placement and related UI changes; automatic compression, terminal-error handling, unload replay, and the analytics rejection fix are retained.
+
+- `VALIDATION_PASS`: 150 focused tests across 21 files cover the compact chat and mobile controls together with canvas/store/route persistence and recovery.
+- `VALIDATION_PASS`: all 27 browser journey groups on the combined implementation, including desktop, mobile, 320px narrow and 200%-equivalent reflow. Screenshots and geometry are refreshed, not inherited from the retired feature preview.
+- `VALIDATION_PASS`: strict type checks (zero errors/warnings), repository lint, and `git diff --check`.
+- The correction PR targets `main` directly. Normal merge and deployment deliver the UI without a separate activation step. Production UI remains unchanged until that merge/deploy.
