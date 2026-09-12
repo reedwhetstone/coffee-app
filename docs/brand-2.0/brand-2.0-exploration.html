@@ -1,0 +1,1281 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>Purveyors Brand 2.0, Design Exploration</title>
+		<style>
+			@font-face {
+				font-family: Newsreader;
+				src: url('./assets/fonts/newsreader-latin-wght-normal.woff2') format('woff2');
+				font-weight: 200 800;
+				font-style: normal;
+			}
+			@font-face {
+				font-family: Newsreader;
+				src: url('./assets/fonts/newsreader-latin-wght-italic.woff2') format('woff2');
+				font-weight: 200 800;
+				font-style: italic;
+			}
+			:root {
+				--canvas: #fcfaf8;
+				--panel: #f7f3ed;
+				--raised: #fff;
+				--ink: #302f2a;
+				--espresso: #292522;
+				--muted: #695c4d;
+				--line: #e4e4e2;
+				--accent: #f9a57b;
+				--rust: #c05b2e;
+				--gold: #d9a05b;
+				--olive: #586048;
+				--green: #7fb069;
+				--teal: #4e8098;
+				--plum: #6d5bd0;
+				--wine: #9c4356;
+				--sans:
+					Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+				--serif: Newsreader, Georgia, Cambria, serif;
+				--mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			html,
+			body {
+				margin: 0;
+				padding: 0;
+				color: var(--ink);
+				background: #d8d2ca;
+				font-family: var(--sans);
+			}
+			@page {
+				size: 13.333in 7.5in;
+				margin: 0;
+			}
+			.slide {
+				width: 13.333in;
+				height: 7.5in;
+				position: relative;
+				overflow: hidden;
+				background: var(--canvas);
+				page-break-after: always;
+				padding: 0.54in 0.66in 0.48in;
+			}
+			.slide:last-child {
+				page-break-after: auto;
+			}
+			.slide::after {
+				content: attr(data-n);
+				position: absolute;
+				right: 0.42in;
+				bottom: 0.25in;
+				color: #9a9085;
+				font: 500 9px/1 var(--mono);
+				letter-spacing: 0.12em;
+			}
+			.grain::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				pointer-events: none;
+				opacity: 0.13;
+				background-image: radial-gradient(#6b5f53 0.45px, transparent 0.6px);
+				background-size: 5px 5px;
+				mix-blend-mode: multiply;
+			}
+			h1,
+			h2,
+			h3,
+			p {
+				margin: 0;
+			}
+			h1,
+			h2,
+			.serif {
+				font-family: var(--serif);
+				font-weight: 500;
+				letter-spacing: -0.025em;
+			}
+			h1 {
+				font-size: 48px;
+				line-height: 0.98;
+			}
+			h2 {
+				font-size: 35px;
+				line-height: 1.02;
+			}
+			h3 {
+				font-size: 16px;
+				line-height: 1.15;
+			}
+			p,
+			li {
+				font-size: 13px;
+				line-height: 1.48;
+			}
+			.kicker {
+				color: var(--rust);
+				font-size: 10px;
+				line-height: 1;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				font-weight: 700;
+				margin-bottom: 14px;
+			}
+			.deckmark {
+				position: absolute;
+				left: 0.66in;
+				top: 0.25in;
+				font: 600 11px/1 var(--serif);
+			}
+			.meta {
+				font: 500 9px/1.4 var(--mono);
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--muted);
+			}
+			.sub {
+				color: var(--muted);
+				font-size: 16px;
+				line-height: 1.45;
+			}
+			.small {
+				color: var(--muted);
+				font-size: 11px;
+			}
+			.grid2 {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 28px;
+			}
+			.grid3 {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 16px;
+			}
+			.grid4 {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: 12px;
+			}
+			.panel {
+				border: 1px solid var(--line);
+				background: rgba(255, 255, 255, 0.68);
+				border-radius: 8px;
+				padding: 16px;
+			}
+			.rule {
+				height: 1px;
+				background: var(--line);
+			}
+			.spine {
+				position: relative;
+				padding-left: 20px;
+			}
+			.spine::before {
+				content: '';
+				position: absolute;
+				left: 0;
+				top: 0;
+				bottom: 0;
+				width: 5px;
+				background: linear-gradient(var(--rust) 0 34%, var(--gold) 34% 66%, var(--olive) 66%);
+			}
+			.dot {
+				width: 8px;
+				height: 8px;
+				border-radius: 50%;
+				display: inline-block;
+				margin-right: 6px;
+			}
+			.chip {
+				display: inline-block;
+				padding: 5px 9px;
+				border-radius: 999px;
+				border: 1px solid var(--line);
+				background: var(--raised);
+				color: var(--muted);
+				font-size: 10px;
+			}
+			.image-frame {
+				border: 1px solid var(--line);
+				background: #eee8df;
+				overflow: hidden;
+			}
+			.image-frame img {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				display: block;
+			}
+			.slide-title {
+				display: flex;
+				justify-content: space-between;
+				align-items: flex-end;
+				gap: 30px;
+				margin-bottom: 20px;
+			}
+			.slide-title .right {
+				max-width: 3.6in;
+				text-align: right;
+			}
+			.num {
+				font: 500 36px/1 var(--serif);
+				color: var(--rust);
+			}
+			.big-stat {
+				font: 500 38px/1 var(--serif);
+			}
+			.pillrow {
+				display: flex;
+				gap: 7px;
+				flex-wrap: wrap;
+			}
+			.quote {
+				font: italic 500 24px/1.28 var(--serif);
+			}
+			.swatch {
+				height: 72px;
+				border: 1px solid rgba(48, 47, 42, 0.12);
+				padding: 9px;
+				display: flex;
+				flex-direction: column;
+				justify-content: flex-end;
+			}
+			.swatch b {
+				font-size: 10px;
+			}
+			.swatch span {
+				font: 500 8px/1.4 var(--mono);
+				opacity: 0.72;
+			}
+			.flow {
+				display: flex;
+				align-items: center;
+				gap: 9px;
+			}
+			.flow .node {
+				flex: 1;
+				min-height: 90px;
+				border: 1px solid var(--line);
+				padding: 13px;
+				background: rgba(255, 255, 255, 0.7);
+			}
+			.flow .arrow {
+				color: var(--rust);
+				font-size: 22px;
+			}
+			.caption {
+				margin-top: 8px;
+				font-size: 9px;
+				color: var(--muted);
+				line-height: 1.45;
+			}
+			.fullbleed {
+				padding: 0;
+			}
+			.fullbleed::after {
+				color: #fff9;
+			}
+			.fullbleed img {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+			}
+			.overlay {
+				position: absolute;
+				inset: 0;
+				padding: 0.68in;
+				background: linear-gradient(
+					90deg,
+					rgba(35, 31, 27, 0.92) 0,
+					rgba(35, 31, 27, 0.68) 35%,
+					rgba(35, 31, 27, 0.05) 73%
+				);
+				color: #fff;
+			}
+			.current-shot {
+				height: 4.98in;
+			}
+			.concept-shot {
+				height: 5.25in;
+			}
+			.checklist {
+				list-style: none;
+				padding: 0;
+				margin: 0;
+			}
+			.checklist li {
+				position: relative;
+				padding: 0 0 10px 18px;
+			}
+			.checklist li::before {
+				content: '';
+				position: absolute;
+				left: 0;
+				top: 6px;
+				width: 7px;
+				height: 7px;
+				border-radius: 50%;
+				background: var(--rust);
+			}
+			.timeline {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: 0;
+				margin-top: 28px;
+			}
+			.phase {
+				border-top: 2px solid var(--line);
+				padding: 15px 16px 0 0;
+				position: relative;
+			}
+			.phase::before {
+				content: '';
+				position: absolute;
+				width: 10px;
+				height: 10px;
+				border-radius: 50%;
+				background: var(--rust);
+				top: -6px;
+				left: 0;
+			}
+			.phase + .phase {
+				padding-left: 16px;
+			}
+			.metricbar {
+				height: 6px;
+				background: #eee8e1;
+				margin: 8px 0 16px;
+			}
+			.metricbar span {
+				display: block;
+				height: 100%;
+				background: var(--rust);
+			}
+			.dark {
+				background: var(--espresso);
+				color: #e7dfd3;
+			}
+			.dark .sub,
+			.dark .small,
+			.dark .meta {
+				color: #bcb1a3;
+			}
+			.dark .panel {
+				background: rgba(255, 255, 255, 0.035);
+				border-color: #4a443e;
+			}
+			.dark .rule {
+				background: #4a443e;
+			}
+			.motif-lines {
+				position: absolute;
+				right: -80px;
+				top: -40px;
+				width: 620px;
+				height: 360px;
+				opacity: 0.23;
+				background: repeating-radial-gradient(
+					ellipse at center,
+					transparent 0 10px,
+					var(--rust) 11px 12px,
+					transparent 13px 19px
+				);
+				transform: rotate(-10deg);
+			}
+			.no-num::after {
+				content: '';
+			}
+		</style>
+	</head>
+	<body>
+		<section class="slide fullbleed no-num grain">
+			<img
+				src="./assets/concepts/terrain-becomes-data.png"
+				alt="Coffee terrain merging into maps and a data line"
+			/>
+			<div class="overlay">
+				<div class="meta" style="color: var(--accent); margin-bottom: 28px">
+					Design exploration · September 2026
+				</div>
+				<h1 style="font-size: 66px; max-width: 5.2in">Purveyors<br />Brand 2.0</h1>
+				<p
+					class="serif"
+					style="font-size: 25px; line-height: 1.2; max-width: 4.2in; margin-top: 22px"
+				>
+					The living ledger of the green coffee market.
+				</p>
+				<p style="max-width: 3.7in; margin-top: 30px; color: #d7cec2">
+					A professional brand, design-system, and UI/UX direction built from the current
+					field-journal foundation.
+				</p>
+				<div style="position: absolute; left: 0.68in; bottom: 0.55in" class="meta">
+					Prepared for Purveyors · Exploration, not implementation specification
+				</div>
+			</div>
+		</section>
+
+		<section class="slide grain" data-n="02">
+			<div class="deckmark">Purveyors / Brand 2.0</div>
+			<div style="margin-top: 0.55in" class="kicker">Executive recommendation</div>
+			<h1 style="max-width: 9.3in">
+				Do not redesign the brand. Make its intelligence unmistakably proprietary.
+			</h1>
+			<div class="grid3" style="margin-top: 34px">
+				<div class="panel spine">
+					<div class="num">01</div>
+					<h3 style="margin: 13px 0 7px">Keep the foundation</h3>
+					<p>
+						Warm canvas, Newsreader headlines, calm density, peach action color, earth-tone chart
+						system, and the “field journal” idea are all sound.
+					</p>
+				</div>
+				<div class="panel spine">
+					<div class="num">02</div>
+					<h3 style="margin: 13px 0 7px">Own the proof layer</h3>
+					<p>
+						Turn source records, freshness, confidence, lot identity, and movement into visible UI
+						signatures, not supporting metadata.
+					</p>
+				</div>
+				<div class="panel spine">
+					<div class="num">03</div>
+					<h3 style="margin: 13px 0 7px">Design the decision loop</h3>
+					<p>
+						Every key surface should move from market signal to evidence to comparison to action,
+						without forcing users through product silos.
+					</p>
+				</div>
+			</div>
+			<div
+				class="panel"
+				style="
+					margin-top: 22px;
+					background: var(--espresso);
+					color: #eee6db;
+					display: flex;
+					align-items: center;
+					justify-content: space-between;
+				"
+			>
+				<p class="serif" style="font-size: 25px; max-width: 7.6in">
+					Brand 2.0 = a field journal that behaves like a market instrument.
+				</p>
+				<span class="meta" style="color: var(--accent)">Recommended north star</span>
+			</div>
+		</section>
+
+		<section class="slide" data-n="03">
+			<div class="deckmark">Baseline audit</div>
+			<div class="slide-title" style="margin-top: 0.48in">
+				<div>
+					<div class="kicker">What is already working</div>
+					<h2>The current homepage has a real point of view.</h2>
+				</div>
+				<p class="right small">Live capture from purveyors.io, September 12, 2026.</p>
+			</div>
+			<div class="grid2" style="grid-template-columns: 1.45fr 0.55fr">
+				<div class="image-frame current-shot">
+					<img
+						src="./assets/current/home-desktop.jpg"
+						style="object-position: top"
+						alt="Current Purveyors homepage"
+					/>
+				</div>
+				<div>
+					<div class="panel">
+						<h3>Strong signals</h3>
+						<ul class="checklist" style="margin-top: 14px">
+							<li>Editorial typography immediately lifts the category.</li>
+							<li>Warm surfaces avoid enterprise-software coldness.</li>
+							<li>Market proof appears before the paywall.</li>
+							<li>Product architecture is becoming legible.</li>
+							<li>The dark Cherry card creates a useful focal point.</li>
+						</ul>
+					</div>
+					<div class="panel spine" style="margin-top: 14px">
+						<h3>Core observation</h3>
+						<p style="margin-top: 8px">
+							The redesign work from July is visible. Brand 2.0 should compound it, not restart it.
+						</p>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="slide" data-n="04">
+			<div class="deckmark">Baseline audit</div>
+			<div class="slide-title" style="margin-top: 0.48in">
+				<div>
+					<div class="kicker">Where the system still flattens</div>
+					<h2>The product is credible, but too many surfaces still resolve to “good warm SaaS.”</h2>
+				</div>
+			</div>
+			<div class="grid2" style="grid-template-columns: 1fr 1fr; gap: 18px">
+				<div class="image-frame" style="height: 3.85in">
+					<img
+						src="./assets/current/catalog-desktop.jpg"
+						style="object-position: top"
+						alt="Current catalog"
+					/>
+				</div>
+				<div class="image-frame" style="height: 3.85in">
+					<img
+						src="./assets/current/market-index-desktop.jpg"
+						style="object-position: top"
+						alt="Current Market Index"
+					/>
+				</div>
+			</div>
+			<div class="grid4" style="margin-top: 16px">
+				<div>
+					<h3>Card repetition</h3>
+					<p class="small" style="margin-top: 5px">
+						Borders and rectangles do most of the structure work, so distinct products can feel
+						visually interchangeable.
+					</p>
+				</div>
+				<div>
+					<h3>Evidence is secondary</h3>
+					<p class="small" style="margin-top: 5px">
+						Provenance exists, but it is not yet the strongest visual signature of the experience.
+					</p>
+				</div>
+				<div>
+					<h3>Scan-to-action gap</h3>
+					<p class="small" style="margin-top: 5px">
+						Catalog and index support reading well, but comparison and next-step affordances are
+						understated.
+					</p>
+				</div>
+				<div>
+					<h3>Limited image identity</h3>
+					<p class="small" style="margin-top: 5px">
+						Brand imagery is coherent but sparse. Real field texture has not become a reusable
+						system.
+					</p>
+				</div>
+			</div>
+		</section>
+
+		<section class="slide grain dark" data-n="05">
+			<div class="motif-lines"></div>
+			<div class="deckmark">Brand north star</div>
+			<div style="margin-top: 0.8in; max-width: 10.8in">
+				<div class="kicker">The living ledger</div>
+				<h1 style="font-size: 58px">
+					Every signal begins with a real place, lot, supplier, and moment in time.
+				</h1>
+			</div>
+			<div class="flow" style="margin-top: 46px">
+				<div class="node">
+					<span class="meta">01 / Observe</span>
+					<h3 style="margin: 12px 0 6px; color: #fff">Field reality</h3>
+					<p class="small">Origin, process, harvest, offer, inventory, and roast context.</p>
+				</div>
+				<div class="arrow">→</div>
+				<div class="node">
+					<span class="meta">02 / Structure</span>
+					<h3 style="margin: 12px 0 6px; color: #fff">Evidence ledger</h3>
+					<p class="small">
+						Normalize, timestamp, attribute, score completeness, expose confidence.
+					</p>
+				</div>
+				<div class="arrow">→</div>
+				<div class="node">
+					<span class="meta">03 / Interpret</span>
+					<h3 style="margin: 12px 0 6px; color: #fff">Market read</h3>
+					<p class="small">Movement, supplier change, relative value, and operational fit.</p>
+				</div>
+				<div class="arrow">→</div>
+				<div class="node">
+					<span class="meta">04 / Act</span>
+					<h3 style="margin: 12px 0 6px; color: #fff">Decision brief</h3>
+					<p class="small">
+						Compare, save, share, source, roast, or automate with traceability intact.
+					</p>
+				</div>
+			</div>
+			<p class="quote" style="margin-top: 35px; max-width: 8.4in; color: var(--accent)">
+				The brand promise is legibility under uncertainty.
+			</p>
+		</section>
+
+		<section class="slide grain" data-n="06">
+			<div class="deckmark">Experience architecture</div>
+			<div class="slide-title" style="margin-top: 0.48in">
+				<div>
+					<div class="kicker">One system, three contexts</div>
+					<h2>
+						Organize the experience around the user’s question, then disclose where the answer came
+						from.
+					</h2>
+				</div>
+			</div>
+			<div class="grid3" style="margin-top: 22px">
+				<div class="panel" style="border-top: 5px solid var(--teal)">
+					<span class="meta">Parchment</span>
+					<h3 class="serif" style="font-size: 26px; margin: 14px 0 8px">The market outside</h3>
+					<p>Catalog, suppliers, prices, movement, provenance, and API contracts.</p>
+					<div class="pillrow" style="margin-top: 17px">
+						<span class="chip">Market Index</span><span class="chip">Catalog</span
+						><span class="chip">API</span>
+					</div>
+				</div>
+				<div class="panel" style="border-top: 5px solid var(--olive)">
+					<span class="meta">Mallard Studio</span>
+					<h3 class="serif" style="font-size: 26px; margin: 14px 0 8px">The operation inside</h3>
+					<p>Inventory, roasts, tasting, sales, margin, and team context.</p>
+					<div class="pillrow" style="margin-top: 17px">
+						<span class="chip">Inventory</span><span class="chip">Roasts</span
+						><span class="chip">Profit</span>
+					</div>
+				</div>
+				<div class="panel" style="border-top: 5px solid var(--rust)">
+					<span class="meta">Cherry</span>
+					<h3 class="serif" style="font-size: 26px; margin: 14px 0 8px">
+						The decision across both
+					</h3>
+					<p>Role-aware reasoning and actions grounded in the contexts the user actually has.</p>
+					<div class="pillrow" style="margin-top: 17px">
+						<span class="chip">Analyze</span><span class="chip">Compare</span
+						><span class="chip">Act</span>
+					</div>
+				</div>
+			</div>
+			<div
+				class="panel spine"
+				style="
+					margin-top: 24px;
+					display: grid;
+					grid-template-columns: 1fr 2fr;
+					gap: 24px;
+					align-items: center;
+				"
+			>
+				<h3 class="serif" style="font-size: 24px">Navigation principle</h3>
+				<p>
+					Preserve product names for orientation, but let shared workflows cross product boundaries.
+					A sourcing brief may combine Parchment evidence, Mallard constraints, and Cherry
+					interpretation without making the user understand the architecture first.
+				</p>
+			</div>
+		</section>
+
+		<section class="slide" data-n="07">
+			<div class="deckmark">Visual system</div>
+			<div class="slide-title" style="margin-top: 0.48in">
+				<div>
+					<div class="kicker">Color roles</div>
+					<h2>Keep the current palette. Tighten its jobs.</h2>
+				</div>
+				<p class="right small">
+					Orange remains the brand/action accent. Cool colors earn their place through data and
+					context.
+				</p>
+			</div>
+			<div class="grid4" style="gap: 10px">
+				<div class="swatch" style="background: #fcfaf8"><b>Canvas</b><span>#FCFAF8</span></div>
+				<div class="swatch" style="background: #f7f3ed"><b>Panel</b><span>#F7F3ED</span></div>
+				<div class="swatch" style="background: #302f2a; color: #fff">
+					<b>Ink</b><span>#302F2A</span>
+				</div>
+				<div class="swatch" style="background: #f9a57b"><b>Action</b><span>#F9A57B</span></div>
+				<div class="swatch" style="background: #c05b2e; color: #fff">
+					<b>Movement / rust</b><span>#C05B2E</span>
+				</div>
+				<div class="swatch" style="background: #586048; color: #fff">
+					<b>Field / olive</b><span>#586048</span>
+				</div>
+				<div class="swatch" style="background: #4e8098; color: #fff">
+					<b>Data / teal</b><span>#4E8098</span>
+				</div>
+				<div class="swatch" style="background: #d9a05b">
+					<b>Attention / ochre</b><span>#D9A05B</span>
+				</div>
+			</div>
+			<div class="grid2" style="margin-top: 26px">
+				<div>
+					<div class="kicker">Typography</div>
+					<p class="serif" style="font-size: 34px; line-height: 1.05">
+						Newsreader carries the read.
+					</p>
+					<p style="font-weight: 650; font-size: 16px; margin-top: 11px">
+						System sans carries the work.
+					</p>
+					<p class="small" style="margin-top: 10px">
+						Serif is for editorial statements, market reads, and chapter titles. Sans is for
+						controls, tables, charts, and operational density. Monospace is reserved for time,
+						price, IDs, and machine contracts.
+					</p>
+				</div>
+				<div>
+					<div class="kicker">Use color sparingly</div>
+					<ul class="checklist">
+						<li>Peach: primary action or selected state, not ambient decoration.</li>
+						<li>Rust, teal, olive, wine: encode meaning in charts and signal rails.</li>
+						<li>Espresso: editorial emphasis and trusted handoff moments.</li>
+						<li>Never rely on color alone for status or confidence.</li>
+					</ul>
+				</div>
+			</div>
+		</section>
+
+		<section class="slide" data-n="08">
+			<div class="deckmark">Signature primitives</div>
+			<div class="slide-title" style="margin-top: 0.48in">
+				<div>
+					<div class="kicker">Recognizable without a logo</div>
+					<h2>Six elements that make the interface feel owned.</h2>
+				</div>
+			</div>
+			<div class="grid3">
+				<div class="panel spine">
+					<span class="meta">01</span>
+					<h3 style="margin: 10px 0 7px">Evidence rail</h3>
+					<p class="small">
+						A thin vertical line that encodes source type or confidence and always leads to the
+						source record.
+					</p>
+				</div>
+				<div class="panel">
+					<span class="meta">02</span>
+					<h3 style="margin: 10px 0 7px">Lot identity strip</h3>
+					<p class="small">
+						Origin · region · process · harvest · supplier, in a fixed order that trains scanning
+						across the product.
+					</p>
+				</div>
+				<div class="panel">
+					<span class="meta">03</span>
+					<h3 style="margin: 10px 0 7px">Freshness clock</h3>
+					<p class="small">
+						Timestamp + human interval + source heartbeat. “Updated 2h ago” is proof, not
+						decoration.
+					</p>
+				</div>
+				<div class="panel">
+					<span class="meta">04</span>
+					<h3 style="margin: 10px 0 7px">Signal trace</h3>
+					<p class="small">
+						A restrained line, seam, or ledger tick for movement. It replaces decorative graphs and
+						blobs.
+					</p>
+				</div>
+				<div class="panel">
+					<span class="meta">05</span>
+					<h3 style="margin: 10px 0 7px">Decision brief</h3>
+					<p class="small">
+						A reusable artifact with claim, supporting evidence, confidence, constraints, and next
+						actions.
+					</p>
+				</div>
+				<div class="panel">
+					<span class="meta">06</span>
+					<h3 style="margin: 10px 0 7px">Terrain contour</h3>
+					<p class="small">
+						A quiet mapping motif for chapter boundaries and empty regions, never behind dense data
+						or copy.
+					</p>
+				</div>
+			</div>
+			<div class="rule" style="margin: 25px 0 16px"></div>
+			<div class="flow">
+				<div class="chip">Signal</div>
+				<div class="arrow">→</div>
+				<div class="chip">Source</div>
+				<div class="arrow">→</div>
+				<div class="chip">Compare</div>
+				<div class="arrow">→</div>
+				<div class="chip">Decision</div>
+				<div class="arrow">→</div>
+				<div
+					class="chip"
+					style="background: var(--accent); color: var(--ink); border-color: var(--accent)"
+				>
+					Act
+				</div>
+			</div>
+			<p class="caption">
+				This sequence should be visible in every important workflow, even when the steps collapse
+				into one screen.
+			</p>
+		</section>
+
+		<section class="slide" data-n="09">
+			<div class="deckmark">Concept / Homepage</div>
+			<div class="slide-title" style="margin-top: 0.4in">
+				<div>
+					<div class="kicker">The living market ledger</div>
+					<h2>Lead with a market read, then let the page prove it.</h2>
+				</div>
+				<p class="right small">
+					Exploratory AI-generated UI. Directional composition, not pixel specification.
+				</p>
+			</div>
+			<div class="image-frame concept-shot">
+				<img src="./assets/concepts/home-ledger.png" alt="Brand 2.0 homepage concept" />
+			</div>
+		</section>
+
+		<section class="slide" data-n="10">
+			<div class="deckmark">Homepage rationale</div>
+			<div style="margin-top: 0.55in" class="grid2">
+				<div>
+					<div class="kicker">What changes</div>
+					<h2 style="font-size: 42px">From product brochure to living proof.</h2>
+					<p class="sub" style="margin-top: 18px">
+						The homepage becomes a composed editorial spread where live offers, supplier movement,
+						and evidence are the visual centerpiece.
+					</p>
+				</div>
+				<div class="grid2" style="gap: 12px">
+					<div class="panel">
+						<span class="num">1</span>
+						<h3 style="margin: 10px 0 5px">One claim</h3>
+						<p class="small">A shorter hero promise with one market-led primary action.</p>
+					</div>
+					<div class="panel">
+						<span class="num">2</span>
+						<h3 style="margin: 10px 0 5px">One live read</h3>
+						<p class="small">
+							Use current data so the brand demonstrates intelligence immediately.
+						</p>
+					</div>
+					<div class="panel">
+						<span class="num">3</span>
+						<h3 style="margin: 10px 0 5px">One evidence system</h3>
+						<p class="small">Sources, dates, and coverage become a repeatable visual signature.</p>
+					</div>
+					<div class="panel">
+						<span class="num">4</span>
+						<h3 style="margin: 10px 0 5px">Three pathways</h3>
+						<p class="small">
+							Parchment, Mallard, and API remain clear without dominating the story.
+						</p>
+					</div>
+				</div>
+			</div>
+			<div class="panel spine" style="margin-top: 30px">
+				<h3>Copy direction</h3>
+				<p class="serif" style="font-size: 25px; margin-top: 9px">
+					“The whole green coffee market, made legible.”
+				</p>
+				<p class="small" style="margin-top: 6px">
+					Recommended as campaign / exploration language. Validate against product positioning
+					before replacing the current homepage H1.
+				</p>
+			</div>
+		</section>
+
+		<section class="slide" data-n="11">
+			<div class="deckmark">Concept / Market Index</div>
+			<div class="slide-title" style="margin-top: 0.4in">
+				<div>
+					<div class="kicker">Evidence cockpit</div>
+					<h2>Every market claim should open into its proof.</h2>
+				</div>
+				<p class="right small">
+					The evidence drawer is the key Brand 2.0 interaction, not ornamental chart styling.
+				</p>
+			</div>
+			<div class="image-frame concept-shot">
+				<img
+					src="./assets/concepts/market-index-evidence.png"
+					alt="Market Index concept with evidence drawer"
+				/>
+			</div>
+		</section>
+
+		<section class="slide" data-n="12">
+			<div class="deckmark">Concept / Catalog</div>
+			<div class="slide-title" style="margin-top: 0.4in">
+				<div>
+					<div class="kicker">Procurement workspace</div>
+					<h2>Scan fast. Inspect deeply. Compare without losing place.</h2>
+				</div>
+				<p class="right small">
+					Photography is optional and must be source-linked. The interaction model is the real
+					recommendation.
+				</p>
+			</div>
+			<div class="image-frame concept-shot">
+				<img src="./assets/concepts/catalog-compare.png" alt="Catalog comparison concept" />
+			</div>
+		</section>
+
+		<section class="slide" data-n="13">
+			<div class="deckmark">Catalog rationale</div>
+			<div class="slide-title" style="margin-top: 0.48in">
+				<div>
+					<div class="kicker">Progressive disclosure</div>
+					<h2>The card is for scanning. The rail is for deciding.</h2>
+				</div>
+			</div>
+			<div class="flow" style="align-items: stretch">
+				<div class="node">
+					<span class="meta">Collapsed card</span>
+					<h3 style="margin: 12px 0 7px">Identity + economics</h3>
+					<p class="small">
+						Name, supplier, origin, process, freshness, baseline price, tasting cue, Purveyor Score.
+					</p>
+				</div>
+				<div class="arrow" style="align-self: center">→</div>
+				<div class="node">
+					<span class="meta">Detail rail</span>
+					<h3 style="margin: 12px 0 7px">Proof + fit</h3>
+					<p class="small">
+						Process disclosure, source record, price history, availability, confidence, comparison
+						action.
+					</p>
+				</div>
+				<div class="arrow" style="align-self: center">→</div>
+				<div class="node">
+					<span class="meta">Comparison tray</span>
+					<h3 style="margin: 12px 0 7px">Trade-offs</h3>
+					<p class="small">
+						Three to four lots, fixed attributes, visible constraints, no full-page context switch.
+					</p>
+				</div>
+				<div class="arrow" style="align-self: center">→</div>
+				<div class="node">
+					<span class="meta">Decision brief</span>
+					<h3 style="margin: 12px 0 7px">Actionable artifact</h3>
+					<p class="small">
+						Save, share, request sample, confirm availability, or analyze in Cherry.
+					</p>
+				</div>
+			</div>
+			<div class="grid2" style="margin-top: 28px">
+				<div class="panel">
+					<h3>Do</h3>
+					<ul class="checklist" style="margin-top: 12px">
+						<li>Keep results visible while inspecting a lot.</li>
+						<li>Make active filters readable at a glance.</li>
+						<li>Use the same identity ordering everywhere.</li>
+						<li>Explain Purveyor Score at the point of use.</li>
+					</ul>
+				</div>
+				<div class="panel">
+					<h3>Do not</h3>
+					<ul class="checklist" style="margin-top: 12px">
+						<li>Turn the catalog into an ecommerce storefront.</li>
+						<li>Let photography outrank data completeness.</li>
+						<li>Use scores without definition or provenance.</li>
+						<li>Hide supplier links behind generic overflow menus.</li>
+					</ul>
+				</div>
+			</div>
+		</section>
+
+		<section class="slide" data-n="14">
+			<div class="deckmark">Concept / Cherry mobile</div>
+			<div class="slide-title" style="margin-top: 0.4in">
+				<div>
+					<div class="kicker">Decision workflow</div>
+					<h2>Cherry should feel like structured intelligence, not a chatbot.</h2>
+				</div>
+				<p class="right small">
+					Four states: Today, evidence context, lot comparison, saved sourcing brief.
+				</p>
+			</div>
+			<div class="image-frame concept-shot">
+				<img
+					src="./assets/concepts/mobile-cherry-workflow.png"
+					alt="Cherry mobile workflow concept"
+				/>
+			</div>
+		</section>
+
+		<section class="slide" data-n="15">
+			<div class="deckmark">Imagery system</div>
+			<div class="slide-title" style="margin-top: 0.48in">
+				<div>
+					<div class="kicker">Terrain becomes data</div>
+					<h2>Use imagery where emotion and place matter. Use UI where proof matters.</h2>
+				</div>
+			</div>
+			<div class="grid2" style="grid-template-columns: 1.35fr 0.65fr">
+				<div class="image-frame" style="height: 4.7in">
+					<img
+						src="./assets/concepts/terrain-becomes-data.png"
+						alt="Terrain becomes data hero artwork"
+					/>
+				</div>
+				<div>
+					<div class="panel">
+						<h3>Image recipe</h3>
+						<ul class="checklist" style="margin-top: 12px">
+							<li>Real place or material texture</li>
+							<li>Archival botanical linework</li>
+							<li>Quiet terrain / lot contours</li>
+							<li>One restrained signal trace</li>
+							<li>No text baked into reusable artwork</li>
+						</ul>
+					</div>
+					<div class="panel" style="margin-top: 12px">
+						<h3>Use for</h3>
+						<p class="small" style="margin-top: 8px">
+							Homepage hero crops, enterprise moments, About, research/editorial covers, empty-state
+							chapter art.
+						</p>
+					</div>
+					<div class="panel" style="margin-top: 12px">
+						<h3>Avoid</h3>
+						<p class="small" style="margin-top: 8px">
+							Generic farm stock, roasted-bean macro photography, latte art, rustic café signals, or
+							art behind tables and charts.
+						</p>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="slide" data-n="16">
+			<div class="deckmark">Interaction and motion</div>
+			<div class="slide-title" style="margin-top: 0.48in">
+				<div>
+					<div class="kicker">Calm, directional, informative</div>
+					<h2>Motion should explain what changed or where the evidence came from.</h2>
+				</div>
+			</div>
+			<div class="grid4" style="margin-top: 24px">
+				<div class="panel">
+					<span class="meta">120–180ms</span>
+					<h3 style="margin: 13px 0 7px">Controls</h3>
+					<p class="small">State changes and hover feedback. No elastic bounce.</p>
+				</div>
+				<div class="panel">
+					<span class="meta">180–240ms</span>
+					<h3 style="margin: 13px 0 7px">Rails</h3>
+					<p class="small">Detail and evidence panels slide from the contextual edge.</p>
+				</div>
+				<div class="panel">
+					<span class="meta">240–360ms</span>
+					<h3 style="margin: 13px 0 7px">Data change</h3>
+					<p class="small">Charts interpolate only when scope or window changes.</p>
+				</div>
+				<div class="panel">
+					<span class="meta">Reduced motion</span>
+					<h3 style="margin: 13px 0 7px">Respect</h3>
+					<p class="small">Use fades or immediate state changes; preserve all meaning.</p>
+				</div>
+			</div>
+			<div class="panel spine" style="margin-top: 26px">
+				<p class="quote">
+					A user should never wonder whether motion was decoration, loading, or evidence changing.
+				</p>
+			</div>
+			<div class="grid3" style="margin-top: 22px">
+				<div>
+					<h3>Focus</h3>
+					<p class="small" style="margin-top: 6px">
+						2px visible ring, accent or high-contrast ink, with offset on warm surfaces.
+					</p>
+				</div>
+				<div>
+					<h3>Loading</h3>
+					<p class="small" style="margin-top: 6px">
+						Label the object being refreshed: “Updating supplier movement,” not “Loading.”
+					</p>
+				</div>
+				<div>
+					<h3>Feedback</h3>
+					<p class="small" style="margin-top: 6px">
+						Confirm save/share actions inline and preserve the artifact’s state.
+					</p>
+				</div>
+			</div>
+		</section>
+
+		<section class="slide" data-n="17">
+			<div class="deckmark">Quality bar</div>
+			<div class="slide-title" style="margin-top: 0.48in">
+				<div>
+					<div class="kicker">Design governance</div>
+					<h2>Brand quality is a product contract, not a moodboard.</h2>
+				</div>
+			</div>
+			<div class="grid2">
+				<div class="panel">
+					<h3>Accessibility and trust</h3>
+					<ul class="checklist" style="margin-top: 14px">
+						<li>WCAG AA contrast for text and controls.</li>
+						<li>Color-blind-safe chart series, with direct labels.</li>
+						<li>Confidence expressed with text and source count, not hue alone.</li>
+						<li>Keyboard path for drawers, comparison, and evidence records.</li>
+						<li>Reduced-motion and data-refresh announcements.</li>
+					</ul>
+				</div>
+				<div class="panel">
+					<h3>Consistency checks</h3>
+					<ul class="checklist" style="margin-top: 14px">
+						<li>Role tokens only, no raw palette drift in new UI.</li>
+						<li>One identity-field order across cards, rails, tables, and exports.</li>
+						<li>One evidence model across Parchment, Mallard, and Cherry.</li>
+						<li>Editorial serif never leaks into dense operational controls.</li>
+						<li>No invented claims, photography, or provenance.</li>
+					</ul>
+				</div>
+			</div>
+			<div style="margin-top: 26px" class="grid3">
+				<div>
+					<span class="big-stat">≤ 1</span>
+					<p class="small">Primary CTA per anonymous view.</p>
+				</div>
+				<div>
+					<span class="big-stat">3–4</span>
+					<p class="small">Lots in a useful comparison set.</p>
+				</div>
+				<div>
+					<span class="big-stat">100%</span>
+					<p class="small">Decision claims traceable to evidence or clearly labeled inference.</p>
+				</div>
+			</div>
+		</section>
+
+		<section class="slide" data-n="18">
+			<div class="deckmark">Rollout</div>
+			<div class="slide-title" style="margin-top: 0.48in">
+				<div>
+					<div class="kicker">Recommended sequence</div>
+					<h2>Prototype the proof layer before expanding the visual language.</h2>
+				</div>
+			</div>
+			<div class="timeline">
+				<div class="phase">
+					<span class="meta">Phase 1 · 1–2 weeks</span>
+					<h3 style="margin: 12px 0 7px">Codify</h3>
+					<p class="small">
+						Evidence rail, identity strip, freshness clock, decision brief anatomy, and token rules
+						in a component inventory.
+					</p>
+				</div>
+				<div class="phase">
+					<span class="meta">Phase 2 · 2–3 weeks</span>
+					<h3 style="margin: 12px 0 7px">Prototype</h3>
+					<p class="small">
+						Clickable Market Index evidence drawer and catalog compare tray using live, truthful
+						data.
+					</p>
+				</div>
+				<div class="phase">
+					<span class="meta">Phase 3 · 2–4 weeks</span>
+					<h3 style="margin: 12px 0 7px">Validate</h3>
+					<p class="small">
+						Test with professional buyers and roasters on scan speed, confidence, and action
+						completion.
+					</p>
+				</div>
+				<div class="phase">
+					<span class="meta">Phase 4 · ongoing</span>
+					<h3 style="margin: 12px 0 7px">Expand</h3>
+					<p class="small">
+						Homepage, Cherry, imagery library, motion, docs, and brand governance after the
+						interaction primitives prove useful.
+					</p>
+				</div>
+			</div>
+			<div class="grid2" style="margin-top: 34px">
+				<div class="panel spine">
+					<h3>First implementation candidate</h3>
+					<p style="margin-top: 7px">
+						Market Index evidence drawer. It is high leverage, visibly differentiated, and exercises
+						the brand promise without requiring a site-wide redesign.
+					</p>
+				</div>
+				<div class="panel">
+					<h3>Success signals</h3>
+					<p class="small" style="margin-top: 9px">
+						Faster source inspection · more comparison starts · more saved briefs · fewer navigation
+						hops · stronger confidence in data recency.
+					</p>
+				</div>
+			</div>
+		</section>
+
+		<section class="slide grain dark" data-n="19">
+			<div class="deckmark">Decisions</div>
+			<div class="motif-lines"></div>
+			<div class="slide-title" style="margin-top: 0.48in">
+				<div>
+					<div class="kicker">What to decide next</div>
+					<h2 style="font-size: 46px">Five decisions unlock a buildable Brand 2.0.</h2>
+				</div>
+			</div>
+			<div class="grid2" style="gap: 14px">
+				<div class="panel">
+					<span class="meta">01</span>
+					<h3 style="margin: 8px 0 5px; color: #fff">Adopt the “living ledger” articulation?</h3>
+					<p class="small">
+						Recommended as the internal design north star, not necessarily the public tagline.
+					</p>
+				</div>
+				<div class="panel">
+					<span class="meta">02</span>
+					<h3 style="margin: 8px 0 5px; color: #fff">Make evidence a persistent side rail?</h3>
+					<p class="small">Recommended for Market Index, catalog details, and Cherry artifacts.</p>
+				</div>
+				<div class="panel">
+					<span class="meta">03</span>
+					<h3 style="margin: 8px 0 5px; color: #fff">Add source-linked lot photography?</h3>
+					<p class="small">
+						Only when coverage and rights are reliable; never make it a required card field.
+					</p>
+				</div>
+				<div class="panel">
+					<span class="meta">04</span>
+					<h3 style="margin: 8px 0 5px; color: #fff">Standardize a comparison tray?</h3>
+					<p class="small">Recommended as a shared pattern across catalog and Cherry workflows.</p>
+				</div>
+				<div class="panel">
+					<span class="meta">05</span>
+					<h3 style="margin: 8px 0 5px; color: #fff">Commission the terrain-data asset family?</h3>
+					<p class="small">Prototype one hero and one editorial cover first, then assess reuse.</p>
+				</div>
+				<div class="panel" style="border-color: var(--accent)">
+					<span class="meta" style="color: var(--accent)">Guardrail</span>
+					<h3 style="margin: 8px 0 5px; color: #fff">
+						Treat all generated screens as directional.
+					</h3>
+					<p class="small">
+						Copy, metrics, photography, and field availability must be verified before
+						implementation.
+					</p>
+				</div>
+			</div>
+		</section>
+
+		<section class="slide fullbleed no-num grain">
+			<img src="./assets/concepts/terrain-becomes-data.png" alt="Terrain and market signal" />
+			<div
+				class="overlay"
+				style="
+					background: linear-gradient(
+						90deg,
+						rgba(35, 31, 27, 0.92),
+						rgba(35, 31, 27, 0.5) 52%,
+						rgba(35, 31, 27, 0.08)
+					);
+					display: flex;
+					flex-direction: column;
+					justify-content: center;
+				"
+			>
+				<div class="kicker">Purveyors Brand 2.0</div>
+				<h1 style="font-size: 62px; max-width: 6.5in">
+					Make the market legible.<br />Make the evidence visible.
+				</h1>
+				<p style="margin-top: 25px; max-width: 4.7in; color: #d7cec2">
+					Recommended next move: prototype the Market Index evidence drawer and catalog comparison
+					tray before commissioning a full visual rollout.
+				</p>
+				<div class="meta" style="position: absolute; left: 0.68in; bottom: 0.55in">
+					Exploration package · Source HTML and generated assets included
+				</div>
+			</div>
+		</section>
+	</body>
+</html>
