@@ -109,6 +109,16 @@ describe('canvas state persistence codec', () => {
 		}
 	);
 
+	it('keeps the legacy cutoff in serialized characters for Unicode state', () => {
+		const state = { text: '界'.repeat(70_000) };
+		const serialized = JSON.stringify(state);
+
+		expect(serialized.length).toBeLessThan(MAX_CANVAS_JSON_CHARS);
+		expect(strToU8(serialized).length).toBeGreaterThan(MAX_CANVAS_JSON_CHARS);
+		expect(encodeCanvasState(state)).toBe(state);
+		expect(encodeCanvasState(state, false)).toBe(state);
+	});
+
 	it.each([
 		{ encoding: 'cherry-canvas-gzip-v2', data: '' },
 		{ encoding: 'cherry-canvas-gzip-v1' },
@@ -174,11 +184,11 @@ describe('canvas state persistence codec', () => {
 });
 
 describe('canvas HTTP error classification', () => {
-	it.each([400, 401, 403, 404, 409, 413, 422])('does not retry terminal HTTP %i', (status) => {
+	it.each([400, 401, 403, 404, 413, 422])('does not retry terminal HTTP %i', (status) => {
 		expect(canvasHttpError(status)).toMatchObject({ retryable: false });
 	});
 
-	it.each([408, 429, 500, 502, 503])('permits retrying transient HTTP %i', (status) => {
+	it.each([408, 409, 429, 500, 502, 503])('permits retrying transient HTTP %i', (status) => {
 		expect(canvasHttpError(status)).toMatchObject({ retryable: true });
 	});
 });

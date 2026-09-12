@@ -104,6 +104,45 @@ describe('workspaceStore lifecycle helpers', () => {
 		});
 	});
 
+	it('leaves a repeated canvas conflict retryable for the next background attempt', async () => {
+		const initialWorkspace = { ...workspaceFixture, reset_epoch: 2, canvas_version: 3 };
+		const refreshedWorkspace = { ...initialWorkspace, canvas_version: 8 };
+		const fetchSpy = vi
+			.fn()
+			.mockResolvedValueOnce(new Response(null, { status: 409 }))
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ workspace: refreshedWorkspace, messages: [] }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				})
+			)
+			.mockResolvedValueOnce(new Response(null, { status: 409 }))
+			.mockResolvedValueOnce(
+				new Response(
+					JSON.stringify({
+						canvas_state: { blocks: [] },
+						canvas_version: 9,
+						reset_epoch: 2
+					}),
+					{ status: 200, headers: { 'Content-Type': 'application/json' } }
+				)
+			);
+		vi.stubGlobal('fetch', fetchSpy);
+		const { workspaceStore } = await loadWorkspaceStore();
+		workspaceStore.hydrate([initialWorkspace], { workspace: initialWorkspace, messages: [] });
+
+		await expect(workspaceStore.saveCanvasState('ws-2', { blocks: [] })).resolves.toBe(false);
+		expect(workspaceStore.getCanvasSaveFailure('ws-2')).toMatchObject({ retryable: true });
+		expect(fetchSpy).toHaveBeenCalledTimes(3);
+
+		await expect(workspaceStore.saveCanvasState('ws-2', { blocks: [] })).resolves.toBe(true);
+		expect(fetchSpy).toHaveBeenCalledTimes(4);
+		expect(JSON.parse(fetchSpy.mock.calls[3][1].body as string)).toMatchObject({
+			expected_canvas_version: 8,
+			expected_reset_epoch: 2
+		});
+	});
+
 	it('retries summary compaction once after a message high-water conflict', async () => {
 		const fetchSpy = vi
 			.fn()
