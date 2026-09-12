@@ -389,7 +389,6 @@ export function buildMarketBriefReaderExport(
 		const heading = token as Tokens.Heading;
 		const title = normalizeMarketBriefSectionTitle(heading.tokens ?? []);
 		const id = slugger.slug(title);
-		if (title.toLowerCase() === 'sources') continue;
 
 		const bodyTokens: Token[] = [];
 		for (let bodyIndex = index + 1; bodyIndex < tokens.length; bodyIndex += 1) {
@@ -408,7 +407,9 @@ export function buildMarketBriefReaderExport(
 					? 'research-spotlight'
 					: normalizedTitle === 'coffee highlights'
 						? 'coffee-highlights'
-						: 'take',
+						: normalizedTitle === 'sources'
+							? 'sources'
+							: 'take',
 			html: marked.parser(bodyTokens)
 		});
 	}
