@@ -1,3 +1,4 @@
+import { decodeCanvasState } from '$lib/services/canvasPersistence';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -51,6 +52,7 @@ function gatedResponse() {
 
 const workspace: Workspace = {
 	id: 'recovery-workspace',
+	canvas_compression_enabled: true,
 	title: 'Coffee',
 	type: 'general',
 	context_summary: '',
@@ -446,5 +448,106 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 		expect(endpoints.saved).toHaveLength(0);
 		await fireEvent.click(screen.getByRole('button', { name: 'Stop response' }));
 		await waitFor(() => expect(screen.getByText(/Response stopped\./)).toBeInTheDocument());
+	});
+});
+
+describe('canvas save size and retry behavior', () => {
+	it('stops retrying a 413 and saves again after evidence is removed', async () => {
+		installEndpoints([]);
+		const originalFetch = globalThis.fetch;
+		let rejected = false;
+		let canvasRequests = 0;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (input, init) => {
+				if (String(input).endsWith('/canvas')) {
+					canvasRequests++;
+					if (!rejected) {
+						rejected = true;
+						return Response.json(
+							{ error: 'canvas_state exceeds 200000 serialized characters' },
+							{ status: 413 }
+						);
+					}
+				}
+				return originalFetch(input, init);
+			})
+		);
+		mountWorkspace();
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument()
+		);
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'old-evidence',
+			block: { type: 'coffee-cards', version: 1, data: [] }
+		});
+		await waitFor(
+			() => expect(screen.getByText(/Evidence workspace is too large to save/)).toBeInTheDocument(),
+			{ timeout: 2000 }
+		);
+		expect(canvasRequests).toBe(1);
+		vi.useFakeTimers();
+		try {
+			await vi.advanceTimersByTimeAsync(35000);
+			expect(canvasRequests).toBe(1);
+		} finally {
+			vi.useRealTimers();
+		}
+		canvasStore.dispatch({ type: 'remove', blockId: canvasStore.blocks[0].id });
+		await waitFor(() =>
+			expect(screen.queryByText(/Evidence workspace is too large to save/)).not.toBeInTheDocument()
+		);
+		expect(canvasRequests).toBe(1); // Reverting to the saved empty canvas needs no write.
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'new-evidence',
+			block: { type: 'coffee-cards', version: 1, data: [] }
+		});
+		await waitFor(() => expect(canvasRequests).toBe(2), { timeout: 2000 });
+		await waitFor(() =>
+			expect(screen.queryByText(/Evidence workspace is too large to save/)).not.toBeInTheDocument()
+		);
+	});
+	it('uses the lossless canvas representation on unload as well as autosave', async () => {
+		const endpoints = installEndpoints([]);
+		mountWorkspace();
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument()
+		);
+		const block = {
+			type: 'action-card' as const,
+			version: 1 as const,
+			data: {
+				actionType: 'add_bean_to_inventory' as const,
+				status: 'success' as const,
+				summary: 'Added coffee',
+				executionId: 'saved-action',
+				result: { id: 42 },
+				fields: [
+					{
+						key: 'coffee_bean',
+						label: 'Coffee',
+						type: 'select' as const,
+						editable: true,
+						value: '1',
+						selectOptions: Array.from({ length: 5000 }, (_, i) => ({
+							value: String(i),
+							label: `Coffee selection ${i} from Colombia`
+						}))
+					}
+				]
+			}
+		};
+		canvasStore.dispatch({ type: 'add', messageId: 'older-than-message-window', block });
+		canvasStore.dispatch({ type: 'pin', blockId: canvasStore.blocks[0].id });
+		await waitFor(() => expect(endpoints.canvasSaves.length).toBeGreaterThan(0), { timeout: 2000 });
+		const saved = endpoints.canvasSaves.at(-1);
+		expect(JSON.stringify(saved).length).toBeLessThan(200000);
+		expect(decodeCanvasState(saved)).toMatchObject({ blocks: [{ block, pinned: true }] });
+		window.dispatchEvent(new Event('beforeunload'));
+		const calls = sendBeacon.mock.calls.filter(([url]) => String(url).endsWith('/canvas'));
+		const beacon = JSON.parse(await (calls.at(-1)![1] as Blob).text());
+		expect(beacon.canvas_state).toEqual(saved);
 	});
 });

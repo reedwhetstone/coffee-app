@@ -1,3 +1,9 @@
+import {
+	encodeCanvasState,
+	decodeCanvasState,
+	canvasHttpError,
+	CanvasSaveError
+} from '$lib/services/canvasPersistence';
 import type { CanvasState } from '$lib/types/genui';
 
 export interface Workspace {
@@ -10,6 +16,7 @@ export interface Workspace {
 	created_at: string;
 	reset_epoch?: number;
 	canvas_version?: number;
+	canvas_compression_enabled?: boolean;
 	summary_version?: number;
 	next_message_sequence?: number;
 }
@@ -213,6 +220,8 @@ async function saveMessages(
 	}
 }
 
+const canvasSaveFailures = new Map<string, Error>();
+
 async function saveCanvasState(
 	workspaceId: string,
 	canvasState: unknown,
@@ -224,7 +233,10 @@ async function saveCanvasState(
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
-				canvas_state: canvasState,
+				canvas_state: encodeCanvasState(
+					canvasState,
+					workspace?.canvas_compression_enabled === true
+				),
 				expected_reset_epoch: workspace?.reset_epoch ?? 0,
 				expected_canvas_version: workspace?.canvas_version ?? 0
 			})
@@ -235,21 +247,28 @@ async function saveCanvasState(
 				if (!refreshed) throw new Error('Failed to refresh canvas state after a conflict');
 				return saveCanvasState(workspaceId, canvasState, false);
 			}
-			throw new Error('Failed to save canvas state');
+			throw canvasHttpError(res.status);
 		}
 		const data = await res.json();
 		workspaces = workspaces.map((item) =>
 			item.id === workspaceId
 				? {
 						...item,
-						canvas_state: data.canvas_state,
+						canvas_state: decodeCanvasState(data.canvas_state) as Workspace['canvas_state'],
 						canvas_version: data.canvas_version,
 						reset_epoch: data.reset_epoch
 					}
 				: item
 		);
+		canvasSaveFailures.delete(workspaceId);
 		return true;
 	} catch (err) {
+		canvasSaveFailures.set(
+			workspaceId,
+			err instanceof CanvasSaveError
+				? err
+				: new CanvasSaveError('Failed to save canvas state', true)
+		);
 		error = (err as Error).message;
 		return false;
 	}
@@ -422,6 +441,7 @@ export const workspaceStore = {
 	createAndActivateWorkspace,
 	saveMessages,
 	saveCanvasState,
+	getCanvasSaveFailure: (workspaceId: string) => canvasSaveFailures.get(workspaceId),
 	refreshWorkspace,
 	triggerSummarize,
 	deleteWorkspace,
