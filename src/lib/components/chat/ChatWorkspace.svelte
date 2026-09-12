@@ -14,6 +14,7 @@
 		buildSearchDataCacheThroughPart,
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
+	import { encodeCanvasState, CanvasSaveError } from '$lib/services/canvasPersistence';
 	import { buildPersistedChatMessages } from '$lib/services/chatPersistence';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
 	import { getSuggestions } from '$lib/services/suggestionEngine';
@@ -404,7 +405,7 @@
 		// beforeunload: persist state via sendBeacon (reliable during tab close/nav)
 		const handleBeforeUnload = () => {
 			const wsId = activeWorkspaceId;
-			if (!wsId) return;
+			if (!wsId || !workspaceReady) return;
 			const workspace = workspaceStore.currentWorkspace;
 			// Save unsaved messages
 			const savedCount = workspaceStore.getSavedMessageCount(wsId);
@@ -430,33 +431,26 @@
 				);
 			}
 			// Save canvas state (including pinned, minimized, focusBlockId)
-			const fIdx = canvasStore.focusBlockId
-				? canvasStore.blocks.findIndex((b: CanvasBlock) => b.id === canvasStore.focusBlockId)
-				: -1;
-			navigator.sendBeacon(
-				`/api/workspaces/${wsId}/canvas`,
-				new Blob(
-					[
-						JSON.stringify({
-							expected_reset_epoch: workspace?.reset_epoch ?? 0,
-							expected_canvas_version: workspace?.canvas_version ?? 0,
-							canvas_state: {
-								blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
-									block: b.block,
-									messageId: b.messageId,
-									pinned: b.pinned,
-									minimized: b.minimized,
-									title: b.title
-								})),
-								layout: canvasStore.layout,
-								focusBlockId: canvasStore.focusBlockId,
-								focusBlockIndex: fIdx >= 0 ? fIdx : undefined
-							}
-						})
-					],
-					{ type: 'application/json' }
-				)
-			);
+			try {
+				navigator.sendBeacon(
+					`/api/workspaces/${wsId}/canvas`,
+					new Blob(
+						[
+							JSON.stringify({
+								expected_reset_epoch: workspace?.reset_epoch ?? 0,
+								expected_canvas_version: workspace?.canvas_version ?? 0,
+								canvas_state: encodeCanvasState(
+									buildCanvasStatePayload(),
+									workspace?.canvas_compression_enabled === true
+								)
+							})
+						],
+						{ type: 'application/json' }
+					)
+				);
+			} catch {
+				// Autosave reports terminal size failures. Never send a known-invalid beacon.
+			}
 		};
 		window.addEventListener('beforeunload', handleBeforeUnload);
 
@@ -658,7 +652,10 @@
 		const canvasStatePayload = buildCanvasStatePayload();
 		await enqueuePersistence(async () => {
 			const saved = await workspaceStore.saveCanvasState(wsId, canvasStatePayload);
-			if (!saved) throw new Error('Failed to persist canvas state');
+			if (!saved)
+				throw (
+					workspaceStore.getCanvasSaveFailure(wsId) ?? new Error('Failed to persist canvas state')
+				);
 		});
 	}
 
@@ -679,7 +676,10 @@
 
 		// Save canvas state (layout, order, pinned, minimized, focus, titles)
 		const canvasSaved = await workspaceStore.saveCanvasState(wsId, canvasStatePayload);
-		if (!canvasSaved) throw new Error('Failed to persist canvas state');
+		if (!canvasSaved)
+			throw (
+				workspaceStore.getCanvasSaveFailure(wsId) ?? new Error('Failed to persist canvas state')
+			);
 	}
 
 	// Auto-persist when streaming completes (fast debounce).
@@ -693,7 +693,7 @@
 	let lastPersistedMessageCount = $state(0);
 	$effect(() => {
 		const count = chat.messages.length;
-		if (isActive || count === 0 || count === lastPersistedMessageCount) return;
+		if (!workspaceReady || isActive || count === 0 || count === lastPersistedMessageCount) return;
 		const timeout = setTimeout(() => {
 			void persistCurrentState().then(
 				() => {
@@ -742,7 +742,11 @@
 		const wsId = workspaceStore.currentWorkspaceId;
 		const signature = canvasSignature();
 		const retryAttempt = canvasPersistRetryAttempt;
-		if (!wsId || isActive || signature === lastCanvasSignature) return;
+		if (!workspaceReady || !wsId || isActive) return;
+		if (signature === lastCanvasSignature) {
+			canvasPersistError = null;
+			return;
+		}
 		let retryTimeout: ReturnType<typeof setTimeout> | undefined;
 		const timeout = setTimeout(() => {
 			void persistCanvasState(wsId).then(
@@ -751,7 +755,11 @@
 					canvasPersistRetryAttempt = 0;
 					canvasPersistError = null;
 				},
-				() => {
+				(error: unknown) => {
+					if (error instanceof CanvasSaveError && !error.retryable) {
+						canvasPersistError = error.message;
+						return;
+					}
 					// Keep the canvas dirty and retry. The workspace ID and state are
 					// re-read by the effect, so a delayed retry cannot leak state across
 					// a workspace switch.
