@@ -1,4 +1,3 @@
-import { env } from '$env/dynamic/private';
 import { decodeCanvasState } from '$lib/services/canvasPersistence';
 import type {
 	ConversationCanvasUpdateRequest,
@@ -68,8 +67,6 @@ export function legacyWorkspace(workspace: ConversationWorkspace) {
 		type: workspace.type,
 		context_summary: workspace.contextSummary,
 		canvas_state: decodeCanvasState(workspace.canvasState) as ConversationWorkspace['canvasState'],
-		// Readers ship first. Enable only after incompatible shared-storage previews are retired.
-		...(env.CHERRY_COMPRESSED_CANVAS_WRITES === 'true' ? { canvas_compression_enabled: true } : {}),
 		created_at: workspace.createdAt,
 		last_accessed_at: workspace.lastAccessedAt,
 		reset_epoch: workspace.resetEpoch,

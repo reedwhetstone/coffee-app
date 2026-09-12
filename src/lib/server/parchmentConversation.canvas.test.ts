@@ -1,6 +1,4 @@
-import { env } from '$env/dynamic/private';
-vi.mock('$env/dynamic/private', () => ({ env: {} }));
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { legacyWorkspace, type ConversationWorkspace } from './parchmentConversation';
 import { encodeCanvasState } from '$lib/services/canvasPersistence';
 
@@ -36,15 +34,4 @@ describe('canvas read compatibility', () => {
 			} as unknown as ConversationWorkspace)
 		).toThrow('could not be read');
 	});
-});
-
-it('advertises compressed writes only after explicit deployment enablement', () => {
-	const workspace = { id: 'ws', canvasState: {} } as ConversationWorkspace;
-	expect(legacyWorkspace(workspace)).not.toHaveProperty('canvas_compression_enabled');
-	env.CHERRY_COMPRESSED_CANVAS_WRITES = 'true';
-	try {
-		expect(legacyWorkspace(workspace)).toHaveProperty('canvas_compression_enabled', true);
-	} finally {
-		delete env.CHERRY_COMPRESSED_CANVAS_WRITES;
-	}
 });

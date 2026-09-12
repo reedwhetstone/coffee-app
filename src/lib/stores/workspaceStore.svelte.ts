@@ -16,7 +16,6 @@ export interface Workspace {
 	created_at: string;
 	reset_epoch?: number;
 	canvas_version?: number;
-	canvas_compression_enabled?: boolean;
 	summary_version?: number;
 	next_message_sequence?: number;
 }
@@ -233,10 +232,7 @@ async function saveCanvasState(
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
-				canvas_state: encodeCanvasState(
-					canvasState,
-					workspace?.canvas_compression_enabled === true
-				),
+				canvas_state: encodeCanvasState(canvasState),
 				expected_reset_epoch: workspace?.reset_epoch ?? 0,
 				expected_canvas_version: workspace?.canvas_version ?? 0
 			})

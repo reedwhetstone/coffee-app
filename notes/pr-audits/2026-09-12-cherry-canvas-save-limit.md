@@ -6,7 +6,7 @@ Fix the save failure reported while adding a coffee from Cherry. Inventory execu
 
 Large evidence snapshots now have a self-contained, lossless gzip/base64 representation. The server and database limits are unchanged. Terminal errors stop timed retries, remain visibly unsaved, and recover when the user changes evidence. Reverting to the already-saved state clears the obsolete warning without another write.
 
-**Rollout boundary:** compressed writes are disabled by default. The compatible readers, terminal-error handling, and size preflight can ship first. Enabling compression requires the deployment sequence below; merging alone does not enable large-canvas saves.
+**Current delivery behavior:** large canvases compress automatically on ordinary saves and unload saves. The release flag and workspace capability metadata introduced in #614 have been removed. Merge and normal application deployment deliver the feature; there is no environment-variable activation step. See [the correction and current validation](2026-09-12-cherry-canvas-automatic-saves.md).
 
 ## Root cause and ownership
 
@@ -18,19 +18,15 @@ Large evidence snapshots now have a self-contained, lossless gzip/base64 represe
 - The shared BFF workspace adapter and canvas response decode envelopes before returning normal blocks to page loaders and browser clients. Invalid encodings fail closed, and automatic/unload writes require successful workspace initialization.
 - All browser save paths use the same encoder, including conflict retries and unload beacons. The existing serialized save queue, reset epoch, and canvas version remain authoritative.
 
-## Reader-first deployment and rollback
+## Deployment and compatibility
 
-This PR intentionally does **not** assume a preview is isolated from production conversation storage.
+Compression is normal application behavior, not an operator-controlled rollout. Small canvases keep their original JSON representation; large canvases use the bounded lossless codec. Both workspace readers and save responses decode stored envelopes to ordinary blocks.
 
-1. Merge/deploy this PR with `CHERRY_COMPRESSED_CANVAS_WRITES` unset or false. Confirm a normal save and reload works; the returned workspace must not advertise `canvas_compression_enabled`.
-2. Redeploy every supported preview using the same conversation storage with this reader code, or retire/protect incompatible previews so they cannot write those workspaces. This includes the older compact-chat preview from PR #613 if it remains in use. Do not enable encoded writes in an isolated new preview while production/other reachable previews still use old readers.
-3. After that compatibility boundary is verified, explicitly set the server-only deployment variable `CHERRY_COMPRESSED_CANVAS_WRITES=true` on the supported deployment and deploy. New workspace reads advertise the capability; both browser writes and the server write endpoint enforce it.
-4. Reload the browser to obtain that capability. Using a test workspace, add enough synthetic retained proposals to cross the former cap, save, reload, and verify complete dropdowns, pinned old evidence, and a completed action receipt. Verify no repeated 413s. Do not repeat a real inventory write merely to check canvas persistence.
-5. An older already-open browser tab calling an upgraded BFF continues to receive ordinary decoded blocks. It may still fail to save an oversized uncompressed canvas until reloaded, but it will not mistake the compressed envelope for an empty canvas.
+The current production reader was introduced in merged #614. Its merge commit `a0c7c495` has a successful Vercel deployment status. This correction requires no Parchment/SDK change, database migration, environment setting, or separate activation deployment.
 
-To stop new compressed writes, disable the flag and redeploy **without removing the reader**. Never roll back to a reader-incompatible build after envelopes have been saved. Reader removal would require an explicit, separately reviewed data conversion first. No workspace data was read or mutated to prepare this PR, and no production or preview deployment was changed.
+Historical pre-#614 builds do not understand the encoded storage representation. This correction supports the current application, including older browser bundles calling the current server; it does not retrofit immutable historical preview servers. Do not roll production back to a reader predating #614 after encoded states exist. That is a storage-format compatibility constraint, not a feature activation task.
 
-## Validation
+## Original #614 validation (historical)
 
 `VALIDATION_PASS`: 82 focused tests across 8 files:
 
@@ -46,6 +42,6 @@ The realistic 5,000-coffee fixture shrinks from **590,173 to 57,790 serialized c
 
 Static checks use repository example env values. Local toolchain: Node 24.19.0/pnpm 10.33.0 versus declared Node 22. Authenticated deployed persistence, browser beacon delivery at platform byte limits, and the actual user's payload are not verified. The unload test proves the constructed request, not delivery after tab closure. The existing per-message size limit and unsent-draft durability are outside this fix.
 
-## Focused review
+## Original #614 focused review (historical)
 
-Independent review identified one material mixed-deployment risk: an older reader could interpret the new representation as a missing canvas, then overwrite historical evidence. The default-off browser/server capability gate and reader-first rollout close that finding for this release. Reassessment found no remaining blockers. Verdict: ready for PR handoff, with compressed writes still subject to the documented activation prerequisite. No merge or deployment is authorized by this review.
+The original review, before the no-release-flag correction, identified one material mixed-deployment risk: an older reader could interpret the new representation as a missing canvas, then overwrite historical evidence. The default-off browser/server capability gate and reader-first rollout close that finding for this release. Reassessment found no remaining blockers. Verdict: ready for PR handoff, with compressed writes still subject to the documented activation prerequisite. No merge or deployment is authorized by this review.
