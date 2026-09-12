@@ -15,6 +15,11 @@
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
 	import { encodeCanvasState, CanvasSaveError } from '$lib/services/canvasPersistence';
+	import {
+		clearPendingCanvasSave,
+		queueCanvasUnloadSave,
+		replayPendingCanvasSaves
+	} from '$lib/services/canvasUnloadPersistence';
 	import { buildPersistedChatMessages } from '$lib/services/chatPersistence';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
 	import { getSuggestions } from '$lib/services/suggestionEngine';
@@ -336,11 +341,18 @@
 		workspaceInitError = null;
 		workspaceReady = false;
 		try {
+			const recoveredCanvasWorkspaceIds = await replayPendingCanvasSaves();
 			if (initialWorkspaceData) {
 				const { workspaces: list, workspace, messages } = initialWorkspaceData;
 				workspaceStore.hydrate(list, workspace ? { workspace, messages } : null);
 				if (workspace) {
-					applyWorkspaceResult({ workspace, messages });
+					if (recoveredCanvasWorkspaceIds.includes(workspace.id)) {
+						if (!(await loadWorkspace(workspace.id))) {
+							throw new Error(workspaceStore.error || 'Failed to reload recovered workspace');
+						}
+					} else {
+						applyWorkspaceResult({ workspace, messages });
+					}
 					workspaceReady = true;
 					return;
 				}
@@ -430,20 +442,17 @@
 					)
 				);
 			}
-			// Save canvas state (including pinned, minimized, focusBlockId)
+			// Save canvas state (including pinned, minimized, focusBlockId). A rejected
+			// beacon is retained for replay because large compressed canvases can exceed
+			// the browser's keepalive budget even when they fit the server limit.
 			try {
-				navigator.sendBeacon(
-					`/api/workspaces/${wsId}/canvas`,
-					new Blob(
-						[
-							JSON.stringify({
-								expected_reset_epoch: workspace?.reset_epoch ?? 0,
-								expected_canvas_version: workspace?.canvas_version ?? 0,
-								canvas_state: encodeCanvasState(buildCanvasStatePayload())
-							})
-						],
-						{ type: 'application/json' }
-					)
+				queueCanvasUnloadSave(
+					wsId,
+					JSON.stringify({
+						expected_reset_epoch: workspace?.reset_epoch ?? 0,
+						expected_canvas_version: workspace?.canvas_version ?? 0,
+						canvas_state: encodeCanvasState(buildCanvasStatePayload())
+					})
 				);
 			} catch {
 				// Autosave reports terminal size failures. Never send a known-invalid beacon.
@@ -653,6 +662,7 @@
 				throw (
 					workspaceStore.getCanvasSaveFailure(wsId) ?? new Error('Failed to persist canvas state')
 				);
+			clearPendingCanvasSave(wsId);
 		});
 	}
 
@@ -677,6 +687,7 @@
 			throw (
 				workspaceStore.getCanvasSaveFailure(wsId) ?? new Error('Failed to persist canvas state')
 			);
+		clearPendingCanvasSave(wsId);
 	}
 
 	// Auto-persist when streaming completes (fast debounce).
