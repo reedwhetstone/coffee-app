@@ -74,7 +74,7 @@
 		} | null;
 	}>();
 
-	// ─── Context visibility toggles (chips above the composer) ────────────────
+	// ─── Context inclusion controls ────────────────
 	let includeWorkspaceMemory = $state(true);
 	let includeCanvasContext = $state(true);
 	let includePageContext = $state(true);
@@ -836,7 +836,7 @@
 	let isActive = $derived(chat.status === 'streaming' || chat.status === 'submitted');
 	let isClearing = $state(false);
 
-	// Context-aware suggestions above input
+	// Context-aware suggestions available from the composer
 	let suggestions = $derived(
 		getSuggestions(
 			workspaceStore.currentWorkspace?.type || 'general',
@@ -1265,22 +1265,25 @@
 	}
 </script>
 
-<!-- One header and one retained evidence surface across all viewport sizes. -->
+{#snippet workspaceActions()}
+	<ChatToolbar
+		{agentName}
+		{variant}
+		{canvasOpen}
+		{onCloseDrawer}
+		hasMessages={chat.messages.length > 0}
+		onOpenMemory={() => (memoryPanelOpen = true)}
+		onToggleCanvas={() => (canvasOpen ? closeEvidence() : openEvidence())}
+		onExport={exportConversation}
+		onClear={clearConversation}
+		clearDisabled={isActive || isClearing}
+	/>
+{/snippet}
+
 <div class="flex h-full min-h-0 min-w-0 flex-col bg-surface-canvas">
-	<div inert={canvasOpen && evidenceOverlay}>
-		<ChatToolbar
-			{agentName}
-			{variant}
-			{canvasOpen}
-			{onCloseDrawer}
-			hasMessages={chat.messages.length > 0}
-			onOpenMemory={() => (memoryPanelOpen = true)}
-			onToggleCanvas={() => (canvasOpen ? closeEvidence() : openEvidence())}
-			onExport={exportConversation}
-			onClear={clearConversation}
-			clearDisabled={isActive || isClearing}
-		/>
-	</div>
+	{#if variant === 'drawer'}
+		<div inert={canvasOpen && evidenceOverlay}>{@render workspaceActions()}</div>
+	{/if}
 	<div class="chat-canvas-container flex min-h-0 flex-1 overflow-hidden">
 		<div
 			class="chat-pane flex min-w-0 flex-col overflow-hidden"
@@ -1306,7 +1309,7 @@
 				{agentName}
 				bind:inputMessage
 				isActive={isActive || isClearing}
-				{canUseMallardWorkspaces}
+				actions={variant === 'page' ? workspaceActions : undefined}
 				{suggestions}
 				{slashCompletions}
 				chatError={displayedError}
