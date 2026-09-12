@@ -23,6 +23,7 @@
 		isActive,
 		canUseMallardWorkspaces,
 		containerEl = $bindable(),
+		contentEl = $bindable(),
 		onScroll,
 		onBlockAction,
 		onExecuteAction,
@@ -35,6 +36,7 @@
 		isActive: boolean;
 		canUseMallardWorkspaces: boolean;
 		containerEl?: HTMLDivElement;
+		contentEl?: HTMLDivElement;
 		onScroll: () => void;
 		onBlockAction: (action: BlockAction) => void;
 		onExecuteAction: (
@@ -203,7 +205,10 @@
 	aria-relevant="additions text"
 >
 	{#if chat.messages.length === 0}
-		<div class="mx-auto flex min-h-full max-w-2xl flex-col justify-center py-10 text-center">
+		<div
+			bind:this={contentEl}
+			class="mx-auto flex min-h-full max-w-2xl flex-col justify-center py-10 text-center"
+		>
 			<p class="mb-2 text-sm font-medium text-accent">{agentName}</p>
 			<h2 class="font-serif text-2xl font-medium tracking-tight text-ink">
 				What do you need to know about green coffee?
@@ -256,7 +261,7 @@
 		</div>
 	{:else}
 		<!-- Chat messages - interleaved rendering -->
-		<div class="mx-auto max-w-4xl space-y-8">
+		<div bind:this={contentEl} class="mx-auto max-w-4xl space-y-8">
 			{#each chat.messages as message, msgIndex (message.id)}
 				{@const isLastMessage = msgIndex === chat.messages.length - 1}
 				{@const isStreaming = isLastMessage && isActive && message.role === 'assistant'}

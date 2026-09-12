@@ -89,6 +89,28 @@ describe('ChatComposer recovery controls', () => {
 		expect(onStop).toHaveBeenCalledOnce();
 	});
 
+	it('accepts drafting but blocks Enter and form submission during a response', async () => {
+		const onSend = vi.fn();
+		const onStop = vi.fn();
+		const component = render(ChatComposer, props({ isActive: true, onSend, onStop }));
+		const input = screen.getByRole('textbox');
+		expect(input).toBeEnabled();
+		await fireEvent.input(input, { target: { value: 'Keep this draft' } });
+		await fireEvent.keyDown(input, { key: 'Enter' });
+		await fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+		await fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+		await fireEvent.submit(input.closest('form')!);
+		expect(onSend).not.toHaveBeenCalled();
+		expect(onStop).not.toHaveBeenCalled();
+		expect(input).toHaveValue('Keep this draft');
+		await component.rerender(
+			props({ isActive: false, inputMessage: 'Keep this draft', onSend, onStop })
+		);
+		expect(onSend).not.toHaveBeenCalled();
+		await fireEvent.keyDown(input, { key: 'Enter' });
+		expect(onSend).toHaveBeenCalledOnce();
+	});
+
 	it('offers retry only for recoverable chat failures', () => {
 		const { rerender } = render(
 			ChatComposer,

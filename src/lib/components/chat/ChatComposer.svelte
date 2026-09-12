@@ -16,6 +16,8 @@
 		agentName,
 		inputMessage = $bindable(''),
 		isActive,
+		isClearing = false,
+		onDraftInput,
 		actions,
 		suggestions,
 		slashCompletions,
@@ -35,6 +37,8 @@
 		agentName: CherryAgentName;
 		inputMessage?: string;
 		isActive: boolean;
+		isClearing?: boolean;
+		onDraftInput?: () => void;
 		actions?: Snippet;
 		suggestions: Suggestion[];
 		slashCompletions: SlashCommand[];
@@ -54,7 +58,7 @@
 
 	function handleSubmit(event: Event) {
 		event.preventDefault();
-		onSend();
+		if (!isActive && !isClearing && workspaceReady) onSend();
 	}
 
 	// ─── Textarea autosize ─────────────────────────────────────────────────────
@@ -92,7 +96,10 @@
 			/>
 		</svg>
 		<span class="flex-1">{chatError}</span>
-		{#if chatCanRetry}<button onclick={onRetry} class="shrink-0 font-medium underline">Retry</button
+		{#if chatCanRetry}<button
+				onclick={onRetry}
+				disabled={isActive || isClearing}
+				class="shrink-0 font-medium underline disabled:opacity-50">Retry</button
 			>{/if}
 		<button
 			onclick={onDismissError}
@@ -160,22 +167,30 @@
 				bind:this={textareaEl}
 				bind:value={inputMessage}
 				aria-label={`Message ${agentName}`}
-				placeholder="Ask about coffee…"
+				placeholder={isActive ? 'Draft your next message…' : 'Ask about coffee…'}
 				aria-describedby={hintId}
 				class="min-h-11 min-w-0 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-ink placeholder-muted focus:outline-none focus:ring-0"
 				rows="1"
-				disabled={isActive || !workspaceReady}
+				disabled={isClearing || !workspaceReady}
+				oninput={onDraftInput}
 				onkeydown={(e) => {
 					if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
 						e.preventDefault();
-						onSend();
+						if (!isActive && !isClearing && workspaceReady) onSend();
 					}
 				}}
 			></textarea>
 			<button
 				type={isActive ? 'button' : 'submit'}
-				onclick={isActive ? onStop : undefined}
-				disabled={!isActive && (!workspaceReady || !inputMessage.trim())}
+				onclick={isActive
+					? (event) => {
+							// Stop can settle synchronously and turn this control into Send
+							// before the browser performs the click's default form action.
+							event.preventDefault();
+							onStop();
+						}
+					: undefined}
+				disabled={isClearing || (!isActive && (!workspaceReady || !inputMessage.trim()))}
 				aria-label={isActive ? 'Stop response' : 'Send message'}
 				class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent text-ink transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 			>
@@ -199,7 +214,11 @@
 				{/if}
 			</button>
 		</div>
-		<p id={hintId} class="sr-only">Enter to send, Shift+Enter for new line</p>
+		<p id={hintId} class="sr-only">
+			{isActive
+				? 'Draft while Cherry responds. Nothing sends automatically. Shift+Enter for a new line.'
+				: 'Enter to send, Shift+Enter for new line'}
+		</p>
 	</form>
 	<div
 		class="relative mx-auto flex max-w-4xl items-center gap-1"

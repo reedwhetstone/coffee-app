@@ -31,3 +31,7 @@ Artifacts are written to `notes/pr-audits/assets/cherry-compact/`: screenshots, 
 - Evidence source-message focus return; drawer initial focus, menu-only Escape, and draft retention across close/reopen.
 
 Settled screenshots intentionally start at the question and first answer. Working/error screenshots retain the app's own scroll behavior. Composer geometry includes its one-line input, 44px touch controls, and padding; opening a bounded context panel overlays the transcript instead of changing its height.
+
+## Reading and drafting journeys
+
+With the same fixture server running, use `node tests/ui/cherry-compact/reading.mjs` for the 100-turn reading/drafting scenario. The fixture exposes a controllable synthetic stream only in `state=reading`; no production hooks or flags are added. It checks real wheel scrolling, new-output badges, stable reading position, explicit latest navigation, keyboard focus, source-message return, and no unintended draft submission through completion, Stop, failure, retry, or drawer reopen. Results/screenshots go to `notes/pr-audits/assets/cherry-reading/`.

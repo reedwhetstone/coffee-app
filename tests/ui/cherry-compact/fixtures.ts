@@ -34,7 +34,7 @@ export const workspace = {
 					]
 				}
 };
-export const messages =
+const initialMessages =
 	scenario === 'empty'
 		? []
 		: [
@@ -57,6 +57,24 @@ export const messages =
 					created_at: workspace.created_at
 				}
 			];
+// A long retained conversation for reading-position and in-flight draft checks.
+export const messages =
+	scenario === 'reading'
+		? [
+				...initialMessages,
+				...Array.from({ length: 198 }, (_, index) => ({
+					id: `history-${index}`,
+					client_message_id: `history-${index}`,
+					workspace_id: workspace.id,
+					role: index % 2 ? 'assistant' : 'user',
+					content:
+						index % 2
+							? `Historical answer ${index}: compare roast development and landed costs before choosing a coffee.`
+							: `Historical question ${index}: what should we compare?`,
+					created_at: workspace.created_at
+				}))
+			]
+		: initialMessages;
 export const auth = {
 	isSignedIn: true,
 	user: { id: 'fixture-user', email: 'fixture@example.invalid' },
@@ -86,8 +104,28 @@ export function installNetwork() {
 			return new Response(
 				new ReadableStream({
 					start(controller) {
+						if (scenario === 'reading')
+							Object.assign(window, {
+								fixtureStream: {
+									emit: (delta: string) =>
+										controller.enqueue(
+											encoder.encode(
+												`data: ${JSON.stringify({ type: 'text-delta', id: 'text', delta })}\n\n`
+											)
+										),
+									finish: () => {
+										controller.enqueue(
+											encoder.encode(
+												'data: {"type":"text-end","id":"text"}\n\ndata: {"type":"finish"}\n\ndata: [DONE]\n\n'
+											)
+										);
+										controller.close();
+									},
+									fail: () => controller.error(new TypeError('Fixture disconnect'))
+								}
+							});
 						for (const chunk of [
-							{ type: 'start', messageId: 'working-answer' },
+							{ type: 'start', messageId: `working-answer-${requests.length}` },
 							{ type: 'start-step' },
 							{ type: 'text-start', id: 'text' },
 							{

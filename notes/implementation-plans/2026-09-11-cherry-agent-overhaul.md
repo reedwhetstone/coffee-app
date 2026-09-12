@@ -1,7 +1,7 @@
 # Cherry AI: connected conversation and evidence workspace
 
 **Date:** 2026-09-11
-**Status:** Accepted scope via [PR #605](https://github.com/reedwhetstone/coffee-app/pull/605); slices 1–2 and coffee-reference slice 3a merged; integrated-shell slice 4a merged; density refinement 4b recovered onto current main for review
+**Status:** Accepted scope via [PR #605](https://github.com/reedwhetstone/coffee-app/pull/605); slices 1–2 and coffee-reference slice 3a merged; integrated shell and compact layout merged through #616; reading-position and in-flight drafting pass implemented for review
 **Owner:** coffee-app for human experience; Parchment for shared runtime and durable contracts
 
 ## Goal and accepted direction
@@ -51,6 +51,10 @@ Incoming agent presentations preserve the active scene and action proposals. Exp
 The [66-point UI benchmark audit (PR #611)](https://github.com/reedwhetstone/coffee-app/pull/611) identified excess vertical chrome in slice 4a. The accepted first implementation pass removes the dedicated page identity bar and chat-only outer gutters, moves page evidence/actions beside the input, and collapses context/suggestions into bounded disclosures. The mobile app shell is the sole top navigation row; the drawer retains its own title and close control. This refines, rather than replaces, the single retained evidence surface and canonical state owners established by [PR #610](https://github.com/reedwhetstone/coffee-app/pull/610).
 
 [Density validation and screenshots](../pr-audits/2026-09-11-cherry-compact-chat.md) record full client-shell fixtures with synthetic auth/data, focus/menu checks, and space measurements. This is the first audit delivery pass only. Conversation search, jump-to-latest, drafting during a response, durable drafts, save-failure recovery, and remaining market/roastery workflows stay in the subsequent delivery sequence. Real device keyboard and authenticated deployed behavior remain unverified.
+
+### Reading and drafting refinement
+
+The September 12 follow-up implements jump-to-latest with new-output indication and composer editing during active responses. It preserves reader intent and holds drafts locally without automatic submission or queuing, including Stop/error/retry transitions. [Behavior and current proof](../pr-audits/2026-09-12-cherry-reading-and-drafting.md). Search is a recommendation only: because reload currently fetches 50 messages, whole-conversation search requires an authoritative Parchment search/history contract rather than filtering just loaded messages. Durable drafts across reload remain separate.
 
 ## Planning baseline and limits
 

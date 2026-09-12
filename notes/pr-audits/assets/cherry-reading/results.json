@@ -1,0 +1,17 @@
+{
+	"fixture": "100-turn synthetic conversation in actual root/chat components; desktop, mobile and drawer; no production data.",
+	"results": [
+		{
+			"name": "desktop",
+			"status": "pass"
+		},
+		{
+			"name": "mobile",
+			"status": "pass"
+		},
+		{
+			"name": "drawer",
+			"status": "pass"
+		}
+	]
+}
