@@ -439,10 +439,7 @@
 							JSON.stringify({
 								expected_reset_epoch: workspace?.reset_epoch ?? 0,
 								expected_canvas_version: workspace?.canvas_version ?? 0,
-								canvas_state: encodeCanvasState(
-									buildCanvasStatePayload(),
-									workspace?.canvas_compression_enabled === true
-								)
+								canvas_state: encodeCanvasState(buildCanvasStatePayload())
 							})
 						],
 						{ type: 'application/json' }

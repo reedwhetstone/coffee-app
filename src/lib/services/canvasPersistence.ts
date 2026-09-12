@@ -20,11 +20,11 @@ const tooLarge = () =>
 	);
 
 /** Keep small/legacy states unchanged; large states remain self-contained and lossless. */
-export function encodeCanvasState(state: unknown, compressionEnabled = true): unknown {
+export function encodeCanvasState(state: unknown): unknown {
 	const serialized = JSON.stringify(state);
 	const bytes = strToU8(serialized);
 	if (serialized.length <= MAX_CANVAS_JSON_CHARS) return state;
-	if (!compressionEnabled || bytes.length > MAX_CANVAS_DECODED_BYTES) throw tooLarge();
+	if (bytes.length > MAX_CANVAS_DECODED_BYTES) throw tooLarge();
 	const compressed = gzipSync(bytes, { level: 6, mtime: 0 });
 	let binary = '';
 	for (const byte of compressed) binary += String.fromCharCode(byte);

@@ -5,7 +5,6 @@ type WorkspaceModule = typeof import('./workspaceStore.svelte');
 
 const workspaceFixture = {
 	id: 'ws-2',
-	canvas_compression_enabled: true,
 	title: 'Analysis Workspace',
 	type: 'analysis' as const,
 	context_summary: '',
@@ -265,15 +264,18 @@ describe('canvas size persistence', () => {
 	});
 });
 
-it('does not enable compressed writes on an older or reader-only deployment', async () => {
-	const fetchSpy = vi.fn();
+it('saves a large canvas from an ordinary workspace response without activation metadata', async () => {
+	const state = { text: 'coffee '.repeat(40000) };
+	const fetchSpy = vi.fn().mockResolvedValue({
+		ok: true,
+		json: async () => ({ canvas_state: state, canvas_version: 1, reset_epoch: 0 })
+	});
 	vi.stubGlobal('fetch', fetchSpy);
 	const { workspaceStore } = await loadWorkspaceStore();
-	const readerOnly = { ...workspaceFixture, canvas_compression_enabled: undefined };
-	workspaceStore.hydrate([readerOnly], { workspace: readerOnly, messages: [] });
-	expect(await workspaceStore.saveCanvasState('ws-2', { text: 'coffee '.repeat(40000) })).toBe(
-		false
-	);
-	expect(fetchSpy).not.toHaveBeenCalled();
-	expect(workspaceStore.getCanvasSaveFailure('ws-2')).toMatchObject({ retryable: false });
+	workspaceStore.hydrate([workspaceFixture], { workspace: workspaceFixture, messages: [] });
+	expect(await workspaceStore.saveCanvasState('ws-2', state)).toBe(true);
+	expect(fetchSpy).toHaveBeenCalledTimes(1);
+	const body = JSON.parse(fetchSpy.mock.calls[0][1].body);
+	expect(body.canvas_state.encoding).toBe('cherry-canvas-gzip-v1');
+	expect(workspaceStore.getCanvasSaveFailure('ws-2')).toBeUndefined();
 });

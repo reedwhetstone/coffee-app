@@ -1,4 +1,3 @@
-import { env } from '$env/dynamic/private';
 import { MAX_CANVAS_JSON_CHARS, decodeCanvasState } from '$lib/services/canvasPersistence';
 import { json } from '@sveltejs/kit';
 import { z } from 'zod';
@@ -40,17 +39,6 @@ async function persistCanvas(event: Parameters<RequestHandler>[0]) {
 		return json(
 			{ error: `canvas_state exceeds ${MAX_CANVAS_JSON_CHARS} serialized characters` },
 			{ status: 413 }
-		);
-	}
-	if (
-		canvasState &&
-		typeof canvasState === 'object' &&
-		'encoding' in canvasState &&
-		env.CHERRY_COMPRESSED_CANVAS_WRITES !== 'true'
-	) {
-		return json(
-			{ error: 'Compressed canvas saves are not enabled on this deployment' },
-			{ status: 400 }
 		);
 	}
 	// Validate compressed state before storing it; never save an unreadable envelope.

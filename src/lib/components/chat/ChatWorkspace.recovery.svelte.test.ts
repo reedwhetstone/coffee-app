@@ -52,7 +52,6 @@ function gatedResponse() {
 
 const workspace: Workspace = {
 	id: 'recovery-workspace',
-	canvas_compression_enabled: true,
 	title: 'Coffee',
 	type: 'general',
 	context_summary: '',

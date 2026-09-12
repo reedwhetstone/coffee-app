@@ -116,7 +116,6 @@ describe('canvas state persistence codec', () => {
 		expect(serialized.length).toBeLessThan(MAX_CANVAS_JSON_CHARS);
 		expect(strToU8(serialized).length).toBeGreaterThan(MAX_CANVAS_JSON_CHARS);
 		expect(encodeCanvasState(state)).toBe(state);
-		expect(encodeCanvasState(state, false)).toBe(state);
 	});
 
 	it.each([
