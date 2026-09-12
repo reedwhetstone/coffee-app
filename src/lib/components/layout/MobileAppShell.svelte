@@ -14,8 +14,9 @@
 	import { getCurrentRouteLabel } from '$lib/components/layout/appNavigation';
 	import { countActiveCatalogFilters } from '$lib/components/layout/desktopShellState';
 
-	let { data } = $props<{
+	let { data, compactChat = false } = $props<{
 		data: Record<string, unknown>;
+		compactChat?: boolean;
 	}>();
 
 	let currentPath = $state(page.url.pathname);
@@ -61,43 +62,50 @@
 
 <div
 	class="fixed inset-x-0 top-0 z-30 border-b border-line bg-surface-canvas/95 backdrop-blur md:hidden"
+	style:padding-top={compactChat ? 'env(safe-area-inset-top)' : undefined}
 >
-	<div class="flex h-16 items-center justify-between gap-2 px-3">
+	<div class="flex items-center justify-between gap-2 px-3 {compactChat ? 'h-14' : 'h-16'}">
 		<div class="flex min-w-0 items-center gap-2">
 			<button
 				type="button"
 				onclick={() => (activeOverlay = 'menu')}
-				class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+				class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 				aria-label="Open app menu"
 			>
 				<PurveyorsCircleMark />
 			</button>
 
-			<button
-				type="button"
-				onclick={() => goto('/dashboard')}
-				class="min-w-0 rounded-md px-1.5 py-2 text-left transition-colors hover:bg-surface-panel"
-			>
+			{#if compactChat}
 				<p class="truncate text-sm font-semibold text-ink">{routeLabel}</p>
-			</button>
+			{:else}
+				<button
+					type="button"
+					onclick={() => goto('/dashboard')}
+					class="min-w-0 rounded-md px-1.5 py-2 text-left transition-colors hover:bg-surface-panel"
+				>
+					<p class="truncate text-sm font-semibold text-ink">{routeLabel}</p>
+				</button>
+			{/if}
 		</div>
 
 		<div class="flex shrink-0 items-center gap-1">
-			<button
-				type="button"
-				onclick={() => goto('/chat')}
-				class="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-panel text-ink ring-1 ring-accent/50 transition-colors hover:bg-accent/15"
-				style="box-shadow: 0 0 18px rgba(249, 165, 123, 0.42);"
-				aria-label="Open chat"
-			>
-				<DesktopShellIcon name="chat" />
-			</button>
+			{#if !compactChat}
+				<button
+					type="button"
+					onclick={() => goto('/chat')}
+					class="flex h-11 w-11 items-center justify-center rounded-lg bg-surface-panel text-ink ring-1 ring-accent/50 transition-colors hover:bg-accent/15"
+					style="box-shadow: 0 0 18px rgba(249, 165, 123, 0.42);"
+					aria-label="Open chat"
+				>
+					<DesktopShellIcon name="chat" />
+				</button>
+			{/if}
 
 			{#if showSettings}
 				<button
 					type="button"
 					onclick={() => (activeOverlay = 'settings')}
-					class="relative flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+					class="relative flex h-11 w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 					aria-label="Open filters"
 				>
 					<DesktopShellIcon name="filters" />
@@ -114,7 +122,7 @@
 				<button
 					type="button"
 					onclick={() => (activeOverlay = 'actions')}
-					class="flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
+					class="flex h-11 w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 					aria-label="Open actions"
 				>
 					<DesktopShellIcon name="actions" />

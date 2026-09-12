@@ -1,7 +1,7 @@
 # Cherry AI: connected conversation and evidence workspace
 
 **Date:** 2026-09-11
-**Status:** Accepted scope via [PR #605](https://github.com/reedwhetstone/coffee-app/pull/605); slices 1–2 and coffee-reference slice 3a merged; integrated-shell slice 4a implemented for review
+**Status:** Accepted scope via [PR #605](https://github.com/reedwhetstone/coffee-app/pull/605); slices 1–2 and coffee-reference slice 3a merged; integrated-shell slice 4a merged; density refinement 4b recovered onto current main for review
 **Owner:** coffee-app for human experience; Parchment for shared runtime and durable contracts
 
 ## Goal and accepted direction
@@ -43,6 +43,14 @@ Grounded references merged in [coffee-app #609](https://github.com/reedwhetstone
 Incoming agent presentations preserve the active scene and action proposals. Explicit clear/remove/replace also preserve executing proposals until their result arrives. Nested coffee and generic detail panels own keyboard focus and Escape, returning to their trigger without closing the workspace. Existing canonical action execution, pins and saved evidence remain intact.
 
 [Slice 4a validation and screenshots](../pr-audits/2026-09-11-cherry-workspace.md) record deterministic desktop/mobile and drawer evidence. This is a coherent shell delivery, **not completion of every slice 4 acceptance journey**. Local proposal edits and transcript/evidence position survive close/reopen and viewport changes within the mounted workspace. Saved selected evidence, pins, transcript and canonical execution outcomes use existing persistence. Unsubmitted proposal edits, composer drafts, and pixel scroll positions are not newly persisted across full reload/navigation. Complete those continuity contracts alongside the remaining market/roastery journeys before declaring the entire overhaul complete; do not silently extend the shared persistence schema in this UI slice. Authenticated deployed/model behavior remains a separate unverified gate.
+
+### Density refinement (slice 4b)
+
+**September 12 delivery correction:** #613 merged into `openclaw/cherry-integrated-workspace` after #610 had already merged. That made the compact UI available on the old feature preview, but did not deliver it to `main` or production. The main-targeted correction reapplies the original density commit onto #615’s merged foundation, preserving automatic canvas compression, unload recovery, and the analytics rejection fix. No activation flag or additional dependency merge is required.
+
+The [66-point UI benchmark audit (PR #611)](https://github.com/reedwhetstone/coffee-app/pull/611) identified excess vertical chrome in slice 4a. The accepted first implementation pass removes the dedicated page identity bar and chat-only outer gutters, moves page evidence/actions beside the input, and collapses context/suggestions into bounded disclosures. The mobile app shell is the sole top navigation row; the drawer retains its own title and close control. This refines, rather than replaces, the single retained evidence surface and canonical state owners established by [PR #610](https://github.com/reedwhetstone/coffee-app/pull/610).
+
+[Density validation and screenshots](../pr-audits/2026-09-11-cherry-compact-chat.md) record full client-shell fixtures with synthetic auth/data, focus/menu checks, and space measurements. This is the first audit delivery pass only. Conversation search, jump-to-latest, drafting during a response, durable drafts, save-failure recovery, and remaining market/roastery workflows stay in the subsequent delivery sequence. Real device keyboard and authenticated deployed behavior remain unverified.
 
 ## Planning baseline and limits
 
