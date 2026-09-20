@@ -148,6 +148,34 @@ describe('buildRoastChartModel', () => {
 		expect(model.yTempDomain).toEqual([0, 250]);
 		expect(model.yRorDomain).toEqual([-5, 30]);
 	});
+
+	it('uses primary series units and includes machine and percentage controls in their time bounds', () => {
+		const data = fixture();
+		data.metadata.temperature_unit = null;
+		data.events.push(
+			{
+				time_milliseconds: -30_000,
+				name: 'heat_setting',
+				value: '75%',
+				category: 'machine',
+				subcategory: 'machine_setting'
+			},
+			{
+				time_milliseconds: 180_000,
+				name: 'heat_setting',
+				value: '25%',
+				category: 'machine',
+				subcategory: 'machine_setting'
+			}
+		);
+
+		const model = buildRoastChartModel(data);
+		const heat = model.series.find((series) => series.id === 'control-heat_setting');
+
+		expect(model.temperatureUnit).toBe('°C');
+		expect(heat?.points[0]).toEqual({ timeMinutes: -1, value: 75 });
+		expect(heat?.points.at(-1)).toEqual({ timeMinutes: 2.5, value: 25 });
+	});
 });
 
 describe('saved roast chart loading', () => {

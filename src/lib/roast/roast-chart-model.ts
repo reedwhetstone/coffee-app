@@ -77,6 +77,17 @@ function isMilestone(event: RoastChartEvent): boolean {
 	);
 }
 
+function isControlEvent(event: RoastChartEvent): boolean {
+	const category = event.category.toLowerCase();
+	return category === 'control' || category === 'machine';
+}
+
+function parseControlValue(event: RoastChartEvent): number | null {
+	if (!isControlEvent(event) || event.value === null) return null;
+	const value = Number.parseFloat(String(event.value));
+	return Number.isFinite(value) ? value : null;
+}
+
 function resolveChargeTime(data: RoastChartData): number {
 	if (data.metadata.charge_time_ms !== null) return data.metadata.charge_time_ms;
 	const charge = data.events.find((event) =>
@@ -95,6 +106,21 @@ function displayName(series: RoastChartSeries): string {
 	if (series.kind === 'ambient_temperature') return 'Ambient Temp';
 	if (series.kind === 'rate_of_rise') return 'BT RoR';
 	return series.name;
+}
+
+function primaryTemperatureUnit(data: RoastChartData): string {
+	const primaryTemperature =
+		data.series.find(
+			(series) => series.kind === 'bean_temperature' && isTemperatureUnit(series.unit)
+		) ??
+		data.series.find(
+			(series) =>
+				['environmental_temperature', 'ambient_temperature'].includes(series.kind) &&
+				isTemperatureUnit(series.unit)
+		);
+	return normalizeTemperatureUnit(
+		data.metadata.temperature_unit || primaryTemperature?.unit || null
+	);
 }
 
 function seriesColor(series: RoastChartSeries, index: number): string {
@@ -150,9 +176,8 @@ function controlSeriesFromEvents(
 ): ChartSeries[] {
 	const grouped = new Map<string, Array<{ time: number; value: number }>>();
 	for (const event of events) {
-		if (event.category.toLowerCase() !== 'control' || event.value === null) continue;
-		const value = Number(event.value);
-		if (!Number.isFinite(value)) continue;
+		const value = parseControlValue(event);
+		if (value === null) continue;
 		const values = grouped.get(event.name) ?? [];
 		values.push({ time: event.time_milliseconds, value });
 		grouped.set(event.name, values);
@@ -194,15 +219,19 @@ export function buildRoastChartModel(
 	settings: RoastChartAxisSettings | null = null
 ): ProcessedChartData {
 	const chargeTime = resolveChargeTime(data);
-	const temperatureUnit = normalizeTemperatureUnit(data.metadata.temperature_unit);
+	const temperatureUnit = primaryTemperatureUnit(data);
 	const canonicalSeries = data.series.map((series, index) =>
 		mapCanonicalSeries(series, chargeTime, index, temperatureUnit)
 	);
-	const allTimes = data.series.flatMap((series) =>
+	const seriesTimes = data.series.flatMap((series) =>
 		series.points.map((point) => point.time_milliseconds)
 	);
-	const startTime = data.metadata.time_min_ms ?? Math.min(...allTimes, chargeTime);
-	const endTime = data.metadata.time_max_ms ?? Math.max(...allTimes, chargeTime);
+	const controlEventTimes = data.events.flatMap((event) =>
+		parseControlValue(event) === null ? [] : [event.time_milliseconds]
+	);
+	const allTimes = [...seriesTimes, ...controlEventTimes];
+	const startTime = Math.min(data.metadata.time_min_ms ?? Infinity, ...allTimes, chargeTime);
+	const endTime = Math.max(data.metadata.time_max_ms ?? -Infinity, ...allTimes, chargeTime);
 	const controls = controlSeriesFromEvents(
 		data.events,
 		chargeTime,

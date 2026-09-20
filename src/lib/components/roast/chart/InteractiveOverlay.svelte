@@ -4,6 +4,7 @@
 	import type { Writable } from 'svelte/store';
 	import type { ScaleLinear } from 'd3-scale';
 	import type { ChartPoint, ChartSeries, TooltipData, ProcessedChartData } from './chart-types';
+	import { nearestPoint, nearestPointWithinSamplingGap } from './chart-utils';
 
 	let {
 		chartData,
@@ -25,19 +26,6 @@
 		height: Writable<number>;
 		xScale: Writable<ScaleLinear<number, number>>;
 	};
-
-	const bisectTime = bisector<ChartPoint, number>((d) => d.timeMinutes).left;
-
-	function nearestPoint(points: ChartPoint[], time: number): ChartPoint | null {
-		const index = bisectTime(points, time);
-		const left = points[index - 1];
-		const right = points[index];
-		return left && right
-			? time - left.timeMinutes > right.timeMinutes - time
-				? right
-				: left
-			: (left ?? right ?? null);
-	}
 
 	function handleMouseMove(e: MouseEvent) {
 		const svg = (e.currentTarget as SVGRectElement).closest('svg');
@@ -61,15 +49,15 @@
 			return;
 		}
 
-		const beanPoint = nearestPoint(
+		const beanPoint = nearestPointWithinSamplingGap(
 			series.find((entry) => entry.kind === 'bean_temperature')?.points ?? [],
 			nearest.timeMinutes
 		);
-		const etPoint = nearestPoint(
+		const etPoint = nearestPointWithinSamplingGap(
 			series.find((entry) => entry.kind === 'environmental_temperature')?.points ?? [],
 			nearest.timeMinutes
 		);
-		const rorPoint = nearestPoint(
+		const rorPoint = nearestPointWithinSamplingGap(
 			series.find((entry) => entry.kind === 'rate_of_rise')?.points ?? [],
 			nearest.timeMinutes
 		);
@@ -103,12 +91,8 @@
 								nearest.timeMinutes
 							) - 1
 						]
-					: nearestPoint(entry.points, nearest.timeMinutes);
-			if (
-				!point ||
-				(entry.axis !== 'control' && Math.abs(point.timeMinutes - nearest.timeMinutes) > 0.5)
-			)
-				return [];
+					: nearestPointWithinSamplingGap(entry.points, nearest.timeMinutes);
+			if (!point) return [];
 			return [{ id: entry.id, label: entry.label, unit: entry.unit, value: point.value }];
 		});
 
@@ -124,10 +108,7 @@
 				chargeTime: chartData.chargeTime,
 				bean_temp: beanPoint?.value ?? null,
 				environmental_temp: etPoint?.value ?? null,
-				rorValue:
-					rorPoint && Math.abs(rorPoint.timeMinutes - nearest.timeMinutes) < 0.5
-						? rorPoint.value
-						: null,
+				rorValue: rorPoint?.value ?? null,
 				milestones,
 				eventData,
 				seriesValues

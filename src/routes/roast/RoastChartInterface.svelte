@@ -102,6 +102,9 @@
 		!currentRoastProfile?.roast_id ||
 			(!savedChartData && savedEventEntries.length === 0 && $roastData.length === 0)
 	);
+	let hasExistingRoastData = $derived(
+		savedChartData !== null || savedEventEntries.length > 0 || $roastData.length > 0
+	);
 	let isDuringRoasting = $derived(isRoasting);
 
 	// Prepared chart data for LayerCake rendering
@@ -608,7 +611,7 @@
 		bind:this={artisanImportDialog}
 		roastId={currentRoastProfile.roast_id}
 		lastUpdated={currentRoastProfile.last_updated}
-		hasExistingData={$roastData.length > 0}
+		hasExistingData={hasExistingRoastData}
 		onImportComplete={handleArtisanImportComplete}
 	/>
 {/if}
