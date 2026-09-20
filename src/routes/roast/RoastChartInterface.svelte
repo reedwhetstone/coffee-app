@@ -6,6 +6,7 @@
 	import ArtisanImportDialog from '$lib/components/roast/ArtisanImportDialog.svelte';
 	import RoastTooltip from '$lib/components/roast/RoastTooltip.svelte';
 	import { RoastChart, prepareChartData } from '$lib/components/roast/chart';
+	import type { ProcessedChartData } from '$lib/components/roast/chart';
 	import type { TemperaturePoint } from '$lib/types/d3.types';
 	import type { RoastProfile } from '$lib/types/component.types';
 	import {
@@ -22,12 +23,10 @@
 		createMilestoneEvents,
 		createControlEvents,
 		fetchChartSettings,
-		loadAndProcessRoastData,
-		type ChartAxisSettings,
-		type ChartEventValueSeries,
-		type RawChartDataRow
+		fetchRoastChartModel,
+		chartEventsToRoastEntries,
+		type ChartAxisSettings
 	} from '$lib/roast';
-	import type { RawChartData } from '../api/roast-chart-data/+server.js';
 
 	let {
 		timer,
@@ -70,7 +69,7 @@
 
 	// Saved profile data for chart rendering (types from roast-data module)
 	let savedEventEntries = $state<RoastEventEntry[]>([]);
-	let savedEventValueSeries = $state<ChartEventValueSeries[]>([]);
+	let savedChartData = $state<ProcessedChartData | null>(null);
 
 	// Chart boundary settings from roast_profiles table
 	let chartSettings = $state<ChartAxisSettings | null>(null);
@@ -100,20 +99,23 @@
 
 	// Add these computed values - check for saved data to determine state
 	let isBeforeRoasting = $derived(
-		!currentRoastProfile?.roast_id || (savedEventEntries.length === 0 && $roastData.length === 0)
+		!currentRoastProfile?.roast_id ||
+			(!savedChartData && savedEventEntries.length === 0 && $roastData.length === 0)
 	);
 	let isDuringRoasting = $derived(isRoasting);
 
 	// Prepared chart data for LayerCake rendering
 	let preparedChartData = $derived(
-		prepareChartData({
-			roastData: $roastData,
-			events: isDuringRoasting ? $eventEntries : savedEventEntries,
-			roastEvents: $roastEvents,
-			savedEventValueSeries: savedEventValueSeries,
-			chartSettings: chartSettings,
-			isDuringRoasting: isDuringRoasting
-		})
+		!isDuringRoasting && savedChartData
+			? savedChartData
+			: prepareChartData({
+					roastData: $roastData,
+					events: isDuringRoasting ? $eventEntries : savedEventEntries,
+					roastEvents: $roastEvents,
+					savedEventValueSeries: [],
+					chartSettings: chartSettings,
+					isDuringRoasting: isDuringRoasting
+				})
 	);
 
 	// Compute current time in charge-relative minutes for the time tracker
@@ -128,10 +130,6 @@
 		if (currentRoastProfile && isBeforeRoasting) {
 			untrack(() => {
 				resetTimer();
-				// Load chart settings for the current profile even before roasting starts
-				if (currentRoastProfile.roast_id) {
-					loadChartSettings(currentRoastProfile.roast_id);
-				}
 			});
 		}
 	});
@@ -335,33 +333,30 @@
 		return calculatePhasePercentages(milestones, isDuringRoasting ? currentElapsedTime : undefined);
 	});
 
-	async function loadChartSettings(roastId: number) {
-		chartSettings = await fetchChartSettings(roastId);
-	}
-
 	async function loadSavedRoastData(roastId: number) {
 		try {
-			const response = await fetch(`/api/roast-chart-data?roastId=${roastId}`);
-			if (!response.ok) throw new Error(`Failed to load roast data: ${response.status}`);
-
-			const rawData: RawChartData = await response.json();
-			if (!rawData.rawData?.length) {
+			const settings = await fetchChartSettings(roastId);
+			chartSettings = settings;
+			const loaded = await fetchRoastChartModel(roastId, fetch, settings);
+			if (!loaded) {
 				savedEventEntries = [];
-				savedEventValueSeries = [];
+				savedChartData = null;
 				$roastData = [];
 				$roastEvents = [];
 				return;
 			}
 
-			const result = loadAndProcessRoastData(rawData.rawData as RawChartDataRow[], roastId);
-			savedEventEntries = result.eventEntries;
-			savedEventValueSeries = result.eventValueSeries;
-			$roastData = result.roastData;
-			$roastEvents = result.roastEvents;
+			savedChartData = loaded.chartData;
+			savedEventEntries = chartEventsToRoastEntries(loaded.data.events, roastId);
+			$roastData = [];
+			$roastEvents = loaded.chartData.events.map((event) => ({
+				time: event.timeMinutes * 60_000 + loaded.chartData.chargeTime,
+				name: event.name
+			}));
 		} catch (error) {
 			console.error('Error loading roast data:', error);
 			savedEventEntries = [];
-			savedEventValueSeries = [];
+			savedChartData = null;
 			$roastData = [];
 			$roastEvents = [];
 		}
@@ -372,11 +367,10 @@
 		if (currentRoastProfile?.roast_id && !isDuringRoasting) {
 			untrack(() => {
 				loadSavedRoastData(currentRoastProfile.roast_id);
-				loadChartSettings(currentRoastProfile.roast_id);
 			});
 		} else if (!currentRoastProfile?.roast_id) {
 			savedEventEntries = [];
-			savedEventValueSeries = [];
+			savedChartData = null;
 			chartSettings = null;
 			$roastData = [];
 			$roastEvents = [];
@@ -396,7 +390,6 @@
 		}
 
 		await loadSavedRoastData(roastId);
-		await loadChartSettings(roastId);
 	}
 </script>
 
@@ -433,7 +426,8 @@
 										chargeTime: state.data.chargeTime,
 										rorValue: state.data.rorValue,
 										milestones: state.data.milestones,
-										eventData: state.data.eventData
+										eventData: state.data.eventData,
+										seriesValues: state.data.seriesValues
 									} satisfies TemperaturePoint)
 								: null
 						};

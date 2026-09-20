@@ -1513,7 +1513,7 @@ const docsPages: DocsPage[] = [
 							'GET',
 							'Session',
 							'Internal analysis helper',
-							'Requires roastId query param. Returns sampled telemetry and metadata, not raw unbounded sensor streams.'
+							'Requires roastId query param. Returns the generated Parchment chart contract with bounded typed series, discrete events, and metadata, not raw unbounded sensor streams.'
 						],
 						[
 							'/api/roast-chart-settings',
@@ -1843,7 +1843,7 @@ const docsPages: DocsPage[] = [
 					'POST /api/roast-profiles supports both single and batch creation. Batch callers retain one Idempotency-Key for the same payload until the result is definitive. The Parchment-owned database trigger recalculates stocked state in the same transaction as each roast change.',
 					'PUT /api/roast-profiles requires an id query parameter and forwards optional If-Match concurrency checks. Live curve writes replace only live temperatures plus the current event set. DELETE accepts either id or an exact batch name query parameter.',
 					'POST /api/artisan-import expects multipart form-data with file and roastId. Supported file extensions are .alog, .alog.json, and .json.',
-					'GET /api/roast-chart-data requires roastId and returns sampled telemetry tuned for charting, including performance metadata and derived ranges.',
+					'GET /api/roast-chart-data requires roastId and forwards the generated Parchment chart model: bounded typed series, discrete events, units, and derived ranges.',
 					'DELETE /api/clear-roast requires roast_id and forwards to Parchment, which enforces ownership plus roast:write before deleting imported telemetry, events, and log rows.'
 				]
 			},

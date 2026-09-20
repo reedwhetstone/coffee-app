@@ -21,6 +21,12 @@ export interface TemperaturePoint extends ChartPoint {
 	milestones?: Array<{ event: string; time: number }>;
 	rorValue?: number | null;
 	eventData?: Record<string, unknown>;
+	seriesValues?: Array<{
+		id: string;
+		label: string;
+		unit: string | null;
+		value: number;
+	}>;
 	heat?: number | null;
 	fan?: number | null;
 }

@@ -8,7 +8,6 @@ const allowedSupabaseFiles = new Set([
 	'src/hooks.server.ts',
 	'src/lib/components/Auth.svelte',
 	'src/lib/components/layout/AuthSidebar.svelte',
-	'src/lib/server/auth.ts',
 	'src/lib/server/pageAuth.ts',
 	'src/lib/server/principal.ts',
 	'src/lib/stores/auth.ts',
