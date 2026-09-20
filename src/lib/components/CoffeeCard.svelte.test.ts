@@ -284,7 +284,15 @@ describe('catalog summary detail hydration', () => {
 		expect(loadDetails).toHaveBeenCalledTimes(1);
 	});
 	it('loads initial deep links, exposes retry on failure, and leaves the card usable', async () => {
-		const summary = { ...createCoffee(), summarySignals: {} };
+		const summary = {
+			...createCoffee(),
+			summarySignals: {
+				farmNotes: false,
+				roastRecommendations: false,
+				descriptions: false,
+				cuppingNotes: false
+			}
+		};
 		const loadDetails = vi
 			.fn()
 			.mockRejectedValueOnce(new Error('offline'))
@@ -309,7 +317,15 @@ describe('catalog summary detail hydration', () => {
 			return new Promise<CoffeeCatalog>(() => {});
 		});
 		render(CoffeeCard, {
-			coffee: { ...createCoffee(), summarySignals: {} } as CoffeeCatalog,
+			coffee: {
+				...createCoffee(),
+				summarySignals: {
+					farmNotes: false,
+					roastRecommendations: false,
+					descriptions: false,
+					cuppingNotes: false
+				}
+			},
 			parseTastingNotes,
 			loadDetails,
 			initialDetailsOpen: true
