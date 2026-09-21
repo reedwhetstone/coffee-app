@@ -1,4 +1,10 @@
-import type { ProcessedChartData, ChartPoint, ControlSeries, ChartEvent } from './chart-types';
+import type {
+	ProcessedChartData,
+	ChartPoint,
+	ControlSeries,
+	ChartEvent,
+	ChartSeries
+} from './chart-types';
 
 /** Colors for Artisan import event value series */
 const EVENT_COLORS = [
@@ -397,13 +403,66 @@ export function prepareChartData(params: {
 		? [chartSettings!.zRange[0]!, chartSettings!.zRange[1]!]
 		: [0, 50];
 
+	const seriesCandidates: ChartSeries[] = [
+		{
+			id: 'bean-temperature',
+			label: 'Bean Temp (BT)',
+			kind: 'bean_temperature',
+			unit: '°F',
+			axis: 'temperature',
+			color: '#f59e0b',
+			strokeWidth: 3,
+			dashed: true,
+			curve: 'basis',
+			points: temperaturePoints
+		},
+		{
+			id: 'environmental-temperature',
+			label: 'Env Temp (ET)',
+			kind: 'environmental_temperature',
+			unit: '°F',
+			axis: 'temperature',
+			color: '#dc2626',
+			strokeWidth: 2,
+			curve: 'basis',
+			points: envTempPoints
+		},
+		{
+			id: 'bean-ror',
+			label: 'BT RoR',
+			kind: 'rate_of_rise',
+			unit: '°F/min',
+			axis: 'ror',
+			color: '#2563eb',
+			strokeWidth: 2,
+			curve: 'basis',
+			points: rorPoints
+		},
+		...controlSeries.map(
+			(control): ChartSeries => ({
+				id: `control-${control.name}`,
+				label: control.name.replace(/_setting/g, '').replace(/_/g, ' '),
+				kind: 'control',
+				unit: null,
+				axis: 'control',
+				color: control.color,
+				strokeWidth: control.strokeWidth,
+				curve: 'stepAfter',
+				points: control.points
+			})
+		)
+	];
+	const series = seriesCandidates.filter((entry) => entry.points.length > 0);
+
 	return {
 		temperaturePoints,
 		envTempPoints,
 		rorPoints,
 		controlSeries,
+		series,
 		events: chartEvents,
 		chargeTime,
+		temperatureUnit: '°F',
 		xDomain,
 		yTempDomain,
 		yRorDomain

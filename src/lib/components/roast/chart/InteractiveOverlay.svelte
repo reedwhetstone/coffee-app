@@ -3,13 +3,16 @@
 	import { bisector } from 'd3-array';
 	import type { Writable } from 'svelte/store';
 	import type { ScaleLinear } from 'd3-scale';
-	import type { ChartPoint, TooltipData, ProcessedChartData } from './chart-types';
+	import type { ChartPoint, ChartSeries, TooltipData, ProcessedChartData } from './chart-types';
+	import { nearestPoint, nearestPointWithinSamplingGap } from './chart-utils';
 
 	let {
 		chartData,
+		series = chartData.series,
 		onTooltipChange
 	}: {
 		chartData: ProcessedChartData;
+		series?: ChartSeries[];
 		onTooltipChange: (state: {
 			visible: boolean;
 			x: number;
@@ -24,8 +27,6 @@
 		xScale: Writable<ScaleLinear<number, number>>;
 	};
 
-	const bisectTime = bisector<ChartPoint, number>((d) => d.timeMinutes).left;
-
 	function handleMouseMove(e: MouseEvent) {
 		const svg = (e.currentTarget as SVGRectElement).closest('svg');
 		if (!svg) return;
@@ -36,32 +37,30 @@
 		// Invert x position to get time in minutes
 		const timeAtMouse = $xScale.invert(mouseX);
 
-		// Find nearest BT point
-		const btPoints = chartData.temperaturePoints;
-		if (btPoints.length === 0) return;
-
-		const idx = bisectTime(btPoints, timeAtMouse);
-		const d0 = btPoints[idx - 1];
-		const d1 = btPoints[idx];
-		const nearest =
-			d0 && d1
-				? timeAtMouse - d0.timeMinutes > d1.timeMinutes - timeAtMouse
-					? d1
-					: d0
-				: (d0 ?? d1);
+		const anchorSeries =
+			series.find((entry) => entry.kind === 'bean_temperature') ??
+			series.find((entry) => entry.axis === 'temperature') ??
+			series[0];
+		if (!anchorSeries) return;
+		const nearest = nearestPoint(anchorSeries.points, timeAtMouse);
 
 		if (!nearest) {
 			onTooltipChange({ visible: false, x: 0, y: 0, data: null });
 			return;
 		}
 
-		// Find matching ET point
-		const etIdx = bisectTime(chartData.envTempPoints, nearest.timeMinutes);
-		const etPoint = chartData.envTempPoints[etIdx] ?? chartData.envTempPoints[etIdx - 1];
-
-		// Find matching RoR point
-		const rorIdx = bisectTime(chartData.rorPoints, nearest.timeMinutes);
-		const rorPoint = chartData.rorPoints[rorIdx] ?? chartData.rorPoints[rorIdx - 1];
+		const beanPoint = nearestPointWithinSamplingGap(
+			series.find((entry) => entry.kind === 'bean_temperature')?.points ?? [],
+			nearest.timeMinutes
+		);
+		const etPoint = nearestPointWithinSamplingGap(
+			series.find((entry) => entry.kind === 'environmental_temperature')?.points ?? [],
+			nearest.timeMinutes
+		);
+		const rorPoint = nearestPointWithinSamplingGap(
+			series.find((entry) => entry.kind === 'rate_of_rise')?.points ?? [],
+			nearest.timeMinutes
+		);
 
 		// Find milestones at this time
 		const milestones = chartData.events
@@ -73,16 +72,29 @@
 
 		// Find control values at this time
 		const eventData: Record<string, number> = {};
-		for (const series of chartData.controlSeries) {
+		for (const entry of series.filter((candidate) => candidate.axis === 'control')) {
 			const cIdx = bisector<ChartPoint, number>((d) => d.timeMinutes).right(
-				series.points,
+				entry.points,
 				nearest.timeMinutes
 			);
-			const controlPoint = series.points[cIdx - 1];
+			const controlPoint = entry.points[cIdx - 1];
 			if (controlPoint) {
-				eventData[series.name] = controlPoint.value;
+				eventData[entry.label] = controlPoint.value;
 			}
 		}
+		const seriesValues = series.flatMap((entry) => {
+			const point =
+				entry.axis === 'control'
+					? entry.points[
+							bisector<ChartPoint, number>((candidate) => candidate.timeMinutes).right(
+								entry.points,
+								nearest.timeMinutes
+							) - 1
+						]
+					: nearestPointWithinSamplingGap(entry.points, nearest.timeMinutes);
+			if (!point) return [];
+			return [{ id: entry.id, label: entry.label, unit: entry.unit, value: point.value }];
+		});
 
 		// Convert timeMinutes back to absolute ms for tooltip
 		const absoluteTimeMs = nearest.timeMinutes * 1000 * 60 + chartData.chargeTime;
@@ -94,14 +106,12 @@
 			data: {
 				time: absoluteTimeMs,
 				chargeTime: chartData.chargeTime,
-				bean_temp: nearest.value,
+				bean_temp: beanPoint?.value ?? null,
 				environmental_temp: etPoint?.value ?? null,
-				rorValue:
-					rorPoint && Math.abs(rorPoint.timeMinutes - nearest.timeMinutes) < 0.5
-						? rorPoint.value
-						: null,
+				rorValue: rorPoint?.value ?? null,
 				milestones,
-				eventData
+				eventData,
+				seriesValues
 			}
 		});
 	}

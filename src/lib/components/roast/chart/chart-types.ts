@@ -4,8 +4,10 @@ export interface ProcessedChartData {
 	envTempPoints: ChartPoint[];
 	rorPoints: ChartPoint[];
 	controlSeries: ControlSeries[];
+	series: ChartSeries[];
 	events: ChartEvent[];
 	chargeTime: number;
+	temperatureUnit: string;
 	xDomain: [number, number];
 	yTempDomain: [number, number];
 	yRorDomain: [number, number];
@@ -20,6 +22,28 @@ export interface ControlSeries {
 	name: string;
 	color: string;
 	strokeWidth: number;
+	points: ChartPoint[];
+}
+
+export type ChartSeriesAxis = 'temperature' | 'ror' | 'control';
+
+/** One independently toggleable line in the shared roast chart model. */
+export interface ChartSeries {
+	id: string;
+	label: string;
+	kind:
+		| 'bean_temperature'
+		| 'environmental_temperature'
+		| 'ambient_temperature'
+		| 'rate_of_rise'
+		| 'auxiliary'
+		| 'control';
+	unit: string | null;
+	axis: ChartSeriesAxis;
+	color: string;
+	strokeWidth: number;
+	dashed?: boolean;
+	curve: 'basis' | 'linear' | 'stepAfter';
 	points: ChartPoint[];
 }
 
@@ -43,6 +67,12 @@ export interface TooltipData {
 	rorValue: number | null;
 	milestones: Array<{ event: string; time: number }>;
 	eventData: Record<string, number>;
+	seriesValues: Array<{
+		id: string;
+		label: string;
+		unit: string | null;
+		value: number;
+	}>;
 }
 
 /** Series descriptor for chart legend */

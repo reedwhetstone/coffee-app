@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { LayerCake, Svg } from 'layercake';
 	import { scaleLinear } from 'd3-scale';
-	import type { ProcessedChartData, TooltipData, LegendEntry } from './chart-types';
+	import type { ProcessedChartData, TooltipData } from './chart-types';
 
 	import AxisX from './AxisX.svelte';
 	import AxisY from './AxisY.svelte';
@@ -9,9 +9,9 @@
 	import Line from './Line.svelte';
 	import MilestoneMarkers from './MilestoneMarkers.svelte';
 	import TimeTracker from './TimeTracker.svelte';
-	import ChartLegend from './ChartLegend.svelte';
 	import ChargeLine from './ChargeLine.svelte';
 	import InteractiveOverlay from './InteractiveOverlay.svelte';
+	import { controlScaleDomain } from './chart-utils';
 
 	let {
 		chartData,
@@ -34,7 +34,22 @@
 	// since LayerCake only supports one Y scale natively
 	let containerHeight = $state(0);
 	let containerWidth = $state(0);
+	let hiddenSeriesIds = $state<string[]>([]);
 	const padding = { top: 20, right: 80, bottom: 40, left: 80 };
+	let visibleSeries = $derived(
+		chartData.series.filter((series) => !hiddenSeriesIds.includes(series.id))
+	);
+	let anchorPoints = $derived(
+		visibleSeries.find((series) => series.axis === 'temperature')?.points ??
+			visibleSeries[0]?.points ??
+			[]
+	);
+
+	function toggleSeries(id: string) {
+		hiddenSeriesIds = hiddenSeriesIds.includes(id)
+			? hiddenSeriesIds.filter((entry) => entry !== id)
+			: [...hiddenSeriesIds, id];
+	}
 
 	let rorScale = $derived.by(() => {
 		const innerH = containerHeight - padding.top - padding.bottom;
@@ -45,58 +60,10 @@
 	let controlScale = $derived.by(() => {
 		const innerH = containerHeight - padding.top - padding.bottom;
 		if (innerH <= 0) return scaleLinear().domain([0, 10]).range([0, 0]);
-		// Compute max value across all control series
-		let maxVal = 10;
-		for (const series of chartData.controlSeries) {
-			for (const pt of series.points) {
-				if (pt.value > maxVal) maxVal = pt.value;
-			}
-		}
-		// Snap to clean ceiling: 10, 50, 100, 200, etc.
-		let ceiling: number;
-		if (maxVal <= 10) ceiling = 10;
-		else if (maxVal <= 50) ceiling = 50;
-		else if (maxVal <= 100) ceiling = 100;
-		else ceiling = Math.ceil(maxVal / 100) * 100;
 		// Control values use bottom 30% of chart height
 		return scaleLinear()
-			.domain([0, ceiling])
+			.domain(controlScaleDomain(visibleSeries))
 			.range([innerH, innerH * 0.7]);
-	});
-
-	// Build legend entries
-	let legendEntries = $derived.by(() => {
-		const entries: LegendEntry[] = [];
-		if (chartData.temperaturePoints.length > 0) {
-			entries.push({
-				label: 'Bean Temp (BT)',
-				color: '#f59e0b',
-				strokeWidth: 3,
-				dashed: true
-			});
-		}
-		if (chartData.envTempPoints.length > 0) {
-			entries.push({
-				label: 'Env Temp (ET)',
-				color: '#dc2626',
-				strokeWidth: 2
-			});
-		}
-		if (chartData.rorPoints.length > 0) {
-			entries.push({
-				label: 'BT RoR (°F/min)',
-				color: '#2563eb',
-				strokeWidth: 2
-			});
-		}
-		for (const series of chartData.controlSeries) {
-			entries.push({
-				label: series.name.replace(/_setting/g, '').replace(/_/g, ' '),
-				color: series.color,
-				strokeWidth: series.strokeWidth
-			});
-		}
-		return entries;
 	});
 
 	function handleTooltip(state: {
@@ -109,90 +76,69 @@
 	}
 </script>
 
-<div class="h-full w-full" bind:clientHeight={containerHeight} bind:clientWidth={containerWidth}>
-	<LayerCake
-		data={chartData.temperaturePoints}
-		x={(d: { timeMinutes: number; value: number }) => d.timeMinutes}
-		y={(d: { timeMinutes: number; value: number }) => d.value}
-		xDomain={chartData.xDomain}
-		yDomain={chartData.yTempDomain}
-		yReverse
-		{padding}
-	>
-		<Svg>
-			<!-- Axes -->
-			<AxisX />
-			<AxisY label="Temperature (°F)" />
-			<AxisYRight scale={rorScale} label="RoR (°F/min)" />
-
-			<!-- Charge line (vertical at time = 0) -->
-			<ChargeLine />
-
-			<!-- BT line (orange dashed) -->
-			{#if chartData.temperaturePoints.length > 0}
-				<Line
-					data={chartData.temperaturePoints}
-					color="#f59e0b"
-					strokeWidth={3}
-					dashArray="5,5"
-					curve="basis"
-					className="bean-temp-line"
-				/>
-			{/if}
-
-			<!-- ET line (red solid) -->
-			{#if chartData.envTempPoints.length > 0}
-				<Line
-					data={chartData.envTempPoints}
-					color="#dc2626"
-					strokeWidth={2}
-					curve="basis"
-					className="env-temp-line"
-				/>
-			{/if}
-
-			<!-- RoR line (blue, right axis) -->
-			{#if chartData.rorPoints.length > 0}
-				<Line
-					data={chartData.rorPoints}
-					color="#2563eb"
-					strokeWidth={2}
-					yScaleOverride={rorScale}
-					curve="basis"
-					className="ror-line"
-				/>
-			{/if}
-
-			<!-- Control series (fan, heat, Artisan events) -->
-			{#each chartData.controlSeries as series}
-				<Line
-					data={series.points}
-					color={series.color}
-					strokeWidth={series.strokeWidth}
-					yScaleOverride={controlScale}
-					curve="stepAfter"
-					className="control-event-line"
-				/>
+<div class="flex h-full w-full flex-col">
+	{#if !isLive && chartData.series.length > 1}
+		<div class="flex flex-wrap gap-1.5 px-2 pb-2" aria-label="Chart series visibility">
+			{#each chartData.series as series}
+				<button
+					type="button"
+					class="hover:bg-surface-muted inline-flex min-h-8 items-center gap-1.5 rounded-full border border-line bg-surface-canvas px-2.5 py-1 text-xs text-ink transition"
+					class:opacity-50={hiddenSeriesIds.includes(series.id)}
+					aria-pressed={!hiddenSeriesIds.includes(series.id)}
+					onclick={() => toggleSeries(series.id)}
+				>
+					<span class="h-0.5 w-3 rounded" style:background-color={series.color}></span>
+					{series.label}{series.unit ? ` (${series.unit})` : ''}
+				</button>
 			{/each}
+		</div>
+	{/if}
+	<div class="min-h-0 flex-1" bind:clientHeight={containerHeight} bind:clientWidth={containerWidth}>
+		<LayerCake
+			data={anchorPoints}
+			x={(d: { timeMinutes: number; value: number }) => d.timeMinutes}
+			y={(d: { timeMinutes: number; value: number }) => d.value}
+			xDomain={chartData.xDomain}
+			yDomain={chartData.yTempDomain}
+			yReverse
+			{padding}
+		>
+			<Svg>
+				<!-- Axes -->
+				<AxisX />
+				<AxisY label={`Temperature (${chartData.temperatureUnit})`} />
+				<AxisYRight scale={rorScale} label={`RoR (${chartData.temperatureUnit}/min)`} />
 
-			<!-- Milestone markers -->
-			<MilestoneMarkers events={chartData.events} />
+				<!-- Charge line (vertical at time = 0) -->
+				<ChargeLine />
 
-			<!-- Time tracker for live roasting -->
-			<TimeTracker {currentTimeMinutes} visible={isLive} />
+				{#each visibleSeries as series}
+					<Line
+						data={series.points}
+						color={series.color}
+						strokeWidth={series.strokeWidth}
+						dashArray={series.dashed ? '5,5' : undefined}
+						yScaleOverride={series.axis === 'ror'
+							? rorScale
+							: series.axis === 'control'
+								? controlScale
+								: undefined}
+						curve={series.curve}
+						className={`chart-series chart-series-${series.kind}`}
+					/>
+				{/each}
 
-			<!-- Legend (positioned in top-right of inner chart area) -->
-			{#if legendEntries.length > 0}
-				{@const innerWidth = containerWidth - padding.left - padding.right}
-				<g class="temp-legend" transform="translate({Math.max(innerWidth - 160, 0)}, 20)">
-					<ChartLegend entries={legendEntries} />
-				</g>
-			{/if}
+				<!-- Milestone markers -->
+				<MilestoneMarkers events={chartData.events} />
 
-			<!-- Interactive overlay for tooltip (saved profiles only) -->
-			{#if !isLive && onTooltipChange}
-				<InteractiveOverlay {chartData} onTooltipChange={handleTooltip} />
-			{/if}
-		</Svg>
-	</LayerCake>
+				<!-- Time tracker for live roasting -->
+				<TimeTracker {currentTimeMinutes} visible={isLive} />
+
+				<!-- Interactive overlay for tooltip (saved profiles only) -->
+				{#if !isLive && onTooltipChange}
+					<InteractiveOverlay {chartData} series={visibleSeries} onTooltipChange={handleTooltip} />
+				{/if}
+			</Svg>
+		</LayerCake>
+	</div>
 </div>
