@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Chat } from '@ai-sdk/svelte';
 	import { DefaultChatTransport } from 'ai';
+	import type { ConversationChatStreamRequest } from '@purveyors/sdk';
 	import EvidenceWorkspace from './EvidenceWorkspace.svelte';
 	import ChatMessageList from '$lib/components/chat/ChatMessageList.svelte';
 	import ChatComposer from '$lib/components/chat/ChatComposer.svelte';
@@ -266,7 +267,8 @@
 	let lastSubmittedDraft = $state('');
 	let lastSubmittedAttachment = $state<ReferenceAttachment | null>(null);
 	let lastSubmittedHandoff = $state<ProfileStudioHandoff | null>(null);
-	let lastSubmittedBody: Record<string, unknown> | null = null;
+	type ChatRequestBody = Omit<ConversationChatStreamRequest, 'messages'>;
+	let lastSubmittedBody: ChatRequestBody | null = null;
 	let retryPreservesComposerDraft = false;
 	let draftEditedSinceSubmission = false;
 	let profileStudioConversationPending = $state(false);
@@ -277,6 +279,8 @@
 		attachmentId: string | null;
 		handoff: ProfileStudioHandoff | null;
 	} | null = null;
+	let pendingContinuationExecutionId: string | null = null;
+	let activeContinuationExecutionId: string | null = null;
 
 	function noteDraftInput() {
 		draftEditedSinceSubmission = true;
@@ -311,6 +315,12 @@
 			console.error('Chat error:', error);
 			const failure = classifyChatFailure(error);
 			allowInterruptedRetention = failure.kind !== 'access';
+			if (activeContinuationExecutionId) {
+				pendingContinuationExecutionId = activeContinuationExecutionId;
+				chatError = `Action completed, but ${agentName} couldn't continue. Retry to pick up where it left off.`;
+				chatCanRetry = true;
+				return;
+			}
 			chatError = failure.message;
 			chatCanRetry = failure.retryable;
 			if (
@@ -333,6 +343,7 @@
 			}
 		},
 		onFinish: ({ isAbort, isError }) => {
+			const continuationExecutionId = activeContinuationExecutionId;
 			// Stop only aborts the transport. Finalize after the SDK has settled so
 			// late parser writes cannot overwrite the retained, append-only snapshot.
 			if (isAbort || isError) {
@@ -356,6 +367,22 @@
 				chatError =
 					'Cherry finished its research without completing the response. Retry the request.';
 				chatCanRetry = true;
+			}
+			if (continuationExecutionId) {
+				if (isAbort || isError || silentToolOnlyCompletion) {
+					pendingContinuationExecutionId = continuationExecutionId;
+					if (isAbort) {
+						chatError = `Action completed, but ${agentName}'s continuation was stopped. Retry to resume it.`;
+						chatCanRetry = true;
+					} else if (silentToolOnlyCompletion) {
+						chatError = `Action completed, but ${agentName} didn't finish the follow-up. Retry to resume it.`;
+					}
+				} else {
+					pendingContinuationExecutionId = null;
+					chatError = null;
+					chatCanRetry = false;
+				}
+				activeContinuationExecutionId = null;
 			}
 			messageCountBeforeSubmission = null;
 			allowInterruptedRetention = true;
@@ -583,6 +610,8 @@
 		dispatchedParts = new Set();
 		lastPersistedMessageCount = 0;
 		lastSummarizedMessageCount = 0;
+		pendingContinuationExecutionId = null;
+		activeContinuationExecutionId = null;
 
 		// Restore messages from persisted workspace
 		if (result.messages.length > 0) {
@@ -1254,6 +1283,7 @@
 					}
 				}
 			}
+			void continueAfterConfirmedAction(executionId);
 			return result;
 		} catch (err) {
 			clearTimeout(timeoutId);
@@ -1279,8 +1309,8 @@
 	// Snapshotted at send time. The server builds a fresh prompt for every turn,
 	// so opted-in context must accompany every request.
 
-	function buildSendBody(): Record<string, unknown> {
-		const body: Record<string, unknown> = { workspaceContext: getWorkspaceContext() };
+	function buildSendBody(): ChatRequestBody {
+		const body: ChatRequestBody = { workspaceContext: getWorkspaceContext() };
 		if (!includeUserMemoryDoc) body.includeUserMemory = false;
 		const context = includePageContext ? pageChatContext.current : null;
 		if (context)
@@ -1295,6 +1325,28 @@
 
 	function storageForIdempotency() {
 		return typeof sessionStorage === 'undefined' ? null : sessionStorage;
+	}
+
+	async function continueAfterConfirmedAction(executionId: string) {
+		pendingContinuationExecutionId = executionId;
+		activeContinuationExecutionId = executionId;
+		retryPreservesComposerDraft = true;
+		chatError = null;
+		chatCanRetry = false;
+		shouldScrollToBottom = true;
+		messageCountBeforeSubmission = chat.messages.length;
+		try {
+			await chat.sendMessage(undefined, {
+				body: {
+					...buildSendBody(),
+					completedAction: { executionId }
+				}
+			});
+		} catch {
+			// Chat owns error classification and retry presentation through onError.
+		} finally {
+			messageCountBeforeSubmission = null;
+		}
 	}
 
 	// ─── Send Message ──────────────────────────────────────────────────────────
@@ -1319,6 +1371,10 @@
 		lastSubmittedDraft = inputMessage.trim();
 		lastSubmittedAttachment = attachment;
 		lastSubmittedHandoff = handoff;
+		// An explicit new request abandons a failed automatic continuation. Future
+		// retries must belong to this newly submitted turn, not stale completed work.
+		pendingContinuationExecutionId = null;
+		activeContinuationExecutionId = null;
 		lastSubmittedPrompt = text;
 		lastSubmittedContext = context;
 		lastSubmittedBody = buildSendBody();
@@ -1394,7 +1450,12 @@
 	}
 
 	async function retryLastResponse() {
-		if (isActive || isClearing || !workspaceReady || !lastSubmittedPrompt) return;
+		if (isActive || isClearing || !workspaceReady) return;
+		if (pendingContinuationExecutionId) {
+			await continueAfterConfirmedAction(pendingContinuationExecutionId);
+			return;
+		}
+		if (!lastSubmittedPrompt) return;
 		// Retry belongs to the failed request, never to a follow-up being drafted.
 		// When the composer only held the restored request, a failed retry may
 		// restore it again.
@@ -1435,6 +1496,8 @@
 		lastSubmittedDraft = inputMessage.trim();
 		lastSubmittedAttachment = pendingReferenceAttachment;
 		lastSubmittedHandoff = profileStudioHandoff;
+		pendingContinuationExecutionId = null;
+		activeContinuationExecutionId = null;
 		lastSubmittedPrompt = prompt;
 		lastSubmittedContext = context;
 		lastSubmittedBody = buildSendBody();
@@ -1486,6 +1549,8 @@
 			chat.messages = [];
 			dispatchedParts = new Set();
 			lastPersistedMessageCount = 0;
+			pendingContinuationExecutionId = null;
+			activeContinuationExecutionId = null;
 			canvasPersistError = null;
 		} catch (err) {
 			canvasPersistError = (err as Error).message;
