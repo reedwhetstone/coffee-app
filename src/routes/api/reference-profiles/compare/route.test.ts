@@ -53,6 +53,10 @@ describe('/api/reference-profiles/compare', () => {
 		);
 
 		expect(response.status).toBe(200);
+		expect(parchmentMocks.createParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+			mode: 'session',
+			signal: expect.any(AbortSignal)
+		});
 		expect(compare).toHaveBeenCalledWith({
 			left: { type: 'executed_roast', roastId: 9, roastRevision: 'roast-revision-9' },
 			right: { type: 'reference_revision', revisionId: 'reference-revision-2' },
@@ -60,5 +64,13 @@ describe('/api/reference-profiles/compare', () => {
 			targetUnit: 'F',
 			targetPoints: 400
 		});
+	});
+
+	it('rejects non-object JSON before touching the downstream client', async () => {
+		const response = await POST(event(null) as never);
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({ error: 'Invalid comparison request' });
+		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
 	});
 });

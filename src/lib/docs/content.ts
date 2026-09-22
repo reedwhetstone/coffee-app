@@ -1528,6 +1528,20 @@ const docsPages: DocsPage[] = [
 							'Session + roast:write',
 							'Internal maintenance helper',
 							'Requires roast_id query param. Forwards to the canonical Parchment API, which clears imported Artisan data and resets related fields.'
+						],
+						[
+							'/api/reference-profiles',
+							'GET POST',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'Lists owner-scoped reference profiles and accepts Artisan multipart uploads or immutable snapshots of eligible executed roasts. POST requires an Idempotency-Key.'
+						],
+						[
+							'/api/reference-profiles/compare',
+							'POST',
+							'Session + Mallard Studio',
+							'Internal analysis helper',
+							'Resolves selected executed-roast or reference-profile IDs to immutable revisions and returns a bounded measured comparison.'
 						]
 					]
 				}
@@ -1843,6 +1857,8 @@ const docsPages: DocsPage[] = [
 					'POST /api/roast-profiles supports both single and batch creation. Batch callers retain one Idempotency-Key for the same payload until the result is definitive. The Parchment-owned database trigger recalculates stocked state in the same transaction as each roast change.',
 					'PUT /api/roast-profiles requires an id query parameter and forwards optional If-Match concurrency checks. Live curve writes replace only live temperatures plus the current event set. DELETE accepts either id or an exact batch name query parameter.',
 					'POST /api/artisan-import expects multipart form-data with file and roastId. Supported file extensions are .alog, .alog.json, and .json.',
+					'GET /api/reference-profiles lists reusable owner-scoped references. POST accepts either an Artisan multipart upload or an executed_roast JSON snapshot and requires a stable Idempotency-Key until the outcome is definitive.',
+					'POST /api/reference-profiles/compare accepts two selected IDs, resolves immutable revisions before comparison, and returns measured charge-aligned deltas. These are internal first-party BFF routes, not public /v1 API contracts.',
 					'GET /api/roast-chart-data requires roastId and forwards the generated Parchment chart model: bounded typed series, discrete events, units, and derived ranges.',
 					'DELETE /api/clear-roast requires roast_id and forwards to Parchment, which enforces ownership plus roast:write before deleting imported telemetry, events, and log rows.'
 				]

@@ -45,9 +45,14 @@ describe('/api/reference-profiles', () => {
 			body: form
 		});
 
-		const response = await POST(event(request) as never);
+		const requestEvent = event(request);
+		const response = await POST(requestEvent as never);
 
 		expect(response.status).toBe(201);
+		expect(parchmentMocks.createParchmentServerClient).toHaveBeenCalledWith(requestEvent, {
+			mode: 'session',
+			signal: request.signal
+		});
 		expect(importProfile).toHaveBeenCalledWith(
 			expect.objectContaining({
 				fileName: 'private-customer-name.alog',
@@ -88,5 +93,23 @@ describe('/api/reference-profiles', () => {
 			{ roastId: 7, roastRevision: 'roast-revision-7', title: 'Batch 7 reference' },
 			'idem-2'
 		);
+	});
+
+	it('rejects non-object JSON before dereferencing the body', async () => {
+		const request = new Request('https://app.test/api/reference-profiles', {
+			method: 'POST',
+			headers: {
+				Origin: 'https://app.test',
+				'Content-Type': 'application/json',
+				'Idempotency-Key': 'idem-invalid'
+			},
+			body: 'null'
+		});
+
+		const response = await POST(event(request) as never);
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({ error: 'Invalid request' });
+		expect(parchmentMocks.createParchmentServerClient).toHaveBeenCalledTimes(1);
 	});
 });

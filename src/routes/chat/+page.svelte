@@ -74,6 +74,7 @@
 			agentName={agent.name}
 			{canUseChat}
 			{canUseMallardWorkspaces}
+			ownerId={data.auth.user?.id ?? null}
 			initialWorkspaceData={data.initialWorkspaceData ?? null}
 		/>
 	</div>

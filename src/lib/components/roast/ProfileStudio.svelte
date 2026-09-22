@@ -7,16 +7,28 @@
 		type ProfileComparison
 	} from '$lib/roast/profile-comparison-model';
 	import { trackProfileStudioActivation } from '$lib/profileStudio/analytics';
+	import {
+		clearIdempotencyKey,
+		reserveIdempotencyKey,
+		shouldRetainIdempotencyKey
+	} from '$lib/idempotency';
 
 	type RoastOption = {
 		roast_id: number;
 		batch_name?: string | null;
 		coffee_name?: string | null;
 		roast_date?: string | null;
+		weight_loss_percent?: number | null;
+		oz_in?: number | null;
+		oz_out?: number | null;
 	};
 	type Selection = { kind: 'executed_roast' | 'reference_profile'; id: string; label: string };
 
-	let { roasts, enabled }: { roasts: RoastOption[]; enabled: boolean } = $props();
+	let {
+		roasts,
+		enabled,
+		ownerId = null
+	}: { roasts: RoastOption[]; enabled: boolean; ownerId?: string | null } = $props();
 	type ReferenceProfileSummary = components['schemas']['ReferenceProfileSummary'];
 	let profiles = $state<ReferenceProfileSummary[]>([]);
 	let loading = $state(false);
@@ -31,9 +43,15 @@
 	let notice = $state<string | null>(null);
 	let comparison = $state<ProfileComparison | null>(null);
 	let comparisonLabels = $state<{ left: string; right: string } | null>(null);
+	let fileInput = $state<HTMLInputElement | null>(null);
+
+	const storage = () => (typeof sessionStorage === 'undefined' ? null : sessionStorage);
+	const isExecutionEligible = (roast: RoastOption) =>
+		(roast.weight_loss_percent ?? 0) > 0 || (roast.oz_out ?? 0) > 0;
+	const executedRoasts = $derived(roasts.filter(isExecutionEligible));
 
 	const options = $derived([
-		...roasts.map((roast) => ({
+		...executedRoasts.map((roast) => ({
 			value: `executed_roast:${roast.roast_id}`,
 			label: `${roast.batch_name || roast.coffee_name || `Roast #${roast.roast_id}`} · executed roast`
 		})),
@@ -50,12 +68,18 @@
 	);
 	const cherryHref = $derived.by(() => {
 		if (!comparisonLabels) return '/chat';
-		const prompt = [
-			`Compare ${comparisonLabels.left} with ${comparisonLabels.right}.`,
-			'Use the measured Profile Studio comparison, explain the largest curve and milestone differences, then ask what I want to preserve or change.',
-			'Do not generate or claim an export; synthesis and download are not available yet.'
-		].join(' ');
-		return `/chat?${new URLSearchParams({ source: 'profile-studio', prompt }).toString()}`;
+		const left = parseSelection(leftValue);
+		const right = parseSelection(rightValue);
+		if (!left || !right) return '/chat';
+		const prompt = `Discuss the measured differences between ${comparisonLabels.left} and ${comparisonLabels.right} and help me decide what to preserve or change.`;
+		return `/chat?${new URLSearchParams({
+			source: 'profile-studio',
+			prompt,
+			left_kind: left.kind,
+			left_id: left.id,
+			right_kind: right.kind,
+			right_id: right.id
+		}).toString()}`;
 	});
 
 	function parseSelection(value: string): Selection | null {
@@ -87,21 +111,44 @@
 
 	async function uploadReference() {
 		if (!selectedFile || saving) return;
+		const title = referenceTitle.trim() || 'Artisan reference';
+		const payloadFingerprint = [
+			selectedFile.name,
+			selectedFile.size,
+			selectedFile.lastModified,
+			title
+		].join('|');
+		const idempotencyKey = reserveIdempotencyKey(
+			storage(),
+			ownerId,
+			'profile-studio-upload',
+			payloadFingerprint
+		);
 		saving = true;
 		error = null;
 		notice = null;
 		try {
 			const form = new FormData();
 			form.set('file', selectedFile);
-			form.set('title', referenceTitle.trim() || 'Artisan reference');
+			form.set('title', title);
 			const response = await fetch('/api/reference-profiles', {
 				method: 'POST',
-				headers: { 'Idempotency-Key': crypto.randomUUID() },
+				headers: { 'Idempotency-Key': idempotencyKey },
 				body: form
 			});
-			const body = await response.json();
-			if (!response.ok) throw new Error(body.error || 'Unable to save this Artisan profile');
+			const body = (await response.json().catch(() => null)) as {
+				data?: { title?: string };
+				error?: string;
+			} | null;
+			if (!response.ok) {
+				if (!shouldRetainIdempotencyKey(response.status))
+					clearIdempotencyKey(storage(), ownerId, 'profile-studio-upload', payloadFingerprint);
+				throw new Error(body?.error || 'Unable to save this Artisan profile');
+			}
+			if (!body?.data?.title) throw new Error('Unable to save this Artisan profile');
+			clearIdempotencyKey(storage(), ownerId, 'profile-studio-upload', payloadFingerprint);
 			selectedFile = null;
+			if (fileInput) fileInput.value = '';
 			referenceTitle = 'Artisan reference';
 			notice = `${body.data.title} is saved as a reference profile, separate from executed roast history.`;
 			trackProfileStudioActivation('artisan_file_accepted');
@@ -117,7 +164,16 @@
 	async function saveRoastReference() {
 		const roastId = Number(selectedRoastId);
 		if (!Number.isSafeInteger(roastId) || roastId <= 0 || saving) return;
-		const roast = roasts.find((candidate) => candidate.roast_id === roastId);
+		const roast = executedRoasts.find((candidate) => candidate.roast_id === roastId);
+		if (!roast) return;
+		const title = `${roast.batch_name || roast.coffee_name || `Roast #${roastId}`} reference`;
+		const payload = JSON.stringify({ source: 'executed_roast', roastId, title });
+		const idempotencyKey = reserveIdempotencyKey(
+			storage(),
+			ownerId,
+			'profile-studio-snapshot',
+			payload
+		);
 		saving = true;
 		error = null;
 		notice = null;
@@ -126,16 +182,21 @@
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'Idempotency-Key': crypto.randomUUID()
+					'Idempotency-Key': idempotencyKey
 				},
-				body: JSON.stringify({
-					source: 'executed_roast',
-					roastId,
-					title: `${roast?.batch_name || roast?.coffee_name || `Roast #${roastId}`} reference`
-				})
+				body: payload
 			});
-			const body = await response.json();
-			if (!response.ok) throw new Error(body.error || 'Unable to save this roast as a reference');
+			const body = (await response.json().catch(() => null)) as {
+				data?: { title?: string };
+				error?: string;
+			} | null;
+			if (!response.ok) {
+				if (!shouldRetainIdempotencyKey(response.status))
+					clearIdempotencyKey(storage(), ownerId, 'profile-studio-snapshot', payload);
+				throw new Error(body?.error || 'Unable to save this roast as a reference');
+			}
+			if (!body?.data?.title) throw new Error('Unable to save this roast as a reference');
+			clearIdempotencyKey(storage(), ownerId, 'profile-studio-snapshot', payload);
 			notice = `${body.data.title} is saved as an immutable reference snapshot.`;
 			selectedRoastId = '';
 			trackProfileStudioActivation('reference_profile_saved');
@@ -164,7 +225,7 @@
 			if (!response.ok) throw new Error(body.error || 'Unable to compare these profiles');
 			comparison = body.data;
 			comparisonLabels = { left: left.label, right: right.label };
-			trackProfileStudioActivation('first_comparison_completed');
+			trackProfileStudioActivation('profile_comparison_completed');
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : 'Unable to compare these profiles';
 		} finally {
@@ -247,6 +308,7 @@
 				>
 				<input
 					type="file"
+					bind:this={fileInput}
 					accept=".alog,.alog.json,.json"
 					class="mt-3 block w-full text-sm text-muted file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-2 file:font-semibold file:text-ink"
 					onchange={(event) =>
@@ -269,7 +331,7 @@
 					class="mt-3 min-h-11 w-full rounded-md border border-line bg-surface-canvas px-3 text-sm text-ink"
 				>
 					<option value="">Choose an executed roast</option>
-					{#each roasts as roast (roast.roast_id)}<option value={String(roast.roast_id)}
+					{#each executedRoasts as roast (roast.roast_id)}<option value={String(roast.roast_id)}
 							>{roast.batch_name || roast.coffee_name || `Roast #${roast.roast_id}`}</option
 						>{/each}
 				</select>

@@ -1,7 +1,14 @@
 import type { components } from '@purveyors/sdk';
 import type { ChartSeries, ProcessedChartData } from '$lib/components/roast/chart';
 
-export type ProfileComparison = components['schemas']['ProfileComparisonResponse']['data'];
+type SdkProfileComparison = components['schemas']['ProfileComparisonResponse']['data'];
+type ProfileComparisonSeries =
+	| SdkProfileComparison['series'][number]
+	| (Omit<SdkProfileComparison['series'][number], 'kind'> & { kind: 'rate_of_rise' });
+
+export type ProfileComparison = Omit<SdkProfileComparison, 'series'> & {
+	series: ProfileComparisonSeries[];
+};
 
 const LEFT_COLORS = ['#b45309', '#0f766e', '#7c3aed', '#0891b2'];
 const RIGHT_COLORS = ['#dc2626', '#2563eb', '#be185d', '#4f46e5'];
@@ -23,7 +30,11 @@ export function buildProfileComparisonChart(
 ): ProcessedChartData {
 	const series: ChartSeries[] = comparison.series.flatMap((entry, index) => {
 		const axis: ChartSeries['axis'] =
-			entry.kind === 'auxiliary' && !/[cf]$/i.test(entry.unit) ? 'control' : 'temperature';
+			entry.kind === 'rate_of_rise'
+				? 'ror'
+				: entry.kind === 'auxiliary' && !/[cf]$/i.test(entry.unit)
+					? 'control'
+					: 'temperature';
 		const shared = {
 			kind: entry.kind,
 			unit: entry.unit === comparison.targetUnit ? `°${entry.unit}` : entry.unit,
@@ -63,7 +74,7 @@ export function buildProfileComparisonChart(
 	return {
 		temperaturePoints: series.find((entry) => entry.kind === 'bean_temperature')?.points ?? [],
 		envTempPoints: series.find((entry) => entry.kind === 'environmental_temperature')?.points ?? [],
-		rorPoints: [],
+		rorPoints: series.find((entry) => entry.kind === 'rate_of_rise')?.points ?? [],
 		controlSeries: [],
 		series,
 		events: comparison.milestones.flatMap((milestone) => [

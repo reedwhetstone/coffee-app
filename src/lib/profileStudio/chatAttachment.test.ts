@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildReferenceAttachmentPrompt } from './chatAttachment';
+import {
+	buildProfileStudioHandoffPrompt,
+	buildReferenceAttachmentPrompt,
+	readProfileStudioHandoff
+} from './chatAttachment';
 
 describe('Profile Studio chat attachments', () => {
 	it('persists only a safe reference label and opaque profile id', () => {
@@ -21,5 +25,22 @@ describe('Profile Studio chat attachments', () => {
 				title: 'Artisan chat reference'
 			})
 		).toContain('help me decide what to preserve or change');
+	});
+
+	it('keeps selected comparison identities in transport context, not the visible seed', () => {
+		const handoff = readProfileStudioHandoff(
+			new URLSearchParams(
+				'source=profile-studio&left_kind=executed_roast&left_id=42&right_kind=reference_profile&right_id=profile-7'
+			)
+		);
+		expect(handoff).toEqual({
+			leftKind: 'executed_roast',
+			leftId: '42',
+			rightKind: 'reference_profile',
+			rightId: 'profile-7'
+		});
+		expect(buildProfileStudioHandoffPrompt('Explain this comparison.', handoff!)).toContain(
+			'left executed_roast 42; right reference_profile profile-7'
+		);
 	});
 });

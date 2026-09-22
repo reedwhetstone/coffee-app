@@ -6,6 +6,8 @@ describe('profile comparison chart model', () => {
 		const comparison = {
 			alignment: 'charge',
 			targetUnit: 'F',
+			left: { type: 'executed_roast', id: 'left', revision: 'left-revision' },
+			right: { type: 'reference_profile', id: 'right', revision: 'right-revision' },
 			series: [
 				{
 					id: 'bean-temperature',
@@ -37,5 +39,29 @@ describe('profile comparison chart model', () => {
 			{ timeMinutes: 8, name: 'Executed roast: first_crack' },
 			{ timeMinutes: 500_000 / 60_000, name: 'Reference plan: first_crack' }
 		]);
+	});
+
+	it('keeps rate-of-rise series on the secondary RoR axis', () => {
+		const comparison = {
+			alignment: 'charge',
+			targetUnit: 'F',
+			left: { type: 'executed_roast', id: 'left', revision: 'left-revision' },
+			right: { type: 'reference_profile', id: 'right', revision: 'right-revision' },
+			series: [
+				{
+					id: 'ror',
+					name: 'RoR',
+					kind: 'rate_of_rise',
+					unit: 'F/min',
+					points: [{ timeMilliseconds: 60_000, left: 12, right: 10, delta: 2 }]
+				}
+			],
+			milestones: []
+		} as ProfileComparison;
+
+		const chart = buildProfileComparisonChart(comparison, 'Left', 'Right');
+
+		expect(chart.series.map((series) => series.axis)).toEqual(['ror', 'ror']);
+		expect(chart.rorPoints).toEqual([{ timeMinutes: 1, value: 12 }]);
 	});
 });

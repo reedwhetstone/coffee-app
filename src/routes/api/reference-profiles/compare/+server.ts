@@ -19,6 +19,10 @@ function validSelection(value: unknown): value is Selection {
 	);
 }
 
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 async function immutableInput(
 	client: Awaited<ReturnType<typeof createParchmentServerClient>>,
 	selection: Selection
@@ -44,12 +48,18 @@ async function immutableInput(
 export const POST: RequestHandler = async (event) => {
 	try {
 		await requireMemberRole(event);
-		const body = (await event.request.json()) as Record<string, unknown>;
+		const parsedBody = await event.request.json();
+		if (!isJsonObject(parsedBody))
+			return json({ error: 'Invalid comparison request' }, { status: 400 });
+		const body = parsedBody;
 		if (!validSelection(body.left) || !validSelection(body.right)) {
 			return json({ error: 'Choose two valid profiles to compare' }, { status: 400 });
 		}
 		const targetUnit = body.targetUnit === 'C' ? 'C' : 'F';
-		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const client = await createParchmentServerClient(event, {
+			mode: 'session',
+			signal: event.request.signal
+		});
 		const [left, right] = await Promise.all([
 			immutableInput(client, body.left),
 			immutableInput(client, body.right)

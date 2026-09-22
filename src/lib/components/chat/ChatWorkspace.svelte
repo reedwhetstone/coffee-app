@@ -53,8 +53,16 @@
 	import { trackProfileStudioActivation } from '$lib/profileStudio/analytics';
 	import {
 		buildReferenceAttachmentPrompt,
-		type ReferenceAttachment
+		buildProfileStudioHandoffPrompt,
+		readProfileStudioHandoff,
+		type ReferenceAttachment,
+		type ProfileStudioHandoff
 	} from '$lib/profileStudio/chatAttachment';
+	import {
+		clearIdempotencyKey,
+		reserveIdempotencyKey,
+		shouldRetainIdempotencyKey
+	} from '$lib/idempotency';
 
 	let {
 		canUseChat,
@@ -62,7 +70,8 @@
 		agentName,
 		variant = 'page',
 		onCloseDrawer,
-		initialWorkspaceData = null
+		initialWorkspaceData = null,
+		ownerId = null
 	} = $props<{
 		canUseChat: boolean;
 		canUseMallardWorkspaces: boolean;
@@ -83,6 +92,7 @@
 			workspace: Workspace | null;
 			messages: WorkspaceMessage[];
 		} | null;
+		ownerId?: string | null;
 	}>();
 
 	// ─── Context inclusion controls ────────────────
@@ -287,15 +297,16 @@
 	let initializingWorkspace = $state(false);
 	let workspaceInitError = $state<string | null>(null);
 	let lastSubmittedPrompt = $state('');
+	let lastSubmittedDraft = $state('');
+	let lastSubmittedAttachment = $state<ReferenceAttachment | null>(null);
 	let lastSubmittedBody: Record<string, unknown> | null = null;
 	let retryPreservesComposerDraft = false;
 	let draftEditedSinceSubmission = false;
-	let restoredFailedPrompt = false;
 	let profileStudioConversationPending = $state(false);
+	let profileStudioHandoff = $state<ProfileStudioHandoff | null>(null);
 
 	function noteDraftInput() {
 		draftEditedSinceSubmission = true;
-		restoredFailedPrompt = false;
 	}
 	let messageCountBeforeSubmission: number | null = null;
 	let allowInterruptedRetention = true;
@@ -335,8 +346,8 @@
 				!inputMessage &&
 				lastSubmittedPrompt
 			) {
-				inputMessage = lastSubmittedPrompt;
-				restoredFailedPrompt = true;
+				inputMessage = lastSubmittedDraft;
+				pendingReferenceAttachment = lastSubmittedAttachment;
 			}
 		},
 		onFinish: ({ isAbort, isError }) => {
@@ -417,17 +428,49 @@
 		attachmentUploading = true;
 		chatError = null;
 		chatCanRetry = false;
+		const payloadFingerprint = [
+			file.name,
+			file.size,
+			file.lastModified,
+			'Artisan chat reference'
+		].join('|');
+		const idempotencyKey = reserveIdempotencyKey(
+			typeof sessionStorage === 'undefined' ? null : sessionStorage,
+			ownerId,
+			'chat-reference-upload',
+			payloadFingerprint
+		);
 		try {
 			const form = new FormData();
 			form.set('file', file);
 			form.set('title', 'Artisan chat reference');
 			const response = await fetch('/api/reference-profiles', {
 				method: 'POST',
-				headers: { 'Idempotency-Key': crypto.randomUUID() },
+				headers: { 'Idempotency-Key': idempotencyKey },
 				body: form
 			});
-			const body = await response.json();
-			if (!response.ok) throw new Error(body.error || 'Unable to save this Artisan reference');
+			const body = (await response.json().catch(() => null)) as {
+				data?: { id?: string; title?: string };
+				error?: string;
+			} | null;
+			if (!response.ok) {
+				if (!shouldRetainIdempotencyKey(response.status))
+					clearIdempotencyKey(
+						storageForIdempotency(),
+						ownerId,
+						'chat-reference-upload',
+						payloadFingerprint
+					);
+				throw new Error(body?.error || 'Unable to save this Artisan reference');
+			}
+			if (!body?.data?.id || !body.data.title)
+				throw new Error('Unable to save this Artisan reference');
+			clearIdempotencyKey(
+				storageForIdempotency(),
+				ownerId,
+				'chat-reference-upload',
+				payloadFingerprint
+			);
 			pendingReferenceAttachment = { id: body.data.id, title: body.data.title };
 			trackProfileStudioActivation('artisan_file_accepted');
 			trackProfileStudioActivation('reference_profile_saved');
@@ -451,6 +494,7 @@
 			lastAnalyticsSeed = seedState.lastAnalyticsSeed;
 			if (page.url.searchParams.get('source') === 'profile-studio' && seedState.inputMessage) {
 				profileStudioConversationPending = true;
+				profileStudioHandoff = readProfileStudioHandoff(page.url.searchParams);
 			}
 		}
 	});
@@ -1253,6 +1297,10 @@
 		return body;
 	}
 
+	function storageForIdempotency() {
+		return typeof sessionStorage === 'undefined' ? null : sessionStorage;
+	}
+
 	// ─── Send Message ──────────────────────────────────────────────────────────
 	async function sendMessage() {
 		if (
@@ -1267,12 +1315,15 @@
 		const attachment = pendingReferenceAttachment;
 		const text = attachment
 			? buildReferenceAttachmentPrompt(inputMessage, attachment)
-			: inputMessage.trim();
+			: profileStudioHandoff
+				? buildProfileStudioHandoffPrompt(inputMessage, profileStudioHandoff)
+				: inputMessage.trim();
+		lastSubmittedDraft = inputMessage.trim();
+		lastSubmittedAttachment = attachment;
 		lastSubmittedPrompt = text;
 		lastSubmittedBody = buildSendBody();
 		retryPreservesComposerDraft = false;
 		draftEditedSinceSubmission = false;
-		restoredFailedPrompt = false;
 		chatError = null;
 		chatCanRetry = false;
 
@@ -1307,6 +1358,7 @@
 
 		inputMessage = '';
 		pendingReferenceAttachment = null;
+		profileStudioHandoff = null;
 		shouldScrollToBottom = true;
 
 		messageCountBeforeSubmission = chat.messages.length;
@@ -1322,8 +1374,6 @@
 	async function retryLastResponse() {
 		if (isActive || isClearing || !workspaceReady || !lastSubmittedPrompt) return;
 		// Retry belongs to the failed request, never to a follow-up being drafted.
-		if (restoredFailedPrompt && inputMessage === lastSubmittedPrompt) inputMessage = '';
-		restoredFailedPrompt = false;
 		retryPreservesComposerDraft = true;
 		chatError = null;
 		chatCanRetry = false;
@@ -1355,9 +1405,10 @@
 
 		// This is deliberately a new turn, not response regeneration. Send the
 		// originating request directly so an unsent composer draft remains intact.
+		lastSubmittedDraft = inputMessage.trim();
+		lastSubmittedAttachment = pendingReferenceAttachment;
 		lastSubmittedPrompt = prompt;
 		lastSubmittedBody = buildSendBody();
-		restoredFailedPrompt = false;
 		retryPreservesComposerDraft = true;
 		chatError = null;
 		chatCanRetry = false;

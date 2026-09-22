@@ -1006,7 +1006,11 @@
 		</div>
 	</div>
 
-	<ProfileStudio roasts={clientData} enabled={canCreateRoastProfiles} />
+	<ProfileStudio
+		roasts={clientData}
+		enabled={canCreateRoastProfiles}
+		ownerId={data.auth?.user?.id ?? null}
+	/>
 
 	<RoastProfileTabs
 		sortedBatchNames={sortedBatchNames()}

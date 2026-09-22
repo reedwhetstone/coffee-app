@@ -28,10 +28,17 @@ function routeFailure(error: unknown, fallback: string) {
 	return json({ error: fallback }, { status: 500 });
 }
 
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export const GET: RequestHandler = async (event) => {
 	try {
 		await requireMemberRole(event);
-		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const client = await createParchmentServerClient(event, {
+			mode: 'session',
+			signal: event.request.signal
+		});
 		const { data, error, response } = await client.referenceProfiles.list(false);
 		if (error || !data) return upstreamFailure(error, response?.status, 'Unable to load profiles');
 		return json(data);
@@ -43,7 +50,10 @@ export const GET: RequestHandler = async (event) => {
 export const POST: RequestHandler = async (event) => {
 	try {
 		await requireMemberRole(event);
-		const client = await createParchmentServerClient(event, { mode: 'session' });
+		const client = await createParchmentServerClient(event, {
+			mode: 'session',
+			signal: event.request.signal
+		});
 		const idempotencyKey = event.request.headers.get('idempotency-key')?.trim();
 		if (!idempotencyKey) {
 			return json({ error: 'Idempotency-Key is required' }, { status: 400 });
@@ -78,7 +88,9 @@ export const POST: RequestHandler = async (event) => {
 			return json(data, { status: response.status });
 		}
 
-		const body = (await event.request.json()) as {
+		const parsedBody = await event.request.json();
+		if (!isJsonObject(parsedBody)) return json({ error: 'Invalid request' }, { status: 400 });
+		const body = parsedBody as {
 			source?: unknown;
 			roastId?: unknown;
 			title?: unknown;
