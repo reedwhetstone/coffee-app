@@ -339,10 +339,8 @@
 							lines are the comparison.
 						</p>
 					</div>
-					<a
-						href={cherryHref}
-						onclick={() => trackProfileStudioActivation('cherry_comparison_started')}
-						class="text-sm font-semibold text-link hover:text-accent">Discuss with Cherry →</a
+					<a href={cherryHref} class="text-sm font-semibold text-link hover:text-accent"
+						>Discuss with Cherry →</a
 					>
 				</div>
 				<div class="mt-4 h-[24rem] min-h-[20rem]"><RoastChart {chartData} /></div>

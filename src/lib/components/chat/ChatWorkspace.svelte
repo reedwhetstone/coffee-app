@@ -291,6 +291,7 @@
 	let retryPreservesComposerDraft = false;
 	let draftEditedSinceSubmission = false;
 	let restoredFailedPrompt = false;
+	let profileStudioConversationPending = $state(false);
 
 	function noteDraftInput() {
 		draftEditedSinceSubmission = true;
@@ -351,6 +352,10 @@
 			}
 			messageCountBeforeSubmission = null;
 			allowInterruptedRetention = true;
+			if (!isAbort && !isError && profileStudioConversationPending) {
+				trackProfileStudioActivation('cherry_comparison_completed');
+				profileStudioConversationPending = false;
+			}
 		}
 	});
 
@@ -444,6 +449,9 @@
 		if (seedState.inputMessage !== inputMessage) inputMessage = seedState.inputMessage;
 		if (seedState.lastAnalyticsSeed !== lastAnalyticsSeed) {
 			lastAnalyticsSeed = seedState.lastAnalyticsSeed;
+			if (page.url.searchParams.get('source') === 'profile-studio' && seedState.inputMessage) {
+				profileStudioConversationPending = true;
+			}
 		}
 	});
 
