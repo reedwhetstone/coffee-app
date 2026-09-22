@@ -15,7 +15,8 @@ export function buildReferenceAttachmentPrompt(
 	attachment: ReferenceAttachment
 ): string {
 	return [
-		draft.trim() || 'Compare this Artisan reference and help me decide what to preserve or change.',
+		draft.trim() ||
+			'I attached an Artisan reference. What should I do next: leave it saved, compare it with another profile, or import it as an executed roast?',
 		`Attached Artisan reference: ${attachment.title}. Reference profile ID: ${attachment.id}. Treat it as a reference profile, not an executed roast.`
 	].join('\n\n');
 }

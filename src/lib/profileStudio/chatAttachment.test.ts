@@ -18,13 +18,15 @@ describe('Profile Studio chat attachments', () => {
 		expect(prompt).not.toContain('.alog');
 	});
 
-	it('supplies a bounded discovery prompt for attachment-only sends', () => {
-		expect(
-			buildReferenceAttachmentPrompt('', {
-				id: 'profile-123',
-				title: 'Artisan chat reference'
-			})
-		).toContain('help me decide what to preserve or change');
+	it('asks for explicit intent on attachment-only sends', () => {
+		const prompt = buildReferenceAttachmentPrompt('', {
+			id: 'profile-123',
+			title: 'Artisan chat reference'
+		});
+
+		expect(prompt).toContain('leave it saved');
+		expect(prompt).toContain('compare it with another profile');
+		expect(prompt).toContain('import it as an executed roast');
 	});
 
 	it('keeps selected comparison identities in transport context, not the visible seed', () => {
