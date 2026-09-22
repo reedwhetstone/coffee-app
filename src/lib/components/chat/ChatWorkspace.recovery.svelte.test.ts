@@ -62,10 +62,14 @@ const workspace: Workspace = {
 	canvas_version: 0
 };
 
-function mountWorkspace(messages: WorkspaceMessage[] = [], variant: 'page' | 'drawer' = 'drawer') {
+function mountWorkspace(
+	messages: WorkspaceMessage[] = [],
+	variant: 'page' | 'drawer' = 'drawer',
+	canUseMallardWorkspaces = false
+) {
 	return render(ChatWorkspace, {
 		canUseChat: true,
-		canUseMallardWorkspaces: false,
+		canUseMallardWorkspaces,
 		agentName: 'Cherry Green Agent',
 		variant,
 		initialWorkspaceData: { workspaces: [{ ...workspace }], workspace: { ...workspace }, messages }
@@ -81,6 +85,12 @@ function installEndpoints(streams: ReturnType<typeof gatedResponse>[]) {
 		'fetch',
 		vi.fn<typeof fetch>(async (input, init) => {
 			const url = String(input);
+			if (url === '/api/reference-profiles' && init?.method === 'POST') {
+				return Response.json(
+					{ data: { id: 'saved-artisan-reference', title: 'Artisan chat reference' } },
+					{ status: 201 }
+				);
+			}
 			if (url === '/api/chat') {
 				requests.push(JSON.parse(String(init?.body)));
 				const stream = streams[requests.length - 1];
@@ -264,6 +274,51 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 		await send(second, 'context-two');
 		second.finish();
 		expect(endpoints.requests[1]).not.toHaveProperty('pageContext');
+	});
+
+	it('keeps Artisan attachment requests within the canvas-description contract', async () => {
+		const stream = gatedResponse();
+		const endpoints = installEndpoints([stream]);
+		mountWorkspace([], 'drawer', true);
+		await waitFor(() =>
+			expect(screen.getByLabelText('Attach Artisan reference file')).toBeEnabled()
+		);
+		for (let roastId = 1; roastId <= 24; roastId++) {
+			canvasStore.dispatch({
+				type: 'add',
+				messageId: `roast-${roastId}`,
+				block: { type: 'roast-chart', version: 1, data: { roastId } }
+			});
+		}
+
+		await fireEvent.change(screen.getByLabelText('Attach Artisan reference file'), {
+			target: {
+				files: [new File(['artisan data'], 'private-session.alog', { type: 'text/plain' })]
+			}
+		});
+		await waitFor(() =>
+			expect(screen.getByText('Artisan chat reference · saved reference')).toBeVisible()
+		);
+		await fireEvent.input(screen.getByRole('textbox'), {
+			target: { value: 'Can you add this as a new roast session?' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(1));
+
+		const request = endpoints.requests[0] as unknown as {
+			messages: Array<{ parts: Array<{ type: string; text?: string }> }>;
+			workspaceContext: { canvasDescription: string };
+		};
+		expect(request.workspaceContext.canvasDescription).toHaveLength(500);
+		expect(request.workspaceContext.canvasDescription).toMatch(/…$/);
+		expect(request.messages.at(-1)?.parts).toContainEqual(
+			expect.objectContaining({
+				type: 'text',
+				text: expect.stringContaining('Reference profile ID: saved-artisan-reference')
+			})
+		);
+		expect(JSON.stringify(request)).not.toContain('private-session.alog');
+		stream.finish();
 	});
 
 	it('preserves entity opt-outs when a live page context refresh keeps the entity visible', async () => {

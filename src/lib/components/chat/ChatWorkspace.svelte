@@ -233,6 +233,13 @@
 	}
 
 	// Build workspace context for the AI system prompt
+	const WORKSPACE_CANVAS_DESCRIPTION_MAX_CHARS = 500;
+
+	function clampCanvasDescription(description: string): string {
+		if (description.length <= WORKSPACE_CANVAS_DESCRIPTION_MAX_CHARS) return description;
+		return `${description.slice(0, WORKSPACE_CANVAS_DESCRIPTION_MAX_CHARS - 1).trimEnd()}…`;
+	}
+
 	function getWorkspaceContext() {
 		const ws = workspaceStore.currentWorkspace;
 		if (!ws) return undefined;
@@ -279,7 +286,7 @@
 				// remove, or reorder them, only add new content alongside.
 				return b.pinned ? `${base} [LOCKED — do not replace, remove, or reorder]` : base;
 			});
-			canvasDescription = descriptions.join('\n');
+			canvasDescription = clampCanvasDescription(descriptions.join('\n'));
 		}
 
 		return {
