@@ -62,10 +62,14 @@ const workspace: Workspace = {
 	canvas_version: 0
 };
 
-function mountWorkspace(messages: WorkspaceMessage[] = [], variant: 'page' | 'drawer' = 'drawer') {
+function mountWorkspace(
+	messages: WorkspaceMessage[] = [],
+	variant: 'page' | 'drawer' = 'drawer',
+	canUseMallardWorkspaces = false
+) {
 	return render(ChatWorkspace, {
 		canUseChat: true,
-		canUseMallardWorkspaces: false,
+		canUseMallardWorkspaces,
 		agentName: 'Cherry Green Agent',
 		variant,
 		initialWorkspaceData: { workspaces: [{ ...workspace }], workspace: { ...workspace }, messages }
@@ -81,6 +85,12 @@ function installEndpoints(streams: ReturnType<typeof gatedResponse>[]) {
 		'fetch',
 		vi.fn<typeof fetch>(async (input, init) => {
 			const url = String(input);
+			if (url === '/api/reference-profiles' && init?.method === 'POST') {
+				return Response.json(
+					{ data: { id: 'saved-artisan-reference', title: 'Artisan chat reference' } },
+					{ status: 201 }
+				);
+			}
 			if (url === '/api/chat') {
 				requests.push(JSON.parse(String(init?.body)));
 				const stream = streams[requests.length - 1];
@@ -264,6 +274,189 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 		await send(second, 'context-two');
 		second.finish();
 		expect(endpoints.requests[1]).not.toHaveProperty('pageContext');
+	});
+
+	it('keeps Artisan attachment requests within the canvas-description contract', async () => {
+		const stream = gatedResponse();
+		const endpoints = installEndpoints([stream]);
+		mountWorkspace([], 'drawer', true);
+		await waitFor(() =>
+			expect(screen.getByLabelText('Attach Artisan reference file')).toBeEnabled()
+		);
+		for (let roastId = 1; roastId <= 24; roastId++) {
+			canvasStore.dispatch({
+				type: 'add',
+				messageId: `roast-${roastId}`,
+				block: { type: 'roast-chart', version: 1, data: { roastId } }
+			});
+		}
+
+		await fireEvent.change(screen.getByLabelText('Attach Artisan reference file'), {
+			target: {
+				files: [new File(['artisan data'], 'private-session.alog', { type: 'text/plain' })]
+			}
+		});
+		await waitFor(() =>
+			expect(screen.getByText('Artisan chat reference · saved reference')).toBeVisible()
+		);
+		await fireEvent.input(screen.getByRole('textbox'), {
+			target: { value: 'Can you add this as a new roast session?' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(1));
+
+		const request = endpoints.requests[0] as unknown as {
+			messages: Array<{ parts: Array<{ type: string; text?: string }> }>;
+			workspaceContext: { canvasDescription: string };
+		};
+		expect(request.workspaceContext.canvasDescription.length).toBeLessThanOrEqual(500);
+		// Every block survives compaction, including the tail.
+		expect(request.workspaceContext.canvasDescription).toContain('24. Roast chart #24');
+		expect(request.messages.at(-1)?.parts).toContainEqual(
+			expect.objectContaining({
+				type: 'text',
+				text: expect.stringContaining('Reference profile ID: saved-artisan-reference')
+			})
+		);
+		expect(JSON.stringify(request)).not.toContain('private-session.alog');
+		stream.finish();
+	});
+
+	async function attachArtisanReference() {
+		await waitFor(() =>
+			expect(screen.getByLabelText('Attach Artisan reference file')).toBeEnabled()
+		);
+		await fireEvent.change(screen.getByLabelText('Attach Artisan reference file'), {
+			target: {
+				files: [new File(['artisan data'], 'private-session.alog', { type: 'text/plain' })]
+			}
+		});
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Remove attached reference' })).toBeVisible()
+		);
+	}
+
+	it('sends attachment identity to Cherry without rendering or persisting it as user text', async () => {
+		const first = gatedResponse();
+		const second = gatedResponse();
+		const endpoints = installEndpoints([first, second]);
+		mountWorkspace([], 'drawer', true);
+		await attachArtisanReference();
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'What changed?' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(1));
+
+		expect(endpoints.requests[0].messages.at(-1)?.parts).toEqual([
+			{ type: 'text', text: 'What changed?' },
+			{
+				type: 'text',
+				text: expect.stringContaining('Reference profile ID: saved-artisan-reference')
+			}
+		]);
+		expect(screen.getByText('What changed?')).toBeVisible();
+		expect(screen.getByText('Artisan chat reference · saved reference')).toBeVisible();
+		expect(screen.queryByText(/Reference profile ID/)).not.toBeInTheDocument();
+
+		first.emit({ type: 'start', messageId: 'attachment-answer' });
+		first.emit({ type: 'text-start', id: 'answer' });
+		first.emit({ type: 'text-delta', id: 'answer', delta: 'It is saved as a reference.' });
+		first.emit({ type: 'text-end', id: 'answer' });
+		first.finish();
+		await waitFor(() => expect(endpoints.saved).toHaveLength(1), { timeout: 2000 });
+		expect(endpoints.saved[0][0].content).toBe('What changed?');
+
+		// Later turns keep the identity in history for Cherry.
+		await send(second, 'follow-up-answer', 'Compare it with my last roast');
+		expect(JSON.stringify(endpoints.requests[1].messages[0])).toContain(
+			'Reference profile ID: saved-artisan-reference'
+		);
+		second.finish();
+	});
+
+	it('Retry clears the automatically restored draft and attachment', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const first = gatedResponse();
+		const retry = gatedResponse();
+		const endpoints = installEndpoints([first, retry]);
+		mountWorkspace([], 'drawer', true);
+		await attachArtisanReference();
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Compare this' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(1));
+		first.fail();
+		await waitFor(() => expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible());
+		expect(screen.getByRole('textbox')).toHaveValue('Compare this');
+		expect(screen.getByRole('button', { name: 'Remove attached reference' })).toBeVisible();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(2));
+		expect(endpoints.requests[1].messages.at(-1)?.parts).toEqual(
+			endpoints.requests[0].messages.at(-1)?.parts
+		);
+		expect(screen.getByRole('textbox')).toHaveValue('');
+		expect(
+			screen.queryByRole('button', { name: 'Remove attached reference' })
+		).not.toBeInTheDocument();
+		retry.finish();
+		await waitFor(() => expect(screen.queryByRole('button', { name: 'Stop response' })).toBeNull());
+		expect(screen.getByRole('textbox')).toHaveValue('');
+	});
+
+	it('Retry keeps a follow-up the member wrote after a failure', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const first = gatedResponse();
+		const retry = gatedResponse();
+		const endpoints = installEndpoints([first, retry]);
+		mountWorkspace([], 'drawer', true);
+		await attachArtisanReference();
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Compare this' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(1));
+		first.fail();
+		await waitFor(() => expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible());
+		await fireEvent.input(screen.getByRole('textbox'), {
+			target: { value: 'Also check development time' }
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(2));
+		expect(screen.getByRole('textbox')).toHaveValue('Also check development time');
+		expect(
+			screen.queryByRole('button', { name: 'Remove attached reference' })
+		).not.toBeInTheDocument();
+		retry.finish();
+	});
+
+	it('surfaces a retry when a settled response contains only completed research tools', async () => {
+		const first = gatedResponse();
+		const retry = gatedResponse();
+		const endpoints = installEndpoints([first, retry]);
+		mountWorkspace();
+		await send(first, 'silent-research', 'Create the requested inventory and roast records');
+		emitCoffee(first);
+		first.finish();
+
+		await waitFor(() =>
+			expect(
+				screen.getByText(
+					'Cherry finished its research without completing the response. Retry the request.'
+				)
+			).toBeVisible()
+		);
+		expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled();
+		expect(screen.getByText(/Response interrupted\./)).toBeVisible();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(2));
+		expect(endpoints.requests[1].messages.at(-1)?.parts).toEqual([
+			{ type: 'text', text: 'Create the requested inventory and roast records' }
+		]);
+		retry.emit({ type: 'start', messageId: 'retry-answer' });
+		retry.emit({ type: 'text-start', id: 'answer' });
+		retry.emit({ type: 'text-delta', id: 'answer', delta: 'Ready for confirmation.' });
+		retry.emit({ type: 'text-end', id: 'answer' });
+		retry.finish();
+		await waitFor(() => expect(screen.getByText('Ready for confirmation.')).toBeVisible());
 	});
 
 	it('preserves entity opt-outs when a live page context refresh keeps the entity visible', async () => {

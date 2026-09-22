@@ -44,10 +44,10 @@ export const SELF_SERVE_PLANS: readonly SelfServePlan[] = [
 		eyebrow: 'For teams that buy and roast',
 		badge: 'Best value',
 		description:
-			'Connect the outside market to your own inventory and production workflow, then use Cherry AI across the complete decision.',
+			'Connect the outside market to your own inventory, Artisan references, and production workflow, then use Cherry AI across the complete decision.',
 		features: [
 			'Every Parchment Intelligence market and sourcing capability',
-			'Every Mallard Studio inventory, roast, tasting, and margin capability',
+			'Every Mallard Studio inventory, Artisan comparison, roast, tasting, and margin capability',
 			'Cherry Synthesis Agent with market evidence and roaster context'
 		],
 		learnMoreHref: '/subscription#both-details',
@@ -60,10 +60,10 @@ export const SELF_SERVE_PLANS: readonly SelfServePlan[] = [
 		eyebrow: 'For roaster operations',
 		badge: 'Roaster workspace',
 		description:
-			'Carry each coffee from green inventory through roasting, tasting, and margin review, with Cherry AI available inside the workflow.',
+			'Carry each coffee from green inventory through Artisan profile comparison, roasting, tasting, and margin review, with Cherry AI inside the workflow.',
 		features: [
 			'Cherry Roast Agent with inventory, roast, tasting, and sales context',
-			'Green coffee inventory, lot tracking, and roast profiles',
+			'Artisan imports, reusable reference profiles, and roast comparisons',
 			'Cupping notes, production records, and margin reporting'
 		],
 		learnMoreHref: '/subscription#studio-details',

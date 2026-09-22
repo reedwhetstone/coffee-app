@@ -65,7 +65,7 @@ describe('POST /api/chat streaming adapter', () => {
 		const event = makeEvent();
 
 		const response = await POST(event);
-		expect(response).toBe(upstream);
+		expect(response).not.toBe(upstream);
 		expect(response.headers.get('content-type')).toBe('text/event-stream');
 		expect(response.headers.get('x-vercel-ai-ui-message-stream')).toBe('v1');
 		expect(response.headers.get('cache-control')).toBe('no-cache');
@@ -87,6 +87,32 @@ describe('POST /api/chat streaming adapter', () => {
 		} finally {
 			await reader.cancel();
 		}
+	});
+
+	it('removes stale encoded-body headers while preserving an upstream error body', async () => {
+		const upstream = new Response(
+			JSON.stringify({ error: { code: 'invalid_request', message: 'Choose an inventory bean' } }),
+			{
+				status: 400,
+				headers: {
+					'content-type': 'application/json',
+					'content-encoding': 'br',
+					'content-length': '24',
+					'x-request-id': 'request-1'
+				}
+			}
+		);
+		mocks.stream.mockResolvedValue(upstream);
+
+		const response = await POST(makeEvent());
+
+		expect(response.status).toBe(400);
+		expect(response.headers.get('content-encoding')).toBeNull();
+		expect(response.headers.get('content-length')).toBeNull();
+		expect(response.headers.get('x-request-id')).toBe('request-1');
+		await expect(response.json()).resolves.toEqual({
+			error: { code: 'invalid_request', message: 'Choose an inventory bean' }
+		});
 	});
 
 	it('keeps browser cancellation connected to the upstream request after streaming starts', async () => {

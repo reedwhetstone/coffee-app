@@ -89,6 +89,37 @@ describe('ChatComposer recovery controls', () => {
 		expect(onStop).toHaveBeenCalledOnce();
 	});
 
+	it('keeps Stop available while an attachment uploads, but not Send', async () => {
+		const onStop = vi.fn();
+		const onSend = vi.fn();
+		const { rerender } = render(
+			ChatComposer,
+			props({
+				isActive: true,
+				attachmentUploading: true,
+				canAttachReferences: true,
+				onStop,
+				onSend
+			})
+		);
+		const stop = screen.getByRole('button', { name: 'Stop response' });
+		expect(stop).toBeEnabled();
+		await fireEvent.click(stop);
+		expect(onStop).toHaveBeenCalledOnce();
+
+		await rerender(
+			props({
+				isActive: false,
+				attachmentUploading: true,
+				canAttachReferences: true,
+				onStop,
+				onSend
+			})
+		);
+		expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
+		expect(onSend).not.toHaveBeenCalled();
+	});
+
 	it('accepts drafting but blocks Enter and form submission during a response', async () => {
 		const onSend = vi.fn();
 		const onStop = vi.fn();
@@ -134,5 +165,40 @@ describe('ChatComposer recovery controls', () => {
 		expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
 		await fireEvent.click(screen.getByRole('button', { name: 'Retry setup' }));
 		expect(onRetryWorkspace).toHaveBeenCalledOnce();
+	});
+
+	it('offers Artisan attachment only to Studio members and can send an attachment without a draft', async () => {
+		const onAttachFile = vi.fn();
+		const onSend = vi.fn();
+		const { rerender } = render(
+			ChatComposer,
+			props({ inputMessage: '', canAttachReferences: false, onAttachFile, onSend })
+		);
+		expect(screen.queryByLabelText('Attach Artisan reference file')).not.toBeInTheDocument();
+
+		await rerender(
+			props({
+				inputMessage: '',
+				canAttachReferences: true,
+				referenceAttachment: { id: 'profile-1', title: 'Artisan chat reference' },
+				onAttachFile,
+				onSend
+			})
+		);
+		const attachmentInput = screen.getByLabelText('Attach Artisan reference file');
+		expect(attachmentInput).toHaveAttribute('accept', '.alog,.alog.json,.json');
+		const attachmentHintId = screen
+			.getByRole('textbox')
+			.getAttribute('aria-describedby')
+			?.split(' ')
+			.at(-1);
+		const attachmentHint = document.getElementById(attachmentHintId ?? '');
+		expect(attachmentHint).toHaveTextContent(
+			'Attach an Artisan .alog, .alog.json, or Artisan-export .json file, up to 10 MB. It is saved as a reference, not an executed roast.'
+		);
+		expect(screen.getByText('Artisan chat reference · saved reference')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Send message' })).toBeEnabled();
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		expect(onSend).toHaveBeenCalledOnce();
 	});
 });

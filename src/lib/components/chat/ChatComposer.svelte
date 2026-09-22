@@ -11,6 +11,10 @@
 		detail: string;
 		active: boolean;
 	}
+	interface ReferenceAttachment {
+		id: string;
+		title: string;
+	}
 
 	let {
 		agentName,
@@ -32,7 +36,12 @@
 		onStop,
 		onRetry,
 		onRetryWorkspace,
-		onDismissError
+		onDismissError,
+		referenceAttachment = null,
+		attachmentUploading = false,
+		canAttachReferences = false,
+		onAttachFile,
+		onRemoveAttachment
 	} = $props<{
 		agentName: CherryAgentName;
 		inputMessage?: string;
@@ -54,11 +63,17 @@
 		onRetry: () => void;
 		onRetryWorkspace: () => void;
 		onDismissError: () => void;
+		referenceAttachment?: ReferenceAttachment | null;
+		attachmentUploading?: boolean;
+		canAttachReferences?: boolean;
+		onAttachFile?: (file: File) => void;
+		onRemoveAttachment?: () => void;
 	}>();
 
 	function handleSubmit(event: Event) {
 		event.preventDefault();
-		if (!isActive && !isClearing && workspaceReady) onSend();
+		if (!isActive && !isClearing && workspaceReady && (inputMessage.trim() || referenceAttachment))
+			onSend();
 	}
 
 	// ─── Textarea autosize ─────────────────────────────────────────────────────
@@ -68,6 +83,7 @@
 	const MAX_TEXTAREA_HEIGHT = 192; // ~8 lines
 
 	const hintId = $props.id();
+	const attachmentHintId = `${hintId}-attachment`;
 	let textareaEl = $state<HTMLTextAreaElement | null>(null);
 	let activeContextCount = $derived(contextChips.filter((chip: ContextChip) => chip.active).length);
 
@@ -160,15 +176,54 @@
 		</div>
 	{/if}
 	<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
+		{#if referenceAttachment || attachmentUploading}
+			<div
+				class="mb-2 flex min-h-10 items-center gap-2 rounded-lg border border-line bg-surface-panel px-3 py-2 text-xs text-muted"
+			>
+				<span aria-hidden="true">↗</span>
+				<span class="min-w-0 flex-1 truncate"
+					>{attachmentUploading
+						? 'Saving Artisan file as a reference…'
+						: `${referenceAttachment?.title} · saved reference`}</span
+				>
+				{#if referenceAttachment && !attachmentUploading}<button
+						type="button"
+						class="font-semibold text-ink hover:text-accent"
+						aria-label="Remove attached reference"
+						onclick={onRemoveAttachment}>Remove</button
+					>{/if}
+			</div>
+		{/if}
 		<div
 			class="flex items-end gap-2 rounded-lg border border-line bg-surface-raised p-2 shadow-sm focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
 		>
+			{#if canAttachReferences}
+				<label
+					class="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-md border border-line text-ink hover:border-accent"
+					title="Attach .alog, .alog.json, or Artisan-export .json (10 MB max)"
+				>
+					<span aria-hidden="true" class="text-xl">+</span>
+					<input
+						type="file"
+						aria-label="Attach Artisan reference file"
+						accept=".alog,.alog.json,.json"
+						class="sr-only"
+						disabled={isClearing || !workspaceReady || attachmentUploading}
+						onchange={(event) => {
+							const input = event.currentTarget as HTMLInputElement;
+							const file = input.files?.[0];
+							if (file) onAttachFile?.(file);
+							input.value = '';
+						}}
+					/>
+				</label>
+			{/if}
 			<textarea
 				bind:this={textareaEl}
 				bind:value={inputMessage}
 				aria-label={`Message ${agentName}`}
 				placeholder={isActive ? 'Draft your next message…' : 'Ask about coffee…'}
-				aria-describedby={hintId}
+				aria-describedby={canAttachReferences ? `${hintId} ${attachmentHintId}` : hintId}
 				class="min-h-11 min-w-0 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-ink placeholder-muted focus:outline-none focus:ring-0"
 				rows="1"
 				disabled={isClearing || !workspaceReady}
@@ -176,7 +231,13 @@
 				onkeydown={(e) => {
 					if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
 						e.preventDefault();
-						if (!isActive && !isClearing && workspaceReady) onSend();
+						if (
+							!isActive &&
+							!isClearing &&
+							workspaceReady &&
+							(inputMessage.trim() || referenceAttachment)
+						)
+							onSend();
 					}
 				}}
 			></textarea>
@@ -190,7 +251,11 @@
 							onStop();
 						}
 					: undefined}
-				disabled={isClearing || (!isActive && (!workspaceReady || !inputMessage.trim()))}
+				disabled={isClearing ||
+					(!isActive &&
+						(attachmentUploading ||
+							!workspaceReady ||
+							(!inputMessage.trim() && !referenceAttachment)))}
 				aria-label={isActive ? 'Stop response' : 'Send message'}
 				class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent text-ink transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 			>
@@ -219,6 +284,14 @@
 				? 'Draft while Cherry responds. Nothing sends automatically. Shift+Enter for a new line.'
 				: 'Enter to send, Shift+Enter for new line'}
 		</p>
+		{#if canAttachReferences}
+			<p id={attachmentHintId} class="mt-1 px-1 text-xs leading-5 text-muted">
+				Attach an Artisan <span class="font-medium text-ink">.alog</span>,
+				<span class="font-medium text-ink">.alog.json</span>, or Artisan-export
+				<span class="font-medium text-ink">.json</span> file, up to 10 MB. It is saved as a reference,
+				not an executed roast.
+			</p>
+		{/if}
 	</form>
 	<div
 		class="relative mx-auto flex max-w-4xl items-center gap-1"

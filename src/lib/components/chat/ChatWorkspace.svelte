@@ -42,6 +42,7 @@
 		classifyChatFailure,
 		recoverInterruptedTurn,
 		getInterruptedTurnStatus,
+		isSilentToolOnlyCompletion,
 		prepareChatRequestMessages,
 		finalizedMessagesForUnload
 	} from './chatRecovery';
@@ -50,6 +51,25 @@
 		cherryConversationExportFilename
 	} from './cherryConversationExport';
 	import type { CherryAgentName } from '$lib/cherry/identity';
+	import { trackProfileStudioActivation } from '$lib/profileStudio/analytics';
+	import {
+		buildReferenceAttachmentRequest,
+		buildProfileStudioHandoffRequest,
+		readProfileStudioHandoff,
+		type ReferenceAttachment,
+		type ProfileStudioHandoff
+	} from '$lib/profileStudio/chatAttachment';
+	import {
+		buildChatRequestMessage,
+		readChatRequestContext,
+		type ChatRequestContext
+	} from '$lib/cherry/requestContext';
+	import { describeCanvasForCherry } from './workspaceCanvasContext';
+	import {
+		clearIdempotencyKey,
+		reserveIdempotencyKey,
+		shouldRetainIdempotencyKey
+	} from '$lib/idempotency';
 
 	let {
 		canUseChat,
@@ -57,7 +77,8 @@
 		agentName,
 		variant = 'page',
 		onCloseDrawer,
-		initialWorkspaceData = null
+		initialWorkspaceData = null,
+		ownerId = null
 	} = $props<{
 		canUseChat: boolean;
 		canUseMallardWorkspaces: boolean;
@@ -78,6 +99,7 @@
 			workspace: Workspace | null;
 			messages: WorkspaceMessage[];
 		} | null;
+		ownerId?: string | null;
 	}>();
 
 	// ─── Context inclusion controls ────────────────
@@ -222,50 +244,8 @@
 		const ws = workspaceStore.currentWorkspace;
 		if (!ws) return undefined;
 
-		// Describe canvas state for the AI with item names/details
-		let canvasDescription = '';
-		const visible = canvasStore.visibleBlocks;
-		if (visible.length > 0) {
-			const describeBlock = (block: CanvasBlock['block'], pos: number): string => {
-				switch (block.type) {
-					case 'coffee-cards': {
-						const items = Array.isArray(block.data) ? block.data : [];
-						const names = items
-							.slice(0, 5)
-							.map((c) => c?.name || 'Unknown')
-							.join(', ');
-						return `${pos}. Coffee cards: ${names}${items.length > 5 ? ` (+${items.length - 5} more)` : ''}`;
-					}
-					case 'roast-profiles': {
-						const items = Array.isArray(block.data) ? block.data : [];
-						const names = items
-							.slice(0, 5)
-							.map((r) => `${r?.coffee_name || 'Unknown'} (${r?.roast_date || '?'})`)
-							.join(', ');
-						return `${pos}. Roast profiles: ${names}${items.length > 5 ? ` (+${items.length - 5} more)` : ''}`;
-					}
-					case 'roast-chart':
-						return `${pos}. Roast temperature chart (roast #${block.data?.roastId || '?'})`;
-					case 'inventory-table': {
-						const items = Array.isArray(block.data) ? block.data : [];
-						return `${pos}. Inventory table (${items.length} beans)`;
-					}
-					case 'tasting-radar':
-						return `${pos}. Tasting radar: ${block.data?.beanName || 'Unknown'}`;
-					case 'action-card':
-						return `${pos}. Action card: ${block.data?.summary || 'Action'} [${block.data?.status || 'unknown'}]`;
-					default:
-						return `${pos}. ${block.type.replace(/-/g, ' ')}`;
-				}
-			};
-			const descriptions = visible.map((b: CanvasBlock, i: number) => {
-				const base = describeBlock(b.block, i + 1);
-				// Locked windows are user-owned: tell the model it must not replace,
-				// remove, or reorder them, only add new content alongside.
-				return b.pinned ? `${base} [LOCKED — do not replace, remove, or reorder]` : base;
-			});
-			canvasDescription = descriptions.join('\n');
-		}
+		// Describe every visible canvas block for the AI within the request bound.
+		const canvasDescription = describeCanvasForCherry(canvasStore.visibleBlocks);
 
 		return {
 			id: ws.id,
@@ -282,14 +262,24 @@
 	let initializingWorkspace = $state(false);
 	let workspaceInitError = $state<string | null>(null);
 	let lastSubmittedPrompt = $state('');
+	let lastSubmittedContext = $state<ChatRequestContext | null>(null);
+	let lastSubmittedDraft = $state('');
+	let lastSubmittedAttachment = $state<ReferenceAttachment | null>(null);
+	let lastSubmittedHandoff = $state<ProfileStudioHandoff | null>(null);
 	let lastSubmittedBody: Record<string, unknown> | null = null;
 	let retryPreservesComposerDraft = false;
 	let draftEditedSinceSubmission = false;
-	let restoredFailedPrompt = false;
+	let profileStudioConversationPending = $state(false);
+	let profileStudioHandoff = $state<ProfileStudioHandoff | null>(null);
+	/** Composer values put back by a failed send, as opposed to a follow-up the member wrote. */
+	let restoredSubmission: {
+		draft: string;
+		attachmentId: string | null;
+		handoff: ProfileStudioHandoff | null;
+	} | null = null;
 
 	function noteDraftInput() {
 		draftEditedSinceSubmission = true;
-		restoredFailedPrompt = false;
 	}
 	let messageCountBeforeSubmission: number | null = null;
 	let allowInterruptedRetention = true;
@@ -329,8 +319,17 @@
 				!inputMessage &&
 				lastSubmittedPrompt
 			) {
-				inputMessage = lastSubmittedPrompt;
-				restoredFailedPrompt = true;
+				// Never replace an attachment or handoff chosen while the request ran.
+				const restoredAttachment = pendingReferenceAttachment ? null : lastSubmittedAttachment;
+				const restoredHandoff = profileStudioHandoff ? null : lastSubmittedHandoff;
+				inputMessage = lastSubmittedDraft;
+				if (restoredAttachment) pendingReferenceAttachment = restoredAttachment;
+				if (restoredHandoff) profileStudioHandoff = restoredHandoff;
+				restoredSubmission = {
+					draft: lastSubmittedDraft,
+					attachmentId: restoredAttachment?.id ?? null,
+					handoff: restoredHandoff
+				};
 			}
 		},
 		onFinish: ({ isAbort, isError }) => {
@@ -344,8 +343,26 @@
 					{ allowRetention: allowInterruptedRetention }
 				);
 			}
+			const silentToolOnlyCompletion =
+				!isAbort &&
+				!isError &&
+				isSilentToolOnlyCompletion(chat.messages, messageCountBeforeSubmission);
+			if (silentToolOnlyCompletion) {
+				chat.messages = recoverInterruptedTurn(
+					chat.messages,
+					messageCountBeforeSubmission,
+					'error'
+				);
+				chatError =
+					'Cherry finished its research without completing the response. Retry the request.';
+				chatCanRetry = true;
+			}
 			messageCountBeforeSubmission = null;
 			allowInterruptedRetention = true;
+			if (!isAbort && !isError && !silentToolOnlyCompletion && profileStudioConversationPending) {
+				trackProfileStudioActivation('cherry_comparison_completed');
+				profileStudioConversationPending = false;
+			}
 		}
 	});
 
@@ -398,7 +415,67 @@
 
 	// Input state (not managed by Chat class - we control the textarea)
 	let inputMessage = $state('');
+	let pendingReferenceAttachment = $state<ReferenceAttachment | null>(null);
+	let attachmentUploading = $state(false);
 	let lastAnalyticsSeed = $state<string | null>(null);
+
+	async function attachArtisanFile(file: File) {
+		if (!canUseMallardWorkspaces || attachmentUploading) return;
+		attachmentUploading = true;
+		chatError = null;
+		chatCanRetry = false;
+		const payloadFingerprint = [
+			file.name,
+			file.size,
+			file.lastModified,
+			'Artisan chat reference'
+		].join('|');
+		const idempotencyKey = reserveIdempotencyKey(
+			typeof sessionStorage === 'undefined' ? null : sessionStorage,
+			ownerId,
+			'chat-reference-upload',
+			payloadFingerprint
+		);
+		try {
+			const form = new FormData();
+			form.set('file', file);
+			form.set('title', 'Artisan chat reference');
+			const response = await fetch('/api/reference-profiles', {
+				method: 'POST',
+				headers: { 'Idempotency-Key': idempotencyKey },
+				body: form
+			});
+			const body = (await response.json().catch(() => null)) as {
+				data?: { id?: string; title?: string };
+				error?: string;
+			} | null;
+			if (!response.ok) {
+				if (!shouldRetainIdempotencyKey(response.status))
+					clearIdempotencyKey(
+						storageForIdempotency(),
+						ownerId,
+						'chat-reference-upload',
+						payloadFingerprint
+					);
+				throw new Error(body?.error || 'Unable to save this Artisan reference');
+			}
+			if (!body?.data?.id || !body.data.title)
+				throw new Error('Unable to save this Artisan reference');
+			clearIdempotencyKey(
+				storageForIdempotency(),
+				ownerId,
+				'chat-reference-upload',
+				payloadFingerprint
+			);
+			pendingReferenceAttachment = { id: body.data.id, title: body.data.title };
+			trackProfileStudioActivation('artisan_file_accepted');
+			trackProfileStudioActivation('reference_profile_saved');
+		} catch (cause) {
+			chatError = cause instanceof Error ? cause.message : 'Unable to save this Artisan reference';
+		} finally {
+			attachmentUploading = false;
+		}
+	}
 
 	$effect(() => {
 		const analyticsSeed = readChatSeedFromSearchParams(page.url.searchParams);
@@ -411,6 +488,10 @@
 		if (seedState.inputMessage !== inputMessage) inputMessage = seedState.inputMessage;
 		if (seedState.lastAnalyticsSeed !== lastAnalyticsSeed) {
 			lastAnalyticsSeed = seedState.lastAnalyticsSeed;
+			if (page.url.searchParams.get('source') === 'profile-studio' && seedState.inputMessage) {
+				profileStudioConversationPending = true;
+				profileStudioHandoff = readProfileStudioHandoff(page.url.searchParams);
+			}
 		}
 	});
 
@@ -1212,21 +1293,43 @@
 		return body;
 	}
 
+	function storageForIdempotency() {
+		return typeof sessionStorage === 'undefined' ? null : sessionStorage;
+	}
+
 	// ─── Send Message ──────────────────────────────────────────────────────────
 	async function sendMessage() {
-		if (!inputMessage.trim() || isActive || isClearing || !workspaceReady) return;
+		if (
+			(!inputMessage.trim() && !pendingReferenceAttachment) ||
+			isActive ||
+			isClearing ||
+			!workspaceReady ||
+			attachmentUploading
+		)
+			return;
 
-		const text = inputMessage.trim();
+		const attachment = pendingReferenceAttachment;
+		const handoff = profileStudioHandoff;
+		const request = attachment
+			? buildReferenceAttachmentRequest(inputMessage, attachment)
+			: handoff
+				? buildProfileStudioHandoffRequest(inputMessage, handoff)
+				: { text: inputMessage.trim(), context: null };
+		const { text, context } = request;
+		lastSubmittedDraft = inputMessage.trim();
+		lastSubmittedAttachment = attachment;
+		lastSubmittedHandoff = handoff;
 		lastSubmittedPrompt = text;
+		lastSubmittedContext = context;
 		lastSubmittedBody = buildSendBody();
 		retryPreservesComposerDraft = false;
 		draftEditedSinceSubmission = false;
-		restoredFailedPrompt = false;
+		restoredSubmission = null;
 		chatError = null;
 		chatCanRetry = false;
 
-		// Intercept slash commands
-		const cmd = matchSlashCommand(text, canUseMallardWorkspaces);
+		// Intercept slash commands. Attachment and handoff sends are always requests.
+		const cmd = context ? null : matchSlashCommand(text, canUseMallardWorkspaces);
 		if (cmd) {
 			inputMessage = '';
 			if (cmd.action === 'clear-canvas') {
@@ -1255,10 +1358,12 @@
 		}
 
 		inputMessage = '';
+		pendingReferenceAttachment = null;
+		profileStudioHandoff = null;
 		shouldScrollToBottom = true;
 
 		messageCountBeforeSubmission = chat.messages.length;
-		await chat.sendMessage({ text }, { body: lastSubmittedBody });
+		await chat.sendMessage(buildChatRequestMessage(text, context), { body: lastSubmittedBody });
 		messageCountBeforeSubmission = null;
 	}
 
@@ -1267,20 +1372,40 @@
 		// Keep the submission boundary until onFinish finalizes partial evidence.
 	}
 
+	/** Retry resends the failed request, so values a failure restored must not stay ready to send. */
+	function clearRestoredSubmission(): boolean {
+		const restored = restoredSubmission;
+		restoredSubmission = null;
+		if (!restored) return false;
+		const draftCleared = !draftEditedSinceSubmission && inputMessage === restored.draft;
+		if (draftCleared) inputMessage = '';
+		if (restored.attachmentId && pendingReferenceAttachment?.id === restored.attachmentId)
+			pendingReferenceAttachment = null;
+		const handoff = profileStudioHandoff;
+		if (
+			restored.handoff &&
+			handoff?.leftKind === restored.handoff.leftKind &&
+			handoff.leftId === restored.handoff.leftId &&
+			handoff.rightKind === restored.handoff.rightKind &&
+			handoff.rightId === restored.handoff.rightId
+		)
+			profileStudioHandoff = null;
+		return draftCleared;
+	}
+
 	async function retryLastResponse() {
 		if (isActive || isClearing || !workspaceReady || !lastSubmittedPrompt) return;
 		// Retry belongs to the failed request, never to a follow-up being drafted.
-		if (restoredFailedPrompt && inputMessage === lastSubmittedPrompt) inputMessage = '';
-		restoredFailedPrompt = false;
-		retryPreservesComposerDraft = true;
+		// When the composer only held the restored request, a failed retry may
+		// restore it again.
+		retryPreservesComposerDraft = !clearRestoredSubmission();
 		chatError = null;
 		chatCanRetry = false;
 		shouldScrollToBottom = true;
 		messageCountBeforeSubmission = chat.messages.length;
-		await chat.sendMessage(
-			{ text: lastSubmittedPrompt },
-			{ body: lastSubmittedBody ?? buildSendBody() }
-		);
+		await chat.sendMessage(buildChatRequestMessage(lastSubmittedPrompt, lastSubmittedContext), {
+			body: lastSubmittedBody ?? buildSendBody()
+		});
 		messageCountBeforeSubmission = null;
 	}
 
@@ -1300,18 +1425,26 @@
 			.join('\n')
 			.trim();
 		if (!prompt) return;
+		// The originating attachment or selection identities travel with the new turn.
+		const context =
+			userMessage?.parts.map(readChatRequestContext).find((candidate) => candidate !== null) ??
+			null;
 
 		// This is deliberately a new turn, not response regeneration. Send the
 		// originating request directly so an unsent composer draft remains intact.
+		lastSubmittedDraft = inputMessage.trim();
+		lastSubmittedAttachment = pendingReferenceAttachment;
+		lastSubmittedHandoff = profileStudioHandoff;
 		lastSubmittedPrompt = prompt;
+		lastSubmittedContext = context;
 		lastSubmittedBody = buildSendBody();
-		restoredFailedPrompt = false;
 		retryPreservesComposerDraft = true;
+		restoredSubmission = null;
 		chatError = null;
 		chatCanRetry = false;
 		shouldScrollToBottom = true;
 		messageCountBeforeSubmission = chat.messages.length;
-		await chat.sendMessage({ text: prompt }, { body: lastSubmittedBody });
+		await chat.sendMessage(buildChatRequestMessage(prompt, context), { body: lastSubmittedBody });
 		messageCountBeforeSubmission = null;
 	}
 
@@ -1435,6 +1568,11 @@
 				workspaceError={workspaceInitError}
 				{workspaceReady}
 				{initializingWorkspace}
+				canAttachReferences={canUseMallardWorkspaces}
+				referenceAttachment={pendingReferenceAttachment}
+				{attachmentUploading}
+				onAttachFile={attachArtisanFile}
+				onRemoveAttachment={() => (pendingReferenceAttachment = null)}
 				{contextChips}
 				onToggleChip={toggleContextChip}
 				onSend={sendMessage}

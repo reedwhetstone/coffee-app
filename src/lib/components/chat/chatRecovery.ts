@@ -4,6 +4,7 @@ import {
 	isCompletedCoffeeSearch,
 	validCoffeeEvidence as validCoffee
 } from '$lib/services/coffeeEvidence';
+import { REQUEST_CONTEXT_PART, readChatRequestContext } from '$lib/cherry/requestContext';
 
 export type InterruptedTurnStatus = 'stopped' | 'error';
 const TURN_STATUS_PART = 'data-cherry-turn-status';
@@ -28,6 +29,42 @@ export function getInterruptedTurnStatus(parts: unknown[]): InterruptedTurnStatu
 		}
 	}
 	return null;
+}
+
+function hasUserFacingOutcome(part: UIMessage['parts'][number]): boolean {
+	const candidate = record(part);
+	if (!candidate) return false;
+	if (part.type === 'text')
+		return typeof candidate.text === 'string' && candidate.text.trim().length > 0;
+	if (!part.type.startsWith('tool-') && part.type !== 'dynamic-tool') return false;
+	if (candidate.state !== 'output-available') return false;
+	const output = record(candidate.output);
+	if (!output) return false;
+	return Boolean(output.action_card || output.presentation);
+}
+
+/** A settled tool turn must leave the user with prose, a presentation, or an action to review. */
+export function isSilentToolOnlyCompletion(
+	messages: UIMessage[],
+	boundary: number | null
+): boolean {
+	if (boundary === null) return false;
+	let hasCompletedTool = false;
+	let hasOutcome = false;
+	for (const message of messages.slice(boundary)) {
+		if (message.role !== 'assistant') continue;
+		for (const part of message.parts) {
+			const candidate = record(part);
+			if (
+				(part.type.startsWith('tool-') || part.type === 'dynamic-tool') &&
+				candidate?.state === 'output-available'
+			) {
+				hasCompletedTool = true;
+			}
+			if (hasUserFacingOutcome(part)) hasOutcome = true;
+		}
+	}
+	return hasCompletedTool && !hasOutcome;
 }
 
 function isCompletedCoffeeEvidence(
@@ -98,11 +135,19 @@ export function recoverInterruptedTurn(
 export function prepareChatRequestMessages(messages: UIMessage[]): UIMessage[] {
 	return messages.map((message) => {
 		const status = getInterruptedTurnStatus(message.parts);
-		const parts = message.parts.filter((part) => {
-			if (part.type === TURN_STATUS_PART) return false;
-			if (!part.type.startsWith('tool-') && part.type !== 'dynamic-tool') return true;
+		const parts = message.parts.flatMap((part): UIMessage['parts'] => {
+			if (part.type === TURN_STATUS_PART) return [];
+			if (part.type === REQUEST_CONTEXT_PART) {
+				// Opaque identities stay out of rendered and exported user text, but
+				// Cherry still needs them on this and every later turn.
+				const context = readChatRequestContext(part);
+				return context ? [{ type: 'text', text: context.text }] : [];
+			}
+			if (!part.type.startsWith('tool-') && part.type !== 'dynamic-tool') return [part];
 			const state = record(part)?.state;
-			return state === 'output-available' || state === 'output-error' || state === 'output-denied';
+			return state === 'output-available' || state === 'output-error' || state === 'output-denied'
+				? [part]
+				: [];
 		});
 		if (status && message.role === 'assistant') {
 			parts.push({

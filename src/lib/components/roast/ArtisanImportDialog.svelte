@@ -94,7 +94,7 @@
 				`📈 Roast events: ${result.roast_events || 0}\n` +
 				`📋 Roast phases: ${result.roast_phases || 0}\n` +
 				`⚙️ Device data points: ${result.extra_device_points || 0}\n\n` +
-				`Your coffee name has been preserved. The chart now shows both bean temperature (BT) and environmental temperature (ET) curves.`;
+				`Your coffee name has been preserved. The chart now shows both bean temperature (BT) and environmental temperature (ET) curves.\n\nProfile Studio on this page can save this roast as a reusable reference, compare it with another profile, and discuss the measured differences with Cherry.`;
 
 			alert(message);
 			await onImportComplete();

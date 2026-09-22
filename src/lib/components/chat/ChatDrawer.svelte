@@ -7,11 +7,13 @@
 	let {
 		open = $bindable(false),
 		role,
-		ppiAccess
+		ppiAccess,
+		ownerId = null
 	} = $props<{
 		open?: boolean;
 		role: UserRole;
 		ppiAccess: boolean;
+		ownerId?: string | null;
 	}>();
 
 	let canUseMallardWorkspaces = $derived(checkRole(role, 'member'));
@@ -40,6 +42,7 @@
 			{canUseChat}
 			{canUseMallardWorkspaces}
 			agentName={agent.name}
+			{ownerId}
 			onCloseDrawer={() => (open = false)}
 		/>
 	</MobileOverlayShell>

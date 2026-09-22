@@ -46,9 +46,13 @@ import { convertToModelMessages, validateUIMessages, type UIMessage } from 'ai';
 import {
 	finalizedMessagesForUnload,
 	getInterruptedTurnStatus,
+	isSilentToolOnlyCompletion,
 	prepareChatRequestMessages,
 	recoverInterruptedTurn
 } from './chatRecovery';
+import { buildChatRequestParts } from '$lib/cherry/requestContext';
+import { buildCherryConversationExport } from './cherryConversationExport';
+import { buildPersistedChatMessages } from '$lib/services/chatPersistence';
 
 const user: UIMessage = {
 	id: 'request',
@@ -67,6 +71,46 @@ function tool(name: string, output: unknown, id = name): UIMessage['parts'][numb
 function assistant(parts: UIMessage['parts']): UIMessage {
 	return { id: 'partial', role: 'assistant', parts };
 }
+
+describe('silent tool-only completion detection', () => {
+	it('flags a settled turn that ends after read tools without a user-facing outcome', () => {
+		const inventory = tool('green_coffee_inventory', { inventory: [], total: 0 });
+		const catalog = tool('coffee_catalog_search', { coffees: [coffee], total: 1 });
+		expect(isSilentToolOnlyCompletion([prior, user, assistant([inventory, catalog])], 1)).toBe(
+			true
+		);
+	});
+
+	it('accepts prose, presentations, and action cards as completed outcomes', () => {
+		const read = tool('coffee_catalog_search', { coffees: [coffee], total: 1 });
+		const presentation = tool('present_results', {
+			presentation: { source_tool: 'coffee_catalog_search', items: [{ id: 42 }] }
+		});
+		const action = tool('add_bean_to_inventory', {
+			action_card: { actionType: 'add_bean_to_inventory', fields: [] }
+		});
+
+		expect(
+			isSilentToolOnlyCompletion(
+				[prior, user, assistant([read, { type: 'text', text: 'Choose this lot.' }])],
+				1
+			)
+		).toBe(false);
+		expect(isSilentToolOnlyCompletion([prior, user, assistant([read, presentation])], 1)).toBe(
+			false
+		);
+		expect(isSilentToolOnlyCompletion([prior, user, assistant([read, action])], 1)).toBe(false);
+	});
+
+	it('does not classify ordinary text-only or untracked history as silent tool completion', () => {
+		expect(
+			isSilentToolOnlyCompletion([prior, user, assistant([{ type: 'text', text: '' }])], 1)
+		).toBe(false);
+		expect(isSilentToolOnlyCompletion([prior, user, assistant([tool('search', {})])], null)).toBe(
+			false
+		);
+	});
+});
 const read = tool('coffee_catalog_search', { coffees: [coffee] });
 const presentation = tool('present_results', {
 	presentation: {
@@ -224,6 +268,35 @@ describe('interrupted message request and unload projections', () => {
 		expect(JSON.stringify(recovered)).toBe(snapshot);
 		// Generic data parts themselves are also compatible with the current upstream validator.
 		await expect(validateUIMessages({ messages: recovered })).resolves.toHaveLength(3);
+	});
+
+	it('gives Cherry request context on every turn without making it visible user text', async () => {
+		const attached: UIMessage = {
+			id: 'attached-request',
+			role: 'user',
+			parts: buildChatRequestParts('What changed?', {
+				text: 'Attached Artisan reference: Artisan chat reference. Reference profile ID: profile-7.',
+				label: 'Artisan chat reference · saved reference'
+			})
+		};
+		const history = [attached, prior, user];
+
+		const model = JSON.stringify(
+			await convertToModelMessages(
+				await validateUIMessages({ messages: prepareChatRequestMessages(history) })
+			)
+		);
+		expect(model).toContain('What changed?');
+		expect(model).toContain('Reference profile ID: profile-7');
+		expect(model).not.toContain('data-cherry-request-context');
+
+		const [persisted] = buildPersistedChatMessages([attached]);
+		expect(persisted.content).toBe('What changed?');
+		expect(persisted.parts.map((part) => part.type)).toEqual([
+			'text',
+			'data-cherry-request-context'
+		]);
+		expect(buildCherryConversationExport(history, new Date(0))).not.toContain('profile-7');
 	});
 
 	it('keeps complete normal tool history but removes incomplete legacy tools', async () => {
