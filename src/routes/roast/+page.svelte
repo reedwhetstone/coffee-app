@@ -6,6 +6,7 @@
 	import RoastProfileForm from './RoastProfileForm.svelte';
 	import FormShell from '$lib/components/FormShell.svelte';
 	import MetricTile from '$lib/components/ui/MetricTile.svelte';
+	import ProfileStudio from '$lib/components/roast/ProfileStudio.svelte';
 	import OperationsHero from '$lib/components/ui/OperationsHero.svelte';
 	import { canUseMallardControls } from '$lib/services/portfolioAccess';
 
@@ -1004,6 +1005,8 @@
 			/>
 		</div>
 	</div>
+
+	<ProfileStudio roasts={clientData} enabled={canCreateRoastProfiles} />
 
 	<RoastProfileTabs
 		sortedBatchNames={sortedBatchNames()}

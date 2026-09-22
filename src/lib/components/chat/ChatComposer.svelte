@@ -11,6 +11,10 @@
 		detail: string;
 		active: boolean;
 	}
+	interface ReferenceAttachment {
+		id: string;
+		title: string;
+	}
 
 	let {
 		agentName,
@@ -32,7 +36,12 @@
 		onStop,
 		onRetry,
 		onRetryWorkspace,
-		onDismissError
+		onDismissError,
+		referenceAttachment = null,
+		attachmentUploading = false,
+		canAttachReferences = false,
+		onAttachFile,
+		onRemoveAttachment
 	} = $props<{
 		agentName: CherryAgentName;
 		inputMessage?: string;
@@ -54,11 +63,17 @@
 		onRetry: () => void;
 		onRetryWorkspace: () => void;
 		onDismissError: () => void;
+		referenceAttachment?: ReferenceAttachment | null;
+		attachmentUploading?: boolean;
+		canAttachReferences?: boolean;
+		onAttachFile?: (file: File) => void;
+		onRemoveAttachment?: () => void;
 	}>();
 
 	function handleSubmit(event: Event) {
 		event.preventDefault();
-		if (!isActive && !isClearing && workspaceReady) onSend();
+		if (!isActive && !isClearing && workspaceReady && (inputMessage.trim() || referenceAttachment))
+			onSend();
 	}
 
 	// ─── Textarea autosize ─────────────────────────────────────────────────────
@@ -160,9 +175,47 @@
 		</div>
 	{/if}
 	<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
+		{#if referenceAttachment || attachmentUploading}
+			<div
+				class="mb-2 flex min-h-10 items-center gap-2 rounded-lg border border-line bg-surface-panel px-3 py-2 text-xs text-muted"
+			>
+				<span aria-hidden="true">↗</span>
+				<span class="min-w-0 flex-1 truncate"
+					>{attachmentUploading
+						? 'Saving Artisan file as a reference…'
+						: `${referenceAttachment?.title} · saved reference`}</span
+				>
+				{#if referenceAttachment && !attachmentUploading}<button
+						type="button"
+						class="font-semibold text-ink hover:text-accent"
+						aria-label="Remove attached reference"
+						onclick={onRemoveAttachment}>Remove</button
+					>{/if}
+			</div>
+		{/if}
 		<div
 			class="flex items-end gap-2 rounded-lg border border-line bg-surface-raised p-2 shadow-sm focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
 		>
+			{#if canAttachReferences}
+				<label
+					class="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-md border border-line text-ink hover:border-accent"
+					aria-label="Attach Artisan file"
+				>
+					<span aria-hidden="true" class="text-xl">+</span>
+					<input
+						type="file"
+						accept=".alog,.alog.json,.json"
+						class="sr-only"
+						disabled={isClearing || !workspaceReady || attachmentUploading}
+						onchange={(event) => {
+							const input = event.currentTarget as HTMLInputElement;
+							const file = input.files?.[0];
+							if (file) onAttachFile?.(file);
+							input.value = '';
+						}}
+					/>
+				</label>
+			{/if}
 			<textarea
 				bind:this={textareaEl}
 				bind:value={inputMessage}
@@ -176,7 +229,13 @@
 				onkeydown={(e) => {
 					if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
 						e.preventDefault();
-						if (!isActive && !isClearing && workspaceReady) onSend();
+						if (
+							!isActive &&
+							!isClearing &&
+							workspaceReady &&
+							(inputMessage.trim() || referenceAttachment)
+						)
+							onSend();
 					}
 				}}
 			></textarea>
@@ -190,7 +249,9 @@
 							onStop();
 						}
 					: undefined}
-				disabled={isClearing || (!isActive && (!workspaceReady || !inputMessage.trim()))}
+				disabled={isClearing ||
+					attachmentUploading ||
+					(!isActive && (!workspaceReady || (!inputMessage.trim() && !referenceAttachment)))}
 				aria-label={isActive ? 'Stop response' : 'Send message'}
 				class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent text-ink transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 			>

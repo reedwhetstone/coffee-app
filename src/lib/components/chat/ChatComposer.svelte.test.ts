@@ -135,4 +135,29 @@ describe('ChatComposer recovery controls', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Retry setup' }));
 		expect(onRetryWorkspace).toHaveBeenCalledOnce();
 	});
+
+	it('offers Artisan attachment only to Studio members and can send an attachment without a draft', async () => {
+		const onAttachFile = vi.fn();
+		const onSend = vi.fn();
+		const { rerender } = render(
+			ChatComposer,
+			props({ inputMessage: '', canAttachReferences: false, onAttachFile, onSend })
+		);
+		expect(screen.queryByLabelText('Attach Artisan file')).not.toBeInTheDocument();
+
+		await rerender(
+			props({
+				inputMessage: '',
+				canAttachReferences: true,
+				referenceAttachment: { id: 'profile-1', title: 'Artisan chat reference' },
+				onAttachFile,
+				onSend
+			})
+		);
+		expect(screen.getByLabelText('Attach Artisan file')).toBeInTheDocument();
+		expect(screen.getByText('Artisan chat reference · saved reference')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Send message' })).toBeEnabled();
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		expect(onSend).toHaveBeenCalledOnce();
+	});
 });

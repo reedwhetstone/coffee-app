@@ -50,6 +50,11 @@
 		cherryConversationExportFilename
 	} from './cherryConversationExport';
 	import type { CherryAgentName } from '$lib/cherry/identity';
+	import { trackProfileStudioActivation } from '$lib/profileStudio/analytics';
+	import {
+		buildReferenceAttachmentPrompt,
+		type ReferenceAttachment
+	} from '$lib/profileStudio/chatAttachment';
 
 	let {
 		canUseChat,
@@ -398,7 +403,35 @@
 
 	// Input state (not managed by Chat class - we control the textarea)
 	let inputMessage = $state('');
+	let pendingReferenceAttachment = $state<ReferenceAttachment | null>(null);
+	let attachmentUploading = $state(false);
 	let lastAnalyticsSeed = $state<string | null>(null);
+
+	async function attachArtisanFile(file: File) {
+		if (!canUseMallardWorkspaces || attachmentUploading) return;
+		attachmentUploading = true;
+		chatError = null;
+		chatCanRetry = false;
+		try {
+			const form = new FormData();
+			form.set('file', file);
+			form.set('title', 'Artisan chat reference');
+			const response = await fetch('/api/reference-profiles', {
+				method: 'POST',
+				headers: { 'Idempotency-Key': crypto.randomUUID() },
+				body: form
+			});
+			const body = await response.json();
+			if (!response.ok) throw new Error(body.error || 'Unable to save this Artisan reference');
+			pendingReferenceAttachment = { id: body.data.id, title: body.data.title };
+			trackProfileStudioActivation('artisan_file_accepted');
+			trackProfileStudioActivation('reference_profile_saved');
+		} catch (cause) {
+			chatError = cause instanceof Error ? cause.message : 'Unable to save this Artisan reference';
+		} finally {
+			attachmentUploading = false;
+		}
+	}
 
 	$effect(() => {
 		const analyticsSeed = readChatSeedFromSearchParams(page.url.searchParams);
@@ -1214,9 +1247,19 @@
 
 	// ─── Send Message ──────────────────────────────────────────────────────────
 	async function sendMessage() {
-		if (!inputMessage.trim() || isActive || isClearing || !workspaceReady) return;
+		if (
+			(!inputMessage.trim() && !pendingReferenceAttachment) ||
+			isActive ||
+			isClearing ||
+			!workspaceReady ||
+			attachmentUploading
+		)
+			return;
 
-		const text = inputMessage.trim();
+		const attachment = pendingReferenceAttachment;
+		const text = attachment
+			? buildReferenceAttachmentPrompt(inputMessage, attachment)
+			: inputMessage.trim();
 		lastSubmittedPrompt = text;
 		lastSubmittedBody = buildSendBody();
 		retryPreservesComposerDraft = false;
@@ -1255,6 +1298,7 @@
 		}
 
 		inputMessage = '';
+		pendingReferenceAttachment = null;
 		shouldScrollToBottom = true;
 
 		messageCountBeforeSubmission = chat.messages.length;
@@ -1435,6 +1479,11 @@
 				workspaceError={workspaceInitError}
 				{workspaceReady}
 				{initializingWorkspace}
+				canAttachReferences={canUseMallardWorkspaces}
+				referenceAttachment={pendingReferenceAttachment}
+				{attachmentUploading}
+				onAttachFile={attachArtisanFile}
+				onRemoveAttachment={() => (pendingReferenceAttachment = null)}
 				{contextChips}
 				onToggleChip={toggleContextChip}
 				onSend={sendMessage}

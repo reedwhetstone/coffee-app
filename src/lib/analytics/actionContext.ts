@@ -140,7 +140,7 @@ export interface AnalyticsSeedInputRequest extends AnalyticsSeedInputState {
 
 export function readChatSeedFromSearchParams(searchParams: URLSearchParams): string | null {
 	const source = searchParams.get('source');
-	if (source !== 'analytics' && source !== 'dashboard') return null;
+	if (source !== 'analytics' && source !== 'dashboard' && source !== 'profile-studio') return null;
 	const prompt = searchParams.get('prompt');
 	if (!prompt?.trim()) return null;
 	return prompt;
