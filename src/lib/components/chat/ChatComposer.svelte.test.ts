@@ -143,7 +143,7 @@ describe('ChatComposer recovery controls', () => {
 			ChatComposer,
 			props({ inputMessage: '', canAttachReferences: false, onAttachFile, onSend })
 		);
-		expect(screen.queryByLabelText('Attach Artisan file')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Attach Artisan reference file')).not.toBeInTheDocument();
 
 		await rerender(
 			props({
@@ -154,7 +154,17 @@ describe('ChatComposer recovery controls', () => {
 				onSend
 			})
 		);
-		expect(screen.getByLabelText('Attach Artisan file')).toBeInTheDocument();
+		const attachmentInput = screen.getByLabelText('Attach Artisan reference file');
+		expect(attachmentInput).toHaveAttribute('accept', '.alog,.alog.json,.json');
+		const attachmentHintId = screen
+			.getByRole('textbox')
+			.getAttribute('aria-describedby')
+			?.split(' ')
+			.at(-1);
+		const attachmentHint = document.getElementById(attachmentHintId ?? '');
+		expect(attachmentHint).toHaveTextContent(
+			'Attach an Artisan .alog, .alog.json, or Artisan-export .json file, up to 10 MB. It is saved as a reference, not an executed roast.'
+		);
 		expect(screen.getByText('Artisan chat reference · saved reference')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Send message' })).toBeEnabled();
 		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
