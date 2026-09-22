@@ -99,6 +99,7 @@ function fixture(): RoastChartData {
 			}
 		],
 		metadata: {
+			revision: null,
 			total_data_points: 3,
 			sampled_data_points: 3,
 			roast_duration_minutes: 2,
