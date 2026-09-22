@@ -30,6 +30,42 @@ export function getInterruptedTurnStatus(parts: unknown[]): InterruptedTurnStatu
 	return null;
 }
 
+function hasUserFacingOutcome(part: UIMessage['parts'][number]): boolean {
+	const candidate = record(part);
+	if (!candidate) return false;
+	if (part.type === 'text')
+		return typeof candidate.text === 'string' && candidate.text.trim().length > 0;
+	if (!part.type.startsWith('tool-') && part.type !== 'dynamic-tool') return false;
+	if (candidate.state !== 'output-available') return false;
+	const output = record(candidate.output);
+	if (!output) return false;
+	return Boolean(output.action_card || output.presentation);
+}
+
+/** A settled tool turn must leave the user with prose, a presentation, or an action to review. */
+export function isSilentToolOnlyCompletion(
+	messages: UIMessage[],
+	boundary: number | null
+): boolean {
+	if (boundary === null) return false;
+	let hasCompletedTool = false;
+	let hasOutcome = false;
+	for (const message of messages.slice(boundary)) {
+		if (message.role !== 'assistant') continue;
+		for (const part of message.parts) {
+			const candidate = record(part);
+			if (
+				(part.type.startsWith('tool-') || part.type === 'dynamic-tool') &&
+				candidate?.state === 'output-available'
+			) {
+				hasCompletedTool = true;
+			}
+			if (hasUserFacingOutcome(part)) hasOutcome = true;
+		}
+	}
+	return hasCompletedTool && !hasOutcome;
+}
+
 function isCompletedCoffeeEvidence(
 	part: UIMessage['parts'][number],
 	messages: UIMessage[],

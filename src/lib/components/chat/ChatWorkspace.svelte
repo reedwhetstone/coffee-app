@@ -42,6 +42,7 @@
 		classifyChatFailure,
 		recoverInterruptedTurn,
 		getInterruptedTurnStatus,
+		isSilentToolOnlyCompletion,
 		prepareChatRequestMessages,
 		finalizedMessagesForUnload
 	} from './chatRecovery';
@@ -368,9 +369,23 @@
 					{ allowRetention: allowInterruptedRetention }
 				);
 			}
+			const silentToolOnlyCompletion =
+				!isAbort &&
+				!isError &&
+				isSilentToolOnlyCompletion(chat.messages, messageCountBeforeSubmission);
+			if (silentToolOnlyCompletion) {
+				chat.messages = recoverInterruptedTurn(
+					chat.messages,
+					messageCountBeforeSubmission,
+					'error'
+				);
+				chatError =
+					'Cherry finished its research without completing the response. Retry the request.';
+				chatCanRetry = true;
+			}
 			messageCountBeforeSubmission = null;
 			allowInterruptedRetention = true;
-			if (!isAbort && !isError && profileStudioConversationPending) {
+			if (!isAbort && !isError && !silentToolOnlyCompletion && profileStudioConversationPending) {
 				trackProfileStudioActivation('cherry_comparison_completed');
 				profileStudioConversationPending = false;
 			}

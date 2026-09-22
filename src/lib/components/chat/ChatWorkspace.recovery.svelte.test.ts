@@ -321,6 +321,38 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 		stream.finish();
 	});
 
+	it('surfaces a retry when a settled response contains only completed research tools', async () => {
+		const first = gatedResponse();
+		const retry = gatedResponse();
+		const endpoints = installEndpoints([first, retry]);
+		mountWorkspace();
+		await send(first, 'silent-research', 'Create the requested inventory and roast records');
+		emitCoffee(first);
+		first.finish();
+
+		await waitFor(() =>
+			expect(
+				screen.getByText(
+					'Cherry finished its research without completing the response. Retry the request.'
+				)
+			).toBeVisible()
+		);
+		expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled();
+		expect(screen.getByText(/Response interrupted\./)).toBeVisible();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(2));
+		expect(endpoints.requests[1].messages.at(-1)?.parts).toEqual([
+			{ type: 'text', text: 'Create the requested inventory and roast records' }
+		]);
+		retry.emit({ type: 'start', messageId: 'retry-answer' });
+		retry.emit({ type: 'text-start', id: 'answer' });
+		retry.emit({ type: 'text-delta', id: 'answer', delta: 'Ready for confirmation.' });
+		retry.emit({ type: 'text-end', id: 'answer' });
+		retry.finish();
+		await waitFor(() => expect(screen.getByText('Ready for confirmation.')).toBeVisible());
+	});
+
 	it('preserves entity opt-outs when a live page context refresh keeps the entity visible', async () => {
 		const stream = gatedResponse();
 		const endpoints = installEndpoints([stream]);
