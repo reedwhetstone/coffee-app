@@ -89,6 +89,37 @@ describe('ChatComposer recovery controls', () => {
 		expect(onStop).toHaveBeenCalledOnce();
 	});
 
+	it('keeps Stop available while an attachment uploads, but not Send', async () => {
+		const onStop = vi.fn();
+		const onSend = vi.fn();
+		const { rerender } = render(
+			ChatComposer,
+			props({
+				isActive: true,
+				attachmentUploading: true,
+				canAttachReferences: true,
+				onStop,
+				onSend
+			})
+		);
+		const stop = screen.getByRole('button', { name: 'Stop response' });
+		expect(stop).toBeEnabled();
+		await fireEvent.click(stop);
+		expect(onStop).toHaveBeenCalledOnce();
+
+		await rerender(
+			props({
+				isActive: false,
+				attachmentUploading: true,
+				canAttachReferences: true,
+				onStop,
+				onSend
+			})
+		);
+		expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
+		expect(onSend).not.toHaveBeenCalled();
+	});
+
 	it('accepts drafting but blocks Enter and form submission during a response', async () => {
 		const onSend = vi.fn();
 		const onStop = vi.fn();

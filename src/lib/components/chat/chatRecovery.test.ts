@@ -50,6 +50,9 @@ import {
 	prepareChatRequestMessages,
 	recoverInterruptedTurn
 } from './chatRecovery';
+import { buildChatRequestParts } from '$lib/cherry/requestContext';
+import { buildCherryConversationExport } from './cherryConversationExport';
+import { buildPersistedChatMessages } from '$lib/services/chatPersistence';
 
 const user: UIMessage = {
 	id: 'request',
@@ -265,6 +268,35 @@ describe('interrupted message request and unload projections', () => {
 		expect(JSON.stringify(recovered)).toBe(snapshot);
 		// Generic data parts themselves are also compatible with the current upstream validator.
 		await expect(validateUIMessages({ messages: recovered })).resolves.toHaveLength(3);
+	});
+
+	it('gives Cherry request context on every turn without making it visible user text', async () => {
+		const attached: UIMessage = {
+			id: 'attached-request',
+			role: 'user',
+			parts: buildChatRequestParts('What changed?', {
+				text: 'Attached Artisan reference: Artisan chat reference. Reference profile ID: profile-7.',
+				label: 'Artisan chat reference · saved reference'
+			})
+		};
+		const history = [attached, prior, user];
+
+		const model = JSON.stringify(
+			await convertToModelMessages(
+				await validateUIMessages({ messages: prepareChatRequestMessages(history) })
+			)
+		);
+		expect(model).toContain('What changed?');
+		expect(model).toContain('Reference profile ID: profile-7');
+		expect(model).not.toContain('data-cherry-request-context');
+
+		const [persisted] = buildPersistedChatMessages([attached]);
+		expect(persisted.content).toBe('What changed?');
+		expect(persisted.parts.map((part) => part.type)).toEqual([
+			'text',
+			'data-cherry-request-context'
+		]);
+		expect(buildCherryConversationExport(history, new Date(0))).not.toContain('profile-7');
 	});
 
 	it('keeps complete normal tool history but removes incomplete legacy tools', async () => {

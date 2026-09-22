@@ -252,8 +252,10 @@
 						}
 					: undefined}
 				disabled={isClearing ||
-					attachmentUploading ||
-					(!isActive && (!workspaceReady || (!inputMessage.trim() && !referenceAttachment)))}
+					(!isActive &&
+						(attachmentUploading ||
+							!workspaceReady ||
+							(!inputMessage.trim() && !referenceAttachment)))}
 				aria-label={isActive ? 'Stop response' : 'Send message'}
 				class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent text-ink transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 			>

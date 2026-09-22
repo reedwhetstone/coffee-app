@@ -309,8 +309,9 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 			messages: Array<{ parts: Array<{ type: string; text?: string }> }>;
 			workspaceContext: { canvasDescription: string };
 		};
-		expect(request.workspaceContext.canvasDescription).toHaveLength(500);
-		expect(request.workspaceContext.canvasDescription).toMatch(/…$/);
+		expect(request.workspaceContext.canvasDescription.length).toBeLessThanOrEqual(500);
+		// Every block survives compaction, including the tail.
+		expect(request.workspaceContext.canvasDescription).toContain('24. Roast chart #24');
 		expect(request.messages.at(-1)?.parts).toContainEqual(
 			expect.objectContaining({
 				type: 'text',
@@ -319,6 +320,111 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 		);
 		expect(JSON.stringify(request)).not.toContain('private-session.alog');
 		stream.finish();
+	});
+
+	async function attachArtisanReference() {
+		await waitFor(() =>
+			expect(screen.getByLabelText('Attach Artisan reference file')).toBeEnabled()
+		);
+		await fireEvent.change(screen.getByLabelText('Attach Artisan reference file'), {
+			target: {
+				files: [new File(['artisan data'], 'private-session.alog', { type: 'text/plain' })]
+			}
+		});
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Remove attached reference' })).toBeVisible()
+		);
+	}
+
+	it('sends attachment identity to Cherry without rendering or persisting it as user text', async () => {
+		const first = gatedResponse();
+		const second = gatedResponse();
+		const endpoints = installEndpoints([first, second]);
+		mountWorkspace([], 'drawer', true);
+		await attachArtisanReference();
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'What changed?' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(1));
+
+		expect(endpoints.requests[0].messages.at(-1)?.parts).toEqual([
+			{ type: 'text', text: 'What changed?' },
+			{
+				type: 'text',
+				text: expect.stringContaining('Reference profile ID: saved-artisan-reference')
+			}
+		]);
+		expect(screen.getByText('What changed?')).toBeVisible();
+		expect(screen.getByText('Artisan chat reference · saved reference')).toBeVisible();
+		expect(screen.queryByText(/Reference profile ID/)).not.toBeInTheDocument();
+
+		first.emit({ type: 'start', messageId: 'attachment-answer' });
+		first.emit({ type: 'text-start', id: 'answer' });
+		first.emit({ type: 'text-delta', id: 'answer', delta: 'It is saved as a reference.' });
+		first.emit({ type: 'text-end', id: 'answer' });
+		first.finish();
+		await waitFor(() => expect(endpoints.saved).toHaveLength(1), { timeout: 2000 });
+		expect(endpoints.saved[0][0].content).toBe('What changed?');
+
+		// Later turns keep the identity in history for Cherry.
+		await send(second, 'follow-up-answer', 'Compare it with my last roast');
+		expect(JSON.stringify(endpoints.requests[1].messages[0])).toContain(
+			'Reference profile ID: saved-artisan-reference'
+		);
+		second.finish();
+	});
+
+	it('Retry clears the automatically restored draft and attachment', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const first = gatedResponse();
+		const retry = gatedResponse();
+		const endpoints = installEndpoints([first, retry]);
+		mountWorkspace([], 'drawer', true);
+		await attachArtisanReference();
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Compare this' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(1));
+		first.fail();
+		await waitFor(() => expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible());
+		expect(screen.getByRole('textbox')).toHaveValue('Compare this');
+		expect(screen.getByRole('button', { name: 'Remove attached reference' })).toBeVisible();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(2));
+		expect(endpoints.requests[1].messages.at(-1)?.parts).toEqual(
+			endpoints.requests[0].messages.at(-1)?.parts
+		);
+		expect(screen.getByRole('textbox')).toHaveValue('');
+		expect(
+			screen.queryByRole('button', { name: 'Remove attached reference' })
+		).not.toBeInTheDocument();
+		retry.finish();
+		await waitFor(() => expect(screen.queryByRole('button', { name: 'Stop response' })).toBeNull());
+		expect(screen.getByRole('textbox')).toHaveValue('');
+	});
+
+	it('Retry keeps a follow-up the member wrote after a failure', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const first = gatedResponse();
+		const retry = gatedResponse();
+		const endpoints = installEndpoints([first, retry]);
+		mountWorkspace([], 'drawer', true);
+		await attachArtisanReference();
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Compare this' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(1));
+		first.fail();
+		await waitFor(() => expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible());
+		await fireEvent.input(screen.getByRole('textbox'), {
+			target: { value: 'Also check development time' }
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(2));
+		expect(screen.getByRole('textbox')).toHaveValue('Also check development time');
+		expect(
+			screen.queryByRole('button', { name: 'Remove attached reference' })
+		).not.toBeInTheDocument();
+		retry.finish();
 	});
 
 	it('surfaces a retry when a settled response contains only completed research tools', async () => {

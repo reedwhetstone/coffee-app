@@ -1,3 +1,5 @@
+import type { ChatRequestContext } from '$lib/cherry/requestContext';
+
 export interface ReferenceAttachment {
 	id: string;
 	title: string;
@@ -10,15 +12,25 @@ export interface ProfileStudioHandoff {
 	rightId: string;
 }
 
-export function buildReferenceAttachmentPrompt(
+/** Visible request text plus identity context that only Cherry receives. */
+export interface ProfileStudioChatRequest {
+	text: string;
+	context: ChatRequestContext;
+}
+
+export function buildReferenceAttachmentRequest(
 	draft: string,
 	attachment: ReferenceAttachment
-): string {
-	return [
-		draft.trim() ||
+): ProfileStudioChatRequest {
+	return {
+		text:
+			draft.trim() ||
 			'I attached an Artisan reference. What should I do next: leave it saved, compare it with another profile, or import it as an executed roast?',
-		`Attached Artisan reference: ${attachment.title}. Reference profile ID: ${attachment.id}. Treat it as a reference profile, not an executed roast.`
-	].join('\n\n');
+		context: {
+			text: `Attached Artisan reference: ${attachment.title}. Reference profile ID: ${attachment.id}. Treat it as a reference profile, not an executed roast.`,
+			label: `${attachment.title} · saved reference`
+		}
+	};
 }
 
 function validId(kind: ProfileStudioHandoff['leftKind'], id: string | null): id is string {
@@ -44,14 +56,15 @@ export function readProfileStudioHandoff(
 	return { leftKind, leftId, rightKind, rightId };
 }
 
-/** Add opaque selected identities to the transport message, never to the visible seed draft. */
-export function buildProfileStudioHandoffPrompt(
+/** Keep opaque selected identities out of both the visible seed draft and the user message. */
+export function buildProfileStudioHandoffRequest(
 	draft: string,
 	handoff: ProfileStudioHandoff
-): string {
-	return [
-		draft.trim() || 'Discuss this measured Profile Studio comparison.',
-		'',
-		`Profile Studio selection context: left ${handoff.leftKind} ${handoff.leftId}; right ${handoff.rightKind} ${handoff.rightId}.`
-	].join('\n');
+): ProfileStudioChatRequest {
+	return {
+		text: draft.trim() || 'Discuss this measured Profile Studio comparison.',
+		context: {
+			text: `Profile Studio selection context: left ${handoff.leftKind} ${handoff.leftId}; right ${handoff.rightKind} ${handoff.rightId}.`
+		}
+	};
 }

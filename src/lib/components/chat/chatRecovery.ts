@@ -4,6 +4,7 @@ import {
 	isCompletedCoffeeSearch,
 	validCoffeeEvidence as validCoffee
 } from '$lib/services/coffeeEvidence';
+import { REQUEST_CONTEXT_PART, readChatRequestContext } from '$lib/cherry/requestContext';
 
 export type InterruptedTurnStatus = 'stopped' | 'error';
 const TURN_STATUS_PART = 'data-cherry-turn-status';
@@ -134,11 +135,19 @@ export function recoverInterruptedTurn(
 export function prepareChatRequestMessages(messages: UIMessage[]): UIMessage[] {
 	return messages.map((message) => {
 		const status = getInterruptedTurnStatus(message.parts);
-		const parts = message.parts.filter((part) => {
-			if (part.type === TURN_STATUS_PART) return false;
-			if (!part.type.startsWith('tool-') && part.type !== 'dynamic-tool') return true;
+		const parts = message.parts.flatMap((part): UIMessage['parts'] => {
+			if (part.type === TURN_STATUS_PART) return [];
+			if (part.type === REQUEST_CONTEXT_PART) {
+				// Opaque identities stay out of rendered and exported user text, but
+				// Cherry still needs them on this and every later turn.
+				const context = readChatRequestContext(part);
+				return context ? [{ type: 'text', text: context.text }] : [];
+			}
+			if (!part.type.startsWith('tool-') && part.type !== 'dynamic-tool') return [part];
 			const state = record(part)?.state;
-			return state === 'output-available' || state === 'output-error' || state === 'output-denied';
+			return state === 'output-available' || state === 'output-error' || state === 'output-denied'
+				? [part]
+				: [];
 		});
 		if (status && message.role === 'assistant') {
 			parts.push({

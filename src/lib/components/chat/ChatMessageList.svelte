@@ -16,6 +16,7 @@
 	import { inlineCoffeeResults } from '$lib/services/inlineCoffeeResults';
 	import { getInterruptedTurnStatus } from './chatRecovery';
 	import type { CherryAgentName } from '$lib/cherry/identity';
+	import { readChatRequestContext } from '$lib/cherry/requestContext';
 
 	let {
 		agentName,
@@ -275,6 +276,15 @@
 							{#each message.parts as part}
 								{#if part.type === 'text'}
 									<div class="whitespace-pre-wrap">{part.text}</div>
+								{:else}
+									<!-- Request context reaches Cherry only; members see its safe label. -->
+									{@const contextLabel = readChatRequestContext(part)?.label}
+									{#if contextLabel}
+										<div class="mt-1.5 text-xs text-muted">
+											<span aria-hidden="true">↗</span>
+											{contextLabel}
+										</div>
+									{/if}
 								{/if}
 							{/each}
 						</div>

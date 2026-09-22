@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { components } from '@purveyors/sdk';
-	import RoastChart from './chart/RoastChart.svelte';
 	import {
 		buildProfileComparisonChart,
 		type ProfileComparison
@@ -61,6 +60,10 @@
 			label: `${profile.title} · reference`
 		}))
 	]);
+
+	// The roast page defers the LayerCake/D3 chart bundle; load it only once a
+	// comparison is ready to draw.
+	const loadRoastChart = () => import('./chart/RoastChart.svelte');
 
 	const chartData = $derived(
 		comparison && comparisonLabels
@@ -404,7 +407,15 @@
 						>Discuss with Cherry →</a
 					>
 				</div>
-				<div class="mt-4 h-[24rem] min-h-[20rem]"><RoastChart {chartData} /></div>
+				<div class="mt-4 h-[24rem] min-h-[20rem]">
+					{#await loadRoastChart() then { default: RoastChart }}
+						<RoastChart {chartData} />
+					{:catch}
+						<p class="text-sm text-muted">
+							The comparison chart could not load. Refresh to try again.
+						</p>
+					{/await}
+				</div>
 				{#if comparison.milestones.length > 0}<div class="mt-4 flex flex-wrap gap-2">
 						{#each comparison.milestones as milestone (milestone.name)}<span
 								class="rounded-full border border-line px-3 py-1 text-xs text-muted"
