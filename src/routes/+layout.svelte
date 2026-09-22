@@ -236,6 +236,7 @@
 					bind:open={chatDrawerOpen}
 					role={data.auth.role}
 					ppiAccess={data.auth.ppiAccess}
+					ownerId={data.auth.user?.id ?? null}
 				/>
 			{/if}
 		{/if}

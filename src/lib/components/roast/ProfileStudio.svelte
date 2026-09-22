@@ -43,6 +43,7 @@
 	let notice = $state<string | null>(null);
 	let comparison = $state<ProfileComparison | null>(null);
 	let comparisonLabels = $state<{ left: string; right: string } | null>(null);
+	let comparisonSelections = $state<{ left: Selection; right: Selection } | null>(null);
 	let fileInput = $state<HTMLInputElement | null>(null);
 
 	const storage = () => (typeof sessionStorage === 'undefined' ? null : sessionStorage);
@@ -67,18 +68,15 @@
 			: null
 	);
 	const cherryHref = $derived.by(() => {
-		if (!comparisonLabels) return '/chat';
-		const left = parseSelection(leftValue);
-		const right = parseSelection(rightValue);
-		if (!left || !right) return '/chat';
+		if (!comparisonLabels || !comparisonSelections) return '/chat';
 		const prompt = `Discuss the measured differences between ${comparisonLabels.left} and ${comparisonLabels.right} and help me decide what to preserve or change.`;
 		return `/chat?${new URLSearchParams({
 			source: 'profile-studio',
 			prompt,
-			left_kind: left.kind,
-			left_id: left.id,
-			right_kind: right.kind,
-			right_id: right.id
+			left_kind: comparisonSelections.left.kind,
+			left_id: comparisonSelections.left.id,
+			right_kind: comparisonSelections.right.kind,
+			right_id: comparisonSelections.right.id
 		}).toString()}`;
 	});
 
@@ -225,6 +223,7 @@
 			if (!response.ok) throw new Error(body.error || 'Unable to compare these profiles');
 			comparison = body.data;
 			comparisonLabels = { left: left.label, right: right.label };
+			comparisonSelections = { left, right };
 			trackProfileStudioActivation('profile_comparison_completed');
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : 'Unable to compare these profiles';
