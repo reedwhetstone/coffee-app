@@ -75,6 +75,11 @@ describe('ChatWorkspace confirmed-action continuation', () => {
 			completedAction?: { executionId: string };
 		}> = [];
 		const actionRequests: unknown[] = [];
+		let blockCanvasSave = false;
+		let releaseCanvasSave!: () => void;
+		const canvasSaveBlocked = new Promise<void>((resolve) => {
+			releaseCanvasSave = resolve;
+		});
 		let canvasVersion = 0;
 		vi.stubGlobal(
 			'fetch',
@@ -101,6 +106,10 @@ describe('ChatWorkspace confirmed-action continuation', () => {
 				}
 				if (url.endsWith('/canvas')) {
 					const payload = JSON.parse(String(init?.body));
+					if (blockCanvasSave && actionRequests.length > 0) {
+						blockCanvasSave = false;
+						await canvasSaveBlocked;
+					}
 					return Response.json({
 						canvas_state: payload.canvas_state,
 						canvas_version: ++canvasVersion,
@@ -151,6 +160,7 @@ describe('ChatWorkspace confirmed-action continuation', () => {
 		proposal.finish();
 
 		await fireEvent.click(await screen.findByRole('button', { name: /Evidence 1/ }));
+		blockCanvasSave = true;
 		await fireEvent.click(await screen.findByRole('button', { name: 'Execute' }));
 		await waitFor(() => expect(actionRequests).toHaveLength(1));
 		await waitFor(() => expect(chatRequests).toHaveLength(2));
@@ -167,6 +177,12 @@ describe('ChatWorkspace confirmed-action continuation', () => {
 				screen.getByText(/Action completed, but Cherry Green Agent couldn't continue/)
 			).toBeVisible()
 		);
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: '/pin' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(chatRequests).toHaveLength(2));
+		expect(
+			screen.getByText(/Action completed, but Cherry Green Agent couldn't continue/)
+		).toBeVisible();
 		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
 		await waitFor(() => expect(chatRequests).toHaveLength(3));
 		expect(actionRequests).toHaveLength(1);
@@ -182,6 +198,7 @@ describe('ChatWorkspace confirmed-action continuation', () => {
 		retry.finish();
 		await waitFor(() => expect(screen.getByText('The bean is ready.')).toBeVisible());
 		expect(actionRequests).toHaveLength(1);
+		releaseCanvasSave();
 		// Let the component's debounced message and canvas persistence settle while
 		// the endpoint stub is still installed.
 		await new Promise((resolve) => setTimeout(resolve, 900));

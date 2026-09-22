@@ -281,6 +281,51 @@
 	} | null = null;
 	let pendingContinuationExecutionId: string | null = null;
 	let activeContinuationExecutionId: string | null = null;
+	type ContinuationContext = {
+		workspaceId: string;
+		lifecycleGeneration: number;
+	};
+	let chatLifecycleGeneration = 0;
+	let activeContinuationContext: ContinuationContext | null = null;
+
+	function invalidateConversationState() {
+		chatLifecycleGeneration += 1;
+		pendingContinuationExecutionId = null;
+		activeContinuationExecutionId = null;
+		activeContinuationContext = null;
+		lastSubmittedPrompt = '';
+		lastSubmittedBody = null;
+		retryPreservesComposerDraft = false;
+		draftEditedSinceSubmission = false;
+		restoredSubmission = null;
+		lastSubmittedContext = null;
+		lastSubmittedDraft = '';
+		lastSubmittedAttachment = null;
+		lastSubmittedHandoff = null;
+		chatError = null;
+		chatCanRetry = false;
+	}
+
+	function beginNewChatTurn(prompt: string, body: ChatRequestBody) {
+		invalidateConversationState();
+		lastSubmittedPrompt = prompt;
+		lastSubmittedBody = body;
+	}
+
+	function captureContinuationContext(): ContinuationContext | null {
+		const workspaceId = workspaceStore.currentWorkspaceId;
+		return workspaceId ? { workspaceId, lifecycleGeneration: chatLifecycleGeneration } : null;
+	}
+
+	function canContinue(context: ContinuationContext | null): context is ContinuationContext {
+		return Boolean(
+			context &&
+				workspaceStore.currentWorkspaceId === context.workspaceId &&
+				chatLifecycleGeneration === context.lifecycleGeneration &&
+				!isActive &&
+				!isClearing
+		);
+	}
 
 	function noteDraftInput() {
 		draftEditedSinceSubmission = true;
@@ -317,8 +362,11 @@
 			allowInterruptedRetention = failure.kind !== 'access';
 			if (activeContinuationExecutionId) {
 				pendingContinuationExecutionId = activeContinuationExecutionId;
-				chatError = `Action completed, but ${agentName} couldn't continue. Retry to pick up where it left off.`;
-				chatCanRetry = true;
+				chatError =
+					failure.kind === 'access'
+						? failure.message
+						: `Action completed, but ${agentName} couldn't continue. Retry to pick up where it left off.`;
+				chatCanRetry = failure.retryable;
 				return;
 			}
 			chatError = failure.message;
@@ -383,6 +431,7 @@
 					chatCanRetry = false;
 				}
 				activeContinuationExecutionId = null;
+				activeContinuationContext = null;
 			}
 			messageCountBeforeSubmission = null;
 			allowInterruptedRetention = true;
@@ -602,6 +651,7 @@
 	}
 
 	function applyWorkspaceResult(result: { workspace: Workspace; messages: WorkspaceMessage[] }) {
+		invalidateConversationState();
 		// Workspace hydration must reset the shared canvas completely. User-facing
 		// clears preserve pinned blocks, but restored workspaces should not inherit
 		// pinned blocks from whatever canvas happened to be mounted before.
@@ -610,9 +660,6 @@
 		dispatchedParts = new Set();
 		lastPersistedMessageCount = 0;
 		lastSummarizedMessageCount = 0;
-		pendingContinuationExecutionId = null;
-		activeContinuationExecutionId = null;
-
 		// Restore messages from persisted workspace
 		if (result.messages.length > 0) {
 			// Reconstruct UIMessage-compatible objects from saved messages
@@ -1228,6 +1275,7 @@
 			throw new Error(
 				`This action predates durable execution IDs. Run it through ${agentName} again to create a current proposal.`
 			);
+		const continuationContext = captureContinuationContext();
 		if (blockId) {
 			const card = canvasStore.blocks.find((b) => b.id === blockId)?.block;
 			const persistedFields =
@@ -1271,19 +1319,17 @@
 				// `failed` or re-throw into the execution catch below; that would
 				// misreport a successful inventory/roast/sale write and invite a
 				// duplicate retry. Persist best-effort and log on failure instead.
-				if (wsId) {
-					try {
-						await persistCanvasState(wsId);
-					} catch (persistErr) {
+				if (wsId)
+					void persistCanvasState(wsId).catch((persistErr) => {
 						console.error(
 							'Canvas persistence failed after a successful action execution; ' +
 								'the action already committed and remains marked success.',
 							persistErr
 						);
-					}
-				}
+					});
 			}
-			void continueAfterConfirmedAction(executionId);
+			if (canContinue(continuationContext))
+				void continueAfterConfirmedAction(executionId, continuationContext);
 			return result;
 		} catch (err) {
 			clearTimeout(timeoutId);
@@ -1327,9 +1373,14 @@
 		return typeof sessionStorage === 'undefined' ? null : sessionStorage;
 	}
 
-	async function continueAfterConfirmedAction(executionId: string) {
+	async function continueAfterConfirmedAction(
+		executionId: string,
+		continuationContext: ContinuationContext
+	) {
+		if (!canContinue(continuationContext)) return;
 		pendingContinuationExecutionId = executionId;
 		activeContinuationExecutionId = executionId;
+		activeContinuationContext = continuationContext;
 		retryPreservesComposerDraft = true;
 		chatError = null;
 		chatCanRetry = false;
@@ -1345,7 +1396,7 @@
 		} catch {
 			// Chat owns error classification and retry presentation through onError.
 		} finally {
-			messageCountBeforeSubmission = null;
+			if (activeContinuationContext === continuationContext) messageCountBeforeSubmission = null;
 		}
 	}
 
@@ -1368,58 +1419,43 @@
 				? buildProfileStudioHandoffRequest(inputMessage, handoff)
 				: { text: inputMessage.trim(), context: null };
 		const { text, context } = request;
+		const cmd = context ? null : matchSlashCommand(text, canUseMallardWorkspaces);
+
+		// Local canvas commands are not new chat turns and must retain a failed
+		// confirmed action's continuation retry state.
+		if (cmd && !cmd.chatText) {
+			inputMessage = '';
+			if (cmd.action === 'clear-canvas') canvasStore.clearAll();
+			else if (cmd.action === 'pin-focused') {
+				const fid = canvasStore.focusBlockId;
+				if (fid) canvasStore.dispatch({ type: 'pin', blockId: fid });
+			} else if (cmd.action === 'unpin-focused') {
+				const fid = canvasStore.focusBlockId;
+				if (fid) canvasStore.dispatch({ type: 'unpin', blockId: fid });
+			}
+			return;
+		}
+
+		const body = buildSendBody();
+		const submittedPrompt = cmd?.chatText ?? text;
+		beginNewChatTurn(submittedPrompt, body);
+		lastSubmittedContext = context;
 		lastSubmittedDraft = inputMessage.trim();
 		lastSubmittedAttachment = attachment;
 		lastSubmittedHandoff = handoff;
-		// An explicit new request abandons a failed automatic continuation. Future
-		// retries must belong to this newly submitted turn, not stale completed work.
-		pendingContinuationExecutionId = null;
-		activeContinuationExecutionId = null;
-		lastSubmittedPrompt = text;
-		lastSubmittedContext = context;
-		lastSubmittedBody = buildSendBody();
 		retryPreservesComposerDraft = false;
-		draftEditedSinceSubmission = false;
-		restoredSubmission = null;
 		chatError = null;
 		chatCanRetry = false;
-
-		// Intercept slash commands. Attachment and handoff sends are always requests.
-		const cmd = context ? null : matchSlashCommand(text, canUseMallardWorkspaces);
-		if (cmd) {
-			inputMessage = '';
-			if (cmd.action === 'clear-canvas') {
-				canvasStore.clearAll();
-				return;
-			}
-			if (cmd.action === 'pin-focused') {
-				const fid = canvasStore.focusBlockId;
-				if (fid) canvasStore.dispatch({ type: 'pin', blockId: fid });
-				return;
-			}
-			if (cmd.action === 'unpin-focused') {
-				const fid = canvasStore.focusBlockId;
-				if (fid) canvasStore.dispatch({ type: 'unpin', blockId: fid });
-				return;
-			}
-			if (cmd.chatText) {
-				lastSubmittedPrompt = cmd.chatText;
-				inputMessage = '';
-				shouldScrollToBottom = true;
-				messageCountBeforeSubmission = chat.messages.length;
-				await chat.sendMessage({ text: cmd.chatText }, { body: lastSubmittedBody });
-				messageCountBeforeSubmission = null;
-				return;
-			}
-		}
-
 		inputMessage = '';
 		pendingReferenceAttachment = null;
 		profileStudioHandoff = null;
 		shouldScrollToBottom = true;
 
 		messageCountBeforeSubmission = chat.messages.length;
-		await chat.sendMessage(buildChatRequestMessage(text, context), { body: lastSubmittedBody });
+		await chat.sendMessage(
+			cmd?.chatText ? { text: cmd.chatText } : buildChatRequestMessage(text, context),
+			{ body }
+		);
 		messageCountBeforeSubmission = null;
 	}
 
@@ -1452,7 +1488,9 @@
 	async function retryLastResponse() {
 		if (isActive || isClearing || !workspaceReady) return;
 		if (pendingContinuationExecutionId) {
-			await continueAfterConfirmedAction(pendingContinuationExecutionId);
+			const continuationContext = captureContinuationContext();
+			if (continuationContext)
+				await continueAfterConfirmedAction(pendingContinuationExecutionId, continuationContext);
 			return;
 		}
 		if (!lastSubmittedPrompt) return;
@@ -1493,21 +1531,19 @@
 
 		// This is deliberately a new turn, not response regeneration. Send the
 		// originating request directly so an unsent composer draft remains intact.
+		const body = buildSendBody();
+		beginNewChatTurn(prompt, body);
 		lastSubmittedDraft = inputMessage.trim();
 		lastSubmittedAttachment = pendingReferenceAttachment;
 		lastSubmittedHandoff = profileStudioHandoff;
-		pendingContinuationExecutionId = null;
-		activeContinuationExecutionId = null;
-		lastSubmittedPrompt = prompt;
 		lastSubmittedContext = context;
-		lastSubmittedBody = buildSendBody();
 		retryPreservesComposerDraft = true;
 		restoredSubmission = null;
 		chatError = null;
 		chatCanRetry = false;
 		shouldScrollToBottom = true;
 		messageCountBeforeSubmission = chat.messages.length;
-		await chat.sendMessage(buildChatRequestMessage(prompt, context), { body: lastSubmittedBody });
+		await chat.sendMessage(buildChatRequestMessage(prompt, context), { body });
 		messageCountBeforeSubmission = null;
 	}
 
@@ -1533,6 +1569,7 @@
 		const wsId = workspaceStore.currentWorkspaceId;
 		if (!wsId) return;
 		isClearing = true;
+		invalidateConversationState();
 		try {
 			await enqueuePersistence(async () => {
 				const response = await fetch(`/api/workspaces/${wsId}/messages`, {
@@ -1549,8 +1586,6 @@
 			chat.messages = [];
 			dispatchedParts = new Set();
 			lastPersistedMessageCount = 0;
-			pendingContinuationExecutionId = null;
-			activeContinuationExecutionId = null;
 			canvasPersistError = null;
 		} catch (err) {
 			canvasPersistError = (err as Error).message;
