@@ -56,3 +56,33 @@ export function mountRapidFollowupPersist(persist: PersistSpy): () => void {
 		flushSync();
 	});
 }
+
+export function mountFailedPersistRetry(persist: (count: number) => Promise<void>): () => void {
+	return $effect.root(() => {
+		const messageCount = $state(2);
+		let lastPersistedMessageCount = $state(0);
+		let retryAttempt = $state(0);
+		$effect(() => {
+			const count = messageCount;
+			const attempt = retryAttempt;
+			if (count === lastPersistedMessageCount) return;
+			let retryTimeout: ReturnType<typeof setTimeout> | undefined;
+			const timeout = setTimeout(() => {
+				void persist(count).then(
+					() => {
+						lastPersistedMessageCount = count;
+						retryAttempt = 0;
+					},
+					() => {
+						retryTimeout = setTimeout(() => (retryAttempt = attempt + 1), 10);
+					}
+				);
+			}, 10);
+			return () => {
+				clearTimeout(timeout);
+				if (retryTimeout) clearTimeout(retryTimeout);
+			};
+		});
+		flushSync();
+	});
+}

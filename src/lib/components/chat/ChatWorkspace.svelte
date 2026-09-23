@@ -341,10 +341,12 @@
 	let messageCountBeforeSubmission: number | null = null;
 	let allowInterruptedRetention = true;
 	let canvasPersistError = $state<string | null>(null);
-	let displayedError = $derived(canvasPersistError ?? chatError);
+	let messagePersistError = $state<string | null>(null);
+	let displayedError = $derived(messagePersistError ?? canvasPersistError ?? chatError);
 
 	function dismissDisplayedError() {
-		if (canvasPersistError) canvasPersistError = null;
+		if (messagePersistError) messagePersistError = null;
+		else if (canvasPersistError) canvasPersistError = null;
 		else chatError = null;
 	}
 
@@ -667,6 +669,8 @@
 		canvasStore.resetAll();
 		dispatchedParts = new Set();
 		lastPersistedMessageCount = 0;
+		messagePersistRetryAttempt = 0;
+		messagePersistError = null;
 		lastSummarizedMessageCount = 0;
 		// Restore messages from persisted workspace
 		if (result.messages.length > 0) {
@@ -877,18 +881,39 @@
 	// meant nothing reached the DB during a live session — messages only ever
 	// persisted via the beforeunload beacon, which drops oversized payloads.
 	let lastPersistedMessageCount = $state(0);
+	let messagePersistRetryAttempt = $state(0);
 	$effect(() => {
+		const wsId = workspaceStore.currentWorkspaceId;
 		const count = chat.messages.length;
-		if (!workspaceReady || isActive || count === 0 || count === lastPersistedMessageCount) return;
+		const retryAttempt = messagePersistRetryAttempt;
+		if (!wsId || !workspaceReady || isActive || count === 0 || count === lastPersistedMessageCount)
+			return;
+		let retryTimeout: ReturnType<typeof setTimeout> | undefined;
 		const timeout = setTimeout(() => {
 			void persistCurrentState().then(
 				() => {
 					lastPersistedMessageCount = count;
+					messagePersistRetryAttempt = 0;
+					messagePersistError = null;
 				},
-				() => undefined
+				() => {
+					if (
+						retryAttempt >= 2 &&
+						workspaceStore.currentWorkspaceId === wsId &&
+						workspaceStore.getSavedMessageCount(wsId) < count
+					)
+						messagePersistError = 'Conversation turns are not saving. Retrying in the background.';
+					retryTimeout = setTimeout(
+						() => (messagePersistRetryAttempt = retryAttempt + 1),
+						Math.min(2000 * 2 ** retryAttempt, 30_000)
+					);
+				}
 			);
 		}, 500);
-		return () => clearTimeout(timeout);
+		return () => {
+			clearTimeout(timeout);
+			if (retryTimeout) clearTimeout(retryTimeout);
+		};
 	});
 
 	// Compact fingerprint of the canvas UI structure (order, view layout, pin/
@@ -1699,7 +1724,7 @@
 				{suggestions}
 				{slashCompletions}
 				chatError={displayedError}
-				chatCanRetry={canvasPersistError ? false : chatCanRetry}
+				chatCanRetry={messagePersistError || canvasPersistError ? false : chatCanRetry}
 				workspaceError={workspaceInitError}
 				{workspaceReady}
 				{initializingWorkspace}

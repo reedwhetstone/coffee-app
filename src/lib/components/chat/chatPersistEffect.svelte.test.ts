@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
 	mountDebouncedPersistAfterTurn,
+	mountFailedPersistRetry,
 	mountRapidFollowupPersist
 } from './chatPersistEffectHarness.svelte';
 
@@ -14,6 +15,19 @@ import {
  * reached the DB. The counter must only be updated inside the timer callback.
  */
 describe('ChatWorkspace auto-persist effect', () => {
+	it('retries a failed save without requiring another chat turn', async () => {
+		const persist = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('temporary save failure'))
+			.mockResolvedValue(undefined);
+		const teardown = mountFailedPersistRetry(persist);
+		await vi.waitFor(() => expect(persist).toHaveBeenCalledTimes(2));
+		await new Promise((resolve) => setTimeout(resolve, 35));
+		expect(persist).toHaveBeenCalledTimes(2);
+		expect(persist).toHaveBeenNthCalledWith(1, 2);
+		expect(persist).toHaveBeenNthCalledWith(2, 2);
+		teardown();
+	});
 	it('runs the debounced persist after a turn completes', async () => {
 		const persist = vi.fn();
 

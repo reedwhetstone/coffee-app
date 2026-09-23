@@ -9,6 +9,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { canUseMallardControls } from '$lib/services/portfolioAccess';
+	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 	import type { PageData } from './$types';
 	import type { PageAuthView } from '$lib/types/auth.types';
 	import type { AvailableCoffee, BatchItem } from '$lib/types/component.types';
@@ -93,6 +94,24 @@
 			poundsIn,
 			salesCount: salesData.length
 		};
+	});
+
+	$effect(() => {
+		const summary = profitSummary;
+		const selected = selectedSale;
+		const inView = selected
+			? [selected.green_coffee_inv_id, ...profitData.map((row) => row.id)]
+			: profitData.map((row) => row.id);
+		pageChatContext.set({
+			surface: 'profit',
+			summary: `Profit workspace: ${profitLoadState === 'loading' ? 'loading' : `${profitData.length} coffees and ${summary.salesCount} sales in view`}. Revenue ${formatCurrency(summary.revenue)}, profit ${formatCurrency(summary.profit)}, margin ${formatPercent(summary.margin)}.${selected ? ` Selected sale #${selected.id} for inventory bean #${selected.green_coffee_inv_id}.` : ''}`,
+			entities: [...new Set(inView)].slice(0, 8).map((id) => ({
+				type: 'inventory_bean',
+				id,
+				label: profitData.find((row) => row.id === id)?.coffee_name ?? `Inventory bean #${id}`
+			}))
+		});
+		return () => pageChatContext.clear();
 	});
 
 	// Add sales form handlers
