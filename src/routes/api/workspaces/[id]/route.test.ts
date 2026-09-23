@@ -13,7 +13,7 @@ vi.mock('$lib/server/parchmentClient', () => ({
 }));
 vi.mock('$lib/server/parchmentConversation', () => ({
 	updateConversationWorkspace: mocks.updateWorkspace,
-	getConversationWorkspace: vi.fn(),
+	getCompleteConversationWorkspace: vi.fn(),
 	ParchmentConversationError: class extends Error {}
 }));
 
