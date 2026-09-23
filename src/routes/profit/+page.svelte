@@ -104,12 +104,18 @@
 			: profitData.map((row) => row.id);
 		pageChatContext.set({
 			surface: 'profit',
-			summary: `Profit workspace: ${profitLoadState === 'loading' ? 'loading' : `${profitData.length} coffees and ${summary.salesCount} sales in view`}. Revenue ${formatCurrency(summary.revenue)}, profit ${formatCurrency(summary.profit)}, margin ${formatPercent(summary.margin)}.${selected ? ` Selected sale #${selected.id} for inventory bean #${selected.green_coffee_inv_id}.` : ''}`,
-			entities: [...new Set(inView)].slice(0, 8).map((id) => ({
-				type: 'inventory_bean',
-				id,
-				label: profitData.find((row) => row.id === id)?.coffee_name ?? `Inventory bean #${id}`
-			}))
+			summary:
+				profitLoadState === 'ready'
+					? `Profit workspace: ${profitData.length} coffees and ${summary.salesCount} sales in view. Revenue ${formatCurrency(summary.revenue)}, profit ${formatCurrency(summary.profit)}, margin ${formatPercent(summary.margin)}.${selected ? ` Selected sale #${selected.id} for inventory bean #${selected.green_coffee_inv_id}.` : ''}`
+					: `Profit workspace data is ${profitLoadState === 'loading' ? 'loading' : 'unavailable'}. Revenue, profit, and margin are not available.${selected ? ` Selected sale #${selected.id} for inventory bean #${selected.green_coffee_inv_id}.` : ''}`,
+			entities:
+				profitLoadState === 'ready'
+					? [...new Set(inView)].slice(0, 8).map((id) => ({
+							type: 'inventory_bean',
+							id,
+							label: profitData.find((row) => row.id === id)?.coffee_name ?? `Inventory bean #${id}`
+						}))
+					: []
 		});
 		return () => pageChatContext.clear();
 	});

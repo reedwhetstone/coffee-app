@@ -896,7 +896,13 @@
 					messagePersistRetryAttempt = 0;
 					messagePersistError = null;
 				},
-				() => {
+				(error: unknown) => {
+					if (error instanceof CanvasSaveError && !error.retryable) {
+						lastPersistedMessageCount = count;
+						messagePersistRetryAttempt = 0;
+						messagePersistError = null;
+						return;
+					}
 					if (
 						retryAttempt >= 2 &&
 						workspaceStore.currentWorkspaceId === wsId &&
@@ -1646,6 +1652,8 @@
 			chat.messages = [];
 			dispatchedParts = new Set();
 			lastPersistedMessageCount = 0;
+			messagePersistRetryAttempt = 0;
+			messagePersistError = null;
 			canvasPersistError = null;
 		} catch (err) {
 			canvasPersistError = (err as Error).message;
