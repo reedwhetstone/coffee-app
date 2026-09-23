@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ChatMessageList from './ChatMessageList.svelte';
 import { canvasStore } from '$lib/stores/canvasStore.svelte';
+import type { ActionCardPayload } from '$lib/types/genui';
 
 vi.mock('@humanspeak/svelte-markdown', () => ({ default: vi.fn() }));
 vi.mock('$lib/components/genui/InlineStatusLine.svelte', () => ({ default: vi.fn() }));
@@ -32,19 +33,20 @@ describe('ChatMessageList conversation controls', () => {
 	});
 
 	it('shows a completed action in its original turn while Cherry follows up', async () => {
+		const actionCard: ActionCardPayload = {
+			executionId: 'assistant-1:inventory',
+			actionType: 'add_bean_to_inventory',
+			summary: 'Add Banko Gotiti to inventory',
+			fields: [
+				{ key: 'name', label: 'Name', type: 'text', value: 'Banko Gotiti', editable: false }
+			],
+			status: 'proposed'
+		};
 		const toolPart = {
 			type: 'tool-propose_action',
 			toolCallId: 'inventory',
 			state: 'output-available',
-			output: {
-				action_card: {
-					executionId: 'assistant-1:inventory',
-					actionType: 'add_bean_to_inventory',
-					summary: 'Add Banko Gotiti to inventory',
-					fields: [],
-					status: 'proposed'
-				}
-			}
+			output: { action_card: actionCard }
 		};
 		canvasStore.dispatch({
 			type: 'add',

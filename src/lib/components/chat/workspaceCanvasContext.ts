@@ -3,8 +3,8 @@ import type { CanvasBlock, UIBlock } from '$lib/types/genui';
 /** Parchment rejects a workspace canvas description longer than this on every chat request. */
 export const CANVAS_DESCRIPTION_MAX_CHARS = 500;
 
-// Locked windows are user-owned: tell the model it must not replace, remove,
-// or reorder them, only add new content alongside.
+// Pinned evidence is user-owned: tell the model it must not replace, remove,
+// or reorder it, only add new content alongside.
 const LOCKED_NOTE = ' [LOCKED — do not replace, remove, or reorder]';
 const LOCKED_TAG = ' [LOCKED]';
 const LOCKED_LEGEND = '[LOCKED] blocks are user-owned: do not replace, remove, or reorder them.';
@@ -79,7 +79,8 @@ function summarizeBlock(block: UIBlock, pos: number): string {
 /**
  * Describe visible evidence for Cherry within the request contract. Detailed
  * lines are used when they fit; otherwise every block is compacted instead of
- * dropping the tail, and locked blocks keep priority if even that overflows.
+ * dropping the tail. When even compact summaries do not fit, pinned blocks
+ * come first, then recent evidence, then recent action receipts.
  */
 export function describeCanvasForCherry(
 	blocks: DescribedBlock[],
@@ -99,11 +100,21 @@ export function describeCanvasForCherry(
 	const allCompact = [...header, ...compact].join('\n');
 	if (allCompact.length <= maxChars) return allCompact;
 
-	// Locked blocks first (ADR 013 prioritizes pinned evidence), then canvas order.
+	// Pinned blocks first (ADR 013), then recent evidence and recent actions.
+	// Action history stays available in the UI without dominating Cherry's context.
 	const budget = maxChars - `\n(+${blocks.length} more evidence blocks)`.length;
 	const priority = compact
 		.map((_, index) => index)
-		.sort((a, b) => Number(blocks[b].pinned) - Number(blocks[a].pinned) || a - b);
+		.sort((a, b) => {
+			const pinnedOrder = Number(blocks[b].pinned) - Number(blocks[a].pinned);
+			if (pinnedOrder !== 0) return pinnedOrder;
+
+			const aIsAction = blocks[a].block.type === 'action-card';
+			const bIsAction = blocks[b].block.type === 'action-card';
+			if (aIsAction !== bIsAction) return Number(aIsAction) - Number(bIsAction);
+
+			return b - a;
+		});
 	const selected = new Set<number>();
 	let used = header.join('\n').length;
 	for (const index of priority) {

@@ -17,6 +17,17 @@ function coffeeCards(names: string[], pinned = false) {
 	};
 }
 
+function actionCard(status: 'proposed' | 'executing' | 'success' | 'failed', pinned = false) {
+	return {
+		block: {
+			type: 'action-card',
+			version: 1,
+			data: { actionType: 'add_bean_to_inventory', summary: 'Action receipt', fields: [], status }
+		} as unknown as UIBlock,
+		pinned
+	};
+}
+
 describe('workspace canvas description for Cherry', () => {
 	it('keeps the detailed description when it fits the request contract', () => {
 		const description = describeCanvasForCherry([
@@ -45,15 +56,34 @@ describe('workspace canvas description for Cherry', () => {
 		expect(description).not.toContain('more evidence blocks');
 	});
 
-	it('prioritizes locked blocks and counts omissions when even compact lines overflow', () => {
+	it('prioritizes pinned and recent canvas items when compact lines overflow', () => {
 		const blocks = Array.from({ length: 40 }, (_, i) => roastChart(i + 1, i === 39));
 		const description = describeCanvasForCherry(blocks);
 		expect(description.length).toBeLessThanOrEqual(CANVAS_DESCRIPTION_MAX_CHARS);
 		expect(description).toContain('40. Roast chart #40 [LOCKED]');
-		expect(description).toContain('1. Roast chart #1');
+		expect(description).toContain('39. Roast chart #39');
+		expect(description).not.toContain('1. Roast chart #1');
 		expect(description).toMatch(/\(\+\d+ more evidence blocks\)$/);
 		const described = description.split('\n').filter((line) => /^\d+\. /.test(line)).length;
 		expect(description).toContain(`(+${40 - described} more evidence blocks)`);
+	});
+
+	it('keeps current references ahead of long-running action history in Cherry context', () => {
+		const blocks = [
+			...Array.from({ length: 40 }, (_, i) =>
+				actionCard(i === 39 ? 'success' : i === 38 ? 'executing' : 'failed')
+			),
+			...Array.from({ length: 8 }, (_, i) => roastChart(i + 1)),
+			coffeeCards(['Current Kenya Guji'])
+		];
+
+		const description = describeCanvasForCherry(blocks);
+
+		expect(description.length).toBeLessThanOrEqual(CANVAS_DESCRIPTION_MAX_CHARS);
+		expect(description).toContain('49. Coffee cards: Current Kenya Guji');
+		expect(description).toContain('40. Action card [success]');
+		expect(description).toContain('39. Action card [executing]');
+		expect(description).not.toMatch(/^1\. Action card \[failed\]/m);
 	});
 
 	it('describes an empty canvas as nothing', () => {

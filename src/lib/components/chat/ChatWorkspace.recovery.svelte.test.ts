@@ -559,7 +559,7 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 			}
 		});
 		await waitFor(() =>
-			expect(screen.getByText('presenting 1 item to the evidence workspace')).toBeInTheDocument()
+			expect(screen.getByText('presenting 1 item to the canvas')).toBeInTheDocument()
 		);
 		expect(screen.queryByRole('heading', { name: 'Retained Colombia' })).not.toBeInTheDocument();
 		stream.finish();
@@ -633,7 +633,7 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 			expect(screen.getByRole('heading', { name: 'Retained Colombia' })).toBeVisible()
 		);
 		expect(screen.getByText(/Response stopped\./)).toBeInTheDocument();
-		expect(screen.queryByRole('button', { name: 'Open evidence' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Open in canvas' })).not.toBeInTheDocument();
 		expect(canvasStore.blocks).toHaveLength(0);
 	});
 
