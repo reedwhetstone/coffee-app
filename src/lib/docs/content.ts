@@ -1591,7 +1591,7 @@ const docsPages: DocsPage[] = [
 							'POST',
 							'Browser session',
 							'Internal product route',
-							'Forwards one explicitly confirmed proposal-card action to Parchment. Parchment owns validation, entitlement and ownership checks, atomic execution, and payload-bound replay.'
+							'Forwards one explicitly confirmed proposal-card action to Parchment, including a planned-reference save with its exact parent and change set. Parchment owns validation, entitlement and ownership checks, atomic execution, and payload-bound replay; Cherry continues by the stable execution ID.'
 						],
 						[
 							'/api/workspaces',
