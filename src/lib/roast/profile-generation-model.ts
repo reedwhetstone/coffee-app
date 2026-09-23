@@ -12,7 +12,15 @@ function domain(values: number[], fallback: [number, number]): [number, number] 
 	return [Math.floor(min - padding), Math.ceil(max + padding)];
 }
 
-/** Preview the proposed curve beside its immutable parent. Event markers remain unchanged. */
+/** Offset between Parchment's logger timestamps and the charge-aligned chart axis. */
+export function chargeOffsetMilliseconds(chart: ReferenceChart): number {
+	return chart.chargeTimeMilliseconds ?? 0;
+}
+
+/**
+ * Preview the proposed curve beside its immutable parent on the shared charge-aligned
+ * axis. Milestones render as markers; control events remain unchanged but unmarked.
+ */
 export function buildProfileGenerationChart(
 	parent: ReferenceChart,
 	preview: ReferenceChart
@@ -33,7 +41,7 @@ export function buildProfileGenerationChart(
 			color: colors[index % colors.length],
 			dashed: !proposed,
 			points: entry.points.map((point) => ({
-				timeMinutes: point.timeMilliseconds / 60_000,
+				timeMinutes: (point.timeMilliseconds - chargeOffsetMilliseconds(chart)) / 60_000,
 				value: point.value
 			}))
 		}));
@@ -54,12 +62,13 @@ export function buildProfileGenerationChart(
 		rorPoints: [],
 		controlSeries: [],
 		series,
-		events: preview.events.map((event) => ({
-			timeMinutes: event.timeMilliseconds / 60_000,
-			name: event.name
-		})),
-		chargeTime:
-			preview.chargeTimeMilliseconds === null ? 0 : preview.chargeTimeMilliseconds / 60_000,
+		events: preview.events
+			.filter((event) => event.category === 'milestone')
+			.map((event) => ({
+				timeMinutes: (event.timeMilliseconds - chargeOffsetMilliseconds(preview)) / 60_000,
+				name: event.name
+			})),
+		chargeTime: chargeOffsetMilliseconds(preview),
 		temperatureUnit,
 		xDomain: domain(times, [0, 12]),
 		yTempDomain: domain(temperatures, preview.temperatureUnit === 'C' ? [0, 260] : [100, 500]),

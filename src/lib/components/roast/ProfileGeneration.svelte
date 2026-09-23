@@ -1,6 +1,9 @@
 <script lang="ts">
 	import type { components } from '@purveyors/sdk';
-	import { buildProfileGenerationChart } from '$lib/roast/profile-generation-model';
+	import {
+		buildProfileGenerationChart,
+		chargeOffsetMilliseconds
+	} from '$lib/roast/profile-generation-model';
 	import {
 		clearIdempotencyKey,
 		reserveIdempotencyKey,
@@ -11,6 +14,7 @@
 	type Request = components['schemas']['ReferenceProfileGenerationRequest'];
 	type Chart = components['schemas']['ReferenceProfileChart'];
 	type Preview = components['schemas']['ReferenceProfileGenerationPreviewResponse']['data'];
+	type Target = { id: string; revisionId: string };
 	let {
 		profiles,
 		ownerId,
@@ -31,10 +35,18 @@
 	let error = $state<string | null>(null);
 	let notice = $state<string | null>(null);
 	let preview = $state<Preview | null>(null);
-	let parentChart = $state<Chart | null>(null);
+	let loadedParent = $state<(Target & { chart: Chart }) | null>(null);
 	let previewFingerprint = $state<string | null>(null);
 	let saved = $state<{ id: string; revisionId: string; title: string } | null>(null);
 	const selected = $derived(profiles.find((profile) => profile.id === selectedId));
+	const target = $derived<Target | null>(
+		selected ? { id: selected.id, revisionId: selected.currentRevisionId } : null
+	);
+	// Only the chart loaded for the current selection may bound, offset, or display a plan.
+	const parentChart = $derived(
+		loadedParent && sameTarget(loadedParent, target) ? loadedParent.chart : null
+	);
+	const maxDelta = $derived(maxDeltaFor(parentChart));
 	const exportable = $derived(
 		profiles.filter(
 			(profile) =>
@@ -44,14 +56,42 @@
 	const chartData = $derived(
 		parentChart && preview ? buildProfileGenerationChart(parentChart, preview.chart) : null
 	);
+	const milestoneCount = $derived(
+		preview?.chart.events.filter((event) => event.category === 'milestone').length ?? 0
+	);
 	const loadRoastChart = () => import('./chart/RoastChart.svelte');
 
-	function request(): Request | null {
+	function sameTarget(left: Target | null, right: Target | null): boolean {
+		return !!left && !!right && left.id === right.id && left.revisionId === right.revisionId;
+	}
+
+	function isCurrent(requested: Target): boolean {
+		return sameTarget(requested, target);
+	}
+
+	function revisionPath(requested: Target): string {
+		return `/api/reference-profiles/${encodeURIComponent(requested.id)}/revisions/${encodeURIComponent(requested.revisionId)}`;
+	}
+
+	function fingerprintFor(requested: Target, input: Request): string {
+		return JSON.stringify({ id: requested.id, revisionId: requested.revisionId, input });
+	}
+
+	function maxDeltaFor(chart: Chart | null): number {
+		return chart?.temperatureUnit === 'C' ? 10 : 20;
+	}
+
+	function formatMinutes(milliseconds: number): number {
+		return Number((milliseconds / 60_000).toFixed(2));
+	}
+
+	/** Inputs are minutes on the charge-aligned chart; Parchment expects logger milliseconds. */
+	function request(chart: Chart | null): Request | null {
 		const start = Number(startMinutes);
 		const end = Number(endMinutes);
 		const adjustment = Number(delta);
 		if (
-			!selected ||
+			!chart ||
 			!title.trim() ||
 			!Number.isFinite(start) ||
 			!Number.isFinite(end) ||
@@ -59,17 +99,18 @@
 			start < 0 ||
 			end <= start ||
 			adjustment === 0 ||
-			Math.abs(adjustment) > (parentChart?.temperatureUnit === 'C' ? 10 : 20)
+			Math.abs(adjustment) > maxDeltaFor(chart)
 		)
 			return null;
+		const offset = chargeOffsetMilliseconds(chart);
 		return {
 			title: title.trim(),
 			changes: {
 				temperatureAdjustments: [
 					{
 						kind,
-						startMilliseconds: Math.round(start * 60_000),
-						endMilliseconds: Math.round(end * 60_000),
+						startMilliseconds: Math.round(start * 60_000) + offset,
+						endMilliseconds: Math.round(end * 60_000) + offset,
 						delta: adjustment
 					}
 				]
@@ -77,76 +118,81 @@
 		};
 	}
 	const matchingPreview = $derived.by(() => {
-		const input = request();
-		return (
-			!!selected &&
-			!!input &&
-			previewFingerprint ===
-				JSON.stringify({ id: selected.id, revisionId: selected.currentRevisionId, input })
-		);
+		const input = request(parentChart);
+		return !!target && !!input && previewFingerprint === fingerprintFor(target, input);
 	});
 
-	function clearPreview() {
+	async function loadParentChart(requested: Target): Promise<Chart | null> {
+		if (loadedParent && sameTarget(loadedParent, requested)) return loadedParent.chart;
+		try {
+			const response = await fetch(`${revisionPath(requested)}/chart`);
+			const body = await response.json().catch(() => null);
+			if (!isCurrent(requested)) return null;
+			if (!response.ok || !body?.data?.chart)
+				throw new Error(body?.error || 'Unable to load the parent chart');
+			loadedParent = { ...requested, chart: body.data.chart };
+			return body.data.chart;
+		} catch (cause) {
+			if (isCurrent(requested))
+				error = cause instanceof Error ? cause.message : 'Unable to load the parent chart';
+			return null;
+		}
+	}
+
+	function selectParent(id: string) {
+		selectedId = id;
 		preview = null;
-		parentChart = null;
+		loadedParent = null;
 		previewFingerprint = null;
 		saved = null;
 		notice = null;
 		error = null;
+		if (target) void loadParentChart(target);
 	}
 
 	async function previewPlan() {
-		const input = request();
-		if (!input || !selected || busy) {
-			error = 'Choose a reference and a non-zero change within the supported bounds.';
-			return;
-		}
+		const requested = target;
+		if (!requested || busy) return;
 		busy = true;
 		error = null;
 		notice = null;
 		preview = null;
-		const base = `/api/reference-profiles/${encodeURIComponent(selected.id)}/revisions/${encodeURIComponent(selected.currentRevisionId)}`;
+		previewFingerprint = null;
+		saved = null;
 		try {
-			const [chartResponse, previewResponse] = await Promise.all([
-				fetch(`${base}/chart`),
-				fetch(`${base}/preview`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(input)
-				})
-			]);
-			const [chartBody, previewBody] = await Promise.all([
-				chartResponse.json(),
-				previewResponse.json()
-			]);
-			if (!chartResponse.ok) throw new Error(chartBody.error || 'Unable to load the parent chart');
-			if (!previewResponse.ok) throw new Error(previewBody.error || 'Unable to preview this plan');
-			parentChart = chartBody.data.chart;
-			preview = previewBody.data;
-			previewFingerprint = JSON.stringify({
-				id: selected.id,
-				revisionId: selected.currentRevisionId,
-				input
+			const chart = await loadParentChart(requested);
+			if (!chart || !isCurrent(requested)) return;
+			const input = request(chart);
+			if (!input) {
+				error = `Choose a plan name, an end after the start, and a non-zero change of at most ${maxDeltaFor(chart)}°${chart.temperatureUnit}.`;
+				return;
+			}
+			const response = await fetch(`${revisionPath(requested)}/preview`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(input)
 			});
+			const body = await response.json().catch(() => null);
+			// A response for a parent that is no longer selected must never be shown as its preview.
+			if (!isCurrent(requested)) return;
+			if (!response.ok || !body?.data)
+				throw new Error(body?.error || 'Unable to preview this plan');
+			preview = body.data;
+			previewFingerprint = fingerprintFor(requested, input);
 		} catch (cause) {
-			error = cause instanceof Error ? cause.message : 'Unable to preview this plan';
+			if (isCurrent(requested))
+				error = cause instanceof Error ? cause.message : 'Unable to preview this plan';
 		} finally {
 			busy = false;
 		}
 	}
 
 	async function savePlan() {
-		const input = request();
-		if (!input || !selected || !preview || busy) return;
-		const fingerprint = JSON.stringify({
-			id: selected.id,
-			revisionId: selected.currentRevisionId,
-			input
-		});
-		if (
-			fingerprint !== previewFingerprint ||
-			preview.parentRevisionId !== selected.currentRevisionId
-		) {
+		const requested = target;
+		const input = request(parentChart);
+		if (!requested || !input || !preview || busy) return;
+		const fingerprint = fingerprintFor(requested, input);
+		if (fingerprint !== previewFingerprint || preview.parentRevisionId !== requested.revisionId) {
 			error = 'The plan changed after preview. Preview it again before saving.';
 			return;
 		}
@@ -159,14 +205,11 @@
 		busy = true;
 		error = null;
 		try {
-			const response = await fetch(
-				`/api/reference-profiles/${encodeURIComponent(selected.id)}/revisions/${encodeURIComponent(selected.currentRevisionId)}/generated`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
-					body: JSON.stringify(input)
-				}
-			);
+			const response = await fetch(`${revisionPath(requested)}/generated`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
+				body: JSON.stringify(input)
+			});
 			const body = await response.json().catch(() => null);
 			if (!response.ok) {
 				if (!shouldRetainIdempotencyKey(response.status))
@@ -216,8 +259,9 @@
 		<label class="text-sm font-medium text-ink"
 			>Parent reference
 			<select
-				bind:value={selectedId}
-				onchange={clearPreview}
+				value={selectedId}
+				onchange={(event) => selectParent(event.currentTarget.value)}
+				disabled={busy}
 				class="mt-1 min-h-11 w-full rounded-md border border-line bg-surface-canvas px-3 font-normal"
 			>
 				<option value="">Choose an Artisan reference</option>
@@ -245,13 +289,13 @@
 			</select>
 		</label>
 		<label class="text-sm font-medium text-ink"
-			>Change (degrees, + or −)
+			>Change ({parentChart ? `°${parentChart.temperatureUnit}` : 'degrees'}, + or −)
 			<input
 				type="number"
 				bind:value={delta}
 				step="0.5"
-				min="-20"
-				max="20"
+				min={-maxDelta}
+				max={maxDelta}
 				class="mt-1 min-h-11 w-full rounded-md border border-line bg-surface-canvas px-3 font-normal"
 			/>
 		</label>
@@ -300,6 +344,8 @@
 		{/if}
 	</div>
 	{#if preview && parentChart && chartData}
+		{@const adjustment = preview.changes.temperatureAdjustments[0]}
+		{@const offset = chargeOffsetMilliseconds(parentChart)}
 		<div class="mt-5 rounded-xl bg-surface-canvas p-4">
 			<p class="text-xs font-semibold uppercase tracking-wide text-muted">
 				Preview only · not saved
@@ -308,14 +354,12 @@
 					Inputs changed. Preview again before saving.
 				</p>{/if}
 			<p class="mt-1 text-sm text-muted">
-				{preview.changes.temperatureAdjustments[0].kind === 'bean_temperature'
-					? 'Bean'
-					: 'Environmental'} temperature:
-				{preview.changes.temperatureAdjustments[0].delta > 0 ? '+' : ''}{preview.changes
-					.temperatureAdjustments[0].delta}°{parentChart.temperatureUnit} from {preview.changes
-					.temperatureAdjustments[0].startMilliseconds / 60_000} to {preview.changes
-					.temperatureAdjustments[0].endMilliseconds / 60_000} minutes. Dashed curves are the immutable
-				parent. {preview.chart.events.length} source events remain unchanged.
+				{adjustment.kind === 'bean_temperature' ? 'Bean' : 'Environmental'} temperature:
+				{adjustment.delta > 0 ? '+' : ''}{adjustment.delta}°{parentChart.temperatureUnit} from {formatMinutes(
+					adjustment.startMilliseconds - offset
+				)} to {formatMinutes(adjustment.endMilliseconds - offset)} minutes. Dashed curves are the immutable
+				parent. {milestoneCount} milestones and {preview.chart.events.length - milestoneCount} control
+				events remain unchanged.
 			</p>
 			<div class="mt-4 h-[24rem] min-h-[20rem]">
 				{#await loadRoastChart() then { default: RoastChart }}

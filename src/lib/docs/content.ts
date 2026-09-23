@@ -1542,6 +1542,34 @@ const docsPages: DocsPage[] = [
 							'Session + Mallard Studio',
 							'Internal analysis helper',
 							'Resolves selected executed-roast or reference-profile IDs to immutable revisions and returns a bounded measured comparison.'
+						],
+						[
+							'/api/reference-profiles/[id]/revisions/[revisionId]/chart',
+							'GET',
+							'Session + Mallard Studio',
+							'Internal UI helper',
+							'Returns the typed chart for one immutable reference revision so Profile Studio can bound and display a planned change.'
+						],
+						[
+							'/api/reference-profiles/[id]/revisions/[revisionId]/preview',
+							'POST',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'Recalculates one bounded temperature-adjustment plan from the immutable parent revision without saving it. Retries never compound an earlier preview.'
+						],
+						[
+							'/api/reference-profiles/[id]/revisions/[revisionId]/generated',
+							'POST',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'Saves the previewed change set as a generated plan, separate from executed roast history. Requires an Idempotency-Key tied to the parent revision and change set.'
+						],
+						[
+							'/api/reference-profiles/[id]/revisions/[revisionId]/export',
+							'GET',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'Downloads a saved generated plan as a private, no-store Purveyors .alog attachment. Uploaded references and executed-roast snapshots are not exported.'
 						]
 					]
 				}
@@ -1859,6 +1887,7 @@ const docsPages: DocsPage[] = [
 					'POST /api/artisan-import expects multipart form-data with file and roastId. Supported file extensions are .alog, .alog.json, and .json.',
 					'GET /api/reference-profiles lists reusable owner-scoped references. POST accepts either an Artisan multipart upload or an executed_roast JSON snapshot and requires a stable Idempotency-Key until the outcome is definitive.',
 					'POST /api/reference-profiles/compare accepts two selected IDs, resolves immutable revisions before comparison, and returns measured charge-aligned deltas. These are internal first-party BFF routes, not public /v1 API contracts.',
+					'Planned references use the revision routes under /api/reference-profiles/[id]/revisions/[revisionId]. GET chart loads the immutable parent, POST preview recalculates one bounded temperature change without saving, POST generated saves that exact change set with a stable Idempotency-Key, and GET export downloads a saved generated plan as a private, no-store .alog attachment. Only uploaded Artisan references and their generated descendants can be planned and exported.',
 					'GET /api/roast-chart-data requires roastId and forwards the generated Parchment chart model: bounded typed series, discrete events, units, and derived ranges.',
 					'DELETE /api/clear-roast requires roast_id and forwards to Parchment, which enforces ownership plus roast:write before deleting imported telemetry, events, and log rows.'
 				]

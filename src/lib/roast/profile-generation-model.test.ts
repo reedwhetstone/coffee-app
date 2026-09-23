@@ -51,4 +51,41 @@ describe('planned reference preview chart', () => {
 		expect(chart.series[1].points[1].value).toBe(205);
 		expect(chart.events).toEqual([{ timeMinutes: 2, name: 'First crack' }]);
 	});
+
+	it('aligns curves and milestones to charge and leaves control events unmarked', () => {
+		const parent: Chart = {
+			temperatureUnit: 'C',
+			chargeTimeMilliseconds: 30_000,
+			series: [
+				{
+					id: 'bt',
+					name: 'BT',
+					kind: 'bean_temperature',
+					unit: 'C',
+					deviceIndex: 0,
+					channel: 2,
+					points: [
+						{ timeMilliseconds: 0, value: 180 },
+						{ timeMilliseconds: 30_000, value: 200 },
+						{ timeMilliseconds: 90_000, value: 110 }
+					]
+				}
+			],
+			events: [
+				{ timeMilliseconds: 30_000, name: 'charge', value: null, category: 'milestone' },
+				{ timeMilliseconds: 60_000, name: 'Burner', value: '80', category: 'control' },
+				{ timeMilliseconds: 75_000, name: 'Air', value: '40', category: 'control' },
+				{ timeMilliseconds: 150_000, name: 'fc_start', value: null, category: 'milestone' }
+			]
+		};
+		const chart = buildProfileGenerationChart(parent, parent);
+		expect(chart.series[0].points.map((point) => point.timeMinutes)).toEqual([-0.5, 0, 1]);
+		expect(chart.series[1].points.map((point) => point.timeMinutes)).toEqual([-0.5, 0, 1]);
+		expect(chart.events).toEqual([
+			{ timeMinutes: 0, name: 'charge' },
+			{ timeMinutes: 2, name: 'fc_start' }
+		]);
+		expect(chart.chargeTime).toBe(30_000);
+		expect(chart.xDomain[0]).toBeLessThan(0);
+	});
 });
