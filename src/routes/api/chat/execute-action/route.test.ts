@@ -60,6 +60,23 @@ const otherActionBodies = [
 			price: 18,
 			buyer: 'Test Buyer'
 		}
+	},
+	{
+		executionId: 'message-6:tool-6',
+		actionType: 'create_generated_reference',
+		fields: {
+			parent_profile_id: '5ea1af6f-234c-43a9-9bf8-5678dd24f854',
+			parent_revision_id: '8d2c41e0-7b9a-4f3e-a6d1-2c9e5f07b3a4',
+			title: 'Next-batch plan',
+			user_goal: 'Later development',
+			model_recommendation: 'Lift bean temperature in the final interval',
+			change_set_summary: 'BT +3°C from 5.00 to 7.00 min',
+			changes: {
+				temperatureAdjustments: [
+					{ kind: 'bean_temperature', startMilliseconds: 300000, endMilliseconds: 420000, delta: 3 }
+				]
+			}
+		}
 	}
 ] as const;
 
@@ -137,6 +154,35 @@ describe('POST /api/chat/execute-action', () => {
 			expect(mocks.execute).toHaveBeenCalledWith(body);
 		}
 	);
+
+	it('returns the generated-reference UUID and replay state unchanged', async () => {
+		const body = otherActionBodies.find(
+			(action) => action.actionType === 'create_generated_reference'
+		);
+		if (!body) throw new Error('Missing generated-reference action fixture');
+		mocks.execute.mockResolvedValue({
+			data: {
+				data: {
+					success: true,
+					id: 'c43a1d7e-95b2-4e06-8f7c-1d2b3a4e5f68',
+					message: 'Planned reference saved',
+					replayed: true
+				}
+			},
+			response: new Response(null, { status: 200 })
+		});
+
+		const response = await POST(makeEvent(JSON.stringify(body)));
+
+		expect(mocks.execute).toHaveBeenCalledOnce();
+		expect(mocks.execute).toHaveBeenCalledWith(body);
+		expect(await response.json()).toEqual({
+			success: true,
+			id: 'c43a1d7e-95b2-4e06-8f7c-1d2b3a4e5f68',
+			message: 'Planned reference saved',
+			replayed: true
+		});
+	});
 
 	it('preserves Parchment replay results without another route-level write', async () => {
 		mocks.execute
