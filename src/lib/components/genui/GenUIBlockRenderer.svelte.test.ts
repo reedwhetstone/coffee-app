@@ -60,7 +60,7 @@ describe('GenUIBlockRenderer chat evidence', () => {
 		expect(screen.getByRole('region', { name: 'Coffee results' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'View details for Test Coffee' })).toBeEnabled();
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Open evidence' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Open in canvas' }));
 
 		expect(onAction).toHaveBeenCalledWith({
 			type: 'focus-canvas-block',

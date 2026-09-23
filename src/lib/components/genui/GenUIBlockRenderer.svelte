@@ -46,7 +46,7 @@
 	<fieldset
 		disabled={!canvasBlockId && block.type !== 'error'}
 		title={!canvasBlockId && block.type !== 'error'
-			? 'No longer available in the evidence workspace'
+			? 'No longer available on the canvas'
 			: undefined}
 		class="genui-preview m-0 inline-block min-w-0 border-0 p-0 disabled:cursor-default disabled:opacity-60"
 	>

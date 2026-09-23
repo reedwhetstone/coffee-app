@@ -94,7 +94,7 @@
 	hidden={!open}
 	role={overlay ? 'dialog' : 'region'}
 	aria-modal={overlay ? true : undefined}
-	aria-label="Evidence workspace"
+	aria-label="Canvas"
 	tabindex="-1"
 	onkeydown={handleKeydown}
 	class="evidence-workspace min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas outline-none {overlay

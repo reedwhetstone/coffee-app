@@ -79,7 +79,7 @@
 				}}
 				class="min-h-9 rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:border-accent hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
 			>
-				Open evidence
+				Open in canvas
 			</button>
 		{/if}
 	</div>

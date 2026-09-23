@@ -132,9 +132,9 @@ describe('chat analytics seed', () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getByRole('button', { name: 'Open evidence (1)' })).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: 'Open canvas (1)' })).toBeInTheDocument();
 		});
-		expect(screen.queryByRole('button', { name: 'Hide evidence (1)' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Hide canvas (1)' })).not.toBeInTheDocument();
 	});
 
 	it('rebuilds missing saved canvas evidence and focuses the compact companion preview target', async () => {
@@ -170,7 +170,7 @@ describe('chat analytics seed', () => {
 		await fireEvent.click(await screen.findByRole('button', { name: /Roast #42 chart/ }));
 
 		await waitFor(() => {
-			expect(screen.getByRole('dialog', { name: 'Evidence workspace' })).toBeInTheDocument();
+			expect(screen.getByRole('dialog', { name: 'Canvas' })).toBeInTheDocument();
 			expect(canvasStore.focusedBlock?.block).toMatchObject({
 				type: 'roast-chart',
 				data: { roastId: 42 }

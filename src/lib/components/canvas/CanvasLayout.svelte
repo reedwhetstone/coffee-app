@@ -38,7 +38,7 @@
 			<section
 				use:retainScroll={canvasBlock.id}
 				hidden={canvasBlock.id !== focusBlockId}
-				aria-label={canvasBlock.title ?? 'Active evidence'}
+				aria-label={canvasBlock.title ?? 'Canvas item'}
 				class="h-full overflow-auto px-3 py-4 sm:px-4"
 			>
 				<GenUIBlockRenderer
