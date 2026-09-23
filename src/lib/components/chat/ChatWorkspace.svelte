@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Chat } from '@ai-sdk/svelte';
 	import { DefaultChatTransport } from 'ai';
+	import type { ConversationChatStreamRequest } from '@purveyors/sdk';
 	import EvidenceWorkspace from './EvidenceWorkspace.svelte';
 	import ChatMessageList from '$lib/components/chat/ChatMessageList.svelte';
 	import ChatComposer from '$lib/components/chat/ChatComposer.svelte';
@@ -266,7 +267,8 @@
 	let lastSubmittedDraft = $state('');
 	let lastSubmittedAttachment = $state<ReferenceAttachment | null>(null);
 	let lastSubmittedHandoff = $state<ProfileStudioHandoff | null>(null);
-	let lastSubmittedBody: Record<string, unknown> | null = null;
+	type ChatRequestBody = Omit<ConversationChatStreamRequest, 'messages'>;
+	let lastSubmittedBody: ChatRequestBody | null = null;
 	let retryPreservesComposerDraft = false;
 	let draftEditedSinceSubmission = false;
 	let profileStudioConversationPending = $state(false);
@@ -277,6 +279,61 @@
 		attachmentId: string | null;
 		handoff: ProfileStudioHandoff | null;
 	} | null = null;
+	let pendingContinuationExecutionId = $state<string | null>(null);
+	let activeContinuationExecutionId = $state<string | null>(null);
+	type ContinuationContext = {
+		workspaceId: string;
+		lifecycleGeneration: number;
+	};
+	let chatLifecycleGeneration = 0;
+	let activeContinuationContext: ContinuationContext | null = null;
+	let queuedContinuations = $state<Array<{ executionId: string; context: ContinuationContext }>>(
+		[]
+	);
+
+	function invalidateConversationState() {
+		chatLifecycleGeneration += 1;
+		pendingContinuationExecutionId = null;
+		activeContinuationExecutionId = null;
+		activeContinuationContext = null;
+		queuedContinuations = [];
+		lastSubmittedPrompt = '';
+		lastSubmittedBody = null;
+		retryPreservesComposerDraft = false;
+		draftEditedSinceSubmission = false;
+		restoredSubmission = null;
+		lastSubmittedContext = null;
+		lastSubmittedDraft = '';
+		lastSubmittedAttachment = null;
+		lastSubmittedHandoff = null;
+		chatError = null;
+		chatCanRetry = false;
+	}
+
+	function beginNewChatTurn(prompt: string, body: ChatRequestBody) {
+		invalidateConversationState();
+		lastSubmittedPrompt = prompt;
+		lastSubmittedBody = body;
+	}
+
+	function captureContinuationContext(): ContinuationContext | null {
+		const workspaceId = workspaceStore.currentWorkspaceId;
+		return workspaceId ? { workspaceId, lifecycleGeneration: chatLifecycleGeneration } : null;
+	}
+
+	function isCurrentContinuationContext(
+		context: ContinuationContext | null
+	): context is ContinuationContext {
+		return Boolean(
+			context &&
+				workspaceStore.currentWorkspaceId === context.workspaceId &&
+				chatLifecycleGeneration === context.lifecycleGeneration
+		);
+	}
+
+	function canContinue(context: ContinuationContext | null): context is ContinuationContext {
+		return isCurrentContinuationContext(context) && !isActive && !isClearing;
+	}
 
 	function noteDraftInput() {
 		draftEditedSinceSubmission = true;
@@ -311,6 +368,15 @@
 			console.error('Chat error:', error);
 			const failure = classifyChatFailure(error);
 			allowInterruptedRetention = failure.kind !== 'access';
+			if (activeContinuationExecutionId) {
+				pendingContinuationExecutionId = activeContinuationExecutionId;
+				chatError =
+					failure.kind === 'access'
+						? failure.message
+						: `Action completed, but ${agentName} couldn't continue. Retry to pick up where it left off.`;
+				chatCanRetry = failure.retryable;
+				return;
+			}
 			chatError = failure.message;
 			chatCanRetry = failure.retryable;
 			if (
@@ -333,6 +399,7 @@
 			}
 		},
 		onFinish: ({ isAbort, isError }) => {
+			const continuationExecutionId = activeContinuationExecutionId;
 			// Stop only aborts the transport. Finalize after the SDK has settled so
 			// late parser writes cannot overwrite the retained, append-only snapshot.
 			if (isAbort || isError) {
@@ -356,6 +423,23 @@
 				chatError =
 					'Cherry finished its research without completing the response. Retry the request.';
 				chatCanRetry = true;
+			}
+			if (continuationExecutionId) {
+				if (isAbort || isError || silentToolOnlyCompletion) {
+					pendingContinuationExecutionId = continuationExecutionId;
+					if (isAbort) {
+						chatError = `Action completed, but ${agentName}'s continuation was stopped. Retry to resume it.`;
+						chatCanRetry = true;
+					} else if (silentToolOnlyCompletion) {
+						chatError = `Action completed, but ${agentName} didn't finish the follow-up. Retry to resume it.`;
+					}
+				} else {
+					pendingContinuationExecutionId = null;
+					chatError = null;
+					chatCanRetry = false;
+				}
+				activeContinuationExecutionId = null;
+				activeContinuationContext = null;
 			}
 			messageCountBeforeSubmission = null;
 			allowInterruptedRetention = true;
@@ -575,6 +659,7 @@
 	}
 
 	function applyWorkspaceResult(result: { workspace: Workspace; messages: WorkspaceMessage[] }) {
+		invalidateConversationState();
 		// Workspace hydration must reset the shared canvas completely. User-facing
 		// clears preserve pinned blocks, but restored workspaces should not inherit
 		// pinned blocks from whatever canvas happened to be mounted before.
@@ -583,7 +668,6 @@
 		dispatchedParts = new Set();
 		lastPersistedMessageCount = 0;
 		lastSummarizedMessageCount = 0;
-
 		// Restore messages from persisted workspace
 		if (result.messages.length > 0) {
 			// Reconstruct UIMessage-compatible objects from saved messages
@@ -1199,6 +1283,7 @@
 			throw new Error(
 				`This action predates durable execution IDs. Run it through ${agentName} again to create a current proposal.`
 			);
+		const continuationContext = captureContinuationContext();
 		if (blockId) {
 			const card = canvasStore.blocks.find((b) => b.id === blockId)?.block;
 			const persistedFields =
@@ -1242,18 +1327,17 @@
 				// `failed` or re-throw into the execution catch below; that would
 				// misreport a successful inventory/roast/sale write and invite a
 				// duplicate retry. Persist best-effort and log on failure instead.
-				if (wsId) {
-					try {
-						await persistCanvasState(wsId);
-					} catch (persistErr) {
+				if (wsId)
+					void persistCanvasState(wsId).catch((persistErr) => {
 						console.error(
 							'Canvas persistence failed after a successful action execution; ' +
 								'the action already committed and remains marked success.',
 							persistErr
 						);
-					}
-				}
+					});
 			}
+			if (isCurrentContinuationContext(continuationContext))
+				queueConfirmedActionContinuation(executionId, continuationContext);
 			return result;
 		} catch (err) {
 			clearTimeout(timeoutId);
@@ -1279,8 +1363,8 @@
 	// Snapshotted at send time. The server builds a fresh prompt for every turn,
 	// so opted-in context must accompany every request.
 
-	function buildSendBody(): Record<string, unknown> {
-		const body: Record<string, unknown> = { workspaceContext: getWorkspaceContext() };
+	function buildSendBody(): ChatRequestBody {
+		const body: ChatRequestBody = { workspaceContext: getWorkspaceContext() };
 		if (!includeUserMemoryDoc) body.includeUserMemory = false;
 		const context = includePageContext ? pageChatContext.current : null;
 		if (context)
@@ -1295,6 +1379,60 @@
 
 	function storageForIdempotency() {
 		return typeof sessionStorage === 'undefined' ? null : sessionStorage;
+	}
+
+	function queueConfirmedActionContinuation(executionId: string, context: ContinuationContext) {
+		if (
+			activeContinuationExecutionId === executionId ||
+			pendingContinuationExecutionId === executionId ||
+			queuedContinuations.some((entry) => entry.executionId === executionId)
+		)
+			return;
+		queuedContinuations = [...queuedContinuations, { executionId, context }];
+	}
+
+	// One Chat transport owns the stream. Completed writes wait in commit order until
+	// the current turn finishes; a failed continuation holds the queue for Retry.
+	$effect(() => {
+		if (
+			!queuedContinuations.length ||
+			isActive ||
+			isClearing ||
+			activeContinuationExecutionId ||
+			pendingContinuationExecutionId
+		)
+			return;
+		const next = queuedContinuations[0];
+		queuedContinuations = queuedContinuations.slice(1);
+		if (isCurrentContinuationContext(next.context))
+			void continueAfterConfirmedAction(next.executionId, next.context);
+	});
+
+	async function continueAfterConfirmedAction(
+		executionId: string,
+		continuationContext: ContinuationContext
+	) {
+		if (!canContinue(continuationContext)) return;
+		pendingContinuationExecutionId = executionId;
+		activeContinuationExecutionId = executionId;
+		activeContinuationContext = continuationContext;
+		retryPreservesComposerDraft = true;
+		chatError = null;
+		chatCanRetry = false;
+		shouldScrollToBottom = true;
+		messageCountBeforeSubmission = chat.messages.length;
+		try {
+			await chat.sendMessage(undefined, {
+				body: {
+					...buildSendBody(),
+					completedAction: { executionId }
+				}
+			});
+		} catch {
+			// Chat owns error classification and retry presentation through onError.
+		} finally {
+			if (activeContinuationContext === continuationContext) messageCountBeforeSubmission = null;
+		}
 	}
 
 	// ─── Send Message ──────────────────────────────────────────────────────────
@@ -1316,54 +1454,43 @@
 				? buildProfileStudioHandoffRequest(inputMessage, handoff)
 				: { text: inputMessage.trim(), context: null };
 		const { text, context } = request;
+		const cmd = context ? null : matchSlashCommand(text, canUseMallardWorkspaces);
+
+		// Local canvas commands are not new chat turns and must retain a failed
+		// confirmed action's continuation retry state.
+		if (cmd && !cmd.chatText) {
+			inputMessage = '';
+			if (cmd.action === 'clear-canvas') canvasStore.clearAll();
+			else if (cmd.action === 'pin-focused') {
+				const fid = canvasStore.focusBlockId;
+				if (fid) canvasStore.dispatch({ type: 'pin', blockId: fid });
+			} else if (cmd.action === 'unpin-focused') {
+				const fid = canvasStore.focusBlockId;
+				if (fid) canvasStore.dispatch({ type: 'unpin', blockId: fid });
+			}
+			return;
+		}
+
+		const body = buildSendBody();
+		const submittedPrompt = cmd?.chatText ?? text;
+		beginNewChatTurn(submittedPrompt, body);
+		lastSubmittedContext = context;
 		lastSubmittedDraft = inputMessage.trim();
 		lastSubmittedAttachment = attachment;
 		lastSubmittedHandoff = handoff;
-		lastSubmittedPrompt = text;
-		lastSubmittedContext = context;
-		lastSubmittedBody = buildSendBody();
 		retryPreservesComposerDraft = false;
-		draftEditedSinceSubmission = false;
-		restoredSubmission = null;
 		chatError = null;
 		chatCanRetry = false;
-
-		// Intercept slash commands. Attachment and handoff sends are always requests.
-		const cmd = context ? null : matchSlashCommand(text, canUseMallardWorkspaces);
-		if (cmd) {
-			inputMessage = '';
-			if (cmd.action === 'clear-canvas') {
-				canvasStore.clearAll();
-				return;
-			}
-			if (cmd.action === 'pin-focused') {
-				const fid = canvasStore.focusBlockId;
-				if (fid) canvasStore.dispatch({ type: 'pin', blockId: fid });
-				return;
-			}
-			if (cmd.action === 'unpin-focused') {
-				const fid = canvasStore.focusBlockId;
-				if (fid) canvasStore.dispatch({ type: 'unpin', blockId: fid });
-				return;
-			}
-			if (cmd.chatText) {
-				lastSubmittedPrompt = cmd.chatText;
-				inputMessage = '';
-				shouldScrollToBottom = true;
-				messageCountBeforeSubmission = chat.messages.length;
-				await chat.sendMessage({ text: cmd.chatText }, { body: lastSubmittedBody });
-				messageCountBeforeSubmission = null;
-				return;
-			}
-		}
-
 		inputMessage = '';
 		pendingReferenceAttachment = null;
 		profileStudioHandoff = null;
 		shouldScrollToBottom = true;
 
 		messageCountBeforeSubmission = chat.messages.length;
-		await chat.sendMessage(buildChatRequestMessage(text, context), { body: lastSubmittedBody });
+		await chat.sendMessage(
+			cmd?.chatText ? { text: cmd.chatText } : buildChatRequestMessage(text, context),
+			{ body }
+		);
 		messageCountBeforeSubmission = null;
 	}
 
@@ -1394,7 +1521,14 @@
 	}
 
 	async function retryLastResponse() {
-		if (isActive || isClearing || !workspaceReady || !lastSubmittedPrompt) return;
+		if (isActive || isClearing || !workspaceReady) return;
+		if (pendingContinuationExecutionId) {
+			const continuationContext = captureContinuationContext();
+			if (continuationContext)
+				await continueAfterConfirmedAction(pendingContinuationExecutionId, continuationContext);
+			return;
+		}
+		if (!lastSubmittedPrompt) return;
 		// Retry belongs to the failed request, never to a follow-up being drafted.
 		// When the composer only held the restored request, a failed retry may
 		// restore it again.
@@ -1432,19 +1566,19 @@
 
 		// This is deliberately a new turn, not response regeneration. Send the
 		// originating request directly so an unsent composer draft remains intact.
+		const body = buildSendBody();
+		beginNewChatTurn(prompt, body);
 		lastSubmittedDraft = inputMessage.trim();
 		lastSubmittedAttachment = pendingReferenceAttachment;
 		lastSubmittedHandoff = profileStudioHandoff;
-		lastSubmittedPrompt = prompt;
 		lastSubmittedContext = context;
-		lastSubmittedBody = buildSendBody();
 		retryPreservesComposerDraft = true;
 		restoredSubmission = null;
 		chatError = null;
 		chatCanRetry = false;
 		shouldScrollToBottom = true;
 		messageCountBeforeSubmission = chat.messages.length;
-		await chat.sendMessage(buildChatRequestMessage(prompt, context), { body: lastSubmittedBody });
+		await chat.sendMessage(buildChatRequestMessage(prompt, context), { body });
 		messageCountBeforeSubmission = null;
 	}
 
@@ -1470,6 +1604,7 @@
 		const wsId = workspaceStore.currentWorkspaceId;
 		if (!wsId) return;
 		isClearing = true;
+		invalidateConversationState();
 		try {
 			await enqueuePersistence(async () => {
 				const response = await fetch(`/api/workspaces/${wsId}/messages`, {

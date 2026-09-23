@@ -1,0 +1,343 @@
+import type { Workspace } from '$lib/stores/workspaceStore.svelte';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
+import '@testing-library/jest-dom/vitest';
+import type { UIMessageChunk } from 'ai';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import ChatWorkspace from './ChatWorkspace.svelte';
+
+vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
+vi.mock('$app/state', () => ({ page: { url: new URL('https://example.test/chat') } }));
+
+function gatedResponse() {
+	let controller!: ReadableStreamDefaultController<Uint8Array>;
+	const encoder = new TextEncoder();
+	const body = new ReadableStream<Uint8Array>({
+		start(value) {
+			controller = value;
+		}
+	});
+	return {
+		response(signal?: AbortSignal | null) {
+			signal?.addEventListener('abort', () =>
+				controller.error(new DOMException('Aborted', 'AbortError'))
+			);
+			return new Response(body, {
+				headers: { 'content-type': 'text/event-stream', 'x-vercel-ai-ui-message-stream': 'v1' }
+			});
+		},
+		emit(chunk: UIMessageChunk) {
+			controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+		},
+		fail() {
+			controller.error(new TypeError('Connection lost'));
+		},
+		finish() {
+			controller.enqueue(encoder.encode('data: {"type":"finish"}\n\ndata: [DONE]\n\n'));
+			controller.close();
+		}
+	};
+}
+
+const workspace: Workspace = {
+	id: 'continuation-workspace',
+	title: 'Coffee',
+	type: 'general',
+	context_summary: '',
+	canvas_state: {},
+	last_accessed_at: '2026-09-22T15:00:00Z',
+	created_at: '2026-09-22T15:00:00Z',
+	reset_epoch: 0,
+	canvas_version: 0
+};
+
+describe('ChatWorkspace confirmed-action continuation', () => {
+	beforeEach(() => {
+		Element.prototype.scrollIntoView = vi.fn();
+		Object.defineProperty(navigator, 'sendBeacon', {
+			configurable: true,
+			value: vi.fn(() => true)
+		});
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	it('retries a failed continuation without executing the committed action again', async () => {
+		const proposal = gatedResponse();
+		const failedContinuation = gatedResponse();
+		const retry = gatedResponse();
+		const chatRequests: Array<{
+			messages: Array<{ role: string }>;
+			completedAction?: { executionId: string };
+		}> = [];
+		const actionRequests: unknown[] = [];
+		let blockCanvasSave = false;
+		let releaseCanvasSave!: () => void;
+		const canvasSaveBlocked = new Promise<void>((resolve) => {
+			releaseCanvasSave = resolve;
+		});
+		let canvasVersion = 0;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn<typeof fetch>(async (input, init) => {
+				const url = String(input);
+				if (url === '/api/reference-profiles' && init?.method === 'POST') {
+					return Response.json(
+						{ data: { id: 'saved-artisan-reference', title: 'Artisan chat reference' } },
+						{ status: 201 }
+					);
+				}
+				if (url === '/api/chat') {
+					chatRequests.push(JSON.parse(String(init?.body)));
+					const stream = [proposal, failedContinuation, retry][chatRequests.length - 1];
+					if (!stream) throw new Error('Unexpected chat request');
+					return stream.response(init?.signal);
+				}
+				if (url === '/api/chat/execute-action') {
+					actionRequests.push(JSON.parse(String(init?.body)));
+					return Response.json({
+						success: true,
+						id: 42,
+						message: 'Bean added to inventory',
+						replayed: false
+					});
+				}
+				if (url === '/api/memory') return Response.json({ content: '' });
+				if (url.endsWith('/messages')) {
+					return Response.json({ reset_epoch: 0, next_message_sequence: 2 });
+				}
+				if (url.endsWith('/canvas')) {
+					const payload = JSON.parse(String(init?.body));
+					if (blockCanvasSave && actionRequests.length > 0) {
+						blockCanvasSave = false;
+						await canvasSaveBlocked;
+					}
+					return Response.json({
+						canvas_state: payload.canvas_state,
+						canvas_version: ++canvasVersion,
+						reset_epoch: 0
+					});
+				}
+				throw new Error(`Unexpected endpoint: ${url}`);
+			})
+		);
+
+		render(ChatWorkspace, {
+			canUseChat: true,
+			canUseMallardWorkspaces: true,
+			agentName: 'Cherry Green Agent',
+			variant: 'drawer',
+			initialWorkspaceData: {
+				workspaces: [{ ...workspace }],
+				workspace: { ...workspace },
+				messages: []
+			}
+		});
+
+		await waitFor(() => expect(screen.getByRole('textbox')).toBeEnabled());
+		await fireEvent.change(screen.getByLabelText('Attach Artisan reference file'), {
+			target: {
+				files: [new File(['artisan data'], 'private-session.alog', { type: 'text/plain' })]
+			}
+		});
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Remove attached reference' })).toBeVisible()
+		);
+		await fireEvent.input(screen.getByRole('textbox'), {
+			target: { value: 'Add this coffee to inventory' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(chatRequests).toHaveLength(1));
+		expect(JSON.stringify(chatRequests[0])).toContain('saved-artisan-reference');
+		expect(JSON.stringify(chatRequests[0])).not.toContain('private-session.alog');
+		proposal.emit({ type: 'start', messageId: 'proposal-assistant' });
+		proposal.emit({
+			type: 'tool-input-available',
+			toolCallId: 'proposal',
+			toolName: 'propose_inventory',
+			input: {}
+		});
+		proposal.emit({
+			type: 'tool-output-available',
+			toolCallId: 'proposal',
+			output: {
+				action_card: {
+					executionId: 'proposal-assistant:proposal',
+					actionType: 'add_bean_to_inventory',
+					summary: 'Add bean',
+					fields: [],
+					status: 'proposed'
+				}
+			}
+		});
+		proposal.finish();
+
+		await fireEvent.click(await screen.findByRole('button', { name: /Evidence 1/ }));
+		blockCanvasSave = true;
+		await fireEvent.click(await screen.findByRole('button', { name: 'Execute' }));
+		await waitFor(() => expect(actionRequests).toHaveLength(1));
+		await waitFor(() => expect(chatRequests).toHaveLength(2));
+		expect(chatRequests[1].completedAction).toEqual({
+			executionId: 'proposal-assistant:proposal'
+		});
+		expect(JSON.stringify(chatRequests[1])).not.toContain('private-session.alog');
+		expect(chatRequests[1].messages.filter((message) => message.role === 'user')).toHaveLength(1);
+		expect(await screen.findByText('Action completed successfully.')).toBeInTheDocument();
+
+		failedContinuation.fail();
+		await fireEvent.click(screen.getByRole('button', { name: '← Back to answer' }));
+		await waitFor(() =>
+			expect(
+				screen.getByText(/Action completed, but Cherry Green Agent couldn't continue/)
+			).toBeVisible()
+		);
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: '/pin' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(chatRequests).toHaveLength(2));
+		expect(
+			screen.getByText(/Action completed, but Cherry Green Agent couldn't continue/)
+		).toBeVisible();
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(chatRequests).toHaveLength(3));
+		expect(actionRequests).toHaveLength(1);
+		expect(chatRequests[2].completedAction).toEqual({
+			executionId: 'proposal-assistant:proposal'
+		});
+		expect(chatRequests[2].messages.filter((message) => message.role === 'user')).toHaveLength(1);
+
+		retry.emit({ type: 'start', messageId: 'continued-assistant' });
+		retry.emit({ type: 'text-start', id: 'answer' });
+		retry.emit({ type: 'text-delta', id: 'answer', delta: 'The bean is ready.' });
+		retry.emit({ type: 'text-end', id: 'answer' });
+		retry.finish();
+		await waitFor(() => expect(screen.getByText('The bean is ready.')).toBeVisible());
+		expect(actionRequests).toHaveLength(1);
+		releaseCanvasSave();
+		// Let the component's debounced message and canvas persistence settle while
+		// the endpoint stub is still installed.
+		await new Promise((resolve) => setTimeout(resolve, 900));
+	});
+
+	it('retains a second committed action through a failed continuation and retry', async () => {
+		const firstContinuation = gatedResponse();
+		const retryContinuation = gatedResponse();
+		const secondContinuation = gatedResponse();
+		const chatRequests: Array<{ completedAction?: { executionId: string } }> = [];
+		const actionRequests: Array<{ executionId: string }> = [];
+		let canvasVersion = 0;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn<typeof fetch>(async (input, init) => {
+				const url = String(input);
+				if (url === '/api/chat') {
+					chatRequests.push(JSON.parse(String(init?.body)));
+					const stream = [firstContinuation, retryContinuation, secondContinuation][
+						chatRequests.length - 1
+					];
+					if (!stream) throw new Error('Unexpected chat request');
+					return stream.response(init?.signal);
+				}
+				if (url === '/api/chat/execute-action') {
+					const request = JSON.parse(String(init?.body));
+					actionRequests.push(request);
+					return Response.json({ success: true, id: actionRequests.length });
+				}
+				if (url === '/api/memory') return Response.json({ content: '' });
+				if (url.endsWith('/messages'))
+					return Response.json({ reset_epoch: 0, next_message_sequence: 2 });
+				if (url.endsWith('/canvas')) {
+					const payload = JSON.parse(String(init?.body));
+					return Response.json({
+						canvas_state: payload.canvas_state,
+						canvas_version: ++canvasVersion,
+						reset_epoch: 0
+					});
+				}
+				throw new Error(`Unexpected endpoint: ${url}`);
+			})
+		);
+
+		const blocks = ['first', 'second'].map((name) => ({
+			id: `saved-${name}`,
+			messageId: 'proposal-assistant',
+			title: `Record ${name}`,
+			pinned: false,
+			minimized: false,
+			addedAt: 0,
+			block: {
+				type: 'action-card' as const,
+				version: 1 as const,
+				data: {
+					executionId: `proposal-assistant:${name}`,
+					actionType: 'record_sale' as const,
+					summary: `Record ${name}`,
+					fields: [],
+					status: 'proposed' as const
+				}
+			}
+		}));
+		const savedWorkspace: Workspace = {
+			...workspace,
+			canvas_state: { blocks, layout: 'focus', focusBlockId: null }
+		};
+		render(ChatWorkspace, {
+			canUseChat: true,
+			canUseMallardWorkspaces: true,
+			agentName: 'Cherry Green Agent',
+			variant: 'drawer',
+			initialWorkspaceData: {
+				workspaces: [savedWorkspace],
+				workspace: savedWorkspace,
+				messages: []
+			}
+		});
+
+		await waitFor(() => expect(screen.getByRole('textbox')).toBeEnabled());
+		await fireEvent.click(screen.getByRole('button', { name: /Evidence 2/ }));
+		const shelf = screen.getByRole('navigation', { name: 'Evidence shelf' });
+		await fireEvent.click(within(shelf).getByRole('button', { name: 'Record first' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
+		await waitFor(() => expect(chatRequests).toHaveLength(1));
+		expect(chatRequests[0].completedAction?.executionId).toBe('proposal-assistant:first');
+
+		await fireEvent.click(within(shelf).getByRole('button', { name: 'Record second' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
+		await waitFor(() => expect(actionRequests).toHaveLength(2));
+		expect(chatRequests).toHaveLength(1);
+
+		firstContinuation.fail();
+		await fireEvent.click(screen.getByRole('button', { name: '← Back to answer' }));
+		await waitFor(() =>
+			expect(
+				screen.getByText(/Action completed, but Cherry Green Agent couldn't continue/)
+			).toBeVisible()
+		);
+		expect(chatRequests).toHaveLength(1);
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(chatRequests).toHaveLength(2));
+		expect(chatRequests[1].completedAction?.executionId).toBe('proposal-assistant:first');
+		retryContinuation.emit({ type: 'start', messageId: 'first-answer' });
+		retryContinuation.emit({ type: 'text-start', id: 'first-text' });
+		retryContinuation.emit({ type: 'text-delta', id: 'first-text', delta: 'First complete.' });
+		retryContinuation.emit({ type: 'text-end', id: 'first-text' });
+		retryContinuation.finish();
+		await waitFor(() => expect(chatRequests).toHaveLength(3));
+		expect(chatRequests[2].completedAction?.executionId).toBe('proposal-assistant:second');
+		expect(actionRequests.map((request) => request.executionId)).toEqual([
+			'proposal-assistant:first',
+			'proposal-assistant:second'
+		]);
+
+		secondContinuation.emit({ type: 'start', messageId: 'second-answer' });
+		secondContinuation.emit({ type: 'text-start', id: 'second-text' });
+		secondContinuation.emit({ type: 'text-delta', id: 'second-text', delta: 'Second complete.' });
+		secondContinuation.emit({ type: 'text-end', id: 'second-text' });
+		secondContinuation.finish();
+		await new Promise((resolve) => setTimeout(resolve, 900));
+		await waitFor(() => expect(screen.getByText('Second complete.')).toBeVisible());
+	});
+});

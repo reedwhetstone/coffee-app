@@ -79,7 +79,7 @@
 		"@ai-sdk/svelte": "^4.0.0",
 		"@fontsource-variable/newsreader": "^5.2.10",
 		"@humanspeak/svelte-markdown": "^0.8.10",
-		"@purveyors/sdk": "0.43.0",
+		"@purveyors/sdk": "0.44.0",
 		"@supabase/ssr": "^0.5.2",
 		"@supabase/supabase-js": "^2.99.1",
 		"@vercel/analytics": "^1.4.1",

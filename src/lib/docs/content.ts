@@ -1556,7 +1556,7 @@ const docsPages: DocsPage[] = [
 							'POST',
 							'Chat access session',
 							'Internal product route',
-							'Forwards an unbuffered Parchment-owned Cherry Runtime stream with workspace and page context. Coffee-app retains session admission and structured presentation.'
+							'Forwards an unbuffered Parchment-owned Cherry Runtime stream with workspace and page context. Ordinary turns carry a user message; after a confirmed action, a transport-only completedAction.executionId turn continues the trusted goal without fabricating another user message. Coffee-app retains session admission and structured presentation.'
 						],
 						[
 							'/api/chat/execute-action',
