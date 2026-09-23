@@ -1,0 +1,390 @@
+<script lang="ts">
+	import type { components } from '@purveyors/sdk';
+	import {
+		buildProfileGenerationChart,
+		chargeOffsetMilliseconds
+	} from '$lib/roast/profile-generation-model';
+	import {
+		clearIdempotencyKey,
+		reserveIdempotencyKey,
+		shouldRetainIdempotencyKey
+	} from '$lib/idempotency';
+
+	type Summary = components['schemas']['ReferenceProfileSummary'];
+	type Request = components['schemas']['ReferenceProfileGenerationRequest'];
+	type Chart = components['schemas']['ReferenceProfileChart'];
+	type Preview = components['schemas']['ReferenceProfileGenerationPreviewResponse']['data'];
+	type Target = { id: string; revisionId: string };
+	let {
+		profiles,
+		ownerId,
+		onSaved
+	}: {
+		profiles: Summary[];
+		ownerId: string | null;
+		onSaved: () => Promise<void>;
+	} = $props();
+
+	let selectedId = $state('');
+	let title = $state('Next-batch plan');
+	let kind = $state<'bean_temperature' | 'environmental_temperature'>('bean_temperature');
+	let startMinutes = $state('0');
+	let endMinutes = $state('5');
+	let delta = $state('5');
+	let busy = $state(false);
+	let error = $state<string | null>(null);
+	let notice = $state<string | null>(null);
+	let preview = $state<Preview | null>(null);
+	let loadedParent = $state<(Target & { chart: Chart }) | null>(null);
+	let previewFingerprint = $state<string | null>(null);
+	let saved = $state<{ id: string; revisionId: string; title: string } | null>(null);
+	const selected = $derived(profiles.find((profile) => profile.id === selectedId));
+	const target = $derived<Target | null>(
+		selected ? { id: selected.id, revisionId: selected.currentRevisionId } : null
+	);
+	// Only the chart loaded for the current selection may bound, offset, or display a plan.
+	const parentChart = $derived(
+		loadedParent && sameTarget(loadedParent, target) ? loadedParent.chart : null
+	);
+	const maxDelta = $derived(maxDeltaFor(parentChart));
+	const exportable = $derived(
+		profiles.filter(
+			(profile) =>
+				profile.sourceClass === 'artisan_upload' || profile.sourceClass === 'generated_revision'
+		)
+	);
+	const chartData = $derived(
+		parentChart && preview ? buildProfileGenerationChart(parentChart, preview.chart) : null
+	);
+	const milestoneCount = $derived(
+		preview?.chart.events.filter((event) => event.category === 'milestone').length ?? 0
+	);
+	const loadRoastChart = () => import('./chart/RoastChart.svelte');
+
+	function sameTarget(left: Target | null, right: Target | null): boolean {
+		return !!left && !!right && left.id === right.id && left.revisionId === right.revisionId;
+	}
+
+	function isCurrent(requested: Target): boolean {
+		return sameTarget(requested, target);
+	}
+
+	function revisionPath(requested: Target): string {
+		return `/api/reference-profiles/${encodeURIComponent(requested.id)}/revisions/${encodeURIComponent(requested.revisionId)}`;
+	}
+
+	function fingerprintFor(requested: Target, input: Request): string {
+		return JSON.stringify({ id: requested.id, revisionId: requested.revisionId, input });
+	}
+
+	function maxDeltaFor(chart: Chart | null): number {
+		return chart?.temperatureUnit === 'C' ? 10 : 20;
+	}
+
+	function formatMinutes(milliseconds: number): number {
+		return Number((milliseconds / 60_000).toFixed(2));
+	}
+
+	/** Inputs are minutes on the charge-aligned chart; Parchment expects logger milliseconds. */
+	function request(chart: Chart | null): Request | null {
+		const start = Number(startMinutes);
+		const end = Number(endMinutes);
+		const adjustment = Number(delta);
+		if (
+			!chart ||
+			!title.trim() ||
+			!Number.isFinite(start) ||
+			!Number.isFinite(end) ||
+			!Number.isFinite(adjustment) ||
+			start < 0 ||
+			end <= start ||
+			adjustment === 0 ||
+			Math.abs(adjustment) > maxDeltaFor(chart)
+		)
+			return null;
+		const offset = chargeOffsetMilliseconds(chart);
+		return {
+			title: title.trim(),
+			changes: {
+				temperatureAdjustments: [
+					{
+						kind,
+						startMilliseconds: Math.round(start * 60_000) + offset,
+						endMilliseconds: Math.round(end * 60_000) + offset,
+						delta: adjustment
+					}
+				]
+			}
+		};
+	}
+	const matchingPreview = $derived.by(() => {
+		const input = request(parentChart);
+		return !!target && !!input && previewFingerprint === fingerprintFor(target, input);
+	});
+
+	async function loadParentChart(requested: Target): Promise<Chart | null> {
+		if (loadedParent && sameTarget(loadedParent, requested)) return loadedParent.chart;
+		try {
+			const response = await fetch(`${revisionPath(requested)}/chart`);
+			const body = await response.json().catch(() => null);
+			if (!isCurrent(requested)) return null;
+			if (!response.ok || !body?.data?.chart)
+				throw new Error(body?.error || 'Unable to load the parent chart');
+			loadedParent = { ...requested, chart: body.data.chart };
+			return body.data.chart;
+		} catch (cause) {
+			if (isCurrent(requested))
+				error = cause instanceof Error ? cause.message : 'Unable to load the parent chart';
+			return null;
+		}
+	}
+
+	function selectParent(id: string) {
+		selectedId = id;
+		preview = null;
+		loadedParent = null;
+		previewFingerprint = null;
+		saved = null;
+		notice = null;
+		error = null;
+		if (target) void loadParentChart(target);
+	}
+
+	async function previewPlan() {
+		const requested = target;
+		if (!requested || busy) return;
+		busy = true;
+		error = null;
+		notice = null;
+		preview = null;
+		previewFingerprint = null;
+		saved = null;
+		try {
+			const chart = await loadParentChart(requested);
+			if (!chart || !isCurrent(requested)) return;
+			const input = request(chart);
+			if (!input) {
+				error = `Choose a plan name, an end after the start, and a non-zero change of at most ${maxDeltaFor(chart)}°${chart.temperatureUnit}.`;
+				return;
+			}
+			const response = await fetch(`${revisionPath(requested)}/preview`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(input)
+			});
+			const body = await response.json().catch(() => null);
+			// A response for a parent that is no longer selected must never be shown as its preview.
+			if (!isCurrent(requested)) return;
+			if (!response.ok || !body?.data)
+				throw new Error(body?.error || 'Unable to preview this plan');
+			preview = body.data;
+			previewFingerprint = fingerprintFor(requested, input);
+		} catch (cause) {
+			if (isCurrent(requested))
+				error = cause instanceof Error ? cause.message : 'Unable to preview this plan';
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function savePlan() {
+		const requested = target;
+		const input = request(parentChart);
+		if (!requested || !input || !preview || busy) return;
+		const fingerprint = fingerprintFor(requested, input);
+		if (fingerprint !== previewFingerprint || preview.parentRevisionId !== requested.revisionId) {
+			error = 'The plan changed after preview. Preview it again before saving.';
+			return;
+		}
+		const key = reserveIdempotencyKey(
+			typeof sessionStorage === 'undefined' ? null : sessionStorage,
+			ownerId,
+			'profile-studio-generation',
+			fingerprint
+		);
+		busy = true;
+		error = null;
+		try {
+			const response = await fetch(`${revisionPath(requested)}/generated`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
+				body: JSON.stringify(input)
+			});
+			const body = await response.json().catch(() => null);
+			if (!response.ok) {
+				if (!shouldRetainIdempotencyKey(response.status))
+					clearIdempotencyKey(sessionStorage, ownerId, 'profile-studio-generation', fingerprint);
+				throw new Error(body?.error || 'Unable to save this plan');
+			}
+			const profile = body?.data;
+			if (!profile?.id || !profile?.currentRevisionId)
+				throw new Error('Unable to confirm the saved plan');
+			clearIdempotencyKey(sessionStorage, ownerId, 'profile-studio-generation', fingerprint);
+			saved = { id: profile.id, revisionId: profile.currentRevisionId, title: profile.title };
+			notice = `${profile.title} is saved as a plan, separate from executed roast history.`;
+			await onSaved();
+		} catch (cause) {
+			error = cause instanceof Error ? cause.message : 'Unable to save this plan';
+		} finally {
+			busy = false;
+		}
+	}
+</script>
+
+<div class="mt-5 rounded-xl border border-line p-4">
+	<h3 class="font-semibold text-ink">Plan the next batch</h3>
+	<p class="mt-1 text-sm text-muted">
+		Start from an uploaded Artisan reference, preview one bounded temperature change, then save an
+		unsigned Purveyors plan. It does not change the parent or record an executed roast.
+	</p>
+	{#if profiles.some((profile) => profile.sourceClass === 'executed_roast')}
+		<p class="mt-2 text-xs text-muted">
+			Historical roast snapshots can be compared, but cannot be exported as Artisan plans because
+			they do not retain the original device and event mapping.
+		</p>
+	{/if}
+	{#if error}<p
+			role="alert"
+			class="mt-3 rounded-lg bg-danger-subtle p-3 text-sm text-danger-strong"
+		>
+			{error}
+		</p>{/if}
+	{#if notice}<p
+			role="status"
+			class="mt-3 rounded-lg bg-success-subtle p-3 text-sm text-success-strong"
+		>
+			{notice}
+		</p>{/if}
+	<div class="mt-4 grid gap-3 sm:grid-cols-2">
+		<label class="text-sm font-medium text-ink"
+			>Parent reference
+			<select
+				value={selectedId}
+				onchange={(event) => selectParent(event.currentTarget.value)}
+				disabled={busy}
+				class="mt-1 min-h-11 w-full rounded-md border border-line bg-surface-canvas px-3 font-normal"
+			>
+				<option value="">Choose an Artisan reference</option>
+				{#each exportable as profile (profile.id)}
+					<option value={profile.id}>{profile.title}</option>
+				{/each}
+			</select>
+		</label>
+		<label class="text-sm font-medium text-ink"
+			>Plan name
+			<input
+				bind:value={title}
+				maxlength="200"
+				class="mt-1 min-h-11 w-full rounded-md border border-line bg-surface-canvas px-3 font-normal"
+			/>
+		</label>
+		<label class="text-sm font-medium text-ink"
+			>Temperature channel
+			<select
+				bind:value={kind}
+				class="mt-1 min-h-11 w-full rounded-md border border-line bg-surface-canvas px-3 font-normal"
+			>
+				<option value="bean_temperature">Bean temperature</option>
+				<option value="environmental_temperature">Environmental temperature</option>
+			</select>
+		</label>
+		<label class="text-sm font-medium text-ink"
+			>Change ({parentChart ? `°${parentChart.temperatureUnit}` : 'degrees'}, + or −)
+			<input
+				type="number"
+				bind:value={delta}
+				step="0.5"
+				min={-maxDelta}
+				max={maxDelta}
+				class="mt-1 min-h-11 w-full rounded-md border border-line bg-surface-canvas px-3 font-normal"
+			/>
+		</label>
+		<label class="text-sm font-medium text-ink"
+			>Start (minutes from roast start)
+			<input
+				type="number"
+				bind:value={startMinutes}
+				min="0"
+				step="0.1"
+				class="mt-1 min-h-11 w-full rounded-md border border-line bg-surface-canvas px-3 font-normal"
+			/>
+		</label>
+		<label class="text-sm font-medium text-ink"
+			>End (minutes from roast start)
+			<input
+				type="number"
+				bind:value={endMinutes}
+				min="0.1"
+				step="0.1"
+				class="mt-1 min-h-11 w-full rounded-md border border-line bg-surface-canvas px-3 font-normal"
+			/>
+		</label>
+	</div>
+	<div class="mt-4 flex flex-wrap gap-3">
+		<button
+			type="button"
+			class="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+			disabled={!selected || busy}
+			onclick={previewPlan}>{busy ? 'Working…' : 'Preview changes'}</button
+		>
+		{#if preview}
+			<button
+				type="button"
+				class="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink"
+				disabled={busy || !!saved || !matchingPreview}
+				onclick={savePlan}>Save planned reference</button
+			>
+		{/if}
+		{#if saved}
+			<a
+				class="rounded-md border border-ink px-4 py-2 text-sm font-semibold text-ink"
+				href={`/api/reference-profiles/${encodeURIComponent(saved.id)}/revisions/${encodeURIComponent(saved.revisionId)}/export`}
+				>Download Purveyors .alog plan</a
+			>
+		{/if}
+	</div>
+	{#if preview && parentChart && chartData}
+		{@const adjustment = preview.changes.temperatureAdjustments[0]}
+		{@const offset = chargeOffsetMilliseconds(parentChart)}
+		<div class="mt-5 rounded-xl bg-surface-canvas p-4">
+			<p class="text-xs font-semibold uppercase tracking-wide text-muted">
+				Preview only · not saved
+			</p>
+			{#if !matchingPreview}<p class="mt-1 text-sm font-semibold text-ink">
+					Inputs changed. Preview again before saving.
+				</p>{/if}
+			<p class="mt-1 text-sm text-muted">
+				{adjustment.kind === 'bean_temperature' ? 'Bean' : 'Environmental'} temperature:
+				{adjustment.delta > 0 ? '+' : ''}{adjustment.delta}°{parentChart.temperatureUnit} from {formatMinutes(
+					adjustment.startMilliseconds - offset
+				)} to {formatMinutes(adjustment.endMilliseconds - offset)} minutes. Dashed curves are the immutable
+				parent. {milestoneCount} milestones and {preview.chart.events.length - milestoneCount} control
+				events remain unchanged.
+			</p>
+			<div class="mt-4 h-[24rem] min-h-[20rem]">
+				{#await loadRoastChart() then { default: RoastChart }}
+					<RoastChart {chartData} />
+				{:catch}
+					<p class="text-sm text-muted">The preview chart could not load. Refresh to try again.</p>
+				{/await}
+			</div>
+		</div>
+	{/if}
+	{#if profiles.some((profile) => profile.sourceClass === 'generated_revision')}
+		<div class="mt-5">
+			<h4 class="text-sm font-semibold text-ink">Saved plans</h4>
+			<ul class="mt-2 space-y-2 text-sm">
+				{#each profiles.filter((profile) => profile.sourceClass === 'generated_revision') as profile (profile.id)}
+					<li class="flex flex-wrap items-center justify-between gap-2">
+						<span>{profile.title} · planned reference</span>
+						<a
+							class="font-semibold text-link hover:text-accent"
+							href={`/api/reference-profiles/${encodeURIComponent(profile.id)}/revisions/${encodeURIComponent(profile.currentRevisionId)}/export`}
+							>Download .alog</a
+						>
+					</li>
+				{/each}
+			</ul>
+		</div>
+	{/if}
+</div>

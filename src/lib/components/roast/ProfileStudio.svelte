@@ -6,6 +6,7 @@
 		type ProfileComparison
 	} from '$lib/roast/profile-comparison-model';
 	import { trackProfileStudioActivation } from '$lib/profileStudio/analytics';
+	import ProfileGeneration from './ProfileGeneration.svelte';
 	import {
 		clearIdempotencyKey,
 		reserveIdempotencyKey,
@@ -345,6 +346,8 @@
 				>
 			</div>
 		</div>
+
+		<ProfileGeneration {profiles} {ownerId} onSaved={loadProfiles} />
 
 		<div class="mt-5 rounded-xl border border-line p-4">
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
