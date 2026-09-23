@@ -118,7 +118,10 @@ type MessageHistoryPage = {
 };
 
 /** Restore older saved turns as well as the latest bounded workspace state. */
-export async function getCompleteConversationWorkspace(client: ParchmentClient, workspaceId: string) {
+export async function getCompleteConversationWorkspace(
+	client: ParchmentClient,
+	workspaceId: string
+) {
 	const latest = await getConversationWorkspace(client, workspaceId, 100);
 	if (latest.messages.length < 100) return latest;
 
@@ -128,13 +131,17 @@ export async function getCompleteConversationWorkspace(client: ParchmentClient, 
 	// generated schema will include this path when the companion API ships.
 	const getHistory = client.raw.GET as unknown as (
 		path: string,
-		options: { params: { path: { workspaceId: string }; query: { beforeSequence: number; messageLimit: number } } }
+		options: {
+			params: {
+				path: { workspaceId: string };
+				query: { beforeSequence: number; messageLimit: number };
+			};
+		}
 	) => Promise<ApiResult<{ data: MessageHistoryPage }>>;
 	while (true) {
-		const result = await getHistory(
-			'/v1/conversation/workspaces/{workspaceId}/messages/history',
-			{ params: { path: { workspaceId }, query: { beforeSequence, messageLimit: 100 } } }
-		);
+		const result = await getHistory('/v1/conversation/workspaces/{workspaceId}/messages/history', {
+			params: { path: { workspaceId }, query: { beforeSequence, messageLimit: 100 } }
+		});
 		// Safe deployment order: until the new API route is live, show the latest
 		// 100 turns instead of making the entire chat unavailable.
 		if (result.response.status === 404) return latest;

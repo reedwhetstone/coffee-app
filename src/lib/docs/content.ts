@@ -1605,7 +1605,7 @@ const docsPages: DocsPage[] = [
 							'GET PUT',
 							'Chat access session + ownership',
 							'Internal product route',
-							'GET returns workspace details plus up to 50 messages and updates last_accessed_at. PUT updates title/type metadata. DELETE is disabled and returns 405 in the single-chat model.'
+							'GET returns workspace details and restores saved conversation history in sequence. During staggered deployment, the chat loader falls back to the latest 100 messages until the companion history route is available, then pages backward to restore the complete history. GET also updates last_accessed_at. PUT updates title/type metadata. DELETE is disabled and returns 405 in the single-chat model.'
 						],
 						[
 							'/api/workspaces/[id]/messages',

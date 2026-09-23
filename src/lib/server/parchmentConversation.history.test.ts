@@ -33,7 +33,9 @@ const response = () => new Response('{}', { status: 200 });
 describe('complete conversation restore', () => {
 	it('loads older saved turns in sequence and does not stop at the latest 100', async () => {
 		const get = vi.fn().mockResolvedValue({
-			data: { data: { workspace, messages: Array.from({ length: 100 }, (_, i) => message(i + 2)) } },
+			data: {
+				data: { workspace, messages: Array.from({ length: 100 }, (_, i) => message(i + 2)) }
+			},
 			response: response()
 		});
 		const history = vi.fn().mockResolvedValue({
@@ -60,7 +62,10 @@ describe('complete conversation restore', () => {
 		const client = {
 			conversation: {
 				workspaces: {
-					get: vi.fn().mockResolvedValue({ data: { data: { workspace, messages: recent } }, response: response() })
+					get: vi.fn().mockResolvedValue({
+						data: { data: { workspace, messages: recent } },
+						response: response()
+					})
 				}
 			},
 			raw: { GET: vi.fn().mockResolvedValue({ response: new Response('{}', { status: 404 }) }) }
