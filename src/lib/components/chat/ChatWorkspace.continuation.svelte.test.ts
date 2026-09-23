@@ -85,6 +85,12 @@ describe('ChatWorkspace confirmed-action continuation', () => {
 			'fetch',
 			vi.fn<typeof fetch>(async (input, init) => {
 				const url = String(input);
+				if (url === '/api/reference-profiles' && init?.method === 'POST') {
+					return Response.json(
+						{ data: { id: 'saved-artisan-reference', title: 'Artisan chat reference' } },
+						{ status: 201 }
+					);
+				}
 				if (url === '/api/chat') {
 					chatRequests.push(JSON.parse(String(init?.body)));
 					const stream = [proposal, failedContinuation, retry][chatRequests.length - 1];
@@ -122,7 +128,7 @@ describe('ChatWorkspace confirmed-action continuation', () => {
 
 		render(ChatWorkspace, {
 			canUseChat: true,
-			canUseMallardWorkspaces: false,
+			canUseMallardWorkspaces: true,
 			agentName: 'Cherry Green Agent',
 			variant: 'drawer',
 			initialWorkspaceData: {
@@ -133,10 +139,21 @@ describe('ChatWorkspace confirmed-action continuation', () => {
 		});
 
 		await waitFor(() => expect(screen.getByRole('textbox')).toBeEnabled());
+		await fireEvent.change(screen.getByLabelText('Attach Artisan reference file'), {
+			target: {
+				files: [new File(['artisan data'], 'private-session.alog', { type: 'text/plain' })]
+			}
+		});
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Remove attached reference' })).toBeVisible()
+		);
 		await fireEvent.input(screen.getByRole('textbox'), {
 			target: { value: 'Add this coffee to inventory' }
 		});
 		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(chatRequests).toHaveLength(1));
+		expect(JSON.stringify(chatRequests[0])).toContain('saved-artisan-reference');
+		expect(JSON.stringify(chatRequests[0])).not.toContain('private-session.alog');
 		proposal.emit({ type: 'start', messageId: 'proposal-assistant' });
 		proposal.emit({
 			type: 'tool-input-available',
@@ -167,6 +184,7 @@ describe('ChatWorkspace confirmed-action continuation', () => {
 		expect(chatRequests[1].completedAction).toEqual({
 			executionId: 'proposal-assistant:proposal'
 		});
+		expect(JSON.stringify(chatRequests[1])).not.toContain('private-session.alog');
 		expect(chatRequests[1].messages.filter((message) => message.role === 'user')).toHaveLength(1);
 		expect(await screen.findByText('Action completed successfully.')).toBeInTheDocument();
 
