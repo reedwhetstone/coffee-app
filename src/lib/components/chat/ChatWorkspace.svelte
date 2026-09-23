@@ -279,20 +279,24 @@
 		attachmentId: string | null;
 		handoff: ProfileStudioHandoff | null;
 	} | null = null;
-	let pendingContinuationExecutionId: string | null = null;
-	let activeContinuationExecutionId: string | null = null;
+	let pendingContinuationExecutionId = $state<string | null>(null);
+	let activeContinuationExecutionId = $state<string | null>(null);
 	type ContinuationContext = {
 		workspaceId: string;
 		lifecycleGeneration: number;
 	};
 	let chatLifecycleGeneration = 0;
 	let activeContinuationContext: ContinuationContext | null = null;
+	let queuedContinuations = $state<Array<{ executionId: string; context: ContinuationContext }>>(
+		[]
+	);
 
 	function invalidateConversationState() {
 		chatLifecycleGeneration += 1;
 		pendingContinuationExecutionId = null;
 		activeContinuationExecutionId = null;
 		activeContinuationContext = null;
+		queuedContinuations = [];
 		lastSubmittedPrompt = '';
 		lastSubmittedBody = null;
 		retryPreservesComposerDraft = false;
@@ -317,14 +321,18 @@
 		return workspaceId ? { workspaceId, lifecycleGeneration: chatLifecycleGeneration } : null;
 	}
 
-	function canContinue(context: ContinuationContext | null): context is ContinuationContext {
+	function isCurrentContinuationContext(
+		context: ContinuationContext | null
+	): context is ContinuationContext {
 		return Boolean(
 			context &&
 				workspaceStore.currentWorkspaceId === context.workspaceId &&
-				chatLifecycleGeneration === context.lifecycleGeneration &&
-				!isActive &&
-				!isClearing
+				chatLifecycleGeneration === context.lifecycleGeneration
 		);
+	}
+
+	function canContinue(context: ContinuationContext | null): context is ContinuationContext {
+		return isCurrentContinuationContext(context) && !isActive && !isClearing;
 	}
 
 	function noteDraftInput() {
@@ -1328,8 +1336,8 @@
 						);
 					});
 			}
-			if (canContinue(continuationContext))
-				void continueAfterConfirmedAction(executionId, continuationContext);
+			if (isCurrentContinuationContext(continuationContext))
+				queueConfirmedActionContinuation(executionId, continuationContext);
 			return result;
 		} catch (err) {
 			clearTimeout(timeoutId);
@@ -1372,6 +1380,33 @@
 	function storageForIdempotency() {
 		return typeof sessionStorage === 'undefined' ? null : sessionStorage;
 	}
+
+	function queueConfirmedActionContinuation(executionId: string, context: ContinuationContext) {
+		if (
+			activeContinuationExecutionId === executionId ||
+			pendingContinuationExecutionId === executionId ||
+			queuedContinuations.some((entry) => entry.executionId === executionId)
+		)
+			return;
+		queuedContinuations = [...queuedContinuations, { executionId, context }];
+	}
+
+	// One Chat transport owns the stream. Completed writes wait in commit order until
+	// the current turn finishes; a failed continuation holds the queue for Retry.
+	$effect(() => {
+		if (
+			!queuedContinuations.length ||
+			isActive ||
+			isClearing ||
+			activeContinuationExecutionId ||
+			pendingContinuationExecutionId
+		)
+			return;
+		const next = queuedContinuations[0];
+		queuedContinuations = queuedContinuations.slice(1);
+		if (isCurrentContinuationContext(next.context))
+			void continueAfterConfirmedAction(next.executionId, next.context);
+	});
 
 	async function continueAfterConfirmedAction(
 		executionId: string,
