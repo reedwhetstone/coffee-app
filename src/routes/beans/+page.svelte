@@ -18,6 +18,7 @@
 	import { formatSourceName } from '$lib/utils/formatters';
 
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
+	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 
 	// Cast filtered data to the correct type for this page
 	let typedFilteredData = $derived($filteredData as unknown as InventoryWithCatalog[]);
@@ -529,6 +530,31 @@
 			avgCost,
 			totalCount: rows.length
 		};
+	});
+
+	$effect(() => {
+		const purchased = isLoading ? [] : (typedFilteredData ?? []);
+		const bookmarked = portfolioTab === 'bookmarked' ? trackedCatalog : [];
+		pageChatContext.set({
+			surface: 'beans',
+			summary:
+				portfolioTab === 'bookmarked'
+					? `Coffee portfolio watchlist: ${bookmarked.length} bookmarked lots in view.`
+					: `Purchased bean inventory: ${purchased.length} beans in view. Use green_coffee_inventory with the exact inventory IDs below for current details.`,
+			entities:
+				portfolioTab === 'bookmarked'
+					? bookmarked.slice(0, 8).map((coffee) => ({
+							type: 'coffee',
+							id: coffee.id,
+							label: coffee.name ?? `Coffee #${coffee.id}`
+						}))
+					: purchased.slice(0, 8).map((bean) => ({
+							type: 'inventory_bean',
+							id: bean.id,
+							label: bean.coffee_catalog?.name ?? `Inventory bean #${bean.id}`
+						}))
+		});
+		return () => pageChatContext.clear();
 	});
 
 	/**

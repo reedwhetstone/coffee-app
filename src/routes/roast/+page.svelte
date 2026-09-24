@@ -23,6 +23,8 @@
 
 	import RoastProfileTabs from './RoastProfileTabs.svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
+	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
+	import { buildRoastPageContext } from '$lib/services/roastPageContext';
 	import { prepareDateForAPI } from '$lib/utils/dates';
 
 	// Cast filtered data to the correct type for this page
@@ -280,6 +282,14 @@
 			completedProfiles: completedProfiles.length,
 			avgLoss
 		};
+	});
+
+	// Publish the actual selection, not just the route name. Cherry receives
+	// canonical roast IDs so its read tool can retrieve the complete profiles.
+	$effect(() => {
+		const visible = isLoading ? [] : (typedFilteredData ?? []);
+		pageChatContext.set(buildRoastPageContext(visible, currentRoastProfile, isLoading));
+		return () => pageChatContext.clear();
 	});
 
 	// Effect to handle first-time expansion of batches
