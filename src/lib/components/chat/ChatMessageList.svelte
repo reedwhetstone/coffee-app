@@ -12,7 +12,8 @@
 		buildSearchDataCacheThroughPart,
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
-	import type { BlockAction, CanvasBlock, UIBlock } from '$lib/types/genui';
+	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
+	import { buildActionReceipts } from '$lib/services/actionReceipts';
 	import { inlineCoffeeResults } from '$lib/services/inlineCoffeeResults';
 	import { getInterruptedTurnStatus } from './chatRecovery';
 	import type { CherryAgentName } from '$lib/cherry/identity';
@@ -120,33 +121,6 @@
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				!(chat.messages[messageIndex] as any)?.metadata?.workspaceRestored
 		};
-	}
-
-	function actionReceipts(message: {
-		id: string;
-		parts: Array<{ type: string; [key: string]: unknown }>;
-	}): Array<{ block: Extract<UIBlock, { type: 'action-card' }>; canvasBlockId?: string }> {
-		return message.parts.flatMap((part) => {
-			if (!part.type.startsWith('tool-')) return [];
-			const block = extractBlockFromPart(part, {
-				messageId: message.id,
-				allowExecutionIdSynthesis: false
-			});
-			if (block?.type !== 'action-card') return [];
-			const canvasEntry = canvasStore
-				.getBlocksForMessage(message.id)
-				.find(
-					(entry) =>
-						entry.block.type === 'action-card' &&
-						entry.block.data.executionId === block.data.executionId
-				);
-			return [
-				{
-					block: canvasEntry?.block.type === 'action-card' ? canvasEntry.block : block,
-					canvasBlockId: canvasEntry?.id
-				}
-			];
-		});
 	}
 
 	// Build a lookup: messageId → canvas blocks (supports multiple blocks per message)
@@ -349,7 +323,7 @@
 
 						<!-- Action receipts stay attached to their originating turn while
 						     subsequent turns and canvas presentations change the working set. -->
-						{#each actionReceipts(message) as actionEntry (actionEntry.block.data.executionId)}
+						{#each buildActionReceipts(message.id, message.parts, canvasStore.getBlocksForMessage(message.id)) as actionEntry (actionEntry.renderKey)}
 							<div class="rounded-md border border-line bg-surface-panel/60 px-3 py-2">
 								<p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
 									Action
