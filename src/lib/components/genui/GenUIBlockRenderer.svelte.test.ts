@@ -58,9 +58,11 @@ describe('GenUIBlockRenderer chat evidence', () => {
 
 		expect(container.querySelector('.genui-preview')).not.toBeInTheDocument();
 		expect(screen.getByRole('region', { name: 'Coffee results' })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'View details for Test Coffee' })).toBeEnabled();
+		expect(
+			screen.queryByRole('button', { name: 'View details for Test Coffee' })
+		).not.toBeInTheDocument();
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Open in canvas' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'View 1 coffee on canvas' }));
 
 		expect(onAction).toHaveBeenCalledWith({
 			type: 'focus-canvas-block',

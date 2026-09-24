@@ -25,6 +25,20 @@ function props(overrides: Record<string, unknown> = {}) {
 }
 
 describe('ChatComposer recovery controls', () => {
+	it('attaches pending actions as compact tabs on the composer', async () => {
+		const onOpenPendingAction = vi.fn();
+		render(
+			ChatComposer,
+			props({
+				pendingActionTabs: [{ id: 'action-1', summary: 'Add Dambi Uddo', failed: false }],
+				onOpenPendingAction
+			})
+		);
+		const tab = screen.getByRole('button', { name: /Add Dambi Uddo.*Review action/ });
+		expect(tab.closest('nav')).toHaveAttribute('aria-label', 'Actions needing attention');
+		await fireEvent.click(tab);
+		expect(onOpenPendingAction).toHaveBeenCalledWith('action-1');
+	});
 	it('uses a short placeholder without a repeated identity footer', () => {
 		render(ChatComposer, props());
 		expect(screen.getByRole('textbox', { name: 'Message Cherry Green Agent' })).toHaveAttribute(

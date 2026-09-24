@@ -174,6 +174,22 @@ async function refreshWorkspace(workspaceId: string): Promise<Workspace | null> 
 	}
 }
 
+export class MessageSaveError extends Error {
+	constructor(
+		message: string,
+		readonly status: number
+	) {
+		super(message);
+		this.name = 'MessageSaveError';
+	}
+}
+
+const messageSaveFailures = new Map<string, MessageSaveError>();
+
+function getMessageSaveFailure(workspaceId: string): MessageSaveError | null {
+	return messageSaveFailures.get(workspaceId) ?? null;
+}
+
 async function saveMessages(
 	workspaceId: string,
 	messages: Array<{
@@ -195,7 +211,15 @@ async function saveMessages(
 				messages
 			})
 		});
-		if (!res.ok) throw new Error('Failed to save messages');
+		if (!res.ok) {
+			const body = await res.json().catch(() => null);
+			const detail = typeof body?.error === 'string' ? body.error : body?.error?.message;
+			throw new MessageSaveError(
+				typeof detail === 'string' ? detail : `Message save failed (${res.status})`,
+				res.status
+			);
+		}
+		messageSaveFailures.delete(workspaceId);
 		const data = await res.json();
 		workspaces = workspaces.map((item) =>
 			item.id === workspaceId
@@ -214,6 +238,8 @@ async function saveMessages(
 
 		return true;
 	} catch (err) {
+		if (err instanceof MessageSaveError) messageSaveFailures.set(workspaceId, err);
+		else messageSaveFailures.delete(workspaceId);
 		error = (err as Error).message;
 		return false;
 	}
@@ -436,6 +462,7 @@ export const workspaceStore = {
 	activateWorkspace,
 	createAndActivateWorkspace,
 	saveMessages,
+	getMessageSaveFailure,
 	saveCanvasState,
 	getCanvasSaveFailure: (workspaceId: string) => canvasSaveFailures.get(workspaceId),
 	refreshWorkspace,

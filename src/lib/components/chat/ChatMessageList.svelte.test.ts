@@ -237,7 +237,7 @@ describe('ChatMessageList conversation controls', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: /Batch 42/ }));
 		await fireEvent.click(screen.getByRole('button', { name: /Roast #42 chart/ }));
-		await fireEvent.click(screen.getByRole('button', { name: 'Open in canvas' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'View 1 coffee on canvas' }));
 
 		expect(componentProps.onBlockAction.mock.calls).toEqual([
 			[{ type: 'focus-canvas-block', blockId: roastId }],
@@ -270,7 +270,7 @@ describe('ChatMessageList conversation controls', () => {
 
 		render(ChatMessageList, props(messages));
 
-		expect(screen.getByRole('button', { name: 'View details for Older coffee' })).toBeEnabled();
+		expect(screen.getByText('1 coffee · No longer on canvas')).toBeVisible();
 		expect(screen.queryByRole('button', { name: 'Open in canvas' })).not.toBeInTheDocument();
 	});
 

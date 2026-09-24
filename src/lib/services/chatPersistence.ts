@@ -29,6 +29,40 @@ export type PersistedChatMessagePayload = {
 	client_created_at?: string;
 };
 
+/** Last-resort save shape for an upstream 413, retaining the turn and action receipt. */
+export function compactPersistedMessageForRetry(
+	message: PersistedChatMessagePayload
+): PersistedChatMessagePayload {
+	const actions = message.parts.flatMap((part) => {
+		const card = (part.output as { action_card?: Record<string, unknown> } | undefined)
+			?.action_card;
+		if (!card || typeof card.executionId !== 'string') return [];
+		return [
+			{
+				type: part.type,
+				toolCallId: part.toolCallId,
+				state: part.state,
+				output: {
+					action_card: {
+						executionId: card.executionId,
+						actionType: card.actionType,
+						summary: String(card.summary ?? '').slice(0, 500),
+						status: card.status,
+						fields: []
+					}
+				}
+			}
+		];
+	});
+	const content = message.content.slice(0, 12_000);
+	return {
+		...message,
+		content,
+		parts: [{ type: 'text', text: content }, ...actions.slice(0, 20)],
+		canvas_mutations: []
+	};
+}
+
 // Keep each append below both the message endpoint's structured-data limit and
 // the hosting platform's request limit. Full results remain on the canvas.
 const MAX_PERSISTED_TEXT = 120_000;
