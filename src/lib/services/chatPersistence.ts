@@ -40,7 +40,9 @@ export function compactPersistedMessageForRetry(
 		return [
 			{
 				type: part.type,
+				...(part.type === 'dynamic-tool' ? { toolName: part.toolName } : {}),
 				toolCallId: part.toolCallId,
+				input: {},
 				state: part.state,
 				output: {
 					action_card: {

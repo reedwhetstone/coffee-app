@@ -1,10 +1,54 @@
 import { describe, expect, it } from 'vitest';
 import { convertToModelMessages, validateUIMessages } from 'ai';
 
-import { buildPersistedChatMessages } from './chatPersistence';
+import { buildPersistedChatMessages, compactPersistedMessageForRetry } from './chatPersistence';
 import { prepareChatRequestMessages } from '$lib/components/chat/chatRecovery';
 
 describe('buildPersistedChatMessages', () => {
+	it('keeps a 413 fallback action receipt valid for the next request after reload', async () => {
+		const [message] = buildPersistedChatMessages([
+			{
+				id: 'fallback-action-turn',
+				role: 'assistant',
+				parts: [
+					{ type: 'text', text: 'Review this inventory action.' },
+					{
+						type: 'tool-propose_action',
+						toolCallId: 'proposal',
+						input: { coffee: 'Ethiopia' },
+						state: 'output-available',
+						output: {
+							action_card: {
+								executionId: 'fallback-action-turn:proposal',
+								actionType: 'add_bean_to_inventory',
+								summary: 'Add Ethiopia',
+								fields: [],
+								status: 'success'
+							}
+						}
+					}
+				]
+			}
+		]);
+		const saved = compactPersistedMessageForRetry(message);
+		const restored = JSON.parse(JSON.stringify(saved));
+		const validated = await validateUIMessages({
+			messages: prepareChatRequestMessages([
+				{ id: restored.client_message_id, role: restored.role, parts: restored.parts } as never,
+				{ id: 'next-turn', role: 'user', parts: [{ type: 'text', text: 'What next?' }] }
+			])
+		});
+
+		expect(restored.parts[1]).toMatchObject({
+			type: 'tool-propose_action',
+			toolCallId: 'proposal',
+			input: {},
+			state: 'output-available',
+			output: { action_card: { executionId: 'fallback-action-turn:proposal' } }
+		});
+		await expect(convertToModelMessages(validated)).resolves.toBeDefined();
+	});
+
 	it('bounds a large tool result without losing the turn or action identity', () => {
 		const payload = buildPersistedChatMessages([
 			{
