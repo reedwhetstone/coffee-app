@@ -29,8 +29,22 @@
 	}>();
 
 	let active = $derived(canvasStore.focusedBlock ?? canvasStore.visibleBlocks[0] ?? null);
+	let activeActions = $derived(
+		canvasStore.visibleBlocks.filter(
+			(entry) => entry.block.type === 'action-card' && entry.block.data.status !== 'success'
+		)
+	);
+	let references = $derived(
+		canvasStore.visibleBlocks.filter((entry) => entry.block.type !== 'action-card')
+	);
+	let completedActions = $derived(
+		canvasStore.visibleBlocks.filter(
+			(entry) => entry.block.type === 'action-card' && entry.block.data.status === 'success'
+		)
+	);
 
 	function blockLabel(block: CanvasBlock): string {
+		if (block.block.type === 'action-card') return block.block.data.summary;
 		return block.title?.trim() || defaultBlockTitle(block.block.type);
 	}
 
@@ -80,7 +94,7 @@
 					onclick={onToggleExpand}
 					aria-pressed={expanded}
 					class="rounded-md border border-line px-3 py-2 text-xs text-muted hover:text-ink"
-					>{expanded ? 'Exit expanded view' : 'Expand evidence'}</button
+					>{expanded ? 'Exit expanded view' : 'Expand canvas'}</button
 				>
 			{/if}
 		</div>
@@ -105,7 +119,7 @@
 				{/if}
 			</div>
 
-			<div class="flex shrink-0 items-center gap-0.5" aria-label="Active evidence controls">
+			<div class="flex shrink-0 items-center gap-0.5" aria-label="Canvas controls">
 				{#if active.messageId && onScrollToMessage}
 					<button
 						type="button"
@@ -137,7 +151,7 @@
 						onclick={() => (detailBlockId = active?.id ?? null)}
 						class="rounded-md p-1.5 text-muted transition-colors hover:bg-surface-panel hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
 						title="Open details"
-						aria-label="Open active evidence details"
+						aria-label="Open canvas item details"
 					>
 						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
@@ -155,8 +169,8 @@
 					class="rounded-md p-1.5 transition-colors hover:bg-surface-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent {active.pinned
 						? 'bg-accent-subtle/15 text-accent'
 						: 'text-muted hover:text-ink'}"
-					title={active.pinned ? 'Unpin evidence' : 'Pin evidence'}
-					aria-label={active.pinned ? 'Unpin active evidence' : 'Pin active evidence'}
+					title={active.pinned ? 'Unpin canvas item' : 'Pin canvas item'}
+					aria-label={active.pinned ? 'Unpin canvas item' : 'Pin canvas item'}
 					aria-pressed={active.pinned}
 				>
 					<svg
@@ -178,8 +192,8 @@
 					type="button"
 					onclick={() => removeBlock(active.id)}
 					class="rounded-md p-1.5 text-muted transition-colors hover:bg-danger-subtle hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
-					title="Remove evidence"
-					aria-label="Remove active evidence"
+					title="Remove canvas item"
+					aria-label="Remove canvas item"
 					disabled={active.pinned ||
 						(active.block.type === 'action-card' && active.block.data.status === 'executing')}
 				>
@@ -205,11 +219,11 @@
 		</main>
 
 		<nav
-			class="shrink-0 border-t border-line bg-surface-panel/70 px-2 py-2"
-			aria-label="Evidence shelf"
+			class="max-h-[38%] shrink-0 overflow-y-auto border-t border-line bg-surface-panel/70 px-3 py-2"
+			aria-label="Canvas items"
 		>
 			<div class="mb-1 flex items-center justify-between px-1">
-				<span class="text-xs font-semibold text-muted">Evidence shelf</span>
+				<span class="text-xs font-semibold text-ink">Canvas</span>
 				<button
 					type="button"
 					onclick={() => canvasStore.clearAll()}
@@ -217,37 +231,56 @@
 						(block) => block.block.type === 'action-card' && block.block.data.status === 'executing'
 					)}
 					class="rounded-md px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:bg-surface-raised hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-					title="Remove all unpinned evidence"
+					title="Clear unpinned canvas items"
 				>
 					Clear unpinned
 				</button>
 			</div>
-			<div class="flex gap-1.5 overflow-x-auto pb-0.5">
-				{#each canvasStore.visibleBlocks as shelfBlock (shelfBlock.id)}
-					<button
-						type="button"
-						onclick={() => focusBlock(shelfBlock.id)}
-						aria-current={shelfBlock.id === active.id ? 'true' : undefined}
-						aria-label={`${blockLabel(shelfBlock)}${shelfBlock.pinned ? ', pinned' : ''}`}
-						class="group flex min-w-[8.5rem] max-w-[11rem] shrink-0 items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent {shelfBlock.id ===
-						active.id
-							? 'border-accent bg-surface-raised text-ink'
-							: shelfBlock.pinned
-								? 'border-accent/40 bg-accent-subtle/40 text-ink hover:border-accent/70'
-								: 'border-line bg-surface-canvas text-muted hover:border-accent/40 hover:text-ink'}"
-					>
-						<span class="min-w-0 flex-1">
-							<span class="block truncate text-xs font-medium">{blockLabel(shelfBlock)}</span>
-							<span class="block truncate text-[10px] text-muted"
-								>{defaultBlockTitle(shelfBlock.block.type)}</span
-							>
-						</span>
-						{#if shelfBlock.pinned}
-							<span class="text-accent" aria-hidden="true">●</span>
-						{/if}
-					</button>
-				{/each}
-			</div>
+			{#each [{ label: 'Actions to review', items: activeActions }, { label: 'Working references', items: references }, { label: 'Completed actions', items: completedActions }] as group (group.label)}
+				{#if group.items.length > 0}
+					<section class="mt-2" aria-label={group.label}>
+						<h3 class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+							{group.label} <span class="font-normal">{group.items.length}</span>
+						</h3>
+						<div class="flex flex-col gap-1">
+							{#each group.items as shelfBlock (shelfBlock.id)}
+								<button
+									type="button"
+									onclick={() => focusBlock(shelfBlock.id)}
+									aria-current={shelfBlock.id === active.id ? 'true' : undefined}
+									aria-label={`${blockLabel(shelfBlock)}${shelfBlock.pinned ? ', pinned' : ''}`}
+									class="group flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent {shelfBlock.id ===
+									active.id
+										? 'border-accent bg-surface-raised text-ink'
+										: shelfBlock.pinned
+											? 'border-accent/40 bg-accent-subtle/40 text-ink hover:border-accent/70'
+											: 'border-line bg-surface-canvas text-muted hover:border-accent/40 hover:text-ink'}"
+								>
+									<span class="min-w-0 flex-1">
+										<span class="block truncate text-xs font-medium">{blockLabel(shelfBlock)}</span>
+										{#if shelfBlock.block.type === 'action-card'}
+											<span class="block truncate text-[10px] text-muted"
+												>{shelfBlock.block.data.status === 'success'
+													? 'Completed'
+													: shelfBlock.block.data.status === 'proposed'
+														? 'Needs confirmation'
+														: shelfBlock.block.data.status === 'executing'
+															? 'Working'
+															: 'Failed'}</span
+											>
+										{:else}<span class="block truncate text-[10px] text-muted"
+												>{defaultBlockTitle(shelfBlock.block.type)}</span
+											>{/if}
+									</span>
+									{#if shelfBlock.pinned}
+										<span class="text-accent" aria-hidden="true">●</span>
+									{/if}
+								</button>
+							{/each}
+						</div>
+					</section>
+				{/if}
+			{/each}
 		</nav>
 	{:else}
 		<div class="flex h-full flex-col items-center justify-center p-6 text-center">
@@ -264,7 +297,7 @@
 					d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625A1.125 1.125 0 0 0 4.5 3.375v17.25c0 .621.504 1.125 1.125 1.125h12.75a1.125 1.125 0 0 0 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
 				/>
 			</svg>
-			<p class="text-sm font-medium text-ink">Your evidence workspace is ready</p>
+			<p class="text-sm font-medium text-ink">Your canvas is ready</p>
 			<p class="mt-1 max-w-xs text-sm text-muted">
 				Open a result from the conversation to explore it here.
 			</p>

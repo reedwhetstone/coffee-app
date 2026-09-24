@@ -154,7 +154,7 @@
 					const items = part.output?.presentation?.items;
 					const count = Array.isArray(items) ? items.length : 0;
 					steps.push({
-						message: `presenting ${count} item${count === 1 ? '' : 's'} to the evidence workspace`
+						message: `presenting ${count} item${count === 1 ? '' : 's'} to the canvas`
 					});
 				} else if (part.state === 'output-error') {
 					steps.push({
@@ -314,6 +314,24 @@
 							</p>
 						{/if}
 
+						<!-- Action receipts stay attached to their originating turn while
+						     subsequent turns and canvas presentations change the working set. -->
+						{#each canvasStore
+							.getBlocksForMessage(message.id)
+							.filter((entry) => entry.block.type === 'action-card') as actionEntry (actionEntry.id)}
+							<div class="rounded-md border border-line bg-surface-panel/60 px-3 py-2">
+								<p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+									Action
+								</p>
+								<GenUIBlockRenderer
+									block={actionEntry.block}
+									renderMode="chat"
+									onAction={onBlockAction}
+									canvasBlockId={actionEntry.id}
+								/>
+							</div>
+						{/each}
+
 						<!-- Text parts stream in live -->
 						{#each message.parts as part, partIndex}
 							{#if part.type === 'text' && part.text.trim()}
@@ -406,7 +424,7 @@
 											hasPR
 										)}
 										{@const block = extractBlockFromPart(toolPart, extractorOptions)}
-										{#if block && block.type !== 'coffee-cards'}
+										{#if block && block.type !== 'coffee-cards' && block.type !== 'action-card'}
 											{@const canvasIds = _partCanvasMap.get(partIndex) ?? []}
 											<div class="preview-fade-in my-1">
 												<GenUIBlockRenderer

@@ -202,8 +202,8 @@
 		if (!canvasStore.isEmpty) {
 			chips.push({
 				id: 'canvas',
-				label: `Evidence (${canvasStore.blockCount})`,
-				detail: `${agentName} can use what is in your evidence workspace`,
+				label: `Canvas (${canvasStore.blockCount})`,
+				detail: `${agentName} can use what is on your canvas`,
 				active: includeCanvasContext
 			});
 		}
@@ -981,8 +981,7 @@
 					// re-read by the effect, so a delayed retry cannot leak state across
 					// a workspace switch.
 					if (retryAttempt >= 2) {
-						canvasPersistError =
-							'Evidence workspace changes are not saving. Retrying in the background.';
+						canvasPersistError = 'Canvas changes are not saving. Retrying in the background.';
 					}
 					const retryDelay = Math.min(2000 * 2 ** retryAttempt, 30_000);
 					retryTimeout = setTimeout(() => {
@@ -1130,6 +1129,13 @@
 			canvasStore.blocks,
 			chat.messages.length > 0,
 			{ canUseMallardWorkspaces }
+		)
+	);
+	let pendingCanvasActions = $derived(
+		canvasStore.blocks.filter(
+			(entry) =>
+				entry.block.type === 'action-card' &&
+				(entry.block.data.status === 'proposed' || entry.block.data.status === 'failed')
 		)
 	);
 
@@ -1722,6 +1728,30 @@
 						: ''}</span
 				>
 			</div>
+			{#if pendingCanvasActions.length > 0}
+				<div
+					class="shrink-0 border-t border-line bg-surface-panel/60 px-4 py-2"
+					aria-label="Actions needing attention"
+				>
+					<p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+						Actions needing attention
+					</p>
+					<div class="flex gap-2 overflow-x-auto">
+						{#each pendingCanvasActions as entry (entry.id)}
+							<button
+								type="button"
+								onclick={() => handleBlockAction({ type: 'focus-canvas-block', blockId: entry.id })}
+								class="min-h-9 shrink-0 rounded-md border border-warning/40 bg-warning-subtle px-3 text-left text-xs font-medium text-ink hover:border-warning focus-visible:ring-2 focus-visible:ring-accent"
+							>
+								{entry.block.type === 'action-card' ? entry.block.data.summary : ''} · {entry.block
+									.type === 'action-card' && entry.block.data.status === 'failed'
+									? 'Review failure'
+									: 'Review action'}
+							</button>
+						{/each}
+					</div>
+				</div>
+			{/if}
 			<ChatComposer
 				{agentName}
 				bind:inputMessage

@@ -47,7 +47,7 @@
 				aria-expanded={canvasOpen}
 				class="min-h-11 whitespace-nowrap rounded-md px-2 text-xs font-medium text-ink hover:bg-surface-panel focus-visible:ring-2 focus-visible:ring-accent"
 			>
-				Evidence <span class="ml-1 text-muted">{canvasStore.blockCount}</span>
+				Canvas <span class="ml-1 text-muted">{canvasStore.blockCount}</span>
 			</button>
 		{/if}
 		<ChatDisclosure

@@ -49,6 +49,15 @@
 		/>
 	</svg>
 	<span>{block.data.summary}</span>
+	<span class="border-current/20 border-l pl-1.5 opacity-80">
+		{block.data.status === 'success'
+			? 'Completed'
+			: block.data.status === 'proposed'
+				? 'Needs confirmation'
+				: block.data.status === 'executing'
+					? 'Working'
+					: 'Failed'}
+	</span>
 	{#if block.data.status === 'proposed'}
 		<svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path

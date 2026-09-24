@@ -147,9 +147,7 @@ describe('Cherry AI incremental activity', () => {
 				}
 			}
 		});
-		await waitFor(() =>
-			expect(screen.getByText('presenting 1 item to the evidence workspace')).toBeVisible()
-		);
+		await waitFor(() => expect(screen.getByText('presenting 1 item to the canvas')).toBeVisible());
 		expect(screen.queryByRole('button', { name: /View details for/ })).not.toBeInTheDocument();
 		stream.finish();
 		await waitFor(() => expect(screen.getByTestId('chat-status')).toHaveTextContent('ready'));
@@ -180,9 +178,7 @@ describe('Cherry AI incremental activity', () => {
 			toolCallId: 'present',
 			output: { presentation: { items: [] } }
 		});
-		await waitFor(() =>
-			expect(screen.getByText('presenting 0 items to the evidence workspace')).toBeVisible()
-		);
+		await waitFor(() => expect(screen.getByText('presenting 0 items to the canvas')).toBeVisible());
 		expect(screen.queryByText('Preparing results…')).not.toBeInTheDocument();
 		stream.finish();
 		await waitFor(() => expect(screen.getByTestId('chat-status')).toHaveTextContent('ready'));

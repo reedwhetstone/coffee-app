@@ -16,19 +16,10 @@ const blockMessageRegistry = new Map<string, string>();
 
 // ─── Derived ─────────────────────────────────────────────────────────────────
 
-// The shelf contains every retained block. Pinned blocks float to the front
-// (stable within pinned and unpinned groups) in addition to being protected
-// from clear/replace. Legacy `minimized` values are deliberately ignored: the
-// active-scene canvas has no hidden window tray, so restored evidence remains
-// reachable from the shelf.
+// Keep the sequence in which items entered the canvas. Pinning protects an
+// item from replacement but does not move it out of conversational order.
 function sortBlocksForShelf(source: CanvasBlock[]): CanvasBlock[] {
-	return source
-		.map((block, index) => ({ block, index }))
-		.sort((a, b) => {
-			if (a.block.pinned !== b.block.pinned) return a.block.pinned ? -1 : 1;
-			return a.index - b.index;
-		})
-		.map((entry) => entry.block);
+	return source.slice();
 }
 
 const visibleBlocks = $derived(sortBlocksForShelf(blocks));
@@ -61,12 +52,9 @@ function dispatch(mutation: CanvasMutation, source: 'user' | 'agent' = 'user') {
 	// active scene or any proposal. Explicit user removal/clear remains separate.
 	const isExecuting = (block: CanvasBlock) =>
 		block.block.type === 'action-card' && block.block.data.status === 'executing';
-	const isUnfinishedAction = (block: CanvasBlock) =>
-		block.block.type === 'action-card' &&
-		(block.block.data.status === 'proposed' || block.block.data.status === 'executing');
 	const retainForAgent = (block: CanvasBlock) =>
 		isExecuting(block) ||
-		(source === 'agent' && (block.id === focusBlockId || isUnfinishedAction(block)));
+		(source === 'agent' && (block.id === focusBlockId || block.block.type === 'action-card'));
 	switch (mutation.type) {
 		case 'add': {
 			const id = generateBlockId();

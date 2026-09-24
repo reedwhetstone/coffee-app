@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ChatMessageList from './ChatMessageList.svelte';
 import { canvasStore } from '$lib/stores/canvasStore.svelte';
+import type { ActionCardPayload } from '$lib/types/genui';
 
 vi.mock('@humanspeak/svelte-markdown', () => ({ default: vi.fn() }));
 vi.mock('$lib/components/genui/InlineStatusLine.svelte', () => ({ default: vi.fn() }));
@@ -28,6 +29,55 @@ describe('ChatMessageList conversation controls', () => {
 		Object.defineProperty(navigator, 'clipboard', {
 			configurable: true,
 			value: { writeText: vi.fn().mockResolvedValue(undefined) }
+		});
+	});
+
+	it('shows a completed action in its original turn while Cherry follows up', async () => {
+		const actionCard: ActionCardPayload = {
+			executionId: 'assistant-1:inventory',
+			actionType: 'add_bean_to_inventory',
+			summary: 'Add Banko Gotiti to inventory',
+			fields: [
+				{ key: 'name', label: 'Name', type: 'text', value: 'Banko Gotiti', editable: false }
+			],
+			status: 'proposed'
+		};
+		const toolPart = {
+			type: 'tool-propose_action',
+			toolCallId: 'inventory',
+			state: 'output-available',
+			output: { action_card: actionCard }
+		};
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'assistant-1',
+			block: { type: 'action-card', version: 1, data: toolPart.output.action_card }
+		});
+		const actionId = canvasStore.blocks[0].id;
+		canvasStore.dispatch({
+			type: 'update-action',
+			blockId: actionId,
+			data: { status: 'success', result: { id: 4135 } }
+		});
+		const componentProps = props([
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				parts: [toolPart, { type: 'text', text: 'Inventory ready.' }]
+			},
+			{
+				id: 'assistant-2',
+				role: 'assistant',
+				parts: [{ type: 'text', text: 'Next, let us plan the roast.' }]
+			}
+		]);
+		render(ChatMessageList, componentProps);
+		const receipt = screen.getByRole('button', { name: /Add Banko Gotiti to inventory Completed/ });
+		expect(receipt).toBeEnabled();
+		await fireEvent.click(receipt);
+		expect(componentProps.onBlockAction).toHaveBeenCalledWith({
+			type: 'focus-canvas-block',
+			blockId: actionId
 		});
 	});
 
@@ -147,7 +197,7 @@ describe('ChatMessageList conversation controls', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: /Batch 42/ }));
 		await fireEvent.click(screen.getByRole('button', { name: /Roast #42 chart/ }));
-		await fireEvent.click(screen.getByRole('button', { name: 'Open evidence' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Open in canvas' }));
 
 		expect(componentProps.onBlockAction.mock.calls).toEqual([
 			[{ type: 'focus-canvas-block', blockId: roastId }],
@@ -181,7 +231,7 @@ describe('ChatMessageList conversation controls', () => {
 		render(ChatMessageList, props(messages));
 
 		expect(screen.getByRole('button', { name: 'View details for Older coffee' })).toBeEnabled();
-		expect(screen.queryByRole('button', { name: 'Open evidence' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Open in canvas' })).not.toBeInTheDocument();
 	});
 
 	it('matches later compact evidence links by block identity after an earlier tab is removed', async () => {

@@ -62,10 +62,7 @@ describe('retained evidence workspace', () => {
 		expect(screen.getByRole('spinbutton')).toBe(input);
 		expect(input).toHaveValue(7);
 		expect(canvasStore.focusBlockId).toBe(originalId);
-		expect(screen.getByRole('dialog', { name: 'Evidence workspace' })).toHaveAttribute(
-			'aria-modal',
-			'true'
-		);
+		expect(screen.getByRole('dialog', { name: 'Canvas' })).toHaveAttribute('aria-modal', 'true');
 		await fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
 		expect(data.onClose).toHaveBeenCalledOnce();
 	});
@@ -111,11 +108,11 @@ it('returns from nested coffee and block details without closing the workspace',
 	expect(data.onClose).not.toHaveBeenCalled();
 	await fireEvent.click(trigger);
 	await screen.findByRole('dialog', { name: 'Colombia' });
-	const backgroundControl = screen.getByRole('button', { name: 'Open active evidence details' });
+	const backgroundControl = screen.getByRole('button', { name: 'Open canvas item details' });
 	await fireEvent.keyDown(backgroundControl, { key: 'Escape' });
 	await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Colombia' })).toBeNull());
 	expect(data.onClose).not.toHaveBeenCalled();
-	const details = screen.getByRole('button', { name: 'Open active evidence details' });
+	const details = screen.getByRole('button', { name: 'Open canvas item details' });
 	details.focus();
 	await fireEvent.click(details);
 	const panel = await screen.findByRole('dialog', { name: 'Shortlist details' });

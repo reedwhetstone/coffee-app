@@ -19,6 +19,40 @@ function addEvidence(messageId: string, title: string) {
 describe('Canvas active scene and evidence shelf', () => {
 	beforeEach(() => canvasStore.resetAll());
 
+	it('separates working references, pending actions, and compact completed history', () => {
+		addEvidence('reference', 'Banko Gotiti profile');
+		for (const [messageId, status] of [
+			['pending', 'proposed'],
+			['done', 'success']
+		] as const) {
+			canvasStore.dispatch({
+				type: 'add',
+				messageId,
+				block: {
+					type: 'action-card',
+					version: 1,
+					data: {
+						executionId: `${messageId}:action`,
+						actionType: 'record_sale',
+						summary: `${messageId} inventory action`,
+						fields: [],
+						status
+					}
+				}
+			});
+		}
+		render(Canvas);
+		expect(screen.getByRole('region', { name: 'Working references' })).toHaveTextContent(
+			'Banko Gotiti profile'
+		);
+		expect(screen.getByRole('region', { name: 'Actions to review' })).toHaveTextContent(
+			'pending inventory action'
+		);
+		expect(screen.getByRole('region', { name: 'Completed actions' })).toHaveTextContent(
+			'done inventory action'
+		);
+	});
+
 	it('switches the active scene from the shelf without rendering layout controls', async () => {
 		addEvidence('message-1', 'Ethiopia shortlist');
 		addEvidence('message-2', 'Kenya shortlist');
@@ -38,7 +72,7 @@ describe('Canvas active scene and evidence shelf', () => {
 		addEvidence('message-1', 'Ethiopia shortlist');
 		render(Canvas);
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Pin active evidence' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Pin canvas item' }));
 
 		expect(canvasStore.focusedBlock?.pinned).toBe(true);
 		expect(screen.getByText('Pinned')).toBeInTheDocument();
@@ -55,7 +89,7 @@ describe('Canvas active scene and evidence shelf', () => {
 		canvasStore.dispatch({ type: 'focus', blockId: canvasStore.blocks[1].id });
 		render(Canvas);
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Remove active evidence' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Remove canvas item' }));
 
 		expect(canvasStore.blocks.map((block) => block.title)).toEqual(['First', 'Third']);
 		expect(canvasStore.focusedBlock?.title).toBe('Third');

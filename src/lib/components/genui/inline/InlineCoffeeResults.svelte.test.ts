@@ -69,7 +69,7 @@ describe('InlineCoffeeResults', () => {
 		expect(screen.getByText('Example Importer')).toBeInTheDocument();
 		expect(screen.getByText('$8.50/lb')).toBeInTheDocument();
 		expect(screen.getByText(/Prices and availability may have changed/)).toBeInTheDocument();
-		expect(screen.queryByRole('button', { name: 'Open evidence' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Open in canvas' })).not.toBeInTheDocument();
 		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 		expect(fetchSpy).not.toHaveBeenCalled();
 		expect(onAction).not.toHaveBeenCalled();
@@ -152,7 +152,7 @@ describe('InlineCoffeeResults', () => {
 		const onAction = vi.fn();
 		render(InlineCoffeeResults, { block: block(), canvasBlockId: 'evidence-17', onAction });
 		expect(onAction).not.toHaveBeenCalled();
-		await fireEvent.click(screen.getByRole('button', { name: 'Open evidence' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Open in canvas' }));
 		expect(onAction).toHaveBeenCalledTimes(1);
 		expect(onAction).toHaveBeenCalledWith({
 			type: 'focus-canvas-block',
