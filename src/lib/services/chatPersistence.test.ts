@@ -3,6 +3,48 @@ import { describe, expect, it } from 'vitest';
 import { buildPersistedChatMessages } from './chatPersistence';
 
 describe('buildPersistedChatMessages', () => {
+	it('bounds a large tool result without losing the turn or action identity', () => {
+		const payload = buildPersistedChatMessages([
+			{
+				id: 'action-turn',
+				role: 'assistant',
+				parts: [
+					{ type: 'text', text: 'I found the lot.' },
+					{
+						type: 'tool-coffee_catalog_search',
+						toolCallId: 'lookup',
+						state: 'output-available',
+						output: { coffees: [{ notes: 'x'.repeat(250_000) }] }
+					},
+					{
+						type: 'tool-propose_action',
+						toolCallId: 'proposal',
+						state: 'output-available',
+						output: {
+							action_card: {
+								executionId: 'action-turn:proposal',
+								actionType: 'add_bean_to_inventory',
+								summary: 'Add bean',
+								fields: [],
+								status: 'success'
+							}
+						}
+					}
+				]
+			}
+		]);
+
+		expect(JSON.stringify(payload[0].parts).length).toBeLessThan(200_000);
+		expect(payload[0].client_message_id).toBe('action-turn');
+		expect(payload[0].content).toBe('I found the lot.');
+		expect(payload[0].parts[1].output).toEqual({
+			summary: 'Large result is available on the canvas.'
+		});
+		expect(
+			(payload[0].parts[2].output as { action_card: { executionId: string } }).action_card
+				.executionId
+		).toBe('action-turn:proposal');
+	});
 	it('omits synthetic client timestamps when messages do not carry real createdAt values', () => {
 		const payload = buildPersistedChatMessages([
 			{ id: 'msg-user', role: 'user', parts: [{ type: 'text', text: 'Find naturals' }] },

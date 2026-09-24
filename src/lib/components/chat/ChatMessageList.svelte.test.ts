@@ -19,7 +19,8 @@ function props(messages: Array<Record<string, unknown>> = []) {
 		onExecuteAction: vi.fn(),
 		onExampleSelect: vi.fn(),
 		onAskAgainMessage: vi.fn(),
-		messageActionsDisabled: false
+		messageActionsDisabled: false,
+		continuationStartIndex: null as number | null
 	};
 }
 
@@ -79,6 +80,45 @@ describe('ChatMessageList conversation controls', () => {
 			type: 'focus-canvas-block',
 			blockId: actionId
 		});
+	});
+
+	it('keeps the completed action receipt visible after its canvas item is removed', () => {
+		const message = {
+			id: 'assistant-action',
+			role: 'assistant',
+			parts: [
+				{
+					type: 'tool-propose_action',
+					toolCallId: 'inventory',
+					state: 'output-available',
+					output: {
+						action_card: {
+							executionId: 'assistant-action:inventory',
+							actionType: 'add_bean_to_inventory',
+							summary: 'Add Banko Gotiti',
+							fields: [],
+							status: 'success'
+						}
+					}
+				}
+			]
+		};
+		render(ChatMessageList, props([message]));
+		expect(screen.getByText('Add Banko Gotiti · Completed')).toBeVisible();
+	});
+
+	it('shows a separate continuation activity row before the next assistant turn starts', () => {
+		const componentProps = props([
+			{
+				id: 'assistant-action',
+				role: 'assistant',
+				parts: [{ type: 'text', text: 'Action queued.' }]
+			}
+		]);
+		componentProps.isActive = true;
+		componentProps.continuationStartIndex = 1;
+		render(ChatMessageList, componentProps);
+		expect(screen.getByText('Continuing after completed action')).toBeVisible();
 	});
 
 	it('shows four compact starter prompts', () => {

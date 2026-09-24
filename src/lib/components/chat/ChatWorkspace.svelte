@@ -338,7 +338,7 @@
 	function noteDraftInput() {
 		draftEditedSinceSubmission = true;
 	}
-	let messageCountBeforeSubmission: number | null = null;
+	let messageCountBeforeSubmission = $state<number | null>(null);
 	let allowInterruptedRetention = true;
 	let canvasPersistError = $state<string | null>(null);
 	let messagePersistError = $state<string | null>(null);
@@ -854,14 +854,25 @@
 	) {
 		// Save new messages (ones not yet persisted)
 		const savedCount = workspaceStore.getSavedMessageCount(wsId);
-		const newMessages = chat.messages.slice(savedCount);
-		if (newMessages.length > 0) {
-			const messagesSaved = await workspaceStore.saveMessages(
-				wsId,
-				buildPersistedChatMessages(newMessages)
-			);
-			if (!messagesSaved) throw new Error('Failed to persist messages');
+		const newMessages = buildPersistedChatMessages(chat.messages.slice(savedCount));
+		// A long action chain can create many large tool results before the debounce
+		// fires. Append bounded batches so one oversized request cannot strand all
+		// subsequent turns. The store advances its saved count after each success.
+		let batch: typeof newMessages = [];
+		let batchSize = 0;
+		for (const message of newMessages) {
+			const messageSize = JSON.stringify(message).length;
+			if (batch.length && (batch.length >= 10 || batchSize + messageSize > 500_000)) {
+				if (!(await workspaceStore.saveMessages(wsId, batch)))
+					throw new Error('Failed to persist messages');
+				batch = [];
+				batchSize = 0;
+			}
+			batch.push(message);
+			batchSize += messageSize;
 		}
+		if (batch.length && !(await workspaceStore.saveMessages(wsId, batch)))
+			throw new Error('Failed to persist messages');
 
 		// Save canvas state (layout, order, pinned, minimized, focus, titles)
 		const canvasSaved = await workspaceStore.saveCanvasState(wsId, canvasStatePayload);
@@ -1310,6 +1321,33 @@
 	}
 
 	// ─── Action Card Execution ───────────────────────────────────────────────
+	function markChatActionCompleted(executionId: string, result: unknown) {
+		chat.messages = chat.messages.map((message) => ({
+			...message,
+			parts: message.parts.map((part) => {
+				const output = 'output' in part ? part.output : undefined;
+				const card =
+					output && typeof output === 'object' && 'action_card' in output
+						? output.action_card
+						: undefined;
+				if (
+					!card ||
+					typeof card !== 'object' ||
+					!('executionId' in card) ||
+					card.executionId !== executionId
+				)
+					return part;
+				return {
+					...part,
+					output: {
+						...(output as Record<string, unknown>),
+						action_card: { ...card, status: 'success', result }
+					}
+				} as typeof part;
+			})
+		}));
+	}
+
 	async function executeAction(
 		executionId: string,
 		actionType: string,
@@ -1352,6 +1390,7 @@
 			}
 
 			const result = await response.json();
+			markChatActionCompleted(executionId, result);
 			if (blockId) {
 				canvasStore.dispatch({
 					type: 'update-action',
@@ -1699,6 +1738,9 @@
 					{agentName}
 					{chat}
 					{isActive}
+					continuationStartIndex={activeContinuationExecutionId
+						? messageCountBeforeSubmission
+						: null}
 					{canUseMallardWorkspaces}
 					bind:containerEl={chatContainer}
 					bind:contentEl={chatContent}

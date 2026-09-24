@@ -176,11 +176,12 @@ describe('ChatWorkspace confirmed-action continuation', () => {
 		});
 		proposal.finish();
 
-		await fireEvent.click(await screen.findByRole('button', { name: /Evidence 1/ }));
+		await fireEvent.click(await screen.findByRole('button', { name: /Canvas 1/ }));
 		blockCanvasSave = true;
 		await fireEvent.click(await screen.findByRole('button', { name: 'Execute' }));
 		await waitFor(() => expect(actionRequests).toHaveLength(1));
 		await waitFor(() => expect(chatRequests).toHaveLength(2));
+		expect(screen.getByText('Continuing after completed action')).toBeInTheDocument();
 		expect(chatRequests[1].completedAction).toEqual({
 			executionId: 'proposal-assistant:proposal'
 		});
@@ -215,6 +216,7 @@ describe('ChatWorkspace confirmed-action continuation', () => {
 		retry.emit({ type: 'text-end', id: 'answer' });
 		retry.finish();
 		await waitFor(() => expect(screen.getByText('The bean is ready.')).toBeVisible());
+		expect(screen.getByRole('button', { name: /Add bean Completed/ })).toBeVisible();
 		expect(actionRequests).toHaveLength(1);
 		releaseCanvasSave();
 		// Let the component's debounced message and canvas persistence settle while
@@ -297,8 +299,8 @@ describe('ChatWorkspace confirmed-action continuation', () => {
 		});
 
 		await waitFor(() => expect(screen.getByRole('textbox')).toBeEnabled());
-		await fireEvent.click(screen.getByRole('button', { name: /Evidence 2/ }));
-		const shelf = screen.getByRole('navigation', { name: 'Evidence shelf' });
+		await fireEvent.click(screen.getByRole('button', { name: /Canvas 2/ }));
+		const shelf = screen.getByRole('navigation', { name: 'Canvas items' });
 		await fireEvent.click(within(shelf).getByRole('button', { name: 'Record first' }));
 		await fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
 		await waitFor(() => expect(chatRequests).toHaveLength(1));

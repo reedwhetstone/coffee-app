@@ -29,6 +29,31 @@ export type PersistedChatMessagePayload = {
 	client_created_at?: string;
 };
 
+// Keep each append below both the message endpoint's structured-data limit and
+// the hosting platform's request limit. Full results remain on the canvas.
+const MAX_PERSISTED_TEXT = 120_000;
+const MAX_PERSISTED_PARTS_JSON = 120_000;
+const MAX_PERSISTED_MUTATIONS_JSON = 60_000;
+
+function compactParts(parts: ChatPersistencePart[]): ChatPersistencePart[] {
+	if (JSON.stringify(parts).length <= MAX_PERSISTED_PARTS_JSON) return parts;
+	return parts.map((part) => {
+		if (part.type === 'text') {
+			return { ...part, text: String(part.text ?? '').slice(0, MAX_PERSISTED_TEXT) };
+		}
+		if (!part.type.startsWith('tool-')) return { type: part.type };
+		const output = part.output as Record<string, unknown> | undefined;
+		return {
+			type: part.type,
+			toolCallId: part.toolCallId,
+			state: part.state,
+			output: output?.action_card
+				? { action_card: output.action_card }
+				: { summary: 'Large result is available on the canvas.' }
+		};
+	});
+}
+
 export function buildMessageCanvasMutations(
 	messages: ChatPersistenceMessage[],
 	message: ChatPersistenceMessage
@@ -73,12 +98,15 @@ export function buildPersistedChatMessages(
 		const textParts = msg.parts.filter((part) => part.type === 'text');
 		const content = textParts
 			.map((part) => (typeof part.text === 'string' ? part.text : ''))
-			.join('\n');
+			.join('\n')
+			.slice(0, MAX_PERSISTED_TEXT);
+		const mutations = buildMessageCanvasMutations(messages, msg);
 		const payload: PersistedChatMessagePayload = {
 			role: msg.role,
 			content,
-			parts: msg.parts,
-			canvas_mutations: buildMessageCanvasMutations(messages, msg),
+			parts: compactParts(msg.parts),
+			canvas_mutations:
+				JSON.stringify(mutations).length <= MAX_PERSISTED_MUTATIONS_JSON ? mutations : [],
 			client_message_id: msg.id
 		};
 
