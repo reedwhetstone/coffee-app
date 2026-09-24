@@ -7,12 +7,42 @@ function canvasBlock(id: string, messageId: string, block: UIBlock): CanvasBlock
 }
 
 describe('buildActionReceipts', () => {
+	it('uses the retained canvas completion after the proposal turn was already saved', () => {
+		const savedProposal = {
+			type: 'tool-propose_action',
+			toolCallId: 'inventory',
+			state: 'output-available',
+			output: {
+				action_card: {
+					executionId: 'proposal:inventory',
+					actionType: 'add_bean_to_inventory' as const,
+					summary: 'Add bean',
+					fields: [],
+					status: 'proposed'
+				}
+			}
+		};
+		const completed: UIBlock = {
+			type: 'action-card',
+			version: 1,
+			data: { ...savedProposal.output.action_card, status: 'success', result: { id: 42 } }
+		};
+		const receipts = buildActionReceipts(
+			'proposal',
+			[savedProposal],
+			[canvasBlock('saved-canvas-action', 'proposal', completed)]
+		);
+		expect(receipts).toHaveLength(1);
+		expect(receipts[0].block.data.status).toBe('success');
+		expect(receipts[0].canvasBlockId).toBe('saved-canvas-action');
+	});
+
 	it('retains canvas-backed receipts for legacy messages without structured parts', () => {
 		const card: UIBlock = {
 			type: 'action-card',
 			version: 1,
 			data: {
-				actionType: 'add_bean_to_inventory',
+				actionType: 'add_bean_to_inventory' as const,
 				summary: 'Legacy inventory action',
 				fields: [],
 				status: 'success'
