@@ -112,6 +112,49 @@ export async function getConversationWorkspace(
 	};
 }
 
+type MessageHistoryPage = {
+	messages: ConversationMessage[];
+	nextBeforeSequence: number | null;
+};
+
+/** Restore older saved turns as well as the latest bounded workspace state. */
+export async function getCompleteConversationWorkspace(
+	client: ParchmentClient,
+	workspaceId: string
+) {
+	const latest = await getConversationWorkspace(client, workspaceId, 100);
+	if (latest.messages.length < 100) return latest;
+
+	const allMessages = [...latest.messages];
+	let beforeSequence = latest.messages[0].message_sequence;
+	// The installed SDK's raw client forwards the same session credential. Its
+	// generated schema will include this path when the companion API ships.
+	const getHistory = client.raw.GET as unknown as (
+		path: string,
+		options: {
+			params: {
+				path: { workspaceId: string };
+				query: { beforeSequence: number; messageLimit: number };
+			};
+		}
+	) => Promise<ApiResult<{ data: MessageHistoryPage }>>;
+	while (true) {
+		const result = await getHistory('/v1/conversation/workspaces/{workspaceId}/messages/history', {
+			params: { path: { workspaceId }, query: { beforeSequence, messageLimit: 100 } }
+		});
+		// Safe deployment order: until the new API route is live, show the latest
+		// 100 turns instead of making the entire chat unavailable.
+		if (result.response.status === 404) return latest;
+		const page = unwrap(result).data;
+		allMessages.unshift(...page.messages.map(legacyMessage));
+		if (page.nextBeforeSequence === null) break;
+		if (page.nextBeforeSequence >= beforeSequence || page.messages.length === 0)
+			throw new Error('Conversation history cursor did not advance');
+		beforeSequence = page.nextBeforeSequence;
+	}
+	return { workspace: latest.workspace, messages: allMessages };
+}
+
 export async function updateConversationWorkspace(
 	client: ParchmentClient,
 	workspaceId: string,

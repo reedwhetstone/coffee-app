@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireChatAccess } from '$lib/server/auth';
 import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 import {
-	getConversationWorkspace,
+	getCompleteConversationWorkspace,
 	legacyConversationError,
 	ParchmentConversationError,
 	updateConversationWorkspace
@@ -35,7 +35,7 @@ export const GET: RequestHandler = async (event) => {
 	try {
 		await requireChatAccess(event);
 		const client = await createParchmentServerClient(event, { mode: 'session' });
-		return json(await getConversationWorkspace(client, event.params.id, 50));
+		return json(await getCompleteConversationWorkspace(client, event.params.id));
 	} catch (error) {
 		return failure(error);
 	}

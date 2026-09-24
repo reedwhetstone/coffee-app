@@ -3,7 +3,7 @@ import type { Workspace, WorkspaceMessage } from '$lib/stores/workspaceStore.sve
 import { getPageAuthState } from '$lib/server/pageAuth';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import {
-	getConversationWorkspace,
+	getCompleteConversationWorkspace,
 	getOrCreateConversationWorkspace
 } from '$lib/server/parchmentConversation';
 import type { PageServerLoad } from './$types';
@@ -23,7 +23,7 @@ async function loadInitialWorkspaceData(
 			title: 'Coffee',
 			type: 'general'
 		})) as Workspace;
-		const state = await getConversationWorkspace(client, canonical.id, 50);
+		const state = await getCompleteConversationWorkspace(client, canonical.id);
 		return {
 			workspaces: [state.workspace as Workspace],
 			workspace: state.workspace as Workspace,
