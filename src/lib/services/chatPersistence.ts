@@ -37,7 +37,7 @@ const MAX_PERSISTED_MUTATIONS_JSON = 60_000;
 
 function compactParts(parts: ChatPersistencePart[]): ChatPersistencePart[] {
 	if (JSON.stringify(parts).length <= MAX_PERSISTED_PARTS_JSON) return parts;
-	return parts.map((part) => {
+	const compacted = parts.map((part) => {
 		if (part.type === 'text') {
 			return { ...part, text: String(part.text ?? '').slice(0, MAX_PERSISTED_TEXT) };
 		}
@@ -52,6 +52,38 @@ function compactParts(parts: ChatPersistencePart[]): ChatPersistencePart[] {
 				: { summary: 'Large result is available on the canvas.' }
 		};
 	});
+	if (JSON.stringify(compacted).length <= MAX_PERSISTED_PARTS_JSON) return compacted;
+	// Multiple long text parts or a huge proposal can still exceed the cap.
+	// Preserve a readable turn and the action receipt with a hard final bound.
+	const minimal = compacted.slice(0, 100).map((part) => {
+		if (part.type === 'text')
+			return { type: 'text', text: String('text' in part ? part.text : '').slice(0, 2000) };
+		const card = (part.output as { action_card?: Record<string, unknown> } | undefined)
+			?.action_card;
+		if (!card) return { type: part.type, toolCallId: part.toolCallId, state: part.state };
+		return {
+			type: part.type,
+			toolCallId: part.toolCallId,
+			state: part.state,
+			output: {
+				action_card: {
+					executionId: card.executionId,
+					actionType: card.actionType,
+					summary: String(card.summary ?? '').slice(0, 500),
+					status: card.status,
+					fields: []
+				}
+			}
+		};
+	});
+	return JSON.stringify(minimal).length <= MAX_PERSISTED_PARTS_JSON
+		? minimal
+		: [
+				{
+					type: 'text',
+					text: 'This turn contained a large result. Its working data is on the canvas.'
+				}
+			];
 }
 
 export function buildMessageCanvasMutations(

@@ -45,6 +45,21 @@ describe('buildPersistedChatMessages', () => {
 				.executionId
 		).toBe('action-turn:proposal');
 	});
+
+	it('hard-bounds a turn with several oversized text parts', () => {
+		const [message] = buildPersistedChatMessages([
+			{
+				id: 'long-turn',
+				role: 'assistant',
+				parts: [
+					{ type: 'text', text: 'a'.repeat(130_000) },
+					{ type: 'text', text: 'b'.repeat(130_000) }
+				]
+			}
+		]);
+		expect(JSON.stringify(message.parts).length).toBeLessThan(120_000);
+		expect(message.content.length).toBeLessThanOrEqual(120_000);
+	});
 	it('omits synthetic client timestamps when messages do not carry real createdAt values', () => {
 		const payload = buildPersistedChatMessages([
 			{ id: 'msg-user', role: 'user', parts: [{ type: 'text', text: 'Find naturals' }] },
