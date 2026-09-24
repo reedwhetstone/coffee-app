@@ -536,7 +536,7 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 		);
 	});
 
-	it('persists curated final cards independently of the canvas and restores them on reload', async () => {
+	it('persists a curated canvas reference and restores its compact chat link on reload', async () => {
 		const stream = gatedResponse();
 		const endpoints = installEndpoints([stream]);
 		const mounted = mountWorkspace();
@@ -564,7 +564,7 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 		expect(screen.queryByRole('heading', { name: 'Retained Colombia' })).not.toBeInTheDocument();
 		stream.finish();
 		await waitFor(() =>
-			expect(screen.getByRole('heading', { name: 'Retained Colombia' })).toBeVisible()
+			expect(screen.getByRole('region', { name: 'Coffee results' })).toBeVisible()
 		);
 		await waitFor(() => expect(endpoints.saved).toHaveLength(1), { timeout: 2000 });
 		const saved = endpoints.saved[0];
@@ -572,12 +572,9 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 		canvasStore.resetAll();
 		mountWorkspace(restoreRows(saved));
 		await waitFor(() =>
-			expect(screen.getByRole('heading', { name: 'Retained Colombia' })).toBeVisible()
+			expect(screen.getByRole('region', { name: 'Coffee results' })).toBeVisible()
 		);
-		expect(screen.getByText('Selected for your request')).toBeVisible();
-		expect(
-			screen.getByRole('button', { name: 'View details for Retained Colombia' })
-		).toBeEnabled();
+		expect(screen.queryByRole('heading', { name: 'Retained Colombia' })).not.toBeInTheDocument();
 	});
 
 	it('hides intermediary coffee, then stop saves a safe snapshot that reloads', async () => {
@@ -630,7 +627,7 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 		mounted.unmount();
 		mountWorkspace(restoreRows(saved));
 		await waitFor(() =>
-			expect(screen.getByRole('heading', { name: 'Retained Colombia' })).toBeVisible()
+			expect(screen.getByRole('region', { name: 'Coffee results' })).toBeVisible()
 		);
 		expect(screen.getByText(/Response stopped\./)).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: 'Open in canvas' })).not.toBeInTheDocument();
@@ -671,7 +668,7 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 		expect(new Set(endpoints.saved.flat().map((message) => message.client_message_id)).size).toBe(
 			4
 		);
-		expect(screen.getByRole('heading', { name: 'Retained Colombia' })).toBeVisible();
+		expect(screen.getByRole('region', { name: 'Coffee results' })).toBeVisible();
 	});
 
 	it('active unload saves only the unsaved finalized prefix, never the mutable new attempt', async () => {
@@ -707,6 +704,47 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 		expect(endpoints.saved).toHaveLength(0);
 		await fireEvent.click(screen.getByRole('button', { name: 'Stop response' }));
 		await waitFor(() => expect(screen.getByText(/Response stopped\./)).toBeInTheDocument());
+	});
+});
+
+describe('message save 413 recovery', () => {
+	it('splits a rejected batch and retains the turn with a compact fallback', async () => {
+		const stream = gatedResponse();
+		const endpoints = installEndpoints([stream]);
+		const originalFetch = globalThis.fetch;
+		const attempts: PersistedChatMessagePayload[][] = [];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn<typeof fetch>(async (input, init) => {
+				if (String(input).endsWith('/messages') && init?.method === 'POST') {
+					const messages = JSON.parse(String(init.body)).messages as PersistedChatMessagePayload[];
+					attempts.push(messages);
+					if (
+						messages.length > 1 ||
+						messages.some((message) => JSON.stringify(message.parts).includes('Retained Colombia'))
+					)
+						return Response.json(
+							{ error: 'Message structured data is too large' },
+							{ status: 413 }
+						);
+				}
+				return originalFetch(input, init);
+			})
+		);
+		mountWorkspace();
+		await send(stream, 'oversized-assistant');
+		emitCoffee(stream);
+		stream.emit({ type: 'text-start', id: 'answer' });
+		stream.emit({ type: 'text-delta', id: 'answer', delta: 'Found a washed coffee.' });
+		stream.emit({ type: 'text-end', id: 'answer' });
+		stream.finish();
+		await waitFor(() => expect(endpoints.saved.flat()).toHaveLength(2), { timeout: 2500 });
+		expect(attempts.some((batch) => batch.length > 1)).toBe(true);
+		expect(attempts.some((batch) => batch.length === 1 && batch[0].role === 'assistant')).toBe(
+			true
+		);
+		expect(endpoints.saved.flat()[1].content).toBe('Found a washed coffee.');
+		expect(screen.queryByText(/Conversation turns are not saving/)).not.toBeInTheDocument();
 	});
 });
 

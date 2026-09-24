@@ -13,6 +13,7 @@
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
+	import { buildActionReceipts } from '$lib/services/actionReceipts';
 	import { inlineCoffeeResults } from '$lib/services/inlineCoffeeResults';
 	import { getInterruptedTurnStatus } from './chatRecovery';
 	import type { CherryAgentName } from '$lib/cherry/identity';
@@ -30,7 +31,8 @@
 		onExecuteAction,
 		onExampleSelect,
 		onAskAgainMessage,
-		messageActionsDisabled = false
+		messageActionsDisabled = false,
+		continuationStartIndex = null
 	} = $props<{
 		agentName: CherryAgentName;
 		chat: Chat;
@@ -49,6 +51,7 @@
 		onExampleSelect: (text: string) => void;
 		onAskAgainMessage: (messageId: string) => void;
 		messageActionsDisabled?: boolean;
+		continuationStartIndex?: number | null;
 	}>();
 
 	let copiedMessageId = $state<string | null>(null);
@@ -265,7 +268,11 @@
 		<div bind:this={contentEl} class="mx-auto max-w-4xl space-y-8">
 			{#each chat.messages as message, msgIndex (message.id)}
 				{@const isLastMessage = msgIndex === chat.messages.length - 1}
-				{@const isStreaming = isLastMessage && isActive && message.role === 'assistant'}
+				{@const isStreaming =
+					isLastMessage &&
+					isActive &&
+					message.role === 'assistant' &&
+					(continuationStartIndex === null || msgIndex >= continuationStartIndex)}
 
 				{#if message.role === 'user'}
 					<!-- User message bubble -->
@@ -316,19 +323,25 @@
 
 						<!-- Action receipts stay attached to their originating turn while
 						     subsequent turns and canvas presentations change the working set. -->
-						{#each canvasStore
-							.getBlocksForMessage(message.id)
-							.filter((entry) => entry.block.type === 'action-card') as actionEntry (actionEntry.id)}
+						{#each buildActionReceipts(message.id, message.parts, canvasStore.getBlocksForMessage(message.id)) as actionEntry (actionEntry.renderKey)}
 							<div class="rounded-md border border-line bg-surface-panel/60 px-3 py-2">
 								<p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
 									Action
 								</p>
-								<GenUIBlockRenderer
-									block={actionEntry.block}
-									renderMode="chat"
-									onAction={onBlockAction}
-									canvasBlockId={actionEntry.id}
-								/>
+								{#if actionEntry.canvasBlockId}
+									<GenUIBlockRenderer
+										block={actionEntry.block}
+										renderMode="chat"
+										onAction={onBlockAction}
+										canvasBlockId={actionEntry.canvasBlockId}
+									/>
+								{:else}
+									<p class="text-sm text-ink">
+										{actionEntry.block.data.summary} · {actionEntry.block.data.status === 'success'
+											? 'Completed'
+											: 'No longer on canvas'}
+									</p>
+								{/if}
 							</div>
 						{/each}
 
@@ -507,8 +520,11 @@
 			{/each}
 
 			<!-- Keep activity visible until the assistant message owns the indicator. -->
-			{#if isActive && chat.messages[chat.messages.length - 1]?.role !== 'assistant'}
+			{#if isActive && (chat.messages[chat.messages.length - 1]?.role !== 'assistant' || (continuationStartIndex !== null && chat.messages.length <= continuationStartIndex))}
 				<div class="message-fade-in">
+					{#if continuationStartIndex !== null}<p class="mb-1 text-xs font-medium text-muted">
+							Continuing after completed action
+						</p>{/if}
 					<InlineStatusLine steps={[]} isActive={true} />
 				</div>
 			{/if}

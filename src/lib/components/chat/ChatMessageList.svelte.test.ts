@@ -19,7 +19,8 @@ function props(messages: Array<Record<string, unknown>> = []) {
 		onExecuteAction: vi.fn(),
 		onExampleSelect: vi.fn(),
 		onAskAgainMessage: vi.fn(),
-		messageActionsDisabled: false
+		messageActionsDisabled: false,
+		continuationStartIndex: null as number | null
 	};
 }
 
@@ -79,6 +80,45 @@ describe('ChatMessageList conversation controls', () => {
 			type: 'focus-canvas-block',
 			blockId: actionId
 		});
+	});
+
+	it('keeps the completed action receipt visible after its canvas item is removed', () => {
+		const message = {
+			id: 'assistant-action',
+			role: 'assistant',
+			parts: [
+				{
+					type: 'tool-propose_action',
+					toolCallId: 'inventory',
+					state: 'output-available',
+					output: {
+						action_card: {
+							executionId: 'assistant-action:inventory',
+							actionType: 'add_bean_to_inventory',
+							summary: 'Add Banko Gotiti',
+							fields: [],
+							status: 'success'
+						}
+					}
+				}
+			]
+		};
+		render(ChatMessageList, props([message]));
+		expect(screen.getByText('Add Banko Gotiti · Completed')).toBeVisible();
+	});
+
+	it('shows a separate continuation activity row before the next assistant turn starts', () => {
+		const componentProps = props([
+			{
+				id: 'assistant-action',
+				role: 'assistant',
+				parts: [{ type: 'text', text: 'Action queued.' }]
+			}
+		]);
+		componentProps.isActive = true;
+		componentProps.continuationStartIndex = 1;
+		render(ChatMessageList, componentProps);
+		expect(screen.getByText('Continuing after completed action')).toBeVisible();
 	});
 
 	it('shows four compact starter prompts', () => {
@@ -197,7 +237,7 @@ describe('ChatMessageList conversation controls', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: /Batch 42/ }));
 		await fireEvent.click(screen.getByRole('button', { name: /Roast #42 chart/ }));
-		await fireEvent.click(screen.getByRole('button', { name: 'Open in canvas' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'View 1 coffee on canvas' }));
 
 		expect(componentProps.onBlockAction.mock.calls).toEqual([
 			[{ type: 'focus-canvas-block', blockId: roastId }],
@@ -230,7 +270,7 @@ describe('ChatMessageList conversation controls', () => {
 
 		render(ChatMessageList, props(messages));
 
-		expect(screen.getByRole('button', { name: 'View details for Older coffee' })).toBeEnabled();
+		expect(screen.getByText('1 coffee · No longer on canvas')).toBeVisible();
 		expect(screen.queryByRole('button', { name: 'Open in canvas' })).not.toBeInTheDocument();
 	});
 

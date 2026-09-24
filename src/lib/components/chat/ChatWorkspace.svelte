@@ -21,7 +21,10 @@
 		queueCanvasUnloadSave,
 		replayPendingCanvasSaves
 	} from '$lib/services/canvasUnloadPersistence';
-	import { buildPersistedChatMessages } from '$lib/services/chatPersistence';
+	import {
+		buildPersistedChatMessages,
+		compactPersistedMessageForRetry
+	} from '$lib/services/chatPersistence';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
 	import { getSuggestions } from '$lib/services/suggestionEngine';
 	import { matchSlashCommand, getSlashCompletions } from '$lib/services/slashCommands';
@@ -30,6 +33,7 @@
 	import { onMount, tick } from 'svelte';
 	import {
 		workspaceStore,
+		MessageSaveError,
 		type Workspace,
 		type WorkspaceMessage
 	} from '$lib/stores/workspaceStore.svelte';
@@ -338,7 +342,7 @@
 	function noteDraftInput() {
 		draftEditedSinceSubmission = true;
 	}
-	let messageCountBeforeSubmission: number | null = null;
+	let messageCountBeforeSubmission = $state<number | null>(null);
 	let allowInterruptedRetention = true;
 	let canvasPersistError = $state<string | null>(null);
 	let messagePersistError = $state<string | null>(null);
@@ -854,14 +858,41 @@
 	) {
 		// Save new messages (ones not yet persisted)
 		const savedCount = workspaceStore.getSavedMessageCount(wsId);
-		const newMessages = chat.messages.slice(savedCount);
-		if (newMessages.length > 0) {
-			const messagesSaved = await workspaceStore.saveMessages(
-				wsId,
-				buildPersistedChatMessages(newMessages)
-			);
-			if (!messagesSaved) throw new Error('Failed to persist messages');
+		const newMessages = buildPersistedChatMessages(chat.messages.slice(savedCount));
+		async function saveBatch(messages: typeof newMessages, compacted = false): Promise<void> {
+			if (await workspaceStore.saveMessages(wsId, messages)) return;
+			const failure =
+				workspaceStore.getMessageSaveFailure(wsId) ?? new Error('Failed to persist messages');
+			if (failure instanceof MessageSaveError && failure.status === 413) {
+				if (messages.length > 1) {
+					const midpoint = Math.floor(messages.length / 2);
+					await saveBatch(messages.slice(0, midpoint));
+					await saveBatch(messages.slice(midpoint));
+					return;
+				}
+				if (!compacted) {
+					await saveBatch([compactPersistedMessageForRetry(messages[0])], true);
+					return;
+				}
+			}
+			throw failure;
 		}
+		// A long action chain can create many large tool results before the debounce
+		// fires. Append bounded batches so one oversized request cannot strand all
+		// subsequent turns. The store advances its saved count after each success.
+		let batch: typeof newMessages = [];
+		let batchSize = 0;
+		for (const message of newMessages) {
+			const messageSize = JSON.stringify(message).length;
+			if (batch.length && (batch.length >= 10 || batchSize + messageSize > 500_000)) {
+				await saveBatch(batch);
+				batch = [];
+				batchSize = 0;
+			}
+			batch.push(message);
+			batchSize += messageSize;
+		}
+		if (batch.length) await saveBatch(batch);
 
 		// Save canvas state (layout, order, pinned, minimized, focus, titles)
 		const canvasSaved = await workspaceStore.saveCanvasState(wsId, canvasStatePayload);
@@ -897,6 +928,11 @@
 					messagePersistError = null;
 				},
 				(error: unknown) => {
+					if (error instanceof MessageSaveError && error.status === 413) {
+						messagePersistError =
+							'This conversation turn was rejected as too large, even after reducing it. Export the conversation before leaving this page.';
+						return;
+					}
 					if (error instanceof CanvasSaveError && !error.retryable) {
 						lastPersistedMessageCount = count;
 						messagePersistRetryAttempt = 0;
@@ -1310,6 +1346,33 @@
 	}
 
 	// ─── Action Card Execution ───────────────────────────────────────────────
+	function markChatActionCompleted(executionId: string, result: unknown) {
+		chat.messages = chat.messages.map((message) => ({
+			...message,
+			parts: message.parts.map((part) => {
+				const output = 'output' in part ? part.output : undefined;
+				const card =
+					output && typeof output === 'object' && 'action_card' in output
+						? output.action_card
+						: undefined;
+				if (
+					!card ||
+					typeof card !== 'object' ||
+					!('executionId' in card) ||
+					card.executionId !== executionId
+				)
+					return part;
+				return {
+					...part,
+					output: {
+						...(output as Record<string, unknown>),
+						action_card: { ...card, status: 'success', result }
+					}
+				} as typeof part;
+			})
+		}));
+	}
+
 	async function executeAction(
 		executionId: string,
 		actionType: string,
@@ -1352,6 +1415,7 @@
 			}
 
 			const result = await response.json();
+			markChatActionCompleted(executionId, result);
 			if (blockId) {
 				canvasStore.dispatch({
 					type: 'update-action',
@@ -1699,6 +1763,9 @@
 					{agentName}
 					{chat}
 					{isActive}
+					continuationStartIndex={activeContinuationExecutionId
+						? messageCountBeforeSubmission
+						: null}
 					{canUseMallardWorkspaces}
 					bind:containerEl={chatContainer}
 					bind:contentEl={chatContent}
@@ -1728,35 +1795,19 @@
 						: ''}</span
 				>
 			</div>
-			{#if pendingCanvasActions.length > 0}
-				<div
-					class="shrink-0 border-t border-line bg-surface-panel/60 px-4 py-2"
-					aria-label="Actions needing attention"
-				>
-					<p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
-						Actions needing attention
-					</p>
-					<div class="flex gap-2 overflow-x-auto">
-						{#each pendingCanvasActions as entry (entry.id)}
-							<button
-								type="button"
-								onclick={() => handleBlockAction({ type: 'focus-canvas-block', blockId: entry.id })}
-								class="min-h-9 shrink-0 rounded-md border border-warning/40 bg-warning-subtle px-3 text-left text-xs font-medium text-ink hover:border-warning focus-visible:ring-2 focus-visible:ring-accent"
-							>
-								{entry.block.type === 'action-card' ? entry.block.data.summary : ''} · {entry.block
-									.type === 'action-card' && entry.block.data.status === 'failed'
-									? 'Review failure'
-									: 'Review action'}
-							</button>
-						{/each}
-					</div>
-				</div>
-			{/if}
 			<ChatComposer
 				{agentName}
 				bind:inputMessage
 				{isActive}
 				{isClearing}
+				pendingActionTabs={pendingCanvasActions
+					.filter((entry) => entry.block.type === 'action-card')
+					.map((entry) => ({
+						id: entry.id,
+						summary: entry.block.type === 'action-card' ? entry.block.data.summary : '',
+						failed: entry.block.type === 'action-card' && entry.block.data.status === 'failed'
+					}))}
+				onOpenPendingAction={(id) => handleBlockAction({ type: 'focus-canvas-block', blockId: id })}
 				onDraftInput={noteDraftInput}
 				actions={variant === 'page' ? workspaceActions : undefined}
 				{suggestions}

@@ -15,6 +15,11 @@
 		id: string;
 		title: string;
 	}
+	interface PendingActionTab {
+		id: string;
+		summary: string;
+		failed: boolean;
+	}
 
 	let {
 		agentName,
@@ -41,7 +46,9 @@
 		attachmentUploading = false,
 		canAttachReferences = false,
 		onAttachFile,
-		onRemoveAttachment
+		onRemoveAttachment,
+		pendingActionTabs = [],
+		onOpenPendingAction
 	} = $props<{
 		agentName: CherryAgentName;
 		inputMessage?: string;
@@ -68,6 +75,8 @@
 		canAttachReferences?: boolean;
 		onAttachFile?: (file: File) => void;
 		onRemoveAttachment?: () => void;
+		pendingActionTabs?: PendingActionTab[];
+		onOpenPendingAction?: (id: string) => void;
 	}>();
 
 	function handleSubmit(event: Event) {
@@ -176,6 +185,26 @@
 		</div>
 	{/if}
 	<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
+		{#if pendingActionTabs.length > 0}
+			<nav
+				aria-label="Actions needing attention"
+				class="relative z-10 -mb-px ml-2 flex max-w-[calc(100%-1rem)] gap-1 overflow-x-auto"
+			>
+				{#each pendingActionTabs as action (action.id)}
+					<button
+						type="button"
+						onclick={() => onOpenPendingAction?.(action.id)}
+						class="flex min-h-9 max-w-72 shrink-0 items-center gap-2 rounded-t-lg border border-b-0 border-warning/50 bg-warning-subtle px-3 text-xs font-medium text-ink hover:border-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+					>
+						<span aria-hidden="true" class="text-warning">●</span>
+						<span class="truncate">{action.summary}</span>
+						<span class="shrink-0 text-muted"
+							>{action.failed ? 'Review failure' : 'Review action'} ↗</span
+						>
+					</button>
+				{/each}
+			</nav>
+		{/if}
 		{#if referenceAttachment || attachmentUploading}
 			<div
 				class="mb-2 flex min-h-10 items-center gap-2 rounded-lg border border-line bg-surface-panel px-3 py-2 text-xs text-muted"
