@@ -194,12 +194,14 @@
       currently open coffee-scraper PR #370 rather than leaving a conflicted branch as
       an implicit task.
 
-- [ ] **Productize safe agent workflows.** Finish the conversation-first chat and
-      evidence-shelf direction, keep structured write proposals behind explicit user
-      confirmation, align tools with published SDK/CLI contracts, and render citations
-      and trust classes consistently. Plans:
-      `notes/implementation-plans/2026-07-13-chat-conversation-first-redesign.md`
-      and `notes/implementation-plans/2026-07-14-active-scene-evidence-shelf.md`.
+- [ ] **Overhaul Cherry AI as a connected Purveyors experience.** Restore continuous
+      live activity and verify streaming timing; make answers useful inline with
+      grounded coffee/data references; integrate the conversation, composer, and
+      evidence workspace. Preserve confirmed actions, canonical SDK/API ownership,
+      pins, historical evidence, and mobile task parity. September 11 intake extends
+      the shipped conversation-first and active-scene work; the observed timing
+      regression is not yet attributed to the thin BFF. Plan:
+      [Cherry AI overhaul](implementation-plans/2026-09-11-cherry-agent-overhaul.md).
 
 ## P3: Strengthen Mallard Studio and product quality
 

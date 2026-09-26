@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getPageAuthState } from './pageAuth';
+import { getPageAuthState, requirePageSession } from './pageAuth';
 import type { RequestPrincipal, SessionPrincipal } from './principal';
 import type { Session, User } from '@supabase/supabase-js';
 
@@ -42,5 +42,35 @@ describe('getPageAuthState', () => {
 			user,
 			role: 'member'
 		});
+	});
+});
+
+describe('requirePageSession', () => {
+	it('redirects anonymous page requests', () => {
+		expect(() => requirePageSession(anonymousPrincipal)).toThrow(
+			expect.objectContaining({ status: 303, location: '/' })
+		);
+	});
+
+	it('returns a narrowed cookie-session auth state', () => {
+		const session = { access_token: 'cookie-token' } as Session;
+		const user = { id: 'cookie-user' } as User;
+		const authState = requirePageSession({
+			subjectType: 'user',
+			authKind: 'session',
+			source: 'cookie-session',
+			isAuthenticated: true,
+			userId: user.id,
+			session,
+			user,
+			appRoles: ['member'],
+			primaryAppRole: 'member',
+			apiPlan: 'member',
+			ppiAccess: false,
+			apiScopes: []
+		} satisfies SessionPrincipal);
+
+		expect(authState.session).toBe(session);
+		expect(authState.user).toBe(user);
 	});
 });

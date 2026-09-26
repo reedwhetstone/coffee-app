@@ -82,13 +82,9 @@ test.describe.serial('Critical business workflow', () => {
 	test('bean appears in inventory UI', async ({ page }) => {
 		expect(testBeanId).toBeTruthy();
 
-		// Set up response listener BEFORE navigation
-		const beansResponse = page.waitForResponse(
-			(resp) => resp.url().includes('/api/beans') && resp.status() === 200,
-			{ timeout: 20000 }
-		);
+		// Portfolio purchases are server-streamed; wait for the rendered result
+		// instead of a browser request that no longer occurs on this route.
 		await page.goto('/beans', { waitUntil: 'domcontentloaded' });
-		await beansResponse;
 
 		// Either a bean card or the empty state renders
 		const beanCard = page.getByRole('button', { name: /view details for/i }).first();
@@ -134,19 +130,14 @@ test.describe.serial('Critical business workflow', () => {
 	// -------------------------------------------------------------------------
 
 	test('roast page loads and renders', async ({ page }) => {
-		// Set up response listener BEFORE navigation
-		const roastResponse = page.waitForResponse(
-			(resp) => resp.url().includes('/api/roast-profiles') && resp.status() === 200,
-			{ timeout: 20000 }
-		);
+		expect(testRoastId).toBeTruthy();
+		// Roast profiles now stream from the server. Verify the created profile
+		// renders instead of waiting for an initial browser API request.
 		await page.goto('/roast', { waitUntil: 'domcontentloaded' });
 		await expect(page).toHaveURL(/roast/);
-		await roastResponse;
-
-		// Either a profile is shown or the empty-state "Browse Profiles" text
-		await expect(
-			page.getByText(new RegExp(`${testRoastName}|Browse Profiles|No Roast Profiles`, 'i')).first()
-		).toBeVisible({ timeout: 10000 });
+		await expect(page.getByText(testRoastName, { exact: true }).first()).toBeVisible({
+			timeout: 20000
+		});
 	});
 
 	// -------------------------------------------------------------------------

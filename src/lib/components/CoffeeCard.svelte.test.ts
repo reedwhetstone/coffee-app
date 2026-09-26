@@ -120,7 +120,7 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: /view details for process lot/i }));
 
-		expect(screen.getByRole('complementary', { name: /process lot/i })).toBeTruthy();
+		expect(screen.getByRole('dialog', { name: /process lot/i })).toBeTruthy();
 		expect(screen.getByRole('tab', { name: /overview/i })).toBeTruthy();
 		expect(screen.getByRole('tab', { name: /taste & process/i })).toBeTruthy();
 		expect(screen.getByText('Provenance identified')).toBeTruthy();
@@ -201,7 +201,7 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 			onDetailClose
 		});
 
-		const panel = screen.getByRole('complementary', { name: longName });
+		const panel = screen.getByRole('dialog', { name: longName });
 		const detailLayer = panel.closest('[data-coffee-detail-layer]');
 		const title = screen.getByRole('heading', { name: longName, level: 2 });
 		const closeButton = screen.getByRole('button', { name: 'Back to map' });
@@ -231,6 +231,20 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 		expect(screen.queryByRole('complementary', { name: longName })).toBeNull();
 	});
 
+	it('closes the detail sheet when Escape is pressed after focus leaves the panel', async () => {
+		const name = 'Focus-leaving coffee';
+		render(CoffeeCard, {
+			coffee: createCoffee({ name }),
+			parseTastingNotes,
+			initialDetailsOpen: true
+		});
+
+		const panel = screen.getByRole('dialog', { name });
+		await fireEvent.keyDown(window, { key: 'Escape' });
+
+		expect(panel).not.toBeInTheDocument();
+	});
+
 	it('renders page-specific detail content inside the canonical pop-out shell', async () => {
 		render(CoffeeCardDetailContentHarness, {
 			coffee: createCoffee(),
@@ -239,9 +253,85 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: /view details for process lot/i }));
 
-		expect(screen.getByRole('complementary', { name: /process lot/i })).toBeTruthy();
+		expect(screen.getByRole('dialog', { name: /process lot/i })).toBeTruthy();
 		expect(screen.getByRole('region', { name: /portfolio detail/i })).toBeTruthy();
 		expect(screen.getByText('Portfolio roast history')).toBeTruthy();
 		expect(screen.queryByRole('tab', { name: /overview/i })).toBeNull();
+	});
+});
+
+describe('catalog summary detail hydration', () => {
+	it('does not fetch collapsed cards, then hydrates a full detail once on demand', async () => {
+		const summary = {
+			...createCoffee(),
+			summarySignals: {
+				farmNotes: true,
+				roastRecommendations: true,
+				descriptions: true,
+				cuppingNotes: true
+			}
+		};
+		const loadDetails = vi
+			.fn()
+			.mockResolvedValue(createCoffee({ ai_description: 'Full demand-loaded detail' }));
+		render(CoffeeCard, { coffee: summary, parseTastingNotes, loadDetails });
+		expect(loadDetails).not.toHaveBeenCalled();
+		await fireEvent.click(screen.getByRole('button', { name: /view details for process lot/i }));
+		expect(await screen.findAllByText('Full demand-loaded detail')).not.toHaveLength(0);
+		expect(loadDetails).toHaveBeenCalledTimes(1);
+		await fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		await fireEvent.click(screen.getByRole('button', { name: /view details for process lot/i }));
+		expect(loadDetails).toHaveBeenCalledTimes(1);
+	});
+	it('loads initial deep links, exposes retry on failure, and leaves the card usable', async () => {
+		const summary = {
+			...createCoffee(),
+			summarySignals: {
+				farmNotes: false,
+				roastRecommendations: false,
+				descriptions: false,
+				cuppingNotes: false
+			}
+		};
+		const loadDetails = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('offline'))
+			.mockResolvedValue(createCoffee({ ai_description: 'Recovered details' }));
+		render(CoffeeCard, {
+			coffee: summary,
+			parseTastingNotes,
+			loadDetails,
+			initialDetailsOpen: true
+		});
+		expect(await screen.findByRole('alert')).toHaveTextContent(
+			'Coffee details could not be loaded.'
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+		expect(await screen.findAllByText('Recovered details')).not.toHaveLength(0);
+		expect(loadDetails).toHaveBeenCalledTimes(2);
+	});
+	it('cancels an unfinished request on close instead of applying late details', async () => {
+		let signal: AbortSignal | undefined;
+		const loadDetails = vi.fn((value: AbortSignal) => {
+			signal = value;
+			return new Promise<CoffeeCatalog>(() => {});
+		});
+		render(CoffeeCard, {
+			coffee: {
+				...createCoffee(),
+				summarySignals: {
+					farmNotes: false,
+					roastRecommendations: false,
+					descriptions: false,
+					cuppingNotes: false
+				}
+			},
+			parseTastingNotes,
+			loadDetails,
+			initialDetailsOpen: true
+		});
+		expect(await screen.findByRole('status')).toHaveTextContent('Loading coffee details');
+		await fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		expect(signal?.aborted).toBe(true);
 	});
 });

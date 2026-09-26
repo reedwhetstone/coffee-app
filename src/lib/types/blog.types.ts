@@ -63,7 +63,7 @@ export interface BlogPost extends Omit<BlogPostFrontmatter, 'format'> {
 export interface MarketBriefReaderSection {
 	id: string;
 	title: string;
-	kind: 'market-read' | 'take' | 'research-spotlight' | 'coffee-highlights';
+	kind: 'market-read' | 'take' | 'research-spotlight' | 'coffee-highlights' | 'sources';
 	html: string;
 }
 

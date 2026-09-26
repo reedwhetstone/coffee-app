@@ -164,3 +164,22 @@ describe('Purveyor Score', () => {
 		expect(formatPurveyorScore(summary)).toBe('Purveyor Score 72 · Strong');
 	});
 });
+
+it('preserves fallback score and confidence when summary narratives become presence signals', () => {
+	const full = createCoffee({ purveyor_score: null, purveyor_score_confidence: null });
+	const compact = {
+		...full,
+		farm_notes: undefined,
+		roast_recs: undefined,
+		description_short: undefined,
+		description_long: undefined,
+		cupping_notes: undefined,
+		summarySignals: {
+			farmNotes: !!full.farm_notes,
+			roastRecommendations: !!full.roast_recs,
+			descriptions: !!(full.description_short || full.description_long),
+			cuppingNotes: !!full.cupping_notes
+		}
+	} as unknown as CoffeeCatalog;
+	expect(calculatePurveyorScore(compact)).toEqual(calculatePurveyorScore(full));
+});

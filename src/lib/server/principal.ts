@@ -16,6 +16,8 @@ const API_PLAN_HIERARCHY: Record<ApiPlan, number> = {
 	enterprise: 2
 };
 
+export type PrincipalUser = Pick<User, 'id' | 'email'>;
+
 export interface SessionIdentity {
 	session: Session | null;
 	user: User | null;
@@ -55,7 +57,7 @@ export interface SessionPrincipal extends PrincipalBase {
 	source: 'cookie-session' | 'bearer-session';
 	isAuthenticated: true;
 	userId: string;
-	user: User;
+	user: PrincipalUser;
 	session: Session | null;
 	appRoles: UserRole[];
 	primaryAppRole: UserRole;
@@ -102,6 +104,8 @@ function normalizeScalarUserRole(role: unknown): UserRole | null {
 }
 
 interface CanonicalPrincipal {
+	// undefined means an older API; null means malformed and must fail closed.
+	sessionIdentity?: PrincipalUser | null;
 	authenticated: boolean;
 	authKind: 'anonymous' | 'session' | 'api-key';
 	userId: string | null;
@@ -110,6 +114,22 @@ interface CanonicalPrincipal {
 	apiPlan: ApiPlan | null;
 	ppiAccess: boolean;
 	apiScopes: string[];
+}
+
+function readSessionIdentity(data: object): PrincipalUser | null | undefined {
+	if (!('sessionIdentity' in data)) return undefined;
+	const value = data.sessionIdentity;
+	if (
+		!value ||
+		typeof value !== 'object' ||
+		!('id' in value) ||
+		typeof value.id !== 'string' ||
+		!value.id ||
+		!('email' in value) ||
+		(value.email !== null && typeof value.email !== 'string')
+	)
+		return null;
+	return { id: value.id, email: value.email ?? undefined };
 }
 
 export function getPrimaryUserRole(roles: UserRole[]): UserRole {
@@ -142,7 +162,7 @@ function createAnonymousPrincipal(): AnonymousPrincipal {
 function createSessionPrincipal(input: {
 	source: SessionPrincipal['source'];
 	session: Session | null;
-	user: User;
+	user: PrincipalUser;
 	canonical: CanonicalPrincipal;
 }): SessionPrincipal {
 	const primaryRole = input.canonical.primaryRole ?? 'viewer';
@@ -230,6 +250,7 @@ async function resolveCanonicalPrincipal(
 					: null;
 
 		return {
+			sessionIdentity: readSessionIdentity(data),
 			authenticated: data.authenticated,
 			authKind: data.authKind,
 			userId: data.userId,
@@ -290,7 +311,10 @@ export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrin
 			return event.locals.principal;
 		}
 
-		const user = await hydrateBearerUser(event, token);
+		const user =
+			canonical.sessionIdentity === undefined
+				? await hydrateBearerUser(event, token)
+				: canonical.sessionIdentity;
 		event.locals.principal =
 			user && user.id === canonical.userId
 				? createSessionPrincipal({
@@ -303,23 +327,33 @@ export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrin
 		return event.locals.principal;
 	}
 
-	const identity = await event.locals.safeGetIdentity();
-	if (identity.session && identity.user) {
-		const canonical = await resolveCanonicalPrincipal(event, identity.session.access_token);
-
-		if (
-			!canonical.authenticated ||
-			canonical.authKind !== 'session' ||
-			canonical.userId !== identity.user.id
-		) {
+	// getSession supplies a credential, never trusted identity or entitlements.
+	// Parchment verifies that credential live and owns the canonical identity.
+	const {
+		data: { session },
+		error
+	} = await event.locals.supabase.auth.getSession();
+	if (session && !error) {
+		const canonical = await resolveCanonicalPrincipal(event, session.access_token);
+		if (!canonical.authenticated || canonical.authKind !== 'session' || !canonical.userId) {
 			event.locals.principal = createAnonymousPrincipal();
 			return event.locals.principal;
 		}
 
+		let user = canonical.sessionIdentity;
+		if (user === undefined) {
+			// Rolling deployment compatibility only. Never use cookie user data.
+			const identity = await event.locals.safeGetIdentity();
+			user = identity.session?.access_token === session.access_token ? identity.user : null;
+		}
+		if (!user || user.id !== canonical.userId) {
+			event.locals.principal = createAnonymousPrincipal();
+			return event.locals.principal;
+		}
 		event.locals.principal = createSessionPrincipal({
 			source: 'cookie-session',
-			session: identity.session,
-			user: identity.user,
+			session,
+			user,
 			canonical
 		});
 		return event.locals.principal;

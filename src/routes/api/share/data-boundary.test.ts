@@ -8,7 +8,6 @@ describe('inventory share Parchment data boundary', () => {
 		const beansSource = readFileSync(resolve('src/routes/api/beans/+server.ts'), 'utf8');
 		const boundarySource = readFileSync(resolve('src/lib/server/parchmentShares.ts'), 'utf8');
 		const authSource = readFileSync(resolve('src/lib/server/auth.ts'), 'utf8');
-		const databaseTypes = readFileSync(resolve('src/lib/types/database.types.ts'), 'utf8');
 
 		expect(createSource).toContain('createParchmentInventoryShareGrant');
 		expect(beansSource).toContain('redeemParchmentInventoryShareGrant');
@@ -23,7 +22,7 @@ describe('inventory share Parchment data boundary', () => {
 		expect(boundarySource).toContain('client.inventory.shareGrants.create');
 		expect(boundarySource).toContain('client.inventory.shareGrants.redeem');
 		expect(boundarySource).not.toContain('supabase');
-		expect(databaseTypes).not.toContain('shared_links:');
+		expect(existsSync(resolve('src/lib/types/database.types.ts'))).toBe(false);
 		expect(existsSync(resolve('src/lib/server/greenCoffeeUtils.ts'))).toBe(false);
 	});
 });

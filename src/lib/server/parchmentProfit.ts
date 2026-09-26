@@ -27,6 +27,8 @@ export async function fetchParchmentProfit(
 	client: ParchmentClient
 ): Promise<ParchmentProfitProjection[]> {
 	const items = await collectOffsetPages({
+		// These BFF projections are called only after session authorization (no API-key cap).
+		pageSize: PAGE_LIMIT,
 		fetchPage: async (offset) =>
 			unwrapParchment(await client.profit.list({ limit: PAGE_LIMIT, offset })).data,
 		key: (row) => row.id

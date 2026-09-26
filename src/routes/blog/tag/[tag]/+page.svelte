@@ -2,6 +2,7 @@
 	import { newsletterName } from '$lib/newsletter';
 	import type { PageData } from './$types';
 	import MarketBriefHeroFallback from '$lib/components/blog/MarketBriefHeroFallback.svelte';
+	import BlogHeroImage from '$lib/components/blog/BlogHeroImage.svelte';
 	import { formatMarketBriefEdition } from '$lib/types/blog.types';
 
 	let { data } = $props<{ data: PageData }>();
@@ -12,10 +13,6 @@
 			month: 'long',
 			day: 'numeric'
 		});
-	}
-
-	function getHeroImage(slug: string): string {
-		return `/blog/images/${slug}/hero.webp`;
 	}
 </script>
 
@@ -39,7 +36,7 @@
 	<p class="text-muted">No posts with this tag yet.</p>
 {:else}
 	<div class="space-y-8">
-		{#each data.posts as post}
+		{#each data.posts as post, index}
 			<article
 				class="group rounded-lg border p-6 shadow-sm transition-all hover:border-accent/40 hover:shadow-md {post.format ===
 				'market-brief'
@@ -72,19 +69,19 @@
 								newsletter={post.newsletter}
 								compact
 							/>
-							<img
-								src={getHeroImage(post.slug)}
+							<BlogHeroImage
+								slug={post.slug}
 								alt={post.title}
 								class="absolute inset-0 h-full w-full object-cover"
-								onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+								eager={index === 0}
 							/>
 						</div>
 					{:else}
-						<img
-							src={getHeroImage(post.slug)}
+						<BlogHeroImage
+							slug={post.slug}
 							alt={post.title}
 							class="mb-4 aspect-[3/2] w-full rounded-md border border-line object-cover"
-							onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+							eager={index === 0}
 						/>
 					{/if}
 					<h2

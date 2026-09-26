@@ -32,7 +32,7 @@ describe('fetchParchmentSales', () => {
 		const result = await fetchParchmentSales({ sales: { list: salesList } } as never);
 
 		expect(salesList).toHaveBeenNthCalledWith(1, { limit: 200, offset: 0 });
-		expect(salesList).toHaveBeenNthCalledWith(2, { limit: 200, offset: 1 });
+		expect(salesList).toHaveBeenCalledOnce();
 		expect(result).toEqual([firstSale]);
 	});
 

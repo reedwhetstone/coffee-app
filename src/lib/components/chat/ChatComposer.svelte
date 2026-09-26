@@ -1,21 +1,33 @@
 <script lang="ts">
-	import SuggestionChips from '$lib/components/genui/SuggestionChips.svelte';
+	import type { Snippet } from 'svelte';
+	import ChatDisclosure from './ChatDisclosure.svelte';
 	import type { Suggestion } from '$lib/services/suggestionEngine';
 	import type { SlashCommand } from '$lib/services/slashCommands';
 	import type { CherryAgentName } from '$lib/cherry/identity';
 
 	interface ContextChip {
-		id: 'memory' | 'canvas' | 'page' | 'usermemory';
+		id: string;
 		label: string;
 		detail: string;
 		active: boolean;
+	}
+	interface ReferenceAttachment {
+		id: string;
+		title: string;
+	}
+	interface PendingActionTab {
+		id: string;
+		summary: string;
+		failed: boolean;
 	}
 
 	let {
 		agentName,
 		inputMessage = $bindable(''),
 		isActive,
-		canUseMallardWorkspaces,
+		isClearing = false,
+		onDraftInput,
+		actions,
 		suggestions,
 		slashCompletions,
 		chatError,
@@ -29,12 +41,21 @@
 		onStop,
 		onRetry,
 		onRetryWorkspace,
-		onDismissError
+		onDismissError,
+		referenceAttachment = null,
+		attachmentUploading = false,
+		canAttachReferences = false,
+		onAttachFile,
+		onRemoveAttachment,
+		pendingActionTabs = [],
+		onOpenPendingAction
 	} = $props<{
 		agentName: CherryAgentName;
 		inputMessage?: string;
 		isActive: boolean;
-		canUseMallardWorkspaces: boolean;
+		isClearing?: boolean;
+		onDraftInput?: () => void;
+		actions?: Snippet;
 		suggestions: Suggestion[];
 		slashCompletions: SlashCommand[];
 		chatError: string | null;
@@ -49,11 +70,19 @@
 		onRetry: () => void;
 		onRetryWorkspace: () => void;
 		onDismissError: () => void;
+		referenceAttachment?: ReferenceAttachment | null;
+		attachmentUploading?: boolean;
+		canAttachReferences?: boolean;
+		onAttachFile?: (file: File) => void;
+		onRemoveAttachment?: () => void;
+		pendingActionTabs?: PendingActionTab[];
+		onOpenPendingAction?: (id: string) => void;
 	}>();
 
 	function handleSubmit(event: Event) {
 		event.preventDefault();
-		onSend();
+		if (!isActive && !isClearing && workspaceReady && (inputMessage.trim() || referenceAttachment))
+			onSend();
 	}
 
 	// ─── Textarea autosize ─────────────────────────────────────────────────────
@@ -62,6 +91,8 @@
 	// after send, suggestion chips — also resize it back down.
 	const MAX_TEXTAREA_HEIGHT = 192; // ~8 lines
 
+	const hintId = $props.id();
+	const attachmentHintId = `${hintId}-attachment`;
 	let textareaEl = $state<HTMLTextAreaElement | null>(null);
 	let activeContextCount = $derived(contextChips.filter((chip: ContextChip) => chip.active).length);
 
@@ -90,7 +121,10 @@
 			/>
 		</svg>
 		<span class="flex-1">{chatError}</span>
-		{#if chatCanRetry}<button onclick={onRetry} class="shrink-0 font-medium underline">Retry</button
+		{#if chatCanRetry}<button
+				onclick={onRetry}
+				disabled={isActive || isClearing}
+				class="shrink-0 font-medium underline disabled:opacity-50">Retry</button
 			>{/if}
 		<button
 			onclick={onDismissError}
@@ -128,9 +162,11 @@
 {/if}
 
 <!-- Input area: keep the composer visually distinct without turning the full viewport edge into a form. -->
-<div class="bg-surface-canvas px-4 pb-4 pt-2">
+<div
+	class="shrink-0 bg-surface-canvas px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 sm:px-4"
+>
 	{#if slashCompletions.length > 0 && inputMessage.startsWith('/')}
-		<div class="mx-auto mb-2 max-w-3xl rounded-lg border border-line bg-surface-raised shadow-sm">
+		<div class="mx-auto mb-2 max-w-4xl rounded-lg border border-line bg-surface-raised shadow-sm">
 			{#each slashCompletions as cmd (cmd.name)}
 				<button
 					onclick={() => {
@@ -147,75 +183,110 @@
 				</button>
 			{/each}
 		</div>
-	{:else if !isActive && suggestions.length > 0}
-		<div class="mx-auto max-w-3xl">
-			<SuggestionChips
-				{suggestions}
-				onSelect={(text) => {
-					inputMessage = text;
-				}}
-			/>
-		</div>
 	{/if}
-	{#if contextChips.length > 0}
-		<details class="mx-auto mb-2 max-w-3xl text-xs text-muted">
-			<summary class="cursor-pointer list-none rounded-md px-1 py-1 hover:text-ink">
-				Using {activeContextCount} of {contextChips.length} context
-				{contextChips.length === 1 ? 'source' : 'sources'}
-			</summary>
-			<div class="mt-1 flex flex-wrap items-center gap-1.5" aria-label="Context sources">
-				{#each contextChips as chip (chip.id)}
+	<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
+		{#if pendingActionTabs.length > 0}
+			<nav
+				aria-label="Actions needing attention"
+				class="relative z-10 -mb-px ml-2 flex max-w-[calc(100%-1rem)] gap-1 overflow-x-auto"
+			>
+				{#each pendingActionTabs as action (action.id)}
 					<button
 						type="button"
-						onclick={() => onToggleChip?.(chip.id)}
-						title={chip.active ? chip.detail : `${chip.label} — excluded from your next message`}
-						aria-pressed={chip.active}
-						class="flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors {chip.active
-							? 'border-accent bg-accent/10 text-ink'
-							: 'border-line text-muted line-through opacity-60'}"
+						onclick={() => onOpenPendingAction?.(action.id)}
+						class="flex min-h-9 max-w-72 shrink-0 items-center gap-2 rounded-t-lg border border-b-0 border-warning/50 bg-warning-subtle px-3 text-xs font-medium text-ink hover:border-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
 					>
-						{#if chip.active}
-							<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="1.5"
-									d="M5 13l4 4L19 7"
-								/>
-							</svg>
-						{/if}
-						{chip.label}
+						<span aria-hidden="true" class="text-warning">●</span>
+						<span class="truncate">{action.summary}</span>
+						<span class="shrink-0 text-muted"
+							>{action.failed ? 'Review failure' : 'Review action'} ↗</span
+						>
 					</button>
 				{/each}
+			</nav>
+		{/if}
+		{#if referenceAttachment || attachmentUploading}
+			<div
+				class="mb-2 flex min-h-10 items-center gap-2 rounded-lg border border-line bg-surface-panel px-3 py-2 text-xs text-muted"
+			>
+				<span aria-hidden="true">↗</span>
+				<span class="min-w-0 flex-1 truncate"
+					>{attachmentUploading
+						? 'Saving Artisan file as a reference…'
+						: `${referenceAttachment?.title} · saved reference`}</span
+				>
+				{#if referenceAttachment && !attachmentUploading}<button
+						type="button"
+						class="font-semibold text-ink hover:text-accent"
+						aria-label="Remove attached reference"
+						onclick={onRemoveAttachment}>Remove</button
+					>{/if}
 			</div>
-		</details>
-	{/if}
-	<form onsubmit={handleSubmit} class="mx-auto max-w-3xl">
+		{/if}
 		<div
-			class="flex items-end gap-2 rounded-lg border border-line bg-surface-raised p-2 shadow-lg shadow-ink/5 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
+			class="flex items-end gap-2 rounded-lg border border-line bg-surface-raised p-2 shadow-sm focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
 		>
+			{#if canAttachReferences}
+				<label
+					class="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-md border border-line text-ink hover:border-accent"
+					title="Attach .alog, .alog.json, or Artisan-export .json (10 MB max)"
+				>
+					<span aria-hidden="true" class="text-xl">+</span>
+					<input
+						type="file"
+						aria-label="Attach Artisan reference file"
+						accept=".alog,.alog.json,.json"
+						class="sr-only"
+						disabled={isClearing || !workspaceReady || attachmentUploading}
+						onchange={(event) => {
+							const input = event.currentTarget as HTMLInputElement;
+							const file = input.files?.[0];
+							if (file) onAttachFile?.(file);
+							input.value = '';
+						}}
+					/>
+				</label>
+			{/if}
 			<textarea
 				bind:this={textareaEl}
 				bind:value={inputMessage}
-				placeholder={canUseMallardWorkspaces
-					? 'Analyze sourcing, portfolio, roasting, or coffee market decisions...'
-					: 'Analyze sourcing, portfolio, catalog, or coffee market decisions...'}
-				class="min-h-11 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-ink placeholder-muted focus:outline-none focus:ring-0"
+				aria-label={`Message ${agentName}`}
+				placeholder={isActive ? 'Draft your next message…' : 'Ask about coffee…'}
+				aria-describedby={canAttachReferences ? `${hintId} ${attachmentHintId}` : hintId}
+				class="min-h-11 min-w-0 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-ink placeholder-muted focus:outline-none focus:ring-0"
 				rows="1"
-				disabled={isActive || !workspaceReady}
+				disabled={isClearing || !workspaceReady}
+				oninput={onDraftInput}
 				onkeydown={(e) => {
-					if (e.key === 'Enter' && !e.shiftKey) {
+					if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
 						e.preventDefault();
-						onSend();
+						if (
+							!isActive &&
+							!isClearing &&
+							workspaceReady &&
+							(inputMessage.trim() || referenceAttachment)
+						)
+							onSend();
 					}
 				}}
 			></textarea>
 			<button
 				type={isActive ? 'button' : 'submit'}
-				onclick={isActive ? onStop : undefined}
-				disabled={!isActive && (!workspaceReady || !inputMessage.trim())}
+				onclick={isActive
+					? (event) => {
+							// Stop can settle synchronously and turn this control into Send
+							// before the browser performs the click's default form action.
+							event.preventDefault();
+							onStop();
+						}
+					: undefined}
+				disabled={isClearing ||
+					(!isActive &&
+						(attachmentUploading ||
+							!workspaceReady ||
+							(!inputMessage.trim() && !referenceAttachment)))}
 				aria-label={isActive ? 'Stop response' : 'Send message'}
-				class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent text-ink transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+				class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent text-ink transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if isActive}
 					<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
@@ -237,8 +308,68 @@
 				{/if}
 			</button>
 		</div>
-		<div class="mt-1.5 px-1 text-xs text-muted">
-			{agentName} · Enter to send, Shift+Enter for new line
-		</div>
+		<p id={hintId} class="sr-only">
+			{isActive
+				? 'Draft while Cherry responds. Nothing sends automatically. Shift+Enter for a new line.'
+				: 'Enter to send, Shift+Enter for new line'}
+		</p>
+		{#if canAttachReferences}
+			<p id={attachmentHintId} class="mt-1 px-1 text-xs leading-5 text-muted">
+				Attach an Artisan <span class="font-medium text-ink">.alog</span>,
+				<span class="font-medium text-ink">.alog.json</span>, or Artisan-export
+				<span class="font-medium text-ink">.json</span> file, up to 10 MB. It is saved as a reference,
+				not an executed roast.
+			</p>
+		{/if}
 	</form>
+	<div
+		class="relative mx-auto flex max-w-4xl items-center gap-1"
+		aria-label="Conversation controls"
+	>
+		{#if contextChips.length > 0}
+			<ChatDisclosure
+				label={`Context: using ${activeContextCount} of ${contextChips.length} sources`}
+			>
+				{#snippet trigger()}Context <span class="tabular-nums"
+						>{activeContextCount}/{contextChips.length}</span
+					>{/snippet}
+				<p class="px-2 py-1 text-xs font-semibold text-ink">Context for your next message</p>
+				{#each contextChips as chip (chip.id)}
+					<button
+						type="button"
+						onclick={() => onToggleChip?.(chip.id)}
+						aria-pressed={chip.active}
+						aria-label={chip.label}
+						class="flex min-h-11 w-full gap-2 rounded-md p-2 text-left text-xs hover:bg-surface-canvas focus-visible:ring-2 focus-visible:ring-accent"
+					>
+						<span aria-hidden="true" class="text-ink">{chip.active ? '✓' : '+'}</span>
+						<span class="min-w-0"
+							><span class="font-medium text-ink"
+								>{chip.label}{chip.active ? '' : ' · Excluded'}</span
+							><span class="mt-1 block whitespace-pre-wrap break-words leading-5 text-muted"
+								>{chip.detail}</span
+							></span
+						>
+					</button>
+				{/each}
+			</ChatDisclosure>
+		{/if}
+		{#if !isActive && suggestions.length > 0}
+			<ChatDisclosure label="Suggested prompts" closeOnSelect>
+				{#snippet trigger()}<span aria-hidden="true" class="text-base">✦</span>{/snippet}
+				{#each suggestions as suggestion (suggestion.label)}
+					<button
+						type="button"
+						onclick={() => {
+							inputMessage = suggestion.text;
+							textareaEl?.focus();
+						}}
+						class="min-h-11 w-full rounded-md px-2 py-2 text-left text-xs text-ink hover:bg-surface-canvas"
+						>{suggestion.label}</button
+					>
+				{/each}
+			</ChatDisclosure>
+		{/if}
+		<div class="ml-auto">{@render actions?.()}</div>
+	</div>
 </div>

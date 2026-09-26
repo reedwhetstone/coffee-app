@@ -6,6 +6,7 @@
 	import LinkedInDraft from '$lib/components/blog/LinkedInDraft.svelte';
 	import MarketBriefArticle from '$lib/components/blog/MarketBriefArticle.svelte';
 	import MarketBriefHeroFallback from '$lib/components/blog/MarketBriefHeroFallback.svelte';
+	import BlogHeroImage from '$lib/components/blog/BlogHeroImage.svelte';
 	import MarketBriefShareTools from '$lib/components/blog/MarketBriefShareTools.svelte';
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 	import MarketWireCta from '$lib/components/market-wire/MarketWireCta.svelte';
@@ -24,10 +25,6 @@
 
 	let showLinkedIn = $state(false);
 	let isMarketBrief = $derived(data.metadata.format === 'market-brief');
-
-	function getHeroImage(slug: string): string {
-		return `/blog/images/${slug}/hero.webp`;
-	}
 </script>
 
 <svelte:head>
@@ -114,19 +111,19 @@
 					edition={data.metadata.edition!}
 					newsletter={data.metadata.newsletter}
 				/>
-				<img
-					src={getHeroImage(data.metadata.slug)}
+				<BlogHeroImage
+					slug={data.metadata.slug}
 					alt={data.metadata.title}
 					class="absolute inset-0 h-full w-full object-cover"
-					onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+					eager
 				/>
 			</div>
 		{:else}
-			<img
-				src={getHeroImage(data.metadata.slug)}
+			<BlogHeroImage
+				slug={data.metadata.slug}
 				alt={data.metadata.title}
 				class="mt-6 aspect-[3/2] w-full rounded-md border border-line object-cover"
-				onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+				eager
 			/>
 		{/if}
 

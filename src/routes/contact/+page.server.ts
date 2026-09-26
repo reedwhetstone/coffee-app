@@ -28,7 +28,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			'Coffee lover, home roaster, and creator of Purveyors. With a background in engineering, product, and analytics, Reed built this platform to make sourcing incredible green coffee easier, smarter, and more fun.',
 		organization: 'Purveyors',
 		email: 'hello@purveyors.io',
-		image: `${baseUrl}/founder.JPG`,
+		image: `${baseUrl}/founder.webp`,
 		url: pageUrl,
 		expertise: [
 			'Coffee & Roasting',

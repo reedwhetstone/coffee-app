@@ -5,7 +5,6 @@
 	interface TableRoastProfile extends RoastProfile {
 		roast_duration_minutes?: number;
 		end_temperature?: number;
-		is_wholesale?: boolean;
 	}
 
 	let {

@@ -1,0 +1,33 @@
+{
+	"fixture": "Actual root +layout, /chat +page, app navigation, workspace, composer, evidence, and drawer; synthetic auth/network; no SSR or real mobile keyboard.",
+	"checks": [
+		"desktop-empty",
+		"desktop-settled",
+		"desktop-working",
+		"desktop-error",
+		"desktop-context",
+		"desktop-evidence",
+		"desktop-drawer",
+		"laptop-empty",
+		"laptop-settled",
+		"laptop-working",
+		"laptop-error",
+		"laptop-context",
+		"laptop-evidence",
+		"laptop-drawer",
+		"mobile-empty",
+		"mobile-settled",
+		"mobile-working",
+		"mobile-error",
+		"mobile-context",
+		"mobile-evidence",
+		"mobile-drawer",
+		"narrow-settled",
+		"narrow-context",
+		"narrow-drawer",
+		"reflow-settled",
+		"reflow-context",
+		"reflow-drawer"
+	],
+	"failures": []
+}

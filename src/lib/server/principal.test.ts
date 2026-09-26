@@ -46,7 +46,16 @@ function makeCookieSessionEvent() {
 			principal: undefined,
 			supabase: {
 				auth: {
-					getUser: vi.fn()
+					getUser: vi.fn(),
+					getSession: vi.fn().mockResolvedValue({
+						data: {
+							session: {
+								access_token: 'cookie-token',
+								user: { id: 'forged-cookie-id', email: 'forged@example.test' }
+							}
+						},
+						error: null
+					})
 				}
 			},
 			safeGetIdentity: vi.fn().mockResolvedValue({
@@ -342,6 +351,52 @@ describe('principal helpers', () => {
 
 		expect(second).toBe(first);
 		expect(mockMe).toHaveBeenCalledTimes(1);
+	});
+
+	it.each(['cookie', 'bearer'])(
+		'uses live canonical identity without a duplicate Auth read for %s',
+		async (source) => {
+			successfulMe({
+				...viewerProjection,
+				sessionIdentity: { id: 'user-1', email: 'verified@example.test' }
+			});
+			const event =
+				source === 'cookie' ? makeCookieSessionEvent() : makeAuthorizationEvent('session-token');
+			const p = await resolvePrincipal(event);
+			expect(p.user).toEqual({ id: 'user-1', email: 'verified@example.test' });
+			expect(event.locals.safeGetIdentity).not.toHaveBeenCalled();
+			expect(event.locals.supabase.auth.getUser).not.toHaveBeenCalled();
+			expect(mockMe).toHaveBeenCalledTimes(1);
+		}
+	);
+
+	it.each([null, { id: 'other-user', email: null }, { id: 'user-1' }, { id: 'user-1', email: 1 }])(
+		'rejects malformed or mismatched canonical identity without fallback: %j',
+		async (sessionIdentity) => {
+			successfulMe({ ...viewerProjection, sessionIdentity });
+			const event = makeCookieSessionEvent();
+			expect((await resolvePrincipal(event)).isAuthenticated).toBe(false);
+			expect(event.locals.safeGetIdentity).not.toHaveBeenCalled();
+		}
+	);
+
+	it('does not reuse canonical identity across requests or bypass revocation', async () => {
+		successfulMe({ ...viewerProjection, sessionIdentity: { id: 'user-1', email: null } });
+		expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(true);
+		successfulMe({
+			...viewerProjection,
+			authenticated: false,
+			authKind: 'anonymous',
+			userId: null
+		});
+		expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(false);
+		expect(mockMe).toHaveBeenCalledTimes(2);
+	});
+
+	it('retains live identity verification with an older API', async () => {
+		const event = makeCookieSessionEvent();
+		expect((await resolvePrincipal(event)).isAuthenticated).toBe(true);
+		expect(event.locals.safeGetIdentity).toHaveBeenCalledTimes(1);
 	});
 
 	it('enforces trusted origins for session-backed mutations only', () => {

@@ -20,20 +20,21 @@ const profitItem = {
 
 describe('fetchParchmentProfit', () => {
 	it('paginates all owner summaries using stable inventory ids', async () => {
+		const firstPage = Array.from({ length: 200 }, (_, i) => ({ ...profitItem, id: i + 10 }));
 		const secondItem = { ...profitItem, id: 8 };
 		const list = vi
 			.fn()
-			.mockResolvedValueOnce({ data: { data: [profitItem] } })
+			.mockResolvedValueOnce({ data: { data: firstPage } })
 			.mockResolvedValueOnce({ data: { data: [secondItem] } })
 			.mockResolvedValueOnce({ data: { data: [] } });
 
 		await expect(fetchParchmentProfit({ profit: { list } } as never)).resolves.toEqual([
-			profitItem,
+			...firstPage,
 			secondItem
 		]);
 		expect(list).toHaveBeenNthCalledWith(1, { limit: 200, offset: 0 });
-		expect(list).toHaveBeenNthCalledWith(2, { limit: 200, offset: 1 });
-		expect(list).toHaveBeenNthCalledWith(3, { limit: 200, offset: 2 });
+		expect(list).toHaveBeenNthCalledWith(2, { limit: 200, offset: 200 });
+		expect(list).toHaveBeenCalledTimes(2);
 	});
 
 	it('preserves legacy JSON omission for absent names and dates', async () => {

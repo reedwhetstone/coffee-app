@@ -49,6 +49,25 @@ describe('MobileOverlayShell', () => {
 		opener.remove();
 	});
 
+	it('focuses a visible summary, skips collapsed actions, and gives its disclosure Escape ownership', async () => {
+		const onClose = vi.fn();
+		render(MobileOverlayShellHarness, { open: true, disclosure: true, onClose });
+		const summary = screen.getByLabelText('Conversation controls');
+		await waitFor(() => expect(summary).toHaveFocus());
+		await fireEvent.keyDown(summary, { key: 'Tab', shiftKey: true });
+		expect(screen.getByRole('button', { name: 'Second action' })).toHaveFocus();
+		summary.focus();
+		await fireEvent.click(summary);
+		const hiddenAction = screen.getByRole('button', { name: 'Hidden action' });
+		hiddenAction.focus();
+		await fireEvent.keyDown(hiddenAction, { key: 'Escape' });
+		expect(summary.closest('details')).not.toHaveAttribute('open');
+		expect(summary).toHaveFocus();
+		expect(onClose).not.toHaveBeenCalled();
+		await fireEvent.keyDown(summary, { key: 'Escape' });
+		expect(onClose).toHaveBeenCalledOnce();
+	});
+
 	it('provides an internal scroll region for tall mobile sheet content', async () => {
 		render(MobileOverlayShellHarness, { open: true, onClose: vi.fn() });
 		await tick();

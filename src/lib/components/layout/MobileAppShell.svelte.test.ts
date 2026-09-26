@@ -59,6 +59,14 @@ describe('MobileAppShell actions launcher', () => {
 		pageState.data = {};
 	});
 
+	it('uses one chat identity and keeps app navigation without a redundant chat launcher', () => {
+		pageState.url = new URL('http://localhost/chat');
+		render(MobileAppShell, { data: auth('member', false), compactChat: true });
+		expect(screen.getByLabelText('Open app menu')).toBeTruthy();
+		expect(screen.getByLabelText('Open actions')).toBeTruthy();
+		expect(screen.queryByLabelText('Open chat')).toBeNull();
+	});
+
 	it('lets Parchment Intelligence-only viewers open portfolio actions', () => {
 		render(MobileAppShell, { data: auth('viewer', true) });
 

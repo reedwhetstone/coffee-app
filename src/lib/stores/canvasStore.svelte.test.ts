@@ -13,6 +13,39 @@ function cards(id: number): UIBlock {
 }
 
 describe('canvasStore pinning', () => {
+	it('keeps a completed action linked to its turn across an agent follow-up replacement', async () => {
+		const { canvasStore } = await loadCanvasStore();
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'first-answer',
+			block: {
+				type: 'action-card',
+				version: 1,
+				data: {
+					executionId: 'first-answer:inventory',
+					actionType: 'add_bean_to_inventory',
+					summary: 'Add bean',
+					fields: [],
+					status: 'proposed'
+				}
+			}
+		});
+		const actionId = canvasStore.blocks[0].id;
+		canvasStore.dispatch({
+			type: 'update-action',
+			blockId: actionId,
+			data: { status: 'success', result: { id: 4135 } }
+		});
+		canvasStore.dispatch(
+			{ type: 'replace', blocks: [{ block: cards(2), messageId: 'follow-up' }] },
+			'agent'
+		);
+		expect(canvasStore.getBlocksForMessage('first-answer')[0]).toMatchObject({
+			id: actionId,
+			block: { data: { status: 'success', result: { id: 4135 } } }
+		});
+		expect(canvasStore.blocks.some((block) => block.messageId === 'follow-up')).toBe(true);
+	});
 	it('persists completed action status in block state across a store remount snapshot', async () => {
 		const { canvasStore } = await loadCanvasStore();
 		canvasStore.dispatch({
@@ -44,7 +77,7 @@ describe('canvasStore pinning', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('floats pinned blocks to the front of visibleBlocks, stable otherwise', async () => {
+	it('keeps chronological order when a block is pinned', async () => {
 		const { canvasStore } = await loadCanvasStore();
 
 		canvasStore.dispatch({ type: 'add', block: cards(1), messageId: 'm1' });
@@ -56,7 +89,7 @@ describe('canvasStore pinning', () => {
 		canvasStore.dispatch({ type: 'pin', blockId: middle.id });
 
 		const order = canvasStore.visibleBlocks.map((b) => b.messageId);
-		expect(order).toEqual(['m2', 'm1', 'm3']);
+		expect(order).toEqual(['m1', 'm2', 'm3']);
 	});
 
 	it('keeps pinned blocks and drops the rest on clear', async () => {
@@ -114,7 +147,7 @@ describe('canvasStore pinning', () => {
 		expect(canvasStore.getMessageIdForBlock(removedBlockId)).toBeUndefined();
 	});
 
-	it('chooses the removal fallback from the pinned-first shelf order', async () => {
+	it('chooses the next item in chronological order after removal', async () => {
 		const { canvasStore } = await loadCanvasStore();
 
 		canvasStore.dispatch({ type: 'add', block: cards(1), messageId: 'm1' });
@@ -124,11 +157,11 @@ describe('canvasStore pinning', () => {
 		canvasStore.dispatch({ type: 'pin', blockId: pinned.id });
 		canvasStore.dispatch({ type: 'focus', blockId: pinned.id });
 
-		expect(canvasStore.visibleBlocks.map((block) => block.messageId)).toEqual(['m2', 'm1', 'm3']);
+		expect(canvasStore.visibleBlocks.map((block) => block.messageId)).toEqual(['m1', 'm2', 'm3']);
 
 		canvasStore.dispatch({ type: 'remove', blockId: pinned.id });
 
-		expect(canvasStore.focusedBlock?.messageId).toBe('m1');
+		expect(canvasStore.focusedBlock?.messageId).toBe('m3');
 	});
 });
 
@@ -231,3 +264,111 @@ describe('canvasStore agent layout suggestions (lock)', () => {
 		expect(canvasStore.layout).toBe(before);
 	});
 });
+
+describe('incoming evidence selection', () => {
+	it('retains the active scene and all proposals on agent replace/clear, while explicit user clear still works', async () => {
+		const { canvasStore } = await loadCanvasStore();
+		canvasStore.resetAll();
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'proposal',
+			block: {
+				type: 'action-card',
+				version: 1,
+				data: {
+					executionId: 'proposal:key',
+					actionType: 'record_sale',
+					summary: 'Sale',
+					fields: [],
+					status: 'proposed'
+				}
+			}
+		});
+		const proposal = canvasStore.blocks[0];
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'selected',
+			block: { type: 'coffee-cards', version: 1, data: [] }
+		});
+		const selected = canvasStore.focusBlockId;
+		canvasStore.dispatch(
+			{
+				type: 'replace',
+				blocks: [{ messageId: 'new', block: { type: 'coffee-cards', version: 1, data: [] } }]
+			},
+			'agent'
+		);
+		expect(canvasStore.blocks).toHaveLength(3);
+		expect(canvasStore.focusBlockId).toBe(selected);
+		canvasStore.dispatch({ type: 'clear' }, 'agent');
+		expect(canvasStore.blocks).toHaveLength(2);
+		expect(canvasStore.blocks.some((block) => block.id === proposal.id)).toBe(true);
+		expect(canvasStore.focusBlockId).toBe(selected);
+		canvasStore.clearAll();
+		expect(canvasStore.isEmpty).toBe(true);
+	});
+});
+
+it('retains an executing proposal through slash clear, remove, and replace until its outcome arrives', async () => {
+	const { canvasStore } = await loadCanvasStore();
+	canvasStore.dispatch({
+		type: 'add',
+		messageId: 'action',
+		block: {
+			type: 'action-card',
+			version: 1,
+			data: {
+				executionId: 'action:key',
+				actionType: 'record_sale',
+				summary: 'Sale',
+				fields: [],
+				status: 'executing'
+			}
+		}
+	});
+	const id = canvasStore.focusBlockId!;
+	canvasStore.dispatch({ type: 'add', messageId: 'other', block: cards(1) });
+	canvasStore.clearAll();
+	canvasStore.dispatch({ type: 'remove', blockId: id });
+	canvasStore.dispatch({ type: 'replace', blocks: [] });
+	expect(canvasStore.blocks.map((block) => block.id)).toEqual([id]);
+	canvasStore.dispatch({
+		type: 'update-action',
+		blockId: id,
+		data: { status: 'success', result: { id: 9 } }
+	});
+	expect(canvasStore.blocks[0].block).toMatchObject({
+		data: { status: 'success', result: { id: 9 } }
+	});
+	canvasStore.clearAll();
+	expect(canvasStore.isEmpty).toBe(true);
+});
+
+it.each(['success', 'failed'] as const)(
+	'retains a completed %s action during an agent refresh',
+	async (status) => {
+		const { canvasStore } = await loadCanvasStore();
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'action',
+			block: {
+				type: 'action-card',
+				version: 1,
+				data: {
+					executionId: `action:${status}`,
+					actionType: 'record_sale',
+					summary: 'Sale',
+					fields: [],
+					status: 'proposed'
+				}
+			}
+		});
+		const actionId = canvasStore.blocks[0].id;
+		canvasStore.dispatch({ type: 'update-action', blockId: actionId, data: { status } });
+		canvasStore.dispatch({ type: 'add', messageId: 'focused', block: cards(1) });
+
+		canvasStore.dispatch({ type: 'replace', blocks: [] }, 'agent');
+
+		expect(canvasStore.blocks.map((block) => block.messageId)).toEqual(['action', 'focused']);
+	}
+);

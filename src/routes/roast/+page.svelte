@@ -6,6 +6,7 @@
 	import RoastProfileForm from './RoastProfileForm.svelte';
 	import FormShell from '$lib/components/FormShell.svelte';
 	import MetricTile from '$lib/components/ui/MetricTile.svelte';
+	import ProfileStudio from '$lib/components/roast/ProfileStudio.svelte';
 	import OperationsHero from '$lib/components/ui/OperationsHero.svelte';
 	import { canUseMallardControls } from '$lib/services/portfolioAccess';
 
@@ -22,6 +23,8 @@
 
 	import RoastProfileTabs from './RoastProfileTabs.svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
+	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
+	import { buildRoastPageContext } from '$lib/services/roastPageContext';
 	import { prepareDateForAPI } from '$lib/utils/dates';
 
 	// Cast filtered data to the correct type for this page
@@ -53,7 +56,6 @@
 	// Page data
 	let {
 		data = {
-			data: [],
 			auth: { isSignedIn: false, user: null, role: 'viewer', ppiAccess: false }
 		}
 	} = $props<{ data?: Partial<PageData> }>();
@@ -150,16 +152,22 @@
 	}
 
 	// Unified function to sync data from API and update filter store
-	async function syncData() {
+	async function syncData(initial?: PageData['initialRoasts']) {
 		isLoading = true;
 		error = null;
 
 		try {
-			const response = await fetch('/api/roast-profiles');
-			if (!response.ok) {
-				throw new Error('Failed to fetch roast profiles');
+			let result: { data: RoastProfile[] };
+			if (initial) {
+				const loaded = await initial;
+				if (loaded.error || !loaded.data)
+					throw new Error(loaded.error ?? 'Failed to load roast profiles');
+				result = loaded.data;
+			} else {
+				const response = await fetch('/api/roast-profiles');
+				if (!response.ok) throw new Error('Failed to fetch roast profiles');
+				result = await response.json();
 			}
-			const result = await response.json();
 
 			if (result.data && Array.isArray(result.data)) {
 				clientData = result.data;
@@ -224,8 +232,8 @@
 		// Sort profiles within each batch by date (newest first)
 		Object.keys(newGroupedProfiles).forEach((batchName) => {
 			newGroupedProfiles[batchName].sort((a, b) => {
-				const dateA = new Date(a.roast_date);
-				const dateB = new Date(b.roast_date);
+				const dateA = new Date(a.roast_date ?? 0);
+				const dateB = new Date(b.roast_date ?? 0);
 				return dateB.getTime() - dateA.getTime();
 			});
 		});
@@ -276,6 +284,14 @@
 		};
 	});
 
+	// Publish the actual selection, not just the route name. Cherry receives
+	// canonical roast IDs so its read tool can retrieve the complete profiles.
+	$effect(() => {
+		const visible = isLoading ? [] : (typedFilteredData ?? []);
+		pageChatContext.set(buildRoastPageContext(visible, currentRoastProfile, isLoading));
+		return () => pageChatContext.clear();
+	});
+
 	// Effect to handle first-time expansion of batches
 	$effect(() => {
 		const batchNames = sortedBatchNames();
@@ -297,15 +313,18 @@
 	$effect(() => {
 		// Only update if we have a profile and we're not in the middle of profile selection
 		if (currentRoastProfile && !selectionState.selectionInProgress) {
+			const normalizedCoffeeId = currentRoastProfile.coffee_id ?? undefined;
+			const normalizedCoffeeName = currentRoastProfile.coffee_name ?? 'Unknown Coffee';
+
 			// Update selectedBean if it's different
 			if (
 				!selectedBean ||
-				selectedBean.id !== currentRoastProfile.coffee_id ||
-				selectedBean.name !== currentRoastProfile.coffee_name
+				selectedBean.id !== normalizedCoffeeId ||
+				selectedBean.name !== normalizedCoffeeName
 			) {
 				selectedBean = {
-					id: currentRoastProfile.coffee_id,
-					name: currentRoastProfile.coffee_name
+					id: normalizedCoffeeId,
+					name: normalizedCoffeeName
 				};
 			}
 		}
@@ -357,7 +376,7 @@
 		}
 
 		// Load roast profiles and handle URL-based profile selection
-		syncData().then(() => {
+		syncData(data.initialRoasts).then(() => {
 			setTimeout(() => {
 				const profileIdParam = page.url.searchParams.get('profileId');
 				if (profileIdParam && !currentRoastProfile) {
@@ -603,8 +622,8 @@
 
 			// Update selected bean
 			selectedBean = {
-				id: profile.coffee_id,
-				name: profile.coffee_name
+				id: profile.coffee_id ?? undefined,
+				name: profile.coffee_name ?? 'Unknown Coffee'
 			};
 
 			// Ensure the batch is expanded
@@ -996,6 +1015,12 @@
 			/>
 		</div>
 	</div>
+
+	<ProfileStudio
+		roasts={clientData}
+		enabled={canCreateRoastProfiles}
+		ownerId={data.auth?.user?.id ?? null}
+	/>
 
 	<RoastProfileTabs
 		sortedBatchNames={sortedBatchNames()}

@@ -10,7 +10,7 @@
 	import RoastChartBlock from './blocks/RoastChartBlock.svelte';
 	import ActionCardBlock from './blocks/ActionCardBlock.svelte';
 	// Preview components (chat mode)
-	import CoffeeCardPreview from './previews/CoffeeCardPreview.svelte';
+	import InlineCoffeeResults from './inline/InlineCoffeeResults.svelte';
 	import InventoryPreview from './previews/InventoryPreview.svelte';
 	import RoastProfilesPreview from './previews/RoastProfilesPreview.svelte';
 	import TastingRadarPreview from './previews/TastingRadarPreview.svelte';
@@ -39,19 +39,18 @@
 	}>();
 </script>
 
-{#if renderMode === 'chat'}
-	<!-- Chat always renders compact links into the shared canvas. Full evidence blocks
-	     live in canvas mode on every viewport. -->
+{#if renderMode === 'chat' && block.type === 'coffee-cards'}
+	<InlineCoffeeResults {block} {onAction} {canvasBlockId} />
+{:else if renderMode === 'chat'}
+	<!-- Other result families retain their compact previews until their own slice. -->
 	<fieldset
 		disabled={!canvasBlockId && block.type !== 'error'}
 		title={!canvasBlockId && block.type !== 'error'
-			? 'No longer available in the evidence workspace'
+			? 'No longer available on the canvas'
 			: undefined}
 		class="genui-preview m-0 inline-block min-w-0 border-0 p-0 disabled:cursor-default disabled:opacity-60"
 	>
-		{#if block.type === 'coffee-cards'}
-			<CoffeeCardPreview {block} {onAction} {canvasBlockId} />
-		{:else if block.type === 'inventory-table'}
+		{#if block.type === 'inventory-table'}
 			<InventoryPreview {block} {onAction} {canvasBlockId} />
 		{:else if block.type === 'roast-profiles'}
 			<RoastProfilesPreview {block} {onAction} {canvasBlockId} />

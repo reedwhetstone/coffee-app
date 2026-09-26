@@ -1,4 +1,5 @@
 import { decodeHTML } from 'entities';
+import { newsletterSupplierName } from '$lib/newsletter';
 import GithubSlugger from 'github-slugger';
 import { marked, type Token, type Tokens } from 'marked';
 
@@ -200,7 +201,13 @@ export function withStructuredMarketBriefTokens(
 		const coffees = post.coffeeHighlights.flatMap((coffee): Token[] => [
 			heading(coffee.name, 3),
 			paragraph(
-				[coffee.supplier, coffee.origin, coffee.region, coffee.process, coffee.variety]
+				[
+					newsletterSupplierName(coffee.supplier),
+					coffee.origin,
+					coffee.region,
+					coffee.process,
+					coffee.variety
+				]
 					.filter(Boolean)
 					.join(' · ')
 			),
@@ -382,7 +389,6 @@ export function buildMarketBriefReaderExport(
 		const heading = token as Tokens.Heading;
 		const title = normalizeMarketBriefSectionTitle(heading.tokens ?? []);
 		const id = slugger.slug(title);
-		if (title.toLowerCase() === 'sources') continue;
 
 		const bodyTokens: Token[] = [];
 		for (let bodyIndex = index + 1; bodyIndex < tokens.length; bodyIndex += 1) {
@@ -401,7 +407,9 @@ export function buildMarketBriefReaderExport(
 					? 'research-spotlight'
 					: normalizedTitle === 'coffee highlights'
 						? 'coffee-highlights'
-						: 'take',
+						: normalizedTitle === 'sources'
+							? 'sources'
+							: 'take',
 			html: marked.parser(bodyTokens)
 		});
 	}

@@ -1,5 +1,9 @@
 <script lang="ts">
+	import { tick } from 'svelte';
+
 	let { open = $bindable(false) } = $props<{ open?: boolean }>();
+	let dialogElement = $state<HTMLDivElement | null>(null);
+	let previouslyFocusedElement = $state<HTMLElement | null>(null);
 
 	let content = $state('');
 	let updatedAt = $state<string | null>(null);
@@ -8,6 +12,57 @@
 	let loading = $state(false);
 	let saving = $state(false);
 	let error = $state<string | null>(null);
+
+	function getFocusableElements(): HTMLElement[] {
+		if (!dialogElement) return [];
+		return Array.from(
+			dialogElement.querySelectorAll<HTMLElement>(
+				'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+			)
+		).filter((element) => !element.closest('[hidden], [inert]'));
+	}
+
+	$effect(() => {
+		if (!open || typeof document === 'undefined') return;
+		previouslyFocusedElement =
+			document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		void tick().then(() => {
+			const [firstFocusable] = getFocusableElements();
+			(firstFocusable ?? dialogElement)?.focus();
+		});
+		return () => {
+			if (previouslyFocusedElement?.isConnected) previouslyFocusedElement.focus();
+		};
+	});
+
+	function handleKeydown(event: KeyboardEvent) {
+		if (!open || event.defaultPrevented) return;
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			event.stopPropagation();
+			open = false;
+			return;
+		}
+		if (event.key !== 'Tab') return;
+		const focusableElements = getFocusableElements();
+		if (focusableElements.length === 0) {
+			event.preventDefault();
+			dialogElement?.focus();
+			return;
+		}
+		const firstFocusable = focusableElements[0];
+		const lastFocusable = focusableElements[focusableElements.length - 1];
+		const activeElement = document.activeElement;
+		if (event.shiftKey) {
+			if (activeElement === firstFocusable || activeElement === dialogElement) {
+				event.preventDefault();
+				lastFocusable.focus();
+			}
+		} else if (activeElement === lastFocusable) {
+			event.preventDefault();
+			firstFocusable.focus();
+		}
+	}
 
 	$effect(() => {
 		if (open) void loadMemory();
@@ -66,9 +121,12 @@
 {#if open}
 	<div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
 		<div
+			bind:this={dialogElement}
 			class="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-lg bg-surface-canvas shadow-xl"
 			role="dialog"
 			aria-label="Memory document"
+			tabindex="-1"
+			onkeydown={handleKeydown}
 		>
 			<div class="flex items-start justify-between border-b border-line px-5 py-3">
 				<div>

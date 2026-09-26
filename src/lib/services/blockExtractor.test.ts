@@ -218,6 +218,48 @@ describe('action-card execution identity', () => {
 			expect(block.data.executionId).toBe('assistant-original:tool-1');
 		}
 	});
+
+	it('keeps a planned-reference confirmation bound to its hidden change set', () => {
+		const changes = {
+			temperatureAdjustments: [
+				{ kind: 'bean_temperature', startMilliseconds: 300000, endMilliseconds: 420000, delta: 3 }
+			]
+		};
+		const block = extractBlockFromPart(
+			{
+				type: 'tool-save_generated_reference_profile',
+				toolName: 'save_generated_reference_profile',
+				toolCallId: 'save-plan',
+				state: 'output-available',
+				output: {
+					action_card: {
+						actionType: 'create_generated_reference',
+						summary: 'Save planned reference',
+						fields: [
+							{
+								key: 'changes',
+								label: 'Machine-readable changes',
+								value: changes,
+								type: 'hidden',
+								editable: false
+							}
+						],
+						status: 'proposed'
+					}
+				}
+			},
+			{ messageId: 'assistant-plan' }
+		);
+
+		expect(block).toMatchObject({
+			type: 'action-card',
+			data: {
+				executionId: 'assistant-plan:save-plan',
+				actionType: 'create_generated_reference',
+				fields: [{ key: 'changes', value: changes, editable: false }]
+			}
+		});
+	});
 });
 
 describe('blockExtractor market_signals support', () => {

@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { filterStore } from '$lib/stores/filterStore';
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
+	import { loadCatalogCoffeeDetail } from '$lib/catalog/loadCatalogCoffeeDetail';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { LotPriceContext, OriginPriceStats } from '$lib/catalog/priceContext';
@@ -163,6 +164,7 @@
 					{#each isSignedIn ? displayData : displayData.slice(0, 15) as coffee (catalogCoffeeCardKey(coffee))}
 						<CoffeeCard
 							{coffee}
+							loadDetails={(signal) => loadCatalogCoffeeDetail(Number(coffee.id), signal)}
 							{parseTastingNotes}
 							showSimilarComparisonAction={true}
 							{canUseBeanMatching}

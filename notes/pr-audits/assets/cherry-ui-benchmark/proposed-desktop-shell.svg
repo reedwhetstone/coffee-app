@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1366" height="768" viewBox="0 0 1366 768" role="img" aria-labelledby="title desc">
+<title id="title">Proposed Cherry desktop chat shell — audit wireframe</title><desc id="desc">A narrow left navigation rail, no full-width identity header, a readable central conversation, small local search and evidence controls, and a compact composer with context in one disclosure.</desc>
+<rect width="1366" height="768" fill="#faf8f5"/>
+<rect width="64" height="768" fill="#f0ede7"/><path d="M64 0V768" stroke="#ded9d1"/>
+<g font-family="system-ui,sans-serif" fill="#302d29">
+<circle cx="32" cy="28" r="17" fill="#f9a57b"/><text x="26" y="34" font-size="18">P</text>
+<text x="12" y="90" font-size="11">Chat</text><text x="12" y="131" font-size="11">Find</text><text x="12" y="714" font-size="11">Account</text>
+<text x="88" y="29" font-size="12" fill="#777168">Cherry · Coffee sourcing</text>
+<rect x="1094" y="8" width="70" height="30" rx="7" fill="#fff" stroke="#ded9d1"/><text x="1110" y="28" font-size="12">Search</text>
+<rect x="1174" y="8" width="106" height="30" rx="7" fill="#fff" stroke="#ded9d1"/><text x="1191" y="28" font-size="12">Evidence 3</text>
+<text x="1300" y="28" font-size="16">···</text>
+<rect x="540" y="80" width="525" height="66" rx="10" fill="#fff0e7" stroke="#f5cfb8"/>
+<text x="560" y="107" font-size="16">Compare three coffees for a sweet filter rotation</text><text x="560" y="132" font-size="16">under $10/lb.</text>
+<text x="310" y="194" font-size="12" fill="#777168">Compared 3 coffees · Show sources</text>
+<text x="310" y="235" font-size="17">Start with Colombia Huila — San Agustín.</text>
+<text x="310" y="267" font-size="16">The strongest balance of sweetness, flexibility, and price.</text>
+<text x="310" y="319" font-size="16" font-weight="600">The tradeoffs</text>
+<g fill="#fff" stroke="#ded9d1"><rect x="310" y="342" width="236" height="128" rx="8"/><rect x="560" y="342" width="236" height="128" rx="8"/><rect x="810" y="342" width="236" height="128" rx="8"/></g>
+<text x="326" y="371" font-size="14" font-weight="600">Colombia Huila</text><text x="326" y="401" font-size="14">$8.50/lb · Balanced</text><text x="326" y="446" font-size="12" fill="#93572f">Inspect coffee →</text>
+<text x="576" y="371" font-size="14" font-weight="600">Ethiopia Guji</text><text x="576" y="401" font-size="14">$9.20/lb · Fruit-forward</text><text x="576" y="446" font-size="12" fill="#93572f">Inspect coffee →</text>
+<text x="826" y="371" font-size="14" font-weight="600">Guatemala</text><text x="826" y="401" font-size="14">$7.80/lb · Value</text><text x="826" y="446" font-size="12" fill="#93572f">Inspect coffee →</text>
+<text x="310" y="505" font-size="12" fill="#777168">Retrieved for this answer. Check current availability before ordering.</text>
+<text x="310" y="545" font-size="12" fill="#777168">Copy     Ask again     Report issue</text>
+<rect x="602" y="605" width="144" height="32" rx="16" fill="#fff" stroke="#ded9d1"/><text x="624" y="626" font-size="12">↓ Latest response</text>
+<rect x="294" y="651" width="784" height="93" rx="12" fill="#fff" stroke="#d7d1c8"/>
+<text x="312" y="676" font-size="12" fill="#777168">Context: Catalog + 3 sources ▾</text>
+<text x="312" y="716" font-size="16" fill="#777168">Ask a follow-up…</text><rect x="1028" y="694" width="34" height="34" rx="7" fill="#f9a57b"/><text x="1038" y="718" font-size="21">↑</text>
+<text x="88" y="752" font-size="10" fill="#777168">PROPOSAL · Synthetic content · Not a shipped screen or measured implementation</text>
+</g>
+</svg>

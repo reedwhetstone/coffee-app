@@ -177,9 +177,13 @@
 					<div class="flex justify-center">
 						<div class="relative">
 							<img
-								src="/founder.JPG"
+								src="/founder.webp"
 								alt="Reed Whetstone, Founder of Purveyors"
 								class="h-64 w-64 rounded-2xl object-cover shadow-lg ring-4 ring-accent/20"
+								width="960"
+								height="1421"
+								fetchpriority="high"
+								decoding="async"
 							/>
 							<div
 								class="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-accent"

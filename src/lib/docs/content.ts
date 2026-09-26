@@ -1513,7 +1513,7 @@ const docsPages: DocsPage[] = [
 							'GET',
 							'Session',
 							'Internal analysis helper',
-							'Requires roastId query param. Returns sampled telemetry and metadata, not raw unbounded sensor streams.'
+							'Requires roastId query param. Returns the generated Parchment chart contract with bounded typed series, discrete events, and metadata, not raw unbounded sensor streams.'
 						],
 						[
 							'/api/roast-chart-settings',
@@ -1528,6 +1528,48 @@ const docsPages: DocsPage[] = [
 							'Session + roast:write',
 							'Internal maintenance helper',
 							'Requires roast_id query param. Forwards to the canonical Parchment API, which clears imported Artisan data and resets related fields.'
+						],
+						[
+							'/api/reference-profiles',
+							'GET POST',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'Lists owner-scoped reference profiles and accepts Artisan multipart uploads or immutable snapshots of eligible executed roasts. POST requires an Idempotency-Key.'
+						],
+						[
+							'/api/reference-profiles/compare',
+							'POST',
+							'Session + Mallard Studio',
+							'Internal analysis helper',
+							'Resolves selected executed-roast or reference-profile IDs to immutable revisions and returns a bounded measured comparison.'
+						],
+						[
+							'/api/reference-profiles/[id]/revisions/[revisionId]/chart',
+							'GET',
+							'Session + Mallard Studio',
+							'Internal UI helper',
+							'Returns the typed chart for one immutable reference revision so Profile Studio can bound and display a planned change.'
+						],
+						[
+							'/api/reference-profiles/[id]/revisions/[revisionId]/preview',
+							'POST',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'Recalculates one bounded temperature-adjustment plan from the immutable parent revision without saving it. Retries never compound an earlier preview.'
+						],
+						[
+							'/api/reference-profiles/[id]/revisions/[revisionId]/generated',
+							'POST',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'Saves the previewed change set as a generated plan, separate from executed roast history. Requires an Idempotency-Key tied to the parent revision and change set.'
+						],
+						[
+							'/api/reference-profiles/[id]/revisions/[revisionId]/export',
+							'GET',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'Downloads a saved generated plan as a private, no-store Purveyors .alog attachment. Uploaded references and executed-roast snapshots are not exported.'
 						]
 					]
 				}
@@ -1542,14 +1584,14 @@ const docsPages: DocsPage[] = [
 							'POST',
 							'Chat access session',
 							'Internal product route',
-							'Forwards an unbuffered Parchment-owned Cherry Runtime stream with workspace and page context. Coffee-app retains session admission and structured presentation.'
+							'Forwards an unbuffered Parchment-owned Cherry Runtime stream with workspace and page context. Ordinary turns carry a user message; after a confirmed action, a transport-only completedAction.executionId turn continues the trusted goal without fabricating another user message. Coffee-app retains session admission and structured presentation.'
 						],
 						[
 							'/api/chat/execute-action',
 							'POST',
 							'Browser session',
 							'Internal product route',
-							'Forwards one explicitly confirmed proposal-card action to Parchment. Parchment owns validation, entitlement and ownership checks, atomic execution, and payload-bound replay.'
+							'Forwards one explicitly confirmed proposal-card action to Parchment, including a planned-reference save with its exact parent and change set. Parchment owns validation, entitlement and ownership checks, atomic execution, and payload-bound replay; Cherry continues by the stable execution ID.'
 						],
 						[
 							'/api/workspaces',
@@ -1563,7 +1605,7 @@ const docsPages: DocsPage[] = [
 							'GET PUT',
 							'Chat access session + ownership',
 							'Internal product route',
-							'GET returns workspace details plus up to 50 messages and updates last_accessed_at. PUT updates title/type metadata. DELETE is disabled and returns 405 in the single-chat model.'
+							'GET returns workspace details and restores saved conversation history in sequence. During staggered deployment, the chat loader falls back to the latest 100 messages until the companion history route is available, then pages backward to restore the complete history. GET also updates last_accessed_at. PUT updates title/type metadata. DELETE is disabled and returns 405 in the single-chat model.'
 						],
 						[
 							'/api/workspaces/[id]/messages',
@@ -1843,7 +1885,10 @@ const docsPages: DocsPage[] = [
 					'POST /api/roast-profiles supports both single and batch creation. Batch callers retain one Idempotency-Key for the same payload until the result is definitive. The Parchment-owned database trigger recalculates stocked state in the same transaction as each roast change.',
 					'PUT /api/roast-profiles requires an id query parameter and forwards optional If-Match concurrency checks. Live curve writes replace only live temperatures plus the current event set. DELETE accepts either id or an exact batch name query parameter.',
 					'POST /api/artisan-import expects multipart form-data with file and roastId. Supported file extensions are .alog, .alog.json, and .json.',
-					'GET /api/roast-chart-data requires roastId and returns sampled telemetry tuned for charting, including performance metadata and derived ranges.',
+					'GET /api/reference-profiles lists reusable owner-scoped references. POST accepts either an Artisan multipart upload or an executed_roast JSON snapshot and requires a stable Idempotency-Key until the outcome is definitive.',
+					'POST /api/reference-profiles/compare accepts two selected IDs, resolves immutable revisions before comparison, and returns measured charge-aligned deltas. These are internal first-party BFF routes, not public /v1 API contracts.',
+					'Planned references use the revision routes under /api/reference-profiles/[id]/revisions/[revisionId]. GET chart loads the immutable parent, POST preview recalculates one bounded temperature change without saving, POST generated saves that exact change set with a stable Idempotency-Key, and GET export downloads a saved generated plan as a private, no-store .alog attachment. Only uploaded Artisan references and their generated descendants can be planned and exported.',
+					'GET /api/roast-chart-data requires roastId and forwards the generated Parchment chart model: bounded typed series, discrete events, units, and derived ranges.',
 					'DELETE /api/clear-roast requires roast_id and forwards to Parchment, which enforces ownership plus roast:write before deleting imported telemetry, events, and log rows.'
 				]
 			},
@@ -2900,7 +2945,7 @@ const docsPages: DocsPage[] = [
 				title: 'How the web app and CLI stay aligned',
 				bullets: [
 					'The app uses a session-authenticated @purveyors/sdk client to forward Parchment-owned Cherry Runtime streams without buffering. The CLI remains a separate Parchment API client and terminal surface; neither runtime imports the other.',
-					'Coffee-app still has direct Supabase paths, including some inventory, roast, sales, tasting, catalog, market, and agent helpers. Those are tracked migration debt, not evidence that the CLI is the app integration layer.',
+					'All Coffee-app product data and AI orchestration now cross Parchment contracts; Supabase is limited to browser identity and session plumbing.',
 					'Cherry read and proposal tools execute inside Parchment. Writes stay user-confirmed through proposal cards and constrained execution routes.',
 					'This API-first architecture keeps terminal, browser, and agent workflows aligned on the same contracts without runtime package coupling.'
 				],

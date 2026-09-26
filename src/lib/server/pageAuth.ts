@@ -1,10 +1,15 @@
-import type { Session, User } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
+import { redirect } from '@sveltejs/kit';
 import type { UserRole } from '$lib/types/auth.types';
-import { isCookieSessionPrincipal, type RequestPrincipal } from '$lib/server/principal';
+import {
+	isCookieSessionPrincipal,
+	type RequestPrincipal,
+	type PrincipalUser
+} from '$lib/server/principal';
 
 export function getPageAuthState(principal: RequestPrincipal): {
 	session: Session | null;
-	user: User | null;
+	user: PrincipalUser | null;
 	role: UserRole;
 } {
 	if (!isCookieSessionPrincipal(principal)) {
@@ -19,5 +24,20 @@ export function getPageAuthState(principal: RequestPrincipal): {
 		session: principal.session,
 		user: principal.user,
 		role: principal.primaryAppRole
+	};
+}
+
+/** Require a browser session for authenticated page loads. */
+export function requirePageSession(principal: RequestPrincipal, redirectTo = '/') {
+	const authState = getPageAuthState(principal);
+
+	if (!authState.session || !authState.user) {
+		throw redirect(303, redirectTo);
+	}
+
+	return {
+		...authState,
+		session: authState.session,
+		user: authState.user
 	};
 }

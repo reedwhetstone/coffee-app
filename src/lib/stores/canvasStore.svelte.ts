@@ -16,19 +16,10 @@ const blockMessageRegistry = new Map<string, string>();
 
 // ─── Derived ─────────────────────────────────────────────────────────────────
 
-// The shelf contains every retained block. Pinned blocks float to the front
-// (stable within pinned and unpinned groups) in addition to being protected
-// from clear/replace. Legacy `minimized` values are deliberately ignored: the
-// active-scene canvas has no hidden window tray, so restored evidence remains
-// reachable from the shelf.
+// Keep the sequence in which items entered the canvas. Pinning protects an
+// item from replacement but does not move it out of conversational order.
 function sortBlocksForShelf(source: CanvasBlock[]): CanvasBlock[] {
-	return source
-		.map((block, index) => ({ block, index }))
-		.sort((a, b) => {
-			if (a.block.pinned !== b.block.pinned) return a.block.pinned ? -1 : 1;
-			return a.index - b.index;
-		})
-		.map((entry) => entry.block);
+	return source.slice();
 }
 
 const visibleBlocks = $derived(sortBlocksForShelf(blocks));
@@ -56,7 +47,14 @@ function maybeAutoLayout() {
 
 // ─── Dispatch mutations ──────────────────────────────────────────────────────
 
-function dispatch(mutation: CanvasMutation) {
+function dispatch(mutation: CanvasMutation, source: 'user' | 'agent' = 'user') {
+	// Incoming presentations may refresh the shelf, but cannot discard the
+	// active scene or any proposal. Explicit user removal/clear remains separate.
+	const isExecuting = (block: CanvasBlock) =>
+		block.block.type === 'action-card' && block.block.data.status === 'executing';
+	const retainForAgent = (block: CanvasBlock) =>
+		isExecuting(block) ||
+		(source === 'agent' && (block.id === focusBlockId || block.block.type === 'action-card'));
 	switch (mutation.type) {
 		case 'add': {
 			const id = generateBlockId();
@@ -71,12 +69,13 @@ function dispatch(mutation: CanvasMutation) {
 			};
 			blocks = [...blocks, newBlock];
 			blockMessageRegistry.set(id, mutation.messageId);
-			focusBlockId = id;
+			if (source !== 'agent' || !focusBlockId) focusBlockId = id;
 			maybeAutoLayout();
 			break;
 		}
 
 		case 'remove': {
+			if (blocks.some((block) => block.id === mutation.blockId && retainForAgent(block))) break;
 			const shelfBefore = sortBlocksForShelf(blocks);
 			const removedIndex = shelfBefore.findIndex((b) => b.id === mutation.blockId);
 			blocks = blocks.filter((b) => b.id !== mutation.blockId);
@@ -107,11 +106,12 @@ function dispatch(mutation: CanvasMutation) {
 
 		case 'clear': {
 			// Keep pinned blocks
-			const pinned = blocks.filter((b) => b.pinned);
-			const removed = blocks.filter((b) => !b.pinned);
+			const pinned = blocks.filter((b) => b.pinned || retainForAgent(b));
+			const removed = blocks.filter((b) => !b.pinned && !retainForAgent(b));
 			for (const b of removed) blockMessageRegistry.delete(b.id);
 			blocks = pinned;
-			focusBlockId = pinned.length > 0 ? pinned[pinned.length - 1].id : null;
+			if (!pinned.some((b) => b.id === focusBlockId))
+				focusBlockId = pinned.length > 0 ? pinned[pinned.length - 1].id : null;
 			layoutManuallySet = false;
 			maybeAutoLayout();
 			break;
@@ -134,8 +134,8 @@ function dispatch(mutation: CanvasMutation) {
 
 		case 'replace': {
 			// Clear unpinned blocks, then add new ones
-			const pinnedBlocks = blocks.filter((b) => b.pinned);
-			for (const b of blocks.filter((b) => !b.pinned)) {
+			const pinnedBlocks = blocks.filter((b) => b.pinned || retainForAgent(b));
+			for (const b of blocks.filter((b) => !b.pinned && !retainForAgent(b))) {
 				blockMessageRegistry.delete(b.id);
 			}
 
@@ -154,7 +154,8 @@ function dispatch(mutation: CanvasMutation) {
 			});
 
 			blocks = [...pinnedBlocks, ...newBlocks];
-			focusBlockId = newBlocks.length > 0 ? newBlocks[0].id : (pinnedBlocks[0]?.id ?? null);
+			if (source !== 'agent' || !pinnedBlocks.some((b) => b.id === focusBlockId))
+				focusBlockId = newBlocks.length > 0 ? newBlocks[0].id : (pinnedBlocks[0]?.id ?? null);
 			maybeAutoLayout();
 			break;
 		}

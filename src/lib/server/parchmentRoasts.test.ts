@@ -44,20 +44,21 @@ const roast = {
 
 describe('fetchParchmentRoasts', () => {
 	it('paginates every roast using stable roast ids', async () => {
+		const firstPage = Array.from({ length: 200 }, (_, i) => ({ ...roast, roast_id: i + 10 }));
 		const secondRoast = { ...roast, roast_id: 8 };
 		const list = vi
 			.fn()
-			.mockResolvedValueOnce({ data: { data: [roast] } })
+			.mockResolvedValueOnce({ data: { data: firstPage } })
 			.mockResolvedValueOnce({ data: { data: [secondRoast] } })
 			.mockResolvedValueOnce({ data: { data: [] } });
 
 		await expect(fetchParchmentRoasts({ roasts: { list } } as never)).resolves.toEqual([
-			roast,
+			...firstPage,
 			secondRoast
 		]);
 		expect(list).toHaveBeenNthCalledWith(1, { limit: 200, offset: 0 });
-		expect(list).toHaveBeenNthCalledWith(2, { limit: 200, offset: 1 });
-		expect(list).toHaveBeenNthCalledWith(3, { limit: 200, offset: 2 });
+		expect(list).toHaveBeenNthCalledWith(2, { limit: 200, offset: 200 });
+		expect(list).toHaveBeenCalledTimes(2);
 	});
 
 	it('rejects a failed Parchment response', async () => {

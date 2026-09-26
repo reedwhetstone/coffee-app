@@ -9,6 +9,8 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { canUseMallardControls } from '$lib/services/portfolioAccess';
+	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
+	import type { PageData } from './$types';
 	import type { PageAuthView } from '$lib/types/auth.types';
 	import type { AvailableCoffee, BatchItem } from '$lib/types/component.types';
 
@@ -49,7 +51,7 @@
 	// Removed unused roastProfileData
 	let salesData = $state<SaleData[]>([]);
 	let { data = { auth: { isSignedIn: false, user: null, role: 'viewer', ppiAccess: false } } } =
-		$props<{ data?: { auth?: PageAuthView } }>();
+		$props<{ data?: Partial<PageData> & { auth?: PageAuthView } }>();
 	let canLogSales = $derived(canUseMallardControls(data.auth?.role ?? 'viewer'));
 	let isFormVisible = $derived(canLogSales && page.url.searchParams.get('modal') === 'new');
 	let selectedSale = $state<SaleData | null>(null);
@@ -92,6 +94,30 @@
 			poundsIn,
 			salesCount: salesData.length
 		};
+	});
+
+	$effect(() => {
+		const summary = profitSummary;
+		const selected = selectedSale;
+		const inView = selected
+			? [selected.green_coffee_inv_id, ...profitData.map((row) => row.id)]
+			: profitData.map((row) => row.id);
+		pageChatContext.set({
+			surface: 'profit',
+			summary:
+				profitLoadState === 'ready'
+					? `Profit workspace: ${profitData.length} coffees and ${summary.salesCount} sales in view. Revenue ${formatCurrency(summary.revenue)}, profit ${formatCurrency(summary.profit)}, margin ${formatPercent(summary.margin)}.${selected ? ` Selected sale #${selected.id} for inventory bean #${selected.green_coffee_inv_id}.` : ''}`
+					: `Profit workspace data is ${profitLoadState === 'loading' ? 'loading' : 'unavailable'}. Revenue, profit, and margin are not available.${selected ? ` Selected sale #${selected.id} for inventory bean #${selected.green_coffee_inv_id}.` : ''}`,
+			entities:
+				profitLoadState === 'ready'
+					? [...new Set(inView)].slice(0, 8).map((id) => ({
+							type: 'inventory_bean',
+							id,
+							label: profitData.find((row) => row.id === id)?.coffee_name ?? `Inventory bean #${id}`
+						}))
+					: []
+		});
+		return () => pageChatContext.clear();
 	});
 
 	// Add sales form handlers
@@ -176,12 +202,38 @@
 			profitLoadState = 'error';
 			return;
 		}
-		await fetchFormData();
 	}
 
 	// Convert onMount to use $effect
 	$effect(() => {
-		void loadProfitPageData();
+		const initial = data.initialProfit;
+		let cancelled = false;
+		if (!initial) {
+			void loadProfitPageData();
+			return;
+		}
+		profitLoadState = 'loading';
+		profitLoadError = null;
+		void initial.then(
+			(result: { data: { sales: unknown[]; profit: unknown[] } | null; error: string | null }) => {
+				if (cancelled) return;
+				if (result.error || !result.data) {
+					profitLoadState = 'error';
+					profitLoadError = result.error;
+					return;
+				}
+				salesData = result.data.sales as SaleData[];
+				profitData = result.data.profit as ProfitData[];
+				profitLoadState = 'ready';
+			}
+		);
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	$effect(() => {
+		if (isFormVisible) void fetchFormData();
 	});
 
 	// Removed unused fetchProfitData

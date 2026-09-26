@@ -1,4 +1,4 @@
-import type { Json } from '$lib/types/database.types';
+import type { Json } from '$lib/types/json.types';
 
 /**
  * A single volume pricing tier.
@@ -18,7 +18,7 @@ export interface PriceableCoffee {
 	cost_lb: number | null;
 	price_per_lb?: number | null;
 	price_tiers: Json | null;
-	wholesale: boolean;
+	wholesale?: boolean | null;
 }
 
 export interface CanonicalPriceInput {

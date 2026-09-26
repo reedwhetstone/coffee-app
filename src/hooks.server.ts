@@ -1,6 +1,5 @@
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import { createServerClient } from '@supabase/ssr';
-import type { Database } from '$lib/types/database.types';
 import { type Handle, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import {
@@ -12,22 +11,18 @@ import {
 import type { CookieSerializeOptions } from 'cookie';
 
 const handleSupabase: Handle = async ({ event, resolve }) => {
-	event.locals.supabase = createServerClient<Database>(
-		PUBLIC_SUPABASE_URL,
-		PUBLIC_SUPABASE_ANON_KEY,
-		{
-			cookies: {
-				getAll: () => event.cookies.getAll(),
-				setAll: (
-					cookiesToSet: Array<{ name: string; value: string; options: CookieSerializeOptions }>
-				) => {
-					cookiesToSet.forEach(({ name, value, options }) => {
-						event.cookies.set(name, value, { ...options, path: '/' });
-					});
-				}
+	event.locals.supabase = createServerClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+		cookies: {
+			getAll: () => event.cookies.getAll(),
+			setAll: (
+				cookiesToSet: Array<{ name: string; value: string; options: CookieSerializeOptions }>
+			) => {
+				cookiesToSet.forEach(({ name, value, options }) => {
+					event.cookies.set(name, value, { ...options, path: '/' });
+				});
 			}
 		}
-	) as unknown as App.Locals['supabase'];
+	}) as unknown as App.Locals['supabase'];
 
 	let identityPromise: Promise<SessionIdentity> | null = null;
 	event.locals.safeGetIdentity = async () => {

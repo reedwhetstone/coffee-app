@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Chat } from '@ai-sdk/svelte';
-	import SvelteMarkdown from '@humanspeak/svelte-markdown';
+	import ChatAnswerMarkdown from './ChatAnswerMarkdown.svelte';
 	import GenUIBlockRenderer from '$lib/components/genui/GenUIBlockRenderer.svelte';
 	import InlineStatusLine from '$lib/components/genui/InlineStatusLine.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
@@ -13,7 +13,11 @@
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
+	import { buildActionReceipts } from '$lib/services/actionReceipts';
+	import { inlineCoffeeResults } from '$lib/services/inlineCoffeeResults';
+	import { getInterruptedTurnStatus } from './chatRecovery';
 	import type { CherryAgentName } from '$lib/cherry/identity';
+	import { readChatRequestContext } from '$lib/cherry/requestContext';
 
 	let {
 		agentName,
@@ -21,18 +25,21 @@
 		isActive,
 		canUseMallardWorkspaces,
 		containerEl = $bindable(),
+		contentEl = $bindable(),
 		onScroll,
 		onBlockAction,
 		onExecuteAction,
 		onExampleSelect,
 		onAskAgainMessage,
-		messageActionsDisabled = false
+		messageActionsDisabled = false,
+		continuationStartIndex = null
 	} = $props<{
 		agentName: CherryAgentName;
 		chat: Chat;
 		isActive: boolean;
 		canUseMallardWorkspaces: boolean;
 		containerEl?: HTMLDivElement;
+		contentEl?: HTMLDivElement;
 		onScroll: () => void;
 		onBlockAction: (action: BlockAction) => void;
 		onExecuteAction: (
@@ -44,6 +51,7 @@
 		onExampleSelect: (text: string) => void;
 		onAskAgainMessage: (messageId: string) => void;
 		messageActionsDisabled?: boolean;
+		continuationStartIndex?: number | null;
 	}>();
 
 	let copiedMessageId = $state<string | null>(null);
@@ -133,8 +141,8 @@
 	function getMessageToolSteps(
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		parts: any[]
-	): Array<{ message: string; timestamp: Date }> {
-		const steps: Array<{ message: string; timestamp: Date }> = [];
+	): Array<{ message: string }> {
+		const steps: Array<{ message: string }> = [];
 
 		for (const part of parts) {
 			if (!part?.type?.startsWith('tool-')) continue;
@@ -143,17 +151,17 @@
 
 			// present_results gets its own step so canvas pushes are never invisible
 			if (rawName === 'present_results') {
-				if (part.state === 'output-available') {
+				if (part.state === 'input-streaming' || part.state === 'input-available') {
+					steps.push({ message: 'Preparing results…' });
+				} else if (part.state === 'output-available') {
 					const items = part.output?.presentation?.items;
 					const count = Array.isArray(items) ? items.length : 0;
 					steps.push({
-						message: `presenting ${count} item${count === 1 ? '' : 's'} to the evidence workspace`,
-						timestamp: new Date()
+						message: `presenting ${count} item${count === 1 ? '' : 's'} to the canvas`
 					});
 				} else if (part.state === 'output-error') {
 					steps.push({
-						message: `Error presenting results: ${part.errorText || 'unknown error'}`,
-						timestamp: new Date()
+						message: `Error presenting results: ${part.errorText || 'unknown error'}`
 					});
 				}
 				continue;
@@ -162,7 +170,7 @@
 			const toolName = rawName.replace(/_/g, ' ');
 
 			if (part.state === 'input-streaming' || part.state === 'input-available') {
-				steps.push({ message: `Querying ${toolName}...`, timestamp: new Date() });
+				steps.push({ message: `Querying ${toolName}...` });
 			} else if (part.state === 'output-available') {
 				const output = part.output;
 				let detail = '';
@@ -179,11 +187,10 @@
 						detail = ` — ${output.total_count} result${output.total_count === 1 ? '' : 's'}`;
 					}
 				}
-				steps.push({ message: `${toolName}${detail}`, timestamp: new Date() });
+				steps.push({ message: `${toolName}${detail}` });
 			} else if (part.state === 'output-error') {
 				steps.push({
-					message: `Error: ${part.errorText || 'unknown error'}`,
-					timestamp: new Date()
+					message: `Error: ${part.errorText || 'unknown error'}`
 				});
 			}
 		}
@@ -202,7 +209,10 @@
 	aria-relevant="additions text"
 >
 	{#if chat.messages.length === 0}
-		<div class="mx-auto flex min-h-full max-w-2xl flex-col justify-center py-10 text-center">
+		<div
+			bind:this={contentEl}
+			class="mx-auto flex min-h-full max-w-2xl flex-col justify-center py-10 text-center"
+		>
 			<p class="mb-2 text-sm font-medium text-accent">{agentName}</p>
 			<h2 class="font-serif text-2xl font-medium tracking-tight text-ink">
 				What do you need to know about green coffee?
@@ -255,20 +265,33 @@
 		</div>
 	{:else}
 		<!-- Chat messages - interleaved rendering -->
-		<div class="mx-auto max-w-3xl space-y-6">
+		<div bind:this={contentEl} class="mx-auto max-w-4xl space-y-8">
 			{#each chat.messages as message, msgIndex (message.id)}
 				{@const isLastMessage = msgIndex === chat.messages.length - 1}
-				{@const isStreaming = isLastMessage && isActive && message.role === 'assistant'}
+				{@const isStreaming =
+					isLastMessage &&
+					isActive &&
+					message.role === 'assistant' &&
+					(continuationStartIndex === null || msgIndex >= continuationStartIndex)}
 
 				{#if message.role === 'user'}
 					<!-- User message bubble -->
-					<div id="msg-{message.id}" class="message-fade-in flex justify-end">
+					<div id="msg-{message.id}" tabindex="-1" class="message-fade-in flex justify-end">
 						<div
 							class="max-w-[85%] rounded-lg border border-accent/25 bg-accent/10 px-4 py-2.5 text-ink sm:max-w-[75%]"
 						>
 							{#each message.parts as part}
 								{#if part.type === 'text'}
 									<div class="whitespace-pre-wrap">{part.text}</div>
+								{:else}
+									<!-- Request context reaches Cherry only; members see its safe label. -->
+									{@const contextLabel = readChatRequestContext(part)?.label}
+									{#if contextLabel}
+										<div class="mt-1.5 text-xs text-muted">
+											<span aria-hidden="true">↗</span>
+											{contextLabel}
+										</div>
+									{/if}
 								{/if}
 							{/each}
 						</div>
@@ -277,27 +300,81 @@
 					<!-- Assistant message -->
 					{@const hasPR = messageHasPresentResults(message.parts)}
 					{@const toolSteps = getMessageToolSteps(message.parts)}
-					{@const hasToolParts = message.parts.some((p: { type: string }) =>
-						p.type.startsWith('tool-')
-					)}
-					<div id="msg-{message.id}" class="message-fade-in w-full space-y-3">
+					{@const interruption = getInterruptedTurnStatus(message.parts)}
+					<div
+						id="msg-{message.id}"
+						tabindex="-1"
+						class="message-fade-in w-full space-y-3 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-accent"
+					>
 						<!-- Persistent accumulated status line for all tool calls -->
-						{#if hasToolParts && toolSteps.length > 0}
+						{#if isStreaming || toolSteps.length > 0}
 							<InlineStatusLine steps={toolSteps} isActive={isStreaming} />
 						{/if}
 
+						{#if interruption}
+							<p
+								class="rounded-md border border-line bg-surface-panel px-3 py-2 text-xs text-muted"
+								role="status"
+							>
+								{interruption === 'stopped' ? 'Response stopped.' : 'Response interrupted.'}
+								This answer is incomplete; any coffee results below were retrieved before it ended.
+							</p>
+						{/if}
+
+						<!-- Action receipts stay attached to their originating turn while
+						     subsequent turns and canvas presentations change the working set. -->
+						{#each buildActionReceipts(message.id, message.parts, canvasStore.getBlocksForMessage(message.id)) as actionEntry (actionEntry.renderKey)}
+							<div class="rounded-md border border-line bg-surface-panel/60 px-3 py-2">
+								<p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+									Action
+								</p>
+								{#if actionEntry.canvasBlockId}
+									<GenUIBlockRenderer
+										block={actionEntry.block}
+										renderMode="chat"
+										onAction={onBlockAction}
+										canvasBlockId={actionEntry.canvasBlockId}
+									/>
+								{:else}
+									<p class="text-sm text-ink">
+										{actionEntry.block.data.summary} · {actionEntry.block.data.status === 'success'
+											? 'Completed'
+											: 'No longer on canvas'}
+									</p>
+								{/if}
+							</div>
+						{/each}
+
 						<!-- Text parts stream in live -->
-						{#each message.parts as part}
+						{#each message.parts as part, partIndex}
 							{#if part.type === 'text' && part.text.trim()}
-								<div
-									class="prose prose-sm max-w-2xl text-ink prose-headings:text-ink prose-p:leading-7 prose-p:text-ink prose-strong:text-ink prose-ol:text-ink prose-ul:text-ink prose-li:text-ink"
-								>
-									<SvelteMarkdown source={part.text} />
-								</div>
+								<ChatAnswerMarkdown
+									source={part.text}
+									messages={chat.messages}
+									messageIndex={msgIndex}
+									{partIndex}
+								/>
 							{/if}
 						{/each}
 
-						<!-- Inline previews render after streaming completes -->
+						<!-- Settled answer cards remain readable without a canvas target. -->
+						{#if !isStreaming && (!isOldMessage(msgIndex, chat.messages.length) || expandedMessages.has(message.id))}
+							{#each inlineCoffeeResults(chat.messages, msgIndex, !!interruption) as result (result.key)}
+								{@const target = canvasStore.blocks.find(
+									(entry) =>
+										entry.messageId === message.id &&
+										blockIdentityKey(entry.block) === blockIdentityKey(result.block)
+								)}
+								<GenUIBlockRenderer
+									block={result.block}
+									renderMode="chat"
+									onAction={onBlockAction}
+									canvasBlockId={target?.id}
+								/>
+							{/each}
+						{/if}
+
+						<!-- Other previews render after streaming completes -->
 						{#if !isStreaming}
 							{@const isOld = isOldMessage(msgIndex, chat.messages.length)}
 							{@const isExpanded = expandedMessages.has(message.id)}
@@ -360,7 +437,7 @@
 											hasPR
 										)}
 										{@const block = extractBlockFromPart(toolPart, extractorOptions)}
-										{#if block}
+										{#if block && block.type !== 'coffee-cards' && block.type !== 'action-card'}
 											{@const canvasIds = _partCanvasMap.get(partIndex) ?? []}
 											<div class="preview-fade-in my-1">
 												<GenUIBlockRenderer
@@ -442,9 +519,12 @@
 				{/if}
 			{/each}
 
-			<!-- Initial loading state before any assistant message parts exist -->
-			{#if chat.status === 'submitted' && (chat.messages.length === 0 || chat.messages[chat.messages.length - 1]?.role === 'user')}
+			<!-- Keep activity visible until the assistant message owns the indicator. -->
+			{#if isActive && (chat.messages[chat.messages.length - 1]?.role !== 'assistant' || (continuationStartIndex !== null && chat.messages.length <= continuationStartIndex))}
 				<div class="message-fade-in">
+					{#if continuationStartIndex !== null}<p class="mb-1 text-xs font-medium text-muted">
+							Continuing after completed action
+						</p>{/if}
 					<InlineStatusLine steps={[]} isActive={true} />
 				</div>
 			{/if}

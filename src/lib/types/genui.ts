@@ -128,6 +128,7 @@ export type ActionType =
 	| 'add_bean_to_inventory'
 	| 'update_bean'
 	| 'create_roast_session'
+	| 'create_generated_reference'
 	| 'update_roast_notes'
 	| 'record_sale';
 

@@ -65,6 +65,14 @@ describe('analytics action context', () => {
 		).toBe('Review my tracked coffees');
 	});
 
+	it('accepts a Profile Studio comparison as a seeded Cherry investigation', () => {
+		expect(
+			readChatSeedFromSearchParams(
+				new URLSearchParams('source=profile-studio&prompt=Compare%20these%20profiles')
+			)
+		).toBe('Compare these profiles');
+	});
+
 	it('seeds chat input on analytics navigation without replaying the same seed', () => {
 		const firstSeed = applyAnalyticsSeedToInput({
 			canUseChat: true,

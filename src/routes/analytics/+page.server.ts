@@ -9,7 +9,6 @@ import {
 	createParchmentServerClient,
 	resolveCatalogCredentialMode
 } from '$lib/server/parchmentClient';
-import type { MarketIndexInsights } from '$lib/types/marketIndex.types';
 import type { ParchmentClient, components } from '@purveyors/sdk';
 
 export type { TrackedLotSummary } from '$lib/server/trackedLots';
@@ -162,7 +161,6 @@ export interface AnalyticsCharts {
 	snapshots: PriceSnapshot[];
 	processDistribution: ProcessBucket[];
 	originRangeData: OriginRangeRow[];
-	marketInsights: MarketIndexInsights;
 }
 
 /** Streamed: entitlement-gated datasets. Resolves empty (and issues no
@@ -376,7 +374,6 @@ async function loadAnalyticsCharts(
 ): Promise<AnalyticsCharts> {
 	// ADR-015 decision-surface reads (value signals, movement stats, metadata index).
 	// These remain independent SDK resources and resolve in parallel with history.
-	const marketInsightsPromise = loadMarketIndexInsights(event, { isParchmentIntelligence });
 	const snapshotWindowDays = isParchmentIntelligence ? 365 : 90;
 	const priceIndexClientPromise = createParchmentServerClient(event, { mode: 'session' });
 
@@ -388,10 +385,9 @@ async function loadAnalyticsCharts(
 			windowDays: snapshotWindowDays
 		})
 	);
-	const [{ data: overview }, snapshotsRaw, marketInsights] = await Promise.all([
+	const [{ data: overview }, snapshotsRaw] = await Promise.all([
 		marketOverviewPromise,
-		snapshotsPromise,
-		marketInsightsPromise
+		snapshotsPromise
 	]);
 
 	// Anonymous visitors render only the trend chart. Authenticated viewers receive
@@ -429,8 +425,7 @@ async function loadAnalyticsCharts(
 	return {
 		snapshots: snapshotsRaw ?? [],
 		processDistribution,
-		originRangeData,
-		marketInsights
+		originRangeData
 	};
 }
 
@@ -585,6 +580,12 @@ export const load: PageServerLoad = async (event) => {
 	// They keep their own section-level failure boundaries while the initial SSR
 	// response waits only for the overview needed to render its synchronous shell.
 	const marketOverviewPromise = loadMarketOverview(event);
+	const analyticsInsights = loadMarketIndexInsights(event, {
+		isParchmentIntelligence,
+		scope: { market: 'retail', window: '7d' },
+		signal: event.request.signal
+	});
+	analyticsInsights.catch(() => {});
 	const analyticsCharts = loadAnalyticsCharts(event, {
 		isParchmentIntelligence,
 		isAnonymous,
@@ -607,6 +608,13 @@ export const load: PageServerLoad = async (event) => {
 		watchlistPromise: analyticsWatchlist
 	});
 
+	// Observe streamed failures before awaiting the overview: these independent
+	// requests can reject while SSR is still waiting for its synchronous shell.
+	// Keep the original promises so the client still receives section-level errors.
+	analyticsCharts.catch(() => {});
+	analyticsWatchlist.catch(() => {});
+	analyticsMember.catch(() => {});
+
 	// The only awaited product-data read before the first byte is the canonical
 	// aggregate overview. Every durable market projection remains Parchment-owned.
 	const marketOverview = await marketOverviewPromise;
@@ -622,9 +630,6 @@ export const load: PageServerLoad = async (event) => {
 	// Mark server-side rejections as handled; the rejection still streams to the
 	// client, which renders a section-level error state for it.
 	analyticsCoverage.catch(() => {});
-	analyticsCharts.catch(() => {});
-	analyticsWatchlist.catch(() => {});
-	analyticsMember.catch(() => {});
 
 	const baseUrl = `${event.url.protocol}//${event.url.host}`;
 	const schemaService = createSchemaService(baseUrl);
@@ -659,6 +664,7 @@ export const load: PageServerLoad = async (event) => {
 		analyticsPreview,
 		analyticsCoverage,
 		analyticsCharts,
+		analyticsInsights,
 		analyticsWatchlist,
 		analyticsMember,
 		meta: buildPublicMeta({

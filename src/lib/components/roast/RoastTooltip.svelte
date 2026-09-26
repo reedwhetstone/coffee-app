@@ -66,26 +66,37 @@
 					</div>
 				{/if}
 
-				<!-- Temperature Data -->
-				{#if d.bean_temp !== null && d.bean_temp !== undefined}
-					<div class="flex justify-between">
-						<span class="text-muted">Bean Temp (BT):</span>
-						<span class="font-semibold text-warning">{formatTemperature(d.bean_temp)}</span>
-					</div>
-				{/if}
-
-				{#if d.environmental_temp !== null && d.environmental_temp !== undefined}
-					<div class="flex justify-between">
-						<span class="text-muted">Env Temp (ET):</span>
-						<span class="font-semibold text-danger">{formatTemperature(d.environmental_temp)}</span>
-					</div>
-				{/if}
-
-				{#if d.rorValue !== null && d.rorValue !== undefined}
-					<div class="flex justify-between">
-						<span class="text-muted">Rate of Rise:</span>
-						<span class="font-semibold text-info">{formatTemperature(d.rorValue)}/min</span>
-					</div>
+				<!-- Canonical temperature, RoR, and auxiliary series -->
+				{#if d.seriesValues?.length}
+					{#each d.seriesValues.filter((series) => !series.id.startsWith('control-')) as series}
+						<div class="flex justify-between gap-3">
+							<span class="text-muted">{series.label}:</span>
+							<span class="font-semibold text-ink">
+								{series.value.toFixed(1)}{series.unit ? ` ${series.unit}` : ''}
+							</span>
+						</div>
+					{/each}
+				{:else}
+					{#if d.bean_temp !== null && d.bean_temp !== undefined}
+						<div class="flex justify-between">
+							<span class="text-muted">Bean Temp (BT):</span>
+							<span class="font-semibold text-warning">{formatTemperature(d.bean_temp)}</span>
+						</div>
+					{/if}
+					{#if d.environmental_temp !== null && d.environmental_temp !== undefined}
+						<div class="flex justify-between">
+							<span class="text-muted">Env Temp (ET):</span>
+							<span class="font-semibold text-danger"
+								>{formatTemperature(d.environmental_temp)}</span
+							>
+						</div>
+					{/if}
+					{#if d.rorValue !== null && d.rorValue !== undefined}
+						<div class="flex justify-between">
+							<span class="text-muted">Rate of Rise:</span>
+							<span class="font-semibold text-info">{formatTemperature(d.rorValue)}/min</span>
+						</div>
+					{/if}
 				{/if}
 
 				<!-- Control Settings from Event Data -->

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Component, Snippet } from 'svelte';
+	import { detailDialog } from '$lib/utils/detailDialog';
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import SimilarCoffeePanel from '$lib/components/catalog/SimilarCoffeePanel.svelte';
 	import {
@@ -25,7 +26,7 @@
 	import { formatSourceName } from '$lib/utils/formatters';
 
 	let {
-		coffee,
+		coffee: initialCoffee,
 		parseTastingNotes,
 		compact = false,
 		highlighted = false,
@@ -38,9 +39,13 @@
 		onToggleTrack = undefined,
 		showCatalogLink = false,
 		initialDetailsOpen = false,
+		detailOnly = false,
 		detailCloseLabel = 'Close',
+		detailNotice = '',
 		onDetailClose = undefined,
-		detailContent
+		onDetailOpen = undefined,
+		detailContent,
+		loadDetails
 	} = $props<{
 		coffee: CoffeeCatalog;
 		parseTastingNotes: (tastingNotesJson: string | null | object) => TastingNotes | null;
@@ -59,12 +64,19 @@
 		showCatalogLink?: boolean;
 		/** Open the detail panel on mount (used by /catalog?coffee=<id> deep links). */
 		initialDetailsOpen?: boolean;
+		/** Reuse only the canonical sheet for a separately owned reference trigger. */
+		detailOnly?: boolean;
 		/** Optional context-specific label for leaving the detail panel. */
 		detailCloseLabel?: string;
+		/** Context about the observation shown in this detail sheet. */
+		detailNotice?: string;
 		/** Optional context owner notified after the detail panel closes. */
 		onDetailClose?: () => void;
+		/** Notify an embedding surface before opening this exact coffee snapshot. */
+		onDetailOpen?: () => void;
 		/** Optional page-specific body rendered inside the canonical detail pop-out shell. */
 		detailContent?: Snippet;
+		loadDetails?: (signal: AbortSignal) => Promise<CoffeeCatalog>;
 	}>();
 
 	function priceContextColorClass(tier: LotPriceTier): string {
@@ -123,6 +135,39 @@
 	// svelte-ignore state_referenced_locally
 	let detailsOpen = $state(initialDetailsOpen);
 	let activeTab = $state<DetailTab>('overview');
+	let hydratedCoffee = $state.raw<CoffeeCatalog | null>(null);
+	let hydratedSource = $state.raw<CoffeeCatalog | null>(null);
+	let detailsLoading = $state(false);
+	let detailsError = $state(false);
+	let detailsRetry = $state(0);
+	let coffee = $derived(
+		hydratedSource === initialCoffee && hydratedCoffee ? hydratedCoffee : initialCoffee
+	);
+
+	$effect(() => {
+		// Only catalog summary rows opt in. Other CoffeeCard consumers stay unchanged.
+		const summary = initialCoffee as CoffeeCatalog & { summarySignals?: unknown };
+		void detailsRetry;
+		if (!detailsOpen || !loadDetails || !summary.summarySignals || hydratedSource === initialCoffee)
+			return;
+		const source = initialCoffee;
+		const controller = new AbortController();
+		detailsLoading = true;
+		detailsError = false;
+		loadDetails(controller.signal)
+			.then((detail: CoffeeCatalog) => {
+				if (controller.signal.aborted) return;
+				detailsLoading = false;
+				hydratedCoffee = detail;
+				hydratedSource = source;
+			})
+			.catch(() => {
+				if (controller.signal.aborted) return;
+				detailsLoading = false;
+				detailsError = true;
+			});
+		return () => controller.abort();
+	});
 
 	$effect(() => {
 		setTimeout(async () => {
@@ -300,6 +345,7 @@
 	}
 
 	function openDetails(tab: DetailTab = 'overview') {
+		onDetailOpen?.();
 		activeTab = tab;
 		detailsOpen = true;
 	}
@@ -308,10 +354,6 @@
 		detailsOpen = false;
 		activeTab = 'overview';
 		onDetailClose?.();
-	}
-
-	function handleDialogKeydown(event: KeyboardEvent) {
-		if (detailsOpen && event.key === 'Escape') closeDetails();
 	}
 
 	function handleCardKeydown(event: KeyboardEvent) {
@@ -323,225 +365,232 @@
 	}
 </script>
 
-<svelte:window onkeydown={handleDialogKeydown} />
-
-<article
-	class="group relative flex h-full flex-col rounded-lg bg-surface-canvas p-4 text-left shadow-sm ring-1 transition-all focus-within:ring-2 focus-within:ring-accent/60 hover:shadow-md hover:ring-accent/50 {highlighted
-		? 'border-l-4 border-accent ring-accent/40'
-		: 'ring-line'} {compact ? 'gap-3' : 'gap-4'}"
->
-	{#if enableDetails}
-		<button
-			type="button"
-			class="absolute inset-0 z-0 cursor-pointer rounded-lg focus:outline-none"
-			aria-label={`View details for ${coffee.name}`}
-			onclick={() => openDetails()}
-			onkeydown={handleCardKeydown}
-		></button>
-	{/if}
-
-	<div class="pointer-events-none relative z-10 flex h-full flex-col {compact ? 'gap-3' : 'gap-4'}">
-		{#if annotation}
-			<p class="max-h-[3.4rem] overflow-hidden text-sm italic leading-relaxed text-muted">
-				{annotation}
-			</p>
+{#if !detailOnly}
+	<article
+		class="group relative flex h-full flex-col rounded-lg bg-surface-canvas p-4 text-left shadow-sm ring-1 transition-all focus-within:ring-2 focus-within:ring-accent/60 hover:shadow-md hover:ring-accent/50 {highlighted
+			? 'border-l-4 border-accent ring-accent/40'
+			: 'ring-line'} {compact ? 'gap-3' : 'gap-4'}"
+	>
+		{#if enableDetails}
+			<button
+				type="button"
+				class="absolute inset-0 z-0 cursor-pointer rounded-lg focus:outline-none"
+				aria-label={`View details for ${coffee.name}`}
+				onclick={() => openDetails()}
+				onkeydown={handleCardKeydown}
+			></button>
 		{/if}
 
-		<div class="flex items-start justify-between gap-3">
-			<div class="min-w-0">
-				<h3 class="{compact ? 'text-sm' : 'text-base'} font-semibold leading-snug text-ink">
-					{coffee.name}
-				</h3>
-				<div class="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-sm">
-					<span class="break-words font-medium text-organic-rust">{supplierName}</span>
-					{#if coffee.wholesale}
-						<span
-							class="rounded-full bg-intelligence-subtle px-2 py-0.5 text-[10px] font-semibold text-intelligence"
+		<div
+			class="pointer-events-none relative z-10 flex h-full flex-col {compact ? 'gap-3' : 'gap-4'}"
+		>
+			{#if annotation}
+				<p class="max-h-[3.4rem] overflow-hidden text-sm italic leading-relaxed text-muted">
+					{annotation}
+				</p>
+			{/if}
+
+			<div class="flex items-start justify-between gap-3">
+				<div class="min-w-0">
+					<h3 class="{compact ? 'text-sm' : 'text-base'} font-semibold leading-snug text-ink">
+						{coffee.name}
+					</h3>
+					<div class="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-sm">
+						<span class="break-words font-medium text-organic-rust">{supplierName}</span>
+						{#if coffee.wholesale}
+							<span
+								class="rounded-full bg-intelligence-subtle px-2 py-0.5 text-[10px] font-semibold text-intelligence"
+							>
+								Wholesale
+							</span>
+						{/if}
+					</div>
+				</div>
+				<div class="shrink-0 text-right">
+					<div class="{compact ? 'text-sm' : 'text-lg'} font-bold text-ink">{priceText}</div>
+					{#if hasMultiplePriceTiers}
+						<div class="text-[11px] text-muted">{priceTiers?.length} tiers</div>
+					{/if}
+					{#if priceContext}
+						<div
+							class="mt-0.5 text-[11px] font-medium {priceContextColorClass(priceContext.tier)}"
+							title="Price relative to {coffee.country ?? 'origin'} median across all stocked lots"
 						>
-							Wholesale
-						</span>
+							{priceContext.label}
+						</div>
 					{/if}
 				</div>
 			</div>
-			<div class="shrink-0 text-right">
-				<div class="{compact ? 'text-sm' : 'text-lg'} font-bold text-ink">{priceText}</div>
-				{#if hasMultiplePriceTiers}
-					<div class="text-[11px] text-muted">{priceTiers?.length} tiers</div>
-				{/if}
-				{#if priceContext}
-					<div
-						class="mt-0.5 text-[11px] font-medium {priceContextColorClass(priceContext.tier)}"
-						title="Price relative to {coffee.country ?? 'origin'} median across all stocked lots"
-					>
-						{priceContext.label}
-					</div>
-				{/if}
-			</div>
-		</div>
 
-		<div class="flex items-center justify-between gap-3 border-y border-line py-2">
-			<div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-				<span>
-					<span class="font-medium text-ink">Origin</span>
-					{locationSummary}
-				</span>
-				{#if coffee.processing}
+			<div class="flex items-center justify-between gap-3 border-y border-line py-2">
+				<div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
 					<span>
-						<span class="font-medium text-ink">Process</span>
-						{coffee.processing}
+						<span class="font-medium text-ink">Origin</span>
+						{locationSummary}
 					</span>
-				{/if}
-				<span>
-					<span class="font-medium text-ink">Freshness</span>
-					{freshnessSummary}
-				</span>
-			</div>
-			<div
-				class="flex shrink-0 items-center gap-1.5 text-xs"
-				title="Purveyor Score"
-				aria-label={`Purveyor Score ${purveyorScore.score} ${purveyorScore.tier}`}
-			>
-				<span class="h-2 w-2 rounded-full bg-accent"></span>
-				<span class="sr-only">Purveyor Score</span>
-				<span class="font-semibold text-ink">{purveyorScore.score}</span>
-				<span class="text-muted">{purveyorScore.tier}</span>
-			</div>
-		</div>
-
-		{#if tastingPreview.length > 0}
-			<div class="flex flex-wrap gap-x-3 gap-y-1.5" aria-label="Tasting preview">
-				{#each tastingPreview as note}
-					<span class="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
-						<span class="h-2 w-2 rounded-full ring-1 ring-line" style:background-color={note.color}
-						></span>
-						{note.tag}
-						{note.score ? `(${note.score}/5)` : ''}
+					{#if coffee.processing}
+						<span>
+							<span class="font-medium text-ink">Process</span>
+							{coffee.processing}
+						</span>
+					{/if}
+					<span>
+						<span class="font-medium text-ink">Freshness</span>
+						{freshnessSummary}
 					</span>
-				{/each}
-			</div>
-		{/if}
-
-		{#if !compact && coffee.ai_description}
-			<p
-				class="max-h-[3.4rem] overflow-hidden border-l-4 border-accent pl-3 text-xs leading-relaxed text-muted"
-			>
-				{coffee.ai_description}
-			</p>
-		{/if}
-
-		<div class="mt-auto flex items-center justify-between gap-2 pt-1 text-muted">
-			{#if showSimilarComparisonAction}
-				<button
-					type="button"
-					class="pointer-events-auto inline-flex size-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-accent/10 hover:text-accent"
-					aria-label={canUseBeanMatching
-						? `Compare matches for ${coffee.name}`
-						: `Unlock matches for ${coffee.name}`}
-					title={canUseBeanMatching ? 'Compare matches' : 'Unlock matches'}
-					onclick={(event) => {
-						event.stopPropagation();
-						openDetails('matches');
-					}}
+				</div>
+				<div
+					class="flex shrink-0 items-center gap-1.5 text-xs"
+					title="Purveyor Score"
+					aria-label={`Purveyor Score ${purveyorScore.score} ${purveyorScore.tier}`}
 				>
-					<svg
-						class="h-4 w-4"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-						aria-hidden="true"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M7 7h10M7 7l3-3M7 7l3 3M17 17H7m10 0l-3-3m3 3l-3 3"
-						/>
-					</svg>
-				</button>
-			{:else}
-				<span></span>
+					<span class="h-2 w-2 rounded-full bg-accent"></span>
+					<span class="sr-only">Purveyor Score</span>
+					<span class="font-semibold text-ink">{purveyorScore.score}</span>
+					<span class="text-muted">{purveyorScore.tier}</span>
+				</div>
+			</div>
+
+			{#if tastingPreview.length > 0}
+				<div class="flex flex-wrap gap-x-3 gap-y-1.5" aria-label="Tasting preview">
+					{#each tastingPreview as note}
+						<span class="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
+							<span
+								class="h-2 w-2 rounded-full ring-1 ring-line"
+								style:background-color={note.color}
+							></span>
+							{note.tag}
+							{note.score ? `(${note.score}/5)` : ''}
+						</span>
+					{/each}
+				</div>
 			{/if}
 
-			{#if onToggleTrack}
-				<button
-					type="button"
-					class="pointer-events-auto inline-flex size-8 items-center justify-center rounded-md transition-colors hover:bg-accent/10 {tracked
-						? 'text-accent'
-						: 'text-muted hover:text-accent'}"
-					aria-label={tracked ? `Untrack ${coffee.name}` : `Track ${coffee.name}`}
-					aria-pressed={tracked}
-					title={tracked ? 'Remove from watchlist' : 'Add to watchlist'}
-					onclick={(event) => {
-						event.stopPropagation();
-						onToggleTrack(coffee.id as unknown as number);
-					}}
+			{#if !compact && coffee.ai_description}
+				<p
+					class="max-h-[3.4rem] overflow-hidden border-l-4 border-accent pl-3 text-xs leading-relaxed text-muted"
 				>
-					<svg
-						class="h-4 w-4"
-						fill={tracked ? 'currentColor' : 'none'}
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-						aria-hidden="true"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-						/>
-					</svg>
-				</button>
+					{coffee.ai_description}
+				</p>
 			{/if}
-			<div class="flex items-center gap-2">
-				{#if coffee.link}
-					<a
-						href={coffee.link}
-						target="_blank"
-						rel="noopener noreferrer"
+
+			<div class="mt-auto flex items-center justify-between gap-2 pt-1 text-muted">
+				{#if showSimilarComparisonAction}
+					<button
+						type="button"
 						class="pointer-events-auto inline-flex size-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-accent/10 hover:text-accent"
-						aria-label={`Open supplier page for ${coffee.name}`}
-						title="Open supplier page"
-						onclick={(event) => event.stopPropagation()}
+						aria-label={canUseBeanMatching
+							? `Compare matches for ${coffee.name}`
+							: `Unlock matches for ${coffee.name}`}
+						title={canUseBeanMatching ? 'Compare matches' : 'Unlock matches'}
+						onclick={(event) => {
+							event.stopPropagation();
+							openDetails('matches');
+						}}
 					>
-						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg
+							class="h-4 w-4"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+							aria-hidden="true"
+						>
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
 								stroke-width="2"
-								d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+								d="M7 7h10M7 7l3-3M7 7l3 3M17 17H7m10 0l-3-3m3 3l-3 3"
 							/>
 						</svg>
-					</a>
+					</button>
+				{:else}
+					<span></span>
 				{/if}
-				<span
-					class="inline-flex size-8 items-center justify-center rounded-md transition-colors group-hover:bg-accent/10 group-hover:text-accent"
-					aria-hidden="true"
-				>
-					<svg
-						class="h-4 w-4 transition-transform group-hover:translate-x-0.5"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
+
+				{#if onToggleTrack}
+					<button
+						type="button"
+						class="pointer-events-auto inline-flex size-8 items-center justify-center rounded-md transition-colors hover:bg-accent/10 {tracked
+							? 'text-accent'
+							: 'text-muted hover:text-accent'}"
+						aria-label={tracked ? `Untrack ${coffee.name}` : `Track ${coffee.name}`}
+						aria-pressed={tracked}
+						title={tracked ? 'Remove from watchlist' : 'Add to watchlist'}
+						onclick={(event) => {
+							event.stopPropagation();
+							onToggleTrack(coffee.id as unknown as number);
+						}}
 					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M9 5l7 7-7 7"
-						/>
-					</svg>
-				</span>
+						<svg
+							class="h-4 w-4"
+							fill={tracked ? 'currentColor' : 'none'}
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+							aria-hidden="true"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+							/>
+						</svg>
+					</button>
+				{/if}
+				<div class="flex items-center gap-2">
+					{#if coffee.link}
+						<a
+							href={coffee.link}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="pointer-events-auto inline-flex size-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-accent/10 hover:text-accent"
+							aria-label={`Open supplier page for ${coffee.name}`}
+							title="Open supplier page"
+							onclick={(event) => event.stopPropagation()}
+						>
+							<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+								/>
+							</svg>
+						</a>
+					{/if}
+					<span
+						class="inline-flex size-8 items-center justify-center rounded-md transition-colors group-hover:bg-accent/10 group-hover:text-accent"
+						aria-hidden="true"
+					>
+						<svg
+							class="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M9 5l7 7-7 7"
+							/>
+						</svg>
+					</span>
+				</div>
 			</div>
 		</div>
-	</div>
-</article>
+	</article>
+{/if}
 
 {#if detailsOpen}
 	<div
 		class="pointer-events-none fixed inset-0 z-[70] flex w-full items-end justify-end overflow-hidden md:items-stretch"
 		data-coffee-detail-layer
 	>
-		<aside
+		<div
+			use:detailDialog={closeDetails}
+			role="dialog"
+			tabindex="-1"
 			class="pointer-events-auto flex h-[calc(100dvh-4.5rem)] max-h-[calc(100dvh-4.5rem)] min-h-0 w-full max-w-full flex-col overflow-hidden rounded-t-2xl border-l border-line bg-surface-canvas shadow-2xl sm:max-w-xl md:h-[100dvh] md:max-h-[100dvh] md:rounded-none xl:max-w-2xl"
 			aria-labelledby="coffee-detail-title-{coffee.id}"
 		>
@@ -622,12 +671,26 @@
 					</div>
 				{/if}
 			</header>
+			{#if detailNotice}<p
+					class="shrink-0 border-b border-line bg-surface-panel px-4 py-3 text-xs leading-relaxed text-muted md:px-6"
+				>
+					{detailNotice}
+				</p>{/if}
 
 			<div
 				class="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-surface-panel/45 px-4 py-5 md:px-6"
 				data-coffee-detail-scroll-region
 			>
-				{#if detailContent}
+				{#if detailsLoading}
+					<p role="status" class="text-sm text-muted">Loading coffee details…</p>
+				{:else if detailsError}
+					<p role="alert" class="text-sm text-muted">Coffee details could not be loaded.</p>
+					<button
+						type="button"
+						class="mt-3 rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink"
+						onclick={() => (detailsRetry += 1)}>Try again</button
+					>
+				{:else if detailContent}
 					{@render detailContent()}
 				{:else if activeTab === 'overview'}
 					<div class="grid gap-4 lg:grid-cols-[1fr_20rem]">
@@ -867,6 +930,6 @@
 					{/if}
 				{/if}
 			</div>
-		</aside>
+		</div>
 	</div>
 {/if}

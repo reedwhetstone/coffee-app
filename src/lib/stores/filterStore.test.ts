@@ -107,7 +107,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		expect(fetchSpy).toHaveBeenNthCalledWith(1, '/api/catalog/filters?showWholesale=true');
 		expect(fetchSpy).toHaveBeenNthCalledWith(
 			2,
-			'/api/catalog?page=1&limit=15&sortField=score_value&sortDirection=asc',
+			'/api/catalog?page=1&limit=15&sortField=score_value&sortDirection=asc&projection=summary',
 			expect.objectContaining({ signal: expect.any(AbortSignal) })
 		);
 	});
@@ -329,7 +329,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		expect(state.pagination.page).toBe(1);
 		expect(fetchSpy).toHaveBeenNthCalledWith(
 			1,
-			'/api/catalog?page=1&limit=15&showWholesale=false&country=Ethiopia',
+			'/api/catalog?page=1&limit=15&showWholesale=false&country=Ethiopia&projection=summary',
 			expect.objectContaining({ signal: expect.any(AbortSignal) })
 		);
 	});

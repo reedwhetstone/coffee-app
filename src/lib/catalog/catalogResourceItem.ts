@@ -16,7 +16,7 @@ export interface CatalogProcessSummary {
 
 type CatalogResourceQueryItem = Omit<
 	CatalogItem,
-	'coffee_user' | 'processing_evidence' | 'processing_evidence_available'
+	'coffee_user' | 'processing_evidence' | 'processing_evidence_available' | 'proof'
 > & {
 	coffee_user?: CatalogItem['coffee_user'];
 	processing_evidence?: CatalogItem['processing_evidence'];
@@ -26,7 +26,7 @@ type CatalogResourceQueryItem = Omit<
 
 export type CatalogResourceItem = Omit<
 	CatalogItem,
-	'coffee_user' | 'processing_evidence' | 'processing_evidence_available'
+	'coffee_user' | 'processing_evidence' | 'processing_evidence_available' | 'proof'
 > & {
 	process: CatalogProcessSummary;
 	proof?: CatalogProofSummary;

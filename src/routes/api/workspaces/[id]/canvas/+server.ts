@@ -1,3 +1,4 @@
+import { MAX_CANVAS_JSON_CHARS, decodeCanvasState } from '$lib/services/canvasPersistence';
 import { json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { requireChatAccess } from '$lib/server/auth';
@@ -10,7 +11,6 @@ import {
 import type { RequestHandler } from './$types';
 import type { ConversationCanvasUpdateRequest } from '@purveyors/sdk';
 
-const MAX_CANVAS_JSON_CHARS = 200000;
 const canvasBodySchema = z
 	.object({
 		canvas_state: z.unknown().optional(),
@@ -41,6 +41,12 @@ async function persistCanvas(event: Parameters<RequestHandler>[0]) {
 			{ status: 413 }
 		);
 	}
+	// Validate compressed state before storing it; never save an unreadable envelope.
+	try {
+		decodeCanvasState(canvasState);
+	} catch {
+		return json({ error: 'Invalid encoded canvas state' }, { status: 400 });
+	}
 	const client = await createParchmentServerClient(event, { mode: 'session' });
 	const data = await updateConversationCanvas(client, event.params.id, {
 		expectedResetEpoch: parsed.data.expected_reset_epoch,
@@ -49,7 +55,7 @@ async function persistCanvas(event: Parameters<RequestHandler>[0]) {
 	});
 	return json({
 		success: true,
-		canvas_state: data.canvasState,
+		canvas_state: decodeCanvasState(data.canvasState),
 		canvas_version: data.canvasVersion,
 		reset_epoch: data.resetEpoch
 	});

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import { newsletterSupplierName } from '$lib/newsletter';
 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
 	import AccentSpine from '$lib/components/ui/AccentSpine.svelte';
 	import {
@@ -37,6 +38,9 @@
 		)
 	);
 	let signalTotal = $derived(Math.max(snapshot?.totalSignals ?? 0, 1));
+	let sources = $derived(
+		reader.sections.find((section: MarketBriefReaderSection) => section.kind === 'sources')
+	);
 
 	function sectionUrl(section: MarketBriefReaderSection): string {
 		return `${reader.canonicalUrl}#${encodeURIComponent(section.id)}`;
@@ -87,13 +91,6 @@
 			day: 'numeric',
 			year: 'numeric'
 		});
-	}
-
-	function supplierLabel(value: string): string {
-		return value
-			.split(/[_-]+/u)
-			.map((part) => `${part.charAt(0).toLocaleUpperCase('en-US')}${part.slice(1)}`)
-			.join(' ');
 	}
 
 	onDestroy(() => {
@@ -376,7 +373,7 @@
 								<h3 class="mt-3 font-serif text-xl font-semibold leading-snug text-ink">
 									{coffee.name}
 								</h3>
-								<p class="mt-1 text-sm text-muted">{supplierLabel(coffee.supplier)}</p>
+								<p class="mt-1 text-sm text-muted">{newsletterSupplierName(coffee.supplier)}</p>
 
 								<div class="mt-4 flex flex-wrap gap-2 text-xs">
 									<span class="rounded-full bg-surface-canvas px-2.5 py-1 text-ink"
@@ -422,8 +419,13 @@
 							<div
 								class="border-t border-line bg-ink/[0.035] p-4 sm:border-l sm:border-t-0 lg:border-l-0 lg:border-t"
 							>
-								<p class="mb-2 text-center text-xs font-semibold text-muted">Tasting profile</p>
+								<p class="mb-2 text-center text-xs font-semibold text-muted">
+									{coffee.tastingNotes ? 'AI-estimated tasting profile' : 'Tasting profile'}
+								</p>
 								{#if coffee.tastingNotes}
+									<p class="mb-3 text-center text-xs leading-5 text-muted">
+										From supplier descriptions, not measured cupping scores.
+									</p>
 									<div class="mx-auto flex justify-center">
 										<TastingNotesRadar tastingNotes={coffee.tastingNotes} size={150} lazy={true} />
 									</div>
@@ -453,6 +455,23 @@
 						</div>
 					</article>
 				{/each}
+			</div>
+		</section>
+	{/if}
+
+	{#if sources}
+		<section
+			id={sources.id}
+			class="scroll-mt-28 border-t border-line pt-6"
+			aria-labelledby="fieldnotes-sources-heading"
+		>
+			<h2 id="fieldnotes-sources-heading" class="text-sm font-semibold text-ink">Sources</h2>
+			<div
+				class="market-brief-copy mt-3 break-words text-sm leading-relaxed text-muted [&_li]:mt-2 [&_ol]:list-decimal [&_ol]:pl-5"
+			>
+				<!-- Markdown tokens reject raw HTML and unsafe link protocols before this render. -->
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+				{@html sources.html}
 			</div>
 		</section>
 	{/if}

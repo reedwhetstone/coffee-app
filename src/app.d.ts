@@ -3,7 +3,6 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
 import { SupabaseClient, Session, User } from '@supabase/supabase-js';
-import type { Database } from '$lib/types/database.types';
 import type { PageAuthView } from '$lib/types/auth.types';
 import type { RequestPrincipal } from '$lib/server/principal';
 
@@ -16,7 +15,7 @@ declare global {
 	namespace App {
 		// interface Error {}
 		interface Locals {
-			supabase: SupabaseClient<Database>;
+			supabase: SupabaseClient;
 			principal: RequestPrincipal;
 			safeGetIdentity(): Promise<{
 				session: Session | null;

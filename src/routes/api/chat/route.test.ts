@@ -68,7 +68,7 @@ describe('POST /api/chat', () => {
 
 		const response = await POST(requestEvent);
 
-		expect(response).toBe(upstream);
+		expect(response).not.toBe(upstream);
 		expect(mocks.requireChatAccess).toHaveBeenCalledWith(requestEvent);
 		expect(mocks.createClient).toHaveBeenCalledWith(requestEvent, {
 			mode: 'session',
@@ -94,7 +94,7 @@ describe('POST /api/chat', () => {
 
 		const response = await POST(event());
 
-		expect(response).toBe(upstream);
+		expect(response).not.toBe(upstream);
 		expect(response.status).toBe(413);
 		expect(mocks.stream).toHaveBeenCalledOnce();
 	});

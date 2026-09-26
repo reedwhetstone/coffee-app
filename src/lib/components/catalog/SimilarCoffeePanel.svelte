@@ -7,7 +7,7 @@
 	} from '$lib/utils/pricing';
 	import { getCatalogProofBadges, type CatalogProofSummary } from '$lib/catalog/proofSummary';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
-	import type { Json } from '$lib/types/database.types';
+	import type { Json } from '$lib/types/json.types';
 	import { formatSourceName } from '$lib/utils/formatters';
 
 	type BaselineSource = 'price_per_lb' | 'price_tiers' | 'cost_lb' | null;

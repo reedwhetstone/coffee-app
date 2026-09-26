@@ -1,3 +1,4 @@
+import { fetchPortfolioPage, parsePortfolioQuery } from '$lib/server/portfolioPage';
 import { json } from '@sveltejs/kit';
 import { AuthError, requireParchmentAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
@@ -121,6 +122,19 @@ export const GET: RequestHandler = async (event) => {
 		// their own rows through the canonical Parchment owner contracts.
 		const { memberAccess } = await requireParchmentAccess(event);
 		const client = await createParchmentServerClient(event, { mode: 'session' });
+		if (url.searchParams.get('portfolio') === 'true') {
+			let query;
+			try {
+				query = parsePortfolioQuery(url.searchParams);
+			} catch {
+				return json({ error: 'Invalid portfolio query' }, { status: 400 });
+			}
+			return json(await fetchPortfolioPage(client, query, memberAccess), {
+				headers: { 'cache-control': 'no-store' }
+			});
+		}
+		if (id !== null && inventoryId(id) === null)
+			return json({ error: 'Invalid inventory id' }, { status: 400 });
 		const responseData = await fetchParchmentInventoryProjection(client, {
 			id: id ? Number(id) : undefined,
 			includeRoastProfiles: memberAccess

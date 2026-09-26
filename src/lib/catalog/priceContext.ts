@@ -1,4 +1,4 @@
-import type { Json } from '$lib/types/database.types';
+import type { Json } from '$lib/types/json.types';
 import { getDisplayPrice } from '$lib/utils/pricing';
 
 export interface OriginPriceStats {

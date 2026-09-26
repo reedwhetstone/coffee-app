@@ -1,0 +1,850 @@
+import { decodeCanvasState } from '$lib/services/canvasPersistence';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import '@testing-library/jest-dom/vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { UIMessageChunk } from 'ai';
+import ChatWorkspace from './ChatWorkspace.svelte';
+import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
+import { canvasStore } from '$lib/stores/canvasStore.svelte';
+import type { Workspace, WorkspaceMessage } from '$lib/stores/workspaceStore.svelte';
+import type { PersistedChatMessagePayload } from '$lib/services/chatPersistence';
+
+vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
+vi.mock('$app/state', () => ({ page: { url: new URL('https://example.test/chat') } }));
+// Canvas rendering is unrelated to transport/persistence. Its real store remains observable.
+vi.mock('$lib/components/canvas/Canvas.svelte', () => ({ default: vi.fn() }));
+
+function gatedResponse() {
+	let controller!: ReadableStreamDefaultController<Uint8Array>;
+	let closed = false;
+	const encoder = new TextEncoder();
+	const body = new ReadableStream<Uint8Array>({
+		start(value) {
+			controller = value;
+		}
+	});
+	return {
+		response(signal?: AbortSignal | null) {
+			signal?.addEventListener('abort', () => {
+				if (!closed) {
+					closed = true;
+					controller.error(new DOMException('Aborted', 'AbortError'));
+				}
+			});
+			return new Response(body, {
+				headers: { 'content-type': 'text/event-stream', 'x-vercel-ai-ui-message-stream': 'v1' }
+			});
+		},
+		emit(chunk: UIMessageChunk) {
+			controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+		},
+		fail() {
+			closed = true;
+			controller.error(new TypeError('Connection lost'));
+		},
+		finish() {
+			closed = true;
+			controller.enqueue(encoder.encode('data: {"type":"finish"}\n\ndata: [DONE]\n\n'));
+			controller.close();
+		}
+	};
+}
+
+const workspace: Workspace = {
+	id: 'recovery-workspace',
+	title: 'Coffee',
+	type: 'general',
+	context_summary: '',
+	canvas_state: {},
+	last_accessed_at: '2026-09-11T17:00:00Z',
+	created_at: '2026-09-11T17:00:00Z',
+	reset_epoch: 0,
+	canvas_version: 0
+};
+
+function mountWorkspace(
+	messages: WorkspaceMessage[] = [],
+	variant: 'page' | 'drawer' = 'drawer',
+	canUseMallardWorkspaces = false
+) {
+	return render(ChatWorkspace, {
+		canUseChat: true,
+		canUseMallardWorkspaces,
+		agentName: 'Cherry Green Agent',
+		variant,
+		initialWorkspaceData: { workspaces: [{ ...workspace }], workspace: { ...workspace }, messages }
+	});
+}
+
+function installEndpoints(streams: ReturnType<typeof gatedResponse>[]) {
+	const saved: PersistedChatMessagePayload[][] = [];
+	const requests: Array<{ messages: Array<{ id: string; parts: unknown[] }> }> = [];
+	const canvasSaves: unknown[] = [];
+	let canvasVersion = 0;
+	vi.stubGlobal(
+		'fetch',
+		vi.fn<typeof fetch>(async (input, init) => {
+			const url = String(input);
+			if (url === '/api/reference-profiles' && init?.method === 'POST') {
+				return Response.json(
+					{ data: { id: 'saved-artisan-reference', title: 'Artisan chat reference' } },
+					{ status: 201 }
+				);
+			}
+			if (url === '/api/chat') {
+				requests.push(JSON.parse(String(init?.body)));
+				const stream = streams[requests.length - 1];
+				if (!stream) throw new Error('Unexpected chat request');
+				return stream.response(init?.signal);
+			}
+			if (url === '/api/memory') return Response.json({ content: '' });
+			if (url === `/api/workspaces/${workspace.id}/messages`) {
+				const payload = JSON.parse(String(init?.body));
+				saved.push(payload.messages);
+				return Response.json({ reset_epoch: 0, next_message_sequence: saved.flat().length });
+			}
+			if (url === `/api/workspaces/${workspace.id}/canvas`) {
+				const payload = JSON.parse(String(init?.body));
+				canvasSaves.push(payload.canvas_state);
+				return Response.json({
+					canvas_state: payload.canvas_state,
+					canvas_version: ++canvasVersion,
+					reset_epoch: 0
+				});
+			}
+			throw new Error(`Unexpected endpoint: ${url}`);
+		})
+	);
+	return { saved, requests, canvasSaves };
+}
+
+async function send(
+	stream: ReturnType<typeof gatedResponse>,
+	assistantId: string,
+	prompt = 'Find a washed coffee'
+) {
+	await waitFor(() => expect(screen.getByRole('textbox')).toBeEnabled());
+	await fireEvent.input(screen.getByRole('textbox'), { target: { value: prompt } });
+	await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+	await waitFor(() =>
+		expect(screen.getByRole('button', { name: 'Stop response' })).toBeInTheDocument()
+	);
+	stream.emit({ type: 'start', messageId: assistantId });
+	stream.emit({ type: 'start-step' });
+}
+
+function emitCoffee(stream: ReturnType<typeof gatedResponse>) {
+	stream.emit({
+		type: 'tool-input-available',
+		toolCallId: 'search',
+		toolName: 'coffee_catalog_search',
+		input: {}
+	});
+	stream.emit({
+		type: 'tool-output-available',
+		toolCallId: 'search',
+		output: {
+			coffees: [
+				{
+					id: 42,
+					name: 'Retained Colombia',
+					country: 'Colombia',
+					processing: 'Washed',
+					cost_lb: 8.5
+				}
+			]
+		}
+	});
+}
+
+function restoreRows(saved: PersistedChatMessagePayload[]): WorkspaceMessage[] {
+	return saved.map((message, index) => ({
+		...message,
+		id: `storage-${index}`,
+		workspace_id: workspace.id,
+		role: message.role as WorkspaceMessage['role'],
+		created_at: '2026-09-11T17:00:00Z'
+	}));
+}
+
+let sendBeacon: ReturnType<typeof vi.fn>;
+beforeEach(() => {
+	canvasStore.resetAll();
+	Element.prototype.scrollIntoView = vi.fn();
+	sendBeacon = vi.fn(() => true);
+	Object.defineProperty(navigator, 'sendBeacon', { configurable: true, value: sendBeacon });
+});
+afterEach(() => {
+	cleanup();
+	pageChatContext.clear();
+	vi.restoreAllMocks();
+	vi.unstubAllGlobals();
+});
+
+describe('ChatWorkspace interrupted-turn transport and persistence', () => {
+	it.each(['complete', 'stop', 'disconnect', 'erased'] as const)(
+		'keeps an in-flight draft through %s without queueing or sending it',
+		async (ending) => {
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			const first = gatedResponse();
+			const retry = gatedResponse();
+			const endpoints = installEndpoints([first, retry]);
+			mountWorkspace();
+			await send(first, 'drafting-answer', 'Original request');
+			const input = screen.getByRole('textbox');
+			expect(input).toBeEnabled();
+			await fireEvent.input(input, { target: { value: 'My unsent follow-up' } });
+			if (ending === 'erased') await fireEvent.input(input, { target: { value: '' } });
+			await fireEvent.keyDown(input, { key: 'Enter' });
+			await fireEvent.submit(input.closest('form')!);
+			expect(endpoints.requests).toHaveLength(1);
+			first.emit({ type: 'text-start', id: 'text' });
+			first.emit({ type: 'text-delta', id: 'text', delta: 'A partial answer.' });
+			if (ending === 'complete') {
+				first.emit({ type: 'text-end', id: 'text' });
+				first.finish();
+			} else if (ending === 'stop') {
+				await fireEvent.click(screen.getByRole('button', { name: 'Stop response' }));
+			} else first.fail();
+			await waitFor(() =>
+				expect(screen.queryByRole('button', { name: 'Stop response' })).not.toBeInTheDocument()
+			);
+			expect(input).toHaveValue(ending === 'erased' ? '' : 'My unsent follow-up');
+			expect(endpoints.requests).toHaveLength(1);
+			if (ending === 'disconnect' || ending === 'erased') {
+				await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+				await waitFor(() => expect(endpoints.requests).toHaveLength(2));
+				expect(endpoints.requests[1].messages.at(-1)?.parts).toEqual([
+					{ type: 'text', text: 'Original request' }
+				]);
+				expect(input).toHaveValue(ending === 'erased' ? '' : 'My unsent follow-up');
+				retry.finish();
+				await waitFor(() =>
+					expect(screen.queryByRole('button', { name: 'Stop response' })).not.toBeInTheDocument()
+				);
+				expect(input).toHaveValue(ending === 'erased' ? '' : 'My unsent follow-up');
+			}
+		}
+	);
+
+	it('retries the expanded slash-command request while preserving the new draft', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const first = gatedResponse();
+		const retry = gatedResponse();
+		const endpoints = installEndpoints([first, retry]);
+		mountWorkspace();
+		await send(first, 'slash-answer', '/beans');
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'New question' } });
+		first.fail();
+		await waitFor(() => expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible());
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(2));
+		expect(endpoints.requests[1].messages.at(-1)?.parts).toEqual(
+			endpoints.requests[0].messages.at(-1)?.parts
+		);
+		expect(screen.getByRole('textbox')).toHaveValue('New question');
+		retry.finish();
+	});
+
+	it('omits deselected page entity IDs and honors whole-page context opt-out in actual requests', async () => {
+		const first = gatedResponse();
+		const second = gatedResponse();
+		const endpoints = installEndpoints([first, second]);
+		pageChatContext.set({
+			surface: 'catalog',
+			summary: 'Filtered catalog',
+			entities: [
+				{ type: 'coffee', id: 42, label: 'Selected Colombia' },
+				{ type: 'coffee', id: 43, label: 'Selected Ethiopia' }
+			]
+		});
+		mountWorkspace();
+		await fireEvent.click(screen.getByLabelText(/^Context: using/));
+		await fireEvent.click(screen.getByRole('button', { name: 'Selected Colombia' }));
+		await send(first, 'context-one');
+		first.finish();
+		await waitFor(() => expect(screen.queryByRole('button', { name: 'Stop response' })).toBeNull());
+		expect(endpoints.requests[0]).toMatchObject({ pageContext: { entities: [{ id: 43 }] } });
+		expect(
+			(endpoints.requests[0] as unknown as { pageContext: { entities: unknown[] } }).pageContext
+				.entities
+		).toHaveLength(1);
+		await fireEvent.click(screen.getByLabelText(/^Context: using/));
+		await fireEvent.click(screen.getByRole('button', { name: 'Viewing: catalog' }));
+		await send(second, 'context-two');
+		second.finish();
+		expect(endpoints.requests[1]).not.toHaveProperty('pageContext');
+	});
+
+	it('keeps Artisan attachment requests within the canvas-description contract', async () => {
+		const stream = gatedResponse();
+		const endpoints = installEndpoints([stream]);
+		mountWorkspace([], 'drawer', true);
+		await waitFor(() =>
+			expect(screen.getByLabelText('Attach Artisan reference file')).toBeEnabled()
+		);
+		for (let roastId = 1; roastId <= 24; roastId++) {
+			canvasStore.dispatch({
+				type: 'add',
+				messageId: `roast-${roastId}`,
+				block: { type: 'roast-chart', version: 1, data: { roastId } }
+			});
+		}
+
+		await fireEvent.change(screen.getByLabelText('Attach Artisan reference file'), {
+			target: {
+				files: [new File(['artisan data'], 'private-session.alog', { type: 'text/plain' })]
+			}
+		});
+		await waitFor(() =>
+			expect(screen.getByText('Artisan chat reference · saved reference')).toBeVisible()
+		);
+		await fireEvent.input(screen.getByRole('textbox'), {
+			target: { value: 'Can you add this as a new roast session?' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(1));
+
+		const request = endpoints.requests[0] as unknown as {
+			messages: Array<{ parts: Array<{ type: string; text?: string }> }>;
+			workspaceContext: { canvasDescription: string };
+		};
+		expect(request.workspaceContext.canvasDescription.length).toBeLessThanOrEqual(500);
+		// Every block survives compaction, including the tail.
+		expect(request.workspaceContext.canvasDescription).toContain('24. Roast chart #24');
+		expect(request.messages.at(-1)?.parts).toContainEqual(
+			expect.objectContaining({
+				type: 'text',
+				text: expect.stringContaining('Reference profile ID: saved-artisan-reference')
+			})
+		);
+		expect(JSON.stringify(request)).not.toContain('private-session.alog');
+		stream.finish();
+	});
+
+	async function attachArtisanReference() {
+		await waitFor(() =>
+			expect(screen.getByLabelText('Attach Artisan reference file')).toBeEnabled()
+		);
+		await fireEvent.change(screen.getByLabelText('Attach Artisan reference file'), {
+			target: {
+				files: [new File(['artisan data'], 'private-session.alog', { type: 'text/plain' })]
+			}
+		});
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Remove attached reference' })).toBeVisible()
+		);
+	}
+
+	it('sends attachment identity to Cherry without rendering or persisting it as user text', async () => {
+		const first = gatedResponse();
+		const second = gatedResponse();
+		const endpoints = installEndpoints([first, second]);
+		mountWorkspace([], 'drawer', true);
+		await attachArtisanReference();
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'What changed?' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(1));
+
+		expect(endpoints.requests[0].messages.at(-1)?.parts).toEqual([
+			{ type: 'text', text: 'What changed?' },
+			{
+				type: 'text',
+				text: expect.stringContaining('Reference profile ID: saved-artisan-reference')
+			}
+		]);
+		expect(screen.getByText('What changed?')).toBeVisible();
+		expect(screen.getByText('Artisan chat reference · saved reference')).toBeVisible();
+		expect(screen.queryByText(/Reference profile ID/)).not.toBeInTheDocument();
+
+		first.emit({ type: 'start', messageId: 'attachment-answer' });
+		first.emit({ type: 'text-start', id: 'answer' });
+		first.emit({ type: 'text-delta', id: 'answer', delta: 'It is saved as a reference.' });
+		first.emit({ type: 'text-end', id: 'answer' });
+		first.finish();
+		await waitFor(() => expect(endpoints.saved).toHaveLength(1), { timeout: 2000 });
+		expect(endpoints.saved[0][0].content).toBe('What changed?');
+
+		// Later turns keep the identity in history for Cherry.
+		await send(second, 'follow-up-answer', 'Compare it with my last roast');
+		expect(JSON.stringify(endpoints.requests[1].messages[0])).toContain(
+			'Reference profile ID: saved-artisan-reference'
+		);
+		second.finish();
+	});
+
+	it('Retry clears the automatically restored draft and attachment', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const first = gatedResponse();
+		const retry = gatedResponse();
+		const endpoints = installEndpoints([first, retry]);
+		mountWorkspace([], 'drawer', true);
+		await attachArtisanReference();
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Compare this' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(1));
+		first.fail();
+		await waitFor(() => expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible());
+		expect(screen.getByRole('textbox')).toHaveValue('Compare this');
+		expect(screen.getByRole('button', { name: 'Remove attached reference' })).toBeVisible();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(2));
+		expect(endpoints.requests[1].messages.at(-1)?.parts).toEqual(
+			endpoints.requests[0].messages.at(-1)?.parts
+		);
+		expect(screen.getByRole('textbox')).toHaveValue('');
+		expect(
+			screen.queryByRole('button', { name: 'Remove attached reference' })
+		).not.toBeInTheDocument();
+		retry.finish();
+		await waitFor(() => expect(screen.queryByRole('button', { name: 'Stop response' })).toBeNull());
+		expect(screen.getByRole('textbox')).toHaveValue('');
+	});
+
+	it('Retry keeps a follow-up the member wrote after a failure', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const first = gatedResponse();
+		const retry = gatedResponse();
+		const endpoints = installEndpoints([first, retry]);
+		mountWorkspace([], 'drawer', true);
+		await attachArtisanReference();
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Compare this' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(1));
+		first.fail();
+		await waitFor(() => expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible());
+		await fireEvent.input(screen.getByRole('textbox'), {
+			target: { value: 'Also check development time' }
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(2));
+		expect(screen.getByRole('textbox')).toHaveValue('Also check development time');
+		expect(
+			screen.queryByRole('button', { name: 'Remove attached reference' })
+		).not.toBeInTheDocument();
+		retry.finish();
+	});
+
+	it('surfaces a retry when a settled response contains only completed research tools', async () => {
+		const first = gatedResponse();
+		const retry = gatedResponse();
+		const endpoints = installEndpoints([first, retry]);
+		mountWorkspace();
+		await send(first, 'silent-research', 'Create the requested inventory and roast records');
+		emitCoffee(first);
+		first.finish();
+
+		await waitFor(() =>
+			expect(
+				screen.getByText(
+					'Cherry finished its research without completing the response. Retry the request.'
+				)
+			).toBeVisible()
+		);
+		expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled();
+		expect(screen.getByText(/Response interrupted\./)).toBeVisible();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(2));
+		expect(endpoints.requests[1].messages.at(-1)?.parts).toEqual([
+			{ type: 'text', text: 'Create the requested inventory and roast records' }
+		]);
+		retry.emit({ type: 'start', messageId: 'retry-answer' });
+		retry.emit({ type: 'text-start', id: 'answer' });
+		retry.emit({ type: 'text-delta', id: 'answer', delta: 'Ready for confirmation.' });
+		retry.emit({ type: 'text-end', id: 'answer' });
+		retry.finish();
+		await waitFor(() => expect(screen.getByText('Ready for confirmation.')).toBeVisible());
+	});
+
+	it('preserves entity opt-outs when a live page context refresh keeps the entity visible', async () => {
+		const stream = gatedResponse();
+		const endpoints = installEndpoints([stream]);
+		pageChatContext.set({
+			surface: 'catalog',
+			summary: 'Filtered catalog',
+			entities: [
+				{ type: 'coffee', id: 42, label: 'Selected Colombia' },
+				{ type: 'coffee', id: 43, label: 'Selected Ethiopia' }
+			]
+		});
+		mountWorkspace();
+		await fireEvent.click(screen.getByLabelText(/^Context: using/));
+		await fireEvent.click(screen.getByRole('button', { name: 'Selected Colombia' }));
+
+		pageChatContext.set({
+			surface: 'catalog',
+			summary: 'Catalog refreshed in the background',
+			entities: [
+				{ type: 'coffee', id: 42, label: 'Selected Colombia' },
+				{ type: 'coffee', id: 43, label: 'Selected Ethiopia' },
+				{ type: 'coffee', id: 44, label: 'Selected Kenya' }
+			]
+		});
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Selected Colombia' })).toHaveAttribute(
+				'aria-pressed',
+				'false'
+			)
+		);
+
+		await send(stream, 'context-refresh');
+		stream.finish();
+		expect(endpoints.requests[0]).toMatchObject({
+			pageContext: { entities: [{ id: 43 }, { id: 44 }] }
+		});
+	});
+
+	it('retains grounded prose references from the drawer through saved full-page restoration', async () => {
+		const stream = gatedResponse();
+		const endpoints = installEndpoints([stream]);
+		const mounted = mountWorkspace();
+		await send(stream, 'reference-assistant');
+		emitCoffee(stream);
+		stream.emit({ type: 'text-start', id: 'answer' });
+		stream.emit({
+			type: 'text-delta',
+			id: 'answer',
+			delta: 'Try [Retained Colombia](/catalog?coffee=42).'
+		});
+		stream.emit({ type: 'text-end', id: 'answer' });
+		stream.finish();
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Retained Colombia' })).toBeVisible()
+		);
+		expect(
+			screen.queryByRole('button', { name: 'View details for Retained Colombia' })
+		).not.toBeInTheDocument();
+		await waitFor(() => expect(endpoints.saved).toHaveLength(1), { timeout: 2000 });
+		mounted.unmount();
+		canvasStore.resetAll();
+		mountWorkspace(restoreRows(endpoints.saved[0]), 'page');
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Retained Colombia' })).toBeVisible()
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Retained Colombia' }));
+		expect(screen.getByRole('heading', { name: 'Retained Colombia' })).toBeVisible();
+		expect(screen.getByRole('link', { name: 'View in catalog' })).toHaveAttribute(
+			'href',
+			'/catalog?coffee=42'
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Back to answer' }));
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Retained Colombia' })).toHaveFocus()
+		);
+	});
+
+	it('persists a curated canvas reference and restores its compact chat link on reload', async () => {
+		const stream = gatedResponse();
+		const endpoints = installEndpoints([stream]);
+		const mounted = mountWorkspace();
+		await send(stream, 'curated-assistant');
+		emitCoffee(stream);
+		stream.emit({
+			type: 'tool-input-available',
+			toolCallId: 'present',
+			toolName: 'present_results',
+			input: {}
+		});
+		stream.emit({
+			type: 'tool-output-available',
+			toolCallId: 'present',
+			output: {
+				presentation: {
+					source_tool: 'coffee_catalog_search',
+					items: [{ id: 42, annotation: 'Selected for your request' }]
+				}
+			}
+		});
+		await waitFor(() =>
+			expect(screen.getByText('presenting 1 item to the canvas')).toBeInTheDocument()
+		);
+		expect(screen.queryByRole('heading', { name: 'Retained Colombia' })).not.toBeInTheDocument();
+		stream.finish();
+		await waitFor(() =>
+			expect(screen.getByRole('region', { name: 'Coffee results' })).toBeVisible()
+		);
+		await waitFor(() => expect(endpoints.saved).toHaveLength(1), { timeout: 2000 });
+		const saved = endpoints.saved[0];
+		mounted.unmount();
+		canvasStore.resetAll();
+		mountWorkspace(restoreRows(saved));
+		await waitFor(() =>
+			expect(screen.getByRole('region', { name: 'Coffee results' })).toBeVisible()
+		);
+		expect(screen.queryByRole('heading', { name: 'Retained Colombia' })).not.toBeInTheDocument();
+	});
+
+	it('hides intermediary coffee, then stop saves a safe snapshot that reloads', async () => {
+		const stream = gatedResponse();
+		const endpoints = installEndpoints([stream]);
+		const mounted = mountWorkspace();
+		await send(stream, 'stopped-assistant');
+		emitCoffee(stream);
+		stream.emit({
+			type: 'tool-input-available',
+			toolCallId: 'proposal',
+			toolName: 'propose_inventory',
+			input: {}
+		});
+		stream.emit({
+			type: 'tool-output-available',
+			toolCallId: 'proposal',
+			output: { action_card: { executionId: 'never-execute' } }
+		});
+		stream.emit({
+			type: 'tool-input-start',
+			toolCallId: 'unfinished',
+			toolName: 'propose_inventory'
+		});
+		await waitFor(() =>
+			expect(screen.getByText(/coffee catalog search.*1 coffee/)).toBeInTheDocument()
+		);
+		expect(screen.queryByRole('heading', { name: 'Retained Colombia' })).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Stop response' })).toBeInTheDocument();
+		await new Promise((resolve) => setTimeout(resolve, 600));
+		expect(endpoints.saved).toHaveLength(0);
+		expect(canvasStore.blocks).toHaveLength(0);
+		window.dispatchEvent(new Event('beforeunload'));
+		expect(sendBeacon.mock.calls.filter(([url]) => String(url).endsWith('/messages'))).toHaveLength(
+			0
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Stop response' }));
+		await waitFor(() => expect(screen.getByText(/Response stopped\./)).toBeInTheDocument());
+		await waitFor(() => expect(endpoints.saved).toHaveLength(1), { timeout: 2000 });
+		const saved = endpoints.saved[0];
+		expect(saved).toHaveLength(2);
+		expect(saved[1].client_message_id).toBe('stopped-assistant');
+		expect(saved[1].parts.map((part) => part.type)).toEqual([
+			'tool-coffee_catalog_search',
+			'data-cherry-turn-status'
+		]);
+		expect(saved[1].canvas_mutations).toEqual([]);
+		expect(JSON.stringify(saved)).not.toContain('never-execute');
+		expect(canvasStore.blocks).toHaveLength(0);
+		mounted.unmount();
+		mountWorkspace(restoreRows(saved));
+		await waitFor(() =>
+			expect(screen.getByRole('region', { name: 'Coffee results' })).toBeVisible()
+		);
+		expect(screen.getByText(/Response stopped\./)).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Open in canvas' })).not.toBeInTheDocument();
+		expect(canvasStore.blocks).toHaveLength(0);
+	});
+
+	it('retains evidence on disconnect and retry appends identities without changing saved history', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const first = gatedResponse();
+		const retry = gatedResponse();
+		const endpoints = installEndpoints([first, retry]);
+		mountWorkspace();
+		await send(first, 'failed-assistant');
+		emitCoffee(first);
+		await waitFor(() =>
+			expect(screen.getByText(/coffee catalog search.*1 coffee/)).toBeInTheDocument()
+		);
+		expect(screen.queryByRole('heading', { name: 'Retained Colombia' })).not.toBeInTheDocument();
+		first.fail();
+		await waitFor(() => expect(screen.getByText(/Response interrupted\./)).toBeInTheDocument());
+		expect(screen.getByRole('textbox')).toHaveValue('Find a washed coffee');
+		await waitFor(() => expect(endpoints.saved).toHaveLength(1), { timeout: 2000 });
+		const firstSave = JSON.stringify(endpoints.saved[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(2));
+		expect(endpoints.requests[1].messages).toHaveLength(3);
+		expect(endpoints.requests[1].messages[2].id).not.toBe(endpoints.saved[0][0].client_message_id);
+		expect(JSON.stringify(endpoints.requests[1])).not.toContain('data-cherry-turn-status');
+		retry.emit({ type: 'start', messageId: 'retry-assistant' });
+		retry.emit({ type: 'text-start', id: 'answer' });
+		retry.emit({ type: 'text-delta', id: 'answer', delta: 'The completed follow-up.' });
+		retry.emit({ type: 'text-end', id: 'answer' });
+		retry.finish();
+		await waitFor(() => expect(endpoints.saved).toHaveLength(2), { timeout: 2000 });
+		expect(endpoints.saved[1]).toHaveLength(2);
+		expect(endpoints.saved[1][1].client_message_id).toBe('retry-assistant');
+		expect(JSON.stringify(endpoints.saved[0])).toBe(firstSave);
+		expect(new Set(endpoints.saved.flat().map((message) => message.client_message_id)).size).toBe(
+			4
+		);
+		expect(screen.getByRole('region', { name: 'Coffee results' })).toBeVisible();
+	});
+
+	it('active unload saves only the unsaved finalized prefix, never the mutable new attempt', async () => {
+		const complete = gatedResponse();
+		const active = gatedResponse();
+		const endpoints = installEndpoints([complete, active]);
+		mountWorkspace();
+		await send(complete, 'finalized-assistant', 'Explain washed coffee');
+		complete.emit({ type: 'text-start', id: 'answer' });
+		complete.emit({ type: 'text-delta', id: 'answer', delta: 'An earlier complete answer.' });
+		complete.emit({ type: 'text-end', id: 'answer' });
+		complete.finish();
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument()
+		);
+		await send(active, 'mutable-assistant');
+		emitCoffee(active);
+		await waitFor(() =>
+			expect(screen.getByText(/coffee catalog search.*1 coffee/)).toBeInTheDocument()
+		);
+		expect(screen.queryByRole('heading', { name: 'Retained Colombia' })).not.toBeInTheDocument();
+		window.dispatchEvent(new Event('beforeunload'));
+		const messageBeacons = sendBeacon.mock.calls.filter(([url]) =>
+			String(url).endsWith('/messages')
+		);
+		expect(messageBeacons).toHaveLength(1);
+		const beacon = JSON.parse(await (messageBeacons[0][1] as Blob).text());
+		expect(beacon.messages).toHaveLength(2);
+		expect(beacon.messages[1].client_message_id).toBe('finalized-assistant');
+		expect(JSON.stringify(beacon)).not.toContain('mutable-assistant');
+		expect(JSON.stringify(beacon)).not.toContain('Retained Colombia');
+		await new Promise((resolve) => setTimeout(resolve, 600));
+		expect(endpoints.saved).toHaveLength(0);
+		await fireEvent.click(screen.getByRole('button', { name: 'Stop response' }));
+		await waitFor(() => expect(screen.getByText(/Response stopped\./)).toBeInTheDocument());
+	});
+});
+
+describe('message save 413 recovery', () => {
+	it('splits a rejected batch and retains the turn with a compact fallback', async () => {
+		const stream = gatedResponse();
+		const endpoints = installEndpoints([stream]);
+		const originalFetch = globalThis.fetch;
+		const attempts: PersistedChatMessagePayload[][] = [];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn<typeof fetch>(async (input, init) => {
+				if (String(input).endsWith('/messages') && init?.method === 'POST') {
+					const messages = JSON.parse(String(init.body)).messages as PersistedChatMessagePayload[];
+					attempts.push(messages);
+					if (
+						messages.length > 1 ||
+						messages.some((message) => JSON.stringify(message.parts).includes('Retained Colombia'))
+					)
+						return Response.json(
+							{ error: 'Message structured data is too large' },
+							{ status: 413 }
+						);
+				}
+				return originalFetch(input, init);
+			})
+		);
+		mountWorkspace();
+		await send(stream, 'oversized-assistant');
+		emitCoffee(stream);
+		stream.emit({ type: 'text-start', id: 'answer' });
+		stream.emit({ type: 'text-delta', id: 'answer', delta: 'Found a washed coffee.' });
+		stream.emit({ type: 'text-end', id: 'answer' });
+		stream.finish();
+		await waitFor(() => expect(endpoints.saved.flat()).toHaveLength(2), { timeout: 2500 });
+		expect(attempts.some((batch) => batch.length > 1)).toBe(true);
+		expect(attempts.some((batch) => batch.length === 1 && batch[0].role === 'assistant')).toBe(
+			true
+		);
+		expect(endpoints.saved.flat()[1].content).toBe('Found a washed coffee.');
+		expect(screen.queryByText(/Conversation turns are not saving/)).not.toBeInTheDocument();
+	});
+});
+
+describe('canvas save size and retry behavior', () => {
+	it('stops retrying a 413 and saves again after evidence is removed', async () => {
+		installEndpoints([]);
+		const originalFetch = globalThis.fetch;
+		let rejected = false;
+		let canvasRequests = 0;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (input, init) => {
+				if (String(input).endsWith('/canvas')) {
+					canvasRequests++;
+					if (!rejected) {
+						rejected = true;
+						return Response.json(
+							{ error: 'canvas_state exceeds 200000 serialized characters' },
+							{ status: 413 }
+						);
+					}
+				}
+				return originalFetch(input, init);
+			})
+		);
+		mountWorkspace();
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument()
+		);
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'old-evidence',
+			block: { type: 'coffee-cards', version: 1, data: [] }
+		});
+		await waitFor(
+			() => expect(screen.getByText(/Evidence workspace is too large to save/)).toBeInTheDocument(),
+			{ timeout: 2000 }
+		);
+		expect(canvasRequests).toBe(1);
+		vi.useFakeTimers();
+		try {
+			await vi.advanceTimersByTimeAsync(35000);
+			expect(canvasRequests).toBe(1);
+		} finally {
+			vi.useRealTimers();
+		}
+		canvasStore.dispatch({ type: 'remove', blockId: canvasStore.blocks[0].id });
+		await waitFor(() =>
+			expect(screen.queryByText(/Evidence workspace is too large to save/)).not.toBeInTheDocument()
+		);
+		expect(canvasRequests).toBe(1); // Reverting to the saved empty canvas needs no write.
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'new-evidence',
+			block: { type: 'coffee-cards', version: 1, data: [] }
+		});
+		await waitFor(() => expect(canvasRequests).toBe(2), { timeout: 2000 });
+		await waitFor(() =>
+			expect(screen.queryByText(/Evidence workspace is too large to save/)).not.toBeInTheDocument()
+		);
+	});
+	it('uses the lossless canvas representation on unload as well as autosave', async () => {
+		const endpoints = installEndpoints([]);
+		mountWorkspace();
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument()
+		);
+		const block = {
+			type: 'action-card' as const,
+			version: 1 as const,
+			data: {
+				actionType: 'add_bean_to_inventory' as const,
+				status: 'success' as const,
+				summary: 'Added coffee',
+				executionId: 'saved-action',
+				result: { id: 42 },
+				fields: [
+					{
+						key: 'coffee_bean',
+						label: 'Coffee',
+						type: 'select' as const,
+						editable: true,
+						value: '1',
+						selectOptions: Array.from({ length: 5000 }, (_, i) => ({
+							value: String(i),
+							label: `Coffee selection ${i} from Colombia`
+						}))
+					}
+				]
+			}
+		};
+		canvasStore.dispatch({ type: 'add', messageId: 'older-than-message-window', block });
+		canvasStore.dispatch({ type: 'pin', blockId: canvasStore.blocks[0].id });
+		await waitFor(() => expect(endpoints.canvasSaves.length).toBeGreaterThan(0), { timeout: 2000 });
+		const saved = endpoints.canvasSaves.at(-1);
+		expect(JSON.stringify(saved).length).toBeLessThan(200000);
+		expect(decodeCanvasState(saved)).toMatchObject({ blocks: [{ block, pinned: true }] });
+		window.dispatchEvent(new Event('beforeunload'));
+		const calls = sendBeacon.mock.calls.filter(([url]) => String(url).endsWith('/canvas'));
+		const beacon = JSON.parse(await (calls.at(-1)![1] as Blob).text());
+		expect(beacon.canvas_state).toEqual(saved);
+	});
+});

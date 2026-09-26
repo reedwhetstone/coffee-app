@@ -1,19 +1,12 @@
 import { json } from '@sveltejs/kit';
-import { CHERRY_RUNTIME_MODEL } from '$lib/server/cherryRuntime';
 import { z } from 'zod';
-import { OPENROUTER_API_KEY } from '$env/static/private';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
 import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 import {
+	dreamConversationMemory,
 	legacyConversationError,
 	ParchmentConversationError
 } from '$lib/server/parchmentConversation';
-import {
-	buildDreamPrompt,
-	getUserMemory,
-	saveUserMemory,
-	USER_MEMORY_DREAM_COOLDOWN_MS
-} from '$lib/server/userMemory';
 import type { RequestHandler } from './$types';
 
 const dreamSchema = z.object({
@@ -28,85 +21,52 @@ const dreamSchema = z.object({
 		.max(30)
 });
 
-// POST /api/memory/dream — Cherry Runtime compaction pass over recent conversation.
-// Fired by the client every ~16 messages; one model call per pass, with a
-// cooldown so rapid triggers can't stack inference cost.
+// POST /api/memory/dream — session BFF for Parchment-owned memory reflection.
 export const POST: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireChatAccess(event);
-		const client = await createParchmentServerClient(event, { mode: 'session' });
-
-		if (!OPENROUTER_API_KEY) {
-			return json({ error: 'OpenRouter API key not configured' }, { status: 500 });
-		}
+		await requireChatAccess(event);
 
 		const parsed = dreamSchema.safeParse(await event.request.json());
 		if (!parsed.success) {
 			return json({ error: 'Invalid messages payload' }, { status: 400 });
 		}
 
-		const existing = await getUserMemory(client);
-
-		// Cost guard: skip if the document was updated very recently.
-		if (existing?.updated_at) {
-			const age = Date.now() - new Date(existing.updated_at).getTime();
-			if (Number.isFinite(age) && age < USER_MEMORY_DREAM_COOLDOWN_MS) {
-				return json({ skipped: true, reason: 'cooldown' });
-			}
-		}
-
-		const conversationText = parsed.data.messages
-			.map((m) => `${m.role}: ${m.content}`)
-			.join('\n')
-			.slice(0, 24000);
-
-		const userName =
-			(user.user_metadata?.full_name as string | undefined) ||
-			(user.user_metadata?.name as string | undefined) ||
-			user.email?.split('@')[0];
-
-		const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${OPENROUTER_API_KEY}`
-			},
-			body: JSON.stringify({
-				model: CHERRY_RUNTIME_MODEL,
-				messages: [
-					{
-						role: 'user',
-						content: buildDreamPrompt(existing?.content ?? '', conversationText, userName)
-					}
-				],
-				max_tokens: 900,
-				temperature: 0.2
-			})
+		const client = await createParchmentServerClient(event, {
+			mode: 'session',
+			preferHandling: 'inherit',
+			signal: event.request.signal
 		});
+		const reflected = await dreamConversationMemory(client, parsed.data);
 
-		if (!response.ok) {
-			const err = await response.text();
-			return json({ error: `OpenRouter error: ${err}` }, { status: 502 });
+		if (reflected.skipped) {
+			return json({ skipped: true, reason: reflected.reason });
 		}
 
-		const result = await response.json();
-		const updated = (result.choices?.[0]?.message?.content ?? '').trim();
-		if (!updated) {
-			return json({ skipped: true, reason: 'empty-response' });
-		}
-
-		const memory = await saveUserMemory(client, updated, 'agent', existing.version);
-
-		return json({ ok: true, ...memory });
+		return json({
+			ok: true,
+			content: reflected.content,
+			version: reflected.version,
+			updated_at: reflected.updatedAt,
+			updated_by: reflected.updatedBy
+		});
 	} catch (error) {
+		if (error instanceof SyntaxError) {
+			return json({ error: 'Invalid messages payload' }, { status: 400 });
+		}
 		if (error instanceof AuthError) return json({ error: error.message }, { status: error.status });
 		if (error instanceof ParchmentConversationError) {
 			return json(legacyConversationError(error.body), { status: error.status });
 		}
+		if (
+			event.request.signal.aborted ||
+			(error instanceof Error && /abort|cancel/i.test(error.message))
+		) {
+			return json({ error: 'Request was cancelled' }, { status: 499 });
+		}
 		if (error instanceof ParchmentConfigError) {
 			return json({ error: 'Conversation memory is temporarily unavailable' }, { status: 503 });
 		}
-		console.error('Memory dream error:', error);
+		console.error('Memory dream BFF request failed');
 		return json({ error: 'Failed to update memory' }, { status: 500 });
 	}
 };

@@ -1,7 +1,6 @@
 import { createBrowserClient } from '@supabase/ssr';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import { sanitizeNextPath } from './utils/safeRedirect';
-import type { Database } from './types/database.types';
 
 export const createClient = (
 	options: {
@@ -11,7 +10,7 @@ export const createClient = (
 		};
 	} = {}
 ) => {
-	return createBrowserClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+	return createBrowserClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
 		global: {
 			fetch
 		},
@@ -50,7 +49,7 @@ export const signOut = (supabase: ReturnType<typeof createClient>) => {
 };
 
 export const createSupabaseLoadClient = () => {
-	return createBrowserClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+	return createBrowserClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
 		global: {
 			fetch
 		},

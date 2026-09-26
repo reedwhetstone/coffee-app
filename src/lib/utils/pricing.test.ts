@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Json } from '$lib/types/database.types';
+import type { Json } from '$lib/types/json.types';
 import {
 	parsePriceTiers,
 	getDisplayPrice,

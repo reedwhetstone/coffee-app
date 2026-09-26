@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ChatMessageList from './ChatMessageList.svelte';
 import { canvasStore } from '$lib/stores/canvasStore.svelte';
+import type { ActionCardPayload } from '$lib/types/genui';
 
 vi.mock('@humanspeak/svelte-markdown', () => ({ default: vi.fn() }));
 vi.mock('$lib/components/genui/InlineStatusLine.svelte', () => ({ default: vi.fn() }));
@@ -18,7 +19,8 @@ function props(messages: Array<Record<string, unknown>> = []) {
 		onExecuteAction: vi.fn(),
 		onExampleSelect: vi.fn(),
 		onAskAgainMessage: vi.fn(),
-		messageActionsDisabled: false
+		messageActionsDisabled: false,
+		continuationStartIndex: null as number | null
 	};
 }
 
@@ -29,6 +31,94 @@ describe('ChatMessageList conversation controls', () => {
 			configurable: true,
 			value: { writeText: vi.fn().mockResolvedValue(undefined) }
 		});
+	});
+
+	it('shows a completed action in its original turn while Cherry follows up', async () => {
+		const actionCard: ActionCardPayload = {
+			executionId: 'assistant-1:inventory',
+			actionType: 'add_bean_to_inventory',
+			summary: 'Add Banko Gotiti to inventory',
+			fields: [
+				{ key: 'name', label: 'Name', type: 'text', value: 'Banko Gotiti', editable: false }
+			],
+			status: 'proposed'
+		};
+		const toolPart = {
+			type: 'tool-propose_action',
+			toolCallId: 'inventory',
+			state: 'output-available',
+			output: { action_card: actionCard }
+		};
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'assistant-1',
+			block: { type: 'action-card', version: 1, data: toolPart.output.action_card }
+		});
+		const actionId = canvasStore.blocks[0].id;
+		canvasStore.dispatch({
+			type: 'update-action',
+			blockId: actionId,
+			data: { status: 'success', result: { id: 4135 } }
+		});
+		const componentProps = props([
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				parts: [toolPart, { type: 'text', text: 'Inventory ready.' }]
+			},
+			{
+				id: 'assistant-2',
+				role: 'assistant',
+				parts: [{ type: 'text', text: 'Next, let us plan the roast.' }]
+			}
+		]);
+		render(ChatMessageList, componentProps);
+		const receipt = screen.getByRole('button', { name: /Add Banko Gotiti to inventory Completed/ });
+		expect(receipt).toBeEnabled();
+		await fireEvent.click(receipt);
+		expect(componentProps.onBlockAction).toHaveBeenCalledWith({
+			type: 'focus-canvas-block',
+			blockId: actionId
+		});
+	});
+
+	it('keeps the completed action receipt visible after its canvas item is removed', () => {
+		const message = {
+			id: 'assistant-action',
+			role: 'assistant',
+			parts: [
+				{
+					type: 'tool-propose_action',
+					toolCallId: 'inventory',
+					state: 'output-available',
+					output: {
+						action_card: {
+							executionId: 'assistant-action:inventory',
+							actionType: 'add_bean_to_inventory',
+							summary: 'Add Banko Gotiti',
+							fields: [],
+							status: 'success'
+						}
+					}
+				}
+			]
+		};
+		render(ChatMessageList, props([message]));
+		expect(screen.getByText('Add Banko Gotiti · Completed')).toBeVisible();
+	});
+
+	it('shows a separate continuation activity row before the next assistant turn starts', () => {
+		const componentProps = props([
+			{
+				id: 'assistant-action',
+				role: 'assistant',
+				parts: [{ type: 'text', text: 'Action queued.' }]
+			}
+		]);
+		componentProps.isActive = true;
+		componentProps.continuationStartIndex = 1;
+		render(ChatMessageList, componentProps);
+		expect(screen.getByText('Continuing after completed action')).toBeVisible();
 	});
 
 	it('shows four compact starter prompts', () => {
@@ -100,6 +190,11 @@ describe('ChatMessageList conversation controls', () => {
 			state: 'output-available',
 			output: { coffees: [{ id: 7, name: 'Later coffee', country: 'Ethiopia' }] }
 		};
+		const curatedPart = {
+			type: 'tool-present_results',
+			state: 'output-available',
+			output: { presentation: { source_tool: 'coffee_catalog_search', items: [{ id: 7 }] } }
+		};
 		const messages = [
 			{
 				id: messageId,
@@ -109,7 +204,8 @@ describe('ChatMessageList conversation controls', () => {
 					roastPart,
 					laterPart
 				]
-			}
+			},
+			{ id: 'assistant-curated', role: 'assistant', parts: [curatedPart] }
 		];
 
 		canvasStore.dispatch({
@@ -128,7 +224,7 @@ describe('ChatMessageList conversation controls', () => {
 		});
 		canvasStore.dispatch({
 			type: 'add',
-			messageId,
+			messageId: 'assistant-curated',
 			block: {
 				type: 'coffee-cards',
 				version: 1,
@@ -141,7 +237,7 @@ describe('ChatMessageList conversation controls', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: /Batch 42/ }));
 		await fireEvent.click(screen.getByRole('button', { name: /Roast #42 chart/ }));
-		await fireEvent.click(screen.getByRole('button', { name: /Later coffee Ethiopia/ }));
+		await fireEvent.click(screen.getByRole('button', { name: 'View 1 coffee on canvas' }));
 
 		expect(componentProps.onBlockAction.mock.calls).toEqual([
 			[{ type: 'focus-canvas-block', blockId: roastId }],
@@ -150,7 +246,7 @@ describe('ChatMessageList conversation controls', () => {
 		]);
 	});
 
-	it('disables compact evidence links after their canvas targets are cleared', () => {
+	it('keeps coffee details usable after their canvas targets are cleared', () => {
 		const messages = [
 			{
 				id: 'assistant-tools',
@@ -162,6 +258,11 @@ describe('ChatMessageList conversation controls', () => {
 						toolCallId: 'coffee-call',
 						state: 'output-available',
 						output: { coffees: [{ id: 7, name: 'Older coffee', country: 'Ethiopia' }] }
+					},
+					{
+						type: 'tool-present_results',
+						state: 'output-available',
+						output: { presentation: { source_tool: 'coffee_catalog_search', items: [{ id: 7 }] } }
 					}
 				]
 			}
@@ -169,7 +270,8 @@ describe('ChatMessageList conversation controls', () => {
 
 		render(ChatMessageList, props(messages));
 
-		expect(screen.getByRole('button', { name: /Older coffee Ethiopia/ })).toBeDisabled();
+		expect(screen.getByText('1 coffee · No longer on canvas')).toBeVisible();
+		expect(screen.queryByRole('button', { name: 'Open in canvas' })).not.toBeInTheDocument();
 	});
 
 	it('matches later compact evidence links by block identity after an earlier tab is removed', async () => {

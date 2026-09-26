@@ -48,36 +48,61 @@ describe('/api/roast-chart-data GET', () => {
 		vi.clearAllMocks();
 	});
 
-	it('maps the owner-scoped Parchment chart contract to the legacy web envelope', async () => {
+	it('forwards the generated owner-scoped Parchment chart contract', async () => {
+		const canonicalData = {
+			points: [
+				{
+					data_type: 'temperature',
+					time_milliseconds: 1000,
+					field_name: 'bean_temp',
+					value_numeric: 212,
+					event_string: '',
+					category: 'temperature',
+					subcategory: 'bean'
+				}
+			],
+			series: [
+				{
+					id: 'bean-temperature',
+					name: 'BT',
+					kind: 'bean_temperature',
+					unit: 'F',
+					device_index: null,
+					channel: null,
+					total_points: 800,
+					sampled_points: 400,
+					points: [{ time_milliseconds: 1000, value_numeric: 212 }]
+				}
+			],
+			events: [
+				{
+					time_milliseconds: 1000,
+					name: 'charge',
+					value: null,
+					category: 'milestone',
+					subcategory: 'roast_phase'
+				}
+			],
+			metadata: {
+				total_data_points: 800,
+				sampled_data_points: 400,
+				roast_duration_minutes: 12.5,
+				time_min_ms: 0,
+				time_max_ms: 750000,
+				temp_min: 72,
+				temp_max: 412,
+				ror_min: -3,
+				ror_max: 35,
+				charge_time_ms: 15000,
+				temperature_unit: 'F',
+				profile_schema_version: 1,
+				target_points: 400,
+				sample_gap_max_ms: 2000
+			}
+		};
 		const chartData = vi.fn().mockResolvedValue({
 			data: {
-				data: {
-					points: [
-						{
-							data_type: 'temperature',
-							time_milliseconds: 1000,
-							field_name: 'bean_temp',
-							value_numeric: 212,
-							event_string: '',
-							category: 'temperature',
-							subcategory: 'bean'
-						}
-					],
-					metadata: {
-						total_data_points: 800,
-						sampled_data_points: 400,
-						roast_duration_minutes: 12.5,
-						time_min_ms: 0,
-						time_max_ms: 750000,
-						temp_min: 72,
-						temp_max: 412,
-						ror_min: -3,
-						ror_max: 35,
-						charge_time_ms: 15000,
-						target_points: 400,
-						sample_gap_max_ms: 2000
-					}
-				}
+				data: canonicalData
 			}
 		});
 		const event = makeEvent();
@@ -87,32 +112,20 @@ describe('/api/roast-chart-data GET', () => {
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
-		expect(body.rawData).toHaveLength(1);
-		expect(body.metadata).toMatchObject({
-			dataPoints: 800,
-			roastDurationMinutes: 12.5,
-			sampleRate: 2,
-			timeRange: [0, 750000],
-			tempRange: [72, 412],
-			rorRange: [-3, 35],
-			chargeTime: 15000
-		});
-		expect(body.metadata.performanceMetrics).toEqual({
-			dbQueryTime: expect.any(Number),
-			processingTime: expect.any(Number),
-			totalApiTime: expect.any(Number)
-		});
+		expect(body).toEqual(canonicalData);
 		expect(parchmentMocks.createParchmentServerClient).toHaveBeenCalledWith(event, {
 			mode: 'session'
 		});
 		expect(chartData).toHaveBeenCalledWith('42', { target_points: 400 });
 	});
 
-	it('preserves legacy metadata defaults for nullable Parchment values', async () => {
+	it('preserves nullable metadata without inventing client-side defaults', async () => {
 		const chartData = vi.fn().mockResolvedValue({
 			data: {
 				data: {
 					points: [],
+					series: [],
+					events: [],
 					metadata: {
 						total_data_points: 0,
 						sampled_data_points: 0,
@@ -124,6 +137,8 @@ describe('/api/roast-chart-data GET', () => {
 						ror_min: null,
 						ror_max: null,
 						charge_time_ms: null,
+						temperature_unit: null,
+						profile_schema_version: null,
 						target_points: 400,
 						sample_gap_max_ms: null
 					}
@@ -136,17 +151,11 @@ describe('/api/roast-chart-data GET', () => {
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
-		expect(body).toMatchObject({
-			rawData: [],
-			metadata: {
-				dataPoints: 0,
-				roastDurationMinutes: 0,
-				sampleRate: 0,
-				timeRange: [0, 0],
-				tempRange: [0, 500],
-				rorRange: [0, 50],
-				chargeTime: 0
-			}
+		expect(body.metadata).toMatchObject({
+			roast_duration_minutes: null,
+			time_min_ms: null,
+			temperature_unit: null,
+			profile_schema_version: null
 		});
 	});
 

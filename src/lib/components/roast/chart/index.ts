@@ -3,6 +3,8 @@ export { prepareChartData } from './prepare-chart-data';
 export type {
 	ProcessedChartData,
 	ChartPoint,
+	ChartSeries,
+	ChartSeriesAxis,
 	ControlSeries,
 	ChartEvent,
 	TooltipState,

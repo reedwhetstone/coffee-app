@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { Chat } from '@ai-sdk/svelte';
 	import { DefaultChatTransport } from 'ai';
-	import Canvas from '$lib/components/canvas/Canvas.svelte';
+	import type { ConversationChatStreamRequest } from '@purveyors/sdk';
+	import EvidenceWorkspace from './EvidenceWorkspace.svelte';
 	import ChatMessageList from '$lib/components/chat/ChatMessageList.svelte';
 	import ChatComposer from '$lib/components/chat/ChatComposer.svelte';
 	import ChatToolbar from '$lib/components/chat/ChatToolbar.svelte';
-	import CanvasMobileOverlay from '$lib/components/chat/CanvasMobileOverlay.svelte';
 	import MemoryPanel from '$lib/components/chat/MemoryPanel.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 	import {
@@ -15,15 +15,25 @@
 		buildSearchDataCacheThroughPart,
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
-	import { buildPersistedChatMessages } from '$lib/services/chatPersistence';
+	import { encodeCanvasState, CanvasSaveError } from '$lib/services/canvasPersistence';
+	import {
+		clearPendingCanvasSave,
+		queueCanvasUnloadSave,
+		replayPendingCanvasSaves
+	} from '$lib/services/canvasUnloadPersistence';
+	import {
+		buildPersistedChatMessages,
+		compactPersistedMessageForRetry
+	} from '$lib/services/chatPersistence';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
 	import { getSuggestions } from '$lib/services/suggestionEngine';
 	import { matchSlashCommand, getSlashCompletions } from '$lib/services/slashCommands';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import {
 		workspaceStore,
+		MessageSaveError,
 		type Workspace,
 		type WorkspaceMessage
 	} from '$lib/stores/workspaceStore.svelte';
@@ -33,19 +43,47 @@
 		applyAnalyticsSeedToInput,
 		readChatSeedFromSearchParams
 	} from '$lib/analytics/actionContext';
-	import { classifyChatFailure, rollbackFailedTurn } from './chatRecovery';
+	import {
+		classifyChatFailure,
+		recoverInterruptedTurn,
+		getInterruptedTurnStatus,
+		isSilentToolOnlyCompletion,
+		prepareChatRequestMessages,
+		finalizedMessagesForUnload
+	} from './chatRecovery';
 	import {
 		buildCherryConversationExport,
 		cherryConversationExportFilename
 	} from './cherryConversationExport';
 	import type { CherryAgentName } from '$lib/cherry/identity';
+	import { trackProfileStudioActivation } from '$lib/profileStudio/analytics';
+	import {
+		buildReferenceAttachmentRequest,
+		buildProfileStudioHandoffRequest,
+		readProfileStudioHandoff,
+		type ReferenceAttachment,
+		type ProfileStudioHandoff
+	} from '$lib/profileStudio/chatAttachment';
+	import {
+		buildChatRequestMessage,
+		readChatRequestContext,
+		type ChatRequestContext
+	} from '$lib/cherry/requestContext';
+	import { describeCanvasForCherry } from './workspaceCanvasContext';
+	import {
+		clearIdempotencyKey,
+		reserveIdempotencyKey,
+		shouldRetainIdempotencyKey
+	} from '$lib/idempotency';
 
 	let {
 		canUseChat,
 		canUseMallardWorkspaces,
 		agentName,
 		variant = 'page',
-		initialWorkspaceData = null
+		onCloseDrawer,
+		initialWorkspaceData = null,
+		ownerId = null
 	} = $props<{
 		canUseChat: boolean;
 		canUseMallardWorkspaces: boolean;
@@ -56,6 +94,7 @@
 		 * app-wide Cherry drawer.
 		 */
 		variant?: 'page' | 'drawer';
+		onCloseDrawer?: () => void;
 		/**
 		 * Server-prefetched workspace list + active conversation (chat page
 		 * load). When present, mount skips the client fetch waterfall.
@@ -65,13 +104,25 @@
 			workspace: Workspace | null;
 			messages: WorkspaceMessage[];
 		} | null;
+		ownerId?: string | null;
 	}>();
 
-	// ─── Context visibility toggles (chips above the composer) ────────────────
+	// ─── Context inclusion controls ────────────────
 	let includeWorkspaceMemory = $state(true);
 	let includeCanvasContext = $state(true);
 	let includePageContext = $state(true);
 	let includeUserMemoryDoc = $state(true);
+	let excludedEntities = $state<string[]>([]);
+	const entityKey = (entity: { type: string; id: number | string }) =>
+		`entity:${entity.type}:${entity.id}`;
+	$effect(() => {
+		const currentEntityKeys = new Set(
+			(pageChatContext.current?.entities ?? []).map((entity) => entityKey(entity))
+		);
+		const retainedExclusions = excludedEntities.filter((key) => currentEntityKeys.has(key));
+		if (retainedExclusions.length !== excludedEntities.length)
+			excludedEntities = retainedExclusions;
+	});
 
 	// ─── Persistent user memory document ───────────────────────────────────────
 	let memoryPanelOpen = $state(false);
@@ -127,7 +178,7 @@
 	});
 
 	interface ContextChip {
-		id: 'memory' | 'canvas' | 'page' | 'usermemory';
+		id: string;
 		label: string;
 		detail: string;
 		active: boolean;
@@ -155,8 +206,8 @@
 		if (!canvasStore.isEmpty) {
 			chips.push({
 				id: 'canvas',
-				label: `Evidence (${canvasStore.blockCount})`,
-				detail: `${agentName} can use what is in your evidence workspace`,
+				label: `Canvas (${canvasStore.blockCount})`,
+				detail: `${agentName} can use what is on your canvas`,
 				active: includeCanvasContext
 			});
 		}
@@ -169,11 +220,25 @@
 				active: includePageContext
 			});
 		}
+		if (pageContext && includePageContext) {
+			for (const entity of pageContext.entities ?? []) {
+				chips.push({
+					id: entityKey(entity),
+					label: entity.label,
+					detail: `${entity.type.replaceAll('_', ' ')} in view on ${pageContext.surface}.`,
+					active: !excludedEntities.includes(entityKey(entity))
+				});
+			}
+		}
 		return chips;
 	});
 
 	function toggleContextChip(id: ContextChip['id']) {
-		if (id === 'memory') includeWorkspaceMemory = !includeWorkspaceMemory;
+		if (id.startsWith('entity:'))
+			excludedEntities = excludedEntities.includes(id)
+				? excludedEntities.filter((key) => key !== id)
+				: [...excludedEntities, id];
+		else if (id === 'memory') includeWorkspaceMemory = !includeWorkspaceMemory;
 		else if (id === 'canvas') includeCanvasContext = !includeCanvasContext;
 		else if (id === 'usermemory') includeUserMemoryDoc = !includeUserMemoryDoc;
 		else includePageContext = !includePageContext;
@@ -184,50 +249,8 @@
 		const ws = workspaceStore.currentWorkspace;
 		if (!ws) return undefined;
 
-		// Describe canvas state for the AI with item names/details
-		let canvasDescription = '';
-		const visible = canvasStore.visibleBlocks;
-		if (visible.length > 0) {
-			const describeBlock = (block: CanvasBlock['block'], pos: number): string => {
-				switch (block.type) {
-					case 'coffee-cards': {
-						const items = Array.isArray(block.data) ? block.data : [];
-						const names = items
-							.slice(0, 5)
-							.map((c) => c?.name || 'Unknown')
-							.join(', ');
-						return `${pos}. Coffee cards: ${names}${items.length > 5 ? ` (+${items.length - 5} more)` : ''}`;
-					}
-					case 'roast-profiles': {
-						const items = Array.isArray(block.data) ? block.data : [];
-						const names = items
-							.slice(0, 5)
-							.map((r) => `${r?.coffee_name || 'Unknown'} (${r?.roast_date || '?'})`)
-							.join(', ');
-						return `${pos}. Roast profiles: ${names}${items.length > 5 ? ` (+${items.length - 5} more)` : ''}`;
-					}
-					case 'roast-chart':
-						return `${pos}. Roast temperature chart (roast #${block.data?.roastId || '?'})`;
-					case 'inventory-table': {
-						const items = Array.isArray(block.data) ? block.data : [];
-						return `${pos}. Inventory table (${items.length} beans)`;
-					}
-					case 'tasting-radar':
-						return `${pos}. Tasting radar: ${block.data?.beanName || 'Unknown'}`;
-					case 'action-card':
-						return `${pos}. Action card: ${block.data?.summary || 'Action'} [${block.data?.status || 'unknown'}]`;
-					default:
-						return `${pos}. ${block.type.replace(/-/g, ' ')}`;
-				}
-			};
-			const descriptions = visible.map((b: CanvasBlock, i: number) => {
-				const base = describeBlock(b.block, i + 1);
-				// Locked windows are user-owned: tell the model it must not replace,
-				// remove, or reorder them, only add new content alongside.
-				return b.pinned ? `${base} [LOCKED — do not replace, remove, or reorder]` : base;
-			});
-			canvasDescription = descriptions.join('\n');
-		}
+		// Describe every visible canvas block for the AI within the request bound.
+		const canvasDescription = describeCanvasForCherry(canvasStore.visibleBlocks);
 
 		return {
 			id: ws.id,
@@ -244,14 +267,90 @@
 	let initializingWorkspace = $state(false);
 	let workspaceInitError = $state<string | null>(null);
 	let lastSubmittedPrompt = $state('');
-	let lastSubmittedBody: Record<string, unknown> | null = null;
+	let lastSubmittedContext = $state<ChatRequestContext | null>(null);
+	let lastSubmittedDraft = $state('');
+	let lastSubmittedAttachment = $state<ReferenceAttachment | null>(null);
+	let lastSubmittedHandoff = $state<ProfileStudioHandoff | null>(null);
+	type ChatRequestBody = Omit<ConversationChatStreamRequest, 'messages'>;
+	let lastSubmittedBody: ChatRequestBody | null = null;
 	let retryPreservesComposerDraft = false;
-	let messageCountBeforeSubmission: number | null = null;
+	let draftEditedSinceSubmission = false;
+	let profileStudioConversationPending = $state(false);
+	let profileStudioHandoff = $state<ProfileStudioHandoff | null>(null);
+	/** Composer values put back by a failed send, as opposed to a follow-up the member wrote. */
+	let restoredSubmission: {
+		draft: string;
+		attachmentId: string | null;
+		handoff: ProfileStudioHandoff | null;
+	} | null = null;
+	let pendingContinuationExecutionId = $state<string | null>(null);
+	let activeContinuationExecutionId = $state<string | null>(null);
+	type ContinuationContext = {
+		workspaceId: string;
+		lifecycleGeneration: number;
+	};
+	let chatLifecycleGeneration = 0;
+	let activeContinuationContext: ContinuationContext | null = null;
+	let queuedContinuations = $state<Array<{ executionId: string; context: ContinuationContext }>>(
+		[]
+	);
+
+	function invalidateConversationState() {
+		chatLifecycleGeneration += 1;
+		pendingContinuationExecutionId = null;
+		activeContinuationExecutionId = null;
+		activeContinuationContext = null;
+		queuedContinuations = [];
+		lastSubmittedPrompt = '';
+		lastSubmittedBody = null;
+		retryPreservesComposerDraft = false;
+		draftEditedSinceSubmission = false;
+		restoredSubmission = null;
+		lastSubmittedContext = null;
+		lastSubmittedDraft = '';
+		lastSubmittedAttachment = null;
+		lastSubmittedHandoff = null;
+		chatError = null;
+		chatCanRetry = false;
+	}
+
+	function beginNewChatTurn(prompt: string, body: ChatRequestBody) {
+		invalidateConversationState();
+		lastSubmittedPrompt = prompt;
+		lastSubmittedBody = body;
+	}
+
+	function captureContinuationContext(): ContinuationContext | null {
+		const workspaceId = workspaceStore.currentWorkspaceId;
+		return workspaceId ? { workspaceId, lifecycleGeneration: chatLifecycleGeneration } : null;
+	}
+
+	function isCurrentContinuationContext(
+		context: ContinuationContext | null
+	): context is ContinuationContext {
+		return Boolean(
+			context &&
+				workspaceStore.currentWorkspaceId === context.workspaceId &&
+				chatLifecycleGeneration === context.lifecycleGeneration
+		);
+	}
+
+	function canContinue(context: ContinuationContext | null): context is ContinuationContext {
+		return isCurrentContinuationContext(context) && !isActive && !isClearing;
+	}
+
+	function noteDraftInput() {
+		draftEditedSinceSubmission = true;
+	}
+	let messageCountBeforeSubmission = $state<number | null>(null);
+	let allowInterruptedRetention = true;
 	let canvasPersistError = $state<string | null>(null);
-	let displayedError = $derived(canvasPersistError ?? chatError);
+	let messagePersistError = $state<string | null>(null);
+	let displayedError = $derived(messagePersistError ?? canvasPersistError ?? chatError);
 
 	function dismissDisplayedError() {
-		if (canvasPersistError) canvasPersistError = null;
+		if (messagePersistError) messagePersistError = null;
+		else if (canvasPersistError) canvasPersistError = null;
 		else chatError = null;
 	}
 
@@ -265,18 +364,94 @@
 		transport: new DefaultChatTransport({
 			api: '/api/chat',
 			prepareSendMessagesRequest: ({ messages, body }) => ({
-				body: { ...(body ?? {}), messages: messages.slice(-CONTEXT_WINDOW_MESSAGES) }
+				body: {
+					...(body ?? {}),
+					messages: prepareChatRequestMessages(messages.slice(-CONTEXT_WINDOW_MESSAGES))
+				}
 			})
 		}),
 		onError: (error) => {
 			console.error('Chat error:', error);
 			const failure = classifyChatFailure(error);
-			chat.messages = rollbackFailedTurn(chat.messages, messageCountBeforeSubmission);
-			messageCountBeforeSubmission = null;
+			allowInterruptedRetention = failure.kind !== 'access';
+			if (activeContinuationExecutionId) {
+				pendingContinuationExecutionId = activeContinuationExecutionId;
+				chatError =
+					failure.kind === 'access'
+						? failure.message
+						: `Action completed, but ${agentName} couldn't continue. Retry to pick up where it left off.`;
+				chatCanRetry = failure.retryable;
+				return;
+			}
 			chatError = failure.message;
 			chatCanRetry = failure.retryable;
-			if (!retryPreservesComposerDraft && !inputMessage && lastSubmittedPrompt) {
-				inputMessage = lastSubmittedPrompt;
+			if (
+				!retryPreservesComposerDraft &&
+				!draftEditedSinceSubmission &&
+				!inputMessage &&
+				lastSubmittedPrompt
+			) {
+				// Never replace an attachment or handoff chosen while the request ran.
+				const restoredAttachment = pendingReferenceAttachment ? null : lastSubmittedAttachment;
+				const restoredHandoff = profileStudioHandoff ? null : lastSubmittedHandoff;
+				inputMessage = lastSubmittedDraft;
+				if (restoredAttachment) pendingReferenceAttachment = restoredAttachment;
+				if (restoredHandoff) profileStudioHandoff = restoredHandoff;
+				restoredSubmission = {
+					draft: lastSubmittedDraft,
+					attachmentId: restoredAttachment?.id ?? null,
+					handoff: restoredHandoff
+				};
+			}
+		},
+		onFinish: ({ isAbort, isError }) => {
+			const continuationExecutionId = activeContinuationExecutionId;
+			// Stop only aborts the transport. Finalize after the SDK has settled so
+			// late parser writes cannot overwrite the retained, append-only snapshot.
+			if (isAbort || isError) {
+				chat.messages = recoverInterruptedTurn(
+					chat.messages,
+					messageCountBeforeSubmission,
+					isAbort ? 'stopped' : 'error',
+					{ allowRetention: allowInterruptedRetention }
+				);
+			}
+			const silentToolOnlyCompletion =
+				!isAbort &&
+				!isError &&
+				isSilentToolOnlyCompletion(chat.messages, messageCountBeforeSubmission);
+			if (silentToolOnlyCompletion) {
+				chat.messages = recoverInterruptedTurn(
+					chat.messages,
+					messageCountBeforeSubmission,
+					'error'
+				);
+				chatError =
+					'Cherry finished its research without completing the response. Retry the request.';
+				chatCanRetry = true;
+			}
+			if (continuationExecutionId) {
+				if (isAbort || isError || silentToolOnlyCompletion) {
+					pendingContinuationExecutionId = continuationExecutionId;
+					if (isAbort) {
+						chatError = `Action completed, but ${agentName}'s continuation was stopped. Retry to resume it.`;
+						chatCanRetry = true;
+					} else if (silentToolOnlyCompletion) {
+						chatError = `Action completed, but ${agentName} didn't finish the follow-up. Retry to resume it.`;
+					}
+				} else {
+					pendingContinuationExecutionId = null;
+					chatError = null;
+					chatCanRetry = false;
+				}
+				activeContinuationExecutionId = null;
+				activeContinuationContext = null;
+			}
+			messageCountBeforeSubmission = null;
+			allowInterruptedRetention = true;
+			if (!isAbort && !isError && !silentToolOnlyCompletion && profileStudioConversationPending) {
+				trackProfileStudioActivation('cherry_comparison_completed');
+				profileStudioConversationPending = false;
 			}
 		}
 	});
@@ -286,11 +461,18 @@
 		workspaceInitError = null;
 		workspaceReady = false;
 		try {
+			const recoveredCanvasWorkspaceIds = await replayPendingCanvasSaves();
 			if (initialWorkspaceData) {
 				const { workspaces: list, workspace, messages } = initialWorkspaceData;
 				workspaceStore.hydrate(list, workspace ? { workspace, messages } : null);
 				if (workspace) {
-					applyWorkspaceResult({ workspace, messages });
+					if (recoveredCanvasWorkspaceIds.includes(workspace.id)) {
+						if (!(await loadWorkspace(workspace.id))) {
+							throw new Error(workspaceStore.error || 'Failed to reload recovered workspace');
+						}
+					} else {
+						applyWorkspaceResult({ workspace, messages });
+					}
 					workspaceReady = true;
 					return;
 				}
@@ -323,7 +505,67 @@
 
 	// Input state (not managed by Chat class - we control the textarea)
 	let inputMessage = $state('');
+	let pendingReferenceAttachment = $state<ReferenceAttachment | null>(null);
+	let attachmentUploading = $state(false);
 	let lastAnalyticsSeed = $state<string | null>(null);
+
+	async function attachArtisanFile(file: File) {
+		if (!canUseMallardWorkspaces || attachmentUploading) return;
+		attachmentUploading = true;
+		chatError = null;
+		chatCanRetry = false;
+		const payloadFingerprint = [
+			file.name,
+			file.size,
+			file.lastModified,
+			'Artisan chat reference'
+		].join('|');
+		const idempotencyKey = reserveIdempotencyKey(
+			typeof sessionStorage === 'undefined' ? null : sessionStorage,
+			ownerId,
+			'chat-reference-upload',
+			payloadFingerprint
+		);
+		try {
+			const form = new FormData();
+			form.set('file', file);
+			form.set('title', 'Artisan chat reference');
+			const response = await fetch('/api/reference-profiles', {
+				method: 'POST',
+				headers: { 'Idempotency-Key': idempotencyKey },
+				body: form
+			});
+			const body = (await response.json().catch(() => null)) as {
+				data?: { id?: string; title?: string };
+				error?: string;
+			} | null;
+			if (!response.ok) {
+				if (!shouldRetainIdempotencyKey(response.status))
+					clearIdempotencyKey(
+						storageForIdempotency(),
+						ownerId,
+						'chat-reference-upload',
+						payloadFingerprint
+					);
+				throw new Error(body?.error || 'Unable to save this Artisan reference');
+			}
+			if (!body?.data?.id || !body.data.title)
+				throw new Error('Unable to save this Artisan reference');
+			clearIdempotencyKey(
+				storageForIdempotency(),
+				ownerId,
+				'chat-reference-upload',
+				payloadFingerprint
+			);
+			pendingReferenceAttachment = { id: body.data.id, title: body.data.title };
+			trackProfileStudioActivation('artisan_file_accepted');
+			trackProfileStudioActivation('reference_profile_saved');
+		} catch (cause) {
+			chatError = cause instanceof Error ? cause.message : 'Unable to save this Artisan reference';
+		} finally {
+			attachmentUploading = false;
+		}
+	}
 
 	$effect(() => {
 		const analyticsSeed = readChatSeedFromSearchParams(page.url.searchParams);
@@ -336,6 +578,10 @@
 		if (seedState.inputMessage !== inputMessage) inputMessage = seedState.inputMessage;
 		if (seedState.lastAnalyticsSeed !== lastAnalyticsSeed) {
 			lastAnalyticsSeed = seedState.lastAnalyticsSeed;
+			if (page.url.searchParams.get('source') === 'profile-studio' && seedState.inputMessage) {
+				profileStudioConversationPending = true;
+				profileStudioHandoff = readProfileStudioHandoff(page.url.searchParams);
+			}
 		}
 	});
 
@@ -355,11 +601,16 @@
 		// beforeunload: persist state via sendBeacon (reliable during tab close/nav)
 		const handleBeforeUnload = () => {
 			const wsId = activeWorkspaceId;
-			if (!wsId) return;
+			if (!wsId || !workspaceReady) return;
 			const workspace = workspaceStore.currentWorkspace;
 			// Save unsaved messages
 			const savedCount = workspaceStore.getSavedMessageCount(wsId);
-			const newMessages = chat.messages.slice(savedCount);
+			const finalized = finalizedMessagesForUnload(
+				chat.messages,
+				messageCountBeforeSubmission,
+				isActive
+			);
+			const newMessages = finalized.slice(savedCount);
 			if (newMessages.length > 0) {
 				const toSave = buildPersistedChatMessages(newMessages);
 				navigator.sendBeacon(
@@ -375,34 +626,21 @@
 					)
 				);
 			}
-			// Save canvas state (including pinned, minimized, focusBlockId)
-			const fIdx = canvasStore.focusBlockId
-				? canvasStore.blocks.findIndex((b: CanvasBlock) => b.id === canvasStore.focusBlockId)
-				: -1;
-			navigator.sendBeacon(
-				`/api/workspaces/${wsId}/canvas`,
-				new Blob(
-					[
-						JSON.stringify({
-							expected_reset_epoch: workspace?.reset_epoch ?? 0,
-							expected_canvas_version: workspace?.canvas_version ?? 0,
-							canvas_state: {
-								blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
-									block: b.block,
-									messageId: b.messageId,
-									pinned: b.pinned,
-									minimized: b.minimized,
-									title: b.title
-								})),
-								layout: canvasStore.layout,
-								focusBlockId: canvasStore.focusBlockId,
-								focusBlockIndex: fIdx >= 0 ? fIdx : undefined
-							}
-						})
-					],
-					{ type: 'application/json' }
-				)
-			);
+			// Save canvas state (including pinned, minimized, focusBlockId). A rejected
+			// beacon is retained for replay because large compressed canvases can exceed
+			// the browser's keepalive budget even when they fit the server limit.
+			try {
+				queueCanvasUnloadSave(
+					wsId,
+					JSON.stringify({
+						expected_reset_epoch: workspace?.reset_epoch ?? 0,
+						expected_canvas_version: workspace?.canvas_version ?? 0,
+						canvas_state: encodeCanvasState(buildCanvasStatePayload())
+					})
+				);
+			} catch {
+				// Autosave reports terminal size failures. Never send a known-invalid beacon.
+			}
 		};
 		window.addEventListener('beforeunload', handleBeforeUnload);
 
@@ -413,7 +651,8 @@
 
 		return () => {
 			window.removeEventListener('beforeunload', handleBeforeUnload);
-			handleBeforeUnload(); // Also fires on SvelteKit client-side navigation
+			handleBeforeUnload(); // Save finalized turns only, never a mutable streamed row.
+			void chat.stop(); // A detached workspace must not keep generating in the background.
 			unsubscribeWorkspace(); // Clean up the workspace ID tracker
 		};
 	});
@@ -426,6 +665,7 @@
 	}
 
 	function applyWorkspaceResult(result: { workspace: Workspace; messages: WorkspaceMessage[] }) {
+		invalidateConversationState();
 		// Workspace hydration must reset the shared canvas completely. User-facing
 		// clears preserve pinned blocks, but restored workspaces should not inherit
 		// pinned blocks from whatever canvas happened to be mounted before.
@@ -433,8 +673,9 @@
 		canvasStore.resetAll();
 		dispatchedParts = new Set();
 		lastPersistedMessageCount = 0;
+		messagePersistRetryAttempt = 0;
+		messagePersistError = null;
 		lastSummarizedMessageCount = 0;
-
 		// Restore messages from persisted workspace
 		if (result.messages.length > 0) {
 			// Reconstruct UIMessage-compatible objects from saved messages
@@ -603,7 +844,11 @@
 		const canvasStatePayload = buildCanvasStatePayload();
 		await enqueuePersistence(async () => {
 			const saved = await workspaceStore.saveCanvasState(wsId, canvasStatePayload);
-			if (!saved) throw new Error('Failed to persist canvas state');
+			if (!saved)
+				throw (
+					workspaceStore.getCanvasSaveFailure(wsId) ?? new Error('Failed to persist canvas state')
+				);
+			clearPendingCanvasSave(wsId);
 		});
 	}
 
@@ -613,18 +858,49 @@
 	) {
 		// Save new messages (ones not yet persisted)
 		const savedCount = workspaceStore.getSavedMessageCount(wsId);
-		const newMessages = chat.messages.slice(savedCount);
-		if (newMessages.length > 0) {
-			const messagesSaved = await workspaceStore.saveMessages(
-				wsId,
-				buildPersistedChatMessages(newMessages)
-			);
-			if (!messagesSaved) throw new Error('Failed to persist messages');
+		const newMessages = buildPersistedChatMessages(chat.messages.slice(savedCount));
+		async function saveBatch(messages: typeof newMessages, compacted = false): Promise<void> {
+			if (await workspaceStore.saveMessages(wsId, messages)) return;
+			const failure =
+				workspaceStore.getMessageSaveFailure(wsId) ?? new Error('Failed to persist messages');
+			if (failure instanceof MessageSaveError && failure.status === 413) {
+				if (messages.length > 1) {
+					const midpoint = Math.floor(messages.length / 2);
+					await saveBatch(messages.slice(0, midpoint));
+					await saveBatch(messages.slice(midpoint));
+					return;
+				}
+				if (!compacted) {
+					await saveBatch([compactPersistedMessageForRetry(messages[0])], true);
+					return;
+				}
+			}
+			throw failure;
 		}
+		// A long action chain can create many large tool results before the debounce
+		// fires. Append bounded batches so one oversized request cannot strand all
+		// subsequent turns. The store advances its saved count after each success.
+		let batch: typeof newMessages = [];
+		let batchSize = 0;
+		for (const message of newMessages) {
+			const messageSize = JSON.stringify(message).length;
+			if (batch.length && (batch.length >= 10 || batchSize + messageSize > 500_000)) {
+				await saveBatch(batch);
+				batch = [];
+				batchSize = 0;
+			}
+			batch.push(message);
+			batchSize += messageSize;
+		}
+		if (batch.length) await saveBatch(batch);
 
 		// Save canvas state (layout, order, pinned, minimized, focus, titles)
 		const canvasSaved = await workspaceStore.saveCanvasState(wsId, canvasStatePayload);
-		if (!canvasSaved) throw new Error('Failed to persist canvas state');
+		if (!canvasSaved)
+			throw (
+				workspaceStore.getCanvasSaveFailure(wsId) ?? new Error('Failed to persist canvas state')
+			);
+		clearPendingCanvasSave(wsId);
 	}
 
 	// Auto-persist when streaming completes (fast debounce).
@@ -636,18 +912,50 @@
 	// meant nothing reached the DB during a live session — messages only ever
 	// persisted via the beforeunload beacon, which drops oversized payloads.
 	let lastPersistedMessageCount = $state(0);
+	let messagePersistRetryAttempt = $state(0);
 	$effect(() => {
+		const wsId = workspaceStore.currentWorkspaceId;
 		const count = chat.messages.length;
-		if (isActive || count === 0 || count === lastPersistedMessageCount) return;
+		const retryAttempt = messagePersistRetryAttempt;
+		if (!wsId || !workspaceReady || isActive || count === 0 || count === lastPersistedMessageCount)
+			return;
+		let retryTimeout: ReturnType<typeof setTimeout> | undefined;
 		const timeout = setTimeout(() => {
 			void persistCurrentState().then(
 				() => {
 					lastPersistedMessageCount = count;
+					messagePersistRetryAttempt = 0;
+					messagePersistError = null;
 				},
-				() => undefined
+				(error: unknown) => {
+					if (error instanceof MessageSaveError && error.status === 413) {
+						messagePersistError =
+							'This conversation turn was rejected as too large, even after reducing it. Export the conversation before leaving this page.';
+						return;
+					}
+					if (error instanceof CanvasSaveError && !error.retryable) {
+						lastPersistedMessageCount = count;
+						messagePersistRetryAttempt = 0;
+						messagePersistError = null;
+						return;
+					}
+					if (
+						retryAttempt >= 2 &&
+						workspaceStore.currentWorkspaceId === wsId &&
+						workspaceStore.getSavedMessageCount(wsId) < count
+					)
+						messagePersistError = 'Conversation turns are not saving. Retrying in the background.';
+					retryTimeout = setTimeout(
+						() => (messagePersistRetryAttempt = retryAttempt + 1),
+						Math.min(2000 * 2 ** retryAttempt, 30_000)
+					);
+				}
 			);
 		}, 500);
-		return () => clearTimeout(timeout);
+		return () => {
+			clearTimeout(timeout);
+			if (retryTimeout) clearTimeout(retryTimeout);
+		};
 	});
 
 	// Compact fingerprint of the canvas UI structure (order, view layout, pin/
@@ -687,7 +995,11 @@
 		const wsId = workspaceStore.currentWorkspaceId;
 		const signature = canvasSignature();
 		const retryAttempt = canvasPersistRetryAttempt;
-		if (!wsId || isActive || signature === lastCanvasSignature) return;
+		if (!workspaceReady || !wsId || isActive) return;
+		if (signature === lastCanvasSignature) {
+			canvasPersistError = null;
+			return;
+		}
 		let retryTimeout: ReturnType<typeof setTimeout> | undefined;
 		const timeout = setTimeout(() => {
 			void persistCanvasState(wsId).then(
@@ -696,13 +1008,16 @@
 					canvasPersistRetryAttempt = 0;
 					canvasPersistError = null;
 				},
-				() => {
+				(error: unknown) => {
+					if (error instanceof CanvasSaveError && !error.retryable) {
+						canvasPersistError = error.message;
+						return;
+					}
 					// Keep the canvas dirty and retry. The workspace ID and state are
 					// re-read by the effect, so a delayed retry cannot leak state across
 					// a workspace switch.
 					if (retryAttempt >= 2) {
-						canvasPersistError =
-							'Evidence workspace changes are not saving. Retrying in the background.';
+						canvasPersistError = 'Canvas changes are not saving. Retrying in the background.';
 					}
 					const retryDelay = Math.min(2000 * 2 ** retryAttempt, 30_000);
 					retryTimeout = setTimeout(() => {
@@ -736,52 +1051,114 @@
 
 	// Scroll management
 	let chatContainer = $state<HTMLDivElement>();
+	let chatContent: HTMLDivElement | undefined = $state();
 	let shouldScrollToBottom = $state(true);
+	let awayFromBottom = $state(false);
+	let lastObservedScrollTop = 0;
+	let scrollFrame: number | undefined;
+	let lastSeenOutput = $state('');
+	// Track visible text and tool progress, not bulky canvas payloads. Draft edits
+	// never change this marker or count as new assistant output.
+	let latestOutput = $derived.by(() => {
+		const message = chat.messages.findLast((entry) => entry.role === 'assistant');
+		if (!message) return '';
+		return JSON.stringify([
+			message.id,
+			message.parts.map((part) => [
+				part.type,
+				'text' in part ? part.text : '',
+				'state' in part ? part.state : '',
+				'toolCallId' in part ? part.toolCallId : ''
+			])
+		]);
+	});
+	let hasNewOutput = $derived(latestOutput !== lastSeenOutput);
 
-	// Scroll when new messages arrive
+	function measureReadingPosition() {
+		if (!chatContainer || !chatContainer.clientHeight) return;
+		awayFromBottom =
+			chatContainer.scrollHeight - chatContainer.clientHeight - chatContainer.scrollTop > 50;
+	}
+
+	function followLatestFrame() {
+		if (scrollFrame !== undefined) return;
+		scrollFrame = requestAnimationFrame(() => {
+			scrollFrame = undefined;
+			// Recheck at execution time: a user may have scrolled up or followed an
+			// evidence link after the frame was scheduled.
+			if (!shouldScrollToBottom || !chatContainer?.clientHeight) return;
+			chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'instant' });
+			lastObservedScrollTop = chatContainer.scrollTop;
+			measureReadingPosition();
+		});
+	}
+
+	function pauseFollowing() {
+		if (shouldScrollToBottom) lastSeenOutput = latestOutput;
+		shouldScrollToBottom = false;
+		if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);
+		scrollFrame = undefined;
+	}
+
 	$effect(() => {
-		if (chatContainer && shouldScrollToBottom && chat.messages.length > 0) {
-			chatContainer.scrollTo({
-				top: chatContainer.scrollHeight,
-				behavior: 'smooth'
-			});
+		void latestOutput;
+		void chat.messages.length;
+		if (shouldScrollToBottom) {
+			lastSeenOutput = latestOutput;
+			followLatestFrame();
 		}
 	});
 
-	// Scroll during streaming — throttled to avoid scroll thrashing
-	let lastScrollTime = 0;
 	$effect(() => {
-		if (!isActive || !shouldScrollToBottom || !chatContainer) return;
-		// Access the last message's parts to create a reactive dependency on streaming content
-		const lastMsg = chat.messages[chat.messages.length - 1];
-		if (lastMsg) {
-			const _partsLen = lastMsg.parts.length;
-			const lastTextPart = lastMsg.parts.findLast((p) => p.type === 'text');
-			if (lastTextPart) {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const _textLen = (lastTextPart as any).text?.length;
-			}
-		}
-		// Throttle scrolls to at most once per 100ms during streaming
-		const now = Date.now();
-		if (now - lastScrollTime < 100) return;
-		lastScrollTime = now;
-		requestAnimationFrame(() => {
-			chatContainer?.scrollTo({ top: chatContainer.scrollHeight });
+		const container = chatContainer;
+		const content = chatContent;
+		if (!container || !content) return;
+		// Covers late markdown/chart layout, composer growth, evidence resizing,
+		// and reopening the retained drawer, not just incoming text chunks.
+		const observer = new ResizeObserver(() => {
+			measureReadingPosition();
+			if (shouldScrollToBottom) followLatestFrame();
 		});
+		observer.observe(container);
+		observer.observe(content);
+		return () => {
+			observer.disconnect();
+			if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);
+			scrollFrame = undefined;
+		};
 	});
 
 	function handleScroll() {
-		if (!chatContainer) return;
-		const { scrollTop, scrollHeight, clientHeight } = chatContainer;
-		const isNearBottom = scrollTop + clientHeight >= scrollHeight - 50;
-		shouldScrollToBottom = isNearBottom;
+		if (!chatContainer?.clientHeight) return;
+		measureReadingPosition();
+		if (!awayFromBottom) {
+			shouldScrollToBottom = true;
+			lastSeenOutput = latestOutput;
+		} else if (chatContainer.scrollTop < lastObservedScrollTop) {
+			pauseFollowing();
+		}
+		lastObservedScrollTop = chatContainer.scrollTop;
+	}
+
+	async function jumpToLatest() {
+		const restoreKeyboardFocus = document.activeElement?.closest('[data-jump-to-latest]');
+		shouldScrollToBottom = true;
+		lastSeenOutput = latestOutput;
+		await tick();
+		followLatestFrame();
+		if (restoreKeyboardFocus) {
+			const id = chat.messages.at(-1)?.id;
+			if (id)
+				chatContainer
+					?.querySelector<HTMLElement>(`[id="msg-${CSS.escape(id)}"]`)
+					?.focus({ preventScroll: true });
+		}
 	}
 
 	let isActive = $derived(chat.status === 'streaming' || chat.status === 'submitted');
 	let isClearing = $state(false);
 
-	// Context-aware suggestions above input
+	// Context-aware suggestions available from the composer
 	let suggestions = $derived(
 		getSuggestions(
 			workspaceStore.currentWorkspace?.type || 'general',
@@ -790,12 +1167,55 @@
 			{ canUseMallardWorkspaces }
 		)
 	);
+	let pendingCanvasActions = $derived(
+		canvasStore.blocks.filter(
+			(entry) =>
+				entry.block.type === 'action-card' &&
+				(entry.block.data.status === 'proposed' || entry.block.data.status === 'failed')
+		)
+	);
 
 	// ─── Canvas panel state ──────────────────────────────────────────────────
 	let canvasOpen = $state(false);
 	let dividerDragging = $state(false);
 	let chatWidthPercent = $state(60); // Chat takes 60% by default
-	let mobileCanvasOpen = $state(false);
+	let evidenceExpanded = $state(false);
+	let wideViewport = $state(false);
+	let evidenceOverlay = $derived(variant === 'drawer' || !wideViewport || evidenceExpanded);
+	let evidenceTrigger: HTMLElement | null = null;
+
+	onMount(() => {
+		const media = window.matchMedia('(min-width: 1024px)');
+		const update = () => {
+			wideViewport = media.matches;
+		};
+		update();
+		media.addEventListener('change', update);
+		return () => media.removeEventListener('change', update);
+	});
+
+	function openEvidence() {
+		if (!canvasOpen)
+			evidenceTrigger =
+				document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		canvasOpen = true;
+	}
+
+	async function closeEvidence() {
+		canvasOpen = false;
+		evidenceExpanded = false;
+		await tick();
+		if (evidenceTrigger?.isConnected) evidenceTrigger.focus({ preventScroll: true });
+	}
+
+	async function returnToMessage(messageId: string) {
+		await closeEvidence();
+		scrollToMessage(messageId);
+		const message = chatContainer?.querySelector<HTMLElement>(
+			`[id="msg-${CSS.escape(messageId)}"]`
+		);
+		message?.focus({ preventScroll: true });
+	}
 
 	// Track which message IDs have been dispatched to canvas (to avoid duplicates)
 	let dispatchedParts = $state(new Set<string>());
@@ -805,7 +1225,7 @@
 		if (isActive) return; // Wait until streaming stops
 
 		for (const [messageIndex, message] of chat.messages.entries()) {
-			if (message.role !== 'assistant') continue;
+			if (message.role !== 'assistant' || getInterruptedTurnStatus(message.parts)) continue;
 
 			const hasPR = messageHasPresentResults(message.parts);
 
@@ -843,7 +1263,7 @@
 
 				const dispatchPlan = buildToolCanvasDispatchPlan(p, block, message.id);
 				if (dispatchPlan.mutations) {
-					for (const mutation of dispatchPlan.mutations) canvasStore.dispatch(mutation);
+					for (const mutation of dispatchPlan.mutations) canvasStore.dispatch(mutation, 'agent');
 					dispatchedParts.add(partKey);
 				} else if (dispatchPlan.handledWithoutCanvas) {
 					// Cache-miss/error presentations intentionally render inline only. Mark them
@@ -851,21 +1271,27 @@
 					dispatchedParts.add(partKey);
 				} else if (dispatchPlan.canvasBlocks.length > 0) {
 					// Non-present_results tools: auto-add the primary block, then companions.
-					canvasStore.dispatch({
-						type: 'add',
-						block: dispatchPlan.canvasBlocks[0],
-						messageId: message.id
-					});
+					canvasStore.dispatch(
+						{
+							type: 'add',
+							block: dispatchPlan.canvasBlocks[0],
+							messageId: message.id
+						},
+						'agent'
+					);
 					dispatchedParts.add(partKey);
 
 					for (let ci = 1; ci < dispatchPlan.canvasBlocks.length; ci++) {
 						const companionKey = `${partKey}-companion-${ci - 1}`;
 						if (!dispatchedParts.has(companionKey)) {
-							canvasStore.dispatch({
-								type: 'add',
-								block: dispatchPlan.canvasBlocks[ci],
-								messageId: message.id
-							});
+							canvasStore.dispatch(
+								{
+									type: 'add',
+									block: dispatchPlan.canvasBlocks[ci],
+									messageId: message.id
+								},
+								'agent'
+							);
 							dispatchedParts.add(companionKey);
 						}
 					}
@@ -884,7 +1310,7 @@
 			if (!container) return;
 			const rect = container.getBoundingClientRect();
 			const percent = ((ev.clientX - rect.left) / rect.width) * 100;
-			chatWidthPercent = Math.max(30, Math.min(80, percent));
+			chatWidthPercent = Math.max(35, Math.min(70, percent));
 		};
 
 		const onUp = () => {
@@ -903,32 +1329,50 @@
 			goto(action.url);
 		} else if (action.type === 'focus-canvas-block') {
 			canvasStore.dispatch({ type: 'focus', blockId: action.blockId });
-			// Re-open the canvas if the user had closed/hidden it. A canvas link in
-			// the conversation should always surface its block, not silently no-op
-			// against a collapsed pane.
-			if (variant === 'page') {
-				canvasOpen = true;
-			}
-			// On mobile (and the drawer variant, which has no inline pane) open the
-			// canvas overlay so the focused block is actually visible.
-			if (variant === 'drawer' || window.innerWidth < 768) {
-				mobileCanvasOpen = true;
-			}
+			openEvidence();
 		} else if (action.type === 'scroll-to-message') {
 			scrollToMessage(action.messageId);
 		}
 	}
 
 	function scrollToMessage(messageId: string) {
-		const el = document.getElementById(`msg-${messageId}`);
+		const el = chatContainer?.querySelector<HTMLElement>(`[id="msg-${CSS.escape(messageId)}"]`);
 		if (el && chatContainer) {
-			el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			pauseFollowing();
+			el.scrollIntoView({ behavior: 'instant', block: 'start' });
 			el.classList.add('message-highlight');
 			setTimeout(() => el.classList.remove('message-highlight'), 2000);
 		}
 	}
 
 	// ─── Action Card Execution ───────────────────────────────────────────────
+	function markChatActionCompleted(executionId: string, result: unknown) {
+		chat.messages = chat.messages.map((message) => ({
+			...message,
+			parts: message.parts.map((part) => {
+				const output = 'output' in part ? part.output : undefined;
+				const card =
+					output && typeof output === 'object' && 'action_card' in output
+						? output.action_card
+						: undefined;
+				if (
+					!card ||
+					typeof card !== 'object' ||
+					!('executionId' in card) ||
+					card.executionId !== executionId
+				)
+					return part;
+				return {
+					...part,
+					output: {
+						...(output as Record<string, unknown>),
+						action_card: { ...card, status: 'success', result }
+					}
+				} as typeof part;
+			})
+		}));
+	}
+
 	async function executeAction(
 		executionId: string,
 		actionType: string,
@@ -939,6 +1383,7 @@
 			throw new Error(
 				`This action predates durable execution IDs. Run it through ${agentName} again to create a current proposal.`
 			);
+		const continuationContext = captureContinuationContext();
 		if (blockId) {
 			const card = canvasStore.blocks.find((b) => b.id === blockId)?.block;
 			const persistedFields =
@@ -970,6 +1415,7 @@
 			}
 
 			const result = await response.json();
+			markChatActionCompleted(executionId, result);
 			if (blockId) {
 				canvasStore.dispatch({
 					type: 'update-action',
@@ -982,18 +1428,17 @@
 				// `failed` or re-throw into the execution catch below; that would
 				// misreport a successful inventory/roast/sale write and invite a
 				// duplicate retry. Persist best-effort and log on failure instead.
-				if (wsId) {
-					try {
-						await persistCanvasState(wsId);
-					} catch (persistErr) {
+				if (wsId)
+					void persistCanvasState(wsId).catch((persistErr) => {
 						console.error(
 							'Canvas persistence failed after a successful action execution; ' +
 								'the action already committed and remains marked success.',
 							persistErr
 						);
-					}
-				}
+					});
 			}
+			if (isCurrentContinuationContext(continuationContext))
+				queueConfirmedActionContinuation(executionId, continuationContext);
 			return result;
 		} catch (err) {
 			clearTimeout(timeoutId);
@@ -1019,82 +1464,184 @@
 	// Snapshotted at send time. The server builds a fresh prompt for every turn,
 	// so opted-in context must accompany every request.
 
-	function buildSendBody(): Record<string, unknown> {
-		const body: Record<string, unknown> = { workspaceContext: getWorkspaceContext() };
+	function buildSendBody(): ChatRequestBody {
+		const body: ChatRequestBody = { workspaceContext: getWorkspaceContext() };
 		if (!includeUserMemoryDoc) body.includeUserMemory = false;
 		const context = includePageContext ? pageChatContext.current : null;
-		if (context) body.pageContext = context;
+		if (context)
+			body.pageContext = {
+				...context,
+				entities: context.entities?.filter(
+					(entity) => !excludedEntities.includes(entityKey(entity))
+				)
+			};
 		return body;
+	}
+
+	function storageForIdempotency() {
+		return typeof sessionStorage === 'undefined' ? null : sessionStorage;
+	}
+
+	function queueConfirmedActionContinuation(executionId: string, context: ContinuationContext) {
+		if (
+			activeContinuationExecutionId === executionId ||
+			pendingContinuationExecutionId === executionId ||
+			queuedContinuations.some((entry) => entry.executionId === executionId)
+		)
+			return;
+		queuedContinuations = [...queuedContinuations, { executionId, context }];
+	}
+
+	// One Chat transport owns the stream. Completed writes wait in commit order until
+	// the current turn finishes; a failed continuation holds the queue for Retry.
+	$effect(() => {
+		if (
+			!queuedContinuations.length ||
+			isActive ||
+			isClearing ||
+			activeContinuationExecutionId ||
+			pendingContinuationExecutionId
+		)
+			return;
+		const next = queuedContinuations[0];
+		queuedContinuations = queuedContinuations.slice(1);
+		if (isCurrentContinuationContext(next.context))
+			void continueAfterConfirmedAction(next.executionId, next.context);
+	});
+
+	async function continueAfterConfirmedAction(
+		executionId: string,
+		continuationContext: ContinuationContext
+	) {
+		if (!canContinue(continuationContext)) return;
+		pendingContinuationExecutionId = executionId;
+		activeContinuationExecutionId = executionId;
+		activeContinuationContext = continuationContext;
+		retryPreservesComposerDraft = true;
+		chatError = null;
+		chatCanRetry = false;
+		shouldScrollToBottom = true;
+		messageCountBeforeSubmission = chat.messages.length;
+		try {
+			await chat.sendMessage(undefined, {
+				body: {
+					...buildSendBody(),
+					completedAction: { executionId }
+				}
+			});
+		} catch {
+			// Chat owns error classification and retry presentation through onError.
+		} finally {
+			if (activeContinuationContext === continuationContext) messageCountBeforeSubmission = null;
+		}
 	}
 
 	// ─── Send Message ──────────────────────────────────────────────────────────
 	async function sendMessage() {
-		if (!inputMessage.trim() || isActive || isClearing || !workspaceReady) return;
+		if (
+			(!inputMessage.trim() && !pendingReferenceAttachment) ||
+			isActive ||
+			isClearing ||
+			!workspaceReady ||
+			attachmentUploading
+		)
+			return;
 
-		const text = inputMessage.trim();
-		lastSubmittedPrompt = text;
-		lastSubmittedBody = buildSendBody();
+		const attachment = pendingReferenceAttachment;
+		const handoff = profileStudioHandoff;
+		const request = attachment
+			? buildReferenceAttachmentRequest(inputMessage, attachment)
+			: handoff
+				? buildProfileStudioHandoffRequest(inputMessage, handoff)
+				: { text: inputMessage.trim(), context: null };
+		const { text, context } = request;
+		const cmd = context ? null : matchSlashCommand(text, canUseMallardWorkspaces);
+
+		// Local canvas commands are not new chat turns and must retain a failed
+		// confirmed action's continuation retry state.
+		if (cmd && !cmd.chatText) {
+			inputMessage = '';
+			if (cmd.action === 'clear-canvas') canvasStore.clearAll();
+			else if (cmd.action === 'pin-focused') {
+				const fid = canvasStore.focusBlockId;
+				if (fid) canvasStore.dispatch({ type: 'pin', blockId: fid });
+			} else if (cmd.action === 'unpin-focused') {
+				const fid = canvasStore.focusBlockId;
+				if (fid) canvasStore.dispatch({ type: 'unpin', blockId: fid });
+			}
+			return;
+		}
+
+		const body = buildSendBody();
+		const submittedPrompt = cmd?.chatText ?? text;
+		beginNewChatTurn(submittedPrompt, body);
+		lastSubmittedContext = context;
+		lastSubmittedDraft = inputMessage.trim();
+		lastSubmittedAttachment = attachment;
+		lastSubmittedHandoff = handoff;
 		retryPreservesComposerDraft = false;
 		chatError = null;
 		chatCanRetry = false;
-
-		// Intercept slash commands
-		const cmd = matchSlashCommand(text, canUseMallardWorkspaces);
-		if (cmd) {
-			inputMessage = '';
-			if (cmd.action === 'clear-canvas') {
-				canvasStore.clearAll();
-				return;
-			}
-			if (cmd.action === 'pin-focused') {
-				const fid = canvasStore.focusBlockId;
-				if (fid) canvasStore.dispatch({ type: 'pin', blockId: fid });
-				return;
-			}
-			if (cmd.action === 'unpin-focused') {
-				const fid = canvasStore.focusBlockId;
-				if (fid) canvasStore.dispatch({ type: 'unpin', blockId: fid });
-				return;
-			}
-			if (cmd.chatText) {
-				inputMessage = '';
-				shouldScrollToBottom = true;
-				messageCountBeforeSubmission = chat.messages.length;
-				await chat.sendMessage({ text: cmd.chatText }, { body: lastSubmittedBody });
-				messageCountBeforeSubmission = null;
-				return;
-			}
-		}
-
 		inputMessage = '';
+		pendingReferenceAttachment = null;
+		profileStudioHandoff = null;
 		shouldScrollToBottom = true;
 
 		messageCountBeforeSubmission = chat.messages.length;
-		await chat.sendMessage({ text }, { body: lastSubmittedBody });
+		await chat.sendMessage(
+			cmd?.chatText ? { text: cmd.chatText } : buildChatRequestMessage(text, context),
+			{ body }
+		);
 		messageCountBeforeSubmission = null;
 	}
 
 	function stopResponse() {
-		chat.stop();
-		// Stopping is not a failed turn: preserve the submitted prompt and any
-		// assistant text that has already streamed into the conversation.
-		messageCountBeforeSubmission = null;
+		void chat.stop();
+		// Keep the submission boundary until onFinish finalizes partial evidence.
+	}
+
+	/** Retry resends the failed request, so values a failure restored must not stay ready to send. */
+	function clearRestoredSubmission(): boolean {
+		const restored = restoredSubmission;
+		restoredSubmission = null;
+		if (!restored) return false;
+		const draftCleared = !draftEditedSinceSubmission && inputMessage === restored.draft;
+		if (draftCleared) inputMessage = '';
+		if (restored.attachmentId && pendingReferenceAttachment?.id === restored.attachmentId)
+			pendingReferenceAttachment = null;
+		const handoff = profileStudioHandoff;
+		if (
+			restored.handoff &&
+			handoff?.leftKind === restored.handoff.leftKind &&
+			handoff.leftId === restored.handoff.leftId &&
+			handoff.rightKind === restored.handoff.rightKind &&
+			handoff.rightId === restored.handoff.rightId
+		)
+			profileStudioHandoff = null;
+		return draftCleared;
 	}
 
 	async function retryLastResponse() {
-		chatError = null;
-		chatCanRetry = false;
-		if (retryPreservesComposerDraft && lastSubmittedPrompt) {
-			shouldScrollToBottom = true;
-			messageCountBeforeSubmission = chat.messages.length;
-			await chat.sendMessage(
-				{ text: lastSubmittedPrompt },
-				{ body: lastSubmittedBody ?? buildSendBody() }
-			);
-			messageCountBeforeSubmission = null;
+		if (isActive || isClearing || !workspaceReady) return;
+		if (pendingContinuationExecutionId) {
+			const continuationContext = captureContinuationContext();
+			if (continuationContext)
+				await continueAfterConfirmedAction(pendingContinuationExecutionId, continuationContext);
 			return;
 		}
-		await sendMessage();
+		if (!lastSubmittedPrompt) return;
+		// Retry belongs to the failed request, never to a follow-up being drafted.
+		// When the composer only held the restored request, a failed retry may
+		// restore it again.
+		retryPreservesComposerDraft = !clearRestoredSubmission();
+		chatError = null;
+		chatCanRetry = false;
+		shouldScrollToBottom = true;
+		messageCountBeforeSubmission = chat.messages.length;
+		await chat.sendMessage(buildChatRequestMessage(lastSubmittedPrompt, lastSubmittedContext), {
+			body: lastSubmittedBody ?? buildSendBody()
+		});
+		messageCountBeforeSubmission = null;
 	}
 
 	async function askAgainFromAssistantMessage(messageId: string) {
@@ -1113,17 +1660,26 @@
 			.join('\n')
 			.trim();
 		if (!prompt) return;
+		// The originating attachment or selection identities travel with the new turn.
+		const context =
+			userMessage?.parts.map(readChatRequestContext).find((candidate) => candidate !== null) ??
+			null;
 
 		// This is deliberately a new turn, not response regeneration. Send the
 		// originating request directly so an unsent composer draft remains intact.
-		lastSubmittedPrompt = prompt;
-		lastSubmittedBody = buildSendBody();
+		const body = buildSendBody();
+		beginNewChatTurn(prompt, body);
+		lastSubmittedDraft = inputMessage.trim();
+		lastSubmittedAttachment = pendingReferenceAttachment;
+		lastSubmittedHandoff = profileStudioHandoff;
+		lastSubmittedContext = context;
 		retryPreservesComposerDraft = true;
+		restoredSubmission = null;
 		chatError = null;
 		chatCanRetry = false;
 		shouldScrollToBottom = true;
 		messageCountBeforeSubmission = chat.messages.length;
-		await chat.sendMessage({ text: prompt }, { body: lastSubmittedBody });
+		await chat.sendMessage(buildChatRequestMessage(prompt, context), { body });
 		messageCountBeforeSubmission = null;
 	}
 
@@ -1149,6 +1705,7 @@
 		const wsId = workspaceStore.currentWorkspaceId;
 		if (!wsId) return;
 		isClearing = true;
+		invalidateConversationState();
 		try {
 			await enqueuePersistence(async () => {
 				const response = await fetch(`/api/workspaces/${wsId}/messages`, {
@@ -1165,6 +1722,8 @@
 			chat.messages = [];
 			dispatchedParts = new Set();
 			lastPersistedMessageCount = 0;
+			messagePersistRetryAttempt = 0;
+			messagePersistError = null;
 			canvasPersistError = null;
 		} catch (err) {
 			canvasPersistError = (err as Error).message;
@@ -1174,38 +1733,42 @@
 	}
 </script>
 
-<!-- Main chat + canvas interface -->
-<div class="flex h-full min-h-0 flex-col bg-surface-canvas">
-	<!-- Chat + Canvas split container -->
-	<div class="chat-canvas-container flex flex-1 overflow-hidden">
-		<!-- Chat pane: full width on mobile (the inline canvas pane is md+ only,
-		     so a narrower chat would just leave dead space); split width on md+. -->
-		<div
-			class="chat-pane flex flex-col overflow-hidden"
-			style="--chat-width: {variant === 'page' && canvasOpen ? chatWidthPercent : 100}%;"
-		>
-			<ChatToolbar
-				{agentName}
-				{variant}
-				{canvasOpen}
-				hasMessages={chat.messages.length > 0}
-				onOpenMemory={() => (memoryPanelOpen = true)}
-				onToggleMobileCanvas={() => (mobileCanvasOpen = !mobileCanvasOpen)}
-				onToggleDesktopCanvas={() => {
-					canvasOpen = !canvasOpen;
-				}}
-				onExport={exportConversation}
-				onClear={clearConversation}
-				clearDisabled={isActive || isClearing}
-			/>
+{#snippet workspaceActions()}
+	<ChatToolbar
+		{agentName}
+		{variant}
+		{canvasOpen}
+		{onCloseDrawer}
+		hasMessages={chat.messages.length > 0}
+		onOpenMemory={() => (memoryPanelOpen = true)}
+		onToggleCanvas={() => (canvasOpen ? closeEvidence() : openEvidence())}
+		onExport={exportConversation}
+		onClear={clearConversation}
+		clearDisabled={isActive || isClearing}
+	/>
+{/snippet}
 
+<div class="flex h-full min-h-0 min-w-0 flex-col bg-surface-canvas">
+	{#if variant === 'drawer'}
+		<div inert={canvasOpen && evidenceOverlay}>{@render workspaceActions()}</div>
+	{/if}
+	<div class="chat-canvas-container flex min-h-0 flex-1 overflow-hidden">
+		<div
+			class="chat-pane flex min-w-0 flex-col overflow-hidden"
+			inert={canvasOpen && evidenceOverlay}
+			style="--chat-width: {canvasOpen && !evidenceOverlay ? chatWidthPercent : 100}%;"
+		>
 			<div class="relative flex min-h-0 flex-1 flex-col">
 				<ChatMessageList
 					{agentName}
 					{chat}
 					{isActive}
+					continuationStartIndex={activeContinuationExecutionId
+						? messageCountBeforeSubmission
+						: null}
 					{canUseMallardWorkspaces}
 					bind:containerEl={chatContainer}
+					bind:contentEl={chatContent}
 					onScroll={handleScroll}
 					onBlockAction={handleBlockAction}
 					onExecuteAction={executeAction}
@@ -1213,39 +1776,52 @@
 					onAskAgainMessage={askAgainFromAssistantMessage}
 					messageActionsDisabled={isActive || isClearing || !workspaceReady}
 				/>
-
-				<!-- Mobile floating canvas indicator: anchored inside the message
-				     area (above the composer) so it can't overlap the send button. -->
-				{#if variant === 'page' && !canvasStore.isEmpty && !mobileCanvasOpen}
-					<button
-						onclick={() => (mobileCanvasOpen = true)}
-						class="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-accent px-3 py-2 text-sm text-ink shadow-lg transition-transform hover:scale-105 md:hidden"
-					>
-						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="1.5"
-								d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-							/>
-						</svg>
-						{canvasStore.blockCount}
-					</button>
+				{#if !shouldScrollToBottom && awayFromBottom}
+					<div class="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-3">
+						<button
+							type="button"
+							data-jump-to-latest
+							onclick={jumpToLatest}
+							class="pointer-events-auto flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface-raised px-4 text-sm text-ink shadow-md hover:border-accent focus-visible:ring-2 focus-visible:ring-accent"
+						>
+							<span aria-hidden="true">↓</span>
+							<span>{hasNewOutput ? 'New output · Jump to latest' : 'Jump to latest'}</span>
+						</button>
+					</div>
 				{/if}
+				<span class="sr-only" role="status"
+					>{!shouldScrollToBottom && awayFromBottom && hasNewOutput
+						? 'New output below.'
+						: ''}</span
+				>
 			</div>
-
 			<ChatComposer
 				{agentName}
 				bind:inputMessage
-				isActive={isActive || isClearing}
-				{canUseMallardWorkspaces}
+				{isActive}
+				{isClearing}
+				pendingActionTabs={pendingCanvasActions
+					.filter((entry) => entry.block.type === 'action-card')
+					.map((entry) => ({
+						id: entry.id,
+						summary: entry.block.type === 'action-card' ? entry.block.data.summary : '',
+						failed: entry.block.type === 'action-card' && entry.block.data.status === 'failed'
+					}))}
+				onOpenPendingAction={(id) => handleBlockAction({ type: 'focus-canvas-block', blockId: id })}
+				onDraftInput={noteDraftInput}
+				actions={variant === 'page' ? workspaceActions : undefined}
 				{suggestions}
 				{slashCompletions}
 				chatError={displayedError}
-				chatCanRetry={canvasPersistError ? false : chatCanRetry}
+				chatCanRetry={messagePersistError || canvasPersistError ? false : chatCanRetry}
 				workspaceError={workspaceInitError}
 				{workspaceReady}
 				{initializingWorkspace}
+				canAttachReferences={canUseMallardWorkspaces}
+				referenceAttachment={pendingReferenceAttachment}
+				{attachmentUploading}
+				onAttachFile={attachArtisanFile}
+				onRemoveAttachment={() => (pendingReferenceAttachment = null)}
 				{contextChips}
 				onToggleChip={toggleContextChip}
 				onSend={sendMessage}
@@ -1255,50 +1831,58 @@
 				onDismissError={dismissDisplayedError}
 			/>
 		</div>
-
-		<!-- Resizable divider (desktop only) -->
-		{#if variant === 'page' && canvasOpen}
+		{#if canvasOpen && !evidenceOverlay}
 			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<div
-				class="hidden w-1 cursor-col-resize bg-line transition-colors hover:bg-accent/40 md:block"
+				class="w-1.5 shrink-0 cursor-col-resize bg-line/60 hover:bg-accent/40 focus:bg-accent/40 focus:outline-none"
 				class:bg-accent={dividerDragging}
 				role="separator"
 				tabindex="0"
+				aria-label="Conversation width"
+				aria-orientation="vertical"
+				aria-valuemin="35"
+				aria-valuemax="70"
+				aria-valuenow={Math.round(chatWidthPercent)}
 				onmousedown={startDividerDrag}
+				onkeydown={(e) => {
+					if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+						e.preventDefault();
+						chatWidthPercent =
+							e.key === 'Home'
+								? 35
+								: e.key === 'End'
+									? 70
+									: Math.max(
+											35,
+											Math.min(70, chatWidthPercent + (e.key === 'ArrowRight' ? 5 : -5))
+										);
+					}
+				}}
 			></div>
-
-			<!-- Canvas pane (desktop) -->
-			<div class="hidden overflow-hidden md:block" style="width: {100 - chatWidthPercent}%;">
-				<Canvas
-					onAction={handleBlockAction}
-					onScrollToMessage={scrollToMessage}
-					onExecuteAction={executeAction}
-				/>
-			</div>
 		{/if}
+		<EvidenceWorkspace
+			open={canvasOpen}
+			overlay={evidenceOverlay}
+			expanded={evidenceExpanded}
+			canExpand={variant === 'page' && wideViewport}
+			onClose={closeEvidence}
+			onToggleExpand={() => (evidenceExpanded = !evidenceExpanded)}
+			onAction={handleBlockAction}
+			onScrollToMessage={returnToMessage}
+			onExecuteAction={executeAction}
+		/>
 	</div>
 </div>
 
 <MemoryPanel bind:open={memoryPanelOpen} />
-
-<!-- Canvas overlay (mobile always; desktop too in drawer variant) -->
-{#if mobileCanvasOpen}
-	<CanvasMobileOverlay
-		{variant}
-		onClose={() => (mobileCanvasOpen = false)}
-		onAction={handleBlockAction}
-		onScrollToMessage={scrollToMessage}
-		onExecuteAction={executeAction}
-	/>
-{/if}
 
 <style>
 	.chat-pane {
 		width: 100%;
 		transition: width 0.2s ease;
 	}
-	@media (min-width: 768px) {
+	@media (min-width: 1024px) {
 		.chat-pane {
 			width: var(--chat-width, 100%);
 		}

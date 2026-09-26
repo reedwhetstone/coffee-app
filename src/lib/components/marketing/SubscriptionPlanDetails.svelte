@@ -13,7 +13,7 @@
 		{
 			name: 'With Mallard Studio',
 			question: 'What should we roast next, and what happened last time?',
-			inputs: ['Green inventory', 'Roast profiles', 'Tasting notes', 'Confirmed actions'],
+			inputs: ['Green inventory', 'Artisan references', 'Roast profiles', 'Tasting notes'],
 			outcome: 'A production answer grounded in your own roastery records.',
 			tone: 'studio'
 		}
@@ -45,7 +45,8 @@
 		},
 		{
 			title: 'Roast',
-			description: 'Save sessions and profiles against the coffee that produced them.'
+			description:
+				'Import Artisan files, save reusable references, and compare them with executed roasts.'
 		},
 		{
 			title: 'Taste',
@@ -151,9 +152,9 @@
 		name="Mallard Studio"
 		price={`${BILLING_OFFERS.studioMonthly.price}${BILLING_OFFERS.studioMonthly.interval}`}
 		headline="Keep the coffee, the roast, and the result connected."
-		description="Mallard Studio replaces disconnected inventory sheets, roast notes, and margin math with one operating record. Trace what happened from the green lot through the finished roast."
+		description="Mallard Studio replaces disconnected inventory sheets, Artisan files, roast notes, and margin math with one operating record. Save reference profiles, compare them with executed roasts, and trace what happened from green lot through finished roast."
 		askTitle="The Cherry Roast Agent is included with Mallard Studio."
-		askDescription="Ask about inventory, compare roast history and tasting notes, and prepare inventory, roast, or sales changes for your confirmation."
+		askDescription="Attach an Artisan file, compare reference profiles with executed roasts, discuss measured differences, and prepare inventory, roast, or sales changes for your confirmation."
 		supportingText="Mallard Studio includes catalog and sourcing context too. Add Parchment Intelligence when you also need market signals, supplier comparisons, price history, and the broader market view."
 		workflowTitle="One coffee record through production"
 		workflow={studioWorkflow}
@@ -182,8 +183,9 @@
 				</h3>
 				<p class="mt-4 max-w-3xl text-base leading-7 text-muted">
 					Use Parchment Intelligence to understand outside supply and pricing, Mallard Studio to
-					manage the coffee after it arrives, and the Cherry Synthesis Agent to investigate across
-					both. The products share one subscription and renewal date.
+					manage inventory and Artisan profile comparisons after it arrives, and the Cherry
+					Synthesis Agent to investigate across both. The products share one subscription and
+					renewal date.
 				</p>
 			</div>
 

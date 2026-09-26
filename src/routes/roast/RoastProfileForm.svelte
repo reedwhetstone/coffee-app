@@ -8,9 +8,9 @@
 	// Flexible type for available coffees which might be catalog or inventory items
 	interface CoffeeItem {
 		id: number;
-		name: string;
+		name?: string | null;
 		stocked?: boolean | null;
-		coffee_catalog?: { name?: string } | null;
+		coffee_catalog?: { name?: string | null } | null;
 		[key: string]: unknown;
 	}
 

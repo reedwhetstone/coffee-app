@@ -1,21 +1,21 @@
 # ADR-007: Headless API Extraction — coffee-app Becomes a Public Reference Client
 
-**Status:** Accepted; migration in progress
+**Status:** Accepted; terminal source migration complete, production canary pending
 **Date:** 2026-06-28
 
 > Companion ADR. The parchment-api repo carries the mirror decision from the API
 > side. This ADR records the destination for coffee-app. Current implementation
-> state and remaining direct-Supabase debt are tracked in
-> `notes/ARCHITECTURE.md` and the headless-cutover entry in `notes/DEVLOG.md`.
+> state and remaining production proof are tracked in `notes/ARCHITECTURE.md` and
+> the headless-cutover entry in `notes/DEVLOG.md`.
 
 ## Current implementation status
 
 The catalog BFF and server-side chat tools use `@purveyors/sdk`, and coffee-app
-does not depend on `@purveyors/cli`. The extraction is not complete. Coffee-app
-still performs direct Supabase reads and writes for auth, billing, workspaces,
-Mallard Studio workflows, and several shared catalog, market, similarity,
-tracking, RAG, API-key, and usage paths. Parchment is the sole shared-schema
-migration authority even while these callers remain.
+does not depend on `@purveyors/cli`. The terminal source extraction is complete:
+coffee-app retains only Supabase browser identity/session plumbing, thin BFF and
+SDK transport adaptation, and presentation behavior. Parchment remains the sole
+shared-schema migration authority. Cross-product production canaries are the
+remaining proof gate before the terminal migration is operationally complete.
 
 ## Context
 
