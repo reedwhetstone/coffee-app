@@ -89,7 +89,9 @@ function compactParts(parts: ChatPersistencePart[]): ChatPersistencePart[] {
 			state: part.state,
 			output: output?.action_card
 				? { action_card: output.action_card }
-				: { summary: 'Large result is available on the canvas.' }
+				: output?.action_plan
+					? { action_plan: output.action_plan }
+					: { summary: 'Large result is available on the canvas.' }
 		};
 	});
 	if (JSON.stringify(compacted).length <= MAX_PERSISTED_PARTS_JSON) return compacted;

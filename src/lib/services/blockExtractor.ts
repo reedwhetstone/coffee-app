@@ -207,28 +207,82 @@ export function extractBlockFromPart(part: any, options?: BlockExtractorOptions)
 
 	// Write tools return action_card payloads
 	if ('action_card' in output && output.action_card) {
-		const card = output.action_card as Record<string, unknown>;
-		return {
-			type: 'action-card',
-			version: 1,
-			data: {
-				executionId:
-					(typeof card.executionId === 'string' && card.executionId) ||
-					(options?.messageId && options.allowExecutionIdSynthesis !== false
-						? `${options.messageId}:${String(part.toolCallId ?? toolName)}`
-						: undefined),
-				actionType: card.actionType as ActionType,
-				summary: card.summary as string,
-				reasoning: card.reasoning as string | undefined,
-				fields: (card.fields || []) as ActionCardBlock['data']['fields'],
-				status: (card.status as ActionCardBlock['data']['status']) || 'proposed',
-				result: card.result,
-				error: card.error as string | undefined
-			}
-		} satisfies ActionCardBlock;
+		return actionCardBlock(
+			output.action_card as Record<string, unknown>,
+			options?.messageId && options.allowExecutionIdSynthesis !== false
+				? `${options.messageId}:${String(part.toolCallId ?? toolName)}`
+				: undefined
+		);
+	}
+
+	// propose_action_plan: the first step is the primary block; later steps are companions.
+	if ('action_plan' in output && output.action_plan) {
+		return actionPlanBlocks(part, options)[0] ?? null;
 	}
 
 	return null;
+}
+
+function actionCardBlock(
+	card: Record<string, unknown>,
+	fallbackExecutionId: string | undefined,
+	plan?: ActionCardBlock['data']['plan']
+): ActionCardBlock {
+	return {
+		type: 'action-card',
+		version: 1,
+		data: {
+			executionId:
+				(typeof card.executionId === 'string' && card.executionId) || fallbackExecutionId,
+			actionType: card.actionType as ActionType,
+			summary: card.summary as string,
+			reasoning: card.reasoning as string | undefined,
+			fields: (card.fields || []) as ActionCardBlock['data']['fields'],
+			status: (card.status as ActionCardBlock['data']['status']) || 'proposed',
+			result: card.result,
+			error: card.error as string | undefined,
+			...(plan ? { plan } : {})
+		}
+	};
+}
+
+/** Durable execution ID for one plan step, derived like a single card's ID. */
+export function actionPlanStepExecutionId(
+	messageId: string,
+	toolCallId: string,
+	step: number
+): string {
+	return `${messageId}:${toolCallId}:step-${step}`;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function actionPlanBlocks(part: any, options?: BlockExtractorOptions): ActionCardBlock[] {
+	const plan = part?.output?.action_plan as { planId?: unknown; steps?: unknown } | undefined;
+	if (!plan || typeof plan.planId !== 'string' || !Array.isArray(plan.steps)) return [];
+	const planId = plan.planId;
+	const toolName = part.toolName ?? String(part.type).replace('tool-', '');
+	return plan.steps.filter(isRecord).map((step, index) => {
+		const meta = isRecord(step.plan) ? step.plan : {};
+		const stepNumber = typeof meta.step === 'number' ? meta.step : index + 1;
+		return actionCardBlock(
+			step,
+			options?.messageId && options.allowExecutionIdSynthesis !== false
+				? actionPlanStepExecutionId(
+						options.messageId,
+						String(part.toolCallId ?? toolName),
+						stepNumber
+					)
+				: undefined,
+			{
+				planId,
+				step: stepNumber,
+				bindings: Array.isArray(meta.bindings)
+					? (meta.bindings as NonNullable<ActionCardBlock['data']['plan']>['bindings'])
+					: [],
+				required: Array.isArray(meta.required) ? (meta.required as string[]) : []
+			}
+		);
+	});
 }
 
 /**
@@ -534,8 +588,11 @@ export function messageHasPresentResults(parts: any[]): boolean {
  * Returns additional companion blocks for a tool part.
  * e.g. a roast-chart block when roast_profiles returns a single roast.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function extractCompanionBlocks(part: any): UIBlock[] {
+export function extractCompanionBlocks(
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	part: any,
+	options?: BlockExtractorOptions
+): UIBlock[] {
 	if (!part?.type?.startsWith('tool-')) return [];
 	if (part.state !== 'output-available') return [];
 
@@ -543,6 +600,10 @@ export function extractCompanionBlocks(part: any): UIBlock[] {
 	if (!output || typeof output !== 'object') return [];
 
 	const toolName = part.toolName ?? part.type.replace('tool-', '');
+
+	if ('action_plan' in output && output.action_plan) {
+		return actionPlanBlocks(part, options).slice(1);
+	}
 
 	// When roast_profiles returns a single profile, also produce a roast-chart block
 	if (

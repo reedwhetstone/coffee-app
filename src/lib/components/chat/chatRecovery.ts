@@ -40,7 +40,7 @@ function hasUserFacingOutcome(part: UIMessage['parts'][number]): boolean {
 	if (candidate.state !== 'output-available') return false;
 	const output = record(candidate.output);
 	if (!output) return false;
-	return Boolean(output.action_card || output.presentation);
+	return Boolean(output.action_card || output.action_plan || output.presentation);
 }
 
 /** A settled tool turn must leave the user with prose, a presentation, or an action to review. */
@@ -78,7 +78,14 @@ function isCompletedCoffeeEvidence(
 		return false;
 	}
 	const output = record(candidate.output);
-	if (!output || output.success === false || output.error || output.action_card) return false;
+	if (
+		!output ||
+		output.success === false ||
+		output.error ||
+		output.action_card ||
+		output.action_plan
+	)
+		return false;
 	const tool = candidate.toolName ?? part.type.slice('tool-'.length);
 	if (typeof tool !== 'string') return false;
 	if (COFFEE_TOOLS.has(tool)) return isCompletedCoffeeSearch(part);

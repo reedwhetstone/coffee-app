@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ActionCardBlock, BlockAction } from '$lib/types/genui';
+	import { actionStatusLabel } from '$lib/services/actionPlans';
 
 	let { block, onAction, canvasBlockId } = $props<{
 		block: ActionCardBlock;
@@ -8,6 +9,7 @@
 	}>();
 
 	const statusColors: Record<string, string> = {
+		waiting: 'bg-surface-canvas text-muted ring-line',
 		proposed: 'bg-warning-subtle text-warning-strong ring-warning/20 hover:bg-warning/15',
 		executing: 'bg-info-subtle text-info-strong ring-info/20',
 		success: 'bg-success-subtle text-success-strong ring-success/20',
@@ -15,6 +17,7 @@
 	};
 
 	const statusIcons: Record<string, string> = {
+		waiting: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
 		proposed: 'M12 9v2m0 4h.01',
 		executing:
 			'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
@@ -50,13 +53,7 @@
 	</svg>
 	<span>{block.data.summary}</span>
 	<span class="border-current/20 border-l pl-1.5 opacity-80">
-		{block.data.status === 'success'
-			? 'Completed'
-			: block.data.status === 'proposed'
-				? 'Needs confirmation'
-				: block.data.status === 'executing'
-					? 'Working'
-					: 'Failed'}
+		{actionStatusLabel(block.data.status)}
 	</span>
 	{#if block.data.status === 'proposed'}
 		<svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -342,4 +342,165 @@ describe('ChatWorkspace confirmed-action continuation', () => {
 		await new Promise((resolve) => setTimeout(resolve, 900));
 		await waitFor(() => expect(screen.getByText('Second complete.')).toBeVisible());
 	});
+	it('unlocks the next plan step without a model turn, then continues after the last step', async () => {
+		const proposal = gatedResponse();
+		const continuation = gatedResponse();
+		const chatRequests: Array<{ completedAction?: { executionId: string } }> = [];
+		const actionRequests: Array<{ executionId: string; fields: Record<string, unknown> }> = [];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn<typeof fetch>(async (input, init) => {
+				const url = String(input);
+				if (url === '/api/chat') {
+					chatRequests.push(JSON.parse(String(init?.body)));
+					const stream = [proposal, continuation][chatRequests.length - 1];
+					if (!stream) throw new Error('Unexpected chat request');
+					return stream.response(init?.signal);
+				}
+				if (url === '/api/chat/execute-action') {
+					const body = JSON.parse(String(init?.body));
+					actionRequests.push(body);
+					return Response.json(
+						actionRequests.length === 1
+							? { success: true, id: 4498, message: 'Roast session created', replayed: false }
+							: { success: true, id: 77, message: 'Sale recorded', replayed: false }
+					);
+				}
+				if (url === '/api/memory') return Response.json({ content: '' });
+				if (url.endsWith('/messages')) {
+					return Response.json({ reset_epoch: 0, next_message_sequence: 2 });
+				}
+				if (url.endsWith('/canvas')) {
+					const payload = JSON.parse(String(init?.body));
+					return Response.json({
+						canvas_state: payload.canvas_state,
+						canvas_version: 1,
+						reset_epoch: 0
+					});
+				}
+				throw new Error(`Unexpected endpoint: ${url}`);
+			})
+		);
+
+		render(ChatWorkspace, {
+			canUseChat: true,
+			canUseMallardWorkspaces: true,
+			agentName: 'Cherry Roast Agent',
+			variant: 'drawer',
+			initialWorkspaceData: {
+				workspaces: [{ ...workspace }],
+				workspace: { ...workspace },
+				messages: []
+			}
+		});
+
+		await waitFor(() => expect(screen.getByRole('textbox')).toBeEnabled());
+		await fireEvent.input(screen.getByRole('textbox'), {
+			target: { value: 'Log this roast, then sell 20 oz of it' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+		await waitFor(() => expect(chatRequests).toHaveLength(1));
+		proposal.emit({ type: 'start', messageId: 'plan-assistant' });
+		proposal.emit({
+			type: 'tool-input-available',
+			toolCallId: 'plan',
+			toolName: 'propose_action_plan',
+			input: {}
+		});
+		proposal.emit({
+			type: 'tool-output-available',
+			toolCallId: 'plan',
+			output: {
+				action_plan: {
+					planId: 'plan-1',
+					summary: 'Roast, then sell',
+					steps: [
+						{
+							actionType: 'create_roast_session',
+							summary: 'Log sample roast',
+							status: 'proposed',
+							fields: [
+								{
+									key: 'coffee_id',
+									label: 'Coffee ID',
+									value: 812,
+									type: 'number',
+									editable: false
+								},
+								{
+									key: 'batch_name',
+									label: 'Batch Name',
+									value: 'Sample',
+									type: 'text',
+									editable: true
+								}
+							],
+							plan: { step: 1, bindings: [], required: [] }
+						},
+						{
+							actionType: 'record_sale',
+							summary: 'Record 20 oz sale',
+							status: 'waiting',
+							fields: [
+								{
+									key: 'green_coffee_inv_id',
+									label: 'Inventory ID',
+									value: '',
+									type: 'number',
+									editable: false
+								},
+								{
+									key: 'batch_name',
+									label: 'Batch Name',
+									value: '',
+									type: 'text',
+									editable: false
+								},
+								{
+									key: 'buyer',
+									label: 'Buyer',
+									value: '',
+									type: 'text',
+									editable: true,
+									required: true
+								}
+							],
+							plan: {
+								step: 2,
+								bindings: [
+									{ field: 'green_coffee_inv_id', fromStep: 1, from: 'coffee_id' },
+									{ field: 'batch_name', fromStep: 1, from: 'batch_name' }
+								],
+								required: ['buyer']
+							}
+						}
+					]
+				}
+			}
+		});
+		proposal.finish();
+
+		await fireEvent.click(await screen.findByRole('button', { name: /Canvas 2/ }));
+		const canvas = await screen.findByRole('dialog', { name: 'Canvas' });
+		await fireEvent.click(within(canvas).getByRole('button', { name: /Log sample roast/ }));
+		await fireEvent.click(await within(canvas).findByRole('button', { name: 'Execute' }));
+		await waitFor(() => expect(actionRequests).toHaveLength(1));
+		expect(actionRequests[0].executionId).toBe('plan-assistant:plan:step-1');
+
+		await fireEvent.click(within(canvas).getByRole('button', { name: /Record 20 oz sale/ }));
+		const buyer = await within(canvas).findByLabelText('Buyer');
+		expect(chatRequests).toHaveLength(1);
+		await fireEvent.input(buyer, { target: { value: 'Corner Cafe' } });
+		await fireEvent.click(within(canvas).getByRole('button', { name: 'Execute' }));
+		await waitFor(() => expect(actionRequests).toHaveLength(2));
+		expect(actionRequests[1]).toMatchObject({
+			executionId: 'plan-assistant:plan:step-2',
+			fields: { green_coffee_inv_id: 812, batch_name: 'Sample', buyer: 'Corner Cafe' }
+		});
+		await waitFor(() => expect(chatRequests).toHaveLength(2));
+		expect(chatRequests[1].completedAction).toEqual({
+			executionId: 'plan-assistant:plan:step-2'
+		});
+		continuation.finish();
+	});
 });

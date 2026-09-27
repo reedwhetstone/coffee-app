@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ActionCardBlock, ActionField } from '$lib/types/genui';
+	import { missingRequiredFields } from '$lib/services/actionPlans';
 
 	let { block, blockId, onExecute } = $props<{
 		block: ActionCardBlock;
@@ -20,11 +21,28 @@
 	// Store all bean options for source_filter coupling (before filtering)
 	let allBeanOptions = $state<Array<{ label: string; value: string }>>([]);
 
+	let missingRequired = $derived(missingRequiredFields(localFields));
+	// Plan steps show which earlier step fills each bound field.
+	let boundFrom = $derived(
+		new Map<string, number>(
+			(block.data.plan?.bindings ?? []).map((b: { field: string; fromStep: number }) => [
+				b.field,
+				b.fromStep
+			])
+		)
+	);
+	let waitingOn = $derived(
+		[...new Set<number>(boundFrom.values())].sort((a, b) => a - b).join(', ')
+	);
+
 	// Initialize local fields from block data
 	$effect(() => {
 		localFields = block.data.fields.map((f: ActionField) => ({ ...f }));
 		status = block.data.status;
 		errorMsg = block.data.error || '';
+		// Open the editor when the user still has to supply values.
+		if (block.data.status === 'proposed' && missingRequiredFields(block.data.fields).length > 0)
+			editing = true;
 
 		// Cache the full bean options for source_filter coupling
 		const beanField = block.data.fields.find((f: ActionField) => f.key === 'coffee_bean');
@@ -107,6 +125,7 @@
 	}
 
 	async function handleExecute() {
+		if (missingRequired.length > 0) return;
 		status = 'executing';
 		errorMsg = '';
 		try {
@@ -144,6 +163,7 @@
 	}
 
 	const statusColors: Record<string, string> = {
+		waiting: 'bg-surface-canvas ring-line',
 		proposed: 'bg-warning-subtle ring-warning/40',
 		executing: 'bg-info-subtle ring-info/40',
 		success: 'bg-success-subtle ring-success/40',
@@ -151,6 +171,7 @@
 	};
 
 	const statusLabels: Record<string, string> = {
+		waiting: 'Waiting',
 		proposed: 'Proposed',
 		executing: 'Executing...',
 		success: 'Completed',
@@ -158,6 +179,7 @@
 	};
 
 	const statusIcons: Record<string, string> = {
+		waiting: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
 		proposed: 'M12 9v2m0 4h.01',
 		executing:
 			'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
@@ -177,7 +199,9 @@
 						? 'text-danger'
 						: status === 'executing'
 							? 'animate-spin text-info'
-							: 'text-warning'}"
+							: status === 'waiting'
+								? 'text-muted'
+								: 'text-warning'}"
 				fill="none"
 				stroke="currentColor"
 				viewBox="0 0 24 24"
@@ -194,13 +218,15 @@
 			</span>
 		</div>
 		<span
-			class="rounded-full px-2 py-0.5 text-xs font-medium {status === 'proposed'
-				? 'bg-warning-subtle text-warning-strong'
-				: status === 'executing'
-					? 'bg-info-subtle text-info-strong'
-					: status === 'success'
-						? 'bg-success-subtle text-success-strong'
-						: 'bg-danger-subtle text-danger-strong'}"
+			class="rounded-full px-2 py-0.5 text-xs font-medium {status === 'waiting'
+				? 'bg-surface-canvas text-muted ring-1 ring-line'
+				: status === 'proposed'
+					? 'bg-warning-subtle text-warning-strong'
+					: status === 'executing'
+						? 'bg-info-subtle text-info-strong'
+						: status === 'success'
+							? 'bg-success-subtle text-success-strong'
+							: 'bg-danger-subtle text-danger-strong'}"
 		>
 			{statusLabels[status]}
 		</span>
@@ -218,8 +244,14 @@
 		{#each localFields as field (field.key)}
 			{#if field.type !== 'hidden' && field.key !== '_bean_sources'}
 				<div class="flex items-center gap-2 text-sm">
-					<span class="w-24 shrink-0 text-muted sm:w-32">{field.label}</span>
-					{#if editing && field.editable && status === 'proposed'}
+					<span class="w-24 shrink-0 text-muted sm:w-32"
+						>{field.label}{#if field.required}<span class="text-danger" aria-hidden="true">
+								*</span
+							>{/if}</span
+					>
+					{#if status === 'waiting' && boundFrom.has(field.key)}
+						<span class="flex-1 italic text-muted">From step {boundFrom.get(field.key)}</span>
+					{:else if editing && field.editable && status === 'proposed'}
 						{#if field.type === 'textarea'}
 							<textarea
 								value={String(field.value || '')}
@@ -254,6 +286,7 @@
 									setFieldValue(field.key, field.type === 'number' ? Number(val) : val);
 								}}
 								aria-label={field.label}
+								aria-required={field.required ? 'true' : undefined}
 								class="min-w-0 flex-1 rounded border border-line bg-white px-2 py-1 text-sm focus:border-accent focus:outline-none"
 							/>
 						{/if}
@@ -281,11 +314,21 @@
 	{/if}
 
 	<!-- Action buttons -->
-	{#if status === 'proposed'}
+	{#if status === 'waiting'}
+		<div class="mt-3 text-sm text-muted">
+			Unlocks after step {waitingOn} completes.
+		</div>
+	{:else if status === 'proposed'}
+		{#if missingRequired.length > 0}
+			<div class="mt-3 text-xs text-muted">
+				Fill in {missingRequired.join(' and ')} to continue.
+			</div>
+		{/if}
 		<div class="mt-3 flex items-center gap-2">
 			<button
 				onclick={handleExecute}
-				class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-ink transition-all hover:bg-opacity-90"
+				disabled={missingRequired.length > 0}
+				class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-ink transition-all hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				Execute
 			</button>
