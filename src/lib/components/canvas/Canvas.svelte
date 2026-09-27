@@ -4,6 +4,7 @@
 	import CanvasBlockDetail from './CanvasBlockDetail.svelte';
 	import { defaultBlockTitle, type BlockAction, type CanvasBlock } from '$lib/types/genui';
 	import { blockSupportsDetail } from '$lib/services/blockDetail';
+	import { actionStatusLabel } from '$lib/services/actionPlans';
 
 	let {
 		onAction,
@@ -260,13 +261,7 @@
 										<span class="block truncate text-xs font-medium">{blockLabel(shelfBlock)}</span>
 										{#if shelfBlock.block.type === 'action-card'}
 											<span class="block truncate text-[10px] text-muted"
-												>{shelfBlock.block.data.status === 'success'
-													? 'Completed'
-													: shelfBlock.block.data.status === 'proposed'
-														? 'Needs confirmation'
-														: shelfBlock.block.data.status === 'executing'
-															? 'Working'
-															: 'Failed'}</span
+												>{actionStatusLabel(shelfBlock.block.data.status)}</span
 											>
 										{:else}<span class="block truncate text-[10px] text-muted"
 												>{defaultBlockTitle(shelfBlock.block.type)}</span

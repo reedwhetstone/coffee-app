@@ -12,6 +12,7 @@
 		buildToolCanvasDispatchPlan,
 		extractBlockFromPart,
 		extractCompanionBlocks,
+		actionPlanStepExecutionId,
 		buildSearchDataCacheThroughPart,
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
@@ -27,6 +28,7 @@
 	} from '$lib/services/chatPersistence';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
 	import { getSuggestions } from '$lib/services/suggestionEngine';
+	import { planHasActionableSteps, resolveReadyPlanSteps } from '$lib/services/actionPlans';
 	import { matchSlashCommand, getSlashCompletions } from '$lib/services/slashCommands';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -781,6 +783,7 @@
 		// The canvas now mirrors storage; record its signature so the canvas
 		// autosave effect doesn't treat the restore as a user edit and write back.
 		lastCanvasSignature = canvasSignature();
+		reconcileRestoredActionCards();
 	}
 
 	// Serialized canvas UI state (which blocks, their order, view layout, pinned/
@@ -1259,6 +1262,16 @@
 				if (!isRestoredMessage && p.output?.action_card && !p.output.action_card.executionId) {
 					p.output.action_card.executionId = `${message.id}:${String(p.toolCallId ?? p.toolName ?? part.type)}`;
 				}
+				if (!isRestoredMessage && Array.isArray(p.output?.action_plan?.steps)) {
+					p.output.action_plan.steps.forEach((step: Record<string, unknown>, index: number) => {
+						if (step && typeof step === 'object' && !step.executionId)
+							step.executionId = actionPlanStepExecutionId(
+								message.id,
+								String(p.toolCallId ?? p.toolName ?? part.type),
+								(step.plan as { step?: number } | undefined)?.step ?? index + 1
+							);
+					});
+				}
 				const block = extractBlockFromPart(p, extractorOptions);
 
 				const dispatchPlan = buildToolCanvasDispatchPlan(p, block, message.id);
@@ -1346,31 +1359,91 @@
 	}
 
 	// ─── Action Card Execution ───────────────────────────────────────────────
-	function markChatActionCompleted(executionId: string, result: unknown) {
+	/** Patch the tool-output card (single or plan step) that owns an execution ID. */
+	function updateChatActionCard(executionId: string, patch: Record<string, unknown>) {
+		const patchCard = (card: unknown) =>
+			card && typeof card === 'object' && 'executionId' in card && card.executionId === executionId
+				? { ...card, ...patch }
+				: card;
 		chat.messages = chat.messages.map((message) => ({
 			...message,
 			parts: message.parts.map((part) => {
 				const output = 'output' in part ? part.output : undefined;
-				const card =
-					output && typeof output === 'object' && 'action_card' in output
-						? output.action_card
+				if (!output || typeof output !== 'object') return part;
+				if ('action_card' in output) {
+					const card = patchCard(output.action_card);
+					if (card === output.action_card) return part;
+					return { ...part, output: { ...output, action_card: card } } as typeof part;
+				}
+				const plan =
+					'action_plan' in output && output.action_plan && typeof output.action_plan === 'object'
+						? (output.action_plan as { steps?: unknown })
 						: undefined;
-				if (
-					!card ||
-					typeof card !== 'object' ||
-					!('executionId' in card) ||
-					card.executionId !== executionId
-				)
-					return part;
+				if (!plan || !Array.isArray(plan.steps)) return part;
+				const steps = plan.steps.map(patchCard);
+				if (steps.every((step, index) => step === (plan.steps as unknown[])[index])) return part;
 				return {
 					...part,
-					output: {
-						...(output as Record<string, unknown>),
-						action_card: { ...card, status: 'success', result }
-					}
+					output: { ...output, action_plan: { ...plan, steps } }
 				} as typeof part;
 			})
 		}));
+	}
+
+	function markChatActionCompleted(executionId: string, result: unknown) {
+		updateChatActionCard(executionId, { status: 'success', result });
+	}
+
+	/** Fill and unlock the plan's waiting steps whose prerequisites have succeeded. */
+	function unlockReadyPlanSteps(planId: string) {
+		for (const ready of resolveReadyPlanSteps(canvasStore.blocks, planId)) {
+			canvasStore.dispatch({
+				type: 'update-action',
+				blockId: ready.blockId,
+				data: { status: 'proposed', fields: ready.fields }
+			});
+			if (ready.executionId)
+				updateChatActionCard(ready.executionId, { status: 'proposed', fields: ready.fields });
+		}
+	}
+
+	/**
+	 * After a plan step succeeds, fill and unlock the steps that were waiting on
+	 * it. Returns true while the user can still act on a step, in which case the
+	 * next card is already in front of the user and no model turn is needed.
+	 * A plan left with only unresolvable waiting steps returns false so the
+	 * model continuation can recover.
+	 */
+	function advanceActionPlan(executionId: string): boolean {
+		const card = canvasStore.blocks.find(
+			(entry) => entry.block.type === 'action-card' && entry.block.data.executionId === executionId
+		)?.block;
+		const planId = card?.type === 'action-card' ? card.data.plan?.planId : undefined;
+		if (!planId) return false;
+		unlockReadyPlanSteps(planId);
+		return planHasActionableSteps(canvasStore.blocks, planId);
+	}
+
+	/**
+	 * Restored messages carry each card as it was first appended; message
+	 * autosave never rewrites them. The saved canvas holds what actually
+	 * executed, so merge its action-card state back into the tool outputs that
+	 * later requests replay, and unlock plan steps whose prerequisites finished.
+	 */
+	function reconcileRestoredActionCards() {
+		const planIds = new Set<string>();
+		for (const entry of canvasStore.blocks) {
+			if (entry.block.type !== 'action-card') continue;
+			const data = entry.block.data;
+			if (data.plan?.planId) planIds.add(data.plan.planId);
+			if (!data.executionId || data.status === 'executing') continue;
+			updateChatActionCard(data.executionId, {
+				status: data.status,
+				fields: data.fields,
+				...(data.result !== undefined ? { result: data.result } : {})
+			});
+		}
+		for (const planId of planIds) unlockReadyPlanSteps(planId);
 	}
 
 	async function executeAction(
@@ -1437,7 +1510,8 @@
 						);
 					});
 			}
-			if (isCurrentContinuationContext(continuationContext))
+			const planContinues = advanceActionPlan(executionId);
+			if (!planContinues && isCurrentContinuationContext(continuationContext))
 				queueConfirmedActionContinuation(executionId, continuationContext);
 			return result;
 		} catch (err) {

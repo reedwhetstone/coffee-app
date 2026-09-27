@@ -1,4 +1,4 @@
-import { extractBlockFromPart } from '$lib/services/blockExtractor';
+import { extractBlockFromPart, extractCompanionBlocks } from '$lib/services/blockExtractor';
 import type { CanvasBlock, UIBlock } from '$lib/types/genui';
 
 export type ActionReceipt = {
@@ -16,31 +16,33 @@ export function buildActionReceipts(
 	const matchedCanvasIds = new Set<string>();
 	const receipts = parts.flatMap((part, partIndex) => {
 		if (!part.type.startsWith('tool-')) return [];
-		const block = extractBlockFromPart(part, {
-			messageId,
-			allowExecutionIdSynthesis: false
+		const options = { messageId, allowExecutionIdSynthesis: false };
+		const primary = extractBlockFromPart(part, options);
+		// Action plans contribute one card per step; later steps are companions.
+		const blocks = primary ? [primary, ...extractCompanionBlocks(part, options)] : [];
+		return blocks.flatMap((block, blockIndex) => {
+			if (block.type !== 'action-card') return [];
+			const canvasEntry = canvasEntries.find(
+				(entry) =>
+					!matchedCanvasIds.has(entry.id) &&
+					entry.block.type === 'action-card' &&
+					(entry.block.data.executionId
+						? entry.block.data.executionId === block.data.executionId
+						: !block.data.executionId)
+			);
+			if (canvasEntry) matchedCanvasIds.add(canvasEntry.id);
+			const fallbackKey =
+				(typeof part.toolCallId === 'string' && part.toolCallId.length > 0
+					? part.toolCallId
+					: `${part.type}-${partIndex}`) + (blockIndex > 0 ? `-${blockIndex}` : '');
+			return [
+				{
+					block: canvasEntry?.block.type === 'action-card' ? canvasEntry.block : block,
+					canvasBlockId: canvasEntry?.id,
+					renderKey: block.data.executionId || canvasEntry?.id || fallbackKey
+				}
+			];
 		});
-		if (block?.type !== 'action-card') return [];
-		const canvasEntry = canvasEntries.find(
-			(entry) =>
-				!matchedCanvasIds.has(entry.id) &&
-				entry.block.type === 'action-card' &&
-				(entry.block.data.executionId
-					? entry.block.data.executionId === block.data.executionId
-					: !block.data.executionId)
-		);
-		if (canvasEntry) matchedCanvasIds.add(canvasEntry.id);
-		const fallbackKey =
-			typeof part.toolCallId === 'string' && part.toolCallId.length > 0
-				? part.toolCallId
-				: `${part.type}-${partIndex}`;
-		return [
-			{
-				block: canvasEntry?.block.type === 'action-card' ? canvasEntry.block : block,
-				canvasBlockId: canvasEntry?.id,
-				renderKey: block.data.executionId || canvasEntry?.id || fallbackKey
-			}
-		];
 	});
 	for (const entry of canvasEntries) {
 		if (matchedCanvasIds.has(entry.id) || entry.block.type !== 'action-card') continue;

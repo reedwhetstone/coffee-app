@@ -140,6 +140,23 @@ export interface ActionField {
 	editable: boolean;
 	options?: string[]; // for select type (simple string options)
 	selectOptions?: Array<{ label: string; value: string }>; // for select type (label/value pairs)
+	/** Only the user can supply this value; Execute stays disabled until it is filled. */
+	required?: boolean;
+}
+
+/** Fills a plan step's field from an earlier step once that step succeeds. */
+export interface ActionPlanBinding {
+	field: string;
+	fromStep: number;
+	/** `result_id` for the ID the earlier write returned, otherwise one of its field keys. */
+	from: string;
+}
+
+export interface ActionPlanStep {
+	planId: string;
+	step: number;
+	bindings: ActionPlanBinding[];
+	required: string[];
 }
 
 export interface ActionCardPayload {
@@ -148,7 +165,9 @@ export interface ActionCardPayload {
 	summary: string;
 	reasoning?: string;
 	fields: ActionField[];
-	status: 'proposed' | 'executing' | 'success' | 'failed';
+	/** `waiting` cards belong to a plan and unlock when their prerequisite steps succeed. */
+	status: 'waiting' | 'proposed' | 'executing' | 'success' | 'failed';
+	plan?: ActionPlanStep;
 	result?: unknown;
 	error?: string;
 }

@@ -70,3 +70,99 @@ describe('ActionCardBlock execution status', () => {
 		expect(await screen.findByText('Action completed successfully.')).toBeInTheDocument();
 	});
 });
+
+describe('ActionCardBlock plan steps', () => {
+	const saleFields = [
+		{ key: 'batch_name', label: 'Batch Name', value: '', type: 'text', editable: false },
+		{ key: 'buyer', label: 'Buyer', value: '', type: 'text', editable: true, required: true }
+	] satisfies ActionCardBlockType['data']['fields'];
+
+	it('shows a waiting step without an Execute button', () => {
+		const block = {
+			type: 'action-card',
+			version: 1,
+			data: {
+				summary: 'Record 20 oz sale',
+				actionType: 'record_sale',
+				executionId: 'msg-1:call-9:step-2',
+				status: 'waiting',
+				fields: saleFields,
+				plan: {
+					planId: 'plan-1',
+					step: 2,
+					bindings: [{ field: 'batch_name', fromStep: 1, from: 'batch_name' }],
+					required: ['buyer']
+				}
+			}
+		} satisfies ActionCardBlockType;
+
+		render(ActionCardBlock, { block, onExecute: vi.fn() });
+		expect(screen.getByText('From step 1')).toBeInTheDocument();
+		expect(screen.getByText('Unlocks after step 1 completes.')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Execute' })).not.toBeInTheDocument();
+	});
+
+	it('blocks execution until the user fills required values', async () => {
+		const onExecute = vi.fn().mockResolvedValue({ success: true });
+		const block = {
+			type: 'action-card',
+			version: 1,
+			data: {
+				summary: 'Record 20 oz sale',
+				actionType: 'record_sale',
+				executionId: 'msg-1:call-9:step-2',
+				status: 'proposed',
+				fields: saleFields.map((field) =>
+					field.key === 'batch_name' ? { ...field, value: 'Sample' } : field
+				)
+			}
+		} satisfies ActionCardBlockType;
+
+		render(ActionCardBlock, { block, onExecute });
+		const execute = screen.getByRole('button', { name: 'Execute' });
+		expect(execute).toBeDisabled();
+		expect(screen.getByText('Fill in Buyer to continue.')).toBeInTheDocument();
+
+		await fireEvent.input(screen.getByLabelText('Buyer'), { target: { value: 'Corner Cafe' } });
+		expect(execute).toBeEnabled();
+		await fireEvent.click(execute);
+		expect(onExecute).toHaveBeenCalledWith(
+			'msg-1:call-9:step-2',
+			'record_sale',
+			{ batch_name: 'Sample', buyer: 'Corner Cafe' },
+			undefined
+		);
+	});
+
+	it('keeps a cleared required number blank instead of zero', async () => {
+		const onExecute = vi.fn().mockResolvedValue({ success: true });
+		const block = {
+			type: 'action-card',
+			version: 1,
+			data: {
+				summary: 'Record sale',
+				actionType: 'record_sale',
+				executionId: 'msg-1:call-9:step-2',
+				status: 'proposed',
+				fields: [
+					{
+						key: 'price',
+						label: 'Price',
+						value: 12,
+						type: 'number',
+						editable: true,
+						required: true
+					}
+				]
+			}
+		} satisfies ActionCardBlockType;
+
+		render(ActionCardBlock, { block, onExecute });
+		await fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+		await fireEvent.input(screen.getByLabelText('Price'), { target: { value: '' } });
+		const execute = screen.getByRole('button', { name: 'Execute' });
+		expect(execute).toBeDisabled();
+		await fireEvent.click(execute);
+		expect(onExecute).not.toHaveBeenCalled();
+	});
+});
