@@ -133,4 +133,36 @@ describe('ActionCardBlock plan steps', () => {
 			undefined
 		);
 	});
+
+	it('keeps a cleared required number blank instead of zero', async () => {
+		const onExecute = vi.fn().mockResolvedValue({ success: true });
+		const block = {
+			type: 'action-card',
+			version: 1,
+			data: {
+				summary: 'Record sale',
+				actionType: 'record_sale',
+				executionId: 'msg-1:call-9:step-2',
+				status: 'proposed',
+				fields: [
+					{
+						key: 'price',
+						label: 'Price',
+						value: 12,
+						type: 'number',
+						editable: true,
+						required: true
+					}
+				]
+			}
+		} satisfies ActionCardBlockType;
+
+		render(ActionCardBlock, { block, onExecute });
+		await fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+		await fireEvent.input(screen.getByLabelText('Price'), { target: { value: '' } });
+		const execute = screen.getByRole('button', { name: 'Execute' });
+		expect(execute).toBeDisabled();
+		await fireEvent.click(execute);
+		expect(onExecute).not.toHaveBeenCalled();
+	});
 });

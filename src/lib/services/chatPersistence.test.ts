@@ -144,6 +144,52 @@ describe('buildPersistedChatMessages', () => {
 		});
 	});
 
+	it('keeps a bounded action plan through both hard compaction fallbacks', () => {
+		const step = (n: number) => ({
+			executionId: `large-plan:plan:step-${n}`,
+			actionType: 'record_sale',
+			summary: `Step ${n}`,
+			status: n === 1 ? 'success' : 'waiting',
+			fields: [{ key: 'options', options: ['x'.repeat(130_000)] }],
+			plan: { step: n, bindings: n === 1 ? [] : [{ field: 'id', fromStep: 1, from: 'result_id' }] }
+		});
+		const [message] = buildPersistedChatMessages([
+			{
+				id: 'large-plan',
+				role: 'assistant',
+				parts: [
+					{
+						type: 'tool-propose_action_plan',
+						toolCallId: 'plan',
+						input: {},
+						state: 'output-available',
+						output: { action_plan: { planId: 'plan-1', steps: [step(1), step(2)] } }
+					}
+				]
+			}
+		]);
+		const expectPlan = (output: unknown) =>
+			expect(output).toMatchObject({
+				action_plan: {
+					planId: 'plan-1',
+					steps: [
+						{ executionId: 'large-plan:plan:step-1', status: 'success', fields: [] },
+						{
+							executionId: 'large-plan:plan:step-2',
+							status: 'waiting',
+							fields: [],
+							plan: { step: 2, bindings: [{ field: 'id', fromStep: 1, from: 'result_id' }] }
+						}
+					]
+				}
+			});
+
+		expect(JSON.stringify(message.parts).length).toBeLessThan(120_000);
+		expectPlan(message.parts[0].output);
+		const retry = compactPersistedMessageForRetry(message);
+		expectPlan(retry.parts[1].output);
+	});
+
 	it('keeps compacted tool interactions valid for the next chat request', async () => {
 		const [message] = buildPersistedChatMessages([
 			{

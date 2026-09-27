@@ -18,7 +18,12 @@ export function actionStatusLabel(status: ActionCardPayload['status']): string {
 }
 
 function isBlank(value: unknown): boolean {
-	return value === undefined || value === null || (typeof value === 'string' && !value.trim());
+	return (
+		value === undefined ||
+		value === null ||
+		(typeof value === 'number' && Number.isNaN(value)) ||
+		(typeof value === 'string' && !value.trim())
+	);
 }
 
 /** Labels of user-owned fields that are still empty. */
@@ -87,7 +92,16 @@ export function resolveReadyPlanSteps(
 	return ready;
 }
 
-/** True while any step of the plan has not completed. */
-export function planHasOpenSteps(cards: Array<{ id: string; block: unknown }>, planId: string) {
-	return planCards(cards, planId).some((entry) => entry.block.data.status !== 'success');
+/**
+ * True while the user can still act on a step of the plan: a card to confirm,
+ * one executing, or a failure to retry. A waiting step whose bindings cannot
+ * resolve does not count, so a stuck plan falls back to the model continuation.
+ */
+export function planHasActionableSteps(
+	cards: Array<{ id: string; block: unknown }>,
+	planId: string
+) {
+	return planCards(cards, planId).some((entry) =>
+		['proposed', 'executing', 'failed'].includes(entry.block.data.status)
+	);
 }

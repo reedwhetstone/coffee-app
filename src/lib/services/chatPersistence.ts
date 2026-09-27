@@ -29,14 +29,50 @@ export type PersistedChatMessagePayload = {
 	client_created_at?: string;
 };
 
+function minimalActionCard(card: Record<string, unknown>) {
+	return {
+		executionId: card.executionId,
+		actionType: card.actionType,
+		summary: String(card.summary ?? '').slice(0, 500),
+		status: card.status,
+		...(card.plan && typeof card.plan === 'object' ? { plan: card.plan } : {}),
+		fields: []
+	};
+}
+
+/**
+ * Bounded receipt for a write-tool result: the action card, or every step of an
+ * action plan, without field payloads. Returns undefined for other results.
+ */
+function minimalActionOutput(output: unknown): Record<string, unknown> | undefined {
+	if (!output || typeof output !== 'object') return undefined;
+	const { action_card: card, action_plan: plan } = output as Record<string, unknown>;
+	if (card && typeof card === 'object')
+		return { action_card: minimalActionCard(card as Record<string, unknown>) };
+	if (plan && typeof plan === 'object' && Array.isArray((plan as { steps?: unknown }).steps)) {
+		const { planId, steps } = plan as { planId?: unknown; steps: unknown[] };
+		return {
+			action_plan: {
+				planId,
+				steps: steps
+					.filter((step): step is Record<string, unknown> => !!step && typeof step === 'object')
+					.slice(0, 20)
+					.map(minimalActionCard)
+			}
+		};
+	}
+	return undefined;
+}
+
 /** Last-resort save shape for an upstream 413, retaining the turn and action receipt. */
 export function compactPersistedMessageForRetry(
 	message: PersistedChatMessagePayload
 ): PersistedChatMessagePayload {
 	const actions = message.parts.flatMap((part) => {
-		const card = (part.output as { action_card?: Record<string, unknown> } | undefined)
-			?.action_card;
-		if (!card || typeof card.executionId !== 'string') return [];
+		const output = minimalActionOutput(part.output);
+		if (!output) return [];
+		const card = output.action_card as { executionId?: unknown } | undefined;
+		if (card && typeof card.executionId !== 'string') return [];
 		return [
 			{
 				type: part.type,
@@ -44,15 +80,7 @@ export function compactPersistedMessageForRetry(
 				toolCallId: part.toolCallId,
 				input: {},
 				state: part.state,
-				output: {
-					action_card: {
-						executionId: card.executionId,
-						actionType: card.actionType,
-						summary: String(card.summary ?? '').slice(0, 500),
-						status: card.status,
-						fields: []
-					}
-				}
+				output
 			}
 		];
 	});
@@ -100,25 +128,15 @@ function compactParts(parts: ChatPersistencePart[]): ChatPersistencePart[] {
 	const minimal: ChatPersistencePart[] = compacted.slice(0, 100).map((part) => {
 		if (part.type === 'text')
 			return { type: 'text', text: String('text' in part ? part.text : '').slice(0, 2000) };
-		const card = (part.output as { action_card?: Record<string, unknown> } | undefined)
-			?.action_card;
 		const minimalTool = {
 			type: part.type,
 			...(part.type === 'dynamic-tool' ? { toolName: part.toolName } : {}),
 			toolCallId: part.toolCallId,
 			input: {},
 			state: part.state,
-			output: card
-				? {
-						action_card: {
-							executionId: card.executionId,
-							actionType: card.actionType,
-							summary: String(card.summary ?? '').slice(0, 500),
-							status: card.status,
-							fields: []
-						}
-					}
-				: { summary: 'Large result is available on the canvas.' }
+			output: minimalActionOutput(part.output) ?? {
+				summary: 'Large result is available on the canvas.'
+			}
 		};
 		return minimalTool;
 	});

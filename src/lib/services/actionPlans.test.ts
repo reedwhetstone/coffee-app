@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { ActionCardBlock } from '$lib/types/genui';
 import { extractBlockFromPart, extractCompanionBlocks } from './blockExtractor';
-import { missingRequiredFields, planHasOpenSteps, resolveReadyPlanSteps } from './actionPlans';
+import {
+	missingRequiredFields,
+	planHasActionableSteps,
+	resolveReadyPlanSteps
+} from './actionPlans';
 
 const planPart = {
 	type: 'tool-propose_action_plan',
@@ -86,7 +90,7 @@ describe('action plans', () => {
 	it('keeps a step waiting until its prerequisite succeeds', () => {
 		const cards = planCards();
 		expect(resolveReadyPlanSteps(cards, 'plan-1')).toEqual([]);
-		expect(planHasOpenSteps(cards, 'plan-1')).toBe(true);
+		expect(planHasActionableSteps(cards, 'plan-1')).toBe(true);
 	});
 
 	it('fills bound fields from the values that actually executed', () => {
@@ -126,6 +130,49 @@ describe('action plans', () => {
 	it('reports the plan closed once every step succeeded', () => {
 		const cards = planCards();
 		for (const card of cards) card.block.data.status = 'success';
-		expect(planHasOpenSteps(cards, 'plan-1')).toBe(false);
+		expect(planHasActionableSteps(cards, 'plan-1')).toBe(false);
+	});
+
+	it('reports no actionable step when a waiting binding cannot resolve', () => {
+		const cards = planCards();
+		cards[1]!.block.data.plan!.bindings = [{ field: 'roast_id', fromStep: 1, from: 'result_id' }];
+		cards[0]!.block.data.status = 'success';
+		cards[0]!.block.data.result = { success: true };
+		expect(resolveReadyPlanSteps(cards, 'plan-1')).toEqual([]);
+		expect(planHasActionableSteps(cards, 'plan-1')).toBe(false);
+	});
+
+	it('keeps a failed step actionable so the user can retry it', () => {
+		const cards = planCards();
+		cards[0]!.block.data.status = 'failed';
+		expect(planHasActionableSteps(cards, 'plan-1')).toBe(true);
+	});
+
+	it('applies the plan-level required list without per-field flags', () => {
+		const part = structuredClone(planPart);
+		const buyer = part.output.action_plan.steps[1]!.fields.find((f) => f.key === 'buyer')!;
+		delete (buyer as { required?: boolean }).required;
+		const [, sale] = [
+			extractBlockFromPart(part, { messageId: 'msg-1' }),
+			...extractCompanionBlocks(part, { messageId: 'msg-1' })
+		] as ActionCardBlock[];
+		expect(sale!.data.fields.find((field) => field.key === 'buyer')!.required).toBe(true);
+		expect(missingRequiredFields(sale!.data.fields)).toEqual(['Buyer']);
+	});
+
+	it('treats a cleared number as missing', () => {
+		expect(
+			missingRequiredFields([
+				{ key: 'price', label: 'Price', value: '', type: 'number', editable: true, required: true },
+				{
+					key: 'oz',
+					label: 'Oz',
+					value: Number.NaN,
+					type: 'number',
+					editable: true,
+					required: true
+				}
+			])
+		).toEqual(['Price', 'Oz']);
 	});
 });

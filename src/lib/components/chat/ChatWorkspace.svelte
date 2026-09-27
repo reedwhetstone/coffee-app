@@ -28,7 +28,7 @@
 	} from '$lib/services/chatPersistence';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
 	import { getSuggestions } from '$lib/services/suggestionEngine';
-	import { planHasOpenSteps, resolveReadyPlanSteps } from '$lib/services/actionPlans';
+	import { planHasActionableSteps, resolveReadyPlanSteps } from '$lib/services/actionPlans';
 	import { matchSlashCommand, getSlashCompletions } from '$lib/services/slashCommands';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -783,6 +783,7 @@
 		// The canvas now mirrors storage; record its signature so the canvas
 		// autosave effect doesn't treat the restore as a user edit and write back.
 		lastCanvasSignature = canvasSignature();
+		reconcileRestoredActionCards();
 	}
 
 	// Serialized canvas UI state (which blocks, their order, view layout, pinned/
@@ -1393,17 +1394,8 @@
 		updateChatActionCard(executionId, { status: 'success', result });
 	}
 
-	/**
-	 * After a plan step succeeds, fill and unlock the steps that were waiting on
-	 * it. Returns true while the plan still has steps to confirm, in which case
-	 * the next card is already in front of the user and no model turn is needed.
-	 */
-	function advanceActionPlan(executionId: string): boolean {
-		const card = canvasStore.blocks.find(
-			(entry) => entry.block.type === 'action-card' && entry.block.data.executionId === executionId
-		)?.block;
-		const planId = card?.type === 'action-card' ? card.data.plan?.planId : undefined;
-		if (!planId) return false;
+	/** Fill and unlock the plan's waiting steps whose prerequisites have succeeded. */
+	function unlockReadyPlanSteps(planId: string) {
 		for (const ready of resolveReadyPlanSteps(canvasStore.blocks, planId)) {
 			canvasStore.dispatch({
 				type: 'update-action',
@@ -1413,7 +1405,45 @@
 			if (ready.executionId)
 				updateChatActionCard(ready.executionId, { status: 'proposed', fields: ready.fields });
 		}
-		return planHasOpenSteps(canvasStore.blocks, planId);
+	}
+
+	/**
+	 * After a plan step succeeds, fill and unlock the steps that were waiting on
+	 * it. Returns true while the user can still act on a step, in which case the
+	 * next card is already in front of the user and no model turn is needed.
+	 * A plan left with only unresolvable waiting steps returns false so the
+	 * model continuation can recover.
+	 */
+	function advanceActionPlan(executionId: string): boolean {
+		const card = canvasStore.blocks.find(
+			(entry) => entry.block.type === 'action-card' && entry.block.data.executionId === executionId
+		)?.block;
+		const planId = card?.type === 'action-card' ? card.data.plan?.planId : undefined;
+		if (!planId) return false;
+		unlockReadyPlanSteps(planId);
+		return planHasActionableSteps(canvasStore.blocks, planId);
+	}
+
+	/**
+	 * Restored messages carry each card as it was first appended; message
+	 * autosave never rewrites them. The saved canvas holds what actually
+	 * executed, so merge its action-card state back into the tool outputs that
+	 * later requests replay, and unlock plan steps whose prerequisites finished.
+	 */
+	function reconcileRestoredActionCards() {
+		const planIds = new Set<string>();
+		for (const entry of canvasStore.blocks) {
+			if (entry.block.type !== 'action-card') continue;
+			const data = entry.block.data;
+			if (data.plan?.planId) planIds.add(data.plan.planId);
+			if (!data.executionId || data.status === 'executing') continue;
+			updateChatActionCard(data.executionId, {
+				status: data.status,
+				fields: data.fields,
+				...(data.result !== undefined ? { result: data.result } : {})
+			});
+		}
+		for (const planId of planIds) unlockReadyPlanSteps(planId);
 	}
 
 	async function executeAction(

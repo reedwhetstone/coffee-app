@@ -280,10 +280,14 @@
 						{:else}
 							<input
 								type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-								value={String(field.value || '')}
+								value={String(field.value ?? '')}
 								oninput={(e) => {
 									const val = (e.target as HTMLInputElement).value;
-									setFieldValue(field.key, field.type === 'number' ? Number(val) : val);
+									// A cleared number input stays blank so a required value cannot become 0.
+									setFieldValue(
+										field.key,
+										field.type === 'number' && val !== '' ? Number(val) : val
+									);
 								}}
 								aria-label={field.label}
 								aria-required={field.required ? 'true' : undefined}

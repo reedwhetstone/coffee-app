@@ -264,8 +264,20 @@ function actionPlanBlocks(part: any, options?: BlockExtractorOptions): ActionCar
 	return plan.steps.filter(isRecord).map((step, index) => {
 		const meta = isRecord(step.plan) ? step.plan : {};
 		const stepNumber = typeof meta.step === 'number' ? meta.step : index + 1;
+		const required = Array.isArray(meta.required)
+			? meta.required.filter((key): key is string => typeof key === 'string')
+			: [];
+		// The plan-level required list is authoritative; mirror it onto each field
+		// so the card's missing-value guard does not depend on a per-field flag.
+		const fields = Array.isArray(step.fields)
+			? step.fields.map((field) =>
+					isRecord(field) && required.includes(field.key as string)
+						? { ...field, required: true }
+						: field
+				)
+			: step.fields;
 		return actionCardBlock(
-			step,
+			{ ...step, fields },
 			options?.messageId && options.allowExecutionIdSynthesis !== false
 				? actionPlanStepExecutionId(
 						options.messageId,
@@ -279,7 +291,7 @@ function actionPlanBlocks(part: any, options?: BlockExtractorOptions): ActionCar
 				bindings: Array.isArray(meta.bindings)
 					? (meta.bindings as NonNullable<ActionCardBlock['data']['plan']>['bindings'])
 					: [],
-				required: Array.isArray(meta.required) ? (meta.required as string[]) : []
+				required
 			}
 		);
 	});
