@@ -1,7 +1,7 @@
 # Market Index audit and comparison system
 
 **Date:** 2026-09-28
-**Status:** Audit and proposal; nothing in this note has shipped
+**Status:** Audit and proposal; Reed's product decisions recorded 2026-09-28 (see "Decisions"). Nothing in this note has shipped.
 **Scope:** `/analytics` (Parchment Market Index) and `/catalog`
 **Governing direction:** `notes/PRODUCT_VISION.md`, ADR-005 (access levels), ADR-007 (Parchment owns shared logic), ADR-010 (public proof surface), ADR-015 (actionable insight)
 
@@ -52,6 +52,14 @@ Green buyer or head roaster at a growing company. Plans seasonally by origin, ca
 - **Market Index job:** Benchmarks, segment comparison, supplier comparison on the same basket, and arrivals by origin.
 - **What they pay for:** Intelligence and the API; later, procurement workflows.
 
+### 3b. Large buyer (progressive-disclosure layer)
+
+Importer-scale or multi-site roaster buying containers and forward contracts. These buyers think in macro terms: C-market futures, differentials, currency, origin harvest and logistics risk. Futures show where commodity arabica trades. They do not show what specialty green actually costs at the point of sale, how fast lots arrive and sell out, or how processing and quality tiers are priced. Purveyors' data is a nuanced microcosm of that macro picture.
+
+- **Questions:** How is specialty pricing moving relative to the C market? Which origins are tightening before it shows in futures or differentials? Is the premium for processing or quality widening?
+- **Market Index job:** A deeper layer reached through progressive disclosure, not a separate page. It includes origin and process indices over longer windows, matched price trends, supply turnover as an early indicator, and later a specialty-versus-C-market view.
+- **Data prerequisite:** A licensed or delayed futures series, plus a clear method statement that a retail/importer listing price is not a contract price. Nothing here should be marketed until the series exists (no-vaporware rule).
+
 ### 4. Market watcher
 
 Importer staff, writers, analysts, and Purveyors itself through Market Brief.
@@ -65,11 +73,11 @@ This persona does not browse the page, but it needs every read on the page to be
 
 ### Anonymous visitor
 
-Usually persona 1 or 2 deciding whether the data is real. The public page should give them one credible read, one example of a value signal with its evidence, and one example comparison, then ask them to sign up.
+Usually persona 1 or 2 deciding whether the data is real. The public page should give them one credible read and one example of a value signal with its evidence, then ask them to sign up. The comparison tool is for signed-in viewers and members only (see Decisions), so the anonymous page describes it rather than rendering it.
 
 ### Design rule
 
-The Market Index should be ordered for the owner-buyer, with the scaling buyer's depth one level down and the market watcher's story at the bottom. The home roaster is served mainly by the catalog. This follows ADR-015 ("value signals first"), which the current page doesn't yet do.
+Home roasters are served mainly by the catalog. The Market Index is for small and medium businesses by default: it is ordered for the owner-buyer, with scaling-buyer depth one level down. Large-buyer macro views sit behind progressive disclosure (expand, longer windows, deeper sections), not a separate product. The market watcher's story sits at the bottom. This follows ADR-015 ("value signals first"), which the current page doesn't yet do.
 
 ## Module scorecard (live Intelligence view)
 
@@ -143,7 +151,9 @@ Order the page by question, for the owner-buyer first. Each section title is the
 7. **Who should I buy from?** Supplier comparison on a defined basket, replacing "Who has it cheapest?", the lot table, and supplier health.
 8. **How is the market changing?** Process mix and disclosure trends. Demote or cut the Purveyor Score confidence chart.
 
-Anonymous visitors get section 1, one fully evidenced example signal, one static example comparison, and the upgrade summary. That extends ADR-010 by one example comparison, so it needs a product decision rather than an incidental change.
+Anonymous visitors get section 1, one fully evidenced example signal, and the upgrade summary, which names comparison as a signed-in feature. This stays within ADR-010.
+
+A ninth, collapsed-by-default layer, **"How does this compare to the commodity market?"**, serves the large buyer once a futures series is licensed (persona 3b).
 
 ### Value signals rebuilt
 
@@ -152,6 +162,39 @@ Anonymous visitors get section 1, one fully evidenced example signal, one static
 - Apply a Purveyor Score floor, or show the score next to the discount so a cheap, thinly described lot reads as what it is.
 - Rank by discount × evidence confidence (comparable-set size, supplier count, and how tight the distribution is), not by discount alone or by supplier-stated score.
 - Suppress `price_drop` when a tier, bag-size, or unit change explains it.
+
+## Quality-aware value (the leverage step)
+
+A comparison table that highlights the lowest price is a spreadsheet. The leverage is a tool that understands coffee well enough to judge when quality is worth paying for and when price should win. Reed's direction on 2026-09-28: cheapest is not best, and the product should understand which suppliers carry higher-quality material and where quality matters versus price.
+
+### What "quality" can honestly mean here
+
+- **Not supplier-stated cup scores as-is.** ADR-015 already rules them out as a cross-supplier comparison metric, because each supplier scores differently.
+- **Not the Purveyor Score.** It measures how complete and comparable a listing's sourcing facts are, not cup quality. It is a useful confidence input, but it must never be labeled as quality.
+- **Evidence the platform can defend:**
+  - Lot facts: grade and screen, elevation, variety, traceability depth (farm or producer versus region only), process disclosure, crop recency, and competition or auction provenance.
+  - Supplier-calibrated scores: supplier-stated scores normalized within each supplier. A supplier's 88 means "near the top of this supplier's range," not a universal 88. This turns inconsistent scores into a within-supplier rank that can be compared.
+  - Supplier quality profile: each supplier's mix across grades, traceability, and price tiers, and how its price for a comparable lot sits against the market. This shows which suppliers consistently carry higher-quality material in each origin.
+  - First-party tasting: Mallard Studio cupping and tasting ratings, aggregated only with consent and minimum-count thresholds. This is the one quality signal no competitor has, and it grows with usage.
+
+### Where quality matters versus price
+
+Value depends on what the coffee is for. Let the buyer state a use, then weight quality and price for it:
+
+- **Blend base or volume espresso:** price, consistency, and availability dominate. The cheapest comparable lot above a quality floor wins.
+- **Single-origin feature or seasonal menu slot:** quality and distinctiveness dominate. Pay up when the quality evidence is strong.
+- **Decaf:** a separate comparison set.
+- **Competition or showcase:** quality only.
+
+This becomes a "Use" selector in comparison views and a filter on value signals. The same lot can be a great buy for one use and a poor one for another.
+
+### Output
+
+- **Value score per lot and use:** price versus the comparable set, adjusted by quality evidence and its confidence. It is shown with a short reason, for example "Priced 18% under comparable washed Guji G1; supplier's top-quartile lot; farm-level traceability."
+- **"Worth the premium" and "cheap for a reason" flags** in comparisons, so the tool explains a price gap instead of only highlighting the lowest number.
+- **Supplier quality profile** in supplier comparison: where each supplier sits on quality versus price for the selected basket.
+
+Rebuilt value signals (slice 1) use the comparable-set and freshness rules now. They adopt the value score when this layer ships.
 
 ## Comparison system
 
@@ -209,29 +252,40 @@ Compare suppliers on the same basket (origin, process, and grade band at a quant
 
 Add a `comparison-table` GenUI block backed by the same Parchment responses, so "compare washed vs natural Ethiopia under $10" in chat renders the same table. `CanvasLayout` already has a `comparison` mode, and `CoffeeCardsBlock` already says "Compare N coffees". Add `purvey catalog compare` and `purvey catalog segments --split-by` so agents can run the same comparisons.
 
-### Access level (decision needed)
+### Access level (decided 2026-09-28)
 
-ADR-005 puts comparison workflows at Member. The proposal:
+- **Anonymous:** No comparison tool. Public pages and the subscription page describe it.
+- **Viewer (free, signed in):** Compare two lots side by side.
+- **Member or Intelligence:** The full tool: up to six lots, segment comparison ("Compare by…"), baselines, the use selector and value score, saved and shared comparisons, Market Index comparison presets, and Cherry comparisons.
 
-- **Anonymous:** A static, real example comparison as proof.
-- **Viewer:** Compare two lots, enough to feel the value.
-- **Member or Intelligence:** Up to six lots, segment comparison, baselines, saved and shared comparisons, and Cherry comparisons.
+Enforce the viewer limit server-side (ADR-005), not only in the tray UI.
 
-This is a product call for Reed.
+### Subscription and feature copy
+
+Every slice that ships a user-facing capability updates, in the same PR:
+
+- `src/lib/billing/selfServePlans.ts`
+- the subscription plan details (`SubscriptionPlanDetails.svelte`)
+- the persona router and homepage contracts where plans are summarized
+- the docs content
+
+Copy names only what is live, follows the customer-copy rules, and states the viewer/member split plainly (for example "Compare two lots free; compare up to six lots and whole processing methods with a membership").
 
 ## Sequenced slices
 
 | #   | Repo                       | Slice                                                                                                                                                                                                                            | Why now                                                                                 |
 | --- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | 0   | coffee-app                 | Trust fixes: T-2 null prices, T-3 median plus a three-supplier floor and the `$` sign, T-4 headline thresholds and "Flat" formatting, T-5 server-rendered last read, T-6 gap labels, E-2 significance-filtered same-coffee strip | Wrong numbers are live today; small and independent                                     |
-| 1   | parchment-api              | Value-signal comparability, freshness, confidence ranking, and artifact suppression (T-1, A-2)                                                                                                                                   | The anchor module is untrustworthy                                                      |
+| 1   | parchment-api              | Value-signal comparability, freshness, confidence ranking, and artifact suppression (T-1, A-2); hide `below_market` in coffee-app until this ships                                                                               | The anchor module is untrustworthy                                                      |
 | 2   | parchment-api → SDK        | Segment comparison aggregate and lot comparison annotations                                                                                                                                                                      | Foundation for every comparison surface                                                 |
 | 3   | coffee-app                 | Lot comparison tray and `/catalog/compare`                                                                                                                                                                                       | The most-requested buyer interaction; v1 can start before slice 2 on existing endpoints |
 | 4   | coffee-app                 | Catalog "Compare by…" segment comparison                                                                                                                                                                                         | Covers the processing-method comparison use case                                        |
 | 5   | parchment-api → coffee-app | `market/read` contract; reorder `/analytics` by question; replace supplier modules with comparison presets; demote score telemetry                                                                                               | Moves intelligence upstream (A-1) and delivers the persona-ordered page                 |
 | 6   | coffee-app, purveyors-cli  | GenUI `comparison-table` block and CLI commands                                                                                                                                                                                  | Surface parity                                                                          |
+| 7   | parchment-api → coffee-app | Quality-aware value: supplier-calibrated scores, supplier quality profiles, use selector, value score and reasons in comparisons and signals                                                                                     | The leverage step: a tool that understands coffee, not just price                       |
+| 8   | parchment-api → coffee-app | Large-buyer macro layer: longer-window indices and specialty versus C-market view, after a futures series is licensed                                                                                                            | Progressive disclosure for large buyers                                                 |
 
-Slices 0 and 1 can run in parallel. Slice 3 can start on existing endpoints while slice 2 is built.
+Slices 3, 4, 7, and 8 include the subscription and feature copy updates described above. Slices 0 and 1 can run in parallel. Slice 3 can start on existing endpoints while slice 2 is built.
 
 ## How to know it worked
 
@@ -241,9 +295,9 @@ Slices 0 and 1 can run in parallel. Slice 3 can start on existing endpoints whil
 - Anonymous-to-signup conversion from `/analytics` before and after the server-rendered read and example comparison.
 - Zero known-wrong values on the page, backed by a canary that fails on $0 prices, "Flat%", or unlabeled gaps.
 
-## Open decisions for Reed
+## Decisions (Reed, 2026-09-28)
 
-1. Confirm the owner-buyer as the Market Index anchor persona, with home roasters served mainly by the catalog.
-2. Choose the access level for lot comparison (the proposal above, or Member-only).
-3. Decide whether to hide `below_market` signals until slice 1 ships. The recommendation is to hide `below_market` now and keep only verified `price_drop` signals, because the current top signals would teach a buyer not to trust the feed.
-4. Decide whether the anonymous page may add one static example comparison. This amends ADR-010.
+1. **Personas:** Confirmed. Hobbyists index on the catalog. The Market Index serves small and medium businesses, with progressive disclosure up to what large buyers care about (macro context, where Purveyors is a more nuanced microcosm than futures).
+2. **Comparison access:** Viewers compare two lots; members get the full tool. The comparison tool is viewer and member only, with no anonymous example comparison, so ADR-010 is unchanged.
+3. **Buy signals:** Agreed that cheapest is not best. Hide `below_market` until slice 1 ships, and treat quality-aware value (slice 7) as the step from comparison table to a tool that understands coffee.
+4. **Subscription pages:** New capabilities ship with matching subscription and feature copy in the same PR.
