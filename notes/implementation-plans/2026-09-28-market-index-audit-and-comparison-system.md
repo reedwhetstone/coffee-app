@@ -188,9 +188,9 @@ Origin, process, and supplier detail views; longer windows; tables; export; API 
 - **Viewers:** market-wide level 0 and level 1, and two-lot comparison.
 - **Members:** personalized ranking and every level.
 
-### Tension with ADR-015
+### ADR-015 alignment (resolved 2026-09-28)
 
-ADR-015 principle 3 says personalization arrives through GenUI and agents, and the static page should not grow per-persona tabs. A ranked attention list driven by tracked lots, inventory, briefs, and a buying profile is personalization on the page itself, although it is not a per-persona tab. This should be settled explicitly: either amend ADR-015 to allow profile-driven ranking on the Market Index, or produce the attention list from the same Parchment contract that Cherry uses, so the page and the agent share one personalization engine. The recommendation is the second option, which satisfies both.
+ADR-015 principle 3 originally limited personalization to GenUI and agents. Reed agreed it was too narrow, and ADR-015 is amended in this PR. The Market Index may rank intelligence against the user's own data. One Parchment attention-feed contract produces the ranking for the page, Cherry, and the CLI, and the page still avoids per-persona tabs.
 
 ### Value signals rebuilt
 
@@ -339,3 +339,4 @@ Slices 3, 4, 5, and 7 include the subscription and feature copy updates describe
 3. **Buy signals:** Agreed that cheapest is not best. Hide `below_market` until slice 1 ships, and treat quality-aware value (slice 7) as the step from comparison table to a tool that understands coffee.
 4. **Subscription pages:** New capabilities ship with matching subscription and feature copy in the same PR.
 5. **Progressive disclosure:** The Market Index leads with the most urgent, relevant intelligence and lets users dig into evidence and tools from each item. Adding sections to the bottom of the page is not the answer.
+6. **ADR-015:** Principle 3 is amended so the page can personalize through a shared Parchment attention-feed contract that it shares with Cherry and the CLI.
