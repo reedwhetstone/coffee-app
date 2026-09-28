@@ -26,79 +26,69 @@ The recommendation is to fix the trust defects immediately, rebuild value signal
 
 Personas are defined by the buying decision they make, not by demographics. Volume drives almost every difference, because it changes which price tier applies, which suppliers are reachable, and how much a wrong buy costs.
 
-### 1. Owner-buyer (anchor persona)
+### Primary archetype 1: small-to-medium roaster (Market Index and catalog)
 
-Micro to small commercial roaster, roughly 100 to 2,000 lb a month, buying from a mix of retail-scale sellers and importers. Owns the menu and the margin. Buys every few weeks and replaces coffees as they run out.
+A roaster buying roughly 100 to 2,000 lb a month from a mix of retail-scale sellers and importers. At the small end, this is the owner who also roasts. At the larger end, it is a head roaster or buyer at a growing multi-coffee operation. They own the menu and the margin, buy every few weeks, and replace coffees as they run out.
 
-- **Questions:** What should I buy this week to replace the coffee I'm running out of? Is this price fair for what it is? Is anything good arriving before my competitors grab it? Would a full bag from an importer beat what I'm paying now?
-- **Catalog job:** Shortlist lots that fit a menu slot, then compare them directly.
-- **Market Index job:** A short weekly read with deals worth acting on, a fair-price check, and arrivals by origin.
-- **What they pay for:** Time saved and dollars per pound saved. This is the Parchment Intelligence buyer and the persona ADR-015 already names.
+- **Questions:**
+  - What needs my attention right now?
+  - What should I buy to replace the coffee I'm running out of?
+  - Is this price fair for what it is?
+  - Is anything good arriving before it's gone?
+  - Would a full bag from an importer beat what I'm paying now?
+  - Which suppliers are reliably good for the origins I buy?
+- **Catalog job:** Shortlist lots for a menu slot, then compare them directly.
+- **Market Index job:** Put the few things that matter to their buying at the top, then let them dig into the evidence and the comparison.
+- **Range handled by depth, not separate personas:** The owner-buyer mostly stops at the top of the page. The larger buyer drills further: longer windows, supplier comparison on a basket, and origin detail. Both use the same page.
+- **What they pay for:** Time saved, dollars per pound saved, and avoiding a bad buy. This is the Parchment Intelligence buyer and the anchor persona ADR-015 names.
 
-### 2. Serious home roaster
+### Primary archetype 2: serious home roaster (catalog)
 
 Buys 5 to 50 lb at a time, almost entirely retail. Price-sensitive, curious, and loyal to a few sellers.
 
 - **Questions:** Where can I get a great Ethiopia natural? Am I overpaying at my usual seller? What's new?
-- **Catalog job:** Discovery and a direct comparison of two to four lots.
-- **Market Index job:** Mostly trust and curiosity. They read the headline and the arrivals, not supplier health tables.
-- **What they pay for:** Mallard Studio context, and maybe Intelligence if the deal feed is good. They are the largest top-of-funnel audience.
+- **Catalog job:** Discovery, and comparing two to four lots directly (two free as a viewer).
+- **Market Index job:** None required. The catalog carries the market context they need, such as "13% above median" and arrival freshness.
+- **What they pay for:** Mallard Studio context, and membership for the full comparison tool. This is the largest top-of-funnel audience.
 
-### 3. Scaling buyer
+### Not primary archetypes
 
-Green buyer or head roaster at a growing company. Plans seasonally by origin, cares about supplier reliability, and moves between retail and importer channels.
+**Large-scale buyers** (importers, container-scale and multi-site roasters) buy through forward contracts, importer relationships, and pre-shipment samples. What they want is supply security for blend components, cost-of-goods forecasting, substitution options when a component gets scarce or expensive, and leverage when negotiating differentials. Purveyors' data covers the U.S. spot and small-lot market across about 41 sellers. That is an early indicator for some of those questions (spot tightness by origin, substitution through similarity matching), but it doesn't reach contract pricing. The dashboard should not be designed for them. If demand appears, serve them through the API, bulk data, or a later procurement product, not dashboard sections.
 
-- **Questions:** Where is each origin priced now against last season? Which suppliers carry depth in the origins I need? When do new crops land? What is the spread between retail and wholesale?
-- **Market Index job:** Benchmarks, segment comparison, supplier comparison on the same basket, and arrivals by origin.
-- **What they pay for:** Intelligence and the API; later, procurement workflows.
+**Analysts and market watchers** are served by Market Brief and the blog. The metadata and disclosure trends feed that publication, and they don't need to take up dashboard space.
 
-### 3b. Large buyer (progressive-disclosure layer)
-
-Importer-scale or multi-site roaster buying containers and forward contracts. These buyers think in macro terms: C-market futures, differentials, currency, origin harvest and logistics risk. Futures show where commodity arabica trades. They do not show what specialty green actually costs at the point of sale, how fast lots arrive and sell out, or how processing and quality tiers are priced. Purveyors' data is a nuanced microcosm of that macro picture.
-
-- **Questions:** How is specialty pricing moving relative to the C market? Which origins are tightening before it shows in futures or differentials? Is the premium for processing or quality widening?
-- **Market Index job:** A deeper layer reached through progressive disclosure, not a separate page. It includes origin and process indices over longer windows, matched price trends, supply turnover as an early indicator, and later a specialty-versus-C-market view.
-- **Data prerequisite:** A licensed or delayed futures series, plus a clear method statement that a retail/importer listing price is not a contract price. Nothing here should be marketed until the series exists (no-vaporware rule).
-
-### 4. Market watcher
-
-Importer staff, writers, analysts, and Purveyors itself through Market Brief.
-
-- **Questions:** How is the market changing? Is anaerobic growing? Are suppliers disclosing more?
-- **Market Index job:** Movement with significance, plus metadata trends. This is the public proof and content engine more than a revenue line.
-
-### 5. Developer or agent
-
-This persona does not browse the page, but it needs every read on the page to be reproducible through the API, CLI, and Cherry. Today it cannot reproduce the market read (see A-1).
+**Developers and agents** don't browse the page, but every read on it must be reproducible through the API, CLI, and Cherry. Today it isn't (see A-1).
 
 ### Anonymous visitor
 
-Usually persona 1 or 2 deciding whether the data is real. The public page should give them one credible read and one example of a value signal with its evidence, then ask them to sign up. The comparison tool is for signed-in viewers and members only (see Decisions), so the anonymous page describes it rather than rendering it.
+Usually one of the two primary archetypes deciding whether the data is real. The public page should give them one credible read and one example of an evidenced value signal, then ask them to sign up. The comparison tool is for signed-in viewers and members only (see Decisions), so the anonymous page describes it rather than rendering it.
 
 ### Design rule
 
-Home roasters are served mainly by the catalog. The Market Index is for small and medium businesses by default: it is ordered for the owner-buyer, with scaling-buyer depth one level down. Large-buyer macro views sit behind progressive disclosure (expand, longer windows, deeper sections), not a separate product. The market watcher's story sits at the bottom. This follows ADR-015 ("value signals first"), which the current page doesn't yet do.
+Two primary archetypes. The catalog is where both find and compare coffee. The Market Index is the small-to-medium roaster's decision surface, built with progressive disclosure (next section), not as a longer list of modules.
 
 ## Module scorecard (live Intelligence view)
 
-| Module                                                | Question it answers                    | Primary persona            | Verdict                                                                                                                            |
-| ----------------------------------------------------- | -------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Market read headline                                  | What happened this week?               | All                        | **Fix.** It overclaims and is computed only in the browser (T-4, A-1).                                                             |
-| KPI strip                                             | How big was the move?                  | Owner-buyer, watcher       | **Fix.** "Flat%" bug; "supplier-origin positions" is jargon.                                                                       |
-| Insight cards (availability, price posture, coverage) | What moved and how much to trust it?   | Owner-buyer                | **Fix.** Price posture leads with the noisiest origins (T-3).                                                                      |
-| Same-coffee prices, 30 days                           | Did like-for-like prices move?         | Owner-buyer, watcher       | **Promote and reframe.** This is the most rigorous metric on the page, but it's shown as a flat ticker of noise-level moves (E-2). |
-| What should I consider buying?                        | What should I buy now?                 | Owner-buyer                | **Rebuild.** The anchor module is the least trustworthy (T-1).                                                                     |
-| Origin price trends                                   | Where is each origin priced over time? | Scaling buyer, watcher     | Keep. It should default to the matched index once it has enough history.                                                           |
-| Processing mix donut                                  | What is the supply made of?            | Watcher                    | Demote. It's a snapshot with no decision attached.                                                                                 |
-| Origin price ranges                                   | How spread out is each origin?         | Scaling buyer              | Keep. It's a good base for a fair-price check.                                                                                     |
-| Who has it cheapest?                                  | Which supplier is cheapest?            | Owner-buyer                | **Replace** with a supplier comparison on the same basket (E-3).                                                                   |
-| Lot-level supplier price table                        | What are all the lots for this origin? | Owner-buyer                | **Replace** with segment and lot comparison (E-4).                                                                                 |
-| Arrivals and delistings                               | What's new and what's leaving?         | Owner-buyer, scaling buyer | Keep. Add season context and tracked-lot emphasis.                                                                                 |
-| Supplier catalog health                               | Which suppliers have depth?            | Scaling buyer              | **Fix** the $0 bug (T-2), then fold into supplier comparison.                                                                      |
-| Origin benchmarks table                               | What does an origin cost?              | Scaling buyer              | Fix: use median and interquartile range, not mean (T-3).                                                                           |
-| Price spread analysis                                 | Would buying wholesale save me money?  | Owner-buyer, scaling buyer | **Keep and promote.** Reframe as "retail versus a full bag" at a quantity.                                                         |
-| Process and disclosure trends                         | Is the market changing?                | Watcher                    | Keep at the bottom. Label the August gap (T-6).                                                                                    |
-| Purveyor Score and confidence trends                  | Is listing metadata improving?         | Internal                   | **Demote or cut.** This is data-quality telemetry: flat lines and no buyer action.                                                 |
+In the recommended structure, a "Keep" module moves into a level 1 evidence view or a level 2 or 3 tool, rather than staying on the page body.
+
+| Module                                                | Question it answers                    | Primary user                | Verdict                                                                                                                            |
+| ----------------------------------------------------- | -------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Market read headline                                  | What happened this week?               | All                         | **Fix.** It overclaims and is computed only in the browser (T-4, A-1).                                                             |
+| KPI strip                                             | How big was the move?                  | SMB roaster                 | **Fix.** "Flat%" bug; "supplier-origin positions" is jargon.                                                                       |
+| Insight cards (availability, price posture, coverage) | What moved and how much to trust it?   | SMB roaster                 | **Fix.** Price posture leads with the noisiest origins (T-3).                                                                      |
+| Same-coffee prices, 30 days                           | Did like-for-like prices move?         | SMB roaster                 | **Promote and reframe.** This is the most rigorous metric on the page, but it's shown as a flat ticker of noise-level moves (E-2). |
+| What should I consider buying?                        | What should I buy now?                 | SMB roaster                 | **Rebuild.** The anchor module is the least trustworthy (T-1).                                                                     |
+| Origin price trends                                   | Where is each origin priced over time? | SMB roaster (deeper levels) | Keep. It should default to the matched index once it has enough history.                                                           |
+| Processing mix donut                                  | What is the supply made of?            | Market Brief                | Demote. It's a snapshot with no decision attached.                                                                                 |
+| Origin price ranges                                   | How spread out is each origin?         | SMB roaster (deeper levels) | Keep. It's a good base for a fair-price check.                                                                                     |
+| Who has it cheapest?                                  | Which supplier is cheapest?            | SMB roaster                 | **Replace** with a supplier comparison on the same basket (E-3).                                                                   |
+| Lot-level supplier price table                        | What are all the lots for this origin? | SMB roaster                 | **Replace** with segment and lot comparison (E-4).                                                                                 |
+| Arrivals and delistings                               | What's new and what's leaving?         | SMB roaster                 | Keep. Add season context and tracked-lot emphasis.                                                                                 |
+| Supplier catalog health                               | Which suppliers have depth?            | SMB roaster (deeper levels) | **Fix** the $0 bug (T-2), then fold into supplier comparison.                                                                      |
+| Origin benchmarks table                               | What does an origin cost?              | SMB roaster (deeper levels) | Fix: use median and interquartile range, not mean (T-3).                                                                           |
+| Price spread analysis                                 | Would buying wholesale save me money?  | SMB roaster                 | **Keep and promote.** Reframe as "retail versus a full bag" at a quantity.                                                         |
+| Process and disclosure trends                         | Is the market changing?                | Market Brief                | Keep at the bottom. Label the August gap (T-6).                                                                                    |
+| Purveyor Score and confidence trends                  | Is listing metadata improving?         | Internal                    | **Demote or cut.** This is data-quality telemetry: flat lines and no buyer action.                                                 |
 
 ## Findings
 
@@ -138,22 +128,69 @@ Home roasters are served mainly by the catalog. The Market Index is for small an
 
 **A-2. Value-signal ranking uses supplier-stated scores.** The rank boost multiplies by `score_value`. The display already hides `value_quality` because supplier scores are inconsistent, and ADR-015 says `score_value` must not be a comparison metric. Ranking should switch to the Purveyor Score or evidence confidence.
 
-## Recommended Market Index shape
+## Recommended Market Index shape: progressive disclosure
 
-Order the page by question, for the owner-buyer first. Each section title is the question.
+Progressive disclosure means the most urgent and useful intelligence comes first, and each item lets the user go deeper into its evidence and into the tools. It does not mean reordering a long page or adding sections at the bottom. The current page, and this note's first draft, both treat the Market Index as a stack of modules. Instead, charts and tables become drill-down destinations reached from an item, not the body of the page.
 
-1. **This week's read.** One server-computed sentence and at most three bullets: what moved beyond normal variance, what notable supply arrived, and what's leaving. If nothing is significant, say that plainly.
-2. **What should I buy?** Rebuilt value signals (see below). Each card shows the comparable set it was measured against and a "Compare with alternatives" action that opens a comparison against the next three comparable lots.
-3. **Is this price fair?** A price check. Pick an origin and process, or start from a lot or a price you were quoted, and see where it sits in the comparable distribution at your quantity. This is a segment comparison with one pinned value.
-4. **What's arriving and leaving?** Arrivals by origin with crop-season context. Tracked lots and brief matches go first when present, which the watchlist section partly does already.
-5. **How are prices moving?** The matched same-coffee index as the primary trend, with significance bands, then origin trends and ranges.
-6. **Retail or a full bag?** The spread module reframed at quantities (10 lb, 25 lb, full bag), because the decision to move up a channel is one of the most valuable ones an owner-buyer makes.
-7. **Who should I buy from?** Supplier comparison on a defined basket, replacing "Who has it cheapest?", the lot table, and supplier health.
-8. **How is the market changing?** Process mix and disclosure trends. Demote or cut the Purveyor Score confidence chart.
+### Level 0: "What needs your attention" (the whole top of the page)
 
-Anonymous visitors get section 1, one fully evidenced example signal, and the upgrade summary, which names comparison as a signed-in feature. This stays within ADR-010.
+A short ranked list, usually three to six items, each written as one claim plus one evidence line. If nothing clears the bar, say that plainly. Item types:
 
-A ninth, collapsed-by-default layer, **"How does this compare to the commodity market?"**, serves the large buyer once a futures series is licensed (persona 3b).
+- A tracked lot or inventory coffee changed price, is running low, or was delisted.
+- A new arrival matches a sourcing brief or the user's buying profile.
+- A value opportunity: a rebuilt value signal, or a quality-aware value score once slice 7 ships.
+- An origin or process the user buys moved outside normal variance on matched prices.
+- A supplier the user relies on changed materially (stopped carrying an origin, or repriced broadly).
+
+Rank items by **urgency × relevance × significance × confidence**:
+
+- **Urgency:** time-sensitive supply (new arrivals, delistings) ranks above slow trends.
+- **Relevance:** tracked lots, Mallard Studio inventory, sourcing briefs, and a short buying profile (origins, processes, volume, price band, use) captured at onboarding and editable.
+- **Significance:** the move measured against normal variance, not raw size.
+- **Confidence:** how many suppliers and comparable lots are behind the claim.
+
+Users with no profile get a market-wide default ranking and a one-step prompt to set their buying profile.
+
+### Level 1: the evidence, inline
+
+Expanding an item shows why the claim is true, in place:
+
+- the lot against its comparable set;
+- its price history;
+- the supplier's quality profile;
+- matched price movement for the segment.
+
+This is where most of today's charts belong, each scoped to the item instead of the whole market.
+
+### Level 2: the working tool, prefilled
+
+Each item links into the tool that answers the next question, with the context already filled in:
+
+- lot or segment comparison;
+- the "Is this price fair?" check;
+- retail versus a full bag at a quantity;
+- supplier comparison on the basket;
+- origin detail;
+- "Ask Cherry" with the item attached.
+
+### Level 3: full detail and export
+
+Origin, process, and supplier detail views; longer windows; tables; export; API and CLI equivalents. This is where the larger buyer in archetype 1 spends time, and where analysts can find the metadata trends if they want them.
+
+### Always available, never in the way
+
+- A compact market pulse line: matched price movement with significance, and net arrivals. Each part opens its detail view.
+- Scope controls (retail, wholesale, all; 7 or 30 days) that apply to every level, or say clearly where they don't.
+
+### Anonymous and non-member views
+
+- **Anonymous:** level 0 with market-wide items only, one item expandable to level 1 as proof, and the upgrade summary. This stays within ADR-010.
+- **Viewers:** market-wide level 0 and level 1, and two-lot comparison.
+- **Members:** personalized ranking and every level.
+
+### Tension with ADR-015
+
+ADR-015 principle 3 says personalization arrives through GenUI and agents, and the static page should not grow per-persona tabs. A ranked attention list driven by tracked lots, inventory, briefs, and a buying profile is personalization on the page itself, although it is not a per-persona tab. This should be settled explicitly: either amend ADR-015 to allow profile-driven ranking on the Market Index, or produce the attention list from the same Parchment contract that Cherry uses, so the page and the agent share one personalization engine. The recommendation is the second option, which satisfies both.
 
 ### Value signals rebuilt
 
@@ -273,31 +310,32 @@ Copy names only what is live, follows the customer-copy rules, and states the vi
 
 ## Sequenced slices
 
-| #   | Repo                       | Slice                                                                                                                                                                                                                            | Why now                                                                                 |
-| --- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| 0   | coffee-app                 | Trust fixes: T-2 null prices, T-3 median plus a three-supplier floor and the `$` sign, T-4 headline thresholds and "Flat" formatting, T-5 server-rendered last read, T-6 gap labels, E-2 significance-filtered same-coffee strip | Wrong numbers are live today; small and independent                                     |
-| 1   | parchment-api              | Value-signal comparability, freshness, confidence ranking, and artifact suppression (T-1, A-2); hide `below_market` in coffee-app until this ships                                                                               | The anchor module is untrustworthy                                                      |
-| 2   | parchment-api → SDK        | Segment comparison aggregate and lot comparison annotations                                                                                                                                                                      | Foundation for every comparison surface                                                 |
-| 3   | coffee-app                 | Lot comparison tray and `/catalog/compare`                                                                                                                                                                                       | The most-requested buyer interaction; v1 can start before slice 2 on existing endpoints |
-| 4   | coffee-app                 | Catalog "Compare by…" segment comparison                                                                                                                                                                                         | Covers the processing-method comparison use case                                        |
-| 5   | parchment-api → coffee-app | `market/read` contract; reorder `/analytics` by question; replace supplier modules with comparison presets; demote score telemetry                                                                                               | Moves intelligence upstream (A-1) and delivers the persona-ordered page                 |
-| 6   | coffee-app, purveyors-cli  | GenUI `comparison-table` block and CLI commands                                                                                                                                                                                  | Surface parity                                                                          |
-| 7   | parchment-api → coffee-app | Quality-aware value: supplier-calibrated scores, supplier quality profiles, use selector, value score and reasons in comparisons and signals                                                                                     | The leverage step: a tool that understands coffee, not just price                       |
-| 8   | parchment-api → coffee-app | Large-buyer macro layer: longer-window indices and specialty versus C-market view, after a futures series is licensed                                                                                                            | Progressive disclosure for large buyers                                                 |
+| #   | Repo                       | Slice                                                                                                                                                                                                                                     | Why now                                                                                 |
+| --- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 0   | coffee-app                 | Trust fixes: T-2 null prices, T-3 median plus a three-supplier floor and the `$` sign, T-4 headline thresholds and "Flat" formatting, T-5 server-rendered last read, T-6 gap labels, E-2 significance-filtered same-coffee strip          | Wrong numbers are live today; small and independent                                     |
+| 1   | parchment-api              | Value-signal comparability, freshness, confidence ranking, and artifact suppression (T-1, A-2); hide `below_market` in coffee-app until this ships                                                                                        | The anchor module is untrustworthy                                                      |
+| 2   | parchment-api → SDK        | Segment comparison aggregate and lot comparison annotations                                                                                                                                                                               | Foundation for every comparison surface                                                 |
+| 3   | coffee-app                 | Lot comparison tray and `/catalog/compare`                                                                                                                                                                                                | The most-requested buyer interaction; v1 can start before slice 2 on existing endpoints |
+| 4   | coffee-app                 | Catalog "Compare by…" segment comparison                                                                                                                                                                                                  | Covers the processing-method comparison use case                                        |
+| 5   | parchment-api → coffee-app | Progressive-disclosure Market Index: a Parchment attention-feed contract (ranking, evidence, links) shared with Cherry; buying-profile capture; level 0 to 3 page structure; charts moved into item and detail views; `market/read` pulse | Delivers the SMB decision surface and moves intelligence upstream (A-1)                 |
+| 6   | coffee-app, purveyors-cli  | GenUI `comparison-table` block and CLI commands                                                                                                                                                                                           | Surface parity                                                                          |
+| 7   | parchment-api → coffee-app | Quality-aware value: supplier-calibrated scores, supplier quality profiles, use selector, value score and reasons in comparisons and signals                                                                                              | The leverage step: a tool that understands coffee, not just price                       |
 
-Slices 3, 4, 7, and 8 include the subscription and feature copy updates described above. Slices 0 and 1 can run in parallel. Slice 3 can start on existing endpoints while slice 2 is built.
+Slices 3, 4, 5, and 7 include the subscription and feature copy updates described above. Slices 0 and 1 can run in parallel. Slice 3 can start on existing endpoints while slice 2 is built.
 
 ## How to know it worked
 
 - Share of Intelligence sessions that open a value signal or comparison (target: most sessions do something beyond reading).
 - Comparison views created per active member per week, and shares of comparison URLs.
 - Value-signal click-through to supplier links, and signals later tracked or bought.
-- Anonymous-to-signup conversion from `/analytics` before and after the server-rendered read and example comparison.
+- Anonymous-to-signup conversion from `/analytics` before and after the server-rendered read.
+- Share of level 0 items that users expand or act on, and the share of sessions ending at level 0 with an action taken. A good top of page resolves most visits there.
 - Zero known-wrong values on the page, backed by a canary that fails on $0 prices, "Flat%", or unlabeled gaps.
 
 ## Decisions (Reed, 2026-09-28)
 
-1. **Personas:** Confirmed. Hobbyists index on the catalog. The Market Index serves small and medium businesses, with progressive disclosure up to what large buyers care about (macro context, where Purveyors is a more nuanced microcosm than futures).
+1. **Personas:** Two primary archetypes. Home roasters use the catalog. Small-to-medium roasters use the Market Index and the catalog, and larger buyers within that range go deeper through the same page. Large-scale buyers and analysts are not primary archetypes. A futures comparison was proposed and withdrawn as too literal.
 2. **Comparison access:** Viewers compare two lots; members get the full tool. The comparison tool is viewer and member only, with no anonymous example comparison, so ADR-010 is unchanged.
 3. **Buy signals:** Agreed that cheapest is not best. Hide `below_market` until slice 1 ships, and treat quality-aware value (slice 7) as the step from comparison table to a tool that understands coffee.
 4. **Subscription pages:** New capabilities ship with matching subscription and feature copy in the same PR.
+5. **Progressive disclosure:** The Market Index leads with the most urgent, relevant intelligence and lets users dig into evidence and tools from each item. Adding sections to the bottom of the page is not the answer.
