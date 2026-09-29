@@ -54,6 +54,7 @@ type MarketEvidenceData = components['schemas']['MarketEvidenceResponse']['data'
 
 interface StreamedLoadResult {
 	analyticsPreview: AnalyticsPreview;
+	analyticsCoverageInitial: AnalyticsCoverage | null;
 	analyticsCoverage: Promise<AnalyticsCoverage>;
 	analyticsCharts: Promise<AnalyticsCharts>;
 	analyticsWatchlist: Promise<AnalyticsWatchlistData>;
@@ -471,6 +472,7 @@ describe('analytics load', () => {
 
 		const result = await runLoad();
 		const coverage = await result.analyticsCoverage;
+		expect(result.analyticsCoverageInitial).toEqual(coverage);
 		const charts = await result.analyticsCharts;
 		const member = await result.analyticsMember;
 
@@ -698,9 +700,9 @@ describe('analytics load', () => {
 					source: 'Royal',
 					stockedCount: 3,
 					origins: 2,
-					avgCostLb: 0,
-					minCostLb: 0,
-					maxCostLb: 0,
+					avgCostLb: null,
+					minCostLb: null,
+					maxCostLb: null,
 					wholesaleCount: 3,
 					retailCount: 0
 				}
@@ -736,6 +738,7 @@ describe('analytics load', () => {
 		const result = await runLoad();
 
 		expect(result.analyticsPreview.stats.lastUpdated).toBeNull();
+		expect(result.analyticsCoverageInitial).toBeNull();
 		await expect(result.analyticsCoverage).rejects.toThrow('overview unavailable');
 		await expect(result.analyticsCharts).resolves.toMatchObject({
 			processDistribution: [],

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { AXIS_LABEL_COLOR, GRIDLINE_COLOR } from '$lib/styles/chartColors';
 	import type { MetadataSeriesItem } from '$lib/types/marketIndex.types';
+	import { missingMonths } from '$lib/analytics/marketRead';
 
 	interface Props {
 		series: MetadataSeriesItem[];
@@ -21,17 +22,27 @@
 		count: number;
 	}
 
-	let periods = $derived.by(() =>
-		series.map((item) => ({
+	// Months with no published data render as labeled empty columns so a gap is
+	// never closed up into what looks like a continuous series.
+	let periods = $derived.by(() => {
+		const observed = series.map((item) => ({
 			period: item.period,
 			lotCount: item.lotCount,
+			gap: false,
 			buckets: item.buckets
 				.filter(
 					(b): b is ShareBucket & { supplierCount: number } => 'share' in b && b.share != null
 				)
 				.map((b) => ({ key: b.key, share: b.share ?? 0, count: b.count }))
-		}))
-	);
+		}));
+		const gaps = missingMonths(observed.map((p) => p.period)).map((period) => ({
+			period,
+			lotCount: 0,
+			gap: true,
+			buckets: [] as { key: string; share: number; count: number }[]
+		}));
+		return [...observed, ...gaps].sort((a, b) => a.period.localeCompare(b.period));
+	});
 
 	// Stable legend order: largest average share first; undisclosed last.
 	let legendKeys = $derived.by(() => {
@@ -76,7 +87,7 @@
 		});
 	}
 
-	let latest = $derived(periods.at(-1) ?? null);
+	let latest = $derived(periods.filter((p) => !p.gap).at(-1) ?? null);
 </script>
 
 {#if periods.length > 0}
@@ -96,6 +107,29 @@
 			/>
 			{#each periods as p, i}
 				{@const x = i * (columnWidth + GAP)}
+				{#if p.gap}
+					<rect
+						{x}
+						y="4"
+						width={columnWidth}
+						height={HEIGHT - PAD_BOTTOM - 4}
+						fill="none"
+						stroke={GRIDLINE_COLOR}
+						stroke-dasharray="4 4"
+						rx="2"
+					>
+						<title>{p.period} · No data published</title>
+					</rect>
+					<text
+						x={x + columnWidth / 2}
+						y={(HEIGHT - PAD_BOTTOM) / 2}
+						text-anchor="middle"
+						font-size="10"
+						fill={AXIS_LABEL_COLOR}
+					>
+						No data
+					</text>
+				{/if}
 				{#each stack(p.buckets) as seg}
 					<rect
 						{x}

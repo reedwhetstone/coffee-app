@@ -3,13 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import MatchedPriceComparison from './MatchedPriceComparison.svelte';
 
-const row = (origin = 'Ethiopia', wholesale = false) => ({
+const row = (origin = 'Ethiopia', wholesale = false, changePercent = 10) => ({
 	from: '2026-08-07',
 	to: '2026-09-06',
 	origin,
 	wholesale,
 	status: 'available',
-	changePercent: 10,
+	changePercent,
 	sample: {
 		fromListings: 10,
 		toListings: 10,
@@ -57,10 +57,45 @@ describe('automatic 30-day comparisons', () => {
 		render(MatchedPriceComparison, { viewMode: 'all' });
 		await screen.findByRole('list', { name: '30-day price signals' });
 		expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-		expect(screen.getAllByText('Brazil').length).toBeGreaterThan(0);
-		expect(screen.getAllByText('(Retail)')[0]).toBeInTheDocument();
-		expect(screen.getByText('(Wholesale)')).toBeInTheDocument();
+		expect(screen.getByText('Brazil (Retail)')).toBeInTheDocument();
+		expect(screen.getByText('Ethiopia (Retail)')).toBeInTheDocument();
+		expect(screen.getByText('Ethiopia (Wholesale)')).toBeInTheDocument();
 		expect(screen.getAllByText('+10.00%')).toHaveLength(3);
+	});
+	it('keeps moves under 2% out of the headline strip', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi
+				.fn()
+				.mockResolvedValue(
+					response(
+						payload([
+							row('Ethiopia', false, 0.34),
+							row('Rwanda', false, 1.29),
+							row('Peru', false, -3.1)
+						])
+					)
+				)
+		);
+		render(MatchedPriceComparison, { viewMode: 'retail' });
+		const list = await screen.findByRole('list', { name: '30-day price signals' });
+		expect(list).toHaveTextContent('Peru');
+		expect(list).not.toHaveTextContent('Rwanda');
+		expect(screen.getByText('2 other origins moved less than 2%.')).toBeInTheDocument();
+	});
+	it('says plainly when no origin moved 2% or more', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi
+				.fn()
+				.mockResolvedValue(
+					response(payload([row('Ethiopia', false, 0.34), row('Rwanda', false, 1.29)]))
+				)
+		);
+		render(MatchedPriceComparison, { viewMode: 'retail' });
+		await screen.findByText(/No origin moved 2% or more/);
+		expect(screen.getByText('Rwanda +1.29%')).toBeInTheDocument();
+		expect(screen.queryByRole('list', { name: '30-day price signals' })).toBeNull();
 	});
 	it('shows one honest empty state without controls or a zero estimate', async () => {
 		vi.stubGlobal(

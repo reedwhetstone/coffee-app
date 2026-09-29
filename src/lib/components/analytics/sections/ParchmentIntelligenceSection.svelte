@@ -19,7 +19,7 @@
 
 	interface OriginBenchmarkRow {
 		origin: string;
-		price_avg: number;
+		price_median: number;
 		supplier_count: number;
 		sample_size: number;
 		price_min: number | null;
@@ -48,6 +48,7 @@
 		hasSnapshots: boolean;
 		windowMode: WindowMode;
 		viewModeLabel: string;
+		viewMode: 'retail' | 'wholesale' | 'all';
 		onRetry: () => void;
 		onWindowModeChange: (v: WindowMode) => void;
 	}
@@ -72,6 +73,7 @@
 		hasSnapshots,
 		windowMode,
 		viewModeLabel,
+		viewMode,
 		onRetry,
 		onWindowModeChange
 	}: Props = $props();
@@ -327,7 +329,7 @@
 						<p class="mb-4 text-sm text-muted">
 							Catalog breadth, active origins, and price coverage by supplier in this scope.
 						</p>
-						<SupplierHealthTableComponent rows={scopedSupplierHealth} />
+						<SupplierHealthTableComponent rows={scopedSupplierHealth} market={viewMode} />
 					</div>
 				{/if}
 			</AnalyticsLoadingPanel>
@@ -341,7 +343,8 @@
 			<div class="rounded-lg border border-accent/20 bg-surface-canvas p-6 shadow-sm">
 				<h2 class="mb-1 text-base font-semibold text-ink">Origin benchmarks</h2>
 				<p class="mb-4 text-sm text-muted">
-					Origin-level price range and supplier coverage in the latest market snapshot.
+					Median price, full range, and supplier coverage per origin in the latest market snapshot.
+					Origins priced by fewer than three suppliers are marked as limited data.
 				</p>
 				{#if hasSnapshots}
 					<div class="overflow-x-auto">
@@ -349,7 +352,7 @@
 							<thead>
 								<tr class="border-b border-line">
 									<th class="py-2 pr-4 text-left font-semibold text-muted">Origin</th>
-									<th class="py-2 pr-4 text-right font-semibold text-muted">Avg $/lb</th>
+									<th class="py-2 pr-4 text-right font-semibold text-muted">Median $/lb</th>
 									<th class="py-2 pr-4 text-right font-semibold text-muted">Min</th>
 									<th class="py-2 pr-4 text-right font-semibold text-muted">Max</th>
 									<th class="py-2 text-right font-semibold text-muted">Suppliers</th>
@@ -358,9 +361,14 @@
 							<tbody>
 								{#each originBarData as row}
 									<tr class="border-b border-line/50 hover:bg-surface-panel">
-										<td class="py-2 pr-4 font-medium text-ink">{row.origin}</td>
+										<td class="py-2 pr-4 font-medium text-ink">
+											{row.origin}
+											{#if row.supplier_count < 3}
+												<span class="ml-1 text-xs font-normal text-muted">Limited data</span>
+											{/if}
+										</td>
 										<td class="py-2 pr-4 text-right font-semibold text-ink"
-											>${row.price_avg.toFixed(2)}</td
+											>${row.price_median.toFixed(2)}</td
 										>
 										<td class="py-2 pr-4 text-right text-muted"
 											>{row.price_min?.toFixed(2) ?? '—'}</td

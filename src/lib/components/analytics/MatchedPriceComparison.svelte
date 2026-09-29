@@ -38,10 +38,34 @@
 		});
 	type ComparisonResponse = z.infer<typeof responseSchema>;
 	let { viewMode }: { viewMode: 'retail' | 'wholesale' | 'all' } = $props();
+
+	/** Moves smaller than this stay in the detail list instead of the headline strip. */
+	const NOTABLE_MOVE_PCT = 2;
+
+	function formatChange(value: number): string {
+		return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+	}
+
+	function label(comparison: { origin: string; wholesale: boolean }): string {
+		return viewMode === 'all'
+			? `${comparison.origin} (${comparison.wholesale ? 'Wholesale' : 'Retail'})`
+			: comparison.origin;
+	}
+
 	let result = $state<ComparisonResponse | null>(null);
 	let loading = $state(true);
 	let failed = $state(false);
 	let retry = $state(0);
+
+	let byMagnitude = $derived(
+		[...(result?.comparisons ?? [])].sort(
+			(a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)
+		)
+	);
+	let notable = $derived(
+		byMagnitude.filter((row) => Math.abs(row.changePercent) >= NOTABLE_MOVE_PCT)
+	);
+	let quietCount = $derived(byMagnitude.length - notable.length);
 
 	$effect(() => {
 		const market = viewMode;
@@ -101,37 +125,47 @@
 			<p class="text-muted" role="status">
 				No 30-day price comparisons available for this market yet.
 			</p>
+		{:else if notable.length === 0}
+			<p class="text-muted" role="status">
+				No origin moved {NOTABLE_MOVE_PCT}% or more on like-for-like prices. Largest move:
+				<span class="font-semibold tabular-nums text-ink"
+					>{label(byMagnitude[0])} {formatChange(byMagnitude[0].changePercent)}</span
+				>.
+			</p>
 		{:else}
 			<ul class="flex flex-wrap items-center gap-x-5 gap-y-2" aria-label="30-day price signals">
-				{#each result.comparisons as comparison (comparison.origin + comparison.wholesale)}
+				{#each notable as comparison (comparison.origin + comparison.wholesale)}
 					<li class="flex items-baseline gap-2">
-						<span class="text-muted"
-							>{comparison.origin}{#if viewMode === 'all'}
-								<span class="text-xs">({comparison.wholesale ? 'Wholesale' : 'Retail'})</span
-								>{/if}</span
-						>
+						<span class="text-muted">{label(comparison)}</span>
 						<span class="font-semibold tabular-nums text-ink"
-							>{comparison.changePercent > 0 ? '+' : ''}{comparison.changePercent.toFixed(2)}%</span
+							>{formatChange(comparison.changePercent)}</span
 						>
 					</li>
 				{/each}
 			</ul>
+			{#if quietCount > 0}
+				<p class="text-muted">
+					{quietCount}
+					{quietCount === 1 ? 'other origin' : 'other origins'} moved less than {NOTABLE_MOVE_PCT}%.
+				</p>
+			{/if}
 		{/if}
 	</div>
 	{#if !loading && !failed && result?.comparisons.length}
 		<details class="mt-2 text-xs text-muted">
 			<summary
 				class="w-fit cursor-pointer rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-				>Dates &amp; coverage</summary
+				>All origins, dates &amp; coverage</summary
 			>
 			<p class="mt-2">30-day change · {result.from} to {result.to}</p>
 			<p class="mt-1">Price changes in the same coffees, with equal weight per supplier.</p>
 			<ul class="mt-2 space-y-1">
-				{#each result.comparisons as comparison (comparison.origin + comparison.wholesale)}
+				{#each byMagnitude as comparison (comparison.origin + comparison.wholesale)}
 					<li>
 						<span class="font-medium text-ink"
 							>{comparison.origin} · {comparison.wholesale ? 'Wholesale' : 'Retail'}:</span
 						>
+						{formatChange(comparison.changePercent)} ·
 						{comparison.sample.matchedListings} of {comparison.sample.fromListings} starting coffees
 						matched ({(comparison.sample.matchedCoverage * 100).toFixed(0)}%) · {comparison.sample
 							.matchedSuppliers} suppliers

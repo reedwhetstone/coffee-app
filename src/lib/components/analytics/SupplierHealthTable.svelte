@@ -5,14 +5,37 @@
 		source: string;
 		stockedCount: number;
 		origins: number;
-		avgCostLb: number;
-		minCostLb: number;
-		maxCostLb: number;
+		/** Retail price fields; null when the supplier has no priced retail lots. */
+		avgCostLb: number | null;
+		minCostLb: number | null;
+		maxCostLb: number | null;
 		wholesaleCount: number;
 		retailCount: number;
 	}
 
-	let { rows = [] }: { rows: SupplierRow[] } = $props();
+	let {
+		rows = [],
+		market = 'all'
+	}: { rows: SupplierRow[]; market?: 'retail' | 'wholesale' | 'all' } = $props();
+
+	/** Stocked lots in the selected scope, so the retail view never counts wholesale lots. */
+	function scopedCount(row: SupplierRow): number {
+		if (market === 'retail') return row.retailCount;
+		if (market === 'wholesale') return row.wholesaleCount;
+		return row.stockedCount;
+	}
+
+	function priceRange(row: SupplierRow): number | null {
+		return row.minCostLb == null || row.maxCostLb == null ? null : row.maxCostLb - row.minCostLb;
+	}
+
+	/** Missing prices always sort last, whichever direction is selected. */
+	function compareNullable(a: number | null, b: number | null): number | null {
+		if (a == null && b == null) return 0;
+		if (a == null) return null;
+		if (b == null) return null;
+		return a - b;
+	}
 
 	type SortKey = 'source' | 'stockedCount' | 'origins' | 'avgCostLb' | 'priceRange' | 'split';
 	let sortKey = $state<SortKey>('stockedCount');
@@ -22,21 +45,22 @@
 		const copy = [...rows];
 		copy.sort((a, b) => {
 			let cmp = 0;
+			if (sortKey === 'avgCostLb' || sortKey === 'priceRange') {
+				const left = sortKey === 'avgCostLb' ? a.avgCostLb : priceRange(a);
+				const right = sortKey === 'avgCostLb' ? b.avgCostLb : priceRange(b);
+				const result = compareNullable(left, right);
+				if (result === null) return left == null ? 1 : -1;
+				return sortAsc ? result : -result;
+			}
 			switch (sortKey) {
 				case 'source':
 					cmp = formatSourceName(a.source).localeCompare(formatSourceName(b.source));
 					break;
 				case 'stockedCount':
-					cmp = a.stockedCount - b.stockedCount;
+					cmp = scopedCount(a) - scopedCount(b);
 					break;
 				case 'origins':
 					cmp = a.origins - b.origins;
-					break;
-				case 'avgCostLb':
-					cmp = a.avgCostLb - b.avgCostLb;
-					break;
-				case 'priceRange':
-					cmp = a.maxCostLb - a.minCostLb - (b.maxCostLb - b.minCostLb);
 					break;
 				case 'split':
 					cmp = a.wholesaleCount / (a.stockedCount || 1) - b.wholesaleCount / (b.stockedCount || 1);
@@ -61,16 +85,21 @@
 		return sortAsc ? 'sorted ascending' : 'sorted descending';
 	}
 
-	let totalStocked = $derived(rows.reduce((s, r) => s + r.stockedCount, 0));
+	let totalStocked = $derived(rows.reduce((s, r) => s + scopedCount(r), 0));
 	let totalRetail = $derived(rows.reduce((s, r) => s + r.retailCount, 0));
 	let totalWholesale = $derived(rows.reduce((s, r) => s + r.wholesaleCount, 0));
 
-	// Overall avg cost
+	// Retail average weighted by priced retail lots; unpriced suppliers are excluded.
 	let overallAvg = $derived.by(() => {
-		if (rows.length === 0) return 0;
-		const totalCost = rows.reduce((s, r) => s + r.avgCostLb * r.stockedCount, 0);
-		return totalCost / (totalStocked || 1);
+		const priced = rows.filter((r) => r.avgCostLb != null && r.retailCount > 0);
+		const weight = priced.reduce((s, r) => s + r.retailCount, 0);
+		if (weight === 0) return null;
+		return priced.reduce((s, r) => s + (r.avgCostLb ?? 0) * r.retailCount, 0) / weight;
 	});
+
+	function money(value: number | null): string {
+		return value == null ? '—' : `$${value.toFixed(2)}`;
+	}
 </script>
 
 <div class="overflow-x-auto">
@@ -106,7 +135,7 @@
 					onclick={() => setSort('avgCostLb')}
 					aria-sort={sortKey === 'avgCostLb' ? (sortAsc ? 'ascending' : 'descending') : 'none'}
 				>
-					Avg $/lb
+					Retail avg $/lb
 					<span class="sr-only">{sortLabel('avgCostLb')}</span>
 				</th>
 				<th
@@ -114,7 +143,7 @@
 					onclick={() => setSort('priceRange')}
 					aria-sort={sortKey === 'priceRange' ? (sortAsc ? 'ascending' : 'descending') : 'none'}
 				>
-					Price range
+					Retail range
 					<span class="sr-only">{sortLabel('priceRange')}</span>
 				</th>
 				<th
@@ -138,16 +167,20 @@
 						<span class="font-medium text-ink">{formatSourceName(row.source)}</span>
 					</td>
 					<td class="py-2 pr-4 text-right font-semibold text-ink">
-						{row.stockedCount}
+						{scopedCount(row)}
 					</td>
 					<td class="py-2 pr-4 text-right text-muted">
 						{row.origins}
 					</td>
 					<td class="py-2 pr-4 text-right font-medium text-ink">
-						${row.avgCostLb.toFixed(2)}
+						{money(row.avgCostLb)}
 					</td>
 					<td class="hidden py-2 pr-4 text-right text-muted sm:table-cell">
-						${row.minCostLb.toFixed(2)} – ${row.maxCostLb.toFixed(2)}
+						{#if row.minCostLb == null || row.maxCostLb == null}
+							—
+						{:else}
+							{money(row.minCostLb)} – {money(row.maxCostLb)}
+						{/if}
 					</td>
 					<td class="py-2 text-right text-muted">
 						{row.retailCount} / {row.wholesaleCount}
@@ -165,7 +198,7 @@
 				</td>
 				<td class="py-3 pr-4 text-right text-muted">—</td>
 				<td class="py-3 pr-4 text-right text-ink">
-					${overallAvg.toFixed(2)} avg
+					{overallAvg == null ? '—' : `${money(overallAvg)} avg`}
 				</td>
 				<td class="hidden py-3 pr-4 text-right text-muted sm:table-cell">—</td>
 				<td class="py-3 text-right text-muted">

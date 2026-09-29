@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 	import type {
 		PriceSnapshot,
@@ -37,6 +38,13 @@
 	import MetadataTrendsSection from '$lib/components/analytics/sections/MetadataTrendsSection.svelte';
 	import AnalyticsPageSkeleton from '$lib/components/analytics/AnalyticsPageSkeleton.svelte';
 	import type { MarketIndexInsights } from '$lib/types/marketIndex.types';
+	import {
+		buildMarketReadHeadline,
+		formatSignedMoneyPerLb,
+		formatSignedPct,
+		isFlatPct,
+		rankOriginMovers
+	} from '$lib/analytics/marketRead';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -169,8 +177,13 @@
 		return () => controller.abort();
 	});
 
-	let coverageState = $state<StreamState>('pending');
-	let coverageData = $state<AnalyticsCoverage | null>(null);
+	// The aggregate overview is awaited before first byte, so coverage and
+	// movement counts are already known on the server. Seeding them lets the
+	// server-rendered market read state a real headline instead of a loading line.
+	// Only the first render needs the seed; the effect below keeps it current.
+	const initialCoverage = untrack(() => data.analyticsCoverageInitial ?? null);
+	let coverageState = $state<StreamState>(initialCoverage ? 'ready' : 'pending');
+	let coverageData = $state<AnalyticsCoverage | null>(initialCoverage);
 	let chartsState = $state<StreamState>('pending');
 	let chartsData = $state<AnalyticsCharts | null>(null);
 	let memberState = $state<StreamState>('pending');
@@ -181,6 +194,11 @@
 	$effect(() => {
 		const promise = data.analyticsCoverage as Promise<AnalyticsCoverage>;
 		let cancelled = false;
+		if (data.analyticsCoverageInitial) {
+			coverageData = data.analyticsCoverageInitial;
+			coverageState = 'ready';
+			return;
+		}
 		coverageState = 'pending';
 		coverageData = null;
 		void Promise.resolve(promise)
@@ -557,17 +575,7 @@
 			? (marketPriceDelta / previousMarketAverage) * 100
 			: null
 	);
-	let latestCoverageCount = $derived(
-		latestSnapshotRows.reduce((sum, snapshot) => sum + (snapshot.supplier_count ?? 0), 0)
-	);
-	let previousCoverageCount = $derived(
-		previousSnapshotRows.reduce((sum, snapshot) => sum + (snapshot.supplier_count ?? 0), 0)
-	);
-	let supplierCoverageDelta = $derived(
-		previousCoverageCount > 0 ? latestCoverageCount - previousCoverageCount : null
-	);
-
-	// ── Origin benchmark table data ───────────────────────────────────────────
+	// ── Origin benchmark table data (medians; means are skewed by premium tails) ──
 
 	let originBarData = $derived.by(() => {
 		if (!filteredSnapshots || filteredSnapshots.length === 0) return [];
@@ -587,7 +595,8 @@
 			}
 		>();
 		for (const s of filteredSnapshots) {
-			if (s.snapshot_date !== latestDate || s.price_avg == null) continue;
+			const price = s.price_median ?? s.price_avg;
+			if (s.snapshot_date !== latestDate || price == null) continue;
 			const cur = byOrigin.get(s.origin) ?? {
 				sum: 0,
 				count: 0,
@@ -596,7 +605,7 @@
 				min: null,
 				max: null
 			};
-			cur.sum += s.price_avg;
+			cur.sum += price;
 			cur.count += 1;
 			cur.suppliers = Math.max(cur.suppliers, s.supplier_count);
 			cur.sample_size += s.sample_size ?? 0;
@@ -608,7 +617,7 @@
 		}
 		return Array.from(byOrigin.entries()).map(([origin, v]) => ({
 			origin,
-			price_avg: Math.round((v.sum / v.count) * 100) / 100,
+			price_median: Math.round((v.sum / v.count) * 100) / 100,
 			supplier_count: v.suppliers,
 			sample_size: v.sample_size,
 			price_min: v.min,
@@ -635,13 +644,6 @@
 		return value == null ? 'N/A' : `$${value.toFixed(2)}`;
 	}
 
-	function formatSigned(value: number | null, precision = 0): string {
-		if (value == null) return 'Baseline';
-		if (Math.abs(value) < 0.01) return 'Flat';
-		const sign = value > 0 ? '+' : '−';
-		return `${sign}${Math.abs(value).toFixed(precision)}`;
-	}
-
 	// ── Movement significance (ADR-015: signal vs noise) ────────────────────
 
 	let currentMoveStat = $derived.by(() => {
@@ -663,6 +665,10 @@
 		if (!stat || stat.latestMovePct == null) return null;
 		const windowLabel = stat.window === '7d' ? 'weekly' : '30-day';
 		const marketLabel = stat.segment.market === 'all' ? 'combined' : stat.segment.market;
+		// A flat move has no driver worth attributing.
+		if (isFlatPct(stat.latestMovePct)) {
+			return `${marketLabel.charAt(0).toUpperCase()}${marketLabel.slice(1)} prices were flat on a ${windowLabel} basis.`;
+		}
 		const movePhrase = `${stat.latestMovePct > 0 ? '+' : ''}${stat.latestMovePct.toFixed(1)}% ${windowLabel} ${marketLabel} move`;
 		const driverPhrase =
 			stat.moveDriver === 'repricing'
@@ -693,30 +699,28 @@
 
 	// ── Market read headline + detail ─────────────────────────────────────────
 
+	// Price only headlines when Parchment classifies the move as notable against
+	// baseline variance; supply only headlines when the net change is a meaningful
+	// share of listings. Coverage is seeded on the server, so this renders in SSR.
 	let marketReadHeadline = $derived.by(() => {
-		// A stability call needs price evidence, so the headline waits for the
-		// charts stream too — not just coverage.
-		if (!coverageSettled || chartsState === 'pending') {
+		if (!coverageSettled) {
 			return 'The latest index snapshot is in; movement and coverage signals are streaming next.';
 		}
-		if (!isMovementDataAvailable) {
-			return `${movementWindowLabel} movement data is unavailable; use price and coverage evidence until the index refreshes.`;
-		}
-		if (scopedArrivalCount > scopedDelistingCount) {
-			return `Supply is expanding faster than it is leaving the visible market in the ${movementWindowLabel} window.`;
-		}
-		if (scopedDelistingCount > scopedArrivalCount) {
-			return `Availability is tightening in the ${movementWindowLabel} movement window.`;
-		}
-		if (chartsState === 'error') {
-			return `Movement is balanced in the ${movementWindowLabel} window, but the price history layer did not load, so this read makes no stability call.`;
-		}
-		if (marketPriceDelta != null && Math.abs(marketPriceDelta) >= 0.05) {
-			return marketPriceDelta > 0
-				? 'Average visible prices are firming in the latest indexed snapshot.'
-				: 'Average visible prices are easing in the latest indexed snapshot.';
-		}
-		return 'The current market read is stable, with breadth still visible across origins and suppliers.';
+		return buildMarketReadHeadline({
+			windowLabel: movementWindowLabel,
+			scopeLabel: viewModeLabel,
+			movementAvailable: isMovementDataAvailable,
+			arrivals: scopedArrivalCount,
+			delistings: scopedDelistingCount,
+			stockedListings: displayStockedCount,
+			priceMove: currentMoveStat
+				? {
+						latestMovePct: currentMoveStat.latestMovePct,
+						classification: currentMoveStat.classification,
+						weeksSinceLargerMove: currentMoveStat.weeksSinceLargerMove
+					}
+				: null
+		});
 	});
 
 	let marketReadDetail = $derived.by(() => {
@@ -727,7 +731,9 @@
 					? 'price movement is unavailable because the price history layer did not load'
 					: marketPriceDelta == null
 						? 'price movement needs another comparable snapshot'
-						: `${formatSigned(marketPriceDelta, 2)}/lb (${formatSigned(marketPriceDeltaPercent, 1)}%) versus the prior comparable snapshot`;
+						: isFlatPct(marketPriceDeltaPercent)
+							? 'average prices were flat versus the prior comparable snapshot'
+							: `average prices moved ${formatSignedMoneyPerLb(marketPriceDelta)} (${formatSignedPct(marketPriceDeltaPercent)}) versus the prior comparable snapshot`;
 		if (!coverageSettled) {
 			return `The ${stats.totalSuppliers.toLocaleString()}-supplier index is loaded; movement and coverage counts are streaming in, and ${pricePhrase}.`;
 		}
@@ -751,7 +757,7 @@
 							? 'up'
 							: 'down';
 			return {
-				value: `${formatSigned(stat.latestMovePct, 1)}%`,
+				value: formatSignedPct(stat.latestMovePct),
 				detail: `${movementWindowLabel} ${viewModeLabel} move`,
 				tone
 			};
@@ -761,11 +767,11 @@
 			value:
 				marketPriceDelta == null
 					? formatMoney(latestMarketAverage)
-					: `${formatSigned(marketPriceDelta, 2)}/lb`,
+					: formatSignedMoneyPerLb(marketPriceDelta),
 			detail:
 				marketPriceDeltaPercent == null
 					? 'Latest indexed average'
-					: `${formatSigned(marketPriceDeltaPercent, 1)}% from prior snapshot`,
+					: `${formatSignedPct(marketPriceDeltaPercent)} from prior snapshot`,
 			tone:
 				marketPriceDelta == null || Math.abs(marketPriceDelta) < 0.01
 					? 'neutral'
@@ -800,11 +806,8 @@
 		{
 			label: 'Supplier coverage',
 			value: displaySuppliersCount.toLocaleString(),
-			detail:
-				supplierCoverageDelta == null
-					? `${displayOriginsCount} ${viewModeLabel} origins indexed`
-					: `${formatSigned(supplierCoverageDelta)} supplier-origin positions`,
-			tone: supplierCoverageDelta != null && supplierCoverageDelta < 0 ? 'alert' : 'neutral'
+			detail: `${displayOriginsCount} ${viewModeLabel} origins indexed`,
+			tone: 'neutral'
 		}
 	]);
 
@@ -836,56 +839,23 @@
 		};
 	});
 
-	// Week-over-week per-origin price movement
-	type OriginMover = { origin: string; latest: number; delta: number };
-	let weeklyOriginMovement = $derived.by(
-		(): { movers: OriginMover[]; baselineDate: string | null } => {
-			const dates = Array.from(new Set(filteredSnapshots.map((s) => s.snapshot_date))).sort();
-			if (dates.length < 2) return { movers: [], baselineDate: null };
-			const latestDate = dates[dates.length - 1];
-			const latestTime = new Date(`${latestDate}T00:00:00Z`).getTime();
-			const weekAgoCandidates = dates.filter(
-				(date) => latestTime - new Date(`${date}T00:00:00Z`).getTime() >= 6 * 24 * 60 * 60 * 1000
-			);
-			const baselineDate = weekAgoCandidates.length
-				? weekAgoCandidates[weekAgoCandidates.length - 1]
-				: dates[0];
+	// Week-over-week origin movement on medians, excluding thin origins
+	let weeklyOriginMovement = $derived.by(() => {
+		const dates = Array.from(new Set(filteredSnapshots.map((s) => s.snapshot_date))).sort();
+		if (dates.length < 2) return { movers: [], baselineDate: null };
+		const latestDate = dates[dates.length - 1];
+		const latestTime = new Date(`${latestDate}T00:00:00Z`).getTime();
+		const weekAgoCandidates = dates.filter(
+			(date) => latestTime - new Date(`${date}T00:00:00Z`).getTime() >= 6 * 24 * 60 * 60 * 1000
+		);
+		const baselineDate = weekAgoCandidates.length
+			? weekAgoCandidates[weekAgoCandidates.length - 1]
+			: dates[0];
+		return { movers: rankOriginMovers(filteredSnapshots, latestDate, baselineDate), baselineDate };
+	});
 
-			const latestAcc = new Map<string, { sum: number; count: number }>();
-			const baselineAcc = new Map<string, { sum: number; count: number }>();
-			for (const s of filteredSnapshots) {
-				if (s.price_avg == null) continue;
-				const acc =
-					s.snapshot_date === latestDate
-						? latestAcc
-						: s.snapshot_date === baselineDate
-							? baselineAcc
-							: null;
-				if (!acc) continue;
-				const cur = acc.get(s.origin) ?? { sum: 0, count: 0 };
-				cur.sum += s.price_avg;
-				cur.count += 1;
-				acc.set(s.origin, cur);
-			}
-			const toAverages = (acc: Map<string, { sum: number; count: number }>) =>
-				new Map(Array.from(acc.entries()).map(([origin, v]) => [origin, v.sum / v.count]));
-
-			const latestByOrigin = toAverages(latestAcc);
-			const baselineByOrigin = toAverages(baselineAcc);
-			const movers: OriginMover[] = [];
-			for (const [origin, latest] of latestByOrigin) {
-				const baseline = baselineByOrigin.get(origin);
-				if (baseline == null) continue;
-				const delta = latest - baseline;
-				if (Math.abs(delta) >= 0.05) movers.push({ origin, latest, delta });
-			}
-			movers.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
-			return { movers, baselineDate };
-		}
-	);
-
-	function formatMoverPhrase(mover: { origin: string; delta: number }): string {
-		return `${mover.origin} ${formatSigned(mover.delta, 2)}/lb`;
+	function formatMoverPhrase(mover: { origin: string; deltaPct: number }): string {
+		return `${mover.origin} ${formatSignedPct(mover.deltaPct)}`;
 	}
 
 	let availabilityInsight = $derived.by(() => {
@@ -929,8 +899,11 @@
 				title:
 					baselineDate === null
 						? 'Week-over-week price movement needs a second comparable snapshot.'
-						: `Origin averages are flat week-over-week (within ±$0.05/lb) in the ${viewModeLabel} scope.`,
-				body: `The latest ${viewModeLabel} average is ${formatMoney(latestMarketAverage)}/lb across ${latestSnapshotRows.length} origin rows. Origin ranges below show how that average distributes.`,
+						: `No well-covered ${viewModeLabel} origin moved 2% or more week over week.`,
+				body:
+					baselineDate === null
+						? `The ${viewModeLabel} average is ${formatMoney(latestMarketAverage)}/lb.`
+						: `Origins priced by at least three suppliers held within 2% of last week's median. The ${viewModeLabel} average is ${formatMoney(latestMarketAverage)}/lb.`,
 				evidence:
 					baselineDate === null
 						? `Evidence: single snapshot ${formatDate(latestSnapshotDate || stats.lastUpdated)}`
@@ -938,9 +911,9 @@
 			};
 		}
 		const lead = movers[0];
-		const up = movers.filter((m) => m.delta > 0);
-		const down = movers.filter((m) => m.delta < 0);
-		const title = `${lead.origin} leads ${viewModeLabel} movement, ${formatSigned(lead.delta, 2)}/lb week-over-week.`;
+		const up = movers.filter((m) => m.deltaPct > 0);
+		const down = movers.filter((m) => m.deltaPct < 0);
+		const title = `${lead.origin} leads ${viewModeLabel} movement, ${formatSignedPct(lead.deltaPct)} week over week (${formatSignedMoneyPerLb(lead.delta)}).`;
 		const bodyParts: string[] = [];
 		if (up.length) {
 			bodyParts.push(`Rising: ${up.slice(0, 3).map(formatMoverPhrase).join(', ')}.`);
@@ -953,7 +926,7 @@
 			label: 'Price posture',
 			title,
 			body: bodyParts.join(' '),
-			evidence: `Evidence: per-origin averages, ${formatDate(baselineDate)} vs ${formatDate(latestSnapshotDate)}`
+			evidence: `Evidence: per-origin medians for origins with 3+ suppliers, ${formatDate(baselineDate)} vs ${formatDate(latestSnapshotDate)}`
 		};
 	});
 
@@ -1420,6 +1393,7 @@
 				{hasSnapshots}
 				{windowMode}
 				{viewModeLabel}
+				{viewMode}
 				onRetry={retryMemberVisuals}
 				onWindowModeChange={(v) => (windowMode = v)}
 			/>
