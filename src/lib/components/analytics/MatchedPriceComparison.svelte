@@ -3,6 +3,14 @@
 
 	const count = z.number().int().nonnegative();
 	const date = z.iso.date();
+	// Parchment's read of how unusual this move is for the origin's own recent
+	// matched moves. Null classification means there is not enough history yet.
+	const significanceSchema = z.object({
+		baselineWindows: count,
+		requiredBaselineWindows: count,
+		movePercentile: z.number().min(0).max(100).nullable(),
+		classification: z.enum(['quiet', 'normal', 'notable', 'exceptional']).nullable()
+	});
 	const comparisonSchema = z.object({
 		from: date,
 		to: date,
@@ -18,7 +26,8 @@
 			matchedCoverage: z.number().min(0).max(1)
 		}),
 		methodology: z.literal('matched-supplier-median-log-v1'),
-		canonicalPublication: z.literal(false)
+		canonicalPublication: z.literal(false),
+		significance: significanceSchema.nullable().optional()
 	});
 	const responseSchema = z
 		.object({
@@ -39,8 +48,42 @@
 	type ComparisonResponse = z.infer<typeof responseSchema>;
 	let { viewMode }: { viewMode: 'retail' | 'wholesale' | 'all' } = $props();
 
-	/** Moves smaller than this stay in the detail list instead of the headline strip. */
-	const NOTABLE_MOVE_PCT = 2;
+	type Comparison = z.infer<typeof comparisonSchema>;
+
+	/**
+	 * Interim size cutoff, used only for origins Parchment cannot yet judge
+	 * against their own history (fewer than eight weekly baseline windows).
+	 */
+	const INTERIM_MOVE_PCT = 2;
+
+	function isJudged(row: Comparison): boolean {
+		return row.significance?.classification != null;
+	}
+
+	function standsOut(row: Comparison): boolean {
+		const classification = row.significance?.classification;
+		if (classification != null)
+			return classification === 'notable' || classification === 'exceptional';
+		return Math.abs(row.changePercent) >= INTERIM_MOVE_PCT;
+	}
+
+	function significanceDetail(row: Comparison): string {
+		const s = row.significance;
+		if (!s || s.classification == null) {
+			const have = s?.baselineWindows ?? 0;
+			const need = s?.requiredBaselineWindows ?? 8;
+			return `history building (${have} of ${need} weeks)`;
+		}
+		const pct =
+			s.movePercentile == null ? '' : `, ${ordinal(Math.round(s.movePercentile))} percentile`;
+		return `${s.classification} for this origin${pct} of the last ${s.baselineWindows} weeks`;
+	}
+
+	function ordinal(n: number): string {
+		const rem100 = n % 100;
+		if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
+		return `${n}${['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+	}
 
 	function formatChange(value: number): string {
 		return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
@@ -62,10 +105,11 @@
 			(a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)
 		)
 	);
-	let notable = $derived(
-		byMagnitude.filter((row) => Math.abs(row.changePercent) >= NOTABLE_MOVE_PCT)
-	);
+	let notable = $derived(byMagnitude.filter(standsOut));
 	let quietCount = $derived(byMagnitude.length - notable.length);
+	let judgedCount = $derived(byMagnitude.filter(isJudged).length);
+	let allJudged = $derived(byMagnitude.length > 0 && judgedCount === byMagnitude.length);
+	let noneJudged = $derived(judgedCount === 0);
 
 	$effect(() => {
 		const market = viewMode;
@@ -127,7 +171,14 @@
 			</p>
 		{:else if notable.length === 0}
 			<p class="text-muted" role="status">
-				No origin moved {NOTABLE_MOVE_PCT}% or more on like-for-like prices. Largest move:
+				{#if allJudged}
+					No origin moved outside its normal 30-day range.
+				{:else if noneJudged}
+					No origin moved {INTERIM_MOVE_PCT}% or more on like-for-like prices.
+				{:else}
+					No origin stood out on like-for-like prices.
+				{/if}
+				Largest move:
 				<span class="font-semibold tabular-nums text-ink"
 					>{label(byMagnitude[0])} {formatChange(byMagnitude[0].changePercent)}</span
 				>.
@@ -140,17 +191,33 @@
 						<span class="font-semibold tabular-nums text-ink"
 							>{formatChange(comparison.changePercent)}</span
 						>
+						{#if comparison.significance?.classification}
+							<span class="text-xs text-muted">{comparison.significance.classification}</span>
+						{/if}
 					</li>
 				{/each}
 			</ul>
 			{#if quietCount > 0}
 				<p class="text-muted">
 					{quietCount}
-					{quietCount === 1 ? 'other origin' : 'other origins'} moved less than {NOTABLE_MOVE_PCT}%.
+					{quietCount === 1 ? 'other origin' : 'other origins'}
+					{#if allJudged}
+						stayed within {quietCount === 1 ? 'its' : 'their'} normal range.
+					{:else if noneJudged}
+						moved less than {INTERIM_MOVE_PCT}%.
+					{:else}
+						did not stand out.
+					{/if}
 				</p>
 			{/if}
 		{/if}
 	</div>
+	{#if !loading && !failed && result?.comparisons.length && !allJudged}
+		<p class="mt-1 text-xs text-muted">
+			Until an origin has eight weeks of matched history to judge it against, moves of {INTERIM_MOVE_PCT}%
+			or more are shown.
+		</p>
+	{/if}
 	{#if !loading && !failed && result?.comparisons.length}
 		<details class="mt-2 text-xs text-muted">
 			<summary
@@ -165,7 +232,7 @@
 						<span class="font-medium text-ink"
 							>{comparison.origin} · {comparison.wholesale ? 'Wholesale' : 'Retail'}:</span
 						>
-						{formatChange(comparison.changePercent)} ·
+						{formatChange(comparison.changePercent)} · {significanceDetail(comparison)} ·
 						{comparison.sample.matchedListings} of {comparison.sample.fromListings} starting coffees
 						matched ({(comparison.sample.matchedCoverage * 100).toFixed(0)}%) · {comparison.sample
 							.matchedSuppliers} suppliers

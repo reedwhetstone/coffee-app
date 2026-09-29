@@ -20,7 +20,7 @@ const row = (origin = 'Ethiopia', wholesale = false, changePercent = 10) => ({
 	methodology: 'matched-supplier-median-log-v1',
 	canonicalPublication: false
 });
-const payload = (comparisons = [row()]) => ({
+const payload = (comparisons: object[] = [row()]) => ({
 	windowDays: 30,
 	from: '2026-08-07',
 	to: '2026-09-06',
@@ -96,6 +96,82 @@ describe('automatic 30-day comparisons', () => {
 		await screen.findByText(/No origin moved 2% or more/);
 		expect(screen.getByText('Rwanda +1.29%')).toBeInTheDocument();
 		expect(screen.queryByRole('list', { name: '30-day price signals' })).toBeNull();
+	});
+	it("uses each origin's own baseline once Parchment can judge it", async () => {
+		const judged = (
+			origin: string,
+			change: number,
+			classification: string,
+			movePercentile: number
+		) => ({
+			...row(origin, false, change),
+			significance: {
+				method: 'matched-30d-weekly-abs-percentile-v1',
+				baselineWindows: 12,
+				requiredBaselineWindows: 8,
+				baselineMedianAbsChangePercent: 0.4,
+				movePercentile,
+				classification
+			}
+		});
+		vi.stubGlobal(
+			'fetch',
+			vi
+				.fn()
+				.mockResolvedValue(
+					response(
+						payload([
+							judged('Kenya', 1.5, 'notable', 91.7),
+							judged('Vietnam', 2.5, 'quiet', 10),
+							judged('Peru', -0.2, 'normal', 50)
+						])
+					)
+				)
+		);
+		render(MatchedPriceComparison, { viewMode: 'retail' });
+		const list = await screen.findByRole('list', { name: '30-day price signals' });
+		// A 1.5% move that is unusual for Kenya is shown; a routine 2.5% move is not.
+		expect(list).toHaveTextContent('Kenya');
+		expect(list).toHaveTextContent('notable');
+		expect(list).not.toHaveTextContent('Vietnam');
+		expect(
+			screen.getByText(/2 other origins\s+stayed within their normal range/)
+		).toBeInTheDocument();
+		expect(screen.queryByText(/Until an origin has eight weeks/)).toBeNull();
+		expect(
+			screen.getByText(/notable for this origin, 92nd percentile of the last 12 weeks/)
+		).toBeInTheDocument();
+	});
+	it('labels the interim size cutoff while history is still building', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue(
+				response(
+					payload([
+						{
+							...row('Rwanda', false, 2.9),
+							significance: {
+								method: 'matched-30d-weekly-abs-percentile-v1',
+								baselineWindows: 1,
+								requiredBaselineWindows: 8,
+								baselineMedianAbsChangePercent: 2.9,
+								movePercentile: null,
+								classification: null
+							}
+						},
+						row('Ethiopia', false, 0.34)
+					])
+				)
+			)
+		);
+		render(MatchedPriceComparison, { viewMode: 'retail' });
+		const list = await screen.findByRole('list', { name: '30-day price signals' });
+		expect(list).toHaveTextContent('Rwanda');
+		expect(
+			screen.getByText(/Until an origin has eight weeks of matched history/)
+		).toBeInTheDocument();
+		expect(screen.getByText(/history building \(1 of 8 weeks\)/)).toBeInTheDocument();
+		expect(screen.getByText(/history building \(0 of 8 weeks\)/)).toBeInTheDocument();
 	});
 	it('shows one honest empty state without controls or a zero estimate', async () => {
 		vi.stubGlobal(
