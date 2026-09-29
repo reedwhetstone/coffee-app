@@ -4,6 +4,17 @@
 
 **Date:** 2026-07-05
 
+> **Amendment (2026-09-28, Reed):** Principle 3 was too narrow. The Market Index may
+> personalize its own page by ranking intelligence against the user's data: tracked
+> lots, Mallard Studio inventory, sourcing briefs, and a buying profile. It does this
+> through progressive disclosure rather than per-persona tabs. One Parchment
+> attention-feed contract produces that ranking for both the page and Cherry, so the
+> two never diverge. The primary users are small-to-medium roasters on the Market
+> Index and home roasters on the catalog. Large-scale buyers and analysts are not
+> primary archetypes. Arbitrage and analyst views are deeper levels, not the default.
+> See
+> `notes/implementation-plans/2026-09-28-market-index-audit-and-comparison-system.md`.
+
 ## Context
 
 The July 2026 UI/brand rework (see `notes/marketing-audits/2026-07-05-ui-brand-gtm-rework-proposal.md`) restructured the Market Index page into named chapters and calmed its presentation, but the deeper critique from the owner stands: the page presents data at roughly equal weight. It shows _that_ the market moved; it is weaker at saying _what that movement means_ and _what to do about it_.
@@ -29,7 +40,7 @@ Principles that govern implementation:
 
 1. **Every module must answer a stakeholder question, not display a dataset.** A module that cannot be titled as a question a roaster, analyst, or buyer would ask gets cut or demoted.
 2. **Signal over noise is a product feature.** Movement should be framed against baseline variance ("down 4.9% — largest weekly move this quarter") rather than reported raw.
-3. **Personalization arrives through GenUI/agents, not more dashboards.** The static page carries the shared, defensible reads; stakeholder-specific mutation (a roaster's watchlist-driven value feed vs. an analyst's origin dislocation view) is the job of the chat/GenUI layer consuming the same Parchment contracts as the CLI (ADR-007).
+3. **Personalization comes from one shared contract and appears on the page and in agents.** _(Amended 2026-09-28.)_ The Market Index leads with a ranked "what needs your attention" list. The list is ordered by urgency, relevance to the user's own data (tracked lots, inventory, briefs, buying profile), significance against normal variance, and evidence confidence. Each item opens into its evidence, then into prefilled tools, then into full detail (progressive disclosure). Users without a profile get a market-wide ranking. A single Parchment contract produces the ranking and evidence, and the page, Cherry/GenUI, and the CLI all consume it (ADR-007). The page still does not grow per-persona tabs or bolt-on sections.
 4. **Access levels follow ADR-005/ADR-010.** Value-signal feeds, arbitrage views, and deep metadata trends are member/Intelligence leverage; the public surface keeps proof-level reads. Anonymous surfaces do not grow new signal feeds.
 5. **The metadata index is a first-class roadmap item.** Positioning language may say "the market index for coffee's metadata, not just its prices" once a first metadata-trend module ships. Per the no-vaporware copy rule, do not market it before it exists.
 
@@ -37,7 +48,7 @@ Principles that govern implementation:
 
 - Analytics roadmap work gets a stable prioritization frame: value signals first (anchor persona: roaster with a buy opportunity), movement significance second, metadata trends third — each shipped as a member/Intelligence module with a public teaser consistent with ADR-005.
 - Data prerequisites become explicit workstreams: origin benchmark baselines and variance bands (exists partially via price snapshots), lot-level price history for drop detection, and normalized metadata coverage (ADR-004 process fields; drying-method/cultivar taxonomies flagged in ADR-005) for the metadata index.
-- The GenUI/agent layer is confirmed as the personalization strategy; the static Market Index page should stay focused rather than sprouting per-persona tabs.
+- Personalization is a shared Parchment capability used by both the Market Index page and the GenUI/agent layer (amended 2026-09-28). The page stays focused through progressive disclosure rather than per-persona tabs or ever-longer module lists.
 - UI work follows the July 2026 brand system: insight modules present as "artifact" cards (AccentSpine), titled as stakeholder questions, grouped under the existing chapter headers.
 
 ## References
