@@ -52,6 +52,8 @@ export interface MarketReadInput {
 		classification: MoveClassification;
 		weeksSinceLargerMove: number | null;
 	} | null;
+	/** Price stats are still streaming, so a missing priceMove is not yet final. */
+	priceMovePending?: boolean;
 }
 
 /**
@@ -92,11 +94,17 @@ export function buildMarketReadHeadline(input: MarketReadInput): string {
 			: `${capitalize(scopeLabel)} supply tightened by a net ${Math.abs(net)} lots in the ${windowLabel} window (${formatShare(share)} of listings).`;
 	}
 
-	const pricePhrase = priceMove ? 'prices stayed within normal variance' : null;
 	const supplyPhrase = `arrivals and delistings roughly offset (${input.arrivals} in, ${input.delistings} out)`;
-	return `No significant ${scopeLabel} move in the ${windowLabel} window: ${
-		pricePhrase ? `${pricePhrase}, and ${supplyPhrase}` : supplyPhrase
-	}.`;
+	// "No significant move" is a price claim too, so it needs a classified move.
+	// Without one, state only what the supply counts support.
+	const priceClassified = pct != null && priceMove?.classification != null;
+	if (!priceClassified) {
+		const priceGap = input.priceMovePending
+			? 'price significance is still loading'
+			: 'price significance is unavailable, so this read makes no price call';
+		return `${capitalize(scopeLabel)} ${supplyPhrase} in the ${windowLabel} window; ${priceGap}.`;
+	}
+	return `No significant ${scopeLabel} move in the ${windowLabel} window: prices stayed within normal variance, and ${supplyPhrase}.`;
 }
 
 export interface OriginPricePoint {
@@ -116,61 +124,82 @@ export interface OriginMover {
 	suppliers: number;
 }
 
-/** Sample-weighted median (falling back to average) per origin for one date. */
+export interface OriginMovement {
+	movers: OriginMover[];
+	/** Origins with enough suppliers on both dates to compare at all. */
+	eligibleOrigins: number;
+}
+
+/**
+ * Median (falling back to average) per origin for one date. Rows must be one
+ * per origin and date: a median cannot be rebuilt from several segment medians,
+ * so an origin with more than one row that date is left out rather than given a
+ * synthetic value.
+ */
 function originMedians(
 	rows: OriginPricePoint[],
 	date: string
 ): Map<string, { price: number; suppliers: number }> {
-	const acc = new Map<string, { sum: number; weight: number; suppliers: number }>();
+	const byOrigin = new Map<string, { price: number; suppliers: number } | null>();
 	for (const row of rows) {
 		if (row.snapshot_date !== date) continue;
 		const price = row.price_median ?? row.price_avg;
 		if (price == null) continue;
-		const weight = row.sample_size || 1;
-		const cur = acc.get(row.origin) ?? { sum: 0, weight: 0, suppliers: 0 };
-		cur.sum += price * weight;
-		cur.weight += weight;
-		cur.suppliers = Math.max(cur.suppliers, row.supplier_count ?? 0);
-		acc.set(row.origin, cur);
+		byOrigin.set(
+			row.origin,
+			byOrigin.has(row.origin) ? null : { price, suppliers: row.supplier_count ?? 0 }
+		);
 	}
 	return new Map(
-		[...acc.entries()].map(([origin, v]) => [
-			origin,
-			{ price: v.sum / v.weight, suppliers: v.suppliers }
-		])
+		[...byOrigin.entries()].filter(
+			(entry): entry is [string, { price: number; suppliers: number }] => entry[1] !== null
+		)
 	);
 }
 
 /**
  * Week-over-week origin movers on median prices. Thin origins (fewer than three
  * suppliers on either date) are excluded, and movers rank by percent change so a
- * $200/lb origin cannot lead on dollar size alone.
+ * $200/lb origin cannot lead on dollar size alone. `eligibleOrigins` separates
+ * "no well-covered origin moved" from "no origin was well covered".
  */
 export function rankOriginMovers(
 	rows: OriginPricePoint[],
 	latestDate: string,
 	baselineDate: string
-): OriginMover[] {
+): OriginMovement {
 	const latest = originMedians(rows, latestDate);
 	const baseline = originMedians(rows, baselineDate);
 	const movers: OriginMover[] = [];
+	let eligibleOrigins = 0;
 	for (const [origin, now] of latest) {
 		const before = baseline.get(origin);
 		if (!before || before.price <= 0) continue;
 		if (now.suppliers < MIN_ORIGIN_SUPPLIERS || before.suppliers < MIN_ORIGIN_SUPPLIERS) continue;
+		eligibleOrigins += 1;
 		const delta = now.price - before.price;
 		const deltaPct = (delta / before.price) * 100;
 		if (Math.abs(deltaPct) < MIN_ORIGIN_MOVE_PCT) continue;
 		movers.push({ origin, latest: now.price, delta, deltaPct, suppliers: now.suppliers });
 	}
-	return movers.sort((a, b) => Math.abs(b.deltaPct) - Math.abs(a.deltaPct));
+	movers.sort((a, b) => Math.abs(b.deltaPct) - Math.abs(a.deltaPct));
+	return { movers, eligibleOrigins };
 }
 
-/** Calendar months ("YYYY-MM") missing between the first and last period. */
+/** "2026-06" or "2026-06-01" to "2026-06"; anything else to null. */
+export function monthKey(period: string): string | null {
+	const match = /^(\d{4}-\d{2})(?:-\d{2})?$/.exec(period);
+	return match ? match[1] : null;
+}
+
+/**
+ * Calendar months ("YYYY-MM") missing between the first and last period.
+ * Accepts month keys or ISO dates, which is how the metadata API reports them.
+ */
 export function missingMonths(periods: string[]): string[] {
-	const valid = periods.filter((p) => /^\d{4}-\d{2}$/.test(p)).sort();
+	const present = new Set(periods.map(monthKey).filter((key): key is string => key !== null));
+	const valid = [...present].sort();
 	if (valid.length < 2) return [];
-	const present = new Set(valid);
 	const missing: string[] = [];
 	let [year, month] = valid[0].split('-').map(Number);
 	const last = valid[valid.length - 1];

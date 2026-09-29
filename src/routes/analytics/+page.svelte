@@ -578,6 +578,18 @@
 	// ── Origin benchmark table data (medians; means are skewed by premium tails) ──
 
 	let originBarData = $derived.by(() => {
+		// The combined scope merges retail and wholesale rows, and a median cannot
+		// be rebuilt from two segment medians, so use Parchment's combined median.
+		if (viewMode === 'all') {
+			return scopedOriginRangeData.map((row) => ({
+				origin: row.origin,
+				price_median: Math.round(row.price_median * 100) / 100,
+				supplier_count: row.supplier_count,
+				sample_size: row.sample_size,
+				price_min: row.price_min,
+				price_max: row.price_max
+			}));
+		}
 		if (!filteredSnapshots || filteredSnapshots.length === 0) return [];
 		const latestDate = filteredSnapshots.reduce(
 			(max, s) => (s.snapshot_date > max ? s.snapshot_date : max),
@@ -713,6 +725,7 @@
 			arrivals: scopedArrivalCount,
 			delistings: scopedDelistingCount,
 			stockedListings: displayStockedCount,
+			priceMovePending: insightsState === 'pending' || scopedInsightsState === 'pending',
 			priceMove: currentMoveStat
 				? {
 						latestMovePct: currentMoveStat.latestMovePct,
@@ -839,10 +852,20 @@
 		};
 	});
 
-	// Week-over-week origin movement on medians, excluding thin origins
+	// Week-over-week origin movement on medians, excluding thin origins. The
+	// combined scope compares retail and wholesale medians separately, because
+	// averaging two segment medians does not produce a median.
+	let moverRows = $derived(
+		viewMode === 'all'
+			? snapshots.map((s) => ({
+					...s,
+					origin: `${s.origin} (${s.wholesale_only ? 'Wholesale' : 'Retail'})`
+				}))
+			: filteredSnapshots
+	);
 	let weeklyOriginMovement = $derived.by(() => {
-		const dates = Array.from(new Set(filteredSnapshots.map((s) => s.snapshot_date))).sort();
-		if (dates.length < 2) return { movers: [], baselineDate: null };
+		const dates = Array.from(new Set(moverRows.map((s) => s.snapshot_date))).sort();
+		if (dates.length < 2) return { movers: [], eligibleOrigins: 0, baselineDate: null };
 		const latestDate = dates[dates.length - 1];
 		const latestTime = new Date(`${latestDate}T00:00:00Z`).getTime();
 		const weekAgoCandidates = dates.filter(
@@ -851,7 +874,7 @@
 		const baselineDate = weekAgoCandidates.length
 			? weekAgoCandidates[weekAgoCandidates.length - 1]
 			: dates[0];
-		return { movers: rankOriginMovers(filteredSnapshots, latestDate, baselineDate), baselineDate };
+		return { ...rankOriginMovers(moverRows, latestDate, baselineDate), baselineDate };
 	});
 
 	function formatMoverPhrase(mover: { origin: string; deltaPct: number }): string {
@@ -891,8 +914,15 @@
 	});
 
 	let pricePostureInsight = $derived.by(() => {
-		const movers = weeklyOriginMovement.movers;
-		const baselineDate = weeklyOriginMovement.baselineDate;
+		const { movers, eligibleOrigins, baselineDate } = weeklyOriginMovement;
+		if (baselineDate && eligibleOrigins === 0) {
+			return {
+				label: 'Price posture',
+				title: `No ${viewModeLabel} origin has three or more suppliers on both dates, so week-over-week origin moves aren't comparable yet.`,
+				body: `Origin medians resting on one or two suppliers move whenever a single lot changes, so they aren't read as market moves. The ${viewModeLabel} average is ${formatMoney(latestMarketAverage)}/lb.`,
+				evidence: `Evidence: supplier counts per origin, ${formatDate(baselineDate)} vs ${formatDate(latestSnapshotDate)}`
+			};
+		}
 		if (!movers.length || !baselineDate) {
 			return {
 				label: 'Price posture',
@@ -903,7 +933,7 @@
 				body:
 					baselineDate === null
 						? `The ${viewModeLabel} average is ${formatMoney(latestMarketAverage)}/lb.`
-						: `Origins priced by at least three suppliers held within 2% of last week's median. The ${viewModeLabel} average is ${formatMoney(latestMarketAverage)}/lb.`,
+						: `${eligibleOrigins === 1 ? 'The one origin' : `All ${eligibleOrigins} origins`} priced by at least three suppliers held within 2% of last week's median. The ${viewModeLabel} average is ${formatMoney(latestMarketAverage)}/lb.`,
 				evidence:
 					baselineDate === null
 						? `Evidence: single snapshot ${formatDate(latestSnapshotDate || stats.lastUpdated)}`

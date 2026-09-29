@@ -574,7 +574,8 @@ describe('analytics load', () => {
 				price_median: 4,
 				price_q1: 3,
 				price_q3: 5,
-				sample_size: 6
+				sample_size: 6,
+				supplier_count: 3
 			},
 			{
 				origin: 'Colombia',
@@ -585,7 +586,8 @@ describe('analytics load', () => {
 				price_median: 5,
 				price_q1: 4.5,
 				price_q3: 5.5,
-				sample_size: 3
+				sample_size: 3,
+				supplier_count: 2
 			},
 			{
 				origin: 'Colombia',
@@ -596,7 +598,8 @@ describe('analytics load', () => {
 				price_median: 3,
 				price_q1: 2.5,
 				price_q3: 3.5,
-				sample_size: 3
+				sample_size: 3,
+				supplier_count: 1
 			}
 		]);
 		expect(setup.historyCalls).toEqual([{ windowDays: 90, page: 1, limit: 1000, order: 'asc' }]);

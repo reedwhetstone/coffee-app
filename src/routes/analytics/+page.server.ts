@@ -118,6 +118,7 @@ export interface OriginRangeRow {
 	price_q1: number;
 	price_q3: number;
 	sample_size: number;
+	supplier_count: number;
 }
 
 export interface AnalyticsStats {
@@ -420,7 +421,8 @@ async function loadAnalyticsCharts(
 					price_median: row.price.median,
 					price_q1: row.price.p25,
 					price_q3: row.price.p75,
-					sample_size: row.sampleSize
+					sample_size: row.sampleSize,
+					supplier_count: row.supplierCount
 				}));
 
 	return {

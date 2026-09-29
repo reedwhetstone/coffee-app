@@ -147,7 +147,8 @@ function createBaseline() {
 				price_median: 4.1,
 				price_q1: 4,
 				price_q3: 4.3,
-				sample_size: 9
+				sample_size: 9,
+				supplier_count: 4
 			}
 		],
 		movementCounts: {
@@ -413,11 +414,12 @@ describe('analytics page loading experience', () => {
 		await waitFor(() => {
 			expect(
 				screen.getByText(
-					'No significant retail move in the 7-day window: arrivals and delistings roughly offset (1 in, 1 out).'
+					'Retail arrivals and delistings roughly offset (1 in, 1 out) in the 7-day window; price significance is still loading.'
 				)
 			).toBeTruthy();
 		});
 		expect(screen.queryByText(/prices stayed within normal variance/i)).toBeNull();
+		expect(screen.queryByText(/No significant retail move/)).toBeNull();
 
 		insights.resolve({
 			...baseline.marketInsights,
@@ -466,7 +468,11 @@ describe('analytics page loading experience', () => {
 		render(AnalyticsPage, { data });
 
 		expect(screen.queryByText(/movement and coverage signals are streaming next/i)).toBeNull();
-		expect(screen.getByText(/No significant retail move in the 7-day window/)).toBeTruthy();
+		expect(
+			screen.getByText(
+				/^Retail arrivals and delistings roughly offset \(1 in, 1 out\) in the 7-day window; price significance is still loading\.$/
+			)
+		).toBeTruthy();
 	});
 
 	it('renders chart sections without waiting for the member stream', async () => {
@@ -641,7 +647,8 @@ describe('analytics page loading experience', () => {
 		});
 		expect(screen.queryByLabelText('Loading market signals')).toBeNull();
 		// Balanced movement plus missing significance stats must not claim price stability.
-		expect(screen.getByText(/No significant retail move/)).toBeTruthy();
+		expect(screen.getByText(/Retail arrivals and delistings roughly offset/)).toBeTruthy();
+		expect(screen.queryByText(/No significant retail move/)).toBeNull();
 		expect(screen.queryByText(/prices stayed within normal variance/i)).toBeNull();
 		// Chat never grounds itself in partially failed data.
 		expect(pageChatContext.current).toBeNull();
@@ -1146,6 +1153,96 @@ describe('analytics command center hierarchy', () => {
 		expect(screen.queryByText(/Treat medians for Ethiopia/i)).toBeNull();
 	});
 
+	it('compares combined-scope origin movers per segment instead of averaging medians', async () => {
+		const [retail, wholesale] = createBaseline().snapshots;
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				snapshots: [
+					{ ...retail, snapshot_date: '2026-04-01', price_median: 4.1, sample_size: 9 },
+					{ ...wholesale, snapshot_date: '2026-04-01', price_median: 3.5, sample_size: 60 },
+					{ ...retail, snapshot_date: '2026-04-08', price_median: 4.1, sample_size: 9 },
+					{ ...wholesale, snapshot_date: '2026-04-08', price_median: 3.675, sample_size: 60 }
+				]
+			})
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+		await screen.getByRole('button', { name: 'All' }).click();
+
+		// Wholesale moved +5% and retail held; a sample-weighted mean of the two
+		// medians is not a combined median, so each segment is read on its own.
+		expect(
+			screen.getByText(
+				/Colombia \(Wholesale\) leads combined retail \+ wholesale movement, \+5\.0% week over week/
+			)
+		).toBeTruthy();
+		expect(screen.queryByText(/^Colombia leads/)).toBeNull();
+	});
+
+	it('says origin moves are not comparable when no origin has three suppliers on both dates', async () => {
+		const [retail] = createBaseline().snapshots;
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				snapshots: [
+					{ ...retail, snapshot_date: '2026-04-01', price_median: 4.1, supplier_count: 2 },
+					{ ...retail, snapshot_date: '2026-04-08', price_median: 4.1, supplier_count: 2 }
+				]
+			})
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		expect(
+			screen.getByText(
+				/No retail origin has three or more suppliers on both dates, so week-over-week origin moves aren't comparable yet/
+			)
+		).toBeTruthy();
+		expect(screen.queryByText(/held within 2%/)).toBeNull();
+	});
+
+	it('uses the canonical combined median for origin benchmarks in the combined scope', async () => {
+		const baseline = createBaseline();
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				originRangeData: [
+					...baseline.originRangeData,
+					{
+						origin: 'Colombia',
+						market_scope: 'all',
+						price_min: 3.3,
+						price_max: 4.5,
+						price_avg: 3.86,
+						price_median: 3.9,
+						price_q1: 3.5,
+						price_q3: 4.2,
+						sample_size: 16,
+						supplier_count: 5
+					}
+				]
+			})
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+		});
+		await screen.getByRole('button', { name: 'All' }).click();
+
+		const table = screen.getByText('Origin benchmarks').closest('div')!;
+		// Merged retail (4.1, n=9) and wholesale (3.5, n=7) medians would average to $3.84.
+		await waitFor(() => {
+			expect(table.textContent).toContain('$3.90');
+		});
+		expect(table.textContent).not.toContain('$3.84');
+	});
+
 	it('surfaces watchlist signals scoped to the selected market', async () => {
 		render(AnalyticsPage, {
 			data: createData({
@@ -1448,6 +1545,36 @@ describe('analytics premium boundary copy', () => {
 		expect(screen.getAllByText('Latest median')).toHaveLength(2);
 		expect(screen.getByText('78')).toBeTruthy();
 		expect(screen.getByText('74%')).toBeTruthy();
+	});
+
+	it('labels unpublished metadata months when the API reports ISO date periods', async () => {
+		const month = (period: string) => ({
+			period,
+			lotCount: 20,
+			supplierCount: 4,
+			buckets: [{ key: 'structured', share: 0.55, count: 11, supplierCount: 4 }]
+		});
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				marketInsights: {
+					valueSignals: null,
+					signalsSummary: null,
+					signalsAsOf: null,
+					moveStats: null,
+					metadataProcessSeries: null,
+					metadataDisclosureSeries: [month('2026-06-01'), month('2026-07-01'), month('2026-09-01')],
+					metadataPurveyorScoreSeries: null,
+					metadataPurveyorScoreConfidenceSeries: null,
+					metadataPurveyorScoreTierSeries: null
+				}
+			})
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText(/No data was published for Aug 2026/)).toBeTruthy();
+		});
 	});
 
 	it('restores premium supplier analytics modules instead of static fallback tables', async () => {
