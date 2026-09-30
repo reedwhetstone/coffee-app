@@ -169,7 +169,7 @@
 {#if valueSignals !== null || signalsSummary !== null}
 	<AnalyticsSectionHeader
 		title="What should I consider buying?"
-		description="Price drops and new arrivals priced well below comparable coffees."
+		description="Price drops and lots priced well below comparable coffees."
 	/>
 
 	{#if isParchmentIntelligence && valueSignals !== null}
@@ -280,9 +280,13 @@
 							{summaryScopeLabel.charAt(0).toUpperCase() + summaryScopeLabel.slice(1)} count shown while
 							the {selectedScopeLabel} scope is selected.
 						{/if}
-						{signalsSummary.byType.price_drop} price drops and {signalsSummary.byType.below_market} new
-						arrivals priced well below comparable coffees. Parchment Intelligence members see each lot,
-						in any scope, with the evidence behind it.
+						<!-- The summary carries type counts only, so below-market lots are not
+						     described as new arrivals or as comparable-set results. -->
+						{signalsSummary.byType.price_drop}
+						{signalsSummary.byType.price_drop === 1 ? 'price drop' : 'price drops'} and {signalsSummary
+							.byType.below_market}
+						{signalsSummary.byType.below_market === 1 ? 'below-market lot' : 'below-market lots'}.
+						Parchment Intelligence members see each lot, in any scope, with the evidence behind it.
 					</p>
 				</div>
 			</div>

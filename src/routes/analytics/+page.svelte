@@ -737,25 +737,33 @@
 	});
 
 	let marketReadDetail = $derived.by(() => {
-		// Parchment's like-for-like move (the significance note) is the price read.
-		// The raw average also moves when listings arrive and leave, so it only
-		// appears as a labeled fallback before that read loads.
+		// The like-for-like read is Parchment's matched-lot move: lots listed at both
+		// ends of the window. latestMovePct is the raw index move, which also shifts
+		// when listings arrive and leave. Without enough matched lots, the read falls
+		// back to the listed-price average, labeled as including that turnover.
+		const stat = currentMoveStat;
+		const matchedPhrase =
+			stat?.matchedLotMovePct != null && stat.moveDriver !== 'insufficient_overlap'
+				? `the ${stat.matchedLotCount.toLocaleString()} lots listed throughout the window ${
+						isFlatPct(stat.matchedLotMovePct)
+							? 'held flat like-for-like'
+							: `moved ${formatSignedPct(stat.matchedLotMovePct)} like-for-like`
+					}`
+				: null;
 		const pricePhrase =
-			currentMoveStat?.latestMovePct != null
-				? null
-				: chartsState === 'pending'
-					? 'price movement is still loading'
-					: chartsState === 'error'
-						? 'price movement is unavailable right now'
-						: marketPriceDelta == null
-							? 'price movement needs another day of data'
-							: isFlatPct(marketPriceDeltaPercent)
-								? 'the average listed price was flat, including lots that arrived or left'
-								: `the average listed price moved ${formatSignedMoneyPerLb(marketPriceDelta)} (${formatSignedPct(marketPriceDeltaPercent)}), including lots that arrived or left`;
-		const listings = `${displayStockedCount.toLocaleString()} active ${viewModeLabel} listings are in scope`;
-		const scope = pricePhrase ? `${listings}; ${pricePhrase}.` : `${listings}.`;
+			matchedPhrase ??
+			(chartsState === 'pending'
+				? 'price movement is still loading'
+				: chartsState === 'error'
+					? 'price movement is unavailable right now'
+					: marketPriceDelta == null
+						? 'price movement needs another day of data'
+						: isFlatPct(marketPriceDeltaPercent)
+							? 'the average listed price was flat, including lots that arrived or left'
+							: `the average listed price moved ${formatSignedMoneyPerLb(marketPriceDelta)} (${formatSignedPct(marketPriceDeltaPercent)}), including lots that arrived or left`);
+		const scope = `${displayStockedCount.toLocaleString()} active ${viewModeLabel} listings are in scope; ${pricePhrase}.`;
 		if (!coverageSettled) {
-			return `The ${stats.totalSuppliers.toLocaleString()}-supplier index is loaded; movement and coverage counts are streaming in${pricePhrase ? `, and ${pricePhrase}` : ''}.`;
+			return `The ${stats.totalSuppliers.toLocaleString()}-supplier index is loaded; movement and coverage counts are streaming in, and ${pricePhrase}.`;
 		}
 		if (!isMovementDataAvailable) {
 			return `${scope} Movement counts are withheld because the latest movement query is unavailable or stale.`;

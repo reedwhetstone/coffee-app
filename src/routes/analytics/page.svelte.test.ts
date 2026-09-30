@@ -450,6 +450,73 @@ describe('analytics page loading experience', () => {
 				)
 			).toBeTruthy();
 		});
+		expect(
+			screen.getByText(/the 40 lots listed throughout the window moved −4\.1% like-for-like\./)
+		).toBeTruthy();
+	});
+
+	it('reads price like-for-like from matched lots, not the raw index move', async () => {
+		const baseline = createBaseline();
+		const moveStat = {
+			segment: { origin: null, process: null, market: 'retail' as const },
+			window: '7d' as const,
+			latestMovePct: 5,
+			baselineMeanMovePct: 0.2,
+			baselineStddev: 1.1,
+			zScore: 4.3,
+			movePercentile: 98,
+			weeksSinceLargerMove: 12,
+			classification: 'notable' as const,
+			matchedLotMovePct: 0,
+			matchedLotCount: 40,
+			moveDriver: 'mix_shift' as const,
+			sampleSize: 84,
+			supplierCount: 12,
+			availableBaselineWeeks: 20,
+			note: null
+		};
+
+		const { unmount } = render(AnalyticsPage, {
+			data: createData({
+				marketInsights: { ...baseline.marketInsights, moveStats: [moveStat] }
+			})
+		});
+
+		// A +5% raw move from catalog turnover with no matched-lot change reads flat
+		// like-for-like, not as a repricing of the listed lots.
+		await waitFor(() => {
+			expect(
+				screen.getByText(/the 40 lots listed throughout the window held flat like-for-like\./)
+			).toBeTruthy();
+		});
+		unmount();
+
+		// Too few matched lots: no like-for-like claim; the listed-price read stays
+		// labeled as including arrivals and delistings.
+		render(AnalyticsPage, {
+			data: createData({
+				marketInsights: {
+					...baseline.marketInsights,
+					moveStats: [
+						{
+							...moveStat,
+							matchedLotMovePct: 1.2,
+							matchedLotCount: 3,
+							moveDriver: 'insufficient_overlap'
+						}
+					]
+				}
+			})
+		});
+		await waitFor(() => {
+			expect(screen.getByText(/listings are in scope; /)).toBeTruthy();
+		});
+		expect(screen.queryByText(/like-for-like/)).toBeNull();
+		expect(
+			screen.getByText(
+				/listings are in scope; (the average listed price (was flat|moved .+), including lots that arrived or left|price movement (is still loading|is unavailable right now|needs another day of data))\./
+			)
+		).toBeTruthy();
 	});
 
 	it('renders the market read on the server-seeded coverage without a loading line', () => {
@@ -843,6 +910,10 @@ describe('analytics command center hierarchy', () => {
 		// The public summary is the unfiltered (retail + wholesale) count slice, so
 		// it must never present itself as retail data.
 		expect(screen.getByText(/5 all-market buy signals are active/i)).toBeTruthy();
+		// Summary counts carry no first-stocked evidence, so below-market lots are
+		// never labeled as new arrivals.
+		expect(screen.getByText(/2 price drops and 3 below-market lots\./)).toBeTruthy();
+		expect(screen.getByLabelText('Value signals summary').textContent).not.toMatch(/new arrival/i);
 		expect(
 			screen.getByText(/All-market count shown while the wholesale scope is selected/i)
 		).toBeTruthy();
