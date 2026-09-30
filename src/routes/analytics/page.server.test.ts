@@ -54,6 +54,7 @@ type MarketEvidenceData = components['schemas']['MarketEvidenceResponse']['data'
 
 interface StreamedLoadResult {
 	analyticsPreview: AnalyticsPreview;
+	analyticsCoverageInitial: AnalyticsCoverage | null;
 	analyticsCoverage: Promise<AnalyticsCoverage>;
 	analyticsCharts: Promise<AnalyticsCharts>;
 	analyticsWatchlist: Promise<AnalyticsWatchlistData>;
@@ -471,6 +472,7 @@ describe('analytics load', () => {
 
 		const result = await runLoad();
 		const coverage = await result.analyticsCoverage;
+		expect(result.analyticsCoverageInitial).toEqual(coverage);
 		const charts = await result.analyticsCharts;
 		const member = await result.analyticsMember;
 
@@ -572,7 +574,8 @@ describe('analytics load', () => {
 				price_median: 4,
 				price_q1: 3,
 				price_q3: 5,
-				sample_size: 6
+				sample_size: 6,
+				supplier_count: 3
 			},
 			{
 				origin: 'Colombia',
@@ -583,7 +586,8 @@ describe('analytics load', () => {
 				price_median: 5,
 				price_q1: 4.5,
 				price_q3: 5.5,
-				sample_size: 3
+				sample_size: 3,
+				supplier_count: 2
 			},
 			{
 				origin: 'Colombia',
@@ -594,7 +598,8 @@ describe('analytics load', () => {
 				price_median: 3,
 				price_q1: 2.5,
 				price_q3: 3.5,
-				sample_size: 3
+				sample_size: 3,
+				supplier_count: 1
 			}
 		]);
 		expect(setup.historyCalls).toEqual([{ windowDays: 90, page: 1, limit: 1000, order: 'asc' }]);
@@ -698,9 +703,9 @@ describe('analytics load', () => {
 					source: 'Royal',
 					stockedCount: 3,
 					origins: 2,
-					avgCostLb: 0,
-					minCostLb: 0,
-					maxCostLb: 0,
+					avgCostLb: null,
+					minCostLb: null,
+					maxCostLb: null,
 					wholesaleCount: 3,
 					retailCount: 0
 				}
@@ -736,6 +741,7 @@ describe('analytics load', () => {
 		const result = await runLoad();
 
 		expect(result.analyticsPreview.stats.lastUpdated).toBeNull();
+		expect(result.analyticsCoverageInitial).toBeNull();
 		await expect(result.analyticsCoverage).rejects.toThrow('overview unavailable');
 		await expect(result.analyticsCharts).resolves.toMatchObject({
 			processDistribution: [],

@@ -10,6 +10,7 @@
 		PROCESS_COLORS
 	} from '$lib/styles/chartColors';
 	import type { MetadataSeriesItem } from '$lib/types/marketIndex.types';
+	import { formatMonthYear, missingMonths } from '$lib/analytics/marketRead';
 
 	type ViewMode = 'retail' | 'wholesale' | 'all';
 
@@ -168,6 +169,18 @@
 
 	let scoreRows = $derived(percentileRows(purveyorScoreSeries));
 	let confidenceRows = $derived(percentileRows(purveyorScoreConfidenceSeries));
+	// Months missing from every series are publication gaps, not market changes.
+	let gapMonths = $derived.by(() => {
+		const all = [
+			processSeries,
+			disclosureSeries,
+			purveyorScoreSeries,
+			purveyorScoreConfidenceSeries,
+			purveyorScoreTierSeries
+		].flatMap((items) => (items ?? []).map((item) => item.period));
+		return missingMonths([...new Set(all)]);
+	});
+
 	let hasAnySeries = $derived(
 		Boolean(
 			processSeries?.length ||
@@ -292,6 +305,13 @@
 		</p>
 	{/if}
 
+	{#if gapMonths.length > 0}
+		<p class="mb-4 text-sm text-muted" aria-label="Metadata data gaps">
+			No data was published for {gapMonths.map(formatMonthYear).join(', ')}. Those months are shown
+			as gaps.
+		</p>
+	{/if}
+
 	<section class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2" aria-label="Metadata trends">
 		{#if processSeries && processSeries.length > 0}
 			<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
@@ -324,9 +344,10 @@
 
 			{#if purveyorScoreTierSeries && purveyorScoreTierSeries.length > 0}
 				<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm">
-					<h3 class="text-base font-semibold text-ink">How is listing quality distributed?</h3>
+					<h3 class="text-base font-semibold text-ink">How complete are listing details?</h3>
 					<p class="mb-4 mt-1 text-sm text-muted">
-						Purveyor Score tiers across stocked retail supply, month over month.
+						Purveyor Score tiers across stocked retail supply, month over month. The score measures
+						how complete and comparable each listing's sourcing facts are, not cup quality.
 					</p>
 					<CompositionTrendChart
 						series={purveyorScoreTierSeries}

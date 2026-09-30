@@ -56,21 +56,20 @@
 		void tick().then(updateNavigation);
 	});
 
-	// Teaser total excludes value_quality (not displayed; see scopedSignals note).
-	let displayedSummaryTotal = $derived(
-		signalsSummary ? signalsSummary.byType.price_drop + signalsSummary.byType.below_market : 0
-	);
+	// Teaser total counts only displayed signal types (see scopedSignals note).
+	let displayedSummaryTotal = $derived(signalsSummary ? signalsSummary.byType.price_drop : 0);
 	let summaryScopeLabel = $derived(signalsSummary?.market === 'retail' ? 'retail' : 'all-market');
 	let selectedScopeLabel = $derived(viewMode === 'all' ? 'all-market' : viewMode);
 
-	// value_quality is excluded from display: it ranks on supplier-stated cup
-	// scores, which are inconsistent across suppliers and deliberately not
-	// surfaced on the front end. It returns once signals rank on the Purveyors
-	// Metadata Score instead (parchment-api follow-up).
+	// Only price drops display. value_quality ranks on supplier-stated cup scores,
+	// which are inconsistent across suppliers. below_market benchmarks against
+	// origin × process segments that mix commodity and premium lots, so its largest
+	// "discounts" compare different products. Both return once Parchment rebuilds
+	// them on comparable sets and quality evidence.
 	let scopedSignals = $derived.by(() => {
 		if (!valueSignals) return [];
 		const filtered = valueSignals.filter(
-			(s) => s.signalType !== 'value_quality' && (viewMode === 'all' || s.market === viewMode)
+			(s) => s.signalType === 'price_drop' && (viewMode === 'all' || s.market === viewMode)
 		);
 		return filtered.slice(0, MAX_CARDS);
 	});
@@ -138,14 +137,17 @@
 {#if valueSignals !== null || signalsSummary !== null}
 	<AnalyticsSectionHeader
 		title="What should I consider buying?"
-		description="Price drops and coffees priced below similar lots."
+		description="Lots priced well below their own recent price."
 	/>
 
 	{#if isParchmentIntelligence && valueSignals !== null}
 		{#if scopedSignals.length > 0}
 			<section class="mb-6 min-w-0" aria-label="Value signals" aria-roledescription="carousel">
 				<div class="mb-2 flex items-center justify-end gap-2">
-					<span class="mr-1 text-xs text-muted">{scopedSignals.length} buy signals</span>
+					<span class="mr-1 text-xs text-muted"
+						>{scopedSignals.length}
+						{scopedSignals.length === 1 ? 'price drop' : 'price drops'}</span
+					>
 					<button
 						type="button"
 						class="rounded border border-line px-3 py-1 text-ink disabled:opacity-40"
@@ -222,8 +224,8 @@
 				aria-label="Value signals"
 			>
 				<p class="text-sm text-muted">
-					No strong {viewMode === 'all' ? '' : `${viewMode} `}buy signals this morning — that's a
-					signal too. The pass runs again tomorrow morning.
+					No significant {viewMode === 'all' ? '' : `${viewMode} `}price drops this morning. The
+					check runs again tomorrow morning.
 				</p>
 			</section>
 		{/if}
@@ -238,19 +240,16 @@
 					<h3 class="font-serif text-lg font-medium text-ink">
 						{displayedSummaryTotal.toLocaleString()}
 						{summaryScopeLabel}
-						{displayedSummaryTotal === 1 ? 'buy signal is' : 'buy signals are'} active
+						{displayedSummaryTotal === 1 ? 'price drop is' : 'price drops are'} active
 						{#if formatAsOf(signalsAsOf)}as of {formatAsOf(signalsAsOf)}{:else}this morning{/if}.
 					</h3>
 					<p class="mt-1 text-sm text-muted">
 						{#if signalsSummary.market !== viewMode && viewMode !== 'all'}
 							{summaryScopeLabel.charAt(0).toUpperCase() + summaryScopeLabel.slice(1)} count shown while
-							the {selectedScopeLabel} scope is selected:
-						{:else}
-							{summaryScopeLabel.charAt(0).toUpperCase() + summaryScopeLabel.slice(1)} proof slice:
+							the {selectedScopeLabel} scope is selected.
 						{/if}
-						{signalsSummary.byType.price_drop} price drops · {signalsSummary.byType.below_market} below-market
-						lots. Parchment Intelligence members see scoped retail, wholesale, and all-market lots with
-						the evidence behind each one.
+						These are lots priced well below their own recent price. Parchment Intelligence members see
+						each lot, in any scope, with the evidence behind it.
 					</p>
 				</div>
 			</div>

@@ -47,9 +47,10 @@ export interface SupplierHealthRow {
 	source: string;
 	stockedCount: number;
 	origins: number;
-	avgCostLb: number;
-	minCostLb: number;
-	maxCostLb: number;
+	/** Retail price fields; null when the supplier has no priced retail lots. */
+	avgCostLb: number | null;
+	minCostLb: number | null;
+	maxCostLb: number | null;
 	wholesaleCount: number;
 	retailCount: number;
 }
@@ -117,6 +118,7 @@ export interface OriginRangeRow {
 	price_q1: number;
 	price_q3: number;
 	sample_size: number;
+	supplier_count: number;
 }
 
 export interface AnalyticsStats {
@@ -419,7 +421,8 @@ async function loadAnalyticsCharts(
 					price_median: row.price.median,
 					price_q1: row.price.p25,
 					price_q3: row.price.p75,
-					sample_size: row.sampleSize
+					sample_size: row.sampleSize,
+					supplier_count: row.supplierCount
 				}));
 
 	return {
@@ -558,9 +561,9 @@ async function loadAnalyticsMemberData({
 			source: row.supplier,
 			stockedCount: row.stockedCount,
 			origins: row.originsCount,
-			avgCostLb: row.retailAverage ?? 0,
-			minCostLb: row.retailMin ?? 0,
-			maxCostLb: row.retailMax ?? 0,
+			avgCostLb: row.retailAverage,
+			minCostLb: row.retailMin,
+			maxCostLb: row.retailMax,
 			wholesaleCount: row.wholesaleCount,
 			retailCount: row.retailCount
 		})),
@@ -623,8 +626,13 @@ export const load: PageServerLoad = async (event) => {
 
 	// Coverage, charts, and entitlement-gated datasets stream independently, so a
 	// failure in one envelope does not discard the other sections.
-	const analyticsCoverage = marketOverview.data
-		? Promise.resolve(buildAnalyticsCoverage(marketOverview.data))
+	// The overview is already resolved here, so the same coverage is also returned
+	// synchronously for the server-rendered market read.
+	const analyticsCoverageInitial = marketOverview.data
+		? buildAnalyticsCoverage(marketOverview.data)
+		: null;
+	const analyticsCoverage = analyticsCoverageInitial
+		? Promise.resolve(analyticsCoverageInitial)
 		: Promise.reject(marketOverview.error ?? new Error('Failed to load analytics market overview'));
 
 	// Mark server-side rejections as handled; the rejection still streams to the
@@ -662,6 +670,7 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		isParchmentIntelligence,
 		analyticsPreview,
+		analyticsCoverageInitial,
 		analyticsCoverage,
 		analyticsCharts,
 		analyticsInsights,
