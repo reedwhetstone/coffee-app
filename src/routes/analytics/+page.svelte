@@ -737,23 +737,30 @@
 	});
 
 	let marketReadDetail = $derived.by(() => {
+		// Parchment's like-for-like move (the significance note) is the price read.
+		// The raw average also moves when listings arrive and leave, so it only
+		// appears as a labeled fallback before that read loads.
 		const pricePhrase =
-			chartsState === 'pending'
-				? 'price movement is loading with the comparable snapshot layer'
-				: chartsState === 'error'
-					? 'price movement is unavailable because the price history layer did not load'
-					: marketPriceDelta == null
-						? 'price movement needs another comparable snapshot'
-						: isFlatPct(marketPriceDeltaPercent)
-							? 'average prices were flat versus the prior comparable snapshot'
-							: `average prices moved ${formatSignedMoneyPerLb(marketPriceDelta)} (${formatSignedPct(marketPriceDeltaPercent)}) versus the prior comparable snapshot`;
+			currentMoveStat?.latestMovePct != null
+				? null
+				: chartsState === 'pending'
+					? 'price movement is still loading'
+					: chartsState === 'error'
+						? 'price movement is unavailable right now'
+						: marketPriceDelta == null
+							? 'price movement needs another day of data'
+							: isFlatPct(marketPriceDeltaPercent)
+								? 'the average listed price was flat, including lots that arrived or left'
+								: `the average listed price moved ${formatSignedMoneyPerLb(marketPriceDelta)} (${formatSignedPct(marketPriceDeltaPercent)}), including lots that arrived or left`;
+		const listings = `${displayStockedCount.toLocaleString()} active ${viewModeLabel} listings are in scope`;
+		const scope = pricePhrase ? `${listings}; ${pricePhrase}.` : `${listings}.`;
 		if (!coverageSettled) {
-			return `The ${stats.totalSuppliers.toLocaleString()}-supplier index is loaded; movement and coverage counts are streaming in, and ${pricePhrase}.`;
+			return `The ${stats.totalSuppliers.toLocaleString()}-supplier index is loaded; movement and coverage counts are streaming in${pricePhrase ? `, and ${pricePhrase}` : ''}.`;
 		}
 		if (!isMovementDataAvailable) {
-			return `${displayStockedCount.toLocaleString()} active ${viewModeLabel} listings are in scope; ${pricePhrase}. Movement counts are withheld because the latest movement query is unavailable or stale.`;
+			return `${scope} Movement counts are withheld because the latest movement query is unavailable or stale.`;
 		}
-		return `${movementWindowLabel} movement: ${scopedArrivalCount} arrivals and ${scopedDelistingCount} delistings. ${displayStockedCount.toLocaleString()} active ${viewModeLabel} listings are in scope; ${pricePhrase}.`;
+		return `${movementWindowLabel} movement: ${scopedArrivalCount} arrivals and ${scopedDelistingCount} delistings. ${scope}`;
 	});
 
 	// ── KPI strip ─────────────────────────────────────────────────────────────

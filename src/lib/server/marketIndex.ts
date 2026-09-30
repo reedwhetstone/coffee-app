@@ -46,12 +46,11 @@ const EMPTY_INSIGHTS: MarketIndexInsights = {
 /** Mirror of ValueSignalsSection's per-scope card cap so each scope gets a full page. */
 const MAX_SIGNAL_CARDS = 6;
 /**
- * Signal types the front end displays. Supplier-stated score signals stay hidden,
- * and below_market stays hidden until it benchmarks against comparable lots: the
- * current origin × process segments mix commodity and premium lots, so its
- * largest "discounts" are different products rather than better buys.
+ * Signal types the front end displays. Supplier-stated score signals stay hidden.
+ * below_market rows display only when Parchment computed them against comparable
+ * sets (evidence.method comparable-signals-v2); ValueSignalsSection filters older rows.
  */
-const DISPLAY_SIGNAL_TYPES: Array<'price_drop'> = ['price_drop'];
+const DISPLAY_SIGNAL_TYPES: Array<'price_drop' | 'below_market'> = ['price_drop', 'below_market'];
 const PRICE_DROP_SIGNAL_TYPES: Array<'price_drop'> = ['price_drop'];
 /** Movement windows the MarketReadSection window toggle can select. */
 const MOVE_WINDOWS = ['7d', '30d'] as const;

@@ -26,6 +26,34 @@
 		value_quality: 'Value for quality'
 	};
 
+	/**
+	 * Evidence Parchment adds for comparable-set signals. Optional until coffee-app
+	 * consumes the SDK release that types these fields.
+	 */
+	type ComparableEvidence = MarketSignalItem['evidence'] & {
+		method?: string | null;
+		comparable_set?: { lot_class: string; lots: number; suppliers: number } | null;
+		first_stocked?: string | null;
+	};
+
+	function comparableEvidence(signal: MarketSignalItem): ComparableEvidence {
+		return signal.evidence as ComparableEvidence;
+	}
+
+	/**
+	 * Price drops always display. below_market displays only when Parchment
+	 * benchmarked it against comparable lots; older rows compared commodity lots
+	 * with premium-inflated segment medians.
+	 */
+	function isDisplayable(signal: MarketSignalItem): boolean {
+		if (signal.signalType === 'price_drop') return true;
+		return (
+			signal.signalType === 'below_market' &&
+			comparableEvidence(signal).method === 'comparable-signals-v2' &&
+			comparableEvidence(signal).comparable_set != null
+		);
+	}
+
 	const MAX_CARDS = 6;
 	let track = $state<HTMLDivElement>();
 	let canPrevious = $state(false);
@@ -56,20 +84,19 @@
 		void tick().then(updateNavigation);
 	});
 
-	// Teaser total counts only displayed signal types (see scopedSignals note).
-	let displayedSummaryTotal = $derived(signalsSummary ? signalsSummary.byType.price_drop : 0);
+	// Teaser total counts only displayed signal types; value_quality stays hidden.
+	let displayedSummaryTotal = $derived(
+		signalsSummary ? signalsSummary.byType.price_drop + signalsSummary.byType.below_market : 0
+	);
 	let summaryScopeLabel = $derived(signalsSummary?.market === 'retail' ? 'retail' : 'all-market');
 	let selectedScopeLabel = $derived(viewMode === 'all' ? 'all-market' : viewMode);
 
-	// Only price drops display. value_quality ranks on supplier-stated cup scores,
-	// which are inconsistent across suppliers. below_market benchmarks against
-	// origin × process segments that mix commodity and premium lots, so its largest
-	// "discounts" compare different products. Both return once Parchment rebuilds
-	// them on comparable sets and quality evidence.
+	// value_quality ranks on supplier-stated cup scores, which are inconsistent
+	// across suppliers, so it never displays.
 	let scopedSignals = $derived.by(() => {
 		if (!valueSignals) return [];
 		const filtered = valueSignals.filter(
-			(s) => s.signalType === 'price_drop' && (viewMode === 'all' || s.market === viewMode)
+			(s) => isDisplayable(s) && (viewMode === 'all' || s.market === viewMode)
 		);
 		return filtered.slice(0, MAX_CARDS);
 	});
@@ -102,7 +129,12 @@
 			return `${formatPct(e.drop_vs_own_median_pct)} vs its own ${e.own_trailing_window ?? ''} median of ${formatMoney(e.own_trailing_median)}.`;
 		}
 		if (signal.signalType === 'below_market') {
-			return `${formatPct(e.discount_vs_median_pct)} vs the ${segment} median of ${formatMoney(e.segment_median)}${e.price_percentile_in_segment != null ? ` · p${e.price_percentile_in_segment} of segment` : ''}.`;
+			const set = comparableEvidence(signal).comparable_set;
+			const comparable = set
+				? `${set.lots} comparable ${segment} lots from ${set.suppliers} suppliers`
+				: `comparable ${segment} lots`;
+			const arrival = comparableEvidence(signal).first_stocked ? ' New arrival.' : '';
+			return `${formatPct(e.discount_vs_median_pct)} vs the median of ${comparable} (${formatMoney(e.segment_median)}).${arrival}`;
 		}
 		return `Scores ${signal.scoreValue ?? '—'} at ${formatMoney(signal.currentPriceLb)} — ${e.value_z_score != null ? `${e.value_z_score.toFixed(1)}σ better` : 'an outlier'} price-for-quality within ${segment || 'its origin'}.`;
 	}
@@ -137,7 +169,7 @@
 {#if valueSignals !== null || signalsSummary !== null}
 	<AnalyticsSectionHeader
 		title="What should I consider buying?"
-		description="Lots priced well below their own recent price."
+		description="Price drops and new arrivals priced well below comparable coffees."
 	/>
 
 	{#if isParchmentIntelligence && valueSignals !== null}
@@ -146,7 +178,7 @@
 				<div class="mb-2 flex items-center justify-end gap-2">
 					<span class="mr-1 text-xs text-muted"
 						>{scopedSignals.length}
-						{scopedSignals.length === 1 ? 'price drop' : 'price drops'}</span
+						{scopedSignals.length === 1 ? 'buy signal' : 'buy signals'}</span
 					>
 					<button
 						type="button"
@@ -224,7 +256,7 @@
 				aria-label="Value signals"
 			>
 				<p class="text-sm text-muted">
-					No significant {viewMode === 'all' ? '' : `${viewMode} `}price drops this morning. The
+					No significant {viewMode === 'all' ? '' : `${viewMode} `}buy signals this morning. The
 					check runs again tomorrow morning.
 				</p>
 			</section>
@@ -240,7 +272,7 @@
 					<h3 class="font-serif text-lg font-medium text-ink">
 						{displayedSummaryTotal.toLocaleString()}
 						{summaryScopeLabel}
-						{displayedSummaryTotal === 1 ? 'price drop is' : 'price drops are'} active
+						{displayedSummaryTotal === 1 ? 'buy signal is' : 'buy signals are'} active
 						{#if formatAsOf(signalsAsOf)}as of {formatAsOf(signalsAsOf)}{:else}this morning{/if}.
 					</h3>
 					<p class="mt-1 text-sm text-muted">
@@ -248,8 +280,9 @@
 							{summaryScopeLabel.charAt(0).toUpperCase() + summaryScopeLabel.slice(1)} count shown while
 							the {selectedScopeLabel} scope is selected.
 						{/if}
-						These are lots priced well below their own recent price. Parchment Intelligence members see
-						each lot, in any scope, with the evidence behind it.
+						{signalsSummary.byType.price_drop} price drops and {signalsSummary.byType.below_market} new
+						arrivals priced well below comparable coffees. Parchment Intelligence members see each lot,
+						in any scope, with the evidence behind it.
 					</p>
 				</div>
 			</div>
