@@ -67,16 +67,13 @@
 		return Math.abs(row.changePercent) >= INTERIM_MOVE_PCT;
 	}
 
+	/** Visible evidence behind a judged origin's classification. */
 	function significanceDetail(row: Comparison): string {
 		const s = row.significance;
-		if (!s || s.classification == null) {
-			const have = s?.baselineWindows ?? 0;
-			const need = s?.requiredBaselineWindows ?? 8;
-			return `history building (${have} of ${need} weeks)`;
-		}
+		if (!s) return '';
 		const pct =
-			s.movePercentile == null ? '' : `, ${ordinal(Math.round(s.movePercentile))} percentile`;
-		return `${s.classification} for this origin${pct} of the last ${s.baselineWindows} weeks`;
+			s.movePercentile == null ? '' : `${ordinal(Math.round(s.movePercentile))} percentile of `;
+		return `${pct}last ${s.baselineWindows} wk`;
 	}
 
 	function ordinal(n: number): string {
@@ -107,6 +104,8 @@
 	);
 	let notable = $derived(byMagnitude.filter(standsOut));
 	let quietCount = $derived(byMagnitude.length - notable.length);
+	// The all-market view has a retail and a wholesale row per origin.
+	let originCount = $derived(new Set(byMagnitude.map((row) => row.origin)).size);
 	let maxMagnitude = $derived(
 		Math.max(...byMagnitude.map((row) => Math.abs(row.changePercent)), 0)
 	);
@@ -126,8 +125,12 @@
 				day: 'numeric',
 				timeZone: 'UTC'
 			});
-		const year = new Date(`${to}T00:00:00Z`).getUTCFullYear();
-		return `${fmt(from)} – ${fmt(to)}, ${year}`;
+		const fromYear = from.slice(0, 4);
+		const toYear = to.slice(0, 4);
+		// Repeat the year on both ends when the window crosses New Year.
+		return fromYear === toYear
+			? `${fmt(from)} – ${fmt(to)}, ${toYear}`
+			: `${fmt(from)}, ${fromYear} – ${fmt(to)}, ${toYear}`;
 	}
 	let judgedCount = $derived(byMagnitude.filter(isJudged).length);
 	let allJudged = $derived(byMagnitude.length > 0 && judgedCount === byMagnitude.length);
@@ -248,7 +251,8 @@
 				<span class="inline-block transition-transform group-open:rotate-90" aria-hidden="true"
 					>▸</span
 				>
-				All {byMagnitude.length} origins
+				All {originCount}
+				{originCount === 1 ? 'origin' : 'origins'}
 			</summary>
 			<div class="mt-3 overflow-x-auto">
 				<table class="min-w-full text-sm" aria-label="30-day same-coffee price change by origin">
@@ -308,12 +312,14 @@
 												class="rounded-full px-2 py-0.5 font-medium {standsOut(comparison)
 													? 'bg-accent-subtle/25 text-ink'
 													: 'bg-surface-panel text-muted'}"
-												title={significanceDetail(comparison)}
 											>
 												{comparison.significance.classification}
 											</span>
+											<span class="ml-1 whitespace-nowrap text-muted"
+												>{significanceDetail(comparison)}</span
+											>
 										{:else}
-											<span class="text-muted" title={significanceDetail(comparison)}
+											<span class="text-muted"
 												>History building · {comparison.significance?.baselineWindows ??
 													0}/{comparison.significance?.requiredBaselineWindows ?? 8} wk</span
 											>

@@ -52,6 +52,21 @@ describe('automatic 30-day comparisons', () => {
 			expect.objectContaining({ signal: expect.any(AbortSignal) })
 		);
 	});
+	it('shows both years when the window crosses New Year', async () => {
+		const crossing = (data: Record<string, unknown>) => ({
+			...data,
+			from: '2026-12-15',
+			to: '2027-01-14'
+		});
+		vi.stubGlobal(
+			'fetch',
+			vi
+				.fn()
+				.mockResolvedValue(response({ ...crossing(payload()), comparisons: [crossing(row())] }))
+		);
+		render(MatchedPriceComparison, { viewMode: 'retail' });
+		expect(await screen.findByText(/Dec 15, 2026 – Jan 14, 2027/)).toBeInTheDocument();
+	});
 	it('offers only available origins and separates retail and wholesale', async () => {
 		vi.stubGlobal(
 			'fetch',
@@ -68,6 +83,8 @@ describe('automatic 30-day comparisons', () => {
 		const table = screen.getByRole('table', { name: '30-day same-coffee price change by origin' });
 		expect(within(table).getAllByText('Wholesale')).toHaveLength(1);
 		expect(within(table).getAllByText('Retail')).toHaveLength(2);
+		// The summary counts distinct origins, not origin-market rows.
+		expect(screen.getByText('All 2 origins')).toBeInTheDocument();
 	});
 	it('keeps moves under 2% out of the headline strip', async () => {
 		vi.stubGlobal(
@@ -145,9 +162,12 @@ describe('automatic 30-day comparisons', () => {
 			screen.getByText(/2 other origins\s+stayed within their normal range/)
 		).toBeInTheDocument();
 		expect(screen.queryByText(/Until an origin has eight weeks/)).toBeNull();
-		expect(
-			screen.getByTitle(/notable for this origin, 92nd percentile of the last 12 weeks/)
-		).toBeInTheDocument();
+		// The evidence is visible in the cell, not hidden behind a hover title.
+		const table = screen.getByRole('table', { name: '30-day same-coffee price change by origin' });
+		const kenyaRow = within(table).getByRole('row', { name: /Kenya/ });
+		expect(kenyaRow).toHaveTextContent('notable');
+		expect(kenyaRow).toHaveTextContent('92nd percentile of last 12 wk');
+		expect(table.querySelector('[title]')).toBeNull();
 		expect(screen.getByRole('columnheader', { name: 'For this origin' })).toBeInTheDocument();
 	});
 	it('labels the interim size cutoff while history is still building', async () => {
