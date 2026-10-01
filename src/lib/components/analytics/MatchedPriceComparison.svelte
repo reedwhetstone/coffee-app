@@ -67,16 +67,13 @@
 		return Math.abs(row.changePercent) >= INTERIM_MOVE_PCT;
 	}
 
+	/** Visible evidence behind a judged origin's classification. */
 	function significanceDetail(row: Comparison): string {
 		const s = row.significance;
-		if (!s || s.classification == null) {
-			const have = s?.baselineWindows ?? 0;
-			const need = s?.requiredBaselineWindows ?? 8;
-			return `history building (${have} of ${need} weeks)`;
-		}
+		if (!s) return '';
 		const pct =
-			s.movePercentile == null ? '' : `, ${ordinal(Math.round(s.movePercentile))} percentile`;
-		return `${s.classification} for this origin${pct} of the last ${s.baselineWindows} weeks`;
+			s.movePercentile == null ? '' : `${ordinal(Math.round(s.movePercentile))} percentile of `;
+		return `${pct}last ${s.baselineWindows} wk`;
 	}
 
 	function ordinal(n: number): string {
@@ -107,6 +104,34 @@
 	);
 	let notable = $derived(byMagnitude.filter(standsOut));
 	let quietCount = $derived(byMagnitude.length - notable.length);
+	// The all-market view has a retail and a wholesale row per origin.
+	let originCount = $derived(new Set(byMagnitude.map((row) => row.origin)).size);
+	let maxMagnitude = $derived(
+		Math.max(...byMagnitude.map((row) => Math.abs(row.changePercent)), 0)
+	);
+	let maxMagnitudeSigned = $derived(byMagnitude[0]?.changePercent ?? 0);
+
+	/** Half-track width (percent of the full bar) for a diverging bar from zero. */
+	function barWidth(change: number): number {
+		if (maxMagnitude === 0) return 0;
+		return Math.max((Math.abs(change) / maxMagnitude) * 50, change === 0 ? 0 : 1);
+	}
+
+	function formatRange(from: string | null, to: string | null): string {
+		if (!from || !to) return '';
+		const fmt = (d: string) =>
+			new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', {
+				month: 'short',
+				day: 'numeric',
+				timeZone: 'UTC'
+			});
+		const fromYear = from.slice(0, 4);
+		const toYear = to.slice(0, 4);
+		// Repeat the year on both ends when the window crosses New Year.
+		return fromYear === toYear
+			? `${fmt(from)} – ${fmt(to)}, ${toYear}`
+			: `${fmt(from)}, ${fromYear} – ${fmt(to)}, ${toYear}`;
+	}
 	let judgedCount = $derived(byMagnitude.filter(isJudged).length);
 	let allJudged = $derived(byMagnitude.length > 0 && judgedCount === byMagnitude.length);
 	let noneJudged = $derived(judgedCount === 0);
@@ -219,26 +244,106 @@
 		</p>
 	{/if}
 	{#if !loading && !failed && result?.comparisons.length}
-		<details class="mt-2 text-xs text-muted">
+		<details class="group mt-3 border-t border-line pt-2">
 			<summary
-				class="w-fit cursor-pointer rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-				>All origins, dates &amp; coverage</summary
+				class="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded text-xs font-medium text-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
 			>
-			<p class="mt-2">30-day change · {result.from} to {result.to}</p>
-			<p class="mt-1">Price changes in the same coffees, with equal weight per supplier.</p>
-			<ul class="mt-2 space-y-1">
-				{#each byMagnitude as comparison (comparison.origin + comparison.wholesale)}
-					<li>
-						<span class="font-medium text-ink"
-							>{comparison.origin} · {comparison.wholesale ? 'Wholesale' : 'Retail'}:</span
-						>
-						{formatChange(comparison.changePercent)} · {significanceDetail(comparison)} ·
-						{comparison.sample.matchedListings} of {comparison.sample.fromListings} starting coffees
-						matched ({(comparison.sample.matchedCoverage * 100).toFixed(0)}%) · {comparison.sample
-							.matchedSuppliers} suppliers
-					</li>
-				{/each}
-			</ul>
+				<span class="inline-block transition-transform group-open:rotate-90" aria-hidden="true"
+					>▸</span
+				>
+				All {originCount}
+				{originCount === 1 ? 'origin' : 'origins'}
+			</summary>
+			<div class="mt-3 overflow-x-auto">
+				<table class="min-w-full text-sm" aria-label="30-day same-coffee price change by origin">
+					<thead>
+						<tr class="border-b border-line text-left text-xs text-muted">
+							<th scope="col" class="py-2 pr-4 font-medium">Origin</th>
+							<th scope="col" class="w-64 py-2 pr-4 font-medium">30-day change</th>
+							{#if judgedCount > 0}
+								<th scope="col" class="py-2 pr-4 font-medium">For this origin</th>
+							{/if}
+							<th scope="col" class="py-2 pr-4 text-right font-medium">Coffees matched</th>
+							<th scope="col" class="py-2 text-right font-medium">Suppliers</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each byMagnitude as comparison (comparison.origin + comparison.wholesale)}
+							{@const width = barWidth(comparison.changePercent)}
+							<tr
+								class="border-b border-line/50 {standsOut(comparison) ? 'bg-accent-subtle/10' : ''}"
+							>
+								<th scope="row" class="py-2 pr-4 text-left font-medium text-ink">
+									{comparison.origin}
+									{#if viewMode === 'all'}
+										<span class="ml-1 text-xs font-normal text-muted"
+											>{comparison.wholesale ? 'Wholesale' : 'Retail'}</span
+										>
+									{/if}
+								</th>
+								<td class="py-2 pr-4">
+									<div class="flex items-center gap-3">
+										<div
+											class="relative h-2 flex-1 rounded-full bg-surface-panel"
+											aria-hidden="true"
+										>
+											<span class="absolute inset-y-0 left-1/2 w-px bg-line"></span>
+											{#if comparison.changePercent > 0}
+												<span
+													class="absolute inset-y-0 left-1/2 rounded-r-full bg-warning"
+													style="width: {width}%"
+												></span>
+											{:else if comparison.changePercent < 0}
+												<span
+													class="absolute inset-y-0 right-1/2 rounded-l-full bg-success"
+													style="width: {width}%"
+												></span>
+											{/if}
+										</div>
+										<span class="w-16 text-right font-semibold tabular-nums text-ink"
+											>{formatChange(comparison.changePercent)}</span
+										>
+									</div>
+								</td>
+								{#if judgedCount > 0}
+									<td class="py-2 pr-4 text-xs">
+										{#if comparison.significance?.classification}
+											<span
+												class="rounded-full px-2 py-0.5 font-medium {standsOut(comparison)
+													? 'bg-accent-subtle/25 text-ink'
+													: 'bg-surface-panel text-muted'}"
+											>
+												{comparison.significance.classification}
+											</span>
+											<span class="ml-1 whitespace-nowrap text-muted"
+												>{significanceDetail(comparison)}</span
+											>
+										{:else}
+											<span class="text-muted"
+												>History building · {comparison.significance?.baselineWindows ??
+													0}/{comparison.significance?.requiredBaselineWindows ?? 8} wk</span
+											>
+										{/if}
+									</td>
+								{/if}
+								<td class="py-2 pr-4 text-right tabular-nums text-muted">
+									{comparison.sample.matchedListings}/{comparison.sample.fromListings}
+									<span class="text-xs"
+										>({Math.round(comparison.sample.matchedCoverage * 100)}%)</span
+									>
+								</td>
+								<td class="py-2 text-right tabular-nums text-muted"
+									>{comparison.sample.matchedSuppliers}</td
+								>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+			<p class="mt-2 text-xs text-muted">
+				{formatRange(result.from, result.to)} · price change in the same coffees, each supplier weighted
+				equally · bars scaled to the largest move ({formatChange(maxMagnitudeSigned)}).
+			</p>
 		</details>
 	{/if}
 </section>
