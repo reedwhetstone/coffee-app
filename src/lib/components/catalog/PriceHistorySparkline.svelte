@@ -142,7 +142,11 @@
 		<h3 class="text-xs font-semibold text-muted">Price history · smallest tier</h3>
 		{#if history && points.length > 1}
 			<p class="text-xs text-muted">
-				Range {money(history.summary.minPriceLb)}–{money(history.summary.maxPriceLb)}/lb
+				{#if history.summary.minPriceLb === history.summary.maxPriceLb}
+					Steady at {money(history.summary.minPriceLb)}/lb
+				{:else}
+					Range {money(history.summary.minPriceLb)}–{money(history.summary.maxPriceLb)}/lb
+				{/if}
 			</p>
 		{/if}
 	</div>

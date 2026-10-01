@@ -79,6 +79,28 @@ describe('PriceHistorySparkline', () => {
 		expect(screen.queryByText('Order size changed')).toBeNull();
 	});
 
+	it('reads a flat price with flickering larger tiers as steady, with no markers', async () => {
+		// Production screenshot 2026-10-01: $9.49 since Apr 4 while 10 and 20 lb tiers came and went.
+		vi.stubGlobal(
+			'fetch',
+			respond({
+				points: [point('2026-04-04', 9.49), point('2026-08-16', 9.49), point('2026-10-01', 9.49)],
+				events: [],
+				summary: {
+					latestPriceLb: 9.49,
+					minPriceLb: 9.49,
+					maxPriceLb: 9.49,
+					comparableChangePct: 0,
+					minimumTierChanged: false
+				}
+			})
+		);
+		render(PriceHistorySparkline, { coffeeId: 416 });
+		await screen.findByText('Unchanged since Apr 4.');
+		expect(screen.getByText('Steady at $9.49/lb')).toBeInTheDocument();
+		expect(screen.queryByText('Order size changed')).toBeNull();
+	});
+
 	it('states a same-tier change and range', async () => {
 		vi.stubGlobal(
 			'fetch',
