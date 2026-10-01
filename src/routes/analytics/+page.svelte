@@ -737,23 +737,38 @@
 	});
 
 	let marketReadDetail = $derived.by(() => {
+		// The like-for-like read is Parchment's matched-lot move: lots listed at both
+		// ends of the window. latestMovePct is the raw index move, which also shifts
+		// when listings arrive and leave. Without enough matched lots, the read falls
+		// back to the listed-price average, labeled as including that turnover.
+		const stat = currentMoveStat;
+		const matchedPhrase =
+			stat?.matchedLotMovePct != null && stat.moveDriver !== 'insufficient_overlap'
+				? `the ${stat.matchedLotCount.toLocaleString()} lots listed throughout the window ${
+						isFlatPct(stat.matchedLotMovePct)
+							? 'held flat like-for-like'
+							: `moved ${formatSignedPct(stat.matchedLotMovePct)} like-for-like`
+					}`
+				: null;
 		const pricePhrase =
-			chartsState === 'pending'
-				? 'price movement is loading with the comparable snapshot layer'
+			matchedPhrase ??
+			(chartsState === 'pending'
+				? 'price movement is still loading'
 				: chartsState === 'error'
-					? 'price movement is unavailable because the price history layer did not load'
+					? 'price movement is unavailable right now'
 					: marketPriceDelta == null
-						? 'price movement needs another comparable snapshot'
+						? 'price movement needs another day of data'
 						: isFlatPct(marketPriceDeltaPercent)
-							? 'average prices were flat versus the prior comparable snapshot'
-							: `average prices moved ${formatSignedMoneyPerLb(marketPriceDelta)} (${formatSignedPct(marketPriceDeltaPercent)}) versus the prior comparable snapshot`;
+							? 'the average listed price was flat, including lots that arrived or left'
+							: `the average listed price moved ${formatSignedMoneyPerLb(marketPriceDelta)} (${formatSignedPct(marketPriceDeltaPercent)}), including lots that arrived or left`);
+		const scope = `${displayStockedCount.toLocaleString()} active ${viewModeLabel} listings are in scope; ${pricePhrase}.`;
 		if (!coverageSettled) {
 			return `The ${stats.totalSuppliers.toLocaleString()}-supplier index is loaded; movement and coverage counts are streaming in, and ${pricePhrase}.`;
 		}
 		if (!isMovementDataAvailable) {
-			return `${displayStockedCount.toLocaleString()} active ${viewModeLabel} listings are in scope; ${pricePhrase}. Movement counts are withheld because the latest movement query is unavailable or stale.`;
+			return `${scope} Movement counts are withheld because the latest movement query is unavailable or stale.`;
 		}
-		return `${movementWindowLabel} movement: ${scopedArrivalCount} arrivals and ${scopedDelistingCount} delistings. ${displayStockedCount.toLocaleString()} active ${viewModeLabel} listings are in scope; ${pricePhrase}.`;
+		return `${movementWindowLabel} movement: ${scopedArrivalCount} arrivals and ${scopedDelistingCount} delistings. ${scope}`;
 	});
 
 	// ── KPI strip ─────────────────────────────────────────────────────────────

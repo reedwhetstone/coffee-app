@@ -369,9 +369,7 @@ describe('analytics page loading experience', () => {
 		await waitFor(() => {
 			expect(screen.getByText(/movement and coverage counts are streaming in/i)).toBeTruthy();
 		});
-		expect(
-			screen.getByText(/price movement is loading with the comparable snapshot layer/i)
-		).toBeTruthy();
+		expect(screen.getByText(/price movement is still loading/i)).toBeTruthy();
 		expect(screen.queryByText(/movement data is unavailable/i)).toBeNull();
 		expect(screen.getByLabelText('Loading market signals')).toBeTruthy();
 		expect(screen.queryByLabelText('Market KPI strip')).toBeNull();
@@ -452,6 +450,73 @@ describe('analytics page loading experience', () => {
 				)
 			).toBeTruthy();
 		});
+		expect(
+			screen.getByText(/the 40 lots listed throughout the window moved −4\.1% like-for-like\./)
+		).toBeTruthy();
+	});
+
+	it('reads price like-for-like from matched lots, not the raw index move', async () => {
+		const baseline = createBaseline();
+		const moveStat = {
+			segment: { origin: null, process: null, market: 'retail' as const },
+			window: '7d' as const,
+			latestMovePct: 5,
+			baselineMeanMovePct: 0.2,
+			baselineStddev: 1.1,
+			zScore: 4.3,
+			movePercentile: 98,
+			weeksSinceLargerMove: 12,
+			classification: 'notable' as const,
+			matchedLotMovePct: 0,
+			matchedLotCount: 40,
+			moveDriver: 'mix_shift' as const,
+			sampleSize: 84,
+			supplierCount: 12,
+			availableBaselineWeeks: 20,
+			note: null
+		};
+
+		const { unmount } = render(AnalyticsPage, {
+			data: createData({
+				marketInsights: { ...baseline.marketInsights, moveStats: [moveStat] }
+			})
+		});
+
+		// A +5% raw move from catalog turnover with no matched-lot change reads flat
+		// like-for-like, not as a repricing of the listed lots.
+		await waitFor(() => {
+			expect(
+				screen.getByText(/the 40 lots listed throughout the window held flat like-for-like\./)
+			).toBeTruthy();
+		});
+		unmount();
+
+		// Too few matched lots: no like-for-like claim; the listed-price read stays
+		// labeled as including arrivals and delistings.
+		render(AnalyticsPage, {
+			data: createData({
+				marketInsights: {
+					...baseline.marketInsights,
+					moveStats: [
+						{
+							...moveStat,
+							matchedLotMovePct: 1.2,
+							matchedLotCount: 3,
+							moveDriver: 'insufficient_overlap'
+						}
+					]
+				}
+			})
+		});
+		await waitFor(() => {
+			expect(screen.getByText(/listings are in scope; /)).toBeTruthy();
+		});
+		expect(screen.queryByText(/like-for-like/)).toBeNull();
+		expect(
+			screen.getByText(
+				/listings are in scope; (the average listed price (was flat|moved .+), including lots that arrived or left|price movement (is still loading|is unavailable right now|needs another day of data))\./
+			)
+		).toBeTruthy();
 	});
 
 	it('renders the market read on the server-seeded coverage without a loading line', () => {
@@ -844,7 +909,11 @@ describe('analytics command center hierarchy', () => {
 
 		// The public summary is the unfiltered (retail + wholesale) count slice, so
 		// it must never present itself as retail data.
-		expect(screen.getByText(/2 all-market price drops are active/i)).toBeTruthy();
+		expect(screen.getByText(/5 all-market buy signals are active/i)).toBeTruthy();
+		// Summary counts carry no first-stocked evidence, so below-market lots are
+		// never labeled as new arrivals.
+		expect(screen.getByText(/2 price drops and 3 below-market lots\./)).toBeTruthy();
+		expect(screen.getByLabelText('Value signals summary').textContent).not.toMatch(/new arrival/i);
 		expect(
 			screen.getByText(/All-market count shown while the wholesale scope is selected/i)
 		).toBeTruthy();
@@ -915,7 +984,7 @@ describe('analytics command center hierarchy', () => {
 		await screen.getByRole('button', { name: 'Wholesale' }).click();
 
 		await waitFor(() =>
-			expect(screen.getByText(/No significant wholesale price drops this morning/i)).toBeTruthy()
+			expect(screen.getByText(/No significant wholesale buy signals this morning/i)).toBeTruthy()
 		);
 		expect(fetch).toHaveBeenCalledWith(
 			'/api/analytics/insights?market=wholesale&window=7d',
@@ -957,7 +1026,7 @@ describe('analytics command center hierarchy', () => {
 			signalsAsOf: '2026-07-06'
 		});
 		await waitFor(() =>
-			expect(screen.getByText(/No significant wholesale price drops this morning/i)).toBeTruthy()
+			expect(screen.getByText(/No significant wholesale buy signals this morning/i)).toBeTruthy()
 		);
 
 		initial.resolve(createBaseline().marketInsights);
@@ -1080,7 +1149,7 @@ describe('analytics command center hierarchy', () => {
 		expect(screen.getAllByText(/Price drop:/).length).toBeGreaterThanOrEqual(2);
 	});
 
-	it('does not display below-market signals', async () => {
+	it('does not display below-market signals computed before comparable sets', async () => {
 		render(AnalyticsPage, {
 			data: createData({
 				session: createSession(),
@@ -1114,10 +1183,63 @@ describe('analytics command center hierarchy', () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getByText(/No significant retail price drops this morning/i)).toBeTruthy();
+			expect(screen.getByText(/No significant retail buy signals this morning/i)).toBeTruthy();
 		});
 		expect(screen.queryByText('Panama Commodity Lot')).toBeNull();
 		expect(screen.queryByText(/Below market:/)).toBeNull();
+	});
+
+	it('displays comparable-set below-market signals with their evidence', async () => {
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				marketInsights: {
+					...createBaseline().marketInsights,
+					valueSignals: [
+						{
+							signalType: 'below_market',
+							signalWindow: 'n/a',
+							catalogId: 13,
+							name: 'Guatemala Huehuetenango SHB',
+							source: 'burman',
+							market: 'retail',
+							origin: 'Guatemala',
+							process: 'Washed',
+							currentPriceLb: 6.49,
+							catalogUrl: 'https://example.com/catalog?id=13',
+							scoreValue: null,
+							evidence: {
+								segment: { origin: 'Guatemala', process: 'Washed', market: 'retail' },
+								discount_vs_median_pct: -33.02,
+								segment_median: 9.69,
+								price_percentile_in_segment: 4,
+								method: 'comparable-signals-v2',
+								comparable_set: {
+									lot_class: 'standard',
+									lots: 28,
+									suppliers: 12,
+									p75: 11.2,
+									iqr_ratio: 1.19
+								},
+								confidence: 0.82,
+								first_stocked: '2026-09-28'
+							}
+						}
+					],
+					signalsAsOf: '2026-09-29'
+				}
+			})
+		});
+
+		await waitFor(() => {
+			expect(
+				screen.getByText(
+					'-33.0% vs the median of 28 comparable Guatemala Washed lots from 12 suppliers ($9.69/lb). New arrival.'
+				)
+			).toBeTruthy();
+		});
+		expect(screen.getByText('Guatemala Huehuetenango SHB')).toBeTruthy();
 	});
 
 	it('scopes coverage supplier-evidence reads with the selected market', async () => {

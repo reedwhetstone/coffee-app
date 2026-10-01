@@ -117,7 +117,7 @@ describe('loadMarketIndexInsights', () => {
 		expect(market.signals).toHaveBeenCalledTimes(4);
 		expect(market.signals).toHaveBeenNthCalledWith(1, {
 			market: 'retail',
-			type: ['price_drop'],
+			type: ['price_drop', 'below_market'],
 			window: '30d',
 			limit: 6
 		});
