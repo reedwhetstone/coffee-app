@@ -1,6 +1,12 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { compareSelection } from '$lib/stores/compareSelection.svelte';
-	import { compareHref, FULL_COMPARE_MAX } from '$lib/catalog/compareAccess';
+	import {
+		canOpenComparison,
+		compareHref,
+		FULL_COMPARE_MAX,
+		signInHref
+	} from '$lib/catalog/compareAccess';
 
 	let {
 		limit,
@@ -13,7 +19,27 @@
 	} = $props();
 
 	let items = $derived(compareSelection.items);
-	let canCompare = $derived(items.length >= 2);
+	let canCompare = $derived(canOpenComparison(items.length, limit));
+	// The selection outlives sign-out and plan changes, so it can sit above the
+	// current limit. Keep it, but only offer what the visitor can open now.
+	let signedOut = $derived(limit === 0);
+	let overLimit = $derived(limit > 0 && items.length > limit);
+	let ctaHref = $derived(
+		canCompare
+			? compareHref(items.map((item) => item.id))
+			: signedOut
+				? signInHref(page.url)
+				: undefined
+	);
+	let ctaLabel = $derived(
+		canCompare
+			? `Compare ${items.length}`
+			: signedOut
+				? 'Sign in to compare'
+				: overLimit
+					? `Remove ${items.length - limit} to compare`
+					: 'Pick one more'
+	);
 </script>
 
 {#if items.length > 0 || notice}
@@ -27,8 +53,9 @@
 		>
 			{#if notice === 'sign_in'}
 				<p class="flex-1 text-sm text-ink">
-					<a href="/auth" class="font-semibold text-link hover:text-accent">Sign in</a> to compare coffees
-					side by side.
+					<a href={signInHref(page.url)} class="font-semibold text-link hover:text-accent"
+						>Sign in</a
+					> to compare coffees side by side.
 				</p>
 			{:else if notice === 'limit'}
 				<p class="flex-1 text-sm text-ink">
@@ -76,13 +103,13 @@
 						onclick={() => compareSelection.clear()}>Clear</button
 					>
 					<a
-						href={canCompare ? compareHref(items.map((item) => item.id)) : undefined}
-						aria-disabled={!canCompare}
-						class="rounded-md px-4 py-2 text-sm font-semibold transition-colors {canCompare
+						href={ctaHref}
+						aria-disabled={!ctaHref}
+						class="rounded-md px-4 py-2 text-sm font-semibold transition-colors {ctaHref
 							? 'bg-accent text-ink hover:bg-accent/85'
 							: 'pointer-events-none bg-surface-panel text-muted'}"
 					>
-						{canCompare ? `Compare ${items.length}` : 'Pick one more'}
+						{ctaLabel}
 					</a>
 				</div>
 			{/if}

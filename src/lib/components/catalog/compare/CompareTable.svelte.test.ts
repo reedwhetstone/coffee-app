@@ -99,4 +99,45 @@ describe('CompareTable', () => {
 		);
 		expect(onRemove).toHaveBeenCalledWith(2);
 	});
+
+	it('labels a missing origin benchmark as unavailable rather than undisclosed', () => {
+		render(CompareTable, {
+			comparison: {
+				...comparison,
+				rows: [
+					{
+						key: 'vs_origin_median',
+						group: 'Price',
+						label: 'Versus origin median (%)',
+						values: [12.5, null, null],
+						relation: 'partial',
+						bestLotIds: []
+					}
+				]
+			},
+			quantityOptions: [1, 5, 10],
+			onQuantityChange: vi.fn(),
+			onRemove: vi.fn()
+		});
+		const row = screen.getByRole('rowheader', { name: 'Versus origin median (%)' }).closest('tr')!;
+		expect(within(row).getByText('+12.5%')).toBeInTheDocument();
+		expect(within(row).getAllByText('Benchmark unavailable')).toHaveLength(2);
+		expect(within(row).queryByText('Not disclosed')).toBeNull();
+	});
+
+	it('keeps a shared quantity outside the presets selectable', () => {
+		render(CompareTable, {
+			comparison: { ...comparison, quantityLbs: 3 },
+			quantityOptions: [1, 5, 10],
+			onQuantityChange: vi.fn(),
+			onRemove: vi.fn()
+		});
+		const picker = screen.getByRole('combobox') as HTMLSelectElement;
+		expect(picker.value).toBe('3');
+		expect(
+			within(picker)
+				.getAllByRole('option')
+				.map((option) => option.textContent)
+		).toEqual(['1 lb', '3 lb', '5 lb', '10 lb']);
+	});
 });

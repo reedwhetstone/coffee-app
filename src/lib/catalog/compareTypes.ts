@@ -38,7 +38,7 @@ export interface CatalogComparison {
 
 export type CompareLoadState =
 	| { status: 'ready'; comparison: CatalogComparison; maxLots: number }
-	| { status: 'empty' }
+	| { status: 'empty'; unavailable?: number }
 	| { status: 'sign_in' }
 	| { status: 'limit'; message: string }
 	| { status: 'error'; message: string };

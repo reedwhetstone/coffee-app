@@ -1,29 +1,36 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import CompareTable from '$lib/components/catalog/compare/CompareTable.svelte';
 	import { compareSelection } from '$lib/stores/compareSelection.svelte';
-	import { compareHref, FULL_COMPARE_MAX } from '$lib/catalog/compareAccess';
+	import { compareHref, FULL_COMPARE_MAX, signInHref } from '$lib/catalog/compareAccess';
 
 	let { data }: { data: PageData } = $props();
 
+	// Only the coffees Parchment returned make up the comparison; ids it reported
+	// missing are dropped from quantity changes, removals, and the tray.
+	let lotIds = $derived(
+		data.state.status === 'ready' ? data.state.comparison.lots.map((lot) => lot.id) : data.ids
+	);
+
 	// A shared comparison link becomes the current selection, so the catalog tray
-	// reflects it when the user goes back to add or remove coffees.
+	// reflects it when the user goes back to add or remove coffees. The write is
+	// untracked so updating the selection never re-runs this effect.
 	$effect(() => {
 		if (data.state.status !== 'ready') return;
-		compareSelection.clear();
-		for (const lot of data.state.comparison.lots) {
-			compareSelection.toggle({ id: lot.id, name: lot.name }, FULL_COMPARE_MAX);
-		}
+		const lots = data.state.comparison.lots;
+		untrack(() => compareSelection.replace(lots.map((lot) => ({ id: lot.id, name: lot.name }))));
 	});
 
 	function changeQuantity(quantityLbs: number) {
-		void goto(compareHref(data.ids, quantityLbs), { keepFocus: true, noScroll: true });
+		void goto(compareHref(lotIds, quantityLbs), { keepFocus: true, noScroll: true });
 	}
 
 	function remove(id: number) {
 		compareSelection.remove(id);
-		const remaining = data.ids.filter((existing) => existing !== id);
+		const remaining = lotIds.filter((existing) => existing !== id);
 		void goto(remaining.length >= 2 ? compareHref(remaining, data.quantityLbs) : '/catalog');
 	}
 </script>
@@ -54,6 +61,12 @@
 	{:else if data.state.status === 'empty'}
 		<section class="rounded-lg border border-line bg-surface-panel p-6">
 			<h2 class="text-lg font-semibold text-ink">Pick at least two coffees</h2>
+			{#if data.state.unavailable}
+				<p class="mt-1 text-sm text-muted">
+					{data.state.unavailable === 1 ? 'One coffee' : `${data.state.unavailable} coffees`}
+					in this link {data.state.unavailable === 1 ? 'is' : 'are'} no longer available to you.
+				</p>
+			{/if}
 			<p class="mt-1 text-sm text-muted">
 				Use Compare on coffee cards in the catalog, then open the comparison from the tray.
 			</p>
@@ -70,7 +83,7 @@
 				Free accounts compare two coffees side by side. Members compare up to {FULL_COMPARE_MAX}.
 			</p>
 			<a
-				href="/auth"
+				href={signInHref(page.url)}
 				class="mt-4 inline-flex rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink hover:bg-accent/85"
 				>Sign in</a
 			>

@@ -55,5 +55,10 @@ export const compareSelection = {
 	clear(): void {
 		items = [];
 		persist();
+	},
+	/** Replaces the selection in one write without reading the current one. */
+	replace(next: CompareItem[]): void {
+		items = next;
+		persist();
 	}
 };

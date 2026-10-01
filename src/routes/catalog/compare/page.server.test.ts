@@ -31,7 +31,10 @@ describe('/catalog/compare load', () => {
 
 	it('returns the comparison and forwards ids and quantity', async () => {
 		rawGet.mockResolvedValue({
-			data: { data: { lots: [], rows: [] }, meta: { maxLots: 6 } },
+			data: {
+				data: { lots: [{ id: 416 }, { id: 8806 }], rows: [], missingIds: [] },
+				meta: { maxLots: 6 }
+			},
 			response: new Response(null, { status: 200 })
 		});
 		const result = (await load(event('ids=416,8806&quantityLbs=5'))) as {
@@ -40,6 +43,17 @@ describe('/catalog/compare load', () => {
 		expect(result.state).toMatchObject({ status: 'ready', maxLots: 6 });
 		expect(rawGet).toHaveBeenCalledWith('/v1/catalog/compare', {
 			params: { query: { ids: '416,8806', quantityLbs: '5' } }
+		});
+	});
+
+	it('falls back to the pick-two state when fewer than two coffees come back', async () => {
+		rawGet.mockResolvedValue({
+			data: { data: { lots: [{ id: 416 }], rows: [], missingIds: [8806] }, meta: { maxLots: 6 } },
+			response: new Response(null, { status: 200 })
+		});
+		expect(((await load(event('ids=416,8806'))) as { state: unknown }).state).toEqual({
+			status: 'empty',
+			unavailable: 1
 		});
 	});
 

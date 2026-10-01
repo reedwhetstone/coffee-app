@@ -36,7 +36,12 @@ export const load: PageServerLoad = async (event) => {
 				'Comparison is unavailable right now.';
 			if (response.status === 200 && data) {
 				const body = data as { data: CatalogComparison; meta: { maxLots: number } };
-				state = { status: 'ready', comparison: body.data, maxLots: body.meta.maxLots };
+				// Parchment drops ids the caller can no longer see; fewer than two
+				// visible coffees is not a comparison.
+				state =
+					body.data.lots.length >= 2
+						? { status: 'ready', comparison: body.data, maxLots: body.meta.maxLots }
+						: { status: 'empty', unavailable: body.data.missingIds.length };
 			} else if (response.status === 401) {
 				state = { status: 'sign_in' };
 			} else if (response.status === 403) {

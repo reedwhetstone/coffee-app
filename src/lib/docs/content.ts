@@ -299,7 +299,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Parchment API',
 		intro: [
 			'The Parchment API and Parchment Console form the API layer inside Purveyors. They expose normalized green coffee catalog data, authorized origin-map projections, beta catalog similarity matching, and aggregate market intelligence through small public HTTP contracts plus a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
-			'The stable public catalog family includes GET https://api.purveyors.io/v1/catalog and GET /v1/catalog/map. Production catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages remain browsable without a user login because the coffee-app BFF presents a server-held public/demo key upstream. Coffee-app now includes a production MapLibre catalog experience through the first-party /api/catalog/map BFF; that browser route is not a public integration contract, and the list remains the default view. Deliberately designated Market Index teaser slices remain anonymous as a narrow route contract. GET /v1/catalog/{id}/similar is a beta member-session and scoped API-key route for candidate matching, not a canonical identity claim. GET /v1/price-index is an authenticated Parchment Intelligence contract for aggregate price_index_snapshots data only; it accepts entitled first-party sessions and customer API keys. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most coffee-app /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, Cherry Runtime, workspaces, billing, and admin tooling.'
+			'The stable public catalog family includes GET https://api.purveyors.io/v1/catalog and GET /v1/catalog/map. Production catalog, owner, and entitled data endpoints require a Bearer credential. Public website catalog pages remain browsable without a user login because the coffee-app BFF presents a server-held public/demo key upstream. Coffee-app now includes a production MapLibre catalog experience through the first-party /api/catalog/map BFF; that browser route is not a public integration contract, and the list remains the default view. Deliberately designated Market Index teaser slices remain anonymous as a narrow route contract. GET /v1/catalog/{id}/similar is a beta member-session and scoped API-key route for candidate matching, not a canonical identity claim. GET /v1/catalog/compare is a signed-in session and scoped API-key route for side-by-side lot comparison; viewers compare 2 coffees, and members, Parchment Intelligence, and API keys compare up to 6. GET /v1/price-index is an authenticated Parchment Intelligence contract for aggregate price_index_snapshots data only; it accepts entitled first-party sessions and customer API keys. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most coffee-app /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, Cherry Runtime, workspaces, billing, and admin tooling.'
 		],
 		sections: [
 			{
@@ -333,6 +333,12 @@ const docsPages: DocsPage[] = [
 							'Member session or API key on any plan with catalog:read',
 							'Matching workflows, substitution research, and account-linked agents',
 							'Beta public contract. Returns cautious candidates, score dimensions, and price deltas, not canonical identity decisions.'
+						],
+						[
+							'GET /v1/catalog/compare',
+							'Signed-in session (viewers 2 coffees; members and Parchment Intelligence 6) or API key with catalog:read (6)',
+							'Side-by-side lot comparison in the catalog, Cherry, and the CLI',
+							'Public contract owned by Parchment, which computes the rows and enforces the limits. The purveyors.io /catalog/compare page is a first-party consumer of it, not a separate contract.'
 						],
 						[
 							'GET /v1/price-index',
@@ -376,6 +382,7 @@ const docsPages: DocsPage[] = [
 					'GET /v1/catalog/map uses the same Bearer modes and catalog scope. Viewer sessions receive a public-safe country or region projection. Member/admin sessions and customer API keys on every API plan can use canonical place navigation, bounding boxes, and elevation profiles; Green map queries inspect at most 25 catalog rows.',
 					'Public website catalog pages use a server-only PARCHMENT_PUBLIC_DEMO_API_KEY through the coffee-app BFF. The browser receives public catalog data without receiving that credential. Anonymous Market Index teaser slices stay in session mode and call their deliberately anonymous upstream routes without the demo key.',
 					"GET /v1/catalog/{id}/similar requires a member session token or an API key with catalog:read. It returns beta similarity candidates within the caller's allowed row projection; missing credentials get 401 and signed-in viewer sessions get 403.",
+					"GET /v1/catalog/compare compares 2 to 6 distinct coffees (ids, plus an optional quantityLbs that defaults to 1) within the caller's catalog visibility. Viewer sessions compare 2; member sessions, Parchment Intelligence sessions, and API keys with catalog:read compare up to 6, reported as meta.maxLots. Anonymous callers and the public demo key get 401; unscoped keys and requests over the caller's limit get 403. Ids the caller cannot see come back in missingIds.",
 					'GET /v1/price-index accepts an entitled first-party session token or a customer API key whose owner has Parchment Intelligence access. It returns aggregate price-index snapshots, not raw supplier-level rows.',
 					'The retired coffee-app same-host /v1/* and /api/catalog-api paths are not integration contracts. External callers use https://api.purveyors.io/v1/*.',
 					'Cookies are not part of the public API contract. Coffee-app may forward a valid first-party session as a Bearer token.',
@@ -495,6 +502,7 @@ const docsPages: DocsPage[] = [
 					'GET /v1/catalog/map is the lightweight authorized spatial projection over the same visibility, filters, entitlement, and notice policy. It is not a second catalog search implementation.',
 					'GET /v1/catalog/proof-coverage returns aggregate proof-summary coverage for the visible catalog scope without raw evidence, supplier quotes, certification language, or row-level proof search leverage.',
 					'GET /v1/catalog/{id}/similar is the beta matching endpoint in the catalog family. It is not anonymous, and it should be presented as candidate discovery rather than accepted identity resolution.',
+					'GET /v1/catalog/compare returns a side-by-side comparison of 2 to 6 coffees at a chosen quantity: price at that quantity, tiers and minimum order, price versus the origin median, availability, origin, process, coffee, and tasting rows, each marked same, partial, or different. It requires a signed-in session or a catalog:read API key; viewers compare 2 coffees and members, Parchment Intelligence, and API keys compare up to 6.',
 					'The coffee-app same-host /v1/* and /api/catalog-api routes are retired. Do not use them as compatibility paths.',
 					'GET /api/catalog on purveyors.io delegates to the same catalog resource for the first-party product, but it is an internal BFF adapter and not an external contract.'
 				],
