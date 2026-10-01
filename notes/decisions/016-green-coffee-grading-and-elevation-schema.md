@@ -89,7 +89,7 @@ New `grading_evidence jsonb` mirrors `processing_evidence`. Each extracted field
 
 1. The scraper keeps writing the raw elevation text to `grade` throughout the deprecation window, alongside the parsed elevation columns, so legacy readers and the legacy filter see unchanged behavior and the raw string is retained before `grading_evidence` exists. Writes to `grade` stop only in the removal step.
 2. Parchment keeps returning `grade` and accepting the `grade` filter with its current semantics, a legacy text match on the stored value that is not mapped to elevation, with `deprecated: true` in OpenAPI for at least one SDK minor cycle and a removal date in the API changelog. Deprecation notes direct new clients to `elevationMinMasl`, `elevationMaxMasl` and `gradeCode`.
-3. Before dropping the column, API usage logs must show no external callers using `grade`, and coffee-app, the CLI and Cherry must read only the new fields. The scraper stops writing `grade` in the same release that drops it.
+3. Before dropping the column, API usage logs must show no external callers using `grade`, and coffee-app, the CLI and Cherry must read only the new fields. Removal is ordered so no deployed writer or reader references a missing column: the scraper release that stops writing `grade` and the Parchment release that stops returning it and accepting its filter deploy first, and the migration that drops the column, with the RPC and view updates that stop projecting it, follows.
 4. User-entered beans: elevation-shaped text moves to the elevation columns; any other text is preserved in `appearance` for the owner to review.
 
 ## Integration plan
