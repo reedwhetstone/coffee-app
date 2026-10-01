@@ -10,6 +10,9 @@
 	import AnalyticsTab from './tabs/AnalyticsTab.svelte';
 	import { INVENTORY_DELETE_CONFIRMATION } from './deleteBean';
 	import { mergeInventoryMutationProjection } from './inventoryMutationProjection';
+	import { page } from '$app/state';
+	import PriceHistorySparkline from '$lib/components/catalog/PriceHistorySparkline.svelte';
+	import { canViewPriceHistoryFor, type PriceHistoryAuth } from '$lib/catalog/priceHistoryAccess';
 
 	let {
 		selectedBean,
@@ -28,6 +31,14 @@
 	}>();
 
 	let currentTab = $state('overview');
+
+	// Market price history for the supplier listing this inventory came from.
+	let priceHistoryCatalogId = $derived.by(() => {
+		const catalog = selectedBean.coffee_catalog as { id?: number; public_coffee?: boolean } | null;
+		if (!catalog || catalog.public_coffee !== true || !catalog.id) return null;
+		if (!canViewPriceHistoryFor(page.data?.auth as PriceHistoryAuth | undefined)) return null;
+		return Number(catalog.id);
+	});
 	let isEditing = $state(false);
 	let editedBean = $state<InventoryWithCatalog>({} as InventoryWithCatalog);
 	let processingUpdate = $state(false);
@@ -407,6 +418,11 @@
 				onToggleEdit={toggleEdit}
 				onDelete={deleteBean}
 			/>
+			{#if priceHistoryCatalogId}
+				<div class="mt-4">
+					<PriceHistorySparkline coffeeId={priceHistoryCatalogId} />
+				</div>
+			{/if}
 		{:else if currentTab === 'cupping'}
 			<CuppingTab
 				{selectedBean}

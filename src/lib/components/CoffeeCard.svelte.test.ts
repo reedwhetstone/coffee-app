@@ -1,5 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
+
+const pageState = vi.hoisted(() => ({ data: {} as Record<string, unknown> }));
+vi.mock('$app/state', () => ({ page: pageState }));
 import CoffeeCard from './CoffeeCard.svelte';
 import CoffeeCardDetailContentHarness from './__test-fixtures__/CoffeeCardDetailContentHarness.svelte';
 import type { CoffeeCatalog } from '$lib/types/component.types';
@@ -132,7 +135,7 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 		expect(screen.getByText('Additives disclosed: Fruit')).toBeTruthy();
 	});
 
-	it('shows price history only to entitled cards and a teaser otherwise', async () => {
+	it('shows price history to members and Intelligence, and a teaser to everyone else', async () => {
 		const fetchSpy = vi
 			.spyOn(globalThis, 'fetch')
 			.mockResolvedValue(
@@ -143,30 +146,60 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 			await fireEvent.click(screen.getByRole('tab', { name: /pricing/i }));
 		};
 
-		const hidden = render(CoffeeCard, { coffee: createCoffee(), parseTastingNotes });
-		await openPricing();
-		expect(screen.queryByLabelText('Price history')).toBeNull();
-		expect(screen.queryByText('Member price history')).toBeNull();
-		hidden.unmount();
-
-		const teaser = render(CoffeeCard, {
-			coffee: createCoffee(),
-			parseTastingNotes,
-			canViewPriceHistory: false
-		});
+		pageState.data = { auth: { role: 'viewer', ppiAccess: false } };
+		const viewer = render(CoffeeCard, { coffee: createCoffee(), parseTastingNotes });
 		await openPricing();
 		expect(screen.getByText('Member price history')).toBeTruthy();
 		expect(fetchSpy).not.toHaveBeenCalled();
-		teaser.unmount();
+		viewer.unmount();
 
-		render(CoffeeCard, { coffee: createCoffee(), parseTastingNotes, canViewPriceHistory: true });
-		await openPricing();
-		expect(screen.getByLabelText('Price history')).toBeTruthy();
+		// Market Index and portfolio cards pass no prop; account entitlement decides.
+		for (const auth of [
+			{ role: 'viewer', ppiAccess: true },
+			{ role: 'member', ppiAccess: false }
+		]) {
+			pageState.data = { auth };
+			const view = render(CoffeeCard, { coffee: createCoffee(), parseTastingNotes });
+			await openPricing();
+			expect(screen.getByLabelText('Price history')).toBeTruthy();
+			view.unmount();
+		}
 		expect(fetchSpy).toHaveBeenCalledWith(
 			expect.stringMatching(/^\/api\/catalog\/\d+\/price-history\?days=180$/),
 			expect.anything()
 		);
+
+		// An explicit catalog entitlement overrides the account default.
+		pageState.data = { auth: { role: 'member', ppiAccess: false } };
+		render(CoffeeCard, { coffee: createCoffee(), parseTastingNotes, canViewPriceHistory: false });
+		await openPricing();
+		expect(screen.getByText('Member price history')).toBeTruthy();
+		pageState.data = {};
 		fetchSpy.mockRestore();
+	});
+
+	it('keeps one detail panel open at a time and closes it on an outside press', async () => {
+		render(CoffeeCard, { coffee: createCoffee({ id: 101, name: 'First Lot' }), parseTastingNotes });
+		render(CoffeeCard, {
+			coffee: createCoffee({ id: 102, name: 'Second Lot' }),
+			parseTastingNotes
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: /view details for first lot/i }));
+		expect(screen.getByRole('dialog', { name: /first lot/i })).toBeTruthy();
+
+		await fireEvent.click(screen.getByRole('button', { name: /view details for second lot/i }));
+		expect(screen.getByRole('dialog', { name: /second lot/i })).toBeTruthy();
+		expect(screen.queryByRole('dialog', { name: /first lot/i })).toBeNull();
+		expect(screen.getAllByRole('dialog')).toHaveLength(1);
+
+		// Presses inside the panel keep it open; a press on the page behind closes it.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		const dialog = screen.getByRole('dialog', { name: /second lot/i });
+		await fireEvent.pointerDown(dialog, { button: 0 });
+		expect(screen.getByRole('dialog', { name: /second lot/i })).toBeTruthy();
+		await fireEvent.pointerDown(document.body, { button: 0 });
+		expect(screen.queryByRole('dialog')).toBeNull();
 	});
 
 	it('shows locked match copy without fetching member-only match details', async () => {

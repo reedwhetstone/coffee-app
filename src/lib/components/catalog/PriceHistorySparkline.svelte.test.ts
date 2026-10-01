@@ -21,7 +21,7 @@ afterEach(() => {
 });
 
 describe('PriceHistorySparkline', () => {
-	it('marks a tier-ladder change and does not claim a comparable price move', async () => {
+	it('marks a minimum-tier change and does not claim a comparable price move', async () => {
 		const fetchMock = respond({
 			points: [
 				point('2026-09-21', 43.36, 0.5),
@@ -31,9 +31,9 @@ describe('PriceHistorySparkline', () => {
 			events: [
 				{
 					date: '2026-09-23',
-					type: 'tier_ladder_change',
-					fromMinLbs: [0.5, 1, 5, 50],
-					toMinLbs: [1, 5, 50]
+					type: 'minimum_tier_change',
+					fromMinLbs: 0.5,
+					toMinLbs: 1
 				}
 			],
 			summary: {
@@ -41,14 +41,14 @@ describe('PriceHistorySparkline', () => {
 				minPriceLb: 19.99,
 				maxPriceLb: 43.36,
 				comparableChangePct: null,
-				tierLadderChanged: true
+				minimumTierChanged: true
 			}
 		});
 		vi.stubGlobal('fetch', fetchMock);
 		render(PriceHistorySparkline, { coffeeId: 8806 });
-		await screen.findByText(/tier structure changed/i);
+		await screen.findByText(/smallest order size changed/i);
 		expect(
-			screen.getByText('Sep 23: tiers changed, minimum order 0.5 lb → 1 lb.')
+			screen.getByText('Sep 23: smallest order changed from 0.5 lb to 1 lb.')
 		).toBeInTheDocument();
 		expect(screen.queryByText(/Down \d/)).toBeNull();
 		expect(screen.getByRole('img')).toBeInTheDocument();
@@ -56,6 +56,27 @@ describe('PriceHistorySparkline', () => {
 			'/api/catalog/8806/price-history?days=180',
 			expect.objectContaining({ signal: expect.any(AbortSignal) })
 		);
+	});
+
+	it('never reports an order-size change when the smallest order is the same', async () => {
+		vi.stubGlobal(
+			'fetch',
+			respond({
+				points: [point('2026-09-16', 9.49), point('2026-09-21', 8.99)],
+				events: [{ date: '2026-09-17', type: 'minimum_tier_change', fromMinLbs: 1, toMinLbs: 1 }],
+				summary: {
+					latestPriceLb: 8.99,
+					minPriceLb: 8.99,
+					maxPriceLb: 9.49,
+					comparableChangePct: -5.27,
+					minimumTierChanged: false
+				}
+			})
+		);
+		render(PriceHistorySparkline, { coffeeId: 416 });
+		await screen.findByText('Down 5.3% since Sep 16, same tiers.');
+		expect(screen.queryByText(/smallest order changed/)).toBeNull();
+		expect(screen.queryByText('Order size changed')).toBeNull();
 	});
 
 	it('states a same-tier change and range', async () => {
@@ -69,7 +90,7 @@ describe('PriceHistorySparkline', () => {
 					minPriceLb: 9,
 					maxPriceLb: 10,
 					comparableChangePct: -10,
-					tierLadderChanged: false
+					minimumTierChanged: false
 				}
 			})
 		);
@@ -89,7 +110,7 @@ describe('PriceHistorySparkline', () => {
 					minPriceLb: 9,
 					maxPriceLb: 9,
 					comparableChangePct: null,
-					tierLadderChanged: false
+					minimumTierChanged: false
 				}
 			})
 		);

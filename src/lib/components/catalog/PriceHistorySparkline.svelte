@@ -8,7 +8,12 @@
 		stocked: boolean;
 	}
 	type PriceEvent =
-		| { date: string; type: 'tier_ladder_change'; fromMinLbs: number[]; toMinLbs: number[] }
+		| {
+				date: string;
+				type: 'minimum_tier_change';
+				fromMinLbs: number | null;
+				toMinLbs: number | null;
+		  }
 		| { date: string; type: 'restocked' | 'unstocked' };
 	interface PriceHistory {
 		points: PricePoint[];
@@ -18,7 +23,7 @@
 			minPriceLb: number | null;
 			maxPriceLb: number | null;
 			comparableChangePct: number | null;
-			tierLadderChanged: boolean;
+			minimumTierChanged: boolean;
 		};
 	}
 
@@ -62,10 +67,12 @@
 	const PAD = { top: 12, right: 12, bottom: 22, left: 44 };
 
 	let points = $derived(history?.points ?? []);
-	let ladderEvents = $derived(
+	// Only a change to the smallest order size makes the plotted price non-comparable;
+	// larger tiers coming and going do not affect it.
+	let minimumTierEvents = $derived(
 		(history?.events ?? []).filter(
-			(event): event is Extract<PriceEvent, { type: 'tier_ladder_change' }> =>
-				event.type === 'tier_ladder_change'
+			(event): event is Extract<PriceEvent, { type: 'minimum_tier_change' }> =>
+				event.type === 'minimum_tier_change' && event.fromMinLbs !== event.toMinLbs
 		)
 	);
 
@@ -114,16 +121,16 @@
 		});
 	}
 
-	function lbs(values: number[]): string {
-		return values.length ? `${values[0]} lb` : 'unknown';
+	function lbs(value: number | null): string {
+		return value == null ? 'unknown' : `${value} lb`;
 	}
 
 	let summaryText = $derived.by(() => {
 		if (!history || points.length < 2) return null;
 		const since = shortDate(points[0].date);
 		const change = history.summary.comparableChangePct;
-		if (history.summary.tierLadderChanged) {
-			return `The tier structure changed, so prices before and after it are not directly comparable.`;
+		if (minimumTierEvents.length > 0) {
+			return `The smallest order size changed, so prices before and after it are not directly comparable.`;
 		}
 		if (change == null || Math.abs(change) < 0.05) return `Unchanged since ${since}.`;
 		return `${change > 0 ? 'Up' : 'Down'} ${Math.abs(change).toFixed(1)}% since ${since}, same tiers.`;
@@ -185,7 +192,7 @@
 				{/if}
 			{/if}
 			<path d={path} fill="none" stroke={MARKER_PRIMARY} stroke-width="2" stroke-linejoin="round" />
-			{#each ladderEvents as event (event.date)}
+			{#each minimumTierEvents as event (event.date)}
 				<line
 					x1={x(event.date)}
 					x2={x(event.date)}
@@ -196,7 +203,7 @@
 					stroke-dasharray="3 3"
 				>
 					<title
-						>{shortDate(event.date)}: tiers changed (minimum {lbs(event.fromMinLbs)} → {lbs(
+						>{shortDate(event.date)}: smallest order changed ({lbs(event.fromMinLbs)} → {lbs(
 							event.toMinLbs
 						)})</title
 					>
@@ -206,7 +213,7 @@
 					y={(PAD.top + HEIGHT - PAD.bottom) / 2}
 					text-anchor="start"
 					font-size="10"
-					fill={AXIS_LABEL_COLOR}>Tiers changed</text
+					fill={AXIS_LABEL_COLOR}>Order size changed</text
 				>
 			{/each}
 			<circle
@@ -229,9 +236,9 @@
 		{#if summaryText}
 			<p class="mt-2 text-sm text-ink">{summaryText}</p>
 		{/if}
-		{#each ladderEvents as event (event.date)}
+		{#each minimumTierEvents as event (event.date)}
 			<p class="mt-1 text-xs text-muted">
-				{shortDate(event.date)}: tiers changed, minimum order {lbs(event.fromMinLbs)} → {lbs(
+				{shortDate(event.date)}: smallest order changed from {lbs(event.fromMinLbs)} to {lbs(
 					event.toMinLbs
 				)}.
 			</p>
