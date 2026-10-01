@@ -43,6 +43,8 @@
 		priceContext = null,
 		tracked = false,
 		onToggleTrack = undefined,
+		compareSelected = false,
+		onToggleCompare = undefined,
 		showCatalogLink = false,
 		initialDetailsOpen = false,
 		detailOnly = false,
@@ -68,6 +70,9 @@
 		canViewPriceHistory?: boolean;
 		similarComparisonActive?: boolean;
 		onCompareSimilar?: (coffee: CoffeeCatalog) => void;
+		/** Shows an "Add to compare" toggle when provided. */
+		onToggleCompare?: (coffee: CoffeeCatalog) => void;
+		compareSelected?: boolean;
 		enableDetails?: boolean;
 		priceContext?: LotPriceContext | null;
 		tracked?: boolean;
@@ -537,6 +542,40 @@
 					</button>
 				{:else}
 					<span></span>
+				{/if}
+
+				{#if onToggleCompare}
+					<button
+						type="button"
+						class="pointer-events-auto inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs font-semibold transition-colors hover:bg-accent/10 {compareSelected
+							? 'text-accent'
+							: 'text-muted hover:text-accent'}"
+						aria-label={compareSelected
+							? `Remove ${coffee.name} from comparison`
+							: `Add ${coffee.name} to comparison`}
+						aria-pressed={compareSelected}
+						title={compareSelected ? 'Remove from comparison' : 'Add to comparison'}
+						onclick={(event) => {
+							event.stopPropagation();
+							onToggleCompare(coffee);
+						}}
+					>
+						<svg
+							class="h-4 w-4"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+							aria-hidden="true"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M9 4H5a1 1 0 00-1 1v14a1 1 0 001 1h4m6-16h4a1 1 0 011 1v14a1 1 0 01-1 1h-4M12 3v18"
+							/>
+						</svg>
+						{compareSelected ? 'Comparing' : 'Compare'}
+					</button>
 				{/if}
 
 				{#if onToggleTrack}

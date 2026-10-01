@@ -26,7 +26,8 @@
 		},
 		{
 			title: 'Supplier evidence',
-			description: 'Compare live offers, supplier coverage, and supplier health in context.'
+			description:
+				'Compare up to six coffees side by side, priced at your quantity, plus live offers, supplier coverage, and supplier health. Free accounts compare two.'
 		},
 		{
 			title: 'Price context',
