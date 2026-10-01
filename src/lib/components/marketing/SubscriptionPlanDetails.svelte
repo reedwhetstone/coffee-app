@@ -30,7 +30,8 @@
 		},
 		{
 			title: 'Price context',
-			description: 'Review origin benchmarks, market signals, and extended price history.'
+			description:
+				"Review origin benchmarks, market signals, and each coffee's price history with tier changes marked."
 		},
 		{
 			title: 'Sourcing decision',

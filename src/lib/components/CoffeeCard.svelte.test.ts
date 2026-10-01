@@ -132,6 +132,43 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 		expect(screen.getByText('Additives disclosed: Fruit')).toBeTruthy();
 	});
 
+	it('shows price history only to entitled cards and a teaser otherwise', async () => {
+		const fetchSpy = vi
+			.spyOn(globalThis, 'fetch')
+			.mockResolvedValue(
+				new Response(JSON.stringify({ data: { points: [], events: [], summary: {} } }))
+			);
+		const openPricing = async () => {
+			await fireEvent.click(screen.getByRole('button', { name: /view details for process lot/i }));
+			await fireEvent.click(screen.getByRole('tab', { name: /pricing/i }));
+		};
+
+		const hidden = render(CoffeeCard, { coffee: createCoffee(), parseTastingNotes });
+		await openPricing();
+		expect(screen.queryByLabelText('Price history')).toBeNull();
+		expect(screen.queryByText('Member price history')).toBeNull();
+		hidden.unmount();
+
+		const teaser = render(CoffeeCard, {
+			coffee: createCoffee(),
+			parseTastingNotes,
+			canViewPriceHistory: false
+		});
+		await openPricing();
+		expect(screen.getByText('Member price history')).toBeTruthy();
+		expect(fetchSpy).not.toHaveBeenCalled();
+		teaser.unmount();
+
+		render(CoffeeCard, { coffee: createCoffee(), parseTastingNotes, canViewPriceHistory: true });
+		await openPricing();
+		expect(screen.getByLabelText('Price history')).toBeTruthy();
+		expect(fetchSpy).toHaveBeenCalledWith(
+			expect.stringMatching(/^\/api\/catalog\/\d+\/price-history\?days=180$/),
+			expect.anything()
+		);
+		fetchSpy.mockRestore();
+	});
+
 	it('shows locked match copy without fetching member-only match details', async () => {
 		const fetchSpy = vi.spyOn(globalThis, 'fetch');
 

@@ -76,4 +76,16 @@ describe('resolveCatalogAccessCapabilities', () => {
 		expect(enterprise.canUseBeanMatching).toBe(true);
 		expect(enterprise.canViewPremiumFilterMetadata).toBe(true);
 	});
+
+	it('grants per-lot price history to members, API keys, and Intelligence sessions only', () => {
+		const resolve = (principal: RequestPrincipal) =>
+			resolveCatalogAccessCapabilities({ principal }).canViewPriceHistory;
+		expect(resolve(anonymousPrincipal)).toBe(false);
+		expect(resolve(sessionPrincipal('viewer'))).toBe(false);
+		expect(resolve({ ...sessionPrincipal('viewer'), ppiAccess: true } as RequestPrincipal)).toBe(
+			true
+		);
+		expect(resolve(sessionPrincipal('member'))).toBe(true);
+		expect(resolve(apiPrincipal('viewer'))).toBe(true);
+	});
 });

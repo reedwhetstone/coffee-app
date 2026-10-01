@@ -24,6 +24,7 @@
 	import { getPurveyorScoreSummary } from '$lib/catalog/purveyorScore';
 	import type { LotPriceContext, LotPriceTier } from '$lib/catalog/priceContext';
 	import { formatSourceName } from '$lib/utils/formatters';
+	import PriceHistorySparkline from '$lib/components/catalog/PriceHistorySparkline.svelte';
 
 	let {
 		coffee: initialCoffee,
@@ -33,6 +34,7 @@
 		annotation = '',
 		showSimilarComparisonAction = false,
 		canUseBeanMatching = false,
+		canViewPriceHistory = null,
 		enableDetails = true,
 		priceContext = null,
 		tracked = false,
@@ -54,6 +56,8 @@
 		annotation?: string;
 		showSimilarComparisonAction?: boolean;
 		canUseBeanMatching?: boolean;
+		/** true shows the price-history chart, false a member teaser, null nothing. */
+		canViewPriceHistory?: boolean | null;
 		similarComparisonActive?: boolean;
 		onCompareSimilar?: (coffee: CoffeeCatalog) => void;
 		enableDetails?: boolean;
@@ -906,6 +910,23 @@
 										</div>
 									</div>
 								{/each}
+							</div>
+						{/if}
+						{#if canViewPriceHistory === true}
+							<PriceHistorySparkline coffeeId={Number(coffee.id)} />
+						{:else if canViewPriceHistory === false}
+							<div class="rounded-lg border border-line bg-surface-panel p-4">
+								<p class="text-xs font-semibold text-intelligence">Member price history</p>
+								<p class="mt-1 text-sm text-muted">
+									See how this coffee's price has moved, with tier changes marked, with a
+									membership.
+								</p>
+								<a
+									href="/subscription"
+									class="mt-3 inline-flex text-sm font-semibold text-link hover:text-accent"
+								>
+									Compare plans <span aria-hidden="true">→</span>
+								</a>
 							</div>
 						{/if}
 					</div>
