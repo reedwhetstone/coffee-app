@@ -31,7 +31,7 @@ export const SELF_SERVE_PLANS: readonly SelfServePlan[] = [
 			'See what changed across the market, compare live supplier offers, and use Cherry AI to turn the evidence into a sharper sourcing decision.',
 		features: [
 			'Cherry Green Agent with catalog, supplier, portfolio, and market context',
-			'Supplier comparisons, arrivals, delistings, and market signals',
+			'Side-by-side coffee and supplier comparisons, arrivals, delistings, and market signals',
 			'Origin benchmarks, price history for each coffee, and a weekly procurement brief'
 		],
 		learnMoreHref: '/subscription#intelligence-details',

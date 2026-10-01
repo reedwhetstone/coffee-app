@@ -38,6 +38,8 @@
 		catalogCoffeeId: (coffee: unknown) => number | null;
 		catalogCoffeeCardKey: (coffee: CoffeeCatalog) => string;
 		onToggleTrack: (catalogId: number) => Promise<void>;
+		compareIds?: Set<number>;
+		onToggleCompare?: (coffee: CoffeeCatalog) => void;
 	}
 
 	let {
@@ -61,7 +63,9 @@
 		getCardPriceContext,
 		catalogCoffeeId,
 		catalogCoffeeCardKey,
-		onToggleTrack
+		onToggleTrack,
+		compareIds = new Set<number>(),
+		onToggleCompare = undefined
 	}: Props = $props();
 </script>
 
@@ -174,6 +178,8 @@
 							priceContext={getCardPriceContext(coffee)}
 							tracked={trackedIds.has((coffee as unknown as { id: number }).id)}
 							onToggleTrack={canUseSourcingIntelligence ? onToggleTrack : undefined}
+							{onToggleCompare}
+							compareSelected={compareIds.has(Number(coffee.id))}
 							initialDetailsOpen={deepLinkCoffeeId === catalogCoffeeId(coffee)}
 						/>
 					{/each}

@@ -16,6 +16,9 @@
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
 	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
+	import { compareSelection } from '$lib/stores/compareSelection.svelte';
+	import { compareLimitFor, type CompareAuth } from '$lib/catalog/compareAccess';
+	import CompareTray from '$lib/components/catalog/compare/CompareTray.svelte';
 	import { getLotPriceContext } from '$lib/catalog/priceContext';
 	import type { OriginPriceStats, LotPriceContext } from '$lib/catalog/priceContext';
 	import { getDisplayPrice } from '$lib/utils/pricing';
@@ -55,6 +58,22 @@
 	}
 
 	let trackedIds = $state<Set<number>>(new Set());
+
+	// Side-by-side comparison: viewers pick 2, members and Intelligence pick 6.
+	let compareLimit = $derived(compareLimitFor(page.data?.auth as CompareAuth | undefined));
+	let compareIds = $derived(new Set(compareSelection.items.map((item) => item.id)));
+	let compareNotice = $state<'sign_in' | 'limit' | null>(null);
+	function handleToggleCompare(coffee: CoffeeCatalog) {
+		if (compareLimit === 0) {
+			compareNotice = 'sign_in';
+			return;
+		}
+		const changed = compareSelection.toggle(
+			{ id: Number(coffee.id), name: coffee.name ?? `Coffee ${coffee.id}` },
+			compareLimit
+		);
+		compareNotice = changed ? null : 'limit';
+	}
 	let trackedIdsReady = $state(false);
 
 	$effect(() => {
@@ -656,6 +675,8 @@
 		{catalogCoffeeId}
 		{catalogCoffeeCardKey}
 		onToggleTrack={handleToggleTrack}
+		{compareIds}
+		onToggleCompare={handleToggleCompare}
 	/>
 {/snippet}
 
@@ -787,6 +808,8 @@
 						priceContext={getCardPriceContext(coffee)}
 						tracked={trackedIds.has(coffee.id)}
 						onToggleTrack={canUseSourcingIntelligence ? handleToggleTrack : undefined}
+						onToggleCompare={handleToggleCompare}
+						compareSelected={compareIds.has(Number(coffee.id))}
 						initialDetailsOpen={true}
 						detailCloseLabel="Back to map"
 						onDetailClose={onClose}
@@ -801,3 +824,9 @@
 		{/if}
 	</div>
 {/if}
+
+<CompareTray
+	limit={compareLimit}
+	notice={compareNotice}
+	onDismissNotice={() => (compareNotice = null)}
+/>
