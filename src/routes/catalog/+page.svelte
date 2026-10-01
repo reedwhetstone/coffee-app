@@ -351,6 +351,7 @@
 	);
 
 	let canUseBeanMatching = $derived(data.catalogAccess?.canUseBeanMatching === true);
+	let canViewPriceHistory = $derived(data.catalogAccess?.canViewPriceHistory === true);
 	let canUseParchmentIntelligence = $derived(ppiAccess === true);
 	let canUseSourcingIntelligence = $derived(
 		canUseParchmentIntelligence || hasRequiredRole('member')
@@ -643,6 +644,7 @@
 		activeOriginStats={activeOriginStats()}
 		{trackedIds}
 		{canUseBeanMatching}
+		{canViewPriceHistory}
 		canUseSourcingIntelligence={canUseSourcingIntelligence && trackedIdsReady}
 		{trackedOnlyView}
 		trackedLotsKnown={trackedIdsReady}
@@ -781,6 +783,7 @@
 						{parseTastingNotes}
 						showSimilarComparisonAction={true}
 						{canUseBeanMatching}
+						{canViewPriceHistory}
 						priceContext={getCardPriceContext(coffee)}
 						tracked={trackedIds.has(coffee.id)}
 						onToggleTrack={canUseSourcingIntelligence ? handleToggleTrack : undefined}

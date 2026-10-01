@@ -32,7 +32,7 @@ export const SELF_SERVE_PLANS: readonly SelfServePlan[] = [
 		features: [
 			'Cherry Green Agent with catalog, supplier, portfolio, and market context',
 			'Supplier comparisons, arrivals, delistings, and market signals',
-			'Origin benchmarks, price history, and a weekly procurement brief'
+			'Origin benchmarks, price history for each coffee, and a weekly procurement brief'
 		],
 		learnMoreHref: '/subscription#intelligence-details',
 		offer: BILLING_OFFERS.intelligenceMonthly

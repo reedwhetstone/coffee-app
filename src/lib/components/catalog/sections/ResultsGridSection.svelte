@@ -26,6 +26,7 @@
 		activeOriginStats: OriginPriceStats | null;
 		trackedIds: Set<number>;
 		canUseBeanMatching: boolean;
+		canViewPriceHistory: boolean;
 		canUseSourcingIntelligence: boolean;
 		trackedOnlyView: boolean;
 		trackedLotsKnown: boolean;
@@ -49,6 +50,7 @@
 		activeOriginStats,
 		trackedIds,
 		canUseBeanMatching,
+		canViewPriceHistory,
 		canUseSourcingIntelligence,
 		trackedOnlyView,
 		trackedLotsKnown,
@@ -168,6 +170,7 @@
 							{parseTastingNotes}
 							showSimilarComparisonAction={true}
 							{canUseBeanMatching}
+							{canViewPriceHistory}
 							priceContext={getCardPriceContext(coffee)}
 							tracked={trackedIds.has((coffee as unknown as { id: number }).id)}
 							onToggleTrack={canUseSourcingIntelligence ? onToggleTrack : undefined}

@@ -1,6 +1,10 @@
 <script lang="ts">
 	import type { Component, Snippet } from 'svelte';
 	import { detailDialog } from '$lib/utils/detailDialog';
+	import { dismissOnOutsidePointer } from '$lib/utils/dismissOnOutsidePointer';
+	import { coffeeDetailFocus } from '$lib/stores/coffeeDetailFocus.svelte';
+	import { page } from '$app/state';
+	import { canViewPriceHistoryFor, type PriceHistoryAuth } from '$lib/catalog/priceHistoryAccess';
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import SimilarCoffeePanel from '$lib/components/catalog/SimilarCoffeePanel.svelte';
 	import {
@@ -24,6 +28,7 @@
 	import { getPurveyorScoreSummary } from '$lib/catalog/purveyorScore';
 	import type { LotPriceContext, LotPriceTier } from '$lib/catalog/priceContext';
 	import { formatSourceName } from '$lib/utils/formatters';
+	import PriceHistorySparkline from '$lib/components/catalog/PriceHistorySparkline.svelte';
 
 	let {
 		coffee: initialCoffee,
@@ -33,6 +38,7 @@
 		annotation = '',
 		showSimilarComparisonAction = false,
 		canUseBeanMatching = false,
+		canViewPriceHistory = undefined,
 		enableDetails = true,
 		priceContext = null,
 		tracked = false,
@@ -54,6 +60,12 @@
 		annotation?: string;
 		showSimilarComparisonAction?: boolean;
 		canUseBeanMatching?: boolean;
+		/**
+		 * Overrides the price-history entitlement. When omitted, the card uses the
+		 * signed-in account: members and Parchment Intelligence see the chart, and
+		 * everyone else sees a member teaser.
+		 */
+		canViewPriceHistory?: boolean;
 		similarComparisonActive?: boolean;
 		onCompareSimilar?: (coffee: CoffeeCatalog) => void;
 		enableDetails?: boolean;
@@ -134,6 +146,24 @@
 	// Deliberate initial-value capture: the prop seeds the open state only.
 	// svelte-ignore state_referenced_locally
 	let detailsOpen = $state(initialDetailsOpen);
+
+	// One shared entitlement rule for every surface that renders a CoffeeCard
+	// (catalog, Market Index, portfolio, chat), unless a caller overrides it.
+	let showPriceHistory = $derived.by(() => {
+		if (canViewPriceHistory !== undefined) return canViewPriceHistory;
+		return canViewPriceHistoryFor(page.data?.auth as PriceHistoryAuth | undefined);
+	});
+
+	// Opening this card's panel closes any other open coffee panel.
+	const detailOwner = Symbol('coffee-detail');
+	$effect(() => {
+		if (detailsOpen && coffeeDetailFocus.owner === null) coffeeDetailFocus.claim(detailOwner);
+	});
+	$effect(() => {
+		const current = coffeeDetailFocus.owner;
+		if (detailsOpen && current !== null && current !== detailOwner) closeDetails();
+	});
+	$effect(() => () => coffeeDetailFocus.release(detailOwner));
 	let activeTab = $state<DetailTab>('overview');
 	let hydratedCoffee = $state.raw<CoffeeCatalog | null>(null);
 	let hydratedSource = $state.raw<CoffeeCatalog | null>(null);
@@ -348,9 +378,11 @@
 		onDetailOpen?.();
 		activeTab = tab;
 		detailsOpen = true;
+		coffeeDetailFocus.claim(detailOwner);
 	}
 
 	function closeDetails() {
+		coffeeDetailFocus.release(detailOwner);
 		detailsOpen = false;
 		activeTab = 'overview';
 		onDetailClose?.();
@@ -589,6 +621,7 @@
 	>
 		<div
 			use:detailDialog={closeDetails}
+			use:dismissOnOutsidePointer={closeDetails}
 			role="dialog"
 			tabindex="-1"
 			class="pointer-events-auto flex h-[calc(100dvh-4.5rem)] max-h-[calc(100dvh-4.5rem)] min-h-0 w-full max-w-full flex-col overflow-hidden rounded-t-2xl border-l border-line bg-surface-canvas shadow-2xl sm:max-w-xl md:h-[100dvh] md:max-h-[100dvh] md:rounded-none xl:max-w-2xl"
@@ -906,6 +939,23 @@
 										</div>
 									</div>
 								{/each}
+							</div>
+						{/if}
+						{#if showPriceHistory}
+							<PriceHistorySparkline coffeeId={Number(coffee.id)} />
+						{:else}
+							<div class="rounded-lg border border-line bg-surface-panel p-4">
+								<p class="text-xs font-semibold text-intelligence">Member price history</p>
+								<p class="mt-1 text-sm text-muted">
+									See how this coffee's price has moved, with tier changes marked, with a
+									membership.
+								</p>
+								<a
+									href="/subscription"
+									class="mt-3 inline-flex text-sm font-semibold text-link hover:text-accent"
+								>
+									Compare plans <span aria-hidden="true">→</span>
+								</a>
 							</div>
 						{/if}
 					</div>

@@ -17,6 +17,8 @@ export interface CatalogAccessCapabilities {
 	canViewPremiumFilterMetadata: boolean;
 	canUseSemanticSearch: boolean;
 	canUseBeanMatching: boolean;
+	/** Per-lot price history: member sessions, API keys, and Intelligence sessions. */
+	canViewPriceHistory: boolean;
 	canUseSavedSearches: boolean;
 	canExport: boolean;
 }
@@ -97,6 +99,9 @@ export function resolveCatalogAccessCapabilities(
 		canViewPremiumFilterMetadata: canUsePublicSearchLeverage,
 		canUseSemanticSearch: canUsePublicSearchLeverage,
 		canUseBeanMatching: canUsePublicSearchLeverage,
+		canViewPriceHistory:
+			canUsePublicSearchLeverage ||
+			(!subject.isApiKey && subject.isAuthenticated && input.principal.ppiAccess === true),
 		canUseSavedSearches: canUseAccountWorkflow,
 		canExport: canUseAccountWorkflow
 	};
