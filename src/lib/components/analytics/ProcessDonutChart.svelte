@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { PROCESS_COLORS, PROCESS_FALLBACK_COLORS } from '$lib/styles/chartColors';
 	import { arc, pie } from 'd3-shape';
+	import { foldSmallProcessSlices } from '$lib/analytics/processSlices';
 
 	interface Bucket {
 		name: string;
@@ -19,38 +20,8 @@
 
 	let total = $derived(data.reduce((s, d) => s + d.count, 0));
 
-	// Merge slices < 3% into "Other"
-	let mergedData = $derived.by((): Bucket[] => {
-		if (total === 0) return data;
-		const threshold = total * 0.03;
-		const main: Bucket[] = [];
-		let otherCount = 0;
-		// Find existing "Other" first so we don't double-count
-		for (const d of data) {
-			if (d.name === 'Other' || d.name === 'Unknown') {
-				// Keep Unknown separate if it's big enough, else fold into Other
-				if (d.count >= threshold) {
-					main.push(d);
-				} else {
-					otherCount += d.count;
-				}
-			} else if (d.count < threshold) {
-				otherCount += d.count;
-			} else {
-				main.push(d);
-			}
-		}
-		if (otherCount > 0) {
-			// Merge into existing Other bucket if present
-			const existingOther = main.find((d) => d.name === 'Other');
-			if (existingOther) {
-				existingOther.count += otherCount;
-			} else {
-				main.push({ name: 'Other', count: otherCount });
-			}
-		}
-		return main.sort((a, b) => b.count - a.count);
-	});
+	// Merge slices < 3% into "Other" without mutating the caller's data
+	let mergedData = $derived(foldSmallProcessSlices(data));
 
 	let radius = $derived(Math.min(containerW, containerH) / 2 - 10);
 	let innerRadius = $derived(radius * 0.55);
