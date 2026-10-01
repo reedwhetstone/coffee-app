@@ -21,11 +21,18 @@
 	let differenceCount = $derived(comparison.rows.filter((row) => row.relation !== 'same').length);
 
 	const PRICE_KEYS = new Set(['price_at_quantity', 'smallest_tier_price']);
-	// Rows Purveyors derives rather than reads from the listing; a null means the
-	// benchmark is missing, not that the supplier withheld something.
+	// Rows Purveyors derives rather than reads from the listing (Parchment rowSpecs);
+	// a null means the derived value is missing, not that the supplier withheld it.
 	const DERIVED_UNAVAILABLE: Record<string, string> = {
-		vs_origin_median: 'Benchmark unavailable'
+		vs_origin_median: 'Benchmark unavailable',
+		disclosure: 'Not assessed',
+		purveyor_score: 'Not scored'
 	};
+
+	function unavailableLabel(key: string): string {
+		if (key.startsWith('taste_')) return 'Not rated';
+		return DERIVED_UNAVAILABLE[key] ?? 'Not disclosed';
+	}
 
 	// A shared link can carry any positive quantity; keep it selectable.
 	let pickerOptions = $derived(
@@ -59,7 +66,7 @@
 			if (row.key === 'price_at_quantity' && lot.price.minOrderLbs) {
 				return `Minimum order ${lot.price.minOrderLbs} lb`;
 			}
-			return DERIVED_UNAVAILABLE[row.key] ?? 'Not disclosed';
+			return unavailableLabel(row.key);
 		}
 		if (typeof value === 'number') {
 			if (PRICE_KEYS.has(row.key)) return money(value);
@@ -212,6 +219,7 @@
 	<p class="text-xs text-muted">
 		Prices are per pound at the tier that applies to the selected quantity. Purveyor Score measures
 		how complete a listing is, not cup quality. "Not disclosed" means the supplier does not list it;
-		"Benchmark unavailable" means there is no origin median to compare against.
+		"Benchmark unavailable" means there is no origin median to compare against. "Not assessed", "Not
+		rated", and "Not scored" mean Purveyors has not derived that value for the listing yet.
 	</p>
 </div>

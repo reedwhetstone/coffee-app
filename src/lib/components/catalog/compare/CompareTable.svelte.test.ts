@@ -125,6 +125,50 @@ describe('CompareTable', () => {
 		expect(within(row).queryByText('Not disclosed')).toBeNull();
 	});
 
+	it('labels other derived rows by why the value is missing', () => {
+		render(CompareTable, {
+			comparison: {
+				...comparison,
+				rows: [
+					{
+						key: 'disclosure',
+						group: 'Process',
+						label: 'Process disclosure',
+						values: ['high_detail', null, null],
+						relation: 'partial',
+						bestLotIds: []
+					},
+					{
+						key: 'taste_body',
+						group: 'Taste',
+						label: 'Body',
+						values: [null, 'Syrupy (4/5)', null],
+						relation: 'partial',
+						bestLotIds: []
+					},
+					{
+						key: 'purveyor_score',
+						group: 'Listing',
+						label: 'Purveyor Score (listing completeness)',
+						values: [82, null, 74],
+						relation: 'different',
+						bestLotIds: []
+					}
+				]
+			},
+			quantityOptions: [1, 5, 10],
+			onQuantityChange: vi.fn(),
+			onRemove: vi.fn()
+		});
+		const cells = (name: string) => within(screen.getByRole('rowheader', { name }).closest('tr')!);
+		expect(cells('Process disclosure').getAllByText('Not assessed')).toHaveLength(2);
+		expect(cells('Body').getAllByText('Not rated')).toHaveLength(2);
+		expect(
+			cells('Purveyor Score (listing completeness)').getByText('Not scored')
+		).toBeInTheDocument();
+		expect(screen.getByRole('table').textContent).not.toContain('Not disclosed');
+	});
+
 	it('keeps a shared quantity outside the presets selectable', () => {
 		render(CompareTable, {
 			comparison: { ...comparison, quantityLbs: 3 },
