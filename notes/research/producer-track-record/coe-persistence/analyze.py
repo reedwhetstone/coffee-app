@@ -90,12 +90,15 @@ def resolve(df, rule):
     """Return entity id per row. rule in {'standard', 'strict', 'name_only'}.
 
     name_only: same country + same normalised farm name (upper bound; merges unrelated homonym farms).
-    standard : same normalised farm name AND (>=2 shared farmer/owner tokens, or 1 shared token that is rare in the
-               country's farmer names or accompanied by an overlapping region token); lots with no farmer listed attach to a
+    standard : same normalised farm name AND (>=2 shared farmer/owner tokens, both owners the same single token, or
+               1 shared token that is rare in the country's farmer names or accompanied by an overlapping region token); lots with no farmer listed attach to a
                farm name only when exactly one entity with that name exists in the country. Also links the same
                farmer (>=2 shared tokens) across near-identical farm names (similarity >= 0.85).
-    strict   : same normalised farm name AND >=2 shared farmer tokens (or identical single-token owner);
+    strict   : same normalised farm name AND (>=2 shared farmer tokens, or both owners are the same single token);
                no-farmer lots stay unlinked.
+    A single shared token never links on its own: 'Martinez' vs 'Juan Martinez' at two unrelated 'La Esperanza' farms
+    stays split unless the token is rare in the country or the regions overlap (standard only). Both owners listed as
+    exactly 'Martinez' link under both rules, so strict stays a subset of standard.
     """
     ids = pd.Series(index=df.index, dtype=object)
     for country, g in df.groupby("country"):
@@ -126,11 +129,10 @@ def resolve(df, rule):
                     tb = g.at[b, "ftok"]
                     shared = ta & tb
                     if rule == "strict":
-                        link = len(shared) >= 2 or (len(shared) == 1 and min(len(ta), len(tb)) == 1)
+                        link = len(shared) >= 2 or (len(ta) == 1 and ta == tb)
                     else:
-                        link = len(shared) >= 2 or (len(shared) == 1 and (
-                            min(len(ta), len(tb)) == 1 or tok_freq[next(iter(shared))] <= rare_cut
-                            or (g.at[a, "rtok"] & g.at[b, "rtok"])))
+                        link = len(shared) >= 2 or (len(ta) == 1 and ta == tb) or (len(shared) == 1 and (
+                            tok_freq[next(iter(shared))] <= rare_cut or bool(g.at[a, "rtok"] & g.at[b, "rtok"])))
                     if link:
                         dsu.union(pos[a], pos[b])
         if rule == "standard":
@@ -219,7 +221,7 @@ def repeat_table(py, cy, label):
         last = max(cy[country])
         yrs_by_ent = g.groupby("ent")["year"].apply(lambda s: sorted(set(s))).to_dict()
         firsts = {e: y[0] for e, y in yrs_by_ent.items()}
-        for k in [1, 2, 3]:
+        for k in [1, 2, 3, 5]:
             # first observed appearance cohort
             elig = [e for e, y0 in firsts.items() if y0 + k <= last]
             hit = [e for e in elig if any(firsts[e] < y <= firsts[e] + k for y in yrs_by_ent[e])]
@@ -423,6 +425,13 @@ for label, f, d in models:
             prow.append(dict(model=label, term=term, coef=m.params[term], se=m.bse[term], p=m.pvalues[term],
                              pct_effect=np.expm1(m.params[term]), n=int(m.nobs), r2=m.rsquared,
                              score_coef=m.params["sc"]))
+            if term == "prior_top10":
+                # prior_top10 is nested inside prior: a prior top-10 farm vs a farm with no prior placement is
+                # prior + prior_top10, not prior_top10 alone (which is the increment over prior non-top-10 farms)
+                tt = m.t_test("prior + prior_top10 = 0")
+                c, se_c, p_c = float(np.squeeze(tt.effect)), float(np.squeeze(tt.sd)), float(np.squeeze(tt.pvalue))
+                prow.append(dict(model=label, term="prior+prior_top10", coef=c, se=se_c, p=p_c, pct_effect=np.expm1(c),
+                                 n=int(m.nobs), r2=m.rsquared, score_coef=m.params["sc"]))
 prow = pd.DataFrame(prow)
 say(prow.to_string(index=False, float_format=lambda x: f"{x:.3f}"))
 prow.to_csv(os.path.join(OUT, "price_regressions.csv"), index=False)
@@ -433,8 +442,12 @@ m, _ = fit("log_price ~ sc + sc2 + C(pos_b) + prior + log_w + C(slug)", lp, "pos
 say(f"Robustness, + placement-position buckets (1, 2-3, 4-10, 11+): prior coef {m.params['prior']:.3f} "
     f"(se {m.bse['prior']:.3f}, p {m.pvalues['prior']:.3g}) => {np.expm1(m.params['prior']):+.1%}")
 m, _ = fit("log_price ~ sc + sc2 + C(pos_b) + prior + prior_top10 + log_w + C(slug)", lp, "pos")
-say(f"Robustness, + position buckets, prior_top10 coef {m.params['prior_top10']:.3f} (se {m.bse['prior_top10']:.3f}, "
-    f"p {m.pvalues['prior_top10']:.3g}) => {np.expm1(m.params['prior_top10']):+.1%}; prior (non-top-10) {m.params['prior']:.3f}")
+tt = m.t_test("prior + prior_top10 = 0")
+c_top = float(np.squeeze(tt.effect))
+say(f"Robustness, + position buckets, prior_top10 increment over prior non-top-10 {m.params['prior_top10']:.3f} "
+    f"(se {m.bse['prior_top10']:.3f}, p {m.pvalues['prior_top10']:.3g}); prior (non-top-10) {m.params['prior']:.3f}; "
+    f"prior top-10 vs no prior placement (prior + prior_top10) {c_top:.3f} (se {float(np.squeeze(tt.sd)):.3f}, "
+    f"p {float(np.squeeze(tt.pvalue)):.3g}) => {np.expm1(c_top):+.1%}")
 say(f"Scale: one cupping point ~ {np.expm1(prow.loc[prow.model == '+ log lot size', 'score_coef'].iloc[0]):+.1%} price at 87 points "
     f"(linear term; quadratic term makes the slope steeper at higher scores)")
 
@@ -536,7 +549,8 @@ for b in range(300):
     hits = 0
     for _, r in bpw.iterrows():
         k = (r.country, int(r.next_year))
-        cands = [x - {"wataru"} for x, e in zip(pools[k], pool_ents[k]) if e != r.ent_standard]
+        # condition the null like the observed sample: only candidates with a non-Wataru buyer left
+        cands = [x - {"wataru"} for x, e in zip(pools[k], pool_ents[k]) if e != r.ent_standard and x - {"wataru"}]
         hits += len(r.b1 & cands[RNG.integers(len(cands))]) > 0
     nw_.append(hits / len(bpw))
 say(f"Excluding Wataru: n={len(bpw)}, repeat-buyer share {ov_w:.3f} vs chance {np.mean(nw_):.3f} (lift {ov_w / np.mean(nw_):.2f}x)")

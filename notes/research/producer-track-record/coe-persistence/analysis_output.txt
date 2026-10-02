@@ -29,105 +29,129 @@ nicaragua: 22 years 2002-2026; missing years: [2013, 2016, 2019]
      brazil                   within 1y      498            61        0.122  812.000     140.000      0.172
      brazil                   within 2y      485            86        0.177  787.000     190.000      0.241
      brazil                   within 3y      465           106        0.228  755.000     226.000      0.299
+     brazil                   within 5y      436           123        0.282  702.000     250.000      0.356
      brazil ever (first year <= last-5)      436           151        0.346      NaN         NaN        NaN
    colombia                   within 1y      428            21        0.049  496.000      27.000      0.054
    colombia                   within 2y      415            34        0.082  474.000      41.000      0.086
    colombia                   within 3y      399            33        0.083  451.000      42.000      0.093
+   colombia                   within 5y      353            32        0.091  398.000      44.000      0.111
    colombia ever (first year <= last-5)      353            47        0.133      NaN         NaN        NaN
  costa-rica                   within 1y      289            49        0.170  487.000     126.000      0.259
  costa-rica                   within 2y      277            65        0.235  460.000     150.000      0.326
  costa-rica                   within 3y      271            76        0.280  435.000     156.000      0.359
+ costa-rica                   within 5y      251            76        0.303  385.000     140.000      0.364
  costa-rica ever (first year <= last-5)      251            87        0.347      NaN         NaN        NaN
 el-salvador                   within 1y      336            58        0.173  613.000     151.000      0.246
 el-salvador                   within 2y      326            78        0.239  589.000     193.000      0.328
 el-salvador                   within 3y      313            86        0.275  562.000     221.000      0.393
+el-salvador                   within 5y      288            92        0.319  506.000     229.000      0.453
 el-salvador ever (first year <= last-5)      288           107        0.372      NaN         NaN        NaN
   guatemala                   within 1y      273            49        0.179  563.000     165.000      0.293
   guatemala                   within 2y      261            69        0.264  533.000     204.000      0.383
   guatemala                   within 3y      254            77        0.303  505.000     221.000      0.438
+  guatemala                   within 5y      232            82        0.353  447.000     218.000      0.488
   guatemala ever (first year <= last-5)      232           104        0.448      NaN         NaN        NaN
    honduras                   within 1y      371            62        0.167  592.000     123.000      0.208
    honduras                   within 2y      359            79        0.220  563.000     161.000      0.286
    honduras                   within 3y      343            86        0.251  534.000     176.000      0.330
+   honduras                   within 5y      313            89        0.284  479.000     175.000      0.365
    honduras ever (first year <= last-5)      313           103        0.329      NaN         NaN        NaN
   nicaragua                   within 1y      370            66        0.178  588.000     118.000      0.201
   nicaragua                   within 2y      360            81        0.225  558.000     142.000      0.254
   nicaragua                   within 3y      347            90        0.259  528.000     155.000      0.294
+  nicaragua                   within 5y      324            91        0.281  486.000     157.000      0.323
   nicaragua ever (first year <= last-5)      324           112        0.346      NaN         NaN        NaN
         ALL ever (first year <= last-5)     2197           711        0.324    0.000       0.000        NaN
         ALL                   within 1y     2565           366        0.143 4151.000     850.000      0.205
         ALL                   within 2y     2483           492        0.198 3964.000    1081.000      0.273
         ALL                   within 3y     2392           554        0.232 3770.000    1197.000      0.318
+        ALL                   within 5y     2197           585        0.266 3403.000    1213.000      0.356
 
-[strict] entities: 2985, entity-years: 4380; entities with >=2 placing years: 710 (23.8%); >=3: 297; >=5: 89; max 19
+[strict] entities: 3000, entity-years: 4380; entities with >=2 placing years: 707 (23.6%); >=3: 295; >=5: 87; max 15
     country                      window  first_n  first_repeat  first_share    all_n  all_repeat  all_share
-     brazil                   within 1y      552            53        0.096  822.000     118.000      0.144
-     brazil                   within 2y      537            76        0.142  797.000     163.000      0.205
-     brazil                   within 3y      515            97        0.188  765.000     194.000      0.254
-     brazil ever (first year <= last-5)      481           135        0.281      NaN         NaN        NaN
+     brazil                   within 1y      554            53        0.096  822.000     118.000      0.144
+     brazil                   within 2y      539            75        0.139  797.000     162.000      0.203
+     brazil                   within 3y      516            96        0.186  765.000     193.000      0.252
+     brazil                   within 5y      482           110        0.228  712.000     213.000      0.299
+     brazil ever (first year <= last-5)      482           134        0.278      NaN         NaN        NaN
    colombia                   within 1y      452            19        0.042  499.000      23.000      0.046
    colombia                   within 2y      437            27        0.062  477.000      32.000      0.067
    colombia                   within 3y      417            25        0.060  454.000      30.000      0.066
+   colombia                   within 5y      365            26        0.071  400.000      33.000      0.083
    colombia ever (first year <= last-5)      365            33        0.090      NaN         NaN        NaN
- costa-rica                   within 1y      346            46        0.133  495.000      99.000      0.200
- costa-rica                   within 2y      331            58        0.175  466.000     115.000      0.247
- costa-rica                   within 3y      320            66        0.206  441.000     120.000      0.272
- costa-rica ever (first year <= last-5)      297            70        0.236      NaN         NaN        NaN
-el-salvador                   within 1y      386            55        0.142  619.000     120.000      0.194
-el-salvador                   within 2y      373            77        0.206  594.000     159.000      0.268
-el-salvador                   within 3y      360            89        0.247  567.000     185.000      0.326
-el-salvador ever (first year <= last-5)      331           104        0.314      NaN         NaN        NaN
-  guatemala                   within 1y      316            46        0.146  564.000     137.000      0.243
-  guatemala                   within 2y      301            65        0.216  534.000     176.000      0.330
-  guatemala                   within 3y      294            75        0.255  506.000     194.000      0.383
-  guatemala ever (first year <= last-5)      270            96        0.356      NaN         NaN        NaN
+ costa-rica                   within 1y      347            46        0.133  495.000      99.000      0.200
+ costa-rica                   within 2y      332            58        0.175  466.000     115.000      0.247
+ costa-rica                   within 3y      321            65        0.202  441.000     119.000      0.270
+ costa-rica                   within 5y      298            64        0.215  390.000     104.000      0.267
+ costa-rica ever (first year <= last-5)      298            69        0.232      NaN         NaN        NaN
+el-salvador                   within 1y      390            56        0.144  619.000     117.000      0.189
+el-salvador                   within 2y      377            76        0.202  594.000     153.000      0.258
+el-salvador                   within 3y      364            89        0.245  567.000     180.000      0.317
+el-salvador                   within 5y      335            89        0.266  511.000     181.000      0.354
+el-salvador ever (first year <= last-5)      335           105        0.313      NaN         NaN        NaN
+  guatemala                   within 1y      318            46        0.145  564.000     130.000      0.230
+  guatemala                   within 2y      303            65        0.215  534.000     170.000      0.318
+  guatemala                   within 3y      296            76        0.257  506.000     189.000      0.374
+  guatemala                   within 5y      272            77        0.283  448.000     183.000      0.408
+  guatemala ever (first year <= last-5)      272            98        0.360      NaN         NaN        NaN
    honduras                   within 1y      400            59        0.147  594.000     110.000      0.185
    honduras                   within 2y      386            72        0.187  565.000     137.000      0.242
    honduras                   within 3y      370            80        0.216  536.000     152.000      0.284
+   honduras                   within 5y      337            85        0.252  481.000     155.000      0.322
    honduras ever (first year <= last-5)      337            94        0.279      NaN         NaN        NaN
-  nicaragua                   within 1y      434            41        0.094  590.000      78.000      0.132
-  nicaragua                   within 2y      420            53        0.126  560.000      98.000      0.175
-  nicaragua                   within 3y      405            64        0.158  530.000     110.000      0.208
-  nicaragua ever (first year <= last-5)      379            80        0.211      NaN         NaN        NaN
-        ALL ever (first year <= last-5)     2460           612        0.249    0.000       0.000        NaN
-        ALL                   within 1y     2886           319        0.111 4183.000     685.000      0.164
-        ALL                   within 2y     2785           428        0.154 3993.000     880.000      0.220
-        ALL                   within 3y     2681           496        0.185 3799.000     985.000      0.259
+  nicaragua                   within 1y      437            41        0.094  590.000      77.000      0.131
+  nicaragua                   within 2y      423            52        0.123  560.000      96.000      0.171
+  nicaragua                   within 3y      408            64        0.157  530.000     109.000      0.206
+  nicaragua                   within 5y      381            63        0.165  488.000     108.000      0.221
+  nicaragua ever (first year <= last-5)      381            78        0.205      NaN         NaN        NaN
+        ALL ever (first year <= last-5)     2470           611        0.247    0.000       0.000        NaN
+        ALL                   within 1y     2898           320        0.110 4183.000     674.000      0.161
+        ALL                   within 2y     2797           425        0.152 3993.000     865.000      0.217
+        ALL                   within 3y     2692           495        0.184 3799.000     972.000      0.256
+        ALL                   within 5y     2470           514        0.208 3430.000     977.000      0.285
 
 [name_only] entities: 2099, entity-years: 4219; entities with >=2 placing years: 840 (40.0%); >=3: 446; >=5: 179; max 19
     country                      window  first_n  first_repeat  first_share    all_n  all_repeat  all_share
      brazil                   within 1y      371            49        0.132  774.000     171.000      0.221
      brazil                   within 2y      360            70        0.194  750.000     243.000      0.324
      brazil                   within 3y      347            90        0.259  719.000     290.000      0.403
+     brazil                   within 5y      331           106        0.320  666.000     317.000      0.476
      brazil ever (first year <= last-5)      331           141        0.426      NaN         NaN        NaN
    colombia                   within 1y      293            23        0.078  455.000      56.000      0.123
    colombia                   within 2y      287            39        0.136  435.000      88.000      0.202
    colombia                   within 3y      277            45        0.162  412.000     100.000      0.243
+   colombia                   within 5y      253            52        0.206  364.000     111.000      0.305
    colombia ever (first year <= last-5)      253            75        0.296      NaN         NaN        NaN
  costa-rica                   within 1y      258            51        0.198  483.000     139.000      0.288
  costa-rica                   within 2y      251            70        0.279  456.000     170.000      0.373
  costa-rica                   within 3y      245            81        0.331  432.000     181.000      0.419
+ costa-rica                   within 5y      226            82        0.363  382.000     171.000      0.448
  costa-rica ever (first year <= last-5)      226            92        0.407      NaN         NaN        NaN
 el-salvador                   within 1y      280            50        0.179  604.000     161.000      0.267
 el-salvador                   within 2y      275            69        0.251  580.000     206.000      0.355
 el-salvador                   within 3y      267            81        0.303  554.000     237.000      0.428
+el-salvador                   within 5y      246            91        0.370  498.000     245.000      0.492
 el-salvador ever (first year <= last-5)      246           114        0.463      NaN         NaN        NaN
   guatemala                   within 1y      233            48        0.206  562.000     181.000      0.322
   guatemala                   within 2y      228            70        0.307  532.000     225.000      0.423
   guatemala                   within 3y      223            78        0.350  504.000     244.000      0.484
+  guatemala                   within 5y      204            86        0.422  446.000     243.000      0.545
   guatemala ever (first year <= last-5)      204           113        0.554      NaN         NaN        NaN
    honduras                   within 1y      308            58        0.188  578.000     138.000      0.239
    honduras                   within 2y      298            72        0.242  549.000     177.000      0.322
    honduras                   within 3y      287            85        0.296  520.000     197.000      0.379
+   honduras                   within 5y      268            97        0.362  467.000     205.000      0.439
    honduras ever (first year <= last-5)      268           118        0.440      NaN         NaN        NaN
   nicaragua                   within 1y      294            67        0.228  571.000     142.000      0.249
   nicaragua                   within 2y      285            83        0.291  543.000     178.000      0.328
   nicaragua                   within 3y      273            88        0.322  515.000     199.000      0.386
+  nicaragua                   within 5y      253            92        0.364  473.000     207.000      0.438
   nicaragua ever (first year <= last-5)      253           111        0.439      NaN         NaN        NaN
         ALL ever (first year <= last-5)     1781           764        0.429    0.000       0.000        NaN
         ALL                   within 1y     2037           346        0.170 4027.000     988.000      0.245
         ALL                   within 2y     1984           473        0.238 3845.000    1287.000      0.335
         ALL                   within 3y     1919           548        0.286 3656.000    1448.000      0.396
+        ALL                   within 5y     1781           606        0.340 3296.000    1499.000      0.455
 
 Most frequent placers (standard rule):
                           years                farm                                             farmer      country  first  last   best
@@ -186,22 +210,23 @@ True    566  0.454064
 Unconditional share of placements that are top-10: 0.310
 
 Sensitivity of demeaned-score correlation (<=3y) to entity rule:
-  strict: n_pairs=1091, r=0.195, p=8.77e-11
+  strict: n_pairs=1075, r=0.190, p=3.54e-10
   name_only: n_pairs=1533, r=0.182, p=6.39e-13
   standard incl. National Winner lots: n_pairs=1393, r=0.209, p=3.3e-15
 
 ## 3. Reputation premium in auction price (CoE tier lots)
 Lots with price and score: 4487; with a prior placement: 1864 (41.5%)
-                                   model        term   coef    se     p  pct_effect    n    r2  score_coef
-base: score+score^2+prior+competition FE       prior  0.021 0.013 0.103       0.021 4487 0.859       0.136
-                          + log lot size       prior  0.030 0.011 0.007       0.031 4457 0.889       0.127
-                 + log lot size + Geisha       prior  0.025 0.011 0.020       0.025 4457 0.896       0.126
-     drop first 3 data years per country       prior  0.027 0.011 0.015       0.027 3993 0.876       0.127
-              n prior placements (count)     n_prior  0.015 0.003 0.000       0.015 4457 0.890       0.126
-     prior top-10 vs prior other vs none       prior -0.017 0.013 0.166      -0.017 4457 0.890       0.126
-     prior top-10 vs prior other vs none prior_top10  0.081 0.017 0.000       0.084 4457 0.890       0.126
+                                   model              term   coef    se     p  pct_effect    n    r2  score_coef
+base: score+score^2+prior+competition FE             prior  0.021 0.013 0.103       0.021 4487 0.859       0.136
+                          + log lot size             prior  0.030 0.011 0.007       0.031 4457 0.889       0.127
+                 + log lot size + Geisha             prior  0.025 0.011 0.020       0.025 4457 0.896       0.126
+     drop first 3 data years per country             prior  0.027 0.011 0.015       0.027 3993 0.876       0.127
+              n prior placements (count)           n_prior  0.015 0.003 0.000       0.015 4457 0.890       0.126
+     prior top-10 vs prior other vs none             prior -0.017 0.013 0.166      -0.017 4457 0.890       0.126
+     prior top-10 vs prior other vs none       prior_top10  0.081 0.017 0.000       0.084 4457 0.890       0.126
+     prior top-10 vs prior other vs none prior+prior_top10  0.063 0.015 0.000       0.065 4457 0.890       0.126
 Robustness, + placement-position buckets (1, 2-3, 4-10, 11+): prior coef 0.027 (se 0.010, p 0.00467) => +2.7%
-Robustness, + position buckets, prior_top10 coef 0.071 (se 0.014, p 2.93e-07) => +7.4%; prior (non-top-10) -0.015
+Robustness, + position buckets, prior_top10 increment over prior non-top-10 0.071 (se 0.014, p 2.93e-07); prior (non-top-10) -0.015; prior top-10 vs no prior placement (prior + prior_top10) 0.056 (se 0.012, p 3.22e-06) => +5.8%
 Scale: one cupping point ~ +13.5% price at 87 points (linear term; quadratic term makes the slope steeper at higher scores)
 
 By country (base + log lot size):
@@ -247,9 +272,9 @@ Farms with buyer data in >=2 years: 799; with any buyer winning them in >=2 year
 Top repeat buyer-farm pairs:
     country                          farm            buyer  n_years
   guatemala                  El Injerto 1         maruyama        5
- costa-rica HACIENDA COPEY Itadaki Estate          geshary        4
- costa-rica HACIENDA COPEY Itadaki Estate              rec        4
  costa-rica HACIENDA COPEY Itadaki Estate            taoca        4
+ costa-rica HACIENDA COPEY Itadaki Estate              rec        4
+ costa-rica HACIENDA COPEY Itadaki Estate          geshary        4
 el-salvador                    El Topacio           wataru        4
 el-salvador                    Santa Rosa           wataru        4
   guatemala                     El Morito    kyokuto fadie        4
@@ -261,7 +286,7 @@ el-salvador                    Santa Rosa           wataru        4
      brazil              Fazenda Barreiro           wataru        3
      brazil                       Recreio       kaldi farm        3
  costa-rica                   Sin Limites           wataru        3
-Excluding Wataru: n=1347, repeat-buyer share 0.114 vs chance 0.026 (lift 4.43x)
+Excluding Wataru: n=1347, repeat-buyer share 0.114 vs chance 0.030 (lift 3.86x)
 By country:
              size      mean
 country                    

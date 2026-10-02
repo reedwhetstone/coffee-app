@@ -1,6 +1,6 @@
 """Parse Alliance for Coffee Excellence (CoE) competition pages into one lot-level CSV.
 
-Input: raw/pages/<slug>.html downloaded from https://allianceforcoffeeexcellence.org/<slug>/
+Input: raw/pages/<slug>.html, downloaded by fetch_pages.py from the URLs in sources.csv
 Output: coe_lots.csv (one row per placed lot), parse_log.csv (per-page diagnostics)
 """
 import difflib
@@ -203,7 +203,10 @@ def merge(results, auctions, slug):
 
 def main():
     rows, log = [], []
-    for path in sorted(glob.glob(os.path.join(HERE, "raw/pages/*.html"))):
+    paths = sorted(glob.glob(os.path.join(HERE, "raw/pages/*.html")))
+    if not paths:
+        raise SystemExit("no pages in raw/pages/; run fetch_pages.py first")
+    for path in paths:
         slug, results, auctions = parse_page(path)
         merged = merge(results, auctions, slug)
         rows.extend(merged)

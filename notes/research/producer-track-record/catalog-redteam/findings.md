@@ -13,7 +13,7 @@ Source: read-only snapshot of coffee_catalog (8,968 rows; retail = wholesale != 
 
 ## Descriptors
 
-- Listings with cupping notes: 2,041. Fruit descriptor present: washed 84%, natural 93%, honey 92%. Avg fruit terms: washed 4.1, natural 6.1.
+- Listings with cupping notes: 2,041. Fruit descriptor present in the supplier-written `cupping_notes`: washed 78%, natural 85%, honey 77%. Avg fruit terms: washed 2.3, natural 3.2. (Adding the AI-derived `ai_tasting_notes` tags would raise these to 84% / 93% / 92%; that derived signal is not supplier vocabulary and is excluded.)
 - Washed fruit-descriptor share by supplier (>=20 washed listings, 14 suppliers): 17% to 98%. Supplier vocabulary dominates.
 
 ## Freshness

@@ -1,0 +1,5 @@
+# Lot-level Cup of Excellence data stays out of the public repo until republishing rights are settled.
+raw/
+coe_lots.csv
+coe_entities.csv
+parse_log.csv

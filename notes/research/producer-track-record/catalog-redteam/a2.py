@@ -9,7 +9,8 @@ def proc(row):
     if 'wash' in s or 'wet' in s: return 'washed'
     return 'other/unknown'
 r['proc']=r.apply(proc,axis=1)
-r['notes']=(r.cupping_notes.fillna('')+' '+r.ai_tasting_notes.fillna('')).str.lower()
+# supplier-written cupping_notes only; ai_tasting_notes is a derived AI signal and would inflate the supplier-vocabulary rate
+r['notes']=r.cupping_notes.fillna('').str.lower()
 r['has_notes']=r.cupping_notes.fillna('').str.len()>10
 r['fruit']=r.notes.str.contains(fruit,regex=True)
 r['fruit_terms']=r.notes.str.count(fruit)
