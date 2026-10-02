@@ -103,23 +103,25 @@ describe('generated CLI reference', () => {
 		}
 	});
 
-	it('states the paid-plan requirement for catalog similar while the manifest says any plan', () => {
-		const catalogPage = renderDocsPageMarkdown(
-			getDocsPage('cli', 'catalog')!,
-			'https://purveyors.io'
-		);
+	it('applies access overrides only where the manifest still has the listed value', () => {
 		for (const [path, override] of Object.entries(CLI_ACCESS_OVERRIDES)) {
 			const [, groupName, commandName] = path.split(' ');
 			const group = manifest.commandGroups.find((candidate) => candidate.name === groupName);
 			const command = group && getGroupCommands(group).find((item) => item.name === commandName);
-			// The override applies only to the manifest value it was written against.
 			expect(command?.auth, path).toBe(override.manifest);
 		}
+	});
+
+	it('states that any signed-in account or API key with catalog:read can use catalog similar', () => {
+		const catalogPage = renderDocsPageMarkdown(
+			getDocsPage('cli', 'catalog')!,
+			'https://purveyors.io'
+		);
 		const similar = catalogPage
 			.slice(catalogPage.indexOf('## purvey catalog similar'))
 			.split('\n## ')[0];
-		expect(similar).toContain(`Access: ${CLI_ACCESS_OVERRIDES['purvey catalog similar'].label}`);
-		expect(similar).toContain('any API key with catalog:read');
+		expect(similar).toContain('catalog:read');
+		expect(similar).toContain('Green');
 		expect(similar).not.toContain('Requires member access');
 		expect(similar).not.toMatch(/paid plan/i);
 	});

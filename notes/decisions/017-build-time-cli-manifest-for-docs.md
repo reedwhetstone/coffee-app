@@ -54,8 +54,10 @@ import the docs content or snapshot.
   internal marker.
 - Where the manifest contradicts a Parchment contract this repo documents,
   coffee-app may override that one field with a test that fails once the CLI is
-  corrected. The first case is `catalog similar` access, which the manifest marks
-  `member` although Parchment accepts any customer API key with `catalog:read`.
+  corrected. The first case was `catalog similar` access: the 0.36.1 manifest
+  marked it `member` although Parchment accepts any customer API key with
+  `catalog:read`. CLI 0.36.2 corrected the manifest (`viewer`), so the override
+  map is now empty; the mechanism stays for any future contradiction.
 - ADR-006's superseded note and ADR-007's "does not depend on `@purveyors/cli`"
   status now read as "no runtime dependency"; the build-time docs exception is
   recorded here.
