@@ -59,7 +59,7 @@ describe('generated CLI reference', () => {
 			);
 			for (const command of getGroupCommands(group)) {
 				for (const option of command.options ?? []) {
-					expect(markdown).toContain(`\`${option.flags.replace(/\|/g, '\\|')}\``);
+					expect(markdown).toContain(`\`${option.flags.split('|').join('\\|')}\``);
 				}
 			}
 		}

@@ -27,16 +27,31 @@ function absolute(href: string, origin: string): string {
 	return href.startsWith('/') ? `${origin}${href}` : href;
 }
 
-/** Escape `<` outside inline code so placeholders like <uuid> are not read as HTML. */
-function prose(text: string): string {
+/**
+ * Escape Markdown-significant characters outside inline code: backslashes, and `<` so
+ * placeholders like <uuid> are not read as HTML. Table cells also escape `|`, which
+ * GFM requires even inside code spans.
+ */
+function escapeText(text: string, inTable = false): string {
+	const proseChars = inTable ? /[\\<|]/g : /[\\<]/g;
 	return text
 		.split('`')
-		.map((part, index) => (index % 2 === 0 ? part.replace(/</g, '\\<') : part))
+		.map((part, index) =>
+			index % 2 === 0
+				? part.replace(proseChars, (char) => `\\${char}`)
+				: inTable
+					? part.split('|').join('\\|')
+					: part
+		)
 		.join('`');
 }
 
+function prose(text: string): string {
+	return escapeText(text);
+}
+
 function escapeCell(cell: string): string {
-	return prose(cell).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+	return escapeText(cell.replace(/\r?\n/g, ' '), true);
 }
 
 function renderTable(table: DocsTable): string {
