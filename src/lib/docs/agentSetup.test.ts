@@ -48,6 +48,36 @@ describe('agent setup page', () => {
 		expect(markdown).toContain('## Troubleshooting');
 	});
 
+	it('sends Claude Code to --target claude and Agent Skills tools to --target agents', () => {
+		expect(markdown).toContain('`--target claude` if you are Claude Code');
+		expect(markdown).toContain('`--target agents` if you are Codex, Cursor');
+		expect(markdown).toContain('| Claude Code | `purvey skill install --target claude` |');
+	});
+
+	it('links repo-level AGENTS.md instructions so Claude Code reads them past a CLAUDE.md', () => {
+		expect(markdown).toContain('purvey skill install --target agents-md --link-claude-md');
+		expect(markdown).toContain(
+			'Claude Code reads AGENTS.md only when there is no CLAUDE.md, .claude/CLAUDE.md, or CLAUDE.local.md'
+		);
+		expect(markdown).toContain('never edits CLAUDE.local.md');
+	});
+
+	it('uses only skill install flags and targets that @purveyors/cli 0.36.0 ships', () => {
+		// From purveyors-cli#150. Check against the pinned manifest once `skill` leaves PENDING_CLI_GROUPS.
+		const flags = new Set(['--target', '--scope', '--force', '--dry-run', '--link-claude-md']);
+		const targets = new Set(['claude', 'agents', 'agents-md']);
+		const invocations = [...markdown.matchAll(/purvey skill install([^`\n]*)/g)];
+		expect(invocations.length).toBeGreaterThan(0);
+		for (const [, args] of invocations) {
+			for (const flag of args.match(/--[a-z-]+/g) ?? []) expect(flags, flag).toContain(flag);
+			const target = args.match(/--target ([a-z-]+)/)?.[1];
+			if (target) expect(targets, target).toContain(target);
+		}
+		for (const flag of markdown.match(/--(?:scope|force|dry-run|link-claude-md)\b/g) ?? []) {
+			expect(flags, flag).toContain(flag);
+		}
+	});
+
 	it('is what the copyable setup prompt points to', () => {
 		expect(AGENT_SETUP_PROMPT).toContain('https://purveyors.io/docs/agents/setup.md');
 		expect(AGENT_SETUP_PROMPT).not.toMatch(/api key/i);

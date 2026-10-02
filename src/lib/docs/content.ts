@@ -2599,23 +2599,20 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Step 4: Install the Purveyors skill',
 				body: [
-					'The skill teaches your agent the Purveyors commands, ID types, and output rules. Pick the command for the agent you are running in. Installing the skill needs no sign-in or network access.'
+					'The skill teaches your agent the Purveyors commands, ID types, and output rules. Pick the command for the agent you are running in: `--target claude` if you are Claude Code, `--target agents` if you are Codex, Cursor, or another Agent Skills tool. Installing the skill needs no sign-in or network access.'
 				],
 				table: {
 					headers: ['Agent', 'Command'],
 					rows: [
 						['Claude Code', '`purvey skill install --target claude`'],
 						[
-							'Codex, Cursor, and other Agent Skills clients',
+							'Codex, Cursor, or another Agent Skills tool',
 							'`purvey skill install --target agents`'
-						],
-						[
-							'Any agent that reads AGENTS.md (run in the project folder)',
-							'`purvey skill install --target agents-md`'
 						]
 					]
 				},
 				bullets: [
+					'Claude Code loads skills only from its own skills folder, so use `--target claude` there even if the project also has an `.agents` folder.',
 					'The skill installs for your user by default. Add --scope project to install it for the current project only.',
 					'Add --dry-run to see where the file will go without writing it.',
 					'Running the command again is safe. It updates the skill in place and leaves your own edits alone unless you pass --force.',
@@ -2636,6 +2633,25 @@ const docsPages: DocsPage[] = [
 					'This returns five currently stocked Ethiopian green coffees with prices and suppliers. Summarize them for the person.',
 					'Then tell the person setup is complete and offer next steps: compare coffees, track inventory, import roasts, or check market prices.',
 					'For every command, run purvey context or read https://purveyors.io/docs/cli/overview.'
+				]
+			},
+			{
+				title: 'Optional: add Purveyors to a project',
+				body: [
+					"To give every agent that works in one repository the Purveyors basics, run this from the project's root folder. It adds a short, marked Purveyors section to AGENTS.md and leaves the rest of the file alone. It changes files in the person's repository, so ask them first."
+				],
+				codeBlocks: [
+					{
+						label: 'Add the Purveyors section to AGENTS.md',
+						language: 'bash',
+						code: 'purvey skill install --target agents-md --link-claude-md'
+					}
+				],
+				bullets: [
+					'Codex, Cursor, and other agents that read AGENTS.md pick up the section directly.',
+					'Claude Code reads AGENTS.md only when there is no CLAUDE.md, .claude/CLAUDE.md, or CLAUDE.local.md in the project folder or any folder above it. `--link-claude-md` adds a one-line `@AGENTS.md` import to the project CLAUDE.md, creating one if needed, so Claude Code reads the section too. It never edits CLAUDE.local.md or a CLAUDE.md outside the project.',
+					'Without `--link-claude-md`, only AGENTS.md changes. If Claude Code would not see the section, the JSON output shows `"claudeCode": { "visible": false }` and a warning names the CLAUDE.md files that hide it.',
+					'Running it again is safe, and `--dry-run` shows every file it would change without writing.'
 				]
 			},
 			{
