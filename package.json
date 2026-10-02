@@ -40,7 +40,7 @@
 	"devDependencies": {
 		"@eslint/compat": "^1.2.3",
 		"@playwright/test": "^1.58.1",
-		"@purveyors/cli": "0.35.1",
+		"@purveyors/cli": "0.36.0",
 		"@sveltejs/adapter-vercel": "^5.6.3",
 		"@sveltejs/kit": "^2.17.2",
 		"@sveltejs/vite-plugin-svelte": "^4.0.0",

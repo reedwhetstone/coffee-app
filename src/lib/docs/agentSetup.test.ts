@@ -69,10 +69,17 @@ describe('agent setup page', () => {
 		expect(markdown).toContain('never edits CLAUDE.local.md');
 	});
 
-	it('uses only skill install flags and targets that @purveyors/cli 0.36.0 ships', () => {
-		// From purveyors-cli#150. Check against the pinned manifest once `skill` leaves PENDING_CLI_GROUPS.
-		const flags = new Set(['--target', '--scope', '--force', '--dry-run', '--link-claude-md']);
-		const targets = new Set(['claude', 'agents', 'agents-md']);
+	it('uses only skill install flags and targets that the pinned CLI ships', () => {
+		const install = getGroupCommands(
+			CLI_REFERENCE.manifest.commandGroups.find((group) => group.name === 'skill')!
+		).find((command) => command.name === 'install');
+		expect(install).toBeDefined();
+		const optionFlags = (install!.options ?? []).map((option) => option.flags);
+		const flags = new Set(optionFlags.map((spec) => spec.match(/--[a-z-]+/)![0]));
+		// The manifest lists targets in the option description: "claude, agents, or agents-md".
+		const targetOption = install!.options?.find((option) => option.flags.startsWith('--target'));
+		const targets = new Set(targetOption?.description?.match(/[a-z][a-z-]*/g) ?? []);
+		expect(targets).toContain('claude');
 		const invocations = [...markdown.matchAll(/purvey skill install([^`\n]*)/g)];
 		expect(invocations.length).toBeGreaterThan(0);
 		for (const [, args] of invocations) {
@@ -91,15 +98,8 @@ describe('agent setup page', () => {
 	});
 });
 
-/**
- * Command groups the docs already reference that the pinned CLI does not ship yet.
- * `skill` arrives in @purveyors/cli 0.36.0 (purveyors-cli#150); this PR must not
- * merge until that release is pinned, which empties this list.
- */
-const PENDING_CLI_GROUPS = ['skill'];
-
 /** Words that follow "purvey" in prose, such as "purvey gives you". */
-const PROSE_AFTER_PURVEY = new Set(['gives', 'in', 'signs', 'to']);
+const PROSE_AFTER_PURVEY = new Set(['did', 'gives', 'in', 'signs', 'to']);
 
 describe('docs command references', () => {
 	const groups = new Map(
@@ -112,20 +112,12 @@ describe('docs command references', () => {
 		])
 	);
 
-	it('lists only pending groups the pinned CLI still lacks', () => {
-		for (const name of PENDING_CLI_GROUPS) {
-			// Fails once the pin includes the group; remove it from the list then.
-			expect(groups.has(name), name).toBe(false);
-		}
-	});
-
-	it('only names commands the pinned CLI ships, apart from pending groups', () => {
+	it('only names commands the pinned CLI ships', () => {
 		for (const docsPage of getPublishedDocsPages()) {
 			const text = renderDocsPageMarkdown(docsPage, 'https://purveyors.io');
 			for (const [, groupName, next] of text.matchAll(
 				/\bpurvey ([a-z][a-z-]*)(?: ([a-z][a-z-]*))?/g
 			)) {
-				if (PENDING_CLI_GROUPS.includes(groupName)) continue;
 				const group = groups.get(groupName);
 				const where = `${docsPage.section}/${docsPage.slug}: purvey ${groupName} ${next ?? ''}`;
 				if (!group && PROSE_AFTER_PURVEY.has(groupName)) continue;

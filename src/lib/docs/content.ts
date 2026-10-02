@@ -2685,7 +2685,7 @@ const docsPages: DocsPage[] = [
 							"That command needs access the account does not have. Tell the person which command failed; the command's reference page lists the access it needs."
 						],
 						[
-							'purvey skill is not a known command',
+							"The CLI reports unknown command 'skill'",
 							'Update the CLI with npm install -g @purveyors/cli@latest, then run step 4 again.'
 						],
 						[
