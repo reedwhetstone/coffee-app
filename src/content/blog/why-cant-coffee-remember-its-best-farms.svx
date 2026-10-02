@@ -1,0 +1,53 @@
+---
+title: "Why Can't Coffee Remember Its Best Farms?"
+date: '2026-10-02'
+description: 'Wine prices track a stored history of quality. Green coffee writes a fresh story for every lot, then throws the record away when the lot sells out.'
+tags: ['coffee', 'data', 'strategy']
+pillar: 'market-intelligence'
+draft: false
+readingTime: 6
+---
+
+I have bought a lot of green coffee, and I still could not tell you with any confidence what makes one farm different from its neighbor in the same region, or which harvests from a given estate were good ones. I pick a supplier I trust, look for fruit in the tasting notes and a strong score, and hope. When a natural I was excited about recently arrived flat, I had three plausible explanations: the coffee was old, the harvest was weak, or the farm was never that good. Nothing in the listing could tell me which.
+
+That is a strange position for a buyer in a market that produces so much information. Green coffee listings carry origin, altitude, variety, process, score, tasting notes, and often a long farm narrative. What they rarely carry is history. Reputation is the stored history of quality, and coffee mostly does not store it.
+
+## Buffett read the record, not the pitch
+
+Warren Buffett is often summarized as an investor who looked at "the whole business" instead of the ticker. That is true, but the business he looked at was a long numeric record. Berkshire's acquisition criteria asked for "demonstrated consistent earning power," adding that "future projections are of little interest to us" ([1987 letter](https://www.berkshirehathaway.com/letters/1987.html)). See's Candies is the canonical case. Berkshire paid $25 million for a business earning 60% pre-tax on capital, and it went on to produce $1.35 billion of pre-tax earnings on $32 million of reinvestment. Buffett credited a durable advantage "built by the See's family over a 50-year period" ([2007 letter](https://www.berkshirehathaway.com/letters/2007ltr.pdf)). The family's work was qualitative. Its evidence was quantitative.
+
+Later research made the point sharper. Frazzini, Kabiller and Pedersen found that Berkshire's outperformance becomes statistically insignificant once you control for exposure to cheap, safe, high-quality stocks ([NBER](https://www.nber.org/system/files/working_papers/w19681/w19681.pdf)). His "full picture" left fingerprints in hard data. The context mattered, and it was measurable once someone kept the right records for long enough.
+
+## Wine stored its reputation first
+
+Wine looks like the romantic counterexample, a category that runs on story. Its foundation is more bureaucratic than that. After phylloxera destroyed more than 40% of French vines in the late nineteenth century, the gap was filled with raisin wine and outright fakes. Growers rioted, and France spent about 30 years building origin law, ending with the appellation system in 1935. Those rules mostly guarantee identity and method, not quality. An appellation fixes where the grapes grew and how the wine was made, which is why a place name on a label predicts something about what is in the glass.
+
+Prices then accumulated against those stable identities. Combris, Lecocq and Visser found that Bordeaux prices are driven by what is printed on the label, while blind jury grades are driven by how the wine tastes ([Economic Journal](https://ideas.repec.org/a/ecj/econjl/v107y1997i441p390-402.html)). A meta-analysis of more than 180 wine price models finds only a moderate correlation between price and sensory quality, and concludes that reputation matters more, with one qualifier: producers have to sustain quality over time to earn it ([Oczkowski and Doucouliagos](https://ideas.repec.org/a/oup/ajagec/v97y2015i1p103-121..html)). Wine buyers pay for a track record, and the track record exists because every vintage is filed under the same name.
+
+## Coffee writes the story and discards the record
+
+Across 45 suppliers in the Purveyors catalog, six in ten stocked listings carry a substantial farm narrative, averaging about 1,250 characters. Fewer than one in five carry any structured producer identity. Of roughly 400 farm names we have seen, only 17 link across more than one supplier even after normalizing accents and prefixes like Finca and Hacienda. When a lot sells out, the listing disappears and its narrative goes with it. One importer currently lists nine lots under the identical name of a single Ethiopian farm and grade, with tasting notes ranging from toffee and cooked apple to hibiscus and tropical fruit.
+
+The signals a buyer leans on instead are supplier-relative. A fruit descriptor appears on 84% of washed listings and 93% of naturals, so "fruity" barely separates anything. For Ethiopian coffees, average scores by supplier range from 86.4 to 91.0, and the lower-scoring supplier charges more. Among listings that publish scores, the score explains about half a percent of the variation in retail price; country of origin explains 43%. Within a single supplier and origin, a point is worth about 1.8%.
+
+The market does pay for identity. Within the same supplier and country, a listing that names its farm, producer, or cooperative sells for about 14.5% more than an anonymous one. Additional narrative length adds nothing measurable. Ethiopia ran this experiment at national scale: when its commodity exchange began trading coffee without lot identity in 2008, the price gap between traceable and untraceable exports widened by 12 percentage points, an estimated $280 million or 26% of farmers' coffee income ([Leung, discussion paper](https://cri-world.com/publications/qed_dp_249.pdf)).
+
+## What a coffee track record looks like
+
+The closest thing coffee has to a vintage record is Cup of Excellence, where national juries score lots blind and publish the winners. I compiled 4,927 winning lots from Brazil, Colombia, Costa Rica, El Salvador, Guatemala, Honduras and Nicaragua between 1999 and 2026, then linked farms across years.
+
+Quality persists, weakly. About a third of placing farms place again within the following five years. Competition-adjusted scores correlate around 0.2 between a farm's appearances, against zero for randomly paired farms. A returning top-ten farm finishes top ten again 45% of the time, compared with 32% for other returners. A small group builds real records: El Injerto placed in 19 of 23 Guatemalan competitions.
+
+The market barely stores that history. At auction, one cupping point near 87 is worth about 13.5% in price. A prior placement adds little on its own; a prior top-ten finish adds about 7 to 8%. The same buyer wins the same farm again at 2.4 times the rate chance would predict, so relationships carry some memory, but mostly the market pays for this year's cup. Because entry is voluntary and only winners are published, these are floors on persistence, not full measurements.
+
+## A record has to say who claimed what
+
+More story will not fix this, and some of it makes buying worse. Origin and farming practice are credence attributes; a roaster cannot taste them. A Kona labeling lawsuit alleged that about 2.7 million pounds of Kona is grown each year while more than 20 million pounds is sold under the name ([Daily Coffee News](https://dailycoffeenews.com/2023/09/27/federal-judge-approves-final-12-million-settlement-in-kona-labeling-case/)). DNA testing found that only 39% of 88 samples labeled Gesha were genetically Gesha ([Daily Coffee News](https://dailycoffeenews.com/2020/04/08/genetic-testing-reveals-the-true-nature-of-coffee-varieties/)). Story also changes perception: people served two identical coffees preferred the one falsely labeled eco-friendly and paid more for it ([PLOS ONE](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0080719)). And producer marketing coexists with exporting countries capturing only 7 to 16 cents of each additional specialty dollar ([World Development, via Daily Coffee News](https://dailycoffeenews.com/2025/07/15/a-closer-look-at-value-distribution-in-specialty-coffee-markets/)).
+
+A useful record therefore keeps three things separate: the stable identity of a farm or washing station, the blind sensory evidence attached to each lot, and the claims made about it, with who made them and whether anyone else corroborates them. That is where Purveyors is headed. As an aggregator, we see the same farm through several importers' eyes across seasons, which is the vantage point needed to turn disposable listings into a longitudinal record.
+
+When my natural arrived flat, the missing piece was the farm's last three harvests, how this lot scored against them, and how long it had sat since arrival. Wine solved that by deciding, long before anyone wrote tasting notes, that the name on the bottle had to mean something durable. Coffee has the stories already. It needs a place to keep the history.
+
+---
+
+*Catalog figures come from a read-only snapshot of the Purveyors green coffee catalog on October 2, 2026 (45 suppliers; 2,674 stocked listings). Price comparisons use retail listings with fixed effects for supplier and country; they are correlational. Producer-identity extraction is about seven months old, so some coverage gaps reflect backfill. Cup of Excellence figures come from public results and auction pages published by the [Alliance for Coffee Excellence](https://allianceforcoffeeexcellence.org/competition-auction-results/); farm matching across years is approximate, and results are conditional on entering and placing.*

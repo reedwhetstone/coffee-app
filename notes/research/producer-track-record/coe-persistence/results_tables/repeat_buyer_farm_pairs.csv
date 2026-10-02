@@ -1,0 +1,302 @@
+ent,buyer,n_years,farm,country
+guatemala|standard|17,maruyama,5,El Injerto 1,guatemala
+costa-rica|standard|364,geshary,4,HACIENDA COPEY Itadaki Estate,costa-rica
+costa-rica|standard|364,rec,4,HACIENDA COPEY Itadaki Estate,costa-rica
+costa-rica|standard|364,taoca,4,HACIENDA COPEY Itadaki Estate,costa-rica
+el-salvador|standard|165,wataru,4,El Topacio,el-salvador
+el-salvador|standard|232,wataru,4,Santa Rosa,el-salvador
+guatemala|standard|221,kyokuto fadie,4,El Morito,guatemala
+guatemala|standard|521,nozy,4,La Gran Manzana,guatemala
+brazil|standard|212,wataru,3,Fazenda do Sertão,brazil
+brazil|standard|480,toa,3,Serra das Cabeças,brazil
+brazil|standard|493,mercanta hunters,3,Santa Terezinha,brazil
+brazil|standard|522,bontain,3,Fazenda do Serrado,brazil
+brazil|standard|588,wataru,3,Fazenda Barreiro,brazil
+brazil|standard|80,kaldi farm,3,Recreio,brazil
+costa-rica|standard|104,wataru,3,Sin Limites,costa-rica
+costa-rica|standard|118,campos,3,Leoncio,costa-rica
+costa-rica|standard|245,museo,3,Don Cayito 2017,costa-rica
+costa-rica|standard|288,nozy,3,Pie San,costa-rica
+el-salvador|standard|658,nozy,3,Finca Ethiopia,el-salvador
+guatemala|standard|119,terarosa,3,Las Macadamias,guatemala
+guatemala|standard|119,me up,3,Las Macadamias,guatemala
+guatemala|standard|17,wataru,3,El Injerto 1,guatemala
+guatemala|standard|17,stumptown,3,El Injerto 1,guatemala
+guatemala|standard|17,orsir,3,El Injerto 1,guatemala
+guatemala|standard|221,libre,3,El Morito,guatemala
+guatemala|standard|269,me up,3,El Socorro,guatemala
+guatemala|standard|309,ecom,3,Plan de la Vega (2016),guatemala
+honduras|standard|164,nozy,3,Los Pinos,honduras
+honduras|standard|186,libre,3,Pino De Oro,honduras
+honduras|standard|265,times club,3,El Nacimiento #2,honduras
+honduras|standard|265,libre,3,El Nacimiento #2,honduras
+honduras|standard|492,nozy,3,Platanares,honduras
+honduras|standard|501,me up,3,Las Virginias,honduras
+honduras|standard|501,therapy,3,Las Virginias,honduras
+honduras|standard|93,wataru,3,Moreno,honduras
+honduras|standard|96,tim wendelboe,3,Cielito Lindo,honduras
+nicaragua|standard|210,ecom,3,Buenos Aires,nicaragua
+nicaragua|standard|210,nozy,3,Buenos Aires,nicaragua
+nicaragua|standard|225,wataru,3,La Picona,nicaragua
+nicaragua|standard|309,ecom,3,Ojo De Agua,nicaragua
+nicaragua|standard|566,nozy,3,LOS ALPES,nicaragua
+nicaragua|standard|566,hugcoffee,3,LOS ALPES,nicaragua
+nicaragua|standard|566,manucoffee,3,LOS ALPES,nicaragua
+brazil|standard|121,bontain,2,Fazenda Ouro Verde,brazil
+brazil|standard|121,times club,2,Fazenda Ouro Verde,brazil
+brazil|standard|121,c coop,2,Fazenda Ouro Verde,brazil
+brazil|standard|121,orsir,2,Fazenda Ouro Verde,brazil
+brazil|standard|121,nozy,2,Fazenda Ouro Verde,brazil
+brazil|standard|121,wataru,2,Fazenda Ouro Verde,brazil
+brazil|standard|121,maruyama,2,Fazenda Ouro Verde,brazil
+brazil|standard|136,proud mary,2,Sitio Santa luzia,brazil
+brazil|standard|155,maruyama,2,Samambaia,brazil
+brazil|standard|177,proud mary,2,Faz. Serra das Três Barras,brazil
+brazil|standard|250,ecom,2,Fazenda São Lourenço,brazil
+brazil|standard|259,wataru,2,Sitio da Torre,brazil
+brazil|standard|266,honukatocoffee,2,Faz Chapadao de Ferro…,brazil
+brazil|standard|27,caravan,2,Sítio Dos Estouros,brazil
+brazil|standard|295,nagahama,2,Faz dos Tachos,brazil
+brazil|standard|322,wataru,2,Fazenda Caracol,brazil
+brazil|standard|322,honu kato,2,Fazenda Caracol,brazil
+brazil|standard|343,wataru,2,Sitio Serra,brazil
+brazil|standard|374,wataru,2,Fazenda Eldorado,brazil
+brazil|standard|4,nozy,2,Sitio São Sebastião,brazil
+brazil|standard|476,solberg hansen,2,Rainha,brazil
+brazil|standard|493,golden box,2,Santa Terezinha,brazil
+brazil|standard|493,49th parallel,2,Santa Terezinha,brazil
+brazil|standard|530,wataru,2,Fazenda Santa Rita,brazil
+brazil|standard|540,mercanta hunters,2,Fazenda Esperança,brazil
+brazil|standard|540,cafes el magnifico barcelona,2,Fazenda Esperança,brazil
+brazil|standard|588,ogawa,2,Fazenda Barreiro,brazil
+brazil|standard|621,world,2,Sítio Castelhano,brazil
+brazil|standard|644,wataru,2,Fazenda Pedra do Sino,brazil
+brazil|standard|700,jubean,2,Fazenda São Judas Tadeu,brazil
+brazil|standard|700,ucc ueshima,2,Fazenda São Judas Tadeu,brazil
+brazil|standard|72,kyokuto fadie,2,Fazenda Serra do Boné,brazil
+brazil|standard|744,ecom,2,Paixão,brazil
+brazil|standard|746,wataru,2,Chácara Tijuco,brazil
+brazil|standard|8,wataru,2,Sítio d Água Limpa,brazil
+brazil|standard|80,doi,2,Recreio,brazil
+brazil|standard|80,nippon trading,2,Recreio,brazil
+brazil|standard|81,nozy,2,Vista Brigadeiro,brazil
+brazil|standard|831,kyokuto fadie,2,Sítio Bateia,brazil
+brazil|standard|88,times club,2,Faz Rainha,brazil
+brazil|standard|895,nagahama,2,SÍTIO LM 2017,brazil
+brazil|standard|94,wataru,2,Fazenda Ponte Alta,brazil
+colombia|standard|13,wataru,2,La Mina,colombia
+colombia|standard|14,caravela,2,El Cairo,colombia
+colombia|standard|185,bontain,2,El Carrizo,colombia
+colombia|standard|268,nippon trading,2,La Esmeralda,colombia
+costa-rica|standard|113,wataru,2,El Halcón,costa-rica
+costa-rica|standard|142,dabov specialty,2,Doña Ileana,costa-rica
+costa-rica|standard|15,sweet marias,2,"Santa Lucia, Génesis, Los…",costa-rica
+costa-rica|standard|150,wataru,2,Chispita,costa-rica
+costa-rica|standard|156,wataru,2,La mesa de Segueto,costa-rica
+costa-rica|standard|165,hisashi yamamoto,2,El Diamante,costa-rica
+costa-rica|standard|165,times club,2,El Diamante,costa-rica
+costa-rica|standard|165,libre,2,El Diamante,costa-rica
+costa-rica|standard|182,wataru,2,La Plaza,costa-rica
+costa-rica|standard|245,txt,2,Don Cayito 2017,costa-rica
+costa-rica|standard|245,therapy,2,Don Cayito 2017,costa-rica
+costa-rica|standard|245,me up,2,Don Cayito 2017,costa-rica
+costa-rica|standard|247,hisashi yamamoto,2,Finca Don Antonio 2017,costa-rica
+costa-rica|standard|247,times club,2,Finca Don Antonio 2017,costa-rica
+costa-rica|standard|382,wataru,2,Don Joel,costa-rica
+costa-rica|standard|402,nozy,2,Burío,costa-rica
+costa-rica|standard|413,elbgold rostkaffee,2,Las Nubes,costa-rica
+costa-rica|standard|530,brew92,2,VOLCAN AZUL 2017,costa-rica
+costa-rica|standard|55,tashiro,2,Bella Vista,costa-rica
+costa-rica|standard|69,terarosa,2,Flor del Café,costa-rica
+costa-rica|standard|7,times club,2,El Cerro y Angeles Norte,costa-rica
+costa-rica|standard|82,java blend,2,La Cumbre de Dota,costa-rica
+costa-rica|standard|82,rojos,2,La Cumbre de Dota,costa-rica
+costa-rica|standard|83,libre,2,Dragón,costa-rica
+el-salvador|standard|124,oslo,2,El Porvenir,el-salvador
+el-salvador|standard|124,kaffa,2,El Porvenir,el-salvador
+el-salvador|standard|126,wataru,2,Miralvalle,el-salvador
+el-salvador|standard|136,saza,2,Los Pirineos,el-salvador
+el-salvador|standard|137,orsir,2,El Jocotillo,el-salvador
+el-salvador|standard|14,pts,2,Los Planes,el-salvador
+el-salvador|standard|143,orsir,2,La Campanula,el-salvador
+el-salvador|standard|152,dutch barista,2,Miralvalle,el-salvador
+el-salvador|standard|152,fonte,2,Miralvalle,el-salvador
+el-salvador|standard|152,james gourmet,2,Miralvalle,el-salvador
+el-salvador|standard|152,kaffitar,2,Miralvalle,el-salvador
+el-salvador|standard|16,wataru,2,Santa Sofía,el-salvador
+el-salvador|standard|23,wataru,2,Pacamaral,el-salvador
+el-salvador|standard|232,mesh,2,Santa Rosa,el-salvador
+el-salvador|standard|232,maruyama,2,Santa Rosa,el-salvador
+el-salvador|standard|232,sarutahiko,2,Santa Rosa,el-salvador
+el-salvador|standard|232,rokumei,2,Santa Rosa,el-salvador
+el-salvador|standard|258,latorre dutch,2,La Esperanza,el-salvador
+el-salvador|standard|268,campos,2,La Esmeralda,el-salvador
+el-salvador|standard|279,wataru,2,Peña Redonda,el-salvador
+el-salvador|standard|298,wataru,2,San Nicolas A,el-salvador
+el-salvador|standard|342,m i,2,El Conrodal,el-salvador
+el-salvador|standard|35,wataru,2,Nombre De Dios,el-salvador
+el-salvador|standard|359,wataru,2,Las Ventanas,el-salvador
+el-salvador|standard|396,saza,2,LOS PIRINEOS 2017,el-salvador
+el-salvador|standard|408,wataru,2,MILEYDI 2017,el-salvador
+el-salvador|standard|45,sweet marias,2,La Montañita 2,el-salvador
+el-salvador|standard|45,kaffebrenneriet,2,La Montañita 2,el-salvador
+el-salvador|standard|45,orsir,2,La Montañita 2,el-salvador
+el-salvador|standard|45,kyokuto fadie,2,La Montañita 2,el-salvador
+el-salvador|standard|486,wataru,2,El Izotal,el-salvador
+el-salvador|standard|527,me up,2,El Conacaste,el-salvador
+el-salvador|standard|527,therapy,2,El Conacaste,el-salvador
+el-salvador|standard|584,wataru,2,Santa Fe,el-salvador
+el-salvador|standard|60,tashiro,2,Montes Everest,el-salvador
+el-salvador|standard|656,honu,2,El Angel,el-salvador
+el-salvador|standard|665,wataru,2,El Manantial,el-salvador
+el-salvador|standard|77,wataru,2,Helvetia,el-salvador
+el-salvador|standard|95,intelligentsia,2,Malacara Lote A,el-salvador
+guatemala|standard|10,world,2,El Bosque,guatemala
+guatemala|standard|119,solberg hansen,2,Las Macadamias,guatemala
+guatemala|standard|119,rawbean academy,2,Las Macadamias,guatemala
+guatemala|standard|119,beanybeans beany,2,Las Macadamias,guatemala
+guatemala|standard|119,deepbluelake,2,Las Macadamias,guatemala
+guatemala|standard|119,two hands full,2,Las Macadamias,guatemala
+guatemala|standard|119,therapy,2,Las Macadamias,guatemala
+guatemala|standard|119,haewol,2,Las Macadamias,guatemala
+guatemala|standard|127,wataru,2,San Antonio De Esquipulas Y…,guatemala
+guatemala|standard|135,has bean,2,San Julián,guatemala
+guatemala|standard|135,mercanta hunters,2,San Julián,guatemala
+guatemala|standard|17,sweet marias,2,El Injerto 1,guatemala
+guatemala|standard|17,takamura,2,El Injerto 1,guatemala
+guatemala|standard|17,momos,2,El Injerto 1,guatemala
+guatemala|standard|17,museo,2,El Injerto 1,guatemala
+guatemala|standard|175,mercanta hunters,2,Santa Isabel,guatemala
+guatemala|standard|175,market lane,2,Santa Isabel,guatemala
+guatemala|standard|179,market lane,2,La Maravilla,guatemala
+guatemala|standard|179,caffe cataldi,2,La Maravilla,guatemala
+guatemala|standard|179,kaffeespezialitaet,2,La Maravilla,guatemala
+guatemala|standard|221,tashiro,2,El Morito,guatemala
+guatemala|standard|221,times club,2,El Morito,guatemala
+guatemala|standard|221,marubeni foods,2,El Morito,guatemala
+guatemala|standard|224,ucc ueshima,2,Miralvalle,guatemala
+guatemala|standard|260,wataru,2,Guatalon,guatemala
+guatemala|standard|262,wataru,2,Idolia,guatemala
+guatemala|standard|269,therapy,2,El Socorro,guatemala
+guatemala|standard|269,two hands full,2,El Socorro,guatemala
+guatemala|standard|282,wataru,2,Santa Ana,guatemala
+guatemala|standard|31,onyx,2,Villaure,guatemala
+guatemala|standard|31,terarosa,2,Villaure,guatemala
+guatemala|standard|31,wataru,2,Villaure,guatemala
+guatemala|standard|31,brew92,2,Villaure,guatemala
+guatemala|standard|312,times club,2,Rio Arriba (2016),guatemala
+guatemala|standard|312,libre,2,Rio Arriba (2016),guatemala
+guatemala|standard|358,gsc international,2,El Zapote y Anexos,guatemala
+guatemala|standard|377,wataru,2,Calahute Alto,guatemala
+guatemala|standard|43,wataru,2,La Esperanza,guatemala
+guatemala|standard|521,ecom,2,La Gran Manzana,guatemala
+guatemala|standard|521,rec,2,La Gran Manzana,guatemala
+guatemala|standard|532,onyx,2,Bella Vista,guatemala
+guatemala|standard|55,doi,2,La Soledad Y Anexo,guatemala
+guatemala|standard|55,nippon trading,2,La Soledad Y Anexo,guatemala
+guatemala|standard|598,linking,2,Vista Hermosa,guatemala
+guatemala|standard|598,big black box,2,Vista Hermosa,guatemala
+guatemala|standard|647,wataru,2,Granito De Oro,guatemala
+guatemala|standard|73,momos,2,El Socorro Y Anexos,guatemala
+guatemala|standard|9,arab,2,El Tempisque,guatemala
+honduras|standard|0,mikatajuku group,2,El Pezote,honduras
+honduras|standard|0,maruyama,2,El Pezote,honduras
+honduras|standard|121,solberg hansen,2,El Campo,honduras
+honduras|standard|146,wataru,2,El Nacimiento,honduras
+honduras|standard|164,wataru,2,Los Pinos,honduras
+honduras|standard|186,tashiro,2,Pino De Oro,honduras
+honduras|standard|186,times club,2,Pino De Oro,honduras
+honduras|standard|186,proud mary,2,Pino De Oro,honduras
+honduras|standard|188,kaffebrenneriet,2,Olvin,honduras
+honduras|standard|204,wataru,2,Copo Mico,honduras
+honduras|standard|22,stumptown,2,El Puente,honduras
+honduras|standard|22,intelligentsia,2,El Puente,honduras
+honduras|standard|249,kyokuto fadie,2,Nueva Esperanza,honduras
+honduras|standard|25,wataru,2,Mira Valle,honduras
+honduras|standard|254,wataru,2,Las Pilas,honduras
+honduras|standard|265,proud mary,2,El Nacimiento #2,honduras
+honduras|standard|276,wataru,2,Integral El Cipres – [O],honduras
+honduras|standard|287,nozy,2,Las Moras,honduras
+honduras|standard|290,st berry,2,La Patepluma,honduras
+honduras|standard|295,tashiro,2,La Montañita,honduras
+honduras|standard|378,kyokuto fadie,2,Los Robles 2017,honduras
+honduras|standard|38,kaffebrenneriet,2,El Filo,honduras
+honduras|standard|38,wataru,2,El Filo,honduras
+honduras|standard|426,wataru,2,Las Tres Peñas,honduras
+honduras|standard|497,angelinos,2,La Salsa,honduras
+honduras|standard|499,spirit animal,2,El Rubí,honduras
+honduras|standard|501,baristatus,2,Las Virginias,honduras
+honduras|standard|501,tob,2,Las Virginias,honduras
+honduras|standard|574,wataru,2,Buena Vista,honduras
+honduras|standard|80,times club,2,El Sauce I,honduras
+honduras|standard|80,c coop,2,El Sauce I,honduras
+honduras|standard|87,wataru,2,Los Agapantos,honduras
+honduras|standard|89,wataru,2,Alba,honduras
+honduras|standard|93,solberg hansen,2,Moreno,honduras
+nicaragua|standard|107,stumptown,2,Coop. Luis Alberto Vásquez {O},nicaragua
+nicaragua|standard|107,ecco caffe,2,Coop. Luis Alberto Vásquez {O},nicaragua
+nicaragua|standard|107,intelligentsia,2,Coop. Luis Alberto Vásquez {O},nicaragua
+nicaragua|standard|147,montana traders,2,Santa Isabel,nicaragua
+nicaragua|standard|176,wataru,2,Bella Aurora,nicaragua
+nicaragua|standard|204,maruyama,2,Los Cipres,nicaragua
+nicaragua|standard|210,toa,2,Buenos Aires,nicaragua
+nicaragua|standard|218,shrub by marukai,2,El Porvenir,nicaragua
+nicaragua|standard|223,maruyama,2,El Recuerdo,nicaragua
+nicaragua|standard|225,are kafferosteri,2,La Picona,nicaragua
+nicaragua|standard|242,wataru,2,"El Naranjo ,Dipilto",nicaragua
+nicaragua|standard|247,wataru,2,Oro Verde,nicaragua
+nicaragua|standard|250,maruyama,2,Un Regalo de Dios,nicaragua
+nicaragua|standard|250,sugi,2,Un Regalo de Dios,nicaragua
+nicaragua|standard|253,terarosa,2,Los Congos,nicaragua
+nicaragua|standard|262,wataru,2,El Poste,nicaragua
+nicaragua|standard|283,orens daily roast,2,La Ampliación,nicaragua
+nicaragua|standard|325,wataru,2,San José,nicaragua
+nicaragua|standard|39,solberg hansen,2,La Pradera,nicaragua
+nicaragua|standard|390,times club,2,Las Promesas de San Blas 2017,nicaragua
+nicaragua|standard|390,libre,2,Las Promesas de San Blas 2017,nicaragua
+nicaragua|standard|40,bontain,2,Cooperativa La Unión,nicaragua
+nicaragua|standard|41,taylors of harrogate,2,Santa Marta,nicaragua
+nicaragua|standard|424,campos,2,Jesus Mountain,nicaragua
+nicaragua|standard|424,nylon,2,Jesus Mountain,nicaragua
+nicaragua|standard|426,dimattina,2,El Cambalache,nicaragua
+nicaragua|standard|43,arab,2,Indirita,nicaragua
+nicaragua|standard|44,mr espresso,2,El Balcón,nicaragua
+nicaragua|standard|45,millstone,2,"Linda Vista, San Miguel, Palo…",nicaragua
+nicaragua|standard|47,intelligentsia,2,"Santa Martha, Providencia",nicaragua
+nicaragua|standard|48,meikan,2,Santa Teresita,nicaragua
+nicaragua|standard|50,tamarindo buying group,2,La Sultana,nicaragua
+nicaragua|standard|50,s ishimitsu to volcafe specialty,2,La Sultana,nicaragua
+nicaragua|standard|51,intelligentsia,2,"Los Cerrones, La Divina…",nicaragua
+nicaragua|standard|511,wataru,2,Fila Quemada,nicaragua
+nicaragua|standard|517,wataru,2,Los Altiplanos,nicaragua
+nicaragua|standard|52,millstone,2,La Canada,nicaragua
+nicaragua|standard|53,cafes el magnifico cafes meo monmouth san francisco,2,"El Porvenir, El Tesoro",nicaragua
+nicaragua|standard|53,mercanta hunters,2,"El Porvenir, El Tesoro",nicaragua
+nicaragua|standard|54,batdorf bronson,2,Kilimanjaro II,nicaragua
+nicaragua|standard|56,mocha joes,2,Hacienda Santa Cleotilde,nicaragua
+nicaragua|standard|56,gh howell,2,Hacienda Santa Cleotilde,nicaragua
+nicaragua|standard|56,raos,2,Hacienda Santa Cleotilde,nicaragua
+nicaragua|standard|56,origins roasterie,2,Hacienda Santa Cleotilde,nicaragua
+nicaragua|standard|56,tree,2,Hacienda Santa Cleotilde,nicaragua
+nicaragua|standard|56,breaking new grounds,2,Hacienda Santa Cleotilde,nicaragua
+nicaragua|standard|566,ocami,2,LOS ALPES,nicaragua
+nicaragua|standard|566,ecom,2,LOS ALPES,nicaragua
+nicaragua|standard|566,belco sas,2,LOS ALPES,nicaragua
+nicaragua|standard|57,wataru,2,"Los Angeles, La Esperanza, La…",nicaragua
+nicaragua|standard|577,wataru,2,EL PORVENIR,nicaragua
+nicaragua|standard|58,intelligentsia,2,Santa Martha,nicaragua
+nicaragua|standard|582,wataru,2,LA AURORA,nicaragua
+nicaragua|standard|59,world,2,Cooperativa Zacarías Padilla,nicaragua
+nicaragua|standard|61,bewleys,2,La Sabatina,nicaragua
+nicaragua|standard|62,p g delaware,2,Santa Maura,nicaragua
+nicaragua|standard|62,brokers,2,Santa Maura,nicaragua
+nicaragua|standard|63,caravan,2,Casa Blanca,nicaragua
+nicaragua|standard|65,estate,2,Cooperativa Laureano Flores,nicaragua
+nicaragua|standard|66,intelligentsia,2,"Los Placeres, La Curva",nicaragua
+nicaragua|standard|69,whittard of chelsea,2,Las Flores,nicaragua
+nicaragua|standard|69,mercanta hunters,2,Las Flores,nicaragua
+nicaragua|standard|70,katocoffee,2,El Cantón,nicaragua
+nicaragua|standard|71,wataru,2,El Limón,nicaragua
+nicaragua|standard|72,world,2,San Cayetano,nicaragua
+nicaragua|standard|92,times club,2,Los Cipreses de Loma Fria,nicaragua
+nicaragua|standard|98,caravan,2,La Copa,nicaragua
