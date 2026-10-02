@@ -1,6 +1,6 @@
 # Producer track record research (October 2026)
 
-Research behind the blog post [Why Can't Coffee Remember Its Best Farms?](../../../src/content/blog/why-cant-coffee-remember-its-best-farms.svx). It is retained as the evidence base for a later producer identity and track-record feature.
+Research behind the blog post [How Would You Know a Great Coffee Before You Roast It?](../../../src/content/blog/how-would-you-know-a-great-coffee.svx). It is retained as the evidence base for a later producer identity and track-record feature.
 
 ## Thesis
 
@@ -18,7 +18,7 @@ The lot-level Cup of Excellence dataset (`coe_lots.csv`, `coe_entities.csv`) is 
 ## Headline findings
 
 - Of 2,674 stocked listings from 45 suppliers, 61% carry a substantial farm narrative but only 17.8% carry any structured producer identity. After name normalization, 17 of about 406 farms link across suppliers. No farm spans more than about 300 days of catalog history yet.
-- Among retail listings that publish a score, the score explains about 0.5% of price variance and country of origin explains 43%. Within the same supplier and country, structured producer identity carries a 14.5% price premium, while narrative length adds nothing measurable. These results are correlational.
+- Among retail listings that publish a score, the score explains about 0.5% of price variance and country of origin explains 43%. Within the same supplier and country, structured producer identity carries an estimated 14.5% price premium, while narrative length adds nothing measurable. The identity estimate rests on about 93 listings and has a wide confidence interval when errors are clustered by supplier (about +1% to +30%), so treat it as directional. These results are correlational.
 - In Cup of Excellence results, quality persists weakly. Adjusted scores correlate about 0.2 between a farm's appearances. About a quarter of first-time placers place again within five years, and about a third place again at some point. The auction price premium for a track record is thin (about 6% for a prior top-10 finish, against a farm with no prior placement). The same buyer wins the same farm again at 2.4 times chance.
 
 ## Feature directions to evaluate

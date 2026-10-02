@@ -9,7 +9,7 @@ Source: read-only snapshot of coffee_catalog (8,968 rows; retail = wholesale != 
 - Within supplier+country: +1 point = +1.8% price. (CoE auctions: ~+18.7%/pt plus rank premiums, Traore et al. 2018.)
 - Median $/lb by score band: <84 $10.00; 84-86 $9.35; 86-88 $9.25; 88-90 $9.35; 90+ $9.75. 10-90th pct roughly $8 to $13 in every band.
 - Score calibration differs by supplier for same origin: Ethiopia mean score Sweet Maria's 91.0 (n=75, median $9.15) vs Showroom 86.4 (n=17, median $10.74). Kenya: Sweet Maria's 90.5 vs Showroom 86.6. Scores are supplier-relative.
-- Identity vs story (n=3,194 priced retail, supplier+country FE): any structured identity (site/farmer/coop) +14.5% (p<0.001); +1,000 chars farm narrative +1.4% (p=0.35, n.s.). Correlational; identity correlates with microlot positioning.
+- Identity vs story (n=3,194 priced retail, supplier+country FE): any structured identity (site/farmer/coop) +14.5% (OLS p<0.001; with standard errors clustered by supplier p=0.04, 95% CI about +0.6% to +30.3%); +1,000 chars farm narrative +1.4% (n.s.). Only about 93 priced retail rows (2.9%) carry structured identity, so the estimate is directional. Correlational; identity correlates with microlot positioning. Score effect within supplier and country: +1.8% per point (OLS p<0.001; clustered by supplier p=0.11). See a5.py.
 
 ## Descriptors
 
