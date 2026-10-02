@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { getDocsPage } from '$lib/docs/content';
-import { CLI_REFERENCE, formatNodeRequirement } from '$lib/docs/cliReference';
+import { getDocsPage, getPublishedDocsPages } from '$lib/docs/content';
+import { CLI_REFERENCE, formatNodeRequirement, getGroupCommands } from '$lib/docs/cliReference';
 import { renderDocsPageMarkdown } from '$lib/docs/markdown';
 import { AGENT_SETUP_PROMPT } from '$lib/components/docs/AgentSetupPrompt.svelte';
 
@@ -51,5 +51,50 @@ describe('agent setup page', () => {
 	it('is what the copyable setup prompt points to', () => {
 		expect(AGENT_SETUP_PROMPT).toContain('https://purveyors.io/docs/agents/setup.md');
 		expect(AGENT_SETUP_PROMPT).not.toMatch(/api key/i);
+	});
+});
+
+/**
+ * Command groups the docs already reference that the pinned CLI does not ship yet.
+ * `skill` arrives in @purveyors/cli 0.36.0 (purveyors-cli#150); this PR must not
+ * merge until that release is pinned, which empties this list.
+ */
+const PENDING_CLI_GROUPS = ['skill'];
+
+/** Words that follow "purvey" in prose, such as "purvey gives you". */
+const PROSE_AFTER_PURVEY = new Set(['gives', 'in', 'signs', 'to']);
+
+describe('docs command references', () => {
+	const groups = new Map(
+		CLI_REFERENCE.manifest.commandGroups.map((group) => [
+			group.name,
+			{
+				hasRoot: Boolean(group.command),
+				subcommands: new Set(getGroupCommands(group).map((command) => command.name))
+			}
+		])
+	);
+
+	it('lists only pending groups the pinned CLI still lacks', () => {
+		for (const name of PENDING_CLI_GROUPS) {
+			// Fails once the pin includes the group; remove it from the list then.
+			expect(groups.has(name), name).toBe(false);
+		}
+	});
+
+	it('only names commands the pinned CLI ships, apart from pending groups', () => {
+		for (const docsPage of getPublishedDocsPages()) {
+			const text = renderDocsPageMarkdown(docsPage, 'https://purveyors.io');
+			for (const [, groupName, next] of text.matchAll(
+				/\bpurvey ([a-z][a-z-]*)(?: ([a-z][a-z-]*))?/g
+			)) {
+				if (PENDING_CLI_GROUPS.includes(groupName)) continue;
+				const group = groups.get(groupName);
+				const where = `${docsPage.section}/${docsPage.slug}: purvey ${groupName} ${next ?? ''}`;
+				if (!group && PROSE_AFTER_PURVEY.has(groupName)) continue;
+				expect(group, where).toBeDefined();
+				if (next && !group!.hasRoot) expect(group!.subcommands.has(next), where).toBe(true);
+			}
+		}
 	});
 });

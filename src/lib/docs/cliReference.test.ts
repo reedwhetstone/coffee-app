@@ -5,7 +5,9 @@ import { describe, expect, it } from 'vitest';
 
 import { getDocsPage } from '$lib/docs/content';
 import {
-	CLI_NOTE_EXCLUSIONS,
+	CLI_ACCESS_OVERRIDES,
+	CLI_COPY_REWRITES,
+	CLI_INTERNAL_COPY,
 	CLI_REFERENCE,
 	getCliGroupPageSlugs,
 	getGroupCommands
@@ -65,17 +67,50 @@ describe('generated CLI reference', () => {
 		}
 	});
 
-	it('only excludes notes that still exist in the pinned manifest', () => {
-		const notes = new Set<string>();
+	it('only rewrites manifest text that still exists in the pinned manifest', () => {
+		const texts = new Set<string>(manifest.outputContract.notes);
+		manifest.idTypes.forEach((id) => texts.add(id.source));
 		for (const group of manifest.commandGroups) {
+			texts.add(group.summary);
 			for (const command of getGroupCommands(group)) {
-				command.notes?.forEach((note) => notes.add(note));
-				command.options?.forEach((option) => option.notes?.forEach((note) => notes.add(note)));
+				texts.add(command.summary);
+				command.notes?.forEach((note) => texts.add(note));
+				command.arguments?.forEach((arg) => texts.add(arg.description));
+				command.options?.forEach((option) => {
+					if (option.description) texts.add(option.description);
+					option.notes?.forEach((note) => texts.add(note));
+				});
 			}
 		}
-		for (const excluded of CLI_NOTE_EXCLUSIONS) {
-			expect(notes.has(excluded), excluded).toBe(true);
+		for (const text of Object.keys(CLI_COPY_REWRITES)) {
+			expect(texts.has(text), text).toBe(true);
 		}
+	});
+
+	it('keeps CLI implementation detail off every generated page', () => {
+		const slugs = new Set(['overview', ...Object.values(getCliGroupPageSlugs())]);
+		for (const slug of slugs) {
+			const markdown = renderDocsPageMarkdown(getDocsPage('cli', slug)!, 'https://purveyors.io');
+			const leaks = markdown.split('\n').filter((line) => CLI_INTERNAL_COPY.test(line));
+			expect(leaks, slug).toEqual([]);
+		}
+	});
+
+	it('overrides access only where the manifest still contradicts the Parchment contract', () => {
+		const catalogPage = renderDocsPageMarkdown(
+			getDocsPage('cli', 'catalog')!,
+			'https://purveyors.io'
+		);
+		for (const [path, override] of Object.entries(CLI_ACCESS_OVERRIDES)) {
+			const [, groupName, commandName] = path.split(' ');
+			const group = manifest.commandGroups.find((candidate) => candidate.name === groupName);
+			const command = group && getGroupCommands(group).find((item) => item.name === commandName);
+			// Fails once the CLI corrects the manifest; remove the override then.
+			expect(command?.auth, path).toBe(override.manifest);
+		}
+		const similar = catalogPage.slice(catalogPage.indexOf('## purvey catalog similar'));
+		expect(similar).toContain(`Access: ${CLI_ACCESS_OVERRIDES['purvey catalog similar'].label}`);
+		expect(similar.split('\n## ')[0]).not.toContain('Requires member access');
 	});
 });
 

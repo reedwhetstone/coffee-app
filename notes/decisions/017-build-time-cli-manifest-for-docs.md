@@ -46,8 +46,16 @@ import the docs content or snapshot.
   JSON differs from the installed package.
 - New manifest command groups get a reference page automatically.
 - CLI manifest wording is now customer-facing on purveyors.io. Copy fixes for
-  flags or notes belong in `purveyors-cli`; coffee-app only excludes specific
-  internal notes through an exact-match list that a test keeps current.
+  flags or notes belong in `purveyors-cli`. Until they ship, coffee-app rewrites
+  or drops maintainer-facing manifest text (backing endpoints, SDK plumbing,
+  table names, design references) through an exact-match map, and drops any
+  other note that matches those internal markers. Tests fail if a map entry no
+  longer exists in the pinned manifest or if a generated page still contains an
+  internal marker.
+- Where the manifest contradicts a Parchment contract this repo documents,
+  coffee-app may override that one field with a test that fails once the CLI is
+  corrected. The first case is `catalog similar` access, which the manifest marks
+  `member` although Parchment accepts any customer API key with `catalog:read`.
 - ADR-006's superseded note and ADR-007's "does not depend on `@purveyors/cli`"
   status now read as "no runtime dependency"; the build-time docs exception is
   recorded here.

@@ -2447,7 +2447,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Agent workflows',
 		agentSetupPrompt: true,
 		intro: [
-			'Any AI agent that can run shell commands, such as Claude Code, Codex, Cursor, or OpenClaw, can use purvey to work with your Purveyors data. Every command returns structured JSON, reports a clear exit code, and states the access it needs, so an agent can act and recover from errors without guessing.',
+			'Any AI agent that can run shell commands, such as Claude Code, Codex, Cursor, or OpenClaw, can use purvey to work with your Purveyors data. Commands return structured JSON when asked with --json, report a clear exit code, and state the access they need, so an agent can act and recover from errors without guessing.',
 			'The fastest way to connect an agent is the setup prompt on this page. Your agent installs the CLI, asks you to approve sign-in in your browser, and installs the Purveyors skill.'
 		],
 		sections: [
@@ -2473,7 +2473,8 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'Install the Purveyors skill with purvey skill install so your agent knows the commands, ID types, and output rules before it starts.',
 					'Have the agent read purvey context for a compact reference, or purvey manifest for the full machine-readable contract of the installed version.',
-					'Rely on JSON output and exit codes: 3 means sign-in or access is missing, 2 means a bad argument, and 4 means the record was not found.',
+					'Pass --json to every command you parse. Most commands print JSON by default, but purvey context prints readable text, and in an interactive terminal so do purvey auth status and purvey config list.',
+					'Rely on exit codes: 3 means sign-in or access is missing, 2 means a bad argument, and 4 means the record was not found.',
 					'Keep ID types straight. Catalog IDs, inventory IDs, roast IDs, and sale IDs are different; the ID reference shows which command takes which.',
 					'Building an application rather than an agent? Use the Parchment API and @purveyors/sdk, documented at https://api.purveyors.io/docs.'
 				],
@@ -2481,7 +2482,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'A typical agent session',
 						language: 'bash',
-						code: 'purvey auth status\npurvey catalog search --origin "Ethiopia" --stocked --limit 5\npurvey inventory list --stocked'
+						code: 'purvey auth status --json\npurvey catalog search --origin "Ethiopia" --stocked --limit 5 --json\npurvey inventory list --stocked --json'
 					}
 				]
 			},
@@ -2582,12 +2583,12 @@ const docsPages: DocsPage[] = [
 			},
 			{
 				title: 'Step 3: Confirm the sign-in',
-				body: ['Run `purvey auth status`.'],
+				body: ['Run `purvey auth status --json`.'],
 				codeBlocks: [
 					{
 						label: 'Check status',
 						language: 'bash',
-						code: 'purvey auth status'
+						code: 'purvey auth status --json'
 					}
 				],
 				bullets: [

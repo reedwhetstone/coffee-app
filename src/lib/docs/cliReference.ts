@@ -28,15 +28,124 @@ export const CLI_REFERENCE = snapshot as unknown as CliReferenceSnapshot;
 const manifest = CLI_REFERENCE.manifest;
 
 /**
- * Manifest notes that describe CLI internals rather than customer behavior.
- * Each entry must match a note in the pinned manifest exactly; remove it once the
- * CLI rewrites or drops the note.
+ * Implementation detail that must never reach a public CLI page: backing endpoints,
+ * SDK plumbing, database table names, server ownership, and design references.
+ * A test fails if any generated page matches.
  */
-export const CLI_NOTE_EXCLUSIONS = new Set<string>([
-	'Uses the beta canonical /v1/catalog/{id}/similar API contract, not the legacy direct RPC path.',
-	'--json emits the API response verbatim (§3.3 evidence object, §3.4 enums); no client-side reshaping.',
-	'Brief creation is a write handled by the Phase 2 write build-out (PADR-0016), not this read surface.'
-]);
+export const CLI_INTERNAL_COPY =
+	/@purveyors\/sdk|\bSDK\b|\bBacked by\b|\/v1\/|PADR-\d|§\d|\bRPC\b|server-owned|server-side|canonical API|query layer|\b(?:coffee_catalog|green_coffee_inv|roast_data|coffee_sales)\b/;
+
+/**
+ * Customer-facing wording for manifest text written for CLI maintainers. Keys must
+ * match a summary, description, ID source, or note in the pinned manifest exactly;
+ * a null value drops a note. Remove an entry once the CLI rewrites or drops the text.
+ */
+export const CLI_COPY_REWRITES: Record<string, string | null> = {
+	// Summaries, descriptions, and ID sources
+	'Market Index decision surface: value signals, movement stats, metadata trends, overview, and evidence via the canonical API':
+		'Market Index value signals, movement stats, metadata trends, overview, and evidence',
+	'Show the canonical identity, plan, scopes, and capabilities for the active credential':
+		'Show the identity, plan, scopes, and capabilities of the active credential',
+	'Fetch beta canonical /v1/catalog/{id}/similar groups for likely same-lot candidates and similar recommendations':
+		'Beta: find likely same-lot candidates and similar coffees for a catalog coffee',
+	'coffee_catalog.catalog_id': 'Catalog ID',
+	'coffee_catalog.catalog_id, not inventory id': 'Catalog ID, not an inventory ID',
+	'green_coffee_inv.id': 'Inventory ID',
+	'roast_data.roast_id': 'Roast ID',
+	'coffee_sales row id': 'Sale ID',
+	'green_coffee_inv.id, not catalog_id': 'Inventory ID, not a catalog ID',
+	'Canonical /v1/catalog supplier filter (partial source-name match)':
+		'Filter by supplier name (partial match)',
+	'Canonical /v1/catalog dryingMethod filter; Parchment owns matching': 'Filter by drying method',
+	'Comma-separated canonical /v1/catalog flavorKeywords; a row matches any keyword':
+		'Comma-separated flavor keywords; a coffee matches if it has any of them',
+	'Request canonical proof summaries from /v1/catalog?include=proof':
+		'Include a proof summary for each coffee',
+	'Request the canonical proof summary from /v1/catalog?include=proof': 'Include the proof summary',
+	'Canonical /v1/catalog/rank supplier filter': 'Filter by supplier name',
+	'coffee_catalog row': 'A coffee in the catalog',
+	'green_coffee_inv row': 'A coffee in your inventory',
+	'roast_data row': 'A roast profile',
+	'coffee_sales row': 'A recorded sale',
+	// Notes
+	'Prints the GET /v1/me response unchanged, including capabilities.profileStudio.':
+		'Prints the account details unchanged, including capabilities.profileStudio.',
+	'Structured process filters map to canonical /v1/catalog query names.': null,
+	'--include-proof uses the canonical /v1/catalog proof summary include and preserves the default output shape when omitted.':
+		'Without --include-proof, the output shape is unchanged.',
+	'The SDK supplies the canonical proof-summary-v1 row projection.': null,
+	'Without a field, prints the canonical /v1/catalog/facets envelope (values, facets, meta) unchanged.':
+		'Without a field, prints every facet with its counted values and meta.',
+	'Uses coffee_catalog.purveyor_score as the canonical quality signal.':
+		'Uses the Purveyor Score as the quality signal.',
+	'Exposes coffee_catalog.purveyor_score plus confidence, tier, factor breakdown, version, and update metadata; the CLI does not recompute the upstream score model.':
+		'Shows the Purveyor Score with its confidence, tier, factor breakdown, version, and update metadata.',
+	'Country and non-wholesale filters are applied at the catalog query layer before supplier aggregation.':
+		'Country and non-wholesale filters apply to coffees before suppliers are summarized.',
+	'Uses the beta canonical /v1/catalog/{id}/similar API contract, not the legacy direct RPC path.':
+		null,
+	'Default JSON output is the grouped canonical response object with data.target, data.groups.canonical_candidates, data.groups.similar_recommendations, optional data.matches, and meta.':
+		'Default JSON output groups results under data.target, data.groups.canonical_candidates, data.groups.similar_recommendations, optional data.matches, and meta.',
+	'Use the scoped member API key created by `purvey auth login`, or override it with PURVEYORS_API_KEY or PARCHMENT_API_KEY.':
+		'Uses the API key stored by `purvey auth login`; PURVEYORS_API_KEY or PARCHMENT_API_KEY overrides it.',
+	'Returns green_coffee_inv rows joined with catalog details.':
+		'Returns your inventory items with their catalog details.',
+	'--catalog-id filters by coffee_catalog.catalog_id.': '--catalog-id filters by catalog ID.',
+	"Returns Parchment's canonical chart-data envelope unchanged: sampled series, events, and metadata.":
+		'Returns the roast chart data unchanged: sampled series, events, and metadata.',
+	'--auto-match classifies roast metadata against stocked inventory through the canonical Parchment POST /v1/roasts/classify SDK operation.':
+		'--auto-match matches each new roast to a stocked inventory item from its metadata.',
+	'--coffee-id filters by green_coffee_inv.id through the canonical sales API.':
+		'--coffee-id filters by inventory ID.',
+	'Creates use the canonical sales API with an idempotency key; selectors resolve through canonical roast endpoints.':
+		null,
+	'--json emits the API response verbatim (§3.3 evidence object, §3.4 enums); no client-side reshaping.':
+		null,
+	'cultivar and drying dimensions are out of scope for v1 (await taxonomy normalization).':
+		'Cultivar and drying dimensions are not available yet.',
+	'Brief creation is a write handled by the Phase 2 write build-out (PADR-0016), not this read surface.':
+		null
+};
+
+/**
+ * Access levels where the pinned manifest contradicts the Parchment contract, keyed
+ * by command path. Parchment admits member sessions and any customer API key with
+ * catalog:read to /v1/catalog/{id}/similar, and the CLI always calls it with an API
+ * key (README, notes/CONTRIBUTOR_CONTRACTS.md). An override applies only while the
+ * manifest still has the listed value; a test fails once the CLI is corrected.
+ */
+export const CLI_ACCESS_OVERRIDES: Record<string, { manifest: CliAuthRequirement; label: string }> =
+	{
+		'purvey catalog similar': {
+			manifest: 'member',
+			label:
+				'Any API plan. Needs an API key with catalog:read, such as the one purvey auth login stores.'
+		}
+	};
+
+function stripInternalClauses(text: string): string {
+	return text
+		.replace(/\s+(?:via|from|through) the canonical API\b/g, '')
+		.replace(/,\s*enforced server-side(?:\s*\(\d{3}(?:\/\d{3})? on denial\))?/g, '');
+}
+
+/** Public wording for a manifest summary, description, or ID source. */
+function publicText(text: string): string {
+	const rewrite = CLI_COPY_REWRITES[text];
+	return typeof rewrite === 'string' ? rewrite : stripInternalClauses(text);
+}
+
+/** Public wording for a manifest note, or null when the note only describes internals. */
+function publicNote(note: string): string | null {
+	if (note in CLI_COPY_REWRITES) return CLI_COPY_REWRITES[note];
+	if (/^Backed by\b/.test(note)) return null;
+	const text = stripInternalClauses(note);
+	return CLI_INTERNAL_COPY.test(text) ? null : text;
+}
+
+function publicNotes(notes: readonly string[] | undefined): string[] {
+	return (notes ?? []).map(publicNote).filter((note): note is string => Boolean(note));
+}
 
 interface CliPageContext {
 	title: string;
@@ -248,6 +357,11 @@ export function formatNodeRequirement(engine: string | null = CLI_REFERENCE.node
 	return engine ? `Node.js ${engine}` : 'a current Node.js LTS release';
 }
 
+function commandAccessLabel(path: string, auth: CliAuthRequirement): string {
+	const override = CLI_ACCESS_OVERRIDES[path];
+	return override?.manifest === auth ? override.label : ACCESS_LABELS[auth];
+}
+
 function titleCase(name: string): string {
 	return name
 		.split('-')
@@ -288,15 +402,13 @@ function sentence(text: string): string {
 
 function optionDetails(option: NonNullable<CliCommandContract['options']>[number]): string {
 	const details: string[] = [];
-	if (option.description) details.push(sentence(option.description));
+	if (option.description) details.push(sentence(publicText(option.description)));
 	if (option.requiredInFlagMode) details.push('Required unless you use --form.');
 	if (option.defaultValue !== undefined) details.push(`Default: ${String(option.defaultValue)}.`);
 	if (option.minimum !== undefined || option.maximum !== undefined) {
 		details.push(`Range: ${option.minimum ?? '…'} to ${option.maximum ?? '…'}.`);
 	}
-	for (const note of option.notes ?? []) {
-		if (!CLI_NOTE_EXCLUSIONS.has(note)) details.push(sentence(note));
-	}
+	for (const note of publicNotes(option.notes)) details.push(sentence(note));
 	return details.join(' ');
 }
 
@@ -307,7 +419,7 @@ function commandTable(command: CliCommandContract): DocsTable | undefined {
 		const label = arg.required ? `<${token}>` : `[${token}]`;
 		rows.push([
 			`\`${label}\``,
-			`${arg.required ? 'Required' : 'Optional'}: ${sentence(arg.description)}`
+			`${arg.required ? 'Required' : 'Optional'}: ${sentence(publicText(arg.description))}`
 		]);
 	}
 	for (const option of command.options ?? []) {
@@ -324,13 +436,14 @@ function commandSection(
 	group: CliCommandGroupContract,
 	command: CliCommandContract
 ): DocsContentSection {
-	const notes = (command.notes ?? []).filter((note) => !CLI_NOTE_EXCLUSIONS.has(note));
+	const path = commandPath(group, command);
+	const notes = publicNotes(command.notes);
 	const section: DocsContentSection = {
-		title: commandPath(group, command),
+		title: path,
 		body: [
-			sentence(command.summary),
+			sentence(publicText(command.summary)),
 			`Usage: \`${usageLine(group, command)}\``,
-			`Access: ${ACCESS_LABELS[command.auth]}`
+			`Access: ${commandAccessLabel(path, command.auth)}`
 		]
 	};
 	const table = commandTable(command);
@@ -362,7 +475,7 @@ function groupPage(group: CliCommandGroupContract): DocsPage {
 		section: 'cli',
 		slug: group.name,
 		title: context.title,
-		summary: sentence(group.summary),
+		summary: sentence(publicText(group.summary)),
 		eyebrow: context.eyebrow,
 		intro: [...(context.intro ?? []), `Access: ${ACCESS_LABELS[group.auth]}`],
 		sections: [
@@ -406,7 +519,7 @@ export function buildCommandGroupTable(): DocsTable {
 		headers: ['Group', 'What it does', 'Access', 'Reference'],
 		rows: manifest.commandGroups.map((group) => [
 			`\`purvey ${group.name}\``,
-			sentence(group.summary),
+			sentence(publicText(group.summary)),
 			ACCESS_LABELS[group.auth],
 			`/docs/cli/${slugs[group.name]}`
 		])
@@ -434,7 +547,7 @@ export function buildOutputSections(): DocsContentSection[] {
 			],
 			table: {
 				headers: ['Role', 'Meaning'],
-				rows: manifest.roles.map((role) => [role.role, sentence(role.description)])
+				rows: manifest.roles.map((role) => [role.role, sentence(publicText(role.description))])
 			}
 		},
 		{
@@ -447,10 +560,10 @@ export function buildOutputSections(): DocsContentSection[] {
 		{
 			title: 'Output and errors',
 			body: [
-				`Standard output: ${sentence(outputContract.stdout)}`,
-				`Standard error: ${sentence(outputContract.stderr)}`
+				`Standard output: ${sentence(publicText(outputContract.stdout))}`,
+				`Standard error: ${sentence(publicText(outputContract.stderr))}`
 			],
-			bullets: outputContract.notes.map(sentence),
+			bullets: publicNotes(outputContract.notes).map(sentence),
 			callout: {
 				tone: 'note',
 				title: 'Structured errors',
@@ -468,7 +581,7 @@ export function buildOutputSections(): DocsContentSection[] {
 				rows: manifest.exitCodes.map((code) => [
 					String(code.exitCode),
 					code.code,
-					sentence(code.description)
+					sentence(publicText(code.description))
 				])
 			}
 		},
@@ -481,7 +594,7 @@ export function buildOutputSections(): DocsContentSection[] {
 				headers: ['ID', 'Identifies', 'Used by'],
 				rows: manifest.idTypes.map((id) => [
 					`\`${id.name}\``,
-					id.source,
+					publicText(id.source),
 					id.usedBy.map((usage) => `\`${usage}\``).join(', ')
 				])
 			}
@@ -493,7 +606,7 @@ export function buildOutputSections(): DocsContentSection[] {
 				rows: manifest.errorPatterns.map((pattern) => [
 					pattern.title,
 					pattern.exitCodes.join(', ') || 'None',
-					pattern.guidance.map(sentence).join(' ')
+					pattern.guidance.map((line) => sentence(publicText(line))).join(' ')
 				])
 			}
 		},

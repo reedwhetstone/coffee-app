@@ -78,7 +78,7 @@ Do not document the whole coffee-app `/api/*` tree as a stable public contract. 
 
 ## CLI relationship
 
-This repo does not depend on the CLI package. Coffee-app and the CLI independently consume the canonical Parchment API contracts.
+Coffee-app has no runtime dependency on the CLI package. Its only use is a build-time devDependency, pinned to an exact `@purveyors/cli` release, whose manifest data generates the `/docs/cli/*` reference ([ADR-017](notes/decisions/017-build-time-cli-manifest-for-docs.md)); app code never imports CLI runtime exports. Coffee-app and the CLI independently consume the canonical Parchment API contracts.
 
 CLI auth and output rules are part of the platform contract:
 
