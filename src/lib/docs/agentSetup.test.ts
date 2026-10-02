@@ -54,6 +54,13 @@ describe('agent setup page', () => {
 		expect(markdown).toContain('| Claude Code | `purvey skill install --target claude` |');
 	});
 
+	it('describes the skill as the two files the CLI writes', () => {
+		// purveyors-cli#150 writes SKILL.md plus workflows.md for --target claude and agents.
+		expect(markdown).toContain('SKILL.md, the guide your agent loads first, and workflows.md');
+		expect(markdown).toContain('The command writes both.');
+		expect(markdown).not.toMatch(/where the file will go/);
+	});
+
 	it('links repo-level AGENTS.md instructions so Claude Code reads them past a CLAUDE.md', () => {
 		expect(markdown).toContain('purvey skill install --target agents-md --link-claude-md');
 		expect(markdown).toContain(

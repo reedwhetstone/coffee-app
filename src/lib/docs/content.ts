@@ -2599,7 +2599,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Step 4: Install the Purveyors skill',
 				body: [
-					'The skill teaches your agent the Purveyors commands, ID types, and output rules. Pick the command for the agent you are running in: `--target claude` if you are Claude Code, `--target agents` if you are Codex, Cursor, or another Agent Skills tool. Installing the skill needs no sign-in or network access.'
+					'The skill teaches your agent the Purveyors commands, ID types, output rules, and step-by-step workflows. Pick the command for the agent you are running in: `--target claude` if you are Claude Code, `--target agents` if you are Codex, Cursor, or another Agent Skills tool. Installing the skill needs no sign-in or network access.'
 				],
 				table: {
 					headers: ['Agent', 'Command'],
@@ -2614,8 +2614,9 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'Claude Code loads skills only from its own skills folder, so use `--target claude` there even if the project also has an `.agents` folder.',
 					'The skill installs for your user by default. Add --scope project to install it for the current project only.',
-					'Add --dry-run to see where the file will go without writing it.',
-					'Running the command again is safe. It updates the skill in place and leaves your own edits alone unless you pass --force.',
+					'The skill is a folder with two files: SKILL.md, the guide your agent loads first, and workflows.md, step-by-step command sequences it reads before a multi-step task. The command writes both.',
+					'Add --dry-run to see where the files will go without writing them.',
+					'Running the command again is safe. It updates both files in place and leaves a file you edited alone unless you pass --force.',
 					'Start a new agent session if the skill does not appear right away.'
 				]
 			},
