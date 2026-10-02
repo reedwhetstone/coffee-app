@@ -44,20 +44,11 @@ export const CLI_COPY_REWRITES: Record<string, string | null> = {};
 
 /**
  * Access levels where the pinned manifest contradicts the Parchment contract, keyed
- * by command path. Parchment admits catalog similarity for member and admin sessions
- * and for any customer API key with catalog:read, including the free Green plan
- * within its quota. The manifest's access level says member only. An override
- * applies only while the manifest still has the listed value; remove it once a CLI
- * release states the API-key rule.
+ * by command path. An override applies only while the manifest still has the listed
+ * value; remove it once a CLI release corrects the manifest.
  */
 export const CLI_ACCESS_OVERRIDES: Record<string, { manifest: CliAuthRequirement; label: string }> =
-	{
-		'purvey catalog similar': {
-			manifest: 'member',
-			label:
-				'Requires a Purveyors membership, or any API key with catalog:read. The free Green API plan includes it within its monthly quota.'
-		}
-	};
+	{};
 
 function stripInternalClauses(text: string): string {
 	return text
