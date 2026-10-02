@@ -73,6 +73,7 @@ This ADR does not change entitlements.
 
 - **Purveyors website:** structured variety, species, and drying filters and their facet counts follow ADR-005. Normalized drying and multi-facet search are Member capabilities there, gated with the structured process facets (`canUseProcessFacets` in `resolveCatalogAccessCapabilities`). Anonymous and Viewer sessions see these controls locked with an upgrade reason, the loader strips the code params for them, and the BFF does not return their facet metadata to them. Canonical labels and raw text on CoffeeCards are catalog reading, so they are visible wherever the card is.
 - **API:** per ADR-005's API-tier amendment, the code filters, facets, and vocabulary endpoint are public-data catalog capabilities available to every API plan with `catalog:read`. The vocabulary endpoint follows the `/v1/catalog/grades` access policy.
+- **Enforcement:** Parchment is the boundary; the website loader's stripping is presentation. `varietyCode`, `speciesCode`, and `dryingMethodCode` join `PROCESS_FACET_FILTER_KEYS` (`packages/api/src/catalog/access.ts`), and their facet counts sit behind the same `canUseProcessFacets` check as the structured process facets. Anonymous, public demo key, and Viewer principals get the existing denial notice; members and customer API keys pass.
 - Grading fields keep their existing gating; nothing here changes it.
 
 Opening these filters to Anonymous or Viewer website sessions would require amending ADR-005 first.
@@ -92,7 +93,7 @@ The website, CLI, Cherry, and SDK use these semantics as defined by Parchment an
 
 ## Integration
 
-- **Parchment:** migration (tables, aliases, columns, triggers, seed); `/v1/catalog/taxonomies` vocabulary endpoint (or extend `/v1/catalog/grades` into a general vocabulary route); the section 6 code filters with existing text params unchanged; facets with family roll-up; comparison rows use labels; unblock the Market Index `cultivar` and `drying` dimensions; SDK minor release.
+- **Parchment:** migration (tables, aliases, columns, triggers, seed); `/v1/catalog/taxonomies` vocabulary endpoint (or extend `/v1/catalog/grades` into a general vocabulary route); the section 6 code filters with existing text params unchanged, gated per section 5; facets with family roll-up; comparison rows use labels; unblock the Market Index `cultivar` and `drying` dimensions; SDK minor release.
 - **Scraper:** runtime vocabulary loader; tokenizer and canonicalizer; audit finding for unmapped tokens; Catalog maintenance backfill; supplier rubric note.
 - **Cherry and CLI:** code-filter parameters (for example `--variety-code`, `--species-code`, `--drying-method-code`) beside the unchanged text flags, facets fields, and a vocabulary lookup, following the grade tooling.
 - **coffee-app:** variety searchable multi-select grouped by family, drying chips, species chips (Origin and supplier or Coffee section of the filter panel), gated per section 5. The card shows canonical labels with the raw supplier text available without hover: an accessible disclosure that opens on tap, click, or keyboard focus, and the raw text shown directly on the coffee detail view.
