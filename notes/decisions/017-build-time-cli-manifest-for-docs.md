@@ -54,8 +54,10 @@ import the docs content or snapshot.
   internal marker.
 - Where the manifest contradicts a Parchment contract this repo documents,
   coffee-app may override that one field with a test that fails once the CLI is
-  corrected. The first case is `catalog similar` access, which the manifest marks
-  `member` although Parchment accepts any customer API key with `catalog:read`.
+  corrected. The first case is `catalog similar` access. Since the 2026-10-02
+  paid-similarity decision (ADR-005 clarification), coffee-app states the
+  member-or-paid-plan rule while CLI 0.36.1 still marks it `member` and adds a
+  note that any API plan works.
 - ADR-006's superseded note and ADR-007's "does not depend on `@purveyors/cli`"
   status now read as "no runtime dependency"; the build-time docs exception is
   recorded here.

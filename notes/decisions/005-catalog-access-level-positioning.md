@@ -22,6 +22,16 @@
 > Parchment Intelligence remains a separate entitlement. This amendment does not
 > change the Anonymous, Viewer, or Member boundaries for the Purveyors website.
 
+> **Similarity clarification (2026-10-02):** Catalog similarity is now a paid
+> capability (Reed, #parchment, 2026-10-02), enforced by Parchment in
+> [parchment-api#335](https://github.com/reedwhetstone/parchment-api/pull/335),
+> which amends PADR-0013 for similarity only. Member and admin sessions, a
+> member's own `purvey auth login` key, and Origin or Enterprise API keys with
+> `catalog:read` may use it; viewer sessions and Green keys owned by free
+> accounts may not. References below and in the 2026-08-31 amendment that give
+> Green keys similarity no longer apply. Every other Green public-data capability
+> is unchanged.
+
 ## Context
 
 PR #302 exposed advanced process-transparency filters on the public catalog. That made a local implementation question visible as a product strategy question: what should anonymous visitors, free signed-in viewers, subscribed members, API customers, and admins each be able to see and do?
