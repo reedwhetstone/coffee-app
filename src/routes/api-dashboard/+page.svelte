@@ -2,6 +2,7 @@
 	import type { PageData } from './$types';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import AgentSetupPrompt from '$lib/components/docs/AgentSetupPrompt.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -272,6 +273,10 @@
 					</button>
 				</div>
 			</div>
+		</div>
+
+		<div class="mt-8">
+			<AgentSetupPrompt />
 		</div>
 
 		<!-- Account quota alerts with upgrade CTAs -->

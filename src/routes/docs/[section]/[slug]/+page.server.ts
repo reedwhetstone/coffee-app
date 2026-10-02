@@ -1,6 +1,7 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { getDocsPage, getDocsSection } from '$lib/docs/content';
+import { getDocsPage, getDocsSection, getPrevNextDocs } from '$lib/docs/content';
+import { docsMarkdownPath } from '$lib/docs/markdown';
 
 export const load: PageServerLoad = async ({ params }) => {
 	if (params.section === 'api') {
@@ -19,7 +20,9 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	return {
 		page,
-		section: section.key,
+		navSection: section,
+		prevNext: getPrevNextDocs(params.section, params.slug),
+		markdownHref: docsMarkdownPath(page),
 		slug: params.slug
 	};
 };

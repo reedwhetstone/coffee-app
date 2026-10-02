@@ -20,7 +20,10 @@ Allow: /api
 Allow: /catalog
 Allow: /analytics
 Allow: /blog
+Allow: /docs
+Allow: /docs.md
 Allow: /llms.txt
+Allow: /llms-full.txt
 Allow: /sitemap.xml
 
 # Sitemap location

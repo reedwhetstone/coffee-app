@@ -11,7 +11,8 @@
 ## Current implementation status
 
 The catalog BFF and server-side chat tools use `@purveyors/sdk`, and coffee-app
-does not depend on `@purveyors/cli`. The terminal source extraction is complete:
+has no runtime dependency on `@purveyors/cli` (ADR-017 allows build-time
+manifest data for docs only). The terminal source extraction is complete:
 coffee-app retains only Supabase browser identity/session plumbing, thin BFF and
 SDK transport adaptation, and presentation behavior. Parchment remains the sole
 shared-schema migration authority. Cross-product production canaries are the

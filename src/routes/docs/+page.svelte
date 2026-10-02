@@ -1,13 +1,17 @@
 <script lang="ts">
-	import { DOCS_NAV } from '$lib/docs/content';
+	import AgentSetupPrompt from '$lib/components/docs/AgentSetupPrompt.svelte';
+	import type { PageData } from './$types';
+
+	let { data } = $props<{ data: PageData }>();
 </script>
 
 <svelte:head>
 	<title>Purveyors docs | Parchment API and Purveyors CLI</title>
 	<meta
 		name="description"
-		content="Purveyors documentation for product context and CLI workflows. Generated Parchment API docs live at api.purveyors.io/docs."
+		content="Purveyors documentation for product context, CLI workflows, and AI agent setup. Generated Parchment API docs live at api.purveyors.io/docs."
 	/>
+	<link rel="alternate" type="text/markdown" href="/docs.md" />
 </svelte:head>
 
 <div class="space-y-8">
@@ -17,16 +21,23 @@
 			Documentation
 		</h1>
 		<p class="mt-4 max-w-3xl text-base leading-relaxed text-muted sm:text-lg">
-			Product context, catalog methodology, and CLI workflows live here. The API contract is now
-			generated from the Parchment API OpenAPI contract and served from
+			Product context, catalog methodology, CLI workflows, and AI agent setup live here. The API
+			reference is generated from the Parchment API's OpenAPI contract and served from
 			<a href="https://api.purveyors.io/docs" class="text-accent hover:underline"
 				>api.purveyors.io/docs</a
-			>, so the reference stays tied to the deployed API.
+			>, so it always matches the deployed API.
+		</p>
+		<p class="mt-4 text-xs text-muted">
+			<a href="/docs.md" type="text/markdown" class="text-accent hover:underline"
+				>View as Markdown</a
+			>
 		</p>
 	</section>
 
+	<AgentSetupPrompt />
+
 	<section class="grid gap-6 lg:grid-cols-2">
-		{#each DOCS_NAV as section}
+		{#each data.sections as section}
 			<div class="rounded-lg border border-line bg-surface-canvas p-6 shadow-sm sm:p-8">
 				<div class="flex items-start justify-between gap-4">
 					<div>

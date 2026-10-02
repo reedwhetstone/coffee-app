@@ -4,70 +4,34 @@ import {
 	DEFAULT_PAGINATED_PAGE_SIZE,
 	MAX_CATALOG_PAGE_LIMIT
 } from '$lib/constants/catalog';
+import {
+	buildCommandGroupTable,
+	buildGroupSections,
+	buildOutputSections,
+	buildWorkflowSection,
+	CLI_REFERENCE,
+	formatNodeRequirement,
+	getCliGroupNavItems,
+	getCliGroupPages
+} from './cliReference';
+import type { DocsNavItem, DocsNavSection, DocsPage, DocsSectionKey } from './types';
 
 const PUBLIC_CATALOG_SORT_FIELD_LIST = formatAllowedValues(PUBLIC_CATALOG_SORT_FIELDS);
 const DEFAULT_CATALOG_SIMILARITY_THRESHOLD = 0.7;
 const DEFAULT_CATALOG_SIMILARITY_LIMIT = 10;
 const MAX_CATALOG_SIMILARITY_LIMIT = 25;
 
-export type DocsSectionKey = 'api' | 'catalog' | 'cli';
-
-export interface DocsCodeBlock {
-	label?: string;
-	language?: string;
-	code: string;
-}
-
-export interface DocsTable {
-	headers: string[];
-	rows: string[][];
-}
-
-export interface DocsCallout {
-	tone: 'note' | 'warning' | 'success';
-	title: string;
-	body: string;
-}
-
-export interface DocsContentSection {
-	title: string;
-	body?: string[];
-	bullets?: string[];
-	codeBlocks?: DocsCodeBlock[];
-	table?: DocsTable;
-	callout?: DocsCallout;
-}
-
-export interface DocsLink {
-	href: string;
-	label: string;
-	description: string;
-}
-
-export interface DocsPage {
-	section: DocsSectionKey;
-	slug: string;
-	title: string;
-	summary: string;
-	eyebrow: string;
-	intro: string[];
-	sections: DocsContentSection[];
-	related: DocsLink[];
-}
-
-export interface DocsNavItem {
-	slug: string;
-	title: string;
-	summary: string;
-}
-
-export interface DocsNavSection {
-	key: DocsSectionKey;
-	title: string;
-	description: string;
-	basePath: string;
-	items: DocsNavItem[];
-}
+export type {
+	DocsCallout,
+	DocsCodeBlock,
+	DocsContentSection,
+	DocsLink,
+	DocsNavItem,
+	DocsNavSection,
+	DocsPage,
+	DocsSectionKey,
+	DocsTable
+} from './types';
 
 export const DOCS_NAV: DocsNavSection[] = [
 	{
@@ -123,43 +87,32 @@ export const DOCS_NAV: DocsNavSection[] = [
 			{
 				slug: 'auth-output',
 				title: 'Auth, config, and output',
-				summary: 'Viewer versus member auth, local config, output modes, and scripting guarantees.'
+				summary: 'Sign-in, roles, settings, output modes, exit codes, and IDs.'
 			},
-			{
-				slug: 'catalog',
-				title: 'Catalog',
-				summary: 'Search the catalog from your terminal with a scoped Parchment API key.'
-			},
-			{
-				slug: 'inventory',
-				title: 'Inventory',
-				summary: 'List and manage your green coffee inventory.'
-			},
-			{
-				slug: 'roast',
-				title: 'Roast',
-				summary: 'Create roast records, import Artisan files, and watch folders.'
-			},
-			{
-				slug: 'sales',
-				title: 'Sales',
-				summary: 'Record and update roasted-coffee sales.'
-			},
-			{
-				slug: 'tasting',
-				title: 'Tasting',
-				summary: 'Read supplier notes and record personal cupping data.'
-			},
+			...getCliGroupNavItems(),
 			{
 				slug: 'context-manifest',
 				title: 'Context and manifest',
-				summary:
-					'Dense reference text, machine-readable manifest output, and onboarding patterns for agents and wrappers.'
+				summary: 'Readable reference text and the machine-readable command contract.'
 			},
 			{
 				slug: 'agent-integration',
 				title: 'Agent integration',
-				summary: 'Use the CLI as a stable interface for AI tools and external agents.'
+				summary: 'Give AI agents reliable access to your coffee data through the CLI.'
+			}
+		]
+	},
+	{
+		key: 'agents',
+		title: 'Agent setup',
+		description:
+			'Connect an AI agent to your Purveyors account: install the CLI, approve sign-in in your browser, and add the Purveyors skill.',
+		basePath: '/docs/agents',
+		items: [
+			{
+				slug: 'setup',
+				title: 'Set up your agent',
+				summary: 'Step-by-step instructions an AI agent can follow on your behalf.'
 			}
 		]
 	}
@@ -2304,627 +2257,184 @@ const docsPages: DocsPage[] = [
 		slug: 'overview',
 		title: 'CLI overview',
 		summary:
-			'The Purveyors CLI is a terminal interface for catalog queries, inventory management, roasting workflows, scripting, and agent automation.',
+			'The Purveyors CLI brings your coffee catalog, inventory, roasting, sales, and market data to the terminal, to scripts, and to AI agents.',
 		eyebrow: '@purveyors/cli',
 		intro: [
-			'The Purveyors CLI (purvey) provides terminal access to the same coffee domain model as the web app. purvey auth login uses browser OAuth once to create and persist a scoped Parchment API key; the CLI does not retain an ongoing viewer session. Catalog search, structured public-data filters, and catalog similar require catalog:read and are available across API plans. Inventory, roast, sales, and tasting commands require owner-bound access and the matching scopes.',
-			'Not every command requires auth. auth, config, context, and manifest are onboarding or local utility surfaces. purvey context is the dense human-readable reference, while purvey manifest is the preferred machine-readable contract.'
+			'purvey gives you terminal access to the same coffee data as the web app: catalog search and ranking, inventory, roast profiles and Artisan imports, sales, tasting notes, Market Index signals, the Parchment Price Index, sourcing briefs, and Studio reference profiles.',
+			`This reference matches @purveyors/cli ${CLI_REFERENCE.version}. Run purvey --version to check your version, and purvey manifest for the exact contract of the version you have installed.`
 		],
 		sections: [
 			{
-				title: 'Install and first-run flow',
+				title: 'Install and sign in',
 				codeBlocks: [
 					{
-						label: 'Install and authenticate',
+						label: 'Install and sign in',
 						language: 'bash',
-						code: 'npm install -g @purveyors/cli\npurvey auth login\npurvey auth status --pretty'
-					},
-					{
-						label: 'Agent-friendly bootstrap',
-						language: 'bash',
-						code: 'purvey auth login --headless\npurvey context\npurvey manifest --pretty'
+						code: 'npm install -g @purveyors/cli\npurvey auth login\npurvey auth status'
 					}
 				],
 				bullets: [
-					'Use purvey auth login for browser OAuth or purvey auth login --headless on servers, CI, and agent hosts.',
-					'purvey auth login opens a request-specific browser consent page where you review the machine name and requested scopes before authorizing. The CLI receives the scoped Parchment API key directly; the browser never displays the key.',
-					'Run purvey auth status to confirm the stored API key is valid and inspect its account email, role, key ID, and creation time before scripting against basic catalog or member-level commands.',
-					'PARCHMENT_API_KEY or the PURVEYORS_API_KEY compatibility alias overrides the key stored by purvey auth login for command execution.',
-					'Use purvey manifest when a wrapper needs the preferred machine-readable contract. Use purvey context when a human or model should read the dense reference text first, or use purvey context --json / --pretty when an existing caller needs manifest-parity output.'
-				]
-			},
-			{
-				title: 'Command groups and auth model',
-				table: {
-					headers: ['Group', 'Examples', 'Auth'],
-					rows: [
-						['auth', 'login, status, logout', 'None'],
-						[
-							'catalog',
-							'search, get, stats',
-							'API key with catalog:read; public-data filters are available across API plans'
-						],
-						['catalog', 'similar', 'API key with catalog:read; available across API plans'],
-						[
-							'inventory / roast / sales / tasting',
-							'Personal data and write workflows',
-							'Member-owned API key with matching scopes'
-						],
-						['config', 'list, get, set, reset', 'None, local-only'],
-						['context / manifest', 'Dense reference text and machine-readable contract', 'None']
-					]
-				},
+					`Requires ${formatNodeRequirement()}.`,
+					'purvey auth login opens a browser page where you review the requesting machine and approve access. The CLI then stores its own scoped key for your account, so you never copy or paste a key.',
+					'On a server, in CI, or for an AI agent, use purvey auth login --headless. It prints an approval link you can open in any browser, and the command finishes on its own once you approve.',
+					'To use a specific API key instead, set PARCHMENT_API_KEY or PURVEYORS_API_KEY. A key in the environment takes priority over the stored sign-in.'
+				],
 				callout: {
-					tone: 'note',
-					title: 'Catalog commands use scoped API-key authentication',
-					body: 'purvey auth login creates and stores an account-linked scoped Parchment API key for CLI commands. Set PARCHMENT_API_KEY or PURVEYORS_API_KEY to use an explicit key instead. Direct Parchment catalog and entitled calls also require a Bearer credential; public no-login catalog discovery lives in the Purveyors web catalog, while designated Market Index teaser slices remain anonymous.'
+					tone: 'success',
+					title: 'Setting up an AI agent?',
+					body: 'Set up your agent (/docs/agents/setup) walks an agent through install, browser sign-in, and the Purveyors skill. Copy the one-line prompt on that page and paste it into your agent.'
 				}
 			},
 			{
-				title: 'Output contract',
+				title: 'Command groups',
+				body: [
+					'Each group has a full reference page with every command, argument, flag, and example. Access levels are explained in Auth, config, and output.'
+				],
+				table: buildCommandGroupTable()
+			},
+			{
+				title: 'Output for scripts',
 				bullets: [
-					'Most commands write compact JSON to stdout by default. --json is an explicit alias for that mode, while --pretty prints indented JSON and --csv exports array-shaped results where supported.',
-					'Operational messages and fatal errors stay on stderr so stdout remains safe for pipes, jq, and redirect-based automation.',
-					'Interactive terminals without an explicit output flag can still show human-readable success or error text. When piped or redirected, the CLI falls back to structured JSON output and JSON error envelopes.',
-					'purvey auth status is the main exception worth remembering: in an interactive TTY it prints human-readable status unless you force --json, --pretty, or --csv.'
+					'Most commands write compact JSON to standard output. Add --pretty for indented JSON or --csv for list results on commands that support it.',
+					'Progress messages and errors go to standard error, so standard output stays safe for pipes, jq, and redirects.',
+					'When output is piped or redirected, errors are JSON with a stable code and exit code. In an interactive terminal without an output flag, you see readable messages instead.'
 				]
 			},
 			{
-				title: 'When to use the CLI vs. the API vs. the web app',
+				title: 'CLI, API, or web app',
 				table: {
-					headers: ['Surface', 'Choose it when', 'Auth expectation'],
+					headers: ['Surface', 'Best for', 'Sign-in'],
 					rows: [
 						[
-							'purvey catalog',
-							'A terminal, script, or agent is acting with scoped account access',
-							'Stored or explicit Parchment API key'
+							'purvey',
+							'Terminal work, scripts, and AI agents acting on your account',
+							'purvey auth login, or an API key in the environment'
 						],
 						[
 							'Purveyors web catalog',
-							'The goal is public discovery, evaluation, or a zero-setup demo',
-							'No user login; coffee-app uses its server-held demo key upstream'
+							'Browsing and evaluating coffees without setup',
+							'None needed to browse'
 						],
 						[
-							'API-key GET https://api.purveyors.io/v1/catalog',
-							'The integration needs production usage visibility, quotas, or server-to-server auth',
-							'Bearer API key required'
+							'Parchment API (https://api.purveyors.io/v1)',
+							'Applications and server-to-server integrations with usage tracking and quotas',
+							'API key from the Parchment Console'
 						],
 						[
-							'Web app',
-							'A human wants visual exploration, dashboards, or account workflows',
-							'Browser session as needed'
+							'Purveyors web app',
+							'Visual exploration, dashboards, and day-to-day account work',
+							'Browser sign-in'
 						]
 					]
-				},
-				bullets: [
-					'CLI login is a one-time OAuth bootstrap that exchanges the browser session for a scoped Parchment API key. The CLI and direct API are credentialed surfaces; the public no-login discovery surface is https://purveyors.io/catalog.'
-				]
-			}
+				}
+			},
+			buildWorkflowSection()
 		],
 		related: [
 			{
-				href: '/docs/cli/auth-output',
-				label: 'Auth, config, and output',
-				description: 'Roles, local config, stderr/stdout guarantees, and exit-code expectations.'
+				href: '/docs/agents/setup',
+				label: 'Set up your agent',
+				description: 'Install, browser sign-in, and the Purveyors skill for AI agents.'
 			},
 			{
-				href: '/docs/cli/context-manifest',
-				label: 'Context and manifest',
-				description: 'Text-first onboarding, manifest output, and wrapper guidance for agents.'
+				href: '/docs/cli/auth-output',
+				label: 'Auth, config, and output',
+				description: 'Access roles, output modes, exit codes, and the ID reference.'
 			},
 			{
 				href: 'https://api.purveyors.io/docs',
 				label: 'Parchment API reference',
-				description:
-					'The generated OpenAPI reference for the deployed Parchment API that complements the CLI.'
+				description: 'The HTTP API behind the CLI, for building your own integrations.'
 			}
 		]
 	},
 	{
 		section: 'cli',
 		slug: 'auth-output',
-		title: 'CLI auth, config, and output',
+		title: 'Auth, config, and output',
 		summary:
-			'Authentication roles, local config, output modes, stderr/stdout rules, and scripting expectations for the Purveyors CLI.',
+			'How purvey signs in, which commands need which access, where settings live, and how output, errors, and exit codes work.',
 		eyebrow: 'Operational contract',
 		intro: [
-			'This page is the practical contract for running purvey in scripts, CI, agent harnesses, and local terminals. It covers which commands require auth, what config exists today, and how output behaves across interactive and non-interactive modes.',
-			'If you automate against purvey, treat stdout and stderr semantics as part of the interface, not just the command names.'
+			'Use this page when you run purvey in scripts, CI, or agent tools. Output format, error envelopes, and exit codes are stable parts of the CLI contract.',
+			'purvey auth login stores a scoped key for your account on this machine. purvey auth logout removes it locally; revoke the key from your API keys in the Parchment Console if the machine is lost.'
 		],
 		sections: [
-			{
-				title: 'Authentication commands',
-				codeBlocks: [
-					{
-						label: 'Login and status',
-						language: 'bash',
-						code: 'purvey auth login\npurvey auth login --headless\npurvey auth status --json\npurvey auth logout'
-					}
-				],
-				bullets: [
-					'purvey auth login opens the browser consent flow. Review the requesting machine and scopes at /auth/cli, authorize the request, and return to the terminal; the CLI exchanges its private verifier for the scoped Parchment API key.',
-					'purvey auth login --headless prints the consent URL for agents, CI, containers, and remote hosts. Open it in any browser and authorize the request; the browser approval completes the sign-in without a manual URL handoff.',
-					'Login uses the OAuth session only to mint a machine-named scoped Parchment API key. The CLI stores that key plus non-secret identity metadata, not session access or refresh tokens.',
-					'purvey auth status validates the stored API key. On success it reports authenticated state, account email, role, key ID, and key creation time; an invalid or revoked key is reported as unauthenticated.',
-					'Catalog search, get, stats, structured public-data filters, and catalog similar require catalog:read and are available across API plans. Inventory, roast, sales, and tasting require owner-bound access and the matching key scopes.'
-				]
-			},
-			{
-				title: 'Local config',
-				table: {
-					headers: ['Command', 'Notes'],
-					rows: [
-						['purvey config list', 'Show all stored config values.'],
-						['purvey config get <key>', 'Print the raw value to stdout for scripting.'],
-						['purvey config set <key> <value>', 'Persist a config value locally.'],
-						['purvey config reset', 'Clear config back to defaults.']
-					]
-				},
-				bullets: [
-					'Today the primary supported key is form-mode, stored in ~/.config/purvey/config.json.',
-					'When form-mode is true, several write commands can enter guided form mode automatically when required flags are missing.',
-					'Config commands are local-only and do not require authentication.'
-				]
-			},
-			{
-				title: 'Stdout and stderr behavior',
-				bullets: [
-					'Compact JSON on stdout is the default success shape for most commands.',
-					'--pretty keeps JSON but formats it for human reading. --csv changes successful stdout only and only on commands that support CSV-shaped output.',
-					'Info messages, confirmations, spinner text, and fatal errors go to stderr so stdout can stay script-friendly.',
-					'With --json, --pretty, --csv, or non-interactive piping, fatal errors become JSON envelopes on stderr. Interactive no-flag sessions may show human-readable fatal errors instead.'
-				],
-				codeBlocks: [
-					{
-						label: 'Script-friendly usage',
-						language: 'bash',
-						code: "purvey inventory list | jq '.[].id'\npurvey sales list --csv > sales.csv\npurvey auth status 2>/dev/null | jq -r '.email'"
-					}
-				]
-			},
-			{
-				title: 'Exit-code expectations',
-				bullets: [
-					'0 means success.',
-					'3 is the important automation code for auth failures, including missing or revoked credentials and insufficient role or entitlement.',
-					'5 represents dependency conflicts such as inventory deletion without --force when dependent roasts or sales exist.',
-					'6 represents local config problems.'
-				]
-			}
+			...buildGroupSections('auth'),
+			...buildOutputSections(),
+			...buildGroupSections('config')
 		],
 		related: [
+			{
+				href: '/docs/cli/overview',
+				label: 'CLI overview',
+				description: 'Install, sign in, and see every command group.'
+			},
 			{
 				href: '/docs/cli/context-manifest',
 				label: 'Context and manifest',
-				description:
-					'Dense onboarding text, machine-readable contract output, and agent wrapper guidance.'
+				description: 'Readable and machine-readable references for your installed version.'
 			},
 			{
-				href: '/docs/cli/overview',
-				label: 'CLI overview',
-				description: 'Return to the high-level command and positioning map.'
-			},
-			{
-				href: '/docs/cli/agent-integration',
-				label: 'Agent integration',
-				description:
-					'See how the web app, CLI, and external agents share Parchment contracts without runtime coupling.'
+				href: '/api-dashboard/keys',
+				label: 'API keys',
+				description: 'Review and revoke keys in the Parchment Console.'
 			}
 		]
 	},
-	{
-		section: 'cli',
-		slug: 'catalog',
-		title: 'CLI catalog commands',
-		summary:
-			'Search and browse the green coffee catalog from your terminal with a scoped Parchment API key.',
-		eyebrow: 'Catalog data',
-		intro: [
-			'Catalog commands are the fastest way to explore the green coffee feed from the terminal with account-linked access. Run purvey auth login to create and store a scoped Parchment API key, or set PARCHMENT_API_KEY or PURVEYORS_API_KEY to supply one explicitly.',
-			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits. purvey catalog similar <id> mirrors the account-linked matching workflow exposed by the beta https://api.purveyors.io/v1/catalog/{id}/similar endpoint and requires a key with catalog:read on any API plan. If the goal is public no-login discovery, use https://purveyors.io/catalog. See the CLI overview for install and login instructions.'
-		],
-		sections: [
-			{
-				title: 'Commands',
-				bullets: [
-					'purvey catalog search: search by origin, processing method, price, flavor, variety, drying method, and more. Requires catalog:read.',
-					'purvey catalog get <id>: fetch a single coffee by catalog ID.',
-					'purvey catalog similar <id>: find coffees similar to a given catalog entry. Requires a Parchment API key with catalog:read and is available across API plans.',
-					'purvey catalog stats: aggregate catalog statistics.'
-				],
-				codeBlocks: [
-					{
-						label: 'Search examples',
-						language: 'bash',
-						code: 'purvey catalog search --origin "Ethiopia" --process "natural" --pretty\npurvey catalog search --variety "Heirloom" --stocked --pretty\npurvey catalog search --drying-method "raised bed" --stocked --limit 20\npurvey catalog search --stocked-days 30 --sort newest --pretty\npurvey catalog search --ids "1182,1183,1200" --pretty\npurvey catalog similar 1182 --threshold 0.85 --stocked-only --pretty'
-					}
-				]
-			},
-			{
-				title: 'Similar matching',
-				bullets: [
-					'purvey catalog similar <id> finds beta similar-coffee candidates for one catalog ID. Treat results as leads for comparison, not canonical identity claims.',
-					'--threshold sets the minimum similarity score. The HTTP beta endpoint accepts 0.5 through 0.99 and defaults to 0.7.',
-					'--stocked-only limits matches to currently stocked coffees. The HTTP endpoint defaults stocked_only to true.',
-					'When an integration needs API-key access, rate-limit headers, or explicit beta response metadata, call GET https://api.purveyors.io/v1/catalog/{id}/similar directly.'
-				]
-			},
-			{
-				title: 'Search filters',
-				bullets: [
-					'--origin <text>: partial match across country, continent, and region fields.',
-					'--process <text>: partial match on processing method (e.g. washed, natural).',
-					'--flavor <text>: partial match on flavor notes (comma-separated for multiple).',
-					'--variety <text>: filter by coffee variety or cultivar (partial match).',
-					'--drying-method <text>: filter by drying method (partial match, e.g. raised bed, patio).',
-					'--name <text>: filter by coffee name (partial match, case-insensitive).',
-					'--supplier <name>: filter by supplier or source name (partial match, case-insensitive).',
-					'--stocked: only show currently available coffees.',
-					'--stocked-days <n>: only show coffees stocked within the last N days.',
-					'--price-min <n> / --price-max <n>: filter by price per pound range.',
-					'--ids <n,n,...>: fetch specific catalog IDs (comma-separated; ignores --limit).',
-					'--sort <price|price-desc|name|origin|newest>: sort results.',
-					'--offset <n>: skip N results for pagination.',
-					'--limit <n>: maximum results returned (default: 10).'
-				]
-			},
-			{
-				title: 'Output formats',
-				bullets: [
-					'--pretty: formatted output for terminal reading.',
-					'--csv: comma-separated output for spreadsheets and data pipelines.',
-					'--origin accepts partial matches across country, continent, and region fields.'
-				]
-			}
-		],
-		related: [
-			{
-				href: '/catalog',
-				label: 'Web catalog',
-				description: 'Browse the same catalog in the web app.'
-			},
-			{
-				href: '/docs/api/catalog',
-				label: 'HTTP catalog docs',
-				description: 'Compare CLI access with the API-key endpoint.'
-			},
-			{
-				href: '/docs/api/catalog-similarity',
-				label: 'Catalog similarity API',
-				description: 'The beta HTTP matching endpoint for member sessions and scoped API keys.'
-			},
-			{
-				href: '/docs/cli/overview',
-				label: 'CLI overview',
-				description: 'Install, authenticate, and see all available commands.'
-			}
-		]
-	},
-	{
-		section: 'cli',
-		slug: 'inventory',
-		title: 'CLI inventory commands',
-		summary:
-			'List, add, update, and delete green coffee inventory from your terminal. Requires authentication.',
-		eyebrow: 'Member workflows',
-		intro: [
-			'Inventory commands manage your green coffee inventory, the same data visible on the /beans page in the web app. Results include catalog details joined to your inventory records.',
-			'Inventory IDs are distinct from catalog IDs. Roast commands and other workflows expect inventory IDs.'
-		],
-		sections: [
-			{
-				title: 'Commands',
-				bullets: [
-					'purvey inventory list: list inventory with optional filters including --stocked, --catalog-id, --origin, --purchase-date-start, --purchase-date-end, and --limit.',
-					'purvey inventory get <id>: fetch a single inventory item by ID.',
-					'purvey inventory add: add a new inventory item (--catalog-id and --qty are required).',
-					'purvey inventory update <id>: update fields on an existing inventory item.',
-					'purvey inventory delete <id>: delete an item; --force cascades to dependent roast profiles and sales.'
-				],
-				codeBlocks: [
-					{
-						label: 'List, add, update, and export',
-						language: 'bash',
-						code: 'purvey inventory list --stocked --pretty\npurvey inventory list --origin Ethiopia --pretty\npurvey inventory list --catalog-id 128 --pretty\npurvey inventory list --purchase-date-start 2026-01-01 --purchase-date-end 2026-03-31\npurvey inventory add --catalog-id 128 --qty 10 --cost 8.50 --pretty\npurvey inventory update 7 --stocked false\npurvey inventory delete 7 --yes\npurvey inventory delete 7 --force --yes\npurvey inventory list --limit 50 --csv > inventory.csv'
-					}
-				]
-			},
-			{
-				title: 'add and update flags',
-				bullets: [
-					'add required flags: --catalog-id (catalog entry ID), --qty (pounds).',
-					'add optional flags: --cost, --tax-ship, --notes, --purchase-date, --form.',
-					'update fields: --qty, --cost, --tax-ship, --notes, --stocked <true|false>.',
-					'delete --force cascades to dependent roast profiles and sales records. Without --force, delete fails if dependents exist.'
-				]
-			},
-			{
-				title: 'Important',
-				callout: {
-					tone: 'warning',
-					title: 'Use inventory IDs for roast work',
-					body: 'purvey roast --coffee-id expects green_coffee_inv.id values. Do not pass coffee_catalog IDs into roast commands.'
-				}
-			}
-		],
-		related: [
-			{
-				href: '/docs/cli/roast',
-				label: 'CLI roast docs',
-				description: 'Inventory IDs feed directly into roast create and import flows.'
-			},
-			{
-				href: '/docs/api/inventory',
-				label: 'Inventory API docs',
-				description: 'Session-authenticated endpoints behind inventory operations.'
-			},
-			{
-				href: '/beans',
-				label: 'Inventory page',
-				description: 'Manage inventory in the web app.'
-			}
-		]
-	},
-	{
-		section: 'cli',
-		slug: 'roast',
-		title: 'CLI roast commands',
-		summary:
-			'Create roast profiles, import Artisan files, and set up folder watching from the terminal.',
-		eyebrow: 'Roasting',
-		intro: [
-			'Roast commands turn terminal workflows into operational tools. They are especially useful for importing Artisan .alog files and automating roast capture with folder watching.',
-			'The CLI encourages purvey roast import when an .alog file is available, extracting curves, events, and milestone timing automatically.'
-		],
-		sections: [
-			{
-				title: 'Commands',
-				bullets: [
-					'purvey roast list: list profiles, optionally filtered by --coffee-id, --roast-id, --batch-name, --coffee-name, --catalog-id, --date-start, or --date-end.',
-					'purvey roast get <id>: fetch a single roast profile (--include-temps, --include-events for full telemetry).',
-					'purvey roast create: create a roast record manually.',
-					'purvey roast import: import an Artisan .alog file.',
-					'purvey roast update <id>: update notes, batch name, oz-out, or targets on an existing profile.',
-					'purvey roast delete <id>: delete a roast profile.',
-					'purvey roast watch: watch a directory for new .alog files with --coffee-id, --batch-prefix, --prompt-each, or --auto-match, and resume long-running sessions with --resume.'
-				],
-				codeBlocks: [
-					{
-						label: 'Create, import, list, update, and watch',
-						language: 'bash',
-						code: 'purvey roast create --coffee-id 7 --batch-name "Ethiopia Guji Light" --oz-in 16 --pretty\npurvey roast import ~/artisan/ethiopia-guji.alog --coffee-id 7 --pretty\npurvey roast list --roast-id 123 --pretty\npurvey roast list --batch-name "Guji" --pretty\npurvey roast list --catalog-id 128 --pretty\npurvey roast update 123 --targets "Aim for FC at 390F, 18% dev"\npurvey roast watch ~/artisan/ --auto-match\npurvey roast watch --resume'
-					}
-				]
-			},
-			{
-				title: 'Behavior notes',
-				bullets: [
-					'--coffee-id always refers to green_coffee_inv.id (use purvey inventory list to find IDs), while --catalog-id on roast list cross-references the underlying coffee_catalog row.',
-					'--roast-id filters by the exact roast profile ID while keeping the list output shape, which is useful in scripts that already expect arrays.',
-					'Import extracts roast curves, events, and milestone timing from .alog files.',
-					'Interactive file and directory prompts normalize pasted path input: surrounding quotes are removed, shell-escaped spaces and common special characters are unescaped, and Windows or UNC path separators are preserved.',
-					'Interactive --form mode provides a guided workflow for create, import, and watch setup. On roast watch, --auto-match and --coffee-id are mutually exclusive, session state is saved for --resume, and the command runs until interrupted.'
-				]
-			}
-		],
-		related: [
-			{
-				href: '/docs/api/roast-profiles',
-				label: 'Roast API docs',
-				description: 'Underlying endpoints and chart helpers.'
-			},
-			{
-				href: '/roast',
-				label: 'Roast page',
-				description: 'Charts and profile editing in the web app.'
-			},
-			{
-				href: '/docs/cli/sales',
-				label: 'Sales commands',
-				description: 'Record sales after roasting.'
-			}
-		]
-	},
-	{
-		section: 'cli',
-		slug: 'sales',
-		title: 'CLI sales commands',
-		summary: 'Record roasted-coffee sales from the terminal.',
-		eyebrow: 'Sales',
-		intro: [
-			'Sales commands record roasted-coffee sales against roast profiles. They complement the /profit page in the web app.',
-			'The flag-based record flow uses roast IDs, not inventory IDs. Use --form when you want an interactive roast picker instead of passing an ID directly.'
-		],
-		sections: [
-			{
-				title: 'Record a sale',
-				codeBlocks: [
-					{
-						label: 'Record and list sales',
-						language: 'bash',
-						code: 'purvey sales record --roast-id 123 --oz 12 --price 22.00 --buyer "Jane Smith" --pretty\npurvey sales record --form\npurvey sales list --pretty\npurvey sales list --roast-id 123 --pretty\npurvey sales list --buyer "Jane" --date-start 2026-01-01\npurvey sales list --csv > sales.csv'
-					}
-				],
-				bullets: [
-					'Required flags for flag-based record: --roast-id, --oz, --price. --buyer and --sell-date are optional.',
-					'Use purvey roast list to find roast IDs. The CLI write flow records against roast_data.roast_id, not green_coffee_inv.id or coffee_catalog.id.',
-					'--price is the total sale price, not per-ounce. Use --form for an interactive picker when you do not already know the roast ID.'
-				]
-			},
-			{
-				title: 'List sales',
-				bullets: [
-					'--roast-id <id>: filter by roast profile ID.',
-					'--date-start / --date-end <YYYY-MM-DD>: filter by date range.',
-					'--buyer <name>: filter by buyer name (partial match).',
-					'--limit <n>: maximum results returned (default: 20).',
-					'--offset <n>: skip rows for pagination when exporting or reconciling larger histories.'
-				]
-			},
-			{
-				title: 'Update and delete',
-				bullets: [
-					'purvey sales update <id>: update oz, price, buyer, or sell-date on an existing sale.',
-					'purvey sales delete <id>: delete a sale record.',
-					'Both commands expect a sale_id from purvey sales list, not a roast_id.'
-				]
-			}
-		],
-		related: [
-			{
-				href: '/profit',
-				label: 'Profit page',
-				description: 'Sales data rolls into profit analytics in the web app.'
-			},
-			{
-				href: '/docs/cli/roast',
-				label: 'CLI roast docs',
-				description: 'Sales depend on roast IDs from roast workflows.'
-			},
-			{
-				href: '/docs/api/roast-profiles',
-				label: 'Roast API docs',
-				description: 'Related session-authenticated endpoints.'
-			}
-		]
-	},
-	{
-		section: 'cli',
-		slug: 'tasting',
-		title: 'CLI tasting commands',
-		summary: 'Read supplier tasting notes and record your own cupping scores from the terminal.',
-		eyebrow: 'Tasting',
-		intro: [
-			'Tasting commands combine supplier-provided notes from the catalog with your personal cupping data stored on inventory rows.',
-			'Both read and write flows are available, so tasting data works across terminal, browser, and Cherry AI contexts.'
-		],
-		sections: [
-			{
-				title: 'Read and rate',
-				codeBlocks: [
-					{
-						label: 'Retrieve and rate tasting data',
-						language: 'bash',
-						code: 'purvey tasting get 128 --filter both --pretty\npurvey tasting get 128 --filter supplier --pretty\npurvey tasting rate 7 --aroma 4 --body 3 --acidity 5 --sweetness 4 --aftertaste 4\npurvey tasting rate --form'
-					}
-				],
-				bullets: [
-					'The <bean-id> for tasting get is a coffee_catalog ID, not an inventory ID.',
-					'purvey tasting rate uses an inventory_id, not a catalog_id. That split mirrors the supplier-notes versus personal-cupping data model.',
-					'--filter both returns both supplier and personal notes when available.',
-					'Rate supports aroma, body, acidity, sweetness, aftertaste, brew-method, notes, and --form.'
-				]
-			}
-		],
-		related: [
-			{
-				href: '/docs/cli/inventory',
-				label: 'CLI inventory docs',
-				description: 'Cupping ratings are stored on inventory rows.'
-			},
-			{
-				href: '/docs/cli/catalog',
-				label: 'CLI catalog docs',
-				description: 'Supplier tasting notes originate in the catalog.'
-			},
-			{
-				href: '/chat',
-				label: 'Cherry AI',
-				description: 'The chat workspace includes tasting-note tools.'
-			}
-		]
-	},
-
+	...getCliGroupPages(),
 	{
 		section: 'cli',
 		slug: 'context-manifest',
-		title: 'CLI context and manifest',
+		title: 'Context and manifest',
 		summary:
-			'Understand purvey context, purvey manifest, and how wrappers should onboard to the CLI contract.',
+			'Get a readable command reference or the full machine-readable contract for the CLI version you have installed.',
 		eyebrow: 'Agent onboarding',
 		intro: [
-			'purvey context and purvey manifest are related but not interchangeable. context is optimized for dense human or model-readable onboarding text. manifest is the preferred machine-readable contract for shells, wrappers, and agents.',
-			'purvey context --json and --pretty emit the same manifest contract for compatibility when an existing caller already uses the context entrypoint. The same contract is also available in-process via @purveyors/cli/manifest.'
+			'purvey context prints a compact, readable reference that suits people and language models. purvey manifest prints the same contract as stable JSON for scripts and tools. Both describe exactly the version you have installed and work without signing in.'
 		],
 		sections: [
 			{
-				title: 'Which command to use',
+				title: 'Which one to use',
 				table: {
 					headers: ['Need', 'Use', 'Notes'],
 					rows: [
 						[
-							'Dense onboarding text',
+							'A readable reference',
 							'purvey context',
-							'Prints the shipped plain-text agent reference with auth rules, ID maps, workflows, and error patterns.'
+							'Plain text covering access rules, the ID map, workflows, and common errors.'
 						],
 						[
-							'Preferred machine-readable contract',
+							'A machine-readable contract',
 							'purvey manifest',
-							'Emits the stable manifest JSON on stdout. Use --pretty for indented output.'
+							'Stable JSON on standard output. Add --pretty for indented output.'
 						],
 						[
-							'Compatibility-parity JSON',
-							'purvey context --json / --pretty',
-							'Use when an existing context caller needs the same manifest contract without changing entrypoints.'
+							'JSON from an existing context caller',
+							'purvey context --json',
+							'Prints the same contract as purvey manifest.'
 						],
 						[
-							'Code-side integration',
+							'The contract inside a Node.js tool',
 							'@purveyors/cli/manifest',
-							'Prefer the dedicated manifest export when an in-process Node.js or agent runtime needs the same contract.'
+							'Import getCliManifest() to read the same contract in-process.'
 						]
 					]
 				}
 			},
-			{
-				title: 'Examples',
-				codeBlocks: [
-					{
-						label: 'Text-first onboarding',
-						language: 'bash',
-						code: 'purvey context\npurvey context | head -50\npurvey context > cli-reference.txt'
-					},
-					{
-						label: 'Machine-readable contract',
-						language: 'bash',
-						code: 'purvey manifest\npurvey manifest --pretty\npurvey context --json > cli-manifest.json'
-					}
-				],
-				bullets: [
-					'purvey context prints text by default. Use purvey manifest for the preferred machine-readable contract.',
-					'purvey context --json and --pretty intentionally emit the same manifest contract for compatibility with existing context-based callers.',
-					'Use --csv only on commands that document CSV support. Neither context nor manifest supports CSV output.'
-				]
-			},
-			{
-				title: 'What the manifest contains',
-				bullets: [
-					'Command groups, subcommands, summaries, examples, and auth requirements.',
-					'Output-mode expectations, stderr/stdout notes, structured error-envelope guidance, and compatibility notes.',
-					'ID-type reference for catalog_id, inventory_id, roast_id, and sale_id so agents do not confuse resource identifiers.',
-					'Workflow examples and common error patterns that help agents recover without reverse-engineering implementation details.'
-				],
-				callout: {
-					tone: 'success',
-					title: 'Prefer the documented contract over internal route coupling',
-					body: 'Use purvey or the public Parchment API through @purveyors/sdk instead of coupling to private chat workspace payloads. The former /api/tools/* compatibility surface is retired.'
-				}
-			}
+			...buildGroupSections('context'),
+			...buildGroupSections('manifest')
 		],
 		related: [
 			{
-				href: '/docs/cli/auth-output',
-				label: 'Auth, config, and output',
-				description: 'See the surrounding scripting contract, not just the onboarding commands.'
-			},
-			{
 				href: '/docs/cli/agent-integration',
 				label: 'Agent integration',
-				description: 'How external agents consume CLI commands and Parchment contracts.'
+				description: 'Patterns for AI agents that use the CLI.'
 			},
 			{
-				href: '/docs/api/overview',
-				label: 'API overview',
-				description: 'Compare the CLI contract with the public HTTP contract.'
+				href: '/docs/cli/auth-output',
+				label: 'Auth, config, and output',
+				description: 'Output modes, exit codes, and the ID reference.'
 			}
 		]
 	},
@@ -2933,54 +2443,274 @@ const docsPages: DocsPage[] = [
 		slug: 'agent-integration',
 		title: 'Agent integration',
 		summary:
-			'Use the Purveyors CLI as a stable interface for AI agents, coding assistants, and external automation.',
+			'Let AI agents search the catalog, keep your records, and read market data on your behalf.',
 		eyebrow: 'Agent workflows',
+		agentSetupPrompt: true,
 		intro: [
-			'The CLI is the preferred documented automation surface for most non-visual workflows. It gives agents stable command names, explicit auth requirements, predictable output modes, and a machine-readable manifest when needed.',
-			'The Purveyors web app and CLI both consume Parchment API contracts, keeping browser, terminal, and agent behavior aligned without runtime package coupling.'
+			'Any AI agent that can run shell commands, such as Claude Code, Codex, Cursor, or OpenClaw, can use purvey to work with your Purveyors data. Commands return structured JSON when asked with --json, report a clear exit code, and state the access they need, so an agent can act and recover from errors without guessing.',
+			'The fastest way to connect an agent is the setup prompt on this page. Your agent installs the CLI, asks you to approve sign-in in your browser, and installs the Purveyors skill.'
 		],
 		sections: [
 			{
-				title: 'Recommended agent patterns',
+				title: 'What your agent can do',
 				bullets: [
-					'For shell-based automation, authenticate once, then call purvey commands with JSON or CSV output that suits the surrounding workflow.',
-					'For code-side integrations, use @purveyors/sdk against the stable Parchment API contracts instead of importing CLI runtime internals or screen-scraping help text.',
-					'Use purvey context first when a model needs dense onboarding text. Use purvey manifest for the preferred machine-readable contract, or purvey context --json when an existing caller needs compatibility-parity output.',
-					'Prefer purvey CLI commands for shell automation or @purveyors/sdk and the public Parchment API for code integrations; the former /api/tools/* endpoints are retired, and private workspace route payloads are not integration contracts.'
+					'Find coffees: search and rank the catalog by origin, process, price, score, and freshness, compare suppliers, and find similar lots.',
+					'Keep records: add inventory, import Artisan roasts, record sales, and log cupping scores.',
+					'Watch the market: check value signals, price movement, and Price Index comparisons.',
+					'Plan roasts: compare roasts with Studio reference profiles and export the next plan to Artisan.'
 				]
 			},
 			{
-				title: 'How the web app and CLI stay aligned',
+				title: 'Your account stays in your hands',
 				bullets: [
-					'The app uses a session-authenticated @purveyors/sdk client to forward Parchment-owned Cherry Runtime streams without buffering. The CLI remains a separate Parchment API client and terminal surface; neither runtime imports the other.',
-					'All Coffee-app product data and AI orchestration now cross Parchment contracts; Supabase is limited to browser identity and session plumbing.',
-					'Cherry read and proposal tools execute inside Parchment. Writes stay user-confirmed through proposal cards and constrained execution routes.',
-					'This API-first architecture keeps terminal, browser, and agent workflows aligned on the same contracts without runtime package coupling.'
+					'You approve sign-in in your own browser. Your agent never sees your password and never needs an API key from you.',
+					'The CLI stores a key for the machine that requested it. You can revoke it at any time from your API keys in the Parchment Console.',
+					'Each command reference lists the access it needs, so your agent can tell you up front when a task needs a different plan.'
+				]
+			},
+			{
+				title: 'Patterns that work well',
+				bullets: [
+					'Install the Purveyors skill with purvey skill install so your agent knows the commands, ID types, and output rules before it starts.',
+					'Have the agent read purvey context for a compact reference, or purvey manifest for the full machine-readable contract of the installed version.',
+					'Pass --json to every command you parse. Most commands print JSON by default, but purvey context prints readable text, and in an interactive terminal so do purvey auth status and purvey config list.',
+					'Rely on exit codes: 3 means sign-in or access is missing, 2 means a bad argument, and 4 means the record was not found.',
+					'Keep ID types straight. Catalog IDs, inventory IDs, roast IDs, and sale IDs are different; the ID reference shows which command takes which.',
+					'Building an application rather than an agent? Use the Parchment API and @purveyors/sdk, documented at https://api.purveyors.io/docs.'
 				],
 				codeBlocks: [
 					{
-						label: 'Agent bootstrap sequence',
+						label: 'A typical agent session',
 						language: 'bash',
-						code: 'purvey auth login --headless\npurvey manifest --pretty\npurvey catalog search --origin "Ethiopia" --json'
+						code: 'purvey auth status --json\npurvey catalog search --origin "Ethiopia" --stocked --limit 5 --json\npurvey inventory list --stocked --json'
 					}
+				]
+			},
+			{
+				title: 'Agents without a shell',
+				body: [
+					'Chat apps that cannot run commands, such as Claude Desktop and ChatGPT, cannot use the CLI yet. You can still give them the documentation: https://purveyors.io/llms-full.txt contains every docs page in one file.'
 				]
 			}
 		],
 		related: [
 			{
+				href: '/docs/agents/setup',
+				label: 'Set up your agent',
+				description: 'The step-by-step setup your agent follows.'
+			},
+			{
 				href: '/docs/cli/context-manifest',
 				label: 'Context and manifest',
-				description: 'Dense onboarding text, manifest output, and wrapper guidance.'
+				description: 'Readable and machine-readable references for agents.'
 			},
 			{
 				href: '/docs/cli/auth-output',
 				label: 'Auth, config, and output',
-				description: 'See the scripting guarantees that make CLI automation reliable.'
+				description: 'Exit codes, error envelopes, and the ID reference.'
+			}
+		]
+	},
+	{
+		section: 'agents',
+		slug: 'setup',
+		title: 'Set up your agent',
+		summary:
+			'Install the Purveyors CLI, sign in with browser approval, and give your AI agent the Purveyors skill.',
+		eyebrow: 'For AI agents',
+		agentSetupPrompt: true,
+		intro: [
+			'These steps are written for an AI agent with shell access, such as Claude Code, Codex, Cursor, or OpenClaw, working on behalf of a person. A person can follow them too.',
+			'Agents without a shell, such as Claude Desktop and ChatGPT, cannot complete this setup yet.',
+			'Work through the steps in order. Only step 2 needs the person: they approve sign-in in their browser.'
+		],
+		sections: [
+			{
+				title: 'Before you start',
+				bullets: [
+					`The machine needs ${formatNodeRequirement()} with npm. Check with node --version.`,
+					'The person you are helping needs a Purveyors account and a web browser. The browser does not have to be on this machine.',
+					'Never ask the person for an API key, password, or token, and never paste credentials into the conversation. Sign-in happens in their browser.'
+				]
 			},
 			{
-				href: '/chat',
-				label: 'Cherry AI workspace',
-				description: 'The web UI that consumes session-mode Parchment API SDK clients.'
+				title: 'Step 1: Install the CLI',
+				body: ['Install the CLI globally with npm, then confirm it runs.'],
+				codeBlocks: [
+					{
+						label: 'Install and confirm',
+						language: 'bash',
+						code: 'npm install -g @purveyors/cli\npurvey --version'
+					}
+				],
+				bullets: [
+					'purvey --version should print a version number. If the shell cannot find purvey, see Troubleshooting below.'
+				]
+			},
+			{
+				title: 'Step 2: Sign in with browser approval',
+				body: [
+					'Run `purvey auth login --headless`. It prints a purveyors.io approval link, then waits until the person approves.'
+				],
+				codeBlocks: [
+					{
+						label: 'Start sign-in',
+						language: 'bash',
+						code: 'purvey auth login --headless'
+					},
+					{
+						label: 'If your shell waits for commands to exit (macOS and Linux)',
+						language: 'bash',
+						code: 'purvey auth login --headless > /tmp/purvey-login.log 2>&1 &\nsleep 3; cat /tmp/purvey-login.log'
+					},
+					{
+						label: 'Message to send the person',
+						language: 'text',
+						code: 'Please open this link, sign in to Purveyors, and approve access for this machine:\n<approval link>\nTell me when you are done.'
+					}
+				],
+				bullets: [
+					'Keep the command running while you wait. If your shell tool only shows output after a command exits, start it in the background, write its output to a file, and read the link from that file.',
+					'Send the link to the person and ask them to open it, sign in, and approve access.',
+					'After approval, the command finishes on its own and prints the signed-in email. Nothing needs to be copied back.',
+					'The link expires after about 10 minutes. If it expires, run the command again for a fresh link.'
+				],
+				callout: {
+					tone: 'warning',
+					title: 'Never ask for an API key',
+					body: 'Do not ask the person for an API key, password, or session token, and do not accept one pasted into the conversation. Browser approval gives the CLI its own key, stored only on this machine.'
+				}
+			},
+			{
+				title: 'Step 3: Confirm the sign-in',
+				body: ['Run `purvey auth status --json`.'],
+				codeBlocks: [
+					{
+						label: 'Check status',
+						language: 'bash',
+						code: 'purvey auth status --json'
+					}
+				],
+				bullets: [
+					'Success prints JSON with "authenticated": true, the account email, and its role, and exits with code 0.',
+					'If it prints "authenticated": false and exits with code 3, repeat step 2.'
+				]
+			},
+			{
+				title: 'Step 4: Install the Purveyors skill',
+				body: [
+					'The skill teaches your agent the Purveyors commands, ID types, output rules, and step-by-step workflows. Pick the command for the agent you are running in: `--target claude` if you are Claude Code, `--target agents` if you are Codex, Cursor, or another Agent Skills tool. Installing the skill needs no sign-in or network access.'
+				],
+				table: {
+					headers: ['Agent', 'Command'],
+					rows: [
+						['Claude Code', '`purvey skill install --target claude`'],
+						[
+							'Codex, Cursor, or another Agent Skills tool',
+							'`purvey skill install --target agents`'
+						]
+					]
+				},
+				bullets: [
+					'Claude Code loads skills only from its own skills folder, so use `--target claude` there even if the project also has an `.agents` folder.',
+					'The skill installs for your user by default. Add --scope project to install it for the current project only.',
+					'The skill is a folder with two files: SKILL.md, the guide your agent loads first, and workflows.md, step-by-step command sequences it reads before a multi-step task. The command writes both.',
+					'Add --dry-run to see where the files will go without writing them.',
+					'Running the command again is safe. It updates both files in place and leaves a file you edited alone unless you pass --force.',
+					'Start a new agent session if the skill does not appear right away.'
+				]
+			},
+			{
+				title: 'Step 5: Run a first command',
+				body: ['Run a catalog search to confirm everything works.'],
+				codeBlocks: [
+					{
+						label: 'Find stocked Ethiopian coffees',
+						language: 'bash',
+						code: 'purvey catalog search --origin "Ethiopia" --stocked --limit 5 --pretty'
+					}
+				],
+				bullets: [
+					'This returns five currently stocked Ethiopian green coffees with prices and suppliers. Summarize them for the person.',
+					'Then tell the person setup is complete and offer next steps: compare coffees, track inventory, import roasts, or check market prices.',
+					'For every command, run purvey context or read https://purveyors.io/docs/cli/overview.'
+				]
+			},
+			{
+				title: 'Optional: add Purveyors to a project',
+				body: [
+					"To give every agent that works in one repository the Purveyors basics, run this from the project's root folder. It adds a short, marked Purveyors section to AGENTS.md and leaves the rest of the file alone. It changes files in the person's repository, so ask them first."
+				],
+				codeBlocks: [
+					{
+						label: 'Add the Purveyors section to AGENTS.md',
+						language: 'bash',
+						code: 'purvey skill install --target agents-md --link-claude-md'
+					}
+				],
+				bullets: [
+					'Codex, Cursor, and other agents that read AGENTS.md pick up the section directly.',
+					'Claude Code reads AGENTS.md only when there is no CLAUDE.md, .claude/CLAUDE.md, or CLAUDE.local.md in the project folder or any folder above it. `--link-claude-md` adds a one-line `@AGENTS.md` import to the project CLAUDE.md, creating one if needed, so Claude Code reads the section too. It never edits CLAUDE.local.md or a CLAUDE.md outside the project.',
+					'Without `--link-claude-md`, only AGENTS.md changes. If Claude Code would not see the section, the JSON output shows `"claudeCode": { "visible": false }` and a warning names the CLAUDE.md files that hide it.',
+					'Running it again is safe, and `--dry-run` shows every file it would change without writing.'
+				]
+			},
+			{
+				title: 'Troubleshooting',
+				table: {
+					headers: ['Problem', 'What to do'],
+					rows: [
+						[
+							'purvey: command not found',
+							"npm's global folder is not on PATH. Run npm prefix -g, add its bin folder to PATH, or open a new shell."
+						],
+						[
+							'EACCES or permission denied during install',
+							'Install Node.js with a version manager such as nvm, or set a user-owned npm prefix. Use sudo only if the person approves.'
+						],
+						[
+							'Unsupported engine or syntax errors on start',
+							`Upgrade to ${formatNodeRequirement()}.`
+						],
+						[
+							'The approval link expired',
+							'Run purvey auth login --headless again and send the new link.'
+						],
+						[
+							'purvey auth status says not logged in',
+							'Repeat step 2. If PARCHMENT_API_KEY or PURVEYORS_API_KEY is set, it takes priority over browser sign-in; unset it unless the person wants to use that key.'
+						],
+						[
+							'A command exits with code 3 after sign-in',
+							"That command needs access the account does not have. Tell the person which command failed; the command's reference page lists the access it needs."
+						],
+						[
+							"The CLI reports unknown command 'skill'",
+							'Update the CLI with npm install -g @purveyors/cli@latest, then run step 4 again.'
+						],
+						[
+							'Your agent cannot run shell commands',
+							'This setup needs a shell. Use the Purveyors web app at https://purveyors.io instead.'
+						]
+					]
+				}
+			}
+		],
+		related: [
+			{
+				href: '/docs/cli/overview',
+				label: 'CLI overview',
+				description: 'Every command group and common workflows.'
+			},
+			{
+				href: '/docs/cli/agent-integration',
+				label: 'Agent integration',
+				description: 'What agents can do with Purveyors and patterns that work well.'
+			},
+			{
+				href: '/docs/cli/auth-output',
+				label: 'Auth, config, and output',
+				description: 'Exit codes, error envelopes, and the ID reference.'
 			}
 		]
 	}
@@ -2996,6 +2726,20 @@ export function getDocsPage(section: string, slug: string): DocsPage | undefined
 
 export function getDocsPagesForSection(section: DocsSectionKey): DocsPage[] {
 	return docsPages.filter((page) => page.section === section);
+}
+
+/** Sections rendered on purveyors.io. API docs redirect to the generated reference. */
+export function getPublishedDocsSections(): DocsNavSection[] {
+	return DOCS_NAV.filter((section) => section.key !== 'api');
+}
+
+/** Every page rendered on purveyors.io, in navigation order. */
+export function getPublishedDocsPages(): DocsPage[] {
+	return getPublishedDocsSections().flatMap((section) =>
+		section.items
+			.map((item) => getDocsPage(section.key, item.slug))
+			.filter((page): page is DocsPage => Boolean(page))
+	);
 }
 
 export function getDefaultSlug(section: string): string | undefined {

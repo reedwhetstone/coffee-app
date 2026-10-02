@@ -73,7 +73,7 @@ Do not blur those layers in code comments, docs, or PR descriptions.
 
 ## CLI relationship
 
-The web app uses a session-mode `@purveyors/sdk` client as an unbuffered Cherry Runtime BFF. Model-facing tools execute inside Parchment. Coffee-app does not import `@purveyors/cli`.
+The web app uses a session-mode `@purveyors/sdk` client as an unbuffered Cherry Runtime BFF. Model-facing tools execute inside Parchment. Coffee-app does not import `@purveyors/cli` at runtime; `/docs/cli` command reference pages are generated at build time from the pinned CLI manifest (ADR-017), so update CLI command and flag wording in `purveyors-cli`, not here.
 
 CLI auth and output rules matter here too:
 

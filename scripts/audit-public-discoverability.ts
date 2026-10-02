@@ -356,6 +356,12 @@ async function main() {
 		},
 		{ label: 'API', path: '/api', expectInSitemap: true, expectInLlms: true },
 		{ label: 'Docs', path: '/docs', expectInSitemap: true, expectInLlms: true },
+		{
+			label: 'Agent setup',
+			path: '/docs/agents/setup',
+			expectInSitemap: true,
+			expectInLlms: true
+		},
 		// /docs/api/* now 307-redirects to the external generated reference
 		// (https://api.purveyors.io/docs) and is intentionally excluded from
 		// sitemap.xml and llms.txt, so it is no longer a first-party
