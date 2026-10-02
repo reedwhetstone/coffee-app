@@ -87,6 +87,13 @@ describe('generated CLI reference', () => {
 		}
 	});
 
+	it('ends each sentence before the next one starts in flag details', () => {
+		for (const slug of Object.values(getCliGroupPageSlugs())) {
+			const markdown = renderDocsPageMarkdown(getDocsPage('cli', slug)!, 'https://purveyors.io');
+			expect(markdown, slug).not.toMatch(/\) (?:Default|Range|Required unless):/);
+		}
+	});
+
 	it('keeps CLI implementation detail off every generated page', () => {
 		const slugs = new Set(['overview', ...Object.values(getCliGroupPageSlugs())]);
 		for (const slug of slugs) {
@@ -96,7 +103,7 @@ describe('generated CLI reference', () => {
 		}
 	});
 
-	it('overrides access only where the manifest still contradicts the Parchment contract', () => {
+	it('states the paid-plan requirement for catalog similar while the manifest says any plan', () => {
 		const catalogPage = renderDocsPageMarkdown(
 			getDocsPage('cli', 'catalog')!,
 			'https://purveyors.io'
@@ -105,12 +112,16 @@ describe('generated CLI reference', () => {
 			const [, groupName, commandName] = path.split(' ');
 			const group = manifest.commandGroups.find((candidate) => candidate.name === groupName);
 			const command = group && getGroupCommands(group).find((item) => item.name === commandName);
-			// Fails once the CLI corrects the manifest; remove the override then.
+			// The override applies only to the manifest value it was written against.
 			expect(command?.auth, path).toBe(override.manifest);
 		}
-		const similar = catalogPage.slice(catalogPage.indexOf('## purvey catalog similar'));
+		const similar = catalogPage
+			.slice(catalogPage.indexOf('## purvey catalog similar'))
+			.split('\n## ')[0];
 		expect(similar).toContain(`Access: ${CLI_ACCESS_OVERRIDES['purvey catalog similar'].label}`);
-		expect(similar.split('\n## ')[0]).not.toContain('Requires member access');
+		expect(similar).toContain('any API key with catalog:read');
+		expect(similar).not.toContain('Requires member access');
+		expect(similar).not.toMatch(/paid plan/i);
 	});
 });
 
