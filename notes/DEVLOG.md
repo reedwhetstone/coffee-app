@@ -162,6 +162,43 @@
       first-class schema only after coverage is credible. Keep raw evidence private
       by default and avoid verification or compliance claims the data cannot support.
 
+- [ ] **Finish the green coffee grading rollout (ADR-016).** ADR-016 is still
+      Proposed. Accept it, or revise it, before shipping the remaining public
+      contract work below (API response, `/v1/catalog/grades`, SDK release) and
+      before `grade` removal; until then this item is conditional on acceptance.
+      Done so far: numeric elevation for every supplier (coffee-scraper
+      #562/#563 plus a backfill), the grading schema (Parchment #332, migration
+      `20261002020000`), and the scraper grading extractor (coffee-scraper #564).
+      Remaining: Parchment catalog response and filters, `/v1/catalog/grades`,
+      grading comparison rows, SDK, Cherry and CLI; coffee-app filters and
+      display; the coffee-app beans pages and `BeanForm` manual-bean write path,
+      which still sends `grade` (move elevation-shaped input to the elevation
+      fields and other text to `appearance`, per ADR-016 section 7); Purveyor
+      Score provenance; Market Index like-for-like value; then `grade` removal,
+      only after every writer and reader, including `BeanForm`, has migrated.
+      The catalog filter work is a full UI/UX rework, not new chips added to the
+      current page. Retire the on-page structured process filters, which add noise
+      and blur the line with the main filter bar. Rank the filters and sorts by
+      importance, and choose a selection method per field (fixed options for
+      bounded vocabularies such as process method, ranges for elevation and
+      screen, search only where values are open-ended).
+      Decision: `notes/decisions/016-green-coffee-grading-and-elevation-schema.md`.
+
+- [ ] **Feat: close grading vocabulary gaps.** The grading extractor reports
+      grade tokens that no seeded system covers. As of the 2026-10-02 dry run:
+      Peru "Grade 1" (33 lots), India AA/AB (31), Uganda AB/AA (15), Yemen
+      "Grade 1" (10), PNG AA (9), Jamaica "Grade 1" (8), Zambia AA (7), and
+      smaller counts for Burundi, Malawi, Rwanda, Laos and Haiti. Add real
+      national systems only where an issuing body defines the exact designation,
+      citing its published specification. India shows why: Coffee Board of India
+      Cherry schedules define AB, while AA appears in other named classifications
+      (for example Monsooned Malabar AA), so seed only verified designations such
+      as the Cherry AB grades and leave a bare supplier `AA` token unmapped until
+      its actual system is established. Decide how to record supplier-only
+      conventions without inventing national standards. Ship as an append-only
+      `green_grade_designations` migration plus extractor mappings; the audit's
+      unmapped-token finding tracks what remains.
+
 ## P2: Expand API, commerce, and agent leverage
 
 - [ ] **Complete canonical API and CLI parity.** Keep the shipped price-index CLI
