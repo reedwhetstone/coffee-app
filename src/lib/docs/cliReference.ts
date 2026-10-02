@@ -41,85 +41,25 @@ export const CLI_INTERNAL_COPY =
  * a null value drops a note. Remove an entry once the CLI rewrites or drops the text.
  */
 export const CLI_COPY_REWRITES: Record<string, string | null> = {
-	// Summaries, descriptions, and ID sources
-	'Market Index decision surface: value signals, movement stats, metadata trends, overview, and evidence via the canonical API':
-		'Market Index value signals, movement stats, metadata trends, overview, and evidence',
-	'Show the canonical identity, plan, scopes, and capabilities for the active credential':
-		'Show the identity, plan, scopes, and capabilities of the active credential',
-	'Fetch beta canonical /v1/catalog/{id}/similar groups for likely same-lot candidates and similar recommendations':
-		'Beta: find likely same-lot candidates and similar coffees for a catalog coffee',
-	'coffee_catalog.catalog_id': 'Catalog ID',
-	'coffee_catalog.catalog_id, not inventory id': 'Catalog ID, not an inventory ID',
-	'green_coffee_inv.id': 'Inventory ID',
-	'roast_data.roast_id': 'Roast ID',
-	'coffee_sales row id': 'Sale ID',
-	'green_coffee_inv.id, not catalog_id': 'Inventory ID, not a catalog ID',
-	'Canonical /v1/catalog supplier filter (partial source-name match)':
-		'Filter by supplier name (partial match)',
-	'Canonical /v1/catalog dryingMethod filter; Parchment owns matching': 'Filter by drying method',
-	'Comma-separated canonical /v1/catalog flavorKeywords; a row matches any keyword':
-		'Comma-separated flavor keywords; a coffee matches if it has any of them',
-	'Request canonical proof summaries from /v1/catalog?include=proof':
-		'Include a proof summary for each coffee',
-	'Request the canonical proof summary from /v1/catalog?include=proof': 'Include the proof summary',
-	'Canonical /v1/catalog/rank supplier filter': 'Filter by supplier name',
-	'coffee_catalog row': 'A coffee in the catalog',
-	'green_coffee_inv row': 'A coffee in your inventory',
-	'roast_data row': 'A roast profile',
-	'coffee_sales row': 'A recorded sale',
-	// Notes
-	'Prints the GET /v1/me response unchanged, including capabilities.profileStudio.':
-		'Prints the account details unchanged, including capabilities.profileStudio.',
-	'Structured process filters map to canonical /v1/catalog query names.': null,
-	'--include-proof uses the canonical /v1/catalog proof summary include and preserves the default output shape when omitted.':
-		'Without --include-proof, the output shape is unchanged.',
-	'The SDK supplies the canonical proof-summary-v1 row projection.': null,
-	'Without a field, prints the canonical /v1/catalog/facets envelope (values, facets, meta) unchanged.':
-		'Without a field, prints every facet with its counted values and meta.',
-	'Uses coffee_catalog.purveyor_score as the canonical quality signal.':
-		'Uses the Purveyor Score as the quality signal.',
-	'Exposes coffee_catalog.purveyor_score plus confidence, tier, factor breakdown, version, and update metadata; the CLI does not recompute the upstream score model.':
-		'Shows the Purveyor Score with its confidence, tier, factor breakdown, version, and update metadata.',
-	'Country and non-wholesale filters are applied at the catalog query layer before supplier aggregation.':
-		'Country and non-wholesale filters apply to coffees before suppliers are summarized.',
-	'Uses the beta canonical /v1/catalog/{id}/similar API contract, not the legacy direct RPC path.':
-		null,
-	'Default JSON output is the grouped canonical response object with data.target, data.groups.canonical_candidates, data.groups.similar_recommendations, optional data.matches, and meta.':
-		'Default JSON output groups results under data.target, data.groups.canonical_candidates, data.groups.similar_recommendations, optional data.matches, and meta.',
-	'Use the scoped member API key created by `purvey auth login`, or override it with PURVEYORS_API_KEY or PARCHMENT_API_KEY.':
-		'Uses the API key stored by `purvey auth login`; PURVEYORS_API_KEY or PARCHMENT_API_KEY overrides it.',
-	'Returns green_coffee_inv rows joined with catalog details.':
-		'Returns your inventory items with their catalog details.',
-	'--catalog-id filters by coffee_catalog.catalog_id.': '--catalog-id filters by catalog ID.',
-	"Returns Parchment's canonical chart-data envelope unchanged: sampled series, events, and metadata.":
-		'Returns the roast chart data unchanged: sampled series, events, and metadata.',
-	'--auto-match classifies roast metadata against stocked inventory through the canonical Parchment POST /v1/roasts/classify SDK operation.':
-		'--auto-match matches each new roast to a stocked inventory item from its metadata.',
-	'--coffee-id filters by green_coffee_inv.id through the canonical sales API.':
-		'--coffee-id filters by inventory ID.',
-	'Creates use the canonical sales API with an idempotency key; selectors resolve through canonical roast endpoints.':
-		null,
-	'--json emits the API response verbatim (§3.3 evidence object, §3.4 enums); no client-side reshaping.':
-		null,
-	'cultivar and drying dimensions are out of scope for v1 (await taxonomy normalization).':
-		'Cultivar and drying dimensions are not available yet.',
-	'Brief creation is a write handled by the Phase 2 write build-out (PADR-0016), not this read surface.':
+	// Contradicts the paid-plan requirement stated by the catalog similar access override.
+	'Signed in with `purvey auth login`, your account needs member access. An API key in PURVEYORS_API_KEY or PARCHMENT_API_KEY works on any API plan when it has the catalog:read scope.':
 		null
 };
 
 /**
  * Access levels where the pinned manifest contradicts the Parchment contract, keyed
- * by command path. Parchment admits member sessions and any customer API key with
- * catalog:read to /v1/catalog/{id}/similar, and the CLI always calls it with an API
- * key (README, notes/CONTRIBUTOR_CONTRACTS.md). An override applies only while the
- * manifest still has the listed value; a test fails once the CLI is corrected.
+ * by command path. Catalog similarity is a paid feature: Parchment admits member and
+ * admin sessions and API keys on the member or enterprise plan (marketed as Origin
+ * and Enterprise) with catalog:read. An override applies only while the manifest
+ * still has the listed value. Remove this one, with the note rewrite above, once a
+ * CLI release states the paid-plan requirement.
  */
 export const CLI_ACCESS_OVERRIDES: Record<string, { manifest: CliAuthRequirement; label: string }> =
 	{
 		'purvey catalog similar': {
 			manifest: 'member',
 			label:
-				'Any API plan. Needs an API key with catalog:read, such as the one purvey auth login stores.'
+				'Requires a Purveyors membership, or an API key on a paid plan (Origin or Enterprise) with catalog:read.'
 		}
 	};
 
@@ -397,7 +337,8 @@ function usageLine(group: CliCommandGroupContract, command: CliCommandContract):
 
 function sentence(text: string): string {
 	const trimmed = text.trim();
-	return /[.!?)]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+	// A closing parenthesis ends a sentence only after its own punctuation: "(see above.)"
+	return /[.!?]\)?$/.test(trimmed) ? trimmed : `${trimmed}.`;
 }
 
 function optionDetails(option: NonNullable<CliCommandContract['options']>[number]): string {

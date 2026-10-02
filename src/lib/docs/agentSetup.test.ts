@@ -99,7 +99,7 @@ describe('agent setup page', () => {
 });
 
 /** Words that follow "purvey" in prose, such as "purvey gives you". */
-const PROSE_AFTER_PURVEY = new Set(['did', 'gives', 'in', 'signs', 'to']);
+const PROSE_AFTER_PURVEY = new Set(['did', 'gives', 'in', 'or', 'signs', 'to']);
 
 describe('docs command references', () => {
 	const groups = new Map(
