@@ -40,26 +40,22 @@ export const CLI_INTERNAL_COPY =
  * match a summary, description, ID source, or note in the pinned manifest exactly;
  * a null value drops a note. Remove an entry once the CLI rewrites or drops the text.
  */
-export const CLI_COPY_REWRITES: Record<string, string | null> = {
-	// Contradicts the paid-plan requirement stated by the catalog similar access override.
-	'Signed in with `purvey auth login`, your account needs member access. An API key in PURVEYORS_API_KEY or PARCHMENT_API_KEY works on any API plan when it has the catalog:read scope.':
-		null
-};
+export const CLI_COPY_REWRITES: Record<string, string | null> = {};
 
 /**
  * Access levels where the pinned manifest contradicts the Parchment contract, keyed
- * by command path. Catalog similarity is a paid feature: Parchment admits member and
- * admin sessions and API keys on the member or enterprise plan (marketed as Origin
- * and Enterprise) with catalog:read. An override applies only while the manifest
- * still has the listed value. Remove this one, with the note rewrite above, once a
- * CLI release states the paid-plan requirement.
+ * by command path. Parchment admits catalog similarity for member and admin sessions
+ * and for any customer API key with catalog:read, including the free Green plan
+ * within its quota. The manifest's access level says member only. An override
+ * applies only while the manifest still has the listed value; remove it once a CLI
+ * release states the API-key rule.
  */
 export const CLI_ACCESS_OVERRIDES: Record<string, { manifest: CliAuthRequirement; label: string }> =
 	{
 		'purvey catalog similar': {
 			manifest: 'member',
 			label:
-				'Requires a Purveyors membership, or an API key on a paid plan (Origin or Enterprise) with catalog:read.'
+				'Requires a Purveyors membership, or any API key with catalog:read. The free Green API plan includes it within its monthly quota.'
 		}
 	};
 

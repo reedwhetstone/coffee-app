@@ -119,9 +119,9 @@ describe('generated CLI reference', () => {
 			.slice(catalogPage.indexOf('## purvey catalog similar'))
 			.split('\n## ')[0];
 		expect(similar).toContain(`Access: ${CLI_ACCESS_OVERRIDES['purvey catalog similar'].label}`);
-		expect(similar).toContain('paid plan');
+		expect(similar).toContain('any API key with catalog:read');
 		expect(similar).not.toContain('Requires member access');
-		expect(similar).not.toMatch(/any API plan/i);
+		expect(similar).not.toMatch(/paid plan/i);
 	});
 });
 
