@@ -1,0 +1,126 @@
+---
+title: 'How Would You Know a Great Coffee Before You Roast It?'
+date: '2026-10-02'
+description: "Coffee's quality signals are inconsistent, often unverifiable, and forgotten after every harvest. Wine and Warren Buffett show what a usable record of quality looks like."
+tags: ['coffee', 'data', 'strategy']
+pillar: 'market-intelligence'
+draft: false
+readingTime: 7
+---
+
+<script>
+	import BlogMetricChart from '$lib/components/blog/BlogMetricChart.svelte';
+
+	const scoreRulers = [
+		{ label: 'Supplier A', value: 91.0, display: '91.0 · $9.15/lb', detail: '75 Ethiopian listings, median $9.15/lb' },
+		{ label: 'Supplier B', value: 90.6, display: '90.6 · $10.58/lb', detail: '12 Ethiopian listings, median $10.58/lb' },
+		{ label: 'Supplier C', value: 88.8, display: '88.8 · $9.25/lb', detail: '23 Ethiopian listings, median $9.25/lb' },
+		{ label: 'Supplier D', value: 86.7, display: '86.7 · $9.99/lb', detail: '17 Ethiopian listings, median $9.99/lb' },
+		{ label: 'Supplier E', value: 86.4, display: '86.4 · $10.74/lb', detail: '17 Ethiopian listings, median $10.74/lb' },
+		{ label: 'Supplier F', value: 86.4, display: '86.4 · $11.49/lb', detail: '16 Ethiopian listings, median $11.49/lb' }
+	];
+
+	const priceByScore = [
+		{ label: 'Scored 84 to 86', value: 9.35, low: 7.85, high: 12.61, display: '$9.35', detail: '440 listings; middle 80% from $7.85 to $12.61/lb' },
+		{ label: 'Scored 86 to 88', value: 9.25, low: 8.07, high: 11.85, display: '$9.25', detail: '395 listings; middle 80% from $8.07 to $11.85/lb' },
+		{ label: 'Scored 88 to 90', value: 9.35, low: 8.25, high: 13.02, display: '$9.35', detail: '406 listings; middle 80% from $8.25 to $13.02/lb' },
+		{ label: 'Scored above 90', value: 9.75, low: 8.45, high: 12.8, display: '$9.75', detail: '247 listings; middle 80% from $8.45 to $12.80/lb' }
+	];
+
+	const auctionPremiums = [
+		{ label: 'One more cup point', value: 13.5, display: '+13.5%', detail: 'Near a score of 87, holding competition and lot size fixed' },
+		{ label: 'Farm placed before, any rank', value: 3.1, display: '+3.1%', detail: 'Same score; versus a farm with no prior placement (p = 0.007)' },
+		{ label: 'Farm finished top 10 before', value: 6.5, display: '+6.5%', detail: 'Same score; versus a farm with no prior placement (p < 0.001). A prior finish outside the top 10 adds nothing measurable.' }
+	];
+</script>
+
+Among green coffees in the Purveyors catalog that publish a cup score, the score explains about half a percent of the variation in retail price. Country of origin explains 43%. The specialty market's main quality measure barely moves what buyers pay, and buyers have good reasons to discount it. Scores are not calibrated across sellers, the descriptions around them are written to sell, and some of the most valuable claims in coffee turn out to be false.
+
+Ask a roaster what makes a particular coffee great and the answer will be some mix of origin, farm, variety, process, score, and a feeling about the importer. Ask how they know those claims are true, or whether this farm's last three harvests were any good, and the honest answer is usually that they don't. Coffee has plenty of descriptive data. What it lacks is a trustworthy, durable record of quality that a buyer can use before the bag is roasted.
+
+## The signals don't travel
+
+Cup scores are the clearest example. For Ethiopian coffees in the Purveyors catalog, average scores by supplier range from 86.4 to 91.0. The supplier with the highest scores also has the lowest median price.
+
+<BlogMetricChart
+	title="Same origin, different rulers"
+	subtitle="Average cup score (dot) and median retail price for Ethiopian green coffees, by supplier."
+	rows={scoreRulers}
+	mark="dot"
+	domain={[85, 92]}
+	ticks={[86, 88, 90, 92]}
+	axisLabel="Average published cup score"
+	valueHeader="Average score · median price"
+	wideValue
+	source="Source: Purveyors catalog, retail listings with a published score, snapshot October 2, 2026. Suppliers anonymized."
+/>
+
+A score is soft judgment that has been turned into a number, and the number only means something if everyone uses the same scale. In finance, Liberti and Petersen put the test plainly: "Your interpretation of a 3 must be the same as mine" ([NBER](https://www.nber.org/system/files/working_papers/w25075/w25075.pdf)). Coffee fails that test. Twenty-six of the 37 retail suppliers we track publish no score at all, and the vocabulary around scores is not much better. Suppliers' own tasting notes name a fruit on 78% of washed listings and 85% of naturals, so "fruity" separates almost nothing.
+
+The harder problem is that many claims cannot be checked at all. Origin, variety, and farming practice are credence attributes: a roaster cannot taste them. A Kona labeling lawsuit alleged that about 2.7 million pounds of Kona is grown each year while more than 20 million pounds is sold under the name ([Daily Coffee News](https://dailycoffeenews.com/2023/09/27/federal-judge-approves-final-12-million-settlement-in-kona-labeling-case/)). DNA testing of 88 samples labeled Gesha found that only 39% were genetically Gesha, mostly through nursery confusion rather than fraud ([Daily Coffee News](https://dailycoffeenews.com/2020/04/08/genetic-testing-reveals-the-true-nature-of-coffee-varieties/)). Story also changes perception directly: people served two identical coffees preferred the one falsely labeled eco-friendly, and paid more for it ([PLOS ONE](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0080719)).
+
+Faced with signals that are inconsistent and partly untrue, buyers do the rational thing and mostly ignore them.
+
+<BlogMetricChart
+	title="Higher scores, same price"
+	subtitle="Median retail price per pound by published cup score. The band shows the middle 80% of listings."
+	rows={priceByScore}
+	mark="dot"
+	domain={[6, 14]}
+	ticks={[6, 10, 14]}
+	tickFormat={(n) => `$${n}`}
+	axisLabel="Retail price per pound (USD)"
+	valueHeader="Median $/lb"
+	source="Source: Purveyors catalog, 1,488 retail listings with a published score of 84 or higher across 11 suppliers, snapshot October 2, 2026."
+/>
+
+## Buffett trusted records he could check
+
+Warren Buffett is often summarized as an investor who looked at the whole business instead of the ticker. The business he looked at was a long, verifiable record. Berkshire's acquisition criteria asked for "demonstrated consistent earning power," adding that "future projections are of little interest to us" ([1987 letter](https://www.berkshirehathaway.com/letters/1987.html)). See's Candies, bought for $25 million, went on to produce $1.35 billion of pre-tax earnings on $32 million of reinvestment, which Buffett credited to an advantage "built by the See's family over a 50-year period" ([2007 letter](https://www.berkshirehathaway.com/letters/2007ltr.pdf)).
+
+Later research found that Berkshire's outperformance becomes statistically insignificant once you control for exposure to cheap, safe, high-quality stocks ([Frazzini, Kabiller and Pedersen](https://www.nber.org/system/files/working_papers/w19681/w19681.pdf)). The qualities Buffett judged were real, and they showed up in audited numbers kept consistently for decades. Context becomes usable when it is recorded the same way over time and someone can check it.
+
+## Wine made reputation usable
+
+Wine is the obvious comparison, and its advantage is often described as romance. The more useful advantage is that wine found a legitimate way to store reputation so buyers can act on it. That system came out of fraud. After phylloxera destroyed more than 40% of French vines in the late nineteenth century, the shortage was filled with raisin wine and fakes. Growers rioted, and France spent about 30 years building origin law, ending with the appellation system in 1935. Those rules guarantee where the grapes grew and how the wine was made. A place name on a label therefore predicts something about what is in the glass, and every vintage is filed under the same verified name.
+
+Prices then accumulated against those identities. Combris, Lecocq and Visser found that Bordeaux prices follow what is printed on the label, while blind jury grades follow how the wine tastes ([Economic Journal](https://ideas.repec.org/a/ecj/econjl/v107y1997i441p390-402.html)). A meta-analysis of more than 180 wine price models concludes that reputation matters more than current sensory quality, with one qualifier: producers have to sustain quality over time to earn it ([Oczkowski and Doucouliagos](https://ideas.repec.org/a/oup/ajagec/v97y2015i1p103-121..html)). Reputation in wine is the stored history of quality, and buyers trust it because the identity under it is enforced.
+
+Coffee has moved in the opposite direction. One importer in our catalog lists nine lots under the identical name of a single Ethiopian farm and grade, with tasting notes ranging from toffee and cooked apple to hibiscus and tropical fruit. Another single estate appears across four suppliers in at least six processing styles. Processing experiments have made the farm name a weaker predictor of the cup.
+
+## Coffee pays for identity, then forgets it
+
+Six in ten stocked listings in our catalog carry a substantial farm narrative. Fewer than one in five carry any structured producer identity, and of roughly 400 farm names we have seen, only 17 link across more than one supplier. When a lot sells out, its listing disappears and its story goes with it. Early evidence suggests identity is what buyers value: within the same supplier and origin, listings that name a farm or producer price higher, while longer farm stories show no measurable effect. The sample with structured identity is still small, so that result is directional.
+
+Ethiopia ran the larger experiment. When its commodity exchange began trading coffee without lot identity in 2008, the price gap between traceable and untraceable exports widened by 12 percentage points, an estimated $280 million or 26% of farmers' coffee income ([Leung, discussion paper](https://cri-world.com/publications/qed_dp_249.pdf)).
+
+## The one long record coffee has
+
+Cup of Excellence is the closest thing coffee has to a vintage record: national juries score lots blind and publish the winners. I compiled 4,927 winning lots from Brazil, Colombia, Costa Rica, El Salvador, Guatemala, Honduras and Nicaragua between 1999 and 2026 and linked farms across years.
+
+Quality persists, weakly. About a quarter of first-time placers place again within five years, and about a third eventually do. Competition-adjusted scores correlate around 0.2 between a farm's appearances, against zero for randomly paired farms, and a returning top-ten farm finishes top ten again 45% of the time compared with 32% for other returners. A few estates build real records; El Injerto placed in 19 of 23 Guatemalan competitions. The market stores little of that history.
+
+<BlogMetricChart
+	title="At auction, buyers pay for this year's cup"
+	subtitle="Estimated price premium for Cup of Excellence lots, holding competition and lot size fixed. Track-record rows compare lots at the same score."
+	rows={auctionPremiums}
+	mark="bar"
+	domain={[0, 15]}
+	ticks={[0, 5, 10, 15]}
+	tickFormat={(n) => `${n}%`}
+	axisLabel="Price premium at auction"
+	valueHeader="Premium"
+	source="Source: 4,487 priced and scored Cup of Excellence lots, 7 countries, 1999 to 2026, from Alliance for Coffee Excellence results. Standard errors clustered by farm."
+/>
+
+Because entry is voluntary and only winners are published, these figures are floors on persistence, not full measurements. They still show the shape of the gap: a blind, calibrated score is priced heavily, while a farm's track record is worth a few percent, concentrated in prior top-ten finishes.
+
+## What a usable record needs
+
+More story will not close this gap. Producer marketing already coexists with exporting countries capturing only 7 to 16 cents of each additional specialty dollar ([World Development, via Daily Coffee News](https://dailycoffeenews.com/2025/07/15/a-closer-look-at-value-distribution-in-specialty-coffee-markets/)). A record a buyer can act on needs three things kept apart: a stable identity for the farm or washing station, blind sensory evidence attached to each lot on a known scale, and every other claim stored with who made it and whether anyone else corroborates it. That is the record Purveyors is building. As an aggregator, we see the same farm through several importers' eyes across seasons, which is the vantage point needed to turn disposable listings into a track record.
+
+The score explains half a percent of retail price because buyers have no way to tell which numbers and claims deserve trust. Wine fixed that by making the name on the bottle mean something durable and checkable, and its prices learned to follow quality over time. Coffee's prices will start following quality when its claims can be checked and its history is kept.
+
+---
+
+_Catalog figures come from a read-only snapshot of the Purveyors green coffee catalog on October 2, 2026 (45 suppliers; 2,674 stocked listings). Price comparisons are correlational. Producer-identity extraction is about seven months old, so identity coverage is still filling in. Cup of Excellence figures come from public results and auction pages published by the [Alliance for Coffee Excellence](https://allianceforcoffeeexcellence.org/competition-auction-results/); farm matching across years is approximate, and results are conditional on entering and placing._
