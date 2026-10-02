@@ -57,14 +57,15 @@ describe('api docs contract', () => {
 		expect(serializedErrors).not.toContain('"error":"Rate limit exceeded"');
 	});
 
-	it('keeps CLI catalog similarity auth copy aligned with API-plan parity', () => {
+	it('takes CLI catalog access from the published CLI manifest', () => {
 		const overview = getDocsPage('cli', 'overview');
 		const catalog = getDocsPage('cli', 'catalog');
 		const serializedDocs = `${JSON.stringify(overview)} ${JSON.stringify(catalog)}`;
+		const groupTable = overview?.sections.find((section) => section.title === 'Command groups');
 
-		expect(serializedDocs).toContain('API key with catalog:read; available across API plans');
-		expect(serializedDocs).toContain(
-			'Requires a Parchment API key with catalog:read and is available across API plans.'
+		expect(groupTable?.table?.rows.some((row) => row[0] === '`purvey catalog`')).toBe(true);
+		expect(catalog?.sections.some((section) => section.title === 'purvey catalog similar')).toBe(
+			true
 		);
 		expect(serializedDocs).not.toContain('API Origin/Enterprise key with catalog:read');
 		expect(serializedDocs).not.toContain('member-owned key or API Origin/Enterprise key');

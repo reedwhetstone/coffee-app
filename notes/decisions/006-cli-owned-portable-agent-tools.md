@@ -7,7 +7,8 @@ Coffee-app agent data consumers use `@purveyors/sdk` session-mode clients. The C
 **Current boundary:** Parchment owns shared behavior behind HTTP endpoints.
 `@purveyors/sdk` is the generated typed client. Coffee-app and
 `@purveyors/cli` are independent SDK/API consumers; the SDK does not use the CLI,
-and coffee-app does not import CLI exports. Everything below this note records
+and coffee-app does not import CLI exports at runtime (ADR-017 allows build-time
+manifest data for docs). Everything below this note records
 the superseded 2026-06-11 design.
 
 **Date:** 2026-06-11

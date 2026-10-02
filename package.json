@@ -9,7 +9,9 @@
 	"scripts": {
 		"sync": "svelte-kit sync",
 		"dev": "vite dev",
-		"build": "pnpm verify:image-artifacts && pnpm run sync && vite build && pnpm verify:market-brief-artifact",
+		"build": "pnpm verify:image-artifacts && pnpm docs:cli-reference && pnpm run sync && vite build && pnpm verify:market-brief-artifact",
+		"docs:cli-reference": "node scripts/generate-cli-reference.mjs",
+		"docs:cli-reference:check": "node scripts/generate-cli-reference.mjs --check",
 		"verify:image-artifacts": "node scripts/verify-image-artifacts.mjs",
 		"vercel:ignore-build": "node scripts/vercel-ignore-build-step.mjs",
 		"verify:market-brief-artifact": "node scripts/verify-market-brief-artifact.mjs",
@@ -38,6 +40,7 @@
 	"devDependencies": {
 		"@eslint/compat": "^1.2.3",
 		"@playwright/test": "^1.58.1",
+		"@purveyors/cli": "0.35.1",
 		"@sveltejs/adapter-vercel": "^5.6.3",
 		"@sveltejs/kit": "^2.17.2",
 		"@sveltejs/vite-plugin-svelte": "^4.0.0",

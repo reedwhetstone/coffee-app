@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import AgentSetupPrompt from '$lib/components/docs/AgentSetupPrompt.svelte';
 	import { MAX_CATALOG_PAGE_LIMIT_DISPLAY } from '$lib/constants/catalog';
 
 	const maxCatalogRowsPerRequest = `Up to ${MAX_CATALOG_PAGE_LIMIT_DISPLAY} per read collection response`;
@@ -160,6 +161,8 @@
 			</ul>
 		</div>
 	</section>
+
+	<AgentSetupPrompt />
 
 	<section
 		id="plans"

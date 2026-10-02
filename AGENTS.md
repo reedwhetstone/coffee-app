@@ -15,7 +15,7 @@ This repo is the Purveyors web platform. It includes:
 - the internal route layer that powers the first-party product
 - the `/docs` tree for product and CLI guidance; the generated API reference lives at `api.purveyors.io/docs`
 
-Coffee-app's Cherry Runtime transport depends on `@purveyors/sdk`; model-facing orchestration and tools execute in Parchment, while `@purveyors/cli` remains a separate first-class API client.
+Coffee-app's Cherry Runtime transport depends on `@purveyors/sdk`; model-facing orchestration and tools execute in Parchment, while `@purveyors/cli` remains a separate first-class API client. Coffee-app reads only the CLI's manifest data at build time for docs and never imports CLI code at runtime.
 
 ## Stack
 
@@ -78,14 +78,15 @@ When behavior changes, inspect and update the affected owners and consumers belo
 - the `/docs` tree under `src/routes/docs`
 - the `/api-dashboard` console surface, including `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate`
 - any legacy docs redirects such as `/api/docs` and `/api-dashboard/docs`
-- metadata and handoff routes such as `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, `/.well-known/appspecific/com.chrome.devtools.json`, `/auth/callback`, and `/auth/cli` when platform route coverage changes
+- metadata and handoff routes such as `/llms.txt`, `/llms-full.txt`, `/sitemap.xml`, `/blog/feed.xml`, `/.well-known/appspecific/com.chrome.devtools.json`, `/auth/callback`, and `/auth/cli` when platform route coverage changes
 - `src/routes/api/+page.server.ts` and `/api` copy when plan naming, limits, or route framing changes
 
 ### Docs architecture
 
 - Public docs live under `/docs`
 - Authored API guides live under `/docs/api/*`; the canonical generated API reference is `https://api.purveyors.io/docs`
-- CLI docs live under `/docs/cli/*`
+- CLI docs live under `/docs/cli/*`; command reference pages are generated at build time from the pinned `@purveyors/cli` manifest (`pnpm docs:cli-reference`, ADR-017). Bump the exact devDependency pin and regenerate rather than hand-editing command or flag details
+- Every docs page has a Markdown twin at `/docs/{section}/{slug}.md`, and `/llms-full.txt` concatenates them; `/docs/agents/setup` is the canonical agent setup flow
 - `src/lib/docs/content.ts` is the shared source of truth for docs IA and long-form content
 - Prefer shared docs data/components over duplicated long-form pages
 - Keep public docs accessible without login

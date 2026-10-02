@@ -22,8 +22,9 @@ complete, this document is the implementation-state correction.
   signals-summary, retail-stats, and process-metadata routes. The SDK does not
   call or embed the CLI.
 - **`@purveyors/cli` is an independent API client and terminal product.** It
-  depends on the SDK and Parchment contracts. Coffee-app does not depend on or
-  import CLI functions.
+  depends on the SDK and Parchment contracts. Coffee-app does not import CLI
+  functions at runtime; the `/docs/cli` reference is generated at build time
+  from the pinned CLI manifest (ADR-017).
 - **Coffee-app owns the web experience.** That includes SvelteKit pages, browser
   session handling, BFF credential brokering, AI SDK client transport and
   structured rendering, billing UI, and app-specific presentation behavior.

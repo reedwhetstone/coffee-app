@@ -1,14 +1,15 @@
 <script lang="ts">
-	import { DOCS_NAV, getPrevNextDocs, type DocsPage, type DocsSectionKey } from '$lib/docs/content';
+	import AgentSetupPrompt from './AgentSetupPrompt.svelte';
+	import DocsText from './DocsText.svelte';
+	import type { DocsNavItem, DocsNavSection, DocsPage } from '$lib/docs/types';
 
-	let { page, section, slug } = $props<{
+	let { page, navSection, prevNext, slug, markdownHref } = $props<{
 		page: DocsPage;
-		section: DocsSectionKey;
+		navSection: DocsNavSection;
+		prevNext: { prev?: DocsNavItem; next?: DocsNavItem };
 		slug: string;
+		markdownHref: string;
 	}>();
-
-	let navSection = $derived(DOCS_NAV.find((item) => item.key === section));
-	let prevNext = $derived(getPrevNextDocs(section, slug));
 
 	// Build a page-level TOC from section titles.
 	// Each entry anchors to a slug derived from the title.
@@ -100,10 +101,24 @@
 
 			<div class="mt-6 space-y-3 text-sm leading-relaxed text-ink">
 				{#each page.intro as paragraph}
-					<p>{paragraph}</p>
+					<p><DocsText text={paragraph} /></p>
 				{/each}
 			</div>
+
+			<p class="mt-6 text-xs text-muted">
+				<a href={markdownHref} type="text/markdown" class="text-accent hover:underline"
+					>View as Markdown</a
+				>
+			</p>
 		</header>
+
+		{#if page.agentSetupPrompt}
+			{#if page.section === 'agents'}
+				<AgentSetupPrompt title="Give your agent this prompt" showSetupLink={false} />
+			{:else}
+				<AgentSetupPrompt />
+			{/if}
+		{/if}
 
 		{#each page.sections as sectionBlock}
 			<section
@@ -117,7 +132,7 @@
 				{#if sectionBlock.body}
 					<div class="mt-4 space-y-3 text-sm leading-relaxed text-ink sm:text-base">
 						{#each sectionBlock.body as paragraph}
-							<p>{paragraph}</p>
+							<p><DocsText text={paragraph} /></p>
 						{/each}
 					</div>
 				{/if}
@@ -127,7 +142,7 @@
 						{#each sectionBlock.bullets as bullet}
 							<li class="flex gap-3">
 								<span class="mt-1 h-2.5 w-2.5 rounded-full bg-accent"></span>
-								<span>{bullet}</span>
+								<span><DocsText text={bullet} /></span>
 							</li>
 						{/each}
 					</ul>
@@ -147,7 +162,7 @@
 								{#each sectionBlock.table.rows as row}
 									<tr>
 										{#each row as cell}
-											<td class="px-4 py-3 align-top leading-relaxed">{cell}</td>
+											<td class="px-4 py-3 align-top leading-relaxed"><DocsText text={cell} /></td>
 										{/each}
 									</tr>
 								{/each}
@@ -179,7 +194,9 @@
 						class={`mt-5 rounded-2xl border px-4 py-4 ${calloutClasses(sectionBlock.callout.tone)}`}
 					>
 						<p class="text-sm font-semibold">{sectionBlock.callout.title}</p>
-						<p class="mt-2 text-sm leading-relaxed">{sectionBlock.callout.body}</p>
+						<p class="mt-2 text-sm leading-relaxed">
+							<DocsText text={sectionBlock.callout.body} />
+						</p>
 					</div>
 				{/if}
 			</section>

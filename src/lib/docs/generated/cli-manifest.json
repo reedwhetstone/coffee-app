@@ -1,0 +1,2390 @@
+{
+	"packageName": "@purveyors/cli",
+	"version": "0.35.1",
+	"nodeEngine": ">=20",
+	"manifest": {
+		"schemaVersion": "1",
+		"binary": "purvey",
+		"packageName": "@purveyors/cli",
+		"description": "The official CLI for purveyors.io. Coffee intelligence from your terminal.",
+		"nodeVersion": "Node.js 20+",
+		"importPath": "@purveyors/cli/manifest",
+		"machineSurfaces": {
+			"humanReference": "purvey context",
+			"shellManifest": "purvey manifest",
+			"moduleImport": "@purveyors/cli/manifest",
+			"notes": [
+				"`purvey --help` is the quick-discovery surface for commands and global flags.",
+				"`purvey context` is the dense human-readable operator reference surface.",
+				"`purvey manifest` is the preferred stable machine-readable contract for shells and automation.",
+				"`purvey context --json` emits the same manifest contract for compatibility when callers already use the context entrypoint.",
+				"`@purveyors/cli/manifest` exposes the same manifest contract in-process for Node.js and agent consumers.",
+				"`@purveyors/cli/cherry` is the primary in-process Cherry roast-classification helper; `@purveyors/cli/ai` is its deprecated compatibility re-export."
+			]
+		},
+		"files": {
+			"credentials": "~/.config/purvey/credentials.json",
+			"config": "~/.config/purvey/config.json"
+		},
+		"docs": [
+			{
+				"label": "CLI docs",
+				"url": "https://purveyors.io/docs/cli/overview"
+			},
+			{
+				"label": "API reference",
+				"url": "https://api.purveyors.io/docs"
+			},
+			{
+				"label": "Repository",
+				"url": "https://github.com/reedwhetstone/purveyors-cli"
+			},
+			{
+				"label": "npm package",
+				"url": "https://www.npmjs.com/package/@purveyors/cli"
+			}
+		],
+		"roles": [
+			{
+				"role": "viewer",
+				"description": "valid scoped API key; required for catalog commands except structured process filters"
+			},
+			{
+				"role": "member",
+				"description": "required for inventory, roast, sales, tasting, and catalog search structured process filters using the scoped API key created by `purvey auth login` or an explicit environment override"
+			}
+		],
+		"globalOptions": [
+			{
+				"flags": "--json",
+				"description": "Output compact JSON explicitly"
+			},
+			{
+				"flags": "--pretty",
+				"description": "Pretty-print JSON output with colors"
+			},
+			{
+				"flags": "--csv",
+				"description": "Output array results as CSV where supported"
+			},
+			{
+				"flags": "--help",
+				"description": "Show help for any command"
+			},
+			{
+				"flags": "--version",
+				"description": "Show version number"
+			}
+		],
+		"outputModes": [
+			{
+				"mode": "json",
+				"description": "compact JSON, suitable for agents and scripts"
+			},
+			{
+				"mode": "pretty",
+				"description": "indented JSON with colors for humans"
+			},
+			{
+				"mode": "csv",
+				"description": "CSV for array-shaped results on supporting commands"
+			}
+		],
+		"outputContract": {
+			"stdout": "Structured JSON by default for most commands, CSV when explicitly requested on supporting commands, and human-readable reference text for `purvey context` unless JSON is requested.",
+			"stderr": "interactive progress and prompts, plus human-readable or structured fatal errors depending on mode",
+			"notes": [
+				"Most commands emit compact JSON to stdout by default.",
+				"Use --json to request compact JSON explicitly.",
+				"Use --pretty for indented JSON.",
+				"Use --csv for array-shaped results that support CSV output.",
+				"Set PURVEYORS_API_KEY or PARCHMENT_API_KEY when intentionally using API-key backed catalog proof reads.",
+				"`purvey context` prints dense human-readable operator reference text unless --json or --pretty is passed.",
+				"`purvey manifest` is the preferred machine-readable contract and always emits it on stdout.",
+				"`purvey context --json` stays available for compatibility parity with existing context-based callers.",
+				"`@purveyors/cli/manifest` exposes the same machine-readable contract for in-process consumers.",
+				"`purvey config list/get/set/reset` stay human-readable in an interactive TTY, but emit JSON on stdout in machine mode and reject --csv.",
+				"In interactive use, stderr may also carry prompts, spinners, and human-readable status lines.",
+				"Parser mistakes like unknown options, unknown commands, and missing required arguments follow the same fatal-error contract as runtime command failures.",
+				"Important exception: auth status prints human-readable output in an interactive TTY unless --json, --pretty, or --csv is passed; when piped or redirected it emits structured JSON automatically."
+			],
+			"structuredErrors": {
+				"channel": "stderr",
+				"guaranteedFields": [
+					"error",
+					"code",
+					"exitCode",
+					"message"
+				],
+				"optionalFields": [
+					"details"
+				],
+				"when": "Emitted for parser and runtime command failures when the invocation is non-interactive or when --json, --pretty, or --csv selects a machine-readable output mode.",
+				"exception": "`purvey auth status` keeps its status payload on stdout even when unauthenticated; this envelope documents command failures."
+			}
+		},
+		"exitCodes": [
+			{
+				"exitCode": 0,
+				"code": "OK",
+				"description": "success"
+			},
+			{
+				"exitCode": 1,
+				"code": "GENERAL_ERROR",
+				"description": "unexpected or unclassified error"
+			},
+			{
+				"exitCode": 2,
+				"code": "INVALID_ARGUMENT",
+				"description": "invalid argument or bad input"
+			},
+			{
+				"exitCode": 3,
+				"code": "AUTH_ERROR",
+				"description": "auth error, missing/revoked key, or wrong role"
+			},
+			{
+				"exitCode": 4,
+				"code": "NOT_FOUND",
+				"description": "resource not found"
+			},
+			{
+				"exitCode": 5,
+				"code": "DEPENDENCY_CONFLICT",
+				"description": "dependency conflict, for example deleting an inventory lot with dependents"
+			},
+			{
+				"exitCode": 6,
+				"code": "CONFIG_ERROR",
+				"description": "local config error"
+			}
+		],
+		"idTypes": [
+			{
+				"name": "catalog_id",
+				"source": "coffee_catalog row",
+				"usedBy": [
+					"catalog get",
+					"catalog similar",
+					"inventory add --catalog-id",
+					"tasting get <bean-id>",
+					"roast list --catalog-id"
+				]
+			},
+			{
+				"name": "inventory_id",
+				"source": "green_coffee_inv row",
+				"usedBy": [
+					"inventory get/update/delete",
+					"roast --coffee-id",
+					"roast list --coffee-id",
+					"tasting rate [bean-id]"
+				]
+			},
+			{
+				"name": "roast_id",
+				"source": "roast_data row",
+				"usedBy": [
+					"roast get/chart/delete",
+					"roast list --roast-id",
+					"sales record --roast-id",
+					"reference-profile compare roast:<roast-id>"
+				]
+			},
+			{
+				"name": "sale_id",
+				"source": "coffee_sales row",
+				"usedBy": [
+					"sales update/delete"
+				]
+			},
+			{
+				"name": "reference_profile_id",
+				"source": "owner-scoped Studio reference profile",
+				"usedBy": [
+					"reference-profile get",
+					"reference-profile chart",
+					"reference-profile preview/save",
+					"reference-profile export",
+					"reference-profile compare profile:<uuid>"
+				]
+			},
+			{
+				"name": "reference_revision_id",
+				"source": "immutable revision belonging to a reference profile",
+				"usedBy": [
+					"reference-profile chart",
+					"reference-profile preview/save",
+					"reference-profile export",
+					"reference-profile compare revision:<uuid>"
+				]
+			}
+		],
+		"commandGroups": [
+			{
+				"name": "auth",
+				"summary": "Manage authentication with purveyors.io",
+				"auth": "none",
+				"subcommands": [
+					{
+						"name": "login",
+						"summary": "Log in to purveyors.io",
+						"auth": "none",
+						"sdkMethods": [
+							"cliAuth.create",
+							"cliAuth.exchange"
+						],
+						"options": [
+							{
+								"flags": "--headless",
+								"description": "Print approval URL without opening a browser"
+							}
+						],
+						"examples": [
+							"purvey auth login",
+							"purvey auth login --headless"
+						]
+					},
+					{
+						"name": "status",
+						"summary": "Show current login status and role",
+						"auth": "none",
+						"sdkMethods": [
+							"me"
+						],
+						"options": [
+							{
+								"flags": "--pretty"
+							},
+							{
+								"flags": "--csv"
+							}
+						],
+						"examples": [
+							"purvey auth status",
+							"purvey auth status --pretty",
+							"purvey auth status --json"
+						]
+					},
+					{
+						"name": "whoami",
+						"summary": "Show the canonical identity, plan, scopes, and capabilities for the active credential",
+						"auth": "none",
+						"sdkMethods": [
+							"me"
+						],
+						"notes": [
+							"Prints the GET /v1/me response unchanged, including capabilities.profileStudio.",
+							"Uses PARCHMENT_API_KEY or PURVEYORS_API_KEY when set, otherwise the stored login key.",
+							"Without a credential it prints the anonymous principal (authenticated: false)."
+						],
+						"examples": [
+							"purvey auth whoami --pretty",
+							"purvey auth whoami | jq '.capabilities.profileStudio'"
+						]
+					},
+					{
+						"name": "logout",
+						"summary": "Clear stored credentials",
+						"auth": "none",
+						"examples": [
+							"purvey auth logout"
+						]
+					}
+				]
+			},
+			{
+				"name": "catalog",
+				"summary": "Browse the coffee catalog; structured process filters require member access",
+				"auth": "viewer",
+				"subcommands": [
+					{
+						"name": "search",
+						"summary": "Search coffees by origin, process, price, and catalog metadata; structured process filters require member access",
+						"auth": "viewer",
+						"sdkMethods": [
+							"catalog.list"
+						],
+						"options": [
+							{
+								"flags": "--origin <origin>"
+							},
+							{
+								"flags": "--process <method>"
+							},
+							{
+								"flags": "--processing-base-method <method>"
+							},
+							{
+								"flags": "--fermentation-type <type>"
+							},
+							{
+								"flags": "--process-additive <additive>"
+							},
+							{
+								"flags": "--processing-disclosure-level <level>"
+							},
+							{
+								"flags": "--processing-confidence-min <n>"
+							},
+							{
+								"flags": "--price-min <n>"
+							},
+							{
+								"flags": "--price-max <n>"
+							},
+							{
+								"flags": "--name <text>"
+							},
+							{
+								"flags": "--ids <n,n,...>"
+							},
+							{
+								"flags": "--variety <text>"
+							},
+							{
+								"flags": "--stocked-days <n>"
+							},
+							{
+								"flags": "--supplier <name>",
+								"description": "Canonical /v1/catalog supplier filter (partial source-name match)"
+							},
+							{
+								"flags": "--drying-method <method>",
+								"description": "Canonical /v1/catalog dryingMethod filter; Parchment owns matching"
+							},
+							{
+								"flags": "--flavor <keywords>",
+								"description": "Comma-separated canonical /v1/catalog flavorKeywords; a row matches any keyword"
+							},
+							{
+								"flags": "--stocked"
+							},
+							{
+								"flags": "--sort <field>"
+							},
+							{
+								"flags": "--offset <n>",
+								"defaultValue": 0
+							},
+							{
+								"flags": "--limit <n>",
+								"description": "Maximum results to return, 1-1000",
+								"defaultValue": 10,
+								"minimum": 1,
+								"maximum": 1000
+							},
+							{
+								"flags": "--include-proof",
+								"description": "Request canonical proof summaries from /v1/catalog?include=proof",
+								"notes": [
+									"Consumes the API proof summary; the CLI does not compute proof fields locally.",
+									"The SDK supplies the canonical proof-summary-v1 row projection."
+								]
+							}
+						],
+						"notes": [
+							"All filters are optional. Without flags, returns up to --limit results.",
+							"Structured process filters map to canonical /v1/catalog query names.",
+							"Structured process filters require member access through the scoped API key created by `purvey auth login` or an explicit environment override.",
+							"--ids fetches specific catalog items by ID, ignoring --limit and --offset.",
+							"--offset + --limit enables pagination through large result sets.",
+							"--include-proof uses the canonical /v1/catalog proof summary include and preserves the default output shape when omitted.",
+							"PURVEYORS_API_KEY or PARCHMENT_API_KEY overrides the scoped API key stored by `purvey auth login`."
+						],
+						"examples": [
+							"purvey catalog search --origin \"Ethiopia\" --process \"natural\" --pretty",
+							"purvey catalog search --processing-base-method \"Natural\" --fermentation-type \"Anaerobic\" --pretty",
+							"purvey catalog search --process-additive \"hops\" --processing-confidence-min 0.8 --pretty",
+							"purvey catalog search --variety \"gesha\" --stocked --pretty",
+							"purvey catalog search --stocked-days 30 --pretty",
+							"purvey catalog search --supplier \"Royal\" --flavor \"blueberry,jasmine\" --stocked --pretty",
+							"purvey catalog search --origin \"Ethiopia\" --include-proof --json"
+						]
+					},
+					{
+						"name": "get",
+						"summary": "Get details for a specific coffee by ID",
+						"auth": "viewer",
+						"sdkMethods": [
+							"catalog.list"
+						],
+						"arguments": [
+							{
+								"name": "catalog_id",
+								"cliToken": "id",
+								"description": "coffee_catalog.catalog_id",
+								"required": true,
+								"idType": "catalog_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--include-proof",
+								"description": "Request the canonical proof summary from /v1/catalog?include=proof",
+								"notes": [
+									"Consumes the API proof summary; the CLI does not compute proof fields locally."
+								]
+							}
+						],
+						"examples": [
+							"purvey catalog get 128 --pretty",
+							"purvey catalog get 128 --include-proof --json"
+						]
+					},
+					{
+						"name": "stats",
+						"summary": "Aggregate statistics for the catalog",
+						"auth": "viewer",
+						"sdkMethods": [
+							"catalog.stats"
+						],
+						"examples": [
+							"purvey catalog stats --pretty"
+						]
+					},
+					{
+						"name": "facets",
+						"summary": "List counted catalog facet values for filter discovery",
+						"auth": "viewer",
+						"sdkMethods": [
+							"catalog.facets"
+						],
+						"arguments": [
+							{
+								"name": "field",
+								"description": "optional facet field: supplier, country, processing_base_method, fermentation_type, drying_method, grade, wholesale",
+								"required": false
+							}
+						],
+						"options": [
+							{
+								"flags": "--all",
+								"description": "Use all visible catalog rows instead of the default stocked-only scope."
+							}
+						],
+						"notes": [
+							"Without a field, prints the canonical /v1/catalog/facets envelope (values, facets, meta) unchanged.",
+							"With a field, prints { field, facet, data, meta }: that facet's counted values and Parchment's meta.",
+							"Counts are computed by Parchment; counts for multi-valued dimensions can overlap, so do not sum them.",
+							"Defaults to currently stocked catalog rows; use --all for all visible rows."
+						],
+						"examples": [
+							"purvey catalog facets supplier --pretty",
+							"purvey catalog facets country --all --json",
+							"purvey catalog facets --pretty"
+						]
+					},
+					{
+						"name": "rank",
+						"summary": "Rank catalog candidates by deterministic objective",
+						"auth": "viewer",
+						"sdkMethods": [
+							"catalog.rank"
+						],
+						"options": [
+							{
+								"flags": "--objective <objective>",
+								"defaultValue": "premium"
+							},
+							{
+								"flags": "--supplier <name>",
+								"description": "Canonical /v1/catalog/rank supplier filter"
+							},
+							{
+								"flags": "--country <country>"
+							},
+							{
+								"flags": "--process <method>"
+							},
+							{
+								"flags": "--stocked"
+							},
+							{
+								"flags": "--all",
+								"description": "Use all visible catalog rows instead of the default stocked-only scope."
+							},
+							{
+								"flags": "--price-max <n>"
+							},
+							{
+								"flags": "--min-score <n>"
+							},
+							{
+								"flags": "--non-wholesale-only",
+								"description": "Apply a query-level filter for non-wholesale or unknown-wholesale listings before sampling."
+							},
+							{
+								"flags": "--sample-size <n>",
+								"defaultValue": 5000
+							},
+							{
+								"flags": "--limit <n>",
+								"defaultValue": 10
+							}
+						],
+						"notes": [
+							"Objectives are premium, value, fresh_arrival, and rare_origin.",
+							"Uses coffee_catalog.purveyor_score as the canonical quality signal.",
+							"Output metadata reports stocked_only/scope, sample scope, and truncation; rare_origin is rarity within sampled matching candidates."
+						],
+						"examples": [
+							"purvey catalog rank --objective premium --stocked --pretty",
+							"purvey catalog rank --objective value --country Ethiopia --price-max 12 --json",
+							"purvey catalog rank --objective premium --supplier \"Royal Coffee\" --limit 5 --json"
+						]
+					},
+					{
+						"name": "rank-premium",
+						"summary": "Rank premium catalog candidates by Purveyor Score",
+						"auth": "viewer",
+						"sdkMethods": [
+							"catalog.rankPremium"
+						],
+						"options": [
+							{
+								"flags": "--origin <origin>"
+							},
+							{
+								"flags": "--process <method>"
+							},
+							{
+								"flags": "--stocked"
+							},
+							{
+								"flags": "--price-max <n>"
+							},
+							{
+								"flags": "--min-score <n>"
+							},
+							{
+								"flags": "--include-unscored"
+							},
+							{
+								"flags": "--sample-size <n>",
+								"defaultValue": 250
+							},
+							{
+								"flags": "--limit <n>",
+								"defaultValue": 10
+							}
+						],
+						"notes": [
+							"Exposes coffee_catalog.purveyor_score plus confidence, tier, factor breakdown, version, and update metadata; the CLI does not recompute the upstream score model.",
+							"Output includes rank, catalog context, pricing, stocked status, Purveyor Score qualifiers, and transparent ranking signals for agents.",
+							"Output metadata reports sample ordering and whether more rows matched than the requested sample size."
+						],
+						"examples": [
+							"purvey catalog rank-premium --stocked --limit 10 --pretty",
+							"purvey catalog rank-premium --origin Ethiopia --min-score 88 --json"
+						]
+					},
+					{
+						"name": "supplier-list",
+						"summary": "List supplier aggregates from catalog rows",
+						"auth": "viewer",
+						"sdkMethods": [
+							"catalog.suppliers"
+						],
+						"options": [
+							{
+								"flags": "--country <country>"
+							},
+							{
+								"flags": "--stocked"
+							},
+							{
+								"flags": "--non-wholesale-only"
+							},
+							{
+								"flags": "--sample-size <n>",
+								"defaultValue": 5000
+							},
+							{
+								"flags": "--limit <n>",
+								"defaultValue": 25
+							}
+						],
+						"notes": [
+							"Summarizes supplier counts, stocked counts, Purveyor Score coverage, average score, average confidence, price range, origin/process coverage, and representative top coffees with score qualifiers.",
+							"Country and non-wholesale filters are applied at the catalog query layer before supplier aggregation.",
+							"Output metadata reports source-ordered pagination, rows examined, and whether the aggregate is sample-limited."
+						],
+						"examples": [
+							"purvey catalog supplier-list --country Ethiopia --non-wholesale-only --pretty"
+						]
+					},
+					{
+						"name": "supplier-detail",
+						"summary": "Show aggregate detail for a supplier query",
+						"auth": "viewer",
+						"sdkMethods": [
+							"catalog.supplierDetail"
+						],
+						"arguments": [
+							{
+								"name": "supplier",
+								"description": "supplier/source name query",
+								"required": true
+							}
+						],
+						"options": [
+							{
+								"flags": "--country <country>"
+							},
+							{
+								"flags": "--stocked"
+							},
+							{
+								"flags": "--non-wholesale-only"
+							},
+							{
+								"flags": "--top-coffees <n>",
+								"defaultValue": 5
+							},
+							{
+								"flags": "--sample-size <n>",
+								"defaultValue": 5000
+							}
+						],
+						"notes": [
+							"Supplier matching is case-insensitive and partial, mirroring catalog search.",
+							"Output metadata reports source-ordered pagination, rows examined, and whether the aggregate is sample-limited."
+						],
+						"examples": [
+							"purvey catalog supplier-detail \"Royal Coffee\" --pretty"
+						]
+					},
+					{
+						"name": "supplier-rank",
+						"summary": "Rank suppliers by average Purveyor Score and stocked coverage",
+						"auth": "viewer",
+						"sdkMethods": [
+							"catalog.supplierRank"
+						],
+						"options": [
+							{
+								"flags": "--country <country>"
+							},
+							{
+								"flags": "--stocked"
+							},
+							{
+								"flags": "--non-wholesale-only"
+							},
+							{
+								"flags": "--min-coffees <n>",
+								"description": "Minimum catalog rows required per supplier, 1-100",
+								"defaultValue": 1,
+								"minimum": 1,
+								"maximum": 100
+							},
+							{
+								"flags": "--sample-size <n>",
+								"defaultValue": 5000
+							},
+							{
+								"flags": "--limit <n>",
+								"defaultValue": 25
+							}
+						],
+						"notes": [
+							"Ranks suppliers by average Purveyor Score, then currently stocked count.",
+							"Country and non-wholesale filters are applied at the catalog query layer before supplier aggregation.",
+							"Output metadata reports source-ordered pagination, rows examined, and whether the aggregate is sample-limited."
+						],
+						"examples": [
+							"purvey catalog supplier-rank --country Ethiopia --non-wholesale-only --min-coffees 3 --pretty"
+						]
+					},
+					{
+						"name": "similar",
+						"summary": "Fetch beta canonical /v1/catalog/{id}/similar groups for likely same-lot candidates and similar recommendations",
+						"auth": "member",
+						"sdkMethods": [
+							"catalog.similar"
+						],
+						"arguments": [
+							{
+								"name": "catalog_id",
+								"cliToken": "id",
+								"description": "coffee_catalog.catalog_id",
+								"required": true,
+								"idType": "catalog_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--threshold <score>",
+								"defaultValue": 0.7,
+								"description": "Minimum canonical similarity threshold, 0.5-0.99"
+							},
+							{
+								"flags": "--limit <count>",
+								"defaultValue": 10,
+								"description": "Maximum results, 1-25"
+							},
+							{
+								"flags": "--stocked-only",
+								"description": "Restrict results to stocked coffees"
+							},
+							{
+								"flags": "--mode <mode>",
+								"defaultValue": "all",
+								"description": "Filter canonical groups: all, likely_same, or similar_profile"
+							}
+						],
+						"notes": [
+							"Uses the beta canonical /v1/catalog/{id}/similar API contract, not the legacy direct RPC path.",
+							"Default JSON output is the grouped canonical response object with data.target, data.groups.canonical_candidates, data.groups.similar_recommendations, optional data.matches, and meta.",
+							"canonical_candidates are likely same-lot candidates; similar_recommendations are profile substitutes and expose blocker reasons when identity gates disagree.",
+							"Preserves classification_version, query_strategy, proof summaries, pricing metadata, blocker details, and score dimensions supplied by the API.",
+							"Use the scoped member API key created by `purvey auth login`, or override it with PURVEYORS_API_KEY or PARCHMENT_API_KEY."
+						],
+						"examples": [
+							"purvey catalog similar 1182 --threshold 0.85 --stocked-only --json",
+							"purvey catalog similar 1182 --mode likely_same --json | jq '.data.groups.canonical_candidates'"
+						]
+					}
+				]
+			},
+			{
+				"name": "inventory",
+				"summary": "Manage your green coffee inventory",
+				"auth": "member",
+				"subcommands": [
+					{
+						"name": "list",
+						"summary": "List your green coffee inventory with catalog details",
+						"auth": "member",
+						"sdkMethods": [
+							"inventory.list"
+						],
+						"options": [
+							{
+								"flags": "--stocked"
+							},
+							{
+								"flags": "--catalog-id <id>"
+							},
+							{
+								"flags": "--purchase-date-start <YYYY-MM-DD>"
+							},
+							{
+								"flags": "--purchase-date-end <YYYY-MM-DD>"
+							},
+							{
+								"flags": "--origin <country>"
+							},
+							{
+								"flags": "--limit <n>",
+								"defaultValue": 20
+							},
+							{
+								"flags": "--offset <n>",
+								"defaultValue": 0
+							}
+						],
+						"notes": [
+							"Returns green_coffee_inv rows joined with catalog details.",
+							"The returned id field is the inventory ID, distinct from catalog_id.",
+							"--offset + --limit enables pagination through large result sets."
+						],
+						"examples": [
+							"purvey inventory list --stocked --pretty",
+							"purvey inventory list --limit 20 --offset 20"
+						]
+					},
+					{
+						"name": "get",
+						"summary": "Get a single inventory item",
+						"auth": "member",
+						"sdkMethods": [
+							"inventory.list"
+						],
+						"arguments": [
+							{
+								"name": "inventory_id",
+								"cliToken": "id",
+								"description": "green_coffee_inv.id",
+								"required": true,
+								"idType": "inventory_id"
+							}
+						],
+						"examples": [
+							"purvey inventory get 7 --pretty"
+						]
+					},
+					{
+						"name": "add",
+						"summary": "Add a bean to your inventory",
+						"auth": "member",
+						"sdkMethods": [
+							"inventory.create"
+						],
+						"confirmedActionEquivalents": [
+							"add_bean_to_inventory"
+						],
+						"options": [
+							{
+								"flags": "--catalog-id <id>",
+								"description": "Catalog lot to add; exactly one of --catalog-id or --manual-name"
+							},
+							{
+								"flags": "--manual-name <name>",
+								"description": "Coffee name for a lot that is not in the catalog"
+							},
+							{
+								"flags": "--qty <lbs>",
+								"requiredInFlagMode": true
+							},
+							{
+								"flags": "--cost <dollars>"
+							},
+							{
+								"flags": "--tax-ship <dollars>"
+							},
+							{
+								"flags": "--notes <text>"
+							},
+							{
+								"flags": "--purchase-date <YYYY-MM-DD>"
+							},
+							{
+								"flags": "--form"
+							}
+						],
+						"notes": [
+							"Flag mode requires --qty and exactly one of --catalog-id or --manual-name.",
+							"--manual-name creates a manual coffee record when Parchment has manual inventory writes enabled."
+						],
+						"examples": [
+							"purvey inventory add --catalog-id 128 --qty 10 --cost 8.50 --pretty",
+							"purvey inventory add --manual-name \"Farm-gate Ethiopia lot 7\" --qty 12 --cost 96 --pretty"
+						]
+					},
+					{
+						"name": "update",
+						"summary": "Update an inventory item",
+						"auth": "member",
+						"sdkMethods": [
+							"inventory.update"
+						],
+						"confirmedActionEquivalents": [
+							"update_bean"
+						],
+						"arguments": [
+							{
+								"name": "inventory_id",
+								"cliToken": "id",
+								"description": "green_coffee_inv.id",
+								"required": true,
+								"idType": "inventory_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--qty <lbs>"
+							},
+							{
+								"flags": "--cost <dollars>"
+							},
+							{
+								"flags": "--tax-ship <dollars>"
+							},
+							{
+								"flags": "--notes <text>"
+							},
+							{
+								"flags": "--stocked <true|false>"
+							},
+							{
+								"flags": "--rank <n>",
+								"description": "Owner-assigned integer rank for this lot"
+							}
+						]
+					},
+					{
+						"name": "delete",
+						"summary": "Delete an inventory item",
+						"auth": "member",
+						"sdkMethods": [
+							"inventory.delete"
+						],
+						"arguments": [
+							{
+								"name": "inventory_id",
+								"cliToken": "id",
+								"description": "green_coffee_inv.id",
+								"required": true,
+								"idType": "inventory_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--yes"
+							}
+						]
+					}
+				]
+			},
+			{
+				"name": "roast",
+				"summary": "Browse and manage your roast profiles",
+				"auth": "member",
+				"subcommands": [
+					{
+						"name": "list",
+						"summary": "List your roast profiles, sorted by date",
+						"auth": "member",
+						"sdkMethods": [
+							"roasts.list"
+						],
+						"options": [
+							{
+								"flags": "--coffee-id <id>"
+							},
+							{
+								"flags": "--roast-id <id>"
+							},
+							{
+								"flags": "--batch-name <text>"
+							},
+							{
+								"flags": "--coffee-name <text>"
+							},
+							{
+								"flags": "--date-start <YYYY-MM-DD>"
+							},
+							{
+								"flags": "--date-end <YYYY-MM-DD>"
+							},
+							{
+								"flags": "--stocked"
+							},
+							{
+								"flags": "--catalog-id <id>"
+							},
+							{
+								"flags": "--limit <n>",
+								"defaultValue": 20
+							},
+							{
+								"flags": "--offset <n>",
+								"defaultValue": 0
+							}
+						],
+						"notes": [
+							"--coffee-id expects inventory_id, not catalog_id.",
+							"--catalog-id filters by coffee_catalog.catalog_id.",
+							"--date-start and --date-end accept YYYY-MM-DD format.",
+							"--offset + --limit enables pagination through large result sets."
+						],
+						"examples": [
+							"purvey roast list --date-start 2026-03-01 --date-end 2026-03-31"
+						]
+					},
+					{
+						"name": "get",
+						"summary": "Get a single roast profile",
+						"auth": "member",
+						"sdkMethods": [
+							"roasts.get"
+						],
+						"arguments": [
+							{
+								"name": "roast_id",
+								"cliToken": "id",
+								"description": "roast_data.roast_id",
+								"required": true,
+								"idType": "roast_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--include-temps"
+							},
+							{
+								"flags": "--include-events"
+							}
+						]
+					},
+					{
+						"name": "chart",
+						"summary": "Fetch the sampled chart model for one roast (series, events, revision)",
+						"auth": "member",
+						"sdkMethods": [
+							"roasts.chartData"
+						],
+						"arguments": [
+							{
+								"name": "roast_id",
+								"cliToken": "id",
+								"description": "roast_data.roast_id",
+								"required": true,
+								"idType": "roast_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--target-points <n>",
+								"description": "Approximate samples per series, 50-1000; Parchment defaults to 400",
+								"minimum": 50,
+								"maximum": 1000
+							}
+						],
+						"notes": [
+							"Returns Parchment's canonical chart-data envelope unchanged: sampled series, events, and metadata.",
+							"data.metadata.revision identifies the immutable chart revision used by reference-profile compare."
+						],
+						"examples": [
+							"purvey roast chart 123 --pretty",
+							"purvey roast chart 123 --target-points 120 | jq '.data.metadata.revision'"
+						]
+					},
+					{
+						"name": "create",
+						"summary": "Create a new roast profile",
+						"auth": "member",
+						"sdkMethods": [
+							"roasts.create"
+						],
+						"confirmedActionEquivalents": [
+							"create_roast_session"
+						],
+						"options": [
+							{
+								"flags": "--coffee-id <id>",
+								"requiredInFlagMode": true
+							},
+							{
+								"flags": "--batch-name <name>"
+							},
+							{
+								"flags": "--oz-in <oz>"
+							},
+							{
+								"flags": "--oz-out <oz>"
+							},
+							{
+								"flags": "--roast-date <YYYY-MM-DD>"
+							},
+							{
+								"flags": "--notes <text>"
+							},
+							{
+								"flags": "--targets <text>"
+							},
+							{
+								"flags": "--roaster-type <text>"
+							},
+							{
+								"flags": "--form"
+							}
+						]
+					},
+					{
+						"name": "update",
+						"summary": "Update a roast profile",
+						"auth": "member",
+						"sdkMethods": [
+							"roasts.update"
+						],
+						"confirmedActionEquivalents": [
+							"update_roast_notes"
+						],
+						"arguments": [
+							{
+								"name": "roast_id",
+								"cliToken": "id",
+								"description": "roast_data.roast_id",
+								"required": true,
+								"idType": "roast_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--notes <text>"
+							},
+							{
+								"flags": "--oz-out <oz>"
+							},
+							{
+								"flags": "--batch-name <name>"
+							},
+							{
+								"flags": "--targets <text>"
+							}
+						]
+					},
+					{
+						"name": "delete",
+						"summary": "Delete a roast profile",
+						"auth": "member",
+						"sdkMethods": [
+							"roasts.delete"
+						],
+						"arguments": [
+							{
+								"name": "roast_id",
+								"cliToken": "id",
+								"description": "roast_data.roast_id",
+								"required": true,
+								"idType": "roast_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--yes"
+							}
+						]
+					},
+					{
+						"name": "import",
+						"summary": "Import an Artisan .alog roast file",
+						"auth": "member",
+						"sdkMethods": [
+							"roasts.import"
+						],
+						"arguments": [
+							{
+								"name": "file",
+								"description": "Path to Artisan .alog file",
+								"required": false
+							}
+						],
+						"options": [
+							{
+								"flags": "--coffee-id <id>",
+								"requiredInFlagMode": true
+							},
+							{
+								"flags": "--batch-name <name>"
+							},
+							{
+								"flags": "--oz-in <oz>"
+							},
+							{
+								"flags": "--roast-notes <text>"
+							},
+							{
+								"flags": "--roast-targets <text>"
+							},
+							{
+								"flags": "--form"
+							}
+						]
+					},
+					{
+						"name": "watch",
+						"summary": "Watch a directory for new Artisan .alog files",
+						"auth": "member",
+						"sdkMethods": [
+							"roasts.import",
+							"inventory.list",
+							"roasts.classify"
+						],
+						"arguments": [
+							{
+								"name": "directory",
+								"description": "Directory to watch",
+								"required": false
+							}
+						],
+						"options": [
+							{
+								"flags": "--coffee-id <inventory_id>"
+							},
+							{
+								"flags": "--batch-prefix <name>"
+							},
+							{
+								"flags": "--prompt-each"
+							},
+							{
+								"flags": "--auto-match"
+							},
+							{
+								"flags": "--commit-mode <batch|individual>",
+								"defaultValue": "batch"
+							},
+							{
+								"flags": "--oz-in <oz>"
+							},
+							{
+								"flags": "--roast-notes <text>"
+							},
+							{
+								"flags": "--roast-targets <text>"
+							},
+							{
+								"flags": "--resume"
+							},
+							{
+								"flags": "--form"
+							}
+						],
+						"notes": [
+							"--auto-match is mutually exclusive with --coffee-id.",
+							"--auto-match classifies roast metadata against stocked inventory through the canonical Parchment POST /v1/roasts/classify SDK operation.",
+							"--commit-mode defaults to batch so new roasts are queued until the session ends."
+						]
+					}
+				]
+			},
+			{
+				"name": "sales",
+				"summary": "Record and manage coffee sales",
+				"auth": "member",
+				"subcommands": [
+					{
+						"name": "list",
+						"summary": "List your sales, sorted by sell date",
+						"auth": "member",
+						"sdkMethods": [
+							"sales.list"
+						],
+						"options": [
+							{
+								"flags": "--coffee-id <id>"
+							},
+							{
+								"flags": "--date-start <YYYY-MM-DD>"
+							},
+							{
+								"flags": "--date-end <YYYY-MM-DD>"
+							},
+							{
+								"flags": "--buyer <name>"
+							},
+							{
+								"flags": "--limit <n>",
+								"defaultValue": 20
+							},
+							{
+								"flags": "--offset <n>",
+								"defaultValue": 0
+							}
+						],
+						"notes": [
+							"--coffee-id filters by green_coffee_inv.id through the canonical sales API.",
+							"--date-start and --date-end accept YYYY-MM-DD and compose into a range.",
+							"--offset + --limit enables pagination through large result sets."
+						]
+					},
+					{
+						"name": "record",
+						"summary": "Record a new sale",
+						"auth": "member",
+						"sdkMethods": [
+							"sales.create",
+							"roasts.list",
+							"roasts.get"
+						],
+						"confirmedActionEquivalents": [
+							"record_sale"
+						],
+						"options": [
+							{
+								"flags": "--roast-id <id>"
+							},
+							{
+								"flags": "--coffee-id <id>"
+							},
+							{
+								"flags": "--batch-name <name>"
+							},
+							{
+								"flags": "--oz <amount>",
+								"requiredInFlagMode": true
+							},
+							{
+								"flags": "--price <dollars>",
+								"requiredInFlagMode": true
+							},
+							{
+								"flags": "--buyer <name>"
+							},
+							{
+								"flags": "--sell-date <YYYY-MM-DD>"
+							},
+							{
+								"flags": "--form"
+							}
+						],
+						"notes": [
+							"Selector modes: --roast-id resolves its inventory + batch, or pass --coffee-id + --batch-name directly.",
+							"Creates use the canonical sales API with an idempotency key; selectors resolve through canonical roast endpoints.",
+							"Use exactly one selector mode.",
+							"Sales retain inventory + batch, not roast ID; duplicate batch names on one inventory item are rejected."
+						]
+					},
+					{
+						"name": "update",
+						"summary": "Update a sale record",
+						"auth": "member",
+						"sdkMethods": [
+							"sales.update"
+						],
+						"arguments": [
+							{
+								"name": "sale_id",
+								"cliToken": "id",
+								"description": "coffee_sales row id",
+								"required": true,
+								"idType": "sale_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--oz <amount>"
+							},
+							{
+								"flags": "--price <dollars>"
+							},
+							{
+								"flags": "--buyer <name>"
+							},
+							{
+								"flags": "--sell-date <YYYY-MM-DD>"
+							}
+						]
+					},
+					{
+						"name": "delete",
+						"summary": "Delete a sale record",
+						"auth": "member",
+						"sdkMethods": [
+							"sales.delete"
+						],
+						"arguments": [
+							{
+								"name": "sale_id",
+								"cliToken": "id",
+								"description": "coffee_sales row id",
+								"required": true,
+								"idType": "sale_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--yes"
+							}
+						]
+					}
+				]
+			},
+			{
+				"name": "tasting",
+				"summary": "View and record tasting notes for a coffee bean",
+				"auth": "member",
+				"subcommands": [
+					{
+						"name": "get",
+						"summary": "Get tasting notes for a coffee",
+						"auth": "member",
+						"sdkMethods": [
+							"tasting.get"
+						],
+						"arguments": [
+							{
+								"name": "catalog_id",
+								"cliToken": "bean-id",
+								"description": "coffee_catalog.catalog_id, not inventory id",
+								"required": true,
+								"idType": "catalog_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--filter <user|supplier|both>",
+								"defaultValue": "both"
+							}
+						]
+					},
+					{
+						"name": "rate",
+						"summary": "Rate a coffee bean with cupping scores",
+						"auth": "member",
+						"sdkMethods": [
+							"tasting.rate"
+						],
+						"arguments": [
+							{
+								"name": "inventory_id",
+								"cliToken": "bean-id",
+								"description": "green_coffee_inv.id, not catalog_id",
+								"required": false,
+								"idType": "inventory_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--aroma <1-5>",
+								"requiredInFlagMode": true
+							},
+							{
+								"flags": "--body <1-5>",
+								"requiredInFlagMode": true
+							},
+							{
+								"flags": "--acidity <1-5>",
+								"requiredInFlagMode": true
+							},
+							{
+								"flags": "--sweetness <1-5>",
+								"requiredInFlagMode": true
+							},
+							{
+								"flags": "--aftertaste <1-5>",
+								"requiredInFlagMode": true
+							},
+							{
+								"flags": "--brew-method <method>"
+							},
+							{
+								"flags": "--notes <text>"
+							},
+							{
+								"flags": "--form"
+							}
+						]
+					}
+				]
+			},
+			{
+				"name": "config",
+				"summary": "Manage purvey CLI settings",
+				"auth": "none",
+				"subcommands": [
+					{
+						"name": "list",
+						"summary": "Show all config values",
+						"auth": "none",
+						"notes": [
+							"Interactive terminals print human-readable key = value lines.",
+							"Machine mode emits the full config object as JSON.",
+							"--csv is not supported on config commands."
+						],
+						"examples": [
+							"purvey config list",
+							"purvey config list --json"
+						]
+					},
+					{
+						"name": "get",
+						"summary": "Get a config value",
+						"auth": "none",
+						"arguments": [
+							{
+								"name": "key",
+								"description": "Config key",
+								"required": true
+							}
+						],
+						"notes": [
+							"Interactive terminals print the raw value with no decorators.",
+							"Machine mode emits {\"<key>\": value|null}.",
+							"--csv is not supported on config commands."
+						],
+						"examples": [
+							"purvey config get form-mode",
+							"purvey config get form-mode --json"
+						]
+					},
+					{
+						"name": "set",
+						"summary": "Set a config value",
+						"auth": "none",
+						"arguments": [
+							{
+								"name": "key",
+								"description": "Config key",
+								"required": true
+							},
+							{
+								"name": "value",
+								"description": "Config value",
+								"required": true
+							}
+						],
+						"notes": [
+							"Interactive terminals print a human-readable success line.",
+							"Machine mode emits the updated config value as JSON.",
+							"--csv is not supported on config commands."
+						],
+						"examples": [
+							"purvey config set form-mode true",
+							"purvey config set form-mode true --json"
+						]
+					},
+					{
+						"name": "reset",
+						"summary": "Reset config to defaults",
+						"auth": "none",
+						"notes": [
+							"Interactive terminals print a human-readable success line.",
+							"Machine mode emits {}.",
+							"--csv is not supported on config commands."
+						],
+						"examples": [
+							"purvey config reset",
+							"purvey config reset --json"
+						]
+					}
+				]
+			},
+			{
+				"name": "context",
+				"summary": "Emit dense human-readable operator reference or manifest-parity JSON",
+				"auth": "none",
+				"command": {
+					"name": "context",
+					"summary": "Emit dense human-readable operator reference or manifest-parity JSON",
+					"auth": "none",
+					"options": [
+						{
+							"flags": "--json"
+						},
+						{
+							"flags": "--pretty"
+						}
+					],
+					"notes": [
+						"Use `purvey context` for dense human-readable operator reference text.",
+						"Prefer `purvey manifest` for the stable machine-readable CLI contract.",
+						"Use `purvey context --json` only for compatibility with existing context-based callers.",
+						"Use `@purveyors/cli/manifest` for the same contract in-process."
+					],
+					"examples": [
+						"purvey context",
+						"purvey context --json",
+						"purvey context --pretty"
+					]
+				}
+			},
+			{
+				"name": "manifest",
+				"summary": "Emit the preferred stable machine-readable CLI manifest contract",
+				"auth": "none",
+				"command": {
+					"name": "manifest",
+					"summary": "Emit the preferred stable machine-readable CLI manifest contract",
+					"auth": "none",
+					"options": [
+						{
+							"flags": "--json"
+						},
+						{
+							"flags": "--pretty"
+						}
+					],
+					"notes": [
+						"`purvey manifest` is the preferred machine-readable entrypoint and emits compact JSON by default.",
+						"`purvey context --json` remains available for compatibility with existing context-based callers.",
+						"The same contract is available in-process via `@purveyors/cli/manifest`."
+					],
+					"examples": [
+						"purvey manifest",
+						"purvey manifest --pretty"
+					]
+				}
+			},
+			{
+				"name": "market",
+				"summary": "Market Index decision surface: value signals, movement stats, metadata trends, overview, and evidence via the canonical API",
+				"auth": "mixed",
+				"subcommands": [
+					{
+						"name": "signals",
+						"summary": "Actionable market value signals; unfiltered summary is a public teaser",
+						"auth": "none",
+						"sdkMethods": [
+							"market.signals"
+						],
+						"options": [
+							{
+								"flags": "--summary"
+							},
+							{
+								"flags": "--type <type>",
+								"notes": [
+									"repeatable or comma-separated: price_drop|below_market|value_quality"
+								]
+							},
+							{
+								"flags": "--origin <origin>"
+							},
+							{
+								"flags": "--process <method>"
+							},
+							{
+								"flags": "--market <retail|wholesale|all>"
+							},
+							{
+								"flags": "--min-discount <n>"
+							},
+							{
+								"flags": "--min-score <n>"
+							},
+							{
+								"flags": "--window <7d|30d>"
+							},
+							{
+								"flags": "--limit <n>",
+								"description": "Results per page, 1-100",
+								"minimum": 1,
+								"maximum": 100
+							}
+						],
+						"notes": [
+							"Backed by the canonical API GET /v1/market/signals via @purveyors/sdk against api.purveyors.io.",
+							"--summary is the only unauthenticated slice (counts only); any filter requires Parchment Intelligence access, enforced server-side (403 on denial).",
+							"--json emits the API response verbatim (§3.3 evidence object, §3.4 enums); no client-side reshaping."
+						],
+						"examples": [
+							"purvey market signals --summary --pretty",
+							"purvey market signals --type price_drop --type below_market --origin \"Ethiopia\" --json"
+						]
+					},
+					{
+						"name": "stats",
+						"summary": "Price movement-significance stats; unfiltered retail slice is public",
+						"auth": "none",
+						"sdkMethods": [
+							"priceIndex.stats"
+						],
+						"options": [
+							{
+								"flags": "--origin <origin>"
+							},
+							{
+								"flags": "--process <method>"
+							},
+							{
+								"flags": "--market <retail|wholesale|all>"
+							},
+							{
+								"flags": "--window <7d|30d>"
+							},
+							{
+								"flags": "--baseline-weeks <n>"
+							}
+						],
+						"notes": [
+							"Backed by the canonical API GET /v1/price-index/stats via @purveyors/sdk.",
+							"The no-origin/no-process retail slice is public; origin/process/wholesale filters require Intelligence access."
+						],
+						"examples": [
+							"purvey market stats --pretty",
+							"purvey market stats --origin \"Colombia\" --window 30d --json"
+						]
+					},
+					{
+						"name": "metadata",
+						"summary": "Metadata-trend index; process/retail/month slice is public",
+						"auth": "none",
+						"sdkMethods": [
+							"market.metadataIndex"
+						],
+						"options": [
+							{
+								"flags": "--dimension <process|disclosure|score>"
+							},
+							{
+								"flags": "--origin <origin>"
+							},
+							{
+								"flags": "--market <retail|wholesale|all>"
+							},
+							{
+								"flags": "--grain <week|month>"
+							},
+							{
+								"flags": "--from <date>"
+							},
+							{
+								"flags": "--to <date>"
+							}
+						],
+						"notes": [
+							"Backed by the canonical API GET /v1/market/metadata-index via @purveyors/sdk.",
+							"Public slice: dimension=process, no origin, market=retail, grain=month; anything else requires Intelligence access.",
+							"cultivar and drying dimensions are out of scope for v1 (await taxonomy normalization)."
+						],
+						"examples": [
+							"purvey market metadata --pretty",
+							"purvey market metadata --dimension score --origin \"Ethiopia\" --grain month --json"
+						]
+					},
+					{
+						"name": "overview",
+						"summary": "Aggregate-only green-coffee market overview over the public catalog",
+						"auth": "viewer",
+						"sdkMethods": [
+							"market.overview"
+						],
+						"notes": [
+							"Backed by the canonical API GET /v1/market/overview via @purveyors/sdk.",
+							"The API rejects anonymous requests; any signed-in session or API key with catalog read access receives the same public evidence.",
+							"Emits the API response verbatim: daily change, coverage, movement, process distribution, and origin price distributions."
+						],
+						"examples": [
+							"purvey market overview --pretty"
+						]
+					},
+					{
+						"name": "evidence",
+						"summary": "Named arrivals, delistings, comparable lots, and supplier health and price ranges",
+						"auth": "member",
+						"sdkMethods": [
+							"market.evidence"
+						],
+						"notes": [
+							"Backed by the canonical API GET /v1/market/evidence via @purveyors/sdk.",
+							"Requires Parchment Intelligence plus catalog read access, enforced server-side (401/403 on denial)."
+						],
+						"examples": [
+							"purvey market evidence --json"
+						]
+					}
+				]
+			},
+			{
+				"name": "price-index",
+				"summary": "Parchment Price Index snapshots, matched 30-day comparisons, and chart history via the canonical API",
+				"auth": "mixed",
+				"command": {
+					"name": "price-index",
+					"summary": "Fetch Parchment Price Index aggregate snapshots from the canonical API",
+					"auth": "member",
+					"sdkMethods": [
+						"priceIndex.list"
+					],
+					"options": [
+						{
+							"flags": "--origin <origin>"
+						},
+						{
+							"flags": "--process <method>"
+						},
+						{
+							"flags": "--grade <grade>"
+						},
+						{
+							"flags": "--from <date>"
+						},
+						{
+							"flags": "--to <date>"
+						},
+						{
+							"flags": "--wholesale <true|false>"
+						},
+						{
+							"flags": "--page <n>"
+						},
+						{
+							"flags": "--limit <n>",
+							"description": "Results per page, 1-100",
+							"minimum": 1,
+							"maximum": 100
+						}
+					],
+					"notes": [
+						"Backed by the canonical API GET /v1/price-index via @purveyors/sdk against api.purveyors.io.",
+						"Requires a scoped member API key with price-index (PPI) access; the API enforces the entitlement.",
+						"PARCHMENT_API_KEY or PURVEYORS_API_KEY overrides the scoped API key stored by `purvey auth login`.",
+						"--from and --to accept ISO dates (YYYY-MM-DD); --wholesale accepts \"true\" or \"false\"."
+					],
+					"examples": [
+						"purvey price-index --pretty",
+						"purvey price-index --origin \"Ethiopia\" --json",
+						"purvey price-index --from 2026-01-01 --to 2026-06-30 --pretty"
+					]
+				},
+				"subcommands": [
+					{
+						"name": "comparisons",
+						"summary": "Available exact 30-day matched price comparisons with significance",
+						"auth": "member",
+						"sdkMethods": [
+							"priceIndex.comparisons"
+						],
+						"options": [
+							{
+								"flags": "--wholesale <true|false|all>"
+							}
+						],
+						"notes": [
+							"Backed by the canonical API GET /v1/price-index/comparisons via @purveyors/sdk.",
+							"Requires Parchment Intelligence access, enforced server-side.",
+							"The API discovers origins with an exact 30-day matched comparison; an empty comparisons list means none qualify.",
+							"Each comparison carries significance verbatim; classification (quiet|normal|notable|exceptional) is null until eight baseline windows exist, meaning not enough history, never quiet."
+						],
+						"examples": [
+							"purvey price-index comparisons --pretty",
+							"purvey price-index comparisons --wholesale all --json"
+						]
+					},
+					{
+						"name": "comparison",
+						"summary": "Matched-listing price comparison for one origin between two exact dates",
+						"auth": "member",
+						"sdkMethods": [
+							"priceIndex.comparison"
+						],
+						"options": [
+							{
+								"flags": "--origin <origin>",
+								"notes": [
+									"required"
+								]
+							},
+							{
+								"flags": "--from <date>",
+								"notes": [
+									"required; ISO date YYYY-MM-DD"
+								]
+							},
+							{
+								"flags": "--to <date>",
+								"notes": [
+									"required; ISO date within 365 days of --from"
+								]
+							},
+							{
+								"flags": "--wholesale <true|false>"
+							}
+						],
+						"notes": [
+							"Backed by the canonical API GET /v1/price-index/comparison via @purveyors/sdk.",
+							"Requires Parchment Intelligence access, enforced server-side.",
+							"status insufficient_fresh_coverage returns a null changePercent, never zero."
+						],
+						"examples": [
+							"purvey price-index comparison --origin \"Ethiopia\" --from 2026-08-31 --to 2026-09-30 --pretty"
+						]
+					},
+					{
+						"name": "history",
+						"summary": "Tier-one price-index chart history; windows up to 90 days are public",
+						"auth": "none",
+						"sdkMethods": [
+							"priceIndex.history"
+						],
+						"options": [
+							{
+								"flags": "--window-days <n>",
+								"description": "Trailing window in days, 1-365",
+								"minimum": 1,
+								"maximum": 365
+							},
+							{
+								"flags": "--page <n>"
+							},
+							{
+								"flags": "--limit <n>",
+								"description": "Results per page, 1-10000",
+								"minimum": 1,
+								"maximum": 10000
+							},
+							{
+								"flags": "--order <asc|desc>"
+							}
+						],
+						"notes": [
+							"Backed by the canonical API GET /v1/price-index/history via @purveyors/sdk.",
+							"Windows up to 90 days (the default) run without credentials; 91-365 days require Parchment Intelligence access, enforced server-side."
+						],
+						"examples": [
+							"purvey price-index history --pretty",
+							"purvey price-index history --window-days 365 --limit 500 --json"
+						]
+					}
+				]
+			},
+			{
+				"name": "procurement",
+				"summary": "Read saved sourcing briefs and their catalog matches from the canonical API",
+				"auth": "member",
+				"subcommands": [
+					{
+						"name": "list",
+						"summary": "List your saved sourcing briefs",
+						"auth": "member",
+						"sdkMethods": [
+							"procurement.briefs.list"
+						],
+						"notes": [
+							"Backed by the canonical API GET /v1/procurement/briefs via @purveyors/sdk.",
+							"Brief creation is a write handled by the Phase 2 write build-out (PADR-0016), not this read surface."
+						],
+						"examples": [
+							"purvey procurement list --pretty"
+						]
+					},
+					{
+						"name": "get",
+						"summary": "Get a single saved sourcing brief by id",
+						"auth": "member",
+						"sdkMethods": [
+							"procurement.briefs.get"
+						],
+						"arguments": [
+							{
+								"name": "brief_id",
+								"cliToken": "id",
+								"description": "sourcing brief id",
+								"required": true
+							}
+						],
+						"notes": [
+							"Backed by the canonical API GET /v1/procurement/briefs/{id} via @purveyors/sdk."
+						],
+						"examples": [
+							"purvey procurement get <brief-id> --pretty"
+						]
+					},
+					{
+						"name": "matches",
+						"summary": "Run a saved brief against the catalog and page through matches",
+						"auth": "member",
+						"sdkMethods": [
+							"procurement.briefs.matches"
+						],
+						"arguments": [
+							{
+								"name": "brief_id",
+								"cliToken": "id",
+								"description": "sourcing brief id",
+								"required": true
+							}
+						],
+						"options": [
+							{
+								"flags": "--page <n>"
+							},
+							{
+								"flags": "--limit <n>",
+								"description": "Matches per page, 1-100",
+								"minimum": 1,
+								"maximum": 100
+							}
+						],
+						"notes": [
+							"Backed by the canonical API GET /v1/procurement/briefs/{id}/matches via @purveyors/sdk.",
+							"--limit maxes at 100 (default 25); --page is 1-based (default 1)."
+						],
+						"examples": [
+							"purvey procurement matches <brief-id> --pretty",
+							"purvey procurement matches <brief-id> --page 2 --limit 50 --json"
+						]
+					}
+				]
+			},
+			{
+				"name": "reference-profile",
+				"summary": "Compare, preview, save, and export Studio reference plans through the canonical API",
+				"auth": "member",
+				"subcommands": [
+					{
+						"name": "list",
+						"summary": "List your Studio reference profiles",
+						"auth": "member",
+						"sdkMethods": [
+							"referenceProfiles.list"
+						],
+						"options": [
+							{
+								"flags": "--include-archived"
+							}
+						],
+						"notes": [
+							"Backed by GET /v1/reference-profiles via @purveyors/sdk.",
+							"Requires a member credential and Studio access; entitlement is enforced by Parchment."
+						],
+						"examples": [
+							"purvey reference-profile list --pretty"
+						]
+					},
+					{
+						"name": "get",
+						"summary": "Get one reference profile and its current revision",
+						"auth": "member",
+						"sdkMethods": [
+							"referenceProfiles.get"
+						],
+						"arguments": [
+							{
+								"name": "reference_profile_id",
+								"cliToken": "profile-id",
+								"description": "owner-scoped reference profile UUID",
+								"required": true,
+								"idType": "reference_profile_id"
+							}
+						],
+						"notes": [
+							"Use data.currentRevision.id for chart, preview, and save."
+						],
+						"examples": [
+							"purvey reference-profile get 5ea1af6f-234c-43a9-9bf8-5678dd24f854 --pretty"
+						]
+					},
+					{
+						"name": "chart",
+						"summary": "Get the typed Artisan chart for a reference revision",
+						"auth": "member",
+						"sdkMethods": [
+							"referenceProfiles.chart"
+						],
+						"arguments": [
+							{
+								"name": "reference_profile_id",
+								"cliToken": "profile-id",
+								"description": "owner-scoped reference profile UUID",
+								"required": true,
+								"idType": "reference_profile_id"
+							},
+							{
+								"name": "reference_revision_id",
+								"cliToken": "revision-id",
+								"description": "immutable revision UUID belonging to the profile",
+								"required": true,
+								"idType": "reference_revision_id"
+							}
+						],
+						"notes": [
+							"Backed by GET /v1/reference-profiles/{id}/revisions/{revisionId}/chart via @purveyors/sdk."
+						],
+						"examples": [
+							"purvey reference-profile chart 5ea1af6f-234c-43a9-9bf8-5678dd24f854 8d2c41e0-7b9a-4f3e-a6d1-2c9e5f07b3a4 --pretty"
+						]
+					},
+					{
+						"name": "import",
+						"summary": "Upload an Artisan file as a private Studio reference profile",
+						"auth": "member",
+						"sdkMethods": [
+							"referenceProfiles.import"
+						],
+						"arguments": [
+							{
+								"name": "file",
+								"description": "Path to an Artisan .alog or importer-supported JSON file",
+								"required": true
+							}
+						],
+						"options": [
+							{
+								"flags": "--title <text>"
+							},
+							{
+								"flags": "--notes <text>"
+							},
+							{
+								"flags": "--idempotency-key <key>",
+								"description": "Stable key for safe retries"
+							}
+						],
+						"notes": [
+							"Backed by POST /v1/reference-profiles/imports via @purveyors/sdk; parsing and private retention are server-owned.",
+							"A new idempotency key is generated when omitted; reuse an explicit key to replay the same upload.",
+							"Import creates a reference profile, not executed roast history."
+						],
+						"examples": [
+							"purvey reference-profile import ~/artisan/ethiopia.alog --title \"Ethiopia baseline\""
+						]
+					},
+					{
+						"name": "compare",
+						"summary": "Compare two immutable roast or reference revisions with measured deltas",
+						"auth": "member",
+						"sdkMethods": [
+							"referenceProfiles.compare",
+							"referenceProfiles.get",
+							"roasts.chartData"
+						],
+						"arguments": [
+							{
+								"name": "left",
+								"description": "selector: revision:<uuid>, profile:<uuid>, roast:<roast-id>, or roast:<roast-id>@<chart-revision>",
+								"required": true
+							},
+							{
+								"name": "right",
+								"description": "selector: revision:<uuid>, profile:<uuid>, roast:<roast-id>, or roast:<roast-id>@<chart-revision>",
+								"required": true
+							}
+						],
+						"options": [
+							{
+								"flags": "--unit <F|C>",
+								"defaultValue": "F"
+							},
+							{
+								"flags": "--target-points <n>",
+								"description": "Samples per aligned series, 50-1000",
+								"defaultValue": 400,
+								"minimum": 50,
+								"maximum": 1000
+							}
+						],
+						"notes": [
+							"Backed by POST /v1/profile-comparisons via @purveyors/sdk; output is the canonical comparison envelope.",
+							"profile:<uuid> resolves the profile currentRevisionId; roast:<roast-id> resolves data.metadata.revision from roast chart data.",
+							"Parchment aligns both sides at charge; a reference profile is never executed roast history."
+						],
+						"examples": [
+							"purvey reference-profile compare roast:123 profile:5ea1af6f-234c-43a9-9bf8-5678dd24f854 --pretty",
+							"purvey reference-profile compare roast:123 roast:124 --unit C --json"
+						]
+					},
+					{
+						"name": "preview",
+						"summary": "Preview bounded temperature adjustments without saving",
+						"auth": "member",
+						"sdkMethods": [
+							"referenceProfiles.preview"
+						],
+						"arguments": [
+							{
+								"name": "reference_profile_id",
+								"cliToken": "profile-id",
+								"description": "owner-scoped reference profile UUID",
+								"required": true,
+								"idType": "reference_profile_id"
+							},
+							{
+								"name": "reference_revision_id",
+								"cliToken": "revision-id",
+								"description": "immutable parent revision UUID",
+								"required": true,
+								"idType": "reference_revision_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--request <file>",
+								"requiredInFlagMode": true
+							}
+						],
+						"notes": [
+							"Backed by POST /v1/reference-profiles/{id}/revisions/{revisionId}/preview via @purveyors/sdk.",
+							"Request JSON contains title, optional notes, optional userGoal (600 chars), modelRecommendation (800), and userEdits (800) provenance, and changes.temperatureAdjustments; each adjustment has kind, startMilliseconds, endMilliseconds, and delta.",
+							"At most 12 adjustments are accepted; intervals must be ordered and each nonzero delta is bounded to -20 through 20.",
+							"Parchment recalculates from the immutable parent; preview never persists or changes the source."
+						],
+						"examples": [
+							"purvey reference-profile preview 5ea1af6f-234c-43a9-9bf8-5678dd24f854 8d2c41e0-7b9a-4f3e-a6d1-2c9e5f07b3a4 --request changes.json --pretty"
+						]
+					},
+					{
+						"name": "save",
+						"summary": "Save changes as a new immutable generated reference plan",
+						"auth": "member",
+						"sdkMethods": [
+							"referenceProfiles.generate"
+						],
+						"confirmedActionEquivalents": [
+							"create_generated_reference"
+						],
+						"arguments": [
+							{
+								"name": "reference_profile_id",
+								"cliToken": "profile-id",
+								"description": "owner-scoped reference profile UUID",
+								"required": true,
+								"idType": "reference_profile_id"
+							},
+							{
+								"name": "reference_revision_id",
+								"cliToken": "revision-id",
+								"description": "immutable parent revision UUID",
+								"required": true,
+								"idType": "reference_revision_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--request <file>",
+								"requiredInFlagMode": true
+							},
+							{
+								"flags": "--idempotency-key <key>",
+								"description": "Stable key for safe retries"
+							}
+						],
+						"notes": [
+							"Backed by POST /v1/reference-profiles/{id}/revisions/{revisionId}/generated via @purveyors/sdk.",
+							"A new idempotency key is generated when omitted; reuse an explicit key to replay the same save.",
+							"Generated references are plans and never create executed roast history."
+						],
+						"examples": [
+							"purvey reference-profile save 5ea1af6f-234c-43a9-9bf8-5678dd24f854 8d2c41e0-7b9a-4f3e-a6d1-2c9e5f07b3a4 --request changes.json --pretty"
+						]
+					},
+					{
+						"name": "export",
+						"summary": "Download a saved generated reference as an unsigned Artisan .alog plan",
+						"auth": "member",
+						"sdkMethods": [
+							"referenceProfiles.exportGenerated"
+						],
+						"arguments": [
+							{
+								"name": "reference_profile_id",
+								"cliToken": "profile-id",
+								"description": "saved generated reference profile UUID",
+								"required": true,
+								"idType": "reference_profile_id"
+							},
+							{
+								"name": "reference_revision_id",
+								"cliToken": "revision-id",
+								"description": "saved generated revision UUID",
+								"required": true,
+								"idType": "reference_revision_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--output <file>",
+								"requiredInFlagMode": true
+							},
+							{
+								"flags": "--force",
+								"description": "Overwrite the destination file if it exists"
+							}
+						],
+						"notes": [
+							"Backed by GET /v1/reference-profiles/{id}/revisions/{revisionId}/export via @purveyors/sdk.",
+							"Only a saved generated revision can be exported; output is a local file plus a JSON receipt.",
+							"The CLI does not claim verified Artisan 4.2 playback compatibility."
+						],
+						"examples": [
+							"purvey reference-profile export 0b7e9f52-3c61-4d8a-9e24-6f1a8c3d5b90 c43a1d7e-95b2-4e06-8f7c-1d2b3a4e5f68 --output ~/artisan/next-batch.alog"
+						]
+					}
+				]
+			}
+		],
+		"workflows": [
+			{
+				"title": "Catalog to inventory",
+				"commands": [
+					"purvey catalog search --origin \"Ethiopia\" --stocked --pretty",
+					"purvey inventory add --catalog-id 128 --qty 10 --cost 8.50"
+				]
+			},
+			{
+				"title": "Catalog proof and similarity research",
+				"commands": [
+					"purvey catalog search --origin \"Ethiopia\" --include-proof --json",
+					"purvey catalog get 128 --include-proof --json",
+					"purvey catalog similar 1182 --threshold 0.85 --stocked-only --json | jq '.data.groups'"
+				]
+			},
+			{
+				"title": "Import a roast from Artisan",
+				"commands": [
+					"purvey inventory list --stocked --pretty",
+					"purvey roast import ~/artisan/ethiopia.alog --coffee-id 7 --pretty"
+				]
+			},
+			{
+				"title": "Plan and export an Artisan reference",
+				"commands": [
+					"purvey reference-profile import ~/artisan/ethiopia.alog --title \"Ethiopia baseline\"",
+					"purvey reference-profile get 5ea1af6f-234c-43a9-9bf8-5678dd24f854 --pretty",
+					"purvey reference-profile preview 5ea1af6f-234c-43a9-9bf8-5678dd24f854 8d2c41e0-7b9a-4f3e-a6d1-2c9e5f07b3a4 --request changes.json --pretty",
+					"purvey reference-profile save 5ea1af6f-234c-43a9-9bf8-5678dd24f854 8d2c41e0-7b9a-4f3e-a6d1-2c9e5f07b3a4 --request changes.json --idempotency-key 3f6c2a1b-8e4d-4b7a-9c05-7e1f2d3a4b5c",
+					"purvey reference-profile export 0b7e9f52-3c61-4d8a-9e24-6f1a8c3d5b90 c43a1d7e-95b2-4e06-8f7c-1d2b3a4e5f68 --output ~/artisan/next-batch.alog"
+				]
+			},
+			{
+				"title": "Watch a folder for new roasts",
+				"commands": [
+					"purvey roast watch ~/artisan/ --coffee-id 7",
+					"purvey roast watch ~/artisan/ --auto-match",
+					"purvey roast watch --resume"
+				]
+			},
+			{
+				"title": "Rate coffee and record a sale",
+				"commands": [
+					"purvey tasting rate 7 --aroma 4 --body 3 --acidity 5 --sweetness 4 --aftertaste 4",
+					"purvey sales record --coffee-id 7 --batch-name \"Ethiopia Guji Light\" --oz 12 --price 22.00 --buyer \"Jane Smith\""
+				]
+			}
+		],
+		"errorPatterns": [
+			{
+				"title": "Not logged in",
+				"exitCodes": [
+					3
+				],
+				"guidance": [
+					"Run `purvey auth login` or `purvey auth login --headless`.",
+					"Run `purvey auth status` to confirm role after login."
+				]
+			},
+			{
+				"title": "Wrong ID type",
+				"exitCodes": [
+					2,
+					4
+				],
+				"guidance": [
+					"Verify whether the command wants catalog_id, inventory_id, roast_id, sale_id, reference_profile_id, or reference_revision_id.",
+					"See the ID MAP section."
+				]
+			},
+			{
+				"title": "Missing required args in write commands",
+				"exitCodes": [
+					2
+				],
+				"guidance": [
+					"Pass the required flags or use --form."
+				]
+			},
+			{
+				"title": "Parser mistakes like unknown options or commands",
+				"exitCodes": [
+					2
+				],
+				"guidance": [
+					"Unknown options, unknown commands, and missing required arguments use the same JSON error envelope contract in machine mode.",
+					"In an interactive terminal with no explicit output flag, those parser failures stay human-readable."
+				]
+			},
+			{
+				"title": "Dependency conflict on delete",
+				"exitCodes": [
+					5
+				],
+				"guidance": [
+					"Delete dependent roast profiles and sales records explicitly, then retry."
+				]
+			},
+			{
+				"title": "Mutually exclusive watch flags",
+				"exitCodes": [
+					2
+				],
+				"guidance": [
+					"`roast watch` forbids using --auto-match together with --coffee-id."
+				]
+			},
+			{
+				"title": "Pagination only returning the first 20 results",
+				"exitCodes": [],
+				"guidance": [
+					"All list commands default to --limit 20.",
+					"Use --offset to page, for example `--limit 20 --offset 40` returns items 41-60."
+				]
+			}
+		]
+	}
+}

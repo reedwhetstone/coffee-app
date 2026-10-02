@@ -70,7 +70,7 @@ Purveyors ships the web app and the external Parchment API as separate HTTP surf
    - `/api/billing/*`, `/api/email-subscriptions/*`, `/api/account-deletion`, and `/api/account-deletion/reauthenticate` are browser-session-only internal BFF routes. Coffee-app forwards typed requests through `@purveyors/sdk`; Parchment owns billing, email preferences, provider projection, entitlements, and the provider-before-local-before-Auth deletion saga. They never form part of the external Parchment API
    - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `https://api.purveyors.io/docs`
-   - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are metadata or compatibility endpoints, not catalog or analytics APIs
+   - `/llms.txt`, `/llms-full.txt`, docs Markdown twins (`/docs.md`, `/docs/{section}.md`, `/docs/{section}/{slug}.md`), `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are metadata or compatibility endpoints, not catalog or analytics APIs
    - `/auth/callback` is the web OAuth handoff surface; `/auth/cli` is the signed-in browser consent surface for CLI authorization requests. Neither is a REST resource
    - Former `/api/tools/*` compatibility shims are retired; use session-mode Parchment SDK integration
 

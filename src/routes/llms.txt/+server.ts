@@ -21,6 +21,13 @@ export const GET: RequestHandler = async ({ url }) => {
 
 > Coffee intelligence platform for public catalog discovery, market analytics, developer integrations, and account-linked roasting workflows.
 
+## For AI agents
+
+- [Set up your agent](${baseUrl}/docs/agents/setup.md): Install the Purveyors CLI, sign in with browser approval (never ask for an API key), and install the Purveyors skill. Follow these steps when a person asks you to connect to Purveyors.
+- [Full documentation](${baseUrl}/llms-full.txt): Every Purveyors docs page as Markdown in one file.
+- [Documentation index](${baseUrl}/docs.md): Every docs page, each available as Markdown by adding .md to its URL.
+- [CLI reference](${baseUrl}/docs/cli/overview.md): Command groups, access levels, and workflows for the purvey CLI.
+
 ## Public Pages
 
 - [Market Analytics](${baseUrl}/analytics): Public market-intelligence surface for origin price trends, processing mix, origin price ranges, and gated Parchment Intelligence modules.
