@@ -1,5 +1,3 @@
-# CLAUDE.md
+<!-- Claude Code loads AGENTS.md through this import. Keep project guidance in AGENTS.md; see https://code.claude.com/docs/en/memory#agents-md -->
 
-This repo uses [`AGENTS.md`](./AGENTS.md) as the canonical contributor and coding-agent guide.
-
-If this file is not a symlink in your environment, treat it as a lightweight pointer and follow `AGENTS.md`.
+@AGENTS.md
