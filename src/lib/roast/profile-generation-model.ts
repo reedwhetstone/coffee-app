@@ -1,5 +1,10 @@
 import type { components } from '@purveyors/sdk';
 import type { ChartSeries, ProcessedChartData } from '$lib/components/roast/chart';
+import {
+	isAbsentReading,
+	isMissingReading,
+	realReadings
+} from '$lib/components/roast/chart/chart-utils';
 
 type ReferenceChart = components['schemas']['ReferenceProfileChart'];
 
@@ -27,26 +32,43 @@ export function buildProfileGenerationChart(
 ): ProcessedChartData {
 	const colors = ['#b45309', '#0f766e', '#7c3aed', '#0891b2'];
 	const makeSeries = (chart: ReferenceChart, proposed: boolean): ChartSeries[] =>
-		chart.series.map((entry, index) => ({
-			id: `${proposed ? 'proposed' : 'parent'}-${entry.id}`,
-			label: `${proposed ? 'Proposed' : 'Parent'} · ${entry.name}`,
-			kind: entry.kind,
-			unit: entry.unit,
-			axis:
-				entry.kind === 'auxiliary' && entry.unit !== chart.temperatureUnit
-					? 'control'
-					: 'temperature',
-			strokeWidth: proposed && entry.kind === 'bean_temperature' ? 3 : 2,
-			curve: 'linear',
-			color: colors[index % colors.length],
-			dashed: !proposed,
-			points: entry.points.map((point) => ({
-				timeMinutes: (point.timeMilliseconds - chargeOffsetMilliseconds(chart)) / 60_000,
-				value: point.value
-			}))
-		}));
+		chart.series
+			.map((entry, index): ChartSeries => {
+				const axis =
+					entry.kind === 'auxiliary' && entry.unit !== chart.temperatureUnit
+						? 'control'
+						: 'temperature';
+				return {
+					id: `${proposed ? 'proposed' : 'parent'}-${entry.id}`,
+					label: `${proposed ? 'Proposed' : 'Parent'} · ${entry.name}`,
+					kind: entry.kind,
+					unit: entry.unit,
+					axis,
+					strokeWidth: proposed && entry.kind === 'bean_temperature' ? 3 : 2,
+					curve: 'linear',
+					color: colors[index % colors.length],
+					dashed: !proposed,
+					// Saved references can still carry Artisan's -1 "no reading" marker.
+					points: realReadings(
+						entry.points.map((point) => ({
+							timeMinutes: (point.timeMilliseconds - chargeOffsetMilliseconds(chart)) / 60_000,
+							value: point.value
+						})),
+						axis === 'temperature' ? isMissingReading : isAbsentReading
+					)
+				};
+			})
+			// A channel with no real readings, such as a probe that was never connected, is left out.
+			.filter((entry) => entry.points.length > 0);
 	const series = [...makeSeries(parent, false), ...makeSeries(preview, true)];
-	const times = series.flatMap((entry) => entry.points.map((point) => point.timeMinutes));
+	// The time axis covers every sample, with or without a reading.
+	const times = [parent, preview].flatMap((chart) =>
+		chart.series.flatMap((entry) =>
+			entry.points.map(
+				(point) => (point.timeMilliseconds - chargeOffsetMilliseconds(chart)) / 60_000
+			)
+		)
+	);
 	const temperatures = series
 		.filter((entry) => entry.axis === 'temperature')
 		.flatMap((entry) => entry.points.map((point) => point.value));

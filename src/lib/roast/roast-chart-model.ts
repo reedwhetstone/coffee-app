@@ -6,6 +6,11 @@ import type {
 	ControlSeries,
 	ProcessedChartData
 } from '$lib/components/roast/chart';
+import {
+	isAbsentReading,
+	isMissingReading,
+	realReadings
+} from '$lib/components/roast/chart/chart-utils';
 import type { RoastEventEntry } from './roast-types';
 
 const SERIES_COLORS = [
@@ -160,10 +165,16 @@ function mapCanonicalSeries(
 		strokeWidth: series.kind === 'bean_temperature' ? 3 : 2,
 		dashed: series.kind === 'bean_temperature',
 		curve: axis === 'control' ? 'linear' : 'basis',
-		points: series.points.map((point) => ({
-			timeMinutes: (point.time_milliseconds - chargeTime) / 60_000,
-			value: point.value_numeric
-		}))
+		// Stored curves can still carry Artisan's -1 "no reading" marker in temperature
+		// channels. On the RoR and control axes -1 can be a real value, so only an absent
+		// value counts as missing there.
+		points: realReadings(
+			series.points.map((point) => ({
+				timeMinutes: (point.time_milliseconds - chargeTime) / 60_000,
+				value: point.value_numeric
+			})),
+			axis === 'temperature' ? isMissingReading : isAbsentReading
+		)
 	};
 }
 
@@ -220,9 +231,10 @@ export function buildRoastChartModel(
 ): ProcessedChartData {
 	const chargeTime = resolveChargeTime(data);
 	const temperatureUnit = primaryTemperatureUnit(data);
-	const canonicalSeries = data.series.map((series, index) =>
-		mapCanonicalSeries(series, chargeTime, index, temperatureUnit)
-	);
+	// A channel with no real readings, such as a probe that was never connected, is left out.
+	const canonicalSeries = data.series
+		.map((series, index) => mapCanonicalSeries(series, chargeTime, index, temperatureUnit))
+		.filter((series) => series.points.length > 0);
 	const seriesTimes = data.series.flatMap((series) =>
 		series.points.map((point) => point.time_milliseconds)
 	);
@@ -254,7 +266,11 @@ export function buildRoastChartModel(
 		timeMinutes: (event.time_milliseconds - chargeTime) / 60_000,
 		name: event.name
 	}));
-	const timeValues = series.flatMap((entry) => entry.points.map((point) => point.timeMinutes));
+	// The time axis covers every stored sample, with or without a reading.
+	const timeValues = [
+		...seriesTimes.map((time) => (time - chargeTime) / 60_000),
+		...controls.flatMap((entry) => entry.points.map((point) => point.timeMinutes))
+	];
 	const temperatureValues = series
 		.filter((entry) => entry.axis === 'temperature')
 		.flatMap((entry) => entry.points.map((point) => point.value));

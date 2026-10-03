@@ -30,7 +30,9 @@ async function immutableInput(
 	if (selection.kind === 'reference_profile') {
 		const result = await client.referenceProfiles.get(selection.id);
 		if (result.error || !result.data)
-			throw new Response('Reference profile not found', { status: result.response?.status ?? 404 });
+			throw new Response('That saved reference could not be found', {
+				status: result.response?.status ?? 404
+			});
 		return { type: 'reference_revision', revisionId: result.data.data.currentRevisionId };
 	}
 	const roastId = Number(selection.id);
@@ -38,10 +40,10 @@ async function immutableInput(
 		throw new Response('Invalid executed roast ID', { status: 400 });
 	const result = await client.roasts.chartData(String(roastId), { target_points: 400 });
 	if (result.error || !result.data)
-		throw new Response('Executed roast not found', { status: result.response?.status ?? 404 });
+		throw new Response('That roast could not be found', { status: result.response?.status ?? 404 });
 	const roastRevision = result.data.data.metadata.revision;
 	if (!roastRevision)
-		throw new Response('Executed roast has no immutable chart revision', { status: 409 });
+		throw new Response('That roast has no recorded curve to compare', { status: 409 });
 	return { type: 'executed_roast', roastId, roastRevision };
 }
 
