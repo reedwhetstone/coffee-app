@@ -2,7 +2,8 @@ name: Code Quality
 
 on:
   push:
-    branches: ['*']
+    # `**` and not `*`: `*` stops at `/`, so it would skip branches such as `feature/x`.
+    branches: ['**']
   pull_request:
     branches: [main, master]
   workflow_dispatch:
