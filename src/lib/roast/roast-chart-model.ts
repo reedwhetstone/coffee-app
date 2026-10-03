@@ -266,7 +266,11 @@ export function buildRoastChartModel(
 		timeMinutes: (event.time_milliseconds - chargeTime) / 60_000,
 		name: event.name
 	}));
-	const timeValues = series.flatMap((entry) => entry.points.map((point) => point.timeMinutes));
+	// The time axis covers every stored sample, with or without a reading.
+	const timeValues = [
+		...seriesTimes.map((time) => (time - chargeTime) / 60_000),
+		...controls.flatMap((entry) => entry.points.map((point) => point.timeMinutes))
+	];
 	const temperatureValues = series
 		.filter((entry) => entry.axis === 'temperature')
 		.flatMap((entry) => entry.points.map((point) => point.value));

@@ -60,7 +60,7 @@ describe('chart utilities', () => {
 		]);
 
 		expect(points).toEqual([
-			{ timeMinutes: 1, value: 200 },
+			{ timeMinutes: 1, value: 200, gapBefore: true },
 			{ timeMinutes: 4, value: 230, gapBefore: true },
 			{ timeMinutes: 5, value: 240 }
 		]);
@@ -86,6 +86,43 @@ describe('chart utilities', () => {
 
 		expect(nearestPointWithinSamplingGap(points, 1)).toBeNull();
 		expect(nearestPointWithinSamplingGap(points, 2.04)).toMatchObject({ value: 260 });
+	});
+
+	it('reports a reading only at its own time when every interval is a gap', () => {
+		const points = realReadings([
+			{ timeMinutes: 0, value: 200 },
+			{ timeMinutes: 1, value: -1 },
+			{ timeMinutes: 2, value: 220 },
+			{ timeMinutes: 3, value: -1 },
+			{ timeMinutes: 4, value: 240 }
+		]);
+
+		expect(nearestPointWithinSamplingGap(points, 2)).toMatchObject({ value: 220 });
+		// The missing samples, and everywhere else between two readings, report nothing.
+		expect([1, 3, 0.2, 2.4, 9].map((time) => nearestPointWithinSamplingGap(points, time))).toEqual([
+			null,
+			null,
+			null,
+			null,
+			null
+		]);
+	});
+
+	it('reports a lone reading only at its own time when the readings beside it are missing', () => {
+		const samples = (values: number[]) =>
+			values.map((value, timeMinutes) => ({ timeMinutes, value }));
+		const afterGap = realReadings(samples([-1, -1, 300]));
+		const beforeGap = realReadings(samples([300, -1, -1]));
+
+		expect(afterGap).toEqual([{ timeMinutes: 2, value: 300, gapBefore: true }]);
+		expect(beforeGap).toEqual([{ timeMinutes: 0, value: 300, gapAfter: true }]);
+		expect(nearestPointWithinSamplingGap(afterGap, 2)).toMatchObject({ value: 300 });
+		expect(nearestPointWithinSamplingGap(afterGap, 0)).toBeNull();
+		expect(nearestPointWithinSamplingGap(beforeGap, 2)).toBeNull();
+		// A series that only ever had one sample is still read anywhere.
+		expect(nearestPointWithinSamplingGap([{ timeMinutes: 0, value: 300 }], 5)).toMatchObject({
+			value: 300
+		});
 	});
 
 	it('turns milestone codes into short readable names', () => {

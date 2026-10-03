@@ -56,9 +56,10 @@ function missingReadingValues(targetUnit: 'F' | 'C'): number[] {
 
 /**
  * Parchment resamples the second profile by interpolation, so a stored -1 becomes a
- * reading partway between -1 and its real neighbours. Remove readings that sit far
- * below the readings around them. A steady climb or fall never qualifies, because
- * each of its readings is the middle value of its own neighbourhood.
+ * reading partway between -1 and its real neighbours, and the marker itself is rarely
+ * left in the result. Remove readings that sit far below the readings around them.
+ * A steady climb or fall never qualifies, because each of its readings is the middle
+ * value of its own neighbourhood.
  */
 function withoutDropouts(values: Reading[], minimumDepth: number): Reading[] {
 	return values.map((value, index) => {
@@ -84,12 +85,6 @@ export function buildProfileComparisonChart(comparison: ProfileComparison): Proc
 			: entry.kind === 'auxiliary' && !/[cf]$/i.test(entry.unit)
 				? 'control'
 				: 'temperature';
-	// Only stored data that still carries the marker can contain interpolated dropouts.
-	const hasMarker = comparison.series.some(
-		(entry) =>
-			axisFor(entry) === 'temperature' &&
-			entry.points.some((point) => isMarker(point.left) || isMarker(point.right))
-	);
 	const minimumDropoutDepth = comparison.targetUnit === 'C' ? 8 : 15;
 
 	const series: ChartSeries[] = comparison.series.flatMap((entry, index) => {
@@ -106,7 +101,9 @@ export function buildProfileComparisonChart(comparison: ProfileComparison): Proc
 				const value = point[side];
 				return isAbsentReading(value) || (axis === 'temperature' && isMarker(value)) ? null : value;
 			});
-			if (axis === 'temperature' && hasMarker)
+			// Only the second profile is interpolated. The first keeps its stored readings, so
+			// its marker is always found exactly and none of its real readings are filtered.
+			if (axis === 'temperature' && side === 'right')
 				values = withoutDropouts(values, minimumDropoutDepth);
 			return realReadings(
 				entry.points.map((point, pointIndex) => ({
@@ -136,7 +133,11 @@ export function buildProfileComparisonChart(comparison: ProfileComparison): Proc
 		// A channel with no real readings, such as a probe that was never connected, is left out.
 		return candidates.filter((candidate) => candidate.points.length > 0);
 	});
-	const times = series.flatMap((entry) => entry.points.map((point) => point.timeMinutes));
+	// The time axis covers every sample, with or without a reading, so a comparison that
+	// starts or ends on missing readings still shows charge and the milestones around it.
+	const times = comparison.series.flatMap((entry) =>
+		entry.points.map((point) => point.timeMilliseconds / 60_000)
+	);
 	const temperatures = series
 		.filter((entry) => entry.axis === 'temperature')
 		.flatMap((entry) => entry.points.map((point) => point.value));

@@ -16,8 +16,10 @@ export interface ProcessedChartData {
 export interface ChartPoint {
 	timeMinutes: number;
 	value: number;
-	/** One or more readings are missing between the previous point and this one. */
+	/** One or more readings are missing just before this point. */
 	gapBefore?: boolean;
+	/** This is the last real reading and one or more readings are missing after it. */
+	gapAfter?: boolean;
 }
 
 export interface ControlSeries {

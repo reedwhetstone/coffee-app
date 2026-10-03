@@ -195,6 +195,31 @@ describe('buildRoastChartModel', () => {
 		expect(model.series.find((series) => series.id === 'drum-pressure')?.points[0].value).toBe(-1);
 	});
 
+	it('keeps charge on the time axis when the roast starts and ends without readings', () => {
+		const data = fixture();
+		data.metadata.temperature_unit = 'F';
+		data.metadata.charge_time_ms = 0;
+		data.events = [{ ...data.events[0], time_milliseconds: 0 }];
+		data.series = [
+			{
+				...data.series[0],
+				unit: 'F',
+				points: [
+					{ time_milliseconds: 0, value_numeric: -1 },
+					{ time_milliseconds: 240_000, value_numeric: 300 },
+					{ time_milliseconds: 360_000, value_numeric: 320 },
+					{ time_milliseconds: 600_000, value_numeric: -1 }
+				]
+			}
+		];
+
+		const model = buildRoastChartModel(data);
+
+		expect(model.temperaturePoints.map((point) => point.timeMinutes)).toEqual([4, 6]);
+		expect(model.xDomain[0]).toBeLessThanOrEqual(0);
+		expect(model.xDomain[1]).toBeGreaterThanOrEqual(10);
+	});
+
 	it('preserves saved chart domains when supplied', () => {
 		const model = buildRoastChartModel(fixture(), {
 			xRange: [-1, 14],

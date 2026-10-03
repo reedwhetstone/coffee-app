@@ -167,6 +167,7 @@ describe('profile comparison chart model', () => {
 	});
 
 	it('removes readings interpolated toward a missing marker on the resampled profile', () => {
+		// The stored -1 fell between two sample times, so no point carries the marker itself.
 		const chart = buildProfileComparisonChart(
 			comparisonOf([
 				temperatureSeries('bean_temperature', [
@@ -177,10 +178,6 @@ describe('profile comparison chart model', () => {
 					[308, 308],
 					[310, 310],
 					[312, 312]
-				]),
-				temperatureSeries('environmental_temperature', [
-					[-1, -1],
-					[-1, -1]
 				])
 			])
 		);
@@ -188,9 +185,62 @@ describe('profile comparison chart model', () => {
 		const resampled = chart.series.find((series) => series.id === 'right-bean-temperature');
 		expect(resampled?.points.map((point) => point.value)).toEqual([300, 302, 308, 310, 312]);
 		expect(resampled?.points[2].gapBefore).toBe(true);
+		expect(chart.yTempDomain[0]).toBeGreaterThan(200);
 	});
 
-	it('keeps a real fast temperature drop when the data carries no missing marker', () => {
+	it('never filters the first profile, whose readings are not interpolated', () => {
+		const chart = buildProfileComparisonChart(
+			comparisonOf([
+				temperatureSeries('bean_temperature', [
+					[300, 300],
+					[302, 302],
+					[151, 304],
+					[62, 306],
+					[308, 308],
+					[310, 310],
+					[312, 312]
+				])
+			])
+		);
+
+		expect(chart.series[0].points.map((point) => point.value)).toEqual([
+			300, 302, 151, 62, 308, 310, 312
+		]);
+	});
+
+	it('keeps the whole timeline, and charge, when a comparison starts and ends without readings', () => {
+		const readings = [-1, -1, 300, 310, -1, -1];
+		const chart = buildProfileComparisonChart(
+			comparisonOf(
+				[
+					{
+						id: 'bean-temperature',
+						name: 'BT',
+						kind: 'bean_temperature',
+						unit: 'F',
+						points: readings.map((value, index) => ({
+							timeMilliseconds: index * 120_000,
+							left: value,
+							right: value,
+							delta: 0
+						}))
+					}
+				],
+				[milestone('charge', 0, 0), milestone('drop', 600_000, 600_000)]
+			)
+		);
+
+		expect(chart.series[0].points.map((point) => point.timeMinutes)).toEqual([4, 6]);
+		expect(chart.xDomain[0]).toBeLessThanOrEqual(0);
+		expect(chart.xDomain[1]).toBeGreaterThanOrEqual(10);
+		expect(
+			chart.events.every(
+				(event) => event.timeMinutes >= chart.xDomain[0] && event.timeMinutes <= chart.xDomain[1]
+			)
+		).toBe(true);
+	});
+
+	it('keeps a real fast temperature drop on the resampled profile', () => {
 		const falling = [400, 340, 280, 230, 200, 190, 195, 205, 220].map((value): [number, number] => [
 			value,
 			value

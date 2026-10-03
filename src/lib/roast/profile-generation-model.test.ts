@@ -132,4 +132,34 @@ describe('planned reference preview chart', () => {
 		]);
 		expect(model.yTempDomain[0]).toBeGreaterThan(200);
 	});
+
+	it('keeps charge on the time axis when the curves start without readings', () => {
+		const chart: Chart = {
+			temperatureUnit: 'F',
+			chargeTimeMilliseconds: 0,
+			series: [
+				{
+					id: 'bt',
+					name: 'BT',
+					kind: 'bean_temperature',
+					unit: 'F',
+					deviceIndex: 0,
+					channel: 2,
+					points: [
+						{ timeMilliseconds: 0, value: -1 },
+						{ timeMilliseconds: 240_000, value: 300 },
+						{ timeMilliseconds: 360_000, value: 320 },
+						{ timeMilliseconds: 600_000, value: -1 }
+					]
+				}
+			],
+			events: [{ timeMilliseconds: 0, name: 'Charge', value: null, category: 'milestone' }]
+		};
+
+		const model = buildProfileGenerationChart(chart, chart);
+
+		expect(model.temperaturePoints.map((point) => point.timeMinutes)).toEqual([4, 6]);
+		expect(model.xDomain[0]).toBeLessThanOrEqual(0);
+		expect(model.xDomain[1]).toBeGreaterThanOrEqual(10);
+	});
 });

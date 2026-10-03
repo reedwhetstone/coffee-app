@@ -15,14 +15,18 @@ export function nearestPoint(points: ChartPoint[], time: number): ChartPoint | n
 }
 
 function samplingTolerance(points: ChartPoint[]): number {
-	if (points.length < 2) return Number.POSITIVE_INFINITY;
+	// A lone reading beside missing readings is only known at its own time.
+	if (points.length < 2)
+		return points[0]?.gapBefore || points[0]?.gapAfter ? 0 : Number.POSITIVE_INFINITY;
 	let maxGap = 0;
 	for (let index = 1; index < points.length; index += 1) {
 		// A stretch of missing readings is not the series' sampling interval.
 		if (points[index].gapBefore) continue;
 		maxGap = Math.max(maxGap, points[index].timeMinutes - points[index - 1].timeMinutes);
 	}
-	return maxGap > 0 ? maxGap / 2 : Number.POSITIVE_INFINITY;
+	// When every interval spans missing readings the sampling interval is unknown, so the
+	// tolerance stays at zero and a reading is reported only at its own time.
+	return maxGap / 2;
 }
 
 /** Return the nearest independent-sample value when it is within that series' sampling gap. */
@@ -66,7 +70,8 @@ export function isMissingReading(value: number | null | undefined): boolean {
 
 /**
  * Keep only real readings. The first reading after a missing stretch is flagged so the
- * line breaks there instead of being drawn through a value nobody measured.
+ * line breaks there instead of being drawn through a value nobody measured, and the
+ * last reading is flagged when the series ends on a missing stretch.
  */
 export function realReadings(
 	samples: Array<{ timeMinutes: number; value: number | null | undefined }>,
@@ -80,10 +85,11 @@ export function realReadings(
 			continue;
 		}
 		const point: ChartPoint = { timeMinutes: sample.timeMinutes, value: sample.value as number };
-		if (missing && points.length > 0) point.gapBefore = true;
+		if (missing) point.gapBefore = true;
 		points.push(point);
 		missing = false;
 	}
+	if (missing && points.length > 0) points[points.length - 1].gapAfter = true;
 	return points;
 }
 

@@ -61,7 +61,14 @@ export function buildProfileGenerationChart(
 			// A channel with no real readings, such as a probe that was never connected, is left out.
 			.filter((entry) => entry.points.length > 0);
 	const series = [...makeSeries(parent, false), ...makeSeries(preview, true)];
-	const times = series.flatMap((entry) => entry.points.map((point) => point.timeMinutes));
+	// The time axis covers every sample, with or without a reading.
+	const times = [parent, preview].flatMap((chart) =>
+		chart.series.flatMap((entry) =>
+			entry.points.map(
+				(point) => (point.timeMilliseconds - chargeOffsetMilliseconds(chart)) / 60_000
+			)
+		)
+	);
 	const temperatures = series
 		.filter((entry) => entry.axis === 'temperature')
 		.flatMap((entry) => entry.points.map((point) => point.value));
