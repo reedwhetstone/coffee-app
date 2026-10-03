@@ -106,7 +106,7 @@ describe('Cherry AI incremental activity', () => {
 		expect(screen.getAllByRole('status', { name: 'Cherry AI activity' })).toHaveLength(1);
 	});
 
-	it('shows progress without intermediary cards, then only curated cards at completion', async () => {
+	it('shows progress without intermediary cards, then one link to the curated coffees at completion', async () => {
 		const stream = controlledResponse();
 		await submit(stream);
 		stream.emit({
@@ -151,12 +151,24 @@ describe('Cherry AI incremental activity', () => {
 		expect(screen.queryByRole('button', { name: /View details for/ })).not.toBeInTheDocument();
 		stream.finish();
 		await waitFor(() => expect(screen.getByTestId('chat-status')).toHaveTextContent('ready'));
-		expect(
-			screen.queryByRole('button', { name: 'View details for Washed Guji' })
-		).not.toBeInTheDocument();
-		expect(screen.getByText('Best fit for the request')).toBeVisible();
-		expect(screen.getAllByRole('button', { name: 'View details for Natural Sidama' })).toHaveLength(
-			1
+		// Coffee cards and their annotations live on the canvas. The settled answer
+		// counts the curated selection, not the two coffees the search returned.
+		expect(screen.queryByRole('button', { name: /View details for/ })).not.toBeInTheDocument();
+		expect(screen.queryByText('Best fit for the request')).not.toBeInTheDocument();
+		expect(screen.getByText('1 coffee · No longer on canvas')).toBeVisible();
+		// The workspace adds the curated block to the canvas once the turn settles.
+		canvasStore.dispatch({
+			type: 'add',
+			messageId: 'assistant-live',
+			block: {
+				type: 'coffee-cards',
+				version: 1,
+				data: [{ id: 2, name: 'Natural Sidama', country: 'Ethiopia' } as never],
+				annotations: [{ id: 2, annotation: 'Best fit for the request' }]
+			}
+		});
+		await waitFor(() =>
+			expect(screen.getAllByRole('button', { name: 'View 1 coffee on canvas' })).toHaveLength(1)
 		);
 	});
 

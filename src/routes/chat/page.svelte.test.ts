@@ -88,7 +88,13 @@ describe('chat analytics seed', () => {
 		chatState.status = 'ready';
 		chatCallbacks.onError = null;
 		pageState.url = new URL('https://example.com/chat');
-		Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+		// The workspace reads its layout from this query; a phone never matches it.
+		vi.stubGlobal('matchMedia', (query: string) => ({
+			matches: false,
+			media: query,
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn()
+		}));
 	});
 
 	it('prefills the input from an analytics prompt for users who can use chat', () => {
@@ -132,9 +138,9 @@ describe('chat analytics seed', () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getByRole('button', { name: 'Open canvas (1)' })).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: 'Canvas 1', expanded: false })).toBeInTheDocument();
 		});
-		expect(screen.queryByRole('button', { name: 'Hide canvas (1)' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('dialog', { name: 'Canvas' })).not.toBeInTheDocument();
 	});
 
 	it('rebuilds missing saved canvas evidence and focuses the compact companion preview target', async () => {
@@ -265,6 +271,8 @@ describe('chat analytics seed', () => {
 
 		const composer = screen.getByRole('textbox');
 		expect(composer).toHaveValue('');
+		// Message actions stay disabled until the saved conversation is ready.
+		await waitFor(() => expect(screen.getByRole('button', { name: 'Ask again' })).toBeEnabled());
 		await fireEvent.click(screen.getByRole('button', { name: 'Ask again' }));
 		chatCallbacks.onError?.(new Error('Request timed out'));
 		expect(composer).toHaveValue('');

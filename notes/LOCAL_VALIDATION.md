@@ -13,6 +13,8 @@ Validation command classes:
 - `pnpm test`
 - `pnpm test:e2e`
 
+The Code Quality workflow runs `pnpm check --fail-on-warnings`, `pnpm lint --max-warnings 0`, and `pnpm test` on every push and pull request, so a local pass of those commands predicts CI. `pnpm test` needs no env values. `pnpm lint` is the formatting gate (`prettier --check .` then ESLint); `pnpm format` rewrites files and exits 0, so it never proves formatting.
+
 For static validation (`pnpm check --fail-on-warnings`), require:
 
 - `PUBLIC_SUPABASE_URL`
