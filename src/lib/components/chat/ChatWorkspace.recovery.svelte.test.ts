@@ -459,6 +459,54 @@ describe('ChatWorkspace interrupted-turn transport and persistence', () => {
 		await waitFor(() => expect(screen.getByText('Ready for confirmation.')).toBeVisible());
 	});
 
+	it('surfaces a retry when a settled response contains only a step that did not complete', async () => {
+		const first = gatedResponse();
+		const retry = gatedResponse();
+		const endpoints = installEndpoints([first, retry]);
+		mountWorkspace();
+		await send(first, 'failed-step-only', 'Make a profile to follow');
+		first.emit({
+			type: 'tool-input-available',
+			toolCallId: 'reference-call',
+			toolName: 'reference_profiles',
+			input: {}
+		});
+		first.emit({
+			type: 'tool-output-error',
+			toolCallId: 'reference-call',
+			errorText: 'AI response failed'
+		});
+		first.emit({ type: 'finish-step' });
+		first.finish();
+
+		await waitFor(() =>
+			expect(
+				screen.getByText(
+					"One step didn't complete, so Cherry couldn't finish the response. Retry the request."
+				)
+			).toBeVisible()
+		);
+		expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled();
+		// The failed step is not left behind as a quiet note on a reply that never answered.
+		expect(
+			screen.queryByText("The reference profiles step didn't complete.")
+		).not.toBeInTheDocument();
+		expect(document.body).not.toHaveTextContent('AI response failed');
+		expect(endpoints.saved.flat()).toHaveLength(0);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(endpoints.requests).toHaveLength(2));
+		expect(endpoints.requests[1].messages.at(-1)?.parts).toEqual([
+			{ type: 'text', text: 'Make a profile to follow' }
+		]);
+		retry.emit({ type: 'start', messageId: 'retry-answer' });
+		retry.emit({ type: 'text-start', id: 'answer' });
+		retry.emit({ type: 'text-delta', id: 'answer', delta: 'Here is a profile to follow.' });
+		retry.emit({ type: 'text-end', id: 'answer' });
+		retry.finish();
+		await waitFor(() => expect(screen.getByText('Here is a profile to follow.')).toBeVisible());
+	});
+
 	it('preserves entity opt-outs when a live page context refresh keeps the entity visible', async () => {
 		const stream = gatedResponse();
 		const endpoints = installEndpoints([stream]);

@@ -49,6 +49,7 @@
 		classifyChatFailure,
 		recoverInterruptedTurn,
 		getInterruptedTurnStatus,
+		hasFailedToolStep,
 		isSilentToolOnlyCompletion,
 		prepareChatRequestMessages,
 		finalizedMessagesForUnload
@@ -423,13 +424,16 @@
 				!isError &&
 				isSilentToolOnlyCompletion(chat.messages, messageCountBeforeSubmission);
 			if (silentToolOnlyCompletion) {
+				// Read the attempt before recovery drops its unfinished steps.
+				const failedStep = hasFailedToolStep(chat.messages, messageCountBeforeSubmission);
 				chat.messages = recoverInterruptedTurn(
 					chat.messages,
 					messageCountBeforeSubmission,
 					'error'
 				);
-				chatError =
-					'Cherry finished its research without completing the response. Retry the request.';
+				chatError = failedStep
+					? "One step didn't complete, so Cherry couldn't finish the response. Retry the request."
+					: 'Cherry finished its research without completing the response. Retry the request.';
 				chatCanRetry = true;
 			}
 			if (continuationExecutionId) {
@@ -463,7 +467,7 @@
 		workspaceInitError = null;
 		workspaceReady = false;
 		try {
-			const recoveredCanvasWorkspaceIds = await replayPendingCanvasSaves();
+			const recoveredCanvasWorkspaceIds = await replayPendingCanvasSaves(ownerId);
 			if (initialWorkspaceData) {
 				const { workspaces: list, workspace, messages } = initialWorkspaceData;
 				workspaceStore.hydrate(list, workspace ? { workspace, messages } : null);
@@ -638,7 +642,8 @@
 						expected_reset_epoch: workspace?.reset_epoch ?? 0,
 						expected_canvas_version: workspace?.canvas_version ?? 0,
 						canvas_state: encodeCanvasState(buildCanvasStatePayload())
-					})
+					}),
+					ownerId
 				);
 			} catch {
 				// Autosave reports terminal size failures. Never send a known-invalid beacon.

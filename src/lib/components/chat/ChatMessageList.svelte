@@ -15,7 +15,7 @@
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
 	import { buildActionReceipts } from '$lib/services/actionReceipts';
 	import { inlineCoffeeResults } from '$lib/services/inlineCoffeeResults';
-	import { getInterruptedTurnStatus } from './chatRecovery';
+	import { getInterruptedTurnStatus, hasUserFacingOutcomePart } from './chatRecovery';
 	import type { CherryAgentName } from '$lib/cherry/identity';
 	import { readChatRequestContext } from '$lib/cherry/requestContext';
 
@@ -112,6 +112,7 @@
 		hasPresentResults: boolean
 	) {
 		return {
+			turnHasOutcome: hasUserFacingOutcomePart(chat.messages[messageIndex]?.parts ?? []),
 			searchDataCache: hasPresentResults
 				? buildSearchDataCacheThroughPart(chat.messages, messageIndex, partIndex)
 				: undefined,
@@ -160,9 +161,7 @@
 						message: `presenting ${count} item${count === 1 ? '' : 's'} to the canvas`
 					});
 				} else if (part.state === 'output-error') {
-					steps.push({
-						message: `Error presenting results: ${part.errorText || 'unknown error'}`
-					});
+					steps.push({ message: 'results not added to the canvas' });
 				}
 				continue;
 			}
@@ -189,9 +188,8 @@
 				}
 				steps.push({ message: `${toolName}${detail}` });
 			} else if (part.state === 'output-error') {
-				steps.push({
-					message: `Error: ${part.errorText || 'unknown error'}`
-				});
+				// The inline note names the step; the part's error text is a fixed server string.
+				steps.push({ message: `${toolName} — didn't complete` });
 			}
 		}
 		return steps;
@@ -462,7 +460,7 @@
 												</div>
 											{/each}
 										{:else if toolPart.state === 'output-error'}
-											{@const errorBlock = extractBlockFromPart(toolPart)}
+											{@const errorBlock = extractBlockFromPart(toolPart, extractorOptions)}
 											{#if errorBlock}
 												<div class="preview-fade-in my-1">
 													<GenUIBlockRenderer

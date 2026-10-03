@@ -119,7 +119,8 @@ export interface SaleFormBlock {
 export interface ErrorBlock {
 	type: 'error';
 	version: 1;
-	data: { message: string; retryable: boolean };
+	/** `notice` marks one step that did not complete inside an otherwise finished answer. */
+	data: { message: string; retryable: boolean; severity?: 'notice' };
 }
 
 // ─── Supporting Types ──────────────────────────────────────────────────────────
