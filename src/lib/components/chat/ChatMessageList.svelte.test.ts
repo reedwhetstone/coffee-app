@@ -347,4 +347,33 @@ describe('ChatMessageList conversation controls', () => {
 		expect(screen.getByRole('button', { name: 'Copy' })).toBeEnabled();
 		expect(screen.getByRole('button', { name: 'Ask again' })).toBeEnabled();
 	});
+
+	it('keeps the error treatment on a saved reply that holds only a step that did not complete', () => {
+		const { container } = render(
+			ChatMessageList,
+			props([
+				{ id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'Make a profile to follow' }] },
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					parts: [
+						{ type: 'step-start' },
+						{ type: 'text', text: '', state: 'done' },
+						{
+							type: 'tool-reference_profiles',
+							toolCallId: 'reference-call',
+							state: 'output-error',
+							errorText: 'AI response failed'
+						}
+					]
+				}
+			])
+		);
+
+		// With no answer beside it, the step is the reply's only failure indicator.
+		const failure = screen.getByText("The reference profiles step didn't complete.");
+		expect(failure.parentElement).toHaveClass('text-danger-strong');
+		expect(failure.parentElement).not.toHaveClass('text-muted');
+		expect(container).not.toHaveTextContent('AI response failed');
+	});
 });

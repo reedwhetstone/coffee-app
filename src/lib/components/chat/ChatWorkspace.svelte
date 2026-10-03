@@ -49,6 +49,7 @@
 		classifyChatFailure,
 		recoverInterruptedTurn,
 		getInterruptedTurnStatus,
+		hasFailedToolStep,
 		isSilentToolOnlyCompletion,
 		prepareChatRequestMessages,
 		finalizedMessagesForUnload
@@ -423,13 +424,16 @@
 				!isError &&
 				isSilentToolOnlyCompletion(chat.messages, messageCountBeforeSubmission);
 			if (silentToolOnlyCompletion) {
+				// Read the attempt before recovery drops its unfinished steps.
+				const failedStep = hasFailedToolStep(chat.messages, messageCountBeforeSubmission);
 				chat.messages = recoverInterruptedTurn(
 					chat.messages,
 					messageCountBeforeSubmission,
 					'error'
 				);
-				chatError =
-					'Cherry finished its research without completing the response. Retry the request.';
+				chatError = failedStep
+					? "One step didn't complete, so Cherry couldn't finish the response. Retry the request."
+					: 'Cherry finished its research without completing the response. Retry the request.';
 				chatCanRetry = true;
 			}
 			if (continuationExecutionId) {

@@ -46,6 +46,7 @@ import { convertToModelMessages, validateUIMessages, type UIMessage } from 'ai';
 import {
 	finalizedMessagesForUnload,
 	getInterruptedTurnStatus,
+	hasFailedToolStep,
 	isSilentToolOnlyCompletion,
 	prepareChatRequestMessages,
 	recoverInterruptedTurn
@@ -100,6 +101,26 @@ describe('silent tool-only completion detection', () => {
 			false
 		);
 		expect(isSilentToolOnlyCompletion([prior, user, assistant([read, action])], 1)).toBe(false);
+	});
+
+	it('flags a settled turn whose only content is a step that did not complete', () => {
+		const failed: UIMessage['parts'][number] = {
+			type: 'tool-reference_profiles',
+			toolCallId: 'reference-call',
+			input: {},
+			state: 'output-error',
+			errorText: 'AI response failed'
+		};
+		const answer: UIMessage['parts'][number] = { type: 'text', text: 'I need a saved profile.' };
+
+		expect(isSilentToolOnlyCompletion([prior, user, assistant([failed])], 1)).toBe(true);
+		expect(hasFailedToolStep([prior, user, assistant([failed])], 1)).toBe(true);
+		// The model read the failure and still answered: a finished reply.
+		expect(isSilentToolOnlyCompletion([prior, user, assistant([failed, answer])], 1)).toBe(false);
+		// Research that completed without an answer is not a failed step.
+		const read = tool('coffee_catalog_search', { coffees: [coffee], total: 1 });
+		expect(hasFailedToolStep([prior, user, assistant([read])], 1)).toBe(false);
+		expect(hasFailedToolStep([prior, user, assistant([failed])], null)).toBe(false);
 	});
 
 	it('does not classify ordinary text-only or untracked history as silent tool completion', () => {

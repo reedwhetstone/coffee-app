@@ -15,7 +15,7 @@
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
 	import { buildActionReceipts } from '$lib/services/actionReceipts';
 	import { inlineCoffeeResults } from '$lib/services/inlineCoffeeResults';
-	import { getInterruptedTurnStatus } from './chatRecovery';
+	import { getInterruptedTurnStatus, hasUserFacingOutcomePart } from './chatRecovery';
 	import type { CherryAgentName } from '$lib/cherry/identity';
 	import { readChatRequestContext } from '$lib/cherry/requestContext';
 
@@ -112,6 +112,7 @@
 		hasPresentResults: boolean
 	) {
 		return {
+			turnHasOutcome: hasUserFacingOutcomePart(chat.messages[messageIndex]?.parts ?? []),
 			searchDataCache: hasPresentResults
 				? buildSearchDataCacheThroughPart(chat.messages, messageIndex, partIndex)
 				: undefined,
@@ -459,7 +460,7 @@
 												</div>
 											{/each}
 										{:else if toolPart.state === 'output-error'}
-											{@const errorBlock = extractBlockFromPart(toolPart)}
+											{@const errorBlock = extractBlockFromPart(toolPart, extractorOptions)}
 											{#if errorBlock}
 												<div class="preview-fade-in my-1">
 													<GenUIBlockRenderer

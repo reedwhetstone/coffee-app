@@ -468,12 +468,15 @@ describe('blockExtractor canvas_title plumbing', () => {
 
 describe('blockExtractor tool step failures', () => {
 	it('names the step that did not complete instead of repeating the server error text', () => {
-		const block = extractBlockFromPart({
-			type: 'tool-reference_profiles',
-			toolCallId: 'reference-call',
-			state: 'output-error',
-			errorText: 'AI response failed'
-		});
+		const block = extractBlockFromPart(
+			{
+				type: 'tool-reference_profiles',
+				toolCallId: 'reference-call',
+				state: 'output-error',
+				errorText: 'AI response failed'
+			},
+			{ turnHasOutcome: true }
+		);
 
 		expect(block).toEqual({
 			type: 'error',
@@ -487,14 +490,34 @@ describe('blockExtractor tool step failures', () => {
 	});
 
 	it('describes a failed canvas presentation in plain terms', () => {
-		const block = extractBlockFromPart({
-			type: 'tool-present_results',
-			state: 'output-error',
-			errorText: 'AI response failed'
-		});
+		const block = extractBlockFromPart(
+			{
+				type: 'tool-present_results',
+				state: 'output-error',
+				errorText: 'AI response failed'
+			},
+			{ turnHasOutcome: true }
+		);
 
 		expect(block).toMatchObject({
 			data: { message: "Results couldn't be added to the canvas.", severity: 'notice' }
 		});
+	});
+
+	it('keeps the error treatment when the reply has nothing but the failed step', () => {
+		const part = {
+			type: 'tool-reference_profiles',
+			toolCallId: 'reference-call',
+			state: 'output-error',
+			errorText: 'AI response failed'
+		};
+		const expected = {
+			type: 'error',
+			version: 1,
+			data: { message: "The reference profiles step didn't complete.", retryable: true }
+		};
+
+		expect(extractBlockFromPart(part)).toEqual(expected);
+		expect(extractBlockFromPart(part, { turnHasOutcome: false })).toEqual(expected);
 	});
 });

@@ -43,28 +43,48 @@ function hasUserFacingOutcome(part: UIMessage['parts'][number]): boolean {
 	return Boolean(output.action_card || output.action_plan || output.presentation);
 }
 
+/** True when a reply holds prose, a presentation, or an action to review. */
+export function hasUserFacingOutcomePart(parts: unknown[]): boolean {
+	return (parts as UIMessage['parts']).some((part) => hasUserFacingOutcome(part));
+}
+
+// A failed or denied step has settled just as a completed one has.
+const SETTLED_TOOL_STATES = new Set(['output-available', 'output-error', 'output-denied']);
+
+function settledToolState(part: UIMessage['parts'][number]): string | null {
+	if (!part.type.startsWith('tool-') && part.type !== 'dynamic-tool') return null;
+	const state = record(part)?.state;
+	return typeof state === 'string' && SETTLED_TOOL_STATES.has(state) ? state : null;
+}
+
 /** A settled tool turn must leave the user with prose, a presentation, or an action to review. */
 export function isSilentToolOnlyCompletion(
 	messages: UIMessage[],
 	boundary: number | null
 ): boolean {
 	if (boundary === null) return false;
-	let hasCompletedTool = false;
+	let hasSettledTool = false;
 	let hasOutcome = false;
 	for (const message of messages.slice(boundary)) {
 		if (message.role !== 'assistant') continue;
 		for (const part of message.parts) {
-			const candidate = record(part);
-			if (
-				(part.type.startsWith('tool-') || part.type === 'dynamic-tool') &&
-				candidate?.state === 'output-available'
-			) {
-				hasCompletedTool = true;
-			}
+			if (settledToolState(part)) hasSettledTool = true;
 			if (hasUserFacingOutcome(part)) hasOutcome = true;
 		}
 	}
-	return hasCompletedTool && !hasOutcome;
+	return hasSettledTool && !hasOutcome;
+}
+
+/** Whether the attempt after the boundary contains a tool step that did not complete. */
+export function hasFailedToolStep(messages: UIMessage[], boundary: number | null): boolean {
+	if (boundary === null) return false;
+	return messages
+		.slice(boundary)
+		.some(
+			(message) =>
+				message.role === 'assistant' &&
+				message.parts.some((part) => settledToolState(part) === 'output-error')
+		);
 }
 
 function isCompletedCoffeeEvidence(
@@ -151,10 +171,7 @@ export function prepareChatRequestMessages(messages: UIMessage[]): UIMessage[] {
 				return context ? [{ type: 'text', text: context.text }] : [];
 			}
 			if (!part.type.startsWith('tool-') && part.type !== 'dynamic-tool') return [part];
-			const state = record(part)?.state;
-			return state === 'output-available' || state === 'output-error' || state === 'output-denied'
-				? [part]
-				: [];
+			return settledToolState(part) ? [part] : [];
 		});
 		if (status && message.role === 'assistant') {
 			parts.push({
