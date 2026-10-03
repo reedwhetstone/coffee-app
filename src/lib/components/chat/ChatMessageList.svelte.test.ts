@@ -312,4 +312,39 @@ describe('ChatMessageList conversation controls', () => {
 			blockId: chartId
 		});
 	});
+
+	it('keeps a finished answer intact when one lookup inside it did not complete', () => {
+		const { container } = render(
+			ChatMessageList,
+			props([
+				{ id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'Make a profile to follow' }] },
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					parts: [
+						{ type: 'step-start' },
+						{ type: 'text', text: '', state: 'done' },
+						{
+							type: 'tool-reference_profiles',
+							toolCallId: 'reference-call',
+							state: 'output-error',
+							errorText: 'AI response failed'
+						},
+						{ type: 'step-start' },
+						{ type: 'text', text: 'Yes, but I need a saved reference profile.', state: 'done' }
+					]
+				}
+			])
+		);
+
+		const note = screen.getByText("The reference profiles step didn't complete.");
+		expect(note.parentElement).toHaveClass('text-muted');
+		expect(note.parentElement).not.toHaveClass('text-danger-strong');
+		expect(container).not.toHaveTextContent('AI response failed');
+		expect(container).not.toHaveTextContent('Response interrupted.');
+		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+		// The reply is still a normal completed answer: it can be copied or asked again.
+		expect(screen.getByRole('button', { name: 'Copy' })).toBeEnabled();
+		expect(screen.getByRole('button', { name: 'Ask again' })).toBeEnabled();
+	});
 });

@@ -65,6 +65,84 @@ describe('canvas unload persistence', () => {
 		expect(await replayPendingCanvasSaves()).toEqual([]);
 	});
 
+	it('stops replaying a pending save for a workspace the signed-in account cannot reach', async () => {
+		const sendBeacon = vi.fn(() => false);
+		Object.defineProperty(navigator, 'sendBeacon', { configurable: true, value: sendBeacon });
+		const fetchMock = vi
+			.fn<typeof fetch>()
+			.mockResolvedValue(new Response('{"error":"Workspace not found."}', { status: 404 }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		// Written before saves were scoped to an account, then replayed after an account switch.
+		queueCanvasUnloadSave('other-account-workspace', JSON.stringify({ canvas_state: {} }));
+		expect(await replayPendingCanvasSaves('user-2')).toEqual([]);
+		expect(await replayPendingCanvasSaves('user-2')).toEqual([]);
+
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/workspaces/other-account-workspace/canvas',
+			expect.objectContaining({ method: 'POST' })
+		);
+	});
+
+	it("holds another account's pending save for that account instead of sending it", async () => {
+		const sendBeacon = vi.fn(() => false);
+		Object.defineProperty(navigator, 'sendBeacon', { configurable: true, value: sendBeacon });
+		const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response('{}'));
+		vi.stubGlobal('fetch', fetchMock);
+		const body = JSON.stringify({ canvas_state: { blocks: [] } });
+
+		queueCanvasUnloadSave('workspace-1', body, 'user-1');
+		expect(await replayPendingCanvasSaves('user-2')).toEqual([]);
+		expect(await replayPendingCanvasSaves(null)).toEqual([]);
+		expect(fetchMock).not.toHaveBeenCalled();
+
+		expect(await replayPendingCanvasSaves('user-1')).toEqual(['workspace-1']);
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/workspaces/workspace-1/canvas',
+			expect.objectContaining({ method: 'POST', body })
+		);
+		expect(await replayPendingCanvasSaves('user-1')).toEqual([]);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([401, 403, 429, 503])(
+		'keeps a pending save for a later page load after a %i response',
+		async (status) => {
+			const sendBeacon = vi.fn(() => false);
+			Object.defineProperty(navigator, 'sendBeacon', { configurable: true, value: sendBeacon });
+			const fetchMock = vi
+				.fn<typeof fetch>()
+				.mockResolvedValueOnce(new Response('{}', { status }))
+				.mockResolvedValue(new Response('{}'));
+			vi.stubGlobal('fetch', fetchMock);
+
+			queueCanvasUnloadSave('workspace-1', JSON.stringify({ canvas_state: {} }), 'user-1');
+			expect(await replayPendingCanvasSaves('user-1')).toEqual([]);
+			expect(await replayPendingCanvasSaves('user-1')).toEqual(['workspace-1']);
+		}
+	);
+
+	it('keeps a save queued while an earlier one is still being replayed', async () => {
+		const sendBeacon = vi.fn(() => false);
+		Object.defineProperty(navigator, 'sendBeacon', { configurable: true, value: sendBeacon });
+		const laterBody = JSON.stringify({ canvas_state: { blocks: ['later'] } });
+		const fetchMock = vi.fn<typeof fetch>().mockImplementationOnce(async () => {
+			queueCanvasUnloadSave('workspace-2', laterBody, 'user-1');
+			return new Response('{}');
+		});
+		fetchMock.mockResolvedValue(new Response('{}'));
+		vi.stubGlobal('fetch', fetchMock);
+
+		queueCanvasUnloadSave('workspace-1', JSON.stringify({ canvas_state: {} }), 'user-1');
+		expect(await replayPendingCanvasSaves('user-1')).toEqual(['workspace-1']);
+		expect(await replayPendingCanvasSaves('user-1')).toEqual(['workspace-2']);
+		expect(fetchMock).toHaveBeenLastCalledWith(
+			'/api/workspaces/workspace-2/canvas',
+			expect.objectContaining({ body: laterBody })
+		);
+	});
+
 	it('clears an older pending payload after a normal canvas save', async () => {
 		const sendBeacon = vi.fn(() => false);
 		Object.defineProperty(navigator, 'sendBeacon', { configurable: true, value: sendBeacon });

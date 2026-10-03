@@ -160,9 +160,7 @@
 						message: `presenting ${count} item${count === 1 ? '' : 's'} to the canvas`
 					});
 				} else if (part.state === 'output-error') {
-					steps.push({
-						message: `Error presenting results: ${part.errorText || 'unknown error'}`
-					});
+					steps.push({ message: 'results not added to the canvas' });
 				}
 				continue;
 			}
@@ -189,9 +187,8 @@
 				}
 				steps.push({ message: `${toolName}${detail}` });
 			} else if (part.state === 'output-error') {
-				steps.push({
-					message: `Error: ${part.errorText || 'unknown error'}`
-				});
+				// The inline note names the step; the part's error text is a fixed server string.
+				steps.push({ message: `${toolName} — didn't complete` });
 			}
 		}
 		return steps;

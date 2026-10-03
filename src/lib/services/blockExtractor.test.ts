@@ -465,3 +465,36 @@ describe('blockExtractor canvas_title plumbing', () => {
 		expect(mutations?.[0]).toMatchObject({ type: 'add', title: undefined });
 	});
 });
+
+describe('blockExtractor tool step failures', () => {
+	it('names the step that did not complete instead of repeating the server error text', () => {
+		const block = extractBlockFromPart({
+			type: 'tool-reference_profiles',
+			toolCallId: 'reference-call',
+			state: 'output-error',
+			errorText: 'AI response failed'
+		});
+
+		expect(block).toEqual({
+			type: 'error',
+			version: 1,
+			data: {
+				message: "The reference profiles step didn't complete.",
+				retryable: true,
+				severity: 'notice'
+			}
+		});
+	});
+
+	it('describes a failed canvas presentation in plain terms', () => {
+		const block = extractBlockFromPart({
+			type: 'tool-present_results',
+			state: 'output-error',
+			errorText: 'AI response failed'
+		});
+
+		expect(block).toMatchObject({
+			data: { message: "Results couldn't be added to the canvas.", severity: 'notice' }
+		});
+	});
+});

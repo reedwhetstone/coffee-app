@@ -463,7 +463,7 @@
 		workspaceInitError = null;
 		workspaceReady = false;
 		try {
-			const recoveredCanvasWorkspaceIds = await replayPendingCanvasSaves();
+			const recoveredCanvasWorkspaceIds = await replayPendingCanvasSaves(ownerId);
 			if (initialWorkspaceData) {
 				const { workspaces: list, workspace, messages } = initialWorkspaceData;
 				workspaceStore.hydrate(list, workspace ? { workspace, messages } : null);
@@ -638,7 +638,8 @@
 						expected_reset_epoch: workspace?.reset_epoch ?? 0,
 						expected_canvas_version: workspace?.canvas_version ?? 0,
 						canvas_state: encodeCanvasState(buildCanvasStatePayload())
-					})
+					}),
+					ownerId
 				);
 			} catch {
 				// Autosave reports terminal size failures. Never send a known-invalid beacon.

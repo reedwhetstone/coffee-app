@@ -89,6 +89,19 @@ const COFFEE_RESULT_TOOLS = new Set(['coffee_catalog_search', 'catalog_rank']);
 const MARKET_SIGNAL_TOOLS = new Set(['market_signals']);
 
 /**
+ * One tool step failing does not fail the answer: the model reads the failure
+ * and still replies. Name the step rather than echoing the part's error text,
+ * which is a fixed server string and not a description of what went wrong.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function toolStepFailureMessage(part: any): string {
+	const toolName = String(part?.toolName ?? part?.type?.replace('tool-', '') ?? '');
+	if (toolName === 'present_results') return "Results couldn't be added to the canvas.";
+	const label = toolName.replace(/_/g, ' ').trim();
+	return label ? `The ${label} step didn't complete.` : "One step didn't complete.";
+}
+
+/**
  * Extracts a single UIBlock from a single message part (tool output).
  * Returns null if the part isn't a tool part or doesn't map to a block.
  */
@@ -101,8 +114,9 @@ export function extractBlockFromPart(part: any, options?: BlockExtractorOptions)
 			type: 'error',
 			version: 1,
 			data: {
-				message: part.errorText || 'An error occurred',
-				retryable: true
+				message: toolStepFailureMessage(part),
+				retryable: true,
+				severity: 'notice'
 			}
 		} satisfies ErrorBlock;
 	}
