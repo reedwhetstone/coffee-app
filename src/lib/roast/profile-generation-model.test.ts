@@ -88,4 +88,48 @@ describe('planned reference preview chart', () => {
 		expect(chart.chargeTime).toBe(30_000);
 		expect(chart.xDomain[0]).toBeLessThan(0);
 	});
+
+	it('draws missing readings as gaps and leaves out a channel with no readings', () => {
+		const chart = (shift: number): Chart => ({
+			temperatureUnit: 'F',
+			chargeTimeMilliseconds: 0,
+			series: [
+				{
+					id: 'bt',
+					name: 'BT',
+					kind: 'bean_temperature',
+					unit: 'F',
+					deviceIndex: 0,
+					channel: 2,
+					points: [
+						{ timeMilliseconds: 0, value: 300 + shift },
+						{ timeMilliseconds: 60_000, value: -1 },
+						{ timeMilliseconds: 120_000, value: 320 + shift }
+					]
+				},
+				{
+					id: 'et',
+					name: 'ET',
+					kind: 'environmental_temperature',
+					unit: 'F',
+					deviceIndex: 0,
+					channel: 1,
+					points: [
+						{ timeMilliseconds: 0, value: -1 },
+						{ timeMilliseconds: 120_000, value: -1 }
+					]
+				}
+			],
+			events: []
+		});
+
+		const model = buildProfileGenerationChart(chart(0), chart(5));
+
+		expect(model.series.map((series) => series.id)).toEqual(['parent-bt', 'proposed-bt']);
+		expect(model.temperaturePoints).toEqual([
+			{ timeMinutes: 0, value: 305 },
+			{ timeMinutes: 2, value: 325, gapBefore: true }
+		]);
+		expect(model.yTempDomain[0]).toBeGreaterThan(200);
+	});
 });

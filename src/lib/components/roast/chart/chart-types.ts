@@ -16,6 +16,8 @@ export interface ProcessedChartData {
 export interface ChartPoint {
 	timeMinutes: number;
 	value: number;
+	/** One or more readings are missing between the previous point and this one. */
+	gapBefore?: boolean;
 }
 
 export interface ControlSeries {
@@ -50,6 +52,10 @@ export interface ChartSeries {
 export interface ChartEvent {
 	timeMinutes: number;
 	name: string;
+	/** Marker text; defaults to the readable form of `name`. */
+	label?: string;
+	color?: string;
+	dashed?: boolean;
 }
 
 export interface TooltipState {

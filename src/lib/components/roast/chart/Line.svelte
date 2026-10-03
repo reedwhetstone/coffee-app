@@ -4,6 +4,7 @@
 	import type { ScaleLinear } from 'd3-scale';
 	import type { Writable } from 'svelte/store';
 	import type { ChartPoint } from './chart-types';
+	import { lineSegments } from './chart-utils';
 
 	let {
 		data,
@@ -37,7 +38,10 @@
 			.x((d) => $xScale(d.timeMinutes))
 			.y((d) => yFn(d.value))
 			.curve(curveMap[curve] ?? curveBasis);
-		return generator(data) ?? '';
+		// Each run of consecutive readings is its own sub-path, so a missing reading leaves a gap.
+		return lineSegments(data)
+			.map((segment) => generator(segment) ?? '')
+			.join('');
 	});
 </script>
 

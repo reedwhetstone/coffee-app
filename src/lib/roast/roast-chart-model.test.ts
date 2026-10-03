@@ -138,6 +138,63 @@ describe('buildRoastChartModel', () => {
 		);
 	});
 
+	it('draws stored -1 readings as gaps and leaves out a probe that never read', () => {
+		const data = fixture();
+		data.metadata.temperature_unit = 'F';
+		data.series = [
+			{
+				...data.series[0],
+				unit: 'F',
+				points: [
+					{ time_milliseconds: 30_000, value_numeric: 350 },
+					{ time_milliseconds: 60_000, value_numeric: -1 },
+					{ time_milliseconds: 90_000, value_numeric: 352 },
+					{ time_milliseconds: 120_000, value_numeric: 356 }
+				]
+			},
+			{
+				...data.series[0],
+				id: 'environmental-temperature',
+				name: 'ET',
+				kind: 'environmental_temperature',
+				unit: 'F',
+				points: [
+					{ time_milliseconds: 30_000, value_numeric: -1 },
+					{ time_milliseconds: 120_000, value_numeric: -1 }
+				]
+			},
+			{
+				...data.series[2],
+				points: [
+					{ time_milliseconds: 60_000, value_numeric: -1 },
+					{ time_milliseconds: 120_000, value_numeric: 8 }
+				]
+			},
+			{
+				...data.series[3],
+				points: [
+					{ time_milliseconds: 30_000, value_numeric: -1 },
+					{ time_milliseconds: 120_000, value_numeric: 12 }
+				]
+			}
+		];
+
+		const model = buildRoastChartModel(data);
+
+		expect(model.temperaturePoints).toEqual([
+			{ timeMinutes: 0, value: 350 },
+			{ timeMinutes: 1, value: 352, gapBefore: true },
+			{ timeMinutes: 1.5, value: 356 }
+		]);
+		expect(model.envTempPoints).toEqual([]);
+		expect(model.series.map((series) => series.id)).not.toContain('environmental-temperature');
+		// The axis is fitted to real readings, not stretched down to the marker.
+		expect(model.yTempDomain[0]).toBeGreaterThan(300);
+		// -1 is a real value for a rate of rise or a pressure channel.
+		expect(model.rorPoints[0]).toEqual({ timeMinutes: 0.5, value: -1 });
+		expect(model.series.find((series) => series.id === 'drum-pressure')?.points[0].value).toBe(-1);
+	});
+
 	it('preserves saved chart domains when supplied', () => {
 		const model = buildRoastChartModel(fixture(), {
 			xRange: [-1, 14],

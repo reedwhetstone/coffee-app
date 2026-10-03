@@ -2,33 +2,35 @@
 	import { onMount } from 'svelte';
 	import type { components } from '@purveyors/sdk';
 	import {
+		COMPARISON_SIDES,
 		buildProfileComparisonChart,
+		describeMilestoneTimings,
 		type ProfileComparison
 	} from '$lib/roast/profile-comparison-model';
+	import {
+		buildProfileOptionGroups,
+		findProfileOption,
+		recordedRoasts,
+		roastOption,
+		type PickerRoast,
+		type ProfileOption
+	} from '$lib/roast/profile-picker-model';
 	import { trackProfileStudioActivation } from '$lib/profileStudio/analytics';
 	import ProfileGeneration from './ProfileGeneration.svelte';
+	import ProfilePicker from './ProfilePicker.svelte';
 	import {
 		clearIdempotencyKey,
 		reserveIdempotencyKey,
 		shouldRetainIdempotencyKey
 	} from '$lib/idempotency';
 
-	type RoastOption = {
-		roast_id: number;
-		batch_name?: string | null;
-		coffee_name?: string | null;
-		roast_date?: string | null;
-		weight_loss_percent?: number | null;
-		oz_in?: number | null;
-		oz_out?: number | null;
-	};
-	type Selection = { kind: 'executed_roast' | 'reference_profile'; id: string; label: string };
+	type Selection = ProfileOption;
 
 	let {
 		roasts,
 		enabled,
 		ownerId = null
-	}: { roasts: RoastOption[]; enabled: boolean; ownerId?: string | null } = $props();
+	}: { roasts: PickerRoast[]; enabled: boolean; ownerId?: string | null } = $props();
 	type ReferenceProfileSummary = components['schemas']['ReferenceProfileSummary'];
 	let profiles = $state<ReferenceProfileSummary[]>([]);
 	let loading = $state(false);
@@ -40,40 +42,35 @@
 	let leftValue = $state('');
 	let rightValue = $state('');
 	let error = $state<string | null>(null);
+	let compareError = $state<string | null>(null);
 	let notice = $state<string | null>(null);
 	let comparison = $state<ProfileComparison | null>(null);
-	let comparisonLabels = $state<{ left: string; right: string } | null>(null);
 	let comparisonSelections = $state<{ left: Selection; right: Selection } | null>(null);
 	let fileInput = $state<HTMLInputElement | null>(null);
 
 	const storage = () => (typeof sessionStorage === 'undefined' ? null : sessionStorage);
-	const isExecutionEligible = (roast: RoastOption) =>
-		(roast.weight_loss_percent ?? 0) > 0 || (roast.oz_out ?? 0) > 0;
-	const executedRoasts = $derived(roasts.filter(isExecutionEligible));
-
-	const options = $derived([
-		...executedRoasts.map((roast) => ({
-			value: `executed_roast:${roast.roast_id}`,
-			label: `${roast.batch_name || roast.coffee_name || `Roast #${roast.roast_id}`} · executed roast`
-		})),
-		...profiles.map((profile) => ({
-			value: `reference_profile:${profile.id}`,
-			label: `${profile.title} · reference`
-		}))
-	]);
+	// Every roast with something recorded, most recent first.
+	const executedRoasts = $derived(recordedRoasts(roasts));
+	const unrecordedRoastCount = $derived(roasts.length - executedRoasts.length);
+	const optionGroups = $derived(buildProfileOptionGroups(roasts, profiles));
 
 	// The roast page defers the LayerCake/D3 chart bundle; load it only once a
 	// comparison is ready to draw.
 	const loadRoastChart = () => import('./chart/RoastChart.svelte');
 
-	const chartData = $derived(
-		comparison && comparisonLabels
-			? buildProfileComparisonChart(comparison, comparisonLabels.left, comparisonLabels.right)
-			: null
+	const chartData = $derived(comparison ? buildProfileComparisonChart(comparison) : null);
+	const milestoneTimings = $derived(comparison ? describeMilestoneTimings(comparison) : []);
+	const comparedProfiles = $derived(
+		comparisonSelections
+			? [
+					{ tag: COMPARISON_SIDES.left, lines: 'Solid lines', ...comparisonSelections.left },
+					{ tag: COMPARISON_SIDES.right, lines: 'Dashed lines', ...comparisonSelections.right }
+				]
+			: []
 	);
 	const cherryHref = $derived.by(() => {
-		if (!comparisonLabels || !comparisonSelections) return '/chat';
-		const prompt = `Discuss the measured differences between ${comparisonLabels.left} and ${comparisonLabels.right} and help me decide what to preserve or change.`;
+		if (!comparisonSelections) return '/chat';
+		const prompt = `Discuss the measured differences between ${comparisonSelections.left.spoken} and ${comparisonSelections.right.spoken}, and help me decide what to preserve or change.`;
 		return `/chat?${new URLSearchParams({
 			source: 'profile-studio',
 			prompt,
@@ -85,14 +82,15 @@
 	});
 
 	function parseSelection(value: string): Selection | null {
-		const option = options.find((candidate) => candidate.value === value);
-		if (!option) return null;
-		const separator = value.indexOf(':');
-		return {
-			kind: value.slice(0, separator) as Selection['kind'],
-			id: value.slice(separator + 1),
-			label: option.label.replace(/ · (executed roast|reference)$/, '')
-		};
+		return findProfileOption(optionGroups, value);
+	}
+
+	/** Say what the user can do about a comparison that Parchment could not line up. */
+	function comparisonError(message: unknown): string {
+		if (typeof message !== 'string' || !message) return 'Unable to compare these profiles';
+		return /charge milestone/i.test(message)
+			? 'One of these profiles has no charge time recorded, so the two curves cannot be lined up. Choose a profile with a recorded curve.'
+			: message;
 	}
 
 	async function loadProfiles() {
@@ -215,22 +213,25 @@
 		const right = parseSelection(rightValue);
 		if (!left || !right || leftValue === rightValue || comparing) return;
 		comparing = true;
-		error = null;
+		compareError = null;
 		comparison = null;
 		try {
 			const response = await fetch('/api/reference-profiles/compare', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ left, right, targetUnit: 'F' })
+				body: JSON.stringify({
+					left: { kind: left.kind, id: left.id },
+					right: { kind: right.kind, id: right.id },
+					targetUnit: 'F'
+				})
 			});
 			const body = await response.json();
-			if (!response.ok) throw new Error(body.error || 'Unable to compare these profiles');
+			if (!response.ok) throw new Error(comparisonError(body.error));
 			comparison = body.data;
-			comparisonLabels = { left: left.label, right: right.label };
 			comparisonSelections = { left, right };
 			trackProfileStudioActivation('profile_comparison_completed');
 		} catch (cause) {
-			error = cause instanceof Error ? cause.message : 'Unable to compare these profiles';
+			compareError = cause instanceof Error ? cause.message : 'Unable to compare these profiles';
 		} finally {
 			comparing = false;
 		}
@@ -335,7 +336,7 @@
 				>
 					<option value="">Choose an executed roast</option>
 					{#each executedRoasts as roast (roast.roast_id)}<option value={String(roast.roast_id)}
-							>{roast.batch_name || roast.coffee_name || `Roast #${roast.roast_id}`}</option
+							>{roastOption(roast).label}</option
 						>{/each}
 				</select>
 				<button
@@ -354,59 +355,92 @@
 				<div>
 					<h3 class="font-semibold text-ink">Compare profiles</h3>
 					<p class="mt-1 text-sm text-muted">
-						Executed and reference series remain clearly labeled.
+						Choose any two saved references or roasts. Search by coffee, date, batch, or roast
+						number.
 					</p>
 				</div>
 				<span class="text-xs text-muted"
-					>{loading ? 'Loading references…' : `${profiles.length} saved references`}</span
+					>{loading
+						? 'Loading references…'
+						: `${profiles.length} saved ${profiles.length === 1 ? 'reference' : 'references'} · ${executedRoasts.length} ${executedRoasts.length === 1 ? 'roast' : 'roasts'}`}</span
 				>
 			</div>
-			<div class="mt-3 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-				<label class="text-sm font-medium text-ink"
-					>First profile<select
-						bind:value={leftValue}
-						class="mt-1 min-h-11 w-full rounded-md border border-line bg-surface-canvas px-3 font-normal"
-						><option value="">Choose a profile</option
-						>{#each options as option (option.value)}<option value={option.value}
-								>{option.label}</option
-							>{/each}</select
-					></label
-				>
-				<label class="text-sm font-medium text-ink"
-					>Comparison profile<select
-						bind:value={rightValue}
-						class="mt-1 min-h-11 w-full rounded-md border border-line bg-surface-canvas px-3 font-normal"
-						><option value="">Choose a profile</option
-						>{#each options as option (option.value)}<option value={option.value}
-								>{option.label}</option
-							>{/each}</select
-					></label
-				>
+			<div class="mt-3 grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-start">
+				<ProfilePicker
+					label="First profile (A)"
+					groups={optionGroups}
+					bind:value={leftValue}
+					unavailableValue={rightValue}
+					{loading}
+				/>
+				<ProfilePicker
+					label="Second profile (B)"
+					groups={optionGroups}
+					bind:value={rightValue}
+					unavailableValue={leftValue}
+					{loading}
+				/>
 				<button
 					type="button"
-					class="min-h-11 rounded-md bg-accent px-4 text-sm font-semibold text-ink disabled:opacity-50 md:self-end"
+					class="min-h-11 rounded-md bg-accent px-4 text-sm font-semibold text-ink disabled:opacity-50 md:mt-6"
 					disabled={!leftValue || !rightValue || leftValue === rightValue || comparing}
 					onclick={compareProfiles}>{comparing ? 'Comparing…' : 'Compare'}</button
 				>
 			</div>
+			{#if compareError}
+				<p role="alert" class="mt-3 rounded-lg bg-danger-subtle p-3 text-sm text-danger-strong">
+					{compareError}
+				</p>
+			{/if}
+			{#if unrecordedRoastCount > 0}
+				<p class="mt-3 text-xs text-muted">
+					{unrecordedRoastCount === 1
+						? '1 roast with nothing recorded yet is not listed.'
+						: `${unrecordedRoastCount} roasts with nothing recorded yet are not listed.`}
+				</p>
+			{/if}
 		</div>
 
-		{#if comparison && comparisonLabels && chartData}
+		{#if comparison && comparisonSelections && chartData}
 			<div class="mt-5 rounded-xl border border-line bg-surface-canvas p-4">
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-					<div>
+					<div class="min-w-0">
 						<p class="text-xs font-semibold uppercase tracking-wide text-muted">
 							Measured comparison
 						</p>
-						<h3 class="mt-1 font-semibold text-ink">
-							{comparisonLabels.left} vs. {comparisonLabels.right}
-						</h3>
-						<p class="mt-1 text-sm text-muted">
-							Charge-aligned in °{comparison.targetUnit}. Solid lines are the first profile; dashed
-							lines are the comparison.
+						<dl class="mt-2 space-y-2">
+							{#each comparedProfiles as profile (profile.tag)}
+								<div class="flex items-start gap-3">
+									<dt
+										class="flex shrink-0 items-center gap-2 pt-0.5 text-sm font-semibold text-ink"
+									>
+										<svg width="28" height="8" aria-hidden="true">
+											<line
+												x1="0"
+												y1="4"
+												x2="28"
+												y2="4"
+												stroke="currentColor"
+												stroke-width="2"
+												stroke-dasharray={profile.tag === COMPARISON_SIDES.right ? '5,4' : 'none'}
+											/>
+										</svg>
+										{profile.tag}
+									</dt>
+									<dd class="min-w-0">
+										<span class="block text-sm font-semibold text-ink">{profile.title}</span>
+										<span class="block text-xs text-muted">{profile.detail} · {profile.lines}</span>
+									</dd>
+								</div>
+							{/each}
+						</dl>
+						<p class="mt-3 text-sm text-muted">
+							Both curves start at charge and are shown in °{comparison.targetUnit}. The chart
+							covers the time both profiles were recording. A break in a line means no reading was
+							recorded there.
 						</p>
 					</div>
-					<a href={cherryHref} class="text-sm font-semibold text-link hover:text-accent"
+					<a href={cherryHref} class="shrink-0 text-sm font-semibold text-link hover:text-accent"
 						>Discuss with Cherry →</a
 					>
 				</div>
@@ -419,14 +453,37 @@
 						</p>
 					{/await}
 				</div>
-				{#if comparison.milestones.length > 0}<div class="mt-4 flex flex-wrap gap-2">
-						{#each comparison.milestones as milestone (milestone.name)}<span
-								class="rounded-full border border-line px-3 py-1 text-xs text-muted"
-								>{milestone.name}: {milestone.deltaMilliseconds > 0 ? '+' : ''}{(
-									milestone.deltaMilliseconds / 1000
-								).toFixed(1)}s</span
-							>{/each}
-					</div>{/if}
+				{#if milestoneTimings.length > 0}
+					<div class="mt-4">
+						<h4 class="text-sm font-semibold text-ink">Milestone timing</h4>
+						<p class="mt-1 text-xs text-muted">
+							Time from charge to each milestone, and how much earlier or later
+							{COMPARISON_SIDES.right} reached it than {COMPARISON_SIDES.left}.
+						</p>
+						<div class="mt-2 overflow-x-auto">
+							<table class="w-full text-left text-sm">
+								<thead>
+									<tr class="text-xs text-muted">
+										<th scope="col" class="py-1 pr-4 font-medium">Milestone</th>
+										<th scope="col" class="py-1 pr-4 font-medium">{COMPARISON_SIDES.left}</th>
+										<th scope="col" class="py-1 pr-4 font-medium">{COMPARISON_SIDES.right}</th>
+										<th scope="col" class="py-1 font-medium">Difference</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each milestoneTimings as timing (timing.name)}
+										<tr class="border-t border-line">
+											<th scope="row" class="py-1.5 pr-4 font-medium text-ink">{timing.label}</th>
+											<td class="py-1.5 pr-4 tabular-nums text-ink">{timing.leftTime}</td>
+											<td class="py-1.5 pr-4 tabular-nums text-ink">{timing.rightTime}</td>
+											<td class="py-1.5 text-ink">{timing.difference}</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				{/if}
 			</div>
 		{/if}
 	{:else}

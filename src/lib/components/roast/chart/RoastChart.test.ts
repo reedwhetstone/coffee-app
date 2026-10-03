@@ -60,4 +60,49 @@ describe('RoastChart', () => {
 
 		expect(ambient).toHaveAttribute('aria-pressed', 'false');
 	});
+
+	it('labels milestones with short horizontal text', () => {
+		const { container } = render(RoastChart, {
+			chartData: {
+				...chartData,
+				events: [
+					{ timeMinutes: 0, name: 'charge' },
+					{ timeMinutes: 5, name: 'dry_end' },
+					{ timeMinutes: 4.25, name: 'dry_end', label: 'B Dry end', dashed: true }
+				]
+			}
+		});
+
+		const labels = [...container.querySelectorAll('.chart-milestone-label')];
+		// The test DOM has no layout width, so only the text matters here, not its order.
+		expect(labels.map((label) => label.textContent?.trim()).sort()).toEqual([
+			'B Dry end',
+			'Charge',
+			'Dry end'
+		]);
+		expect(labels.every((label) => !label.hasAttribute('transform'))).toBe(true);
+	});
+
+	it('breaks a line where a reading is missing', () => {
+		const { container } = render(RoastChart, {
+			chartData: {
+				...chartData,
+				series: [
+					{
+						...chartData.series[0],
+						curve: 'linear',
+						points: [
+							{ timeMinutes: 0, value: 200 },
+							{ timeMinutes: 1, value: 250 },
+							{ timeMinutes: 3, value: 300, gapBefore: true },
+							{ timeMinutes: 4, value: 320 }
+						]
+					}
+				]
+			}
+		});
+
+		const path = container.querySelector('.chart-series-bean_temperature')?.getAttribute('d') ?? '';
+		expect(path.match(/M/g)).toHaveLength(2);
+	});
 });
