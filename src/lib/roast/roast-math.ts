@@ -257,6 +257,42 @@ export function calculatePhasePercentages(
 	};
 }
 
+/** The stored roast-profile fields the milestone summary reads. */
+export interface StoredMilestoneFields {
+	total_roast_time?: number | null;
+	dry_end_time?: number | null;
+	fc_start_time?: number | null;
+	dry_percent?: number | null;
+	maillard_percent?: number | null;
+	development_percent?: number | null;
+}
+
+/**
+ * Milestone summary for a saved roast, from the times stored on its profile.
+ *
+ * Stored milestone times are already seconds since CHARGE (`charge_time` is
+ * only where CHARGE sits on the recording clock), so they are shown as they
+ * are. Returns null when the profile has no stored phase data.
+ */
+export function storedMilestoneCalculations(
+	profile: StoredMilestoneFields
+): MilestoneCalculations | null {
+	const hasStoredPhases =
+		profile.dry_percent !== null ||
+		profile.maillard_percent !== null ||
+		profile.development_percent !== null;
+	if (!hasStoredPhases) return null;
+
+	return {
+		totalTime: secondsToMs(profile.total_roast_time || 0),
+		dryingPercent: profile.dry_percent || 0,
+		tpTime: secondsToMs(profile.dry_end_time || 0),
+		maillardPercent: profile.maillard_percent || 0,
+		fcTime: secondsToMs(profile.fc_start_time || 0),
+		devPercent: profile.development_percent || 0
+	};
+}
+
 // ─── Charge Time Detection ───────────────────────────────────────────────────
 
 /**
