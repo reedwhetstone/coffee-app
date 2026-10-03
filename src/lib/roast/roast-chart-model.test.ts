@@ -220,6 +220,41 @@ describe('buildRoastChartModel', () => {
 		expect(model.xDomain[1]).toBeGreaterThanOrEqual(10);
 	});
 
+	it('counts from recording start when CHARGE was never marked', () => {
+		const data = fixture();
+		data.metadata.temperature_unit = 'F';
+		data.metadata.charge_time_ms = null;
+		data.metadata.time_min_ms = 240_000;
+		data.metadata.time_max_ms = 600_000;
+		data.events = [
+			{
+				time_milliseconds: 300_000,
+				name: 'dry_end',
+				value: null,
+				category: 'milestone',
+				subcategory: 'roast_phase'
+			}
+		];
+		// The first surviving sample is four minutes after recording start.
+		data.series = [
+			{
+				...data.series[0],
+				unit: 'F',
+				points: [
+					{ time_milliseconds: 240_000, value_numeric: 300 },
+					{ time_milliseconds: 600_000, value_numeric: 380 }
+				]
+			}
+		];
+
+		const model = buildRoastChartModel(data);
+
+		expect(model.chargeTime).toBe(0);
+		expect(model.temperaturePoints.map((point) => point.timeMinutes)).toEqual([4, 10]);
+		expect(model.events).toEqual([{ timeMinutes: 5, name: 'dry_end' }]);
+		expect(model.xDomain[0]).toBeLessThanOrEqual(0);
+	});
+
 	it('preserves saved chart domains when supplied', () => {
 		const model = buildRoastChartModel(fixture(), {
 			xRange: [-1, 14],
