@@ -59,19 +59,19 @@ New `green_analysis jsonb` with a versioned shape, validated by the same Zod sch
 
 ```json
 {
-  "version": 1,
-  "moisture_pct": 10.8,
-  "water_activity": 0.55,
-  "density_g_l": 720,
-  "density_method": "free_settled",
-  "quakers": null,
-  "defects": {
-    "protocol": "sca_350g",
-    "sample_g": 350,
-    "category_1": 0,
-    "category_2": 3,
-    "full_defect_equivalents": null
-  }
+	"version": 1,
+	"moisture_pct": 10.8,
+	"water_activity": 0.55,
+	"density_g_l": 720,
+	"density_method": "free_settled",
+	"quakers": null,
+	"defects": {
+		"protocol": "sca_350g",
+		"sample_g": 350,
+		"category_1": 0,
+		"category_2": 3,
+		"full_defect_equivalents": null
+	}
 }
 ```
 

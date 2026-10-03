@@ -16,26 +16,26 @@ The same idea appears in two places with different semantics (top-bar Process is
 
 Live facet cardinality (stocked catalog, 2026-10-02) shows which fields are bounded vocabularies and which are open text:
 
-| Field | Distinct values | Today | Notes |
-| --- | --- | --- | --- |
-| processing_base_method | 9 | panel select | clean, structured |
-| fermentation_type | 8 | panel select | clean |
-| process_additives | 7 | panel select | clean |
-| continents | 6 | sidebar select | clean |
-| processing_disclosure_level | 4 | panel select | clean |
-| grade codes by kind (size, altitude, defects, cup, prep) | 6 to 14 each | none | ADR-016, labeled vocabulary |
-| screen size (min) | 7 | none | ADR-016 |
-| elevation bands (200 m) | 13 | sidebar number range | |
-| countries | 42 | top-bar select and sidebar select | |
-| suppliers | 45 | sidebar | stored as slugs |
-| arrival months | 55 | sidebar select | includes "Spot" |
-| processing (raw text) | 31 | top-bar select and sidebar text | messy variants of the structured field |
-| drying_method | 94 | none in UI | messy free text |
-| type ("Importer") | 255 | sidebar text | mostly junk ("Unroasted Coffee Beans", "Green Coffee") |
-| grade (legacy) | 431 | sidebar text | elevation text; superseded by elevation + grade codes |
-| appearance | 481 | sidebar text | superseded by grade codes |
-| cultivar_detail | 635 | sidebar text | comma lists, inconsistent casing |
-| regions | 1014 | sidebar text | open geography |
+| Field                                                    | Distinct values | Today                             | Notes                                                  |
+| -------------------------------------------------------- | --------------- | --------------------------------- | ------------------------------------------------------ |
+| processing_base_method                                   | 9               | panel select                      | clean, structured                                      |
+| fermentation_type                                        | 8               | panel select                      | clean                                                  |
+| process_additives                                        | 7               | panel select                      | clean                                                  |
+| continents                                               | 6               | sidebar select                    | clean                                                  |
+| processing_disclosure_level                              | 4               | panel select                      | clean                                                  |
+| grade codes by kind (size, altitude, defects, cup, prep) | 6 to 14 each    | none                              | ADR-016, labeled vocabulary                            |
+| screen size (min)                                        | 7               | none                              | ADR-016                                                |
+| elevation bands (200 m)                                  | 13              | sidebar number range              |                                                        |
+| countries                                                | 42              | top-bar select and sidebar select |                                                        |
+| suppliers                                                | 45              | sidebar                           | stored as slugs                                        |
+| arrival months                                           | 55              | sidebar select                    | includes "Spot"                                        |
+| processing (raw text)                                    | 31              | top-bar select and sidebar text   | messy variants of the structured field                 |
+| drying_method                                            | 94              | none in UI                        | messy free text                                        |
+| type ("Importer")                                        | 255             | sidebar text                      | mostly junk ("Unroasted Coffee Beans", "Green Coffee") |
+| grade (legacy)                                           | 431             | sidebar text                      | elevation text; superseded by elevation + grade codes  |
+| appearance                                               | 481             | sidebar text                      | superseded by grade codes                              |
+| cultivar_detail                                          | 635             | sidebar text                      | comma lists, inconsistent casing                       |
+| regions                                                  | 1014            | sidebar text                      | open geography                                         |
 
 ## Principles
 
