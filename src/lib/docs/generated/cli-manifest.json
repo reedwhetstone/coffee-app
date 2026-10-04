@@ -1,6 +1,6 @@
 {
 	"packageName": "@purveyors/cli",
-	"version": "0.36.2",
+	"version": "0.38.0",
 	"nodeEngine": ">=20",
 	"manifest": {
 		"schemaVersion": "1",
@@ -167,6 +167,8 @@
 				"usedBy": [
 					"catalog get",
 					"catalog similar",
+					"catalog compare",
+					"catalog price-history",
 					"inventory add --catalog-id",
 					"tasting get <bean-id>",
 					"roast list --catalog-id"
@@ -189,7 +191,8 @@
 					"roast get/chart/delete",
 					"roast list --roast-id",
 					"sales record --roast-id",
-					"reference-profile compare roast:<roast-id>"
+					"reference-profile compare roast:<roast-id>",
+					"reference-profile preview-from-roast/from-roast"
 				]
 			},
 			{
@@ -207,7 +210,8 @@
 					"reference-profile chart",
 					"reference-profile preview/save",
 					"reference-profile export",
-					"reference-profile compare profile:<uuid>"
+					"reference-profile compare profile:<uuid>",
+					"roast from-reference"
 				]
 			},
 			{
@@ -217,7 +221,8 @@
 					"reference-profile chart",
 					"reference-profile preview/save",
 					"reference-profile export",
-					"reference-profile compare revision:<uuid>"
+					"reference-profile compare revision:<uuid>",
+					"roast from-reference"
 				]
 			}
 		],
@@ -398,10 +403,61 @@
 							{
 								"flags": "--include-proof",
 								"description": "Add a proof summary to each coffee: how well its process, provenance, freshness, and pricing details are supported (strong, partial, limited, or not available)"
+							},
+							{
+								"flags": "--elevation-min <masl>",
+								"description": "Lowest growing elevation in meters; coffees whose disclosed range overlaps match",
+								"minimum": 1,
+								"maximum": 6000
+							},
+							{
+								"flags": "--elevation-max <masl>",
+								"description": "Highest growing elevation in meters",
+								"minimum": 1,
+								"maximum": 6000
+							},
+							{
+								"flags": "--screen-min <n>",
+								"description": "Smallest disclosed screen size (64ths of an inch); an 18+ lot matches any minimum up to its range",
+								"minimum": 8,
+								"maximum": 20
+							},
+							{
+								"flags": "--screen-max <n>",
+								"description": "Largest disclosed screen size (64ths of an inch)",
+								"minimum": 8,
+								"maximum": 20
+							},
+							{
+								"flags": "--grade <codes>",
+								"description": "Comma-separated grade codes such as KE:AA,PREP:EP; a coffee matches if it carries any of them. List codes with `purvey catalog grades`"
+							},
+							{
+								"flags": "--grade-kind <kind>",
+								"description": "Only coffees with a grade of this kind: size, altitude, defects, cup, or preparation"
+							},
+							{
+								"flags": "--peaberry",
+								"description": "Only peaberry lots"
+							},
+							{
+								"flags": "--lab-analyzed",
+								"description": "Only coffees with lab values such as moisture, water activity, density, or defect counts"
+							},
+							{
+								"flags": "--moisture-max <pct>",
+								"description": "Highest disclosed moisture percentage; coffees without a moisture reading are excluded",
+								"minimum": 0,
+								"maximum": 20
+							},
+							{
+								"flags": "--score-protocol <protocol>",
+								"description": "Only cup scores from this protocol: sca_2004, cva_affective, q_arabica, coe, or supplier_unspecified"
 							}
 						],
 						"notes": [
 							"All filters are optional. Without flags, returns up to --limit results.",
+							"Grading filters add a grading object to each coffee: disclosed screen size, labeled grade codes, lab analysis, and cup score with its protocol.",
 							"--ids fetches specific catalog items by ID, ignoring --limit and --offset.",
 							"--offset + --limit enables pagination through large result sets.",
 							"Without --include-proof, the output shape is unchanged.",
@@ -414,7 +470,9 @@
 							"purvey catalog search --variety \"gesha\" --stocked --pretty",
 							"purvey catalog search --stocked-days 30 --pretty",
 							"purvey catalog search --supplier \"Royal\" --flavor \"blueberry,jasmine\" --stocked --pretty",
-							"purvey catalog search --origin \"Ethiopia\" --include-proof --json"
+							"purvey catalog search --origin \"Ethiopia\" --include-proof --json",
+							"purvey catalog search --grade KE:AA,KE:AB --screen-min 17 --stocked --pretty",
+							"purvey catalog search --grade-kind altitude --elevation-min 1600 --pretty"
 						]
 					},
 					{
@@ -465,7 +523,7 @@
 						"arguments": [
 							{
 								"name": "field",
-								"description": "The facet to list: supplier, country, processing_base_method, fermentation_type, drying_method, grade, or wholesale. Without it, every facet is listed",
+								"description": "The facet to list: supplier, country, processing_base_method, fermentation_type, drying_method, wholesale, grade_size, grade_altitude, grade_defects, grade_cup, grade_preparation, screen_size_min, or elevation_band. Without it, every facet is listed",
 								"required": false
 							}
 						],
@@ -476,7 +534,7 @@
 							}
 						],
 						"notes": [
-							"Without a field, prints every facet with its counted values and meta (values, facets, meta).",
+							"Without a field, prints every non-grading facet with its counted values and meta (values, facets, meta); name a grading field to get its counts.",
 							"With a field, prints { field, facet, data, meta }: that facet's counted values and meta.",
 							"Counts for multi-valued dimensions can overlap, so do not sum them.",
 							"Defaults to currently stocked coffees; use --all for every coffee you can see."
@@ -484,7 +542,8 @@
 						"examples": [
 							"purvey catalog facets supplier --pretty",
 							"purvey catalog facets country --all --json",
-							"purvey catalog facets --pretty"
+							"purvey catalog facets --pretty",
+							"purvey catalog facets grade_altitude --pretty"
 						]
 					},
 					{
@@ -811,6 +870,111 @@
 						"examples": [
 							"purvey catalog similar 1182 --threshold 0.85 --stocked-only --json",
 							"purvey catalog similar 1182 --mode likely_same --json | jq '.data.groups.canonical_candidates'"
+						]
+					},
+					{
+						"name": "compare",
+						"summary": "Compare 2 to 6 coffees side by side, priced at your quantity",
+						"auth": "viewer",
+						"sdkMethods": [
+							"catalog.compare"
+						],
+						"arguments": [
+							{
+								"name": "ids",
+								"description": "2 to 6 catalog IDs, space- or comma-separated",
+								"required": true,
+								"idType": "catalog_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--quantity <lb>",
+								"description": "Pounds you plan to buy, any positive number up to 10000; each coffee is priced at the tier that applies to this quantity",
+								"defaultValue": 1
+							}
+						],
+						"notes": [
+							"Rows are grouped Price, Availability, Origin, Process, Coffee, Grading, Taste, and Listing, each marked same, partial, or different.",
+							"Price rows name the cheapest lots in bestLotIds; grading rows never carry best marks.",
+							"Viewer accounts compare 2 coffees; member accounts and API keys compare up to 6."
+						],
+						"examples": [
+							"purvey catalog compare 416 8806 --pretty",
+							"purvey catalog compare 416 8806 1182 --quantity 5 --json | jq '.data.bestPriceLotIds'"
+						]
+					},
+					{
+						"name": "price-history",
+						"summary": "Daily smallest-tier price history for one coffee",
+						"auth": "viewer",
+						"sdkMethods": [
+							"catalog.priceHistory"
+						],
+						"arguments": [
+							{
+								"name": "catalog_id",
+								"cliToken": "id",
+								"description": "Catalog ID of the coffee",
+								"required": true,
+								"idType": "catalog_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--days <n>",
+								"description": "How many days of history to return",
+								"defaultValue": 180,
+								"minimum": 7,
+								"maximum": 365
+							}
+						],
+						"notes": [
+							"Prices track the smallest order tier.",
+							"Parchment decides access: member accounts, Parchment Intelligence, and API keys with catalog:read, including the key `purvey auth login` stores.",
+							"Events flag days when the smallest tier's quantity changed, which makes prices before and after not directly comparable."
+						],
+						"examples": [
+							"purvey catalog price-history 1182 --pretty",
+							"purvey catalog price-history 1182 --days 90 --json | jq '.data.summary'"
+						]
+					},
+					{
+						"name": "grades",
+						"summary": "Explain green grade codes such as KE:AA, ET:G1, GT:SHB, or PREP:EP",
+						"auth": "viewer",
+						"sdkMethods": [
+							"catalog.grades"
+						],
+						"arguments": [
+							{
+								"name": "codes",
+								"description": "optional grade codes to explain, space- or comma-separated",
+								"required": false
+							}
+						],
+						"options": [
+							{
+								"flags": "--kind <kind>",
+								"description": "Only codes of this kind: size, altitude, defects, cup, or preparation"
+							},
+							{
+								"flags": "--system <system>",
+								"description": "Only codes from this grading system, such as KE, ET, BR, ALT, or PREP"
+							},
+							{
+								"flags": "--include-retired",
+								"description": "Include retired codes, which stay valid on older listings"
+							}
+						],
+						"notes": [
+							"Codes are <system>:<token>; composite grades such as ET:G1 carry more than one kind.",
+							"Implied ranges come from the published definition, not from any listing.",
+							"Codes not in the vocabulary are listed under unknownCodes."
+						],
+						"examples": [
+							"purvey catalog grades KE:AA ET:G1 --pretty",
+							"purvey catalog grades --kind altitude --json | jq '.data[].code'"
 						]
 					}
 				]
@@ -1295,6 +1459,76 @@
 						]
 					},
 					{
+						"name": "from-reference",
+						"summary": "Create a roast from the Artisan file saved with a reference profile",
+						"auth": "member",
+						"sdkMethods": [
+							"roasts.importFromReference"
+						],
+						"confirmedActionEquivalents": [
+							"create_roast_from_reference"
+						],
+						"arguments": [
+							{
+								"name": "reference_profile_id",
+								"cliToken": "profile-id",
+								"description": "UUID of an uploaded Artisan reference profile",
+								"required": true,
+								"idType": "reference_profile_id"
+							},
+							{
+								"name": "reference_revision_id",
+								"cliToken": "revision-id",
+								"description": "UUID of that profile's current revision",
+								"required": true,
+								"idType": "reference_revision_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--coffee-id <id>",
+								"description": "Required. Inventory ID of the coffee you roasted (not a catalog ID)"
+							},
+							{
+								"flags": "--batch-name <name>",
+								"description": "Name for this roast batch; defaults to the coffee name plus the roast date"
+							},
+							{
+								"flags": "--roast-date <YYYY-MM-DD>",
+								"description": "Date of the roast; defaults to the date in the saved Artisan file"
+							},
+							{
+								"flags": "--oz-in <oz>",
+								"description": "Green coffee weight going in, in ounces; overrides the weight in the saved Artisan file"
+							},
+							{
+								"flags": "--oz-out <oz>",
+								"description": "Roasted weight coming out, in ounces; overrides the weight in the saved Artisan file"
+							},
+							{
+								"flags": "--roast-notes <notes>",
+								"description": "Notes to save with the new roast"
+							},
+							{
+								"flags": "--roast-targets <targets>",
+								"description": "What you were aiming for, saved with the new roast"
+							},
+							{
+								"flags": "--idempotency-key <key>",
+								"description": "Key that makes retries safe: repeating the command with the same key does not create a second roast. A new key is generated when omitted"
+							}
+						],
+						"notes": [
+							"Creates the roast from the Artisan file uploaded with reference-profile import, so the .alog file does not need to be on this machine.",
+							"Only an uploaded Artisan reference can become a roast. A generated plan is never recorded as a roast, and a reference saved from a past roast is refused because that roast is already in your history.",
+							"Output is the created roast with its curve, an import summary, and the reference it came from.",
+							"Requires a member credential and Studio access on your account."
+						],
+						"examples": [
+							"purvey roast from-reference 5ea1af6f-234c-43a9-9bf8-5678dd24f854 8d2c41e0-7b9a-4f3e-a6d1-2c9e5f07b3a4 --coffee-id 7 --pretty"
+						]
+					},
+					{
 						"name": "watch",
 						"summary": "Watch a directory for new Artisan .alog files",
 						"auth": "member",
@@ -1317,7 +1551,7 @@
 							},
 							{
 								"flags": "--batch-prefix <name>",
-								"description": "Prefix for batch names, which are numbered like \"<prefix> #1\"; defaults to the coffee name"
+								"description": "Batch name for the watch session; defaults to the coffee name. Batch commit mode saves every roast under this name, and individual commit mode numbers them like \"<name> #1\""
 							},
 							{
 								"flags": "--prompt-each",
@@ -1329,7 +1563,7 @@
 							},
 							{
 								"flags": "--commit-mode <batch|individual>",
-								"description": "batch queues new roasts and saves them together when you stop watching; individual saves each roast as soon as its file appears",
+								"description": "batch queues new roasts and saves them under one shared batch name when you stop watching, so the session shows up as a single batch; individual saves each roast as soon as its file appears, under its own numbered batch name",
 								"defaultValue": "batch"
 							},
 							{
@@ -1356,7 +1590,9 @@
 						"notes": [
 							"--auto-match is mutually exclusive with --coffee-id.",
 							"--auto-match matches each new roast to a stocked inventory item from its metadata.",
-							"--commit-mode defaults to batch so new roasts are queued until the session ends."
+							"--commit-mode defaults to batch so new roasts are queued until the session ends.",
+							"In batch commit mode every roast from the session shares the --batch-prefix name, so the roasts appear together as one batch for that roast date. --resume keeps the same batch name; roasts with a different roast date appear as a separate batch.",
+							"In individual commit mode each roast gets its own batch name: \"<name> #1\", \"<name> #2\", and so on."
 						]
 					}
 				]
@@ -1458,7 +1694,7 @@
 						"notes": [
 							"Selector modes: --roast-id resolves its inventory + batch, or pass --coffee-id + --batch-name directly.",
 							"Use exactly one selector mode.",
-							"Sales retain inventory + batch, not roast ID; duplicate batch names on one inventory item are rejected."
+							"Sales retain inventory + batch, not roast ID. When several roasts share a batch name on one inventory item, the sale is recorded against that batch as a whole in either selector mode."
 						]
 					},
 					{
@@ -2271,7 +2507,7 @@
 			},
 			{
 				"name": "reference-profile",
-				"summary": "Import, compare, adjust, save, and export Studio reference roast plans",
+				"summary": "Import, compare, adjust, save, and export Studio reference roast plans, from an Artisan file or a past roast",
 				"auth": "member",
 				"subcommands": [
 					{
@@ -2427,6 +2663,31 @@
 						]
 					},
 					{
+						"name": "roasts",
+						"summary": "List your past roasts that a plan can be built from",
+						"auth": "member",
+						"sdkMethods": [
+							"referenceProfiles.roastCandidates"
+						],
+						"options": [
+							{
+								"flags": "--limit <n>",
+								"description": "Number of roasts to list, newest first",
+								"defaultValue": 15,
+								"minimum": 1,
+								"maximum": 50
+							}
+						],
+						"notes": [
+							"Lists roasts with an Artisan file on record; each entry has the roastId and roastRevision that preview-from-roast and from-roast accept, and the reference the roast is or would be saved under.",
+							"data.ineligibleRoastCount counts your other roasts: entered by hand, logged live, imported before Artisan files were kept, or holding a file too large for a reference. Those cannot be a plan base.",
+							"Requires a member credential and Studio access on your account."
+						],
+						"examples": [
+							"purvey reference-profile roasts --pretty"
+						]
+					},
+					{
 						"name": "preview",
 						"summary": "Preview bounded temperature adjustments without saving",
 						"auth": "member",
@@ -2462,6 +2723,93 @@
 						],
 						"examples": [
 							"purvey reference-profile preview 5ea1af6f-234c-43a9-9bf8-5678dd24f854 8d2c41e0-7b9a-4f3e-a6d1-2c9e5f07b3a4 --request changes.json --pretty"
+						]
+					},
+					{
+						"name": "preview-from-roast",
+						"summary": "Preview a plan built from one of your past roasts without saving",
+						"auth": "member",
+						"sdkMethods": [
+							"referenceProfiles.previewFromRoast",
+							"roasts.get"
+						],
+						"arguments": [
+							{
+								"name": "roast_id",
+								"cliToken": "roast-id",
+								"description": "ID of a past roast with an Artisan file on record",
+								"required": true,
+								"idType": "roast_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--request <file>",
+								"description": "Required. JSON file with a title and up to 12 temperature adjustments; preview and save accept the same file"
+							},
+							{
+								"flags": "--roast-revision <token>",
+								"description": "The roast's revision from reference-profile roasts, to plan from exactly the roast you looked at. The roast's current revision is used when omitted"
+							}
+						],
+						"notes": [
+							"Nothing is saved and the roast is not changed. The result is a plan, never a roast you ran.",
+							"data.parentProfileId and data.parentRevisionId name the reference this roast is saved under; data.parentSaved says whether from-roast --artisan-source has saved it yet.",
+							"A roast with no Artisan file on record exits 2 with a message that says why and what to do next."
+						],
+						"examples": [
+							"purvey reference-profile preview-from-roast 4529 --request changes.json --pretty"
+						]
+					},
+					{
+						"name": "from-roast",
+						"summary": "Save one of your past roasts as a reference profile",
+						"auth": "member",
+						"sdkMethods": [
+							"referenceProfiles.fromRoast",
+							"roasts.get"
+						],
+						"confirmedActionEquivalents": [
+							"create_generated_reference"
+						],
+						"arguments": [
+							{
+								"name": "roast_id",
+								"cliToken": "roast-id",
+								"description": "ID of the past roast to save as a reference",
+								"required": true,
+								"idType": "roast_id"
+							}
+						],
+						"options": [
+							{
+								"flags": "--artisan-source",
+								"description": "Keep the roast's Artisan file with the reference so a plan can be built from it. Without this flag the reference is a chart for comparison only"
+							},
+							{
+								"flags": "--roast-revision <token>",
+								"description": "The roast's revision from reference-profile roasts, to save exactly the roast you looked at. The roast's current revision is used when omitted"
+							},
+							{
+								"flags": "--title <text>",
+								"description": "Title for the reference profile"
+							},
+							{
+								"flags": "--notes <text>",
+								"description": "Notes about the reference profile"
+							},
+							{
+								"flags": "--idempotency-key <key>",
+								"description": "Key that makes retries safe: repeating the command with the same key does not create a second reference. A new key is generated when omitted"
+							}
+						],
+						"notes": [
+							"With --artisan-source, saving the same roast again returns the reference already saved from it. Pass data.id and data.currentRevisionId to save to store the plan.",
+							"The roast is never changed, and the reference is not a second roast.",
+							"A roast with no Artisan file on record exits 2 with a message that says why and what to do next."
+						],
+						"examples": [
+							"purvey reference-profile from-roast 4529 --artisan-source --pretty"
 						]
 					},
 					{
@@ -2502,6 +2850,7 @@
 						],
 						"notes": [
 							"Reuse an explicit idempotency key to replay the same save.",
+							"To plan from a past roast, run from-roast --artisan-source first and pass the profile and revision ids it returns.",
 							"Generated references are plans and never create executed roast history."
 						],
 						"examples": [
@@ -2590,6 +2939,16 @@
 					"purvey reference-profile get 5ea1af6f-234c-43a9-9bf8-5678dd24f854 --pretty",
 					"purvey reference-profile preview 5ea1af6f-234c-43a9-9bf8-5678dd24f854 8d2c41e0-7b9a-4f3e-a6d1-2c9e5f07b3a4 --request changes.json --pretty",
 					"purvey reference-profile save 5ea1af6f-234c-43a9-9bf8-5678dd24f854 8d2c41e0-7b9a-4f3e-a6d1-2c9e5f07b3a4 --request changes.json --idempotency-key 3f6c2a1b-8e4d-4b7a-9c05-7e1f2d3a4b5c",
+					"purvey reference-profile export 0b7e9f52-3c61-4d8a-9e24-6f1a8c3d5b90 c43a1d7e-95b2-4e06-8f7c-1d2b3a4e5f68 --output ~/artisan/next-batch.alog"
+				]
+			},
+			{
+				"title": "Plan the next roast from a past roast",
+				"commands": [
+					"purvey reference-profile roasts --pretty",
+					"purvey reference-profile preview-from-roast 4529 --request changes.json --pretty",
+					"purvey reference-profile from-roast 4529 --artisan-source --pretty",
+					"purvey reference-profile save 5ea1af6f-234c-43a9-9bf8-5678dd24f854 8d2c41e0-7b9a-4f3e-a6d1-2c9e5f07b3a4 --request changes.json",
 					"purvey reference-profile export 0b7e9f52-3c61-4d8a-9e24-6f1a8c3d5b90 c43a1d7e-95b2-4e06-8f7c-1d2b3a4e5f68 --output ~/artisan/next-batch.alog"
 				]
 			},
