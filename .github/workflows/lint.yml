@@ -2,11 +2,17 @@ name: Code Quality
 
 on:
   push:
-    # `**` and not `*`: `*` stops at `/`, so it would skip branches such as `feature/x`.
-    branches: ['**']
+    # Only `main`. Branch heads are covered by `pull_request`; listing them here too
+    # runs every job twice on each push to a branch with an open PR.
+    branches: [main]
   pull_request:
     branches: [main, master]
   workflow_dispatch:
+
+# A newer push to the same PR supersedes the run in flight. Runs on `main` are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
