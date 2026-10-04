@@ -99,10 +99,9 @@ function resolveChargeTime(data: RoastChartData): number {
 		['charge', 'start'].includes(event.name.toLowerCase())
 	);
 	if (charge) return charge.time_milliseconds;
-	const pointTimes = data.series.flatMap((series) =>
-		series.points.map((point) => point.time_milliseconds)
-	);
-	return pointTimes.length > 0 ? Math.min(...pointTimes) : 0;
+	// Without CHARGE, the chart origin is recording start, not the first
+	// surviving reading (which may be later than time zero).
+	return 0;
 }
 
 function displayName(series: RoastChartSeries): string {
@@ -271,6 +270,8 @@ export function buildRoastChartModel(
 		...seriesTimes.map((time) => (time - chargeTime) / 60_000),
 		...controls.flatMap((entry) => entry.points.map((point) => point.timeMinutes))
 	];
+	// Keep the origin on the axis when the first stored sample is later than it.
+	if (timeValues.length > 0) timeValues.push(0);
 	const temperatureValues = series
 		.filter((entry) => entry.axis === 'temperature')
 		.flatMap((entry) => entry.points.map((point) => point.value));

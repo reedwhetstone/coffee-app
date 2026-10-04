@@ -108,11 +108,7 @@ function extractMilestoneNames(events: RoastEventEntry[]): {
 /**
  * Compute charge time from roast data/events
  */
-function computeChargeTime(
-	data: RoastPoint[],
-	events: RoastEventEntry[],
-	roastEvents: RoastEvent[]
-): number {
+function computeChargeTime(events: RoastEventEntry[], roastEvents: RoastEvent[]): number {
 	// Try event entries first
 	if (events.length > 0) {
 		const ms = extractMilestoneNames(events);
@@ -124,8 +120,9 @@ function computeChargeTime(
 			return e.time;
 		}
 	}
-	// Fallback: first data point
-	return data.length > 0 ? data[0].time : 0;
+	// Without CHARGE, the chart origin is recording start, not the first
+	// surviving temperature reading (which may be later than time zero).
+	return 0;
 }
 
 /**
@@ -310,7 +307,7 @@ export function prepareChartData(params: {
 	const { roastData, events, roastEvents, savedEventValueSeries, chartSettings, isDuringRoasting } =
 		params;
 
-	const chargeTime = computeChargeTime(roastData, events, roastEvents);
+	const chargeTime = computeChargeTime(events, roastEvents);
 	const ms = extractMilestoneNames(events);
 
 	// Process and sort data
