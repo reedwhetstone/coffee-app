@@ -10,6 +10,7 @@ import {
 	calculateRoR,
 	extractMilestones,
 	calculatePhasePercentages,
+	storedMilestoneCalculations,
 	findChargeTime,
 	normalizeEventName,
 	formatDisplayName,
@@ -294,6 +295,59 @@ describe('calculatePhasePercentages', () => {
 });
 
 // ─── Charge Time Detection ───────────────────────────────────────────────────
+
+describe('storedMilestoneCalculations', () => {
+	// Logging started 46.403 s before CHARGE. Stored milestone times count from
+	// CHARGE; `charge_time` is only where CHARGE sits on the recording clock.
+	const profile = {
+		charge_time: 46.403,
+		total_roast_time: 540.8,
+		dry_end_time: 135.3,
+		fc_start_time: 522.5,
+		dry_percent: 25,
+		maillard_percent: 71.6,
+		development_percent: 3.4
+	};
+
+	it('shows stored milestone times as they are, without subtracting the CHARGE offset', () => {
+		const result = storedMilestoneCalculations(profile);
+		expect(result).toEqual({
+			totalTime: 540800,
+			dryingPercent: 25,
+			tpTime: 135300,
+			maillardPercent: 71.6,
+			fcTime: 522500,
+			devPercent: 3.4
+		});
+		expect(formatTimeDisplay(result!.tpTime)).toBe('2:15');
+		expect(formatTimeDisplay(result!.fcTime)).toBe('8:42');
+		expect(result!.fcTime).toBeLessThan(result!.totalTime);
+	});
+
+	it('shows no time for a milestone the roast does not have', () => {
+		const result = storedMilestoneCalculations({
+			...profile,
+			fc_start_time: null,
+			maillard_percent: 0,
+			development_percent: 0
+		});
+		expect(result!.fcTime).toBe(0);
+		expect(formatTimeDisplay(result!.fcTime)).toBe('--:--');
+	});
+
+	it('returns null when the profile stores no phase data', () => {
+		expect(
+			storedMilestoneCalculations({
+				total_roast_time: 540.8,
+				dry_end_time: 135.3,
+				fc_start_time: 522.5,
+				dry_percent: null,
+				maillard_percent: null,
+				development_percent: null
+			})
+		).toBeNull();
+	});
+});
 
 describe('findChargeTime', () => {
 	const makeEvent = (name: string, timeSec: number): RoastEventEntry => ({
