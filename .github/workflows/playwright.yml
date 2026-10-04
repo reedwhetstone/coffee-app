@@ -2,12 +2,39 @@ name: Playwright Tests
 permissions:
   contents: read
 on:
+  # Branch heads are covered by `pull_request`. Changes that cannot affect the running
+  # app (planning notes, agent instructions) skip the browser suite; this list is the
+  # subset of NON_RUNTIME_PATHS in scripts/vercel-ignore-build-step.mjs that also
+  # excludes tests and workflows, which do change what this job proves.
   push:
-    branches: ['*'] # Run on every commit to any branch
+    branches: [main]
+    paths-ignore:
+      - 'notes/**'
+      - '.claude/**'
+      - '.cursorrules'
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'GEMINI.md'
+      - 'README.md'
   pull_request:
     branches: [main, master]
+    paths-ignore:
+      - 'notes/**'
+      - '.claude/**'
+      - '.cursorrules'
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'GEMINI.md'
+      - 'README.md'
   # Allow manual trigger from GitHub Actions UI
   workflow_dispatch:
+
+# A newer push to the same PR supersedes the run in flight. Every other run gets its own
+# group: a shared group holds one pending run and drops the rest even without
+# cancel-in-progress, which would leave a `main` commit untested when merges land close together.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
