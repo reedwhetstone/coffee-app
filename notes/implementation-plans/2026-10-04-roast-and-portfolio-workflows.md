@@ -2,7 +2,7 @@
 
 **Status:** Proposed for review. Nothing in this document is built.
 **Date:** 2026-10-04
-**Replaces:** the Option A recommendation in [Profile Studio restructure](2026-10-03-profile-studio-restructure.md). That document's inventory of the page and its list of 12 confusions still stand and are not repeated here.
+**Replaces:** the Option A recommendation in [Profile Studio restructure](2026-10-03-profile-studio-restructure.md). That document's inventory of what the page offers and its list of 12 confusions still stand and are not repeated here. Its access claims do not: it says a signed-in viewer can open `/roast` and see a locked Studio, and section 4.10 shows the server redirects them first. That document now carries the correction.
 **Related:** [Catalog filter and sort UX rework](2026-10-02-catalog-filter-ux-rework.md), [ADR-009 progressive depth with task parity](../decisions/009-progressive-depth-task-parity.md), parchment-api PR #346 (batch identity, PADR-0029), parchment-api PR #337 (plan from a roast in history)
 
 ## Summary
@@ -94,7 +94,7 @@ The catalog fixes in rows 1, 2, 6, 8, and 15 belong to the 2026-10-02 catalog pl
 | --------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Content on the first screen | First card at 0.5 screens                   | First card at 0.8 screens, after the hero, tabs, five tiles, and "Portfolio by source" | First roast at 1.9 screens                                                                                | Roast first. Portfolio: move "by source" below the cards.                                                    |
 | Open item is in the URL     | `?coffee=<id>` from links, not from a click | No. The open coffee and its tab cannot be linked or restored                           | `?profileId=<id>`, written on selection                                                                   | Portfolio: `?coffee=<id>&tab=`. All three: add a history entry when an item opens.                           |
-| Filters in the URL          | Yes                                         | No. `?tab=bookmarked` is read on load and not written when the tab changes             | No                                                                                                        | Roast: coffee, date range, and search in the URL. Portfolio: tab and filters.                                |
+| Filters in the URL          | Yes                                         | No. `?tab=bookmarked` is read on load and not written when the tab changes             | No                                                                                                        | Roast: coffee, date range, search, and retail or wholesale in the URL. Portfolio: tab and filters.           |
 | Visible search and sort     | Signed out only                             | Hidden panel with 14 fields, most of them catalog fields                               | Hidden panel; "Roast Date" lists one exact date per option, with no range                                 | A primary row on each page.                                                                                  |
 | Compare                     | Tray, then a page with a URL                | None                                                                                   | Two pickers inside the Studio section, above the roast; the result is not linkable                        | Roast comparison at its own URL, started from a roast or from portfolio.                                     |
 | Detail                      | Panel, pill tabs                            | Same panel, different tabs with emoji, and a Delete button at the foot of every tab    | An inline block under a tab row; detail fields and two delete buttons sit above the chart                 | One tab style. Destructive actions in a menu, away from the top.                                             |
@@ -202,11 +202,12 @@ Roasts of this coffee                    [ Roast this coffee ]  See all in Roast
 2 selected   [ Compare ]                         row menu: Plan next roast · Log sale
 ```
 
+- **The newest roast says how it differs** from the one before it, in words under its row: "22 sec longer · 4°F hotter drop than Sep 27". A value that was not recorded shows "—", never a zero.
 - **Row click** opens `/roast?roast=<id>` with in-app navigation. No reload.
 - **Tick two rows, then Compare** opens `/roast/compare?a=roast:<id>&b=roast:<id>`.
-- **Plan next roast** in the row menu opens `/roast/plan?from=roast:<id>`.
+- **Plan next roast** in the row menu opens `/roast/plan?from=roast:<id>`. It is added to the menu by PR 5, when that page exists. **Log sale** is added by PR 8, or earlier with name and date prefill if that part of PR 8 is brought forward.
 - **Roast this coffee** opens the new-roast form with the coffee filled in. It exists today as "Start New Roast".
-- **See all in Roasts** opens `/roast?coffee=<inventory id>`.
+- **See all in Roasts** opens `/roast?coffee=<inventory id>`. PR 3 makes the roast list read that parameter and show only that coffee's roasts, with the coffee named in a chip that can be removed. The control for choosing a coffee on the list itself comes with PR 7.
 - **Phone:** each row becomes two lines (date and batch, then loss, time, drop, and development). Selection and Compare stay. This is the ADR-009 column-priority form.
 - **Data:** the panel's current roast list carries six fields. The trend columns come from `GET /v1/roasts?coffee_id=`, which Parchment already supports and the pinned SDK already types. The app's `/api/roast-profiles` route ignores query parameters today and needs to forward `coffee_id`. No Parchment or SDK change.
 
@@ -241,7 +242,8 @@ Sep 27 · Guji drop test                         24 oz · 13.3% loss      [ Log 
 
 - The header is one title, one count line, and two actions. The four tiles become the count line.
 - Batches are open by default with their roasts visible. Today every batch but the newest is closed, which costs a click per batch.
-- Search, coffee, and date range are on the page and in the URL: `/roast?coffee=101&range=30d&q=guji`.
+- Search, coffee, date range, and retail or wholesale are on the page and in the URL: `/roast?coffee=101&range=30d&q=guji&market=wholesale`.
+- The list loads a page at a time, so every one of those filters has to run in Parchment, not in the browser. Coffee and date already can. Search and retail or wholesale cannot yet: `GET /v1/roasts` has separate coffee-name, batch-name, and roast-ID filters that all have to match at once, and nothing for wholesale. Section 5 and decision 9 cover what PR 7 needs.
 - A batch header shows its date first. Names repeat; dates do not.
 
 **Arriving with a roast (`/roast?roast=4531`)**
@@ -269,6 +271,7 @@ Same coffee: ← Sep 27 #4529 · next →
 - **More** holds: Save as reference, Edit details, Import Artisan file, Clear recorded data, Delete roast, Delete batch. The two delete buttons leave the top of the page.
 - "In portfolio" opens `/beans?coffee=<id>&tab=roasting`. "Same coffee" steps through that coffee's roasts without going back to a list.
 - A roast with nothing recorded shows the timer and controls in place of the milestone line. That is today's behavior, moved to the top.
+- A milestone that was not marked is named in the line ("First crack not marked") instead of being left out.
 - **Phone:** title, then "Compare with…" as the one visible action and the rest under More, then the milestone line as a two-row grid, then the chart.
 
 The only difference between the two arrivals is which of these two views is drawn. "← Roasts" returns to the list with its filters intact.
@@ -281,6 +284,7 @@ The only difference between the two arrivals is which of these two views is draw
 - **From a roast:** "Compare with…" opens `/roast/compare?a=roast:4531` with the second picker open and that coffee's other roasts listed first.
 - **From portfolio:** both sides are already chosen, so the result is on screen when the page opens.
 - **Two saved references, no roast:** `/roast/compare?a=ref:<id>&b=ref:<id>`, reached from the saved library by ticking two rows, or by opening the page and choosing both sides. No roast has to be open.
+- **The largest milestone difference is stated first,** above the chart: "First crack: B was 45 sec earlier". A milestone missing on either side is shown as not recorded, not as a difference.
 - **Back** returns to wherever the comparison was opened from.
 - No tray is needed on the roast list at first. A roast comparison has exactly two sides, and the picker reaches any roast. If selecting from the list turns out to be wanted, the catalog tray is the pattern.
 
@@ -303,7 +307,7 @@ Starting from a roast uses `referenceProfiles.previewFromRoast` and `fromRoast`.
 
 ```text
 Saved references and plans                               [ Add an Artisan file ]
-Profiles you kept to repeat, and plans you made from them. They are never counted as roasts.
+References you kept to repeat, and plans you made from them. They are never counted as roasts.
 
 [ ] Guji plan: +5°F through drying       Plan · Oct 2        Download for Artisan · ⋯
 [ ] Guji natural, September keeper       Artisan file · Sep 28   View curve · ⋯
@@ -339,22 +343,23 @@ PR 4 is worth doing whatever else is decided. It fixes a way to lose data that e
 
 ### 4.8 URL scheme
 
-| URL                                                   | Opens                                       | Notes                                                                                                                                |
-| ----------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `/beans?coffee=<inventory id>&tab=roasting`           | Portfolio with that coffee's panel on a tab | New. Tabs: `overview`, `cupping`, `roasting`, `analytics`. Mirrors catalog's `?coffee=`.                                             |
-| `/beans?tab=bookmarked`                               | The second portfolio tab                    | Exists for reading. Start writing it when the tab changes.                                                                           |
-| `/roast`                                              | Roast list                                  | Filters: `coffee=<inventory id>`, `range=7d` / `30d` / `ytd`, `from=` and `to=` dates, `q=`, `batch=<batch id>` once batch IDs ship. |
-| `/roast?roast=<id>`                                   | One roast, chart first                      | New name. `?profileId=<id>` keeps working for existing links from Cherry AI and bookmarks.                                           |
-| `/roast?modal=new&beanId=<id>&beanName=<name>`        | New-roast form, coffee filled in            | Exists. Unchanged.                                                                                                                   |
-| `/roast/compare?a=<side>&b=<side>`                    | Comparison                                  | A side is `roast:<id>` or `ref:<uuid>`. With only `a`, the second picker opens.                                                      |
-| `/roast/plan?from=<side>`                             | Plan editor                                 | `/roast/plan?plan=<uuid>` reopens a saved plan with its download.                                                                    |
-| `/roast/saved`                                        | Saved references and plans                  |                                                                                                                                      |
-| `/profit?modal=new&coffee=<id>&batch=<id>&roast=<id>` | Sale form, filled in                        | `modal=new` exists. The three prefill parameters are new. Until batch IDs ship, `batch` carries the name and `date` its date.        |
+| URL                                                   | Opens                                       | Notes                                                                                                                                                                                                                                  |
+| ----------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/beans?coffee=<inventory id>&tab=roasting`           | Portfolio with that coffee's panel on a tab | New. Tabs: `overview`, `cupping`, `roasting`, `analytics`. Mirrors catalog's `?coffee=`.                                                                                                                                               |
+| `/beans?tab=bookmarked`                               | The second portfolio tab                    | Exists for reading. Start writing it when the tab changes.                                                                                                                                                                             |
+| `/roast`                                              | Roast list                                  | Filters: `coffee=<inventory id>`, `range=7d` / `30d` / `ytd`, `from=` and `to=` dates, `q=`, `market=retail` / `wholesale` (left out for All), `batch=<batch id>` once batch IDs ship. `coffee` is read from PR 3; the rest from PR 7. |
+| `/roast?roast=<id>`                                   | One roast, chart first                      | New name. `?profileId=<id>` keeps working for existing links from Cherry AI and bookmarks.                                                                                                                                             |
+| `/roast?modal=new&beanId=<id>&beanName=<name>`        | New-roast form, coffee filled in            | Exists. Unchanged.                                                                                                                                                                                                                     |
+| `/roast/compare?a=<side>&b=<side>`                    | Comparison                                  | A side is `roast:<id>` or `ref:<uuid>`. With only `a`, the second picker opens.                                                                                                                                                        |
+| `/roast/plan?from=<side>`                             | Plan editor                                 | `/roast/plan?plan=<uuid>` reopens a saved plan with its download.                                                                                                                                                                      |
+| `/roast/saved`                                        | Saved references and plans                  |                                                                                                                                                                                                                                        |
+| `/profit?modal=new&coffee=<id>&batch=<id>&roast=<id>` | Sale form, filled in                        | `modal=new` exists. The three prefill parameters are new. Until batch IDs ship, `batch` carries the name and `date` its date.                                                                                                          |
 
 Rules:
 
 - Opening an item adds a history entry, so Back closes it. Changing a filter replaces the entry.
-- Every `/roast` path stays under the existing member guard, which matches on the path prefix.
+- Every `/roast` path stays under the existing member guard in `hooks.server.ts`. It matches on the path prefix, so `/roast/compare`, `/roast/plan`, and `/roast/saved` are covered without a new rule. One exception is proposed and only if decision 4 is yes: the exact path `/roast` renders a locked page for a signed-in account without Mallard Studio. That is a guard change with its own slice, PR 10. The three child pages and every roast and reference API route keep their checks.
+- Every filter on the roast list is in the URL and survives a reload, a shared link, and Back: coffee, date, search, and retail or wholesale.
 - `/roast?roast=` stays a query parameter for now. A path such as `/roast/4531` would unmount the page that holds the live timer. It can come with phase 3.
 
 ### 4.9 Naming
@@ -393,7 +398,7 @@ Checked in the local render with a viewer account, except the last point, which 
 Proposed:
 
 - **Portfolio Roasting tab without Mallard Studio:** "Roast history is part of Mallard Studio. Log roasts against this coffee, compare them, and plan the next one." with "See Mallard Studio".
-- **`/roast` without Mallard Studio:** a locked page in place of the silent redirect. This is decision 4.
+- **`/roast` without Mallard Studio:** a locked page in place of the silent redirect. This is decision 4. It cannot be done in the page alone, because the guard redirects before the page renders. PR 10 changes the guard for the exact path `/roast` only: the locked page is drawn and no roast data is loaded for that account. `/roast/compare`, `/roast/plan`, and `/roast/saved` keep redirecting to `/dashboard`, and the roast and reference API routes keep their checks. If decision 4 is no, nothing changes and the navigation's locked label stays the only explanation.
 
 ### 4.11 Copy
 
@@ -407,6 +412,8 @@ Proposed:
 - Date options: Any time · Last 7 days · Last 30 days · This year
 - Empty, no roasts yet: **No roasts yet.** Log a roast live or import one from Artisan, and it will appear here.
 - Empty, filters: **No roasts match.** Nothing was roasted in the last 7 days for Ethiopia Yirgacheffe Wush Wush. Button: Clear filters
+- Retail or wholesale: All · Retail · Wholesale
+- Opened for one coffee: Ethiopia Yirgacheffe Wush Wush ×
 - Load failure: **Roasts could not be loaded.** Button: Try again
 
 **One roast**
@@ -416,13 +423,16 @@ Proposed:
 - More: Save as reference · Edit details · Import Artisan file · Clear recorded data · Delete roast · Delete batch
 - Nothing recorded: **Nothing recorded for this roast yet.** Start the timer to log it live, or import the Artisan file from this roast.
 - Leaving during a roast: **A roast is still recording.** Leaving now loses the readings that are not saved. Buttons: Keep roasting · Leave
+- Milestone not marked: First crack not marked
 - Plan not possible: This roast has no Artisan file on record, so a plan cannot be built from it. Import its .alog to plan from it.
 
 **Compare**
 
 - Title: Compare roasts
 - Body: Line up any two roasts or saved references. Both curves start at charge.
-- One side chosen: Choose a second profile to compare with Ethiopia Yirgacheffe Wush Wush, Oct 1.
+- One side chosen: Choose a second roast or saved reference to compare with Ethiopia Yirgacheffe Wush Wush, Oct 1.
+- Largest difference: First crack: B was 45 sec earlier
+- Milestone missing on one side: First crack not recorded for A
 - Nothing to compare: Record or import a roast, and it will appear here to compare.
 - Link: Discuss with Cherry AI
 
@@ -430,12 +440,12 @@ Proposed:
 
 - Title: Plan your next roast
 - Body: Start from a roast or reference you liked, adjust it, and save the result as a curve to follow in Artisan. Your roast history is not changed.
-- Steps, helper text, and Artisan instructions: as written in the 2026-10-03 plan.
+- Steps, helper text, and Artisan instructions: as written in the 2026-10-03 plan, with one change. Its empty state ends "add an Artisan file under Saved profiles"; here that reads "add an Artisan file under Saved references and plans".
 
 **Saved references and plans**
 
 - Title: Saved references and plans
-- Body: Profiles you kept to repeat, and plans you made from them. They are never counted as roasts.
+- Body: References you kept to repeat, and plans you made from them. They are never counted as roasts.
 - Row labels: Artisan file · Saved Sep 28, 2026; Saved from a roast · Saved Sep 25, 2026; Plan · Saved Oct 2, 2026
 - Add button: Add an Artisan file. Helper: Keeps the file as a reference to compare or plan from. To record it as a roast you ran, import it from Roasts.
 - Empty: **Nothing saved yet.** Save a roast you want to repeat, add an Artisan file, or make a plan from a roast.
@@ -444,11 +454,12 @@ Proposed:
 
 - Heading: Roasts of this coffee
 - Summary: 5 roasts · 64 oz roasted · 6.0 lb left · 13.8% average loss
+- Newest roast: 22 sec longer · 4°F hotter drop than Sep 27
 - Buttons: Roast this coffee · See all in Roasts
 - Empty: **No roasts of this coffee yet.** Roast it and its history will build here. Button: Roast this coffee
 - Without Mallard Studio: Roast history is part of Mallard Studio. Log roasts against this coffee, compare them, and plan the next one. Button: See Mallard Studio
 
-**Locked roast page** (if decision 4 is yes)
+**Locked roast page** (PR 10, if decision 4 is yes)
 
 - Title: Log, compare, and plan your roasts
 - Body: Roasts are part of Mallard Studio. Keep every roast's curve, compare any two, plan the next one, and take the plan into Artisan.
@@ -456,32 +467,100 @@ Proposed:
 
 ### 4.12 Task parity (ADR-009)
 
-| Module                 | Question it answers                | Decision                          | Desktop                                             | Phone                                                       | Check before release                                                      |
-| ---------------------- | ---------------------------------- | --------------------------------- | --------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Portfolio Roasting tab | How has this coffee been roasting? | Repeat, adjust, or compare        | Seven-column table in the panel                     | Two-line rows; the same links and Compare                   | From the tab, open the comparison of the two newest roasts on both sizes. |
-| One roast              | What happened in this roast?       | Keep it, compare it, plan from it | Chart at full width with the action bar above       | Chart within one screen; one visible action and a More menu | Open a roast by link and read first crack and drop without scrolling.     |
-| Compare                | What differed between these two?   | What to keep or change next time  | Chart and milestone table side by side with the key | Key, chart, then the table as rows                          | Read "B was 45 sec earlier" on both sizes.                                |
-| Roast list             | Which roast do I want?             | Open one                          | Batches with roast rows                             | The same rows, two lines each                               | Find a roast from last week in two taps.                                  |
+ADR-009 requires each analytical module to declare ten things. The five modules this proposal adds or reshapes are declared below in the ADR's order. The saved library is a list to manage, not a read of data, so it carries no declaration; on a phone it is the same rows on two lines.
+
+**Portfolio Roasting tab**
+
+- **User question:** How has this coffee been roasting?
+- **Decision:** Repeat the last roast, adjust the next one, or compare two.
+- **Overview:** The summary line (5 roasts · 64 oz roasted · 6.0 lb left · 13.8% average loss) and the newest roast, both on the first screen of the tab on a phone.
+- **Anomaly:** The newest roast leads the table and says how it differs from the one before it: "22 sec longer · 4°F hotter drop than Sep 27".
+- **Explanation:** That line, plus loss, time, drop, and development for every roast, so a drift reads down a column.
+- **Source:** The roast count in the summary, and the date and batch on each row. Every value is the recorded one; a value that was not recorded shows "—". Without Mallard Studio the tab says roast history is part of Mallard Studio.
+- **Action:** Open a roast, tick two and compare, roast this coffee, see all in Roasts. Plan next roast and Log sale join the row menu with PRs 5 and 8.
+- **Desktop:** Seven-column table in the panel.
+- **Phone:** Two-line rows in column-priority order: date and batch, then loss, time, drop, and development. The same links, selection, and Compare.
+- **QA task:** On both sizes, read how the newest roast differs from the one before, then open the comparison of those two from the tab.
+
+**One roast**
+
+- **User question:** What happened in this roast?
+- **Decision:** Keep it as a reference, compare it, or plan the next roast from it.
+- **Overview:** The coffee, roast number, date, batch, and weight in and out with loss, then the milestone line. All of it sits above the chart.
+- **Anomaly:** A milestone that was not marked is named ("First crack not marked"), and a roast with nothing recorded says so in place of the milestone line.
+- **Explanation:** The milestone line reads the curve in words: charge, turning point, dry end, first crack, drop time and temperature, development.
+- **Source:** Roast number, date, and batch in the header, with the chart of the recorded readings directly below.
+- **Action:** Compare with…, Plan next roast from this, Log sale, and More.
+- **Desktop:** Chart at full width with the action bar and milestone line above it.
+- **Phone:** Title, "Compare with…" and a More menu, the milestone line as a two-row grid, then the chart within one screen.
+- **QA task:** On both sizes, open a roast by link and read first crack and drop without scrolling; open a roast with nothing recorded and see that stated.
+
+**Compare**
+
+- **User question:** What differed between these two?
+- **Decision:** What to keep or change next time.
+- **Overview:** The key naming A and B, and the largest milestone difference.
+- **Anomaly:** The milestone with the largest timing difference, stated first: "First crack: B was 45 sec earlier".
+- **Explanation:** Every milestone difference in words in the table. Both curves start at charge, so the times line up.
+- **Source:** Each side is labelled as a roast or a saved reference, with its coffee and date. A milestone missing on either side is shown as not recorded, not as a difference.
+- **Action:** Change either side, go back to the roast, Discuss with Cherry AI.
+- **Desktop:** Chart and milestone table side by side with the key.
+- **Phone:** Key, the largest difference, the chart, then the table as rows.
+- **QA task:** On both sizes, open a comparison by link and read which milestone differed most and by how much.
+
+**Roast list**
+
+- **User question:** Which roast do I want?
+- **Decision:** Open one.
+- **Overview:** The count line (14 roasts in 10 batches · 15.0% average loss) and the newest batch with its roasts.
+- **Anomaly:** Newest first, so the latest batch leads. A roast with no weight out shows its weight in alone.
+- **Explanation:** Each batch header totals its weight and loss; each roast row gives time, drop, and development.
+- **Source:** The count line counts what matches the filters in force. Those filters are visible in the controls and in the URL, and the empty state names them.
+- **Action:** Open a roast, New roast, Import from Artisan. Load more comes with PR 7 and Log sale on a batch with PR 8.
+- **Desktop:** Batches with one-line roast rows.
+- **Phone:** The same rows on two lines each.
+- **QA task:** On both sizes, find a roast from last week in two taps.
+
+**Plan preview**
+
+- **User question:** What will this change do to the curve?
+- **Decision:** Save it and send it to Artisan, or adjust it.
+- **Overview:** What the plan starts from and the change in words: "+5°F bean temperature, 0 to 5 minutes after charge".
+- **Anomaly:** The stretch where the plan line leaves the dashed line it started from. When a roast cannot be used, the reason takes the place of the preview.
+- **Explanation:** The plan drawn over what it started from: "The dashed line is what you started from."
+- **Source:** The roast or saved reference it starts from, named with its date; "Plan preview · not saved yet" until it is saved; "Your roast history is not changed."
+- **Action:** Preview, Save plan, Download for Artisan.
+- **Desktop:** The four steps with the preview chart at full width.
+- **Phone:** The steps stacked, the preview chart under step 3, then Save and Download.
+- **QA task:** On both sizes, build a plan from a saved reference, read the preview, save it, and download it.
 
 ADR-009 says of Roast: "mobile must support monitoring and lightweight profile review". Today a phone needs 5.7 screens of scrolling to reach a curve.
 
 ## 5. PR breakdown
 
-In merge order. PRs 1 and 2 carry most of the click and scroll reduction and do not touch live logging, the SDK, or Parchment.
+In merge order. PRs 1 and 2 carry most of the click and scroll reduction and do not touch live logging, the SDK, or Parchment. PR 10 ships only if decision 4 is yes, and can merge any time after PR 1.
 
-| #   | PR                                        | What ships                                                                                                                                                                                                                                                                                                                                                                 | Depends on                                                        | SDK or Parchment                                                                                                                            | Risk                                                               |
-| --- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| 1   | Roast first on `/roast`                   | The list is the first thing on the page; an open roast shows its title, milestone line, and chart first, with the hero, tiles, and Studio section not drawn above it. No self-scroll. "← Roasts". Page title "Roasts"; "New roast". Batches open by default. In-app navigation from portfolio. Remove the debugging empty state. The Studio section stays, below the list. | None                                                              | None                                                                                                                                        | Low. Layout in `+page.svelte` and `RoastProfileTabs`.              |
-| 2   | Actions on the roast and `/roast/compare` | The action bar with "Compare with…" and the More menu. The comparison card moves to its own page with `a` and `b` in the URL and the same-coffee roasts listed first. `?roast=` with `?profileId=` still read.                                                                                                                                                             | PR 1                                                              | None. Comparison is in SDK 0.46.0.                                                                                                          | Low. A new page from an existing card.                             |
-| 3   | Portfolio as the launch point             | Roasting tab table with time, drop, and development; row links; tick two and Compare; "See all in Roasts"; `/beans?coffee=&tab=`; last roast on the card, "Remaining" sort, "Roast" action; "by source" below the cards; one tab style.                                                                                                                                    | PR 2 for the compare target; `/roast?coffee=` from PR 1 or 6      | None. The server route forwards `coffee_id`, which `GET /v1/roasts` already accepts.                                                        | Low to medium. Touches the shared coffee panel.                    |
-| 4   | Live roast guard and tests                | Confirmation before leaving or switching away from a roast in progress; component tests for start, log event, pause, and save.                                                                                                                                                                                                                                             | None. Can merge at any point.                                     | None                                                                                                                                        | Low. Additive, and it removes an existing way to lose data.        |
-| 5   | `/roast/plan` and plan from a roast       | The plan page; "Plan next roast from this"; start from a roast; the "cannot be used" reasons; download with Artisan instructions.                                                                                                                                                                                                                                          | PR 2                                                              | **SDK update from 0.46.0 to 0.54.0 or later** (0.56.0 is current) for `roastCandidates`, `previewFromRoast`. Parchment already serves them. | Medium. The update from 0.46.0 to 0.56.0 needs its own type check. |
-| 6   | `/roast/saved` and Studio removal         | The library with view, compare, plan, download, rename, remove, add an Artisan file, and "Record as a roast I ran". The Studio section is removed from `/roast`. `BRAND.md` updated for the retired names.                                                                                                                                                                 | PRs 2 and 5                                                       | Rename and remove are in 0.46.0. "Record as a roast I ran" needs the PR 5 update. Two new server routes in the app.                         | Medium. Removes a section people may have learned.                 |
-| 7   | Finding roasts                            | Search, coffee, and date range on the list and in the URL; "Load more"; the server route passes filters and paging upstream and stops loading every roast on each visit.                                                                                                                                                                                                   | PR 1                                                              | None. `GET /v1/roasts` already takes `coffee_id`, `date_start`, `date_end`, `limit`, and `offset`.                                          | Medium. The page filters in the browser today.                     |
-| 8   | Batches and sales                         | Group by batch ID; date-first batch headers; `?batch=<id>`; "Log sale" on a batch and a roast with the sale form filled in, sending the batch ID and, from a roast, the roast ID; delete a batch by ID.                                                                                                                                                                    | **parchment-api #346 merged, migrated, and deployed; SDK 0.57.0** | Yes, as above. "Log sale" with name and date prefill can ship earlier as part of PR 2 if wanted.                                            | Medium. Follows a production migration.                            |
-| 9   | Viewer and logger split (optional)        | A read-only roast viewer separate from the live logger; an overlay of a second curve on the roast's own chart; `/roast/<id>` as a path if wanted.                                                                                                                                                                                                                          | PR 4                                                              | None                                                                                                                                        | High. The only PR that changes `RoastChartInterface`.              |
+| #   | PR                                            | What ships                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Depends on                                                                                 | SDK or Parchment                                                                                                                                                                                                                                                                                                 | Risk                                                                                |
+| --- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 1   | Roast first on `/roast`                       | The list is the first thing on the page; an open roast shows its title, milestone line, and chart first, naming any milestone that was not marked, with the hero, tiles, and Studio section not drawn above it. No self-scroll. "← Roasts". Page title "Roasts"; "New roast". Batches open by default. In-app navigation from portfolio. Remove the debugging empty state. The Studio section stays, below the list.                                                                                                         | None                                                                                       | None                                                                                                                                                                                                                                                                                                             | Low. Layout in `+page.svelte` and `RoastProfileTabs`.                               |
+| 2   | Actions on the roast and `/roast/compare`     | The action bar with "Compare with…" and the More menu. The comparison card moves to its own page with `a` and `b` in the URL, the same-coffee roasts listed first, and the largest milestone difference stated above the chart. `?roast=` with `?profileId=` still read.                                                                                                                                                                                                                                                     | PR 1                                                                                       | None. Comparison is in SDK 0.46.0.                                                                                                                                                                                                                                                                               | Low. A new page from an existing card.                                              |
+| 3   | Portfolio as the launch point                 | Roasting tab table with time, drop, and development, and the newest roast's change from the one before; row links; tick two and Compare; "See all in Roasts", with the roast list reading `?coffee=` and showing that coffee's roasts under a removable chip; `/beans?coffee=&tab=`; last roast on the card, "Remaining" sort, "Roast" action; "by source" below the cards; one tab style.                                                                                                                                   | PR 1 for the roast list that `?coffee=` filters; PR 2 for the compare target and `?roast=` | None. The server route forwards `coffee_id`, which `GET /v1/roasts` already accepts. The Roasting tab and `/roast?coffee=` both use it.                                                                                                                                                                          | Low to medium. Touches the shared coffee panel.                                     |
+| 4   | Live roast guard and tests                    | Confirmation before leaving or switching away from a roast in progress; component tests for start, log event, pause, and save.                                                                                                                                                                                                                                                                                                                                                                                               | None. Can merge at any point.                                                              | None                                                                                                                                                                                                                                                                                                             | Low. Additive, and it removes an existing way to lose data.                         |
+| 5   | `/roast/plan` and plan from a roast           | The plan page; "Plan next roast from this" on the roast and "Plan next roast" in portfolio's row menu; start from a roast; the "cannot be used" reasons; download with Artisan instructions.                                                                                                                                                                                                                                                                                                                                 | PR 2                                                                                       | **SDK update from 0.46.0 to 0.54.0 or later** (0.56.0 is current) for `roastCandidates`, `previewFromRoast`. Parchment already serves them.                                                                                                                                                                      | Medium. The update from 0.46.0 to 0.56.0 needs its own type check.                  |
+| 6   | `/roast/saved` and Studio removal             | The list's second segment and the library, with view, compare, plan, download, rename, remove, add an Artisan file, and "Record as a roast I ran". The Studio section is removed from `/roast`. `BRAND.md` updated for the retired names.                                                                                                                                                                                                                                                                                    | PRs 2 and 5                                                                                | Rename and remove are in 0.46.0. "Record as a roast I ran" needs the PR 5 update. Two new server routes in the app.                                                                                                                                                                                              | Medium. Removes a section people may have learned.                                  |
+| 7   | Finding roasts                                | The coffee control, date range, search, and retail or wholesale on the list and in the URL (`coffee`, `range` or `from` and `to`, `q`, `market`); "Load more"; the server route passes every filter and the paging upstream and stops loading every roast on each visit.                                                                                                                                                                                                                                                     | PRs 1 and 3; the Parchment parameters in the next column, released in the SDK (decision 9) | **Two new optional parameters on `GET /v1/roasts`: `q` and `is_wholesale`.** It already takes `coffee_id`, `date_start`, `date_end`, `limit`, and `offset`. Its `coffee_name`, `batch_name`, and `roast_id` filters must all match at once, so they cannot serve one search box, and it has no wholesale filter. | Medium. The page filters in the browser today, and it waits on a Parchment release. |
+| 8   | Batches and sales                             | Group by batch ID; date-first batch headers; `?batch=<id>`; "Log sale" on a batch, a roast, and portfolio's row menu with the sale form filled in, sending the batch ID and, from a roast, the roast ID; delete a batch by ID.                                                                                                                                                                                                                                                                                               | **parchment-api #346 merged, migrated, and deployed; SDK 0.57.0**; PR 7 for `?batch=`      | Yes, as above. "Log sale" with name and date prefill can ship earlier as part of PR 2 if wanted.                                                                                                                                                                                                                 | Medium. Follows a production migration.                                             |
+| 9   | Viewer and logger split (optional)            | A read-only roast viewer separate from the live logger; an overlay of a second curve on the roast's own chart; `/roast/<id>` as a path if wanted.                                                                                                                                                                                                                                                                                                                                                                            | PR 4                                                                                       | None                                                                                                                                                                                                                                                                                                             | High. The only PR that changes `RoastChartInterface`.                               |
+| 10  | Locked roast page (only if decision 4 is yes) | The guard in `hooks.server.ts` lets a signed-in account without Mallard Studio render the exact path `/roast`, which draws the locked page and nothing else. The page's server load skips the roast request for that account. `/roast/compare`, `/roast/plan`, and `/roast/saved` keep redirecting to `/dashboard`; signed-out visitors keep going to `/catalog`; the roast and reference API routes are unchanged. Guard tests cover a viewer on `/roast`, a viewer on each child page, a member, and a signed-out visitor. | Decision 4; PR 1 for the page title                                                        | None                                                                                                                                                                                                                                                                                                             | Medium. It changes an auth guard, so it ships alone with its tests.                 |
 
-**New endpoints needed: none for PRs 1 to 8.** Everything is either in the pinned SDK, in the current SDK, or in PR #346. Two optional upstream additions:
+**New endpoints needed: none.** PRs 1 to 6, 8, and 10 use what is in the pinned SDK, the current SDK, or PR #346. PR 7 needs two new optional query parameters on an existing endpoint:
+
+- **`q` on `GET /v1/roasts`.** Matches when the coffee name or the batch name contains the text, or when the text is a number equal to the roast ID. Today's `coffee_name`, `batch_name`, and `roast_id` filters narrow together, so passing one search term to all three returns almost nothing.
+- **`is_wholesale` on `GET /v1/roasts`.** Parchment works out wholesale from the catalog coffee linked to the roast and returns it on each row, but cannot filter by it. With the list loading a page at a time, the app cannot filter it either.
+
+Both keep Parchment's existing order (newest roast date, then highest roast ID) and its `limit` and `offset` paging, so "Load more" stays correct. Decision 9 gives the alternative that leaves Parchment unchanged and why it is not recommended.
+
+Two optional upstream additions:
 
 - **Last roast per coffee.** `last_roast_date` and `roast_count` on Parchment's portfolio response would replace the join PR 3 does in the app's server route. Worth doing only if that join is slow on real data.
 - **Follow a roast unchanged.** A plan needs at least one temperature change, so "send this roast to Artisan as it is" has no path. It needs a small Parchment change. See decision 6.
@@ -491,8 +570,9 @@ In merge order. PRs 1 and 2 carry most of the click and scroll reduction and do 
 1. **Comparison and planning as their own pages under `/roast`, or as an overlay and side panel on the roast's own chart.** Recommendation: their own pages now. Same two-click path from the roast, no change to live logging, and two saved references can be compared with no roast. The overlay can come with PR 9.
 2. **Retire "Profile Studio" and "Roast studio" as names on screen.** Recommendation: yes. "Mallard Studio" stays as the only Studio. The page is "Roasts". Recorded in `BRAND.md` in PR 6.
 3. **`?roast=<id>` as the roast link, with `?profileId=` still accepted.** Recommendation: yes. It matches the noun. A path such as `/roast/4531` waits for PR 9, because it would unmount the page holding the live timer.
-4. **What a non-member sees at `/roast`.** Today: a silent redirect to the dashboard. Recommendation: a locked page that says what Mallard Studio adds, with one button. `BRAND.md` asks for gated features to explain what unlocks.
+4. **What a non-member sees at `/roast`.** Today: a silent redirect to the dashboard. Recommendation: a locked page that says what Mallard Studio adds, with one button. `BRAND.md` asks for gated features to explain what unlocks. Yes means PR 10: a change to the auth guard for the exact path `/roast`, with no roast data loaded for that account and every child page and API route still protected. No means no guard change, and the locked-page copy in 4.11 is dropped.
 5. **Keep "Save as reference" for a roast.** Comparing never needed it, and planning from a roast saves the reference as part of saving the plan. Recommendation: keep it as one item in the More menu, as a way to mark a roast worth repeating so it appears first in pickers. Remove the standalone card.
 6. **Follow a roast unchanged.** Carried over from the earlier plan. Recommendation: yes, as a Parchment follow-up after PR 5. "Repeat this roast" is the most common reason to send a curve to Artisan, and today it needs a made-up change.
 7. **Portfolio coffee detail stays a panel.** The trend table fits the panel at desktop width. Recommendation: keep the panel. Reconsider a full page for a coffee only when charts are added to the Roasting tab.
 8. **Catalog items found here.** Header tiles, inline filters for signed-in members, one name for saved lots, the empty-state copy, and the matches-panel copy. Recommendation: fold them into slice 1 of the 2026-10-02 catalog plan instead of opening separate work.
+9. **Where roast search and the retail or wholesale filter run.** Once the list loads a page at a time (PR 7), neither can run in the browser, and `GET /v1/roasts` supports neither as proposed. Recommendation: add `q` and `is_wholesale` to `GET /v1/roasts` in Parchment and release them in the SDK before PR 7. Search rules, order, and paging stay in one place, and the CLI and Cherry AI get the same search. The alternative leaves Parchment unchanged: for a search, the app's server route sends up to three requests (`coffee_name`, `batch_name`, and `roast_id` when the text is a number), asks each for every row up to the end of the page being shown, merges them by roast ID, sorts again, and cuts the page. That gives correct results for "Load more", but each further page costs more, the search rules live in the app only, and retail or wholesale still cannot be filtered without loading every roast.

@@ -1,6 +1,6 @@
 # Profile Studio restructure
 
-**Status:** Superseded on 2026-10-04 by [Roast and portfolio workflows](2026-10-04-roast-and-portfolio-workflows.md), which replaces the Option A recommendation below with an Option B structure. The inventory of the page and the list of confusions remain valid inputs. Nothing in this document is built.
+**Status:** Superseded on 2026-10-04 by [Roast and portfolio workflows](2026-10-04-roast-and-portfolio-workflows.md), which replaces the Option A recommendation below with an Option B structure. The inventory of what the page offers and the list of confusions remain valid inputs. The access claims do not: a signed-in viewer is redirected away from `/roast` and never sees it, as the correction under the inventory explains. Nothing in this document is built.
 **Date:** 2026-10-03
 **Related:** parchment-api [Artisan Interoperability Epic 3](https://github.com/reedwhetstone/parchment-api/blob/main/docs/plans/2026-09-21-artisan-interoperability-epic-3.md), parchment-api PR #336 (missing readings at import), parchment-api PR #337 (plan from a roast in history, SDK 0.54.0)
 
@@ -22,6 +22,8 @@ The picker and chart bugs Reed reported the same day are fixed separately in the
 ## What the page offers today
 
 Everything below lives on `/roast`. Access is the same throughout: the page requires a signed-in session, the Studio section and every `/api/reference-profiles` route require the member role (Mallard Studio), and Parchment checks the Mallard Studio entitlement again on every reference-profile read and write. Parchment Intelligence on its own does not unlock any of it. A viewer sees the locked state in the last row.
+
+**Correction, 2026-10-04.** The access column below is wrong about viewers and is not carried forward. The auth guard in `hooks.server.ts` redirects any signed-in account without the member role from `/roast` to `/dashboard` before the page renders. So "Signed in" in rows 1, 2, and 9 means a Mallard Studio member in practice, and the locked state in row 10 cannot be reached by a signed-in viewer. The same applies to the viewer cost listed against Option B and to the "Locked (viewer)" copy further down. [Roast and portfolio workflows, section 4.10](2026-10-04-roast-and-portfolio-workflows.md#410-what-viewers-see) has the verified behavior and is the reference for access.
 
 | #   | Section on the page                                   | What the user can do                                                                             | States                                                        | Access                                                                                                     |
 | --- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
