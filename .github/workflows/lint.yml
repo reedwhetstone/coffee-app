@@ -2,7 +2,8 @@ name: Code Quality
 
 on:
   push:
-    branches: ['*']
+    # `**` and not `*`: `*` stops at `/`, so it would skip branches such as `feature/x`.
+    branches: ['**']
   pull_request:
     branches: [main, master]
   workflow_dispatch:
@@ -45,11 +46,35 @@ jobs:
           ACCOUNT_DELETION_REAUTH_ACTIVE_KID=dummy
           EOF
 
-      - name: Check formatting
-        run: pnpm format --check
-
       - name: Type check
         run: pnpm check --fail-on-warnings
 
+      # `pnpm lint` is the formatting gate: it runs `prettier --check .` before ESLint.
+      # Do not add `pnpm format --check` here; `format` passes `--write`, which rewrites
+      # the checkout and exits 0, so unformatted files would pass.
       - name: Lint
         run: pnpm lint --max-warnings 0
+
+  unit:
+    name: Unit Tests (Vitest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run unit tests
+        run: pnpm test
