@@ -63,7 +63,7 @@ function props(overrides: Record<string, unknown> = {}) {
 		onProfileUpdate: vi.fn(),
 		onProfileDelete: vi.fn(),
 		onBatchDelete: vi.fn(),
-		onClearProfile: vi.fn(),
+		onClearProfile: vi.fn(async () => true),
 		onClearFilters: vi.fn(),
 		onProfileRefresh: vi.fn(),
 		selectedBean: { name: 'Ethiopia Yirgacheffe Wush Wush' },
@@ -322,7 +322,7 @@ describe('an open roast', () => {
 	});
 
 	it('returns to the list through the page, without leaving it', async () => {
-		const onClearProfile = vi.fn();
+		const onClearProfile = vi.fn(async () => true);
 		render(RoastProfileTabs, props({ currentRoastProfile: wushWush, onClearProfile }));
 
 		const back = screen.getByRole('link', { name: '← Roasts' });
@@ -333,6 +333,38 @@ describe('an open roast', () => {
 
 		expect(onClearProfile).toHaveBeenCalledOnce();
 		expect(click.defaultPrevented).toBe(true);
+	});
+
+	it('stays on the roast when the page keeps it open', async () => {
+		// The page answers false when a roast is recording and the member keeps roasting.
+		const onClearProfile = vi.fn(async () => false);
+		render(RoastProfileTabs, props({ currentRoastProfile: wushWush, onClearProfile }));
+
+		await fireEvent.click(screen.getByRole('link', { name: '← Roasts' }));
+		await onClearProfile.mock.results[0].value;
+
+		expect(screen.getByRole('link', { name: '← Roasts' })).toBeInTheDocument();
+		expect(
+			screen.getByRole('heading', { level: 1, name: 'Ethiopia Yirgacheffe Wush Wush' })
+		).toBeInTheDocument();
+		expect(screen.queryByRole('heading', { name: 'Roasts' })).toBeNull();
+	});
+
+	it('leaves a modified click to the browser, which opens the list in another tab', () => {
+		const onClearProfile = vi.fn(async () => true);
+		render(RoastProfileTabs, props({ currentRoastProfile: wushWush, onClearProfile }));
+
+		const back = screen.getByRole('link', { name: '← Roasts' });
+		// Stop the event before the test browser acts on it; the handler has already run.
+		back.parentElement!.addEventListener('click', (event) => event.preventDefault());
+		for (const modifier of ['metaKey', 'ctrlKey', 'shiftKey', 'altKey']) {
+			back.dispatchEvent(
+				new MouseEvent('click', { bubbles: true, cancelable: true, [modifier]: true })
+			);
+		}
+
+		// The roast on this page is not closed, so a roast in progress keeps recording.
+		expect(onClearProfile).not.toHaveBeenCalled();
 	});
 
 	it('lists the other roasts of the batch under the chart and switches to one', async () => {

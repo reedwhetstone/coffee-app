@@ -828,7 +828,7 @@
 		await syncData();
 	}
 
-	// Function to clear the current profile (for Browse Profiles tab).
+	// Function to clear the current profile (for the "← Roasts" back link).
 	// Resolves false when a roast is recording and the member keeps roasting.
 	async function handleClearProfile(): Promise<boolean> {
 		if (!(await confirmLeaveLiveRoast())) return false;
