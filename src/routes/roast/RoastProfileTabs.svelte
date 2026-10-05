@@ -2,26 +2,29 @@
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
 	import RoastProfileDisplay from './RoastProfileDisplay.svelte';
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
-	import { formatDateForDisplay } from '$lib/utils/dates';
+	import { hasRecordedCurve, roastDetailLine, roastMilestones } from '$lib/roast/roast-summary';
 	import type { RoastProfile } from '$lib/types/component.types';
 	import type { ComponentType } from 'svelte';
-	import { replaceState } from '$app/navigation';
 	import type { RoastTimer } from '$lib/roast';
 
 	let {
 		sortedBatchNames,
 		sortedGroupedProfiles,
-		expandedBatches,
+		collapsedBatches,
 		currentRoastProfile,
 		currentProfileIndex,
 		chartComponentLoading,
 		RoastChartInterface,
+		countLine,
+		totalRoasts,
+		canCreateRoast,
 		onToggleBatch,
 		onSelectProfile,
 		onProfileUpdate,
 		onProfileDelete,
 		onBatchDelete,
 		onClearProfile,
+		onClearFilters,
 		onProfileRefresh,
 		selectedBean,
 		timer,
@@ -35,17 +38,21 @@
 	} = $props<{
 		sortedBatchNames: string[];
 		sortedGroupedProfiles: Record<string, RoastProfile[]>;
-		expandedBatches: Set<string>;
+		collapsedBatches: Set<string>;
 		currentRoastProfile: RoastProfile | null;
 		currentProfileIndex: number;
 		chartComponentLoading: boolean;
 		RoastChartInterface: ComponentType | null;
+		countLine: string;
+		totalRoasts: number;
+		canCreateRoast: boolean;
 		onToggleBatch: (batchName: string) => void;
 		onSelectProfile: (profile: RoastProfile) => void;
 		onProfileUpdate: (profile: RoastProfile) => void;
 		onProfileDelete: () => void;
 		onBatchDelete: () => void;
 		onClearProfile: () => Promise<boolean>;
+		onClearFilters: () => void;
 		onProfileRefresh: (roastId: number) => Promise<void>;
 		selectedBean: { id?: number; name: string };
 		timer: RoastTimer;
@@ -58,224 +65,148 @@
 		clearRoastData: () => void;
 	}>();
 
-	// Tab state management
-	let viewMode = $state<'browser' | 'active'>('browser');
-
-	// Helper function to check if element is in viewport
-	function isInViewport(element: Element): boolean {
-		const rect = element.getBoundingClientRect();
-		return (
-			rect.top >= 0 &&
-			rect.left >= 0 &&
-			rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-			rect.right <= (window.innerWidth || document.documentElement.clientWidth)
-		);
-	}
-
-	// Auto-switch to active tab when profile is selected (but allow manual override)
-	$effect(() => {
-		if (currentRoastProfile && viewMode === 'browser') {
-			// Only auto-switch if user hasn't manually chosen browser mode
-			viewMode = 'active';
-
-			// Only scroll if user is not already near the tabs
-			setTimeout(() => {
-				const tabsElement = document.querySelector('.tab-navigation');
-				if (tabsElement && !isInViewport(tabsElement)) {
-					tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-				}
-			}, 100);
-		}
-	});
-
-	// Reset to browser mode when no profile selected
-	$effect(() => {
-		if (!currentRoastProfile) {
-			viewMode = 'browser';
-		}
-	});
-
-	// Profile selection handler that auto-switches tab
-	function handleProfileSelect(profile: RoastProfile) {
-		onSelectProfile(profile);
-		// Tab switching handled by effect above
-	}
-
-	// Handle Browse Profiles tab click - clear current profile and reset URL
-	async function handleBrowseProfilesClick() {
-		// The page asks first while a roast is recording; stay on the roast if it declines.
-		if (!(await onClearProfile())) return;
-
-		viewMode = 'browser';
-
-		// Clear URL profileId parameter using SvelteKit's replaceState
-		const currentUrl = new URL(window.location.href);
-		currentUrl.searchParams.delete('profileId');
-		replaceState(currentUrl.pathname + (currentUrl.search || ''), {});
-	}
-
-	// Helper function for batch summary (from RoastHistoryTable)
-	function getBatchSummary(profiles: RoastProfile[]) {
-		const totalWeight = profiles.reduce((sum, p) => sum + (p.oz_in || 0), 0);
-
-		// Calculate average weight loss percentage for batch summary
-		const validProfiles = profiles.filter(
-			(p) =>
-				(p.weight_loss_percent !== null && p.weight_loss_percent !== undefined) ||
-				(p.oz_in && p.oz_out)
-		);
-		const avgWeightLoss =
-			validProfiles.length > 0
-				? validProfiles.reduce((sum, p) => {
-						if (p.weight_loss_percent !== null && p.weight_loss_percent !== undefined) {
-							return sum + p.weight_loss_percent;
-						}
-						if (p.oz_in && p.oz_out) {
-							return sum + ((p.oz_in - p.oz_out) / p.oz_in) * 100;
-						}
-						return sum;
-					}, 0) / validProfiles.length
-				: 0;
-
-		return {
-			totalWeight: totalWeight.toFixed(1),
-			avgWeightLoss: avgWeightLoss.toFixed(1),
-			count: profiles.length
-		};
+	// The link is a real one for the keyboard and for opening in a new tab; a plain click
+	// closes the roast in place so the page holding the timer is not reloaded. The page
+	// asks first while a roast is recording, and keeps the roast open if the member stays.
+	function handleBackToRoasts(event: MouseEvent) {
+		if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+		event.preventDefault();
+		void onClearProfile();
 	}
 </script>
 
 <div class="mx-auto w-full max-w-[100vw] overflow-x-hidden">
-	<!-- Tab Navigation -->
-	<div class="tab-navigation border-b border-line bg-surface-canvas">
-		<div class="flex space-x-8">
-			<!-- Browse Profiles Tab -->
-			<button
-				class="flex items-center gap-2 border-b-2 px-1 py-2 text-sm font-medium transition-colors duration-200 {viewMode ===
-				'browser'
-					? 'border-accent text-accent'
-					: 'border-transparent text-muted hover:border-line hover:text-ink'}"
-				onclick={handleBrowseProfilesClick}
-			>
-				<span>📋</span>
-				Browse Profiles
-			</button>
+	{#if currentRoastProfile}
+		{@const batchKey =
+			Object.keys(sortedGroupedProfiles).find((key) =>
+				sortedGroupedProfiles[key]?.some(
+					(p: RoastProfile) => p.roast_id === currentRoastProfile.roast_id
+				)
+			) || ''}
+		{@const otherBatchRoasts = (sortedGroupedProfiles[batchKey] || []).filter(
+			(p: RoastProfile) => p.roast_id !== currentRoastProfile.roast_id
+		)}
+		<div class="mb-4">
+			<a href="/roast" class="text-sm text-link hover:text-accent" onclick={handleBackToRoasts}>
+				← Roasts
+			</a>
+			<h1 class="mt-2 break-words text-xl font-bold text-ink sm:text-2xl">
+				{currentRoastProfile.coffee_name?.trim() || `Roast #${currentRoastProfile.roast_id}`}
+			</h1>
+			<p class="mt-1 text-sm text-muted">{roastDetailLine(currentRoastProfile)}</p>
+
+			{#if hasRecordedCurve(currentRoastProfile)}
+				{@const milestones = roastMilestones(currentRoastProfile)}
+				<ul
+					class="mt-3 grid grid-cols-3 gap-x-4 gap-y-2 text-sm sm:flex sm:flex-wrap sm:gap-x-0 sm:gap-y-1"
+					aria-label="Milestones"
+				>
+					{#each milestones as milestone, index (milestone.key)}
+						<li class="flex flex-col sm:flex-row sm:items-baseline sm:gap-1">
+							<span class="text-xs text-muted sm:text-sm">{milestone.label}</span>
+							<span
+								class="tabular-nums {milestone.value
+									? 'font-semibold text-ink'
+									: 'font-medium text-muted'}"
+							>
+								{milestone.value ?? 'not marked'}
+							</span>
+							{#if index < milestones.length - 1}
+								<span class="mx-2 hidden text-muted sm:inline" aria-hidden="true">·</span>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			{:else if timer.isIdle}
+				<p class="mt-3 text-sm text-muted">
+					<span class="font-semibold text-ink">Nothing recorded for this roast yet.</span>
+					Start the timer to log it live, or import the Artisan file from this roast.
+				</p>
+			{/if}
 		</div>
-	</div>
 
-	<!-- Tab Content -->
-	<div class="min-h-[600px]">
-		{#if viewMode === 'browser'}
-			<!-- Browse Profiles Tab Content -->
-			<div class="mt-6">
-				<RoastHistoryTable
-					{sortedBatchNames}
-					{sortedGroupedProfiles}
-					{expandedBatches}
+		<!-- The roast is titled above, so the chart panel's own copy of the title is not drawn. -->
+		<div class="rounded-lg bg-surface-panel p-4 [&_h1]:hidden">
+			{#if chartComponentLoading}
+				<ChartSkeleton height="500px" title="Loading roasting interface..." />
+			{:else if RoastChartInterface}
+				<RoastChartInterface
+					{timer}
 					{currentRoastProfile}
-					{onToggleBatch}
-					onSelectProfile={handleProfileSelect}
+					bind:fanValue
+					bind:heatValue
+					bind:selectedEvent
+					{updateFan}
+					{updateHeat}
+					{saveRoastProfile}
+					{selectedBean}
+					{onProfileRefresh}
+					{clearRoastData}
 				/>
-			</div>
-		{:else if viewMode === 'active' && currentRoastProfile}
-			<!-- Tiered Active Profile Content -->
-			{@const batchKey =
-				Object.keys(sortedGroupedProfiles).find((key) =>
-					sortedGroupedProfiles[key]?.some(
-						(p: RoastProfile) => p.roast_id === currentRoastProfile.roast_id
-					)
-				) || ''}
-			{@const batchProfiles = sortedGroupedProfiles[batchKey] || []}
-			{@const batchSummary = getBatchSummary(batchProfiles)}
-			<div class="mt-6">
-				<!-- Tier 1: Batch Header -->
-				<div class="mb-0 rounded-lg bg-surface-panel ring-1 ring-line">
-					<div class="flex w-full items-center justify-between p-4">
-						<div class="flex items-center gap-3">
-							<div>
-								<h3 class="text-lg font-semibold text-ink">
-									{currentRoastProfile.batch_name}
-								</h3>
-								<p class="text-sm text-muted">
-									{batchSummary.count} roast{batchSummary.count !== 1 ? 's' : ''} • {formatDateForDisplay(
-										batchProfiles[0]?.roast_date
-									)}
-								</p>
-							</div>
-						</div>
-						<div class="hidden text-right sm:block">
-							<div class="grid grid-cols-3 gap-6 text-sm">
-								<div>
-									<p class="text-muted">Total weight</p>
-									<p class="font-semibold tabular-nums text-ink">{batchSummary.totalWeight} oz</p>
-								</div>
-								<div>
-									<p class="text-muted">Avg loss</p>
-									<p class="font-semibold tabular-nums text-ink">{batchSummary.avgWeightLoss}%</p>
-								</div>
-								<div>
-									<p class="text-muted">Roasts</p>
-									<p class="font-semibold tabular-nums text-ink">{batchSummary.count}</p>
-								</div>
-							</div>
-						</div>
-					</div>
+			{/if}
+		</div>
 
-					<!-- Tier 2: Bean Profile Sub-tabs -->
-					<div class="border-t border-line bg-surface-canvas">
-						<div class="flex space-x-1 overflow-x-auto p-2">
-							{#each batchProfiles as profile}
-								<button
-									class="flex-shrink-0 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-200 {currentRoastProfile.roast_id ===
-									profile.roast_id
-										? 'bg-accent text-ink'
-										: 'bg-surface-panel text-muted hover:bg-accent hover:bg-opacity-10 hover:text-ink'}"
-									onclick={() => handleProfileSelect(profile)}
-								>
-									{profile.coffee_name} #{profile.roast_id}
-								</button>
-							{/each}
-						</div>
-					</div>
-				</div>
-
-				<!-- Content Area: Profile Details + Chart -->
-				<div class="mt-6 space-y-6">
-					<!-- Profile Info Section -->
-					<div
-						class="w-full overflow-x-hidden rounded-lg border border-line bg-surface-panel p-3 shadow-md"
+		{#if otherBatchRoasts.length > 0}
+			<div class="mt-6 flex flex-wrap items-center gap-2">
+				<span class="text-sm text-muted">Also in this batch:</span>
+				{#each otherBatchRoasts as profile (profile.roast_id)}
+					<button
+						type="button"
+						class="rounded-md bg-surface-panel px-3 py-2 text-sm font-medium text-muted ring-1 ring-line transition-colors duration-200 hover:text-ink hover:ring-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+						onclick={() => onSelectProfile(profile)}
 					>
-						<RoastProfileDisplay
-							profile={currentRoastProfile}
-							currentIndex={currentProfileIndex}
-							onUpdate={onProfileUpdate}
-							onProfileDeleted={onProfileDelete}
-							onBatchDeleted={onBatchDelete}
-						/>
-					</div>
-
-					<!-- Chart Interface Section -->
-					<div class="rounded-lg bg-surface-panel p-4">
-						{#if chartComponentLoading}
-							<ChartSkeleton height="500px" title="Loading roasting interface..." />
-						{:else if RoastChartInterface}
-							<RoastChartInterface
-								{timer}
-								{currentRoastProfile}
-								bind:fanValue
-								bind:heatValue
-								bind:selectedEvent
-								{updateFan}
-								{updateHeat}
-								{saveRoastProfile}
-								{selectedBean}
-								{onProfileRefresh}
-								{clearRoastData}
-							/>
-						{/if}
-					</div>
-				</div>
+						{profile.coffee_name} #{profile.roast_id}
+					</button>
+				{/each}
 			</div>
 		{/if}
-	</div>
+
+		<div
+			class="mt-6 w-full overflow-x-hidden rounded-lg border border-line bg-surface-panel p-3 shadow-md"
+		>
+			<RoastProfileDisplay
+				profile={currentRoastProfile}
+				currentIndex={currentProfileIndex}
+				onUpdate={onProfileUpdate}
+				onProfileDeleted={onProfileDelete}
+				onBatchDeleted={onBatchDelete}
+			/>
+		</div>
+	{:else}
+		<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+			<div>
+				<h1 class="text-2xl font-bold text-ink">Roasts</h1>
+				{#if sortedBatchNames.length > 0}
+					<p class="mt-1 text-muted">{countLine}</p>
+				{/if}
+			</div>
+			<div class="flex flex-wrap gap-2">
+				{#if canCreateRoast}
+					<a
+						href="/roast?modal=new"
+						class="inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink shadow-sm transition-colors hover:bg-accent/85"
+					>
+						New roast
+					</a>
+				{/if}
+				<a
+					href="#profile-studio"
+					class="inline-flex items-center justify-center rounded-md border border-line bg-surface-canvas px-4 py-2 text-sm font-semibold text-muted transition-colors hover:border-accent hover:text-ink"
+				>
+					Compare and plan
+				</a>
+			</div>
+		</div>
+
+		<RoastHistoryTable
+			{sortedBatchNames}
+			{sortedGroupedProfiles}
+			{collapsedBatches}
+			{currentRoastProfile}
+			{totalRoasts}
+			{onToggleBatch}
+			{onSelectProfile}
+			{onClearFilters}
+		/>
+	{/if}
 </div>

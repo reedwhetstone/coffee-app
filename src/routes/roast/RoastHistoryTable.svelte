@@ -10,17 +10,23 @@
 	let {
 		sortedBatchNames,
 		sortedGroupedProfiles,
-		expandedBatches,
+		collapsedBatches,
 		currentRoastProfile,
+		totalRoasts = 0,
 		onToggleBatch,
-		onSelectProfile
+		onSelectProfile,
+		onClearFilters
 	} = $props<{
 		sortedBatchNames: string[];
 		sortedGroupedProfiles: Record<string, TableRoastProfile[]>;
-		expandedBatches: Set<string>;
+		/** Batches are open unless the roaster closed them. */
+		collapsedBatches: Set<string>;
 		currentRoastProfile: TableRoastProfile | null | undefined;
+		/** Roasts on the account before any filter, to tell "none yet" from "none match". */
+		totalRoasts?: number;
 		onToggleBatch: (batchName: string) => void;
 		onSelectProfile: (profile: TableRoastProfile) => void;
+		onClearFilters?: () => void;
 	}>();
 
 	// Create derived values with defaults
@@ -42,9 +48,9 @@
 				})
 	);
 
-	import { formatDateForDisplay } from '$lib/utils/dates';
+	import { formatDay } from '$lib/roast/profile-picker-model';
 
-	let isBatchExpanded = $derived((batchKey: string) => expandedBatches.has(batchKey));
+	let isBatchExpanded = $derived((batchKey: string) => !collapsedBatches.has(batchKey));
 
 	// Helper functions for data calculations
 	function calculateRoastDuration(profile: TableRoastProfile): string {
@@ -139,8 +145,23 @@
 					d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"
 				/>
 			</svg>
-			<h3 class="mb-2 text-lg font-semibold text-ink">No roast profiles yet</h3>
-			<p class="text-muted">Start roasting to see your profile history and analytics here</p>
+			{#if totalRoasts > 0}
+				<h3 class="text-lg font-semibold text-ink">No roasts match.</h3>
+				{#if onClearFilters}
+					<button
+						type="button"
+						class="mt-4 rounded-md border border-accent px-4 py-2 text-accent transition-colors duration-200 hover:bg-accent hover:text-ink"
+						onclick={onClearFilters}
+					>
+						Clear filters
+					</button>
+				{/if}
+			{:else}
+				<h3 class="mb-2 text-lg font-semibold text-ink">No roasts yet.</h3>
+				<p class="text-muted">
+					Log a roast live or import one from Artisan, and it will appear here.
+				</p>
+			{/if}
 		</div>
 	{:else}
 		<div class="mb-4 flex items-center gap-2">
@@ -166,6 +187,11 @@
 				onclick={() => (wholesaleFilter = 'wholesale')}>Wholesale</button
 			>
 		</div>
+		{#if filteredBatchNames.length === 0}
+			<div class="rounded-lg bg-surface-panel p-8 text-center ring-1 ring-line">
+				<h3 class="text-lg font-semibold text-ink">No roasts match.</h3>
+			</div>
+		{/if}
 		<div class="space-y-6">
 			{#each filteredBatchNames as batchKey}
 				{@const batchName = batchKey.includes('|||') ? batchKey.split('|||')[0] : batchKey}
@@ -204,9 +230,9 @@
 									{/if}
 								</div>
 								<p class="text-sm text-muted">
-									{batchSummary.count} roast{batchSummary.count !== 1 ? 's' : ''} • {formatDateForDisplay(
+									{batchSummary.count} roast{batchSummary.count !== 1 ? 's' : ''} • {formatDay(
 										profiles[0]?.roast_date
-									)}
+									) ?? ''}
 								</p>
 							</div>
 						</div>
@@ -234,7 +260,7 @@
 							class="border-t border-line bg-surface-canvas p-4"
 							id="batch-{batchKey.replace(/\s+/g, '-').toLowerCase()}"
 							role="region"
-							aria-label="Roast profiles for {batchName}"
+							aria-label="Roasts in {batchName}"
 						>
 							<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 								{#each profiles as profile}
@@ -260,7 +286,7 @@
 													{/if}
 												</div>
 												<p class="text-sm text-muted">
-													ID: {profile.roast_id} • {formatDateForDisplay(profile.roast_date)}
+													ID: {profile.roast_id} • {formatDay(profile.roast_date) ?? ''}
 												</p>
 											</div>
 										</div>

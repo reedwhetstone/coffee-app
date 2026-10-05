@@ -43,6 +43,8 @@ const roasts = [
 	roast({ roast_id: 1, coffee_id: 7, coffee_name: 'Ethiopia' }),
 	roast({ roast_id: 2, coffee_id: 8, coffee_name: 'Colombia' })
 ];
+/** What the roast list request returns; a create adds the new roast to it. */
+let listedRoasts = roasts;
 
 type Request = { url: string; method: string; headers: Headers; body: unknown };
 let requests: Request[] = [];
@@ -69,9 +71,10 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
 		if (method === 'PUT') return json(roast({ roast_notes: 'Windy day', last_updated: EDITED_AT }));
 		if (method === 'POST') {
 			const created = roast({ roast_id: 3, batch_name: 'Next batch' });
+			listedRoasts = [...roasts, created];
 			return json({ profiles: [created], roast_ids: [3] });
 		}
-		return json({ data: roasts });
+		return json({ data: listedRoasts });
 	}
 	return json({ data: [] });
 });
@@ -95,6 +98,14 @@ function openedRoastIds() {
 	return goto.mock.calls
 		.map(([url]) => new URL(String(url), 'http://localhost').searchParams.get('profileId'))
 		.filter((id) => id !== null);
+}
+
+function backLink() {
+	return screen.getByRole('link', { name: '← Roasts' });
+}
+
+function roastListTitle() {
+	return screen.queryByRole('heading', { level: 1, name: 'Roasts' });
 }
 
 function leaveQuestion() {
@@ -147,11 +158,11 @@ async function saveRoast() {
 	await fireEvent.click(await screen.findByRole('button', { name: 'Save roast' }));
 }
 
-function leavePage() {
+function leavePage(to = '/beans') {
 	const cancel = vi.fn();
 	navigationGuards.at(-1)!({
 		from: { url: new URL('http://localhost/roast?profileId=1') },
-		to: { url: new URL('http://localhost/beans') },
+		to: { url: new URL(`http://localhost${to}`) },
 		type: 'link',
 		willUnload: false,
 		cancel
@@ -168,6 +179,7 @@ function unload() {
 beforeEach(() => {
 	vi.clearAllMocks();
 	requests = [];
+	listedRoasts = roasts;
 	navigationGuards.length = 0;
 	sessionStorage.clear();
 	vi.stubGlobal('fetch', fetchMock);
@@ -300,6 +312,8 @@ describe('roast page live roast guard', () => {
 		const logged = loggedEvents();
 		goto.mockClear();
 
+		// The other roasts of the batch are listed under the chart of the open roast.
+		expect(screen.getByText('Also in this batch:')).toBeInTheDocument();
 		await fireEvent.click(screen.getByRole('button', { name: 'Colombia #2' }));
 		await fireEvent.click(await screen.findByRole('button', { name: 'Keep roasting' }));
 		await selectionSettled();
@@ -333,19 +347,57 @@ describe('roast page live roast guard', () => {
 		await startRoast();
 		await logEvent('Charge');
 		const logged = loggedEvents();
+		goto.mockClear();
 
-		await fireEvent.click(screen.getByRole('button', { name: /Browse Profiles/ }));
+		await fireEvent.click(backLink());
 		await fireEvent.click(await screen.findByRole('button', { name: 'Keep roasting' }));
 		await selectionSettled();
 
 		expect(timerButton()).toHaveTextContent('Stop');
 		expect(loggedEvents()).toEqual(logged);
+		expect(roastListTitle()).toBeNull();
+		// The address still names the roast.
+		expect(goto).not.toHaveBeenCalled();
 		expect(replaceState).not.toHaveBeenCalled();
 
-		await fireEvent.click(screen.getByRole('button', { name: /Browse Profiles/ }));
+		await fireEvent.click(backLink());
 		await fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
 
 		await waitFor(() => expect(timerButton()).toBeNull());
+		expect(roastListTitle()).toBeInTheDocument();
+		expect(get(eventEntries)).toEqual([]);
+		expect(get(temperatureEntries)).toEqual([]);
+		// The roast is taken out of the address, in place.
+		expect(goto).toHaveBeenCalledOnce();
+		expect(openedRoastIds()).toEqual([]);
+		expect(goto.mock.calls[0][1]).toEqual({ replaceState: true, keepFocus: true, noScroll: true });
+	});
+
+	it('keeps the roast list off the page while a roast is recording', async () => {
+		await openRoast();
+		await startRoast();
+		await logEvent('Charge');
+
+		// The list, and the "New roast" button beside it, are reached only through
+		// the back link, which asks first.
+		expect(roastListTitle()).toBeNull();
+		expect(screen.queryAllByRole('button', { name: /Toggle .* batch/ })).toEqual([]);
+		expect(screen.queryByRole('link', { name: 'New roast' })).toBeNull();
+
+		await fireEvent.click(backLink());
+		expect(leaveQuestion()).toBeInTheDocument();
+		expect(roastListTitle()).toBeNull();
+		await fireEvent.click(screen.getByRole('button', { name: 'Leave' }));
+		await waitFor(() => expect(roastListTitle()).toBeInTheDocument());
+
+		// With the roast left behind, a roast opens from the list on an idle timer.
+		goto.mockClear();
+		await fireEvent.click(screen.getByRole('button', { name: /Colombia/ }));
+
+		await waitFor(() => expect(openedRoastIds()).toEqual(['2']));
+		expect(leaveQuestion()).not.toBeInTheDocument();
+		await waitFor(() => expect(timerButton()).toHaveTextContent('Start'));
+		expect(timerDisplay()).toBe('0:00.00');
 		expect(get(eventEntries)).toEqual([]);
 	});
 
@@ -360,7 +412,7 @@ describe('roast page live roast guard', () => {
 		expect(sampler).toBeDefined();
 		stopInterval.mockClear();
 
-		await fireEvent.click(screen.getByRole('button', { name: /Browse Profiles/ }));
+		await fireEvent.click(backLink());
 		await fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
 		await waitFor(() => expect(timerButton()).toBeNull());
 
@@ -383,6 +435,46 @@ describe('roast page live roast guard', () => {
 		await pauseRoast();
 		expect(unload().defaultPrevented).toBe(true);
 		expect(leavePage()).toHaveBeenCalledOnce();
+	});
+
+	it('asks before leaving for portfolio, and goes there only once the member chooses to leave', async () => {
+		await openRoast();
+		await startRoast();
+		await logEvent('Charge');
+		const logged = loggedEvents();
+		goto.mockClear();
+
+		expect(leavePage('/beans')).toHaveBeenCalledOnce();
+		await fireEvent.click(await screen.findByRole('button', { name: 'Keep roasting' }));
+		await selectionSettled();
+
+		expect(goto).not.toHaveBeenCalled();
+		expect(timerButton()).toHaveTextContent('Stop');
+		expect(loggedEvents()).toEqual(logged);
+
+		expect(leavePage('/beans')).toHaveBeenCalledOnce();
+		await fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
+
+		await waitFor(() => expect(goto).toHaveBeenCalledOnce());
+		expect(String(goto.mock.calls[0][0])).toBe('http://localhost/beans');
+	});
+
+	it('opens a roast reached from portfolio on a clean timer, without asking', async () => {
+		// Portfolio opens a roast inside the app, so readings from a roast left
+		// earlier in the same visit are still in memory when this page starts.
+		const leftBehind = { roast_id: 1, time_seconds: 42, event_string: 'charge' };
+		eventEntries.set([leftBehind] as never);
+		temperatureEntries.set([{ roast_id: 1, time_seconds: 42, data_source: 'live' }] as never);
+
+		await openRoast('?profileId=2');
+
+		expect(screen.getByRole('heading', { level: 1, name: 'Colombia' })).toBeInTheDocument();
+		expect(openedRoastIds()).toEqual(['2']);
+		expect(leaveQuestion()).not.toBeInTheDocument();
+		expect(timerDisplay()).toBe('0:00.00');
+		expect(get(eventEntries)).toEqual([]);
+		expect(get(temperatureEntries)).toEqual([]);
+		expect(unload().defaultPrevented).toBe(false);
 	});
 
 	it('stops asking once the roast is saved', async () => {
@@ -443,5 +535,24 @@ describe('roast page live roast guard', () => {
 		expect(sent('POST')).toEqual([]);
 		expect(loggedEvents()).toEqual(logged);
 		expect(timerButton()).toHaveTextContent('Stop');
+	});
+
+	it('creates the new roast and opens it once the member chooses to leave', async () => {
+		await openRoast('?profileId=1&modal=new&beanId=7&beanName=Ethiopia');
+		await startRoast();
+		await logEvent('Charge');
+		await fireEvent.input(screen.getByLabelText('Batch Name'), {
+			target: { value: 'Next batch' }
+		});
+
+		await fireEvent.submit(document.querySelector('form')!);
+		expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+		expect(sent('POST')).toEqual([]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Leave' }));
+
+		await waitFor(() => expect(sent('POST')).toHaveLength(1));
+		await waitFor(() => expect(openedRoastIds()).toContain('3'));
+		expect(get(eventEntries)).toEqual([]);
+		await waitFor(() => expect(timerButton()).toHaveTextContent('Start'));
 	});
 });

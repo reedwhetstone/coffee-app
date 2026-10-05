@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import type { InventoryWithCatalog, RoastProfile } from '$lib/types/component.types';
 
 	let { selectedBean, role, onStartNewRoast } = $props<{
@@ -28,7 +29,7 @@
 					class="w-full cursor-pointer rounded-lg bg-surface-canvas p-4 text-left ring-1 ring-line transition-all duration-200 hover:bg-surface-panel hover:ring-2 hover:ring-accent"
 					onclick={() => {
 						if (profile.roast_id) {
-							window.location.href = `/roast?profileId=${profile.roast_id}`;
+							goto(`/roast?profileId=${profile.roast_id}`);
 						}
 					}}
 					disabled={!profile.roast_id}

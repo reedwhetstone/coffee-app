@@ -63,7 +63,7 @@ function timeOf(value: string | null | undefined): number {
 }
 
 /** A roast date is a calendar day, so it is shown as stored and never shifted by time zone. */
-function formatDay(value: string | null | undefined): string | null {
+export function formatDay(value: string | null | undefined): string | null {
 	const day = value?.match(/^(\d{4})-(\d{2})-(\d{2})/);
 	if (!day) return null;
 	return DATE_FORMAT.format(Date.UTC(Number(day[1]), Number(day[2]) - 1, Number(day[3])));
