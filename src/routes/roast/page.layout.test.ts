@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/sve
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RoastProfile } from '$lib/types/component.types';
 import RoastPage from './+page.svelte';
+import { roastListResponse } from './__test-fixtures__/roastListBackend';
 
 const { goto, replaceState, pageState } = vi.hoisted(() => ({
 	goto: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock('$app/state', () => ({ page: pageState }));
 function roast(overrides: Partial<RoastProfile>): RoastProfile {
 	return {
 		roast_id: 1,
+		batch_id: 'aaaaaaaa-0000-4000-8000-000000000001',
 		batch_name: 'Morning batch',
 		coffee_id: 7,
 		coffee_name: 'Ethiopia',
@@ -43,6 +45,7 @@ const roasts = [
 		roast_id: 3,
 		coffee_id: 9,
 		coffee_name: 'Guatemala',
+		batch_id: 'aaaaaaaa-0000-4000-8000-000000000002',
 		batch_name: 'Last week',
 		roast_date: '2026-09-24'
 	})
@@ -59,7 +62,7 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
 	const url = String(input);
 	if (url.startsWith('/api/roast-chart-settings')) return json({ settings: null });
 	if (url.startsWith('/api/roast-chart-data')) return json({ series: [], events: [] });
-	if (url.startsWith('/api/roast-profiles')) return json({ data: roasts });
+	if (url.startsWith('/api/roast-profiles')) return roastListResponse(roasts, url);
 	return json({ data: [] });
 });
 
@@ -71,8 +74,7 @@ function renderPage() {
 				user: { id: 'member-1', email: 'member@example.com' },
 				role: 'member',
 				ppiAccess: false
-			},
-			initialRoasts: Promise.resolve({ data: { data: roasts }, error: null })
+			}
 		}
 	} as never);
 }
@@ -246,7 +248,7 @@ describe('roast page layout', () => {
 					return json({ success: true });
 				}
 				if (url.startsWith('/api/roast-profiles') && cleared) {
-					return json({ data: [roasts[0], clearedRoast, roasts[2]] });
+					return roastListResponse([roasts[0], clearedRoast, roasts[2]], url);
 				}
 				return fetchMock(input);
 			})

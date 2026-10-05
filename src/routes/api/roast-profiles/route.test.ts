@@ -25,7 +25,17 @@ const mutationMocks = vi.hoisted(() => ({
 
 const parchmentMocks = vi.hoisted(() => ({
 	createParchmentServerClient: vi.fn(),
-	fetchParchmentRoasts: vi.fn()
+	fetchParchmentRoastList: vi.fn(),
+	fetchParchmentRoastPage: vi.fn(),
+	ParchmentRoastListError: class ParchmentRoastListError extends Error {
+		constructor(
+			public status: number,
+			public code: string,
+			message: string
+		) {
+			super(message);
+		}
+	}
 }));
 
 const principalMocks = vi.hoisted(() => ({
@@ -43,7 +53,10 @@ vi.mock('$lib/server/parchmentRoastMutations', () => ({
 }));
 
 vi.mock('$lib/server/parchmentRoasts', () => ({
-	fetchParchmentRoasts: parchmentMocks.fetchParchmentRoasts
+	fetchParchmentRoastList: parchmentMocks.fetchParchmentRoastList,
+	fetchParchmentRoastPage: parchmentMocks.fetchParchmentRoastPage,
+	ParchmentRoastListError: parchmentMocks.ParchmentRoastListError,
+	ROAST_PAGE_LIMIT: 200
 }));
 
 vi.mock('$lib/server/principal', async (importOriginal) => ({
@@ -109,45 +122,180 @@ describe('/api/roast-profiles thin Parchment adapter', () => {
 		principalMocks.isTrustedMutationRequest.mockReturnValue(true);
 	});
 
-	it('lists every owner roast from the session Parchment client', async () => {
-		parchmentMocks.fetchParchmentRoasts.mockResolvedValue([profile]);
+	const BATCH = 'aaaaaaaa-0000-4000-8000-000000000001';
+	const totals = { roasts: 87, batches: 59, average_loss_percent: 15.289 };
+	const get = (query = '') =>
+		GET(makeEvent({ url: `https://app.test/api/roast-profiles${query}` }) as never);
+
+	it('lists every owner roast from the session Parchment client when no page is named', async () => {
+		parchmentMocks.fetchParchmentRoastList.mockResolvedValue({ data: [profile], totals });
 		const event = makeEvent();
 
 		const response = await GET(event as never);
 
 		expect(response.status).toBe(200);
-		expect(await response.json()).toEqual({ data: [profile] });
+		expect(await response.json()).toEqual({ data: [profile], totals });
 		expect(parchmentMocks.createParchmentServerClient).toHaveBeenCalledWith(event, {
 			mode: 'session'
 		});
-		expect(parchmentMocks.fetchParchmentRoasts).toHaveBeenCalledWith({ kind: 'session-client' });
+		expect(parchmentMocks.fetchParchmentRoastList).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			{}
+		);
+		expect(parchmentMocks.fetchParchmentRoastPage).not.toHaveBeenCalled();
 	});
 
 	it("forwards ?coffee_id= so the list holds one portfolio coffee's roasts", async () => {
-		parchmentMocks.fetchParchmentRoasts.mockResolvedValue([profile]);
+		parchmentMocks.fetchParchmentRoastList.mockResolvedValue({ data: [profile], totals });
 
-		const response = await GET(
-			makeEvent({ url: 'https://app.test/api/roast-profiles?coffee_id=7' }) as never
-		);
+		const response = await get('?coffee_id=7');
 
 		expect(response.status).toBe(200);
-		expect(await response.json()).toEqual({ data: [profile] });
-		expect(parchmentMocks.fetchParchmentRoasts).toHaveBeenCalledWith(
+		expect(await response.json()).toEqual({ data: [profile], totals });
+		expect(parchmentMocks.fetchParchmentRoastList).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			{ coffeeId: 7 }
 		);
 	});
 
-	it.each(['0', '-3', '7.5', 'abc', ''])(
+	it('asks Parchment for one page, with every filter, and returns its totals', async () => {
+		parchmentMocks.fetchParchmentRoastPage.mockResolvedValue({ data: [profile], totals });
+
+		const response = await get(
+			`?coffee_id=7&batch_id=${BATCH}&date_start=2026-09-01&date_end=2026-09-30` +
+				'&q=%20guji%20&is_wholesale=false&limit=50&offset=100'
+		);
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ data: [profile], totals });
+		expect(parchmentMocks.fetchParchmentRoastPage).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			{
+				coffeeId: 7,
+				batchId: BATCH,
+				dateStart: '2026-09-01',
+				dateEnd: '2026-09-30',
+				q: 'guji',
+				isWholesale: false
+			},
+			{ limit: 50, offset: 100 }
+		);
+		// A page is one request: the route does not read every roast to answer it.
+		expect(parchmentMocks.fetchParchmentRoastList).not.toHaveBeenCalled();
+	});
+
+	it('starts a page at the first roast when no offset is given', async () => {
+		parchmentMocks.fetchParchmentRoastPage.mockResolvedValue({ data: [], totals });
+
+		await get('?limit=50&is_wholesale=true');
+
+		expect(parchmentMocks.fetchParchmentRoastPage).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			{ isWholesale: true },
+			{ limit: 50, offset: 0 }
+		);
+	});
+
+	it('reads one roast by its number and one batch by its ID', async () => {
+		parchmentMocks.fetchParchmentRoastList.mockResolvedValue({ data: [profile], totals });
+
+		await get('?roast_id=41');
+		await get(`?batch_id=${BATCH.toUpperCase()}`);
+
+		expect(parchmentMocks.fetchParchmentRoastList).toHaveBeenNthCalledWith(
+			1,
+			{ kind: 'session-client' },
+			{ roastId: 41 }
+		);
+		expect(parchmentMocks.fetchParchmentRoastList).toHaveBeenNthCalledWith(
+			2,
+			{ kind: 'session-client' },
+			{ batchId: BATCH }
+		);
+	});
+
+	it('treats a blank search as no search', async () => {
+		parchmentMocks.fetchParchmentRoastPage.mockResolvedValue({ data: [], totals });
+
+		await get('?q=%20%20&limit=50');
+
+		expect(parchmentMocks.fetchParchmentRoastPage).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			{},
+			{ limit: 50, offset: 0 }
+		);
+	});
+
+	it.each(['0', '-3', '7.5', 'abc', '', '2147483648'])(
 		'rejects ?coffee_id=%s without asking Parchment for roasts',
 		async (coffeeId) => {
-			const response = await GET(
-				makeEvent({ url: `https://app.test/api/roast-profiles?coffee_id=${coffeeId}` }) as never
-			);
+			const response = await get(`?coffee_id=${coffeeId}`);
 
 			expect(response.status).toBe(400);
 			expect(await response.json()).toEqual({ error: 'Invalid coffee id' });
-			expect(parchmentMocks.fetchParchmentRoasts).not.toHaveBeenCalled();
+			expect(parchmentMocks.fetchParchmentRoastList).not.toHaveBeenCalled();
+		}
+	);
+
+	it.each([
+		['roast_id=abc', 'Invalid roast id'],
+		['roast_id=2147483648', 'Invalid roast id'],
+		['batch_id=wednesday', 'Invalid batch id'],
+		['date_start=09/01/2026', 'Invalid date'],
+		['date_end=2026-02-30', 'Invalid date'],
+		['is_wholesale=yes', 'Invalid wholesale filter'],
+		['limit=0', 'Invalid limit'],
+		['limit=201', 'Invalid limit'],
+		['limit=fifty', 'Invalid limit'],
+		['limit=50&offset=-1', 'Invalid offset'],
+		['limit=50&offset=1.5', 'Invalid offset'],
+		['offset=50', 'An offset needs a limit']
+	])('rejects ?%s without asking Parchment for roasts', async (query, error) => {
+		const response = await get(`?${query}`);
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({ error });
+		expect(parchmentMocks.fetchParchmentRoastList).not.toHaveBeenCalled();
+		expect(parchmentMocks.fetchParchmentRoastPage).not.toHaveBeenCalled();
+	});
+
+	it('answers a search Parchment cannot use with its own code, not a failure', async () => {
+		parchmentMocks.fetchParchmentRoastPage.mockRejectedValue(
+			new parchmentMocks.ParchmentRoastListError(400, 'invalid_query', 'q is too long')
+		);
+
+		const response = await get(`?q=${'x'.repeat(101)}&limit=50`);
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({ error: 'Invalid search term', code: 'invalid_search' });
+	});
+
+	it('reports any other Parchment failure as a failure to load', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		parchmentMocks.fetchParchmentRoastPage.mockRejectedValue(
+			new parchmentMocks.ParchmentRoastListError(503, 'unavailable', 'roasts unavailable')
+		);
+		expect((await get('?q=guji&limit=50')).status).toBe(500);
+
+		// With no search sent, a 400 from Parchment is not about a search.
+		parchmentMocks.fetchParchmentRoastPage.mockRejectedValue(
+			new parchmentMocks.ParchmentRoastListError(400, 'invalid_query', 'bad query')
+		);
+		const response = await get('?limit=50');
+		expect(response.status).toBe(500);
+		expect(await response.json()).toEqual({ error: 'Failed to fetch roast profiles' });
+	});
+
+	it.each(['anonymous', 'api-key'] as const)(
+		'answers 401 to a roast list read from %s, before any filter is read',
+		async (principal) => {
+			const response = await GET(
+				makeEvent({ url: 'https://app.test/api/roast-profiles?limit=50&q=guji', principal }) as never
+			);
+
+			expect(response.status).toBe(401);
+			expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
+			expect(parchmentMocks.fetchParchmentRoastPage).not.toHaveBeenCalled();
 		}
 	);
 

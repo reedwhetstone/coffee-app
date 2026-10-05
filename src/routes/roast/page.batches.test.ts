@@ -3,6 +3,7 @@ import { get } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RoastProfile } from '$lib/types/component.types';
 import RoastPage from './+page.svelte';
+import { roastListResponse } from './__test-fixtures__/roastListBackend';
 import { eventEntries, roastData, roastEvents, temperatureEntries } from './stores';
 
 const { goto, replaceState, pageState } = vi.hoisted(() => ({
@@ -96,7 +97,7 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
 		listed = listed.filter((entry) => entry.batch_id !== batchId);
 		return json({ success: true, id: batchId, roastIds: removed.map((entry) => entry.roast_id) });
 	}
-	if (url.startsWith('/api/roast-profiles')) return json({ data: listed });
+	if (url.startsWith('/api/roast-profiles')) return roastListResponse(listed, url);
 	return json({ data: [] });
 });
 
@@ -111,8 +112,7 @@ function renderPage(initial = roasts) {
 				user: { id: 'member-1', email: 'member@example.com' },
 				role: 'member',
 				ppiAccess: false
-			},
-			initialRoasts: Promise.resolve({ data: { data: initial }, error: null })
+			}
 		}
 	} as never);
 }
@@ -301,7 +301,7 @@ describe('deleting a batch', () => {
 
 		await chooseFromMore('Delete batch');
 
-		expect(confirmMock).toHaveBeenCalledOnce();
+		await waitFor(() => expect(confirmMock).toHaveBeenCalledOnce());
 		expect(confirmMock).toHaveBeenCalledWith(
 			'Delete the batch “Wednesday roast” from Sep 24, 2026? This removes its 2 roasts and everything recorded for them, and cannot be undone. Sales recorded against the batch are kept.'
 		);
@@ -335,6 +335,7 @@ describe('deleting a batch', () => {
 
 		await chooseFromMore('Delete batch');
 
+		await waitFor(() => expect(confirmMock).toHaveBeenCalledOnce());
 		expect(confirmMock.mock.calls[0][0]).toContain(
 			'“Wednesday roast” from Oct 1, 2026? This removes its 2 roasts'
 		);

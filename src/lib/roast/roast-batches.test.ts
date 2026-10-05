@@ -6,8 +6,6 @@ import {
 	batchSaleHref,
 	batchSpanLabel,
 	deleteBatchConfirmation,
-	filterBatchesByCoffee,
-	filterBatchesById,
 	groupRoastsByBatch,
 	logSaleLink,
 	parseBatchId,
@@ -224,32 +222,23 @@ describe('the roast list’s ?batch= filter', () => {
 		}
 	);
 
-	it('keeps only the named batch, and not the other batch with its name', () => {
-		const batches = groupRoastsByBatch(roasts);
-
-		expect(filterBatchesById(batches, SEP_24).map((batch) => batch.id)).toEqual([SEP_24]);
-		expect(filterBatchesById(batches, null)).toHaveLength(4);
-		expect(filterBatchesById(batches, 'aaaaaaaa-0000-4000-8000-00000000ffff')).toEqual([]);
-	});
-
-	it('narrows to one coffee without changing what the batch is called or dated', () => {
-		const narrowed = filterBatchesByCoffee(groupRoastsByBatch(roasts), 101);
-
-		expect(narrowed.map((batch) => [batch.id, batch.roasts.map((r) => r.roast_id)])).toEqual([
-			[OCT_1, [4531]],
-			[GUJI, [4529]],
-			[SEP_24, [4521]]
-		]);
-		expect(batchLabel(narrowed[0], 2026)).toBe('Oct 1 · Wednesday roast');
-		expect(filterBatchesByCoffee(groupRoastsByBatch(roasts), 999)).toEqual([]);
-		expect(filterBatchesByCoffee(groupRoastsByBatch(roasts), null)).toHaveLength(4);
-	});
-
 	it('links back to the list as it was narrowed', () => {
 		expect(roastListHref()).toBe('/roast');
 		expect(roastListHref({ coffee: 101 })).toBe('/roast?coffee=101');
 		expect(roastListHref({ batch: OCT_1 })).toBe(`/roast?batch=${OCT_1}`);
 		expect(roastListHref({ coffee: 101, batch: OCT_1 })).toBe(`/roast?coffee=101&batch=${OCT_1}`);
+	});
+
+	it('carries every filter the list was narrowed by, and escapes a search', () => {
+		expect(
+			roastListHref({ coffee: 101, range: '30d', q: 'guji', market: 'wholesale' })
+		).toBe('/roast?coffee=101&range=30d&q=guji&market=wholesale');
+		expect(roastListHref({ from: '2026-09-01', to: '2026-09-30', q: 'drop & rest #2' })).toBe(
+			'/roast?from=2026-09-01&to=2026-09-30&q=drop%20%26%20rest%20%232'
+		);
+		expect(roastListHref({ coffee: null, batch: null, range: null, q: '', market: null })).toBe(
+			'/roast'
+		);
 	});
 
 	it('reads a batch ID only when it is one', () => {
@@ -283,7 +272,8 @@ describe('"Log sale" links', () => {
 	});
 
 	it('fills in the coffee when the list is narrowed to one', () => {
-		const narrowed = filterBatchesByCoffee(batches, 102);
+		// Narrowed to one coffee, the list holds only that coffee's roasts of the batch.
+		const narrowed = groupRoastsByBatch(roasts.filter((roast) => roast.coffee_id === 102));
 
 		expect(batchSaleHref(narrowed[0])).toBe(`/profit?modal=new&coffee=102&batch=${OCT_1}`);
 	});

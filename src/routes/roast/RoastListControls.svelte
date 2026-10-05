@@ -154,7 +154,7 @@
 
 		{#if hasRoastListFilters(filters)}
 			<button type="button" onclick={clearFilters} class="text-sm text-link hover:text-accent">
-				Clear filters
+				Clear all
 			</button>
 		{/if}
 	</div>

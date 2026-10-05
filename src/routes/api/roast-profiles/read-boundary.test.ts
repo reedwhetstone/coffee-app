@@ -14,7 +14,8 @@ describe('/api/roast-profiles Parchment read boundary', () => {
 		const pageLoaderSource = existsSync(pageLoaderPath) ? readFileSync(pageLoaderPath, 'utf8') : '';
 		const parchmentSource = readFileSync(resolve('src/lib/server/parchmentRoasts.ts'), 'utf8');
 
-		expect(getHandler).toContain('fetchParchmentRoasts');
+		expect(getHandler).toContain('fetchParchmentRoastPage');
+		expect(getHandler).toContain('fetchParchmentRoastList');
 		expect(getHandler).not.toContain('supabase');
 		expect(getHandler).not.toContain(".from('roast_profiles')");
 		expect(pageLoaderSource).not.toContain(".from('roast_profiles')");

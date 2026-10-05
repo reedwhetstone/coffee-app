@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RoastProfile } from '$lib/types/component.types';
 import RoastPage from './+page.svelte';
+import { roastListRequests, roastListResponse } from './__test-fixtures__/roastListBackend';
 
 const { goto, replaceState, pageState } = vi.hoisted(() => ({
 	goto: vi.fn(),
@@ -17,9 +18,14 @@ vi.mock('$app/navigation', () => ({
 }));
 vi.mock('$app/state', () => ({ page: pageState }));
 
+const OCT_1 = 'aaaaaaaa-0000-4000-8000-000000000001';
+const SEP_27 = 'aaaaaaaa-0000-4000-8000-000000000002';
+const SEP_20 = 'aaaaaaaa-0000-4000-8000-000000000003';
+
 function roast(overrides: Partial<RoastProfile>): RoastProfile {
 	return {
 		roast_id: 1,
+		batch_id: OCT_1,
 		batch_name: 'Wednesday roast',
 		coffee_id: 101,
 		coffee_name: 'Ethiopia Yirgacheffe Wush Wush',
@@ -42,6 +48,7 @@ const roasts = [
 	roast({ roast_id: 4530, coffee_id: 102, coffee_name: 'Colombia Sierra Nevada' }),
 	roast({
 		roast_id: 4529,
+		batch_id: SEP_27,
 		batch_name: 'Guji drop test',
 		roast_date: '2026-09-27',
 		weight_loss_percent: 12
@@ -50,6 +57,7 @@ const roasts = [
 		roast_id: 4520,
 		coffee_id: 103,
 		coffee_name: 'Kenya Nyeri',
+		batch_id: SEP_20,
 		batch_name: 'Kenya sample',
 		roast_date: '2026-09-20'
 	})
@@ -66,7 +74,7 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
 	const url = String(input);
 	if (url.startsWith('/api/roast-chart-settings')) return json({ settings: null });
 	if (url.startsWith('/api/roast-chart-data')) return json({ series: [], events: [] });
-	if (url.startsWith('/api/roast-profiles')) return json({ data: roasts });
+	if (url.startsWith('/api/roast-profiles')) return roastListResponse(roasts, url);
 	return json({ data: [] });
 });
 
@@ -78,8 +86,7 @@ function renderPage() {
 				user: { id: 'member-1', email: 'member@example.com' },
 				role: 'member',
 				ppiAccess: false
-			},
-			initialRoasts: Promise.resolve({ data: { data: roasts }, error: null })
+			}
 		}
 	} as never);
 }
@@ -129,8 +136,8 @@ describe('the roast list opened for one coffee', () => {
 
 		const clear = screen.getByRole('button', { name: 'Show roasts of every coffee' });
 		expect(clear.parentElement).toHaveTextContent('Ethiopia Yirgacheffe Wush Wush');
-		// Reading the link reloads nothing and asks for no narrower list.
-		expect(fetchMock.mock.calls.some(([input]) => String(input).includes('coffee_id'))).toBe(false);
+		// The coffee narrows the list in the request, not in the browser.
+		expect(roastListRequests(fetchMock)[0].get('coffee_id')).toBe('101');
 	});
 
 	it('removes the coffee from the address when the chip is removed', async () => {
