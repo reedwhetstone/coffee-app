@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/svelte';
+import { fireEvent, render, screen } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import MobileAppShell from './MobileAppShell.svelte';
+import { catalogFilterPanel } from '$lib/stores/catalogFilterPanel.svelte';
 
 const { goto, pageState } = vi.hoisted(() => ({
 	goto: vi.fn(),
@@ -120,5 +121,17 @@ describe('MobileAppShell actions launcher', () => {
 		render(MobileAppShell, { data: auth('viewer', false) });
 
 		expect(screen.getByLabelText('Open filters')).toBeTruthy();
+	});
+
+	it("opens the catalog's own filter panel from the catalog", async () => {
+		catalogFilterPanel.open = false;
+		pageState.url = new URL('http://localhost/catalog');
+		pageState.data = {};
+		render(MobileAppShell, { data: auth('viewer', false) });
+
+		await fireEvent.click(screen.getByLabelText('Open filters'));
+
+		expect(catalogFilterPanel.open).toBe(true);
+		expect(screen.queryByRole('dialog')).toBeNull();
 	});
 });

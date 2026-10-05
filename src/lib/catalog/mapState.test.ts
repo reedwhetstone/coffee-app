@@ -119,6 +119,7 @@ describe('catalog map BFF request state', () => {
 		expect(params.get('projection')).toBe('locations');
 		expect(params.get('lens')).toBe('catalog');
 		expect(params.get('place_id')).toBe(placeId);
+		expect(params.get('stocked')).toBe('true');
 		expect(params.has('sortField')).toBe(false);
 		expect(params.has('page')).toBe(false);
 
@@ -128,5 +129,20 @@ describe('catalog map BFF request state', () => {
 			true
 		);
 		expect(entitledParams.get('lens')).toBe('elevation');
+	});
+
+	it('plots out-of-stock coffees too when the list includes them', () => {
+		const catalogState = createDefaultCatalogUrlState();
+		catalogState.includeUnstocked = true;
+
+		const params = buildCatalogMapRequestParams(catalogState, {
+			view: 'map',
+			center: [0, 0],
+			zoom: 3,
+			bbox: null,
+			placeId: null
+		});
+
+		expect(params.getAll('stocked')).toEqual(['all']);
 	});
 });

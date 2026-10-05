@@ -502,6 +502,221 @@ describe('/catalog page load', () => {
 		);
 	});
 
+	it('keeps the price range for a signed-in free account and still strips its score range', async () => {
+		const result = (await load(
+			makeLoadInput(
+				'viewer',
+				{ access_token: 'cookie-token' } as Session | null,
+				'https://app.test/catalog?price_per_lb_min=8&price_per_lb_max=12&score_value_min=86'
+			)
+		)) as {
+			initialCatalogState: { filters: Record<string, unknown> };
+			catalogAccess: { canUsePriceRanges: boolean; canUsePriceScoreRanges: boolean };
+		};
+
+		expect(result.catalogAccess).toMatchObject({
+			canUsePriceRanges: true,
+			canUsePriceScoreRanges: false
+		});
+		expect(result.initialCatalogState.filters).toEqual({ cost_lb: { min: '8', max: '12' } });
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.objectContaining({ pricePerLbMin: 8, pricePerLbMax: 12 })
+		);
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.not.objectContaining({ scoreValueMin: 86 })
+		);
+	});
+
+	it('strips the price range for anonymous visitors', async () => {
+		const result = (await load(
+			makeLoadInput('viewer', null, 'https://app.test/catalog?price_per_lb_max=8&country=Kenya')
+		)) as {
+			initialCatalogState: { filters: Record<string, unknown> };
+			catalogAccess: { canUsePriceRanges: boolean };
+		};
+
+		expect(result.catalogAccess.canUsePriceRanges).toBe(false);
+		expect(result.initialCatalogState.filters).toEqual({ country: ['Kenya'] });
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.not.objectContaining({ pricePerLbMax: 8 })
+		);
+	});
+
+	it('strips the standardized variety, species and drying filters for free accounts and passes them for members', async () => {
+		const url =
+			'https://app.test/catalog?variety_code=bourbon&variety_code=gesha&species_code=arabica&drying_method_code=raised_bed&country=Kenya';
+
+		const viewer = (await load(
+			makeLoadInput('viewer', { access_token: 'cookie-token' } as Session | null, url)
+		)) as {
+			initialCatalogState: { filters: Record<string, unknown> };
+			catalogAccessNotice: { deniedParams: string[] } | null;
+		};
+		expect(viewer.initialCatalogState.filters).toEqual({ country: ['Kenya'] });
+		expect(viewer.catalogAccessNotice?.deniedParams).toEqual(
+			expect.arrayContaining(['variety_code', 'species_code', 'drying_method_code'])
+		);
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.not.objectContaining({ varietyCode: expect.anything() })
+		);
+
+		const member = (await load(
+			makeLoadInput('member', { access_token: 'cookie-token' } as Session | null, url)
+		)) as { initialCatalogState: { filters: Record<string, unknown> } };
+		expect(member.initialCatalogState.filters).toEqual({
+			country: ['Kenya'],
+			variety_code: ['bourbon', 'gesha'],
+			species_code: ['arabica'],
+			drying_method_code: ['raised_bed']
+		});
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				varietyCode: ['bourbon', 'gesha'],
+				speciesCode: ['arabica'],
+				dryingMethodCode: ['raised_bed']
+			})
+		);
+	});
+
+	it('shows the catalog without a variety code Parchment does not recognize, and says so', async () => {
+		mockCatalogList
+			.mockResolvedValueOnce({
+				data: undefined,
+				error: { error: { code: 'invalid_query', message: 'Unknown varietyCode "not_a_variety".' } }
+			})
+			.mockResolvedValueOnce({
+				data: { data: [], pagination: { total: 85 } }
+			});
+
+		const result = (await load(
+			makeLoadInput(
+				'member',
+				{ access_token: 'cookie-token' } as Session | null,
+				'https://app.test/catalog?variety_code=not_a_variety&country=Kenya'
+			)
+		)) as {
+			initialCatalogState: { filters: Record<string, unknown> };
+			unrecognizedCodeFilters: boolean;
+			pagination: { total: number };
+		};
+
+		expect(result.unrecognizedCodeFilters).toBe(true);
+		expect(result.initialCatalogState.filters).toEqual({ country: ['Kenya'] });
+		expect(result.pagination.total).toBe(85);
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.not.objectContaining({ varietyCode: expect.anything() })
+		);
+	});
+
+	it('keeps the recognized codes and other filters when one code in a link is not recognized', async () => {
+		mockCatalogList
+			.mockResolvedValueOnce({
+				data: undefined,
+				error: {
+					error: {
+						code: 'invalid_query',
+						message: 'Unknown dryingMethodCode "sun_table": use a code from /v1/catalog/taxonomies'
+					}
+				}
+			})
+			.mockResolvedValueOnce({
+				data: { data: [], pagination: { total: 7 } }
+			});
+
+		const result = (await load(
+			makeLoadInput(
+				'member',
+				{ access_token: 'cookie-token' } as Session | null,
+				'https://app.test/catalog?variety_code=gesha&species_code=arabica&drying_method_code=Sun_Table&drying_method_code=raised_bed&country=Kenya'
+			)
+		)) as {
+			initialCatalogState: { filters: Record<string, unknown> };
+			unrecognizedCodeFilters: boolean;
+			pagination: { total: number };
+		};
+
+		expect(result.unrecognizedCodeFilters).toBe(true);
+		expect(result.initialCatalogState.filters).toEqual({
+			country: ['Kenya'],
+			variety_code: ['gesha'],
+			species_code: ['arabica'],
+			drying_method_code: ['raised_bed']
+		});
+		expect(result.pagination.total).toBe(7);
+		expect(mockCatalogList).toHaveBeenCalledTimes(2);
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				varietyCode: ['gesha'],
+				speciesCode: ['arabica'],
+				dryingMethodCode: ['raised_bed']
+			})
+		);
+	});
+
+	it('drops unrecognized codes from each standardized filter Parchment reports in turn', async () => {
+		const unknown = (message: string) => ({
+			data: undefined,
+			error: { error: { code: 'invalid_query', message } }
+		});
+		mockCatalogList
+			.mockResolvedValueOnce(
+				unknown('Unknown varietyCode "old_variety": use a code from /v1/catalog/taxonomies')
+			)
+			.mockResolvedValueOnce(
+				unknown('Unknown speciesCode "old_species": use a code from /v1/catalog/taxonomies')
+			)
+			.mockResolvedValueOnce({
+				data: { data: [], pagination: { total: 3 } }
+			});
+
+		const result = (await load(
+			makeLoadInput(
+				'member',
+				{ access_token: 'cookie-token' } as Session | null,
+				'https://app.test/catalog?variety_code=old_variety&species_code=old_species&drying_method_code=patio'
+			)
+		)) as {
+			initialCatalogState: { filters: Record<string, unknown> };
+			unrecognizedCodeFilters: boolean;
+		};
+
+		expect(result.unrecognizedCodeFilters).toBe(true);
+		expect(result.initialCatalogState.filters).toEqual({ drying_method_code: ['patio'] });
+		expect(mockCatalogList).toHaveBeenCalledTimes(3);
+	});
+
+	it('fails the page when Parchment keeps rejecting codes after every standardized filter was retried', async () => {
+		mockCatalogList.mockResolvedValue({
+			data: undefined,
+			error: {
+				error: {
+					code: 'invalid_query',
+					message: 'Unknown varietyCode "old_variety": use a code from /v1/catalog/taxonomies'
+				}
+			}
+		});
+
+		await expect(
+			load(
+				makeLoadInput(
+					'member',
+					{ access_token: 'cookie-token' } as Session | null,
+					'https://app.test/catalog?variety_code=old_variety'
+				)
+			)
+		).rejects.toThrow('Unknown varietyCode');
+		expect(mockCatalogList).toHaveBeenCalledTimes(4);
+	});
+
+	it('lists out-of-stock coffees too when the link asks for them', async () => {
+		const result = (await load(
+			makeLoadInput('viewer', null, 'https://app.test/catalog?stocked=all')
+		)) as { initialCatalogState: { includeUnstocked?: boolean } };
+
+		expect(result.initialCatalogState.includeUnstocked).toBe(true);
+		expect(mockCatalogList).toHaveBeenLastCalledWith(expect.objectContaining({ stocked: 'all' }));
+	});
+
 	it('strips premium discovery filters and sorts from viewer SSR state', async () => {
 		const result = (await load(
 			makeLoadInput(

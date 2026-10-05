@@ -290,4 +290,71 @@ describe('catalog URL state helpers', () => {
 		expect(buildCatalogShareParams(state, '/catalog').toString()).toBe('stocked_days=30');
 		expect(catalogUrlStateToSearchState(state).stockedDays).toBe(30);
 	});
+
+	it('round-trips the standardized variety, species and drying filters as repeatable codes', () => {
+		const state = parseCatalogUrlState(
+			new URL(
+				'https://app.test/catalog?variety_code=bourbon&variety_code=gesha&species_code=arabica&drying_method_code=raised_bed'
+			)
+		);
+
+		expect(state.filters).toEqual({
+			variety_code: ['bourbon', 'gesha'],
+			species_code: ['arabica'],
+			drying_method_code: ['raised_bed']
+		});
+		expect(buildCatalogShareParams(state).toString()).toBe(
+			'drying_method_code=raised_bed&variety_code=bourbon&variety_code=gesha&species_code=arabica'
+		);
+		expect(catalogUrlStateToSearchState(state)).toMatchObject({
+			varietyCodes: ['bourbon', 'gesha'],
+			speciesCodes: ['arabica'],
+			dryingMethodCodes: ['raised_bed']
+		});
+	});
+
+	it('round-trips a view that also lists out-of-stock coffees', () => {
+		const state = parseCatalogUrlState(new URL('https://app.test/catalog?stocked=all'));
+
+		expect(state.includeUnstocked).toBe(true);
+		expect(buildCatalogShareParams(state).toString()).toBe('stocked=all');
+		expect(buildCatalogRequestParams(state).get('stocked')).toBe('all');
+		expect(
+			parseCatalogUrlState(new URL('https://app.test/catalog')).includeUnstocked
+		).toBeUndefined();
+	});
+
+	it('reads a value a link repeats as one selection', () => {
+		const state = parseCatalogUrlState(
+			new URL(
+				'https://app.test/catalog?country=Kenya&country=Ethiopia&country=Kenya&source=sweet_marias&source=sweet_marias&variety_code=gesha&variety_code=gesha'
+			)
+		);
+
+		expect(state.filters).toEqual({
+			country: ['Kenya', 'Ethiopia'],
+			source: ['sweet_marias'],
+			variety_code: ['gesha']
+		});
+		expect(buildCatalogShareParams(state).toString()).toBe(
+			'country=Kenya&country=Ethiopia&source=sweet_marias&variety_code=gesha'
+		);
+	});
+
+	it('keeps every filter from an older link whose control is retired', () => {
+		const search =
+			'sortField=region&sortDirection=asc&processing=Natural&processing_confidence_min=0.8&cultivar_detail=Caturra&type=Importer&grade=SHB&appearance=EP';
+		const state = parseCatalogUrlState(new URL(`https://app.test/catalog?${search}`));
+
+		expect(state.filters).toEqual({
+			processing: 'Natural',
+			processing_confidence_min: 0.8,
+			cultivar_detail: 'Caturra',
+			type: 'Importer',
+			grade: 'SHB',
+			appearance: 'EP'
+		});
+		expect(state.sortField).toBe('region');
+		expect(buildCatalogShareParams(state).toString()).toBe(search);
+	});
 });

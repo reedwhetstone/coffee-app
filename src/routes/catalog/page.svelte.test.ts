@@ -6,6 +6,7 @@ import CatalogPage from './+page.svelte';
 import type { PageData } from './$types';
 import { createCatalogProofSummary } from '$lib/catalog/proofSummary';
 import { filterStore } from '$lib/stores/filterStore';
+import { catalogFilterPanel } from '$lib/stores/catalogFilterPanel.svelte';
 import type { UserRole } from '$lib/types/auth.types';
 
 const { goto, replaceState, pageState } = vi.hoisted(() => ({
@@ -16,6 +17,11 @@ const { goto, replaceState, pageState } = vi.hoisted(() => ({
 
 vi.mock('$app/navigation', () => ({ goto, replaceState }));
 vi.mock('$app/state', () => ({ page: pageState }));
+vi.mock('$lib/components/catalog/CatalogMapCanvas.svelte', async () => ({
+	default: (
+		await import('$lib/components/catalog/__test-fixtures__/CatalogMapCanvasHarness.svelte')
+	).default
+}));
 
 function createData(
 	overrides: Partial<PageData> & {
@@ -129,6 +135,7 @@ beforeEach(() => {
 	pageState.url = new URL('https://app.test/catalog');
 	window.history.replaceState({}, '', '/catalog');
 	filterStore.initializeForRoute('__test-reset__', []);
+	catalogFilterPanel.open = false;
 	vi.stubGlobal(
 		'fetch',
 		vi.fn(async (url: string, init?: RequestInit) => {
@@ -142,9 +149,16 @@ beforeEach(() => {
 			if (url.startsWith('/api/catalog/filters')) {
 				return new Response(
 					JSON.stringify({
-						countries: ['Colombia'],
-						processing: ['Washed'],
-						processing_base_method: ['Natural']
+						values: {
+							countries: ['Colombia'],
+							processing: ['Washed'],
+							processing_base_method: ['Natural']
+						},
+						facets: {
+							countries: [{ value: 'Colombia', count: 344 }],
+							processing: [{ value: 'Washed', count: 1235 }],
+							processing_base_method: [{ value: 'Natural', count: 533 }]
+						}
 					}),
 					{ status: 200, headers: { 'Content-Type': 'application/json' } }
 				);
@@ -883,8 +897,25 @@ describe('/catalog similar comparison controls', () => {
 	});
 });
 
-describe('/catalog process controls', () => {
-	it('hides working process facet controls for anonymous and viewer access', async () => {
+describe('/catalog filters', () => {
+	const memberAccess = {
+		canViewPublicCatalog: true,
+		canViewFullCatalog: true,
+		canViewWholesale: true,
+		canUseBasicFilters: true,
+		canUseAdvancedFilters: true,
+		canUseProcessFacets: true,
+		canUsePriceRanges: true,
+		canUsePriceScoreRanges: true,
+		canUseAdvancedSorts: true,
+		canViewPremiumFilterMetadata: true,
+		canUseSemanticSearch: true,
+		canUseBeanMatching: true,
+		canUseSavedSearches: true,
+		canExport: true
+	};
+
+	it('gives anonymous and free viewers the public process list, with the structured filters shown locked', async () => {
 		renderCatalog(
 			createData({
 				catalogAccessNotice: {
@@ -896,12 +927,41 @@ describe('/catalog process controls', () => {
 			} as unknown as Partial<PageData>)
 		);
 
-		expect(screen.getByText('Members unlock structured process filters')).toBeInTheDocument();
+		const row = document.querySelector('[data-catalog-primary-row]') as HTMLElement;
+		expect(within(row).getByLabelText('Process')).toBeInstanceOf(HTMLSelectElement);
+		expect(
+			within(row).getByText('Members filter by process method, fermentation, additives and drying.')
+		).toBeInTheDocument();
+		expect(within(row).queryByRole('group', { name: 'Process' })).not.toBeInTheDocument();
+		expect(await within(row).findByRole('option', { name: 'Washed (1,235)' })).toBeInTheDocument();
 		expect(
 			screen.getByText('Structured process filters require a member account.')
 		).toBeInTheDocument();
-		expect(screen.queryByLabelText('Base method')).not.toBeInTheDocument();
-		expect(screen.queryByText('Advanced process transparency')).not.toBeInTheDocument();
+	});
+
+	it('locks the price range for anonymous visitors and opens it to signed-in free accounts', async () => {
+		const { unmount } = renderCatalog(createData());
+		await fireEvent.click(screen.getByRole('button', { name: 'Price per lb' }));
+		expect(screen.getByText('Sign in with a free account to filter by price.')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Under $8' })).toBeDisabled();
+		unmount();
+
+		renderCatalog(
+			createData({
+				session: { access_token: 'viewer-token' },
+				role: 'viewer',
+				catalogAccess: { ...createData().catalogAccess, canUsePriceRanges: true }
+			} as unknown as Partial<PageData>)
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Price per lb' }));
+		expect(
+			screen.queryByText('Sign in with a free account to filter by price.')
+		).not.toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'Under $8' }));
+		expect(get(filterStore).filters.cost_lb).toEqual({ min: '', max: '8' });
+		expect(
+			screen.getByRole('button', { name: 'Remove filter: Price: up to $8 per lb' })
+		).toBeInTheDocument();
 	});
 
 	it('explains when viewer-tier premium discovery filters were not applied', () => {
@@ -925,51 +985,147 @@ describe('/catalog process controls', () => {
 		).toBeInTheDocument();
 	});
 
-	it('enables process facet controls for member access', async () => {
+	it('gives members the structured process chips with counts in place of the public list', async () => {
 		renderCatalog(
 			createData({
 				session: { access_token: 'member-token' },
 				role: 'member',
-				catalogAccess: {
-					canViewPublicCatalog: true,
-					canViewFullCatalog: true,
-					canViewWholesale: true,
-					canUseBasicFilters: true,
-					canUseAdvancedFilters: true,
-					canUseProcessFacets: true,
-					canUsePriceScoreRanges: true,
-					canUseAdvancedSorts: true,
-					canViewPremiumFilterMetadata: true,
-					canUseSemanticSearch: true,
-					canUseBeanMatching: true,
-					canUseSavedSearches: true,
-					canExport: true
+				catalogAccess: memberAccess
+			} as unknown as Partial<PageData>)
+		);
+
+		const row = document.querySelector('[data-catalog-primary-row]') as HTMLElement;
+		const chips = within(row).getByRole('group', { name: 'Process' });
+		const natural = await within(chips).findByRole('button', { name: 'Natural 533' });
+		expect(within(row).queryByLabelText('Process')).not.toBeInTheDocument();
+		expect(row.querySelector('[data-catalog-lock]')).toBeNull();
+
+		await fireEvent.click(natural);
+		expect(get(filterStore).filters.processing_base_method).toBe('Natural');
+		expect(natural).toHaveAttribute('aria-pressed', 'true');
+		expect(
+			screen.getByRole('button', { name: 'Remove filter: Process: Natural' })
+		).toBeInTheDocument();
+	});
+
+	it('opens one filter panel from the row, with each section locked or open by access level', async () => {
+		// The panel slides in; the test DOM has no Web Animations API.
+		Object.defineProperty(HTMLElement.prototype, 'animate', {
+			configurable: true,
+			value: vi.fn(() => ({ finished: Promise.resolve(), cancel: vi.fn(), play: vi.fn() }))
+		});
+		const { unmount } = renderCatalog(createData());
+		await fireEvent.click(screen.getByRole('button', { name: /^All filters/ }));
+		let panel = document.querySelector('[data-catalog-filter-panel]') as HTMLElement;
+		expect(
+			[...panel.querySelectorAll('summary')].map((summary) => summary.textContent?.trim())
+		).toEqual([
+			'Origin and supplier',
+			'Process',
+			'Variety',
+			'Freshness',
+			'Elevation and cup score'
+		]);
+		expect(panel.querySelectorAll('[data-catalog-lock]')).toHaveLength(6);
+		expect(within(panel).getByLabelText('Hobbyist suppliers only')).toBeEnabled();
+		expect(within(panel).getByLabelText('Wholesale suppliers only')).toBeDisabled();
+		expect(within(panel).getByLabelText('Lowest elevation')).toBeDisabled();
+		expect(within(panel).getByLabelText('Lowest score')).toBeDisabled();
+		unmount();
+		catalogFilterPanel.open = false;
+
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' },
+				role: 'member',
+				catalogAccess: memberAccess
+			} as unknown as Partial<PageData>)
+		);
+		await fireEvent.click(screen.getByRole('button', { name: /^All filters/ }));
+		panel = document.querySelector('[data-catalog-filter-panel]') as HTMLElement;
+		expect(panel.querySelectorAll('[data-catalog-lock]')).toHaveLength(0);
+		expect(within(panel).getByLabelText('Wholesale suppliers only')).toBeEnabled();
+		expect(within(panel).getByLabelText('Lowest elevation')).toBeEnabled();
+		expect(within(panel).getByRole('group', { name: 'Drying' })).toBeInTheDocument();
+		expect(within(panel).getByRole('searchbox', { name: 'Variety' })).toBeInTheDocument();
+	});
+
+	it('keeps a section the viewer opened open when the filters or counts change', async () => {
+		Object.defineProperty(HTMLElement.prototype, 'animate', {
+			configurable: true,
+			value: vi.fn(() => ({ finished: Promise.resolve(), cancel: vi.fn(), play: vi.fn() }))
+		});
+		renderCatalog(createData());
+		await fireEvent.click(screen.getByRole('button', { name: /^All filters/ }));
+		const panel = document.querySelector('[data-catalog-filter-panel]') as HTMLElement;
+		const section = (title: string) =>
+			[...panel.querySelectorAll('details')].find(
+				(details) => details.querySelector('summary')?.textContent?.trim() === title
+			) as HTMLDetailsElement;
+
+		expect(section('Origin and supplier').open).toBe(true);
+		expect(section('Freshness').open).toBe(false);
+
+		section('Freshness').open = true;
+		await fireEvent(section('Freshness'), new Event('toggle'));
+		filterStore.setFilter('region', 'Huila');
+		await waitFor(() =>
+			expect(
+				screen.getByRole('button', { name: 'Remove filter: Region: Huila' })
+			).toBeInTheDocument()
+		);
+
+		expect(section('Freshness').open).toBe(true);
+	});
+
+	it('lists every active filter as a removable chip and counts the ones set in the panel', async () => {
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' },
+				role: 'member',
+				catalogAccess: memberAccess,
+				initialCatalogState: {
+					...createData().initialCatalogState,
+					showWholesale: true,
+					filters: { country: ['Kenya'], grade: 'AA', stocked_days: '30' }
 				}
 			} as unknown as Partial<PageData>)
 		);
 
-		expect(screen.getByText('Advanced process transparency')).toBeInTheDocument();
-		expect(screen.getByLabelText('Base method')).toBeInTheDocument();
-		expect(screen.getByLabelText('Fermentation')).toBeInTheDocument();
-		expect(screen.getByLabelText('Confidence')).toBeInTheDocument();
-		expect(screen.queryByText('Members unlock structured process filters')).not.toBeInTheDocument();
+		const active = screen.getByLabelText('Active filters');
+		expect(
+			within(active)
+				.getAllByRole('listitem')
+				.map((item) => item.textContent?.trim())
+		).toEqual(['Grade text: AA', 'Origin: Kenya', 'Stocked in the last 30 days']);
+		expect(screen.getByRole('button', { name: /All filters/ })).toHaveTextContent('2');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Remove filter: Grade text: AA' }));
+		expect(get(filterStore).filters).toEqual({ country: ['Kenya'], stocked_days: '30' });
+
+		await fireEvent.click(within(active).getByRole('button', { name: 'Clear all' }));
+		expect(get(filterStore).filters).toEqual({});
+		expect(screen.queryByLabelText('Active filters')).not.toBeInTheDocument();
 	});
 
-	it('hides disconnected process controls in tracked-only mode', () => {
+	it('says so when a link names a variety, species or drying method the catalog does not know', () => {
+		renderCatalog(createData({ unrecognizedCodeFilters: true } as unknown as Partial<PageData>));
+
+		expect(screen.getByText('A filter in this link was not applied')).toBeInTheDocument();
+	});
+
+	it('leaves the filters out of the tracked-only view', () => {
 		renderCatalog(
 			createData({
 				session: { access_token: 'member-token' },
 				role: 'member',
 				trackedOnly: true,
-				catalogAccess: {
-					...createData().catalogAccess,
-					canUseProcessFacets: true
-				}
+				catalogAccess: memberAccess
 			} as unknown as Partial<PageData>)
 		);
 
-		expect(screen.queryByText('Advanced process transparency')).not.toBeInTheDocument();
-		expect(screen.queryByText('Members unlock structured process filters')).not.toBeInTheDocument();
+		expect(document.querySelector('[data-catalog-primary-row]')).toBeNull();
+		expect(screen.queryByRole('button', { name: /^All filters/ })).not.toBeInTheDocument();
 	});
 
 	it('gives an empty tracked-only view one honest path back to the catalog', () => {
@@ -1060,5 +1216,25 @@ describe('/catalog map navigation', () => {
 		const [nextUrl] = replaceState.mock.calls[0] as [URL, unknown];
 		expect(nextUrl.searchParams.get('country')).toBe('Ethiopia');
 		expect(nextUrl.searchParams.get('view')).toBe('map');
+	});
+
+	it('asks the map for out-of-stock coffees too once "In stock only" is turned off', async () => {
+		const mapStockScopes: (string | null)[] = [];
+		const respond = vi.mocked(fetch).getMockImplementation()!;
+		vi.mocked(fetch).mockImplementation((input, init) => {
+			const url = String(input);
+			if (!url.startsWith('/api/catalog/map?')) return respond(input, init);
+			mapStockScopes.push(new URLSearchParams(url.slice(url.indexOf('?'))).get('stocked'));
+			// The request is what matters here; the map never gets an answer.
+			return new Promise<Response>(() => {});
+		});
+
+		renderCatalog(createData());
+		await fireEvent.click(screen.getByRole('tab', { name: 'Map' }));
+		await waitFor(() => expect(mapStockScopes).toEqual(['true']));
+
+		await fireEvent.click(screen.getByLabelText('In stock only'));
+
+		await waitFor(() => expect(mapStockScopes.at(-1)).toBe('all'));
 	});
 });

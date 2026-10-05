@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LeftSidebar from './LeftSidebar.svelte';
+import { catalogFilterPanel } from '$lib/stores/catalogFilterPanel.svelte';
 
 const { goto, pageState, filterState } = vi.hoisted(() => {
 	type CurrentFilterState = {
@@ -96,6 +97,7 @@ describe('LeftSidebar', () => {
 		);
 		pageState.url = new URL('http://localhost/catalog');
 		pageState.data = {};
+		catalogFilterPanel.open = false;
 		filterState.set({
 			routeId: '/catalog',
 			showWholesale: true,
@@ -127,6 +129,19 @@ describe('LeftSidebar', () => {
 		expect(screen.getAllByLabelText('Main navigation menu')).toHaveLength(1);
 	});
 
+	it("opens the catalog's own filter panel from the catalog, not the shell's", async () => {
+		render(LeftSidebar, { data: memberData });
+
+		const actionBar = screen.getByLabelText('Desktop action bar');
+		const filterTrigger = within(actionBar).getByRole('button', { name: 'Open filters' });
+		expect(filterTrigger).toHaveAttribute('aria-haspopup', 'dialog');
+		await fireEvent.click(filterTrigger);
+
+		expect(catalogFilterPanel.open).toBe(true);
+		expect(screen.queryByLabelText('Filters menu')).toBeNull();
+		expect(document.getElementById('desktop-shell-panel')).toBeNull();
+	});
+
 	it('shows roast filters to a member and none beside the locked roast page', () => {
 		pageState.url = new URL('http://localhost/roast');
 		pageState.data = { roastsLocked: false };
@@ -148,6 +163,8 @@ describe('LeftSidebar', () => {
 	});
 
 	it('opens one overlay filters panel without changing the action-bar width', async () => {
+		pageState.url = new URL('http://localhost/beans');
+		filterState.set({ routeId: '/beans', showWholesale: true, wholesaleOnly: false, filters: {} });
 		render(LeftSidebar, { data: memberData });
 
 		const shell = screen.getByTestId('desktop-app-shell');

@@ -171,7 +171,8 @@ export function buildCatalogMapRequestParams(
 	params.delete('limit');
 	params.delete('sortField');
 	params.delete('sortDirection');
-	params.set('stocked', 'true');
+	// The map plots the same coffees the list shows, out of stock or not.
+	params.set('stocked', catalogState.includeUnstocked ? 'all' : 'true');
 	params.set('showWholesale', catalogState.showWholesale ? 'true' : 'false');
 	params.set('wholesaleOnly', catalogState.wholesaleOnly ? 'true' : 'false');
 	params.set('zoom', CATALOG_MAP_POINT_PROJECTION_ZOOM.toString());

@@ -13,6 +13,7 @@
 	import MobileOverlayShell from '$lib/components/layout/MobileOverlayShell.svelte';
 	import { getCurrentRouteLabel } from '$lib/components/layout/appNavigation';
 	import { countActiveCatalogFilters } from '$lib/components/layout/desktopShellState';
+	import { catalogFilterPanel } from '$lib/stores/catalogFilterPanel.svelte';
 
 	let { data, compactChat = false } = $props<{
 		data: Record<string, unknown>;
@@ -107,7 +108,11 @@
 			{#if showSettings}
 				<button
 					type="button"
-					onclick={() => (activeOverlay = 'settings')}
+					onclick={() => {
+						// The catalog owns its filter panel; the other routes use the shell's.
+						if (currentPath === '/catalog') catalogFilterPanel.open = true;
+						else activeOverlay = 'settings';
+					}}
 					class="relative flex h-11 w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 					aria-label="Open filters"
 				>
@@ -152,7 +157,7 @@
 	label="Filters"
 	labelledBy="filters-dialog-title"
 >
-	<Settingsbar {data} isOpen={true} onClose={closeOverlay} variant="rail" />
+	<Settingsbar isOpen={true} onClose={closeOverlay} variant="rail" />
 </MobileOverlayShell>
 
 <MobileOverlayShell

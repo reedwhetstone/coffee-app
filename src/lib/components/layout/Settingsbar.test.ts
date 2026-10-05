@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/svelte';
+import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Settingsbar from './Settingsbar.svelte';
 
@@ -6,11 +6,7 @@ type SettingsbarStoreValue = {
 	sortField: string;
 	sortDirection: string;
 	showWholesale: boolean;
-	filters: {
-		stocked_date: string;
-		stocked_days: string;
-		elevation_masl?: { min: string; max: string; includeUnknown?: boolean };
-	};
+	filters: Record<string, unknown>;
 	uniqueValues: Record<string, unknown>;
 };
 
@@ -20,10 +16,7 @@ const { afterNavigate, pageState, storeState, filterStore } = vi.hoisted(() => {
 			sortField: 'stocked_date',
 			sortDirection: 'desc',
 			showWholesale: false,
-			filters: {
-				stocked_date: '',
-				stocked_days: ''
-			},
+			filters: {},
 			uniqueValues: {}
 		} as SettingsbarStoreValue,
 		set(nextValue: SettingsbarStoreValue) {
@@ -38,21 +31,12 @@ const { afterNavigate, pageState, storeState, filterStore } = vi.hoisted(() => {
 	return {
 		afterNavigate: vi.fn(),
 		pageState: {
-			url: new URL('http://localhost/catalog')
+			url: new URL('http://localhost/beans')
 		},
 		storeState,
 		filterStore: {
 			subscribe: storeState.subscribe.bind(storeState),
-			getFilterableColumns: vi.fn(() => [
-				'name',
-				'type',
-				'grade',
-				'elevation_masl',
-				'appearance',
-				'score_value',
-				'cost_lb',
-				'stocked_date'
-			]),
+			getFilterableColumns: vi.fn(() => ['name', 'source', 'score_value', 'stocked']),
 			setFilter: vi.fn(),
 			setSortField: vi.fn(),
 			setSortDirection: vi.fn(),
@@ -74,189 +58,44 @@ vi.mock('$lib/stores/filterStore', () => ({
 	filterStore
 }));
 
-function auth(role: 'viewer' | 'member', ppiAccess = false) {
-	return { isSignedIn: true, user: null, role, ppiAccess };
-}
-
-describe('Settingsbar stocked filters', () => {
+describe('Settingsbar', () => {
 	beforeEach(() => {
-		pageState.url = new URL('http://localhost/catalog');
+		pageState.url = new URL('http://localhost/beans');
 		filterStore.getFilterableColumns.mockClear();
 		filterStore.setFilter.mockClear();
 		filterStore.setSortField.mockClear();
-		filterStore.setSortDirection.mockClear();
-		filterStore.setShowWholesale.mockClear();
 		storeState.set({
-			sortField: 'stocked_date',
-			sortDirection: 'desc',
+			sortField: '',
+			sortDirection: '',
 			showWholesale: false,
-			filters: {
-				stocked_date: '',
-				stocked_days: ''
-			},
-			uniqueValues: {}
+			filters: {},
+			uniqueValues: { sources: ['sweet_marias'] }
 		});
 	});
 
-	it('separates absolute stocked_date input from explicit stocked_days window control', async () => {
-		render(Settingsbar, {
-			data: { auth: auth('member') },
-			onClose: vi.fn()
-		});
+	it("offers the current list's own columns for sorting and filtering", async () => {
+		render(Settingsbar, { onClose: vi.fn() });
 
-		const stockedDateInput = screen.getByLabelText('Stocked Date');
-		expect(stockedDateInput).toHaveAttribute('type', 'date');
-		expect(screen.getByText('Stocked window')).toBeInTheDocument();
-		expect(screen.getByText(/Show coffees stocked on or after this date/i)).toBeInTheDocument();
+		expect(filterStore.getFilterableColumns).toHaveBeenCalledWith('/beans');
 		expect(
-			screen.getByText(/Relative filter for coffees stocked within the last N days/i)
-		).toBeInTheDocument();
+			within(screen.getByLabelText('Sort by'))
+				.getAllByRole('option')
+				.map((option) => option.textContent?.trim())
+		).toEqual(['None', 'Name', 'Source', 'Score Value', 'Stocked']);
+		expect(screen.getByLabelText('Maximum Score Value')).toBeInTheDocument();
 
-		await fireEvent.change(stockedDateInput, { target: { value: '2026-03-01' } });
-		await fireEvent.change(screen.getByLabelText('Stocked window'), {
-			target: { value: '30' }
-		});
+		await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'gesha' } });
+		expect(filterStore.setFilter).toHaveBeenCalledWith('name', 'gesha');
 
-		expect(filterStore.setFilter).toHaveBeenNthCalledWith(1, 'stocked_date', '2026-03-01');
-		expect(filterStore.setFilter).toHaveBeenNthCalledWith(2, 'stocked_days', '30');
+		await fireEvent.change(screen.getByLabelText('Stocked'), { target: { value: 'FALSE' } });
+		expect(filterStore.setFilter).toHaveBeenCalledWith('stocked', 'FALSE');
 	});
 
-	it('hides filters that the free catalog API strips while keeping basic filters and sorting', () => {
-		render(Settingsbar, { data: { auth: auth('viewer') }, onClose: vi.fn() });
+	it('carries none of the catalog-only controls, which live in the catalog filter panel', () => {
+		render(Settingsbar, { onClose: vi.fn() });
 
-		expect(screen.getByText('Home Roaster Suppliers Only')).toBeInTheDocument();
-		expect(screen.getByText('Filter out wholesale quantities')).toBeInTheDocument();
-		expect(screen.queryByLabelText('Score Value')).not.toBeInTheDocument();
-		expect(screen.queryByLabelText('Cost Lb')).not.toBeInTheDocument();
-		expect(screen.queryByLabelText('Stocked Date')).not.toBeInTheDocument();
-		expect(screen.queryByLabelText('Stocked window')).not.toBeInTheDocument();
-		expect(screen.queryByLabelText('Importer')).not.toBeInTheDocument();
+		expect(screen.queryByText('Stocked window')).not.toBeInTheDocument();
+		expect(screen.queryByText(/Suppliers Only/i)).not.toBeInTheDocument();
 		expect(screen.queryByLabelText('Elevation (MASL)')).not.toBeInTheDocument();
-		expect(screen.queryByLabelText('Appearance')).not.toBeInTheDocument();
-		expect(screen.getByLabelText('Name')).toBeInTheDocument();
-		expect(screen.getByRole('option', { name: 'Score Value' })).toBeInTheDocument();
-		expect(screen.queryByRole('option', { name: 'Importer' })).not.toBeInTheDocument();
-		expect(screen.queryByRole('option', { name: 'Elevation (MASL)' })).not.toBeInTheDocument();
-		expect(screen.queryByRole('option', { name: 'Appearance' })).not.toBeInTheDocument();
-	});
-
-	it('applies the same free catalog controls to the root catalog alias', () => {
-		pageState.url = new URL('http://localhost/');
-		render(Settingsbar, { data: { auth: auth('viewer') }, onClose: vi.fn() });
-
-		expect(screen.getByText('Home Roaster Suppliers Only')).toBeInTheDocument();
-		expect(screen.queryByLabelText('Score Value')).not.toBeInTheDocument();
-		expect(screen.queryByLabelText('Cost Lb')).not.toBeInTheDocument();
-		expect(screen.queryByLabelText('Stocked Date')).not.toBeInTheDocument();
-		expect(screen.queryByLabelText('Stocked window')).not.toBeInTheDocument();
-		expect(screen.queryByLabelText('Importer')).not.toBeInTheDocument();
-		expect(screen.queryByLabelText('Elevation (MASL)')).not.toBeInTheDocument();
-		expect(screen.queryByLabelText('Appearance')).not.toBeInTheDocument();
-		expect(screen.getByLabelText('Name')).toBeInTheDocument();
-	});
-
-	it('shows the home-roaster scope and paid range filters to member sessions', () => {
-		storeState.set({
-			...storeState.value,
-			filters: {
-				...storeState.value.filters,
-				elevation_masl: { min: '1200', max: '1900' }
-			}
-		});
-		render(Settingsbar, { data: { auth: auth('member') }, onClose: vi.fn() });
-
-		expect(screen.getByText('Home Roaster Suppliers Only')).toBeInTheDocument();
-		expect(screen.getByLabelText('Score Value')).toBeInTheDocument();
-		expect(screen.getByLabelText('Cost Lb')).toBeInTheDocument();
-		expect(screen.getByLabelText('Importer')).toBeInTheDocument();
-		expect(screen.getByLabelText('Grade')).toBeInTheDocument();
-		expect(screen.getByLabelText('Elevation (MASL)')).toHaveValue(1200);
-		expect(screen.getByLabelText('Maximum Elevation (MASL)')).toHaveValue(1900);
-		expect(screen.queryByRole('option', { name: 'Elevation (MASL)' })).not.toBeInTheDocument();
-		expect(screen.getByLabelText('Appearance')).toBeInTheDocument();
-	});
-
-	it('shows premium catalog filters to intelligence-entitled viewer sessions', () => {
-		render(Settingsbar, { data: { auth: auth('viewer', true) }, onClose: vi.fn() });
-
-		expect(screen.getByLabelText('Importer')).toBeInTheDocument();
-		expect(screen.getByLabelText('Grade')).toBeInTheDocument();
-		expect(screen.getByLabelText('Elevation (MASL)')).toBeInTheDocument();
-		expect(screen.getByLabelText('Appearance')).toBeInTheDocument();
-		expect(screen.queryByLabelText('Stocked window')).not.toBeInTheDocument();
-	});
-
-	it('writes the paid elevation range through the canonical catalog filter', async () => {
-		storeState.set({
-			...storeState.value,
-			filters: {
-				...storeState.value.filters,
-				elevation_masl: { min: '1200', max: '1900' }
-			}
-		});
-		render(Settingsbar, { data: { auth: auth('member') }, onClose: vi.fn() });
-
-		await fireEvent.input(screen.getByLabelText('Elevation (MASL)'), {
-			target: { value: '1400' }
-		});
-
-		expect(filterStore.setFilter).toHaveBeenCalledWith('elevation_masl', {
-			min: '1400',
-			max: '1900'
-		});
-
-		const includeUnknown = screen.getByRole('checkbox', {
-			name: /Include coffees with unknown elevation/i
-		});
-		expect(includeUnknown).not.toBeChecked();
-		await fireEvent.click(includeUnknown);
-		expect(filterStore.setFilter).toHaveBeenLastCalledWith('elevation_masl', {
-			min: '1200',
-			max: '1900',
-			includeUnknown: true
-		});
-	});
-
-	it('rejects inverted elevation bounds before updating the canonical filter', async () => {
-		storeState.set({
-			...storeState.value,
-			filters: {
-				...storeState.value.filters,
-				elevation_masl: { min: '1200', max: '1900' }
-			}
-		});
-		render(Settingsbar, { data: { auth: auth('member') }, onClose: vi.fn() });
-
-		await fireEvent.input(screen.getByLabelText('Elevation (MASL)'), {
-			target: { value: '2000' }
-		});
-
-		expect(filterStore.setFilter).not.toHaveBeenCalled();
-		expect(screen.getByRole('alert')).toHaveTextContent(
-			'Minimum elevation cannot exceed maximum elevation.'
-		);
-
-		await fireEvent.input(screen.getByLabelText('Maximum Elevation (MASL)'), {
-			target: { value: '2200' }
-		});
-
-		expect(filterStore.setFilter).toHaveBeenCalledWith('elevation_masl', {
-			min: '2000',
-			max: '2200'
-		});
-	});
-
-	it('turns off wholesale visibility when home-roaster suppliers only is selected', async () => {
-		storeState.set({
-			...storeState.value,
-			showWholesale: true
-		});
-		render(Settingsbar, { data: { auth: auth('viewer') }, onClose: vi.fn() });
-
-		const checkbox = screen.getByRole('checkbox', { name: /Home Roaster Suppliers Only/i });
-		expect(checkbox).not.toBeChecked();
-		await fireEvent.click(checkbox);
-
-		expect(filterStore.setShowWholesale).toHaveBeenCalledWith(false);
 	});
 });
