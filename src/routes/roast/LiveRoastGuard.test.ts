@@ -195,6 +195,19 @@ describe('LiveRoastGuard', () => {
 			expect(String(goto.mock.calls[0][0])).toBe('http://localhost/roast/compare?a=roast:1');
 		});
 
+		it('holds navigation to the plan while readings are unsaved', async () => {
+			render(LiveRoastGuard, { active: true });
+			const cancel = navigate('/roast/plan?from=roast:1');
+			expect(cancel).toHaveBeenCalledOnce();
+			await fireEvent.click(await screen.findByRole('button', { name: 'Keep roasting' }));
+			expect(goto).not.toHaveBeenCalled();
+			navigate('/roast/plan?from=roast:1');
+			await fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
+			await waitFor(() =>
+				expect(String(goto.mock.calls[0][0])).toBe('http://localhost/roast/plan?from=roast:1')
+			);
+		});
+
 		it('leaves a reload or a closed tab to the browser prompt', () => {
 			render(LiveRoastGuard, { active: true });
 

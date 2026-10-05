@@ -303,6 +303,7 @@ describe('hooks auth guard integration', () => {
 			'/roast/compare?a=roast:4531&b=roast:4507',
 			'/roast/plan',
 			'/roast/plan?from=roast:4531',
+			'/roast/plan?plan=aaaaaaaa-0000-4000-8000-000000000003',
 			'/roast/saved',
 			'/roast/4531',
 			// Not the roast list page. SvelteKit strips the data suffix before the hook runs,

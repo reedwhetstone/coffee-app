@@ -436,10 +436,13 @@ describe("an open roast's actions", () => {
 		expect(compare.tagName).toBe('A');
 	});
 
-	it('keeps the plan and sale actions for the releases that add them', () => {
+	it('opens the plan with this roast chosen and keeps the sale action for a later release', () => {
 		render(RoastProfileTabs, props({ currentRoastProfile: wushWush }));
 
-		expect(screen.queryByText('Plan next roast from this')).toBeNull();
+		expect(screen.getByRole('link', { name: 'Plan next roast from this' })).toHaveAttribute(
+			'href',
+			'/roast/plan?from=roast:4531'
+		);
 		expect(screen.queryByText('Log sale')).toBeNull();
 	});
 
@@ -453,6 +456,7 @@ describe("an open roast's actions", () => {
 
 		expect(more).toHaveAttribute('aria-expanded', 'true');
 		expect(moreItems().map((item) => item.textContent?.trim())).toEqual([
+			'Plan next roast from this',
 			'Save as reference',
 			'Edit details',
 			'Import Artisan file',
@@ -580,6 +584,7 @@ describe("an open roast's actions", () => {
 			moreItems().map((item) => [item.textContent?.trim(), !(item as HTMLButtonElement).disabled])
 		);
 		expect(enabled).toEqual({
+			'Plan next roast from this': true,
 			'Save as reference': false,
 			'Edit details': true,
 			'Import Artisan file': true,

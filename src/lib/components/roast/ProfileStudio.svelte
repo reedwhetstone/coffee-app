@@ -1,11 +1,8 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import type { components } from '@purveyors/sdk';
 	import { recordedRoasts, roastOption, type PickerRoast } from '$lib/roast/profile-picker-model';
 	import { compareHref } from '$lib/roast/compare-sides';
 	import { saveRoastAsReference } from '$lib/roast/save-reference';
 	import { trackProfileStudioActivation } from '$lib/profileStudio/analytics';
-	import ProfileGeneration from './ProfileGeneration.svelte';
 	import {
 		clearIdempotencyKey,
 		reserveIdempotencyKey,
@@ -17,8 +14,6 @@
 		enabled,
 		ownerId = null
 	}: { roasts: PickerRoast[]; enabled: boolean; ownerId?: string | null } = $props();
-	type ReferenceProfileSummary = components['schemas']['ReferenceProfileSummary'];
-	let profiles = $state<ReferenceProfileSummary[]>([]);
 	let saving = $state(false);
 	let selectedFile = $state<File | null>(null);
 	let referenceTitle = $state('Artisan reference');
@@ -30,19 +25,6 @@
 	const storage = () => (typeof sessionStorage === 'undefined' ? null : sessionStorage);
 	// Every roast with something recorded, most recent first.
 	const executedRoasts = $derived(recordedRoasts(roasts));
-
-	async function loadProfiles() {
-		if (!enabled) return;
-		error = null;
-		try {
-			const response = await fetch('/api/reference-profiles');
-			const body = await response.json();
-			if (!response.ok) throw new Error(body.error || 'Unable to load reference profiles');
-			profiles = body.data ?? [];
-		} catch (cause) {
-			error = cause instanceof Error ? cause.message : 'Unable to load reference profiles';
-		}
-	}
 
 	async function uploadReference() {
 		if (!selectedFile || saving) return;
@@ -88,7 +70,6 @@
 			notice = `${body.data.title} is saved as a reference profile, separate from executed roast history.`;
 			trackProfileStudioActivation('artisan_file_accepted');
 			trackProfileStudioActivation('reference_profile_saved');
-			await loadProfiles();
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : 'Unable to save this Artisan profile';
 		} finally {
@@ -109,15 +90,12 @@
 			notice = `${title} is saved as an immutable reference snapshot.`;
 			selectedRoastId = '';
 			trackProfileStudioActivation('reference_profile_saved');
-			await loadProfiles();
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : 'Unable to save this roast as a reference';
 		} finally {
 			saving = false;
 		}
 	}
-
-	onMount(() => void loadProfiles());
 </script>
 
 <section
@@ -228,7 +206,22 @@
 			</div>
 		</div>
 
-		<ProfileGeneration {profiles} {ownerId} onSaved={loadProfiles} />
+		<div
+			class="mt-5 flex flex-col gap-3 rounded-xl border border-line p-4 sm:flex-row sm:items-center sm:justify-between"
+		>
+			<div>
+				<h3 class="font-semibold text-ink">Plan your next roast</h3>
+				<p class="mt-1 text-sm text-muted">
+					Start from a roast or reference you liked, adjust it, and save the result as a curve to
+					follow in Artisan.
+				</p>
+			</div>
+			<a
+				href="/roast/plan"
+				class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-accent px-4 text-sm font-semibold text-ink"
+				>Plan next roast</a
+			>
+		</div>
 
 		<div
 			class="mt-5 flex flex-col gap-3 rounded-xl border border-line p-4 sm:flex-row sm:items-center sm:justify-between"

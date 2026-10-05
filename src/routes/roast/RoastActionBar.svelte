@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { tick } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { compareHref } from '$lib/roast/compare-sides';
+	import { planHref } from '$lib/roast/plan-link';
 
 	// The actions for the roast on screen. "Compare with…" is a plain link, so leaving a
 	// roast that is still recording goes through the page's live-roast guard like any
@@ -36,6 +38,12 @@
 	let menu = $state<HTMLDivElement | null>(null);
 
 	const items = $derived([
+		{
+			label: 'Plan next roast from this',
+			run: () => void goto(planHref({ type: 'roast', id: roastId })),
+			disabled: busy,
+			phoneOnly: true
+		},
 		{ label: 'Save as reference', run: onSaveReference, disabled: !hasRecording || busy },
 		{ label: 'Edit details', run: onEditDetails, disabled: false },
 		{ label: 'Import Artisan file', run: onImportArtisan, disabled: false },
@@ -45,7 +53,9 @@
 	]);
 
 	const enabledItems = () =>
-		Array.from(menu?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? []);
+		Array.from(
+			menu?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? []
+		).filter((item) => !(item.classList.contains('sm:hidden') && window.innerWidth >= 640));
 
 	async function show(focus: 'first' | 'last' = 'first') {
 		open = true;
@@ -116,6 +126,12 @@
 		</button>
 	{/if}
 
+	<a
+		href={planHref({ type: 'roast', id: roastId })}
+		class="hidden items-center justify-center rounded-md border border-line bg-surface-canvas px-4 py-2 text-sm font-semibold text-ink hover:border-accent sm:inline-flex"
+		>Plan next roast from this</a
+	>
+
 	<div class="relative" onfocusout={handleFocusOut}>
 		<button
 			bind:this={trigger}
@@ -157,7 +173,9 @@
 						type="button"
 						role="menuitem"
 						disabled={item.disabled}
-						class="block w-full px-3 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50 {item.destructive
+						class="block w-full px-3 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50 {item.phoneOnly
+							? 'sm:hidden'
+							: ''} {item.destructive
 							? 'text-danger hover:bg-danger-subtle'
 							: 'text-ink hover:bg-accent-subtle'}"
 						onclick={() => choose(item.run)}

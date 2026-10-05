@@ -1,70 +1,97 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
-import type { components } from '@purveyors/sdk';
 import ProfileGeneration from './ProfileGeneration.svelte';
 
-type Summary = components['schemas']['ReferenceProfileSummary'];
-type Chart = components['schemas']['ReferenceProfileChart'];
+vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 
-const summary = (id: string, title: string): Summary => ({
-	id,
-	title,
-	notes: null,
-	sourceClass: 'artisan_upload',
-	status: 'active',
-	currentRevisionId: `${id}-revision`,
-	createdAt: '2026-09-22T00:00:00Z',
-	updatedAt: '2026-09-22T00:00:00Z'
-});
-
-const chart = (
-	temperatureUnit: 'C' | 'F',
-	chargeTimeMilliseconds: number | null = null
-): Chart => ({
-	temperatureUnit,
-	chargeTimeMilliseconds,
+const candidate = {
+	roastId: 4531,
+	roastRevision: 'revision-4531',
+	label: 'Ethiopia · Oct 1',
+	batchName: 'Wednesday roast',
+	coffeeName: 'Ethiopia',
+	roastDate: '2026-10-01',
+	reference: {
+		profileId: 'bbbbbbbb-0000-4000-8000-000000004531',
+		revisionId: 'bbbbbbbb-1111-4000-8000-000000004531',
+		saved: false
+	}
+};
+const chart = {
+	temperatureUnit: 'F',
+	chargeTimeMilliseconds: 30000,
 	series: [
 		{
 			id: 'bt',
 			name: 'BT',
 			kind: 'bean_temperature',
-			unit: temperatureUnit,
+			unit: 'F',
 			deviceIndex: 0,
 			channel: 2,
 			points: [
-				{ timeMilliseconds: 0, value: 100 },
-				{ timeMilliseconds: 600_000, value: 200 }
+				{ timeMilliseconds: 30000, value: 100 },
+				{ timeMilliseconds: 330000, value: 200 }
 			]
 		}
 	],
 	events: []
-});
+};
+const response = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
 
-const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
-
-function deferred() {
-	let resolve!: (value: Response) => void;
-	const promise = new Promise<Response>((done) => (resolve = done));
-	return { promise, resolve };
-}
-
-function previewBody(parent: Summary, body: string, source: Chart) {
-	const input = JSON.parse(body);
-	return {
-		data: {
-			parentRevisionId: parent.currentRevisionId,
-			title: input.title,
-			changes: input.changes,
-			chart: source,
-			exportEligible: true
+function mockFetch(options: { failGenerate?: boolean; noFile?: boolean } = {}) {
+	let generateFailures = options.failGenerate ? 1 : 0;
+	const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+		if (url === '/api/reference-profiles') return response({ data: [] });
+		if (url.endsWith('/candidates'))
+			return response({
+				data: { roasts: [candidate], eligibleCount: 1, totalRoastCount: 7, ineligibleRoastCount: 6 }
+			});
+		if (url.endsWith('/chart/4531')) return response({ data: { chart } });
+		if (url.endsWith('/from-roast/preview')) {
+			if (options.noFile)
+				return response(
+					{ code: 'roast_artisan_source_unavailable', reason: 'artisan_file_not_retained' },
+					400
+				);
+			const input = JSON.parse(String(init?.body));
+			return response({
+				data: {
+					parentRevisionId: candidate.reference.revisionId,
+					title: input.title,
+					changes: input.changes,
+					chart,
+					exportEligible: true
+				}
+			});
 		}
-	};
-}
-
-async function choose(id: string) {
-	const select = screen.getByLabelText('Parent reference');
-	await fireEvent.change(select, { target: { value: id } });
+		if (url === '/api/reference-profiles/from-roast')
+			return response(
+				{
+					data: {
+						id: candidate.reference.profileId,
+						currentRevisionId: candidate.reference.revisionId
+					}
+				},
+				201
+			);
+		if (url.endsWith('/generated')) {
+			if (generateFailures--) return response({ error: 'Saving the plan failed' }, 503);
+			return response(
+				{
+					data: {
+						id: 'aaaaaaaa-0000-4000-8000-000000000009',
+						currentRevisionId: 'aaaaaaaa-1111-4000-8000-000000000009',
+						title: 'Next-batch plan'
+					}
+				},
+				201
+			);
+		}
+		throw new Error(`Unexpected ${url}`);
+	});
+	vi.stubGlobal('fetch', fetchMock);
+	return fetchMock;
 }
 
 afterEach(() => {
@@ -73,102 +100,61 @@ afterEach(() => {
 	sessionStorage.clear();
 });
 
-describe('Profile Studio planned reference', () => {
-	it('applies the Celsius bound on the first preview and ignores a late chart for an old parent', async () => {
-		const fahrenheit = summary('f', 'Fahrenheit reference');
-		const celsius = summary('c', 'Celsius reference');
-		const lateFahrenheitChart = deferred();
-		const fetchMock = vi.fn((url: string) =>
-			url.includes('/f/')
-				? lateFahrenheitChart.promise
-				: Promise.resolve(json({ data: { chart: chart('C') } }))
-		);
-		vi.stubGlobal('fetch', fetchMock);
+describe('plan editor', () => {
+	it('lists candidates newest first and counts roasts that cannot be used', async () => {
+		mockFetch();
 		render(ProfileGeneration, {
-			profiles: [fahrenheit, celsius],
-			ownerId: 'owner',
-			onSaved: vi.fn()
+			link: { kind: 'from', side: { type: 'roast', id: 4531 } },
+			ownerId: 'owner'
 		});
-
-		await choose('f');
-		await choose('c');
-		await waitFor(() => expect(screen.getByLabelText(/Change \(°C/)).toHaveAttribute('max', '10'));
-		lateFahrenheitChart.resolve(json({ data: { chart: chart('F') } }));
-		await fireEvent.input(screen.getByLabelText(/Change \(/), { target: { value: '15' } });
-		await fireEvent.click(screen.getByRole('button', { name: 'Preview changes' }));
-
-		expect(await screen.findByRole('alert')).toHaveTextContent('at most 10°C');
-		expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/preview'))).toBe(false);
+		expect(
+			await screen.findByText(/6 older roasts were imported before Artisan files were kept/)
+		).toBeInTheDocument();
+		expect(screen.getByRole('option', { name: 'Ethiopia · Oct 1' })).toBeInTheDocument();
 	});
 
-	it('sends charge-relative inputs as logger time and locks the parent while a preview is in flight', async () => {
-		const parent = summary('a', 'Charged reference');
-		const source = chart('F', 30_000);
-		const pendingPreview = deferred();
-		const fetchMock = vi.fn((url: string, _init?: RequestInit) =>
-			url.endsWith('/preview')
-				? pendingPreview.promise
-				: Promise.resolve(json({ data: { chart: source } }))
+	it('previews read-only, saves a roast reference once, and reuses it after generation fails', async () => {
+		const fetchMock = mockFetch({ failGenerate: true });
+		render(ProfileGeneration, {
+			link: { kind: 'from', side: { type: 'roast', id: 4531 } },
+			ownerId: 'owner'
+		});
+		await screen.findByRole('option', { name: 'Ethiopia · Oct 1' });
+		await fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+		await screen.findByText(/Plan preview · not saved yet/);
+		const previewCall = fetchMock.mock.calls.find(([url]) => url.endsWith('/from-roast/preview'));
+		expect(previewCall).toBeDefined();
+		const previewInput = JSON.parse(String(previewCall?.[1]?.body));
+		expect(previewInput).toMatchObject({ roastId: 4531, roastRevision: 'revision-4531' });
+		expect(previewInput.changes.temperatureAdjustments[0]).toMatchObject({
+			startMilliseconds: 30000,
+			endMilliseconds: 330000,
+			delta: 5
+		});
+		expect(fetchMock.mock.calls.some(([url]) => url === '/api/reference-profiles/from-roast')).toBe(
+			false
 		);
-		vi.stubGlobal('fetch', fetchMock);
-		render(ProfileGeneration, { profiles: [parent], ownerId: 'owner', onSaved: vi.fn() });
-
-		await choose('a');
-		await fireEvent.input(screen.getByLabelText('Start (minutes from roast start)'), {
-			target: { value: '1' }
-		});
-		await fireEvent.input(screen.getByLabelText('End (minutes from roast start)'), {
-			target: { value: '2' }
-		});
-		await fireEvent.click(screen.getByRole('button', { name: 'Preview changes' }));
-
-		await waitFor(() => expect(screen.getByLabelText('Parent reference')).toBeDisabled());
-		const previewCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/preview'));
-		const body = JSON.parse(String(previewCall?.[1]?.body));
-		expect(body.changes.temperatureAdjustments[0]).toMatchObject({
-			startMilliseconds: 90_000,
-			endMilliseconds: 150_000
-		});
-		pendingPreview.resolve(json(previewBody(parent, JSON.stringify(body), source)));
-		expect(await screen.findByText(/from 1 to 2 minutes/)).toBeInTheDocument();
-		expect(screen.getByLabelText('Parent reference')).not.toBeDisabled();
+		await fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+		expect(await screen.findByRole('alert')).toHaveTextContent('Saving the plan failed');
+		await fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+		await screen.findByRole('link', { name: 'Download for Artisan (.alog)' });
+		expect(
+			fetchMock.mock.calls.filter(([url]) => url === '/api/reference-profiles/from-roast')
+		).toHaveLength(1);
+		expect(fetchMock.mock.calls.filter(([url]) => url.endsWith('/generated'))).toHaveLength(2);
 	});
 
-	it('allows another plan from the same parent after a new preview', async () => {
-		const parent = summary('a', 'Reference');
-		const source = chart('F');
-		const onSaved = vi.fn().mockResolvedValue(undefined);
-		vi.stubGlobal(
-			'fetch',
-			vi.fn((url: string, init?: RequestInit) => {
-				if (url.endsWith('/chart')) return Promise.resolve(json({ data: { chart: source } }));
-				if (url.endsWith('/preview'))
-					return Promise.resolve(json(previewBody(parent, String(init?.body), source)));
-				return Promise.resolve(
-					json(
-						{
-							data: {
-								...summary(`plan-${Math.random()}`, 'Next-batch plan'),
-								sourceClass: 'generated_revision'
-							}
-						},
-						201
-					)
-				);
-			})
-		);
-		render(ProfileGeneration, { profiles: [parent], ownerId: 'owner', onSaved });
-
-		await choose('a');
-		await fireEvent.click(screen.getByRole('button', { name: 'Preview changes' }));
-		await fireEvent.click(await screen.findByRole('button', { name: 'Save planned reference' }));
-		await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
-		expect(screen.getByRole('button', { name: 'Save planned reference' })).toBeDisabled();
-
-		await fireEvent.input(screen.getByLabelText(/Change \(/), { target: { value: '-5' } });
-		await fireEvent.click(screen.getByRole('button', { name: 'Preview changes' }));
+	it('shows the no-file reason as a next step', async () => {
+		mockFetch({ noFile: true });
+		render(ProfileGeneration, {
+			link: { kind: 'from', side: { type: 'roast', id: 4531 } },
+			ownerId: 'owner'
+		});
+		await screen.findByRole('option', { name: 'Ethiopia · Oct 1' });
+		await fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
 		await waitFor(() =>
-			expect(screen.getByRole('button', { name: 'Save planned reference' })).not.toBeDisabled()
+			expect(screen.getByRole('status')).toHaveTextContent("Import the roast's .alog again")
 		);
+		expect(screen.queryByRole('alert')).toBeNull();
 	});
 });
