@@ -11,7 +11,7 @@ const workspace = {
 	canvasState: null,
 	createdAt: null,
 	lastAccessedAt: null,
-	resetEpoch: 0,
+	resetEpoch: 3,
 	canvasVersion: 0,
 	summaryVersion: 0,
 	nextMessageSequence: 102
@@ -43,18 +43,15 @@ describe('complete conversation restore', () => {
 			response: response()
 		});
 		const client = {
-			conversation: { workspaces: { get } },
-			raw: { GET: history }
+			conversation: { workspaces: { get, messages: { history } } }
 		} as unknown as ParchmentClient;
 		const result = await getCompleteConversationWorkspace(client, workspaceId);
 		expect(result.messages).toHaveLength(101);
 		expect(result.messages.map((turn) => turn.message_sequence)).toEqual(
 			Array.from({ length: 101 }, (_, i) => i + 1)
 		);
-		expect(history).toHaveBeenCalledWith(
-			'/v1/conversation/workspaces/{workspaceId}/messages/history',
-			{ params: { path: { workspaceId }, query: { beforeSequence: 2, messageLimit: 100 } } }
-		);
+		// The workspace's reset epoch, then the oldest sequence already loaded.
+		expect(history).toHaveBeenCalledWith(workspaceId, 3, 2, 100);
 	});
 
 	it('keeps recent turns available while the companion API route is deploying', async () => {
@@ -65,10 +62,12 @@ describe('complete conversation restore', () => {
 					get: vi.fn().mockResolvedValue({
 						data: { data: { workspace, messages: recent } },
 						response: response()
-					})
+					}),
+					messages: {
+						history: vi.fn().mockResolvedValue({ response: new Response('{}', { status: 404 }) })
+					}
 				}
-			},
-			raw: { GET: vi.fn().mockResolvedValue({ response: new Response('{}', { status: 404 }) }) }
+			}
 		} as unknown as ParchmentClient;
 		const result = await getCompleteConversationWorkspace(client, workspaceId);
 		expect(result.messages).toHaveLength(100);

@@ -119,6 +119,8 @@ export const POST: RequestHandler = async (event) => {
 			{
 				roastId,
 				roastRevision,
+				// Comparison-only chart. Parchment defaults to this basis; the SDK type requires it.
+				basis: 'chart_snapshot',
 				...(typeof body.title === 'string' && body.title.trim()
 					? { title: body.title.trim() }
 					: {}),

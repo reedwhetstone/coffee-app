@@ -7,8 +7,6 @@ import { applyBffCatalogNoStore } from '$lib/server/cacheHeaders';
 // First-party BFF for the coffee card's price-history chart. Parchment owns
 // entitlement (member, Intelligence, or scoped API key) and returns 401/403
 // itself; this route forwards the session and never caches member data.
-// Uses the raw path until coffee-app consumes the SDK release that adds
-// client.catalog.priceHistory.
 export const GET: RequestHandler = async (event) => {
 	const headers = applyBffCatalogNoStore(new Headers());
 	let id: string;
@@ -27,13 +25,10 @@ export const GET: RequestHandler = async (event) => {
 	const days = event.url.searchParams.get('days');
 	try {
 		const client = await createParchmentServerClient(event, { mode: 'session' });
-		const get = client.raw.GET as unknown as (
-			path: string,
-			options: { params: { path: { id: string }; query: Record<string, string> } }
-		) => Promise<{ data?: unknown; error?: unknown; response: Response }>;
-		const { data, error, response } = await get('/v1/catalog/{id}/price-history', {
-			params: { path: { id }, query: days ? { days } : {} }
-		});
+		const { data, error, response } = await client.catalog.priceHistory(
+			id,
+			days ? { days } : undefined
+		);
 		return jsonResponse(data ?? error ?? { error: 'Price history unavailable' }, {
 			status: response.status,
 			headers

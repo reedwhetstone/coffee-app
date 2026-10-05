@@ -112,11 +112,6 @@ export async function getConversationWorkspace(
 	};
 }
 
-type MessageHistoryPage = {
-	messages: ConversationMessage[];
-	nextBeforeSequence: number | null;
-};
-
 /** Restore older saved turns as well as the latest bounded workspace state. */
 export async function getCompleteConversationWorkspace(
 	client: ParchmentClient,
@@ -127,23 +122,16 @@ export async function getCompleteConversationWorkspace(
 
 	const allMessages = [...latest.messages];
 	let beforeSequence = latest.messages[0].message_sequence;
-	// The installed SDK's raw client forwards the same session credential. Its
-	// generated schema will include this path when the companion API ships.
-	const getHistory = client.raw.GET as unknown as (
-		path: string,
-		options: {
-			params: {
-				path: { workspaceId: string };
-				query: { beforeSequence: number; messageLimit: number };
-			};
-		}
-	) => Promise<ApiResult<{ data: MessageHistoryPage }>>;
 	while (true) {
-		const result = await getHistory('/v1/conversation/workspaces/{workspaceId}/messages/history', {
-			params: { path: { workspaceId }, query: { beforeSequence, messageLimit: 100 } }
-		});
-		// Safe deployment order: until the new API route is live, show the latest
-		// 100 turns instead of making the entire chat unavailable.
+		// Parchment binds every history page to the reset epoch of the state it extends.
+		const result = await client.conversation.workspaces.messages.history(
+			workspaceId,
+			latest.workspace.reset_epoch,
+			beforeSequence,
+			100
+		);
+		// A missing history route or workspace still shows the latest 100 turns
+		// instead of making the entire chat unavailable.
 		if (result.response.status === 404) return latest;
 		const page = unwrap(result).data;
 		allMessages.unshift(...page.messages.map(legacyMessage));
