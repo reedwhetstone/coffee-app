@@ -305,8 +305,8 @@ describe('portfolio Roasting tab', () => {
 
 	it('draws the row menu from the links it is given', async () => {
 		renderTab({
-			rowMenu: (roastId: number) => [
-				{ label: 'Plan next roast', href: `/roast/plan?from=roast:${roastId}` }
+			rowMenu: (roast: { roast_id: number }) => [
+				{ label: 'Plan next roast', href: `/roast/plan?from=roast:${roast.roast_id}` }
 			]
 		});
 

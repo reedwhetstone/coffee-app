@@ -21,7 +21,6 @@ vi.mock('$app/navigation', () => ({
 	}
 }));
 vi.mock('$app/state', () => ({ page: pageState }));
-vi.mock('$lib/components/roast/ProfileStudio.svelte', () => ({ default: vi.fn() }));
 
 const SAVED_AT = '2026-10-01T12:00:00.000Z';
 const EDITED_AT = '2026-10-01T12:05:00.000Z';

@@ -101,7 +101,7 @@ describe('roast page layout', () => {
 			scrollIntoView as unknown as typeof Element.prototype.scrollIntoView;
 	});
 
-	it('opens on the roast list, with the Studio section below it', async () => {
+	it('opens on the roast list, with no Studio section on the page', async () => {
 		const { container } = renderPage();
 
 		const title = await screen.findByRole('heading', { level: 1, name: 'Roasts' });
@@ -111,19 +111,35 @@ describe('roast page layout', () => {
 		expect(batches).toHaveLength(2);
 		for (const batch of batches) expect(batch).toHaveAttribute('aria-expanded', 'true');
 
-		const studio = container.querySelector('#profile-studio');
-		expect(studio).not.toBeNull();
 		expect(precedes(title, batches[0])).toBe(true);
-		expect(precedes(batches[batches.length - 1], studio!)).toBe(true);
-		// Comparison has its own page; what is left of the Studio section is a jump away.
-		const compareLinks = screen.getAllByRole('link', { name: 'Compare roasts' });
-		expect(precedes(compareLinks[0], batches[0])).toBe(true);
-		for (const link of compareLinks) expect(link).toHaveAttribute('href', '/roast/compare');
-		expect(screen.getByRole('link', { name: 'Saved references and plans' })).toHaveAttribute(
+		// Comparing, planning, and the saved library each have their own page, one link away.
+		const compare = screen.getByRole('link', { name: 'Compare roasts' });
+		expect(compare).toHaveAttribute('href', '/roast/compare');
+		expect(precedes(compare, batches[0])).toBe(true);
+		expect(screen.getByRole('link', { name: 'Plan next roast' })).toHaveAttribute(
 			'href',
-			'#profile-studio'
+			'/roast/plan'
 		);
+		const segments = screen.getByRole('navigation', {
+			name: 'Roasts, and saved references and plans'
+		});
+		expect(within(segments).getByRole('link', { name: 'Roasts' })).toHaveAttribute(
+			'aria-current',
+			'page'
+		);
+		const saved = within(segments).getByRole('link', { name: 'Saved references and plans' });
+		expect(saved).toHaveAttribute('href', '/roast/saved');
+		expect(saved).not.toHaveAttribute('aria-current');
+		expect(precedes(segments, batches[0])).toBe(true);
 		expect(screen.queryByRole('link', { name: 'Compare and plan' })).toBeNull();
+
+		// The Studio section is gone, with its upload, snapshot, and numbered steps.
+		expect(container.querySelector('#profile-studio')).toBeNull();
+		expect(container.querySelector('[href="#profile-studio"]')).toBeNull();
+		expect(container.textContent).not.toMatch(/profile studio|roast studio/i);
+		expect(screen.queryByText('Upload an Artisan reference')).toBeNull();
+		expect(screen.queryByText('Save a historical roast')).toBeNull();
+		expect(screen.queryByText(/Ask Cherry/)).toBeNull();
 
 		// The hero, the four tiles, and the debugging line are gone.
 		expect(screen.queryByText('Roast studio')).toBeNull();
@@ -132,7 +148,7 @@ describe('roast page layout', () => {
 		expect(screen.queryByText(/items in raw data/)).toBeNull();
 	});
 
-	it('opens a roast from the list at the top of the page, with the Studio section below', async () => {
+	it('opens a roast from the list at the top of the page, with no Studio section under it', async () => {
 		const { container } = renderPage();
 		await screen.findByRole('heading', { level: 1, name: 'Roasts' });
 
@@ -141,7 +157,9 @@ describe('roast page layout', () => {
 		const title = await screen.findByRole('heading', { level: 1, name: 'Guatemala' });
 		expect(screen.getByRole('link', { name: '← Roasts' })).toBeInTheDocument();
 		expect(screen.queryByRole('heading', { name: 'Roasts' })).toBeNull();
-		expect(precedes(title, container.querySelector('#profile-studio')!)).toBe(true);
+		expect(title).toBeInTheDocument();
+		expect(container.querySelector('#profile-studio')).toBeNull();
+		expect(container.textContent).not.toMatch(/profile studio|roast studio/i);
 
 		// The roast is written to the link, and the page is not told to keep its scroll
 		// position, so the roast is read from its title down.
