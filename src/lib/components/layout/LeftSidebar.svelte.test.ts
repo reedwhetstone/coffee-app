@@ -127,6 +127,26 @@ describe('LeftSidebar', () => {
 		expect(screen.getAllByLabelText('Main navigation menu')).toHaveLength(1);
 	});
 
+	it('shows roast filters to a member and none beside the locked roast page', () => {
+		pageState.url = new URL('http://localhost/roast');
+		pageState.data = { roastsLocked: false };
+		const { unmount } = render(LeftSidebar, { data: memberData });
+		expect(
+			within(screen.getByLabelText('Desktop action bar')).getByRole('button', {
+				name: 'Open filters'
+			})
+		).toBeTruthy();
+		unmount();
+
+		pageState.data = { roastsLocked: true };
+		render(LeftSidebar, { data: memberData });
+		expect(
+			within(screen.getByLabelText('Desktop action bar')).queryByRole('button', {
+				name: 'Open filters'
+			})
+		).toBeNull();
+	});
+
 	it('opens one overlay filters panel without changing the action-bar width', async () => {
 		render(LeftSidebar, { data: memberData });
 

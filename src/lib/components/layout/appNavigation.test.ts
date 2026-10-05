@@ -46,6 +46,29 @@ describe('authenticated app navigation taxonomy', () => {
 		expect(roastItem).toMatchObject({ label: 'Roast', locked: true });
 	});
 
+	it('sends a locked Roast item to its own locked page and other locked items to plans', () => {
+		for (const ppiAccess of [false, true]) {
+			const studioItems = sectionById('viewer', 'maillard', ppiAccess)?.items;
+
+			expect(studioItems?.find((item) => item.href === '/roast')).toMatchObject({
+				locked: true,
+				upgradeHref: '/roast',
+				lockedReason: 'Roasting workflows require Mallard Studio.'
+			});
+			expect(studioItems?.find((item) => item.href === '/profit')).toMatchObject({
+				locked: true,
+				upgradeHref: '/subscription'
+			});
+		}
+		expect(sectionById('viewer', 'portfolio')?.items[0]).toMatchObject({
+			locked: true,
+			upgradeHref: '/subscription'
+		});
+		expect(
+			sectionById('member', 'maillard')?.items.find((item) => item.href === '/roast')
+		).toMatchObject({ locked: false, href: '/roast' });
+	});
+
 	it('unlocks the Cherry Green Agent and Portfolio for Parchment Intelligence users without showing roasting tools as unlocked', () => {
 		const parchmentItems = sectionById('viewer', 'parchment', true)?.items;
 		const chatItem = parchmentItems?.find((item) => item.href === '/chat');
