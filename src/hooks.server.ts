@@ -66,12 +66,22 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	});
 };
 
+// SvelteKit matches routes against the decoded pathname, so `/%72oast` reaches the `/roast`
+// route. The guard compares its prefixes against the same decoded form.
+function decodeGuardPath(pathname: string): string {
+	try {
+		return pathname.split('%25').map(decodeURI).join('%25');
+	} catch {
+		return pathname;
+	}
+}
+
 const authGuard: Handle = async ({ event, resolve }) => {
 	const protectedRoutes = ['/roast', '/profit', '/beans', '/chat'];
 	const adminRoutes = ['/admin'];
 	const apiRoutes = ['/api-dashboard'];
 	const dashboardRoutes = ['/dashboard'];
-	const currentPath = event.url.pathname;
+	const currentPath = decodeGuardPath(event.url.pathname);
 	const requiresProtection = protectedRoutes.some((route) => currentPath.startsWith(route));
 	const requiresAdminAccess = adminRoutes.some((route) => currentPath.startsWith(route));
 	const requiresApiAccess = apiRoutes.some((route) => currentPath.startsWith(route));
