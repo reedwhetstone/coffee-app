@@ -1416,7 +1416,7 @@ const docsPages: DocsPage[] = [
 							'GET POST PUT DELETE',
 							'Session',
 							'Internal product route',
-							'GET returns both sales and computed profit data. Writes enforce ownership on the underlying sales or inventory rows.'
+							'GET returns both sales and computed profit data. Writes enforce ownership on the underlying sales or inventory rows. POST and PUT require Mallard Studio and accept batch_id and roast_id, the roast batch and roast a sale is recorded against.'
 						]
 					]
 				}
@@ -1460,7 +1460,21 @@ const docsPages: DocsPage[] = [
 							'GET POST PUT DELETE',
 							'Session',
 							'Internal product route',
-							'CRUD for roast profiles. GET accepts coffee_id, a portfolio inventory id, to list one coffee’s roasts. POST supports single and batch creation. DELETE accepts id or batch name.'
+							'CRUD for roast profiles. GET accepts coffee_id, a portfolio inventory id, to list one coffee’s roasts. POST supports single and batch creation. DELETE accepts a roast id. Every roast carries batch_id, the ID of its batch.'
+						],
+						[
+							'/api/roast-batches',
+							'GET',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'Lists the member’s roast batches, newest batch date first, each with its ID, name, date, and roast IDs. Batch names can repeat, so a batch is identified by its ID. include_empty=true also lists batches that hold no roasts.'
+						],
+						[
+							'/api/roast-batches/[id]',
+							'DELETE',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'Deletes one batch, by ID, with the roasts in it. Another batch with the same name is not touched. Sales recorded against the batch are kept.'
 						],
 						[
 							'/api/roast-profiles/[id]/artisan-file',
@@ -1893,7 +1907,7 @@ const docsPages: DocsPage[] = [
 				title: 'Key behaviors',
 				bullets: [
 					'POST /api/roast-profiles supports both single and batch creation. Batch callers retain one Idempotency-Key for the same payload until the result is definitive. The Parchment-owned database trigger recalculates stocked state in the same transaction as each roast change.',
-					'PUT /api/roast-profiles requires an id query parameter and forwards optional If-Match concurrency checks. Live curve writes replace only live temperatures plus the current event set. DELETE accepts either id or an exact batch name query parameter.',
+					'PUT /api/roast-profiles requires an id query parameter and forwards optional If-Match concurrency checks. Live curve writes replace only live temperatures plus the current event set. DELETE requires a roast id query parameter. A batch is deleted by its own ID with DELETE /api/roast-batches/[id], which removes that batch and its roasts and keeps the sales recorded against it.',
 					'POST /api/artisan-import expects multipart form-data with file and roastId. Supported file extensions are .alog, .alog.json, and .json.',
 					'GET /api/reference-profiles lists reusable owner-scoped references. POST accepts either an Artisan multipart upload or an executed_roast JSON snapshot and requires a stable Idempotency-Key until the outcome is definitive.',
 					'POST /api/reference-profiles/compare accepts two selected IDs, resolves immutable revisions before comparison, and returns measured charge-aligned deltas. These are internal first-party BFF routes, not public /v1 API contracts.',
