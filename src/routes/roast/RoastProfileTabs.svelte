@@ -45,7 +45,7 @@
 		onProfileUpdate: (profile: RoastProfile) => void;
 		onProfileDelete: () => void;
 		onBatchDelete: () => void;
-		onClearProfile: () => void;
+		onClearProfile: () => Promise<boolean>;
 		onProfileRefresh: (roastId: number) => Promise<void>;
 		selectedBean: { id?: number; name: string };
 		timer: RoastTimer;
@@ -102,16 +102,16 @@
 	}
 
 	// Handle Browse Profiles tab click - clear current profile and reset URL
-	function handleBrowseProfilesClick() {
+	async function handleBrowseProfilesClick() {
+		// The page asks first while a roast is recording; stay on the roast if it declines.
+		if (!(await onClearProfile())) return;
+
 		viewMode = 'browser';
 
 		// Clear URL profileId parameter using SvelteKit's replaceState
 		const currentUrl = new URL(window.location.href);
 		currentUrl.searchParams.delete('profileId');
 		replaceState(currentUrl.pathname + (currentUrl.search || ''), {});
-
-		// Clear current profile state in parent
-		onClearProfile();
 	}
 
 	// Helper function for batch summary (from RoastHistoryTable)
