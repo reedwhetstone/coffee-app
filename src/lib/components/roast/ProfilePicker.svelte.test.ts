@@ -123,7 +123,7 @@ describe('ProfilePicker', () => {
 		await fireEvent.focus(input);
 		const taken = screen.getByRole('option', { name: /newnewtest/ });
 		expect(taken).toHaveAttribute('aria-disabled', 'true');
-		expect(taken).toHaveTextContent('Chosen as the other profile');
+		expect(taken).toHaveTextContent('Chosen on the other side');
 		await fireEvent.click(taken);
 
 		expect(input).toHaveAttribute('aria-expanded', 'true');

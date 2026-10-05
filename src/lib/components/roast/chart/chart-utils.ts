@@ -103,22 +103,26 @@ export function lineSegments(points: ChartPoint[]): ChartPoint[][] {
 	return segments;
 }
 
+/** Other names a milestone is recorded under, each mapped to the one name used for it here. */
+const MILESTONE_ALIASES: Record<string, string> = {
+	tp: 'turning_point',
+	fc_start: 'first_crack',
+	first_crack_start: 'first_crack',
+	fc_end: 'first_crack_end',
+	sc_start: 'second_crack',
+	second_crack_start: 'second_crack',
+	sc_end: 'second_crack_end'
+};
+
 const MILESTONE_LABELS: Record<string, string> = {
 	charge: 'Charge',
 	start: 'Start',
-	tp: 'Turning point',
 	turning_point: 'Turning point',
 	dry_end: 'Dry end',
 	maillard: 'Maillard',
-	fc_start: 'First crack',
 	first_crack: 'First crack',
-	first_crack_start: 'First crack',
-	fc_end: 'First crack end',
 	first_crack_end: 'First crack end',
-	sc_start: 'Second crack',
 	second_crack: 'Second crack',
-	second_crack_start: 'Second crack',
-	sc_end: 'Second crack end',
 	second_crack_end: 'Second crack end',
 	drop: 'Drop',
 	cool: 'Cool',
@@ -126,13 +130,21 @@ const MILESTONE_LABELS: Record<string, string> = {
 	end: 'End'
 };
 
-/** Short readable name for a roast milestone, e.g. `dry_end` becomes "Dry end". */
-export function milestoneLabel(name: string): string {
+/**
+ * One name for a milestone however it was recorded: `fc_start`, `First Crack` and
+ * `first-crack` are the same event. Use it wherever two milestones are matched by name.
+ */
+export function milestoneKey(name: string): string {
 	const key = name
 		.trim()
 		.toLowerCase()
 		.replace(/[\s-]+/g, '_');
-	const known = MILESTONE_LABELS[key];
+	return MILESTONE_ALIASES[key] ?? key;
+}
+
+/** Short readable name for a roast milestone, e.g. `dry_end` becomes "Dry end". */
+export function milestoneLabel(name: string): string {
+	const known = MILESTONE_LABELS[milestoneKey(name)];
 	if (known) return known;
 	const words = name.trim().replace(/_+/g, ' ');
 	return words.charAt(0).toUpperCase() + words.slice(1);

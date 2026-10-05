@@ -1,31 +1,9 @@
 <script lang="ts">
+	import type { components } from '@purveyors/sdk';
 	import { AXIS_LABEL_COLOR, GRIDLINE_COLOR, MARKER_PRIMARY } from '$lib/styles/chartColors';
 
-	interface PricePoint {
-		date: string;
-		priceLb: number;
-		minLbs: number | null;
-		stocked: boolean;
-	}
-	type PriceEvent =
-		| {
-				date: string;
-				type: 'minimum_tier_change';
-				fromMinLbs: number | null;
-				toMinLbs: number | null;
-		  }
-		| { date: string; type: 'restocked' | 'unstocked' };
-	interface PriceHistory {
-		points: PricePoint[];
-		events: PriceEvent[];
-		summary: {
-			latestPriceLb: number | null;
-			minPriceLb: number | null;
-			maxPriceLb: number | null;
-			comparableChangePct: number | null;
-			minimumTierChanged: boolean;
-		};
-	}
+	type PriceHistory = components['schemas']['LotPriceHistoryResponse']['data'];
+	type PriceEvent = PriceHistory['events'][number];
 
 	let { coffeeId, days = 180 }: { coffeeId: number; days?: number } = $props();
 

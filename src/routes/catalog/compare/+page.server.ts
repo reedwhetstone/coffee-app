@@ -1,12 +1,11 @@
 import type { PageServerLoad } from './$types';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
-import type { CatalogComparison, CompareLoadState } from '$lib/catalog/compareTypes';
+import type { CompareLoadState } from '$lib/catalog/compareTypes';
 
 const QUANTITY_OPTIONS = [1, 5, 10, 25, 50, 100];
 
 // Parchment owns comparison logic and access limits (viewers 2, members and
-// Intelligence 6). Uses the raw path until coffee-app consumes the SDK release
-// that adds client.catalog.compare.
+// Intelligence 6).
 export const load: PageServerLoad = async (event) => {
 	const ids = (event.url.searchParams.get('ids') ?? '')
 		.split(',')
@@ -24,24 +23,19 @@ export const load: PageServerLoad = async (event) => {
 	} else {
 		try {
 			const client = await createParchmentServerClient(event, { mode: 'session' });
-			const get = client.raw.GET as unknown as (
-				path: string,
-				options: { params: { query: Record<string, string> } }
-			) => Promise<{ data?: unknown; error?: unknown; response: Response }>;
-			const { data, error, response } = await get('/v1/catalog/compare', {
-				params: { query: { ids: ids.join(','), quantityLbs: String(quantityLbs) } }
+			const { data, error, response } = await client.catalog.compare({
+				ids: ids.join(','),
+				quantityLbs: String(quantityLbs)
 			});
-			const message =
-				(error as { error?: { message?: string } } | undefined)?.error?.message ??
-				'Comparison is unavailable right now.';
+			// An upstream failure outside the documented error shape has no message.
+			const message = error?.error?.message ?? 'Comparison is unavailable right now.';
 			if (response.status === 200 && data) {
-				const body = data as { data: CatalogComparison; meta: { maxLots: number } };
 				// Parchment drops ids the caller can no longer see; fewer than two
 				// visible coffees is not a comparison.
 				state =
-					body.data.lots.length >= 2
-						? { status: 'ready', comparison: body.data, maxLots: body.meta.maxLots }
-						: { status: 'empty', unavailable: body.data.missingIds.length };
+					data.data.lots.length >= 2
+						? { status: 'ready', comparison: data.data, maxLots: data.meta.maxLots }
+						: { status: 'empty', unavailable: data.data.missingIds.length };
 			} else if (response.status === 401) {
 				state = { status: 'sign_in' };
 			} else if (response.status === 403) {

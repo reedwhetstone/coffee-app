@@ -27,20 +27,6 @@
 	};
 
 	/**
-	 * Evidence Parchment adds for comparable-set signals. Optional until coffee-app
-	 * consumes the SDK release that types these fields.
-	 */
-	type ComparableEvidence = MarketSignalItem['evidence'] & {
-		method?: string | null;
-		comparable_set?: { lot_class: string; lots: number; suppliers: number } | null;
-		first_stocked?: string | null;
-	};
-
-	function comparableEvidence(signal: MarketSignalItem): ComparableEvidence {
-		return signal.evidence as ComparableEvidence;
-	}
-
-	/**
 	 * Price drops always display. below_market displays only when Parchment
 	 * benchmarked it against comparable lots; older rows compared commodity lots
 	 * with premium-inflated segment medians.
@@ -49,8 +35,8 @@
 		if (signal.signalType === 'price_drop') return true;
 		return (
 			signal.signalType === 'below_market' &&
-			comparableEvidence(signal).method === 'comparable-signals-v2' &&
-			comparableEvidence(signal).comparable_set != null
+			signal.evidence.method === 'comparable-signals-v2' &&
+			signal.evidence.comparable_set != null
 		);
 	}
 
@@ -129,11 +115,11 @@
 			return `${formatPct(e.drop_vs_own_median_pct)} vs its own ${e.own_trailing_window ?? ''} median of ${formatMoney(e.own_trailing_median)}.`;
 		}
 		if (signal.signalType === 'below_market') {
-			const set = comparableEvidence(signal).comparable_set;
+			const set = e.comparable_set;
 			const comparable = set
 				? `${set.lots} comparable ${segment} lots from ${set.suppliers} suppliers`
 				: `comparable ${segment} lots`;
-			const arrival = comparableEvidence(signal).first_stocked ? ' New arrival.' : '';
+			const arrival = e.first_stocked ? ' New arrival.' : '';
 			return `${formatPct(e.discount_vs_median_pct)} vs the median of ${comparable} (${formatMoney(e.segment_median)}).${arrival}`;
 		}
 		return `Scores ${signal.scoreValue ?? '—'} at ${formatMoney(signal.currentPriceLb)} — ${e.value_z_score != null ? `${e.value_z_score.toFixed(1)}σ better` : 'an outlier'} price-for-quality within ${segment || 'its origin'}.`;

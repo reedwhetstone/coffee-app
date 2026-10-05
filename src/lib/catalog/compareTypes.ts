@@ -1,40 +1,9 @@
-/** Mirrors Parchment's CatalogComparisonResponse (GET /v1/catalog/compare). */
-export interface ComparisonLot {
-	id: number;
-	name: string;
-	source: string | null;
-	link: string | null;
-	stocked: boolean | null;
-	wholesale: boolean | null;
-	price: {
-		quantityLbs: number;
-		atQuantityLb: number | null;
-		smallestTierLb: number | null;
-		minOrderLbs: number | null;
-		tiers: { minLbs: number | null; priceLb: number }[];
-		originMedianLb: number | null;
-		vsOriginMedianPct: number | null;
-	};
-}
+import type { components } from '@purveyors/sdk';
 
-export type ComparisonRelation = 'same' | 'different' | 'partial';
-
-export interface ComparisonRow {
-	key: string;
-	group: 'Price' | 'Availability' | 'Origin' | 'Process' | 'Coffee' | 'Taste' | 'Listing';
-	label: string;
-	values: (string | number | null)[];
-	relation: ComparisonRelation;
-	bestLotIds: number[];
-}
-
-export interface CatalogComparison {
-	quantityLbs: number;
-	lots: ComparisonLot[];
-	rows: ComparisonRow[];
-	bestPriceLotIds: number[];
-	missingIds: number[];
-}
+/** Parchment's comparison of 2 to 6 catalog coffees (GET /v1/catalog/compare). */
+export type CatalogComparison = components['schemas']['CatalogComparisonResponse']['data'];
+export type ComparisonLot = CatalogComparison['lots'][number];
+export type ComparisonRow = CatalogComparison['rows'][number];
 
 export type CompareLoadState =
 	| { status: 'ready'; comparison: CatalogComparison; maxLots: number }

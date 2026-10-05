@@ -6,6 +6,7 @@ type ReferenceProfileSummary = components['schemas']['ReferenceProfileSummary'];
 export interface PickerRoast {
 	roast_id: number;
 	batch_name?: string | null;
+	coffee_id?: number | null;
 	coffee_name?: string | null;
 	roast_date?: string | null;
 	oz_out?: number | null;
@@ -35,7 +36,7 @@ export interface ProfileOption {
 }
 
 export interface ProfileOptionGroup {
-	key: 'references' | 'roasts';
+	key: 'same-coffee' | 'references' | 'roasts';
 	heading: string;
 	options: ProfileOption[];
 	/** Options in this group before any search filter. */
@@ -67,6 +68,19 @@ export function formatDay(value: string | null | undefined): string | null {
 	const day = value?.match(/^(\d{4})-(\d{2})-(\d{2})/);
 	if (!day) return null;
 	return DATE_FORMAT.format(Date.UTC(Number(day[1]), Number(day[2]) - 1, Number(day[3])));
+}
+
+const SHORT_DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
+	month: 'short',
+	day: 'numeric',
+	timeZone: 'UTC'
+});
+
+/** A calendar day without its year: "Oct 1". */
+export function formatShortDay(value: string | null | undefined): string | null {
+	const day = value?.match(/^(\d{4})-(\d{2})-(\d{2})/);
+	if (!day) return null;
+	return SHORT_DATE_FORMAT.format(Date.UTC(Number(day[1]), Number(day[2]) - 1, Number(day[3])));
 }
 
 /** The part of a batch name that adds something to the coffee name it usually starts with. */
@@ -164,6 +178,58 @@ export function buildProfileOptionGroups(
 			total: references.length
 		},
 		{ key: 'roasts', heading: 'Roasts', options: roastOptions, total: roastOptions.length }
+	];
+}
+
+/** Whether two roasts are of the same coffee: the same portfolio coffee, or failing that the same name. */
+function isSameCoffee(roast: PickerRoast, other: PickerRoast): boolean {
+	if (roast.coffee_id != null && other.coffee_id != null)
+		return roast.coffee_id === other.coffee_id;
+	const name = roast.coffee_name?.trim().toLowerCase();
+	return Boolean(name) && name === other.coffee_name?.trim().toLowerCase();
+}
+
+/**
+ * The choices for one side of a comparison when the other side is already chosen. The
+ * chosen side is left out, since nothing is compared with itself. When it is a roast, that
+ * coffee's other roasts are listed first, most recent first, ahead of saved references and
+ * the remaining roasts.
+ */
+export function buildCompareOptionGroups(
+	roasts: PickerRoast[],
+	profiles: ReferenceProfileSummary[],
+	otherValue = ''
+): ProfileOptionGroup[] {
+	const groups = buildProfileOptionGroups(roasts, profiles);
+	if (!otherValue) return groups;
+
+	const [references, allRoasts] = groups;
+	const available = (options: ProfileOption[]) =>
+		options.filter((option) => option.value !== otherValue);
+	const referenceOptions = available(references.options);
+	const referenceGroup = {
+		...references,
+		options: referenceOptions,
+		total: referenceOptions.length
+	};
+
+	const recorded = recordedRoasts(roasts);
+	const other = recorded.find((roast) => roastOption(roast).value === otherValue);
+	const sameCoffee = other
+		? recorded.filter((roast) => roast !== other && isSameCoffee(roast, other)).map(roastOption)
+		: [];
+	const sameCoffeeValues = new Set(sameCoffee.map((option) => option.value));
+	const remaining = available(allRoasts.options).filter(
+		(option) => !sameCoffeeValues.has(option.value)
+	);
+
+	if (sameCoffee.length === 0) {
+		return [referenceGroup, { ...allRoasts, options: remaining, total: remaining.length }];
+	}
+	return [
+		{ key: 'same-coffee', heading: 'Same coffee', options: sameCoffee, total: sameCoffee.length },
+		referenceGroup,
+		{ key: 'roasts', heading: 'Other roasts', options: remaining, total: remaining.length }
 	];
 }
 
