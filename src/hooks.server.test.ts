@@ -349,4 +349,122 @@ describe('hooks auth guard integration', () => {
 			})
 		).rejects.toMatchObject({ status: 303, location: '/dashboard' });
 	});
+
+	describe('a percent-encoded path gets the same guard as the page it routes to', () => {
+		const signedIn = (role: 'viewer' | 'member', ppiAccess = false) => ({
+			isAuthenticated: true,
+			authKind: 'session',
+			source: 'cookie-session',
+			session: { access_token: 'cookie-token' },
+			user: { id: `${role}-user` },
+			appRoles: [role],
+			primaryAppRole: role,
+			ppiAccess
+		});
+		const signedOut = {
+			isAuthenticated: false,
+			authKind: 'anonymous',
+			source: 'none',
+			session: null,
+			user: null,
+			appRoles: [],
+			primaryAppRole: null,
+			ppiAccess: false
+		};
+		// SvelteKit decodes the pathname before it matches a route, so each of these opens the
+		// page named in the comment beside it.
+		const memberOnly = [
+			'/%70rofit', // /profit
+			'/%70rofit?modal=new',
+			'/pro%66it',
+			'/%72oast/compare', // /roast/compare
+			'/roas%74/4531'
+		];
+
+		it.each([...memberOnly, '/%62eans', '/%63hat', '/%61dmin', '/%61pi-dashboard'])(
+			'sends a signed-out visitor from %s to the catalog',
+			async (path) => {
+				mockResolvePrincipal.mockResolvedValue(signedOut);
+				const resolve = vi.fn();
+
+				await expect(handle({ event: makeEvent(path), resolve })).rejects.toMatchObject({
+					status: 303,
+					location: '/catalog'
+				});
+				expect(resolve).not.toHaveBeenCalled();
+			}
+		);
+
+		it('sends a signed-out visitor from /%64ashboard to sign-in', async () => {
+			mockResolvePrincipal.mockResolvedValue(signedOut);
+			const resolve = vi.fn();
+
+			await expect(handle({ event: makeEvent('/%64ashboard'), resolve })).rejects.toMatchObject({
+				status: 303,
+				location: '/auth'
+			});
+			expect(resolve).not.toHaveBeenCalled();
+		});
+
+		it.each([...memberOnly, '/%62eans', '/%63hat', '/%61dmin'])(
+			'sends a signed-in account without access from %s to the dashboard',
+			async (path) => {
+				mockResolvePrincipal.mockResolvedValue(signedIn('viewer'));
+				const resolve = vi.fn();
+
+				await expect(handle({ event: makeEvent(path), resolve })).rejects.toMatchObject({
+					status: 303,
+					location: '/dashboard'
+				});
+				expect(resolve).not.toHaveBeenCalled();
+			}
+		);
+
+		it.each(memberOnly)(
+			'sends a Parchment Intelligence-only account from %s to the dashboard',
+			async (path) => {
+				mockResolvePrincipal.mockResolvedValue(signedIn('viewer', true));
+				const resolve = vi.fn();
+
+				await expect(handle({ event: makeEvent(path), resolve })).rejects.toMatchObject({
+					status: 303,
+					location: '/dashboard'
+				});
+				expect(resolve).not.toHaveBeenCalled();
+			}
+		);
+
+		it('sends a member from /%61dmin to the dashboard', async () => {
+			mockResolvePrincipal.mockResolvedValue(signedIn('member'));
+			const resolve = vi.fn();
+
+			await expect(handle({ event: makeEvent('/%61dmin'), resolve })).rejects.toMatchObject({
+				status: 303,
+				location: '/dashboard'
+			});
+			expect(resolve).not.toHaveBeenCalled();
+		});
+
+		it.each([...memberOnly, '/%62eans', '/%63hat'])('lets a member open %s', async (path) => {
+			mockResolvePrincipal.mockResolvedValue(signedIn('member'));
+			const resolve = vi.fn(() => new Response('ok'));
+
+			const response = await handle({ event: makeEvent(path), resolve });
+
+			expect(response.status).toBe(200);
+			expect(resolve).toHaveBeenCalledOnce();
+		});
+
+		// A doubly encoded path decodes to a literal `%70`, which is no route: it passes the
+		// guard and SvelteKit answers 404. A path that cannot be decoded is left as it came.
+		it.each(['/%2570rofit', '/%E0%A4%A'])('leaves %s to the router', async (path) => {
+			mockResolvePrincipal.mockResolvedValue(signedOut);
+			const resolve = vi.fn(() => new Response('not found', { status: 404 }));
+
+			const response = await handle({ event: makeEvent(path), resolve });
+
+			expect(response.status).toBe(404);
+			expect(resolve).toHaveBeenCalledOnce();
+		});
+	});
 });
