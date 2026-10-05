@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RoastTimer } from '$lib/roast';
 import { groupRoastsByBatch } from '$lib/roast/roast-batches';
+import { NO_ROAST_LIST_FILTERS } from '$lib/roast/roast-list-filters';
 import type { RoastProfile } from '$lib/types/component.types';
 import RoastProfileTabs from './RoastProfileTabs.svelte';
 
@@ -65,7 +66,6 @@ function props(overrides: Record<string, unknown> = {}) {
 		chartComponentLoading: true,
 		RoastChartInterface: null,
 		countLine: '3 roasts in 2 batches · 14.4% average loss',
-		totalRoasts: 3,
 		canCreateRoast: true,
 		onToggleBatch: vi.fn(),
 		onSelectProfile: vi.fn(),
@@ -224,7 +224,8 @@ describe('roast list', () => {
 		render(
 			RoastProfileTabs,
 			props({
-				listBatches: batches.filter((batch) => batch.id === GUJI_TEST),
+				batches: batches.filter((batch) => batch.id === GUJI_TEST),
+				filters: { ...NO_ROAST_LIST_FILTERS, batch: GUJI_TEST },
 				batchFilter: { id: GUJI_TEST, label: 'Sep 27 · Guji drop test' },
 				onClearBatchFilter
 			})
@@ -242,7 +243,10 @@ describe('roast list', () => {
 		render(
 			RoastProfileTabs,
 			props({
-				listBatches: [],
+				batches: [],
+				countLine: '',
+				filters: { ...NO_ROAST_LIST_FILTERS, batch: LAST_WEDNESDAY },
+				emptyDetail: 'That batch has no roasts. It may have been deleted.',
 				batchFilter: { id: LAST_WEDNESDAY, label: null }
 			})
 		);
@@ -272,7 +276,7 @@ describe('roast list', () => {
 	});
 
 	it('says there are no roasts yet when the account has none', () => {
-		render(RoastProfileTabs, props({ batches: [], totalRoasts: 0 }));
+		render(RoastProfileTabs, props({ batches: [], countLine: '' }));
 
 		expect(screen.getByRole('heading', { name: 'No roasts yet.' })).toBeInTheDocument();
 		expect(
@@ -284,13 +288,173 @@ describe('roast list', () => {
 
 	it('says no roasts match, and offers to clear the filters, when filters hide them all', async () => {
 		const onClearFilters = vi.fn();
-		render(RoastProfileTabs, props({ batches: [], totalRoasts: 3, onClearFilters }));
+		render(
+			RoastProfileTabs,
+			props({
+				batches: [],
+				countLine: '',
+				filters: { ...NO_ROAST_LIST_FILTERS, range: '7d', coffee: 101 },
+				emptyDetail: 'Nothing was roasted in the last 7 days for Ethiopia Yirgacheffe Wush Wush.',
+				onClearFilters
+			})
+		);
 
 		expect(screen.getByRole('heading', { name: 'No roasts match.' })).toBeInTheDocument();
+		expect(
+			screen.getByText('Nothing was roasted in the last 7 days for Ethiopia Yirgacheffe Wush Wush.')
+		).toBeInTheDocument();
 		expect(screen.queryByText('No roasts yet.')).toBeNull();
+		// Nothing matches, so there is no count to state.
+		expect(screen.queryByText(/average loss/)).toBeNull();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
 		expect(onClearFilters).toHaveBeenCalledOnce();
+	});
+});
+
+describe('finding roasts in the list', () => {
+	const listed = (overrides: Record<string, unknown> = {}) =>
+		props({ onFiltersChange: vi.fn(), loadedRoasts: 3, matchingRoasts: 3, ...overrides });
+
+	it('puts search, coffee, date, and retail or wholesale on the page, above the roasts', () => {
+		render(
+			RoastProfileTabs,
+			listed({ coffeeOptions: [{ id: 101, name: 'Ethiopia Yirgacheffe Wush Wush' }] })
+		);
+
+		const search = screen.getByRole('searchbox', { name: 'Search roasts' });
+		expect(search).toHaveAttribute('placeholder', 'Coffee, batch, or roast number');
+		expect(
+			within(screen.getByRole('combobox', { name: 'Coffee' }))
+				.getAllByRole('option')
+				.map((option) => option.textContent)
+		).toEqual(['All coffees', 'Ethiopia Yirgacheffe Wush Wush']);
+		expect(
+			within(screen.getByRole('combobox', { name: 'Roast date' }))
+				.getAllByRole('option')
+				.map((option) => option.textContent)
+		).toEqual(['Any time', 'Last 7 days', 'Last 30 days', 'This year', 'Custom dates']);
+		expect(
+			within(screen.getByRole('group', { name: 'Retail or wholesale' }))
+				.getAllByRole('button')
+				.map((button) => button.textContent?.trim())
+		).toEqual(['All', 'Retail', 'Wholesale']);
+		expect(
+			precedes(search, screen.getByRole('button', { name: /Toggle Wednesday roast batch/ }))
+		).toBe(true);
+	});
+
+	it('shows the filters in force in the controls', () => {
+		render(
+			RoastProfileTabs,
+			listed({
+				filters: { ...NO_ROAST_LIST_FILTERS, coffee: 101, range: '30d', q: 'guji', market: 'wholesale' },
+				coffeeOptions: [{ id: 101, name: 'Ethiopia Yirgacheffe Wush Wush' }]
+			})
+		);
+
+		expect(screen.getByRole('searchbox', { name: 'Search roasts' })).toHaveValue('guji');
+		expect(screen.getByRole('combobox', { name: 'Coffee' })).toHaveValue('101');
+		expect(screen.getByRole('combobox', { name: 'Roast date' })).toHaveValue('30d');
+		expect(screen.getByRole('button', { name: 'Wholesale' })).toHaveAttribute('aria-pressed', 'true');
+		expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'false');
+	});
+
+	it('returns to the list with every filter from an open roast', () => {
+		render(
+			RoastProfileTabs,
+			props({
+				currentRoastProfile: wushWush,
+				filters: { ...NO_ROAST_LIST_FILTERS, coffee: 101, range: '30d', q: 'guji', market: 'wholesale' }
+			})
+		);
+
+		expect(screen.getByRole('link', { name: '← Roasts' })).toHaveAttribute(
+			'href',
+			'/roast?coffee=101&range=30d&q=guji&market=wholesale'
+		);
+	});
+
+	it('offers "Load more" while the filters match more roasts than are shown', async () => {
+		const onLoadMore = vi.fn();
+		render(
+			RoastProfileTabs,
+			listed({ hasMore: true, loadedRoasts: 50, matchingRoasts: 1257, onLoadMore })
+		);
+
+		expect(screen.getByText('Showing 50 of 1,257 roasts')).toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+
+		expect(onLoadMore).toHaveBeenCalledOnce();
+	});
+
+	it('offers no "Load more" on the last page', () => {
+		render(RoastProfileTabs, listed({ hasMore: false }));
+
+		expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+		expect(screen.queryByText(/^Showing/)).toBeNull();
+	});
+
+	it('waits while more roasts load, and offers to try again when they do not arrive', async () => {
+		const onLoadMore = vi.fn();
+		const view = render(
+			RoastProfileTabs,
+			listed({ hasMore: true, isLoadingMore: true, onLoadMore })
+		);
+		expect(screen.getByRole('button', { name: 'Loading…' })).toBeDisabled();
+
+		await view.rerender(
+			listed({ hasMore: true, isLoadingMore: false, loadMoreFailed: true, onLoadMore })
+		);
+		expect(screen.getByRole('alert')).toHaveTextContent('More roasts could not be loaded.');
+		await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+		expect(onLoadMore).toHaveBeenCalledOnce();
+		// The roasts already loaded stay on screen.
+		expect(screen.getByRole('button', { name: /Toggle Wednesday roast batch/ })).toBeInTheDocument();
+	});
+
+	it('keeps the roasts on screen, marked busy, while a change of filters loads', () => {
+		const { container } = render(RoastProfileTabs, listed({ isRefreshing: true }));
+
+		expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+		expect(screen.getByRole('button', { name: /Toggle Wednesday roast batch/ })).toBeInTheDocument();
+	});
+
+	it('explains a search that cannot be used instead of reporting a failure', async () => {
+		const onFiltersChange = vi.fn();
+		const filters = { ...NO_ROAST_LIST_FILTERS, q: 'x'.repeat(101), range: '7d' };
+		render(
+			RoastProfileTabs,
+			listed({ batches: [], countLine: '', searchInvalid: true, filters, onFiltersChange })
+		);
+
+		expect(screen.getByRole('heading', { name: 'That search cannot be used.' })).toBeInTheDocument();
+		expect(
+			screen.getByText(
+				'Search for a coffee, a batch, or a roast number, in 100 characters or fewer.'
+			)
+		).toBeInTheDocument();
+		expect(screen.queryByRole('alert')).toBeNull();
+		expect(screen.queryByText('Roasts could not be loaded.')).toBeNull();
+		expect(screen.queryByText('No roasts match.')).toBeNull();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+
+		// The other filters stay as they were.
+		expect(onFiltersChange).toHaveBeenCalledWith({ ...filters, q: '' });
+	});
+
+	it('says the roasts could not be loaded and offers to try again, with the controls still there', async () => {
+		const onRetryList = vi.fn();
+		render(RoastProfileTabs, listed({ batches: [], countLine: '', listFailed: true, onRetryList }));
+
+		expect(screen.getByRole('alert')).toHaveTextContent('Roasts could not be loaded.');
+		expect(screen.queryByText('No roasts yet.')).toBeNull();
+		expect(screen.getByRole('searchbox', { name: 'Search roasts' })).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+		expect(onRetryList).toHaveBeenCalledOnce();
 	});
 });
 
@@ -491,7 +655,13 @@ describe('an open roast', () => {
 		const onSelectProfile = vi.fn();
 		const { container } = render(
 			RoastProfileTabs,
-			props({ currentRoastProfile: wushWush, onSelectProfile })
+			// The open roast's batch comes from its own request, whatever the list holds.
+			props({
+				currentRoastProfile: wushWush,
+				batches: [],
+				openBatchRoasts: [wushWush, colombia],
+				onSelectProfile
+			})
 		);
 
 		expect(screen.getByText('Also in this batch:')).toBeInTheDocument();
@@ -506,7 +676,7 @@ describe('an open roast', () => {
 	});
 
 	it('leaves the batch line out for a roast that is alone in its batch', () => {
-		render(RoastProfileTabs, props({ currentRoastProfile: guji }));
+		render(RoastProfileTabs, props({ currentRoastProfile: guji, openBatchRoasts: [guji] }));
 
 		expect(screen.queryByText('Also in this batch:')).toBeNull();
 	});
