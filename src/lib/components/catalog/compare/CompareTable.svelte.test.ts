@@ -169,6 +169,85 @@ describe('CompareTable', () => {
 		expect(screen.getByRole('table').textContent).not.toContain('Not disclosed');
 	});
 
+	it('shows grading rows in their own group between Coffee and Taste', () => {
+		render(CompareTable, {
+			comparison: {
+				...comparison,
+				rows: [
+					{
+						key: 'taste_body',
+						group: 'Taste',
+						label: 'Body',
+						values: ['Syrupy (4/5)', null, null],
+						relation: 'partial',
+						bestLotIds: []
+					},
+					{
+						key: 'moisture',
+						group: 'Grading',
+						label: 'Moisture',
+						values: ['10.8%', '11.2%', null],
+						relation: 'different',
+						bestLotIds: []
+					},
+					{
+						key: 'variety',
+						group: 'Coffee',
+						label: 'Variety',
+						values: ['Bourbon', 'Bourbon', 'Bourbon'],
+						relation: 'same',
+						bestLotIds: []
+					}
+				]
+			},
+			quantityOptions: [1, 5, 10],
+			onQuantityChange: vi.fn(),
+			onRemove: vi.fn()
+		});
+		const headings = screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim());
+		expect(headings.filter((text) => ['Coffee', 'Grading', 'Taste'].includes(text ?? ''))).toEqual([
+			'Coffee',
+			'Grading',
+			'Taste'
+		]);
+		const row = screen.getByRole('rowheader', { name: 'Moisture' }).closest('tr')!;
+		expect(within(row).getByText('10.8%')).toBeInTheDocument();
+		expect(within(row).getByText('11.2%')).toBeInTheDocument();
+		expect(within(row).getByText('Not disclosed')).toBeInTheDocument();
+	});
+
+	it('draws a group it does not know about after the known ones', () => {
+		render(CompareTable, {
+			comparison: {
+				...comparison,
+				rows: [
+					{
+						key: 'future_row',
+						group: 'Certifications' as never,
+						label: 'Organic',
+						values: ['Yes', 'No', null],
+						relation: 'different',
+						bestLotIds: []
+					},
+					{
+						key: 'variety',
+						group: 'Coffee',
+						label: 'Variety',
+						values: ['Bourbon', 'Bourbon', 'Bourbon'],
+						relation: 'same',
+						bestLotIds: []
+					}
+				]
+			},
+			quantityOptions: [1, 5, 10],
+			onQuantityChange: vi.fn(),
+			onRemove: vi.fn()
+		});
+		const headings = screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim());
+		expect(headings.indexOf('Certifications')).toBeGreaterThan(headings.indexOf('Coffee'));
+		expect(screen.getByRole('rowheader', { name: 'Organic' })).toBeInTheDocument();
+	});
+
 	it('keeps a shared quantity outside the presets selectable', () => {
 		render(CompareTable, {
 			comparison: { ...comparison, quantityLbs: 3 },

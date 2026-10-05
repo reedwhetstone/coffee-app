@@ -44,17 +44,28 @@
 		'Origin',
 		'Process',
 		'Coffee',
+		'Grading',
 		'Taste',
 		'Listing'
 	];
 
+	// A group Parchment adds later is drawn after the known ones instead of being dropped.
+	let groupOrder = $derived([
+		...GROUP_ORDER,
+		...new Set(
+			comparison.rows.map((row) => row.group).filter((group) => !GROUP_ORDER.includes(group))
+		)
+	]);
+
 	let groups = $derived(
-		GROUP_ORDER.map((group) => ({
-			group,
-			rows: comparison.rows.filter(
-				(row) => row.group === group && (!showDifferencesOnly || row.relation !== 'same')
-			)
-		})).filter((entry) => entry.rows.length > 0)
+		groupOrder
+			.map((group) => ({
+				group,
+				rows: comparison.rows.filter(
+					(row) => row.group === group && (!showDifferencesOnly || row.relation !== 'same')
+				)
+			}))
+			.filter((entry) => entry.rows.length > 0)
 	);
 
 	function money(value: number): string {
