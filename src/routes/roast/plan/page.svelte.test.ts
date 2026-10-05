@@ -177,9 +177,54 @@ describe('/roast/plan', () => {
 		await screen.findByRole('combobox', { name: 'Roast or saved reference' });
 		expect(
 			screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)
-		).toEqual(['1. Start from', '2. What to change', '3. Preview', '4. Save and send to Artisan']);
+		).toEqual([
+			'1. Start from',
+			'2. What to change',
+			'3. Preview',
+			'4. Save and send to Artisan',
+			'Saved plans'
+		]);
 		expect(screen.getByRole('button', { name: 'Preview' })).toBeDisabled();
 		expect(screen.getByText('Up to 20 °F (10 °C).')).toBeInTheDocument();
+	});
+
+	it('lists the plans already saved, each with a link to open it and its download', async () => {
+		const olderPlan = reference(
+			'aaaaaaaa-0000-4000-8000-000000000007',
+			'Colombia plan: −3°F after first crack',
+			'generated_revision',
+			'2026-09-20T00:00:00Z'
+		);
+		references = [olderPlan, keeper, savedPlan];
+		visit('/roast/plan');
+
+		const list = await screen.findByRole('region', { name: 'Saved plans' });
+		// Newest first, and only plans: an uploaded reference has no download.
+		const rows = within(list).getAllByRole('listitem');
+		expect(rows.map((row) => within(row).getAllByRole('link')[0].textContent)).toEqual([
+			'Guji plan: +5°F through drying',
+			'Colombia plan: −3°F after first crack'
+		]);
+		expect(within(rows[0]).getByText('Plan · Saved Oct 2, 2026')).toBeInTheDocument();
+		expect(
+			within(rows[0]).getByRole('link', { name: 'Guji plan: +5°F through drying' })
+		).toHaveAttribute('href', `/roast/plan?plan=${PLAN}`);
+		const download = within(rows[0]).getByRole('link', {
+			name: 'Download for Artisan (.alog): Guji plan: +5°F through drying'
+		});
+		expect(download).toHaveAttribute(
+			'href',
+			`/api/reference-profiles/${PLAN}/revisions/${PLAN}-revision/export`
+		);
+		expect(download).toHaveAttribute('download');
+	});
+
+	it('shows no list of saved plans to an account with none', async () => {
+		references = [keeper];
+		visit('/roast/plan');
+
+		await screen.findByRole('combobox', { name: 'Roast or saved reference' });
+		expect(screen.queryByRole('region', { name: 'Saved plans' })).toBeNull();
 	});
 
 	it('opens with the roast in the link chosen, and counts the roasts that cannot be used', async () => {
@@ -238,6 +283,32 @@ describe('/roast/plan', () => {
 		expect(
 			fetchMock.mock.calls.filter(([url]) => String(url) === '/api/reference-profiles')
 		).toHaveLength(2);
+	});
+
+	it('does not offer to save a plan again when it was saved and could not be opened', async () => {
+		goto.mockRejectedValueOnce(new Error('Navigation failed'));
+		visit('/roast/plan?from=roast:4531');
+		const preview = await screen.findByRole('button', { name: 'Preview' });
+		await waitFor(() => expect(preview).toBeEnabled());
+
+		await fireEvent.click(preview);
+		await screen.findByText('Plan preview · not saved yet');
+		await fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+
+		const saved = await screen.findByRole('status');
+		expect(saved).toHaveTextContent('Ethiopia Yirgacheffe Wush Wush plan is saved.');
+		expect(within(saved).getByRole('link', { name: 'Open the saved plan' })).toHaveAttribute(
+			'href',
+			`/roast/plan?plan=${NEW_PLAN}`
+		);
+		expect(screen.queryByRole('alert')).toBeNull();
+		expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled();
+		// The plan is also in the list of saved plans, read again after the save.
+		expect(
+			within(screen.getByRole('region', { name: 'Saved plans' })).getByRole('link', {
+				name: 'Ethiopia Yirgacheffe Wush Wush plan'
+			})
+		).toHaveAttribute('href', `/roast/plan?plan=${NEW_PLAN}`);
 	});
 
 	it('reopens a saved plan with its download and what to do with it in Artisan', async () => {
@@ -307,6 +378,25 @@ describe('/roast/plan', () => {
 		await fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
 		await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
 		expect(screen.getByText(/13 roasts have no Artisan file on record/)).toBeInTheDocument();
+	});
+
+	it('does not call a saved reference missing when the saved references could not be loaded', async () => {
+		referencesFail = true;
+		visit(`/roast/plan?from=ref:${KEEPER}`);
+
+		const alert = await screen.findByRole('alert');
+		expect(alert).toHaveTextContent('Saved references and plans could not be loaded.');
+		expect(screen.queryByText('That saved reference could not be found.')).toBeNull();
+		expect(screen.queryByText(/A plan starts from a roast or reference/)).toBeNull();
+
+		referencesFail = false;
+		await fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
+		await waitFor(() =>
+			expect(screen.getByRole('combobox', { name: 'Roast or saved reference' })).toHaveValue(
+				'Guji natural, September keeper'
+			)
+		);
+		expect(screen.queryByRole('alert')).toBeNull();
 	});
 
 	it('does not call a saved plan missing when the saved plans could not be loaded', async () => {

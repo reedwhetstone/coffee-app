@@ -1509,7 +1509,7 @@ const docsPages: DocsPage[] = [
 							'GET',
 							'Session + Mallard Studio',
 							'Internal UI helper',
-							'Lists the newest roasts whose Artisan file is on record, so a plan can start from one, with a count of the roasts that have no usable file.'
+							'Lists the newest roasts whose Artisan file is on record, so a plan can start from one. Returns at most 50 roasts and is not paged. The counts in the response cover every roast on the account, including eligible roasts beyond the 50 returned and roasts with no usable file.'
 						],
 						[
 							'/api/reference-profiles/from-roast/preview',

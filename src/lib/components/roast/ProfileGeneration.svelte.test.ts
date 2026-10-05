@@ -214,9 +214,13 @@ function show(props: {
 	candidates?: RoastCandidate[];
 	profiles?: SavedReference[];
 	ineligibleRoastCount?: number;
+	eligibleRoastCount?: number;
+	referencesFailed?: boolean;
+	roastsFailed?: boolean;
 	from?: CompareSide | null;
+	onSaved?: () => void | Promise<void>;
 }) {
-	const onSaved = vi.fn();
+	const onSaved = vi.fn(props.onSaved);
 	const onStartChange = vi.fn();
 	const view = render(ProfileGeneration, {
 		candidates: [],
@@ -224,8 +228,8 @@ function show(props: {
 		from: null,
 		ownerId: 'owner',
 		onStartChange,
-		onSaved,
-		...props
+		...props,
+		onSaved
 	});
 	return { ...view, onSaved, onStartChange };
 }
@@ -311,6 +315,64 @@ describe('choosing what a plan starts from', () => {
 		).toBeInTheDocument();
 		expect(screen.queryByRole('combobox')).toBeNull();
 		expect(screen.queryByRole('button', { name: 'Preview' })).toBeNull();
+	});
+
+	it('does not call a saved reference missing, or the account empty, when the saved references could not be loaded', async () => {
+		stubFetch();
+		const view = show({ referencesFailed: true, from: { type: 'ref', id: KEEPER } });
+
+		// The page says the list failed and offers another try; the form concludes nothing from it.
+		expect(screen.queryByText('That saved reference could not be found.')).toBeNull();
+		expect(screen.queryByText(/A plan starts from a roast or reference/)).toBeNull();
+		expect(screen.queryByRole('status')).toBeNull();
+		expect(previewButton()).toBeDisabled();
+
+		await fireEvent.focus(picker());
+		const [references, roasts] = within(screen.getByRole('listbox')).getAllByRole('group');
+		expect(
+			within(references).getByText('Saved references and plans could not be loaded.')
+		).toBeInTheDocument();
+		expect(
+			within(roasts).getByText('No roasts with an Artisan file on record yet.')
+		).toBeInTheDocument();
+
+		// Once the list is read, the reference in the link is chosen.
+		await fireEvent.keyDown(picker(), { key: 'Escape' });
+		const keeper = reference(KEEPER, 'Guji natural, September keeper');
+		stubFetch(referenceBackend(keeper, chart('F', 30_000)));
+		await view.rerender({ referencesFailed: false, profiles: [keeper] });
+		await waitFor(() => expect(picker()).toHaveValue('Guji natural, September keeper'));
+		await waitFor(() => expect(previewButton()).toBeEnabled());
+	});
+
+	it('still says a saved reference is missing once the saved references were read', () => {
+		stubFetch();
+		show({ roastsFailed: true, from: { type: 'ref', id: KEEPER } });
+
+		expect(screen.getByRole('status')).toHaveTextContent(
+			'That saved reference could not be found.'
+		);
+	});
+
+	it('does not say there is nothing to start from when the roasts could not be loaded', async () => {
+		stubFetch();
+		show({ roastsFailed: true });
+
+		expect(screen.queryByText(/A plan starts from a roast or reference/)).toBeNull();
+		await fireEvent.focus(picker());
+		const [, roasts] = within(screen.getByRole('listbox')).getAllByRole('group');
+		expect(within(roasts).getByText('Roasts could not be loaded.')).toBeInTheDocument();
+	});
+
+	it('says the list holds only the newest roasts when more can be planned from', () => {
+		stubFetch();
+		show({ candidates: [candidate(4531), candidate(4507)], eligibleRoastCount: 62 });
+
+		expect(
+			screen.getByText(
+				'The 2 newest roasts are listed. To plan from an older one, open that roast and choose “Plan next roast from this”.'
+			)
+		).toBeInTheDocument();
 	});
 
 	it('arrives with the roast from the link chosen and its plan named after the coffee', async () => {
@@ -723,6 +785,39 @@ describe('planning from a saved reference', () => {
 		expect(String(calls(fetchMock, '/generated')[0][0])).toBe(
 			`/api/reference-profiles/${KEEPER}/revisions/${KEEPER}-revision/generated`
 		);
+	});
+
+	it('saves a plan once when opening it afterwards fails', async () => {
+		const keeper = reference(KEEPER, 'Guji natural, September keeper');
+		const fetchMock = stubFetch(referenceBackend(keeper, chart('F', 30_000)), planSaved);
+		const { onSaved } = show({
+			profiles: [keeper],
+			from: { type: 'ref', id: KEEPER },
+			onSaved: () => Promise.reject(new Error('Navigation failed'))
+		});
+
+		await previewAndWait();
+		await fireEvent.click(saveButton());
+		await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+
+		// The plan is saved: that is what the form says, with the way to it.
+		const saved = await screen.findByRole('status');
+		expect(saved).toHaveTextContent('Guji natural, September keeper plan is saved.');
+		expect(within(saved).getByRole('link', { name: 'Open the saved plan' })).toHaveAttribute(
+			'href',
+			`/roast/plan?plan=${NEW_PLAN}`
+		);
+		expect(screen.queryByRole('alert')).toBeNull();
+
+		// It cannot be saved a second time from the same preview.
+		expect(saveButton()).toBeDisabled();
+		await fireEvent.click(saveButton());
+		expect(calls(fetchMock, '/generated')).toHaveLength(1);
+
+		// A new preview is a new plan, and can be saved.
+		await previewAndWait();
+		expect(screen.queryByRole('status')).toBeNull();
+		expect(saveButton()).toBeEnabled();
 	});
 
 	it('holds the form while a preview is in flight', async () => {

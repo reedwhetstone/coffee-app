@@ -4,7 +4,12 @@
 	import { buildProfileGenerationChart } from '$lib/roast/profile-generation-model';
 	import { compareHref } from '$lib/roast/compare-sides';
 	import { referenceOption } from '$lib/roast/profile-picker-model';
-	import { planHref, type ReferenceChart, type SavedReference } from '$lib/roast/roast-plan';
+	import {
+		planDownloadHref,
+		planHref,
+		type ReferenceChart,
+		type SavedReference
+	} from '$lib/roast/roast-plan';
 
 	type ChartAnswer = components['schemas']['ReferenceProfileChartResponse']['data'];
 
@@ -36,7 +41,7 @@
 	const chartData = $derived(
 		curve ? buildProfileGenerationChart(curve.startedFrom?.chart ?? null, curve.chart) : null
 	);
-	const downloadHref = $derived(plan ? `${revisionPath(plan)}/export` : '');
+	const downloadHref = $derived(plan ? planDownloadHref(plan) : '');
 
 	const loadRoastChart = () => import('./chart/RoastChart.svelte');
 

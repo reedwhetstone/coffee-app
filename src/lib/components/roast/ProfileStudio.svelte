@@ -214,7 +214,7 @@
 				<h3 class="font-semibold text-ink">Plan your next roast</h3>
 				<p class="mt-1 text-sm text-muted">
 					Start from a roast or reference you liked, adjust it, and save the result as a curve to
-					follow in Artisan.
+					follow in Artisan. Plans you have saved are listed there, with their downloads.
 				</p>
 			</div>
 			<a

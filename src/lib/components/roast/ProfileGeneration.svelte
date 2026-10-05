@@ -20,6 +20,7 @@
 		buildPlanStartGroups,
 		describeAdjustment,
 		isRoastSourceReason,
+		olderRoastsLine,
 		planHref,
 		planStartKey,
 		planStarts,
@@ -58,6 +59,9 @@
 		candidates,
 		profiles,
 		ineligibleRoastCount = 0,
+		eligibleRoastCount = 0,
+		referencesFailed = false,
+		roastsFailed = false,
 		from,
 		ownerId,
 		onStartChange,
@@ -68,6 +72,12 @@
 		profiles: SavedReference[];
 		/** How many of the account's other roasts have no usable Artisan file. */
 		ineligibleRoastCount?: number;
+		/** How many of the account's roasts can be planned from, listed here or not. */
+		eligibleRoastCount?: number;
+		/** The saved references could not be read, so none being listed says nothing about them. */
+		referencesFailed?: boolean;
+		/** The roasts could not be read, so none being listed says nothing about them. */
+		roastsFailed?: boolean;
 		/** What the link asks to start from. */
 		from: CompareSide | null;
 		ownerId: string | null;
@@ -99,6 +109,8 @@
 	// The saved reference a roast's Artisan file was kept under, so a second try reuses it.
 	let keptReference = $state<(Target & { key: string }) | null>(null);
 	let referenceKept = $state(false);
+	// The plan this preview was saved as. It is saved once, whatever happens on the way to it.
+	let savedPlan = $state<(Target & { title: string }) | null>(null);
 	let previewSection = $state<HTMLElement | null>(null);
 
 	const storage = () => (typeof sessionStorage === 'undefined' ? null : sessionStorage);
@@ -114,8 +126,11 @@
 			? [...listed, extra]
 			: listed;
 	});
-	const groups = $derived(buildPlanStartGroups(starts));
-	const resolution = $derived(resolvePlanStart(from, starts, candidates, profiles));
+	const failed = $derived({ references: referencesFailed, roasts: roastsFailed });
+	const groups = $derived(buildPlanStartGroups(starts, failed));
+	const resolution = $derived(resolvePlanStart(from, starts, candidates, profiles, failed));
+	// Only two lists that were both read and both came back empty mean there is nothing to start from.
+	const nothingToStartFrom = $derived(starts.length === 0 && !referencesFailed && !roastsFailed);
 	const start = $derived(resolution.status === 'ready' ? resolution.start : null);
 	const startKey = $derived(start ? planStartKey(start) : '');
 	// Only the curve loaded for the current start may place, limit, or sit behind a plan.
@@ -123,6 +138,7 @@
 	const temperatureUnit = $derived(startChart?.temperatureUnit ?? 'F');
 	const maxDegrees = $derived(maxDegreesFor(temperatureUnit));
 	const unusableLine = $derived(unusableRoastsLine(ineligibleRoastCount));
+	const olderLine = $derived(olderRoastsLine(candidates.length, eligibleRoastCount));
 	const fingerprint = $derived(
 		JSON.stringify({
 			start: startKey,
@@ -369,6 +385,7 @@
 		previewError = null;
 		saveError = null;
 		referenceKept = false;
+		savedPlan = null;
 		preview = null;
 		previewed = null;
 		try {
@@ -452,7 +469,7 @@
 		const key = startKey;
 		const drawn = preview;
 		const inputs = previewed;
-		if (!requested || !drawn || !inputs || busy) return;
+		if (!requested || !drawn || !inputs || busy || savedPlan) return;
 		if (inputs.fingerprint !== fingerprint) {
 			saveError = 'The plan changed after the preview. Preview it again before saving.';
 			return;
@@ -506,7 +523,15 @@
 				throw new Error('Unable to confirm the saved plan');
 			clearIdempotencyKey(storage(), ownerId, GENERATION_SCOPE, operation);
 			kept = false;
-			await onSaved({ id: saved.id, revisionId: saved.currentRevisionId, title: saved.title });
+			// The plan is saved from here. Failing to open it is not a failure to save it, and
+			// must not leave the form offering to save the same plan a second time.
+			const plan = { id: saved.id, revisionId: saved.currentRevisionId, title: saved.title };
+			savedPlan = plan;
+			try {
+				await onSaved(plan);
+			} catch {
+				// The form keeps a link to the saved plan.
+			}
 		} catch (cause) {
 			saveError = cause instanceof Error ? cause.message : 'Unable to save this plan';
 			referenceKept = kept;
@@ -543,6 +568,7 @@
 			previewError = null;
 			saveError = null;
 			referenceKept = false;
+			savedPlan = null;
 			if (!titleEdited) title = start ? `${start.option.title} plan`.slice(0, 200) : '';
 			if (start) void loadStartChart(start);
 		});
@@ -552,7 +578,7 @@
 <div class="rounded-xl border border-line bg-surface-panel p-4 sm:p-6">
 	<section aria-labelledby="{uid}-start">
 		<h2 id="{uid}-start" class="font-semibold text-ink">1. Start from</h2>
-		{#if starts.length === 0}
+		{#if nothingToStartFrom}
 			<p class="mt-2 max-w-2xl text-sm text-muted">
 				A plan starts from a roast or reference that still has its Artisan file.
 				<a href="/roast?modal=new" class="font-semibold text-link hover:text-accent"
@@ -597,12 +623,15 @@
 				>
 			</div>
 		{/if}
+		{#if olderLine}
+			<p class="mt-3 max-w-2xl text-xs text-muted">{olderLine}</p>
+		{/if}
 		{#if unusableLine}
 			<p class="mt-3 max-w-2xl text-xs text-muted">{unusableLine}</p>
 		{/if}
 	</section>
 
-	{#if !stop && starts.length > 0}
+	{#if !stop && !nothingToStartFrom}
 		<section class="mt-6 border-t border-line pt-5" aria-labelledby="{uid}-change">
 			<h2 id="{uid}-change" class="font-semibold text-ink">2. What to change</h2>
 			<fieldset
@@ -731,7 +760,7 @@
 				<button
 					type="button"
 					class="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink disabled:opacity-50"
-					disabled={busy !== null || !matchingPreview}
+					disabled={busy !== null || !matchingPreview || savedPlan !== null}
 					onclick={savePlan}>{busy === 'save' ? 'Saving…' : 'Save plan'}</button
 				>
 				<button
@@ -749,6 +778,14 @@
 			{#if referenceKept}
 				<p role="status" class="mt-3 text-sm text-muted">
 					This roast is now kept as a saved reference. Saving the plan again will use it.
+				</p>
+			{/if}
+			{#if savedPlan && busy === null}
+				<p role="status" class="mt-3 rounded-lg bg-success-subtle p-3 text-sm text-success-strong">
+					{savedPlan.title} is saved.
+					<a href={planHref({ plan: savedPlan.id })} class="font-semibold underline"
+						>Open the saved plan</a
+					>
 				</p>
 			{/if}
 		</section>

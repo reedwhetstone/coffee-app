@@ -107,8 +107,17 @@ export function planStarts(candidates: RoastCandidate[], profiles: SavedReferenc
 	return [...references, ...candidates.map(roastStart)];
 }
 
+/** Which of the two lists a plan starts from could not be read. An unread list is not an empty one. */
+export interface PlanListFailures {
+	references?: boolean;
+	roasts?: boolean;
+}
+
 /** The plan page's "Start from" choices, in the comparison picker's order. */
-export function buildPlanStartGroups(starts: PlanStart[]): ProfileOptionGroup[] {
+export function buildPlanStartGroups(
+	starts: PlanStart[],
+	failed: PlanListFailures = {}
+): ProfileOptionGroup[] {
 	const references = starts.filter((start) => start.kind === 'reference').map((s) => s.option);
 	const roasts = starts.filter((start) => start.kind === 'roast').map((s) => s.option);
 	return [
@@ -117,14 +126,18 @@ export function buildPlanStartGroups(starts: PlanStart[]): ProfileOptionGroup[] 
 			heading: 'Saved references and plans',
 			options: references,
 			total: references.length,
-			empty: 'No saved references or plans yet.'
+			empty: failed.references
+				? 'Saved references and plans could not be loaded.'
+				: 'No saved references or plans yet.'
 		},
 		{
 			key: 'roasts',
 			heading: 'Roasts',
 			options: roasts,
 			total: roasts.length,
-			empty: 'No roasts with an Artisan file on record yet.'
+			empty: failed.roasts
+				? 'Roasts could not be loaded.'
+				: 'No roasts with an Artisan file on record yet.'
 		}
 	];
 }
@@ -137,13 +150,16 @@ export type PlanStartResolution =
 	| { status: 'unlisted'; roastId: number }
 	/** A saved reference that holds a roast's chart and no Artisan file. */
 	| { status: 'snapshot'; sourceRoastId: number | null }
-	| { status: 'missing' };
+	| { status: 'missing' }
+	/** A saved reference that cannot be looked for, because the saved references were not read. */
+	| { status: 'unknown' };
 
 export function resolvePlanStart(
 	from: CompareSide | null,
 	starts: PlanStart[],
 	candidates: RoastCandidate[],
-	profiles: SavedReference[]
+	profiles: SavedReference[],
+	failed: PlanListFailures = {}
 ): PlanStartResolution {
 	if (!from) return { status: 'none' };
 	const listed = starts.find((start) => start.side.type === from.type && start.side.id === from.id);
@@ -154,9 +170,21 @@ export function resolvePlanStart(
 	const candidate = candidates.find((entry) => entry.reference.profileId === from.id);
 	if (candidate) return { status: 'ready', start: roastStart(candidate) };
 	const profile = profiles.find((entry) => entry.id === from.id);
-	if (!profile) return { status: 'missing' };
+	if (!profile) return { status: failed.references ? 'unknown' : 'missing' };
 	if (canPlanFromReference(profile)) return { status: 'ready', start: referenceStart(profile) };
 	return { status: 'snapshot', sourceRoastId: profile.sourceRoast?.id ?? null };
+}
+
+/** The account's saved plans, newest first. */
+export function savedPlans(profiles: SavedReference[]): SavedReference[] {
+	return profiles
+		.filter((profile) => profile.sourceClass === 'generated_revision')
+		.sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
+}
+
+/** Where a saved plan's file for Artisan is downloaded from. */
+export function planDownloadHref(plan: Pick<SavedReference, 'id' | 'currentRevisionId'>): string {
+	return `/api/reference-profiles/${encodeURIComponent(plan.id)}/revisions/${encodeURIComponent(plan.currentRevisionId)}/export`;
 }
 
 /** A roast Parchment accepted that the candidate list did not carry. */
@@ -177,6 +205,15 @@ export function unusableRoastsLine(count: number): string | null {
 	return count === 1
 		? '1 roast has no Artisan file on record, so a plan cannot be built from it. Import its .alog to plan from it.'
 		: `${count} roasts have no Artisan file on record, so a plan cannot be built from them. Import a roast's .alog to plan from it.`;
+}
+
+/**
+ * Parchment lists the newest roasts that can be planned from, up to a limit. When more can be,
+ * say so, and say how an older one is reached.
+ */
+export function olderRoastsLine(listed: number, eligible: number): string | null {
+	if (!Number.isFinite(eligible) || listed <= 0 || eligible <= listed) return null;
+	return `The ${listed} newest roasts are listed. To plan from an older one, open that roast and choose “Plan next roast from this”.`;
 }
 
 /** Parchment's reason a roast cannot be planned from, as the next thing to do. */

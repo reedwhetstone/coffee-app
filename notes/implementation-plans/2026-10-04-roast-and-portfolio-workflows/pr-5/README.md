@@ -48,6 +48,31 @@ A plan from a roast saves twice: the roast's Artisan file is kept as a saved ref
 - "Save plan" again saves the plan. The stand-in received one request to keep the file and two to save the plan.
 - The reference kept from a roast is named for the coffee and its date ("Ethiopia Yirgacheffe Wush Wush 96 Hour Anaerobic Natural, roasted Oct 1, 2026"). The roast is still offered once under "Start from".
 
+## Plans saved before this page
+
+The Studio section on `/roast` listed saved plans with their downloads. That list moved with the form, so a plan saved earlier is still reachable without its link:
+
+- Under the form, "Saved plans" lists every plan, newest first. The name opens the plan (`/roast/plan?plan=<id>`); "Download for Artisan (.alog)" saves `Purveyors-reference.alog` from the row. An account with no plans sees no list.
+- The Studio card on `/roast` reads "Plans you have saved are listed there, with their downloads."
+- At both sizes the last row's download is clear of the chat button fixed to the corner when the page is scrolled to its end (desktop: the link ends at 783 px, the button starts at 836 px; phone: 711 px and 780 px).
+
+`/roast/saved` in PR 6 takes this list over.
+
+## When a list cannot be loaded
+
+A list that could not be read is not treated as an empty one.
+
+- **Saved references fail, and the link names one** (`/roast/plan?from=ref:<id>`): the page says "Saved references and plans could not be loaded." with "Try again". It does not also say the reference could not be found, and it does not say there is nothing to start from. Under "Start from" the group reads "Saved references and plans could not be loaded." and the roasts are still offered. "Try again" brings the reference in the link up chosen.
+- **Both lists fail:** both messages, each with "Try again", and the form held with nothing chosen. The page does not say the account has nothing to plan from.
+
+## Saving once
+
+When the plan is saved and the saved plan cannot then be opened, the form says "[name] is saved." with "Open the saved plan", and "Save plan" is held until a new preview is drawn. Covered by component tests, with the page's navigation made to fail: one request to save the plan, and no "Unable to save" message.
+
+## More roasts than the list holds
+
+Parchment returns at most 50 roasts. When more can be planned from, the line under "Start from" reads "The 50 newest roasts are listed. To plan from an older one, open that roast and choose “Plan next roast from this”." Covered by tests; the seeded account has three.
+
 ## Task check (ADR-009)
 
 Build a plan from a saved reference, read the preview, save it, and download it. The link is `/roast/plan?from=ref:<id>`.
@@ -101,6 +126,8 @@ The plan's last sentence, "It does not control your roaster", does not hold in e
 | A saved plan reopened by link                    | [desktop](plan-reopened-desktop.png)                   | [phone](plan-reopened-phone.png)                                                                |
 | "Start from" opened, after a plan from a roast   | [desktop](plan-picker-open-desktop.png)                | [phone](plan-picker-open-phone.png)                                                             |
 | Nothing chosen yet                               | [desktop](plan-nothing-chosen-desktop.png)             | [phone](plan-nothing-chosen-phone.png)                                                          |
+| Saved plans listed under the form                | [desktop](plan-saved-plans-list-desktop.png)           | [phone](plan-saved-plans-list-phone.png)                                                        |
+| Saved references could not be loaded             | [desktop](plan-references-not-loaded-desktop.png)      | [phone](plan-references-not-loaded-phone.png)                                                   |
 | Plan from a saved reference: preview             | [desktop](plan-from-reference-preview-desktop.png)     | [phone](plan-from-reference-preview-phone.png)                                                  |
 | Leaving a recording roast to plan                | [desktop](guard-plan-desktop.png)                      | [phone](guard-plan-phone.png)                                                                   |
 | The Studio section's plan card on `/roast`       | [desktop](studio-plan-card-desktop.png)                | [phone](studio-plan-card-phone.png)                                                             |

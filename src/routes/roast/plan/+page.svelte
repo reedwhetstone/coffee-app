@@ -6,9 +6,12 @@
 	import SavedPlan from '$lib/components/roast/SavedPlan.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	import type { CompareSide } from '$lib/roast/compare-sides';
+	import { referenceOption } from '$lib/roast/profile-picker-model';
 	import {
+		planDownloadHref,
 		planHref,
 		readPlanLink,
+		savedPlans,
 		type RoastCandidates,
 		type SavedReference
 	} from '$lib/roast/roast-plan';
@@ -26,6 +29,7 @@
 
 	// What is being planned lives in the link, so a plan can be shared and reopened.
 	const link = $derived(readPlanLink(page.url.searchParams));
+	const plans = $derived(savedPlans(profiles));
 
 	async function loadReferences() {
 		try {
@@ -122,11 +126,44 @@
 				candidates={candidates?.roasts ?? []}
 				{profiles}
 				ineligibleRoastCount={candidates?.ineligibleRoastCount ?? 0}
+				eligibleRoastCount={candidates?.eligibleCount ?? 0}
+				{referencesFailed}
+				{roastsFailed}
 				from={link.from}
 				ownerId={data.auth?.user?.id ?? null}
 				onStartChange={changeStart}
 				onSaved={openSavedPlan}
 			/>
+			{#if plans.length > 0}
+				<!-- The bottom margin keeps the last download clear of the chat button fixed to the corner. -->
+				<section
+					class="mb-20 mt-6 rounded-xl border border-line bg-surface-panel p-4 sm:p-6"
+					aria-labelledby="saved-plans"
+				>
+					<h2 id="saved-plans" class="font-semibold text-ink">Saved plans</h2>
+					<ul class="mt-2 divide-y divide-line text-sm">
+						{#each plans as plan (plan.id)}
+							{@const option = referenceOption(plan)}
+							<li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3">
+								<div class="min-w-0">
+									<a
+										href={planHref({ plan: plan.id })}
+										class="break-words font-semibold text-link hover:text-accent">{option.title}</a
+									>
+									<p class="text-muted">{option.detail}</p>
+								</div>
+								<a
+									href={planDownloadHref(plan)}
+									download
+									aria-label="Download for Artisan (.alog): {option.title}"
+									class="inline-flex min-h-11 shrink-0 items-center font-semibold text-link hover:text-accent"
+									>Download for Artisan (.alog)</a
+								>
+							</li>
+						{/each}
+					</ul>
+				</section>
+			{/if}
 		{/if}
 	{/if}
 </div>

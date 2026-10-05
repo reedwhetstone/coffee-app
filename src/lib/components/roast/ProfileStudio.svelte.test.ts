@@ -82,6 +82,10 @@ describe('Profile Studio', () => {
 		const link = screen.getByRole('link', { name: 'Plan next roast' });
 		expect(link).toHaveAttribute('href', '/roast/plan');
 		expect(screen.getByRole('heading', { name: 'Plan your next roast' })).toBeInTheDocument();
+		// Saved plans used to be listed here with their downloads; the card says where they are now.
+		expect(
+			screen.getByText(/Plans you have saved are listed there, with their downloads\./)
+		).toBeInTheDocument();
 
 		// The form, its preview, and its downloads are gone from the section, and the
 		// section no longer reads the saved references it only listed for that form.

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	buildPlanStartGroups,
 	describeAdjustment,
+	olderRoastsLine,
+	planDownloadHref,
 	planHref,
 	planStartKey,
 	planStarts,
@@ -9,6 +11,7 @@ import {
 	referenceChartFromRoast,
 	resolvePlanStart,
 	roastSourceReasonCopy,
+	savedPlans,
 	unusableRoastsLine,
 	type RoastCandidate,
 	type RoastChartData,
@@ -187,6 +190,35 @@ describe('what a plan can start from', () => {
 		expect(roasts.empty).toBe('No roasts with an Artisan file on record yet.');
 	});
 
+	it('does not call a list that could not be read empty', () => {
+		const [references, roasts] = buildPlanStartGroups([], { references: true, roasts: true });
+		expect(references.empty).toBe('Saved references and plans could not be loaded.');
+		expect(roasts.empty).toBe('Roasts could not be loaded.');
+
+		// Only the list that failed says so.
+		const [read, unread] = buildPlanStartGroups([], { roasts: true });
+		expect(read.empty).toBe('No saved references or plans yet.');
+		expect(unread.empty).toBe('Roasts could not be loaded.');
+	});
+
+	it('does not call a saved reference missing when the saved references could not be read', () => {
+		const from = { type: 'ref', id: KEEPER } as const;
+		expect(resolvePlanStart(from, [], [], [], { references: true })).toEqual({
+			status: 'unknown'
+		});
+		// The roasts failing says nothing about a saved reference.
+		expect(resolvePlanStart(from, [], [], [], { roasts: true })).toEqual({ status: 'missing' });
+		// A reference kept from a listed roast is still found through that roast.
+		const kept = candidate({
+			reference: { profileId: KEPT_FROM_ROAST, revisionId: 'kept-revision', saved: true }
+		});
+		expect(
+			resolvePlanStart({ type: 'ref', id: KEPT_FROM_ROAST }, planStarts([kept], []), [kept], [], {
+				references: true
+			})
+		).toMatchObject({ status: 'ready', start: { kind: 'roast', roastId: 4531 } });
+	});
+
 	it('resolves what a link names', () => {
 		const candidates = [newest];
 		const profiles = [keeper, snapshot, plan];
@@ -219,6 +251,47 @@ describe('what a plan can start from', () => {
 		const [after] = planStarts([{ ...newest, roastRevision: 'later' }], []);
 		expect(planStartKey(before)).toBe('roast:4531@revision-4531');
 		expect(planStartKey(after)).not.toBe(planStartKey(before));
+	});
+});
+
+describe('saved plans', () => {
+	it('lists only plans, newest first, each with its download', () => {
+		const older = reference({
+			id: PLAN,
+			title: 'Guji plan',
+			sourceClass: 'generated_revision',
+			createdAt: '2026-09-30T00:00:00Z'
+		});
+		const newer = reference({
+			id: 'aaaaaaaa-0000-4000-8000-000000000009',
+			title: 'Colombia plan',
+			sourceClass: 'generated_revision',
+			createdAt: '2026-10-03T00:00:00Z'
+		});
+		const upload = reference({});
+		const snapshot = reference({ id: SNAPSHOT, sourceClass: 'executed_roast' });
+
+		expect(savedPlans([older, upload, snapshot, newer]).map((plan) => plan.title)).toEqual([
+			'Colombia plan',
+			'Guji plan'
+		]);
+		expect(savedPlans([upload, snapshot])).toEqual([]);
+		expect(planDownloadHref(older)).toBe(
+			`/api/reference-profiles/${PLAN}/revisions/${PLAN}-revision/export`
+		);
+	});
+});
+
+describe('roasts that are not listed', () => {
+	it('says the list holds the newest roasts only when more can be planned from', () => {
+		expect(olderRoastsLine(50, 50)).toBeNull();
+		expect(olderRoastsLine(3, 3)).toBeNull();
+		expect(olderRoastsLine(0, 0)).toBeNull();
+		// A list that could not be read has nothing in it to call the newest.
+		expect(olderRoastsLine(0, 62)).toBeNull();
+		expect(olderRoastsLine(50, 62)).toBe(
+			'The 50 newest roasts are listed. To plan from an older one, open that roast and choose “Plan next roast from this”.'
+		);
 	});
 });
 
