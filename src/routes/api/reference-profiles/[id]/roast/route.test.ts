@@ -71,7 +71,9 @@ describe('POST /api/reference-profiles/[id]/roast', () => {
 	});
 
 	it('requires an Idempotency-Key, so a retry cannot record the roast twice', async () => {
-		const response = await POST(event({ coffeeId: 101, revisionId: REVISION }, { key: null }) as never);
+		const response = await POST(
+			event({ coffeeId: 101, revisionId: REVISION }, { key: null }) as never
+		);
 
 		expect(response.status).toBe(400);
 		expect(await response.json()).toEqual({ error: 'Idempotency-Key is required' });

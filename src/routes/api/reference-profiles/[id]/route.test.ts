@@ -54,16 +54,21 @@ describe('PATCH /api/reference-profiles/[id]', () => {
 		expect(await response.json()).toEqual({ data: { id: KEEPER, title: 'Guji keeper, washed' } });
 	});
 
-	it.each([{ title: '   ' }, { title: 42 }, {}, null])('asks for a name when sent %j', async (body) => {
-		const update = vi.fn();
-		parchmentMocks.createParchmentServerClient.mockResolvedValue({ referenceProfiles: { update } });
+	it.each([{ title: '   ' }, { title: 42 }, {}, null])(
+		'asks for a name when sent %j',
+		async (body) => {
+			const update = vi.fn();
+			parchmentMocks.createParchmentServerClient.mockResolvedValue({
+				referenceProfiles: { update }
+			});
 
-		const response = await PATCH(event('PATCH', KEEPER, body) as never);
+			const response = await PATCH(event('PATCH', KEEPER, body) as never);
 
-		expect(response.status).toBe(400);
-		expect(await response.json()).toEqual({ error: 'Enter a name' });
-		expect(update).not.toHaveBeenCalled();
-	});
+			expect(response.status).toBe(400);
+			expect(await response.json()).toEqual({ error: 'Enter a name' });
+			expect(update).not.toHaveBeenCalled();
+		}
+	);
 
 	it('answers a body that is not JSON with 400', async () => {
 		const response = await PATCH(event('PATCH', KEEPER, '{not json') as never);

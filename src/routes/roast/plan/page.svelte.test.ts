@@ -177,12 +177,7 @@ describe('/roast/plan', () => {
 		await screen.findByRole('combobox', { name: 'Roast or saved reference' });
 		expect(
 			screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)
-		).toEqual([
-			'1. Start from',
-			'2. What to change',
-			'3. Preview',
-			'4. Save and send to Artisan'
-		]);
+		).toEqual(['1. Start from', '2. What to change', '3. Preview', '4. Save and send to Artisan']);
 		expect(screen.getByRole('button', { name: 'Preview' })).toBeDisabled();
 		expect(screen.getByText('Up to 20 °F (10 °C).')).toBeInTheDocument();
 	});
