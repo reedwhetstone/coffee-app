@@ -1463,6 +1463,13 @@ const docsPages: DocsPage[] = [
 							'CRUD for roast profiles. GET accepts coffee_id, a portfolio inventory id, to list one coffee’s roasts. POST supports single and batch creation. DELETE accepts id or batch name.'
 						],
 						[
+							'/api/roast-profiles/[id]/artisan-file',
+							'GET',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'Downloads the Artisan file stored with a roast when it was imported, byte for byte, as a private, no-store attachment with Parchment’s file name and Repr-Digest. A roast with no file on record returns 400 with code roast_artisan_source_unavailable and a reason.'
+						],
+						[
 							'/api/artisan-import',
 							'POST',
 							'Session + roast:write',
@@ -1498,6 +1505,27 @@ const docsPages: DocsPage[] = [
 							'Lists owner-scoped reference profiles and accepts Artisan multipart uploads or immutable snapshots of eligible executed roasts. POST requires an Idempotency-Key.'
 						],
 						[
+							'/api/reference-profiles/[id]',
+							'PATCH DELETE',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'PATCH renames a saved reference or plan from a JSON title. DELETE removes it and returns 204. Roasts are not changed by either.'
+						],
+						[
+							'/api/reference-profiles/[id]/artisan-file',
+							'GET',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'Downloads the Artisan file stored with a reference, whether it was uploaded or kept from a roast, byte for byte, as a private, no-store attachment with Parchment’s file name and Repr-Digest. A reference with no stored file returns 400 with code reference_artisan_file_unavailable and a reason; a plan downloads through its revision’s export instead.'
+						],
+						[
+							'/api/reference-profiles/[id]/roast',
+							'POST',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'Records an uploaded Artisan reference as a roast of one portfolio coffee, from the file Parchment already holds. The body carries coffeeId and the reference’s revisionId. Requires an Idempotency-Key. The reference is kept.'
+						],
+						[
 							'/api/reference-profiles/compare',
 							'POST',
 							'Session + Mallard Studio',
@@ -1530,7 +1558,7 @@ const docsPages: DocsPage[] = [
 							'GET',
 							'Session + Mallard Studio',
 							'Internal UI helper',
-							'Returns the typed chart for one immutable reference revision so Profile Studio can bound and display a planned change.'
+							'Returns the typed chart for one immutable reference revision so the plan page can bound and display a planned change.'
 						],
 						[
 							'/api/reference-profiles/[id]/revisions/[revisionId]/preview',
@@ -1551,7 +1579,7 @@ const docsPages: DocsPage[] = [
 							'GET',
 							'Session + Mallard Studio',
 							'Internal product route',
-							'Downloads a saved generated plan as a private, no-store Purveyors .alog attachment. Uploaded references and executed-roast snapshots are not exported.'
+							'Downloads a saved generated plan as a private, no-store Purveyors .alog attachment. Uploaded references and executed-roast snapshots are not exported; a reference with a stored Artisan file downloads it from the artisan-file route.'
 						]
 					]
 				}
@@ -1869,7 +1897,8 @@ const docsPages: DocsPage[] = [
 					'POST /api/artisan-import expects multipart form-data with file and roastId. Supported file extensions are .alog, .alog.json, and .json.',
 					'GET /api/reference-profiles lists reusable owner-scoped references. POST accepts either an Artisan multipart upload or an executed_roast JSON snapshot and requires a stable Idempotency-Key until the outcome is definitive.',
 					'POST /api/reference-profiles/compare accepts two selected IDs, resolves immutable revisions before comparison, and returns measured charge-aligned deltas. These are internal first-party BFF routes, not public /v1 API contracts.',
-					'Planned references use the revision routes under /api/reference-profiles/[id]/revisions/[revisionId]. GET chart loads the immutable parent, POST preview recalculates one bounded temperature change without saving, POST generated saves that exact change set with a stable Idempotency-Key, and GET export downloads a saved generated plan as a private, no-store .alog attachment. Only uploaded Artisan references and their generated descendants can be planned and exported.',
+					'Planned references use the revision routes under /api/reference-profiles/[id]/revisions/[revisionId]. GET chart loads the immutable parent, POST preview recalculates one bounded temperature change without saving, POST generated saves that exact change set with a stable Idempotency-Key, and GET export downloads a saved generated plan as a private, no-store .alog attachment. A plan can be built on an uploaded Artisan reference, a reference kept from a roast’s Artisan file, or another plan; only generated plans are exported.',
+					'The saved library at /roast/saved manages references and plans. PATCH /api/reference-profiles/[id] renames one and DELETE removes it. GET /api/reference-profiles/[id]/artisan-file and GET /api/roast-profiles/[id]/artisan-file download the stored Artisan file unchanged, with its file name and Repr-Digest; when no file is on record they return 400 with a code and a reason. POST /api/reference-profiles/[id]/roast records an uploaded reference as a roast of a chosen portfolio coffee with a stable Idempotency-Key.',
 					'A plan can also start from a roast whose Artisan file is on record. GET /api/reference-profiles/from-roast/candidates lists those roasts, POST /api/reference-profiles/from-roast/preview previews the change without saving, and POST /api/reference-profiles/from-roast keeps the roast’s file as a reference with a stable Idempotency-Key before the plan is saved on it through the generated route. A roast with no usable file returns 400 with code roast_artisan_source_unavailable and a reason.',
 					'GET /api/roast-chart-data requires roastId and forwards the generated Parchment chart model: bounded typed series, discrete events, units, and derived ranges.',
 					'DELETE /api/clear-roast requires roast_id and forwards to Parchment, which enforces ownership plus roast:write before deleting imported telemetry, events, and log rows.'
@@ -2282,7 +2311,7 @@ const docsPages: DocsPage[] = [
 			'The Purveyors CLI brings your coffee catalog, inventory, roasting, sales, and market data to the terminal, to scripts, and to AI agents.',
 		eyebrow: '@purveyors/cli',
 		intro: [
-			'purvey gives you terminal access to the same coffee data as the web app: catalog search and ranking, inventory, roast profiles and Artisan imports, sales, tasting notes, Market Index signals, the Parchment Price Index, sourcing briefs, and Studio reference profiles.',
+			'purvey gives you terminal access to the same coffee data as the web app: catalog search and ranking, inventory, roasts and Artisan imports, sales, tasting notes, Market Index signals, the Parchment Price Index, sourcing briefs, and saved references and plans.',
 			`This reference matches @purveyors/cli ${CLI_REFERENCE.version}. Run purvey --version to check your version, and purvey manifest for the exact contract of the version you have installed.`
 		],
 		sections: [
@@ -2479,7 +2508,7 @@ const docsPages: DocsPage[] = [
 					'Find coffees: search and rank the catalog by origin, process, price, score, and freshness, compare suppliers, and find similar lots.',
 					'Keep records: add inventory, import Artisan roasts, record sales, and log cupping scores.',
 					'Watch the market: check value signals, price movement, and Price Index comparisons.',
-					'Plan roasts: compare roasts with Studio reference profiles and export the next plan to Artisan.'
+					'Plan roasts: compare roasts with your saved references and export the next plan to Artisan.'
 				]
 			},
 			{

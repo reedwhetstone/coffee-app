@@ -135,17 +135,43 @@ const GROUP_CONTEXT: Record<string, CliPageContext> = {
 	},
 	roast: {
 		title: 'Roast commands',
-		navSummary: 'Record roasts, import Artisan files, and watch folders.',
+		navSummary: 'Record roasts, import and download Artisan files, and watch folders.',
 		eyebrow: 'Roasting',
 		intro: [
-			'Record roast profiles, import Artisan .alog files with their curves and milestones, and watch a folder so new roasts are captured automatically.'
+			'Record roasts, import Artisan .alog files with their curves and milestones, download the file a roast was imported from, and watch a folder so new roasts are captured automatically.'
 		],
 		related: [
-			{ href: '/roast', label: 'Roast page', description: 'Charts and profile editing.' },
+			{ href: '/roast', label: 'Roasts page', description: 'Charts, comparison, and plans.' },
+			{
+				href: '/docs/cli/roast-batch',
+				label: 'Roast batch commands',
+				description: 'Work on a roasting session by its batch ID.'
+			},
 			{
 				href: '/docs/cli/sales',
 				label: 'Sales commands',
 				description: 'Record sales against roast IDs.'
+			},
+			OVERVIEW_LINK
+		]
+	},
+	'roast-batch': {
+		title: 'Roast batch commands',
+		navSummary: 'List, open, rename, and delete roast batches by ID.',
+		eyebrow: 'Roasting',
+		intro: [
+			'A batch is one roasting session and the roasts in it. Batch names can repeat, so these commands find a batch by its ID.'
+		],
+		related: [
+			{
+				href: '/docs/cli/roast',
+				label: 'Roast commands',
+				description: 'Add roasts to a batch and list the roasts in one.'
+			},
+			{
+				href: '/docs/cli/sales',
+				label: 'Sales commands',
+				description: 'Record sales against a batch ID.'
 			},
 			OVERVIEW_LINK
 		]
@@ -231,16 +257,21 @@ const GROUP_CONTEXT: Record<string, CliPageContext> = {
 	},
 	'reference-profile': {
 		title: 'Reference profile commands',
-		navSummary: 'Compare, preview, save, and export Studio reference plans.',
-		eyebrow: 'Studio',
+		navSummary: 'Compare, plan from, export, and download saved references.',
+		eyebrow: 'Roasting',
 		intro: [
-			'Work with Studio reference profiles: compare roasts against a reference, preview and save plan changes, and export an Artisan file for your next batch.'
+			'Work with your saved references and plans: compare roasts against a reference, preview and save plan changes, export a plan as an Artisan file for your next batch, and download the Artisan file a reference was added from.'
 		],
 		related: [
 			{
 				href: '/docs/cli/roast',
 				label: 'Roast commands',
 				description: 'Import the roasts you compare against references.'
+			},
+			{
+				href: '/roast/saved',
+				label: 'Saved references and plans',
+				description: 'The same library in the web app.'
 			},
 			OVERVIEW_LINK
 		]

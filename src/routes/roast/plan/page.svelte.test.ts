@@ -172,59 +172,28 @@ describe('/roast/plan', () => {
 			)
 		).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: '← Roasts' })).toHaveAttribute('href', '/roast');
+		expect(document.body.textContent).not.toMatch(/profile studio|roast studio/i);
 
 		// The four steps, in order, with nothing chosen yet.
 		await screen.findByRole('combobox', { name: 'Roast or saved reference' });
 		expect(
 			screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)
-		).toEqual([
-			'1. Start from',
-			'2. What to change',
-			'3. Preview',
-			'4. Save and send to Artisan',
-			'Saved plans'
-		]);
+		).toEqual(['1. Start from', '2. What to change', '3. Preview', '4. Save and send to Artisan']);
 		expect(screen.getByRole('button', { name: 'Preview' })).toBeDisabled();
 		expect(screen.getByText('Up to 20 °F (10 °C).')).toBeInTheDocument();
 	});
 
-	it('lists the plans already saved, each with a link to open it and its download', async () => {
-		const olderPlan = reference(
-			'aaaaaaaa-0000-4000-8000-000000000007',
-			'Colombia plan: −3°F after first crack',
-			'generated_revision',
-			'2026-09-20T00:00:00Z'
-		);
-		references = [olderPlan, keeper, savedPlan];
-		visit('/roast/plan');
-
-		const list = await screen.findByRole('region', { name: 'Saved plans' });
-		// Newest first, and only plans: an uploaded reference has no download.
-		const rows = within(list).getAllByRole('listitem');
-		expect(rows.map((row) => within(row).getAllByRole('link')[0].textContent)).toEqual([
-			'Guji plan: +5°F through drying',
-			'Colombia plan: −3°F after first crack'
-		]);
-		expect(within(rows[0]).getByText('Plan · Saved Oct 2, 2026')).toBeInTheDocument();
-		expect(
-			within(rows[0]).getByRole('link', { name: 'Guji plan: +5°F through drying' })
-		).toHaveAttribute('href', `/roast/plan?plan=${PLAN}`);
-		const download = within(rows[0]).getByRole('link', {
-			name: 'Download for Artisan (.alog): Guji plan: +5°F through drying'
-		});
-		expect(download).toHaveAttribute(
-			'href',
-			`/api/reference-profiles/${PLAN}/revisions/${PLAN}-revision/export`
-		);
-		expect(download).toHaveAttribute('download');
-	});
-
-	it('shows no list of saved plans to an account with none', async () => {
-		references = [keeper];
+	it('sends plans already saved to the saved library instead of listing them here', async () => {
+		references = [keeper, savedPlan];
 		visit('/roast/plan');
 
 		await screen.findByRole('combobox', { name: 'Roast or saved reference' });
+		const pointer = screen.getByText(/Plans you have saved, with their downloads, are in/);
+		expect(
+			within(pointer).getByRole('link', { name: 'Saved references and plans' })
+		).toHaveAttribute('href', '/roast/saved');
 		expect(screen.queryByRole('region', { name: 'Saved plans' })).toBeNull();
+		expect(screen.queryByRole('link', { name: /Download for Artisan/ })).toBeNull();
 	});
 
 	it('opens with the roast in the link chosen, and counts the roasts that cannot be used', async () => {
@@ -303,12 +272,11 @@ describe('/roast/plan', () => {
 		);
 		expect(screen.queryByRole('alert')).toBeNull();
 		expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled();
-		// The plan is also in the list of saved plans, read again after the save.
-		expect(
-			within(screen.getByRole('region', { name: 'Saved plans' })).getByRole('link', {
-				name: 'Ethiopia Yirgacheffe Wush Wush plan'
-			})
-		).toHaveAttribute('href', `/roast/plan?plan=${NEW_PLAN}`);
+		// The plan is also in the saved library, which the page points to.
+		expect(screen.getByRole('link', { name: 'Saved references and plans' })).toHaveAttribute(
+			'href',
+			'/roast/saved'
+		);
 	});
 
 	it('reopens a saved plan with its download and what to do with it in Artisan', async () => {

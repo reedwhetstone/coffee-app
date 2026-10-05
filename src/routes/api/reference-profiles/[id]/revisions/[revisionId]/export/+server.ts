@@ -1,8 +1,7 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { requireMemberRole, AuthError } from '$lib/server/auth';
-import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
-import { upstreamFailure } from '$lib/server/referenceGeneration';
+import { requireMemberRole } from '$lib/server/auth';
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import { routeFailure, upstreamFailure } from '$lib/server/referenceGeneration';
 
 export const GET: RequestHandler = async (event) => {
 	try {
@@ -27,10 +26,6 @@ export const GET: RequestHandler = async (event) => {
 			}
 		});
 	} catch (error) {
-		if (error instanceof AuthError) return json({ error: error.message }, { status: error.status });
-		if (error instanceof ParchmentConfigError)
-			return json({ error: 'Profile Studio is temporarily unavailable' }, { status: 503 });
-		console.error('Unable to download this plan');
-		return json({ error: 'Unable to download this plan' }, { status: 500 });
+		return routeFailure(error, 'Unable to download this plan');
 	}
 };

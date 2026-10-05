@@ -112,6 +112,7 @@ describe('/roast/compare', () => {
 			screen.getByText('Line up any two roasts or saved references. Both curves start at charge.')
 		).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: '← Roasts' })).toHaveAttribute('href', '/roast');
+		expect(document.body.textContent).not.toMatch(/profile studio|roast studio/i);
 		// With neither side in the link, both pickers wait to be used.
 		const first = await screen.findByRole('combobox', { name: 'First (A)' });
 		expect(first).toHaveValue('');

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InventoryWithCatalog } from '$lib/types/component.types';
+import { planNextRoastLink } from '$lib/roast/roast-plan';
 import RoastingTab from './RoastingTab.svelte';
 
 const coffee = {
@@ -305,8 +306,8 @@ describe('portfolio Roasting tab', () => {
 
 	it('draws the row menu from the links it is given', async () => {
 		renderTab({
-			rowMenu: (roastId: number) => [
-				{ label: 'Plan next roast', href: `/roast/plan?from=roast:${roastId}` }
+			rowMenu: (roast: { roast_id: number }) => [
+				{ label: 'Plan next roast', href: `/roast/plan?from=roast:${roast.roast_id}` }
 			]
 		});
 
@@ -317,6 +318,96 @@ describe('portfolio Roasting tab', () => {
 				.getByRole('link', { name: 'Plan next roast', hidden: true })
 				.getAttribute('href')
 		).toBe('/roast/plan?from=roast:4531');
+	});
+
+	it('offers "Plan next roast" only on a roast a plan can be built from', async () => {
+		// The newest roast and the oldest still have their Artisan file; the rest do not.
+		respondWith(
+			roasts.map((roast) => ({
+				...roast,
+				artisan_file_available: roast.roast_id === 4531 || roast.roast_id === 4480
+			}))
+		);
+		renderTab({ rowMenu: planNextRoastLink });
+
+		const rows = await dataRows();
+		const menus = rows.map((row) => within(row).queryByLabelText(/More for roast/));
+		expect(menus.map((menu) => menu?.getAttribute('aria-label') ?? null)).toEqual([
+			'More for roast #4531',
+			null,
+			null,
+			null,
+			'More for roast #4480'
+		]);
+		expect(
+			within(rows[0])
+				.getByRole('link', { name: 'Plan next roast', hidden: true })
+				.getAttribute('href')
+		).toBe('/roast/plan?from=roast:4531');
+		expect(
+			within(rows[4])
+				.getByRole('link', { name: 'Plan next roast', hidden: true })
+				.getAttribute('href')
+		).toBe('/roast/plan?from=roast:4480');
+		// Logging a sale from here comes with the release that adds it.
+		expect(screen.queryByText('Log sale')).toBeNull();
+	});
+
+	it('lets the last roast’s menu open below the table instead of cutting it off', async () => {
+		renderTab({
+			rowMenu: (roast: { roast_id: number }) => [
+				{ label: 'Plan next roast', href: `/roast/plan?from=roast:${roast.roast_id}` }
+			]
+		});
+
+		const rows = await dataRows();
+		const last = rows[rows.length - 1];
+		const link = within(last).getByRole('link', { name: 'Plan next roast', hidden: true });
+		// The menu hangs below its row, so nothing between it and the page may clip what
+		// runs past its own edge.
+		const table = screen.getByRole('table', { name: 'Roasts of this coffee, newest first' });
+		for (let box = link.parentElement; box && table.contains(box); box = box.parentElement) {
+			expect(box.className).not.toMatch(/\boverflow-(?:hidden|clip|auto|scroll)\b/);
+		}
+		// The last row still follows the table's rounded corners when it is pointed at.
+		expect(last).toHaveClass('last:rounded-b-lg');
+	});
+
+	it('keeps an open menu above the next roast’s own menu button', async () => {
+		renderTab({
+			rowMenu: (roast: { roast_id: number }) => [
+				{ label: 'Plan next roast', href: `/roast/plan?from=roast:${roast.roast_id}` }
+			]
+		});
+
+		const rows = await dataRows();
+		for (const row of rows) {
+			const link = within(row).getByRole('link', { name: 'Plan next roast', hidden: true });
+			const menu = link.closest('details');
+			// Every menu is layered from the same place, and the open one is raised over the
+			// rest, so the button of the roast below cannot cover part of the link.
+			expect(menu).toHaveClass('relative', 'z-10', 'open:z-20');
+			for (let box = menu?.parentElement; box && row.contains(box); box = box.parentElement) {
+				expect(box.className).not.toMatch(/(?:^|\s)-?z-/);
+			}
+		}
+	});
+
+	it('draws no row menu on a shared coffee, where nothing can be planned', async () => {
+		render(RoastingTab, {
+			selectedBean: {
+				...coffee,
+				roast_profiles: roasts.map((roast) => ({ ...roast, artisan_file_available: true }))
+			} as never,
+			role: 'member',
+			readOnly: true,
+			onStartNewRoast: vi.fn(),
+			rowMenu: planNextRoastLink
+		});
+
+		expect(await dataRows()).toHaveLength(5);
+		expect(screen.queryByLabelText(/More for roast/)).toBeNull();
+		expect(screen.queryByText('Plan next roast')).toBeNull();
 	});
 });
 

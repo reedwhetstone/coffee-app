@@ -5,7 +5,6 @@
 	// import RoastChart from './RoastChart.svelte';
 	import RoastProfileForm from './RoastProfileForm.svelte';
 	import FormShell from '$lib/components/FormShell.svelte';
-	import ProfileStudio from '$lib/components/roast/ProfileStudio.svelte';
 	import { canUseMallardControls } from '$lib/services/portfolioAccess';
 
 	import { page } from '$app/state';
@@ -20,6 +19,13 @@
 		readCoffeeFilter
 	} from '$lib/roast/coffee-links';
 	import { saveRoastAsReference } from '$lib/roast/save-reference';
+	import {
+		ARTISAN_BACKGROUND_STEPS,
+		downloadFile,
+		roastFileHref,
+		roastFileReasonCopy
+	} from '$lib/roast/artisan-download';
+	import { savedHref } from '$lib/roast/saved-library';
 	import { trackProfileStudioActivation } from '$lib/profileStudio/analytics';
 	import {
 		clearRoastCreateOperation,
@@ -28,7 +34,7 @@
 		shouldRetainRoastCreateOperation
 	} from '$lib/roast/create-operation';
 
-	import RoastProfileTabs from './RoastProfileTabs.svelte';
+	import RoastProfileTabs, { type RoastActionNotice } from './RoastProfileTabs.svelte';
 	import LiveRoastGuard from './LiveRoastGuard.svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
@@ -105,8 +111,8 @@
 	// Profile operation errors
 	let profileError = $state<string | null>(null);
 	let operationInProgress = $state<string | null>(null);
-	// Shown under the open roast's actions after "Save as reference".
-	let referenceNotice = $state<{ roastId: number; message: string } | null>(null);
+	// Shown under the open roast's actions after "Save as reference" or a download.
+	let actionNotice = $state<{ roastId: number; notice: RoastActionNotice } | null>(null);
 
 	// Track processing state
 	let selectionState = $state({
@@ -848,15 +854,55 @@
 		if (!roast || operationInProgress) return;
 		setOperation('Saving reference...');
 		clearProfileError();
-		referenceNotice = null;
+		actionNotice = null;
 		try {
 			const title = await saveRoastAsReference(roast, data.auth?.user?.id ?? null, sessionStorage);
-			referenceNotice = { roastId: roast.roast_id, message: `${title} is saved as a reference.` };
+			actionNotice = {
+				roastId: roast.roast_id,
+				notice: {
+					message: `${title} is saved as a reference.`,
+					link: { href: savedHref(), label: 'See saved references and plans' }
+				}
+			};
 			trackProfileStudioActivation('reference_profile_saved');
 		} catch (error) {
 			setProfileError(
 				error instanceof Error ? error.message : 'Unable to save this roast as a reference'
 			);
+		} finally {
+			setOperation(null);
+		}
+	}
+
+	// "Download Artisan file" in the roast's More menu: the Artisan file stored with the
+	// roast when it was imported. Nothing on the page changes, so a roast that is recording
+	// keeps recording.
+	async function handleDownloadArtisanFile() {
+		const roast = currentRoastProfile;
+		if (!roast || operationInProgress) return;
+		setOperation('Downloading Artisan file...');
+		clearProfileError();
+		actionNotice = null;
+		try {
+			const result = await downloadFile(
+				roastFileHref(roast.roast_id),
+				`roast-${roast.roast_id}.alog`
+			);
+			if (result.ok) {
+				actionNotice = {
+					roastId: roast.roast_id,
+					notice: {
+						message: `Downloading ${result.fileName}. It is the Artisan file stored with this roast when it was imported. ${ARTISAN_BACKGROUND_STEPS}`
+					}
+				};
+			} else if (result.reason) {
+				actionNotice = {
+					roastId: roast.roast_id,
+					notice: { message: roastFileReasonCopy(result.reason), tone: 'note' }
+				};
+			} else {
+				setProfileError('This file could not be downloaded. Try again in a moment.');
+			}
 		} finally {
 			setOperation(null);
 		}
@@ -1025,11 +1071,12 @@
 		countLine={roastCountLine(roastSummary)}
 		totalRoasts={clientData.length}
 		canCreateRoast={canCreateRoastProfiles}
-		referenceNotice={referenceNotice?.roastId === currentRoastProfile?.roast_id
-			? (referenceNotice?.message ?? null)
+		actionNotice={actionNotice?.roastId === currentRoastProfile?.roast_id
+			? (actionNotice?.notice ?? null)
 			: null}
 		actionInProgress={operationInProgress !== null}
 		onSaveReference={handleSaveReference}
+		onDownloadArtisan={handleDownloadArtisanFile}
 		onToggleBatch={toggleBatch}
 		onSelectProfile={selectProfile}
 		onProfileUpdate={handleProfileUpdate}
@@ -1055,12 +1102,4 @@
 		{saveRoastProfile}
 		clearRoastData={() => handleClearRoastData()}
 	/>
-
-	<div class="mt-8">
-		<ProfileStudio
-			roasts={clientData}
-			enabled={canCreateRoastProfiles}
-			ownerId={data.auth?.user?.id ?? null}
-		/>
-	</div>
 {/if}

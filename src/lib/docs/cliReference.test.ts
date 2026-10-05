@@ -52,6 +52,14 @@ describe('generated CLI reference', () => {
 		}
 	});
 
+	it('gives the roast batch group its own page, linked from the roast commands', () => {
+		const page = getDocsPage('cli', 'roast-batch');
+		expect(page?.title).toBe('Roast batch commands');
+		expect(page?.eyebrow).toBe('Roasting');
+		const roast = renderDocsPageMarkdown(getDocsPage('cli', 'roast')!, 'https://purveyors.io');
+		expect(roast).toContain('/docs/cli/roast-batch');
+	});
+
 	it('renders every documented flag from the manifest', () => {
 		const slugs = getCliGroupPageSlugs();
 		for (const group of manifest.commandGroups) {

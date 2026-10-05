@@ -506,10 +506,72 @@ describe("an open roast's actions", () => {
 		expect(onSaveReference).toHaveBeenCalledOnce();
 		expect(screen.queryByRole('menu')).toBeNull();
 
-		await rerender({ referenceNotice: 'Wednesday roast reference is saved as a reference.' });
-		expect(screen.getByRole('status')).toHaveTextContent(
-			'Wednesday roast reference is saved as a reference.'
+		await rerender({
+			actionNotice: {
+				message: 'Wednesday roast reference is saved as a reference.',
+				link: { href: '/roast/saved', label: 'See saved references and plans' }
+			}
+		});
+		const notice = screen.getByRole('status');
+		expect(notice).toHaveTextContent('Wednesday roast reference is saved as a reference.');
+		// The saved library is one link away, and leaving a recording roast for it asks first.
+		expect(
+			within(notice).getByRole('link', { name: 'See saved references and plans' })
+		).toHaveAttribute('href', '/roast/saved');
+	});
+
+	it('offers the Artisan file in More only for a roast that has one on record', async () => {
+		const onDownloadArtisan = vi.fn();
+		const { unmount } = render(
+			RoastProfileTabs,
+			props({ currentRoastProfile: wushWush, onDownloadArtisan })
 		);
+		await openMore();
+		// A roast logged live or entered by hand has no file, so there is nothing to offer.
+		expect(screen.queryByRole('menuitem', { name: 'Download Artisan file' })).toBeNull();
+		unmount();
+
+		render(
+			RoastProfileTabs,
+			props({
+				currentRoastProfile: roast({ artisan_file_available: true }),
+				onDownloadArtisan
+			})
+		);
+		await openMore();
+
+		expect(moreItems().map((item) => item.textContent?.trim())).toEqual([
+			'Plan next roast from this',
+			'Save as reference',
+			'Edit details',
+			'Import Artisan file',
+			'Download Artisan file',
+			'Clear recorded data',
+			'Delete roast',
+			'Delete batch'
+		]);
+		await fireEvent.click(screen.getByRole('menuitem', { name: 'Download Artisan file' }));
+
+		expect(onDownloadArtisan).toHaveBeenCalledOnce();
+		expect(screen.queryByRole('menu')).toBeNull();
+	});
+
+	it('shows why a file could not be downloaded as a next step, not as a confirmation', async () => {
+		render(
+			RoastProfileTabs,
+			props({
+				currentRoastProfile: wushWush,
+				actionNotice: {
+					message:
+						'This roast has no Artisan file on record, so there is no file to download. Import its .alog to keep a copy with the roast.',
+					tone: 'note'
+				}
+			})
+		);
+
+		const notice = screen.getByRole('status');
+		expect(notice).toHaveTextContent('This roast has no Artisan file on record');
+		expect(notice).not.toHaveClass('bg-success-subtle');
 	});
 
 	it('opens the details for editing', async () => {

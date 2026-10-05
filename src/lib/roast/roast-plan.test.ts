@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
 	buildPlanStartGroups,
+	canPlanFromReference,
 	describeAdjustment,
 	olderRoastsLine,
 	planDownloadHref,
 	planHref,
+	planNextRoastLink,
 	planStartKey,
 	planStarts,
 	readPlanLink,
 	referenceChartFromRoast,
 	resolvePlanStart,
 	roastSourceReasonCopy,
-	savedPlans,
 	unusableRoastsLine,
 	type RoastCandidate,
 	type RoastChartData,
@@ -32,6 +33,8 @@ function reference(overrides: Partial<SavedReference>): SavedReference {
 		notes: null,
 		sourceClass: 'artisan_upload',
 		status: 'active',
+		// Only an uploaded Artisan file is kept as it was sent.
+		artisanFileAvailable: (overrides.sourceClass ?? 'artisan_upload') === 'artisan_upload',
 		currentRevisionId: `${overrides.id ?? KEEPER}-revision`,
 		createdAt: '2026-09-28T00:00:00Z',
 		updatedAt: '2026-09-28T00:00:00Z',
@@ -254,28 +257,47 @@ describe('what a plan can start from', () => {
 	});
 });
 
-describe('saved plans', () => {
-	it('lists only plans, newest first, each with its download', () => {
+describe('"Plan next roast" on one roast in a list', () => {
+	it('links to the plan page for a roast whose Artisan file is on record', () => {
+		expect(planNextRoastLink({ roast_id: 4531, artisan_file_available: true })).toEqual([
+			{ label: 'Plan next roast', href: '/roast/plan?from=roast:4531' }
+		]);
+	});
+
+	it.each([false, null, undefined])(
+		'offers nothing for a roast a plan cannot be built on (file on record: %s)',
+		(artisan_file_available) => {
+			expect(planNextRoastLink({ roast_id: 4531, artisan_file_available })).toEqual([]);
+		}
+	);
+});
+
+describe('planning from a saved reference', () => {
+	it('needs a file Artisan can read: an upload, a roast kept with its file, or a plan', () => {
+		expect(canPlanFromReference(reference({}))).toBe(true);
+		expect(canPlanFromReference(reference({ id: PLAN, sourceClass: 'generated_revision' }))).toBe(
+			true
+		);
+		expect(
+			canPlanFromReference(
+				reference({ id: SNAPSHOT, sourceClass: 'executed_roast', artisanFileAvailable: true })
+			)
+		).toBe(true);
+		expect(canPlanFromReference(reference({ id: SNAPSHOT, sourceClass: 'executed_roast' }))).toBe(
+			false
+		);
+	});
+});
+
+describe('a saved plan', () => {
+	it('downloads from its own revision', () => {
 		const older = reference({
 			id: PLAN,
 			title: 'Guji plan',
 			sourceClass: 'generated_revision',
 			createdAt: '2026-09-30T00:00:00Z'
 		});
-		const newer = reference({
-			id: 'aaaaaaaa-0000-4000-8000-000000000009',
-			title: 'Colombia plan',
-			sourceClass: 'generated_revision',
-			createdAt: '2026-10-03T00:00:00Z'
-		});
-		const upload = reference({});
-		const snapshot = reference({ id: SNAPSHOT, sourceClass: 'executed_roast' });
 
-		expect(savedPlans([older, upload, snapshot, newer]).map((plan) => plan.title)).toEqual([
-			'Colombia plan',
-			'Guji plan'
-		]);
-		expect(savedPlans([upload, snapshot])).toEqual([]);
 		expect(planDownloadHref(older)).toBe(
 			`/api/reference-profiles/${PLAN}/revisions/${PLAN}-revision/export`
 		);

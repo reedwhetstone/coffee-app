@@ -62,9 +62,9 @@ export function buildProfileStudioHandoffRequest(
 	handoff: ProfileStudioHandoff
 ): ProfileStudioChatRequest {
 	return {
-		text: draft.trim() || 'Discuss this measured Profile Studio comparison.',
+		text: draft.trim() || 'Discuss this roast comparison.',
 		context: {
-			text: `Profile Studio selection context: left ${handoff.leftKind} ${handoff.leftId}; right ${handoff.rightKind} ${handoff.rightId}.`
+			text: `Roast comparison selection: left ${handoff.leftKind} ${handoff.leftId}; right ${handoff.rightKind} ${handoff.rightId}.`
 		}
 	};
 }

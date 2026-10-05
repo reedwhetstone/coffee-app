@@ -28,9 +28,9 @@
 		/**
 		 * EXTENSION POINT: the row menu.
 		 * The links offered for one roast. A row draws its menu once this returns any.
-		 * "Plan next roast" (`/roast/plan?from=roast:<id>`) and "Log sale" belong here.
+		 * "Log sale" belongs here.
 		 */
-		rowMenu?: (roastId: number) => RowMenuLink[];
+		rowMenu?: (roast: SummaryRoast) => RowMenuLink[];
 	}>();
 
 	// Roast history is part of Mallard Studio.
@@ -176,10 +176,11 @@
 			{/if}
 		</div>
 	{:else}
+		<!-- Nothing is clipped at the table's edge, so the last row's menu can open below it. -->
 		<div
 			role="table"
 			aria-label="Roasts of this coffee, newest first"
-			class="overflow-hidden rounded-lg bg-surface-canvas ring-1 ring-line"
+			class="rounded-lg bg-surface-canvas ring-1 ring-line"
 		>
 			<!-- On a phone the header names the four values on each row's second line. -->
 			<div
@@ -200,10 +201,10 @@
 				</div>
 			</div>
 			{#each rows as row, index (row.roastId)}
-				{@const menuLinks = readOnly ? [] : rowMenu(row.roastId)}
+				{@const menuLinks = readOnly || !roasts ? [] : rowMenu(roasts[index])}
 				<div
 					role="row"
-					class="relative gap-y-1 border-b border-line px-3 py-2.5 text-sm transition-colors last:border-b-0 hover:bg-surface-panel {rowGrid}"
+					class="relative gap-y-1 border-b border-line px-3 py-2.5 text-sm transition-colors last:rounded-b-lg last:border-b-0 hover:bg-surface-panel {rowGrid}"
 				>
 					<span
 						role="cell"
@@ -250,8 +251,9 @@
 						<span role="cell">{row.development}</span>
 					</div>
 					{#if menuLinks.length > 0}
-						<div role="cell" class="relative z-10 col-start-3 row-start-1 sm:col-start-9">
-							<details class="relative">
+						<!-- An open menu sits above the rows under it, their own "⋯" buttons included. -->
+						<div role="cell" class="col-start-3 row-start-1 sm:col-start-9">
+							<details class="relative z-10 open:z-20">
 								<summary
 									class="flex h-6 w-6 cursor-pointer list-none items-center justify-center rounded-md text-muted transition-colors hover:bg-accent/10 hover:text-accent [&::-webkit-details-marker]:hidden"
 									aria-label="More for roast #{row.roastId}"

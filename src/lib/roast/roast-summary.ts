@@ -19,6 +19,8 @@ export interface SummaryRoast {
 	total_roast_time?: number | null;
 	development_percent?: number | null;
 	data_source?: string | null;
+	/** Whether the Artisan file the roast was imported from is on record. */
+	artisan_file_available?: boolean | null;
 }
 
 export interface RoastMilestone {

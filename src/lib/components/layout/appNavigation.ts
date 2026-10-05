@@ -141,7 +141,7 @@ const authenticatedSections: NavSection[] = [
 			{
 				label: 'Roast',
 				href: '/roast',
-				description: 'Manage roasts and profiles',
+				description: 'Log, compare, and plan roasts',
 				requiresRole: 'member',
 				lockedReason: 'Roasting workflows require Mallard Studio.',
 				// `/roast` draws its own locked page for an account without Mallard Studio.

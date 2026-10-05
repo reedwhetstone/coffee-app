@@ -161,51 +161,63 @@
 	{/if}
 	{#if open}
 		<div
-			id={listId}
-			bind:this={listElement}
-			role="listbox"
-			aria-label={label}
-			class="absolute left-0 right-0 z-20 mt-1 max-h-80 overflow-y-auto rounded-md border border-line bg-surface-panel shadow-lg"
+			class="absolute left-0 right-0 z-20 mt-1 overflow-hidden rounded-md border border-line bg-surface-panel shadow-lg"
 		>
-			{#each visibleGroups as group (group.key)}
-				<div role="group" aria-labelledby={`${uid}-${group.key}`}>
-					<p
-						id={`${uid}-${group.key}`}
-						class="sticky top-0 flex justify-between border-b border-line bg-surface-panel px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted"
-					>
-						<span>{group.heading}</span>
-						<span class="font-normal normal-case tracking-normal">{countLabel(group)}</span>
-					</p>
-					{#each group.options as option (option.value)}
-						{@const unavailable = option.value === unavailableValue}
-						<!-- svelte-ignore a11y_click_events_have_key_events -->
-						<div
-							id={optionId(option)}
-							role="option"
-							tabindex="-1"
-							aria-selected={option.value === value}
-							aria-disabled={unavailable}
-							class="cursor-pointer px-3 py-2 {unavailable
-								? 'cursor-not-allowed opacity-50'
-								: 'hover:bg-accent-subtle'} {option.value === activeValue
-								? 'bg-accent-subtle'
-								: ''}"
-							onmousedown={(event) => event.preventDefault()}
-							onclick={() => choose(option)}
+			<div
+				id={listId}
+				bind:this={listElement}
+				role="listbox"
+				aria-label={label}
+				class="max-h-80 overflow-y-auto"
+			>
+				{#each visibleGroups as group (group.key)}
+					<div role="group" aria-labelledby={`${uid}-${group.key}`}>
+						<p
+							id={`${uid}-${group.key}`}
+							class="sticky top-0 flex justify-between border-b border-line bg-surface-panel px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted"
 						>
-							<span class="block text-sm text-ink {option.value === value ? 'font-semibold' : ''}"
-								>{option.title}</span
+							<span>{group.heading}</span>
+							<span class="font-normal normal-case tracking-normal">{countLabel(group)}</span>
+						</p>
+						{#each group.options as option (option.value)}
+							{@const unavailable = option.value === unavailableValue}
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<div
+								id={optionId(option)}
+								role="option"
+								tabindex="-1"
+								aria-selected={option.value === value}
+								aria-disabled={unavailable}
+								class="cursor-pointer px-3 py-2 {unavailable
+									? 'cursor-not-allowed opacity-50'
+									: 'hover:bg-accent-subtle'} {option.value === activeValue
+									? 'bg-accent-subtle'
+									: ''}"
+								onmousedown={(event) => event.preventDefault()}
+								onclick={() => choose(option)}
 							>
-							<span class="block text-xs text-muted"
-								>{option.detail}{unavailable ? ' · Chosen on the other side' : ''}</span
-							>
-						</div>
-					{/each}
-					{#if group.options.length === 0}
-						<p class="px-3 py-2 text-sm text-muted">{emptyLabel(group)}</p>
-					{/if}
-				</div>
-			{/each}
+								<span class="block text-sm text-ink {option.value === value ? 'font-semibold' : ''}"
+									>{option.title}</span
+								>
+								<span class="block text-xs text-muted"
+									>{option.detail}{unavailable ? ' · Chosen on the other side' : ''}</span
+								>
+							</div>
+						{/each}
+						{#if group.options.length === 0}
+							<p class="px-3 py-2 text-sm text-muted">{emptyLabel(group)}</p>
+						{/if}
+					</div>
+				{/each}
+			</div>
+			<!-- Renaming, removing, and adding a saved reference are done in the library. -->
+			<a
+				href="/roast/saved"
+				class="block border-t border-line px-3 py-2 text-sm font-semibold text-link hover:bg-accent-subtle hover:text-accent"
+				onmousedown={(event) => event.preventDefault()}
+			>
+				Manage saved references
+			</a>
 		</div>
 	{/if}
 </div>

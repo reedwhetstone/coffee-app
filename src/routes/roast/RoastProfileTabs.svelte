@@ -1,12 +1,23 @@
+<script lang="ts" module>
+	/** What an action on the open roast did. `note` is a next step, not a confirmation. */
+	export interface RoastActionNotice {
+		message: string;
+		tone?: 'status' | 'note';
+		link?: { href: string; label: string };
+	}
+</script>
+
 <script lang="ts">
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
 	import RoastProfileDisplay from './RoastProfileDisplay.svelte';
 	import RoastActionBar from './RoastActionBar.svelte';
+	import RoastSegments from './RoastSegments.svelte';
 	import ArtisanImportDialog from '$lib/components/roast/ArtisanImportDialog.svelte';
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import { coffeeRoastsHref } from '$lib/roast/coffee-links';
 	import { compareHref } from '$lib/roast/compare-sides';
 	import { hasRecordedRoast } from '$lib/roast/profile-picker-model';
+	import { planHref } from '$lib/roast/roast-plan';
 	import { hasRecordedCurve, roastDetailLine, roastMilestones } from '$lib/roast/roast-summary';
 	import type { RoastProfile } from '$lib/types/component.types';
 	import type { ComponentType } from 'svelte';
@@ -23,9 +34,10 @@
 		countLine,
 		totalRoasts,
 		canCreateRoast,
-		referenceNotice = null,
+		actionNotice = null,
 		actionInProgress = false,
 		onSaveReference,
+		onDownloadArtisan = undefined,
 		onToggleBatch,
 		onSelectProfile,
 		onProfileUpdate,
@@ -58,10 +70,12 @@
 		countLine: string;
 		totalRoasts: number;
 		canCreateRoast: boolean;
-		/** Confirmation shown under the actions after a roast is saved as a reference. */
-		referenceNotice?: string | null;
+		/** What an action from the More menu did, shown under the actions. */
+		actionNotice?: RoastActionNotice | null;
 		actionInProgress?: boolean;
 		onSaveReference: () => void;
+		/** Downloads the Artisan file the open roast was imported from. */
+		onDownloadArtisan?: () => void;
 		onToggleBatch: (batchName: string) => void;
 		onSelectProfile: (profile: RoastProfile) => void;
 		onProfileUpdate: (profile: RoastProfile) => void;
@@ -146,13 +160,26 @@
 				{onSaveReference}
 				onEditDetails={editDetails}
 				onImportArtisan={() => artisanImportDialog?.open()}
+				onDownloadArtisan={currentRoastProfile.artisan_file_available
+					? onDownloadArtisan
+					: undefined}
 				onClearRecorded={clearRecordedData}
 				onDeleteRoast={() => detailPanel?.deleteProfile()}
 				onDeleteBatch={() => detailPanel?.deleteBatch()}
 			/>
-			{#if referenceNotice}
-				<p role="status" class="mt-3 rounded-lg bg-success-subtle p-3 text-sm text-success-strong">
-					{referenceNotice}
+			{#if actionNotice}
+				<p
+					role="status"
+					class="mt-3 rounded-lg p-3 text-sm {actionNotice.tone === 'note'
+						? 'bg-surface-panel text-muted ring-1 ring-line'
+						: 'bg-success-subtle text-success-strong'}"
+				>
+					{actionNotice.message}
+					{#if actionNotice.link}
+						<a href={actionNotice.link.href} class="font-semibold underline hover:no-underline"
+							>{actionNotice.link.label}</a
+						>
+					{/if}
 				</p>
 			{/if}
 
@@ -285,13 +312,15 @@
 					Compare roasts
 				</a>
 				<a
-					href="#profile-studio"
+					href={planHref()}
 					class="inline-flex items-center justify-center rounded-md border border-line bg-surface-canvas px-4 py-2 text-sm font-semibold text-muted transition-colors hover:border-accent hover:text-ink"
 				>
-					Saved references and plans
+					Plan next roast
 				</a>
 			</div>
 		</div>
+
+		<RoastSegments current="roasts" />
 
 		<RoastHistoryTable
 			sortedBatchNames={visibleBatchNames}
