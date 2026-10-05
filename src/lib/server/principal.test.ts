@@ -14,6 +14,7 @@ const {
 	principalHasApiPlan,
 	principalHasRole,
 	principalHasScope,
+	rememberedIdentityCount,
 	requiresSessionOriginCheck,
 	resetIdentityReuse,
 	resolvePrincipal
@@ -39,10 +40,15 @@ function successfulMe(data: typeof viewerProjection | Record<string, unknown>) {
 }
 
 function makeCookieSessionEvent(
-	options: { method?: string; path?: string; token?: string; cookies?: Record<string, string> } = {}
+	options: {
+		method?: string;
+		path?: string;
+		token?: unknown;
+		cookies?: Record<string, string>;
+	} = {}
 ) {
 	const url = `https://app.test${options.path ?? '/catalog'}`;
-	const token = options.token ?? 'cookie-token';
+	const token = 'token' in options ? options.token : 'cookie-token';
 	return {
 		fetch: vi.fn(),
 		request: new Request(url, { method: options.method ?? 'GET' }),
@@ -447,6 +453,9 @@ describe('principal helpers', () => {
 		it.each([
 			{ request: 'a write', options: { method: 'POST', path: '/api/roast-profiles' } },
 			{ request: 'a delete', options: { method: 'DELETE', path: '/api/roast-profiles' } },
+			{ request: 'a PUT', options: { method: 'PUT', path: '/api/roast-profiles' } },
+			{ request: 'a PATCH', options: { method: 'PATCH', path: '/api/subscription' } },
+			{ request: 'an OPTIONS request', options: { method: 'OPTIONS', path: '/api/catalog' } },
 			{ request: 'the CLI approval page', options: { path: '/auth/cli' } },
 			{ request: 'the sign-in callback', options: { path: '/auth/callback' } },
 			// SvelteKit decodes the path before routing, so these reach the same pages.
@@ -500,7 +509,7 @@ describe('principal helpers', () => {
 				expect(mockMe).toHaveBeenCalledTimes(3);
 			});
 
-			it('does the same for a bearer session', async () => {
+			it('does the same for a bearer session when the read follows the write', async () => {
 				successfulMe(verified);
 				await resolvePrincipal(makeAuthorizationEvent('session-token', { method: 'POST' }));
 
@@ -651,6 +660,82 @@ describe('principal helpers', () => {
 			successfulMe(verified);
 			expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(true);
 			expect(mockMe).toHaveBeenCalledTimes(2);
+		});
+
+		it('gives each credential its own answer, even when two share a long prefix', async () => {
+			const shared = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.';
+			const answerFor = (id: string) => ({
+				data: { ...viewerProjection, userId: id, sessionIdentity: { id, email: null } },
+				error: undefined,
+				response: new Response(null, { status: 200 })
+			});
+			mockMe.mockResolvedValueOnce(answerFor('user-a')).mockResolvedValueOnce(answerFor('user-b'));
+
+			const a = await resolvePrincipal(makeCookieSessionEvent({ token: `${shared}aaaa` }));
+			const b = await resolvePrincipal(makeCookieSessionEvent({ token: `${shared}bbbb` }));
+			const aAgain = await resolvePrincipal(makeCookieSessionEvent({ token: `${shared}aaaa` }));
+
+			expect([a.userId, b.userId, aAgain.userId]).toEqual(['user-a', 'user-b', 'user-a']);
+			expect(mockMe).toHaveBeenCalledTimes(2);
+		});
+
+		it.each([123, null, {}, [], ''])(
+			'treats a cookie whose token is %j as signed out, without asking Parchment',
+			async (token) => {
+				const principal = await resolvePrincipal(makeCookieSessionEvent({ token }));
+
+				expect(principal.isAuthenticated).toBe(false);
+				expect(mockMe).not.toHaveBeenCalled();
+			}
+		);
+
+		it('never remembers a header-authenticated answer that is not signed in', async () => {
+			successfulMe(revoked);
+			expect((await resolvePrincipal(makeAuthorizationEvent('pk_live_key'))).isAuthenticated).toBe(
+				false
+			);
+
+			successfulMe(verified);
+			expect((await resolvePrincipal(makeAuthorizationEvent('pk_live_key'))).isAuthenticated).toBe(
+				true
+			);
+			expect(mockMe).toHaveBeenCalledTimes(2);
+		});
+
+		it('verifies again when the clock has stepped backwards', async () => {
+			vi.useFakeTimers({ now: new Date('2026-10-05T12:00:00Z') });
+			try {
+				successfulMe(verified);
+				await resolvePrincipal(makeCookieSessionEvent());
+
+				vi.setSystemTime(new Date('2026-10-05T11:59:00Z'));
+				await resolvePrincipal(makeCookieSessionEvent());
+
+				expect(mockMe).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('holds at most 500 answers and drops the ones that can no longer be reused', async () => {
+			vi.useFakeTimers({ now: new Date('2026-10-05T12:00:00Z') });
+			try {
+				successfulMe(verified);
+				for (let index = 0; index < 501; index += 1) {
+					await resolvePrincipal(makeCookieSessionEvent({ token: `token-${index}` }));
+				}
+				expect(rememberedIdentityCount()).toBe(500);
+
+				// The oldest made room, so it is verified again inside the window.
+				await resolvePrincipal(makeCookieSessionEvent({ token: 'token-0' }));
+				expect(mockMe).toHaveBeenCalledTimes(502);
+
+				vi.advanceTimersByTime(10_000);
+				await resolvePrincipal(makeCookieSessionEvent({ token: 'someone-new' }));
+				expect(rememberedIdentityCount()).toBe(1);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('keeps each credential separate', async () => {
