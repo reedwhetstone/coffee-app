@@ -28,12 +28,8 @@
 	let userRole = $derived(auth.role);
 	let ppiAccess = $derived(auth.ppiAccess);
 	let canUseActions = $derived(canManagePortfolio(userRole, ppiAccess));
-	// The locked roast page loads no roasts, so it has nothing to filter.
-	let showSettings = $derived(
-		['/catalog', '/beans', '/roast'].includes(currentPath) &&
-			!trackedCatalogRoute &&
-			!(page.data as { roastsLocked?: boolean }).roastsLocked
-	);
+	// The roast list carries its own filters on the page, so it has no filter panel.
+	let showSettings = $derived(['/catalog', '/beans'].includes(currentPath) && !trackedCatalogRoute);
 	let routeLabel = $derived(getCurrentRouteLabel(currentPath, userRole, { ppiAccess }));
 	let activeFilterCount = $derived(
 		$filterStore.routeId === currentPath

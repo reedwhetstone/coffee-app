@@ -95,11 +95,11 @@ describe('MobileAppShell actions launcher', () => {
 		expect(screen.queryByLabelText('Open filters')).toBeNull();
 	});
 
-	it('shows roast filters to a member and none beside the locked roast page', () => {
+	it('offers no filter panel on the roast page, which carries its own filters', () => {
 		pageState.url = new URL('http://localhost/roast');
 		pageState.data = { roastsLocked: false };
 		const { unmount } = render(MobileAppShell, { data: auth('member', false) });
-		expect(screen.getByLabelText('Open filters')).toBeTruthy();
+		expect(screen.queryByLabelText('Open filters')).toBeNull();
 		unmount();
 
 		pageState.data = { roastsLocked: true };

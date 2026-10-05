@@ -1,6 +1,6 @@
 <script lang="ts">
 	// Component imports
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 
 	// import RoastChart from './RoastChart.svelte';
 	import RoastProfileForm from './RoastProfileForm.svelte';
@@ -13,16 +13,36 @@
 	import { createRoastTimer } from '$lib/roast';
 	import { roastCountLine } from '$lib/roast/roast-summary';
 	import { readOpenRoastId } from '$lib/roast/compare-sides';
-	import { coffeeFilterName, readCoffeeFilter } from '$lib/roast/coffee-links';
+	import { coffeeFilterName } from '$lib/roast/coffee-links';
 	import {
 		batchLabel,
 		deleteBatchConfirmation,
-		filterBatchesByCoffee,
-		filterBatchesById,
 		groupRoastsByBatch,
+		parseBatchId,
 		readBatchFilter,
 		roastListHref
 	} from '$lib/roast/roast-batches';
+	import {
+		hasRoastListFilters,
+		isLastRoastPage,
+		NO_ROAST_LIST_FILTERS,
+		readRoastListFilters,
+		roastListEmptyDetail,
+		roastListFilterKey,
+		roastListQuery,
+		ROAST_PAGE_SIZE,
+		writeRoastListFilters,
+		type RoastListFilters
+	} from '$lib/roast/roast-list-filters';
+	import {
+		mergeRoasts,
+		requestBatchRoasts,
+		requestRoast,
+		requestRoasts,
+		RoastListRequestError,
+		type RoastListTotals
+	} from '$lib/roast/roast-list-loader';
+	import { roastCoffeeOptions } from '$lib/roast/roast-coffee-options';
 	import { saveRoastAsReference } from '$lib/roast/save-reference';
 	import {
 		ARTISAN_BACKGROUND_STEPS,
@@ -41,13 +61,10 @@
 
 	import RoastProfileTabs, { type RoastActionNotice } from './RoastProfileTabs.svelte';
 	import LiveRoastGuard from './LiveRoastGuard.svelte';
-	import { filteredData, filterStore } from '$lib/stores/filterStore';
 	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 	import { buildRoastPageContext } from '$lib/services/roastPageContext';
 	import { prepareDateForAPI } from '$lib/utils/dates';
 
-	// Cast filtered data to the correct type for this page
-	let typedFilteredData = $derived($filteredData as unknown as RoastProfile[]);
 	import RoastPageSkeleton from '$lib/components/RoastPageSkeleton.svelte';
 
 	// Lazy load the heavy chart component
@@ -106,12 +123,38 @@
 
 	// Profile grouping and sorting state. Batches are open unless the roaster closes them.
 	let collapsedBatches = $state<Set<string>>(new Set());
-	let currentProfileIndex = $state<number>(0);
 
-	// Client-side data state
-	let clientData = $state<RoastProfile[]>([]);
+	// The roast list holds one page of roasts at a time for the filters in the address.
+	// Every filter runs in Parchment, so what is shown is the newest of everything that matches.
+	let filters = $derived(readRoastListFilters(page.url.searchParams));
+	let filterKey = $derived(roastListFilterKey(filters));
+	let listRoasts = $state<RoastProfile[]>([]);
+	// Totals for everything the filters match, not only the roasts loaded so far.
+	let listTotals = $state<RoastListTotals | null>(null);
+	// Roasts asked for so far, a page at a time. "Load more" continues from here.
+	let listOffset = $state(0);
+	let hasMoreRoasts = $state(false);
+	// The filters the list on screen was loaded for.
+	let listKey = $state<string | null>(null);
+	// True for the first load and while the page reloads after a roast or batch changed.
 	let isLoading = $state(true);
-	let error = $state<string | null>(null);
+	// True while a change of filters loads; the roasts on screen stay until it arrives.
+	let isRefreshing = $state(false);
+	let isLoadingMore = $state(false);
+	let loadMoreFailed = $state(false);
+	let listFailed = $state(false);
+	// The search term cannot be used. The page says how to search instead of failing.
+	let searchInvalid = $state(false);
+	let listStarted = false;
+	let listRequest = 0;
+	// The day date presets count back from, kept for "Load more" so its pages line up.
+	let listDay = new Date();
+
+	// The open roast's whole batch, from its own request: the list may not hold it.
+	let openBatchRoasts = $state<RoastProfile[]>([]);
+	let openBatchRequest = 0;
+	// The batch `?batch=` names, as a whole, when other filters narrow what the list shows.
+	let filterBatch = $state<{ id: string; roasts: RoastProfile[] } | null>(null);
 
 	// Profile operation errors
 	let profileError = $state<string | null>(null);
@@ -127,14 +170,18 @@
 	});
 	let pendingProfileCreatePayload = $state<string | null>(null);
 
-	// Available coffees for form
-	let availableCoffees = $state<CoffeeCatalog[]>([]);
+	// The member's portfolio coffees: the choices in the list's coffee control, and, for
+	// those in stock, in the new-roast form.
+	let portfolioCoffees = $state<CoffeeCatalog[]>([]);
+	let coffeesLoaded = false;
 	let coffeesLoading = $state(false);
+	let availableCoffees = $derived(portfolioCoffees.filter((coffee) => coffee.stocked === true));
+	let coffeeOptions = $derived(roastCoffeeOptions(portfolioCoffees));
 
-	// Fetch form coffees reactively when the form becomes visible
+	// Fetch them once the list or the form is on screen
 	$effect(() => {
-		if (isFormVisible) {
-			ensureFormCoffees();
+		if (isFormVisible || (!isLoading && currentRoastProfile === null)) {
+			void ensureCoffees();
 		}
 	});
 
@@ -169,44 +216,157 @@
 		operationInProgress = operation;
 	}
 
-	// Unified function to sync data from API and update filter store
-	async function syncData(initial?: PageData['initialRoasts']) {
-		isLoading = true;
-		error = null;
+	// A page can end partway through a batch. The rest of that batch is asked for, so each
+	// batch header counts every one of its roasts that matches.
+	async function withWholeLastBatch(
+		rows: RoastProfile[],
+		forFilters: RoastListFilters,
+		day: Date
+	): Promise<RoastProfile[]> {
+		const batchId = parseBatchId(rows.at(-1)?.batch_id);
+		if (!batchId || forFilters.batch !== null) return rows;
+		try {
+			const rest = await requestRoasts(roastListQuery({ ...forFilters, batch: batchId }, null, day));
+			return mergeRoasts(rows, rest.data);
+		} catch {
+			return rows;
+		}
+	}
+
+	// Load the first page of roasts for the filters in the address. Nothing about the open
+	// roast is touched, so a roast that is recording keeps recording.
+	async function loadList(initial?: PageData['initialRoasts']) {
+		const request = ++listRequest;
+		const forFilters = filters;
+		const key = filterKey;
+		const day = new Date();
+		isRefreshing = true;
 
 		try {
-			let result: { data: RoastProfile[] };
-			if (initial) {
-				const loaded = await initial;
-				if (loaded.error || !loaded.data)
-					throw new Error(loaded.error ?? 'Failed to load roast profiles');
-				result = loaded.data;
-			} else {
-				const response = await fetch('/api/roast-profiles');
-				if (!response.ok) throw new Error('Failed to fetch roast profiles');
-				result = await response.json();
-			}
+			const preloaded = initial ? await initial : null;
+			const result =
+				preloaded?.data ??
+				(await requestRoasts(roastListQuery(forFilters, { limit: ROAST_PAGE_SIZE, offset: 0 }, day)));
+			const lastPage = isLastRoastPage(0, result.data.length, result.totals.roasts);
+			const rows = lastPage
+				? result.data
+				: await withWholeLastBatch(result.data, forFilters, day);
+			if (request !== listRequest) return;
 
-			if (result.data && Array.isArray(result.data)) {
-				clientData = result.data;
-				// Re-initialize FilterStore with fresh data
-				const currentRoute = page.url.pathname;
-				filterStore.initializeForRoute(currentRoute, clientData);
-			}
+			listRoasts = rows;
+			listTotals = result.totals;
+			listOffset = result.data.length;
+			hasMoreRoasts = !lastPage;
+			listDay = day;
+			listFailed = false;
+			searchInvalid = false;
 		} catch (err) {
-			console.error('Error syncing roast data:', err);
-			error = err instanceof Error ? err.message : 'Failed to load roast data';
+			if (request !== listRequest) return;
+			console.error('Error loading roasts:', err);
+			listRoasts = [];
+			listTotals = null;
+			listOffset = 0;
+			hasMoreRoasts = false;
+			searchInvalid = err instanceof RoastListRequestError && err.kind === 'invalid-search';
+			listFailed = !searchInvalid;
+		} finally {
+			if (request === listRequest) {
+				listKey = key;
+				loadMoreFailed = false;
+				isRefreshing = false;
+			}
+		}
+	}
+
+	// "Load more": the next page for the same filters, added under what is shown.
+	async function loadMoreRoasts() {
+		if (isLoadingMore || !hasMoreRoasts) return;
+		const request = listRequest;
+		const forFilters = filters;
+		const offset = listOffset;
+		isLoadingMore = true;
+		loadMoreFailed = false;
+
+		try {
+			const result = await requestRoasts(
+				roastListQuery(forFilters, { limit: ROAST_PAGE_SIZE, offset }, listDay)
+			);
+			// A page with nothing in it ends the list, whatever the totals say.
+			const lastPage =
+				result.data.length === 0 ||
+				isLastRoastPage(offset, result.data.length, result.totals.roasts);
+			const rows = mergeRoasts(listRoasts, result.data);
+			const whole = lastPage ? rows : await withWholeLastBatch(rows, forFilters, listDay);
+			if (request !== listRequest) return;
+
+			listRoasts = whole;
+			listTotals = result.totals;
+			listOffset = offset + result.data.length;
+			hasMoreRoasts = !lastPage;
+		} catch (err) {
+			if (request !== listRequest) return;
+			console.error('Error loading more roasts:', err);
+			loadMoreFailed = true;
+		} finally {
+			isLoadingMore = false;
+		}
+	}
+
+	// A change of filters in the address loads its list. The first list is loaded on mount.
+	$effect(() => {
+		const key = filterKey;
+		untrack(() => {
+			if (listStarted && key !== listKey) void loadList();
+		});
+	});
+
+	// Reload the list after a roast or a batch changed. The page shows its skeleton meanwhile.
+	async function syncData() {
+		isLoading = true;
+		try {
+			await loadList();
 		} finally {
 			isLoading = false;
 		}
 	}
 
+	// The open roast's batch, for "Also in this batch" and "Delete batch". What the list
+	// already holds of it is shown at once, and the whole batch replaces it when it arrives.
+	async function loadOpenBatch(profile: RoastProfile) {
+		const request = ++openBatchRequest;
+		const batchId = parseBatchId(profile.batch_id);
+		const held = batchId
+			? mergeRoasts(
+					[profile],
+					[...openBatchRoasts, ...listRoasts].filter(
+						(roast) => parseBatchId(roast.batch_id) === batchId
+					)
+				)
+			: [profile];
+		openBatchRoasts = held;
+		if (!batchId) return;
+
+		try {
+			const roasts = await requestBatchRoasts(batchId);
+			if (request === openBatchRequest) openBatchRoasts = roasts;
+		} catch (err) {
+			// The roast stays open with the batch roasts already known.
+			console.error('Error loading the batch of the open roast:', err);
+		}
+	}
+
 	// Single source of truth for reloading a profile after any mutation.
-	// Syncs fresh data from the API and re-selects the profile so the chart
-	// reloads from the database (input mode → display mode transition).
+	// Reads the roast again by its number and reloads the list, then re-selects the roast so
+	// the chart reloads from the database (input mode → display mode transition). The roast
+	// is asked for on its own because the list's filters may leave it out.
 	async function reloadProfile(roastId: number): Promise<RoastProfile | null> {
-		await syncData();
-		const profile = clientData.find((p) => p.roast_id === roastId);
+		let profile: RoastProfile | null = null;
+		isLoading = true;
+		try {
+			[profile] = await Promise.all([requestRoast(roastId).catch(() => null), loadList()]);
+		} finally {
+			isLoading = false;
+		}
 		if (!profile) return null;
 
 		// Reset the selection guard so selectProfile actually runs even if
@@ -228,65 +388,87 @@
 
 	// Batches are worked out from the roasts by batch ID. A name can repeat from week to
 	// week, and a batch can hold roasts from more than one day.
-	let batches = $derived(groupRoastsByBatch(typedFilteredData ?? []));
-	// Every batch on the account, whatever the filters in force: a batch is named and
-	// deleted as a whole.
-	let allBatches = $derived(groupRoastsByBatch(clientData));
+	let batches = $derived(groupRoastsByBatch(listRoasts));
+	// The open roast's batch as a whole: a batch is named and deleted as a whole.
+	let openBatch = $derived(groupRoastsByBatch(openBatchRoasts)[0] ?? null);
+	let currentProfileIndex = $derived(
+		Math.max(
+			0,
+			openBatchRoasts.findIndex((roast) => roast.roast_id === currentRoastProfile?.roast_id)
+		)
+	);
 
 	// `/roast?coffee=<inventory id>` narrows the list to one portfolio coffee, and
-	// `/roast?batch=<batch id>` to one batch. The page still holds every roast, so an open
-	// roast keeps its batch and nothing is reloaded.
-	let coffeeFilterId = $derived(readCoffeeFilter(page.url.searchParams));
+	// `/roast?batch=<batch id>` to one batch. Both are named in a chip that removes them.
 	let coffeeFilter = $derived(
-		coffeeFilterId === null
+		filters.coffee === null
 			? null
-			: { id: coffeeFilterId, name: coffeeFilterName(clientData, coffeeFilterId) }
+			: {
+					id: filters.coffee,
+					name:
+						coffeeOptions.find((option) => option.id === filters.coffee)?.name ??
+						coffeeFilterName(listRoasts, filters.coffee)
+				}
 	);
-	let batchFilterId = $derived(readBatchFilter(page.url.searchParams));
-	let batchFilter = $derived.by(() => {
-		if (batchFilterId === null) return null;
-		const batch = allBatches.find((candidate) => candidate.id === batchFilterId);
-		return { id: batchFilterId, label: batch ? batchLabel(batch) : null };
+	// A batch keeps its own name and date whatever else narrows the list. On its own, the
+	// list is that batch; with other filters, the batch is asked for as a whole.
+	let batchOnlyFilter = $derived(
+		filters.batch !== null && !hasRoastListFilters({ ...filters, batch: null })
+	);
+	$effect(() => {
+		const batchId = filters.batch;
+		if (batchId === null || batchOnlyFilter) return;
+		if (untrack(() => filterBatch?.id) === batchId) return;
+		let current = true;
+		requestBatchRoasts(batchId)
+			.then((roasts) => {
+				if (current) filterBatch = { id: batchId, roasts };
+			})
+			.catch((err) => console.error('Error loading the batch the list is narrowed to:', err));
+		return () => {
+			current = false;
+		};
 	});
-	let listBatches = $derived(
-		filterBatchesByCoffee(filterBatchesById(batches, batchFilterId), coffeeFilterId)
-	);
+	let batchFilter = $derived.by(() => {
+		if (filters.batch === null) return null;
+		const whole = batchOnlyFilter
+			? listKey === filterKey
+				? listRoasts
+				: []
+			: filterBatch?.id === filters.batch
+				? filterBatch.roasts
+				: [];
+		const batch = groupRoastsByBatch(whole).find((candidate) => candidate.id === filters.batch);
+		return { id: filters.batch, label: batch ? batchLabel(batch) : null };
+	});
 
-	function clearListFilter(name: 'coffee' | 'batch') {
-		const url = new URL(page.url);
-		url.searchParams.delete(name);
-		const search = url.searchParams.toString();
-		goto(url.pathname + (search ? '?' + search : ''), {
+	function setFilters(next: RoastListFilters) {
+		const search = writeRoastListFilters(next, page.url.searchParams).toString();
+		goto(page.url.pathname + (search ? '?' + search : ''), {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: true
 		});
 	}
 
-	let roastSummary = $derived.by(() => {
-		const profiles = listBatches.flatMap((batch) => batch.roasts);
-		const profilesWithLossData = profiles.filter(
-			(profile) => profile.weight_loss_percent !== null && profile.weight_loss_percent !== undefined
-		);
-		const averageLoss =
-			profilesWithLossData.length > 0
-				? profilesWithLossData.reduce(
-						(sum, profile) => sum + (Number(profile.weight_loss_percent) || 0),
-						0
-					) / profilesWithLossData.length
-				: null;
-
-		return {
-			roasts: profiles.length,
-			batches: listBatches.length,
-			averageLoss
-		};
-	});
+	// The count line reads the totals for everything the filters match.
+	let countLine = $derived(
+		listTotals && listTotals.roasts > 0
+			? roastCountLine({
+					roasts: listTotals.roasts,
+					batches: listTotals.batches,
+					averageLoss: listTotals.average_loss_percent
+				})
+			: ''
+	);
+	let emptyDetail = $derived(
+		roastListEmptyDetail(filters, { coffee: coffeeFilter?.name, batch: batchFilter?.label })
+	);
 
 	// Publish the actual selection, not just the route name. Cherry receives
 	// canonical roast IDs so its read tool can retrieve the complete profiles.
 	$effect(() => {
-		const visible = isLoading ? [] : listBatches.flatMap((batch) => batch.roasts);
+		const visible = isLoading ? [] : listRoasts;
 		pageChatContext.set(buildRoastPageContext(visible, currentRoastProfile, isLoading));
 		return () => pageChatContext.clear();
 	});
@@ -316,22 +498,37 @@
 
 	// Removed the sort effect since it's redundant - the filtered data effect will handle updates
 
-	async function ensureFormCoffees() {
-		if (availableCoffees.length > 0 || coffeesLoading) return;
+	async function ensureCoffees() {
+		if (coffeesLoaded || coffeesLoading) return;
 		coffeesLoading = true;
 		try {
 			const response = await fetch('/api/beans');
 			if (response.ok) {
 				const result = await response.json();
-				availableCoffees = (result.data || []).filter(
-					(coffee: CoffeeCatalog) => coffee.stocked === true
-				);
+				portfolioCoffees = result.data || [];
+				coffeesLoaded = true;
 			}
 		} catch (err) {
 			console.error('Error fetching available coffees:', err);
-			availableCoffees = [];
 		} finally {
 			coffeesLoading = false;
+		}
+	}
+
+	// The first list and, when the address names one, the open roast. The roast is asked for
+	// by its number, so it opens whether or not the list's first page holds it.
+	async function openPage() {
+		listStarted = true;
+		const targetProfileId = readOpenRoastId(page.url.searchParams);
+		const initial = data.initialRoastsKey === filterKey ? data.initialRoasts : undefined;
+		try {
+			const [target] = await Promise.all([
+				targetProfileId === null ? null : requestRoast(targetProfileId).catch(() => null),
+				loadList(initial)
+			]);
+			if (target && !currentRoastProfile) await selectProfile(target);
+		} finally {
+			isLoading = false;
 		}
 	}
 
@@ -357,23 +554,8 @@
 			};
 		}
 
-		// Load roast profiles and handle URL-based profile selection
-		syncData(data.initialRoasts).then(() => {
-			setTimeout(() => {
-				// `?roast=<id>` names the open roast; `?profileId=<id>` is the earlier name.
-				const targetProfileId = readOpenRoastId(page.url.searchParams);
-				if (targetProfileId !== null && !currentRoastProfile) {
-					const filteredProfiles = typedFilteredData || [];
-					let targetProfile = filteredProfiles.find((p) => p.roast_id === targetProfileId);
-					if (!targetProfile && clientData.length > 0) {
-						targetProfile = clientData.find((p) => p.roast_id === targetProfileId);
-					}
-					if (targetProfile) {
-						selectProfile(targetProfile);
-					}
-				}
-			}, 100);
-		});
+		// `?roast=<id>` names the open roast; `?profileId=<id>` is the earlier name.
+		void openPage();
 	});
 
 	// Form submission handler for new roast profiles
@@ -525,6 +707,7 @@
 	async function handleProfileDelete() {
 		// Reset state
 		currentRoastProfile = null;
+		openBatchRoasts = [];
 		selectedBean = { name: 'No Bean Selected' };
 		// Refresh profiles list
 		await syncData();
@@ -574,21 +757,10 @@
 		try {
 			console.log('Selecting profile:', profile.roast_id, profile.coffee_name);
 
-			// Find the roast's place in its batch
-			const profiles =
-				batches.find((batch) => batch.roasts.some((p) => p.roast_id === profile.roast_id))
-					?.roasts ?? [];
-			const index = profiles.findIndex((p) => p.roast_id === profile.roast_id);
-
-			// If not found in grouped profiles, it might be a timing issue
-			if (index === -1) {
-				console.warn('Profile not found in grouped profiles, using index 0 as fallback');
-			}
-
 			// Make a copy of the profile to avoid reference issues
 			currentRoastProfile = { ...profile };
-			currentProfileIndex = Math.max(0, index);
 			selectionState.lastSelectedId = profile.roast_id;
+			void loadOpenBatch(profile);
 
 			// Update selected bean
 			selectedBean = {
@@ -864,8 +1036,23 @@
 	// "Delete batch" in the open roast's More menu: one batch, by its ID, with the roasts in
 	// it. Another batch that carries the same name is not touched.
 	async function deleteBatch(batchKey: string) {
-		const batch = allBatches.find((candidate) => candidate.key === batchKey);
-		if (!batch?.id || operationInProgress) return;
+		const batchId = openBatch?.key === batchKey ? openBatch.id : null;
+		if (!batchId || operationInProgress) return;
+
+		// The member is told how many roasts go with the batch, so its roasts are read again
+		// before asking.
+		let batch;
+		try {
+			batch = groupRoastsByBatch(await requestBatchRoasts(batchId)).find(
+				(candidate) => candidate.id === batchId
+			);
+		} catch (error) {
+			console.error('Error reading the batch to delete:', error);
+		}
+		if (!batch?.id) {
+			setProfileError('This batch could not be read. Try again in a moment.');
+			return;
+		}
 
 		// Deleting the batch of the roast being recorded drops its readings with it.
 		const holdsOpenRoast =
@@ -910,6 +1097,7 @@
 				noScroll: true
 			});
 
+			if (holdsOpenRoast) openBatchRoasts = [];
 			await syncData();
 		} catch (error) {
 			console.error('Error deleting batch:', error);
@@ -937,9 +1125,9 @@
 		$roastData = [];
 		$roastEvents = [];
 
-		// Back to the list as it was: the coffee or batch it was narrowed to stays in the address.
-		const params = new URL(window.location.href).searchParams;
-		goto(roastListHref({ coffee: readCoffeeFilter(params), batch: readBatchFilter(params) }), {
+		// Back to the list as it was: every filter it was narrowed by stays in the address.
+		openBatchRoasts = [];
+		goto(roastListHref(filters), {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: true
@@ -1008,53 +1196,30 @@
 
 {#if isLoading}
 	<RoastPageSkeleton />
-{:else if error}
-	<!-- Error state -->
-	<div class="rounded-lg bg-danger-subtle p-6 text-center ring-1 ring-danger/30">
-		<svg
-			class="mx-auto mb-4 h-12 w-12 text-danger opacity-70"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="1.5"
-			aria-hidden="true"
-		>
-			<path
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
-			/>
-		</svg>
-		<h3 class="mb-2 text-lg font-semibold text-danger-strong">Failed to load data</h3>
-		<p class="mb-4 text-danger">{error}</p>
-		<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
-			<button
-				onclick={async () => {
-					error = null;
-					await syncData();
-				}}
-				class="rounded-md bg-danger px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-danger-strong focus:outline-none focus:ring-2 focus:ring-danger focus:ring-offset-2"
-			>
-				Try again
-			</button>
-			<button
-				onclick={() => window.location.reload()}
-				class="rounded-md border border-danger px-4 py-2 font-medium text-danger transition-all duration-200 hover:bg-danger hover:text-white focus:outline-none focus:ring-2 focus:ring-danger focus:ring-offset-2"
-			>
-				Reload page
-			</button>
-		</div>
-	</div>
 {:else}
 	<RoastProfileTabs
 		{batches}
+		{openBatchRoasts}
 		{collapsedBatches}
 		{currentRoastProfile}
 		{currentProfileIndex}
 		{chartComponentLoading}
 		{RoastChartInterface}
-		countLine={roastCountLine(roastSummary)}
-		totalRoasts={clientData.length}
+		{countLine}
+		{filters}
+		{coffeeOptions}
+		onFiltersChange={setFilters}
+		{emptyDetail}
+		loadedRoasts={listRoasts.length}
+		matchingRoasts={listTotals?.roasts ?? 0}
+		hasMore={hasMoreRoasts}
+		{isRefreshing}
+		{isLoadingMore}
+		{loadMoreFailed}
+		{listFailed}
+		{searchInvalid}
+		onLoadMore={loadMoreRoasts}
+		onRetryList={() => loadList()}
 		canCreateRoast={canCreateRoastProfiles}
 		actionNotice={actionNotice?.roastId === currentRoastProfile?.roast_id
 			? (actionNotice?.notice ?? null)
@@ -1068,25 +1233,11 @@
 		onProfileDelete={handleProfileDelete}
 		onDeleteBatch={deleteBatch}
 		onClearProfile={handleClearProfile}
-		onClearFilters={() => {
-			filterStore.clearFilters();
-			if (coffeeFilterId !== null || batchFilterId !== null) {
-				const url = new URL(page.url);
-				url.searchParams.delete('coffee');
-				url.searchParams.delete('batch');
-				const search = url.searchParams.toString();
-				goto(url.pathname + (search ? '?' + search : ''), {
-					replaceState: true,
-					keepFocus: true,
-					noScroll: true
-				});
-			}
-		}}
-		{listBatches}
+		onClearFilters={() => setFilters(NO_ROAST_LIST_FILTERS)}
 		{coffeeFilter}
-		onClearCoffeeFilter={() => clearListFilter('coffee')}
+		onClearCoffeeFilter={() => setFilters({ ...filters, coffee: null })}
 		{batchFilter}
-		onClearBatchFilter={() => clearListFilter('batch')}
+		onClearBatchFilter={() => setFilters({ ...filters, batch: null })}
 		onProfileRefresh={refreshProfileAfterArtisanImport}
 		{selectedBean}
 		{timer}
