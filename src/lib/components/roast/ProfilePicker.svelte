@@ -59,6 +59,7 @@
 				? 'No saved references match your search.'
 				: 'No roasts match your search.';
 		}
+		if (group.empty && !loading) return group.empty;
 		if (group.key === 'references') {
 			return loading ? 'Loading saved references…' : 'No saved references yet.';
 		}

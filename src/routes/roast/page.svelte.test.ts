@@ -497,11 +497,49 @@ describe('roast page live roast guard', () => {
 		expect(leaveQuestion()).not.toBeInTheDocument();
 	});
 
-	it('does not offer comparison for a roast with nothing recorded yet', async () => {
+	it('asks before leaving a recording roast for the plan page', async () => {
+		const weighed = roast({ roast_id: 1, oz_in: 16, oz_out: 13.6 });
+		await openRoast('?roast=1', [weighed, roasts[1]]);
+		await startRoast();
+		await logEvent('Charge');
+		const logged = loggedEvents();
+		goto.mockClear();
+
+		// "Plan next roast from this" is a plain link too: clicking it is a navigation the
+		// guard sees, and it stays available while the roast records.
+		const plan = screen.getByRole('link', { name: 'Plan next roast from this' });
+		expect(plan).toHaveAttribute('href', '/roast/plan?from=roast:1');
+
+		expect(leavePage('/roast/plan?from=roast:1')).toHaveBeenCalledOnce();
+		await fireEvent.click(await screen.findByRole('button', { name: 'Keep roasting' }));
+		await selectionSettled();
+
+		expect(goto).not.toHaveBeenCalled();
+		expect(timerButton()).toHaveTextContent('Stop');
+		expect(loggedEvents()).toEqual(logged);
+
+		expect(leavePage('/roast/plan?from=roast:1')).toHaveBeenCalledOnce();
+		await fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
+
+		await waitFor(() => expect(goto).toHaveBeenCalledOnce());
+		expect(String(goto.mock.calls[0][0])).toBe('http://localhost/roast/plan?from=roast:1');
+	});
+
+	it('lets the plan page open without asking when nothing is recording', async () => {
+		const weighed = roast({ roast_id: 1, oz_in: 16, oz_out: 13.6 });
+		await openRoast('?roast=1', [weighed, roasts[1]]);
+
+		expect(leavePage('/roast/plan?from=roast:1')).not.toHaveBeenCalled();
+		expect(leaveQuestion()).not.toBeInTheDocument();
+	});
+
+	it('does not offer comparison or a plan for a roast with nothing recorded yet', async () => {
 		await openRoast();
 
 		expect(screen.queryByRole('link', { name: 'Compare with…' })).toBeNull();
 		expect(screen.getByRole('button', { name: 'Compare with…' })).toBeDisabled();
+		expect(screen.queryByRole('link', { name: 'Plan next roast from this' })).toBeNull();
+		expect(screen.getByRole('button', { name: 'Plan next roast from this' })).toBeDisabled();
 	});
 
 	it('opens a roast reached from portfolio on a clean timer, without asking', async () => {
