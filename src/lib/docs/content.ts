@@ -1486,9 +1486,9 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/artisan-import',
 							'POST',
-							'Session + Mallard Studio',
+							'Session + Mallard Studio + ownership',
 							'Internal product route',
-							'Accepts multipart form-data with file plus roastId. Supported formats: .alog, .alog.json, .json. Forwards to the canonical Parchment API. Signed-in accounts without Mallard Studio receive a 403.'
+							'Accepts multipart form-data with file plus roastId. Supported formats: .alog, .alog.json, .json. Signed-in accounts without Mallard Studio receive a 403. Member requests are forwarded to the canonical Parchment API, which authorizes the roast write itself and accepts only the caller’s own roast; its 401, 403, and 404 responses are returned with their status.'
 						],
 						[
 							'/api/roast-chart-data',
@@ -1507,9 +1507,9 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/clear-roast',
 							'DELETE',
-							'Session + Mallard Studio',
+							'Session + Mallard Studio + ownership',
 							'Internal maintenance helper',
-							'Requires roast_id query param. Forwards to the canonical Parchment API, which clears imported Artisan data and resets related fields.'
+							'Requires roast_id query param. Signed-in accounts without Mallard Studio receive a 403. Member requests are forwarded to the canonical Parchment API, which authorizes the roast write itself, accepts only the caller’s own roast, then clears imported Artisan data and resets related fields.'
 						],
 						[
 							'/api/reference-profiles',
@@ -1867,7 +1867,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Roasting',
 		intro: [
 			'Roast routes cover CRUD for roast profiles, Artisan import, chart telemetry, chart display settings, and data clearing.',
-			'Roast routes require a signed-in account with Mallard Studio. Mutations are same-origin thin BFF calls to Parchment, which owns authorization and persistence.'
+			'Roast routes require a signed-in account with Mallard Studio; an account without it receives a 403 and nothing is forwarded. That requirement is in addition to Parchment’s own checks, not a replacement for them. Mutations are same-origin thin BFF calls to Parchment, which owns authorization, ownership, and persistence.'
 		],
 		sections: [
 			{
@@ -1884,8 +1884,8 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/artisan-import',
 							'POST',
-							'Session + Mallard Studio',
-							'Import an Artisan roast file into an existing roast profile via the canonical Parchment API'
+							'Session + Mallard Studio + ownership',
+							'Import an Artisan roast file into one of the caller’s existing roast profiles via the canonical Parchment API, which authorizes the write'
 						],
 						[
 							'/api/roast-chart-data',
@@ -1902,7 +1902,7 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/clear-roast',
 							'DELETE',
-							'Session + Mallard Studio',
+							'Session + Mallard Studio + ownership',
 							'Clear imported roast telemetry and reset Artisan fields'
 						]
 					]
@@ -1920,7 +1920,8 @@ const docsPages: DocsPage[] = [
 					'The saved library at /roast/saved manages references and plans. PATCH /api/reference-profiles/[id] renames one and DELETE removes it. GET /api/reference-profiles/[id]/artisan-file and GET /api/roast-profiles/[id]/artisan-file download the stored Artisan file unchanged, with its file name and Repr-Digest; when no file is on record they return 400 with a code and a reason. POST /api/reference-profiles/[id]/roast records an uploaded reference as a roast of a chosen portfolio coffee with a stable Idempotency-Key.',
 					'A plan can also start from a roast whose Artisan file is on record. GET /api/reference-profiles/from-roast/candidates lists those roasts, POST /api/reference-profiles/from-roast/preview previews the change without saving, and POST /api/reference-profiles/from-roast keeps the roast’s file as a reference with a stable Idempotency-Key before the plan is saved on it through the generated route. A roast with no usable file returns 400 with code roast_artisan_source_unavailable and a reason.',
 					'GET /api/roast-chart-data requires roastId and forwards the generated Parchment chart model: bounded typed series, discrete events, units, and derived ranges.',
-					'DELETE /api/clear-roast requires roast_id and forwards to Parchment, which enforces ownership plus roast:write before deleting imported telemetry, events, and log rows.'
+					'DELETE /api/clear-roast requires roast_id and forwards to Parchment, which enforces ownership and its roast-write authorization before deleting imported telemetry, events, and log rows.',
+					'Parchment authorizes every forwarded Artisan import and clear again. A session needs Mallard Studio and no API scope; the roast:write scope is what Parchment requires of an API key that calls it directly, and these routes do not accept API keys. Both routes return a Parchment refusal with its status: 401 for a session Parchment does not accept, 403 for an entitlement refusal, and 404 for a roast that is missing or belongs to another account.'
 				]
 			},
 			{
@@ -2005,7 +2006,7 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/clear-roast',
 							'DELETE',
-							'Session + Mallard Studio',
+							'Session + Mallard Studio + ownership',
 							'Clear imported roast data for a flow reset'
 						]
 					]
