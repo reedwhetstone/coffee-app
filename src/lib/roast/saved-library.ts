@@ -27,8 +27,6 @@ export interface LibraryRow {
 	canRecordAsRoast: boolean;
 	/** A plan downloads its own file; a reference downloads the file it was added from. */
 	downloadHref: string;
-	/** Whether the download is known to be there before it is asked for. */
-	hasDownload: boolean;
 }
 
 /** Every saved reference and plan, newest first; the name breaks ties. */
@@ -48,8 +46,7 @@ export function libraryRows(profiles: SavedReference[]): LibraryRow[] {
 				isPlan,
 				canPlan: canPlanFromReference(profile),
 				canRecordAsRoast: profile.sourceClass === 'artisan_upload' && profile.artisanFileAvailable,
-				downloadHref: isPlan ? planDownloadHref(profile) : referenceFileHref(profile.id),
-				hasDownload: isPlan || profile.artisanFileAvailable
+				downloadHref: isPlan ? planDownloadHref(profile) : referenceFileHref(profile.id)
 			};
 		});
 }

@@ -22,11 +22,6 @@ export function chargeOffsetMilliseconds(chart: ReferenceChart): number {
 	return chart.chargeTimeMilliseconds ?? 0;
 }
 
-/**
- * Draw a plan over the curve it started from, both timed from charge. A saved plan whose
- * starting curve is no longer on record is drawn alone. Milestones render as markers;
- * control events remain unchanged but unmarked.
- */
 /** One saved reference's curve on its own, each line named for what it measures. */
 export function buildReferenceCurveChart(chart: ReferenceChart): ProcessedChartData {
 	const data = buildProfileGenerationChart(null, chart);
@@ -36,6 +31,11 @@ export function buildReferenceCurveChart(chart: ReferenceChart): ProcessedChartD
 	};
 }
 
+/**
+ * Draw a plan over the curve it started from, both timed from charge. A saved plan whose
+ * starting curve is no longer on record is drawn alone. Milestones render as markers;
+ * control events remain unchanged but unmarked.
+ */
 export function buildProfileGenerationChart(
 	parent: ReferenceChart | null,
 	preview: ReferenceChart

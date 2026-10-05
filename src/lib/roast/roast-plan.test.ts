@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
 	buildPlanStartGroups,
+	canPlanFromReference,
 	describeAdjustment,
 	olderRoastsLine,
 	planDownloadHref,
 	planHref,
+	planNextRoastLink,
 	planStartKey,
 	planStarts,
 	readPlanLink,
@@ -252,6 +254,38 @@ describe('what a plan can start from', () => {
 		const [after] = planStarts([{ ...newest, roastRevision: 'later' }], []);
 		expect(planStartKey(before)).toBe('roast:4531@revision-4531');
 		expect(planStartKey(after)).not.toBe(planStartKey(before));
+	});
+});
+
+describe('"Plan next roast" on one roast in a list', () => {
+	it('links to the plan page for a roast whose Artisan file is on record', () => {
+		expect(planNextRoastLink({ roast_id: 4531, artisan_file_available: true })).toEqual([
+			{ label: 'Plan next roast', href: '/roast/plan?from=roast:4531' }
+		]);
+	});
+
+	it.each([false, null, undefined])(
+		'offers nothing for a roast a plan cannot be built on (file on record: %s)',
+		(artisan_file_available) => {
+			expect(planNextRoastLink({ roast_id: 4531, artisan_file_available })).toEqual([]);
+		}
+	);
+});
+
+describe('planning from a saved reference', () => {
+	it('needs a file Artisan can read: an upload, a roast kept with its file, or a plan', () => {
+		expect(canPlanFromReference(reference({}))).toBe(true);
+		expect(canPlanFromReference(reference({ id: PLAN, sourceClass: 'generated_revision' }))).toBe(
+			true
+		);
+		expect(
+			canPlanFromReference(
+				reference({ id: SNAPSHOT, sourceClass: 'executed_roast', artisanFileAvailable: true })
+			)
+		).toBe(true);
+		expect(canPlanFromReference(reference({ id: SNAPSHOT, sourceClass: 'executed_roast' }))).toBe(
+			false
+		);
 	});
 });
 

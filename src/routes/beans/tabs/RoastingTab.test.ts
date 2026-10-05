@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InventoryWithCatalog } from '$lib/types/component.types';
+import { planNextRoastLink } from '$lib/roast/roast-plan';
 import RoastingTab from './RoastingTab.svelte';
 
 const coffee = {
@@ -317,6 +318,56 @@ describe('portfolio Roasting tab', () => {
 				.getByRole('link', { name: 'Plan next roast', hidden: true })
 				.getAttribute('href')
 		).toBe('/roast/plan?from=roast:4531');
+	});
+
+	it('offers "Plan next roast" only on a roast a plan can be built from', async () => {
+		// The newest roast and the oldest still have their Artisan file; the rest do not.
+		respondWith(
+			roasts.map((roast) => ({
+				...roast,
+				artisan_file_available: roast.roast_id === 4531 || roast.roast_id === 4480
+			}))
+		);
+		renderTab({ rowMenu: planNextRoastLink });
+
+		const rows = await dataRows();
+		const menus = rows.map((row) => within(row).queryByLabelText(/More for roast/));
+		expect(menus.map((menu) => menu?.getAttribute('aria-label') ?? null)).toEqual([
+			'More for roast #4531',
+			null,
+			null,
+			null,
+			'More for roast #4480'
+		]);
+		expect(
+			within(rows[0])
+				.getByRole('link', { name: 'Plan next roast', hidden: true })
+				.getAttribute('href')
+		).toBe('/roast/plan?from=roast:4531');
+		expect(
+			within(rows[4])
+				.getByRole('link', { name: 'Plan next roast', hidden: true })
+				.getAttribute('href')
+		).toBe('/roast/plan?from=roast:4480');
+		// Logging a sale from here comes with the release that adds it.
+		expect(screen.queryByText('Log sale')).toBeNull();
+	});
+
+	it('draws no row menu on a shared coffee, where nothing can be planned', async () => {
+		render(RoastingTab, {
+			selectedBean: {
+				...coffee,
+				roast_profiles: roasts.map((roast) => ({ ...roast, artisan_file_available: true }))
+			} as never,
+			role: 'member',
+			readOnly: true,
+			onStartNewRoast: vi.fn(),
+			rowMenu: planNextRoastLink
+		});
+
+		expect(await dataRows()).toHaveLength(5);
+		expect(screen.queryByLabelText(/More for roast/)).toBeNull();
+		expect(screen.queryByText('Plan next roast')).toBeNull();
 	});
 });
 
