@@ -99,7 +99,7 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
 	requests.push({ url, method });
 	if (url.startsWith('/api/roast-chart-settings')) return Response.json({ settings: null });
 	if (url.startsWith('/api/roast-chart-data')) return Response.json({ series: [], events: [] });
-	if (url.startsWith('/api/beans')) {
+	if (url.startsWith('/api/roast-coffees') || url.startsWith('/api/beans')) {
 		return Response.json({
 			data: [
 				{ id: 101, name: 'Ethiopia Yirgacheffe Wush Wush', stocked: true },
@@ -200,6 +200,18 @@ describe('loading the roast list a page at a time', () => {
 		expect(screen.getByText('Showing 50 of 120 roasts')).toBeInTheDocument();
 		// No request asks for the whole list.
 		expect(listRequests().every((query) => query.has('limit') || query.has('batch_id'))).toBe(true);
+	});
+
+	it('reads the coffee choices from the portfolio alone, not from a request that reads roasts', async () => {
+		visit('/roast');
+		renderPage();
+		await waitFor(() => expect(roastRows()).toHaveLength(50));
+
+		await waitFor(() =>
+			expect(requests.some((request) => request.url === '/api/roast-coffees')).toBe(true)
+		);
+		// The portfolio route reads every roast to describe each coffee; the list does not call it.
+		expect(requests.some((request) => request.url.startsWith('/api/beans'))).toBe(false);
 	});
 
 	it('loads the next pages on "Load more" and stops at the last one', async () => {

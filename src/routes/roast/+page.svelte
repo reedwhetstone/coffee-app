@@ -42,7 +42,7 @@
 		RoastListRequestError,
 		type RoastListTotals
 	} from '$lib/roast/roast-list-loader';
-	import { roastCoffeeOptions } from '$lib/roast/roast-coffee-options';
+	import { roastCoffeeOptions, type RoastCoffeeOption } from '$lib/roast/roast-coffee-options';
 	import { saveRoastAsReference } from '$lib/roast/save-reference';
 	import {
 		ARTISAN_BACKGROUND_STEPS,
@@ -170,20 +170,39 @@
 	});
 	let pendingProfileCreatePayload = $state<string | null>(null);
 
-	// The member's portfolio coffees: the choices in the list's coffee control, and, for
-	// those in stock, in the new-roast form.
-	let portfolioCoffees = $state<CoffeeCatalog[]>([]);
-	let coffeesLoaded = false;
+	// Available coffees for form
+	let availableCoffees = $state<CoffeeCatalog[]>([]);
 	let coffeesLoading = $state(false);
-	let availableCoffees = $derived(portfolioCoffees.filter((coffee) => coffee.stocked === true));
-	let coffeeOptions = $derived(roastCoffeeOptions(portfolioCoffees));
 
-	// Fetch them once the list or the form is on screen
+	// Fetch form coffees reactively when the form becomes visible
 	$effect(() => {
-		if (isFormVisible || (!isLoading && currentRoastProfile === null)) {
-			void ensureCoffees();
+		if (isFormVisible) {
+			ensureFormCoffees();
 		}
 	});
+
+	// The member's portfolio coffees, as the choices in the list's coffee control. They are
+	// read once the list is on screen, from a request that reads the portfolio and no roasts.
+	let coffeeOptions = $state<RoastCoffeeOption[]>([]);
+	let coffeeOptionsStarted = false;
+	$effect(() => {
+		if (isLoading || currentRoastProfile !== null || coffeeOptionsStarted) return;
+		coffeeOptionsStarted = true;
+		void loadCoffeeOptions();
+	});
+
+	async function loadCoffeeOptions() {
+		try {
+			const response = await fetch('/api/roast-coffees');
+			if (!response.ok) throw new Error(`Failed to load coffees (${response.status})`);
+			const result = await response.json();
+			coffeeOptions = roastCoffeeOptions(Array.isArray(result.data) ? result.data : []);
+		} catch (err) {
+			// The list still works: the coffee control offers the coffee it is narrowed to.
+			console.error('Error loading the coffees to choose from:', err);
+			coffeeOptionsStarted = false;
+		}
+	}
 
 	// Restore the exact payload for a create that may have committed before its
 	// response was lost. The form owns the visible retry and discard controls.
@@ -264,13 +283,14 @@
 			searchInvalid = false;
 		} catch (err) {
 			if (request !== listRequest) return;
-			console.error('Error loading roasts:', err);
 			listRoasts = [];
 			listTotals = null;
 			listOffset = 0;
 			hasMoreRoasts = false;
+			// A search that cannot be used is explained on the page; it is not a failure.
 			searchInvalid = err instanceof RoastListRequestError && err.kind === 'invalid-search';
 			listFailed = !searchInvalid;
+			if (listFailed) console.error('Error loading roasts:', err);
 		} finally {
 			if (request === listRequest) {
 				listKey = key;
@@ -500,18 +520,20 @@
 
 	// Removed the sort effect since it's redundant - the filtered data effect will handle updates
 
-	async function ensureCoffees() {
-		if (coffeesLoaded || coffeesLoading) return;
+	async function ensureFormCoffees() {
+		if (availableCoffees.length > 0 || coffeesLoading) return;
 		coffeesLoading = true;
 		try {
 			const response = await fetch('/api/beans');
 			if (response.ok) {
 				const result = await response.json();
-				portfolioCoffees = result.data || [];
-				coffeesLoaded = true;
+				availableCoffees = (result.data || []).filter(
+					(coffee: CoffeeCatalog) => coffee.stocked === true
+				);
 			}
 		} catch (err) {
 			console.error('Error fetching available coffees:', err);
+			availableCoffees = [];
 		} finally {
 			coffeesLoading = false;
 		}

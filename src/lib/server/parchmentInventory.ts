@@ -257,6 +257,35 @@ function throwParchmentResultError(
 		: new Error('Parchment inventory request failed', { cause: result.error });
 }
 
+/** One portfolio coffee as a control lists it: enough to name it and tell two purchases apart. */
+export interface InventoryChoice {
+	id: number;
+	name: string | null;
+	purchase_date: string | null;
+	stocked: boolean | null;
+}
+
+/**
+ * The owner's portfolio coffees as choices for a control. Only the inventory is read: no
+ * roasts and no catalog detail, so the cost does not grow with the owner's roast history.
+ */
+export async function fetchParchmentInventoryChoices(
+	client: ParchmentClient
+): Promise<InventoryChoice[]> {
+	const inventory = await collectOffsetPages({
+		pageSize: PAGE_LIMIT,
+		fetchPage: async (offset) =>
+			unwrapParchment(await client.inventory.list({ limit: PAGE_LIMIT, offset })).data,
+		key: (row) => row.id
+	});
+	return inventory.map((row) => ({
+		id: row.id,
+		name: row.coffee_catalog?.name ?? null,
+		purchase_date: row.purchase_date,
+		stocked: row.stocked
+	}));
+}
+
 function roastProjection(roast: RoastResource) {
 	return {
 		oz_in: roast.oz_in,

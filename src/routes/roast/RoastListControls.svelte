@@ -90,10 +90,10 @@
 
 <div class="mb-4 rounded-lg border border-line bg-surface-panel px-4 py-3" data-roast-list-controls>
 	<div class="flex flex-wrap items-center gap-2">
-		<label class="min-w-[11rem] flex-1 basis-full sm:basis-auto">
-			<span class="sr-only">Search roasts</span>
+		<div class="min-w-[11rem] flex-1 basis-full sm:basis-auto">
 			<input
 				type="search"
+				aria-label="Search roasts"
 				value={searchText}
 				maxlength={MAX_ROAST_SEARCH_LENGTH}
 				oninput={(event) => typeSearch(event.currentTarget.value)}
@@ -103,11 +103,11 @@
 				placeholder="Coffee, batch, or roast number"
 				class="w-full rounded-md border border-line bg-surface-canvas px-3 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent"
 			/>
-		</label>
+		</div>
 
-		<label class="min-w-0 max-w-full">
-			<span class="sr-only">Coffee</span>
+		<div class="min-w-0 max-w-full">
 			<select
+				aria-label="Coffee"
 				value={filters.coffee === null ? '' : String(filters.coffee)}
 				onchange={(event) =>
 					onChange({
@@ -121,11 +121,11 @@
 					<option value={String(option.id)}>{option.name}</option>
 				{/each}
 			</select>
-		</label>
+		</div>
 
-		<label class="min-w-0 max-w-full">
-			<span class="sr-only">Roast date</span>
+		<div class="min-w-0 max-w-full">
 			<select
+				aria-label="Roast date"
 				value={dateChoice}
 				onchange={(event) => chooseDates(event.currentTarget.value)}
 				class={selectClass}
@@ -136,7 +136,7 @@
 				{/each}
 				<option value="custom">Custom dates</option>
 			</select>
-		</label>
+		</div>
 
 		<FilterChips
 			legend="Retail or wholesale"

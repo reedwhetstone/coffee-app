@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+	fetchParchmentInventoryChoices,
 	commitParchmentCatalogInventoryBatch,
 	commitParchmentManualInventoryBatch,
 	deleteParchmentInventoryItem,
@@ -11,6 +12,54 @@ import {
 	reserveParchmentManualInventoryBatch,
 	updateParchmentInventoryItem
 } from './parchmentInventory';
+
+describe('fetchParchmentInventoryChoices', () => {
+	it('names every portfolio coffee from the inventory alone, with no roast or catalog read', async () => {
+		const row = (id: number, name: string | null, extra: Record<string, unknown> = {}) => ({
+			id,
+			purchase_date: '2026-07-28',
+			stocked: true,
+			coffee_catalog: name === null ? null : { id, name },
+			notes: 'private',
+			bean_cost: 50,
+			...extra
+		});
+		const firstPage = Array.from({ length: 200 }, (_, index) => row(index + 1, `Coffee ${index}`));
+		const inventoryList = vi
+			.fn()
+			.mockResolvedValueOnce({ data: { data: firstPage } })
+			.mockResolvedValueOnce({
+				data: {
+					data: [row(301, 'Kenya Nyeri', { stocked: false, purchase_date: null }), row(302, null)]
+				}
+			});
+		const roastsList = vi.fn();
+		const catalogList = vi.fn();
+
+		const choices = await fetchParchmentInventoryChoices({
+			inventory: { list: inventoryList },
+			roasts: { list: roastsList },
+			catalog: { list: catalogList }
+		} as never);
+
+		expect(choices).toHaveLength(202);
+		expect(choices[0]).toEqual({
+			id: 1,
+			name: 'Coffee 0',
+			purchase_date: '2026-07-28',
+			stocked: true
+		});
+		// Only what a control needs is returned: no cost and no notes.
+		expect(choices.slice(-2)).toEqual([
+			{ id: 301, name: 'Kenya Nyeri', purchase_date: null, stocked: false },
+			{ id: 302, name: null, purchase_date: '2026-07-28', stocked: true }
+		]);
+		expect(inventoryList).toHaveBeenNthCalledWith(1, { limit: 200, offset: 0 });
+		expect(inventoryList).toHaveBeenNthCalledWith(2, { limit: 200, offset: 200 });
+		expect(roastsList).not.toHaveBeenCalled();
+		expect(catalogList).not.toHaveBeenCalled();
+	});
+});
 
 describe('fetchParchmentInventoryProjection', () => {
 	it('paginates owner resources and preserves the beans-page projection', async () => {
