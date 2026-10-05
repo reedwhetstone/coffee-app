@@ -252,33 +252,54 @@ export async function _loadPriceSnapshotsPaginated({
 		return { rows: data?.data ?? [], pagination: data?.pagination };
 	};
 
-	const first = await readPage(1);
-	const snapshots: PriceSnapshot[] = first.rows.map(mapPriceIndexHistoryItem);
-	const totalPages = first.pagination?.totalPages;
+	const snapshots: PriceSnapshot[] = [];
+	let emptyPage: number | null = null;
+	// A read returns the whole history or fails. Rows have to be contiguous, so an
+	// empty page is only accepted after the last row.
+	const appendPage = (page: number, { rows, pagination }: Awaited<ReturnType<typeof readPage>>) => {
+		if (rows.length === 0) {
+			if (pagination?.hasNext) {
+				throw new Error(
+					`Failed to load analytics price snapshots page ${page}: upstream returned an empty page with hasNext=true`
+				);
+			}
+			emptyPage ??= page;
+			return;
+		}
+		if (emptyPage !== null) {
+			throw new Error(
+				`Failed to load analytics price snapshots page ${emptyPage}: upstream returned an empty page before page ${page}, which has rows`
+			);
+		}
+		snapshots.push(...rows.map(mapPriceIndexHistoryItem));
+	};
+
+	let lastPage = 1;
+	let last = await readPage(lastPage);
+	appendPage(lastPage, last);
+	const totalPages = last.pagination?.totalPages;
 
 	// The first page says how many there are, so the rest are read side by side
 	// instead of one after another: a year of history is about ten pages.
 	if (typeof totalPages === 'number' && Number.isInteger(totalPages)) {
 		const remaining = Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => index + 2);
 		for (let start = 0; start < remaining.length; start += SNAPSHOT_PAGE_CONCURRENCY) {
-			const batch = await Promise.all(
-				remaining.slice(start, start + SNAPSHOT_PAGE_CONCURRENCY).map(readPage)
-			);
-			for (const page of batch) snapshots.push(...page.rows.map(mapPriceIndexHistoryItem));
+			const pages = remaining.slice(start, start + SNAPSHOT_PAGE_CONCURRENCY);
+			const batch = await Promise.all(pages.map(readPage));
+			for (const [index, result] of batch.entries()) {
+				lastPage = pages[index];
+				last = result;
+				appendPage(lastPage, last);
+			}
 		}
-		return snapshots;
 	}
 
-	// No page count in the response: follow hasNext one page at a time.
-	let previous = first;
-	for (let page = 2; previous.pagination?.hasNext; page += 1) {
-		if (previous.rows.length === 0) {
-			throw new Error(
-				`Failed to load analytics price snapshots page ${page - 1}: upstream returned an empty page with hasNext=true`
-			);
-		}
-		previous = await readPage(page);
-		snapshots.push(...previous.rows.map(mapPriceIndexHistoryItem));
+	// No page count in the response, or the history grew past it during the read:
+	// follow hasNext one page at a time.
+	while (last.pagination?.hasNext) {
+		lastPage += 1;
+		last = await readPage(lastPage);
+		appendPage(lastPage, last);
 	}
 
 	return snapshots;
