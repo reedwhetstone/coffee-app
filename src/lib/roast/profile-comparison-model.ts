@@ -204,32 +204,137 @@ export function formatDuration(milliseconds: number): string {
 		: `${Math.floor(whole / 60)} min ${remainder} sec`;
 }
 
+/** A milestone one profile recorded, timed from that profile's own charge. */
+export interface SideMilestone {
+	name: string;
+	milliseconds: number;
+}
+
+/**
+ * The milestones each compared profile recorded. Parchment's comparison lists only the
+ * milestones both profiles have, so this is what shows a milestone that one of them lacks.
+ * A side is null when its milestones could not be read.
+ */
+export interface ComparisonSideMilestones {
+	left: SideMilestone[] | null;
+	right: SideMilestone[] | null;
+}
+
+export const NOT_RECORDED = 'Not recorded';
+
 export interface MilestoneTiming {
 	name: string;
 	label: string;
-	/** Time from charge, as m:ss. */
+	/** Time from charge, as m:ss, or "Not recorded". */
 	leftTime: string;
 	rightTime: string;
 	/** Plain statement of which profile reached the milestone first, and by how much. */
 	difference: string;
+	/** The profile that did not record this milestone, when only one of them did. */
+	missing?: (typeof COMPARISON_SIDES)[Side];
 }
 
-/** Milestone timing as sentences: when each profile reached it and which one was earlier. */
-export function describeMilestoneTimings(comparison: ProfileComparison): MilestoneTiming[] {
-	return comparison.milestones
-		.filter((milestone) => milestone.leftMilliseconds !== 0 || milestone.rightMilliseconds !== 0)
+const milestoneKey = (name: string) => name.trim().toLowerCase();
+
+/** Charge is where both curves start, so it is never a difference. */
+function isCharge(milestone: ProfileComparison['milestones'][number]): boolean {
+	return milestone.leftMilliseconds === 0 && milestone.rightMilliseconds === 0;
+}
+
+/** Milestones that exactly one of the two profiles recorded, charge excepted. */
+function oneSidedTimings(
+	comparison: ProfileComparison,
+	sides: ComparisonSideMilestones
+): Array<MilestoneTiming & { at: number }> {
+	if (!sides.left || !sides.right) return [];
+	const shared = new Set(comparison.milestones.map((milestone) => milestoneKey(milestone.name)));
+	const recorded = (entries: SideMilestone[]) =>
+		new Map(entries.map((entry) => [milestoneKey(entry.name), entry]));
+	const left = recorded(sides.left);
+	const right = recorded(sides.right);
+	const timings: Array<MilestoneTiming & { at: number }> = [];
+	for (const [has, lacks, missing] of [
+		[left, right, 'right'],
+		[right, left, 'left']
+	] as const) {
+		for (const [key, entry] of has) {
+			if (key === 'charge' || shared.has(key) || lacks.has(key)) continue;
+			const label = milestoneLabel(entry.name);
+			const time = clock(entry.milliseconds);
+			timings.push({
+				name: key,
+				label,
+				leftTime: missing === 'left' ? NOT_RECORDED : time,
+				rightTime: missing === 'right' ? NOT_RECORDED : time,
+				difference: `${label} not recorded for ${COMPARISON_SIDES[missing]}`,
+				missing: COMPARISON_SIDES[missing],
+				at: entry.milliseconds
+			});
+		}
+	}
+	return timings;
+}
+
+/**
+ * Milestone timing as sentences: when each profile reached it and which one was earlier.
+ * A milestone only one profile recorded is listed as not recorded for the other, never as
+ * a difference.
+ */
+export function describeMilestoneTimings(
+	comparison: ProfileComparison,
+	sides?: ComparisonSideMilestones | null
+): MilestoneTiming[] {
+	const shared = comparison.milestones
+		.filter((milestone) => !isCharge(milestone))
 		.map((milestone) => {
 			// Parchment reports the second profile's time minus the first profile's time.
 			const delta = milestone.rightMilliseconds - milestone.leftMilliseconds;
 			return {
-				name: milestone.name,
-				label: milestoneLabel(milestone.name),
-				leftTime: clock(milestone.leftMilliseconds),
-				rightTime: clock(milestone.rightMilliseconds),
-				difference:
-					Math.abs(delta) < SAME_TIME_MILLISECONDS
-						? 'Same time'
-						: `${COMPARISON_SIDES.right} was ${formatDuration(delta)} ${delta < 0 ? 'earlier' : 'later'}`
+				at: milestone.leftMilliseconds,
+				timing: {
+					name: milestone.name,
+					label: milestoneLabel(milestone.name),
+					leftTime: clock(milestone.leftMilliseconds),
+					rightTime: clock(milestone.rightMilliseconds),
+					difference:
+						Math.abs(delta) < SAME_TIME_MILLISECONDS
+							? 'Same time'
+							: `${COMPARISON_SIDES.right} was ${formatDuration(delta)} ${delta < 0 ? 'earlier' : 'later'}`
+				} satisfies MilestoneTiming
 			};
 		});
+	const oneSided = sides ? oneSidedTimings(comparison, sides) : [];
+	if (oneSided.length === 0) return shared.map((entry) => entry.timing);
+	return [...shared, ...oneSided.map(({ at, ...timing }) => ({ at, timing }))]
+		.sort((first, second) => first.at - second.at)
+		.map((entry) => entry.timing);
+}
+
+/**
+ * The milestone the two profiles reached furthest apart, as one line: "First crack: B was
+ * 45 sec earlier". Null when no milestone both profiles recorded differs.
+ */
+export function largestMilestoneDifference(comparison: ProfileComparison): string | null {
+	let largest: ProfileComparison['milestones'][number] | null = null;
+	let largestDelta = 0;
+	for (const milestone of comparison.milestones) {
+		if (isCharge(milestone)) continue;
+		const delta = milestone.rightMilliseconds - milestone.leftMilliseconds;
+		if (Math.abs(delta) < SAME_TIME_MILLISECONDS || Math.abs(delta) <= Math.abs(largestDelta))
+			continue;
+		largest = milestone;
+		largestDelta = delta;
+	}
+	if (!largest) return null;
+	return `${milestoneLabel(largest.name)}: ${COMPARISON_SIDES.right} was ${formatDuration(largestDelta)} ${largestDelta < 0 ? 'earlier' : 'later'}`;
+}
+
+/**
+ * The first thing to read about a comparison: the largest milestone difference, or that
+ * there is none when every milestone both profiles recorded falls at the same time. Null
+ * when they share no milestone after charge.
+ */
+export function milestoneHeadline(comparison: ProfileComparison): string | null {
+	if (!comparison.milestones.some((milestone) => !isCharge(milestone))) return null;
+	return largestMilestoneDifference(comparison) ?? 'All milestones: same time';
 }

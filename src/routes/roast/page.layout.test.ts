@@ -115,10 +115,15 @@ describe('roast page layout', () => {
 		expect(studio).not.toBeNull();
 		expect(precedes(title, batches[0])).toBe(true);
 		expect(precedes(batches[batches.length - 1], studio!)).toBe(true);
-		expect(screen.getByRole('link', { name: 'Compare and plan' })).toHaveAttribute(
+		// Comparison has its own page; what is left of the Studio section is a jump away.
+		const compareLinks = screen.getAllByRole('link', { name: 'Compare roasts' });
+		expect(precedes(compareLinks[0], batches[0])).toBe(true);
+		for (const link of compareLinks) expect(link).toHaveAttribute('href', '/roast/compare');
+		expect(screen.getByRole('link', { name: 'Saved references and plans' })).toHaveAttribute(
 			'href',
 			'#profile-studio'
 		);
+		expect(screen.queryByRole('link', { name: 'Compare and plan' })).toBeNull();
 
 		// The hero, the four tiles, and the debugging line are gone.
 		expect(screen.queryByText('Roast studio')).toBeNull();
@@ -140,7 +145,7 @@ describe('roast page layout', () => {
 
 		// The roast is written to the link, and the page is not told to keep its scroll
 		// position, so the roast is read from its title down.
-		expect(goto).toHaveBeenLastCalledWith('/roast?profileId=3', {
+		expect(goto).toHaveBeenLastCalledWith('/roast?roast=3', {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: false
@@ -150,7 +155,7 @@ describe('roast page layout', () => {
 	});
 
 	it('opens a roast by link without moving the page', async () => {
-		visit('/roast?profileId=2');
+		visit('/roast?roast=2');
 		renderPage();
 
 		await screen.findByRole('heading', { level: 1, name: 'Colombia' }, { timeout: 3000 });
@@ -159,13 +164,94 @@ describe('roast page layout', () => {
 		).toBeInTheDocument();
 		expect(screen.getByRole('list', { name: 'Milestones' })).toHaveTextContent('First crack');
 
-		expect(goto).toHaveBeenLastCalledWith('/roast?profileId=2', {
+		expect(goto).toHaveBeenLastCalledWith('/roast?roast=2', {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: true
 		});
 		await new Promise((resolve) => setTimeout(resolve, 250));
 		expect(scrollIntoView).not.toHaveBeenCalled();
+	});
+
+	it('still opens a roast from a link written with the earlier ?profileId= name', async () => {
+		visit('/roast?profileId=2');
+		renderPage();
+
+		await screen.findByRole('heading', { level: 1, name: 'Colombia' }, { timeout: 3000 });
+
+		// The address is rewritten to the current name, without a second copy of the roast.
+		expect(goto).toHaveBeenLastCalledWith('/roast?roast=2', {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
+	});
+
+	it('reads ?roast= ahead of ?profileId= when a link carries both', async () => {
+		visit('/roast?profileId=2&roast=3');
+		renderPage();
+
+		await screen.findByRole('heading', { level: 1, name: 'Guatemala' }, { timeout: 3000 });
+		expect(goto).toHaveBeenLastCalledWith('/roast?roast=3', expect.anything());
+	});
+
+	it('offers the open roast for comparison, with that roast already chosen', async () => {
+		visit('/roast?roast=2');
+		renderPage();
+		await screen.findByRole('heading', { level: 1, name: 'Colombia' }, { timeout: 3000 });
+
+		expect(screen.getByRole('link', { name: 'Compare with…' })).toHaveAttribute(
+			'href',
+			'/roast/compare?a=roast:2'
+		);
+	});
+
+	it('shows a roast as cleared once its recorded data is cleared from More', async () => {
+		let cleared = false;
+		const clearedRoast = roast({
+			roast_id: 2,
+			coffee_id: 8,
+			coffee_name: 'Colombia',
+			oz_out: null,
+			weight_loss_percent: null,
+			charge_time: null,
+			fc_start_time: null,
+			drop_time: null,
+			total_roast_time: null
+		});
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+				const url = String(input);
+				if (url.startsWith('/api/clear-roast') && init?.method === 'DELETE') {
+					cleared = true;
+					return json({ success: true });
+				}
+				if (url.startsWith('/api/roast-profiles') && cleared) {
+					return json({ data: [roasts[0], clearedRoast, roasts[2]] });
+				}
+				return fetchMock(input);
+			})
+		);
+		vi.stubGlobal(
+			'confirm',
+			vi.fn(() => true)
+		);
+		visit('/roast?roast=2');
+		renderPage();
+		await screen.findByRole('heading', { level: 1, name: 'Colombia' }, { timeout: 3000 });
+		expect(screen.getByRole('list', { name: 'Milestones' })).toBeInTheDocument();
+		// The page ignores a second selection for 100 ms after a roast opens.
+		await new Promise((resolve) => setTimeout(resolve, 150));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'More' }));
+		await fireEvent.click(screen.getByRole('menuitem', { name: 'Clear recorded data' }));
+
+		// The roast stays open and reads as it now is, without a reload of the page.
+		expect(await screen.findByText('Nothing recorded for this roast yet.')).toBeInTheDocument();
+		expect(screen.queryByRole('list', { name: 'Milestones' })).toBeNull();
+		expect(screen.getByRole('heading', { level: 1, name: 'Colombia' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Compare with…' })).toBeDisabled();
 	});
 
 	it('returns to the list from an open roast', async () => {

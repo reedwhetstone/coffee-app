@@ -40,6 +40,7 @@ Coffee-app consumes Parchment-owned Cherry Runtime through an unbuffered, sessio
 | ---------------- | --------------------------------------------------- |
 | `/beans`         | Green coffee inventory management                   |
 | `/roast`         | Roast profiles, Artisan imports, and chart analysis |
+| `/roast/compare` | Two roasts or saved references on one chart         |
 | `/profit`        | Sales and margin tracking                           |
 | `/chat`          | Cherry AI workspace with evidence and action cards  |
 | `/api-dashboard` | Parchment Console: API keys, usage, and billing     |

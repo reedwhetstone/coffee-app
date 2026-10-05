@@ -65,6 +65,7 @@ function props(overrides: Record<string, unknown> = {}) {
 		onBatchDelete: vi.fn(),
 		onClearProfile: vi.fn(async () => true),
 		onClearFilters: vi.fn(),
+		onSaveReference: vi.fn(),
 		onProfileRefresh: vi.fn(),
 		selectedBean: { name: 'Ethiopia Yirgacheffe Wush Wush' },
 		timer: idleTimer,
@@ -214,14 +215,21 @@ describe('an open roast', () => {
 		const chart = container.querySelector('.animate-pulse');
 		const details = screen.getByRole('button', { name: 'Edit' });
 
+		const compare = screen.getByRole('link', { name: 'Compare with…' });
+		const more = screen.getByRole('button', { name: 'More' });
+
 		expect(chart).not.toBeNull();
 		expect(container.firstElementChild?.querySelector('a, h1, ul, button')).toBe(back);
 		expect(precedes(back, title)).toBe(true);
-		expect(precedes(title, milestones)).toBe(true);
+		// The actions sit on the roast: under its title, above the milestone line and the chart.
+		expect(precedes(title, compare)).toBe(true);
+		expect(precedes(compare, more)).toBe(true);
+		expect(precedes(more, milestones)).toBe(true);
 		expect(precedes(milestones, chart!)).toBe(true);
-		// The editable details and both delete buttons follow the chart.
+		// The editable details follow the chart. Neither delete button is drawn on the page;
+		// both are in the More menu.
 		expect(precedes(chart!, details)).toBe(true);
-		expect(precedes(chart!, screen.getByRole('button', { name: 'Delete batch' }))).toBe(true);
+		expect(screen.queryByRole('button', { name: /^Delete/ })).toBeNull();
 
 		expect(
 			screen.getByText('Roast #4531 · Oct 1, 2026 · Wednesday roast · 16 → 13.7 oz (14.4% loss)')
@@ -389,5 +397,205 @@ describe('an open roast', () => {
 		render(RoastProfileTabs, props({ currentRoastProfile: guji }));
 
 		expect(screen.queryByText('Also in this batch:')).toBeNull();
+	});
+});
+
+describe("an open roast's actions", () => {
+	const moreItems = () =>
+		within(screen.getByRole('menu', { name: 'More actions for this roast' })).getAllByRole(
+			'menuitem'
+		);
+
+	async function openMore() {
+		await fireEvent.click(screen.getByRole('button', { name: 'More' }));
+	}
+
+	async function chooseFromMore(name: string) {
+		await openMore();
+		await fireEvent.click(screen.getByRole('menuitem', { name }));
+	}
+
+	beforeEach(() => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => new Response(JSON.stringify({}), { status: 200 }))
+		);
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	it('links to the comparison page with this roast already chosen', () => {
+		render(RoastProfileTabs, props({ currentRoastProfile: wushWush }));
+
+		const compare = screen.getByRole('link', { name: 'Compare with…' });
+		expect(compare).toHaveAttribute('href', '/roast/compare?a=roast:4531');
+		// A plain link: the browser and the page's live-roast guard handle the navigation.
+		expect(compare.tagName).toBe('A');
+	});
+
+	it('keeps the plan and sale actions for the releases that add them', () => {
+		render(RoastProfileTabs, props({ currentRoastProfile: wushWush }));
+
+		expect(screen.queryByText('Plan next roast from this')).toBeNull();
+		expect(screen.queryByText('Log sale')).toBeNull();
+	});
+
+	it('holds the six further actions in More, with the two deletions last', async () => {
+		render(RoastProfileTabs, props({ currentRoastProfile: wushWush }));
+		const more = screen.getByRole('button', { name: 'More' });
+		expect(more).toHaveAttribute('aria-expanded', 'false');
+		expect(screen.queryByRole('menu')).toBeNull();
+
+		await openMore();
+
+		expect(more).toHaveAttribute('aria-expanded', 'true');
+		expect(moreItems().map((item) => item.textContent?.trim())).toEqual([
+			'Save as reference',
+			'Edit details',
+			'Import Artisan file',
+			'Clear recorded data',
+			'Delete roast',
+			'Delete batch'
+		]);
+		for (const item of moreItems()) expect(item).toBeEnabled();
+	});
+
+	it('closes More on Escape and returns to its button', async () => {
+		render(RoastProfileTabs, props({ currentRoastProfile: wushWush }));
+		await openMore();
+
+		await fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+
+		expect(screen.queryByRole('menu')).toBeNull();
+		expect(screen.getByRole('button', { name: 'More' })).toHaveFocus();
+	});
+
+	it('saves the roast as a reference through the page and shows the confirmation', async () => {
+		const onSaveReference = vi.fn();
+		const { rerender } = render(
+			RoastProfileTabs,
+			props({ currentRoastProfile: wushWush, onSaveReference })
+		);
+
+		await chooseFromMore('Save as reference');
+
+		expect(onSaveReference).toHaveBeenCalledOnce();
+		expect(screen.queryByRole('menu')).toBeNull();
+
+		await rerender({ referenceNotice: 'Wednesday roast reference is saved as a reference.' });
+		expect(screen.getByRole('status')).toHaveTextContent(
+			'Wednesday roast reference is saved as a reference.'
+		);
+	});
+
+	it('opens the details for editing', async () => {
+		render(RoastProfileTabs, props({ currentRoastProfile: wushWush }));
+		expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+
+		await chooseFromMore('Edit details');
+
+		expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
+	});
+
+	it('opens the Artisan import for this roast, after warning that it replaces the recording', async () => {
+		const confirm = vi.fn(() => true);
+		vi.stubGlobal('confirm', confirm);
+		render(RoastProfileTabs, props({ currentRoastProfile: wushWush }));
+
+		await chooseFromMore('Import Artisan file');
+
+		expect(confirm).toHaveBeenCalledOnce();
+		expect(screen.getByRole('heading', { name: 'Import Artisan Roast File' })).toBeInTheDocument();
+	});
+
+	it('clears the recorded data only once the member confirms', async () => {
+		const clearRoastData = vi.fn();
+		const confirm = vi.fn(() => false);
+		vi.stubGlobal('confirm', confirm);
+		render(RoastProfileTabs, props({ currentRoastProfile: wushWush, clearRoastData }));
+
+		await chooseFromMore('Clear recorded data');
+		expect(clearRoastData).not.toHaveBeenCalled();
+
+		confirm.mockReturnValue(true);
+		await chooseFromMore('Clear recorded data');
+		expect(clearRoastData).toHaveBeenCalledOnce();
+	});
+
+	it('deletes the roast, or its whole batch, only once the member confirms', async () => {
+		const fetchMock = vi.fn(async () => new Response(JSON.stringify({}), { status: 200 }));
+		vi.stubGlobal('fetch', fetchMock);
+		const confirm = vi.fn(() => false);
+		vi.stubGlobal('confirm', confirm);
+		const onProfileDelete = vi.fn();
+		const onBatchDelete = vi.fn();
+		render(
+			RoastProfileTabs,
+			props({ currentRoastProfile: wushWush, onProfileDelete, onBatchDelete })
+		);
+
+		await chooseFromMore('Delete roast');
+		await chooseFromMore('Delete batch');
+		expect(fetchMock).not.toHaveBeenCalled();
+
+		confirm.mockReturnValue(true);
+		await chooseFromMore('Delete roast');
+		await vi.waitFor(() => expect(onProfileDelete).toHaveBeenCalledOnce());
+		expect(fetchMock).toHaveBeenLastCalledWith('/api/roast-profiles?id=4531', { method: 'DELETE' });
+
+		await chooseFromMore('Delete batch');
+		await vi.waitFor(() => expect(onBatchDelete).toHaveBeenCalledOnce());
+		expect(fetchMock).toHaveBeenLastCalledWith('/api/roast-profiles?name=Wednesday%20roast', {
+			method: 'DELETE'
+		});
+	});
+
+	it('offers nothing to compare, keep, or clear for a roast with nothing recorded', async () => {
+		const planned = roast({
+			roast_id: 4540,
+			oz_out: null,
+			weight_loss_percent: null,
+			charge_time: null,
+			charge_temp: null,
+			tp_time: null,
+			dry_end_time: null,
+			fc_start_time: null,
+			drop_time: null,
+			drop_temp: null,
+			total_roast_time: null,
+			development_percent: null,
+			data_source: null
+		});
+		render(RoastProfileTabs, props({ currentRoastProfile: planned }));
+
+		expect(screen.queryByRole('link', { name: 'Compare with…' })).toBeNull();
+		expect(screen.getByRole('button', { name: 'Compare with…' })).toBeDisabled();
+
+		await openMore();
+		const enabled = Object.fromEntries(
+			moreItems().map((item) => [item.textContent?.trim(), !(item as HTMLButtonElement).disabled])
+		);
+		expect(enabled).toEqual({
+			'Save as reference': false,
+			'Edit details': true,
+			'Import Artisan file': true,
+			'Clear recorded data': false,
+			'Delete roast': true,
+			'Delete batch': true
+		});
+	});
+
+	it('holds the saving and deleting actions while one is already under way', async () => {
+		render(RoastProfileTabs, props({ currentRoastProfile: wushWush, actionInProgress: true }));
+
+		await openMore();
+
+		expect(screen.getByRole('menuitem', { name: 'Save as reference' })).toBeDisabled();
+		expect(screen.getByRole('menuitem', { name: 'Delete roast' })).toBeDisabled();
+		expect(screen.getByRole('menuitem', { name: 'Edit details' })).toBeEnabled();
 	});
 });

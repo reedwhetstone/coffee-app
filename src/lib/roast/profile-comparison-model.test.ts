@@ -3,6 +3,8 @@ import {
 	buildProfileComparisonChart,
 	describeMilestoneTimings,
 	formatDuration,
+	largestMilestoneDifference,
+	milestoneHeadline,
 	type ProfileComparison
 } from './profile-comparison-model';
 
@@ -324,5 +326,136 @@ describe('milestone timing in plain words', () => {
 		expect(formatDuration(-45_000)).toBe('45 sec');
 		expect(formatDuration(120_000)).toBe('2 min');
 		expect(formatDuration(221_500)).toBe('3 min 42 sec');
+	});
+});
+
+describe('the largest milestone difference', () => {
+	const of = (milestones: ProfileComparison['milestones']) =>
+		largestMilestoneDifference(comparisonOf([], milestones));
+
+	it('names the milestone the two reached furthest apart, and which way', () => {
+		expect(
+			of([
+				milestone('charge', 0, 0),
+				milestone('dry_end', 266_000, 260_000),
+				milestone('fc_start', 498_000, 453_000),
+				milestone('drop', 618_000, 605_000)
+			])
+		).toBe('First crack: B was 45 sec earlier');
+	});
+
+	it('says later when the second one took longer', () => {
+		expect(of([milestone('fc_start', 480_000, 492_000), milestone('drop', 600_000, 672_000)])).toBe(
+			'Drop: B was 1 min 12 sec later'
+		);
+	});
+
+	it('takes the earlier milestone when two differ by the same amount', () => {
+		expect(of([milestone('dry_end', 270_000, 300_000), milestone('drop', 600_000, 570_000)])).toBe(
+			'Dry end: B was 30 sec later'
+		);
+	});
+
+	it('has nothing to say when every milestone was reached at the same time', () => {
+		expect(of([milestone('charge', 0, 0), milestone('drop', 600_000, 600_200)])).toBeNull();
+		expect(of([])).toBeNull();
+	});
+
+	it('heads the comparison with the largest difference, or says there is none', () => {
+		const headline = (milestones: ProfileComparison['milestones']) =>
+			milestoneHeadline(comparisonOf([], milestones));
+
+		expect(headline([milestone('charge', 0, 0), milestone('fc_start', 498_000, 453_000)])).toBe(
+			'First crack: B was 45 sec earlier'
+		);
+		// A plan keeps the milestone times of what it was made from.
+		expect(headline([milestone('charge', 0, 0), milestone('drop', 600_000, 600_200)])).toBe(
+			'All milestones: same time'
+		);
+		// With only charge in common there is no milestone to speak of.
+		expect(headline([milestone('charge', 0, 0)])).toBeNull();
+		expect(headline([])).toBeNull();
+	});
+});
+
+describe('a milestone only one profile recorded', () => {
+	const shared = [
+		milestone('charge', 0, 0),
+		milestone('dry_end', 266_000, 260_000),
+		milestone('drop', 618_000, 605_000)
+	];
+	const recorded = (...entries: Array<[name: string, milliseconds: number]>) =>
+		entries.map(([name, milliseconds]) => ({ name, milliseconds }));
+
+	it('is listed in roast order as not recorded for the side without it', () => {
+		const comparison = comparisonOf([], shared);
+		const timings = describeMilestoneTimings(comparison, {
+			left: recorded(['charge', 0], ['dry_end', 266_000], ['drop', 618_000]),
+			right: recorded(['charge', 0], ['dry_end', 260_000], ['fc_start', 453_000], ['drop', 605_000])
+		});
+
+		expect(timings.map((timing) => [timing.label, timing.leftTime, timing.rightTime])).toEqual([
+			['Dry end', '4:26', '4:20'],
+			['First crack', 'Not recorded', '7:33'],
+			['Drop', '10:18', '10:05']
+		]);
+		expect(timings[1]).toMatchObject({
+			name: 'fc_start',
+			difference: 'First crack not recorded for A',
+			missing: 'A'
+		});
+		// It is not a difference, so it is never the largest one.
+		expect(largestMilestoneDifference(comparison)).toBe('Drop: B was 13 sec earlier');
+	});
+
+	it('names B when the second profile is the one without it', () => {
+		const timings = describeMilestoneTimings(comparisonOf([], shared), {
+			left: recorded(
+				['charge', 0],
+				['Dry_End', 266_000],
+				[' FC_START ', 498_000],
+				['drop', 618_000]
+			),
+			right: recorded(['charge', 0], ['dry_end', 260_000], ['drop', 605_000])
+		});
+
+		expect(timings.find((timing) => timing.name === 'fc_start')).toEqual({
+			name: 'fc_start',
+			label: 'First crack',
+			leftTime: '8:18',
+			rightTime: 'Not recorded',
+			difference: 'First crack not recorded for B',
+			missing: 'B'
+		});
+	});
+
+	it('leaves out a milestone neither profile recorded, and charge', () => {
+		const timings = describeMilestoneTimings(
+			comparisonOf([], [milestone('drop', 618_000, 605_000)]),
+			{
+				// Charge is where the curves are lined up, so it is never reported as missing.
+				left: recorded(['charge', 0], ['drop', 618_000]),
+				right: recorded(['drop', 605_000])
+			}
+		);
+
+		expect(timings.map((timing) => timing.name)).toEqual(['drop']);
+	});
+
+	it('claims nothing is missing when a side could not be read', () => {
+		const comparison = comparisonOf([], shared);
+		const complete = recorded(['charge', 0], ['dry_end', 266_000], ['fc_start', 498_000]);
+
+		for (const sides of [
+			null,
+			undefined,
+			{ left: complete, right: null },
+			{ left: null, right: complete }
+		]) {
+			expect(describeMilestoneTimings(comparison, sides).map((timing) => timing.name)).toEqual([
+				'dry_end',
+				'drop'
+			]);
+		}
 	});
 });
