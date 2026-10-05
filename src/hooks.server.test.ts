@@ -522,7 +522,7 @@ describe('hooks auth guard integration', () => {
 		).rejects.toMatchObject({ status: 303, location: '/dashboard' });
 	});
 
-	describe('every /roast path is member-only', () => {
+	describe('every path under /roast is member-only', () => {
 		const principalOf = (role: 'viewer' | 'member', ppiAccess = false) => ({
 			isAuthenticated: true,
 			authKind: 'session',
@@ -533,7 +533,10 @@ describe('hooks auth guard integration', () => {
 			primaryAppRole: role,
 			ppiAccess
 		});
-		const paths = ['/roast', '/roast/compare', '/roast/compare?a=roast:4531&b=roast:4507'];
+		// `/roast` itself draws a locked page for an account without Mallard Studio; the
+		// locked roast page tests above cover it.
+		const childPaths = ['/roast/compare', '/roast/compare?a=roast:4531&b=roast:4507'];
+		const paths = ['/roast', ...childPaths];
 
 		it.each(paths)('lets a member open %s', async (path) => {
 			mockResolvePrincipal.mockResolvedValue(principalOf('member'));
@@ -545,7 +548,7 @@ describe('hooks auth guard integration', () => {
 			expect(resolve).toHaveBeenCalledOnce();
 		});
 
-		it.each(paths)(
+		it.each(childPaths)(
 			'sends a signed-in account without Mallard Studio from %s to the dashboard',
 			async (path) => {
 				// Parchment Intelligence opens portfolio and chat, never the roast pages.
