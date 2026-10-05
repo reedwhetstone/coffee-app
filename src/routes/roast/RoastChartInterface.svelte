@@ -24,7 +24,8 @@
 		createMilestoneEvents,
 		createControlEvents,
 		fetchChartSettings,
-		fetchRoastChartModel,
+		fetchRoastChartData,
+		buildRoastChartModel,
 		chartEventsToRoastEntries,
 		type ChartAxisSettings
 	} from '$lib/roast';
@@ -319,12 +320,21 @@
 		return calculatePhasePercentages(milestones, isDuringRoasting ? currentElapsedTime : undefined);
 	});
 
+	// Counts chart loads, so a roast picked while another is still loading
+	// cannot be overwritten by the earlier one's response.
+	let savedRoastLoad = 0;
+
 	async function loadSavedRoastData(roastId: number) {
+		const load = ++savedRoastLoad;
 		try {
-			const settings = await fetchChartSettings(roastId);
+			// The axis ranges and the curve are separate reads; neither waits for the other.
+			const [settings, data] = await Promise.all([
+				fetchChartSettings(roastId),
+				fetchRoastChartData(roastId, fetch)
+			]);
+			if (load !== savedRoastLoad) return;
 			chartSettings = settings;
-			const loaded = await fetchRoastChartModel(roastId, fetch, settings);
-			if (!loaded) {
+			if (!data) {
 				savedEventEntries = [];
 				savedChartData = null;
 				$roastData = [];
@@ -332,14 +342,16 @@
 				return;
 			}
 
-			savedChartData = loaded.chartData;
-			savedEventEntries = chartEventsToRoastEntries(loaded.data.events, roastId);
+			const chartData = buildRoastChartModel(data, settings);
+			savedChartData = chartData;
+			savedEventEntries = chartEventsToRoastEntries(data.events, roastId);
 			$roastData = [];
-			$roastEvents = loaded.chartData.events.map((event) => ({
-				time: event.timeMinutes * 60_000 + loaded.chartData.chargeTime,
+			$roastEvents = chartData.events.map((event) => ({
+				time: event.timeMinutes * 60_000 + chartData.chargeTime,
 				name: event.name
 			}));
 		} catch (error) {
+			if (load !== savedRoastLoad) return;
 			console.error('Error loading roast data:', error);
 			savedEventEntries = [];
 			savedChartData = null;

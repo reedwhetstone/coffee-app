@@ -390,6 +390,156 @@ describe('loadPriceSnapshotsPaginated', () => {
 		]);
 	});
 
+	it('reads the remaining pages side by side once the first page gives the page count', async () => {
+		const pageRows = (page: number, count: number) =>
+			Array.from({ length: count }, (_, index) => makeHistoryRow((page - 1) * 1000 + index));
+		let inFlight = 0;
+		let mostInFlight = 0;
+		const history = vi.fn(async (query: { page: number }) => {
+			inFlight += 1;
+			mostInFlight = Math.max(mostInFlight, inFlight);
+			// Later pages answer first, so the result must not depend on arrival order.
+			await new Promise((resolve) => setTimeout(resolve, (11 - query.page) * 2));
+			inFlight -= 1;
+			return {
+				data: {
+					data: pageRows(query.page, query.page === 10 ? 40 : 1000),
+					pagination: { page: query.page, totalPages: 10, hasNext: query.page < 10 }
+				}
+			};
+		});
+		const client = { priceIndex: { history } } as unknown as Parameters<
+			typeof _loadPriceSnapshotsPaginated
+		>[0]['client'];
+
+		const snapshots = await _loadPriceSnapshotsPaginated({ client, windowDays: 365 });
+
+		expect(history).toHaveBeenCalledTimes(10);
+		expect(history.mock.calls.map(([query]) => query.page).sort((a, b) => a - b)).toEqual([
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+		]);
+		expect(mostInFlight).toBeGreaterThan(1);
+		expect(mostInFlight).toBeLessThanOrEqual(6);
+		expect(snapshots).toHaveLength(9040);
+		expect(snapshots[1000]).toEqual(mapExpectedSnapshot(makeHistoryRow(1000)));
+		expect(snapshots.at(-1)).toEqual(mapExpectedSnapshot(makeHistoryRow(9039)));
+	});
+
+	it('throws when a page read side by side fails instead of returning partial data', async () => {
+		const history = vi.fn(async (query: { page: number }) =>
+			query.page === 3
+				? { error: { error: { message: 'API blew up' } } }
+				: { data: { data: [makeHistoryRow(query.page)], pagination: { totalPages: 4 } } }
+		);
+		const client = { priceIndex: { history } } as unknown as Parameters<
+			typeof _loadPriceSnapshotsPaginated
+		>[0]['client'];
+
+		await expect(_loadPriceSnapshotsPaginated({ client, windowDays: 365 })).rejects.toThrow(
+			'Failed to load analytics price snapshots page 3: API blew up'
+		);
+	});
+
+	it.each([
+		{
+			name: 'a page before the last one is empty and says more follow',
+			emptyPage: 3,
+			emptyHasNext: true,
+			message:
+				'Failed to load analytics price snapshots page 3: upstream returned an empty page with hasNext=true'
+		},
+		{
+			name: 'a page before the last one is empty and a later page still has rows',
+			emptyPage: 3,
+			emptyHasNext: false,
+			message:
+				'Failed to load analytics price snapshots page 3: upstream returned an empty page before page 4, which has rows'
+		},
+		{
+			name: 'the first page is empty and says more follow',
+			emptyPage: 1,
+			emptyHasNext: true,
+			message:
+				'Failed to load analytics price snapshots page 1: upstream returned an empty page with hasNext=true'
+		}
+	])(
+		'throws when $name instead of returning partial data',
+		async ({ emptyPage, emptyHasNext, message }) => {
+			const history = vi.fn(async (query: { page: number }) => ({
+				data: {
+					data: query.page === emptyPage ? [] : [makeHistoryRow(query.page)],
+					pagination: {
+						page: query.page,
+						totalPages: 8,
+						hasNext: query.page === emptyPage ? emptyHasNext : query.page < 8
+					}
+				}
+			}));
+			const client = { priceIndex: { history } } as unknown as Parameters<
+				typeof _loadPriceSnapshotsPaginated
+			>[0]['client'];
+
+			await expect(_loadPriceSnapshotsPaginated({ client, windowDays: 365 })).rejects.toThrow(
+				message
+			);
+		}
+	);
+
+	it('throws on an empty page that says more follow when the response has no page count', async () => {
+		const history = vi.fn(async (query: { page: number }) => ({
+			data: {
+				data: query.page === 2 ? [] : [makeHistoryRow(query.page)],
+				pagination: { hasNext: true }
+			}
+		}));
+		const client = { priceIndex: { history } } as unknown as Parameters<
+			typeof _loadPriceSnapshotsPaginated
+		>[0]['client'];
+
+		await expect(_loadPriceSnapshotsPaginated({ client, windowDays: 365 })).rejects.toThrow(
+			'Failed to load analytics price snapshots page 2: upstream returned an empty page with hasNext=true'
+		);
+		expect(history).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps reading when the last counted page says the history grew during the read', async () => {
+		const history = vi.fn(async (query: { page: number }) => ({
+			data: {
+				data: [makeHistoryRow(query.page)],
+				// Page 1 counted three pages; by page 3 there is a fourth.
+				pagination: { page: query.page, totalPages: 3, hasNext: query.page < 4 }
+			}
+		}));
+		const client = { priceIndex: { history } } as unknown as Parameters<
+			typeof _loadPriceSnapshotsPaginated
+		>[0]['client'];
+
+		const snapshots = await _loadPriceSnapshotsPaginated({ client, windowDays: 365 });
+
+		expect(history.mock.calls.map(([query]) => query.page)).toEqual([1, 2, 3, 4]);
+		expect(snapshots).toEqual(
+			[1, 2, 3, 4].map((page) => mapExpectedSnapshot(makeHistoryRow(page)))
+		);
+	});
+
+	it('accepts empty pages after the last row', async () => {
+		const history = vi.fn(async (query: { page: number }) => ({
+			data: {
+				// Page 1 counted four pages; the history ends on page 2.
+				data: query.page <= 2 ? [makeHistoryRow(query.page)] : [],
+				pagination: { page: query.page, totalPages: 4, hasNext: query.page < 2 }
+			}
+		}));
+		const client = { priceIndex: { history } } as unknown as Parameters<
+			typeof _loadPriceSnapshotsPaginated
+		>[0]['client'];
+
+		const snapshots = await _loadPriceSnapshotsPaginated({ client, windowDays: 365 });
+
+		expect(history).toHaveBeenCalledTimes(4);
+		expect(snapshots).toEqual([1, 2].map((page) => mapExpectedSnapshot(makeHistoryRow(page))));
+	});
+
 	it('throws when an intermediate page fails instead of returning partial data', async () => {
 		const setup = createAnalyticsClient({
 			historyPages: [

@@ -3,6 +3,7 @@ import type { RoastChartData } from '@purveyors/sdk';
 import {
 	buildRoastChartModel,
 	chartEventsToRoastEntries,
+	fetchRoastChartData,
 	fetchRoastChartModel
 } from './roast-chart-model';
 
@@ -309,6 +310,24 @@ describe('saved roast chart loading', () => {
 
 		expect(fetchFn).toHaveBeenCalledWith('/api/roast-chart-data?roastId=42');
 		expect(loaded?.chartData.series.some((series) => series.id === 'drum-pressure')).toBe(true);
+	});
+
+	it('reads the curve on its own, so it can load alongside the axis settings', async () => {
+		const data = fixture();
+		const fetchFn = vi.fn(async () => new Response(JSON.stringify(data)));
+
+		expect(await fetchRoastChartData(42, fetchFn)).toEqual(data);
+		expect(fetchFn).toHaveBeenCalledWith('/api/roast-chart-data?roastId=42');
+	});
+
+	it('returns nothing for a roast with no curve or events, or when the read fails', async () => {
+		const empty = vi.fn(
+			async () => new Response(JSON.stringify({ ...fixture(), series: [], events: [] }))
+		);
+		const failed = vi.fn(async () => new Response('{}', { status: 500 }));
+
+		expect(await fetchRoastChartData(42, empty)).toBeNull();
+		expect(await fetchRoastChartData(42, failed)).toBeNull();
 	});
 
 	it('converts canonical events for existing phase calculations', () => {

@@ -307,16 +307,25 @@ export function buildRoastChartModel(
 	};
 }
 
+/** A roast's recorded curve and events, or null when it has none. */
+export async function fetchRoastChartData(
+	roastId: number,
+	fetchFn: typeof fetch = fetch
+): Promise<RoastChartData | null> {
+	const response = await fetchFn(`/api/roast-chart-data?roastId=${roastId}`);
+	if (!response.ok) return null;
+	const data = (await response.json()) as RoastChartData;
+	if (data.series.length === 0 && data.events.length === 0) return null;
+	return data;
+}
+
 export async function fetchRoastChartModel(
 	roastId: number,
 	fetchFn: typeof fetch = fetch,
 	settings: RoastChartAxisSettings | null = null
 ): Promise<LoadedRoastChart | null> {
-	const response = await fetchFn(`/api/roast-chart-data?roastId=${roastId}`);
-	if (!response.ok) return null;
-	const data = (await response.json()) as RoastChartData;
-	if (data.series.length === 0 && data.events.length === 0) return null;
-	return { data, chartData: buildRoastChartModel(data, settings) };
+	const data = await fetchRoastChartData(roastId, fetchFn);
+	return data ? { data, chartData: buildRoastChartModel(data, settings) } : null;
 }
 
 export function chartEventsToRoastEntries(
