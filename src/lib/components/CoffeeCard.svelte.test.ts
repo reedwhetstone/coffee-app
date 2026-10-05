@@ -135,6 +135,47 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 		expect(screen.getByText('Additives disclosed: Fruit')).toBeTruthy();
 	});
 
+	it('shows standardized variety and drying names beside the supplier wording', async () => {
+		render(CoffeeCard, {
+			coffee: createCoffee({
+				cultivar_detail: 'Catimor, Tipica and Pink Borbon',
+				drying_method: 'dried on african beds for 21 days',
+				taxonomy: {
+					varieties: [{ code: 'catimor', label: 'Catimor', parent_code: null }],
+					species: [],
+					drying_methods: [
+						{ code: 'african_bed', label: 'African beds', parent_code: 'raised_bed' }
+					]
+				}
+			} as never),
+			parseTastingNotes
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: /view details for process lot/i }));
+
+		expect(screen.getByText('Variety')).toBeTruthy();
+		expect(screen.getByText('Catimor')).toBeTruthy();
+		expect(screen.getByText('Listed by supplier as: Catimor, Tipica and Pink Borbon')).toBeTruthy();
+
+		await fireEvent.click(screen.getByRole('tab', { name: /taste & process/i }));
+
+		expect(
+			screen.getByText(
+				'Drying: African beds (listed by supplier as: dried on african beds for 21 days)'
+			)
+		).toBeTruthy();
+	});
+
+	it('shows the supplier variety text alone when nothing is standardized', async () => {
+		render(CoffeeCard, { coffee: createCoffee(), parseTastingNotes });
+
+		await fireEvent.click(screen.getByRole('button', { name: /view details for process lot/i }));
+
+		expect(screen.getByText('Variety')).toBeTruthy();
+		expect(screen.getByText('Caturra')).toBeTruthy();
+		expect(screen.queryByText(/Listed by supplier as/)).toBeNull();
+	});
+
 	it('shows price history to members and Intelligence, and a teaser to everyone else', async () => {
 		const fetchSpy = vi
 			.spyOn(globalThis, 'fetch')
