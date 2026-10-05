@@ -20,15 +20,34 @@
 	const menuId = `${uid}-menu`;
 
 	let open = $state(false);
+	// The menu opens upward when it would otherwise run under the bottom of the screen.
+	let above = $state(false);
 	let trigger = $state<HTMLButtonElement | null>(null);
 	let menu = $state<HTMLDivElement | null>(null);
+
+	// Room kept clear at the bottom of the screen for the chat button fixed to the corner,
+	// and at the top for the page header.
+	const BOTTOM_CLEARANCE = 96;
+	const TOP_CLEARANCE = 80;
 
 	const choices = () =>
 		Array.from(menu?.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)') ?? []);
 
 	async function show(focus: 'first' | 'last' = 'first') {
+		above = false;
 		open = true;
 		await tick();
+		const box = menu?.getBoundingClientRect();
+		const anchor = trigger?.getBoundingClientRect();
+		if (
+			box &&
+			anchor &&
+			box.bottom > window.innerHeight - BOTTOM_CLEARANCE &&
+			anchor.top - box.height > TOP_CLEARANCE
+		) {
+			above = true;
+			await tick();
+		}
 		const enabled = choices();
 		(focus === 'first' ? enabled[0] : enabled[enabled.length - 1])?.focus();
 	}
@@ -98,7 +117,9 @@
 			id={menuId}
 			role="menu"
 			aria-label={label}
-			class="absolute right-0 z-20 mt-1 w-56 rounded-md border border-line bg-surface-panel py-1 shadow-lg"
+			class="absolute right-0 z-20 w-56 rounded-md border border-line bg-surface-panel py-1 shadow-lg {above
+				? 'bottom-full mb-1'
+				: 'mt-1'}"
 			onkeydown={handleMenuKeydown}
 		>
 			{#each items as item, index (item.label)}

@@ -320,6 +320,38 @@ describe('the saved library', () => {
 		]);
 	});
 
+	it('opens the row menu upward when it would run under the bottom of the screen', async () => {
+		await renderLibrary();
+		const trigger = screen.getByRole('button', { name: `More for ${keeper.title}` });
+		// The row sits low on a 844 px screen, and the menu is 280 px tall.
+		vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({
+			top: 700,
+			bottom: 736
+		} as DOMRect);
+		vi.spyOn(HTMLDivElement.prototype, 'getBoundingClientRect').mockReturnValue({
+			top: 740,
+			bottom: 1020,
+			height: 280
+		} as DOMRect);
+		vi.stubGlobal('innerHeight', 844);
+
+		const menu = await openMenu(keeper.title);
+
+		expect(menu).toHaveClass('bottom-full');
+		expect(menu).not.toHaveClass('mt-1');
+		// The first choice still takes focus.
+		expect(within(menu).getByRole('menuitem', { name: 'View curve' })).toHaveFocus();
+	});
+
+	it('opens the row menu downward when there is room for it', async () => {
+		await renderLibrary();
+
+		const menu = await openMenu(keeper.title);
+
+		expect(menu).toHaveClass('mt-1');
+		expect(menu).not.toHaveClass('bottom-full');
+	});
+
 	it('closes the row menu on Escape and returns to its button', async () => {
 		await renderLibrary();
 		const menu = await openMenu(keeper.title);
@@ -368,7 +400,8 @@ describe('the saved library', () => {
 		expect(screen.queryByRole('list')).toBeNull();
 		expect(screen.queryByRole('button', { name: 'Compare' })).toBeNull();
 		expect(screen.getByRole('link', { name: 'Open Roasts' })).toHaveAttribute('href', '/roast');
-		expect(screen.getAllByRole('button', { name: 'Add an Artisan file' })).toHaveLength(2);
+		// Adding a file is the one action on this page; saving a roast and planning start from Roasts.
+		expect(screen.getAllByRole('button', { name: 'Add an Artisan file' })).toHaveLength(1);
 	});
 
 	it('offers to try again when the list cannot be loaded', async () => {
@@ -447,9 +480,7 @@ describe('adding an Artisan file', () => {
 
 		await fireEvent.click(within(form).getByRole('button', { name: 'Save reference' }));
 
-		expect(await within(form).findByRole('alert')).toHaveTextContent(
-			'This is not an Artisan file'
-		);
+		expect(await within(form).findByRole('alert')).toHaveTextContent('This is not an Artisan file');
 		expect(rowTitles()).toHaveLength(4);
 	});
 });

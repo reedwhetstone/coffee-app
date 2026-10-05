@@ -538,14 +538,9 @@
 			<span class="font-semibold text-ink">Nothing saved yet.</span>
 			Save a roast you want to repeat, add an Artisan file, or make a plan from a roast.
 		</p>
-		<div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3">
-			<button
-				type="button"
-				class="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink shadow-sm transition-colors hover:bg-accent/85"
-				onclick={openAddForm}>Add an Artisan file</button
-			>
+		<p class="mt-3">
 			<a href="/roast" class="text-sm font-semibold text-link hover:text-accent">Open Roasts</a>
-		</div>
+		</p>
 	</div>
 {:else}
 	{#if openId && !openRow}
