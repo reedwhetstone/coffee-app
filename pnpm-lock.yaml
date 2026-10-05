@@ -18,8 +18,8 @@ importers:
         specifier: ^0.8.10
         version: 0.8.14(svelte@5.48.0)
       '@purveyors/sdk':
-        specifier: 0.59.0
-        version: 0.59.0
+        specifier: 0.61.0
+        version: 0.61.0
       '@supabase/ssr':
         specifier: ^0.5.2
         version: 0.5.2(@supabase/supabase-js@2.99.1(bufferutil@4.1.0)(utf-8-validate@6.0.6))
@@ -860,8 +860,8 @@ packages:
   '@purveyors/sdk@0.54.0':
     resolution: {integrity: sha512-pDA0gRjEJ9mwUmeKWSkHa7ad5uzfM54pr9BdSTsFXUgOOA5fD+5UkSn/aDREiuSg7+E36GANxV558tAFg8NxEA==}
 
-  '@purveyors/sdk@0.59.0':
-    resolution: {integrity: sha512-BBLeBtA9YBNMMYNWf/Un45ChxeFSrlJv4ZXKLyyvfpwSf9IEjT7XROyo7LPPavzyEfd16VpYyWABoWH5mC5HzQ==}
+  '@purveyors/sdk@0.61.0':
+    resolution: {integrity: sha512-P9JfeQSZXejI6jGa6Z5jytQLOeMyXwpRq8KB4H3ZehGjbr++c2w8gfMxdolqv0IEUhUfrFH2J93vuZfDhxs1Qw==}
 
   '@rollup/pluginutils@5.3.0':
     resolution: {integrity: sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q==}
@@ -3651,7 +3651,7 @@ snapshots:
     dependencies:
       openapi-fetch: 0.13.8
 
-  '@purveyors/sdk@0.59.0':
+  '@purveyors/sdk@0.61.0':
     dependencies:
       openapi-fetch: 0.13.8
 
