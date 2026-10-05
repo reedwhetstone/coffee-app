@@ -584,7 +584,7 @@
 				<a href="/roast?modal=new" class="font-semibold text-link hover:text-accent"
 					>Import a roast from Artisan</a
 				>, or add an Artisan file under
-				<a href="/roast#profile-studio" class="font-semibold text-link hover:text-accent"
+				<a href="/roast/saved" class="font-semibold text-link hover:text-accent"
 					>Saved references and plans</a
 				>.
 			</p>

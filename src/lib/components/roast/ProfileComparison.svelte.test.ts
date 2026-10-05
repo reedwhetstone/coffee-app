@@ -22,6 +22,8 @@ const reference = (
 	notes: null,
 	sourceClass,
 	status: 'active',
+	// Only an uploaded Artisan file is kept as it was sent.
+	artisanFileAvailable: sourceClass === 'artisan_upload',
 	currentRevisionId: `${id}-revision`,
 	createdAt,
 	updatedAt: createdAt

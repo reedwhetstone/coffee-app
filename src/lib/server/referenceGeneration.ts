@@ -46,6 +46,13 @@ export function parseRoastRevision(
 	return { roastId, roastRevision };
 }
 
+const REFERENCE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Whether a value is a saved reference's or a revision's ID. */
+export function isReferenceId(value: unknown): value is string {
+	return typeof value === 'string' && REFERENCE_ID.test(value);
+}
+
 /** The name a saved reference is given, when the request carries one. */
 export function parseReferenceTitle(value: unknown): string | null {
 	if (typeof value !== 'object' || value === null || !('title' in value)) return null;
@@ -113,10 +120,13 @@ export function upstreamFailure(error: unknown, status: number | undefined, fall
 	return json({ error: message }, { status: status ?? 500 });
 }
 
+/** What a page shows when Parchment cannot be reached for saved references or plans. */
+export const SERVICE_UNAVAILABLE = 'Saved references and plans are temporarily unavailable';
+
 export function routeFailure(error: unknown, fallback: string) {
 	if (error instanceof AuthError) return json({ error: error.message }, { status: error.status });
 	if (error instanceof ParchmentConfigError)
-		return json({ error: 'Profile Studio is temporarily unavailable' }, { status: 503 });
+		return json({ error: SERVICE_UNAVAILABLE }, { status: 503 });
 	if (error instanceof SyntaxError) return json({ error: 'Invalid request' }, { status: 400 });
 	console.error(fallback);
 	return json({ error: fallback }, { status: 500 });

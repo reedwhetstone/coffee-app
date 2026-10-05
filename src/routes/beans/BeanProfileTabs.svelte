@@ -15,6 +15,7 @@
 	import { canViewPriceHistoryFor, type PriceHistoryAuth } from '$lib/catalog/priceHistoryAccess';
 	import type { PortfolioPanelTab } from '$lib/portfolio/panel-url';
 	import { newRoastHref } from '$lib/roast/coffee-links';
+	import { planNextRoastLink } from '$lib/roast/roast-plan';
 
 	let {
 		selectedBean,
@@ -448,7 +449,13 @@
 				onSave={handleCuppingSave}
 			/>
 		{:else if currentTab === 'roasting'}
-			<RoastingTab {selectedBean} {role} readOnly={sharedView} onStartNewRoast={startNewRoast} />
+			<RoastingTab
+				{selectedBean}
+				{role}
+				readOnly={sharedView}
+				onStartNewRoast={startNewRoast}
+				rowMenu={planNextRoastLink}
+			/>
 		{:else if currentTab === 'analytics'}
 			<AnalyticsTab {selectedBean} />
 		{/if}

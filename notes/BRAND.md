@@ -2,7 +2,7 @@
 
 **Status:** Active brand direction (visual identity system adopted July 2026)
 **Owner:** Reed Whetstone
-**Last updated:** 2026-08-29
+**Last updated:** 2026-10-05
 
 > **July 2026 rework:** the brand direction is now "the field journal of the green coffee market" — research-institution rigor presented with the warmth of a botanical field journal. The full rationale and rollout live in `notes/marketing-audits/2026-07-05-ui-brand-gtm-rework-proposal.md`. The sections below are the durable rules that came out of it.
 
@@ -49,7 +49,7 @@ Use these names consistently:
 | Cherry Synthesis Agent      | Cross-domain role using both Parchment Intelligence evidence and Mallard Studio context                                         |
 | Cherry Evals                | Public family for domain benchmarks covering green coffee, sensory analysis, sourcing, and roasting; canonical route `/evals`   |
 | Parchment                   | API infrastructure layer inside Purveyors; use as the shared infrastructure name, not a public platform                         |
-| Mallard Studio              | Authenticated roaster workspace for inventory, roast, profit, tasting, chat, and subscriptions                                  |
+| Mallard Studio              | Authenticated roaster workspace for inventory, roast, profit, tasting, chat, and subscriptions. The only "Studio"               |
 | Parchment API               | External API product and stable `/v1/*` public contract                                                                         |
 | Parchment Intelligence      | Market intelligence product for analytics, price-index depth, supplier signals, arrivals, and delistings                        |
 | Parchment Console           | Authenticated API key, usage, docs, and billing surface                                                                         |
@@ -64,6 +64,7 @@ immutable revision or artifact digest, not only a movable family alias. Runtime 
 Avoid these in current public-facing copy unless quoting historical material:
 
 - Maillard Studio
+- Profile Studio and Roast studio; see "One Studio" below
 - Parchment Platform
 - Explorer / Roaster+ / Integrate
 - PPI member when the intended surface is Parchment Intelligence
@@ -73,6 +74,16 @@ Avoid these in current public-facing copy unless quoting historical material:
 - Parchment Intelligence Chat
 - standalone `Cherry` when the product family is intended; use `Cherry AI`
 - generic "AI assistant" or "AI workbench" labels when the owned product is Cherry AI
+
+### One Studio
+
+Decided 2026-10-04 with the [roast and portfolio workflows plan](implementation-plans/2026-10-04-roast-and-portfolio-workflows.md), decision 2. **Mallard Studio is the only Studio.** It names the paid roaster workspace and nothing inside it.
+
+- "Roast studio" was the `/roast` page title. The page is **Roasts**, and the navigation label is **Roast**.
+- "Profile Studio" was a section on `/roast`. The section is gone and its parts are named for what they do: **Compare roasts** (`/roast/compare`), **Plan your next roast** (`/roast/plan`), and **Saved references and plans** (`/roast/saved`).
+- Do not name a page, section, or feature "Studio". Name it for the job it does.
+- Roast pages use three nouns: a **roast** is something that was roasted, a **saved reference** is an Artisan file or a roast kept to repeat, and a **plan** is a curve to follow next time.
+- Internal identifiers that carry the old name (`profileStudio`, `source=profile-studio`, analytics surface names) can stay. They are not shown to customers.
 
 ### Cherry identity and anti-anthropomorphism
 

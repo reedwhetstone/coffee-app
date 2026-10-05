@@ -28,9 +28,9 @@
 		/**
 		 * EXTENSION POINT: the row menu.
 		 * The links offered for one roast. A row draws its menu once this returns any.
-		 * "Plan next roast" (`/roast/plan?from=roast:<id>`) and "Log sale" belong here.
+		 * "Log sale" belongs here.
 		 */
-		rowMenu?: (roastId: number) => RowMenuLink[];
+		rowMenu?: (roast: SummaryRoast) => RowMenuLink[];
 	}>();
 
 	// Roast history is part of Mallard Studio.
@@ -200,7 +200,7 @@
 				</div>
 			</div>
 			{#each rows as row, index (row.roastId)}
-				{@const menuLinks = readOnly ? [] : rowMenu(row.roastId)}
+				{@const menuLinks = readOnly || !roasts ? [] : rowMenu(roasts[index])}
 				<div
 					role="row"
 					class="relative gap-y-1 border-b border-line px-3 py-2.5 text-sm transition-colors last:border-b-0 hover:bg-surface-panel {rowGrid}"

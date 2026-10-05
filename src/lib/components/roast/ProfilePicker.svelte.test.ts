@@ -13,6 +13,7 @@ const reference = (id: string, title: string, createdAt: string): Summary => ({
 	notes: null,
 	sourceClass: 'artisan_upload',
 	status: 'active',
+	artisanFileAvailable: true,
 	currentRevisionId: `${id}-revision`,
 	createdAt,
 	updatedAt: createdAt

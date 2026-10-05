@@ -506,10 +506,18 @@ describe("an open roast's actions", () => {
 		expect(onSaveReference).toHaveBeenCalledOnce();
 		expect(screen.queryByRole('menu')).toBeNull();
 
-		await rerender({ referenceNotice: 'Wednesday roast reference is saved as a reference.' });
-		expect(screen.getByRole('status')).toHaveTextContent(
-			'Wednesday roast reference is saved as a reference.'
-		);
+		await rerender({
+			actionNotice: {
+				message: 'Wednesday roast reference is saved as a reference.',
+				link: { href: '/roast/saved', label: 'See saved references and plans' }
+			}
+		});
+		const notice = screen.getByRole('status');
+		expect(notice).toHaveTextContent('Wednesday roast reference is saved as a reference.');
+		// The saved library is one link away, and leaving a recording roast for it asks first.
+		expect(
+			within(notice).getByRole('link', { name: 'See saved references and plans' })
+		).toHaveAttribute('href', '/roast/saved');
 	});
 
 	it('opens the details for editing', async () => {

@@ -40,6 +40,24 @@ export function planHref(target: Partial<PlanLink> = {}): string {
 	return '/roast/plan';
 }
 
+/**
+ * "Plan next roast" for one roast in a list, or nothing when a plan cannot be built on it:
+ * a plan needs the Artisan file the roast was imported from.
+ */
+export function planNextRoastLink(roast: {
+	roast_id: number;
+	artisan_file_available?: boolean | null;
+}): { label: string; href: string }[] {
+	return roast.artisan_file_available === true
+		? [
+				{
+					label: 'Plan next roast',
+					href: planHref({ from: { type: 'roast', id: roast.roast_id } })
+				}
+			]
+		: [];
+}
+
 /** A roast or saved reference a plan can start from. */
 export type PlanStart =
 	| {
@@ -58,9 +76,16 @@ export type PlanStart =
 			roastRevision: string;
 	  };
 
-/** A saved reference still has its Artisan file when it was uploaded or is itself a plan. */
+/**
+ * A plan can be built on a saved reference that has a file Artisan can read: one that was
+ * uploaded, one kept from a roast with that roast's file, or a plan.
+ */
 export function canPlanFromReference(profile: SavedReference): boolean {
-	return profile.sourceClass === 'artisan_upload' || profile.sourceClass === 'generated_revision';
+	return (
+		profile.sourceClass === 'artisan_upload' ||
+		profile.sourceClass === 'generated_revision' ||
+		profile.artisanFileAvailable === true
+	);
 }
 
 type RoastSummary = Pick<
@@ -173,13 +198,6 @@ export function resolvePlanStart(
 	if (!profile) return { status: failed.references ? 'unknown' : 'missing' };
 	if (canPlanFromReference(profile)) return { status: 'ready', start: referenceStart(profile) };
 	return { status: 'snapshot', sourceRoastId: profile.sourceRoast?.id ?? null };
-}
-
-/** The account's saved plans, newest first. */
-export function savedPlans(profiles: SavedReference[]): SavedReference[] {
-	return profiles
-		.filter((profile) => profile.sourceClass === 'generated_revision')
-		.sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
 }
 
 /** Where a saved plan's file for Artisan is downloaded from. */

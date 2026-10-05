@@ -13,6 +13,7 @@
 		onSaveReference,
 		onEditDetails,
 		onImportArtisan,
+		onDownloadArtisan = undefined,
 		onClearRecorded,
 		onDeleteRoast,
 		onDeleteBatch
@@ -24,6 +25,8 @@
 		onSaveReference: () => void;
 		onEditDetails: () => void;
 		onImportArtisan: () => void;
+		/** Given only when the Artisan file this roast was imported from is on record. */
+		onDownloadArtisan?: () => void;
 		onClearRecorded: () => void;
 		onDeleteRoast: () => void;
 		onDeleteBatch: () => void;
@@ -43,6 +46,9 @@
 		{ label: 'Save as reference', run: onSaveReference, disabled: !hasRecording || busy },
 		{ label: 'Edit details', run: onEditDetails, disabled: false },
 		{ label: 'Import Artisan file', run: onImportArtisan, disabled: false },
+		...(onDownloadArtisan
+			? [{ label: 'Download Artisan file', run: onDownloadArtisan, disabled: busy }]
+			: []),
 		{ label: 'Clear recorded data', run: onClearRecorded, disabled: !hasRecording || busy },
 		{ label: 'Delete roast', run: onDeleteRoast, disabled: busy, destructive: true },
 		{ label: 'Delete batch', run: onDeleteBatch, disabled: busy, destructive: true }

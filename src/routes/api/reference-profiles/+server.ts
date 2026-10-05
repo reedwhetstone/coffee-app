@@ -1,32 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { requireMemberRole, AuthError } from '$lib/server/auth';
-import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
+import { requireMemberRole } from '$lib/server/auth';
+import { createParchmentServerClient } from '$lib/server/parchmentClient';
+import { routeFailure, upstreamFailure } from '$lib/server/referenceGeneration';
 
 const MAX_ARTISAN_BYTES = 10_000_000;
-
-function upstreamFailure(error: unknown, status: number | undefined, fallback: string) {
-	const message =
-		typeof error === 'object' &&
-		error !== null &&
-		'error' in error &&
-		typeof error.error === 'object' &&
-		error.error !== null &&
-		'message' in error.error &&
-		typeof error.error.message === 'string'
-			? error.error.message
-			: fallback;
-	return json({ error: message }, { status: status ?? 500 });
-}
-
-function routeFailure(error: unknown, fallback: string) {
-	if (error instanceof AuthError) return json({ error: error.message }, { status: error.status });
-	if (error instanceof ParchmentConfigError)
-		return json({ error: 'Profile Studio is temporarily unavailable' }, { status: 503 });
-	if (error instanceof SyntaxError) return json({ error: 'Invalid request' }, { status: 400 });
-	console.error(fallback);
-	return json({ error: fallback }, { status: 500 });
-}
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
