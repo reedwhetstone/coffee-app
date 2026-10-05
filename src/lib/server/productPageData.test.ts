@@ -6,11 +6,17 @@ it('starts primary reads on the server and returns without awaiting them', () =>
 	const fetcher = vi.fn(() => new Promise<Response>(() => {}));
 	// The roast page reads the roast list for a member only.
 	const member = { isAuthenticated: true, appRoles: ['member'] };
-	const roast = loadRoast({ fetch: fetcher, locals: { principal: member } } as never);
+	const roast = loadRoast({
+		fetch: fetcher,
+		locals: { principal: member },
+		url: new URL('https://app.test/roast'),
+		untrack: <T>(read: () => T) => read()
+	} as never);
 	const profit = loadProfit({ fetch: fetcher } as never);
 	expect(roast).toHaveProperty('initialRoasts', expect.any(Promise));
 	expect(profit).toHaveProperty('initialProfit', expect.any(Promise));
-	expect(fetcher.mock.calls).toEqual([['/api/roast-profiles'], ['/api/profit']]);
+	// The roast page asks for its first page of roasts, not every roast.
+	expect(fetcher.mock.calls).toEqual([['/api/roast-profiles?limit=50&offset=0'], ['/api/profit']]);
 });
 it('preserves complete product response data', async () => {
 	const payload = { sales: [{ id: 3 }], profit: [{ id: 7 }] };

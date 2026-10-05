@@ -15,7 +15,11 @@ const rows = Array.from({ length: 105 }, (_, id) => ({
 	coffee_catalog: { name: `Lot ${id}`, source: 'Supplier A', country: 'Ethiopia' },
 	roast_profiles: [{ oz_in: 16 }]
 }));
-const noRoasts = { list: vi.fn().mockResolvedValue({ data: { data: [] } }) };
+const noRoasts = {
+	list: vi.fn().mockResolvedValue({
+		data: { data: [], meta: { totals: { roasts: 0, batches: 0, average_loss_percent: null } } }
+	})
+};
 describe('bounded Portfolio adapter and deployment compatibility', () => {
 	it('does not hydrate catalog or enumerate inventory when the bounded contract is available', async () => {
 		legacy.mockClear();
@@ -75,7 +79,12 @@ describe('bounded Portfolio adapter and deployment compatibility', () => {
 describe('last roast on the portfolio card', () => {
 	const page = legacyPortfolioPage(rows.slice(0, 3), query);
 	const roastList = (roasts: unknown[]) => ({
-		list: vi.fn().mockResolvedValue({ data: { data: roasts } })
+		list: vi.fn().mockResolvedValue({
+			data: {
+				data: roasts,
+				meta: { totals: { roasts: roasts.length, batches: 1, average_loss_percent: null } }
+			}
+		})
 	});
 
 	it('joins each coffee to its roast count and newest roast date', async () => {

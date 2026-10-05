@@ -1906,6 +1906,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Key behaviors',
 				bullets: [
+					'GET /api/roast-profiles lists the signed-in owner’s roasts, newest first. Optional filters narrow together: coffee_id, roast_id, batch_id, date_start and date_end (YYYY-MM-DD, inclusive), q (one search term across coffee name, batch name, and roast number, at most 100 characters), and is_wholesale (true or false). With limit (up to 200) and offset it returns one page; without them it returns every matching roast. Every response carries totals for everything the filters match: roasts, batches, and average_loss_percent.',
 					'POST /api/roast-profiles supports both single and batch creation. Batch callers retain one Idempotency-Key for the same payload until the result is definitive. The Parchment-owned database trigger recalculates stocked state in the same transaction as each roast change.',
 					'PUT /api/roast-profiles requires an id query parameter and forwards optional If-Match concurrency checks. Live curve writes replace only live temperatures plus the current event set. DELETE requires a roast id query parameter. A batch is deleted by its own ID with DELETE /api/roast-batches/[id], which removes that batch and its roasts and keeps the sales recorded against it.',
 					'POST /api/artisan-import expects multipart form-data with file and roastId. Supported file extensions are .alog, .alog.json, and .json.',
