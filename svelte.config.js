@@ -16,7 +16,10 @@ const config = {
 		adapter: adapter({
 			// Configure function runtime for specific routes
 			runtime: 'nodejs22.x',
-			regions: ['iad1'], // US East for better latency
+			// Run next to what the functions call: the Parchment API (Render, Oregon)
+			// and Supabase (us-west-1). Every page and data request makes one or more
+			// round trips to them, so a far region adds its distance to each one.
+			regions: ['pdx1'],
 			// Increase timeout for chat endpoint (5 minutes max)
 			maxDuration: 300
 		})
