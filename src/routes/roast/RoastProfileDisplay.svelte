@@ -32,6 +32,13 @@
 		editedProfile = { ...profile };
 	});
 
+	/** Open the details for editing; the panel's own Save button stores them. */
+	export function startEditing() {
+		if (isEditing) return;
+		editedProfile = { ...profile };
+		isEditing = true;
+	}
+
 	function toggleEdit() {
 		if (isEditing) {
 			saveChanges();
@@ -77,8 +84,8 @@
 		}
 	}
 
-	async function deleteProfile() {
-		if (confirm('Are you sure you want to delete this roast profile?')) {
+	export async function deleteProfile() {
+		if (confirm('Are you sure you want to delete this roast?')) {
 			try {
 				const response = await fetch(`/api/roast-profiles?id=${profile.roast_id}`, {
 					method: 'DELETE'
@@ -98,14 +105,14 @@
 		}
 	}
 
-	async function deleteBatch() {
+	export async function deleteBatch() {
 		try {
 			if (!profile?.batch_name) {
 				throw new Error('No batch name available');
 			}
 
 			if (
-				!confirm(`Are you sure you want to delete all profiles in batch "${profile.batch_name}"?`)
+				!confirm(`Are you sure you want to delete all roasts in batch "${profile.batch_name}"?`)
 			) {
 				return;
 			}
@@ -143,14 +150,6 @@
 						Roast ID: {profile.roast_id} • {formatDay(profile.roast_date) ?? ''}
 					</div>
 				{/if}
-			</div>
-			<div class="flex gap-2">
-				<button
-					class="rounded border-2 border-danger-strong px-3 py-1 text-sm text-ink hover:bg-danger-subtle"
-					onclick={deleteBatch}
-				>
-					Delete batch
-				</button>
 			</div>
 		</div>
 	</div>
@@ -298,12 +297,6 @@
 				onclick={toggleEdit}
 			>
 				{isEditing ? 'Save' : 'Edit'}
-			</button>
-			<button
-				class="w-full rounded border-2 border-danger-strong px-3 py-1 text-ink hover:bg-danger-subtle sm:w-auto"
-				onclick={deleteProfile}
-			>
-				Delete
 			</button>
 		</div>
 	</div>

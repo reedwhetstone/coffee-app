@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { RoastProfilesBlock, BlockAction } from '$lib/types/genui';
+	import { roastHref } from '$lib/roast/compare-sides';
 
 	let { block, onAction: _onAction } = $props<{
 		block: RoastProfilesBlock;
@@ -48,7 +49,7 @@
 	}
 
 	function handleViewChart(roastId: string) {
-		window.open(`/roast?profileId=${roastId}`, '_blank');
+		window.open(roastHref(roastId), '_blank');
 	}
 </script>
 

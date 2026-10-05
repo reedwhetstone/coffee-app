@@ -13,6 +13,9 @@
 	import { roastData, roastEvents, temperatureEntries, eventEntries, msToSeconds } from './stores';
 	import { createRoastTimer } from '$lib/roast';
 	import { roastCountLine } from '$lib/roast/roast-summary';
+	import { readOpenRoastId } from '$lib/roast/compare-sides';
+	import { saveRoastAsReference } from '$lib/roast/save-reference';
+	import { trackProfileStudioActivation } from '$lib/profileStudio/analytics';
 	import {
 		clearRoastCreateOperation,
 		readRoastCreateOperation,
@@ -97,6 +100,8 @@
 	// Profile operation errors
 	let profileError = $state<string | null>(null);
 	let operationInProgress = $state<string | null>(null);
+	// Shown under the open roast's actions after "Save as reference".
+	let referenceNotice = $state<{ roastId: number; message: string } | null>(null);
 
 	// Track processing state
 	let selectionState = $state({
@@ -363,9 +368,9 @@
 		// Load roast profiles and handle URL-based profile selection
 		syncData(data.initialRoasts).then(() => {
 			setTimeout(() => {
-				const profileIdParam = page.url.searchParams.get('profileId');
-				if (profileIdParam && !currentRoastProfile) {
-					const targetProfileId = parseInt(profileIdParam);
+				// `?roast=<id>` names the open roast; `?profileId=<id>` is the earlier name.
+				const targetProfileId = readOpenRoastId(page.url.searchParams);
+				if (targetProfileId !== null && !currentRoastProfile) {
 					const filteredProfiles = typedFilteredData || [];
 					let targetProfile = filteredProfiles.find((p) => p.roast_id === targetProfileId);
 					if (!targetProfile && clientData.length > 0) {
@@ -608,8 +613,9 @@
 			// Update URL to reflect the selected profile. Opening a roast lands at the top
 			// of the page; reloading the one already open keeps the reader's place.
 			const currentUrl = new URL(window.location.href);
-			const alreadyOpen = currentUrl.searchParams.get('profileId') === profile.roast_id.toString();
-			currentUrl.searchParams.set('profileId', profile.roast_id.toString());
+			const alreadyOpen = readOpenRoastId(currentUrl.searchParams) === profile.roast_id;
+			currentUrl.searchParams.delete('profileId');
+			currentUrl.searchParams.set('roast', profile.roast_id.toString());
 			goto(currentUrl.pathname + '?' + currentUrl.searchParams.toString(), {
 				replaceState: true,
 				keepFocus: true,
@@ -791,14 +797,36 @@
 			const result = await response.json();
 			console.log('Clear roast result:', result);
 
-			// Clear data successful - reload the profile
-			if (currentRoastProfile) {
-				await selectProfile(currentRoastProfile); // Reload the profile
+			// Reload so the page shows the cleared roast. A roast that is recording keeps
+			// its timer and readings, so it is left as it is.
+			if (currentRoastProfile && !liveRoastInProgress) {
+				await reloadProfile(currentRoastProfile.roast_id);
 			}
 			clearProfileError();
 		} catch (error) {
 			console.error('Error clearing roast data:', error);
 			setProfileError(error instanceof Error ? error.message : 'Failed to clear roast data');
+		} finally {
+			setOperation(null);
+		}
+	}
+
+	// "Save as reference" in the roast's More menu: keeps the roast to compare or plan
+	// from later. The roast and anything being recorded are left as they are.
+	async function handleSaveReference() {
+		const roast = currentRoastProfile;
+		if (!roast || operationInProgress) return;
+		setOperation('Saving reference...');
+		clearProfileError();
+		referenceNotice = null;
+		try {
+			const title = await saveRoastAsReference(roast, data.auth?.user?.id ?? null, sessionStorage);
+			referenceNotice = { roastId: roast.roast_id, message: `${title} is saved as a reference.` };
+			trackProfileStudioActivation('reference_profile_saved');
+		} catch (error) {
+			setProfileError(
+				error instanceof Error ? error.message : 'Unable to save this roast as a reference'
+			);
 		} finally {
 			setOperation(null);
 		}
@@ -813,6 +841,7 @@
 
 		// Clear URL parameter for deleted profile
 		const currentUrl = new URL(window.location.href);
+		currentUrl.searchParams.delete('roast');
 		currentUrl.searchParams.delete('profileId');
 		goto(
 			currentUrl.pathname +
@@ -848,6 +877,7 @@
 
 		// Clear URL params
 		const currentUrl = new URL(window.location.href);
+		currentUrl.searchParams.delete('roast');
 		currentUrl.searchParams.delete('profileId');
 		goto(currentUrl.pathname, { replaceState: true, keepFocus: true, noScroll: true });
 		return true;
@@ -963,6 +993,11 @@
 		countLine={roastCountLine(roastSummary)}
 		totalRoasts={clientData.length}
 		canCreateRoast={canCreateRoastProfiles}
+		referenceNotice={referenceNotice?.roastId === currentRoastProfile?.roast_id
+			? (referenceNotice?.message ?? null)
+			: null}
+		actionInProgress={operationInProgress !== null}
+		onSaveReference={handleSaveReference}
 		onToggleBatch={toggleBatch}
 		onSelectProfile={selectProfile}
 		onProfileUpdate={handleProfileUpdate}

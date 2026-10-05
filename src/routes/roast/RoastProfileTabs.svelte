@@ -1,7 +1,11 @@
 <script lang="ts">
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
 	import RoastProfileDisplay from './RoastProfileDisplay.svelte';
+	import RoastActionBar from './RoastActionBar.svelte';
+	import ArtisanImportDialog from '$lib/components/roast/ArtisanImportDialog.svelte';
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
+	import { compareHref } from '$lib/roast/compare-sides';
+	import { hasRecordedRoast } from '$lib/roast/profile-picker-model';
 	import { hasRecordedCurve, roastDetailLine, roastMilestones } from '$lib/roast/roast-summary';
 	import type { RoastProfile } from '$lib/types/component.types';
 	import type { ComponentType } from 'svelte';
@@ -18,6 +22,9 @@
 		countLine,
 		totalRoasts,
 		canCreateRoast,
+		referenceNotice = null,
+		actionInProgress = false,
+		onSaveReference,
 		onToggleBatch,
 		onSelectProfile,
 		onProfileUpdate,
@@ -46,6 +53,10 @@
 		countLine: string;
 		totalRoasts: number;
 		canCreateRoast: boolean;
+		/** Confirmation shown under the actions after a roast is saved as a reference. */
+		referenceNotice?: string | null;
+		actionInProgress?: boolean;
+		onSaveReference: () => void;
 		onToggleBatch: (batchName: string) => void;
 		onSelectProfile: (profile: RoastProfile) => void;
 		onProfileUpdate: (profile: RoastProfile) => void;
@@ -64,6 +75,21 @@
 		saveRoastProfile: () => Promise<void>;
 		clearRoastData: () => void;
 	}>();
+
+	let detailPanel = $state<RoastProfileDisplay>();
+	let detailSection = $state<HTMLDivElement>();
+	let artisanImportDialog = $state<ArtisanImportDialog>();
+
+	function editDetails() {
+		detailPanel?.startEditing();
+		detailSection?.scrollIntoView?.({ block: 'center' });
+	}
+
+	function clearRecordedData() {
+		if (confirm('Are you sure you want to clear this roast data? This action cannot be undone.')) {
+			clearRoastData();
+		}
+	}
 
 	// The link is a real one for the keyboard and for opening in a new tab; a plain click
 	// closes the roast in place so the page holding the timer is not reloaded. The page
@@ -94,6 +120,23 @@
 				{currentRoastProfile.coffee_name?.trim() || `Roast #${currentRoastProfile.roast_id}`}
 			</h1>
 			<p class="mt-1 text-sm text-muted">{roastDetailLine(currentRoastProfile)}</p>
+
+			<RoastActionBar
+				roastId={currentRoastProfile.roast_id}
+				hasRecording={hasRecordedRoast(currentRoastProfile)}
+				busy={actionInProgress}
+				{onSaveReference}
+				onEditDetails={editDetails}
+				onImportArtisan={() => artisanImportDialog?.open()}
+				onClearRecorded={clearRecordedData}
+				onDeleteRoast={() => detailPanel?.deleteProfile()}
+				onDeleteBatch={() => detailPanel?.deleteBatch()}
+			/>
+			{#if referenceNotice}
+				<p role="status" class="mt-3 rounded-lg bg-success-subtle p-3 text-sm text-success-strong">
+					{referenceNotice}
+				</p>
+			{/if}
 
 			{#if hasRecordedCurve(currentRoastProfile)}
 				{@const milestones = roastMilestones(currentRoastProfile)}
@@ -162,9 +205,11 @@
 		{/if}
 
 		<div
+			bind:this={detailSection}
 			class="mt-6 w-full overflow-x-hidden rounded-lg border border-line bg-surface-panel p-3 shadow-md"
 		>
 			<RoastProfileDisplay
+				bind:this={detailPanel}
 				profile={currentRoastProfile}
 				currentIndex={currentProfileIndex}
 				onUpdate={onProfileUpdate}
@@ -172,6 +217,15 @@
 				onBatchDeleted={onBatchDelete}
 			/>
 		</div>
+
+		<!-- Opened from More. A file imported while this roast is recording replaces what is on screen. -->
+		<ArtisanImportDialog
+			bind:this={artisanImportDialog}
+			roastId={currentRoastProfile.roast_id}
+			lastUpdated={currentRoastProfile.last_updated}
+			hasExistingData={hasRecordedCurve(currentRoastProfile) || !timer.isIdle}
+			onImportComplete={() => onProfileRefresh(currentRoastProfile.roast_id)}
+		/>
 	{:else}
 		<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 			<div>
@@ -190,10 +244,16 @@
 					</a>
 				{/if}
 				<a
+					href={compareHref()}
+					class="inline-flex items-center justify-center rounded-md border border-line bg-surface-canvas px-4 py-2 text-sm font-semibold text-muted transition-colors hover:border-accent hover:text-ink"
+				>
+					Compare roasts
+				</a>
+				<a
 					href="#profile-studio"
 					class="inline-flex items-center justify-center rounded-md border border-line bg-surface-canvas px-4 py-2 text-sm font-semibold text-muted transition-colors hover:border-accent hover:text-ink"
 				>
-					Compare and plan
+					Saved references and plans
 				</a>
 			</div>
 		</div>

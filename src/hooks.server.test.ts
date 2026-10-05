@@ -350,6 +350,67 @@ describe('hooks auth guard integration', () => {
 		).rejects.toMatchObject({ status: 303, location: '/dashboard' });
 	});
 
+	describe('every /roast path is member-only', () => {
+		const principalOf = (role: 'viewer' | 'member', ppiAccess = false) => ({
+			isAuthenticated: true,
+			authKind: 'session',
+			source: 'cookie-session',
+			session: { access_token: 'cookie-token' },
+			user: { id: `${role}-user` },
+			appRoles: [role],
+			primaryAppRole: role,
+			ppiAccess
+		});
+		const paths = ['/roast', '/roast/compare', '/roast/compare?a=roast:4531&b=roast:4507'];
+
+		it.each(paths)('lets a member open %s', async (path) => {
+			mockResolvePrincipal.mockResolvedValue(principalOf('member'));
+			const resolve = vi.fn(() => new Response('ok'));
+
+			const response = await handle({ event: makeEvent(path), resolve });
+
+			expect(response.status).toBe(200);
+			expect(resolve).toHaveBeenCalledOnce();
+		});
+
+		it.each(paths)(
+			'sends a signed-in account without Mallard Studio from %s to the dashboard',
+			async (path) => {
+				// Parchment Intelligence opens portfolio and chat, never the roast pages.
+				for (const ppiAccess of [false, true]) {
+					mockResolvePrincipal.mockResolvedValue(principalOf('viewer', ppiAccess));
+					const resolve = vi.fn();
+
+					await expect(handle({ event: makeEvent(path), resolve })).rejects.toMatchObject({
+						status: 303,
+						location: '/dashboard'
+					});
+					expect(resolve).not.toHaveBeenCalled();
+				}
+			}
+		);
+
+		it.each(paths)('sends a signed-out visitor from %s to the catalog', async (path) => {
+			mockResolvePrincipal.mockResolvedValue({
+				isAuthenticated: false,
+				authKind: 'anonymous',
+				source: 'anonymous',
+				session: null,
+				user: null,
+				appRoles: [],
+				primaryAppRole: null,
+				ppiAccess: false
+			});
+			const resolve = vi.fn();
+
+			await expect(handle({ event: makeEvent(path), resolve })).rejects.toMatchObject({
+				status: 303,
+				location: '/catalog'
+			});
+			expect(resolve).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('a percent-encoded path gets the same guard as the page it routes to', () => {
 		const signedIn = (role: 'viewer' | 'member', ppiAccess = false) => ({
 			isAuthenticated: true,
