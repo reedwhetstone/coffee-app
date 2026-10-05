@@ -442,6 +442,11 @@ Proposed:
 - Title: Plan your next roast
 - Body: Start from a roast or reference you liked, adjust it, and save the result as a curve to follow in Artisan. Your roast history is not changed.
 - Steps, helper text, and Artisan instructions: as written in the 2026-10-03 plan, with one change. Its empty state ends "add an Artisan file under Saved profiles"; here that reads "add an Artisan file under Saved references and plans".
+- Corrected when PR 5 was built ([evidence](2026-10-04-roast-and-portfolio-workflows/pr-5/README.md)):
+  - Roasts that cannot be used: Parchment's count covers every roast with no usable Artisan file, including roasts logged live or entered by hand, so "older roasts were imported before Artisan files were kept" would be false for most of them. The line reads "12 roasts have no Artisan file on record, so a plan cannot be built from them. Import a roast's .alog to plan from it." One roast named in a link gets Parchment's own reason.
+  - Artisan instructions: the menu wording was confirmed against Artisan's documentation. "It does not control your roaster" is not true when Artisan is set to play back a background's events or to follow the background, so the sentence ends "unless Artisan is set to play back a background's events or to follow the background."
+  - The "Raise or lower" in step 2 is a choice of Raise or Lower, and the number is always positive.
+  - Saved plans stay reachable until the saved library ships in PR 6: the plan page lists them under the form, each with its link and its download, and the Studio card says so. The Studio section's own list moved with the form.
 
 **Saved references and plans**
 

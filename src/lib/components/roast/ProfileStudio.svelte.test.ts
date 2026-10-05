@@ -75,6 +75,27 @@ describe('Profile Studio', () => {
 		).toBe(false);
 	});
 
+	it('sends planning to its own page instead of holding the form here', async () => {
+		const fetchMock = stubFetch();
+		render(ProfileStudio, { roasts, enabled: true });
+
+		const link = screen.getByRole('link', { name: 'Plan next roast' });
+		expect(link).toHaveAttribute('href', '/roast/plan');
+		expect(screen.getByRole('heading', { name: 'Plan your next roast' })).toBeInTheDocument();
+		// Saved plans used to be listed here with their downloads; the card says where they are now.
+		expect(
+			screen.getByText(/Plans you have saved are listed there, with their downloads\./)
+		).toBeInTheDocument();
+
+		// The form, its preview, and its downloads are gone from the section, and the
+		// section no longer reads the saved references it only listed for that form.
+		expect(screen.queryByText('Plan the next batch')).toBeNull();
+		expect(screen.queryByLabelText('Parent reference')).toBeNull();
+		expect(screen.queryByRole('button', { name: /Preview/ })).toBeNull();
+		expect(screen.queryByText('Saved plans')).toBeNull();
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
 	it('still offers every recorded roast to save as a reference, and none with nothing recorded', () => {
 		stubFetch();
 		render(ProfileStudio, { roasts, enabled: true });
@@ -89,11 +110,12 @@ describe('Profile Studio', () => {
 		expect(options[2]).toContain('Colombia Huila');
 	});
 
-	it('does not offer comparison to an account without Mallard Studio', () => {
+	it('does not offer comparison or planning to an account without Mallard Studio', () => {
 		stubFetch();
 		render(ProfileStudio, { roasts, enabled: false });
 
 		expect(screen.queryByRole('link', { name: 'Compare roasts' })).toBeNull();
+		expect(screen.queryByRole('link', { name: 'Plan next roast' })).toBeNull();
 		expect(screen.getByRole('link', { name: 'Unlock Mallard Studio' })).toBeInTheDocument();
 	});
 });

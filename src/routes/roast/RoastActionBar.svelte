@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { compareHref } from '$lib/roast/compare-sides';
+	import { planHref } from '$lib/roast/roast-plan';
 
-	// The actions for the roast on screen. "Compare with…" is a plain link, so leaving a
-	// roast that is still recording goes through the page's live-roast guard like any
-	// other navigation.
+	// The actions for the roast on screen. "Compare with…" and "Plan next roast from this"
+	// are plain links, so leaving a roast that is still recording goes through the page's
+	// live-roast guard like any other navigation.
 	let {
 		roastId,
 		hasRecording,
@@ -35,6 +36,9 @@
 	let trigger = $state<HTMLButtonElement | null>(null);
 	let menu = $state<HTMLDivElement | null>(null);
 
+	const planLink = $derived(planHref({ from: { type: 'roast', id: roastId } }));
+	const PLAN_LABEL = 'Plan next roast from this';
+
 	const items = $derived([
 		{ label: 'Save as reference', run: onSaveReference, disabled: !hasRecording || busy },
 		{ label: 'Edit details', run: onEditDetails, disabled: false },
@@ -44,8 +48,11 @@
 		{ label: 'Delete batch', run: onDeleteBatch, disabled: busy, destructive: true }
 	]);
 
+	// On a phone the plan link sits in this menu; on wider screens it is hidden here.
 	const enabledItems = () =>
-		Array.from(menu?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? []);
+		Array.from(
+			menu?.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)') ?? []
+		).filter((item) => getComputedStyle(item).display !== 'none');
 
 	async function show(focus: 'first' | 'last' = 'first') {
 		open = true;
@@ -81,7 +88,7 @@
 		event.preventDefault();
 		const choices = enabledItems();
 		if (choices.length === 0) return;
-		const index = choices.indexOf(document.activeElement as HTMLButtonElement);
+		const index = choices.findIndex((choice) => choice === document.activeElement);
 		const next =
 			event.key === 'Home'
 				? 0
@@ -113,6 +120,24 @@
 			class="inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink opacity-50 shadow-sm"
 		>
 			Compare with…
+		</button>
+	{/if}
+
+	<!-- A phone shows one action; this one moves into More there. -->
+	{#if hasRecording}
+		<a
+			href={planLink}
+			class="hidden items-center justify-center rounded-md border border-line bg-surface-canvas px-4 py-2 text-sm font-semibold text-muted transition-colors hover:border-accent hover:text-ink sm:inline-flex"
+		>
+			{PLAN_LABEL}
+		</a>
+	{:else}
+		<button
+			type="button"
+			disabled
+			class="hidden items-center justify-center rounded-md border border-line bg-surface-canvas px-4 py-2 text-sm font-semibold text-muted opacity-50 sm:inline-flex"
+		>
+			{PLAN_LABEL}
 		</button>
 	{/if}
 
@@ -149,6 +174,25 @@
 				class="absolute right-0 z-20 mt-1 w-56 rounded-md border border-line bg-surface-panel py-1 shadow-lg sm:left-0 sm:right-auto"
 				onkeydown={handleMenuKeydown}
 			>
+				{#if hasRecording}
+					<a
+						href={planLink}
+						role="menuitem"
+						class="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-accent-subtle sm:hidden"
+						onclick={() => setTimeout(() => hide())}
+					>
+						{PLAN_LABEL}
+					</a>
+				{:else}
+					<button
+						type="button"
+						role="menuitem"
+						disabled
+						class="block w-full cursor-not-allowed px-3 py-2 text-left text-sm text-ink opacity-50 sm:hidden"
+					>
+						{PLAN_LABEL}
+					</button>
+				{/if}
 				{#each items as item, index (item.label)}
 					{#if item.destructive && !items[index - 1]?.destructive}
 						<div class="my-1 border-t border-line" role="separator"></div>

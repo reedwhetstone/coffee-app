@@ -302,7 +302,10 @@ describe('hooks auth guard integration', () => {
 			'/roast/compare',
 			'/roast/compare?a=roast:4531&b=roast:4507',
 			'/roast/plan',
+			'/roast/plan/',
 			'/roast/plan?from=roast:4531',
+			'/roast/plan?from=ref:aaaaaaaa-0000-4000-8000-000000000001',
+			'/roast/plan?plan=aaaaaaaa-0000-4000-8000-000000000003',
 			'/roast/saved',
 			'/roast/4531',
 			// Not the roast list page. SvelteKit strips the data suffix before the hook runs,
@@ -535,7 +538,14 @@ describe('hooks auth guard integration', () => {
 		});
 		// `/roast` itself draws a locked page for an account without Mallard Studio; the
 		// locked roast page tests above cover it.
-		const childPaths = ['/roast/compare', '/roast/compare?a=roast:4531&b=roast:4507'];
+		const childPaths = [
+			'/roast/compare',
+			'/roast/compare?a=roast:4531&b=roast:4507',
+			'/roast/plan',
+			'/roast/plan?from=roast:4531',
+			'/roast/plan?from=ref:aaaaaaaa-0000-4000-8000-000000000001',
+			'/roast/plan?plan=aaaaaaaa-0000-4000-8000-000000000003'
+		];
 		const paths = ['/roast', ...childPaths];
 
 		it.each(paths)('lets a member open %s', async (path) => {
@@ -614,6 +624,8 @@ describe('hooks auth guard integration', () => {
 			'/%70rofit?modal=new',
 			'/pro%66it',
 			'/%72oast/compare', // /roast/compare
+			'/roast/%70lan', // /roast/plan
+			'/%72oast/plan?from=roast:4531',
 			'/roas%74/4531'
 		];
 

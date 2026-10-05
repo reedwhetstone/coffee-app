@@ -23,11 +23,12 @@ export function chargeOffsetMilliseconds(chart: ReferenceChart): number {
 }
 
 /**
- * Preview the proposed curve beside its immutable parent on the shared charge-aligned
- * axis. Milestones render as markers; control events remain unchanged but unmarked.
+ * Draw a plan over the curve it started from, both timed from charge. A saved plan whose
+ * starting curve is no longer on record is drawn alone. Milestones render as markers;
+ * control events remain unchanged but unmarked.
  */
 export function buildProfileGenerationChart(
-	parent: ReferenceChart,
+	parent: ReferenceChart | null,
 	preview: ReferenceChart
 ): ProcessedChartData {
 	const colors = ['#b45309', '#0f766e', '#7c3aed', '#0891b2'];
@@ -40,7 +41,7 @@ export function buildProfileGenerationChart(
 						: 'temperature';
 				return {
 					id: `${proposed ? 'proposed' : 'parent'}-${entry.id}`,
-					label: `${proposed ? 'Proposed' : 'Parent'} · ${entry.name}`,
+					label: `${proposed ? 'Plan' : 'Started from'} · ${entry.name}`,
 					kind: entry.kind,
 					unit: entry.unit,
 					axis,
@@ -60,9 +61,10 @@ export function buildProfileGenerationChart(
 			})
 			// A channel with no real readings, such as a probe that was never connected, is left out.
 			.filter((entry) => entry.points.length > 0);
-	const series = [...makeSeries(parent, false), ...makeSeries(preview, true)];
+	const charts = parent ? [parent, preview] : [preview];
+	const series = [...(parent ? makeSeries(parent, false) : []), ...makeSeries(preview, true)];
 	// The time axis covers every sample, with or without a reading.
-	const times = [parent, preview].flatMap((chart) =>
+	const times = charts.flatMap((chart) =>
 		chart.series.flatMap((entry) =>
 			entry.points.map(
 				(point) => (point.timeMilliseconds - chargeOffsetMilliseconds(chart)) / 60_000

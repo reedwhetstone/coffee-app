@@ -41,6 +41,8 @@ export interface ProfileOptionGroup {
 	options: ProfileOption[];
 	/** Options in this group before any search filter. */
 	total: number;
+	/** What an empty group says, where the picker's own wording does not fit. */
+	empty?: string;
 }
 
 const DATE_FORMAT = new Intl.DateTimeFormat('en-US', {

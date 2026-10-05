@@ -41,8 +41,8 @@ describe('planned reference preview chart', () => {
 		};
 		const chart = buildProfileGenerationChart(parent, preview);
 		expect(chart.series.map((series) => [series.label, series.dashed])).toEqual([
-			['Parent · BT', true],
-			['Proposed · BT', false]
+			['Started from · BT', true],
+			['Plan · BT', false]
 		]);
 		expect(chart.series[0].points).toEqual([
 			{ timeMinutes: 0, value: 0 },

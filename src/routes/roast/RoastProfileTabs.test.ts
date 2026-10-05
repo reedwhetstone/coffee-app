@@ -436,10 +436,20 @@ describe("an open roast's actions", () => {
 		expect(compare.tagName).toBe('A');
 	});
 
-	it('keeps the plan and sale actions for the releases that add them', () => {
+	it('links to the plan page with this roast to start from', () => {
 		render(RoastProfileTabs, props({ currentRoastProfile: wushWush }));
 
-		expect(screen.queryByText('Plan next roast from this')).toBeNull();
+		const plan = screen.getByRole('link', { name: 'Plan next roast from this' });
+		expect(plan).toHaveAttribute('href', '/roast/plan?from=roast:4531');
+		// A plain link, like "Compare with…": the live-roast guard sees the navigation.
+		expect(plan.tagName).toBe('A');
+		// On a phone it gives way to "Compare with…" and sits in More instead.
+		expect(plan).toHaveClass('hidden', 'sm:inline-flex');
+	});
+
+	it('keeps the sale action for the release that adds it', () => {
+		render(RoastProfileTabs, props({ currentRoastProfile: wushWush }));
+
 		expect(screen.queryByText('Log sale')).toBeNull();
 	});
 
@@ -453,6 +463,7 @@ describe("an open roast's actions", () => {
 
 		expect(more).toHaveAttribute('aria-expanded', 'true');
 		expect(moreItems().map((item) => item.textContent?.trim())).toEqual([
+			'Plan next roast from this',
 			'Save as reference',
 			'Edit details',
 			'Import Artisan file',
@@ -461,6 +472,16 @@ describe("an open roast's actions", () => {
 			'Delete batch'
 		]);
 		for (const item of moreItems()) expect(item).toBeEnabled();
+	});
+
+	it('carries the plan link in More for a phone, where only one action is shown', async () => {
+		render(RoastProfileTabs, props({ currentRoastProfile: wushWush }));
+		await openMore();
+
+		const plan = screen.getByRole('menuitem', { name: 'Plan next roast from this' });
+		expect(plan.tagName).toBe('A');
+		expect(plan).toHaveAttribute('href', '/roast/plan?from=roast:4531');
+		expect(plan).toHaveClass('sm:hidden');
 	});
 
 	it('closes More on Escape and returns to its button', async () => {
@@ -554,7 +575,7 @@ describe("an open roast's actions", () => {
 		});
 	});
 
-	it('offers nothing to compare, keep, or clear for a roast with nothing recorded', async () => {
+	it('offers nothing to compare, plan from, keep, or clear for a roast with nothing recorded', async () => {
 		const planned = roast({
 			roast_id: 4540,
 			oz_out: null,
@@ -574,12 +595,15 @@ describe("an open roast's actions", () => {
 
 		expect(screen.queryByRole('link', { name: 'Compare with…' })).toBeNull();
 		expect(screen.getByRole('button', { name: 'Compare with…' })).toBeDisabled();
+		expect(screen.queryByRole('link', { name: 'Plan next roast from this' })).toBeNull();
+		expect(screen.getByRole('button', { name: 'Plan next roast from this' })).toBeDisabled();
 
 		await openMore();
 		const enabled = Object.fromEntries(
 			moreItems().map((item) => [item.textContent?.trim(), !(item as HTMLButtonElement).disabled])
 		);
 		expect(enabled).toEqual({
+			'Plan next roast from this': false,
 			'Save as reference': false,
 			'Edit details': true,
 			'Import Artisan file': true,
