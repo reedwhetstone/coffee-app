@@ -1516,7 +1516,7 @@ const docsPages: DocsPage[] = [
 							'GET',
 							'Session + Mallard Studio',
 							'Internal product route',
-							'Downloads the Artisan file stored with a reference, whether it was uploaded or kept from a roast, byte for byte, as a private, no-store attachment with Parchment’s file name and Repr-Digest. A reference with no original file returns 400 with code reference_artisan_file_unavailable and a reason; a plan downloads through its revision’s export instead.'
+							'Downloads the Artisan file stored with a reference, whether it was uploaded or kept from a roast, byte for byte, as a private, no-store attachment with Parchment’s file name and Repr-Digest. A reference with no stored file returns 400 with code reference_artisan_file_unavailable and a reason; a plan downloads through its revision’s export instead.'
 						],
 						[
 							'/api/reference-profiles/[id]/roast',
@@ -1579,7 +1579,7 @@ const docsPages: DocsPage[] = [
 							'GET',
 							'Session + Mallard Studio',
 							'Internal product route',
-							'Downloads a saved generated plan as a private, no-store Purveyors .alog attachment. Uploaded references and executed-roast snapshots are not exported; a reference that holds its original file downloads it from the artisan-file route.'
+							'Downloads a saved generated plan as a private, no-store Purveyors .alog attachment. Uploaded references and executed-roast snapshots are not exported; a reference with a stored Artisan file downloads it from the artisan-file route.'
 						]
 					]
 				}

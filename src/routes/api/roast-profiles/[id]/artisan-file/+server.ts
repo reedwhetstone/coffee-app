@@ -5,7 +5,7 @@ import { artisanFileResponse } from '$lib/server/artisanFile';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { routeFailure } from '$lib/server/referenceGeneration';
 
-/** The Artisan file a roast was imported from, as it was uploaded. Internal to the roast pages. */
+/** The Artisan file stored with a roast when it was imported. Internal to the roast pages. */
 export const GET: RequestHandler = async (event) => {
 	try {
 		await requireMemberRole(event);

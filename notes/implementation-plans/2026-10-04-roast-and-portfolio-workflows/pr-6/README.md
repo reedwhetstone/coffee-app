@@ -71,6 +71,7 @@ On a coffee's Roasting tab, "Plan next roast" is in the row menu of each roast w
 - Of the coffee's five roasts, the two with a file show the menu; the other three show none. A plan cannot be built on a roast with no file, so the item is left off instead of leading to a refusal.
 - A shared, read-only coffee shows no menu. Covered by tests.
 - **The last roast's menu** opens below the table and is not cut off at the table's edge. Measured with a file on every roast, so the last row draws a menu: "Plan next roast" sits 35 px below the table's bottom edge on desktop and 11 px below it on a phone, takes the click, and opens the plan. With the table clipping its contents, as it did before, the same click on desktop landed on the page behind the menu.
+- **An open menu sits above the roast under it.** Measured with a file on every roast: on desktop the "⋯" button of the next roast used to show through the right edge of the open menu and take the click there, on every roast with another under it. Every point of "Plan next roast" now takes the click on all five roasts at both sizes, and the row's own link and tick box still work beside the menu.
 - "Log sale" joins this menu with PR 8.
 
 ## Live roast guard

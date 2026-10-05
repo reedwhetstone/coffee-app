@@ -251,8 +251,9 @@
 						<span role="cell">{row.development}</span>
 					</div>
 					{#if menuLinks.length > 0}
-						<div role="cell" class="relative z-10 col-start-3 row-start-1 sm:col-start-9">
-							<details class="relative">
+						<!-- An open menu sits above the rows under it, their own "⋯" buttons included. -->
+						<div role="cell" class="col-start-3 row-start-1 sm:col-start-9">
+							<details class="relative z-10 open:z-20">
 								<summary
 									class="flex h-6 w-6 cursor-pointer list-none items-center justify-center rounded-md text-muted transition-colors hover:bg-accent/10 hover:text-accent [&::-webkit-details-marker]:hidden"
 									aria-label="More for roast #{row.roastId}"

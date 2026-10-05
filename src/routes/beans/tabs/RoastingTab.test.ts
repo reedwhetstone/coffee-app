@@ -373,6 +373,26 @@ describe('portfolio Roasting tab', () => {
 		expect(last).toHaveClass('last:rounded-b-lg');
 	});
 
+	it('keeps an open menu above the next roast’s own menu button', async () => {
+		renderTab({
+			rowMenu: (roast: { roast_id: number }) => [
+				{ label: 'Plan next roast', href: `/roast/plan?from=roast:${roast.roast_id}` }
+			]
+		});
+
+		const rows = await dataRows();
+		for (const row of rows) {
+			const link = within(row).getByRole('link', { name: 'Plan next roast', hidden: true });
+			const menu = link.closest('details');
+			// Every menu is layered from the same place, and the open one is raised over the
+			// rest, so the button of the roast below cannot cover part of the link.
+			expect(menu).toHaveClass('relative', 'z-10', 'open:z-20');
+			for (let box = menu?.parentElement; box && row.contains(box); box = box.parentElement) {
+				expect(box.className).not.toMatch(/(?:^|\s)-?z-/);
+			}
+		}
+	});
+
 	it('draws no row menu on a shared coffee, where nothing can be planned', async () => {
 		render(RoastingTab, {
 			selectedBean: {
