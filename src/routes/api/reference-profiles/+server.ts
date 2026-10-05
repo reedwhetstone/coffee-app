@@ -62,7 +62,7 @@ export const POST: RequestHandler = async (event) => {
 				idempotencyKey
 			);
 			if (error || !data)
-				return upstreamFailure(error, response?.status, 'Unable to save this Artisan profile');
+				return upstreamFailure(error, response?.status, 'Unable to save this Artisan file');
 			return json(data, { status: response.status });
 		}
 

@@ -437,7 +437,7 @@ describe('adding an Artisan file', () => {
 
 	it('says why a file was refused and keeps the form open', async () => {
 		answers['POST /api/reference-profiles'] = () =>
-			json({ error: 'This file is not an Artisan profile' }, 400);
+			json({ error: 'This is not an Artisan file' }, 400);
 		await renderLibrary();
 		await fireEvent.click(screen.getByRole('button', { name: 'Add an Artisan file' }));
 		const form = screen.getByRole('form', { name: 'Add an Artisan file' });
@@ -448,7 +448,7 @@ describe('adding an Artisan file', () => {
 		await fireEvent.click(within(form).getByRole('button', { name: 'Save reference' }));
 
 		expect(await within(form).findByRole('alert')).toHaveTextContent(
-			'This file is not an Artisan profile'
+			'This is not an Artisan file'
 		);
 		expect(rowTitles()).toHaveLength(4);
 	});
