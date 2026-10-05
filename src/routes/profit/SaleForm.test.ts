@@ -649,6 +649,8 @@ describe('SaleForm batches and roasts', () => {
 
 			expect(screen.getByRole('heading', { name: 'Edit Sale' })).toBeInTheDocument();
 			expect(chosen(coffeeSelect())).toBe('Ethiopia Wush Wush');
+			// A recorded sale keeps its coffee; only what it is recorded against can change.
+			expect(coffeeSelect()).toBeDisabled();
 			expect(chosen(batchSelect())).toBe('Not linked · recorded as “Wednesday roast”');
 			expect(batchSelect()).toHaveAccessibleDescription(
 				'This sale was recorded with a batch name and is not linked to a batch. Choose the batch to link it.'

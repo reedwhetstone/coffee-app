@@ -262,6 +262,7 @@
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 						value={String(formData.green_coffee_inv_id ?? '')}
 						onchange={handleCoffeeChange}
+						disabled={isUpdate}
 						required
 					>
 						<option value="">Select a coffee...</option>
