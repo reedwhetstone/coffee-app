@@ -5,21 +5,22 @@
 	interface TableRoastProfile extends RoastProfile {
 		roast_duration_minutes?: number;
 		end_temperature?: number;
+		notes?: string | null;
 	}
 
 	let {
-		sortedBatchNames,
-		sortedGroupedProfiles,
+		batches,
 		collapsedBatches,
 		currentRoastProfile,
 		totalRoasts = 0,
 		emptyDetail = '',
+		showLogSale = false,
 		onToggleBatch,
 		onSelectProfile,
 		onClearFilters
 	} = $props<{
-		sortedBatchNames: string[];
-		sortedGroupedProfiles: Record<string, TableRoastProfile[]>;
+		/** The batches to list, newest first, each with the roasts to show under it. */
+		batches: RoastBatchGroup<TableRoastProfile>[];
 		/** Batches are open unless the roaster closed them. */
 		collapsedBatches: Set<string>;
 		currentRoastProfile: TableRoastProfile | null | undefined;
@@ -27,31 +28,35 @@
 		totalRoasts?: number;
 		/** What the filters in force left out, said under "No roasts match." */
 		emptyDetail?: string;
-		onToggleBatch: (batchName: string) => void;
+		/** Whether a batch header offers "Log sale". */
+		showLogSale?: boolean;
+		onToggleBatch: (batchKey: string) => void;
 		onSelectProfile: (profile: TableRoastProfile) => void;
 		onClearFilters?: () => void;
 	}>();
 
-	// Create derived values with defaults
-	let safeBatchNames = $derived(sortedBatchNames ?? []);
-	let safeGroupedProfiles = $derived(sortedGroupedProfiles ?? {});
+	let safeBatches = $derived<RoastBatchGroup<TableRoastProfile>[]>(batches ?? []);
 
 	// Wholesale filter state
 	let wholesaleFilter = $state<'all' | 'retail' | 'wholesale'>('all');
 
-	let filteredBatchNames = $derived(
+	let filteredBatches = $derived(
 		wholesaleFilter === 'all'
-			? safeBatchNames
-			: safeBatchNames.filter((batchKey: string) => {
-					const profiles: TableRoastProfile[] = safeGroupedProfiles[batchKey] || [];
-					if (wholesaleFilter === 'wholesale') {
-						return profiles.some((p: TableRoastProfile) => p.is_wholesale);
-					}
-					return profiles.some((p: TableRoastProfile) => !p.is_wholesale);
-				})
+			? safeBatches
+			: safeBatches.filter((batch) =>
+					wholesaleFilter === 'wholesale'
+						? batch.roasts.some((p) => p.is_wholesale)
+						: batch.roasts.some((p) => !p.is_wholesale)
+				)
 	);
 
 	import { formatDay } from '$lib/roast/profile-picker-model';
+	import {
+		batchLabel,
+		batchSaleHref,
+		batchSpanLabel,
+		type RoastBatchGroup
+	} from '$lib/roast/roast-batches';
 
 	let isBatchExpanded = $derived((batchKey: string) => !collapsedBatches.has(batchKey));
 
@@ -132,7 +137,7 @@
 </script>
 
 <div class="w-full max-w-[100vw] overflow-x-hidden">
-	{#if !safeBatchNames || safeBatchNames.length === 0}
+	{#if safeBatches.length === 0}
 		<div class="rounded-lg bg-surface-panel p-8 text-center ring-1 ring-line">
 			<svg
 				class="mx-auto mb-4 h-12 w-12 text-muted opacity-60"
@@ -193,72 +198,89 @@
 				onclick={() => (wholesaleFilter = 'wholesale')}>Wholesale</button
 			>
 		</div>
-		{#if filteredBatchNames.length === 0}
+		{#if filteredBatches.length === 0}
 			<div class="rounded-lg bg-surface-panel p-8 text-center ring-1 ring-line">
 				<h3 class="text-lg font-semibold text-ink">No roasts match.</h3>
 			</div>
 		{/if}
 		<div class="space-y-6">
-			{#each filteredBatchNames as batchKey}
-				{@const batchName = batchKey.includes('|||') ? batchKey.split('|||')[0] : batchKey}
-				{@const profiles = safeGroupedProfiles[batchKey] || []}
+			{#each filteredBatches as batch (batch.key)}
+				{@const batchKey = batch.key}
+				{@const profiles = batch.roasts}
+				{@const label = batchLabel(batch)}
+				{@const span = batchSpanLabel(batch)}
 				{@const batchSummary = getBatchSummary(profiles)}
 				{@const hasWholesale = profiles.some((p: TableRoastProfile) => p.is_wholesale)}
+				{@const saleLink = showLogSale ? batchSaleHref(batch) : null}
 				<div class="rounded-lg bg-surface-panel ring-1 ring-line">
-					<!-- Batch Header - Following ProfitCards Pattern -->
-					<button
-						type="button"
-						class="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-surface-canvas focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
-						onclick={() => onToggleBatch(batchKey)}
-						onkeydown={(e) => {
-							if (e.key === 'Enter' || e.key === ' ') {
-								e.preventDefault();
-								onToggleBatch(batchKey);
-							}
-						}}
-						aria-expanded={isBatchExpanded(batchKey)}
-						aria-controls="batch-{batchKey.replace(/\s+/g, '-').toLowerCase()}"
-						aria-label="Toggle {batchName} batch ({batchSummary.count} roasts)"
-					>
-						<div class="flex items-center gap-3">
-							<div class="text-ink">
-								{isBatchExpanded(batchKey) ? '▼' : '▶'}
-							</div>
-							<div>
-								<div class="flex items-center gap-1.5">
-									<h3 class="text-lg font-semibold text-ink">
-										{batchName}
-									</h3>
-									{#if hasWholesale}
-										<span class="rounded bg-info-subtle px-1 text-xs font-medium text-info-strong"
-											>Wholesale</span
-										>
-									{/if}
+					<!-- Batch header: the date leads, because a name can repeat from week to week. -->
+					<div class="flex items-center">
+						<button
+							type="button"
+							class="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-lg p-4 text-left transition-colors hover:bg-surface-canvas focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+							onclick={() => onToggleBatch(batchKey)}
+							onkeydown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									onToggleBatch(batchKey);
+								}
+							}}
+							aria-expanded={isBatchExpanded(batchKey)}
+							aria-controls="batch-{batchKey.replace(/\s+/g, '-').toLowerCase()}"
+							aria-label="Toggle {batch.name} batch, {formatDay(batch.date) ??
+								'no date'} ({batchSummary.count} roast{batchSummary.count !== 1 ? 's' : ''})"
+						>
+							<div class="flex min-w-0 items-center gap-3">
+								<div class="text-ink">
+									{isBatchExpanded(batchKey) ? '▼' : '▶'}
 								</div>
-								<p class="text-sm text-muted">
-									{batchSummary.count} roast{batchSummary.count !== 1 ? 's' : ''} • {formatDay(
-										profiles[0]?.roast_date
-									) ?? ''}
-								</p>
-							</div>
-						</div>
-						<div class="hidden text-right sm:block">
-							<div class="grid grid-cols-3 gap-6 text-sm">
-								<div>
-									<p class="text-muted">Total weight</p>
-									<p class="font-semibold tabular-nums text-ink">{batchSummary.totalWeight} oz</p>
-								</div>
-								<div>
-									<p class="text-muted">Avg loss</p>
-									<p class="font-semibold tabular-nums text-ink">{batchSummary.avgWeightLoss}%</p>
-								</div>
-								<div>
-									<p class="text-muted">Roasts</p>
-									<p class="font-semibold tabular-nums text-ink">{batchSummary.count}</p>
+								<div class="min-w-0">
+									<div class="flex flex-wrap items-center gap-1.5">
+										<h3 class="break-words text-lg font-semibold text-ink">
+											{label}
+										</h3>
+										{#if hasWholesale}
+											<span class="rounded bg-info-subtle px-1 text-xs font-medium text-info-strong"
+												>Wholesale</span
+											>
+										{/if}
+									</div>
+									<p class="text-sm text-muted">
+										{batchSummary.count} roast{batchSummary.count !== 1 ? 's' : ''}{span
+											? ` · ${span}`
+											: ''}
+									</p>
 								</div>
 							</div>
-						</div>
-					</button>
+							<div class="hidden shrink-0 text-right sm:block">
+								<div class="grid grid-cols-3 gap-6 text-sm">
+									<div>
+										<p class="text-muted">Total weight</p>
+										<p class="font-semibold tabular-nums text-ink">{batchSummary.totalWeight} oz</p>
+									</div>
+									<div>
+										<p class="text-muted">Avg loss</p>
+										<p class="font-semibold tabular-nums text-ink">{batchSummary.avgWeightLoss}%</p>
+									</div>
+									<div>
+										<p class="text-muted">Roasts</p>
+										<p class="font-semibold tabular-nums text-ink">{batchSummary.count}</p>
+									</div>
+								</div>
+							</div>
+						</button>
+						{#if saleLink}
+							<div class="shrink-0 pl-2 pr-4">
+								<a
+									href={saleLink}
+									class="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-line bg-surface-canvas px-3 py-2 text-sm font-semibold text-muted transition-colors hover:border-accent hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+									aria-label="Log sale from {label}"
+								>
+									Log sale
+								</a>
+							</div>
+						{/if}
+					</div>
 
 					<!-- Roast Profile Cards -->
 					{#if isBatchExpanded(batchKey) && profiles.length > 0}
@@ -266,7 +288,7 @@
 							class="border-t border-line bg-surface-canvas p-4"
 							id="batch-{batchKey.replace(/\s+/g, '-').toLowerCase()}"
 							role="region"
-							aria-label="Roasts in {batchName}"
+							aria-label="Roasts in {label}"
 						>
 							<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 								{#each profiles as profile}

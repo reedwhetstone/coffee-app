@@ -23,29 +23,6 @@ interface BatchedRoast {
 	coffee_name?: string | null;
 }
 
-/**
- * Narrow the roast list's batches to one coffee. A batch keeps only that coffee's roasts,
- * and a batch with none of them is dropped. Batch order is kept.
- */
-export function filterBatchesByCoffee<T extends BatchedRoast>(
-	batchNames: readonly string[],
-	groupedRoasts: Readonly<Record<string, T[]>>,
-	coffeeId: number | null
-): { batchNames: string[]; groupedRoasts: Record<string, T[]> } {
-	if (coffeeId === null) {
-		return { batchNames: [...batchNames], groupedRoasts: { ...groupedRoasts } };
-	}
-	const names: string[] = [];
-	const grouped: Record<string, T[]> = {};
-	for (const name of batchNames) {
-		const roasts = (groupedRoasts[name] ?? []).filter((roast) => roast.coffee_id === coffeeId);
-		if (roasts.length === 0) continue;
-		names.push(name);
-		grouped[name] = roasts;
-	}
-	return { batchNames: names, groupedRoasts: grouped };
-}
-
 /** The coffee's name as its roasts carry it, or null when none of them is for that coffee. */
 export function coffeeFilterName(roasts: readonly BatchedRoast[], coffeeId: number): string | null {
 	for (const roast of roasts) {

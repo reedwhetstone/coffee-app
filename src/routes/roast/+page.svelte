@@ -13,11 +13,16 @@
 	import { createRoastTimer } from '$lib/roast';
 	import { roastCountLine } from '$lib/roast/roast-summary';
 	import { readOpenRoastId } from '$lib/roast/compare-sides';
+	import { coffeeFilterName, readCoffeeFilter } from '$lib/roast/coffee-links';
 	import {
-		coffeeFilterName,
+		batchLabel,
+		deleteBatchConfirmation,
 		filterBatchesByCoffee,
-		readCoffeeFilter
-	} from '$lib/roast/coffee-links';
+		filterBatchesById,
+		groupRoastsByBatch,
+		readBatchFilter,
+		roastListHref
+	} from '$lib/roast/roast-batches';
 	import { saveRoastAsReference } from '$lib/roast/save-reference';
 	import {
 		ARTISAN_BACKGROUND_STEPS,
@@ -146,18 +151,6 @@
 			readRoastCreateOperation(sessionStorage, ownerId, 'profile-form')?.payload ?? null;
 	});
 
-	// // Debug data in the component
-	// $effect(() => {
-	// 	//console.log('Roast page data:', data);
-	// 	//console.log('FilteredData store value:', $filteredData.length, 'items');
-	// 	//console.log('Sorted batch names:', sortedBatchNames.length, 'batches');
-	// 	//console.log(
-	// 		'Sorted grouped profiles:',
-	// 		Object.keys(sortedGroupedProfiles).length,
-	// 		'batch keys'
-	// 	);
-	// });
-
 	// Data loading is handled by onMount to avoid race conditions
 
 	// Error handling utilities
@@ -233,69 +226,35 @@
 		pendingProfileCreatePayload = null;
 	}
 
-	// Derived values for grouped profiles - directly computed from typedFilteredData
-	let sortedGroupedProfiles = $derived(() => {
-		if (!typedFilteredData || typedFilteredData.length === 0) {
-			return {};
-		}
+	// Batches are worked out from the roasts by batch ID. A name can repeat from week to
+	// week, and a batch can hold roasts from more than one day.
+	let batches = $derived(groupRoastsByBatch(typedFilteredData ?? []));
+	// Every batch on the account, whatever the filters in force: a batch is named and
+	// deleted as a whole.
+	let allBatches = $derived(groupRoastsByBatch(clientData));
 
-		// Group profiles by batch name + roast date.
-		// Same batch name on different days = different batch.
-		const newGroupedProfiles: Record<string, RoastProfile[]> = {};
-
-		// Process each profile
-		typedFilteredData.forEach((profile) => {
-			const name = profile.batch_name || 'Unknown Batch';
-			const date = profile.roast_date ? profile.roast_date.split('T')[0] : 'unknown';
-			const batchKey = `${name}|||${date}`;
-			if (!newGroupedProfiles[batchKey]) {
-				newGroupedProfiles[batchKey] = [];
-			}
-			newGroupedProfiles[batchKey].push(profile);
-		});
-
-		// Sort profiles within each batch by date (newest first)
-		Object.keys(newGroupedProfiles).forEach((batchName) => {
-			newGroupedProfiles[batchName].sort((a, b) => {
-				const dateA = new Date(a.roast_date ?? 0);
-				const dateB = new Date(b.roast_date ?? 0);
-				return dateB.getTime() - dateA.getTime();
-			});
-		});
-
-		return newGroupedProfiles;
-	});
-
-	let sortedBatchNames = $derived(() => {
-		const groupedProfiles = sortedGroupedProfiles();
-		const batchNames = Object.keys(groupedProfiles).sort((a, b) => {
-			// Get the latest date from each batch
-			const latestA = groupedProfiles[a][0]?.roast_date
-				? new Date(groupedProfiles[a][0].roast_date)
-				: new Date(0);
-			const latestB = groupedProfiles[b][0]?.roast_date
-				? new Date(groupedProfiles[b][0].roast_date)
-				: new Date(0);
-			return latestB.getTime() - latestA.getTime();
-		});
-		return batchNames;
-	});
-
-	// `/roast?coffee=<inventory id>` narrows the list to one portfolio coffee. The page still
-	// holds every roast, so an open roast keeps its batch and nothing is reloaded.
+	// `/roast?coffee=<inventory id>` narrows the list to one portfolio coffee, and
+	// `/roast?batch=<batch id>` to one batch. The page still holds every roast, so an open
+	// roast keeps its batch and nothing is reloaded.
 	let coffeeFilterId = $derived(readCoffeeFilter(page.url.searchParams));
 	let coffeeFilter = $derived(
 		coffeeFilterId === null
 			? null
 			: { id: coffeeFilterId, name: coffeeFilterName(clientData, coffeeFilterId) }
 	);
+	let batchFilterId = $derived(readBatchFilter(page.url.searchParams));
+	let batchFilter = $derived.by(() => {
+		if (batchFilterId === null) return null;
+		const batch = allBatches.find((candidate) => candidate.id === batchFilterId);
+		return { id: batchFilterId, label: batch ? batchLabel(batch) : null };
+	});
 	let listBatches = $derived(
-		filterBatchesByCoffee(sortedBatchNames(), sortedGroupedProfiles(), coffeeFilterId)
+		filterBatchesByCoffee(filterBatchesById(batches, batchFilterId), coffeeFilterId)
 	);
 
-	function clearCoffeeFilter() {
+	function clearListFilter(name: 'coffee' | 'batch') {
 		const url = new URL(page.url);
-		url.searchParams.delete('coffee');
+		url.searchParams.delete(name);
 		const search = url.searchParams.toString();
 		goto(url.pathname + (search ? '?' + search : ''), {
 			replaceState: true,
@@ -305,8 +264,7 @@
 	}
 
 	let roastSummary = $derived.by(() => {
-		const batches = listBatches.batchNames;
-		const profiles = batches.flatMap((batchName) => listBatches.groupedRoasts[batchName]);
+		const profiles = listBatches.flatMap((batch) => batch.roasts);
 		const profilesWithLossData = profiles.filter(
 			(profile) => profile.weight_loss_percent !== null && profile.weight_loss_percent !== undefined
 		);
@@ -320,7 +278,7 @@
 
 		return {
 			roasts: profiles.length,
-			batches: batches.length,
+			batches: listBatches.length,
 			averageLoss
 		};
 	});
@@ -328,9 +286,7 @@
 	// Publish the actual selection, not just the route name. Cherry receives
 	// canonical roast IDs so its read tool can retrieve the complete profiles.
 	$effect(() => {
-		const visible = isLoading
-			? []
-			: listBatches.batchNames.flatMap((batchName) => listBatches.groupedRoasts[batchName]);
+		const visible = isLoading ? [] : listBatches.flatMap((batch) => batch.roasts);
 		pageChatContext.set(buildRoastPageContext(visible, currentRoastProfile, isLoading));
 		return () => pageChatContext.clear();
 	});
@@ -575,15 +531,15 @@
 	}
 
 	// Function to toggle batch expansion
-	function toggleBatch(batchName: string) {
-		if (!sortedGroupedProfiles()[batchName]) return;
+	function toggleBatch(batchKey: string) {
+		if (!batches.some((batch) => batch.key === batchKey)) return;
 
 		// A new Set, so the change is seen
 		const next = new Set(collapsedBatches);
-		if (next.has(batchName)) {
-			next.delete(batchName);
+		if (next.has(batchKey)) {
+			next.delete(batchKey);
 		} else {
-			next.add(batchName);
+			next.add(batchKey);
 		}
 		collapsedBatches = next;
 	}
@@ -618,13 +574,10 @@
 		try {
 			console.log('Selecting profile:', profile.roast_id, profile.coffee_name);
 
-			// Find the batch key containing this profile (keys are composite name|||date)
-			const groupedProfiles = sortedGroupedProfiles();
-			const batchKey =
-				Object.keys(groupedProfiles).find((key) =>
-					groupedProfiles[key]?.some((p) => p.roast_id === profile.roast_id)
-				) || '';
-			const profiles = groupedProfiles[batchKey] || [];
+			// Find the roast's place in its batch
+			const profiles =
+				batches.find((batch) => batch.roasts.some((p) => p.roast_id === profile.roast_id))
+					?.roasts ?? [];
 			const index = profiles.findIndex((p) => p.roast_id === profile.roast_id);
 
 			// If not found in grouped profiles, it might be a timing issue
@@ -908,29 +861,62 @@
 		}
 	}
 
-	// Update this function to handle batch deletion
-	async function handleBatchDelete() {
-		// Reset state
-		currentRoastProfile = null;
-		selectedBean = { name: 'No Bean Selected' };
-		selectionState.lastSelectedId = null;
+	// "Delete batch" in the open roast's More menu: one batch, by its ID, with the roasts in
+	// it. Another batch that carries the same name is not touched.
+	async function deleteBatch(batchKey: string) {
+		const batch = allBatches.find((candidate) => candidate.key === batchKey);
+		if (!batch?.id || operationInProgress) return;
 
-		// Clear URL parameter for deleted profile
-		const currentUrl = new URL(window.location.href);
-		currentUrl.searchParams.delete('roast');
-		currentUrl.searchParams.delete('profileId');
-		goto(
-			currentUrl.pathname +
-				(currentUrl.searchParams.toString() ? '?' + currentUrl.searchParams.toString() : ''),
-			{
+		// Deleting the batch of the roast being recorded drops its readings with it.
+		const holdsOpenRoast =
+			currentRoastProfile !== null &&
+			batch.roasts.some((roast) => roast.roast_id === currentRoastProfile?.roast_id);
+		if (holdsOpenRoast && !(await confirmLeaveLiveRoast())) return;
+		if (!confirm(deleteBatchConfirmation(batch))) return;
+
+		setOperation('Deleting batch...');
+		clearProfileError();
+		try {
+			const response = await fetch(`/api/roast-batches/${batch.id}`, { method: 'DELETE' });
+			if (!response.ok) {
+				const failure = await response.json().catch(() => null);
+				throw new Error(failure?.error || 'Failed to delete this batch');
+			}
+
+			if (holdsOpenRoast) {
+				currentRoastProfile = null;
+				selectedBean = { name: 'No Bean Selected' };
+				selectionState.lastSelectedId = null;
+				timer.reset();
+				$temperatureEntries = [];
+				$eventEntries = [];
+				$roastData = [];
+				$roastEvents = [];
+			}
+
+			// The open roast and the batch are gone, so neither stays in the address.
+			const currentUrl = new URL(window.location.href);
+			if (holdsOpenRoast) {
+				currentUrl.searchParams.delete('roast');
+				currentUrl.searchParams.delete('profileId');
+			}
+			if (readBatchFilter(currentUrl.searchParams) === batch.id) {
+				currentUrl.searchParams.delete('batch');
+			}
+			const search = currentUrl.searchParams.toString();
+			goto(currentUrl.pathname + (search ? '?' + search : ''), {
 				replaceState: true,
 				keepFocus: true,
 				noScroll: true
-			}
-		);
+			});
 
-		// Refresh both server data and client data
-		await syncData();
+			await syncData();
+		} catch (error) {
+			console.error('Error deleting batch:', error);
+			setProfileError(error instanceof Error ? error.message : 'Failed to delete this batch');
+		} finally {
+			setOperation(null);
+		}
 	}
 
 	// Function to clear the current profile (for the "← Roasts" back link).
@@ -951,9 +937,9 @@
 		$roastData = [];
 		$roastEvents = [];
 
-		// Back to the list as it was: the coffee it was narrowed to stays in the address.
-		const coffee = readCoffeeFilter(new URL(window.location.href).searchParams);
-		goto(coffee === null ? '/roast' : `/roast?coffee=${coffee}`, {
+		// Back to the list as it was: the coffee or batch it was narrowed to stays in the address.
+		const params = new URL(window.location.href).searchParams;
+		goto(roastListHref({ coffee: readCoffeeFilter(params), batch: readBatchFilter(params) }), {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: true
@@ -1061,8 +1047,7 @@
 	</div>
 {:else}
 	<RoastProfileTabs
-		sortedBatchNames={sortedBatchNames()}
-		sortedGroupedProfiles={sortedGroupedProfiles()}
+		{batches}
 		{collapsedBatches}
 		{currentRoastProfile}
 		{currentProfileIndex}
@@ -1081,16 +1066,27 @@
 		onSelectProfile={selectProfile}
 		onProfileUpdate={handleProfileUpdate}
 		onProfileDelete={handleProfileDelete}
-		onBatchDelete={handleBatchDelete}
+		onDeleteBatch={deleteBatch}
 		onClearProfile={handleClearProfile}
 		onClearFilters={() => {
 			filterStore.clearFilters();
-			if (coffeeFilterId !== null) clearCoffeeFilter();
+			if (coffeeFilterId !== null || batchFilterId !== null) {
+				const url = new URL(page.url);
+				url.searchParams.delete('coffee');
+				url.searchParams.delete('batch');
+				const search = url.searchParams.toString();
+				goto(url.pathname + (search ? '?' + search : ''), {
+					replaceState: true,
+					keepFocus: true,
+					noScroll: true
+				});
+			}
 		}}
-		listBatchNames={listBatches.batchNames}
-		listGroupedProfiles={listBatches.groupedRoasts}
+		{listBatches}
 		{coffeeFilter}
-		onClearCoffeeFilter={clearCoffeeFilter}
+		onClearCoffeeFilter={() => clearListFilter('coffee')}
+		{batchFilter}
+		onClearBatchFilter={() => clearListFilter('batch')}
 		onProfileRefresh={refreshProfileAfterArtisanImport}
 		{selectedBean}
 		{timer}

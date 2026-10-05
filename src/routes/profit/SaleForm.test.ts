@@ -124,7 +124,7 @@ describe('SaleForm create idempotency', () => {
 			onClose: vi.fn(),
 			onSubmit,
 			availableCoffees: [],
-			availableBatches: []
+			availableRoasts: []
 		});
 		const form = container.querySelector('form')!;
 
@@ -166,7 +166,7 @@ describe('SaleForm create idempotency', () => {
 			onClose: vi.fn(),
 			onSubmit: vi.fn(),
 			availableCoffees: [],
-			availableBatches: []
+			availableRoasts: []
 		});
 		const form = container.querySelector('form')!;
 
@@ -201,7 +201,7 @@ describe('SaleForm create idempotency', () => {
 			onClose: vi.fn(),
 			onSubmit: vi.fn(),
 			availableCoffees: [],
-			availableBatches: []
+			availableRoasts: []
 		});
 		const form = container.querySelector('form')!;
 
@@ -240,7 +240,7 @@ describe('SaleForm create idempotency', () => {
 			onClose: vi.fn(),
 			onSubmit: vi.fn(),
 			availableCoffees: [],
-			availableBatches: []
+			availableRoasts: []
 		});
 		const form = container.querySelector('form')!;
 
@@ -279,7 +279,7 @@ describe('SaleForm create idempotency', () => {
 			onClose: vi.fn(),
 			onSubmit: vi.fn(),
 			availableCoffees: [],
-			availableBatches: []
+			availableRoasts: []
 		});
 		const form = container.querySelector('form')!;
 
@@ -313,7 +313,7 @@ describe('SaleForm create idempotency', () => {
 			onClose: vi.fn(),
 			onSubmit: vi.fn(),
 			availableCoffees: [],
-			availableBatches: []
+			availableRoasts: []
 		});
 		const form = container.querySelector('form')!;
 

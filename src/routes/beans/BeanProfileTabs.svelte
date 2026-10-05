@@ -16,6 +16,7 @@
 	import type { PortfolioPanelTab } from '$lib/portfolio/panel-url';
 	import { newRoastHref } from '$lib/roast/coffee-links';
 	import { planNextRoastLink } from '$lib/roast/roast-plan';
+	import { logSaleLink } from '$lib/roast/roast-batches';
 
 	let {
 		selectedBean,
@@ -454,7 +455,7 @@
 				{role}
 				readOnly={sharedView}
 				onStartNewRoast={startNewRoast}
-				rowMenu={planNextRoastLink}
+				rowMenu={(roast) => [...planNextRoastLink(roast), ...logSaleLink(roast)]}
 			/>
 		{:else if currentTab === 'analytics'}
 			<AnalyticsTab {selectedBean} />

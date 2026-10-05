@@ -20,11 +20,6 @@ export type InventoryWithCatalog = Omit<InventoryResource, 'coffee_catalog'> & {
 export type GreenCoffeeInv = InventoryWithCatalog;
 export type AvailableCoffee = InventoryWithCatalog & { name?: string | null };
 
-export interface BatchItem {
-	batch_name: string;
-	coffee_id: number;
-}
-
 export interface CoffeeFormData {
 	manual_name?: string;
 	catalog_id?: number | null;

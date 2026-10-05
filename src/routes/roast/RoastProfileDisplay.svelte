@@ -7,13 +7,11 @@
 		profile,
 		onUpdate,
 		onProfileDeleted,
-		onBatchDeleted,
 		currentIndex = 0
 	} = $props<{
 		profile: RoastProfile;
 		onUpdate: (profile: RoastProfile) => void;
 		onProfileDeleted: () => void;
-		onBatchDeleted: () => void;
 		currentIndex?: number;
 	}>();
 
@@ -102,38 +100,6 @@
 				console.error('Error deleting roast profile:', error);
 				alert(error instanceof Error ? error.message : 'Failed to delete roast profile');
 			}
-		}
-	}
-
-	export async function deleteBatch() {
-		try {
-			if (!profile?.batch_name) {
-				throw new Error('No batch name available');
-			}
-
-			if (
-				!confirm(`Are you sure you want to delete all roasts in batch "${profile.batch_name}"?`)
-			) {
-				return;
-			}
-
-			const response = await fetch(
-				`/api/roast-profiles?name=${encodeURIComponent(profile.batch_name)}`,
-				{
-					method: 'DELETE'
-				}
-			);
-
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to delete batch profiles');
-			}
-
-			// Notify parent via callback
-			onBatchDeleted();
-		} catch (error) {
-			console.error('Error deleting batch:', error);
-			alert(error instanceof Error ? error.message : 'Failed to delete batch profiles');
 		}
 	}
 </script>

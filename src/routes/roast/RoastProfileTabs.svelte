@@ -14,18 +14,22 @@
 	import RoastSegments from './RoastSegments.svelte';
 	import ArtisanImportDialog from '$lib/components/roast/ArtisanImportDialog.svelte';
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
-	import { coffeeRoastsHref } from '$lib/roast/coffee-links';
 	import { compareHref } from '$lib/roast/compare-sides';
 	import { hasRecordedRoast } from '$lib/roast/profile-picker-model';
 	import { planHref } from '$lib/roast/roast-plan';
+	import {
+		parseBatchId,
+		roastListHref,
+		roastSaleHref,
+		type RoastBatchGroup
+	} from '$lib/roast/roast-batches';
 	import { hasRecordedCurve, roastDetailLine, roastMilestones } from '$lib/roast/roast-summary';
 	import type { RoastProfile } from '$lib/types/component.types';
 	import type { ComponentType } from 'svelte';
 	import type { RoastTimer } from '$lib/roast';
 
 	let {
-		sortedBatchNames,
-		sortedGroupedProfiles,
+		batches,
 		collapsedBatches,
 		currentRoastProfile,
 		currentProfileIndex,
@@ -42,13 +46,14 @@
 		onSelectProfile,
 		onProfileUpdate,
 		onProfileDelete,
-		onBatchDelete,
+		onDeleteBatch,
 		onClearProfile,
 		onClearFilters,
-		listBatchNames = undefined,
-		listGroupedProfiles = undefined,
+		listBatches = undefined,
 		coffeeFilter = null,
 		onClearCoffeeFilter = undefined,
+		batchFilter = null,
+		onClearBatchFilter = undefined,
 		onProfileRefresh,
 		selectedBean,
 		timer,
@@ -60,8 +65,8 @@
 		saveRoastProfile,
 		clearRoastData
 	} = $props<{
-		sortedBatchNames: string[];
-		sortedGroupedProfiles: Record<string, RoastProfile[]>;
+		/** Every batch, newest first, keyed by batch ID. */
+		batches: RoastBatchGroup<RoastProfile>[];
 		collapsedBatches: Set<string>;
 		currentRoastProfile: RoastProfile | null;
 		currentProfileIndex: number;
@@ -76,19 +81,22 @@
 		onSaveReference: () => void;
 		/** Downloads the Artisan file the open roast was imported from. */
 		onDownloadArtisan?: () => void;
-		onToggleBatch: (batchName: string) => void;
+		onToggleBatch: (batchKey: string) => void;
 		onSelectProfile: (profile: RoastProfile) => void;
 		onProfileUpdate: (profile: RoastProfile) => void;
 		onProfileDelete: () => void;
-		onBatchDelete: () => void;
+		/** Deletes one batch, by its key, once the member confirms. */
+		onDeleteBatch: (batchKey: string) => void;
 		onClearProfile: () => Promise<boolean>;
 		onClearFilters: () => void;
 		/** The batches the list shows when it is narrowed; every batch otherwise. */
-		listBatchNames?: string[];
-		listGroupedProfiles?: Record<string, RoastProfile[]>;
+		listBatches?: RoastBatchGroup<RoastProfile>[];
 		/** The portfolio coffee the list is narrowed to by `?coffee=`. */
 		coffeeFilter?: { id: number; name: string | null } | null;
 		onClearCoffeeFilter?: () => void;
+		/** The batch the list is narrowed to by `?batch=`, named date first when it is known. */
+		batchFilter?: { id: string; label: string | null } | null;
+		onClearBatchFilter?: () => void;
 		onProfileRefresh: (roastId: number) => Promise<void>;
 		selectedBean: { id?: number; name: string };
 		timer: RoastTimer;
@@ -101,12 +109,22 @@
 		clearRoastData: () => void;
 	}>();
 
-	let visibleBatchNames = $derived<string[]>(listBatchNames ?? sortedBatchNames);
-	let visibleGroupedProfiles = $derived<Record<string, RoastProfile[]>>(
-		listGroupedProfiles ?? sortedGroupedProfiles
-	);
+	let visibleBatches = $derived<RoastBatchGroup<RoastProfile>[]>(listBatches ?? batches);
 	// "← Roasts" returns to the list as it was narrowed.
-	let listHref = $derived(coffeeFilter ? coffeeRoastsHref(coffeeFilter.id) : '/roast');
+	let listHref = $derived(roastListHref({ coffee: coffeeFilter?.id, batch: batchFilter?.id }));
+
+	// What the filters in force left out, said under "No roasts match."
+	let emptyDetail = $derived.by(() => {
+		const coffee = coffeeFilter ? (coffeeFilter.name ?? 'this coffee') : null;
+		if (batchFilter) {
+			const batch = batchFilter.label ?? 'that batch';
+			if (coffee) return `Nothing was roasted for ${coffee} in ${batch}.`;
+			return batchFilter.label
+				? `No roasts in ${batch} match.`
+				: 'That batch has no roasts. It may have been deleted.';
+		}
+		return coffee ? `Nothing was roasted for ${coffee}.` : '';
+	});
 
 	let detailPanel = $state<RoastProfileDisplay>();
 	let detailSection = $state<HTMLDivElement>();
@@ -133,15 +151,29 @@
 	}
 </script>
 
+{#snippet filterChip(label: string, removeLabel: string, onRemove: (() => void) | undefined)}
+	<span
+		class="inline-flex max-w-full items-center gap-1 rounded-full bg-surface-panel py-1 pl-3 pr-1 text-sm font-medium text-ink ring-1 ring-line"
+	>
+		<span class="truncate">{label}</span>
+		<button
+			type="button"
+			class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-accent/10 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+			aria-label={removeLabel}
+			onclick={() => onRemove?.()}
+		>
+			<span aria-hidden="true">×</span>
+		</button>
+	</span>
+{/snippet}
+
 <div class="mx-auto w-full max-w-[100vw] overflow-x-hidden">
 	{#if currentRoastProfile}
-		{@const batchKey =
-			Object.keys(sortedGroupedProfiles).find((key) =>
-				sortedGroupedProfiles[key]?.some(
-					(p: RoastProfile) => p.roast_id === currentRoastProfile.roast_id
-				)
-			) || ''}
-		{@const otherBatchRoasts = (sortedGroupedProfiles[batchKey] || []).filter(
+		{@const openBatch = batches.find((batch: RoastBatchGroup<RoastProfile>) =>
+			batch.roasts.some((p: RoastProfile) => p.roast_id === currentRoastProfile.roast_id)
+		)}
+		{@const openBatchId = parseBatchId(currentRoastProfile.batch_id)}
+		{@const otherBatchRoasts = (openBatch?.roasts ?? []).filter(
 			(p: RoastProfile) => p.roast_id !== currentRoastProfile.roast_id
 		)}
 		<div class="mb-4">
@@ -157,6 +189,7 @@
 				roastId={currentRoastProfile.roast_id}
 				hasRecording={hasRecordedRoast(currentRoastProfile)}
 				busy={actionInProgress}
+				saleLink={roastSaleHref(currentRoastProfile)}
 				{onSaveReference}
 				onEditDetails={editDetails}
 				onImportArtisan={() => artisanImportDialog?.open()}
@@ -165,7 +198,7 @@
 					: undefined}
 				onClearRecorded={clearRecordedData}
 				onDeleteRoast={() => detailPanel?.deleteProfile()}
-				onDeleteBatch={() => detailPanel?.deleteBatch()}
+				onDeleteBatch={openBatchId ? () => onDeleteBatch(openBatchId) : undefined}
 			/>
 			{#if actionNotice}
 				<p
@@ -259,7 +292,6 @@
 				currentIndex={currentProfileIndex}
 				onUpdate={onProfileUpdate}
 				onProfileDeleted={onProfileDelete}
-				onBatchDeleted={onBatchDelete}
 			/>
 		</div>
 
@@ -275,24 +307,25 @@
 		<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 			<div>
 				<h1 class="text-2xl font-bold text-ink">Roasts</h1>
-				{#if visibleBatchNames.length > 0}
+				{#if visibleBatches.length > 0}
 					<p class="mt-1 text-muted">{countLine}</p>
 				{/if}
-				{#if coffeeFilter}
-					<p class="mt-3">
-						<span
-							class="inline-flex max-w-full items-center gap-1 rounded-full bg-surface-panel py-1 pl-3 pr-1 text-sm font-medium text-ink ring-1 ring-line"
-						>
-							<span class="truncate">{coffeeFilter.name ?? 'This coffee'}</span>
-							<button
-								type="button"
-								class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-accent/10 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-								aria-label="Show roasts of every coffee"
-								onclick={() => onClearCoffeeFilter?.()}
-							>
-								<span aria-hidden="true">×</span>
-							</button>
-						</span>
+				{#if coffeeFilter || batchFilter}
+					<p class="mt-3 flex flex-wrap gap-2">
+						{#if coffeeFilter}
+							{@render filterChip(
+								coffeeFilter.name ?? 'This coffee',
+								'Show roasts of every coffee',
+								onClearCoffeeFilter
+							)}
+						{/if}
+						{#if batchFilter}
+							{@render filterChip(
+								batchFilter.label ?? 'One batch',
+								'Show every batch',
+								onClearBatchFilter
+							)}
+						{/if}
 					</p>
 				{/if}
 			</div>
@@ -323,14 +356,12 @@
 		<RoastSegments current="roasts" />
 
 		<RoastHistoryTable
-			sortedBatchNames={visibleBatchNames}
-			sortedGroupedProfiles={visibleGroupedProfiles}
+			batches={visibleBatches}
 			{collapsedBatches}
 			{currentRoastProfile}
 			{totalRoasts}
-			emptyDetail={coffeeFilter
-				? `Nothing was roasted for ${coffeeFilter.name ?? 'this coffee'}.`
-				: ''}
+			{emptyDetail}
+			showLogSale={canCreateRoast}
 			{onToggleBatch}
 			{onSelectProfile}
 			{onClearFilters}

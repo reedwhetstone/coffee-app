@@ -3,25 +3,28 @@
 	import { compareHref } from '$lib/roast/compare-sides';
 	import { planHref } from '$lib/roast/roast-plan';
 
-	// The actions for the roast on screen. "Compare with…" and "Plan next roast from this"
-	// are plain links, so leaving a roast that is still recording goes through the page's
-	// live-roast guard like any other navigation.
+	// The actions for the roast on screen. "Compare with…", "Plan next roast from this", and
+	// "Log sale" are plain links, so leaving a roast that is still recording goes through the
+	// page's live-roast guard like any other navigation.
 	let {
 		roastId,
 		hasRecording,
 		busy = false,
+		saleLink = null,
 		onSaveReference,
 		onEditDetails,
 		onImportArtisan,
 		onDownloadArtisan = undefined,
 		onClearRecorded,
 		onDeleteRoast,
-		onDeleteBatch
+		onDeleteBatch = undefined
 	}: {
 		roastId: number;
 		/** Whether anything was recorded for this roast; there is nothing to compare, keep, or clear otherwise. */
 		hasRecording: boolean;
 		busy?: boolean;
+		/** The sale form with this roast's coffee, batch, and roast filled in. */
+		saleLink?: string | null;
 		onSaveReference: () => void;
 		onEditDetails: () => void;
 		onImportArtisan: () => void;
@@ -29,7 +32,8 @@
 		onDownloadArtisan?: () => void;
 		onClearRecorded: () => void;
 		onDeleteRoast: () => void;
-		onDeleteBatch: () => void;
+		/** Given only when the roast's batch is known by its ID. */
+		onDeleteBatch?: () => void;
 	} = $props();
 
 	const uid = $props.id();
@@ -51,10 +55,12 @@
 			: []),
 		{ label: 'Clear recorded data', run: onClearRecorded, disabled: !hasRecording || busy },
 		{ label: 'Delete roast', run: onDeleteRoast, disabled: busy, destructive: true },
-		{ label: 'Delete batch', run: onDeleteBatch, disabled: busy, destructive: true }
+		...(onDeleteBatch
+			? [{ label: 'Delete batch', run: onDeleteBatch, disabled: busy, destructive: true }]
+			: [])
 	]);
 
-	// On a phone the plan link sits in this menu; on wider screens it is hidden here.
+	// On a phone the plan and sale links sit in this menu; on wider screens they are hidden here.
 	const enabledItems = () =>
 		Array.from(
 			menu?.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)') ?? []
@@ -147,6 +153,15 @@
 		</button>
 	{/if}
 
+	{#if saleLink}
+		<a
+			href={saleLink}
+			class="hidden items-center justify-center rounded-md border border-line bg-surface-canvas px-4 py-2 text-sm font-semibold text-muted transition-colors hover:border-accent hover:text-ink sm:inline-flex"
+		>
+			Log sale
+		</a>
+	{/if}
+
 	<div class="relative" onfocusout={handleFocusOut}>
 		<button
 			bind:this={trigger}
@@ -198,6 +213,16 @@
 					>
 						{PLAN_LABEL}
 					</button>
+				{/if}
+				{#if saleLink}
+					<a
+						href={saleLink}
+						role="menuitem"
+						class="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-accent-subtle sm:hidden"
+						onclick={() => setTimeout(() => hide())}
+					>
+						Log sale
+					</a>
 				{/if}
 				{#each items as item, index (item.label)}
 					{#if item.destructive && !items[index - 1]?.destructive}
