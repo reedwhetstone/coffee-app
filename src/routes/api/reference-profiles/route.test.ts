@@ -90,7 +90,12 @@ describe('/api/reference-profiles', () => {
 
 		expect(response.status).toBe(201);
 		expect(fromRoast).toHaveBeenCalledWith(
-			{ roastId: 7, roastRevision: 'roast-revision-7', title: 'Batch 7 reference' },
+			{
+				roastId: 7,
+				roastRevision: 'roast-revision-7',
+				basis: 'chart_snapshot',
+				title: 'Batch 7 reference'
+			},
 			'idem-2'
 		);
 	});
