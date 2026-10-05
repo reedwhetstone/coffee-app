@@ -1460,7 +1460,14 @@ const docsPages: DocsPage[] = [
 							'GET POST PUT DELETE',
 							'Session',
 							'Internal product route',
-							'CRUD for roast profiles. GET accepts coffee_id, a portfolio inventory id, to list one coffee’s roasts. POST supports single and batch creation. DELETE accepts a roast id. Every roast carries batch_id, the ID of its batch.'
+							'CRUD for roast profiles. GET lists roasts newest first and accepts coffee_id (a portfolio inventory id), roast_id, batch_id, date_start, date_end, q (one search term across coffee name, batch name, and roast number), and is_wholesale; limit and offset return one page, and totals counts everything the filters match. POST supports single and batch creation. DELETE accepts a roast id. Every roast carries batch_id, the ID of its batch.'
+						],
+						[
+							'/api/roast-coffees',
+							'GET',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'Lists the member’s portfolio coffees by ID, name, purchase date, and stocked state: the choices the roast list can be narrowed to. It reads the portfolio only.'
 						],
 						[
 							'/api/roast-batches',
@@ -1880,6 +1887,12 @@ const docsPages: DocsPage[] = [
 							'GET POST PUT DELETE',
 							'Session',
 							'List, create, update, or delete roast profiles'
+						],
+						[
+							'/api/roast-coffees',
+							'GET',
+							'Session + Mallard Studio',
+							'List the portfolio coffees the roast list can be narrowed to'
 						],
 						[
 							'/api/artisan-import',
