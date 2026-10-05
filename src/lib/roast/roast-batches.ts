@@ -146,36 +146,27 @@ export function readBatchFilter(searchParams: URLSearchParams): string | null {
 	return parseBatchId(searchParams.get('batch'));
 }
 
-/** Keep only the named batch. With no batch named, every batch is kept. */
-export function filterBatchesById<T extends BatchedRoast>(
-	batches: readonly RoastBatchGroup<T>[],
-	batchId: string | null
-): RoastBatchGroup<T>[] {
-	return batchId === null ? [...batches] : batches.filter((batch) => batch.id === batchId);
+/** The filters a roast list link can carry. Each one is left out of the link when it is not set. */
+export interface RoastListLinkFilters {
+	coffee?: number | null;
+	batch?: string | null;
+	range?: string | null;
+	from?: string | null;
+	to?: string | null;
+	q?: string | null;
+	market?: string | null;
 }
 
-/**
- * Narrow batches to one coffee. A batch keeps only that coffee's roasts, and a batch with
- * none of them is dropped. Its name and date stay those of the whole batch.
- */
-export function filterBatchesByCoffee<T extends BatchedRoast>(
-	batches: readonly RoastBatchGroup<T>[],
-	coffeeId: number | null
-): RoastBatchGroup<T>[] {
-	if (coffeeId === null) return [...batches];
-	return batches.flatMap((batch) => {
-		const roasts = batch.roasts.filter((roast) => roast.coffee_id === coffeeId);
-		return roasts.length > 0 ? [{ ...batch, roasts }] : [];
-	});
-}
-
-/** The link to the roast list as it is narrowed: by coffee, by batch, both, or neither. */
-export function roastListHref(
-	filters: { coffee?: number | null; batch?: string | null } = {}
-): string {
+/** The link to the roast list with its filters in force: `/roast?coffee=101&range=30d&q=guji`. */
+export function roastListHref(filters: RoastListLinkFilters = {}): string {
 	const query = [
 		filters.coffee != null ? `coffee=${filters.coffee}` : null,
-		filters.batch ? `batch=${filters.batch}` : null
+		filters.batch ? `batch=${filters.batch}` : null,
+		filters.range ? `range=${filters.range}` : null,
+		filters.from ? `from=${filters.from}` : null,
+		filters.to ? `to=${filters.to}` : null,
+		filters.q ? `q=${encodeURIComponent(filters.q)}` : null,
+		filters.market ? `market=${filters.market}` : null
 	]
 		.filter(Boolean)
 		.join('&');
