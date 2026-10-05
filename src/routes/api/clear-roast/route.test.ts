@@ -38,7 +38,7 @@ function makeEvent(url = 'https://app.test/api/clear-roast?roast_id=42', session
 		url: new URL(url),
 		request: new Request(url, { method: 'DELETE' }),
 		locals: {
-			principal: session ? cookieSessionPrincipal() : anonymousPrincipal()
+			principal: session ? cookieSessionPrincipal('member') : anonymousPrincipal()
 		}
 	} as unknown as Parameters<NonNullable<typeof DELETE>>[0];
 }

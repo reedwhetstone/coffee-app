@@ -1458,7 +1458,7 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/roast-profiles',
 							'GET POST PUT DELETE',
-							'Session',
+							'Session + Mallard Studio',
 							'Internal product route',
 							'CRUD for roast profiles. GET accepts coffee_id, a portfolio inventory id, to list one coffee’s roasts. POST supports single and batch creation. DELETE accepts a roast id. Every roast carries batch_id, the ID of its batch.'
 						],
@@ -1486,28 +1486,28 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/artisan-import',
 							'POST',
-							'Session + roast:write',
+							'Session + Mallard Studio',
 							'Internal product route',
-							'Accepts multipart form-data with file plus roastId. Supported formats: .alog, .alog.json, .json. Forwards to the canonical Parchment API, which enforces the roast:write entitlement; signed-in callers without it receive a 403.'
+							'Accepts multipart form-data with file plus roastId. Supported formats: .alog, .alog.json, .json. Forwards to the canonical Parchment API. Signed-in accounts without Mallard Studio receive a 403.'
 						],
 						[
 							'/api/roast-chart-data',
 							'GET',
-							'Session',
+							'Session + Mallard Studio',
 							'Internal analysis helper',
 							'Requires roastId query param. Returns the generated Parchment chart contract with bounded typed series, discrete events, and metadata, not raw unbounded sensor streams.'
 						],
 						[
 							'/api/roast-chart-settings',
 							'GET',
-							'Session',
+							'Session + Mallard Studio',
 							'Internal UI helper',
 							'Requires roastId query param. Reads saved chart ranges for a roast profile.'
 						],
 						[
 							'/api/clear-roast',
 							'DELETE',
-							'Session + roast:write',
+							'Session + Mallard Studio',
 							'Internal maintenance helper',
 							'Requires roast_id query param. Forwards to the canonical Parchment API, which clears imported Artisan data and resets related fields.'
 						],
@@ -1867,7 +1867,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Roasting',
 		intro: [
 			'Roast routes cover CRUD for roast profiles, Artisan import, chart telemetry, chart display settings, and data clearing.',
-			'Roast routes require an authenticated session. Mutations are same-origin thin BFF calls to Parchment, which owns authorization and persistence.'
+			'Roast routes require a signed-in account with Mallard Studio. Mutations are same-origin thin BFF calls to Parchment, which owns authorization and persistence.'
 		],
 		sections: [
 			{
@@ -1878,26 +1878,31 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/roast-profiles',
 							'GET POST PUT DELETE',
-							'Session',
+							'Session + Mallard Studio',
 							'List, create, update, or delete roast profiles'
 						],
 						[
 							'/api/artisan-import',
 							'POST',
-							'Session + roast:write',
-							'Import an Artisan roast file into an existing roast profile via the canonical Parchment API (requires the roast:write entitlement)'
+							'Session + Mallard Studio',
+							'Import an Artisan roast file into an existing roast profile via the canonical Parchment API'
 						],
 						[
 							'/api/roast-chart-data',
 							'GET',
-							'Session',
+							'Session + Mallard Studio',
 							'Return sampled roast telemetry and metadata for a roast'
 						],
-						['/api/roast-chart-settings', 'GET', 'Session', 'Read saved chart ranges for a roast'],
+						[
+							'/api/roast-chart-settings',
+							'GET',
+							'Session + Mallard Studio',
+							'Read saved chart ranges for a roast'
+						],
 						[
 							'/api/clear-roast',
 							'DELETE',
-							'Session + ownership',
+							'Session + Mallard Studio',
 							'Clear imported roast telemetry and reset Artisan fields'
 						]
 					]
@@ -1988,14 +1993,19 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/roast-chart-data',
 							'GET',
-							'Session',
+							'Session + Mallard Studio',
 							'Sampled roast telemetry and metadata for chart rendering'
 						],
-						['/api/roast-chart-settings', 'GET', 'Session', 'Saved chart axis ranges'],
+						[
+							'/api/roast-chart-settings',
+							'GET',
+							'Session + Mallard Studio',
+							'Saved chart axis ranges'
+						],
 						[
 							'/api/clear-roast',
 							'DELETE',
-							'Session + ownership',
+							'Session + Mallard Studio',
 							'Clear imported roast data for a flow reset'
 						]
 					]

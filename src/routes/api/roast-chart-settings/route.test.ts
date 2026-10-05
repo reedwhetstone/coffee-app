@@ -35,7 +35,7 @@ function makeEvent(
 		fetch: vi.fn(),
 		locals: {
 			principal: authoritativeAuthenticated
-				? cookieSessionPrincipal('viewer', {
+				? cookieSessionPrincipal('member', {
 						user: { id: 'authoritative-user-1' } as never,
 						session: { access_token: 'authoritative-session-token' } as never
 					})
